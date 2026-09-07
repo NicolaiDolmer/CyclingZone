@@ -1121,3 +1121,108 @@ export async function notifyForumThreadReply({
     return { delivered: false, deduped: false, reason: "error" };
   }
 }
+
+// #3200 (DM v1) ────────────────────────────────────────────────────────────
+
+export const DIRECT_MESSAGE_TYPE = "dm_message";
+
+export function buildDirectMessageNotification({ conversationId, senderName, messageCount }) {
+  const count = Math.max(1, messageCount || 1);
+  const name = senderName || "Another manager";
+  const title = count > 1 ? `${count} new messages` : "New message";
+  const message = count > 1
+    ? `${count} new messages from ${name}`
+    : `${name} sent you a message`;
+  return {
+    type: DIRECT_MESSAGE_TYPE,
+    title,
+    message,
+    relatedId: conversationId,
+    metadata: {
+      conversationId,
+      senderName: name,
+      messageCount: count,
+      // #666: ÉN kode pr. felt med ICU-plural (count), ikke separate
+      // title/titlePlural-koder — samme mønster som forum_thread_reply.
+      titleCode: "notif.directMessage.title",
+      titleParams: { count },
+      messageCode: "notif.directMessage.message",
+      messageParams: { count, senderName: name },
+    },
+  };
+}
+
+/**
+ * #3200 · Notificér modtageren om en ny direkte besked.
+ *
+ * Kaldes fra sendDirectMessage EFTER beskeden er gemt, og KUN når modtageren
+ * ikke har blokeret afsenderen — blok-tjekket ligger i directMessages.js, så
+ * en blokeret afsender aldrig kan udløse et livstegn hos den der blokerede.
+ * En fejlet notifikation må ALDRIG vælte selve beskeden (samme A2-isolerings-
+ * mønster som resten af filen).
+ *
+ * DEDUPE pr. (bruger, samtale): findes der allerede en ULÆST dm_message-
+ * notifikation for samme samtale, opdateres den ("N new messages") og
+ * created_at bumpes. En samtale med 20 beskeder giver ÉN notifikation, ikke 20
+ * — samme regel som forum_thread_reply (#3517).
+ */
+export async function notifyDirectMessage({
+  supabase, recipientUserId, senderUserId, senderName = null, conversationId, now = new Date(),
+}) {
+  if (!recipientUserId || !conversationId) return { delivered: false, deduped: false, reason: "missing_target" };
+  if (recipientUserId === senderUserId) return { delivered: false, deduped: false, reason: "own_message" };
+
+  try {
+    const { data: existingRows, error: findError } = await supabase
+      .from("notifications")
+      .select("id, metadata")
+      .eq("user_id", recipientUserId)
+      .eq("type", DIRECT_MESSAGE_TYPE)
+      .eq("related_id", conversationId)
+      .eq("is_read", false)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (findError) throw findError;
+
+    const existing = existingRows?.[0] || null;
+    const messageCount = (existing?.metadata?.messageCount ?? 0) + 1;
+    const resolvedName = senderName || existing?.metadata?.senderName || null;
+    const payload = buildDirectMessageNotification({ conversationId, senderName: resolvedName, messageCount });
+
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("notifications")
+        .update({
+          title: payload.title,
+          message: payload.message,
+          metadata: payload.metadata,
+          created_at: now.toISOString(),
+        })
+        .eq("id", existing.id);
+      if (updateError) throw updateError;
+      return { delivered: true, deduped: true, id: existing.id, messageCount };
+    }
+
+    const { data: inserted, error: insertError } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: recipientUserId,
+        type: payload.type,
+        title: payload.title,
+        message: payload.message,
+        related_id: payload.relatedId,
+        metadata: payload.metadata,
+        is_read: false,
+        created_at: now.toISOString(),
+      })
+      .select("id")
+      .single();
+    if (insertError) throw insertError;
+    return { delivered: true, deduped: false, id: inserted?.id, messageCount };
+  } catch (err) {
+    // conversationId må ALDRIG stå i format-string-positionen (CodeQL #188).
+    console.error("  ❌ dm-notifikation fejlede (samtale %s):", conversationId, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "dm-message" }, conversationId });
+    return { delivered: false, deduped: false, reason: "error" };
+  }
+}
