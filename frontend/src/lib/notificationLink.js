@@ -50,6 +50,16 @@ export function resolveNotificationLink(notification, fallbackLink) {
     return fallbackLink ?? null;
   }
 
+  // #4943: invitationen til det in-app spoergeskema sendes som admin_notice,
+  // som med vilje ikke har et generisk link i TYPE_CONFIG. Slug'en ligger i
+  // metadata (samme moenster som #4557's aarsmoede-regel), saa beskeden kan
+  // sendes for et hvilket som helst skema uden en ny notifikationstype.
+  // /survey/:slug er selv tilstands-vagtet: er skemaet lukket, viser siden
+  // tak-fladen frem for et doedt link.
+  if (n.type === "admin_notice" && typeof meta.surveySlug === "string" && meta.surveySlug) {
+    return `/survey/${meta.surveySlug}`;
+  }
+
   if ((n.type === "board_update" || n.type === "board_critical") && BOARD_MEETING_TITLE_CODES.has(meta.titleCode)) {
     return "/board/meeting";
   }
