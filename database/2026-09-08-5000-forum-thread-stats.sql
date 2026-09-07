@@ -113,9 +113,12 @@ CREATE INDEX IF NOT EXISTS forum_thread_views_post_id_viewed_at_idx
 -- ── RLS: deny-all for klienter ──────────────────────────────────────────────
 --
 -- Samme klasse som forum_reports/forum_poll_votes (#3199): hvem der har laest
--- hvad maa aldrig naa en spiller-flade. Ingen policies = ingen adgang for
--- anon/authenticated; backend laeser/skriver via service_role, som bypasser
--- RLS. REVOKE'en er defense-in-depth mod Supabase' default table-grants.
+-- hvad maa aldrig naa en spiller-flade. En eksplicit deny-all-policy (USING
+-- false / WITH CHECK false) frem for slet ingen policy — den er selv-
+-- dokumenterende i pg_policies og gør hensigten laesbar for advisoren, i
+-- stedet for at ligne en tabel nogen glemte at give adgang til. REVOKE'en
+-- ovenpaa er defense-in-depth mod Supabase' default table-grants. Backend
+-- laeser/skriver via service_role, som bypasser RLS.
 
 ALTER TABLE public.forum_thread_views ENABLE ROW LEVEL SECURITY;
 
