@@ -7,7 +7,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { computeAttackGainSeconds, computeRegroupSeconds, descentHook, incidentProbability } from "./descent.ts";
+import {
+  computeAttackGainSeconds,
+  computeRegroupSeconds,
+  descentHook,
+  descentResultIsNoop,
+  incidentProbability,
+} from "./descent.ts";
 import { maxIncidentsForField, resolveCrashIncident } from "./incidents.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { RACE_V4_TUNING, DESCENT_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
@@ -157,6 +163,33 @@ test("solo-gruppe (< 2 ryttere) kan ikke splitte", () => {
   const result = descentHook(state, ctx);
   assert.equal(result.events.length, 0);
   assert.strictEqual(result.state, state);
+});
+
+// ── #4950: no-op-garantien maa ALDRIG tabe en riders-mutation tavst ─────────
+// descentHook's no-op-optimering (samme state-reference) blandede foer et
+// enkelt `changed`-flag for BAADE groups (vaerdi-baseret, korrekt) og riders
+// (som burde vaere reference-baseret). descentResultIsNoop() adskiller de to,
+// saa en fremtidig riders-mutation der ikke ogsaa saetter groupsChanged=true
+// ikke kan blive tabt af no-op-grenen.
+
+test("descentResultIsNoop: uaendrede groups + uaendrede (samme reference) riders => no-op", () => {
+  const riders = { a: makeRiderState("a", "g") };
+  assert.equal(descentResultIsNoop(false, riders, riders), true);
+});
+
+test("descentResultIsNoop: riders-reference aendret (mutation) UDEN groupsChanged=true => IKKE no-op (#4950-faelden)", () => {
+  const stateRiders = { a: makeRiderState("a", "g") };
+  const mutatedRiders = { ...stateRiders, a: { ...stateRiders.a, incidents: 1 } };
+  assert.equal(
+    descentResultIsNoop(false, mutatedRiders, stateRiders),
+    false,
+    "en riders-mutation skal ALDRIG betragtes som no-op, uanset groupsChanged",
+  );
+});
+
+test("descentResultIsNoop: groupsChanged=true er ALDRIG no-op, uanset riders", () => {
+  const riders = { a: makeRiderState("a", "g") };
+  assert.equal(descentResultIsNoop(true, riders, riders), false);
 });
 
 // ── Kontrakt: gevinst-loft (beslutning 6) ───────────────────────────────────

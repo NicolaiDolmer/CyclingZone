@@ -16,9 +16,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { simulateStageV4 } from "./index.ts";
+import { maxIncidentsForField } from "./mechanics/incidents.ts";
 import { riderCpForSegment, riderWeatherCpMultiplier } from "./segmentLoop.ts";
 import { validateTimelineEvents } from "./timeline.ts";
-import { RACE_V4_TUNING } from "./tuning.ts";
+import { INCIDENTS_EXTRA_TUNING, RACE_V4_TUNING } from "./tuning.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -115,6 +116,23 @@ function weatherEvents(output: StageOutput) {
 
 /** Blandet felt — spredning i alle evner, saa selektionerne har noget at arbejde med. */
 const MIXED_FIELD = field(60, (i) =>
+  abilitiesAt(30, {
+    climbing: 15 + ((i * 7) % 70),
+    sprint: 20 + ((i * 11) % 60),
+    descending: 10 + ((i * 13) % 80),
+    durability: 15 + ((i * 5) % 70),
+    endurance: 20 + ((i * 3) % 60),
+  }),
+);
+
+// Samme evne-spredning som MIXED_FIELD, men 180 ryttere: kun descent-
+// risiko-armen (#4950) bruger dette — et 60-rytters felt giver et
+// uheldsloft (maxIncidentsFieldShare) paa 3 pr. etape, taet nok paa hvad
+// 40 loeb rent faktisk producerer at wet > dry-marginen kunne braekke ved
+// naeste kalibrering (maalt: 1-2/40 loeb ramte loftet praecis). 180 ryttere
+// (loft 9) gav 0/40 loft-ramte loeb over samme maaling — headroom uden at
+// aendre produktionens loft (tuning.ts's maxIncidentsFieldShare uroert).
+const WIDE_MIXED_FIELD = field(180, (i) =>
   abilitiesAt(30, {
     climbing: 15 + ((i * 7) % 70),
     sprint: 20 + ((i * 11) % 60),
@@ -334,30 +352,49 @@ test("regn forstaerker descent attack-risikoen (risiko-armen er koblet ind i des
   // saa rullet faktisk sker, og maaler DEN forskel vejret goer. At produktions-
   // raten er naer nul er en KALIBRERINGS-observation, ikke en wiring-fejl —
   // den er noteret i PR-bodyen.
+  //
+  // #4950: WIDE_MIXED_FIELD (180 ryttere, loft 9/etape) i stedet for
+  // MIXED_FIELD (60 ryttere, loft 3/etape) — se feltets kommentar. Uheldsloftet
+  // (maxIncidentsFieldShare) er delt med M10 og uaendret i tuning.ts; kun
+  // testens EGET felt er bredere, saa wet > dry-marginen maales et stykke fra
+  // loftet i stedet for at rulle op ad det.
   const loudRiskTuning = {
     ...RACE_V4_TUNING,
     descent: { ...RACE_V4_TUNING.descent, incidentRiskBase: 0.35 },
   };
   const seeds = Array.from({ length: 40 }, (_, i) => `m11-descent-risk-${i}`);
-  const countIncidents = (weather: Weather): number =>
-    seeds.reduce((sum, seed) => {
+  const cap = maxIncidentsForField(WIDE_MIXED_FIELD.length, INCIDENTS_EXTRA_TUNING);
+  const countIncidents = (weather: Weather): { total: number; seedsAtCap: number } => {
+    let total = 0;
+    let seedsAtCap = 0;
+    for (const seed of seeds) {
       const out = simulateStageV4({
         route: shelteredThenExposedRoute(weather),
-        startlist: MIXED_FIELD,
+        startlist: WIDE_MIXED_FIELD,
         orders: [],
         seed,
         tuning: loudRiskTuning,
       });
-      return (
-        sum +
-        out.timeline.events.filter(
-          (e) => e.type === "incident" && (e.params as { cause?: string }).cause === "descent_attack",
-        ).length
-      );
-    }, 0);
+      const n = out.timeline.events.filter(
+        (e) => e.type === "incident" && (e.params as { cause?: string }).cause === "descent_attack",
+      ).length;
+      total += n;
+      // "raa risiko" (ikke det DELTE etape-loft) er det denne test vil maale —
+      // et loeb der selv rammer det fulde etape-loft (M3 + M10 tilsammen) siger
+      // intet om vejrets EGEN forstaerkning og skal ikke kunne skjule en braekket
+      // wet > dry-margin (#4950).
+      if (n >= cap) seedsAtCap += 1;
+    }
+    return { total, seedsAtCap };
+  };
 
   const dry = countIncidents({ kind: "sun", wind_exposure: 0.2 });
   const wet = countIncidents({ kind: "rain", wind_exposure: 0.2 });
-  assert.ok(dry > 0, "testruten skal producere descent-angreb med uheldsrul overhovedet");
-  assert.ok(wet > dry, `regn (${wet} uheld) skal give flere descent-uheld end sol (${dry})`);
+  assert.ok(dry.total > 0, "testruten skal producere descent-angreb med uheldsrul overhovedet");
+  assert.equal(dry.seedsAtCap, 0, `sol-armen maa ikke ramme etape-loftet (${cap}) — saa maaler testen loftet, ikke raa risiko`);
+  assert.equal(wet.seedsAtCap, 0, `regn-armen maa ikke ramme etape-loftet (${cap}) — saa maaler testen loftet, ikke raa risiko`);
+  assert.ok(
+    wet.total > dry.total,
+    `regn (${wet.total} uheld) skal give flere descent-uheld end sol (${dry.total})`,
+  );
 });

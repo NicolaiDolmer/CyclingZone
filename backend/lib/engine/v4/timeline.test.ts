@@ -98,6 +98,24 @@ test("incidentEvent + favoriteCrackEvent + finaleAttackEvent", () => {
   assert.deepEqual(attack.params, { rider_id: "g" });
 });
 
+// ── incidentEvent: valgfrit cause-argument (#4950) ────────────────────────────
+
+test("incidentEvent: cause udelades naar ikke angivet (bit-identisk med foer #4950)", () => {
+  const inc = incidentEvent(75, { riderId: "e", kind: "crash", outcome: "time_loss", timeLossSeconds: 12 });
+  assert.ok(!("cause" in inc.params), "ingen cause-argument => ingen cause-noegle i params");
+});
+
+test("incidentEvent: cause-argumentet saettes ordret i params naar angivet", () => {
+  const inc = incidentEvent(75, {
+    riderId: "e",
+    kind: "crash",
+    outcome: "time_loss",
+    timeLossSeconds: 12,
+    cause: "descent_attack",
+  });
+  assert.equal(inc.params.cause, "descent_attack");
+});
+
 test("sprintDecidedEvent + finishEvent + gcChangeEvent", () => {
   const sprint = sprintDecidedEvent(180, { riderIds: ["a", "b"], photoFinish: true });
   assert.deepEqual(sprint.params, { rider_ids: ["a", "b"], photo_finish: true });
@@ -162,6 +180,18 @@ test("validateTimelineEvents regel 3 (unknown-rider): rider_id udenfor det kendt
   const violations = validateTimelineEvents(events, { distanceKm: 100, knownRiderIds: new Set(["a"]) });
   const flaggedRuleCount = violations.filter((v) => v.rule === "unknown-rider").length;
   assert.equal(flaggedRuleCount, 4);
+});
+
+test("validateTimelineEvents: incident-cause — tom/ikke-streng cause paa et incident-event flages (#4950)", () => {
+  const events = [
+    makeEvent(10, "incident", { rider_id: "a", kind: "crash", outcome: "time_loss", time_loss_seconds: 5, cause: "" }),
+    makeEvent(20, "incident", { rider_id: "a", kind: "crash", outcome: "time_loss", time_loss_seconds: 5, cause: 7 }),
+    incidentEvent(30, { riderId: "a", kind: "crash", outcome: "time_loss", timeLossSeconds: 5, cause: "descent_attack" }),
+    incidentEvent(40, { riderId: "a", kind: "crash", outcome: "time_loss", timeLossSeconds: 5 }),
+  ];
+  const violations = validateTimelineEvents(events, { distanceKm: 100, knownRiderIds: new Set(["a"]) });
+  const causeViolations = violations.filter((v) => v.rule === "incident-cause");
+  assert.equal(causeViolations.length, 2, "kun de to ugyldige cause-vaerdier skal flages");
 });
 
 test("assertValidTimeline: kaster med samlet fejlbesked ved brud", () => {
