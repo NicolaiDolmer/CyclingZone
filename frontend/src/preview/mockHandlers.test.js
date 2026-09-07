@@ -147,7 +147,8 @@ test("/api/managers/:id returnerer managerprofilens fulde kontrakt", () => {
   const r = apiResponse(`/api/managers/${TEST_TEAM.id}`);
   assert.deepEqual(
     Object.keys(r).sort(),
-    ["achievements", "riders", "season_history", "team", "transfer_activity", "user"]
+    // #5000: forum_stats (traade + svar) er en del af kontrakten nu.
+    ["achievements", "forum_stats", "riders", "season_history", "team", "transfer_activity", "user"]
   );
   assert.equal(r.team.id, TEST_TEAM.id);
   assert.equal(typeof r.team.division, "number");
@@ -156,6 +157,11 @@ test("/api/managers/:id returnerer managerprofilens fulde kontrakt", () => {
   assert.ok(r.season_history.length >= 1, "profilen skal have sæsonhistorik");
   // #2917: kolonnen læser rank_in_division (final_rank fandtes ikke).
   assert.ok(r.season_history.every((s) => Number.isInteger(s.rank_in_division)));
+  // #5000: taellingen er traade + svar, og totalen skal stemme med delene —
+  // ellers viser profilens noegletal noget andet end backend leverer.
+  assert.equal(typeof r.forum_stats.posts, "number");
+  assert.equal(typeof r.forum_stats.replies, "number");
+  assert.equal(r.forum_stats.total, r.forum_stats.posts + r.forum_stats.replies);
 });
 
 test("/api/managers/:id — achievements dækker låst, oplåst, hemmelig og progress", () => {
