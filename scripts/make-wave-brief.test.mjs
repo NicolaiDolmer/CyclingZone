@@ -67,6 +67,16 @@ test("instruerer draft-PR ved foerste push og gh pr ready som sidste handling (C
   assert.match(brief, /gh pr ready/);
 });
 
+test("instruerer CodeRabbit CLI-review foer gh pr ready", () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /coderabbit review --base main --committed/);
+  assert.match(brief, /Ret aegte fund/);
+  assert.match(brief, /maa IKKE markeres klar foer dette review er koert/);
+  const cliIdx = brief.indexOf("coderabbit review --base main --committed");
+  const readyIdx = brief.indexOf("gh pr ready <N>");
+  assert.ok(cliIdx > 0 && readyIdx > cliIdx, "CLI-review skal staa FOER gh pr ready");
+});
+
 test("indeholder forbud mod watchers/dev-servere og under-agenter", () => {
   const brief = generateBrief(baseConfig);
   assert.match(brief, /watcher eller dev-server/);
