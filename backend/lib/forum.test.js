@@ -17,6 +17,8 @@ import {
   getForumPost,
   createForumPost,
   createForumReply,
+  forumCategoryPostRole,
+  canCreateForumThread,
   voteForumPoll,
   reportForumContent,
   listForumReports,
@@ -90,8 +92,9 @@ test("parseForumCursor accepterer kun positive heltal, ellers null (ingen 500)",
   assert.equal(parseForumCursor("42"), 42);
 });
 
-test("isValidForumCategory matcher DB-CHECK'en (#4492: 6 kategorier)", () => {
-  assert.deepEqual(FORUM_CATEGORIES, ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"]);
+test("isValidForumCategory matcher DB-CHECK'en (#4492: 6 kategorier, #4818: + roadmap øverst)", () => {
+  // Rækkefølgen er visningsrækkefølgen — roadmap SKAL ligge først (#4818).
+  assert.deepEqual(FORUM_CATEGORIES, ["roadmap", "general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"]);
   for (const category of FORUM_CATEGORIES) assert.ok(isValidForumCategory(category), category);
   assert.ok(!isValidForumCategory("random"));
   // #4492: "archive" er et visnings-filter, ALDRIG en gyldig category-værdi
@@ -542,15 +545,68 @@ test("createForumPost: validering af kategori/titel/body", async () => {
   assert.equal(fake.state.forum_posts.length, 0);
 });
 
-test("createForumPost: alle 6 kategorier (#4492: questions/tactics/transfers/off_topic tilføjet) accepteres", async () => {
+test("createForumPost: alle kategorier accepteres (#4492 + #4818: admin når roadmap er med)", async () => {
   const fake = createFakeSupabase(seedState());
   for (const category of FORUM_CATEGORIES) {
     const result = await createForumPost({
-      supabase: fake, userId: "u1", teamId: "t1", category, title: `Post in ${category}`, body: "Body",
+      supabase: fake, userId: "u1", teamId: "t1", isAdmin: true, category, title: `Post in ${category}`, body: "Body",
     });
     assert.equal(result.status, 200, category);
   }
   assert.equal(fake.state.forum_posts.length, FORUM_CATEGORIES.length);
+});
+
+// #4818 (ejer-direktiv 4/9 + afklaring 8/9): roadmap-kategorien tager kun
+// tråde fra ejeren; alle andre kategorier er uændret åbne, og SVAR er aldrig
+// begrænset ("kun jeg opretter, alle svarer").
+test("forumCategoryPostRole/canCreateForumThread: generel regel, ikke et bruger-id", () => {
+  assert.equal(forumCategoryPostRole("roadmap"), "admin");
+  assert.equal(forumCategoryPostRole("general"), "everyone");
+  assert.equal(forumCategoryPostRole("archive"), "everyone");
+  assert.equal(canCreateForumThread("roadmap", { isAdmin: true }), true);
+  assert.equal(canCreateForumThread("roadmap", { isAdmin: false }), false);
+  // Fail closed: alt der ikke er eksplicit true tæller som ikke-admin.
+  assert.equal(canCreateForumThread("roadmap"), false);
+  assert.equal(canCreateForumThread("roadmap", { isAdmin: "admin" }), false);
+  assert.equal(canCreateForumThread("general", { isAdmin: false }), true);
+});
+
+test("createForumPost: #4818 roadmap er admin-only (403, intet opslag), resten uændret", async () => {
+  const fake = createFakeSupabase(seedState());
+  const base = { supabase: fake, userId: "u1", teamId: "t1", title: "Where the game is going", body: "Body" };
+
+  const denied = await createForumPost({ ...base, isAdmin: false, category: "roadmap" });
+  assert.equal(denied.status, 403);
+  assert.equal(denied.body.errorCode, "forum_category_admin_only");
+  assert.equal(fake.state.forum_posts.length, 0);
+
+  // Rollen mangler helt (fx fejlet rolle-opslag i ruten) → stadig afvist.
+  const missingRole = await createForumPost({ ...base, category: "roadmap" });
+  assert.equal(missingRole.status, 403);
+  assert.equal(fake.state.forum_posts.length, 0);
+
+  // Gaten rammer FØR indholdsvalideringen, så grunden er den rigtige.
+  const emptyTitle = await createForumPost({ ...base, isAdmin: false, category: "roadmap", title: "  " });
+  assert.equal(emptyTitle.body.errorCode, "forum_category_admin_only");
+
+  const allowed = await createForumPost({ ...base, isAdmin: true, category: "roadmap" });
+  assert.equal(allowed.status, 200);
+  assert.equal(fake.state.forum_posts[0].category, "roadmap");
+
+  // Ingen anden kategori er blevet låst som sidegevinst.
+  const stillOpen = await createForumPost({ ...base, isAdmin: false, category: "general" });
+  assert.equal(stillOpen.status, 200);
+});
+
+test("createForumReply: #4818 alle må svare i roadmap-tråde", async () => {
+  const state = seedState();
+  state.forum_posts.push(post({ id: "roadmap-1", category: "roadmap", user_id: "admin-1" }));
+  const fake = createFakeSupabase(state);
+  const result = await createForumReply({
+    supabase: fake, postId: "roadmap-1", userId: "u1", teamId: "t1", body: "Looking forward to this",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(fake.state.forum_replies.filter((r) => r.post_id === "roadmap-1").length, 1);
 });
 
 test("createForumPost: almindelig spiller kan oprette; poll kræver admin (403, intet opslag)", async () => {

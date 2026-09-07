@@ -563,6 +563,24 @@ const FORUM_AUTHOR_E2E = { username: "e2e", team_name: "E2E Racing", team_id: TE
 // den umarkerede tilstand), post-2 og post-4 er ulæst (prik + fed titel på
 // preview/e2e), så unread-status-mocken nedenfor har noget ægte at svare på.
 const FORUM_POSTS = [
+  // #4818: den officielle roadmap-kategori — ejer-opslag, alle må svare. Med i
+  // seedet så preview/e2e kan vise BÅDE listen med kategorien øverst og en
+  // tråd i den (ellers ville fanen altid stå tom i preview).
+  {
+    id: "forum-roadmap-1",
+    seq: 5,
+    created_at: "2026-08-06T08:00:00Z",
+    category: "roadmap",
+    title: "What I am building next",
+    excerpt: "Race replays first, then the transfer window rework. Ask me anything in here.",
+    body: "Race replays first, then the transfer window rework. Ask me anything in here.",
+    is_pinned: false,
+    reply_count: 3,
+    last_reply_at: "2026-08-06T07:45:00Z",
+    has_poll: false,
+    is_unread: false,
+    author: FORUM_AUTHOR_OWNER,
+  },
   {
     id: "forum-pinned-1",
     seq: 4,

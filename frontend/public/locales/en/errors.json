@@ -217,6 +217,7 @@
     "forum_post_not_found": "The post was not found. It may have been removed.",
     "forum_reply_not_found": "The reply was not found. It may have been removed.",
     "forum_poll_admin_only": "Only the admin can attach polls",
+    "forum_category_admin_only": "Only I start threads in Roadmap. You can reply to any of them.",
     "forum_poll_invalid_options": "A poll needs 2 to 8 options of at most 100 characters",
     "forum_poll_option_not_found": "That poll option no longer exists",
     "forum_invalid_target_type": "Invalid report target",

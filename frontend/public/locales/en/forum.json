@@ -8,6 +8,7 @@
   },
   "categories": {
     "all": "All",
+    "roadmap": "Roadmap",
     "general": "General",
     "feedback_ideas": "Feedback & ideas",
     "questions": "Questions & answers",
@@ -15,6 +16,11 @@
     "transfers": "Transfers",
     "off_topic": "Off-topic",
     "archive": "Archive"
+  },
+  "adminOnly": {
+    "tag": "Official",
+    "notice": "Only I post here. Reply as much as you like.",
+    "emptyDescription": "Nothing here yet. This is where I post where the game is going."
   },
   "list": {
     "pinnedHeading": "Pinned",
