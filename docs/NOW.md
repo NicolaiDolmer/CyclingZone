@@ -10,7 +10,7 @@
 
 > **🔴 Åbne fund (§7b refreshet 7/9 efter #4971):** bjerg-top-10 **209 s GRØN** · højbjerg-hale grøn · felt-sammenhæng flad 31 % rød (fix i #4975, venter rebase) · favorit-win-rate 57 % rød (egen akse) · nedkørsel 0,43 grøn. CLAUDE.md 1737/1750 tok (#4364) · #4811 · #4453 · #4537 · #4530 · #4531 · #4109.
 
-> **✅ 7/9 dagbølge (Fable, ejer ved maskinen):** 17 PR'er merget (#4966 #4967 #4968 #4969 #4970 #4971 #4972 #4973 #4974 #4976 #4977 #4978 #4986 #4990 #4991 #4995 (=#4989, auto-lukket ved base-slet) + patch note #4994). Done: #4947 #4949 #4950 #4595 #4213 #4872 #4877 #4954 #4921 #4963 #4828 #4987 #4589 #4951 #4917 #4979 #4980 #4992. Nye: #4979-#4985 #4987 #4992 #4993. Audit: `docs/audits/day-wave-2026-09-07.md`. **CodeRabbit:** PR'er som draft til sidst (#4991), CLI installeret + logget ind, cap 20 USD, promo-kredit til 14/9.
+> **✅ 7/9 dagbølge (Fable, ejer ved maskinen):** 17 PR'er merget (#4966 #4967 #4968 #4969 #4970 #4971 #4972 #4973 #4974 #4976 #4977 #4978 #4986 #4990 #4991 #4995 (=#4989, auto-lukket ved base-slet) + patch note #4994). Efterfølgende: #5002 #5003 + patch note v7.262. Done: #4947 #4949 #4950 #4595 #4213 #4872 #4877 #4954 #4921 #4963 #4828 #4987 #4589 #4951 #4917 #4979 #4980 #4992. Nye: #4979-#4985 #4987 #4992 #4993. Audit: `docs/audits/day-wave-2026-09-07.md`. **CodeRabbit:** PR'er som draft til sidst (#4991), CLI installeret + logget ind, cap 20 USD, promo-kredit til 14/9.
 
 > **📊 Triage:** Sentry via `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. Clarity er ikke kilde til "hvor mange" (traffic_events brød 1/9, #4963 annoteret). #4952 Firefox-mobil · #4953 dead clicks /training (→ #3643/#4613/#4982).
 

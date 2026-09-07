@@ -1,5 +1,40 @@
 export const PATCHES = [
   {
+    "version": "7.262",
+    "date": "2026-09-07",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Feedback",
+        "en": {
+          "title": "The recommend-a-friend question now shows up on your dashboard",
+          "body": "Once your team has raced at least 3 race days this season, a short bar appears at the bottom of your dashboard asking how likely you are to recommend Cycling Zone to a friend. Before, it only lived on your own team's Results tab, where almost nobody found it. Answer it or close it, your call. You get asked at most once every 90 days, and never again once you have answered."
+        },
+        "da": {
+          "title": "Anbefal-en-ven-spørgsmålet vises nu på dit dashboard",
+          "body": "Når dit hold har kørt mindst 3 løbsdage i sæsonen, dukker en lav bar op nederst på dit dashboard med spørgsmålet om hvor sandsynligt det er, at du anbefaler Cycling Zone til en ven. Før lå den kun på din egen holdsides Resultater-fane, hvor næsten ingen fandt den. Svar eller luk den, som du vil. Du bliver højst spurgt én gang hver 90. dag, og aldrig igen når du har svaret."
+        },
+        "refs": [4997]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Roadmap",
+        "en": {
+          "title": "The roadmap now loads for logged-out visitors too",
+          "body": "Roadmap shows the real list with voting even when you are not logged in. Before, a logged-out visitor saw an outdated placeholder text instead. The list itself is also refreshed: staff, tactics and rider form, and bonus seconds have moved to Already built, four new ideas are in, including direct messages between managers and inviting a friend, and Deadline day is gone."
+        },
+        "da": {
+          "title": "Roadmappet indlæses nu også for besøgende der ikke er logget ind",
+          "body": "Roadmappet viser den rigtige liste med afstemning, selv når du ikke er logget ind. Før så en besøgende uden login en forældet reservetekst i stedet. Selve listen er også opdateret: staff, taktik og dagsform samt bonussekunder er flyttet til Allerede bygget, fire nye idéer er kommet til, blandt andet direkte beskeder mellem managere og at invitere en ven, og Deadline day er fjernet."
+        },
+        "refs": [3457]
+      }
+    ]
+  },
+  {
     "version": "7.261",
     "date": "2026-09-07",
     "label": "Beta",
