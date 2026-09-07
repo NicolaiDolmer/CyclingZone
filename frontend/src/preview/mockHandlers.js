@@ -672,6 +672,15 @@ export function forumCategoryMutes() {
   };
 }
 
+/**
+ * Nulstil til "foelger alle kategorier". Tilstanden er modul-lokal og deles
+ * derfor af alle tests i den samme Node-proces — e2e-fixturen kalder denne ved
+ * hver page-opsaetning, saa én tests klik aldrig kan laekke ind i den naeste.
+ */
+export function resetForumCategoryMutes() {
+  forumMutedCategories.clear();
+}
+
 export function setForumCategoryMuteMock(category, muted) {
   if (!FORUM_CATEGORY_KEYS.includes(category)) return { ok: false };
   if (muted) forumMutedCategories.add(category);

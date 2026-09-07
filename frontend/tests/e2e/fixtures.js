@@ -19,6 +19,8 @@ import {
   restRows,
   restObject,
   apiResponse,
+  setForumCategoryMuteMock,
+  resetForumCategoryMutes,
 } from "../../src/preview/mockHandlers.js";
 
 // Re-export så eksisterende spec-imports (import { TEST_USER, ... } from "./fixtures.js")
@@ -78,6 +80,10 @@ export function raceResultsRoute(dataset) {
 }
 
 export async function installNetworkMocks(page) {
+  // #5013: abonnement pr. forum-kategori er statefuldt i mockHandlers, og
+  // tilstanden deles af hele Node-processen. Nulstil ved hver opsaetning, saa
+  // et klik i én test aldrig kan laekke ind i den naeste.
+  resetForumCategoryMutes();
   await page.route("**/auth/v1/token?**", route => json(route, {
     access_token: "e2e-access-token",
     token_type: "bearer",
@@ -130,6 +136,14 @@ export async function installNetworkMocks(page) {
           ?? (rider.team_id === TEST_TEAM.id ? { lo: 4.5, hi: 4.5, level: 3 } : { hidden: true, level: 0 });
       }
       return json(route, { teamId: TEST_TEAM.id, maxLevel: 3, estimates });
+    }
+
+    // #5013: den ENESTE mutation e2e skal kunne se effekten af — ulaest-
+    // markeringerne og nav-prikken afledes af valget i mockHandlers.
+    if (url.pathname.endsWith("/api/forum/category-mutes") && request.method() === "PUT") {
+      let body = null;
+      try { body = JSON.parse(request.postData() || "{}"); } catch { body = null; }
+      return json(route, setForumCategoryMuteMock(body?.category, body?.muted));
     }
 
     if (request.method() !== "GET") return json(route, { ok: true });
