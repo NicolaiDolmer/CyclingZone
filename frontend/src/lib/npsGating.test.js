@@ -142,7 +142,7 @@ test("nps_submitted + nps_dismissed er registreret i KNOWN_EVENTS (Detector E's 
 const dashboardSource = fs.readFileSync(new URL("../pages/DashboardPage.jsx", import.meta.url), "utf8");
 
 test("Dashboard monterer NPS-prompten (rod-årsagen bag 40 af 262, #4997)", () => {
-  assert.match(dashboardSource, /import NpsPrompt from "\.\.\/components\/NpsPrompt"/);
+  assert.match(dashboardSource, /import NpsPrompt from "\.\.\/components\/NpsPrompt\.jsx"/);
   assert.match(dashboardSource, /<NpsPrompt/);
 });
 

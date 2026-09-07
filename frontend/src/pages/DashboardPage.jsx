@@ -85,8 +85,8 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
 // #4997 — NPS-prompten var kun monteret på Resultater-fanen på egen holdside;
 // se komponent-monteringen nederst i filen.
-import NpsPrompt from "../components/NpsPrompt";
-import { useNpsPrompt } from "../hooks/useNpsPrompt";
+import NpsPrompt from "../components/NpsPrompt.jsx";
+import { useNpsPrompt } from "../hooks/useNpsPrompt.js";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal

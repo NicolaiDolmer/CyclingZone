@@ -48,7 +48,10 @@ async function shoot(browser, { name, width, height, pickScore }) {
   await bar.waitFor({ state: "visible", timeout: 20000 });
   if (pickScore != null) {
     await bar.getByRole("radio", { name: String(pickScore), exact: true }).click();
-    await page.waitForTimeout(300);
+    // Vent paa den UDFOLDEDE tilstand, ikke bare paa en timer: uden dette kunne
+    // et *-expanded.png fange baren mens den stadig er sammenklappet.
+    await bar.getByPlaceholder("Optional: the main reason, in a sentence or two").waitFor({ state: "visible", timeout: 10000 });
+    await bar.getByRole("button", { name: "Send", exact: true }).waitFor({ state: "visible", timeout: 10000 });
   }
   await page.waitForTimeout(1200);
   await page.screenshot({ path: resolve(OUT, `${name}.png`) });

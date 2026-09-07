@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, XIcon } from "./ui";
+import Button from "./ui/Button.jsx";
+import { XIcon } from "./ui/icons/index.jsx";
 
 // #940 In-app NPS — diskret bund-bar (IKKE blokerende modal). Omskrevet i #4997.
 //
@@ -97,8 +98,9 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                 <button
                   type="button"
                   onClick={() => onDismiss({ scoreSelected: score !== null })}
+                  disabled={submitting}
                   aria-label={t("nps.dismissAriaLabel")}
-                  className="shrink-0 text-cz-3 hover:text-cz-1 transition-colors p-1"
+                  className="shrink-0 text-cz-3 hover:text-cz-1 transition-colors p-1 disabled:opacity-40 disabled:pointer-events-none"
                 >
                   <XIcon size={14} aria-hidden="true" />
                 </button>
@@ -126,6 +128,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                   <Button
                     size="sm"
                     variant="ghost"
+                    disabled={submitting}
                     onClick={() => onDismiss({ scoreSelected: true })}
                   >
                     {t("nps.notNow")}
