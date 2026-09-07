@@ -1124,6 +1124,15 @@ export function apiResponse(pathname, search = "") {
     };
   }
 
+  // #3200 (DM v1): Beskeder-fanen skal kunne aabnes paa preview uden en
+  // backend. Tom liste er den rigtige default her — de seedede samtaler bor i
+  // e2e-fixturens installMessagesMocks, saa preview ikke faar paahittet post
+  // fra managere der ikke findes.
+  if (pathname.endsWith("/api/messages/conversations")) return { conversations: [] };
+  if (pathname.endsWith("/api/messages/unread-count")) {
+    return { unreadConversations: 0, unreadMessages: 0, hasUnread: false };
+  }
+
   if (pathname.endsWith("/api/inbox/pending")) {
     return {
       transfer_offers: [],

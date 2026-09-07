@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import { tabClass, tabListClass } from "./tabsStyles.js";
 
 const TabsContext = createContext(null);
@@ -46,14 +46,29 @@ export function TabList({ label, className = "", children }) {
 export function Tab({ value: tabValue, className = "", children }) {
   const ctx = useContext(TabsContext);
   const active = ctx?.value === tabValue;
+  const ref = useRef(null);
+
+  // #3200: fanerækken scroller vandret på mobil. Da Indbakken fik sin femte
+  // fane, lå den aktive fane uden for skærmen på 390px når man kom ind via et
+  // deep link — ingen understregning nogen steder, og fanen kunne kun findes
+  // ved at gætte at rækken kunne skubbes. `block: "nearest"` gør intet når
+  // fanen allerede er synlig, så eksisterende sider er urørte.
+  useEffect(() => {
+    if (!active) return;
+    ref.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active]);
+
   return (
     <button
+      ref={ref}
       type="button"
       role="tab"
       aria-selected={active}
       tabIndex={active ? 0 : -1}
       onClick={() => ctx?.onChange?.(tabValue)}
-      className={`${tabClass({ active })} ${className}`}
+      // scroll-mx-4: giver scrollIntoView lidt luft, saa en fane med badge
+      // ikke lander praecis i kanten med taelleren klippet af.
+      className={`scroll-mx-4 ${tabClass({ active })} ${className}`}
     >
       {children}
     </button>

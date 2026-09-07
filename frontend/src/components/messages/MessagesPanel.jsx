@@ -252,7 +252,10 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
         {/* Samtaleliste */}
-        <div className={`${showListOnMobile ? "block" : "hidden"} md:block border border-cz-border rounded-cz overflow-hidden bg-cz-card`}>
+        {/* self-start: listen skal vaere praecis saa hoej som sine raekker.
+            Uden den straekker grid'et kortet til traadens hoejde og efterlader
+            en tom ramme under den sidste samtale. */}
+        <div className={`${showListOnMobile ? "block" : "hidden"} md:block self-start border border-cz-border rounded-cz overflow-hidden bg-cz-card`}>
           {conversations.map(conversation => (
             <ConversationRow
               key={conversation.id}
