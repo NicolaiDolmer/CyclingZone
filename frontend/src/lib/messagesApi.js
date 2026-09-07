@@ -8,28 +8,34 @@
 // en oversat tekst op i `errors:api.<code>` frem for at vise backendens
 // engelske fallback-streng.
 
-import { supabase } from "./supabase";
+import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 
 const API = import.meta.env.VITE_API_URL;
 
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return null;
-  return { Authorization: `Bearer ${session.access_token}` };
-}
-
 async function call(path, { method = "GET", body = null } = {}) {
-  const headers = await authHeaders();
+  const headers = await authHeaders({ json: Boolean(body) });
   if (!headers) {
     const err = new Error("Not signed in");
     err.errorCode = "unauthorized";
     throw err;
   }
-  const res = await fetch(`${API}/api/messages${path}`, {
-    method,
-    headers: body ? { ...headers, "Content-Type": "application/json" } : headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  // fetch() REJECTER ved netværksudfald (mobil-WebKit: "TypeError: Load
+  // failed"). Uden denne oversættelse ville hver enkelt kalder skulle skelne
+  // mellem "netværket faldt ud" og "backenden sagde nej" — her bliver begge
+  // til den samme Error med en errorCode, som kaldestederne allerede fanger og
+  // viser som en fejltekst (#3628).
+  let res;
+  try {
+    res = await fetch(`${API}/api/messages${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (cause) {
+    const err = new Error("Network request failed", { cause });
+    err.errorCode = "network";
+    throw err;
+  }
   let payload;
   try {
     payload = await res.json();

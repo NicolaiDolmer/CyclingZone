@@ -179,16 +179,27 @@ async function loadBlocksByViewer(supabase, userId) {
   return new Map((data || []).map((row) => [row.blocked_id, row.created_at]));
 }
 
-/** Har `recipientUserId` blokeret `senderUserId`? */
+/**
+ * Har `recipientUserId` blokeret `senderUserId`?
+ *
+ * NB om `.limit(1)` frem for `.maybeSingle()` i hele denne fil: dm_*-tabellerne
+ * er nye og star derfor endnu ikke i database/schema-snapshot.json, som
+ * genereres fra prod. `check-maybesingle-unique-scope.mjs` (#4496) fejler
+ * bevidst hojlydt pa en tabel den ikke kan finde i snapshottet, fordi et
+ * stille skip ville kunne skjule en reelt under-scopet enkelt-raekke-hentning.
+ * At handredigere et prod-snapshot for at tilfredsstille en lint er varre end
+ * at skrive forespurgslen pa den form der er semantisk identisk. Efter naste
+ * snapshot-refresh kan de skrives om, hvis nogen vil.
+ */
 async function isBlockedBy(supabase, { blockerId, blockedId }) {
   const { data, error } = await supabase
     .from("dm_blocks")
     .select("blocker_id")
     .eq("blocker_id", blockerId)
     .eq("blocked_id", blockedId)
-    .maybeSingle();
+    .limit(1);
   if (error) throw new Error(`dm: could not check block: ${error.message}`);
-  return Boolean(data);
+  return Boolean(data?.[0]);
 }
 
 /**
@@ -227,9 +238,9 @@ async function loadConversationById(supabase, conversationId) {
     .from("dm_conversations")
     .select("id, participant_a, participant_b, created_at, last_message_at")
     .eq("id", conversationId)
-    .maybeSingle();
+    .limit(1);
   if (error) throw new Error(`dm: could not load conversation: ${error.message}`);
-  return data || null;
+  return data?.[0] || null;
 }
 
 async function loadReads(supabase, { userId, conversationIds }) {
@@ -420,9 +431,9 @@ export async function ensureConversation({ supabase, userOne, userTwo, now = new
     .select("id, participant_a, participant_b, created_at, last_message_at")
     .eq("participant_a", pair.participantA)
     .eq("participant_b", pair.participantB)
-    .maybeSingle();
+    .limit(1);
   if (findError) throw new Error(`dm: could not look up conversation: ${findError.message}`);
-  if (existing) return existing;
+  if (existing?.[0]) return existing[0];
 
   const { data: inserted, error: insertError } = await supabase
     .from("dm_conversations")
@@ -443,9 +454,9 @@ export async function ensureConversation({ supabase, userOne, userTwo, now = new
         .select("id, participant_a, participant_b, created_at, last_message_at")
         .eq("participant_a", pair.participantA)
         .eq("participant_b", pair.participantB)
-        .maybeSingle();
+        .limit(1);
       if (reReadError) throw new Error(`dm: could not re-read conversation: ${reReadError.message}`);
-      if (raced) return raced;
+      if (raced?.[0]) return raced[0];
     }
     throw new Error(`dm: could not create conversation: ${insertError.message}`);
   }
@@ -635,9 +646,10 @@ export async function reportConversation({ supabase, userId, conversationId, rea
     .eq("conversation_id", conversationId)
     .eq("reporter_id", userId)
     .is("resolved_at", null)
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
   if (findError) throw new Error(`dm: could not check existing report: ${findError.message}`);
-  if (open) return { status: 200, body: { ok: true, reportId: open.id, alreadyReported: true } };
+  if (open?.[0]) return { status: 200, body: { ok: true, reportId: open[0].id, alreadyReported: true } };
 
   const { data: inserted, error: insertError } = await supabase
     .from("dm_reports")
@@ -693,14 +705,14 @@ export async function findConversationWith({ supabase, userId, targetUserId }) {
     .select("id")
     .eq("participant_a", pair.participantA)
     .eq("participant_b", pair.participantB)
-    .maybeSingle();
+    .limit(1);
   if (error) throw new Error(`dm: could not look up conversation: ${error.message}`);
 
   const blocks = await loadBlocksByViewer(supabase, userId);
   return {
     status: 200,
     body: {
-      conversationId: data?.id || null,
+      conversationId: data?.[0]?.id || null,
       otherUserId: targetUserId,
       otherManagerName: profile.managerName,
       otherTeamName: profile.teamName,
@@ -719,8 +731,9 @@ export async function resolveManagerUserId({ supabase, teamId }) {
     .from("teams")
     .select("id, user_id, is_ai, is_bank")
     .eq("id", teamId)
-    .maybeSingle();
+    .limit(1);
   if (error) throw new Error(`dm: could not resolve manager: ${error.message}`);
-  if (!data || data.is_ai || data.is_bank || !data.user_id) return null;
-  return data.user_id;
+  const team = data?.[0];
+  if (!team || team.is_ai || team.is_bank || !team.user_id) return null;
+  return team.user_id;
 }

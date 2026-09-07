@@ -4,8 +4,7 @@
   },
   "list": {
     "title": "Messages",
-    "subtitle_one": "{{count}} conversation waiting for you",
-    "subtitle_other": "{{count}} conversations waiting for you",
+    "subtitle": "{count, plural, one {# conversation waiting for you} other {# conversations waiting for you}}",
     "subtitleNone": "Nothing new",
     "emptyTitle": "No messages yet",
     "emptyBody": "Open a manager profile and write to the person behind the team. A deal is easier to close when you can ask first.",
@@ -18,12 +17,12 @@
     "placeholder": "Write a message",
     "send": "Send",
     "sending": "Sending",
-    "counter": "{{count}}/{{max}}",
+    "counter": "{count}/{max}",
     "loadMore": "Show older messages",
     "emptyTitle": "No messages yet",
     "emptyBody": "Say what you want, and keep it civil. Every message is stored.",
     "sendError": "I could not send that. Try again.",
-    "tooLong": "Keep it under {{max}} characters.",
+    "tooLong": "Keep it under {max} characters.",
     "openProfile": "Open profile",
     "blockedNote": "You have blocked this manager. You will not see new messages from them until you unblock."
   },
@@ -52,7 +51,7 @@
     "cancel": "Cancel",
     "done": "Report sent. I will look at it.",
     "alreadyDone": "You already reported this conversation. I have it.",
-    "tooShort": "Write at least {{min}} characters, so I know what to look for.",
+    "tooShort": "Write at least {min} characters, so I know what to look for.",
     "error": "I could not send the report. Try again."
   },
   "hide": {
@@ -61,10 +60,10 @@
   },
   "start": {
     "button": "Message",
-    "buttonAria": "Message {{name}}",
+    "buttonAria": "Message {name}",
     "forumLink": "Message",
     "dealButton": "Message the other manager",
-    "title": "Message {{name}}",
+    "title": "Message {name}",
     "placeholder": "Write a message",
     "send": "Send",
     "cancel": "Cancel",
@@ -73,8 +72,7 @@
   "quote": {
     "transfer_offer": "Transfer offer",
     "auction": "Auction",
-    "rider": "{{rider}}",
-    "amount": "{{amount}} CZ$",
+    "amount": "{amount} CZ$",
     "open": "Open"
   }
 }

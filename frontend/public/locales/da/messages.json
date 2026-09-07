@@ -4,8 +4,7 @@
   },
   "list": {
     "title": "Beskeder",
-    "subtitle_one": "{{count}} samtale venter på dig",
-    "subtitle_other": "{{count}} samtaler venter på dig",
+    "subtitle": "{count, plural, one {# samtale venter på dig} other {# samtaler venter på dig}}",
     "subtitleNone": "Intet nyt",
     "emptyTitle": "Ingen beskeder endnu",
     "emptyBody": "Åbn en managerprofil og skriv til personen bag holdet. En handel er nemmere at lukke, når man kan spørge først.",
@@ -18,12 +17,12 @@
     "placeholder": "Skriv en besked",
     "send": "Send",
     "sending": "Sender",
-    "counter": "{{count}}/{{max}}",
+    "counter": "{count}/{max}",
     "loadMore": "Vis ældre beskeder",
     "emptyTitle": "Ingen beskeder endnu",
     "emptyBody": "Sig hvad du vil, og hold en pæn tone. Alle beskeder gemmes.",
     "sendError": "Jeg kunne ikke sende den. Prøv igen.",
-    "tooLong": "Hold den under {{max}} tegn.",
+    "tooLong": "Hold den under {max} tegn.",
     "openProfile": "Åbn profil",
     "blockedNote": "Du har blokeret denne manager. Du ser ikke nye beskeder fra ham, før du ophæver blokeringen."
   },
@@ -52,7 +51,7 @@
     "cancel": "Fortryd",
     "done": "Anmeldelsen er sendt. Jeg kigger på den.",
     "alreadyDone": "Du har allerede anmeldt denne samtale. Jeg har den.",
-    "tooShort": "Skriv mindst {{min}} tegn, så jeg ved hvad jeg skal kigge efter.",
+    "tooShort": "Skriv mindst {min} tegn, så jeg ved hvad jeg skal kigge efter.",
     "error": "Jeg kunne ikke sende anmeldelsen. Prøv igen."
   },
   "hide": {
@@ -61,10 +60,10 @@
   },
   "start": {
     "button": "Skriv",
-    "buttonAria": "Skriv til {{name}}",
+    "buttonAria": "Skriv til {name}",
     "forumLink": "Skriv",
     "dealButton": "Skriv til modparten",
-    "title": "Skriv til {{name}}",
+    "title": "Skriv til {name}",
     "placeholder": "Skriv en besked",
     "send": "Send",
     "cancel": "Fortryd",
@@ -73,8 +72,7 @@
   "quote": {
     "transfer_offer": "Transfertilbud",
     "auction": "Auktion",
-    "rider": "{{rider}}",
-    "amount": "{{amount}} CZ$",
+    "amount": "{amount} CZ$",
     "open": "Åbn"
   }
 }

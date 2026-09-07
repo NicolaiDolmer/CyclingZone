@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink";
+import MessageManagerButton from "../components/messages/MessageManagerButton.jsx"; // #3200
 import TeamLink from "../components/TeamLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -201,6 +202,31 @@ function statusCfg(t, status) {
   return { ...style, label: t(labelKey) };
 }
 
+// #3200 (ejer-valg 3, 8/9): "Skriv til modparten" paa et tilbud. Aabner
+// DM-traaden med den anden manager og citerer handlen som foerste linje.
+// Citatet baerer KUN tal begge parter allerede kan se paa dette kort
+// (rytter, det effektive beloeb, dato) - ingen skjulte tal.
+function OfferMessageButton({ offer, counterparty }) {
+  if (!counterparty?.id) return null;
+  const amount = getEffectiveOfferAmount(offer);
+  const riderName = [offer.rider?.firstname, offer.rider?.lastname].filter(Boolean).join(" ");
+  return (
+    <div className="mb-3">
+      <MessageManagerButton
+        teamId={counterparty.id}
+        managerName={counterparty.name}
+        context={{
+          kind: "transfer_offer",
+          refId: offer.id,
+          riderName: riderName || null,
+          amount: amount ?? null,
+          occurredAt: offer.updated_at || offer.created_at || null,
+        }}
+      />
+    </div>
+  );
+}
+
 // ── Modtaget tilbud ──────────────────────────────────────────────────────────
 function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
   const { t } = useTranslation("transfers");
@@ -291,6 +317,8 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
           &quot;{offer.message}&quot;
         </div>
       )}
+
+      <OfferMessageButton offer={offer} counterparty={offer.buyer} />
 
       {isPending && (
         <div className="flex flex-col gap-2">
@@ -452,6 +480,8 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
           &quot;{offer.message}&quot;
         </div>
       )}
+
+      <OfferMessageButton offer={offer} counterparty={offer.seller} />
 
       {isCountered && (
         <div className="flex flex-col gap-2">
