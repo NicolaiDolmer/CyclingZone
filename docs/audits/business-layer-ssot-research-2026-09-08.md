@@ -77,6 +77,8 @@ Typer: `welcome`, `day1`, `race_digest` (`backend/lib/emailTemplates.js:32`). Ga
 ### 2.2 Historisk/arkiv (modsiger nutiden)
 `docs/strategy/BUSINESS_MODEL.md` (4 tiers 49/89/149, 25/5), `ASSUMPTIONS_TO_VALIDATE.md`, `TDF_2026_LAUNCH_PLAN.md`, `PARKED_QUESTIONS.md`, `docs/LAUNCH_ROADMAP.md` (selv-mærket historisk), `docs/SPRINT_DASHBOARD.md` (maj-sprint), `docs/RelaunchControlTowerPlan.md` (superseded), `docs/launch/2026-06-21-go-nogo.md`, `docs/discord/2026-06-21-content-calendar.md` (åbne ejer-beslutninger, andre slot-navne), `docs/discord/2026-06-21-bot-config.md`.
 
+**Udført 8/9 (#5056):** de ni første er flyttet til `docs/archive/` med samme filnavn (`docs/archive/strategy/`, `docs/archive/launch/`, `docs/archive/discord/` for de tre i undermapper). `docs/strategy/TDF_2026_LAUNCH_PLAN.md` har en SUPERSEDED-stub på den gamle sti. `docs/discord/2026-06-21-bot-config.md` blev IKKE arkiveret; den er stadig i brug. Sti-referencerne nedenfor i §5 er de gamle stier, som de så ud før flytningen.
+
 ### 2.3 Modstrid fundet
 1. Tier-navne: `TONE_OF_VOICE.md` kalder Premium/Pro Analyst/Patron "låst" (19/5); produktet er ét tier "CZ Pro" (`2026-06-26-cz-pro-monetization-design.md`, BILLING_STACK).
 2. "Aktiv": 7 d (survey) vs 30 d-dormancy (growth) vs union-af-kilder (7/9-audit) vs `player_events` som sandhed (clarity/README).

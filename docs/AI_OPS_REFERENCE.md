@@ -18,7 +18,7 @@ _Udfaset fra `AGENTS.md` 2026-05-29 per [#733](https://github.com/NicolaiDolmer/
 | `docs/CONVENTIONS.md` | Naming/style-spørgsmål |
 | `docs/TEST_SCENARIOS.md` | Skriver tests |
 | `docs/DEPLOYMENT.md` | Deploy-relateret arbejde |
-| `docs/archive/LAUNCH_ROADMAP.md` | Historisk pre-launch-roadmap (arkiveret 8/9 2026) — viser P0/P1/P2-prioritering |
+| `docs/archive/LAUNCH_ROADMAP.md` | Historisk pre-launch-roadmap (arkiveret 8/9 2026): viser P0/P1/P2-prioritering |
 | `docs/AI_LOOPS.md` | Implementerer en loop-slice |
 | `docs/CROSS_PC_SETUP.md` | Cross-PC migration, OneDrive-context, drift-håndtering |
 | `docs/HOOKS.md` | Project-level + user-level hooks (SessionStart/Stop/PreToolUse) |
