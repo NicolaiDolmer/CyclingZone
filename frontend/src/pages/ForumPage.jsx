@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
@@ -7,7 +7,11 @@ import {
   Button, PageHeader, Section, SectionStack, SectionHeader, EmptyState, ErrorState,
   SkeletonLines, Modal, Field, Input, Textarea,
 } from "../components/ui";
-import { InboxIcon, FlagIcon } from "../components/ui/icons/index.jsx";
+import { InboxIcon, FlagIcon, BellIcon, BellOffIcon } from "../components/ui/icons/index.jsx";
+// #5013: abonnement pr. kategori — samme normalisering som indstillingerne.
+import {
+  normalizeCategoryMutes, applyCategoryMute, isCategoryMuted, isSubscribableCategory,
+} from "../lib/forumCategoryMutes.js";
 import FounderMark from "../components/FounderMark.jsx";
 // #4751: datoformatteren bor nu i det delte forum-modul (en side skal ikke
 // vaere kilde for en komponent — ForumAuthorIdentity bruger den samme).
@@ -335,6 +339,34 @@ export default function ForumPage() {
   }, []);
   useEffect(() => { refreshUnread(); }, [refreshUnread]);
 
+  // #5013: abonnement pr. kategori. Hentes ÉN gang (ikke pr. fane-skift) —
+  // valget er globalt for brugeren, ikke en egenskab ved den viste liste.
+  const [categoryMutes, setCategoryMutes] = useState(() => normalizeCategoryMutes(null));
+  const [savingMute, setSavingMute] = useState(false);
+  const [muteError, setMuteError] = useState(null);
+  // Har spilleren allerede rørt en kategori? Så er hans valg nyere end det
+  // svar der er på vej, og et langsomt GET må ikke rulle det tilbage: knappen
+  // ville stå på "Følger" mens serveren havde gemt det modsatte (CodeRabbit).
+  const mutesTouchedRef = useRef(false);
+  // Den fane man står på LIGE NU. Læses efter et await, hvor `category` fra
+  // render-lukningen kan være forældet.
+  const activeCategoryRef = useRef(category);
+  useEffect(() => { activeCategoryRef.current = category; }, [category]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const headers = await authHeaders();
+      if (!headers || !API) return;
+      try {
+        const res = await fetch(`${API}/api/forum/category-mutes`, { headers });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        if (!cancelled && !mutesTouchedRef.current) setCategoryMutes(normalizeCategoryMutes(data));
+      } catch { /* ignore — listen falder til "følger alt", aldrig til dæmpet */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const refetch = useCallback(() => { load(null); refreshUnread(); }, [load, refreshUnread]);
   useRealtimeRefetch("forum-live", FORUM_TABLES, refetch);
 
@@ -377,8 +409,51 @@ export default function ForumPage() {
     }
   }
 
+  // #5013: til/fra for den kategori man STÅR i. `muted: true` = spilleren
+  // følger ikke længere kategorien. Optimistisk: tilstanden skifter med det
+  // samme og rulles tilbage hvis kaldet fejler, så knappen aldrig står og
+  // lyver om et valg der ikke blev gemt.
+  async function handleToggleCategoryMute(nextMuted) {
+    if (savingMute || !isSubscribableCategory(category)) return;
+    // Kategorien FANGES her: skifter spilleren fane mens PUT'en er undervejs,
+    // hører både kaldet og den efterfølgende reload stadig til den kategori
+    // han faktisk klikkede på.
+    const target = category;
+    const previous = categoryMutes;
+    mutesTouchedRef.current = true;
+    setSavingMute(true);
+    setMuteError(null);
+    setCategoryMutes(applyCategoryMute(previous, target, nextMuted));
+    try {
+      const headers = await authHeaders();
+      if (!headers || !API) throw new Error("no session");
+      const res = await fetch(`${API}/api/forum/category-mutes`, {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ category: target, muted: nextMuted }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Ulæst-markeringerne og nav-prikken afledes af valget på backend —
+      // hent dem igen, i stedet for at gætte lokalt hvilke prikker der falder.
+      // Trådlisten genindlæses kun hvis man stadig står på samme fane: `load`
+      // er bundet til kategorien fra dette render og ville ellers skrive den
+      // gamle kategoris tråde ind over den nye fane (CodeRabbit).
+      await (activeCategoryRef.current === target
+        ? Promise.all([load(null), refreshUnread()])
+        : refreshUnread());
+      window.dispatchEvent(new Event("cz:forum-thread-read"));
+    } catch {
+      setCategoryMutes(previous);
+      setMuteError(t("subscription.saveFailed"));
+    } finally {
+      setSavingMute(false);
+    }
+  }
+
   const language = i18n.language;
   const isArchiveTab = category === ARCHIVE_FILTER;
+  const showSubscriptionControl = isSubscribableCategory(category);
+  const currentCategoryMuted = isCategoryMuted(categoryMutes, category);
   // #4818: den officielle kategori bærer et flag-ikon i fanen (stroke, aldrig
   // emoji) og et "Official"-meta-label over listen — samme signal begge steder.
   const isAdminOnlyTab = isAdminOnlyCategory(category);
@@ -463,6 +538,39 @@ export default function ForumPage() {
             {!showsCompose && <span className="text-cz-3"> {t("adminOnly.notice")}</span>}
           </span>
         </p>
+      )}
+
+      {/* #5013 · Kategori-hoved: navnet på den valgte kategori + til/fra for
+          "sig til når der er nyt her". Vises kun på en rigtig kategori — ikke
+          på "All" (intet at abonnere på) og ikke på arkivet (et visnings-
+          filter på tværs af kategorier, #4492). Sekundær knap: gold er
+          reserveret til "New post". */}
+      {showSubscriptionControl && (
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-cz-border pb-4">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-cz-1">{t(`categories.${category}`)}</h2>
+            <p className="mt-0.5 text-xs leading-snug text-cz-3">
+              {currentCategoryMuted ? t("subscription.mutedHint") : t("subscription.followingHint")}
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-pressed={!currentCategoryMuted}
+            data-testid="forum-category-subscription-toggle"
+            loading={savingMute}
+            disabled={savingMute}
+            onClick={() => handleToggleCategoryMute(!currentCategoryMuted)}
+            iconLeft={currentCategoryMuted
+              ? <BellOffIcon size={15} aria-hidden="true" />
+              : <BellIcon size={15} aria-hidden="true" />}
+          >
+            {currentCategoryMuted ? t("subscription.muted") : t("subscription.following")}
+          </Button>
+        </div>
+      )}
+      {muteError && (
+        <p role="alert" className="mb-4 text-xs text-cz-danger">{muteError}</p>
       )}
 
       {state.status === "loading" ? (

@@ -150,5 +150,11 @@
         "desc": "Your board reacts to results or finances."
       }
     }
+  },
+  "forumCategories": {
+    "title": "Forum categories",
+    "hint": "Turn off a category and it stops telling you there is something new. Replies to your own threads still reach you.",
+    "summary": "Following {count} of {total} categories.",
+    "saveFailed": "Could not save your choice. Try again."
   }
 }

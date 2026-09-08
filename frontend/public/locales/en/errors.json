@@ -208,6 +208,7 @@
     "auction_created_before_account": "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away.",
     "rate_forum": "Too many forum actions in a short time. Try again shortly.",
     "forum_invalid_category": "Invalid category",
+    "forum_invalid_mute_flag": "Invalid choice",
     "forum_title_required": "A title is required",
     "forum_title_too_long": "The title is too long",
     "forum_body_required": "A message is required",
