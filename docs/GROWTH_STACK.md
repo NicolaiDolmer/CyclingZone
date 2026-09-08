@@ -13,7 +13,7 @@
 
 **Nordstjernen er `aktive/7d`:** antal brugere med et menneskehold der har været aktive inden for de seneste 7 dage. 📄 Definitionen er consent-uafhængig og navngivet i ANALYTICS_STACK (aktivitet = `users.last_seen` ∪ `player_events` ∪ `auction_bids` ∪ manuelle `race_entries` ∪ `xp_log` ∪ forum-skrivning). `player_events` alene er samtykke-gated og må aldrig stå alene som aktivitetsmål.
 
-Hvorfor lige det tal: økonomien er ikke et konverteringsproblem. ✅ 8/9 betaler 17 af 74 aktive/7d, altså 23 %. ARPU er ~37 kr. ekskl. moms, så et levebrød på 25.000 kr./md. kræver i omegnen af 680 betalende og dermed tusindvis af aktive spillere. **Tilgang er flaskehalsen, ikke konvertering.**
+Hvorfor lige det tal: økonomien er ikke et konverteringsproblem. ✅ 8/9 er der 17 til 18 betalende abonnementer mod 74 aktive/7d, altså omkring en fjerdedel. (Bemærk: at hver betaler også er aktiv/7d er ikke verificeret, så de to tal er et forhold, ikke en konverteringsrate.) 📄 ARPU er ~37 kr. ekskl. moms, så et levebrød på 25.000 kr./md. kræver i omegnen af 680 betalende og dermed tusindvis af aktive spillere. **Tilgang er flaskehalsen, ikke konvertering.**
 
 ### 1.2 De tre mandagstal
 
@@ -36,14 +36,14 @@ Derudover aflæses hver mandag: nordstjernen (aktive 1d/7d/30d), signups pr. uge
 infisical run --env=prod -- node scripts/monday-numbers.mjs
 ```
 
-- Outputtet skrives som **én linje i §11 "Log"** nedenfor. Nyeste øverst.
+- Outputtet skrives som **én linje i §12 "Log"** nedenfor. Nyeste øverst.
 - MRR hentes særskilt via Alunta MCP `get_business_overview` (REST-API'et eksponerer ikke MRR) og skrives ind i samme log-linje.
 
 > **Tal hører til i Log, ikke i prosa.** MRR er tidligere hardkodet tre forskellige steder (pengeplanen 188 kr., `NOW.md` 436 kr., Alunta 659 kr.) og alle tre var forældede samtidig. Dokumentet bærer formlen og proceduren; tallet bor i loggen.
 
 ### 1.4 Baseline 8/9 og mål 2/10
 
-Baseline ✅ målt 8/9 kl. 20:47 (scriptets output, se §11):
+Baseline ✅ målt 8/9 kl. 20:47 (scriptets output, se §12):
 
 | Mandagstal | Baseline 8/9 | Mål 2/10 (pengeplan §2) | Status |
 |---|---|---|---|
@@ -210,7 +210,9 @@ Målet er **ikke** flere klik i sig selv, men om dag-7- og dag-14-andelen løfte
 
 ### 5.5 Måling efter et opslag
 
-📄 A10 i `ASSUMPTIONS_TO_VALIDATE.md`: **upvotes, kommentarer og signups inden for 48 timer** efter opslaget. Det er det vindue der afgør om en kanal virker. Kør `scripts/monday-numbers.mjs` igen 48 timer efter og læs kanal-kolonnen "sidste 30 d".
+📄 A10 i `ASSUMPTIONS_TO_VALIDATE.md`: **upvotes, kommentarer og signups inden for 48 timer** efter opslaget. Det er det vindue der afgør om en kanal virker.
+
+Sådan læses det: kør `scripts/monday-numbers.mjs --json` **lige før** opslaget og igen **48 timer efter**, og træk kanalens `total` fra hinanden. Kanal-tabellens 30-dages-kolonne kan ikke isolere to døgn; kun differencen kan. Upvotes og kommentarer tælles manuelt af ejeren i samme ombæring.
 
 ### 5.6 Communities i spil
 
@@ -307,7 +309,7 @@ Kort oversigt. Ansvarsfordelingen mellem værktøjerne bor i ANALYTICS_STACK.
 |---|---|---|
 | **Postgres (prod)** | Supabase MCP (read-only) + `SUPABASE_SERVICE_KEY` i scripts | Sandheden for tragt, attribution og penge |
 | **Alunta** | MCP, skrivebeskyttet | MRR, ARPU, aktive abonnementer |
-| **Clarity** | MCP | Replay og dead clicks. Kan ikke bære attribution (§10) |
+| **Clarity** | MCP | Replay og dead clicks. Kan ikke bære attribution (§11, faldgrube 1) |
 | **PostHog** | MCP, projekt findes (EU), 0 events endnu ✅ | Produkt-funnels, retention, attribution, når #4321 er wired |
 | **GSC** | Google service-konto planlagt, nøgle `GSC_SERVICE_ACCOUNT_JSON` i Infisical ❓ | Søgning: rank og impressions (#3797) |
 | **Ahrefs** | Kun gratis-endpoints. Betalt plan afvist ✅ ("Insufficient plan" på keywords-explorer og GSC-tools) | Domain rating, ikke andet |
