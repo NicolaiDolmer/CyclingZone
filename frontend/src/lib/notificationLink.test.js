@@ -96,6 +96,29 @@ test("#4118/#3517 forum_thread_reply deep-linker til tråden via related_id", ()
   assert.equal(link, "/forum/post-1");
 });
 
+// #5011: @-tag. related_id er trådens id; stod tagget i et svar, peger
+// metadata.replyId på det konkrete indlæg, og ankeret #reply-<id> lander
+// på selve svaret i stedet for øverst i en lang tråd.
+test("#5011 forum_mention deep-linker til det SVAR tagget stod i", () => {
+  const link = resolveNotificationLink(
+    { type: "forum_mention", related_id: "post-1", metadata: { replyId: "reply-9" } },
+    "/forum",
+  );
+  assert.equal(link, "/forum/post-1#reply-reply-9");
+});
+
+test("#5011 forum_mention i selve opslaget lander på tråden uden anker", () => {
+  const link = resolveNotificationLink(
+    { type: "forum_mention", related_id: "post-1", metadata: { replyId: null } },
+    "/forum",
+  );
+  assert.equal(link, "/forum/post-1");
+});
+
+test("#5011 forum_mention uden related_id falder tilbage til forum-forsiden", () => {
+  assert.equal(resolveNotificationLink({ type: "forum_mention" }, "/forum"), "/forum");
+});
+
 // #4557 (S-M2d): aabnings- og reminder-notifikationer om aarsmoedet
 // deep-linker direkte til /board/meeting, ikke det generiske /board.
 for (const titleCode of [
