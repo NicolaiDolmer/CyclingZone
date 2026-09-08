@@ -27,6 +27,7 @@ import {
   orderedPair,
   otherParticipant,
   reportConversation,
+  resolveCounterpartUserId,
   resolveManagerUserId,
   sendDirectMessage,
   unblockManager,
@@ -383,6 +384,35 @@ test("resolveManagerUserId afviser AI-hold og ukendt hold", async () => {
   assert.equal(await resolveManagerUserId({ supabase, teamId: BOB_TEAM }), BOB);
   assert.equal(await resolveManagerUserId({ supabase, teamId: AI_TEAM }), null);
   assert.equal(await resolveManagerUserId({ supabase, teamId: ALICE }), null);
+});
+
+test("modparten kan udledes af samtalen, ogsaa uden hold (CodeRabbit 8/9)", async () => {
+  const supabase = createFakeSupabase(baseState());
+  await sendDirectMessage({ supabase, senderUserId: ALICE, recipientUserId: BOB, body: "Hi" });
+  const conversationId = supabase.state.dm_conversations[0].id;
+
+  // Begge veje: samtalen kender modparten uanset hvem der spoerger.
+  assert.equal(await resolveCounterpartUserId({ supabase, userId: ALICE, conversationId }), BOB);
+  assert.equal(await resolveCounterpartUserId({ supabase, userId: BOB, conversationId }), ALICE);
+
+  // Det er hele pointen: blokering virker selv om modparten ikke har et hold,
+  // hvor den team-noeglede vej ville give null.
+  supabase.state.teams = supabase.state.teams.filter(t => t.id !== BOB_TEAM);
+  assert.equal(await resolveManagerUserId({ supabase, teamId: BOB_TEAM }), null);
+  assert.equal(await resolveCounterpartUserId({ supabase, userId: ALICE, conversationId }), BOB);
+});
+
+test("en fremmed faar null for en samtale han ikke er part i", async () => {
+  const supabase = createFakeSupabase(baseState());
+  await sendDirectMessage({ supabase, senderUserId: ALICE, recipientUserId: BOB, body: "Hi" });
+  const conversationId = supabase.state.dm_conversations[0].id;
+  assert.equal(await resolveCounterpartUserId({ supabase, userId: CARLA, conversationId }), null);
+  // Ukendt samtale svarer det samme som "ikke din samtale": de to maa ikke
+  // kunne skelnes udefra.
+  assert.equal(
+    await resolveCounterpartUserId({ supabase, userId: ALICE, conversationId: CARLA }),
+    null,
+  );
 });
 
 test("den citerede handel følger med den første besked", async () => {

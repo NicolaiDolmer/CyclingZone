@@ -63,6 +63,14 @@
 
 -- ── dm_conversations ────────────────────────────────────────────────────────
 
+-- ON DELETE CASCADE, bevidst — CodeRabbit foreslog 8/9 RESTRICT, saa "loggen er
+-- evidensen" ikke kunne slettes. Afvist: RESTRICT ville goere en konto
+-- USLETTELIG i det oejeblik den har sendt eller modtaget een besked, og
+-- sletteretten vejer tungere end en fair-play-sag mod en konto der ikke
+-- laengere findes. CASCADE er ogsaa praecis det forummet (#3199) goer med
+-- forum_posts.user_id og forum_reports.reporter_user_id, saa DM afviger ikke
+-- fra den etablerede sletteadfaerd. Evidensen lever saa laenge begge parter
+-- findes; det er den periode en sag foeres i.
 CREATE TABLE IF NOT EXISTS public.dm_conversations (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   participant_a   UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -233,11 +241,30 @@ CREATE POLICY dm_messages_admin_reported_read ON public.dm_messages
   );
 
 -- dm_reads / dm_blocks / dm_conversation_hides: kun egne raekker.
+-- CodeRabbit 8/9: "kun egne raekker" var ikke nok. user_id = auth.uid() alene
+-- lod enhver indlogget bruger skrive en laest-/skjult-markering paa en HVILKEN
+-- SOM HELST samtale-id han kunne gaette. Raekken ville vaere hans egen og
+-- harmloes i UI'et, men den er stadig en skrivning til en samtale han ikke er
+-- part i. Medlemskabs-tjekket staar nu i baade USING og WITH CHECK.
 DROP POLICY IF EXISTS dm_reads_own_rows ON public.dm_reads;
 CREATE POLICY dm_reads_own_rows ON public.dm_reads
   FOR ALL TO authenticated
-  USING (user_id = (SELECT auth.uid()))
-  WITH CHECK (user_id = (SELECT auth.uid()));
+  USING (
+    user_id = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM public.dm_conversations c
+      WHERE c.id = conversation_id
+        AND (SELECT auth.uid()) IN (c.participant_a, c.participant_b)
+    )
+  )
+  WITH CHECK (
+    user_id = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM public.dm_conversations c
+      WHERE c.id = conversation_id
+        AND (SELECT auth.uid()) IN (c.participant_a, c.participant_b)
+    )
+  );
 
 DROP POLICY IF EXISTS dm_blocks_own_rows ON public.dm_blocks;
 CREATE POLICY dm_blocks_own_rows ON public.dm_blocks
@@ -248,8 +275,22 @@ CREATE POLICY dm_blocks_own_rows ON public.dm_blocks
 DROP POLICY IF EXISTS dm_conversation_hides_own_rows ON public.dm_conversation_hides;
 CREATE POLICY dm_conversation_hides_own_rows ON public.dm_conversation_hides
   FOR ALL TO authenticated
-  USING (user_id = (SELECT auth.uid()))
-  WITH CHECK (user_id = (SELECT auth.uid()));
+  USING (
+    user_id = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM public.dm_conversations c
+      WHERE c.id = conversation_id
+        AND (SELECT auth.uid()) IN (c.participant_a, c.participant_b)
+    )
+  )
+  WITH CHECK (
+    user_id = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM public.dm_conversations c
+      WHERE c.id = conversation_id
+        AND (SELECT auth.uid()) IN (c.participant_a, c.participant_b)
+    )
+  );
 
 -- dm_reports: en part kan anmelde sin egen samtale og se sin egen anmeldelse.
 -- Admin ser alle anmeldelser (det er indgangen til admin-listen).

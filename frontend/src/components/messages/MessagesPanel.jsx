@@ -166,9 +166,15 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
     return () => clearInterval(timer);
   }, [conversationId, loadThread]);
 
+  // Nøglet på den NYESTE besked, ikke på antallet: "Load more" lægger ældre
+  // beskeder foran, så antallet vokser — og en længde-nøgle ville rulle tilbage
+  // til bunden og skubbe præcis de beskeder ud af billedet som brugeren lige
+  // bad om (CodeRabbit 8/9).
+  const messages = thread?.messages;
+  const latestMessageId = messages?.length ? messages[messages.length - 1].id : null;
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [thread?.messages?.length]);
+    if (latestMessageId) bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [latestMessageId]);
 
   async function handleSend(event) {
     event.preventDefault();
@@ -196,7 +202,7 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
     if (!thread?.conversation) return;
     const next = !thread.conversation.blocked;
     try {
-      await setBlocked(thread.conversation.otherTeamId, next);
+      await setBlocked({ conversationId }, next);
       setNotice(next ? t("block.done") : t("block.undone"));
       await loadThread(conversationId, { silent: true });
       await loadList();

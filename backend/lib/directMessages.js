@@ -723,6 +723,24 @@ export async function findConversationWith({ supabase, userId, targetUserId }) {
 }
 
 /**
+ * Modpartens bruger-id i en samtale jeg selv er part i.
+ *
+ * CodeRabbit 8/9: blokeringen var kun team-noeglet, og `otherTeamId` kan vaere
+ * null (linje 325/401) for en modpart uden hold — en manager der har forladt
+ * sit hold kunne dermed ikke blokeres. Blokering er en sikkerhedsfunktion og
+ * skal altid virke, saa den kan nu ogsaa noegles paa selve samtalen, hvor
+ * modparten udledes paa serveren. Returnerer null hvis samtalen ikke findes
+ * eller jeg ikke er part i den — kalderen maa ikke kunne skelne de to.
+ */
+export async function resolveCounterpartUserId({ supabase, userId, conversationId }) {
+  const conversation = await loadConversationById(supabase, conversationId);
+  if (!conversation || !isParticipant(conversation, userId)) return null;
+  return conversation.participant_a === userId
+    ? conversation.participant_b
+    : conversation.participant_a;
+}
+
+/**
  * Bruger-id'et bag et hold. Managerprofilen kender kun holdet, men samtalen
  * hænger på personen (#4379).
  */

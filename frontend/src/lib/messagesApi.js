@@ -93,6 +93,9 @@ export function reportThread(conversationId, reason) {
   return call(`/conversations/${conversationId}/report`, { method: "POST", body: { reason } });
 }
 
-export function setBlocked(teamId, blocked) {
-  return call("/block", { method: "POST", body: { teamId, blocked } });
+// Ét af de to felter er nok. Traaden sender `conversationId`, fordi modparten
+// kan mangle et hold og dermed et `teamId` (CodeRabbit 8/9); profilen og
+// forumnavnet sender `teamId`, fordi samtalen maaske ikke findes endnu.
+export function setBlocked({ teamId, conversationId }, blocked) {
+  return call("/block", { method: "POST", body: { teamId, conversationId, blocked } });
 }

@@ -91,3 +91,15 @@ test("DM-ruterne delegerer til directMessages.js og bygger ikke queries inline",
   assert.ok(block.length > 1000, "DM-blokken skal findes i api.js");
   assert.doesNotMatch(block, /supabase\s*\n?\s*\.from\("dm_/, "ingen inline dm_-queries i api.js");
 });
+
+test("blokér-ruten udleder modparten paa serveren naar traaden noegler paa samtalen", () => {
+  const block = routeBlock('router.post("/messages/block"');
+  // Klienten maa ALDRIG kunne udpege hvem der blokeres via et bart bruger-id;
+  // begge veje gaar gennem en server-side opslag med medlemskabs-tjek.
+  assert.match(block, /resolveCounterpartUserId\(\{ supabase, userId: req\.user\.id, conversationId \}\)/);
+  assert.match(block, /resolveManagerUserId\(\{ supabase, teamId \}\)/);
+  assert.doesNotMatch(block, /targetUserId\s*=\s*req\.body/);
+  // Og mindst een af de to noegler skal vaere en gyldig UUID.
+  assert.match(block, /UUID_RE\.test\(conversationId\)/);
+  assert.match(block, /dm_invalid_block_target/);
+});

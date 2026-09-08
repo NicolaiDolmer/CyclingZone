@@ -36,7 +36,7 @@ export default function MessageManagerButton({
   // namespacet er hentet — useSuspense er slået fra.
   const { t, ready } = useTranslation("messages");
   const navigate = useNavigate();
-  const myTeamId = useMyTeamId();
+  const { teamId: myTeamId, resolved: myTeamResolved } = useMyTeamId();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -85,8 +85,10 @@ export default function MessageManagerButton({
   }
 
   // Ingen knap paa eget indlaeg eller egen profil: man skriver ikke til sig
-  // selv, og backenden ville i oevrigt afvise det med 400.
-  if (!ready || !teamId || teamId === myTeamId) return null;
+  // selv, og backenden ville i oevrigt afvise det med 400. `myTeamResolved`
+  // holder knappen tilbage indtil vi VED hvilket hold der er mit — ellers
+  // blinker den kortvarigt frem paa ens egen profil (CodeRabbit 8/9).
+  if (!ready || !teamId || !myTeamResolved || teamId === myTeamId) return null;
 
   const label = context ? t("start.dealButton") : t("start.button");
 

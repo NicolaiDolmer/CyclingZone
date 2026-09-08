@@ -172,6 +172,7 @@ import {
   hideConversation,
   findConversationWith,
   resolveManagerUserId,
+  resolveCounterpartUserId,
 } from "../lib/directMessages.js";
 import {
   contractOnAcquirePatch,
@@ -14788,11 +14789,20 @@ router.post("/messages/conversations/:id/report", requireAuth, dmActionLimiter, 
 // POST /api/messages/block — blokér eller ophæv blokering af en manager.
 router.post("/messages/block", requireAuth, dmActionLimiter, async (req, res) => {
   try {
-    const { teamId, blocked } = req.body || {};
-    if (typeof teamId !== "string" || !UUID_RE.test(teamId)) {
+    const { teamId, conversationId, blocked } = req.body || {};
+    // To noegler, bevidst. `teamId` er indgangen fra en profil eller et
+    // forumnavn, hvor samtalen maaske ikke findes endnu. `conversationId` er
+    // indgangen fra selve traaden - og den ENESTE der virker hvis modparten
+    // ikke laengere har et hold (CodeRabbit 8/9). Blokering skal altid kunne
+    // lade sig goere, saa traaden noegler paa samtalen.
+    const hasConversation = typeof conversationId === "string" && UUID_RE.test(conversationId);
+    const hasTeam = typeof teamId === "string" && UUID_RE.test(teamId);
+    if (!hasConversation && !hasTeam) {
       return res.status(400).json({ error: "Pick a manager to block", errorCode: "dm_invalid_block_target" });
     }
-    const targetUserId = await resolveManagerUserId({ supabase, teamId });
+    const targetUserId = hasConversation
+      ? await resolveCounterpartUserId({ supabase, userId: req.user.id, conversationId })
+      : await resolveManagerUserId({ supabase, teamId });
     if (!targetUserId) {
       return res.status(404).json({ error: "Manager not found", errorCode: "dm_recipient_not_found" });
     }
