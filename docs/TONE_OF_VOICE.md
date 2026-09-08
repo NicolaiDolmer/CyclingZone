@@ -186,7 +186,7 @@ stadig hedder `supporter`, må værdien beholdes internt, men player-facing labe
 >
 > **Skriv hvad du tænker i [kanal].** Kritisk feedback er meget velkommen. Jeg vil hellere lære den hårde sandhed nu end bygge det forkerte.
 
-*(Eksempel-draft baseret på Manus' Message 1 omskrevet til EN-først founder-led build-in-public-tone. Ikke godkendt til at sende. Skal koordineres med Discord-launch-timing per [#415](https://github.com/NicolaiDolmer/CyclingZone/issues/415).)*
+*(Eksempel-draft baseret på Manus' Message 1 omskrevet til EN-først founder-led build-in-public-tone. Ikke godkendt til at sende. **Bemærk (8/9 2026):** teksten er fra maj og bruger ordet "premium" som produktnavn. Produktet hedder i dag CZ Pro; eksemplet står her for tonens skyld, ikke for terminologiens. Skal koordineres med Discord-launch-timing per [#415](https://github.com/NicolaiDolmer/CyclingZone/issues/415).)*
 
 ## Patch notes · format (låst 2026-08-14, ejer-godkendt)
 
