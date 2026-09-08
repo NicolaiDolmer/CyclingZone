@@ -72,9 +72,9 @@ er automatiseret. 📄 (`backend/scripts/notify-4376-sponsor-correction.js`, `se
 | Patch notes | Ændringslog: hvad blev anderledes | Automatisk in-app; ejeren i `#patch-notes` | Ved enhver brugerrettet ændring (hard rule) | EN først, DA under | Nej | 📄 format låst i ToV 14/8 |
 | Mail (Resend) | Onboarding og genkald; bredeste rækkevidde | Automatisk (loop) | welcome + day1 automatisk; broadcast kun med ejer-go | EN + DA | Ja, altid | ✅ welcome + day1 on 8/9 |
 | Reddit | Tilgang udefra: nye managere | Ejeren | Én community ad gangen, aldrig batch | EN | Ja, pr. community | 📄 #2236 |
-| Hattrick-forum | Nærmeste beslægtede publikum (browser-manager-spillere) | Ejeren | Sjældent, regel-tjek først | EN | Ja | ✅ 3 signups attribueret til hattrick.org |
+| Hattrick-forum | Nærmeste beslægtede publikum (browser-manager-spillere) | Ejeren | Sjældent, regel-tjek først | EN | Ja | ✅ 8 signups attribueret til hattrick.org (alle subdomæner, målt 8/9) |
 | AI-assistenter (ChatGPT, Perplexity m.fl.) | Indirekte kanal: de citerer offentligt indhold | Ingen (kan ikke postes til) | n/a | EN | Kan ikke sættes | ✅ 10 signups m. `utm_source=chatgpt.com` |
-| Marketing-site (`marketing/`) | Søgemaskine-landing uden for appen | Deploy | n/a | EN + DA | Modtager UTM | 📄 merget 2/9, endnu intet eget Vercel-projekt |
+| Marketing-site (`marketing/`) | Søgemaskine-landing uden for appen | Deploy | n/a | EN + DA | Modtager UTM | ✅ live på cycling-zone-marketing.vercel.app 8/9; rewrites fra cyclingzone.org udestår (#4067) |
 
 ### 2.1 Discord 📄
 
@@ -152,7 +152,7 @@ Tier-listen og trackeren ligger i #2236.
 
 ### 2.7 Hattrick-forum ✅
 
-3 signups er attribueret til `hattrick.org` i `signup_attribution` (målt 8/9). Publikummet er beslægtet
+8 signups er attribueret til `hattrick.org` (alle subdomæner, målt 8/9). Publikummet er beslægtet
 (browser-manager, langsom kadence, gammelt community), og en Hattrick-spiller i vores eget community har
 selv peget på Hattrick som model (#4235). Samme regler som Reddit: læs forumreglerne først, historie før link.
 
