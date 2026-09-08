@@ -19,8 +19,8 @@
 ## Bane 2 · Forretning (viger aldrig; SSOT [`2026-09-02-30-dages-pengeplan.md`](superpowers/specs/2026-09-02-30-dages-pengeplan.md))
 
 Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d ≥ 100. **Målt 7/9: 90 — under målet.**
-8. 🟢 **BRAND · Ejerens egne bestillinger** (#feedback-from-dolmer 1-8/9): forum- og beskedpakken MERGET 8/9 (#5020 #5018 #5026 #5022 #5019 #5008 #5023 #5010 #5029 #5021, v7.264 + Hjælp). Rest: spørgeskema-åbning (draft i prod, #4943) · mail-nøgler + dag-1 on (#4964) · DM-opfølgning #5032 · lag 3 #5033. Prompt i `docs/drafts/` (8/9 eftermiddag). #4270 blokeret af #4845.
-9. ✅ #4960 = målebrud · #4595 fix klar i #5021 (ejer: vent) · #4964 rapport merget (#5025) → dag-1-mail dry-run 8/9.
+8. 🟢 **BRAND · Ejerens egne bestillinger** (#feedback-from-dolmer 1-8/9): forum- og beskedpakken MERGET 8/9 (#5020 #5018 #5026 #5022 #5019 #5008 #5023 #5010 #5029 #5021, v7.264 + Hjælp). Spørgeskema ÅBNET 8/9 (#4943, 241 inviteret). Rest: admin-resultatside (PR) · mail-drift #5038 + #5045 → dag-1 on (#4964) · #5032 · #5033. Prompt i `docs/drafts/` (9/9). #4270 blokeret af #4845.
+9. ✅ #4960 = målebrud · #4595: entry-chunk roterer stadig efter #5021 → ejer-valg rod-årsag før #5033 · #4964: nøgler i prod, flip afventer ejer.
 10. 🔵 **Nøgleblok #4616** (ejer ~30 min) låser op: Pro i euro PR #4608 → #4645 pris-synk → #4646 frafald · #4074 · #4005.
 11. 🔵 **Mail-loop:** Mail v2 merget (#2853) → ejer-GO dry_run → on pr. type → #2760 win-back (77 m. samtykke).
 12. 🔴 **Spiller-kommunikation #428:** MAN uge-note · ONS spørgsmål · SØN ugens øjeblik · #4820 indholdsplan + spørgeskema · tråd-bank #4117. Ejeren poster selv.
