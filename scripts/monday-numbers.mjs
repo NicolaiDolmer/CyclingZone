@@ -23,6 +23,7 @@
 //   2 = fejl mod Supabase (auth, netvaerk, RPC)
 
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 
 const TZ = "Europe/Copenhagen";
@@ -397,7 +398,12 @@ async function main() {
   console.log(lines.join("\n"));
 }
 
-main().catch((err) => {
-  console.error("💥 monday-numbers fejlede:", err?.message || err);
-  process.exit(2);
-});
+// Koer kun naar filen startes direkte. Testen importerer classifyChannel og maa
+// ikke udloese en prod-koersel som bivirkning.
+const invokedDirectly = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error("💥 monday-numbers fejlede:", err?.message || err);
+    process.exit(2);
+  });
+}

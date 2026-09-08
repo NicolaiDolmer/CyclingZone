@@ -167,7 +167,7 @@ Reglen fra #2236 er en del af konventionen: **UTM pr. community**, ikke pr. plat
 
 - **Første bud er signalet.** Af de 44 der er der i uge 2 har 42 budt, altså 95 %. Af de 99 tabte har 37 budt. `auction_bids` er kilden, ikke `player_events`.
 - **Selv-sat opstilling mod auto-udfyldt** (7/9-auditen, n=193): første løb auto-udfyldt gav 29,9 % uge-2-retention; sat af manageren selv gav 57,9 %. Launch-kohorten fik 12 af 20 kun auto-udfyldte opstillinger. Bemærk: korrelation, ikke årsag. Den der selv sætter opstilling er også den der i forvejen er engageret.
-- **Launch-kohorten (24-30/8)** holdt 28,6 % efter alders-justering 33,3 % fra uge 1 til uge 2. Nye spillere har holdt 33 til 46 % siden maj. Launch-ugen er ikke syg; den gjorde et gammelt tab synligt (#4964).
+- **Launch-kohorten (24-30/8)** blev meldt som 28,6 %. Alders-justeret (hver kohortes egen dag 0-6 mod dag 7-13) er tallet 33,3 %, og de tidligere kohorter ligger på 38,8 til 45,5 %. Nye spillere har holdt 33 til 46 % siden maj. Launch-ugen er ikke syg; den gjorde et gammelt tab synligt, fordi 20 kom ind på én uge (#4964).
 - **Frafaldet er bimodalt.** 7 af launch-kohortens 18 stoppede inden for 36 minutter. Enten binder første session, eller også er det slut. Der er ingen glidende decay at optimere på.
 
 ### 4.3 G4-princippet (bindende)
@@ -360,6 +360,14 @@ infisical run --env=prod -- node scripts/monday-numbers.mjs
 Read-only: kun SELECT og den read-only RPC `get_cohort_retention`. Nøgler læses udelukkende fra env (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, valgfri `ALUNTA_API_TOKEN`) og printes aldrig. `--json` giver maskinlæsbart output til videre behandling.
 
 Scriptet fejler tydeligt hvis en nøgle mangler (exit 1) eller Supabase svarer med fejl (exit 2). Rammer en tabel-forespørgsel række-loftet, siger scriptet det i "Forbehold" i stedet for stiltiende at undertælle.
+
+Kanal-grupperingen i §2.1 er den eneste rigtige logik i scriptet, og den er testet uden netværk:
+
+```bash
+node --test scripts/monday-numbers.test.mjs
+```
+
+Ændrer du gruppedefinitionerne (`AI_ASSISTANT_HOSTS`, `OWN_EMAIL_HOSTS`, `REDDIT_HOSTS`, `SEARCH_HOSTS`), så ret §2.1 i samme PR. Ellers flytter et tal i SSOT'en uden at nogen ser det.
 
 ## 14. Relateret
 
