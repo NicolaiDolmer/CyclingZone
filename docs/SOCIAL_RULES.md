@@ -37,6 +37,15 @@ beskeder fra ejeren: resultat-feeds til divisionskanalerne, digest-DM'en (§4.6)
 transfer-DM'er (§4.2) og ops-alarmer. De sender fordi koden er bygget til det, ikke fordi en agent
 besluttede at skrive til nogen.
 
+**Roadmap-kategorien på forummet er ejerens egen kanal** (#4818, ejer-direktiv 4/9 + afklaring 8/9:
+*"kun jeg opretter, alle svarer"*). Kun `users.role = 'admin'` kan oprette tråde der; databasen afviser
+resten via triggeren `forum_posts_enforce_category_post_role`, backend svarer `403
+forum_category_admin_only`, og fladen skjuler knappen. Rettigheden er generel — `post_role` pr. kategori i
+`public.forum_category_post_roles`, ikke et hardcodet bruger-id — så #4268's rollemodel kan overtage den
+uden en ny migration. **Svar er åbne for alle i alle kategorier**; ingen kategori begrænser
+`forum_replies`. §0 gælder uændret og skærpet her: en agent poster ALDRIG i Roadmap-kategorien, heller
+ikke selvom den tekniske adgang findes via service-role. Ejeren skriver selv; AI leverer udkast.
+
 Beslægtet og lige så bindende: spillervendt tekst merges aldrig uden ejerens eksplicitte ja til den
 konkrete ordlyd (`.claude/learnings/2026-08-28-shipped-player-copy-without-explicit-yes.md`), og
 community-copy skal verificeres mod koden før den påstår at noget mangler
@@ -56,6 +65,7 @@ community-copy skal verificeres mod koden før den påstår at noget mangler
 | In-app-notifikationer | **Live**, 55 typer | `notificationTypes.js` |
 | Achievements | **Live**, 46 definitioner | `achievementEngine.js` |
 | Forum med opbakning | **Live** siden 6/8 | `forum.js`, se `FORUM_RULES.md` |
+| Roadmap-kategorien (kun ejeren opretter) | **Live** siden #4818 | `forum_category_post_roles`, se §0 |
 | Holdprofil (offentlig) | **Live** | `frontend/src/pages/TeamProfilePage.jsx`, rute `teams/:id` |
 | Managerprofil (offentlig) | **Live** | `frontend/src/pages/ManagerProfilePage.jsx`, rute `managers/:teamId` |
 | Online-prik + "sidst set" | **Live**, 5-min-granularitet | `api.js:13856`, `OnlineBadge.jsx` |
@@ -312,7 +322,7 @@ fordi dens skrivninger er.
 
 | Regel | Værdi | Hvor |
 |---|---|---|
-| Kanonisk typeliste | **54 typer** | `notificationTypes.js`, talt med `node -e "import('./lib/notificationTypes.js')..."` |
+| Kanonisk typeliste | **55 typer** | `notificationTypes.js`, talt med `node -e "import('./lib/notificationTypes.js')..."` |
 | Paritetskrav | listen SKAL matche `notifications_type_check` i prod | `notificationTypes.js:1-5` |
 | Paritets-vagt | `notificationTypes.test.js` fejler hvis en type kun findes ét af stederne | samme |
 | Rate limit på læsning | 120 kald pr. 60 s (`presencePulseLimiter`) | `rateLimiters.js:94-100` |
@@ -336,6 +346,31 @@ constrainten fejler tavst i prod. Se §10.
 
 **Bevidste fravalg** (`FORUM_RULES.md` §1, ejer 25/8): ingen notifikation ved *alle* nye opslag, og
 ingen notifikation ved opbakning.
+
+### 6.1 @-tag af en manager (#5011, ejer-direktiv 3/9 i #4751)
+
+Skriver du `@Managernavn` i et opslag eller et svar, får den taggede en notifikation i indbakken med
+link direkte til indlægget. Reglerne:
+
+| Regel | Værdi | Hvor |
+|---|---|---|
+| Type | `forum_mention` | `notificationTypes.js` |
+| Hvem der afgør tagget | **serveren**, aldrig klienten | `forumMentions.js`, kaldt fra `POST /forum/posts` og `POST /forum/posts/:id/replies` |
+| Match | case-insensitivt, **hele** navne (`@Nico` rammer aldrig "Nicolai"), navne med mellemrum (længste match vinder), aldrig e-mails, aldrig hen over et linjeskift | `findForumMentions` |
+| Selv-tag | afvises i `notifyForumMention` selv, ikke kun på kaldestedet | `notificationService.js` |
+| Dedupe | pr. (bruger, **indlæg**) via `metadata.sourceKey` (`post:<id>` / `reply:<id>`), læst som ulæst. To managere kan tagge dig i samme tråd; samme indlæg sender aldrig to gange — og det er også svaret på "ingen ny notifikation ved redigering" | samme |
+| Isolering | en fejlet notifikation må aldrig vælte opslaget/svaret | samme |
+| Link | `related_id` = trådens id, `metadata.replyId` = det konkrete svar → `/forum/<postId>#reply-<replyId>` | `notificationLink.js` |
+| Hvad der scannes | **kun brødteksten**, ikke trådtitlen: titlen står i sidehovedet og i trådlistens rækker, hvor hele rækken allerede er ét `<Link>` | `api.js` |
+| Taggbar | menneskestyrede hold med et brugernavn (ikke AI, ikke banken) | `loadMentionableManagers` |
+| Klientens rolle | rendrer navnet klikbart til `/managers/:teamId` og foreslår navne ved `@` + 2 tegn — den afgør **ikke** hvem der får besked | `MentionText.jsx`, `MentionAutocomplete.jsx` |
+
+Parseren findes **to steder** (`backend/lib/forumMentions.js` og `frontend/src/lib/forumMentions.js`)
+fordi serveren skal afgøre notifikationen og klienten skal rendre præcis de samme navne klikbare.
+Drift mellem de to ville give den værste tilstand: et navn ulinket i teksten mens modtageren fik en
+besked. Blokken er derfor markeret i begge filer, sammenlignet tegn for tegn af
+`frontend/src/lib/forumMentions.parity.test.js` og synkroniseres med
+`node scripts/sync-forum-mentions-parser.mjs` — **backend er kilden**.
 
 ---
 

@@ -112,5 +112,13 @@ export function resolveNotificationLink(notification, fallbackLink) {
     return `/notifications?tab=messages&c=${meta.conversationId || n.related_id}`;
   }
 
+  // #5011: du blev @-tagget. related_id er trådens id; stod tagget i et SVAR,
+  // bærer metadata.replyId det konkrete indlæg, og #reply-<id> lander på selve
+  // svaret (samme anker ForumPostPage allerede bruger til citat-spring og til
+  // "første ulæste svar", #3517/#3451) i stedet for øverst i en lang tråd.
+  if (n.type === "forum_mention" && n.related_id) {
+    return meta.replyId ? `/forum/${n.related_id}#reply-${meta.replyId}` : `/forum/${n.related_id}`;
+  }
+
   return fallbackLink ?? null;
 }

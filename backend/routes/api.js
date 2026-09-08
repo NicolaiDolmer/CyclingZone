@@ -113,6 +113,7 @@ import {
   buildWelcomeNotification,
   notifyForumThreadReply,
   notifyDirectMessage,
+  notifyForumMentions,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
@@ -160,6 +161,7 @@ import {
   recordForumThreadView,
   getForumAuthorStats,
 } from "../lib/forum.js";
+import { loadMentionableManagers } from "../lib/forumMentions.js";
 import {
   listConversations,
   getUnreadSummary,
@@ -14346,6 +14348,25 @@ router.get("/forum/posts", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/forum/mentionable-managers — navnene der kan @-tagges (#5011).
+// Kun `name` (managerens brugernavn) + `team_id` — begge dele står allerede på
+// hvert eneste forum-indlæg (ForumAuthorIdentity, #4751), så ruten tilføjer
+// ingen ny eksponering. Klienten bruger listen to steder: autocomplete i
+// editoren og den klikbare rendering af @navn i teksten. Den er IKKE kilden til
+// hvem der får en notifikation — det afgør serveren selv ved oprettelsen.
+// presencePulseLimiter (120/60 s): kaldes af autocomplete mens man skriver et
+// @-tag, altsaa billigt og hyppigt — samme profil som limiteren er bygget til
+// (#530-daekning for nye auth-ruter, samme moenster som #5013).
+router.get("/forum/mentionable-managers", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const managers = await loadMentionableManagers({ supabase });
+    res.json({ managers: managers.map((m) => ({ name: m.name, team_id: m.teamId })) });
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/forum/unread-status — billig nav-prik-kilde (#3451): {has_unread}.
 router.get("/forum/unread-status", requireAuth, async (req, res) => {
   try {
@@ -14425,6 +14446,19 @@ router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => 
         username: u?.username || null,
         teamName: req.team?.name || null,
       }).catch(err => console.error("[forum] discord ping (post) failed:", err.message));
+      // #5011: @-tags i opslagets BRØDTEKST giver den taggede en
+      // indbakke-notifikation. Kun brødteksten scannes — det er præcis den
+      // tekst der også rendres med klikbare navne (titlen står i sidehovedet
+      // og i trådlistens rækker, hvor hele rækken allerede er ét <Link>, så et
+      // link deri ville være ugyldig HTML). Best-effort: opslaget er gemt.
+      notifyForumMentions({
+        supabase,
+        text: typeof postBody === "string" ? postBody.trim() : "",
+        authorUserId: req.user.id,
+        postId: result.body?.id || null,
+        postTitle: typeof title === "string" ? title.trim() : null,
+        authorName: u?.username || null,
+      }).catch(err => captureException(err));
     }
     res.status(result.status).json(result.body);
   } catch (e) {
@@ -14448,13 +14482,20 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
     });
     if (result.status === 200) {
       const replyBody = typeof req.body?.body === "string" ? req.body.body.trim() : "";
-      supabase.from("users").select("username").eq("id", req.user.id).single()
-        .then(({ data: u }) => notifyForumActivity({
+      // ÉT username-opslag deles af Discord-pinget og #5011's mention-scan —
+      // et postgrest-builder-objekt udfører requesten på hver .then(), så det
+      // pakkes i et rigtigt promise før det forbruges to steder.
+      const authorNamePromise = (async () => {
+        const { data: u } = await supabase.from("users").select("username").eq("id", req.user.id).single();
+        return u?.username || null;
+      })();
+      authorNamePromise
+        .then((username) => notifyForumActivity({
           kind: "reply",
           title: result.post?.title || "",
           body: replyBody,
           category: result.post?.category || null,
-          username: u?.username || null,
+          username,
           teamName: req.team?.name || null,
         }))
         .catch(err => console.error("[forum] discord ping (reply) failed:", err.message));
@@ -14488,6 +14529,20 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
           postTitle,
         }).catch(err => captureException(err));
       }
+      // #5011: @-tags i svaret. Dedupe-nøglen er selve SVARET
+      // ("reply:<id>"), ikke tråden, så to forskellige managere kan tagge dig
+      // i samme tråd — og det samme svar aldrig kan sende to gange.
+      authorNamePromise
+        .then((authorName) => notifyForumMentions({
+          supabase,
+          text: replyBody,
+          authorUserId: req.user.id,
+          postId,
+          postTitle,
+          replyId: result.body?.id || null,
+          authorName,
+        }))
+        .catch(err => captureException(err));
     }
     res.status(result.status).json(result.body);
   } catch (e) {

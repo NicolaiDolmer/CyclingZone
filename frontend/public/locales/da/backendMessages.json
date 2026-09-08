@@ -486,6 +486,11 @@
       "message": "{count, plural, one {Nogen svarede på din tråd} other {# nye svar på din tråd}}",
       "messageWithTitle": "{count, plural, one {Et nyt svar på \"{postTitle}\"} other {# nye svar på \"{postTitle}\"}}"
     },
+    "forumMention": {
+      "title": "Du blev nævnt",
+      "message": "{author} nævnte dig på forummet",
+      "messageWithTitle": "{author} nævnte dig i \"{postTitle}\""
+    },
     "careerMilestone": {
       "maidenWin": {
         "title": "Første sejr",

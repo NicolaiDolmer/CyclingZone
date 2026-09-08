@@ -73,6 +73,9 @@ export const NOTIFICATION_TYPES = [
   // giver ÉN ulæst notifikation. En blokeret afsender udløser aldrig en
   // notifikation. Se notifyDirectMessage, notificationService.js.
   "dm_message",
+  // #5011 (ejer-direktiv 3/9, #4751): du blev @-tagget i et forum-indlæg.
+  // Højst ÉN pr. (bruger, indlæg), aldrig ved selv-tag. Se notifyForumMention.
+  "forum_mention",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

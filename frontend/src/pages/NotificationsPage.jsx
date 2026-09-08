@@ -108,6 +108,10 @@ const TYPE_CONFIG = {
   // #3200: fallback-linket peger på fanen; resolveNotificationLink deep-linker
   // til selve tråden via related_id (samtale-id'et).
   dm_message:                { Icon: MessageIcon,      color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/notifications?tab=messages" },
+  // #5011: du blev @-tagget i et forum-indlæg. Fallback-link er /forum —
+  // related_id (trådens id) + metadata.replyId overstyrer med det konkrete
+  // indlæg via den dedikerede regel i notificationLink.js.
+  forum_mention:             { Icon: InboxIcon,        color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/forum" },
 
   // #4501: de 19 typer nedenfor fandtes i backendens NOTIFICATION_TYPES, men
   // manglede en TYPE_CONFIG-entry og faldt derfor til DEFAULT_TYPE_CONFIG:

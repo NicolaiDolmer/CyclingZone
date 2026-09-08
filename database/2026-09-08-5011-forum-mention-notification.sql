@@ -1,25 +1,22 @@
--- #3200 (DM v1): tilføjer 'dm_message' — notifikation når en anden manager
--- sender dig en direkte besked. Sendt fra backend/lib/notificationService.js
--- (notifyDirectMessage), udløst af POST /api/messages/send. Dedupe pr.
--- (bruger, samtale): findes der allerede en ULÆST notifikation for samme
--- samtale, opdateres den ("N new messages") i stedet for at stable nye rækker
--- op — samme mønster som forum_thread_reply (#4118).
+-- #5011 (ejer-direktiv 3/9 i #4751, ejer-valg 8/9): tilfoejer 'forum_mention' —
+-- notifikation naar en ANDEN manager @-tagger dig i et forum-opslag eller -svar.
+-- Sendt fra backend/lib/notificationService.js (notifyForumMention /
+-- notifyForumMentions), udloest af POST /api/forum/posts og
+-- POST /api/forum/posts/:id/replies. Selve navne-udtraekket bor server-side i
+-- backend/lib/forumMentions.js — klienten bestemmer aldrig hvem der tagges.
 --
--- En blokeret afsender udløser ALDRIG en notifikation: blok-tjekket ligger før
--- notifikationskaldet i backenden, og modtageren ser heller ikke beskeden
--- (RLS-filteret i 2026-09-08-3200-manager-dm.sql).
+-- Regler: case-insensitivt match paa HELE managernavne, aldrig selv-tag, og
+-- hoejst EEN notifikation pr. (bruger, indlaeg) — dedupe paa
+-- metadata.sourceKey ('post:<id>' / 'reply:<id>'), saa et redigeret indlaeg
+-- heller ikke kan sende en ny.
 --
 -- Paritets-guard: backend/lib/notificationTypes.test.js krydstjekker denne fil
--- mod NOTIFICATION_TYPES (MIGRATION_PATH peger på DENNE fil — opdateret fra
--- 2026-08-25-3517-forum-reply-notification-type.sql, kanonisk forgænger).
+-- mod NOTIFICATION_TYPES (MIGRATION_PATH peger nu paa DENNE fil — opdateret fra
+-- 2026-08-25-3517-forum-reply-notification-type.sql, kanonisk forgaenger).
 --
--- Fletning 8/9: #5011 (2026-09-08-5011-forum-mention-notification.sql) forgrenede
--- fra samme forgænger og landede først på main. Listen herunder er derfor
--- UNIONEN — både 'forum_mention' og 'dm_message'. #5011 er allerede applied i
--- prod, så denne fil er den sidste der køres og dermed den gældende constraint.
---
--- Applies post-merge under #2642-rammerne (idempotent, ikke-destruktiv →
--- ikke ejer-gated). IKKE applied endnu ved denne PR.
+-- Applies post-merge under #2642-rammerne: idempotent (drop if exists + add),
+-- ikke-destruktiv (constrainten udvides, ingen raekker roeres) → ikke ejer-gated.
+-- IKKE applied endnu ved denne PR.
 
 begin;
 
@@ -82,13 +79,12 @@ alter table public.notifications
     'auction_sold',
     'market_value_level_correction',
     'forum_thread_reply',
-    'forum_mention',
-    'dm_message'
+    'forum_mention'
   ]::text[]));
 
 commit;
 
--- Post-verify (kør efter apply): slå notifications_type_check op via
+-- Post-verify (koer efter apply): slaa notifications_type_check op via
 -- pg_get_constraintdef (se pg_constraint, conrelid = public.notifications) og
--- bekræft at BÅDE "dm_message" og "forum_mention" indgår i listen af tilladte
--- typer, og at listen har 56 typer i alt.
+-- bekraeft at BAADE forum_mention og forum_thread_reply indgaar i listen af
+-- tilladte typer, og at listen har 55 typer i alt.

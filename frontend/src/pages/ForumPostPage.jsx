@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch.js";
 import { computeForumUnreadFold } from "../lib/forumUnreadFold.js";
@@ -11,6 +11,9 @@ import {
 import { InboxIcon, ArrowUpIcon, UndoIcon, ChevronDownIcon } from "../components/ui/icons/index.jsx";
 import ForumAuthorIdentity, { ForumSignature } from "../components/forum/ForumAuthorIdentity.jsx";
 import { authorDisplayName } from "../components/forum/forumIdentity.js";
+// #5011: @-tag af en manager — klikbart navn i teksten + navneforslag i editoren.
+import MentionText from "../components/forum/MentionText.jsx";
+import MentionAutocomplete from "../components/forum/MentionAutocomplete.jsx";
 
 // #3199 — tråd-detalje: opslag + evt. ejer-poll + svar. T1 (max-w-4xl).
 // Afstemning: single choice, genafstemning tilladt (backend upserter). Kun
@@ -235,6 +238,11 @@ export default function ForumPostPage() {
   const { t: tErrors } = useTranslation("errors");
   const { postId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // #5011: "#reply-<id>" fra en @-tag-notifikation. Er der et anker, ejer det
+  // sidens scroll — den skal lande på det indlæg beskeden handlede om, ikke på
+  // det første ulæste svar.
+  const replyAnchorId = location.hash.startsWith("#reply-") ? location.hash.slice("#reply-".length) : null;
 
   const [state, setState] = useState({ status: "loading", post: null, replies: [], poll: null });
   const [replyBody, setReplyBody] = useState("");
@@ -311,10 +319,26 @@ export default function ForumPostPage() {
   // på hver svar-række (genbrugt af citat-spring-funktionen nedenfor).
   useEffect(() => {
     if (hasScrolledToUnreadRef.current) return;
+    if (replyAnchorId) return; // #5011: ankeret vinder over "første ulæste".
     if (state.status !== "ready" || !unreadFold.firstUnreadId) return;
     hasScrolledToUnreadRef.current = true;
     document.getElementById(`reply-${unreadFold.firstUnreadId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [state.status, unreadFold.firstUnreadId]);
+  }, [state.status, unreadFold.firstUnreadId, replyAnchorId]);
+
+  // #5011: spring til det svar en @-tag-notifikation pegede på. Ligger svaret
+  // i den foldede "tidligere svar"-blok (#3451), åbnes folden først — ellers
+  // ville linket ramme et element der ikke er i layoutet, og siden ville blive
+  // stående øverst uden nogen forklaring.
+  useEffect(() => {
+    if (state.status !== "ready" || !replyAnchorId) return undefined;
+    const frame = requestAnimationFrame(() => {
+      const el = document.getElementById(`reply-${replyAnchorId}`);
+      if (!el) return;
+      el.closest("details")?.setAttribute("open", "");
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [state.status, replyAnchorId]);
 
   async function handleReply(e) {
     e.preventDefault();
@@ -454,7 +478,7 @@ export default function ForumPostPage() {
             teksten, praecis som paa selve opslaget. */}
         <div className="mt-2 ps-[38px]">
           <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
-          <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{reply.body}</p>
+          <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1"><MentionText body={reply.body} /></p>
           <ForumSignature author={reply.author} body={reply.body} t={t} />
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <SupportButton
@@ -530,7 +554,7 @@ export default function ForumPostPage() {
               size="md"
               t={t}
             />
-            <p className="mt-3 whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{post.body}</p>
+            <p className="mt-3 whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1"><MentionText body={post.body} /></p>
             <ForumSignature author={post.author} body={post.body} t={t} />
             {poll && <PollBlock poll={poll} onVote={handleVote} voting={voting} t={t} />}
             <div className="mt-4 flex items-center gap-2 border-t border-cz-border pt-3">
@@ -618,6 +642,7 @@ export default function ForumPostPage() {
                   placeholder={t("post.replyPlaceholder")}
                 />
               </Field>
+              <MentionAutocomplete textareaId="forum-reply-body" value={replyBody} onChange={setReplyBody} t={t} />
               {replyError && <p className="text-xs text-cz-danger">{replyError}</p>}
               <div className="flex justify-end">
                 <Button type="submit" variant="primary" size="sm" loading={replySubmitting} disabled={replySubmitting || !replyBody.trim()}>

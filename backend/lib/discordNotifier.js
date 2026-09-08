@@ -936,6 +936,7 @@ const FORUM_KIND_META = {
 // #4492: SKAL matche FORUM_CATEGORIES i backend/lib/forum.js — udvid begge
 // sammen. Kun labels til Discord-pinget; ingen valideringsrolle her.
 const FORUM_CATEGORY_LABELS = {
+  roadmap: "Roadmap",
   general: "General",
   feedback_ideas: "Feedback & ideas",
   questions: "Questions & answers",

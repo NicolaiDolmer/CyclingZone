@@ -19,15 +19,19 @@
 // løb, se useStageTimeline.js's kommentar) miste adgangen til Final Kilometre
 // helt — kun narrativ-listen og "Watch the race film" er fortsat tidslinje-
 // gatede.
-import { lazy, Suspense, useState } from "react";
+import { Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, Button, PlayIcon, StopwatchIcon } from "../ui";
 import { formatNumber } from "../../lib/intl.js";
 import { useStageTimeline } from "../../hooks/useStageTimeline.js";
 import { selectStoryEvents } from "../../lib/stageTimelineStory.js";
 import { describeEvent } from "../../lib/stageTimelineFilm.js";
+import { lazyWithRetry } from "../../lib/lazyWithRetry.js";
 
-const TimelineFilmPlayer = lazy(() => import("./TimelineFilmPlayer.jsx"));
+// #5014: lazyWithRetry (ikke bart React.lazy) — se lib/lazyWithRetry.js for
+// hvorfor: uden retry-vaernet klassificeres en stale-chunk-fejl efter deploy
+// som render_error, ikke chunk_load_error (CYCLINGZONE-5H).
+const TimelineFilmPlayer = lazyWithRetry(() => import("./TimelineFilmPlayer.jsx"));
 
 function StoryRow({ event, riderNameById, teamNameById, t }) {
   const described = describeEvent(event, { riderNameById, teamNameById });
