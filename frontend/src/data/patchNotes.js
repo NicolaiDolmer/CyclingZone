@@ -1,5 +1,40 @@
 export const PATCHES = [
   {
+    "version": "7.266",
+    "date": "2026-09-08",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "A welcome email when you start your team",
+          "body": "New managers now get a welcome email shortly after creating their team, and a follow-up email about a day later with pointers for your first steps. Every email has a one-click unsubscribe link. Existing managers do not get these emails."
+        },
+        "da": {
+          "title": "En velkomstmail når du starter dit hold",
+          "body": "Nye managere får nu en velkomstmail kort efter holdoprettelsen, og en opfølgende mail cirka et døgn senere med pejlemærker til dine første skridt. Hver mail har et afmeld-link med ét klik. Eksisterende managere får ikke disse mails."
+        },
+        "refs": [2853, 4964]
+      },
+      {
+        "category": "fixed",
+        "audience": "internal",
+        "topic": "Onboarding",
+        "en": {
+          "title": "Email logo rendering in Outlook dark mode",
+          "body": "The welcome and day-1 email logo showed broken in Outlook's dark mode. Fixed."
+        },
+        "da": {
+          "title": "Mail-logo i Outlook dark mode",
+          "body": "Velkomst- og dag-1-mailens logo blev vist forkert i Outlooks dark mode. Rettet."
+        },
+        "refs": [2853, 4964]
+      }
+    ]
+  },
+  {
     "version": "7.265",
     "date": "2026-09-08",
     "label": "Beta",
