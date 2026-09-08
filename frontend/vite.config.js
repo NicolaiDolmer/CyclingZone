@@ -118,6 +118,19 @@ export default defineConfig({
           project: process.env.SENTRY_PROJECT,
           release: {
             name: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA,
+            // #4595 rod-årsag 2: pluginets default (`inject: true`) skriver
+            // `window.SENTRY_RELEASE={id:"<sha>"}` ind i ENTRY-chunken selv —
+            // en deploy-unik streng i en hashet asset, præcis den klasse resten
+            // af denne fil eksisterer for at undgå. Fordi hver route-chunk
+            // importerer entry'en, roterede HELE asset-træet på hvert deploy,
+            // også docs-/backend-only commits uden en eneste frontend-ændring
+            // (målt: 268 af 387 commits siden 1/9). #4970 lukkede kun
+            // `import.meta.env`-vejen; denne injektion sker i pluginet selv og
+            // er derfor usynlig for den vagt. Releasen er stadig korrekt sat på
+            // Sentry-events (source maps matcher) via `Sentry.init({ release })`
+            // i src/lib/sentry.jsx, som læser `<meta name="cz-release">` — en
+            // kilde der IKKE ligger i en hashet chunk.
+            inject: false,
           },
           sourcemaps: {
             assets: "./dist/**",
