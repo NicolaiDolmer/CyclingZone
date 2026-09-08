@@ -472,7 +472,7 @@ export default function SurveyPage() {
       <p className={`text-sm leading-relaxed text-cz-2 ${isPreview ? "mb-4" : "mb-1"}`}>{t("page.introLead")}</p>
       {!isPreview && <p className="mb-4 text-sm leading-relaxed text-cz-2">{t("page.introAccount")}</p>}
 
-      <div className="sticky top-0 z-sticky -mx-4 mb-4 bg-cz-bg px-4 py-2 sm:-mx-8 sm:px-8">
+      <div className="sticky top-0 z-sticky -mx-4 mb-4 bg-cz-body border-b border-cz-border px-4 py-2 sm:-mx-8 sm:px-8">
         <ProgressMeter
           value={progress.percent}
           label={t("progress.label")}
