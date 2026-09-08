@@ -1,4 +1,4 @@
-# 2026-09-08: Spoergeskema aabnet uden skrive-grants — 241 managers kunne ikke svare
+# 2026-09-08: Spoergeskema aabnet uden skrive-grants — 241 managers kunne ikke svare (del 1+2)
 
 **Issue:** #4943 (in-app spoergeskema). Hoerer sammen med #5006 (migration) og
 2026-09-07-migration-halvt-applied-insert-aritet.md (samme migration, anden
@@ -88,7 +88,7 @@ review-kaeden tjekkede at pligten var opfyldt.
     (toggle-moenster: insert/delete uden update), men boer bekraeftes af
     ejeren eller markeres med `-- policy-grant-ok: <begrundelse>`.
 
-## Laering
+## Laering (del 1)
 
 En sikkerhedsforbedring der fjerner en implicit default (#2830: ingen gratis
 skrive-adgang til nye tabler) skal parres med en vagt der haandhaever den nye
@@ -97,5 +97,51 @@ EKSPLICITTE pligt — ellers flytter man risikoen fra "for aaben default" til
 nogen rammer den i produktion. Et RLS-policy-review er ikke fuldt foer nogen
 har svaret paa "har rollen overhovedet lov til at forsoege denne operation,
 uafhaengigt af policy-logikken?".
+
+## Del 2: samme dag kl. 14:55 — upsert kraever UPDATE selv ved foerste indsaettelse
+
+Kort efter del 1-hotfixen (14:33) meldte spillere stadig fejl paa "Send mine
+svar". Frontenden gemmer en gennemfoerelse med et `INSERT ... ON CONFLICT
+(survey_id, user_id) DO UPDATE` mod `public.survey_completions` — en upsert,
+ikke en ren INSERT. Del 1's hotfix gav kun `GRANT INSERT` til den tabel, fordi
+den oprindelige migrations eneste policy der blev set som "det skrivende
+tilfaelde" var INSERT-policyen. Men en upsert er BEGGE operationer paa een
+gang: Postgres kraever UPDATE-tabelret for at PLANLAEGGE `ON CONFLICT DO
+UPDATE`-grenen, ogsaa naar raekken slet ikke findes endnu og forespoergslen i
+praksis kun indsaetter. Uden `GRANT UPDATE` fejlede upserten stadig med 42501
+— nu paa UPDATE-grenen, ikke INSERT-grenen.
+
+Ejeren gav go til endnu et direkte prod-fix kl. 14:56:
+  `GRANT UPDATE ON public.survey_completions TO authenticated;`
+Verificeret med `has_table_privilege('authenticated', 'public.survey_completions', 'UPDATE')` (true).
+Skriftlig version tilfoejet til samme fil som del 1:
+`database/2026-09-08-4943-survey-grants-hotfix.sql` (nu ogsaa post-verify for
+UPDATE paa survey_completions).
+
+Roden er den samme som del 1 (#2830: ingen default skrive-privilegier paa
+tabeller oprettet paa/efter 14/8), men fanget for sent fordi forward-guarden
+i del 1 kun blev koert MOD DEN AENDREDE FIL, ikke mod hele policy-fladen paa
+tabellen foer den blev submitted i praksis — `survey_completions` HAR faktisk
+en `CREATE POLICY ... FOR UPDATE ... TO authenticated` i den oprindelige
+migration (`2026-09-07-4943-in-app-survey.sql`, til at redigere
+`seconds_spent`/`completed_at` foer skemaet lukker), som del 1's hotfix ikke
+daekkede. `scripts/lint-sql-policy-grants.mjs` fanger faktisk denne praecise
+mangel naar den koeres med `--all` mod hele `database/`-korpuset (verificeret:
+finding paa `survey_completions:UPDATE` foer del 2-linjen blev tilfoejet) —
+det var PR-jobbets scope til KUN aendrede filer i den oprindelige #4943-PR der
+gjorde at ingen automatisk vagt saa hele billedet foer merge. Lint-scriptets
+egen testsuite har nu en fixture der laaser praecis denne upsert-form fast
+(INSERT grantet, UPDATE-policy til stede, UPDATE ikke grantet → fund).
+
+### Laering (del 2)
+
+En `ON CONFLICT DO UPDATE` (upsert) er ALTID begge operationer for
+grant-formaal, uanset at den forretningsmaessige hensigt kun er "indsaet hvis
+ny, ellers opdatér" — GRANT INSERT alene er ikke nok, heller ikke for den
+foerste raekke nogensinde. Naar en tabel har baade en INSERT- og en
+UPDATE-policy `TO authenticated`, og skrive-stien i frontenden er en upsert,
+skal BEGGE grants tjekkes sammen, ikke kun det der matcher den mest
+aabenlyse operation. Forward-guarden daekkede allerede dette korrekt — det
+var proces (kun-diff-scope i PR-jobbet), ikke lint-logikken, der var hullet.
 
 Refs #4943 #2830

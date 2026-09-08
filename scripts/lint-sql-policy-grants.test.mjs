@@ -159,3 +159,43 @@ test('findCreateTables: extracts table name from CREATE TABLE IF NOT EXISTS', ()
   assert.deepEqual(findCreateTables(CREATE_POST_CUTOVER), ['widgets']);
   assert.deepEqual(findCreateTables(CREATE_PRE_CUTOVER), ['widgets']);
 });
+
+// #4943 del 2 (8/9 kl. 14:55): en upsert (`INSERT ... ON CONFLICT DO UPDATE`)
+// mod en tabel kræver UPDATE-tabelret ogsaa ved den allerførste indsættelse —
+// Postgres tjekker retten for at planlægge ON CONFLICT DO UPDATE-grenen,
+// uafhængigt af om raekken findes. survey_completions havde et GRANT INSERT
+// (del 1's hotfix) og en gyldig UPDATE-policy TO authenticated (fra den
+// oprindelige migration), men intet GRANT UPDATE — upserten fejlede stadig
+// med 42501. Denne fixture laaser fast at guarden fanger PRAECIS den form:
+// INSERT grantet + UPDATE-policy til stede + UPDATE IKKE grantet → fund.
+test('#4943 del 2: upsert-tabel med GRANT INSERT men uden GRANT UPDATE er stadig flagget (survey_completions-formen)', () => {
+  const src = `
+CREATE TABLE IF NOT EXISTS public.survey_completions (id UUID PRIMARY KEY);
+ALTER TABLE public.survey_completions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can insert own survey completions"
+  ON public.survey_completions FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+CREATE POLICY "Users can update own survey completions"
+  ON public.survey_completions FOR UPDATE
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+GRANT INSERT ON public.survey_completions TO authenticated;
+`;
+  const sources = [{ file: '2026-09-07-survey-completions.sql', source: src }];
+  const { findings } = scanCorpus(sources, sources);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].table, 'survey_completions');
+  assert.equal(findings[0].op, 'UPDATE');
+
+  // Tilføjes GRANT UPDATE (del 2-hotfixen) i en senere migration, forsvinder
+  // fundet — reproducerer den faktiske fix-form (grant tilføjet i en anden fil).
+  const grantFile = {
+    file: '2026-09-08-survey-completions-update-grant.sql',
+    source: `GRANT UPDATE ON public.survey_completions TO authenticated;`,
+  };
+  const allWithFix = [sources[0], grantFile];
+  const { findings: findingsAfterFix } = scanCorpus(allWithFix, [sources[0]]);
+  assert.equal(findingsAfterFix.length, 0);
+});
