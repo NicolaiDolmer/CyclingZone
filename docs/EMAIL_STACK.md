@@ -76,10 +76,12 @@ Samtykke-hjemmel og tekst-kilde pr. type:
 
 | Type | Hjemmel | Hvorfor | Tekst-kilde | Patch note / help.json |
 |---|---|---|---|---|
-| `welcome` | Kontoservice (GDPR art. 6(1)(b)) 📄 | Sendes én gang, lige efter manageren selv har oprettet den konto mailen handler om. Banner-teksten siger eksplicit at transaktionelle mails ikke afhænger af `email_marketing`-valget | `docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md` §1 (låst af ejeren 2/9) | Patch note v7.266 ✅. Ingen help.json-ændring: ingen ny spilmekanik |
-| `day1` | Kontoservice 📄 | Samme onboarding-forløb, ét døgn efter | Samme dokument §2 | Samme patch note ✅ |
-| `race_digest` | Samtykke (art. 6(1)(a)): `consent_preferences.email_marketing === true` 📄 | Modtageren har været væk 3+ døgn; mailen understøtter ingen igangværende handling. Gaten blev tilføjet i #4654 (`emailRaceDigestSweep.js:195`) | Samme dokument §3 | Ingen (typen er off) |
+| `welcome` | Kontoservice (vurdering: GDPR art. 6(1)(b), ikke juridisk efterprøvet) ❓ | Sendes én gang, lige efter manageren selv har oprettet den konto mailen handler om. Banner-teksten siger eksplicit at transaktionelle mails ikke afhænger af `email_marketing`-valget | `docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md` §1 (låst af ejeren 2/9) | Patch note v7.266 ✅. Ingen help.json-ændring: ingen ny spilmekanik |
+| `day1` | Kontoservice (samme vurdering) ❓ | Samme onboarding-forløb, ét døgn efter | Samme dokument §2 | Samme patch note ✅ |
+| `race_digest` | Samtykke: `consent_preferences.email_marketing === true` 📄 (artikel-henvisning 6(1)(a) er vurdering ❓) | Modtageren har været væk 3+ døgn; mailen understøtter ingen igangværende handling. Gaten blev tilføjet i #4654 (`emailRaceDigestSweep.js:195`) | Samme dokument §3 | Ingen (typen er off) |
 | `winback` ❓ | Samtykke, samme gate | Tydeligere markedsføring end de tre ovenfor | `docs/audits/winback-consent-audit-2026-09-02.md` §3 (udkast, ikke godkendt) | Ingen |
+
+Artikel-henvisningerne er Claudes vurdering ud fra banner-teksten; ejeren har ikke fået dem juridisk efterprøvet.
 
 Sprog 📄: skabelonerne vælger tekst på `users.language` (`'da'` giver dansk, alt andet engelsk). Alle tre typer læser `language` sammen med `email`.
 
