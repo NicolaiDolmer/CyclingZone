@@ -468,7 +468,7 @@
   },
   "surveyInvite": {
     "title": "Help me decide what to build next",
-    "subtitle": "Rate each idea twice. It takes about 3 minutes.",
+    "subtitle": "Rate each idea twice. It takes about 5 minutes.",
     "cta": "Answer now",
     "dismissAria": "Hide the survey card"
   }
