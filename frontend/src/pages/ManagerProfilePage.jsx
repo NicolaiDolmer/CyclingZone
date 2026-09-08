@@ -270,7 +270,14 @@ export default function ManagerProfilePage() {
           full-bleed bånd (RiderProfileHero/RiderStatsPage er referenceimplementeringen).
           Back-linket ligger over kortet på sidens baggrund; kortet bærer selv
           guld-keylinen på topkanten. Layout-ruten er stadig full-bleed — siden
-          ejer selv sine containere. */}
+          ejer selv sine containere. Denne wrapper slutter FØR tab-panelerne —
+          det er den ANDEN wrapper (nedenfor, `pt-5 ... pb-24 md:pb-16`) der er
+          T3-søster-siderne (RaceDetailPage/RiderStatsPage/etc.) sin
+          success-container-clearance mod Layout.jsx's fixede MobileQuickNav-
+          bar; pb-24 her ville bare give et dobbelt, uønsket mellemrum mellem
+          fane-listen og dens paneler (CodeRabbit-fund under denne PR). Den
+          akutte fane-under-nav-fejl (manager-profile.spec.js, mobile-webkit)
+          sad i HeroStats.jsx's 5-tal-gitter — se kommentaren der. */}
       <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
         <button
           onClick={() => navigate(-1)}
