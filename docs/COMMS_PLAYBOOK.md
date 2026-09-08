@@ -262,7 +262,7 @@ Rotér. Ikke kun toppen af D1: et øjeblik fra D3 er mere værd, fordi flere kan
 ## 4. Kampagne-skabelon
 
 En kampagne er en samlet udsendelse om én anledning på tværs af flader. Første anvendelse:
-**sæson 4, der starter 27/9** (📄 ejer 8/9). Opfind ingen andre datoer.
+**sæson 4, der starter mandag 28/9; sæson 3 slutter søndag 27/9** (📄 ejer 8/9). Opfind ingen andre datoer.
 
 ### 4.1 Skabelon
 
