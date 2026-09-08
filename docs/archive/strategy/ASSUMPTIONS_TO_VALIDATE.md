@@ -1,5 +1,7 @@
 # Antagelser der mangler validation
 
+> **Historisk (arkiveret 8/9 2026, [#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)).** Afløst af [`docs/GROWTH_STACK.md`](../../GROWTH_STACK.md); det brugbare er båret over (Reddit-måling inden 48 timer efter opslag → GROWTH_STACK §5.5). Tal, priser og tiers heri er forældede.
+
 > Etableret 2026-05-25.
 > Hver antagelse har sandsynlighed-vurdering + foreslået validation-metode + hvornår valideringen ideelt sker.
 

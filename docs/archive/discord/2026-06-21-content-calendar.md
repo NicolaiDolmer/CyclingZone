@@ -1,5 +1,7 @@
 # Discord — ugentlig content-kalender (struktur)
 
+> **Historisk (arkiveret 8/9 2026, [#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)).** Afløst af [`docs/COMMS_PLAYBOOK.md`](../../COMMS_PLAYBOOK.md); det brugbare er båret over (slot-skabelonerne MAN/ONS/FRE/SØN → COMMS_PLAYBOOK §3.3). Tal, priser og tiers heri er forældede, og kanalnavnene her er antagelser der aldrig blev verificeret.
+
 > Owner-prep doc for [#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428). Epic: discord-community.
 > Dette er en **cadence-struktur**: faste slot-typer + faktuelle prompts. Selve post-teksten skriver ejeren (founder-stemme). Placeholders er markeret `[FOUNDER-PROSA: ejer skriver]`.
 

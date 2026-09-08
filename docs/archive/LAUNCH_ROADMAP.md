@@ -1,6 +1,8 @@
 # LAUNCH ROADMAP — Cycling Zone
 
-_Historisk roadmap fra 2026-05-05. Den aktuelle plan er hard relaunch 2026-06-20 via [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105) og [`docs/strategy/TDF_2026_LAUNCH_PLAN.md`](strategy/TDF_2026_LAUNCH_PLAN.md). Langsigtet produktretning: [Living World Product Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) + [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145). Historiske leverancer nedenfor bevares som reference._
+> **Historisk (arkiveret 8/9 2026, [#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)).** Afløst af [`docs/MASTERPLAN.md`](../MASTERPLAN.md) (den prioriterede kø) og [`docs/GROWTH_STACK.md`](../GROWTH_STACK.md) (vækst). Tal, priser og tiers heri er forældede.
+
+_Historisk roadmap fra 2026-05-05. Den aktuelle plan er hard relaunch 2026-06-20 via [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105) og [`docs/strategy/TDF_2026_LAUNCH_PLAN.md`](strategy/TDF_2026_LAUNCH_PLAN.md). Langsigtet produktretning: [Living World Product Doctrine](../superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) + [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145). Historiske leverancer nedenfor bevares som reference._
 
 ---
 

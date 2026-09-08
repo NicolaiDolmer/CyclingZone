@@ -1,5 +1,7 @@
 # Sprint Dashboard — Monetization Validation
 
+> **Historisk (arkiveret 8/9 2026, [#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)).** Afløst af [`docs/ANALYTICS_STACK.md`](../ANALYTICS_STACK.md) (måling) og [`docs/MASTERPLAN.md`](../MASTERPLAN.md) (den prioriterede kø); det brugbare er båret over (metrik-kategorierne til go/no-go → ANALYTICS_STACK §4f). Tal, priser og tiers heri er forældede: dashboardet dækker maj-sprinten 18/5 til 17/6 2026.
+
 > **Sprint:** Monetization Validation Sprint
 > **Periode:** 2026-05-18 → 2026-06-17 (30 dage)
 > **I dag:** 2026-05-19 (**Sprint Day 2**)

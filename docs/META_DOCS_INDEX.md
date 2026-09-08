@@ -29,11 +29,16 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/TRANSFER_MARKET_RULES.md` | **SSOT for transfermarkedet:** auktionens livscyklus og timere, bud og autobud, frie agenter, annullering, finalisering, lån, udskudte holdskifter, trup-lofter, misbrugs-gates |
 | `docs/SOCIAL_RULES.md` | **SSOT for de sociale features:** Discord-kobling og rollesync, DM-udsendelse og præferencer, notifikationer, achievements, holdprofiler, ranglister. Forummets indhold bor i FORUM_RULES |
 | `docs/SURVEY_SYSTEM.md` | **SSOT for in-app spørgeskemaer (#4943):** tabeller og livscyklus (draft/open/closed), værdi-former i `survey_responses.value`, join-nøglerne til segmentering (division, sæsoner, Pro, hyppighed, sprog) og fem færdige analyse-forespørgsler |
+| **SSOT'er · Forretning (#5048)** | |
+| `docs/BILLING_STACK.md` | **SSOT for betaling:** Alunta, Stripe og Dinero, priser og produkt-tiers. Læs FØR du rører noget der tager penge |
+| `docs/GROWTH_STACK.md` | **SSOT for vækst:** mandagstallene og deres procedure, kanaler og UTM-konvention, kampagner, interviews. Læs FØR du citerer et forretningstal eller starter en kanal |
+| `docs/ANALYTICS_STACK.md` | **SSOT for måling:** ét ansvar pr. værktøj, samtykke pr. vendor, event-katalog, definitioner ("aktiv", D7). Læs FØR du bygger et event eller læser et dashboard |
+| `docs/EMAIL_STACK.md` | **SSOT for mail:** typer, gate-kæde, samtykke-hjemmel pr. type, drift-tærskler, kendte huller. Læs FØR du rører noget der sender mail |
+| `docs/COMMS_PLAYBOOK.md` | **SSOT for spillerkommunikation:** kadence, kanaler, skabeloner, opslags-bank. Læs FØR du skriver noget der skal ud til spillerne. Stemmen bor i `TONE_OF_VOICE.md`, teknikken i `SOCIAL_RULES.md` |
 | `docs/GAME_INVARIANTS.md` | Game-balance konstanter (sponsor/balance/gældsloft/upload-grænser) |
 | `docs/RIDER_GENERATION.md` | SSOT for hvordan ryttere SKABES: determinisme, navne-pools, trupstørrelser, AI-fyld-politik, derive-kæden. Skal opdateres ved enhver ændring i generationen (#4178) |
 | `docs/ALUNTA_OPS.md` | Alunta webhook/reconcile-opsætning · Infisical-nøgler · hvilke dashboard-events skal slås til · pre-fornyelses-tjekliste (#2736) |
 | `docs/BUSINESS_STRATEGY.md` | Monetization-spørgsmål · tier-struktur · validation sprint · UCI/IP-risiko · dansk finansiering · fact-check krav |
-| `docs/SPRINT_DASHBOARD.md` | Live status på 30-dages validation sprint · metrics-snapshot · uge-checkbox-tasks · founder-track · decision log |
 | `docs/AGENT_PLAYBOOK.md` | Hvornår Fable/Opus/Sonnet, hvornår én agent vs bølge · verifikations-trappen (bevisbyrde pr. påstandstype) · faste faldgruber (gennemsnit/median, vindue/tilstand, id/kategori, sæson/sæson, klasse/fil) · fleet-prompt-regler · orkestratorens pligter · hvad det koster |
 | `docs/AGENT_ARCHITECTURE.md` | Cross-agent bug · parallel-session-setup · failure-mode lookup (auto-gen fra learnings) |
 | `docs/WORKTREE_WORKFLOW.md` | Setup af parallelle Claude Code-sessioner via git worktrees · `new-worktree.ps1` / `remove-worktree.ps1` · node_modules-sharing · memory-junction · branch-collision gotchas |
@@ -50,6 +55,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/AI_OPS_COST_MODEL.md` | Cost-baseline ved 5k/10k brugere |
 | `scripts/agent-doctor.ps1` (`install-parity` check) | Lockfile vs `node_modules` drift på direct deps. Fanger #616-mønstret (`npm install` lyver "up to date"). Fix: `npm run sync-deps`. Snapshots i `docs/metrics/install-snapshot-*.json` |
 | `docs/RUNBOOK_RESTORE_DRILL.md` | Supabase backup restore-drill cadence, procedure og smoke-tests |
+| `docs/runbooks/GSC_SERVICE_ACCOUNT.md` | Ejer-guide: Google service-konto der giver `scripts/gsc-report.mjs` læseadgang til Search Console (#3797) |
 | `docs/SEASON_TRANSITION_CHECKLIST.md` | Admin-checklist for sæson N→N+1 (sæt closes_at, cron-chain-tider, verifikation, abort-procedure) |
 | `docs/slices/<slug>.md` | Slice har dedikeret brief |
 | `docs/prompts/<type>.md` | Session-prompt templates: `bugfix.md` · `investigation.md` · `postmortem.md` · `mobile-to-code.md` · `ultrareview-economy.md` (B7/B8, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561)/[#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562)) |

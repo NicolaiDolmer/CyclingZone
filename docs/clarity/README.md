@@ -1,5 +1,7 @@
 # Clarity weekly review — manuel template
 
+> Ansvarsfordelingen er absorberet i [`docs/ANALYTICS_STACK.md`](../ANALYTICS_STACK.md) §1 (8/9, [#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)); denne fil er runbook/detalje.
+
 > Loop I fra `docs/AI_LOOPS.md`. Konverterer Microsoft Clarity-data til actionable issues.
 > Manuel-vej indtil videre; scripted Data Export API kan komme som opfølgning hvis denne flow viser sig at være for friktion-fyldt.
 
