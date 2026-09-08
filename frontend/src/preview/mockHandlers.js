@@ -543,6 +543,13 @@ export function managerProfile(teamId) {
       last_seen: isRival ? "2026-07-24T19:00:00.000Z" : "2026-07-25T20:55:00.000Z",
       login_streak: isRival ? 1 : 9,
       is_online: !isRival,
+      // #5012: to grene af Discord-kontaktlinjen demonstreres i preview/e2e
+      // uden ekstra fixture-hold — TEST_TEAM har et gyldigt discord_id (samme
+      // snowflake som /api/me/discord-status bruger, gitleaks:allow) og viser
+      // derfor et direkte discord.com/users/-link; RIVAL_TEAM har KUN det
+      // offentlige brugernavn og viser dermed kopi-til-udklipsholder-grenen.
+      discord_handle: isRival ? "peloton_pete" : "nicolai.dolmer",
+      discord_id: isRival ? null : "123456789012345678", // gitleaks:allow
     },
     riders: RIDERS.filter((rider) => rider.team_id === team.id),
     season_history: SEED_TEAM_SEASON_STANDINGS.filter((row) => row.team_id === team.id),
