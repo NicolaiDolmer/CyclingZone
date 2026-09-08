@@ -393,10 +393,16 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
                     </Button>
                   </div>
                 )}
+                {/* `dm-thread-messages`: samtalelistens forhåndsvisning gengiver
+                    den seneste besked ordret, så en tekst-locator på siden som
+                    helhed rammer BÅDE boblen og forhåndsvisningen. Hvilken af
+                    dem der står malet når en e2e-assertion kører, afhænger af om
+                    listen nåede at genhente — det gjorde blokér-testen flaky i
+                    CI. Tråden skal kunne udpeges for sig. */}
                 {thread.messages.length === 0 ? (
                   <p className="py-6 text-center text-sm text-cz-3">{t("thread.emptyBody")}</p>
                 ) : (
-                  <ul className="flex flex-col gap-2.5">
+                  <ul data-testid="dm-thread-messages" className="flex flex-col gap-2.5">
                     {thread.messages.map(message => (
                       <li key={message.id} className={`flex ${message.fromMe ? "justify-end" : "justify-start"}`}>
                         <div

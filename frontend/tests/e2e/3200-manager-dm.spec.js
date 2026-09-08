@@ -24,6 +24,13 @@ test.beforeEach(async ({ page }) => {
   await installNetworkMocks(page);
 });
 
+// Samtalelistens forhaandsvisning gengiver den seneste besked ordret, saa en
+// tekst-locator paa siden som helhed rammer BAADE boblen og forhaandsvisningen.
+// Om begge staar malet naar assertionen koerer, afhaenger af om listen naaede at
+// genhente - blokér-testen var groen lokalt og roed i CI af netop den grund.
+// Alt der handler om HVAD der staar i traaden, spoerges derfor kun i traaden.
+const thread = (page) => page.getByTestId("dm-thread-messages");
+
 test("Beskeder-fanen viser samtalelisten med ulaest-prik", async ({ page }) => {
   await installMessagesMocks(page);
   await login(page);
@@ -39,15 +46,13 @@ test("traaden viser beskeder begge veje og en sendt besked lander i traaden", as
   await login(page);
   await page.goto("/notifications?tab=messages&c=dm-conv-1");
 
-  await expect(page.getByText(/Are you open to selling Vandenberg/)).toBeVisible();
-  await expect(page.getByText(/Make it 165k and we have a deal/)).toBeVisible();
+  await expect(thread(page).getByText(/Are you open to selling Vandenberg/)).toBeVisible();
+  await expect(thread(page).getByText(/Make it 165k and we have a deal/)).toBeVisible();
 
   await page.getByRole("textbox", { name: /Write a message|Skriv en besked/ }).fill("Deal at 160k, final.");
   await page.getByRole("button", { name: /^Send$/ }).click();
 
-  // exact: uden den rammer locatoren OGSAA samtalelistens forhaandsvisning
-  // ("Dig: Deal at 160k, final."), som paa md+ staar ved siden af traaden.
-  await expect(page.getByText("Deal at 160k, final.", { exact: true })).toBeVisible();
+  await expect(thread(page).getByText("Deal at 160k, final.")).toBeVisible();
 });
 
 test("bloker skjuler modpartens beskeder uden at slette dem", async ({ page }) => {
@@ -55,14 +60,14 @@ test("bloker skjuler modpartens beskeder uden at slette dem", async ({ page }) =
   await login(page);
   await page.goto("/notifications?tab=messages&c=dm-conv-1");
 
-  await expect(page.getByText(/Are you open to selling Vandenberg/)).toBeVisible();
+  await expect(thread(page).getByText(/Are you open to selling Vandenberg/)).toBeVisible();
 
   await page.getByRole("button", { name: /More|Mere/ }).click();
   await page.getByRole("menuitem", { name: /Block manager|Blokér manager/ }).click();
 
   // Mine egne beskeder staar der stadig; modpartens er ude af MIN visning.
-  await expect(page.getByText(/Make it 165k and we have a deal/)).toBeVisible();
-  await expect(page.getByText(/Are you open to selling Vandenberg/)).toHaveCount(0);
+  await expect(thread(page).getByText(/Make it 165k and we have a deal/)).toBeVisible();
+  await expect(thread(page).getByText(/Are you open to selling Vandenberg/)).toHaveCount(0);
   // Menupunktet er vendt til "ophaev", saa blokeringen kan tages tilbage.
   await expect(page.getByRole("menuitem", { name: /Unblock|Ophæv/ })).toBeVisible();
   await expect(page.getByText(/You have blocked this manager|Du har blokeret denne manager/)).toBeVisible();
