@@ -103,6 +103,7 @@
       "searchPlaceholder": "Word or phrase",
       "count": "{shown} of {total} answers",
       "empty": "No answers match.",
+      "emptyDescription": "Try a different word, or pick another question.",
       "emptyAction": "Clear the search",
       "noTeam": "No team",
       "division": "Division {value}"

@@ -103,6 +103,7 @@
       "searchPlaceholder": "Ord eller sætning",
       "count": "{shown} af {total} svar",
       "empty": "Ingen svar matcher.",
+      "emptyDescription": "Prøv et andet ord, eller vælg et andet spørgsmål.",
       "emptyAction": "Ryd søgningen",
       "noTeam": "Intet hold",
       "division": "Division {value}"

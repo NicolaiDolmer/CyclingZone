@@ -74,7 +74,7 @@ export default function SurveyTextTab({ data, questionKeys = null }) {
         <EmptyState
           icon={<MessageIcon size={26} aria-hidden="true" />}
           title={t("surveyResults.text.empty")}
-          description={t("surveyResults.empty.description")}
+          description={t("surveyResults.text.emptyDescription")}
           action={
             <Button variant="secondary" size="sm" onClick={() => { setSearch(""); setQuestionFilter("all"); }}>
               {t("surveyResults.text.emptyAction")}
