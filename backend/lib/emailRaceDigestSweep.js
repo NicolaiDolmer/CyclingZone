@@ -265,7 +265,16 @@ export async function runEmailRaceDigestSweep({
   }
 
   // ÉN samlet ops-alarm for koerslen (#2853) + tal til sundhedsrapporten.
-  await postPermanentFailureAlert({ collector: failureCollector, sweep: "email-race-digest", now, sendWebhookFn, getOpsWebhookFn });
+  // best-effort (fund 8/9, review-runde 2): kaster ops-webhooken -- fx et
+  // fejlet opslag af URL'en -- maa den ALDRIG vaelte sweepen efter at
+  // mailene er sendt. Uden try/catch naaede recordRun nedenfor aldrig at
+  // skrive koerslens tal, og sundhedsrapporten mistede hele koerslen.
+  // Samme moenster som emailRetrySweep.js's dead-alarm.
+  try {
+    await postPermanentFailureAlert({ collector: failureCollector, sweep: "email-race-digest", now, sendWebhookFn, getOpsWebhookFn });
+  } catch (err) {
+    console.error("[email:race-digest] ops-alarm fejlede:", err?.message || err);
+  }
   await recordRun({ supabase, emailType: "race_digest", stage, candidates: absentees.length, sent, skipped, failed });
 
   return { candidates: absentees.length, sent, skipped, failed };

@@ -171,6 +171,18 @@ Resend den trafik. Har `cyclingzone.org` ingen indbakke i dag, er der intet at
 miste. Er du i tvivl, så lad Receiving stå slukket. Alt andet i pakken virker
 uden den, og webhooken springer bare `email.received` over.
 
+Sådan opfører videresendelsen sig (verificeret i kode, ikke antaget):
+
+- Videresendelsen sætter `Reply-To` til spillerens egen adresse, så du kan
+  svare direkte fra din indbakke. Feltet hedder `replyTo` i SDK'et — Resends
+  klient oversætter det selv til wire-feltet `reply_to`, og et håndskrevet
+  `reply_to` bliver tavst smidt væk. Samme regel gælder `EMAIL_REPLY_TO` på
+  udgående loop-mails.
+- `Fwd:`-mails til `EMAIL_REPLY_FORWARD_TO` skrives aldrig i `email_log`.
+  Bouncer eller klager din egen indbakke over en videresendelse, springer
+  webhooken bruger-opslaget over og logger kun en warn-linje — den må ikke
+  kunne undertrykke din egen konto fra hele mail-loopet.
+
 ### 6.3 DMARC-plan
 
 I dag: `p=none` med `rua` til en Gmail-adresse. `p=none` betyder "rapportér,

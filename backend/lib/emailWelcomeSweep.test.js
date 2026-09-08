@@ -275,3 +275,30 @@ test("koerslens tal logges til sundhedsrapporten - men kun naar der var kandidat
   );
   assert.equal(runs[1].candidates, 0);
 });
+
+test("en kastende ops-webhook vaelter ikke sweepen - recordRun naas stadig", async () => {
+  // Fund 8/9 (review-runde 2): postPermanentFailureAlert laa uden for try/catch
+  // (modsat emailRetrySweep.js). Kastede getOpsWebhookFn, doede sweepen EFTER
+  // at mailene var sendt, og koerslens tal naaede aldrig sundhedsrapporten.
+  const now = new Date("2026-07-20T12:00:00Z");
+  const recent = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  const runs = [];
+
+  const result = await runEmailWelcomeSweep({
+    supabase: makeSupabase([mk("a", { created_at: recent })], { "user-a": "a@x.dk" }),
+    now,
+    readStage: async () => "on",
+    unsubSecret: "test-secret",
+    send: async ({ failureCollector, dedupeKey }) => {
+      failureCollector.permanent.push({ dedupeKey, reason: "config-error" });
+      return { status: "failed", error: "invalid address", retryable: false };
+    },
+    recordRun: async (args) => { runs.push(args); return { recorded: true }; },
+    sendWebhookFn: async () => {},
+    getOpsWebhookFn: async () => { throw new Error("ops-webhook nede"); },
+  });
+
+  assert.equal(runs.length, 1, "koerslens tal SKAL stadig logges");
+  assert.equal(runs[0].candidates, 1);
+  assert.deepEqual(result, { candidates: 1, sent: 0, skipped: 1, failed: 0 });
+});

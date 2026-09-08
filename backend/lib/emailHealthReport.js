@@ -295,7 +295,12 @@ export async function runEmailHealthReport({
   // saa faa ALLE resterende ticks samme doegn til at springe over som
   // "already_reported_today" — rapporten ville forsvinde for hele dagen,
   // praecis paa en dag hvor databasen driller og man har mest brug for den.
-  const { alert: isNewDay } = await shouldAlertOnChange({
+  // ... og selve CLAIMET skrives foerst naar rapporten faktisk ER postet (fund
+  // 8/9, review-runde 2). Skrev vi det her, ville et opslag af ops-webhooken
+  // der kaster — eller et Discord-udfald — bruge dagens signatur op og gemme
+  // rapporten vaek resten af doegnet. Derfor to skridt: `claim: false`
+  // spoerger kun, og claim-kaldet nedenfor koeres kun paa posted === true.
+  const dayClaim = {
     supabase,
     alertKey: EMAIL_HEALTH_ALERT_KEY,
     signature: copenhagenDateString(now),
@@ -305,7 +310,8 @@ export async function runEmailHealthReport({
     // dag, tier vi hellere end at sende den to gange (samme valg som
     // cronHeartbeat.js).
     alertOnReadError: false,
-  });
+  };
+  const { alert: isNewDay } = await shouldAlertOnChange({ ...dayClaim, claim: false });
   if (!isNewDay) return { posted: false, skipped: "already_reported_today" };
 
   const window24h = summarizeEmailLogWindow(logRows, { fromIso: dayAgoIso });
@@ -327,6 +333,12 @@ export async function runEmailHealthReport({
     sendWebhookFn,
     getOpsWebhookFn,
   });
+
+  // Foerst her er dagen "brugt". Blev der ikke postet noget (ingen webhook
+  // wired, eller et udfald), staar signaturen uroert og naeste tick i dag
+  // proever igen. postOpsEmbed kan kaste — den fejl bobler bevidst op til
+  // cron-kalderen UDEN at have claimet dagen.
+  if (posted) await shouldAlertOnChange({ ...dayClaim, alertOnReadError: true });
 
   return { posted, breaches, window24h, window7d, types24h, retryQueue };
 }

@@ -101,7 +101,16 @@ export async function runEmailWelcomeSweep({
 
   // ÉN samlet ops-alarm for koerslen (#2853) + koerselens tal til den daglige
   // sundhedsrapport. Begge er best-effort og maa aldrig vaelte sweepen.
-  await postPermanentFailureAlert({ collector: failureCollector, sweep: "email-welcome", now, sendWebhookFn, getOpsWebhookFn });
+  // best-effort (fund 8/9, review-runde 2): kaster ops-webhooken -- fx et
+  // fejlet opslag af URL'en -- maa den ALDRIG vaelte sweepen efter at
+  // mailene er sendt. Uden try/catch naaede recordRun nedenfor aldrig at
+  // skrive koerslens tal, og sundhedsrapporten mistede hele koerslen.
+  // Samme moenster som emailRetrySweep.js's dead-alarm.
+  try {
+    await postPermanentFailureAlert({ collector: failureCollector, sweep: "email-welcome", now, sendWebhookFn, getOpsWebhookFn });
+  } catch (err) {
+    console.error("[email:welcome] ops-alarm fejlede:", err?.message || err);
+  }
   await recordRun({ supabase, emailType: "welcome", stage, candidates: candidates.length, sent, skipped, failed });
 
   return { candidates: candidates.length, sent, skipped, failed };

@@ -8,7 +8,9 @@ import {
   MAX_EMAIL_ATTEMPTS,
   dedupeBlocksSend,
   SENT_STATUSES,
+  sendViaResend,
 } from "./emailService.js";
+import { Resend } from "resend";
 
 // Mock supabase covering the three tables sendLoopEmail touches:
 //   app_config (flag read, done by the injected `readStage` normally, but we
@@ -487,7 +489,7 @@ test("en injiceret stage sparer app_config-opslaget helt", async () => {
   assert.deepEqual(result, { status: "dry_run" });
 });
 
-test("reply_to saettes paa udgaaende mails naar EMAIL_REPLY_TO er sat, og udelades ellers", async () => {
+test("replyTo saettes paa udgaaende mails naar EMAIL_REPLY_TO er sat, og udelades ellers", async () => {
   const payloads = [];
   const resend = { emails: { send: async (p) => { payloads.push(p); return { data: { id: "p1" }, error: null }; } } };
 
@@ -496,6 +498,47 @@ test("reply_to saettes paa udgaaende mails naar EMAIL_REPLY_TO er sat, og udelad
   delete process.env.EMAIL_REPLY_TO;
   await sendLoopEmail({ ...baseArgs, supabase: makeSupabase({}), readStage: async () => "on", resendFactory: () => resend });
 
-  assert.deepEqual(payloads[0].reply_to, ["hej@cyclingzone.org"]);
-  assert.equal(payloads[1].reply_to, undefined);
+  // camelCase, ikke snake_case: se testen nedenfor for hvorfor det er
+  // forskellen paa en virkende og en tavst tabt Reply-To.
+  assert.deepEqual(payloads[0].replyTo, ["hej@cyclingzone.org"]);
+  assert.equal(payloads[0].reply_to, undefined);
+  assert.equal(payloads[1].replyTo, undefined);
+});
+
+test("EMAIL_REPLY_TO naar HELE vejen gennem det RIGTIGE Resend-SDK til wire-feltet reply_to", async () => {
+  // Regressionsvagt for fund 8/9 (review-runde 2): resend@6's
+  // parseEmailToApiOptions er en WHITELIST — den kender kun `replyTo` og
+  // mapper den til wire-feltet `reply_to`. Et caller-sat `reply_to` blev
+  // tavst smidt vaek, saa EMAIL_REPLY_TO havde nul effekt paa den mail der
+  // faktisk blev sendt. En mock af `resend.emails.send` kan IKKE fange det —
+  // derfor koerer denne test den aegte klasse mod en fake fetch.
+  const bodies = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) => {
+    bodies.push(JSON.parse(options.body));
+    return new Response(JSON.stringify({ id: "re_wire_1" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  process.env.EMAIL_REPLY_TO = "hej@cyclingzone.org";
+  try {
+    const resend = new Resend("re_test_key_not_a_real_secret");
+    await sendViaResend({
+      resend,
+      to: "player@example.com",
+      subject: "Emne",
+      html: "<p>hej</p>",
+      text: "hej",
+      unsubscribeUrl: "https://cyclingzone.org/u/abc",
+      dedupeKey: "welcome:user-1",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.EMAIL_REPLY_TO;
+  }
+
+  assert.equal(bodies.length, 1);
+  assert.deepEqual(bodies[0].reply_to, ["hej@cyclingzone.org"], "wire-body'en SKAL baere reply_to");
+  assert.equal(bodies[0].replyTo, undefined, "SDK'et sender aldrig camelCase videre paa wiren");
 });

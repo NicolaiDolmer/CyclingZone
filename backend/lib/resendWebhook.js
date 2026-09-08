@@ -27,7 +27,8 @@
  * dobbelt videresendelse. Samme greb som email_log.dedupe_key mod Resends
  * Idempotency-Key paa udgaaende side.
  *
- * UNDERTRYKKELSE: en HAARD bounce (bounce.type/subType i HARD_BOUNCE_MARKERS)
+ * UNDERTRYKKELSE: en HAARD bounce (bounce.type == "Permanent", eller en
+ * subType i HARD_BOUNCE_SUBTYPES -- se isHardBounce)
  * og enhver klage saetter users.email_prefs.all = false plus
  * suppressed_reason/suppressed_at. Det genbruger den EKSISTERENDE opt-out-
  * mekanisme (emailPrefs.js's master-noegle, den samme som et-kliks-unsubscribe
@@ -90,23 +91,44 @@ const STATUS_RANK = Object.freeze({ dry_run: 0, failed: 0, sent: 1, delivered: 2
 
 /**
  * Haarde bounce-markoerer fra Resends payload (`data.bounce.type` og
- * `.subType`, se SDK'ets EmailBounce). "Permanent" er SES' egen type-vaerdi;
- * General/NoEmail/Suppressed er de subtyper der betyder "denne adresse
- * eksisterer ikke / vil aldrig modtage". Alt andet (Transient, MailboxFull,
- * ContentRejected ...) er bloedt.
+ * `.subType`, se SDK'ets EmailBounce). De to felter er IKKE udskiftelige og
+ * maa aldrig matches mod den samme flade liste:
+ *
+ *   type    -- SES' klassifikation. "Permanent" betyder "denne adresse vil
+ *              aldrig modtage". "Transient" er en midlertidig afvisning,
+ *              "Undetermined" et ukendt svar fra modtagerserveren.
+ *   subType -- praeciseringen INDEN FOR en type. "General" er den generiske
+ *              default og optraeder paa BEGGE sider: Permanent/General er
+ *              haard, mens Transient/General er den almindeligste BLOEDE
+ *              bounce der findes (fuld postkasse, graylisting, kort udfald).
+ *
+ * Fund 8/9 (review-runde 2): en flad markoer-liste med "general" i sig gjorde
+ * Transient/General haard og undertrykte gyldige spillere permanent
+ * (users.email_prefs.all = false). Reglen er derfor:
+ *
+ *   haard  <=>  type == "Permanent"  ELLER  subType i HARD_BOUNCE_SUBTYPES
+ *
+ * subType "General" alene er ALDRIG haard. NoEmail/Suppressed/
+ * OnAccountSuppressionList betyder "adressen eksisterer ikke / staar paa
+ * afsenderens egen suppression-liste" og er haarde uanset type.
  */
-export const HARD_BOUNCE_MARKERS = Object.freeze(["permanent", "general", "noemail", "suppressed"]);
+export const HARD_BOUNCE_TYPES = Object.freeze(["permanent"]);
+export const HARD_BOUNCE_SUBTYPES = Object.freeze(["noemail", "suppressed", "onaccountsuppressionlist"]);
+
+/** REN: normalisér en bounce-markoer ("No Email", "no_email" -> "noemail"). */
+function normalizeBounceMarker(value) {
+  return value == null ? "" : String(value).toLowerCase().replace(/[\s_-]/g, "");
+}
 
 /**
- * REN: er dette en haard bounce?
- * @param {{type?: string, subType?: string}|null|undefined} bounce
+ * REN: er dette en haard bounce? Type og subType vurderes HVER FOR SIG -- se
+ * kommentaren over HARD_BOUNCE_TYPES.
+ * @param {{type?: string, subType?: string, sub_type?: string}|null|undefined} bounce
  */
 export function isHardBounce(bounce) {
   if (!bounce) return false;
-  const markers = [bounce.type, bounce.subType, bounce.sub_type]
-    .filter(Boolean)
-    .map((v) => String(v).toLowerCase().replace(/[\s_-]/g, ""));
-  return markers.some((m) => HARD_BOUNCE_MARKERS.includes(m));
+  if (HARD_BOUNCE_TYPES.includes(normalizeBounceMarker(bounce.type))) return true;
+  return HARD_BOUNCE_SUBTYPES.includes(normalizeBounceMarker(bounce.subType ?? bounce.sub_type));
 }
 
 /**
@@ -229,8 +251,22 @@ async function suppressUser({ supabase, userId, reason, now, captureExceptionFn 
  * provider_id -- det er den raekke VI skrev ved afsendelsen), sekundaert via
  * users.email = modtageren. Fallbacken daekker mails sendt uden om
  * sendLoopEmail (fx en manuel testafsendelse fra Resend-dashboardet).
+ *
+ * UNDTAGELSE (fund 8/9, review-runde 2): naar modtageren ER
+ * EMAIL_REPLY_FORWARD_TO, springes fallbacken over. De mails vi sender dertil
+ * er `Fwd:`-videresendelser af spillersvar (forwardInboundReply) -- de skrives
+ * ALDRIG i email_log, saa en bounce eller klage paa dem ville falde igennem
+ * til recipient-opslaget og ramme EJERENS egen brugerkonto. Resultatet ville
+ * vaere at ejeren undertrykte sig selv fra hele mail-loopet fordi hans egen
+ * indbakke afviste en videresendelse. Vi logger i stedet en warn.
  */
-async function findUserForEvent({ supabase, providerId, recipient, captureExceptionFn = captureException }) {
+async function findUserForEvent({
+  supabase,
+  providerId,
+  recipient,
+  forwardTo = process.env.EMAIL_REPLY_FORWARD_TO,
+  captureExceptionFn = captureException,
+}) {
   if (providerId) {
     const { data: logRow, error: logErr } = await supabase
       .from("email_log").select("id, user_id, email_type, status").eq("provider_id", providerId).maybeSingle();
@@ -246,6 +282,13 @@ async function findUserForEvent({ supabase, providerId, recipient, captureExcept
     if (logRow?.user_id) return { userId: logRow.user_id, logRow };
   }
   if (recipient) {
+    const normalizedForwardTo = String(forwardTo ?? "").trim().toLowerCase();
+    if (normalizedForwardTo && String(recipient).trim().toLowerCase() === normalizedForwardTo) {
+      console.warn(
+        "[resend-webhook] event paa videresendelses-adressen (EMAIL_REPLY_FORWARD_TO) - ingen bruger-fallback, ingen undertrykkelse"
+      );
+      return { userId: null, logRow: null };
+    }
     const { data: userRow, error: userErr } = await supabase
       .from("users").select("id").eq("email", recipient).maybeSingle();
     if (userErr) {
@@ -300,7 +343,12 @@ export async function forwardInboundReply({
     subject: `Fwd: ${subject}`,
     ...(inbound.html ? { html: inbound.html } : {}),
     text: bodyText || "(ingen tekstdel i det indgaaende svar)",
-    ...(sender ? { reply_to: [sender] } : {}),
+    // `replyTo` (camelCase) er SDK'ets feltnavn -- resend@6's
+    // parseEmailToApiOptions er en WHITELIST der mapper replyTo -> wire-feltet
+    // reply_to og smider et caller-sat `reply_to` paa gulvet (fund 8/9,
+    // review-runde 2). Uden det havde svar paa en videresendelse ingen
+    // Reply-To og gik tilbage til no-reply-postkassen.
+    ...(sender ? { replyTo: [sender] } : {}),
   });
   if (sendErr) {
     captureExceptionFn(new Error(`resend-webhook videresendelse fejlede: ${sendErr.message ?? String(sendErr)}`), {
@@ -405,7 +453,15 @@ export async function handleResendWebhook({
       return res.sendStatus(200);
     }
 
-    const { userId, logRow } = await findUserForEvent({ supabase, providerId, recipient, captureExceptionFn });
+    const { userId, logRow } = await findUserForEvent({
+      supabase,
+      providerId,
+      recipient,
+      // Samme "undefined = laes env ved kaldstid"-kontrakt som forwardTo-
+      // parameteren ovenfor, saa testene kan injicere adressen.
+      ...(forwardTo === undefined ? {} : { forwardTo }),
+      captureExceptionFn,
+    });
 
     // Loeft email_log-raekkens status -- kun fremad (se STATUS_RANK).
     const nextStatus = STATUS_BY_EVENT[type];

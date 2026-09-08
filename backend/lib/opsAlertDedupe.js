@@ -50,11 +50,17 @@ export function buildAlertSignature(parts = []) {
  *
  * @param {{ supabase: object, alertKey: string, signature: string, now?: Date,
  *           reAlertAfterMs?: number|null, captureExceptionFn?: Function,
- *           alertOnReadError?: boolean }} args
+ *           alertOnReadError?: boolean, claim?: boolean }} args
  *   alertOnReadError: hvad skal `alert` være hvis SELVE LÆSNINGEN af
  *     ops_alert_state fejler? `true` (default) = fail-open, denne fils
  *     oprindelige semantik. `false` = fail-safe-stille (#2738-migrerede
  *     kaldere) — se filhovedet.
+ *   claim: skal beslutningen SKRIVES (default `true`, den oprindelige
+ *     semantik)? `false` = ren forespørgsel: signaturen claimes ikke, så
+ *     kalderen kan afgøre "skal jeg alarmere?" FØR den forsøger at sende, og
+ *     først claime bagefter med et nyt kald når afsendelsen faktisk lykkedes.
+ *     Uden det bruger et fejlet send dagens/tilstandens claim op, og alarmen
+ *     er tabt indtil signaturen ændrer sig (fund 8/9, emailHealthReport.js).
  * @returns {Promise<{ alert: boolean, reason: "changed"|"re-alert"|"suppressed"|"state-error" }>}
  */
 export async function shouldAlertOnChange({
@@ -65,6 +71,7 @@ export async function shouldAlertOnChange({
   reAlertAfterMs = null,
   captureExceptionFn,
   alertOnReadError = true,
+  claim = true,
 } = {}) {
   const { data: stateRow, error: readErr } = await supabase
     .from(OPS_ALERT_STATE_TABLE)
@@ -96,7 +103,8 @@ export async function shouldAlertOnChange({
 
   // Skriv kun når der er noget at flytte: enten er signaturen ny, eller vi har
   // netop alarmeret og skal nulstille gulvet. Et undertrykt tick rører intet.
-  if (changed || alert) {
+  // `claim: false` rører heller intet — se parameter-doc'en ovenfor.
+  if (claim && (changed || alert)) {
     const { error: upsertErr } = await supabase.from(OPS_ALERT_STATE_TABLE).upsert(
       {
         alert_key: alertKey,

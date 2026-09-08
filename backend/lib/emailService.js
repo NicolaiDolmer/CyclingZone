@@ -102,6 +102,12 @@ export async function sendViaResend({ resend, to, subject, html, text, unsubscri
   // svar i intetheden. Env-variablen laeses ved KALDSTID (ikke ved modul-load),
   // saa retry-sweepen faar samme adresse uden en genstart, og saa en usat
   // variabel bare betyder "uaendret adfaerd" — intet kaster.
+  //
+  // Feltet SKAL hedde `replyTo` (camelCase). resend@6's
+  // parseEmailToApiOptions er en whitelist der oversaetter SDK-felter til
+  // wire-felter (replyTo -> reply_to); et caller-sat `reply_to` staar ikke i
+  // den whitelist og bliver tavst smidt vaek. Fund 8/9 (review-runde 2):
+  // EMAIL_REPLY_TO havde derfor NUL effekt paa de faktisk afsendte mails.
   const replyTo = (process.env.EMAIL_REPLY_TO || "").trim();
   return resend.emails.send(
     {
@@ -110,7 +116,7 @@ export async function sendViaResend({ resend, to, subject, html, text, unsubscri
       subject,
       html,
       text,
-      ...(replyTo ? { reply_to: [replyTo] } : {}),
+      ...(replyTo ? { replyTo: [replyTo] } : {}),
       headers: {
         "List-Unsubscribe": `<${unsubscribeUrl}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",

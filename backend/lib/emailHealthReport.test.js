@@ -199,3 +199,72 @@ test("samme dag to gange: kun den foerste rapport sendes", async () => {
   assert.equal(posts.length, 1);
   assert.equal(posts[0].payload.content, undefined, "en ren rapport @mentioner ikke");
 });
+
+test("en fejlet afsendelse bruger IKKE dagen op - naeste tick samme dag rapporterer igen", async () => {
+  // Fund 8/9 (review-runde 2): dags-signaturen blev claimet FOER postOpsEmbed.
+  // Kastede webhook-opslaget (eller Discord), var dagen brugt, og rapporten
+  // forsvandt indtil naeste doegn — praecis paa en dag hvor noget driller.
+  const state = { signature: null, last_alerted_at: null };
+  const posts = [];
+  const supabase = {
+    from(table) {
+      if (table === "ops_alert_state") {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: state.signature ? { ...state } : null, error: null }) }) }),
+          upsert: async (row) => { state.signature = row.signature; state.last_alerted_at = row.last_alerted_at ?? state.last_alerted_at; return { error: null }; },
+        };
+      }
+      const empty = {
+        select: () => empty, gte: () => empty, order: () => empty,
+        range: async () => ({ data: [], error: null }),
+      };
+      return empty;
+    },
+  };
+  let webhookFails = true;
+
+  await assert.rejects(
+    runEmailHealthReport({
+      supabase, now: NOW,
+      sendWebhookFn: async (url, payload) => posts.push({ url, payload }),
+      getOpsWebhookFn: async () => { if (webhookFails) throw new Error("ops-webhook nede"); return "https://discord.example/ops"; },
+    }),
+    /ops-webhook nede/
+  );
+  assert.equal(state.signature, null, "dagen maa IKKE vaere claimet naar intet blev sendt");
+
+  webhookFails = false;
+  const retry = await runEmailHealthReport({
+    supabase, now: NOW,
+    sendWebhookFn: async (url, payload) => posts.push({ url, payload }),
+    getOpsWebhookFn: async () => "https://discord.example/ops",
+  });
+
+  assert.equal(retry.posted, true, "samme dag skal rapporten kunne sendes naar kanalen er tilbage");
+  assert.equal(posts.length, 1);
+  assert.ok(state.signature, "foerst NU er dagen claimet");
+});
+
+test("en rapport uden wired ops-kanal claimer heller ikke dagen", async () => {
+  const state = { signature: null, last_alerted_at: null };
+  const supabase = {
+    from(table) {
+      if (table === "ops_alert_state") {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: state.signature ? { ...state } : null, error: null }) }) }),
+          upsert: async (row) => { state.signature = row.signature; return { error: null }; },
+        };
+      }
+      const empty = {
+        select: () => empty, gte: () => empty, order: () => empty,
+        range: async () => ({ data: [], error: null }),
+      };
+      return empty;
+    },
+  };
+
+  const res = await runEmailHealthReport({ supabase, now: NOW });
+
+  assert.equal(res.posted, false);
+  assert.equal(state.signature, null);
+});
