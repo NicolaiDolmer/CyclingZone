@@ -316,6 +316,52 @@
         "text": "No Discord? Use the Contact button at the bottom of the menu to send feedback, report a bug or share an idea directly with the developer. Pick a category, write your message and send. A bug report automatically includes the page you were on, which makes it easier to track down. For billing questions (CZ Pro), you can also email support@cyclingzone.org."
       }
     },
+    "forum": {
+      "label": "Forum",
+      "roadmap": {
+        "title": "Who posts in the Roadmap category?",
+        "text": "Only I post new threads in Roadmap, and it is where I tell you where the game is going. Everyone can reply, so ask and push back right under each post."
+      },
+      "mentions": {
+        "title": "How do @-tags work?",
+        "text": "Type @ and the first letters of a manager name in a post or reply, then pick the name from the list. That manager gets a message in their inbox with a link straight to your post. The name is clickable in the post and leads to their manager profile."
+      },
+      "following": {
+        "title": "How do I follow or mute a category?",
+        "text": "Use the bell in a category header, or the list under Settings, to turn a category off. It then stops marking threads unread and stops lighting the forum dot. Replies to your own threads and @-tags always reach you, even in a muted category."
+      },
+      "pictures": {
+        "title": "Pictures in posts",
+        "text": "You can add up to three pictures to a post or a reply. JPG, PNG and WebP work, and large photos are scaled down to 2 MB in your browser before they are uploaded, so phone photos are fine. Tap a picture to see it in full size, or tap the X on a picture before sending to remove it."
+      }
+    },
+    "messages": {
+      "label": "Messages",
+      "starting": {
+        "title": "How do I start a conversation?",
+        "text": "Open a manager's profile or tap their name on the forum and press Message. On a transfer offer or an auction you can also press Message the other manager to write to them with the deal quoted in the first line."
+      },
+      "whereTheyLive": {
+        "title": "Where do my conversations live?",
+        "text": "Under Messages in the inbox. Each conversation shows the other manager's name and your latest message."
+      },
+      "block": {
+        "title": "What happens if I block a manager?",
+        "text": "They can no longer reach you here, and they are not told that you blocked them. You keep the earlier messages in that conversation; only new ones stay hidden until you unblock."
+      },
+      "report": {
+        "title": "How do I report a conversation?",
+        "text": "Open the conversation, use the menu and pick Report conversation. I get a copy of the whole thread and read it myself; you don't need to screenshot anything first."
+      },
+      "retention": {
+        "title": "Are messages ever deleted?",
+        "text": "No. Messages are kept so fair play can be checked, even years later. Hide conversation only removes it from your own list; a new message from that manager brings it back."
+      },
+      "rateLimit": {
+        "title": "Is there a limit on how many messages I can send?",
+        "text": "Yes, a fair-use limit. If you send very many messages in a short time, you get a short pause before the next one goes through."
+      }
+    },
     "discord": {
       "label": "Discord DMs",
       "whyDms": {
