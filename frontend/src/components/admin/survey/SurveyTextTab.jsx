@@ -57,7 +57,9 @@ export default function SurveyTextTab({ data, questionKeys = null }) {
           ariaLabel: t("surveyResults.text.search"),
           testId: "survey-text-search",
         }}
-        filters={[{
+        // Ét spørgsmål giver ingen vælger: en "Al fritekst"-menu med præcis én
+        // mulighed under den er en kontrol der ikke kan gøre noget.
+        filters={questions.length > 1 ? [{
           key: "question",
           value: questionFilter,
           onChange: (event) => setQuestionFilter(event.target.value),
@@ -66,7 +68,7 @@ export default function SurveyTextTab({ data, questionKeys = null }) {
             { value: "all", label: t("surveyResults.text.allQuestions") },
             ...questions.map((question) => ({ value: question.key, label: questionLabel(question, language) })),
           ],
-        }]}
+        }] : []}
         meta={t("surveyResults.text.count", { shown: fmtInt(answers.length), total: fmtInt(total) })}
       />
 
