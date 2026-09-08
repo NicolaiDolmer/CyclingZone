@@ -153,6 +153,7 @@ import {
   setForumPostPinned,
   deleteForumPost,
   deleteForumReply,
+  deleteForumImage,
   getForumReportCounts,
   markForumThreadRead,
   markAllForumThreadsRead,
@@ -160,6 +161,8 @@ import {
   toggleForumReaction,
   recordForumThreadView,
   getForumAuthorStats,
+  listForumCategoryMutes,
+  setForumCategoryMute,
 } from "../lib/forum.js";
 import { loadMentionableManagers } from "../lib/forumMentions.js";
 import {
@@ -14377,6 +14380,39 @@ router.get("/forum/unread-status", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/forum/category-mutes — spillerens abonnement pr. kategori (#5013):
+// {categories:[{category, muted}]}. Opt-out-model, så en tom tabel betyder
+// "følger alt" (se database/2026-09-08-5013-forum-category-mutes.sql).
+// presencePulseLimiter (120/60 s): den kaldes én gang pr. sideindlæsning af
+// baade forumsiden og indstillingerne, altsaa billigt og hyppigt — samme
+// profil som limiteren er bygget til (#530-daekning for nye auth-ruter).
+router.get("/forum/category-mutes", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    res.json(await listForumCategoryMutes({ supabase, userId: req.user.id }));
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/forum/category-mutes — slå ÉN kategori til/fra (#5013). user_id
+// kommer ALTID fra sessionen, aldrig fra body — en spiller kan ikke skrive en
+// andens abonnement. Samme forumWriteLimiter som de øvrige skrive-ruter.
+router.put("/forum/category-mutes", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await setForumCategoryMute({
+      supabase,
+      userId: req.user.id,
+      category: req.body?.category,
+      muted: req.body?.muted,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // PATCH /api/forum/threads/read-all — markér ALLE tråde læst for requesteren
 // (#3451, spillerønske 26/8: "a button, like in the inbox, where you can mark
 // all threads as read"). Samme skrive-mønster som forum-postruterne herunder
@@ -14421,7 +14457,7 @@ router.get("/forum/posts/:id", requireAuth, async (req, res) => {
 // POST /api/forum/posts — nyt opslag. poll_options er admin-only (403 ellers).
 router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => {
   try {
-    const { category, title, body: postBody, poll_options: pollOptions } = req.body || {};
+    const { category, title, body: postBody, images, poll_options: pollOptions } = req.body || {};
     // Rolle + username i ét opslag: rollen gater polls, username bruges i
     // Discord-pinget. requireAuth sætter kun req.user (auth) + req.team.
     // Fejler opslaget behandles brugeren som ikke-admin (fail closed for polls).
@@ -14435,6 +14471,9 @@ router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => 
       category,
       title,
       body: postBody,
+      // #4819: klienten har allerede uploadet filerne og sender kun stierne;
+      // createForumPost afviser alt der ikke ligger i brugerens egen mappe.
+      images: images ?? null,
       pollOptions: pollOptions ?? null,
     });
     if (result.status === 200) {
@@ -14478,6 +14517,7 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
       userId: req.user.id,
       teamId: req.team?.id || null,
       body: req.body?.body,
+      images: req.body?.images ?? null,
       quotedReplyId: req.body?.quoted_reply_id || null,
     });
     if (result.status === 200) {
@@ -14666,6 +14706,20 @@ router.delete("/admin/forum/posts/:id", requireAdmin, adminWriteLimiter, async (
 router.delete("/admin/forum/replies/:id", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { status, body } = await deleteForumReply({ supabase, id: req.params.id, adminUserId: req.user.id });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/forum/images — fjern ÉT billede fra et indlæg/svar
+// (#4819, ejer-valg 8/9). Målet identificeres i body frem for i stien, fordi
+// stien til billedet selv indeholder "/" og ikke kan bære en URL-parameter.
+router.delete("/admin/forum/images", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { target_type: targetType, target_id: targetId, path } = req.body || {};
+    const { status, body } = await deleteForumImage({ supabase, targetType, targetId, path });
     res.status(status).json(body);
   } catch (e) {
     captureException(e);

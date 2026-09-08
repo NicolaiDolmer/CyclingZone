@@ -5,7 +5,7 @@
 // Interceptoren må ALDRIG kaste: enhver umatchet route eller fejl falder tilbage
 // til den ægte fetch, så Vite-assets/HMR/WS stadig virker. Bag VITE_PREVIEW_MOCK-
 // guarden i main.jsx ⇒ prod tree-shaker hele preview/-mappen væk.
-import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, apiResponse, mockProEnabled } from "./mockHandlers.js";
+import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, apiResponse, mockProEnabled, setForumCategoryMuteMock } from "./mockHandlers.js";
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
@@ -309,6 +309,15 @@ export function installPreviewMock() {
               : [],
           },
         });
+      }
+
+      // #5013: abonnement pr. forum-kategori — den ENESTE ikke-GET-rute her
+      // der skal flytte tilstand, saa til/fra faktisk kan klikkes igennem i
+      // preview og e2e (ulaest-prikkerne afledes af valget i mockHandlers).
+      if (method === "PUT" && /\/api\/forum\/category-mutes$/.test(url)) {
+        let body = null;
+        try { body = init && init.body ? JSON.parse(init.body) : null; } catch { body = null; }
+        return jsonResponse(setForumCategoryMuteMock(body?.category, body?.muted));
       }
 
       // Express-API (/api/...).

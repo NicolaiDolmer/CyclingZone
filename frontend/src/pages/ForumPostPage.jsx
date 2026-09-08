@@ -11,6 +11,10 @@ import {
 import { InboxIcon, ArrowUpIcon, UndoIcon, ChevronDownIcon } from "../components/ui/icons/index.jsx";
 import ForumAuthorIdentity, { ForumSignature } from "../components/forum/ForumAuthorIdentity.jsx";
 import { authorDisplayName } from "../components/forum/forumIdentity.js";
+// #4819: billeder i indlaeg. Egen kolonne, ikke markup i body — body rendres
+// fortsat som REN tekst, saa fladen aldrig faar en XSS-vej.
+import ForumImagePicker from "../components/forum/ForumImagePicker.jsx";
+import ForumImageAttachments from "../components/forum/ForumImageAttachments.jsx";
 // #5011: @-tag af en manager — klikbart navn i teksten + navneforslag i editoren.
 import MentionText from "../components/forum/MentionText.jsx";
 import MentionAutocomplete from "../components/forum/MentionAutocomplete.jsx";
@@ -246,10 +250,19 @@ export default function ForumPostPage() {
 
   const [state, setState] = useState({ status: "loading", post: null, replies: [], poll: null });
   const [replyBody, setReplyBody] = useState("");
+  const [replyImages, setReplyImages] = useState([]);
+  // Submit gates paa dette: et upload der stadig koerer ville ellers blive
+  // sendt afsted som "ingen billeder".
+  const [uploadingImage, setUploadingImage] = useState(false);
+  // Admin-slet af ét billede har sin egen fejllinje - den hoerer ikke hjemme
+  // under svar-formularen, hvor handlingen ikke er sket.
+  const [imageActionError, setImageActionError] = useState(null);
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [replyError, setReplyError] = useState(null);
   const [voting, setVoting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // #4819: billed-stien ER ejerskabet (`<user_id>/...`).
+  const [userId, setUserId] = useState(null);
   const [reportTarget, setReportTarget] = useState(null); // { type, id } | null
   const [reactingKey, setReactingKey] = useState(null); // "post:<id>" | "reply:<id>" | null
   const [quoteTarget, setQuoteTarget] = useState(null); // { id, excerpt, author } | null
@@ -272,6 +285,7 @@ export default function ForumPostPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+      setUserId(user.id);
       const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
       if (!cancelled) setIsAdmin(userData?.role === "admin");
     })();
@@ -342,6 +356,9 @@ export default function ForumPostPage() {
 
   async function handleReply(e) {
     e.preventDefault();
+    // #4819: tekst er FORTSAT paakraevet, ogsaa naar der er billeder paa.
+    // Backend'ens forum_body_required er uaendret, og et svar uden ét ord er
+    // ikke en samtale. Billeder er et tillaeg til svaret, ikke svaret selv.
     if (!replyBody.trim()) return;
     setReplySubmitting(true);
     setReplyError(null);
@@ -350,7 +367,11 @@ export default function ForumPostPage() {
       const res = await fetch(`${API}/api/forum/posts/${postId}/replies`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ body: replyBody.trim(), quoted_reply_id: quoteTarget?.id || null }),
+        body: JSON.stringify({
+          body: replyBody.trim(),
+          images: replyImages,
+          quoted_reply_id: quoteTarget?.id || null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -358,6 +379,7 @@ export default function ForumPostPage() {
         return;
       }
       setReplyBody("");
+      setReplyImages([]);
       setQuoteTarget(null);
       await load();
     } catch {
@@ -436,6 +458,31 @@ export default function ForumPostPage() {
     }
   }
 
+  // #4819 (ejer-valg 8/9): admin kan fjerne ET billede uden at slette hele
+  // indlaegget. Backend fjerner stien fra raekken FOER filen slettes, saa et
+  // indlaeg aldrig kommer til at pege paa en fil der ikke findes.
+  async function handleAdminRemoveImage(type, id, path) {
+    setImageActionError(null);
+    try {
+      const headers = await authHeaders();
+      const res = await fetch(`${API}/api/admin/forum/images`, {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ target_type: type, target_id: id, path }),
+      });
+      if (!res.ok) {
+        // En 403/404/500 maa ikke ende som tavshed: admin skal se at
+        // billedet stadig ligger der, ikke gaette.
+        const data = await res.json().catch(() => ({}));
+        setImageActionError(tError(data?.errorCode));
+        return;
+      }
+      await load();
+    } catch {
+      setImageActionError(t("errors.submitFailed"));
+    }
+  }
+
   async function handleAdminPin(pinned) {
     const headers = await authHeaders();
     const res = await fetch(`${API}/api/admin/forum/posts/${postId}/pin`, {
@@ -479,6 +526,11 @@ export default function ForumPostPage() {
         <div className="mt-2 ps-[38px]">
           <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
           <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1"><MentionText body={reply.body} /></p>
+          <ForumImageAttachments
+            images={reply.images}
+            t={t}
+            onAdminRemove={isAdmin ? (path) => handleAdminRemoveImage("reply", reply.id, path) : null}
+          />
           <ForumSignature author={reply.author} body={reply.body} t={t} />
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <SupportButton
@@ -532,6 +584,9 @@ export default function ForumPostPage() {
       ) : (
         <>
         <PageHeader title={post.title} subtitle={t(`categories.${post.category}`)} />
+        {imageActionError && (
+          <p role="alert" className="mb-4 text-xs text-cz-danger">{imageActionError}</p>
+        )}
         <SectionStack>
           <Section>
             {/* #5000: visningstal i traadhovedet — samme metalinje som
@@ -555,6 +610,11 @@ export default function ForumPostPage() {
               t={t}
             />
             <p className="mt-3 whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1"><MentionText body={post.body} /></p>
+            <ForumImageAttachments
+              images={post.images}
+              t={t}
+              onAdminRemove={isAdmin ? (path) => handleAdminRemoveImage("post", post.id, path) : null}
+            />
             <ForumSignature author={post.author} body={post.body} t={t} />
             {poll && <PollBlock poll={poll} onVote={handleVote} voting={voting} t={t} />}
             <div className="mt-4 flex items-center gap-2 border-t border-cz-border pt-3">
@@ -642,10 +702,22 @@ export default function ForumPostPage() {
                   placeholder={t("post.replyPlaceholder")}
                 />
               </Field>
+              {/* #5011: hoerer til svarfeltet ovenfor (monteres via textareaId,
+                  panelet er `fixed`), derfor lige efter det og foer billedvaelgeren. */}
               <MentionAutocomplete textareaId="forum-reply-body" value={replyBody} onChange={setReplyBody} t={t} />
+              <ForumImagePicker
+                images={replyImages}
+                onChange={setReplyImages}
+                onBusyChange={setUploadingImage}
+                // #4819 review: samme vagt som i compose-modalen — uden userId
+                // dropper pickeren filen tavst.
+                disabled={replySubmitting || !userId}
+                userId={userId}
+                t={t}
+              />
               {replyError && <p className="text-xs text-cz-danger">{replyError}</p>}
               <div className="flex justify-end">
-                <Button type="submit" variant="primary" size="sm" loading={replySubmitting} disabled={replySubmitting || !replyBody.trim()}>
+                <Button type="submit" variant="primary" size="sm" loading={replySubmitting} disabled={replySubmitting || uploadingImage || !replyBody.trim()}>
                   {t("post.replySubmit")}
                 </Button>
               </div>

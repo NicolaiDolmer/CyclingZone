@@ -27,3 +27,7 @@ Ingen migration køres mod en rigtig Postgres før merge. Supabase Preview-check
 Git Bash' `date` på denne PC printer UTC uden zone-mærke; PowerShell `Get-Date` printer lokal tid. Flere issue-kommentarer 7/9 fik derfor tidsstempler to timer for tidligt. Brug `Get-Date -Format "yyyy-MM-dd HH:mm zzz"` til tidsstempler.
 
 Refs #4943 #5006 #5024 #2642 #4919
+
+## Efterladt under-agent (fundet 8/9 kl. 09:00)
+
+En worker fra aftenboelgen spawnede selv en under-agent ("Kortlaeg frontend-moenstre") ca. 20:40, som hang paa en kommando i 12 timer uden fremdrift (188,8k tokens, 54 kald) og foerst blev stoppet da ejeren saa den i task-panelet. Regel til worker-skabelonen: workers spawner ALDRIG egne agenter (ingen Agent-tool-kald i workers); orkestratoren ejer alle spawns og TaskStop. Orkestratoren tjekker ved close-out task-listen for fremmede agenter (TaskStop-fejlbeskeden lister dem).
