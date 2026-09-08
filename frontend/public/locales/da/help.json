@@ -333,6 +333,10 @@
       "pictures": {
         "title": "Billeder i indlæg",
         "text": "Du kan sætte op til tre billeder i et opslag eller et svar. JPG, PNG og WebP virker, og store fotos skaleres ned til 2 MB i din browser før de sendes, så telefonbilleder er fine. Tryk på et billede for at se det i fuld størrelse, eller tryk på X'et på et billede før afsendelse for at fjerne det."
+      },
+      "survey": {
+        "title": "Hvad handler spørgeskemaet om?",
+        "text": "Der ligger et kort spørgeskema i spillet, hvor du giver idéer til hvad jeg skal bygge næste gang to karakterer: er den god, og betyder den noget for dig? Åbn det fra kortet på dit dashboard, beskeden i din indbakke eller linket i forummet. Dine svar gemmes på din konto og læses kun af mig."
       }
     },
     "messages": {

@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.265",
+    "date": "2026-09-08",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Community",
+        "en": {
+          "title": "A survey about what I should build next",
+          "body": "There is a short survey in the game now. You rate each idea twice: is it a good idea, and does it matter to you? Open it from the card on your dashboard, the message in your inbox, or the link in the forum. Your answers are saved on your account and are only read by me."
+        },
+        "da": {
+          "title": "Et spørgeskema om hvad jeg skal bygge næste gang",
+          "body": "Der ligger nu et kort spørgeskema i spillet. Du giver hver idé to karakterer: er den god, og betyder den noget for dig? Åbn det fra kortet på dit dashboard, beskeden i din indbakke eller linket i forummet. Dine svar gemmes på din konto og læses kun af mig."
+        },
+        "refs": [4943]
+      }
+    ]
+  },
+  {
     "version": "7.264",
     "date": "2026-09-08",
     "label": "Beta",

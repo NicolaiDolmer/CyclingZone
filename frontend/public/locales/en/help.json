@@ -333,6 +333,10 @@
       "pictures": {
         "title": "Pictures in posts",
         "text": "You can add up to three pictures to a post or a reply. JPG, PNG and WebP work, and large photos are scaled down to 2 MB in your browser before they are uploaded, so phone photos are fine. Tap a picture to see it in full size, or tap the X on a picture before sending to remove it."
+      },
+      "survey": {
+        "title": "What is the survey about?",
+        "text": "There is a short survey in the game where you rate ideas for what I should build next: is it a good idea, and does it matter to you? Open it from the card on your dashboard, the message in your inbox, or the link in the forum. Your answers are saved on your account and are only read by me."
       }
     },
     "messages": {

@@ -191,6 +191,7 @@ const SECTION_DEFS = [
       { id: "mentions", kind: "text" },
       { id: "following", kind: "text" },
       { id: "pictures", kind: "text" },
+      { id: "survey", kind: "text" },
     ],
   },
   // #3200 · Beskeder mellem managere. Egen sektion, ikke en del af "managers",
