@@ -87,7 +87,7 @@
       },
       "survey": {
         "title": "Hjælp mig med at vælge hvad der skal bygges næste gang",
-        "message": "Jeg har lagt et kort spørgeskema ind i spillet. Du giver hver idé to karakterer: om den overhovedet er en god idé, og hvor meget den betyder for dig lige nu. Det tager cirka 3 minutter, og du kan rette dine svar indtil det lukker. Åbn det herfra."
+        "message": "Jeg har lagt et kort spørgeskema ind i spillet. Du giver hver idé to karakterer: om den overhovedet er en god idé, og hvor meget den betyder for dig lige nu. Det tager cirka 5 minutter, og du kan rette dine svar indtil det lukker. Åbn det herfra."
       }
     },
     "loanCreatedShort": {
