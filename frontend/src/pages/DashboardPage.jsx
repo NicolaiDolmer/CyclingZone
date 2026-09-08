@@ -1197,6 +1197,14 @@ export default function DashboardPage() {
         }
       />
 
+      {/* #4943 (ejer-bestilling 8/9): flyttet til TOPPEN af dashboardet, som
+          første element under sidehovedet — over squad-/kontrakt-advarslerne.
+          Indgang til det aktive spoergeskema. Selv-hentende og renderer intet
+          naar der ikke er et aabent skema, spilleren har gennemfoert, eller
+          kortet er lukket inden for 3 dage. Sekundaer CTA: dashboardets ene
+          guld-primaere element ejes af computeDashboardGoldCta. */}
+      <SurveyInviteCard />
+
       {/* Squad warning + kontrakt-fornyelses-advarsel — ALLERØVERST i
           indholdsflowet, over dagens etaper. #3915 satte oprindeligt dagens
           etaper allerøverst, men ejer besluttede 25/8 at KUN advarsler må stå
@@ -1500,12 +1508,6 @@ export default function DashboardPage() {
       {/* #1140: OnboardingModal er konsolideret væk — OnboardingProgressCard
           ovenfor er den kanoniske onboarding-UI. Filen beholdes (genbruges evt.
           senere), men monteres ikke længere her. */}
-
-      {/* #4943: indgang til det aktive spoergeskema. Selv-hentende og renderer
-          intet naar der ikke er et aabent skema, spilleren har gennemfoert, eller
-          kortet er lukket inden for 3 dage. Sekundaer CTA: dashboardets ene
-          guld-primaere element ejes af computeDashboardGoldCta. */}
-      <SurveyInviteCard />
 
       {/* #3398 (Maiden Win Engine): career-first-momentkort — renderer intet
           uden data. Bevidst FØR Hero & Agony: en career-first er det sjældnere,
