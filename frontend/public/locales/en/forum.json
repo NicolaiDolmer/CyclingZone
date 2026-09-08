@@ -110,6 +110,23 @@
     "retry": "Try again",
     "markAllReadFailed": "Could not mark all threads as read. Try again."
   },
+  "images": {
+    "label": "Images",
+    "add": "Add image",
+    "counter": "{count} of {max}",
+    "remove": "Remove image",
+    "adminRemove": "Delete image",
+    "openFull": "Open the image at full size",
+    "attachmentAlt": "Image in this post",
+    "hint": "Up to {max} images. JPG, PNG or WebP. Large photos are scaled down before they are uploaded.",
+    "errors": {
+      "type": "That file type does not work here. Use JPG, PNG or WebP.",
+      "tooMany": "You can add {count} images to a post.",
+      "tooLarge": "That image is still too large after scaling. Try a smaller one.",
+      "decode": "The image could not be read. Try another file.",
+      "upload": "The upload failed. Check your connection and try again."
+    }
+  },
   "subscription": {
     "following": "Following",
     "muted": "Muted",

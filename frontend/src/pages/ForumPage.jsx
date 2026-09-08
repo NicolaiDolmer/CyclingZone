@@ -13,6 +13,8 @@ import {
   normalizeCategoryMutes, applyCategoryMute, isCategoryMuted, isSubscribableCategory,
 } from "../lib/forumCategoryMutes.js";
 import FounderMark from "../components/FounderMark.jsx";
+// #4819: billeder i indlaegget. Uploades FOER submit, se komponentens hoved.
+import ForumImagePicker from "../components/forum/ForumImagePicker.jsx";
 // #4751: datoformatteren bor nu i det delte forum-modul (en side skal ikke
 // vaere kilde for en komponent — ForumAuthorIdentity bruger den samme).
 import { formatForumDate, authorDisplayName } from "../components/forum/forumIdentity.js";
@@ -121,7 +123,7 @@ function PostRow({ post, t, language }) {
   );
 }
 
-function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, tError }) {
+function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCategory, t, tError }) {
   // #4818: vælgeren viser kun kategorier brugeren faktisk må oprette i — en
   // synlig-men-afvist knap er et dødt klik. useMemo fordi listen indgår i
   // effektens deps; en ny array pr. render ville køre effekten hver gang.
@@ -129,6 +131,10 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
   const [category, setCategory] = useState(choices[0]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [images, setImages] = useState([]);
+  // Submit gates paa dette: et upload der stadig koerer ville ellers blive
+  // sendt afsted som "ingen billeder".
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [pollText, setPollText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -140,11 +146,19 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
   }, [open, defaultCategory, choices]);
 
   function handleClose() {
-    if (submitting) return;
+    // Ogsaa `uploadingImage`: lukkede man mens et upload koerte, ryddede
+    // timeouten nedenfor `images`, hvorefter pickerens `onChange(next)` efter
+    // sit await skrev billedet TILBAGE i den stadig monterede modal — og et
+    // senere opslag fik en vedhaeftning brugeren havde fortrudt. Modal'ens
+    // onClose er den her, saa X, backdrop og Escape er daekket af samme vagt.
+    if (submitting || uploadingImage) return;
     onClose?.();
     setTimeout(() => {
       setTitle("");
       setBody("");
+      // Billederne er allerede uploadet; naar modalen lukkes uden at sende,
+      // bliver de foraeldreloese og ryddes af sweep-scriptet.
+      setImages([]);
       setPollText("");
       setError(null);
     }, 200);
@@ -171,6 +185,7 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
           category,
           title: title.trim(),
           body: body.trim(),
+          images,
           ...(isAdmin && pollOptions.length ? { poll_options: pollOptions } : {}),
         }),
       });
@@ -241,7 +256,22 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
             placeholder={t("compose.bodyPlaceholder")}
           />
         </Field>
+        {/* #5011: hører til body-feltet ovenfor (monteres via textareaId, panelet
+            er `fixed`), derfor lige efter det og før billedvælgeren. */}
         <MentionAutocomplete textareaId="forum-compose-body" value={body} onChange={setBody} t={t} />
+        <Field label={t("images.label")}>
+          <ForumImagePicker
+            images={images}
+            onChange={setImages}
+            onBusyChange={setUploadingImage}
+            // #4819 review: uden userId dropper pickeren filen tavst (den
+            // nulstiller inputtet og returnerer), saa knappen er slaaet fra
+            // indtil supabase.auth.getUser() er landet.
+            disabled={submitting || !userId}
+            userId={userId}
+            t={t}
+          />
+        </Field>
         {isAdmin && (
           <Field label={t("compose.pollLabel")} htmlFor="forum-compose-poll" helper={t("compose.pollHelp")}>
             <Textarea
@@ -255,10 +285,10 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
         )}
         {error && <p className="text-xs text-cz-danger">{error}</p>}
         <div className="flex items-center justify-end gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={submitting}>
+          <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={submitting || uploadingImage}>
             {t("compose.cancel")}
           </Button>
-          <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting}>
+          <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting || uploadingImage}>
             {t("compose.submit")}
           </Button>
         </div>
@@ -277,6 +307,9 @@ export default function ForumPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // #4819: billed-stien ER ejerskabet (`<user_id>/...`), saa vaelgeren skal
+  // kende brugerens id for at kunne uploade i sin egen mappe.
+  const [userId, setUserId] = useState(null);
   // #3451: "Markér alle som læst" — sekundær knap (gold er reserveret til
   // "New post"), samme markingAll/loading-mønster som NotificationsPage.
   const [markingAll, setMarkingAll] = useState(false);
@@ -292,6 +325,7 @@ export default function ForumPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+      setUserId(user.id);
       const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
       if (!cancelled) setIsAdmin(userData?.role === "admin");
     })();
@@ -644,6 +678,7 @@ export default function ForumPage() {
         onClose={() => setComposeOpen(false)}
         onCreated={() => load(null)}
         isAdmin={isAdmin}
+        userId={userId}
         defaultCategory={category}
         t={t}
         tError={tError}

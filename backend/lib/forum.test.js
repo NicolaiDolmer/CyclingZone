@@ -31,6 +31,10 @@ import {
   markAllForumThreadsRead,
   getForumUnreadStatus,
   toggleForumReaction,
+  normalizeForumImages,
+  shapeForumImages,
+  deleteForumImage,
+  FORUM_IMAGE_MAX_PER_POST,
   recordForumThreadView,
   getForumAuthorStats,
   resolveMutedCategories,
@@ -1007,6 +1011,179 @@ test("getForumReportCounts: tæller kun åbne rapporter", async () => {
     ],
   }));
   assert.deepEqual(await getForumReportCounts({ supabase: fake }), { new: 1 });
+});
+
+// ── #4819 · billeder i indlæg ────────────────────────────────────────────────
+
+const IMG = (path, extra = {}) => ({ path, width: 1600, height: 900, ...extra });
+
+test("normalizeForumImages: tomt/udeladt felt bliver til et tomt array", () => {
+  assert.deepEqual(normalizeForumImages(null, "u1"), { ok: true, images: [] });
+  assert.deepEqual(normalizeForumImages(undefined, "u1"), { ok: true, images: [] });
+  assert.deepEqual(normalizeForumImages([], "u1"), { ok: true, images: [] });
+});
+
+test("normalizeForumImages: accepterer op til 3 billeder i brugerens egen mappe", () => {
+  const result = normalizeForumImages(
+    [IMG("u1/a.webp"), IMG("u1/b.png"), IMG("u1/c.jpg")],
+    "u1"
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.images.length, FORUM_IMAGE_MAX_PER_POST);
+  assert.deepEqual(result.images[0], { path: "u1/a.webp", width: 1600, height: 900 });
+});
+
+test("normalizeForumImages: afviser billede nummer fire", () => {
+  const result = normalizeForumImages(
+    [IMG("u1/a.webp"), IMG("u1/b.webp"), IMG("u1/c.webp"), IMG("u1/d.webp")],
+    "u1"
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.errorCode, "forum_too_many_images");
+});
+
+test("normalizeForumImages: en sti i en ANDEN brugers mappe afvises med 403", () => {
+  const result = normalizeForumImages([IMG("u2/a.webp")], "u1");
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 403);
+  assert.equal(result.body.errorCode, "forum_image_not_owned");
+});
+
+test("normalizeForumImages: afviser fulde URL'er, traversal og forkerte filtyper", () => {
+  for (const path of [
+    "https://evil.example/x.png",
+    "u1/../u2/a.webp",
+    "u1/a.svg",
+    "u1/a.html",
+    "u1/",
+    "/u1/a.webp",
+    "a.webp",
+  ]) {
+    const result = normalizeForumImages([IMG(path)], "u1");
+    assert.equal(result.ok, false, `burde afvise ${path}`);
+  }
+});
+
+test("normalizeForumImages: afviser dubletter og ugyldige dimensioner", () => {
+  assert.equal(normalizeForumImages([IMG("u1/a.webp"), IMG("u1/a.webp")], "u1").ok, false);
+  assert.equal(normalizeForumImages([IMG("u1/a.webp", { width: 0 })], "u1").ok, false);
+  assert.equal(normalizeForumImages([IMG("u1/a.webp", { height: -5 })], "u1").ok, false);
+  assert.equal(normalizeForumImages([IMG("u1/a.webp", { width: 1.5 })], "u1").ok, false);
+  assert.equal(normalizeForumImages([IMG("u1/a.webp", { width: 99999 })], "u1").ok, false);
+  assert.equal(normalizeForumImages(["u1/a.webp"], "u1").ok, false);
+  assert.equal(normalizeForumImages("u1/a.webp", "u1").ok, false);
+});
+
+test("shapeForumImages: null-kolonne (rækker fra før migrationen) bliver til []", () => {
+  assert.deepEqual(shapeForumImages(null), []);
+  assert.deepEqual(shapeForumImages(undefined), []);
+  assert.deepEqual(shapeForumImages([{ path: "u1/a.webp", width: 800, height: 600 }]), [
+    { path: "u1/a.webp", width: 800, height: 600 },
+  ]);
+});
+
+test("createForumPost gemmer billederne, og en fremmed sti bliver til 403 uden indlæg", async () => {
+  const fake = createFakeSupabase(seedState());
+  const ok = await createForumPost({
+    supabase: fake,
+    userId: "u1",
+    teamId: "t1",
+    category: "general",
+    title: "With images",
+    body: "Look at this",
+    images: [IMG("u1/a.webp")],
+  });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(fake.state.forum_posts[0].images, [{ path: "u1/a.webp", width: 1600, height: 900 }]);
+
+  const denied = await createForumPost({
+    supabase: fake,
+    userId: "u1",
+    teamId: "t1",
+    category: "general",
+    title: "Stolen",
+    body: "Not mine",
+    images: [IMG("u2/a.webp")],
+  });
+  assert.equal(denied.status, 403);
+  assert.equal(fake.state.forum_posts.length, 1);
+});
+
+test("createForumReply gemmer billederne paa svaret", async () => {
+  const fake = createFakeSupabase(seedState({ forum_posts: [post({ id: "p1" })] }));
+  const ok = await createForumReply({
+    supabase: fake,
+    postId: "p1",
+    userId: "u2",
+    body: "My screenshot",
+    images: [IMG("u2/shot.png")],
+  });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(fake.state.forum_replies[0].images, [{ path: "u2/shot.png", width: 1600, height: 900 }]);
+});
+
+test("getForumPost sender billederne med baade opslag og svar", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", images: [{ path: "u1/a.webp", width: 800, height: 600 }] })],
+    forum_replies: [{
+      id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u2",
+      team_id: null, body: "Reply", deleted_at: null, quoted_reply_id: null,
+      images: [{ path: "u2/b.webp", width: 400, height: 300 }],
+    }],
+  }));
+  const res = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body.post.images, [{ path: "u1/a.webp", width: 800, height: 600 }]);
+  assert.deepEqual(res.body.replies[0].images, [{ path: "u2/b.webp", width: 400, height: 300 }]);
+});
+
+/** fakeSupabase har ingen Storage-flade — den stubbes her. */
+function withStorage(fake, removed) {
+  return Object.assign(Object.create(Object.getPrototypeOf(fake)), fake, {
+    storage: { from: () => ({ remove: async (paths) => { removed.push(...paths); return { error: null }; } }) },
+  });
+}
+
+test("deleteForumImage fjerner billedet fra indlaegget og sletter filen", async () => {
+  const removed = [];
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", images: [{ path: "u1/a.webp", width: 800, height: 600 }, { path: "u1/b.webp", width: 800, height: 600 }] })],
+  }));
+  const res = await deleteForumImage({
+    supabase: withStorage(fake, removed),
+    targetType: "post",
+    targetId: "p1",
+    path: "u1/a.webp",
+  });
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body.images, [{ path: "u1/b.webp", width: 800, height: 600 }]);
+  assert.deepEqual(fake.state.forum_posts[0].images, [{ path: "u1/b.webp", width: 800, height: 600 }]);
+  assert.deepEqual(removed, ["u1/a.webp"]);
+});
+
+test("deleteForumImage: ukendt sti giver 404 og roerer ikke raekken", async () => {
+  const removed = [];
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", images: [{ path: "u1/a.webp", width: 800, height: 600 }] })],
+  }));
+  const res = await deleteForumImage({
+    supabase: withStorage(fake, removed),
+    targetType: "post",
+    targetId: "p1",
+    path: "u1/nope.webp",
+  });
+  assert.equal(res.status, 404);
+  assert.equal(res.body.errorCode, "forum_image_not_found");
+  assert.equal(fake.state.forum_posts[0].images.length, 1);
+  assert.deepEqual(removed, []);
+});
+
+test("deleteForumImage afviser ugyldigt maal", async () => {
+  const fake = createFakeSupabase(seedState());
+  assert.equal((await deleteForumImage({ supabase: fake, targetType: "team", targetId: "p1", path: "u1/a.webp" })).status, 400);
+  assert.equal((await deleteForumImage({ supabase: fake, targetType: "post", targetId: "", path: "u1/a.webp" })).status, 400);
+  assert.equal((await deleteForumImage({ supabase: fake, targetType: "post", targetId: "p1", path: "" })).status, 400);
 });
 
 // ── #5000 · Visningstal, seneste svars forfatter, indlaegstal på profilen ────

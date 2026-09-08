@@ -110,6 +110,23 @@
     "retry": "Prøv igen",
     "markAllReadFailed": "Kunne ikke markere alle tråde som læst. Prøv igen."
   },
+  "images": {
+    "label": "Billeder",
+    "add": "Tilføj billede",
+    "counter": "{count} af {max}",
+    "remove": "Fjern billede",
+    "adminRemove": "Slet billede",
+    "openFull": "Åbn billedet i fuld størrelse",
+    "attachmentAlt": "Billede i indlægget",
+    "hint": "Op til {max} billeder. JPG, PNG eller WebP. Store fotos skaleres ned inden de sendes.",
+    "errors": {
+      "type": "Den filtype virker ikke her. Brug JPG, PNG eller WebP.",
+      "tooMany": "Du kan tilføje {count} billeder til et indlæg.",
+      "tooLarge": "Billedet er stadig for stort efter nedskalering. Prøv et mindre.",
+      "decode": "Billedet kunne ikke læses. Prøv en anden fil.",
+      "upload": "Uploadet mislykkedes. Tjek forbindelsen og prøv igen."
+    }
+  },
   "subscription": {
     "following": "Følger",
     "muted": "Slået fra",

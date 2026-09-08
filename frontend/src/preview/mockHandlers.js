@@ -636,6 +636,13 @@ const FORUM_POSTS = [
     has_poll: false,
     is_unread: true,
     author: FORUM_AUTHOR_PETE,
+    // #4819: opslag med det fulde loft paa 3 billeder. Stierne er relative
+    // til bucketen forum-images — preview/e2e router selve filerne lokalt.
+    images: [
+      { path: "preview-user/forum-1.png", width: 1200, height: 800 },
+      { path: "preview-user/forum-2.png", width: 1200, height: 800 },
+      { path: "preview-user/forum-3.png", width: 1200, height: 800 },
+    ],
   },
   {
     id: "forum-post-3",
@@ -753,6 +760,9 @@ export function forumPostDetail(postId) {
         support_count: 6,
         supported_by_me: true,
         quoted: null,
+        // #4819: svar med ET billede — den anden ende af skalaen fra
+        // opslagets tre.
+        images: [{ path: "preview-user/forum-1.png", width: 1200, height: 800 }],
       },
       {
         id: `${post.id}-r2`,
