@@ -230,15 +230,29 @@ async function suppressUser({ supabase, userId, reason, now, captureExceptionFn 
  * users.email = modtageren. Fallbacken daekker mails sendt uden om
  * sendLoopEmail (fx en manuel testafsendelse fra Resend-dashboardet).
  */
-async function findUserForEvent({ supabase, providerId, recipient }) {
+async function findUserForEvent({ supabase, providerId, recipient, captureExceptionFn = captureException }) {
   if (providerId) {
-    const { data: logRow } = await supabase
+    const { data: logRow, error: logErr } = await supabase
       .from("email_log").select("id, user_id, email_type, status").eq("provider_id", providerId).maybeSingle();
+    // En laesefejl her betyder at vi ikke kan identificere brugeren bag mailen
+    // — en haard bounce ville saa ikke undertrykke nogen. Det skal vaere
+    // synligt, men maa ikke stoppe resten (recipient-fallbacken nedenfor kan
+    // stadig lykkes).
+    if (logErr) {
+      captureExceptionFn(new Error(`resend-webhook email_log-opslag: ${logErr.message}`), {
+        tags: { flow: "email-loop", component: "resend-webhook" }, extra: { providerId },
+      });
+    }
     if (logRow?.user_id) return { userId: logRow.user_id, logRow };
   }
   if (recipient) {
-    const { data: userRow } = await supabase
+    const { data: userRow, error: userErr } = await supabase
       .from("users").select("id").eq("email", recipient).maybeSingle();
+    if (userErr) {
+      captureExceptionFn(new Error(`resend-webhook users-opslag paa modtager: ${userErr.message}`), {
+        tags: { flow: "email-loop", component: "resend-webhook" },
+      });
+    }
     if (userRow?.id) return { userId: userRow.id, logRow: null };
   }
   return { userId: null, logRow: null };
@@ -331,6 +345,11 @@ export async function handleResendWebhook({
     else if (typeof req.body === "string") payload = JSON.parse(req.body);
     else payload = req.body;
   } catch {
+    // best-effort: selve parse-fejlen kastes bevidst vaek. Den eneste
+    // information i den er den ikke-parsbare body, og den maa aldrig logges
+    // (kan indeholde modtager-/kundedata) — samme regel som aluntaWebhook.js
+    // (#2817). At det skete, staar i linjen nedenfor; 400 fortaeller Resend
+    // at leveringen var ubrugelig.
     console.warn("[resend-webhook] afvist: body kunne ikke parses som JSON");
     return res.sendStatus(400);
   }

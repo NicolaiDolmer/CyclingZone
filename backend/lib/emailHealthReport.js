@@ -85,6 +85,9 @@ export async function recordEmailSweepRun({
     }
     return { recorded: true };
   } catch (err) {
+    // best-effort: se funktionens header. En sweep der HAR sendt sine mails
+    // maa aldrig vaelte fordi dens egen statistik-linje ikke kunne skrives.
+    // Konsekvensen er alene et hul i naeste dags rapport, ikke en tabt mail.
     console.error(`[email:health] sweep-run-log kastede (${emailType}):`, err?.message || err);
     return { recorded: false };
   }

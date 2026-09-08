@@ -242,6 +242,9 @@ export async function processEmailRetryDrain({
         getOpsWebhookFn,
       });
     } catch (err) {
+      // best-effort: Sentry-alarmen ovenfor er ALLEREDE afsendt og baerer den
+      // samme information. En Discord-webhook der er nede maa ikke kunne
+      // vaelte drainen eller skjule at den faktisk gjorde sit arbejde.
       console.error("[email:retry] ops-alarm fejlede:", err?.message || err);
     }
   }
