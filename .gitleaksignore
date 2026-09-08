@@ -35,3 +35,13 @@ fa572f73006572659bbb76050b5b65aa78b9c1ef:frontend/src/preview/mockHandlers.js:di
 #
 # #2853: test-dummy for DISCORD_OPS_MENTION i et tidligt commit paa feat/2853-mail-drift (ikke et rigtigt id); kilden er rettet i 0907cb6b, kun historikken matcher
 8c6b33e600439f9b1e65a4babda97495bffe2864:backend/lib/emailOpsAlert.test.js:discord-client-id:79
+#
+# #4321 (PR #5052): PostHog project API key som hardcodet fallback i den FOERSTE
+# commit paa feat/4321-posthog-wiring. I modsaetning til de oevrige linjer her er
+# det en aegte token — men en client-side "project API key", der per design er
+# offentlig: den ligger i enhver besoegendes bundle, kan kun skrive events og
+# giver ingen laeseadgang. Ingen rotation noedvendig. Fallbacken er fjernet igen i
+# ecf3b098 (noeglen kommer nu kun fra VITE_POSTHOG_KEY, sat i Vercel), og en
+# guard-test i posthogIntegration.test.js fejler hvis nogen genindfoerer en
+# token-literal. Kun historikken matcher, og squash-merge baerer den ikke til main:
+3f79b317ea49c6eabb277062082803f3c5748ab4:frontend/src/lib/posthogClient.js:generic-api-key:29
