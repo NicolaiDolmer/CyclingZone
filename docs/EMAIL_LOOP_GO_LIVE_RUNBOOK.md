@@ -1,5 +1,7 @@
 # Runbook — Email-loopet: dry-run → on (#2853)
 
+> Tilstanden (mailtyper, gates, samtykke-hjemmel, drift-tærskler, kendte huller) står i [`docs/EMAIL_STACK.md`](EMAIL_STACK.md); denne fil er handlingen.
+
 Del D af #2853. Kode er merged og dormant. Denne runbook er ejerens tjekliste
 for at tænde loopet — Claude flipper `app_config` og læser `email_log`,
 ejeren lægger secrets og godkender copy.
