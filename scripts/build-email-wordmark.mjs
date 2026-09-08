@@ -3,12 +3,16 @@
 // transactional emails (backend/lib/emailTemplates.js, #2853).
 //
 // Why a PNG and not the SVG we already host: Gmail, Outlook.com and the
-// Outlook apps all refuse <img src="*.svg">, so an email needs a raster. Why a
-// baked-in navy plate instead of transparency: Outlook.com's dark mode
-// rewrites background colours behind the image, and a transparent gold mark
-// would then sit on whatever grey it picked. The plate is the exact band navy
-// (#1B2A4A), so the seam is invisible when the band renders correctly and the
-// mark stays on brand when it does not.
+// Outlook apps all refuse <img src="*.svg">, so an email needs a raster. Why
+// transparent and not a baked-in navy plate: an earlier version baked in the
+// exact band navy (#1B2A4A) so the mark would keep its own background if a
+// client repainted the band. Outlook on Windows dark mode does exactly that —
+// but it repaints the band to a slate grey while the *image* still has the
+// old navy baked in, so the plate showed up as a visible dark square sitting
+// on top of the lighter slate band (owner report 8/9, screenshot: gold mark
+// on a grey-blue rectangle). A transparent PNG has no seam to mismatch: the
+// gold ink sits directly on whatever colour the surrounding <td> is painted,
+// in any client, in any theme.
 //
 // Source of truth is frontend/public/brand/wordmark-ondark.svg — this script
 // only crops its padding away and rasterises it, it never redraws the mark.
@@ -31,13 +35,11 @@ const TARGET = path.join(repoRoot, "frontend/public/brand/wordmark-email.png");
 const CROP = { x: 52, y: 20, width: 378, height: 90 };
 const DISPLAY_HEIGHT = 22;
 const DISPLAY_WIDTH = Math.round((CROP.width / CROP.height) * DISPLAY_HEIGHT);
-const BAND_NAVY = "#1B2A4A";
 
 const source = readFileSync(SOURCE, "utf8");
 const inner = source.replace(/^[\s\S]*?<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
 
 const cropped = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CROP.x} ${CROP.y} ${CROP.width} ${CROP.height}">
-  <rect x="${CROP.x}" y="${CROP.y}" width="${CROP.width}" height="${CROP.height}" fill="${BAND_NAVY}"/>
   ${inner}
 </svg>`;
 
