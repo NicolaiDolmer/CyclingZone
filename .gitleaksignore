@@ -32,3 +32,6 @@ fa572f73006572659bbb76050b5b65aa78b9c1ef:frontend/src/preview/mockHandlers.js:di
 # sammenlignede med strengen "G4_emergent_distribution" -> matchede generic-api-key.
 # Rettet til gateName i opfoelgende commit; historisk commit allowlistes:
 3a3c7012aa85a64631cebfce2b45477823c4b9c5:backend/scripts/simArchetypeGeneration3458.js:generic-api-key:206
+#
+# #2853: test-dummy for DISCORD_OPS_MENTION i et tidligt commit paa feat/2853-mail-drift (ikke et rigtigt id); kilden er rettet i 0907cb6b, kun historikken matcher
+8c6b33e600439f9b1e65a4babda97495bffe2864:backend/lib/emailOpsAlert.test.js:discord-client-id:79
