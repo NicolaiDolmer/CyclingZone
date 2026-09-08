@@ -126,5 +126,12 @@
       "decode": "The image could not be read. Try another file.",
       "upload": "The upload failed. Check your connection and try again."
     }
+  },
+  "subscription": {
+    "following": "Following",
+    "muted": "Muted",
+    "followingHint": "You get unread marks and the forum dot when there is something new here.",
+    "mutedHint": "No unread marks and no forum dot from this category. Replies to your own threads still reach you.",
+    "saveFailed": "Could not save your choice. Try again."
   }
 }

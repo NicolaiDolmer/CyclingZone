@@ -160,6 +160,8 @@ import {
   toggleForumReaction,
   recordForumThreadView,
   getForumAuthorStats,
+  listForumCategoryMutes,
+  setForumCategoryMute,
 } from "../lib/forum.js";
 import { loadMentionableManagers } from "../lib/forumMentions.js";
 import {
@@ -14355,6 +14357,39 @@ router.get("/forum/mentionable-managers", requireAuth, presencePulseLimiter, asy
 router.get("/forum/unread-status", requireAuth, async (req, res) => {
   try {
     res.json(await getForumUnreadStatus({ supabase, userId: req.user.id }));
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/forum/category-mutes — spillerens abonnement pr. kategori (#5013):
+// {categories:[{category, muted}]}. Opt-out-model, så en tom tabel betyder
+// "følger alt" (se database/2026-09-08-5013-forum-category-mutes.sql).
+// presencePulseLimiter (120/60 s): den kaldes én gang pr. sideindlæsning af
+// baade forumsiden og indstillingerne, altsaa billigt og hyppigt — samme
+// profil som limiteren er bygget til (#530-daekning for nye auth-ruter).
+router.get("/forum/category-mutes", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    res.json(await listForumCategoryMutes({ supabase, userId: req.user.id }));
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/forum/category-mutes — slå ÉN kategori til/fra (#5013). user_id
+// kommer ALTID fra sessionen, aldrig fra body — en spiller kan ikke skrive en
+// andens abonnement. Samme forumWriteLimiter som de øvrige skrive-ruter.
+router.put("/forum/category-mutes", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await setForumCategoryMute({
+      supabase,
+      userId: req.user.id,
+      category: req.body?.category,
+      muted: req.body?.muted,
+    });
+    res.status(status).json(body);
   } catch (e) {
     captureException(e);
     res.status(500).json({ error: e.message });

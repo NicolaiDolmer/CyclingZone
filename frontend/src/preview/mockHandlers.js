@@ -4,6 +4,7 @@
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
 import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
+import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";
 import {
   TEST_USER,
   TEST_TEAM,
@@ -699,6 +700,48 @@ const MENTIONABLE_MANAGERS = [
 // første besøg, uændret adfærd — samme default som en frisk konto).
 const FORUM_VIEWER_LAST_READ_AT = { "forum-pinned-1": "2026-08-06T07:30:00Z" };
 
+// #5013: abonnement pr. kategori i preview. Modul-lokal tilstand, saa PUT'en
+// faktisk flytter noget og GET'en (samt de afledte is_unread/has_unread
+// nedenfor) svarer paa det SAMME valg — ellers modellerer preview en tilstand
+// der ikke kan opstaa i prod. Opt-out: tomt saet = foelger alle kategorier.
+// Kataloget kommer fra #4818's fælles modul, aldrig en kopi her: preview skal
+// vise praecis de kategorier prod kender (roadmap inkl.).
+const FORUM_CATEGORY_KEYS = FORUM_CATEGORY_ORDER;
+const forumMutedCategories = new Set();
+
+export function forumCategoryMutes() {
+  return {
+    categories: FORUM_CATEGORY_KEYS.map((category) => ({
+      category,
+      muted: forumMutedCategories.has(category),
+    })),
+  };
+}
+
+/**
+ * Nulstil til "foelger alle kategorier". Tilstanden er modul-lokal og deles
+ * derfor af alle tests i den samme Node-proces — e2e-fixturen kalder denne ved
+ * hver page-opsaetning, saa én tests klik aldrig kan laekke ind i den naeste.
+ */
+export function resetForumCategoryMutes() {
+  forumMutedCategories.clear();
+}
+
+export function setForumCategoryMuteMock(category, muted) {
+  if (!FORUM_CATEGORY_KEYS.includes(category)) return { ok: false };
+  if (muted) forumMutedCategories.add(category);
+  else forumMutedCategories.delete(category);
+  return { ok: true, category, muted: Boolean(muted) };
+}
+
+/** Ulaest kun i kategorier spilleren stadig foelger — samme regel som forum.js. */
+function forumPostsWithMutes() {
+  return FORUM_POSTS.map((p) => ({
+    ...p,
+    is_unread: p.is_unread && !forumMutedCategories.has(p.category),
+  }));
+}
+
 export function forumPostDetail(postId) {
   const post = FORUM_POSTS.find((p) => p.id === postId) || FORUM_POSTS[0];
   return {
@@ -837,8 +880,11 @@ export function apiResponse(pathname, search = "") {
   // nedenfor, så preview/e2e viser den ÆGTE afledte tilstand i stedet for en
   // uafhængig hardkodet boolean der kan drifte fra listens is_unread-felter.
   if (pathname.endsWith("/api/forum/unread-status")) {
-    return { has_unread: FORUM_POSTS.some((p) => p.is_unread) };
+    // #5013: daempede kategorier taeller ikke med i nav-prikken.
+    return { has_unread: forumPostsWithMutes().some((p) => p.is_unread) };
   }
+  // #5013: spillerens abonnement pr. kategori.
+  if (pathname.endsWith("/api/forum/category-mutes")) return forumCategoryMutes();
   // #5011: navnene autocomplete og den klikbare rendering slår op i.
   if (pathname.endsWith("/api/forum/mentionable-managers")) {
     return { managers: MENTIONABLE_MANAGERS };
@@ -848,7 +894,7 @@ export function apiResponse(pathname, search = "") {
   if (forumPostMatch) return forumPostDetail(decodeURIComponent(forumPostMatch[1]));
   if (pathname.endsWith("/api/forum/posts")) {
     const category = new URLSearchParams(search).get("category");
-    const visible = FORUM_POSTS.filter((p) => !category || p.category === category);
+    const visible = forumPostsWithMutes().filter((p) => !category || p.category === category);
     return {
       pinned: visible.filter((p) => p.is_pinned),
       items: visible.filter((p) => !p.is_pinned),

@@ -100,6 +100,19 @@ export function BellIcon(props) {
   );
 }
 
+// #5013: "kategorien er slaaet fra" — samme klokke som BellIcon med en
+// diagonal streg over. Stroke-only, samme geometri, saa de to tilstande
+// laeser som ét ikon der skiftes, ikke to forskellige ikoner.
+export function BellOffIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 16l1-2V9a5 5 0 0 1 10 0v5l1 2z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+      <path d="M4 4l16 16" />
+    </IconBase>
+  );
+}
+
 export function ChevronUpIcon(props) {
   return (
     <IconBase {...props}>

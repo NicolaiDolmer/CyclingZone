@@ -347,7 +347,41 @@ constrainten fejler tavst i prod. Se §10.
 **Bevidste fravalg** (`FORUM_RULES.md` §1, ejer 25/8): ingen notifikation ved *alle* nye opslag, og
 ingen notifikation ved opbakning.
 
-### 6.1 @-tag af en manager (#5011, ejer-direktiv 3/9 i #4751)
+### 6.1 Abonnement pr. forum-kategori (#5013, ejer-direktiv 3/9 i #4751)
+
+Spilleren bestemmer selv hvilke forum-kategorier der overhovedet må sige til at der er noget nyt.
+
+| Regel | Værdi | Hvor |
+|---|---|---|
+| Model | **opt-out**: ingen række = spilleren følger kategorien | `2026-09-08-5013-forum-category-mutes.sql` |
+| Tabel | `forum_category_mutes` (`user_id`, `category_id`, `created_at`), PK på begge id'er | samme |
+| Hvorfor opt-out | default skal være "følger alle". Opt-in ville kræve backfill af hver bruger, og hver **ny** kategori (Roadmap, #4818) ville være tavs for alle eksisterende spillere indtil endnu en backfill | samme fil-header |
+| `category_id` | kategori-nøglen som text, samme værdirum som `forum_posts.category`. Ingen FK: der findes ingen `forum_categories`-tabel | samme |
+| RLS | bruger ser og skriver kun egne rækker; backend læser via service-role | samme |
+| API | `GET /api/forum/category-mutes` (hele listen med `muted`-flag), `PUT` med `{category, muted}`. `user_id` kommer altid fra sessionen | `api.js` |
+| Arkivet | `archive` er et visnings-filter (#4492), aldrig en kategori man kan abonnere på: `PUT` afviser den med 400 | `forum.js` |
+
+**Hvad valget dæmper — og hvad det aldrig dæmper.** Dette er reglen, ikke en implementeringsdetalje:
+
+| Signal | Dæmpes? | Hvor |
+|---|---|---|
+| `is_unread` pr. tråd i trådlisten | **ja** | `listForumPosts` |
+| Den gule forum-prik i navigationen (`has_unread`) | **ja** | `getForumUnreadStatus` |
+| `forum_thread_reply` — nogen svarer på **din egen** tråd | **nej** | `notifyForumThreadReply`, urørt |
+| @-tag af dig personligt (#5011) | **nej** | `notifyForumMention`, urørt — se §6.2 |
+
+Skillelinjen er "kategori-bredt signal" mod "besked til dig". Et svar til dig er ikke et
+kategori-signal, og en spiller der har slået Off-topic fra forventer stadig svar på sin egen tråd
+dér. En fremtidig kategori-bred notifikationstype skal respektere mute-settet; en ny direkte type
+skal ikke.
+
+**Flader:** til/fra i kategori-hovedet på forumsiden (kun på en rigtig kategori, ikke på "All" og
+ikke på arkivet) og den samlede liste i indstillingerne. De deler
+`frontend/src/lib/forumCategoryMutes.js`, så de to steder aldrig kan vise hver sin sandhed. Et
+fejlet eller tomt svar falder til "følger alt" — en fejlet forespørgsel må aldrig tænde for en
+dæmpning spilleren ikke har bedt om.
+
+### 6.2 @-tag af en manager (#5011, ejer-direktiv 3/9 i #4751)
 
 Skriver du `@Managernavn` i et opslag eller et svar, får den taggede en notifikation i indbakken med
 link direkte til indlægget. Reglerne:
@@ -371,6 +405,9 @@ Drift mellem de to ville give den værste tilstand: et navn ulinket i teksten me
 besked. Blokken er derfor markeret i begge filer, sammenlignet tegn for tegn af
 `frontend/src/lib/forumMentions.parity.test.js` og synkroniseres med
 `node scripts/sync-forum-mentions-parser.mjs` — **backend er kilden**.
+
+Et @-tag er en **besked til dig**, ikke et kategori-signal: `forum_mention` sendes uanset om
+modtageren har slået kategorien fra (§6.1).
 
 ---
 
