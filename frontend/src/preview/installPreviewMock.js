@@ -16,6 +16,7 @@ import {
   SEED_TEAM_ORDERS_BY_RACE,
   SEED_DEV_TRANSITION, ACTIVE_SEASON, SEED_TEAM_RACE_POINTS_MV,
 } from "./seedData.js";
+import { SEED_SURVEY } from "./surveyMock.js";
 import { NPS_MIN_RACE_DAYS } from "../lib/npsGating.js";
 import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
 
@@ -110,6 +111,21 @@ export function installPreviewMock() {
           && window.location.pathname.startsWith("/admin/surveys")) {
         const row = { id: TEST_USER.id, role: "admin", username: "Preview Admin", login_streak: 3 };
         return jsonResponse(wantsObject(accept) ? row : [row]);
+      }
+
+      // #4943 · SurveyInviteCard øverst på dashboardet (flyttet dertil ved
+      // ejer-bestilling 8/9). Bevidst KUN her og ikke i mockHandlers.js (samme
+      // lagdeling som NPS-bundbaren ovenfor): Playwright-fixtures deler
+      // mockHandlers via frontend/tests/e2e/fixtures.js, og et synligt kort her
+      // ville flytte de eksisterende dashboard-snapshots — 4943-survey.spec.js
+      // styrer selv skema-tilstanden via installSurveyRoutes(). Skemaet svares
+      // her som permanent "open" og uden completion, så ejeren altid kan se
+      // kortet på preview.
+      if (method === "GET" && /\/rest\/v1\/surveys/.test(url)) {
+        return jsonResponse(wantsObject(accept) ? SEED_SURVEY : [SEED_SURVEY]);
+      }
+      if (method === "GET" && /\/rest\/v1\/survey_completions/.test(url)) {
+        return jsonResponse(wantsObject(accept) ? null : []);
       }
 
       // Supabase REST (PostgREST).

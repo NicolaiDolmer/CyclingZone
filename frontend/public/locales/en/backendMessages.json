@@ -87,7 +87,7 @@
       },
       "survey": {
         "title": "Help me decide what to build next",
-        "message": "I have put a short survey in the game. You rate each idea twice: whether it is a good idea at all, and how much it matters to you right now. It takes about 3 minutes, and you can change your answers until it closes. Open it from here."
+        "message": "I have put a short survey in the game. You rate each idea twice: whether it is a good idea at all, and how much it matters to you right now. It takes about 5 minutes, and you can change your answers until it closes. Open it from here."
       }
     },
     "loanCreatedShort": {

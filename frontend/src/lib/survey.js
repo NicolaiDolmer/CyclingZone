@@ -148,6 +148,21 @@ export function normalizeAnswer(question, raw) {
 }
 
 /**
+ * Rå tekst til det VISTE fritekst-felt mens spilleren skriver: beskærer til
+ * TEXT_MAX_LENGTH, men trimmer IKKE. `normalizeAnswer` trimmer ved hvert
+ * tastetryk, så et afsluttende mellemrum ("hej ") blev fjernet igen før næste
+ * bogstav kunne skrives — mellemrum kunne reelt ikke bruges i fritekst
+ * (#4943-hotfix). Trimning sker stadig ved persist (`normalizeAnswer`) og i
+ * `answeredUnits` nedenfor, så et svar der kun består af mellemrum aldrig
+ * tæller som besvaret eller skrives til databasen.
+ */
+export function displayTextAnswer(raw) {
+  const text = (typeof raw === "object" && raw !== null ? raw.text : raw) ?? "";
+  const capped = String(text).slice(0, TEXT_MAX_LENGTH);
+  return capped.length ? { text: capped } : null;
+}
+
+/**
  * Hvor mange "trin" spørgsmålet tæller i progress-linjen. To-akse-gitteret
  * tæller én pr. funktion: 20 funktioner må ikke være 1/20 af skemaet på
  * progress-linjen når de er over halvdelen af arbejdet.
@@ -164,6 +179,13 @@ export function answeredUnits(question, value) {
     return Object.values(ratings).filter(
       (r) => r && (r.dont_know === true || (r.idea !== null && r.importance !== null))
     ).length;
+  }
+  // Det VISTE fritekst-svar er ikke trimmet (se displayTextAnswer), så et
+  // felt der kun indeholder mellemrum må ikke tælle som besvaret her —
+  // ellers ville progress-linjen og "påkrævet"-tjekket regne et tomt svar
+  // som udfyldt, selvom normalizeAnswer ville droppe det ved persist.
+  if (question.kind === "text") {
+    return value.text && String(value.text).trim() ? 1 : 0;
   }
   return 1;
 }

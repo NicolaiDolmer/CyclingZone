@@ -9,6 +9,7 @@ import {
   buildResponsePayload,
   canSubmit,
   computeProgress,
+  displayTextAnswer,
   groupQuestionsIntoSections,
   INVITE_DISMISS_DAYS,
   inviteDismissKey,
@@ -210,6 +211,21 @@ test("fritekst trimmes, tom tekst er intet svar, og længden er begrænset", () 
   assert.equal(normalizeAnswer(oneThing, "   "), null);
   assert.equal(normalizeAnswer(oneThing, ""), null);
   assert.equal(normalizeAnswer(oneThing, "a".repeat(2000)).text.length, 1000);
+});
+
+test("displayTextAnswer bevarer indre og afsluttende mellemrum (kun normalizeAnswer trimmer, ved persist)", () => {
+  assert.deepEqual(displayTextAnswer("hej "), { text: "hej " }, "afsluttende mellemrum må ikke forsvinde mens der skrives (#4943-hotfix)");
+  assert.deepEqual(displayTextAnswer("to ord"), { text: "to ord" });
+  assert.deepEqual(displayTextAnswer("  Live races  "), { text: "  Live races  " });
+  assert.equal(displayTextAnswer(""), null);
+  assert.equal(displayTextAnswer("a".repeat(2000)).text.length, 1000, "beskæres til TEXT_MAX_LENGTH ligesom normalizeAnswer");
+});
+
+test("et fritekst-svar der kun er mellemrum tæller ikke som besvaret, selvom det viste svar ikke er trimmet", () => {
+  assert.equal(answeredUnits(oneThing, displayTextAnswer("   ")), 0);
+  assert.equal(answeredUnits(oneThing, displayTextAnswer("hej ")), 1);
+  assert.equal(answeredUnits(oneThing, null), 0);
+  assert.equal(isAnswered(oneThing, displayTextAnswer("   ")), false);
 });
 
 test("ukendt spørgsmålstype kaster i stedet for at gemme noget uforståeligt", () => {

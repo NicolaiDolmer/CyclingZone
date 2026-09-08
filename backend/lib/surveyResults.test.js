@@ -382,7 +382,7 @@ test("segment=active: idé-gitteret skjuler segmenter under tre svar (stoej, ikk
     responses: ["user-a", "user-a2", "user-a3"].map((id, i) => r(
       id, "team-a", "feature_axes",
       { ratings: { live_race: { idea: 5, importance: 4, dont_know: false } } },
-      `2026-09-0${8 + i}T10:00:00Z`,
+      `2026-09-${String(8 + i).padStart(2, "0")}T10:00:00Z`,
     )),
     completions: [],
     invitedCount: 240,

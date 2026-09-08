@@ -16,12 +16,6 @@ export function segmentLabel(t, value) {
     : String(value);
 }
 
-/** Gruppe-overskriften på en to-akse-option (fem områder i v3-indholdet). */
-export function groupLabel(option, language) {
-  const da = Boolean(language && String(language).startsWith("da"));
-  return (da ? option?.group_da : option?.group_en) || null;
-}
-
 /** Slår et aggregeret spørgsmål op på nøgle; undefined når skemaet ikke har det. */
 export function questionByKey(data, key) {
   return (data?.questions ?? []).find((question) => question.key === key);

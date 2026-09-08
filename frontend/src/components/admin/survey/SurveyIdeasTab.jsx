@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DataTable, Section, SectionHeader } from "../../ui";
-import { optionLabel } from "../../../lib/survey.js";
+import { optionGroup, optionLabel } from "../../../lib/survey.js";
 import { DualBar, QuadrantChart, fmtInt, fmtNum, fmtPct } from "./surveyCharts.jsx";
-import { groupLabel, questionByKey } from "./surveyLabels.js";
+import { questionByKey } from "./surveyLabels.js";
 
 // #4943 · Idéerne: 20 forslag målt på to akser. Kvadrant-plottet svarer på
 // "hvad skal bygges først" på et halvt sekund; tabellen under er tallene bag.
@@ -86,7 +86,7 @@ export default function SurveyIdeasTab({ data }) {
           </span>
         </span>
       ),
-      subline: (row) => groupLabel(row, language),
+      subline: (row) => optionGroup(row, language),
     },
     {
       key: "bars",

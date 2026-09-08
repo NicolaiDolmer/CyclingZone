@@ -97,7 +97,9 @@ export default function SurveyTextTab({ data, questionKeys = null }) {
                     ? null
                     : t("surveyResults.text.division", { value: answer.division }),
                   segmentLabel(t, answer.language),
-                  answer.at ? new Date(answer.at).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" }) : null,
+                  // Formatér i fladens eget sprog: en hardkodet da-DK ville
+                  // vise danske datoer i den engelske admin-visning.
+                  answer.at ? new Date(answer.at).toLocaleString(language, { dateStyle: "short", timeStyle: "short" }) : null,
                 ].filter(Boolean).join(" · ")}
               </p>
             </li>

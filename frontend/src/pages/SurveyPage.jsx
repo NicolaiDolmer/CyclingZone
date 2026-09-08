@@ -33,6 +33,7 @@ import {
   answersByQuestionKey,
   buildResponsePayload,
   computeProgress,
+  displayTextAnswer,
   groupQuestionsIntoSections,
   missingRequired,
   normalizeAnswer,
@@ -288,9 +289,14 @@ export default function SurveyPage() {
         // spørgsmålets type. Behold det viste svar, skriv ikke skrald.
         return;
       }
+      // Fritekst: det VISTE svar må ikke trimmes ved hvert tastetryk, ellers
+      // forsvinder et afsluttende mellemrum igen før næste bogstav kan
+      // skrives (#4943-hotfix). `value` (normaliseret/trimmet) er stadig det
+      // der autosaves nedenfor — kun visningen i `answers` bruger den rå tekst.
+      const displayValue = question.kind === "text" ? displayTextAnswer(raw) : value;
       setAnswers((prev) => {
         const next = { ...prev };
-        if (value) next[question.key] = value;
+        if (displayValue) next[question.key] = displayValue;
         else delete next[question.key];
         return next;
       });
@@ -466,7 +472,7 @@ export default function SurveyPage() {
       <p className={`text-sm leading-relaxed text-cz-2 ${isPreview ? "mb-4" : "mb-1"}`}>{t("page.introLead")}</p>
       {!isPreview && <p className="mb-4 text-sm leading-relaxed text-cz-2">{t("page.introAccount")}</p>}
 
-      <div className="sticky top-0 z-sticky -mx-4 mb-4 bg-cz-bg px-4 py-2 sm:-mx-8 sm:px-8">
+      <div className="sticky top-0 z-sticky -mx-4 mb-4 bg-cz-body border-b border-cz-border px-4 py-2 sm:-mx-8 sm:px-8">
         <ProgressMeter
           value={progress.percent}
           label={t("progress.label")}

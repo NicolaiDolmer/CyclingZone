@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
@@ -70,7 +70,17 @@ export default function AdminSurveyResultsPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Et segment-skift starter et nyt kald mens det forrige stadig er i luften.
+  // Uden en sekvens-vagt kunne det FØRSTE svar lande sidst og male den gamle
+  // opdeling ind over den nye, mens URL'en sagde noget andet. Kun det nyeste
+  // kald må skrive state.
+  const requestSeq = useRef(0);
+
   const load = useCallback(async () => {
+    const seq = requestSeq.current + 1;
+    requestSeq.current = seq;
+    const isLatest = () => requestSeq.current === seq;
+
     setLoading(true);
     setError(null);
     setNotFound(false);
@@ -82,13 +92,14 @@ export default function AdminSurveyResultsPage() {
         { headers: auth },
       );
       const json = await readAdminJson(res);
+      if (!isLatest()) return;
       if (res.status === 404) { setNotFound(true); return; }
       if (!res.ok) { setError(adminErrorMessage(json, res)); return; }
       setData(json);
     } catch (err) {
-      setError(err.message || "Forbindelsen fejlede");
+      if (isLatest()) setError(err.message || "Forbindelsen fejlede");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
   }, [getAuth, slug, segment]);
 
