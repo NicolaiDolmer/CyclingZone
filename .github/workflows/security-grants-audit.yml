@@ -43,6 +43,7 @@ on:
     paths:
       - 'database/**'
       - 'scripts/check-secdef-revoke-lint.mjs'
+      - 'scripts/lint-sql-policy-grants.mjs'
       - 'scripts/proposals-reconcile.mjs'
       - 'scripts/security-grants.sql'
       - 'scripts/security-rls-policy-fn-grants.sql'
@@ -78,6 +79,7 @@ jobs:
           node --test scripts/check-secdef-revoke-lint.test.mjs
           node --test scripts/proposals-reconcile.test.mjs
           node --test scripts/security-rls-policy-fn-grants.test.mjs
+          node --test scripts/lint-sql-policy-grants.test.mjs
 
       - name: Lint ændrede SQL-filer
         shell: bash
@@ -101,6 +103,30 @@ jobs:
           printf '  %s\n' "${FILES[@]}"
           echo ""
           node scripts/check-secdef-revoke-lint.mjs "${FILES[@]}"
+
+      # #4943 — anden akse, samme job/trigger: en CREATE POLICY ... TO
+      # authenticated uden et matchende tabel-GRANT er unåelig (42501 FØR RLS
+      # evalueres). check-secdef-revoke-lint dækker kun SECURITY DEFINER-
+      # funktioner; dette dækker RLS-policies på almindelige tabeller. Kører
+      # kun mod de ÆNDREDE filer (samme FILES-liste som ovenfor), men slår
+      # GRANT + CREATE TABLE op i HELE database/ — se scriptets header for
+      # #2830-nuancen (SELECT udelukket, kun tabeller oprettet på/efter
+      # 2026-08-14 tjekkes for skrive-ops).
+      - name: Lint policy/grant-mismatch i ændrede SQL-filer
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          mapfile -t FILES < <(
+            git diff --name-only --diff-filter=d "origin/$BASE_REF...HEAD" -- database \
+              | grep -E '\.sql$' || true
+          )
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "✅ Ingen ændrede SQL-filer i database/ — intet at tjekke."
+            exit 0
+          fi
+          node scripts/lint-sql-policy-grants.mjs "${FILES[@]}"
 
   live:
     name: Live grant-tjek mod prod
