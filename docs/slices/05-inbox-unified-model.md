@@ -1,6 +1,6 @@
 # Slice S-05 · Indbakke unified content-model ✅ Leveret v2.30 (2026-05-04)
 
-**Status:** P0 LEVERET — runtime-divergens fra brief håndteret med 3 polish-bidder. Se `LAUNCH_ROADMAP.md` for fuld kontekst.
+**Status:** P0 LEVERET — runtime-divergens fra brief håndteret med 3 polish-bidder. Se `docs/archive/LAUNCH_ROADMAP.md` for fuld kontekst.
 
 **Kort version af leverancen:** Brief'en antog problemet "spredte hændelser over flere tabeller" var større end runtime — men `notificationService.notifyUser/notifyTeamOwner` med dedup centraliserede allerede alt i `notifications`-tabellen, og NotificationsPage havde allerede tabs + kategori-filtre + realtime + mark-read. I stedet for at rebrande siden leveredes (1) drift-fix på `activity_feed`-skema, (2) orphan-cleanup, (3) nyt "Skal handles"-tab der aggregerer pending decisions (transfer/swap/loan) hvor brugeren skal handle.
 

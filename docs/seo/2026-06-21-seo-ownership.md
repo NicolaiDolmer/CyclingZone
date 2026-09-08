@@ -1,5 +1,7 @@
 # SEO measurement — ownership & gotchas
 
+> Ansvarsfordelingen er absorberet i [`docs/ANALYTICS_STACK.md`](../ANALYTICS_STACK.md) §1 (8/9, [#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)); denne fil er runbook/detalje.
+
 > Owner-prep doc for [#1407](https://github.com/NicolaiDolmer/CyclingZone/issues/1407). Refs #1301, #1304.
 > Formål: én kilde til sandhed for "hvilket værktøj ejer hvilket tal", så fremtidige SEO-reviews ikke sammenligner æbler og pærer. Ingen kode-ændringer i denne doc.
 

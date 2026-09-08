@@ -116,6 +116,8 @@ Så #4644 er rigtigt i konklusionen (mandagstal kan ikke tages fra snapshots) me
 
 ### 0.9 De tre mandagstal (SSOT herfra, måles hver mandag kl. 09 via SQL + Alunta MCP)
 
+> Flyttet 8/9 ([#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)): proceduren og loggen bor nu i [`docs/GROWTH_STACK.md`](../../GROWTH_STACK.md) §1 og §12; SQL'en her er historisk reference.
+
 1. **MRR + aktive abonnementer.** Alunta `get_business_overview` (MRR ekskl. moms, aktive abonnementer) krydset med:
    ```sql
    SELECT count(*) AS aktive_abo FROM subscriptions

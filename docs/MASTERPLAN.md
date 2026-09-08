@@ -2,11 +2,11 @@
 
 > **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml` (#4921).
 
-**Reglen (ejer 6/9, afløser S3-køen 27-28/8):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig, kører parallelt. **Bane 3 færdiggør** = alt over 70 % færdigt, ordnet efter afstand til lukning; tømmes FØR noget nyt startes. **Ventelisten** rangeres efter langsigtet værdi (hvor mange områder det løfter) og fylder bane 3 når den er tom. **Målt 6/9:** 589 åbne (34 done-gated) · 99 nye issues siden 2/9 · 12 betalende (MRR 436 kr) · S3 529 løb. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
+**Reglen (ejer 6/9, afløser S3-køen 27-28/8):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig, kører parallelt. **Bane 3 færdiggør** = alt over 70 % færdigt, ordnet efter afstand til lukning; tømmes FØR noget nyt startes. **Ventelisten** rangeres efter langsigtet værdi (hvor mange områder det løfter) og fylder bane 3 når den er tom. **Målt 6/9:** 589 åbne (34 done-gated) · S3 529 løb. Forretningstal: `GROWTH_STACK.md`. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
 
 ## Bane 1 · S4-cutover 27-28/9 (deadline; ca. 3 ugers arbejde, nul buffer)
 
-1. ✅ **Løbssiden som faner** #4913 (6/9) + opfølgere #4917/#4979/#4980/#4992 (7/9, ejer-testet): etapeprofil, rolleskift, rute-match pr. etape.
+1. ✅ **Løbssiden som faner** #4913 + 4 opfølgere (7/9, ejer-testet).
 2. 🟠 **v4 før flip** (`RACE_ENGINE_RULES.md` §9, spec 6/9): **7/9 merget: #4971 #4975 #4988 #4998 → §7b alle grønne undtagen favorit-win-rate 62,6 % (egen kalibrering).** Rest: favorit-win-rate · M12, grupetto · #4915 TTT (ejer-valg) · #4948 raceDay-hjælp flag.
 3. 🔵 **v4-flip** (ejer-only) → #4916 følg løbet live (efter flip).
 4. 🔵 **S4-kalender:** #4270 apply (ejer inden 10/9) · #4845 kalenderpakker · #4203 monumenter ud af GT (done-gated).
@@ -16,15 +16,15 @@
 
 **Risiko (Fable 6/9):** pkt. 5-7 ryger hvis v4 driller. Claude skærer ikke selv; ejeren vælger.
 
-## Bane 2 · Forretning (viger aldrig; SSOT [`2026-09-02-30-dages-pengeplan.md`](superpowers/specs/2026-09-02-30-dages-pengeplan.md))
+## Bane 2 · Forretning (viger aldrig; SSOT for tal og mandagstal: [`GROWTH_STACK.md`](GROWTH_STACK.md); 30-dages-planen: [pengeplan](superpowers/specs/2026-09-02-30-dages-pengeplan.md))
 
 Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d ≥ 100. **Målt 7/9: 90 — under målet.**
-8. 🟢 **BRAND · Ejerens egne bestillinger** (#feedback-from-dolmer 1-8/9): forum- og beskedpakken MERGET 8/9 (#5020 #5018 #5026 #5022 #5019 #5008 #5023 #5010 #5029 #5021, v7.264 + Hjælp). Spørgeskema ÅBNET 8/9 (#4943, 241 inviteret). Rest: admin-resultatside (PR) · mail-drift #5038 + #5045 → dag-1 on (#4964) · #5032 · #5033. Prompt i `docs/drafts/` (9/9). #4270 blokeret af #4845.
+8. 🟢 **BRAND · Ejerens egne bestillinger** (#feedback-from-dolmer 1-8/9): forum- og beskedpakken MERGET 8/9 (10 PR'er, v7.264 + Hjælp; se git-log). Spørgeskema ÅBNET 8/9 (#4943, 241 inviteret). Rest: admin-resultatside (PR) · mail-drift #5038 + #5045 → dag-1 on (#4964) · #5032 · #5033. Prompt i `docs/drafts/` (9/9). #4270 blokeret af #4845.
 9. ✅ #4960 = målebrud · #4595: entry-chunk roterer stadig efter #5021 → ejer-valg rod-årsag før #5033 · #4964: nøgler i prod, flip afventer ejer.
 10. 🔵 **Nøgleblok #4616** (ejer ~30 min) låser op: Pro i euro PR #4608 → #4645 pris-synk → #4646 frafald · #4074 · #4005.
 11. 🔵 **Mail-loop:** Mail v2 merget (#2853) → ejer-GO dry_run → on pr. type → #2760 win-back (77 m. samtykke).
 12. 🔴 **Spiller-kommunikation #428:** MAN uge-note · ONS spørgsmål · SØN ugens øjeblik · #4820 indholdsplan + spørgeskema · tråd-bank #4117. Ejeren poster selv.
-13. ⚪ **Nye spillere:** #4067 SEO-site (1 indekseret side) · #3796 "hvor hørte du om os" · #4811 signup-sprog · #4321 PostHog. **Fastholdelse:** dag-1-mail dry_run 8/9 (#4964) · #4751 rest (venner, online-liste) · #4821 · #4235 forum vs Discord 15/9.
+13. ⚪ **Nye spillere:** #4067 SEO-site (1 indekseret side) · #3796 "hvor hørte du om os" · #4811 signup-sprog · #4321 PostHog. **Fastholdelse:** dag-1-mail dry_run 8/9 (#4964) · #4751 rest (venner, online-liste) · #4821 · #4235 forum vs Discord 15/9. SSOT'er for forretningslaget merget 8/9 (#5048: GROWTH/ANALYTICS/EMAIL/COMMS).
 14. 🔵 **Billing-vagter:** #4514 ubetalt m. Pro-adgang · #4512 fornyelsessti.
 
 ## Bane 3 · Færdiggør (>70 %; tømmes før nyt)

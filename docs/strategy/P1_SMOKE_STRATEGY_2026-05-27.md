@@ -3,7 +3,7 @@
 **Dato:** 2026-05-27
 **Udarbejdet af:** Manus AI
 **Indsat af:** Codex, efter runtime/GitHub-sammenligning 2026-05-27
-**Kontekst:** Audit af `LAUNCH_ROADMAP.md`, nylige commits og åbne issues #701, #702 og #705 for at prioritere næste skridt mod stabil launch.
+**Kontekst:** Audit af `docs/archive/LAUNCH_ROADMAP.md`, nylige commits og åbne issues #701, #702 og #705 for at prioritere næste skridt mod stabil launch.
 
 ## Status & Audit Af Nylige Ændringer
 
@@ -13,7 +13,7 @@ Loop A/B/C er implementeret og runtime-verificeret mod repo-filer:
 - **Loop B · Pre-push hook:** `scripts/pre-push-hook.ps1` findes, og lokal `.git/hooks/pre-push` kalder scriptet.
 - **Loop C · Postmortem-loop:** `.claude/learnings/_TEMPLATE.md` findes, og `.claude/learnings/2026-05-27-uci-scraper-decimal-points-bug.md` viser loopet i aktiv brug.
 
-P0-slices S-01 til S-06 er fortsat markeret leveret i `docs/LAUNCH_ROADMAP.md`.
+P0-slices S-01 til S-06 er fortsat markeret leveret i `docs/archive/LAUNCH_ROADMAP.md`.
 
 ## Kritiske Åbne Issues
 

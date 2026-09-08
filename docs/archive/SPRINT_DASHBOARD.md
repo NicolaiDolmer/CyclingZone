@@ -1,11 +1,13 @@
 # Sprint Dashboard — Monetization Validation
 
+> **Historisk (arkiveret 8/9 2026, [#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)).** Afløst af [`docs/ANALYTICS_STACK.md`](../ANALYTICS_STACK.md) (måling) og [`docs/MASTERPLAN.md`](../MASTERPLAN.md) (den prioriterede kø); det brugbare er båret over (metrik-kategorierne til go/no-go → ANALYTICS_STACK §4f). Tal, priser og tiers heri er forældede: dashboardet dækker maj-sprinten 18/5 til 17/6 2026.
+
 > **Sprint:** Monetization Validation Sprint
 > **Periode:** 2026-05-18 → 2026-06-17 (30 dage)
 > **I dag:** 2026-05-19 (**Sprint Day 2**)
 > **Sidste opdatering:** 2026-05-19 (Session A status-synk — issue-tabel + Uge 1 checkboxes afstemt mod faktisk GitHub-state; metrics-baseline stadig fra 2026-05-18 13:11 UTC)
 >
-> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Overordnet styring → [`MASTERPLAN.md`](MASTERPLAN.md) (MASTER_PLAN.md er superseded, #2827).** Prioriteret backlog → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).
+> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](../BUSINESS_STRATEGY.md). **Overordnet styring → [`MASTERPLAN.md`](../MASTERPLAN.md) (MASTER_PLAN.md er superseded, #2827).** Prioriteret backlog → [`BACKLOG_PRIORITIZED.md`](../BACKLOG_PRIORITIZED.md).
 >
 > **Status-note 2026-05-19 (Session A — [#497](https://github.com/NicolaiDolmer/CyclingZone/issues/497)):** Issue-tabel synkroniseret mod GitHub: 7 sprint-issues (#359-#364, #367) blev lukket 16-18 maj, men dashboard stod stadig ⏳ — nu rettet til ✅ med close-dato. #476/#479/#497 tilføjet til tabellen. Eneste åbne tekniske sprint-issues er nu #366 (PatchNotes fair freemium — venter på naming), #472 (recruitment drafts), #473 (skills mockup), #476 (metrics-snapshot automation), #479 (mobile perf), #497 (denne session).
 
@@ -173,7 +175,7 @@
 
 ## 🚨 Risk snapshot (top 3)
 
-1. **UCI/cykelsport IP** 🔴 — Real race-names + UCI-scraper i kode. Mitigation: advokat uge 3 + team/rider migration inden day 30. **Detaljer:** [BUSINESS_STRATEGY.md §8](BUSINESS_STRATEGY.md#8-risiko-register).
+1. **UCI/cykelsport IP** 🔴 — Real race-names + UCI-scraper i kode. Mitigation: advokat uge 3 + team/rider migration inden day 30. **Detaljer:** [BUSINESS_STRATEGY.md §8](../BUSINESS_STRATEGY.md#8-risiko-register).
 2. **Retention ukendt** 🟡 — Hele revenue-modellen antager 40%+ weekly returning. Måles mandag uge 1.
 3. **Organic-growth-antagelse** 🟡 — Sprintet har ingen paid acquisition fallback. Kanal-attribution i survey afslører om Discord/Reddit reelt leverer.
 

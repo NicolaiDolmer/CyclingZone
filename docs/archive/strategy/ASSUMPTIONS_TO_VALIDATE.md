@@ -1,5 +1,7 @@
 # Antagelser der mangler validation
 
+> **Historisk (arkiveret 8/9 2026, [#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)).** Afløst af [`docs/GROWTH_STACK.md`](../../GROWTH_STACK.md); det brugbare er båret over (Reddit-måling inden 48 timer efter opslag → GROWTH_STACK §5.5). Tal, priser og tiers heri er forældede.
+
 > Etableret 2026-05-25.
 > Hver antagelse har sandsynlighed-vurdering + foreslået validation-metode + hvornår valideringen ideelt sker.
 
@@ -39,7 +41,7 @@
 
 ### A6b: D7 retention ≥ 30% er nåbar post-TdF
 **Sandsynlighed:** Lav baseret på open-beta-cohort 8-15 maj (5 brugere, D7 = 20% — under target). Cohort er dog for lille til hård konklusion + instrumentation hul (kun 2/5 har `session_started`).
-**Validation-metode:** Gentag retention-audit på TdF-cohort med større N + presence-based fallback + Clarity cross-check (se [`retention-cohort-may-2026.md`](../research/retention-cohort-may-2026.md), refs [#670](https://github.com/NicolaiDolmer/CyclingZone/issues/670), [#674](https://github.com/NicolaiDolmer/CyclingZone/issues/674)).
+**Validation-metode:** Gentag retention-audit på TdF-cohort med større N + presence-based fallback + Clarity cross-check (se [`retention-cohort-may-2026.md`](../../research/retention-cohort-may-2026.md), refs [#670](https://github.com/NicolaiDolmer/CyclingZone/issues/670), [#674](https://github.com/NicolaiDolmer/CyclingZone/issues/674)).
 **Hvornår:** Under og post-TdF (juli-august 2026)
 
 ### A7: Cycling-zones + watt-tal vil føles relevant for målgruppen

@@ -1,7 +1,7 @@
 # Backlog — prioriteret view (alle 150 åbne issues)
 
 > **Opdateret:** 2026-05-15 · **Aktivt sprint:** Monetization Validation 2026-05-18 → 2026-06-17
-> **Formål:** Single source of priority for hele backlog set fra fuldtidsmål-perspektiv (~14k DKK/md gross = ~200 betalende brugere). Sprint-mekanik bor i [`SPRINT_DASHBOARD.md`](SPRINT_DASHBOARD.md); strategi i [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). Denne fil opdateres ved store priorit-shifts (ugentligt under sprint, ellers ad-hoc).
+> **Formål:** Single source of priority for hele backlog set fra fuldtidsmål-perspektiv (~14k DKK/md gross = ~200 betalende brugere). Sprint-mekanik bor i [`archive/SPRINT_DASHBOARD.md`](archive/SPRINT_DASHBOARD.md) (arkiveret 8/9 2026); strategi i [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). Denne fil opdateres ved store priorit-shifts (ugentligt under sprint, ellers ad-hoc).
 
 ## Sådan læser du denne fil
 

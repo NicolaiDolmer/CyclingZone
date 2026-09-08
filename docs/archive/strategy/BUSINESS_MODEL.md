@@ -1,5 +1,7 @@
 # CyclingZone Business Model
 
+> **Historisk (arkiveret 8/9 2026, [#5048](https://github.com/NicolaiDolmer/CyclingZone/issues/5048)).** Afløst af [`docs/GROWTH_STACK.md`](../../GROWTH_STACK.md) (vækst og forretningstal) og [`docs/BILLING_STACK.md`](../../BILLING_STACK.md) (priser og produkt). Tal, priser og tiers heri er forældede: de fire tiers Premium/Pro Analyst/Patron er døde, produktet er ét tier (CZ Pro) plus Founder.
+
 > **Etableret:** 2026-05-25 (strategi-session)
 > **Snapshot-dato:** 2026-05-25
 > **Næste review:** post-TdF (august 2026) når monetization-validation-data eksisterer
