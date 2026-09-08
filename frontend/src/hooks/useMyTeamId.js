@@ -42,12 +42,25 @@ export function resetMyTeamIdCache() {
   notify();
 }
 
-// App.jsx håndterer allerede SIGNED_IN/SIGNED_OUT; den ene linje her holder
-// hook'ens cache i takt uden at hver forbruger skal huske det.
-supabase.auth.onAuthStateChange((_event, session) => {
-  const nextUserId = session?.user?.id ?? null;
-  if (nextUserId !== cachedUserId) resetMyTeamIdCache();
-});
+// Abonnementet oprettes ved FØRSTE mount og rives ned ved den sidste — ikke ved
+// import. En side-effekt på modul-niveau ville køre i SSR-/prerender-bundlen og
+// efterlade et abonnement ingen ejer, og landingssiden prerenderes.
+let authSubscription = null;
+
+function ensureAuthSubscription() {
+  if (authSubscription) return;
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const nextUserId = session?.user?.id ?? null;
+    if (nextUserId !== cachedUserId) resetMyTeamIdCache();
+  });
+  authSubscription = data?.subscription ?? null;
+}
+
+function releaseAuthSubscription() {
+  if (subscribers.size > 0 || !authSubscription) return;
+  authSubscription.unsubscribe();
+  authSubscription = null;
+}
 
 /**
  * @returns {{ teamId: string|null, resolved: boolean }}
@@ -88,8 +101,13 @@ export function useMyTeamId() {
     }
 
     subscribers.add(sync);
+    ensureAuthSubscription();
     sync();
-    return () => { alive = false; subscribers.delete(sync); };
+    return () => {
+      alive = false;
+      subscribers.delete(sync);
+      releaseAuthSubscription();
+    };
   }, []);
 
   return state;

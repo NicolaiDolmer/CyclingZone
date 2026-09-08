@@ -42,6 +42,18 @@ test("alle DM-ruter kræver auth", () => {
   }
 });
 
+// #530: ogsaa laeseruterne. De POLLES (aaben traad hvert 20. sekund), saa de er
+// praecis den klasse en loebsk fane kan hamre.
+test("alle DM-ruter er rate-limitede, ogsaa laesningerne", () => {
+  for (const signature of READ_ROUTES) {
+    assert.match(
+      routeBlock(signature, 200),
+      /presencePulseLimiter/,
+      `${signature} skal have en rate-limiter`,
+    );
+  }
+});
+
 test("alle DM-skriveruter er rate-limitede", () => {
   for (const signature of WRITE_ROUTES) {
     assert.match(

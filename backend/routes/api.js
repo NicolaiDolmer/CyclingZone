@@ -14631,7 +14631,13 @@ router.delete("/admin/forum/replies/:id", requireAdmin, adminWriteLimiter, async
 // MELLEM SPILLERE inde i spillet — modulet hedder derfor directMessages.js.
 
 // GET /api/messages/conversations — samtalelisten til Beskeder-fanen.
-router.get("/messages/conversations", requireAuth, async (req, res) => {
+// Laeseruterne baerer presencePulseLimiter (120/min), ikke dmActionLimiter.
+// #530-vagten kraever daekning paa enhver auth-gated rute, og disse fire POLLES:
+// en aaben traad henter hvert 20. sekund, og listen + badgen foelger indbakkens
+// hentning. Et 10-minutters loft ville ramme en normal session; 120/min er
+// praecis det loft de oevrige pollede laesninger (notifikationer, presence)
+// allerede bruger, og det stopper stadig en loebsk fane.
+router.get("/messages/conversations", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const { status, body } = await listConversations({ supabase, userId: req.user.id });
     res.status(status).json(body);
@@ -14642,7 +14648,7 @@ router.get("/messages/conversations", requireAuth, async (req, res) => {
 });
 
 // GET /api/messages/unread-count — billig kilde til nav-badgen.
-router.get("/messages/unread-count", requireAuth, async (req, res) => {
+router.get("/messages/unread-count", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const { status, body } = await getUnreadSummary({ supabase, userId: req.user.id });
     res.status(status).json(body);
@@ -14655,7 +14661,7 @@ router.get("/messages/unread-count", requireAuth, async (req, res) => {
 // GET /api/messages/with/:teamId — indgangen fra managerprofilen, forumnavnet
 // og "Skriv til modparten". Returnerer den eksisterende samtale hvis der er
 // en; opretter ALDRIG en tom tråd.
-router.get("/messages/with/:teamId", requireAuth, async (req, res) => {
+router.get("/messages/with/:teamId", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     if (!UUID_RE.test(req.params.teamId)) {
       return res.status(400).json({ error: "Invalid team id", errorCode: "dm_invalid_recipient" });
@@ -14673,7 +14679,7 @@ router.get("/messages/with/:teamId", requireAuth, async (req, res) => {
 });
 
 // GET /api/messages/conversations/:id — én tråd, nyeste sidst.
-router.get("/messages/conversations/:id", requireAuth, async (req, res) => {
+router.get("/messages/conversations/:id", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     if (!UUID_RE.test(req.params.id)) {
       return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
