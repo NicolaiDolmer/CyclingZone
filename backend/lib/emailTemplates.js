@@ -48,9 +48,12 @@ const RADIUS = "5px";
 // PNG"). It is a 2x raster of frontend/public/brand/wordmark-ondark.svg built
 // by scripts/build-email-wordmark.mjs, hosted from the same origin as the
 // site. A PNG and not the SVG we already host because Gmail, Outlook.com and
-// the Outlook apps all refuse SVG in <img>. The navy plate is baked into the
-// file so the mark keeps its own background even where a client repaints the
-// band behind it.
+// the Outlook apps all refuse SVG in <img>. The file is transparent, not a
+// baked-in navy plate: Outlook on Windows dark mode repaints the band behind
+// the image to slate grey, and a baked-in navy square then showed up as a
+// visible dark box on top of the lighter band (owner report 8/9). The band's
+// own navy lives on the surrounding <td bgcolor>, not the image, so a
+// transparent mark always sits on whatever colour that td ends up painted.
 const WORDMARK_URL = "https://cyclingzone.org/brand/wordmark-email.png";
 const WORDMARK_WIDTH = 92;
 const WORDMARK_HEIGHT = 22;
