@@ -12,8 +12,9 @@
 // translation of that same locked text (see the doc's "DA-oversaettelse"
 // section added in this PR), faithful to the EN structure and placeholders,
 // not a separate copy pass. Hybrid layout (owner pick: band+footer from "A",
-// numbered-step rows from "B"): a navy (#1B2A4A) band with a text wordmark
-// ("CYCLING ZONE", ZONE in gold — no image file in this PR) and a short gold
+// numbered-step rows from "B"): a navy (#1B2A4A) band with the brand wordmark
+// as a small hosted PNG (#2853 follow-up 2026-09-08, replacing the system-font
+// "CYCLING ZONE" text that stood here) and a short gold
 // eyebrow, a white body, one gold primary CTA button, a shared Discord
 // outline CTA + line, and the signature "Dolmer, Cycling Zone" (unchanged in
 // both languages, it is a name) — all rendered once by wrapHtml/wrapText so
@@ -34,6 +35,25 @@ const DISCORD_URL = "https://discord.gg/ykysBrWUyC";
 
 const NAVY = "#1B2A4A";
 const GOLD = "#C9A227";
+const PAGE_BG = "#f4f4f4";
+const CARD_BG = "#ffffff";
+const TEXT = "#1a1a1a";
+const TEXT_SUB = "#5a5a5a";
+const TEXT_MUTED = "#767676";
+// House radius (docs/design/TASTE.md, docs/design/PAGE_TEMPLATES.md): 5px on
+// every button and card corner, in the app and here.
+const RADIUS = "5px";
+
+// The wordmark in the navy band (#2853, layout lock's "wordmark som lille
+// PNG"). It is a 2x raster of frontend/public/brand/wordmark-ondark.svg built
+// by scripts/build-email-wordmark.mjs, hosted from the same origin as the
+// site. A PNG and not the SVG we already host because Gmail, Outlook.com and
+// the Outlook apps all refuse SVG in <img>. The navy plate is baked into the
+// file so the mark keeps its own background even where a client repaints the
+// band behind it.
+const WORDMARK_URL = "https://cyclingzone.org/brand/wordmark-email.png";
+const WORDMARK_WIDTH = 92;
+const WORDMARK_HEIGHT = 22;
 
 // Only "da" renders Danish; everything else (undefined, "en", an unknown
 // locale) falls back to English — same default-to-EN rule the frontend's
@@ -103,12 +123,81 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+// Dark-mode lock (#2853, owner saw the Outlook.com/hotmail dark render 8/9).
+// Two clients repaint a light email on their own:
+//
+//   1. Outlook.com and the Outlook mobile apps rewrite the message, and while
+//      doing so they copy every <style> rule and prefix the copy with
+//      [data-ogsc] (elements whose colour they changed) or [data-ogsb]
+//      (background changed). Re-stating our colours behind those two prefixes
+//      is the only hook that survives their rewrite — inline styles alone are
+//      exactly what they overwrite, which is why navy came out slate grey and
+//      gold came out olive.
+//   2. Apple Mail honours the color-scheme/supported-color-schemes meta tags
+//      and leaves a light-only mail alone; the prefers-color-scheme block is
+//      the belt to that braces, for clients that read the media query but not
+//      the meta tags.
+//
+// Both lists are generated from the same table so a colour can never drift
+// between them. Every element that carries a colour also carries the matching
+// cz-* class; the inline style stays as the baseline for clients that strip
+// <style> entirely (Gmail's non-Gmail-account app), and bgcolor="" is the
+// third layer for the ones that also drop background shorthand.
+// Each entry is [selectors, declarations]. Selectors are a list, not a comma
+// string, because the [data-ogsc]/[data-ogsb] prefix has to be distributed
+// over EVERY selector in a group — prefixing only the first would leave the
+// rest applying unconditionally.
+const COLOR_LOCKS = [
+  [[".cz-page"], `background-color:${PAGE_BG} !important;`],
+  [[".cz-card"], `background-color:${CARD_BG} !important;`],
+  [[".cz-band"], `background-color:${NAVY} !important;`],
+  [[".cz-eyebrow"], `color:${GOLD} !important;`],
+  [[".cz-body"], `background-color:${CARD_BG} !important;color:${TEXT} !important;`],
+  // The per-template paragraphs and result lists carry no class of their own
+  // (their copy is locked, their markup is not this module's to decorate), so
+  // they are locked by descendant selector. The two exceptions below are given
+  // a two-class selector on purpose: .cz-body .cz-sub beats .cz-body p, so the
+  // grey step subtext and the grey footer keep their own greys.
+  [[".cz-text", ".cz-body p", ".cz-body li"], `color:${TEXT} !important;`],
+  [[".cz-sub", ".cz-body .cz-sub"], `color:${TEXT_SUB} !important;`],
+  [[".cz-muted", ".cz-body .cz-muted", ".cz-body .cz-muted a"], `color:${TEXT_MUTED} !important;`],
+  [[".cz-btn"], `background-color:${GOLD} !important;color:${NAVY} !important;`],
+  [[".cz-btn-label"], `color:${NAVY} !important;`],
+  [
+    [".cz-btn-outline"],
+    `background-color:${CARD_BG} !important;border-color:${NAVY} !important;color:${NAVY} !important;`,
+  ],
+  [[".cz-btn-outline-label"], `color:${NAVY} !important;`],
+  [[".cz-step-num"], `background-color:${NAVY} !important;`],
+  [[".cz-step-num-text"], `color:${CARD_BG} !important;`],
+];
+
+const COLOR_LOCK_CSS = [
+  `:root{color-scheme:light;supported-color-schemes:light;}`,
+  COLOR_LOCKS.map(
+    ([selectors, declarations]) =>
+      `${selectors.map((selector) => `[data-ogsc] ${selector},[data-ogsb] ${selector}`).join(",")}{${declarations}}`
+  ).join(""),
+  `@media (prefers-color-scheme:dark){${COLOR_LOCKS.map(
+    ([selectors, declarations]) => `${selectors.join(",")}{${declarations}}`
+  ).join("")}}`,
+].join("");
+
 // A gold, dark-text button — the ONE primary CTA per mail (house design rule:
 // one gold primary action per view, mirrored here for email since
 // docs/design/TASTE.md's "one gold primary button" applies to player-facing
-// surfaces generally, not just app pages).
+// surfaces generally, not just app pages). The label colour is stated twice,
+// on the <a> and on an inner <span>, because Outlook.com's dark mode recolours
+// link text on the anchor and leaves a nested span alone — without the span
+// the label came out white on gold instead of navy on gold.
 function primaryButtonHtml(url, label) {
-  return `<a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 28px;background:${GOLD};color:${NAVY};font-weight:700;text-decoration:none;font-size:14px;">${escapeHtml(label)}</a>`;
+  return `<a class="cz-btn" href="${escapeHtml(url)}" style="display:inline-block;padding:12px 28px;background:${GOLD};background-color:${GOLD};border-radius:${RADIUS};color:${NAVY};font-weight:700;text-decoration:none;font-size:14px;"><span class="cz-btn-label" style="color:${NAVY};text-decoration:none;">${escapeHtml(label)}</span></a>`;
+}
+
+// The shared secondary CTA (Discord): navy outline on white, same 5px radius,
+// same doubled label colour for the same reason as the primary button.
+function outlineButtonHtml(url, label) {
+  return `<a class="cz-btn-outline" href="${escapeHtml(url)}" style="display:inline-block;padding:9px 20px;background:${CARD_BG};background-color:${CARD_BG};border:1px solid ${NAVY};border-radius:${RADIUS};color:${NAVY};font-weight:600;text-decoration:none;font-size:13px;"><span class="cz-btn-outline-label" style="color:${NAVY};text-decoration:none;">${escapeHtml(label)}</span></a>`;
 }
 
 // Shared layout (#2853 v2, docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md):
@@ -120,33 +209,41 @@ function primaryButtonHtml(url, label) {
 // signature and the unsubscribe footer are identical across all three
 // templates and live here, once, localized via COPY[language].
 function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language }) {
-  const copy = copyFor(language);
+  const lang = normalizeLanguage(language);
+  const copy = copyFor(lang);
   return `<!doctype html>
-<html>
-  <body style="margin:0;padding:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:24px 0;">
+<html lang="${lang}" style="color-scheme:light;supported-color-schemes:light;">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <style>${COLOR_LOCK_CSS}</style>
+  </head>
+  <body class="cz-page" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};background-color:${PAGE_BG};color-scheme:light;supported-color-schemes:light;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" class="cz-page" bgcolor="${PAGE_BG}" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG};background-color:${PAGE_BG};padding:24px 0;">
       <tr>
         <td align="center">
-          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;">
+          <table role="presentation" class="cz-card" bgcolor="${CARD_BG}" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:${CARD_BG};background-color:${CARD_BG};">
             <tr>
-              <td style="background:${NAVY};padding:20px 24px;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <td class="cz-band" bgcolor="${NAVY}" style="background:${NAVY};background-color:${NAVY};padding:20px 24px;">
+                <table role="presentation" class="cz-band" bgcolor="${NAVY}" width="100%" cellpadding="0" cellspacing="0" style="background:${NAVY};background-color:${NAVY};">
                   <tr>
-                    <td style="font-size:16px;font-weight:700;letter-spacing:1px;color:#ffffff;text-transform:uppercase;">CYCLING <span style="color:${GOLD};">ZONE</span></td>
-                    <td align="right" style="font-size:11px;font-weight:700;letter-spacing:1px;color:${GOLD};text-transform:uppercase;">${escapeHtml(eyebrow)}</td>
+                    <td valign="middle" style="line-height:0;font-size:0;"><img src="${WORDMARK_URL}" alt="Cycling Zone" width="${WORDMARK_WIDTH}" height="${WORDMARK_HEIGHT}" style="display:block;border:0;outline:none;text-decoration:none;width:${WORDMARK_WIDTH}px;height:${WORDMARK_HEIGHT}px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;line-height:${WORDMARK_HEIGHT}px;color:#ffffff;text-transform:uppercase;"></td>
+                    <td align="right" valign="middle" class="cz-eyebrow" style="font-size:11px;font-weight:700;letter-spacing:1px;color:${GOLD};text-transform:uppercase;">${escapeHtml(eyebrow)}</td>
                   </tr>
                 </table>
               </td>
             </tr>
             <tr>
-              <td style="padding:32px 24px;color:#1a1a1a;font-size:15px;line-height:1.55;">
+              <td class="cz-body" bgcolor="${CARD_BG}" style="background:${CARD_BG};background-color:${CARD_BG};padding:32px 24px;color:${TEXT};font-size:15px;line-height:1.55;">
                 ${bodyHtml}
-                <p style="margin:32px 0 12px;">${escapeHtml(copy.discordLine)}</p>
-                <p style="margin:0 0 32px;"><a href="${escapeHtml(DISCORD_URL)}" style="display:inline-block;padding:9px 20px;border:1px solid ${NAVY};color:${NAVY};font-weight:600;text-decoration:none;font-size:13px;">${escapeHtml(copy.discordButton)}</a></p>
-                <p style="margin:0;font-weight:700;">Dolmer, Cycling Zone</p>
-                <p style="margin:24px 0 0;font-size:12px;color:#767676;">
+                <p class="cz-text" style="margin:32px 0 12px;color:${TEXT};">${escapeHtml(copy.discordLine)}</p>
+                <p style="margin:0 0 32px;">${outlineButtonHtml(DISCORD_URL, copy.discordButton)}</p>
+                <p class="cz-text" style="margin:0;font-weight:700;color:${TEXT};">Dolmer, Cycling Zone</p>
+                <p class="cz-muted" style="margin:24px 0 0;font-size:12px;color:${TEXT_MUTED};">
                   ${escapeHtml(copy.unsubLine)}
-                  <a href="${escapeHtml(unsubscribeUrl)}" style="color:#767676;">${escapeHtml(copy.unsubLinkText)}</a>.
+                  <a class="cz-muted" href="${escapeHtml(unsubscribeUrl)}" style="color:${TEXT_MUTED};">${escapeHtml(copy.unsubLinkText)}</a>.
                 </p>
               </td>
             </tr>
@@ -177,13 +274,13 @@ function welcomeStepsHtml(steps) {
       (step, index) => `
       <tr>
         <td width="36" valign="top" style="padding:0 12px 16px 0;">
-          <table role="presentation" cellpadding="0" cellspacing="0" width="28" style="background:${NAVY};border-radius:50%;">
-            <tr><td align="center" style="width:28px;height:28px;color:#ffffff;font-size:13px;font-weight:700;">${index + 1}</td></tr>
+          <table role="presentation" class="cz-step-num" bgcolor="${NAVY}" cellpadding="0" cellspacing="0" width="28" style="background:${NAVY};background-color:${NAVY};border-radius:50%;">
+            <tr><td align="center" style="width:28px;height:28px;font-size:13px;font-weight:700;"><span class="cz-step-num-text" style="color:${CARD_BG};">${index + 1}</span></td></tr>
           </table>
         </td>
         <td valign="top" style="padding:0 0 16px;">
-          <p style="margin:0;font-weight:700;">${escapeHtml(step.title)}</p>
-          <p style="margin:2px 0 0;color:#5a5a5a;font-size:13px;">${escapeHtml(step.sub)}</p>
+          <p class="cz-text" style="margin:0;font-weight:700;color:${TEXT};">${escapeHtml(step.title)}</p>
+          <p class="cz-sub" style="margin:2px 0 0;color:${TEXT_SUB};font-size:13px;">${escapeHtml(step.sub)}</p>
         </td>
       </tr>`
     )

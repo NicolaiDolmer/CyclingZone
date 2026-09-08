@@ -11,6 +11,9 @@ import {
 const EM_DASH = "—";
 const UNSUB_URL = "https://cyclingzone.org/api/email/unsubscribe?token=abc.def";
 const DISCORD_URL = "https://discord.gg/ykysBrWUyC";
+const WORDMARK_URL = "https://cyclingzone.org/brand/wordmark-email.png";
+const NAVY = "#1B2A4A";
+const GOLD = "#C9A227";
 
 // Escapes a literal string for use inside a RegExp (not a URL/host check -
 // this only builds an exact-match pattern for fixture assertions below).
@@ -83,11 +86,14 @@ test("welcome email renders the three numbered steps as table rows, not a bare <
   assert.ok(t.text.includes("3. Training and lineup"));
 });
 
-test("welcome email band shows the CYCLING ZONE wordmark and the START LINE eyebrow", () => {
+test("welcome email band shows the wordmark image and the START LINE eyebrow", () => {
   const t = buildWelcomeEmail({ teamName: "T", unsubscribeUrl: UNSUB_URL });
-  assert.ok(t.html.includes("CYCLING"));
-  assert.ok(t.html.includes(">ZONE<"), "ZONE rendered in its own gold span");
   assert.ok(t.html.includes("START LINE"));
+  assert.ok(
+    t.html.includes(`src="${WORDMARK_URL}"`),
+    "band uses the hosted brand wordmark PNG, not a system-font text logotype",
+  );
+  assert.ok(!t.html.includes(">ZONE<"), "the old text wordmark span is gone");
 });
 
 // ─── day1 ───────────────────────────────────────────────────────────────────
@@ -341,4 +347,142 @@ test("buildLoopEmail passes language through for all three types", () => {
   assert.equal(day1.subject, "Dag 1: dine ryttere har allerede kørt");
   const digest = buildLoopEmail("race_digest", { teamName: "T", results: [], unsubscribeUrl: UNSUB_URL, language: "da" });
   assert.equal(digest.subject, "T kørte mens du var væk");
+});
+
+// ─── shell: dark-mode lock, wordmark, radius (#2853 follow-up 2026-09-08) ────
+//
+// The owner opened a test mail in Outlook.com (hotmail) dark mode and got a
+// slate-grey band, olive buttons and white button labels: the client had
+// repainted every colour we set inline. These tests pin the three defences
+// that answer that (meta tags, [data-ogsc]/[data-ogsb] + prefers-color-scheme
+// overrides, bgcolor attributes) plus the wordmark image and the 5px radius,
+// once for every template and both languages, so a future edit to wrapHtml
+// cannot quietly drop one of them.
+
+function allTemplates() {
+  return [
+    ["welcome en", buildWelcomeEmail({ teamName: "T", unsubscribeUrl: UNSUB_URL })],
+    ["welcome da", buildWelcomeEmail({ teamName: "T", unsubscribeUrl: UNSUB_URL, language: "da" })],
+    ["day1 hasResults", buildDay1Email({ teamName: "T", hasResults: true, unsubscribeUrl: UNSUB_URL })],
+    ["day1 noResults", buildDay1Email({ teamName: "T", hasResults: false, unsubscribeUrl: UNSUB_URL })],
+    [
+      "race_digest",
+      buildRaceDigestEmail({
+        teamName: "T",
+        results: [{ riderName: "R", rank: 1, raceName: "Race" }],
+        unsubscribeUrl: UNSUB_URL,
+      }),
+    ],
+  ];
+}
+
+test("every template declares a light-only colour scheme in the head", () => {
+  for (const [label, t] of allTemplates()) {
+    assert.ok(t.html.includes('<meta name="color-scheme" content="light">'), `${label}: color-scheme meta`);
+    assert.ok(
+      t.html.includes('<meta name="supported-color-schemes" content="light">'),
+      `${label}: supported-color-schemes meta`,
+    );
+    assert.ok(t.html.includes("color-scheme:light;supported-color-schemes:light;"), `${label}: root color-scheme`);
+  }
+});
+
+test("every template ships the Outlook.com dark-mode overrides for band, buttons and body", () => {
+  for (const [label, t] of allTemplates()) {
+    assert.ok(
+      t.html.includes(`[data-ogsc] .cz-band,[data-ogsb] .cz-band{background-color:${NAVY} !important;}`),
+      `${label}: band stays navy in Outlook dark mode`,
+    );
+    assert.ok(
+      t.html.includes(
+        `[data-ogsc] .cz-btn,[data-ogsb] .cz-btn{background-color:${GOLD} !important;color:${NAVY} !important;}`,
+      ),
+      `${label}: primary button stays gold with a navy label`,
+    );
+    assert.ok(
+      t.html.includes(`[data-ogsc] .cz-btn-label,[data-ogsb] .cz-btn-label{color:${NAVY} !important;}`),
+      `${label}: inner label span locked`,
+    );
+    assert.ok(
+      t.html.includes(`[data-ogsc] .cz-card,[data-ogsb] .cz-card{background-color:#ffffff !important;}`),
+      `${label}: card stays white`,
+    );
+    // Every selector in a group must carry its own prefix; a bare ".cz-body p"
+    // in the Outlook block would leak the override into light mode too.
+    assert.ok(
+      t.html.includes(
+        `[data-ogsc] .cz-text,[data-ogsb] .cz-text,[data-ogsc] .cz-body p,[data-ogsb] .cz-body p,` +
+          `[data-ogsc] .cz-body li,[data-ogsb] .cz-body li{color:#1a1a1a !important;}`,
+      ),
+      `${label}: multi-selector groups are prefixed per selector`,
+    );
+  }
+});
+
+test("every template ships a prefers-color-scheme dark block with the same colours", () => {
+  for (const [label, t] of allTemplates()) {
+    const media = t.html.match(/@media \(prefers-color-scheme:dark\)\{[\s\S]*?\}\}/);
+    assert.ok(media, `${label}: has a prefers-color-scheme dark block`);
+    const css = media[0];
+    assert.ok(css.includes(`.cz-band{background-color:${NAVY} !important;}`), `${label}: band navy`);
+    assert.ok(css.includes(`.cz-btn{background-color:${GOLD} !important;color:${NAVY} !important;}`), `${label}: button gold`);
+    assert.ok(css.includes(`.cz-btn-label{color:${NAVY} !important;}`), `${label}: button label navy`);
+    assert.ok(css.includes(`.cz-card{background-color:#ffffff !important;}`), `${label}: body stays white`);
+  }
+});
+
+test("every coloured cell carries a bgcolor attribute next to the inline background", () => {
+  for (const [label, t] of allTemplates()) {
+    assert.ok(t.html.includes(`bgcolor="${NAVY}"`), `${label}: navy band has bgcolor`);
+    assert.ok(t.html.includes('bgcolor="#ffffff"'), `${label}: white card has bgcolor`);
+    assert.ok(t.html.includes('bgcolor="#f4f4f4"'), `${label}: page background has bgcolor`);
+  }
+});
+
+test("the wordmark is an image with alt text and a styled fallback for blocked images", () => {
+  for (const [label, t] of allTemplates()) {
+    assert.ok(t.html.includes(`src="${WORDMARK_URL}"`), `${label}: hosted wordmark PNG`);
+    assert.ok(t.html.includes('alt="Cycling Zone"'), `${label}: alt text`);
+    assert.match(t.html, /<img src="[^"]+wordmark-email\.png" alt="Cycling Zone" width="\d+" height="\d+"/, `${label}: sized img`);
+    // When the image is blocked the alt text inherits the img's own font
+    // styles, so it still reads as an uppercase white logotype on the band.
+    const img = t.html.match(/<img [^>]*wordmark-email\.png[^>]*>/)[0];
+    assert.ok(img.includes("text-transform:uppercase"), `${label}: fallback text uppercased`);
+    assert.ok(img.includes("color:#ffffff"), `${label}: fallback text readable on navy`);
+    assert.ok(img.includes("font-weight:700"), `${label}: fallback text bold`);
+  }
+});
+
+test("both buttons use the 5px house radius and keep a navy label on gold", () => {
+  for (const [label, t] of allTemplates()) {
+    const primary = t.html.match(/<a class="cz-btn"[^>]*>/)[0];
+    assert.ok(primary.includes("border-radius:5px"), `${label}: primary button radius`);
+    assert.ok(primary.includes(`background-color:${GOLD}`), `${label}: primary button gold`);
+    assert.ok(primary.includes(`color:${NAVY}`), `${label}: primary button label navy`);
+    assert.match(
+      t.html,
+      new RegExp(`<a class="cz-btn"[^>]*><span class="cz-btn-label" style="color:${NAVY};`),
+      `${label}: primary label colour restated on an inner span`,
+    );
+
+    const outline = t.html.match(/<a class="cz-btn-outline"[^>]*>/)[0];
+    assert.ok(outline.includes("border-radius:5px"), `${label}: Discord button radius`);
+    assert.ok(outline.includes(`border:1px solid ${NAVY}`), `${label}: Discord button navy outline`);
+    assert.match(
+      t.html,
+      new RegExp(`<a class="cz-btn-outline"[^>]*><span class="cz-btn-outline-label" style="color:${NAVY};`),
+      `${label}: Discord label colour restated on an inner span`,
+    );
+  }
+});
+
+test("the shell changes did not touch the locked copy or the plain-text part", () => {
+  const en = buildWelcomeEmail({ teamName: "Team Velodrome", unsubscribeUrl: UNSUB_URL });
+  assert.ok(en.text.startsWith("Hi,"), "plain text still opens on the locked greeting");
+  assert.ok(!en.text.includes("cz-"), "no markup leaked into the plain-text part");
+  assert.ok(!en.text.includes("wordmark"), "no image reference in the plain-text part");
+  assert.ok(en.html.includes("Welcome to Cycling Zone, and thanks for creating Team Velodrome."), "intro unchanged");
+  const da = buildWelcomeEmail({ teamName: "Holdet", unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.ok(da.html.includes("Velkommen til Cycling Zone, og tak fordi du oprettede Holdet."), "DA intro unchanged");
+  assert.equal(da.html.includes('<html lang="da"'), true, "html lang follows the recipient language");
 });
