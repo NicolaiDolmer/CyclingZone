@@ -17,10 +17,13 @@ import {
   isAnswered,
   missingRequired,
   normalizeAnswer,
+  optionGroup,
   optionLabel,
+  SECTION_ORDER,
   progressUnits,
   questionHelp,
   questionLabel,
+  resolveSurveyView,
   scaleFor,
   sectionForQuestion,
   sortQuestions,
@@ -48,6 +51,19 @@ const axes = {
     { key: "live_race", label_en: "Live race", label_da: "Live løb" },
     { key: "youth_teams", label_en: "Youth teams", label_da: "Ungdomshold" },
     { key: "team_looks", label_en: "Team looks", label_da: "Holdets udseende" },
+  ],
+};
+const fogMore = {
+  key: "fog_more",
+  kind: "single",
+  required: true,
+  sort_order: 50,
+  label_en: "How much more should be hidden?",
+  label_da: "Hvor meget mere skal skjules?",
+  options: [
+    { key: "nothing", label_en: "Nothing more", label_da: "Ikke mere" },
+    { key: "a_lot", label_en: "A lot more", label_da: "Meget mere" },
+    { key: "no_opinion", label_en: "No strong opinion", label_da: "Ingen stærk holdning" },
   ],
 };
 const worst = {
@@ -103,6 +119,18 @@ test("labels følger sproget, EN som fallback for alt der ikke er dansk", () => 
   assert.equal(questionHelp(satisfaction, "da"), "1 til 5");
   assert.equal(questionHelp(nps, "da"), null, "manglende hjælpetekst er null, ikke undefined");
   assert.equal(optionLabel(axes.options[0], "da"), "Live løb");
+});
+
+test("optionGroup følger sproget og er null når en option ikke har en gruppe", () => {
+  const grouped = { key: "live_race", group_en: "Racing", group_da: "Løbene", label_en: "Live", label_da: "Live" };
+  assert.equal(optionGroup(grouped, "en"), "Racing");
+  assert.equal(optionGroup(grouped, "da"), "Løbene");
+  assert.equal(optionGroup(grouped, "da-DK"), "Løbene");
+  assert.equal(optionGroup(grouped, undefined), "Racing");
+  // Bagudkompatibelt: et ældre skema uden group-felter må ikke få overskrifter.
+  assert.equal(optionGroup(axes.options[0], "da"), null);
+  assert.equal(optionGroup(undefined, "da"), null, "ingen forrige option i listen er ikke en gruppe");
+  assert.equal(optionGroup({ key: "x", group_en: "", group_da: "" }, "en"), null);
 });
 
 test("scaleFor giver 0-10 til NPS og 1-5 til begge akser", () => {
@@ -281,19 +309,32 @@ test("spørgsmål grupperes i sektioner, tomme sektioner udelades", () => {
   // nps er ikke længere en spoergsmaalsnoegle i skemaet (droppet 8/9, #4943);
   // brugt her udelukkende som generisk scale_0_10-fixture, og lander derfor i
   // "other" som ethvert andet ukendt spoergsmaal.
-  const sections = groupQuestionsIntoSections([wouldPay, nps, axes, oneThing, satisfaction, worst, followUp]);
+  const sections = groupQuestionsIntoSections([wouldPay, nps, axes, oneThing, satisfaction, worst, fogMore, followUp]);
   assert.deepEqual(
     sections.map((s) => [s.id, s.questions.map((q) => q.key)]),
     [
       ["today", ["satisfaction"]],
-      ["ideas", ["feature_axes"]],
       ["problems", ["works_worst"]],
+      ["ideas", ["feature_axes"]],
+      ["fog", ["fog_more"]],
       ["choices", ["one_thing"]],
       ["pro", ["pro_would_pay"]],
       ["closing", ["follow_up"]],
       ["other", ["nps"]],
     ]
   );
+});
+
+// Rækkefølgen er ejer-godkendt 8/9 (v3) og er ikke en detalje: "hvad fungerer
+// dårligst" SKAL komme før idéerne, og fog lige efter dem.
+test("sektions-rækkefølgen er v3-flowet, og fog ligger lige efter idéerne", () => {
+  assert.deepEqual(SECTION_ORDER, ["today", "problems", "ideas", "fog", "choices", "pro", "closing", "other"]);
+  assert.equal(sectionForQuestion(fogMore), "fog");
+  assert.equal(SECTION_ORDER.indexOf("problems") < SECTION_ORDER.indexOf("ideas"), true);
+  assert.equal(SECTION_ORDER.indexOf("fog"), SECTION_ORDER.indexOf("ideas") + 1);
+  assert.equal(SECTION_ORDER.indexOf("pro") < SECTION_ORDER.indexOf("closing"), true);
+  // "other" er stadig sidst, så et ukendt spørgsmål aldrig skubber flowet.
+  assert.equal(SECTION_ORDER.at(-1), "other");
 });
 
 test("et ukendt spørgsmål havner i other frem for at forsvinde fra siden", () => {
@@ -329,6 +370,29 @@ test("luk-krydset på dashboard-kortet husker i 3 dage pr. skema", () => {
   assert.equal(isInviteDismissed(String(until), now), true);
   assert.equal(isInviteDismissed(String(until), until - 1), true);
   assert.equal(isInviteDismissed(String(until), until + 1), false, "efter 3 dage vises kortet igen");
+});
+
+test("et åbent skema vises som formular for alle, admin eller ej", () => {
+  assert.equal(resolveSurveyView({ status: "open", isAdmin: false }), "open");
+  assert.equal(resolveSurveyView({ status: "open", isAdmin: true }), "open");
+});
+
+test("en kladde er preview for admins og lukket for alle andre", () => {
+  assert.equal(resolveSurveyView({ status: "draft", isAdmin: true }), "preview");
+  assert.equal(resolveSurveyView({ status: "draft", isAdmin: false }), "closed");
+  // Et manglende eller utydeligt admin-svar må ALDRIG åbne kladden: RLS
+  // beskytter indholdet, men UI'et skal heller ikke antyde at det findes.
+  assert.equal(resolveSurveyView({ status: "draft" }), "closed");
+  assert.equal(resolveSurveyView({ status: "draft", isAdmin: "true" }), "closed");
+  assert.equal(resolveSurveyView({ status: "draft", isAdmin: null }), "closed");
+});
+
+test("et lukket eller ukendt skema er lukket, også for en admin", () => {
+  assert.equal(resolveSurveyView({ status: "closed", isAdmin: true }), "closed");
+  assert.equal(resolveSurveyView({ status: "closed", isAdmin: false }), "closed");
+  assert.equal(resolveSurveyView({ status: "archived", isAdmin: true }), "closed");
+  assert.equal(resolveSurveyView({ isAdmin: true }), "closed");
+  assert.equal(resolveSurveyView(), "closed");
 });
 
 test("et tomt eller ulæseligt luk-flag betyder at kortet vises", () => {

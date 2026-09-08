@@ -38,6 +38,7 @@ import {
   normalizeAnswer,
   questionHelp,
   questionLabel,
+  resolveSurveyView,
   sortQuestions,
 } from "../lib/survey.js";
 import SurveyQuestion from "../components/survey/SurveyQuestion.jsx";
@@ -53,6 +54,7 @@ import {
   SkeletonLines,
   ClipboardIcon,
   CheckIcon,
+  EyeIcon,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
@@ -100,6 +102,8 @@ export default function SurveyPage() {
   const language = i18n.language;
 
   const [status, setStatus] = useState("loading"); // loading | ready | notFound | error
+  // open | preview | closed — se resolveSurveyView i lib/survey.js.
+  const [view, setView] = useState("closed");
   const [survey, setSurvey] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [userId, setUserId] = useState(null);
@@ -130,10 +134,23 @@ export default function SurveyPage() {
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
+    // Nulstil ALT der hænger på det forrige slug. Uden det kan en klient-side
+    // navigation fra ét skema til et andet vise det gamle skemas spørgsmål og
+    // svar, hvis den nye indlæsning ender i en tidlig retur (CodeRabbit-review
+    // på #4943).
+    setQuestions([]);
+    setAnswers({});
+    setSaveState({});
+    setCompleted(false);
+    setEditing(false);
     (async () => {
-      const [{ data: surveyRows, error: surveyError }, { data: auth }] = await Promise.all([
+      // is_admin-RPC'en er samme admin-gate som RoadmapPage bruger. Den er
+      // billig og svarer false for alle andre, saa den kan koere sammen med
+      // skema-opslaget uden at koste et ekstra rundtur for spilleren.
+      const [{ data: surveyRows, error: surveyError }, { data: auth }, { data: adminRaw }] = await Promise.all([
         supabase.from("surveys").select("id, slug, title_en, title_da, status, closes_at").eq("slug", slug).limit(1),
         supabase.auth.getUser(),
+        supabase.rpc("is_admin"),
       ]);
       if (cancelled) return;
       if (surveyError) {
@@ -149,7 +166,32 @@ export default function SurveyPage() {
 
       const uid = auth?.user?.id ?? null;
       setUserId(uid);
-      if (surveyRow.status !== "open" || !uid) {
+      const nextView = resolveSurveyView({ status: surveyRow.status, isAdmin: adminRaw === true });
+      // Uden en bruger vises ALDRIG formularen. Ruten er login-gated, så det
+      // her er en session der er faldet væk midt i navigationen: en tom
+      // formular med en klikbar Send-knap ville love en aflevering der aldrig
+      // kan gennemføres (handleSubmit returnerer uden userId).
+      setView(uid ? nextView : "closed");
+      if (nextView === "closed" || !uid) {
+        setStatus("ready");
+        return;
+      }
+
+      // Kladde-preview (#4943): hent KUN spoergsmaalene. Der findes hverken
+      // svar eller gennemfoerelser paa en kladde, og et opslag der alligevel
+      // returnerede noget ville vise ejeren en tilstand spillerne aldrig faar.
+      if (nextView === "preview") {
+        const { data: draftQuestions, error: draftError } = await supabase
+          .from("survey_questions")
+          .select(QUESTION_COLUMNS)
+          .eq("survey_id", surveyRow.id)
+          .order("sort_order");
+        if (cancelled) return;
+        if (draftError) {
+          setStatus("error");
+          return;
+        }
+        setQuestions(sortQuestions(draftQuestions ?? []));
         setStatus("ready");
         return;
       }
@@ -188,8 +230,14 @@ export default function SurveyPage() {
     };
   }, [slug]);
 
+  const isPreview = view === "preview";
+
   const writeOne = useCallback(
     async (question, value) => {
+      // Kladde-preview skriver ALDRIG. RLS afviser alligevel en insert mod et
+      // skema der ikke er 'open', men en afvist skrivning ville vise ejeren en
+      // roed "svaret blev ikke gemt"-tilstand paa hvert eneste klik.
+      if (isPreview) return true;
       if (!survey || !userId) return false;
       setSaveState((prev) => ({ ...prev, [question.key]: "saving" }));
       const { error } = value
@@ -212,7 +260,7 @@ export default function SurveyPage() {
       setSaveState((prev) => ({ ...prev, [question.key]: error ? "error" : "saved" }));
       return !error;
     },
-    [survey, userId, teamId]
+    [isPreview, survey, userId, teamId]
   );
 
   // Skrivningerne serialiseres PR. SPOERGSMAAL. To hurtige klik paa samme
@@ -247,6 +295,9 @@ export default function SurveyPage() {
         return next;
       });
       setSubmitError(false);
+      // Preview: svaret bliver staaende paa skaermen saa hele formularen kan
+      // proeves af, men der startes ingen autosave-timer.
+      if (isPreview) return;
 
       const timers = timersRef.current;
       clearTimeout(timers.get(question.key));
@@ -258,10 +309,12 @@ export default function SurveyPage() {
         }, AUTOSAVE_DEBOUNCE_MS)
       );
     },
-    [persist]
+    [isPreview, persist]
   );
 
   async function handleSubmit() {
+    // Send-knappen er deaktiveret i preview; det her er baeltet til selerne.
+    if (isPreview) return;
     if (!survey || !userId) return;
     setSubmitting(true);
     setSubmitError(false);
@@ -354,7 +407,7 @@ export default function SurveyPage() {
     );
   }
 
-  if (survey.status !== "open") {
+  if (view === "closed") {
     return (
       <div className="mx-auto max-w-4xl">
         <PageHeader title={title} />
@@ -395,8 +448,23 @@ export default function SurveyPage() {
     <div className="mx-auto max-w-4xl">
       <PageHeader title={title} subtitle={t("page.subtitle")} />
 
-      <p className="mb-1 text-sm leading-relaxed text-cz-2">{t("page.introLead")}</p>
-      <p className="mb-4 text-sm leading-relaxed text-cz-2">{t("page.introAccount")}</p>
+      {/* Kladde-bjaelke (#4943): hairline, ingen skygge, stroke-ikon. Én kort
+          linje — hvad fladen er, hvem der ser den, og at intet gemmes. */}
+      {isPreview && (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-2 rounded-cz border border-cz-border bg-cz-subtle px-3 py-2 text-[13px] leading-relaxed text-cz-2"
+        >
+          <EyeIcon size={14} aria-hidden="true" className="mt-[3px] shrink-0 text-cz-3" />
+          <span>{t("preview.notice")}</span>
+        </div>
+      )}
+
+      {/* introAccount ("dine svar gemmes på din konto") skjules i preview:
+          kladde-bjælken lige ovenfor siger det modsatte, og to linjer der
+          modsiger hinanden er værre end én linje mindre. */}
+      <p className={`text-sm leading-relaxed text-cz-2 ${isPreview ? "mb-4" : "mb-1"}`}>{t("page.introLead")}</p>
+      {!isPreview && <p className="mb-4 text-sm leading-relaxed text-cz-2">{t("page.introAccount")}</p>}
 
       <div className="sticky top-0 z-sticky -mx-4 mb-4 bg-cz-bg px-4 py-2 sm:-mx-8 sm:px-8">
         <ProgressMeter
@@ -435,11 +503,17 @@ export default function SurveyPage() {
 
         <Section>
           <div className="flex flex-wrap items-center gap-3">
-            <Button size="sm" loading={submitting} disabled={missing.length > 0} onClick={handleSubmit}>
+            <Button
+              size="sm"
+              loading={submitting}
+              disabled={isPreview || missing.length > 0}
+              onClick={handleSubmit}
+            >
               {submitting ? t("submit.sending") : t("submit.cta")}
             </Button>
             <span aria-live="polite" className="text-xs text-cz-2">
-              {missing.length > 0 && t("submit.missing", { count: missing.length })}
+              {isPreview && t("preview.submitDisabled")}
+              {!isPreview && missing.length > 0 && t("submit.missing", { count: missing.length })}
               {missing.length === 0 && submitError && (
                 <span className="text-cz-danger">{t("submit.error")}</span>
               )}

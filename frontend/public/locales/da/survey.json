@@ -1,6 +1,6 @@
 {
   "page": {
-    "subtitle": "Cirka 3 minutter",
+    "subtitle": "Cirka 5 minutter",
     "introLead": "Jeg spørger hellere dig end gætter, så jeg har samlet hele listen ét sted.",
     "introAccount": "Dine svar gemmes på din konto, så du kan rette dem indtil skemaet lukker."
   },
@@ -13,6 +13,7 @@
     "today": "Sådan er det i dag",
     "ideas": "Idéerne",
     "problems": "Hvad fungerer dårligst",
+    "fog": "Hvad du kan se",
     "choices": "Hvad du selv ville vælge",
     "pro": "Pro",
     "closing": "Før du sender",
@@ -53,6 +54,10 @@
     "editable": "Du kan rette dine svar indtil skemaet lukker.",
     "edit": "Ret mine svar",
     "roadmap": "Se roadmap"
+  },
+  "preview": {
+    "notice": "Kladde. Kun admins kan se denne side. Svar gemmes ikke.",
+    "submitDisabled": "Send er slået fra så længe skemaet er en kladde."
   },
   "closed": {
     "title": "Skemaet er lukket",

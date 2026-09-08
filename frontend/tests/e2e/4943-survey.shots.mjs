@@ -69,6 +69,12 @@ for (const vp of VIEWPORTS) {
     await page.waitForTimeout(250);
     await page.screenshot({ path: resolve(OUT, `4943-two-axes-${vp.name}.png`) });
 
+    // 2a. Gruppe-overskrifterne i idé-listen (v3, ejer-godkendt 8/9): 20 idéer
+    // delt i fem områder, så listen læses som fem korte spørgsmål.
+    await page.getByText("Markedet og informationen", { exact: true }).scrollIntoViewIfNeeded();
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: resolve(OUT, `4943-idea-groups-${vp.name}.png`) });
+
     // 2b. Invitér-en-ven: multi i stedet for fritekst (ejer-beslutning 8/9).
     await page.getByRole("heading", { name: "Hvad du selv ville vælge" }).scrollIntoViewIfNeeded();
     await page.waitForTimeout(200);
@@ -78,6 +84,32 @@ for (const vp of VIEWPORTS) {
     await page.getByRole("heading", { name: "Pro", exact: true }).scrollIntoViewIfNeeded();
     await page.waitForTimeout(200);
     await page.screenshot({ path: resolve(OUT, `4943-pro-${vp.name}.png`) });
+    await context.close();
+  }
+
+  // 2d. Kladde-preview som admin (#4943): bjælken øverst, hele formularen,
+  // Send deaktiveret. Det er den tilstand ejeren skal kunne se FØR skemaet
+  // åbnes for spillerne.
+  {
+    const { context, page } = await openPage(vp, { status: "draft", isAdmin: true });
+    await page.goto(`/survey/${SLUG}`);
+    await page.getByText("Kladde. Kun admins kan se denne side. Svar gemmes ikke.").waitFor();
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: resolve(OUT, `4943-draft-preview-${vp.name}.png`) });
+
+    await page.getByRole("button", { name: "Send mine svar" }).scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: resolve(OUT, `4943-draft-preview-send-${vp.name}.png`) });
+    await context.close();
+  }
+
+  // 2e. Samme kladde uden admin: den uændrede lukket-tilstand.
+  {
+    const { context, page } = await openPage(vp, { status: "draft" });
+    await page.goto(`/survey/${SLUG}`);
+    await page.getByText("Skemaet er lukket").waitFor();
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: resolve(OUT, `4943-draft-not-admin-${vp.name}.png`) });
     await context.close();
   }
 

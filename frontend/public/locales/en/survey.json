@@ -1,6 +1,6 @@
 {
   "page": {
-    "subtitle": "About 3 minutes",
+    "subtitle": "About 5 minutes",
     "introLead": "I would rather ask you than guess, so I have put the whole list in one place.",
     "introAccount": "Your answers are saved to your account, so you can change them until the survey closes."
   },
@@ -13,6 +13,7 @@
     "today": "How it feels today",
     "ideas": "The ideas",
     "problems": "What works worst",
+    "fog": "What you can see",
     "choices": "What you would choose",
     "pro": "Pro",
     "closing": "Before you send",
@@ -53,6 +54,10 @@
     "editable": "You can change your answers until the survey closes.",
     "edit": "Change my answers",
     "roadmap": "See the roadmap"
+  },
+  "preview": {
+    "notice": "Draft preview. Only admins can see this page. Answers are not saved.",
+    "submitDisabled": "Send is off while the survey is a draft."
   },
   "closed": {
     "title": "This survey has closed",
