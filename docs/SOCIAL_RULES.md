@@ -37,6 +37,15 @@ beskeder fra ejeren: resultat-feeds til divisionskanalerne, digest-DM'en (§4.6)
 transfer-DM'er (§4.2) og ops-alarmer. De sender fordi koden er bygget til det, ikke fordi en agent
 besluttede at skrive til nogen.
 
+**Roadmap-kategorien på forummet er ejerens egen kanal** (#4818, ejer-direktiv 4/9 + afklaring 8/9:
+*"kun jeg opretter, alle svarer"*). Kun `users.role = 'admin'` kan oprette tråde der; databasen afviser
+resten via triggeren `forum_posts_enforce_category_post_role`, backend svarer `403
+forum_category_admin_only`, og fladen skjuler knappen. Rettigheden er generel — `post_role` pr. kategori i
+`public.forum_category_post_roles`, ikke et hardcodet bruger-id — så #4268's rollemodel kan overtage den
+uden en ny migration. **Svar er åbne for alle i alle kategorier**; ingen kategori begrænser
+`forum_replies`. §0 gælder uændret og skærpet her: en agent poster ALDRIG i Roadmap-kategorien, heller
+ikke selvom den tekniske adgang findes via service-role. Ejeren skriver selv; AI leverer udkast.
+
 Beslægtet og lige så bindende: spillervendt tekst merges aldrig uden ejerens eksplicitte ja til den
 konkrete ordlyd (`.claude/learnings/2026-08-28-shipped-player-copy-without-explicit-yes.md`), og
 community-copy skal verificeres mod koden før den påstår at noget mangler
@@ -56,6 +65,7 @@ community-copy skal verificeres mod koden før den påstår at noget mangler
 | In-app-notifikationer | **Live**, 54 typer | `notificationTypes.js` |
 | Achievements | **Live**, 46 definitioner | `achievementEngine.js` |
 | Forum med opbakning | **Live** siden 6/8 | `forum.js`, se `FORUM_RULES.md` |
+| Roadmap-kategorien (kun ejeren opretter) | **Live** siden #4818 | `forum_category_post_roles`, se §0 |
 | Holdprofil (offentlig) | **Live** | `frontend/src/pages/TeamProfilePage.jsx`, rute `teams/:id` |
 | Managerprofil (offentlig) | **Live** | `frontend/src/pages/ManagerProfilePage.jsx`, rute `managers/:teamId` |
 | Online-prik + "sidst set" | **Live**, 5-min-granularitet | `api.js:13856`, `OnlineBadge.jsx` |

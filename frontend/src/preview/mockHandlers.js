@@ -573,6 +573,31 @@ const FORUM_AUTHOR_E2E = { username: "e2e", team_name: "E2E Racing", team_id: TE
 // den umarkerede tilstand), post-2 og post-4 er ulæst (prik + fed titel på
 // preview/e2e), så unread-status-mocken nedenfor har noget ægte at svare på.
 const FORUM_POSTS = [
+  // #4818: den officielle roadmap-kategori — ejer-opslag, alle må svare. Med i
+  // seedet så preview/e2e kan vise BÅDE listen med kategorien øverst og en
+  // tråd i den (ellers ville fanen altid stå tom i preview).
+  {
+    id: "forum-roadmap-1",
+    seq: 5,
+    // Traaden skal vaere aeldre end sit eget seneste svar (07:45), ellers viser
+    // PostRow opslagets egen dato i stedet for svaret — en umulig raekkefoelge.
+    created_at: "2026-08-05T20:00:00Z",
+    category: "roadmap",
+    title: "What I am building next",
+    // Bevidst uden konkrete loefter: seedet vises i preview og paa
+    // PR-screenshots, og en mock maa ikke se ud som et roadmap-tilsagn om
+    // features der ikke er besluttet.
+    excerpt: "This is where I post what I am working on. Ask me anything in here.",
+    body: "This is where I post what I am working on. Ask me anything in here.",
+    is_pinned: false,
+    reply_count: 3,
+    last_reply_at: "2026-08-06T07:45:00Z",
+    // #5000: samme svar som forumPostDetail returnerer nederst i traaden (r3).
+    last_reply_author: FORUM_AUTHOR_E2E,
+    has_poll: false,
+    is_unread: false,
+    author: FORUM_AUTHOR_OWNER,
+  },
   {
     id: "forum-pinned-1",
     seq: 4,
