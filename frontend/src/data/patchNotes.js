@@ -1,5 +1,96 @@
 export const PATCHES = [
   {
+    "version": "7.264",
+    "date": "2026-09-08",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "A Roadmap category on the forum",
+          "body": "The forum has a new category at the top called Roadmap. Only I post there, and it is where I tell you where the game is going. Everyone can reply, so ask and push back right under each post."
+        },
+        "da": {
+          "title": "En Roadmap-kategori på forummet",
+          "body": "Forummet har fået en ny kategori øverst, der hedder Roadmap. Kun jeg slår op der, og det er her jeg fortæller hvor spillet er på vej hen. Alle kan svare, så spørg og sig imod lige under hvert opslag."
+        },
+        "refs": [4818]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Tag a manager with @ and they get a message",
+          "body": "Type @ and the first letters of a manager name in a post or reply, pick the name from the list, and that manager gets a message in their inbox with a link straight to your post. The name is clickable and leads to their manager profile."
+        },
+        "da": {
+          "title": "Tag en manager med @, så får de besked",
+          "body": "Skriv @ og de første bogstaver af et managernavn i et opslag eller svar, vælg navnet i listen, og den manager får en besked i indbakken med link direkte til dit indlæg. Navnet kan klikkes og fører til managerprofilen."
+        },
+        "refs": [5011]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Choose which forum categories you follow",
+          "body": "Use the bell in a category header, or the list under Settings, to turn a category off. It then stops marking threads unread and stops lighting the forum dot. Replies to your own threads and @-tags always reach you."
+        },
+        "da": {
+          "title": "Vælg hvilke forum-kategorier du følger",
+          "body": "Brug klokken i kategori-hovedet, eller listen under Indstillinger, til at slå en kategori fra. Så markerer den ikke længere tråde som ulæste og tænder ikke forum-prikken. Svar på dine egne tråde og @-tags når dig altid."
+        },
+        "refs": [5013]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Pictures in forum posts",
+          "body": "You can add up to three pictures to a post or a reply. JPG, PNG and WebP work, and large photos are scaled down in your browser before they are uploaded, so phone photos are fine. Tap a picture to see it in full size."
+        },
+        "da": {
+          "title": "Billeder i forum-indlæg",
+          "body": "Du kan sætte op til tre billeder i et opslag eller et svar. JPG, PNG og WebP virker, og store fotos skaleres ned i din browser før de sendes, så telefonbilleder er fine. Tryk på et billede for at se det i fuld størrelse."
+        },
+        "refs": [4819]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Messages",
+        "en": {
+          "title": "Messages between managers",
+          "body": "You can now write directly to another manager. Open their manager profile or tap their name on the forum and press Message. Your conversations live under Messages in the inbox. On a transfer offer or an auction you can write to the other manager with the deal quoted in the first line. You can block a manager, and you can report a conversation to me. Messages are kept, never deleted, so fair play can be checked."
+        },
+        "da": {
+          "title": "Beskeder mellem managere",
+          "body": "Du kan nu skrive direkte til en anden manager. Åbn managerprofilen eller tryk på navnet i forummet og vælg Besked. Dine samtaler ligger under Beskeder i indbakken. På et transfertilbud eller en auktion kan du skrive til modparten med tilbuddet citeret i første linje. Du kan blokere en manager, og du kan anmelde en samtale til mig. Beskeder gemmes og slettes ikke, så fair play kan tjekkes."
+        },
+        "refs": [3200]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Profile",
+        "en": {
+          "title": "Tabs on the manager profile were hidden behind the phone navigation",
+          "body": "On a phone, the fifth number on the manager profile pushed the tabs down behind the bar at the bottom, so you could not reach them. The numbers now sit in three columns on small screens and the tabs are back where you can tap them."
+        },
+        "da": {
+          "title": "Fanerne på managerprofilen gemte sig bag telefon-navigationen",
+          "body": "På telefon skubbede det femte tal på managerprofilen fanerne ned bag bjælken i bunden, så du ikke kunne ramme dem. Tallene står nu i tre kolonner på små skærme, og fanerne er tilbage hvor du kan trykke på dem."
+        },
+        "refs": [5000]
+      }
+    ]
+  },
+  {
     "version": "7.263",
     "date": "2026-09-08",
     "label": "Beta",

@@ -316,6 +316,52 @@
         "text": "Ingen Discord? Brug Kontakt-knappen nederst i menuen til at sende feedback, melde en fejl eller dele en idé direkte til udvikleren. Vælg en kategori, skriv din besked og send. En fejlrapport inkluderer automatisk den side du var på, hvilket gør den lettere at spore. Ved spørgsmål om betaling (CZ Pro) kan du også skrive til support@cyclingzone.org."
       }
     },
+    "forum": {
+      "label": "Forum",
+      "roadmap": {
+        "title": "Hvem slår op i Roadmap-kategorien?",
+        "text": "Kun jeg opretter nye tråde i Roadmap, og det er her jeg fortæller hvor spillet er på vej hen. Alle kan svare, så spørg og sig imod lige under hvert opslag."
+      },
+      "mentions": {
+        "title": "Hvordan virker @-tags?",
+        "text": "Skriv @ og de første bogstaver af et managernavn i et opslag eller svar, og vælg navnet i listen. Den manager får en besked i indbakken med link direkte til dit indlæg. Navnet kan klikkes i indlægget og fører til managerprofilen."
+      },
+      "following": {
+        "title": "Hvordan følger eller slår jeg en kategori fra?",
+        "text": "Brug klokken i kategori-hovedet, eller listen under Indstillinger, til at slå en kategori fra. Så markerer den ikke længere tråde som ulæste og tænder ikke forum-prikken. Svar på dine egne tråde og @-tags når dig altid, også i en kategori du har slået fra."
+      },
+      "pictures": {
+        "title": "Billeder i indlæg",
+        "text": "Du kan sætte op til tre billeder i et opslag eller et svar. JPG, PNG og WebP virker, og store fotos skaleres ned til 2 MB i din browser før de sendes, så telefonbilleder er fine. Tryk på et billede for at se det i fuld størrelse, eller tryk på X'et på et billede før afsendelse for at fjerne det."
+      }
+    },
+    "messages": {
+      "label": "Beskeder",
+      "starting": {
+        "title": "Hvordan starter jeg en samtale?",
+        "text": "Åbn en managers profil eller tryk på navnet i forummet og vælg Besked. På et transfertilbud eller en auktion kan du også trykke Skriv til modparten for at skrive til dem med tilbuddet citeret i første linje."
+      },
+      "whereTheyLive": {
+        "title": "Hvor ligger mine samtaler?",
+        "text": "Under Beskeder i indbakken. Hver samtale viser den anden managers navn og din seneste besked."
+      },
+      "block": {
+        "title": "Hvad sker der, hvis jeg blokerer en manager?",
+        "text": "De kan ikke længere nå dig her, og de får ikke besked om at du har blokeret dem. Du beholder de tidligere beskeder i samtalen; kun nye beskeder holdes skjult, indtil du fjerner blokeringen."
+      },
+      "report": {
+        "title": "Hvordan anmelder jeg en samtale?",
+        "text": "Åbn samtalen, brug menuen og vælg Anmeld samtale. Jeg får en kopi af hele tråden og læser den selv; du behøver ikke tage screenshots først."
+      },
+      "retention": {
+        "title": "Bliver beskeder nogensinde slettet?",
+        "text": "Nej. Beskeder gemmes, så fair play kan tjekkes, også år efter. Skjul samtale fjerner den kun fra din egen liste; en ny besked fra den manager bringer den tilbage."
+      },
+      "rateLimit": {
+        "title": "Er der en grænse for, hvor mange beskeder jeg kan sende?",
+        "text": "Ja, en fair-brug-grænse. Sender du meget mange beskeder på kort tid, får du en kort pause, før den næste kan sendes."
+      }
+    },
     "discord": {
       "label": "Discord DMs",
       "whyDms": {

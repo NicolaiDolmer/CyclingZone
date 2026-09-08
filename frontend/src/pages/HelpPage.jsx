@@ -45,6 +45,8 @@ import {
   AlertTriangleIcon,
   GavelIcon,
   CobblesIcon,
+  GlobeIcon,
+  MessageIcon,
 } from "../components/ui/icons/index.jsx";
 
 // #4855 · Sektioner der kun maa vises naar den bagvedliggende model er slaaet
@@ -176,6 +178,34 @@ const SECTION_DEFS = [
       { id: "managersOnline", kind: "text" },
       { id: "headToHead", kind: "text" },
       { id: "contactSupport", kind: "text" },
+    ],
+  },
+  // #4818/#5011/#5013/#4819 · Forummet (Roadmap-kategori, @-tags, kategori-
+  // abonnement, billeder). Placeret lige efter managers, som den udvider med
+  // et andet socialt rum end DM'erne rette efter.
+  {
+    key: "forum",
+    Icon: GlobeIcon,
+    blocks: [
+      { id: "roadmap", kind: "text" },
+      { id: "mentions", kind: "text" },
+      { id: "following", kind: "text" },
+      { id: "pictures", kind: "text" },
+    ],
+  },
+  // #3200 · Beskeder mellem managere. Egen sektion, ikke en del af "managers",
+  // fordi indholdet (start, blokér, anmeld, opbevaring, rate limit) er en
+  // selvstaendig flade, ikke en indstilling paa profilen.
+  {
+    key: "messages",
+    Icon: MessageIcon,
+    blocks: [
+      { id: "starting", kind: "text" },
+      { id: "whereTheyLive", kind: "text" },
+      { id: "block", kind: "text" },
+      { id: "report", kind: "text" },
+      { id: "retention", kind: "text" },
+      { id: "rateLimit", kind: "text" },
     ],
   },
   {
