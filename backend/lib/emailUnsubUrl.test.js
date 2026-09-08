@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { unsubscribeUrlFor, EMAIL_UNSUB_BASE_DEFAULT } from "./emailUnsubUrl.js";
+import {
+  unsubscribeUrlFor,
+  unsubscribeUrlForStage,
+  assertUnsubSecretForStage,
+  DRY_RUN_UNSUB_TOKEN,
+  EMAIL_UNSUB_BASE_DEFAULT,
+} from "./emailUnsubUrl.js";
 import { verifyUnsubToken } from "./emailUnsubToken.js";
 
 const SECRET = "test-secret-do-not-use-in-prod";
@@ -35,4 +41,31 @@ test("unsubscribeUrlFor honours an explicit base argument over the env var", () 
   } finally {
     delete process.env.EMAIL_UNSUB_BASE_URL;
   }
+});
+
+// ─── #2853: stage-bevidst URL + én-fejl-pr.-koersel ──────────────────────────
+
+test("dry_run uden hemmelighed giver en dummy-token i stedet for at kaste", () => {
+  const url = unsubscribeUrlForStage({ userId: "user-1", secret: undefined, stage: "dry_run" });
+  assert.equal(url, `${EMAIL_UNSUB_BASE_DEFAULT}?token=${DRY_RUN_UNSUB_TOKEN}`);
+});
+
+test("dry_run-tokenet kan ALDRIG verificeres (den afmelder ingen ved et uheld)", () => {
+  assert.equal(verifyUnsubToken(DRY_RUN_UNSUB_TOKEN, "hvilken-som-helst-hemmelighed"), null);
+});
+
+test("dry_run MED hemmelighed signerer helt normalt", () => {
+  const url = unsubscribeUrlForStage({ userId: "user-1", secret: "s3cret", stage: "dry_run" });
+  assert.equal(url, unsubscribeUrlFor("user-1", "s3cret"));
+});
+
+test("stage=on uden hemmelighed kaster stadig - en rigtig mail maa aldrig faa en falsk unsub-URL", () => {
+  assert.throws(() => unsubscribeUrlForStage({ userId: "user-1", secret: undefined, stage: "on" }), /secret required/);
+});
+
+test("assertUnsubSecretForStage kaster kun ved stage=on", () => {
+  assert.throws(() => assertUnsubSecretForStage("on", undefined), /EMAIL_UNSUB_SECRET/);
+  assert.doesNotThrow(() => assertUnsubSecretForStage("dry_run", undefined));
+  assert.doesNotThrow(() => assertUnsubSecretForStage("off", undefined));
+  assert.doesNotThrow(() => assertUnsubSecretForStage("on", "s3cret"));
 });

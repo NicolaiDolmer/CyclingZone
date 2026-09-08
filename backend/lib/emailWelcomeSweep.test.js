@@ -189,3 +189,89 @@ test("skips (does not throw) a team whose user has no email on file", async () =
   assert.equal(result.skipped, 1);
   assert.equal(result.failed, 0);
 });
+
+// ─── #2853 (fund 8/9): dry_run uden unsub-hemmelighed + samlet ops-alarm ─────
+
+test("dry_run koerer helt igennem UDEN EMAIL_UNSUB_SECRET og skriver dry_run-raekker", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const recent = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  const rows = [mk("a", { created_at: recent }), mk("b", { created_at: recent })];
+  const supabase = makeSupabase(rows, { "user-a": "a@example.com", "user-b": "b@example.com" });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  const result = await runEmailWelcomeSweep({
+    supabase, now, readStage: async () => "dry_run", send, unsubSecret: undefined,
+  });
+
+  assert.equal(result.sent, 2, "begge kandidater naaede en dry_run-raekke");
+  assert.equal(result.failed, 0, "ingen 'secret required'-fejl pr. hold");
+  for (const call of sendCalls) {
+    assert.ok(call.unsubscribeUrl.endsWith("token=dry-run"), "dummy-token i dry_run");
+    assert.equal(call.stage, "dry_run", "stage gives videre saa sendLoopEmail ikke laeser app_config igen");
+  }
+});
+
+test("stage=on uden hemmelighed kaster ÉN gang for hele koerslen, foer nogen kandidat hentes", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const recent = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  const rows = [mk("a", { created_at: recent }), mk("b", { created_at: recent }), mk("c", { created_at: recent })];
+  const supabase = makeSupabase(rows, { "user-a": "a@x.dk", "user-b": "b@x.dk", "user-c": "c@x.dk" });
+  const captured = [];
+
+  await assert.rejects(
+    () => runEmailWelcomeSweep({
+      supabase, now, readStage: async () => "on", unsubSecret: undefined,
+      send: async () => { throw new Error("maa ikke naa til afsendelse"); },
+      captureExceptionFn: (e) => captured.push(e),
+    }),
+    /EMAIL_UNSUB_SECRET/
+  );
+  assert.equal(captured.length, 0, "ingen per-hold-alarmer - kastet foer loopet");
+});
+
+test("permanente fejl i én koersel giver PRAECIS én ops-besked", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const recent = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  const rows = [mk("a", { created_at: recent }), mk("b", { created_at: recent })];
+  const supabase = makeSupabase(rows, { "user-a": "a@x.dk", "user-b": "b@x.dk" });
+  const posts = [];
+
+  // Simulerer sendLoopEmail's egen opsamling: to permanente fejl i samme koersel.
+  const send = async ({ failureCollector, dedupeKey }) => {
+    failureCollector.permanent.push({ dedupeKey, reason: "config-error", error: "invalid address" });
+    return { status: "failed", error: "invalid address", retryable: false };
+  };
+
+  await runEmailWelcomeSweep({
+    supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret",
+    sendWebhookFn: async (url, payload) => posts.push({ url, payload }),
+    getOpsWebhookFn: async () => "https://discord.example/ops",
+  });
+
+  assert.equal(posts.length, 1);
+  assert.ok(posts[0].payload.embeds[0].title.includes("2 permanent"));
+});
+
+test("koerslens tal logges til sundhedsrapporten - men kun naar der var kandidater", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const recent = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  const runs = [];
+  const recordRun = async (args) => { runs.push(args); return { recorded: true }; };
+
+  await runEmailWelcomeSweep({
+    supabase: makeSupabase([mk("a", { created_at: recent })], { "user-a": "a@x.dk" }),
+    now, readStage: async () => "dry_run", send: async () => ({ status: "dry_run" }), recordRun,
+  });
+  await runEmailWelcomeSweep({
+    supabase: makeSupabase([], {}), now, readStage: async () => "dry_run",
+    send: async () => ({ status: "dry_run" }), recordRun,
+  });
+
+  assert.equal(runs.length, 2, "sweepen rapporterer altid; recordEmailSweepRun filtrerer selv de tomme fra");
+  assert.deepEqual(
+    { type: runs[0].emailType, stage: runs[0].stage, candidates: runs[0].candidates, sent: runs[0].sent },
+    { type: "welcome", stage: "dry_run", candidates: 1, sent: 1 }
+  );
+  assert.equal(runs[1].candidates, 0);
+});
