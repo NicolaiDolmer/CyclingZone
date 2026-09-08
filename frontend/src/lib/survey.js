@@ -185,6 +185,25 @@ export function canSubmit(questions, answers) {
   return missingRequired(questions, answers).length === 0;
 }
 
+// ── Hvilken tilstand siden skal vise ────────────────────────────────────────
+// Ejeren skal kunne SE en kladde som spillerne kommer til at se den, FØR den
+// åbnes (#4943). RLS lader allerede admins læse både kladde-skemaet og dets
+// spørgsmål; det der manglede var en visnings-tilstand imellem "åbent" og
+// "lukket".
+//
+//   open     spilleren kan svare og sende
+//   preview  kladde set af en admin: hele formularen, men intet gemmes
+//   closed   alt andet (lukket skema, og en kladde set af en ikke-admin)
+//
+// "closed" er default med vilje: en ukendt eller manglende status må aldrig
+// åbne et skema, og en kladde må aldrig lække til en ikke-admin gennem UI'et.
+// RLS beskytter uanset — det her er laget ovenpå, ikke i stedet for.
+export function resolveSurveyView({ status, isAdmin } = {}) {
+  if (status === "open") return "open";
+  if (status === "draft" && isAdmin === true) return "preview";
+  return "closed";
+}
+
 export function buildResponsePayload({ surveyId, userId, teamId = null, questionKey, value }) {
   if (!surveyId || !userId || !questionKey) {
     throw new Error("surveyId, userId and questionKey are required");

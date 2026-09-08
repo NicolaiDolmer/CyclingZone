@@ -54,6 +54,10 @@
     "edit": "Ret mine svar",
     "roadmap": "Se roadmap"
   },
+  "preview": {
+    "notice": "Kladde. Kun admins kan se denne side. Svar gemmes ikke.",
+    "submitDisabled": "Send er slået fra så længe skemaet er en kladde."
+  },
   "closed": {
     "title": "Skemaet er lukket",
     "body": "Tak til alle jer der svarede. Det der kom ud af det lander på roadmappet.",

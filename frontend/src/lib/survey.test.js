@@ -21,6 +21,7 @@ import {
   progressUnits,
   questionHelp,
   questionLabel,
+  resolveSurveyView,
   scaleFor,
   sectionForQuestion,
   sortQuestions,
@@ -329,6 +330,29 @@ test("luk-krydset på dashboard-kortet husker i 3 dage pr. skema", () => {
   assert.equal(isInviteDismissed(String(until), now), true);
   assert.equal(isInviteDismissed(String(until), until - 1), true);
   assert.equal(isInviteDismissed(String(until), until + 1), false, "efter 3 dage vises kortet igen");
+});
+
+test("et åbent skema vises som formular for alle, admin eller ej", () => {
+  assert.equal(resolveSurveyView({ status: "open", isAdmin: false }), "open");
+  assert.equal(resolveSurveyView({ status: "open", isAdmin: true }), "open");
+});
+
+test("en kladde er preview for admins og lukket for alle andre", () => {
+  assert.equal(resolveSurveyView({ status: "draft", isAdmin: true }), "preview");
+  assert.equal(resolveSurveyView({ status: "draft", isAdmin: false }), "closed");
+  // Et manglende eller utydeligt admin-svar må ALDRIG åbne kladden: RLS
+  // beskytter indholdet, men UI'et skal heller ikke antyde at det findes.
+  assert.equal(resolveSurveyView({ status: "draft" }), "closed");
+  assert.equal(resolveSurveyView({ status: "draft", isAdmin: "true" }), "closed");
+  assert.equal(resolveSurveyView({ status: "draft", isAdmin: null }), "closed");
+});
+
+test("et lukket eller ukendt skema er lukket, også for en admin", () => {
+  assert.equal(resolveSurveyView({ status: "closed", isAdmin: true }), "closed");
+  assert.equal(resolveSurveyView({ status: "closed", isAdmin: false }), "closed");
+  assert.equal(resolveSurveyView({ status: "archived", isAdmin: true }), "closed");
+  assert.equal(resolveSurveyView({ isAdmin: true }), "closed");
+  assert.equal(resolveSurveyView(), "closed");
 });
 
 test("et tomt eller ulæseligt luk-flag betyder at kortet vises", () => {

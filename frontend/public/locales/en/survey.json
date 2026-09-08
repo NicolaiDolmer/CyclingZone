@@ -54,6 +54,10 @@
     "edit": "Change my answers",
     "roadmap": "See the roadmap"
   },
+  "preview": {
+    "notice": "Draft preview. Only admins can see this page. Answers are not saved.",
+    "submitDisabled": "Send is off while the survey is a draft."
+  },
   "closed": {
     "title": "This survey has closed",
     "body": "Thank you to everyone who answered. What came out of it lands on the roadmap.",
