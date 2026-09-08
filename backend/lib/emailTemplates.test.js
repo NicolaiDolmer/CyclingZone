@@ -7,11 +7,12 @@ import {
   buildRaceDigestEmail,
   buildLoopEmail,
 } from "./emailTemplates.js";
+import { WORDMARK_FILENAME } from "./emailWordmarkAsset.js";
 
 const EM_DASH = "—";
 const UNSUB_URL = "https://cyclingzone.org/api/email/unsubscribe?token=abc.def";
 const DISCORD_URL = "https://discord.gg/ykysBrWUyC";
-const WORDMARK_URL = "https://cyclingzone.org/brand/wordmark-email.png";
+const WORDMARK_URL = `https://cyclingzone.org/brand/${WORDMARK_FILENAME}`;
 const NAVY = "#1B2A4A";
 const GOLD = "#C9A227";
 
@@ -443,10 +444,14 @@ test("the wordmark is an image with alt text and a styled fallback for blocked i
   for (const [label, t] of allTemplates()) {
     assert.ok(t.html.includes(`src="${WORDMARK_URL}"`), `${label}: hosted wordmark PNG`);
     assert.ok(t.html.includes('alt="Cycling Zone"'), `${label}: alt text`);
-    assert.match(t.html, /<img src="[^"]+wordmark-email\.png" alt="Cycling Zone" width="\d+" height="\d+"/, `${label}: sized img`);
+    assert.match(
+      t.html,
+      /<img src="[^"]+wordmark-email\.[0-9a-f]{8}\.png" alt="Cycling Zone" width="\d+" height="\d+"/,
+      `${label}: sized img on a content-hashed URL`,
+    );
     // When the image is blocked the alt text inherits the img's own font
     // styles, so it still reads as an uppercase white logotype on the band.
-    const img = t.html.match(/<img [^>]*wordmark-email\.png[^>]*>/)[0];
+    const img = t.html.match(/<img [^>]*wordmark-email\.[0-9a-f]{8}\.png[^>]*>/)[0];
     assert.ok(img.includes("text-transform:uppercase"), `${label}: fallback text uppercased`);
     assert.ok(img.includes("color:#ffffff"), `${label}: fallback text readable on navy`);
     assert.ok(img.includes("font-weight:700"), `${label}: fallback text bold`);

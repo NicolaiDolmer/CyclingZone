@@ -27,6 +27,8 @@
 // Every template ends with an unsubscribe link line, required by CAN-SPAM/
 // GDPR/CASL for every commercial/bulk email.
 
+import { WORDMARK_FILENAME } from "./emailWordmarkAsset.js";
+
 export const TEMPLATE_TYPES = Object.freeze(["welcome", "day1", "race_digest"]);
 
 const DASHBOARD_URL = "https://cyclingzone.org/dashboard";
@@ -54,7 +56,14 @@ const RADIUS = "5px";
 // visible dark box on top of the lighter band (owner report 8/9). The band's
 // own navy lives on the surrounding <td bgcolor>, not the image, so a
 // transparent mark always sits on whatever colour that td ends up painted.
-const WORDMARK_URL = "https://cyclingzone.org/brand/wordmark-email.png";
+// The filename carries the PNG's own content hash (WORDMARK_FILENAME, written
+// by the build script) because a stable URL is not enough: when 8/9's
+// transparency fix shipped, prod served the new bytes but Outlook's image
+// proxy kept showing the old plate — /brand/* is sent with a week-long
+// Cache-Control. A hashed name makes every version its own immutable URL, so
+// a new mark can never be masked by a cached old one, and mails already in an
+// inbox keep resolving the image they were sent with.
+const WORDMARK_URL = `https://cyclingzone.org/brand/${WORDMARK_FILENAME}`;
 const WORDMARK_WIDTH = 92;
 const WORDMARK_HEIGHT = 22;
 
