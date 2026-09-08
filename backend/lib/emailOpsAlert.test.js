@@ -76,12 +76,12 @@ test("postOpsEmbed styrer @mention pr. kald", async () => {
   };
   const payload = { embeds: [{ title: "test" }] };
 
-  process.env.DISCORD_OPS_MENTION = "123456789012345678";
+  process.env.DISCORD_OPS_MENTION = "<@42>";
   await postOpsEmbed({ payload, mention: true, ...wiring });
   await postOpsEmbed({ payload, mention: false, ...wiring });
   delete process.env.DISCORD_OPS_MENTION;
 
-  assert.equal(posts[0].content, "<@123456789012345678>");
+  assert.equal(posts[0].content, "<@42>");
   assert.equal(posts[1].content, undefined);
 });
 
