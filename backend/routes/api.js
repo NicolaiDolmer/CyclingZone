@@ -14337,7 +14337,10 @@ router.get("/forum/posts", requireAuth, async (req, res) => {
 // ingen ny eksponering. Klienten bruger listen to steder: autocomplete i
 // editoren og den klikbare rendering af @navn i teksten. Den er IKKE kilden til
 // hvem der får en notifikation — det afgør serveren selv ved oprettelsen.
-router.get("/forum/mentionable-managers", requireAuth, async (req, res) => {
+// presencePulseLimiter (120/60 s): kaldes af autocomplete mens man skriver et
+// @-tag, altsaa billigt og hyppigt — samme profil som limiteren er bygget til
+// (#530-daekning for nye auth-ruter, samme moenster som #5013).
+router.get("/forum/mentionable-managers", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const managers = await loadMentionableManagers({ supabase });
     res.json({ managers: managers.map((m) => ({ name: m.name, team_id: m.teamId })) });
