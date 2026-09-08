@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { getAuthedUser } from "./getAuthedUser.js";
 import { isSquadDrafted } from "./teamDrafted.js";
 import { getSessionId } from "./sessionId.js";
+import { capturePosthogEvent } from "./posthogClient.js";
 
 // Player-events baseline (#137). Fire-and-forget instrumentation der respekterer
 // analytics-consent (samme gate som Clarity). Skriver til public.player_events
@@ -146,10 +147,20 @@ export const KNOWN_EVENTS = Object.freeze([
   "nps_dismissed",
 ]);
 
+// #4321: spejl eventet til PostHog. Postgres-skrivningen nedenfor er og bliver
+// sandheden (fair-play-detektion + Detector E læser player_events); PostHog er
+// kopien der giver funnels/retention uden håndbygget SQL. capturePosthogEvent
+// er no-op indtil SDK'et er startet (kræver PROD + analytics-samtykke) og kan
+// hverken kaste eller blokere — spejlingen må aldrig påvirke instrumenteringen.
+function mirrorToPosthog(name, data) {
+  capturePosthogEvent(name, data || {});
+}
+
 async function _logEvent(name, data) {
   if (!hasAnalyticsConsent()) return;
   const identity = await ensureIdentity();
   if (!identity?.userId) return;
+  mirrorToPosthog(name, data);
   await supabase.from("player_events").insert({
     team_id: identity.teamId,
     user_id: identity.userId,
@@ -196,6 +207,7 @@ async function _logFirstEvent(name, data) {
   } catch {
     // localStorage utilgængelig — fortsæt og fyr eventet (hellere over- end under-tælle).
   }
+  mirrorToPosthog(name, data);
   await supabase.from("player_events").insert({
     team_id: identity.teamId,
     user_id: identity.userId,
@@ -254,6 +266,7 @@ async function _flushPendingSignup() {
   if (!hasAnalyticsConsent()) return;
   const identity = await ensureIdentity();
   if (!identity?.userId) return;
+  mirrorToPosthog("signup", {});
   await supabase.from("player_events").insert({
     team_id: identity.teamId,
     user_id: identity.userId,

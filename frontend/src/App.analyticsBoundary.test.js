@@ -30,6 +30,7 @@ const ANALYTICS_COMPONENTS = [
   "WebVitalsIntegration",
   "VercelAnalyticsIntegration",
   "GaIntegration",
+  "PosthogIntegration",
   "TrafficBeacon",
 ];
 
