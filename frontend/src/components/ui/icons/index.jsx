@@ -100,6 +100,19 @@ export function BellIcon(props) {
   );
 }
 
+// #5013: "kategorien er slaaet fra" — samme klokke som BellIcon med en
+// diagonal streg over. Stroke-only, samme geometri, saa de to tilstande
+// laeser som ét ikon der skiftes, ikke to forskellige ikoner.
+export function BellOffIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 16l1-2V9a5 5 0 0 1 10 0v5l1 2z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+      <path d="M4 4l16 16" />
+    </IconBase>
+  );
+}
+
 export function ChevronUpIcon(props) {
   return (
     <IconBase {...props}>
@@ -192,6 +205,17 @@ export function TrashIcon(props) {
       <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
       <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
       <path d="M10 11v6M14 11v6" />
+    </IconBase>
+  );
+}
+
+// #4819 — "Add image" i forum-editoren. Stroke-ikon, aldrig emoji (TASTE).
+export function ImageIcon(props) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="8.5" cy="10" r="1.5" />
+      <path d="M21 16l-5-5-4.5 4.5-2-2L3 18" />
     </IconBase>
   );
 }
@@ -601,6 +625,26 @@ export function PauseIcon(props) {
   return (
     <IconBase {...props}>
       <path d="M8 5v14M16 5v14" />
+    </IconBase>
+  );
+}
+
+// #3200 (beskeder mellem managers): taleboblen paa "Message"-knappen
+// (managerprofil, forumnavn, "Skriv til modparten") og paa Beskeder-fanen.
+// Stroke-ikon paa samme IconBase som resten — aldrig emoji (TASTE).
+export function MessageIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 5h16v11H9l-5 4V5z" strokeLinejoin="round" />
+    </IconBase>
+  );
+}
+
+// #3200: tre-prik-menuen i traad-hovedet (Bloker / Anmeld / Skjul).
+export function MoreIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M5 12h.01M12 12h.01M19 12h.01" strokeLinecap="round" />
     </IconBase>
   );
 }

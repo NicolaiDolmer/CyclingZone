@@ -4,6 +4,7 @@
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
 import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
+import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";
 import {
   TEST_USER,
   TEST_TEAM,
@@ -543,11 +544,21 @@ export function managerProfile(teamId) {
       last_seen: isRival ? "2026-07-24T19:00:00.000Z" : "2026-07-25T20:55:00.000Z",
       login_streak: isRival ? 1 : 9,
       is_online: !isRival,
+      // #5012: to grene af Discord-kontaktlinjen demonstreres i preview/e2e
+      // uden ekstra fixture-hold — TEST_TEAM har et gyldigt discord_id (samme
+      // snowflake som /api/me/discord-status bruger, gitleaks:allow) og viser
+      // derfor et direkte discord.com/users/-link; RIVAL_TEAM har KUN det
+      // offentlige brugernavn og viser dermed kopi-til-udklipsholder-grenen.
+      discord_handle: isRival ? "peloton_pete" : "nicolai.dolmer",
+      discord_id: isRival ? null : "123456789012345678", // gitleaks:allow
     },
     riders: RIDERS.filter((rider) => rider.team_id === team.id),
     season_history: SEED_TEAM_SEASON_STANDINGS.filter((row) => row.team_id === team.id),
     achievements: seedManagerAchievements({ unlocked: !isRival }),
     transfer_activity: isRival ? [] : SEED_MANAGER_TRANSFERS,
+    // #5000: antal forumindlaeg (traade + svar). Rival-holdet har et hoejere
+    // tal end e2e-kontoen, saa preview viser begge stoerrelser af tallet.
+    forum_stats: isRival ? { posts: 6, replies: 23, total: 29 } : { posts: 2, replies: 9, total: 11 },
   };
 }
 
@@ -563,6 +574,31 @@ const FORUM_AUTHOR_E2E = { username: "e2e", team_name: "E2E Racing", team_id: TE
 // den umarkerede tilstand), post-2 og post-4 er ulæst (prik + fed titel på
 // preview/e2e), så unread-status-mocken nedenfor har noget ægte at svare på.
 const FORUM_POSTS = [
+  // #4818: den officielle roadmap-kategori — ejer-opslag, alle må svare. Med i
+  // seedet så preview/e2e kan vise BÅDE listen med kategorien øverst og en
+  // tråd i den (ellers ville fanen altid stå tom i preview).
+  {
+    id: "forum-roadmap-1",
+    seq: 5,
+    // Traaden skal vaere aeldre end sit eget seneste svar (07:45), ellers viser
+    // PostRow opslagets egen dato i stedet for svaret — en umulig raekkefoelge.
+    created_at: "2026-08-05T20:00:00Z",
+    category: "roadmap",
+    title: "What I am building next",
+    // Bevidst uden konkrete loefter: seedet vises i preview og paa
+    // PR-screenshots, og en mock maa ikke se ud som et roadmap-tilsagn om
+    // features der ikke er besluttet.
+    excerpt: "This is where I post what I am working on. Ask me anything in here.",
+    body: "This is where I post what I am working on. Ask me anything in here.",
+    is_pinned: false,
+    reply_count: 3,
+    last_reply_at: "2026-08-06T07:45:00Z",
+    // #5000: samme svar som forumPostDetail returnerer nederst i traaden (r3).
+    last_reply_author: FORUM_AUTHOR_E2E,
+    has_poll: false,
+    is_unread: false,
+    author: FORUM_AUTHOR_OWNER,
+  },
   {
     id: "forum-pinned-1",
     seq: 4,
@@ -573,7 +609,13 @@ const FORUM_POSTS = [
     body: "Vote below. I read everything in here, so add a reply if your favourite is missing.",
     is_pinned: true,
     reply_count: 2,
-    last_reply_at: "2026-08-06T07:20:00Z",
+    // #5000: seneste svars forfatter/tid skal beskrive det SAMME svar som
+    // forumPostDetail returnerer nederst i traaden (r3, E2E kl. 07:45) —
+    // ellers modellerer preview en liste/detalje-tilstand der ikke kan
+    // opstaa i prod. Gaelder alle tre traade med svar herunder.
+    last_reply_at: "2026-08-06T07:45:00Z",
+    view_count: 148,
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: true,
     is_unread: false,
     author: FORUM_AUTHOR_OWNER,
@@ -588,10 +630,19 @@ const FORUM_POSTS = [
     body: "My squad is thin on climbers, but the auction prices this week are brutal. How are you all planning the last week of the transfer window?",
     is_pinned: false,
     reply_count: 3,
-    last_reply_at: "2026-08-06T06:10:00Z",
+    last_reply_at: "2026-08-06T07:45:00Z",
+    view_count: 62,
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: false,
     is_unread: true,
     author: FORUM_AUTHOR_PETE,
+    // #4819: opslag med det fulde loft paa 3 billeder. Stierne er relative
+    // til bucketen forum-images — preview/e2e router selve filerne lokalt.
+    images: [
+      { path: "preview-user/forum-1.png", width: 1200, height: 800 },
+      { path: "preview-user/forum-2.png", width: 1200, height: 800 },
+      { path: "preview-user/forum-3.png", width: 1200, height: 800 },
+    ],
   },
   {
     id: "forum-post-3",
@@ -603,7 +654,9 @@ const FORUM_POSTS = [
     body: "It would help new managers learn if we could see what tactics the podium teams used once a race is finished.",
     is_pinned: false,
     reply_count: 1,
-    last_reply_at: "2026-08-05T08:00:00Z",
+    last_reply_at: "2026-08-06T07:45:00Z",
+    view_count: 9,
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: false,
     is_unread: false,
     author: FORUM_AUTHOR_SOFIE,
@@ -619,10 +672,25 @@ const FORUM_POSTS = [
     is_pinned: false,
     reply_count: 0,
     last_reply_at: null,
+    // Traad uden svar: last_reply_author er null, og listen viser i stedet
+    // opslagets egen dato — den gren skal ogsaa kunne ses paa preview.
+    view_count: 4,
+    last_reply_author: null,
     has_poll: false,
     is_unread: true,
     author: FORUM_AUTHOR_E2E,
   },
+];
+
+// #5011: de navne der kan @-tagges (GET /api/forum/mentionable-managers).
+// Samme shape som backend serverer ({ name, team_id }) og bevidst de SAMME
+// managere som forum-seedets forfattere — ejeren (dolmer) har intet hold og
+// staar derfor ikke paa listen, praecis som i prod hvor ruten kun returnerer
+// menneskestyrede hold.
+const MENTIONABLE_MANAGERS = [
+  { name: FORUM_AUTHOR_E2E.username, team_id: FORUM_AUTHOR_E2E.team_id },
+  { name: FORUM_AUTHOR_SOFIE.username, team_id: FORUM_AUTHOR_SOFIE.team_id },
+  { name: FORUM_AUTHOR_PETE.username, team_id: FORUM_AUTHOR_PETE.team_id },
 ];
 
 // #3451: forum-pinned-1's "sidst læst FØR dette besøg" — sat mellem r2
@@ -631,6 +699,48 @@ const FORUM_POSTS = [
 // separat seed-tråd. De andre tråde har ingen gemt læse-række (null =
 // første besøg, uændret adfærd — samme default som en frisk konto).
 const FORUM_VIEWER_LAST_READ_AT = { "forum-pinned-1": "2026-08-06T07:30:00Z" };
+
+// #5013: abonnement pr. kategori i preview. Modul-lokal tilstand, saa PUT'en
+// faktisk flytter noget og GET'en (samt de afledte is_unread/has_unread
+// nedenfor) svarer paa det SAMME valg — ellers modellerer preview en tilstand
+// der ikke kan opstaa i prod. Opt-out: tomt saet = foelger alle kategorier.
+// Kataloget kommer fra #4818's fælles modul, aldrig en kopi her: preview skal
+// vise praecis de kategorier prod kender (roadmap inkl.).
+const FORUM_CATEGORY_KEYS = FORUM_CATEGORY_ORDER;
+const forumMutedCategories = new Set();
+
+export function forumCategoryMutes() {
+  return {
+    categories: FORUM_CATEGORY_KEYS.map((category) => ({
+      category,
+      muted: forumMutedCategories.has(category),
+    })),
+  };
+}
+
+/**
+ * Nulstil til "foelger alle kategorier". Tilstanden er modul-lokal og deles
+ * derfor af alle tests i den samme Node-proces — e2e-fixturen kalder denne ved
+ * hver page-opsaetning, saa én tests klik aldrig kan laekke ind i den naeste.
+ */
+export function resetForumCategoryMutes() {
+  forumMutedCategories.clear();
+}
+
+export function setForumCategoryMuteMock(category, muted) {
+  if (!FORUM_CATEGORY_KEYS.includes(category)) return { ok: false };
+  if (muted) forumMutedCategories.add(category);
+  else forumMutedCategories.delete(category);
+  return { ok: true, category, muted: Boolean(muted) };
+}
+
+/** Ulaest kun i kategorier spilleren stadig foelger — samme regel som forum.js. */
+function forumPostsWithMutes() {
+  return FORUM_POSTS.map((p) => ({
+    ...p,
+    is_unread: p.is_unread && !forumMutedCategories.has(p.category),
+  }));
+}
 
 export function forumPostDetail(postId) {
   const post = FORUM_POSTS.find((p) => p.id === postId) || FORUM_POSTS[0];
@@ -650,12 +760,18 @@ export function forumPostDetail(postId) {
         support_count: 6,
         supported_by_me: true,
         quoted: null,
+        // #4819: svar med ET billede — den anden ende af skalaen fra
+        // opslagets tre.
+        images: [{ path: "preview-user/forum-1.png", width: 1200, height: 800 }],
       },
       {
         id: `${post.id}-r2`,
         seq: 2,
         created_at: "2026-08-06T07:20:00Z",
-        body: "Agreed, and thanks for asking us directly in the game instead of only on Discord.",
+        // #5011: @-tag i et svar — navnet rendres klikbart (MentionText) og er
+        // det samme navn som MENTIONABLE_MANAGERS nedenfor serverer, saa
+        // preview viser den ÆGTE kæde og ikke en hardkodet blaa streng.
+        body: "Good shout @peloton_pete. Thanks for asking us directly in the game instead of only on Discord.",
         author: FORUM_AUTHOR_SOFIE,
         is_mine: false,
         support_count: 2,
@@ -764,14 +880,21 @@ export function apiResponse(pathname, search = "") {
   // nedenfor, så preview/e2e viser den ÆGTE afledte tilstand i stedet for en
   // uafhængig hardkodet boolean der kan drifte fra listens is_unread-felter.
   if (pathname.endsWith("/api/forum/unread-status")) {
-    return { has_unread: FORUM_POSTS.some((p) => p.is_unread) };
+    // #5013: daempede kategorier taeller ikke med i nav-prikken.
+    return { has_unread: forumPostsWithMutes().some((p) => p.is_unread) };
+  }
+  // #5013: spillerens abonnement pr. kategori.
+  if (pathname.endsWith("/api/forum/category-mutes")) return forumCategoryMutes();
+  // #5011: navnene autocomplete og den klikbare rendering slår op i.
+  if (pathname.endsWith("/api/forum/mentionable-managers")) {
+    return { managers: MENTIONABLE_MANAGERS };
   }
   // #3199: forum-liste + tråd-detalje.
   const forumPostMatch = pathname.match(/\/api\/forum\/posts\/([^/]+)$/);
   if (forumPostMatch) return forumPostDetail(decodeURIComponent(forumPostMatch[1]));
   if (pathname.endsWith("/api/forum/posts")) {
     const category = new URLSearchParams(search).get("category");
-    const visible = FORUM_POSTS.filter((p) => !category || p.category === category);
+    const visible = forumPostsWithMutes().filter((p) => !category || p.category === category);
     return {
       pinned: visible.filter((p) => p.is_pinned),
       items: visible.filter((p) => !p.is_pinned),
@@ -1122,6 +1245,15 @@ export function apiResponse(pathname, search = "") {
         ],
       },
     };
+  }
+
+  // #3200 (DM v1): Beskeder-fanen skal kunne aabnes paa preview uden en
+  // backend. Tom liste er den rigtige default her — de seedede samtaler bor i
+  // e2e-fixturens installMessagesMocks, saa preview ikke faar paahittet post
+  // fra managere der ikke findes.
+  if (pathname.endsWith("/api/messages/conversations")) return { conversations: [] };
+  if (pathname.endsWith("/api/messages/unread-count")) {
+    return { unreadConversations: 0, unreadMessages: 0, hasUnread: false };
   }
 
   if (pathname.endsWith("/api/inbox/pending")) {

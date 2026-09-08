@@ -25,7 +25,11 @@ import { SQUAD_BELOW_MINIMUM_TYPE } from "./squadBelowMinimumCheck.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATION_PATH = join(
   __dirname,
-  "../../database/2026-08-25-3517-forum-reply-notification-type.sql",
+  // Kanonisk = den SENEST applied constraint-migration. #5011 (forum_mention)
+  // og #3200 (dm_message) forgrenede begge fra 2026-08-25-3517; #5011 landede
+  // foerst paa main, saa DM-migrationen nedenfor er unionen af begge og den
+  // sidste der koeres mod prod.
+  "../../database/2026-09-08-3200-dm-notification-type.sql",
 );
 const BACKEND_ROOT = join(__dirname, "..");
 

@@ -78,6 +78,13 @@
   "discord": {
     "title": "Discord Integration",
     "subtitle": "Modtag notifikationer direkte i Discord",
+    "handleLabel": "Offentligt Discord-brugernavn",
+    "handlePlaceholder": "f.eks. nicolai.dolmer",
+    "handleHelp": "Vises på din offentlige profil, så andre managere kan finde dig på Discord. Små bogstaver, tal, punktum og underscore, 2-32 tegn. Lad feltet være tomt for at skjule det.",
+    "handleSave": "Gem brugernavn",
+    "handleSaved": "Discord-brugernavn gemt!",
+    "handleCleared": "Discord-brugernavn fjernet",
+    "handleError": "Skal være 2-32 tegn: kun små bogstaver, tal, punktum og underscore (dit rigtige Discord-brugernavn, ikke et kaldenavn).",
     "intro": "Hvis du tilknytter dit Discord bruger-ID, vil du blive tagget i Discord når du overbydes på auktioner, vinder auktioner, modtager transfer-tilbud m.m.",
     "idLabel": "Dit Discord Bruger-ID",
     "idPlaceholder": "f.eks. 123456789012345678",
@@ -118,12 +125,36 @@
         "transfers": "Transfers",
         "club": "Klub"
       },
-      "auction_outbid": { "label": "Overbudt", "desc": "Nogen byder over dig, inkl. autobud." },
-      "auction_won": { "label": "Auktion vundet", "desc": "Du vinder en rytter du bød på." },
-      "watchlist_rider_auction": { "label": "Ønskeliste-rytter på auktion", "desc": "En rytter på din ønskeliste sættes til salg." },
-      "transfer_offer": { "label": "Transfertilbud modtaget", "desc": "En anden manager byder på en af dine ryttere." },
-      "transfer_response": { "label": "Svar på dit tilbud", "desc": "Accepteret, afvist eller modbud." },
-      "board_update": { "label": "Bestyrelsesopdatering", "desc": "Din bestyrelse reagerer på resultater eller økonomi." }
+      "auction_outbid": {
+        "label": "Overbudt",
+        "desc": "Nogen byder over dig, inkl. autobud."
+      },
+      "auction_won": {
+        "label": "Auktion vundet",
+        "desc": "Du vinder en rytter du bød på."
+      },
+      "watchlist_rider_auction": {
+        "label": "Ønskeliste-rytter på auktion",
+        "desc": "En rytter på din ønskeliste sættes til salg."
+      },
+      "transfer_offer": {
+        "label": "Transfertilbud modtaget",
+        "desc": "En anden manager byder på en af dine ryttere."
+      },
+      "transfer_response": {
+        "label": "Svar på dit tilbud",
+        "desc": "Accepteret, afvist eller modbud."
+      },
+      "board_update": {
+        "label": "Bestyrelsesopdatering",
+        "desc": "Din bestyrelse reagerer på resultater eller økonomi."
+      }
     }
+  },
+  "forumCategories": {
+    "title": "Forumkategorier",
+    "hint": "Slå en kategori fra, så holder den op med at sige til, når der er noget nyt. Svar på dine egne tråde når dig stadig.",
+    "summary": "Du følger {count} af {total} kategorier.",
+    "saveFailed": "Dit valg kunne ikke gemmes. Prøv igen."
   }
 }

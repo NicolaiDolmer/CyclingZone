@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import Avatar from "../ui/Avatar.jsx";
 import FounderMark from "../FounderMark.jsx";
+import MessageManagerButton from "../messages/MessageManagerButton.jsx"; // #3200
 import {
   formatForumDate,
   authorDisplayName,
@@ -74,6 +75,14 @@ export default function ForumAuthorIdentity({ author, body, createdAt, language,
         )}
         {/* #4649: Founder-maerke ved forfatterlinjen. */}
         <FounderMark teamId={teamId} />
+        {/* #3200: den ANDEN indgang ejeren bad om — et forumnavn skal kunne
+            skrives til. Bevidst ét diskret link i meta-raekken og ikke en
+            knap: forfatterlinjen er metadata, ikke et handlingsomraade, og
+            den skal stadig kunne staa paa 412px. Komponenten skjuler sig selv
+            paa egne indlaeg og naar der ikke er en manager bag holdet. */}
+        {teamId && (
+          <MessageManagerButton teamId={teamId} managerName={name} variant="link" />
+        )}
         {/* Separator + dato holdes sammen i ét nowrap-element: paa 412px brød
             linjen ellers mellem prikken og datoen. */}
         <span className="whitespace-nowrap tabular-nums">

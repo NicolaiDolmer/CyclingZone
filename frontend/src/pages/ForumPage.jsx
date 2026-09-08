@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
@@ -7,11 +7,30 @@ import {
   Button, PageHeader, Section, SectionStack, SectionHeader, EmptyState, ErrorState,
   SkeletonLines, Modal, Field, Input, Textarea,
 } from "../components/ui";
-import { InboxIcon } from "../components/ui/icons/index.jsx";
+import { InboxIcon, FlagIcon, BellIcon, BellOffIcon } from "../components/ui/icons/index.jsx";
+// #5013: abonnement pr. kategori — samme normalisering som indstillingerne.
+import {
+  normalizeCategoryMutes, applyCategoryMute, isCategoryMuted, isSubscribableCategory,
+} from "../lib/forumCategoryMutes.js";
 import FounderMark from "../components/FounderMark.jsx";
+// #4819: billeder i indlaegget. Uploades FOER submit, se komponentens hoved.
+import ForumImagePicker from "../components/forum/ForumImagePicker.jsx";
 // #4751: datoformatteren bor nu i det delte forum-modul (en side skal ikke
 // vaere kilde for en komponent — ForumAuthorIdentity bruger den samme).
-import { formatForumDate } from "../components/forum/forumIdentity.js";
+import { formatForumDate, authorDisplayName } from "../components/forum/forumIdentity.js";
+// #5011: navneforslag mens man skriver "@..." i det nye opslags brødtekst.
+import MentionAutocomplete from "../components/forum/MentionAutocomplete.jsx";
+// #5000: samme relativ-tid-formatter som dashboardets ForumHighlightsCard —
+// "seneste svar" skal laese ens de to steder det staar.
+import { formatRelativeTime } from "../lib/intl.js";
+// #4818: kategori-raekkefoelge + skrive-rettigheder. Reglerne bor i modulet,
+// ikke her, saa de kan koeres under `node --test` (forumCategories.test.js).
+import {
+  FORUM_CATEGORY_ORDER,
+  isAdminOnlyCategory,
+  postableForumCategories,
+  showsNewThreadButton,
+} from "../components/forum/forumCategories.js";
 
 // #3199 — Forum v1 (plan låst 6/8): to kategorier (General · Feedback & ideas),
 // opslag + svar-tråde, ejer-opslag kan pinnes og bære afstemninger. T1 standard
@@ -21,17 +40,21 @@ import { formatForumDate } from "../components/forum/forumIdentity.js";
 // #4492 (ejer-beslutning 4/9): fire nye kategorier (questions, tactics,
 // transfers, off_topic) + en "archive"-fane. Archive er IKKE en postable
 // kategori — den er kun et filter (backend beregner den ud fra 60 dages
-// inaktivitet), så POST_CATEGORIES (compose-modalens vælger) og FILTER_TABS
-// (oversigtens fanerække) er bevidst to forskellige lister.
+// inaktivitet), så compose-modalens vælger og FILTER_TABS (oversigtens
+// fanerække) er bevidst to forskellige lister.
+//
+// #4818 (ejer-direktiv 4/9 + afklaring 8/9): "roadmap" ligger øverst i
+// fanerækken og er den første kategori med en skrive-rettighed — kun ejeren
+// opretter tråde der, alle svarer. Fladen SKJULER bare knappen og siger
+// hvorfor; den rigtige gate sidder i backend (403) og i databasen (trigger).
 //
 // Data læses via backend-API (service-role bag requireAuth) — RLS på
 // forum-tabellerne tillader ikke klient-queries til andet end Realtime-events,
 // som her kun bruges som refetch-trigger (useRealtimeRefetch-mønstret).
 
 const API = import.meta.env.VITE_API_URL;
-const POST_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"];
 const ARCHIVE_FILTER = "archive";
-const FILTER_TABS = [...POST_CATEGORIES, ARCHIVE_FILTER];
+const FILTER_TABS = [...FORUM_CATEGORY_ORDER, ARCHIVE_FILTER];
 const TITLE_MAX = 120;
 const BODY_MAX = 4000;
 // Modul-konstant: en inline-array ville re-subscribe Realtime-kanalen hver render.
@@ -59,45 +82,83 @@ function PostRow({ post, t, language }) {
             {post.title}
           </span>
         </span>
-        <span className="shrink-0 font-data text-2xs tabular-nums text-cz-3">
+        {/* #5000: svar- og visningstal staar samme sted — begge er "hvor meget
+            liv er der i traaden", og tabular figures holder kolonnen i ro. */}
+        <span className="shrink-0 whitespace-nowrap font-data text-2xs tabular-nums text-cz-3">
           {t("list.replies", { count: post.reply_count })}
+          {" · "}
+          {t("stats.views", { count: post.view_count ?? 0 })}
         </span>
       </div>
       <div className="mt-0.5 flex items-center gap-2 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
         {post.is_pinned && <span className="text-cz-accent-t">{t("post.pinnedTag")}</span>}
         {post.has_poll && <span className="text-cz-accent-t">{t("list.poll")}</span>}
         <span className="truncate">
-          {t("list.by", { name: post.author?.username || post.author?.team_name || "?" })}
+          {t("list.by", { name: authorDisplayName(post.author) })}
         </span>
         {/* #4649: Founder-mærke ved forfatterlinjen. */}
         <FounderMark teamId={post.author?.team_id} />
         <span>·</span>
         <span>{t(`categories.${post.category}`)}</span>
-        <span>·</span>
-        <span className="tabular-nums">{formatForumDate(post.created_at, language)}</span>
+      </div>
+      {/* #5000 (ejer-bestilling 7/9): tiden staar paa sin EGEN linje, fordi
+          seneste svars forfatter + relativ tid ikke kan vaere paa metalinjen
+          uden at klemme forfatternavnet ned til "BY ..." paa 390px (TASTE P10
+          — maalt paa screenshot, ikke gaettet). Har traaden svar, er trådens
+          oprettelses-dato desuden ikke laengere den interessante tid: de to
+          udelukker hinanden med vilje, saa raekken aldrig baerer to datoer. */}
+      <div className="mt-0.5 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
+        {post.last_reply_author ? (
+          <span className="block truncate">
+            {t("stats.lastReply", {
+              name: authorDisplayName(post.last_reply_author),
+              time: formatRelativeTime(post.last_reply_at || post.created_at),
+            })}
+          </span>
+        ) : (
+          <span className="tabular-nums">{formatForumDate(post.created_at, language)}</span>
+        )}
       </div>
     </Link>
   );
 }
 
-function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, tError }) {
-  const [category, setCategory] = useState(defaultCategory || "general");
+function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCategory, t, tError }) {
+  // #4818: vælgeren viser kun kategorier brugeren faktisk må oprette i — en
+  // synlig-men-afvist knap er et dødt klik. useMemo fordi listen indgår i
+  // effektens deps; en ny array pr. render ville køre effekten hver gang.
+  const choices = useMemo(() => postableForumCategories({ isAdmin }), [isAdmin]);
+  const [category, setCategory] = useState(choices[0]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [images, setImages] = useState([]);
+  // Submit gates paa dette: et upload der stadig koerer ville ellers blive
+  // sendt afsted som "ingen billeder".
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [pollText, setPollText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (open) setCategory(POST_CATEGORIES.includes(defaultCategory) ? defaultCategory : "general");
-  }, [open, defaultCategory]);
+    // Åbnes modalen fra "All", arkivet eller en fane brugeren ikke må skrive
+    // i, falder valget tilbage til den første lovlige kategori.
+    if (open) setCategory(choices.includes(defaultCategory) ? defaultCategory : choices[0]);
+  }, [open, defaultCategory, choices]);
 
   function handleClose() {
-    if (submitting) return;
+    // Ogsaa `uploadingImage`: lukkede man mens et upload koerte, ryddede
+    // timeouten nedenfor `images`, hvorefter pickerens `onChange(next)` efter
+    // sit await skrev billedet TILBAGE i den stadig monterede modal — og et
+    // senere opslag fik en vedhaeftning brugeren havde fortrudt. Modal'ens
+    // onClose er den her, saa X, backdrop og Escape er daekket af samme vagt.
+    if (submitting || uploadingImage) return;
     onClose?.();
     setTimeout(() => {
       setTitle("");
       setBody("");
+      // Billederne er allerede uploadet; naar modalen lukkes uden at sende,
+      // bliver de foraeldreloese og ryddes af sweep-scriptet.
+      setImages([]);
       setPollText("");
       setError(null);
     }, 200);
@@ -124,6 +185,7 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
           category,
           title: title.trim(),
           body: body.trim(),
+          images,
           ...(isAdmin && pollOptions.length ? { poll_options: pollOptions } : {}),
         }),
       });
@@ -155,7 +217,7 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
               det gamle inline-flex+overflow-hidden segment, der ville
               klippe knapper af i stedet for at brydes om. */}
           <div role="group" aria-label={t("compose.categoryLabel")} className="flex flex-wrap gap-1.5">
-            {POST_CATEGORIES.map((key) => (
+            {choices.map((key) => (
               <button
                 key={key}
                 type="button"
@@ -194,6 +256,22 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
             placeholder={t("compose.bodyPlaceholder")}
           />
         </Field>
+        {/* #5011: hører til body-feltet ovenfor (monteres via textareaId, panelet
+            er `fixed`), derfor lige efter det og før billedvælgeren. */}
+        <MentionAutocomplete textareaId="forum-compose-body" value={body} onChange={setBody} t={t} />
+        <Field label={t("images.label")}>
+          <ForumImagePicker
+            images={images}
+            onChange={setImages}
+            onBusyChange={setUploadingImage}
+            // #4819 review: uden userId dropper pickeren filen tavst (den
+            // nulstiller inputtet og returnerer), saa knappen er slaaet fra
+            // indtil supabase.auth.getUser() er landet.
+            disabled={submitting || !userId}
+            userId={userId}
+            t={t}
+          />
+        </Field>
         {isAdmin && (
           <Field label={t("compose.pollLabel")} htmlFor="forum-compose-poll" helper={t("compose.pollHelp")}>
             <Textarea
@@ -207,10 +285,10 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
         )}
         {error && <p className="text-xs text-cz-danger">{error}</p>}
         <div className="flex items-center justify-end gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={submitting}>
+          <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={submitting || uploadingImage}>
             {t("compose.cancel")}
           </Button>
-          <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting}>
+          <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting || uploadingImage}>
             {t("compose.submit")}
           </Button>
         </div>
@@ -229,6 +307,9 @@ export default function ForumPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // #4819: billed-stien ER ejerskabet (`<user_id>/...`), saa vaelgeren skal
+  // kende brugerens id for at kunne uploade i sin egen mappe.
+  const [userId, setUserId] = useState(null);
   // #3451: "Markér alle som læst" — sekundær knap (gold er reserveret til
   // "New post"), samme markingAll/loading-mønster som NotificationsPage.
   const [markingAll, setMarkingAll] = useState(false);
@@ -244,6 +325,7 @@ export default function ForumPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+      setUserId(user.id);
       const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
       if (!cancelled) setIsAdmin(userData?.role === "admin");
     })();
@@ -291,6 +373,34 @@ export default function ForumPage() {
   }, []);
   useEffect(() => { refreshUnread(); }, [refreshUnread]);
 
+  // #5013: abonnement pr. kategori. Hentes ÉN gang (ikke pr. fane-skift) —
+  // valget er globalt for brugeren, ikke en egenskab ved den viste liste.
+  const [categoryMutes, setCategoryMutes] = useState(() => normalizeCategoryMutes(null));
+  const [savingMute, setSavingMute] = useState(false);
+  const [muteError, setMuteError] = useState(null);
+  // Har spilleren allerede rørt en kategori? Så er hans valg nyere end det
+  // svar der er på vej, og et langsomt GET må ikke rulle det tilbage: knappen
+  // ville stå på "Følger" mens serveren havde gemt det modsatte (CodeRabbit).
+  const mutesTouchedRef = useRef(false);
+  // Den fane man står på LIGE NU. Læses efter et await, hvor `category` fra
+  // render-lukningen kan være forældet.
+  const activeCategoryRef = useRef(category);
+  useEffect(() => { activeCategoryRef.current = category; }, [category]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const headers = await authHeaders();
+      if (!headers || !API) return;
+      try {
+        const res = await fetch(`${API}/api/forum/category-mutes`, { headers });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        if (!cancelled && !mutesTouchedRef.current) setCategoryMutes(normalizeCategoryMutes(data));
+      } catch { /* ignore — listen falder til "følger alt", aldrig til dæmpet */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const refetch = useCallback(() => { load(null); refreshUnread(); }, [load, refreshUnread]);
   useRealtimeRefetch("forum-live", FORUM_TABLES, refetch);
 
@@ -333,11 +443,62 @@ export default function ForumPage() {
     }
   }
 
+  // #5013: til/fra for den kategori man STÅR i. `muted: true` = spilleren
+  // følger ikke længere kategorien. Optimistisk: tilstanden skifter med det
+  // samme og rulles tilbage hvis kaldet fejler, så knappen aldrig står og
+  // lyver om et valg der ikke blev gemt.
+  async function handleToggleCategoryMute(nextMuted) {
+    if (savingMute || !isSubscribableCategory(category)) return;
+    // Kategorien FANGES her: skifter spilleren fane mens PUT'en er undervejs,
+    // hører både kaldet og den efterfølgende reload stadig til den kategori
+    // han faktisk klikkede på.
+    const target = category;
+    const previous = categoryMutes;
+    mutesTouchedRef.current = true;
+    setSavingMute(true);
+    setMuteError(null);
+    setCategoryMutes(applyCategoryMute(previous, target, nextMuted));
+    try {
+      const headers = await authHeaders();
+      if (!headers || !API) throw new Error("no session");
+      const res = await fetch(`${API}/api/forum/category-mutes`, {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ category: target, muted: nextMuted }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Ulæst-markeringerne og nav-prikken afledes af valget på backend —
+      // hent dem igen, i stedet for at gætte lokalt hvilke prikker der falder.
+      // Trådlisten genindlæses kun hvis man stadig står på samme fane: `load`
+      // er bundet til kategorien fra dette render og ville ellers skrive den
+      // gamle kategoris tråde ind over den nye fane (CodeRabbit).
+      await (activeCategoryRef.current === target
+        ? Promise.all([load(null), refreshUnread()])
+        : refreshUnread());
+      window.dispatchEvent(new Event("cz:forum-thread-read"));
+    } catch {
+      setCategoryMutes(previous);
+      setMuteError(t("subscription.saveFailed"));
+    } finally {
+      setSavingMute(false);
+    }
+  }
+
   const language = i18n.language;
   const isArchiveTab = category === ARCHIVE_FILTER;
+  const showSubscriptionControl = isSubscribableCategory(category);
+  const currentCategoryMuted = isCategoryMuted(categoryMutes, category);
+  // #4818: den officielle kategori bærer et flag-ikon i fanen (stroke, aldrig
+  // emoji) og et "Official"-meta-label over listen — samme signal begge steder.
+  const isAdminOnlyTab = isAdminOnlyCategory(category);
+  const showsCompose = showsNewThreadButton(category, { isAdmin });
   const tabs = [
     { key: "", label: t("categories.all") },
-    ...POST_CATEGORIES.map((key) => ({ key, label: t(`categories.${key}`) })),
+    ...FORUM_CATEGORY_ORDER.map((key) => ({
+      key,
+      label: t(`categories.${key}`),
+      official: isAdminOnlyCategory(key),
+    })),
     { key: ARCHIVE_FILTER, label: t("categories.archive") },
   ];
 
@@ -357,9 +518,14 @@ export default function ForumPage() {
                 {markingAll ? t("page.markingAllRead") : t("page.markAllRead")}
               </Button>
             )}
-            <Button variant="primary" size="sm" onClick={() => setComposeOpen(true)}>
-              {t("page.newPost")}
-            </Button>
+            {/* #4818: på en admin-only fane har en ikke-admin intet at trykke
+                på — knappen fjernes helt og erstattes af forklaringen under
+                fanerækken, i stedet for at stå og afvise klik. */}
+            {showsCompose && (
+              <Button variant="primary" size="sm" onClick={() => setComposeOpen(true)}>
+                {t("page.newPost")}
+              </Button>
+            )}
           </>
         }
       />
@@ -367,7 +533,15 @@ export default function ForumPage() {
         <p role="alert" className="mb-4 text-xs text-cz-danger">{markAllError}</p>
       )}
 
-      <nav className="mb-6 flex gap-1 border-b border-cz-border overflow-x-auto" aria-label={t("compose.categoryLabel")}>
+      {/* #4818: Roadmap er den 9. fane, og 8 var praecis hvad der kunne vaere
+          paa 896px (T1). Paa desktop bryder raekken derfor nu om i stedet for
+          at skjule Off-topic + Arkiv bag en usynlig vandret scroll — samme valg
+          som compose-modalens vaelger traf i #4492. Paa mobil beholder vi
+          scrollen: der ville ombrydning give fire raekker faner over indholdet. */}
+      <nav
+        className="mb-6 flex gap-1 border-b border-cz-border overflow-x-auto md:flex-wrap md:overflow-x-visible"
+        aria-label={t("compose.categoryLabel")}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.key || "all"}
@@ -380,10 +554,58 @@ export default function ForumPage() {
                 : "border-transparent text-cz-3 hover:text-cz-2"
             }`}
           >
+            {tab.official && <FlagIcon size={12} aria-hidden="true" className="me-1.5 inline-block align-[-1px]" />}
             {tab.label}
           </button>
         ))}
       </nav>
+
+      {/* #4818: kort linje i ejerens egen stemme (docs/TONE_OF_VOICE.md — jeg,
+          aldrig vi). Beskrivelsen af kategorien står for alle; reglen ("kun jeg
+          slår op her") kun for dem der ikke selv kan slå op — for ejeren står
+          knappen der i stedet, og linjen ville sige ham noget han ved. */}
+      {isAdminOnlyTab && (
+        <p className="mb-6 -mt-2 flex items-center gap-1.5 text-[13px] text-cz-2">
+          <FlagIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
+          <span>
+            {t("adminOnly.description")}
+            {!showsCompose && <span className="text-cz-3"> {t("adminOnly.notice")}</span>}
+          </span>
+        </p>
+      )}
+
+      {/* #5013 · Kategori-hoved: navnet på den valgte kategori + til/fra for
+          "sig til når der er nyt her". Vises kun på en rigtig kategori — ikke
+          på "All" (intet at abonnere på) og ikke på arkivet (et visnings-
+          filter på tværs af kategorier, #4492). Sekundær knap: gold er
+          reserveret til "New post". */}
+      {showSubscriptionControl && (
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-cz-border pb-4">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-cz-1">{t(`categories.${category}`)}</h2>
+            <p className="mt-0.5 text-xs leading-snug text-cz-3">
+              {currentCategoryMuted ? t("subscription.mutedHint") : t("subscription.followingHint")}
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-pressed={!currentCategoryMuted}
+            data-testid="forum-category-subscription-toggle"
+            loading={savingMute}
+            disabled={savingMute}
+            onClick={() => handleToggleCategoryMute(!currentCategoryMuted)}
+            iconLeft={currentCategoryMuted
+              ? <BellOffIcon size={15} aria-hidden="true" />
+              : <BellIcon size={15} aria-hidden="true" />}
+          >
+            {currentCategoryMuted ? t("subscription.muted") : t("subscription.following")}
+          </Button>
+        </div>
+      )}
+      {muteError && (
+        <p role="alert" className="mb-4 text-xs text-cz-danger">{muteError}</p>
+      )}
 
       {state.status === "loading" ? (
         <Section><SkeletonLines lines={6} /></Section>
@@ -407,16 +629,31 @@ export default function ForumPage() {
             </Section>
           )}
           <Section>
-            <SectionHeader title={isArchiveTab ? t("list.archiveHeading") : t("list.latestHeading")} />
+            <SectionHeader
+              title={isArchiveTab ? t("list.archiveHeading") : t("list.latestHeading")}
+              meta={isAdminOnlyTab ? t("adminOnly.tag") : null}
+            />
             {state.items.length === 0 && state.pinned.length === 0 ? (
               <EmptyState
-                icon={<InboxIcon size={26} aria-hidden="true" />}
+                icon={isAdminOnlyTab ? <FlagIcon size={26} aria-hidden="true" /> : <InboxIcon size={26} aria-hidden="true" />}
                 title={isArchiveTab ? t("list.archiveEmptyTitle") : t("list.emptyTitle")}
-                description={isArchiveTab ? t("list.archiveEmptyDescription") : t("list.emptyDescription")}
+                // #4818: "Be the first to start a conversation" er forkert i en
+                // kategori hvor spilleren ikke MÅ starte noget.
+                description={
+                  isArchiveTab
+                    ? t("list.archiveEmptyDescription")
+                    : isAdminOnlyTab && !showsCompose
+                      ? t("adminOnly.emptyDescription")
+                      : t("list.emptyDescription")
+                }
               />
             ) : state.items.length === 0 ? (
               <p className="py-2 text-[13px] text-cz-2">
-                {isArchiveTab ? t("list.archiveEmptyDescription") : t("list.emptyDescription")}
+                {isArchiveTab
+                  ? t("list.archiveEmptyDescription")
+                  : isAdminOnlyTab && !showsCompose
+                    ? t("adminOnly.emptyDescription")
+                    : t("list.emptyDescription")}
               </p>
             ) : (
               <div className="divide-y divide-cz-border">
@@ -441,6 +678,7 @@ export default function ForumPage() {
         onClose={() => setComposeOpen(false)}
         onCreated={() => load(null)}
         isAdmin={isAdmin}
+        userId={userId}
         defaultCategory={category}
         t={t}
         tError={tError}

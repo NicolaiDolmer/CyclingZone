@@ -19,6 +19,8 @@ import {
   restRows,
   restObject,
   apiResponse,
+  setForumCategoryMuteMock,
+  resetForumCategoryMutes,
 } from "../../src/preview/mockHandlers.js";
 
 // Re-export så eksisterende spec-imports (import { TEST_USER, ... } from "./fixtures.js")
@@ -78,6 +80,10 @@ export function raceResultsRoute(dataset) {
 }
 
 export async function installNetworkMocks(page) {
+  // #5013: abonnement pr. forum-kategori er statefuldt i mockHandlers, og
+  // tilstanden deles af hele Node-processen. Nulstil ved hver opsaetning, saa
+  // et klik i én test aldrig kan laekke ind i den naeste.
+  resetForumCategoryMutes();
   await page.route("**/auth/v1/token?**", route => json(route, {
     access_token: "e2e-access-token",
     token_type: "bearer",
@@ -130,6 +136,14 @@ export async function installNetworkMocks(page) {
           ?? (rider.team_id === TEST_TEAM.id ? { lo: 4.5, hi: 4.5, level: 3 } : { hidden: true, level: 0 });
       }
       return json(route, { teamId: TEST_TEAM.id, maxLevel: 3, estimates });
+    }
+
+    // #5013: den ENESTE mutation e2e skal kunne se effekten af — ulaest-
+    // markeringerne og nav-prikken afledes af valget i mockHandlers.
+    if (url.pathname.endsWith("/api/forum/category-mutes") && request.method() === "PUT") {
+      let body;
+      try { body = JSON.parse(request.postData() || "{}"); } catch { body = {}; }
+      return json(route, setForumCategoryMuteMock(body.category, body.muted));
     }
 
     if (request.method() !== "GET") return json(route, { ok: true });
@@ -543,4 +557,200 @@ export function collectBrowserErrors(page, testInfo, { consoleNoise = [] } = {})
   });
 
   return { pageErrors, consoleErrors };
+}
+
+// #3200 (DM v1) — en levende, muterbar DM-backend til e2e og screenshots.
+//
+// Registreres OVEN PÅ installNetworkMocks (senest registrerede route vinder i
+// Playwright) og holder sin egen tilstand, så en test kan sende en besked og
+// se den dukke op i tråden, blokere og se knappen skifte, og anmelde og se
+// kvitteringen. Uden mutation ville flowet kun kunne testes ét klik ad gangen.
+//
+// Blok-semantikken er spejlet fra backenden med vilje: en besked FRA den
+// blokerede gemmes stadig i mock-tilstanden, men filtreres ud af det viewer'en
+// får — så en test kan bevise at loggen er komplet uden at modtageren ser noget.
+export function installMessagesMocks(page, { seedConversation = true, seedOffer = false } = {}) {
+  const RIVAL_TEAM_ID = "team-rival";
+  const CONVERSATION_ID = "dm-conv-1";
+
+  const state = {
+    conversations: seedConversation
+      ? [{
+        id: CONVERSATION_ID,
+        otherUserId: "00000000-0000-4000-8000-000000000002",
+        otherManagerName: "Visual Tester",
+        otherTeamName: "Regression VC",
+        otherTeamId: RIVAL_TEAM_ID,
+        blocked: false,
+      }]
+      : [],
+    messages: seedConversation
+      ? [
+        {
+          id: "dm-msg-1", conversationId: CONVERSATION_ID, fromMe: false,
+          body: "Are you open to selling Vandenberg? I can go to 140k.",
+          createdAt: "2026-09-07T09:12:00.000Z", context: null,
+        },
+        {
+          id: "dm-msg-2", conversationId: CONVERSATION_ID, fromMe: true,
+          body: "Not at 140k. Make it 165k and we have a deal.",
+          createdAt: "2026-09-07T09:31:00.000Z", context: null,
+        },
+        {
+          id: "dm-msg-3", conversationId: CONVERSATION_ID, fromMe: false,
+          body: "Let me look at my budget tonight.",
+          createdAt: "2026-09-07T10:04:00.000Z", context: null,
+        },
+      ]
+      : [],
+    blocked: false,
+    reported: false,
+    lastReadAt: null,
+    sent: [],
+  };
+
+  let nextId = 100;
+
+  function conversationRows() {
+    return state.conversations.map((conversation) => {
+      // Samme blok-filter som traaden: en blokeret afsenders beskeder er ude
+      // af MIN visning, ogsaa i listens sidste-linje og ulaest-tal. De bliver
+      // liggende i state - det er pointen med at loggen er komplet.
+      const messages = state.messages
+        .filter(m => m.conversationId === conversation.id)
+        .filter(m => !(state.blocked && !m.fromMe));
+      const latest = messages[messages.length - 1] || null;
+      const cutoff = state.lastReadAt ? Date.parse(state.lastReadAt) : null;
+      const unreadCount = messages.filter(m =>
+        !m.fromMe && (cutoff == null || Date.parse(m.createdAt) > cutoff)).length;
+      return {
+        ...conversation,
+        blocked: state.blocked,
+        lastMessageAt: latest?.createdAt || null,
+        lastMessagePreview: latest?.body?.slice(0, 140) || null,
+        lastMessageFromMe: latest ? latest.fromMe : false,
+        unreadCount,
+      };
+    });
+  }
+
+  return page.route("**/api/messages/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const { pathname } = url;
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+
+    if (pathname.endsWith("/api/messages/conversations")) {
+      return json(route, { conversations: conversationRows() });
+    }
+    if (pathname.endsWith("/api/messages/unread-count")) {
+      const rows = conversationRows().filter(c => c.unreadCount > 0);
+      return json(route, {
+        unreadConversations: rows.length,
+        unreadMessages: rows.reduce((sum, c) => sum + c.unreadCount, 0),
+        hasUnread: rows.length > 0,
+      });
+    }
+    if (pathname.includes("/api/messages/with/")) {
+      return json(route, {
+        conversationId: state.conversations[0]?.id || null,
+        otherUserId: "00000000-0000-4000-8000-000000000002",
+        otherManagerName: "Visual Tester",
+        otherTeamName: "Regression VC",
+        otherTeamId: RIVAL_TEAM_ID,
+        blocked: state.blocked,
+      });
+    }
+    if (pathname.endsWith("/read")) {
+      state.lastReadAt = new Date().toISOString();
+      return json(route, { ok: true, lastReadAt: state.lastReadAt });
+    }
+    if (pathname.endsWith("/report")) {
+      state.reported = true;
+      return json(route, { ok: true, reportId: "dm-report-1", alreadyReported: false });
+    }
+    if (pathname.endsWith("/hide")) {
+      state.conversations = [];
+      return json(route, { ok: true });
+    }
+    if (pathname.endsWith("/api/messages/block")) {
+      let payload = {};
+      try { payload = JSON.parse(request.postData() || "{}"); } catch { /* tom body */ }
+      state.blocked = payload.blocked !== false;
+      return json(route, { ok: true, blocked: state.blocked });
+    }
+    if (pathname.endsWith("/api/messages/send")) {
+      let payload = {};
+      try { payload = JSON.parse(request.postData() || "{}"); } catch { /* tom body */ }
+      const id = `dm-msg-${nextId += 1}`;
+      const message = {
+        id,
+        conversationId: payload.conversationId || CONVERSATION_ID,
+        fromMe: true,
+        body: payload.body,
+        createdAt: new Date().toISOString(),
+        context: payload.context || null,
+      };
+      if (state.conversations.length === 0) {
+        state.conversations = [{
+          id: CONVERSATION_ID,
+          otherUserId: "00000000-0000-4000-8000-000000000002",
+          otherManagerName: "Visual Tester",
+          otherTeamName: "Regression VC",
+          otherTeamId: RIVAL_TEAM_ID,
+          blocked: false,
+        }];
+      }
+      state.messages.push(message);
+      state.sent.push(message);
+      // Spejler backenden: `delivered` sendes ALDRIG med ud til afsenderen.
+      return json(route, { conversationId: message.conversationId, message });
+    }
+    if (pathname.includes("/api/messages/conversations/")) {
+      const id = pathname.split("/api/messages/conversations/")[1].split("/")[0];
+      const conversation = state.conversations.find(c => c.id === id) || {
+        id, otherUserId: "00000000-0000-4000-8000-000000000002",
+        otherManagerName: "Visual Tester", otherTeamName: "Regression VC",
+        otherTeamId: RIVAL_TEAM_ID,
+      };
+      return json(route, {
+        conversation: { ...conversation, blocked: state.blocked },
+        // Blok-filteret: beskeder FRA modparten forsvinder for mig når jeg har
+        // blokeret, mens de bliver liggende i state (= loggen).
+        messages: state.messages
+          .filter(m => m.conversationId === id)
+          .filter(m => !(state.blocked && !m.fromMe)),
+        hasMore: false,
+        nextBefore: null,
+      });
+    }
+    return json(route, {});
+  }).then(() => (seedOffer ? installReceivedOfferMock(page) : undefined)).then(() => state);
+}
+
+// #3200: ét modtaget transfertilbud, så "Skriv til modparten" kan ses og
+// klikkes på Transfers. Egen funktion frem for en ændring af den delte
+// /api/transfers/my-offers-mock, som andre specs asserterer tom.
+export function installReceivedOfferMock(page) {
+  const rider = RIDERS[0];
+  return page.route("**/api/transfers/my-offers**", route => json(route, {
+    sent: [],
+    received: [{
+      id: "offer-e2e-1",
+      rider: { ...rider, contract_length: 2, contract_end_season: 3 },
+      buyer: { id: "team-rival", name: "Regression VC" },
+      seller: { id: "team-e2e", name: "E2E Racing" },
+      offer_amount: 140000,
+      counter_amount: null,
+      status: "pending",
+      round: 1,
+      message: "First offer. Tell me if it is close.",
+      created_at: "2026-09-07T08:00:00.000Z",
+      updated_at: "2026-09-07T08:00:00.000Z",
+    }],
+    archivedSent: [],
+    archivedReceived: [],
+  }));
 }

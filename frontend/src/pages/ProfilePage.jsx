@@ -7,6 +7,12 @@ import { reportActionFailure } from "../lib/actionTelemetry";
 import { useSubscription } from "../lib/useSubscription";
 import { useTheme } from "../lib/theme.jsx";
 import { useConsent } from "../lib/consent.jsx";
+import { parseDiscordHandle } from "../lib/discordHandle.js";
+// #5013: abonnement pr. forum-kategori — delt med ForumPage, så de to flader
+// aldrig kan vise hver sin sandhed.
+import {
+  normalizeCategoryMutes, applyCategoryMute, followedCategoryCount, FORUM_CATEGORY_KEYS,
+} from "../lib/forumCategoryMutes.js";
 import {
   Card,
   Button,
@@ -28,13 +34,20 @@ const API = import.meta.env.VITE_API_URL;
 const THEME_OPTIONS = ["system", "light", "dark"];
 
 export default function ProfilePage() {
-  const { t, i18n } = useTranslation(["profile", "errors"]);
+  // #5013: forum-namespacet lånes til kategori-navnene — de skal hedde det
+  // SAMME her og på forumsiden, så de må ikke oversættes to steder.
+  const { t, i18n } = useTranslation(["profile", "errors", "forum"]);
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
   const [discordId, setDiscordId] = useState("");
+  const [discordHandle, setDiscordHandle] = useState("");
+  const [savingDiscordHandle, setSavingDiscordHandle] = useState(false);
   const [dmStatus, setDmStatus] = useState(null);
   const [assistant, setAssistant] = useState(null);
   const [savingAssistant, setSavingAssistant] = useState(false);
+  // #5013: én række pr. forum-kategori med "følger jeg den?".
+  const [forumCategories, setForumCategories] = useState(() => normalizeCategoryMutes(null));
+  const [savingForumCategory, setSavingForumCategory] = useState(null);
   const [savingDmEnabled, setSavingDmEnabled] = useState(false);
   const [testingDm, setTestingDm] = useState(false);
   const [teamName, setTeamName] = useState("");
@@ -65,18 +78,62 @@ export default function ProfilePage() {
     // #1792: udløbet/ugyldig session → authUser=null; stop før authUser.id (auth-flow redirecter til /login)
     if (!authUser) { setLoading(false); return; }
     const [{ data: userData }, { data: teamData }] = await Promise.all([
-      supabase.from("users").select("discord_id, username, email, role").eq("id", authUser.id).maybeSingle(),
+      supabase.from("users").select("discord_id, discord_handle, username, email, role").eq("id", authUser.id).maybeSingle(),
       supabase.from("teams").select("id, name, manager_name").eq("user_id", authUser.id).maybeSingle(),
     ]);
     setUser(userData);
     setDiscordId(userData?.discord_id || "");
+    setDiscordHandle(userData?.discord_handle || "");
     setUsernameInput(userData?.username || "");
     setEmailInput(userData?.email || "");
     setTeam(teamData);
     setTeamName(teamData?.name || "");
     setManagerName(teamData?.manager_name || "");
-    await Promise.all([refreshDmStatus(), refreshAssistantSettings()]);
+    await Promise.all([refreshDmStatus(), refreshAssistantSettings(), refreshForumCategories()]);
     setLoading(false);
+  }
+
+  // #5013: abonnement pr. forum-kategori. Samme normalisering som forumsiden
+  // (frontend/src/lib/forumCategoryMutes.js) — et fejlet kald falder til
+  // "følger alt", aldrig til dæmpet.
+  // getAuthHeaders() ligger INDE i try'en: en fejlet session-refresh ville
+  // ellers afvise dette promise, og loadProfile()'s Promise.all nåede aldrig
+  // setLoading(false) — profilen ville hænge på loaderen (CodeRabbit).
+  async function refreshForumCategories() {
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const res = await fetch(`${API}/api/forum/category-mutes`, { headers });
+      if (res.ok) setForumCategories(normalizeCategoryMutes(await res.json()));
+    } catch {
+      // best-effort — listen står som "følger alt" indtil næste indlæsning
+    }
+  }
+
+  // Optimistisk toggle, rulles tilbage ved fejl (samme mønster som forumsiden).
+  async function toggleForumCategory(category, follow) {
+    if (savingForumCategory) return;
+    const previous = forumCategories;
+    setSavingForumCategory(category);
+    setForumCategories(applyCategoryMute(previous, category, !follow));
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error("no session");
+      const res = await fetch(`${API}/api/forum/category-mutes`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ category, muted: !follow }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Nav-prikken afledes af valget på backend — bed layoutet hente den igen.
+      window.dispatchEvent(new Event("cz:forum-thread-read"));
+    } catch (err) {
+      setForumCategories(previous);
+      reportActionFailure("profile_forum_category_mute", { reason: "network", cause: err });
+      showMsg(t("forumCategories.saveFailed"), "error");
+    } finally {
+      setSavingForumCategory(null);
+    }
   }
 
   // #4201: assistentens tilstand er runtime-styret (app_config). Kortet vises kun
@@ -155,6 +212,45 @@ export default function ProfilePage() {
     else showMsg(t("discord.idSaved"));
     await refreshDmStatus();
     setSavingDiscord(false);
+  }
+
+  // #5012: separat, offentligt Discord-BRUGERNAVN — vises på managerprofilen
+  // (/managers/:teamId), i modsætning til discord_id ovenfor der kun bruges
+  // internt til bot-DM-levering (#2161). Samme direkte-til-Supabase-mønster
+  // som saveDiscordId: kolonne-scopet UPDATE-grant + eksisterende RLS-policy
+  // "Users can update own profile" (se database/2026-09-08-5012-discord-handle.sql).
+  async function saveDiscordHandle() {
+    const { valid, value } = parseDiscordHandle(discordHandle);
+    if (!valid) {
+      showMsg(t("discord.handleError"), "error");
+      return;
+    }
+    setSavingDiscordHandle(true);
+    // #3628-mønstret (CodeRabbit-fund på #5012): try/finally om HELE kroppen —
+    // ikke kun happy-path'en. Uden det holder knappen sig i "Gemmer..." for
+    // evigt hvis getUser()/update() kaster (tabt net, udløbet token), fordi
+    // setSavingDiscordHandle(false) i bunden aldrig nås. Samme kur som
+    // toggleDmEnabled/sendTestDm/saveTeamInfo ovenfor.
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      // #1792: udløbet/ugyldig session → authUser=null; stop før authUser.id (auth-flow redirecter til /login)
+      if (!authUser) return;
+      const { error } = await supabase
+        .from("users")
+        .update({ discord_handle: value })
+        .eq("id", authUser.id);
+      if (error) showMsg(error.message, "error");
+      else {
+        setDiscordHandle(value || "");
+        setUser(prev => ({ ...prev, discord_handle: value }));
+        showMsg(value ? t("discord.handleSaved") : t("discord.handleCleared"));
+      }
+    } catch (cause) {
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_discord_handle_save", { reason: "network", cause });
+    } finally {
+      setSavingDiscordHandle(false);
+    }
   }
 
   // #1746: skift brugernavn via backend (case-insensitivt unikheds-tjek +
@@ -627,6 +723,38 @@ export default function ProfilePage() {
         </Card>
       )}
 
+      {/* Forum-kategorier (#5013) — samlet oversigt over hvilke kategorier der
+          må sige til når der er nyt. Samme valg som til/fra-kontrollen i
+          kategori-hovedet på forumsiden; de deler
+          frontend/src/lib/forumCategoryMutes.js. */}
+      <Card className="p-5 mb-4">
+        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("forumCategories.title")}</h2>
+        <p className="text-cz-3 text-xs mb-4 leading-relaxed">{t("forumCategories.hint")}</p>
+        <div className="space-y-2">
+          {FORUM_CATEGORY_KEYS.map(key => {
+            const following = !forumCategories.some(row => row.category === key && row.muted);
+            return (
+              <div key={key} className="flex items-center justify-between gap-3">
+                <p className="text-cz-1 text-sm min-w-0">{t(`forum:categories.${key}`)}</p>
+                <Toggle
+                  id={`forum-category-${key}`}
+                  // Kategori-navnet står som en søskende-<p>, ikke i labelen —
+                  // uden aria-label ville en skærmlæser høre en række unavngivne
+                  // switches (CodeRabbit, #5013).
+                  aria-label={t(`forum:categories.${key}`)}
+                  checked={following}
+                  disabled={savingForumCategory === key}
+                  onChange={e => toggleForumCategory(key, e.target.checked)}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-cz-3 text-xs mt-4 pt-3 border-t border-cz-border">
+          {t("forumCategories.summary", { count: followedCategoryCount(forumCategories), total: FORUM_CATEGORY_KEYS.length })}
+        </p>
+      </Card>
+
       {/* Team info */}
       {canEditTeam && (
         <Card className="p-5 mb-4">
@@ -731,6 +859,42 @@ export default function ProfilePage() {
             {t("discord.intro")}
           </p>
         </div>
+
+        {/* #5012: offentligt Discord-brugernavn — vises på managerprofilen når
+            udfyldt. Adskilt fra Discord-ID'et nedenfor, der kun bruges internt
+            til bot-DM-levering (#2161) og aldrig er offentligt synligt. */}
+        <Field
+          label={t("discord.handleLabel")}
+          htmlFor="profile-discord-handle"
+          className="mb-4"
+        >
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              id="profile-discord-handle"
+              type="text"
+              value={discordHandle}
+              onChange={e => setDiscordHandle(e.target.value)}
+              placeholder={t("discord.handlePlaceholder")}
+              minLength={2}
+              maxLength={32}
+              autoComplete="off"
+              data-clarity-mask="True"
+              className="flex-1 font-mono focus:border-cz-discord"
+            />
+            <Button
+              onClick={saveDiscordHandle}
+              loading={savingDiscordHandle}
+              disabled={discordHandle.trim() === (user?.discord_handle || "")}
+              variant="secondary"
+              className="sm:w-auto"
+            >
+              {savingDiscordHandle ? t("discord.saving") : t("discord.handleSave")}
+            </Button>
+          </div>
+          <p className="text-cz-3 text-xs mt-2">{t("discord.handleHelp")}</p>
+        </Field>
+
+        <div className="border-t border-cz-border pt-4 mb-4" />
 
         <Field
           label={t("discord.idLabel")}

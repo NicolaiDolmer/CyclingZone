@@ -8,6 +8,7 @@
   },
   "categories": {
     "all": "Alle",
+    "roadmap": "Roadmap",
     "general": "Generelt",
     "feedback_ideas": "Feedback & idéer",
     "questions": "Spørgsmål og svar",
@@ -15,6 +16,12 @@
     "transfers": "Transfers",
     "off_topic": "Off-topic",
     "archive": "Arkiv"
+  },
+  "adminOnly": {
+    "tag": "Officielt",
+    "description": "Hvor spillet er på vej hen, direkte fra mig.",
+    "notice": "Kun jeg slår op her. Svar så meget du vil.",
+    "emptyDescription": "Der er ikke noget her endnu. Her lægger jeg op om, hvor spillet er på vej hen."
   },
   "list": {
     "pinnedHeading": "Fastgjort",
@@ -29,6 +36,10 @@
     "archiveEmptyDescription": "Tråde flytter herover automatisk efter 60 dage uden ny aktivitet.",
     "by": "Af {name}",
     "unread": "Ulæst"
+  },
+  "stats": {
+    "views": "{count, plural, =0 {Ingen visninger} one {1 visning} other {# visninger}}",
+    "lastReply": "Seneste svar {name}, {time}"
   },
   "compose": {
     "title": "Nyt opslag",
@@ -71,6 +82,9 @@
   "identity": {
     "profileAria": "Åbn managerprofilen for {name}"
   },
+  "mentions": {
+    "listLabel": "Nævn en manager"
+  },
   "signature": {
     "division": "Division {division}"
   },
@@ -95,5 +109,29 @@
     "submitFailed": "Kunne ikke sende. Prøv igen.",
     "retry": "Prøv igen",
     "markAllReadFailed": "Kunne ikke markere alle tråde som læst. Prøv igen."
+  },
+  "images": {
+    "label": "Billeder",
+    "add": "Tilføj billede",
+    "counter": "{count} af {max}",
+    "remove": "Fjern billede",
+    "adminRemove": "Slet billede",
+    "openFull": "Åbn billedet i fuld størrelse",
+    "attachmentAlt": "Billede i indlægget",
+    "hint": "Op til {max} billeder. JPG, PNG eller WebP. Store fotos skaleres ned inden de sendes.",
+    "errors": {
+      "type": "Den filtype virker ikke her. Brug JPG, PNG eller WebP.",
+      "tooMany": "Du kan tilføje {count} billeder til et indlæg.",
+      "tooLarge": "Billedet er stadig for stort efter nedskalering. Prøv et mindre.",
+      "decode": "Billedet kunne ikke læses. Prøv en anden fil.",
+      "upload": "Uploadet mislykkedes. Tjek forbindelsen og prøv igen."
+    }
+  },
+  "subscription": {
+    "following": "Følger",
+    "muted": "Slået fra",
+    "followingHint": "Du får ulæst-markering og forumprikken, når der er noget nyt her.",
+    "mutedHint": "Ingen ulæst-markering og ingen forumprik fra denne kategori. Svar på dine egne tråde når dig stadig.",
+    "saveFailed": "Dit valg kunne ikke gemmes. Prøv igen."
   }
 }

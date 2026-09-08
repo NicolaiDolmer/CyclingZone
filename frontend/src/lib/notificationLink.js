@@ -50,6 +50,16 @@ export function resolveNotificationLink(notification, fallbackLink) {
     return fallbackLink ?? null;
   }
 
+  // #4943: invitationen til det in-app spoergeskema sendes som admin_notice,
+  // som med vilje ikke har et generisk link i TYPE_CONFIG. Slug'en ligger i
+  // metadata (samme moenster som #4557's aarsmoede-regel), saa beskeden kan
+  // sendes for et hvilket som helst skema uden en ny notifikationstype.
+  // /survey/:slug er selv tilstands-vagtet: er skemaet lukket, viser siden
+  // tak-fladen frem for et doedt link.
+  if (n.type === "admin_notice" && typeof meta.surveySlug === "string" && meta.surveySlug) {
+    return `/survey/${meta.surveySlug}`;
+  }
+
   if ((n.type === "board_update" || n.type === "board_critical") && BOARD_MEETING_TITLE_CODES.has(meta.titleCode)) {
     return "/board/meeting";
   }
@@ -94,6 +104,21 @@ export function resolveNotificationLink(notification, fallbackLink) {
   // #4118/#3517: svar på egen tråd — related_id er post_id, deep-link
   // direkte til tråden i stedet for den generiske forum-forside.
   if (n.type === "forum_thread_reply" && n.related_id) return `/forum/${n.related_id}`;
+
+  // #3200: en direkte besked — related_id er samtale-id'et. Uden denne regel
+  // landede spilleren på Beskeder-fanens liste og skulle selv finde tråden
+  // igen, selvom notifikationen netop fortalte hvilken samtale det var.
+  if (n.type === "dm_message" && (meta.conversationId || n.related_id)) {
+    return `/notifications?tab=messages&c=${meta.conversationId || n.related_id}`;
+  }
+
+  // #5011: du blev @-tagget. related_id er trådens id; stod tagget i et SVAR,
+  // bærer metadata.replyId det konkrete indlæg, og #reply-<id> lander på selve
+  // svaret (samme anker ForumPostPage allerede bruger til citat-spring og til
+  // "første ulæste svar", #3517/#3451) i stedet for øverst i en lang tråd.
+  if (n.type === "forum_mention" && n.related_id) {
+    return meta.replyId ? `/forum/${n.related_id}#reply-${meta.replyId}` : `/forum/${n.related_id}`;
+  }
 
   return fallbackLink ?? null;
 }

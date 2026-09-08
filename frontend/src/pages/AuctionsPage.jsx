@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { NavLink, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
+import MessageManagerButton from "../components/messages/MessageManagerButton.jsx"; // #3200
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { ABILITY_STATS, ABILITY_SHORT, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
@@ -715,6 +716,27 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
         <div className="bg-cz-subtle rounded-cz px-3 py-2">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.seller")}</p>
           <p className="text-cz-2 text-sm font-medium truncate">{getAuctionSellerLabel(auction)}</p>
+          {/* #3200 (ejer-valg 3, 8/9): "Skriv til modparten" paa auktionen.
+              Modparten er SAELGEREN - den eneste anden manager i handlen
+              foer den er afgjort; hvem der byder er fog of war. Citatet
+              baerer rytter og den nuvaerende pris, som staar paa kortet i
+              forvejen. Komponenten skjuler sig selv hvis saelgeren er dig
+              selv, eller hvis der ingen saelger er (ungdomsauktion). */}
+          {auction.seller?.id && (
+            <div className="mt-1.5">
+              <MessageManagerButton
+                teamId={auction.seller.id}
+                managerName={auction.seller.name}
+                context={{
+                  kind: "auction",
+                  refId: auction.id,
+                  riderName: [r?.firstname, r?.lastname].filter(Boolean).join(" ") || null,
+                  amount: auction.current_price ?? auction.starting_price ?? null,
+                  occurredAt: auction.calculated_end || auction.created_at || null,
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
 

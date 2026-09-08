@@ -10,6 +10,13 @@
 // tilføjet) + et arkiv-FILTER (ikke en kategori — se FORUM_ARCHIVE_FILTER
 // nedenfor).
 //
+// #4818 (ejer-direktiv 4/9 + afklaring 8/9): "roadmap" er den syvende
+// kategori og den første med en SKRIVE-rettighed: kun admin må oprette
+// tråde der, alle må svare. Rettigheden er generel (FORUM_CATEGORY_POST_ROLES
+// herunder), ikke et hardcodet bruger-id, og håndhæves i tre lag: databasen
+// (trigger, database/2026-09-08-4818-forum-roadmap-category.sql), denne fil
+// (403 forum_category_admin_only) og fladen (knappen skjules).
+//
 // Handler-logikken bor her (ikke inline i api.js) af samme grund som
 // feedbackInbox.js: api.js kræver en live Supabase-klient og kan ikke
 // unit-testes direkte, mens rene handlere kan køres mod createFakeSupabase.
@@ -38,7 +45,20 @@
 // forummet forbi denne skala kræver sorteringen en DB-side generated
 // `last_activity_at`-kolonne i stedet for JS-scanningen.
 
-export const FORUM_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"];
+// Rækkefølgen ER visningsrækkefølgen (fanerække + compose-vælger). #4818:
+// roadmap ligger øverst — ejerens egen kanal skal være det første man ser.
+// SKAL matche forum_posts_category_check i databasen OG FORUM_CATEGORY_ORDER
+// i frontend/src/components/forum/forumCategories.js.
+export const FORUM_CATEGORIES = ["roadmap", "general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"];
+
+// #4818: hvem der må OPRETTE en tråd pr. kategori. Spejler tabellen
+// public.forum_category_post_roles (migration 2026-09-08-4818) — udvid begge
+// sammen. En kategori der ikke står her er åben for alle. Gælder KUN
+// trådoprettelse: svar er aldrig begrænset (ejer-afklaring 8/9, ordret:
+// "kun jeg opretter, alle svarer").
+export const FORUM_CATEGORY_POST_ROLES = { roadmap: "admin" };
+export const FORUM_POST_ROLE_EVERYONE = "everyone";
+export const FORUM_POST_ROLE_ADMIN = "admin";
 // #4492: arkiv er et BEREGNET visnings-filter, ikke en gyldig category-værdi
 // — et opslag kan aldrig oprettes eller stå permanent i "archive" (isValid-
 // ForumCategory afviser den bevidst, se nedenfor). En tråd er arkiveret når
@@ -63,6 +83,80 @@ export const FORUM_LIST_MAX_LIMIT = 100;
 export const FORUM_REPLIES_LOAD_LIMIT = 500;
 export const FORUM_REPORT_STATUSES = ["new", "resolved"];
 
+// #4819 (ejer-direktiv 4/9 + ejer-valg 8/9) — billeder i indlæg. Grænserne
+// spejles i frontend/src/lib/forumImages.js og migrationen
+// database/2026-09-08-4819-forum-images-bucket.sql; ret dem sammen.
+//
+// Billederne bor i en EGEN kolonne (`images` jsonb), ikke som markup i body.
+// Forum-body rendres som ren tekst (`whitespace-pre-wrap`) — der findes ingen
+// markdown-/HTML-renderer på fladen, og en billed-syntaks i body ville kræve
+// netop den renderer og dermed åbne en XSS-flade forummet ikke har i dag.
+export const FORUM_IMAGE_BUCKET = "forum-images";
+export const FORUM_IMAGE_MAX_PER_POST = 3;
+export const FORUM_IMAGE_MAX_DIMENSION = 10000;
+// Stien er `<user_id>/<filnavn>`: første mappeniveau ER ejerskabet (samme
+// regel som RLS-policyen på storage.objects håndhæver ved upload).
+const FORUM_IMAGE_FILENAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.(jpe?g|png|webp)$/i;
+
+function invalidImages() {
+  return { ok: false, status: 400, body: { error: "Invalid images", errorCode: "forum_invalid_images" } };
+}
+
+/**
+ * Validér og normalisér `images` fra en klient-payload.
+ *
+ * Klienten uploader FØR den sender indlægget og sender kun stier tilbage —
+ * derfor er dette den eneste port hvor en fremmed sti kan komme ind. Reglerne:
+ * højst 3, ingen dubletter, filnavn på hvid liste, og stien SKAL ligge i
+ * afsenderens egen mappe. Sidstnævnte er hvad der gør det umuligt at hænge en
+ * anden brugers (eller en helt fremmed) fil på sit eget indlæg.
+ *
+ * Returnerer { ok: true, images: [...] } eller { ok: false, status, body }
+ * i samme form som resten af filens handlere.
+ */
+export function normalizeForumImages(images, userId) {
+  if (images == null) return { ok: true, images: [] };
+  if (!Array.isArray(images)) return invalidImages();
+  if (images.length > FORUM_IMAGE_MAX_PER_POST) {
+    return { ok: false, status: 400, body: { error: "Too many images", errorCode: "forum_too_many_images" } };
+  }
+  if (!userId) return invalidImages();
+
+  const out = [];
+  const seen = new Set();
+  for (const raw of images) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return invalidImages();
+    const path = typeof raw.path === "string" ? raw.path.trim() : "";
+    const slash = path.indexOf("/");
+    if (slash <= 0 || slash === path.length - 1) return invalidImages();
+    const owner = path.slice(0, slash);
+    const filename = path.slice(slash + 1);
+    if (owner !== String(userId)) {
+      return { ok: false, status: 403, body: { error: "Image is not yours", errorCode: "forum_image_not_owned" } };
+    }
+    if (!FORUM_IMAGE_FILENAME_RE.test(filename)) return invalidImages();
+    if (seen.has(path)) return invalidImages();
+    seen.add(path);
+
+    const width = Number(raw.width);
+    const height = Number(raw.height);
+    if (!Number.isInteger(width) || width < 1 || width > FORUM_IMAGE_MAX_DIMENSION) return invalidImages();
+    if (!Number.isInteger(height) || height < 1 || height > FORUM_IMAGE_MAX_DIMENSION) return invalidImages();
+
+    out.push({ path, width, height });
+  }
+  return { ok: true, images: out };
+}
+
+/** Kolonnen kan være null på rækker skrevet før migrationen — normalisér ved læsning. */
+export function shapeForumImages(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((img) => img && typeof img.path === "string")
+    .slice(0, FORUM_IMAGE_MAX_PER_POST)
+    .map((img) => ({ path: img.path, width: img.width ?? null, height: img.height ?? null }));
+}
+
 const REPLY_RECOUNT_LIMIT = 1000;
 const EXCERPT_LENGTH = 200;
 // #4118: bounded scan for aktivitets-sortering — se filhoved-kommentaren.
@@ -73,6 +167,17 @@ const UNREAD_STATUS_SCAN_LIMIT = 2000;
 // filosofi som REPLY_RECOUNT_LIMIT/vote-limit 5000. Én tråd har typisk
 // ét opslag + <=500 svar (FORUM_REPLIES_LOAD_LIMIT), langt under grænsen.
 const REACTIONS_SCAN_LIMIT = 5000;
+// #5000: bounded scan for indlaegstal pr. manager paa profilen — samme
+// filosofi. Hele forummet havde ~90 indlaeg i alt efter tre uger, saa 2000 pr.
+// manager er rigeligt hovedrum uden at kunne traekke en stor side hjem.
+const FORUM_AUTHOR_STATS_LIMIT = 2000;
+// #5013: højst én mute-række pr. (bruger, kategori), så antallet af
+// kategorier ER loftet. Konstanten er sat med hovedrum til fremtidige
+// kategorier (#4818) og til rækker for kategorier der senere fjernes.
+const FORUM_CATEGORY_MUTES_LIMIT = 50;
+// #5013: delt tomt sæt, så shapeListPost's default ikke allokerer et nyt
+// Set pr. tråd i lister uden bruger (tests).
+const EMPTY_MUTES = new Set();
 
 export function parseForumLimit(raw) {
   const n = Number.parseInt(raw ?? "", 10);
@@ -95,6 +200,20 @@ export function isValidForumCategory(category) {
 /** GET /api/forum/posts?category=… accepterer de rigtige kategorier + "archive". */
 export function isValidForumListFilter(filter) {
   return filter === FORUM_ARCHIVE_FILTER || isValidForumCategory(filter);
+}
+
+/** #4818: hvilken rolle der kræves for at oprette en tråd i kategorien. */
+export function forumCategoryPostRole(category) {
+  return FORUM_CATEGORY_POST_ROLES[category] || FORUM_POST_ROLE_EVERYONE;
+}
+
+/**
+ * #4818: må denne bruger oprette en tråd i kategorien? Fail closed — en
+ * ukendt/manglende isAdmin behandles som "ikke admin", så en glemt rolle-
+ * opslag aldrig åbner en admin-kategori.
+ */
+export function canCreateForumThread(category, { isAdmin = false } = {}) {
+  return forumCategoryPostRole(category) !== FORUM_POST_ROLE_ADMIN || isAdmin === true;
 }
 
 /** Aktivitets-nøgle for sortering: seneste svar, ellers oprettelse. */
@@ -197,7 +316,10 @@ function shapeAuthor(row, usersById, teamsById) {
 }
 
 const POST_LIST_COLUMNS =
-  "id, seq, created_at, user_id, team_id, category, title, body, is_pinned, reply_count, last_reply_at";
+  "id, seq, created_at, user_id, team_id, category, title, body, is_pinned, reply_count, last_reply_at, " +
+  // #5000: visningstal + seneste svars forfatter/hold — begge denormaliseret
+  // paa forum_posts, saa traadlisten kan vise dem uden et opslag pr. traad.
+  "view_count, last_reply_user_id, last_reply_team_id";
 
 // #3451: ulæst = ingen forum_thread_reads-række for (bruger, tråd), ELLER
 // trådens seneste aktivitet er nyere end brugerens last_read_at. `lastReadAt`
@@ -209,7 +331,23 @@ function isThreadUnread(row, lastReadAt) {
   return activityAt(row) > lastReadAt;
 }
 
-function shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId) {
+/**
+ * #5000 · Seneste svars forfatter til traadlisten. Bygget af de samme
+ * users/teams-maps som selve traadens forfatter (resolveAuthors faar
+ * last_reply-parrene med som ekstra rows), saa der ikke er ét ekstra opslag
+ * pr. traad. NULL i en traad uden svar — dér ER traadens egen forfatter den
+ * seneste, og listen viser den allerede.
+ */
+function shapeLastReplyAuthor(row, usersById, teamsById) {
+  if (!row.last_reply_user_id) return null;
+  return shapeAuthor(
+    { user_id: row.last_reply_user_id, team_id: row.last_reply_team_id ?? null },
+    usersById,
+    teamsById
+  );
+}
+
+function shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId, mutedCategories = EMPTY_MUTES) {
   return {
     id: row.id,
     seq: row.seq,
@@ -220,11 +358,20 @@ function shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, us
     is_pinned: row.is_pinned,
     reply_count: row.reply_count ?? 0,
     last_reply_at: row.last_reply_at,
+    // #5000: seneste svars forfatter — null naar traaden ingen svar har.
+    last_reply_author: shapeLastReplyAuthor(row, usersById, teamsById),
+    // #5000: unikke (bruger, UTC-dag)-visninger, taelt af record_forum_thread_view.
+    view_count: row.view_count ?? 0,
     has_poll: pollPostIds.has(row.id),
     // Uden userId (ingen indlogget bruger — kun tests kalder listForumPosts
     // sådan) er der ingen "ulæst for hvem", så feltet falder til false i
     // stedet for at gætte via isThreadUnread's "ingen række = ulæst"-regel.
-    is_unread: userId ? isThreadUnread(row, readsByPostId.get(row.id)) : false,
+    // #5013: en dæmpet kategori giver ALDRIG en ulæst-markering — spilleren
+    // har fravalgt netop dét signal. Tråden vises stadig i listen; kun
+    // "der er nyt her"-prikken forsvinder.
+    is_unread: userId && !mutedCategories.has(row.category)
+      ? isThreadUnread(row, readsByPostId.get(row.id))
+      : false,
     author: shapeAuthor(row, usersById, teamsById),
   };
 }
@@ -246,6 +393,77 @@ async function resolveThreadReads({ supabase, userId, postIds }) {
   if (error) throw new Error(`forum: could not resolve thread reads: ${error.message}`);
   for (const row of data || []) map.set(row.post_id, row.last_read_at);
   return map;
+}
+
+/**
+ * #5013 · Kategorier spilleren har slået FRA. Opt-out-model: ingen række =
+ * spilleren følger kategorien (se database/2026-09-08-5013-forum-category-
+ * mutes.sql for hvorfor mute-rækker og ikke abonnements-rækker). Ét bounded
+ * select pr. request, aldrig N+1 — der er højst én række pr. kategori pr.
+ * bruger, så FORUM_CATEGORIES.length er et hårdt loft.
+ *
+ * Ukendte kategori-nøgler i tabellen (fx en kategori der senere fjernes fra
+ * FORUM_CATEGORIES) beholdes i settet uden at gøre skade: de matcher bare
+ * ingen tråd.
+ */
+export async function resolveMutedCategories({ supabase, userId }) {
+  if (!userId) return new Set();
+  const { data, error } = await supabase
+    .from("forum_category_mutes")
+    .select("category_id")
+    .eq("user_id", userId)
+    .limit(FORUM_CATEGORY_MUTES_LIMIT);
+  if (error) throw new Error(`forum: could not resolve category mutes: ${error.message}`);
+  return new Set((data || []).map((row) => row.category_id));
+}
+
+/**
+ * GET /api/forum/category-mutes — spillerens eget valg, formet som en fuld
+ * liste over kategorierne med `muted` pr. kategori, ikke som en rå mute-liste.
+ * Fladen skal kunne tegne alle seks rækker uden selv at kende rækkefølgen
+ * eller kunne komme til at vise en kategori der ikke findes mere.
+ */
+export async function listForumCategoryMutes({ supabase, userId }) {
+  const muted = await resolveMutedCategories({ supabase, userId });
+  return {
+    categories: FORUM_CATEGORIES.map((category) => ({ category, muted: muted.has(category) })),
+  };
+}
+
+/**
+ * PUT /api/forum/category-mutes — slå ÉN kategori til/fra. Idempotent i begge
+ * retninger: at slå en allerede dæmpet kategori fra igen er en no-op (upsert
+ * på PK'en), og at slå en kategori til der aldrig var dæmpet sletter bare
+ * ingenting. `muted: true` = spilleren følger IKKE længere kategorien.
+ *
+ * Arkiv-filteret (#4492) er bevidst ikke en gyldig værdi her — det er et
+ * visnings-filter på tværs af kategorier, ikke noget man kan abonnere på.
+ */
+export async function setForumCategoryMute({ supabase, userId, category, muted, now = new Date() }) {
+  if (!userId) return { status: 401, body: { error: "Missing user", errorCode: "forum_missing_user" } };
+  if (!isValidForumCategory(category)) {
+    return { status: 400, body: { error: "Invalid category", errorCode: "forum_invalid_category" } };
+  }
+  if (typeof muted !== "boolean") {
+    return { status: 400, body: { error: "Invalid muted flag", errorCode: "forum_invalid_mute_flag" } };
+  }
+
+  if (muted) {
+    const { error } = await supabase.from("forum_category_mutes").upsert(
+      [{ user_id: userId, category_id: category, created_at: now.toISOString() }],
+      { onConflict: "user_id,category_id" }
+    );
+    if (error) throw new Error(`forum: could not mute category ${category}: ${error.message}`);
+  } else {
+    const { error } = await supabase
+      .from("forum_category_mutes")
+      .delete()
+      .eq("user_id", userId)
+      .eq("category_id", category);
+    if (error) throw new Error(`forum: could not unmute category ${category}: ${error.message}`);
+  }
+
+  return { status: 200, body: { ok: true, category, muted } };
 }
 
 /**
@@ -296,6 +514,10 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
   const archiveFilter = category === FORUM_ARCHIVE_FILTER;
   const categoryFilter = !archiveFilter && isValidForumCategory(category) ? category : null;
 
+  // schema-columns-ok: view_count/last_reply_user_id/last_reply_team_id
+  // tilfoejes af database/2026-09-08-5000-forum-thread-stats.sql i SAMME PR —
+  // snapshottet opdateres post-merge (#2642-rammen), kolonnerne findes ikke i
+  // prod ENDNU.
   let query = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
     .is("deleted_at", null)
     .eq("is_pinned", false);
@@ -319,6 +541,8 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
 
   let pinnedRows = [];
   if (afterCursor == null && !archiveFilter) {
+    // schema-columns-ok: samme tre nye kolonner som ovenfor — tilfoejes af
+    // database/2026-09-08-5000-forum-thread-stats.sql i SAMME PR.
     let pinnedQuery = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
       .is("deleted_at", null)
       .eq("is_pinned", true);
@@ -331,7 +555,13 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
   }
 
   const allRows = [...pinnedRows, ...pageRows];
-  const { usersById, teamsById } = await resolveAuthors({ supabase, rows: allRows });
+  // #5000: seneste-svar-forfatteren slaas op i SAMME batch som traadenes egne
+  // forfattere (resolveAuthors de-dupliker id'erne) — ingen ekstra rundtur, og
+  // ingen N+1 pr. traad.
+  const lastReplyRows = allRows
+    .filter((r) => r.last_reply_user_id)
+    .map((r) => ({ user_id: r.last_reply_user_id, team_id: r.last_reply_team_id ?? null }));
+  const { usersById, teamsById } = await resolveAuthors({ supabase, rows: [...allRows, ...lastReplyRows] });
 
   const postIds = allRows.map((r) => r.id);
   let pollPostIds = new Set();
@@ -346,10 +576,13 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
   }
 
   const readsByPostId = await resolveThreadReads({ supabase, userId, postIds });
+  // #5013: ét opslag pr. request (ikke pr. tråd) — samme ikke-N+1-mønster
+  // som resolveAuthors/resolveThreadReads.
+  const mutedCategories = await resolveMutedCategories({ supabase, userId });
 
   return {
-    pinned: pinnedRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId)),
-    items: pageRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId)),
+    pinned: pinnedRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId, mutedCategories)),
+    items: pageRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId, mutedCategories)),
     next_cursor: hasMore ? encodeForumActivityCursor(pageRows[pageRows.length - 1]) : null,
     limit: pageSize,
   };
@@ -363,9 +596,11 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
 export async function getForumPost({ supabase, id, userId }) {
   if (!id) return { status: 400, body: { error: "Missing id", errorCode: "forum_missing_id" } };
 
+  // schema-columns-ok: view_count tilfoejes af
+  // database/2026-09-08-5000-forum-thread-stats.sql i SAMME PR.
   const { data: post, error: postError } = await supabase
     .from("forum_posts")
-    .select("id, seq, created_at, user_id, team_id, category, title, body, is_pinned, reply_count, last_reply_at, deleted_at")
+    .select("id, seq, created_at, user_id, team_id, category, title, body, images, is_pinned, reply_count, last_reply_at, view_count, deleted_at")
     .eq("id", id)
     .maybeSingle();
   if (postError) throw new Error(`forum: could not load post ${id}: ${postError.message}`);
@@ -375,7 +610,7 @@ export async function getForumPost({ supabase, id, userId }) {
 
   const { data: replyRows, error: replyError } = await supabase
     .from("forum_replies")
-    .select("id, seq, created_at, post_id, user_id, team_id, body, quoted_reply_id")
+    .select("id, seq, created_at, post_id, user_id, team_id, body, images, quoted_reply_id")
     .eq("post_id", id)
     .is("deleted_at", null)
     .order("seq", { ascending: true })
@@ -482,9 +717,16 @@ export async function getForumPost({ supabase, id, userId }) {
         category: post.category,
         title: post.title,
         body: post.body,
+        // #4819: kun path + dimensioner — URL'en bygges klient-side af
+        // Supabase-klientens faste Storage-origin.
+        images: shapeForumImages(post.images),
         is_pinned: post.is_pinned,
         reply_count: post.reply_count ?? 0,
         last_reply_at: post.last_reply_at,
+        // #5000: visningstal i traadhovedet. Routen overskriver feltet med
+        // returvaerdien fra record_forum_thread_view, saa laeserens EGEN
+        // visning er talt med i det tal der vises — uden et ekstra opslag.
+        view_count: post.view_count ?? 0,
         author: shapeAuthor(post, usersById, teamsById),
         // auth-UUID'er eksponeres aldrig til spiller-fladen — kun "er det mig".
         is_mine: Boolean(userId && post.user_id === userId),
@@ -496,6 +738,7 @@ export async function getForumPost({ supabase, id, userId }) {
         seq: r.seq,
         created_at: r.created_at,
         body: r.body,
+        images: shapeForumImages(r.images),
         author: shapeAuthor(r, usersById, teamsById),
         is_mine: Boolean(userId && r.user_id === userId),
         support_count: replyReactions.counts.get(r.id) ?? 0,
@@ -525,6 +768,54 @@ export async function markForumThreadRead({ supabase, userId, postId, now = new 
 }
 
 /**
+ * #5000 · Registrér én traad-visning og faa traadens visningstal tilbage.
+ *
+ * Hele arbejdet ligger i SQL-funktionen record_forum_thread_view (database/
+ * 2026-09-08-5000-forum-thread-stats.sql): insert i visnings-loggen med daglig
+ * dedup + increment af forum_posts.view_count i SAMME transaktion. Det er
+ * grunden til at det er en RPC og ikke to supabase-js-kald — en
+ * read-modify-write i JS kunne tabe et taelle-skridt naar to spillere aabner
+ * traaden samtidig.
+ *
+ * Kaldes best-effort fra routen: en fejl her maa ALDRIG blokere trådvisningen.
+ * Returnerer null naar der ikke er noget at taelle (ingen bruger/traad).
+ */
+export async function recordForumThreadView({ supabase, postId, userId }) {
+  if (!userId || !postId) return null;
+  const { data, error } = await supabase.rpc("record_forum_thread_view", {
+    p_post_id: postId,
+    p_user_id: userId,
+  });
+  if (error) throw new Error(`forum: could not record thread view for ${postId}: ${error.message}`);
+  return typeof data === "number" ? data : null;
+}
+
+/**
+ * #5000 · Antal forumindlaeg for én manager (traade + svar, ekskl. soft-
+ * slettede) — vises paa den offentlige managerprofil, GET /api/managers/:teamId.
+ *
+ * Bounded id-selects frem for head-counts, af samme grund som
+ * getForumReportCounts: fakeSupabase understoetter ikke count/head, og en
+ * enkelt manager ligger langt under graensen (hele forummet havde ~90 indlaeg
+ * efter tre uger). Rammer vi loftet, er tallet stadig sandt "mindst dette".
+ */
+export async function getForumAuthorStats({ supabase, userId }) {
+  const empty = { posts: 0, replies: 0, total: 0 };
+  if (!userId) return empty;
+
+  const [postsResult, repliesResult] = await Promise.all([
+    supabase.from("forum_posts").select("id").eq("user_id", userId).is("deleted_at", null).limit(FORUM_AUTHOR_STATS_LIMIT),
+    supabase.from("forum_replies").select("id").eq("user_id", userId).is("deleted_at", null).limit(FORUM_AUTHOR_STATS_LIMIT),
+  ]);
+  if (postsResult.error) throw new Error(`forum: could not count posts for ${userId}: ${postsResult.error.message}`);
+  if (repliesResult.error) throw new Error(`forum: could not count replies for ${userId}: ${repliesResult.error.message}`);
+
+  const posts = (postsResult.data || []).length;
+  const replies = (repliesResult.data || []).length;
+  return { posts, replies, total: posts + replies };
+}
+
+/**
  * GET /api/forum/unread-status — billig kilde til nav-prikken (#3451): ÉT
  * kald fra klienten, to bounded queries på backend (posts + reads, samme
  * ikke-N+1-mønster som resolveAuthors) i stedet for én forespørgsel pr.
@@ -535,12 +826,22 @@ export async function getForumUnreadStatus({ supabase, userId }) {
 
   const { data: postRows, error } = await supabase
     .from("forum_posts")
-    .select("id, seq, created_at, last_reply_at")
+    .select("id, seq, created_at, last_reply_at, category")
     .is("deleted_at", null)
     .order("seq", { ascending: false })
     .limit(UNREAD_STATUS_SCAN_LIMIT);
   if (error) throw new Error(`forum: could not load posts for unread-status: ${error.message}`);
-  const rows = postRows || [];
+  const allRows = postRows || [];
+  if (!allRows.length) return { has_unread: false };
+
+  // #5013: nav-prikken er det bredeste kategori-signal der findes — den skal
+  // aldrig kunne lyse på grund af en kategori spilleren har slået fra.
+  // Filtreringen sker FØR reads-opslaget, så en spiller der kun følger én
+  // kategori også kun slår rækker op for den.
+  const mutedCategories = await resolveMutedCategories({ supabase, userId });
+  const rows = mutedCategories.size
+    ? allRows.filter((row) => !mutedCategories.has(row.category))
+    : allRows;
   if (!rows.length) return { has_unread: false };
 
   const readsByPostId = await resolveThreadReads({ supabase, userId, postIds: rows.map((r) => r.id) });
@@ -593,6 +894,9 @@ function validatePollOptions(pollOptions) {
  * POST /api/forum/posts — nyt opslag. Polls er EJER-funktionalitet (plan 6/8):
  * kun admin må vedhæfte afstemning; en almindelig spiller med poll_options i
  * payloaden får 403, ikke et opslag uden poll (stille scope-klip skjuler fejl).
+ *
+ * #4818: kategorier med post_role = 'admin' (i dag kun "roadmap") afviser
+ * ikke-admins med 403 forum_category_admin_only. Svar er upåvirkede.
  */
 export async function createForumPost({
   supabase,
@@ -602,11 +906,23 @@ export async function createForumPost({
   category,
   title,
   body,
+  images = null,
   pollOptions = null,
   now = new Date(),
 }) {
   if (!isValidForumCategory(category)) {
     return { status: 400, body: { error: "Invalid category", errorCode: "forum_invalid_category" } };
+  }
+  // #4818: skrive-rettighed pr. kategori. Tjekkes FØR indholdsvalideringen, så
+  // en ikke-admin får den rigtige grund (403) i stedet for at blive sendt
+  // tilbage efter en titel-fejl i en kategori han alligevel ikke må skrive i.
+  // Databasens trigger fanger det samme — dette lag er til for at give et
+  // brugbart svar i stedet for en 500.
+  if (!canCreateForumThread(category, { isAdmin })) {
+    return {
+      status: 403,
+      body: { error: "Only the admin can start threads here", errorCode: "forum_category_admin_only" },
+    };
   }
   const trimmedTitle = typeof title === "string" ? title.trim() : "";
   if (!trimmedTitle) {
@@ -622,6 +938,11 @@ export async function createForumPost({
   if (trimmedBody.length > FORUM_BODY_MAX_LENGTH) {
     return { status: 400, body: { error: "Body is too long", errorCode: "forum_body_too_long" } };
   }
+
+  // #4819: billederne er allerede uploadet af klienten; her valideres kun at
+  // stierne er brugerens egne og inden for loftet.
+  const normalizedImages = normalizeForumImages(images, userId);
+  if (!normalizedImages.ok) return { status: normalizedImages.status, body: normalizedImages.body };
 
   const wantsPoll = pollOptions != null && (!Array.isArray(pollOptions) || pollOptions.length > 0);
   let pollLabels = null;
@@ -643,12 +964,18 @@ export async function createForumPost({
       category,
       title: trimmedTitle,
       body: trimmedBody,
+      images: normalizedImages.images,
       created_at: now.toISOString(),
       // DB-defaults gentaget eksplicit: filtre som .is("deleted_at", null) og
       // .eq("is_pinned", false) skal også matche i test-fakes uden defaults.
       is_pinned: false,
       reply_count: 0,
       last_reply_at: null,
+      // #5000: samme grund som ovenfor — en ny traad har ingen visninger og
+      // intet seneste svar, og test-fakes har ingen DB-defaults.
+      view_count: 0,
+      last_reply_user_id: null,
+      last_reply_team_id: null,
       deleted_at: null,
     })
     .select("id, seq")
@@ -674,17 +1001,35 @@ export async function createForumPost({
   return { status: 200, body: { ok: true, id: inserted.id, seq: inserted.seq } };
 }
 
-/** Genberegn reply_count (ekskl. slettede) — selvhelende frem for +1/-1. */
+/**
+ * Genberegn reply_count (ekskl. slettede) — selvhelende frem for +1/-1.
+ *
+ * #5000: samme kald vedligeholder last_reply_user_id/last_reply_team_id.
+ * Selvhelende af samme grund som taelleren: sletter admin det seneste svar,
+ * falder felterne tilbage til det forrige svar — og til null i en traad uden
+ * svar. `seq` er den totale orden (created_at kan deles af to svar).
+ */
 async function recountReplies({ supabase, postId, now = null }) {
   const { data: idRows, error } = await supabase
     .from("forum_replies")
-    .select("id")
+    .select("id, seq, user_id, team_id, created_at")
     .eq("post_id", postId)
     .is("deleted_at", null)
     .limit(REPLY_RECOUNT_LIMIT);
   if (error) throw new Error(`forum: could not recount replies for ${postId}: ${error.message}`);
-  const patch = { reply_count: (idRows || []).length };
-  if (now) patch.last_reply_at = now.toISOString();
+  const rows = idRows || [];
+  const latest = rows.reduce((best, row) => (best == null || row.seq > best.seq ? row : best), null);
+  const patch = {
+    reply_count: rows.length,
+    last_reply_user_id: latest?.user_id ?? null,
+    last_reply_team_id: latest?.team_id ?? null,
+    // #5000: tidsstemplet heler MED forfatteren. Foer #5000 blev last_reply_at
+    // kun rykket ved nye svar (`now`), saa en sletning af det seneste svar lod
+    // det staa paa den slettede raekke. Med en forfatter ved siden af ville
+    // traadlisten vise den rigtige forrige forfatter ved siden af det forkerte
+    // tidspunkt — parret ville ikke laengere beskrive det samme svar.
+    last_reply_at: now ? now.toISOString() : (latest?.created_at ?? null),
+  };
   const { error: updateError } = await supabase.from("forum_posts").update(patch).eq("id", postId);
   if (updateError) throw new Error(`forum: could not update reply count for ${postId}: ${updateError.message}`);
   return patch.reply_count;
@@ -700,7 +1045,7 @@ async function recountReplies({ supabase, postId, now = null }) {
  * (samme forum_thread_reply-dedupe som trådejer-notifikationen, aldrig ved
  * citat af egen kommentar — se notifyForumThreadReply's own_reply-guard).
  */
-export async function createForumReply({ supabase, postId, userId, teamId = null, body, quotedReplyId = null, now = new Date() }) {
+export async function createForumReply({ supabase, postId, userId, teamId = null, body, images = null, quotedReplyId = null, now = new Date() }) {
   if (!postId) return { status: 400, body: { error: "Missing id", errorCode: "forum_missing_id" } };
   const trimmedBody = typeof body === "string" ? body.trim() : "";
   if (!trimmedBody) {
@@ -709,6 +1054,9 @@ export async function createForumReply({ supabase, postId, userId, teamId = null
   if (trimmedBody.length > FORUM_BODY_MAX_LENGTH) {
     return { status: 400, body: { error: "Body is too long", errorCode: "forum_body_too_long" } };
   }
+
+  const normalizedImages = normalizeForumImages(images, userId);
+  if (!normalizedImages.ok) return { status: normalizedImages.status, body: normalizedImages.body };
 
   const { data: post, error: postError } = await supabase
     .from("forum_posts")
@@ -743,6 +1091,7 @@ export async function createForumReply({ supabase, postId, userId, teamId = null
       user_id: userId,
       team_id: teamId,
       body: trimmedBody,
+      images: normalizedImages.images,
       quoted_reply_id: quotedReplyId || null,
       created_at: now.toISOString(),
       deleted_at: null,
@@ -1072,6 +1421,55 @@ export async function deleteForumReply({ supabase, id, adminUserId, now = new Da
   await recountReplies({ supabase, postId: data.post_id });
   await resolveReportsForTarget({ supabase, targetType: "reply", targetId: id, adminUserId, now });
   return { status: 200, body: { ok: true, id: data.id } };
+}
+
+/**
+ * DELETE /api/admin/forum/images (#4819, ejer-valg 8/9: "admin kan slette et
+ * billede og dermed fjerne det fra indlægget").
+ *
+ * Rækkefølgen er bevidst: FØRST fjernes stien fra indlæggets `images`, DEREFTER
+ * slettes selve filen. Fejler filsletningen efter rækken er opdateret, står
+ * billedet tilbage som forældreløst i bucketen (fanges af
+ * scripts/sweep-forum-image-orphans.mjs) — det er langt bedre end den omvendte
+ * rækkefølge, hvor et indlæg ville pege på en fil der ikke findes mere.
+ */
+export async function deleteForumImage({ supabase, targetType, targetId, path }) {
+  if (targetType !== "post" && targetType !== "reply") {
+    return { status: 400, body: { error: "Invalid target type", errorCode: "forum_invalid_target_type" } };
+  }
+  if (!targetId) return { status: 400, body: { error: "Missing target id", errorCode: "forum_missing_id" } };
+  if (typeof path !== "string" || !path.trim()) {
+    return { status: 400, body: { error: "Invalid images", errorCode: "forum_invalid_images" } };
+  }
+
+  const table = targetType === "post" ? "forum_posts" : "forum_replies";
+  const { data: row, error: loadError } = await supabase
+    .from(table)
+    .select("id, images")
+    .eq("id", targetId)
+    .maybeSingle();
+  if (loadError) throw new Error(`forum: could not load ${targetType} ${targetId}: ${loadError.message}`);
+  if (!row) {
+    return targetType === "post"
+      ? { status: 404, body: { error: "Post not found", errorCode: "forum_post_not_found" } }
+      : { status: 404, body: { error: "Reply not found", errorCode: "forum_reply_not_found" } };
+  }
+
+  const current = shapeForumImages(row.images);
+  const next = current.filter((img) => img.path !== path);
+  if (next.length === current.length) {
+    return { status: 404, body: { error: "Image not found", errorCode: "forum_image_not_found" } };
+  }
+
+  const { error: updateError } = await supabase.from(table).update({ images: next }).eq("id", targetId);
+  if (updateError) throw new Error(`forum: could not update images for ${targetType} ${targetId}: ${updateError.message}`);
+
+  const { error: removeError } = await supabase.storage.from(FORUM_IMAGE_BUCKET).remove([path]);
+  // Filen er nu ikke længere refereret; en fejlet Storage-sletning må ikke
+  // rulle rækken tilbage. Rapportér den, lad oprydningsscriptet tage filen.
+  const storageError = removeError ? removeError.message : null;
+
+  return { status: 200, body: { ok: true, images: next, storage_error: storageError } };
 }
 
 /**

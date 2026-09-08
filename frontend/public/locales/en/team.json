@@ -275,6 +275,7 @@
     "tabAchievements": "Achievements {unlocked}/{total}",
     "statSeasons": "Seasons",
     "statTransfers": "Transfers",
+    "statForumPosts": "Forum posts",
     "recentTransfers": "Recent transfers",
     "noTransfers": "No transfers yet",
     "boughtFrom": "Bought from",
@@ -290,6 +291,9 @@
     "thPoints": "Points",
     "thRank": "Rank",
     "seasonNumber": "Season {n}",
-    "divisionShort": "Div. {n}"
+    "divisionShort": "Div. {n}",
+    "discordOpenAria": "Open {handle}'s Discord profile",
+    "discordCopyAria": "Copy Discord username {handle}",
+    "discordCopied": "Copied"
   }
 }

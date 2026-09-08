@@ -43,11 +43,18 @@ test("locked achievement shows progress toward its next goal", async ({ page }) 
   await page.goto(`/managers/${TEST_TEAM.id}`);
   await expect(page).toHaveURL(new RegExp(`/managers/${TEST_TEAM.id}$`));
 
-  // Åbn achievements-tabben (DA-locale: "Achievements 1/2"). force: nabo-tabs i
-  // den vandrette scroll-row kan opfange klik-punktet på smal mobil-viewport.
+  // Åbn achievements-tabben (DA-locale: "Achievements 1/2").
+  //
+  // #3200-afløseren 8/9: samme rettelse som i manager-profile.spec.js. Her stod
+  // `scrollIntoViewIfNeeded()` + `click({ force: true })`, og den kombination
+  // parkerer fanen i viewportens nederste kant — under den faste bundnavigation
+  // på mobile-webkits lavere viewport — mens `force` springer netop
+  // obstruktions-tjekket over. I søstermodulet endte klikket i bundbjælken og
+  // navigerede væk fra siden. Denne test var ikke rød endnu, men den står på
+  // samme fane på samme side og er samme fejlklasse.
   const achievementsTab = page.getByRole("tab", { name: /Achievements 1\/2/ });
-  await achievementsTab.scrollIntoViewIfNeeded();
-  await achievementsTab.click({ force: true });
+  await achievementsTab.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await achievementsTab.click();
 
   // Progress-tal + progressbar på den låste achievement.
   await expect(page.getByText("40/50")).toBeVisible();

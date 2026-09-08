@@ -112,6 +112,8 @@ import {
   notifyUser as notifyUserShared,
   buildWelcomeNotification,
   notifyForumThreadReply,
+  notifyDirectMessage,
+  notifyForumMentions,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
@@ -151,12 +153,32 @@ import {
   setForumPostPinned,
   deleteForumPost,
   deleteForumReply,
+  deleteForumImage,
   getForumReportCounts,
   markForumThreadRead,
   markAllForumThreadsRead,
   getForumUnreadStatus,
   toggleForumReaction,
+  recordForumThreadView,
+  getForumAuthorStats,
+  listForumCategoryMutes,
+  setForumCategoryMute,
 } from "../lib/forum.js";
+import { loadMentionableManagers } from "../lib/forumMentions.js";
+import {
+  listConversations,
+  getUnreadSummary,
+  getConversation,
+  sendDirectMessage,
+  markConversationRead,
+  blockManager,
+  unblockManager,
+  reportConversation,
+  hideConversation,
+  findConversationWith,
+  resolveManagerUserId,
+  resolveCounterpartUserId,
+} from "../lib/directMessages.js";
 import {
   contractOnAcquirePatch,
   computeReleaseBuyoutFee,
@@ -435,6 +457,8 @@ import {
   presencePulseLimiter,
   feedbackLimiter,
   forumWriteLimiter,
+  dmSendLimiter,
+  dmActionLimiter,
   userOrIpKey,
 } from "../lib/rateLimiters.js";
 import {
@@ -14327,10 +14351,62 @@ router.get("/forum/posts", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/forum/mentionable-managers — navnene der kan @-tagges (#5011).
+// Kun `name` (managerens brugernavn) + `team_id` — begge dele står allerede på
+// hvert eneste forum-indlæg (ForumAuthorIdentity, #4751), så ruten tilføjer
+// ingen ny eksponering. Klienten bruger listen to steder: autocomplete i
+// editoren og den klikbare rendering af @navn i teksten. Den er IKKE kilden til
+// hvem der får en notifikation — det afgør serveren selv ved oprettelsen.
+// presencePulseLimiter (120/60 s): kaldes af autocomplete mens man skriver et
+// @-tag, altsaa billigt og hyppigt — samme profil som limiteren er bygget til
+// (#530-daekning for nye auth-ruter, samme moenster som #5013).
+router.get("/forum/mentionable-managers", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const managers = await loadMentionableManagers({ supabase });
+    res.json({ managers: managers.map((m) => ({ name: m.name, team_id: m.teamId })) });
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/forum/unread-status — billig nav-prik-kilde (#3451): {has_unread}.
 router.get("/forum/unread-status", requireAuth, async (req, res) => {
   try {
     res.json(await getForumUnreadStatus({ supabase, userId: req.user.id }));
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/forum/category-mutes — spillerens abonnement pr. kategori (#5013):
+// {categories:[{category, muted}]}. Opt-out-model, så en tom tabel betyder
+// "følger alt" (se database/2026-09-08-5013-forum-category-mutes.sql).
+// presencePulseLimiter (120/60 s): den kaldes én gang pr. sideindlæsning af
+// baade forumsiden og indstillingerne, altsaa billigt og hyppigt — samme
+// profil som limiteren er bygget til (#530-daekning for nye auth-ruter).
+router.get("/forum/category-mutes", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    res.json(await listForumCategoryMutes({ supabase, userId: req.user.id }));
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/forum/category-mutes — slå ÉN kategori til/fra (#5013). user_id
+// kommer ALTID fra sessionen, aldrig fra body — en spiller kan ikke skrive en
+// andens abonnement. Samme forumWriteLimiter som de øvrige skrive-ruter.
+router.put("/forum/category-mutes", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await setForumCategoryMute({
+      supabase,
+      userId: req.user.id,
+      category: req.body?.category,
+      muted: req.body?.muted,
+    });
+    res.status(status).json(body);
   } catch (e) {
     captureException(e);
     res.status(500).json({ error: e.message });
@@ -14355,7 +14431,17 @@ router.patch("/forum/threads/read-all", requireAuth, forumWriteLimiter, async (r
 // GET /api/forum/posts/:id — opslag + svar + evt. poll (aggregater + egen stemme).
 router.get("/forum/posts/:id", requireAuth, async (req, res) => {
   try {
-    const { status, body } = await getForumPost({ supabase, id: req.params.id, userId: req.user.id });
+    // #5000: visningen registreres PARALLELT med selve opslaget (ikke bagefter),
+    // fordi RPC'en returnerer traadens view_count EFTER inkrementet — laeseren
+    // skal se sin egen visning talt med uden en ekstra rundtur. Best-effort:
+    // fejler taellingen, vises traaden alligevel med det tal der stod i basen.
+    const [viewCount, result] = await Promise.all([
+      recordForumThreadView({ supabase, postId: req.params.id, userId: req.user.id })
+        .catch((err) => { captureException(err); return null; }),
+      getForumPost({ supabase, id: req.params.id, userId: req.user.id }),
+    ]);
+    const { status, body } = result;
+    if (status === 200 && typeof viewCount === "number") body.post.view_count = viewCount;
     if (status === 200) {
       // #3451: markér tråden læst — best-effort, må ALDRIG blokere visningen.
       markForumThreadRead({ supabase, userId: req.user.id, postId: req.params.id })
@@ -14371,7 +14457,7 @@ router.get("/forum/posts/:id", requireAuth, async (req, res) => {
 // POST /api/forum/posts — nyt opslag. poll_options er admin-only (403 ellers).
 router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => {
   try {
-    const { category, title, body: postBody, poll_options: pollOptions } = req.body || {};
+    const { category, title, body: postBody, images, poll_options: pollOptions } = req.body || {};
     // Rolle + username i ét opslag: rollen gater polls, username bruges i
     // Discord-pinget. requireAuth sætter kun req.user (auth) + req.team.
     // Fejler opslaget behandles brugeren som ikke-admin (fail closed for polls).
@@ -14385,6 +14471,9 @@ router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => 
       category,
       title,
       body: postBody,
+      // #4819: klienten har allerede uploadet filerne og sender kun stierne;
+      // createForumPost afviser alt der ikke ligger i brugerens egen mappe.
+      images: images ?? null,
       pollOptions: pollOptions ?? null,
     });
     if (result.status === 200) {
@@ -14396,6 +14485,19 @@ router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => 
         username: u?.username || null,
         teamName: req.team?.name || null,
       }).catch(err => console.error("[forum] discord ping (post) failed:", err.message));
+      // #5011: @-tags i opslagets BRØDTEKST giver den taggede en
+      // indbakke-notifikation. Kun brødteksten scannes — det er præcis den
+      // tekst der også rendres med klikbare navne (titlen står i sidehovedet
+      // og i trådlistens rækker, hvor hele rækken allerede er ét <Link>, så et
+      // link deri ville være ugyldig HTML). Best-effort: opslaget er gemt.
+      notifyForumMentions({
+        supabase,
+        text: typeof postBody === "string" ? postBody.trim() : "",
+        authorUserId: req.user.id,
+        postId: result.body?.id || null,
+        postTitle: typeof title === "string" ? title.trim() : null,
+        authorName: u?.username || null,
+      }).catch(err => captureException(err));
     }
     res.status(result.status).json(result.body);
   } catch (e) {
@@ -14415,17 +14517,25 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
       userId: req.user.id,
       teamId: req.team?.id || null,
       body: req.body?.body,
+      images: req.body?.images ?? null,
       quotedReplyId: req.body?.quoted_reply_id || null,
     });
     if (result.status === 200) {
       const replyBody = typeof req.body?.body === "string" ? req.body.body.trim() : "";
-      supabase.from("users").select("username").eq("id", req.user.id).single()
-        .then(({ data: u }) => notifyForumActivity({
+      // ÉT username-opslag deles af Discord-pinget og #5011's mention-scan —
+      // et postgrest-builder-objekt udfører requesten på hver .then(), så det
+      // pakkes i et rigtigt promise før det forbruges to steder.
+      const authorNamePromise = (async () => {
+        const { data: u } = await supabase.from("users").select("username").eq("id", req.user.id).single();
+        return u?.username || null;
+      })();
+      authorNamePromise
+        .then((username) => notifyForumActivity({
           kind: "reply",
           title: result.post?.title || "",
           body: replyBody,
           category: result.post?.category || null,
-          username: u?.username || null,
+          username,
           teamName: req.team?.name || null,
         }))
         .catch(err => console.error("[forum] discord ping (reply) failed:", err.message));
@@ -14459,6 +14569,20 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
           postTitle,
         }).catch(err => captureException(err));
       }
+      // #5011: @-tags i svaret. Dedupe-nøglen er selve SVARET
+      // ("reply:<id>"), ikke tråden, så to forskellige managere kan tagge dig
+      // i samme tråd — og det samme svar aldrig kan sende to gange.
+      authorNamePromise
+        .then((authorName) => notifyForumMentions({
+          supabase,
+          text: replyBody,
+          authorUserId: req.user.id,
+          postId,
+          postTitle,
+          replyId: result.body?.id || null,
+          authorName,
+        }))
+        .catch(err => captureException(err));
     }
     res.status(result.status).json(result.body);
   } catch (e) {
@@ -14589,6 +14713,232 @@ router.delete("/admin/forum/replies/:id", requireAdmin, adminWriteLimiter, async
   }
 });
 
+// DELETE /api/admin/forum/images — fjern ÉT billede fra et indlæg/svar
+// (#4819, ejer-valg 8/9). Målet identificeres i body frem for i stien, fordi
+// stien til billedet selv indeholder "/" og ikke kan bære en URL-parameter.
+router.delete("/admin/forum/images", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { target_type: targetType, target_id: targetId, path } = req.body || {};
+    const { status, body } = await deleteForumImage({ supabase, targetType, targetId, path });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BESKEDER MELLEM MANAGERS (#3200) — 1:1 DM
+// ═══════════════════════════════════════════════════════════════════════════════
+// Al skrivning sker via service-role: authenticated har KUN SELECT på
+// dm_conversations/dm_messages (database/2026-09-08-3200-manager-dm.sql), så
+// blok-tjek, længde-validering og rate-limit findes præcis ét sted — her.
+// sender_id udledes ALTID af req.user; klienten sender aldrig sit eget id.
+//
+// Bemærk navnet: "DM" betyder også Discord-DM i denne kodebase
+// (discordDmOutbox.js m.fl.). Denne blok handler udelukkende om beskeder
+// MELLEM SPILLERE inde i spillet — modulet hedder derfor directMessages.js.
+
+// GET /api/messages/conversations — samtalelisten til Beskeder-fanen.
+// Laeseruterne baerer presencePulseLimiter (120/min), ikke dmActionLimiter.
+// #530-vagten kraever daekning paa enhver auth-gated rute, og disse fire POLLES:
+// en aaben traad henter hvert 20. sekund, og listen + badgen foelger indbakkens
+// hentning. Et 10-minutters loft ville ramme en normal session; 120/min er
+// praecis det loft de oevrige pollede laesninger (notifikationer, presence)
+// allerede bruger, og det stopper stadig en loebsk fane.
+router.get("/messages/conversations", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const { status, body } = await listConversations({ supabase, userId: req.user.id });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/messages/unread-count — billig kilde til nav-badgen.
+router.get("/messages/unread-count", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const { status, body } = await getUnreadSummary({ supabase, userId: req.user.id });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/messages/with/:teamId — indgangen fra managerprofilen, forumnavnet
+// og "Skriv til modparten". Returnerer den eksisterende samtale hvis der er
+// en; opretter ALDRIG en tom tråd.
+router.get("/messages/with/:teamId", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.teamId)) {
+      return res.status(400).json({ error: "Invalid team id", errorCode: "dm_invalid_recipient" });
+    }
+    const targetUserId = await resolveManagerUserId({ supabase, teamId: req.params.teamId });
+    if (!targetUserId) {
+      return res.status(404).json({ error: "Manager not found", errorCode: "dm_recipient_not_found" });
+    }
+    const { status, body } = await findConversationWith({ supabase, userId: req.user.id, targetUserId });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/messages/conversations/:id — én tråd, nyeste sidst.
+router.get("/messages/conversations/:id", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+    const { status, body } = await getConversation({
+      supabase,
+      userId: req.user.id,
+      conversationId: req.params.id,
+      limit: req.query.limit,
+      before: typeof req.query.before === "string" ? req.query.before : null,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/send — send en besked. `delivered` udelades bevidst af
+// svaret: en blokeret afsender må ikke kunne aflæse blokeringen (ejer-valg 2).
+router.post("/messages/send", requireAuth, dmSendLimiter, async (req, res) => {
+  try {
+    const { recipientTeamId, conversationId, body: messageBody, context } = req.body || {};
+    let recipientUserId = null;
+    if (!conversationId) {
+      if (typeof recipientTeamId !== "string" || !UUID_RE.test(recipientTeamId)) {
+        return res.status(400).json({ error: "Pick a manager to write to", errorCode: "dm_invalid_recipient" });
+      }
+      recipientUserId = await resolveManagerUserId({ supabase, teamId: recipientTeamId });
+      if (!recipientUserId) {
+        return res.status(404).json({ error: "Manager not found", errorCode: "dm_recipient_not_found" });
+      }
+    } else if (!UUID_RE.test(conversationId)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+
+    const { status, body } = await sendDirectMessage({
+      supabase,
+      senderUserId: req.user.id,
+      recipientUserId,
+      conversationId: conversationId || null,
+      body: messageBody,
+      context,
+      notify: async ({ conversationId: cid, recipientUserId: to, now }) =>
+        notifyDirectMessage({
+          supabase,
+          recipientUserId: to,
+          senderUserId: req.user.id,
+          senderName: req.team?.manager_name || req.team?.name || null,
+          conversationId: cid,
+          now,
+        }),
+    });
+    if (status !== 200) return res.status(status).json(body);
+    // `delivered` bygges bevidst IKKE ind i svaret: det er feltet der ville
+    // afsløre en blokering for afsenderen.
+    res.status(200).json({ conversationId: body.conversationId, message: body.message });
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/conversations/:id/read — markér tråden læst.
+router.post("/messages/conversations/:id/read", requireAuth, dmActionLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+    const { status, body } = await markConversationRead({
+      supabase, userId: req.user.id, conversationId: req.params.id,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/conversations/:id/hide — skjul samtalen for kalderen.
+// Beskederne bliver liggende: tabellen er loggen (#3131).
+router.post("/messages/conversations/:id/hide", requireAuth, dmActionLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+    const { status, body } = await hideConversation({
+      supabase, userId: req.user.id, conversationId: req.params.id,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/conversations/:id/report — anmeld tråden til admin.
+router.post("/messages/conversations/:id/report", requireAuth, dmActionLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+    const { status, body } = await reportConversation({
+      supabase, userId: req.user.id, conversationId: req.params.id, reason: req.body?.reason,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/block — blokér eller ophæv blokering af en manager.
+router.post("/messages/block", requireAuth, dmActionLimiter, async (req, res) => {
+  try {
+    const { teamId, conversationId, blocked } = req.body || {};
+    // To noegler, bevidst. `teamId` er indgangen fra en profil eller et
+    // forumnavn, hvor samtalen maaske ikke findes endnu. `conversationId` er
+    // indgangen fra selve traaden - og den ENESTE der virker hvis modparten
+    // ikke laengere har et hold (CodeRabbit 8/9). Blokering skal altid kunne
+    // lade sig goere, saa traaden noegler paa samtalen.
+    const hasConversation = typeof conversationId === "string" && UUID_RE.test(conversationId);
+    const hasTeam = typeof teamId === "string" && UUID_RE.test(teamId);
+    if (!hasConversation && !hasTeam) {
+      return res.status(400).json({ error: "Pick a manager to block", errorCode: "dm_invalid_block_target" });
+    }
+    const targetUserId = hasConversation
+      ? await resolveCounterpartUserId({ supabase, userId: req.user.id, conversationId })
+      : await resolveManagerUserId({ supabase, teamId });
+    if (!targetUserId) {
+      return res.status(404).json({ error: "Manager not found", errorCode: "dm_recipient_not_found" });
+    }
+    // CodeRabbit 8/9: sit eget teamId resolver til ens eget bruger-id, og
+    // CHECK-constrainten dm_blocks_not_self afviste saa insertet - hvilket kom
+    // ud som en 500 og en Sentry-rapport i stedet for et 400. Kun teamId-vejen
+    // kan naa hertil; resolveCounterpartUserId kan pr. definition ikke give en
+    // selv.
+    if (targetUserId === req.user.id) {
+      return res.status(400).json({ error: "Pick a manager to block", errorCode: "dm_invalid_block_target" });
+    }
+    const { status, body } = blocked === false
+      ? await unblockManager({ supabase, userId: req.user.id, targetUserId })
+      : await blockManager({ supabase, userId: req.user.id, targetUserId });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ACHIEVEMENTS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -14656,7 +15006,13 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
 
     const [userRes, ridersRes, historyRes, allAchsRes, unlockedAchsRes, transfersRes] = await Promise.all([
       supabase.from("users")
-        .select("id, username, last_seen, login_streak")
+        // discord_handle/discord_id (#5012): offentligt Discord-kontaktfelt +
+        // det eksisterende bot-DM-ID (#2161), brugt til at afgøre link-vs-kopi
+        // på den offentlige managerprofil. Se database/2026-09-08-5012-discord-
+        // handle.sql for hvorfor dette IKKE eksponeres via en RLS SELECT-policy.
+        // schema-columns-ok: discord_handle tilføjes af database/2026-09-08-5012-
+        // discord-handle.sql i SAMME PR — snapshottet opdateres først post-merge.
+        .select("id, username, last_seen, login_streak, discord_handle, discord_id")
         .eq("id", team.user_id).single(),
       supabase.from("riders")
         .select("id, firstname, lastname, birthdate, market_value, is_u25, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)")
@@ -14722,7 +15078,21 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
       userData.is_online = userData.last_seen
         ? (Date.now() - new Date(userData.last_seen).getTime()) < 5 * 60 * 1000
         : false;
+      // #5012 (CodeRabbit-fund): discord_id er det PRIVATE bot-DM-kobling-ID
+      // (#2161) — det har ALDRIG været eksponeret af dette endpoint før denne
+      // PR. Uden dette guard ville enhver authenticated bruger kunne se en
+      // managers rå Discord-snowflake i DevTools/Network, selv hvis vedkommende
+      // aldrig satte det offentlige discord_handle. Frontend renderer allerede
+      // kun discord_id NÅR discord_handle er sat (ManagerProfilePage.jsx) —
+      // dette håndhæver samme regel server-side, hvor det faktisk beskytter data.
+      if (!userData.discord_handle) delete userData.discord_id;
     }
+
+    // #5000 (ejer-bestilling 7/9): antal forumindlaeg — traade + svar — paa den
+    // offentlige managerprofil, som forummets forfatterlinjer allerede linker
+    // til. AI-hold har ingen brugerkonto (team.user_id er null for ~57% af
+    // holdene) og faar derfor nul-objektet uden et DB-opslag.
+    const forumStats = await getForumAuthorStats({ supabase, userId: team.user_id });
 
     res.json({
       team: { id: team.id, name: team.name, division: team.division, is_ai: !!team.is_ai },
@@ -14731,6 +15101,7 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
       season_history: historyRes.data || [],
       achievements,
       transfer_activity: transfersRes.data || [],
+      forum_stats: forumStats,
     });
   } catch (err) {
     captureException(err, { route: "GET /managers/:teamId", team_id: teamId });

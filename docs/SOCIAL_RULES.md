@@ -37,6 +37,15 @@ beskeder fra ejeren: resultat-feeds til divisionskanalerne, digest-DM'en (§4.6)
 transfer-DM'er (§4.2) og ops-alarmer. De sender fordi koden er bygget til det, ikke fordi en agent
 besluttede at skrive til nogen.
 
+**Roadmap-kategorien på forummet er ejerens egen kanal** (#4818, ejer-direktiv 4/9 + afklaring 8/9:
+*"kun jeg opretter, alle svarer"*). Kun `users.role = 'admin'` kan oprette tråde der; databasen afviser
+resten via triggeren `forum_posts_enforce_category_post_role`, backend svarer `403
+forum_category_admin_only`, og fladen skjuler knappen. Rettigheden er generel — `post_role` pr. kategori i
+`public.forum_category_post_roles`, ikke et hardcodet bruger-id — så #4268's rollemodel kan overtage den
+uden en ny migration. **Svar er åbne for alle i alle kategorier**; ingen kategori begrænser
+`forum_replies`. §0 gælder uændret og skærpet her: en agent poster ALDRIG i Roadmap-kategorien, heller
+ikke selvom den tekniske adgang findes via service-role. Ejeren skriver selv; AI leverer udkast.
+
 Beslægtet og lige så bindende: spillervendt tekst merges aldrig uden ejerens eksplicitte ja til den
 konkrete ordlyd (`.claude/learnings/2026-08-28-shipped-player-copy-without-explicit-yes.md`), og
 community-copy skal verificeres mod koden før den påstår at noget mangler
@@ -53,14 +62,15 @@ community-copy skal verificeres mod koden før den påstår at noget mangler
 | Discord-DM til manageren | **Live**, 9 typer | `discordNotifier.js:566`, se §4.2 |
 | Per-type DM-præferencer | **Live**, 6 nøgler | `discordDmPrefs.js:12-19` |
 | Discord-kanalposter (webhooks) | **Live**, 20 konfigurerede | `discordNotifier.js:131-178` |
-| In-app-notifikationer | **Live**, 54 typer | `notificationTypes.js` |
+| In-app-notifikationer | **Live**, 55 typer | `notificationTypes.js` |
 | Achievements | **Live**, 46 definitioner | `achievementEngine.js` |
 | Forum med opbakning | **Live** siden 6/8 | `forum.js`, se `FORUM_RULES.md` |
+| Roadmap-kategorien (kun ejeren opretter) | **Live** siden #4818 | `forum_category_post_roles`, se §0 |
 | Holdprofil (offentlig) | **Live** | `frontend/src/pages/TeamProfilePage.jsx`, rute `teams/:id` |
 | Managerprofil (offentlig) | **Live** | `frontend/src/pages/ManagerProfilePage.jsx`, rute `managers/:teamId` |
 | Online-prik + "sidst set" | **Live**, 5-min-granularitet | `api.js:13856`, `OnlineBadge.jsx` |
 | Global rangliste | **Live**, 231 hold rangeret | `globalRankFormula.js`, `global_rank_mv` |
-| **Spiller-til-spiller-beskeder i spillet** | **FINDES IKKE** | ingen tabel, ingen route |
+| Beskeder mellem managers (1:1) | **Live** siden 8/9 | `directMessages.js`, `/api/messages`, se §6a |
 | **Notifikation når du låser en achievement op** | **FINDES IKKE** | `achievement` optræder ikke i `notificationService.js` |
 | **Notifikation ved opbakning** | **FINDES IKKE**, bevidst v1-fravalg | `forum.js:781` |
 | **Referral-/rekrutteringsrangliste** | **FINDES IKKE** | ønsket i [#3051](https://github.com/NicolaiDolmer/CyclingZone/issues/3051) |
@@ -312,7 +322,7 @@ fordi dens skrivninger er.
 
 | Regel | Værdi | Hvor |
 |---|---|---|
-| Kanonisk typeliste | **54 typer** | `notificationTypes.js`, talt med `node -e "import('./lib/notificationTypes.js')..."` |
+| Kanonisk typeliste | **55 typer** | `notificationTypes.js`, talt med `node -e "import('./lib/notificationTypes.js')..."` |
 | Paritetskrav | listen SKAL matche `notifications_type_check` i prod | `notificationTypes.js:1-5` |
 | Paritets-vagt | `notificationTypes.test.js` fejler hvis en type kun findes ét af stederne | samme |
 | Rate limit på læsning | 120 kald pr. 60 s (`presencePulseLimiter`) | `rateLimiters.js:94-100` |
@@ -336,6 +346,138 @@ constrainten fejler tavst i prod. Se §10.
 
 **Bevidste fravalg** (`FORUM_RULES.md` §1, ejer 25/8): ingen notifikation ved *alle* nye opslag, og
 ingen notifikation ved opbakning.
+
+### 6.1 Abonnement pr. forum-kategori (#5013, ejer-direktiv 3/9 i #4751)
+
+Spilleren bestemmer selv hvilke forum-kategorier der overhovedet må sige til at der er noget nyt.
+
+| Regel | Værdi | Hvor |
+|---|---|---|
+| Model | **opt-out**: ingen række = spilleren følger kategorien | `2026-09-08-5013-forum-category-mutes.sql` |
+| Tabel | `forum_category_mutes` (`user_id`, `category_id`, `created_at`), PK på begge id'er | samme |
+| Hvorfor opt-out | default skal være "følger alle". Opt-in ville kræve backfill af hver bruger, og hver **ny** kategori (Roadmap, #4818) ville være tavs for alle eksisterende spillere indtil endnu en backfill | samme fil-header |
+| `category_id` | kategori-nøglen som text, samme værdirum som `forum_posts.category`. Ingen FK: der findes ingen `forum_categories`-tabel | samme |
+| RLS | bruger ser og skriver kun egne rækker; backend læser via service-role | samme |
+| API | `GET /api/forum/category-mutes` (hele listen med `muted`-flag), `PUT` med `{category, muted}`. `user_id` kommer altid fra sessionen | `api.js` |
+| Arkivet | `archive` er et visnings-filter (#4492), aldrig en kategori man kan abonnere på: `PUT` afviser den med 400 | `forum.js` |
+
+**Hvad valget dæmper — og hvad det aldrig dæmper.** Dette er reglen, ikke en implementeringsdetalje:
+
+| Signal | Dæmpes? | Hvor |
+|---|---|---|
+| `is_unread` pr. tråd i trådlisten | **ja** | `listForumPosts` |
+| Den gule forum-prik i navigationen (`has_unread`) | **ja** | `getForumUnreadStatus` |
+| `forum_thread_reply` — nogen svarer på **din egen** tråd | **nej** | `notifyForumThreadReply`, urørt |
+| @-tag af dig personligt (#5011) | **nej** | `notifyForumMention`, urørt — se §6.2 |
+
+Skillelinjen er "kategori-bredt signal" mod "besked til dig". Et svar til dig er ikke et
+kategori-signal, og en spiller der har slået Off-topic fra forventer stadig svar på sin egen tråd
+dér. En fremtidig kategori-bred notifikationstype skal respektere mute-settet; en ny direkte type
+skal ikke.
+
+**Flader:** til/fra i kategori-hovedet på forumsiden (kun på en rigtig kategori, ikke på "All" og
+ikke på arkivet) og den samlede liste i indstillingerne. De deler
+`frontend/src/lib/forumCategoryMutes.js`, så de to steder aldrig kan vise hver sin sandhed. Et
+fejlet eller tomt svar falder til "følger alt" — en fejlet forespørgsel må aldrig tænde for en
+dæmpning spilleren ikke har bedt om.
+
+### 6.2 @-tag af en manager (#5011, ejer-direktiv 3/9 i #4751)
+
+Skriver du `@Managernavn` i et opslag eller et svar, får den taggede en notifikation i indbakken med
+link direkte til indlægget. Reglerne:
+
+| Regel | Værdi | Hvor |
+|---|---|---|
+| Type | `forum_mention` | `notificationTypes.js` |
+| Hvem der afgør tagget | **serveren**, aldrig klienten | `forumMentions.js`, kaldt fra `POST /forum/posts` og `POST /forum/posts/:id/replies` |
+| Match | case-insensitivt, **hele** navne (`@Nico` rammer aldrig "Nicolai"), navne med mellemrum (længste match vinder), aldrig e-mails, aldrig hen over et linjeskift | `findForumMentions` |
+| Selv-tag | afvises i `notifyForumMention` selv, ikke kun på kaldestedet | `notificationService.js` |
+| Dedupe | pr. (bruger, **indlæg**) via `metadata.sourceKey` (`post:<id>` / `reply:<id>`), læst som ulæst. To managere kan tagge dig i samme tråd; samme indlæg sender aldrig to gange — og det er også svaret på "ingen ny notifikation ved redigering" | samme |
+| Isolering | en fejlet notifikation må aldrig vælte opslaget/svaret | samme |
+| Link | `related_id` = trådens id, `metadata.replyId` = det konkrete svar → `/forum/<postId>#reply-<replyId>` | `notificationLink.js` |
+| Hvad der scannes | **kun brødteksten**, ikke trådtitlen: titlen står i sidehovedet og i trådlistens rækker, hvor hele rækken allerede er ét `<Link>` | `api.js` |
+| Taggbar | menneskestyrede hold med et brugernavn (ikke AI, ikke banken) | `loadMentionableManagers` |
+| Klientens rolle | rendrer navnet klikbart til `/managers/:teamId` og foreslår navne ved `@` + 2 tegn — den afgør **ikke** hvem der får besked | `MentionText.jsx`, `MentionAutocomplete.jsx` |
+
+Parseren findes **to steder** (`backend/lib/forumMentions.js` og `frontend/src/lib/forumMentions.js`)
+fordi serveren skal afgøre notifikationen og klienten skal rendre præcis de samme navne klikbare.
+Drift mellem de to ville give den værste tilstand: et navn ulinket i teksten mens modtageren fik en
+besked. Blokken er derfor markeret i begge filer, sammenlignet tegn for tegn af
+`frontend/src/lib/forumMentions.parity.test.js` og synkroniseres med
+`node scripts/sync-forum-mentions-parser.mjs` — **backend er kilden**.
+
+Et @-tag er en **besked til dig**, ikke et kategori-signal: `forum_mention` sendes uanset om
+modtageren har slået kategorien fra (§6.1).
+
+---
+
+## 6a. Beskeder mellem managers (DM v1, #3200)
+
+Ejer-designvalg 8/9. Bygget efter deadline-direktivet 25/8: *"Det skal være
+muligt at sende andre managers beskeder i sæson 3 senest"*. Ønsket er også
+spiller-drevet (@arongreve, #feedback-and-ideas 3/8), og ejeren svarede
+offentligt at featuren kommer.
+
+### 6a.1 Formen
+
+| Regel | Værdi |
+|---|---|
+| Model | **kun 1:1**, ingen gruppe-/pulje-tråde i v1 |
+| Deltagere | **brugere** (`auth.users`), ikke hold (#4379). Vises som managernavn + holdnavn |
+| Par-nøgle | uordnet: `participant_a = least`, `participant_b = greatest`, CHECK + UNIQUE |
+| Indgange | managerprofilen, forfatternavnet i forummet, transfertilbud, auktioner |
+| Flade | Beskeder-fanen i indbakken, `/notifications?tab=messages&c=<id>` |
+| Maks længde | **2 000 tegn**, håndhævet i DB-CHECK og i backend-validering |
+| Rate-limit | **30 beskeder pr. 10 min** (`dmSendLimiter`), 60 sidehandlinger pr. 10 min (`dmActionLimiter`) |
+| Realtime | **nej i v1** — åben tråd poller hvert 20. sekund |
+| Indholdsfiltrering | **ingen**, bevidst ejer-valg |
+| Notifikation | type `dm_message`, dedupe pr. (bruger, samtale) mens den er ulæst |
+
+Modtageren skal være en rigtig manager: AI- og bank-hold filtreres fra, så de
+aldrig kan stå som modpart.
+
+### 6a.2 De tre værn, og hvorfor de ser ud som de gør
+
+**Blokering er tavs.** En blokeret afsenders besked bliver GEMT, men modtageren
+ser den ikke og notificeres ikke. Knappen skjules ikke, og endpointet svarer
+ikke 403: begge dele ville fortælle den blokerede direkte at han er blokeret,
+og det er præcis det ejeren ikke vil. `delivered`-feltet bygges bevidst ikke
+ind i API-svaret, og en kontrakt-test fejler hvis nogen ændrer route'en til et
+bart `res.json(body)`.
+
+Blok-filteret gælder beskeder sendt EFTER blokeringen. Historik fra før
+bevares — ellers ville en blokering slette konteksten for den anmeldelse man
+typisk laver i samme åndedrag.
+
+**Der slettes aldrig.** `dm_messages` har hverken UPDATE- eller DELETE-policy
+for nogen rolle, heller ikke afsenderen. Tabellen ER loggen og er evidensen i
+fair-play-sager ([#3131](https://github.com/NicolaiDolmer/CyclingZone/issues/3131)).
+En bruger kan kun skjule samtalen for sig selv (`dm_conversation_hides`), og en
+ny besked henter den frem igen.
+
+**Admin læser ikke privat post uden anmeldelse.** Gaten ligger i RLS, ikke i
+UI'et: admin har kun SELECT på samtaler og beskeder hvor der findes en
+`dm_reports`-række. En uanmeldt samtale er usynlig for admin på
+databaseniveau. Anmeldelse kræver en begrundelse på mindst 10 tegn (samme
+regel som forummets rapportering, #3452) og er idempotent mens sagen er åben.
+
+### 6a.3 Hvor koden bor
+
+| Lag | Fil |
+|---|---|
+| Tabeller + RLS | `database/2026-09-08-3200-manager-dm.sql` |
+| Notifikationstype | `database/2026-09-08-3200-dm-notification-type.sql` |
+| Backend-logik | `backend/lib/directMessages.js` |
+| Routes | `backend/routes/api.js`, blokken "BESKEDER MELLEM MANAGERS" |
+| Notifikation | `notifyDirectMessage`, `backend/lib/notificationService.js` |
+| Fane + tråd | `frontend/src/components/messages/MessagesPanel.jsx` |
+| Indgangs-knap | `frontend/src/components/messages/MessageManagerButton.jsx` |
+| Design | `docs/superpowers/specs/2026-09-08-manager-dm-v1-design.md` |
+
+Navnekollision værd at kende: "DM" betyder også **Discord-DM** i denne
+kodebase (`discordDm*.js`, `discord_dm_outbox`). §4 handler om den kanal, §6a
+om beskeder mellem spillere inde i spillet. De to har intet med hinanden at
+gøre.
 
 ---
 
@@ -441,6 +583,30 @@ Om det er en synligheds- eller en værdi-årsag er ikke afgjort, og det hører u
 
 Til sammenligning: 378 rækker i `forum_thread_reads` fordelt på 52 brugere. Folk **læser**
 forummet, de trykker bare ikke opbakning.
+
+### 8.1b Billeder i forum-indlæg
+
+Ejer-direktiv 4/9 ordret: *"Det skal være muligt at indsætte billeder i forummet"*
+([#4819](https://github.com/NicolaiDolmer/CyclingZone/issues/4819)). Grænserne er ejer-valg 8/9.
+
+| Regel | Værdi | Hvor |
+|---|---|---|
+| Hvor billederne bor | `forum_posts.images` / `forum_replies.images` (jsonb-array af `{path, width, height}`) | migration `2026-09-08-4819` |
+| Hvorfor ikke markdown i `body` | body rendres som **ren tekst** (`whitespace-pre-wrap`); en billed-syntaks ville kræve en renderer og dermed åbne en XSS-flade forummet ikke har | `ForumPostPage.jsx` |
+| Bucket | `forum-images`, public, 2 MB pr. fil, mime jpeg/png/webp | `storage.buckets` |
+| Antal | **maks 3 pr. indlæg** (tråd eller svar), DB-CHECK + backend | `forum.js` |
+| Størrelse | 2 MB **efter** nedskalering i browseren (længste side 1600 px, kvalitet 0,85) — et 8 MB telefonbillede skal virke | `frontend/src/lib/forumImages.js` |
+| Ejerskab | stien er `<user_id>/<uuid>.<ext>`; første mappeniveau håndhæves af RLS ved INSERT **og** af `normalizeForumImages` ved post | begge lag |
+| Sletning | filens ejer eller admin (`public.is_admin()`). Admin kan fjerne **ét** billede uden at slette hele indlægget: `DELETE /api/admin/forum/images` | `forum.js` |
+| Anmeldelse | den eksisterende Report-knap dækker billeder — ingen separat vej | ejer-valg 8/9 |
+| Visning | max-bredde 100 % (mobil, [#4415](https://github.com/NicolaiDolmer/CyclingZone/issues/4415)), klik åbner filen i fuld størrelse i en ny fane | `ForumImageAttachments.jsx` |
+
+**Upload sker FØR indlægget sendes** — et fejlet upload må aldrig koste brugeren teksten. Prisen er
+forældreløse filer når nogen lukker editoren uden at sende: fjern-krydset sletter filen med det
+samme, og resten ryddes af `scripts/sweep-forum-image-orphans.mjs` (dry-run som default, rører kun
+filer ældre end 72 timer der ikke er refereret af noget indlæg). Restrisikoen (en editor der står åben
+længere end grænsen) er et bevidst valg: alternativet er en reservations-tabel server-side, som er
+fravalgt i v1.
 
 ### 8.2 Holdprofil og managerprofil
 

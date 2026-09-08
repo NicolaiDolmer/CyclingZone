@@ -8,6 +8,7 @@
   },
   "categories": {
     "all": "All",
+    "roadmap": "Roadmap",
     "general": "General",
     "feedback_ideas": "Feedback & ideas",
     "questions": "Questions & answers",
@@ -15,6 +16,12 @@
     "transfers": "Transfers",
     "off_topic": "Off-topic",
     "archive": "Archive"
+  },
+  "adminOnly": {
+    "tag": "Official",
+    "description": "Where the game is going, straight from me.",
+    "notice": "Only I post here. Reply as much as you like.",
+    "emptyDescription": "Nothing here yet. This is where I post where the game is going."
   },
   "list": {
     "pinnedHeading": "Pinned",
@@ -29,6 +36,10 @@
     "archiveEmptyDescription": "Threads move here automatically after 60 days without new activity.",
     "by": "By {name}",
     "unread": "Unread"
+  },
+  "stats": {
+    "views": "{count, plural, =0 {No views} one {1 view} other {# views}}",
+    "lastReply": "Last reply {name}, {time}"
   },
   "compose": {
     "title": "New post",
@@ -71,6 +82,9 @@
   "identity": {
     "profileAria": "Open the manager profile for {name}"
   },
+  "mentions": {
+    "listLabel": "Mention a manager"
+  },
   "signature": {
     "division": "Division {division}"
   },
@@ -95,5 +109,29 @@
     "submitFailed": "Could not submit. Try again.",
     "retry": "Try again",
     "markAllReadFailed": "Could not mark all threads as read. Try again."
+  },
+  "images": {
+    "label": "Images",
+    "add": "Add image",
+    "counter": "{count} of {max}",
+    "remove": "Remove image",
+    "adminRemove": "Delete image",
+    "openFull": "Open the image at full size",
+    "attachmentAlt": "Image in this post",
+    "hint": "Up to {max} images. JPG, PNG or WebP. Large photos are scaled down before they are uploaded.",
+    "errors": {
+      "type": "That file type does not work here. Use JPG, PNG or WebP.",
+      "tooMany": "You can add {count} images to a post.",
+      "tooLarge": "That image is still too large after scaling. Try a smaller one.",
+      "decode": "The image could not be read. Try another file.",
+      "upload": "The upload failed. Check your connection and try again."
+    }
+  },
+  "subscription": {
+    "following": "Following",
+    "muted": "Muted",
+    "followingHint": "You get unread marks and the forum dot when there is something new here.",
+    "mutedHint": "No unread marks and no forum dot from this category. Replies to your own threads still reach you.",
+    "saveFailed": "Could not save your choice. Try again."
   }
 }

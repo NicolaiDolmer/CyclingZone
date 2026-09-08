@@ -29,9 +29,9 @@
     "retry": "Try again"
   },
   "founderMark": {
-    "label": "Founder supporter",
-    "aria": "Founder supporter no. {n} of {cap}",
-    "heroLine": "Founder supporter no. {n} of {cap}"
+    "label": "Founder",
+    "aria": "Founder no. {n} of {cap}",
+    "heroLine": "Founder no. {n} of {cap}"
   },
   "gate": {
     "note": "Pro shows this across every season, not just the current one.",

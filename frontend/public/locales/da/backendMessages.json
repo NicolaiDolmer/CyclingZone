@@ -84,6 +84,10 @@
       "devTransition": {
         "title": "Udviklingsvisningen er ændret",
         "message": "Dine ryttere har ikke ændret sig. Evner, ratings og resultater er præcis som i går. Det gamle bånd viste bund til loft. Det nye bånd er rytterens forventede niveau: der hvor han realistisk lander med din træning. Lofterne blev hævet for de fleste ryttere samtidig, så et bånd der ser lavere ud betyder ikke en svagere rytter. Potentiale afgør nu hvor hurtigt en rytter udvikler sig, ikke hvor han stopper. Dit dashboard viser dine egne ryttere før og efter."
+      },
+      "survey": {
+        "title": "Hjælp mig med at vælge hvad der skal bygges næste gang",
+        "message": "Jeg har lagt et kort spørgeskema ind i spillet. Du giver hver idé to karakterer: om den overhovedet er en god idé, og hvor meget den betyder for dig lige nu. Det tager cirka 3 minutter, og du kan rette dine svar indtil det lukker. Åbn det herfra."
       }
     },
     "loanCreatedShort": {
@@ -482,6 +486,11 @@
       "message": "{count, plural, one {Nogen svarede på din tråd} other {# nye svar på din tråd}}",
       "messageWithTitle": "{count, plural, one {Et nyt svar på \"{postTitle}\"} other {# nye svar på \"{postTitle}\"}}"
     },
+    "forumMention": {
+      "title": "Du blev nævnt",
+      "message": "{author} nævnte dig på forummet",
+      "messageWithTitle": "{author} nævnte dig i \"{postTitle}\""
+    },
     "careerMilestone": {
       "maidenWin": {
         "title": "Første sejr",
@@ -547,6 +556,11 @@
       "soldToAiMessage": "{rider} er solgt til AI for {price} CZ$ (garanteret pris)",
       "expiredNoBidsTitle": "Auktion udløb uden bud",
       "expiredNoBidsMessage": "Ingen bød på {rider}"
+    },
+    "directMessage": {
+      "title": "{count, plural, one {Ny besked} other {# nye beskeder}}",
+      "message": "{count, plural, one {{senderName} har skrevet til dig} other {# nye beskeder fra {senderName}}}",
+      "messageUnknownSender": "{count, plural, one {En anden manager har skrevet til dig} other {# nye beskeder fra en anden manager}}"
     }
   },
   "error": {

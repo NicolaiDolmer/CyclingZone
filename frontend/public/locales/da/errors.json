@@ -208,6 +208,7 @@
     "auction_created_before_account": "Jeres hold blev oprettet efter denne auktion startede, så I kan ikke byde på den. Nyere auktioner er åbne for jer med det samme.",
     "rate_forum": "For mange forum-handlinger på kort tid. Prøv igen om lidt.",
     "forum_invalid_category": "Ugyldig kategori",
+    "forum_invalid_mute_flag": "Ugyldigt valg",
     "forum_title_required": "En titel er påkrævet",
     "forum_title_too_long": "Titlen er for lang",
     "forum_body_required": "En besked er påkrævet",
@@ -217,6 +218,7 @@
     "forum_post_not_found": "Opslaget blev ikke fundet. Det kan være blevet fjernet.",
     "forum_reply_not_found": "Svaret blev ikke fundet. Det kan være blevet fjernet.",
     "forum_poll_admin_only": "Kun admin kan vedhæfte afstemninger",
+    "forum_category_admin_only": "Kun jeg opretter tråde i Roadmap. Du kan svare på dem alle.",
     "forum_poll_invalid_options": "En afstemning kræver 2 til 8 muligheder på højst 100 tegn",
     "forum_poll_option_not_found": "Den afstemningsmulighed findes ikke længere",
     "forum_invalid_target_type": "Ugyldigt rapport-mål",
@@ -229,6 +231,10 @@
     "forum_invalid_quote": "Det svar kan ikke længere citeres",
     "forum_invalid_reaction_target_type": "Ugyldigt mål",
     "forum_reaction_target_not_found": "Indholdet er ikke længere tilgængeligt",
+    "forum_invalid_images": "Billederne kunne ikke vedhæftes. Prøv at tilføje dem igen.",
+    "forum_too_many_images": "Du kan tilføje op til 3 billeder til et indlæg.",
+    "forum_image_not_owned": "Det billede tilhører ikke dig.",
+    "forum_image_not_found": "Billedet ligger ikke længere på indlægget.",
     "flash_custom_end_conflict": "Flash-auktioner varer fast 30 minutter og kan ikke få et valgt sluttidspunkt",
     "auction_end_invalid": "Vælg et gyldigt sluttidspunkt for auktionen",
     "auction_end_too_soon": "En auktion skal køre i mindst {minHours} time",
@@ -236,6 +242,14 @@
     "auction_end_outside_window": "Auktioner kan kun slutte mens markedet er åbent, mellem {openHour} og {closeHour}",
     "auction_end_crosses_season_transition": "Auktioner kan ikke slutte efter sæsonskiftet ({boundaryAt})",
     "season_end_already_claimed": "Sæsonen er allerede ved at blive afsluttet eller er allerede afsluttet",
-    "session_expired": "Din session er udløbet. Log ind igen"
+    "session_expired": "Din session er udløbet. Log ind igen",
+    "rate_dm": "For mange beskeder på kort tid. Prøv igen om lidt.",
+    "dm_body_invalid": "En besked skal være mellem 1 og 2000 tegn.",
+    "dm_invalid_recipient": "Vælg en manager at skrive til.",
+    "dm_recipient_not_found": "Jeg kunne ikke finde den manager.",
+    "dm_not_found": "Den samtale findes ikke længere.",
+    "dm_invalid_block_target": "Vælg en manager først.",
+    "dm_report_reason_required": "Fortæl mig hvad der er galt, i en sætning eller to.",
+    "dm_report_reason_too_long": "Begrundelsen er for lang."
   }
 }

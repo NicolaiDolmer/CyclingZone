@@ -208,6 +208,7 @@
     "auction_created_before_account": "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away.",
     "rate_forum": "Too many forum actions in a short time. Try again shortly.",
     "forum_invalid_category": "Invalid category",
+    "forum_invalid_mute_flag": "Invalid choice",
     "forum_title_required": "A title is required",
     "forum_title_too_long": "The title is too long",
     "forum_body_required": "A message is required",
@@ -217,6 +218,7 @@
     "forum_post_not_found": "The post was not found. It may have been removed.",
     "forum_reply_not_found": "The reply was not found. It may have been removed.",
     "forum_poll_admin_only": "Only the admin can attach polls",
+    "forum_category_admin_only": "Only I start threads in Roadmap. You can reply to any of them.",
     "forum_poll_invalid_options": "A poll needs 2 to 8 options of at most 100 characters",
     "forum_poll_option_not_found": "That poll option no longer exists",
     "forum_invalid_target_type": "Invalid report target",
@@ -229,6 +231,10 @@
     "forum_invalid_quote": "That reply can no longer be quoted",
     "forum_invalid_reaction_target_type": "Invalid target",
     "forum_reaction_target_not_found": "This content is no longer available",
+    "forum_invalid_images": "Those images could not be attached. Try adding them again.",
+    "forum_too_many_images": "You can add up to 3 images to a post.",
+    "forum_image_not_owned": "That image does not belong to you.",
+    "forum_image_not_found": "That image is no longer on this post.",
     "flash_custom_end_conflict": "Flash auctions run for a fixed 30 minutes and can't take a custom end time",
     "auction_end_invalid": "Pick a valid end time for the auction",
     "auction_end_too_soon": "An auction must run for at least {minHours} hour",
@@ -236,6 +242,14 @@
     "auction_end_outside_window": "Auctions can only end while the market is open, between {openHour} and {closeHour}",
     "auction_end_crosses_season_transition": "Auctions can't end after the season change ({boundaryAt})",
     "season_end_already_claimed": "Season end already in progress or already completed",
-    "session_expired": "Your session has expired. Log in again"
+    "session_expired": "Your session has expired. Log in again",
+    "rate_dm": "Too many messages in a short time. Try again shortly.",
+    "dm_body_invalid": "A message must be between 1 and 2000 characters.",
+    "dm_invalid_recipient": "Pick a manager to write to.",
+    "dm_recipient_not_found": "I could not find that manager.",
+    "dm_not_found": "That conversation is gone.",
+    "dm_invalid_block_target": "Pick a manager first.",
+    "dm_report_reason_required": "Tell me what is wrong, in a sentence or two.",
+    "dm_report_reason_too_long": "That reason is too long."
   }
 }

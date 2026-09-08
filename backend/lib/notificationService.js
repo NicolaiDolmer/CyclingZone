@@ -1,4 +1,5 @@
 import { isKnownNotificationType } from "./notificationTypes.js";
+import { findForumMentions, loadMentionableManagers, uniqueMentionTargets } from "./forumMentions.js";
 import { DEFAULT_LANGUAGE, translate as translateServer } from "./i18nServer.js";
 import { captureException } from "./sentry.js";
 import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
@@ -1119,5 +1120,268 @@ export async function notifyForumThreadReply({
     console.error("  ❌ forum-thread-reply-notifikation fejlede (post %s):", postId, err?.message || err);
     captureException(err, { tags: { flow: "notifications", stage: "forum-thread-reply" }, postId });
     return { delivered: false, deduped: false, reason: "error" };
+  }
+}
+
+// #3200 (DM v1) ────────────────────────────────────────────────────────────
+
+export const DIRECT_MESSAGE_TYPE = "dm_message";
+
+export function buildDirectMessageNotification({ conversationId, senderName, messageCount }) {
+  const count = Math.max(1, messageCount || 1);
+  // Fallback-navnet er ENGELSK og bruges kun i den lagrede title/message, som er
+  // backendens pre-i18n kopi. Det må IKKE sendes videre som `senderName`-parameter:
+  // så ville en dansk klient rendere "Another manager har skrevet til dig" — en
+  // i18n-læk af præcis den klasse #1068 beskriver. Mangler navnet, vælges en
+  // EGEN messageCode i stedet, så oversættelsen selv formulerer fallbacken
+  // (CodeRabbit 8/9). Samme greb som buildForumThreadReplyNotification.
+  const hasName = Boolean(senderName);
+  const name = senderName || "Another manager";
+  const title = count > 1 ? `${count} new messages` : "New message";
+  const message = count > 1
+    ? `${count} new messages from ${name}`
+    : `${name} sent you a message`;
+  return {
+    type: DIRECT_MESSAGE_TYPE,
+    title,
+    message,
+    relatedId: conversationId,
+    metadata: {
+      conversationId,
+      senderName: name,
+      messageCount: count,
+      // #666: ÉN kode pr. felt med ICU-plural (count), ikke separate
+      // title/titlePlural-koder — samme mønster som forum_thread_reply.
+      titleCode: "notif.directMessage.title",
+      titleParams: { count },
+      messageCode: hasName
+        ? "notif.directMessage.message"
+        : "notif.directMessage.messageUnknownSender",
+      messageParams: hasName ? { count, senderName } : { count },
+    },
+  };
+}
+
+/**
+ * #3200 · Notificér modtageren om en ny direkte besked.
+ *
+ * Kaldes fra sendDirectMessage EFTER beskeden er gemt, og KUN når modtageren
+ * ikke har blokeret afsenderen — blok-tjekket ligger i directMessages.js, så
+ * en blokeret afsender aldrig kan udløse et livstegn hos den der blokerede.
+ * En fejlet notifikation må ALDRIG vælte selve beskeden (samme A2-isolerings-
+ * mønster som resten af filen).
+ *
+ * DEDUPE pr. (bruger, samtale): findes der allerede en ULÆST dm_message-
+ * notifikation for samme samtale, opdateres den ("N new messages") og
+ * created_at bumpes. En samtale med 20 beskeder giver ÉN notifikation, ikke 20
+ * — samme regel som forum_thread_reply (#3517).
+ */
+export async function notifyDirectMessage({
+  supabase, recipientUserId, senderUserId, senderName = null, conversationId, now = new Date(),
+}) {
+  if (!recipientUserId || !conversationId) return { delivered: false, deduped: false, reason: "missing_target" };
+  if (recipientUserId === senderUserId) return { delivered: false, deduped: false, reason: "own_message" };
+
+  try {
+    const { data: existingRows, error: findError } = await supabase
+      .from("notifications")
+      .select("id, metadata")
+      .eq("user_id", recipientUserId)
+      .eq("type", DIRECT_MESSAGE_TYPE)
+      .eq("related_id", conversationId)
+      .eq("is_read", false)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (findError) throw findError;
+
+    const existing = existingRows?.[0] || null;
+    const messageCount = (existing?.metadata?.messageCount ?? 0) + 1;
+    const resolvedName = senderName || existing?.metadata?.senderName || null;
+    const payload = buildDirectMessageNotification({ conversationId, senderName: resolvedName, messageCount });
+
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("notifications")
+        .update({
+          title: payload.title,
+          message: payload.message,
+          metadata: payload.metadata,
+          created_at: now.toISOString(),
+        })
+        .eq("id", existing.id);
+      if (updateError) throw updateError;
+      return { delivered: true, deduped: true, id: existing.id, messageCount };
+    }
+
+    const { data: inserted, error: insertError } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: recipientUserId,
+        type: payload.type,
+        title: payload.title,
+        message: payload.message,
+        related_id: payload.relatedId,
+        metadata: payload.metadata,
+        is_read: false,
+        created_at: now.toISOString(),
+      })
+      .select("id")
+      .single();
+    if (insertError) throw insertError;
+    return { delivered: true, deduped: false, id: inserted?.id, messageCount };
+  } catch (err) {
+    // conversationId må ALDRIG stå i format-string-positionen (CodeQL #188).
+    console.error("  ❌ dm-notifikation fejlede (samtale %s):", conversationId, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "dm-message" }, conversationId });
+    return { delivered: false, deduped: false, reason: "error" };
+  }
+}
+
+
+// #5011 (ejer-direktiv 3/9, #4751) — @-tag af en manager ────────────────────
+
+export const FORUM_MENTION_TYPE = "forum_mention";
+
+/** Hvor mange eksisterende mention-rækker der scannes for dubletter pr. tråd. */
+const MENTION_DEDUPE_SCAN_LIMIT = 50;
+
+/**
+ * Kilde-id for dedupe: præcis det INDLÆG tagget stod i (opslaget selv, eller
+ * ét bestemt svar) — ikke tråden. Trådnøglen ville betyde at manager nr. to
+ * der tagger dig i samme tråd aldrig nåede frem.
+ */
+function mentionSourceKey({ postId, replyId }) {
+  return replyId ? `reply:${replyId}` : `post:${postId}`;
+}
+
+export function buildForumMentionNotification({ postId, postTitle, replyId = null, authorName = null }) {
+  const author = authorName || "Someone";
+  // #4734: fallback-teksten UDLEDES af nøglen — den må aldrig være en parallel
+  // håndskrevet streng (det var netop den drift #4734 lukkede).
+  const keyed = buildKeyedNotification({
+    titleCode: "notif.forumMention.title",
+    messageCode: postTitle ? "notif.forumMention.messageWithTitle" : "notif.forumMention.message",
+    messageParams: { author, postTitle: postTitle || "" },
+    metadata: {
+      postId,
+      postTitle: postTitle || null,
+      replyId: replyId || null,
+      sourceKey: mentionSourceKey({ postId, replyId }),
+      authorName: authorName || null,
+    },
+  });
+  return {
+    type: FORUM_MENTION_TYPE,
+    title: keyed.title,
+    message: keyed.message,
+    // related_id er trådens id — notificationLink.js bygger dybdelinket og
+    // hægter #reply-<id> på fra metadata, samme mønster som forum_thread_reply.
+    relatedId: postId,
+    metadata: keyed.metadata,
+  };
+}
+
+/**
+ * #5011 · Notificér ÉN tagget manager. Kaldes efter at indlægget er gemt — en
+ * fejlet notifikation må ALDRIG vælte opslaget/svaret (samme A2-isolerings-
+ * mønster som resten af filen).
+ *
+ * DEDUPE: højst ÉN notifikation pr. (bruger, indlæg). Findes der allerede en
+ * forum_mention med samme metadata.sourceKey — læst eller ulæst — sker der
+ * intet. Det er også svaret på "ingen ny notifikation ved redigering": en
+ * fremtidig redigerings-route kan kalde herind igen uden at spamme.
+ * Dubletjekket sker i JS over et bounded udtræk frem for et jsonb-filter,
+ * så det opfører sig ens mod PostgREST og mod test-fakes.
+ */
+export async function notifyForumMention({
+  supabase, mentionedUserId, authorUserId, postId, postTitle = null, replyId = null, authorName = null,
+  now = new Date(),
+}) {
+  if (!mentionedUserId || !postId) return { delivered: false, deduped: false, reason: "missing_target" };
+  // Selv-tag håndhæves HER og ikke kun ved kaldestedet, så en fremtidig
+  // kalder ikke kan glemme det (samme forsigtighed som notifyForumThreadReply).
+  if (mentionedUserId === authorUserId) return { delivered: false, deduped: false, reason: "own_mention" };
+
+  const sourceKey = mentionSourceKey({ postId, replyId });
+  try {
+    const { data: existingRows, error: findError } = await supabase
+      .from("notifications")
+      .select("id, metadata")
+      .eq("user_id", mentionedUserId)
+      .eq("type", FORUM_MENTION_TYPE)
+      .eq("related_id", postId)
+      .order("created_at", { ascending: false })
+      .limit(MENTION_DEDUPE_SCAN_LIMIT);
+    if (findError) throw findError;
+    if ((existingRows || []).some((row) => row?.metadata?.sourceKey === sourceKey)) {
+      return { delivered: false, deduped: true, reason: "already_notified" };
+    }
+
+    const payload = buildForumMentionNotification({ postId, postTitle, replyId, authorName });
+    const { data: inserted, error: insertError } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: mentionedUserId,
+        type: payload.type,
+        title: payload.title,
+        message: payload.message,
+        related_id: payload.relatedId,
+        metadata: payload.metadata,
+        is_read: false,
+        created_at: now.toISOString(),
+      })
+      .select("id")
+      .single();
+    if (insertError) throw insertError;
+    return { delivered: true, deduped: false, id: inserted?.id };
+  } catch (err) {
+    // postId må ALDRIG stå i format-string-positionen (CodeQL #188).
+    console.error("  ❌ forum-mention-notifikation fejlede (post %s):", postId, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "forum-mention" }, postId });
+    return { delivered: false, deduped: false, reason: "error" };
+  }
+}
+
+/**
+ * #5011 · Find @-tags i et netop gemt forum-indlæg og notificér dem alle.
+ * Ét sted, kaldt fra både POST /forum/posts og POST /forum/posts/:id/replies,
+ * så de to veje aldrig kan komme til at matche forskelligt.
+ *
+ * `managers` kan injiceres i test; ellers hentes den taggbare liste her.
+ * Hele funktionen er best-effort: den kaster aldrig videre til routen.
+ */
+export async function notifyForumMentions({
+  supabase, text, authorUserId, postId, postTitle = null, replyId = null, authorName = null,
+  managers = null, now = new Date(),
+}) {
+  if (!postId || typeof text !== "string" || !text.includes("@")) {
+    return { delivered: 0, targets: [] };
+  }
+  try {
+    const directory = managers ?? await loadMentionableManagers({ supabase });
+    const targets = uniqueMentionTargets(findForumMentions(text, directory), { excludeUserId: authorUserId });
+    if (targets.length === 0) return { delivered: 0, targets: [] };
+
+    let delivered = 0;
+    for (const target of targets) {
+      const result = await notifyForumMention({
+        supabase,
+        mentionedUserId: target.userId,
+        authorUserId,
+        postId,
+        postTitle,
+        replyId,
+        authorName,
+        now,
+      });
+      if (result.delivered) delivered += 1;
+    }
+    return { delivered, targets };
+  } catch (err) {
+    // "scan", ikke "udtræk": i18n-leak-guarden (#1068) tæller enhver linje med
+    // æ/ø/å i en streng sammen med `message` som et dansk API-svar.
+    console.error("  ❌ forum-mention-scan fejlede (post %s):", postId, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "forum-mention-scan" }, postId });
+    return { delivered: 0, targets: [], reason: "error" };
   }
 }

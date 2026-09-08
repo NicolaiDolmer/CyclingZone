@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import { tabClass, tabListClass } from "./tabsStyles.js";
 
 const TabsContext = createContext(null);
@@ -46,8 +46,37 @@ export function TabList({ label, className = "", children }) {
 export function Tab({ value: tabValue, className = "", children }) {
   const ctx = useContext(TabsContext);
   const active = ctx?.value === tabValue;
+  const ref = useRef(null);
+
+  // #3200: fanerækken scroller vandret på mobil. Da Indbakken fik sin femte
+  // fane, lå den aktive fane uden for skærmen på 390px når man kom ind via et
+  // deep link — ingen understregning nogen steder, og fanen kunne kun findes
+  // ved at gætte at rækken kunne skubbes.
+  //
+  // Kun VANDRET, og kun på selve tablisten. Den oplagte `scrollIntoView({
+  // block: "nearest" })` blev prøvet først og rullede HELE siden nogle få
+  // pixels, så den klistrede topbjælke forsvandt ud af billedet på mobil
+  // (fanget af core-smoke's finance-snapshot). Et fane-skift må aldrig flytte
+  // sidens lodrette position.
+  useEffect(() => {
+    if (!active) return;
+    const el = ref.current;
+    const list = el?.closest('[role="tablist"]');
+    if (!el || !list) return;
+    if (list.scrollWidth <= list.clientWidth) return; // rækken kan ikke scrolle
+    const pad = 16;
+    const left = el.offsetLeft - list.offsetLeft;
+    const right = left + el.offsetWidth;
+    if (left - pad < list.scrollLeft) {
+      list.scrollLeft = Math.max(0, left - pad);
+    } else if (right + pad > list.scrollLeft + list.clientWidth) {
+      list.scrollLeft = right + pad - list.clientWidth;
+    }
+  }, [active]);
+
   return (
     <button
+      ref={ref}
       type="button"
       role="tab"
       aria-selected={active}
