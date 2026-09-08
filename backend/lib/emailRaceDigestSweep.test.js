@@ -40,6 +40,9 @@ function makeSupabase({ teamRows = [], userRows = [], emailLogRows = [], raceRes
         };
         return b;
       }
+      // #2853: sundhedsrapportens koerselslog. Ikke det disse tests handler om
+      // -- accepter skrivningen og kassér den.
+      if (table === "email_sweep_runs") return { insert: async () => ({ error: null }) };
       if (table === "users") {
         return {
           select() { return this; },
@@ -114,7 +117,9 @@ test("efter kl. 19 samme dag (deploy-restart catch-up) koerer sweepen stadig (#3
   const CATCHUP_NOW = new Date("2026-07-20T18:15:00Z"); // 20:15 Copenhagen
   assert.ok(copenhagenHour(CATCHUP_NOW) > DIGEST_HOUR_COPENHAGEN);
   const supabase = makeSupabase({});
-  const result = await runEmailRaceDigestSweep({ supabase, now: CATCHUP_NOW, isActive: async () => true });
+  const result = await runEmailRaceDigestSweep({
+    supabase, now: CATCHUP_NOW, readStage: async () => "on", unsubSecret: "s",
+  });
   assert.notEqual(result.skippedReason, "outside_hour_window");
 });
 
@@ -122,7 +127,7 @@ test("outside the 19:00-19:59 Copenhagen hour, the sweep does no DB work at all"
   assert.ok(copenhagenHour(OUT_OF_WINDOW_NOW) < DIGEST_HOUR_COPENHAGEN);
   const supabase = { from() { throw new Error("must not query any table outside the digest hour"); } };
   const res = await runEmailRaceDigestSweep({
-    supabase, now: OUT_OF_WINDOW_NOW, isActive: async () => true,
+    supabase, now: OUT_OF_WINDOW_NOW, readStage: async () => "on",
     send: async () => { throw new Error("must not send"); },
   });
   assert.equal(res.skippedReason, "outside_hour_window");
@@ -133,7 +138,7 @@ test("inside the digest hour but flag inactive: no-op, no team/user query", asyn
   assert.equal(copenhagenHour(IN_WINDOW_NOW), DIGEST_HOUR_COPENHAGEN);
   const supabase = { from() { throw new Error("must not query any table when the flag is inactive"); } };
   const res = await runEmailRaceDigestSweep({
-    supabase, now: IN_WINDOW_NOW, isActive: async () => false,
+    supabase, now: IN_WINDOW_NOW, readStage: async () => "off",
     send: async () => { throw new Error("must not send"); },
   });
   assert.deepEqual(res, { candidates: 0, sent: 0, skipped: 0, failed: 0 });
@@ -157,7 +162,7 @@ test("excludes AI/bank/frozen/test-account teams from the digest", async () => {
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 1);
   assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-human"]);
@@ -173,7 +178,7 @@ test("a manager seen within the last 3 days is never sent to (still active, not 
   const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
   const send = async () => { throw new Error("must not send to a still-active manager"); };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 0);
   assert.equal(res.sent, 0);
@@ -186,7 +191,7 @@ test("a manager seen EXACTLY 3 days ago is not yet absent (< cutoff, not <=)", a
   const supabase = makeSupabase({ teamRows, userRows });
   const send = async () => { throw new Error("must not send at the exact boundary"); };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 0);
 });
@@ -200,7 +205,7 @@ test("a manager seen just over 3 days ago IS absent and is considered", async ()
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 1);
   assert.equal(sendCalls.length, 1);
@@ -212,7 +217,7 @@ test("a manager with no last_seen at all is excluded, never treated as absent", 
   const supabase = makeSupabase({ teamRows, userRows });
   const send = async () => { throw new Error("must not send without a last_seen timestamp"); };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 0);
 });
@@ -229,7 +234,7 @@ test("email_prefs race_digest=false (or all=false) is excluded even though absen
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 1, "only the opted-in absentee counts as a candidate");
   assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-in"]);
@@ -255,7 +260,7 @@ test("only an EXPLICIT consent_preferences.email_marketing=true is sent to -- fa
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 1, "only the explicit email_marketing=true user counts as a candidate");
   assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-true"]);
@@ -274,7 +279,7 @@ test("email_marketing=true alone isn't enough: the consent gate combines with th
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 1);
   assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-both-in"]);
@@ -290,7 +295,7 @@ test("dedupeKey embeds the Copenhagen ISO week, not a calendar date", async () =
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(sendCalls[0].dedupeKey, `digest:user-t1:${copenhagenIsoWeekString(IN_WINDOW_NOW)}`);
   assert.equal(sendCalls[0].type, "race_digest");
@@ -309,7 +314,7 @@ test("a manager already sent 2 digests since their current last_seen is skipped 
   const supabase = makeSupabase({ teamRows, userRows, emailLogRows, raceResultsByTeam });
   const send = async () => { throw new Error("must not send a 3rd digest for the same absence period"); };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 1);
   assert.equal(res.sent, 0);
@@ -328,7 +333,7 @@ test("a manager with only 1 prior digest this absence period can still receive a
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.sent, 1);
   assert.equal(sendCalls.length, 1);
@@ -352,7 +357,7 @@ test("digests sent BEFORE the player's most recent visit don't count toward the 
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.sent, 1, "the 2 old digests belong to a prior absence period the player already returned from");
   assert.equal(sendCalls.length, 1);
@@ -375,7 +380,7 @@ test("only includes race_results imported at or after the player's last_seen, ne
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.ok(sendCalls[0].html.includes("New Rider"));
   assert.ok(!sendCalls[0].html.includes("Old Rider"), "a result from before the player's last visit must never appear");
@@ -387,7 +392,7 @@ test("no results since the player's last visit: no email sent at all (never an e
   const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam: {} });
   const send = async () => { throw new Error("must not send an empty come-back digest"); };
 
-  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(res.candidates, 1);
   assert.equal(res.sent, 0);
@@ -408,7 +413,7 @@ test("picks the best (lowest) rank per race, never invents data", async () => {
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.ok(sendCalls[0].html.includes("Rider B"), "keeps the best (rank 2) result for race-1");
   assert.ok(!sendCalls[0].html.includes("Rider A"), "drops the worse (rank 5) duplicate for the same race");
@@ -423,7 +428,7 @@ test("subject and body carry the manager's real team name", async () => {
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(sendCalls[0].subject, "Team Velodrome raced while you were away");
 });
@@ -438,7 +443,7 @@ test("users.language 'da' renders the Danish digest copy", async () => {
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(sendCalls[0].subject, "Team Velodrome kørte mens du var væk");
   assert.ok(sendCalls[0].html.includes("placering 1 i Race"));
@@ -452,7 +457,7 @@ test("any users.language other than 'da' (including missing) renders the English
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s" });
 
   assert.equal(sendCalls[0].subject, "Team Velodrome raced while you were away");
 });
@@ -471,7 +476,7 @@ test("per-manager failures are isolated", async () => {
   };
 
   const res = await runEmailRaceDigestSweep({
-    supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s", captureExceptionFn: () => {},
+    supabase, now: IN_WINDOW_NOW, readStage: async () => "on", send, unsubSecret: "s", captureExceptionFn: () => {},
   });
 
   assert.equal(res.candidates, 2);

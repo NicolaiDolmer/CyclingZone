@@ -7,7 +7,10 @@
 //   1. flag off (per-type, #2853 — readEmailLoopStage(supabase, type), with
 //      fallback to the legacy shared flag when the type's own key is unset)
 //                           -> {skipped:"flag_off"}, no email_log row at all.
-//   2. dedupe_key already logged -> {skipped:"dedupe"} (idempotent retries).
+//   2. dedupe_key already logged WITH A BLOCKING STATUS -> {skipped:"dedupe"}
+//      (idempotent retries). #2853: "blocking" is sent/delivered/bounced/
+//      complained plus a 'failed' row the retry drain still owns — a dry_run
+//      row never blocks the real send (see dedupeBlocksSend below).
 //   3. email_prefs opt-out (type or master "all") -> {skipped:"prefs"}.
 //   4. flag dry_run         -> logs status "dry_run", never calls Resend.
 //   5. flag on              -> sends via Resend, idempotencyKey = dedupe_key.
@@ -94,6 +97,12 @@ export function classifyEmailFailure(statusCode) {
  * exact same request — headers, idempotencyKey — from a rendered email.
  */
 export async function sendViaResend({ resend, to, subject, html, text, unsubscribeUrl, dedupeKey }) {
+  // #2853: Reply-To gør at en spiller kan svare direkte paa en loop-mail.
+  // From-adressen (updates@) er en no-reply-postkasse; uden Reply-To lander et
+  // svar i intetheden. Env-variablen laeses ved KALDSTID (ikke ved modul-load),
+  // saa retry-sweepen faar samme adresse uden en genstart, og saa en usat
+  // variabel bare betyder "uaendret adfaerd" — intet kaster.
+  const replyTo = (process.env.EMAIL_REPLY_TO || "").trim();
   return resend.emails.send(
     {
       from: FROM_ADDRESS,
@@ -101,6 +110,7 @@ export async function sendViaResend({ resend, to, subject, html, text, unsubscri
       subject,
       html,
       text,
+      ...(replyTo ? { reply_to: [replyTo] } : {}),
       headers: {
         "List-Unsubscribe": `<${unsubscribeUrl}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -108,6 +118,54 @@ export async function sendViaResend({ resend, to, subject, html, text, unsubscri
     },
     { idempotencyKey: dedupeKey }
   );
+}
+
+/**
+ * Statusser der betyder "denne mail naaede faktisk Resend". Alle fire
+ * blokerer en gen-afsendelse. delivered/bounced/complained skrives af
+ * Resend-webhooken (#2853, resendWebhook.js) oven paa den oprindelige 'sent'.
+ */
+export const SENT_STATUSES = Object.freeze(["sent", "delivered", "bounced", "complained"]);
+
+/**
+ * REN: blokerer en eksisterende email_log-raekke en ny afsendelse?
+ *
+ * #2853 (fund 8/9): tjekket matchede FOER paa dedupe_key alene, uanset status.
+ * En dry_run-raekke — hele pointen med dry_run er at verificere targeting UDEN
+ * at sende — blokerede derfor den rigtige mail for evigt naar typen blev
+ * flippet til "on". Ejeren maatte slette raekker manuelt foer hvert flip.
+ *
+ * Reglen nu:
+ *   sent/delivered/bounced/complained -> blokerer (mailen ER afsendt).
+ *   failed MED next_attempt_at        -> blokerer (retry-drainen ejer raekken;
+ *                                        en parallel afsendelse ville dublere).
+ *   failed UDEN next_attempt_at       -> blokerer IKKE (permanent/opbrugt —
+ *                                        en ny sweep maa gerne proeve igen naar
+ *                                        aarsagen er rettet).
+ *   dry_run                           -> blokerer ALDRIG.
+ *
+ * dedupe_key er UNIQUE (database/2026-07-20-2725-email-retention-loop.sql), saa
+ * en ikke-blokerende raekke kan ikke faa en soesterraekke ved siden af — den
+ * OPDATERES i stedet (se writeEmailLogRow nedenfor).
+ */
+export function dedupeBlocksSend(row) {
+  if (!row) return false;
+  if (SENT_STATUSES.includes(row.status)) return true;
+  return row.status === "failed" && row.next_attempt_at != null;
+}
+
+/**
+ * Skriv email_log-raekken for denne afsendelse: UPDATE hvis der allerede findes
+ * en ikke-blokerende raekke paa dedupe_key (dry_run eller en doed failed),
+ * ellers INSERT. UNIQUE(dedupe_key) gør en INSERT umulig i det foerste
+ * tilfaelde, og en dry_run-raekke maa ikke blive staaende som historik der
+ * skjuler den rigtige afsendelse.
+ */
+async function writeEmailLogRow({ supabase, existingId, row }) {
+  if (existingId) {
+    return supabase.from("email_log").update(row).eq("id", existingId);
+  }
+  return supabase.from("email_log").insert(row);
 }
 
 export async function sendLoopEmail({
@@ -124,20 +182,32 @@ export async function sendLoopEmail({
   readStage = readEmailLoopStage,
   resendFactory = getResendClient,
   captureExceptionFn = captureException,
+  // #2853: opsamler til permanente fejl, saa sweepen kan sende ÉN samlet
+  // ops-alarm i stedet for én pr. mail (emailOpsAlert.js). Udeladt =
+  // uaendret adfaerd (kun Sentry).
+  failureCollector = null,
   now = new Date(),
+  stage: stageOverride = undefined,
 } = {}) {
   if (!supabase?.from) throw new Error("sendLoopEmail: supabase required");
   if (!userId || !type || !dedupeKey || !to) {
     throw new Error("sendLoopEmail: userId, type, dedupeKey and to are required");
   }
 
-  const stage = await readStage(supabase, type);
+  // #2853: sweepen har allerede laest stage én gang for hele koerslen (den
+  // skal bruge den til unsub-URL'en), saa den maa gerne give den videre i
+  // stedet for at koste ét app_config-opslag pr. kandidat. Udeladt = uaendret
+  // adfaerd (vi laeser selv).
+  const stage = stageOverride ?? (await readStage(supabase, type));
   if (stage === "off") return { skipped: "flag_off" };
 
   const { data: existing, error: dedupeErr } = await supabase
-    .from("email_log").select("id").eq("dedupe_key", dedupeKey).maybeSingle();
+    .from("email_log").select("id, status, next_attempt_at").eq("dedupe_key", dedupeKey).maybeSingle();
   if (dedupeErr) throw new Error(`sendLoopEmail dedupe-check: ${dedupeErr.message}`);
-  if (existing) return { skipped: "dedupe" };
+  if (dedupeBlocksSend(existing)) return { skipped: "dedupe" };
+  // Ikke-blokerende raekke (dry_run eller doed failed): den OPDATERES nedenfor,
+  // fordi dedupe_key er UNIQUE og en INSERT derfor ville fejle.
+  const existingId = existing?.id ?? null;
 
   const { data: userRow, error: userErr } = await supabase
     .from("users").select("email_prefs").eq("id", userId).maybeSingle();
@@ -145,8 +215,10 @@ export async function sendLoopEmail({
   if (!isEmailTypeEnabled(userRow?.email_prefs, type)) return { skipped: "prefs" };
 
   if (stage === "dry_run") {
-    const { error: insertErr } = await supabase.from("email_log").insert({
-      user_id: userId, team_id: teamId, email_type: type, dedupe_key: dedupeKey, status: "dry_run",
+    const { error: insertErr } = await writeEmailLogRow({
+      supabase,
+      existingId,
+      row: { user_id: userId, team_id: teamId, email_type: type, dedupe_key: dedupeKey, status: "dry_run" },
     });
     if (insertErr) throw new Error(`sendLoopEmail dry_run log: ${insertErr.message}`);
     return { status: "dry_run" };
@@ -164,15 +236,19 @@ export async function sendLoopEmail({
     const failure = classifyEmailFailure(error.statusCode ?? null);
     const retryable = failure.kind === "retryable";
 
-    const { error: logErr } = await supabase.from("email_log").insert({
-      user_id: userId, team_id: teamId, email_type: type, dedupe_key: dedupeKey,
-      status: "failed", error: message, attempts: 1,
-      // #3600: only retryable failures get a next_attempt_at + a snapshot of
-      // the rendered email — a permanent failure (bad address, invalid API
-      // key, validation) would just fail again identically, so there's
-      // nothing to retry and no payload to keep around.
-      next_attempt_at: retryable ? new Date(now.getTime() + nextEmailAttemptDelayMs(1)).toISOString() : null,
-      retry_payload: retryable ? { to, subject, html, text, unsubscribeUrl } : null,
+    const { error: logErr } = await writeEmailLogRow({
+      supabase,
+      existingId,
+      row: {
+        user_id: userId, team_id: teamId, email_type: type, dedupe_key: dedupeKey,
+        status: "failed", error: message, attempts: 1,
+        // #3600: only retryable failures get a next_attempt_at + a snapshot of
+        // the rendered email — a permanent failure (bad address, invalid API
+        // key, validation) would just fail again identically, so there's
+        // nothing to retry and no payload to keep around.
+        next_attempt_at: retryable ? new Date(now.getTime() + nextEmailAttemptDelayMs(1)).toISOString() : null,
+        retry_payload: retryable ? { to, subject, html, text, unsubscribeUrl } : null,
+      },
     });
     if (logErr) console.error(`[emailService] failed-log insert error for ${dedupeKey}:`, logErr.message);
 
@@ -186,13 +262,25 @@ export async function sendLoopEmail({
         tags: { flow: "email-loop", emailType: type, reason: failure.reason },
         extra: { userId, dedupeKey },
       });
+      // #2853: og videre til ops-kanalen — men SAMLET pr. sweep-koersel.
+      // Opsamleren toemmes af sweepen naar dens loop er faerdigt; her
+      // registrerer vi kun. Se emailOpsAlert.js for hvorfor det skel er
+      // afgoerende (én alarm pr. mail var netop dry_run-fundet 8/9).
+      failureCollector?.permanent?.push({ dedupeKey, reason: failure.reason, error: message, type, userId });
     }
     return { status: "failed", error: message, retryable };
   }
 
-  const { error: logErr } = await supabase.from("email_log").insert({
-    user_id: userId, team_id: teamId, email_type: type, dedupe_key: dedupeKey,
-    status: "sent", provider_id: data?.id ?? null,
+  const { error: logErr } = await writeEmailLogRow({
+    supabase,
+    existingId,
+    row: {
+      user_id: userId, team_id: teamId, email_type: type, dedupe_key: dedupeKey,
+      status: "sent", provider_id: data?.id ?? null,
+      // En genbrugt raekke (dry_run/doed failed) skal ikke slaebe gammel
+      // fejl-/retry-tilstand med over i den nye, vellykkede afsendelse.
+      error: null, next_attempt_at: null, retry_payload: null,
+    },
   });
   if (logErr) {
     // Send already succeeded — a logging failure here must never look like a

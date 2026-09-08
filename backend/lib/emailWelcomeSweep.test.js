@@ -29,6 +29,9 @@ function makeSupabase(teamRows, userEmails = {}) {
         };
         return b;
       }
+      // #2853: sundhedsrapportens koerselslog. Ikke det disse tests handler om
+      // -- accepter skrivningen og kassér den.
+      if (table === "email_sweep_runs") return { insert: async () => ({ error: null }) };
       if (table === "users") {
         let userId = null;
         return {
@@ -66,7 +69,7 @@ test("targets only teams created within the last 48h", async () => {
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
   const result = await runEmailWelcomeSweep({
-    supabase, now, isActive: async () => true, send, unsubSecret: "test-secret",
+    supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret",
   });
 
   assert.deepEqual(sendCalls.map((c) => c.teamId), ["fresh"]);
@@ -88,7 +91,7 @@ test("excludes AI/bank/frozen/test-account teams (human-team filter discipline)"
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const result = await runEmailWelcomeSweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  const result = await runEmailWelcomeSweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   assert.deepEqual(sendCalls.map((c) => c.teamId), ["human"]);
   assert.equal(result.candidates, 1);
@@ -102,7 +105,7 @@ test("dedupeKey is deterministic (welcome:<userId>) so sendLoopEmail's own dedup
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailWelcomeSweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailWelcomeSweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   assert.equal(sendCalls[0].dedupeKey, "welcome:user-42");
   assert.equal(sendCalls[0].type, "welcome");
@@ -114,7 +117,7 @@ test("is a no-op (0 db work signaled via candidates=0) when the flag is not acti
   const supabase = makeSupabase([{ id: "should-not-be-queried" }]);
   const send = async () => { throw new Error("send must not be called when flag is inactive"); };
 
-  const result = await runEmailWelcomeSweep({ supabase, now, isActive: async () => false, send });
+  const result = await runEmailWelcomeSweep({ supabase, now, readStage: async () => "off", send });
   assert.deepEqual(result, { candidates: 0, sent: 0, skipped: 0, failed: 0 });
 });
 
@@ -129,7 +132,7 @@ test("per-team failures are isolated (one throws, the rest still send)", async (
   };
 
   const result = await runEmailWelcomeSweep({
-    supabase, now, isActive: async () => true, send, unsubSecret: "test-secret", captureExceptionFn: () => {},
+    supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret", captureExceptionFn: () => {},
   });
 
   assert.equal(result.candidates, 2);
@@ -147,7 +150,7 @@ test("users.language 'da' renders the Danish welcome copy", async () => {
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailWelcomeSweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailWelcomeSweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   assert.equal(sendCalls[0].subject, "Dit hold er på startlinjen");
   assert.ok(sendCalls[0].html.includes("Velkommen til Cycling Zone"));
@@ -167,7 +170,7 @@ test("any users.language other than 'da' (including missing) renders the English
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailWelcomeSweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailWelcomeSweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   for (const call of sendCalls) {
     assert.equal(call.subject, "Your team is on the start line");
@@ -181,7 +184,7 @@ test("skips (does not throw) a team whose user has no email on file", async () =
   const supabase = makeSupabase(rows, {}); // no email registered
   const send = async () => { throw new Error("send must not be called without an email"); };
 
-  const result = await runEmailWelcomeSweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  const result = await runEmailWelcomeSweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
   assert.equal(result.candidates, 1);
   assert.equal(result.skipped, 1);
   assert.equal(result.failed, 0);

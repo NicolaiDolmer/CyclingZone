@@ -35,6 +35,9 @@ function makeSupabase(
         };
         return b;
       }
+      // #2853: sundhedsrapportens koerselslog. Ikke det disse tests handler om
+      // -- accepter skrivningen og kassér den.
+      if (table === "email_sweep_runs") return { insert: async () => ({ error: null }) };
       if (table === "users") {
         let userId = null;
         return {
@@ -98,7 +101,7 @@ test("targets only teams created 20-30h ago (window edges excluded/included corr
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const result = await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  const result = await runEmailDay1Sweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   assert.deepEqual(sendCalls.map((c) => c.teamId), ["in-window"]);
   assert.equal(result.candidates, 1);
@@ -118,7 +121,7 @@ test("excludes AI/bank/frozen/test-account teams", async () => {
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const result = await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  const result = await runEmailDay1Sweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   assert.deepEqual(sendCalls.map((c) => c.teamId), ["human"]);
   assert.equal(result.candidates, 1);
@@ -132,7 +135,7 @@ test("dedupeKey is deterministic (day1:<userId>)", async () => {
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailDay1Sweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   assert.equal(sendCalls[0].dedupeKey, "day1:user-42");
   assert.equal(sendCalls[0].type, "day1");
@@ -146,7 +149,7 @@ test("hasResults=true renders the raced-while-away copy for a team with a race_r
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailDay1Sweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   assert.equal(sendCalls[0].subject, "Day 1: your riders have already raced");
   assert.ok(sendCalls[0].html.includes("raced while you were away"));
@@ -160,7 +163,7 @@ test("hasResults=false renders the truthful no-results-yet copy, never the inven
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailDay1Sweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   assert.equal(sendCalls[0].subject, "Day 1: your first race is on the calendar");
   assert.ok(!sendCalls[0].html.includes("raced while you were away"));
@@ -186,7 +189,7 @@ test("users.language 'da' renders the Danish day1 copy for both hasResults varia
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailDay1Sweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   const byTeam = Object.fromEntries(sendCalls.map((c) => [c.teamId, c]));
   assert.equal(byTeam["has-results"].subject, "Dag 1: dine ryttere har allerede kørt");
@@ -201,7 +204,7 @@ test("any users.language other than 'da' (including missing) renders the English
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailDay1Sweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
 
   assert.equal(sendCalls[0].subject, "Day 1: your riders have already raced");
 });
@@ -211,7 +214,7 @@ test("is a no-op when the flag is not active", async () => {
   const supabase = makeSupabase([{ id: "should-not-be-queried" }]);
   const send = async () => { throw new Error("send must not be called when flag is inactive"); };
 
-  const result = await runEmailDay1Sweep({ supabase, now, isActive: async () => false, send });
+  const result = await runEmailDay1Sweep({ supabase, now, readStage: async () => "off", send });
   assert.deepEqual(result, { candidates: 0, sent: 0, skipped: 0, failed: 0 });
 });
 
@@ -226,7 +229,7 @@ test("per-team failures are isolated", async () => {
   };
 
   const result = await runEmailDay1Sweep({
-    supabase, now, isActive: async () => true, send, unsubSecret: "test-secret", captureExceptionFn: () => {},
+    supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret", captureExceptionFn: () => {},
   });
 
   assert.equal(result.candidates, 2);
@@ -248,7 +251,7 @@ test("a failed race_results lookup for one team is isolated (per-team try/catch)
   const capturedErrors = [];
 
   const result = await runEmailDay1Sweep({
-    supabase, now, isActive: async () => true, send, unsubSecret: "test-secret",
+    supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret",
     captureExceptionFn: (err, ctx) => capturedErrors.push({ err, ctx }),
   });
 
@@ -267,7 +270,7 @@ test("skips (does not throw) a team whose user has no email on file", async () =
   const supabase = makeSupabase(rows, {}); // no email registered
   const send = async () => { throw new Error("send must not be called without an email"); };
 
-  const result = await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  const result = await runEmailDay1Sweep({ supabase, now, readStage: async () => "on", send, unsubSecret: "test-secret" });
   assert.equal(result.candidates, 1);
   assert.equal(result.skipped, 1);
   assert.equal(result.failed, 0);

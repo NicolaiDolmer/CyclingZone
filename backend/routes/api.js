@@ -33,6 +33,7 @@ import { applyNameSearch } from "../lib/riderNameSearch.js";
 import { fetchGcClassicSplit, splitGcWins } from "../lib/dashboardRiderRankingGcSplit.js";
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
+import { handleResendWebhook } from "../lib/resendWebhook.js";
 import { createCheckoutHandler } from "../lib/billingCheckout.js";
 import { createPortalHandler } from "../lib/billingPortal.js";
 import { createAluntaClient } from "../lib/alunta.js"; // #4648 — scopet reconcile-for-team efter checkout.completed
@@ -132,6 +133,7 @@ import {
   sendTestEmbed,
   sendTestDM,
   getBotToken,
+  getOpsWebhook,
 } from "../lib/discordNotifier.js";
 import { syncAllDivisionRoles } from "../lib/discordRoleSync.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
@@ -902,6 +904,15 @@ router.get("/pro/rider-history/:riderId", requireAuth, presencePulseLimiter, (re
 // aluntaWebhook.js) for at kunne unit-testes uden api.js's fulde router.
 router.get("/email/unsubscribe", (req, res) => handleEmailUnsubscribe({ req, res, supabase }));
 router.post("/email/unsubscribe", (req, res) => handleEmailUnsubscribe({ req, res, supabase }));
+
+// ── Resend-webhook (#2853) ────────────────────────────────────────────────────
+// EKSTERN (Resend) → INGEN requireAuth; Svix-signaturen ER auth'en. Rå body er
+// wired i server.js (express.raw på pathen før express.json), præcis som
+// /billing/alunta-webhook. Se backend/lib/resendWebhook.js for signatur-,
+// replay- og idempotens-kontrakten.
+router.post("/email/resend-webhook", (req, res) =>
+  handleResendWebhook({ req, res, supabase, sendWebhookFn: sendWebhook, getOpsWebhookFn: getOpsWebhook })
+);
 
 // Lightweight admin-check til endpoints der betjener BÅDE admin og ikke-admin
 // (modsat requireAdmin, som blokerer ikke-admin helt). Bruges nu til at maskere

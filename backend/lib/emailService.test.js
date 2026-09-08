@@ -8,33 +8,53 @@ import { sendLoopEmail, FROM_ADDRESS, classifyEmailFailure, nextEmailAttemptDela
 //               via readStage override below in most tests for isolation),
 //   email_log  (dedupe select + insert),
 //   users      (prefs select).
-function makeSupabase({ emailLogExisting = false, userRow = { email_prefs: {} }, insertError = null } = {}) {
+// `existingRow` (#2853): den eksisterende email_log-raekke pa dedupe_key, eller
+// null. `emailLogExisting: true` bevares som genvej for "en allerede afsendt
+// raekke" (status 'sent') — det var den eneste form der fandtes foer #2853.
+function makeSupabase({
+  emailLogExisting = false,
+  existingRow = undefined,
+  userRow = { email_prefs: {} },
+  insertError = null,
+} = {}) {
   const emailLogInserts = [];
+  const emailLogUpdates = [];
   const calls = [];
+  const dedupeRow =
+    existingRow !== undefined
+      ? existingRow
+      : emailLogExisting
+        ? { id: "existing-row", status: "sent", next_attempt_at: null }
+        : null;
   return {
     emailLogInserts,
+    emailLogUpdates,
     calls,
     from(table) {
       calls.push(table);
       if (table === "email_log") {
         return {
           select(cols) {
-            assert.equal(cols, "id");
+            assert.equal(cols, "id, status, next_attempt_at");
             return {
               eq(col, _dedupeKey) {
                 assert.equal(col, "dedupe_key");
-                return {
-                  maybeSingle: async () => ({
-                    data: emailLogExisting ? { id: "existing-row" } : null,
-                    error: null,
-                  }),
-                };
+                return { maybeSingle: async () => ({ data: dedupeRow, error: null }) };
               },
             };
           },
           insert: async (row) => {
             emailLogInserts.push(row);
             return { error: insertError };
+          },
+          update(row) {
+            return {
+              eq: async (col, id) => {
+                assert.equal(col, "id");
+                emailLogUpdates.push({ id, row });
+                return { error: insertError };
+              },
+            };
           },
         };
       }
@@ -187,6 +207,11 @@ test("stage=on sends via the injected Resend client with idempotencyKey + List-U
       dedupe_key: "welcome:user-1",
       status: "sent",
       provider_id: "provider-id-123",
+      // #2853: nulstilles eksplicit, saa en genbrugt dry_run-/doed-failed-
+      // raekke ikke slaeber gammel fejl-/retry-tilstand med over.
+      error: null,
+      next_attempt_at: null,
+      retry_payload: null,
     });
   } finally {
     process.env.RESEND_API_KEY = oldKey;

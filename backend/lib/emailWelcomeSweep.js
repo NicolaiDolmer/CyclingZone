@@ -13,10 +13,12 @@
 // selection.
 
 import { fetchAllRows } from "./supabasePagination.js";
-import { isEmailLoopActive } from "./emailLoopFlag.js";
+import { readEmailLoopStage } from "./emailLoopFlag.js";
 import { sendLoopEmail } from "./emailService.js";
 import { buildWelcomeEmail } from "./emailTemplates.js";
-import { unsubscribeUrlFor } from "./emailUnsubUrl.js";
+import { unsubscribeUrlForStage, assertUnsubSecretForStage } from "./emailUnsubUrl.js";
+import { createEmailFailureCollector, postPermanentFailureAlert } from "./emailOpsAlert.js";
+import { recordEmailSweepRun } from "./emailHealthReport.js";
 import { captureException } from "./sentry.js";
 
 export const WELCOME_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -24,13 +26,23 @@ export const WELCOME_WINDOW_MS = 48 * 60 * 60 * 1000;
 export async function runEmailWelcomeSweep({
   supabase,
   now = new Date(),
-  isActive = isEmailLoopActive,
+  // #2853 (fund 8/9): sweepen skal kende STAGE, ikke bare "aktiv ja/nej" —
+  // unsub-URL'en bygges her, og dry_run maa ikke kraeve hemmeligheden.
+  readStage = readEmailLoopStage,
   send = sendLoopEmail,
   unsubSecret = process.env.EMAIL_UNSUB_SECRET,
+  sendWebhookFn = null,
+  getOpsWebhookFn = null,
+  recordRun = recordEmailSweepRun,
   captureExceptionFn = captureException,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
-  if (!(await isActive(supabase, "welcome"))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+  const stage = await readStage(supabase, "welcome");
+  if (stage === "off") return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+
+  // ÉN fejl pr. koersel, ikke én pr. hold pr. tick (#2853, fund 8/9: 3 Sentry-
+  // alarmer paa 15 min for den samme manglende noegle).
+  assertUnsubSecretForStage(stage, unsubSecret);
 
   const cutoffIso = new Date(now.getTime() - WELCOME_WINDOW_MS).toISOString();
 
@@ -50,6 +62,7 @@ export async function runEmailWelcomeSweep({
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  const failureCollector = createEmailFailureCollector();
 
   for (const team of candidates) {
     try {
@@ -58,7 +71,7 @@ export async function runEmailWelcomeSweep({
       if (error) throw new Error(`users lookup: ${error.message}`);
       if (!userRow?.email) { skipped += 1; continue; }
 
-      const unsubscribeUrl = unsubscribeUrlFor(team.user_id, unsubSecret);
+      const unsubscribeUrl = unsubscribeUrlForStage({ userId: team.user_id, secret: unsubSecret, stage });
       const { subject, html, text } = buildWelcomeEmail({ teamName: team.name, unsubscribeUrl, language: userRow.language });
       const result = await send({
         supabase,
@@ -71,6 +84,8 @@ export async function runEmailWelcomeSweep({
         html,
         text,
         unsubscribeUrl,
+        stage,
+        failureCollector,
       });
       if (result?.status === "sent" || result?.status === "dry_run") sent += 1;
       else skipped += 1;
@@ -83,6 +98,11 @@ export async function runEmailWelcomeSweep({
       });
     }
   }
+
+  // ÉN samlet ops-alarm for koerslen (#2853) + koerselens tal til den daglige
+  // sundhedsrapport. Begge er best-effort og maa aldrig vaelte sweepen.
+  await postPermanentFailureAlert({ collector: failureCollector, sweep: "email-welcome", now, sendWebhookFn, getOpsWebhookFn });
+  await recordRun({ supabase, emailType: "welcome", stage, candidates: candidates.length, sent, skipped, failed });
 
   return { candidates: candidates.length, sent, skipped, failed };
 }
