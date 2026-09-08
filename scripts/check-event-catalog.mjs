@@ -20,10 +20,16 @@
 //      service-role uden om logEvent.js.
 //
 // Regler:
-//   - Frontend-events skal staa i BAADE KNOWN_EVENTS og §3-tabellen.
-//   - Server-events staar kun i §3-tabellen (de gaar aldrig gennem logEvent.js,
-//     og KNOWN_EVENTS' formaal er impression-canaries for spilleradfaerd).
-//   - Et navn i KNOWN_EVENTS uden en raekke i §3 er ogsaa en fejl.
+//   FEJL   et event-navn i koden staar HVERKEN i KNOWN_EVENTS eller i §3.
+//          Saa er det usynligt for alle andre end den der skrev det.
+//   FEJL   et navn i KNOWN_EVENTS uden en raekke i §3. Tabellen skal vaere komplet.
+//   FEJL   et server-event uden en raekke i §3 (de gaar aldrig gennem logEvent.js,
+//          og hoerer derfor ikke hjemme i KNOWN_EVENTS).
+//   ADVARSEL  et event der fyrer og er dokumenteret i §3, men mangler i
+//          KNOWN_EVENTS. Det er canary-blindt: Detector E ville ikke opdage at
+//          stroemmen toerrede ud. 16 saadanne findes i dag (ANALYTICS_STACK §6
+//          punkt 11); at rette dem er en kode-aendring, ikke en docs-aendring,
+//          saa guarden advarer i stedet for at spaerre.
 //
 // BRUG:
 //   node scripts/check-event-catalog.mjs
@@ -130,9 +136,15 @@ function main() {
       if (!frontendEvents.has(name)) frontendEvents.set(name, path.relative(ROOT, file).replace(/\\/g, "/"));
     }
   }
+  const canaryBlind = [];
   for (const [name, file] of frontendEvents) {
-    if (!known.has(name)) problems.push(`${name} (${file}) mangler i KNOWN_EVENTS i frontend/src/lib/logEvent.js`);
-    if (!documented.has(name)) problems.push(`${name} (${file}) mangler en raekke i docs/ANALYTICS_STACK.md §3`);
+    if (!known.has(name) && !documented.has(name)) {
+      problems.push(`${name} (${file}) staar hverken i KNOWN_EVENTS eller i docs/ANALYTICS_STACK.md §3`);
+    } else if (!documented.has(name)) {
+      problems.push(`${name} (${file}) mangler en raekke i docs/ANALYTICS_STACK.md §3`);
+    } else if (!known.has(name)) {
+      canaryBlind.push(`${name} (${file})`);
+    }
   }
 
   // 2. Server-side inserts.
@@ -151,10 +163,16 @@ function main() {
     if (!documented.has(name)) problems.push(`${name} staar i KNOWN_EVENTS, men mangler en raekke i docs/ANALYTICS_STACK.md §3`);
   }
 
+  if (canaryBlind.length > 0) {
+    console.warn(`ADVARSEL: ${canaryBlind.length} event(s) fyrer og er dokumenteret, men mangler i KNOWN_EVENTS (canary-blinde):`);
+    for (const c of canaryBlind.sort()) console.warn(`  - ${c}`);
+    console.warn("  Detector E ville ikke opdage at deres stroem toerrede ud. Se ANALYTICS_STACK.md §6 punkt 11.\n");
+  }
+
   if (problems.length > 0) {
     console.error("Event-katalog ude af sync:");
     for (const p of problems.sort()) console.error(`  - ${p}`);
-    console.error("\nEt nyt event kraever BEGGE dele: en raekke i ANALYTICS_STACK.md §3 og (for frontend-events) et navn i KNOWN_EVENTS.");
+    console.error("\nEt nyt event kraever en raekke i ANALYTICS_STACK.md §3 og (for frontend-events) et navn i KNOWN_EVENTS.");
     return 1;
   }
 
