@@ -103,70 +103,50 @@ export function DualBar({ primary, secondary, max = 5, primaryTitle, secondaryTi
 }
 
 /**
- * Lodrette dag-bars (svar over tid). Rå SVG frem for flex-divs, så etiketterne
- * kan sidde i samme koordinatsystem som søjlerne og ikke skride på 375 px.
+ * Lodrette dag-bars (svar over tid). CSS og ikke SVG: en SVG der strækkes til
+ * kortets bredde (preserveAspectRatio="none") skalerer også teksten, og
+ * dato-etiketterne blev trukket ud af form. Flex-kolonner rammer den samme
+ * figur med skarpe etiketter i alle bredder.
  * `data`: [{ date, started, completed }]
  */
-export function DayBars({ data, height = 132, label, emptyLabel }) {
+export function DayBars({ data, height = 128, label, emptyLabel }) {
   if (!data.length) return <p className="text-[13px] text-cz-3">{emptyLabel}</p>;
 
-  const top = Math.max(1, ...data.map((d) => d.started));
-  const slot = 100 / data.length;
-  const barWidth = Math.min(slot * 0.55, 7);
-  const plotTop = 6;
-  const plotHeight = 74;
+  const top = Math.max(1, ...data.map((day) => day.started));
+  // Højst 12 etiketter: derover overlapper de på 375 px.
+  const labelEvery = Math.max(1, Math.ceil(data.length / 12));
 
   return (
-    <svg
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      role="img"
-      aria-label={label}
-      className="w-full"
-      style={{ height }}
-    >
-      {/* Grundlinje som hairline, samme rolle som tabellens 1px-regel. */}
-      <line x1="0" y1={plotTop + plotHeight} x2="100" y2={plotTop + plotHeight} className="stroke-cz-border" strokeWidth="0.4" vectorEffect="non-scaling-stroke" />
-      {data.map((day, index) => {
-        const x = slot * index + slot / 2;
-        const startedH = (day.started / top) * plotHeight;
-        const completedH = (day.completed / top) * plotHeight;
-        return (
-          <g key={day.date}>
-            <title>{`${day.date}: ${day.started} startede, ${day.completed} gennemførte`}</title>
-            <rect
-              x={x - barWidth / 2}
-              y={plotTop + plotHeight - startedH}
-              width={barWidth}
-              height={Math.max(startedH, 0.6)}
-              className="fill-cz-accent/35"
-            />
-            <rect
-              x={x - barWidth / 2}
-              y={plotTop + plotHeight - completedH}
-              width={barWidth}
-              height={Math.max(completedH, day.completed > 0 ? 0.6 : 0)}
-              className="fill-cz-accent"
-            />
-          </g>
-        );
-      })}
-      {data.map((day, index) => (
-        // Kun første, sidste og hver 3. dag får en etiket, ellers overlapper de på mobil.
-        index === 0 || index === data.length - 1 || index % 3 === 0 ? (
-          <text
-            key={`label-${day.date}`}
-            x={slot * index + slot / 2}
-            y="95"
-            textAnchor="middle"
-            className="fill-cz-3 font-data"
-            style={{ fontSize: "7px" }}
+    <div role="img" aria-label={label}>
+      {/* Søjlen har et loft på 44 px: med fire dage ville en ren flex-1-søjle
+          fylde en fjerdedel af kortet og læse som et fladeareal, ikke som en bar. */}
+      <div className="flex items-stretch gap-1.5 border-b border-cz-border" style={{ height }}>
+        {data.map((day) => (
+          <div key={day.date} className="flex min-w-0 flex-1 items-end justify-center">
+            <div
+              className="relative w-full max-w-[44px] bg-cz-accent/30"
+              style={{ height: `${Math.max((day.started / top) * 100, day.started > 0 ? 2 : 0)}%` }}
+              title={`${day.date}: ${day.started} / ${day.completed}`}
+            >
+              <span
+                className="absolute inset-x-0 bottom-0 block bg-cz-accent"
+                style={{ height: day.started > 0 ? `${(day.completed / day.started) * 100}%` : 0 }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-1.5">
+        {data.map((day, index) => (
+          <span
+            key={day.date}
+            className="min-w-0 flex-1 text-center font-data text-3xs tabular-nums text-cz-3"
           >
-            {day.date.slice(8)}/{day.date.slice(5, 7)}
-          </text>
-        ) : null
-      ))}
-    </svg>
+            {index % labelEvery === 0 ? `${day.date.slice(8)}/${day.date.slice(5, 7)}` : ""}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -176,7 +156,7 @@ export function DayBars({ data, height = 132, label, emptyLabel }) {
  * musen kan læse en prik uden at 20 etiketter skal ligge oven i hinanden.
  * `points`: [{ key, label, x, y, n, rank }]
  */
-export function QuadrantChart({ points, axisXLabel, axisYLabel, cornerLabel, height = 340 }) {
+export function QuadrantChart({ points, axisXLabel, axisYLabel, cornerLabel }) {
   const min = 1;
   const max = 5;
   const pad = 12;
@@ -185,8 +165,17 @@ export function QuadrantChart({ points, axisXLabel, axisYLabel, cornerLabel, hei
   const toY = (value) => pad + span - ((value - min) / (max - min)) * span;
   const mid = 3;
 
+  // Kvadratisk med vilje og derfor bredde-begrænset: de to akser er den samme
+  // skala, og et strakt plot ville få en 4,0 på den ene akse til at se større
+  // ud end en 4,0 på den anden.
   return (
-    <svg viewBox="0 0 100 100" role="img" aria-label={cornerLabel} className="w-full" style={{ height }}>
+    <svg
+      viewBox="0 0 100 100"
+      role="img"
+      aria-label={cornerLabel}
+      className="mx-auto block w-full max-w-[540px]"
+      style={{ aspectRatio: "1 / 1" }}
+    >
       {/* Kvadrant-flade øverst til højre: den eneste flade der er fyldt, fordi
           den er den eneste der betyder noget ved første øjekast. */}
       <rect
@@ -216,7 +205,19 @@ export function QuadrantChart({ points, axisXLabel, axisYLabel, cornerLabel, hei
         </g>
       ))}
 
-      <text x={toX(max)} y={toY(min) + 6} textAnchor="end" className="fill-cz-3 font-data" style={{ fontSize: "3.2px" }}>
+      {/* Skala-ender, så en prik kan læses som "3,1 af 5" og ikke bare "midtfor". */}
+      {[min, max].map((tick) => (
+        <text key={`x-${tick}`} x={toX(tick)} y={toY(min) + 3.5} textAnchor="middle" className="fill-cz-3 font-data" style={{ fontSize: "3px" }}>
+          {tick}
+        </text>
+      ))}
+      {[min, max].map((tick) => (
+        <text key={`y-${tick}`} x={toX(min) - 1.5} y={toY(tick) + 1} textAnchor="end" className="fill-cz-3 font-data" style={{ fontSize: "3px" }}>
+          {tick}
+        </text>
+      ))}
+
+      <text x={toX(max)} y={toY(min) + 7.5} textAnchor="end" className="fill-cz-3 font-data" style={{ fontSize: "3.2px" }}>
         {axisXLabel}
       </text>
       <text

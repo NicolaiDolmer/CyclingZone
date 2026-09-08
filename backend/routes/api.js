@@ -9250,7 +9250,10 @@ router.get("/admin/surveys/:slug/results", requireAdmin, async (req, res) => {
     }));
   } catch (error) {
     captureException(error);
-    res.status(500).json({ error: error.message || "Kunne ikke hente spørgeskema-resultater" });
+    // Engelsk fallback med vilje: baseline for danske backend-strenge er en
+    // ratchet (#1068), og fladen viser alligevel sin egen i18n-tekst frem for
+    // denne besked (kun "Admin only" læses ordret).
+    res.status(500).json({ error: error.message || "Could not load survey results" });
   }
 });
 

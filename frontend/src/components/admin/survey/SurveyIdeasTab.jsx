@@ -75,10 +75,15 @@ export default function SurveyIdeasTab({ data }) {
       key: "feature",
       header: t("surveyResults.ideas.columns.feature"),
       sticky: true,
+      // Idé-teksten er en hel sætning. Uden en bredde-grænse voksede den
+      // sticky kolonne til 760 px og skubbede prioritets-kolonnen ud over
+      // kortets kant på 1280 px, altså præcis det tal man kom for.
       render: (row) => (
         <span className="flex items-baseline gap-2">
           <span className="font-data text-2xs tabular-nums text-cz-3">{row.rank ?? "—"}</span>
-          {optionLabel(row, language)}
+          <span className="block max-w-[300px] whitespace-normal lg:max-w-[420px]">
+            {optionLabel(row, language)}
+          </span>
         </span>
       ),
       subline: (row) => groupLabel(row, language),
