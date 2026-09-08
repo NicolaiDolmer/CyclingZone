@@ -22,12 +22,15 @@ import { isLikelyAutomation, isPrerendering } from "./clarityBotSignals.js";
 // import.meta.env optional-chained så modulet kan importeres i node --test,
 // jf. konventionen i trafficBeacon.js / clarityIntegration.jsx.
 //
-// Fallback-token: PostHog's client-side "project API key" er per design
-// offentlig (den ligger i enhver besøgendes bundle og kan kun skrive events,
-// ikke læse data). Den er derfor hardcodet som fallback, så integrationen ikke
-// er tavs hvis en env-variabel mangler på et deploy. Den er IKKE en secret.
-const FALLBACK_KEY = "phc_vykwxRnQyYyPSKX2wAYrK3fRKn85KxttbpaRYRU8LAFP";
-const PROJECT_KEY = import.meta.env?.VITE_POSTHOG_KEY || FALLBACK_KEY;
+// Nøglen kommer UDELUKKENDE fra env — der er bevidst ingen fallback-token i
+// koden. PostHog's client-side "project API key" er per design offentlig (den
+// ligger i enhver besøgendes bundle og kan kun skrive events, ikke læse data),
+// men den holdes alligevel ude af repoet: gitleaks i CI og repoets
+// secret-sanitize-hook bider begge på PostHog-token-mønstret, og en hardcodet
+// nøgle ville blokere hver eneste PR. Den sættes som VITE_POSTHOG_KEY i Vercel
+// (Production + Preview). Mangler den, er hele integrationen en tavs no-op —
+// præcis som GA4 uden VITE_GA_MEASUREMENT_ID (gaIntegration.jsx).
+const PROJECT_KEY = import.meta.env?.VITE_POSTHOG_KEY;
 
 // Relativ sti = samme origin = ingen adblocker-liste rammer den. Rewrites i
 // frontend/vercel.json sender /ingest videre til EU-cloud'en.

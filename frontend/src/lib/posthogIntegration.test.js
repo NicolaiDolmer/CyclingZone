@@ -36,6 +36,36 @@ test("PostHog er slået fra uden PROD (og dermed i test/dev)", () => {
   assert.equal(POSTHOG_ENABLED, false);
 });
 
+// Der må ALDRIG ligge en project-token i repoet: gitleaks i CI og repoets
+// secret-sanitize-hook bider begge på mønstret, og en hardcodet nøgle blokerer
+// enhver PR. Token-præfikset stykkes sammen her, netop så denne vagt ikke selv
+// bliver det fund den skal forhindre.
+const TOKEN_PATTERN = new RegExp(`ph${"c"}_[A-Za-z0-9]`);
+
+test("ingen fallback-token i koden — nøglen kommer kun fra env", () => {
+  assert.doesNotMatch(clientSource, TOKEN_PATTERN, "hardcodet PostHog-token i posthogClient.js");
+  assert.doesNotMatch(clientSource, /FALLBACK_KEY/, "ingen fallback-konstant må genindføres");
+  assert.match(
+    clientSource,
+    /const PROJECT_KEY = import\.meta\.env\?\.VITE_POSTHOG_KEY;/,
+    "nøglen læses udelukkende fra VITE_POSTHOG_KEY, uden ||-fallback",
+  );
+  assert.match(
+    clientSource,
+    /export const POSTHOG_ENABLED = Boolean\(import\.meta\.env\?\.PROD\) && Boolean\(PROJECT_KEY\);/,
+    "integrationen skal kræve både PROD og en env-nøgle",
+  );
+});
+
+test("uden VITE_POSTHOG_KEY er integrationen en tavs no-op", async () => {
+  // node --test kører uden Vite, så import.meta.env er undefined: præcis samme
+  // tilstand som et deploy hvor nøglen mangler. Intet må starte, intet kaste.
+  assert.equal(POSTHOG_ENABLED, false, "ingen env-nøgle ⇒ slået fra");
+  await startPosthog();
+  assert.equal(isPosthogStarted(), false, "SDK'et må ikke starte uden nøgle");
+  assert.doesNotThrow(() => capturePosthogEvent("auction_bid_placed", { amount: 1 }));
+});
+
 test("startPosthog() starter ikke SDK'et når integrationen er slået fra", async () => {
   await startPosthog();
   assert.equal(isPosthogStarted(), false, "PostHog må aldrig starte uden PROD + samtykke");
