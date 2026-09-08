@@ -10,6 +10,13 @@
 // tilføjet) + et arkiv-FILTER (ikke en kategori — se FORUM_ARCHIVE_FILTER
 // nedenfor).
 //
+// #4818 (ejer-direktiv 4/9 + afklaring 8/9): "roadmap" er den syvende
+// kategori og den første med en SKRIVE-rettighed: kun admin må oprette
+// tråde der, alle må svare. Rettigheden er generel (FORUM_CATEGORY_POST_ROLES
+// herunder), ikke et hardcodet bruger-id, og håndhæves i tre lag: databasen
+// (trigger, database/2026-09-08-4818-forum-roadmap-category.sql), denne fil
+// (403 forum_category_admin_only) og fladen (knappen skjules).
+//
 // Handler-logikken bor her (ikke inline i api.js) af samme grund som
 // feedbackInbox.js: api.js kræver en live Supabase-klient og kan ikke
 // unit-testes direkte, mens rene handlere kan køres mod createFakeSupabase.
@@ -38,7 +45,20 @@
 // forummet forbi denne skala kræver sorteringen en DB-side generated
 // `last_activity_at`-kolonne i stedet for JS-scanningen.
 
-export const FORUM_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"];
+// Rækkefølgen ER visningsrækkefølgen (fanerække + compose-vælger). #4818:
+// roadmap ligger øverst — ejerens egen kanal skal være det første man ser.
+// SKAL matche forum_posts_category_check i databasen OG FORUM_CATEGORY_ORDER
+// i frontend/src/components/forum/forumCategories.js.
+export const FORUM_CATEGORIES = ["roadmap", "general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"];
+
+// #4818: hvem der må OPRETTE en tråd pr. kategori. Spejler tabellen
+// public.forum_category_post_roles (migration 2026-09-08-4818) — udvid begge
+// sammen. En kategori der ikke står her er åben for alle. Gælder KUN
+// trådoprettelse: svar er aldrig begrænset (ejer-afklaring 8/9, ordret:
+// "kun jeg opretter, alle svarer").
+export const FORUM_CATEGORY_POST_ROLES = { roadmap: "admin" };
+export const FORUM_POST_ROLE_EVERYONE = "everyone";
+export const FORUM_POST_ROLE_ADMIN = "admin";
 // #4492: arkiv er et BEREGNET visnings-filter, ikke en gyldig category-værdi
 // — et opslag kan aldrig oprettes eller stå permanent i "archive" (isValid-
 // ForumCategory afviser den bevidst, se nedenfor). En tråd er arkiveret når
@@ -106,6 +126,20 @@ export function isValidForumCategory(category) {
 /** GET /api/forum/posts?category=… accepterer de rigtige kategorier + "archive". */
 export function isValidForumListFilter(filter) {
   return filter === FORUM_ARCHIVE_FILTER || isValidForumCategory(filter);
+}
+
+/** #4818: hvilken rolle der kræves for at oprette en tråd i kategorien. */
+export function forumCategoryPostRole(category) {
+  return FORUM_CATEGORY_POST_ROLES[category] || FORUM_POST_ROLE_EVERYONE;
+}
+
+/**
+ * #4818: må denne bruger oprette en tråd i kategorien? Fail closed — en
+ * ukendt/manglende isAdmin behandles som "ikke admin", så en glemt rolle-
+ * opslag aldrig åbner en admin-kategori.
+ */
+export function canCreateForumThread(category, { isAdmin = false } = {}) {
+  return forumCategoryPostRole(category) !== FORUM_POST_ROLE_ADMIN || isAdmin === true;
 }
 
 /** Aktivitets-nøgle for sortering: seneste svar, ellers oprettelse. */
@@ -782,6 +816,9 @@ function validatePollOptions(pollOptions) {
  * POST /api/forum/posts — nyt opslag. Polls er EJER-funktionalitet (plan 6/8):
  * kun admin må vedhæfte afstemning; en almindelig spiller med poll_options i
  * payloaden får 403, ikke et opslag uden poll (stille scope-klip skjuler fejl).
+ *
+ * #4818: kategorier med post_role = 'admin' (i dag kun "roadmap") afviser
+ * ikke-admins med 403 forum_category_admin_only. Svar er upåvirkede.
  */
 export async function createForumPost({
   supabase,
@@ -796,6 +833,17 @@ export async function createForumPost({
 }) {
   if (!isValidForumCategory(category)) {
     return { status: 400, body: { error: "Invalid category", errorCode: "forum_invalid_category" } };
+  }
+  // #4818: skrive-rettighed pr. kategori. Tjekkes FØR indholdsvalideringen, så
+  // en ikke-admin får den rigtige grund (403) i stedet for at blive sendt
+  // tilbage efter en titel-fejl i en kategori han alligevel ikke må skrive i.
+  // Databasens trigger fanger det samme — dette lag er til for at give et
+  // brugbart svar i stedet for en 500.
+  if (!canCreateForumThread(category, { isAdmin })) {
+    return {
+      status: 403,
+      body: { error: "Only the admin can start threads here", errorCode: "forum_category_admin_only" },
+    };
   }
   const trimmedTitle = typeof title === "string" ? title.trim() : "";
   if (!trimmedTitle) {

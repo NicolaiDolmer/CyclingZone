@@ -736,7 +736,7 @@ export default function ProfilePage() {
                 <Toggle
                   id={`forum-category-${key}`}
                   // Kategori-navnet står som en søskende-<p>, ikke i labelen —
-                  // uden aria-label ville en skærmlæser høre seks unavngivne
+                  // uden aria-label ville en skærmlæser høre en række unavngivne
                   // switches (CodeRabbit, #5013).
                   aria-label={t(`forum:categories.${key}`)}
                   checked={following}

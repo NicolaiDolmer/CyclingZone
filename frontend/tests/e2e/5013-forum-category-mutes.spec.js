@@ -15,6 +15,7 @@
 import { readFileSync } from "node:fs";
 import { test, expect } from "./e2e-base.js";
 import { stabilizePage, installNetworkMocks, login } from "./fixtures.js";
+import { FORUM_CATEGORY_ORDER } from "../../src/components/forum/forumCategories.js";
 
 const daForum = JSON.parse(
   readFileSync(new URL("../../public/locales/da/forum.json", import.meta.url), "utf8"),
@@ -119,6 +120,12 @@ test.describe("Forum — abonnement pr. kategori", () => {
 
     // Toggle.jsx gemmer selve inputtet (peer + sr-only), saa klikket skal ramme
     // labelen — et forceret klik paa det skjulte input flipper ikke i WebKit.
+    // Hele kataloget skal staa her, roadmap (#4818) inkl.: en admin-only
+    // kategori kan alle stadig laese og svare i, saa alle skal kunne daempe
+    // den. Listen deles med forumsidens katalog (forumCategories.js).
+    await expect(page.locator("[id^=forum-category-]")).toHaveCount(FORUM_CATEGORY_ORDER.length);
+    await expect(page.locator("#forum-category-roadmap")).toBeChecked();
+
     const generalToggle = page.locator("#forum-category-general");
     await expect(generalToggle).toBeChecked();
     await page.locator('label[for="forum-category-general"]').click();

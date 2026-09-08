@@ -10,14 +10,17 @@
 // den fulde liste selv når backend svarer med et tomt sæt — og en kategori
 // backend ikke kender falder til "følger", aldrig til "slået fra".
 
-export const FORUM_CATEGORY_KEYS = [
-  "general",
-  "feedback_ideas",
-  "questions",
-  "tactics",
-  "transfers",
-  "off_topic",
-];
+import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";
+
+/**
+ * Kataloget har ÉN kilde: #4818's FORUM_CATEGORY_ORDER (som selv spejler
+ * FORUM_CATEGORIES i backend/lib/forum.js). En egen liste her ville betyde at
+ * hver ny kategori — "roadmap" var den første — landede på forumsiden uden at
+ * kunne slås fra, og at indstillingernes liste tavst manglede en række.
+ * Rollen (hvem der må OPRETTE) er uden betydning her: alle kan læse og svare i
+ * en admin-only kategori, så alle skal også kunne slå den fra.
+ */
+export const FORUM_CATEGORY_KEYS = FORUM_CATEGORY_ORDER;
 
 /** "archive" er et visnings-filter (#4492), ikke noget man kan abonnere på. */
 export function isSubscribableCategory(category) {

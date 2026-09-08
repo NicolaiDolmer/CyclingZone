@@ -68,6 +68,9 @@ export const NOTIFICATION_TYPES = [
   // notifikation for samme tråd opdateres ("N nye svar") i stedet for at
   // stable nye rækker op. Se notifyForumThreadReply, notificationService.js.
   "forum_thread_reply",
+  // #5011 (ejer-direktiv 3/9, #4751): du blev @-tagget i et forum-indlæg.
+  // Højst ÉN pr. (bruger, indlæg), aldrig ved selv-tag. Se notifyForumMention.
+  "forum_mention",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

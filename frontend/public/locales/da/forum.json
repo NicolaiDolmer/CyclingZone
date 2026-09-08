@@ -8,6 +8,7 @@
   },
   "categories": {
     "all": "Alle",
+    "roadmap": "Roadmap",
     "general": "Generelt",
     "feedback_ideas": "Feedback & idéer",
     "questions": "Spørgsmål og svar",
@@ -15,6 +16,12 @@
     "transfers": "Transfers",
     "off_topic": "Off-topic",
     "archive": "Arkiv"
+  },
+  "adminOnly": {
+    "tag": "Officielt",
+    "description": "Hvor spillet er på vej hen, direkte fra mig.",
+    "notice": "Kun jeg slår op her. Svar så meget du vil.",
+    "emptyDescription": "Der er ikke noget her endnu. Her lægger jeg op om, hvor spillet er på vej hen."
   },
   "list": {
     "pinnedHeading": "Fastgjort",
@@ -74,6 +81,9 @@
   },
   "identity": {
     "profileAria": "Åbn managerprofilen for {name}"
+  },
+  "mentions": {
+    "listLabel": "Nævn en manager"
   },
   "signature": {
     "division": "Division {division}"

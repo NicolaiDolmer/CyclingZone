@@ -9,12 +9,26 @@ import {
   isCategoryMuted,
   followedCategoryCount,
 } from "./forumCategoryMutes.js";
+import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";
 
-test("isSubscribableCategory: de seks kategorier, aldrig arkiv-filteret (#4492)", () => {
+test("isSubscribableCategory: alle kategorier, aldrig arkiv-filteret (#4492)", () => {
   for (const key of FORUM_CATEGORY_KEYS) assert.ok(isSubscribableCategory(key), key);
   assert.ok(!isSubscribableCategory("archive"));
   assert.ok(!isSubscribableCategory(""));
   assert.ok(!isSubscribableCategory(undefined));
+});
+
+// Kataloget deles med #4818. Testen findes fordi en egen liste her lod
+// "roadmap" lande paa forumsiden uden at kunne slaas fra: en admin-only
+// kategori kan alle stadig laese og svare i, saa alle skal kunne daempe den.
+test("kataloget er #4818's — roadmap kan ogsaa foelges/daempes", () => {
+  assert.deepEqual(FORUM_CATEGORY_KEYS, FORUM_CATEGORY_ORDER);
+  assert.ok(isSubscribableCategory("roadmap"));
+  assert.equal(normalizeCategoryMutes({}).length, FORUM_CATEGORY_ORDER.length);
+  assert.ok(isCategoryMuted(
+    applyCategoryMute(normalizeCategoryMutes({}), "roadmap", true),
+    "roadmap"
+  ));
 });
 
 test("normalizeCategoryMutes: tomt/defekt svar = følger alt (den sikre default)", () => {

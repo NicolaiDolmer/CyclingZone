@@ -76,6 +76,8 @@
     "test:lint-supabase-mutation": "node --test scripts/lint-unchecked-supabase-mutation.test.mjs",
     "lint:pagination-guard": "node scripts/lint-pagination-guard.mjs",
     "test:lint-pagination-guard": "node --test scripts/lint-pagination-guard.test.mjs",
+    "lint:lazy-with-retry": "node scripts/lint-lazy-with-retry.mjs",
+    "test:lint-lazy-with-retry": "node --test scripts/lint-lazy-with-retry.test.mjs",
     "lint:fetchallrows-order": "node scripts/check-fetchallrows-order.mjs",
     "test:lint-fetchallrows-order": "node --test scripts/check-fetchallrows-order.test.mjs",
     "lint:rate-limit-coverage": "node scripts/check-rate-limit-coverage.mjs",

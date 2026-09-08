@@ -218,6 +218,7 @@
     "forum_post_not_found": "Opslaget blev ikke fundet. Det kan være blevet fjernet.",
     "forum_reply_not_found": "Svaret blev ikke fundet. Det kan være blevet fjernet.",
     "forum_poll_admin_only": "Kun admin kan vedhæfte afstemninger",
+    "forum_category_admin_only": "Kun jeg opretter tråde i Roadmap. Du kan svare på dem alle.",
     "forum_poll_invalid_options": "En afstemning kræver 2 til 8 muligheder på højst 100 tegn",
     "forum_poll_option_not_found": "Den afstemningsmulighed findes ikke længere",
     "forum_invalid_target_type": "Ugyldigt rapport-mål",
