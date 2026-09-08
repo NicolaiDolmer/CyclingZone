@@ -247,11 +247,17 @@ async function main() {
     try {
       const { createAluntaClient } = await import("../backend/lib/alunta.js");
       const client = createAluntaClient();
-      const res = await client.listSubscriptions({ perPage: 100 });
+      const perPage = 100;
+      const res = await client.listSubscriptions({ perPage });
       const list = res?.data ?? res ?? [];
       out.alunta_active_subscriptions = Array.isArray(list)
         ? list.filter((s) => ["active", "past_due"].includes(String(s?.status || "").toLowerCase())).length
         : null;
+      // Kun foerste side hentes. Rammer vi loftet, er krydstjekket ikke laengere
+      // et krydstjek, og det skal siges hoejt frem for at undertaelle stille.
+      if (Array.isArray(list) && list.length >= perPage) {
+        notes.push(`Alunta-krydstjekket laeste kun foerste side (${perPage} abonnementer). Tallet kan undertaelle; brug MCP'ens tal.`);
+      }
     } catch (err) {
       notes.push(`Alunta-krydstjek fejlede: ${String(err?.message || err).slice(0, 160)}`);
     }
