@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
@@ -11,9 +11,13 @@ import {
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
+import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 // #2602 · lazy: modalen aabnes kun ved klik paa Kontakt — dens kode (+i18n-traek)
 // skal ikke belaste hovedbundlet (perf-gate: 888 KB > 885 KB-loftet uden lazy).
-const FeedbackModal = lazy(() => import("./FeedbackModal"));
+// #5014: lazyWithRetry (ikke bart React.lazy), samme retry-vaern som App.jsx's
+// route-chunks — ellers klassificeres et stale-chunk-load som render_error i
+// stedet for chunk_load_error, og #4595's auto-reload trigges aldrig.
+const FeedbackModal = lazyWithRetry(() => import("./FeedbackModal.jsx"));
 import MobileQuickNav from "./MobileQuickNav";
 import RaceControlBanner from "./RaceControlBanner";
 import LanguageSwitcher from "./LanguageSwitcher";

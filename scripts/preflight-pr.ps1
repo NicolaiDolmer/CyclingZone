@@ -143,6 +143,13 @@ try {
   if ($LASTEXITCODE -ne 0) { $failed += "frontend-lint" }
   Pop-Location
 
+  # Forward-guard mod bart React.lazy() i frontend/src (#5014) — se scriptets
+  # header for hvorfor et stale-chunk-load ellers klassificeres forkert
+  # (render_error i stedet for chunk_load_error, ingen auto-reload/#4595).
+  Write-Host "== lazy-with-retry-guard (bart React.lazy() uden retry-vaern, #5014) ==" -ForegroundColor Cyan
+  node scripts/lint-lazy-with-retry.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "lazy-with-retry-guard" }
+
   # #4783: 4/9 aften blev PR #4780 merget med preflight GRØN, men CI's
   # riders-column-grant-guard og warning-budget-job blev røde for de to
   # EFTERFØLGENDE PR'er (#4779, #4781) - ingen af de to var i preflight, saa
