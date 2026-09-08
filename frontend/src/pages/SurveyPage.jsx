@@ -33,6 +33,7 @@ import {
   answersByQuestionKey,
   buildResponsePayload,
   computeProgress,
+  displayTextAnswer,
   groupQuestionsIntoSections,
   missingRequired,
   normalizeAnswer,
@@ -288,9 +289,14 @@ export default function SurveyPage() {
         // spørgsmålets type. Behold det viste svar, skriv ikke skrald.
         return;
       }
+      // Fritekst: det VISTE svar må ikke trimmes ved hvert tastetryk, ellers
+      // forsvinder et afsluttende mellemrum igen før næste bogstav kan
+      // skrives (#4943-hotfix). `value` (normaliseret/trimmet) er stadig det
+      // der autosaves nedenfor — kun visningen i `answers` bruger den rå tekst.
+      const displayValue = question.kind === "text" ? displayTextAnswer(raw) : value;
       setAnswers((prev) => {
         const next = { ...prev };
-        if (value) next[question.key] = value;
+        if (displayValue) next[question.key] = displayValue;
         else delete next[question.key];
         return next;
       });

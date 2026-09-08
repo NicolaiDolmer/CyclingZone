@@ -148,6 +148,40 @@ test("autosave skriver svaret uden at man trykker Send", async ({ page }) => {
   expect(writes.join(" ")).toContain('"score":5');
 });
 
+test("fritekst-felt bevarer mellemrum imens man skriver, men gemmer trimmet (#4943-hotfix)", async ({ page }) => {
+  // Regression: hvert tastetryk normaliserede (trimmede) det viste svar, så
+  // et afsluttende mellemrum blev fjernet igen før næste bogstav kunne
+  // skrives — mellemrum mellem ord kunne reelt ikke bruges i fritekst.
+  const writes = [];
+  await installNetworkMocks(page);
+  await installSurveyRoutes(page);
+  await page.route(/\/rest\/v1\/survey_responses/, async (route) => {
+    const request = route.request();
+    if (request.method() === "POST") writes.push(request.postData());
+    return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  });
+  await stabilizePage(page);
+  await login(page);
+  await page.goto(`/survey/${SLUG}`);
+
+  const oneThing = page.getByLabel(
+    "Hvis jeg kun kunne bygge én ting den næste måned, hvad skulle det så være?"
+  );
+  await oneThing.pressSequentially("to ord");
+  await expect(oneThing).toHaveValue("to ord");
+
+  // Et yderligere afsluttende mellemrum skal blive stående i feltet.
+  await oneThing.pressSequentially(" ");
+  await expect(oneThing).toHaveValue("to ord ");
+
+  await expect(page.getByText("Gemt").first()).toBeVisible();
+  expect(writes.length).toBeGreaterThan(0);
+  expect(writes.join(" ")).toContain('"question_key":"one_thing"');
+  // Persisteret værdi er trimmet, uanset det viste felts afsluttende mellemrum.
+  expect(writes.join(" ")).toContain('"text":"to ord"');
+  expect(writes.join(" ")).not.toContain('"text":"to ord "');
+});
+
 test("et ryddet svar slettes, i stedet for at blive gemt som en tom værdi", async ({ page }) => {
   const methods = [];
   await installNetworkMocks(page);
