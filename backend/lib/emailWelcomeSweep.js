@@ -101,14 +101,15 @@ export async function runEmailWelcomeSweep({
 
   // ÉN samlet ops-alarm for koerslen (#2853) + koerselens tal til den daglige
   // sundhedsrapport. Begge er best-effort og maa aldrig vaelte sweepen.
-  // best-effort (fund 8/9, review-runde 2): kaster ops-webhooken -- fx et
-  // fejlet opslag af URL'en -- maa den ALDRIG vaelte sweepen efter at
-  // mailene er sendt. Uden try/catch naaede recordRun nedenfor aldrig at
-  // skrive koerslens tal, og sundhedsrapporten mistede hele koerslen.
-  // Samme moenster som emailRetrySweep.js's dead-alarm.
+  // Fund 8/9 (review-runde 2): alarmen SKAL ligge i try/catch (samme
+  // moenster som emailRetrySweep.js's dead-alarm) -- ellers vaelter en
+  // kastende ops-webhook sweepen FOER recordRun naar at logge koerslen.
   try {
     await postPermanentFailureAlert({ collector: failureCollector, sweep: "email-welcome", now, sendWebhookFn, getOpsWebhookFn });
   } catch (err) {
+    // best-effort: de permanente fejl staar ALLEREDE i Sentry og i
+    // email_log.error. En Discord-kanal der er nede maa ikke koste os
+    // koerslens tal i sundhedsrapporten.
     console.error("[email:welcome] ops-alarm fejlede:", err?.message || err);
   }
   await recordRun({ supabase, emailType: "welcome", stage, candidates: candidates.length, sent, skipped, failed });
