@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.267",
+    "date": "2026-09-08",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Privacy",
+        "en": {
+          "title": "Cookie banner now names PostHog",
+          "body": "The Analytics category in the cookie banner now lists PostHog alongside Clarity, Google Analytics, and Vercel Web Analytics, matching what actually runs. It only sees anonymous gameplay events and page views, only after you consent, and never your name or email."
+        },
+        "da": {
+          "title": "Cookie-banneret nævner nu PostHog",
+          "body": "Analyse-kategorien i cookie-banneret nævner nu PostHog sammen med Clarity, Google Analytics og Vercel Web Analytics, så det matcher hvad der rent faktisk kører. Det ser kun anonyme spil-events og sidevisninger, kun efter dit samtykke, og aldrig dit navn eller din e-mail."
+        },
+        "refs": [4321]
+      }
+    ]
+  },
+  {
     "version": "7.266",
     "date": "2026-09-08",
     "label": "Beta",
