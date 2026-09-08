@@ -22,6 +22,6 @@
 - **Træning:** løbsdag som tick (#4850/#4846) live senest 28/9; kalenderpakker #4845 FØR S4-kalender.
 - **Mekanik:** merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`, aldrig HH:57-HH:03); migrationer applies af auto-migrate.yml, Claude tjekker runnet + post-verify før næste merge. Bølger: TIER WAVE, draft til `gh pr ready`, CodeRabbit CLI før ready (`%LOCALAPPDATA%\Programs\coderabbit\coderabbit.exe`, kan selv committe), push <10 min + hvert 15. min, vagt `wave-lane-watch.ps1`, frossen worker = afløser i SAMME worktree. Workers kører aldrig hele e2e; go-kort bygges på `gh pr diff` + billeder orkestratoren selv har set. Tid: `Get-Date` (Git Bash `date` = UTC).
 
-> **🤖 Working agent:** Ingen aktiv session (Fable lukket 8/9 ca. 02:00; næste = morgen-merges + dag-1-mail + kalender).
+> **🤖 Working agent:** Fable-orkestrator AKTIV 8/9 fra 07:15 (morgen-merges + dag-1-mail + kalender). Anden session: STOP + spørg ejeren (#559).
 
 _Historik i git-log, issue-tråde + docs/audits/._
