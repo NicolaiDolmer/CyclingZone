@@ -116,11 +116,14 @@ function hostOf(referrer) {
   const raw = String(referrer).trim();
   if (!raw) return null;
   if (raw.startsWith("android-app://")) return raw.slice("android-app://".length).replace(/\/+$/, "").toLowerCase();
+  let host;
   try {
-    return new URL(raw).hostname.toLowerCase();
+    host = new URL(raw).hostname.toLowerCase();
   } catch {
-    return raw.replace(/^https?:\/\//, "").split("/")[0].toLowerCase() || null;
+    host = raw.replace(/^https?:\/\//, "").split("/")[0].toLowerCase() || null;
   }
+  // www.foo.com og foo.com er samme kanal, ellers splittes en kanal i to raekker.
+  return host ? host.replace(/^www\d*\./, "") : null;
 }
 
 // Kanal-gruppering. Rangorden: eksplicit utm_source foerst (det er VORES egen
@@ -258,7 +261,9 @@ async function main() {
 
   // --- 4. Mandagstal 2: D7 for seneste fulde kohorte.
   out.cohort_d7 = null;
-  const { data: cohorts, error: cohortErr } = await db.rpc("get_cohort_retention", { p_weeks: 6 });
+  const { data: cohortPayload, error: cohortErr } = await db.rpc("get_cohort_retention", { p_weeks: 6 });
+  // RPC'en svarer {cohorts:[...], generated_at}, ikke et bart array (maalt 8/9).
+  const cohorts = Array.isArray(cohortPayload) ? cohortPayload : (cohortPayload?.cohorts ?? null);
   if (cohortErr) {
     notes.push(`get_cohort_retention fejlede: ${cohortErr.message}`);
   } else if (Array.isArray(cohorts)) {
