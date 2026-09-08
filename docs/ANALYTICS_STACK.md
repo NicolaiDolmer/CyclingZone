@@ -89,9 +89,9 @@ Ordlyden binder os. Nøglerne i `frontend/public/locales/{en,da}/banners.json`:
 
 > ⚠️ **PostHog står ikke i teksten.** Wires PostHog under `analytics`-gaten, skal `analytics.desc` udvides i BEGGE sprog i samme PR. Ellers måler vi med et værktøj brugeren ikke har fået at vide at vi bruger.
 
-### 2d. `email_marketing` bruges ikke af mail-loopet 📄
+### 2d. `email_marketing` gater `race_digest`, ikke resten af mail-loopet 📄
 
-Mail-sweeps gater på `users.email_prefs` (opt-out, fravær = tilmeldt), **ikke** på `consent_preferences.email_marketing` (opt-in). De to er uafhængige, og det er en kendt GDPR-gæld for `race_digest` (winback-audit 2/9 §1.2). Hjemmel og gate-kæde pr. mailtype hører til i `docs/EMAIL_STACK.md`; her står kun at forskellen findes, så ingen forveksler de to felter.
+Mail-sweeps gater alle typer på `users.email_prefs` (opt-out, fravær = tilmeldt). `race_digest` gater derudover på at `consent_preferences.email_marketing === true` (`backend/lib/emailRaceDigestSweep.js:195`, 📄 #4654, verificeret 8/9 af EMAIL_STACK-workeren). `welcome` og `day1` læser bevidst ikke consent, fordi de er onboarding til egen konto. Hjemmel og gate-kæde pr. mailtype hører til i `docs/EMAIL_STACK.md`; her står kun at gate-logikken findes, så ingen forveksler felterne.
 
 ## 3. Event-katalog: alle navne i `player_events`
 
@@ -267,7 +267,7 @@ Strukturen fra `docs/SPRINT_DASHBOARD.md` overlever selvom tallene deri er histo
 
 First-touch fanges ved **første** besøg i `localStorage["cz_attribution_v1"]` (`frontend/src/lib/attribution.js`): fem UTM-felter plus `referrer` og `landing_path`. "First-touch wins", der overskrives aldrig. Rækken skrives først server-side ved holdoprettelse (`backend/routes/api.js`, `PUT /api/teams/my`, kun når holdet reelt blev oprettet) til `signup_attribution`, service-role-only, læses via `GET /api/admin/attribution`. 📄
 
-Attributionen er **bevidst uden for samtykke-gaten**: first-touch sker før banneret besvares, og intet persisteres før brugeren selv opretter en konto. Grundlaget er legitim interesse, dokumenteret i privatlivspolitikken. 📄
+Attributionen er **bevidst uden for samtykke-gaten**: first-touch sker før banneret besvares, og intet persisteres før brugeren selv opretter en konto. Grundlaget er legitim interesse (vurdering, ikke juridisk efterprøvet); om privatlivspolitikken beskriver det, er ikke tjekket ❓
 
 Beacon'en (`trafficBeacon.js`) bærer de tre kanal-bærende UTM-felter plus referrer på anonyme sidevisninger, så trafik- og signup-siden af tragten kan holdes op mod hinanden ([#4320](https://github.com/NicolaiDolmer/CyclingZone/issues/4320)). Den er storage-less: konteksten lever i modul-scope for den ene page-session.
 
