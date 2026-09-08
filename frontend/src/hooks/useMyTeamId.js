@@ -11,6 +11,12 @@ import { supabase } from "../lib/supabase.js";
 let cachedTeamId;
 let cachedUserId = null;
 let inFlight = null;
+// Generationstæller. `resetMyTeamIdCache` kan rydde `inFlight`, men den kan ikke
+// annullere det opslag der allerede er undervejs — og dets success-handler ville
+// bagefter skrive den FORRIGE brugers hold ind i cachen igen. Det er præcis den
+// fejl rydningen findes for at undgå (CodeRabbit 8/9). Et opslag der blev
+// startet i en ældre generation må derfor hverken røre cachen eller state.
+let generation = 0;
 
 // CodeRabbit 8/9: cachen overlevede et bruger-skifte. Logger man ud og ind som
 // en anden, ville knappen skjule sig på den FORRIGE brugers profil og vise sig
@@ -39,6 +45,7 @@ export function resetMyTeamIdCache() {
   cachedTeamId = undefined;
   cachedUserId = null;
   inFlight = null;
+  generation += 1;
   notify();
 }
 
@@ -89,14 +96,23 @@ export function useMyTeamId() {
       // Kun et LYKKET opslag caches. Et fejlet kald må ikke fryse "du har intet
       // hold" fast for resten af sessionen — så ville knappen dukke op på ens
       // egne opslag, og backenden ville afvise klikket med 400.
+      const startedAt = generation;
       inFlight = inFlight || loadMyTeamId().then(
-        ({ userId, teamId }) => { cachedTeamId = teamId; cachedUserId = userId; return teamId; },
+        ({ userId, teamId }) => {
+          if (startedAt !== generation) return null;
+          cachedTeamId = teamId;
+          cachedUserId = userId;
+          return teamId;
+        },
         () => null,
       );
       const pending = inFlight;
       pending.then((id) => {
         if (pending === inFlight) inFlight = null;
-        if (alive) setState({ teamId: id ?? null, resolved: cachedTeamId !== undefined });
+        // Et svar fra før et bruger-skifte hører til en anden bruger; den nye
+        // generations egen `sync()` har allerede sat et nyt opslag i gang.
+        if (!alive || startedAt !== generation) return;
+        setState({ teamId: id ?? null, resolved: cachedTeamId !== undefined });
       });
     }
 

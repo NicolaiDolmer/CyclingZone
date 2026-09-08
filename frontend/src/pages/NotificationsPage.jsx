@@ -281,6 +281,12 @@ export default function NotificationsPage() {
   // hertil og tilbage-knappen gør det man forventer.
   const openConversationId = tab === "messages" ? searchParams.get("c") : null;
 
+  // Bemærk: UDEN `replace`, i modsætning til setTab ovenfor. Et faneskift er et
+  // tilstandsskift på den samme side, men at åbne en samtale er et NAVIGATIONS-
+  // skridt: på mobil viser panelet enten listen eller tråden, aldrig begge. Med
+  // `replace: true` overskrev `?c=` den aktuelle history-post, så Androids
+  // tilbage-knap forlod indbakken i stedet for at gå tilbage til samtalelisten
+  // (CodeRabbit 8/9).
   function setOpenConversation(next) {
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
@@ -288,7 +294,7 @@ export default function NotificationsPage() {
       if (next) params.set("c", next);
       else params.delete("c");
       return params;
-    }, { replace: true });
+    });
   }
 
   // #3200: badgen skal vaere rigtig OGSAA naar man lander paa Mine/Skal

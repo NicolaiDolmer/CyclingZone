@@ -554,7 +554,8 @@
     },
     "directMessage": {
       "title": "{count, plural, one {New message} other {# new messages}}",
-      "message": "{count, plural, one {{senderName} sent you a message} other {# new messages from {senderName}}}"
+      "message": "{count, plural, one {{senderName} sent you a message} other {# new messages from {senderName}}}",
+      "messageUnknownSender": "{count, plural, one {Another manager sent you a message} other {# new messages from another manager}}"
     }
   },
   "error": {

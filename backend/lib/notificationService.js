@@ -1128,6 +1128,13 @@ export const DIRECT_MESSAGE_TYPE = "dm_message";
 
 export function buildDirectMessageNotification({ conversationId, senderName, messageCount }) {
   const count = Math.max(1, messageCount || 1);
+  // Fallback-navnet er ENGELSK og bruges kun i den lagrede title/message, som er
+  // backendens pre-i18n kopi. Det må IKKE sendes videre som `senderName`-parameter:
+  // så ville en dansk klient rendere "Another manager har skrevet til dig" — en
+  // i18n-læk af præcis den klasse #1068 beskriver. Mangler navnet, vælges en
+  // EGEN messageCode i stedet, så oversættelsen selv formulerer fallbacken
+  // (CodeRabbit 8/9). Samme greb som buildForumThreadReplyNotification.
+  const hasName = Boolean(senderName);
   const name = senderName || "Another manager";
   const title = count > 1 ? `${count} new messages` : "New message";
   const message = count > 1
@@ -1146,8 +1153,10 @@ export function buildDirectMessageNotification({ conversationId, senderName, mes
       // title/titlePlural-koder — samme mønster som forum_thread_reply.
       titleCode: "notif.directMessage.title",
       titleParams: { count },
-      messageCode: "notif.directMessage.message",
-      messageParams: { count, senderName: name },
+      messageCode: hasName
+        ? "notif.directMessage.message"
+        : "notif.directMessage.messageUnknownSender",
+      messageParams: hasName ? { count, senderName } : { count },
     },
   };
 }

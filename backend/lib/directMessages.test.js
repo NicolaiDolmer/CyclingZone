@@ -260,14 +260,20 @@ test("BLOK: modtageren ser ikke beskeden i tråden", async () => {
 
 test("sideinddelingen afgøres af de RÅ rækker, ikke af de synlige (CodeRabbit 8/9)", async () => {
   const supabase = createFakeSupabase(baseState());
-  // Bob skriver fire beskeder, og Bob bliver derefter blokeret af Alice. Bobs
-  // beskeder BLIVER liggende (loggen er evidensen) og filtreres væk på Alices
-  // læsesti — præcis den tilstand der før slog paginering ihjel.
-  for (const body of ["one", "two", "three", "four"]) {
-    await sendDirectMessage({ supabase, senderUserId: BOB, recipientUserId: ALICE, body });
-  }
+  // Eksplicitte tidspunkter: blok-filteret rammer kun beskeder sendt EFTER
+  // blokeringen (historik fra før bevares bevidst), så en test der lader alle
+  // fire beskeder og blokeringen dele "nu" afhænger af maskinens hastighed.
+  const at = (minute) => new Date(Date.UTC(2026, 8, 8, 10, minute, 0));
+
+  // Bob blokeres FØRST, og skriver derefter fire beskeder. De BLIVER liggende
+  // (loggen er evidensen) og filtreres væk på Alices læsesti — præcis den
+  // tilstand der før slog paginering ihjel.
+  await sendDirectMessage({ supabase, senderUserId: BOB, recipientUserId: ALICE, body: "hello", now: at(0) });
   const conversationId = supabase.state.dm_conversations[0].id;
-  await blockManager({ supabase, userId: ALICE, targetUserId: BOB });
+  await blockManager({ supabase, userId: ALICE, targetUserId: BOB, now: at(1) });
+  for (const [i, body] of ["one", "two", "three", "four"].entries()) {
+    await sendDirectMessage({ supabase, senderUserId: BOB, recipientUserId: ALICE, body, now: at(2 + i) });
+  }
 
   const page = await getConversation({ supabase, userId: ALICE, conversationId, limit: 2 });
   // Alice ser INGEN af Bobs beskeder ...
