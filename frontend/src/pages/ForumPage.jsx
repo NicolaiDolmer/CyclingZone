@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
@@ -344,6 +344,14 @@ export default function ForumPage() {
   const [categoryMutes, setCategoryMutes] = useState(() => normalizeCategoryMutes(null));
   const [savingMute, setSavingMute] = useState(false);
   const [muteError, setMuteError] = useState(null);
+  // Har spilleren allerede rørt en kategori? Så er hans valg nyere end det
+  // svar der er på vej, og et langsomt GET må ikke rulle det tilbage: knappen
+  // ville stå på "Følger" mens serveren havde gemt det modsatte (CodeRabbit).
+  const mutesTouchedRef = useRef(false);
+  // Den fane man står på LIGE NU. Læses efter et await, hvor `category` fra
+  // render-lukningen kan være forældet.
+  const activeCategoryRef = useRef(category);
+  useEffect(() => { activeCategoryRef.current = category; }, [category]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -353,7 +361,7 @@ export default function ForumPage() {
         const res = await fetch(`${API}/api/forum/category-mutes`, { headers });
         if (!res.ok) return;
         const data = await res.json().catch(() => null);
-        if (!cancelled) setCategoryMutes(normalizeCategoryMutes(data));
+        if (!cancelled && !mutesTouchedRef.current) setCategoryMutes(normalizeCategoryMutes(data));
       } catch { /* ignore — listen falder til "følger alt", aldrig til dæmpet */ }
     })();
     return () => { cancelled = true; };
@@ -407,22 +415,32 @@ export default function ForumPage() {
   // lyver om et valg der ikke blev gemt.
   async function handleToggleCategoryMute(nextMuted) {
     if (savingMute || !isSubscribableCategory(category)) return;
+    // Kategorien FANGES her: skifter spilleren fane mens PUT'en er undervejs,
+    // hører både kaldet og den efterfølgende reload stadig til den kategori
+    // han faktisk klikkede på.
+    const target = category;
     const previous = categoryMutes;
+    mutesTouchedRef.current = true;
     setSavingMute(true);
     setMuteError(null);
-    setCategoryMutes(applyCategoryMute(previous, category, nextMuted));
+    setCategoryMutes(applyCategoryMute(previous, target, nextMuted));
     try {
       const headers = await authHeaders();
       if (!headers || !API) throw new Error("no session");
       const res = await fetch(`${API}/api/forum/category-mutes`, {
         method: "PUT",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ category, muted: nextMuted }),
+        body: JSON.stringify({ category: target, muted: nextMuted }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       // Ulæst-markeringerne og nav-prikken afledes af valget på backend —
       // hent dem igen, i stedet for at gætte lokalt hvilke prikker der falder.
-      await Promise.all([load(null), refreshUnread()]);
+      // Trådlisten genindlæses kun hvis man stadig står på samme fane: `load`
+      // er bundet til kategorien fra dette render og ville ellers skrive den
+      // gamle kategoris tråde ind over den nye fane (CodeRabbit).
+      await (activeCategoryRef.current === target
+        ? Promise.all([load(null), refreshUnread()])
+        : refreshUnread());
       window.dispatchEvent(new Event("cz:forum-thread-read"));
     } catch {
       setCategoryMutes(previous);

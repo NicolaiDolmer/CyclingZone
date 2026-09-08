@@ -96,10 +96,13 @@ export default function ProfilePage() {
   // #5013: abonnement pr. forum-kategori. Samme normalisering som forumsiden
   // (frontend/src/lib/forumCategoryMutes.js) — et fejlet kald falder til
   // "følger alt", aldrig til dæmpet.
+  // getAuthHeaders() ligger INDE i try'en: en fejlet session-refresh ville
+  // ellers afvise dette promise, og loadProfile()'s Promise.all nåede aldrig
+  // setLoading(false) — profilen ville hænge på loaderen (CodeRabbit).
   async function refreshForumCategories() {
-    const headers = await getAuthHeaders();
-    if (!headers) return;
     try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
       const res = await fetch(`${API}/api/forum/category-mutes`, { headers });
       if (res.ok) setForumCategories(normalizeCategoryMutes(await res.json()));
     } catch {
