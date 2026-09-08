@@ -29,6 +29,8 @@ import {
   markAllForumThreadsRead,
   getForumUnreadStatus,
   toggleForumReaction,
+  recordForumThreadView,
+  getForumAuthorStats,
 } from "./forum.js";
 
 function post(overrides = {}) {
@@ -44,6 +46,10 @@ function post(overrides = {}) {
     is_pinned: false,
     reply_count: 0,
     last_reply_at: null,
+    // #5000: samme defaults som migrationen giver kolonnerne i prod.
+    view_count: 0,
+    last_reply_user_id: null,
+    last_reply_team_id: null,
     deleted_at: null,
     deleted_by: null,
     ...overrides,
@@ -840,4 +846,137 @@ test("getForumReportCounts: tæller kun åbne rapporter", async () => {
     ],
   }));
   assert.deepEqual(await getForumReportCounts({ supabase: fake }), { new: 1 });
+});
+
+// ── #5000 · Visningstal, seneste svars forfatter, indlaegstal på profilen ────
+
+test("#5000 listForumPosts: view_count og seneste svars forfatter følger med trådlisten", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      post({
+        id: "p1", seq: 1, user_id: "u1", team_id: "t1",
+        reply_count: 2, view_count: 17,
+        last_reply_at: "2026-08-02T09:00:00Z",
+        last_reply_user_id: "u2", last_reply_team_id: "t2",
+      }),
+      // Tråd uden svar: last_reply_author skal være null, ikke trådens egen
+      // forfatter gentaget.
+      post({ id: "p2", seq: 2, user_id: "u1", team_id: "t1", view_count: 0 }),
+    ],
+  }));
+
+  const result = await listForumPosts({ supabase: fake, userId: "u1" });
+  const p1 = result.items.find((i) => i.id === "p1");
+  const p2 = result.items.find((i) => i.id === "p2");
+
+  assert.equal(p1.view_count, 17);
+  assert.deepEqual(p1.last_reply_author, {
+    username: "bob", team_name: "Team Beta", team_id: "t2", division: 3,
+  });
+  assert.equal(p2.view_count, 0);
+  assert.equal(p2.last_reply_author, null);
+});
+
+test("#5000 listForumPosts: manglende view_count falder til 0 (rækker fra før migrationen)", async () => {
+  const withoutColumn = post({ id: "p1" });
+  delete withoutColumn.view_count;
+  const fake = createFakeSupabase(seedState({ forum_posts: [withoutColumn] }));
+  const result = await listForumPosts({ supabase: fake, userId: "u1" });
+  assert.equal(result.items[0].view_count, 0);
+  assert.equal(result.items[0].last_reply_author, null);
+});
+
+test("#5000 getForumPost: view_count er med i trådhovedet", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", view_count: 42 })],
+  }));
+  const result = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.post.view_count, 42);
+});
+
+test("#5000 createForumReply: sætter seneste svars forfatter/hold på tråden", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1" })],
+  }));
+  const result = await createForumReply({
+    supabase: fake, postId: "p1", userId: "u2", teamId: "t2", body: "Første svar",
+    now: new Date("2026-08-02T09:00:00Z"),
+  });
+  assert.equal(result.status, 200);
+  assert.equal(fake.state.forum_posts[0].last_reply_user_id, "u2");
+  assert.equal(fake.state.forum_posts[0].last_reply_team_id, "t2");
+  assert.equal(fake.state.forum_posts[0].last_reply_at, "2026-08-02T09:00:00.000Z");
+});
+
+test("#5000 deleteForumReply: seneste svars forfatter heler tilbage til forrige svar, og til null når tråden tømmes", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", reply_count: 2, last_reply_user_id: "u2", last_reply_team_id: "t2" })],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u1", team_id: "t1", body: "One", deleted_at: null },
+      { id: "r2", seq: 2, created_at: "2026-08-01T12:00:00Z", post_id: "p1", user_id: "u2", team_id: "t2", body: "Two", deleted_at: null },
+    ],
+  }));
+
+  assert.equal((await deleteForumReply({ supabase: fake, id: "r2", adminUserId: "admin1" })).status, 200);
+  assert.equal(fake.state.forum_posts[0].last_reply_user_id, "u1");
+  assert.equal(fake.state.forum_posts[0].last_reply_team_id, "t1");
+  // Tidsstemplet skal hele MED forfatteren: står det på det slettede svar,
+  // viser trådlisten den rigtige forfatter ved siden af det forkerte tidspunkt.
+  assert.equal(fake.state.forum_posts[0].last_reply_at, "2026-08-01T11:00:00Z");
+
+  assert.equal((await deleteForumReply({ supabase: fake, id: "r1", adminUserId: "admin1" })).status, 200);
+  assert.equal(fake.state.forum_posts[0].reply_count, 0);
+  assert.equal(fake.state.forum_posts[0].last_reply_user_id, null);
+  assert.equal(fake.state.forum_posts[0].last_reply_team_id, null);
+  assert.equal(fake.state.forum_posts[0].last_reply_at, null);
+});
+
+test("#5000 recordForumThreadView: kalder RPC'en med post+bruger og returnerer det nye tal", async () => {
+  const calls = [];
+  const stub = {
+    rpc(fn, args) {
+      calls.push([fn, args]);
+      return Promise.resolve({ data: 8, error: null });
+    },
+  };
+  assert.equal(await recordForumThreadView({ supabase: stub, postId: "p1", userId: "u1" }), 8);
+  assert.deepEqual(calls, [["record_forum_thread_view", { p_post_id: "p1", p_user_id: "u1" }]]);
+});
+
+test("#5000 recordForumThreadView: springer RPC'en over uden bruger/tråd og kaster ved DB-fejl", async () => {
+  let called = 0;
+  const stub = {
+    rpc() {
+      called += 1;
+      return Promise.resolve({ data: null, error: { message: "boom" } });
+    },
+  };
+  assert.equal(await recordForumThreadView({ supabase: stub, postId: "p1", userId: null }), null);
+  assert.equal(await recordForumThreadView({ supabase: stub, postId: null, userId: "u1" }), null);
+  assert.equal(called, 0);
+  await assert.rejects(
+    () => recordForumThreadView({ supabase: stub, postId: "p1", userId: "u1" }),
+    /could not record thread view for p1: boom/
+  );
+});
+
+test("#5000 getForumAuthorStats: tæller egne tråde + svar, ignorerer slettede og fremmede", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      post({ id: "p1", user_id: "u1" }),
+      post({ id: "p2", user_id: "u1", deleted_at: "2026-08-05T10:00:00Z" }),
+      post({ id: "p3", user_id: "u2" }),
+    ],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u1", team_id: "t1", body: "A", deleted_at: null },
+      { id: "r2", seq: 2, created_at: "2026-08-01T12:00:00Z", post_id: "p1", user_id: "u1", team_id: "t1", body: "B", deleted_at: "2026-08-06T10:00:00Z" },
+      { id: "r3", seq: 3, created_at: "2026-08-01T13:00:00Z", post_id: "p1", user_id: "u2", team_id: "t2", body: "C", deleted_at: null },
+    ],
+  }));
+
+  assert.deepEqual(await getForumAuthorStats({ supabase: fake, userId: "u1" }), { posts: 1, replies: 1, total: 2 });
+  assert.deepEqual(await getForumAuthorStats({ supabase: fake, userId: "u2" }), { posts: 1, replies: 1, total: 2 });
+  // AI-hold har ingen brugerkonto — nul-objekt uden DB-opslag.
+  assert.deepEqual(await getForumAuthorStats({ supabase: fake, userId: null }), { posts: 0, replies: 0, total: 0 });
 });

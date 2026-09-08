@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
+import SurveyInviteCard from "../components/SurveyInviteCard"; // #4943
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #4231
 import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
@@ -1499,6 +1500,12 @@ export default function DashboardPage() {
       {/* #1140: OnboardingModal er konsolideret væk — OnboardingProgressCard
           ovenfor er den kanoniske onboarding-UI. Filen beholdes (genbruges evt.
           senere), men monteres ikke længere her. */}
+
+      {/* #4943: indgang til det aktive spoergeskema. Selv-hentende og renderer
+          intet naar der ikke er et aabent skema, spilleren har gennemfoert, eller
+          kortet er lukket inden for 3 dage. Sekundaer CTA: dashboardets ene
+          guld-primaere element ejes af computeDashboardGoldCta. */}
+      <SurveyInviteCard />
 
       {/* #3398 (Maiden Win Engine): career-first-momentkort — renderer intet
           uden data. Bevidst FØR Hero & Agony: en career-first er det sjældnere,

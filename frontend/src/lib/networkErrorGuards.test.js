@@ -85,6 +85,16 @@ const FIXED_HANDLERS = [
     clears: /finally \{\s*setSavingTeam\(false\);/,
   },
   {
+    // #5012 (CodeRabbit-fund): saveDiscordHandle fik samme try/finally-kur som
+    // sine naboer ovenfor, ellers sad "Gem brugernavn"-knappen fast i
+    // "Gemmer..." på et tabt net — netop den regression dette værn findes for.
+    label: "ProfilePage.saveDiscordHandle",
+    source: profile,
+    start: "async function saveDiscordHandle(",
+    end: "async function saveUsername(",
+    clears: /finally \{\s*setSavingDiscordHandle\(false\);/,
+  },
+  {
     label: "RiderStatsPage.startAuction",
     source: riderStats,
     start: "async function startAuction(",
@@ -125,8 +135,8 @@ test("de rettede handlere viser en lokaliseret netvaerksbesked, ikke en tom fejl
   // errors:generic.networkError findes i BÅDE en og da (verificeret 14/8).
   assert.equal(
     (profile.match(/t\("errors:generic\.networkError"\)/g) || []).length,
-    5,
-    "alle fem Profil-handlere skal vise netværks-teksten (#4201 tilføjede den femte)",
+    6,
+    "alle seks Profil-handlere skal vise netværks-teksten (#5012 tilføjede den sjette)",
   );
   assert.match(riderStats, /setAuctionError\(t\("errors:generic\.networkError"\)\)/);
   assert.match(board, /t\("errors:generic\.networkError"\)/);

@@ -29,6 +29,11 @@ export default {
   // auto-migrate on ON_ERROR_STOP=1 (the #635 bug shape).
   "database/**/*.sql": (files) => [
     `node scripts/lint-sql-strings.mjs ${files.map(escape).join(" ")}`,
+    // #4943 forward-guard: INSERT INTO (cols) VALUES (...) column/value count
+    // mismatch (e.g. 4 columns, 3 values) — same silent-until-CI failure
+    // class as #639 above: auto-migrate aborts mid-file on ON_ERROR_STOP=1
+    // before the schema_migrations row lands. Recipe: script header.
+    `node scripts/lint-sql-insert-arity.mjs ${files.map(escape).join(" ")}`,
     // #401 forward-guard: NEW database/2026-*.sql migrations must use idempotent
     // DDL so a re-run (recovery replay / partial re-apply / fresh rebuild from
     // the migration log) is a no-op, not an error. The script filters to

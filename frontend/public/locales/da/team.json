@@ -275,6 +275,7 @@
     "tabAchievements": "Achievements {unlocked}/{total}",
     "statSeasons": "Sæsoner",
     "statTransfers": "Transfers",
+    "statForumPosts": "Forumindlæg",
     "recentTransfers": "Seneste transfers",
     "noTransfers": "Ingen transfers endnu",
     "boughtFrom": "Købt fra",
@@ -290,6 +291,9 @@
     "thPoints": "Point",
     "thRank": "Placering",
     "seasonNumber": "Sæson {n}",
-    "divisionShort": "Div. {n}"
+    "divisionShort": "Div. {n}",
+    "discordOpenAria": "Åbn {handle}s Discord-profil",
+    "discordCopyAria": "Kopiér Discord-brugernavn {handle}",
+    "discordCopied": "Kopieret"
   }
 }

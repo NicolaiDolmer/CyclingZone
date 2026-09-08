@@ -82,6 +82,19 @@ try {
   node scripts/lint-constraint-form.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "constraint-form-guard" }
 
+  # Begge koerer ubetinget paa HELE database/*.sql (samme spaend som
+  # constraint-form-guard ovenfor), ikke kun aendrede filer — de er kun
+  # lint-staged pre-commit-hooks i dag, som --no-verify kan omgaa (#4943:
+  # netop den slags miss lod en INSERT-aritetsfejl (4 kolonner, 3 vaerdier)
+  # naa main og roede auto-migrate.yml).
+  Write-Host "== sql-string-lint (unescaped apostrof i SQL-strenge, #639) ==" -ForegroundColor Cyan
+  node scripts/lint-sql-strings.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "sql-string-lint" }
+
+  Write-Host "== sql-insert-arity-guard (INSERT-kolonner vs. VALUES-vaerdier, #4943) ==" -ForegroundColor Cyan
+  node scripts/lint-sql-insert-arity.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "sql-insert-arity-guard" }
+
   # #2858: CI-vagten koerer kun paa AENDREDE SQL-filer (hele database/ har historiske
   # fund der ikke afspejler live-tilstanden, se scriptets header) - spejler samme
   # afgraensning her, ellers fanger preflight ikke det CI faktisk spaerrer paa.

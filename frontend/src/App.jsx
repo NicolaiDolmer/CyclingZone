@@ -69,6 +69,7 @@ const WatchlistPage = lazy(() => import("./pages/WatchlistPage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
 const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
 const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
+const SurveyPage = lazy(() => import("./pages/SurveyPage")); // #4943
 const RulesPage = lazy(() => import("./pages/RulesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
@@ -400,6 +401,10 @@ export default function App() {
             <Route path="academy" element={<AcademyPage />} />
             <Route path="klub" element={<KlubPage />} />
             <Route path="scouting" element={<I18nReadyGate ns="scouting"><ScoutingCentralPage /></I18nReadyGate>} />
+            {/* #4943: in-app spoergeskema. Login-gated med vilje (svarene
+                haenger paa kontoen, saa spilleren kan rette dem indtil skemaet
+                lukker, og segmenteringen joines fra teams/users). */}
+            <Route path="survey/:slug" element={<I18nReadyGate ns="survey"><SurveyPage /></I18nReadyGate>} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

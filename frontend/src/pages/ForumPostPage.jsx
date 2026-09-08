@@ -510,9 +510,18 @@ export default function ForumPostPage() {
         <PageHeader title={post.title} subtitle={t(`categories.${post.category}`)} />
         <SectionStack>
           <Section>
-            {post.is_pinned && (
-              <div className="mb-2 font-data text-2xs uppercase tracking-[.08em] text-cz-accent-t">{t("post.pinnedTag")}</div>
-            )}
+            {/* #5000: visningstal i traadhovedet — samme metalinje som
+                pinned-maerket, saa traaden ikke faar en ny linje at bære.
+                tabular-nums fordi tallet skifter mens man laeser. */}
+            <div className="mb-2 flex items-center gap-2 font-data text-2xs uppercase tracking-[.08em] text-cz-3">
+              {post.is_pinned && (
+                <>
+                  <span className="text-cz-accent-t">{t("post.pinnedTag")}</span>
+                  <span aria-hidden="true">·</span>
+                </>
+              )}
+              <span className="tabular-nums">{t("stats.views", { count: post.view_count ?? 0 })}</span>
+            </div>
             <ForumAuthorIdentity
               author={post.author}
               body={post.body}

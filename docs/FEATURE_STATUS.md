@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-61 poster: live 42 · beta 1 · dormant 6 · building 7 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+62 poster: live 42 · beta 1 · dormant 6 · building 8 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -135,6 +135,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Email retention loop (`email-loop`) | dormant | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK.md](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-07 | Rækker email_loop_welcome/day1/race_digest = "off" i prod (#4951); afventer ejer-go, jf. runbook. |
+| In-app player survey (`in-app-survey`) | building | - | [SURVEY_SYSTEM.md](SURVEY_SYSTEM.md) | #4943 | 2026-09-07 | Skemaet 2026-09-features er seedet som draft; ejeren flipper status til open og udsendelsen køres af sendSurveyInvite.mjs. |
 
 ## billing
 
