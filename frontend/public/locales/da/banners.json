@@ -28,7 +28,7 @@
       },
       "analytics": {
         "label": "Analyse",
-        "desc": "Jeg måler anonymt hvordan spillet bruges: hvilke knapper der frustrerer (Microsoft Clarity), hvor spillerne kommer fra (Google Analytics) og sidevisninger (Vercel Web Analytics), så jeg kan rette dårlig UX."
+        "desc": "Jeg måler anonymt hvordan spillet bruges: hvilke knapper der frustrerer (Microsoft Clarity), hvor spillerne kommer fra (Google Analytics), hvilke funktioner der bruges (PostHog) og sidevisninger (Vercel Web Analytics), så jeg kan rette dårlig UX."
       },
       "marketing": {
         "label": "Marketing",

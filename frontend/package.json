@@ -33,6 +33,7 @@
     "i18next-http-backend": "^4.0.1",
     "i18next-icu": "^2.4.4",
     "intl-messageformat": "^11.2.14",
+    "posthog-js": "^1.428.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.12",

@@ -24,6 +24,9 @@ const ClarityIntegration = lazy(() => import("./lib/clarityIntegration.jsx"));
 const WebVitalsIntegration = lazy(() => import("./lib/webVitalsIntegration.jsx"));
 const VercelAnalyticsIntegration = lazy(() => import("./lib/vercelAnalyticsIntegration.jsx"));
 const GaIntegration = lazy(() => import("./lib/gaIntegration.jsx"));
+// #4321: PostHog (EU) — produkt-funnels, retention og kanal-attribution.
+// Additivt lag ved siden af GA4/Clarity; player_events bliver i Postgres.
+const PosthogIntegration = lazy(() => import("./lib/posthogIntegration.jsx"));
 // #2040: anonym, storage-less engagement-beacon for den logget-UD cold-population
 // (logget-ind måles via player_events). Consent-uafhængig, ingen storage på enheden.
 const TrafficBeacon = lazy(() => import("./components/TrafficBeacon.jsx"));
@@ -252,6 +255,7 @@ export default function App() {
             <WebVitalsIntegration />
             <VercelAnalyticsIntegration />
             <GaIntegration />
+            <PosthogIntegration />
             <TrafficBeacon session={session} />
           </Suspense>
         </AnalyticsBoundary>
