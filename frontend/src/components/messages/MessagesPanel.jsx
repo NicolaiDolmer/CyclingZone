@@ -330,7 +330,7 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
                 >
                   <ChevronLeftIcon size={16} />{t("thread.back")}
                 </button>
-                <Avatar name={thread.conversation.otherTeamName || thread.conversation.otherManagerName || ""} size="sm" className="hidden md:block shrink-0" />
+                <Avatar name={thread.conversation.otherTeamName || thread.conversation.otherManagerName || ""} size="sm" className="hidden md:inline-flex shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13.5px] font-semibold text-cz-1">
                     {thread.conversation.otherManagerName || thread.conversation.otherTeamName}
