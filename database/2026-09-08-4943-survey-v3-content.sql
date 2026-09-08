@@ -31,7 +31,14 @@
 -- raekker i survey_responses/survey_completions (post-verify nedenfor), saa de
 -- fjernede option-noegler (manager_messages, custom_front_page) findes ikke i
 -- nogen gemt `ratings`-blob. Skulle skemaet mod forventning have faaet svar,
--- SKAL denne migration stoppes og noeglerne mappes foerst.
+-- SKAL denne migration stoppes og noeglerne mappes foerst — og det er ikke
+-- overladt til et menneske: guarden nedenfor RAISE'er og ruller hele filen
+-- tilbage, hvis der findes bare eet svar eller een gennemfoerelse
+-- (CodeRabbit-review paa PR #5035). Derfor koeres alt i EEN eksplicit
+-- transaktion: auto-migrate.yml bruger `psql -f` uden -1, saa uden BEGIN/COMMIT
+-- ville en fejl midt i filen efterlade halvdelen af aendringerne comittet.
+-- Survey-raekken laases FOR UPDATE under tjekket, saa en samtidig svar-insert
+-- ikke kan snige sig ind mellem tjek og skrivning.
 --
 -- Idempotent: INSERT ... ON CONFLICT (survey_id, key) DO UPDATE paa
 -- survey_questions_survey_key_uniq + en positionel UPDATE. Ingen destruktiv
@@ -65,6 +72,31 @@
 --   SELECT status FROM public.surveys WHERE slug = '2026-09-features';  -- forventet draft
 --   SELECT count(*) FROM public.survey_responses;   -- forventet 0
 --   SELECT count(*) FROM public.survey_completions; -- forventet 0
+
+BEGIN;
+
+-- ── 0. Guard: indholdet maa kun skiftes mens skemaet er ubesvaret ──────────
+-- survey_responses.value gemmer option-noegler uafhaengigt af
+-- survey_questions.options. Fjerner vi noegler EFTER at nogen har svaret,
+-- staar der svar tilbage paa noegler skemaet ikke laengere kender, og
+-- analysen i docs/SURVEY_SYSTEM.md §5.2 taeller dem uden at kunne navngive dem.
+DO $$
+DECLARE
+  v_survey_id UUID;
+BEGIN
+  SELECT id INTO v_survey_id
+    FROM public.surveys
+   WHERE slug = '2026-09-features'
+   FOR UPDATE;
+
+  IF v_survey_id IS NOT NULL
+     AND (EXISTS (SELECT 1 FROM public.survey_responses   WHERE survey_id = v_survey_id)
+       OR EXISTS (SELECT 1 FROM public.survey_completions WHERE survey_id = v_survey_id))
+  THEN
+    RAISE EXCEPTION
+      'Skemaet 2026-09-features har allerede svar: v3-indholdet maa ikke skiftes uden en noegle-mapning foerst (#4943).';
+  END IF;
+END $$;
 
 -- ── 1. Ny raekkefoelge paa de spoergsmaal der ellers er uaendrede ───────────
 -- works_worst, feature_axes og fog_more faar deres sort_order i insertet
@@ -170,3 +202,5 @@ ON CONFLICT (survey_id, key) DO UPDATE
       help_da    = EXCLUDED.help_da,
       options    = EXCLUDED.options,
       required   = EXCLUDED.required;
+
+COMMIT;

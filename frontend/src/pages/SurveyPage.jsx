@@ -134,6 +134,15 @@ export default function SurveyPage() {
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
+    // Nulstil ALT der hænger på det forrige slug. Uden det kan en klient-side
+    // navigation fra ét skema til et andet vise det gamle skemas spørgsmål og
+    // svar, hvis den nye indlæsning ender i en tidlig retur (CodeRabbit-review
+    // på #4943).
+    setQuestions([]);
+    setAnswers({});
+    setSaveState({});
+    setCompleted(false);
+    setEditing(false);
     (async () => {
       // is_admin-RPC'en er samme admin-gate som RoadmapPage bruger. Den er
       // billig og svarer false for alle andre, saa den kan koere sammen med
@@ -158,7 +167,11 @@ export default function SurveyPage() {
       const uid = auth?.user?.id ?? null;
       setUserId(uid);
       const nextView = resolveSurveyView({ status: surveyRow.status, isAdmin: adminRaw === true });
-      setView(nextView);
+      // Uden en bruger vises ALDRIG formularen. Ruten er login-gated, så det
+      // her er en session der er faldet væk midt i navigationen: en tom
+      // formular med en klikbar Send-knap ville love en aflevering der aldrig
+      // kan gennemføres (handleSubmit returnerer uden userId).
+      setView(uid ? nextView : "closed");
       if (nextView === "closed" || !uid) {
         setStatus("ready");
         return;
