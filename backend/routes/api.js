@@ -14812,6 +14812,14 @@ router.post("/messages/block", requireAuth, dmActionLimiter, async (req, res) =>
     if (!targetUserId) {
       return res.status(404).json({ error: "Manager not found", errorCode: "dm_recipient_not_found" });
     }
+    // CodeRabbit 8/9: sit eget teamId resolver til ens eget bruger-id, og
+    // CHECK-constrainten dm_blocks_not_self afviste saa insertet - hvilket kom
+    // ud som en 500 og en Sentry-rapport i stedet for et 400. Kun teamId-vejen
+    // kan naa hertil; resolveCounterpartUserId kan pr. definition ikke give en
+    // selv.
+    if (targetUserId === req.user.id) {
+      return res.status(400).json({ error: "Pick a manager to block", errorCode: "dm_invalid_block_target" });
+    }
     const { status, body } = blocked === false
       ? await unblockManager({ supabase, userId: req.user.id, targetUserId })
       : await blockManager({ supabase, userId: req.user.id, targetUserId });

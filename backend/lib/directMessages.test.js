@@ -136,6 +136,31 @@ test("normalizeMessageContext kaster ukendte felter og ukendte kinds væk", () =
   assert.equal(normalizeMessageContext(null), null);
 });
 
+// dm_messages har ingen DELETE-policy. Alt der slipper igennem her, ligger i
+// loggen for evigt — derfor er BEGGE de frie strengfelter bundet (CodeRabbit 8/9).
+test("normalizeMessageContext binder refId i baade laengde og format", () => {
+  const base = { kind: "transfer_offer", occurredAt: "2026-09-08T10:00:00.000Z" };
+  // Det var denne der kunne vokse en append-only-tabel uden loft.
+  assert.equal(normalizeMessageContext({ ...base, refId: "a".repeat(65) }), null);
+  assert.equal(normalizeMessageContext({ ...base, refId: "a".repeat(64) })?.refId, "a".repeat(64));
+  // refId bliver et deep link i traaden, saa tegn der hoerer til en URL eller
+  // et markup-fragment maa ikke kunne lande i den.
+  assert.equal(normalizeMessageContext({ ...base, refId: "../../etc" }), null);
+  assert.equal(normalizeMessageContext({ ...base, refId: "offer 1" }), null);
+  assert.equal(normalizeMessageContext({ ...base, refId: "<script>" }), null);
+  assert.equal(normalizeMessageContext({ ...base, refId: "  offer-1  " })?.refId, "offer-1");
+});
+
+test("normalizeMessageContext normaliserer occurredAt gennem Date", () => {
+  const base = { kind: "auction", refId: "auction-1" };
+  assert.equal(normalizeMessageContext({ ...base, occurredAt: "i gaar" })?.occurredAt, null);
+  assert.equal(normalizeMessageContext({ ...base, occurredAt: "x".repeat(5000) })?.occurredAt, null);
+  assert.equal(
+    normalizeMessageContext({ ...base, occurredAt: "2026-09-08T10:00:00Z" })?.occurredAt,
+    "2026-09-08T10:00:00.000Z",
+  );
+});
+
 // ── Samtale-nøglen ──────────────────────────────────────────────────────────
 
 test("ensureConversation genbruger samtalen uanset hvem der starter", async () => {
@@ -231,6 +256,27 @@ test("BLOK: modtageren ser ikke beskeden i tråden", async () => {
   // Afsenderen ser stadig sin egen besked stå i tråden.
   const asAlice = await getConversation({ supabase, userId: ALICE, conversationId });
   assert.equal(asAlice.body.messages.length, 1);
+});
+
+test("sideinddelingen afgøres af de RÅ rækker, ikke af de synlige (CodeRabbit 8/9)", async () => {
+  const supabase = createFakeSupabase(baseState());
+  // Bob skriver fire beskeder, og Bob bliver derefter blokeret af Alice. Bobs
+  // beskeder BLIVER liggende (loggen er evidensen) og filtreres væk på Alices
+  // læsesti — præcis den tilstand der før slog paginering ihjel.
+  for (const body of ["one", "two", "three", "four"]) {
+    await sendDirectMessage({ supabase, senderUserId: BOB, recipientUserId: ALICE, body });
+  }
+  const conversationId = supabase.state.dm_conversations[0].id;
+  await blockManager({ supabase, userId: ALICE, targetUserId: BOB });
+
+  const page = await getConversation({ supabase, userId: ALICE, conversationId, limit: 2 });
+  // Alice ser INGEN af Bobs beskeder ...
+  assert.equal(page.body.messages.length, 0);
+  // ... men tråden har stadig flere sider, og markøren peger ind i de rå
+  // rækker. Var hasMore udledt af den filtrerede liste, ville den være false
+  // her, og resten af tråden ville være uopnåelig for Alice for altid.
+  assert.equal(page.body.hasMore, true);
+  assert.ok(page.body.nextBefore, "nextBefore skal pege videre, ogsaa naar siden er tom for laeseren");
 });
 
 test("en notifikationsfejl vælter ALDRIG selve beskeden", async () => {

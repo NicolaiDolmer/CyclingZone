@@ -47,6 +47,17 @@ export const DM_LIST_SCAN_LIMIT = 2000;
 export const DM_UNREAD_BADGE_CAP = 9;
 
 export const DM_CONTEXT_KINDS = ["transfer_offer", "auction"];
+// CodeRabbit 8/9: `refId` og `occurredAt` var ubundne strenge. Konteksten skrives
+// til `dm_messages.context`, og den tabel har ingen DELETE-policy — en klient
+// kunne altså vokse en append-only-tabel med en flere megabyte stor `refId` pr.
+// besked, uden at 2000-tegns-loftet på selve teksten rørte det.
+//
+// `refId` bliver desuden et deep link i tråden, så det er både længde- OG
+// formatbundet. Ikke bundet til UUID: kilden er en handels-id, og et snævrere
+// krav end nødvendigt ville gøre valideringen til en skjult kobling til hvordan
+// den id tilfældigvis ser ud i dag.
+const DM_CONTEXT_REF_MAX_LENGTH = 64;
+const DM_CONTEXT_REF_RE = /^[A-Za-z0-9._:-]+$/;
 
 // ── Rene helpers (unit-testes uden database) ────────────────────────────────
 
@@ -128,11 +139,17 @@ export function normalizeMessageContext(context) {
   if (!context || typeof context !== "object") return null;
   const kind = typeof context.kind === "string" ? context.kind : null;
   if (!DM_CONTEXT_KINDS.includes(kind)) return null;
-  const refId = typeof context.refId === "string" ? context.refId : null;
-  if (!refId) return null;
+  const rawRefId = typeof context.refId === "string" ? context.refId.trim() : "";
+  // Uden en gyldig reference er der ingen handel at citere, og hele konteksten
+  // falder væk — beskeden sendes stadig, bare uden citat.
+  if (!rawRefId || rawRefId.length > DM_CONTEXT_REF_MAX_LENGTH || !DM_CONTEXT_REF_RE.test(rawRefId)) return null;
+  const refId = rawRefId;
   const amount = Number.isFinite(Number(context.amount)) ? Math.round(Number(context.amount)) : null;
   const riderName = typeof context.riderName === "string" ? context.riderName.trim().slice(0, 120) : null;
-  const occurredAt = typeof context.occurredAt === "string" ? context.occurredAt : null;
+  // Normaliseret gennem Date: en ugyldig eller vilkårligt lang streng bliver
+  // null i stedet for at lande ordret i loggen.
+  const parsedAt = typeof context.occurredAt === "string" ? Date.parse(context.occurredAt) : NaN;
+  const occurredAt = Number.isFinite(parsedAt) ? new Date(parsedAt).toISOString() : null;
   return { kind, refId, riderName: riderName || null, amount, occurredAt };
 }
 
@@ -152,7 +169,13 @@ async function loadManagerProfiles(supabase, userIds) {
     .in("user_id", ids)
     .eq("is_ai", false)
     .eq("is_bank", false)
-    .limit(ids.length);
+    // CodeRabbit 8/9: her stod `.limit(ids.length)`. Den antog ét hold pr.
+    // bruger — mens dedupe-tjekket nedenfor antager det MODSATTE. Havde én
+    // bruger i batchen to rækker, ville loftet skære en ANDEN brugers profil
+    // væk, og hans samtale ville rendere uden manager- og holdnavn. Loftet er
+    // nu værste tilfælde, så dedupe er det eneste sted multipliciteten
+    // håndteres.
+    .limit(ids.length * 2);
   if (error) throw new Error(`dm: could not load manager profiles: ${error.message}`);
   const byUser = new Map();
   for (const row of data || []) {
@@ -211,9 +234,21 @@ async function isBlockedBy(supabase, { blockerId, blockedId }) {
  */
 async function loadConversationsForUser(supabase, userId) {
   const columns = "id, participant_a, participant_b, created_at, last_message_at";
+  // CodeRabbit 8/9: begge forespørgsler manglede en `.order()`. PostgREST giver
+  // rækker i uspecificeret orden, så `.limit(50)` tog 50 VILKÅRLIGE samtaler,
+  // ikke de nyeste — JS-sorteringen nedenfor sorterede altså et tilfældigt
+  // udsnit. En manager med mere end 50 samtaler i én kolonne kunne miste sin
+  // nyeste samtale fra Beskeder-fanen, og badgen underrapportere, uden fejl.
+  // Samme regel som `buildQuery` i docs/GAME_INVARIANTS.md.
+  //
+  // `nullsFirst: false` fordi `last_message_at` er null indtil den første
+  // besked: en tom samtale skal ikke fortrænge en aktiv.
+  const order = (query) => query
+    .order("last_message_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
   const [asA, asB] = await Promise.all([
-    supabase.from("dm_conversations").select(columns).eq("participant_a", userId).limit(DM_LIST_LIMIT),
-    supabase.from("dm_conversations").select(columns).eq("participant_b", userId).limit(DM_LIST_LIMIT),
+    order(supabase.from("dm_conversations").select(columns).eq("participant_a", userId)).limit(DM_LIST_LIMIT),
+    order(supabase.from("dm_conversations").select(columns).eq("participant_b", userId)).limit(DM_LIST_LIMIT),
   ]);
   if (asA.error) throw new Error(`dm: could not load conversations: ${asA.error.message}`);
   if (asB.error) throw new Error(`dm: could not load conversations: ${asB.error.message}`);
@@ -382,9 +417,23 @@ export async function getConversation({ supabase, userId, conversationId, limit,
   if (error) throw new Error(`dm: could not load thread: ${error.message}`);
 
   const blocks = await loadBlocksByViewer(supabase, userId);
-  const rows = filterMessagesBlockedForViewer(data || [], blocks);
-  const hasMore = rows.length > pageSize;
-  const page = hasMore ? rows.slice(0, pageSize) : rows;
+  // CodeRabbit 8/9: rækkefølgen var byttet om. Blok-filteret kørte FØRST, og
+  // `hasMore` blev udledt af den filtrerede liste — så snart filteret fjernede
+  // bare én besked, faldt længden til pageSize, `hasMore` blev false og
+  // `nextBefore` null, mens der stadig lå ældre beskeder. Klienten holdt op med
+  // at paginere og resten af tråden var uopnåelig. Og det er den TILSIGTEDE
+  // tilstand, ikke et hjørnetilfælde: en blokeret afsenders beskeder bliver
+  // liggende og filtreres netop væk på læsestien.
+  //
+  // Sideinddelingen afgøres derfor af de RÅ rækker (det er dem markøren
+  // `nextBefore` peger ind i), og blokeringen filtreres først bagefter. Prisen
+  // er at en side kan vise færre end pageSize beskeder; det er korrekt, for
+  // beskederne ER der, de er bare ikke synlige for netop denne læser.
+  const raw = data || [];
+  const hasMore = raw.length > pageSize;
+  const rawPage = hasMore ? raw.slice(0, pageSize) : raw;
+  const page = filterMessagesBlockedForViewer(rawPage, blocks);
+  const nextBefore = hasMore ? rawPage[rawPage.length - 1]?.created_at || null : null;
 
   const otherUserId = otherParticipant(conversation, userId);
   const profiles = await loadManagerProfiles(supabase, [otherUserId]);
@@ -412,7 +461,7 @@ export async function getConversation({ supabase, userId, conversationId, limit,
           context: msg.context || null,
         })),
       hasMore,
-      nextBefore: hasMore ? page[page.length - 1]?.created_at || null : null,
+      nextBefore,
     },
   };
 }
@@ -538,11 +587,25 @@ export async function sendDirectMessage({
   // last_message_at holder samtalelistens sortering korrekt uden at scanne
   // beskederne. Den bumpes OGSÅ for en blokeret besked: afsenderen skal se
   // sin egen tråd stige til tops, ellers lækker blokeringen gennem listen.
+  //
+  // CodeRabbit 8/9: her stod `throw`. Beskeden ER allerede committet på det
+  // tidspunkt, og `dm_messages` har ingen DELETE-policy, så rækken kan ikke
+  // rulles tilbage: et fejlet bump gav afsenderen en 500 for en besked der lå i
+  // loggen, og hans retry lagde en kopi ved siden af. Bumpet er ikke
+  // bærende for korrektheden — `listConversations` foretrækker den nyeste
+  // beskeds `created_at` frem for `last_message_at` — så et mistet bump påvirker
+  // kun sorteringen indtil næste besked. Det logges og rapporteres, men må ikke
+  // fælde requesten.
   const { error: bumpError } = await supabase
     .from("dm_conversations")
     .update({ last_message_at: inserted.created_at })
     .eq("id", conversation.id);
-  if (bumpError) throw new Error(`dm: could not bump conversation: ${bumpError.message}`);
+  if (bumpError) {
+    console.error("  ❌ dm: kunne ikke bumpe last_message_at (samtale %s):", conversation.id, bumpError.message);
+    captureException(new Error(`dm: could not bump conversation: ${bumpError.message}`), {
+      tags: { flow: "messages", stage: "dm-bump" },
+    });
+  }
 
   if (!blocked && notify) {
     try {

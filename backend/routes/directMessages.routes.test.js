@@ -115,3 +115,10 @@ test("blokér-ruten udleder modparten paa serveren naar traaden noegler paa samt
   assert.match(block, /UUID_RE\.test\(conversationId\)/);
   assert.match(block, /dm_invalid_block_target/);
 });
+
+test("bloker-ruten afviser selv-blokering med 400, ikke en 500 fra en CHECK", () => {
+  const block = routeBlock('router.post("/messages/block"');
+  // dm_blocks_not_self ville ellers smide insertet tilbage som en 500 + en
+  // Sentry-rapport for en helt almindelig klientfejl (CodeRabbit 8/9).
+  assert.match(block, /targetUserId === req\.user\.id/);
+});
