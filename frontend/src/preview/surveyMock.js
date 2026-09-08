@@ -154,13 +154,23 @@ export const SEED_SURVEY_QUESTIONS = [
  * Overlejrer skemaets fire tabeller på en Playwright-side. Registreres EFTER
  * installNetworkMocks, så disse routes vinder (Playwright matcher LIFO).
  *
+ * `isAdmin` spejler RLS'en i database/2026-09-07-4943-in-app-survey.sql: en
+ * admin kan laese BAADE kladde-skemaet og dets spoergsmaal, alle andre kan kun
+ * laese spoergsmaalene mens skemaet er aabent. Det er dét der goer
+ * kladde-preview-tilstanden (#4943) testbar uden prod-login.
+ *
  * @param {import('@playwright/test').Page} page
- * @param {{ status?: string, completed?: boolean, responses?: object[] }} options
+ * @param {{ status?: string, completed?: boolean, responses?: object[], isAdmin?: boolean }} options
  */
-export async function installSurveyRoutes(page, { status = "open", completed = false, responses = [] } = {}) {
+export async function installSurveyRoutes(
+  page,
+  { status = "open", completed = false, responses = [], isAdmin = false } = {}
+) {
   const survey = { ...SEED_SURVEY, status };
   const body = (data) => ({ status: 200, contentType: "application/json", body: JSON.stringify(data) });
   const single = (request) => (request.headers().accept || "").includes("vnd.pgrst.object");
+
+  await page.route(/\/rest\/v1\/rpc\/is_admin/, (route) => route.fulfill(body(isAdmin)));
 
   await page.route(/\/rest\/v1\/surveys/, (route) => {
     const request = route.request();
@@ -169,7 +179,7 @@ export async function installSurveyRoutes(page, { status = "open", completed = f
   });
 
   await page.route(/\/rest\/v1\/survey_questions/, (route) =>
-    route.fulfill(body(status === "open" ? SEED_SURVEY_QUESTIONS : []))
+    route.fulfill(body(status === "open" || isAdmin ? SEED_SURVEY_QUESTIONS : []))
   );
 
   await page.route(/\/rest\/v1\/survey_responses/, (route) => {

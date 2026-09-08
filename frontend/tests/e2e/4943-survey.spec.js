@@ -169,6 +169,45 @@ test("et lukket skema viser tak og en vej til roadmappet, ikke en død formular"
   await expect(page.getByRole("button", { name: "Send mine svar" })).toHaveCount(0);
 });
 
+test("en admin ser kladden som spillerne vil se den, men kan ikke sende", async ({ page }) => {
+  const writes = [];
+  await installNetworkMocks(page);
+  await installSurveyRoutes(page, { status: "draft", isAdmin: true });
+  // Fanger enhver skrivning: en preview må ikke røre spillernes svar-tabeller.
+  await page.route(/\/rest\/v1\/survey_(responses|completions)/, (route) => {
+    const request = route.request();
+    if (request.method() !== "GET") writes.push(`${request.method()} ${request.url()}`);
+    return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  });
+  await stabilizePage(page);
+  await login(page);
+  await page.goto(`/survey/${SLUG}`);
+
+  await expect(page.getByText("Kladde. Kun admins kan se denne side. Svar gemmes ikke.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Idéerne" })).toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: `Idé: ${FIRST_FEATURE}` })).toBeVisible();
+
+  const send = page.getByRole("button", { name: "Send mine svar" });
+  await expect(send).toBeDisabled();
+  await expect(page.getByText("Send er slået fra så længe skemaet er en kladde.")).toBeVisible();
+
+  // Svaret bliver stående på skærmen, men intet skrives.
+  const satisfaction = page.getByRole("radiogroup").first().getByRole("radio").nth(4);
+  await satisfaction.click();
+  await expect(satisfaction).toHaveAttribute("aria-checked", "true");
+  await page.waitForTimeout(600); // > AUTOSAVE_DEBOUNCE_MS
+  expect(writes).toEqual([]);
+});
+
+test("en ikke-admin ser stadig lukket-tilstanden på en kladde", async ({ page }) => {
+  await openSurvey(page, { status: "draft" });
+
+  await expect(page.getByText("Skemaet er lukket")).toBeVisible();
+  await expect(page.getByText("Kladde.", { exact: false })).toHaveCount(0);
+  await expect(page.getByRole("progressbar")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send mine svar" })).toHaveCount(0);
+});
+
 test("to-akse-rækken taber ikke den anden akse på 375 px", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await openSurvey(page);
