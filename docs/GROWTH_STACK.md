@@ -83,7 +83,7 @@ Tre kanaler man kunne tro vi har. Vi har dem ikke:
 | Kanal | Status | Detalje |
 |---|---|---|
 | **Referral / invitér en ven** | Findes ikke i kode 📄 | Ejer-beslutning 23/7 (#1173): trappet belønning, 7 dages Pro for en ven der bliver aktiv, 1 måneds Pro hvis vennen betaler. Afhængighed: Pro skal låse noget op, ellers er belønningen tom. Uafklaret: hvad "bliver aktiv" betyder, og hvordan selv-referral med flere konti forhindres |
-| **Betalte annoncer** | Ikke startet 📄 | Ejer-direktiv 20/7 (#2759). **Ejer-beslutning 8/9:** én lille test på 500 til 1.000 kr. (Reddit/Facebook, UTM-tagget) i ugen op til S4 27/9. Claude leverer udkast og målgruppe, ejeren godkender budget. **Betinget af G4-princippet, se §4.3** |
+| **Betalte annoncer** | Ikke startet 📄 | Ejer-direktiv 20/7 (#2759). **Ejer-beslutning 8/9:** én lille test på 500 til 1.000 kr. (Reddit/Facebook, UTM-tagget) i ugen op til S4 (starter 28/9). Claude leverer udkast og målgruppe, ejeren godkender budget. **Betinget af G4-princippet, se §4.3** |
 | **SEO-site** | Deployet på eget Vercel-subdomæne, ikke koblet til cyclingzone.org ✅ | `marketing/` (Next.js App Router) er merget 2/9 (#4659) med `/`, `/how-it-works`, `/pro-cycling-manager-alternative` + `/da/...`. Vercel-projektet `cycling-zone-marketing` er git-koblet og bygger fra main; sitet er live på https://cycling-zone-marketing.vercel.app (verificeret 8/9 kl. 21:05 med curl: forside, `/da`, `/how-it-works`, `/da/saadan-fungerer-det`, `/pro-cycling-manager-alternative`, sitemap og robots svarer 200). Mangler stadig rewrites fra cyclingzone.org (separat PR, ejer-go). Forsiden er indtil videre `LandingPage.jsx` prerenderet på engelsk. Google-indeks: 1 side (målt 21/8, #4067) |
 
 ### 2.3 Kanaler vi bevidst ikke bruger
@@ -239,15 +239,15 @@ En kampagne er et afgrænset skub med et mål, ikke løbende posting. Skabelonen
 
 ### 6.1 Første kampagne: sæsonskiftet S4
 
-**Datoen 27/9 er en hård kendsgerning** (sæsonskiftet), ikke en valgt kampagnedato. Det besluttede indhold:
+**Datoerne er hårde kendsgerninger:** sæson 3 slutter søndag 27/9, sæson 4 starter mandag 28/9 (ejer 8/9: sæsonen slutter en søndag og starter en mandag). Ikke en valgt kampagnedato. Det besluttede indhold:
 
-- **Annonce-test:** 500 til 1.000 kr. på Reddit/Facebook med UTM, i ugen op til 27/9. Ejer godkender budget og tekst. Betinget af G4.
+- **Annonce-test:** 500 til 1.000 kr. på Reddit/Facebook med UTM, i ugen op til sæsonstarten 28/9. Ejer godkender budget og tekst. Betinget af G4.
 - **S4-opslaget som win-back-krog** 📄 (pengeplan §1, satsning 3): "ny sæson starter" er den ene ægte grund til at vende tilbage vi har i kalenderen.
 - **Hård afhængighed:** S4-kalenderen skal materialiseres FØR cutover, ellers får ingen hold et årsmøde 📄 (tørkørsel 2/9).
 
 Alt andet om kampagnen er ubesluttet. **Opfind ikke datoer, budgetter eller kanaler her.**
 
-> ❓ **Uafklaret dato-drift:** pengeplanen og #4964 skriver sæsonskiftet som både 27/9 og 28/9, og win-back-udkastet siger 28/9 i selve mail-teksten. Én dato skal vinde før teksterne sendes.
+> Dato-drift afklaret 8/9: 27/9 er sidste S3-dag (søndag), 28/9 er første S4-dag (mandag). Tekster der siger 'sæsonen starter 28/9' er korrekte; tekster der siger 'sæsonskiftet 27/9' mener sidste dag i S3.
 
 ## 7. Brugerforståelse
 
@@ -332,7 +332,6 @@ Kort oversigt. Ansvarsfordelingen mellem værktøjerne bor i ANALYTICS_STACK.
 | [#4964](https://github.com/NicolaiDolmer/CyclingZone/issues/4964) | Launch-kohorten | Ejer-valg om #1140/#1569's kø-placering udestår |
 | [#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321) | PostHog | 0 events. Revurdér Clarity efter 4 ugers PostHog-drift |
 | (nyt) | Aktivitets-unionen i scriptet | `scripts/monday-numbers.mjs` dækker `last_seen` ∪ `player_events` ∪ `auction_bids`. Manuelle `race_entries`, `xp_log` og forum-skrivning mangler; aktive-tallene kan undertælle |
-| (nyt) | Sæsondato 27/9 mod 28/9 | Se §6.1 ❓ |
 
 ## 11. Faldgruber
 
