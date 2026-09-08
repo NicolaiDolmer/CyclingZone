@@ -19,8 +19,8 @@
 ## Bane 2 · Forretning (viger aldrig; SSOT [`2026-09-02-30-dages-pengeplan.md`](superpowers/specs/2026-09-02-30-dages-pengeplan.md))
 
 Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d ≥ 100. **Målt 7/9: 90 — under målet.**
-8. 🔴 **BRAND · Ejerens egne bestillinger** (Discord #feedback-from-dolmer 1-8/9: patch notes web+Discord, spørgeskema, roadmap, GitHub-audit, forum #4751/#4818/#4819, webhooks, founder-badge, NPS, dashboard-load). 7/9: NPS #5003, roadmap #5002, audit, #4589 lukket. Spørgeskema-infrastruktur i PR #5006; **indhold designes ét spørgsmål ad gangen næste session** + forum/Discord (#5000 #4999 #4818 #4819 #4751) + vækst-kort. Prompt i `docs/drafts/`. #4270 inden 10/9.
-9. ✅ #4960 = målebrud · ✅ #4595 shippet (#4970) → **genmål 8/9** (-21 % efter 1,5 t).
+8. 🔴 **BRAND · Ejerens egne bestillinger** (#feedback-from-dolmer 1-8/9). 7/9 aften merget: spørgeskema (11 spørgsmål, draft i prod, #4943) · forum-stat #5008 · Discord-navn #5023 · Founder #5010 · webhooks #5009. Klar til "merge" 8/9: #5029 #5027 #5028 #5020 #5018 #5026 #5022 (#5021 venter). DM i PR #5019. Prompt i `docs/drafts/` (8/9 morgen). #4270 blokeret af #4845.
+9. ✅ #4960 = målebrud · #4595 fix klar i #5021 (ejer: vent) · #4964 rapport merget (#5025) → dag-1-mail dry-run 8/9.
 10. 🔵 **Nøgleblok #4616** (ejer ~30 min) låser op: Pro i euro PR #4608 → #4645 pris-synk → #4646 frafald · #4074 · #4005.
 11. 🔵 **Mail-loop:** Mail v2 merget (#2853) → ejer-GO dry_run → on pr. type → #2760 win-back (77 m. samtykke).
 12. 🔴 **Spiller-kommunikation #428:** MAN uge-note · ONS spørgsmål · SØN ugens øjeblik · #4820 indholdsplan + spørgeskema · tråd-bank #4117. Ejeren poster selv.
