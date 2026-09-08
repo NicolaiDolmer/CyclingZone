@@ -31,10 +31,12 @@
 // actual copy selection ('da' -> Danish, anything else -> English).
 
 import { fetchAllRows } from "./supabasePagination.js";
-import { isEmailLoopActive } from "./emailLoopFlag.js";
+import { readEmailLoopStage } from "./emailLoopFlag.js";
 import { sendLoopEmail } from "./emailService.js";
 import { buildDay1Email } from "./emailTemplates.js";
-import { unsubscribeUrlFor } from "./emailUnsubUrl.js";
+import { unsubscribeUrlForStage, assertUnsubSecretForStage } from "./emailUnsubUrl.js";
+import { createEmailFailureCollector, postPermanentFailureAlert } from "./emailOpsAlert.js";
+import { recordEmailSweepRun } from "./emailHealthReport.js";
 import { captureException } from "./sentry.js";
 
 export const DAY1_WINDOW_MIN_MS = 20 * 60 * 60 * 1000;
@@ -43,13 +45,21 @@ export const DAY1_WINDOW_MAX_MS = 30 * 60 * 60 * 1000;
 export async function runEmailDay1Sweep({
   supabase,
   now = new Date(),
-  isActive = isEmailLoopActive,
+  // #2853 (fund 8/9): stage frem for "aktiv ja/nej" — se emailWelcomeSweep.js.
+  readStage = readEmailLoopStage,
   send = sendLoopEmail,
   unsubSecret = process.env.EMAIL_UNSUB_SECRET,
+  sendWebhookFn = null,
+  getOpsWebhookFn = null,
+  recordRun = recordEmailSweepRun,
   captureExceptionFn = captureException,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
-  if (!(await isActive(supabase, "day1"))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+  const stage = await readStage(supabase, "day1");
+  if (stage === "off") return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+
+  // ÉN fejl pr. koersel, ikke én pr. hold pr. tick (#2853, fund 8/9).
+  assertUnsubSecretForStage(stage, unsubSecret);
 
   const minCreatedIso = new Date(now.getTime() - DAY1_WINDOW_MAX_MS).toISOString();
   const maxCreatedIso = new Date(now.getTime() - DAY1_WINDOW_MIN_MS).toISOString();
@@ -71,6 +81,7 @@ export async function runEmailDay1Sweep({
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  const failureCollector = createEmailFailureCollector();
 
   for (const team of candidates) {
     try {
@@ -87,7 +98,7 @@ export async function runEmailDay1Sweep({
       if (resultsError) throw new Error(`race_results lookup: ${resultsError.message}`);
       const hasResults = (resultRows || []).length > 0;
 
-      const unsubscribeUrl = unsubscribeUrlFor(team.user_id, unsubSecret);
+      const unsubscribeUrl = unsubscribeUrlForStage({ userId: team.user_id, secret: unsubSecret, stage });
       const { subject, html, text } = buildDay1Email({ teamName: team.name, hasResults, unsubscribeUrl, language: userRow.language });
       const result = await send({
         supabase,
@@ -100,6 +111,8 @@ export async function runEmailDay1Sweep({
         html,
         text,
         unsubscribeUrl,
+        stage,
+        failureCollector,
       });
       if (result?.status === "sent" || result?.status === "dry_run") sent += 1;
       else skipped += 1;
@@ -112,6 +125,20 @@ export async function runEmailDay1Sweep({
       });
     }
   }
+
+  // ÉN samlet ops-alarm for koerslen (#2853) + tal til sundhedsrapporten.
+  // Fund 8/9 (review-runde 2): alarmen SKAL ligge i try/catch (samme
+  // moenster som emailRetrySweep.js's dead-alarm) -- ellers vaelter en
+  // kastende ops-webhook sweepen FOER recordRun naar at logge koerslen.
+  try {
+    await postPermanentFailureAlert({ collector: failureCollector, sweep: "email-day1", now, sendWebhookFn, getOpsWebhookFn });
+  } catch (err) {
+    // best-effort: de permanente fejl staar ALLEREDE i Sentry og i
+    // email_log.error. En Discord-kanal der er nede maa ikke koste os
+    // koerslens tal i sundhedsrapporten.
+    console.error("[email:day1] ops-alarm fejlede:", err?.message || err);
+  }
+  await recordRun({ supabase, emailType: "day1", stage, candidates: candidates.length, sent, skipped, failed });
 
   return { candidates: candidates.length, sent, skipped, failed };
 }

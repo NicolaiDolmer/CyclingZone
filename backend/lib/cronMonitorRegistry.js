@@ -173,6 +173,9 @@ export const ALL_CRON_MONITORS = [
   // #3600: retry-drain for e-mails der fejlede med en retryable Resend-fejl —
   // samme kadence som discord-dm-outbox-drain/discord-webhook-outbox-drain.
   ["email-retry-drain", CRON_MONITOR_5MIN],
+  // #2853: daglig mail-sundhedsrapport. Tikker hver time (time-gate + dags-
+  // dedupe ligger i selve sweepen), så kadencen her er 60 min, ikke 24 t.
+  ["email-health-report", CRON_MONITOR_60MIN],
   ["discord-race-digest", CRON_MONITOR_60MIN],
   ["alunta-subscription-reconcile", CRON_MONITOR_60MIN],
   // #4514 — forfalds-vagt. Ikke gated bag et flag: en vagt der er slukket som

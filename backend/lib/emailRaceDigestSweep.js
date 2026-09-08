@@ -56,11 +56,13 @@
 // ('da' -> Danish, anything else -> English).
 
 import { fetchAllRows } from "./supabasePagination.js";
-import { isEmailLoopActive } from "./emailLoopFlag.js";
+import { readEmailLoopStage } from "./emailLoopFlag.js";
 import { sendLoopEmail } from "./emailService.js";
 import { isEmailTypeEnabled } from "./emailPrefs.js";
 import { buildRaceDigestEmail } from "./emailTemplates.js";
-import { unsubscribeUrlFor } from "./emailUnsubUrl.js";
+import { unsubscribeUrlForStage, assertUnsubSecretForStage } from "./emailUnsubUrl.js";
+import { createEmailFailureCollector, postPermanentFailureAlert } from "./emailOpsAlert.js";
+import { recordEmailSweepRun } from "./emailHealthReport.js";
 import { copenhagenHour, copenhagenIsoWeekString } from "./copenhagenTime.js";
 import { captureException } from "./sentry.js";
 
@@ -117,9 +119,13 @@ async function defaultFetchResultsSince({ supabase, teamId, sinceIso }) {
 export async function runEmailRaceDigestSweep({
   supabase,
   now = new Date(),
-  isActive = isEmailLoopActive,
+  // #2853 (fund 8/9): stage frem for "aktiv ja/nej" — se emailWelcomeSweep.js.
+  readStage = readEmailLoopStage,
   send = sendLoopEmail,
   unsubSecret = process.env.EMAIL_UNSUB_SECRET,
+  sendWebhookFn = null,
+  getOpsWebhookFn = null,
+  recordRun = recordEmailSweepRun,
   fetchCandidateTeams = defaultFetchCandidateTeams,
   fetchDigestLogRows = defaultFetchDigestLogRows,
   fetchResultsSince = defaultFetchResultsSince,
@@ -134,7 +140,11 @@ export async function runEmailRaceDigestSweep({
   if (copenhagenHour(now) < DIGEST_HOUR_COPENHAGEN) {
     return { candidates: 0, sent: 0, skipped: 0, failed: 0, skippedReason: "outside_hour_window" };
   }
-  if (!(await isActive(supabase, "race_digest"))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+  const stage = await readStage(supabase, "race_digest");
+  if (stage === "off") return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+
+  // ÉN fejl pr. koersel, ikke én pr. bruger pr. tick (#2853, fund 8/9).
+  assertUnsubSecretForStage(stage, unsubSecret);
 
   const teams = await fetchCandidateTeams({ supabase });
   if (!teams.length) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
@@ -197,6 +207,7 @@ export async function runEmailRaceDigestSweep({
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  const failureCollector = createEmailFailureCollector();
 
   for (const user of absentees) {
     try {
@@ -223,7 +234,7 @@ export async function runEmailRaceDigestSweep({
       }
       if (!bestByRace.size) { skipped += 1; continue; } // ingen resultater siden sidste besøg -> ingen mail
 
-      const unsubscribeUrl = unsubscribeUrlFor(user.id, unsubSecret);
+      const unsubscribeUrl = unsubscribeUrlForStage({ userId: user.id, secret: unsubSecret, stage });
       const { subject, html, text } = buildRaceDigestEmail({
         teamName: team.name,
         results: [...bestByRace.values()],
@@ -241,6 +252,8 @@ export async function runEmailRaceDigestSweep({
         html,
         text,
         unsubscribeUrl,
+        stage,
+        failureCollector,
       });
       if (result?.status === "sent" || result?.status === "dry_run") sent += 1;
       else skipped += 1;
@@ -250,6 +263,20 @@ export async function runEmailRaceDigestSweep({
       captureExceptionFn(err, { tags: { cron: "email-race-digest" }, extra: { userId: user.id } });
     }
   }
+
+  // ÉN samlet ops-alarm for koerslen (#2853) + tal til sundhedsrapporten.
+  // Fund 8/9 (review-runde 2): alarmen SKAL ligge i try/catch (samme
+  // moenster som emailRetrySweep.js's dead-alarm) -- ellers vaelter en
+  // kastende ops-webhook sweepen FOER recordRun naar at logge koerslen.
+  try {
+    await postPermanentFailureAlert({ collector: failureCollector, sweep: "email-race-digest", now, sendWebhookFn, getOpsWebhookFn });
+  } catch (err) {
+    // best-effort: de permanente fejl staar ALLEREDE i Sentry og i
+    // email_log.error. En Discord-kanal der er nede maa ikke koste os
+    // koerslens tal i sundhedsrapporten.
+    console.error("[email:race-digest] ops-alarm fejlede:", err?.message || err);
+  }
+  await recordRun({ supabase, emailType: "race_digest", stage, candidates: absentees.length, sent, skipped, failed });
 
   return { candidates: absentees.length, sent, skipped, failed };
 }

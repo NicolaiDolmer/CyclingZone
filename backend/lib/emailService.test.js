@@ -1,6 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { sendLoopEmail, FROM_ADDRESS, classifyEmailFailure, nextEmailAttemptDelayMs, MAX_EMAIL_ATTEMPTS } from "./emailService.js";
+import {
+  sendLoopEmail,
+  FROM_ADDRESS,
+  classifyEmailFailure,
+  nextEmailAttemptDelayMs,
+  MAX_EMAIL_ATTEMPTS,
+  dedupeBlocksSend,
+  SENT_STATUSES,
+  sendViaResend,
+} from "./emailService.js";
+import { Resend } from "resend";
 
 // Mock supabase covering the three tables sendLoopEmail touches:
 //   app_config (flag read, done by the injected `readStage` normally, but we
@@ -8,33 +18,53 @@ import { sendLoopEmail, FROM_ADDRESS, classifyEmailFailure, nextEmailAttemptDela
 //               via readStage override below in most tests for isolation),
 //   email_log  (dedupe select + insert),
 //   users      (prefs select).
-function makeSupabase({ emailLogExisting = false, userRow = { email_prefs: {} }, insertError = null } = {}) {
+// `existingRow` (#2853): den eksisterende email_log-raekke pa dedupe_key, eller
+// null. `emailLogExisting: true` bevares som genvej for "en allerede afsendt
+// raekke" (status 'sent') — det var den eneste form der fandtes foer #2853.
+function makeSupabase({
+  emailLogExisting = false,
+  existingRow = undefined,
+  userRow = { email_prefs: {} },
+  insertError = null,
+} = {}) {
   const emailLogInserts = [];
+  const emailLogUpdates = [];
   const calls = [];
+  const dedupeRow =
+    existingRow !== undefined
+      ? existingRow
+      : emailLogExisting
+        ? { id: "existing-row", status: "sent", next_attempt_at: null }
+        : null;
   return {
     emailLogInserts,
+    emailLogUpdates,
     calls,
     from(table) {
       calls.push(table);
       if (table === "email_log") {
         return {
           select(cols) {
-            assert.equal(cols, "id");
+            assert.equal(cols, "id, status, next_attempt_at");
             return {
               eq(col, _dedupeKey) {
                 assert.equal(col, "dedupe_key");
-                return {
-                  maybeSingle: async () => ({
-                    data: emailLogExisting ? { id: "existing-row" } : null,
-                    error: null,
-                  }),
-                };
+                return { maybeSingle: async () => ({ data: dedupeRow, error: null }) };
               },
             };
           },
           insert: async (row) => {
             emailLogInserts.push(row);
             return { error: insertError };
+          },
+          update(row) {
+            return {
+              eq: async (col, id) => {
+                assert.equal(col, "id");
+                emailLogUpdates.push({ id, row });
+                return { error: insertError };
+              },
+            };
           },
         };
       }
@@ -187,6 +217,11 @@ test("stage=on sends via the injected Resend client with idempotencyKey + List-U
       dedupe_key: "welcome:user-1",
       status: "sent",
       provider_id: "provider-id-123",
+      // #2853: nulstilles eksplicit, saa en genbrugt dry_run-/doed-failed-
+      // raekke ikke slaeber gammel fejl-/retry-tilstand med over.
+      error: null,
+      next_attempt_at: null,
+      retry_payload: null,
     });
   } finally {
     process.env.RESEND_API_KEY = oldKey;
@@ -353,4 +388,157 @@ test("requires userId, type, dedupeKey and to", async () => {
   await assert.rejects(() => sendLoopEmail({ supabase, ...baseArgs, type: null, readStage: stageReader("dry_run") }));
   await assert.rejects(() => sendLoopEmail({ supabase, ...baseArgs, dedupeKey: null, readStage: stageReader("dry_run") }));
   await assert.rejects(() => sendLoopEmail({ supabase, ...baseArgs, to: null, readStage: stageReader("dry_run") }));
+});
+
+// ─── #2853: dedupe blokerer ikke laengere paa dry_run ────────────────────────
+
+test("dedupeBlocksSend: kun reelt afsendte raekker og en retry i koeen blokerer", () => {
+  assert.equal(dedupeBlocksSend(null), false, "ingen raekke -> send");
+  for (const status of SENT_STATUSES) {
+    assert.equal(dedupeBlocksSend({ status, next_attempt_at: null }), true, `${status} skal blokere`);
+  }
+  assert.equal(dedupeBlocksSend({ status: "dry_run", next_attempt_at: null }), false, "dry_run maa ALDRIG blokere");
+  assert.equal(dedupeBlocksSend({ status: "failed", next_attempt_at: "2026-09-08T10:00:00Z" }), true, "retry-drainen ejer raekken");
+  assert.equal(
+    dedupeBlocksSend({ status: "failed", next_attempt_at: null }),
+    true,
+    "terminal fejl blokerer OGSAA - ellers ville welcome-sweepen proeve samme permanente fejl hvert 5. minut i 48 timer"
+  );
+});
+
+test("en terminal failed-raekke blokerer, saa en 5-min-sweep ikke gen-proever i det uendelige", async () => {
+  const supabase = makeSupabase({ existingRow: { id: "dead-row", status: "failed", next_attempt_at: null } });
+  const result = await sendLoopEmail({
+    ...baseArgs, supabase, readStage: async () => "on",
+    resendFactory: () => { throw new Error("maa ikke proeve en terminal fejl igen"); },
+  });
+  assert.deepEqual(result, { skipped: "dedupe" });
+  assert.equal(supabase.emailLogUpdates.length, 0);
+});
+
+test("en dry_run-raekke OPDATERES til sent i stedet for at blokere (dedupe_key er UNIQUE)", async () => {
+  const supabase = makeSupabase({ existingRow: { id: "dry-row", status: "dry_run", next_attempt_at: null } });
+  const resend = { emails: { send: async () => ({ data: { id: "provider-9" }, error: null }) } };
+
+  const result = await sendLoopEmail({
+    ...baseArgs, supabase, readStage: async () => "on", resendFactory: () => resend,
+  });
+
+  assert.deepEqual(result, { status: "sent", providerId: "provider-9" });
+  assert.equal(supabase.emailLogInserts.length, 0, "ingen INSERT - den ville ramme UNIQUE-constrainten");
+  assert.equal(supabase.emailLogUpdates.length, 1);
+  assert.equal(supabase.emailLogUpdates[0].id, "dry-row");
+  assert.equal(supabase.emailLogUpdates[0].row.status, "sent");
+  assert.equal(supabase.emailLogUpdates[0].row.provider_id, "provider-9");
+});
+
+test("en allerede afsendt raekke blokerer stadig (idempotens uaendret)", async () => {
+  const supabase = makeSupabase({ existingRow: { id: "sent-row", status: "sent", next_attempt_at: null } });
+  const result = await sendLoopEmail({
+    ...baseArgs, supabase, readStage: async () => "on",
+    resendFactory: () => { throw new Error("maa ikke sende igen"); },
+  });
+  assert.deepEqual(result, { skipped: "dedupe" });
+});
+
+test("en raekke der er blevet 'bounced' af webhooken blokerer ogsaa", async () => {
+  const supabase = makeSupabase({ existingRow: { id: "bounced-row", status: "bounced", next_attempt_at: null } });
+  const result = await sendLoopEmail({
+    ...baseArgs, supabase, readStage: async () => "on",
+    resendFactory: () => { throw new Error("maa ikke sende igen") },
+  });
+  assert.deepEqual(result, { skipped: "dedupe" });
+});
+
+// ─── #2853: failureCollector + injiceret stage ───────────────────────────────
+
+test("en permanent fejl lander i failureCollector (til sweepens samlede alarm)", async () => {
+  const supabase = makeSupabase({});
+  const resend = { emails: { send: async () => ({ data: null, error: { message: "invalid address", statusCode: 422 } }) } };
+  const collector = { permanent: [] };
+
+  await sendLoopEmail({
+    ...baseArgs, supabase, readStage: async () => "on", resendFactory: () => resend,
+    captureExceptionFn: () => {}, failureCollector: collector,
+  });
+
+  assert.equal(collector.permanent.length, 1);
+  assert.equal(collector.permanent[0].dedupeKey, "welcome:user-1");
+  assert.equal(collector.permanent[0].reason, "config-error");
+});
+
+test("en RETRYABLE fejl lander IKKE i collectoren (retry-drainen alarmerer naar den opgiver)", async () => {
+  const supabase = makeSupabase({});
+  const resend = { emails: { send: async () => ({ data: null, error: { message: "boom", statusCode: 503 } }) } };
+  const collector = { permanent: [] };
+
+  await sendLoopEmail({
+    ...baseArgs, supabase, readStage: async () => "on", resendFactory: () => resend,
+    captureExceptionFn: () => {}, failureCollector: collector,
+  });
+
+  assert.equal(collector.permanent.length, 0);
+});
+
+test("en injiceret stage sparer app_config-opslaget helt", async () => {
+  const supabase = makeSupabase({});
+  const result = await sendLoopEmail({
+    ...baseArgs, supabase, stage: "dry_run",
+    readStage: async () => { throw new Error("maa ikke laese app_config naar stage er givet"); },
+  });
+  assert.deepEqual(result, { status: "dry_run" });
+});
+
+test("replyTo saettes paa udgaaende mails naar EMAIL_REPLY_TO er sat, og udelades ellers", async () => {
+  const payloads = [];
+  const resend = { emails: { send: async (p) => { payloads.push(p); return { data: { id: "p1" }, error: null }; } } };
+
+  process.env.EMAIL_REPLY_TO = "hej@cyclingzone.org";
+  await sendLoopEmail({ ...baseArgs, supabase: makeSupabase({}), readStage: async () => "on", resendFactory: () => resend });
+  delete process.env.EMAIL_REPLY_TO;
+  await sendLoopEmail({ ...baseArgs, supabase: makeSupabase({}), readStage: async () => "on", resendFactory: () => resend });
+
+  // camelCase, ikke snake_case: se testen nedenfor for hvorfor det er
+  // forskellen paa en virkende og en tavst tabt Reply-To.
+  assert.deepEqual(payloads[0].replyTo, ["hej@cyclingzone.org"]);
+  assert.equal(payloads[0].reply_to, undefined);
+  assert.equal(payloads[1].replyTo, undefined);
+});
+
+test("EMAIL_REPLY_TO naar HELE vejen gennem det RIGTIGE Resend-SDK til wire-feltet reply_to", async () => {
+  // Regressionsvagt for fund 8/9 (review-runde 2): resend@6's
+  // parseEmailToApiOptions er en WHITELIST — den kender kun `replyTo` og
+  // mapper den til wire-feltet `reply_to`. Et caller-sat `reply_to` blev
+  // tavst smidt vaek, saa EMAIL_REPLY_TO havde nul effekt paa den mail der
+  // faktisk blev sendt. En mock af `resend.emails.send` kan IKKE fange det —
+  // derfor koerer denne test den aegte klasse mod en fake fetch.
+  const bodies = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) => {
+    bodies.push(JSON.parse(options.body));
+    return new Response(JSON.stringify({ id: "re_wire_1" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  process.env.EMAIL_REPLY_TO = "hej@cyclingzone.org";
+  try {
+    const resend = new Resend("re_test_key_not_a_real_secret");
+    await sendViaResend({
+      resend,
+      to: "player@example.com",
+      subject: "Emne",
+      html: "<p>hej</p>",
+      text: "hej",
+      unsubscribeUrl: "https://cyclingzone.org/u/abc",
+      dedupeKey: "welcome:user-1",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.EMAIL_REPLY_TO;
+  }
+
+  assert.equal(bodies.length, 1);
+  assert.deepEqual(bodies[0].reply_to, ["hej@cyclingzone.org"], "wire-body'en SKAL baere reply_to");
+  assert.equal(bodies[0].replyTo, undefined, "SDK'et sender aldrig camelCase videre paa wiren");
 });

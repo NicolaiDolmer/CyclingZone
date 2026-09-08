@@ -21,3 +21,44 @@ export const EMAIL_UNSUB_BASE_DEFAULT = "https://cyclingzone.org/api/email/unsub
 export function unsubscribeUrlFor(userId, secret, base = process.env.EMAIL_UNSUB_BASE_URL || EMAIL_UNSUB_BASE_DEFAULT) {
   return `${base}?token=${signUnsubToken(userId, secret)}`;
 }
+
+// #2853 (fund 8/9 under dry_run): dry_run maa ALDRIG kraeve unsub-
+// hemmeligheden. Sweepsene byggede URL'en FOER sendLoopEmail naaede at laese
+// stage, saa en manglende EMAIL_UNSUB_SECRET fik hver eneste kandidat til at
+// kaste `signUnsubToken: secret required` — ingen dry_run-raekke blev skrevet,
+// og alarmen kom én gang pr. hold pr. tick i stedet for én gang i alt.
+// dry_run kalder aldrig Resend, saa der findes ingen mail hvis footer-link kan
+// klikkes: en dummy-token er tilstraekkelig, og den kan pr. konstruktion ikke
+// verificeres (verifyUnsubToken kraever et "." og afviser denne).
+export const DRY_RUN_UNSUB_TOKEN = "dry-run";
+
+/**
+ * Stage-bevidst unsub-URL.
+ * @param {object} args
+ * @param {string} args.userId
+ * @param {string|undefined} args.secret - EMAIL_UNSUB_SECRET.
+ * @param {"off"|"dry_run"|"on"} args.stage
+ * @param {string} [args.base]
+ */
+export function unsubscribeUrlForStage({
+  userId,
+  secret,
+  stage,
+  base = process.env.EMAIL_UNSUB_BASE_URL || EMAIL_UNSUB_BASE_DEFAULT,
+}) {
+  if (stage !== "on" && !secret) return `${base}?token=${DRY_RUN_UNSUB_TOKEN}`;
+  return unsubscribeUrlFor(userId, secret, base);
+}
+
+/**
+ * Kastes ÉN gang pr. sweep-koersel (foer loopet over kandidater), ikke én gang
+ * pr. hold — se kommentaren over DRY_RUN_UNSUB_TOKEN for hvorfor netop det
+ * skel er hele pointen.
+ * @param {"off"|"dry_run"|"on"} stage
+ * @param {string|undefined} secret
+ */
+export function assertUnsubSecretForStage(stage, secret) {
+  if (stage === "on" && !secret) {
+    throw new Error("email-sweep: EMAIL_UNSUB_SECRET not set (stage=on) - ingen mails kan sendes");
+  }
+}

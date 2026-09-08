@@ -87,6 +87,7 @@ import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
 import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #2725
 import { processEmailRetryDrain } from "./lib/emailRetrySweep.js"; // #3600
+import { runEmailHealthReport } from "./lib/emailHealthReport.js"; // #2853
 import { runDiscordRaceDigestSweep } from "./lib/discordRaceDigestSweep.js"; // #3400
 import { runSeasonDocumentarySweep } from "./lib/seasonDocumentarySweep.js"; // #3402
 import { createAluntaClient } from "./lib/alunta.js"; // #2736
@@ -1383,18 +1384,24 @@ async function runRiderDoubleBookingWatchCron() {
 // og flipper app_config.email_loop_enabled off → dry_run → on. Ingen af
 // nedenstående funktioner sender en rigtig e-mail før flaget er "on".
 
+// #2853: ops-alarmerne bruger den BARE sendWebhook plus getOpsWebhook — ikke
+// sendOpsWebhook, som auto-prepender @mention på alt. Mail-alarmerne skal
+// kunne sende både med mention (brud) og uden (den rolige dagsrapport), og
+// emailOpsAlert.js's postOpsEmbed styrer det pr. kald.
+const emailOpsWiring = { sendWebhookFn: sendWebhook, getOpsWebhookFn: getOpsWebhook };
+
 async function runEmailWelcomeSweepCron() {
-  const r = await runEmailWelcomeSweep({ supabase, now: new Date() });
+  const r = await runEmailWelcomeSweep({ supabase, now: new Date(), ...emailOpsWiring });
   if (r.sent) console.log(`✉️  Email-welcome: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
 }
 
 async function runEmailDay1SweepCron() {
-  const r = await runEmailDay1Sweep({ supabase, now: new Date() });
+  const r = await runEmailDay1Sweep({ supabase, now: new Date(), ...emailOpsWiring });
   if (r.sent) console.log(`✉️  Email-day1: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
 }
 
 async function runEmailRaceDigestSweepCron() {
-  const r = await runEmailRaceDigestSweep({ supabase, now: new Date() });
+  const r = await runEmailRaceDigestSweep({ supabase, now: new Date(), ...emailOpsWiring });
   if (r.sent) console.log(`✉️  Email-race-digest: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
 }
 
@@ -1403,9 +1410,19 @@ async function runEmailRaceDigestSweepCron() {
 // (#1115/#3545): dormant sammen med resten af e-mail-loopet (no-op mens
 // email_loop_enabled ikke er "on"), så den er sikker at have kørende.
 async function runEmailRetryDrainCron() {
-  const r = await processEmailRetryDrain({ supabase, now: new Date() });
+  const r = await processEmailRetryDrain({ supabase, now: new Date(), ...emailOpsWiring });
   if (r.processed) {
     console.log(`✉️  Email retry-drain: ${r.processed} behandlet — ${r.sent} sendt, ${r.rescheduled} replanlagt, ${r.dead} opgivet`);
+  }
+}
+
+// #2853 — daglig sundhedsrapport til #ops kl. 08 dansk tid. Tikker hver time
+// (et præcist times-vindue kan ædes af en deploy-klynge), men rapporten selv
+// er dags-dedupet i ops_alert_state — se emailHealthReport.js.
+async function runEmailHealthReportCron() {
+  const r = await runEmailHealthReport({ supabase, now: new Date(), ...emailOpsWiring });
+  if (r.posted) {
+    console.log(`✉️  Email-sundhedsrapport sendt (${r.breaches?.length || 0} taerskel-brud)`);
   }
 }
 
@@ -1999,6 +2016,13 @@ export function startCron() {
   setInterval(
     trackedTick("email retry-drain", monitorCron("email-retry-drain", runEmailRetryDrainCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
+  );
+  // #2853 — daglig mail-sundhedsrapport. 60-min-kadence + time-gate i selve
+  // sweepen (samme form som email-race-digest); dags-dedupen sikrer én rapport
+  // pr. døgn uanset hvor mange ticks der rammer efter kl. 08.
+  setInterval(
+    trackedTick("email health-report", monitorCron("email-health-report", runEmailHealthReportCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
   );
   setInterval(
     trackedTick("discord-race-digest sweep", monitorCron("discord-race-digest", runDiscordRaceDigestSweepCron, CRON_MONITOR_60MIN)),

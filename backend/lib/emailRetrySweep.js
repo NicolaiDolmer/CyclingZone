@@ -45,6 +45,7 @@ import {
   MAX_EMAIL_ATTEMPTS,
 } from "./emailService.js";
 import { readEmailLoopStage, EMAIL_LOOP_TYPE_KEYS } from "./emailLoopFlag.js";
+import { buildRetryDeadEmbed, postOpsEmbed } from "./emailOpsAlert.js";
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 import { captureException } from "./sentry.js";
 
@@ -71,6 +72,11 @@ export async function processEmailRetryDrain({
   readStage = readEmailLoopStage,
   resendFactory = getResendClient,
   captureExceptionFn = captureException,
+  // #2853: dead-alarmen gaar nu OGSAA til ops-kanalen med @mention (Sentry
+  // alene er ikke et sted ejeren kigger). Fortsat ÉN besked pr. drain-koersel.
+  // sendWebhookFn skal vaere den BARE sendWebhook — se emailOpsAlert.js.
+  sendWebhookFn = null,
+  getOpsWebhookFn = null,
   now = new Date(),
   maxAttempts = MAX_EMAIL_ATTEMPTS,
 } = {}) {
@@ -226,6 +232,21 @@ export async function processEmailRetryDrain({
       new Error(`Email retry-drain: ${deadRows.length} mail(s) opgivet efter gentagne ${attemptsWord} — ${summary}`),
       { tags: { component: "email-retry-sweep" }, extra: { deadRows } }
     );
+    // #2853: samme aggregerede alarm videre til ops-kanalen. Fejler webhooken,
+    // maa den ikke tage drainens returvaerdi med sig — Sentry-alarmen ovenfor
+    // er allerede afsendt, og drainen HAR gjort sit arbejde.
+    try {
+      await postOpsEmbed({
+        payload: buildRetryDeadEmbed({ deadRows, now }),
+        sendWebhookFn,
+        getOpsWebhookFn,
+      });
+    } catch (err) {
+      // best-effort: Sentry-alarmen ovenfor er ALLEREDE afsendt og baerer den
+      // samme information. En Discord-webhook der er nede maa ikke kunne
+      // vaelte drainen eller skjule at den faktisk gjorde sit arbejde.
+      console.error("[email:retry] ops-alarm fejlede:", err?.message || err);
+    }
   }
 
   return { processed: rows.length - skippedTypeOff, sent, rescheduled, dead: deadRows.length };

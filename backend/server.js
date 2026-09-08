@@ -51,6 +51,9 @@ app.use(cors({ origin: (origin, cb) => cb(null, isAllowedOrigin(origin, ALLOWED_
 // Webhooks skal have rå body (signatur/verifikation) → undtag fra JSON-parseren.
 // Rå-parseren sætter req._body, så den globale express.json() springer pathen over.
 app.use("/api/billing/alunta-webhook", express.raw({ type: "*/*" }));
+// #2853: Resend-webhooken signeres med Svix-skemaet — HMAC over de RÅ bytes,
+// se backend/lib/resendWebhook.js. Samme undtagelse fra JSON-parseren.
+app.use("/api/email/resend-webhook", express.raw({ type: "*/*" }));
 app.use(express.json({ limit: "10mb" }));
 
 app.use("/api", apiRoutes);

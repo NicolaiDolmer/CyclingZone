@@ -49,6 +49,11 @@
     "proxy-cancel": 10,
     "proxy-notif": 10,
     "raceEntryCleanup": 10,
+    "resend-webhook": 50,
+    "email:health": 5,
+    "email:welcome": 5,
+    "email:day1": 5,
+    "email:race-digest": 5,
     "resolveProxyBids": 10,
     "rider-view-log": 10,
     "runStarterSquadAllocation": 5,
@@ -64,7 +69,12 @@
     "express": "Express' fejl-handler. Aldrig normal.",
     "auth": "#4165 (401 invalid_token) + #4369 (503 auth_unavailable). 401 fra scannere/udloebne sessioner er normal i småt tal; 300/doegn er sat som foerste bud og skal justeres efter foerste uges maaling. 503 faar sin egen spand via normalizeBucket og rammer taersklen langt tidligere i praksis.",
     "rate-limit": "#4451: baselinen ligger 4-20x over maalt spidsbelastning, saa gentagne 429'ere betyder enten et loebsk klient-loop eller at spillerbasen er vokset ud af tallet.",
-    "discord-config": "Praeregistreret for #4471 (console.error('[discord-config] <tabel> lookup failed')). Tagget findes endnu ikke i runtime paa denne branch; entryen staar her saa tag-guarden ikke gaar roed paa #4471 og alle efterfoelgende PR'er alene pga. merge-raekkefoelgen."
+    "discord-config": "Praeregistreret for #4471 (console.error('[discord-config] <tabel> lookup failed')). Tagget findes endnu ikke i runtime paa denne branch; entryen staar her saa tag-guarden ikke gaar roed paa #4471 og alle efterfoelgende PR'er alene pga. merge-raekkefoelgen.",
+    "resend-webhook": "#2853 (backend/lib/resendWebhook.js): console.warn ved afvist webhook (ugyldig svix-signatur eller body der ikke kan parses som JSON) samt ved ignoreret gen-levering (svix-id allerede set - normalt, Resend retryer paa non-2xx). Bucketes hver for sig af normalizeBucket, saa taersklen bider pr. aarsag. Et par forsoeg i timen (scannere/Resend-retries) er normalt; 50/doegn er sat som foerste bud for EN aarsags-spand og skal justeres efter foerste uges maaling, samme fremgangsmaade som 'auth'.",
+    "email:health": "#2853 (backend/lib/emailHealthReport.js): console.error naar recordEmailSweepRun ikke kan skrive sin statistik-raekke (Supabase insert fejler eller kaster). Best-effort skrivning - sweepen der HAR sendt sine mails er ikke i fare, kun naeste dags rapport faar et hul. Selve den daglige sundhedsrapport gaar til Discord via postOpsEmbed, ikke til console, saa tagget her ses KUN ved fejl. Lav taerskel (5) svarende til andre best-effort-log-tags (collect, feedback, forum).",
+    "email:welcome": "#2853 (backend/lib/emailWelcomeSweep.js): console.error naar den samlede ops-alarm (postPermanentFailureAlert til Discord) fejler efter en welcome-mail-koersel. Best-effort - de permanente sende-fejl staar allerede i Sentry og i email_log.error, kun Discord-varslingen mangler. Lav taerskel (5), samme moenster som email:health.",
+    "email:day1": "#2853 (backend/lib/emailDay1Sweep.js): console.error naar den samlede ops-alarm (postPermanentFailureAlert til Discord) fejler efter en day1-mail-koersel. Best-effort - de permanente sende-fejl staar allerede i Sentry og i email_log.error, kun Discord-varslingen mangler. Lav taerskel (5), samme moenster som email:health.",
+    "email:race-digest": "#2853 (backend/lib/emailRaceDigestSweep.js): console.error naar den samlede ops-alarm (postPermanentFailureAlert til Discord) fejler efter en race-digest-mail-koersel. Best-effort - de permanente sende-fejl staar allerede i Sentry og i email_log.error, kun Discord-varslingen mangler. Lav taerskel (5), samme moenster som email:health."
   },
   "_growthNotes": "Tag-TOTALEN (summen over alle spande for et tag) udloeser ogsaa et fund naar den er growthMultiplier gange stoerre end samme tag i det foregaaende vindue OG mindst growthMinimum. Formaal: et udfald der spreder sig over mange endpoints holder hver enkelt spand under sin taerskel - review af PR #4469 regnede eksemplet: 30 ruter x 250 [auth]-linjer = 7.500 linjer og NUL taerskel-brud under den rene per-spand-regel. Reglen er bevidst RATIO-baseret, saa den ikke kraever et volumental ingen har maalt endnu; growthMinimum 100 er et gulv mod stoej fra smaa tags og skal justeres efter foerste uges maaling ligesom auth: 300. Ignorerede tags er ogsaa undtaget her.",
   "ignore": [
