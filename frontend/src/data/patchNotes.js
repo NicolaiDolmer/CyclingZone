@@ -1,5 +1,54 @@
 export const PATCHES = [
   {
+    "version": "7.263",
+    "date": "2026-09-08",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Thread views, last reply and your forum post count",
+          "body": "Every thread now shows how many times it has been opened, and the thread list tells you who wrote the last reply and when, so you can see where the conversation is before you click. Your manager profile shows how many forum posts you have written. Views count once per manager per day."
+        },
+        "da": {
+          "title": "Visninger, seneste svar og dit antal indlæg i forummet",
+          "body": "Hver tråd viser nu hvor mange gange den er blevet åbnet, og trådlisten fortæller hvem der skrev det seneste svar og hvornår, så du kan se hvor samtalen er før du klikker. Din managerprofil viser hvor mange forumindlæg du har skrevet. Visninger tælles én gang pr. manager pr. dag."
+        },
+        "refs": [5000]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Profile",
+        "en": {
+          "title": "Show your Discord name on your manager profile",
+          "body": "In Settings you can add your Discord username. It appears on your public manager profile, so other managers can find you on Discord. Leave it empty and nothing is shown. Tap it to copy the name, or to open your Discord profile if your Discord account is already linked to the bot."
+        },
+        "da": {
+          "title": "Vis dit Discord-navn på din managerprofil",
+          "body": "Under Indstillinger kan du tilføje dit Discord-brugernavn. Det vises på din offentlige managerprofil, så andre managere kan finde dig på Discord. Lader du feltet stå tomt, vises intet. Tryk på navnet for at kopiere det, eller for at åbne din Discord-profil hvis din Discord-konto allerede er koblet til botten."
+        },
+        "refs": [5012]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Profile",
+        "en": {
+          "title": "The Founder mark now shows on manager profiles, and it just says Founder",
+          "body": "Managers who hold one of the Founder places now carry the mark on their public manager profile too, not only on the forum, the standings and the team page. The label now reads Founder everywhere."
+        },
+        "da": {
+          "title": "Founder-mærket vises nu på managerprofilen, og det hedder bare Founder",
+          "body": "Managere med en af Founder-pladserne bærer nu også mærket på deres offentlige managerprofil, ikke kun i forummet, stillingen og på holdsiden. Teksten hedder nu Founder overalt."
+        },
+        "refs": [5007, 4649]
+      }
+    ]
+  },
+  {
     "version": "7.262",
     "date": "2026-09-07",
     "label": "Beta",
