@@ -1,0 +1,79 @@
+{
+  "tab": {
+    "label": "Beskeder"
+  },
+  "list": {
+    "title": "Beskeder",
+    "subtitle": "{count, plural, one {# samtale venter på dig} other {# samtaler venter på dig}}",
+    "subtitleNone": "Intet nyt",
+    "emptyTitle": "Ingen beskeder endnu",
+    "emptyBody": "Åbn en managerprofil og skriv til personen bag holdet. En handel er nemmere at lukke, når man kan spørge først.",
+    "emptyAction": "Find en manager",
+    "you": "Dig",
+    "loadError": "Jeg kunne ikke hente dine beskeder. Prøv igen.",
+    "retry": "Prøv igen"
+  },
+  "thread": {
+    "back": "Alle beskeder",
+    "placeholder": "Skriv en besked",
+    "send": "Send",
+    "sending": "Sender",
+    "counter": "{count}/{max}",
+    "loadMore": "Vis ældre beskeder",
+    "emptyTitle": "Ingen beskeder endnu",
+    "emptyBody": "Sig hvad du vil, og hold en pæn tone. Alle beskeder gemmes.",
+    "sendError": "Jeg kunne ikke sende den. Prøv igen.",
+    "tooLong": "Hold den under {max} tegn.",
+    "openProfile": "Åbn profil",
+    "blockedNote": "Du har blokeret denne manager. Du ser ikke nye beskeder fra ham, før du ophæver blokeringen."
+  },
+  "menu": {
+    "label": "Mere",
+    "block": "Blokér manager",
+    "unblock": "Ophæv blokering",
+    "report": "Anmeld samtale",
+    "hide": "Skjul samtale"
+  },
+  "block": {
+    "title": "Blokér denne manager?",
+    "body": "Han kan ikke nå dig her mere. Han får ikke at vide, at du har blokeret ham.",
+    "confirm": "Blokér",
+    "cancel": "Fortryd",
+    "done": "Blokeret",
+    "undone": "Blokering ophævet",
+    "error": "Jeg kunne ikke gøre det. Prøv igen."
+  },
+  "report": {
+    "title": "Anmeld denne samtale",
+    "body": "Jeg får en kopi af tråden og læser den selv. Fortæl mig hvad der er galt.",
+    "reasonLabel": "Hvad er der sket",
+    "reasonPlaceholder": "En sætning eller to er nok",
+    "confirm": "Send anmeldelse",
+    "cancel": "Fortryd",
+    "done": "Anmeldelsen er sendt. Jeg kigger på den.",
+    "alreadyDone": "Du har allerede anmeldt denne samtale. Jeg har den.",
+    "tooShort": "Skriv mindst {min} tegn, så jeg ved hvad jeg skal kigge efter.",
+    "error": "Jeg kunne ikke sende anmeldelsen. Prøv igen."
+  },
+  "hide": {
+    "done": "Samtalen er skjult. En ny besked henter den frem igen.",
+    "error": "Jeg kunne ikke skjule den. Prøv igen."
+  },
+  "start": {
+    "button": "Skriv",
+    "buttonAria": "Skriv til {name}",
+    "forumLink": "Skriv",
+    "dealButton": "Skriv til modparten",
+    "title": "Skriv til {name}",
+    "placeholder": "Skriv en besked",
+    "send": "Send",
+    "cancel": "Fortryd",
+    "sent": "Beskeden er sendt"
+  },
+  "quote": {
+    "transfer_offer": "Transfertilbud",
+    "auction": "Auktion",
+    "amount": "{amount} CZ$",
+    "open": "Åbn"
+  }
+}

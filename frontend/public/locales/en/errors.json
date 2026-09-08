@@ -242,6 +242,14 @@
     "auction_end_outside_window": "Auctions can only end while the market is open, between {openHour} and {closeHour}",
     "auction_end_crosses_season_transition": "Auctions can't end after the season change ({boundaryAt})",
     "season_end_already_claimed": "Season end already in progress or already completed",
-    "session_expired": "Your session has expired. Log in again"
+    "session_expired": "Your session has expired. Log in again",
+    "rate_dm": "Too many messages in a short time. Try again shortly.",
+    "dm_body_invalid": "A message must be between 1 and 2000 characters.",
+    "dm_invalid_recipient": "Pick a manager to write to.",
+    "dm_recipient_not_found": "I could not find that manager.",
+    "dm_not_found": "That conversation is gone.",
+    "dm_invalid_block_target": "Pick a manager first.",
+    "dm_report_reason_required": "Tell me what is wrong, in a sentence or two.",
+    "dm_report_reason_too_long": "That reason is too long."
   }
 }

@@ -6,6 +6,7 @@ import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { ageBadgeKey } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import OnlineBadge from "../components/OnlineBadge";
+import MessageManagerButton from "../components/messages/MessageManagerButton.jsx"; // #3200
 import FounderMark from "../components/FounderMark.jsx";
 import { formatNumber, formatDate } from "../lib/intl";
 import { ABILITY_STATS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
@@ -321,11 +322,23 @@ export default function ManagerProfilePage() {
                 )}
               </div>
             </div>
-            {isOwnProfile && (
+            {/* #3200: primær handling i heroens højre slot — bevidst HER og
+                ikke i identitetsrækken ovenfor, hvor #5012/#5007 arbejder
+                parallelt. Kun på fremmede profiler med en rigtig manager bag:
+                et AI-styret hold (user === null) har ingen at skrive til. */}
+            {isOwnProfile ? (
               <Link to="/profile" className={`${buttonClass({ variant: "secondary", size: "sm" })} flex-none`}>
                 <SettingsIcon size={13} />{t("manager.settingsLink")}
               </Link>
-            )}
+            ) : user ? (
+              <div className="flex-none">
+                <MessageManagerButton
+                  teamId={team.id}
+                  managerName={user.username || team.name}
+                  variant="primary"
+                />
+              </div>
+            ) : null}
           </div>
 
           {/* #5012: Discord-kontaktlinje — separat fra identitets-rækken

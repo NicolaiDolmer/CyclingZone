@@ -25,6 +25,8 @@ const {
   buildForumThreadReplyNotification,
   notifyForumThreadReply,
   FORUM_THREAD_REPLY_TYPE,
+  buildDirectMessageNotification,
+  DIRECT_MESSAGE_TYPE,
 } = await import("./notificationService.js");
 
 // #3434: notifyTeamOwner har en kortlivet TTL-cache (teamId -> user_id).
@@ -1161,4 +1163,28 @@ test("notifyForumThreadReply: et postId med %s-specifier skjuler ikke fejlbesked
   const logged = lines.join(" | ");
   assert.ok(logged.includes("%s %d %j"), `id skal logges ordret, fik: ${logged}`);
   assert.ok(logged.includes("boom"), `fejlbeskeden skal overleve, fik: ${logged}`);
+});
+
+// #3200 · DM-notifikationen. Den engelske fallback "Another manager" hoerer til
+// i den LAGREDE title/message (backendens pre-i18n kopi) og maa aldrig sendes
+// videre som i18n-parameter: saa ville en dansk klient faa "Another manager har
+// skrevet til dig" (#1068-klassen, CodeRabbit 8/9).
+test("DM-notifikationen laekker aldrig det engelske fallback-navn ind i i18n", () => {
+  const withName = buildDirectMessageNotification({
+    conversationId: "conv-1", senderName: "Alice", messageCount: 1,
+  });
+  assert.equal(withName.type, DIRECT_MESSAGE_TYPE);
+  assert.equal(withName.metadata.messageCode, "notif.directMessage.message");
+  assert.equal(withName.metadata.messageParams.senderName, "Alice");
+
+  const withoutName = buildDirectMessageNotification({
+    conversationId: "conv-1", senderName: null, messageCount: 3,
+  });
+  // Egen kode, saa oversaettelsen selv formulerer fallbacken ...
+  assert.equal(withoutName.metadata.messageCode, "notif.directMessage.messageUnknownSender");
+  // ... og INGEN senderName-parameter at rendere en engelsk streng ind i.
+  assert.equal(withoutName.metadata.messageParams.senderName, undefined);
+  assert.equal(withoutName.metadata.messageParams.count, 3);
+  // Den lagrede kopi beholder fallbacken; den er backendens egen, ikke klientens.
+  assert.match(withoutName.message, /Another manager/);
 });

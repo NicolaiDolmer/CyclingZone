@@ -62,7 +62,7 @@ community-copy skal verificeres mod koden før den påstår at noget mangler
 | Discord-DM til manageren | **Live**, 9 typer | `discordNotifier.js:566`, se §4.2 |
 | Per-type DM-præferencer | **Live**, 6 nøgler | `discordDmPrefs.js:12-19` |
 | Discord-kanalposter (webhooks) | **Live**, 20 konfigurerede | `discordNotifier.js:131-178` |
-| In-app-notifikationer | **Live**, 54 typer | `notificationTypes.js` |
+| In-app-notifikationer | **Live**, 55 typer | `notificationTypes.js` |
 | Achievements | **Live**, 46 definitioner | `achievementEngine.js` |
 | Forum med opbakning | **Live** siden 6/8 | `forum.js`, se `FORUM_RULES.md` |
 | Roadmap-kategorien (kun ejeren opretter) | **Live** siden #4818 | `forum_category_post_roles`, se §0 |
@@ -70,7 +70,7 @@ community-copy skal verificeres mod koden før den påstår at noget mangler
 | Managerprofil (offentlig) | **Live** | `frontend/src/pages/ManagerProfilePage.jsx`, rute `managers/:teamId` |
 | Online-prik + "sidst set" | **Live**, 5-min-granularitet | `api.js:13856`, `OnlineBadge.jsx` |
 | Global rangliste | **Live**, 231 hold rangeret | `globalRankFormula.js`, `global_rank_mv` |
-| **Spiller-til-spiller-beskeder i spillet** | **FINDES IKKE** | ingen tabel, ingen route |
+| Beskeder mellem managers (1:1) | **Live** siden 8/9 | `directMessages.js`, `/api/messages`, se §6a |
 | **Notifikation når du låser en achievement op** | **FINDES IKKE** | `achievement` optræder ikke i `notificationService.js` |
 | **Notifikation ved opbakning** | **FINDES IKKE**, bevidst v1-fravalg | `forum.js:781` |
 | **Referral-/rekrutteringsrangliste** | **FINDES IKKE** | ønsket i [#3051](https://github.com/NicolaiDolmer/CyclingZone/issues/3051) |
@@ -408,6 +408,76 @@ besked. Blokken er derfor markeret i begge filer, sammenlignet tegn for tegn af
 
 Et @-tag er en **besked til dig**, ikke et kategori-signal: `forum_mention` sendes uanset om
 modtageren har slået kategorien fra (§6.1).
+
+---
+
+## 6a. Beskeder mellem managers (DM v1, #3200)
+
+Ejer-designvalg 8/9. Bygget efter deadline-direktivet 25/8: *"Det skal være
+muligt at sende andre managers beskeder i sæson 3 senest"*. Ønsket er også
+spiller-drevet (@arongreve, #feedback-and-ideas 3/8), og ejeren svarede
+offentligt at featuren kommer.
+
+### 6a.1 Formen
+
+| Regel | Værdi |
+|---|---|
+| Model | **kun 1:1**, ingen gruppe-/pulje-tråde i v1 |
+| Deltagere | **brugere** (`auth.users`), ikke hold (#4379). Vises som managernavn + holdnavn |
+| Par-nøgle | uordnet: `participant_a = least`, `participant_b = greatest`, CHECK + UNIQUE |
+| Indgange | managerprofilen, forfatternavnet i forummet, transfertilbud, auktioner |
+| Flade | Beskeder-fanen i indbakken, `/notifications?tab=messages&c=<id>` |
+| Maks længde | **2 000 tegn**, håndhævet i DB-CHECK og i backend-validering |
+| Rate-limit | **30 beskeder pr. 10 min** (`dmSendLimiter`), 60 sidehandlinger pr. 10 min (`dmActionLimiter`) |
+| Realtime | **nej i v1** — åben tråd poller hvert 20. sekund |
+| Indholdsfiltrering | **ingen**, bevidst ejer-valg |
+| Notifikation | type `dm_message`, dedupe pr. (bruger, samtale) mens den er ulæst |
+
+Modtageren skal være en rigtig manager: AI- og bank-hold filtreres fra, så de
+aldrig kan stå som modpart.
+
+### 6a.2 De tre værn, og hvorfor de ser ud som de gør
+
+**Blokering er tavs.** En blokeret afsenders besked bliver GEMT, men modtageren
+ser den ikke og notificeres ikke. Knappen skjules ikke, og endpointet svarer
+ikke 403: begge dele ville fortælle den blokerede direkte at han er blokeret,
+og det er præcis det ejeren ikke vil. `delivered`-feltet bygges bevidst ikke
+ind i API-svaret, og en kontrakt-test fejler hvis nogen ændrer route'en til et
+bart `res.json(body)`.
+
+Blok-filteret gælder beskeder sendt EFTER blokeringen. Historik fra før
+bevares — ellers ville en blokering slette konteksten for den anmeldelse man
+typisk laver i samme åndedrag.
+
+**Der slettes aldrig.** `dm_messages` har hverken UPDATE- eller DELETE-policy
+for nogen rolle, heller ikke afsenderen. Tabellen ER loggen og er evidensen i
+fair-play-sager ([#3131](https://github.com/NicolaiDolmer/CyclingZone/issues/3131)).
+En bruger kan kun skjule samtalen for sig selv (`dm_conversation_hides`), og en
+ny besked henter den frem igen.
+
+**Admin læser ikke privat post uden anmeldelse.** Gaten ligger i RLS, ikke i
+UI'et: admin har kun SELECT på samtaler og beskeder hvor der findes en
+`dm_reports`-række. En uanmeldt samtale er usynlig for admin på
+databaseniveau. Anmeldelse kræver en begrundelse på mindst 10 tegn (samme
+regel som forummets rapportering, #3452) og er idempotent mens sagen er åben.
+
+### 6a.3 Hvor koden bor
+
+| Lag | Fil |
+|---|---|
+| Tabeller + RLS | `database/2026-09-08-3200-manager-dm.sql` |
+| Notifikationstype | `database/2026-09-08-3200-dm-notification-type.sql` |
+| Backend-logik | `backend/lib/directMessages.js` |
+| Routes | `backend/routes/api.js`, blokken "BESKEDER MELLEM MANAGERS" |
+| Notifikation | `notifyDirectMessage`, `backend/lib/notificationService.js` |
+| Fane + tråd | `frontend/src/components/messages/MessagesPanel.jsx` |
+| Indgangs-knap | `frontend/src/components/messages/MessageManagerButton.jsx` |
+| Design | `docs/superpowers/specs/2026-09-08-manager-dm-v1-design.md` |
+
+Navnekollision værd at kende: "DM" betyder også **Discord-DM** i denne
+kodebase (`discordDm*.js`, `discord_dm_outbox`). §4 handler om den kanal, §6a
+om beskeder mellem spillere inde i spillet. De to har intet med hinanden at
+gøre.
 
 ---
 

@@ -4,7 +4,8 @@
     "subtitleMine": "{count, plural, =0 {All read} one {1 unread} other {# unread}}",
     "subtitleHandle": "{count, plural, =0 {Nothing to handle right now} one {1 waiting for you} other {# waiting for you}}",
     "subtitleLeague": "What's happening in the league",
-    "subtitleActivity": "Your market actions in one place"
+    "subtitleActivity": "Your market actions in one place",
+    "subtitleMessages": "{count, plural, =0 {No unread messages} one {1 conversation waiting for you} other {# conversations waiting for you}}"
   },
   "actions": {
     "markAllRead": "Mark all read",
@@ -18,7 +19,8 @@
     "mine": "Mine",
     "handle": "To handle",
     "league": "League",
-    "activity": "My Activity"
+    "activity": "My Activity",
+    "messages": "Messages"
   },
   "filter": {
     "all": "All ({count})",

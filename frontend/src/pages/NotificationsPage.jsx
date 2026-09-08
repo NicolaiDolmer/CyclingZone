@@ -4,6 +4,8 @@ import { supabase } from "../lib/supabase";
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { useNavigate, useSearchParams } from "react-router";
 import ActivityPage from "./ActivityPage.jsx";
+import MessagesPanel from "../components/messages/MessagesPanel.jsx"; // #3200
+import { fetchUnreadSummary } from "../lib/messagesApi.js"; // #3200
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
@@ -21,7 +23,7 @@ import {
   LightningIcon, TrophyIcon, UndoIcon, AlertTriangleIcon, StarIcon,
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
   ClipboardIcon, PodiumIcon, BellIcon, SearchIcon, InboxIcon,
-  ChevronRightIcon, ChevronDownIcon, InfoIcon,
+  ChevronRightIcon, ChevronDownIcon, InfoIcon, MessageIcon,
 } from "../components/ui";
 
 // Role key for PENDING_ROLE — mapped to i18n via pending.role.<key>
@@ -103,6 +105,9 @@ const TYPE_CONFIG = {
   // related_id (altid sat, se notifyForumThreadReply) overstyrer med den
   // konkrete tråd via den dedikerede regel i notificationLink.js.
   forum_thread_reply:        { Icon: InboxIcon,        color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/forum" },
+  // #3200: fallback-linket peger på fanen; resolveNotificationLink deep-linker
+  // til selve tråden via related_id (samtale-id'et).
+  dm_message:                { Icon: MessageIcon,      color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/notifications?tab=messages" },
   // #5011: du blev @-tagget i et forum-indlæg. Fallback-link er /forum —
   // related_id (trådens id) + metadata.replyId overstyrer med det konkrete
   // indlæg via den dedikerede regel i notificationLink.js.
@@ -259,7 +264,7 @@ export default function NotificationsPage() {
   // (/activity redirecter til /notifications?tab=activity) og tilbage/frem
   // flytter fanen med (#3102 etape 2-læringen; før var det en useState-kopi).
   const [searchParams, setSearchParams] = useSearchParams();
-  const VALID_TABS = ["mine", "skal_handles", "ligaen", "activity"];
+  const VALID_TABS = ["mine", "skal_handles", "ligaen", "activity", "messages"];
   const tabParam = searchParams.get("tab");
   const tab = VALID_TABS.includes(tabParam) ? tabParam : "mine";
 
@@ -268,9 +273,46 @@ export default function NotificationsPage() {
       const params = new URLSearchParams(prev);
       if (next === "mine") params.delete("tab");
       else params.set("tab", next);
+      // #3200: en åben tråd hører kun til Beskeder-fanen. Uden denne
+      // oprydning ville ?c=<id> hænge ved i URL'en efter et faneskift og
+      // åbne tråden igen næste gang man klikker Beskeder.
+      if (next !== "messages") params.delete("c");
       return params;
     }, { replace: true });
   }
+
+  // #3200: den åbne DM-tråd bor i URL'en, så en notifikation kan deep-linke
+  // hertil og tilbage-knappen gør det man forventer.
+  const openConversationId = tab === "messages" ? searchParams.get("c") : null;
+
+  // Bemærk: UDEN `replace`, i modsætning til setTab ovenfor. Et faneskift er et
+  // tilstandsskift på den samme side, men at åbne en samtale er et NAVIGATIONS-
+  // skridt: på mobil viser panelet enten listen eller tråden, aldrig begge. Med
+  // `replace: true` overskrev `?c=` den aktuelle history-post, så Androids
+  // tilbage-knap forlod indbakken i stedet for at gå tilbage til samtalelisten
+  // (CodeRabbit 8/9).
+  function setOpenConversation(next) {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.set("tab", "messages");
+      if (next) params.set("c", next);
+      else params.delete("c");
+      return params;
+    });
+  }
+
+  // #3200: badgen skal vaere rigtig OGSAA naar man lander paa Mine/Skal
+  // handles/Ligaen/Min Aktivitet. Uden dette kald stod DM-badgen paa 0 indtil
+  // man foerste gang aabnede Beskeder-fanen. MessagesPanel holder den
+  // opdateret bagefter, mens fanen er aaben.
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    fetchUnreadSummary()
+      .then(summary => { if (alive) setUnreadMessages(summary?.unreadConversations ?? 0); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   // Mine tab
   const [notifications, setNotifications] = useState([]);
@@ -522,7 +564,9 @@ export default function NotificationsPage() {
               ? t("page.subtitleHandle", { count: pending.counts.total })
               : tab === "activity"
                 ? t("page.subtitleActivity")
-                : t("page.subtitleLeague")
+                : tab === "messages"
+                  ? t("page.subtitleMessages", { count: unreadMessages })
+                  : t("page.subtitleLeague")
         }
         actions={tab === "mine" ? (
           <>
@@ -552,6 +596,10 @@ export default function NotificationsPage() {
             // her frem for eget Marked-nav-punkt — handlingscentret bor hvor
             // spillerne allerede kigger (Indbakken, 6.152 sessions).
             { key: "activity",     label: t("tabs.activity") },
+            // #3200: beskeder mellem managers. Badgen tæller SAMTALER med
+            // ulæst, ikke beskeder — den svarer på "hvor mange steder venter
+            // nogen på mig".
+            { key: "messages",     label: t("tabs.messages"), badge: unreadMessages },
           ].map(tt => (
             <Tab key={tt.key} value={tt.key} className="flex items-center gap-2">
               {tt.label}
@@ -801,6 +849,17 @@ export default function NotificationsPage() {
         // refresh) som fane-indhold — samme mønster som RacePointsPage i
         // Resultat-hubben (#3102 etape 2).
         <I18nReadyGate ns="activity"><ActivityPage /></I18nReadyGate>
+      ) : tab === "messages" ? (
+        // #3200: beskeder mellem managers. Fanen bærer den åbne tråd i URL'en
+        // (?c=<id>) af samme grund som fanen selv ligger der (#3104 etape C) —
+        // en dm_message-notifikation deep-linker direkte hertil.
+        <I18nReadyGate ns="messages">
+          <MessagesPanel
+            conversationId={openConversationId}
+            onSelectConversation={setOpenConversation}
+            onUnreadChange={setUnreadMessages}
+          />
+        </I18nReadyGate>
       ) : (
         <>
           {/* Ligaen — feed-filter, samme idiom (ui/Select) som Mine-fanen ovenfor. */}

@@ -628,3 +628,23 @@ export function PauseIcon(props) {
     </IconBase>
   );
 }
+
+// #3200 (beskeder mellem managers): taleboblen paa "Message"-knappen
+// (managerprofil, forumnavn, "Skriv til modparten") og paa Beskeder-fanen.
+// Stroke-ikon paa samme IconBase som resten — aldrig emoji (TASTE).
+export function MessageIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 5h16v11H9l-5 4V5z" strokeLinejoin="round" />
+    </IconBase>
+  );
+}
+
+// #3200: tre-prik-menuen i traad-hovedet (Bloker / Anmeld / Skjul).
+export function MoreIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M5 12h.01M12 12h.01M19 12h.01" strokeLinecap="round" />
+    </IconBase>
+  );
+}

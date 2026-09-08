@@ -138,6 +138,31 @@ export const billingLimiter = buildLimiter({
   errorCode: "rate_billing",
 });
 
+// Direct messages between managers (#3200) — 30 pr. 10 min. En almindelig
+// samtale er et par beskeder ad gangen; loftet rummer en livlig
+// forhandling om et transfertilbud og lukker et spam-script. Bevidst
+// LØSERE end forumWriteLimiter (10/5min): forummet er en delt flade hvor
+// støj rammer alle, mens en DM kun rammer én modtager, som selv kan blokere.
+// EN `message` af samme grund som feedbackLimiter (#1068: ingen pre-i18n-kaldere).
+export const dmSendLimiter = buildLimiter({
+  name: "dm-send",
+  windowMs: 600_000,
+  max: 30,
+  message: "Too many messages in a short time. Try again shortly.",
+  errorCode: "rate_dm",
+});
+
+// DM-sidehandlinger (blokér, anmeld, skjul, markér læst). Adskilt fra
+// dmSendLimiter, så en spiller der bliver spammet ikke også får spærret
+// sin egen blokér-knap af sit eget klikkeri.
+export const dmActionLimiter = buildLimiter({
+  name: "dm-action",
+  windowMs: 600_000,
+  max: 60,
+  message: "Too many actions in a short time. Try again shortly.",
+  errorCode: "rate_dm",
+});
+
 // Internal export for tests so they can exercise the same factory without
 // hard-coding production thresholds.
 export const __testing__ = { buildLimiter, userOrIpKey };

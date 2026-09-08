@@ -105,6 +105,13 @@ export function resolveNotificationLink(notification, fallbackLink) {
   // direkte til tråden i stedet for den generiske forum-forside.
   if (n.type === "forum_thread_reply" && n.related_id) return `/forum/${n.related_id}`;
 
+  // #3200: en direkte besked — related_id er samtale-id'et. Uden denne regel
+  // landede spilleren på Beskeder-fanens liste og skulle selv finde tråden
+  // igen, selvom notifikationen netop fortalte hvilken samtale det var.
+  if (n.type === "dm_message" && (meta.conversationId || n.related_id)) {
+    return `/notifications?tab=messages&c=${meta.conversationId || n.related_id}`;
+  }
+
   // #5011: du blev @-tagget. related_id er trådens id; stod tagget i et SVAR,
   // bærer metadata.replyId det konkrete indlæg, og #reply-<id> lander på selve
   // svaret (samme anker ForumPostPage allerede bruger til citat-spring og til

@@ -242,6 +242,14 @@
     "auction_end_outside_window": "Auktioner kan kun slutte mens markedet er åbent, mellem {openHour} og {closeHour}",
     "auction_end_crosses_season_transition": "Auktioner kan ikke slutte efter sæsonskiftet ({boundaryAt})",
     "season_end_already_claimed": "Sæsonen er allerede ved at blive afsluttet eller er allerede afsluttet",
-    "session_expired": "Din session er udløbet. Log ind igen"
+    "session_expired": "Din session er udløbet. Log ind igen",
+    "rate_dm": "For mange beskeder på kort tid. Prøv igen om lidt.",
+    "dm_body_invalid": "En besked skal være mellem 1 og 2000 tegn.",
+    "dm_invalid_recipient": "Vælg en manager at skrive til.",
+    "dm_recipient_not_found": "Jeg kunne ikke finde den manager.",
+    "dm_not_found": "Den samtale findes ikke længere.",
+    "dm_invalid_block_target": "Vælg en manager først.",
+    "dm_report_reason_required": "Fortæl mig hvad der er galt, i en sætning eller to.",
+    "dm_report_reason_too_long": "Begrundelsen er for lang."
   }
 }

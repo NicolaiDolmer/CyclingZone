@@ -112,6 +112,7 @@ import {
   notifyUser as notifyUserShared,
   buildWelcomeNotification,
   notifyForumThreadReply,
+  notifyDirectMessage,
   notifyForumMentions,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
@@ -164,6 +165,20 @@ import {
   setForumCategoryMute,
 } from "../lib/forum.js";
 import { loadMentionableManagers } from "../lib/forumMentions.js";
+import {
+  listConversations,
+  getUnreadSummary,
+  getConversation,
+  sendDirectMessage,
+  markConversationRead,
+  blockManager,
+  unblockManager,
+  reportConversation,
+  hideConversation,
+  findConversationWith,
+  resolveManagerUserId,
+  resolveCounterpartUserId,
+} from "../lib/directMessages.js";
 import {
   contractOnAcquirePatch,
   computeReleaseBuyoutFee,
@@ -442,6 +457,8 @@ import {
   presencePulseLimiter,
   feedbackLimiter,
   forumWriteLimiter,
+  dmSendLimiter,
+  dmActionLimiter,
   userOrIpKey,
 } from "../lib/rateLimiters.js";
 import {
@@ -14703,6 +14720,218 @@ router.delete("/admin/forum/images", requireAdmin, adminWriteLimiter, async (req
   try {
     const { target_type: targetType, target_id: targetId, path } = req.body || {};
     const { status, body } = await deleteForumImage({ supabase, targetType, targetId, path });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BESKEDER MELLEM MANAGERS (#3200) — 1:1 DM
+// ═══════════════════════════════════════════════════════════════════════════════
+// Al skrivning sker via service-role: authenticated har KUN SELECT på
+// dm_conversations/dm_messages (database/2026-09-08-3200-manager-dm.sql), så
+// blok-tjek, længde-validering og rate-limit findes præcis ét sted — her.
+// sender_id udledes ALTID af req.user; klienten sender aldrig sit eget id.
+//
+// Bemærk navnet: "DM" betyder også Discord-DM i denne kodebase
+// (discordDmOutbox.js m.fl.). Denne blok handler udelukkende om beskeder
+// MELLEM SPILLERE inde i spillet — modulet hedder derfor directMessages.js.
+
+// GET /api/messages/conversations — samtalelisten til Beskeder-fanen.
+// Laeseruterne baerer presencePulseLimiter (120/min), ikke dmActionLimiter.
+// #530-vagten kraever daekning paa enhver auth-gated rute, og disse fire POLLES:
+// en aaben traad henter hvert 20. sekund, og listen + badgen foelger indbakkens
+// hentning. Et 10-minutters loft ville ramme en normal session; 120/min er
+// praecis det loft de oevrige pollede laesninger (notifikationer, presence)
+// allerede bruger, og det stopper stadig en loebsk fane.
+router.get("/messages/conversations", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const { status, body } = await listConversations({ supabase, userId: req.user.id });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/messages/unread-count — billig kilde til nav-badgen.
+router.get("/messages/unread-count", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const { status, body } = await getUnreadSummary({ supabase, userId: req.user.id });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/messages/with/:teamId — indgangen fra managerprofilen, forumnavnet
+// og "Skriv til modparten". Returnerer den eksisterende samtale hvis der er
+// en; opretter ALDRIG en tom tråd.
+router.get("/messages/with/:teamId", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.teamId)) {
+      return res.status(400).json({ error: "Invalid team id", errorCode: "dm_invalid_recipient" });
+    }
+    const targetUserId = await resolveManagerUserId({ supabase, teamId: req.params.teamId });
+    if (!targetUserId) {
+      return res.status(404).json({ error: "Manager not found", errorCode: "dm_recipient_not_found" });
+    }
+    const { status, body } = await findConversationWith({ supabase, userId: req.user.id, targetUserId });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/messages/conversations/:id — én tråd, nyeste sidst.
+router.get("/messages/conversations/:id", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+    const { status, body } = await getConversation({
+      supabase,
+      userId: req.user.id,
+      conversationId: req.params.id,
+      limit: req.query.limit,
+      before: typeof req.query.before === "string" ? req.query.before : null,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/send — send en besked. `delivered` udelades bevidst af
+// svaret: en blokeret afsender må ikke kunne aflæse blokeringen (ejer-valg 2).
+router.post("/messages/send", requireAuth, dmSendLimiter, async (req, res) => {
+  try {
+    const { recipientTeamId, conversationId, body: messageBody, context } = req.body || {};
+    let recipientUserId = null;
+    if (!conversationId) {
+      if (typeof recipientTeamId !== "string" || !UUID_RE.test(recipientTeamId)) {
+        return res.status(400).json({ error: "Pick a manager to write to", errorCode: "dm_invalid_recipient" });
+      }
+      recipientUserId = await resolveManagerUserId({ supabase, teamId: recipientTeamId });
+      if (!recipientUserId) {
+        return res.status(404).json({ error: "Manager not found", errorCode: "dm_recipient_not_found" });
+      }
+    } else if (!UUID_RE.test(conversationId)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+
+    const { status, body } = await sendDirectMessage({
+      supabase,
+      senderUserId: req.user.id,
+      recipientUserId,
+      conversationId: conversationId || null,
+      body: messageBody,
+      context,
+      notify: async ({ conversationId: cid, recipientUserId: to, now }) =>
+        notifyDirectMessage({
+          supabase,
+          recipientUserId: to,
+          senderUserId: req.user.id,
+          senderName: req.team?.manager_name || req.team?.name || null,
+          conversationId: cid,
+          now,
+        }),
+    });
+    if (status !== 200) return res.status(status).json(body);
+    // `delivered` bygges bevidst IKKE ind i svaret: det er feltet der ville
+    // afsløre en blokering for afsenderen.
+    res.status(200).json({ conversationId: body.conversationId, message: body.message });
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/conversations/:id/read — markér tråden læst.
+router.post("/messages/conversations/:id/read", requireAuth, dmActionLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+    const { status, body } = await markConversationRead({
+      supabase, userId: req.user.id, conversationId: req.params.id,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/conversations/:id/hide — skjul samtalen for kalderen.
+// Beskederne bliver liggende: tabellen er loggen (#3131).
+router.post("/messages/conversations/:id/hide", requireAuth, dmActionLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+    const { status, body } = await hideConversation({
+      supabase, userId: req.user.id, conversationId: req.params.id,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/conversations/:id/report — anmeld tråden til admin.
+router.post("/messages/conversations/:id/report", requireAuth, dmActionLimiter, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: "Conversation not found", errorCode: "dm_not_found" });
+    }
+    const { status, body } = await reportConversation({
+      supabase, userId: req.user.id, conversationId: req.params.id, reason: req.body?.reason,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/messages/block — blokér eller ophæv blokering af en manager.
+router.post("/messages/block", requireAuth, dmActionLimiter, async (req, res) => {
+  try {
+    const { teamId, conversationId, blocked } = req.body || {};
+    // To noegler, bevidst. `teamId` er indgangen fra en profil eller et
+    // forumnavn, hvor samtalen maaske ikke findes endnu. `conversationId` er
+    // indgangen fra selve traaden - og den ENESTE der virker hvis modparten
+    // ikke laengere har et hold (CodeRabbit 8/9). Blokering skal altid kunne
+    // lade sig goere, saa traaden noegler paa samtalen.
+    const hasConversation = typeof conversationId === "string" && UUID_RE.test(conversationId);
+    const hasTeam = typeof teamId === "string" && UUID_RE.test(teamId);
+    if (!hasConversation && !hasTeam) {
+      return res.status(400).json({ error: "Pick a manager to block", errorCode: "dm_invalid_block_target" });
+    }
+    const targetUserId = hasConversation
+      ? await resolveCounterpartUserId({ supabase, userId: req.user.id, conversationId })
+      : await resolveManagerUserId({ supabase, teamId });
+    if (!targetUserId) {
+      return res.status(404).json({ error: "Manager not found", errorCode: "dm_recipient_not_found" });
+    }
+    // CodeRabbit 8/9: sit eget teamId resolver til ens eget bruger-id, og
+    // CHECK-constrainten dm_blocks_not_self afviste saa insertet - hvilket kom
+    // ud som en 500 og en Sentry-rapport i stedet for et 400. Kun teamId-vejen
+    // kan naa hertil; resolveCounterpartUserId kan pr. definition ikke give en
+    // selv.
+    if (targetUserId === req.user.id) {
+      return res.status(400).json({ error: "Pick a manager to block", errorCode: "dm_invalid_block_target" });
+    }
+    const { status, body } = blocked === false
+      ? await unblockManager({ supabase, userId: req.user.id, targetUserId })
+      : await blockManager({ supabase, userId: req.user.id, targetUserId });
     res.status(status).json(body);
   } catch (e) {
     captureException(e);
