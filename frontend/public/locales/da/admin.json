@@ -1,4 +1,128 @@
 {
+  "surveyResults": {
+    "title": "Spørgeskema-resultater",
+    "subtitle": {
+      "open": "Skemaet er åbent. Tallene opdateres efterhånden som svarene kommer ind.",
+      "closed": "Skemaet er lukket. Det her er de endelige tal.",
+      "draft": "Skemaet er stadig en kladde, så ingen kan svare på det endnu."
+    },
+    "status": { "draft": "Kladde", "open": "Åbent", "closed": "Lukket" },
+    "reload": "Genindlæs",
+    "loading": "Henter spørgeskema-resultater",
+    "notFound": {
+      "title": "Intet skema på den adresse",
+      "description": "Tjek slug'en i adresselinjen mod surveys-tabellen.",
+      "action": "Tilbage til admin"
+    },
+    "error": {
+      "title": "Kunne ikke hente resultaterne",
+      "description": "Intet er gået tabt. Svarene ligger stadig i databasen.",
+      "forbidden": "Du er ikke admin.",
+      "retry": "Prøv igen"
+    },
+    "empty": {
+      "title": "Ingen svar endnu",
+      "description": "Det første svar dukker op her få sekunder efter det er gemt.",
+      "action": "Genindlæs"
+    },
+    "segment": {
+      "label": "Opdel efter",
+      "none": "Alle",
+      "division": "Division",
+      "language": "Sprog",
+      "active": "Aktiv de sidste 7 dage",
+      "hint": "Opdelingen gælder alle faner.",
+      "values": {
+        "division": "Division {value}",
+        "da": "Dansk",
+        "en": "Engelsk",
+        "active": "Aktiv",
+        "lapsed": "Faldet fra",
+        "unknown": "Ukendt"
+      },
+      "respondents": "{n} har svaret"
+    },
+    "tabs": {
+      "overview": "Overblik",
+      "ideas": "Idéerne",
+      "worst": "Fungerer dårligst",
+      "text": "Fritekst",
+      "pro": "Pro",
+      "segments": "Segmenter"
+    },
+    "totals": {
+      "invited": "Inviterede",
+      "started": "Startede",
+      "completed": "Gennemførte",
+      "avgMinutes": "Gennemsnitlig tid",
+      "minutes": "{value} min",
+      "ofInvited": "{pct} af de inviterede",
+      "ofStarted": "{pct} af dem der startede"
+    },
+    "overview": {
+      "timeline": "Svar pr. dag",
+      "timelineMeta": "Fyldt er gennemført, bleg er startet",
+      "timelineEmpty": "Ingen svar endnu.",
+      "satisfaction": "Tilfredshed i dag",
+      "average": "Gennemsnit {value} ud af 5",
+      "fog": "Hvor meget mere skal skjules",
+      "scaleValue": "{value} ud af 5",
+      "noAnswers": "Ingen svar endnu.",
+      "answers": "{n} svar"
+    },
+    "ideas": {
+      "title": "Alle idéer, rangeret efter prioritet",
+      "meta": "Prioritet er idé gange vigtigt, begge på 1 til 5",
+      "quadrant": "Idé mod vigtigt",
+      "quadrantX": "God idé",
+      "quadrantY": "Betyder noget for mig",
+      "quadrantCorner": "Byg det her først",
+      "columns": {
+        "rank": "#",
+        "feature": "Idé",
+        "group": "Område",
+        "idea": "Idé",
+        "importance": "Vigtigt",
+        "priority": "Prioritet",
+        "dontKnow": "Ved ikke",
+        "veto": "Gav 1 eller 2",
+        "n": "Bedømt af"
+      },
+      "vetoHint": "Over 25 procent deler idéen vandene, uanset hvor pænt gennemsnittet ser ud.",
+      "empty": "Ingen har bedømt idéerne endnu."
+    },
+    "worst": {
+      "title": "Hvad fungerer dårligst i dag",
+      "meta": "Op til tre valg hver, så andelene summer til over 100",
+      "empty": "Ingen har valgt et område endnu."
+    },
+    "text": {
+      "question": "Spørgsmål",
+      "allQuestions": "Al fritekst",
+      "search": "Søg i svarene",
+      "searchPlaceholder": "Ord eller sætning",
+      "count": "{shown} af {total} svar",
+      "empty": "Ingen svar matcher.",
+      "emptyDescription": "Prøv et andet ord, eller vælg et andet spørgsmål.",
+      "emptyAction": "Ryd søgningen",
+      "noTeam": "Intet hold",
+      "division": "Division {value}"
+    },
+    "pro": {
+      "contents": "Hvad hører hjemme i Pro",
+      "wouldPay": "Ville du betale for det Pro",
+      "exclusions": "Hvad skal holdes ude af Pro",
+      "empty": "Ingen svar endnu."
+    },
+    "segments": {
+      "pick": "Vælg en opdeling øverst for at sammenligne segmenter.",
+      "satisfaction": "Tilfredshed pr. segment",
+      "topIdeas": "Top fem idéer pr. segment",
+      "tooFew": "Færre end tre svar, så det er støj og ikke et segment.",
+      "empty": "Ingen svar i dette segment endnu."
+    },
+    "orphan": "{n} svar ligger på nøgler skemaet ikke længere har: {keys}"
+  },
   "racePoints": {
   "model": {
     "tabModel": "Model (kaskade)",

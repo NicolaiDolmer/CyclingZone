@@ -416,6 +416,7 @@ import { evaluateAuctionEntryGate, readNewAccountGateConfig } from "../lib/newAc
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
 import { buildCustomerRows, partitionSubscriptions, summarizeNps } from "../lib/growthSnapshot.js";
+import { buildSurveyResults, SEGMENT_DIMENSIONS } from "../lib/surveyResults.js";
 import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches, findConsecutiveTierBreaches } from "../lib/balanceDriftMetrics.js";
 import { isBotUserAgent } from "../lib/botDetection.js";
 import { computeVisitHash, dayString } from "../lib/visitHash.js";
@@ -9160,6 +9161,99 @@ router.get("/admin/growth/nps", requireAdmin, async (req, res) => {
   } catch (error) {
     captureException(error);
     res.status(500).json({ error: error.message || "Kunne ikke hente NPS-data" });
+  }
+});
+
+// ─── Spørgeskema-resultater (#4943) ──────────────────────────────────────────
+// GET /api/admin/surveys/:slug/results?segment=division|language|active
+//
+// Hvorfor et endpoint og ikke direkte PostgREST fra browseren: RLS lader en
+// admin læse survey_responses, men segmenteringen kræver også teams (division,
+// navn) og users (sprog, last_seen) for ANDRE brugere, og invitations-tallet
+// ligger i notifications. Det er fire krydsende læsninger der hører hjemme bag
+// requireAdmin med service_role, præcis som /admin/growth/nps ovenfor.
+//
+// Al regning ligger i backend/lib/surveyResults.js (ren funktion, unit-testet).
+// Denne route læser kun rækkerne. Datamængden er lille med vilje: 241
+// inviterede × 12 spørgsmål er øvre grænse for survey_responses.
+router.get("/admin/surveys/:slug/results", requireAdmin, async (req, res) => {
+  try {
+    const slug = String(req.params.slug || "");
+    const segment = SEGMENT_DIMENSIONS.includes(req.query.segment) ? req.query.segment : null;
+
+    // `.limit(1)` + `[0]` frem for `.maybeSingle()`: surveys.slug ER unik, men
+    // tabellen findes endnu ikke i database/schema-snapshot.json, og
+    // check-maybesingle-unique-scope.mjs fejler loudly på det (#4496) — samme
+    // begrundelse som backend/scripts/sendSurveyInvite.mjs.
+    const { data: surveyRows, error: surveyError } = await supabase
+      .from("surveys")
+      .select("id, slug, title_en, title_da, status, opens_at, closes_at")
+      .eq("slug", slug)
+      .limit(1);
+    if (surveyError) throw surveyError;
+    const survey = surveyRows?.[0];
+    if (!survey) return res.status(404).json({ error: "Survey not found" });
+
+    const [questionsRes, responsesRes, completionsRes, invitesRes] = await Promise.all([
+      supabase
+        .from("survey_questions")
+        .select("key, kind, sort_order, label_en, label_da, options, required")
+        .eq("survey_id", survey.id)
+        .order("sort_order"),
+      supabase
+        .from("survey_responses")
+        .select("user_id, team_id, question_key, value, created_at, updated_at")
+        .eq("survey_id", survey.id),
+      supabase
+        .from("survey_completions")
+        .select("user_id, completed_at, seconds_spent")
+        .eq("survey_id", survey.id),
+      // Inviterede = de admin_notice-beskeder sendSurveyInvite.mjs faktisk
+      // sendte for NETOP dette skema (metadata.surveySlug). head+count, så vi
+      // ikke trækker 241 beskeder hjem for at tælle dem.
+      supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("type", "admin_notice")
+        .eq("metadata->>surveySlug", slug),
+    ]);
+    for (const result of [questionsRes, responsesRes, completionsRes, invitesRes]) {
+      if (result.error) throw result.error;
+    }
+
+    const responses = responsesRes.data || [];
+    const teamIds = [...new Set(responses.map((r) => r.team_id).filter(Boolean))];
+    const userIds = [...new Set(responses.map((r) => r.user_id).filter(Boolean))];
+
+    // Chunket i begge opslag: 241 UUID'er ≈ 9 KB, tæt på PostgRESTs ~16 KB
+    // URL-cap allerede ved ét skema mere (#3014, samme mønster som NPS-routen).
+    const [teams, users] = await Promise.all([
+      teamIds.length
+        ? fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
+          .from("teams").select("id, name, division").in("id", chunk).order("id"))
+        : [],
+      userIds.length
+        ? fetchAllRowsChunkedIn(userIds, (chunk) => supabase
+          .from("users").select("id, language, browser_language, last_seen").in("id", chunk).order("id"))
+        : [],
+    ]);
+
+    res.json(buildSurveyResults({
+      survey,
+      questions: questionsRes.data || [],
+      responses,
+      completions: completionsRes.data || [],
+      invitedCount: invitesRes.count ?? 0,
+      teamsById: Object.fromEntries((teams || []).map((t) => [t.id, t])),
+      usersById: Object.fromEntries((users || []).map((u) => [u.id, u])),
+      segment,
+    }));
+  } catch (error) {
+    captureException(error);
+    // Engelsk fallback med vilje: baseline for danske backend-strenge er en
+    // ratchet (#1068), og fladen viser alligevel sin egen i18n-tekst frem for
+    // denne besked (kun "Admin only" læses ordret).
+    res.status(500).json({ error: error.message || "Could not load survey results" });
   }
 });
 

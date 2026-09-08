@@ -291,3 +291,87 @@ Grupperingen af de 20 idéer (`group_en`/`group_da` på hver option) er **kun
 visuel**: svarene gemmes stadig pr. option-nøgle, så §5.2 og §5.5 kører uændret.
 Skal der grupperes i analysen, joines nøglerne mod `options` med
 `jsonb_array_elements(q.options)`.
+
+## 6. Admin-resultater (#4943)
+
+Ejeren læser svarene på en side i spillet i stedet for at køre §5's SQL i
+hånden. Claude kan læse **præcis det samme tal** fra endpointet bag siden, så
+en rapport og en skærm aldrig kan vise hver sit.
+
+| Del | Hvor |
+|---|---|
+| Side `/admin/surveys/:slug` | `frontend/src/pages/AdminSurveyResultsPage.jsx` (T2, cap 1600px) |
+| Faner + diagrammer | `frontend/src/components/admin/survey/` |
+| Endpoint | `GET /api/admin/surveys/:slug/results` i `backend/routes/api.js` |
+| Aggregering (ren funktion) | `backend/lib/surveyResults.js` + `.test.js` |
+| Preview-/e2e-seed | `frontend/src/preview/surveyResultsMock.js` |
+| e2e | `frontend/tests/e2e/4943-survey-results.spec.js` |
+
+Menupunktet "Spørgeskema" peger på `ACTIVE_SURVEY_SLUG` i
+`frontend/src/lib/survey.js`; **ruten selv er generisk på slug**, så det næste
+skema læses af den samme flade uden en ny side. Skift konstanten når et nyt
+skema afløser dette.
+
+### 6.1 Adgang
+
+Dobbelt-gated med vilje. Ruten redirecter ikke-admins til dashboardet, OG
+endpointet ligger bag `requireAdmin` (403 "Admin only"). Redirecten alene er
+kosmetik: den kan omgås ved at kalde API'et direkte, og fladen viser hver
+eneste fritekst-besvarelse med holdnavn. Svarene bærer hold, division og sprog
+— aldrig email eller brugernavn, så et screenshot kan deles.
+
+Endpointet læser med service-klienten, fordi segmenteringen kræver `teams`
+(division, navn) og `users` (sprog, `last_seen`) for **andre** brugere end den
+indloggede, og invitations-tallet ligger i `notifications`. Det er fire
+krydsende læsninger som RLS ikke giver en admin i browseren.
+
+### 6.2 Sådan læser Claude de samme tal
+
+```bash
+# Ejerens session-token findes i browseren; i en agent-session er SQL'en i §5
+# den korte vej. Endpointet er sandheden fladen viser:
+curl -s -H "Authorization: Bearer <admin-jwt>" \
+  "https://<api>/api/admin/surveys/2026-09-features/results?segment=division" | jq .
+```
+
+Payloadens form (kontrakten står i `backend/lib/surveyResults.js`):
+
+- `totals` — `invited` (antal `admin_notice` med `metadata.surveySlug`),
+  `started` (DISTINCT `user_id` i `survey_responses`), `completed`
+  (`survey_completions`), `startedPct`/`completedPct` (af inviterede),
+  `finishPct` (af dem der startede) og `avgMinutes`.
+- `timeline` — én række pr. dag i **dansk lokaltid**, hullerne udfyldt. En
+  manager tælles på den dag han *begyndte*; gennemførelsen på den dag den blev
+  sendt. Afstanden mellem de to kurver er frafaldet undervejs.
+- `questions[]` — ét aggregat pr. spørgsmål i `sort_order`, formet efter `kind`
+  (skala: fordeling + gennemsnit · enkeltvalg/ja-nej: antal pr. valg ·
+  flervalg: antal pr. valg, procent af **dem der svarede** · to-akse: se 6.3 ·
+  fritekst: svarene nyeste først).
+- `segmentValues` + `bySegment` — kun når `?segment=` er sat. Segmenterne
+  tæller **brugere**, ikke svar-rækker: 12 rækker fra én manager er én
+  besvarelse i division 2, ikke tolv.
+- `orphanQuestionKeys` — svar der ligger på nøgler skemaet ikke længere har.
+  De tabes ikke tavst; fladen skriver dem ud.
+
+Join-nøglerne er §3's: division på `team_id` (svarets egen øjebliks-kopi),
+sprog og aktivitet på `user_id`. "Aktiv" er `users.last_seen` inden for 7 dage.
+
+### 6.3 Prioritetsscoren
+
+```
+prioritet = gennemsnit(idé) × gennemsnit(vigtigt)     # begge 1-5 ⇒ 0-25
+```
+
+**Produkt og ikke sum**, fordi en idé der er god men ligegyldig, og en der er
+vigtig men dårlig, begge skal falde. Summen ville lade den ene akse bære den
+anden. Kun rækker hvor **begge** akser er sat tæller med: en halv besvarelse
+ville trække de to gennemsnit skævt fra hinanden. "Ved ikke" står helt uden for
+gennemsnittet og rapporteres som `dontKnowPct`.
+
+`vetoPct` er andelen der gav 1 eller 2 på idé-aksen. Over 25 % deler idéen
+vandene, uanset hvor pænt gennemsnittet ser ud (samme grænse som §5.2).
+
+Rangen (`rank`) beregnes i backend og ikke i fladen, så to sorteringer af det
+samme tal ikke kan give to forskellige rækkefølger. Segment-opdelte idé-tal
+skjules under **3 svar** pr. option (`MIN_SEGMENT_N`): under det er det støj,
+ikke et segment.

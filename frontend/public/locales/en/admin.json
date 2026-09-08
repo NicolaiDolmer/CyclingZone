@@ -1,4 +1,128 @@
 {
+  "surveyResults": {
+    "title": "Survey results",
+    "subtitle": {
+      "open": "The survey is open. The numbers update as answers come in.",
+      "closed": "The survey is closed. These are the final numbers.",
+      "draft": "The survey is still a draft, so nobody can answer it yet."
+    },
+    "status": { "draft": "Draft", "open": "Open", "closed": "Closed" },
+    "reload": "Reload",
+    "loading": "Loading survey results",
+    "notFound": {
+      "title": "No survey with that address",
+      "description": "Check the slug in the address bar against the surveys table.",
+      "action": "Back to admin"
+    },
+    "error": {
+      "title": "Could not load the results",
+      "description": "Nothing was lost. The answers are still in the database.",
+      "forbidden": "You are not an admin.",
+      "retry": "Try again"
+    },
+    "empty": {
+      "title": "No answers yet",
+      "description": "The first answer shows up here seconds after it is saved.",
+      "action": "Reload"
+    },
+    "segment": {
+      "label": "Split by",
+      "none": "Everyone",
+      "division": "Division",
+      "language": "Language",
+      "active": "Active last 7 days",
+      "hint": "The split applies to every tab.",
+      "values": {
+        "division": "Division {value}",
+        "da": "Danish",
+        "en": "English",
+        "active": "Active",
+        "lapsed": "Lapsed",
+        "unknown": "Unknown"
+      },
+      "respondents": "{n} answered"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "ideas": "The ideas",
+      "worst": "Works worst",
+      "text": "Free text",
+      "pro": "Pro",
+      "segments": "Segments"
+    },
+    "totals": {
+      "invited": "Invited",
+      "started": "Started",
+      "completed": "Completed",
+      "avgMinutes": "Average time",
+      "minutes": "{value} min",
+      "ofInvited": "{pct} of invited",
+      "ofStarted": "{pct} of those who started"
+    },
+    "overview": {
+      "timeline": "Answers per day",
+      "timelineMeta": "Solid is completed, pale is started",
+      "timelineEmpty": "No answers yet.",
+      "satisfaction": "Satisfaction today",
+      "average": "Average {value} of 5",
+      "fog": "How much more should be hidden",
+      "scaleValue": "{value} of 5",
+      "noAnswers": "No answers yet.",
+      "answers": "{n} answers"
+    },
+    "ideas": {
+      "title": "Every idea, ranked by priority",
+      "meta": "Priority is idea times matters, both on 1 to 5",
+      "quadrant": "Idea against matters",
+      "quadrantX": "Good idea",
+      "quadrantY": "Matters to me",
+      "quadrantCorner": "Build this first",
+      "columns": {
+        "rank": "#",
+        "feature": "Idea",
+        "group": "Area",
+        "idea": "Idea",
+        "importance": "Matters",
+        "priority": "Priority",
+        "dontKnow": "Do not know",
+        "veto": "Rated 1 or 2",
+        "n": "Rated by"
+      },
+      "vetoHint": "Above 25 percent the idea splits the room, no matter how good the average looks.",
+      "empty": "Nobody has rated the ideas yet."
+    },
+    "worst": {
+      "title": "What works worst today",
+      "meta": "Up to three picks each, so the shares add up past 100",
+      "empty": "Nobody has picked an area yet."
+    },
+    "text": {
+      "question": "Question",
+      "allQuestions": "All free text",
+      "search": "Search the answers",
+      "searchPlaceholder": "Word or phrase",
+      "count": "{shown} of {total} answers",
+      "empty": "No answers match.",
+      "emptyDescription": "Try a different word, or pick another question.",
+      "emptyAction": "Clear the search",
+      "noTeam": "No team",
+      "division": "Division {value}"
+    },
+    "pro": {
+      "contents": "What belongs in Pro",
+      "wouldPay": "Would you pay for that Pro",
+      "exclusions": "What should stay out of Pro",
+      "empty": "No answers yet."
+    },
+    "segments": {
+      "pick": "Pick a split at the top to compare segments.",
+      "satisfaction": "Satisfaction per segment",
+      "topIdeas": "Top five ideas per segment",
+      "tooFew": "Fewer than three answers, so this is noise rather than a segment.",
+      "empty": "No answers in this segment yet."
+    },
+    "orphan": "{n} answers sit on keys the survey no longer has: {keys}"
+  },
   "racePoints": {
   "model": {
     "tabModel": "Model (cascade)",
