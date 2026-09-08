@@ -709,7 +709,9 @@ export default function ForumPostPage() {
                 images={replyImages}
                 onChange={setReplyImages}
                 onBusyChange={setUploadingImage}
-                disabled={replySubmitting}
+                // #4819 review: samme vagt som i compose-modalen — uden userId
+                // dropper pickeren filen tavst.
+                disabled={replySubmitting || !userId}
                 userId={userId}
                 t={t}
               />

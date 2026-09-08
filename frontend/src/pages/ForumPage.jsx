@@ -142,7 +142,12 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCatego
   }, [open, defaultCategory, choices]);
 
   function handleClose() {
-    if (submitting) return;
+    // Ogsaa `uploadingImage`: lukkede man mens et upload koerte, ryddede
+    // timeouten nedenfor `images`, hvorefter pickerens `onChange(next)` efter
+    // sit await skrev billedet TILBAGE i den stadig monterede modal — og et
+    // senere opslag fik en vedhaeftning brugeren havde fortrudt. Modal'ens
+    // onClose er den her, saa X, backdrop og Escape er daekket af samme vagt.
+    if (submitting || uploadingImage) return;
     onClose?.();
     setTimeout(() => {
       setTitle("");
@@ -255,7 +260,10 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCatego
             images={images}
             onChange={setImages}
             onBusyChange={setUploadingImage}
-            disabled={submitting}
+            // #4819 review: uden userId dropper pickeren filen tavst (den
+            // nulstiller inputtet og returnerer), saa knappen er slaaet fra
+            // indtil supabase.auth.getUser() er landet.
+            disabled={submitting || !userId}
             userId={userId}
             t={t}
           />
@@ -273,7 +281,7 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCatego
         )}
         {error && <p className="text-xs text-cz-danger">{error}</p>}
         <div className="flex items-center justify-end gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={submitting}>
+          <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={submitting || uploadingImage}>
             {t("compose.cancel")}
           </Button>
           <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting || uploadingImage}>
