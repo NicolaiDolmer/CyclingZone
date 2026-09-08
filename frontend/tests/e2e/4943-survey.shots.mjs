@@ -69,6 +69,12 @@ for (const vp of VIEWPORTS) {
     await page.waitForTimeout(250);
     await page.screenshot({ path: resolve(OUT, `4943-two-axes-${vp.name}.png`) });
 
+    // 2a. Gruppe-overskrifterne i idé-listen (v3, ejer-godkendt 8/9): 20 idéer
+    // delt i fem områder, så listen læses som fem korte spørgsmål.
+    await page.getByText("Markedet og informationen", { exact: true }).scrollIntoViewIfNeeded();
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: resolve(OUT, `4943-idea-groups-${vp.name}.png`) });
+
     // 2b. Invitér-en-ven: multi i stedet for fritekst (ejer-beslutning 8/9).
     await page.getByRole("heading", { name: "Hvad du selv ville vælge" }).scrollIntoViewIfNeeded();
     await page.waitForTimeout(200);

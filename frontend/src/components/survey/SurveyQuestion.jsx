@@ -13,7 +13,7 @@
 
 import { useTranslation } from "react-i18next";
 import { Checkbox, Radio, Textarea } from "../ui";
-import { optionLabel, questionOptions, MULTI_MAX3_LIMIT, SCALE_0_10, SCALE_1_5 } from "../../lib/survey.js";
+import { optionGroup, optionLabel, questionOptions, MULTI_MAX3_LIMIT, SCALE_0_10, SCALE_1_5 } from "../../lib/survey.js";
 
 const STEP_BASE =
   "h-9 min-w-0 flex-1 rounded-cz border font-data text-xs font-semibold tabular-nums transition-colors duration-150 disabled:opacity-50";
@@ -108,14 +108,24 @@ function IdeaImportanceQuestion({ question, value, language, onChange, disabled 
     });
   }
 
+  // Gruppe-overskrift naar options skifter omraade (feature_axes' fem
+  // grupper, #4943 v3). Options-raekkefoelgen ER grupperingen: listen sorteres
+  // aldrig om her, og et spoergsmaal uden group-felter faar ingen overskrifter.
+  const options = questionOptions(question);
+
   return (
     <ul className="flex flex-col">
-      {questionOptions(question).map((option) => {
+      {options.map((option, index) => {
         const rating = ratings[option.key] ?? {};
         const dontKnow = Boolean(rating.dont_know);
         const name = optionLabel(option, language);
+        const group = optionGroup(option, language);
+        const newGroup = group && group !== optionGroup(options[index - 1], language);
         return (
           <li key={option.key} className="border-t border-cz-border py-3.5 first:border-t-0 first:pt-0">
+            {newGroup && (
+              <p className="mb-2.5 font-data text-2xs uppercase tracking-[.08em] text-cz-3">{group}</p>
+            )}
             <p className="text-[13.5px] font-medium leading-snug text-cz-1">{name}</p>
             <div className="mt-2.5 flex flex-col gap-1.5">
               <ScaleRow

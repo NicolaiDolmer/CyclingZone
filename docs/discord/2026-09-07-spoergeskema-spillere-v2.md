@@ -3,8 +3,11 @@
 > **v3 8/9 (det der faktisk sendes):** skemaet bygges **in-app**, ikke i Google
 > Forms (ejer-beslutning 7/9), og indholdet er rettet spørgsmål for spørgsmål
 > 8/9. Sandheden er `database/2026-09-07-4943-in-app-survey.sql` +
-> `docs/SURVEY_SYSTEM.md`, ikke denne fil. Ift. listen herunder: skemaet er nu
-> **11 spørgsmål**, ikke 24/18. Q1-Q6 (segmentering) er droppet, vi kender dem
+> `database/2026-09-08-4943-survey-v3-content.sql` + `docs/SURVEY_SYSTEM.md`,
+> ikke denne fil. Ift. listen herunder: skemaet er nu **12 spørgsmål og 20
+> idéer**, ikke 24/18. De 20 idéer står i fem områder (Løbene, Træning og
+> udvikling, Ungdom, Markedet og informationen, Klubben), og der er kommet et
+> nyt spørgsmål om fog of war (`fog_more`) lige efter dem. Q1-Q6 (segmentering) er droppet, vi kender dem
 > fra databasen. `nps` (Q7) er droppet, dashboard-NPS (#4997) dækker. `rider
 > effort` (funktion 2) er erstattet af "races train you". `invite a friend`
 > (Q13) er en afkrydsning med 7 valg, ikke fritekst. `pro_contents` (Q14) har

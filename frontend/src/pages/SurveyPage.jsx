@@ -447,8 +447,11 @@ export default function SurveyPage() {
         </div>
       )}
 
-      <p className="mb-1 text-sm leading-relaxed text-cz-2">{t("page.introLead")}</p>
-      <p className="mb-4 text-sm leading-relaxed text-cz-2">{t("page.introAccount")}</p>
+      {/* introAccount ("dine svar gemmes på din konto") skjules i preview:
+          kladde-bjælken lige ovenfor siger det modsatte, og to linjer der
+          modsiger hinanden er værre end én linje mindre. */}
+      <p className={`text-sm leading-relaxed text-cz-2 ${isPreview ? "mb-4" : "mb-1"}`}>{t("page.introLead")}</p>
+      {!isPreview && <p className="mb-4 text-sm leading-relaxed text-cz-2">{t("page.introAccount")}</p>}
 
       <div className="sticky top-0 z-sticky -mx-4 mb-4 bg-cz-bg px-4 py-2 sm:-mx-8 sm:px-8">
         <ProgressMeter

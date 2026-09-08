@@ -11,12 +11,30 @@
 > `rider_effort`, `invite_friend` blev en afkrydsning med flere valg,
 > `pro_contents` mistede `scouting` og fik `early_access`, og `pro_would_pay`
 > fik ny ordlyd.
+>
+> **v3 8/9 (ejer-godkendt kl. 13:30, migration `database/2026-09-08-4943-survey-v3-content.sql`):**
+> skemaet er nu **12 spørgsmål og 20 idéer**.
+> * `works_worst` fik `mobile` og `learning` (12 valg, loftet på tre er uændret).
+> * `feature_axes` gik fra 12 til 20 idéer, delt i fem områder via nye
+>   `group_en`/`group_da`-felter på hver option. Nye: `race_orders`,
+>   `more_races_lower`, `coach_feedback`, `one_big_squad`, `ai_offers`,
+>   `value_no_leak`, `fuzzy_rivals`, `side_sponsors`, `rider_staff_portraits`.
+>   `manager_messages` er ude (shippet i #3200), `custom_front_page` er omdøbt
+>   til `custom_dashboard`, og `team_looks` har mistet rytterportrætterne til
+>   `rider_staff_portraits`. `scout_reports` og `league_buyout` blev vurderet og
+>   **ikke** tilføjet; `more_races_lower` blev beholdt.
+> * Ny nøgle `fog_more` (`single`, påkrævet): hvor meget mere der skal skjules.
+> * Flowet: i dag → hvad fungerer dårligst → idéerne → hvad du kan se → hvad du
+>   selv ville vælge → Pro → før du sender. `sort_order` følger flowet
+>   (10 til 120), og `SECTION_ORDER` i `frontend/src/lib/survey.js` er sandheden
+>   for sidens rækkefølge. Undertitlen er "Cirka 5 minutter".
 
 ## 1. Delene
 
 | Del | Hvor |
 |---|---|
 | Tabeller + seed | `database/2026-09-07-4943-in-app-survey.sql` |
+| v3-indhold (12 spørgsmål, 20 idéer) | `database/2026-09-08-4943-survey-v3-content.sql` |
 | Side `/survey/:slug` | `frontend/src/pages/SurveyPage.jsx` (T1, max-w-4xl) |
 | Kontrollerne | `frontend/src/components/survey/SurveyQuestion.jsx` |
 | Ren logik + tests | `frontend/src/lib/survey.js` + `survey.test.js` |
@@ -154,7 +172,7 @@ SELECT feature,
 ### 5.3 NPS måles ikke længere her
 
 `nps` blev droppet fra skemaet ved ejer-beslutninger 8/9: dashboard-NPS (#4997)
-måler det samme, løbende og uden at bruge et af skemaets 11 spørgsmål på det.
+måler det samme, løbende og uden at bruge et af skemaets 12 spørgsmål på det.
 Skal en promoter/kritiker-/ambassadørsegmentering krydses mod skemaets egne
 svar (fx feature_axes eller works_worst), joines `nps_responses` på `user_id`,
 fordi den tabel hænger på kontoen, ikke på et hold:
@@ -250,3 +268,26 @@ SELECT reason, count(*) AS picks,
  GROUP BY reason
  ORDER BY picks DESC;
 ```
+
+### 5.7 Fog of war
+
+`fog_more` er et `single`-spørgsmål (v3 8/9), så svaret ligger i `value->>'choice'`
+med nøglerne `nothing`, `a_bit`, `a_lot`, `no_opinion`. Krydses det mod
+`feature_axes`' `value_no_leak` og `fuzzy_rivals`, kan man se om de der siger
+"meget mere" også giver de to idéer høje karakterer.
+
+```sql
+WITH s AS (SELECT id FROM public.surveys WHERE slug = '2026-09-features')
+SELECT r.value->>'choice' AS answer, count(*) AS answers,
+       round(100.0 * count(*) / NULLIF(sum(count(*)) OVER (), 0), 1) AS pct
+  FROM public.survey_responses r
+  JOIN s ON s.id = r.survey_id
+ WHERE r.question_key = 'fog_more'
+ GROUP BY 1
+ ORDER BY answers DESC;
+```
+
+Grupperingen af de 20 idéer (`group_en`/`group_da` på hver option) er **kun
+visuel**: svarene gemmes stadig pr. option-nøgle, så §5.2 og §5.5 kører uændret.
+Skal der grupperes i analysen, joines nøglerne mod `options` med
+`jsonb_array_elements(q.options)`.

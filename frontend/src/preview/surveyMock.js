@@ -7,9 +7,10 @@
 // grund som SEED_OPS_NOTICES). Specs og shots-scripts overlejrer selv rækkerne
 // med installSurveyRoutes() nedenfor.
 //
-// Spørgsmålene er de samme 11 som seedes af
-// database/2026-09-07-4943-in-app-survey.sql (ejer-beslutninger 8/9, #4943),
-// så preview viser den rigtige side.
+// Spørgsmålene er de samme 12 som seedes af
+// database/2026-09-07-4943-in-app-survey.sql + v3-indholdet i
+// database/2026-09-08-4943-survey-v3-content.sql (ejer-godkendt 8/9, #4943),
+// så preview viser den rigtige side: 12 spørgsmål, 20 idéer i fem grupper.
 
 export const SEED_SURVEY = {
   id: "survey-e2e",
@@ -21,19 +22,42 @@ export const SEED_SURVEY = {
   closes_at: null,
 };
 
+// group_en/group_da spejler v3-migrationen: rækkefølgen ER grupperingen, og
+// SurveyQuestion tegner en overskrift hver gang gruppen skifter.
+const RACING = { group_en: "Racing", group_da: "Løbene" };
+const TRAINING = { group_en: "Training and development", group_da: "Træning og udvikling" };
+const YOUTH = { group_en: "Youth", group_da: "Ungdom" };
+const MARKET = { group_en: "The market and what you can see", group_da: "Markedet og informationen" };
+const CLUB = { group_en: "The club", group_da: "Klubben" };
+
 const FEATURES = [
-  { key: "live_race", label_en: "Follow a race live while it happens, stage by stage", label_da: "Følg et løb live mens det kører, etape for etape" },
-  { key: "races_train_you", label_en: "Races train you: riding cobbled races makes you better on cobbles", label_da: "Løbene træner dig: kører du brostensløb, bliver du bedre til brosten" },
-  { key: "jersey_targets", label_en: "Target the mountains or points jersey from the start", label_da: "Gå efter bjerg- eller pointtrøjen fra løbets start" },
-  { key: "training_programs", label_en: "Build a training week once as a reusable program", label_da: "Byg en træningsuge én gang som et genbrugeligt program" },
-  { key: "shared_programs", label_en: "Share training programs and use other managers programs", label_da: "Del træningsprogrammer og brug andre manageres programmer" },
-  { key: "form_training", label_en: "Form training for riders who no longer gain skills", label_da: "Formtræning til ryttere der ikke længere kan lære mere" },
-  { key: "youth_teams", label_en: "U23 and junior teams with their own races", label_da: "U23- og juniorhold med deres egne løb" },
-  { key: "team_looks", label_en: "Team looks: kit colours, logo and rider portraits", label_da: "Holdets udseende: trøjefarver, logo og rytterportrætter" },
-  { key: "deeper_staff", label_en: "Deeper staff: more roles, real strengths and weaknesses", label_da: "Dybere personale: flere roller, rigtige styrker og svagheder" },
-  { key: "inbox_transfers", label_en: "Handle transfer offers straight from your inbox", label_da: "Håndtér transfertilbud direkte fra din indbakke" },
-  { key: "manager_messages", label_en: "Send messages to other managers inside the game", label_da: "Send beskeder til andre managere inde i spillet" },
-  { key: "custom_front_page", label_en: "A front page you set up yourself, showing what needs action", label_da: "En forside du selv sætter op, med det der kræver handling" },
+  { key: "live_race", ...RACING, label_en: "Follow a race live while it happens, stage by stage", label_da: "Følg et løb live mens det kører, etape for etape" },
+  { key: "races_train_you", ...RACING, label_en: "Races train you: riding cobbled races makes you better on cobbles", label_da: "Løbene træner dig: kører du brostensløb, bliver du bedre til brosten" },
+  { key: "jersey_targets", ...RACING, label_en: "Target the mountains or points jersey from the start", label_da: "Gå efter bjerg- eller pointtrøjen fra løbets start" },
+  { key: "race_orders", ...RACING, label_en: "Race orders with conditions: chase the break only if other teams help, and pick where on the stage you attack", label_da: "Løbsordrer med betingelser: jag udbruddet kun hvis andre hold hjælper, og vælg selv hvor på etapen du angriber" },
+  { key: "more_races_lower", ...RACING, label_en: "More races per day in the lower divisions, so squad size becomes a real choice", label_da: "Flere løb pr. dag i de lave divisioner, så trupstørrelsen bliver et reelt valg" },
+  { key: "training_programs", ...TRAINING, label_en: "Build a training week once as a reusable program", label_da: "Byg en træningsuge én gang som et genbrugeligt program" },
+  { key: "shared_programs", ...TRAINING, label_en: "Share training programs and use other managers programs", label_da: "Del træningsprogrammer og brug andre manageres programmer" },
+  { key: "form_training", ...TRAINING, label_en: "Form training for riders who no longer gain skills", label_da: "Formtræning til ryttere der ikke længere kan lære mere" },
+  { key: "coach_feedback", ...TRAINING, label_en: "Feedback from your coach in words instead of a number score", label_da: "Feedback fra din træner i ord i stedet for en talscore" },
+  { key: "youth_teams", ...YOUTH, label_en: "U23 and junior teams with their own races", label_da: "U23- og juniorhold med deres egne løb" },
+  { key: "one_big_squad", ...YOUTH, label_en: "One big squad where you decide who only trains in the academy, who races U23 and who races senior", label_da: "Én stor trup hvor du selv bestemmer hvem der kun træner i akademiet, kører U23 og kører senior" },
+  { key: "inbox_transfers", ...MARKET, label_en: "Handle transfer offers straight from your inbox", label_da: "Håndtér transfertilbud direkte fra din indbakke" },
+  { key: "ai_offers", ...MARKET, label_en: "AI teams that bid on your riders and send you offers", label_da: "AI-hold der byder på dine ryttere og sender dig tilbud" },
+  { key: "value_no_leak", ...MARKET, label_en: "A market value that no longer gives away a young rider's hidden potential", label_da: "En markedsværdi der ikke længere afslører en ung rytters skjulte potentiale" },
+  { key: "fuzzy_rivals", ...MARKET, label_en: "Other teams' rider abilities shown as ranges, revealed through scouting", label_da: "Andre holds rytter-evner vist som intervaller, afsløret gennem scouting" },
+  { key: "side_sponsors", ...CLUB, label_en: "Smaller side sponsors with their own goals: a nationality in the top 10, a race type, one specific race", label_da: "Mindre side-sponsorer med egne mål: en nationalitet i top 10, en løbstype, ét bestemt løb" },
+  { key: "deeper_staff", ...CLUB, label_en: "Deeper staff: more roles, real strengths and weaknesses", label_da: "Dybere personale: flere roller, rigtige styrker og svagheder" },
+  { key: "team_looks", ...CLUB, label_en: "Team looks: kit colours and logo", label_da: "Holdets udseende: trøjefarver og logo" },
+  { key: "rider_staff_portraits", ...CLUB, label_en: "Pictures of your riders and staff", label_da: "Billeder af dine ryttere og dit personale" },
+  { key: "custom_dashboard", ...CLUB, label_en: "A dashboard you can set up yourself, showing what needs your action", label_da: "Et dashboard du selv kan tilpasse, med det der kræver din handling" },
+];
+
+const FOG = [
+  { key: "nothing", label_en: "Nothing more. I want to see other teams' stats clearly, that is part of the fun", label_da: "Ikke mere. Jeg vil se andre holds stats klart, det er en del af sjovet" },
+  { key: "a_bit", label_en: "A bit more. Keep stats visible, but stop the market value from giving away hidden potential", label_da: "Lidt mere. Behold synlige stats, men stop markedsværdien i at afsløre skjult potentiale" },
+  { key: "a_lot", label_en: "A lot more. Show other teams' abilities as ranges too, revealed through scouting", label_da: "Meget mere. Vis også andre holds evner som intervaller, afsløret gennem scouting" },
+  { key: "no_opinion", label_en: "No strong opinion", label_da: "Ingen stærk holdning" },
 ];
 
 const WORST = [
@@ -47,6 +71,8 @@ const WORST = [
   { key: "inbox", label_en: "The inbox and notifications", label_da: "Indbakken og notifikationerne" },
   { key: "forum", label_en: "The forum and the community", label_da: "Forummet og fællesskabet" },
   { key: "stability", label_en: "Speed, bugs and things that break", label_da: "Hastighed, fejl og ting der går i stykker" },
+  { key: "mobile", label_en: "Playing on the phone", label_da: "At spille på telefonen" },
+  { key: "learning", label_en: "Learning the game: help, explanations, getting started", label_da: "At lære spillet: hjælp, forklaringer, at komme i gang" },
 ];
 
 const PRO = [
@@ -104,36 +130,47 @@ export const SEED_SURVEY_QUESTIONS = [
     "All in all, how satisfied are you with Cycling Zone right now?",
     "Alt i alt, hvor tilfreds er du med Cycling Zone lige nu?",
     { required: true }),
-  q(20, "feature_axes", "idea_importance",
-    "Rate each idea twice.",
-    "Giv hver idé to karakterer.",
-    { help_en: DONT_KNOW_HELP_EN, help_da: DONT_KNOW_HELP_DA, options: FEATURES }),
-  q(30, "works_worst", "multi_max3",
+  q(20, "works_worst", "multi_max3",
     "Which parts of the game work worst today? Pick up to three.",
     "Hvilke dele af spillet fungerer dårligst i dag? Vælg op til tre.",
     { options: WORST, required: true }),
-  q(40, "works_worst_detail", "text",
+  q(30, "works_worst_detail", "text",
     "What exactly goes wrong there? The more concrete, the better.",
     "Hvad går præcist galt der? Jo mere konkret, jo bedre."),
-  q(50, "one_thing", "text",
+  q(40, "feature_axes", "idea_importance",
+    "Rate each idea twice.",
+    "Giv hver idé to karakterer.",
+    { help_en: DONT_KNOW_HELP_EN, help_da: DONT_KNOW_HELP_DA, options: FEATURES }),
+  q(50, "fog_more", "single",
+    "How much more should be hidden?",
+    "Hvor meget mere skal skjules?",
+    {
+      help_en:
+        "Right now you can see other teams' full rider stats, and a rider's true potential is always hidden behind a scouted range.",
+      help_da:
+        "Lige nu kan du se andre holds fulde rytter-stats, og en rytters sande potentiale er altid skjult bag et scoutet interval.",
+      options: FOG,
+      required: true,
+    }),
+  q(60, "one_thing", "text",
     "If I could only build one thing in the next month, what should it be?",
     "Hvis jeg kun kunne bygge én ting den næste måned, hvad skulle det så være?",
     { required: true }),
-  q(60, "play_more", "text",
+  q(70, "play_more", "text",
     "What would make you play more than you do now?",
     "Hvad ville få dig til at spille mere end du gør nu?"),
-  q(70, "invite_friend", "multi",
+  q(80, "invite_friend", "multi",
     "What would make you invite a friend to join? Pick as many as you like.",
     "Hvad ville få dig til at invitere en ven med? Vælg lige så mange du vil.",
     { options: INVITE_FRIEND }),
-  q(80, "pro_contents", "multi",
+  q(90, "pro_contents", "multi",
     "What would belong in Pro, if you got to decide? Pick as many as you like.",
     "Hvad hører hjemme i Pro, hvis du bestemte? Vælg lige så mange du vil.",
     { help_en: PRO_HELP_EN, help_da: PRO_HELP_DA, options: PRO }),
-  q(90, "pro_exclusions", "text",
+  q(100, "pro_exclusions", "text",
     "Is there anything that should stay out of Pro? Tell me what, and why.",
     "Er der noget der ikke skal ind i Pro? Skriv hvad, og hvorfor."),
-  q(100, "pro_would_pay", "single",
+  q(110, "pro_would_pay", "single",
     "Would you pay for Pro with the things you picked above?",
     "Ville du betale for Pro med det du valgte ovenfor?",
     {
@@ -145,7 +182,7 @@ export const SEED_SURVEY_QUESTIONS = [
         { key: "already", label_en: "I already do", label_da: "Det gør jeg allerede" },
       ],
     }),
-  q(110, "follow_up", "yes_no",
+  q(120, "follow_up", "yes_no",
     "May I come back to you about your answers?",
     "Må jeg vende tilbage til dig om dine svar?"),
 ];

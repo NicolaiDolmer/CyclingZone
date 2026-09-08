@@ -3,8 +3,11 @@
 // Ejer-beslutning 7/9: skemaet bygges i spillet i stedet for Google Forms.
 // Skemaet gik fra 12 til 11 spørgsmål ved ejer-beslutninger 8/9 (#4943): nps
 // droppet (dashboard-NPS #4997 dækker), invite_friend blev en afkrydsning.
+// v3 samme dag: 12 spørgsmål og 20 idéer, "hvad fungerer dårligst" flyttet FØR
+// idéerne, ny fog_more-sektion efter dem, og idéerne delt i fem grupper.
 // Smoke-guarden holder på det der gør siden brugbar frem for et Forms-link:
-//   1) Siden loader med intro, progress-linje og de 11 spørgsmål i sektioner.
+//   1) Siden loader med intro, progress-linje og de 12 spørgsmål i sektioner,
+//      i den ejer-godkendte rækkefølge, og idéerne står under gruppe-overskrifter.
 //   2) To-akse-rækken har BEGGE skalaer pr. funktion plus en "ved ikke"-udvej,
 //      og den overlever 375 px uden at tabe den anden akse (P10).
 //   3) Send er låst indtil alle påkrævede spørgsmål er besvaret, og teksten
@@ -31,21 +34,59 @@ async function openSurvey(page, options) {
   await page.goto(`/survey/${SLUG}`);
 }
 
-test("skemaet loader med intro, progress og de 11 spørgsmål i sektioner", async ({ page }) => {
+// Rækkefølgen er ejer-godkendt 8/9 og er selve pointen med v3: man svarer på
+// det man lige har oplevet, FØR man giver karakterer til 20 idéer.
+const SECTIONS_IN_ORDER = [
+  "Sådan er det i dag",
+  "Hvad fungerer dårligst",
+  "Idéerne",
+  "Hvad du kan se",
+  "Hvad du selv ville vælge",
+  "Pro",
+  "Før du sender",
+];
+
+test("skemaet loader med intro, progress og de 12 spørgsmål i sektioner", async ({ page }) => {
   await openSurvey(page);
 
   await expect(page.getByRole("heading", { name: "Hvad skal jeg bygge næste gang?" })).toBeVisible();
   await expect(page.getByText("Jeg spørger hellere dig end gætter", { exact: false })).toBeVisible();
   await expect(page.getByText("Dine svar gemmes på din konto", { exact: false })).toBeVisible();
+  await expect(page.getByText("Cirka 5 minutter")).toBeVisible();
 
   const progress = page.getByRole("progressbar");
   await expect(progress).toBeVisible();
   await expect(progress).toHaveAttribute("aria-valuenow", "0");
 
-  // Sektionerne, i rækkefølge. Ingen løs stak af 11 kort.
-  for (const heading of ["Sådan er det i dag", "Idéerne", "Hvad fungerer dårligst", "Hvad du selv ville vælge", "Pro", "Før du sender"]) {
-    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+  // Sektionerne i DOM-rækkefølge. Ingen løs stak af 12 kort, og rækkefølgen
+  // aflæses som den står på siden, ikke bare "findes de".
+  const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
+  expect(headings.map((text) => text.trim())).toEqual(SECTIONS_IN_ORDER);
+});
+
+test("idéerne står i fem grupper, hver overskrift præcis én gang", async ({ page }) => {
+  await openSurvey(page);
+
+  // Gruppe-overskrifterne er hverken knapper eller overskrifter i a11y-træet:
+  // de er en meta-linje i listen, så de tælles som tekst.
+  for (const group of ["Løbene", "Træning og udvikling", "Ungdom", "Markedet og informationen", "Klubben"]) {
+    await expect(page.getByText(group, { exact: true })).toHaveCount(1);
   }
+
+  // Den første idé i en gruppe står under sin egen overskrift, og de 20 idéer
+  // er stadig 20 rækker med to akser.
+  await expect(page.getByRole("radiogroup", { name: /^Idé: / })).toHaveCount(20);
+  await expect(
+    page.getByRole("radiogroup", { name: "Idé: AI-hold der byder på dine ryttere og sender dig tilbud" })
+  ).toBeVisible();
+});
+
+test("fog of war-spørgsmålet ligger i sin egen sektion lige efter idéerne", async ({ page }) => {
+  await openSurvey(page);
+
+  await expect(page.getByRole("heading", { name: "Hvad du kan se" })).toBeVisible();
+  await expect(page.getByText("Hvor meget mere skal skjules?")).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Ingen stærk holdning" })).toBeVisible();
 });
 
 test("to-akse-rækken har begge akser og en ved ikke-udvej pr. funktion", async ({ page }) => {
@@ -79,10 +120,11 @@ test("Send er låst indtil de påkrævede spørgsmål er besvaret", async ({ pag
   await expect(send).toBeDisabled();
   await expect(page.getByText("mangler stadig et svar", { exact: false })).toBeVisible();
 
-  // satisfaction er det første påkrævede spørgsmål (nps droppet 8/9): tælleren
-  // skal falde fra 4 til 3 når det besvares.
+  // satisfaction er det første påkrævede spørgsmål: tælleren skal falde fra 5
+  // til 4 når det besvares (v3 har fem påkrævede: satisfaction, works_worst,
+  // fog_more, one_thing, pro_would_pay).
   await page.getByRole("radiogroup").first().getByRole("radio").nth(4).click();
-  await expect(page.getByText("3 spørgsmål mangler stadig et svar.")).toBeVisible();
+  await expect(page.getByText("4 spørgsmål mangler stadig et svar.")).toBeVisible();
   await expect(send).toBeDisabled();
 });
 
@@ -184,6 +226,11 @@ test("en admin ser kladden som spillerne vil se den, men kan ikke sende", async 
   await page.goto(`/survey/${SLUG}`);
 
   await expect(page.getByText("Kladde. Kun admins kan se denne side. Svar gemmes ikke.")).toBeVisible();
+  // Intro-linjen om at svar gemmes på kontoen er skjult i preview: bjælken lige
+  // ovenfor siger det modsatte, og to linjer der modsiger hinanden er værre end
+  // én linje mindre.
+  await expect(page.getByText("Jeg spørger hellere dig end gætter", { exact: false })).toBeVisible();
+  await expect(page.getByText("Dine svar gemmes på din konto", { exact: false })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Idéerne" })).toBeVisible();
   await expect(page.getByRole("radiogroup", { name: `Idé: ${FIRST_FEATURE}` })).toBeVisible();
 

@@ -48,6 +48,17 @@ export function optionLabel(option, language) {
   return DA(language) ? option.label_da : option.label_en;
 }
 
+/**
+ * Gruppe-overskriften på en option, eller null hvis den ikke har en.
+ * feature_axes' 20 idéer er delt i fem områder (group_en/group_da i options),
+ * fordi 20 punkter i én lang liste føles uendelig, mens fem grupper på 3-5
+ * føles som fem korte spørgsmål (ejer-godkendt flow 8/9). Felterne er
+ * VALGFRIE: et spørgsmål uden dem rendres præcis som før.
+ */
+export function optionGroup(option, language) {
+  return (DA(language) ? option?.group_da : option?.group_en) || null;
+}
+
 export function questionOptions(question) {
   return Array.isArray(question?.options) ? question.options : [];
 }
@@ -138,7 +149,7 @@ export function normalizeAnswer(question, raw) {
 
 /**
  * Hvor mange "trin" spørgsmålet tæller i progress-linjen. To-akse-gitteret
- * tæller én pr. funktion: 12 funktioner må ikke være 1/12 af skemaet på
+ * tæller én pr. funktion: 20 funktioner må ikke være 1/20 af skemaet på
  * progress-linjen når de er over halvdelen af arbejdet.
  */
 export function progressUnits(question) {
@@ -224,13 +235,21 @@ export function buildResponsePayload({ surveyId, userId, teamId = null, question
 // Sektionen er en EGENSKAB VED NØGLEN og ikke en kolonne i databasen: et
 // spørgsmål kan flyttes mellem sektioner uden en migration, og et skema med
 // ukendte nøgler falder i "other" i stedet for at forsvinde fra siden.
-export const SECTION_ORDER = ["today", "ideas", "problems", "choices", "pro", "closing", "other"];
+//
+// Rækkefølgen er ejer-godkendt 8/9 (v3): "hvad fungerer dårligst" ligger FØR
+// idéerne, fordi folk svarer bedst på det de lige har oplevet, og de tunge 20
+// idéer skal komme mens de stadig er friske. "fog" (hvad du kan se) ligger lige
+// efter idéerne, fordi spørgsmålet bygger videre på to af dem (markedsværdi og
+// intervaller). Pro til sidst før samtykket: kommercielle spørgsmål efter man
+// har givet sin mening om spillet, aldrig før.
+export const SECTION_ORDER = ["today", "problems", "ideas", "fog", "choices", "pro", "closing", "other"];
 
 const SECTION_BY_KEY = {
   satisfaction: "today",
   feature_axes: "ideas",
   works_worst: "problems",
   works_worst_detail: "problems",
+  fog_more: "fog",
   one_thing: "choices",
   play_more: "choices",
   invite_friend: "choices",
