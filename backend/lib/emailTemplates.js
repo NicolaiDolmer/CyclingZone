@@ -275,7 +275,7 @@ function welcomeStepsHtml(steps) {
       <tr>
         <td width="36" valign="top" style="padding:0 12px 16px 0;">
           <table role="presentation" class="cz-step-num" bgcolor="${NAVY}" cellpadding="0" cellspacing="0" width="28" style="background:${NAVY};background-color:${NAVY};border-radius:50%;">
-            <tr><td class="cz-step-num" bgcolor="${NAVY}" align="center" style="background:${NAVY};background-color:${NAVY};width:28px;height:28px;font-size:13px;font-weight:700;"><span class="cz-step-num-text" style="color:${CARD_BG};">${index + 1}</span></td></tr>
+            <tr><td align="center" style="width:28px;height:28px;font-size:13px;font-weight:700;"><span class="cz-step-num-text" style="color:${CARD_BG};">${index + 1}</span></td></tr>
           </table>
         </td>
         <td valign="top" style="padding:0 0 16px;">
