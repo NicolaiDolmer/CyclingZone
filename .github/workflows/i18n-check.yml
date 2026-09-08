@@ -29,6 +29,11 @@ on:
       - 'scripts/i18n-check-error-codes.test.mjs'
       - 'scripts/tone-check-em-dash.mjs'
       - 'scripts/tone-check-em-dash.test.mjs'
+      - 'scripts/tone-check-terms.mjs'
+      - 'scripts/tone-check-terms.test.mjs'
+      - 'marketing/locales/**'
+      - 'docs/TONE_OF_VOICE.md'
+      - 'docs/COMMS_PLAYBOOK.md'
       - 'frontend/index.html'
   workflow_dispatch:
 
@@ -263,3 +268,27 @@ jobs:
 
       - name: Run tone em-dash guard
         run: node scripts/tone-check-em-dash.mjs
+
+  tone-terms:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Refs #5048 - tone-guard: doede produkttermer i spillervendt copy.
+    # Ejer-beslutning 8/9 2026: der findes eet betalt produkt, CZ Pro, plus
+    # statussen Founder. Premium (som tier-navn), Pro Analyst og Patron er
+    # doede, og "Founder Supporter" + "free forever" var forbudt i forvejen.
+    # Reglen har bidt: "Founder Supporter" laa live i spillervendt copy i fire
+    # dage (.claude/learnings/2026-09-07-founder-supporter-forbudt-term-live-i-4-dage.md).
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Test tone terms guard
+        run: node --test scripts/tone-check-terms.test.mjs
+
+      - name: Run tone terms guard
+        run: node scripts/tone-check-terms.mjs

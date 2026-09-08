@@ -94,19 +94,28 @@ This is the load-bearing sentence in everything we write about premium. Repeat i
 
 ### Tilladte termer (begge sprog)
 
+> **Ejer 8/9 2026: ét tier, CZ Pro.** De tre tier-navne fra 19/5 udgår. Kun `CZ Pro` og `Founder` er
+> tilladte produkttermer. Beslutningen ligger i
+> [`docs/audits/business-layer-ssot-research-2026-09-08.md`](audits/business-layer-ssot-research-2026-09-08.md) §4.3.
+> Forward-guard: `node scripts/tone-check-terms.mjs`.
+
 | EN | DA | Note |
 |---|---|---|
-| premium | premium | OK på begge sprog. Don't avoid it. |
+| CZ Pro | CZ Pro | Det eneste betalte produkt. Priser i [`BILLING_STACK.md`](BILLING_STACK.md) §2. |
+| premium | premium | Som alment ord om et betalt lag: OK på begge sprog. Don't avoid it. Ikke som produktnavn. |
 | open beta | open beta | We're in open beta. Use it. |
 | tester / open beta tester | tester / open beta tester | Naming-framing for nuværende fase |
 | founder | founder | Early-adopter-status for de første waitlist-signups, ikke separat betalt tier. |
-| Premium | premium | 49 DKK-tier, player-facing tier-navn låst i Session B. |
-| Pro Analyst | Pro Analyst | 89 DKK-tier for analyser og dashboards, låst i Session B. |
-| Patron | Patron | 149 DKK-tier for high-trust community og identitet, låst i Session B. |
 
 ### Forbudte termer (begge sprog)
 
 Per `feedback_player_facing_copy_rules.md` regel 2 + dagens session-tillæg:
+
+<!-- tone-check-terms:disable (listen NÆVNER de forbudte termer for at forbyde dem) -->
+
+**Døde produktnavne (ejer 8/9 2026):**
+- ❌ `Premium` som tier-navn, `Pro Analyst`, `Patron`, `Free Manager`
+  → Der er ét betalt produkt: **CZ Pro**. Se "Produktnavne" nedenfor.
 
 **Intern jargon:**
 - "sprint", "validation", "validation sprint", "monetization sprint"
@@ -123,6 +132,8 @@ Per `feedback_player_facing_copy_rules.md` regel 2 + dagens session-tillæg:
 - ❌ "Founder Supporter" som kombineret tier-navn ("lyder åndsvagt" per founder)
   → Brug enten "Founder" alene eller "Supporter" alene, ikke begge sammen.
 
+<!-- tone-check-terms:enable -->
+
 **Founders person:**
 - ❌ "fuldtid" / "full-time" om Nicolai før indtægt dækker leveomkostninger
   → Per 2026-05-18 gør det det ikke. Don't claim it.
@@ -132,16 +143,24 @@ Per `feedback_player_facing_copy_rules.md` regel 2 + dagens session-tillæg:
   → **Undtagelse:** et enkeltstående `—` brugt som tom-værdi-glyf i tabeller/dropdowns (en celle uden værdi, "ingen data") er ikke prosa og er tilladt. Det er en typografisk placeholder, ikke en sætnings-separator. Locale-nøgler som `rankNone`, `salaryNone`, `dash`, `noBuyOption` falder under denne undtagelse (#671).
   → **Forward-guard:** `scripts/tone-check-em-dash.mjs` (kører i CI via `i18n-check.yml`) blokerer nye em-dashes i locales + PatchNotes + privacy-prosa; undtagelsen ovenfor er kodet ind (#1172).
 
-### Session B naming-beslutning
+### Produktnavne (ejer 8/9 2026, afløser Session B)
 
-Tier-navne er låst per `docs/decisions/session-b-naming-fair-premium-copy.md`:
-- `Free Manager` = gratis competitive core.
-- `Premium` = 49 DKK-tier.
-- `Pro Analyst` = 89 DKK-tier.
-- `Patron` = 149 DKK-tier.
-- `Founder` = tidlig waitlist-status for de første 100, ikke separat betalt tier.
+<!-- tone-check-terms:disable (afsnittet NÆVNER de døde navne for at aflive dem) -->
 
-Brug ikke `Founder Supporter` som samlet navn. Hvis et teknisk felt eller en eksisterende enum stadig hedder `supporter`, må værdien beholdes internt, men player-facing labels skal følge listen ovenfor.
+**Der findes ét betalt produkt.**
+
+- `CZ Pro` = det betalte abonnement. 49 kr./md eller 265 kr./6 md (EUR 6,49 / 34,99), se `BILLING_STACK.md` §2.
+- `Founder` = tidlig status, ikke en betalt tier. Brug ordet alene.
+
+**Døde navne (må ikke bruges player-facing):** `Premium` som tier-navn, `Pro Analyst`, `Patron`,
+`Free Manager`. De blev låst i Session B 19/5
+(`docs/decisions/session-b-naming-fair-premium-copy.md`, nu historisk) på en fire-tier-model der aldrig
+blev bygget. Produktet er ét tier, og de tre navne er aflivet af ejeren 8/9 2026.
+
+Brug heller ikke `Founder Supporter` som samlet navn. Hvis et teknisk felt eller en eksisterende enum
+stadig hedder `supporter`, må værdien beholdes internt, men player-facing labels skal følge listen ovenfor.
+
+<!-- tone-check-terms:enable -->
 
 ## Eksempel · Discord launch-post (EN draft)
 
@@ -265,10 +284,15 @@ Hvis en tekst krydser grænsen til player-eyes og du er usikker på om tonen pas
 
 - Ingen **em-dash (: )** nogensteds i prosa. Brug komma, punktum, kolon eller parentes. (CI-guard: `scripts/tone-check-em-dash.mjs`.)
 - Ingen **intern jargon**: "sprint", "validation", "Go/No-Go", "freemium", "30 weeks runway", sprint-timeline-referencer.
-- Ingen **"støt"/"support"** som verb om premium. Brug "back the project", "join premium", "go premium".
+<!-- tone-check-terms:disable (DON'T-listen NÆVNER de forbudte termer for at forbyde dem) -->
+
+- Ingen **"støt"/"support"** som verb om premium. Brug "back the project", "join premium", "go Pro".
 - Aldrig **"Founder Supporter"** som samlet navn. Brug "Founder" eller "Supporter" alene.
+- Aldrig **"Premium"** som tier-navn, **"Pro Analyst"** eller **"Patron"**. Ét produkt: CZ Pro (ejer 8/9 2026).
 - Aldrig **"fuldtid"/"full-time"** om Nicolai før indtægt dækker leveomkostninger.
-- Aldrig **"free forever"** som markedsførings-frase (jf. `feedback_anti_ai_slop_design_taste`). Spillet er gratis og forbliver gratis, men formuleringen "free forever" bruges ikke.
+- Aldrig **"free forever"** som markedsførings-frase (jf. `feedback_anti_ai_slop_design_taste`). Spillet er gratis og forbliver gratis, men formuleringen bruges ikke.
+
+<!-- tone-check-terms:enable -->
 - Ingen **AI-slop-floskler** eller opfundet indhold; ingen tom hype.
 
 ### Reference-eksempel
