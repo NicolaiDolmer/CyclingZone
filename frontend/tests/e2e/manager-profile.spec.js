@@ -45,6 +45,23 @@ async function openProfile(page, teamId) {
   await expect(page.getByRole("tab", { name: /Overblik/ })).toBeVisible();
 }
 
+// #3200-afløseren 8/9. Her stod `scrollIntoViewIfNeeded()` + `click({ force: true })`
+// i hver test, og det fejlede kun på mobile-webkit: `scrollIntoViewIfNeeded` ruller
+// LIGE nok til at elementet er i viewporten, så fanen landede i den nederste kant —
+// under den faste bundnavigation, som på webkits lavere viewport ligger hen over
+// indholdet. `force: true` springer netop obstruktions-tjekket over, så klikket blev
+// leveret på de koordinater og ramte "Ryttere" i bundbjælken: testen endte på
+// rytterdatabasen og ledte efter en overskrift der aldrig kunne findes. Begge
+// chromium-projekter har en højere viewport og ramte aldrig bjælken.
+//
+// `block: "center"` flytter fanen væk fra begge kanter, og klikket sker UDEN force,
+// så Playwright igen får lov at fejle højlydt hvis noget dækker den.
+async function openTab(page, name) {
+  const tab = page.getByRole("tab", { name });
+  await tab.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await tab.click();
+}
+
 test("managerprofilen bæres af den delte preview-mock (ingen lokal override)", async ({ page }, testInfo) => {
   await openProfile(page, TEST_TEAM.id);
 
@@ -62,9 +79,7 @@ test("managerprofilen bæres af den delte preview-mock (ingen lokal override)", 
 test("achievements-fanen viser de nye sæson-badges + progress", async ({ page }, testInfo) => {
   await openProfile(page, TEST_TEAM.id);
 
-  const achievementsTab = page.getByRole("tab", { name: /Achievements \d+\/\d+/ });
-  await achievementsTab.scrollIntoViewIfNeeded();
-  await achievementsTab.click({ force: true });
+  await openTab(page, /Achievements \d+\/\d+/);
 
   // Kategorierne fra achievements-tabellen grupperer badges.
   await expect(page.getByRole("heading", { name: "sæson" })).toBeVisible();
@@ -83,9 +98,7 @@ test("achievements-fanen viser de nye sæson-badges + progress", async ({ page }
 test("sæsonhistorikken viser en rigtig placering (ikke #—)", async ({ page }) => {
   await openProfile(page, TEST_TEAM.id);
 
-  const seasonTab = page.getByRole("tab", { name: /Sæsonhistorik/ });
-  await seasonTab.scrollIntoViewIfNeeded();
-  await seasonTab.click({ force: true });
+  await openTab(page, /Sæsonhistorik/);
 
   // #2917: kolonnen læste `final_rank`, som ikke findes i season_standings — alle
   // rækker viste "#—". Seedet har en sæson vundet (rank 1) og en 2.-plads.
