@@ -50,6 +50,7 @@ const AdminSystemTab = lazy(() => import("./pages/admin/AdminSystemTab"));
 const AdminGrowthPage = lazy(() => import("./pages/AdminGrowthPage"));
 const AdminFairplayPage = lazy(() => import("./pages/AdminFairplayPage")); // #3138
 const AdminValueTransitionPage = lazy(() => import("./pages/AdminValueTransitionPage")); // #3750/#4000
+const AdminSurveyResultsPage = lazy(() => import("./pages/AdminSurveyResultsPage")); // #4943
 const RankingsHubPage = lazy(() => import("./pages/RankingsHubPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 // #4265: Sponsors-siden (Klubhus, ved siden af Board).
@@ -390,6 +391,13 @@ export default function App() {
             <Route path="admin/growth" element={<AdminGrowthPage />} />
             <Route path="admin/fairplay" element={<AdminFairplayPage />} /> {/* #3138 */}
             <Route path="admin/value-transition" element={<AdminValueTransitionPage />} /> {/* #3750/#4000 */}
+            {/* #4943: generisk paa slug, saa det naeste skema laeses af samme flade.
+                Namespace-gaten er noedvendig: `admin` hentes lazy, og uden den
+                render fladen raa noegler i det oejeblik den mountes (#3697). */}
+            <Route
+              path="admin/surveys/:slug"
+              element={<I18nReadyGate ns="admin"><AdminSurveyResultsPage /></I18nReadyGate>}
+            />
             {/* #3196: gamle standalone-ruter redirecter til deres fane i det
                 samlede vækst-dashboard, så eksisterende bogmærker/links ikke knækker. */}
             <Route path="admin/waitlist" element={<Navigate to="/admin/growth?tab=waitlist" replace />} />

@@ -10,6 +10,7 @@ import {
 } from "../lib/sessionExpiry"; // #4350
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
+import { ACTIVE_SURVEY_SLUG } from "../lib/survey.js"; // #4943
 import SetupWizardModal from "./SetupWizardModal";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 // #2602 · lazy: modalen aabnes kun ved klik paa Kontakt — dens kode (+i18n-traek)
@@ -126,6 +127,9 @@ function buildAdminGroup(t, isOwner = false) {
       { to: "/admin", label: t("nav.item.admin"), exact: true },
       { to: "/admin/growth", label: t("nav.item.growth") },
       { to: "/admin/fairplay", label: t("nav.item.fairplay") },
+      // #4943: spørgeskema-resultaterne. Ruten er generisk på slug; menupunktet
+      // peger på det aktive skema (ACTIVE_SURVEY_SLUG i lib/survey.js).
+      { to: `/admin/surveys/${ACTIVE_SURVEY_SLUG}`, label: t("nav.item.survey") },
       // #3750: ejer-only (OWNER_USER_IDS via /api/admin/owner-check) — skjult for andre admins.
       ...(isOwner ? [{ to: "/admin/value-transition", label: t("nav.item.valueTransition") }] : []),
     ],

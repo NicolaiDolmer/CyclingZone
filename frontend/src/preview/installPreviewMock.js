@@ -17,6 +17,7 @@ import {
   SEED_DEV_TRANSITION, ACTIVE_SEASON, SEED_TEAM_RACE_POINTS_MV,
 } from "./seedData.js";
 import { NPS_MIN_RACE_DAYS } from "../lib/npsGating.js";
+import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
 
 // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
 // toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
@@ -97,6 +98,18 @@ export function installPreviewMock() {
           rows.push({ ...own[0], race_id: `preview-nps-race-${rows.length}` });
         }
         return jsonResponse(rows);
+      }
+
+      // #4943 · Rolle-opslaget bag admin-fladens rute-guard. Bevidst KUN på
+      // /admin/surveys-stien og kun her: mockHandlers' "users"-case deles med
+      // Playwright-fixtures, og en global admin-rolle ville åbne admin-menuen
+      // i hvert eneste visuelle snapshot (samme lagdeling som NPS-bundbaren
+      // ovenfor). Guarden i selve siden er dermed stadig ægte — den svarer bare
+      // "ja" på præcis den ene rute preview skal kunne vise.
+      if (/\/rest\/v1\/users/.test(url) && method === "GET"
+          && window.location.pathname.startsWith("/admin/surveys")) {
+        const row = { id: TEST_USER.id, role: "admin", username: "Preview Admin", login_streak: 3 };
+        return jsonResponse(wantsObject(accept) ? row : [row]);
       }
 
       // Supabase REST (PostgREST).
@@ -318,6 +331,14 @@ export function installPreviewMock() {
         let body = null;
         try { body = init && init.body ? JSON.parse(init.body) : null; } catch { body = null; }
         return jsonResponse(setForumCategoryMuteMock(body?.category, body?.muted));
+      }
+
+      // #4943 · Admin-fladen med spørgeskema-resultater. Rout FØR den generiske
+      // /api-blok, som ellers ville svare {} og efterlade siden i sin
+      // tomme tilstand.
+      if (/\/api\/admin\/surveys\/[^/]+\/results/.test(url)) {
+        const parsed = new URL(url, window.location.origin);
+        return jsonResponse(buildMockSurveyResults(parsed.searchParams.get("segment")));
       }
 
       // Express-API (/api/...).

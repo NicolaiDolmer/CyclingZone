@@ -283,6 +283,14 @@ export function groupQuestionsIntoSections(questions) {
 export const INVITE_DISMISS_DAYS = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Skemaet admin-menupunktet peger på (#4943). Resultat-fladen selv er generisk
+ * på slug (/admin/surveys/:slug); det her er kun genvejen i menuen, så ejeren
+ * ikke skal kunne slug'en udenad. Skift den når et nyt skema afløser dette:
+ * kampagnen har en levetid, ruten har ikke.
+ */
+export const ACTIVE_SURVEY_SLUG = "2026-09-features";
+
 export function inviteDismissKey(slug) {
   return `cz-dashboard-survey-dismissed:${slug}`;
 }
