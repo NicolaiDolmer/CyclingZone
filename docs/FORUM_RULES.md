@@ -34,6 +34,7 @@ Normal benchmark for skrivende deltagere i et community er 1-9 %. Forummet lå a
 | **Rapportering kræver begrundelse** | Ejer-direktiv: *"gider ikke se rapporter uden grund"* | [#3452](https://github.com/NicolaiDolmer/CyclingZone/issues/3452), 6/8 |
 | **Søgning er udskudt** | Med 12 tråde er der ikke noget at søge i. Bliver først værdifuld hvis auto-indhold får trådtallet til at vokse | 25/8, se §3 |
 | **Kategorier udvidet fra 2 til 6 + arkiv-filter** | Ejer-beslutning 4/9 ("kategorier skal vi have flere af"), efter spillerønske fra @knud_r_flink 30/8. Overtrumfer [#4492](https://github.com/NicolaiDolmer/CyclingZone/issues/4492)'s egen accept-linje om at kategori-sættet skulle besluttes samlet med sprog-splittet i #3517 — ejeren valgte at køre kategorierne nu, uafhængigt. Nye: `questions`, `tactics`, `transfers`, `off_topic` (general + feedback_ideas uændret; transfers tilføjet samme dag efter samme ejer-beslutning). `archive` er IKKE en DB-kategori — det er et beregnet visnings-filter i `backend/lib/forum.js` (ingen aktivitet i 60 dage), så en tråd falder automatisk ud af arkivet igen ved et nyt svar | Ejer 4/9, [#4492](https://github.com/NicolaiDolmer/CyclingZone/issues/4492) |
+| **Roadmap-kategorien: kun ejeren opretter tråde, alle svarer** | Ejer-direktiv 4/9, ordret: *"Inde på forummet vil jeg have en roadmap/roadbook kategori... Skal kun være mig, der kan slå noget op det sted i forummet."* Ejer-afklaring 8/9 lukkede det udestående spørgsmål: **svar er åbne for alle**. Rettigheden er GENEREL, ikke et bruger-id: `public.forum_category_post_roles.post_role` (`everyone` \| `admin`) pr. kategori, håndhævet i tre lag — DB-trigger `forum_posts_enforce_category_post_role` (binder også service-role), backend (`403 forum_category_admin_only`) og fladen (knappen skjules). `forum_replies` er UÆNDRET: ingen kategori begrænser svar. Rækkefølgen bor i koden (`FORUM_CATEGORIES` + `FORUM_CATEGORY_ORDER`), og `roadmap` ligger øverst | Ejer 4/9 + 8/9, [#4818](https://github.com/NicolaiDolmer/CyclingZone/issues/4818) |
 
 ---
 
@@ -46,6 +47,7 @@ Normal benchmark for skrivende deltagere i et community er 1-9 %. Forummet lå a
 | `forum_reactions` | opbakning, én pr. bruger pr. mål, toggle | som `forum_thread_reads` |
 | `forum_poll_options`, `forum_poll_votes` | afstemninger, kun admin kan oprette | — |
 | `forum_reports` | rapportering + moderation-indbakke | — |
+| `forum_category_post_roles` | hvem der må OPRETTE tråde pr. kategori (`everyone`/`admin`, #4818). Manglende række = `everyone` | SELECT for indloggede; skrives kun via migrationer |
 
 `forum_thread_reads` er samtidig **vores eneste kilde til læser-tal** — før den fandtes, kunne vi kun tælle skribenter.
 

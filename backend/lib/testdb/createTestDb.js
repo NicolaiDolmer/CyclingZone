@@ -81,6 +81,12 @@ const PREREQ = `
   CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$ SELECT NULL::text $$;
   CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
   CREATE OR REPLACE FUNCTION public.uuid_generate_v4() RETURNS uuid LANGUAGE sql AS $$ SELECT gen_random_uuid() $$;
+  -- Supabase opretter selv publikationen 'supabase_realtime'; PGlite har den ikke.
+  -- Flere migrationer (fx 2026-08-06-3199-forum.sql) tilfoejer tabeller til den i
+  -- en DO-blok, som sanitizeForPglite ikke kan strippe (den ligger inde i et
+  -- PL/pgSQL-legeme, ikke som et selvstaendigt statement). Uden stubben fejler
+  -- loadet med 42704 "publication does not exist". #4818.
+  CREATE PUBLICATION supabase_realtime;
 `;
 
 /**

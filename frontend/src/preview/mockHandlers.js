@@ -573,6 +573,31 @@ const FORUM_AUTHOR_E2E = { username: "e2e", team_name: "E2E Racing", team_id: TE
 // den umarkerede tilstand), post-2 og post-4 er ulæst (prik + fed titel på
 // preview/e2e), så unread-status-mocken nedenfor har noget ægte at svare på.
 const FORUM_POSTS = [
+  // #4818: den officielle roadmap-kategori — ejer-opslag, alle må svare. Med i
+  // seedet så preview/e2e kan vise BÅDE listen med kategorien øverst og en
+  // tråd i den (ellers ville fanen altid stå tom i preview).
+  {
+    id: "forum-roadmap-1",
+    seq: 5,
+    // Traaden skal vaere aeldre end sit eget seneste svar (07:45), ellers viser
+    // PostRow opslagets egen dato i stedet for svaret — en umulig raekkefoelge.
+    created_at: "2026-08-05T20:00:00Z",
+    category: "roadmap",
+    title: "What I am building next",
+    // Bevidst uden konkrete loefter: seedet vises i preview og paa
+    // PR-screenshots, og en mock maa ikke se ud som et roadmap-tilsagn om
+    // features der ikke er besluttet.
+    excerpt: "This is where I post what I am working on. Ask me anything in here.",
+    body: "This is where I post what I am working on. Ask me anything in here.",
+    is_pinned: false,
+    reply_count: 3,
+    last_reply_at: "2026-08-06T07:45:00Z",
+    // #5000: samme svar som forumPostDetail returnerer nederst i traaden (r3).
+    last_reply_author: FORUM_AUTHOR_E2E,
+    has_poll: false,
+    is_unread: false,
+    author: FORUM_AUTHOR_OWNER,
+  },
   {
     id: "forum-pinned-1",
     seq: 4,
@@ -656,6 +681,17 @@ const FORUM_POSTS = [
   },
 ];
 
+// #5011: de navne der kan @-tagges (GET /api/forum/mentionable-managers).
+// Samme shape som backend serverer ({ name, team_id }) og bevidst de SAMME
+// managere som forum-seedets forfattere — ejeren (dolmer) har intet hold og
+// staar derfor ikke paa listen, praecis som i prod hvor ruten kun returnerer
+// menneskestyrede hold.
+const MENTIONABLE_MANAGERS = [
+  { name: FORUM_AUTHOR_E2E.username, team_id: FORUM_AUTHOR_E2E.team_id },
+  { name: FORUM_AUTHOR_SOFIE.username, team_id: FORUM_AUTHOR_SOFIE.team_id },
+  { name: FORUM_AUTHOR_PETE.username, team_id: FORUM_AUTHOR_PETE.team_id },
+];
+
 // #3451: forum-pinned-1's "sidst læst FØR dette besøg" — sat mellem r2
 // (07:20) og r3 (07:45) herunder, så preview/e2e viser den fulde fold+scroll-
 // adfærd (2 tidligere svar foldet, r3 markeret som første ulæste) uden en
@@ -689,7 +725,10 @@ export function forumPostDetail(postId) {
         id: `${post.id}-r2`,
         seq: 2,
         created_at: "2026-08-06T07:20:00Z",
-        body: "Agreed, and thanks for asking us directly in the game instead of only on Discord.",
+        // #5011: @-tag i et svar — navnet rendres klikbart (MentionText) og er
+        // det samme navn som MENTIONABLE_MANAGERS nedenfor serverer, saa
+        // preview viser den ÆGTE kæde og ikke en hardkodet blaa streng.
+        body: "Good shout @peloton_pete. Thanks for asking us directly in the game instead of only on Discord.",
         author: FORUM_AUTHOR_SOFIE,
         is_mine: false,
         support_count: 2,
@@ -799,6 +838,10 @@ export function apiResponse(pathname, search = "") {
   // uafhængig hardkodet boolean der kan drifte fra listens is_unread-felter.
   if (pathname.endsWith("/api/forum/unread-status")) {
     return { has_unread: FORUM_POSTS.some((p) => p.is_unread) };
+  }
+  // #5011: navnene autocomplete og den klikbare rendering slår op i.
+  if (pathname.endsWith("/api/forum/mentionable-managers")) {
+    return { managers: MENTIONABLE_MANAGERS };
   }
   // #3199: forum-liste + tråd-detalje.
   const forumPostMatch = pathname.match(/\/api\/forum\/posts\/([^/]+)$/);

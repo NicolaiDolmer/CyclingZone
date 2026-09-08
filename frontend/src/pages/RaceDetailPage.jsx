@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useParams, useSearchParams, useLocation } from "react-router";
@@ -70,12 +70,16 @@ import TerrainTypeGlyph from "../components/race/TerrainTypeGlyph.jsx";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
+import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
 // (eget chunk) så bundle-vagtens luft holder uanset hvor mange der besøger
 // etape-fanen uden nogensinde at åbne afspilningen.
-const FinalKilometrePlayback = lazy(() => import("../components/race/FinalKilometrePlayback.jsx"));
+// #5014: lazyWithRetry (ikke bart React.lazy) — samme retry-vaern som
+// App.jsx's route-chunks; en stale-chunk-fejl skal klassificeres som
+// chunk_load_error, ikke render_error (CYCLINGZONE-5H).
+const FinalKilometrePlayback = lazyWithRetry(() => import("../components/race/FinalKilometrePlayback.jsx"));
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
