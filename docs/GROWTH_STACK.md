@@ -84,7 +84,7 @@ Tre kanaler man kunne tro vi har. Vi har dem ikke:
 |---|---|---|
 | **Referral / invitér en ven** | Findes ikke i kode 📄 | Ejer-beslutning 23/7 (#1173): trappet belønning, 7 dages Pro for en ven der bliver aktiv, 1 måneds Pro hvis vennen betaler. Afhængighed: Pro skal låse noget op, ellers er belønningen tom. Uafklaret: hvad "bliver aktiv" betyder, og hvordan selv-referral med flere konti forhindres |
 | **Betalte annoncer** | Ikke startet 📄 | Ejer-direktiv 20/7 (#2759). **Ejer-beslutning 8/9:** én lille test på 500 til 1.000 kr. (Reddit/Facebook, UTM-tagget) i ugen op til S4 27/9. Claude leverer udkast og målgruppe, ejeren godkender budget. **Betinget af G4-princippet, se §4.3** |
-| **SEO-site** | Bygget, ikke deployet ❓ | `marketing/` (Next.js App Router) er merget 2/9 (#4659) med `/`, `/how-it-works`, `/pro-cycling-manager-alternative` + `/da/...`. Vercel-projekt oprettet 8/9, men uden git-link endnu, og der er ingen rewrites fra cyclingzone.org. Forsiden er indtil videre `LandingPage.jsx` prerenderet på engelsk. Google-indeks: 1 side (målt 21/8, #4067) |
+| **SEO-site** | Deployet på eget Vercel-subdomæne, ikke koblet til cyclingzone.org ✅ | `marketing/` (Next.js App Router) er merget 2/9 (#4659) med `/`, `/how-it-works`, `/pro-cycling-manager-alternative` + `/da/...`. Vercel-projektet `cycling-zone-marketing` er git-koblet og bygger fra main; sitet er live på https://cycling-zone-marketing.vercel.app (verificeret 8/9 kl. 21:05 med curl: forside, `/da`, `/how-it-works`, `/da/saadan-fungerer-det`, `/pro-cycling-manager-alternative`, sitemap og robots svarer 200). Mangler stadig rewrites fra cyclingzone.org (separat PR, ejer-go). Forsiden er indtil videre `LandingPage.jsx` prerenderet på engelsk. Google-indeks: 1 side (målt 21/8, #4067) |
 
 ### 2.3 Kanaler vi bevidst ikke bruger
 
@@ -104,7 +104,7 @@ Holdoprettelse → PUT /api/teams/my (kun når result.created === true) sender p
 Aflæsning      → GET /api/admin/attribution, Attribution-fanen i AdminGrowthPage.
 ```
 
-Feltet er bevidst uafhængigt af analytics-samtykket: first-touch sker før cookie-banneret er besvaret, og intet persisteres før brugeren opretter en konto. Hjemmel: legitim interesse, dokumenteret i privatlivspolitikken.
+Feltet er bevidst uafhængigt af analytics-samtykket: first-touch sker før cookie-banneret er besvaret, og intet persisteres før brugeren opretter en konto. Hjemmel: legitim interesse (vurdering, ikke juridisk efterprøvet); om privatlivspolitikken nævner det, er ikke tjekket ❓
 
 **Dækning:** ✅ 123 af 137 signups de seneste 60 dage er attribueret, altså 90 % (målt 8/9). De 10 % uden række er typisk brugere der aldrig fik oprettet et hold, eller hvor localStorage var blokeret.
 
@@ -180,7 +180,7 @@ G4 er en **port, ikke et vægtet signal**: enten er der ingen åbne spil-blokere
 
 ### 4.4 Dag-1-krogen er tændt
 
-✅ 8/9: mail-loopets `welcome` og `day1` er `on` (første mail leveret); `race_digest` er stadig `off`. Før 8/9 havde `email_log` nul rækker nogensinde, og en spiller der lukkede fanen efter 36 minutter kunne ikke nås af noget som helst. Day-1-sweepets vindue (20 til 30 timer efter holdoprettelse) rammer nøjagtigt der hvor frafaldet sker. Gates, typer og drift: EMAIL_STACK.
+✅ 8/9: mail-loopets `welcome` og `day1` er `on` (første mail sendt; levering ikke bekræftet, fordi webhooken ikke er sat op (EMAIL_STACK §5.8) ❓); `race_digest` er stadig `off`. Før 8/9 havde `email_log` nul rækker nogensinde, og en spiller der lukkede fanen efter 36 minutter kunne ikke nås af noget som helst. Day-1-sweepets vindue (20 til 30 timer efter holdoprettelse) rammer nøjagtigt der hvor frafaldet sker. Gates, typer og drift: EMAIL_STACK.
 
 Målet er **ikke** flere klik i sig selv, men om dag-7- og dag-14-andelen løftes fra launch-kohortens 30 % og 25 % op mod det historiske bånd på 34 til 37 % og 24 til 30 %. Måles på næste kohorte med mindst 15 nye, 14 dage efter.
 
@@ -323,7 +323,7 @@ Kort oversigt. Ansvarsfordelingen mellem værktøjerne bor i ANALYTICS_STACK.
 |---|---|---|
 | [#3796](https://github.com/NicolaiDolmer/CyclingZone/issues/3796) | UTM-disciplin + "hvor hørte du om os" | Konventionen står nu her (§3.4). Mangler: tagning af mails og Discord-kanaler, samt onboarding-dropdown |
 | [#4322](https://github.com/NicolaiDolmer/CyclingZone/issues/4322) | AI-assistenter som kanal | Gruppen er defineret (§2.1). Mangler: baseline-måling af hvad assistenterne svarer, og verifikation af at AI-crawlere ikke er blokeret |
-| [#4067](https://github.com/NicolaiDolmer/CyclingZone/issues/4067) | Marketing-site | Vercel-projekt uden git-link, ingen rewrites fra cyclingzone.org ❓ |
+| [#4067](https://github.com/NicolaiDolmer/CyclingZone/issues/4067) | Marketing-site | Live på cycling-zone-marketing.vercel.app; mangler rewrites fra cyclingzone.org (separat PR med ejer-go) ✅ |
 | [#3797](https://github.com/NicolaiDolmer/CyclingZone/issues/3797) | GSC + funnel pr. kanal | Service-konto og `scripts/gsc-report.mjs` ikke bygget |
 | [#1173](https://github.com/NicolaiDolmer/CyclingZone/issues/1173) | Referral | Belønningsmodellen er besluttet; intet er bygget. Afventer at Pro låser noget op |
 | [#2759](https://github.com/NicolaiDolmer/CyclingZone/issues/2759) | Betalte annoncer | Testen er godkendt i princippet; udkast, målgruppe og budget mangler |
