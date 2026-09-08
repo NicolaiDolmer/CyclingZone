@@ -173,7 +173,7 @@ Manus dækkede ikke dansk finansieringslandskab. Følgende skal verificeres af b
 | 2026-05-14 | 30-dages sprint starter 2026-05-18 (mandag) | Bruger |
 | 2026-05-14 | Codex får tekniske implementerings-issues; bruger beholder strategi | Bruger |
 | 2026-05-14 | Forretningsstrategi i `docs/BUSINESS_STRATEGY.md` (denne fil) + Manus-detaljer i OneDrive | Bruger |
-| 2026-05-14 | Dashboard-arkitektur: `docs/SPRINT_DASHBOARD.md` (status) + GitHub Project board (tekniske issues) + Google Calendar (tid-blokket arbejde) | Bruger |
+| 2026-05-14 | Dashboard-arkitektur: `docs/archive/SPRINT_DASHBOARD.md` (status; arkiveret 8/9 2026) + GitHub Project board (tekniske issues) + Google Calendar (tid-blokket arbejde) | Bruger |
 
 ## 11. Åbne beslutninger (skal afklares)
 

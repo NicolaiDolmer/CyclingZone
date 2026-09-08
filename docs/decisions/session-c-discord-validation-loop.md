@@ -25,7 +25,7 @@ The Danish version remains:
 | First poll | Ready to paste or create as native Discord poll | Nicolai | Use one answer only. Keep open for 24 to 48 hours. |
 | Top-player DM | Ready to send | Nicolai | Send to Tier 1 targets from the private top-active-player list. |
 | Interview flow | Ready to use | Nicolai | 15 minutes by call or written Q&A. |
-| Tracking | Ready to maintain | Nicolai or next AI session | Add counts to `docs/SPRINT_DASHBOARD.md` when live data exists. |
+| Tracking | Ready to maintain | Nicolai or next AI session | Add counts to `docs/archive/SPRINT_DASHBOARD.md` when live data exists. |
 
 ## 2. Posting order for the first feedback loop
 
@@ -107,7 +107,7 @@ If you choose Maybe, No or I need more information, please add one sentence abou
 
 ## 6. Top-player DM template
 
-Send this to the Tier 1 DM targets identified in `docs/SPRINT_DASHBOARD.md`. The dashboard currently names Swatt Team, Visma, Chris Machines, Soudal Quick-Step and Decathlon CMA CGM as the top 5 with Discord handles available in the private source file. Do not paste private emails into public repo docs.
+Send this to the Tier 1 DM targets identified in `docs/archive/SPRINT_DASHBOARD.md`. The dashboard currently names Swatt Team, Visma, Chris Machines, Soudal Quick-Step and Decathlon CMA CGM as the top 5 with Discord handles available in the private source file. Do not paste private emails into public repo docs.
 
 ```text
 Hey [name/team], thanks for being one of the active testers in CyclingZone.
@@ -217,4 +217,4 @@ I will keep the competitive game fair. If the feedback shows that Premium would 
 
 ## 11. Close-out status
 
-This document completes Session C as a paste-ready Discord feedback pack. It does not confirm that the messages have been posted, the Discord channel has been created or the DMs have been sent. Once Nicolai posts the opener and poll, the next repo update should mark the relevant `docs/SPRINT_DASHBOARD.md` Week 1 checkboxes as live and add actual early metrics where available.
+This document completes Session C as a paste-ready Discord feedback pack. It does not confirm that the messages have been posted, the Discord channel has been created or the DMs have been sent. Once Nicolai posts the opener and poll, the next repo update should mark the relevant `docs/archive/SPRINT_DASHBOARD.md` Week 1 checkboxes as live and add actual early metrics where available.

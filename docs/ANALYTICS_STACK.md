@@ -232,7 +232,7 @@ Den fulde union med `auction_bids`, `race_entries`, `xp_log` og forum lever i `s
 | Navn | Definition | Kilde | Brug |
 |---|---|---|---|
 | **Kohorte-D1/D3/D7** | Kohorte = signup-uge (mandag 00:00 UTC). Returneret på +Nd = `GREATEST(users.last_seen, max(player_events.created_at)) >= signup + N dage`. **Rolling**, ikke "aktiv præcis på dag N". Eligibility kræver `signup + N <= now()`; yngre kohorter giver `null`, ikke 0 % | `get_cohort_retention(p_weeks)`, `database/2026-06-09-cohort-retention-rpc.sql` | **Gate-tallet.** Det er dette D7 der bruges i go/no-go |
-| **Rullende D7** | Andel af ALLE brugere der er 7+ dage gamle, og som har været aktive i de sidste 7 dage | `get_sprint_metrics(p_window)` | **Kun sanity-check.** Isolerer ingen kohorte og må aldrig stå som gate-tal (`docs/launch/2026-06-21-go-nogo.md` §2c) |
+| **Rullende D7** | Andel af ALLE brugere der er 7+ dage gamle, og som har været aktive i de sidste 7 dage | `get_sprint_metrics(p_window)` | **Kun sanity-check.** Isolerer ingen kohorte og må aldrig stå som gate-tal (`docs/archive/launch/2026-06-21-go-nogo.md` §2c) |
 
 > ⚠️ De to tal hedder begge "D7" og er ikke sammenlignelige. Skriv altid hvilket af dem du citerer. Rolling-valget i kohorte-RPC'en er bevidst: bounded ("aktiv præcis dag N") ville give ren nul-støj på en beta-population af denne størrelse.
 
@@ -261,7 +261,7 @@ Standarddefinition, `backend/lib/growthSnapshot.js`: promoter = 9-10, passiv = 7
 
 ### 4f. Go/no-go-kategorier
 
-Strukturen fra `docs/SPRINT_DASHBOARD.md` overlever selvom tallene deri er historiske (maj-sprint): et go/no-go-scorecard har fire kategorier, ikke én. **Community** (Discord-medlemmer), **survey** (svar og svarprocent), **interviews** (gennemførte samtaler) og **ratio-metrikker** (fx venteliste mod survey). Blandes de sammen til ét tal, forsvinder signalet.
+Strukturen fra `docs/archive/SPRINT_DASHBOARD.md` overlever selvom tallene deri er historiske (maj-sprint): et go/no-go-scorecard har fire kategorier, ikke én. **Community** (Discord-medlemmer), **survey** (svar og svarprocent), **interviews** (gennemførte samtaler) og **ratio-metrikker** (fx venteliste mod survey). Blandes de sammen til ét tal, forsvinder signalet.
 
 ## 5. Attribution (kort)
 
