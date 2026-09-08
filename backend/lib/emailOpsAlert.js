@@ -36,9 +36,16 @@ export function summarizeLines(lines, max = MAX_EMBED_LINES) {
   return [...lines.slice(0, max), `... og ${lines.length - max} mere`].join("\n");
 }
 
-/** REN: embed for permanente sendefejl i én sweep-koersel. */
+/**
+ * REN: embed for permanente sendefejl i én sweep-koersel.
+ *
+ * Bevidst KUN dedupe_key + den klassificerede aarsag. Resends raa fejlbesked
+ * citerer typisk modtager-adressen, og ops-kanalen har et bredere publikum end
+ * Sentry — den fulde besked bor i Sentry og i email_log.error, ikke her.
+ * dedupe_key baerer et bruger-UUID, ikke en mailadresse.
+ */
 export function buildPermanentFailureEmbed({ sweep, failures, now = new Date() }) {
-  const lines = failures.map((f) => `\`${f.dedupeKey}\` -- ${f.reason ?? "ukendt"}: ${f.error ?? ""}`.trim());
+  const lines = failures.map((f) => `\`${f.dedupeKey}\` -- ${f.reason ?? "ukendt"}`);
   return {
     embeds: [
       {

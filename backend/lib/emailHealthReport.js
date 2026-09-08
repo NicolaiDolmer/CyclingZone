@@ -255,19 +255,6 @@ export async function runEmailHealthReport({
   // 2026-08-06-kommentar). Dags-signaturen nedenfor holder den paa én om dagen.
   if (copenhagenHour(now) < hour) return { posted: false, skipped: "outside_hour_window" };
 
-  const { alert: isNewDay } = await shouldAlertOnChange({
-    supabase,
-    alertKey: EMAIL_HEALTH_ALERT_KEY,
-    signature: copenhagenDateString(now),
-    now,
-    captureExceptionFn,
-    // Fail-safe-STILLE: kan vi ikke afgoere om rapporten allerede er sendt i
-    // dag, tier vi hellere end at sende den to gange (samme valg som
-    // cronHeartbeat.js).
-    alertOnReadError: false,
-  });
-  if (!isNewDay) return { posted: false, skipped: "already_reported_today" };
-
   const weekAgoIso = new Date(now.getTime() - WEEK_MS).toISOString();
   const dayAgoIso = new Date(now.getTime() - DAY_MS).toISOString();
   const twoDaysAgoIso = new Date(now.getTime() - 2 * DAY_MS).toISOString();
@@ -301,6 +288,25 @@ export async function runEmailHealthReport({
     });
     return { posted: false, skipped: "fetch_failed" };
   }
+
+  // Dags-claimet skrives FOERST naar dataene faktisk er hentet. Gjorde vi det
+  // foer (som i det foerste udkast, fanget af CodeRabbit), ville ét enkelt
+  // forbigaaende DB-udfald skrive dagens signatur, returnere fetch_failed, og
+  // saa faa ALLE resterende ticks samme doegn til at springe over som
+  // "already_reported_today" — rapporten ville forsvinde for hele dagen,
+  // praecis paa en dag hvor databasen driller og man har mest brug for den.
+  const { alert: isNewDay } = await shouldAlertOnChange({
+    supabase,
+    alertKey: EMAIL_HEALTH_ALERT_KEY,
+    signature: copenhagenDateString(now),
+    now,
+    captureExceptionFn,
+    // Fail-safe-STILLE: kan vi ikke afgoere om rapporten allerede er sendt i
+    // dag, tier vi hellere end at sende den to gange (samme valg som
+    // cronHeartbeat.js).
+    alertOnReadError: false,
+  });
+  if (!isNewDay) return { posted: false, skipped: "already_reported_today" };
 
   const window24h = summarizeEmailLogWindow(logRows, { fromIso: dayAgoIso });
   const window7d = summarizeEmailLogWindow(logRows, { fromIso: weekAgoIso });

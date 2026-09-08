@@ -405,7 +405,7 @@ export async function handleResendWebhook({
       return res.sendStatus(200);
     }
 
-    const { userId, logRow } = await findUserForEvent({ supabase, providerId, recipient });
+    const { userId, logRow } = await findUserForEvent({ supabase, providerId, recipient, captureExceptionFn });
 
     // Loeft email_log-raekkens status -- kun fremad (se STATUS_RANK).
     const nextStatus = STATUS_BY_EVENT[type];

@@ -96,7 +96,15 @@ ORDER BY next_attempt_at NULLS LAST;
 
 `status = 'dry_run'` betyder gaten virkede og targeting er korrekt — INGEN rigtig mail sendt. `status = 'sent'` sker kun når stage er `on`.
 
-Siden #2853's driftspakke findes tre statusser mere, som Resend-webhooken skriver oven på en `sent`-række: `delivered`, `bounced` og `complained`. De fortæller hvad der skete EFTER afsendelsen. Alle fire (`sent`, `delivered`, `bounced`, `complained`) blokerer en gen-afsendelse; `dry_run` blokerer aldrig, og en dry_run-række bliver opdateret til den rigtige status når typen flippes til `on`. Ingen manuel DELETE er nødvendig længere.
+Siden #2853's driftspakke findes tre statusser mere, som Resend-webhooken skriver oven på en `sent`-række: `delivered`, `bounced` og `complained`. De fortæller hvad der skete EFTER afsendelsen.
+
+Hvilke rækker blokerer en gen-afsendelse:
+
+| Status | Blokerer? |
+|---|---|
+| `sent`, `delivered`, `bounced`, `complained` | Ja. Mailen nåede Resend. |
+| `failed` | Ja. Enten permanent (adresse, nøgle, validering) eller opbrugte retries. En gentagelse ville fejle identisk, så den skal ryddes manuelt når årsagen er rettet (se §6.5). |
+| `dry_run` | Nej, aldrig. Rækken bliver opdateret til den rigtige status når typen flippes til `on`. Ingen manuel DELETE før flip længere. |
 
 ## 4. Rækkefølge
 
@@ -219,6 +227,22 @@ når noget er galt. En rolig rapport er en rapport du ikke behøver læse.
 
 Akut nødbremse er altid den samme: sæt de(n) berørte `app_config`-nøgle til
 `off` (§5). Ingen deploy nødvendig.
+
+**Efter en rettet årsag: ryd de terminale rækker.** En `failed`-række med
+`next_attempt_at IS NULL` blokerer bevidst en gen-afsendelse, også efter at du
+har rettet nøglen eller adressen. Det er med vilje: uden den blokering ville
+welcome-sweepen prøve den samme permanente fejl hvert femte minut i 48 timer.
+Har du rettet årsagen og vil give de ramte mails en chance til:
+
+```sql
+DELETE FROM public.email_log
+WHERE status = 'failed'
+  AND next_attempt_at IS NULL
+  AND created_at > NOW() - INTERVAL '48 hours';
+```
+
+Kør altid en `SELECT` med samme `WHERE` først og se på rækkerne. Sletter du en
+række for en mail der faktisk blev sendt, får modtageren den igen.
 
 ### 6.6 SQL-opslag (email_events)
 

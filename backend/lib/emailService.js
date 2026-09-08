@@ -139,24 +139,37 @@ export const SENT_STATUSES = Object.freeze(["sent", "delivered", "bounced", "com
  *   sent/delivered/bounced/complained -> blokerer (mailen ER afsendt).
  *   failed MED next_attempt_at        -> blokerer (retry-drainen ejer raekken;
  *                                        en parallel afsendelse ville dublere).
- *   failed UDEN next_attempt_at       -> blokerer IKKE (permanent/opbrugt —
- *                                        en ny sweep maa gerne proeve igen naar
- *                                        aarsagen er rettet).
+ *   failed UDEN next_attempt_at       -> blokerer OGSAA (terminal: permanent
+ *                                        fejl eller opbrugte forsoeg).
  *   dry_run                           -> blokerer ALDRIG.
  *
+ * Hvorfor ogsaa den TERMINALE failed-raekke blokerer (CodeRabbit-fund paa denne
+ * PR, og en aegte fejl i det foerste udkast): welcome-sweepen tikker hvert 5.
+ * minut i 48 timer. Slap en terminal raekke igennem, ville den SAMME permanente
+ * fejl blive forsoegt ~576 gange for ét hold — hver gang med en ny Sentry-
+ * capture og en ny ops-alarm, og med `attempts` nulstillet til 1 hver gang, saa
+ * MAX_EMAIL_ATTEMPTS aldrig ville bide. Det er praecis den alarm-spam hele
+ * denne pakke findes for at fjerne. En terminal fejl kan pr. definition ikke
+ * loeses ved at proeve igen: den kraever at aarsagen (adresse, noegle,
+ * validering) rettes, og derefter at raekken ryddes eksplicit — se runbookens
+ * §6.5. Det er ogsaa den adfaerd der stod i #2853-kommentaren ("dedupe kun paa
+ * status IN ('sent','failed')") og den adfaerd der gjaldt foer denne PR, saa
+ * det er ingen aendring for failed-raekker; det ENESTE der aendrer sig er at
+ * dry_run holder op med at blokere.
+ *
  * dedupe_key er UNIQUE (database/2026-07-20-2725-email-retention-loop.sql), saa
- * en ikke-blokerende raekke kan ikke faa en soesterraekke ved siden af — den
- * OPDATERES i stedet (se writeEmailLogRow nedenfor).
+ * den ikke-blokerende dry_run-raekke kan ikke faa en soesterraekke ved siden af
+ * — den OPDATERES i stedet (se writeEmailLogRow nedenfor).
  */
 export function dedupeBlocksSend(row) {
   if (!row) return false;
   if (SENT_STATUSES.includes(row.status)) return true;
-  return row.status === "failed" && row.next_attempt_at != null;
+  return row.status === "failed";
 }
 
 /**
  * Skriv email_log-raekken for denne afsendelse: UPDATE hvis der allerede findes
- * en ikke-blokerende raekke paa dedupe_key (dry_run eller en doed failed),
+ * en ikke-blokerende raekke paa dedupe_key (i praksis: en dry_run-raekke),
  * ellers INSERT. UNIQUE(dedupe_key) gør en INSERT umulig i det foerste
  * tilfaelde, og en dry_run-raekke maa ikke blive staaende som historik der
  * skjuler den rigtige afsendelse.
@@ -266,7 +279,13 @@ export async function sendLoopEmail({
       // Opsamleren toemmes af sweepen naar dens loop er faerdigt; her
       // registrerer vi kun. Se emailOpsAlert.js for hvorfor det skel er
       // afgoerende (én alarm pr. mail var netop dry_run-fundet 8/9).
-      failureCollector?.permanent?.push({ dedupeKey, reason: failure.reason, error: message, type, userId });
+      //
+      // KUN den klassificerede aarsag ryger med, ALDRIG Resends raa
+      // fejlbesked: en valideringsfejl fra Resend citerer typisk selve
+      // modtager-adressen, og ops-kanalen er et bredere publikum end Sentry.
+      // Den fulde besked ligger allerede i Sentry-capturen ovenfor og i
+      // email_log.error.
+      failureCollector?.permanent?.push({ dedupeKey, reason: failure.reason, type, userId });
     }
     return { status: "failed", error: message, retryable };
   }

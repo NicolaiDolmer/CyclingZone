@@ -397,7 +397,21 @@ test("dedupeBlocksSend: kun reelt afsendte raekker og en retry i koeen blokerer"
   }
   assert.equal(dedupeBlocksSend({ status: "dry_run", next_attempt_at: null }), false, "dry_run maa ALDRIG blokere");
   assert.equal(dedupeBlocksSend({ status: "failed", next_attempt_at: "2026-09-08T10:00:00Z" }), true, "retry-drainen ejer raekken");
-  assert.equal(dedupeBlocksSend({ status: "failed", next_attempt_at: null }), false, "opgivet/permanent -> en ny sweep maa proeve igen");
+  assert.equal(
+    dedupeBlocksSend({ status: "failed", next_attempt_at: null }),
+    true,
+    "terminal fejl blokerer OGSAA - ellers ville welcome-sweepen proeve samme permanente fejl hvert 5. minut i 48 timer"
+  );
+});
+
+test("en terminal failed-raekke blokerer, saa en 5-min-sweep ikke gen-proever i det uendelige", async () => {
+  const supabase = makeSupabase({ existingRow: { id: "dead-row", status: "failed", next_attempt_at: null } });
+  const result = await sendLoopEmail({
+    ...baseArgs, supabase, readStage: async () => "on",
+    resendFactory: () => { throw new Error("maa ikke proeve en terminal fejl igen"); },
+  });
+  assert.deepEqual(result, { skipped: "dedupe" });
+  assert.equal(supabase.emailLogUpdates.length, 0);
 });
 
 test("en dry_run-raekke OPDATERES til sent i stedet for at blokere (dedupe_key er UNIQUE)", async () => {
