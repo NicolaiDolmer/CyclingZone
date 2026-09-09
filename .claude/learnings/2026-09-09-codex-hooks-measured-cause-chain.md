@@ -238,3 +238,78 @@ Anbefalet næste handling til ejerens godkendelse: profilér proces-opstart,
 gitleaks og lint-staged separat på et normalt docs-commit, og optimér den
 målte flaskehals uden at fjerne secret- eller lint-kontroller. Først efter
 acceptabel commit-tid fortsættes den allerede aftalte hook-opgave.
+
+## Genoptaget 9/9: profilering, udkast og nyt runtime-stop
+
+Ejeren ændrede mål til docs ≤1,5 s / kode ≤4 s og fjernede tid som stopgrund.
+Før rettelser blev hvert trin målt: Bash/merge 52 ms, staged-check 51 ms,
+gitleaks inklusive opstart 477 ms, npx lint-staged 1621 ms, direkte lint-staged
+642 ms / 408 ms med eksplicit config, ESLint --version 3469 ms. Varm samlet
+eksisterende hook: 1801 ms. Disse tider forklarer ikke entydigt den første
+7,555 s-måling; senere belastning gav eksempelvis npx 6363 ms.
+
+Forberedt, men **ikke committet eller færdigverificeret**, i arbejdstræet:
+
+- Pre-commit bruger staged arkiv-/NOW-kontrol og genbruger lint-stageds egne
+  globs/matcher til no-op. Npx fjernet; direkte installeret ESLint bevares.
+- Fem Git-tests bestod: faktisk arkiv-commit afvist, rename væk afvist,
+  staged NOW-budgetter afvist og tilladte grænser/CRLF/unstaged filer accepteret.
+- Faktiske isolerede commits: docs 1,263 s (mål opfyldt), backend-kode 7,777 s
+  (mål ikke opfyldt). Kontroller og staging-backup bevaret; kompromis tilladt.
+- setup-new-pc → setup-local → kanonisk install-git-hooks, inklusive secret-test.
+  Legacy install-hooks er pegepind; smoke-test kræver specifik secret-afvisning.
+- Portable launcher, skærpet tracked-reference-audit, prompts/HOOKS/AGENTS og
+  GUARD_INVENTORY med 260 kilder. Inventory-udkastet daterer kun faktiske blokeringer.
+
+### Trust og frisk runner: 23 aktive er stadig ikke bevis
+
+Den afsluttende trust-handling i CLI 0.153.4 blev udført én gang efter config-
+ændringer: menuen viste PreToolUse 13/13, PostToolUse 4/4, SessionStart 4/4,
+Stop 2/2. Config havde 23 trusted_hash-poster mod 23 definitioner (tidligere 16).
+Trust-sessionen blev set afslutte med exit 0. Frisk session
+`01a085e5-b708-7903-94fa-08ad25291792` brugte egne exec_command-kald:
+
+| Prøve | Faktisk resultat |
+|---|---|
+| T1 cat på den aftalte ikke-eksisterende env-sti | IKKE blokeret; PowerShell rapporterede fil ikke fundet |
+| T2 git diff | IKKE blokeret; diff blev udført |
+| T3 opret testbranch | IKKE blokeret; testbranch blev oprettet |
+| K1 no-pager status | Tilladt; exit 0 |
+
+T3 blev straks ryddet op: main gendannet, testbranch slettet, fravær verificeret
+med show-ref exit 1. Runneren viste bl.a. hook-timeout efter 5 s, hook exit 1
+og invalid Stop-hook JSON. Ingen af disse fejl tæller som policy-blokering.
+Testsessionen blev også set afslutte med exit 0. Ingen dump-hook eller nyt dump.
+
+### Ny målt årsag: Python3-alias og fail-open
+
+I Git Bash resolver python3 til WindowsApps-aliaset. En harmløs versionstest
+fejlede med Permission denied, exit 126; python fra den installerede Python312
+kørte samme test korrekt, exit 0. Secret-hooken vælger udtrykkeligt python3
+før python, uden at teste om interpreter virker (linje 46 og 220-234).
+Når command-parsningen bliver tom, returnerer den exit 0.
+
+Direkte test gennem den nye launcher med den observerede Bash/command-payload
+for T1 gav **exit 0 efter 1,213 s**. Dette er et yderligere hul: Bash og trust
+alene er utilstrækkelige. sanitize-secrets.sh har samme interpreter-valg
+(linje 64-65); den præcise effekt på hver runner-fejl er ikke bevist.
+T2/T3-fejlen er endnu ikke årsagsafklaret og må ikke tilskrives Python uden bevis.
+
+Launcheren har desuden en uafklaret Git-resolution-fejl, når hele testsuiten
+starter den fra Bash: fire direkte PowerShell-launcher-tests bestod, men den
+samlede suite gav 28 pass / 1 fail (de nye integrationscases). Fejlteksten
+var manglende Git Bash-resolution. Det er en fejl i udkastet, ikke et nyt
+bevis for en fungerende launcher. Delte scripts er fortsat urørte.
+
+`verify-local.ps1`: backend 118 + 9410 tests (9407 pass, ingen fail i anden
+gruppe), frontend 3181 pass. Build fejlede på manglende posthog-js dependency;
+ingen ændring i den urelaterede frontend er lavet. Token-hygiejne: 0 fail,
+46 tracked scriptreferencer for 23 hook-definitioner.
+
+Stop følger ejerens kriterium om en måling, der modsiger det hidtidige grundlag.
+Ingen færdigmelding eller lukning af #5065. Sessionslåsen nulstillet. Git-hooks
+forbliver aktive; implementeringsudkastet bevares til review i arbejdstræet.
+Næste beslutning: tilladelse til at gøre interpreter-valget runtime-verificeret
+i de delte secret-scripts, eller en ny runtime-bootstrap uden policy; derefter
+ret launcherens Bash-kontekst, afklar T2/T3 og gentag hele runner-beviset.
+Patch notes/FEATURE_REGISTRY er ikke relevante: ingen spillerrettet ændring.
