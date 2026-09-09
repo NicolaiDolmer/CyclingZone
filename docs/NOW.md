@@ -22,6 +22,6 @@
 - **Træning:** løbsdag som tick (#4850/#4846) live senest 28/9; kalenderpakker #4845 FØR S4-kalender.
 - **Mekanik:** merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`, aldrig HH:57-HH:03; start køen først når checks har været rene i to aflæsninger); migrationer applies af auto-migrate.yml, Claude tjekker runnet + post-verify før næste merge. Bølger: TIER WAVE, draft til `gh pr ready`, CodeRabbit CLI før ready, push <10 min + hvert 15. min, vagt `wave-lane-watch.ps1`, frossen worker = afløser i SAMME worktree. Workers kører aldrig hele e2e, spawner aldrig agenter og kører preflight i FORGRUNDEN; go-kort bygges på `gh pr diff` + billeder orkestratoren selv har set. Tid: `Get-Date` (Git Bash `date` = UTC).
 
-> **🤖 Working agent:** Ingen aktiv session. Codex hook-trust (#5065): diagnostisk trust virkede; CLI 0.135.0 afvist af modellen før payload/PATH-måling. Probe og midlertidig trust ryddet op; adapter/retest udestår. Se `.claude/learnings/2026-09-09-codex-hook-diagnostic-blocked.md`. **Codex er sidevogn (#5065):** Claude kan IKKE se Codex (#4016); sæt feltet manuelt. Prompter: `docs/agents/CODEX_PROMPTS.md`.
+> **🤖 Working agent:** Codex — hook-trust (#5065). Ejer har godkendt CLI-opdatering og samlet måling af event-navne, hver hooks trust-status, PATH/bash og faktiske payloads; ingen adapter eller matcher-rettelse i denne runde. **Codex er sidevogn (#5065):** Claude kan IKKE se Codex (#4016); sæt feltet manuelt. Prompter: `docs/agents/CODEX_PROMPTS.md`.
 
 _Historik i git-log, issue-tråde + docs/audits/._
