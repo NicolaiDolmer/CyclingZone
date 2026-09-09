@@ -22,6 +22,6 @@
 - **Træning:** løbsdag som tick (#4850/#4846) live senest 28/9; kalenderpakker #4845 FØR S4-kalender.
 - **Mekanik:** merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`, aldrig HH:57-HH:03; start køen først når checks har været rene i to aflæsninger); migrationer applies af auto-migrate.yml, Claude tjekker runnet + post-verify før næste merge. Bølger: TIER WAVE, draft til `gh pr ready`, CodeRabbit CLI før ready, push <10 min + hvert 15. min, vagt `wave-lane-watch.ps1`, frossen worker = afløser i SAMME worktree. Workers kører aldrig hele e2e, spawner aldrig agenter og kører preflight i FORGRUNDEN; go-kort bygges på `gh pr diff` + billeder orkestratoren selv har set. Tid: `Get-Date` (Git Bash `date` = UTC).
 
-> **🤖 Working agent:** Ingen aktiv session. #5066 review opdateret; prod-go og #4925-verifikation udestår.
+> **🤖 Working agent:** Codex: #5066 godkendt bootstrap-merge + read-only post-verify + PR/Dependabot-checkbevis. Ingen aktivering, puljereparation eller branch-protection-go.
 
 _Historik i git-log, issue-tråde + docs/audits/._
