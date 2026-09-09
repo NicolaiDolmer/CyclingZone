@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { retireAiTeam, teamHasLiveTransferOffers, LIVE_OFFER_STATUSES } from "./aiTeamRetirement.js";
+import { teamHasLiveTransferOffers, LIVE_OFFER_STATUSES } from "./aiTeamRetirement.js";
 import { AI_TEAM_RETIRE_FLAG_KEY } from "./aiTeamRetireFlag.js";
 import { teamIsBlockedForRemoval } from "./aiTeamGenerator.js";
 
@@ -127,64 +127,7 @@ function seedTeam({ teamId = "ai-1", poolId = 8, riderCount = 3, offers = [] } =
   });
 }
 
-// ── Rytterne + holdet ────────────────────────────────────────────────────────
-
-test("retireAiTeam: holdet forlader puljen og rytterne pensioneres — INTET slettes", async () => {
-  const supabase = seedTeam({ riderCount: 3 });
-  const res = await retireAiTeam(supabase, "ai-1", { now: new Date("2026-09-04T10:00:00Z") });
-
-  assert.equal(res.retired, true);
-  assert.equal(res.ridersRetired, 3);
-
-  const team = supabase.state.teams[0];
-  assert.equal(team.league_division_id, null, "puljepladsen skal være frigivet");
-  assert.equal(team.retired_at, "2026-09-04T10:00:00.000Z");
-  assert.equal(team.pending_removal_at, null, "udskydelses-markøren skal ryddes");
-
-  assert.equal(supabase.state.teams.length, 1, "holdrækken må ikke slettes");
-  assert.equal(supabase.state.riders.length, 3, "rytterrækkerne må ikke slettes");
-  for (const r of supabase.state.riders) {
-    assert.equal(r.is_retired, true);
-    assert.equal(r.team_id, null);
-  }
-
-  const forbidden = supabase.deletes.filter((d) => d.table === "teams" || d.table === "riders");
-  assert.deepEqual(forbidden, [], "nedlæggelse må ALDRIG kalde delete på teams/riders");
-});
-
-test("retireAiTeam: døde transfer_offers overlever nedlæggelsen (historik bevares)", async () => {
-  const supabase = seedTeam({
-    riderCount: 2,
-    offers: [
-      { id: "o1", rider_id: "r1", seller_team_id: "ai-1", status: "withdrawn" },
-      { id: "o2", rider_id: "r2", seller_team_id: "ai-1", status: "accepted" },
-    ],
-  });
-  await retireAiTeam(supabase, "ai-1");
-
-  assert.equal(supabase.state.transfer_offers.length, 2, "døde tilbud er handelshistorik og skal bestå");
-  assert.deepEqual(supabase.state.transfer_offers.map((o) => o.status).sort(), ["accepted", "withdrawn"]);
-});
-
-test("retireAiTeam: levende tilbud trækkes tilbage i stedet for at hænge som zombie", async () => {
-  const supabase = seedTeam({
-    riderCount: 1,
-    offers: [{ id: "o1", rider_id: "r1", seller_team_id: "ai-1", status: "pending" }],
-  });
-  await retireAiTeam(supabase, "ai-1");
-  assert.equal(supabase.state.transfer_offers[0].status, "withdrawn");
-});
-
-test("retireAiTeam: idempotent — anden kørsel ændrer ikke slut-tilstanden", async () => {
-  const supabase = seedTeam({ riderCount: 2 });
-  await retireAiTeam(supabase, "ai-1", { now: new Date("2026-09-04T10:00:00Z") });
-  const first = JSON.stringify(supabase.state.riders);
-
-  await retireAiTeam(supabase, "ai-1", { now: new Date("2026-09-05T10:00:00Z") });
-  assert.equal(supabase.state.riders.length, 2);
-  assert.equal(JSON.stringify(supabase.state.riders), first, "rytterne må ikke røres igen");
-  assert.equal(supabase.state.teams[0].league_division_id, null);
-});
+// Retirement effects/rollback are exercised against real SQL in aiPoolRetirement.integration.test.js.
 
 // ── Guard-semantikken: hvad blokerer, og hvad gør ikke ───────────────────────
 
@@ -232,57 +175,6 @@ test("teamIsBlockedForRemoval: inflight-entries (#2074) blokerer i BEGGE tilstan
       `et hold midt i et løb må ikke fjernes (retire=${retire})`,
     );
   }
-});
-
-// ── Forward-guard: HELE trim-stien, ikke bare retireAiTeam ──────────────────
-//
-// Den vigtigste assertion i filen. reconcileAiTeamsForPool → removeAiTeams er den
-// sti der har fejlet 3 gange på 3 forskellige FK'er. Testen beviser at der med
-// flaget tændt ikke findes ÉN delete på teams/riders nogen steder i den kæde — og
-// at et hold blokeret af DØDE tilbud faktisk kommer ud af puljen.
-
-test("reconcileAiTeamsForPool med flaget tændt: puljen falder fra 25 til 24 uden en eneste delete", async () => {
-  const { reconcileAiTeamsForPool } = await import("./aiTeamGenerator.js");
-
-  const POOL = 8;
-  const teams = [
-    // 9 ægte managere (samme fordeling som prod-puljen D4-A 4/9)
-    ...Array.from({ length: 9 }, (_, i) => ({
-      id: `mgr-${i}`, name: `Manager ${i}`, is_ai: false, is_bank: false,
-      is_frozen: false, is_test_account: false, league_division_id: POOL, division: 4,
-    })),
-    // 16 AI-hold — ét for mange (target = 24 - 9 = 15)
-    ...Array.from({ length: 16 }, (_, i) => ({
-      id: `ai-${String(i).padStart(2, "0")}`, name: `AI ${i}`, is_ai: true, is_bank: false,
-      is_frozen: false, is_test_account: false, league_division_id: POOL, division: 4,
-      pending_removal_at: i === 0 ? "2026-08-28T00:00:00.000Z" : null, retired_at: null,
-    })),
-  ];
-  const supabase = makeSupabase({
-    league_divisions: [{ id: POOL, tier: 4, pool_index: 0, label: "Division 4 — A" }],
-    teams,
-    riders: [{ id: "rr1", team_id: "ai-00", firstname: "A", lastname: "B", is_retired: false }],
-    // Den blokering der låste hold nr. 1 i id-orden permanent: et DØDT tilbud.
-    transfer_offers: [{ id: "o1", rider_id: "rr1", seller_team_id: "ai-00", status: "withdrawn" }],
-    app_config: [{ key: AI_TEAM_RETIRE_FLAG_KEY, value: "on" }],
-  });
-
-  const before = supabase.state.teams.filter((t) => t.league_division_id === POOL).length;
-  assert.equal(before, 25);
-
-  const res = await reconcileAiTeamsForPool({ supabase, poolId: POOL });
-  assert.equal(res.removed, 1);
-
-  const after = supabase.state.teams.filter((t) => t.league_division_id === POOL).length;
-  assert.equal(after, 24, "puljen skal falde til 24 straks");
-
-  const retired = supabase.state.teams.find((t) => t.id === "ai-00");
-  assert.equal(retired.league_division_id, null);
-  assert.ok(retired.retired_at, "holdet skal være markeret nedlagt");
-  assert.equal(supabase.state.teams.length, 25, "ingen holdrække må forsvinde");
-
-  const forbidden = supabase.deletes.filter((d) => d.table === "teams" || d.table === "riders");
-  assert.deepEqual(forbidden, [], "trim-stien må ALDRIG kalde delete på teams/riders når flaget er tændt");
 });
 
 // ── Flaget ───────────────────────────────────────────────────────────────────

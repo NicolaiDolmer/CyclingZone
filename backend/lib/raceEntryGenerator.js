@@ -253,7 +253,7 @@ export async function runRaceEntryGenerator({
   // resten: kun tomme trupper, kun inden for lateFillHours. opt_in lader kun de
   // hold med der selv har slaaet assistenten til. proactive = uaendret #4217.
   const { data: allTeams, error: teamErr } = await supabase
-    .from("teams").select("id, is_test_account, is_frozen, league_division_id, user_id")
+    .from("teams").select("id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, user_id")
     .or("is_test_account.is.null,is_test_account.eq.false");
   if (teamErr) throw new Error(`teams: ${teamErr.message}`);
 
@@ -279,7 +279,7 @@ export async function runRaceEntryGenerator({
   }
 
   const eligibleTeams = (allTeams || []).filter((t) => {
-    if (t.is_frozen) return false;
+    if (t.is_frozen || (t.is_ai && t.pending_removal_at)) return false;
     if (!t.user_id) return true; // AI-hold: uaendret i ALLE tilstande (#2622-bindingen).
     if (mode === ASSISTANT_MODES.LATE_FILL) return true;
     if (mode === ASSISTANT_MODES.OPT_IN) return optInTeamIds?.has(t.id) === true;

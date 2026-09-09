@@ -1,5 +1,22 @@
 export const PATCHES = [
   {
+    "version": "7.268",
+    "date": "2026-09-09",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Leagues",
+      "en": {
+        "title": "League pools return to 24 teams",
+        "body": "Four pools had 25 teams instead of 24. Surplus AI teams now leave automatically once their ongoing races and deals are finished. Their history is preserved."
+      },
+      "da": {
+        "title": "Ligapuljer vender tilbage til 24 hold",
+        "body": "Fire puljer havde 25 hold i stedet for 24. Overskydende AI-hold forlader nu automatisk puljen, når deres igangværende løb og handler er afsluttet. Deres historik bevares."
+      },
+      "refs": [4753]
+    }]
+  },
+  {
     "version": "7.267",
     "date": "2026-09-08",
     "label": "Beta",

@@ -8,8 +8,7 @@ name: League-size invariant audit
 # ENHVER fremtidig afvigelse (uanset årsag) opdages inden for et døgn.
 #
 # Triggers:
-#   - PR der rører teams/league_divisions-skemaet, auditscriptet selv eller
-#     dette workflow → blokerer merge ved nye findings
+#   - Alle PRs: et unikt league-size-invariant-check; ingen tavs secret-skip
 #   - Dagligt cron (03:40 UTC — efter quality-inbox 03:30, før feature-
 #     liveness/codeql 04:00 mandag) → fanger drift inden for et døgn, jf.
 #     ejer-kravet "inden for et døgn" (#2377 pkt. 3)
@@ -19,10 +18,6 @@ name: League-size invariant audit
 
 on:
   pull_request:
-    paths:
-      - 'database/**'
-      - 'backend/scripts/audit-league-size-invariant.js'
-      - '.github/workflows/league-size-invariant-audit.yml'
   schedule:
     - cron: '40 3 * * *'
   workflow_dispatch:
@@ -34,18 +29,13 @@ permissions:
 
 jobs:
   audit:
+    name: league-size-invariant
     runs-on: ubuntu-latest
     steps:
-      - name: Skip secret-backed audit for Dependabot PRs
-        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
-        run: echo "Skipping league-size invariant audit for Dependabot PR because repository secrets are unavailable to Dependabot-triggered pull_request workflows."
-
       - name: Check out repository
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         uses: actions/checkout@v7
 
       - name: Set up Node.js
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -53,12 +43,10 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install backend dependencies
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         run: npm ci
         working-directory: backend
 
       - name: Run league-size invariant audit
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         id: audit
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -97,7 +85,6 @@ jobs:
           echo "total=$total" >> "$GITHUB_OUTPUT"
 
       - name: Upload report
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         uses: actions/upload-artifact@v7
         with:
           name: league-size-audit-report
@@ -106,7 +93,7 @@ jobs:
             league-size-audit.txt
 
       - name: Comment on PR if findings (PR runs only)
-        if: github.event_name == 'pull_request' && steps.audit.outputs.total != '0'
+        if: github.event_name == 'pull_request' && steps.audit.outputs.total != '' && steps.audit.outputs.total != '0'
         uses: actions/github-script@v9
         with:
           script: |
@@ -131,7 +118,7 @@ jobs:
             });
 
       - name: Open or update tracking issue (scheduled runs only)
-        if: github.event_name == 'schedule' && steps.audit.outputs.total != '0'
+        if: github.event_name == 'schedule' && steps.audit.outputs.total != '' && steps.audit.outputs.total != '0'
         uses: actions/github-script@v9
         with:
           script: |
@@ -177,7 +164,7 @@ jobs:
             }
 
       - name: Fail if findings
-        if: steps.audit.outputs.total != '0'
+        if: steps.audit.outputs.total != '' && steps.audit.outputs.total != '0'
         run: |
           echo "::error::League-size invariant audit found ${{ steps.audit.outputs.total }} deviating group(s). See report artifact."
           exit 1

@@ -671,6 +671,17 @@ test("#1993/#1844 loadEntrantsForRace: entrant.team_id + team_name kommer fra ra
   assert.equal(r1.team_name, "Snapshot Squad");
 });
 
+test('#4753 late auto-fill never reintroduces a draining AI team',async()=>{
+  const supabase=makeSupabase(padRoster({race_entries:[],
+    teams:[{id:'T1',is_ai:true,is_frozen:false,is_test_account:false,pending_removal_at:'2026-09-09T12:00:00Z'}],
+    riders:[{id:'r1',team_id:'T1',firstname:'A',lastname:'A',is_u25:false}],
+    rider_derived_abilities:[{rider_id:'r1',...abil()}],
+  },'T1'));
+  const entrants=await loadEntrantsForRace({supabase,race:{id:'race-x'}});
+  assert.equal(entrants.length,0);
+  assert.ok(!supabase.__writes.some(w=>w.table==='race_entries' && w.op==='insert'));
+});
+
 test("loadEntrantsForRace: tomt felt → auto-fill skriver race_entries", async () => {
   // #4295: assistenten skal kunne finde mindst 6 kandidater, ellers stiller holdet
   // ikke op og der er ikke noget at auto-fylde — derfor en trup på gulvet, ikke én rytter.

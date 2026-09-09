@@ -165,7 +165,7 @@ const BASELINE = {
   "backend/lib/boardUtils.js": 1,
   "backend/lib/attributionDashboard.js": 1,
   "backend/lib/aluntaWebhook.js": 1,
-  "backend/lib/aiTeamTrimHealSweep.js": 1,
+  "backend/lib/aiTeamTrimHealSweep.js": 0,
   "backend/lib/academyHealSweep.js": 1,
   "backend/lib/academyGraduationSweep.js": 1,
 };

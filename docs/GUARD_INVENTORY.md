@@ -12,6 +12,7 @@ En deltest beviser kun den angivne dækning, aldrig automatisk hele guardens pol
 
 | Guard / lag | Bevist dækning | Sidst set blokere | Bevis |
 |---|---|---|---|
+| League-size audit / GitHub CI | Opdagede ægte puljeoverskud; merge-blokering var ikke aktiveret | 2026-09-09 (rødt check, ingen merge-blokering) | PR #5057: league-audit fejlede, mens et andet `audit` bestod. Prod D4 F havde 25 hold; branch protection krævede ikke league-checket, og merge-køen kontrollerede kun required checks. Alarmen blev ignoreret. #4753 indfører unikt `league-size-invariant`; ny håndhævelse afventer prod-go og positivt bevis. |
 | `.githooks/pre-commit` / Git | Staged fake-secret | 2026-09-09 | `git commit`: gitleaks BLOCKED, exit 1, HEAD uændret; installerens smoketest genkørt efter ændring |
 | `.githooks/pre-push` / Git | Forbudt env-filnavn med harmløst indhold | 2026-09-09 | `git push` til lokalt test-remote afvist med specifik filnavnsbesked |
 | `scripts/check-staged-docs.mjs` via pre-commit / Git | Arkivændring inkl. rename væk; staged NOW >30 linjer eller >1200 approx tokens | 2026-09-09 | Faktisk arkiv-commit afvist; budget-fixtures, CRLF/grænse/unstaged-kontrol i `test-staged-docs.mjs` |
@@ -148,7 +149,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | CI | [.github/workflows/i18n-check.yml](../.github/workflows/i18n-check.yml) | leak-check: leak-check | aldrig bevist |
 | CI | [.github/workflows/i18n-check.yml](../.github/workflows/i18n-check.yml) | tone-em-dash: tone-em-dash | aldrig bevist |
 | CI | [.github/workflows/i18n-check.yml](../.github/workflows/i18n-check.yml) | tone-terms: tone-terms | aldrig bevist |
-| CI | [.github/workflows/league-size-invariant-audit.yml](../.github/workflows/league-size-invariant-audit.yml) | audit: audit | aldrig bevist |
+| CI | [.github/workflows/league-size-invariant-audit.yml](../.github/workflows/league-size-invariant-audit.yml) | audit: league-size-invariant | aldrig bevist |
 | CI | [.github/workflows/lighthouse-ci-skip-stub.yml](../.github/workflows/lighthouse-ci-skip-stub.yml) | perf-gate: perf-gate | aldrig bevist |
 | CI | [.github/workflows/lighthouse-ci.yml](../.github/workflows/lighthouse-ci.yml) | perf-gate: perf-gate | aldrig bevist |
 | CI | [.github/workflows/lockfile-drift-check.yml](../.github/workflows/lockfile-drift-check.yml) | lockfile-drift: npm ci + install-parity | aldrig bevist |
@@ -281,6 +282,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | script / CI eller manuel | [scripts/run-staged-checks.mjs](../scripts/run-staged-checks.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/setup-sentry-and-verify.ps1](../scripts/setup-sentry-and-verify.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/test-guard-commit-branch.sh](../scripts/test-guard-commit-branch.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/test-league-check.ps1](../scripts/test-league-check.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/tone-check-em-dash.mjs](../scripts/tone-check-em-dash.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/tone-check-terms.mjs](../scripts/tone-check-terms.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/verify-affected.mjs](../scripts/verify-affected.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |

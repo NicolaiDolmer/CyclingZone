@@ -38,9 +38,11 @@ import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName } from "./aiTeamNames.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
-import { STALL_WATCHDOG_DEFAULT_THRESHOLDS } from "./stallWatchdog.js";
+import { teamInflightRaceIds } from "./aiTeamRaceObligations.js";
+export { teamInflightRaceIds, getStalledInflightRaceIds } from "./aiTeamRaceObligations.js";
 import { notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { isAiTeamRetireEnabled } from "./aiTeamRetireFlag.js";
+import { retireExcessAiTeamsForPool } from "./aiPoolRetirement.js";
 import { retireAiTeam, teamHasLiveTransferOffers } from "./aiTeamRetirement.js";
 
 const INSERT_BATCH = 500;
@@ -58,7 +60,7 @@ export function isRealManager(team) {
 }
 
 function isAiTeam(team) {
-  return team.is_ai === true;
+  return team.is_ai === true && !team.is_bank;
 }
 
 // Politik: hvor mange AI skal en pulje have, givet antal ægte managere i den?
@@ -66,12 +68,12 @@ function isAiTeam(team) {
 //   tier 3/4: kun hvis >=1 manager — og da op til target (managere medregnes i feltet).
 // Eksporteret (#2407): aiTeamTrimHealSweep genbruger politikken som hard-gate
 // (sweep'en må aldrig slette en pulje under target).
-export function targetAiCountForPool(tier, realManagerCount) {
+export function targetAiCountForPool(tier, realManagerCount, occupiedNonAi = realManagerCount) {
   const alwaysFill = tier === MIN_DIVISION || tier === MIN_DIVISION + 1; // tier 1 og 2
-  if (alwaysFill) return Math.max(0, POOL_TARGET_SIZE - realManagerCount);
+  if (alwaysFill) return Math.max(0, POOL_TARGET_SIZE - occupiedNonAi);
   // tier 3/4: kun puljer med mindst én ægte manager.
   if (realManagerCount <= 0) return 0;
-  return Math.max(0, POOL_TARGET_SIZE - realManagerCount);
+  return Math.max(0, POOL_TARGET_SIZE - occupiedNonAi);
 }
 
 // Indsæt ÉT AI-hold i en pulje (deterministisk navn + seed), allokér dets 8-rytter-
@@ -100,21 +102,6 @@ async function createAiTeam(supabase, { pool, ordinal, baseSeed, usedNames, allo
 // DISTINKTE blokerende race_ids (tom liste = ikke blokeret). teamHasInflightEntries
 // delegerer hertil. aiTeamTrimHealSweep bruger listen til at afgøre om et blokerende
 // løb SELV er stallet (løbs-bevidst stale-detektion) — ikke bare OM holdet er blokeret.
-export async function teamInflightRaceIds(supabase, teamId, inflightRaceIds) {
-  if (!inflightRaceIds.length) return [];
-  const { data: riders, error: rErr } = await supabase.from("riders").select("id").eq("team_id", teamId);
-  if (rErr) throw new Error(`AI-trim (riders for ${teamId}): ${rErr.message}`);
-  const riderIds = (riders || []).map((r) => r.id);
-  if (!riderIds.length) return [];
-  const { data: entries, error: eErr } = await supabase
-    .from("race_entries")
-    .select("race_id")
-    .in("race_id", inflightRaceIds)
-    .in("rider_id", riderIds);
-  if (eErr) throw new Error(`AI-trim (race_entries for ${teamId}): ${eErr.message}`);
-  return [...new Set((entries || []).map((e) => e.race_id))];
-}
-
 // #2269: har holdets ryttere entries i et IGANGVÆRENDE løb (låst felt, samme
 // definition som #2074-guarden: ikke-completed + stages_completed>0)? Et låst hold
 // kan ikke hard-slettes — DB-triggeren trg_block_rider_delete_inflight kaster.
@@ -198,39 +185,6 @@ async function getBlockedRiderIds(supabase, riderIds) {
 // blokeret af et løb der SELV er gået i stå — ikke når det bare er blokeret af et
 // lovligt kørende multi-dag etapeløb (rod-årsagen til CYCLINGZONE-31's falsk-positive
 // spam: 48t-tærsklen var kortere end etapeløbenes kalender-spredning).
-export async function getStalledInflightRaceIds(
-  supabase,
-  now = new Date(),
-  stageAlarmHours = STALL_WATCHDOG_DEFAULT_THRESHOLDS.stageAlarmHours,
-) {
-  const { data: races, error: rErr } = await supabase
-    .from("races")
-    .select("id, stages_completed")
-    .neq("status", "completed")
-    .gt("stages_completed", 0);
-  if (rErr) throw new Error(`AI-trim (stalled races): ${rErr.message}`);
-  if (!races?.length) return [];
-
-  const cutoff = new Date(now.getTime() - stageAlarmHours * 60 * 60 * 1000).toISOString();
-  const raceIds = races.map((r) => r.id);
-
-  const dueRows = await fetchAllRows(() => supabase
-    .from("race_stage_schedule")
-    .select("race_id, stage_number, scheduled_at")
-    .in("race_id", raceIds)
-    .lte("scheduled_at", cutoff)
-    .order("race_id", { ascending: true }));
-  if (!dueRows.length) return [];
-
-  const nextStageByRace = new Map(races.map((r) => [r.id, (r.stages_completed || 0) + 1]));
-  const stalled = new Set();
-  for (const row of dueRows) {
-    // Kun DEN forfaldne række der ER løbets næste uafviklede etape betyder "stallet".
-    if (row.stage_number === nextStageByRace.get(row.race_id)) stalled.add(row.race_id);
-  }
-  return [...stalled];
-}
-
 // #2187: markér AI-hold der IKKE kunne slettes nu (inflight-blokeret) til udskudt
 // trim, så en heal-sweep kan fuldføre dem senere (uden at en ny signup i SAMME pulje
 // skal ske for at give trimmet en ny chance — det var rod-årsagen til at Division 4
@@ -348,9 +302,8 @@ export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
 //
 // Med filteret opfoerer blokeringen sig som de to eksisterende (#2074 inflight, #2389
 // uudbetalte praemier): kandidaten springes over, naeste tages i stedet, og underskuddet
-// udskydes via pending_removal_at. Doede tilbud (withdrawn/accepted/rejected) forsvinder
-// aldrig af sig selv, saa de hold forbliver udskudt indtil FK-semantikken er afgjort
-// (#4233's A/B/C — ejer-beslutning, ikke noget denne funktion foregriber).
+// udskydes via pending_removal_at. Dette er KUN den legacy hard-delete-sti.
+// Ejer-design 9/9 (#4753): den aktive sti nedlaegger atomisk og bevarer tilbud.
 export async function teamHasBlockingTransferOffers(supabase, teamId) {
   const { data: asSeller, error: sellerErr } = await supabase
     .from("transfer_offers").select("id").eq("seller_team_id", teamId).limit(1);
@@ -375,26 +328,8 @@ export async function teamHasBlockingTransferOffers(supabase, teamId) {
   return false;
 }
 
-// #4753: ÉN kilde til "kan dette AI-hold forlade puljen lige nu?" — delt af begge
-// fjernelses-tilstande, så guard-listen ikke kan drifte fra hinanden.
-//
-// De to første grunde gælder i BEGGE tilstande, fordi de ikke handler om FK'er:
-//   · inflight race_entries (#2074): et hold midt i et etapeløb skal køre løbet
-//     færdigt — feltet må ikke skifte under et kørende løb.
-//   · uudbetalte præmier (#2389): auto-prize-sweepen og standings-recalc læser
-//     holdet; forsvinder det midt i det, aborteres hele ticket (CYCLINGZONE-26/2E/2F).
-//
-// Den TREDJE grund skifter betydning med tilstanden:
-//   · hård-slet: ENHVER transfer_offers-række blokerer, uanset status, fordi begge
-//     FK'er (rider_id + seller_team_id) er NO ACTION (#4233).
-//   · nedlæggelse: kun LEVENDE tilbud blokerer, og da som spiller-hensyn (en manager
-//     står midt i en forhandling). Døde tilbud (withdrawn/accepted/rejected) blokerede
-//     kun fordi der blev SLETTET — og der slettes ikke længere. Det er præcis dét led
-//     der låste 13 AI-hold permanent (målt prod 4/9).
-// Returnerer HVILKEN guard der blokerer (null = ingen). Reparations-dry-run'en
-// (backend/scripts/retire-stuck-ai-teams.js) viser grunden pr. hold, så ejeren kan se
-// forskel på "venter på et løb der kører færdigt" og "permanent fastlåst" uden at
-// gætte — netop det gæt lod 4 puljer stå på 25 hold i en uge uden at nogen opdagede det.
+// Legacy read-only diagnostic, retained for historical incident tooling.
+// Automatic retirement and its dry-run use ai_team_retirement_reason in SQL.
 export async function teamRemovalBlockReason(supabase, teamId, inflightRaceIds, { retire = false } = {}) {
   if (await teamHasInflightEntries(supabase, teamId, inflightRaceIds)) return "inflight_entries";
   if (await teamHasUnpaidPrizeResults(supabase, teamId)) return "unpaid_prizes";
@@ -406,186 +341,25 @@ export async function teamIsBlockedForRemoval(supabase, teamId, inflightRaceIds,
   return (await teamRemovalBlockReason(supabase, teamId, inflightRaceIds, opts)) != null;
 }
 
-// #2187: slet ét navngivet AI-hold (rytter+hold). Bruges af heal-sweep-retryen, som
-// (modsat removeAiTeams' kandidat-udvælgelse fra en pulje-liste) allerede kender det
-// præcise hold-id den skal forsøge igen.
-//
-// #2086: defense-in-depth mod #2074-DB-triggeren (trg_block_rider_delete_inflight).
-// aiTeamTrimHealSweep genkontrollerer inflight-status FØR den kalder denne funktion,
-// men et TOCTOU-vindue findes stadig (en etape kan starte imellem check og delete).
-// Uden filteret her ville et bulk .delete().eq("team_id", teamId) blive rullet HELT
-// tilbage af DB-triggeren hvis BARE ÉN af holdets ryttere er ramt — resten af sweep'en
-// ville se en throw i stedet for en ren skip (isoleret af sweep'ens per-hold try/catch,
-// men rapporteret som "failed" i stedet for korrekt udskudt). Filtrér de blokerede
-// ryttere fra FØR delete i stedet.
-export async function deleteAiTeamById(supabase, teamId) {
-  // #4753: nedlæggelses-tilstanden (flag ai_team_retire_enabled). Ingen DELETE —
-  // holdet forlader puljen via league_division_id=NULL og rytterne pensioneres.
-  // Guards: inflight (#2074) + uudbetalte præmier (#2389) + LEVENDE tilbud udskyder
-  // stadig; døde tilbud gør ikke, fordi der ikke slettes noget de kan blokere.
-  if (await isAiTeamRetireEnabled(supabase)) {
-    const inflightRaceIds = await getInflightRaceIds(supabase);
-    if (await teamIsBlockedForRemoval(supabase, teamId, inflightRaceIds, { retire: true })) {
-      await markPendingRemoval(supabase, [teamId]);
-      console.warn(
-        `  ⏳ deleteAiTeamById(${teamId}): hold er inflight-/præmie-/levende-tilbud-blokeret (#4753) — nedlæggelse udskudt, hold markeret pending_removal_at.`
-      );
-      return { deleted: false, deferred: true, blockedRiderIds: [] };
-    }
-    const { ridersRetired } = await retireAiTeam(supabase, teamId);
-    console.log(`  🏁 deleteAiTeamById(${teamId}): hold nedlagt (#4753), ${ridersRetired} ryttere pensioneret.`);
-    return { deleted: true, deferred: false, retired: true, blockedRiderIds: [] };
+// Compatibility name for callers: retires through the atomic pool contract.
+// A deferred result must never be counted as a successful removal.
+export async function deleteAiTeamById(supabase, teamId, { now = new Date() } = {}) {
+  if (!await isAiTeamRetireEnabled(supabase)) {
+    return { deleted: false, deferred: true, retired: false, reason: "retirement_disabled", blockedRiderIds: [] };
   }
-
-  // #4233: transfer_offers-FK'erne (rider_id + seller_team_id, begge NO ACTION) sprænger
-  // baade rytter- og hold-sletningen. Tjek FOER vi roerer noget: en delvis sletning ville
-  // efterlade holdet uden trup uden at bringe puljen naermere target. Udskyd hele holdet.
-  if (await teamHasBlockingTransferOffers(supabase, teamId)) {
-    await markPendingRemoval(supabase, [teamId]);
-    console.warn(
-      `  ⏳ deleteAiTeamById(${teamId}): blokerende transfer_offers (#4233) — sletning udskudt, hold markeret pending_removal_at.`
-    );
-    return { deleted: false, deferred: true, blockedRiderIds: [] };
-  }
-  // #1847: bevar løbshistorikkens navne før FK'erne SET NULL'er attributionen.
-  await snapshotRaceResultNamesForTeams(supabase, [teamId]);
-  // #2524: hent navn+id FØR delete — rider_watchlist har ingen FK-cascade, så
-  // rytteren ville ellers forsvinde tavst fra enhver managers ønskeliste.
-  const { data: watchedRiders } = await supabase.from("riders").select("id, firstname, lastname").eq("team_id", teamId);
-  const riders = watchedRiders || [];
-
-  const blockedIds = await getBlockedRiderIds(supabase, riders.map((r) => r.id));
-  const deletable = riders.filter((r) => !blockedIds.has(r.id));
-
-  if (blockedIds.size > 0) {
-    // Holdet kan ikke slettes helt så længe mindst én rytter er i et igangværende
-    // løb (#2074) — slet de øvrige ryttere, lad holdet + den/de blokerede rytter(e)
-    // stå, og udskyd resten via pending_removal_at (samme mekanik som removeAiTeams,
-    // #2187) så en senere sweep fuldfører når løbet er kørt færdigt.
-    if (deletable.length) {
-      const { error: rErr } = await supabase.from("riders").delete().in("id", deletable.map((r) => r.id));
-      if (rErr) throw new Error(`AI-rider delete (${teamId}): ${rErr.message}`);
-      await notifyAndClearWatchlistForRiders({ supabase, riders: deletable });
-    }
-    await markPendingRemoval(supabase, [teamId]);
-    console.warn(
-      `  ⏳ deleteAiTeamById(${teamId}): ${blockedIds.size} rytter(e) i igangværende løb (#2074) — sletning udskudt (#2086), hold markeret pending_removal_at.`
-    );
-    return { deleted: false, deferred: true, blockedRiderIds: [...blockedIds] };
-  }
-
-  const { error: rErr } = await supabase.from("riders").delete().eq("team_id", teamId);
-  if (rErr) throw new Error(`AI-rider delete (${teamId}): ${rErr.message}`);
-  await notifyAndClearWatchlistForRiders({ supabase, riders });
-  const { error: tErr } = await supabase.from("teams").delete().eq("id", teamId);
-  if (tErr) throw new Error(`AI-team delete (${teamId}): ${tErr.message}`);
-  return { deleted: true, deferred: false, blockedRiderIds: [] };
+  const result = await retireAiTeam(supabase, teamId, { now });
+  return { deleted: result.retired, deferred: !result.retired, retired: result.retired,
+    reason: result.reason, blockedRiderIds: [] };
 }
 
-// Fjern N AI-hold fra en pulje (deterministisk: laveste id først). Sletter holdets
-// ryttere FØR holdet (riders.team_id -> teams er ON DELETE SET NULL i skemaet, men
-// vi vil ikke efterlade ejerløse AI-ryttere i markedet → eksplicit delete).
-// #2269: hold hvis ryttere har entries i et igangværende løb SPRINGES OVER (DB-guarden
-// fra #2074 blokerer hard delete af dem) — næste kandidat i id-ordenen tages i stedet.
-// #2187: er der ikke nok ledige kandidater, trimmes færre end ønsket, og de sprungne
-// (blokerede) hold markeres pending_removal_at — en heal-sweep (aiTeamTrimHealSweep.js)
-// retryer dem periodisk, uafhængigt af om puljen får et nyt signup igen.
-async function removeAiTeams(supabase, aiTeams, count) {
-  const sorted = [...aiTeams].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  if (!sorted.length || count <= 0) return 0;
-
-  const inflightRaceIds = await getInflightRaceIds(supabase);
-  // #4753: nedlæggelse frem for hård-slet (flag ai_team_retire_enabled). Læses ÉN
-  // gang pr. trim, ikke pr. hold — tilstanden må ikke kunne skifte midt i et loop.
-  const retire = await isAiTeamRetireEnabled(supabase);
-
-  const toRemove = [];
-  const blockedIds = [];
-  for (const team of sorted) {
-    if (toRemove.length >= count) break;
-    // #2389 (uudbetalte præmier) + #2074 (inflight) + #4233/#4753 (tilbud) — se
-    // teamIsBlockedForRemoval for hvorfor det tredje led skifter betydning med
-    // tilstanden. Uden dette led valgte loopet et hold det ikke kunne slette, og hele
-    // reconcilen kastede i stedet for at tage naeste kandidat.
-    if (await teamIsBlockedForRemoval(supabase, team.id, inflightRaceIds, { retire })) {
-      blockedIds.push(team.id);
-      continue;
-    }
-    toRemove.push(team);
-  }
-  if (toRemove.length < count) {
-    // #2407 Fejl 1: markér KUN det faktiske underskud (count - toRemove.length), ikke
-    // hvert blokeret hold loopet passerede. Da næsten alle AI-hold typisk er præmie-/
-    // inflight-blokeret (#2389), betød "markér alle passerede" at HELE puljen fik
-    // pending_removal_at (prod 12-15/7: 65 hold markeret i pulje 9/10/11, kun 5 reelt
-    // overskud) — og heal-sweepen ville derefter tælle puljen ned mod 4. De første
-    // `deficit` blokerede i id-orden vælges (samme deterministiske orden som selve
-    // trim-udvælgelsen).
-    const deficit = count - toRemove.length;
-    const deferredIds = blockedIds.slice(0, deficit);
-    console.warn(
-      `  ⏳ AI-trim deferred: ${deficit} AI-hold har entries i igangværende løb (låst felt, #2074), ` +
-      `uudbetalte præmier (#2389) eller blokerende transfer_offers (#4233) og kan ikke trimmes nu — ` +
-      `markeret pending_removal_at (#2187), en heal-sweep fuldfører når blokeringen er væk.`
-    );
-    if (deferredIds.length) {
-      await markPendingRemoval(supabase, deferredIds);
-    }
-  }
-  if (!toRemove.length) return 0;
-  const ids = toRemove.map((t) => t.id);
-
-  // #4753: NEDLÆGGELSES-STIEN. Ingen DELETE på hverken riders eller teams — derfor
-  // heller ingen navne-snapshot (#1847): race_results.rider_id/team_id peger fortsat
-  // på levende rækker, så attributionen bevares i stedet for at blive SET NULL'et.
-  // Ét hold ad gangen: hver nedlæggelse er selvstændigt idempotent, og en fejl på
-  // hold nr. 3 må ikke rulle nr. 1-2 tilbage.
-  if (retire) {
-    for (const teamId of ids) {
-      await retireAiTeam(supabase, teamId);
-    }
-    console.log(`  🏁 AI-trim: ${ids.length} hold nedlagt (#4753) — puljepladsen frigivet, intet slettet.`);
-    return toRemove.length;
-  }
-
-  for (let i = 0; i < ids.length; i += INSERT_BATCH) {
-    const batch = ids.slice(i, i + INSERT_BATCH);
-    // #1847: bevar løbshistorikkens navne før FK'erne SET NULL'er attributionen.
-    await snapshotRaceResultNamesForTeams(supabase, batch);
-    // #2524: hent navn+id FØR delete (rider_watchlist ingen FK-cascade — se
-    // notifyAndClearWatchlistForRiders).
-    // #3331: batch kan være op til 500 team-id'er × op til 38 ryttere/hold —
-    // kan overstige 1000-rækkers-loftet, så pagineret.
-    const watchedRiders = await fetchAllRows(() => supabase
-      .from("riders").select("id, firstname, lastname").in("team_id", batch)
-      .order("id", { ascending: true }));
-    // Cutover-fix 23/8: authenticator-rollen har statement_timeout=8s, og én
-    // DELETE på 500+ ryttere (FK-kaskader til resultater/entries/watchlists)
-    // sprænger den (målt: 503 ryttere i D1-reconcilen → "canceling statement
-    // due to statement timeout"). Slet derfor i id-bidder på 100 — samme
-    // slutresultat, hvert statement langt under grænsen.
-    const riderIds = (watchedRiders || []).map((r) => r.id);
-    for (let j = 0; j < riderIds.length; j += 100) {
-      const idChunk = riderIds.slice(j, j + 100);
-      const { error: rErr } = await supabase.from("riders").delete().in("id", idChunk);
-      if (rErr) throw new Error(`AI-rider delete (chunk ${j / 100 + 1}): ${rErr.message}`);
-    }
-    // Belt-and-suspenders: ryttere uden for watchedRiders-selectet (må ikke
-    // findes, men en race mellem select og delete skal ikke efterlade forældre-
-    // løse rækker når holdene slettes nedenfor).
-    const { error: rRestErr } = await supabase.from("riders").delete().in("team_id", batch);
-    if (rRestErr) throw new Error(`AI-rider delete (rest): ${rRestErr.message}`);
-    await notifyAndClearWatchlistForRiders({ supabase, riders: watchedRiders || [] });
-    // 3 hold pr. statement: hvert hold kaskade-sletter historik (player_events,
-    // board_satisfaction_events, finance_transactions m.fl., ~2-3k raekker/hold)
-    // — 25 ad gangen sprang stadig 8s-grænsen (målt 23/8).
-    for (let j = 0; j < batch.length; j += 3) {
-      const teamChunk = batch.slice(j, j + 3);
-      const { error: tErr } = await supabase.from("teams").delete().in("id", teamChunk);
-      if (tErr) throw new Error(`AI-team delete (chunk ${Math.floor(j / 3) + 1}): ${tErr.message}`);
-    }
-  }
-  return toRemove.length;
+// Owner design-go 9/9: retirement is the only automatic trim path. Disabled or
+// unavailable flag pauses removal; it can never fall back to destructive deletes.
+// Selection, reservation, obligation checks and pool budget live in the SQL SSOT.
+async function removeAiTeams(supabase, aiTeams, count, now = new Date()) {
+  if (!aiTeams.length || count <= 0 || !await isAiTeamRetireEnabled(supabase)) return 0;
+  const poolId = aiTeams[0].league_division_id;
+  if (poolId == null) throw new Error("AI retirement requires pool context");
+  return retireExcessAiTeamsForPool(supabase, poolId, now);
 }
 
 /**
@@ -662,7 +436,7 @@ export async function clearAllAiTeams(supabase) {
  * @param {object}  [args.deps]     { allocateSquadForTeam } — injicérbar for test.
  * @returns {Promise<{created:number, removed:number, pools:object[]}>}
  */
-export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPULATION.seed, deps = {} } = {}) {
+export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPULATION.seed, deps = {}, now = new Date() } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   const allocateSquadForTeam = deps.allocateSquadForTeam || defaultAllocateSquadForTeam;
   const baseSeed = (Number(seed) >>> 0);
@@ -691,7 +465,8 @@ export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPUL
     const inPool = (teams || []).filter((t) => t.league_division_id === pool.id);
     const realManagers = inPool.filter(isRealManager);
     const aiTeams = inPool.filter(isAiTeam);
-    const targetAi = targetAiCountForPool(pool.tier, realManagers.length);
+    const targetAi = targetAiCountForPool(pool.tier, realManagers.length,
+      inPool.filter(t => !t.is_ai && !t.is_bank).length);
     const delta = targetAi - aiTeams.length;
 
     if (delta > 0) {
@@ -706,7 +481,7 @@ export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPUL
         created++;
       }
     } else if (delta < 0) {
-      removed += await removeAiTeams(supabase, aiTeams, -delta);
+      removed += await removeAiTeams(supabase, aiTeams, -delta, now);
     }
 
     poolSummaries.push({
@@ -797,7 +572,7 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
  * @param {object} [args.deps]      { allocateSquadForTeam } — injicérbar for test.
  * @returns {Promise<{created:number, removed:number, poolId:(string|number), tier:(number|null), realManagers:number, targetAi:number, aiBefore:number, delta:number}>}
  */
-export async function reconcileAiTeamsForPool({ supabase, poolId, seed = LAUNCH_POPULATION.seed, deps = {} } = {}) {
+export async function reconcileAiTeamsForPool({ supabase, poolId, seed = LAUNCH_POPULATION.seed, deps = {}, now = new Date() } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (poolId == null) throw new Error("poolId required");
   const allocateSquadForTeam = deps.allocateSquadForTeam || defaultAllocateSquadForTeam;
@@ -824,14 +599,15 @@ export async function reconcileAiTeamsForPool({ supabase, poolId, seed = LAUNCH_
   const teamsInPool = inPool || [];
   const realManagers = teamsInPool.filter(isRealManager);
   const aiTeams = teamsInPool.filter(isAiTeam);
-  const targetAi = targetAiCountForPool(pool.tier, realManagers.length);
+  const targetAi = targetAiCountForPool(pool.tier, realManagers.length,
+    teamsInPool.filter(t => !t.is_ai && !t.is_bank).length);
   const delta = targetAi - aiTeams.length;
 
   let created = 0;
   let removed = 0;
 
   if (delta < 0) {
-    removed = await removeAiTeams(supabase, aiTeams, -delta);
+    removed = await removeAiTeams(supabase, aiTeams, -delta, now);
   } else if (delta > 0) {
     // Navne-unikhed: hent eksisterende AI-navne globalt (re-run/reconcile-sikkerhed).
     const { data: allAi, error: aiErr } = await supabase

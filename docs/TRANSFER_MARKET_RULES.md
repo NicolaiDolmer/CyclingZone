@@ -20,6 +20,18 @@
 
 ## 0. De tre veje ind på markedet
 
+### AI-hold på vej ud af puljen (#4753, design-go 9/9)
+
+Et overskydende AI-hold nedlægges; hold, ryttere, tilbud og resultater bevares.
+`pending_removal_at` betyder, at holdet færdiggør eksisterende forpligtelser, men ikke starter nye.
+Transfer- og byttetilbud i `pending/countered/awaiting_confirmation`, auktioner i
+`active/extended` og udskudte ejerskifter blokerer nedlæggelsen. Eksisterende forhandlinger
+kan fortsat ændre pris, bekræftes og afsluttes. Døde tilbud blokerer ikke og slettes ikke.
+Salgsannoncer i `open/negotiating` trækkes tilbage; nye annoncer, tilbud, bytter og bud afvises.
+Nedlæggelse, pensionering og ønskelistebeskeder committer samlet eller rulles samlet tilbage.
+Kode: `database/2026-09-09-4753-ai-pool-retirement.sql`; puljekontrakten står i
+[`GAME_INVARIANTS.md`](GAME_INVARIANTS.md). Verificeret lokalt; prod-release afventer særskilt ejer-go.
+
 | Vej | Hvem opretter | Kode |
 |---|---|---|
 | **Auktion** | manager (`POST /api/auctions`) eller et automatisk flow | `backend/routes/api.js:6229-6560`, `backend/lib/youthMarket.js:139`, `backend/lib/academyGraduation.js:227` |

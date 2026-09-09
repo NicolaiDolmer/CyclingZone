@@ -77,7 +77,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| AI team retirement (`ai-team-retire`) | live | `ai_team_retire_enabled` | - | - | 2026-09-06 | - |
+| AI team retirement (`ai-team-retire`) | live | `ai_team_retire_enabled` | - | - | 2026-09-06 | #4753: flag on genmålt 9/9; atomisk reservation, dræning og pulje-sweep lokalt verificeret, prod-release afventer ejer-go. |
 | Season recap (`season-end-recap`) | live | - | - | #1311 | 2026-09-06 | SeasonEndPage med recap og hædersbevisninger. |
 | Season transition (`season-transition`) | live | - | [SEASON_TRANSITION_CHECKLIST.md](SEASON_TRANSITION_CHECKLIST.md) | - | 2026-09-06 | - |
 | Season signup (`season-signup`) | dormant | `season_signup_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-07 | Bygget; flaget åbnes ved S4-cutover 27-28/9 (#452, #4592). |

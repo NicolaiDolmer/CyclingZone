@@ -408,6 +408,7 @@ features:
     state: live
     flag: ai_team_retire_enabled
     verified: 2026-09-06
+    note: '#4753: flag on genmålt 9/9; atomisk reservation, dræning og pulje-sweep lokalt verificeret, prod-release afventer ejer-go.'
 
   - id: season-documentary-llm
     area: season

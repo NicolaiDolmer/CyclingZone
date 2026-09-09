@@ -23,19 +23,19 @@ SSOT: `docs/TRANSFER_MARKET_RULES.md`, `docs/GAME_INVARIANTS.md` and
 
 ## Implementation and verification plan
 Execution: inline, using executing-plans and test-driven-development.
-- [ ] Add a real PostgreSQL test fixture for pool planning, signup reservation,
+- [x] Add a real PostgreSQL test fixture for pool planning, signup reservation,
   draining guards, atomic rollback and repeat/concurrent retirement. First fail
   against the existing behavior, then load and exercise the migration itself.
-- [ ] Add service-only SQL planning/retirement functions and placement/draining
+- [x] Add service-only SQL planning/retirement functions and placement/draining
   triggers. Revoke public RPC execution; use fixed search paths. No data repair
   statements at migration top level and no changed foreign-key delete actions.
-- [ ] Delegate retirement, pool sweep and dry-run to the common database contract;
+- [x] Delegate retirement, pool sweep and dry-run to the common database contract;
   preserve existing caller result shapes and propagate failures.
-- [ ] Update league audit to classify explained waits from current obligations;
+- [x] Update league audit to classify explained waits from current obligations;
   use `league-size-invariant` in workflow and merge checks, with no silent bypass.
-- [ ] Update transfer/calendar/invariant SSOT, feature registry, patch notes,
+- [x] Update transfer/calendar/invariant SSOT, feature registry, patch notes,
   guard evidence and postmortem (guard ignored; unresolved decision closed).
-- [ ] Run focused integration tests, `scripts/verify-local.ps1`, frontend lint
+- [x] Run focused integration tests, `scripts/verify-local.ps1`, frontend lint
   and applicable e2e, `scripts/preflight-pr.ps1`, token hygiene and code review.
 - [ ] Push a draft PR with design-go and evidence; run read-only live dry-run;
   clear the session lock and wait for owner go. The issue stays open.
@@ -49,3 +49,5 @@ Retirement flag already on; PR #4762 merged 4/9. Sweep only reads marked teams.
 Branch protection omitted `audit`; merge script only checked required contexts.
 Missing marker's historical cause is unproven; prevention covers interrupted
 signup and discovery covers already-existing drift without guessing its origin.
+
+Evidence: [local verification and live measurement](../audits/2026-09-09-4753-retirement-verification.md).

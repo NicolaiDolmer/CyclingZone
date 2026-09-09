@@ -202,7 +202,7 @@ export const BASELINE = {
   "backend/routes/api.js": 108,
   "backend/lib/raceRunner.js": 4,
   "backend/lib/academyTransfer.js": 3,
-  "backend/lib/aiTeamGenerator.js": 1,
+  "backend/lib/aiTeamGenerator.js": 0,
   "backend/lib/economyEngine.js": 2,
   "backend/lib/auctionEngine.js": 2,
   "backend/lib/auctionFinalization.js": 1,

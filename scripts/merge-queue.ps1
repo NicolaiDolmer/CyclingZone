@@ -66,6 +66,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot 'lib\gh-retry.ps1')
+. (Join-Path $PSScriptRoot 'lib\league-check.ps1')
 
 $PrNumbers = @($Pr -split '[,\s]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'."; exit 1 }
@@ -79,6 +80,19 @@ function Get-PrPlanEntry([int]$number) {
     $checksExit = $LASTEXITCODE
   } catch {
     $checksExit = 1
+  }
+  # #4753: the production invariant is mandatory even before GitHub settings
+  # are updated. Missing, pending, skipped and failing all stop this queue.
+  if ($checksExit -eq 0) {
+    $leagueJson = & gh pr checks $number --repo $Repo --json name,bucket
+    $leagueExit = $LASTEXITCODE
+    try {
+      if ($leagueExit -notin @(0, 1, 8)) {
+        $checksExit = 1
+      } else {
+        $checksExit = Get-LeagueCheckExitCode -Checks @(($leagueJson -join "") | ConvertFrom-Json)
+      }
+    } catch { $checksExit = 1 }
   }
   if ($checksExit -eq 0) { $checksSummary = "GROEN" }
   elseif ($checksExit -eq 8) { $checksSummary = "AFVENTER" }

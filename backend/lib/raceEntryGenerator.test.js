@@ -1740,6 +1740,13 @@ function seedModeScenario({ managerOptIn = true } = {}) {
 const entriesFor = (state, raceId, teamId) =>
   state.race_entries.filter((e) => e.race_id === raceId && e.team_id === teamId);
 
+test('#4753 draining AI gets no new automatic entries', async () => {
+  const { state, seasonId } = seedModeScenario();
+  Object.assign(state.teams[0], { is_ai:true, pending_removal_at:'2026-07-10T07:00:00Z' });
+  await runRaceEntryGenerator({supabase:makeSupabase(state),seasonId,dryRun:false,now:Date.parse('2026-07-10T08:00:00Z')});
+  assert.equal(state.race_entries.filter(e=>e.team_id==='ai1').length,0);
+});
+
 test("#4201 proactive (default): manager-hold roeres ikke, AI-hold fyldes", async () => {
   const { state, seasonId } = seedModeScenario();
   const supabase = makeSupabase(state);
