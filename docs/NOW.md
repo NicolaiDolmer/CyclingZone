@@ -22,6 +22,6 @@
 - **Træning:** løbsdag som tick (#4850/#4846) live senest 28/9; kalenderpakker #4845 FØR S4-kalender.
 - **Mekanik:** merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`, aldrig HH:57-HH:03; start køen først når checks har været rene i to aflæsninger); migrationer applies af auto-migrate.yml, Claude tjekker runnet + post-verify før næste merge. Bølger: TIER WAVE, draft til `gh pr ready`, CodeRabbit CLI før ready, push <10 min + hvert 15. min, vagt `wave-lane-watch.ps1`, frossen worker = afløser i SAMME worktree. Workers kører aldrig hele e2e, spawner aldrig agenter og kører preflight i FORGRUNDEN; go-kort bygges på `gh pr diff` + billeder orkestratoren selv har set. Tid: `Get-Date` (Git Bash `date` = UTC).
 
-> **🤖 Working agent:** Ingen aktiv session. #5065 leveret 9/9: frisk CLI blokerer T1/T2/T3, K1 tilladt; Git-secret/arkiv bevist, trust 23/23. Årsagskæde og PC1-trin: GUARD_INVENTORY.md.
+> **🤖 Working agent:** Ingen aktiv session. #5065 leveret 9/9: frisk CLI blokerer T1/T2/T3, K1 tilladt; Git-secret/arkiv bevist, trust 23/23. Årsagskæde og PC1-trin: GUARD_INVENTORY.md. **Naeste Codex-session: #4753** (ejer valgte C 9/9 - doede transfer_offers blokerer AI-trim; 4 puljer paa 25 hold; dry-run ejer-gated foer prod-sletning).
 
 _Historik i git-log, issue-tråde + docs/audits/._
