@@ -415,9 +415,8 @@ features:
     title_en: AI pool retirement
     title_da: Atomisk nedlæggelse af AI-hold i puljer
     state: building
-    flag: ai_pool_retirement_v2_enabled
     verified: 2026-09-09
-    note: 'Off/fravær; ejer-go, begge flag on.'
+    note: 'ai_pool_retirement_v2_enabled: fravær/off, ejer-go.'
 
   - id: season-documentary-llm
     area: season

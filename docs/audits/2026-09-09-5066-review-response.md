@@ -36,3 +36,8 @@ Documentation and local mocks do not replace observing the deployed event/check.
 Second completed CodeRabbit review of the updated diff: **1 minor issue**, repeated
 release conditions in the evidence note. Consolidated into the canonical runbook
 reference. No new code issues were raised; this does not replace verification.
+
+Post-push CI caught an error in my registry entry: `flag` may only reference a key
+that already exists in production. The absent release key belongs in `note` until
+activation, as specified by check-feature-registry-flags.mjs. Corrected the entry
+and regenerated FEATURE_STATUS; neither the guard nor production config was changed.

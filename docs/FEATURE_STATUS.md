@@ -81,7 +81,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Season recap (`season-end-recap`) | live | - | - | #1311 | 2026-09-06 | SeasonEndPage med recap og hædersbevisninger. |
 | Season transition (`season-transition`) | live | - | [SEASON_TRANSITION_CHECKLIST.md](SEASON_TRANSITION_CHECKLIST.md) | - | 2026-09-06 | - |
 | Season signup (`season-signup`) | dormant | `season_signup_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-07 | Bygget; flaget åbnes ved S4-cutover 27-28/9 (#452, #4592). |
-| AI pool retirement (`ai-pool-retirement-v2`) | building | `ai_pool_retirement_v2_enabled` | - | - | 2026-09-09 | Off/fravær; ejer-go, begge flag on. |
+| AI pool retirement (`ai-pool-retirement-v2`) | building | - | - | - | 2026-09-09 | ai_pool_retirement_v2_enabled: fravær/off, ejer-go. |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
 
 ## economy
