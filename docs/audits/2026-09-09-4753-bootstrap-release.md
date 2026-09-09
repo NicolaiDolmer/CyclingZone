@@ -63,12 +63,35 @@ unrelated workflow in this release-evidence PR.
 
 ## Remaining gates
 
-This ordinary documentation PR exercises the trusted publisher after merge.
-A real Dependabot GitHub Actions version-update job was requested through its
-Check for updates UI. Neither request itself proves publication; record the
-actual check ID, exact head SHA, trusted workflow revision and measurement result
-in #4753 after each completes. A red measurement of the remaining surplus is the
-correct result; green population and enforced protection remain separate proofs.
+Both actual workflow_run executions used trusted main revision
+`3759ab2e639ffcb3f4888e105338a97aad63484e`. Their checkout, production measurement
+and PR-check publication steps all succeeded. The separate Fail if findings step
+then correctly failed because Division 4 F still had 25 teams. There was no
+credential skip, no PR-code execution with secrets, and no fabricated green result.
+
+| PR | Exact PR head SHA | Unique GitHub Actions check | Trusted workflow_run |
+|---|---|---|---|
+| Ordinary #5071 | `a96c9960782eaa1d2dc6c9d05c99794e5380c188` | [102579954168](https://github.com/NicolaiDolmer/CyclingZone/runs/102579954168) | [34385281610](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/34385281610) |
+| Dependabot #5070 | `d5e6d63776b23a1c2e772caef8d40d34558a670c` | [102578723248](https://github.com/NicolaiDolmer/CyclingZone/runs/102578723248) | [34384904156](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/34384904156) |
+
+GitHub check-runs returned exactly one league-size-invariant check on each SHA,
+with external_id `league-audit:<that SHA>`, app github-actions, completed/failure.
+The public summaries measured all 15 pools, one finding and zero waiting cases
+at 17:49:56 UTC (ordinary) and 17:46:21 UTC (Dependabot). These are observations
+of named revisions; later documentation commits require their own check result.
+
+Dependabot's real version-update job 1566595629 created #5070. Its unrelated
+auto-merge workflow stopped because AUTO_MERGE_PAT was unavailable; no credentials
+were changed. #5070 was converted to draft to retain it for review without a
+dependency release. That auto-merge failure is distinct from the successful
+production measurement in the trusted league workflow.
+
+The real merge queue was exercised with `-Pr 5071 -DryRun`: exit 1, no merge.
+Separately, `gh pr checks 5071 --required` returned 0, while the production
+Get-LeagueCheckExitCode helper returned 1 for the observed check list. This proves
+the league guard stopped a merge despite the existing required checks passing.
+It does not prove GitHub branch protection enforces the context; that setting
+remains unchanged. All-green population proof still awaits owner-gated repair.
 
 Branch protection was read only: 26 existing required contexts, without
 league-size-invariant. No setting was changed. Activation, pool repair and branch
