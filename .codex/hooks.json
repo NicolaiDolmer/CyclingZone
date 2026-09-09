@@ -1,0 +1,164 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/block-dangerous-secret-commands.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-branch-switch-in-main-checkout.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/setup-worktree-if-needed.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/lint-gh-issue.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-ci-before-push.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-preflight-before-push.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-blocking-shell-commands.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-now-md-edit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-archived-edit.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-now-md-edit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-archived-edit.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-now-md-edit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-archived-edit.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Write|Edit|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/session-prefetch-issue.sh",
+            "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/ensure-scheduled-tasks.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/setup-worktree-if-needed.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/set-active-sessions.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/check-now-md.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/clear-active-sessions.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -32,7 +32,12 @@ backend/scripts/out/*
 !backend/scripts/out/teamplay-ab-*
 backend/out/
 .codex.local/
-.codex/
+# #5065: .codex/config.toml baerer MCP-env (secrets) og forbliver lokal, men
+# hook-konfigurationen er en sikkerhedsguard der SKAL foelge med til de andre
+# PC'er — lokal-only guards er hard rule 2-brud og driftede 3 maaneder bagud.
+# Filer kan kun re-includes naar mappen selv ikke er ekskluderet -> `.codex/*`.
+.codex/*
+!.codex/hooks.json
 .agents/
 # supabase CLI lokal-state (repoet bruger database/*.sql til migrationer, ikke CLI-scaffold)
 supabase/

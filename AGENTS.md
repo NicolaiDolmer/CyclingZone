@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Arbejdsregler for Claude i cycling-manager-repo'et. Single source of truth for de discipliner hver session skal følge. (Tidligere multi-AI-koordineringsfil; solo Claude-operation siden 2026-06-12 — Codex/Manus udfaset.)_
+_Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Code + Codex). Single source of truth for de discipliner hver session skal følge. Claude auto-loader `CLAUDE.md`, Codex auto-loader KUN denne fil — derfor trin 0 i start-sekvensen. (Codex genindført 2026-09-09 pr. [#5065](https://github.com/NicolaiDolmer/CyclingZone/issues/5065) efter udfasning 2026-06-12; Manus er fortsat udfaset.)_
 
 > **Lean core (split 2026-05-29, [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).** Denne fil holder kun det der reelt skal i HVER session — hard rules (fuld tekst), start-sekvens og delt handoff-format. Rolle-matrix, cross-PC-detaljer, session-rytme-signaler, token-effektivitets-vejledning og loops-quick-ref er flyttet til **[`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md)** (WARM, on-demand). Intet indhold er slettet — kun flyttet.
 
@@ -103,14 +103,15 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 34. **Masterplan-ændring → artifacten opdateres i samme omgang.** Ændres `docs/MASTERPLAN.md` (rækkefølge, status, nye spor), republiceres artifacten *"Cycling Zone — Masterplan"* (find den med `Artifact action=list`; samme URL, aldrig en ny) FØR sessionen lukker, og commit-beskeden nævner det. Artifacten er ejerens læseflade; en plan der kun er rettet i markdown er en parallel plan (samme princip som hard rule 30). Ejeren 25/8: *"hver gang masterplanen opdateres, så opdateres artifacten også."*
 
-### §LOKAL lokal-only-state (legacy — Codex-æra)
+### §LOKAL lokal-only-state
 
-`.codex.local/`-whitelisten og `cross-pc-forensic-audit.ps1` blev bygget til at fange lokal-only state Codex efterlod på tværs af PC'er. Med solo Claude-operation er rutinen ikke længere en per-session-gate — kør kun auditen ad hoc hvis du mistænker drift (fx efter længere ophold på en sekundær PC). Detaljer: [`docs/CROSS_PC_LOCAL_STATE.md`](docs/CROSS_PC_LOCAL_STATE.md).
+`.codex.local/`-whitelisten og `cross-pc-forensic-audit.ps1` fanger lokal-only state en agent efterlader på tværs af PC'er. Ikke en per-session-gate, men kør auditen når du mistænker drift — fx efter ophold på en sekundær PC, eller efter en Codex-session (Codex' egen memory er lokal-only og tæller som cache, jf. hard rule 2). Detaljer: [`docs/CROSS_PC_LOCAL_STATE.md`](docs/CROSS_PC_LOCAL_STATE.md).
 
 ---
 
 ## Start-sekvens (hver session)
 
+0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` — ingen egne sidehoveder, bredder eller radii · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** (NOW.md-budget, patch notes, FEATURE_REGISTRY, token-hygiejne) · **merge-mekanik** (`--squash --delete-branch --admin`, én PR ad gangen via merge-køen).
 1. Kør `git rev-parse --show-toplevel` — bekræft repo-root
 2. Kør `git fetch --prune origin && git status -sb` — hvis `[behind N]`, kør `git pull --ff-only` før edit (user-level SessionStart-hook gør dette automatisk hvis installeret)
 3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes, men behandl den som regenererbar cache fra GitHub-issues — ikke som source of truth. Hvis den er stale/mangler, brug `docs/NOW.md` + `gh issue list/view`.
@@ -147,10 +148,9 @@ Kritiske facts:
 
 ---
 
-24. **Orkestratoren ejer e2e-slottet ved parallelle workers.** Ved 2+ samtidige frontend-workers på samme PC tildeles verifikations-niveauet i SPAWN-prompten: workers kører unit-tests + lint + check:i18n + verify-affected + build + screenshots — ALDRIG den fulde lokale e2e-suite (CI bærer den på PR'en; fravalget noteres i PR-body med henvisning til denne regel). Max 3 samtidige tunge frontend-workers; backend-workers er billige og undtaget. Fuld lokal suite er kravet igen ved SERIELT arbejde (én worker ad gangen) i TIER FULL. _18/8 (KS3): 7 frontend-workers kørte hver fuld suite samtidig og serialiserede på CPU'en — timers spild før orkestratoren omdirigerede midt i bølgen. Ejer-mandat 18/8: må ikke gentages._
+## Worktree-disciplin (alle agenter)
 
-## Worktree-disciplin (Claude-specifik)
-
+- **Hoved-checkoutet (`C:\Dev\CyclingZone`) er ejerens og Claudes.** Enhver anden agent — Codex inkluderet — arbejder ALTID i en worktree (`scripts/new-worktree.ps1`), også til trivielle docs-commits. To agenter i samme working tree betyder branch-skift under hinandens fødder, og hard rule 18 fanger det først EFTER skaden. Maskinlæsbart session-claim er sporet i [#4016](https://github.com/NicolaiDolmer/CyclingZone/issues/4016); indtil da er `🤖 Working agent` i `docs/NOW.md` den eneste lås — den skal sættes ved start, pushes, og nulstilles ved close-out.
 - Worktrees i `.claude/worktrees/<navn>/` cleanes efter ship via SessionStart-hook
 - Manuel fallback hvis hook fejler: `git worktree remove <path>` + `git branch -D <branch>` på PC'en der oprettede worktreen
 - Per-PC handling — gentages på den anden PC ved næste session der
