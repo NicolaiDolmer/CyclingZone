@@ -216,3 +216,25 @@ PC1 er ikke målt. Den eksisterende aktiveringskommando derfra er
 `pwsh -File scripts/install-git-hooks.ps1 -SmokeTest` fra repo-roden.
 
 Ingen spillerrettet ændring; patch notes er derfor ikke relevante.
+
+### Stopkriterium ramt: commit-latens
+
+Et reelt docs-commit (`bf0fa503`, kun denne læringsnote) på main blev målt med
+Stopwatch umiddelbart omkring `git commit`, efter staging og branch-guard:
+**7,555 sekunder, exit 0**. Gitleaks rapporterede 138 ms scanning af 1,85 KB;
+lint-staged rapporterede ingen staged filer med matchende opgaver. Den samlede
+tid overskrider ejerens krav på cirka ét sekund markant. Scannerens egen tid
+er ikke hele proces-opstartstiden; resten er endnu ikke profileret og må ikke
+uden måling tilskrives lint-staged alene. Push gennem den aktiverede pre-push
+lykkedes; token-hygiejnen viste 0 fail, herunder `codex-hooks-tracked` OK.
+
+Ejerens eksplicitte stopkriterium gælder derfor. Git-hooks forbliver aktiveret.
+Ingen hook-policy er svækket, ingen agent-hook ændret og ingen ny trust udført.
+Portabel Bash-opstart, Git-kontroller for arkiv/NOW, samling af installationsveje,
+AGENTS-markering, guard-inventory og endelig T1-T4/K1-verifikation udestår.
+#5065 forbliver åben; sessionslåsen nulstilles ved dette stop.
+
+Anbefalet næste handling til ejerens godkendelse: profilér proces-opstart,
+gitleaks og lint-staged separat på et normalt docs-commit, og optimér den
+målte flaskehals uden at fjerne secret- eller lint-kontroller. Først efter
+acceptabel commit-tid fortsættes den allerede aftalte hook-opgave.
