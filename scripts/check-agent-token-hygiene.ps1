@@ -279,6 +279,42 @@ if (Test-Path "AGENTS.md") {
   }
 }
 
+# Codex' hook-konfiguration maa kun pege paa TRACKEDE scripts (#5065).
+# Haendelsen: .codex/hooks.json pegede paa lokale kopier i .codex/hooks/ (hele
+# .codex/ var gitignored). Kopierne driftede maaneder bag Claudes versioner -
+# secret-blokkeren manglede #3342 og get-test-token --print-blokeringen (leak
+# 4/8), sanitize-secrets manglede 100 linjer. En lokal-only sikkerhedsguard er
+# usynlig for review, naar aldrig andre PC'er og er et hard rule 2-brud.
+# Denne vagt fanger enhver fremtidig hook-reference til en ikke-tracked fil.
+if (Test-Path ".codex/hooks.json") {
+  try {
+    $codexHooks = Get-Content ".codex/hooks.json" -Raw | ConvertFrom-Json
+    $hookPaths = New-Object System.Collections.Generic.List[string]
+    foreach ($event in $codexHooks.hooks.PSObject.Properties) {
+      foreach ($group in $event.Value) {
+        foreach ($h in $group.hooks) {
+          if ($h.command -match '(?:^|\s)bash\s+[''"]?([^''"\s]+\.(?:sh|ps1|mjs|js))') {
+            $hookPaths.Add($Matches[1].Replace('\', '/')) | Out-Null
+          }
+        }
+      }
+    }
+    $untracked = @()
+    foreach ($p in ($hookPaths | Select-Object -Unique)) {
+      $rel = $p -replace '^.*?CyclingZone/', ''
+      git ls-files --error-unmatch -- $rel *> $null
+      if ($LASTEXITCODE -ne 0) { $untracked += $rel }
+    }
+    if ($untracked.Count -gt 0) {
+      Add-Result $results "codex-hooks-tracked" "FAIL" "$($untracked.Count) hook(s) i .codex/hooks.json peger paa ikke-tracked fil(er): $($untracked -join ', ') - lokal-only guards drifter (#5065)"
+    } else {
+      Add-Result $results "codex-hooks-tracked" "OK" "$($hookPaths.Count) hook-referencer peger alle paa trackede filer"
+    }
+  } catch {
+    Add-Result $results "codex-hooks-tracked" "WARN" "Kunne ikke parse .codex/hooks.json: $($_.Exception.Message)"
+  }
+}
+
 $hostname = $env:COMPUTERNAME
 $snapshotPath = "docs/metrics/harness-snapshot-$hostname.json"
 $harnessSource = "estimate"
