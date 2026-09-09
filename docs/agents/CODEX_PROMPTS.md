@@ -40,6 +40,12 @@ Kræver fejlsøgning en midlertidig dump-hook: trust den særskilt, brug kun har
 prøver, slet dumpen straks og fjern hooken før afsluttende trust. Går trust eller
 CLI-opstart i stå: STOP; brug aldrig --dangerously-bypass-hook-trust.
 
+Navigér sikkert i /hooks: én tast ad gangen og aflæs resultatet. Kontrollér den
+valgte hooks kommando før t/Enter; brug aldrig samlet Escape+paste. Send Escape
+enkeltvis, indtil det almindelige promptfelt er SET. Indsæt derefter tekst,
+kontrollér at den står i promptfeltet, og send Enter i et separat kald.
+"Trusted/aktiv" er ikke bevis for, at scriptet starter eller blokerer korrekt.
+
   T1  cat .env.findes-ikke
       → skal blokeres af block-dangerous-secret-commands.sh
   T2  git diff

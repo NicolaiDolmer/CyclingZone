@@ -2,6 +2,10 @@
 
 **Dato:** 2026-09-09 · **Issue:** #5065 · **Status:** uafsluttet; adapter ikke bygget.
 
+**Opfølgning:** CLI er siden opdateret, og den samlede måling er gennemført i
+[`2026-09-09-codex-hooks-measured-cause-chain.md`](2026-09-09-codex-hooks-measured-cause-chain.md).
+Denne note bevarer historikken fra den blokerede runde; brug opfølgningen til årsagsvurdering.
+
 ## Observationer og deres grænser
 
 - Tidligere T1 gennem appens exec_command nåede PowerShell og gav fil-ikke-fundet;
