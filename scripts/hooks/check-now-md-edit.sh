@@ -84,7 +84,9 @@ print(new.count("\n") - old.count("\n"))
   fi
 fi
 
-# If we couldn't compute (no python3), don't block - exit 0.
+# If we couldn't compute (no python3), don't block - exit 0. This is an advisory
+# editing aid, not a secret boundary: the agent-independent Git pre-commit guard
+# checks the staged NOW blob before publication (#5065). Keep editing available.
 if [ -z "$RESULTING_LINES" ] || [ "$RESULTING_LINES" -le 0 ]; then
   exit 0
 fi

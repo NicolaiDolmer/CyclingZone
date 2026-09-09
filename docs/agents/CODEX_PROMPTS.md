@@ -67,6 +67,10 @@ kontrollér at den står i promptfeltet, og send Enter i et separat kald.
 Codex bruger scripts/hooks/run-codex-hook.ps1 til portabel Git Bash-opstart.
 Den finder Git-installationen lokalt, tilføjer dens bin/usr/bin til barnets PATH
 og videresender payload/exit/output uden policy. Manglende runtime fejler højt.
+Windows-kommandoerne slutter med `; exit $LASTEXITCODE`: uden det omsætter den
+ydre PowerShell -Command hookens exit 2 til 1, som Codex ikke behandler som deny.
+De delte secret-scripts runtime-tester Python og afviser Windows Store-aliaser;
+manglende interpreter eller scanner-crash blokerer med en tydelig exit 2-fejl.
 Edit-hookene er bevaret, men inaktive for observeret apply_patch-input uden
 file_path. Arkiv/NOW beskyttes derfor på staged Git-indhold; en edit er mulig,
 men må ikke kunne committes i strid med de regler. Ingen patchtekst-adapter.

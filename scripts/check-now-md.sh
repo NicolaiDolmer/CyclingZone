@@ -72,9 +72,10 @@ fi
 
 # Output samlet warning
 if [ "${#WARNINGS[@]}" -gt 0 ]; then
-  MSG=""
-  for w in "${WARNINGS[@]}"; do
-    MSG="${MSG}- ${w}\\n"
-  done
-  printf '{"systemMessage": "CLOSE-OUT REMINDER:\\n%s"}\n' "$MSG"
+  # Warning text can contain quotes/backslashes (e.g. gh --body "...").
+  # Serialize it rather than interpolating it into JSON; policy stays advisory.
+  printf '%s\0' "${WARNINGS[@]}" | node -e '
+    const warnings = require("fs").readFileSync(0, "utf8").split("\0").filter(Boolean);
+    console.log(JSON.stringify({systemMessage: "CLOSE-OUT REMINDER:\n" + warnings.map(w => "- " + w).join("\n")}));
+  '
 fi

@@ -54,3 +54,11 @@ test('rename away from archive is blocked', () => fixture(({git,put,check}) => {
   assert.equal(git('mv', 'docs/archive/old.md', 'docs/moved.md').status, 0);
   const result = check(); assert.equal(result.status, 1); assert.match(result.stderr, /archive/);
 }));
+
+test('multiple staged docs skip lint-staged/ESLint entirely', () => fixture(({cwd,git,put}) => {
+  put('docs/one.md', 'one\n'); put('docs/two.md', 'two\n'); git('add', '.');
+  // There are no node_modules in this fixture: starting lint-staged would fail.
+  const result = spawnSync(process.execPath, [join(root, 'scripts/run-staged-checks.mjs')], {cwd, encoding:'utf8'});
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /lint-staged\/ESLint not started/);
+}));

@@ -11,7 +11,9 @@
 # reset sentinel -- curated human/orchestrator prose is left untouched (we
 # didn't write it, so it isn't ours to clear).
 #
-# Fail-safe: exits 0 always.
+# Fail-safe: exits 0 always. This is advisory session bookkeeping, not a secret
+# scanner; missing Python must not prevent session close-out. Manual NOW cleanup
+# remains required and preserves other sessions' claims.
 #
 # Refs: #3712, #559, #558.
 

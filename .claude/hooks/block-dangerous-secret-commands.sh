@@ -15,6 +15,14 @@
 
 set -u
 
+# Security checks must not silently disappear when PATH contains a broken stub.
+HOOK_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../scripts/hooks/lib" && pwd)/resolve-python.sh"
+if ! source "$HOOK_LIB"; then
+  echo 'SECRET GUARD BLOCKED: Python runtime helper unavailable.' >&2
+  exit 2
+fi
+PY=$(resolve_hook_python) || { secret_runtime_failure 'no working Python >=3.8 (Windows Store aliases rejected)'; exit 2; }
+
 # --- #684 TRACE (cross-PC hook-firing investigation) ---
 {
   mkdir -p "$HOME/.claude" 2>/dev/null
@@ -40,8 +48,7 @@ fi
 # Vi scanner kun tool_input — tool_response håndteres af PostToolUse sanitizer.
 # Bash/PowerShell command-specifikt block (cat .env, railway variables osv.)
 # kommer længere nede.
-command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1 || INPUT_SCAN_AVAILABLE=0
-PY=$(command -v python3 || command -v python)
+# PY was runtime-verified above; never re-select by existence alone.
 
 if [ -n "${PY:-}" ]; then
   export _BLOCK_SCAN_INPUT="$INPUT"
@@ -51,7 +58,7 @@ text = os.environ.get("_BLOCK_SCAN_INPUT", "")
 try:
     d = json.loads(text)
 except Exception:
-    sys.exit(0)
+    sys.exit(3)
 
 # Extract ALL string-values from tool_input recursively
 def collect_strings(obj, out):
@@ -87,7 +94,7 @@ for name, pat in PATTERNS:
 if found:
     print(",".join(sorted(set(found))))
 PYEOF
-  )
+  ) || { secret_runtime_failure 'tool-input scan failed'; exit 2; }
   unset _BLOCK_SCAN_INPUT
 
   if [ -n "$LEAK_TYPES" ]; then
@@ -128,7 +135,7 @@ text = os.environ.get("_PATHSCAN_INPUT", "")
 try:
     d = json.loads(text)
 except Exception:
-    sys.exit(0)
+    sys.exit(3)
 tn = str(d.get("tool_name", "") or "")
 if tn not in ("Read", "Grep"):
     sys.exit(0)
@@ -173,7 +180,9 @@ if hits:
     print(hits[0])
 PYEOF
   )
+  path_scan_exit=$?
   unset _PATHSCAN_INPUT
+  [ "$path_scan_exit" -eq 0 ] || { secret_runtime_failure 'secret-path scan failed'; exit 2; }
 
   if [ -n "$SECRET_PATH" ]; then
     cat >&2 <<EOF
@@ -209,16 +218,15 @@ esac
 
 # Extract command field via python json-parse (sed-greedy bug ramte ved korte
 # commands som "env" — fanger ikke trailing JSON). Python handles escapes
-# korrekt. Fail-open hvis python mangler.
-command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1 || exit 0
-PY=$(command -v python3 || command -v python)
+# korrekt. Den allerede runtime-verificerede interpreter genbruges.
 
 CMD=$(printf '%s' "$INPUT" | "$PY" -c 'import sys, json
 try:
   d = json.load(sys.stdin)
   print(d.get("tool_input", {}).get("command", ""))
 except Exception:
-  pass' 2>/dev/null | head -c 8000)
+  sys.exit(3)' 2>/dev/null) || { secret_runtime_failure 'command parsing failed'; exit 2; }
+CMD=${CMD:0:8000}
 
 if [ -z "$CMD" ]; then
   exit 0

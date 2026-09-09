@@ -18,6 +18,13 @@
 
 set -u
 
+HOOK_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../scripts/hooks/lib" && pwd)/resolve-python.sh"
+if ! source "$HOOK_LIB"; then
+  echo 'SECRET GUARD BLOCKED: Python runtime helper unavailable.' >&2
+  exit 2
+fi
+PY=$(resolve_hook_python) || { secret_runtime_failure 'no working Python >=3.8 (Windows Store aliases rejected)'; exit 2; }
+
 # --- #684 TRACE (cross-PC hook-firing investigation) ---
 {
   mkdir -p "$HOME/.claude" 2>/dev/null
@@ -60,14 +67,12 @@ fi
 #   - grep -E har subtle forskelle (fx \b, \d) på BSD vs GNU
 #   - Performance-mæssigt er én Python-proces hurtigere end mange grep
 #
-# Fail-open: hvis Python ikke findes (sjældent på dev-maskiner) -> exit 0.
-command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1 || exit 0
-PY=$(command -v python3 || command -v python)
+# PY is runtime-verified before all early returns, even for short outputs.
 
 # Python script som heredoc. Læser INPUT fra env-var for at undgå quoting-helvede.
 export _SECRET_SCAN_INPUT="$INPUT"
 
-SCAN_RESULT=$("$PY" <<'PYEOF' 2>/dev/null || true
+SCAN_RESULT=$("$PY" <<'PYEOF' 2>/dev/null
 import os, re, json, sys
 
 text = os.environ.get("_SECRET_SCAN_INPUT", "")
@@ -352,13 +357,14 @@ result = {
 }
 print(json.dumps(result))
 PYEOF
-)
+) || { secret_runtime_failure 'output scan failed'; exit 2; }
 
 unset _SECRET_SCAN_INPUT
 
 # Parse Python result
 if [ -z "$SCAN_RESULT" ]; then
-  exit 0
+  secret_runtime_failure 'output scanner returned no result'
+  exit 2
 fi
 
 REPO_ROOT=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd || pwd)
@@ -393,7 +399,7 @@ if [ -n "$STATS_LINE" ]; then
   echo "$TS $STATS_LINE" >> "$STATS_FILE" 2>/dev/null || true
 fi
 
-LEAK=$(printf '%s' "$SCAN_RESULT" | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print("yes" if d.get("leak_detected") else "no")' 2>/dev/null || echo "no")
+LEAK=$(printf '%s' "$SCAN_RESULT" | "$PY" -c 'import sys,json; d=json.load(sys.stdin); assert isinstance(d.get("leak_detected"), bool); print("yes" if d["leak_detected"] else "no")' 2>/dev/null) || { secret_runtime_failure 'scan verdict parsing failed'; exit 2; }
 
 if [ "$LEAK" != "yes" ]; then
   exit 0

@@ -216,7 +216,7 @@ if [ -f "$SCHED_DIR/SKILL.md" ]; then
 fi
 
 echo ""
-if node --test scripts/hooks/__tests__/test-staged-docs.mjs scripts/hooks/__tests__/test-codex-launcher.mjs; then
+if node --test scripts/hooks/__tests__/test-staged-docs.mjs scripts/hooks/__tests__/test-codex-launcher.mjs scripts/hooks/__tests__/test-secret-runtime.mjs; then
   PASS=$((PASS+1)); echo "PASS  Git staged archive/NOW integration cases (#5065)"
 else
   FAIL=$((FAIL+1)); echo "FAIL  Git staged archive/NOW integration cases (#5065)"

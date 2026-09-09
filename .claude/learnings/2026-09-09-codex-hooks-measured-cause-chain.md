@@ -313,3 +313,97 @@ Næste beslutning: tilladelse til at gøre interpreter-valget runtime-verificere
 i de delte secret-scripts, eller en ny runtime-bootstrap uden policy; derefter
 ret launcherens Bash-kontekst, afklar T2/T3 og gentag hele runner-beviset.
 Patch notes/FEATURE_REGISTRY er ikke relevante: ingen spillerrettet ændring.
+
+## Afsluttet måling efter ejerens korrektion og udvidede mandat (9/9)
+
+Udkastet blev først sikret i **b9cefa11**, committet og pushed før yderligere
+ændringer. Sessionslåsen blev genoptaget i **669cbfe4**. Den ovenstående stopstatus
+er historik, ikke slutresultatet. Ejer godkendte ændring af de delte secret-scripts
+og accepterede kodecommit **7,777 s**; docscommit **1,263 s** opfyldte ≤1,5 s.
+
+### Observation → årsag → handling → bevis
+
+| Observation | Årsag | Handling | Bevis / begrænsning |
+|---|---|---|---|
+| Bash fandtes ikke på hook-PATH | Gits bin/usr/bin manglede; oprindelig bootstrap kunne ikke starte | Tracked PowerShell-launcher finder lokal Git Bash og giver barnet Git-værktøjer på PATH | Runtime-opstart målt; ingen WSL eller hardkodet PC-sti |
+| 7 modified + 7 new, ikke alle 16 gamle hashes ugyldige | Trust var delvis; den første forklaring generaliserede forkert | Review af faktiske definitioner; samlet trust efter konfiguration | Endeligt 23/23 entries og aktive hooks; trust er ikke længere en åben årsag |
+| Shell-matchere virkede allerede | Codex normaliserer exec_command til Bash/command | Ingen matcher-/payload-adapter | Observerede feltnavne nedenfor; T2/T3 blokerer nu med uændret policy |
+| apply_patch mangler file_path | De eksisterende edit-scripts kan ikke udlede stien | Ingen skrøbelig patch-parser; arkiv/NOW håndhæves på staged Git-data | Faktisk arkiv-commit blokeret, NOW-fixtures inkl. grænser og unstaged forskel |
+| Python3-stub eksisterede, men kørte ikke | command -v beviser ikke en interpreter; secret-parser faldt åbent igennem | Begge secret-scripts bruger fælles runtime-probe, afviser WindowsApps, blokerer fejl med exit 2 | 12 runtime-cases: eksisterende Claude-fixtures samt ingen Python, falsk probe, WindowsApps og scanner-crash |
+| Launcheren fejlede i login Git Bash med exit 2 og CODEX HOOK STARTUP FAILED | git --exec-path var korrekt, men LASTEXITCODE i pipeline var null; fallback antog forkert rod for mingw64/bin/git.exe | Validér den faktiske Git-directory og håndtér begge Git-installationsstier | Samme login-kontekst giver nu pagerens specifikke exit 2; Python-rettelsen alene løste ikke dette |
+| T1/T2/T3 gav stadig Hook failed, code 1, selv med fungerende scripts | Ydre PowerShell -Command ændrede native exit 2 til 1 | Alle 23 kommandoer afsluttes med `; exit $LASTEXITCODE`, derefter samlet re-trust | Før regressionstest: 1 !== 2; efter: exit 2; frisk runner blokerer alle tre |
+| Stop meldte invalid JSON | Manuel JSON-interpolation kunne ikke escape anførselstegn i gh --body-reminder | JSON.stringify serialiserer samme advisory besked | JSON parse bestod; frisk Stop viste den citerede reminder uden JSON-fejl |
+| Git-hooks tracked og omtalt som aktive, men kun samples i valgt hooksPath | Aktivering fandtes kun i manuel ny-PC-slutcheckliste; oprindelsen til denne PCs config er ukendt | Kanonisk installer aktiveret; automatisk setup-new-pc → setup-local → install-git-hooks | Rigtig Git-commit med staged fake-secret afvist, rigtig push med forbudt filnavn afvist |
+
+De første hypoteser blev gentagne gange indsnævret af måling: matchere var ikke
+fejlen; trust gjaldt kun nogle hooks; Git-laget manglede aktivering, ikke kode;
+PATH-reparation var utilstrækkelig uden fungerende Python og korrekt exit-transport.
+Ingen enkelt af disse rettelser var tilstrækkelig alene.
+
+### Diagnostik og trust-regnskab
+
+Den supplerende launcher-probe registrerede kun processtadier og feltnavne i
+gitignored `.codex.local/`; kun harmløst K1 blev kørt. Alle probe-filer blev læst
+og slettet straks, og diagnosekoden fjernet. Der er ingen varig payload-logning.
+Observeret struktur (værdier fjernet, undtagen den relevante tool-type):
+
+```text
+{session_id, turn_id, transcript_path, cwd, hook_event_name, model,
+ permission_mode, tool_name: Bash, tool_input: {command}, tool_use_id}
+```
+
+Probe-runden beviste, at stdin nåede barnet og K1 returnerede 0. En hypotese om
+stdin-streaming som fejlkilde blev forkastet: buffering ændrede ikke T1-T3-fejlen.
+Den endelige launcher videresender rå bytes, uden buffering-adapter eller parser.
+
+Trust-rækkefølge: særskilt diagnostisk dump-trust tidligere i sagen; første
+samlede 23-hook-trust før Python-/exit-fundet; derefter afsluttende samlet review
+af de 23 ændrede exit-kommandoer, **efter token-hygiejne 0 fail**.
+Sidste trust-session: `01a0860a-65f9-7ee3-8e7c-bcb821c57929`, afsluttet exit 0.
+Menuen viste PreToolUse 13/13, PostToolUse 4/4, SessionStart 4/4, Stop 2/2.
+Antallet af trusted_hash-poster blev genmålt til 23 mod 23 definitioner.
+Ingen bypass blev brugt. Kommandoer/trust ændres ikke efter sluttesten.
+
+### Positivt slutbevis fra egne tools i en frisk session
+
+CLI 0.153.4, session **01a0860b-3ece-7732-be39-c956de75a716**:
+
+| Test | Resultat |
+|---|---|
+| T1 `cat .env.findes-ikke` | `Command blocked by PreToolUse hook`, navngiven secret-hook og env-fil-læser-afvisning |
+| T2 `git diff` | `Command blocked by PreToolUse hook: BLOCKED: git diff uden --no-pager` |
+| T3 `git checkout -b codex-hook-selvtest` | `Command blocked by PreToolUse hook: [branch-lock] BLOKERET` |
+| K1 `git --no-pager status -sb` | Tilladt, shell exit 0 på main |
+| Git-T4 | Isoleret fixture med rigtigt `git commit`: STAGED-DOCS BLOCKED: archive, HEAD ikke oprettet; fixture fjernet |
+
+Præcis fire exec_command-kald i sluttesten, ingen genforsøg eller branch-cleanup
+nødvendig. Sessionen afsluttede med exit 0. Tidligere testbranches blev fjernet
+straks efter fejlede prøver; fravær kontrolleret med show-ref exit 1.
+K1 viste sandbox-advarsel om adgang til brugerens Git-ignore, men lykkedes.
+Dette beviser CLI-runneren på denne PC; PC1 og en allerede åben Desktop-session
+har ikke automatisk samme runtime-bevis.
+
+### Regression og afgrænsning
+
+- Før: hooksuite 28 pass / 1 fail; Bash-sanitizer 33/33. PowerShell-fixtureharness
+  fejlede med exit 127 uden Git-værktøjer på PATH; derfor ingen scanner-konklusion
+  fra det første harness-run. Den eksisterende Python3-parser blev særskilt set
+  returnere 0 på T1, og nye runtime-tests fejlede før reparation.
+- Efter: hooksuite **29 pass / 0 fail**, med **23** Node-integrationstests;
+  Bash-sanitizer **33/33**, PowerShell-harness med fungerende Git-PATH **48/48**,
+  inklusive alle fire `.claude/hooks/test-fixtures/` og sikre kontrolcases.
+- Git-installerens smoketest genkørt: gitleaks 8.30.1 blokerede staged fake-secret.
+  Fallback er ikke nødvendig på denne PC. Tidligere pre-push-filnavnsbevis består.
+- Flere staged docs havde en callback-fejl: Array.some sendte indeks videre som
+  picomatchs returnObject-flag. En eksplicit callback retter det; regressionen
+  beviser at to docs slet ikke starter lint-staged/ESLint. Alle lint-globs bevares.
+- Python-audit af begge mapper og begrundelser for advisory fail-open står i
+  GUARD_INVENTORY.md. Secret-patterns og eksisterende scanner-grænser er bevaret.
+- Fuld verify-local blev kørt tidligere: backend- og frontend-tests bestod,
+  frontend-build fejlede på manglende installeret posthog-js. Dette er ikke et
+  grønt build-bevis; ingen spillerkode eller dependency-baseline blev ændret.
+- Ingen patch notes eller FEATURE_REGISTRY-ændring: kun agent-/Git-infrastruktur.
+
+PC1: `git pull --ff-only`, `pwsh -File scripts/setup-local.ps1`, derefter review
+og trust i `/hooks`, genstart og kør Del A i CODEX_PROMPTS.md. En aktiv hook uden
+en observeret afvisning må fortsat ikke få en bevisdato.

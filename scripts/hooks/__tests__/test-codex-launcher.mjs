@@ -1,13 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const launcher = join(root, 'scripts/hooks/run-codex-hook.ps1');
 const pwsh = spawnSync('pwsh', ['-NoProfile', '-Command', '(Get-Process -Id $PID).Path'], {encoding:'utf8'}).stdout.trim();
 const run = (script, input, env = process.env) => spawnSync(pwsh, ['-NoProfile', '-File', launcher, script], {cwd:root, input, encoding:'utf8', env});
+
+test('configured command preserves blocking exit 2 through the outer PowerShell shell', () => {
+  const config = JSON.parse(readFileSync(join(root, '.codex/hooks.json'), 'utf8'));
+  const hook = config.hooks.PreToolUse.flatMap(group => group.hooks).find(hook => hook.command.includes('block-blocking-shell-commands.sh'));
+  const result = spawnSync(pwsh, ['-NoProfile', '-Command', hook.command], {cwd:root, encoding:'utf8', input:JSON.stringify({tool_name:'Bash', tool_input:{command:'git diff'}})});
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /BLOCKED: git diff/);
+});
 test('observed Bash payload: git diff is blocked by shared pager guard', () => {
   const result = run('scripts/hooks/block-blocking-shell-commands.sh', JSON.stringify({tool_name:'Bash',tool_input:{command:'git diff'}}));
   assert.equal(result.status, 2); assert.match(result.stderr, /BLOCKED/);

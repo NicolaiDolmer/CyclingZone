@@ -234,7 +234,7 @@ Transcript-syncen kører **altid**, uafhængigt af gaten. Den er selve målingen
 5. Dokumentér her i `docs/HOOKS.md`
 6. Commit + push
 
-**Vigtigt:** Hold hooks fail-safe (`exit 0` selv ved fejl). Et hook der fejler hardt kan blokere Claude session-start.
+**Vigtigt:** Advisory session-hooks kan fejle åbent, med begrundelse i koden. Secret-guards skal fejle højt med exit 2 hvis de ikke kan kontrollere input/output; runtime-fejl er aldrig bevis for sikkert input.
 
 ## Fælles Git-lag og Codex (#5065, 2026-09-09)
 
@@ -254,7 +254,7 @@ Codex bruger den trackede scripts/hooks/run-codex-hook.ps1: Git Bash findes
 via git --exec-path på hver PC, aldrig via WSL eller en maskinhardkodet sti.
 Barnets PATH får Gits bin/usr/bin; rå stdin/stdout/stderr og exit videresendes.
 Runtime-fejl vises som CODEX HOOK STARTUP FAILED og exit 2. Policy ligger alene
-i de uændrede delte scripts. De to edit-hooks er inaktive for Codex-patchens
+i de delte scripts; deres Python-runtime verificeres før brug, og fejl blokerer. De to edit-hooks er inaktive for Codex-patchens
 observerede command-payload uden file_path; deres regler håndhæves i Git-laget.
 
 Færdiggør alle konfigurationsændringer før /hooks review/trust. Åbn derefter
@@ -262,3 +262,9 @@ en frisk session og kør T1-T3/K1 samt Git-T4 fra CODEX_PROMPTS.md. Trust-status
 er ikke blokeringens bevis. Navigér med én tast ad gangen; paste aldrig ind i
 en uaflæst menu. Ejeren kan bevidst bruge git commit/push --no-verify, men det
 omgår lokale kontroller. Agenter må aldrig gøre det eller slukke hooks.
+
+Windows-hookkommandoerne bevarer native exit med `; exit $LASTEXITCODE`.
+Uden det blev scriptets exit 2 målt som exit 1 i ydre PowerShell -Command,
+og Codex lod kaldet fortsætte. Frisk CLI 0.153.4: T1/T2/T3 blokeret, K1 tilladt
+9/9; trust 23/23. Begge secret-scripts afviser WindowsApps-aliaser og fejler
+med exit 2 ved manglende Python eller scanner-crash. Se inventoryens Python-audit.

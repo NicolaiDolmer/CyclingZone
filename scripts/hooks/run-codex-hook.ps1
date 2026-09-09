@@ -7,20 +7,25 @@ try {
   $candidates = [Collections.Generic.List[string]]::new()
   if ($IsWindows) {
     $git = Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1
-    $execPath = (& $git.Source --exec-path 2>$null | Select-Object -First 1)
-    if ($LASTEXITCODE -eq 0 -and $execPath) {
+    $execPathOutput = & $git.Source --exec-path 2>$null
+    $execPath = $execPathOutput | Select-Object -First 1
+    # Native exit status inside a pipeline was null in login Git Bash. Validate
+    # the returned directory itself; a guessed install root must not select WSL.
+    if ($execPath -and [IO.Path]::IsPathFullyQualified($execPath) -and (Test-Path -LiteralPath $execPath -PathType Container)) {
       $gitRoot = [IO.Path]::GetFullPath((Join-Path $execPath '../../..'))
       $candidates.Add((Join-Path $gitRoot 'bin/bash.exe'))
       $candidates.Add((Join-Path $gitRoot 'usr/bin/bash.exe'))
     }
     $commandRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
     $candidates.Add((Join-Path $commandRoot 'bin/bash.exe'))
+    # Git Bash's login PATH often selects Git/mingw64/bin/git.exe instead of cmd/git.exe.
+    $candidates.Add((Join-Path (Split-Path $commandRoot -Parent) 'bin/bash.exe'))
   } else {
     $candidates.Add((Get-Command bash -CommandType Application -ErrorAction Stop).Source)
   }
   $bashPath = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
   if (-not $bashPath) { throw 'Git Bash could not be resolved from this PC''s Git installation. Install Git for Windows and restart Codex.' }
-  $scriptPath = [IO.Path]::GetFullPath($HookScript)
+  $scriptPath = [IO.Path]::GetFullPath($HookScript, (Get-Location).ProviderPath)
   if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) { throw "Hook script missing: $HookScript" }
   $start = [Diagnostics.ProcessStartInfo]::new()
   $start.FileName = $bashPath

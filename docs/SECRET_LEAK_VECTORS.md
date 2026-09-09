@@ -4,6 +4,12 @@
 
 ## Hvorfor det her dokument findes
 
+**Runtime-kontrakt (#5065, 2026-09-09):** De delte Bash-secret-guards skal
+runtime-verificere Python, afvise Windows Store-aliaser og blokere med exit 2
+ved manglende interpreter eller scanner-fejl. `command -v` alene er utilstrækkeligt.
+Windows/Codex skal bevare denne exit-kode gennem den ydre PowerShell-proces.
+Aktivering og faktisk blokering skal måles separat: [GUARD_INVENTORY.md](GUARD_INVENTORY.md).
+
 Brugeren har været tvunget til at rotere produktions-secrets manuelt 2 gange på 14 dage pga. agent-fejl:
 
 - **2026-04-17 → 2026-05-11 ([#296](https://github.com/NicolaiDolmer/CyclingZone/issues/296)):** Supabase service_role JWT i klartekst i `setup.py`, committed til public repo, 25 dage før rotation. Forward-guards listet i postmortem ([`2026-05-11-supabase-key-rotation.md`](../.claude/learnings/2026-05-11-supabase-key-rotation.md)) — pre-commit gitleaks, audit-script, PR-template — **blev ALDRIG bygget**. Det er den primære årsag til at leak #2 skete.

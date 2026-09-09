@@ -24,6 +24,8 @@
 # exists at the agent/LLM layer; a hook subprocess has no MCP access).
 #
 # Fail-safe: exits 0 always. Missing python -> silently does nothing.
+# This is advisory session bookkeeping, not a secret scanner; failure must not
+# block unrelated work. The manually claimed NOW field remains authoritative.
 #
 # Refs: #3712, #559, #558.
 

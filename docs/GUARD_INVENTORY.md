@@ -1,9 +1,8 @@
 # Guard-inventory — aktivering kræver bevis
 
-**Udkast i arbejdstræet, ikke færdig leverance (#5065).** Implementeringen blev
-stoppet ved nyt runtime-fund 9/9. Git-bevisdatoerne nedenfor er reelle; de nye
-installer-/launcher-/inventory-ændringer er endnu ikke committet. Se seneste
-afsnit i `.claude/learnings/2026-09-09-codex-hooks-measured-cause-chain.md`.
+**Runtime-verificeret på denne PC 2026-09-09 (#5065).** Checkpoint `b9cefa11`
+sikrede udkastet før reparation af delte secret-scripts. Endelig årsagskæde og
+før/efter-beviser står i `.claude/learnings/2026-09-09-codex-hooks-measured-cause-chain.md`.
 
 ## Målt bevisregister
 
@@ -16,10 +15,42 @@ En deltest beviser kun den angivne dækning, aldrig automatisk hele guardens pol
 | `.githooks/pre-commit` / Git | Staged fake-secret | 2026-09-09 | `git commit`: gitleaks BLOCKED, exit 1, HEAD uændret; installerens smoketest genkørt efter ændring |
 | `.githooks/pre-push` / Git | Forbudt env-filnavn med harmløst indhold | 2026-09-09 | `git push` til lokalt test-remote afvist med specifik filnavnsbesked |
 | `scripts/check-staged-docs.mjs` via pre-commit / Git | Arkivændring inkl. rename væk; staged NOW >30 linjer eller >1200 approx tokens | 2026-09-09 | Faktisk arkiv-commit afvist; budget-fixtures, CRLF/grænse/unstaged-kontrol i `test-staged-docs.mjs` |
-| `block-dangerous-secret-commands.sh` / Codex | T1 gennem frisk runner | aldrig bevist | FEJL 9/9 efter trust: kommandoen kørte; Python3-alias fejler, direkte payload-prøve returnerer 0 |
-| `block-blocking-shell-commands.sh` / Codex | T2 gennem frisk runner | aldrig bevist | FEJL 9/9 efter trust: git diff kørte; præcis runner-årsag uafklaret |
-| `block-branch-switch-in-main-checkout.sh` / Codex | T3 gennem frisk runner | aldrig bevist | FEJL 9/9 efter trust: branch oprettet, straks returneret til main og slettet |
+| `block-dangerous-secret-commands.sh` / Codex | T1 gennem frisk runner | 2026-09-09 | `Command blocked by PreToolUse hook`, specifik env-fil-læser-afvisning; shell ikke startet |
+| `block-blocking-shell-commands.sh` / Codex | T2 gennem frisk runner | 2026-09-09 | `Command blocked by PreToolUse hook: BLOCKED: git diff uden --no-pager`; shell ikke startet |
+| `block-branch-switch-in-main-checkout.sh` / Codex | T3 gennem frisk runner | 2026-09-09 | `Command blocked by PreToolUse hook: [branch-lock] BLOKERET`; branch ikke oprettet |
+| Begge delte secret-scripts / fixtures | Manglende Python, defekt stub, WindowsApps-alias, scanner-crash | 2026-09-09 | Alle returnerer exit 2 med runtime-fejl; 12 cases inkl. de fire eksisterende Claude-fixtures består |
 | `block-archived-edit.sh`, `check-now-md-edit.sh` / Codex | Inaktive for observeret apply_patch-payload | aldrig bevist | Matcher-aliaser findes, men payload mangler file_path; Git-laget giver staged beskyttelse |
+
+Frisk CLI **0.153.4**, session `01a0860b-3ece-7732-be39-c956de75a716`:
+fire egne `exec_command`-kald; T1/T2/T3 afvist før shell, K1
+`git --no-pager status -sb` tilladt med exit 0. Ingen genforsøg/bypass/cleanup.
+T4 er ejer-godkendt erstattet af en faktisk Git-commit-test af staged arkivændring.
+Sessionen afsluttede med exit 0; Stop-reminder viste gyldig JSON.
+
+**Trust er afklaret, ikke en åben årsag:** 23/23 `trusted_hash`-poster matcher
+antallet af definitioner. `/hooks`: PreToolUse 13/13, PostToolUse 4/4,
+SessionStart 4/4, Stop 2/2 aktive. Første samlede trust var før Python-/exit-fundet;
+den sidste ændring til eksplicit exit-propagation krævede nyt review af alle 23.
+Afsluttende trust skete samlet, efter 0 fail i token-hygiejne, før den friske test.
+Diagnose-hookens tidligere trust var særskilt; dump blev slettet straks efter aflæsning.
+
+## Python-audit af begge hook-mapper
+
+| Script | Valgt vej og begrundelse |
+|---|---|
+| `.claude/hooks/block-dangerous-secret-commands.sh` | Runtime-probe via tracked `scripts/hooks/lib/resolve-python.sh`; WindowsApps afvises eksplicit; ingen brugbar Python eller scanner-fejl → exit 2 |
+| `.claude/hooks/sanitize-secrets.sh` | Samme fail-loud vej, også før korte input; intet silent fallback til et sikkert verdict |
+| `scripts/hooks/check-now-md-edit.sh` | Advisory fail-open bevaret og begrundet i kode; staged NOW-budget håndhæves af Git |
+| `scripts/hooks/set-active-sessions.sh` | Advisory fail-open bevaret og begrundet; sessionsregistrering, ikke secret-kontrol; manuel NOW-lås består |
+| `scripts/hooks/clear-active-sessions.sh` | Samme advisory valg; manglende Python må ikke forhindre close-out |
+| `scripts/hooks/protect-claude-process.sh` | Direkte python-kald, eksisterende dokumenteret fail-open på parsefejl bevaret; ikke secret-scanner |
+| `scripts/hooks/block-blocking-shell-commands.sh` | Python forekommer kun som kommandotekst der undersøges; parseren bruger Node |
+| `.claude/hooks/sanitize-secrets.ps1` | Ingen Python-afhængighed, ikke ændret |
+
+Søgningen omfattede alle `.sh`/`.ps1` i begge mapper. Test-harnesset
+`__tests__/test-active-sessions-engine.sh` bruger også existence-only discovery,
+men er ikke en runtime-guard. Resolveren tilføjer ingen secret-policy.
+Eksisterende sanitizer-grænser (kort input/trunkering) er ikke udvidet i denne opgave.
 
 **Hændelse 9/9 (#5065):** Git-hook-laget var bygget og tracked, beskrevet som
 mekanisk håndhævet i AGENTS.md, men lokal core.hooksPath pegede på `.git/hooks`
@@ -51,9 +82,9 @@ ESLint --version 3469 ms. Dette summeres ikke til en forklaring af den første
 måling: proces-cache og belastning varierer. Under senere måling var npx 6363 ms.
 Npx er fjernet, og samme installerede lint-staged-globs bestemmer den billige no-op.
 Faktiske isolerede commits efter ændring: docs **1,263 s** (mål ≤1,5 s),
-backend-kode **7,777 s** (mål ≤4 s, IKKE opfyldt). Kodeprøven kørte rigtig
+backend-kode **7,777 s** (mål ≤4 s, ejer-accepteret kompromis 9/9). Kodeprøven kørte rigtig
 ESLint plus lint-stageds backup/staging/cleanup; begge commits lykkedes.
-Kompromis: kodekontroller og sikker staging bevares frem for at slå noget fra.
+Kompromisset er afsluttet: kodekontroller og sikker staging bevares.
 Dette er ikke et bevis for alle frontend-/SQL-committyper eller et latency-loft.
 
 <!-- GENERATED GUARD SOURCES -->
@@ -306,26 +337,26 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | agent-deny | [.claude/settings.json](../.claude/settings.json) | PowerShell(cat *.env*) | aldrig bevist |
 | agent-deny | [.claude/settings.json](../.claude/settings.json) | PowerShell(type *.env*) | aldrig bevist |
 | agent-deny | [.claude/settings.json](../.claude/settings.json) | PowerShell(Select-String *.env*) | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:0:0; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/block-dangerous-secret-commands.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:0; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-branch-switch-in-main-checkout.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:1; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/setup-worktree-if-needed.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:2; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/lint-gh-issue.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:3; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-ci-before-push.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:4; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-preflight-before-push.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:5; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-blocking-shell-commands.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:2:0; matcher=Edit; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-now-md-edit.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:2:1; matcher=Edit; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-archived-edit.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:3:0; matcher=Write; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-now-md-edit.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:3:1; matcher=Write; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-archived-edit.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:4:0; matcher=NotebookEdit; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-now-md-edit.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:4:1; matcher=NotebookEdit; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-archived-edit.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PostToolUse:0:0; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PostToolUse:1:0; matcher=PowerShell; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PostToolUse:2:0; matcher=mcp__.*; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PostToolUse:3:0; matcher=Read\|Write\|Edit\|Grep; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | SessionStart:0:0; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/session-prefetch-issue.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | SessionStart:0:1; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/ensure-scheduled-tasks.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | SessionStart:0:2; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/setup-worktree-if-needed.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | SessionStart:0:3; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/set-active-sessions.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | Stop:0:0; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/check-now-md.sh | aldrig bevist |
-| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | Stop:0:1; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/clear-active-sessions.sh | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:0:0; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/block-dangerous-secret-commands.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:0; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-branch-switch-in-main-checkout.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:1; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/setup-worktree-if-needed.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:2; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/lint-gh-issue.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:3; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-ci-before-push.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:4; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-preflight-before-push.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:1:5; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-blocking-shell-commands.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:2:0; matcher=Edit; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-now-md-edit.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:2:1; matcher=Edit; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-archived-edit.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:3:0; matcher=Write; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-now-md-edit.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:3:1; matcher=Write; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-archived-edit.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:4:0; matcher=NotebookEdit; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-now-md-edit.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PreToolUse:4:1; matcher=NotebookEdit; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-archived-edit.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PostToolUse:0:0; matcher=Bash; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PostToolUse:1:0; matcher=PowerShell; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PostToolUse:2:0; matcher=mcp__.*; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | PostToolUse:3:0; matcher=Read\|Write\|Edit\|Grep; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | SessionStart:0:0; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/session-prefetch-issue.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | SessionStart:0:1; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/ensure-scheduled-tasks.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | SessionStart:0:2; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/setup-worktree-if-needed.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | SessionStart:0:3; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/set-active-sessions.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | Stop:0:0; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/check-now-md.sh ; exit $LASTEXITCODE | aldrig bevist |
+| agent-binding | [.codex/hooks.json](../.codex/hooks.json) | Stop:0:1; matcher=; pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/clear-active-sessions.sh ; exit $LASTEXITCODE | aldrig bevist |
