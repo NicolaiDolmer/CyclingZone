@@ -22,6 +22,6 @@
 - **Træning:** løbsdag som tick (#4850/#4846) live senest 28/9; kalenderpakker #4845 FØR S4-kalender.
 - **Mekanik:** merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`, aldrig HH:57-HH:03; start køen først når checks har været rene i to aflæsninger); migrationer applies af auto-migrate.yml, Claude tjekker runnet + post-verify før næste merge. Bølger: TIER WAVE, draft til `gh pr ready`, CodeRabbit CLI før ready, push <10 min + hvert 15. min, vagt `wave-lane-watch.ps1`, frossen worker = afløser i SAMME worktree. Workers kører aldrig hele e2e, spawner aldrig agenter og kører preflight i FORGRUNDEN; go-kort bygges på `gh pr diff` + billeder orkestratoren selv har set. Tid: `Get-Date` (Git Bash `date` = UTC).
 
-> **🤖 Working agent:** Ingen aktiv session. #5065 stoppet ved ejerens tidsgrænse: Git-hooks aktiveret og secret-blokering bevist; normalt docs-commit 7,555 s mod ~1 s. Issue og læringsnote har bevis; Codex-opstart/trust og Git-udvidelser udestår.
+> **🤖 Working agent:** Codex — hook-trust (#5065). Profilerer pre-commit, færdiggør Git-kontroller, automatisk installation, Codex-opstart/trust og guard-inventory. Ejer har godkendt fuld levering med dokumenterede tidskompromiser. Claude kan IKKE se Codex (#4016).
 
 _Historik i git-log, issue-tråde + docs/audits/._
