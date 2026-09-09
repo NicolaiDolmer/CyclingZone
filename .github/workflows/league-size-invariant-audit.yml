@@ -1,170 +1,135 @@
 name: League-size invariant audit
 
-# Permanent forward-guard for #2377: hver liga-pulje (league_divisions) SKAL
-# have PRÆCIS 24 hold. Prod-audit 12/7 fandt 9 overskudshold på tværs af 7
-# puljer (rod-årsag: #2187 selvhelende AI-trim-gap ved signup + et frosset
-# test-hold uden is_test_account-flag). Reparationen er et separat,
-# ejer-godkendt spor (destruktiv trim) — dette workflow er KUN vagten, så
-# ENHVER fremtidig afvigelse (uanset årsag) opdages inden for et døgn.
-#
-# Triggers:
-#   - Alle PRs: et unikt league-size-invariant-check; ingen tavs secret-skip
-#   - Dagligt cron (03:40 UTC — efter quality-inbox 03:30, før feature-
-#     liveness/codeql 04:00 mandag) → fanger drift inden for et døgn, jf.
-#     ejer-kravet "inden for et døgn" (#2377 pkt. 3)
-#   - Manuel workflow_dispatch
-#
-# INGEN whitelist — ejer-kravet er absolut for alle grupper i alle divisioner.
-
+# Trusted default-branch code only: never execute PR code or consume PR artifacts
+# with production secrets. workflow_run also supports Dependabot and fork PRs.
+# publishes-check-on-pr-head: league-size-invariant
 on:
-  pull_request:
+  workflow_run:
+    workflows: ['CI (AI-Autopilot)']
+    types: [completed]
   schedule:
     - cron: '40 3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
+  checks: write
   issues: write
-  pull-requests: write
+  pull-requests: read
+
+concurrency:
+  group: league-audit-${{ github.event.workflow_run.head_sha || github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   audit:
     name: league-size-invariant
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Check out repository
+      - name: Check out trusted workflow revision
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+
+      - name: Start check on current PR head
+        id: target
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const bridge = require('./scripts/lib/league-audit-check.cjs');
+            if (context.eventName !== 'workflow_run') {
+              core.setOutput('run', 'true');
+              return;
+            }
+            const target = await bridge.targetForRun(github, context);
+            if (!target) return; // Closed or superseded SHA: never certify its successor.
+            const id = await bridge.startCheck(github, context, target, new Date().toISOString());
+            core.setOutput('check_id', id);
+            core.setOutput('run', 'true');
 
       - name: Set up Node.js
+        if: steps.target.outputs.run == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
+          package-manager-cache: false
 
-      - name: Install backend dependencies
-        run: npm ci
+      - name: Install trusted backend dependencies
+        if: steps.target.outputs.run == 'true'
+        run: npm ci --ignore-scripts
         working-directory: backend
 
-      - name: Run league-size invariant audit
+      - name: Measure production and redact candidate details
+        if: steps.target.outputs.run == 'true'
         id: audit
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         shell: bash
         run: |
-          # #4463: pipefail, saa `tee`/`tr` ikke sluger en exit-kode. `|| true`
-          # nedenfor er stadig bevidst (scriptets fund-signal), og JSON-valideringen
-          # skelner et gyldigt fund fra et crash.
-          set -o pipefail
-          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
-          SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
-          export SUPABASE_URL SUPABASE_SERVICE_KEY
-          # Scriptet exit 1'er naar det FINDER noget — det er dets normale
-          # "rødt" signal, ikke en fejl. run-steps bruger `bash -e` som default
-          # shell, saa uden `|| true` her doede steppet paa selve fund-linjen:
-          # hverken den laesbare tee-rapport, total-udregningen eller de senere
-          # PR-/issue-kommentar-steps naaede nogensinde at koere (verificeret i
-          # run 33022476909 — total var permanent tom, league-size-audit.txt
-          # manglede). `|| true` betyder IKKE "ignorer crashes" — valideringen
-          # nedenfor skelner stadig et gyldigt JSON-fund (rødt, scriptet virkede)
-          # fra et decideret crash (intet/ugyldigt JSON, fx manglende secrets).
-          node backend/scripts/audit-league-size-invariant.js --json > league-size-audit.json || true
-          node backend/scripts/audit-league-size-invariant.js | tee league-size-audit.txt || true
+          set -euo pipefail
+          test -n "$SUPABASE_URL" && test -n "$SUPABASE_SERVICE_KEY"
+          status=0
+          node backend/scripts/audit-league-size-invariant.js --json > league-audit-private.json || status=$?
+          if [ "$status" -gt 1 ]; then exit "$status"; fi
+          node <<'NODE'
+          const fs = require('fs');
+          const { publicSummary } = require('./scripts/lib/league-audit-check.cjs');
+          const report = publicSummary(JSON.parse(fs.readFileSync('league-audit-private.json', 'utf8')));
+          fs.writeFileSync('league-size-audit.json', JSON.stringify(report, null, 2));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `total=${report.total_findings}\n`);
+          NODE
 
-          if [ ! -s league-size-audit.json ]; then
-            echo "::error::audit-league-size-invariant.js skrev ingen JSON-output — scriptet crashede (fx manglende secrets). Det er IKKE et normalt fund, se run-loggen ovenfor."
-            exit 2
-          fi
-
-          total=$(node -e "
-            const d = JSON.parse(require('fs').readFileSync('league-size-audit.json', 'utf8'));
-            if (typeof d.total_findings !== 'number') { throw new Error('total_findings mangler eller er ikke et tal'); }
-            console.log(d.total_findings);
-          ") || { echo "::error::league-size-audit.json var ugyldigt/ufuldstaendigt — scriptet crashede midt i koersel."; exit 2; }
-          echo "total=$total" >> "$GITHUB_OUTPUT"
-
-      - name: Upload report
-        uses: actions/upload-artifact@v7
-        with:
-          name: league-size-audit-report
-          path: |
-            league-size-audit.json
-            league-size-audit.txt
-
-      - name: Comment on PR if findings (PR runs only)
-        if: github.event_name == 'pull_request' && steps.audit.outputs.total != '' && steps.audit.outputs.total != '0'
+      - name: Complete PR check even when measurement fails
+        if: always() && steps.target.outputs.check_id != ''
         uses: actions/github-script@v9
+        env:
+          LEAGUE_CHECK_ID: ${{ steps.target.outputs.check_id }}
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
         with:
           script: |
             const fs = require('fs');
-            const report = fs.readFileSync('league-size-audit.txt', 'utf8');
-            const body = [
-              '## ❌ League-size invariant audit fandt afvigelse(r)',
-              '',
-              'En eller flere liga-puljer har IKKE præcis 24 hold ([#2377](https://github.com/${{ github.repository }}/issues/2377) — ejer-krav, absolut, ingen whitelist).',
-              '',
-              '```',
-              report.trim(),
-              '```',
-              '',
-              'Fix: reparér de afvigende puljer via den sikre trim-sti (ejer-godkendt, IKKE automatisk) — se overskudskandidat-listen ovenfor.',
-            ].join('\n');
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+            const bridge = require('./scripts/lib/league-audit-check.cjs');
+            let report = null;
+            if (fs.existsSync('league-size-audit.json')) {
+              report = JSON.parse(fs.readFileSync('league-size-audit.json', 'utf8'));
+            }
+            await bridge.finishCheck(github, context, Number(process.env.LEAGUE_CHECK_ID),
+              report, process.env.AUDIT_OUTCOME === 'success', new Date().toISOString());
 
-      - name: Open or update tracking issue (scheduled runs only)
+      - name: Upload aggregate report
+        if: steps.audit.outputs.total != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-size-audit-report
+          path: league-size-audit.json
+
+      - name: Open or update tracking issue
         if: github.event_name == 'schedule' && steps.audit.outputs.total != '' && steps.audit.outputs.total != '0'
         uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
-            const data = JSON.parse(fs.readFileSync('league-size-audit.json', 'utf8'));
-            const report = fs.readFileSync('league-size-audit.txt', 'utf8');
-            const title = `[bot] League-size invariant audit fandt ${data.total_findings} afvigende pulje(r)`;
-            const body = [
-              '## League-size invariant drift detected',
-              '',
-              `Dagligt cron-run fandt **${data.total_findings}** pulje(r) uden præcis 24 hold (krav: ${data.required_team_count}, jf. [#2377](https://github.com/${{ github.repository }}/issues/2377)).`,
-              '',
-              'Mest sandsynligt: en AI-fill/signup-trim-gap (#2187-klassen) eller et manuelt oprettet test-/admin-hold uden korrekt flag. Se overskudskandidat-listen pr. pulje nedenfor som beslutningshjælp — scriptet trimmer INTET selv.',
-              '',
-              '```',
-              report.trim(),
-              '```',
-              '',
-              'Run-link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            const report = JSON.parse(fs.readFileSync('league-size-audit.json', 'utf8'));
+            const title = `[bot] League-size invariant audit fandt ${report.total_findings} afvigende pulje(r)`;
+            const body = ['Read-only production audit (#2377 / #4753).',
+              'Active pools require 24 teams; dormant lower tiers require zero.',
+              '```json', JSON.stringify(report, null, 2), '```',
+              `Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             ].join('\n');
             const { data: existing } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: 'league-size-audit',
+              ...context.repo, state: 'open', labels: 'league-size-audit'
             });
-            if (existing.length > 0) {
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existing[0].number,
-                title,
-                body,
-              });
+            if (existing.length) {
+              await github.rest.issues.update({ ...context.repo, issue_number: existing[0].number, title, body });
             } else {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title,
-                body,
-                labels: ['league-size-audit', 'priority:high', 'type:bug', 'claude:todo'],
-              });
+              await github.rest.issues.create({ ...context.repo, title, body,
+                labels: ['league-size-audit', 'priority:high', 'type:bug', 'claude:todo'] });
             }
 
       - name: Fail if findings
         if: steps.audit.outputs.total != '' && steps.audit.outputs.total != '0'
-        run: |
-          echo "::error::League-size invariant audit found ${{ steps.audit.outputs.total }} deviating group(s). See report artifact."
-          exit 1
+        run: exit 1

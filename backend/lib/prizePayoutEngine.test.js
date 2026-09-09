@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getSeasonPrizePreview, paySeasonPrizesToDate } from "./prizePayoutEngine.js";
+import { getSeasonPrizePreview, paySeasonPrizesToDate as payPrizes } from "./prizePayoutEngine.js";
 import { FINANCE_ACTOR_TYPE } from "./economyConstants.js";
+const NOW = new Date('2026-09-09T12:00:00Z');
+const paySeasonPrizesToDate = (season, actor, supabase, opts={}) => payPrizes(season,actor,supabase,{...opts,now:NOW});
 
 // Mock-query-builder: thenable (for kæder der afsluttes uden .range(), fx races/
 // teams) OG med .range() der pager (for fetchAllRows på race_results/finance_tx).
@@ -32,6 +34,17 @@ function makeSupabase({ races = [], results = [], transactions = [], teams = [] 
     },
   };
 }
+
+test('AI teams never enter the payout plan, even with historical prize result amounts', async () => {
+  const preview = await getSeasonPrizePreview('s1',makeSupabase({
+    races:[{id:'race',status:'completed',prize_paid_at:null}],
+    teams:[{id:'ai',name:'AI',is_ai:true},{id:'human',name:'Human',is_ai:false}],
+    results:[{race_id:'race',team_id:'ai',prize_money:700},{race_id:'race',team_id:'human',prize_money:300}],
+  }));
+  assert.equal(preview.total_pending,300);
+  assert.deepEqual(preview.pending_payment[0].by_team.map(t=>t.team_id),['human']);
+  assert.equal(preview.totals.free_ai,700);
+});
 
 test("getSeasonPrizePreview paginerer race_results forbi 1000-row-loftet", async () => {
   // 2500 præmie-rækker (10 CZ$ hver) for ét hold i ét ubetalt løb. Uden
@@ -181,7 +194,9 @@ test("getSeasonPrizePreview advarer ved løb hvor hele puljen er fri/AI (#896)",
   const preview = await getSeasonPrizePreview("season-1", supabase);
 
   // Løbet droppes IKKE stille — det bliver en eksplicit warning.
-  assert.equal(preview.pending_payment.length, 0);
+  assert.equal(preview.pending_payment.length, 1);
+  assert.deepEqual(preview.pending_payment[0].by_team, []);
+  assert.equal(preview.pending_payment[0].total_prize, 0);
   assert.equal(preview.warnings.length, 1);
   assert.equal(preview.warnings[0].type, "all_free_ai");
   assert.equal(preview.warnings[0].race_id, "r1");
@@ -220,7 +235,7 @@ test("getSeasonPrizePreview reconcilerer betalt løb: results-sum vs finance-sum
 
 // Stateful mock covering BOTH the payout path (rpc + races.update + import_log)
 // and the updateRiderValues recalc it now triggers (seasons + riders.update).
-function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, completedSeasons = [], failRecalc = false, missingTeamIds = [] }) {
+function makePayoutSupabase({ pendingRace, riders = [], teams = [], activeSeason = null, completedSeasons = [], failRecalc = false, missingTeamIds = [] }) {
   const state = { rpcCalls: [], racesPaidAt: [], importLogs: [], riderUpdates: [] };
 
   const racesRows = [{ id: pendingRace.id, name: pendingRace.name, prize_paid_at: null, status: "completed", season_id: "season-1" }];
@@ -295,7 +310,7 @@ function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, com
         return builder;
       }
       if (table === "teams") {
-        const builder = { select: () => builder, in: () => builder, order: () => builder, range: () => Promise.resolve({ data: [], error: null }), then: (r) => r({ data: [], error: null }) };
+        const builder = { select: () => builder, in: () => builder, order: () => builder, range: () => Promise.resolve({ data: teams, error: null }), then: (r) => r({ data: teams, error: null }) };
         return builder;
       }
       if (table === "import_log") {
@@ -328,6 +343,17 @@ function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, com
   };
   return supabase;
 }
+
+test('AI-only race closes payout bookkeeping without a balance credit',async()=>{
+  const sb=makePayoutSupabase({pendingRace:{id:'r1',name:'AI race',results:[
+    {race_id:'r1',team_id:'ai',prize_money:700},
+  ]},teams:[{id:'ai',name:'AI',is_ai:true}]});
+  const result=await paySeasonPrizesToDate('season-1',null,sb);
+  assert.equal(result.total_paid,0);
+  assert.equal(result.races_paid,1);
+  assert.equal(sb.state.rpcCalls.length,0);
+  assert.equal(sb.state.racesPaidAt.length,1);
+});
 
 test("paySeasonPrizesToDate triggers fixed-window rider-value recalc after paying", async () => {
   const supabase = makePayoutSupabase({

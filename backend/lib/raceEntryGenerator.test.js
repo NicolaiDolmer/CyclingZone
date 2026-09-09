@@ -133,6 +133,7 @@ function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false, b
       gte(col, val) { q.filters.push(["gte", col, val]); return api; },
       range() { return api; }, // mock ignorer paginering (test-data < 1000 rækker)
       order() { return api; },
+      maybeSingle() { return api.then(r => ({...r,data:r.data?.[0] ?? null})); },
       delete() { q.op = "delete"; return api; },
       update(values) { q.op = "update"; q.values = values; return api; },
       insert(rows) {
@@ -1742,9 +1743,18 @@ const entriesFor = (state, raceId, teamId) =>
 
 test('#4753 draining AI gets no new automatic entries', async () => {
   const { state, seasonId } = seedModeScenario();
+  state.app_config = [{key:'ai_team_retire_enabled',value:'on'},{key:'ai_pool_retirement_v2_enabled',value:'on'}];
   Object.assign(state.teams[0], { is_ai:true, pending_removal_at:'2026-07-10T07:00:00Z' });
   await runRaceEntryGenerator({supabase:makeSupabase(state),seasonId,dryRun:false,now:Date.parse('2026-07-10T08:00:00Z')});
   assert.equal(state.race_entries.filter(e=>e.team_id==='ai1').length,0);
+});
+
+test('#4753 release gate off leaves automatic entry generation unchanged', async () => {
+  const { state, seasonId } = seedModeScenario();
+  state.app_config = [{key:'ai_team_retire_enabled',value:'on'}];
+  Object.assign(state.teams[0], {is_ai:true,pending_removal_at:'2026-07-10T07:00:00Z'});
+  await runRaceEntryGenerator({supabase:makeSupabase(state),seasonId,dryRun:false,now:Date.parse('2026-07-10T08:00:00Z')});
+  assert.ok(state.race_entries.some(e=>e.team_id==='ai1'));
 });
 
 test("#4201 proactive (default): manager-hold roeres ikke, AI-hold fyldes", async () => {

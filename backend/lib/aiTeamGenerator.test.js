@@ -318,6 +318,28 @@ test("clearAllAiTeams er no-op uden AI-hold", async () => {
   assert.deepEqual(supabase.state.teams.map((t) => t.id), ["mgr-1"]);
 });
 
+test('relaunch wipe preserves retired teams and their detached rider history',async()=>{
+  const supabase=makeSupabase({teams:[
+    {id:'archived',is_ai:true,retired_at:'2026-09-01T12:00:00Z'},
+    {id:'active',is_ai:true,retired_at:null},
+  ],riders:[{id:'old-rider',team_id:null,is_retired:true},{id:'active-rider',team_id:'active'}],
+  transfer_offers:[{id:'history',seller_team_id:'archived',rider_id:'old-rider',status:'accepted'}]});
+  const result=await clearAllAiTeams(supabase);
+  assert.equal(result.teams,1);
+  assert.deepEqual(supabase.state.teams.map(t=>t.id),['archived']);
+  assert.deepEqual(supabase.state.riders.map(r=>r.id),['old-rider']);
+  assert.equal(supabase.state.transfer_offers.length,1);
+});
+
+test('relaunch wipe refuses unresolved offer references before deleting any candidate',async()=>{
+  const supabase=makeSupabase({teams:[{id:'clean',is_ai:true},{id:'referenced',is_ai:true}],
+    riders:[{id:'clean-rider',team_id:'clean'},{id:'referenced-rider',team_id:'referenced'}],
+    transfer_offers:[{id:'history',seller_team_id:'referenced',status:'withdrawn'}]});
+  await assert.rejects(clearAllAiTeams(supabase),/transfer offers/);
+  assert.equal(supabase.state.teams.length,2);
+  assert.equal(supabase.state.riders.length,2);
+});
+
 // ── #1739 · reconcileAiTeamsForPool: trim AI når et nyt ægte hold rykker ind ────
 // Bug'en: trim-logikken (generateAndAllocateAiTeams) kørte KUN ved relaunch, så et
 // nyt hold midt i sæsonen efterlod AI-feltet urørt og puljen voksede forbi target.

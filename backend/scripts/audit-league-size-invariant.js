@@ -172,7 +172,7 @@ export async function runLeagueSizeAudit({
       stalledIds ??= await getStalledIds(supabase, now);
       if (stalledIds.length && (await teamBlockingRaceIds(supabase, team.id, stalledIds)).length) continue;
     }
-    if (['inflight_entries','unpaid_prizes','pending_transfer','live_transfer_offers','live_swap_offers','live_auctions'].includes(reason)) {
+    if (['inflight_entries','pending_transfer','live_transfer_offers','live_swap_offers','live_auctions'].includes(reason)) {
       waiting.push({team_id:team.id,pool_id:team.league_division_id,reason,pending_since:team.pending_removal_at});
       waitingIds.add(team.id);
     }

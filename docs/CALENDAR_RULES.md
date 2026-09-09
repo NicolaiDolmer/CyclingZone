@@ -13,7 +13,8 @@ Reglerne lå før spredt over seks filer med hver sin dato og issue-reference. D
 
 ## 0. De to akser (den hyppigste fejlkilde)
 
-**AI-nedlæggelse (#4753, design-go 9/9):** Et markeret AI-hold får ingen nye tilmeldinger.
+**AI-nedlæggelse (#4753, design-go 9/9):** Når begge aktiveringsflag i GAME_INVARIANTS
+er on, får et markeret AI-hold ingen nye tilmeldinger. Off/fravær bevarer normal udtagelse.
 Kun entries til endnu ikke startede løb uden en etape-claim fjernes; igangværende løb
 færdiggøres med deres eksisterende felt. Claim og oprydning serialiseres på løbsrækken,
 og batch-udtagelse deler sin holdlås med nedlæggelsen. Kalender/løbsdage flyttes ikke.

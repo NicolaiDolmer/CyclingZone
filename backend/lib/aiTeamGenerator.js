@@ -384,10 +384,21 @@ async function removeAiTeams(supabase, aiTeams, count, now = new Date()) {
  */
 export async function clearAllAiTeams(supabase) {
   if (!supabase?.from) throw new Error("Supabase client required");
-  const { data: aiTeams, error } = await supabase.from("teams").select("id").eq("is_ai", true);
-  if (error) throw new Error(`clearAllAiTeams (teams read): ${error.message}`);
+  // Relaunch replaces active AI, not retained history. Retired teams/riders
+  // intentionally survive this operation, including their terminal offers.
+  // This owner-only maintenance path is not a live/concurrent cleanup API.
+  const aiTeams = await fetchAllRows(() => supabase.from("teams").select("id")
+    .eq("is_ai", true).is("retired_at", null).is("user_id", null)
+    .order("id"));
   const ids = (aiTeams || []).map((t) => t.id);
   if (!ids.length) return { teams: 0, deferred: 0 };
+  // Validate the entire destructive plan first. An uncleared market after the
+  // relaunch reset requires investigation, not deletion of offer history here.
+  for (const id of ids) {
+    if (await teamHasBlockingTransferOffers(supabase,id)) {
+      throw new Error('clearAllAiTeams: transfer offers still reference active AI; finish the owner-approved relaunch reset first');
+    }
+  }
   let deferred = 0;
   for (let i = 0; i < ids.length; i += INSERT_BATCH) {
     const batch = ids.slice(i, i + INSERT_BATCH);

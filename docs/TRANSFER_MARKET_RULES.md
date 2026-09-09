@@ -29,6 +29,9 @@ Transfer- og byttetilbud i `pending/countered/awaiting_confirmation`, auktioner 
 kan fortsat ændre pris, bekræftes og afsluttes. Døde tilbud blokerer ikke og slettes ikke.
 Salgsannoncer i `open/negotiating` trækkes tilbage; nye annoncer, tilbud, bytter og bud afvises.
 Nedlæggelse, pensionering og ønskelistebeskeder committer samlet eller rulles samlet tilbage.
+SQL-reservation, drænings-triggere og nedlæggelse kræver både `ai_team_retire_enabled`
+og den særskilte `ai_pool_retirement_v2_enabled` på on. Den nye gate var fraværende/off
+ved read-only-verifikation 9/9; migrationen opretter/aktiverer ikke flaget.
 Kode: `database/2026-09-09-4753-ai-pool-retirement.sql`; puljekontrakten står i
 [`GAME_INVARIANTS.md`](GAME_INVARIANTS.md). Verificeret lokalt; prod-release afventer særskilt ejer-go.
 

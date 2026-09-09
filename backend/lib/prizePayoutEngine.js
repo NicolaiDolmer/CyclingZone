@@ -69,28 +69,34 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
     ...paidTransactions.map(t => t.team_id),
   ].filter(Boolean))];
   const teamNameById = new Map();
+  const nonPayableTeams = new Set();
   if (teamIds.length) {
     // #3030: også chunket — 361 team-ids var ~13,5 KB URL og få dage fra samme
     // klippe. fetchAllRows-vejen betyder samtidig at en fejl nu kaster i stedet
     // for tavst at give unavngivne hold.
     const teams = await fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
       .from("teams")
-      .select("id, name")
+      .select("id, name, is_ai, is_bank")
       .in("id", chunk)
       .order("id", { ascending: true }));
-    for (const t of teams) teamNameById.set(t.id, t.name);
+    for (const t of teams) {
+      teamNameById.set(t.id, t.name);
+      if (t.is_ai || t.is_bank) nonPayableTeams.add(t.id);
+    }
   }
+  // AI prize result amounts remain historical sporting data, never team cash.
+  const payableResult = r => r.team_id && !nonPayableTeams.has(r.team_id);
 
   const resultsByRace = groupBy(allResults || [], r => r.race_id);
   const txByRace = groupBy(paidTransactions, t => t.race_id);
 
   // Season-wide split (#896): "optjent" = alle præmie-rækker over completed-løb;
-  // "udbetalbar" = kun rækker med et hold (team_id). Differencen er fri/AI-præmie
+  // "udbetalbar" = rækker til ikke-AI/ikke-bank-hold. Differencen er fri/AI-præmie
   // (holdsløse ryttere + forældreløse holdklassement-rækker) der tæller for
   // rytter-værdi men ALDRIG udbetales. Skjult i dag → previewets total var
   // misvisende (optjent vist som om det kunne udbetales).
   const earned = (allResults || []).reduce((s, r) => s + r.prize_money, 0);
-  const payable = (allResults || []).reduce((s, r) => s + (r.team_id ? r.prize_money : 0), 0);
+  const payable = (allResults || []).reduce((s, r) => s + (payableResult(r) ? r.prize_money : 0), 0);
 
   const already_paid = [];
   const pending_payment = [];
@@ -114,11 +120,15 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
       });
 
       // Reconciliation (#896): de udbetalte finance_transactions skal matche
-      // summen af de UDBETALBARE race_results (team_id != null) for løbet —
+      // summen af berettigede resultater og faktisk historisk krediterede hold —
       // ellers er der drift mellem de to kilder (dobbeltbetaling, delvis
       // udbetaling, eller import-ændring efter udbetaling).
       const results = resultsByRace.get(race.id) || [];
-      const results_total = results.reduce((s, r) => s + (r.team_id ? r.prize_money : 0), 0);
+      // Preserve reconciliation of actual historical AI credits. No new credits
+      // are planned for AI; previously posted ledger rows are not rewritten.
+      const creditedTeams = new Set((txByRace.get(race.id) || []).map(t => t.team_id));
+      const results_total = results.reduce((s, r) => s +
+        (payableResult(r) || creditedTeams.has(r.team_id) ? r.prize_money : 0), 0);
       const diff = finance_total - results_total;
       reconciliation.push({
         race_id: race.id,
@@ -143,7 +153,7 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
 
       const byTeam = new Map();
       for (const r of results) {
-        if (!r.team_id) continue;
+        if (!payableResult(r)) continue;
         byTeam.set(r.team_id, (byTeam.get(r.team_id) || 0) + r.prize_money);
       }
       if (!byTeam.size) {
@@ -156,7 +166,8 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
           type: "all_free_ai",
           message: `Hele puljen (${free_ai.toLocaleString("da-DK")} CZ$) er fri/AI — intet udbetales til hold.`,
         });
-        continue;
+        // Keep a zero-cash settlement in the plan so prize_paid_at can close
+        // this race once; otherwise AI-only races are rediscovered forever.
       }
 
       const teamBreakdown = [...byTeam.entries()].map(([team_id, prize]) => ({
@@ -235,7 +246,7 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
     return { races_paid: 0, total_paid: 0, by_race: [] };
   }
 
-  const now = new Date().toISOString();
+  const now = (opts.now ?? new Date()).toISOString();
 
   // #1573: saml de løb DETTE tick faktisk vandt prize_paid_at-kapløbet om. Et
   // rivaliserende cron-tick kan have læst det samme pending-preview (begge så

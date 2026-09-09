@@ -673,6 +673,7 @@ test("#1993/#1844 loadEntrantsForRace: entrant.team_id + team_name kommer fra ra
 
 test('#4753 late auto-fill never reintroduces a draining AI team',async()=>{
   const supabase=makeSupabase(padRoster({race_entries:[],
+    app_config:[{key:'ai_team_retire_enabled',value:'on'},{key:'ai_pool_retirement_v2_enabled',value:'on'}],
     teams:[{id:'T1',is_ai:true,is_frozen:false,is_test_account:false,pending_removal_at:'2026-09-09T12:00:00Z'}],
     riders:[{id:'r1',team_id:'T1',firstname:'A',lastname:'A',is_u25:false}],
     rider_derived_abilities:[{rider_id:'r1',...abil()}],

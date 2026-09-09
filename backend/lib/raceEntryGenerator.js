@@ -5,6 +5,7 @@
 // stabilt på vindue-start, så race_id). Pure — ingen DB.
 
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
+import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   windowsOverlap, raceBindingWindow,
   isRiderDayInvariantViolation, isConstraintNotDeferrable,
@@ -278,8 +279,9 @@ export async function runRaceEntryGenerator({
     }
   }
 
+  const drainingEnabled = await isAiTeamRetireEnabled(supabase);
   const eligibleTeams = (allTeams || []).filter((t) => {
-    if (t.is_frozen || (t.is_ai && t.pending_removal_at)) return false;
+    if (t.is_frozen || (drainingEnabled && t.is_ai && t.pending_removal_at)) return false;
     if (!t.user_id) return true; // AI-hold: uaendret i ALLE tilstande (#2622-bindingen).
     if (mode === ASSISTANT_MODES.LATE_FILL) return true;
     if (mode === ASSISTANT_MODES.OPT_IN) return optInTeamIds?.has(t.id) === true;

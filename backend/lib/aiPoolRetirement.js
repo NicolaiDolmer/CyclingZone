@@ -16,7 +16,8 @@ export async function reservePoolRetirements(supabase, poolId, now) {
     p_pool_id: poolId, p_now: now.toISOString(),
   });
   if (error) throw new Error(`AI pool ${poolId} reserve: ${error.message}`);
-  if (!Number.isInteger(data) || data < 0) throw new Error(`AI pool ${poolId} reserve: invalid response`);
+  if (!Number.isInteger(data?.reserved) || data.reserved < 0
+    || !Number.isInteger(data?.cleared) || data.cleared < 0) throw new Error(`AI pool ${poolId} reserve: invalid response`);
   return data;
 }
 
@@ -42,7 +43,9 @@ export async function runAiPoolRetirementSweep({ supabase, now, backstopHours,
   const stalledIds = new Set(await getStalledIds(supabase, now));
   for (const pool of pools) {
     try {
-      await reservePoolRetirements(supabase, pool.id, now);
+      const reservation = await reservePoolRetirements(supabase, pool.id, now);
+      result.cleared += reservation.cleared;
+      if (reservation.cleared) result.guard.push({poolId:pool.id,reason:'obsolete_reservations',cleared:reservation.cleared});
       const plan = await planPoolRetirements(supabase, pool.id, now);
       result.candidates += plan.length;
       for (const c of plan) {
@@ -62,6 +65,9 @@ export async function runAiPoolRetirementSweep({ supabase, now, backstopHours,
           }
           const retired = await retireAiTeam(supabase, c.team_id, { now });
           if (retired.retired) result.healed += 1;
+          else if (['not_excess','not_active_ai','pool_changed'].includes(retired.reason)) {
+            result.guard.push({teamId:c.team_id,poolId:pool.id,reason:retired.reason});
+          }
         } catch (error) {
           // best-effort per team: return errors to cron's Sentry aggregation;
           // persistent failures use its deduplicated stale alert (#4594).

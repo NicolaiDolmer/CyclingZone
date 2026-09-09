@@ -10,9 +10,9 @@ export async function teamInflightRaceIds(supabase, teamId, inflightRaceIds) {
   const riderIds = (riders || []).map((r) => r.id);
   const [byTeam, byRider] = await Promise.all([
     fetchAllRows(() => supabase.from('race_entries').select('race_id')
-      .in('race_id', inflightRaceIds).eq('team_id', teamId).order('rider_id')),
+      .in('race_id', inflightRaceIds).eq('team_id', teamId).order('race_id').order('rider_id')),
     riderIds.length ? fetchAllRows(() => supabase.from('race_entries').select('race_id')
-      .in('race_id', inflightRaceIds).in('rider_id', riderIds).order('rider_id')) : [],
+      .in('race_id', inflightRaceIds).in('rider_id', riderIds).order('race_id').order('rider_id')) : [],
   ]);
   return [...new Set([...byTeam, ...byRider].map(e => e.race_id))];
 }
@@ -37,7 +37,7 @@ export async function getStalledInflightRaceIds(
     .select("race_id, stage_number, scheduled_at")
     .in("race_id", raceIds)
     .lte("scheduled_at", cutoff)
-    .order("race_id", { ascending: true }));
+    .order("race_id", { ascending: true }).order("stage_number", { ascending: true }));
   if (!dueRows.length) return [];
 
   const nextStageByRace = new Map(races.map((r) => [r.id, (r.stages_completed || 0) + 1]));

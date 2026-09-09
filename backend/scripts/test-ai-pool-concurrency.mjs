@@ -108,6 +108,31 @@ try {
   assert.equal(sql('SELECT count(*) FROM race_entries'),'0');
   assert.equal(sql('SELECT count(*) FROM teams WHERE league_division_id=13'),'24');
   console.log('PASS: race entry batch and retirement serialize without deadlock');
+  if (process.argv.includes('--benchmark')) {
+    // Isolate the incremental cost of this migration's entry trigger. This is
+    // NOT a production capacity claim: the fixture lacks unrelated RLS/triggers.
+    sql(`TRUNCATE race_entries,race_stage_claims,race_results,races,riders CASCADE;
+      UPDATE teams SET pending_removal_at=NULL;
+      INSERT INTO races SELECT gen_random_uuid(),'scheduled',0,NULL FROM generate_series(1,40);
+      INSERT INTO riders(id,team_id) SELECT gen_random_uuid(),t.id FROM generate_series(1,250)
+        CROSS JOIN (SELECT id FROM teams WHERE NOT is_ai AND retired_at IS NULL LIMIT 1) t;`);
+    const med = values => [...values].sort((a,b)=>a-b)[Math.floor(values.length/2)];
+    const results = {};
+    for (const mode of ['baseline','gate-off','enabled']) {
+      sql(`ALTER TABLE race_entries ${mode==='baseline'?'DISABLE':'ENABLE'} TRIGGER trg_ai_drain_entries;
+        UPDATE app_config SET value=to_jsonb('${mode==='gate-off'?'off':'on'}'::text)
+          WHERE key='ai_pool_retirement_v2_enabled';`);
+      const samples = [];
+      for (let i=0;i<6;i++) {
+        sql('TRUNCATE race_entries');
+        const plan=JSON.parse(sql(`EXPLAIN (ANALYZE, FORMAT JSON)
+          INSERT INTO race_entries SELECT r.id,d.id,d.team_id FROM races r CROSS JOIN riders d;`));
+        if(i>0) samples.push(plan[0]['Execution Time']); // discard warm-up
+      }
+      results[mode]={rows:10000,samples_ms:samples,median_ms:med(samples)};
+    }
+    console.log('BENCHMARK '+JSON.stringify(results));
+  }
 } finally {
   if(started) execFileSync(exe('pg_ctl'),['-D',data,'-m','fast','-w','stop'],options);
   // Keep isolated logs for review. No recursive filesystem deletion.

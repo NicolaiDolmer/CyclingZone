@@ -4,12 +4,16 @@ Design-go: owner chat, 9 September 2026. This explicitly replaces the earlier C
 decision: retire AI teams, preserve their history, drain obligations, discover
 unmarked excess automatically, and block merges on unexplained/stuck excess.
 SSOT: `docs/TRANSFER_MARKET_RULES.md`, `docs/GAME_INVARIANTS.md` and
-`docs/CALENDAR_RULES.md` (existing races finish unchanged).
+`docs/CALENDAR_RULES.md` (existing races finish unchanged), `docs/ECONOMY_RULES.md`.
 
 ## Contract
 - All active pools target 24 non-bank teams. Existing dormant-pool policy remains.
 - Placement and reservation of the excess AI retirement share one transaction.
 - Choose an unblocked AI first, deterministically; preserve existing reservations.
+- After 120 hours of the same blocker, an unblocked replacement may leave instead
+  (owner approved 9/9); preserve the stuck team/history. A new reason resets the wait.
+- AI/bank teams receive no prize cash; historical results/ledger rows remain.
+- Both the existing kill switch and new absent/off release gate must be on.
 - A draining AI finishes existing races and deals, but starts no new obligations.
 - Dead offers, team records, riders and results are retained.
 - Actual retirement is atomic and rechecks the pool budget under a database lock.
@@ -37,7 +41,7 @@ Execution: inline, using executing-plans and test-driven-development.
   guard evidence and postmortem (guard ignored; unresolved decision closed).
 - [x] Run focused integration tests, `scripts/verify-local.ps1`, frontend lint
   and applicable e2e, `scripts/preflight-pr.ps1`, token hygiene and code review.
-- [ ] Push a draft PR with design-go and evidence; run read-only live dry-run;
+- [x] Push a draft PR with design-go and evidence; run read-only live dry-run;
   clear the session lock and wait for owner go. The issue stays open.
 - [ ] After separate go: apply the reviewed release/repair in explicit steps,
   verify 15 pools at 24 and a fresh PR league check green, then close out evidence.
@@ -51,3 +55,4 @@ Missing marker's historical cause is unproven; prevention covers interrupted
 signup and discovery covers already-existing drift without guessing its origin.
 
 Evidence: [local verification and live measurement](../audits/2026-09-09-4753-retirement-verification.md).
+Review: [Claude and CodeRabbit dispositions](../audits/2026-09-09-5066-review-response.md).

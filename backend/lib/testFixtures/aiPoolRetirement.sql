@@ -28,8 +28,8 @@
     CREATE TABLE rider_watchlist(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, rider_id uuid REFERENCES riders);
     CREATE TABLE notifications(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, type text,
       title text, message text, related_id uuid, metadata jsonb, created_at timestamptz DEFAULT now());
-    CREATE TABLE app_config(key text PRIMARY KEY, value text);
-    INSERT INTO app_config VALUES ('ai_team_retire_enabled','on');
+    CREATE TABLE app_config(key text PRIMARY KEY, value jsonb);
+    INSERT INTO app_config VALUES ('ai_team_retire_enabled','"on"'),('ai_pool_retirement_v2_enabled','"on"');
     GRANT USAGE ON SCHEMA public TO service_role;
     GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
   

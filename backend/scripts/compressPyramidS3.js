@@ -376,9 +376,13 @@ console.log(`  I alt ${tiedPointGroups.length} pointgruppe(r) med 2+ hold på sa
 
 console.log(`\n── AI-FYLD (target efter flytning vs. AI-hold i puljen NU — reconcileAiTeamsForPool udfører dette ved --apply) ──`);
 const currentAiByPool = new Map();
+const stationaryNonAiByPool = new Map();
 for (const t of allTeams) {
   if (t.is_ai === true && t.league_division_id) {
     currentAiByPool.set(t.league_division_id, (currentAiByPool.get(t.league_division_id) || 0) + 1);
+  }
+  if (!t.is_ai && !t.is_bank && (t.is_frozen || t.is_test_account) && t.league_division_id) {
+    stationaryNonAiByPool.set(t.league_division_id,(stationaryNonAiByPool.get(t.league_division_id)||0)+1);
   }
 }
 let totalAiRemoved = 0, totalAiCreated = 0;
@@ -386,7 +390,8 @@ const aiReport = [];
 const d1PoolId = pools.find((p) => p.tier === 1)?.id;
 for (const p of pools) {
   const realManagerCount = byPool.get(p.id) || 0;
-  const targetAi = targetAiCountForPool(p.tier, realManagerCount);
+  const targetAi = targetAiCountForPool(p.tier, realManagerCount,
+    realManagerCount+(stationaryNonAiByPool.get(p.id)||0));
   const currentAi = currentAiByPool.get(p.id) || 0;
   const delta = targetAi - currentAi;
   if (delta !== 0) {

@@ -4,6 +4,15 @@
 -- No FK delete actions or RLS policies are relaxed. RPCs are service-only.
 BEGIN;
 
+-- Installation never enables this release. The legacy flag is already on in
+-- production; an independent, absent-by-default gate requires a separate go.
+-- Missing/unknown/beta values fail closed. Read on each statement, no process cache.
+CREATE OR REPLACE FUNCTION public.ai_pool_retirement_enabled()
+RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path = '' AS $$
+  SELECT count(*)=2 AND bool_and(coalesce(value IN ('true'::jsonb,'"on"'::jsonb),false))
+  FROM public.app_config WHERE key IN ('ai_team_retire_enabled','ai_pool_retirement_v2_enabled');
+$$;
+
 CREATE OR REPLACE FUNCTION public.ai_team_retirement_reason(p_team_id uuid)
 RETURNS text LANGUAGE sql STABLE SECURITY INVOKER SET search_path = '' AS $$
   SELECT CASE
@@ -11,8 +20,8 @@ RETURNS text LANGUAGE sql STABLE SECURITY INVOKER SET search_path = '' AS $$
       WHERE (e.team_id=p_team_id OR e.rider_id IN (SELECT id FROM public.riders WHERE team_id=p_team_id))
         AND r.status<>'completed' AND (r.stages_completed>0 OR EXISTS
           (SELECT 1 FROM public.race_stage_claims c WHERE c.race_id=r.id))) THEN 'inflight_entries'
-    WHEN EXISTS (SELECT 1 FROM public.race_results rr JOIN public.races r ON r.id=rr.race_id
-      WHERE rr.team_id=p_team_id AND rr.prize_money>0 AND r.prize_paid_at IS NULL) THEN 'unpaid_prizes'
+    -- AI teams have no cash-prize entitlement. Historical result amounts and
+    -- prize_paid_at cannot hold an AI retirement open (owner rule 9/9).
     WHEN EXISTS (SELECT 1 FROM public.riders WHERE
       (team_id=p_team_id AND pending_team_id IS NOT NULL) OR pending_team_id=p_team_id) THEN 'pending_transfer'
     WHEN EXISTS (SELECT 1 FROM public.transfer_offers o
@@ -60,18 +69,26 @@ LANGUAGE sql STABLE SECURITY INVOKER SET search_path = '' AS $$
       AND r.status='scheduled' AND r.stages_completed=0
       AND NOT EXISTS (SELECT 1 FROM public.race_stage_claims c WHERE c.race_id=r.id))
   FROM candidates t CROSS JOIN population p
-  ORDER BY (t.pending_removal_at IS NULL), (t.block_reason IS NOT NULL),t.pending_removal_at,t.id
+  -- Owner 9/9: preserve normal reservations; after 120h of the SAME blocker,
+  -- an unblocked candidate may replace it. Never rotate one blocked team for
+  -- another, or inherit an old blocker's clock for a newly changed obligation.
+  ORDER BY (t.pending_removal_at IS NOT NULL AND NOT
+    (t.block_reason IS NOT NULL AND t.pending_removal_blocked_reason IS NOT DISTINCT FROM t.block_reason
+      AND coalesce(t.pending_removal_blocked_since,t.pending_removal_at)<=p_now-interval '120 hours')) DESC,
+    (t.block_reason IS NOT NULL),(t.pending_removal_at IS NULL),t.pending_removal_at,t.id
   LIMIT (SELECT greatest(0,n-target) FROM population);
 $$;
 
 CREATE OR REPLACE FUNCTION public.reserve_ai_pool_retirements(p_pool_id bigint, p_now timestamptz DEFAULT now())
-RETURNS int LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
 DECLARE chosen uuid[]; candidate record; n int;
 BEGIN
-  IF p_pool_id IS NULL THEN RETURN 0; END IF;
+  IF NOT public.ai_pool_retirement_enabled() OR p_pool_id IS NULL THEN
+    RETURN jsonb_build_object('reserved',0,'cleared',0);
+  END IF;
   -- All placement and retirement paths acquire this same pool lock first.
   PERFORM 1 FROM public.league_divisions WHERE id=p_pool_id FOR NO KEY UPDATE;
-  IF NOT FOUND THEN RETURN 0; END IF;
+  IF NOT FOUND THEN RETURN jsonb_build_object('reserved',0,'cleared',0); END IF;
   SELECT coalesce(array_agg(team_id),'{}'::uuid[]) INTO chosen
     FROM public.plan_ai_pool_retirements(p_pool_id,p_now);
   -- Same advisory key/order as apply_race_entry_unit_batch / move_race_entry.
@@ -83,6 +100,7 @@ BEGIN
     pending_removal_blocked_since=NULL WHERE league_division_id=p_pool_id AND is_ai=true
     AND user_id IS NULL AND NOT coalesce(is_bank,false) AND pending_removal_at IS NOT NULL
     AND NOT(id=ANY(chosen));
+  GET DIAGNOSTICS n = ROW_COUNT;
   -- Lock candidates before checking obligations again. Market/entry guards take
   -- a share lock on the same teams, closing the stale-read insertion window.
   FOR candidate IN SELECT id FROM public.teams WHERE id=ANY(chosen) ORDER BY id FOR UPDATE LOOP
@@ -106,8 +124,7 @@ BEGIN
       pending_removal_blocked_reason=public.ai_team_retirement_reason(candidate.id)
       WHERE id=candidate.id;
   END LOOP;
-  n := cardinality(chosen);
-  RETURN n;
+  RETURN jsonb_build_object('reserved',cardinality(chosen),'cleared',n);
 END;
 $$;
 
@@ -117,6 +134,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.reserve_ai_retirement_on_placement()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
+  IF NOT public.ai_pool_retirement_enabled() THEN RETURN NEW; END IF;
   IF TG_OP='UPDATE' AND NEW.league_division_id IS NOT DISTINCT FROM OLD.league_division_id THEN RETURN NEW; END IF;
   IF TG_WHEN='BEFORE' THEN
     PERFORM 1 FROM public.league_divisions WHERE id IN
@@ -140,9 +158,28 @@ CREATE TRIGGER trg_ai_pool_placement_reserve AFTER INSERT OR UPDATE OF league_di
 -- Definer is confined to a trigger and reads only the parent rows' retirement state.
 CREATE OR REPLACE FUNCTION public.guard_draining_ai_obligation()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-DECLARE payload jsonb := to_jsonb(NEW); previous jsonb; ids uuid[]; rids uuid[];
+DECLARE payload jsonb; previous jsonb; ids uuid[]; rids uuid[];
   t record; existing boolean := false;
 BEGIN
+  IF NOT public.ai_pool_retirement_enabled() THEN RETURN NEW; END IF;
+  -- Race-entry batches are the hot path: typed fields avoid row-wide JSON work.
+  IF TG_TABLE_NAME='race_entries' THEN
+    IF TG_OP='UPDATE' AND NEW.race_id IS NOT DISTINCT FROM OLD.race_id
+      AND NEW.rider_id IS NOT DISTINCT FROM OLD.rider_id
+      AND NEW.team_id IS NOT DISTINCT FROM OLD.team_id THEN RETURN NEW; END IF;
+    FOR t IN SELECT id,is_ai,pending_removal_at,retired_at FROM public.teams
+      WHERE id=NEW.team_id OR id=(SELECT team_id FROM public.riders WHERE id=NEW.rider_id)
+      ORDER BY id FOR SHARE LOOP
+      IF t.is_ai AND (t.pending_removal_at IS NOT NULL OR t.retired_at IS NOT NULL) THEN
+        RAISE EXCEPTION 'AI team is draining: no new obligations' USING ERRCODE='23514';
+      END IF;
+    END LOOP;
+    IF EXISTS (SELECT 1 FROM public.riders WHERE id=NEW.rider_id AND is_retired=true) THEN
+      RAISE EXCEPTION 'AI rider is retired: no new obligations' USING ERRCODE='23514';
+    END IF;
+    RETURN NEW;
+  END IF;
+  payload := to_jsonb(NEW);
   IF TG_TABLE_NAME='auctions' AND payload->>'current_bidder_id' IS NOT NULL AND
     (TG_OP='INSERT' OR payload->>'current_bidder_id' IS DISTINCT FROM to_jsonb(OLD)->>'current_bidder_id') THEN
     FOR t IN SELECT id,is_ai,pending_removal_at,retired_at FROM public.teams
@@ -210,6 +247,7 @@ CREATE TRIGGER trg_ai_drain_listings BEFORE INSERT OR UPDATE ON public.transfer_
 CREATE OR REPLACE FUNCTION public.lock_ai_retirement_race_claim()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
 BEGIN
+  IF NOT public.ai_pool_retirement_enabled() THEN RETURN NEW; END IF;
   PERFORM 1 FROM public.races WHERE id=NEW.race_id FOR UPDATE;
   RETURN NEW;
 END;
@@ -222,6 +260,9 @@ CREATE OR REPLACE FUNCTION public.retire_ai_pool_team(p_team_id uuid, p_now time
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
 DECLARE pool bigint; why text; rider_ids uuid[]; chosen boolean;
 BEGIN
+  IF NOT public.ai_pool_retirement_enabled() THEN
+    RETURN jsonb_build_object('retired',false,'reason','disabled','ridersRetired',0);
+  END IF;
   SELECT league_division_id INTO pool FROM public.teams WHERE id=p_team_id AND is_ai=true
     AND user_id IS NULL AND NOT coalesce(is_bank,false) AND NOT coalesce(is_frozen,false)
     AND NOT coalesce(is_test_account,false) AND retired_at IS NULL;
@@ -254,6 +295,8 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.ai_team_retirement_reason(uuid) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.ai_pool_retirement_enabled() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.ai_pool_retirement_enabled() TO service_role;
 REVOKE ALL ON FUNCTION public.plan_ai_pool_retirements(bigint,timestamptz) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.reserve_ai_pool_retirements(bigint,timestamptz) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.retire_ai_pool_team(uuid,timestamptz) FROM PUBLIC,anon,authenticated;

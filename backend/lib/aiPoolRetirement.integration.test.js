@@ -68,6 +68,28 @@ test('signup commits an AI retirement reservation in the same transaction', asyn
   assert.ok((await team()).pending_removal_at);
   assert.equal(await count(),25);
 });
+
+test('the deployed legacy flag cannot activate the new SQL release', async () => {
+  await db.exec("DELETE FROM app_config WHERE key='ai_pool_retirement_v2_enabled'");
+  try {
+    await excess();
+    assert.equal((await team()).pending_removal_at,null);
+    assert.equal((await retire()).reason,'disabled');
+    assert.equal(await count(),25);
+    assert.equal((await reconcileAiTeamsForPool({supabase:client(),poolId:13,now:new Date(NOW)})).removed,0);
+    await db.query('UPDATE teams SET pending_removal_at=$1 WHERE id=$2',[NOW,AI]);
+    await db.query("INSERT INTO transfer_offers(rider_id,seller_team_id,status) VALUES ($1,$2,'pending')",[RIDER,AI]);
+    await db.query("INSERT INTO transfer_listings(rider_id,seller_team_id,status) VALUES ($1,$2,'open')",[RIDER,AI]);
+    await db.query("INSERT INTO swap_offers(offered_rider_id,proposing_team_id,status) VALUES ($1,$2,'pending')",[RIDER,AI]);
+    await db.query("INSERT INTO auctions(rider_id,seller_team_id,status) VALUES ($1,$2,'active')",[RIDER,AI]);
+    const race=(await db.query('INSERT INTO races DEFAULT VALUES RETURNING id')).rows[0].id;
+    await db.query('INSERT INTO race_entries VALUES ($1,$2,$3)',[race,RIDER,AI]);
+    await db.query('INSERT INTO race_stage_claims(race_id,stage_index) VALUES ($1,1)',[race]);
+    assert.equal(await count(),25);
+  } finally {
+    await db.exec("INSERT INTO app_config VALUES ('ai_pool_retirement_v2_enabled',to_jsonb('on'::text)) ON CONFLICT (key) DO UPDATE SET value=excluded.value");
+  }
+});
 test('failed signup rolls back its retirement reservation too', async () => {
   await assert.rejects(db.transaction(async tx => {
     await tx.exec("INSERT INTO teams(name,league_division_id) VALUES ('New',13)");
@@ -151,6 +173,25 @@ test('draining keeps ongoing race entries and clears future entries', async () =
 test('retirement RPC is unavailable to anon and authenticated',async () => {
   for (const role of ['anon','authenticated']) {
     assert.equal((await db.query("SELECT has_function_privilege($1,'retire_ai_pool_team(uuid,timestamp with time zone)','EXECUTE') allowed",[role])).rows[0].allowed,false);
+  }
+});
+
+test('service-role retirement works with RLS enabled while authenticated cannot invoke it', async () => {
+  await excess();
+  await db.exec('ALTER TABLE teams ENABLE ROW LEVEL SECURITY; ALTER TABLE riders ENABLE ROW LEVEL SECURITY');
+  try {
+    await assert.rejects(db.transaction(async tx => {
+      await tx.exec('SET LOCAL ROLE authenticated');
+      await tx.query('SELECT retire_ai_pool_team($1,$2)',[AI,NOW]);
+    }), /permission denied/);
+    const result = await db.transaction(async tx => {
+      await tx.exec('SET LOCAL ROLE service_role');
+      return tx.query('SELECT retire_ai_pool_team($1,$2) AS result',[AI,NOW]);
+    });
+    assert.equal(result.rows[0].result.retired,true);
+    assert.equal(await count(),24);
+  } finally {
+    await db.exec('ALTER TABLE teams DISABLE ROW LEVEL SECURITY; ALTER TABLE riders DISABLE ROW LEVEL SECURITY');
   }
 });
 
@@ -254,23 +295,48 @@ test('a frozen manager still occupies a slot during both top-up paths',async()=>
 
 test('disabled flag pauses every automatic removal path, with no hard-delete fallback',async()=>{
   await excess();
-  await db.exec("UPDATE app_config SET value='off'");
+  await db.exec("UPDATE app_config SET value=to_jsonb('off'::text)");
   try {
     assert.equal((await deleteAiTeamById(client(),AI,{now:new Date(NOW)})).deleted,false);
     assert.equal((await reconcileAiTeamsForPool({supabase:client(),poolId:13,now:new Date(NOW)})).removed,0);
     assert.equal((await runAiTeamTrimHealSweep({supabase:client(),now:new Date(NOW)})).paused,true);
     assert.equal(await count(),25);
-  } finally { await db.exec("UPDATE app_config SET value='on'"); }
+  } finally { await db.exec("UPDATE app_config SET value=to_jsonb('on'::text)"); }
 });
 
-test('unpaid results wait for payout and keep historical references afterwards',async()=>{
+test('AI result history creates no cash entitlement and cannot block retirement',async()=>{
   const race=(await db.query("INSERT INTO races(status) VALUES ('completed') RETURNING id")).rows[0].id;
   await db.query('INSERT INTO race_results(race_id,rider_id,team_id,prize_money) VALUES ($1,$2,$3,1)',[race,RIDER,AI]);
   await excess();
-  assert.equal((await retire()).reason,'unpaid_prizes');
-  await db.query('UPDATE races SET prize_paid_at=$1',[NOW]);
   assert.equal((await retire()).retired,true);
   assert.equal((await db.query('SELECT team_id FROM race_results')).rows[0].team_id,AI);
+});
+
+test('sweep reports obsolete reservation cleanup instead of a permanent zero',async()=>{
+  await db.query('UPDATE teams SET pending_removal_at=$1 WHERE id=$2',[NOW,AI]);
+  const result=await runAiTeamTrimHealSweep({supabase:client(),now:new Date(NOW)});
+  assert.equal(result.cleared,1);
+  assert.equal(result.guard[0].reason,'obsolete_reservations');
+  assert.equal((await team()).pending_removal_at,null);
+});
+
+test('a blocked reservation yields after 120 hours, but not before or on a new blocker',async()=>{
+  const replacement='00000000-0000-0000-0000-000000000002';
+  await db.query("INSERT INTO transfer_offers(rider_id,seller_team_id,status) VALUES ($1,$2,'pending')",[RIDER,AI]);
+  await db.query("INSERT INTO teams(id,name,is_ai,league_division_id) VALUES ($1,'Replacement',true,13)",[replacement]);
+  const plan=async()=> (await db.query('SELECT * FROM plan_ai_pool_retirements(13,$1)',[NOW])).rows[0];
+  await db.query("UPDATE teams SET pending_removal_at=$1,pending_removal_blocked_since=$1,pending_removal_blocked_reason='live_transfer_offers' WHERE id=$2",['2026-09-04T12:00:01Z',AI]);
+  assert.equal((await plan()).team_id,AI);
+  await db.query("UPDATE teams SET pending_removal_blocked_since=$1 WHERE id=$2",['2026-09-04T12:00:00Z',AI]);
+  assert.equal((await plan()).team_id,replacement);
+  await db.query("UPDATE teams SET pending_removal_blocked_reason='live_auctions' WHERE id=$1",[AI]);
+  assert.equal((await plan()).team_id,AI,'a different current blocker gets its own grace clock');
+  await db.query("UPDATE teams SET pending_removal_blocked_reason='live_transfer_offers' WHERE id=$1",[AI]);
+  assert.equal((await retire(replacement)).retired,true);
+  assert.equal(await count(),24);
+  assert.equal((await team()).retired_at,null);
+  assert.equal((await team()).pending_removal_at,null);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM transfer_offers')).rows[0].n),1);
 });
 
 test('pending ownership handover must finish before retirement',async()=>{

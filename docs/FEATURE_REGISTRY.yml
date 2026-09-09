@@ -408,7 +408,16 @@ features:
     state: live
     flag: ai_team_retire_enabled
     verified: 2026-09-06
-    note: '#4753: flag on genmålt 9/9; atomisk reservation, dræning og pulje-sweep lokalt verificeret, prod-release afventer ejer-go.'
+    note: 'On; v2 kræver særskilt go.'
+
+  - id: ai-pool-retirement-v2
+    area: season
+    title_en: AI pool retirement
+    title_da: Atomisk nedlæggelse af AI-hold i puljer
+    state: building
+    flag: ai_pool_retirement_v2_enabled
+    verified: 2026-09-09
+    note: 'Off/fravær; ejer-go, begge flag on.'
 
   - id: season-documentary-llm
     area: season

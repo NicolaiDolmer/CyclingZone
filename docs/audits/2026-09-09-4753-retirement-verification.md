@@ -13,6 +13,8 @@ repair require a separate owner go against the fresh candidate list.
 | 9 September, 14:39 CEST | 1 | 11 | 8 |
 | 9 September, 16:06-16:09 CEST | 1 | 10 | 7 |
 | 9 September, 16:25 CEST | 1 | 10 | 7 |
+| 9 September, 18:06 CEST | 1 | 10 | 7 |
+| 9 September, 18:32 CEST | 1 | 10 | 7 |
 
 Latest measurement: 120 AI in pools; three have live offers. The issue's own-rider
 criterion and the expanded seller-or-rider criterion both gave 10/7. No bank AI
@@ -22,16 +24,17 @@ Retirement was already deployed by #4762 on 4 September; flag on, verified 9/9.
 This contradicted the original C premise, so implementation followed the owner's
 subsequent explicit retirement design rather than the obsolete deletion plan.
 
-The exact migration planner was inlined as SELECT and run without installing SQL:
+The exact migration planner was inlined as SELECT and run without installing SQL.
 
 The exact candidate identity and per-team effects are shown privately in the owner
 chat, not published in this repository. Regenerate with the committed preview
 script; that live result, rather than a public copy, is the approval basis.
 
-No current blocker. Team, rider and result records remain. This observation is
-time-bound; regenerate immediately before approval and recheck before mutation.
+The earlier preview had no blocker; the 18:06 follow-up found an in-flight race,
+so immediate retirement is currently deferred. Team, rider and result records
+remain. Regenerate immediately before approval and recheck before mutation.
 
-## Observed local verification
+## Original implementation verification (before review follow-up)
 
 - Final `scripts/verify-local.ps1`: exit 0. Isolated backend 118 passed;
   main backend 9,403 passed, 3 existing skips; frontend 3,181 passed; build passed.
@@ -64,20 +67,56 @@ entries and new market obligations. Retirement removes riders from active squads
 rankings and transfer candidates (`TeamPage`, `RidersPage`, `RiderStatsPage`,
 `useRiderRankings` consume is_retired); stored team/rider/result/offer history is
 preserved. Watchlist removal and its notification share the retirement transaction.
-Existing race claims and unpaid results defer retirement. No rider ability,
+Existing race claims and live market obligations defer retirement. AI prizes create
+no cash entitlement and do not defer retirement (owner clarification during review). No rider ability,
 valuation, salary or historical result is rewritten. The planner reports affected
 riders, offer history and future entries before release; rollback is not a promise
 to reconstruct deleted future entries after a successful commit.
 
-Patch note 7.268 includes the historical four-pool incident in Danish and English;
-the exact Danish copy was shown to the owner. No layout changed. Doc-drift search
+The pool patch note was held until activation during review; version 7.268 now
+covers the deploy-time AI prize fix. Pool copy remains in the release runbook.
+No layout changed. Doc-drift search
 found no new environment variable, route or deploy target requiring ARCHITECTURE.
 Postmortem records the ignored guard and #4233's closure with a decision unresolved.
 
 ## Still required after owner go
 
 Follow [the release runbook](../runbooks/4753-ai-pool-retirement-release.md).
-Observe deployment/migration, remeasure, retire at most the approved candidate per
-explicit invocation if still needed, verify all 15 pools physically at 24, observe
-a fresh PR's unique league check green, require it in GitHub and prove enforcement.
-Only then may incident close-out claim success. Until then #4753 remains open.
+It is the single checklist for activation, measured pool recovery and enforced
+GitHub checks. Until its observed close-out criteria pass, #4753 remains open.
+
+## Review follow-up evidence
+
+[Critical dispositions](2026-09-09-5066-review-response.md) cover all eight Claude
+points and both completed CodeRabbit reviews. Second CodeRabbit run raised one
+minor documentation issue; the repeated release checklist above was consolidated.
+
+New integration coverage executes the actual migration with RLS enabled for
+teams/riders, denies the authenticated role's RPC call, and verifies service-role
+retirement. Other cases cover absent release gate, zero-cash AI prize settlement,
+same-blocker replacement at the exact deadline, and obsolete reservation counts.
+This is still a purpose-built schema subset, not the complete production RLS and
+trigger stack. Four real PostgreSQL concurrency scenarios passed again; server
+shutdown was observed. PostgreSQL remains 18.4 locally versus 17 in production.
+
+Reproduce entry-trigger overhead with
+`node backend/scripts/test-ai-pool-concurrency.mjs --benchmark` (local isolated DB).
+For 10,000 rows, five measured samples after warm-up gave median 303.087 ms without
+the new trigger, 503.752 ms with its release gate off, and 1,058.562 ms enabled.
+An earlier run gave 190.780 / 327.211 / 589.059 ms respectively: host contention
+matters. These measure incremental fixture overhead, not production capacity;
+there is no owner-approved latency target, so no performance-SLA green is claimed.
+
+Final review verification: TIER FULL passed with 118 isolated + 9,412 main backend
+tests (3 existing skips), 3,181 frontend tests and build. Preflight passed; backend
+and frontend lint each reported zero errors/warnings. CI contract tests: 22 passed.
+Token hygiene: zero failures; existing advisory warnings are retained.
+
+Browser evidence is deliberately not reported as an entirely green full run:
+all three projects completed with 812 passed, 26 skipped and two mobile-webkit
+failures (season matrix click stability timeout, SEO route React hydration #418).
+Both passed alone with one worker and unchanged code/assertions. That does NOT prove
+a hydration error harmless or exclude an intermittent player bug; #4925 already
+tracks this class and remains open. PR stays draft. An earlier concurrent browser
+run was interrupted after timeouts; concurrent backend had a cache-test ECONNRESET
+before the successful isolated TIER FULL run. These failed attempts are not hidden.

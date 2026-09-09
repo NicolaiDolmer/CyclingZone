@@ -73,13 +73,20 @@ Målet er præcis 24 ikke-bank-hold i aktive puljer; den eksisterende dormant-po
 for tier 3/4 uden ægte managere har mål 0. Frosne/test-hold optager stadig en fysisk plads.
 Placering af en manager og reservation af overskydende AI-hold sker i samme transaktion.
 Den fælles SQL-plan vælger ubundne AI-hold først og bevarer allerede aftalte reservationer.
-Et AI-hold med løb, uudbetalte præmier eller levende markedsforpligtelser bliver midlertidigt;
+Efter 120 timer med samme blokering må et ubundet hold vælges i stedet (ejer 9/9);
+det fastlåste hold og historikken bevares. En ny blokeringsårsag starter en ny ventetid.
+Et AI-hold med løb eller levende markedsforpligtelser bliver midlertidigt;
+AI-hold modtager ingen præmiepenge, så præmieafregning blokerer aldrig nedlæggelsen.
 historik bevares ved nedlæggelse. Frosne/test-hold og bruger-ejede hold nedlægges aldrig her.
 Puljelås og genkontrol i `retire_ai_pool_team` forhindrer gentagelser i at gå under målet.
-Sweepet undersøger alle puljer, også uden markør. Slået fra/ulæseligt flag pauser fjernelse,
-aldrig tilbagefald til hård sletning. Den eksplicitte relaunch-wipe er en separat ejer-gated operation.
+Sweepet undersøger alle puljer, også uden markør. Begge flag (`ai_team_retire_enabled`
+og `ai_pool_retirement_v2_enabled`) skal være on; fravær/off/fejl pauser fjernelse,
+aldrig tilbagefald til hård sletning. Den eksplicitte relaunch-wipe er en separat ejer-gated operation;
+dens AI-reset bevarer nedlagte hold og afviser aktive tilbudsreferencer før første sletning.
 Audit må kun fratrække en frisk AI-markør med en konkret, levende blokering; markøren alene
 er ikke bevis. Uforklaret overskud, et stallet blokerende løb eller overskredet ventefrist fejler `league-size-invariant`.
+Auditens samlede markørgrænse er fortsat 120 timer; en ny blokeringsårsag forlænger
+ikke audit-fritagelsen. Langvarigt overskud kræver stadig en synlig reaktion.
 Dette præciserer audit-delen af occupancy-reglen ovenfor; signup-balanceringens tæller er uændret.
 Løbs-stall og den aktuelle blokerings alder overvåges fortsat af sweepet (#2434/#4828).
 Kode: `database/2026-09-09-4753-ai-pool-retirement.sql`, `backend/lib/aiPoolRetirement.js`.

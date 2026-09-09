@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { teamHasLiveTransferOffers, LIVE_OFFER_STATUSES } from "./aiTeamRetirement.js";
-import { AI_TEAM_RETIRE_FLAG_KEY } from "./aiTeamRetireFlag.js";
+import { AI_TEAM_RETIRE_FLAG_KEY, AI_POOL_RETIREMENT_RELEASE_KEY } from "./aiTeamRetireFlag.js";
 import { teamIsBlockedForRemoval } from "./aiTeamGenerator.js";
 
 // #4753 — AI-hold nedlægges i stedet for at hård-slettes.
@@ -184,7 +184,9 @@ test("ai_team_retire_enabled: fail-safe OFF når nøglen mangler", async () => {
   const supabase = makeSupabase({ app_config: [] });
   assert.equal(await isAiTeamRetireEnabled(supabase), false);
 
-  const on = makeSupabase({ app_config: [{ key: AI_TEAM_RETIRE_FLAG_KEY, value: "on" }] });
+  const legacyOnly = makeSupabase({ app_config: [{ key: AI_TEAM_RETIRE_FLAG_KEY, value: "on" }] });
+  assert.equal(await isAiTeamRetireEnabled(legacyOnly), false);
+  const on = makeSupabase({ app_config: [{ key: AI_TEAM_RETIRE_FLAG_KEY, value: "on" }, { key: AI_POOL_RETIREMENT_RELEASE_KEY, value: "on" }] });
   assert.equal(await isAiTeamRetireEnabled(on), true);
 
   const off = makeSupabase({ app_config: [{ key: AI_TEAM_RETIRE_FLAG_KEY, value: "off" }] });

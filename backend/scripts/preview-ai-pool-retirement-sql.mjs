@@ -13,7 +13,7 @@ export function previewSql() {
   const reason = body('ai_team_retirement_reason').replaceAll('p_team_id', 't.id');
   const plan = body('plan_ai_pool_retirements')
     .replaceAll('public.ai_team_retirement_reason(t.id)', `(${reason})`)
-    .replaceAll('p_pool_id', 'pool.id');
+    .replaceAll('p_pool_id', 'pool.id').replaceAll('p_now','now()');
   const signature = migration.split('CREATE OR REPLACE FUNCTION public.plan_ai_pool_retirements(')[1];
   const columns = signature.match(/RETURNS TABLE\(([\s\S]*?)\)\s*LANGUAGE/)[1]
     .split(',').map(column => column.trim().split(/\s+/)[0]).join(',');

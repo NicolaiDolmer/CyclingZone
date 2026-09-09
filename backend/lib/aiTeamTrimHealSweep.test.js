@@ -15,7 +15,7 @@ function client(plans, failures = [], failedTeams = []) {
       if (failedTeams.includes(args.p_team_id)) return {error:{message:'injected retirement failure'}};
       if (failures.includes(args.p_pool_id)) return {error:{message:'injected DB failure'}};
       return {data:name==='plan_ai_pool_retirements' ? plans[args.p_pool_id] :
-        name==='retire_ai_pool_team' ? {retired:true,ridersRetired:1} : 1,error:null};
+        name==='retire_ai_pool_team' ? {retired:true,ridersRetired:1} : {reserved:1,cleared:0},error:null};
     },
   };
 }

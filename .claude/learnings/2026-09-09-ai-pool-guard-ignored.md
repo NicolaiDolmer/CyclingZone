@@ -6,7 +6,7 @@ failed league audit, another unrelated successful check named `audit`, and branc
 protection did not require the league check. The merge queue checked only required
 contexts before using its admin merge path. A red check alone was no barrier.
 
-#4233 had also been closed during an audit while the underlying decision remained
+Issue #4233 had also been closed during an audit while the underlying decision remained
 open. Closure and `claude:done` are not evidence of resolution. Always verify the
 decision, the delivered runtime behavior and the live invariant separately.
 
@@ -28,3 +28,17 @@ Release gate: owner sees a fresh read-only candidate list before any prod change
 After release, record all 15 pools at 24 and a new PR's genuinely green unique
 league check, require it in GitHub, and retain the failure/ignored evidence in
 GUARD_INVENTORY. Until observed, the incident stays open and enforcement is unproven.
+
+Review follow-up: test actual effects, not the intention written above a migration.
+The suggested existing feature flag was already ON in production: reusing it would
+not make deployment safe. A separate absent/off release gate now protects SQL and
+backend entry draining. A secret-based PR audit must support Dependabot without a
+false-green skip or executing untrusted PR code with production credentials.
+The trusted default-branch publisher still needs a real post-merge event test.
+
+The owner also caught an incorrect assumption in our proposed waiting policy:
+AI teams must receive no prize cash. Read-only finance/result joins proved existing
+AI credits; new payout plans now exclude AI/bank teams. Historical records remain.
+Review comments are hypotheses to verify, including comments that are partly right.
+Fixture tests exercise real migration SQL, but do not reproduce the complete prod
+RLS/trigger stack; an isolated overhead benchmark cannot establish a production SLA.
