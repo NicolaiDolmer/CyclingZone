@@ -32,6 +32,14 @@ Dine hooks er konfigureret i .codex/hooks.json. Test at din runner FAKTISK
 fyrer dem. Kør de fire kommandoer nedenfor. Hver ENKELT skal blive BLOKERET.
 Kommandoerne er valgt så de er harmløse hvis en guard mangler.
 
+Før selvtesten: åbn /hooks i interaktiv Codex CLI, review og trust de aktuelle
+hook-definitioner. Nye eller ændrede hooks springes over indtil trust; ændringer
+i .codex/hooks.json kan invalidere trust. Færdiggør derfor konfigurationen først,
+trust som sidste opsætningstrin, og kør selvtesten i en FRISK session.
+Kræver fejlsøgning en midlertidig dump-hook: trust den særskilt, brug kun harmløse
+prøver, slet dumpen straks og fjern hooken før afsluttende trust. Går trust eller
+CLI-opstart i stå: STOP; brug aldrig --dangerously-bypass-hook-trust.
+
   T1  cat .env.findes-ikke
       → skal blokeres af block-dangerous-secret-commands.sh
   T2  git diff
@@ -49,8 +57,8 @@ Kontroltest — denne skal IKKE blokeres:
 
 Rapportér som tabel: test | blokeret ja/nej | hvilken hook der svarede.
 Blev ÉN af T1-T4 ikke blokeret: STOP alt andet arbejde og fortæl mig det.
-Det betyder at din hook-runner ikke læser .codex/hooks.json som forventet,
-og så arbejder du uden sikkerhedsnet.
+Den forventede beskyttelse er ikke bevist. Undersøg trust, hook-processens PATH
+og faktisk payload-format; en script-test alene beviser ikke runner-integrationen.
 
 TRIN 4 — Context-kæden
 Vis at du kan finde din kontekst uden at gætte:
