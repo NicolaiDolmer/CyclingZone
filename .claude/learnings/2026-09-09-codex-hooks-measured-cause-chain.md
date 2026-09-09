@@ -184,3 +184,35 @@ Begge PC'er skal verificeres; WSL-bash må ikke vælges ved et uheld.
 En eventuel oversættelse bør målrettes patch-inputtet og delegere al policy til
 de urørte scripts. Denne måling begrunder ikke en generel shell-adapter eller
 udskiftning af de eksisterende Bash/Edit/Write-matchere. Ejeren vælger næste skridt.
+
+## Git-laget: aktivering og første runtime-bevis (9/9, #5065)
+
+Den efterfølgende måling korrigerede også påstanden om manglende Git-hooks:
+`.githooks/pre-commit`, `.githooks/pre-push` og `scripts/install-git-hooks.ps1`
+var allerede tracked. Lokal `core.hooksPath` pegede imidlertid på `.git/hooks`,
+som kun indeholdt samples. Bygget beskyttelse var derfor ikke aktiveret her.
+
+Den eksisterende installer er nu kørt og aflæst tilbage som
+`core.hooksPath=.githooks`. Gitleaks 8.30.1 er installeret. Positivt observeret
+gennem Git-kald mod isolerede, efterfølgende slettede fixtures:
+
+- `git commit` med staged fake-secret: exit 1 og den specifikke besked
+  `PRE-COMMIT BLOCKED: gitleaks found secret`; HEAD uændret.
+- `git push` til et lokalt test-remote med en harmløs fil på en forbudt env-sti:
+  exit 1 og `Pre-push blokeret: secret-lignende fil`. Ingen fixture sendt til GitHub.
+
+Dette beviser de to secret-kontroller; det beviser ikke pre-push-lint,
+PatchNotes-kontrollen eller Python-fallbacken. Gitleaks virker på denne PC,
+så fallback var ikke den aktive sti. Commit-latens måles før nogen udvidelse.
+Kilderne til de eksisterende Git-hooks og alle delte agent-hooks er urørte.
+
+Installationshullet kan ses i `scripts/setup-new-pc.ps1`: aktivering via
+`setup-local.ps1` står kun som manuelt punkt i slut-checklisten. Selve rutinen
+installerer Claude user-hooks, men kalder ikke Git-hook-installeren.
+`setup-local.ps1` og `install-git-hooks.ps1` skriver begge hooksPath direkte.
+Dette viser et hul i den automatiske ny-PC-rutine; det beviser ikke, hvilken
+historisk handling der satte denne maskines tidligere hooksPath.
+PC1 er ikke målt. Den eksisterende aktiveringskommando derfra er
+`pwsh -File scripts/install-git-hooks.ps1 -SmokeTest` fra repo-roden.
+
+Ingen spillerrettet ændring; patch notes er derfor ikke relevante.
