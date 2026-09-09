@@ -330,6 +330,8 @@ Trust-entryen i `~/.codex/config.toml` betyder Codex ikke spørger om tilladelse
 | Docs i repo (NOW.md, AGENTS.md, etc.) | Git | Same |
 | `backend/.env`, `frontend/.env*` | Lokal, gitignored (kan være tom efter Phase 5) | **Infisical runtime-injection** → `npm run dev:backend` wrapper bruger `infisical run --env=dev --recursive -- node ...`; ingen secret-værdier på disk (#327 Phase 5) |
 | `.mcp.json` | Lokal, gitignored | Auto-genereres af `setup-discord-mcp.ps1` (token fra Railway) |
+| `.codex/hooks.json` | **Git (tracked siden #5065)** | `git push` / `git pull`. Codex' hook-sæt er en sikkerhedsguard og skal være ens på alle PC'er — den peger på `.claude/hooks/` og `scripts/hooks/`, så der er én vedligeholdt kilde per hook |
+| `.codex/config.toml` | Lokal, gitignored | Bærer MCP-server-definitioner + env — skrives i hånden per PC (intet script genererer den; `setup-discord-mcp.ps1` rører kun `.mcp.json`). Hold den secret-fri: lad `env`-blokken være tom og lad tokenet komme fra parent-processen, som `.mcp.json` gør |
 | `.codex.local/SUPABASE_CONTEXT.md`, `.codex.local/supabase-readonly.env` | Lokal, gitignored | **OneDrive-context hardlink** — `~/OneDrive/CyclingZone-context/codex-local/` (midlertidig hybrid — readonly AI-context) |
 | Claude auto-memory | `~/.claude/projects/<encoded>/memory/` | **OneDrive-context junction** — `~/OneDrive/CyclingZone-context/memory/` |
 | `.codex.local/SESSION_CONTEXT.md` | Lokal, gitignored | Regenererbar cache fra GitHub issue via hook. Må slettes; må ikke indeholde unikt handoff |
