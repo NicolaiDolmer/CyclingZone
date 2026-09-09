@@ -492,7 +492,7 @@ jobs:
       # gaa roed OG merge alligevel, fordi auto-merge.yml kun venter paa
       # `gh pr checks --required`. Det fund kom fra det adversariske review 31/8.
       - name: Test required-ci-jobs guard
-        run: node --test scripts/check-required-ci-jobs.test.mjs
+        run: node --test scripts/check-required-ci-jobs.test.mjs scripts/league-audit-check.test.mjs
 
       - name: Run required-ci-jobs guard
         run: node scripts/check-required-ci-jobs.mjs

@@ -12,6 +12,17 @@ import { parseJobs, parseTriggers, findBrokenContexts, findMergeGroupGaps, loadW
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 
+test('workflow_run requires an explicit PR-head publisher contract', () => {
+  const workflow = { file: 'audit.yml', triggers: ['workflow_run'],
+    jobs: [{ key: 'audit', checkName: 'league-size-invariant', hasStrategy: false, dynamicName: false }] };
+  assert.equal(findBrokenContexts(['league-size-invariant'], [workflow]).length, 1);
+  assert.deepEqual(findBrokenContexts(['league-size-invariant'], [
+    { ...workflow, prHeadChecks: ['league-size-invariant'] }
+  ]), []);
+  const actual = loadWorkflows().find(w => w.file.endsWith('/league-size-invariant-audit.yml'));
+  assert.deepEqual(findBrokenContexts(['league-size-invariant'], [actual]), []);
+});
+
 test("parseJobs laeser job-noegler som check-navne", () => {
   const yaml = `name: CI
 on:

@@ -1,5 +1,11 @@
 # Assistentens regler - SSOT
 
+**#4753, design-go 9/9:** AI-hold med `pending_removal_at` får ingen nye automatiske
+udtagelser, heller ikke via sen redning i `raceRunner.fillMissingTeamEntries`.
+Eksisterende løbsfelter færdiggøres. DB-guarden er sidste værn mod samtidige skriv.
+Se [`CALENDAR_RULES.md`](CALENDAR_RULES.md) og [`GAME_INVARIANTS.md`](GAME_INVARIANTS.md).
+Lokalt verificeret; prod-release afventer særskilt ejer-go.
+
 > **Læs denne FØR enhver opgave der rører assistenten: auto-udtagelse, auto-udfyld, sen redning
 > ved afvikling, peak-forslag, automatisk træningsfokus eller assistent-sweepene.**
 > Ejer-direktiv 25/8 2026 ([#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)).

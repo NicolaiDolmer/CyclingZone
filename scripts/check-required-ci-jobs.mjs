@@ -172,9 +172,9 @@ export function findBrokenContexts(contexts, workflows) {
 
   for (const context of contexts) {
     const producers = [];
-    for (const { file, jobs, triggers } of workflows) {
+    for (const { file, jobs, triggers, prHeadChecks = [] } of workflows) {
       for (const job of jobs) {
-        if (job.checkName === context) producers.push({ file, job, triggers });
+        if (job.checkName === context) producers.push({ file, job, triggers, prHeadChecks });
       }
     }
 
@@ -199,7 +199,10 @@ export function findBrokenContexts(contexts, workflows) {
     // netop mønstret bag perf-gate (lighthouse-ci.yml er paths-filtreret,
     // lighthouse-ci-skip-stub.yml dækker resten med samme job-navn).
     const withTriggers = producers.filter((p) => Array.isArray(p.triggers));
-    if (withTriggers.length && !withTriggers.some((p) => p.triggers.includes("pull_request"))) {
+    // A trusted workflow_run publisher explicitly attaches its check to the PR
+    // head through Checks API. Merely using workflow_run is NOT sufficient.
+    if (withTriggers.length && !withTriggers.some((p) => p.triggers.includes("pull_request")
+      || (p.triggers.includes("workflow_run") && p.prHeadChecks.includes(context)))) {
       broken.push({
         context,
         reason: `ingen af de producerende workflows kører på pull_request (${withTriggers
@@ -233,7 +236,8 @@ export function loadWorkflows(dir = WORKFLOW_DIR) {
     .sort()
     .map((f) => {
       const source = readFileSync(join(dir, f), "utf8");
-      return { file: `.github/workflows/${f}`, jobs: parseJobs(source), triggers: parseTriggers(source) };
+      const prHeadChecks = [...source.matchAll(/^# publishes-check-on-pr-head: ([a-z0-9-]+)\s*$/gm)].map(m => m[1]);
+      return { file: `.github/workflows/${f}`, jobs: parseJobs(source), triggers: parseTriggers(source), prHeadChecks };
     });
 }
 

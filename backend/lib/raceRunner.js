@@ -30,6 +30,7 @@
 // only (gc-RANK driver points); standings/schema er uændret.
 
 import { randomUUID } from "node:crypto";
+import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   applyRaceResults as applyRaceResultsShared,
   buildRacePointsLookup,
@@ -978,7 +979,7 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
     teams = await fetchAllRows(() => (
       supabase
         .from("teams")
-        .select("id, is_test_account, is_frozen, league_division_id")
+        .select("id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id")
         .or("is_test_account.is.null,is_test_account.eq.false")
         .order("id", { ascending: true })
     ));
@@ -1021,8 +1022,9 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   // henter alle hold; vi filtrerer i app-koden så logikken er testbar og pulje-
   // semantikken er eksplicit (service_role/bulk bypasser desuden RLS).
   const racePoolId = race?.league_division_id ?? null;
+  const drainingEnabled = await isAiTeamRetireEnabled(supabase);
   let eligibleTeams = (teams || []).filter(
-    (t) => !t.is_frozen && !teamsAtOrAboveFloor.has(t.id)
+    (t) => !t.is_frozen && !(drainingEnabled && t.is_ai && t.pending_removal_at) && !teamsAtOrAboveFloor.has(t.id)
       && !withdrawnTeams.has(t.id) && !clearedTeams.has(t.id)
   );
   if (racePoolId != null) {

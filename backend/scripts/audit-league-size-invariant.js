@@ -35,6 +35,7 @@ import dotenv from "dotenv";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatSupabaseAuditError } from "./audit-error-classifier.js";
+import { getStalledInflightRaceIds, teamInflightRaceIds } from '../lib/aiTeamRaceObligations.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -108,6 +109,8 @@ export async function runLeagueSizeAudit({
   topCandidates = TOP_CANDIDATES,
   now = new Date(),
   pendingGraceHours = PENDING_REMOVAL_GRACE_HOURS,
+  getStalledIds = getStalledInflightRaceIds,
+  teamBlockingRaceIds = teamInflightRaceIds,
 }) {
   const [divisions, teams, riderRows] = await Promise.all([
     fetchAllRows(() =>
@@ -118,7 +121,7 @@ export async function runLeagueSizeAudit({
     fetchAllRows(() =>
       supabase
         .from("teams")
-        .select("id, name, is_ai, is_frozen, is_bank, is_test_account, created_at, league_division_id, pending_removal_at")
+        .select("id, name, user_id, retired_at, is_ai, is_frozen, is_bank, is_test_account, created_at, league_division_id, pending_removal_at")
         .order("id", { ascending: true })
     ).catch((error) => {
       throw new Error(formatSupabaseAuditError("teams select", error));
@@ -155,9 +158,26 @@ export async function runLeagueSizeAudit({
     // Uparsbar markør → behandl som fastlåst (fail-loud: en ulæselig dato må ikke
     // kunne skjule et overskudshold på ubestemt tid).
     if (!Number.isFinite(markedAt)) return false;
-    return markedAt > graceCutoffMs;
+    return markedAt > graceCutoffMs && markedAt <= now.getTime();
   };
-  const realTeams = teams.filter((t) => !t.is_bank && !isWithinPendingGrace(t));
+  const waiting = [];
+  const waitingIds = new Set();
+  let stalledIds;
+  for (const team of teams) {
+    if (!team.is_ai || team.is_bank || team.is_frozen || team.is_test_account ||
+        team.user_id != null || team.retired_at != null || !isWithinPendingGrace(team)) continue;
+    const { data: reason, error } = await supabase.rpc('ai_team_retirement_reason', { p_team_id: team.id });
+    if (error) throw new Error('League audit obligation check: ' + error.message);
+    if (reason === 'inflight_entries') {
+      stalledIds ??= await getStalledIds(supabase, now);
+      if (stalledIds.length && (await teamBlockingRaceIds(supabase, team.id, stalledIds)).length) continue;
+    }
+    if (['inflight_entries','pending_transfer','live_transfer_offers','live_swap_offers','live_auctions'].includes(reason)) {
+      waiting.push({team_id:team.id,pool_id:team.league_division_id,reason,pending_since:team.pending_removal_at});
+      waitingIds.add(team.id);
+    }
+  }
+  const realTeams = teams.filter((t) => !t.is_bank && !waitingIds.has(t.id));
 
   // Teams uden league_division_id (endnu ikke pulje-allokeret — typisk
   // dev/test-hold, jf. #1608 "NULL = endnu ikke pulje-allokeret") hører ikke
@@ -201,7 +221,8 @@ export async function runLeagueSizeAudit({
   }
 
   return {
-    generated_at: new Date().toISOString(),
+    generated_at: now.toISOString(),
+    waiting,
     required_team_count: requiredCount,
     groups_checked: sortedDivisions.length,
     total_findings: findings.length,
@@ -223,8 +244,13 @@ function printHuman(summary) {
   console.log(`Krav: præcis ${summary.required_team_count} hold pr. aktiv pulje — 0 i dormant tier 3/4 uden ægte managere (#2851) — (${summary.groups_checked} puljer tjekket)`);
   console.log(`Total findings: ${summary.total_findings}\n`);
 
+  for (const wait of summary.waiting ?? []) {
+    console.log('WAIT: pool ' + wait.pool_id + ', AI ' + wait.team_id + ': ' + wait.reason);
+  }
   if (summary.total_findings === 0) {
-    console.log("OK — alle aktive puljer har præcis 24 hold (dormant-puljer 0).\n");
+    console.log(summary.waiting?.length
+      ? "Ingen uforklarede afvigelser; de viste AI-hold afventer afslutning af eksisterende forpligtelser."
+      : "OK: alle aktive puljer har præcis 24 hold (dormant-puljer 0).\n");
     return;
   }
 

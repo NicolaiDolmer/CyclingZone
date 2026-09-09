@@ -1,5 +1,22 @@
 export const PATCHES = [
   {
+    "version": "7.268",
+    "date": "2026-09-09",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Economy",
+      "en": {
+        "title": "Prize money goes to player teams",
+        "body": "AI teams no longer receive prize money. Race results and past payments remain in the history."
+      },
+      "da": {
+        "title": "Præmiepenge går til spillerhold",
+        "body": "AI-hold får ikke længere udbetalt præmiepenge. Løbsresultater og tidligere udbetalinger bliver i historikken."
+      },
+      "refs": [4753]
+    }]
+  },
+  {
     "version": "7.267",
     "date": "2026-09-08",
     "label": "Beta",

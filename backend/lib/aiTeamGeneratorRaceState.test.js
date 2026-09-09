@@ -4,15 +4,15 @@ import assert from "node:assert/strict";
 import { teamInflightRaceIds, getStalledInflightRaceIds } from "./aiTeamGenerator.js";
 
 // Minimal chainable mock: hver .from(table) giver forud-konfigurerede rækker for den
-// tabel. Filter-metoderne er no-ops (funktionernes ikke-trivielle logik ligger i JS
-// EFTER query'en), men kæden skal kunne await'es direkte OG via fetchAllRows' .range().
+// tabel. eq/in filtrerer ejerskab og løbs-id; øvrige predicates bruger seedede
+// query-resultater. Kæden kan await'es direkte og via fetchAllRows' .range().
 function raceStateMock(data) {
   function from(table) {
     const result = { data: data[table] || [], error: null };
     const b = {
       select() { return b; },
-      eq() { return b; },
-      in() { return b; },
+      eq(key,value) { result.data=result.data.filter(row=>row[key]===value); return b; },
+      in(key,values) { result.data=result.data.filter(row=>values.includes(row[key])); return b; },
       neq() { return b; },
       gt() { return b; },
       lte() { return b; },
@@ -28,8 +28,8 @@ function raceStateMock(data) {
 
 test("#2434 teamInflightRaceIds: returnerer DISTINKTE blokerende race_ids", async () => {
   const sb = raceStateMock({
-    riders: [{ id: "r1" }, { id: "r2" }],
-    race_entries: [{ race_id: "x" }, { race_id: "x" }, { race_id: "y" }],
+    riders: [{ id: "r1",team_id:'team-1' }, { id: "r2",team_id:'team-1' }],
+    race_entries: [{ race_id: "x",rider_id:'r1' }, { race_id: "x",rider_id:'r2' }, { race_id: "y",rider_id:'r1' }],
   });
   const ids = await teamInflightRaceIds(sb, "team-1", ["x", "y", "z"]);
   assert.deepEqual([...ids].sort(), ["x", "y"], "dubletter foldes, kun blokerende løb");
@@ -43,6 +43,11 @@ test("#2434 teamInflightRaceIds: tom inflight-liste → [] uden query", async ()
 test("#2434 teamInflightRaceIds: hold uden ryttere → []", async () => {
   const sb = raceStateMock({ riders: [], race_entries: [{ race_id: "x" }] });
   assert.deepEqual(await teamInflightRaceIds(sb, "team-1", ["x"]), []);
+});
+
+test('#4753 snapshot team remains protected even after current rider ownership changed',async()=>{
+  const sb=raceStateMock({riders:[],race_entries:[{race_id:'x',team_id:'team-1',rider_id:'transferred'}]});
+  assert.deepEqual(await teamInflightRaceIds(sb,'team-1',['x']),['x']);
 });
 
 test("#2434 getStalledInflightRaceIds: næste etape forfalden → løbet er stallet", async () => {

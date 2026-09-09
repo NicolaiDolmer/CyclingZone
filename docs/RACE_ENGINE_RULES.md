@@ -8,6 +8,12 @@ Reglerne lå spredt over **25 design-dokumenter**. Denne fil er nu kilden. Ændr
 
 ## 0. De to kontrakter (den hyppigste fejlkilde)
 
+**Afvikling under AI-nedlæggelse (#4753, design-go 9/9):** En claim til første etape
+beskytter allerede feltet, selv om `stages_completed` endnu er 0. Claim-triggeren
+og nedlæggelsen låser samme løb; auto-fill springer markerede AI-hold over.
+Motorens input/output og igangværende felter er uændrede. Se
+[`CALENDAR_RULES.md`](CALENDAR_RULES.md). Lokalt verificeret; prod-go udestår.
+
 Motoren har to frosne grænseflader. De må ikke forveksles, og ingen af dem må udvides uden ejer-go.
 
 | Kontrakt | Hvad den er | Hvor den bor |

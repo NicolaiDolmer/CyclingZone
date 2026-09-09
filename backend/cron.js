@@ -887,11 +887,12 @@ async function runAiTeamTrimHealSweepCron() {
     // #2389 A2: akutte per-hold-fejl (den stale-gren nedenfor dækker kun >120t, #2434).
     const firstMessage = result.errors[0]?.message || "(ukendt fejl)";
     sentryCapture(new Error(`ai-trim heal sweep: ${result.failed} hold fejlede — ${firstMessage}`), {
-      tags: { cron: "ai-trim heal sweep", firstFailedTeamId: result.errors[0]?.teamId || "" },
+      tags: { cron: "ai-trim heal sweep", firstFailedTeamId: result.errors[0]?.teamId || "",
+        firstFailedPoolId: String(result.errors[0]?.poolId ?? "") },
       extra: {
         healed: result.healed,
         failed: result.failed,
-        errorMessages: result.errors.map((e) => `${e.teamId}: ${e.message}`),
+        errorMessages: result.errors.map((e) => `${e.teamId || `pool ${e.poolId}`}: ${e.message}`),
       },
     });
   }

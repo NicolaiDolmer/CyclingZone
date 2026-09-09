@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, deleteAiTeamById, __testables } from "./aiTeamGenerator.js";
+import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, __testables } from "./aiTeamGenerator.js";
 import { POOL_TARGET_SIZE, MAX_DIVISION, MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 import { AI_SQUAD, AI_TIER_STAT_WINDOWS, AI_TIER_VALUE_CAP } from "./starterSquadAllocator.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
@@ -232,51 +232,9 @@ test("idempotent: re-run top-up'er ikke forbi target (ingen duplikering)", async
   assert.equal(countTeamsInPool(supabase.state, t1.id), POOL_TARGET_SIZE, "stadig præcis target efter re-run");
 });
 
-test("reconcile: ny ægte manager i en fuld tier-1-pulje fortrænger overskuds-AI (ingen displacement)", async () => {
-  const pools = seedPools();
-  const t1 = poolByTierIndex(pools, 1, 0);
-  const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
 
-  // Fyld tier 1 fuldt med AI.
-  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
-  assert.equal(countTeamsInPool(supabase.state, t1.id), POOL_TARGET_SIZE);
 
-  // En ægte manager dukker op i den (allerede fulde) tier-1-pulje.
-  supabase.state.teams.push({
-    id: "late-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
-    division: 1, league_division_id: t1.id,
-  });
 
-  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
-
-  assert.equal(countTeamsInPool(supabase.state, t1.id), POOL_TARGET_SIZE, "pulje stadig præcis target (AI trimmet)");
-  assert.equal(countTeamsInPool(supabase.state, t1.id, { ai: false }), 1, "ægte manager bevaret");
-  assert.equal(countTeamsInPool(supabase.state, t1.id, { ai: true }), POOL_TARGET_SIZE - 1, "én AI fjernet for at give plads");
-  assert.ok(supabase.state.teams.some((t) => t.id === "late-mgr"), "ægte manager aldrig fjernet");
-});
-
-test("reconcile: tier-3-pulje der mister sin sidste manager tømmes for AI", async () => {
-  const pools = seedPools();
-  const t3a = poolByTierIndex(pools, 3, 0);
-  const supabase = makeSupabase({
-    league_divisions: pools,
-    teams: [
-      { id: "mgr-3", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3a.id },
-    ],
-    riders: [],
-  });
-
-  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
-  assert.equal(countTeamsInPool(supabase.state, t3a.id), POOL_TARGET_SIZE, "pulje fyldt mens manager var der");
-
-  // Manageren forlader puljen (fx oprykning/sletning).
-  supabase.state.teams = supabase.state.teams.filter((t) => t.id !== "mgr-3");
-
-  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
-
-  assert.equal(countTeamsInPool(supabase.state, t3a.id, { ai: true }), 0, "AI ryddet fra forladt tier-3-pulje");
-  assert.equal(countTeamsInPool(supabase.state, t3a.id), 0, "puljen tom (politik: tier 3/4 uden manager = ingen AI)");
-});
 
 test("AI-hold får is_ai=true, division=pool.tier og pulje-id; navn har intet AI-præfiks", async () => {
   const pools = seedPools();
@@ -360,45 +318,35 @@ test("clearAllAiTeams er no-op uden AI-hold", async () => {
   assert.deepEqual(supabase.state.teams.map((t) => t.id), ["mgr-1"]);
 });
 
+test('relaunch wipe preserves retired teams and their detached rider history',async()=>{
+  const supabase=makeSupabase({teams:[
+    {id:'archived',is_ai:true,retired_at:'2026-09-01T12:00:00Z'},
+    {id:'active',is_ai:true,retired_at:null},
+  ],riders:[{id:'old-rider',team_id:null,is_retired:true},{id:'active-rider',team_id:'active'}],
+  transfer_offers:[{id:'history',seller_team_id:'archived',rider_id:'old-rider',status:'accepted'}]});
+  const result=await clearAllAiTeams(supabase);
+  assert.equal(result.teams,1);
+  assert.deepEqual(supabase.state.teams.map(t=>t.id),['archived']);
+  assert.deepEqual(supabase.state.riders.map(r=>r.id),['old-rider']);
+  assert.equal(supabase.state.transfer_offers.length,1);
+});
+
+test('relaunch wipe refuses unresolved offer references before deleting any candidate',async()=>{
+  const supabase=makeSupabase({teams:[{id:'clean',is_ai:true},{id:'referenced',is_ai:true}],
+    riders:[{id:'clean-rider',team_id:'clean'},{id:'referenced-rider',team_id:'referenced'}],
+    transfer_offers:[{id:'history',seller_team_id:'referenced',status:'withdrawn'}]});
+  await assert.rejects(clearAllAiTeams(supabase),/transfer offers/);
+  assert.equal(supabase.state.teams.length,2);
+  assert.equal(supabase.state.riders.length,2);
+});
+
 // ── #1739 · reconcileAiTeamsForPool: trim AI når et nyt ægte hold rykker ind ────
 // Bug'en: trim-logikken (generateAndAllocateAiTeams) kørte KUN ved relaunch, så et
 // nyt hold midt i sæsonen efterlod AI-feltet urørt og puljen voksede forbi target.
 // reconcileAiTeamsForPool afgrænser delta-logikken til én pulje, så holdoprettelses-
 // stien kan trimme uden at scanne hele pyramiden.
 
-test("#1739 reconcileAiTeamsForPool: ny manager i fuld entry-pulje trimmer ét AI-hold (størrelse holder)", async () => {
-  const pools = seedPools();
-  // Entry-puljen er tier 3 (MANAGER_ENTRY_DIVISION) i den frosne pyramide.
-  const t3a = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 0);
-  const supabase = makeSupabase({
-    league_divisions: pools,
-    teams: [
-      { id: "first-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3a.id },
-    ],
-    riders: [],
-  });
 
-  // Puljen fyldes til target (1 manager + 23 AI = 24).
-  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
-  assert.equal(countTeamsInPool(supabase.state, t3a.id), POOL_TARGET_SIZE, "puljen er fuld før nyt hold");
-
-  // Et NYT ægte hold rykker ind (simulerer pickDivisionForNewTeam-insertet).
-  supabase.state.teams.push({
-    id: "new-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
-    division: 3, league_division_id: t3a.id,
-  });
-  assert.equal(countTeamsInPool(supabase.state, t3a.id), POOL_TARGET_SIZE + 1, "puljen er over target lige efter join");
-
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId: t3a.id, seed: 2026, deps: DEPS });
-
-  assert.equal(summary.removed, 1, "præcis ét AI-hold trimmet");
-  assert.equal(summary.created, 0);
-  assert.equal(countTeamsInPool(supabase.state, t3a.id), POOL_TARGET_SIZE, "pulje-størrelse tilbage på target");
-  assert.equal(countTeamsInPool(supabase.state, t3a.id, { ai: false }), 2, "begge ægte managere bevaret");
-  assert.equal(countTeamsInPool(supabase.state, t3a.id, { ai: true }), POOL_TARGET_SIZE - 2, "ét AI-hold fjernet");
-  assert.ok(supabase.state.teams.some((t) => t.id === "new-mgr"), "nyt hold aldrig fjernet");
-  assert.ok(supabase.state.teams.some((t) => t.id === "first-mgr"), "eksisterende manager aldrig fjernet");
-});
 
 // ── #4233 · transfer_offers-FK blokerer trim ──────────────────────────────────
 // Sentry CYCLINGZONE-4W, prod 25/8: `transfer_offers.rider_id -> riders` er NO ACTION,
@@ -407,81 +355,9 @@ test("#1739 reconcileAiTeamsForPool: ny manager i fuld entry-pulje trimmer ét A
 // var de to foerste AI-hold i D4-A netop de blokerede, mens 16 trimbare laa lige bagved.
 // Puljen stod derfor paa 25 hold mod #2377's krav om praecis 24.
 
-test("#4233 reconcileAiTeamsForPool: AI-hold med blokerende transfer_offers springes over, naeste trimmes i stedet", async () => {
-  const pools = seedPools();
-  const t3a = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 0);
-  const supabase = makeSupabase({
-    league_divisions: pools,
-    teams: [
-      { id: "first-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3a.id },
-    ],
-    riders: [],
-  });
-  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
 
-  // Blokér praecis den kandidat trimmen ville vaelge foerst (laveste id).
-  const aiSorted = supabase.state.teams
-    .filter((t) => t.league_division_id === t3a.id && t.is_ai)
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const blockedTeam = aiSorted[0];
-  const nextTeam = aiSorted[1];
-  const blockedRider = supabase.state.riders.find((r) => r.team_id === blockedTeam.id);
-  assert.ok(blockedRider, "det blokerede AI-hold har en trup at haenge tilbuddet paa");
-  supabase.state.transfer_offers = [
-    { id: "offer-1", rider_id: blockedRider.id, seller_team_id: blockedTeam.id, status: "withdrawn" },
-  ];
 
-  supabase.state.teams.push({
-    id: "new-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
-    division: 3, league_division_id: t3a.id,
-  });
 
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId: t3a.id, seed: 2026, deps: DEPS });
-
-  assert.equal(summary.removed, 1, "trimmen lykkes stadig — den tager naeste kandidat");
-  assert.equal(countTeamsInPool(supabase.state, t3a.id), POOL_TARGET_SIZE, "puljen tilbage paa target");
-  assert.ok(
-    supabase.state.teams.some((t) => t.id === blockedTeam.id),
-    "det blokerede hold staar urort tilbage",
-  );
-  assert.ok(
-    !supabase.state.teams.some((t) => t.id === nextTeam.id),
-    "naeste kandidat i id-orden blev trimmet i stedet",
-  );
-});
-
-test("#4233 reconcileAiTeamsForPool: er ALLE kandidater blokerede, trimmes ingen og underskuddet udskydes", async () => {
-  const pools = seedPools();
-  const t3a = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 0);
-  const supabase = makeSupabase({
-    league_divisions: pools,
-    teams: [
-      { id: "first-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3a.id },
-    ],
-    riders: [],
-  });
-  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
-
-  const aiTeams = supabase.state.teams.filter((t) => t.league_division_id === t3a.id && t.is_ai);
-  supabase.state.transfer_offers = aiTeams.map((t, i) => ({
-    id: `offer-${i}`, rider_id: null, seller_team_id: t.id, status: "accepted",
-  }));
-
-  supabase.state.teams.push({
-    id: "new-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
-    division: 3, league_division_id: t3a.id,
-  });
-
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId: t3a.id, seed: 2026, deps: DEPS });
-
-  assert.equal(summary.removed, 0, "ingen kan trimmes");
-  assert.equal(
-    supabase.state.teams.filter((t) => t.league_division_id === t3a.id && t.pending_removal_at != null).length,
-    1,
-    "praecis underskuddet (1) markeres pending_removal_at — ikke hele puljen (#2407)",
-  );
-  assert.ok(supabase.state.teams.some((t) => t.id === "new-mgr"), "den nye manager rammes aldrig");
-});
 
 test("#1739 reconcileAiTeamsForPool: første manager i tom entry-pulje top-up'er feltet", async () => {
   // En tom tier-3-pulje fyldes IKKE af generatoren (politik), men når den FØRSTE
@@ -541,32 +417,7 @@ test("#1739 reconcileAiTeamsForPool: ukendt/null pulje er no-op (ingen kast)", a
 // Fix: spring låste hold over (næste kandidat i id-orden), og trim færre hvis alle er
 // låst (deferred til næste reconcile) i stedet for at kaste. ────────────────────────
 
-// Seed: fuld entry-pulje + nyt ægte hold → delta = -1, trim skal fjerne præcis ét AI-hold.
-async function seedOverfullPoolWithNewManager() {
-  const pools = seedPools();
-  const t3a = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 0);
-  const supabase = makeSupabase({
-    league_divisions: pools,
-    teams: [
-      { id: "first-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3a.id },
-    ],
-    riders: [],
-  });
-  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
-  supabase.state.teams.push({
-    id: "new-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
-    division: 3, league_division_id: t3a.id,
-  });
-  return { supabase, poolId: t3a.id };
-}
-
-function aiTeamIdsInPool(state, poolId) {
-  return state.teams
-    .filter((t) => t.league_division_id === poolId && t.is_ai)
-    .map((t) => t.id)
-    .sort();
-}
-
+// Retirement regressions now exercise the real SQL in aiPoolRetirement.integration.test.js.
 // Lås et hold: giv én af dets ryttere en entry i et igangværende løb.
 function lockTeamInInflightRace(state, teamId, raceId) {
   if (!state.races) state.races = [];
@@ -578,140 +429,30 @@ function lockTeamInInflightRace(state, teamId, raceId) {
   state.race_entries.push({ rider_id: rider.id, race_id: raceId });
 }
 
-test("#2269 removeAiTeams springer et hold med inflight-entries over og trimmer næste kandidat", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  const lockedId = aiIds[0]; // lavest id = den gamle (fejlende) kandidat
-  lockTeamInInflightRace(supabase.state, lockedId, "race-inflight-1");
 
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
 
-  assert.equal(summary.removed, 1, "trimmen lykkes stadig (næste kandidat taget)");
-  assert.ok(supabase.state.teams.some((t) => t.id === lockedId), "det låste hold er IKKE slettet");
-  assert.equal(countTeamsInPool(supabase.state, poolId), POOL_TARGET_SIZE, "pulje tilbage på target");
-  // Det næst-laveste id blev trimmet i stedet.
-  assert.ok(!supabase.state.teams.some((t) => t.id === aiIds[1]), "næste kandidat i id-orden trimmet");
-});
 
-test("#2269 removeAiTeams: alle kandidater låst → 0 trimmet, intet kast (deferred)", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
-  for (const id of aiTeamIdsInPool(supabase.state, poolId)) {
-    lockTeamInInflightRace(supabase.state, id, "race-inflight-all");
-  }
-
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
-
-  assert.equal(summary.removed, 0, "ingen trim når alle hold er låst");
-  assert.equal(countTeamsInPool(supabase.state, poolId), POOL_TARGET_SIZE + 1, "puljen forbliver midlertidigt over target");
-});
 
 // ── #2187 · removeAiTeams markerer udskudte hold pending_removal_at, så en heal-
 // sweep kan fuldføre trimmet uden at afvente et nyt signup i SAMME pulje (rod-
 // årsagen til at Division 4 B/C blev hængende på 26 hold i stedet for 24). ────────
 
-test("#2187 removeAiTeams: blokeret kandidat markeres pending_removal_at (selvhelende trim)", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  const lockedId = aiIds[0];
-  for (const id of aiIds) {
-    lockTeamInInflightRace(supabase.state, id, "race-inflight-1");
-  }
 
-  await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
 
-  const lockedTeam = supabase.state.teams.find((t) => t.id === lockedId);
-  assert.ok(lockedTeam.pending_removal_at, "det blokerede hold er markeret til udskudt trim");
-  // Ægte managere i puljen må ALDRIG få markøren (defense-in-depth — markPendingRemoval
-  // kaldes kun med blokerede AI-kandidat-id'er, men verificér ingen lækage).
-  const realManagers = supabase.state.teams.filter((t) => t.league_division_id === poolId && !t.is_ai);
-  assert.ok(realManagers.every((t) => !t.pending_removal_at), "ægte managere aldrig markeret");
-});
 
-test("#2187 removeAiTeams: gentagen udskydelse af samme hold flytter ikke det oprindelige tidspunkt", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  for (const id of aiIds) {
-    lockTeamInInflightRace(supabase.state, id, "race-inflight-all");
-  }
 
-  await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
-  const firstMark = supabase.state.teams.find((t) => t.id === aiIds[0]).pending_removal_at;
-  assert.ok(firstMark, "markeret efter første udskudte forsøg");
 
-  // Endnu et nyt ægte hold rykker ind → endnu et udskudt trim-forsøg for SAMME puljer/hold.
-  supabase.state.teams.push({
-    id: "second-new-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
-    division: 3, league_division_id: poolId,
-  });
-  await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
-  const secondMark = supabase.state.teams.find((t) => t.id === aiIds[0]).pending_removal_at;
-
-  assert.equal(secondMark, firstMark, "IS NULL-guarden bevarer det oprindelige udskydelses-tidspunkt (idempotent)");
-});
-
-test("#2269 removeAiTeams: entries i et COMPLETED eller endnu-ikke-startet løb låser ikke", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  // Completed løb + løb der ikke er startet (stages_completed=0) må IKKE blokere trim.
-  supabase.state.races = [
-    { id: "race-done", status: "completed", stages_completed: 5 },
-    { id: "race-open", status: "scheduled", stages_completed: 0 },
-  ];
-  const rider = supabase.state.riders.find((r) => r.team_id === aiIds[0]);
-  supabase.state.race_entries = [
-    { rider_id: rider.id, race_id: "race-done" },
-    { rider_id: rider.id, race_id: "race-open" },
-  ];
-
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
-
-  assert.equal(summary.removed, 1);
-  assert.ok(!supabase.state.teams.some((t) => t.id === aiIds[0]), "laveste id trimmes som normalt");
-});
 
 // ── #2389 · removeAiTeams må ikke slette et hold med UUDBETALTE præmier — sletningen
 // kolliderer ellers med auto-prize-sweepen (P0002 midt i payout-ticket) og standings-
 // recalc (FK-fejl) (Sentry CYCLINGZONE-26/2E/2F). Samme udskudt-trim-mekanik som
 // inflight-guarden; auto-prize sweeper hvert 5. minut, så blokeringen er kortvarig. ──
 
-test("#2389 removeAiTeams: hold med præmier i et UUDBETALT løb springes over, næste kandidat trimmes", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  const blockedId = aiIds[0]; // laveste id = den kandidat trimmen ellers ville tage
-  supabase.state.races = [{ id: "race-unpaid", status: "completed", stages_completed: 5, prize_paid_at: null }];
-  supabase.state.race_results = [{ race_id: "race-unpaid", team_id: blockedId, prize_money: 5000 }];
 
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
 
-  assert.equal(summary.removed, 1, "trimmen lykkes stadig (næste kandidat taget)");
-  assert.ok(supabase.state.teams.some((t) => t.id === blockedId), "holdet med uudbetalte præmier er IKKE slettet");
-  assert.ok(!supabase.state.teams.some((t) => t.id === aiIds[1]), "næste kandidat i id-orden trimmet i stedet");
-});
 
-test("#2389 removeAiTeams: ALLE kandidater præmie-blokeret → 0 trimmet, alle markeret pending_removal_at", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  supabase.state.races = [{ id: "race-unpaid", status: "completed", stages_completed: 5, prize_paid_at: null }];
-  supabase.state.race_results = aiIds.map((id) => ({ race_id: "race-unpaid", team_id: id, prize_money: 100 }));
 
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
 
-  assert.equal(summary.removed, 0, "ingen trim når alle hold afventer præmie-udbetaling");
-  const marked = supabase.state.teams.filter((t) => aiIds.includes(t.id) && t.pending_removal_at);
-  assert.ok(marked.length > 0, "blokerede hold markeret til udskudt trim (heal-sweep samler op efter udbetaling)");
-});
-
-test("#2389 removeAiTeams: præmier i et UDBETALT løb blokerer ikke trim", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  supabase.state.races = [{ id: "race-paid", status: "completed", stages_completed: 5, prize_paid_at: "2026-07-10T00:00:00Z" }];
-  supabase.state.race_results = [{ race_id: "race-paid", team_id: aiIds[0], prize_money: 5000 }];
-
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
-
-  assert.equal(summary.removed, 1);
-  assert.ok(!supabase.state.teams.some((t) => t.id === aiIds[0]), "udbetalt løb → laveste id trimmes som normalt");
-});
 
 // ── #2407 Fejl 1 · removeAiTeams må kun markere det FAKTISKE underskud
 // (count - toRemove.length) pending_removal_at — ikke hvert blokeret hold loopet
@@ -719,47 +460,9 @@ test("#2389 removeAiTeams: præmier i et UDBETALT løb blokerer ikke trim", asyn
 // HELE puljen blev markeret (65 hold i pulje 9/10/11, kun 5 reelt overskud) →
 // heal-sweepen ville have tømt puljerne mod 4/4/4. ────────────────────────────────
 
-test("#2407 Fejl 1: alle kandidater blokeret + underskud 1 → PRÆCIS 1 markeres, ikke hele puljen", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager(); // delta = -1
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  supabase.state.races = [{ id: "race-unpaid", status: "completed", stages_completed: 5, prize_paid_at: null }];
-  supabase.state.race_results = aiIds.map((id) => ({ race_id: "race-unpaid", team_id: id, prize_money: 100 }));
 
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
 
-  assert.equal(summary.removed, 0, "ingen trim når alle er blokeret");
-  const marked = supabase.state.teams.filter((t) => aiIds.includes(t.id) && t.pending_removal_at);
-  assert.equal(marked.length, 1,
-    `overskuddet er 1 → præcis 1 hold må markeres (fik ${marked.length} — hele-puljen-markering er #2407-kaskaden)`);
-  // Deterministisk: den først-passerede blokerede kandidat (lavest id) markeres.
-  assert.equal(marked[0].id, [...aiIds].sort()[0], "lavest id markeres først (samme orden som trim-udvælgelsen)");
-});
 
-test("#2407 Fejl 1: underskud 1 med delvis blokering → kun 1 blokeret markeres, resten forbliver umarkeret", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
-  // Endnu en manager ind → delta = -2 (to hold skal væk).
-  supabase.state.teams.push({
-    id: "third-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
-    division: 3, league_division_id: poolId,
-  });
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  // Alle undtagen det SIDSTE hold i id-orden er præmie-blokeret → 1 kan trimmes nu,
-  // underskuddet er 2-1 = 1 → præcis 1 blokeret hold må markeres.
-  const freeId = [...aiIds].sort().at(-1);
-  supabase.state.races = [{ id: "race-unpaid", status: "completed", stages_completed: 5, prize_paid_at: null }];
-  supabase.state.race_results = aiIds
-    .filter((id) => id !== freeId)
-    .map((id) => ({ race_id: "race-unpaid", team_id: id, prize_money: 100 }));
-
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
-
-  assert.equal(summary.removed, 1, "det ublokerede hold trimmes nu");
-  assert.ok(!supabase.state.teams.some((t) => t.id === freeId), "det ublokerede hold er slettet");
-  const marked = supabase.state.teams.filter((t) => t.is_ai && t.pending_removal_at);
-  assert.equal(marked.length, 1,
-    `underskud efter trim er 1 → præcis 1 markeres (fik ${marked.length})`);
-  assert.equal(marked[0].id, [...aiIds].sort()[0], "lavest id blandt de blokerede markeres");
-});
 
 // ── #1847 · AI-hold-churn må ikke efterlade visningsdøde race_results: rider_id/
 // team_id er ON DELETE SET NULL (historik skal overleve churn), så rækker der
@@ -767,75 +470,16 @@ test("#2407 Fejl 1: underskud 1 med delvis blokering → kun 1 blokeret markeres
 // evidens 16/7: 4.100 rytter-rækker med rider_id=NULL, alle fra slettede AI-hold —
 // display-sikre alene fordi insert-stierne populerede navnene. ────────────────────
 
-test("#1847 removeAiTeams: manglende rider_name/team_name backfilles før sletning", async () => {
-  const { supabase, poolId } = await seedOverfullPoolWithNewManager(); // delta = -1, ingen blokering
-  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
-  const doomedId = [...aiIds].sort()[0]; // lavest id trimmes
-  const rider = supabase.state.riders.find((r) => r.team_id === doomedId);
-  rider.firstname = "Test";
-  rider.lastname = "Rytter";
-  const doomedTeam = supabase.state.teams.find((t) => t.id === doomedId);
-  doomedTeam.name = "AI Doomed CC";
-  supabase.state.races = [{ id: "race-old", status: "completed", stages_completed: 1, prize_paid_at: "2026-07-01T00:00:00Z" }];
-  supabase.state.race_results = [
-    // Mangler BEGGE navne-snapshots (legacy-række) → skal backfilles.
-    { id: "rr-1", race_id: "race-old", rider_id: rider.id, team_id: doomedId, prize_money: 0, rider_name: null, team_name: null },
-    // Har allerede navne → må IKKE overskrives (IS NULL-guard).
-    { id: "rr-2", race_id: "race-old", rider_id: rider.id, team_id: doomedId, prize_money: 0, rider_name: "Oprindeligt Navn", team_name: "Oprindeligt Hold" },
-  ];
 
-  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
 
-  assert.equal(summary.removed, 1);
-  assert.ok(!supabase.state.teams.some((t) => t.id === doomedId), "holdet er slettet");
-  const rr1 = supabase.state.race_results.find((r) => r.id === "rr-1");
-  assert.equal(rr1.rider_name, "Test Rytter", "manglende rider_name snapshottet før sletning");
-  assert.equal(rr1.team_name, "AI Doomed CC", "manglende team_name snapshottet før sletning");
-  const rr2 = supabase.state.race_results.find((r) => r.id === "rr-2");
-  assert.equal(rr2.rider_name, "Oprindeligt Navn", "eksisterende snapshot røres ikke");
-  assert.equal(rr2.team_name, "Oprindeligt Hold", "eksisterende snapshot røres ikke");
-});
 
-test("#1847 deleteAiTeamById (heal-sweep-stien): samme navne-snapshot før sletning", async () => {
-  const supabase = makeSupabase({
-    teams: [{ id: "ai-solo", name: "AI Solo CC", is_ai: true, league_division_id: 1 }],
-    riders: [{ id: "rid-1", team_id: "ai-solo", firstname: "Solo", lastname: "Kører" }],
-    race_results: [
-      { id: "rr-solo", race_id: "race-x", rider_id: "rid-1", team_id: "ai-solo", rider_name: null, team_name: null },
-    ],
-  });
-
-  await deleteAiTeamById(supabase, "ai-solo");
-
-  assert.ok(!supabase.state.teams.some((t) => t.id === "ai-solo"), "holdet er slettet");
-  assert.ok(!supabase.state.riders.some((r) => r.team_id === "ai-solo"), "rytterne er slettet");
-  const rr = supabase.state.race_results.find((r) => r.id === "rr-solo");
-  assert.equal(rr.rider_name, "Solo Kører", "rider_name snapshottet før sletning");
-  assert.equal(rr.team_name, "AI Solo CC", "team_name snapshottet før sletning");
-});
 
 // ── #2524 · rider_watchlist har ingen FK-cascade — sletning af en AI-holds
 // ryttere (deleteAiTeamById/removeAiTeams/clearAllAiTeams) må notificere +
 // rydde enhver ønskeliste-række for netop de ryttere, ikke kun senior-/
 // ungdomsauktion-stien i auctionFinalization. ────────────────────────────────
 
-test("#2524 deleteAiTeamById: rydder + notificerer rider_watchlist for holdets ryttere", async () => {
-  const supabase = makeSupabase({
-    teams: [{ id: "ai-watched", name: "AI Watched CC", is_ai: true, league_division_id: 1 }],
-    riders: [{ id: "rid-w1", team_id: "ai-watched", firstname: "Watched", lastname: "Rytter" }],
-    rider_watchlist: [{ id: "wl-1", user_id: "user-1", rider_id: "rid-w1" }],
-    notifications: [],
-  });
 
-  await deleteAiTeamById(supabase, "ai-watched");
-
-  assert.equal(supabase.state.rider_watchlist.length, 0, "watchlist-rækken er ryddet");
-  assert.equal(supabase.state.notifications.length, 1, "watcheren fik en departure-notifikation");
-  const notif = supabase.state.notifications[0];
-  assert.equal(notif.user_id, "user-1");
-  assert.equal(notif.type, "watchlist_departed");
-  assert.match(notif.message, /Watched Rytter/);
-});
 
 test("#2524 clearAllAiTeams: rydder + notificerer rider_watchlist på tværs af batches", async () => {
   const supabase = makeSupabase({
@@ -867,41 +511,9 @@ test("#2524 clearAllAiTeams: rydder + notificerer rider_watchlist på tværs af 
 // inflight-status: deleteAiTeamById (heal-sweep-retryen) og clearAllAiTeams
 // (relaunchens engangs-wipe). ──────────────────────────────────────────────────
 
-test("#2086 deleteAiTeamById: rytter i igangværende løb udskyder sletningen (holdet bevares, markeret pending_removal_at)", async () => {
-  const supabase = makeSupabase({
-    teams: [{ id: "ai-racing", name: "AI Racing CC", is_ai: true, league_division_id: 1 }],
-    riders: [
-      { id: "rid-racing", team_id: "ai-racing", firstname: "Racing", lastname: "Rytter" },
-      { id: "rid-free", team_id: "ai-racing", firstname: "Free", lastname: "Rytter" },
-    ],
-  });
-  lockTeamInInflightRace(supabase.state, "ai-racing", "race-inflight-1");
 
-  const res = await deleteAiTeamById(supabase, "ai-racing");
 
-  assert.equal(res.deleted, false);
-  assert.equal(res.deferred, true);
-  assert.deepEqual(res.blockedRiderIds, ["rid-racing"]);
-  assert.ok(supabase.state.teams.some((t) => t.id === "ai-racing"), "holdet er IKKE slettet");
-  const team = supabase.state.teams.find((t) => t.id === "ai-racing");
-  assert.ok(team.pending_removal_at, "holdet er markeret pending_removal_at");
-  assert.ok(supabase.state.riders.some((r) => r.id === "rid-racing"), "den racende rytter er bevaret");
-  assert.ok(!supabase.state.riders.some((r) => r.id === "rid-free"), "den ledige holdkammerat ER slettet");
-});
 
-test("#2086 deleteAiTeamById: ingen inflight-entries → uændret adfærd (fuld sletning)", async () => {
-  const supabase = makeSupabase({
-    teams: [{ id: "ai-clear", name: "AI Clear CC", is_ai: true, league_division_id: 1 }],
-    riders: [{ id: "rid-clear", team_id: "ai-clear", firstname: "Clear", lastname: "Rytter" }],
-  });
-
-  const res = await deleteAiTeamById(supabase, "ai-clear");
-
-  assert.equal(res.deleted, true);
-  assert.equal(res.deferred, false);
-  assert.ok(!supabase.state.teams.some((t) => t.id === "ai-clear"));
-  assert.ok(!supabase.state.riders.some((r) => r.id === "rid-clear"));
-});
 
 test("#2086 clearAllAiTeams: hold med rytter i igangværende løb undlades (ikke slettet) og resten af batchen fuldføres", async () => {
   const supabase = makeSupabase({

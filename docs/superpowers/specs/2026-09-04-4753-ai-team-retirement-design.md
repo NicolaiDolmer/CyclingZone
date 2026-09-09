@@ -1,7 +1,9 @@
 # AI-hold nedlægges i stedet for at slettes (#4753)
 
 **Dato:** 2026-09-04 · **Refs:** #4753, #4233, #2377, #4286, #2074, #2389, #2187, #2407, #4592
-**Status:** design — implementering bag flag `ai_team_retire_enabled` (default OFF), reparation kræver ejer-GO.
+**Status:** historisk design fra 4/9, videreført af [9/9-slicen](../../slices/4753-ai-pool-retirement.md).
+Det gamle flag er on i prod; PR #5066 tilføjer en særskilt release-gate. Reparation kræver stadig ejer-GO.
+SSOT: [TRANSFER_MARKET_RULES](../../TRANSFER_MARKET_RULES.md), [GAME_INVARIANTS](../../GAME_INVARIANTS.md).
 
 ## 1. Problemet, målt
 

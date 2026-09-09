@@ -8,12 +8,15 @@ import { runLeagueSizeAudit, excessScore, REQUIRED_TEAM_COUNT } from "./audit-le
 //   teams.select().order().range()
 //   riders.select().not().order().range()
 // Alle tre er paginerede single-page reads i disse tests (data.length < 1000).
-function makeMock({ divisions = [], teams = [], riders = [] } = {}) {
+function makeMock({ divisions = [], teams = [], riders = [], reason = 'inflight_entries' } = {}) {
   function from(table) {
     const b = {
       select() { return b; },
       order() { return b; },
       not() { return b; },
+      neq() { return b; },
+      gt() { return b; },
+      then(resolve,reject) { return b.range().then(resolve,reject); },
       range() {
         if (table === "league_divisions") return Promise.resolve({ data: divisions, error: null });
         if (table === "teams") return Promise.resolve({ data: teams, error: null });
@@ -23,12 +26,21 @@ function makeMock({ divisions = [], teams = [], riders = [] } = {}) {
     };
     return b;
   }
-  return { from };
+  return { from, rpc: async () => ({ data: reason, error: null }) };
 }
 
 function makeDivision(id, tier, pool_index, label) {
   return { id, tier, pool_index, label };
 }
+
+test('a fresh reservation blocked by a stalled race is an audit finding',async()=>{
+  const teams=Array.from({length:24},(_,i)=>makeTeam(`m${i}`,{league_division_id:1}));
+  teams.push(makeTeam('waiting-ai',{league_division_id:1,is_ai:true,pending_removal_at:'2026-09-09T11:00:00Z'}));
+  const summary=await runLeagueSizeAudit({supabase:makeMock({divisions:[makeDivision(1,1,0,'D1')],teams}),
+    now:new Date('2026-09-09T12:00:00Z'),getStalledIds:async()=>['race1'],teamBlockingRaceIds:async()=>['race1']});
+  assert.equal(summary.total_findings,1);
+  assert.equal(summary.waiting.length,0);
+});
 
 function makeTeam(id, { league_division_id = null, is_ai = false, is_frozen = false, is_bank = false, created_at = "2026-06-01T00:00:00Z", pending_removal_at = null, name } = {}) {
   return { id, name: name || `Team ${id}`, is_ai, is_frozen, is_bank, created_at, pending_removal_at, league_division_id };
@@ -39,7 +51,7 @@ test("no findings when every division has exactly 24 teams", async () => {
   const teams = Array.from({ length: 24 }, (_, i) => makeTeam(`t${i}`, { league_division_id: 1 }));
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 0);
   assert.equal(summary.required_team_count, REQUIRED_TEAM_COUNT);
 });
@@ -49,7 +61,7 @@ test("flags a group with 25 teams (excess) with positive delta", async () => {
   const teams = Array.from({ length: 25 }, (_, i) => makeTeam(`t${i}`, { league_division_id: 1 }));
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 1);
   assert.equal(summary.findings[0].count, 25);
   assert.equal(summary.findings[0].delta, 1);
@@ -61,7 +73,7 @@ test("flags a group with 23 teams (shortage) with negative delta and no candidat
   const teams = Array.from({ length: 23 }, (_, i) => makeTeam(`t${i}`, { league_division_id: 1 }));
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 1);
   assert.equal(summary.findings[0].delta, -1);
   // Shortage har ingen "overskudskandidater" — der er intet at trimme.
@@ -83,7 +95,7 @@ test("ranks AI + frozen + 0-rider teams highest as excess candidates", async () 
   const riders = normalTeams.map((t, i) => ({ team_id: t.id, i }));
   const supabase = makeMock({ divisions, teams, riders });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 1);
   assert.equal(summary.findings[0].delta, 1);
   assert.equal(summary.findings[0].top_candidates[0].id, "ai-excess");
@@ -98,7 +110,7 @@ test("excludes bank teams from the invariant count", async () => {
   ];
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 0, "bank-hold må ikke tælle med i puljens 24-krav");
 });
 
@@ -171,6 +183,15 @@ test("en uparsbar pending_removal_at fritager ikke (fail-loud, #4753)", async ()
   assert.equal(summary.total_findings, 1, "en ulæselig dato må ikke give tidsubegrænset fritagelse");
 });
 
+test('a fresh marker without a live blocking obligation does not hide excess',async () => {
+  const divisions=[makeDivision(13,4,5,'Division 4 F')];
+  const teams=[...Array.from({length:24},(_,i)=>makeTeam(`t${i}`,{league_division_id:13})),
+    makeTeam('excess',{league_division_id:13,is_ai:true,pending_removal_at:FRESH_PENDING})];
+  const result=await runLeagueSizeAudit({supabase:makeMock({divisions,teams,reason:null}),now:NOW});
+  assert.equal(result.total_findings,1);
+  assert.equal(result.findings[0].count,25);
+});
+
 // #4753: et nedlagt hold har league_division_id = NULL og er derfor allerede uden
 // for enhver pulje — auditen ser puljen som 24 UDEN at kende til retired_at.
 test("et nedlagt AI-hold tæller ikke i sin gamle pulje (#4753)", async () => {
@@ -193,7 +214,7 @@ test("teams with no league_division_id are outside the invariant (not flagged)",
   ];
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 0, "et ikke-allokeret hold må ikke tælle med i nogen puljes 24-krav");
 });
 
@@ -211,7 +232,7 @@ test("multiple divisions: only the ones deviating from 24 are reported", async (
   ];
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 1);
   assert.equal(summary.findings[0].label, "Division 2 — A");
   assert.equal(summary.findings[0].delta, 2);
@@ -223,7 +244,7 @@ test("dormant tier 4-pulje (0 ægte managere, 0 hold) giver ingen findings (#285
   const divisions = [makeDivision(9, 4, 2, "Division 4 — C")];
   const supabase = makeMock({ divisions, teams: [], riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 0, "tom tier 3/4-pulje uden ægte managere er forventet tilstand");
 });
 
@@ -232,7 +253,7 @@ test("dormant tier 4-pulje med AI-rest flagges (forventet 0)", async () => {
   const teams = Array.from({ length: 16 }, (_, i) => makeTeam(`ai${i}`, { league_division_id: 9, is_ai: true }));
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 1, "AI-rest i en dormant pulje er et fund (heal-sweep skal trimme)");
   assert.equal(summary.findings[0].required, 0);
   assert.equal(summary.findings[0].delta, 16);
@@ -246,7 +267,7 @@ test("tier 4-pulje MED ægte manager kræver stadig præcis 24", async () => {
   ];
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 1, "19 hold i en aktiv tier 4-pulje = shortage");
   assert.equal(summary.findings[0].required, 24);
   assert.equal(summary.findings[0].delta, -5);
@@ -256,7 +277,7 @@ test("tier 1/2-puljer kræver 24 selv uden ægte managere (alwaysFill-politikken
   const divisions = [makeDivision(1, 1, 0, "Division 1")];
   const supabase = makeMock({ divisions, teams: [], riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 1, "tom D1 er ALDRIG ok — toppen skal altid være fyldt");
   assert.equal(summary.findings[0].required, 24);
 });

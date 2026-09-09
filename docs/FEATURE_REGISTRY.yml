@@ -408,6 +408,15 @@ features:
     state: live
     flag: ai_team_retire_enabled
     verified: 2026-09-06
+    note: 'On; v2 kræver særskilt go.'
+
+  - id: ai-pool-retirement-v2
+    area: season
+    title_en: AI pool retirement
+    title_da: Atomisk nedlæggelse af AI-hold i puljer
+    state: building
+    verified: 2026-09-09
+    note: 'ai_pool_retirement_v2_enabled: fravær/off, ejer-go.'
 
   - id: season-documentary-llm
     area: season

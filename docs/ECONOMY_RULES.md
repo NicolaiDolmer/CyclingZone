@@ -68,6 +68,13 @@ Begge 14/8-specs (`vaerdi-og-loen-fundament-design.md` §5, `oekonomi-designkrit
 
 ## 3. Sponsor, upkeep, gæld, præmie
 
+**Præmieberettigelse (ejer præciseret 9/9, #4753/#5066):** AI- og bank-hold modtager
+ingen kontant præmie, heller ikke når `race_results.team_id` er udfyldt. `prizePayoutEngine`
+filtrerer dem før balance-RPC'en. Løb med kun ikke-berettigede resultater afsluttes som
+afregnet uden pengeoverførsel. Historiske finansposteringer og resultater ændres ikke;
+rytterens præmiebaserede værdi følger fortsat GAME_INVARIANTS. Lokalt verificeret i PR'en;
+prod har historiske AI-udbetalinger, så tidligere tekst om ingen udbetaling var ikke håndhævet.
+
 > **Sponsoren har fået sit eget SSOT-dokument 29/8: [`SPONSOR_RULES.md`](SPONSOR_RULES.md).** Kontrakternes
 > tilstandsmaskine, de fem arketyper, divisions-tillægget (ejer-besluttet 29/8) og de seks op-/nedryknings-tilfælde
 > står dér, ikke her. Dette afsnit dækker kun konstanterne.
