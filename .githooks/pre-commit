@@ -2,12 +2,15 @@
 # Pre-commit gate:
 #   1. Secret-leak scan (gitleaks primary, python fallback) — #634 AC5
 #   2. lint-staged (frontend/backend lint på staged changes)
-# Aktiveres via core.hooksPath=.githooks (sat af scripts/setup-local.ps1).
+# Aktiveres via scripts/install-git-hooks.ps1 (core.hooksPath=.githooks).
 set -e
+
+# Agent-independent archive/NOW policy, including merge/rebase commits.
+node scripts/check-staged-docs.mjs
 
 # Skip ved merge/rebase commits (gitleaks ville få false positives på conflict-markers)
 if [ -f .git/MERGE_HEAD ] || [ -f .git/REBASE_HEAD ] || [ -f .git/CHERRY_PICK_HEAD ]; then
-  exec npx lint-staged
+  exec node scripts/run-staged-checks.mjs
 fi
 
 # Skip hvis ingen staged ændringer
@@ -142,4 +145,4 @@ EOF
 fi
 
 # --- (2) lint-staged ---
-npx lint-staged
+node scripts/run-staged-checks.mjs

@@ -28,13 +28,18 @@ Bekræft ved at svare på tre spørgsmål med citat:
 Kan du ikke svare fra filerne, har du ikke læst dem — læs igen.
 
 TRIN 3 — Hook-selvtest (den vigtigste)
+Aktivér først Git-laget med `pwsh -File scripts/setup-local.ps1` (dependencies,
+kanonisk installer og fake-secret-smoketest). Kontrollér core.hooksPath=.githooks.
+Det sker automatisk på nye PC'er via setup-new-pc.ps1. Bevisdatoer og begrænsninger
+står i docs/GUARD_INVENTORY.md; "installeret" er ikke "bevist".
+
 Dine hooks er konfigureret i .codex/hooks.json. Test at din runner FAKTISK
-fyrer dem. Kør de fire kommandoer nedenfor. Hver ENKELT skal blive BLOKERET.
+fyrer dem. T1-T3 skal blokeres af agent-hooks; T4 af Git pre-commit.
 Kommandoerne er valgt så de er harmløse hvis en guard mangler.
 
 Før selvtesten: åbn /hooks i interaktiv Codex CLI, review og trust de aktuelle
 hook-definitioner. Nye eller ændrede hooks springes over indtil trust; ændringer
-i .codex/hooks.json kan invalidere trust. Færdiggør derfor konfigurationen først,
+i .codex/hooks.json kræver nyt review af trust. Færdiggør derfor konfigurationen først,
 trust som sidste opsætningstrin, og kør selvtesten i en FRISK session.
 Kræver fejlsøgning en midlertidig dump-hook: trust den særskilt, brug kun harmløse
 prøver, slet dumpen straks og fjern hooken før afsluttende trust. Går trust eller
@@ -55,8 +60,16 @@ kontrollér at den står i promptfeltet, og send Enter i et separat kald.
       → skal blokeres af block-branch-switch-in-main-checkout.sh.
         Slap den igennem: kør straks `git checkout main` og
         `git branch -D codex-hook-selvtest`, og noter det som FEJL.
-  T4  Forsøg at bruge dit edit-værktøj på en fil under docs/archive/
-      → skal blokeres af block-archived-edit.sh
+  T4  Forsøg et Git-commit med en staged, harmløs arkivændring i en isoleret fixture.
+      → skal blokeres af pre-commit: STAGED-DOCS BLOCKED: archive.
+      Verificér HEAD uændret og ryd fixture/index op. Brug aldrig --no-verify.
+
+Codex bruger scripts/hooks/run-codex-hook.ps1 til portabel Git Bash-opstart.
+Den finder Git-installationen lokalt, tilføjer dens bin/usr/bin til barnets PATH
+og videresender payload/exit/output uden policy. Manglende runtime fejler højt.
+Edit-hookene er bevaret, men inaktive for observeret apply_patch-input uden
+file_path. Arkiv/NOW beskyttes derfor på staged Git-indhold; en edit er mulig,
+men må ikke kunne committes i strid med de regler. Ingen patchtekst-adapter.
 
 Kontroltest — denne skal IKKE blokeres:
   K1  git --no-pager status -sb

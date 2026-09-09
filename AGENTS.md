@@ -9,7 +9,7 @@ _Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Co
 ## Hard rules
 
 > **Håndhævelse:** 🔒 = mekanisk håndhævet (hook/CI — kan ikke glemmes). ✍️ = honor-system (prosa; afhænger af disciplin — disse er dem der drifter, hold dem korte).
-> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)) · 16 🔒 (nightly `clock-drift-test-check.yml`, detektor på frontend + backend, ikke pr.-PR-gate) · 18 🔒 (`scripts/guard-commit-branch.sh`, blokerende) · 19-23 ✍️ (kvalitetsproces-regler, ejer-godkendt 18/8 pr. [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)) · 31-32 ✍️ (build-konventioner, [#4329](https://github.com/NicolaiDolmer/CyclingZone/issues/4329)).
+> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 ✍️ (patch-notes-dækning; secret-/versions-vagter: se [bevisregister](docs/GUARD_INVENTORY.md)) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)) · 16 🔒 (nightly `clock-drift-test-check.yml`, detektor på frontend + backend, ikke pr.-PR-gate) · 18 🔒 (`scripts/guard-commit-branch.sh`, blokerende) · 19-23 ✍️ (kvalitetsproces-regler, ejer-godkendt 18/8 pr. [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)) · 31-32 ✍️ (build-konventioner, [#4329](https://github.com/NicolaiDolmer/CyclingZone/issues/4329)).
 
 1. **Repo-root verification:** Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`. Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger. Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment.
 
@@ -19,7 +19,7 @@ _Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Co
 
 4. **Bliv ved med at stille spørgsmål når i tvivl.** 70-95% sikkerhed → spørg, antag ikke. Også for proaktive forbedringsforslag. AskUserQuestion-tool foretrækkes til strukturerede valg.
 
-5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Pre-push hook (loop B i AIDEFS/FAQALLOWLIST/EXEMPT i scriptet med begrundelse.
+5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Git-hooks er aktive efter installation: pre-commit scanner secrets, pre-push scanner secret-stier/diffs og PatchNotes-versioner. Versionskontrol beviser ikke patch-notes-dækning. Lokalt secret-lag positivt bevist 9/9; CI og øvrige vagter har separat bevisstatus i `docs/GUARD_INVENTORY.md`.
 
 6. **Slice close-out kræver:**
    - `docs/NOW.md` opdateret + relevante GitHub-issues lukket eller opdateret med status (`gh issue comment N --body "..."` / `gh issue close N --reason completed`)

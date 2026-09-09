@@ -99,18 +99,11 @@ if ($LASTEXITCODE -ne 0) { throw "git clone fejlede" }
 # --- 4. npm install ---
 Write-Section "Installer dependencies"
 
-Push-Location (Join-Path $Target "backend")
+Push-Location $Target
 try {
-  Write-Host "  Backend: npm install..."
-  & npm install
-  if ($LASTEXITCODE -ne 0) { throw "Backend npm install fejlede" }
-} finally { Pop-Location }
-
-Push-Location (Join-Path $Target "frontend")
-try {
-  Write-Host "  Frontend: npm install..."
-  & npm install
-  if ($LASTEXITCODE -ne 0) { throw "Frontend npm install fejlede" }
+  # One path for dependencies + tracked hooks, with a real blocking smoke-test.
+  & pwsh -NoProfile -File (Join-Path $Target 'scripts/setup-local.ps1')
+  if ($LASTEXITCODE -ne 0) { throw "Dependencies eller Git-hook installation fejlede" }
 } finally { Pop-Location }
 
 # --- 5. Build-verifikation ---
@@ -233,7 +226,7 @@ Write-Section "Setup faerdig"
 Write-Host "  Repo placeret: $Target" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Tjek folgende efter setup:" -ForegroundColor Yellow
-Write-Host "    0. Aktivér git hooks + root-deps (goer klon commit-klar): pwsh -File scripts/setup-local.ps1"
+Write-Host "    0. Git-hooks er allerede aktiveret og smoke-testet via setup-local.ps1."
 Write-Host "    1. Memory + AI-context sync'es via OneDrive (CyclingZone-context\memory)"
 Write-Host "       Hvis OneDrive ikke var synket endnu: kor 'pwsh -File scripts/link-onedrive-context.ps1' senere"
 Write-Host ""

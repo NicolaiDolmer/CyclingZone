@@ -8,7 +8,7 @@
 // in commit 471ceee (reverted in e0e0aeb).
 //
 // ESLint v10 (flat config) discovers eslint.config.js automatically by
-// walking up from the file location, so we can invoke `npx eslint <files>`
+// walking up from the file location, so we can invoke the installed ESLint
 // from the repo root without a --prefix.
 //
 // Trade-off vs. the old "full-directory lint" pattern: pre-commit only
@@ -22,8 +22,8 @@
 const escape = (f) => JSON.stringify(f);
 
 export default {
-  "frontend/**/*.{js,jsx}": (files) => `npx eslint ${files.map(escape).join(" ")}`,
-  "backend/**/*.js": (files) => `npx eslint ${files.map(escape).join(" ")}`,
+  "frontend/**/*.{js,jsx}": (files) => `node frontend/node_modules/eslint/bin/eslint.js ${files.map(escape).join(" ")}`,
+  "backend/**/*.js": (files) => `node backend/node_modules/eslint/bin/eslint.js ${files.map(escape).join(" ")}`,
   // #639 forward-guard: SQL string-literal lint catches unescaped apostrophes
   // (e.g. `claim'et` instead of `claim''et`) that would otherwise abort
   // auto-migrate on ON_ERROR_STOP=1 (the #635 bug shape).

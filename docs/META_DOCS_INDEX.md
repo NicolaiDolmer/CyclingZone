@@ -7,6 +7,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/GUARDRAILS_CORE.md` | Issue har `needs-contract` eller `shared-refactor` label |
 | `docs/GUARDRAILS.md` (fuld) | Nye datakontrakter · IA/naming-valg · shared runtime-refactors · features med flere plausible produktmodeller |
 | `docs/HOOKS.md` | Hooks-konfiguration ændres |
+| `docs/GUARD_INVENTORY.md` | Guard-dækning, aktivering, bevisdatoer og per-PC selvtest (#5065) |
 | `docs/ARCHITECTURE.md` | Cross-domain refactor |
 | `docs/DOMAIN_REFERENCE.md` | Domænegrænse-spørgsmål |
 | `docs/FEATURE_REGISTRY.yml` | **SSOT for "hvad er live":** én post pr. kernefunktion med state, prod-flag, SSOT, epic og verifikationsdato. Opdateres i samme PR som et flag-flip eller en feature-luk (hard rule 30 (e), #4921) |

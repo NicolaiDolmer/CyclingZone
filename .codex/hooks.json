@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/block-dangerous-secret-commands.sh",
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/block-dangerous-secret-commands.sh",
             "timeout": 5
           }
         ]
@@ -16,27 +16,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/hooks/block-branch-switch-in-main-checkout.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-branch-switch-in-main-checkout.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/setup-worktree-if-needed.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/setup-worktree-if-needed.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/lint-gh-issue.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/lint-gh-issue.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/check-ci-before-push.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-ci-before-push.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/check-preflight-before-push.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-preflight-before-push.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/block-blocking-shell-commands.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-blocking-shell-commands.sh"
           }
         ]
       },
@@ -45,11 +45,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/hooks/check-now-md-edit.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-now-md-edit.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/block-archived-edit.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-archived-edit.sh"
           }
         ]
       },
@@ -58,11 +58,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/hooks/check-now-md-edit.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-now-md-edit.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/block-archived-edit.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-archived-edit.sh"
           }
         ]
       },
@@ -71,11 +71,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/hooks/check-now-md-edit.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/check-now-md-edit.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/block-archived-edit.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-archived-edit.sh"
           }
         ]
       }
@@ -86,7 +86,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh",
             "timeout": 10
           }
         ]
@@ -96,7 +96,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh",
             "timeout": 10
           }
         ]
@@ -106,7 +106,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh",
             "timeout": 10
           }
         ]
@@ -116,7 +116,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 .claude/hooks/sanitize-secrets.sh",
             "timeout": 10
           }
         ]
@@ -128,20 +128,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/session-prefetch-issue.sh",
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/session-prefetch-issue.sh",
             "timeout": 20
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/ensure-scheduled-tasks.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/ensure-scheduled-tasks.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/setup-worktree-if-needed.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/setup-worktree-if-needed.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/set-active-sessions.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/set-active-sessions.sh"
           }
         ]
       }
@@ -151,11 +151,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/check-now-md.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/check-now-md.sh"
           },
           {
             "type": "command",
-            "command": "bash scripts/hooks/clear-active-sessions.sh"
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/clear-active-sessions.sh"
           }
         ]
       }

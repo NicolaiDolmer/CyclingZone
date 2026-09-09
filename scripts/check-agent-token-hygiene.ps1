@@ -293,8 +293,13 @@ if (Test-Path ".codex/hooks.json") {
     foreach ($event in $codexHooks.hooks.PSObject.Properties) {
       foreach ($group in $event.Value) {
         foreach ($h in $group.hooks) {
-          if ($h.command -match '(?:^|\s)bash\s+[''"]?([^''"\s]+\.(?:sh|ps1|mjs|js))') {
-            $hookPaths.Add($Matches[1].Replace('\', '/')) | Out-Null
+          # Check BOTH the tracked portable launcher and its delegated script.
+          $references = [regex]::Matches($h.command, '(?:^|\s|["''])((?:\.claude|scripts|\.codex)/[^\s"'']+\.(?:sh|ps1|mjs|js))(?=$|\s|["''])')
+          if ($references.Count -eq 0) {
+            throw "Ingen kontrollerbare script-referencer i hook command"
+          }
+          foreach ($reference in $references) {
+            $hookPaths.Add($reference.Groups[1].Value.Replace('\', '/')) | Out-Null
           }
         }
       }
@@ -311,7 +316,7 @@ if (Test-Path ".codex/hooks.json") {
       Add-Result $results "codex-hooks-tracked" "OK" "$($hookPaths.Count) hook-referencer peger alle paa trackede filer"
     }
   } catch {
-    Add-Result $results "codex-hooks-tracked" "WARN" "Kunne ikke parse .codex/hooks.json: $($_.Exception.Message)"
+    Add-Result $results "codex-hooks-tracked" "FAIL" "Kunne ikke kontrollere .codex/hooks.json: $($_.Exception.Message)"
   }
 }
 

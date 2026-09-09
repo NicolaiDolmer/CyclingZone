@@ -235,3 +235,30 @@ Transcript-syncen kører **altid**, uafhængigt af gaten. Den er selve målingen
 6. Commit + push
 
 **Vigtigt:** Hold hooks fail-safe (`exit 0` selv ved fejl). Et hook der fejler hardt kan blokere Claude session-start.
+
+## Fælles Git-lag og Codex (#5065, 2026-09-09)
+
+Bevisstatus og PC-grænser: [GUARD_INVENTORY.md](GUARD_INVENTORY.md).
+Git-hooks var tracked, men lå slukket på den målte PC indtil 9/9: hooksPath
+pegede på en mappe med samples. Nu er install-git-hooks.ps1 den kanoniske
+installer. setup-new-pc.ps1 kalder setup-local.ps1, som installerer alle tre
+npm-projekter og automatisk aktiverer/smoke-tester Git-hooks. Den gamle
+install-hooks.ps1 er kun en pegepind. Eksisterende PC1: kør setup-local.ps1.
+
+Pre-commit kontrollerer staged arkivstier og NOW-blobs (30 linjer / 1200
+approx tokens, CRLF normaliseret), secret-scanner, og kører kun matchende
+lint-opgaver. Ingen patchtekst-adapter. Pre-push beholder secret-/lint- og
+PatchNotes-versionskontroller; versionskontrol er ikke patch-notes-dækning.
+
+Codex bruger den trackede scripts/hooks/run-codex-hook.ps1: Git Bash findes
+via git --exec-path på hver PC, aldrig via WSL eller en maskinhardkodet sti.
+Barnets PATH får Gits bin/usr/bin; rå stdin/stdout/stderr og exit videresendes.
+Runtime-fejl vises som CODEX HOOK STARTUP FAILED og exit 2. Policy ligger alene
+i de uændrede delte scripts. De to edit-hooks er inaktive for Codex-patchens
+observerede command-payload uden file_path; deres regler håndhæves i Git-laget.
+
+Færdiggør alle konfigurationsændringer før /hooks review/trust. Åbn derefter
+en frisk session og kør T1-T3/K1 samt Git-T4 fra CODEX_PROMPTS.md. Trust-status
+er ikke blokeringens bevis. Navigér med én tast ad gangen; paste aldrig ind i
+en uaflæst menu. Ejeren kan bevidst bruge git commit/push --no-verify, men det
+omgår lokale kontroller. Agenter må aldrig gøre det eller slukke hooks.

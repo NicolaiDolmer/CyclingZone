@@ -39,6 +39,7 @@ try {
   } else {
     Info "[1/3] Setting core.hooksPath -> .githooks"
     & git config core.hooksPath .githooks
+    if ($LASTEXITCODE -ne 0) { throw 'Kunne ikke aktivere core.hooksPath=.githooks' }
     Ok "core.hooksPath set"
   }
 
@@ -86,6 +87,9 @@ try {
       & git config user.name "Test"
       & git config core.hooksPath (Join-Path $repoRoot ".githooks")
 
+      New-Item -ItemType Directory -Path (Join-Path $tmpDir 'scripts') | Out-Null
+      Copy-Item (Join-Path $repoRoot 'scripts/check-staged-docs.mjs') (Join-Path $tmpDir 'scripts/check-staged-docs.mjs')
+
       # Copy gitleaks config if available
       $gitleaksTomlPath = Join-Path $repoRoot ".gitleaks.toml"
       if (Test-Path $gitleaksTomlPath) {
@@ -104,13 +108,13 @@ try {
       $commitOutput = & git commit -m "test: should be blocked" 2>&1 | Out-String
       $commitExit = $LASTEXITCODE
 
-      if ($commitExit -ne 0) {
+      if ($commitExit -ne 0 -and $commitOutput -match 'PRE-COMMIT BLOCKED: (gitleaks found secret|secret-pattern in staged changes)') {
         Ok "Smoke-test PASSED: pre-commit hook blocked fake secret (exit=$commitExit)"
         if ($commitOutput -match "BLOCKED|gitleaks|secret") {
           Info "  Hook produced expected secret-related output."
         }
       } else {
-        Err "Smoke-test FAILED: pre-commit hook did NOT block fake secret."
+        Err "Smoke-test FAILED: expected secret detection was NOT proven (exit=$commitExit)."
         Err "Output: $commitOutput"
         exit 1
       }
@@ -126,7 +130,7 @@ try {
 
   Info ""
   Ok "Git hooks ready."
-  Info "  Pre-commit: secret-scan + lint-staged (.githooks/pre-commit)"
+  Info "  Pre-commit: staged archive/NOW guard + secret-scan + matching lint tasks"
   Info "  Pre-push:   secret-scan + lint + PatchNotes-check (.githooks/pre-push)"
   Info ""
   Info "Test manually:"
