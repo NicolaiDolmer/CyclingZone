@@ -579,6 +579,19 @@ Registreret som D-046. Doktrinen 8/6 består.
 Samtalen pauses efter D-046. Næste session: kort design (personale-/løbsomdømme,
 popularitet → omdømme), derefter eksekvering. Se `docs/drafts/next-session-prompt-2026-09-10-design-og-eksekvering.md`.
 
+## Rettelse af klokkeslæt (10/9)
+
+Klokkeslættene i dagens poster fra Q-032 til Q-050 er omtrentlige og op til
+to timer for sene (skrevet uden `Get-Date`). Sessionen kørte 12:20-14:45
+dansk tid. Rækkefølgen af svar er korrekt; datoen er korrekt.
+
+## Ejerens svar på go-kortet for bølgens PR'er (10/9 kl. 14:40, ordret)
+
+> 5099 - Det kan ikke passe, at dette er den bedste mobil venlige løsning vi kan finde på? Har vi ikke lige for nyligt lavet den modsatte løsning? Måske vi skal prøve en 3. ting, sådan standarden for mobil visningen stiger markant? - Ikke i denne session selvfølgelig. Lad os snakke om de øvrige også
+
+Håndteret uden for GDD: PR #5099 parkeret som draft; #5102 oprettet som
+designpunkt (ny mobil-tabelstandard). #5097 og #5100 fik merge-go og gik i køen.
+
 ## Handoff · Til Claude Code efter Q-050, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; 18 beslutninger i Claude Code 10/9 (D-029 til D-046), alle pushet; docs-PR #5090 (draft).
