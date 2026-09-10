@@ -10,6 +10,7 @@
 // her (getScoutState returnerer kun assignment-rækker, ingen riders.potentiale).
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
+import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "./sharedRequestCache.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -31,9 +32,18 @@ export function useScoutingCentral() {
     const headers = await authHeaders();
     if (!headers) { setLoading(false); return; }
     try {
-      const meRes = await fetch(`${API}/api/scouting/me`, { headers });
-      if (!meRes.ok) { setLoading(false); return; }
-      const me = await meRes.json();
+      // #5089: samme globale endpoint som useScouting bruger. Layout mounter
+      // denne hook paa HVER side, saa uden deling kostede enhver rytterprofil
+      // to GET /api/scouting/me. Mutationerne nedenfor invaliderer.
+      const me = await sharedRequestCache.get(
+        SHARED_KEYS.scoutingMe,
+        async () => {
+          const meRes = await fetch(`${API}/api/scouting/me`, { headers });
+          if (!meRes.ok) throw new Error("scouting_me_failed");
+          return meRes.json();
+        },
+        SHARED_TTL_MS.scoutingMe,
+      );
       const systemEnabled = Boolean(me.scoutSystemEnabled);
       setEnabled(systemEnabled);
       if (!systemEnabled) { setLoading(false); return; }
@@ -72,6 +82,7 @@ export function useScoutingCentral() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed" };
+      sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe); // #5089: holdtilstand aendret
       await refresh();
       return { ok: true, assignment: data.assignment };
     } catch {
@@ -91,6 +102,7 @@ export function useScoutingCentral() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed" };
+      sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe); // #5089: holdtilstand aendret
       await refresh();
       return { ok: true, assignment: data.assignment };
     } catch {
@@ -109,6 +121,7 @@ export function useScoutingCentral() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed" };
+      sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe); // #5089: holdtilstand aendret
       await refresh();
       return { ok: true };
     } catch {

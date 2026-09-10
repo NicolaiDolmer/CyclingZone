@@ -3,27 +3,38 @@ import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 // #5089: maaletest for rytterkortets API-fan-out.
 //
-// Baggrund: Railway-loggen 10/9 kl. 10:12 UTC viste flere hundrede 429'ere fra
-// `api-baseline` paa fire millisekunder. Moenstret var 14 kald pr. rytter, og
-// de GLOBALE kald (/api/deadline-day/status, /api/transfers, /api/scouting/me)
-// blev gentaget for HVER rytter i stedet for at blive hentet een gang.
+// ── Hvorfor den findes ──────────────────────────────────────────────────────
 //
-// Denne spec er tallet, ikke en formodning: den taeller faktiske HTTP-kald mod
-// backend-API'et (ikke Supabase /rest/v1 og /auth/v1) mens to rytterprofiler
-// aabnes efter hinanden. Groensen er en RATCHET: den maa saenkes naar fan-outen
-// falder, aldrig haeves uden at issuet genaabnes.
+// Railway-loggen 10/9 kl. 10:12:24 UTC viste flere hundrede 429'ere fra
+// `api-baseline` inden for fire millisekunder. Moenstret var ca. 14 kald pr.
+// rytterkort, og tre af dem var GLOBALE (`/api/transfers`,
+// `/api/deadline-day/status`, `/api/scouting/me`): de svarer det samme uanset
+// hvilken rytter der vises, men blev hentet forfra ved hvert eneste mount.
 //
-// Maalt paa desktop-chromium, overblik-fanen (den fane spilleren lander paa).
+// Graensen i `apiBaselineLimiter` (backend/routes/api.js) er en sikkerheds-
+// kontrol og maa IKKE haeves som "fix". Denne spec er den anden ende af den
+// aftale: den holder fan-outen nede, saa graensen kan blive staaende.
+//
+// ── Hvordan den maaler ──────────────────────────────────────────────────────
+//
+// Kun rytterkortets EGNE endpoints taelles. App-skallen (inbox, presence,
+// online-count, forum, academy, training) fyrer sine egne kald ved hver
+// navigation og har intet med #5089 at goere; at taelle dem med ville goere
+// ratchetten stoej-foelsom og ubrugelig som regressions-vagt.
+//
+// Tallene er RATCHETS: de maa saenkes naar fan-outen falder, aldrig haeves uden
+// at #5089 genaabnes.
 
-const API_PATH_RE = /\/api\//;
+// Rytterkortets eget budget: alt under /api/riders/<id>/, pro-historikken, samt
+// de tre globale endpoints issuet naevner.
+const RIDER_CARD_RE = /\/api\/(riders\/[^/]+\/|pro\/rider-history\/|transfers$|deadline-day\/status$|scouting\/(me|estimates)$)/;
 
-function countApiCalls(page) {
+function countRiderCardCalls(page) {
   const calls = [];
   page.on("request", (request) => {
-    const url = request.url();
-    if (!API_PATH_RE.test(url)) return;
-    if (url.includes("/rest/v1/") || url.includes("/auth/v1/")) return;
-    calls.push(`${request.method()} ${new URL(url).pathname}`);
+    const url = new URL(request.url());
+    if (!RIDER_CARD_RE.test(url.pathname)) return;
+    calls.push(`${request.method()} ${url.pathname}`);
   });
   return calls;
 }
@@ -34,49 +45,83 @@ function tally(calls) {
   return counts;
 }
 
+async function settleOnProfile(page) {
+  await expect(page.getByRole("tab", { name: /Overblik|Overview/ })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+}
+
 test.beforeEach(async ({ page }) => {
   await installNetworkMocks(page);
   await stabilizePage(page);
 });
 
-test("rider card fan-out stays inside the api-baseline budget (#5089)", async ({ page }) => {
+test("cold rider profile stays inside the api-baseline budget (#5089)", async ({ page }) => {
   await login(page);
+  const calls = countRiderCardCalls(page);
 
-  const calls = countApiCalls(page);
-
+  // rider-2 er en RIVAL-rytter (fixture): ingen ejer-handlinger i hero'en.
   await page.goto("/riders/rider-2");
-  await expect(page.getByRole("tab", { name: /Overblik|Overview/ })).toBeVisible();
-  await page.waitForLoadState("networkidle");
+  await settleOnProfile(page);
+  const rival = [...calls];
 
-  const firstRiderCalls = [...calls];
+  console.log("[#5089] rival profile, cold load:", JSON.stringify(tally(rival), null, 2));
 
-  await page.goto("/riders/rider-1");
-  await expect(page.getByRole("tab", { name: /Overblik|Overview/ })).toBeVisible();
-  await page.waitForLoadState("networkidle");
+  // Ratchet: hele profilens fan-out ved en kold sideindlaesning.
+  // Maalt 10/9: 15 foer, 8 efter.
+  expect(rival.length).toBeLessThanOrEqual(8);
 
-  const secondRiderCalls = calls.slice(firstRiderCalls.length);
+  const rivalTally = tally(rival);
 
-  // Diagnostik i rapporten, saa et fremtidigt regressionsfund viser HVILKET
-  // endpoint der voksede og ikke bare et tal der ikke passer.
-  console.log("[#5089] rider 1 of 2:", JSON.stringify(tally(firstRiderCalls), null, 2));
-  console.log("[#5089] rider 2 of 2:", JSON.stringify(tally(secondRiderCalls), null, 2));
-
-  // Ratchet 1: foerste rytterprofil (kold cache).
-  expect(firstRiderCalls.length).toBeLessThanOrEqual(9);
-
-  // Ratchet 2: NAESTE rytterprofil i samme session. De globale kald er delte,
-  // saa rytter nr. 2 maa koste mindre end rytter nr. 1.
-  expect(secondRiderCalls.length).toBeLessThanOrEqual(6);
-
-  // De tre globale endpoints maa ikke gentages pr. rytter.
-  const secondTally = tally(secondRiderCalls);
-  expect(secondTally["GET /api/deadline-day/status"] ?? 0).toBe(0);
-  expect(secondTally["GET /api/transfers"] ?? 0).toBe(0);
-  expect(secondTally["GET /api/scouting/me"] ?? 0).toBe(0);
+  // Layout mounter useScoutingCentral og profilen mounter useScouting. Begge
+  // laeser /api/scouting/me; de skal dele svaret, ikke hente hver sin kopi.
+  expect(rivalTally["GET /api/scouting/me"] ?? 0).toBeLessThanOrEqual(1);
 
   // Fane-gatede endpoints maa ikke fyre paa Overblik-fanen.
-  const firstTally = tally(firstRiderCalls);
   for (const gated of ["history", "interest", "view-count", "watchlist-count", "development", "development-projection"]) {
-    expect(firstTally[`GET /api/riders/rider-2/${gated}`] ?? 0).toBe(0);
+    expect(rivalTally[`GET /api/riders/rider-2/${gated}`] ?? 0).toBe(0);
   }
+});
+
+test("global endpoints are not refetched when navigating into a rider profile (#5089)", async ({ page }) => {
+  await login(page);
+
+  // Holdsiden henter selv begge globale endpoints ved mount.
+  await page.goto("/team");
+  await expect(page.getByRole("link", { name: /Pedersen/ }).first()).toBeVisible();
+  await page.waitForLoadState("networkidle");
+
+  // Taelleren starter FOERST her, saa vi kun maaler navigationen ind i profilen.
+  const calls = countRiderCardCalls(page);
+
+  await page.getByRole("link", { name: /Pedersen/ }).first().click();
+  await settleOnProfile(page);
+
+  console.log("[#5089] own profile, warm client-side navigation:", JSON.stringify(tally(calls), null, 2));
+
+  const warm = tally(calls);
+  expect(warm["GET /api/deadline-day/status"] ?? 0).toBe(0);
+  expect(warm["GET /api/scouting/me"] ?? 0).toBe(0);
+  expect(warm["GET /api/transfers"] ?? 0).toBeLessThanOrEqual(1);
+
+  // Ratchet: den DYRE profil (egen rytter, med salgs-knap og kontrakt-panel)
+  // efter en klient-navigation. Maalt 10/9: 16 foer, 7 efter.
+  expect(calls.length).toBeLessThanOrEqual(7);
+});
+
+test("tab data is fetched on tab open, once per rider (#5089)", async ({ page }) => {
+  await login(page);
+  const calls = countRiderCardCalls(page);
+
+  await page.goto("/riders/rider-2");
+  await settleOnProfile(page);
+  expect(tally(calls)["GET /api/riders/rider-2/history"] ?? 0).toBe(0);
+
+  await page.getByRole("tab", { name: /Historik|History/ }).click();
+  await expect.poll(() => tally(calls)["GET /api/riders/rider-2/history"] ?? 0).toBe(1);
+
+  // Frem og tilbage mellem fanerne maa ikke hente forfra.
+  await page.getByRole("tab", { name: /Overblik|Overview/ }).click();
+  await page.getByRole("tab", { name: /Historik|History/ }).click();
+  await page.waitForLoadState("networkidle");
+  expect(tally(calls)["GET /api/riders/rider-2/history"]).toBe(1);
 });

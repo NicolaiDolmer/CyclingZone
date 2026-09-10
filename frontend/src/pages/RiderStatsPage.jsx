@@ -5,6 +5,7 @@ import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
 import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
+import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
 import { riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
@@ -299,8 +300,18 @@ function TransferListButton({ rider, onChanged }) {
         // GET /api/transfers returnerer åbne listings — find rytterens egen.
         // Fejler kaldet, virker salgs-knappen stadig (POST svarer 409 hvis
         // rytteren allerede er listet).
-        const res = await fetch(`${API}/api/transfers`, { headers: { Authorization: `Bearer ${session.access_token}` } });
-        const data = await res.json().catch(() => []);
+        // #5089: listen er GLOBAL (samme svar uanset rytter), men blev hentet
+        // forfra ved hvert eneste profil-mount. Nu deles den via
+        // sharedRequestCache med kort TTL; hver mutation nedenfor invaliderer.
+        const data = await sharedRequestCache.get(
+          SHARED_KEYS.transferListings,
+          async () => {
+            const res = await fetch(`${API}/api/transfers`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+            if (!res.ok) throw new Error("transfer_listings_failed");
+            return res.json();
+          },
+          SHARED_TTL_MS.transferListings,
+        );
         if (!cancelled && Array.isArray(data)) {
           const own = data.find(l => l.rider?.id === rider.id) || null;
           setListing(own);
@@ -332,6 +343,9 @@ function TransferListButton({ rider, onChanged }) {
       );
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        // #5089: den delte transferliste er nu stale — ryd den, saa naeste
+        // profil-mount ser den nye/ændrede listing i stedet for TTL-kopien.
+        sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
         setListing(listing ? { ...listing, asking_price: price } : data);
         setShow(false);
         flashResult(true, listing ? t("sellRider.toast.priceUpdated") : t("sellRider.toast.listed"));
@@ -359,6 +373,7 @@ function TransferListButton({ rider, onChanged }) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        sharedRequestCache.invalidate(SHARED_KEYS.transferListings); // #5089
         setListing(null);
         setPrice(getRiderMarketValue(rider));
         setShow(false);
@@ -908,6 +923,10 @@ export default function RiderStatsPage() {
   const visitsFetchIdRef = useRef(null);
   const watchlistCountFetchIdRef = useRef(null);
   const retirementStatusFetchIdRef = useRef(null); // #2748 samme stale-guard-mønster
+  // #5089: hvilke fane-gatede datastroemme der allerede er hentet for DENNE
+  // rytter. { riderId, keys } frem for et bart Set, saa et rytter-skift kan
+  // nulstille synkront inde i effekten (ingen effekt-raekkefoelge at huske paa).
+  const tabFetchedRef = useRef({ riderId: null, keys: new Set() });
   const riderFetchIdRef = useRef(null);
   const transferListingFetchIdRef = useRef(null); // #3490 samme stale-guard-mønster
   useEffect(() => { activeAuctionRef.current = activeAuction; }, [activeAuction]);
@@ -1368,7 +1387,6 @@ export default function RiderStatsPage() {
     await Promise.all([loadActiveAuctionFull(riderRes.data), loadTransferListing()]);
     if (riderFetchIdRef.current !== fetchId) return;
     setLoading(false);
-    loadWatchlistCount();
 
     // Log besøg for ALLE ryttere (#963) — ikke kun hold-ejede. Endpointet
     // håndterer både besøgs-logging og det (team-gated) transferrygte internt.
@@ -1377,32 +1395,79 @@ export default function RiderStatsPage() {
       const h = await authHeaders();
       if (h) fetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
     }
-  }, [id, loadActiveAuctionFull, loadTransferListing, loadWatchlistCount]);
+  }, [id, loadActiveAuctionFull, loadTransferListing]);
 
   const loadDdStatus = useCallback(async () => {
     try {
       const h = await authHeaders();
       if (!h) return; // #4347/#4348: ingen session — banneret falder tilbage til inaktiv
-      const res = await fetch(`${API}/api/deadline-day/status`, { headers: h });
-      if (res.ok) {
-        const data = await res.json();
-        setDdActive(data.active === true);
-      }
+      // #5089: deadline day er GLOBAL tilstand, ikke rytter-specifik. Den blev
+      // hentet forfra ved hver profil-mount og indgik i 429-burstet 10/9. Nu
+      // deles svaret. Auth-tjekket ligger UDEN FOR cachen med vilje, saa en
+      // manglende session aldrig kan blive cachet som "inaktiv".
+      const data = await sharedRequestCache.get(
+        SHARED_KEYS.deadlineDayStatus,
+        async () => {
+          const res = await fetch(`${API}/api/deadline-day/status`, { headers: h });
+          if (!res.ok) throw new Error("dd_status_failed");
+          return res.json();
+        },
+        SHARED_TTL_MS.deadlineDayStatus,
+      );
+      setDdActive(data?.active === true);
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }, []);
 
   // #4448: alle load*-funktionerne er nu useCallback([id]), så listen herunder
   // er komplet og ESLint-verificeret. Effekten kører fortsat præcis når rytter-
   // id'et skifter — identiteterne er en ren funktion af `id`.
+  //
+  // #5089: KUN det hero'en og de altid-synlige flader bruger hentes her.
+  // Profilen fyrede foer 13 API-kald pr. rytter uanset hvilken fane spilleren
+  // stod paa, og de fleste af dem tegner en fane han maaske aldrig aabner. Det
+  // var halvdelen af 429-burstet 10/9. Fane-dataene ligger i effekten nedenfor.
+  //
+  // bid-timeline BLIVER her: den er ikke kun Historik-fanens tabel, den er
+  // ogsaa noeglen realtime-kanalen abonnerer paa (auction_id + status), og uden
+  // den holder hero'ens live-pris op med at opdatere under en auktion.
   useEffect(() => {
-    loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory();
-    loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend();
-    loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline(); loadVisits();
-    loadInterest(); loadRetirementStatus();
+    loadRider(); loadMyTeam(); loadWatchlistStatus(); loadValueTrend();
+    loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline();
+    loadRetirementStatus();
   }, [
-    loadRider, loadMyTeam, loadWatchlistStatus, loadHistory, loadDevelopmentHistory,
-    loadDevelopmentProjection, loadValueTrend, loadLevelCorrectionReceipt, loadDdStatus,
-    loadBidTimeline, loadVisits, loadInterest, loadRetirementStatus,
+    loadRider, loadMyTeam, loadWatchlistStatus, loadValueTrend,
+    loadLevelCorrectionReceipt, loadDdStatus, loadBidTimeline, loadRetirementStatus,
+  ]);
+
+  // #5089: fane-gatede datastroemme. Hver fane har allerede sin egen
+  // loading-gate (`events == null` / `interest == null` / spinner i Udvikling),
+  // saa spilleren ser praecis den samme flade som foer — den henter bare foerst
+  // naar fanen faktisk aabnes, og hoejst EEN gang pr. (rytter, fane).
+  //
+  // Guarden nulstilles ved rytter-skift: uden det ville et hop A → B → A vise
+  // B's historik under A's navn, fordi state'en stadig staar fra B.
+  useEffect(() => {
+    if (tabFetchedRef.current.riderId !== id) {
+      tabFetchedRef.current = { riderId: id, keys: new Set() };
+    }
+    const once = (key, load) => {
+      if (tabFetchedRef.current.keys.has(key)) return;
+      tabFetchedRef.current.keys.add(key);
+      load();
+    };
+    if (tab === "history") {
+      once("history", loadHistory);
+    } else if (tab === "development") {
+      once("development", loadDevelopmentHistory);
+      once("development-projection", loadDevelopmentProjection);
+    } else if (tab === "interest") {
+      once("interest", loadInterest);
+      once("view-count", loadVisits);
+      once("watchlist-count", loadWatchlistCount);
+    }
+  }, [
+    tab, id, loadHistory, loadDevelopmentHistory, loadDevelopmentProjection,
+    loadInterest, loadVisits, loadWatchlistCount,
   ]);
 
   function pushOverbidToast({ riderName, amount }) {
