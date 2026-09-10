@@ -7,13 +7,20 @@
 //   1. ingen vandret scroll i standardtilstanden — heller ikke med et langt
 //      rytternavn og et 8-cifret beloeb (review-fundet: "kun tilfaeldigt
 //      opfyldt af testdata" med een raekke og et 13-tegns navn),
-//   2. raekkens handling kan trykkes UDEN at aabne "Fuld tabel" foerst,
+//   2. raekkens handling er hoejst EET chip-tryk vaek — aldrig bag "Fuld tabel"
+//      (Mit holds tre er OVR/vaerdi/loen efter ejer-beslutningen 10/9),
 //   3. et chip-tryk flytter ikke chippen under fingeren,
 //   4. "Fuld tabel" er neutral, aldrig gold (TASTE P3: een gold pr. view).
 //
 // Desktop-projekterne springer over: standardtilstanden findes kun <=640px.
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
+import {
+  installNetworkMocks,
+  login,
+  stabilizePage,
+  revealMobileTableColumn,
+  MOBILE_COLUMN_ACTION,
+} from "./fixtures.js";
 
 const FULL_TABLE = /^(Full table|Fuld tabel)$/;
 const SELL_BUTTON = /^(Sell \/ Auction|Sælg \/ Auktion)$/;
@@ -63,7 +70,14 @@ test.describe("D-047 mobilstandard for DataTable (#5102)", () => {
   test("raekkens handling kan trykkes uden at aabne Fuld tabel foerst", async ({ page }) => {
     const fullTable = page.getByRole("button", { name: FULL_TABLE });
     await expect(fullTable).toHaveAttribute("aria-pressed", "false");
-    // Sidens primaere handling ER en af de tre standardkolonner (D-047).
+
+    // Ejer-beslutning 10/9: Mit holds tre er OVR, vaerdi og LOEN, saa
+    // handlingen er ikke fremme fra start her.
+    await expect(page.getByRole("button", { name: SELL_BUTTON })).toHaveCount(0);
+
+    // Men den er hoejst EET chip-tryk vaek — aldrig bag "Fuld tabel".
+    await revealMobileTableColumn(page, MOBILE_COLUMN_ACTION);
+    await expect(fullTable).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByRole("button", { name: SELL_BUTTON }).first()).toBeVisible();
   });
 

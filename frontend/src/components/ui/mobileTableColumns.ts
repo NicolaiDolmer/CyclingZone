@@ -10,8 +10,10 @@
 // "Tre TALkolonner" er standard-fyldet, ikke en spærring: de tre pladser fyldes
 // numerisk-først, men en side må sætte en handlings- eller badge-kolonne som en
 // af sine tre (`mobileDefaults`), og spilleren må bytte en ind. Ønskelisten,
-// Mit hold og Akademiet gør det med rækkens handlingsknap — ellers ville sidens
-// primære handling ligge bag "Fuld tabel" på mobil.
+// Akademiet og Stab gør det med rækkens handlingsknap — ellers ville sidens
+// primære handling ligge bag "Fuld tabel" på mobil. Mit hold gør det IKKE
+// (ejer 10/9): dér er de tre rating, værdi og løn, og handlingen er ét
+// chip-tryk væk.
 //
 // Kolonneroller på mobil:
 //   sticky  → navnekolonnen. Altid låst, aldrig en chip (D-047: en til/fra-knap

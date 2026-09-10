@@ -870,15 +870,16 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   const abilityModeColumns = [nameColumn, ratingColumn, typeColumn, ...abilityColumns];
   const columns = tableMode === "abilities" ? abilityModeColumns : overviewColumns;
 
-  // D-047 (#5102): Mit holds tre standardkolonner paa mobil. OVR + vaerdi er de
-  // tal en trup vurderes paa — og HANDLINGSkolonnen ("Saelg / Auktion") er den
-  // tredje med vilje: sidens primaere handling maa ikke ligge bag "Fuld tabel"
-  // paa en telefon (TASTE P10 / tjekliste-spoergsmaal 15). Loen er eet chip-tryk
-  // vaek. I evne-tilstanden findes hverken vaerdi, loen eller handling, saa dér
-  // er de tre OVR + de to foerste evner.
+  // D-047 (#5102): Mit holds tre standardkolonner paa mobil. Ejer-beslutning
+  // 10/9: OVR, vaerdi og LOEN — de tre tal en trup vurderes paa. Handlingen
+  // ("Saelg / Auktion") er eet chip-tryk vaek og ligger desuden paa
+  // rytterprofilen, som raekken selv linker til. Akademiet, Stab og Oensken
+  // beholder handlingen som deres tredje, fordi den DER er sidens primaere
+  // handling. I evne-tilstanden findes hverken vaerdi, loen eller handling, saa
+  // dér er de tre OVR + de to foerste evner.
   const mobileDefaults = tableMode === "abilities"
     ? ["rating", ...STATS.slice(0, 2).map((s) => s.key)]
-    : ["rating", "value", "action"];
+    : ["rating", "value", "salary"];
 
   // #4628 (audit 2026-09 række #2): kontrol-rækken lå som en LØSREVET række
   // mellem sidehovedet og tabellen — præcis PAGE_TEMPLATES' "no orphan action
