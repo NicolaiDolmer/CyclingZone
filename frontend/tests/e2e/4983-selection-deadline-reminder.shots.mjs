@@ -1,7 +1,8 @@
 // #4983 — screenshots af den synlige udtagelses-påmindelse i begge tilstande:
-// gul (fristen inden for #2180's 36-timers vindue) og rød (inden for
-// assistentens late fill-horisont, 24 t). Ad-hoc capture-script, ikke en del af
-// CI-suiten (testMatch fanger kun *.spec.js).
+// gul (truppen er ikke fuld inde i #2180's 36-timers vindue) og rød (truppen er
+// UNDER deltagelses-gulvet på 6 inde i assistentens late fill-horisont, 24 t —
+// ejer-beslutning 10/9). Ad-hoc capture-script, ikke en del af CI-suiten
+// (testMatch fanger kun *.spec.js).
 //
 // /api/me/selection-reminder overrides KUN i dette scripts egen browser-context.
 // Den delte mockHandlers.js svarer bevidst "tone: none", så resten af
@@ -25,41 +26,59 @@ const BASE = process.argv[2] || "http://127.0.0.1:4476";
 const OUT = resolve(process.argv[3] || resolve(__dirname, "screenshots"));
 
 // Samme shape som backend/lib/selectionDeadlineReminder.js returnerer.
-// GUL: begge løb over 24-timers-grænsen, altså inde i 36-timers vinduet.
 //
-// Løbene og tallene er valgt så de matcher DET BOARD der står 60 px længere nede
-// på samme side (Løbsdag 13 i mockHandlers: "Tour de Preview 1 / 8 ·
-// UNDERBEMANDET" og "Critérium Preview 0 / 7 · UNDERBEMANDET"). Ellers ville
-// skærmbilledet vise to forskellige tal for det samme løb og ligne en regnefejl
-// for en læser der ikke kender mock-lagdelingen.
+// Tallene ER de fire tilfælde ejer-beslutningen 10/9 handler om, så billedet kan
+// læses uden at kende koden:
+//
+//   GUL   6/8 med KUN 6 timer til start — over gulvet på 6, altså et hold der
+//         stiller op (bare ikke i fuld styrke). Bliver aldrig rødt. Det er hele
+//         pointen i beslutningen.
+//   GUL   1/8 med 30 timer til start — under gulvet, men uden for de 24 timer.
+//   RØD   0/7 og 5/8 inde i horisonten — begge under gulvet, altså hold der
+//         IKKE stiller op.
+//
+// Løbsnavnene er valgt så de ikke kolliderer med DET BOARD der står længere nede
+// på samme side (Løbsdag 13 i mockHandlers viser "Tour de Preview 1 / 8" og
+// "Critérium Preview 0 / 7"): 1/8-løbet ER Tour de Preview og 0/7-løbet ER
+// Critérium Preview, mens de to nye tal ligger på "Giro di Preview", som slet
+// ikke står på boardet. Ellers ville skærmbilledet vise to forskellige tal for
+// det samme løb og ligne en regnefejl.
 const REMINDER_WARNING = {
   enabled: true,
   tone: "warning",
   count: 2,
   races: [
     {
-      id: "wp-1", name: "Tour de Preview", race_class: "TourFrance",
-      deadline_at: "2026-09-12T09:00:00.000Z", hours_until: 30,
-      entry_count: 1, target_size: 8, tone: "warning",
+      id: "wp-2", name: "Giro di Preview", race_class: "GiroVuelta",
+      deadline_at: "2026-09-11T15:00:00.000Z", hours_until: 6,
+      entry_count: 6, target_size: 8, min_size: 6, will_not_start: false, tone: "warning",
     },
     {
-      id: "wp-4", name: "Critérium Preview", race_class: "ProSeries",
-      deadline_at: "2026-09-12T13:00:00.000Z", hours_until: 34,
-      entry_count: 0, target_size: 7, tone: "warning",
+      id: "wp-1", name: "Tour de Preview", race_class: "TourFrance",
+      deadline_at: "2026-09-12T09:00:00.000Z", hours_until: 30,
+      entry_count: 1, target_size: 8, min_size: 6, will_not_start: true, tone: "warning",
     },
   ],
   window_hours: 36,
   urgent_hours: 24,
 };
 
-// RØD: det nærmeste løb er inde i late fill-horisonten. Ét rødt løb gør hele
-// markeringen rød (aggregateReminderTone) — nav-prikken følger med.
+// RØD: begge løb er under gulvet OG inde i late fill-horisonten. Ét rødt løb gør
+// hele markeringen rød (aggregateReminderTone) — nav-prikken følger med.
 const REMINDER_URGENT = {
   ...REMINDER_WARNING,
   tone: "urgent",
   races: [
-    { ...REMINDER_WARNING.races[0], hours_until: 6, tone: "urgent" },
-    { ...REMINDER_WARNING.races[1], hours_until: 18, tone: "urgent" },
+    {
+      id: "wp-4", name: "Critérium Preview", race_class: "ProSeries",
+      deadline_at: "2026-09-11T15:00:00.000Z", hours_until: 6,
+      entry_count: 0, target_size: 7, min_size: 6, will_not_start: true, tone: "urgent",
+    },
+    {
+      id: "wp-2", name: "Giro di Preview", race_class: "GiroVuelta",
+      deadline_at: "2026-09-12T03:00:00.000Z", hours_until: 18,
+      entry_count: 5, target_size: 8, min_size: 6, will_not_start: true, tone: "urgent",
+    },
   ],
 };
 
