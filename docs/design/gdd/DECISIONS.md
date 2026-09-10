@@ -1105,6 +1105,69 @@ på løbsdag 15 til en bedre, ender højere end den, der bliver, kun hvis den ny
 mentor er tydeligt bedre; ugentlig rotation mellem ligeværdige mentorer ender
 lavere end at blive i ét par.
 
+## Q-035 · Hvad bestemmer ungdomstruppernes kapacitet?
+
+**Status:** stillet 10/9 (Claude Code) efter at ejeren samme dag løftede
+"trupper U23/junior" fra nr. 8 til nr. 3 på MASTERPLANs venteliste (parret med
+træning) på spillerdata: roadmap nr. 2 (35 stemmer), skema nr. 3, forumtråden
+med flest visninger. Vist som tre kolonner (rig D1-klub mod D4-talentfabrik).
+A valgt, se D-032. **A, anbefalet:** samme grundloft pr. trup for alle;
+akademifaciliteten udbygges i trin med anlægspris og stigende drift pr. plads.
+**B:** samme faste loft for alle, ingen udvidelse. **C:** loftet følger divisionen.
+**Tradeoff:** A giver talentfabrikken (D-001) en vækstvej og købeklubben (D-008)
+et frit valg, og penge får et sink; B er ren struktur uden identitetsvækst;
+C belønner sportslig styrke med ungdomskapacitet og rammer "balance = struktur".
+Spillerbevis: forum 7-9/9 bad selv om udvidelse med stigende pris; "én stor
+trup" fik veto 23 % i skemaet. Kilder: YOUTH_RULES §2.1/§6 (loft afgøres af
+økonomi-sim + ejer-go), doktrinen "styrke straffes aldrig".
+
+## D-032 · Fast grundloft pr. ungdomstrup plus købte udvidelser
+
+**Status:** ejer-valgt 10/9, svar på Q-035.
+**Ejerens svar, ordret:** "A · Fast grundloft + køb af udvidelser (anbefalet)".
+Alle klubber får samme grundloft pr. trup (Junior og U23). Kapacitet ud over
+grundloftet købes som trin på akademifaciliteten med anlægspris og stigende
+drift pr. plads; den kan ikke optjenes af division eller resultater.
+**Fravalgt:** ét fælles loft uden udvidelse (B) og divisionsafhængigt loft (C);
+"én stor trup på 50 uden tiers" er fortsat fravalgt (YOUTH_RULES §2.1 + skema-veto).
+**Åbent (YOUTH_RULES §6, økonomi-sim + ejer-go):** grundloftets størrelse pr.
+trup, antal trin, anlægspris og driftskurve, om trin kan sælges/nedgraderes,
+og om udvidelsen deles mellem Junior og U23 eller købes pr. trup. Tallene 12/10
+og +4/+2 i kortet var illustration, ikke valg. Ingen build-go.
+**Foreslået verifikation:** en D4-klub kan med samme grundloft som en D1-klub
+drive en talentfabrik; en udvidelse betaler sig kun ved reel brug (drift pr.
+plads), så tomme pladser er et tab; ingen klub får kapacitet af sin division.
+
+## Q-036 · Skal udlån af ryttere findes, og for hvem?
+
+**Status:** stillet 10/9 (Claude Code) med tre kolonner (en 20-årig "nr. 13" og
+en D3-klub uden ryttere). B valgt, se D-033. **A, anbefalet af designeren:**
+udlån kun af Junior/U23 (sæsonalder ≤ 22) for resten af sæsonen; ejer beholder
+ejerskab, låner betaler løn, udvikling tæller hos begge (D-015). **B:** ingen
+udlån; behold, sælg eller byt. **C:** udlån for alle aldre og perioder.
+**Tradeoff:** A giver talentfabrikken en udvej for overskydende unge og fylder
+lavere divisioner med menneskers ryttere, men indfører en ny aftaletype og en
+fair play-flade; B er enklest uden misbrugsflade, men "nr. 13" er et rent tab;
+C skaber lån af en stjerne til ét løb og rammer fair play (#3131, #3818).
+Spillerbevis: "Deeper negotiation between managers" 34 stemmer (idé 4,0).
+Kilder: D-015, D-032, TRANSFER_MARKET_RULES, YOUTH_RULES §2.2.
+
+## D-033 · Ingen udlån af ryttere
+
+**Status:** ejer-valgt 10/9, svar på Q-036. Ejeren fravalgte designerens anbefaling.
+**Ejerens svar, ordret:** "B · Ingen udlån".
+Ryttere kan ikke udlånes mellem klubber, hverken unge eller seniorer. En klub
+med flere unge end pladser må beholde (købt kapacitet, D-032), sælge eller
+bytte som i dag. Lavere divisioners felter fyldes fortsat med AI-ryttere.
+**Fravalgt:** udlån af unge (A) og udlån for alle (C).
+**Konsekvens for andre beslutninger:** D-015's "flere udviklingsklubber" opstår
+kun gennem salg/bytte af unge, ikke gennem lån; D-032's købte udvidelser er den
+eneste indenlandske udvej for overskydende talent. **Designerens forbehold,
+registreret:** salg af en ung med potentiale er et permanent tab, så trykket
+på at købe kapacitet stiger; det bør indgå i økonomi-simulationen (YOUTH_RULES §6).
+**Genåbnes kun** med en konkret grund, fx målt AI-andel i ungdomsfelter eller
+gentagne spillerønsker efter slice 2. Ingen build-go.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code

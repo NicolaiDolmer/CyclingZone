@@ -1,5 +1,9 @@
 # Transfermarkedets regler - SSOT
 
+> **GDD-retning, ejer 10/9 (D-033):** ingen udlån af ryttere, hverken unge eller seniorer;
+> markedets veje er behold, salg og bytte. Ejeren fravalgte designerens anbefaling om
+> udlån af unge; se [D-033](design/gdd/DECISIONS.md). Ingen transferimplementation er ændret.
+
 > **GDD-retning, ejer 10/9 (D-025):** fremtidigt samspil mellem konkrete ryttere
 > følger dem ved transfer. Købes et etableret makkerpar, bevarer de deres
 > indbyrdes samspil, ikke en relation til alle nye holdkammerater. Domænereglen

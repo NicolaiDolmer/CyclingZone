@@ -410,11 +410,33 @@ Registreret som D-031 efter tre kurver over samme scenarie (skift på løbsdag
 15 af 40). Mentortråden (D-026 til D-031) er nu konkret nok til et koncept;
 kalibrering, synlighed og UI er åbne, og intet er build-godkendt.
 
+## Planvalg 10/9 kl. 13:30 (MASTERPLAN, ikke GDD)
+
+Ejeren løftede "trupper U23/junior" fra nr. 8 til nr. 3 på ventelisten, parret
+med rytterudvikling/træning, på spillerdata (roadmap nr. 2 med 35 stemmer, skema
+nr. 1+3, forum). Ordret valg: "A · Løft til nr. 3, parret med træning (anbefalet)".
+Det ændrer ikke bane 1; det afgør det første store efter S4-cutover.
+
+## Q-035 · Ungdomstruppernes kapacitet, ejerens svar ordret (10/9 kl. 13:40)
+
+> A · Fast grundloft + køb af udvidelser (anbefalet)
+
+Registreret som D-032 efter tre kolonner (rig D1-klub mod D4-talentfabrik).
+Tal i kortet var illustration; lofter og priser afgøres i YOUTH_RULES §6's
+økonomi-sim med ejer-go.
+
+## Q-036 · Udlån, ejerens svar ordret (10/9 kl. 13:50)
+
+> B · Ingen udlån
+
+Registreret som D-033; ejeren fravalgte designerens anbefaling (udlån af unge).
+Forbeholdet om permanent tab ved salg af unge er noteret til økonomi-simulationen.
+
 ## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-034/D-031. Intet spørgsmål står åbent; Q-035 er ikke stillet.
-- Næste skridt: bredere områder efter spillerdata (holdudtagelse, akademi/ungdomshold, mobil); træningsreworket er allerede ejer-besluttet 6/9. Fog of war som eget kapitel senere. Ro under pres og Træningsdisciplin er stadig kandidater uden mekanik.
+- Sidste svar: Q-036/D-033 (ingen udlån). Intet spørgsmål står åbent; Q-037 er ikke stillet.
+- Næste skridt: fog of war-kapitlet (markedsværdi og potentiale, scouting, Lederskabs synlighed), derefter holdudtagelse og mobil efter spillerdata. Ro under pres og Træningsdisciplin er stadig kandidater uden mekanik.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.

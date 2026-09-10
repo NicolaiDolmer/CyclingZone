@@ -7,6 +7,8 @@
 > [GDD](GAME_DESIGN_DOCUMENT.md) og [D-001/D-008](design/gdd/DECISIONS.md).
 > Konkrete trupregler, omkostninger og flows nedenfor ændres ikke af dette principvalg;
 > deres sammenhæng med retningen skal efterprøves under designgennemgangen.
+> **D-032 (Claude Code, 10/9):** ungdomstruppernes kapacitet = samme grundloft pr.
+> trup for alle + købte facilitetstrin med stigende drift; aldrig af division. Se §6 pkt. 1.
 
 > **Følg udviklede ryttere, ejer 10/9 (D-011):** Den fremtidige automatiske kreds
 > skal omfatte eget akademi samt unge købt og udviklet en væsentlig del af
@@ -213,7 +215,7 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 
 | # | Parameter | Afgøres af |
 |---|---|---|
-| 1 | Loft pr. trup (forslag U23 12, junior 10) | økonomi-sim i slice 1/2 + ejer-go |
+| 1 | Loft pr. trup (forslag U23 12, junior 10). **Princip ejer-valgt 10/9 (D-032):** samme grundloft for alle klubber; ekstra pladser købes som facilitetstrin med anlægspris og stigende drift pr. plads; kapacitet følger aldrig division eller resultater | økonomi-sim i slice 1/2 + ejer-go (tal, trin, priser) |
 | 2 | Drift pr. plads pr. tier | økonomi-sim (Scorecard C3) + ejer-go |
 | 3 | Antal divisioner i ungdomspyramiderne | felt-gaten (C1) mod population + ejer-go |
 | 4 | Løbsfrekvens pr. tier | `CALENDAR_RULES.md`-arbejdet i slice 2 |

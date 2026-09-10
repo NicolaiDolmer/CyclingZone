@@ -237,6 +237,22 @@ skiftes, men et nyt par bygger udbyttet op forfra over løbsdage; det lærte
 beholdes, også når parret ophører ved salg. Sæsonlås og omkostningsfrit skift
 er fravalgt. Opbygningens længde, feedback og UI er åbne.
 
+### Ungdomstrupper: kapacitet (D-032, ejer-valgt 10/9)
+
+[YOUTH_RULES](YOUTH_RULES.md) ejer strukturen (Junior 16-18, U23 19-22, egne
+løb og pyramider, ejer 2/9). GDD-samtalen tilføjer princippet for kapacitet:
+alle klubber får samme grundloft pr. trup, og ekstra pladser købes som trin på
+akademifaciliteten med anlægspris og stigende drift. Kapacitet følger aldrig
+division eller resultater. Det giver talentfabrikken (D-001) en vækstvej og
+købeklubben (D-008) et frit fravalg, uden at styrke belønnes med struktur.
+Lofter, trin og priser afgøres af økonomi-simulationen i YOUTH_RULES §6.
+Spillerdata 10/9 (roadmap nr. 2, skema nr. 3) fik ejeren til at løfte området
+til nr. 3 på MASTERPLANs venteliste; det er en rækkefølge, ikke et build-go.
+**D-033 (ejer-valgt 10/9, mod designerens anbefaling):** ingen udlån af
+ryttere. Overskydende unge håndteres med købt kapacitet, salg eller bytte;
+designerens forbehold om permanent tab ved salg af talent er noteret til
+økonomi-simulationen.
+
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
 Dette er en samtalerækkefølge, ikke en ændring af leverancerne i MASTERPLAN.
@@ -363,3 +379,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-030 om Lederskab som ny evne (kun mentor/trup) valgt; fog of war parkeret som
   eget kapitel på ejerens ønske; muligheder vises visuelt før kortet.
   D-031 om frit mentorskift med opbygning forfra valgt; mentortråden samlet.
+  D-032 om ungdomstruppernes kapacitet (fast grundloft + købte udvidelser) valgt.
+  D-033: ingen udlån (ejerens fravalg af designerens anbefaling).
