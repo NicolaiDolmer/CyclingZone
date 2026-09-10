@@ -88,8 +88,11 @@ test("#5060: .cz-pinned-rule-* tegner en 1px hairline, ikke en skygge", () => {
   assert.match(block.slice(0, 400), /width:\s*1px/);
   assert.match(block.slice(0, 400), /background-color:\s*var\(--border\)/);
   assert.doesNotMatch(block.slice(0, 400), /box-shadow/, "hairline, ikke skygge (PAGE_TEMPLATES hard don't)");
-  assert.match(css, /\.cz-pinned-rule-end::after\s*\{\s*right:\s*0;\s*\}/);
-  assert.match(css, /\.cz-pinned-rule-start::after\s*\{\s*left:\s*0;\s*\}/);
+  // -1px, ikke 0: den kollapsede border males i GRAENSEN mellem cellerne (lige
+  // uden for border-boxen), saa `0` ville lægge reglen ved siden af den og give
+  // en 2px-streg i hvile. Målt ved 4x DPI: 4 device-px før, 8 med `0`.
+  assert.match(css, /\.cz-pinned-rule-end::after\s*\{\s*right:\s*-1px;\s*\}/);
+  assert.match(css, /\.cz-pinned-rule-start::after\s*\{\s*left:\s*-1px;\s*\}/);
 });
 
 // #5060: hjørnecellen (den pinnede kolonnes EGEN overskrift) skal ligge over

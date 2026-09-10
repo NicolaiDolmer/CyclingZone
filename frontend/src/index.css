@@ -351,8 +351,15 @@ tr:hover .auction-rider-cell-winning {
   background-color: var(--border);
   pointer-events: none;
 }
-.cz-pinned-rule-end::after { right: 0; }
-.cz-pinned-rule-start::after { left: 0; }
+/* -1px, ikke 0: med border-collapse maler browseren den kollapsede 1px-border i
+   selve GRAENSEN mellem cellerne, dvs. i [cellens right, right+1) - altsaa lige
+   UDEN FOR cellens border-box. En pseudo-regel paa `right: 0` ville lande ved
+   siden af den og give en 2px-streg naar tabellen staar i hvile (maalt, 4x DPI:
+   4 device-px foer, 8 efter). Paa -1px ligger de to praecis oven i hinanden:
+   uaendret i hvile, og reglen foelger cellen naar der scrolles. Cellen er
+   z-table-col/-corner og maler derfor over de statiske nabo-celler. */
+.cz-pinned-rule-end::after { right: -1px; }
+.cz-pinned-rule-start::after { left: -1px; }
 
 /* "Dig"-markering paa tabelraekker (#2795-opfoelgning).
    Markeringen laa foer som `inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)` paa
