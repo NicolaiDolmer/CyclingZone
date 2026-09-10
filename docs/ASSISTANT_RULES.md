@@ -144,6 +144,32 @@ altid `proactive`. Skal de følge tilstanden, er det en selvstændig beslutning 
 `409 assistant_opt_in_not_active` i de to andre. En synlig kontakt uden virkning ville være
 en løgn om hvad spilleren styrer.
 
+### Påmindelsen før fristen ([#4983](https://github.com/NicolaiDolmer/CyclingZone/issues/4983), D-034)
+
+D-034's synlige halvdel: **før** assistenten må gøre noget, får manageren at vide at truppen
+mangler. Ren UI-tilstand - den skriver intet, sender ingen notifikation og læser ikke
+`assistant_selection_mode`. Den virker derfor ens i alle tre tilstande.
+
+| Regel | Værdi | Kilde | Fil |
+|---|---|---|:--|
+| Fristen | første etapes `scheduled_at` | egenskab 2 ovenfor (wall-clock, ikke binding-vinduet) | `selectionWarningSweep.js` (`racesNeedingSelectionWarning`) |
+| "Trup mangler" | `race_entries` (manuelle + auto) `< selectionSizeForRace(race).max` | [#4038](https://github.com/NicolaiDolmer/CyclingZone/issues/4038) | `raceAutopick.js`, `raceSelection.js` |
+| **Gul markering** | fristen inden for **36 t** (`SELECTION_WARNING_HOURS`) | [#2180](https://github.com/NicolaiDolmer/CyclingZone/issues/2180) - samme vindue som indbakke-varslet | `selectionWarningSweep.js:41` |
+| **Rød eskalering** | fristen inden for `assistant_late_fill_hours` (**24 t** default) | [#4201](https://github.com/NicolaiDolmer/CyclingZone/issues/4201)/D-034 - assistentens egen horisont | `assistantSelectionMode.js` |
+| Spillerens eget valg | `teams.selection_reminder_enabled`, default **true** | #4983 | `database/2026-09-10-4983-selection-reminder.sql` |
+| Endpoint | `GET /api/me/selection-reminder` (read-only), `PATCH /api/me/selection-reminder-settings` | #4983 | `backend/lib/selectionDeadlineReminder.js` |
+
+**De to trin er ét tal hver, og de er begge lånt.** Påmindelsen opfinder hverken en frist
+eller et vindue: gul er det vindue indbakke-varslet allerede bruger, rød er den horisont
+assistenten selv ville handle inden for. Flyttes `assistant_late_fill_hours` i `app_config`,
+flytter det røde trin med af sig selv. Ændres et af tallene, **skal denne tabel opdateres i
+samme PR** (hard rule 30).
+
+**Afmeldte hold og fulde trupper markeres aldrig** - samme to udeladelser som sweepet. En
+trup assistenten selv har fyldt tæller som fuld; det var præcis #4038's rettelse, og
+påmindelsen må ikke genindføre fejlen på en anden flade. Kontakten på Profil er synlig i alle
+tre tilstande, netop fordi påmindelsen virker i alle tre - modsat autopick-kontakten ovenfor.
+
 ---
 
 ## 2. De indgange der findes

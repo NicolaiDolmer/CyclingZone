@@ -41,6 +41,8 @@ import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
 import { useActionSummary } from "../hooks/useActionSummary";
+import { useSelectionReminder } from "../hooks/useSelectionReminder.ts"; // #4983
+import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.ts"; // #4983
 import { useUserProfile } from "../lib/userProfile.jsx"; // #3034
 
 const API = import.meta.env.VITE_API_URL;
@@ -185,7 +187,15 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       // nav-punkt; fanen selv viser plannerens tom-state når flaget er off.
       key: "planlaegning", label: t("nav.group.planlaegning"),
       items: [
-        { to: "/planning", label: t("nav.item.planning") },
+        // #4983: dot: true — gul markering når en kommende trup mangler før
+        // fristen, rød inde i assistentens late fill-horisont. Samme
+        // item-specifikke prik-recipe som Patch Notes (#3811); tonen slås op
+        // i dotTones (selectionReminder.ts), så en almindelig prik forbliver guld.
+        {
+          to: "/planning", label: t("nav.item.planning"), dot: true,
+          dotLabel: t("a11y.selectionReminder"),
+          dotLabelUrgent: t("a11y.selectionReminderUrgent"),
+        },
       ],
     },
     {
@@ -259,7 +269,7 @@ async function fetchForumUnread(headers) {
   }
 }
 
-function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCounts, dotFlags, exact, excludeQuery, excludePaths, title }) {
+function NavItem({ to, label, badge, dot, dotLabel, dotLabelUrgent, onClick, location, badgeCounts, dotFlags, dotTones, exact, excludeQuery, excludePaths, title }) {
   const isActive = pathMatchesNavItem(location, { to, exact, excludeQuery, excludePaths });
   // #3521: badge-tallet er nu item-specifikt (Indbakke ≠ Transfers) — se
   // navBadges.js. resolveNavBadgeCount returnerer 0 for items uden badge: true.
@@ -268,6 +278,14 @@ function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCoun
   // #3811: ulæst-prik (Patch Notes) — samme item-specifikke opslags-recipe som
   // badge ovenfor, men boolean i stedet for tal (ingen "hvor mange", kun "nyt").
   const showDot = resolveNavDot({ to, dot }, dotFlags);
+  // #4983: prikkens FARVE. "none" = ingen tone-nøgle for punktet → guld som før
+  // (#3811's ulæst-prik er uændret). Gul/rød bruger de eksisterende
+  // status-tokens, aldrig nye farver.
+  const dotTone = resolveNavDotTone({ to, dot }, dotTones);
+  const dotToneClass = dotTone === "none" ? "bg-cz-accent" : NAV_DOT_TONE_CLASS[dotTone];
+  // Farve alene må ikke bære forskellen gul/rød (P8 + skærmlæsere): den
+  // presserende tilstand har sin egen sr-only-tekst.
+  const dotText = dotTone === "urgent" ? (dotLabelUrgent || dotLabel) : dotLabel;
   // #3102: Link, ikke NavLink. NavLink beregner selv aktiv-tilstand på et rent
   // prefix-match og sætter aria-current="page" ud fra DEN — den kender hverken
   // excludeQuery eller excludePaths. Med tre nav-items under /races-prefixet
@@ -296,9 +314,9 @@ function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCoun
           patch notes" er ikke en meningsfuld optælling for spilleren), samme
           guld som badgen ovenfor. Forsvinder når /patch-notes åbnes (Layout()). */}
       {showDot && (
-        <span className="flex-shrink-0" title={dotLabel}>
-          <span aria-hidden="true" className="block w-2 h-2 rounded-full bg-cz-accent" />
-          <span className="sr-only">{dotLabel}</span>
+        <span className="flex-shrink-0" title={dotText}>
+          <span aria-hidden="true" className={`block w-2 h-2 rounded-full ${dotToneClass}`} />
+          <span className="sr-only">{dotText}</span>
         </span>
       )}
       {/* #481 PR-2: hover indicator — the wordmark's short thick accent-dash, scales
@@ -311,7 +329,7 @@ function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCoun
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, logoutLabel, onOpenFeedback, contactLabel }) {
+function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, onOpenFeedback, contactLabel }) {
   const { t } = useTranslation("common");
   const { isPro, isFounder } = useSubscription(team?.id);
   return (
@@ -385,7 +403,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
               {isOpen && (
                 <div className="py-0.5">
                   {group.items.map(item => (
-                    <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} />
+                    <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} dotTones={dotTones} />
                   ))}
                 </div>
               )}
@@ -396,7 +414,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
         {bottomItems.map(item => (
-          <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} />
+          <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} dotTones={dotTones} />
         ))}
 
         {/* #2602: Contact/feedback-indgang — samme sted som Help (bottom nav),
@@ -561,6 +579,9 @@ export default function Layout() {
   // når alle tilbud er besvaret uden ekstra wiring her.
   const { pending: pendingActions } = useActionSummary();
   const badgeCounts = buildNavBadgeCounts({ unread, pendingOffersCount: pendingActions.counts.total });
+  // #4983: den synlige paamindelse foer udtagelsesfristen. Read-only og
+  // fail-safe: uden svar er tonen "none", og navigationen ser ud som foer.
+  const { reminder: selectionReminder } = useSelectionReminder();
 
   async function fetchOnlineCount(headers) {
     if (!API) return;
@@ -856,9 +877,17 @@ export default function Layout() {
   // #3811: ulæst-prik-flag pr. `to` — samme recipe som badgeCounts ovenfor.
   // #4118/#3451: forum-prikken lever uden for buildNavDotFlags (den er
   // patch-notes-specifik og lokalt drevet) — samme kort, egen nøgle.
-  const dotFlags = { ...buildNavDotFlags({ patchNotesUnread }), "/forum": forumUnread };
+  const dotFlags = {
+    ...buildNavDotFlags({ patchNotesUnread }),
+    "/forum": forumUnread,
+    // #4983: prikken ved Planlægning tændes af serverens påmindelse. "none"
+    // (ingen manglende trup, eller spilleren har slået den fra) = ingen prik.
+    "/planning": selectionReminder.tone !== "none",
+  };
+  // #4983: samme kort-recipe, men tonen (gul/rød) i stedet for kun "vis den".
+  const dotTones = { "/planning": selectionReminder.tone };
   const sidebarProps = {
-    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags,
+    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones,
     logoutLabel: t("nav.item.logout"),
     onOpenFeedback: () => setFeedbackOpen(true),
     contactLabel: t("nav.item.contact"),

@@ -9521,6 +9521,10 @@ router.get("/me/selection-reminder", requireAuth, presencePulseLimiter, async (r
     // En paamindelse maa aldrig vaelte navigationen: fail-safe er "ingen
     // markering", ikke en fejl-flade (Layout mounter dette for hver side).
     console.error("[selection-reminder] failed:", error?.message || error);
+    captureException(error, {
+      tags: { flow: "planning", stage: "selection-reminder" },
+      extra: { teamId: req.team?.id ?? null },
+    });
     res.json(empty(true));
   }
 });

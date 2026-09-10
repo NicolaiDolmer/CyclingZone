@@ -45,6 +45,7 @@ export default function ProfilePage() {
   const [dmStatus, setDmStatus] = useState(null);
   const [assistant, setAssistant] = useState(null);
   const [savingAssistant, setSavingAssistant] = useState(false);
+  const [savingSelectionReminder, setSavingSelectionReminder] = useState(false); // #4983
   // #5013: én række pr. forum-kategori med "følger jeg den?".
   const [forumCategories, setForumCategories] = useState(() => normalizeCategoryMutes(null));
   const [savingForumCategory, setSavingForumCategory] = useState(null);
@@ -384,6 +385,40 @@ export default function ProfilePage() {
     }
   }
 
+  // #4983: paamindelsen foer udtagelsesfristen. Egen endpoint frem for et felt
+  // paa assistant-settings, fordi den PATCH er gated paa opt_in-tilstanden —
+  // paamindelsen er ren UI og virker i alle tre tilstande.
+  async function toggleSelectionReminder(enabled) {
+    setSavingSelectionReminder(true);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        showMsg(t("discord.noSession"), "error");
+        return;
+      }
+      const res = await fetch(`${API}/api/me/selection-reminder-settings`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) showMsg(data.error || t("errors:generic.serverError"), "error");
+      else {
+        setAssistant(prev => ({ ...prev, selection_reminder_enabled: data.selection_reminder_enabled }));
+        showMsg(enabled ? t("selectionReminder.on") : t("selectionReminder.off"));
+      }
+    } catch (cause) {
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_selection_reminder", {
+        reason: "network",
+        cause,
+        context: { enabled },
+      });
+    } finally {
+      setSavingSelectionReminder(false);
+    }
+  }
+
   async function toggleDmPref(prefKey, enabled) {
     // Læses FØR den optimistiske opdatering, så tilbagerulningen er lokal.
     // refreshDmStatus() kan IKKE bære den: den er selv et fetch med en tavs
@@ -639,6 +674,25 @@ export default function ProfilePage() {
             );
           })}
         </div>
+      </Card>
+
+      {/* Paamindelse foer udtagelsesfristen (#4983) — vises ALTID: den er ren
+          UI-tilstand og afhaenger ikke af assistentens tilstand. */}
+      <Card className="p-5 mb-4">
+        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("selectionReminder.title")}</h2>
+        <p className="text-cz-3 text-xs mb-4">{t("selectionReminder.subtitle")}</p>
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="profile-selection-reminder" className="text-cz-1 text-sm font-medium">
+            {t("selectionReminder.toggleLabel")}
+          </label>
+          <Toggle
+            id="profile-selection-reminder"
+            checked={assistant?.selection_reminder_enabled !== false}
+            disabled={savingSelectionReminder}
+            onChange={e => toggleSelectionReminder(e.target.checked)}
+          />
+        </div>
+        <p className="text-cz-3 text-xs leading-relaxed mt-3">{t("selectionReminder.toggleHint")}</p>
       </Card>
 
       {/* Assistent (#4201) — kun naar tilstanden er "opt_in"; ellers er der intet valg */}

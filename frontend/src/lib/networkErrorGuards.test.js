@@ -135,8 +135,8 @@ test("de rettede handlere viser en lokaliseret netvaerksbesked, ikke en tom fejl
   // errors:generic.networkError findes i BÅDE en og da (verificeret 14/8).
   assert.equal(
     (profile.match(/t\("errors:generic\.networkError"\)/g) || []).length,
-    6,
-    "alle seks Profil-handlere skal vise netværks-teksten (#5012 tilføjede den sjette)",
+    7,
+    "alle syv Profil-handlere skal vise netværks-teksten (#4983 tilføjede den syvende: påmindelsen før udtagelsesfristen)",
   );
   assert.match(riderStats, /setAuctionError\(t\("errors:generic\.networkError"\)\)/);
   assert.match(board, /t\("errors:generic\.networkError"\)/);

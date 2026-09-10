@@ -70,6 +70,15 @@ gaterne bor i [`ASSISTANT_RULES.md`](ASSISTANT_RULES.md) §1b - dupliker dem ikk
 flippet**, og regel 1's forbud mod nye proaktive assistent-FLADER gælder uændret i alle tre
 tilstande; den eneste nye flade er én til/fra-kontakt på Profil, synlig kun i `opt_in`.
 
+**Påmindelsen før fristen (#4983, D-034) er ikke en sjette udfyldningsvej.** Den markerer
+"Planlægning" gult i navigationen og viser en boks øverst på planlægningssiden når en trup
+mangler før fristen, og rød inde i `assistant_late_fill_hours`. Den skriver intet, udtager
+intet og sender ingen besked - regel 1's forbud mod nye proaktive assistent-FLADER handler om
+flader der handler på spillerens vegne, og en markering der siger "du mangler noget" gør det
+modsatte. De to eskaleringstrin og deres kilder står i
+[`ASSISTANT_RULES.md`](ASSISTANT_RULES.md) §1b ("Påmindelsen før fristen") - duplikér dem ikke
+her. Spilleren kan slå den fra på Profil (`teams.selection_reminder_enabled`, default til).
+
 **Kendt rest (kode, hører til P3):** symmetriske kontroller (man kan rydde dag OG sæson, men kun udfylde en dag), én forklarende linje på boardet, Hjælp-afsnit (en+da). AI-holds autofill er uændret (felterne afhænger af den, jf. #2622-bindingen).
 
 ---

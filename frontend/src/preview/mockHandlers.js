@@ -1303,7 +1303,18 @@ export function apiResponse(pathname, search = "") {
   // #4201: assistentens tilstand. Preview viser opt_in-tilstanden, saa kontakten
   // paa Profil-siden er synlig uden at noget flippes i prod (den staar proactive).
   if (pathname.endsWith("/api/me/assistant-settings")) {
-    return { mode: "opt_in", late_fill_hours: 24, autopick_enabled: true };
+    return {
+      mode: "opt_in", late_fill_hours: 24, autopick_enabled: true,
+      // #4983: paamindelsens kontakt er ALTID synlig (ikke gated paa opt_in).
+      selection_reminder_enabled: true, selection_reminder_window_hours: 36,
+    };
+  }
+  // #4983: paamindelsen foer udtagelsesfristen. Preview viser INGEN markering
+  // som default, saa de oevrige skaermbilleder i korpuset er uaendrede — de to
+  // tilstande (gul/roed) mockes pr. capture-script (4983-*.shots.mjs), samme
+  // lagdeling som #3521's badge-tal.
+  if (pathname.endsWith("/api/me/selection-reminder")) {
+    return { enabled: true, tone: "none", count: 0, races: [], window_hours: 36, urgent_hours: 24 };
   }
   // #3102 etape 3: verdens-kataloget bor i Resultat-hubbens Arkiv-fane nu.
   // Returnerede før en tom liste med forkert shape ({pool, summary} forventes)
