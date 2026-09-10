@@ -475,11 +475,18 @@ Registreret som D-035. Grænsens tal er kalibrering; #3957 har nu en retning.
 Registreret som D-036. Kapitlet "holdudtagelse og løbsdagen" har nu D-034,
 D-035 og D-036; næste kapitel er dag 1 og de første 7 dage.
 
+## Q-041 · Første session, ejerens svar ordret (10/9 kl. 14:55)
+
+> B · Første session ender i dit første løb (anbefalet)
+
+Registreret som D-037. Kapitel: dag 1 og de første 7 dage. Åbent: afstanden til
+et nyt holds første løb skal måles før build.
+
 ## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-040/D-036 (indsatskort pr. rytter). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-041 er ikke stillet.
-- Næste skridt: dag 1 og de første 7 dage (launch-kohorte 28,6 % mod 86,8 %, #4964), derefter akademi-intake. Ro under pres og Træningsdisciplin er stadig kandidater uden mekanik.
+- Sidste svar: Q-041/D-037 (første session ender i første løb). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-042 er ikke stillet.
+- Næste skridt: dag 2-7 (hvad bringer spilleren tilbage: besked om resultat, næste løb, første auktion), derefter akademi-intake. Ro under pres og Træningsdisciplin er stadig kandidater uden mekanik.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.

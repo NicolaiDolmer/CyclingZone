@@ -272,6 +272,18 @@ og kræver v4-flippet. **Fog of war (Q-037)** er parkeret:
 ejeren stiller spørgsmålet til spillerne som forum-afstemning med billede,
 før der besluttes.
 
+### Dag 1: første session ender i første løb (D-037, ejer-valgt 10/9)
+
+Målt 7/9 (#4964): nye spillere har holdt 33-46 % fra uge 1 til uge 2 siden
+maj, og frafaldet er bimodalt: enten binder første session, eller også er
+det slut. De handlinger, der hænger sammen med at blive, er egen udtagelse og
+en beslutning med konsekvens; auktionen er oftest den sidste flade før
+frafald. Den nye managers første session bliver derfor én ledet bane: draft,
+egen udtagelse til næste løb (assistenten forudvælger), én taktik, og
+resultatet med indsatskort (D-036). Auktion, træning og bestyrelse åbner i
+eget tempo bagefter. Før build skal afstanden fra tilmelding til første løb
+måles, og onboarding-kortets trin 4 skal måle en reel handling.
+
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
 Dette er en samtalerækkefølge, ikke en ændring af leverancerne i MASTERPLAN.
@@ -403,4 +415,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   Q-037 (fog of war) parkeret til spillerafstemning. D-034 om sen udfyldning
   24 t før start + påmindelse valgt (kapitel: holdudtagelse og løbsdagen).
   D-035 (assistenten fylder til gulvet, derover kun egnede) og D-036
-  (indsatskort pr. rytter efter løbet) valgt.
+  (indsatskort pr. rytter efter løbet) valgt. D-037 om første session valgt
+  (kapitel: dag 1 og de første 7 dage).

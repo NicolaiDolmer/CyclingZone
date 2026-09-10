@@ -1281,6 +1281,52 @@ sidst" eller kun på løbssiden, mobilvisning, og om AI-holds ryttere får kort
 sprinter på en bjergetape med ordren "spar kræfter" viser kortet ikke en dårlig
 dom for at blive sat af.
 
+## Q-041 · Hvad skal den første session ende i?
+
+**Status:** stillet 10/9 (Claude Code) som første kort i kapitlet "dag 1 og de
+første 7 dage", med tal fra `docs/audits/launch-cohort-dropoff-2026-09-07.md`
+(#4964) og tre baner. B valgt, se D-037.
+**Tal (7/9, consent-uafhængigt):** nye spillere har holdt 33-46 % fra uge 1 til
+uge 2 siden maj; launch-kohorten: 7 af 18 væk inden en time, bimodalt (enten
+binder første session, eller også er det slut). Uge 2-retention med/uden
+handling inden 48 t: bud 52 %/19 %, egen udtagelse 55 %/31 %, træning 55 %/30 %.
+Onboarding-trin 4 (bestyrelsesplan) flipper uden spillerhandling (90 % "færdige").
+**A:** som i dag (draft, anbefalet bud, frit dashboard med fire trin).
+**B, anbefalet:** første session ender i spillerens første løb: draft → udtag
+selv til næste løb (assistenten forudvælger, spilleren bytter) → én taktik
+(kaptajn, plan) → resultat med indsatskort (D-036); auktion og bestyrelse
+åbner bagefter. **C:** fuld lineær tutorial gennem alle områder.
+**Tradeoff:** B tvinger de to handlinger frem, som hænger sammen med at blive,
+og giver et forståeligt resultat (GDD §7, scenarie 1); A er administration
+uden belønning; C holder genrekendere i hånden i en halv time (D-005).
+Kilder: auditten ovenfor, DASHBOARD_RULES §1 (Clarity), FEATURE_REGISTRY
+`onboarding-first-session` (live, 4 trin + tour), Living World-doktrinen.
+
+## D-037 · Første session ender i spillerens første løb
+
+**Status:** ejer-valgt 10/9, svar på Q-041.
+**Ejerens svar, ordret:** "B · Første session ender i dit første løb (anbefalet)".
+Den nye managers første session er én ledet bane: draft som i dag, derefter
+egen udtagelse til holdets næste løb (assistenten forudvælger, spilleren
+bytter), én taktisk beslutning (kaptajn og plan), og resultatet leveres med
+indsatskort pr. rytter (D-036) samt besked, hvis spilleren er gået. Auktion,
+træning og bestyrelse åbner i eget tempo bagefter; de forsvinder ikke.
+**Fravalgt:** dagens frie firetrinskort som grundmodel (A); fuld lineær
+tutorial (C).
+**Åbent og skal måles før build:** afstanden fra tilmelding til et nyt holds
+første løb i kalenderen (kan "dit næste løb" altid findes inden for samme dag,
+eller skal det første løb være et særligt indledende løb?); hvad "én taktik"
+konkret er i v3 kontra v4; hvordan banen ser ud på mobil; om draftens
+anbefalede bud skal flyttes til efter første løb; og hvordan de fire trin
+måles ærligt (trin 4 måler i dag ingenting: `board_profiles.negotiation_status`
+flipper uden handling, antaget kilde `boardAutoAccept.js`, se auditten §3).
+Ingen build-go. Kandidat til MASTERPLAN bane 2 (fastholdelse) efter måling.
+**Foreslået verifikation:** en ny spiller kan i én session på højst 20 minutter
+(D-006) gå fra tilmelding til at have udtaget og sat taktik til et konkret
+løb; andelen der sætter egen udtagelse inden 48 t stiger fra 35 % (launch)
+mod 50 %+, og uge 1→2-retention følger med; trin 4 kan ikke længere blive
+grønt uden en spillerhandling.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code
