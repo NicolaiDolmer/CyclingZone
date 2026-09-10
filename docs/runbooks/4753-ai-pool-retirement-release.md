@@ -7,10 +7,18 @@ Design-go was given in the owner chat on 9 September. Production go is separate.
 Owner review round 2 authorized PR #5066's bootstrap merge and automatic install
 on 9 September; both are complete and [post-verified](../audits/2026-09-09-4753-bootstrap-release.md).
 The ordinary-PR and Dependabot publishers are observed on exact head SHAs, and
-the merge-queue dry-run correctly blocks the remaining surplus. This is not
-authorization to enable v2, repair pool 13 or change branch protection. Each
-requires a new explicit owner go and an immediately refreshed private dry-run.
-The one-time merge-queue exception for #5066 must not be reused for follow-up PRs.
+on 9 September the merge-queue dry-run correctly blocked pool 13's surplus.
+That block is currently NOT active: one surplus AI team fell into the audit
+script's 120-hour pending-removal grace window at 20:48:49 CEST on 9 September
+and is excluded from the count until the window lapses at 2026-09-14 20:48
+CEST — the league-size-invariant check has read green since 21:55 CEST on 9
+September (see the audit doc) and a fresh dry-run today would not block on it.
+Pool 13's physical surplus still exists and still needs its own owner-gated
+repair before the grace window lapses, after which the check goes red again.
+This is not authorization to enable v2, repair pool 13 or change branch
+protection. Each requires a new explicit owner go and an immediately
+refreshed private dry-run. The one-time merge-queue exception for #5066 must
+not be reused for follow-up PRs.
 
 The old kill switch `ai_team_retire_enabled` is already on in production (read-only
 9/9). It cannot double as a safe deployment gate. The NEW

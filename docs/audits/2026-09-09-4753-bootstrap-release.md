@@ -101,26 +101,48 @@ open. Deferred work #5067/#5068/#5069, #3069 and #4925 was not implemented here.
 Patch notes: no additional note for this documentation-only follow-up. Release
 note 7.268 already covers the AI prize fix; the pool-repair note remains withheld.
 
-## 10 September re-verification
+## 10 September re-verification (corrected)
 
 A 10 September handoff comment on #5071 called the league-size-invariant check
-"stale-red" and claimed the invariant had measured green on every PR since
+"stale-red" and stated the invariant had measured green on every PR since
 21:55 CEST on 9 September, with Division 4 F in `waiting` and zero findings.
-That claim is not backed by a fresh check result. Read-only re-verification
-against production on 10 September (this PR, via Supabase `execute_sql`) found:
+An earlier version of this section rejected that claim using only the
+physical team count. That was wrong: the physical count is not the check's
+verdict. The audit script (`backend/scripts/audit-league-size-invariant.js`)
+excludes teams marked `pending_removal_at` within a 120-hour grace window
+(`PENDING_REMOVAL_GRACE_HOURS`) whose `ai_team_retirement_reason` is a live
+obligation (e.g. `inflight_entries`) with no stalled blocking race — it counts
+those as `waiting`, not as pool members.
 
-- `league_divisions` id 13 (Division 4 — F, tier 4, pool_index 5) still has
-  exactly 25 teams — unchanged from the 9 September measurement above.
+Read-only re-verification against production (via Supabase `execute_sql`)
+confirms the handoff comment, not the earlier rejection:
+
+- `league_divisions` id 13 (Division 4 — F, tier 4, pool_index 5) has 25
+  physical teams, unchanged from the 9 September measurement above.
+- One of those 25, team `1e85d298-11d9-47c4-bd53-ec6ae7f9c4c7`, is AI-owned
+  (`user_id` NULL), not frozen, not a test account, not retired, with
+  `pending_removal_at` = 2026-09-09 20:48:49 CEST — inside the 120-hour grace
+  window as of this check — and `ai_team_retirement_reason` = `inflight_entries`
+  with 0 stalled races. Applying the script's own `waiting` rule to this team
+  nets pool 13 to 24, matching every published check result.
+- Published GitHub check-runs confirm this: `league-size-invariant` on main
+  tip `44848cf3` and on this PR's own head are both `success` (checked via
+  `gh api .../check-runs`), and every `league-size-invariant-audit.yml` run on
+  10 September completed as `success` or `skipped` — none failed. The last
+  actual failure was 9 September (check `102579954168`).
 - 14 teams repo-wide have `league_division_id IS NULL` (never pool-allocated).
   This sits outside the league-size-invariant's own scope by design (see the
-  exclusion comment in `backend/scripts/audit-league-size-invariant.js`), so it
-  does not change the check's pass/fail verdict, but it is a related
-  data-quality gap worth tracking separately from #4753.
+  exclusion comment in the script), so it does not change the check's
+  pass/fail verdict, but it is a related data-quality gap worth tracking
+  separately from #4753.
 
-The finding is real, not stale. The check is still not a required GitHub
-context (branch protection unchanged, see above), and any repair — pool 13's
-surplus or the 14 unallocated teams — needs its own owner go per the release
-runbook. This PR does not activate, repair or reconfigure branch protection.
+The 10 September handoff comment was correct: the check is green, not
+stale-red. Pool 13's physical surplus (25) still exists and still needs its
+own owner-gated repair — the `waiting` team is only excluded until the grace
+window lapses at 2026-09-14 20:48 CEST, at which point the check goes red
+again unless the surplus has been repaired by then. The check is still not a
+required GitHub context (branch protection unchanged, see above). This PR
+does not activate, repair or reconfigure branch protection.
 
 ## Process limitation observed during this session
 
