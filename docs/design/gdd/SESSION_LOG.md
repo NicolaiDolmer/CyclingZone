@@ -256,13 +256,27 @@ genlæste hele 6/9-spec'en og #4850 og præciserede spørgsmålet om relativt
 udbytte. Det godkendte reworkgrundlag er nu opsummeret eksplicit i GDD.
 Q-020 er genstillet i kortere form og står åbent. Det er ikke et nyt Q-021.
 
+## Q-020 · Ejerens researchønske R-002, ordret
+
+> Det synes jeg er svært at sige. Måske jo bedre løbets kategori er, jo bedre udvikling skal det give - Derudover jo yngre en rytter er jo mere skal de få ud af "debuter" og første gange de kører store typer af løb. Kan du forslå hvad der vil være realistisk og virkelighedstro her? Måske kan du kigge på hvad football manager gør og forslå en måde det kan passe ind i vores spil? Tænk dig grundigt om og kom med gode forslag til dybde.
+
+Registreret som R-002, ikke som accept af en kategori-/debutbonus. Codex læste
+officielle FM-kilder, cykelstudier og UCI-praksis og skrev
+TRAINING_RACE_DEVELOPMENT_RESEARCH med tre mulige retninger, anbefaling,
+konkrete forløb, risici og verifikationsbehov. Ingen fuld implementeret FM-model
+eller fysiologisk debutbonus er udledt af kilderne. E-007 bevarer afgrænsningen.
+Q-021 er stillet om grundmodellen: passende udfordring og aftagende læring
+(anbefalet), generel kategori-/debutbonus eller afklaring/ændring før valg.
+Checkpoint `f38ae626` er pushet og bevarer RIDER_LEGACY samt reworkafklaringen;
+R-002 og Q-021 er den efterfølgende fortsættelse.
+
 ## Handoff · Genoptaget, 10/9 2026
 
 - Aktivt arbejde: samlet GDD og kritisk interview, status `in_progress`, genoptaget af ejer.
-- Q-001–019 har ejer-svar; Q-020 har afklaringsspørgsmål, men intet balancevalg. Det præciserede kort står åbent.
-- Næste skridt: afklar udviklingsvalget; fortsæt træning. R-001-konceptet er samlet, åbne detaljer er bevaret.
+- Q-020 førte til R-002, ikke et balancevalg. Q-021 om researchmodellens retning står åbent; afvent svaret.
+- Næste skridt: afklar grundmodellen, så erfaringstyper, aldersvirkning og konkret udbytte ét ad gangen.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001, D-001–017 og ønske R-001 er registreret; ingen ny funktion er godkendt til build.
+- V-001, D-001–017 og R-001/R-002 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

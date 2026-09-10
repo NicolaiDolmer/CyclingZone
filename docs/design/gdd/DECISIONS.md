@@ -661,7 +661,8 @@ klubbens offentlige udviklingshistorik får ikke en ufortjent tilskrivning.
 
 **Status:** ejeren har svaret med afklaringsspørgsmål om det igangværende rework.
 Ingen A/B-beslutning modtaget. Efter kildekontrol genstillet i kortere form;
-det samme balancevalg afventer fortsat.
+ejeren udvidede derefter emnet med forslag og researchønske R-002. Q-021 er
+det næste beslutningskort. Q-020 har fortsat ikke et valgt A/B-udfald.
 En frisk 19-årig klatrer kan køre et passende bjergløb eller blive hjemme til en
 målrettet træningsblok. Skal blokken kunne være bedst for langsigtet evneudvikling?
 **A, anbefalet:** ja; målrettede træningsperioder skal kunne være udviklingsvalget,
@@ -680,6 +681,53 @@ Kilder: TRAINING_RULES §6/§13, spec 6/8 og E-006.
 Codex bekræftede kendskab, genlæste hele 6/9-designet og #4850 og præciserede:
 begge aktiviteter giver udvikling; spørgsmålet handler kun om deres relative
 udbytte. Dette må ikke registreres som en ny idé om løbsudvikling eller et valg af A.
+
+## R-002 · Løbskategori, debuter og realistisk udviklingsdybde
+
+**Status:** ejerens idéer og researchopgave 10/9, ikke balancegodkendelse.
+**Ejerens svar, ordret:** "Det synes jeg er svært at sige. Måske jo bedre løbets kategori er, jo bedre udvikling skal det give - Derudover jo yngre en rytter er jo mere skal de få ud af \"debuter\" og første gange de kører store typer af løb. Kan du forslå hvad der vil være realistisk og virkelighedstro her? Måske kan du kigge på hvad football manager gør og forslå en måde det kan passe ind i vores spil? Tænk dig grundigt om og kom med gode forslag til dybde.".
+
+"Måske" bevares som usikkerhed og undersøgelsesforslag. Ejeren ønsker begrundet
+inspiration fra Football Manager og cykelvirkeligheden, før der vælges en model.
+Resultatet står i [researchforslaget](TRAINING_RACE_DEVELOPMENT_RESEARCH.md):
+officielle FM24-/FM26-kilder, original forskning og UCI-praksis, med kildebegrænsninger.
+**Anbefalet til videre design:** fysisk stimulus og erfaring som forskellige
+årsager til udvikling; passende udfordring; meningsfuld deltagelse; aftagende
+læring ved nye situationer; ingen automatisk stor bonus blot for at stå på
+startlisten i en høj kategori. Ingen nye erfaringstal er nødvendigvis påkrævet.
+**Ikke besluttet:** kategori-/debutbonus, aldersvirkning, erfaringstyper, nye
+stats, løbsrating som proxy, mentor-/selvtillidssystem, balance eller release-scope.
+
+## Q-021 · Grundmodel efter researchen
+
+**Status:** stillet 10/9; afventer.
+**A, anbefalet:** passende udfordring og aftagende læring ved nye erfaringer.
+Træning giver præcision; løb giver fysisk stimulus og konkurrencesituationens
+erfaring. Højere kategori er ikke automatisk bedre for enhver rytter.
+**B:** enklere model, hvor højere kategori og debut generelt giver mere evneudvikling.
+**C:** ændr eller afklar forslaget før valg.
+
+Kortet vælger kun retning til videre design, ikke hele researchforslaget eller
+en komplet ny mekanik. Næste konkrete valg er erfaringstyper, aldersvirkning og
+udbytte. Ingen ny D-beslutning må udledes af R-002 alene. Kilder: R-002,
+TRAINING_RULES §6/§13, PROGRESSION_RULES og researchforslagets S1-S6.
+
+## E-007 · Ekstern research til R-002
+
+**Status:** primærkilder læst online 10/9; ingen egen FM-test eller sportssimulation.
+FM24-manualen og en navngiven FM26-guide på den officielle hjemmeside giver
+forskellige evidenstyper: produktmanual og strategiguide. De blandes ikke sammen
+til en påstand om kendte motorformler. Gallo-studiet beskriver racebelastning,
+ikke kausal effekt af løbskategori på talentudvikling. Clark-studiet undersøger
+struktureret træning hos voksne, ikke debuter hos unge. UCI-kilder er praksiseksempler.
+Direkte links, korte referater og begrænsninger står i researchforslaget S1-S6.
+Den foreslåede debut-/erfaringsmekanik er original spildesignfortolkning, ikke
+noget kilderne dokumenterer som en præcis fysisk eller FM-intern regel.
+
+**Lokal afgrænsning:** `applyRaceDevelopmentTick` i `dailyTraining.js` blev læst
+igen; den kontrollerede signatur rummer profil og indsats, ikke historik over
+debuter. Det er en observation af én kodevej, ikke bevis for fravær af al
+erfaringslogik i hele projektet. Intet nyt runtimebugfund eller feature-issue oprettet.
 
 ## E-006 · Den ældre fordel til løbsudvikling
 

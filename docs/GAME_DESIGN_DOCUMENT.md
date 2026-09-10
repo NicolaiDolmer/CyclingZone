@@ -13,7 +13,9 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
 [dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-017 er registreret.
-**Aktuelt:** Q-020 om målrettet træning kontra passende løb afventer.
+**Aktuelt:** Q-020 førte til researchønske R-002 om løbskategorier, debuter og FM.
+Q-021 om grundmodellen i [researchforslaget](design/gdd/TRAINING_RACE_DEVELOPMENT_RESEARCH.md)
+afventer. Der er ikke valgt ny udviklingsbalance.
 R-001 bevarer ejerens ønske om at følge ryttere "af egen avl".
 [Genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md)
 bevarer pausepunktet; journalens sidste handoff er den aktuelle samtaletilstand.
@@ -183,7 +185,11 @@ samlet i #4850. Ejeren fremhævede dette igen ved Q-020 den 10/9.
 
 Dette er tidligere ejerbeslutninger, ikke nye forslag eller et samlet bevis for
 leverance. Q-020 angår alene det relative udviklingsudbytte af de to aktiviteter
-og har endnu ikke ændret den ældre prioritering af passende løb.
+og har endnu ikke ændret den ældre prioritering af passende løb. Ejeren foreslog
+under Q-020 at undersøge kategori og unge rytteres første store erfaringer.
+[R-002-researchen](design/gdd/TRAINING_RACE_DEVELOPMENT_RESEARCH.md) sammenholder
+officielle FM-kilder, cykelstudier og UCI-praksis. Den anbefaler passende
+udfordring og aftagende læring ved ny erfaring; det er endnu kun et forslag.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -295,5 +301,6 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-014 om "Siden sidst" og D-015 om flere udviklingsklubber valgt;
   D-016 om personligt gennembrud og D-017 om manuel opfølgning valgt;
   konceptkapitlet RIDER_LEGACY samlet; Q-020 om træning kontra løb stillet.
+  Q-020 gav researchønske R-002; forslag med kilder gemt; Q-021 afventer.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.

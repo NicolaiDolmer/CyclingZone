@@ -105,3 +105,9 @@ Efter ejerens anmodning om at genvise kortet blev denne kortere tekst besvaret:
 
 Efter ejerens afklaringsspørgsmål om reworket blev balancevalget præciseret således:
 > I dit nye system giver både løb og træning udvikling, og rytteren vælger én af delene pr. løbsdag. Skal en målrettet træningsperiode nogle gange kunne give bedre evneudvikling end passende løb? Jeg anbefaler ja, så manageren bevidst kan ofre mulige resultater og præmiepenge for at udvikle rytteren. Alternativet er at fastholde passende løb som den normalt bedste udviklingsvej.
+
+Ejeren svarede med researchønske R-002; dette var ikke et valgt A/B-udfald.
+
+## Q-021 · Grundmodellen efter research
+
+> Hvilken grundmodel skal vi arbejde videre med for løbsudviklingen? Jeg anbefaler modellen i forslaget: Begge dagsaktiviteter udvikler rytteren; målrettet træning har præcision, mens passende løb giver fysisk stimulus og erfaring. Større kategorier kan give nye udfordringer, og de første meningsfulde erfaringer lærer rytteren ekstra, men gevinsten aftager ved gentagelse. Det valg godkender kun retningen til videre design — vi tager debuttyper, aldersvirkning og konkret udbytte ét ad gangen.
