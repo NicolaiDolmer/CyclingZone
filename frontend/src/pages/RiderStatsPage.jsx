@@ -1428,8 +1428,15 @@ export default function RiderStatsPage() {
   //
   // #5089: KUN det hero'en og de altid-synlige flader bruger hentes her.
   // Profilen fyrede foer 13 API-kald pr. rytter uanset hvilken fane spilleren
-  // stod paa, og de fleste af dem tegner en fane han maaske aldrig aabner. Det
-  // var halvdelen af 429-burstet 10/9. Fane-dataene ligger i effekten nedenfor.
+  // stod paa, og de fleste af dem tegner en fane han maaske aldrig aabner.
+  // Fane-dataene ligger i effekten nedenfor.
+  //
+  // NB paa aarsagen: loggen 10/9 viser at DISSE endpoints var blandt de
+  // AFVISTE kald, ikke at fan-outen alene braendte budgettet (600/min) — se
+  // #5089, som bevidst ikke kan afgoere om burstet kom fra en spiller eller et
+  // script. Fan-outen skaeres fordi den er maalbart spildt, ikke fordi
+  // kausaliteten er bevist. Backoff/Retry-After (#5089 punkt 2b/3/4) mangler
+  // stadig, saa issuet lukkes ikke paa denne aendring.
   //
   // bid-timeline BLIVER her: den er ikke kun Historik-fanens tabel, den er
   // ogsaa noeglen realtime-kanalen abonnerer paa (auction_id + status), og uden
