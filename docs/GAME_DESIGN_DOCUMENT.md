@@ -2,6 +2,7 @@
 
 Status: **Arbejdende udkast, discovery startet 10/9 2026. Ikke godkendt som samlet spildesign.**
 Ejer: Nicolai. Designpartner: Codex. Produktets historiske samlingspunkt: [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145).
+Samlet GDD-opfølgning og Claude-overdragelse: [#5087](https://github.com/NicolaiDolmer/CyclingZone/issues/5087).
 
 ## Læs dette først
 

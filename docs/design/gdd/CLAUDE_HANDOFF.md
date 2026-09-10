@@ -1,5 +1,8 @@
 # Claude Code · Fortsæt GDD efter Q-031
 
+**Samlet opfølgning: [#5087](https://github.com/NicolaiDolmer/CyclingZone/issues/5087).**
+Fem eksisterende featureejere er opdateret; direkte kommentarlinks står i GITHUB_HANDOFF.
+
 **Overdraget af Nicolai 10/9 2026.** Codex-sessionen er afsluttet på ejerens
 ønske om at fortsætte i Claude og spare Codex-tokens. Den samlede GDD er fortsat
 `in_progress`. Sidste svar er D-028; intet spørgsmålskort er åbent. Q-032 er ikke stillet.
@@ -127,7 +130,8 @@ Bevar desuden disse åbne spor:
 
 Ejeren bad om GitHub-opgaver for aftalt, ikke bygget arbejde. Se GITHUB_HANDOFF:
 genbrug eksisterende ejere, tilføj ikke dubletter. Opgaverne er designarbejde
-med åbne valg, ikke klar-til-build-ordrer. Ingen agent er startet via omtale.
+med åbne valg, ikke klar-til-build-ordrer. Ingen direkte implementeringsdispatch
+eller agent-mention er sendt fra denne session.
 
 Ingen runtimekode, prod-data, flag, merge eller deploy er ændret i sessionen.
 Områdernes SSOT'er er afstemt med de valgte retninger på denne branch.
@@ -135,6 +139,11 @@ MASTERPLAN/rækkefølgen er ikke ændret. Ingen FEATURE_REGISTRY-/patch-noteænd
 er nødvendig for docs-only arbejde. Full repo-preflight bestod tidligere i
 sessionen; de senere checkpoints har dokument-/link-/hygiejne-/secret-kontrol.
 Ingen tests beviser, at de nye oplevelsesmål allerede er opfyldt.
+
+Close-out-cleanup er kørt som dry-run med worktree-prune fravalgt, fordi denne
+worktree skal genbruges. Processcanningen fik Access denied i sandboxen; dens
+efterfølgende nul-fund er ikke bevis for fravær af processer. Ingen proces er
+dræbt eller worktree slettet. Sessionens egne tool-command-forløb er afsluttet.
 
 Fortsæt med at gemme væsentlige svar og afstemte regler. Commit med branch-guard
 og push straks. Den afsluttende handoff-commit findes på branchens remote HEAD.

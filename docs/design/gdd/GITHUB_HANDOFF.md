@@ -20,11 +20,29 @@ forslag uden særskilt planbeslutning. Ejerens prioriteringslabels bevares.
 
 ## Samlet GDD-opfølgning
 
-En særskilt GDD-/overdragelsesopgave registreres ved publiceringen af denne
-pakke. Den samler dokumentleverancen og fortsættelsen efter Q-031; den erstatter
-ikke de fem featureejere ovenfor. #1145 er det historiske, lukkede doktrinanker,
-som allerede leverede juni-doktrinen; det er ikke den nye samlede GDD-leverance.
-Det endelige issue-ID og kommentarlinks tilføjes før overdragelsen afsluttes.
+**Oprettet: [#5087 — Samlet Game Design Document og fortsat designinterview](https://github.com/NicolaiDolmer/CyclingZone/issues/5087).**
+Den samler dokumentleverancen og fortsættelsen efter Q-031; den erstatter ikke
+de fem featureejere ovenfor. #1145 er det historiske, lukkede doktrinanker,
+som leverede juni-doktrinen. Det er ikke genåbnet.
+
+## Publicerede overdragelseskommentarer
+
+| Sted | Direkte link |
+|---|---|
+| #1239: identitet og bestyrelse | [Aftaler fra 10/9](https://github.com/NicolaiDolmer/CyclingZone/issues/1239#issuecomment-5616574907) |
+| #1148: egen avl og historik | [Koncept og valgte regler](https://github.com/NicolaiDolmer/CyclingZone/issues/1148#issuecomment-5616575843) |
+| #1177: Holdarbejde, samspil og mentor | [D-021–028 og åbne detaljer](https://github.com/NicolaiDolmer/CyclingZone/issues/1177#issuecomment-5616576519) |
+| #1154: øvrige evnekandidater | [Ro under pres og Træningsdisciplin](https://github.com/NicolaiDolmer/CyclingZone/issues/1154#issuecomment-5616577286) |
+| #4850: træningsrework | [Designinput med bevaret scopegrænse](https://github.com/NicolaiDolmer/CyclingZone/issues/4850#issuecomment-5616578247) |
+| #1145: historisk doktrinanker | [Pointer til ny GDD-leverance](https://github.com/NicolaiDolmer/CyclingZone/issues/1145#issuecomment-5616578553) |
+| #3514: bestyrelsesrework | [Afstemt rework-overblik og afgrænsning](https://github.com/NicolaiDolmer/CyclingZone/issues/3514#issuecomment-5616578865) |
+
+#1239/#1148/#1177/#1154 har fået additive `needs-design`/`needs-decision`-labels;
+eksisterende prioritet er bevaret. #4850/#3514 er ikke generelt blokeret af
+det nye designinput. Ingen eksisterende issue-body er overskrevet, ingen
+feature er lukket, og der er ikke sendt en direkte agent-mention eller dispatch
+til implementation. Status/labels og én ny overdragelseskommentar på hver af
+de fem featureejere er genlæst og verificeret efter skrivningen.
 
 ## Dubletkontrol og scopevurdering
 

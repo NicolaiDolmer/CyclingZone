@@ -366,6 +366,10 @@ Ejerens administrative mandat omfatter GitHub-opgaver og Claude-handoff.
 Kommende session skal fortsætte designsamtalen, ikke antage samlet build-go.
 Kort indgang: CLAUDE_HANDOFF; fulde ord/alternativer her og i DECISIONS;
 konkret opgavekort og dubletkontrol: GITHUB_HANDOFF.
+Overdragelsespakken er først pushet som `e3b7ed2d`. Derefter er #5087 oprettet
+og #1239/#1148/#1177/#1154/#4850 opdateret med konkrete aftaler. #1145 og #3514
+har fået kildepointers. Direkte kommentarlinks og labelafgrænsning er gemt i
+GITHUB_HANDOFF. Ingen dublet-featureissues, ændret prioritet eller implementation.
 
 ## Handoff · Til Claude Code efter Q-031, 10/9 2026
 
