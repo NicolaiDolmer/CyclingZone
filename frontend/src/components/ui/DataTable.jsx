@@ -10,6 +10,7 @@ import {
   defaultMobileColumnKeys,
   mobileColumnLabel,
   mobileSwappableColumns,
+  orderMobileChips,
   orderMobileColumns,
   readMobileColumnKeys,
   swapMobileColumn,
@@ -126,7 +127,7 @@ export function DataTable({
       <div className={className}>
         {hasChips && (
           <MobileColumnChips
-            columns={swappable}
+            columns={orderMobileChips(columns, mobileKeys)}
             selected={mobileKeys}
             onPick={pickColumn}
             fullTable={fullTable}
@@ -317,14 +318,23 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
 // gold outline naar siden ikke allerede bruger sin ene gold primary i mobil-
 // viewportet, ellers --text-1.
 function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, tone, t }) {
+  const scrollerRef = useRef(null);
+  // Et byt aendrer raekkefoelgen (valgte foerst), saa raekken rulles tilbage til
+  // start — ellers staar de tre netop valgte chips halvt uden for skaermen.
+  useEffect(() => {
+    if (scrollerRef.current) scrollerRef.current.scrollLeft = 0;
+  }, [selected]);
   const base =
     "flex-none inline-flex items-center gap-1.5 rounded-cz-pill border px-2.5 min-h-[32px] " +
     "font-data text-2xs font-semibold uppercase tracking-[.06em] transition-colors duration-150";
   const gold = tone !== "neutral";
   return (
     <div className="mb-2 flex items-center gap-1.5">
+      {/* Maske i hoejre kant: den eneste affordance for at raekken kan rulles.
+          Ingen skygge, ingen pil — kanten falmer, som i den godkendte mockup. */}
       <div
-        className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto"
+        ref={scrollerRef}
+        className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [mask-image:linear-gradient(90deg,#000_88%,transparent)]"
         role="group"
         aria-label={t("table.columnsLabel")}
       >

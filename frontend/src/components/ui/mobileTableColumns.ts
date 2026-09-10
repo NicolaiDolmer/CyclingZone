@@ -89,6 +89,23 @@ export function swapMobileColumn(current: readonly string[], nextKey: string): s
   return next.length > MOBILE_COLUMN_COUNT ? next.slice(next.length - MOBILE_COLUMN_COUNT) : next;
 }
 
+/**
+ * Chip-raekkens orden: de VALGTE tre foerst (i kolonneorden), derefter resten (i
+ * kolonneorden). Uden det kan alle tre valgte staa uden for skaermen i en tabel
+ * med mange kolonner — spilleren kan ikke se hvad han faktisk kigger paa, og
+ * chip-raekken holder op med at vaere en tilstandsvisning.
+ */
+export function orderMobileChips<T extends MobileColumnLike>(
+  columns: readonly T[],
+  selected: readonly string[]
+): T[] {
+  const swappable = mobileSwappableColumns(columns);
+  return [
+    ...swappable.filter((c) => selected.includes(c.key)),
+    ...swappable.filter((c) => !selected.includes(c.key)),
+  ];
+}
+
 /** Visningsorden = desktopens kolonneorden (D-047: sortering og orden som desktop). */
 export function orderMobileColumns<T extends MobileColumnLike>(
   columns: readonly T[],

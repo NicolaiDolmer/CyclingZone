@@ -7,6 +7,7 @@ import {
   mobileColumnsStorageKey,
   mobileSwappableColumns,
   normalizeMobileColumnKeys,
+  orderMobileChips,
   orderMobileColumns,
   readMobileColumnKeys,
   swapMobileColumn,
@@ -91,6 +92,13 @@ test("et chip-tryk skubber den AELDSTE valgte ud, og antallet forbliver tre", ()
 
 test("tryk paa en allerede valgt kolonne aendrer intet (standarden er TRE, ikke 'op til tre')", () => {
   assert.deepEqual(swapMobileColumn(["rating", "value", "salary"], "value"), ["rating", "value", "salary"]);
+});
+
+test("chip-raekken viser de VALGTE tre foerst, saa de aldrig ruller ud af skaermen", () => {
+  assert.deepEqual(
+    orderMobileChips(COLUMNS, ["salary", "popularity", "type"]).map((c) => c.key),
+    ["type", "salary", "popularity", "rating", "value"]
+  );
 });
 
 test("visningsordenen er desktopens kolonneorden, ikke valg-raekkefoelgen", () => {
