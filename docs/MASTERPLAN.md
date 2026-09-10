@@ -25,7 +25,7 @@ Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d 
 9. 🔵 **Mail:** #5045 → testmail → #5038 ejer-trin (Resend-webhook, DMARC) → flip pr. type → #2760 win-back.
 10. 🔵 **Nøgleblok #4616** → Pro i euro #4608 → #4645 → #4646 · #4074 · #4005. **Billing-vagter** #4514 · #4512. **#5051** LTV-fejl (high).
 11. 🔴 **Spiller-kommunikation #428/#4820:** ejeren poster selv. Hængende løfter: #4346 anmeld-handel (27/8) · flyt forumkategori ("senest 10/9"). #4964 launch-kohorte 28,6 % (ejer-valg) · #5033 chunk lag 3 (efter #4595).
-12. 🟠 **Vækst-fundament (ejer 10/9):** **SEO/markedsføring** #4067 · #3796 · #4811 · #4321 · **hastighed** #5055 · perf-gate/Core Web Vitals · **mobil hele sitet** #1602 · #4982 · #4613. **Fastholdelse:** #4751 · #4821 · #4235 (15/9) · GDD D-037/D-038 efter måling.
+12. 🟠 **Vækst-fundament (ejer 10/9):** **SEO/markedsføring** #4067 · #3796 · #4811 · #4321 · **hastighed** #5055 · perf-gate/Core Web Vitals · **mobil hele sitet** #1602 · #4982 · #4613. **Fastholdelse:** #4751 · #4821 · #4235 · GDD D-037/D-038.
 
 ## Bane 3 · Færdiggør (>70 %; tømmes før nyt)
 
@@ -33,7 +33,7 @@ Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d 
 14. 🟠 **Docs-SSOT:** #5087 GDD som docs-PR · #5071 4753-bevis (rebase i bølge) · #5058 AGENTS hard rule 30 korrupt · #5088 matview-grants · #2259 78 backup-tabeller (48 MB, ejer-go til flyt).
 15. 🟠 #4921 feature-register · #4918/#4919/#4920 bølge-drift · #5004 preflight anti-slop · #5085 CI marketing.
 16. 🔵 Akademi: #4495 · #4213 · #4750 · #4423/#4418 (done-gated). Design-rest #4622: #4627 · #4628 · #4813 · #4814 · #4815 · #4613.
-17. Drift: #4147 · #4866 (done-gated) · #4869 · #4877/#4900/#4899/#4896/#4903 · #4867 · #4828/#4829 · #5017 · #5015 · #2423 (rør ikke).
+17. Drift: #4147 · #4866 · #4869 · #4877/#4900/#4899/#4896/#4903 · #4867 · #4828/#4829 · #5017 · #5015 · #2423 (rør ikke).
 18. Spillerfund: #4589 · #4702 · #4873 · #4875 · #4861 · #4981 · #4982 · #4983 · #5075 · #5059 sprint-tog gated · #5030 puncheur-opskrift.
 
 ## Venteliste · langsigtet værdi (ejerens område-rækkefølge 2/9; **ejer 10/9: trupper U23/junior løftet fra 8 til 3, parret med træning**, på spillerdata)
