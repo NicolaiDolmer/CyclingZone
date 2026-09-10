@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SortIndicator } from "./SortableTh.jsx";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
@@ -401,6 +401,12 @@ function MobileFullTable({
   const nameRef = useRef(null);
   const dataRef = useRef(null);
   const scrollerRef = useRef(null);
+  // To-lags-tilstanden splitter en raekke over to tabeller. Uden en eksplicit
+  // kobling mister datablokkens raekke sit navn — baade for skaermlaesere og for
+  // enhver "find raekken der hedder X"-logik. Navnecellen faar et id, og
+  // datablokkens <tr> peger paa det med aria-labelledby.
+  const uid = useId();
+  const nameCellId = (i) => `${uid}-name-${i}`;
   const [headerHeight, setHeaderHeight] = useState(0);
   const [atEnd, setAtEnd] = useState(true);
 
@@ -482,7 +488,7 @@ function MobileFullTable({
                 <EmptyRow rows={rows} empty={empty} colSpan={1} />
                 {rows.map((row, i) => (
                   <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zones[i], rowProps ? rowProps(row, i) : null)}>
-                    <td className={tdClass({ zone: zones[i], ...zoneEdges(zones, i), dense })}>
+                    <td id={nameCellId(i)} className={tdClass({ zone: zones[i], ...zoneEdges(zones, i), dense })}>
                       {renderStickyCell(entityCol, row, i, foldCols)}
                     </td>
                   </tr>
@@ -508,7 +514,11 @@ function MobileFullTable({
                 {rows.map((row, i) => {
                   const edges = zoneEdges(zones, i);
                   return (
-                    <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zones[i], rowProps ? rowProps(row, i) : null)}>
+                    <tr
+                      key={rowKey ? rowKey(row, i) : i}
+                      aria-labelledby={nameCellId(i)}
+                      {...mergeRowProps(zones[i], rowProps ? rowProps(row, i) : null)}
+                    >
                       {dataCols.map((col) => (
                         <td
                           key={col.key}

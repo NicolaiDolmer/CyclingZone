@@ -10,7 +10,7 @@
 // nat-tidspunkt, og et afvist tidspunkt for langt frem. I alle afviste
 // tilfælde skal Start-knappen være spærret, så fejlen fanges før POST'en.
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage, evidenceShotPath } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, evidenceShotPath, revealAllTableColumns } from "./fixtures.js";
 
 const SELL_BUTTON = /^(Sell \/ Auction|Sælg \/ Auktion)$/;
 
@@ -20,6 +20,8 @@ test.describe("Auction custom end time (#2884)", () => {
     await installNetworkMocks(page);
     await login(page);
     await page.goto("/team");
+    // #5102/D-047: paa mobil ligger handlingskolonnen bag "Fuld tabel".
+    await revealAllTableColumns(page);
     await page.getByRole("button", { name: SELL_BUTTON }).first().click();
   });
 

@@ -475,8 +475,11 @@ export default function WatchlistPage() {
                 columns={columns}
                 rows={visible}
                 rowKey={(entry) => entry.id}
-                /* D-047 (#5102) */
-                mobileDefaults={["rating", "value", "salary"]}
+                /* D-047 (#5102): oenskelistens POINT er handlingen — "Start
+                   auktion" / "I auktion"-status. Den er derfor en af de tre
+                   standardkolonner paa mobil (cellen er een lille knap eller ét
+                   badge, saa bredden holder); loen er et chip-tryk vaek. */
+                mobileDefaults={["rating", "value", "action"]}
                 sort={sort}
                 sortDir={sortDir}
                 onSort={handleSort}
