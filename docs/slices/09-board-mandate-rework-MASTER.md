@@ -4,7 +4,16 @@
 **Nordstjerne:** Verdens bedste bestyrelse i et managerspil = den første hvor HVER bevægelse har en kvittering, forhandling er en dialog med modtilbud, og alt kan nås på ≤2 klik.
 **Timing (ejer-valg 1/9, afløser 23/8-ankeret):** **Flip i S3 så snart bygget + verificeret.** Datamodellen blev migreret 23/8 (217 hold, bag slukket kill-switch) men er frosset — skyggedata genopbygges og confidence-migrationen re-baselines til flipdagen.
 
-## Status 6/9 (målt, audit)
+## Aktuel status
+
+**Opdateret 10/9:** [BOARD_RULES.md §0](../BOARD_RULES.md) er det verificerede overblik
+over hvad der bliver, udgår og er leveret. Boardroom, årsmøde, sponsoradskillelse,
+bonus/DNA og skyggeskrivning er bygget; flaget er fortsat beta. Rest før fuld
+aktivering: #4859 med sine forudsætninger; #4858 er efterfølgende oprydning.
+De nye GDD-principper om friere klubidentitet og bestyrelsens rolle er i SSOT §0.4;
+de må ikke læses som allerede bygget rework eller aktiverings-go.
+
+## Historisk status 6/9 (afløst af overblikket ovenfor)
 
 Flaget er **`beta`** (siden 17/8), ikke slukket, men beta vises kun for admin/beta-testere, og
 prod har 0 beta-testere + 1 admin: **0 reelle seere** har set Boardroom i praksis. `board_relations`

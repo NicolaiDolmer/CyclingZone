@@ -12,7 +12,7 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001, D-001 og D-002 er registreret; Q-004 om bestyrelsens autoritet afventer.
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-004 er registreret; Q-006 om målspilleren afventer.
 
 **Eksisterende kompas:** [Living World Product Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md).
 Det dokument er historisk ejer-godkendt, men nyere områdebeslutninger kan have
@@ -78,7 +78,21 @@ opstår, skal vi stadig designe.
 
 [Bestyrelsens SSOT](BOARD_RULES.md) ejer de konkrete regler. Det eksisterende
 Mandat-rework bevarer DNA-valget og skal ikke forveksles med denne nye retning.
-Q-004 afklarer hvor meget bestyrelsen må bestemme over managerens valgte rejse.
+### Bestyrelsen og managerens retning (D-003, ejer-godkendt 10/9)
+
+Bestyrelsen udfordrer planens kvalitet inden for managerens valgte klubidentitet.
+Den må kræve troværdig fremgang; den skal ikke automatisk kræve at en talentfabrik
+bliver et titelhold. Princippet er afstemt i BOARD_RULES §0.4; konkret måldannelse
+og konsekvenser skal stadig designes. Reglerne skal undersøges for, om de måler
+det arbejde klubben faktisk prøver at lykkes med.
+
+### Aftalen om spillerens tid (D-004, ejer-bekræftet 10/9)
+
+To til tre besøg om ugen skal kunne bære en konkurrencedygtig klub på dens valgte
+niveau og vej. God planlægning skal have reel værdi, mens verden fortsætter under
+fravær. Dette er ikke en garanti for at slå dygtigere managers. Sessionslængde og
+fordelen ved hyppigere besøg er ikke fastlagt. Kalender, assistance, marked,
+kontrakter og bestyrelsesfrister skal vurderes samlet mod aftalen.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -175,6 +189,7 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
 
 - 10/9 2026: mandat, kildestruktur og dækningsregister oprettet; vision V-001
   bevaret; D-001 om selvstændige succesveje og D-002 om klubidentitet valgt;
-  bestyrelsesrework undersøgt; Q-004 stillet.
+  bestyrelsesrework afstemt; D-003 om bestyrelsens rolle og D-004 om spillerens tid
+  valgt; Q-006 stillet.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.

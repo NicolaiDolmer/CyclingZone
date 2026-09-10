@@ -58,13 +58,37 @@ er bygget. Aktivering for alle er et selvstændigt trin. Read-only prod-måling
 Den gamle påstand om frosne skyggedata er dermed afløst af positiv skriveevidens.
 Q-004 er stillet om bestyrelsens autoritet over klubbens retning.
 
+## Q-004 · Bestyrelsens rolle, ejerens svar ordret
+
+> Bestyrelsen udfordrer planen inden for managerens valgte retning (anbefalet)
+
+Registreret som D-003 og afstemt i BOARD_RULES §0.4. Detaljeret måldannelse og
+konsekvenser skal stadig designes; managerens frihed betyder ikke trivielle mål.
+
+## Q-005 · Spillerens tid, ejerens svar ordret
+
+> 2-3 besøg om ugen skal kunne bære en konkurrencedygtig klub (anbefalet)
+
+Registreret som D-004, bekræfter doktrinens retning. Ingen sessionslængde eller
+præcis sportslig fordel ved meraktivitet er valgt. Q-006 er nu stillet om
+målspillerens forkundskaber (cykelfan, managerfan eller erfaren cykelmanager).
+
+## Checkpoint og bestyrelsesafklaring
+
+Første checkpoint `bdaa9542` er pushet til `origin/codex/game-design-document`.
+Det omfatter mandat, vision, beslutninger frem til D-002 og Q-004 som dengang åben.
+Dokumenterne opdateres videre; checkpointet er ikke en samlet designgodkendelse.
+Repo-preflight bestået, links kontrolleret og tokenhygiejne uden fejl.
+Bestyrelsens nye §0 afstemmer reworket med kode, merged PR'er og read-only prod;
+slice-masteren peger på det som aktuel status. Ingen runtime-/prod-ændringer.
+
 ## Handoff · Opdater ved næste betydningsfulde svar
 
 - Aktivt arbejde: samlet GDD og kritisk designinterview, status `in_progress`.
-- Åbent spørgsmål: Q-004, bestyrelsens autoritet over managerens retning.
-- Næste skridt: bevar svaret; afstem BOARD_RULES-overblikket og fortsæt designinterviewet.
+- Åbent spørgsmål: Q-006, målspillerens forkundskaber.
+- Næste skridt: bevar svaret; afklar tidsbudget/meraktivitet og fortsæt systemgennemgangen.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001 er ejerudtrykt; D-001 og D-002 er valgt; konkrete nye mekanikker er ikke godkendt.
+- V-001 og D-001 til D-004 er registreret; konkrete nye mekanikker er ikke godkendt.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

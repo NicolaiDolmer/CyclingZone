@@ -20,9 +20,9 @@ Senere kontrol skal også gennemgå baggrundsprocesser og funktioner uden egen r
 
 | ID | Område og designspørgsmål | Primære kilder under docs/ | Status i samtalen |
 |---|---|---|---|
-| G01 | Identitet, målspiller, managerfantasi og succeskriterier | Living World-doktrinen; #1145 | V-001, D-001, D-002; Q-004 afventer |
+| G01 | Identitet, målspiller, managerfantasi og succeskriterier | Living World-doktrinen; #1145 | V-001, D-001 til D-004; Q-006 afventer |
 | G02 | Onboarding, første beslutning, læring, hjælp og comeback | FEATURE_REGISTRY; App.jsx; #1140 | Inventeret; detaljer afventer |
-| G03 | Besøgskadence, offline-spil, deadlines og assistance | ASSISTANT_RULES; PLANNING_CENTER_RULES; TRAINING_RULES | ASSISTANT_RULES §0-2 delvist læst; træningsstikprøve E-001 |
+| G03 | Besøgskadence, offline-spil, deadlines og assistance | ASSISTANT_RULES; PLANNING_CENTER_RULES; TRAINING_RULES | D-004: 2-3 ugentlige besøg; ASSISTANT_RULES §0-2 delvist læst; E-001 |
 | G04 | Rytteridentitet, generation, egenskaber og typer | RIDER_GENERATION; PROGRESSION_RULES | PROGRESSION_RULES §0-8 læst; ingen ny kode-/prod-kontrol |
 | G05 | Træning, form, restitution, sygdom, skader og peaks | TRAINING_RULES; PROGRESSION_RULES | TRAINING_RULES §1 og §13 læst; E-001; ingen samlet mekaniktest |
 | G06 | Scouting, fog of war, potentiale og informationsværdi | PROGRESSION_RULES; YOUTH_RULES; scout-system i FEATURE_REGISTRY | Inventeret; egen reglerute afklares ved læsning |
@@ -34,7 +34,7 @@ Senere kontrol skal også gennemgå baggrundsprocesser og funktioner uden egen r
 | G12 | Økonomi, ressourcer, risiko, vækst og langtidsbalance | ECONOMY_RULES; GAME_INVARIANTS | ECONOMY_RULES delvist læst; påstande ikke genverificeret |
 | G13 | Kontrakter, forhandling, transfer, auktion, bytte og lån | TRANSFER_MARKET_RULES; ECONOMY_RULES | Inventeret |
 | G14 | Faciliteter, personale, klubidentitet og specialisering | FEATURE_REGISTRY; TRAINING_RULES; ECONOMY_RULES; #1149 | Inventeret; præcis regeldækning afklares |
-| G15 | Bestyrelse, sponsorer, ambition og handlefrihed | BOARD_RULES; SPONSOR_RULES | Reworkets design/spec/addendum, kode og PR'er kontrolleret; prod-flag/skrivning 10/9; Q-004 |
+| G15 | Bestyrelse, sponsorer, ambition og handlefrihed | BOARD_RULES; SPONSOR_RULES | Rework afstemt i SSOT §0 med kode/PR/prod-bevis 10/9; D-003 valgt; ingen fuld mål-/konsekvenstest |
 | G16 | AI-hold, verdensbefolkning, likviditet og skala | RIDER_GENERATION; TRANSFER_MARKET_RULES; #1151 | Inventeret |
 | G17 | Sociale relationer, beskeder, forum og rivalisering | SOCIAL_RULES; FORUM_RULES | Inventeret |
 | G18 | Historie, profiler, legender, anerkendelse og klubmuseum | SOCIAL_RULES; FEATURE_REGISTRY; #1148 | Inventeret |

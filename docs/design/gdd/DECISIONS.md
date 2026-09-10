@@ -136,7 +136,7 @@ må ikke i sig selv tælle som bevis på opnået omdømme. Præcise kriterier af
 
 ## Q-004 · Bestyrelsens mandat over managerens retning
 
-**Status:** stillet 10/9 efter overblikket over bestyrelsesreworket; afventer.
+**Status:** besvaret 10/9; A valgt, se D-003.
 
 **A, anbefalet:** Bestyrelsen udfordrer planens kvalitet og kræver troværdig fremgang
 inden for managerens valgte klubidentitet. En talentfabrik kan kritiseres for dårlig
@@ -148,6 +148,57 @@ med økonomiske konsekvenser ved uenighed.
 institutionel modstand i managerrollen. Begge kræver reelle, forståelige krav og
 respekterer den eksisterende regel om ingen fyring. Graden af modstand er ikke
 afgjort alene ved D-002. SSOT-kilder: BOARD_RULES §1, §4-6 og Mandat-spec'en.
+
+## D-003 · Bestyrelsen udfordrer planen inden for managerens retning
+
+**Status:** ejer-godkendt designretning 10/9, svar på Q-004.
+**Ejerens svar, ordret:** "Bestyrelsen udfordrer planen inden for managerens valgte retning (anbefalet)".
+
+Bestyrelsen må kræve kvalitet, ansvarlighed og troværdig fremgang inden for den
+klubidentitet manageren har valgt. Den skal ikke automatisk omdefinere en
+talentfabrik til et titelhold. Retningen er afstemt i BOARD_RULES §0.4.
+
+**Begrundelse:** sammenhæng mellem V-001's handlefrihed, D-001's alternative succes
+og D-002's managerstyrede ambitioner. **Fravalgt:** selvstændig bestyrelsesvision som
+kan kræve en anden klubretning end managerens. **Åbent:** præcis måldannelse,
+sværhedsgrad, frister, konsekvenser og genforhandling; meningsfuld modstand består.
+
+**Designhypotese til undersøgelse:** En talentfabriks salg af veludviklede ryttere
+skal ikke automatisk få talentarbejdet til at se mislykket ud. Målingen skal
+undersøges før dette bliver et bugfund. `boardGoalContext.js` og `boardGoals.js`
+er identificerede indgange; endnu ingen gennemført salgsscenarie-test.
+
+## Q-005 / D-004 · Konkurrencedygtighed med få ugentlige besøg
+
+**Status:** ejer-godkendt 10/9.
+**Spørgsmål:** Fastholdes doktrinens konkurrencedygtige kadence på 2-3 besøg om
+ugen, eller må daglige beslutninger være nødvendige? Konkurrencedygtighed gælder
+klubbens valgte niveau og vej; den lover ikke sejr over dygtigere managers.
+**Ejerens svar, ordret:** "2-3 besøg om ugen skal kunne bære en konkurrencedygtig klub (anbefalet)".
+
+God planlægning skal kunne bære klubben. Hyppigere besøg kan give mere indblik og
+muligheder; den præcise tilladte fordel ved meraktivitet er endnu ikke afklaret.
+**Fravalgt:** nødvendige daglige beslutninger som grundkrav for konkurrencedygtighed.
+**Ikke vedtaget:** bestemt sessionslængde, permanent automatisk optimering, nye
+auktionsfrister eller ens udfald for spillere med forskellig dygtighed.
+
+Kilder: Living World-doktrinens Product Identity; TRAINING_RULES §13 (fjernelse
+af klikbonus allerede ejer-besluttet 6/9); ASSISTANT_RULES (eksisterende assistance).
+**Foreslået verifikation:** en konkret uge med planlægning, overlap, træning,
+marked, kontrakter og bestyrelsesfrister; registrér hvilke valg der faktisk kræver
+fremmøde. D-004 er en tværgående aftale, ikke en påstand om at spillet opfylder den.
+
+## Q-006 · Den primære målspillers forkundskaber
+
+**Status:** stillet 10/9; afventer.
+**A, anbefalet:** cykelinteresserede, også uden erfaring med managerspil.
+**B:** erfarne managerspillere, som gerne vil lære cykelsporten.
+**C:** erfarne cykelmanagers, der allerede kender begge dele.
+
+**Hvorfor det betyder noget:** afgør hvilke begreber vi må forudsætte, hvor
+forklaringerne starter, og hvor hurtigt kompleksitet introduceres. A anbefales
+ud fra V-001's cykeltroværdighed, enkel UI og dybde der kan læres. Der er ikke
+foretaget en markedsmåling eller valgt en eksklusiv demografisk målgruppe.
 
 ## E-001 · Daglig klikbonus: implementeret adfærd og godkendt afløser
 
