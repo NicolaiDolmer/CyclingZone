@@ -6,9 +6,10 @@
 > [#4266](https://github.com/NicolaiDolmer/CyclingZone/issues/4266).
 >
 > Bestyrelsen er en af ejerens 10 kernefunktioner og havde indtil 29/8 intet SSOT-dokument.
-> Denne fil beskriver **hvad der kører i dag**, ikke hvad der er besluttet. De to er ikke det samme:
-> Mandat-modellen (#3514) er ejer-godkendt 7/8, migreret 23/8 og kører i **beta** (0 reelle seere,
-> ingen skyggeskrivning siden 1/9): se §6.
+> Denne fil skelner mellem gældende regler, bygget kode og godkendt fremtidigt design.
+> **Aktuel rework-status og hvad der bliver/udgår: læs §0 først.** Mandat-modellen
+> er fortsat i **beta** (prod-læst 10/9); Boardroom og årsmødet er bygget, og
+> skyggemodellen skriver data. Ældre målinger i §1-8 er historiske, ikke nutidsbevis.
 >
 > Sponsorsiden bor i [`SPONSOR_RULES.md`](SPONSOR_RULES.md). Grænsen mellem de to er §5, og den er
 > selve grunden til at begge filer findes. Økonomiens øvrige regler: [`ECONOMY_RULES.md`](ECONOMY_RULES.md).
@@ -17,6 +18,96 @@
 > 31/8 under [#4382](https://github.com/NicolaiDolmer/CyclingZone/issues/4382). §6 og §7 række 3 er
 > målt på ny 6/9 (#4837, #4838, #4839). Beslutnings-arkæologi:
 > [`audits/2026-08-29-sponsor-board-decision-inventory.md`](audits/2026-08-29-sponsor-board-decision-inventory.md).
+
+---
+
+## 0. Mandatet: samlet overblik, verificeret 10/9 2026
+
+**Anledning:** ejerens GDD-samtale 10/9: hvad er planlagt til at blive, og hvad udgår?
+**Kilder:** ejer-spec 7/8 + addendum 1/9, den nyere ejerretning om overblik/faner i
+PR #4844, kode ved `3759ab2e639ffcb3f4888e105338a97aad63484e`, GitHub-issues/PR'er
+læst 10/9 og read-only Supabase-måling 10/9 kl. 08:48 Europe/Copenhagen.
+Dette afsnit afløser ældre STATUS-påstande nedenfor, ikke de uændrede mekanikregler.
+
+### 0.1 Hvad bliver, erstattes og flyttes?
+
+| Del | Godkendt slutbillede for det eksisterende rework | Kilde/bevis |
+|---|---|---|
+| Tre parallelle planer og satisfaction-tal | Erstattes af én relation med confidence, ét årligt mandat og langsigtede visions-milepæle | Spec 7/8 §3; `boardMandate.js`, `boardMandateEngine.js` |
+| Managerens forhandling | Ét årsmøde med fokusvalg, Easier/Keep/Stretch, anmodning og underskrift; mid-season/ekstraordinær samtale består som retning | Spec §3.2-3.3; `boardMandateMeeting.js`; `annualMeeting/AnnualMeetingPage.jsx`; PR #4656/#4661 |
+| Navngivne medlemmer og mål-ejerskab | Bevares og får stemme, kvitteringer, referater og medlemsvisning | Addendum 1/9 A3; `boardVoice.js`, `BoardCard.jsx`; PR #4558 |
+| Langsigtede mål | Bliver visions-milepæle med oprindelige frister; tidligt opnået milepæl fejres straks, nyt slot-forslag ved næste årsmøde | Addendum 1/9 A7 afløser spec'ens venten til målsæsonen for tidlig opfyldelse |
+| Sponsorsamtale | Flyttet til egen Sponsors-side; den økonomiske kobling til bestyrelsens tillid består | §5; merged PR #4843; `SponsorsPage.jsx`, `App.jsx` |
+| Bonustilbud | Bevares i Boardroom; bonusmålet skrives også til mandatet | Merged PR #4844; `boardBonusGoal.js`, `api.js::applyAcceptedBonusGoal`; #4856 lukket |
+| Klub-DNA | **Bevares med eksisterende DNA-pakker.** Valg/genvalg er flyttet med til Boardroom; reworket leverer ikke en fri identitetsmodel | `BoardroomPage.jsx::chooseDna`, `DnaChoiceCard`; `boardClubDna.js`; PR #4844 |
+| Faner | De gamle 1/3/5-års-planfaner udgår; den nyere Boardroom har Overview, Mandate, Vision, Board | PR #4844; `BoardroomPage.jsx::TABS`. Den gamle formulering "ingen faner" er afløst |
+| Fyring, hårdt game over | Fortsat fravalgt. Bestyrelsens eksisterende konsekvenslag bevares i reworkets kontrakt | §1, §4; spec 7/8 §2.5 |
+| Gammel BoardPage | Fallback under beta/rollback; planlagt slettet efter stabil fuld aktivering | `BoardroomRoute.jsx`; [#4858](https://github.com/NicolaiDolmer/CyclingZone/issues/4858) |
+
+### 0.2 Hvad er faktisk leveret og aktiveret?
+
+- **Kode/merge-bevis:** PR #4841 (skrivning i beta), #4842 (nye hold + sæsonskifte),
+  #4843 (Sponsors-side), #4844 (Boardroom med bonus/DNA) er alle MERGED på GitHub.
+  Boardroom og årsmødets ruter samt komponenter findes på ovenstående kode-HEAD.
+- **Produktionsflag:** `board_mandate_model_enabled = 'beta'`, målt 10/9. Fladen er
+  dermed ikke aktiveret for alle. `featureStage.evaluateFlagStage` tillader beta
+  for berettigede seere og for `engineWrite`; `off` lukker begge.
+- **Positiv skriveevidens:** 239 `board_relations`; seneste opdatering
+  `2026-09-09 14:08:56.989+00`; seneste kvittering med `mandate_id`
+  `2026-09-09 14:08:57.112041+00`. Der er 12.866 mandatkvitteringer siden 6/9 UTC.
+  Påstanden om fortsat frysning siden 1/9 er afløst. Tallene beviser aktivitet,
+  ikke korrekthed af hver evaluering eller dækning af alle berettigede hold.
+- **Mandatstatus, samme læsetjek:** 237 `active`, 2 `proposed`. Dette er ikke
+  et bevis for et gennemført årsmøde eller fuld visuel/end-to-end-verifikation.
+- **Hjælp og kommunikation:** #4855 er lukket; Mandatet-hjælp findes i en+da,
+  og `docs/drafts/patch-note-mandate-flip.md` + `discord-mandate-flip.md` er
+  udarbejdet til aktiveringen. Udkastene er ikke publiceringsbevis.
+
+### 0.3 Resterende releasearbejde, ikke nye designvalg
+
+[#4859](https://github.com/NicolaiDolmer/CyclingZone/issues/4859) er fortsat åben
+og ejer selve beta-til-alle-flippet. Dens forudsætninger omfatter:
+
+- #4855 og #4856 er **lukkede**, sponsor/Boardroom-PR'erne er **merged**.
+- #4857 er **åben**: kontrollér dagens berettigede hold og den nødvendige backfill.
+  Det gamle antal manglende hold er ikke genmålt her og må ikke genbruges som nutidstal.
+- Sæson 4-forudsætningen (#4270), et aktuelt dry-run/scorecard, samlet verifikation
+  og særskilt ejer-go består. Denne GDD-session har ikke givet aktiverings-go.
+- #4858 er oprydning **efter** stabil aktivering, ikke en før-flip-blokering.
+
+Issue #3514 er åben. Dens statuskommentar fra 7/9 om at fase 2 ikke er bygget
+stemmer ikke med merged PR'er og kode. Brug dette overblik og de konkrete
+rest-issues frem for de historiske fasecheckbokse. Der er ikke lavet runtime-
+ændringer, migrationer eller udsendt spillerkommunikation i denne gennemgang.
+
+### 0.4 Ny designretning fra GDD-samtalen 10/9
+
+Ejeren har efterfølgende valgt disse principper; de er **ikke endnu en detaljeret
+erstatning for det byggede DNA-, mål- eller konsekvenssystem**:
+
+- **D-001:** en talentfabrik kan være en selvstændig langsigtet succesvej uden
+  hyppige store løbssejre som nødvendigt slutmål.
+- **D-002:** managerens frit kombinerede ambitioner skal fylde mest i identiteten,
+  suppleret af omdømme og identitet gennem handlinger. De fem DNA-pakker er ikke
+  den ønskede eneste fremtidige model.
+- **D-003:** bestyrelsen udfordrer planens kvalitet **inden for managerens valgte
+  retning**. Den kræver troværdig fremgang, men gør ikke automatisk en talentfabrik
+  til et titelprojekt. Kravene skal stadig være meningsfulde.
+- **D-009:** manageren kan frit begynde et strategisk kursskifte. Modstanden kommer
+  fra faktiske investeringer, trup, kontrakter og optjent omdømme; der lægges ikke
+  en særskilt skiftepris/ventetid oveni alene for at binde identiteten. Erklæringen
+  sletter ikke aftalte forpligtelser. Konkrete regler for genforhandling og
+  overgangen fra den eksisterende DNA-genvalgslås skal stadig designes.
+
+- **D-040 (Claude Code, 10/9, ejerens ord "gerne med endnu flere muligheder"):**
+  retningen erklæres som 2-3 valg fra et bredt katalog med primær/sekundær vægt;
+  mandatet udledes af retningerne; de fem DNA-pakker bliver forudfyldte kombinationer.
+  Katalog, antal, vægte og DNA-migration er åbne; #4859's release er uændret.
+Begrundelser og ejerens svar: [GDD-beslutninger](design/gdd/DECISIONS.md).
+Før et konkret redesign: afklar målbare succeskriterier, modstand/konsekvenser,
+omdømmets kilder og forholdet til eksisterende mandater. Ingen nye bonusser,
+frister, vægte eller migrationsregler er vedtaget. Dette er en ny designretning,
+ikke en skjult ændring af scope for de allerede godkendte releaseopgaver.
 
 ---
 
@@ -159,6 +250,14 @@ Lag 2-3 håndhæves i transfer- og auktions-routes via `assertSigningAllowed`. L
 
 ## 5. Adskillelsen — kontrakten mellem de to systemer
 
+> **GDD D-043 (ejer 10/9, præciseret):** målbilledet er det skarpe snit (sponsor = penge og
+> resultater; bestyrelse = identitet og retning, tillid virker strukturelt på mandatets
+> ambition og store investeringer). Koblingen nedenfor (modifier 0,8-1,2, pullout,
+> bonustilbud) BEVARES SOM OVERGANG, fordi spillerne er vant til den; den udfases kun ved
+> ny ejerbeslutning. Allerede nu: bestyrelsens mål = identitet/retning (D-040/D-003), aldrig
+> placeringer eller penge; sponsorens mål = resultater/synlighed/omdømme med bonus ved
+> opfyldelse (D-042). Popularitet → omdømme (D-041). Intet er bygget; se [D-043](design/gdd/DECISIONS.md).
+
 > Ejer-direktiv 25/8 ([#4265](https://github.com/NicolaiDolmer/CyclingZone/issues/4265)):
 > *"I sæson 3 skal bestyrelsen og sponsorere adskilles i ui."*
 >
@@ -214,7 +313,10 @@ korrekthedsfejl; #5 er en flytning der kræver at sponsoren får sin egen flade 
 
 ---
 
-## 6. Mandat-modellen (#3514): godkendt, migreret, beta uden skyggeskrivning
+## 6. Mandat-modellen (#3514): historisk status og migrationsregler
+
+**Aktuel status står i §0.** Tabellen og auditnoterne nedenfor bevarer den tidligere
+diagnose og begrundelser; skyggeskrivning, Boardroom og årsmøde er siden leveret.
 
 Ejer-godkendt 7/8 med 10 låste beslutninger. Erstatter tre planer med **én relation** (`confidence`
 0-100), **ét årligt mandat** (3-5 mål) og en **vision** af milepæle med målsæson.
@@ -234,10 +336,10 @@ Ejer-godkendt 7/8 med 10 låste beslutninger. Erstatter tre planer med **én rel
 | Årsmødet (S-M2c) | 0 produktions-evidens. Alle 237 mandater står `active`, 0 `proposed` |
 | Issue-label | `claude:done`, stadig med tomme fase-checkbokse |
 
-**Rest før flip (ejer-go 6/9 på rækkefølgen):** #4837 + #4838 + #4839 (backend, **merget 6/9**: PR #4841 + #4842) →
-Sponsors-side (#4265, PR #4843 grøn, preview) → bonustilbud + DNA i Boardroom som overblik + faner (#4557, PR #4844 grøn, preview) → help en+da
-+ patch note + Discord-udkast → flip på ejer-"go". S4 i DB kører som eget spor EFTER
-kalenderpakkeren har fået ens antal løbsdage (`TRAINING_RULES.md` §13, beslutning 1).
+**Daværende rækkefølge før flip (ejer 6/9):** backend → Sponsors-side → Boardroom
+med bonus/DNA → hjælp og kommunikationsudkast → særskilt aktiverings-go.
+Backend og de nævnte flader er nu merged, hjælp/udkast leveret; aktuel rest i §0.3.
+S4 i DB kører som eget spor efter kalenderpakkeren (`TRAINING_RULES.md` §13).
 
 **Opdateret 6/9 (#4837 + #4838) — to huller i motorens kaldstier lukket:**
 
@@ -270,6 +372,10 @@ kun i tillid.** Penge forbliver i lag 6 og modifieren.
 ---
 
 ## 7. Kendte åbne modsigelser
+
+**Historisk auditliste.** Nutidsstatus for reworket står i §0. Særligt række 1 er
+afløst af sponsor_growth-fixet i §3; række 2 af det genåbnede epic; række 3 af den
+verificerede skyggeskrivning. Øvrige rækker er ikke genverificeret som del af GDD-opstarten.
 
 | # | Modsigelse | Bevis |
 |---|---|---|

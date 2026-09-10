@@ -1,5 +1,22 @@
 # Race-motorens regler — SSOT
 
+> **GDD-retning, ejer 10/9 (D-019):** fremtidig læring af løbserfaring udvikler
+> eksisterende evner gennem progressionen; der tilføjes ikke en særskilt skjult
+> præstationsbonus oveni alene for erfaring. Se [PROGRESSION_RULES](PROGRESSION_RULES.md)
+> og [D-018/D-019](design/gdd/DECISIONS.md). Ingen motormekanik eller kontrakt
+> er ændret af denne retning; konkrete erfaringstyper og udbytte skal designes.
+> **D-022:** højere Holdarbejde hos en hjælper skal primært give mere brugbar
+> hjælp for samme egen indsats. Ejeren ønsker også, at en kaptajns høje Holdarbejde
+> kan få mere hjælp ud af holdet, begrundet i hans støtte til andre. De valgte
+> præciseringer står i D-023/D-024 nedenfor; §2e's begrænsninger består.
+> Se [beslutningerne](design/gdd/DECISIONS.md).
+> **D-023:** kaptajnens egenskab giver en startvirkning; faktisk godt samarbejde
+> med holdet kan styrke den. **D-024:** den ekstra støtte er bedre samarbejde
+> inden for de valgte roller/indsatsordrer, uden automatisk ekstra træthed.
+> Holdarbejdet har fortsat reel pris og begrænset effekt. **D-025:** opbygget
+> samspil følger de konkrete ryttere og bevares mellem dem ved klubskifte;
+> samarbejde med nye holdkammerater skal opbygges.
+
 > **Læs denne FØR enhver opgave der rører motoren, ruter, taktik eller resultater.** Ejer-direktiv 25/8 2026 ([#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)): *"Det må ALDRIG NOGENSINDE ske, at du ikke bruger et SSOT-dokument, når vi rent faktisk har lavet et."*
 
 Reglerne lå spredt over **25 design-dokumenter**. Denne fil er nu kilden. Ændrer du en værdi, ændrer du den i den fil tabellen peger på — og opdaterer denne i samme PR.

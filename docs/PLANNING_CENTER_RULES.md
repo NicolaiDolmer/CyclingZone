@@ -70,6 +70,10 @@ gaterne bor i [`ASSISTANT_RULES.md`](ASSISTANT_RULES.md) §1b - dupliker dem ikk
 flippet**, og regel 1's forbud mod nye proaktive assistent-FLADER gælder uændret i alle tre
 tilstande; den eneste nye flade er én til/fra-kontakt på Profil, synlig kun i `opt_in`.
 
+**GDD D-034 (ejer 10/9):** retningen er `late_fill` (24 t) plus påmindelse før fristen
+(#4983); regel 1-5 gælder uændret, og flippet er et ejer-gated prod-skridt. Se
+[ASSISTANT_RULES §12 pkt. 0](ASSISTANT_RULES.md) og [D-034](design/gdd/DECISIONS.md).
+
 **Påmindelsen før fristen (#4983, D-034) er ikke en sjette udfyldningsvej.** Den markerer
 "Planlægning" gult i navigationen og viser en boks øverst på planlægningssiden når en trup
 mangler før fristen, og rød når truppen er under deltagelses-gulvet (`MIN_RACE_ENTRIES` = 6,

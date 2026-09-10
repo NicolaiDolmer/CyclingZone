@@ -1,5 +1,21 @@
 # De sociale features' regler - SSOT
 
+> **GDD-retning, ejer 10/9 (D-013):** Klubbens udviklingshistorik skal have en
+> offentlig sektion på klubprofilen og et eget praktisk overblik for manageren.
+> Akademioprindelse og udvikling hos klubben adskilles efter D-011/D-012 i
+> [YOUTH_RULES](YOUTH_RULES.md). Andre klubbers private træningsoplysninger
+> bliver ikke tilgængelige gennem historikken. **D-014, samme dag:** eget overblik
+> viser én samlet "Siden sidst" med udvalgte milepæle og adgang til rytterdetaljer.
+> Præcise milepæle og konkret layout afventer; eksterne beskeder er ikke valgt.
+> Ingen funktion eller beskedudsendelse er
+> godkendt til build her. [GDD-beslutninger](design/gdd/DECISIONS.md).
+> **D-016/D-017:** Personlige gennembrud vægter højt i opsummeringen (hjælperens
+> første mindre sejr over stjernens endnu en almindelig WorldTour-etape i det
+> forelagte eksempel; store hovedbedrifter kan fortsat prioriteres særligt).
+> Manuel "Følg karrieren" supplerer automatisk opfølgning og påvirker ikke
+> offentlige akademi-/udviklingsmærker. Samlet koncept og åbne detaljer:
+> [Rytterhistorier og egen avl](design/gdd/RIDER_LEGACY.md).
+
 > **Læs denne FØR enhver opgave der rører de sociale flader: Discord-koblingen, rollesynkronisering,
 > DM-udsendelse og DM-præferencer, in-app-notifikationer, achievements, opbakning i forummet,
 > holdprofiler og tilstedeværelse, eller ranglister.**

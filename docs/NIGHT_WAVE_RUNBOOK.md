@@ -187,6 +187,10 @@ _Refs #605. Se også: [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md) (parallel
 
 - _SHA` lå uden for Vercels shallow clone og exit 128 tolkes som deploy-fejl ([#3838](https://github.com/NicolaiDolmer/CyclingZone/issues/3838))._
 
+**Regel 20 - Deploy-verify er en del af merge-handlingen**
+
+- _18/8: prod-frontend sad fast på sidste gode deploy i timevis mens merges fortsatte ovenpå den knækkede ignoreCommand._
+
 **Regel 21 - Per-agent-timeout dimensioneres efter samtidighed**
 
 - _Natbølge XL 18/8: 110 min klippede 15 af 32 agenter under 26+ samtidige; e-mail-kæden blev klippet to gange ved 110/150 og leverede på 16 min da maskinen var ledig._
@@ -195,28 +199,14 @@ _Refs #605. Se også: [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md) (parallel
 
 - _Natbølgen 4.-5./8: fire spor allerede løst. 18/8 formiddag: #3682 lukket 3 dage før. 18/8 eftermiddag: #3066 stod som priority:high-punkt i sessionsprompten men var shipped+lukket 17/8 — ét kald sparede en hel worker._
 
+**Regel 23 - Post-merge guard-tjek af main**
+
+- _18/8 morgen: to vagter knækkede på main efter formiddagens merges og blokerede hele merge-køen (fix `6d5a232c`)._
+
 **Regel 24 - Orkestratoren ejer e2e-slottet**
 
 - _KS3 18/8: workers der selv valgte fuld suite spildte timer på et delt slot._
 
-**Regel 26 - **
-
-- _KEY` — i hvert modul den serverer, så `curl`/`fetch`/`Invoke-WebRequest` mod localhost:5173/5174 lækker nøglen til transcriptet uanset hvilket modul du henter. Screenshots og `read_
-
 **Regel 30 - Omraadets SSOT laeses, citeres og opdateres i samme PR**
 
-- _RULES.md) · holdudtagelse og sæsonplanlægning → [`docs/PLANNING_
-
-- _RULES.md) · **sponsor, kontrakter og arketyper → [`docs/SPONSOR_
-
-- _RULES.md)** · **bestyrelsen, mål og konsekvenser → [`docs/BOARD_
-
-- _RULES.md)** · rytterudvikling, træning og rating → [`docs/PROGRESSION_
-
-- _RULES.md)** · **transfermarked og auktioner → [`docs/TRANSFER_
-
-- _RULES.md` fandtes, var opdateret samme dag og indeholdt ordret advarslen "gulvene er regressionsværn, ikke kvalitetsmål". Linjen var læst. Alligevel blev "1 fritstående enkeltstart OK" rapporteret, hvor 1 kun var et gulv. Ejeren opdagede det selv — ingen gate gjorde. Samme dag blev et Z1-design tegnet med et rollesæt der ville have kollideret med `TeamOrder`-kontrakten, fordi motorens SSOT ikke fandtes endnu._
-
-**Regel 24 - Orkestratoren ejer e2e-slottet**
-
-- _REFERENCE.md` per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733) (token-reduktion; Codex cold-start). Indhold bevaret, kun flyttet._
+- _25/8: `CALENDAR_RULES.md` fandtes, var opdateret samme dag og indeholdt ordret advarslen "gulvene er regressionsværn, ikke kvalitetsmål". Linjen var læst. Alligevel blev "1 fritstående enkeltstart OK" rapporteret, hvor 1 kun var et gulv. Ejeren opdagede det selv — ingen gate gjorde. Samme dag blev et Z1-design tegnet med et rollesæt der ville have kollideret med `TeamOrder`-kontrakten, fordi motorens SSOT ikke fandtes endnu._

@@ -624,7 +624,7 @@ features:
     title_da: Rytter-omdømme
     state: building
     flag: rider_reputation_enabled
-    verified: 2026-09-06
+    verified: 2026-09-10
 
   - id: survey-banner
     area: ops
