@@ -381,7 +381,7 @@ mens nye mål bliver forståelige. Test også gentagne erklæringer for mål-nul
 
 ## Q-011 · Hvor sikkert er et talentprojekt?
 
-**Status:** stillet 10/9; afventer.
+**Status:** besvaret 10/9; A valgt, se D-010.
 En lovende ung rytter udvikles fornuftigt over flere sæsoner og bliver en god
 hjælper, men aldrig den håbede stjerne.
 **A, anbefalet:** almindeligt acceptabelt udfald; god management forbedrer en
@@ -399,6 +399,172 @@ Kilder læst: PROGRESSION_RULES §0-10, TRAINING_RULES §12-13; ejerbeslutningen
 6/9 om ærlig score for egen manager genåbnes ikke. Potentiale er udviklingsfart,
 ikke det tidligere direkte potentialeloft. Sammenhængen mellem talenter,
 individuelle forskelle, udviklingsvalg og karriere skal undersøges videre.
+
+## D-010 · En god karriere kan lykkes uden stjernestatus
+
+**Status:** ejer-valgt 10/9, svar på Q-011.
+**Ejerens svar, ordret:** "Ja; en god karriere kan lykkes, selv om stjernedrømmen ikke gør (anbefalet)".
+
+Det er almindeligt acceptabelt, at en lovende ung rytter efter flere sæsoners
+fornuftig udvikling bliver en god hjælper frem for den håbede stjerne. God
+management skal forbedre karrieren, men behøver ikke indfri stjernedrømmen.
+Troværdige udviklingstegn og brugbare muligheder undervejs er en del af A's
+forelagte tradeoff. **Fravalgt:** næsten sikker stjernestatus for velvalgte
+talenter under god management og udfald næsten helt bestemt af managerens valg.
+
+**Åbent:** hvor forskellene og usikkerheden kommer fra, og hvordan hjælperens
+bidrag og karriere mærkes. Ingen ny tilfældighed, skjult dom, loft eller rate
+er valgt. Potentiale som udviklingsfart og den ærlige score genåbnes ikke.
+**Designerens kritik til videre prøve:** en hjælperkarriere må have oplevet og
+praktisk værdi, hvis udfaldet skal være andet end en pæn beskrivelse af fiasko.
+**Foreslået verifikation:** følg projektet gennem udviklingssignaler, løbsbidrag,
+behold/sælg-valg og historik; undersøg om manageren kan begrunde karrierens værdi.
+Kilder: V-001, D-001, PROGRESSION_RULES (principnote afstemt), TRAINING_RULES §13.
+
+## Q-012 · Stoltheden ved den hjemmeudviklede hjælper
+
+**Status:** ejerønske modtaget 10/9, se R-001; intet konkret karriereøjeblik valgt.
+En hjemmeudviklet hjælper har kørt fem sæsoner, vinder sjældent og kan måske
+erstattes af en lidt stærkere rytter. Hvilket konkret øjeblik gør manageren stolt
+af at have udviklet ham og opleve ham som vigtig for klubbens historie?
+**Anbefaling:** forankr stoltheden i faktiske bidrag og spillerens relation til
+rytteren. Spørgsmålet vælger ikke en bonus for loyalitet eller en bestemt UI-flade.
+**Hvorfor frit svar:** Vi har valgt strategiske principper; nu behøves ejerens
+konkrete ønskede oplevelse for at designe synlig værdi og tilknytning.
+Kilder læst: RACE_ENGINE_RULES §0-1b, §2e og §9; D-010. E-004 afgrænser kodebevis.
+
+## R-001 · Følg ryttere "af egen avl"
+
+**Status:** ejerudtrykt ønske 10/9, svar på Q-012; konkret design afventer.
+**Ejerens svar, ordret:** "Jeg vil gerne have nogle fede måder i spillet at kunne følge ryttere \"af egen avl\", som i football manager. Kan du stille flere konkrete spørgsmål angående dette, og give nogle anbefalinger med, så er det nemmere at svare på?".
+
+Ejeren peger på muligheden for at følge egne udviklede ryttere og beder om
+konkrete anbefalede valg. Det er ikke en godkendelse af en bestemt trackingflade,
+notifikationsstrøm, statistik eller økonomisk belønning. Football Manager er
+ejerens reference; ingen specifik funktion derfra er undersøgt eller kopieret.
+**Arbejdsform:** konkrete beslutningskort, ét ad gangen. Først målgruppen af
+ryttere (Q-013), derefter følgeflade og betydningsfulde begivenheder. Det frie
+spørgsmål om et stolt øjeblik stilles ikke igen i samme form.
+Kilder: V-001, D-001/D-010, YOUTH_RULES §1/§4 og E-005.
+
+## Q-013 · Hvilke udviklede ryttere følges automatisk?
+
+**Status:** besvaret 10/9; A valgt, se D-011.
+**A, anbefalet:** både ryttere fra eget akademi og unge købt og udviklet en
+væsentlig del af karrieren hos klubben; tydelig forskel mellem "fra vores
+akademi" og "udviklet hos os". En købt 17-årig udviklet gennem fem sæsoner er
+et eksempel, ikke et vedtaget adgangskrav.
+**B:** kun eget akademi kommer automatisk med.
+**C:** ingen automatisk liste; manageren vælger selv sine særlige ryttere.
+
+**Begrundelse:** D-001's talentfabrik kan skabe værdi på flere måder. A anerkender
+udviklingsarbejde uden at overtage en anden klubs akademioprindelse. Det kræver
+efterfølgende en tydelig definition af bidraget og behandling af flere klubber,
+gentagne handler og historiske data. Alder, varighed og præcise mærker er åbne.
+Dette spørgsmål afgør automatisk afgrænsning; manuel supplering, favoritter,
+offentlig visning og notifikationer er endnu ikke afgjort.
+
+## D-011 · Akademioprindelse og udviklingsklub følges særskilt
+
+**Status:** ejer-valgt 10/9, svar på Q-013.
+**Ejerens svar, ordret:** "Eget akademi og unge udviklet hos os, med tydelig forskel (anbefalet)".
+
+Den automatiske kreds af ryttere, som klubben kan følge videre efter salg, skal
+omfatte eget akademi samt unge, som klubben har købt og udviklet en væsentlig
+del af karrieren. "Fra vores akademi" og "udviklet hos os" adskilles tydeligt.
+**Begrundelse:** anerkend faktisk klubhistorie og talentfabrikkens arbejde uden
+at tilskrive akademioprindelsen til en senere køber. **Fravalgt:** kun eget
+akademi automatisk og en rent manuelt udvalgt kreds som eneste model.
+
+**Åbent:** alders-/opholdskriterier, flere udviklingsklubber, manuel supplering,
+offentlig visning, privat information efter salg, liste/nyheder og notifikationer.
+Ingen konkret mærkeplacering eller bonus valgt. Kilder: R-001, D-001/D-010,
+YOUTH_RULES (principnote afstemt) og E-005. **Foreslået verifikation:** følg både
+egen kandidat og indkøbt ung rytter gennem salg; begge historier bevares, og
+deres forskellige ophav fremgår uden udokumenterede tilskrivninger.
+
+## Q-014 · Kriteriet for "udviklet hos os"
+
+**Status:** besvaret 10/9; A valgt med ejerændring fra to til tre sæsoner, se D-012.
+**A, anbefalet:** mindst to sæsoners samlet ungdomstid hos klubben, frem til og
+med U23-perioden. Eksempel: købt som 17-årig og hos klubben frem til 19.
+**B:** mindst én sæsons ungdomstid; tilknytningen skal opstå hurtigere.
+**C:** faktisk evnefremgang afgør mærket i stedet for opholdstid.
+
+**Tradeoff:** opholdstid er forståelig og favoriserer ikke hurtige talenter over
+langsomme hjælpere, men beviser ikke i sig selv godt trænerarbejde. En vækstregel
+kan tilskrive mere af den målte udvikling, men påvirkes af talentets medfødte fart
+og bliver vanskeligere at gennemskue. Antal sæsoner er et åbent forslag, ikke en
+låst balancekonstant. U23's aldersbegreb følger YOUTH_RULES §1 (sæsonalder).
+Ved valg af tidsregel skal målingen præciseres: delvise sæsoner, flere ophold,
+aldersgrænse og om alder eller truptilhørsforhold tæller. Ingen data-backfill valgt.
+
+## D-012 · Tre sæsoners samlet ungdomstid giver udviklingstilknytning
+
+**Status:** ejer-valgt 10/9, svar på Q-014.
+**Ejerens svar, ordret:** "1 - Det skal være 3 sæsoner i stedet for 2 sæsoner.".
+
+"Udviklet hos os" bygger på mindst **tre sæsoners samlet ungdomstid hos klubben**,
+frem til og med rytterens U23-periode. Ejeren vælger A's opholdstidsmodel og ændrer
+forslagets to sæsoner til tre. Den oprindelige 17-til-19-års illustration er derfor
+ikke længere et kvalificerende eksempel; under samme antagelse ville 17 til 20
+opfylde tre sæsoner. **Fravalgt:** én sæson, to sæsoner og evnefremgang som kriterium.
+
+**Forelagt tradeoff:** forståelig tilknytning, også for langsomme talenter/hjælpere,
+men ophold er ikke bevis for godt trænerarbejde. Mærket må ikke beskrives som en
+objektiv rangering af uddannelseskvalitet. **Åbent:** delvise sæsoners måling,
+aldersgrænsens skæringspunkt, truptilhørsforhold kontra alder, flere ophold og
+historisk datadækning. En optælling af passerede sæsonskifter er ikke i sig selv
+afklaret som tilsvarende tre sæsoners faktisk ophold.
+Kilder: D-011, YOUTH_RULES §1 (U23/sæsonalder) og topnote afstemt her.
+**Foreslået verifikation:** tre fulde sæsoners ungdomsophold kvalificerer;
+kort gennemhandel gør ikke; langsom vækst alene må ikke diskvalificere.
+
+## Q-015 · Offentlig eller privat udviklingshistorik?
+
+**Status:** stillet 10/9; afventer.
+**A, anbefalet:** offentlig sektion på klubprofilen og eget praktisk overblik
+til manageren. Eksempelindhold: akademi/udviklingsklub adskilt, navn, nuværende
+klub og udvalgte karrierebedrifter, med link til rytterprofil.
+**B:** kun privat personlig historik.
+**C:** manageren vælger offentlig eller privat udviklingshistorik.
+
+**Begrundelse:** D-001's talentfabrik kan få synlig multiplayeridentitet gennem
+ryttere, som siden vinder for andre hold. Dette afgør synlighed, ikke præcise
+kolonner, rangliste, belønninger eller notifikationskadence. Andre klubbers private
+træningsoplysninger er ikke del af forslaget (TRAINING_RULES §13).
+Kilder: V-001, R-001, D-011/D-012 og YOUTH_RULES.
+
+## E-005 · Årgange, intake og historik er forskellige kilder
+
+**Status:** afgrænset kilde-/kodekontrol 10/9 ved `be62a839`, ingen prod-måling.
+YOUTH_RULES §1/§4 definerer `generation_tag` som årgangsmærke; det er ikke i sig
+selv en tilskrivning af uddannelse til en bestemt klub. `academyIntakeReconcile.js`
+skelner mellem tilbud, underskrevet kandidat og kandidat købt af en anden klub.
+Et tilbud alene er derfor ikke bevis for at klubben har udviklet rytteren.
+`riderHistory.js` samler offentlig handelshistorik og henviser til
+`rider_ownership_events`; filen angiver at den særskilte ejerskabslog blev indført
+senere end de ældste handler. Historisk dækning af udviklingsperioder er ikke
+verificeret; ingen universel rekonstruktion eller ny mangelliste er vedtaget.
+
+## E-004 · Hjælperrollen og holdarbejdet er eksisterende mekanikker
+
+**Status:** kilde-/kodekontrol 10/9 ved `be62a839`; ingen prod- eller UI-prøve.
+RACE_ENGINE_RULES §1 definerer `helper` som arbejder for kaptajnen. §2e beskriver
+beskyttelse til kaptajnen og en pris for hjælperens eget resultat. Kodekontrollen
+finder roller og work-cost i `backend/lib/raceRoles.js` samt arbejdende roller,
+betaling og beskyttelse i `backend/lib/engine/v4/mechanics/teamPlay.ts`.
+NOW angiver v3 for S3 og v4 som særskilt kommende flip; fundet er ikke en påstand
+om at v4 er live. Ingen historiske kalibreringstal er genmålt eller gentaget.
+
+**Designhypotese:** En lav personlig placering kan være forenelig med vigtig
+hjælp til holdet. Vi har ikke kontrolleret, hvor tydeligt dette formidles i
+resultater, referater, rytterhistorik eller karrierevurdering. Der er derfor
+ikke belæg for at kalde manglende synlighed en eksisterende UI-bug endnu.
+
+**Kildeafstemning:** PROGRESSION_RULES §6's gamle støjkrav er markeret afløst af
+den nyere ejerbeslutning i TRAINING_RULES §13. Det er en dokumentkonflikt rettet
+ved kildehenvisning, ikke en ny designbeslutning eller en runtimeændring.
 
 ## E-003 · Den eksisterende DNA-genvalgslås
 

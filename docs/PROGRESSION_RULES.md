@@ -1,5 +1,13 @@
 # Rytterudviklingens regler — SSOT
 
+> **GDD-retning, ejer 10/9 2026 (D-010):** En fornuftigt udviklet ung rytter kan
+> få en god hjælperkarriere uden at indfri managerens stjernedrøm. Det er et
+> almindeligt acceptabelt udfald; der skal være troværdige udviklingstegn og
+> brugbare muligheder undervejs. Se [GDD](GAME_DESIGN_DOCUMENT.md) og
+> [beslutningen](design/gdd/DECISIONS.md). Det fastlægger ikke nye lofter,
+> tilfældighed eller sandsynligheder. Den ærlige score besluttet i TRAINING_RULES
+> §13 består; konkrete regler skal efterprøves mod oplevelsesmålet.
+
 > **Læs denne FØR enhver opgave der rører rytterudvikling, træning, potentiale, lofter, rating eller ryttertyper.** Ejer-direktiv 25/8 ([#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)):
 > *"Det må ALDRIG NOGENSINDE ske, at du ikke bruger et SSOT-dokument, når vi rent faktisk har lavet et. Der skal nogle hardcore regler på det her."*
 >
@@ -98,6 +106,13 @@ Ejer-beslutning 13/8, "tredje vej": potentiale forbliver **1-6 internt**, UI vis
 ---
 
 ## 6. Rating og scouting
+
+**Nyere beslutning har afløst støjkravet nedenfor:** TRAINING_RULES §13, ejer 6/9,
+fastlægger ærlig træningsscore for egen manager fra dag ét og frafalder den
+tidligere privatlivs-/støj-gate. De to historiske rækker om mere dagsstøj og
+scouting afhængig af denne gate må derfor ikke bruges som aktuelle byggekrav.
+Dette er en afstemning af designkilder, ikke bevis for at scoreomlægningen er live.
+Andre spørgsmål om scouting og fremmede ryttere afgøres ikke af afstemningen.
 
 | Regel | Fil | Status |
 |---|---|---|

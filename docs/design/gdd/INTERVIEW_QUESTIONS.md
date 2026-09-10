@@ -61,3 +61,21 @@ i journalen. På pausetidspunktet var Q-010 ikke stillet.
 ## Q-011 · Talentprojektets usikkerhed
 
 > Du køber en lovende ung rytter og udvikler ham fornuftigt gennem flere sæsoner. Alligevel bliver han en god hjælperytter og aldrig den stjerne, du håbede på. Skal det være et almindeligt, acceptabelt udfald? Jeg anbefaler ja: God management skal forbedre hans karriere, men behøver ikke indfri den oprindelige stjernedrøm. Det gør vurderingen af talenter og valget om at beholde eller sælge dem betydningsfuldt. Til gengæld skal spillet undervejs give troværdige tegn på udviklingen og brugbare muligheder for rytteren, så årene ikke opleves som spildt på en skjult, uforanderlig dom. Vi ændrer ikke her den allerede besluttede ærlige træningsscore; spørgsmålet handler om, hvor sikkert et langsigtet talentprojekt skal være.
+
+## Q-012 · Stoltheden ved den hjemmeudviklede hjælper
+
+> Forestil dig den hjemmeudviklede hjælper efter fem sæsoner i din klub: Han vinder næsten aldrig og kunne måske erstattes af en lidt stærkere rytter. Hvad skal spillet lade dig se eller opleve, så du alligevel tænker: »Ham er jeg stolt af at have udviklet — han har været vigtig for vores historie«? Beskriv gerne ét konkret øjeblik. Min anbefaling er at bygge stoltheden på hans faktiske bidrag og din relation til ham; holdarbejde findes allerede i løbsmodellen, men vi skal afklare, hvordan det bliver en mærkbar del af spillerens oplevelse.
+
+## Q-013 · Hvem tæller med blandt klubbens udviklede ryttere?
+
+> Hvilke ryttere skal automatisk høre til blandt »klubbens udviklede ryttere«, som du kan følge videre efter et salg? Jeg anbefaler både dem, du har taget ind gennem eget akademi, og unge, du har købt og udviklet en væsentlig del af karrieren. Listen skal tydeligt vise forskellen på »fra vores akademi« og »udviklet hos os«. Eksempel: En 17-årig, du køber og udvikler gennem fem sæsoner, bør også kunne være en del af din klubs historie. Det giver talentfabrikken anerkendelse for arbejdet, uden at den overtager æren for en anden klubs akademi. De præcise alders- og varighedskrav tager vi bagefter.
+
+## Q-014 · Kriteriet for udviklingsklub
+
+> Hvornår skal en indkøbt ung rytter få mærket »udviklet hos os«? Mit forslag er mindst to sæsoners samlet tid i klubbens ungdomsår, frem til og med rytterens U23-periode. Så kan en 17-årig, der bliver hos jer til 19, tælle med, mens et kort ophold før videresalg ikke gør. Jeg anbefaler opholdstid som grundlag: Det er let at forstå og anerkender også en langsomt udviklende hjælper. Ulempen er, at tiden ikke i sig selv beviser godt trænerarbejde. Alternativt kan mærket kræve en bestemt faktisk evnefremgang, men det favoriserer hurtigt udviklende talenter og gør grænsen sværere at gennemskue. To sæsoner er et forslag, som vi kan justere.
+
+Ejerens svar ændrede forslaget til **tre** sæsoner; se D-012.
+
+## Q-015 · Udviklingshistorikkens synlighed
+
+> Skal andre managers kunne se klubbens udviklede ryttere? Jeg anbefaler en offentlig sektion på klubprofilen med »Fra vores akademi« og »Udviklet hos os«: rytterens navn, nuværende klub og udvalgte karrierebedrifter, med link til rytterprofilen. Så kan en talentfabrik blive kendt for de ryttere, den har sendt videre. Dit eget overblik kan samtidig rumme mere praktisk opfølgning; sektionen skal ikke give adgang til en anden managers private træningsoplysninger.

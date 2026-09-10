@@ -149,13 +149,52 @@ uden at indfri stjernedrømmen? PROGRESSION_RULES §0-10 og TRAINING_RULES §12-
 læst før spørgsmålet. Ærlig træningsscore og potentiale som fart fastholdes som
 eksisterende beslutninger; historiske statusstempler i kilderne er ikke genmålt.
 
+## Q-011 · Talentprojektets udfald, ejerens svar ordret
+
+> Ja; en god karriere kan lykkes, selv om stjernedrømmen ikke gør (anbefalet)
+
+Registreret som D-010 og afstemt i PROGRESSION_RULES. Ingen ny tilfældighed eller
+ændring af ærlig score valgt. Q-012 beder om ét konkret øjeblik, som gør den
+hjemmeudviklede hjælper vigtig for klubbens historie. Holdarbejde og hjælperrolle
+er kilde-/kodekontrolleret (E-004); deres formidling er endnu ikke UI-verificeret.
+PROGRESSION_RULES §6's historiske støjkrav er samtidig markeret afløst af den
+nyere ejerbeslutning om ærlig træningsscore 6/9; ingen runtimeændring.
+
+## Q-012 · Egen avl og konkrete spørgsmål, ejerens svar ordret
+
+> Jeg vil gerne have nogle fede måder i spillet at kunne følge ryttere "af egen avl", som i football manager. Kan du stille flere konkrete spørgsmål angående dette, og give nogle anbefalinger med, så er det nemmere at svare på?
+
+Registreret som R-001, et ønske der skal konkretiseres, ikke en bestemt feature
+godkendt til build. Arbejdsformen justeres til konkrete anbefalede valg, stadig
+ét ad gangen. Q-013 spørger, hvem der automatisk omfattes: eget akademi alene,
+også unge udviklet hos klubben efter køb, eller kun managerens manuelle udvalg.
+Kode-/kildestikprøven E-005 adskiller årgang, tilbud og faktisk klubhistorik.
+
+## Q-013 · Hvem der følges, ejerens svar ordret
+
+> Eget akademi og unge udviklet hos os, med tydelig forskel (anbefalet)
+
+Registreret som D-011 og afstemt i YOUTH_RULES. Eget akademi og købte unge udviklet
+hos klubben skal med, med særskilt oprindelse og udviklingsbidrag. Q-014 spørger
+til kriteriet for indkøbte unge: to sæsoners ungdomstid (anbefalet), én sæson,
+eller faktisk evnefremgang. Ingen konkret grænse er valgt endnu.
+
+## Q-014 · Tre sæsoner, ejerens svar ordret
+
+> 1 - Det skal være 3 sæsoner i stedet for 2 sæsoner.
+
+Registreret som D-012 og afstemt i YOUTH_RULES. Opholdstid vælges, men ejerens
+tre sæsoner erstatter Codex' forslag om to. U23-perioden indgår som i A;
+delvise sæsoner og historisk opgørelse er ikke teknisk afgjort. Q-015 spørger
+til offentlig udviklingshistorik på klubprofilen kontra privat/valgfri visning.
+
 ## Handoff · Genoptaget, 10/9 2026
 
 - Aktivt arbejde: samlet GDD og kritisk interview, status `in_progress`, genoptaget af ejer.
-- Q-001–010 er besvaret; Q-011 om talentprojektets usikkerhed afventer.
-- Næste skridt: bevar Q-011-svaret og fortsæt med rytterudvikling, individuelle forskelle og feedback.
+- Q-001–014 har ejer-svar; Q-015 om offentlig udviklingshistorik afventer.
+- Næste skridt: konkrete kort om R-001, følgeflade og begivenheder; afklar åbne kriteriedetaljer før build.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001 og D-001 til D-009 er registreret; konkrete nye mekanikker er ikke godkendt.
+- V-001, D-001–012 og ønske R-001 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

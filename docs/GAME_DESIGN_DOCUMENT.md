@@ -12,9 +12,10 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-009 er registreret.
-**Genoptaget 10/9 efter Q-009:** hele genoptagelsespakken læst; Q-011 om talentprojektets
-usikkerhed afventer. [Genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md)
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-012 er registreret.
+**Aktuelt:** Q-015 om offentlig eller privat udviklingshistorik afventer.
+R-001 bevarer ejerens ønske om at følge ryttere "af egen avl".
+[Genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md)
 bevarer pausepunktet; journalens sidste handoff er den aktuelle samtaletilstand.
 
 **Eksisterende kompas:** [Living World Product Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md).
@@ -133,6 +134,28 @@ af konsekvenser og langsigtede valg. Vi må ikke forveksle en tæt informationsf
 med en forståelig flade. [TASTE](design/TASTE.md) er fortsat UI-kilden; D-005
 godkender ingen ændret sideopskrift eller konkret onboardingmekanik.
 
+### Talentprojektets udfald (D-010, ejer-valgt 10/9)
+
+En lovende ung rytter kan udvikles fornuftigt gennem flere sæsoner og ende som en
+god hjælper uden at blive den håbede stjerne. Det er et almindeligt acceptabelt
+udfald: god management skal forbedre karrieren, men garanterer ikke stjernestatus.
+Undervejs skal der være troværdige tegn på udviklingen og brugbare muligheder for
+rytteren. En god karriere skal kunne have værdi for klubbens historie og mål.
+
+Dette fastlægger oplevelsen, ikke en ny tilfældighedsmodel eller skjult stopregel.
+[PROGRESSION_RULES](PROGRESSION_RULES.md) ejer udviklingsreglerne, og
+[TRAINING_RULES §13](TRAINING_RULES.md) ejer den allerede besluttede ærlige score.
+**Ejerønske (R-001, 10/9):** gode måder at følge ryttere "af egen avl", med
+Football Manager som inspiration. **D-011, valgt 10/9:** Den automatiske kreds
+omfatter eget akademi og unge, som klubben har købt og udviklet en væsentlig del
+af karrieren. Oprindelse og udviklingsarbejde vises tydeligt adskilt som "fra
+vores akademi" og "udviklet hos os". **D-012, valgt 10/9:** "Udviklet hos os"
+kræver mindst tre sæsoners samlet ungdomstid hos klubben frem til og med
+U23-perioden. Opholdstid er grundlaget, ikke en bestemt evnefremgang.
+Delvise sæsoners opgørelse og historisk datadækning skal præciseres.
+Hvordan de følges efter salg, og hvilke begivenheder der fremhæves, afklares videre.
+Der er endnu ikke valgt liste, notifikationer, loyalitetsbonus eller ny statistik.
+
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
 Dette er en samtalerækkefølge, ikke en ændring af leverancerne i MASTERPLAN.
@@ -233,6 +256,8 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   markedsaktivitet valgt; D-008 om købeklubben og vid valgfrihed valgt.
   Interview pauset efter Q-009 med genoptagelsesbrief og spørgsmålstekster.
   Genoptaget fra `c51231e5` samme dag; D-009 om fri omlægning valgt efter kodekontrol.
-  Q-011 om talentprojektets usikkerhed stillet.
+  D-010 om talentprojektets usikkerhed valgt; Q-012 besvaret med ønske R-001
+  om at følge egen avl og mere konkrete spørgsmål. D-011 om afgrænsningen valgt;
+  D-012 om tre sæsoners ungdomstid valgt; Q-015 om synlighed stillet.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.

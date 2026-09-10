@@ -8,6 +8,16 @@
 > Konkrete trupregler, omkostninger og flows nedenfor ændres ikke af dette principvalg;
 > deres sammenhæng med retningen skal efterprøves under designgennemgangen.
 
+> **Følg udviklede ryttere, ejer 10/9 (D-011):** Den fremtidige automatiske kreds
+> skal omfatte eget akademi samt unge købt og udviklet en væsentlig del af
+> karrieren hos klubben. "Fra vores akademi" og "udviklet hos os" skal være
+> tydeligt adskilt. **D-012, samme dag:** "Udviklet hos os" kræver mindst tre
+> sæsoners samlet ungdomstid hos klubben frem til og med U23-perioden; opholdstid,
+> ikke målt evnefremgang, er grundlaget. Opgørelse af delvise sæsoner, historiske
+> data, flade og begivenheder afventer design.
+> [R-001/D-011/D-012](design/gdd/DECISIONS.md) bevarer intentionen;
+> dette er ikke en påstand om leveret funktionalitet eller godkendelse til build.
+
 > **Læs denne FØR enhver opgave der rører akademiet, intake, ungdomsauktionen, graduering,
 > flyt mellem trupper, aldersgrænser for hold og løb, eller "kommer snart"-flader for
 > ungdomsholdene.** Området blev født uden SSOT: reglerne lå i tre design-specs
