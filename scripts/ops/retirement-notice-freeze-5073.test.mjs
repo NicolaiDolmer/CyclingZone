@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import {
   classifyRider,
   buildFreezeReport,
-  buildFreezeMap,
+  buildFreezeRows,
   legacyAnnouncedRetirementAfterSeason,
 } from "./retirement-notice-freeze-5073.lib.mjs";
 import { announcedRetirementAfterSeason } from "../../backend/lib/riderProgression.js";
@@ -72,23 +72,59 @@ test("buildFreezeReport taeller menneskehold separat og lister kun divergenser",
   assert.equal(report.totals.currentAnnounced, 1);
 });
 
-test("buildFreezeMap indeholder KUN vinduet, og foelger --source", () => {
+test("buildFreezeRows daekker HELE populationen og foelger --source i vinduet", () => {
   const riders = [
     { id: "w1", birthdate: bornForAge(37), isHuman: true },
     { id: "w2", birthdate: bornForAge(39), isHuman: true },
     { id: "young", birthdate: bornForAge(22), isHuman: true },
     { id: "guaranteed", birthdate: bornForAge(42), isHuman: true },
   ];
-  const legacy = buildFreezeMap(riders, S3, "legacy");
-  const current = buildFreezeMap(riders, S3, "current");
-  assert.deepEqual(Object.keys(legacy).sort(), ["w1", "w2"]);
-  assert.deepEqual(Object.keys(current).sort(), ["w1", "w2"]);
-  assert.equal(legacy.w1, legacyAnnouncedRetirementAfterSeason({ id: "w1", birthdate: bornForAge(37) }, S3));
-  assert.equal(current.w1, announcedRetirementAfterSeason({ id: "w1", birthdate: bornForAge(37) }, S3));
+  const now = "2026-09-10T14:00:00.000Z";
+  const legacy = buildFreezeRows(riders, S3, "legacy", now);
+  const current = buildFreezeRows(riders, S3, "current", now);
+
+  // ALLE ryttere faar en raekke: efter koerslen er saeson 3 besvaret for hele
+  // populationen, saa hverken cutover eller rytterkortet behoever rulle igen.
+  assert.deepEqual(legacy.map((r) => r.riderId).sort(), ["guaranteed", "w1", "w2", "young"]);
+
+  const byId = (rows, id) => rows.find((r) => r.riderId === id);
+  assert.equal(byId(legacy, "w1").announced,
+    legacyAnnouncedRetirementAfterSeason({ id: "w1", birthdate: bornForAge(37) }, S3));
+  assert.equal(byId(current, "w1").announced,
+    announcedRetirementAfterSeason({ id: "w1", birthdate: bornForAge(37) }, S3));
+
+  // Uden for vinduet er kilden ligegyldig: en alders-regel uden rul.
+  for (const id of ["young", "guaranteed"]) {
+    assert.equal(byId(legacy, id).announced, byId(current, id).announced,
+      `${id} burde give samme svar uanset kilde`);
+  }
+  assert.equal(byId(legacy, "young").announced, false);
+  assert.equal(byId(legacy, "guaranteed").announced, true);
 });
 
-test("buildFreezeMap afviser en ukendt kilde", () => {
-  assert.throws(() => buildFreezeMap([], S3, "whatever"), /ukendt --source/);
+test("buildFreezeRows' patch matcher kolonne-kontrakten (ja faar dato, nej faar ikke)", () => {
+  const now = "2026-09-10T14:00:00.000Z";
+  const rows = buildFreezeRows(
+    [{ id: "young", birthdate: bornForAge(22) }, { id: "guaranteed", birthdate: bornForAge(42) }],
+    S3, "legacy", now,
+  );
+  const young = rows.find((r) => r.riderId === "young");
+  const old = rows.find((r) => r.riderId === "guaranteed");
+
+  assert.deepEqual(young.patch, {
+    retirement_notice_season: S3,
+    retirement_notice_after_season: null,
+    retirement_notice_given_at: null,
+  });
+  assert.deepEqual(old.patch, {
+    retirement_notice_season: S3,
+    retirement_notice_after_season: S3,
+    retirement_notice_given_at: now,
+  });
+});
+
+test("buildFreezeRows afviser en ukendt kilde", () => {
+  assert.throws(() => buildFreezeRows([], S3, "whatever"), /ukendt --source/);
 });
 
 test("frie agenter (team_id null) er med i populationen og taelles for sig", () => {
@@ -112,6 +148,6 @@ test("frie agenter (team_id null) er med i populationen og taelles for sig", () 
   assert.equal(report.totals.diverged, 1);
   assert.equal(report.totals.freeAgentDiverged, 1);
   assert.equal(report.diverged[0].isFreeAgent, true);
-  // Frie agenter skal ogsaa have en noegle i frysnings-kortet.
-  assert.deepEqual(Object.keys(buildFreezeMap(riders, S3, "legacy")), [freeId]);
+  // Frie agenter skal ogsaa have en raekke i frysningen.
+  assert.deepEqual(buildFreezeRows(riders, S3, "legacy").map((r) => r.riderId), [freeId]);
 });

@@ -37,7 +37,9 @@
 //   docs/PROGRESSION_RULES.md §6, raekken "Dags-/saeson-seedet stoej ... SKAL bruge
 //   seededUnitMixed()" (#4987). Den regel er rigtig for daglig stoej, men den
 //   kolliderer med #2700/#2748's loefte om at et GIVET varsel staar fast. Konflikten
-//   er skrevet ind i §9 (modsigelse nr. 9) i samme PR som denne fil.
+//   er loest i §9 (modsigelse nr. 9): varslet er nu en GEMT kendsgerning paa
+//   riders (retirement_notice_season / -after_season / -given_at), og dette
+//   script skriver netop de kolonner for saeson 3.
 
 import { ageForSeason } from "../../backend/lib/riderSeasonAge.js";
 import {
@@ -45,8 +47,7 @@ import {
   seededUnit,
   announcedRetirementAfterSeason,
 } from "../../backend/lib/riderProgression.js";
-
-export const APP_CONFIG_KEY_PREFIX = "retirement_notice_freeze_s";
+import { noticeFreezePatch } from "../../backend/lib/retirementNotice.js";
 
 // ── LEGACY-rullet (frossen kopi af koden FOER commit 742ba4d30) ───────────────
 // Bevidst en kopi og ikke en import: den nuvaerende retirementDecision() tager
@@ -153,31 +154,48 @@ export function buildFreezeReport(riders, activeSeason, cfg = PROGRESSION_CONFIG
   return { activeSeason, totals, diverged: rows };
 }
 
+
+// ── Reparations-planen (hvad --execute skriver) ──────────────────────────────
 /**
- * Frysnings-kortet der skrives til app_config: rytter-id -> boolean varsel.
- * Kun ryttere i det seedede vindue er med - uden for vinduet er svaret en ren
- * alders-regel der ikke kan flytte sig, og en frysning ville bare skjule en
- * fremtidig aendring af windowStartAge/guaranteedAge.
+ * Byg de raekker frysningen skal skrive.
  *
- * VIGTIGT - kortet er et OEJEBLIKSBILLEDE, ikke en komplet kontrakt. Ryttere der
- * TRAEDER IND i vinduet efter frysningen (akademi-graduering, nygenererede
- * ryttere, en rytter der fylder 36 i loebet af saesonen) faar ingen noegle. Den
- * kommende kode-PR SKAL derfor specificere fallback: enten
- *   (a) manglende noegle => genberegn med motoren (accepterer at netop de
- *       ryttere igen kan flytte sig hvis hashen aendres), eller
- *   (b) frysningen skrives ved hver saesonstart for hele vinduet, og en manglende
- *       noegle behandles som "endnu ikke i vinduet" (= intet varsel).
- * Vaelges (a) uden at skrive det ned, gentages praecis #5073 for den gruppe.
+ * Reglen er ejer-beslutningen 10/9 kl. 16:05 ("A: genopret loeftet + gem
+ * varslet"):
+ *   · i det seedede vindue (36-39) skrives det svar spillerne saa FOER 7/9,
+ *     altsaa `source = "legacy"` (det gamle seededUnit-rul),
+ *   · udenfor vinduet skrives det gaeldende svar - som pr. konstruktion er
+ *     identisk med legacy, fordi under windowStartAge er svaret altid nej og fra
+ *     guaranteedAge altid ja. Der er intet rul at genoprette, kun en alders-regel
+ *     at skrive ned.
+ *
+ * ALLE ryttere faar en raekke. Det er bevidst: efter koerslen er saeson N besvaret
+ * for hele populationen, saa hverken cutover eller rytterkortet behoever falde
+ * tilbage paa et nyt rul. Ryttere der TRAEDER IND i vinduet senere (akademi-
+ * graduering, nygenererede) daekkes af lazy freeze i
+ * backend/lib/retirementNotice.js - det hul fra den foerste udgave af dette
+ * script er lukket i koden, ikke kun i en kommentar.
+ *
+ * @param {Array<object>} riders
+ * @param {number} activeSeason  saesonen varslet gaelder (rytteren stopper EFTER den)
+ * @param {"legacy"|"current"} source
+ * @param {string} [now]  ISO-tidsstempel (injicerbart, saa tests er deterministiske)
+ * @returns {Array<{riderId:string, announced:boolean, inSeededWindow:boolean, patch:object}>}
  */
-export function buildFreezeMap(riders, activeSeason, source, cfg = PROGRESSION_CONFIG) {
+export function buildFreezeRows(riders, activeSeason, source, now, cfg = PROGRESSION_CONFIG) {
   if (source !== "legacy" && source !== "current") {
     throw new Error(`ukendt --source: ${source} (brug legacy eller current)`);
   }
-  const map = {};
+  const rows = [];
   for (const rider of riders) {
     const c = classifyRider(rider, activeSeason, cfg);
-    if (!c.inSeededWindow || !c.riderId) continue;
-    map[c.riderId] = source === "legacy" ? c.legacy : c.current;
+    if (!c.riderId) continue;
+    const announced = c.inSeededWindow ? (source === "legacy" ? c.legacy : c.current) : c.current;
+    rows.push({
+      riderId: c.riderId,
+      announced,
+      inSeededWindow: c.inSeededWindow,
+      patch: noticeFreezePatch(activeSeason, announced, now),
+    });
   }
-  return map;
+  return rows;
 }

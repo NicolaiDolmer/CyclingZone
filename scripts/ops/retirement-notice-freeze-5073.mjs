@@ -1,8 +1,8 @@
 // scripts/ops/retirement-notice-freeze-5073.mjs
 //
 // #5073 · Pensionsvarslet skiftede midt i saeson 3. Dette script MAALER skaden og
-// kan (kun med eksplicit ejer-go) fryse varslet som en lagret kendsgerning, saa det
-// ikke laengere kan flytte sig fordi en seed-funktion aendres.
+// skriver (kun med eksplicit ejer-go) varslet ned i rytterens egne kolonner, saa
+// det ikke laengere kan flytte sig fordi en seed-funktion aendres.
 //
 // Rod-aarsag, evidens og den rene klassifikationslogik ligger i
 // retirement-notice-freeze-5073.lib.mjs (importeret nedenfor). Denne fil er KUN
@@ -11,62 +11,79 @@
 // uden `npm ci`, saa testen maa ikke kunne naa @supabase/supabase-js via en
 // importkaede. Alt testbart bor derfor i .lib.mjs.
 //
-// DETTE SCRIPT AENDRER INGEN PENSIONSLOGIK. Det laeser prod, sammenligner det
-// LEGACY-svar (foer 7/9) med det NUVAERENDE svar, og kan skrive frysningen som
-// en app_config-raekke som en senere kode-PR kan laese i stedet for at rulle igen.
+// HVAD DER SKRIVES (ejer-beslutning 10/9 kl. 16:05: "A: genopret loeftet + gem
+// varslet"): de tre kolonner fra migration
+// database/2026-09-10-5073-retirement-notice-column.sql -
+//   retirement_notice_season        saesonen svaret er afgjort for
+//   retirement_notice_after_season  saesonen rytteren stopper EFTER (NULL = intet varsel)
+//   retirement_notice_given_at      hvornaar varslet blev givet (kun ved ja)
 //
-// FRYSNINGEN ALENE GENOPRETTER IKKE LOEFTET (vigtigt for ejer-beslutningen):
-//   Varslet laeses af GET /api/riders/:id/retirement-status. Selve pensioneringen
-//   afgoeres et ANDET sted: riderProgressionEngine.js kalder developRiderSeason(),
-//   som i backend/lib/riderProgression.js (linjen med
-//   `retirement: retirementDecision(age - 1, rider.id, season, cfg)`) ruller med
-//   den NYE seededUnitMixed-hash ved saeson-cutover. Fryser man kun varslet til
-//   legacy, viser banneret "gaar ikke paa pension" for 36 ryttere der alligevel
-//   pensioneres naar saeson 3 slutter (og omvendt for de 22 der mistede varslet).
-//   En reparation der genopretter loeftet SKAL derfor ogsaa faa cutover-stien til
-//   at laese frysningen (eller bruge legacy-hashen for saeson 3). Det hoerer til
-//   ejerens beslutning + en separat kode-PR; dette script goer det ikke.
+//   · Ryttere i det seedede vindue (36-39 i saeson 3) faar det GAMLE rul
+//     (seededUnit, som foer #4990) - altsaa praecis det svar spillerne planlagde
+//     efter, foer hash-skiftet 7/9 flyttede det.
+//   · Alle andre ryttere faar det gaeldende svar. Udenfor vinduet er det pr.
+//     konstruktion samme svar (under 36 = altid nej, 40+ = altid ja); der er
+//     intet rul at genoprette, kun en alders-regel at skrive ned.
+//
+// BAADE banneret OG cutover laeser kolonnen efter denne koersel
+// (backend/routes/api.js -> resolveRetirementNotice, riderProgressionEngine ->
+// resolveSeasonRetirement). Det var forbeholdet i den foerste udgave af dette
+// script: en frysning der kun blev laest af /retirement-status ville vise
+// "gaar ikke paa pension" for 36 ryttere der alligevel blev pensioneret ved
+// cutover. Det hul er lukket i koden i samme PR.
 //
 // POPULATION: alle ikke-pensionerede, ikke-akademi-ryttere - OGSAA frie agenter
 // (team_id IS NULL). Et tidligere udkast filtrerede team_id NOT NULL og sprang
 // dermed netop de ryttere over der ligger paa transfermarked/auktion, altsaa dem
-// koebere traeffer beslutninger om (praecis thelamba-casen i #5073). Tallene i
-// PR/issue er maalt paa denne bredere population.
+// koebere traeffer beslutninger om (praecis thelamba-casen i #5073).
+//
+// IDEMPOTENS: skriver kun raekker hvor retirement_notice_season er NULL. En
+// rytter der allerede har faaet sit varsel (lazy freeze ved en visning, eller en
+// tidligere koersel) roeres ikke - et givet loefte overskrives aldrig. `--force`
+// slaar den beskyttelse fra og er kun til en bevidst omkoersel.
 //
 // Brug:
 //   # 1) maaling (default, INGEN skrivning)
-//   infisical run --env=prod -- node scripts/ops/retirement-notice-freeze-5073.mjs
+//   infisical run --env=prod -- node scripts/ops/retirement-notice-freeze-5073.mjs --dry-run
 //
 //   # 2) skriv frysningen (kraever BEGGE dele)
 //   OWNER_GO=1 infisical run --env=prod -- \
 //     node scripts/ops/retirement-notice-freeze-5073.mjs --execute
 //
 // Flag:
+//   --dry-run            eksplicit maaling (default-adfaerd; kan ikke kombineres med --execute)
 //   --execute            skriv frysningen (naegter uden OWNER_GO=1)
+//   --force              skriv ogsaa oven i ryttere der allerede har et frosset varsel
 //   --source=legacy      frys det svar spillerne saa FOER 7/9 (default, genopretter varslet)
 //   --source=current     frys det svar prod giver I DAG (hvis ejeren vil beholde det nye rul)
 //   --out=<sti>          skriv JSON-kvitteringen hertil (default: en fil i OS'ets
 //                        temp-mappe - en maaling maa ikke efterlade navnelister
 //                        som untracked filer i repoet)
+//   --input=<sti>        laes rytter-raekkerne fra en JSON-fil i stedet for prod
+//                        (read-only maaling uden DB-credentials; kun med --dry-run)
 
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { PROGRESSION_CONFIG } from "../../backend/lib/riderProgression.js";
+import { RETIREMENT_NOTICE_COLUMNS } from "../../backend/lib/retirementNotice.js";
 import {
-  APP_CONFIG_KEY_PREFIX,
-  buildFreezeMap,
   buildFreezeReport,
+  buildFreezeRows,
 } from "./retirement-notice-freeze-5073.lib.mjs";
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
 const ARGV = process.argv.slice(2);
 const EXECUTE = ARGV.includes("--execute");
+const DRY_RUN = ARGV.includes("--dry-run");
+const FORCE = ARGV.includes("--force");
 const SOURCE = (ARGV.find((a) => a.startsWith("--source=")) || "--source=legacy").split("=")[1];
 const OUT_PATH = (ARGV.find((a) => a.startsWith("--out=")) || "").split("=")[1] || null;
+const INPUT_PATH = (ARGV.find((a) => a.startsWith("--input=")) || "").split("=")[1] || null;
 
 const RIDER_PAGE = 1000;
+const WRITE_CHUNK = 200;
 
 function fail(msg) {
   console.error(`FEJL: ${msg}`);
@@ -85,6 +102,18 @@ async function fetchActiveSeasonNumber(supabase) {
   return Number(data.number);
 }
 
+function decorate(rows) {
+  return rows.map((r) => {
+    const t = r.teams || null;
+    return {
+      ...r,
+      teamName: t?.name ?? r.teamName ?? null,
+      // Fri agent (team_id IS NULL) er per definition ikke paa et menneskehold.
+      isHuman: t != null && t.is_ai === false && t.is_bank === false && t.is_frozen === false && t.is_test_account === false,
+    };
+  });
+}
+
 async function fetchRiders(supabase) {
   const rows = [];
   for (let from = 0; ; from += RIDER_PAGE) {
@@ -92,30 +121,29 @@ async function fetchRiders(supabase) {
     // netop dem koebere traeffer beslutninger om (se POPULATION i headeren).
     const { data, error } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, birthdate, team_id, contract_end_season, teams(name, is_ai, is_bank, is_frozen, is_test_account)")
+      .select(`id, firstname, lastname, birthdate, team_id, contract_end_season, ${RETIREMENT_NOTICE_COLUMNS}, teams(name, is_ai, is_bank, is_frozen, is_test_account)`)
       .eq("is_retired", false)
       .eq("is_academy", false)
       .order("id")
       .range(from, from + RIDER_PAGE - 1);
     if (error) fail(`kunne ikke hente ryttere: ${error.message}`);
     if (!data?.length) break;
-    for (const r of data) {
-      const t = r.teams || null;
-      rows.push({
-        ...r,
-        teamName: t?.name ?? null,
-        // Fri agent (team_id IS NULL) er per definition ikke paa et menneskehold.
-        isHuman: t != null && t.is_ai === false && t.is_bank === false && t.is_frozen === false && t.is_test_account === false,
-      });
-    }
+    rows.push(...decorate(data));
     if (data.length < RIDER_PAGE) break;
   }
   return rows;
 }
 
 // ── Rapport ──────────────────────────────────────────────────────────────────
-function printReport(report, source) {
+function printReport(report, freezeRows, riders, source) {
   const { totals } = report;
+  // Id-baseret, ikke indeks-baseret: buildFreezeRows springer raekker uden id
+  // over, saa positionerne i de to lister er ikke garanteret de samme.
+  const frozenIds = new Set(riders.filter((r) => r.retirement_notice_season != null).map((r) => r.id));
+  const alreadyFrozen = frozenIds.size;
+  const willWrite = FORCE ? freezeRows.length : freezeRows.filter((r) => !frozenIds.has(r.riderId)).length;
+  const announcedAfter = freezeRows.filter((r) => r.announced).length;
+
   console.log(`Aktiv saeson: ${report.activeSeason} (referenceaar ${2026 + report.activeSeason - 1})`);
   console.log(`Pensionsvindue: ${PROGRESSION_CONFIG.retirement.windowStartAge}-${PROGRESSION_CONFIG.retirement.guaranteedAge - 1} (garanteret fra ${PROGRESSION_CONFIG.retirement.guaranteedAge})`);
   console.log("");
@@ -127,44 +155,101 @@ function printReport(report, source) {
   console.log(`  heraf paa menneskehold ... ${totals.humanDiverged} (fik: ${totals.humanGained}, mistede: ${totals.humanLost})`);
   console.log(`  heraf frie agenter ....... ${totals.freeAgentDiverged}`);
   console.log("");
-  console.log("Divergerende ryttere (menneskehold foerst):");
-  for (const r of report.diverged) {
+  console.log(`Allerede frosset i DB ...... ${alreadyFrozen} (roeres ikke uden --force)`);
+  console.log(`Skrives af denne koersel ... ${willWrite} raekker, kilde --source=${source}`);
+  console.log(`  heraf MED varsel ........ ${announcedAfter} (rytteren stopper efter saeson ${report.activeSeason})`);
+  console.log("");
+  console.log("Divergerende ryttere paa MENNESKEHOLD (navneliste):");
+  const humans = report.diverged.filter((r) => r.isHuman);
+  for (const r of humans) {
     const tag = r.direction === "gained" ? "FIK VARSEL " : "MISTEDE    ";
-    const holder = r.isHuman ? "M " : (r.isFreeAgent ? "FA" : "AI");
-    console.log(`  ${tag} ${holder}  ${String(r.age).padStart(2)}  ${r.name.padEnd(28)} ${r.teamName ?? "fri agent"}  (${r.riderId})`);
+    console.log(`  ${tag} ${String(r.age).padStart(2)}  ${r.name.padEnd(28)} ${r.teamName ?? "-"}  (${r.riderId})`);
   }
   console.log("");
-  console.log(`Frysnings-kilde: --source=${source}`);
+  console.log("Oevrige divergerende (frie agenter + AI-hold):");
+  for (const r of report.diverged.filter((x) => !x.isHuman)) {
+    const tag = r.direction === "gained" ? "FIK VARSEL " : "MISTEDE    ";
+    const holder = r.isFreeAgent ? "FA" : "AI";
+    console.log(`  ${tag} ${holder}  ${String(r.age).padStart(2)}  ${r.name.padEnd(28)} ${r.teamName ?? "fri agent"}  (${r.riderId})`);
+  }
 }
 
-function writeReceipt(report, freezeMap, source) {
+function writeReceipt(report, freezeRows, source) {
   // Default UDEN for repoet: kvitteringen indeholder navnelister paa alle
   // divergerende ryttere, og en ren maaling maa ikke efterlade untracked filer
   // i arbejdstraeet. Vil man gemme den, peger man selv med --out.
   const file = OUT_PATH || path.join(os.tmpdir(), `retirement-notice-freeze-s${report.activeSeason}.json`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify({ generatedAt: new Date().toISOString(), source, ...report, freezeMap }, null, 2));
+  fs.writeFileSync(file, JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    source,
+    ...report,
+    freeze: freezeRows.map(({ riderId, announced, inSeededWindow }) => ({ riderId, announced, inSeededWindow })),
+  }, null, 2));
+  console.log("");
   console.log(`Kvittering skrevet: ${file}`);
   return file;
 }
 
+// ── Skrivning ────────────────────────────────────────────────────────────────
+// Grupperet, ikke pr. rytter: patchen har praecis to former (varsel / intet
+// varsel), saa hele populationen kan skrives med to `.in(id, chunk)`-updates pr.
+// chunk i stedet for 2.000 enkeltkald.
+async function writeFreeze(supabase, freezeRows) {
+  const groups = [
+    { announced: true, rows: freezeRows.filter((r) => r.announced) },
+    { announced: false, rows: freezeRows.filter((r) => !r.announced) },
+  ];
+  let written = 0;
+  for (const group of groups) {
+    if (!group.rows.length) continue;
+    const patch = group.rows[0].patch;
+    for (let i = 0; i < group.rows.length; i += WRITE_CHUNK) {
+      const ids = group.rows.slice(i, i + WRITE_CHUNK).map((r) => r.riderId);
+      let q = supabase.from("riders").update(patch).in("id", ids);
+      // Idempotens: et allerede givet loefte overskrives aldrig utilsigtet.
+      if (!FORCE) q = q.is("retirement_notice_season", null);
+      const { data, error } = await q.select("id");
+      if (error) fail(`kunne ikke skrive frysningen: ${error.message}`);
+      written += data?.length ?? 0;
+    }
+  }
+  return written;
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-    fail("SUPABASE_URL/SUPABASE_SERVICE_KEY mangler - koer via `infisical run --env=prod --`.");
-  }
+  if (EXECUTE && DRY_RUN) fail("--dry-run og --execute kan ikke kombineres.");
   if (SOURCE !== "legacy" && SOURCE !== "current") {
     fail(`ukendt --source=${SOURCE} (brug legacy eller current)`);
   }
+  if (INPUT_PATH && EXECUTE) fail("--input er kun til maaling; koer --execute mod prod.");
 
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-  const activeSeason = await fetchActiveSeasonNumber(supabase);
-  const riders = await fetchRiders(supabase);
+  let supabase = null;
+  let activeSeason;
+  let riders;
+
+  if (INPUT_PATH) {
+    // Read-only maaling paa et udtraek (fx SELECT'et via Supabase MCP), saa
+    // tallene kan reproduceres uden service-role-credentials i miljoeet.
+    const payload = JSON.parse(fs.readFileSync(INPUT_PATH, "utf8"));
+    activeSeason = Number(payload.activeSeason);
+    if (!Number.isFinite(activeSeason)) fail(`--input mangler activeSeason: ${INPUT_PATH}`);
+    riders = decorate(payload.riders || []);
+  } else {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+      fail("SUPABASE_URL/SUPABASE_SERVICE_KEY mangler - koer via `infisical run --env=prod --`.");
+    }
+    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    activeSeason = await fetchActiveSeasonNumber(supabase);
+    riders = await fetchRiders(supabase);
+  }
+
   const report = buildFreezeReport(riders, activeSeason);
-  const freezeMap = buildFreezeMap(riders, activeSeason, SOURCE);
+  const freezeRows = buildFreezeRows(riders, activeSeason, SOURCE);
 
-  printReport(report, SOURCE);
-  writeReceipt(report, freezeMap, SOURCE);
+  printReport(report, freezeRows, riders, SOURCE);
+  writeReceipt(report, freezeRows, SOURCE);
 
   if (!EXECUTE) {
     console.log("");
@@ -177,25 +262,28 @@ async function main() {
     fail("--execute kraever OWNER_GO=1 i miljoeet. Ejeren skal have set tallene ovenfor FOERST (#5073).");
   }
 
-  const key = `${APP_CONFIG_KEY_PREFIX}${activeSeason}`;
-  const value = { source: SOURCE, season: activeSeason, frozenAt: new Date().toISOString(), notices: freezeMap };
-  const { error: cfgErr } = await supabase
-    .from("app_config")
-    .upsert({ key, value, description: `#5073: frosset pensionsvarsel for saeson ${activeSeason} (kilde: ${SOURCE})` }, { onConflict: "key" });
-  if (cfgErr) fail(`kunne ikke skrive app_config.${key}: ${cfgErr.message}`);
+  const written = await writeFreeze(supabase, freezeRows);
 
   const { error: logErr } = await supabase.from("admin_log").insert({
     action_type: "retirement_notice_freeze",
-    description: `#5073: froes pensionsvarslet for saeson ${activeSeason} (kilde ${SOURCE}, ${Object.keys(freezeMap).length} ryttere)`,
-    meta: { issue: 5073, season: activeSeason, source: SOURCE, riderCount: Object.keys(freezeMap).length, diverged: report.totals.diverged },
+    description: `#5073: froes pensionsvarslet for saeson ${activeSeason} (kilde ${SOURCE}, ${written} raekker skrevet${FORCE ? ", --force" : ""})`,
+    meta: {
+      issue: 5073,
+      season: activeSeason,
+      source: SOURCE,
+      force: FORCE,
+      written,
+      candidates: freezeRows.length,
+      diverged: report.totals.diverged,
+      humanDiverged: report.totals.humanDiverged,
+    },
   });
   if (logErr) console.error(`ADVARSEL: admin_log-raekken fejlede: ${logErr.message}`);
 
   console.log("");
-  console.log(`SKREVET: app_config.${key} (${Object.keys(freezeMap).length} ryttere frosset, kilde ${SOURCE}).`);
-  console.log("Naeste skridt er en separat kode-PR der laeser noeglen BAADE i /retirement-status");
-  console.log("OG paa cutover-stien (developRiderSeason -> retirementDecision) - ellers vises");
-  console.log("et varsel der ikke holder ved saesonskiftet.");
+  console.log(`SKREVET: ${written} ryttere har nu et frosset varsel for saeson ${activeSeason} (kilde ${SOURCE}).`);
+  console.log("Baade /retirement-status og cutover (developRiderSeason) laeser kolonnen,");
+  console.log("saa banneret og den faktiske pensionering kan ikke laengere sige to ting.");
 }
 
 // Kun main() ved direkte kald - importeret (test) skal ikke ramme prod.
