@@ -6,7 +6,7 @@
 
 ## 🔴 Brand (rettes før alt andet; bølge startet 10/9 kl. 13:10, intet merges uden ejer-go)
 
-#4595 chunk-fejl: rod-årsag = egen `preventDefault()`, 954 events/50 spillere, PR i bølge · #5089 rytterkortet fyrer 14 kald pr. rytter → 429, PR i bølge · #5060 mobil: rytternavn følger ikke med ved scroll, PR i bølge · #5073 pensionsvarsel skifter midt i sæsonen (tillidsbrud, ejer-valg: rod-årsag) · #4959 pulje 13 har 25 hold (league-check rødt på alle PR'er, ejer-gated reparation) · #4872 rytterværdi står stille meldt igen 9/9 (fix holdt ikke?).
+#4595 chunk-fejl (egen `preventDefault()`, 954 events/50 spillere) PR #5097 · #5089 rytterkortet 14 kald/rytter → 429, PR #5100 · #5060 mobil sticky navn, PR #5099 · #5073 pensionsvarsel skifter midt i sæsonen (ejer-valg: rod-årsag) · #4959 pulje 13 = 25 hold (ejer-gated) · #4872 rytterværdi står stille, meldt igen 9/9.
 
 ## Bane 1 · S4-cutover 27-28/9 (deadline; nul buffer)
 
@@ -15,7 +15,7 @@
 3. 🔵 **v4-flip** (ejer-only) → #4916 følg løbet live.
 4. 🔵 **S4-kalender:** #4270 apply (ejer) · #4845 kalenderpakker · #4203 (done-gated).
 5. 🟠 **Træning pr. løbsdag #4850** (live senest 28/9; skemaet: træning = "fungerer dårligst" 17 af 36, og "løb udvikler rytterne" er skemaets nr. 1): #4846 → #4847 → #4851 → #4852/#4853/#4854 → #4848 → #4849. #4801 · #4874 i pakken. #5076 formdyk-forklaring + #5064 scouting-niveauer som help-tekst i #4849.
-6. 🔵 **Bestyrelsen: Mandatet-flip** (G1, 27/9): #4857 backfill (ejer-go) → #4859 → #4858. Videre bestyrelsesdesign (retninger, omdømme): GDD D-040/D-041, venteliste 10.
+6. 🔵 **Bestyrelsen: Mandatet-flip** (27/9): #4857 (ejer-go) → #4859 → #4858. Videre design: GDD D-040/D-041.
 7. 🔵 **Cutover-pakke:** #4592 inaktive (ejer godkender liste) → #452 → #4759 · #4619 · #4860 sponsorpris S4 · #4376 sponsor-base ved oprykning.
 
 ## Bane 2 · Forretning (viger aldrig; SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
@@ -25,7 +25,7 @@ Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d 
 9. 🔵 **Mail:** #5045 → testmail → #5038 ejer-trin (Resend-webhook, DMARC) → flip pr. type → #2760 win-back.
 10. 🔵 **Nøgleblok #4616** → Pro i euro #4608 → #4645 → #4646 · #4074 · #4005. **Billing-vagter** #4514 · #4512. **#5051** LTV-fejl (high).
 11. 🔴 **Spiller-kommunikation #428/#4820:** ejeren poster selv. Hængende løfter: #4346 anmeld-handel (27/8) · flyt forumkategori ("senest 10/9"). #4964 launch-kohorte 28,6 % (ejer-valg) · #5033 chunk lag 3 (efter #4595).
-12. 🟠 **Vækst-fundament (ejer 10/9: "meget vigtigt"):** **SEO/markedsføring** #4067 · #3796 · #4811 · #4321 (ejer-nøgle) · **hastighed** #5055 posthog-lite · #4595/#5089 (bølge) · perf-gate/Core Web Vitals · **mobil hele sitet** #1602 epic · #5060 (bølge) · #4982 · #4613. **Fastholdelse:** #4751 rest · #4821 · #4235 (15/9) · GDD D-037/D-038 (dag 1 + krog) efter måling.
+12. 🟠 **Vækst-fundament (ejer 10/9):** **SEO/markedsføring** #4067 · #3796 · #4811 · #4321 · **hastighed** #5055 · perf-gate/Core Web Vitals · **mobil hele sitet** #1602 · #4982 · #4613. **Fastholdelse:** #4751 · #4821 · #4235 (15/9) · GDD D-037/D-038 efter måling.
 
 ## Bane 3 · Færdiggør (>70 %; tømmes før nyt)
 
