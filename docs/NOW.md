@@ -8,7 +8,7 @@
 
 > **⏳ Åbne ejer-valg:** #4270 S4-kalender (A/B) · #4860 sponsor S4 · #4616 EUR-nøgler · #4915 TTT · #4948 raceDay-hjælp · #4857 mandat-backfill · #5032 DM · #5073 pension rod-årsag · #4959 pulje 13 = 25 hold · assistent-flip `late_fill` (D-034, prod-skridt) · #2259 78 backup-tabeller (48 MB, flyt) · #5088 matview-grants · #2423 skew (rør ikke) · #5042 · #5044.
 
-> **🔴 Åbne fund:** favorit-win-rate 62,6 % RØD (§7b). Feature-liveness rød på alle PR'er (#3069). Postmortem 8/9: `.claude/learnings/2026-09-08-survey-grants-missing.md`. **10/9-audits:** `docs/audits/2026-09-10-spillerstemmer-survey-roadmap-forum.md` (skema 27/242: ungdom+træning øverst; veto >20 % på delte programmer/AI-bud/indbakke-transfers; Pro aldrig fordel) + `2026-09-10-discord-stemmer-s3.md`. Issue-runde 10/9: #5091–#5096 (Codex-opfølgninger + ufilede Discord-fund).
+> **🔴 Åbne fund:** favorit-win-rate 62,6 % RØD (§7b). Feature-liveness rød på alle PR'er (#3069). **10/9-audits:** `docs/audits/2026-09-10-spillerstemmer-survey-roadmap-forum.md` (skema 27/242: ungdom+træning øverst; veto >20 % på delte programmer/AI-bud/indbakke-transfers; Pro aldrig fordel) + `2026-09-10-discord-stemmer-s3.md`. Issue-runder 10/9: #5091–#5096 · #5101–#5107 (GDD-beslutninger).
 
 > **📊 Triage:** `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. **💳** [`BILLING_STACK.md`](BILLING_STACK.md), 12 betalende (MRR 436 kr). **S3:** 529 løb, 28/8 → 27/9, etaper hver hele time.
 
