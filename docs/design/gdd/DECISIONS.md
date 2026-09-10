@@ -1631,6 +1631,72 @@ Ingen build-go.
 **Foreslået verifikation (når B tages op):** andelen af auktioner uden bud
 pr. værdibånd før/efter; ingen rytter sælges til AI over markedsværdi.
 
+## Q-049 · Klubbens omdømme: ét tal, mærker eller begge?
+
+**Status:** stillet 10/9 (Claude Code) efter `REPUTATION_RESEARCH.md` fandt en
+direkte konflikt: spec'en fra 4/9 (`2026-09-04-reputation-system-design.md` §6)
+låser klubomdømme som ét tal (0,7 x snit top-8 + 0,3 x resultater; kolonner
+findes; PR 4 #4957 ikke startet), mens D-041 valgte "kendt for"-mærker.
+A valgt, se D-045. **A, anbefalet:** hybrid: §6-tallet beholdes underliggende
+(sponsor, lån, AI), mærker udledes af handlingsmønstre og er det verden ser.
+**B:** ét tal som spec'en. **C:** kun mærker, formlen kasseres.
+**Tradeoff:** A genbruger det byggede og giver D-041's mærker, men har to lag
+at holde konsistente; B gør talentfabrik og klassikerhold ens for verden;
+C kasserer en låst beslutning og en fælles skala.
+
+## D-045 · Klubomdømme som hybrid: underliggende tal, offentlige "kendt for"-mærker
+
+**Status:** ejer-valgt 10/9, svar på Q-049. Afløser delvist spec'ens §6
+(4/9) for klubben: formlen består, men er ikke længere det spilleren ser.
+**Ejerens svar, ordret:** "A · Hybrid: tallet under, mærkerne oven på (anbefalet)".
+Klubbens omdømme har to lag: (1) et underliggende klubtal efter spec §6's
+låste formel, som forbruges af sponsor, lånekapacitet og AI-adfærd og aldrig
+vises som score; (2) offentlige "kendt for"-mærker udledt af dokumenterede
+handlingsmønstre over sæsoner (D-041), som er det spilleren og andre klubber
+ser. Landeomdømme følger foreløbig spec §6 (ét tal); om lande også får mærker
+er åbent. Rytter-omdømmets rørledning (PR 2 shadow → PR 3 synlighed → PR 4
+klub/land) fortsætter som planlagt; netværksudvidelsen (manager, personale,
+løb) lægges ovenpå som senere trin, ikke som redesign fra bunden.
+**Fravalgt:** ét tal alene (B); kun mærker (C).
+**Åbent:** mærkernes katalog og tærskler, falmning, om tallet må vises som
+ordbånd (Ukendt-Legende) på klubprofilen eller kun mærkerne, kobling til
+D-040's retninger ("erklæret men ikke bevist"), og popularitet → omdømme
+(D-042's forudsætning 1) i praksis: `riders.popularity` afløses af
+rytter-omdømmet, når flaget tændes. Ingen build-go; flag-flip er ejer-gated.
+**Foreslået verifikation:** to klubber med samme klubtal, men forskellige
+handlinger, viser forskellige mærker; ingen flade viser klubtallet som et tal
+for andre klubber; sponsorens tilbud reagerer på tallet, ikke på mærkerne.
+
+## Q-050 · Managerens omdømme: kosmetisk, med effekt eller ude af netværket?
+
+**Status:** stillet 10/9 (Claude Code) som konflikt 2 fra `REPUTATION_RESEARCH.md`
+§4: doktrinen 8/6 og spec 4/9 låser manageren til "kun kosmetisk
+karrierehistorik, ingen effekt"; D-041 nævner managers i netværket. A valgt,
+se D-046. **A, anbefalet:** manageren er i netværket, men kun kosmetisk.
+**B:** åbn doktrinen, manageromdømme får effekt. **C:** manager ude af netværket.
+**Tradeoff:** A opfylder D-041 som visning uden at røre doktrinen; B kræver ny
+doktrinbeslutning og risikerer at belønne den erfarne oven i klubbens fordele;
+C går mod ejerens opremsning. Én manager pr. hold og intet klubskifte gør
+effekt gennem manageren ensbetydende med effekt gennem klubben.
+
+## D-046 · Manageren er i omdømme-netværket, men kun kosmetisk
+
+**Status:** ejer-valgt 10/9, svar på Q-050. Doktrinen 8/6 og spec §6 (4/9) består.
+**Ejerens svar, ordret:** "A · Manager i netværket, men kun kosmetisk (anbefalet)".
+Manageren modtager omdømme fra sine rytteres og klubbens bedrifter og viser
+det som karrierehistorik og mærker på managerprofilen; det påvirker aldrig
+spillet (ingen sponsor-, forhandlings- eller motoreffekt). D-041's netværk
+gælder dermed fuldt for hold, ryttere, lande og løb (samt personale, når det
+designes), og for manageren som modtager/visning.
+**Fravalgt:** effekt gennem manageren (B); manager ude af netværket (C).
+**Åbent:** hvad managerprofilen viser (karrierehistorik, mærker, "siden
+sidst"), personale- og løbs-omdømme (rene huller i researchen §4; kandidat
+til næste session), og hvordan popularitet afløses af rytter-omdømme i
+praksis (flag `rider_reputation_enabled`, ejer-gated).
+**Foreslået verifikation:** ingen kodesti læser manageromdømme til andet end
+visning; en managers profil viser bedrifter, der stammer fra klubbens og
+rytternes dokumenterede handlinger.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code

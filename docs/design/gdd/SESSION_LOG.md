@@ -559,11 +559,38 @@ strukturel tillidsvirkning), koblingen (20 % + bonustilbud) bevares som overgang
 
 Registreret som D-044: kun mennesker byder nu; B udsat til egen session.
 
+## Q-049 · Klubomdømme, ejerens svar ordret (10/9 kl. 16:20)
+
+> A · Hybrid: tallet under, mærkerne oven på (anbefalet)
+
+Registreret som D-045. Spec §6's formel består som underliggende lag; mærker er
+det synlige. Q-050 tager konflikt 2 (manager-omdømme låst som kosmetisk).
+
+## Q-050 · Manageromdømme, ejerens svar ordret (10/9 kl. 16:25)
+
+> A · Manager i netværket, men kun kosmetisk (anbefalet)
+
+Registreret som D-046. Doktrinen 8/6 består.
+
+## Ejerens ønske om pause, ordret (10/9 kl. 16:25)
+
+> Denne session er nu ved at være meget stor. Så jeg synes ikke vi skal tage særligt mange punkter mere lige nu. Måske vi kan tage en pause ganske snart fra at snakke og så starte en ny fantastisk session, hvor vi snakker og designer en smule mere, men derefter inde i den session også har stort fokus på at eksekvere på de meget vigtige ting, som vi gerne vil have, at de kommer live nu her til kunderne? Hvad anbefaler du, at vi gør her og nu, for at lave noget fremragende til siden?
+
+Samtalen pauses efter D-046. Næste session: kort design (personale-/løbsomdømme,
+popularitet → omdømme), derefter eksekvering. Se `docs/drafts/next-session-prompt-2026-09-10-design-og-eksekvering.md`.
+
+## Handoff · Til Claude Code efter Q-050, 10/9 2026
+
+- Aktivt arbejde: samlet GDD, status `in_progress`; 18 beslutninger i Claude Code 10/9 (D-029 til D-046), alle pushet; docs-PR #5090 (draft).
+- Sidste svar: Q-050/D-046. Q-037 parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-051 er ikke stillet.
+- Næste skridt (design, kort): personale- og løbsomdømme (research §4 huller), popularitet → omdømme konkret, fog of war når spillerne har stemt. Derefter eksekvering (se prompten).
+- Betjeningsregler (ejer 10/9): ét område pr. kort; muligheder visuelt før kortet; "1 + tilføjelse" bevares ordret; visuelt spørgsmål til spillerne når skemaet ikke dækker valget.
+
 ## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-048/D-044 (kun mennesker byder nu; AI-bud til egen session). D-043 præciseret (A som målbillede, kobling som overgang). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-049 er næste.
-- Næste skridt: Q-049 = konflikterne mellem D-041 og de låste omdømme-planer (`REPUTATION_RESEARCH.md`: klub-omdømme som ét tal i låst spec §6; manager-omdømme låst som kosmetisk). Derefter "popularitet → omdømme" konkret. Fog of war når spillerne har stemt.
+- Sidste svar: Q-049/D-045 (klubomdømme som hybrid). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-050 (manager-omdømme, doktrin 8/6) er næste.
+- Næste skridt: Q-050; derefter personale- og løbs-omdømme (rene huller i researchen §4) og "popularitet → omdømme" konkret. Fog of war når spillerne har stemt.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.

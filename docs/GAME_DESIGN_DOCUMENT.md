@@ -112,7 +112,13 @@ hold, lande, managers, personale, ryttere og løb har hver sit omdømme, og de
 påvirker hinanden (en rytter vinder omdømme ved at vinde et løb med højt
 omdømme; et løbs omdømme stiger med feltets kvalitet). Eksisterende planer om
 omdømme, fans og merchandise skal læses og afstemmes, før noget designes
-konkret (research i `design/gdd/REPUTATION_RESEARCH.md`).
+konkret (research i `design/gdd/REPUTATION_RESEARCH.md`). **D-045 (ejer-valgt
+10/9):** researchen fandt, at klubomdømme allerede var låst som ét tal (spec
+4/9 §6); afgjort som hybrid: tallet består underliggende (sponsor, lån, AI),
+og "kendt for"-mærkerne er det verden ser. Rytter-omdømmets rørledning
+fortsætter; netværket lægges ovenpå. **D-046:** manageren er i netværket,
+men kun kosmetisk (doktrinen 8/6 består). Personale- og løbsomdømme er
+rene huller og designes i næste session.
 ### Bestyrelsen og managerens retning (D-003, ejer-godkendt 10/9)
 
 Bestyrelsen udfordrer planens kvalitet inden for managerens valgte klubidentitet.
@@ -463,3 +469,6 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-042 om sponsorbonus ved opfyldelse valgt med to forudsætninger (popularitet →
   omdømme; sponsor/bestyrelse adskilles). D-043: A som målbillede, koblingen bevaret
   som overgang (ejerens præcisering). D-044: kun mennesker byder; AI-bud til egen session.
+  REPUTATION_RESEARCH samlet (worker); D-045 om klubomdømme som hybrid og D-046 om
+  manageren som kosmetisk netværksdel valgt. Samtalen pauset på ejerens ønske efter
+  18 beslutninger i Claude Code; næste session designer kort og eksekverer.
