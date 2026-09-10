@@ -32,7 +32,7 @@ Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d 
 13. **Lukkesession (ejer, 30 min):** 16 done-gated issues.
 14. 🟠 **Docs-SSOT:** #5087 GDD som docs-PR · #5088 matview-grants · #2259 78 backup-tabeller (48 MB, ejer-go til flyt).
 15. 🟠 #4921 feature-register · #4918/#4919/#4920 bølge-drift · #5004 preflight anti-slop · #5085 CI marketing.
-16. 🔵 Akademi: #4495 · #4213 · #4750 · #4423/#4418 (done-gated). Design-rest #4622: #4627 · #4628 · #4813 · #4814 · #4815 · #4613 → **Visuel identitet #5113** (3D-first, ejer 10/9; ejer kører Claude Design-prompten; første byg #5115 livery).
+16. 🔵 Akademi: #4495 · #4213 · #4750 · #4423/#4418 (done-gated). Design-rest #4622: #4627 · #4628 · #4813 · #4814 · #4815 · #4613 → **Visuel identitet #5113** (3D-first, ejer 10/9; første byg #5115 livery).
 17. Drift: #4147 · #4866 · #4869 · #4877/#4900/#4899/#4896/#4903 · #4867 · #4828/#4829 · #5017 · #5015 · #2423 (rør ikke).
 18. Spillerfund: #4589 · #4702 · #4873 · #4875 · #4861 · #4981 · #4982 · #4983 · #5075 · #5059 sprint-tog gated · #5030 puncheur-opskrift.
 
