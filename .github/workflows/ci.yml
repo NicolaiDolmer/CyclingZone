@@ -446,6 +446,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/ops/railway-log-watch.test.mjs
 
+      # #5073: maalescriptet for pensionsvarslets divergens (legacy seededUnit vs.
+      # nuvaerende seededUnitMixed). Ren klassifikation, ingen DB - guarden fanger
+      # hvis motorens announcedRetirementAfterSeason og scriptets frosne
+      # historiske kopi holder op med at kunne sammenlignes.
+      - name: Test retirement-notice freeze classification
+        if: ${{ !cancelled() }}
+        run: node --test scripts/ops/retirement-notice-freeze-5073.test.mjs
+
   migration-idempotency:
     runs-on: ubuntu-latest
     permissions:

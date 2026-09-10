@@ -143,6 +143,7 @@ Det sidste niveau er nøjagtig det hul kalenderen havde før [#4176](https://git
 | 6 | Toprytterens form ("mesterlig i primæren, jævn i resten") er princip, ikke kalibreret profil pr. type | audit §B9 |
 | 7 | Ingen af de tre kildespecs' succeskriterier er en tilbagevendende gate | denne fil §8, audit "Det vigtigste at kigge på" nr. 5 |
 | 8 | Staff- og facilitets-stien (spec 14/8's eget hul nr. 7) er stadig åben, ikke undersøgt i denne fil | audit, sidste linje |
+| 9 | §6's `seededUnitMixed()`-krav gælder også pensionsrullet, men pensionsvarslet (#2700/#2748) beregnes on-the-fly ved hver visning og har ingen frysning. Et skift af hash-funktionen ændrer derfor varslet MIDT i en sæson, selvom rytteren er uændret — målt i prod 10/9: 58 af 229 ryttere i det seedede vindue (36-39) skiftede svar da #4987 blev merged 7/9 | [#5073](https://github.com/NicolaiDolmer/CyclingZone/issues/5073), `scripts/ops/retirement-notice-freeze-5073.mjs` |
 
 ---
 
