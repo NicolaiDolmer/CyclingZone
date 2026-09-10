@@ -4,6 +4,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 
 | Doc | Læs hvornår |
 |---|---|
+| `docs/GAME_DESIGN_DOCUMENT.md` | Samlet GDD og kritisk designinterview (udkast fra 10/9). Genoptag via `docs/design/gdd/SESSION_LOG.md`; beslutninger i `DECISIONS.md`, gennemgangens dækning i `COVERAGE.md`. Udkastet erstatter endnu ingen område-SSOT |
 | `docs/GUARDRAILS_CORE.md` | Issue har `needs-contract` eller `shared-refactor` label |
 | `docs/GUARDRAILS.md` (fuld) | Nye datakontrakter · IA/naming-valg · shared runtime-refactors · features med flere plausible produktmodeller |
 | `docs/HOOKS.md` | Hooks-konfiguration ændres |

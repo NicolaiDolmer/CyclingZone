@@ -567,13 +567,20 @@ et fund fra kode-gennemgangen 30/8, ikke et rapporteret symptom. Hører til
 
 Hver post er ÉN ting der mangler at blive afgjort. Ingen af dem må gættes på plads.
 
-0. **Hvilken tilstand skal prod køre?** Mekanikken findes nu (§1b), men flippet er ejerens:
+0. **Hvilken tilstand skal prod køre?** **Retning ejer-valgt 10/9 (GDD D-034):** `late_fill`
+   med 24 t-horisont plus synlig påmindelse før fristen (#4983); sen redning ved etape 1
+   består. Selve flippet og #4201's migration er fortsat ejer-gatede prod-skridt, og
+   delspørgsmålene nedenfor (sæson-transition, admin-genvej, delvis trup) er stadig åbne.
+   Se [D-034](design/gdd/DECISIONS.md). Oprindelig tekst: mekanikken findes nu (§1b), men flippet er ejerens:
    `proactive` (i dag), `late_fill` (og med hvilken horisont - 24 t er kun defaulten), eller
    `opt_in`. Skal sæson-transitionen og admin-genvejen følge tilstanden, eller altid køre
    proaktivt som i dag? Og skal `late_fill` på sigt også top-fylde en **delvis** trup, eller
    forbliver det den sene rednings job? *(#4201/#2622, `assistantSelectionMode.js`)*
 
-1. **Skal assistenten kunne lade en plads stå tom?** I dag fylder den altid op til
+1. **Skal assistenten kunne lade en plads stå tom?** **Retning ejer-valgt 10/9 (GDD D-035):**
+   ja, over gulvet: altid op til klassens gulv (6), pladser derover kun med ryttere over en
+   egnetheds-/træthedsgrænse, tomme pladser vises med årsag. Tallet er kalibrering og stadig
+   åbent. Se [D-035](design/gdd/DECISIONS.md). Oprindelig tekst: I dag fylder den altid op til
    `sizeRule.max` (7 til Københavns Klassiker) uanset hvor lav match-scoren er. Skal der være en
    egnetheds-bundgrænse, og hvad er tallet? Uden svar kan #3957 ikke lukkes.
    *(§4 trin 4, `raceAutopick.js:107`)*

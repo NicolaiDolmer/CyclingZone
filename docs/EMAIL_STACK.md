@@ -63,6 +63,11 @@ Migrationer 📄: `database/2026-07-20-2725-email-retention-loop.sql` (`email_lo
 
 ## 2. Mailtyper
 
+> **GDD-retning, ejer 10/9 (D-038):** i den nye managers første uge er krogen hændelsesdrevet:
+> "dit løb er kørt" (resultat, indsatskort, næste skridt) erstatter `day1`-tips, når der findes
+> et resultat; ingen mail uden hændelse i uge 1. Samtykkehjemlen for en resultatudløst mail er
+> ikke juridisk efterprøvet. Ingen sweep, flag eller tekst er ændret; se [D-038](design/gdd/DECISIONS.md).
+
 Tre typer findes i kode (`TEMPLATE_TYPES`, `emailTemplates.js:137`); en fjerde er foreslået, men ikke bygget. Flag-nøglerne står i `EMAIL_LOOP_TYPE_KEYS` (`emailLoopFlag.js:29-33`) med legacy-fallback `email_loop_enabled` (`EMAIL_LOOP_FLAG_KEY`), som kun bruges hvis en types egen nøgle mangler eller har en ukendt værdi.
 
 | Type | Flag-nøgle | Trigger og kandidat-regel | Dedupe-nøgle | Kadence | Status 8/9 |
