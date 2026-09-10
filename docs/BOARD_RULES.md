@@ -93,6 +93,11 @@ erstatning for det byggede DNA-, mål- eller konsekvenssystem**:
 - **D-003:** bestyrelsen udfordrer planens kvalitet **inden for managerens valgte
   retning**. Den kræver troværdig fremgang, men gør ikke automatisk en talentfabrik
   til et titelprojekt. Kravene skal stadig være meningsfulde.
+- **D-009:** manageren kan frit begynde et strategisk kursskifte. Modstanden kommer
+  fra faktiske investeringer, trup, kontrakter og optjent omdømme; der lægges ikke
+  en særskilt skiftepris/ventetid oveni alene for at binde identiteten. Erklæringen
+  sletter ikke aftalte forpligtelser. Konkrete regler for genforhandling og
+  overgangen fra den eksisterende DNA-genvalgslås skal stadig designes.
 
 Begrundelser og ejerens svar: [GDD-beslutninger](design/gdd/DECISIONS.md).
 Før et konkret redesign: afklar målbare succeskriterier, modstand/konsekvenser,

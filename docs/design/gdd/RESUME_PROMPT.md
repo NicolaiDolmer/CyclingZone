@@ -1,5 +1,9 @@
 # Genoptag GDD-interviewet · pause 10/9 2026 efter Q-009
 
+**Historisk pausebrief:** Ejeren genoptog interviewet 10/9 fra `c51231e5`.
+Følg fortsat læserækkefølgen, men brug [journalens sidste handoff](SESSION_LOG.md)
+og [DECISIONS](DECISIONS.md) til aktuel status og spørgsmål efter Q-009.
+
 ## Prompt ejeren kan sende
 
 > Genoptag vores grundige Cycling Zone-game-design-session fra pausen 10/9 efter Q-009.

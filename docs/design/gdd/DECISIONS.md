@@ -339,6 +339,82 @@ Perioder og godkendte succeskriterier fastlægges under systemgennemgangen.
 Kilder: V-001, D-001/D-002/D-003/D-007; [YOUTH_RULES](../../YOUTH_RULES.md),
 BOARD_RULES og TRANSFER_MARKET_RULES. Ungdommens SSOT har samme principnote.
 
+## Q-010 · Hvor kommer modstanden ved kursskifte fra?
+
+**Status:** besvaret ved genoptagelsen 10/9; A valgt, se D-009.
+En talentfabrik vil midt i sæsonen begynde at bygge et hold til store løbssejre.
+**A, anbefalet:** fri omlægning; eksisterende trup, kontrakter, investeringer,
+omdømme og aftalte forpligtelser gør, at den nye retning tager tid at realisere.
+**B:** også en særskilt skiftepris eller ventetid for at gøre identiteten bindende.
+**C:** let omlægning; spillet hjælper aktivt med at omstille klubbens ressourcer.
+
+**Designspænding:** D-008's frihed skal kunne rumme læring og ændrede ambitioner,
+mens V-001's meningsfulde valg skal have vedvarende konsekvenser. Hvis styrker
+omfordeles straks ved et profilvalg, risikerer identitet at blive overfladisk;
+ekstra skiftehindringer kan omvendt gøre afprøvning unødigt dyr. Det er en
+designervurdering, ikke en måling af spilleradfærd. A lader valgte investeringer
+skabe omstillingen uden automatisk at slette forpligtelser.
+
+**Kilder:** D-002/D-003/D-008; BOARD_RULES §0; `boardMembers.js::chooseDnaForTeamCore`
+(E-003). Det eksisterende rework bevarer DNA-valget. Spørgsmålet er et principvalg
+for den fremtidige friere identitet; ingen eksisterende gate er ændret.
+
+## D-009 · Fri omlægning med konsekvenser af eksisterende valg
+
+**Status:** ejer-valgt 10/9, svar på Q-010.
+**Ejerens svar, ordret:** "Fri omlægning; eksisterende investeringer og forpligtelser giver modstanden (anbefalet)".
+
+Manageren må frit begynde at ændre klubbens retning. Trup, kontrakter,
+investeringer og optjent omdømme giver vedvarende konsekvenser, så en ny retning
+tager tid at realisere. Erklæringen sletter ikke aftalte forpligtelser og giver
+ikke straks en ny klubs styrker. **Fravalgt:** en særskilt skiftepris/ventetid
+alene for at gøre identiteten bindende, samt aktiv hjælp til at omstille ressourcer
+som den grundlæggende model for kursskifte.
+
+**Begrundelse:** kombinerer D-008's frihed med V-001's meningsfulde valg.
+**Åbent:** hvordan konkrete mandater genforhandles, omdømme ændres og eksisterende
+DNA migreres. Det er ikke tilladelse til at slette genvalgsgaten nu eller gøre
+enhver kontrakt/forpligtelse uopsigelig. SSOT: BOARD_RULES §0.4, afstemt her.
+**Foreslået verifikation:** en talentfabrik begynder midt i sæsonen et titelprojekt;
+den kan handle på retningen, bærer sine forpligtelser og beholder sin historie,
+mens nye mål bliver forståelige. Test også gentagne erklæringer for mål-nulstilling.
+
+## Q-011 · Hvor sikkert er et talentprojekt?
+
+**Status:** stillet 10/9; afventer.
+En lovende ung rytter udvikles fornuftigt over flere sæsoner og bliver en god
+hjælper, men aldrig den håbede stjerne.
+**A, anbefalet:** almindeligt acceptabelt udfald; god management forbedrer en
+karriere uden nødvendigvis at indfri stjernedrømmen. Kræver troværdige tegn
+undervejs og brugbare muligheder, så indsatsen ikke opleves som spildt på en
+skjult, uforanderlig dom.
+**B:** kun sjældent; et velvalgt talent bør blive stjerne med god management.
+**C:** udfaldet skal næsten helt afgøres af managerens udviklingsvalg.
+
+**Tradeoff:** større udfaldsusikkerhed giver vurdering og behold/sælg-valg vægt,
+men kan undergrave V-001's løfte om momentum, hvis spilleren ikke kan forstå
+eller bruge udviklingen. Det er et spørgsmål om talentprojektets sikkerhed,
+ikke forslag om skjulte stop, mere vilkårlig tilfældighed eller uærlige data.
+Kilder læst: PROGRESSION_RULES §0-10, TRAINING_RULES §12-13; ejerbeslutningen
+6/9 om ærlig score for egen manager genåbnes ikke. Potentiale er udviklingsfart,
+ikke det tidligere direkte potentialeloft. Sammenhængen mellem talenter,
+individuelle forskelle, udviklingsvalg og karriere skal undersøges videre.
+
+## E-003 · Den eksisterende DNA-genvalgslås
+
+**Status:** kodekontrolleret 10/9 efter genoptagelse ved `c51231e5`; ingen prod-læsning.
+`backend/lib/boardMembers.js::chooseDnaForTeamCore` læser eksisterende DNA og
+bestyrelsesmedlemmer. Ved en anden DNA-nøgle og eksisterende medlemmer kaldes
+`isWithinFirstSeasonForTeam`; uden for første sæson afvises genvalg med
+`DNA_ALREADY_CHOSEN`. Samme nøgle og recovery følger særskilte veje. Kodekommentaren
+refererer ejerbeslutning 29/6 og senere drift; `boardClubDna.js` har fem pakker.
+
+**Afgrænsning:** dette er en lås på erklæret DNA, ikke et bevis på at klubben
+ikke kan ændre trup eller faktiske handlinger. Den gamle slice
+`docs/slices/02-board-redesign-MASTER.md` nævner senere DNA-drift; aktuel komplet
+leverancestatus for drift er ikke fastslået her. Fundet er derfor en forskel at
+afklare ved design af den nye identitetsmodel, ikke et nyt konstateret bugfund.
+
 ## E-002 · Markedsadgang: autobud og eksisterende tidsdiskussion
 
 **Status:** afgrænset dokument-, kode- og issuekontrol 10/9 på grundlaget

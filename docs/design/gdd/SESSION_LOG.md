@@ -120,13 +120,42 @@ Bestyrelsens nye §0 afstemmer reworket med kode, merged PR'er og read-only prod
 slice-masteren peger på det som aktuel status. Ingen runtime-/prod-ændringer.
 Andet checkpoint `a6edec31` er også pushet: bestyrelsesafklaringen og D-003/D-004.
 
-## Handoff · Pause efter Q-009, 10/9 2026
+## Genoptagelse efter Q-009, 10/9 2026
 
-- Aktivt arbejde: samlet GDD, status `in_progress`; interview pauset på ejerens ønske.
-- Alle stillede spørgsmål Q-001–009 er besvaret. Intet spørgsmål afventer.
-- Næste skridt: læs RESUME_PROMPT + journal/beslutninger/dækning; fortsæt fra D-008, uden at gentage interviewet.
+Ejeren genoptog udtrykkeligt med prompten fra pausepakken: fortsæt kritisk på dansk,
+ét begrundet spørgsmål ad gangen; gentag ikke besvarede spørgsmål og gem fortsat
+præcise intentioner, fravalg og undersøgelser på GitHub. Sidste valg D-008 bekræftes
+som udgangspunkt, ikke som en ny beslutning.
+
+`CLAUDE.md` læst først; hovedrepo-root verificeret. Eksisterende worktree/branch
+var ren ved `c51231e5`; fetch gennemført uden nyere branchændringer. Hele journalen,
+GDD, DECISIONS, INTERVIEW_QUESTIONS og COVERAGE samt område-topnoterne er læst igen.
+Den tidligere afklaring om eneste session genåbnes ikke uden nyt konfliktbevis.
+
+Q-010 er stillet om hvad der gør et strategisk kursskifte krævende. Kodekontrol:
+`boardMembers.js::chooseDnaForTeamCore` har normalt genvalgslås efter klubbens
+første sæson, når DNA og bestyrelse allerede findes. E-003 afgrænser observationen.
+Anbefalingen er fri omlægning med modstand fra faktiske investeringer og
+forpligtelser; en særskilt skiftepris/ventetid er et alternativ, ikke et nyt krav.
+
+## Q-010 · Modstand ved kursskifte, ejerens svar ordret
+
+> Fri omlægning; eksisterende investeringer og forpligtelser giver modstanden (anbefalet)
+
+Registreret som D-009 og afstemt i BOARD_RULES §0.4. Ingen konkret genvalgsgate
+ændret; håndtering af eksisterende mandater er fortsat åbent. Q-011 går videre
+til rytterudvikling: må et fornuftigt drevet talentprojekt blive en god hjælper
+uden at indfri stjernedrømmen? PROGRESSION_RULES §0-10 og TRAINING_RULES §12-13
+læst før spørgsmålet. Ærlig træningsscore og potentiale som fart fastholdes som
+eksisterende beslutninger; historiske statusstempler i kilderne er ikke genmålt.
+
+## Handoff · Genoptaget, 10/9 2026
+
+- Aktivt arbejde: samlet GDD og kritisk interview, status `in_progress`, genoptaget af ejer.
+- Q-001–010 er besvaret; Q-011 om talentprojektets usikkerhed afventer.
+- Næste skridt: bevar Q-011-svaret og fortsæt med rytterudvikling, individuelle forskelle og feedback.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001 og D-001 til D-008 er registreret; konkrete nye mekanikker er ikke godkendt.
+- V-001 og D-001 til D-009 er registreret; konkrete nye mekanikker er ikke godkendt.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

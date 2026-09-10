@@ -23,8 +23,8 @@ Senere kontrol skal også gennemgå baggrundsprocesser og funktioner uden egen r
 | G01 | Identitet, målspiller, managerfantasi og succeskriterier | Living World-doktrinen; #1145 | V-001, D-001 til D-008; ikke samlet reviewet |
 | G02 | Onboarding, første beslutning, læring, hjælp og comeback | FEATURE_REGISTRY; App.jsx; #1140 | D-005: to indgange og let betjening; detaljer afventer |
 | G03 | Besøgskadence, offline-spil, deadlines og assistance | ASSISTANT_RULES; PLANNING_CENTER_RULES; TRAINING_RULES | D-004/D-006: 2-3 besøg på 15-20 min; ASSISTANT_RULES §0-2 læst; E-001; D-007 om markedsaktivitet |
-| G04 | Rytteridentitet, generation, egenskaber og typer | RIDER_GENERATION; PROGRESSION_RULES | PROGRESSION_RULES §0-8 læst; ingen ny kode-/prod-kontrol |
-| G05 | Træning, form, restitution, sygdom, skader og peaks | TRAINING_RULES; PROGRESSION_RULES | TRAINING_RULES §1 og §13 læst; E-001; ingen samlet mekaniktest |
+| G04 | Rytteridentitet, generation, egenskaber og typer | RIDER_GENERATION; PROGRESSION_RULES | PROGRESSION_RULES §0-10 læst; Q-011 stillet; ingen samlet kode-/prod-kontrol |
+| G05 | Træning, form, restitution, sygdom, skader og peaks | TRAINING_RULES; PROGRESSION_RULES | TRAINING_RULES §1, §12 og §13 læst; E-001; Q-011 stillet; ingen samlet mekaniktest |
 | G06 | Scouting, fog of war, potentiale og informationsværdi | PROGRESSION_RULES; YOUTH_RULES; scout-system i FEATURE_REGISTRY | Inventeret; egen reglerute afklares ved læsning |
 | G07 | Akademi, ungdomstrupper, karrierer og generationsskifte | YOUTH_RULES; RIDER_GENERATION; PROGRESSION_RULES | YOUTH_RULES læst; D-008: individuel ungdomsindsats valgfri; ingen samlet kodekontrol |
 | G08 | Kalender, udtagelse, kapacitet og sæsonplan | CALENDAR_RULES; PLANNING_CENTER_RULES; ASSISTANT_RULES | Inventeret |
@@ -33,7 +33,7 @@ Senere kontrol skal også gennemgå baggrundsprocesser og funktioner uden egen r
 | G11 | Ligaer, ranglister, kvalifikation, sæsonskift og genopbygning | CALENDAR_RULES; GAME_INVARIANTS; SEASON_TRANSITION_CHECKLIST | Inventeret |
 | G12 | Økonomi, ressourcer, risiko, vækst og langtidsbalance | ECONOMY_RULES; GAME_INVARIANTS | ECONOMY_RULES delvist læst; påstande ikke genverificeret |
 | G13 | Kontrakter, forhandling, transfer, auktion, bytte og lån | TRANSFER_MARKET_RULES; ECONOMY_RULES | TRANSFER_MARKET_RULES delvist læst, §2/§4 + kode/issue-stikprøve i E-002; D-007 valgt |
-| G14 | Faciliteter, personale, klubidentitet og specialisering | FEATURE_REGISTRY; TRAINING_RULES; ECONOMY_RULES; #1149 | Inventeret; præcis regeldækning afklares |
+| G14 | Faciliteter, personale, klubidentitet og specialisering | FEATURE_REGISTRY; TRAINING_RULES; ECONOMY_RULES; #1149 | D-009 om fri omlægning valgt; DNA-genvalg kodekontrolleret i E-003; øvrig regeldækning afklares |
 | G15 | Bestyrelse, sponsorer, ambition og handlefrihed | BOARD_RULES; SPONSOR_RULES | Rework afstemt i SSOT §0 med kode/PR/prod-bevis 10/9; D-003 valgt; ingen fuld mål-/konsekvenstest |
 | G16 | AI-hold, verdensbefolkning, likviditet og skala | RIDER_GENERATION; TRANSFER_MARKET_RULES; #1151 | Inventeret |
 | G17 | Sociale relationer, beskeder, forum og rivalisering | SOCIAL_RULES; FORUM_RULES | Inventeret |

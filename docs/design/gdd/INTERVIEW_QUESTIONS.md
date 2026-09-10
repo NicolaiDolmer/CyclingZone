@@ -1,9 +1,10 @@
-# GDD · De ni stillede spørgsmål før pausen
+# GDD · Stillede interviewspørgsmål
 
 [Journal med ejerens præcise svar](SESSION_LOG.md) · [Beslutninger og alternativer](DECISIONS.md).
 Spørgsmålsteksterne nedenfor er bevaret fra de viste spørgsmål/svar i samtalen.
 Svar som "1" eller "anbefalet" skal læses sammen med spørgsmålet og beslutningens
-alternativer. Alle ni er besvaret; dette er ikke en ny spørgerunde.
+alternativer. Q-001–009 blev besvaret før pausen; spørgsmål derefter tilføjes
+nederst. Aktuel svarstatus står i DECISIONS og journalens handoff.
 
 ## Q-001 · Vision
 
@@ -51,4 +52,12 @@ forkundskaber. Ejeren valgte 1+2; ingen af de to er udpeget som vigtigere.
 
 Ejerens "1" vælger ja med minimal egen ungdomsudvikling. Han uddyber med vid
 valgfrihed og beder derefter om pause og et genoptagelsespunkt. Hele beskeden står
-i journalen. Q-010 er ikke stillet.
+i journalen. På pausetidspunktet var Q-010 ikke stillet.
+
+## Q-010 · Kursskifte (stillet efter genoptagelsen)
+
+> En talentfabrik vil midt i sæsonen begynde at bygge et hold til store løbssejre. Hvad skal gøre det skifte krævende? Jeg anbefaler, at manageren frit kan begynde omlægningen, mens trup, kontrakter, investeringer og optjent omdømme gør, at den nye retning tager tid at realisere. Et erklæret skifte giver ikke straks en ny klubs styrker eller sletter aftalte forpligtelser. Alternativet er også at lægge en særskilt skiftepris eller ventetid oveni for at gøre klubidentiteten mere bindende. Den nuværende DNA-kode låser normalt genvalg efter klubbens første sæson; vi tager her stilling til princippet for den fremtidige friere identitet.
+
+## Q-011 · Talentprojektets usikkerhed
+
+> Du køber en lovende ung rytter og udvikler ham fornuftigt gennem flere sæsoner. Alligevel bliver han en god hjælperytter og aldrig den stjerne, du håbede på. Skal det være et almindeligt, acceptabelt udfald? Jeg anbefaler ja: God management skal forbedre hans karriere, men behøver ikke indfri den oprindelige stjernedrøm. Det gør vurderingen af talenter og valget om at beholde eller sælge dem betydningsfuldt. Til gengæld skal spillet undervejs give troværdige tegn på udviklingen og brugbare muligheder for rytteren, så årene ikke opleves som spildt på en skjult, uforanderlig dom. Vi ændrer ikke her den allerede besluttede ærlige træningsscore; spørgsmålet handler om, hvor sikkert et langsigtet talentprojekt skal være.

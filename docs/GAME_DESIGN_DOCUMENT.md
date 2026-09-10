@@ -12,9 +12,10 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-008 er registreret.
-**Pause efter Q-009 på ejerens ønske:** alle stillede spørgsmål er besvaret.
-Fortsættelsen starter fra [genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md).
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-009 er registreret.
+**Genoptaget 10/9 efter Q-009:** hele genoptagelsespakken læst; Q-011 om talentprojektets
+usikkerhed afventer. [Genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md)
+bevarer pausepunktet; journalens sidste handoff er den aktuelle samtaletilstand.
 
 **Eksisterende kompas:** [Living World Product Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md).
 Det dokument er historisk ejer-godkendt, men nyere områdebeslutninger kan have
@@ -60,8 +61,8 @@ Det fulde ejerudsagn bevares i [journalen](design/gdd/SESSION_LOG.md).
 **Designerens foreløbige sammenfatning:** ejerskab over en klubhistorie i en fælles
 verden. Det er en fortolkning til videre afklaring, ikke en vedtaget tagline.
 Q-002 har afklaret talentfabrikken som selvstændig succesvej (D-001 nedenfor).
-Målgruppernes indgange og besøgskadencen er afklaret nedenfor; tidsbudget og
-de konkrete grænser for managerens frihed undersøges videre.
+Målgruppernes indgange, besøgskadence og normaldriftens tidsbudget er afklaret
+nedenfor; de konkrete grænser for managerens frihed undersøges videre.
 
 ### Flere veje til succes (D-001, ejer-godkendt retning 10/9)
 
@@ -84,7 +85,12 @@ konkrete regler. Princippet er afstemt i [YOUTH_RULES](YOUTH_RULES.md).
 Managerens frit kombinerede ambitioner skal fylde mest i den fremtidige identitet,
 suppleret af det klubben faktisk gør over tid. Færdige DNA-pakker er ikke den
 ønskede eneste model. Hvordan ambitioner erklæres og ændres, og hvordan omdømme
-opstår, skal vi stadig designe.
+opstår, skal vi stadig designe. **Kursskifte (D-009, valgt 10/9):** Manageren må
+frit begynde omlægningen. Trup, kontrakter, investeringer og optjent omdømme giver
+modstanden og tager tid at ændre. Der lægges ikke en særskilt skiftepris eller
+ventetid oveni alene for at binde identiteten. Et erklæret skifte sletter ikke
+aftalte forpligtelser eller giver straks den nye retnings styrker. Den konkrete
+overgang for eksisterende mandater og DNA skal fortsat designes.
 
 [Bestyrelsens SSOT](BOARD_RULES.md) ejer de konkrete regler. Det eksisterende
 Mandat-rework bevarer DNA-valget og skal ikke forveksles med denne nye retning.
@@ -226,5 +232,7 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   valgt; D-005 om to målgruppeindgange, D-006 om besøgslængde og D-007 om
   markedsaktivitet valgt; D-008 om købeklubben og vid valgfrihed valgt.
   Interview pauset efter Q-009 med genoptagelsesbrief og spørgsmålstekster.
+  Genoptaget fra `c51231e5` samme dag; D-009 om fri omlægning valgt efter kodekontrol.
+  Q-011 om talentprojektets usikkerhed stillet.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.
