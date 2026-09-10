@@ -7,10 +7,8 @@ daterede filer med links herfra, så genoptagelsen forbliver kort.
 
 ## 10/9 2026 · Opstart
 
-**Ejerens mandat, uddrag ordret:**
-> Vi skal arbejde som ægte game designers og du skal stille spørgsmåls tegn ved alt i projektet du mener der ikke er optimalt.
-
-> Og vi skal være sikre på, at ingen information du og claude code kan bruge fremadrettet går tabt, det skal gemmes på en fremragende måde i contexten.
+**Ejerens oprindelige opgave, ordret:**
+> Kan du hjælpe mig med at presse astra til der yderste og gennemgå alt i projektet du ikke forstår eller er uenig med mig i? Og så får vi lavet et samlet design dokument til spillet til spidst, som vi kan gemme som et game design dokument, som vi kan arbejde udfra fremadrettet. Gør det til verdensklasse og stor profesionalisme. Vi skal arbejde som ægte game designers og du skal stille spørgsmåls tegn ved alt i projektet du mener der ikke er optimalt. Det må gerne tage et par timer, vhor du stiller mig spørgsmål, indtil du er sikker på, at du får intentionen bag alle funktioner i spillet - Og vi skal være sikre på, at ingen information du og claude code kan bruge fremadrettet går tabt, det skal gemmes på en fremragende måde i contexten.
 
 Ejeren ønsker samlet GDD og grundig udspørgen over gerne flere timer, indtil
 intentionerne bag funktionerne er forstået. Codex har foreslået kildekontrol,
@@ -73,6 +71,45 @@ Registreret som D-004, bekræfter doktrinens retning. Ingen sessionslængde elle
 præcis sportslig fordel ved meraktivitet er valgt. Q-006 er nu stillet om
 målspillerens forkundskaber (cykelfan, managerfan eller erfaren cykelmanager).
 
+## Q-006 · Målgruppe og sværhedsgrad, ejerens svar ordret
+
+> 1 og 2 kombineret. Vil rigtigt gerne have begge grupper ind i spillet. Jeg tror jeg går efter "nemt at komme ind i, svært at mestre" sværhedsgraden. Spillet må gerne tilbyde dybde, men først skal det være rigtigt nemt at betjene alle spillets kernefunktioner.
+
+Registreret som D-005: både cykelfans uden managererfaring og managerspillere,
+der skal lære cykelsporten. Ingen af grupperne er udpeget som primær.
+Codex' oprindelige anbefaling om én primær indgang er dermed ændret af ejeren.
+Q-007 er stillet om nødvendig besøgslængde; assistance og læring afventer videre design.
+
+## Q-007 · Nødvendig besøgslængde, ejerens svar ordret
+
+> Cirka 15–20 minutter; ekstra fordybelse er frivillig (anbefalet)
+
+Registreret som D-006, sammen med D-004 et tidsmål for normal drift. Der er ikke
+antaget samme tidsbudget for onboarding eller sæsonskifte. Q-008 er stillet om
+fordelen ved hyppigere markedsbesøg; konkret auktionstid afgøres ikke her.
+Kode og #4177/#4714 er kontrolleret: den eksisterende tidsdiskussion afventer
+spillerafstemning, mens autobud allerede findes. E-002 afgrænser beviset.
+
+## Q-008 · Fordelen ved markedsaktivitet, ejerens svar ordret
+
+> Flere chancer for gode handler, men begge kan konkurrere på markedet (anbefalet)
+
+Registreret som D-007 og afstemt i transfermarkedets SSOT. Hyppighed må give flere
+muligheder; handelsvejen skal stadig fungere ved D-004's kadence. Q-009 spørger,
+om en klub omvendt kan vælge næsten al egen ungdomsudvikling fra og købe færdige ryttere.
+
+## Q-009 · Valgfrihed og ejerens pauseanmodning, ordret
+
+> 1 - Ja jeg ønsker total valgfrihed hvor alle spillere kan spille for deres egen måde og finde deres egen vej i spillet. Jeg ønsker i meget store træk, at spillere kan gøre præcist som de ønsker i spillet. Jeg vil gerne genstarte codex lige om lidt, fordi jeg har gjrot sådan du kan bruge endnu større kontekst vindue. Kan du pause denne session / gøre sådan at jeg hurtigt lige kan genstarte og så går jeg lidt og starte session igen bagefter hvor vi slap? Kan du lave en prompt jeg kan sende til dig, for at du bevare mest mulig kontekst? Jeg er bange for, at du allerede har midstet noget vigtigt, ved at komprimmere i starten rigtigt tidligt? Dette er trods alt en utroligt vigtig session, hvor det er vigtigt, at du bevarer overblikket.
+
+Registreret som D-008: købeklubben er en fuldgyldig strategi, og ejeren understreger
+bred valgfrihed. Interviewet pauser efter dette svar; **Q-010 er ikke stillet**.
+Genstart og større kontekstvindue er ejerens oplyste hensigt, ikke en verificeret
+ændring af modellens kapacitet. Der er ikke lovet tabsfri modelhukommelse.
+Dokumenterne er genoptagelsens grundlag: ejerens ord, beslutninger, kildebevis,
+åbne hypoteser og dækning gemmes i Git. Se [genoptagelsesbrief](RESUME_PROMPT.md).
+Spørgsmålenes fulde viste tekst bevares i [spørgsmålsarkivet](INTERVIEW_QUESTIONS.md).
+
 ## Checkpoint og bestyrelsesafklaring
 
 Første checkpoint `bdaa9542` er pushet til `origin/codex/game-design-document`.
@@ -81,14 +118,15 @@ Dokumenterne opdateres videre; checkpointet er ikke en samlet designgodkendelse.
 Repo-preflight bestået, links kontrolleret og tokenhygiejne uden fejl.
 Bestyrelsens nye §0 afstemmer reworket med kode, merged PR'er og read-only prod;
 slice-masteren peger på det som aktuel status. Ingen runtime-/prod-ændringer.
+Andet checkpoint `a6edec31` er også pushet: bestyrelsesafklaringen og D-003/D-004.
 
-## Handoff · Opdater ved næste betydningsfulde svar
+## Handoff · Pause efter Q-009, 10/9 2026
 
-- Aktivt arbejde: samlet GDD og kritisk designinterview, status `in_progress`.
-- Åbent spørgsmål: Q-006, målspillerens forkundskaber.
-- Næste skridt: bevar svaret; afklar tidsbudget/meraktivitet og fortsæt systemgennemgangen.
+- Aktivt arbejde: samlet GDD, status `in_progress`; interview pauset på ejerens ønske.
+- Alle stillede spørgsmål Q-001–009 er besvaret. Intet spørgsmål afventer.
+- Næste skridt: læs RESUME_PROMPT + journal/beslutninger/dækning; fortsæt fra D-008, uden at gentage interviewet.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001 og D-001 til D-004 er registreret; konkrete nye mekanikker er ikke godkendt.
+- V-001 og D-001 til D-008 er registreret; konkrete nye mekanikker er ikke godkendt.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

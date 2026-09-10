@@ -1,5 +1,14 @@
 # Transfermarkedets regler - SSOT
 
+> **GDD-retning, ejer 10/9 2026:** Hyppigere besøg må give flere chancer for gode
+> handler, men en manager med 2-3 ugentlige besøg skal stadig kunne konkurrere på
+> markedet og drive en talentfabrik. Se [GDD](GAME_DESIGN_DOCUMENT.md) og
+> [D-007 + bevis E-002](design/gdd/DECISIONS.md). Det er et kvalitativt designkrav,
+> ikke en måling af at markedet allerede opfylder det. Konkrete tider er uændrede.
+> **Statusafstemning 10/9:** #4177 er lukket efter tekstrettelsen i #4674;
+> det resterende tidsvalg ligger i åbne #4714 og afventer spillerafstemning
+> efter ejerbeslutningen 3/9. Ældre issue-status og prod-tal nedenfor er historiske.
+
 > **Læs denne FØR enhver opgave der rører transfermarkedet: auktioner, bud, autobud,
 > annullering, finalisering, frie agenter, trup-lofter, udskudte holdskifter eller de gates
 > der forhindrer misbrug.** Ejer-direktiv 25/8 2026

@@ -12,7 +12,9 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-004 er registreret; Q-006 om målspilleren afventer.
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-008 er registreret.
+**Pause efter Q-009 på ejerens ønske:** alle stillede spørgsmål er besvaret.
+Fortsættelsen starter fra [genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md).
 
 **Eksisterende kompas:** [Living World Product Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md).
 Det dokument er historisk ejer-godkendt, men nyere områdebeslutninger kan have
@@ -58,7 +60,8 @@ Det fulde ejerudsagn bevares i [journalen](design/gdd/SESSION_LOG.md).
 **Designerens foreløbige sammenfatning:** ejerskab over en klubhistorie i en fælles
 verden. Det er en fortolkning til videre afklaring, ikke en vedtaget tagline.
 Q-002 har afklaret talentfabrikken som selvstændig succesvej (D-001 nedenfor).
-Målgrupper, tidspres og grænserne for managerens frihed er endnu ikke afklaret.
+Målgruppernes indgange og besøgskadencen er afklaret nedenfor; tidsbudget og
+de konkrete grænser for managerens frihed undersøges videre.
 
 ### Flere veje til succes (D-001, ejer-godkendt retning 10/9)
 
@@ -68,6 +71,13 @@ give den rejse mening; sportslig dominans er ikke alle klubbers nødvendige slut
 Den konkrete anerkendelse, bæredygtighed og bestyrelsens vurdering skal undersøges
 i systemkapitlerne. D-001 godkender ingen bestemt bonus, økonomisk sats eller ny
 rangliste. Se [beslutningsgrundlaget](design/gdd/DECISIONS.md).
+
+**Den omvendte vej er også legitim (D-008, valgt 10/9):** En købeklub kan bygge på
+færdige ryttere og minimal egen ungdomsudvikling. Ejeren ønsker vid valgfrihed til
+egen vej i spillet. Akademiet skal være vigtigt for verdenen uden at være et
+tvunget individuelt succeskrav. De konkrete grænser mellem frihed, ressourcer
+og fælles konkurrence skal undersøges; der er ikke besluttet afskaffelse af
+konkrete regler. Princippet er afstemt i [YOUTH_RULES](YOUTH_RULES.md).
 
 ### Klubidentitet: ambition og omdømme (D-002, ejer-valgt retning 10/9)
 
@@ -90,9 +100,32 @@ det arbejde klubben faktisk prøver at lykkes med.
 
 To til tre besøg om ugen skal kunne bære en konkurrencedygtig klub på dens valgte
 niveau og vej. God planlægning skal have reel værdi, mens verden fortsætter under
-fravær. Dette er ikke en garanti for at slå dygtigere managers. Sessionslængde og
-fordelen ved hyppigere besøg er ikke fastlagt. Kalender, assistance, marked,
+fravær. Dette er ikke en garanti for at slå dygtigere managers. **D-006, valgt 10/9:**
+Et nødvendigt besøg i normal drift må kræve cirka 15-20 minutter; ekstra fordybelse
+er frivillig. Dette er et designmål, ikke en målt egenskab ved spillet. Onboarding
+og særlige sæsonbegivenheder er ikke tidsfastsat. Fordelen ved hyppigere besøg er
+fastlagt kvalitativt i D-007 nedenfor. Kalender, assistance, marked,
 kontrakter og bestyrelsesfrister skal vurderes samlet mod aftalen.
+
+**Markedsaktivitet (D-007, valgt 10/9):** Hyppigere besøg må give flere chancer for
+gode handler. Spilleren med få ugentlige besøg skal stadig kunne konkurrere på
+markedet og drive en talentfabrik. Enkelte mistede ryttere er acceptable; adgangen
+til reelle alternativer skal undersøges. Ingen bestemt fordel, auktionstid eller
+ny købsautomatik er vedtaget. Områdets kilde er [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md).
+
+### To indgange, fælles dybde (D-005, ejer-valgt 10/9)
+
+Spillet skal lykkes både for cykelinteresserede uden managererfaring og for
+managerspillere, som skal lære cykelsporten. Ejerens sværhedsgrad er **"nemt at
+komme ind i, svært at mestre"**. Først skal alle kernefunktioner være nemme at
+betjene; spillet skal samtidig tilbyde dybde. Erfaring med begge områder er
+ikke et adgangskrav. Ingen af de to indgange er udpeget som vigtigere end den anden.
+
+**Designerens fortolkning til validering:** Betjeningen og de grundlæggende begreber
+skal kunne læres hurtigt; mesterskab skal opstå gennem prioriteringer, forståelse
+af konsekvenser og langsigtede valg. Vi må ikke forveksle en tæt informationsflade
+med en forståelig flade. [TASTE](design/TASTE.md) er fortsat UI-kilden; D-005
+godkender ingen ændret sideopskrift eller konkret onboardingmekanik.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -190,6 +223,8 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
 - 10/9 2026: mandat, kildestruktur og dækningsregister oprettet; vision V-001
   bevaret; D-001 om selvstændige succesveje og D-002 om klubidentitet valgt;
   bestyrelsesrework afstemt; D-003 om bestyrelsens rolle og D-004 om spillerens tid
-  valgt; Q-006 stillet.
+  valgt; D-005 om to målgruppeindgange, D-006 om besøgslængde og D-007 om
+  markedsaktivitet valgt; D-008 om købeklubben og vid valgfrihed valgt.
+  Interview pauset efter Q-009 med genoptagelsesbrief og spørgsmålstekster.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.

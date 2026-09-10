@@ -22,6 +22,6 @@
 - **Træning:** løbsdag som tick (#4850/#4846) live senest 28/9; kalenderpakker #4845 FØR S4-kalender.
 - **Mekanik:** merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`, aldrig HH:57-HH:03; start køen først når checks har været rene i to aflæsninger); migrationer applies af auto-migrate.yml, Claude tjekker runnet + post-verify før næste merge. Bølger: TIER WAVE, draft til `gh pr ready`, CodeRabbit CLI før ready, push <10 min + hvert 15. min, vagt `wave-lane-watch.ps1`, frossen worker = afløser i SAMME worktree. Workers kører aldrig hele e2e, spawner aldrig agenter og kører preflight i FORGRUNDEN; go-kort bygges på `gh pr diff` + billeder orkestratoren selv har set. Tid: `Get-Date` (Git Bash `date` = UTC).
 
-> **🤖 Working agent:** Codex: [GDD](GAME_DESIGN_DOCUMENT.md) + designinterview (ejer 10/9, eneste session). Branch `codex/game-design-document`; [journal](design/gdd/SESSION_LOG.md): V-001, D-001/004 gemt, Q-006 afventer. BOARD_RULES §0 afstemt; ingen prod-ændring.
+> **🤖 Working agent:** Ingen aktiv; GDD-interview pauset af ejer 10/9 før genstart. Branch `codex/game-design-document`; [genoptag](design/gdd/RESUME_PROMPT.md), [journal](design/gdd/SESSION_LOG.md). V-001/D-001–008 gemt, alle ni spørgsmål besvaret. Ingen prod-ændring.
 
 _Historik i git-log, issue-tråde + docs/audits/._

@@ -1,5 +1,13 @@
 # Ungdommens regler: akademi, junior, U23 og senior - SSOT
 
+> **GDD-retning, ejer 10/9 2026:** Egen ungdomsudvikling skal kunne vælges fra som
+> klubstrategi. En købeklub med minimal egen ungdomsindsats er en fuldgyldig vej,
+> ligesom talentfabrikken er et legitimt slutmål. Ungdom kan være vigtigt for den
+> fælles verden uden at være et nødvendigt individuelt succeskrav. Se
+> [GDD](GAME_DESIGN_DOCUMENT.md) og [D-001/D-008](design/gdd/DECISIONS.md).
+> Konkrete trupregler, omkostninger og flows nedenfor ændres ikke af dette principvalg;
+> deres sammenhæng med retningen skal efterprøves under designgennemgangen.
+
 > **Læs denne FØR enhver opgave der rører akademiet, intake, ungdomsauktionen, graduering,
 > flyt mellem trupper, aldersgrænser for hold og løb, eller "kommer snart"-flader for
 > ungdomsholdene.** Området blev født uden SSOT: reglerne lå i tre design-specs
