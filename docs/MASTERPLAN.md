@@ -15,17 +15,17 @@
 3. 🔵 **v4-flip** (ejer-only) → #4916 følg løbet live.
 4. 🔵 **S4-kalender:** #4270 apply (ejer) · #4845 kalenderpakker · #4203 (done-gated).
 5. 🟠 **Træning pr. løbsdag #4850** (live senest 28/9; skemaet: træning = "fungerer dårligst" 17 af 36, og "løb udvikler rytterne" er skemaets nr. 1): #4846 → #4847 → #4851 → #4852/#4853/#4854 → #4848 → #4849. #4801 · #4874 i pakken. #5076 formdyk-forklaring + #5064 scouting-niveauer som help-tekst i #4849.
-6. 🔵 **Mandatet flip** (G1, 27/9): #4857 backfill (ejer-go) → #4859 → #4858.
+6. 🔵 **Bestyrelsen: Mandatet-flip** (G1, 27/9): #4857 backfill (ejer-go) → #4859 → #4858. Videre bestyrelsesdesign (retninger, omdømme): GDD D-040/D-041, venteliste 10.
 7. 🔵 **Cutover-pakke:** #4592 inaktive (ejer godkender liste) → #452 → #4759 · #4619 · #4860 sponsorpris S4 · #4376 sponsor-base ved oprykning.
 
 ## Bane 2 · Forretning (viger aldrig; SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 
 Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d ≥ 100 (målt 7/9: 90).
-8. 🟠 **Spørgeskema #4943:** 27 gennemført, admin-side live. Fund: ungdom+træning entydigt øverst; veto > 20 % på delte programmer, AI-bud, transfers i indbakken; Pro må aldrig give fordel (7 fritekst). Reminder-udkast → ejeren poster. Luk skemaet når 40 er nået eller 15/9.
+8. 🟠 **Spørgeskema #4943:** 27 gennemført, admin-side live. Fund: ungdom+træning øverst; veto > 20 % på delte programmer, AI-bud, indbakke-transfers; Pro må aldrig give fordel. Luk ved 40 eller 15/9. Fog of war-afstemning: `docs/drafts/forum-poll-fog-of-war-2026-09-10.md` (ejeren poster).
 9. 🔵 **Mail:** #5045 → testmail → #5038 ejer-trin (Resend-webhook, DMARC) → flip pr. type → #2760 win-back.
 10. 🔵 **Nøgleblok #4616** → Pro i euro #4608 → #4645 → #4646 · #4074 · #4005. **Billing-vagter** #4514 · #4512. **#5051** LTV-fejl (high).
 11. 🔴 **Spiller-kommunikation #428/#4820:** ejeren poster selv. Hængende løfter: #4346 anmeld-handel (27/8) · flyt forumkategori ("senest 10/9"). #4964 launch-kohorte 28,6 % (ejer-valg) · #5033 chunk lag 3 (efter #4595).
-12. ⚪ **Nye spillere:** #4067 SEO · #3796 · #4811 · #4321 PostHog-nøgle (ejer). **Fastholdelse:** #4751 rest · #4821 · #4235 forum vs Discord 15/9.
+12. 🟠 **Vækst-fundament (ejer 10/9: "meget vigtigt"):** **SEO/markedsføring** #4067 · #3796 · #4811 · #4321 (ejer-nøgle) · **hastighed** #5055 posthog-lite · #4595/#5089 (bølge) · perf-gate/Core Web Vitals · **mobil hele sitet** #1602 epic · #5060 (bølge) · #4982 · #4613. **Fastholdelse:** #4751 rest · #4821 · #4235 (15/9) · GDD D-037/D-038 (dag 1 + krog) efter måling.
 
 ## Bane 3 · Færdiggør (>70 %; tømmes før nyt)
 
