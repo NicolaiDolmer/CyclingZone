@@ -12,8 +12,8 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-012 er registreret.
-**Aktuelt:** Q-015 om offentlig eller privat udviklingshistorik afventer.
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-013 er registreret.
+**Aktuelt:** Q-016 om opfølgning siden sidste besøg afventer.
 R-001 bevarer ejerens ønske om at følge ryttere "af egen avl".
 [Genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md)
 bevarer pausepunktet; journalens sidste handoff er den aktuelle samtaletilstand.
@@ -153,7 +153,10 @@ vores akademi" og "udviklet hos os". **D-012, valgt 10/9:** "Udviklet hos os"
 kræver mindst tre sæsoners samlet ungdomstid hos klubben frem til og med
 U23-perioden. Opholdstid er grundlaget, ikke en bestemt evnefremgang.
 Delvise sæsoners opgørelse og historisk datadækning skal præciseres.
-Hvordan de følges efter salg, og hvilke begivenheder der fremhæves, afklares videre.
+**D-013, valgt 10/9:** Udviklingshistorikken bliver offentlig på klubprofilen,
+og manageren får eget praktisk overblik. Andre klubbers private træningsoplysninger
+følger ikke med. [SOCIAL_RULES](SOCIAL_RULES.md) ejer synlighedens principnote.
+Hvordan opfølgningen præsenteres, og hvilke begivenheder der fremhæves, afklares videre.
 Der er endnu ikke valgt liste, notifikationer, loyalitetsbonus eller ny statistik.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
@@ -258,6 +261,7 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   Genoptaget fra `c51231e5` samme dag; D-009 om fri omlægning valgt efter kodekontrol.
   D-010 om talentprojektets usikkerhed valgt; Q-012 besvaret med ønske R-001
   om at følge egen avl og mere konkrete spørgsmål. D-011 om afgrænsningen valgt;
-  D-012 om tre sæsoners ungdomstid valgt; Q-015 om synlighed stillet.
+  D-012 om tre sæsoners ungdomstid og D-013 om offentlig/eget overblik valgt;
+  Q-016 om opfølgning siden sidst stillet.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.

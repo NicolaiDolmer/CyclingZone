@@ -188,13 +188,24 @@ tre sæsoner erstatter Codex' forslag om to. U23-perioden indgår som i A;
 delvise sæsoner og historisk opgørelse er ikke teknisk afgjort. Q-015 spørger
 til offentlig udviklingshistorik på klubprofilen kontra privat/valgfri visning.
 
+## Q-015 · Synlighed, ejerens svar ordret
+
+> Ja; offentlig klubhistorik og et eget overblik til manageren (anbefalet)
+
+Registreret som D-013; offentlighedens princip afstemt i SOCIAL_RULES med pointer
+fra YOUTH_RULES. Q-016 spørger til samlet "Siden sidst" med milepæle, alle
+hændelser i strøm eller kun rytterliste. Det angår eget overblik, ikke eksterne
+beskeder. SOCIAL_RULES §0/§6 er læst; ingen kommunikation sendt.
+Checkpoint `bc9b5816` er pushet og bevarer svarene gennem Q-014 samt Q-015 som
+dengang åben. Aktuel fortsættelse er dokumenteret nedenfor og i DECISIONS.
+
 ## Handoff · Genoptaget, 10/9 2026
 
 - Aktivt arbejde: samlet GDD og kritisk interview, status `in_progress`, genoptaget af ejer.
-- Q-001–014 har ejer-svar; Q-015 om offentlig udviklingshistorik afventer.
-- Næste skridt: konkrete kort om R-001, følgeflade og begivenheder; afklar åbne kriteriedetaljer før build.
+- Q-001–015 har ejer-svar; Q-016 om "Siden sidst"-opfølgning afventer.
+- Næste skridt: konkrete kort om R-001, opfølgning og begivenheder; afklar åbne kriteriedetaljer før build.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001, D-001–012 og ønske R-001 er registreret; ingen ny funktion er godkendt til build.
+- V-001, D-001–013 og ønske R-001 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

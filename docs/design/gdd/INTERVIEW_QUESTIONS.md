@@ -79,3 +79,7 @@ Ejerens svar ændrede forslaget til **tre** sæsoner; se D-012.
 ## Q-015 · Udviklingshistorikkens synlighed
 
 > Skal andre managers kunne se klubbens udviklede ryttere? Jeg anbefaler en offentlig sektion på klubprofilen med »Fra vores akademi« og »Udviklet hos os«: rytterens navn, nuværende klub og udvalgte karrierebedrifter, med link til rytterprofilen. Så kan en talentfabrik blive kendt for de ryttere, den har sendt videre. Dit eget overblik kan samtidig rumme mere praktisk opfølgning; sektionen skal ikke give adgang til en anden managers private træningsoplysninger.
+
+## Q-016 · Siden sidst
+
+> Hvordan skal dit eget overblik fortælle, hvad de tidligere ryttere har oplevet siden dit sidste besøg? Jeg anbefaler én samlet »Siden sidst«-opsummering med udvalgte milepæle: eksempelvis første sejr, et stort karriereresultat, klubskifte eller pension. Fra opsummeringen kan du åbne rytteren og undersøge mere. Det holder forbindelsen levende, også når klubben efter mange sæsoner har udviklet mange ryttere, uden en besked for hvert løb. Eksemplerne er forslag; den præcise milepælsliste vælger vi senere.

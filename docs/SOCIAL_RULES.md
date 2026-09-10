@@ -1,5 +1,13 @@
 # De sociale features' regler - SSOT
 
+> **GDD-retning, ejer 10/9 (D-013):** Klubbens udviklingshistorik skal have en
+> offentlig sektion på klubprofilen og et eget praktisk overblik for manageren.
+> Akademioprindelse og udvikling hos klubben adskilles efter D-011/D-012 i
+> [YOUTH_RULES](YOUTH_RULES.md). Andre klubbers private træningsoplysninger
+> bliver ikke tilgængelige gennem historikken. Indhold, opfølgning og konkret
+> layout afventer videre design; ingen funktion eller beskedudsendelse er
+> godkendt til build her. [GDD-beslutninger](design/gdd/DECISIONS.md).
+
 > **Læs denne FØR enhver opgave der rører de sociale flader: Discord-koblingen, rollesynkronisering,
 > DM-udsendelse og DM-præferencer, in-app-notifikationer, achievements, opbakning i forummet,
 > holdprofiler og tilstedeværelse, eller ranglister.**

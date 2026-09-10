@@ -522,7 +522,7 @@ kort gennemhandel gør ikke; langsom vækst alene må ikke diskvalificere.
 
 ## Q-015 · Offentlig eller privat udviklingshistorik?
 
-**Status:** stillet 10/9; afventer.
+**Status:** besvaret 10/9; A valgt, se D-013.
 **A, anbefalet:** offentlig sektion på klubprofilen og eget praktisk overblik
 til manageren. Eksempelindhold: akademi/udviklingsklub adskilt, navn, nuværende
 klub og udvalgte karrierebedrifter, med link til rytterprofil.
@@ -534,6 +534,38 @@ ryttere, som siden vinder for andre hold. Dette afgør synlighed, ikke præcise
 kolonner, rangliste, belønninger eller notifikationskadence. Andre klubbers private
 træningsoplysninger er ikke del af forslaget (TRAINING_RULES §13).
 Kilder: V-001, R-001, D-011/D-012 og YOUTH_RULES.
+
+## D-013 · Offentlig klubhistorik og eget manageroverblik
+
+**Status:** ejer-valgt 10/9, svar på Q-015.
+**Ejerens svar, ordret:** "Ja; offentlig klubhistorik og et eget overblik til manageren (anbefalet)".
+
+Udviklingshistorikken skal være offentlig på klubprofilen; manageren får
+desuden eget praktisk overblik. Det gør talentfabrikkens bidrag synligt for andre
+managers og støtter V-001's multiplayeridentitet. Akademi og udvikling hos klubben
+vises adskilt. **Fravalgt:** udelukkende privat historik og valgfri offentlighed
+som grundmodel. Private træningsoplysninger fra andre klubber er ikke inkluderet.
+**Åbent:** præcise kolonner/milepæle, layout, sortering, personlige favoritter,
+opfølgningsform og notifikationer. Navn/nuværende klub/bedrifter var et illustreret
+forslag; beslutningen her låser synlighed og de to formål, ikke en færdig skærm.
+Kilder: R-001/D-011/D-012; SOCIAL_RULES (principnote afstemt), YOUTH_RULES,
+TRAINING_RULES §13. **Foreslået verifikation:** en besøgende forstår klubbens
+bidrag, mens manageren kan følge videre; adgangen afslører ikke fremmed træning.
+
+## Q-016 · Opfølgning siden sidste besøg
+
+**Status:** stillet 10/9; afventer.
+**A, anbefalet:** én samlet "Siden sidst" med udvalgte milepæle og mulighed for
+at åbne rytteren. Første sejr, stort karriereresultat, klubskifte og pension er
+eksempler; en præcis milepælsliste vælges senere.
+**B:** løbende strøm med alle løbsresultater og klubskifter.
+**C:** kun rytterlisten; manageren åbner selv dem, der skal undersøges.
+
+**Tradeoff:** udvalgte hændelser gør historikken overskuelig med mange tidligere
+ryttere og D-004's besøgskadence; de kræver kriterier for, hvad der er væsentligt.
+Alle hændelser giver detalje, men kan skjule de vigtige historier. Spørgsmålet
+handler om eget overblik, ikke om push-, mail- eller Discord-beskeder.
+Kilder: D-004/D-006/D-013, SOCIAL_RULES §0/§6 og Living World-doktrinens returflade.
 
 ## E-005 · Årgange, intake og historik er forskellige kilder
 

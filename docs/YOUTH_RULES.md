@@ -17,6 +17,8 @@
 > data, flade og begivenheder afventer design.
 > [R-001/D-011/D-012](design/gdd/DECISIONS.md) bevarer intentionen;
 > dette er ikke en påstand om leveret funktionalitet eller godkendelse til build.
+> **D-013:** offentlig klubhistorik og eget manageroverblik; synlighedens regel
+> står i [SOCIAL_RULES](SOCIAL_RULES.md), som læses sammen med denne afgrænsning.
 
 > **Læs denne FØR enhver opgave der rører akademiet, intake, ungdomsauktionen, graduering,
 > flyt mellem trupper, aldersgrænser for hold og løb, eller "kommer snart"-flader for
