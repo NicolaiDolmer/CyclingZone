@@ -264,7 +264,11 @@ værn. Det er svaret på D-004/D-006 for løbsdagen: 2-3 besøg om ugen må ikke
 koste en Tour. Selve flippet af tilstanden og #4201's migration er ejer-gatede
 prod-skridt. **D-035:** assistenten fylder altid til gulvet (6), men pladser
 derover kun med ryttere over en egnetheds- og træthedsgrænse; tomme pladser
-vises med årsag. Grænsen er kalibrering. **Fog of war (Q-037)** er parkeret:
+vises med årsag. Grænsen er kalibrering. **D-036 (løbsdagen):** efter et løb
+får manageren et indsatskort pr. rytter: ordren, 2-4 hændelser med km fra
+v4's tidslinje og én dom i klar tekst, ingen karakter; den levende tidslinje
+(#4916) supplerer. Det er svaret på GDD §4's krav om konsekvens og feedback
+og kræver v4-flippet. **Fog of war (Q-037)** er parkeret:
 ejeren stiller spørgsmålet til spillerne som forum-afstemning med billede,
 før der besluttes.
 
@@ -398,3 +402,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-033: ingen udlån (ejerens fravalg af designerens anbefaling).
   Q-037 (fog of war) parkeret til spillerafstemning. D-034 om sen udfyldning
   24 t før start + påmindelse valgt (kapitel: holdudtagelse og løbsdagen).
+  D-035 (assistenten fylder til gulvet, derover kun egnede) og D-036
+  (indsatskort pr. rytter efter løbet) valgt.

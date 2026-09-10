@@ -1246,6 +1246,41 @@ korrektion: med kun fire ryttere kan gulvet ikke nås, og reglen fra
 PLANNING_CENTER_RULES §4 pkt. 2 ("der skrives intet hvis gulvet ikke kan nås")
 består uændret.
 
+## Q-040 · Hvad får spilleren at vide om egne rytteres indsats efter et løb?
+
+**Status:** stillet 10/9 (Claude Code), tre kolonner (hjælperen "Lund" med ordren
+"hjælp kaptajnen" på en kuperet etape). A valgt, se D-036.
+**A, anbefalet:** indsatskort pr. rytter under resultatet: ordren, 2-4 hændelser
+med km fra v4's tidslinje, én linje om han gjorde sit arbejde; ingen karakter.
+**B:** karakter 1-10 pr. rytter (spillerforslag i skemaet). **C:** kun den
+levende tidslinje (#4916).
+**Tradeoff:** A forklarer hvad ordren betød og bygger direkte på v4's gemte
+tidslinje; B er hurtig at læse, men forklarer ikke hvorfor og inviterer til at
+sammenligne ryttere; C er stærk for den der ser med, men den fraværende
+manager (D-004) skal selv finde sin rytter i 135 km prikker.
+Kilder: RACE_ENGINE_RULES (v4 tidslinje, #4893), #4916, skema 10/9 fritekst
+("did he attack at km 12? ... maybe with a mark from 1 to 10"), GDD §4 pkt. 3.
+
+## D-036 · Indsatskort pr. rytter: ordre, hændelser, dom
+
+**Status:** ejer-valgt 10/9, svar på Q-040.
+**Ejerens svar, ordret:** "A · Indsatskort pr. rytter: ordre, hændelser, dom (anbefalet)".
+Efter et løb får manageren for hver af sine ryttere et kort indsatskort: den
+ordre/rolle rytteren havde, de 2-4 hændelser fra tidslinjen der betød noget
+(med km), og én dom i klar tekst ("gjorde sit arbejde", "faldt igennem",
+"kørte over evne") med den vigtigste konsekvens (fx træthed før → efter).
+Ingen numerisk karakter. Kortet er grundmodellen for feedback på løbsdagen;
+den levende tidslinje (#4916) supplerer, erstatter ikke.
+**Fravalgt:** karakter 1-10 (B); kun replay (C).
+**Åbent:** hvilke hændelsestyper der udvælges og hvordan (regel, ikke AI-tekst),
+dommens ordforråd (en+da, TONE_OF_VOICE), om kortet vises i indbakken/"Siden
+sidst" eller kun på løbssiden, mobilvisning, og om AI-holds ryttere får kort
+(ikke nødvendigt). Kræver v4-flippet; ingen build-go.
+**Foreslået verifikation:** for en hjælper der dækkede et udbrud og trak i
+38 km viser kortet netop de hændelser og dommen "gjorde sit arbejde"; for en
+sprinter på en bjergetape med ordren "spar kræfter" viser kortet ikke en dårlig
+dom for at blive sat af.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code
