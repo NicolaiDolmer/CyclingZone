@@ -44,3 +44,21 @@ test("soegemaskiner samles, og self-referral holdes ude af kanal-listen", () => 
   assert.equal(classifyChannel({ referrer: "https://duckduckgo.com/" }), "soegning (organisk)");
   assert.equal(classifyChannel({ referrer: "https://cyclingzone.org/dashboard" }), "self-referral");
 });
+
+test("lookalike domains cannot impersonate Hattrick or self-referrals", () => {
+  for (const domain of ["hattrick.org", "cyclingzone.org", "cycling-zone.vercel.app"]) {
+    for (const impostor of [`${domain}.example.com`, `evil-${domain}`]) {
+      assert.equal(classifyChannel({ referrer: `https://${impostor}/` }), impostor);
+      assert.equal(classifyChannel({ utm_source: impostor }), impostor);
+    }
+    assert.equal(classifyChannel({ referrer: `https://example.com/${domain}` }), "example.com");
+    assert.equal(classifyChannel({ referrer: `https://${domain}@example.com/` }), "example.com");
+  }
+});
+
+test("genuine hostnames and their subdomains retain their channel", () => {
+  for (const [domain, expected] of [["hattrick.org", "hattrick"], ["cyclingzone.org", "self-referral"], ["cycling-zone.vercel.app", "self-referral"]]) {
+    assert.equal(classifyChannel({ referrer: `https://sub.${domain}/` }), expected);
+    assert.equal(classifyChannel({ utm_source: domain }), expected);
+  }
+});

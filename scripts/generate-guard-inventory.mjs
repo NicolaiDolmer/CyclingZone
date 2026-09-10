@@ -2,11 +2,11 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import YAML from 'yaml';
+import { escapeInventoryCell as escape } from './lib/guard-inventory-cell.mjs';
 const target = 'docs/GUARD_INVENTORY.md';
 const marker = '<!-- GENERATED GUARD SOURCES -->';
 const header = readFileSync(target, 'utf8').split(marker)[0].trimEnd();
 const files = execFileSync('git', ['ls-files', '-z'], {encoding:'utf8'}).split('\0').filter(Boolean);
-const escape = value => String(value).replace(/\|/g, '\\|').replace(/[\r\n]+/g, ' ');
 const link = path => `[${path}](../${path})`;
 const rows = [];
 const row = (layer, path, coverage) => rows.push(`| ${layer} | ${link(path)} | ${escape(coverage)} | aldrig bevist |`);
