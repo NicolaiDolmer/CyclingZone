@@ -1,6 +1,11 @@
 // Unit-tests for #5073-maalescriptets RENE klassifikationslogik. Ingen DB, ingen
 // netvaerk - samme kontrakt som de oevrige scripts/ops/*.test.mjs i CI's
 // static-guards-job.
+//
+// Importer .lib.mjs, ALDRIG .mjs: static-guards koerer uden `npm ci`, og
+// .mjs-scriptet importerer @supabase/supabase-js paa topniveau. Ryger den import
+// ind i denne kaede, fejler jobbet med ERR_MODULE_NOT_FOUND i CI selvom testen
+// passerer lokalt hvor node_modules findes.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -9,7 +14,7 @@ import {
   buildFreezeReport,
   buildFreezeMap,
   legacyAnnouncedRetirementAfterSeason,
-} from "./retirement-notice-freeze-5073.mjs";
+} from "./retirement-notice-freeze-5073.lib.mjs";
 import { announcedRetirementAfterSeason } from "../../backend/lib/riderProgression.js";
 
 // Saeson 3 = referenceaar 2028 (LAUNCH_REFERENCE_YEAR 2026).
@@ -84,4 +89,29 @@ test("buildFreezeMap indeholder KUN vinduet, og foelger --source", () => {
 
 test("buildFreezeMap afviser en ukendt kilde", () => {
   assert.throws(() => buildFreezeMap([], S3, "whatever"), /ukendt --source/);
+});
+
+test("frie agenter (team_id null) er med i populationen og taelles for sig", () => {
+  // Populationen skal inkludere transfermarked/auktion - det er dem koebere
+  // traeffer beslutninger om (#5073's thelamba-case). Vi vaelger et id der rent
+  // faktisk divergerer, saa taellingen kan verificeres.
+  let freeId = null;
+  for (let i = 0; i < 400 && !freeId; i++) {
+    const cand = { id: `fa-${i}`, birthdate: bornForAge(38) };
+    if (classifyRider(cand, S3).diverged) freeId = cand.id;
+  }
+  assert.ok(freeId, "kunne ikke finde en divergerende test-rytter");
+
+  const riders = [
+    { id: freeId, firstname: "Fri", lastname: "Agent", birthdate: bornForAge(38), team_id: null, isHuman: false },
+  ];
+  const report = buildFreezeReport(riders, S3);
+  assert.equal(report.totals.inSeededWindow, 1);
+  assert.equal(report.totals.freeAgentInSeededWindow, 1);
+  assert.equal(report.totals.humanInSeededWindow, 0);
+  assert.equal(report.totals.diverged, 1);
+  assert.equal(report.totals.freeAgentDiverged, 1);
+  assert.equal(report.diverged[0].isFreeAgent, true);
+  // Frie agenter skal ogsaa have en noegle i frysnings-kortet.
+  assert.deepEqual(Object.keys(buildFreezeMap(riders, S3, "legacy")), [freeId]);
 });

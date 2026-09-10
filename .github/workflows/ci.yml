@@ -450,6 +450,9 @@ jobs:
       # nuvaerende seededUnitMixed). Ren klassifikation, ingen DB - guarden fanger
       # hvis motorens announcedRetirementAfterSeason og scriptets frosne
       # historiske kopi holder op med at kunne sammenlignes.
+      # Testen importerer retirement-notice-freeze-5073.lib.mjs (ren) og ALDRIG
+      # .mjs-scriptet, som importerer @supabase/supabase-js: dette job koerer
+      # bevidst uden `npm ci`, saa den import ville give ERR_MODULE_NOT_FOUND.
       - name: Test retirement-notice freeze classification
         if: ${{ !cancelled() }}
         run: node --test scripts/ops/retirement-notice-freeze-5073.test.mjs
