@@ -5,7 +5,7 @@
 // virker: "Fix price" retter feltet uden at submitte, "No, intentional"
 // fortsætter den oprindelige (lave) pris uændret.
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath, revealAllTableColumns } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath } from "./fixtures.js";
 
 test.describe("Auction start-price typo guard (#3184)", () => {
   test.beforeEach(async ({ page }) => {
@@ -160,10 +160,8 @@ test.describe("Auction start-price typo guard (#3184)", () => {
     // #706 i TeamPage.jsx: rækkens "Sell / Auction"-knap åbner RiderActionModal
     // (stopPropagation — et klik andetsteds i rækken navigerer i stedet til
     // rytterprofilen via den indlejrede RiderLink).
-    // #5102/D-047: paa mobil ligger handlingskolonnen bag "Fuld tabel", og
-    // raekken er delt i en navneblok + en datablok (datablokkens <tr> baerer
-    // navnet via aria-labelledby, saa row-navnet stadig virker).
-    await revealAllTableColumns(page);
+    // #5102/D-047: handlingskolonnen er en af Mit holds tre standardkolonner paa
+    // mobil, saa raekken er EEN <tr> med baade navn og knap — ogsaa i 375px.
     await page.getByRole("row", { name: /Ada Pedersen/ })
       .getByRole("button", { name: /^(Sell \/ Auction|Sælg \/ Auktion)$/ })
       .click();

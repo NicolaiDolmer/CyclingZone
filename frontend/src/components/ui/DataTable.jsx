@@ -105,6 +105,23 @@ export function DataTable({
 
   const [mobileKeys, setMobileKeys] = useState(() => defaultMobileColumnKeys(columns, mobileDefaults));
   const [fullTable, setFullTable] = useState(false);
+  // En `mobileDefaults`-nøgle der peger på en fold- eller sticky-kolonne (eller
+  // på en kolonne der er blevet omdøbt) bliver STILLE kasseret, og pladsen
+  // fyldes af den første numeriske kolonne i stedet. Akademiet ramte præcis det
+  // (`value` er `fold: true` dér), og ingen kunne se det uden at tælle
+  // kolonner i en telefon. Dev-warning, ikke kast — samme linje som ovenfor.
+  if (import.meta.env.DEV && mobileDefaults) {
+    const valid = new Set(swappable.map((c) => c.key));
+    const unknown = mobileDefaults.filter((key) => !valid.has(key));
+    if (unknown.length > 0) {
+      console.error(
+        `DataTable "${label ?? "(uden label)"}": mobileDefaults ${JSON.stringify(unknown)} findes ikke som ` +
+          "byttebare kolonner (fold/sticky-kolonner kan ikke vaere standardkolonner) og ignoreres. " +
+          "Refs #5102."
+      );
+    }
+  }
+
   // Kolonnesættets IDENTITET (nøgler + sticky/fold-roller), ikke de nye
   // array-referencer hver render. Den er også localStorage-nøglens grundlag, så
   // en closure der er fanget på denne signatur kan aldrig skrive til en anden
@@ -201,7 +218,7 @@ export function DataTable({
                               er tilovers og GIVER den fra sig igen naar tallene
                               bliver brede — sammen med `wrap` nedenfor er det
                               det der holder tabellen inden for 375px. */}
-                          <td className={`${tdClass({ ...edges, zone: zones[i], dense })} w-full max-w-0`}>
+                          <td className={`${tdClass({ ...edges, zone: zones[i], compact: true, dense })} w-full max-w-0`}>
                             {renderStickyCell(entityCol, row, i, foldCols, true)}
                           </td>
                           {visibleMobileCols.map((col) => (
@@ -211,7 +228,7 @@ export function DataTable({
                                 numeric: col.numeric,
                                 zone: zones[i],
                                 ...edges,
-                                compact: col.compact,
+                                compact: true,
                                 tight: col.tight,
                                 dense,
                               })}
@@ -322,7 +339,10 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
           return (
             <th
               key={col.key}
-              className={`${thClass({ numeric: col.numeric, sticky: !mobile && col.sticky, compact: col.compact, tight: col.tight, dense, stickyHeader })} ${!mobile && col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
+              // mobile ⇒ compact gutter (px-2) på ALLE celler: på 393px er de
+              // 16px ekstra pr. kolonne forskellen på at tabellen passer og på
+              // at den skubber sig selv ud over kanten (målt, ikke gættet).
+              className={`${thClass({ numeric: col.numeric, sticky: !mobile && col.sticky, compact: mobile || col.compact, tight: col.tight, dense, stickyHeader })} ${!mobile && col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
               onClick={sortable ? () => onSort(col.sortKey) : undefined}
               aria-sort={
                 sortable ? (active ? (sortDir === "desc" ? "descending" : "ascending") : "none") : undefined
@@ -615,7 +635,12 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
     .map((c) => (c.foldValue ? c.foldValue(row) : row[c.key]))
     .filter((v) => v != null && v !== "");
   const indent = col.sublineIndent ? "pl-[17px]" : "";
-  const nowrap = wrap ? "min-w-0 [&>*]:min-w-0" : "whitespace-nowrap";
+  // `break-words`: uden det saetter det laengste ORD i navnet kolonnens
+  // min-bredde, og en raekke med en bred handlingsknap kan saa ikke laengere
+  // give plads — tabellen bliver bredere end telefonen. Med det kan
+  // navnekolonnen altid krympe, og et navn brydes hellere end at tabellen
+  // scroller (D-047's raekkefoelge af prioriteter).
+  const nowrap = wrap ? "min-w-0 break-words [&>*]:min-w-0" : "whitespace-nowrap";
   return (
     <>
       <span className={`flex items-center gap-2 text-[13.5px] font-medium text-cz-1 ${nowrap}`}>

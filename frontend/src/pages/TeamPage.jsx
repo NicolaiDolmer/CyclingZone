@@ -852,8 +852,12 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       header: t("squad.headers.action"),
       compact: true,
       render: (r) => (!r._isIncoming ? (
+        // #5102/D-047: knappen bryder til to linjer paa mobil. Med nowrap er den
+        // 107px bred, og saa er der kun 63px tilbage til NAVNET paa 393px —
+        // navnet brød midt i et ord. "Navnet er helligt" (ejer 25/7) vinder
+        // over knappens een-linjes-form.
         <button onClick={(e) => { e.stopPropagation(); onSelectRider(r); }}
-          className="px-3 py-1 min-h-[44px] sm:min-h-[30px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-nowrap">
+          className="px-2 sm:px-3 py-1 min-h-[44px] sm:min-h-[30px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-normal sm:whitespace-nowrap">
           {t("squad.actionButton")}
         </button>
       ) : null),

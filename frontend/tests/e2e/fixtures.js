@@ -393,22 +393,6 @@ export async function login(page) {
   await expect(page).toHaveURL(/\/dashboard$/);
 }
 
-// D-047 (#5102): paa <=640px viser DataTable kun navnekolonnen + tre valgte
-// talkolonner. Specs der klikker paa en raekke-knap (Saelg/Auktion, Start
-// auktion, ...) skal derfor aabne "Fuld tabel" foerst naar de koerer i et
-// mobil-projekt. No-op paa desktop, hvor chippen slet ikke findes.
-export async function revealAllTableColumns(page) {
-  const viewport = page.viewportSize();
-  if (!viewport || viewport.width > 640) return; // desktop viser allerede alt
-  const chip = page.getByRole("button", { name: /^(Full table|Fuld tabel)$/ }).first();
-  // waitFor (ikke isVisible) — chippen kommer foerst naar tabellen har renderet,
-  // og en spec der kalder helperen lige efter goto() ville ellers se "ingen chip"
-  // og stille springe over. Tabeller med <=3 byttebare kolonner har ingen chip.
-  await chip.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
-  if (!(await chip.isVisible().catch(() => false))) return;
-  if ((await chip.getAttribute("aria-pressed")) !== "true") await chip.click();
-}
-
 export async function stabilizePage(page) {
   await page.addInitScript(() => {
     // Lock Playwright til DA-locale så fixturens hardcoded danske
