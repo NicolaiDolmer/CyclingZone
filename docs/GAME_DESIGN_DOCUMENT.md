@@ -313,9 +313,16 @@ Ejeren satte 10/9 to ting foran ethvert sponsor-redesign: **popularitet laves
 om til omdømme** (ingen selvstændig popularitetsstørrelse ved siden af D-041's
 netværk), og **sponsor og bestyrelse skal have tydeligt adskilte roller**:
 sponsorer primært penge og resultater, bestyrelsen primært holdets identitet
-(rollefordelingen designes i Q-047). Inden for den ramme er retningen for
+(rollefordelingen afgjort i D-043). Inden for den ramme er retningen for
 sponsormål (D-042): bonussen udbetales, når målet er nået, ellers ikke; ingen
-tilbagebetaling og ingen straf. Grundreglerne er udskudt til efter 27/9.
+tilbagebetaling og ingen straf. **D-043 (ejer-valgt og præciseret 10/9):**
+målbilledet er det skarpe snit: sponsoren ejer penge og resultater,
+bestyrelsen ejer identitet og retning, og bestyrelsens tillid virker
+strukturelt (mandatets ambition, godkendelse af store investeringer).
+Pengekoblingen (0,8-1,2) og bestyrelsens bonustilbud bevares som overgang,
+fordi spillerne er vant til dem; forskellen formes over tid. **D-044:**
+markedet forbliver menneskeligt (ingen AI-bud); AI-bud på udbudte ryttere
+tages op i en egen session efter 27/9. Grundreglerne er udskudt til efter 27/9.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -454,4 +461,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-040 om retning fra et bredt katalog valgt (kapitel: klubidentitet og ambitioner).
   D-041 om omdømme som netværk valgt med forbehold om at læse eksisterende planer.
   D-042 om sponsorbonus ved opfyldelse valgt med to forudsætninger (popularitet →
-  omdømme; sponsor/bestyrelse adskilles).
+  omdømme; sponsor/bestyrelse adskilles). D-043: A som målbillede, koblingen bevaret
+  som overgang (ejerens præcisering). D-044: kun mennesker byder; AI-bud til egen session.

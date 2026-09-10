@@ -1521,7 +1521,7 @@ med sidemål" idé 4,04 / vigtighed 3,54); forum 4/9 (sponsorer som identitetsve
 ## D-042 · Sponsorbonus ved opfyldelse, efter to forudsætninger fra ejeren
 
 **Status:** ejer-forventet retning 10/9 (B), svar på Q-046, med to forudsætninger
-der skal på plads først. Bekræftes endeligt, når Q-047 (rollefordeling) er svaret.
+der skal på plads først. **Bekræftet ved D-043 (Q-047 besvaret samme dag).**
 **Ejerens svar, ordret:** "Jeg tror vi lige skal have nogle ting på plads her
 først. Popularitet skal laves om til omdømme. Jeg vil gerne adskille sponsor og
 bestyrelsen yderligere, så de ikke minder for meget om hinanden. Dette vil jeg
@@ -1547,6 +1547,89 @@ udskudt til efter 27/9; ingen build-go.
 **Foreslået verifikation:** et hold der afviser målet, står økonomisk som et
 hold der tager det og fejler; et hold der når målet, får bonussen den dag;
 ingen kontrakt udbetaler en bonus for et mål, der ikke er nået.
+
+## Q-047 · Hvad ejer sponsoren, og hvad ejer bestyrelsen?
+
+**Status:** stillet 10/9 (Claude Code) på ejerens ønske om tydeligere roller;
+tre kolonner. B valgt (mod designerens anbefaling A), se D-043.
+**A, anbefalet af designeren:** skarpt snit: pengekoblingen (0,8-1,2) fjernes,
+bestyrelsens bonustilbud bliver sponsorens resultatmål, bestyrelsens tillid
+styrer mandatets ambition og godkendelse af store investeringer. **B:**
+koblingen bliver; kun målene deles op (identitet hos bestyrelsen, resultater
+hos sponsoren). **C:** bestyrelsen som økonomisk tilsyn, sponsor som ren indtægt.
+**Tradeoff:** A giver to samtaler med hvert sit sprog, men fjerner tilfredshedens
+eneste pengevirkning; B er den mindste ændring, men bestyrelsen styrer stadig
+20 % af sponsorpengene, så adskillelsen er mest i målene; C går modsat ejerens
+ønske. Kilder: BOARD_RULES §5 (koblingen bevidst bevaret 29/8; "sponsor =
+penge, bestyrelse = tillid" var aldrig sandt), SPONSOR_RULES §5, ejer-valg 7/8
+(kun tillid som valuta, ingen ny pengestrøm), #4265 (UI-adskillelse i S3).
+
+## D-043 · Målmodel A (identitet mod penge/resultater), med koblingen bevaret som overgang
+
+**Status:** ejer-valgt 10/9, svar på Q-047, præciseret af ejeren få minutter senere.
+**Ejerens første svar, ordret:** "B · Koblingen bliver, kun målene deles op".
+**Ejerens præcisering, ordret:** "Jeg synes a angående bestyrelsen lyder
+rigtigt god. Jeg ønsker bare lige at bruge a, men bevare de 20% og bonus
+målene, fordi spillerne er van til det, så ser vi på sigt, hvad vi kan forme
+forskellen til at være. Giver det mening?"
+**Valgt model:** rollefordelingen fra A er **målbilledet**: sponsoren ejer
+penge og resultater (grundaftale, løbsdagsbetaling, resultat-/synligheds-/
+omdømmemål med bonus ved opfyldelse, D-042); bestyrelsen ejer identitet og
+retning (retninger D-040, mandat inden for retningen D-003, visions-milepæle,
+medlemmer med stemme), og bestyrelsens tillid virker strukturelt: hvor
+ambitiøst et mandat manageren må sætte, og godkendelse af store investeringer
+(akademitrin, faciliteter). **Overgang:** pengekoblingen (tilfredshed ganger
+basen 0,8-1,2, pullout) og bestyrelsens bonustilbud **bevares indtil videre**,
+fordi spillerne er vant til dem; forskellen formes over tid, og koblingen
+udfases først ved en ny ejerbeslutning, når de strukturelle konsekvenser er
+bygget og forstået. Bestyrelsens mål må dog allerede nu ikke handle om
+placeringer eller penge; sponsorens ikke om identitet.
+**Designerens note:** i overgangen findes to pengehåndtag side om side; derfor
+skal adskillelsen være synlig i målene og i UI (#4265) først, så spillerne
+lærer rollerne, før koblingen fjernes.
+**Fravalgt:** bestyrelsen som økonomisk tilsyn (C); koblingen som varigt
+princip (B alene).
+**Åbent:** hvilke måltyper der er "identitet" (fx retningsmilepæle, udviklede
+ryttere, national profil) kontra "resultat" (sejre, podier, top-40 %), hvad der
+sker med eksisterende bestyrelsesmål af resultattypen (migration), om
+bonustilbud med penge stadig må have resultatindhold hos bestyrelsen (bør
+flyttes til sponsoren for konsekvens), og #4265's UI. Ingen build-go.
+**Foreslået verifikation:** intet bestyrelsesmål nævner en placering eller
+et pengebeløb som mål; intet sponsormål nævner identitet; en talentfabrik
+kan få høj bestyrelsestilfredshed uden sejre og alligevel en beskeden sponsoraftale.
+
+## Q-048 · Skal AI-hold byde på markedet, og hvordan?
+
+**Status:** stillet 10/9 (Claude Code), tre kolonner (en hjælper til salg uden
+bud). Ejeren valgte A nu og satte B til en egen session, se D-044.
+**A:** kun mennesker byder (i dag). **B, anbefalet af designeren:** AI-hold med
+plads og behov byder på det der ER udbudt (auktioner, annoncer) inden for et
+bånd under markedsværdien; aldrig uopfordret. **C:** AI byder også uopfordret
+(vetoet 30 % i skemaet).
+**Tradeoff:** A lader "svært at sælge" bestå som strukturel følge af få købere;
+B giver et gulv under markedet uden loft og respekterer vetoet, men rører
+prisdannelsen midt i markedsblendet (#4449); C er vetoet.
+Kilder: TRANSFER_MARKET_RULES §14 pkt. 5 (prisbånd slukket), #1310 (aldrig
+bygget), skema 10/9 (veto AI-bud 29,6 %, indbakke-transfers 28,0 %; fritekst
+"svært at sælge"), ECONOMY_RULES §9.2 (markedsdrevne værdier).
+
+## D-044 · Kun mennesker byder nu; AI-bud på udbudte ryttere udsat til egen session
+
+**Status:** ejer-valgt 10/9, svar på Q-048.
+**Ejerens svar, ordret:** "Jeg synes vi skal tage a nu. Og måske bygge b
+senere, men så er det i sin egen session, hvor vi tænker grundigt over det."
+Markedet forbliver som i dag: kun menneskelige managere byder; ingen AI-bud,
+ingen uopfordrede tilbud. Model B (AI-bud kun på udbudte ryttere, bånd under
+markedsværdien, aldrig uopfordret) er **ikke fravalgt**, men udsat til en
+egen, grundig designsession, efter grundreglerne (efter 27/9) og efter at
+markedsblendet har kørt nogle uger. C (uopfordrede AI-bud) er fravalgt så
+længe spillernes veto står.
+**Åbent (til den egne session):** hvilke AI-hold der byder (behov, plads,
+division), båndets tal, samspil med markedsblendet og prisbåndet (§14 pkt. 5),
+og hvad "svært at sælge" faktisk måler (auktioner uden bud pr. værdibånd).
+Ingen build-go.
+**Foreslået verifikation (når B tages op):** andelen af auktioner uden bud
+pr. værdibånd før/efter; ingen rytter sælges til AI over markedsværdi.
 
 ## Overdragelse 10/9 efter Q-031
 

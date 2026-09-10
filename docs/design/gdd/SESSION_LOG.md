@@ -538,11 +538,32 @@ Registreret som D-042 (retning B med to forudsætninger): popularitet → omdøm
 (ejer-direktiv, kobles til D-041), og sponsor/bestyrelse skal adskilles
 tydeligt (Q-047 stilles med designerens forslag).
 
+## Q-047 · Rollefordeling, ejerens svar ordret (10/9 kl. 16:05)
+
+> B · Koblingen bliver, kun målene deles op
+
+Registreret som D-043 (ejeren fravalgte designerens anbefaling om at fjerne
+pengekoblingen). D-042 er dermed bekræftet. Designerens forbehold om at
+adskillelsen er i målene, ikke pengene, står i D-043.
+
+## Q-047 · Ejerens præcisering, ordret (10/9 kl. 16:10)
+
+> Jeg synes a angående bestyrelsen lyder rigtigt god. Jeg ønsker bare lige at bruge a, men bevare de 20% og bonus målene, fordi spillerne er van til det, så ser vi på sigt, hvad vi kan forme forskellen til at være. Giver det mening?
+
+D-043 er omskrevet: A er målbilledet (identitet/retning mod penge/resultater,
+strukturel tillidsvirkning), koblingen (20 % + bonustilbud) bevares som overgang.
+
+## Q-048 · AI på markedet, ejerens svar ordret (10/9 kl. 16:10)
+
+> Jeg synes vi skal tage a nu. Og måske bygge b senere, men så er det i sin egen session, hvor vi tænker grundigt over det.
+
+Registreret som D-044: kun mennesker byder nu; B udsat til egen session.
+
 ## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-046/D-042 (sponsorbonus ved opfyldelse, med to forudsætninger). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-047 (rollefordeling sponsor/bestyrelse) er næste.
-- Næste skridt: Q-047 rollefordeling; læs `REPUTATION_RESEARCH.md` (worker 10/9) FØR næste omdømme-kort, og indarbejd ejer-direktivet "popularitet → omdømme". Fog of war når spillerne har stemt.
+- Sidste svar: Q-048/D-044 (kun mennesker byder nu; AI-bud til egen session). D-043 præciseret (A som målbillede, kobling som overgang). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-049 er næste.
+- Næste skridt: Q-049 = konflikterne mellem D-041 og de låste omdømme-planer (`REPUTATION_RESEARCH.md`: klub-omdømme som ét tal i låst spec §6; manager-omdømme låst som kosmetisk). Derefter "popularitet → omdømme" konkret. Fog of war når spillerne har stemt.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.

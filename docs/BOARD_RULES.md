@@ -250,6 +250,14 @@ Lag 2-3 håndhæves i transfer- og auktions-routes via `assertSigningAllowed`. L
 
 ## 5. Adskillelsen — kontrakten mellem de to systemer
 
+> **GDD D-043 (ejer 10/9, præciseret):** målbilledet er det skarpe snit (sponsor = penge og
+> resultater; bestyrelse = identitet og retning, tillid virker strukturelt på mandatets
+> ambition og store investeringer). Koblingen nedenfor (modifier 0,8-1,2, pullout,
+> bonustilbud) BEVARES SOM OVERGANG, fordi spillerne er vant til den; den udfases kun ved
+> ny ejerbeslutning. Allerede nu: bestyrelsens mål = identitet/retning (D-040/D-003), aldrig
+> placeringer eller penge; sponsorens mål = resultater/synlighed/omdømme med bonus ved
+> opfyldelse (D-042). Popularitet → omdømme (D-041). Intet er bygget; se [D-043](design/gdd/DECISIONS.md).
+
 > Ejer-direktiv 25/8 ([#4265](https://github.com/NicolaiDolmer/CyclingZone/issues/4265)):
 > *"I sæson 3 skal bestyrelsen og sponsorere adskilles i ui."*
 >

@@ -5,9 +5,9 @@ Fem eksisterende featureejere er opdateret; direkte kommentarlinks står i GITHU
 
 **Overdraget af Nicolai 10/9 2026.** Codex-sessionen er afsluttet på ejerens
 ønske om at fortsætte i Claude og spare Codex-tokens. Den samlede GDD er fortsat
-`in_progress`. **Opdateret 10/9 kl. 15:55 (Claude Code):** sidste svar er D-042 (Q-046,
-sponsorbonus med forudsætninger); Q-037 er parkeret til spillerafstemning; intet
-spørgsmålskort er åbent. Q-047 (rollefordeling sponsor/bestyrelse) er næste.
+`in_progress`. **Opdateret 10/9 kl. 16:10 (Claude Code):** sidste svar er D-044 (Q-048,
+marked); D-043 præciseret af ejeren; Q-037 er parkeret til spillerafstemning; intet
+spørgsmålskort er åbent. Q-049 (omdømme-konflikter fra `REPUTATION_RESEARCH.md`) er næste.
 **Ejer-direktiver 10/9:** popularitet → omdømme; sponsor = penge/resultater, bestyrelse =
 identitet. **Læs `REPUTATION_RESEARCH.md` før næste omdømme-kort.** Samme dag løftede
 ejeren trupper U23/junior til nr. 3 på MASTERPLANs venteliste (planvalg, ikke GDD-beslutning). Mentortråden (D-026 til D-031) er
@@ -102,6 +102,8 @@ Denne tabel er et kort; DECISIONS og de ordrette svar er detaljerne.
 | D-040 | Klubidentitet: retning erklæres som 2-3 valg fra et BREDT katalog (primær/sekundær); mandatet udledes af retningerne; DNA-pakker bliver forudfyldte kombinationer. Katalog, antal og DNA-migration åbne. (Claude Code 10/9, ejerens tilføjelse bevaret) |
 | D-041 | Omdømme: "kendt for"-mærker optjent af handlinger, ikke ét tal; ejerens udvidelse: omdømme er et netværk for hold, lande, managers, personale, ryttere og løb, der påvirker hinanden. FORBEHOLD: eksisterende planer om omdømme/fans/merchandise læses først (`REPUTATION_RESEARCH.md`). (Claude Code 10/9) |
 | D-042 | Sponsormålets bonus udbetales ved opfyldelse, ellers ikke (ingen straf). To ejer-forudsætninger: popularitet laves om til omdømme (D-041), og sponsor/bestyrelse adskilles tydeligt (sponsor = penge/resultater, bestyrelse = identitet; Q-047). (Claude Code 10/9) |
+| D-043 | Sponsor/bestyrelse: A er målbilledet (sponsor = penge/resultater; bestyrelse = identitet/retning, tillid virker strukturelt på mandatets ambition og investeringer); pengekoblingen (0,8-1,2) og bonustilbud BEVARES som overgang, fordi spillerne er vant til dem. (Claude Code 10/9, ejerens præcisering) |
+| D-044 | Marked: kun mennesker byder nu; AI-bud på udbudte ryttere (aldrig uopfordret) udsat til egen grundig session efter 27/9. Uopfordrede AI-bud fravalgt så længe spillernes veto står. (Claude Code 10/9) |
 | Q-037 | PARKERET: hvad andre managere ser om nuværende evner; forum-afstemning med billede i `docs/drafts/forum-poll-fog-of-war-2026-09-10.md`, ejeren poster selv. |
 
 R-001: følg egen avl med FM-inspiration. R-002: undersøg kategori/debuter og
