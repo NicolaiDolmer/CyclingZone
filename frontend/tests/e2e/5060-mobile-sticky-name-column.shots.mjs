@@ -24,6 +24,18 @@ mkdirSync(OUT, { recursive: true });
 
 const ROUTES = [
   { slug: "mit-hold", path: "/team" },
+  // Evne-matricen paa Mit hold: 15 tal-kolonner er den bredeste tabel i appen,
+  // og #4982's padding-fund sidder her — tages med saa fixet kan ses paa den
+  // vaerste case og saa #4982 ikke forvaerres ubemaerket.
+  {
+    slug: "mit-hold-evner",
+    path: "/team",
+    prepare: async (page) => {
+      const tab = page.getByRole("button", { name: /abilities|evner/i }).first();
+      if (await tab.count()) await tab.click();
+      await page.waitForTimeout(600);
+    },
+  },
   { slug: "traening", path: "/training" },
   { slug: "rangliste-ryttere", path: "/standings?tab=riders" },
 ];
@@ -77,6 +89,7 @@ for (const spec of ROUTES) {
   await page.locator("table").first().waitFor({ state: "visible", timeout: 20000 }).catch(() => {});
   await page.evaluate(async () => { if (document.fonts?.ready) await document.fonts.ready; }).catch(() => {});
   await page.waitForTimeout(1500);
+  if (spec.prepare) await spec.prepare(page);
 
   // Scroll tabellens egen scroller helt ud til hoejre + bring tabellen i view.
   const geom = await page.evaluate(() => {

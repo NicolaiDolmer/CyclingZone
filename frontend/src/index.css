@@ -331,6 +331,29 @@ tr:hover .auction-rider-cell-winning {
   background-color: var(--bg-card);
 }
 
+/* #5060 — den pinnede kolonnes 1px hairline-skille skal FOELGE cellen.
+   Tabellerne er `border-collapse: collapse` (dataTableStyles.js's TABLE), og en
+   kollapset border hoerer til tabellens border-grid, ikke til cellen: den bliver
+   liggende paa kolonnens LAYOUT-position og scroller vaek sammen med tallene.
+   Resultatet paa 375px var at "245,000" loeb direkte ind i "Ada Pedersen" uden
+   nogen kant imellem - praecis der hvor spilleren har mest brug for den (verificeret
+   3x zoom, /standings?tab=riders, 10/9). Reglen tegnes derfor af cellen SELV som et
+   1px pseudo-element. Ingen skygge: det er den samme hairline som `border-cz-border`,
+   bare malet af den celle der rent faktisk staar stille.
+   Cellerne er `position: sticky` og dermed positionerede, saa ::after forankres i dem. */
+.cz-pinned-rule-end::after,
+.cz-pinned-rule-start::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--border);
+  pointer-events: none;
+}
+.cz-pinned-rule-end::after { right: 0; }
+.cz-pinned-rule-start::after { left: 0; }
+
 /* "Dig"-markering paa tabelraekker (#2795-opfoelgning).
    Markeringen laa foer som `inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)` paa
    selve <tr>. To ting gjorde den naesten usynlig, og hverken farve eller alpha

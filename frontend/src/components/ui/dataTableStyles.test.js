@@ -1,5 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { WRAP, COUNT, thClass, tdClass, trClass, zonePillClass, mergeRowProps } from "./dataTableStyles.js";
 
 // #2849 bølge 0 — cz-table-recipen (T2, docs/design/PAGE_TEMPLATES.md).
@@ -71,6 +74,22 @@ test("sticky kolonne: opak bg + 1px højre-rule + mobil-min-bredde — ALDRIG r�
   assert.ok(c.includes("bg-cz-card"));
   assert.ok(c.includes("min-w-[148px]"));
   assert.ok(!c.includes("shadow"), "sticky-skyggen er erstattet af opak celle + højre-rule");
+  // #5060: `border-r` alene forsvinder ved vandret scroll (border-collapse:
+  // collapse lægger den i tabellens border-grid, ikke i cellen) — cellen tegner
+  // derfor selv reglen som et 1px pseudo-element.
+  assert.ok(c.includes("cz-pinned-rule-end"), "den pinnede celle skal selv tegne højre-rulen (#5060)");
+});
+
+test("#5060: .cz-pinned-rule-* tegner en 1px hairline, ikke en skygge", () => {
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "index.css"), "utf8");
+  const block = css.slice(css.indexOf(".cz-pinned-rule-end::after"));
+  assert.ok(block.length > 0, "index.css mangler .cz-pinned-rule-end::after");
+  assert.match(block.slice(0, 400), /position:\s*absolute/);
+  assert.match(block.slice(0, 400), /width:\s*1px/);
+  assert.match(block.slice(0, 400), /background-color:\s*var\(--border\)/);
+  assert.doesNotMatch(block.slice(0, 400), /box-shadow/, "hairline, ikke skygge (PAGE_TEMPLATES hard don't)");
+  assert.match(css, /\.cz-pinned-rule-end::after\s*\{\s*right:\s*0;\s*\}/);
+  assert.match(css, /\.cz-pinned-rule-start::after\s*\{\s*left:\s*0;\s*\}/);
 });
 
 // #5060: hjørnecellen (den pinnede kolonnes EGEN overskrift) skal ligge over

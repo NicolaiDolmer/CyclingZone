@@ -966,7 +966,7 @@ function MarketRow({
         {/* #2849 bølge 2: rå box-shadow fjernet — .sticky-name-cell (index.css)
             giver allerede opak cellebund; border-r er den ene hairline-rule
             (cz-table-recipen), samme fix som AuctionsPage bølge 1. */}
-        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-table-col border-r border-cz-border">
+        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-table-col border-r border-cz-border cz-pinned-rule-end">
           <div className="flex items-center gap-2">
             {/* #2451: markering til bulk-prisredigering — kun egne listinger kan
                 bulk-redigeres, så checkboxen findes kun for dem. Ligger i selve
@@ -1900,7 +1900,7 @@ export default function TransfersPage() {
                               entydig "bedste" nation) — resten af kolonnerne er via SortableTh. */}
                           <th className={`px-2 py-3 text-left text-cz-3 w-12 hidden sm:table-cell ${MARKET_TH_BASE}`}>{t("marketRow.nation")}</th>
                           <SortableTh sortKey="rider" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className={`px-3 py-3 text-left w-40 sticky left-0 z-table-corner bg-cz-card border-r border-cz-border ${MARKET_TH_BASE}`}>
+                            className={`px-3 py-3 text-left w-40 sticky left-0 z-table-corner bg-cz-card border-r border-cz-border cz-pinned-rule-end ${MARKET_TH_BASE}`}>
                             {t("marketRow.rider")}
                           </SortableTh>
                           <SortableTh sortKey="seller" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}

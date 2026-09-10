@@ -29,7 +29,14 @@ export const COUNT = "mt-2 font-data text-xs text-cz-3";
 // (thClass laegger allerede z-table-head paa alle header-celler via `base`;
 // tdClass laegger z-table-col paa nedenstaaende). To z-index-utilities paa
 // samme element ville vaere en cascade-kaprace mod Tailwinds output-raekkefoelge.
-const STICKY = "sticky left-0 min-w-[148px] border-r border-cz-border";
+// #5060: `.cz-pinned-rule-end` (index.css) tegner den 1px hoejre-rule som
+// cellen SELV maler. `border-r` alene er ikke nok: tabellen er
+// border-collapse: collapse, saa den kollapsede border hoerer til tabellens
+// border-grid og bliver liggende paa kolonnens layout-position - den scroller
+// vaek sammen med tallene, og navnet og tallene loeb sammen uden kant.
+// `border-r` bliver staaende (den holder kolonnens 1px-bredde og daekker
+// desktop uaendret); pseudo-reglen ligger praecis oven i den ved scrollLeft 0.
+const STICKY = "sticky left-0 min-w-[148px] border-r border-cz-border cz-pinned-rule-end";
 
 // Sticky-celler SKAL være opake (kolonner scroller ind under dem). I dark theme
 // er --success-bg/--danger-bg translucente, så tinten lægges som gradient oven

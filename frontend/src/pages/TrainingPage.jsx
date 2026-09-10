@@ -866,7 +866,7 @@ export default function TrainingPage() {
             opskrift som RidersPage/TeamPage (.sticky-name-cell). Ingen rå skygge-klasse
             (#2849 bølge 4 anti-slop) — den opake .sticky-name-cell-baggrund + 1px
             border-r ER den kanoniske sticky-first-column-recipe (T2). */}
-        <td className="border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-table-col border-r border-cz-border">
+        <td className="border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-table-col border-r border-cz-border cz-pinned-rule-end">
           {/* whitespace-nowrap: navnet er kolonnens naturlige bredde (DataTable-opskriften)
               — uden den kollapser cellen til underlinjens max-w og ombryder navnet. */}
           <div className="flex items-center gap-1.5 whitespace-nowrap">
@@ -1591,7 +1591,7 @@ export default function TrainingPage() {
                         />
                       </th>
                       <SortTh sortKey="name" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                        className={`${thClass({ pinned: true })} sticky-name-cell sticky left-10 border-r border-cz-border`}>
+                        className={`${thClass({ pinned: true })} sticky-name-cell sticky left-10 border-r border-cz-border cz-pinned-rule-end`}>
                         {t("colRider")}
                       </SortTh>
                       {/* #3045: Type/Form/Træthed foldes ind i navne-underlinjen ≤640px
