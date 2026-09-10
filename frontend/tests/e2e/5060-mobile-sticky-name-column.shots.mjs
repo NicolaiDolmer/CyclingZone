@@ -2,13 +2,21 @@
 // Ad-hoc capture-script (ikke i CI-suiten; testMatch fanger kun *.spec.js).
 // Koerer mod en koerende dev-/preview-server med e2e-netvaerksmocks.
 //
-//   node tests/e2e/5060-mobile-sticky-name-column.shots.mjs <baseURL> <outDir> <before|after>
+//   node tests/e2e/5060-mobile-sticky-name-column.shots.mjs <baseURL> <outDir> <before|after> [chromium|webkit]
+//
+// DET HER SCRIPT ASSERTERER INTET. Det producerer billeder til PR-kroppen, og
+// et billede er ikke en guard. Selve kontrakten — navnecellen og dens overskrift
+// staar stille, intet maler oven paa dem, hairline foelger cellen — maales i
+// `5060-mobile-sticky-name-column.spec.js`, som CI koerer paa BEGGE mobil-motorer
+// (mobile-chromium = Pixel 5/Android-UA, mobile-webkit = iPhone 13). Den 4.
+// parameter findes fordi `chromium` alene med `isMobile: true` stadig er en
+// desktop-Chromium: skal billederne vise en anden motor, saa vaelg webkit.
 //
 // Hver rute scrolles vandret helt ud i tabellens egen scroller; screenshottet er
 // viewportet (ikke fullPage), fordi det er praecis den tilstand spilleren
 // beskriver: navnekolonnen skal stadig staa der naar tallene er scrollet forbi.
 
-import { chromium } from "@playwright/test";
+import { chromium, webkit } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -20,6 +28,7 @@ const { installNetworkMocks, login } = fixtures;
 const BASE = process.argv[2] || "http://127.0.0.1:5311";
 const OUT = resolve(process.argv[3] || resolve(__dirname, "../../../pr-screens"));
 const PHASE = process.argv[4] || "after";
+const ENGINE = process.argv[5] === "webkit" ? webkit : chromium;
 mkdirSync(OUT, { recursive: true });
 
 const ROUTES = [
@@ -40,7 +49,7 @@ const ROUTES = [
   { slug: "rangliste-ryttere", path: "/standings?tab=riders" },
 ];
 
-const browser = await chromium.launch();
+const browser = await ENGINE.launch();
 const context = await browser.newContext({
   baseURL: BASE,
   viewport: { width: 375, height: 812 },

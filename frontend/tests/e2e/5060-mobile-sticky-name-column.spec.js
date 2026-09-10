@@ -6,7 +6,7 @@ import { installNetworkMocks, stabilizePage, login } from "./fixtures.js";
 // ── Hvorfor denne fil findes ────────────────────────────────────────────────
 //
 // Spilleren (Discord 8/9) skrev ordret: "kolonnen med spillernavne foelger ikke
-// med naar man scroller til siden". Den foerste udgave af #5060 laaste fixet med
+// med naar man scroller til siden". Foerste udgave af #5060 laaste fixet med
 // tre KLASSE-STRENG-guards (dataTableStyles.test.js, table.source.test.js,
 // zIndexScale.test.js) plus et screenshot-script uden assertions. De guards
 // beviser hvad `thClass()` RETURNERER — ikke hvad browseren MALER. En senere
@@ -15,29 +15,30 @@ import { installNetworkMocks, stabilizePage, login } from "./fixtures.js";
 // allerede paa AuctionsPage/TransfersPage), bliver hjoernets z-table-corner
 // indkapslet, og klasse-strengene er uaendrede.
 //
-// Denne spec maaler derfor i en RIGTIG browser, paa begge mobil-motorer:
+// Denne spec maaler derfor i en RIGTIG browser, paa begge mobil-motorer CI koerer:
 //   · mobile-chromium (Pixel 5, Android-UA + touch) = spillerens sandsynlige motor
 //   · mobile-webkit   (iPhone 13) = den eneste ikke-Chromium-daekning der findes
 // `position: sticky` i en `border-collapse`-tabel er praecis den klasse hvor de
-// to motorer historisk afviger, og den foerste udgave af PR'en var kun verificeret
-// i desktop-Chromium med `isMobile`-emulering.
+// to motorer historisk afviger, og PR'ens egen verifikation var desktop-Chromium
+// med `isMobile`-emulering. Ingen evidens for en fysisk Android-enhed: der findes
+// ingen i harnessen. Daekningen her er de to motorer, ikke spillerens telefon.
 //
 // ── Hvad der maales ────────────────────────────────────────────────────────
 //
 //   1. Tabellen overflower faktisk vandret (ellers reproducerer testen ikke
 //      spillerens situation, og en groen koersel ville vaere falsk tryghed).
-//   2. Navnecellen (KROPPEN — det spilleren skrev om) staar stille naar tallene
-//      scroller forbi, og den er oeverst i sit eget punkt.
+//   2. Navnecellen i KROPPEN — det spilleren skrev om — staar stille naar
+//      tallene scroller forbi, og intet maler oven paa den.
 //   3. Navnekolonnens OVERSKRIFT staar stille og er oeverst i sit eget punkt.
 //      Det var den der forsvandt: "Salary"/"Wins" delte z-lag med "Rider" og
 //      vandt paa DOM-raekkefoelge.
-//   4. Hjoernet ligger over kroppens pinnede celle ved LODRET scroll.
+//   4. Hjoernet bliver over kroppens pinnede celle ved LODRET scroll.
 //   5. Hairline-skillet males af cellen selv (1px, absolut, ikke gennemsigtigt),
 //      saa navn og tal ikke loeber sammen naar der er scrollet ud.
 //
-// Ingen evidens for en fysisk Android-enhed: der findes ingen i harnessen.
-// Daekningen her er de to motorer CI koerer, ikke en enhedstest paa spillerens
-// telefon.
+// Cellerne findes paa deres BEREGNEDE stil, ikke paa en klasse fixet indfoerte
+// (`position: sticky` + vandret laas). Ellers ville guarden kun bevise at et
+// klassenavn stadig staar i markuppen, og den ville vaere groen-ved-fravaer.
 
 const ROUTES = [
   // Ranglisterne og traeningssiden er de to flader spillerne navngav konkret
@@ -48,46 +49,54 @@ const ROUTES = [
   { name: "traeningssiden", path: "/training" },
 ];
 
-// Den pinnede celle er den der tegner sit eget hairline-skille. Samme markoer i
-// begge opskrifter, saa specen behoever ikke kende den enkelte sides kolonner.
-const HEAD_CELL = "main thead th.cz-pinned-rule-end";
-const BODY_CELL = "main tbody td.cz-pinned-rule-end";
-
-/** Maaler de to pinnede cellers position + hvem der maler oeverst i deres punkt. */
+/**
+ * Maaler de to pinnede celler: position, z-lag, hvem der maler oeverst i deres
+ * eget midtpunkt, og cellens egen hairline. Alt sker i EEN evaluate, saa
+ * opslaget af cellerne og maalingen ikke kan komme ud af trit.
+ */
 async function measure(page) {
-  return page.evaluate(({ headSel, bodySel }) => {
-    const head = document.querySelector(headSel);
-    const body = document.querySelector(bodySel);
-    const scroller = head?.closest("div[class*='overflow']");
-    if (!head || !body || !scroller) return { found: false, head: !!head, body: !!body, scroller: !!scroller };
+  return page.evaluate(() => {
+    const isPinned = (el) => {
+      const cs = getComputedStyle(el);
+      return cs.position === "sticky" && cs.left !== "auto";
+    };
+
+    // Er der flere pinnede celler (Traeningssiden pinner checkbox paa left-0 OG
+    // navn paa left-10), er navnekolonnen den sidste af dem.
+    const heads = [...document.querySelectorAll("main thead th")].filter(isPinned);
+    const head = heads.length ? heads[heads.length - 1] : null;
+    const firstPinnedTd = [...document.querySelectorAll("main tbody td")].filter(isPinned)[0];
+    const row = firstPinnedTd ? firstPinnedTd.closest("tr") : null;
+    const bodyCells = row ? [...row.querySelectorAll("td")].filter(isPinned) : [];
+    const body = bodyCells.length ? bodyCells[bodyCells.length - 1] : null;
+    const scroller = head ? head.closest("div[class*='overflow']") : null;
+
+    if (!head || !body || !scroller) {
+      return { found: false, hasHead: Boolean(head), hasBody: Boolean(body), hasScroller: Boolean(scroller) };
+    }
 
     const read = (el) => {
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
-      const x = r.left + r.width / 2;
-      const y = r.top + r.height / 2;
-      const hit = document.elementFromPoint(x, y);
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       const rule = getComputedStyle(el, "::after");
       return {
         left: Math.round(r.left),
         width: Math.round(r.width),
-        zIndex: cs.zIndex,
+        text: (el.textContent || "").trim().slice(0, 24),
+        zIndex: Number(cs.zIndex) || 0,
         position: cs.position,
-        // true = cellen (eller dens indhold) er det oeverste element i sit eget
-        // midtpunkt. false = en anden celle maler oven paa den.
+        // true = cellen (eller dens indhold) er oeverst i sit eget midtpunkt.
+        // false = en anden celle maler oven paa den.
         topmost: Boolean(hit && (el === hit || el.contains(hit))),
         painterOnTop: hit && !el.contains(hit) ? (hit.textContent || "").trim().slice(0, 30) : null,
-        rule: {
-          width: rule.width,
-          position: rule.position,
-          background: rule.backgroundColor,
-        },
+        rule: { width: rule.width, position: rule.position, background: rule.backgroundColor },
       };
     };
 
-    // De celler der SCROLLER forbi: header-celler uden vandret pin (`left: auto`).
-    // Traeningssidens checkbox-header er selv pinnet (left-0) og deler med rette
-    // hjoerne-laget — den ligger ved siden af navnet, ikke oven paa det.
+    // De overskrifter der SCROLLER forbi (ingen vandret laas). Traeningssidens
+    // checkbox-header er selv pinnet og deler med rette hjoerne-laget — den
+    // ligger ved siden af navnet, ikke oven paa det.
     const scrollingHeadZ = [...document.querySelectorAll("main thead th")]
       .filter((th) => th !== head && getComputedStyle(th).left === "auto")
       .map((th) => Number(getComputedStyle(th).zIndex) || 0);
@@ -100,16 +109,23 @@ async function measure(page) {
       body: read(body),
       maxScrollingHeadZ: scrollingHeadZ.length ? Math.max(...scrollingHeadZ) : 0,
     };
-  }, { headSel: HEAD_CELL, bodySel: BODY_CELL });
+  });
 }
 
-/** Scroller tabellens EGEN scroller (ikke siden) helt ud til hoejre. */
-async function scrollTableRight(page) {
-  await page.evaluate((headSel) => {
-    const scroller = document.querySelector(headSel)?.closest("div[class*='overflow']");
-    if (scroller) scroller.scrollLeft = scroller.scrollWidth;
-  }, HEAD_CELL);
-  // Sticky-omplacering sker ved naeste maling; to frames er nok i alle tre motorer.
+/** Scroller tabellens EGEN scroller (ikke siden) paa den valgte akse. */
+async function scrollTable(page, { left, top }) {
+  await page.evaluate(({ left: l, top: t }) => {
+    const el = [...document.querySelectorAll("main thead th")]
+      .find((th) => {
+        const cs = getComputedStyle(th);
+        return cs.position === "sticky" && cs.left !== "auto";
+      });
+    const scroller = el ? el.closest("div[class*='overflow']") : null;
+    if (!scroller) return;
+    if (l) scroller.scrollLeft = scroller.scrollWidth;
+    if (t) scroller.scrollTop = Math.min(t, scroller.scrollHeight);
+  }, { left, top });
+  // Sticky-omplacering sker ved naeste maling; to frames raekker i begge motorer.
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
 
@@ -126,19 +142,16 @@ test.describe("#5060: navnekolonnen bliver liggende ved vandret scroll (mobil)",
 
       await login(page);
       await page.goto(route.path);
-      await expect(page.locator(HEAD_CELL).first()).toBeVisible({ timeout: 20000 });
-      await expect(page.locator(BODY_CELL).first()).toBeVisible();
+      await expect(page.locator("main tbody tr td").first()).toBeVisible({ timeout: 20000 });
 
       const before = await measure(page);
-      expect(before.found, `pinnet celle + scroller skal findes paa ${route.path}`).toBe(true);
+      expect(before.found, `pinnet overskrift + celle + scroller skal findes paa ${route.path}: ${JSON.stringify(before)}`).toBe(true);
       // Ingen vandret overflow = testen reproducerer ikke spillerens situation.
       // Det skal FEJLE, ikke skippe: en guard der stille holder op med at maale
       // noget er praecis den fejlklasse denne fil findes for.
       expect(before.maxScroll, "tabellen skal overflowe vandret paa mobil, ellers maaler testen intet").toBeGreaterThan(20);
-      expect(before.head.position).toBe("sticky");
-      expect(before.body.position).toBe("sticky");
 
-      await scrollTableRight(page);
+      await scrollTable(page, { left: true });
       const after = await measure(page);
       expect(after.scrollLeft, "scrolleren skal faktisk vaere rykket").toBeGreaterThan(20);
 
@@ -153,12 +166,12 @@ test.describe("#5060: navnekolonnen bliver liggende ved vandret scroll (mobil)",
       expect(Math.abs(after.head.left - before.head.left), "overskriften skal blive hos sin kolonne")
         .toBeLessThanOrEqual(1);
       expect(after.head.topmost, `noget malede oven paa navne-overskriften: ${after.head.painterOnTop}`).toBe(true);
-      expect(Number(after.head.zIndex) || 0, "hjoernet skal rangere over de overskrifter der scroller forbi")
+      expect(after.head.zIndex, "hjoernet skal rangere over de overskrifter der scroller forbi")
         .toBeGreaterThan(after.maxScrollingHeadZ);
 
       // 3) Hairline-skillet: cellen maler det selv, saa "245,000" ikke loeber
       //    ind i "Ada Pedersen". 1px, ikke en skygge.
-      expect(after.body.rule.position).toBe("absolute");
+      expect(after.body.rule.position, "den pinnede celle skal selv tegne sit skille").toBe("absolute");
       expect(after.body.rule.width).toBe("1px");
       expect(after.body.rule.background).not.toBe("rgba(0, 0, 0, 0)");
 
@@ -166,11 +179,7 @@ test.describe("#5060: navnekolonnen bliver liggende ved vandret scroll (mobil)",
       //    Faar <thead> senere sit eget stacking context med et for lavt lag,
       //    kravler kroppens celler op over overskriften — usynligt for enhver
       //    klasse-streng-test.
-      await page.evaluate((headSel) => {
-        const scroller = document.querySelector(headSel)?.closest("div[class*='overflow']");
-        if (scroller) scroller.scrollTop = Math.min(240, scroller.scrollHeight);
-      }, HEAD_CELL);
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      await scrollTable(page, { top: 240 });
       const scrolled = await measure(page);
       expect(scrolled.head.topmost, `kroppen malede op over overskriften: ${scrolled.head.painterOnTop}`).toBe(true);
 

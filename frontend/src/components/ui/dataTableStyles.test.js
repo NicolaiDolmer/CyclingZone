@@ -99,6 +99,14 @@ test("#5060: .cz-pinned-rule-* tegner en 1px hairline, ikke en skygge", () => {
 // resten af overskriftsrækken. Delte de samme z-lag, vandt DOM-rækkefølgen ved
 // vandret scroll, og "Rider"-headeren blev malet over af "Salary"/"Wins" —
 // præcis når spilleren scrollede ud for at læse tallene (mobil, 375px).
+//
+// De to tests herunder låser hvad `thClass()` RETURNERER. De kan ikke se hvad
+// browseren MALER: får `<thead>` sit eget stacking context, bliver z-table-corner
+// indkapslet uden at én klasse-streng ændrer sig. Den rigtige forward-guard er
+// derfor `tests/e2e/5060-mobile-sticky-name-column.spec.js`, som måler position,
+// `elementFromPoint` og hairline i både mobile-chromium og mobile-webkit — og
+// som er verificeret rød på pre-fix-koden på begge motorer. Ændrer du recepten
+// her, så kør den spec, ikke kun denne fil.
 test("#5060: kun ÉT z-lag pr. header-celle, og hjørnet ligger over resten", () => {
   const plain = thClass();
   const corner = thClass({ sticky: true });

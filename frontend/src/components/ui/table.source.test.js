@@ -21,6 +21,10 @@ test("Th sidder paa subtle-bg; sticky-prop giver sticky foerste kolonne", () => 
 // #5060: tabelceller hoerer i den table-lokale z-skala (#2952), ikke i
 // page-chrome-skalaen. `z-sticky` (1100) paa en celle kunne male sig oven paa
 // en dropdown (1000) og slog den sticky header-raekke ud.
+//
+// NB: den her test regexer KILDEKODE. Den beviser at strengen staar der, ikke
+// at kolonnen bliver liggende. Adfaerden maales i
+// `tests/e2e/5060-mobile-sticky-name-column.spec.js` paa begge mobil-motorer.
 test("#5060: sticky-celler bruger den table-lokale z-skala, ikke z-sticky", () => {
   assert.doesNotMatch(src, /sticky left-0 z-sticky/);
   assert.match(src, /sticky left-0 z-table-corner/);
