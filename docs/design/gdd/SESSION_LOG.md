@@ -382,11 +382,31 @@ Spillerbeviset fra roadmap-stemmerne (31 stemmer på vejkaptajner/mentorer)
 blev vist i kortet. Åbne mentorrammer: hvem kan være mentor, opbygningstid,
 "tydeligt bedre" i tal, bindingstid, feedback og transfer af den ene part.
 
-## Handoff · Til Claude Code efter Q-032, 10/9 2026
+## Q-033 · Ejerens betjeningsønsker og svar ordret (10/9 kl. 12:35-12:50)
+
+Første udgave af kortet blandede den nye evne med synlighed/fog of war. Ejeren:
+
+> Kan vi lige tage en ny evne og feature adskilt fra fog of war? Så snakker vi om fog of war senere? En ting af gangen, ikke kombination af to kæmpe områder?
+
+Anden udgave uden synlighed. Ejeren:
+
+> Kan du vise mulgiehderne visuelt?
+
+Tre kolonner med samme scenarie blev vist (to 31-årige hjælpere, en 19-årig
+mentee). Ejerens svar:
+
+> A · Ny evne Lederskab, kun mentor/trup (anbefalet)
+
+Registreret som D-030. Betjeningsregel fremover: ét område pr. kort, og
+mulighederne vises visuelt (kolonner med samme scenarie) før kortet, når
+valget har mere end to bevægelige dele. Fog of war (hvem ser hvilke tal)
+er parkeret som eget kapitel; det gælder også Lederskabs synlighed.
+
+## Handoff · Til Claude Code efter Q-033, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-032/D-029. Intet spørgsmål står åbent; Q-033 er ikke stillet.
-- Næste skridt: mentorens resterende rammer (hvem kan være mentor, Lederskabs synlighed) med ét kort ad gangen; derefter bredere områder efter spillerdata (træning, holdudtagelse, akademi, mobil).
+- Sidste svar: Q-033/D-030. Intet spørgsmål står åbent; Q-034 er ikke stillet.
+- Næste skridt: mentorparrets livscyklus (frit skift kontra bindingstid) som sidste mentorkort; derefter bredere områder efter spillerdata (træning, holdudtagelse, akademi, mobil). Fog of war som eget kapitel senere.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.

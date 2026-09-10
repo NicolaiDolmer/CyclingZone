@@ -23,7 +23,10 @@
 > udbytte, ikke dårligere vaner/evner hos den unge. **D-029:** manageren udpeger
 > et navngivet mentorpar (én mentor, højst to mentees, samme klub, alle trupper);
 > udbytte pr. løbsdag, kun hvor mentoren er tydeligt bedre, aftagende.
-> Endelig evneliste, opbygningstid, "tydeligt bedre" i tal og styrke er fortsat åbne.
+> **D-030:** Lederskab bliver en ny evne i det almindelige evnesystem (ikke et
+> skjult sidelag); vokser med alder og kaptajn-/mentortid; mentor kræver tærskel
+> plus tydelig overlegenhed; ingen løbsvirkning. Synlighed afgøres i fog of
+> war-kapitlet. Endelig evneliste, opbygningstid, "tydeligt bedre" i tal og styrke er fortsat åbne.
 
 > **Læs denne FØR enhver opgave der rører rytterudvikling, træning, potentiale, lofter, rating eller ryttertyper.** Ejer-direktiv 25/8 ([#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)):
 > *"Det må ALDRIG NOGENSINDE ske, at du ikke bruger et SSOT-dokument, når vi rent faktisk har lavet et. Der skal nogle hardcore regler på det her."*

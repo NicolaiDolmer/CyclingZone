@@ -127,7 +127,10 @@ alene gør ikke mentoren god til alt. Endelig evneliste og effekt afventer.
 udbytte og koster tid/mentorplads; dårlige vaner smitter ikke som negativ
 statpåvirkning. **D-029:** kapaciteten er højst to mentees pr. mentor i et
 navngivet par, som manageren selv vælger; passiv trupvirkning er fravalgt.
-Varighed, opbygningstid og den konkrete mulighedsomkostning er stadig åbne.
+**D-030:** Lederskab er nu ejer-valgt som ny evne i det almindelige evnesystem
+med mentor/trup som eneste formål (ingen løbsvirkning). Punkterne under "Før
+nogen bygger en ny evne" gælder stadig fuldt ud før build; synligheden afgøres
+i fog of war-kapitlet. Varighed, opbygningstid og mulighedsomkostning er åbne.
 
 **Træningsdisciplin** kan i princippet handle om stabile vaner og kvaliteten af
 at gennemføre programmet. Men hvis den bare ganger udviklingsfarten, dublerer

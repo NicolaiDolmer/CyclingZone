@@ -5,8 +5,10 @@ Fem eksisterende featureejere er opdateret; direkte kommentarlinks står i GITHU
 
 **Overdraget af Nicolai 10/9 2026.** Codex-sessionen er afsluttet på ejerens
 ønske om at fortsætte i Claude og spare Codex-tokens. Den samlede GDD er fortsat
-`in_progress`. **Opdateret 10/9 kl. 12:30 (Claude Code):** sidste svar er D-029 (Q-032);
-intet spørgsmålskort er åbent. Q-033 er ikke stillet.
+`in_progress`. **Opdateret 10/9 kl. 12:50 (Claude Code):** sidste svar er D-030 (Q-033);
+intet spørgsmålskort er åbent. Q-034 er ikke stillet. **Betjeningsregel fra ejeren
+10/9:** ét område pr. kort (fog of war/synlighed er eget kapitel, ikke en del af
+evne-spørgsmål), og mulighederne vises visuelt før kortet.
 
 ## Start med overblikket; læs detaljer når de bliver relevante
 
@@ -82,6 +84,7 @@ Denne tabel er et kort; DECISIONS og de ordrette svar er detaljerne.
 | D-027 | Mentorens hovedområde er mentale færdigheder/vaner; relevant egen kunnen kræves, ingen generel fysisk bonus. |
 | D-028 | Mentor påvirker kun positivt; dårligt match giver begrænset udbytte og mulighedsomkostning, ikke dårligere vaner/evner. |
 | D-029 | Navngivet mentorpar: manageren udpeger mentor og højst to mentees i samme klub; udbytte pr. løbsdag, kun hvor mentoren er tydeligt bedre; aftagende. (Claude Code 10/9) |
+| D-030 | Lederskab er en ny evne i det almindelige evnesystem; vokser med alder og kaptajn-/mentortid; mentor kræver tærskel + tydelig overlegenhed; ingen løbsvirkning. Synlighed parkeret til fog of war-kapitlet. (Claude Code 10/9) |
 
 R-001: følg egen avl med FM-inspiration. R-002: undersøg kategori/debuter og
 cykeltroværdig udvikling. R-003: foreslå nye evner. Ønsker og research er ikke

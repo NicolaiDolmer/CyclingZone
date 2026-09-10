@@ -228,8 +228,12 @@ ikke dårligere vaner/evner hos den unge. **D-029 (Claude Code, 10/9):**
 manageren udpeger selv et navngivet mentorpar: én mentor og højst to mentees
 i samme klub, på tværs af trupper. Udbyttet bygges op pr. løbsdag, kun på
 mentale evner hvor mentoren er tydeligt bedre, og aftager når den unge nærmer
-sig mentoren. Passiv trupvirkning er fravalgt. Hvem der kan være mentor,
-opbygningstid, bindingstid, feedback og transfer af den ene part er åbne.
+sig mentoren. Passiv trupvirkning er fravalgt. **D-030:** Lederskab bliver en
+ny evne i det almindelige evnesystem; den vokser med alder og kaptajn-/mentortid,
+og mentor-egnethed kræver en tærskel plus tydelig overlegenhed på den mentale
+evne. Lederskab påvirker intet i løbet. Synlighed (hvem ser tallet) er
+udtrykkeligt parkeret til fog of war-kapitlet. Opbygningstid, bindingstid,
+feedback og transfer af den ene part er åbne.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -354,3 +358,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.
 - 10/9 2026 (Claude Code): samtalen genoptaget efter overdragelsen. D-029 om
   navngivet mentorpar med højst to mentees valgt. Designpartner er nu Claude Code.
+  D-030 om Lederskab som ny evne (kun mentor/trup) valgt; fog of war parkeret som
+  eget kapitel på ejerens ønske; muligheder vises visuelt før kortet.

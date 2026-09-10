@@ -1041,6 +1041,42 @@ allerede gældende regel). Ingen formel, skala eller UI er godkendt til build.
 uden, adskiller sig kun på mentorens stærke mentale evner; en tredje ung med
 en mentor, der er svagere end ham selv, får intet udbytte og ingen straf.
 
+## Q-033 · Skal Lederskab være en ny evne, og hvad gør en rytter til mentor?
+
+**Status:** stillet 10/9 (Claude Code); første udgave koblede spørgsmålet med
+synlighed/fog of war, og ejeren bad om at skille de to områder ad. Anden udgave
+blev vist visuelt (tre kolonner, samme scenarie) på ejerens ønske. A valgt, se D-030.
+Scenarie: to 31-årige hjælpere med samme fysik og samme taktik 78; en 19-årig
+U23-rytter med taktik 45 skal have en mentor.
+**A, anbefalet:** Lederskab bliver en evne på alle ryttere; vokser med alder og
+tid som kaptajn/mentor, topper sent. Mentor-krav: Lederskab over en tærskel OG
+tydeligt bedre på den konkrete mentale evne. Ingen virkning i selve løbet.
+**B:** ingen ny evne; mentor = sæsonalder 28+ og tydeligt bedre på evnen.
+**C:** som A, men højt Lederskab giver også en lille kaptajnsvirkning i løbet.
+**Tradeoff:** A gør de to veteraner forskellige og lader en ung naturlig leder
+være mentor; B giver nul nye tal, men alle veteraner er lige gode mentorer;
+C lader to evner forklare samme løbsresultat (overlap med D-023/D-024).
+Kilder: D-026–029, RIDER_ATTRIBUTES_RESEARCH ("Før nogen bygger en ny evne").
+
+## D-030 · Lederskab er en ny evne med mentor og trup som eneste formål
+
+**Status:** ejer-valgt 10/9, svar på Q-033.
+**Ejerens svar, ordret:** "A · Ny evne Lederskab, kun mentor/trup (anbefalet)".
+Lederskab bliver en evne i samme evnesystem som de øvrige (jf. D-019: ingen
+skjult sidelag). Den vokser med alder og med tid som kaptajn eller mentor og
+topper sent i karrieren. Mentor-egnethed kræver Lederskab over en tærskel og
+tydelig overlegenhed på den mentale evne, der læres fra. Lederskab påvirker
+intet i løbsmotoren; Holdarbejde ejer fortsat samarbejdet i løbet (D-022–024).
+**Fravalgt:** ingen ny evne (alder + relevant evne), og løbsvirkning oveni.
+**Åbent (holdes adskilt efter ejerens ønske):** synlighed og fog of war
+(hvem ser tallet), tærskelværdi, vækstkurve og skala (privat kalibrering),
+behandling af eksisterende ryttere uden historik (jf. researchens punkt 6),
+og hvordan evnen vises på rytterkortet. Ingen registry-post, generation,
+scouting- eller værdikontrakt er ændret ved dette valg.
+**Foreslået verifikation:** to ellers identiske veteraner adskiller sig kun i
+mentor-egnethed og mentee-udbytte; ingen løbssimulation ændrer udfald ved
+ændret Lederskab; en ung rytter med højt Lederskab kan være mentor.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code
