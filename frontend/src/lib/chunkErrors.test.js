@@ -120,7 +120,18 @@ test("installChunkReloadHandlers — vite:preloadError udløser præcis ét loop
   assert.equal(reloads, 0, "reload er udskudt — fyrer ikke synkront i event-handleren");
   await timer.flush();
   assert.equal(reloads, 1, "kun ét reload trods to preloadError-events (loop-guard pr. release)");
-  assert.equal(prevented, 2, "preventDefault kaldes på hvert preloadError så Vite ikke selv kaster");
+  // #4595: preventDefault ville stoppe Vite i at kaste, så __vitePreload
+  // resolvede med undefined og loaderen mistede den ægte fejl + chunk-URL'en.
+  assert.equal(prevented, 0, "preventDefault kaldes ALDRIG på preloadError — Vite skal kaste videre");
+});
+
+test("isChunkLoadError — #4595: Vites CSS-preload-fejl er en utvetydig chunk-fejl", () => {
+  // Uden dette moenster ville en fejlet <link rel="stylesheet"> for et
+  // async-chunk blive klassificeret render_error → fuldskærms-fallback, i
+  // stedet for det ene retry der faktisk redder den.
+  const error = new Error("Unable to preload CSS for https://cyclingzone.org/assets/TeamPage-old.css");
+  assert.equal(isChunkLoadError(error), true);
+  assert.equal(isUnambiguousChunkLoadError(error), true);
 });
 
 test("installChunkReloadHandlers — unhandledrejection: reloader på chunk-fejl, ignorerer andre", async () => {

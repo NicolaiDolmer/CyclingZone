@@ -8,6 +8,13 @@ const UNAMBIGUOUS_CHUNK_ERROR_PATTERNS = [
   /chunkloaderror/i,
   /module script.*mime type/i,
   /expected a javascript module script/i,
+  // #4595: Vites preload-helper kaster denne naar en <link rel="stylesheet">
+  // for et async-chunk ikke kan hentes ("Unable to preload CSS for <url>").
+  // Den kan kun komme derfra. Uden moensteret ville en fejlet CSS-preload
+  // blive klassificeret som render_error og give fuldskaerms-fallbacken, i
+  // stedet for det ene stille retry der faktisk redder den (Vites `seen`-map
+  // springer dep'en over anden gang, saa modulet loader).
+  /unable to preload css for/i,
 ];
 
 // React.lazy's INTERNE fejl efter en fejlet dynamic import (#881/#906). De er den
@@ -124,8 +131,8 @@ export async function documentIsStillLoadable({ fetchFn, url, timeoutMs = 3000, 
 // Globalt net for stale-chunk-fejl der aldrig når React's error-boundary (#906).
 // To kilder:
 //   1. `vite:preloadError` — Vite's helper dispatcher dette når en modulepreload
-//      eller dynamic-import fejler. preventDefault() stopper at Vite selv kaster,
-//      så VI styrer recovery (ét kontrolleret reload til frisk index.html).
+//      eller dynamic-import fejler. Vi lader Vite kaste videre, så den ægte fejl
+//      (med chunk-URL'en) når loaderen — se onPreloadError nedenfor.
 //   2. `unhandledrejection` — dynamic imports der IKKE ligger bag React.lazy
 //      (fx import("@e965/xlsx") i RacesPage, import("@microsoft/clarity")) kan
 //      reject uden for render-stien → de når aldrig boundary'en.
@@ -193,8 +200,26 @@ export function installChunkReloadHandlers({ target, release, storage, reload, d
   // bfcache-restore: siden lever videre efter pagehide → gør recovery mulig igen.
   const onPageshow = () => { unloading = false; };
 
-  const onPreloadError = (event) => {
-    event?.preventDefault?.();
+  // #4595 — rod-årsagen til CYCLINGZONE-56 (954 events / 50 spillere på 7 dage).
+  //
+  // Her stod `event.preventDefault()`. Konsekvensen var IKKE at "vi styrer
+  // recovery" — den var at Vites `handlePreloadError` ikke kastede, at
+  // `baseModule().catch(handlePreloadError)` dermed returnerede `undefined`, og
+  // at hele `__vitePreload(...)`-promisen RESOLVEDE med `undefined`. Så nåede
+  // `lazyWithRetry.validateModule()` frem til et tomt modul og mintede sin egen
+  // syntetiske fejl ("resolved to an invalid module without a default export")
+  // — uden URL. Retry'et ramte samme sti, og cache-purgen havde intet chunk at
+  // rense, fordi den ægte fejl (med URL) blev smidt væk sammen med kastet.
+  //
+  // Derfor: lad Vite kaste. Så bobler den rigtige fejl — med chunk-URL'en — op
+  // ad den sti den hører til (rejection → loadWithRetry → purge → boundary /
+  // unhandledrejection-handleren nedenfor). Recovery-reloadet er uændret: det
+  // kaldes her uanset, præcis som før.
+  //
+  // Handleren må derfor ALDRIG kalde preventDefault() på dette event, og der er
+  // ikke brug for at gemme `event.payload`: når Vite kaster, ER payload'en den
+  // fejl loaderen fanger.
+  const onPreloadError = () => {
     reloadOncePerRelease();
   };
 
