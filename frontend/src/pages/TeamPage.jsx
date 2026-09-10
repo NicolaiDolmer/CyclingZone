@@ -1117,7 +1117,9 @@ export function TeamPage() {
       const data = await sharedRequestCache.get(
         SHARED_KEYS.deadlineDayStatus,
         async () => {
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deadline-day/status`, {
+          // catch-ok: bobler ud gennem sharedRequestCache.get() til loadDdStatus'
+          // egen try/catch (non-critical: flash-valget forbliver skjult).
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deadline-day/status`, { // catch-ok
             headers: { Authorization: `Bearer ${session.access_token}` },
           });
           if (!res.ok) throw new Error("dd_status_failed");

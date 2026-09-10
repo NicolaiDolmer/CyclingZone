@@ -306,7 +306,9 @@ function TransferListButton({ rider, onChanged }) {
         const data = await sharedRequestCache.get(
           SHARED_KEYS.transferListings,
           async () => {
-            const res = await fetch(`${API}/api/transfers`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+            // catch-ok: bobler ud gennem sharedRequestCache.get() til effektens
+            // egen try/catch (salgs-knappen virker stadig, se kommentar ovenfor).
+            const res = await fetch(`${API}/api/transfers`, { headers: { Authorization: `Bearer ${session.access_token}` } }); // catch-ok
             if (!res.ok) throw new Error("transfer_listings_failed");
             return res.json();
           },
@@ -1408,7 +1410,9 @@ export default function RiderStatsPage() {
       const data = await sharedRequestCache.get(
         SHARED_KEYS.deadlineDayStatus,
         async () => {
-          const res = await fetch(`${API}/api/deadline-day/status`, { headers: h });
+          // catch-ok: bobler ud gennem sharedRequestCache.get() til loadDdStatus'
+          // egen try/catch (non-critical: banneret falder tilbage til inaktiv).
+          const res = await fetch(`${API}/api/deadline-day/status`, { headers: h }); // catch-ok
           if (!res.ok) throw new Error("dd_status_failed");
           return res.json();
         },

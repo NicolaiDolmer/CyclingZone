@@ -78,7 +78,9 @@ export function useScouting() {
       const data = await sharedRequestCache.get(
         SHARED_KEYS.scoutingMe,
         async () => {
-          const res = await fetch(`${API}/api/scouting/me`, { headers });
+          // catch-ok: loaderens rejection bobler ud gennem sharedRequestCache.get()
+          // og fanges af refresh()s egen try/catch nedenfor (som ogsaa rydder loading).
+          const res = await fetch(`${API}/api/scouting/me`, { headers }); // catch-ok
           if (!res.ok) throw new Error("scouting_me_failed");
           return res.json();
         },
