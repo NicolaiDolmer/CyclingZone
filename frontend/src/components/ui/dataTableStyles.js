@@ -80,9 +80,15 @@ function gutter(compact, tight) {
 // pinnede navnekolonne) — hele overskriftsraekken laases i toppen ved lodret
 // scroll. Hjoernecellen (col.sticky) faar OGSAA `left-0` via STICKY nedenfor,
 // saa den staar fast paa begge akser (top+venstre) samtidig.
-export function thClass({ numeric = false, sticky = false, compact = false, tight = false, dense = false } = {}) {
+// #5102 (D-047): `stickyHeader: false` slaar den laaste overskriftsraekke fra.
+// To-lags-mobiltilstanden bestaar af TO separate tabeller side om side; hvis kun
+// den ene theads sticky-forankring virker (den vandrette scroller om datablokken
+// er selv en scroll-container, jf. #4747-noten ovenfor), glider de to headere fra
+// hinanden. Begge slaar den derfor fra og scroller sammen i den fælles lodrette
+// scroller. Desktop og mobil-standardtilstanden er uaendrede (default true).
+export function thClass({ numeric = false, sticky = false, compact = false, tight = false, dense = false, stickyHeader = true } = {}) {
   const base =
-    `whitespace-nowrap bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3 sticky top-0 z-table-head`;
+    `whitespace-nowrap bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3 ${stickyHeader ? "sticky top-0 z-table-head" : ""}`;
   return [base, numeric ? "text-right" : "text-left", sticky ? STICKY : ""]
     .filter(Boolean)
     .join(" ");

@@ -1,6 +1,20 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SortIndicator } from "./SortableTh.jsx";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
 import { TableRowContext } from "./tableRowContext.js";
+import { ChevronRightIcon, TableIcon } from "./icons/index.jsx";
+import { useIsMobileViewport } from "../../hooks/useMediaQuery.ts";
+import {
+  MOBILE_COLUMN_COUNT,
+  defaultMobileColumnKeys,
+  mobileColumnLabel,
+  mobileSwappableColumns,
+  orderMobileColumns,
+  readMobileColumnKeys,
+  swapMobileColumn,
+  writeMobileColumnKeys,
+} from "./mobileTableColumns.ts";
 
 // #2849 bølge 0 — DEN kanoniske wide-data-tabel (T2, docs/design/PAGE_TEMPLATES.md).
 //
@@ -10,12 +24,13 @@ import { TableRowContext } from "./tableRowContext.js";
 //   numeric,      // true → højrestillet font-data tabular
 //   compact,      // true → halv vandret gutter (px-2); til smalle ét-tals-kolonner
 //   tight,        // true → mindste gutter (px-1); til en MATRIX af tal-celler (de 15 evner)
-//   sticky,       // true → pinned første kolonne (opak bg + 1px højre-rule)
+//   sticky,       // true → entity-/navnekolonnen (desktop: pinned; mobil: navneblok)
 //   render,       // (row, i) => node — celleindhold
 //   subline,      // kun sticky: (row, i) => node — text-3xs uppercase underlinje
 //   sublineIndent,// kun sticky: true → pl-[17px] så underlinjen flugter forbi JerseyDot
 //   fold,         // true → skjules ≤640px og foldes ind i sticky-cellens underlinje
 //   foldValue,    // (row) => string — tekstværdi til mobil-fold (default row[key])
+//   mobileLabel,  // chip-label på mobil når `header` ikke er ren tekst
 //   sortKey,      // gør headeren sorterbar når onSort er sat
 // }
 //
@@ -28,6 +43,20 @@ import { TableRowContext } from "./tableRowContext.js";
 // hover); øvrige props (ref, onClick, data-*, …) spredes uændret på <tr>.
 // `dense` (#2906): halveret lodret cellepolstring for tabeller hvor antallet af
 // rækker pr. skærm er pointen (truppen: 30 ryttere). Default = T2's 13px-rytme.
+//
+// ── Mobil ≤640px: D-047 (ejer 10/9 kl. 15:20, #5102) ────────────────────────
+// Standardtilstanden er navnekolonnen + PRÆCIS tre talkolonner UDEN vandret
+// scroll. En chip-række over tabellen bytter kolonner (valget huskes pr.
+// `label`), og "Fuld tabel" åbner alle kolonner som TO-LAGS: navneblokken er sin
+// egen kolonne ved siden af en scrollbar datablok — ikke CSS sticky, så #5060's
+// fejlklasse ikke kan opstå igen. Sortering og kolonneorden er desktopens.
+// Sticky-kolonne + vandret scroll som DEFAULT er dermed væk (afløser TASTE P10
+// fork 6 / PAGE_TEMPLATES T2 "Mobile ≤640px"). Desktop er uændret.
+//
+//   mobileDefaults: ["ovr", "value", "salary"]  // sidens tre standardkolonner
+//   mobileFullTableTone: "gold" | "neutral"     // "neutral" når siden ALLEREDE
+//                                               // har en gold primary i mobil-
+//                                               // viewportet (én gold pr. view)
 export function DataTable({
   columns,
   rows,
@@ -43,21 +72,136 @@ export function DataTable({
   dense = false,
   toolbar = null,
   empty = null,
+  mobileDefaults = null,
+  mobileFullTableTone = "gold",
 }) {
+  const { t } = useTranslation("common");
+  const isMobile = useIsMobileViewport();
   const zones = rows.map((row, i) => (rowZone ? rowZone(row, i) : null));
   const foldCols = columns.filter((c) => c.fold);
+  const entityCol = columns.find((c) => c.sticky) ?? null;
+  const swappable = mobileSwappableColumns(columns);
 
-  // #4625 (slice 3 af #4622, TASTE fork 6 / P10) — pinned navnekolonne + vandret
-  // scroll er DEN vedtagne mobil-standard for T2 (Traeningssiden havde moensteret
-  // allerede; audit 2026-09 fandt 6 sider uden det: Ryttere, Mit hold, /teams/:id,
-  // /managers/:teamId, /auctions/history, /admin/feedback). SCROLLER er allerede
-  // ubetinget "overflow-x-auto"; det eneste en tabel kan glemme er selve pin'et.
-  // Dev-warning (ikke kast — DataTable bruges af snesevis af sider der endnu ikke
-  // er migreret) saa nye tabeller ikke stille mister moensteret.
-  if (import.meta.env.DEV && rows.length > 0 && !columns.some((c) => c.sticky)) {
+  // #4625 → D-047: navnekolonnen er stadig den kolonne alt andet hænger på —
+  // uden den ved mobil-standarden ikke hvad navneblokken er, og tabellen falder
+  // tilbage til den gamle vandrette scroller. Dev-warning (ikke kast — DataTable
+  // bruges af snesevis af sider) så nye tabeller ikke stille mister mønsteret.
+  if (import.meta.env.DEV && rows.length > 0 && !entityCol) {
     console.error(
       `DataTable "${label ?? "(uden label)"}": ingen kolonne har sticky:true. ` +
-        "Mobil-standarden er pinned navnekolonne + vandret scroll under den (docs/design/PAGE_TEMPLATES.md#t2-wide-data-page) — marker entity-navnekolonnen `sticky: true`."
+        "Mobil-standarden (D-047, #5102) bygger paa en entity-/navnekolonne — marker den `sticky: true` " +
+        "(docs/design/PAGE_TEMPLATES.md#t2-wide-data-page)."
+    );
+  }
+
+  const [mobileKeys, setMobileKeys] = useState(() => defaultMobileColumnKeys(columns, mobileDefaults));
+  const [fullTable, setFullTable] = useState(false);
+  const columnSignature = columns.map((c) => c.key).join("|");
+
+  // Læs det huskede valg EFTER mount (localStorage er per-browser og må ikke
+  // gøre first render afhængig af en I/O der kan kaste i et privat vindue).
+  useEffect(() => {
+    setMobileKeys(readMobileColumnKeys(label, columns, mobileDefaults));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- kolonne-IDENTITET, ikke de nye objekt-referencer hver render
+  }, [label, columnSignature, mobileDefaults]);
+
+  const pickColumn = useCallback(
+    (key) => {
+      setMobileKeys((current) => {
+        const next = swapMobileColumn(current, key);
+        writeMobileColumnKeys(label, next);
+        return next;
+      });
+    },
+    [label]
+  );
+
+  const mobileStandard = isMobile && Boolean(entityCol);
+  const hasChips = mobileStandard && swappable.length > MOBILE_COLUMN_COUNT;
+  const visibleMobileCols = hasChips && !fullTable ? orderMobileColumns(columns, mobileKeys) : swappable;
+
+  if (mobileStandard) {
+    return (
+      <div className={className}>
+        {hasChips && (
+          <MobileColumnChips
+            columns={swappable}
+            selected={mobileKeys}
+            onPick={pickColumn}
+            fullTable={fullTable}
+            onToggleFullTable={() => setFullTable((v) => !v)}
+            tone={mobileFullTableTone}
+            t={t}
+          />
+        )}
+        <div className={WRAP}>
+          {toolbar && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-cz-border px-4 py-2.5">{toolbar}</div>
+          )}
+          {fullTable ? (
+            <MobileFullTable
+              entityCol={entityCol}
+              dataCols={swappable}
+              rows={rows}
+              rowKey={rowKey}
+              rowProps={rowProps}
+              zones={zones}
+              foldCols={foldCols}
+              sort={sort}
+              sortDir={sortDir}
+              onSort={onSort}
+              label={label}
+              dense={dense}
+              empty={empty}
+              t={t}
+            />
+          ) : (
+            <div className={SCROLLER}>
+              <table className={TABLE} aria-label={label} data-sortable>
+                <TableHead
+                  columns={[entityCol, ...visibleMobileCols]}
+                  sort={sort}
+                  sortDir={sortDir}
+                  onSort={onSort}
+                  dense={dense}
+                  mobile
+                />
+                <TableRowContext.Provider value={true}>
+                  <tbody>
+                    <EmptyRow rows={rows} empty={empty} colSpan={visibleMobileCols.length + 1} />
+                    {rows.map((row, i) => {
+                      const edges = zoneEdges(zones, i);
+                      return (
+                        <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zones[i], rowProps ? rowProps(row, i) : null)}>
+                          <td className={tdClass({ ...edges, zone: zones[i], dense })}>
+                            {renderStickyCell(entityCol, row, i, foldCols)}
+                          </td>
+                          {visibleMobileCols.map((col) => (
+                            <td
+                              key={col.key}
+                              className={tdClass({
+                                numeric: col.numeric,
+                                zone: zones[i],
+                                ...edges,
+                                compact: col.compact,
+                                tight: col.tight,
+                                dense,
+                              })}
+                            >
+                              {col.render ? col.render(row, i) : row[col.key]}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </TableRowContext.Provider>
+              </table>
+            </div>
+          )}
+        </div>
+        {count && <div className={COUNT}>{count}</div>}
+      </div>
     );
   }
 
@@ -77,36 +221,7 @@ export function DataTable({
         )}
         <div className={SCROLLER}>
           <table className={TABLE} aria-label={label} data-sortable>
-            <thead>
-              <tr>
-                {columns.map((col) => {
-                  const sortable = typeof onSort === "function" && col.sortKey != null;
-                  const active = sortable && sort === col.sortKey;
-                  const sortableCls = sortable
-                    ? `cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "hover:text-cz-2"}`
-                    : "";
-                  return (
-                    <th
-                      key={col.key}
-                      className={`${thClass({ numeric: col.numeric, sticky: col.sticky, compact: col.compact, tight: col.tight, dense })} ${col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
-                      onClick={sortable ? () => onSort(col.sortKey) : undefined}
-                      aria-sort={
-                        sortable
-                          ? active
-                            ? sortDir === "desc"
-                              ? "descending"
-                              : "ascending"
-                            : "none"
-                          : undefined
-                      }
-                    >
-                      {col.header}
-                      {sortable && <SortIndicator active={active} dir={sortDir} />}
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
+            <TableHead columns={columns} sort={sort} sortDir={sortDir} onSort={onSort} dense={dense} />
             <TableRowContext.Provider value={true}>
               <tbody>
                 {/* PAGE_TEMPLATES "Canonical states": for tabeller swappes
@@ -114,23 +229,15 @@ export function DataTable({
                     monteret. #4628: uden det forsvandt filter-kontrollerne
                     sammen med raekkerne, saa et filter der tømte tabellen ikke
                     kunne slaas fra igen. */}
-                {rows.length === 0 && empty && (
-                  <tr>
-                    <td colSpan={columns.length} className="border-t border-cz-border p-4">
-                      {empty}
-                    </td>
-                  </tr>
-                )}
+                <EmptyRow rows={rows} empty={empty} colSpan={columns.length} />
                 {rows.map((row, i) => {
-                  const zone = zones[i];
-                  const edgeTop = Boolean(zone) && i > 0 && zones[i - 1] !== zone;
-                  const edgeBottom = Boolean(zone) && i < rows.length - 1 && zones[i + 1] !== zone;
+                  const edges = zoneEdges(zones, i);
                   return (
-                    <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zone, rowProps ? rowProps(row, i) : null)}>
+                    <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zones[i], rowProps ? rowProps(row, i) : null)}>
                       {columns.map((col) => (
                         <td
                           key={col.key}
-                          className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone, edgeTop, edgeBottom, compact: col.compact, tight: col.tight, dense })} ${col.fold ? "hidden sm:table-cell" : ""}`}
+                          className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone: zones[i], ...edges, compact: col.compact, tight: col.tight, dense })} ${col.fold ? "hidden sm:table-cell" : ""}`}
                         >
                           {col.sticky
                             ? renderStickyCell(col, row, i, foldCols)
@@ -148,6 +255,281 @@ export function DataTable({
         </div>
       </div>
       {count && <div className={COUNT}>{count}</div>}
+    </div>
+  );
+}
+
+function zoneEdges(zones, i) {
+  const zone = zones[i];
+  return {
+    edgeTop: Boolean(zone) && i > 0 && zones[i - 1] !== zone,
+    edgeBottom: Boolean(zone) && i < zones.length - 1 && zones[i + 1] !== zone,
+  };
+}
+
+function EmptyRow({ rows, empty, colSpan }) {
+  if (rows.length > 0 || !empty) return null;
+  return (
+    <tr>
+      <td colSpan={colSpan} className="border-t border-cz-border p-4">
+        {empty}
+      </td>
+    </tr>
+  );
+}
+
+// Delt <thead>. `mobile` slaar fold-skjulet fra (mobil-standarden vaelger selv
+// hvilke kolonner der vises) og `stickyHeader:false` bruges af to-lags-
+// tilstanden, hvor to separate tabeller skal have PRAECIS samme header-adfaerd.
+function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stickyHeader = true }) {
+  return (
+    <thead>
+      <tr>
+        {columns.map((col) => {
+          const sortable = typeof onSort === "function" && col.sortKey != null;
+          const active = sortable && sort === col.sortKey;
+          const sortableCls = sortable
+            ? `cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "hover:text-cz-2"}`
+            : "";
+          return (
+            <th
+              key={col.key}
+              className={`${thClass({ numeric: col.numeric, sticky: !mobile && col.sticky, compact: col.compact, tight: col.tight, dense, stickyHeader })} ${!mobile && col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
+              onClick={sortable ? () => onSort(col.sortKey) : undefined}
+              aria-sort={
+                sortable ? (active ? (sortDir === "desc" ? "descending" : "ascending") : "none") : undefined
+              }
+            >
+              {col.header}
+              {sortable && <SortIndicator active={active} dir={sortDir} />}
+            </th>
+          );
+        })}
+      </tr>
+    </thead>
+  );
+}
+
+// D-047's chip-raekke. text-2xs uppercase som al anden meta i systemet, hairline
+// og 999px-pille (den ENE plads hvor pille-radius er tilladt, TASTE fork 6).
+// Aktiv kolonne = --text-1-kant. "Fuld tabel" staar for sig selv til hoejre;
+// gold outline naar siden ikke allerede bruger sin ene gold primary i mobil-
+// viewportet, ellers --text-1.
+function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, tone, t }) {
+  const base =
+    "flex-none inline-flex items-center gap-1.5 rounded-cz-pill border px-2.5 min-h-[32px] " +
+    "font-data text-2xs font-semibold uppercase tracking-[.06em] transition-colors duration-150";
+  const gold = tone !== "neutral";
+  return (
+    <div className="mb-2 flex items-center gap-1.5">
+      <div
+        className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto"
+        role="group"
+        aria-label={t("table.columnsLabel")}
+      >
+        {columns.map((col) => {
+          const active = selected.includes(col.key);
+          return (
+            <button
+              key={col.key}
+              type="button"
+              onClick={() => onPick(col.key)}
+              aria-pressed={active}
+              disabled={fullTable}
+              className={`${base} ${
+                active ? "border-cz-1 text-cz-1" : "border-cz-border text-cz-2 hover:text-cz-1"
+              } ${fullTable ? "opacity-40" : ""}`}
+            >
+              {mobileColumnLabel(col)}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={onToggleFullTable}
+        aria-pressed={fullTable}
+        className={`${base} ${
+          fullTable
+            ? gold
+              ? "border-transparent bg-cz-accent text-cz-on-accent"
+              : "border-cz-1 bg-cz-1 text-cz-card"
+            : gold
+              ? "border-cz-accent text-cz-accent-t"
+              : "border-cz-1 text-cz-1"
+        }`}
+      >
+        <TableIcon size={14} aria-hidden="true" />
+        {t("table.fullTable")}
+      </button>
+    </div>
+  );
+}
+
+// To-lags "Fuld tabel" (D-047): navneblokken er sin EGEN tabel ved siden af en
+// vandret scrollbar datablok. Ikke CSS sticky — #5060 viste at en sticky kolonne
+// over en scroller er den skroebelige del. Prisen er at raekkehoejderne skal
+// synkroniseres i JS; det er en maaling, ikke et layout-hack, og den koerer kun
+// paa mobil.
+function MobileFullTable({
+  entityCol,
+  dataCols,
+  rows,
+  rowKey,
+  rowProps,
+  zones,
+  foldCols,
+  sort,
+  sortDir,
+  onSort,
+  label,
+  dense,
+  empty,
+  t,
+}) {
+  const nameRef = useRef(null);
+  const dataRef = useRef(null);
+  const scrollerRef = useRef(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [atEnd, setAtEnd] = useState(true);
+
+  const rowSignature = rows.length;
+
+  useLayoutEffect(() => {
+    const nameTable = nameRef.current;
+    const dataTable = dataRef.current;
+    if (!nameTable || !dataTable) return undefined;
+
+    let frame = 0;
+    let observer = null;
+    const sync = () => {
+      const left = Array.from(nameTable.rows);
+      const right = Array.from(dataTable.rows);
+      const n = Math.min(left.length, right.length);
+      for (let i = 0; i < n; i += 1) {
+        left[i].style.height = "";
+        right[i].style.height = "";
+      }
+      const heights = [];
+      for (let i = 0; i < n; i += 1) {
+        heights.push(Math.max(left[i].getBoundingClientRect().height, right[i].getBoundingClientRect().height));
+      }
+      for (let i = 0; i < n; i += 1) {
+        left[i].style.height = `${heights[i]}px`;
+        right[i].style.height = `${heights[i]}px`;
+      }
+      setHeaderHeight(heights[0] ?? 0);
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(sync);
+    };
+
+    sync();
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(schedule);
+      observer.observe(nameTable);
+      observer.observe(dataTable);
+    }
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, [rowSignature, dataCols.length, dense]);
+
+  const onScroll = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    onScroll();
+  }, [onScroll, rowSignature, dataCols.length]);
+
+  const entityLabel = mobileColumnLabel(entityCol);
+
+  return (
+    <div className={SCROLLER}>
+      <div className="relative flex">
+        <div className="flex-none border-r border-cz-border bg-cz-card">
+          <table className={TABLE} ref={nameRef} aria-label={`${label ?? ""} · ${entityLabel}`.trim()} data-sortable>
+            <TableHead
+              columns={[entityCol]}
+              sort={sort}
+              sortDir={sortDir}
+              onSort={onSort}
+              dense={dense}
+              mobile
+              stickyHeader={false}
+            />
+            <TableRowContext.Provider value={true}>
+              <tbody>
+                <EmptyRow rows={rows} empty={empty} colSpan={1} />
+                {rows.map((row, i) => (
+                  <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zones[i], rowProps ? rowProps(row, i) : null)}>
+                    <td className={tdClass({ zone: zones[i], ...zoneEdges(zones, i), dense })}>
+                      {renderStickyCell(entityCol, row, i, foldCols)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableRowContext.Provider>
+          </table>
+        </div>
+        <div className="min-w-0 flex-1 overflow-x-auto" ref={scrollerRef} onScroll={onScroll}>
+          <table className={`${TABLE} w-max min-w-full`} ref={dataRef} aria-label={label} data-sortable>
+            <TableHead
+              columns={dataCols}
+              sort={sort}
+              sortDir={sortDir}
+              onSort={onSort}
+              dense={dense}
+              mobile
+              stickyHeader={false}
+            />
+            <TableRowContext.Provider value={true}>
+              <tbody>
+                <EmptyRow rows={rows} empty={null} colSpan={dataCols.length} />
+                {rows.map((row, i) => {
+                  const edges = zoneEdges(zones, i);
+                  return (
+                    <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zones[i], rowProps ? rowProps(row, i) : null)}>
+                      {dataCols.map((col) => (
+                        <td
+                          key={col.key}
+                          className={tdClass({
+                            numeric: col.numeric,
+                            zone: zones[i],
+                            ...edges,
+                            compact: col.compact,
+                            tight: col.tight,
+                            dense,
+                          })}
+                        >
+                          {col.render ? col.render(row, i) : row[col.key]}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </TableRowContext.Provider>
+          </table>
+        </div>
+        {!atEnd && (
+          <div
+            className="pointer-events-none absolute right-0 top-0 flex items-center justify-end bg-gradient-to-l from-cz-card via-cz-card to-transparent pl-8 pr-2 text-cz-3"
+            style={headerHeight ? { height: `${headerHeight}px` } : undefined}
+            title={t("table.moreRight")}
+          >
+            <ChevronRightIcon size={14} aria-hidden="true" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
