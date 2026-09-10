@@ -165,6 +165,21 @@ assistenten selv ville handle inden for. Flyttes `assistant_late_fill_hours` i `
 flytter det røde trin med af sig selv. Ændres et af tallene, **skal denne tabel opdateres i
 samme PR** (hard rule 30).
 
+**Åbent punkt: "mangler" måles mod klassens `max`, ikke mod gulvet.** Det er #4038's
+definition, og den er bevidst uændret her - men den kolliderer med to naboregler så snart
+`assistant_selection_mode` flippes til `late_fill`. `PLANNING_CENTER_RULES.md` §4 regel 2
+redder kun op til `MIN_RACE_ENTRIES` (6), og D-035 (ejer-valgt 10/9, beslutningsloggen ligger i
+GDD-PR'en [#5090](https://github.com/NicolaiDolmer/CyclingZone/pull/5090), ikke merget endnu)
+siger at assistenten fremover altid fylder til gulvet, men kun besætter pladser derover med
+ryttere over en egnetheds- og træthedsgrænse - og at tomme pladser vises med årsag. Et Grand
+Tour-hold på 6/8 er altså en TILSIGTET sluttilstand, men vil stå gult og derefter rødt indtil
+løbet kører - præcis #4038's fejlklasse på en ny flade. Boksen skelner heller ikke mellem "starter, men ikke i fuld
+styrke" og "stiller ikke op", selvom `partialSquadOutlook` (§4 regel 3) har den skelnen på de
+to andre flader. **Beslutningen hører til flippet, ikke til #4983:** før `late_fill` slås til,
+skal enten "mangler" læses som "under gulvet", eller boksen bære konsekvensen
+(`partialSquadOutlook`) i stedet for kun tiden. Indtil da er markeringen korrekt for
+`proactive`-tilstanden, som er prod i dag.
+
 **Afmeldte hold og fulde trupper markeres aldrig** - samme to udeladelser som sweepet. En
 trup assistenten selv har fyldt tæller som fuld; det var præcis #4038's rettelse, og
 påmindelsen må ikke genindføre fejlen på en anden flade. Kontakten på Profil er synlig i alle

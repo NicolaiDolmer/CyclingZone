@@ -934,7 +934,29 @@ export default function Layout() {
         {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
             og ikke "følge med op" og stjæle plads på små skærme (#1007). */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">
-          <button onClick={() => setMobileOpen(true)} aria-label={t("a11y.openMenu")} className="text-cz-sidebar-2 hover:text-cz-sidebar-1"><MenuIcon aria-hidden="true" className="w-6 h-6" /></button>
+          {/* #4983: prikken ved "Planlægning" bor inde i drawer'en, så på mobil
+              ville markeringen først være synlig EFTER at manageren selv åbnede
+              menuen — og accept-kriteriet i #4983 er netop "uden at skulle
+              opdage det ved et tilfælde". Hamburger-knappen bærer derfor samme
+              tone som nav-prikken. Bevidst KUN påmindelsen: patch notes-/forum-
+              prikkerne (#3811/#4118) har samme begrænsning, men at give dem
+              passiv mobil-synlighed er en selvstændig beslutning, ikke noget
+              denne PR skal afgøre. */}
+          <button
+            onClick={() => setMobileOpen(true)}
+            aria-label={selectionReminder.tone === "none"
+              ? t("a11y.openMenu")
+              : `${t("a11y.openMenu")} (${selectionReminder.tone === "urgent" ? t("a11y.selectionReminderUrgent") : t("a11y.selectionReminder")})`}
+            className="relative text-cz-sidebar-2 hover:text-cz-sidebar-1"
+          >
+            <MenuIcon aria-hidden="true" className="w-6 h-6" />
+            {selectionReminder.tone !== "none" && (
+              <span
+                aria-hidden="true"
+                className={`absolute -top-0.5 -right-0.5 block w-2 h-2 rounded-full ${NAV_DOT_TONE_CLASS[selectionReminder.tone]}`}
+              />
+            )}
+          </button>
           <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex items-center gap-2 rounded hover:opacity-80 transition-opacity">
             <Wordmark forceDark className="h-5 w-auto" alt="" />
           </Link>

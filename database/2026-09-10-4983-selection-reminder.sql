@@ -17,6 +17,15 @@
 -- indbakke-varsel og #4038's rettelse. Der skrives INTET til race_entries,
 -- assistant_selection_mode eller notifications.
 --
+-- SYNLIGHED (maalt read-only i prod 10/9): public.teams har rls_enabled=true med
+-- praecis EEN policy, "Public read teams" (SELECT, rolle public, qual=true), plus
+-- table-level grant til anon+authenticated og ingen kolonne-ACL undtagen paa
+-- league_division_id. Den nye kolonne er derfor verdens-laesbar praecis som det
+-- eksisterende assistant_autopick_enabled. Bevidst uaendret her: at snaevre
+-- teams-laesningen ind pr. kolonne er en selvstaendig RLS-beslutning for HELE
+-- tabellen (ejer-gated), ikke noget denne migration skal afgoere. Vaerdien er en
+-- UI-praeference uden spil-effekt.
+--
 -- Idempotent. Applies af CI (auto-migrate.yml) ved merge; denne PR applier
 -- IKKE mod prod.
 --

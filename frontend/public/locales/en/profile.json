@@ -161,7 +161,8 @@
     "title": "Deadline reminder",
     "subtitle": "A missing squad is marked in the navigation and on the planning page.",
     "toggleLabel": "Remind me before the selection deadline",
-    "toggleHint": "On: Planning is marked when a race starts within 36 hours without a full squad, and the mark turns red inside the last 24 hours. Off: nothing is marked, and the deadline still applies.",
+    "toggleHint": "On: Planning is marked when a race starts within {windowHours} hours without a full squad, and the mark turns red inside the last {urgentHours} hours. Off: nothing is marked, and the deadline still applies.",
+    "toggleHintGeneric": "On: Planning is marked when a race starts soon without a full squad, and the mark turns red close to the deadline. Off: nothing is marked, and the deadline still applies.",
     "on": "Deadline reminders are on.",
     "off": "Deadline reminders are off."
   }

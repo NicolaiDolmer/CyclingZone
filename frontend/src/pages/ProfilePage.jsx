@@ -568,6 +568,15 @@ export default function ProfilePage() {
     );
   };
 
+  // #4983: paamindelsens to trin kommer FRA serveren (GET /api/me/assistant-settings),
+  // aldrig fra copy. window = SELECTION_REMINDER_WINDOW_HOURS, urgent =
+  // app_config.assistant_late_fill_hours. Se hint-teksten nedenfor.
+  // null (ikke 0) naar tallet mangler: Number(null) er 0 og ville sende "inden
+  // for 0 timer" ud paa fladen.
+  const positiveHours = value => (typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null);
+  const selectionReminderWindowHours = positiveHours(assistant?.selection_reminder_window_hours);
+  const selectionReminderUrgentHours = positiveHours(assistant?.late_fill_hours);
+
   return (
     // #2253: translate="no" — browser-oversættere muterede React's tekst-noder og
     // udløste NotFoundError-crashes (Sentry-events med url=/profile). Se PR #2272.
@@ -692,7 +701,21 @@ export default function ProfilePage() {
             onChange={e => toggleSelectionReminder(e.target.checked)}
           />
         </div>
-        <p className="text-cz-3 text-xs leading-relaxed mt-3">{t("selectionReminder.toggleHint")}</p>
+        {/* De to trin er RUNTIME-tal, ikke copy: gul er
+            SELECTION_REMINDER_WINDOW_HOURS og roed er
+            app_config.assistant_late_fill_hours (ASSISTANT_RULES §1b: "flyttes
+            assistant_late_fill_hours, flytter det roede trin med af sig selv").
+            Skrev vi 36/24 i strengen, ville teksten lyve foerste gang horisonten
+            justeres — D-034 har den eksplicit som et aabent punkt. Kender vi dem
+            ikke endnu (svaret er ikke hentet), staar den tal-loese variant. */}
+        <p className="text-cz-3 text-xs leading-relaxed mt-3">
+          {selectionReminderWindowHours && selectionReminderUrgentHours
+            ? t("selectionReminder.toggleHint", {
+                windowHours: selectionReminderWindowHours,
+                urgentHours: selectionReminderUrgentHours,
+              })
+            : t("selectionReminder.toggleHintGeneric")}
+        </p>
       </Card>
 
       {/* Assistent (#4201) — kun naar tilstanden er "opt_in"; ellers er der intet valg */}

@@ -113,6 +113,15 @@ export type DeadlineCountdown =
  * under to døgn timer, derover hele dage. Nedrunding hele vejen: "in 1h" må
  * aldrig stå når der er 65 minutter tilbage — påmindelsen skal hellere haste
  * lidt for meget end for lidt.
+ *
+ * "past"-grenen er bevidst UOPNÅELIG i dag og bliver stående som værn:
+ * serveren filtrerer allerede startede løb fra (`startMs <= nowMs → continue`,
+ * selectionWarningSweep.js), så `hours_until` er altid positiv i et gyldigt
+ * svar. Men tallet kommer fra netværket, og `normalizeSelectionReminder`
+ * validerer det ikke — uden grenen ville et negativt eller NaN-felt (ændret
+ * serverkontrakt, proxy der roder med JSON) rendere "in -3h" eller "in NaN h" i
+ * navigationens vigtigste advarsel. i18n-nøglen `selectionReminder.deadlinePassed`
+ * (en+da) findes udelukkende for denne gren og skal derfor blive.
  */
 export function deadlineCountdown(hoursUntil: number): DeadlineCountdown {
   if (!Number.isFinite(hoursUntil) || hoursUntil <= 0) return { unit: "past", value: 0 };

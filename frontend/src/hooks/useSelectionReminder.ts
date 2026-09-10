@@ -7,6 +7,7 @@
 // Et roligt interval dækker begge dele, og endpointet er read-only + cache-let.
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
 import {
   normalizeSelectionReminder,
   EMPTY_SELECTION_REMINDER,
@@ -27,15 +28,29 @@ export function useSelectionReminder(): {
   const [reminder, setReminder] = useState<SelectionReminder>(EMPTY_SELECTION_REMINDER);
   const [loaded, setLoaded] = useState(false);
 
-  const refetch = useCallback(async () => {
+  // #5089's delte request-lag: hooket mountes i Layout (hver eneste side) OG i
+  // PlanningHubPage, så /planning ville ellers fyre to uafhængige kald — hver
+  // med 5 Supabase-runder — ved mount og ved hvert interval-tick. TTL'en (60 s)
+  // dækker kun de samtidige kald; den udskyder ikke overgangen gul → rød.
+  const load = useCallback(async (force: boolean) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setReminder(EMPTY_SELECTION_REMINDER); return; }
-      const res = await fetch(`${API}/api/me/selection-reminder`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (!res.ok) { setReminder(EMPTY_SELECTION_REMINDER); return; }
-      setReminder(normalizeSelectionReminder(await res.json()));
+      if (force) sharedRequestCache.invalidate(SHARED_KEYS.selectionReminder);
+      const payload = await sharedRequestCache.get(
+        SHARED_KEYS.selectionReminder,
+        async () => {
+          // catch-ok: loaderens rejection bobler ud gennem sharedRequestCache.get()
+          // og fanges af catch'en nedenfor (fail-safe = ingen markering).
+          const res = await fetch(`${API}/api/me/selection-reminder`, { // catch-ok
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (!res.ok) throw new Error("selection_reminder_failed");
+          return res.json();
+        },
+        SHARED_TTL_MS.selectionReminder,
+      );
+      setReminder(normalizeSelectionReminder(payload));
     } catch {
       // Fail-safe: ingen markering. En påmindelse må aldrig vælte navigationen.
       setReminder(EMPTY_SELECTION_REMINDER);
@@ -44,11 +59,14 @@ export function useSelectionReminder(): {
     }
   }, []);
 
+  // Eksplicit refetch springer cachen over — kalderen beder om FRISKE tal.
+  const refetch = useCallback(() => load(true), [load]);
+
   useEffect(() => {
-    refetch();
-    const timer = setInterval(refetch, REFRESH_MS);
+    load(false);
+    const timer = setInterval(() => load(false), REFRESH_MS);
     return () => clearInterval(timer);
-  }, [refetch]);
+  }, [load]);
 
   return { reminder, loaded, refetch };
 }
