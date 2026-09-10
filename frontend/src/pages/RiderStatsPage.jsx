@@ -852,7 +852,11 @@ export default function RiderStatsPage() {
   // fordi selve beslutningen kræver den SAMME seedede motor-logik som backend
   // bruger ved cutover (announcedRetirementAfterSeason, riderProgression.js) og
   // derfor ikke kan genberegnes rent i klienten.
+  // #5073: svaret er nu GEMT på rytteren, og endpointet svarer også hvilken
+  // sæson varslet blev givet før — banneret siger det, så det læses som en
+  // afgjort kendsgerning og ikke et estimat der kan flytte sig.
   const [announcedRetirement, setAnnouncedRetirement] = useState(false);
+  const [retirementNoticeSeason, setRetirementNoticeSeason] = useState(null);
   const [visits, setVisits]                 = useState(null);
   const [seasonRows, setSeasonRows]         = useState([]);
   // Fejl-flag for resultat-hentningen (#1338-princippet): en query-fejl må ikke
@@ -1027,6 +1031,7 @@ export default function RiderStatsPage() {
     const fetchId = id;
     retirementStatusFetchIdRef.current = fetchId;
     setAnnouncedRetirement(false);
+    setRetirementNoticeSeason(null);
     try {
       const h = await authHeaders();
       if (!h) return; // #4347/#4348: ingen session — banneret vises bare ikke
@@ -1034,6 +1039,7 @@ export default function RiderStatsPage() {
       const data = await res.json();
       if (retirementStatusFetchIdRef.current !== fetchId) return;
       setAnnouncedRetirement(Boolean(data.announced_retirement));
+      setRetirementNoticeSeason(data.notice_season ?? null);
     } catch { /* non-critical: banneret vises bare ikke for den nye rytter */ }
   }, [id]);
 
@@ -1838,7 +1844,14 @@ export default function RiderStatsPage() {
       valueDelta: computeBidValueDelta(transferListing.asking_price, rider),
     };
   } else if (announcedRetirement) {
-    statusBanner = { kind: "finalSeason", season: seasonNumberFromReferenceYear(seasonYear) };
+    // #5073: `noticeSeason` er sæsonen varslet blev afgjort for (serverens
+    // gemte svar). Falder tilbage på den aktive sæson, så et ældre svar uden
+    // sæson-felt stadig viser banneret som før.
+    statusBanner = {
+      kind: "finalSeason",
+      season: seasonNumberFromReferenceYear(seasonYear),
+      noticeSeason: retirementNoticeSeason ?? seasonNumberFromReferenceYear(seasonYear),
+    };
   } else if (isAcademyRider) {
     statusBanner = { kind: "academy" };
   } else if (isMyRider && rider.contract_end_season != null) {

@@ -31,6 +31,7 @@ import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { developRiderSeason, buildCapsForRider, sameCaps } from "./riderProgression.js";
+import { frozenNoticeFor, isInSeededWindow, noticeFreezePatch } from "./retirementNotice.js";
 import { resolveTrainingModifier } from "./training.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
@@ -146,7 +147,9 @@ export async function developRidersForSeason({
     // den allerførste sæson-transition efter merge — præcis det #3345 fryser mod.
     fetchAllRows(() => supabase
       .from("riders")
-      .select("id, primary_type, secondary_type, valuation_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname")
+      // #5073: varsel-kolonnerne med — cutover SKAL læse det svar spilleren
+      // allerede har set, ikke rulle et nyt (se resolveSeasonRetirement).
+      .select("id, primary_type, secondary_type, valuation_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname, retirement_notice_season, retirement_notice_after_season, retirement_notice_given_at")
       .eq("is_retired", false)
       .order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
@@ -161,6 +164,8 @@ export async function developRidersForSeason({
     grew: 0, declined: 0, retired: 0, caps_initialised: 0,
     trained: 0,
     growth_skipped: 0,  // ryttere hvis vækst-trin springes over (anti-double-dip #1305)
+    retirement_notice_frozen: 0,  // ryttere hvis pensionsvarsel blev skrevet ned her (#5073)
+    retirement_notice_read: 0,    // ryttere hvor cutover LÆSTE et allerede frosset varsel (#5073)
   };
 
   for (const r of riders) {
@@ -197,8 +202,17 @@ export async function developRidersForSeason({
     const training = resolveTrainingModifier(plan, r.id, seasonNumber);
     if (training) summary.trained++;
 
+    // #5073: pensionen for den AFSLUTTEDE sæson (seasonNumber − 1) er et løfte
+    // rytterkortet allerede har vist. Er svaret frosset for netop den sæson,
+    // læses det; ellers rulles som hidtil — og resultatet skrives ned nedenfor,
+    // så det aldrig kan flytte sig igen. `endingSeason` er null ved kald uden
+    // sæsonnummer (tests/orchestrator), og så er adfærden præcis som før.
+    const endingSeason = seasonNumber != null ? Number(seasonNumber) - 1 : null;
+    const frozenRetirementNotice = endingSeason != null ? frozenNoticeFor(r, endingSeason) : null;
+    if (frozenRetirementNotice !== null) summary.retirement_notice_read++;
+
     const { next, retirement } = developRiderSeason(
-      { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age },
+      { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age, frozenRetirementNotice },
       abilities, caps, seasonNumber, undefined, training, { skipGrowth }
     );
 
@@ -227,6 +241,18 @@ export async function developRidersForSeason({
     if (newBaseValue != null) riderPatch.base_value = newBaseValue;
     if (newCpv != null) riderPatch.current_production_value = newCpv;
     if (retirement.retire) { riderPatch.is_retired = true; summary.retired++; }
+
+    // #5073: rullede motoren selv (intet frosset svar fandtes), skrives svaret
+    // ned nu — men KUN for ryttere i det seedede vindue, hvor der overhovedet er
+    // et rul der kan flytte sig. Uden for vinduet er svaret en ren alders-regel,
+    // og en frysning dér ville bare skjule en fremtidig bevidst ændring af
+    // windowStartAge/guaranteedAge. `apply_rider_development` skriver felterne
+    // i samme transaktion som pensioneringen selv (migration 2026-09-10-5073).
+    if (retirement.source === "rolled" && endingSeason != null
+        && isInSeededWindow(r, endingSeason)) {
+      Object.assign(riderPatch, noticeFreezePatch(endingSeason, retirement.retire));
+      summary.retirement_notice_frozen++;
+    }
 
     perRider.push({
       id: r.id,

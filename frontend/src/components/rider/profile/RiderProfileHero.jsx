@@ -80,6 +80,15 @@ function StatusBanner({ banner }) {
         <p className="mt-[7px] mb-0 text-[12.5px] text-cz-2 leading-[1.55]">
           {t("profile.banner.finalSeason", { season: banner.season })}
         </p>
+        {/* #5073: hvornår varslet blev givet. Varslet er en GEMT kendsgerning
+            (riders.retirement_notice_*), ikke et estimat der genberegnes ved
+            hver visning — datoen gør det tydeligt for spilleren. Kort linje,
+            mono/dæmpet, så den ikke konkurrerer med selve beskeden. */}
+        {banner.noticeSeason != null && (
+          <p className="mt-[7px] mb-0 font-mono text-3xs uppercase tracking-[0.1em] text-cz-3 tabular-nums">
+            {t("profile.banner.finalSeasonAnnounced", { season: banner.noticeSeason })}
+          </p>
+        )}
       </div>
     );
   }

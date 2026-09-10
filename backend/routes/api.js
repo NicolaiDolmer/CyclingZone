@@ -316,7 +316,10 @@ import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 import { applyTypeDampening } from "../lib/riderValuationTypeDampening.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ageForSeason } from "../lib/riderProgressionEngine.js";
-import { announcedRetirementAfterSeason } from "../lib/riderProgression.js";
+import {
+  RETIREMENT_NOTICE_COLUMNS,
+  resolveRetirementNotice,
+} from "../lib/retirementNotice.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
   annotateGoalWithIdentityBasis,
@@ -15253,24 +15256,35 @@ router.get("/riders/:id/view-count", requireAuth, async (req, res) => {
 // GET /api/riders/:id/retirement-status — #2748 pension-minimum: DEFINITIVT
 // pensions-varsel (ikke risiko-badget retirementRiskBadgeKey allerede viser).
 // Synligt for ALLE viewere (ingen ejerskabs-check) — hele pointen er at en
-// køber kan se det FØR et bud/handel, ikke kun ejeren. Deterministisk: samme
-// seed som season-transition-motoren rent faktisk vil bruge ved cutover til
-// NÆSTE sæson (announcedRetirementAfterSeason, riderProgression.js — se
-// funktionens kommentar for sporingen af hvorfor de to giver samme svar).
+// køber kan se det FØR et bud/handel, ikke kun ejeren.
+//
+// #5073: svaret er GEMT, ikke genberegnet. Kilden til sandhed er
+// riders.retirement_notice_* (se backend/lib/retirementNotice.js); først når der
+// ingen frysning findes for den aktive sæson beregnes svaret — én gang — med
+// announcedRetirementAfterSeason() og skrives ned. Cutover-stien
+// (riderProgressionEngine → developRiderSeason) læser SAMME kolonne, så
+// banneret og den faktiske pensionering aldrig kan sige to forskellige ting.
 router.get("/riders/:id/retirement-status", requireAuth, async (req, res) => {
   const { data: rider, error } = await supabase
     .from("riders")
-    .select("id, birthdate")
+    .select(`id, birthdate, ${RETIREMENT_NOTICE_COLUMNS}`)
     .eq("id", req.params.id)
     .maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
   if (!rider) return res.status(404).json({ error: "Rider not found" });
 
+  // #5073: kolonnen er kilden til sandhed. Findes der ingen frysning for den
+  // aktive sæson, beregnes svaret ÉN gang med den gældende regel og skrives ned
+  // (lazy freeze) — så en senere ændring af hash-funktionen bag rullet ikke kan
+  // flytte varslet midt i en sæson, sådan som #4990 gjorde 7/9.
   const seasonNumber = await getActiveSeasonNumber();
-  const announced = seasonNumber != null
-    ? announcedRetirementAfterSeason(rider, seasonNumber)
-    : false;
-  res.json({ announced_retirement: announced });
+  const notice = await resolveRetirementNotice(supabase, rider, seasonNumber);
+  res.json({
+    announced_retirement: notice.announced,
+    // Sæsonen varslet gælder — rytterkortet skriver "Announced before season N".
+    notice_season: notice.announced ? notice.season : null,
+    notice_given_at: notice.givenAt,
+  });
 });
 
 // POST /api/riders/:id/view — vis rytter-profil, log besøg (#963) + trigger evt. transferrygte
