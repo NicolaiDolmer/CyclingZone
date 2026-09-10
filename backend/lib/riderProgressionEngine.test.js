@@ -204,6 +204,106 @@ test("garanteret retirement ved 40 + notifikation til ejer-hold", async () => {
   assert.equal(notified[0].teamId, "team-1");
 });
 
+// ── #5073: pensionsvarslet er et LØFTE, ikke et rul der køres forfra ──────────
+// Kontrakten hviler på ÉT led motoren ejer alene: `endingSeason = seasonNumber − 1`.
+// Læste cutover frysningen for den NYE sæson i stedet for den afsluttede, ville
+// hele suiten være grøn (retirementNotice.test.js tester kun den rene
+// developRiderSeason) og fejlen først vise sig ved sæsonskiftet som en
+// pensionering der modsiger banneret. Derfor to tests HER, gennem
+// developRidersForSeason → apply_rider_development, ikke på den rene funktion.
+//
+// Rytteren: født 1990 ⇒ alder 38 i sæson 3 (det seedede vindue 36-39) og 39 ved
+// cutover til sæson 4. `r-ret-1` er valgt fordi dagens rul siger JA
+// (retirementDecision(38, "r-ret-1", 4).retire === true) — så et frosset "nej"
+// kan kun vinde hvis kolonnen faktisk læses.
+const NOTICE_RIDER = {
+  id: "r-ret-1", primary_type: "sprinter", potentiale: 4, birthdate: "1990-01-01",
+  base_value: 50000, is_u25: false, is_retired: false, team_id: null,
+  firstname: "Frossen", lastname: "Varsel",
+};
+
+test("#5073: et frosset 'nej' for den AFSLUTTEDE sæson blokerer pensioneringen ved cutover", async () => {
+  const state = seedState({
+    riders: [{
+      ...NOTICE_RIDER,
+      // Frysningen står for sæson 3 = den sæson der slutter når sæson 4 starter.
+      retirement_notice_season: 3,
+      retirement_notice_after_season: null,   // NULL = intet varsel ⇒ "nej"
+      retirement_notice_given_at: null,
+    }],
+    abilities: [{ rider_id: NOTICE_RIDER.id, sprint: 70, ability_caps: null }],
+  });
+  const supabase = createMockSupabase(state);
+  const summary = await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4, model: MODEL });
+
+  assert.equal(summary.retirement_notice_read, 1, "cutover skal LÆSE frysningen");
+  assert.equal(summary.retirement_notice_frozen, 0, "et allerede frosset svar må ikke skrives igen");
+  assert.equal(summary.retired, 0, "rullet siger ja — frysningen siger nej, og frysningen vinder");
+  assert.equal(state.riders[0].is_retired, false);
+  assert.equal(state.riders[0].retirement_notice_season, 3, "markøren må ikke flyttes til den nye sæson");
+});
+
+test("#5073: uden frysning ruller cutover og skriver svaret ned for sæson N−1", async () => {
+  const state = seedState({
+    riders: [{ ...NOTICE_RIDER }],   // ingen varsel-kolonner sat
+    abilities: [{ rider_id: NOTICE_RIDER.id, sprint: 70, ability_caps: null }],
+  });
+  const supabase = createMockSupabase(state);
+  const summary = await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4, model: MODEL });
+
+  assert.equal(summary.retirement_notice_read, 0, "der var intet frosset svar at læse");
+  assert.equal(summary.retirement_notice_frozen, 1, "motorens eget rul skal skrives ned");
+  assert.equal(summary.retired, 1, "rullet for (38, r-ret-1, sæson 4) siger ja");
+  // Off-by-one-guarden: frysningen hører til den AFSLUTTEDE sæson (3), aldrig
+  // den nye (4) — ellers ville banneret for sæson 4 læse et svar der blev
+  // afgjort for sæson 3 og sige det modsatte af rytterkortet.
+  assert.equal(state.riders[0].retirement_notice_season, 3);
+  assert.equal(state.riders[0].retirement_notice_after_season, 3, "han stopper EFTER sæson 3");
+  assert.ok(state.riders[0].retirement_notice_given_at, "et ja skal bære en dato");
+});
+
+test("#5073: mangler varsel-kolonnerne, kører sæsonskiftet videre uden dem (ingen tavs nul-sæson)", async () => {
+  // Er migrationen ikke applied når season-transition kører, fejler selectet.
+  // Uden fallbacken kaster developRidersForSeason, economyEngine sluger fejlen,
+  // og HELE sæsonen gennemføres uden rytterudvikling og uden en eneste
+  // pensionering. Her skal den i stedet hente rytterne uden varsel-kolonnerne og
+  // opføre sig præcis som før #5073: alt rulles, intet fryses.
+  const state = seedState({
+    riders: [{ ...NOTICE_RIDER }],
+    abilities: [{ rider_id: NOTICE_RIDER.id, sprint: 70, ability_caps: null }],
+  });
+  const base = createMockSupabase(state);
+  const missingColumn = {
+    code: "42703",
+    message: 'column riders.retirement_notice_season does not exist',
+  };
+  const supabase = {
+    rpc: base.rpc,
+    from(table) {
+      const q = base.from(table);
+      if (table !== "riders") return q;
+      return {
+        ...q,
+        select(columns) {
+          if (typeof columns === "string" && columns.includes("retirement_notice_season")) {
+            const dead = { range: () => Promise.resolve({ data: null, error: missingColumn }) };
+            dead.eq = () => dead;
+            dead.order = () => dead;
+            return dead;
+          }
+          return q.select(columns);
+        },
+      };
+    },
+  };
+
+  const summary = await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4, model: MODEL });
+  assert.equal(summary.developed, 1, "rytteren skal stadig udvikles");
+  assert.equal(summary.retired, 1, "rullet afgør pensionen som før #5073");
+  assert.equal(summary.retirement_notice_read, 0);
+  assert.equal(summary.retirement_notice_frozen, 1, "patchen bygges stadig — RPC'ens kolonneliste ignorerer den bare");
+});
+
 test("is_u25 opdateres når rytter passerer 25 (board #813 ser aldringen)", async () => {
   // født 2003 → ved sæson 1 (2026) er 23 (u25), ved sæson 4 (2029) er 26 (ikke u25)
   const state = seedState({

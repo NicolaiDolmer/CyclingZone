@@ -31,6 +31,12 @@ import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { developRiderSeason, buildCapsForRider, sameCaps } from "./riderProgression.js";
+import {
+  RETIREMENT_NOTICE_COLUMNS,
+  frozenNoticeFor,
+  isInSeededWindow,
+  noticeFreezePatch,
+} from "./retirementNotice.js";
 import { resolveTrainingModifier } from "./training.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
@@ -60,6 +66,47 @@ function defaultModel() {
     cachedModel = applyTypeDampening(JSON.parse(readFileSync(join(__dirname, "riderValuationModelV4.json"), "utf8")));
   }
   return cachedModel;
+}
+
+// #3345: valuation_type er med — sæson-progressionen genberegner
+// base_value/current_production_value for HVER aktiv rytter HVER sæson. Uden det
+// frosne felt ville denne sti stille revaluere hele populationen efter enhver
+// primary_type-reklassificering (#3325/#3343), på den allerførste
+// sæson-transition efter merge — præcis det #3345 fryser mod.
+const SEASON_RIDER_COLUMNS =
+  "id, primary_type, secondary_type, valuation_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname";
+
+// #5073: varsel-kolonnerne SKAL med — cutover læser det svar spilleren allerede
+// har set i stedet for at rulle et nyt (se resolveSeasonRetirement).
+//
+// Men de må ikke kunne vælte hele sæsonskiftet: er migrationen ikke applied endnu
+// (deploy før auto-migrate, eller en database uden migrationen), fejler selectet,
+// developRidersForSeason kaster, og economyEngine's try/catch sluger fejlen og
+// gennemfører sæsonskiftet UDEN nogen rytterudvikling og uden en eneste
+// pensionering — tavst, og først synligt en hel sæson senere. Fallbacken koster
+// ét ekstra kald i præcis det tilfælde og gør adfærden identisk med før #5073
+// (alt rulles, intet fryses; RPC'ens eksplicitte kolonneliste ignorerer bare
+// varsel-nøglerne i patchen). Fejlen logges så railway-log-watch kan se den.
+// schema-columns-ok: retirement_notice_* tilfoejes af
+// database/2026-09-10-5073-retirement-notice-column.sql i SAMME PR; snapshottet
+// opdateres foerst efter merge.
+async function fetchRidersForSeason(supabase) {
+  const load = (columns) => fetchAllRows(() => supabase
+    .from("riders")
+    .select(columns)
+    .eq("is_retired", false)
+    .order("id"));
+  try {
+    return await load(`${SEASON_RIDER_COLUMNS}, ${RETIREMENT_NOTICE_COLUMNS}`);
+  } catch (err) {
+    const message = err?.message || String(err);
+    if (!/retirement_notice/.test(message)) throw err;
+    console.error(
+      "[retirement-notice] cutover koerer UDEN varsel-kolonnerne (migration 2026-09-10-5073 ikke applied):",
+      message,
+    );
+    return load(SEASON_RIDER_COLUMNS);
+  }
 }
 
 async function runBatched(items, concurrency, fn) {
@@ -139,16 +186,9 @@ export async function developRidersForSeason({
 
   // ── Load aktive ryttere + abilities (+ loft) ──────────────────────────────────
   const [riders, abilityRows] = await Promise.all([
-    // #3345: valuation_type med i selectet — sæson-progressionen genberegner
-    // base_value/current_production_value for HVER aktiv rytter HVER sæson (linje
-    // ~200 nedenfor). Uden det frosne felt ville denne sti stille revaluere hele
-    // populationen efter enhver primary_type-reklassificering (#3325/#3343), på
-    // den allerførste sæson-transition efter merge — præcis det #3345 fryser mod.
-    fetchAllRows(() => supabase
-      .from("riders")
-      .select("id, primary_type, secondary_type, valuation_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname")
-      .eq("is_retired", false)
-      .order("id")),
+    // Kolonnelisten (og fallbacken når varsel-kolonnerne mangler) bor i
+    // fetchRidersForSeason ovenfor — se dér for #3345 og #5073.
+    fetchRidersForSeason(supabase),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
   ]);
   const abilityByRider = new Map(abilityRows.map((a) => [a.rider_id, a]));
@@ -161,6 +201,8 @@ export async function developRidersForSeason({
     grew: 0, declined: 0, retired: 0, caps_initialised: 0,
     trained: 0,
     growth_skipped: 0,  // ryttere hvis vækst-trin springes over (anti-double-dip #1305)
+    retirement_notice_frozen: 0,  // ryttere hvis pensionsvarsel blev skrevet ned her (#5073)
+    retirement_notice_read: 0,    // ryttere hvor cutover LÆSTE et allerede frosset varsel (#5073)
   };
 
   for (const r of riders) {
@@ -197,8 +239,17 @@ export async function developRidersForSeason({
     const training = resolveTrainingModifier(plan, r.id, seasonNumber);
     if (training) summary.trained++;
 
+    // #5073: pensionen for den AFSLUTTEDE sæson (seasonNumber − 1) er et løfte
+    // rytterkortet allerede har vist. Er svaret frosset for netop den sæson,
+    // læses det; ellers rulles som hidtil — og resultatet skrives ned nedenfor,
+    // så det aldrig kan flytte sig igen. `endingSeason` er null ved kald uden
+    // sæsonnummer (tests/orchestrator), og så er adfærden præcis som før.
+    const endingSeason = seasonNumber != null ? Number(seasonNumber) - 1 : null;
+    const frozenRetirementNotice = endingSeason != null ? frozenNoticeFor(r, endingSeason) : null;
+    if (frozenRetirementNotice !== null) summary.retirement_notice_read++;
+
     const { next, retirement } = developRiderSeason(
-      { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age },
+      { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age, frozenRetirementNotice },
       abilities, caps, seasonNumber, undefined, training, { skipGrowth }
     );
 
@@ -227,6 +278,18 @@ export async function developRidersForSeason({
     if (newBaseValue != null) riderPatch.base_value = newBaseValue;
     if (newCpv != null) riderPatch.current_production_value = newCpv;
     if (retirement.retire) { riderPatch.is_retired = true; summary.retired++; }
+
+    // #5073: rullede motoren selv (intet frosset svar fandtes), skrives svaret
+    // ned nu — men KUN for ryttere i det seedede vindue, hvor der overhovedet er
+    // et rul der kan flytte sig. Uden for vinduet er svaret en ren alders-regel,
+    // og en frysning dér ville bare skjule en fremtidig bevidst ændring af
+    // windowStartAge/guaranteedAge. `apply_rider_development` skriver felterne
+    // i samme transaktion som pensioneringen selv (migration 2026-09-10-5073).
+    if (retirement.source === "rolled" && endingSeason != null
+        && isInSeededWindow(r, endingSeason)) {
+      Object.assign(riderPatch, noticeFreezePatch(endingSeason, retirement.retire));
+      summary.retirement_notice_frozen++;
+    }
 
     perRider.push({
       id: r.id,
