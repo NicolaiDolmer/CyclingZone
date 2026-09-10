@@ -5,9 +5,9 @@ Fem eksisterende featureejere er opdateret; direkte kommentarlinks står i GITHU
 
 **Overdraget af Nicolai 10/9 2026.** Codex-sessionen er afsluttet på ejerens
 ønske om at fortsætte i Claude og spare Codex-tokens. Den samlede GDD er fortsat
-`in_progress`. **Opdateret 10/9 kl. 15:15 (Claude Code):** sidste svar er D-039 (Q-043,
-akademi-intake); Q-037 er parkeret til spillerafstemning; intet spørgsmålskort er
-åbent. Q-044 er ikke stillet. Samme dag løftede
+`in_progress`. **Opdateret 10/9 kl. 15:40 (Claude Code):** sidste svar er D-041 (Q-045,
+omdømme, med forbehold); Q-037 er parkeret til spillerafstemning; intet spørgsmålskort
+er åbent. Q-046 er ikke stillet. **Læs `REPUTATION_RESEARCH.md` før næste omdømme-kort.** Samme dag løftede
 ejeren trupper U23/junior til nr. 3 på MASTERPLANs venteliste (planvalg, ikke GDD-beslutning). Mentortråden (D-026 til D-031) er
 konceptuelt samlet; næste kapitler vælges efter spillerdata i `docs/audits/2026-09-10-*`. **Betjeningsregel fra ejeren
 10/9:** ét område pr. kort (fog of war/synlighed er eget kapitel, ikke en del af
@@ -97,6 +97,8 @@ Denne tabel er et kort; DECISIONS og de ordrette svar er detaljerne.
 | D-037 | Dag 1: første session er én ledet bane, der ender i spillerens første løb (draft → egen udtagelse → én taktik → resultat med indsatskort); auktion/træning/bestyrelse åbner bagefter. Afstand til første løb måles før build. (Claude Code 10/9) |
 | D-038 | Dag 2-7: hændelsesdrevet krog ("dit løb er kørt" med indsatskort og næste skridt) erstatter dag 1-tips, når der er et resultat; ingen besked uden hændelse i uge 1. Samtykke-hjemmel ikke juridisk efterprøvet. (Claude Code 10/9) |
 | D-039 | Akademi-intake: kuldet trækkes med overvægt mod klubbens ønskede profil (nationalitet/region + type), aldrig udelukkende; driveren er akademifaciliteten (D-032), ikke scoutniveau; potentialefordeling ens for alle. (Claude Code 10/9, ejerens præcisering bevaret) |
+| D-040 | Klubidentitet: retning erklæres som 2-3 valg fra et BREDT katalog (primær/sekundær); mandatet udledes af retningerne; DNA-pakker bliver forudfyldte kombinationer. Katalog, antal og DNA-migration åbne. (Claude Code 10/9, ejerens tilføjelse bevaret) |
+| D-041 | Omdømme: "kendt for"-mærker optjent af handlinger, ikke ét tal; ejerens udvidelse: omdømme er et netværk for hold, lande, managers, personale, ryttere og løb, der påvirker hinanden. FORBEHOLD: eksisterende planer om omdømme/fans/merchandise læses først (`REPUTATION_RESEARCH.md`). (Claude Code 10/9) |
 | Q-037 | PARKERET: hvad andre managere ser om nuværende evner; forum-afstemning med billede i `docs/drafts/forum-poll-fog-of-war-2026-09-10.md`, ejeren poster selv. |
 
 R-001: følg egen avl med FM-inspiration. R-002: undersøg kategori/debuter og

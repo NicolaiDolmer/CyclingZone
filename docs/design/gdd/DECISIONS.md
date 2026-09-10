@@ -1410,6 +1410,99 @@ stadig andre typer/nationaliteter; potentialefordelingen i kuldet er
 uafhængig af facilitetstrin; to klubber med samme trin og forskellig profil
 får samme kvalitet, forskellig sammensætning.
 
+## Q-044 · Hvordan erklærer manageren sin retning?
+
+**Status:** stillet 10/9 (Claude Code) som første kort i kapitlet "klubidentitet
+og ambitioner" (ejerens valg af kapitel kl. 15:20); tre kolonner (colombiansk
+sprinterfabrik). Første option valgt med tilføjelse, se D-040.
+**A, anbefalet:** 2-3 retninger fra et fast katalog (fx udvikle unge, vinde
+etapeløb, klassikere, national profil, sprint, stabil økonomi) med primær/
+sekundær vægt; bestyrelsens mandat udledes af retningerne; DNA-pakkerne bliver
+forudfyldte kombinationer. **B:** én af fem DNA-pakker (som reworket).
+**C:** fri ambition i egne ord.
+**Tradeoff:** A er målbar for bestyrelsen (D-003), læsbar for andre managere
+(omdømme) og forståelig for spilleren, og omlægning følger D-009; B rummer
+ikke frie kombinationer (D-002's begrundelse); C kan bestyrelsen ikke måle.
+Kilder: D-002/D-003/D-009, BOARD_RULES §0 (reworket bevarer DNA-pakkerne,
+Mandatet i beta, flip ejer-gated #4859), E-003 (genvalgslås), V-001.
+
+## D-040 · Retning erklæres som 2-3 valg fra et bredt katalog
+
+**Status:** ejer-valgt 10/9, svar på Q-044, med ejerens tilføjelse.
+**Ejerens svar, ordret:** "1 - Gerne med endnu flere muligheder der passer godt ind i spillet."
+Manageren erklærer klubbens retning som 2-3 valg fra et fast katalog med
+primær og sekundær vægt. **Kataloget skal være bredt**: flere muligheder end
+kortets seks eksempler, så længe hver mulighed passer ind i spillet og kan
+måles af bestyrelsen (D-003). Bestyrelsens årlige mandat udledes af de valgte
+retninger. De eksisterende fem DNA-pakker bliver forudfyldte kombinationer af
+retninger, ikke låse. Omlægning sker ved at ændre retninger (på årsmødet eller
+en ekstraordinær samtale, jf. BOARD_RULES §0.1); modstanden er trup, kontrakter
+og optjent omdømme (D-009), ingen særskilt skiftepris.
+**Fravalgt:** DNA-pakker som eneste model (B); fri tekst (C).
+**Åbent:** katalogets konkrete retninger og antal (kandidater ud over kortets
+seks: hjemmeavlede stjerner (D-001/D-011), klassikere pr. terræn (brosten,
+bakker), bjerg/GT-klassement, holdløb/TTT, ungdomsløb, økonomisk overskud,
+regional/national profil, veteran-mentorklub (D-026), fair play/omdømme),
+hvor mange retninger der må vælges, vægtenes betydning i mandatet, hvordan
+eksisterende DNA-valg migreres (E-003's genvalgslås), og hvordan retninger
+vises offentligt. Ingen bonus, frist eller vægt er vedtaget; reworkets
+release (#4859) er uændret. Ingen build-go.
+**Foreslået verifikation:** en colombiansk sprinterfabrik og et dansk
+GT-hold kan begge udtrykke sig præcist i kataloget; bestyrelsens mandat
+stiller kun krav inden for de valgte retninger; en klub uden valgte
+retninger får et neutralt mandat, ikke et tilfældigt.
+
+## Q-045 · Hvad er omdømme, og hvor kommer det fra?
+
+**Status:** stillet 10/9 (Claude Code), tre kolonner (sprinterfabrikken efter to
+sæsoner, set af en anden manager). Første option valgt med et vigtigt forbehold
+og en udvidelse, se D-041. **A, anbefalet:** offentlige "kendt for"-mærker pr.
+retning, optjent af dokumenterede handlinger over sæsoner, falmer langsomt,
+påvirker bestyrelsens tillid, akademikuldet og andres forventninger; ingen
+skjult score. **B:** ét omdømmetal (FM-stil) af resultater/rangliste.
+**C:** ingen omdømme, kun offentlig historik.
+**Tradeoff:** A gør omdømme efterprøveligt (D-013) og lader mekanikker reagere
+på det; B belønner kun sportslig styrke (talentfabrikken taber); C har ingen
+mekanik. Kilder: D-002, D-013, D-039, D-040, `riders.reputation` og
+`rider_reputation_events` i skemaet (eksisterende rytteromdømme, ikke læst
+i detaljer før kortet; se forbeholdet i D-041).
+
+## D-041 · Omdømme optjenes af handlinger, som et netværk mellem hold, lande, managers, personale, ryttere og løb
+
+**Status:** ejer-valgt 10/9 med forbehold, svar på Q-045.
+**Ejerens svar, ordret:** "Vi kan godt prøve 1 - Men så skal du huske lige at
+læse de øvrige ting vi har planlagt angående omdømme, fans, merchandise - Men
+særligt omdømme. Jeg vil gerne have, at der bygges omdømme for hold, lande,
+managers, personale, ryttere og løb f.eks. Altså skal have omdømme, sådan at
+ryttere får mere omdømme, af at vinde løb med højt omdømme. Løbs omdømme skal
+stige efter hvor gode ryttere der kommer med til løbene mv."
+**Valgt princip:** klubbens omdømme er offentlige "kendt for"-mærker, optjent
+af dokumenterede handlinger over sæsoner, ikke af erklæringer alene og ikke
+som ét tal. **Ejerens udvidelse (bindende retning):** omdømme er ikke kun
+klubbens; det er et **netværk** med omdømme for hold, lande, managers,
+personale, ryttere og løb, hvor størrelserne påvirker hinanden: en rytter
+får mere omdømme af at vinde et løb med højt omdømme; et løbs omdømme stiger
+med kvaliteten af de ryttere, der stiller op; klubbens mærker bygger på
+rytternes og løbenes omdømme, og så videre.
+**Forbehold (ejerens krav):** før noget konkret designes, skal de eksisterende
+planer om omdømme, fans og merchandise læses og afstemmes: kendte spor er
+`riders.reputation` + `rider_reputation_events` (kode), race-prestige i
+kalenderen, SOCIAL_RULES, klubmuseum/verdenshistorik (#1154, #2359) og
+issues om fans/merchandise. Denne læsning er sat i gang som research
+(`REPUTATION_RESEARCH.md` i denne mappe, worker 10/9); D-041 er retningen,
+ikke en færdig model.
+**Fravalgt:** ét samlet omdømmetal (B); ingen omdømme (C).
+**Åbent:** hvilke handlinger der giver mærker og tærskler, falmning,
+netværkets præcise koblinger (rytter↔løb↔hold↔manager↔land↔personale),
+forholdet til eksisterende `riders.reputation`, hvordan fans og merchandise
+hænger på omdømmet (økonomi), og hvad der vises offentligt (fog of war-kapitlet).
+Ingen build-go.
+**Foreslået verifikation:** to klubber med samme resultater, men forskellige
+handlinger (den ene udvikler og sælger unge, den anden køber), får forskellige
+mærker; en rytter der vinder et stort løb får mere omdømme end af et lille;
+et løb med stærkere startfelt får højere omdømme over tid; ingen af delene
+kan opnås ved at erklære noget uden at handle.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code

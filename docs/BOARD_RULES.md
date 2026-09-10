@@ -99,6 +99,10 @@ erstatning for det byggede DNA-, mål- eller konsekvenssystem**:
   sletter ikke aftalte forpligtelser. Konkrete regler for genforhandling og
   overgangen fra den eksisterende DNA-genvalgslås skal stadig designes.
 
+- **D-040 (Claude Code, 10/9, ejerens ord "gerne med endnu flere muligheder"):**
+  retningen erklæres som 2-3 valg fra et bredt katalog med primær/sekundær vægt;
+  mandatet udledes af retningerne; de fem DNA-pakker bliver forudfyldte kombinationer.
+  Katalog, antal, vægte og DNA-migration er åbne; #4859's release er uændret.
 Begrundelser og ejerens svar: [GDD-beslutninger](design/gdd/DECISIONS.md).
 Før et konkret redesign: afklar målbare succeskriterier, modstand/konsekvenser,
 omdømmets kilder og forholdet til eksisterende mandater. Ingen nye bonusser,

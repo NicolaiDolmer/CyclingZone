@@ -101,6 +101,18 @@ overgang for eksisterende mandater og DNA skal fortsat designes.
 
 [Bestyrelsens SSOT](BOARD_RULES.md) ejer de konkrete regler. Det eksisterende
 Mandat-rework bevarer DNA-valget og skal ikke forveksles med denne nye retning.
+**D-040 (ejer-valgt 10/9 med tilføjelse):** retningen erklæres som 2-3 valg
+fra et bredt katalog med primær og sekundær vægt ("gerne med endnu flere
+muligheder der passer godt ind i spillet"). Bestyrelsens mandat udledes af
+retningerne; de fem DNA-pakker bliver forudfyldte kombinationer, ikke låse.
+Kataloget, antallet og migrationen fra DNA er åbne; reworkets release er uændret.
+**D-041 (ejer-valgt 10/9 med forbehold):** omdømme er "kendt for"-mærker
+optjent af handlinger, ikke ét tal, og ejeren udvidede det til et netværk:
+hold, lande, managers, personale, ryttere og løb har hver sit omdømme, og de
+påvirker hinanden (en rytter vinder omdømme ved at vinde et løb med højt
+omdømme; et løbs omdømme stiger med feltets kvalitet). Eksisterende planer om
+omdømme, fans og merchandise skal læses og afstemmes, før noget designes
+konkret (research i `design/gdd/REPUTATION_RESEARCH.md`).
 ### Bestyrelsen og managerens retning (D-003, ejer-godkendt 10/9)
 
 Bestyrelsen udfordrer planens kvalitet inden for managerens valgte klubidentitet.
@@ -428,3 +440,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   (indsatskort pr. rytter efter løbet) valgt. D-037 om første session og
   D-038 om den hændelsesdrevne krog valgt (kapitel: dag 1 og de første 7 dage).
   D-039 om profilstyret akademikuld drevet af faciliteten valgt (ejerens præcisering).
+  D-040 om retning fra et bredt katalog valgt (kapitel: klubidentitet og ambitioner).
+  D-041 om omdømme som netværk valgt med forbehold om at læse eksisterende planer.

@@ -496,11 +496,43 @@ Registreret som D-039: profilstyret kuld med overvægt, drevet af
 akademifaciliteten (ikke scoutniveau, som designeren foreslog). Tilføjelsen er
 bevaret som en del af beslutningen ("1 + ..."-reglen).
 
+## Kapitelvalg 10/9 kl. 15:20, ejerens svar ordret
+
+> B · Klubidentitet og ambitioner
+
+## Q-044 · Erklæret retning, ejerens svar ordret (10/9 kl. 15:30)
+
+> 1 - Gerne med endnu flere muligheder der passer godt ind i spillet.
+
+Registreret som D-040: 2-3 retninger fra et BREDT katalog med primær/sekundær
+vægt; tilføjelsen om flere muligheder er bevaret som en del af beslutningen.
+
+## Q-045 · Omdømme, ejerens svar ordret (10/9 kl. 15:40)
+
+> Vi kan godt prøve 1 - Men så skal du huske lige at læse de øvrige ting vi har planlagt angående omdømme, fans, merchandise - Men særligt omdømme. Jeg vil gerne have, at der bygges omdømme for hold, lande, managers, personale, ryttere og løb f.eks. Altså skal have omdømme, sådan at ryttere får mere omdømme, af at vinde løb med højt omdømme. Løbs omdømme skal stige efter hvor gode ryttere der kommer med til løbene mv.
+
+Registreret som D-041 med forbehold: eksisterende planer om omdømme, fans og
+merchandise skal læses først (research sat i gang som worker, resultat i
+`REPUTATION_RESEARCH.md`). Ejerens netværksmodel (hold, lande, managers,
+personale, ryttere, løb) er bindende retning.
+
+## Ejerens tilføjelse til planen, samme minut (ordret)
+
+> Markedsføring / søgemaskine optimering er også meget vigtig
+> Hastigheds optimering af hjemmesiden er meget vigtigt
+> Mobiloptimering af hele hjemmesiden er også meget vigtigt.
+> Disse ting ønsker jeg også, bliver en del af vores plan.
+> Derudover inde i selve masterplanen har jeg svært ved at se hvor bestyrelsen er en del af den plan?
+
+Håndteret i MASTERPLAN (ikke GDD): vækst-fundament (SEO/markedsføring,
+hastighed, mobil) skrevet ind i bane 2; bestyrelsen gjort synlig ved navn i bane 1
+(Mandatet-flippet) og i ventelisten (D-040/D-041).
+
 ## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-043/D-039 (profilstyret kuld, faciliteten som driver). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-044 er ikke stillet.
-- Næste skridt: nyt kapitel efter ejerens valg (kandidater: økonomi/marked "svært at sælge"; klubidentitet og ambitioner, D-002's åbne del; Ro under pres/Træningsdisciplin). Fog of war når spillerne har stemt.
+- Sidste svar: Q-045/D-041 (omdømme som netværk, med forbehold om at læse eksisterende planer). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-046 er ikke stillet.
+- Næste skridt: læs `REPUTATION_RESEARCH.md` (worker 10/9) FØR næste omdømme-kort; derefter økonomi/marked. Fog of war når spillerne har stemt.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
