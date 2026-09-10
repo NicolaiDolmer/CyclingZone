@@ -448,11 +448,15 @@ export const MOBILE_COLUMN_ACTION = /^(Action|Handling)$/;
 
 export async function revealMobileTableColumn(page, label) {
   if ((page.viewportSize()?.width ?? 1280) > 640) return;
-  const chips = page
+  const chip = page
     .getByRole("group", { name: /^(Choose columns|Vælg kolonner)$/ })
-    .getByRole("button", { name: label });
-  if ((await chips.count()) === 0) return;
-  const chip = chips.first();
+    .getByRole("button", { name: label })
+    .first();
+  // Vent AKTIVT paa chippen i stedet for at springe over naar den ikke er
+  // tegnet endnu: en `count() === 0`-udvej gjorde helperen til en stille no-op
+  // naar den blev kaldt lige efter `page.goto()`, og fejlen dukkede foerst op
+  // som en timeout paa den knap kolonnen skulle have hentet frem.
+  await chip.waitFor({ state: "visible" });
   if ((await chip.getAttribute("aria-pressed")) === "true") return;
   await chip.click();
   await expect(chip).toHaveAttribute("aria-pressed", "true");
