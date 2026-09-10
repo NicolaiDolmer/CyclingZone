@@ -18,6 +18,19 @@ der oprettes derfor ikke separate dubletter om de samme temaer. #4850's
 eksisterende tidsomlægning og ejerdeadline gøres ikke afhængig af alle nye
 forslag uden særskilt planbeslutning. Ejerens prioriteringslabels bevares.
 
+## Issue-runde 2, Claude Code 10/9 (D-029 til D-046)
+
+Kommentarer med beslutningen på eksisterende ejere: #1177 + #1154 (mentor, Lederskab),
+#4619 + #4620 (ungdomskapacitet, ingen udlån), #4201 + #4983 (sen udfyldning + påmindelse,
+#4983 sat til priority:high), #3957 (fyld til gulvet), #1140 (første session), #2853 + #4964
+(hændelsesdrevet krog), #1239 + #3514 (retninger), #1099 (omdømme-netværk), #3595
+(sponsorbonus), #4265 (sponsor/bestyrelse), #1310 (kun mennesker byder), #1375/#1602/#1301/#4067
+(vækst-fundament). Nye issues, kun hvor ingen ejer fandtes: #5101 indsatskort pr. rytter
+(D-036) · #5103 onboarding-trin 4 flipper uden handling (bug) · #5104 mål afstand til første
+løb (D-037) · #5105 profilstyret akademikuld (D-039) · #5106 omdømme-netværk løb/personale +
+popularitet → omdømme (D-041/D-045/D-046) · #5107 fog of war-afstemning (Q-037) · #5102 ny
+mobil-tabelstandard (ejer 10/9 ved go-kortet). Alle er designretninger, ikke build-go.
+
 ## Samlet GDD-opfølgning
 
 **Oprettet: [#5087 — Samlet Game Design Document og fortsat designinterview](https://github.com/NicolaiDolmer/CyclingZone/issues/5087).**
