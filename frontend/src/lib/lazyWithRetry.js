@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { getErrorText, isChunkLoadError } from "./chunkErrors.js";
+import { getErrorText, getRecentPreloadError, isChunkLoadError } from "./chunkErrors.js";
 
 // Wraps React.lazy så stale-chunk-fejl efter et deploy bliver recoverable.
 //
@@ -13,9 +13,25 @@ import { getErrorText, isChunkLoadError } from "./chunkErrors.js";
 // Fix: fang import-fejlen i factory'en. Ét stille retry (dækker transiente netværks-blips
 // / mid-deploy races); ved vedvarende fejl kast en *genkendelig* ChunkLoadError, så
 // SentryBoundary + vite:preloadError-reload-stien engagerer korrekt.
-function validateModule(module) {
+//
+// #4595: fejlen der kastes skal være browserens EGEN — den er den eneste der
+// bærer URL'en på det chunk der fejlede. Se validateModule nedenfor og
+// onPreloadError i chunkErrors.js.
+function validateModule(module, options = {}) {
   if (module?.default != null) return module;
 
+  // #4595: et tomt modul er næsten altid en preload-fejl der blev slugt —
+  // Vites helper returnerer `undefined` fra sit `.catch()`, hvis nogen har
+  // preventDefault'et `vite:preloadError`. Den ægte fejl (MED chunk-URL'en)
+  // ligger i `event.payload` og er gemt af chunkErrors.js. Kast DEN, ikke en
+  // syntetisk streng uden URL: ellers har hverken retry'et eller cache-purgen
+  // noget at arbejde med, og Sentry ser vores egen tekst i stedet for
+  // browserens (CYCLINGZONE-56).
+  const preloadError = options.preloadError ?? getRecentPreloadError();
+  if (preloadError) return Promise.reject(preloadError);
+
+  // Ingen preload-fejl i nærheden ⇒ modulet manglede reelt sin default-export.
+  // Navnet holdes som ChunkLoadError, så recovery-stien stadig engagerer.
   const error = new Error(
     "Failed to fetch dynamically imported module: resolved to an invalid module without a default export",
   );
@@ -67,7 +83,12 @@ export async function purgeStaleChunkFromCache(error, options = {}) {
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   if (typeof fetchFn !== "function") return [];
 
-  const direct = chunkUrlFromError(error);
+  // #4595: fejlteksten først, derefter den gemte `vite:preloadError`-payload
+  // (den bærer URL'en når fejlen nåede os uden den, fx React.lazy's interne
+  // "_result"-varianter), og først til sidst dokumentets modul-URL'er.
+  const direct =
+    chunkUrlFromError(error) ??
+    chunkUrlFromError(options.preloadError ?? getRecentPreloadError());
   const urls = direct ? [direct] : moduleUrlsFromDocument(doc);
   if (urls.length === 0) return [];
 
@@ -99,13 +120,16 @@ export async function purgeStaleChunkFromCache(error, options = {}) {
 
 export async function loadWithRetry(importFn, options = {}) {
   try {
-    return await validateModule(await importFn());
+    return await validateModule(await importFn(), options);
   } catch (err) {
     if (!isChunkLoadError(err)) throw err;
     try {
-      // Transient? Ét retry. Hjælper ikke hvis chunk-hash'en permanent er væk —
-      // men så kaster vi nedenfor en genkendelig fejl der trigger reload (frisk index.html).
-      return await validateModule(await importFn());
+      // Transient? Ét retry. Hjælper ikke hvis chunk-hash'en permanent er væk
+      // (browserens module map husker en fejlet modul-load) — men det redder
+      // den fejlede CSS-preload: Vites `seen`-map springer dep'en over anden
+      // gang, så modulet loader. Ved vedvarende fejl kaster vi nedenfor en
+      // genkendelig fejl der trigger reload (frisk index.html).
+      return await validateModule(await importFn(), options);
     } catch (retryErr) {
       // #4595: rens en evt. cachet 404 ud af browser-cachen FØR fejlen bobler op
       // til reload-stien. Uden dette reloader vi ind i præcis samme cachede 404.
