@@ -1580,8 +1580,18 @@ export default function TrainingPage() {
                   <thead>
                     <tr>
                       {/* Sticky sammen med navne-headeren nedenfor (#2446) — fast w-10 så
-                          offsettet på navne-kolonnen (left-10) matcher præcis. */}
-                      <th className={`${thClass({ pinned: true })} sticky-name-cell sticky left-0 w-10`}>
+                          offsettet på navne-kolonnen (left-10) matcher præcis.
+                          #5060: `compact` (px-2), ikke thClass' default px-4. Kolonnens
+                          brede er auto-layoutens MAX af de to cellers preferred width, og
+                          med px-4 var headerens indhold 16px checkbox + 32px polstring =
+                          48px. `w-10` (40px) taber mod et større min-content, så kolonnen
+                          blev 48px bred mens navnecellen blev pinnet på `left-10` = 40px —
+                          navnekolonnen sprang 8px ind UNDER checkbox-kolonnen i samme
+                          oejeblik man scrollede vandret (maalt paa baade mobile-chromium og
+                          mobile-webkit, 8px). px-2 matcher kroppens celle nedenfor, saa
+                          min-content (32px) er under de 40px og kolonnen bliver praecis
+                          w-10 — samme tal som offsettet. */}
+                      <th className={`${thClass({ pinned: true, compact: true })} sticky-name-cell sticky left-0 w-10`}>
                         <input
                           type="checkbox"
                           checked={allSelected}
