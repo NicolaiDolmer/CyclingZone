@@ -322,13 +322,22 @@ ekstra støtte kommer af bedre samarbejde inden for ordrerne eller ekstra
 faktisk arbejde og træthed. Relationens data og konkrete samarbejdshændelser
 er ikke valgt; heller ikke Lederskabs afgrænsning.
 
+## Q-027 · Samarbejde inden for ordrerne, ejerens svar ordret
+
+> Bedre samarbejde inden for de valgte ordrer, uden automatisk ekstra træthed (anbefalet)
+
+Registreret som D-024, afstemt i RACE_ENGINE_RULES. Kaptajnens tilføjede effekt
+forbedrer koordinering frem for automatisk at kræve mere arbejde. Q-028 spørger
+til et makkerpars samspil ved fælles klubskifte. Checkpoint `b93d1d9b` er pushet
+og bevarer beslutninger gennem D-023 og Q-027 som dengang åben.
+
 ## Handoff · Genoptaget, 10/9 2026
 
 - Aktivt arbejde: samlet GDD og kritisk interview, status `in_progress`, genoptaget af ejer.
-- D-022/D-023 vælger hjælper/kaptajn/startvirkning; Q-027 om kræfter og ordrer står åbent. Hold kortet åbent.
-- Næste skridt: afklar pris/koordination, samarbejdshistorik og Lederskabs afgrænsning; øvrige kandidater er åbne.
+- D-024 vælger bedre koordinering; Q-028 om samspil ved klubskifte står åbent. Hold kortet åbent.
+- Næste skridt: afklar historik mellem ryttere og Lederskabs afgrænsning; øvrige kandidater og erfaringsdetaljer er åbne.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001, D-001–023 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
+- V-001, D-001–024 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

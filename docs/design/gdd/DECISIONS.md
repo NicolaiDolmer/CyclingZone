@@ -874,7 +874,7 @@ evne kan have forskellig støtte; en ny kaptajn må ikke få fiktiv fælles hist
 
 ## Q-027 · Kaptajnens ekstra hjælp og hjælpernes kræfter
 
-**Status:** stillet 10/9; afventer.
+**Status:** besvaret 10/9; A valgt, se D-024.
 **A, anbefalet:** bedre samarbejde inden for managerens roller og indsatsordrer;
 en bedre kaptajn udløser ikke automatisk ekstra træthed hos hjælperne.
 **B:** mere faktisk arbejde pga. villighed, med ekstra træthed til planlægningen.
@@ -882,6 +882,31 @@ Begge modeller skal have reel pris på holdarbejdet og begrænset effekt.
 Dette afklarer kaptajnens tilføjede kanal i D-022, ikke den allerede valgte
 hjælpervirkning for samme egen indsats. Kilder: D-022/D-023, RACE_ENGINE_RULES §2e
 og managerens handlefrihed i V-001/D-008. Ingen ny belastningsformel er valgt.
+
+## D-024 · Bedre koordinering uden automatisk ekstra træthed
+
+**Status:** ejer-valgt 10/9, svar på Q-027.
+**Ejerens svar, ordret:** "Bedre samarbejde inden for de valgte ordrer, uden automatisk ekstra træthed (anbefalet)".
+Kaptajnens egenskab og samarbejde skal give bedre koordinering inden for
+managerens valgte roller og indsatsordrer. En bedre kaptajn udløser ikke
+automatisk ekstra træthed hos hjælperne. **Fravalgt:** villighed som ekstra
+faktisk arbejde og ekstra træthed i denne kanal. Holdarbejdet har stadig
+reel pris og begrænset effekt; valget er ikke gratis eller ubegrænset kraft.
+**Åbent:** effektgrænser, samspillets historie og afgrænsning fra Lederskab.
+Kilder: D-022/D-023, RACE_ENGINE_RULES §2e (afstemt).
+**Foreslået verifikation:** ændret kaptajnkvalitet kan forbedre støtten uden
+at ændre hjælpernes indsatsordre eller automatisk øge deres belastning.
+
+## Q-028 · Hvem ejer det opbyggede samspil?
+
+**Status:** stillet 10/9; afventer.
+Kaptajn og fast hjælper med flere sæsoners godt samarbejde købes samlet.
+**A, anbefalet:** deres indbyrdes samspil følger rytterne til den nye klub;
+samarbejde med øvrige ryttere skal opbygges. **B:** samspil tilhører klubben
+og skal genopbygges efter klubskiftet.
+**Tradeoff:** A giver kontinuitet og makkerpar værdi ved transfer, men kræver
+historik mellem konkrete ryttere. Det foreslår ikke en ny købsprisformel eller
+en bonus til alle i den nye klub. Kilder: D-023/D-024, RACE_ENGINE_RULES §2e.
 
 ## E-008 · Evneinventar og FM-inspiration
 

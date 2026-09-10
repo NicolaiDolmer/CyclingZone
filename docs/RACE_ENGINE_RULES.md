@@ -7,11 +7,13 @@
 > er ændret af denne retning; konkrete erfaringstyper og udbytte skal designes.
 > **D-022:** højere Holdarbejde hos en hjælper skal primært give mere brugbar
 > hjælp for samme egen indsats. Ejeren ønsker også, at en kaptajns høje Holdarbejde
-> kan få mere hjælp ud af holdet, begrundet i hans støtte til andre. Stat kontra
-> fælles historie samt den ekstra hjælps pris afklares særskilt; §2e's eksisterende
-> begrænsninger gælder fortsat. Se [D-022/Q-026](design/gdd/DECISIONS.md).
+> kan få mere hjælp ud af holdet, begrundet i hans støtte til andre. De valgte
+> præciseringer står i D-023/D-024 nedenfor; §2e's begrænsninger består.
+> Se [beslutningerne](design/gdd/DECISIONS.md).
 > **D-023:** kaptajnens egenskab giver en startvirkning; faktisk godt samarbejde
-> med holdet kan styrke den. Prisen/ordrerne i den ekstra støtte afklares i Q-027.
+> med holdet kan styrke den. **D-024:** den ekstra støtte er bedre samarbejde
+> inden for de valgte roller/indsatsordrer, uden automatisk ekstra træthed.
+> Holdarbejdet har fortsat reel pris og begrænset effekt. Q-028 afklarer samspil ved klubskifte.
 
 > **Læs denne FØR enhver opgave der rører motoren, ruter, taktik eller resultater.** Ejer-direktiv 25/8 2026 ([#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)): *"Det må ALDRIG NOGENSINDE ske, at du ikke bruger et SSOT-dokument, når vi rent faktisk har lavet et."*
 

@@ -135,3 +135,7 @@ Ejeren svarede med researchønske R-002; dette var ikke et valgt A/B-udfald.
 ## Q-027 · Ekstra hjælp og træthed
 
 > Når en respekteret kaptajn får ekstra hjælp fra holdet, skal hjælperne så bruge flere kræfter end ellers? Jeg anbefaler, at kaptajnen først og fremmest får holdet til at samarbejde bedre inden for de valgte roller og indsatsordrer. Hjælperne bliver dermed ikke automatisk mere trætte, blot fordi de får en bedre kaptajn. Alternativt kan deres villighed udløse mere faktisk arbejde og dermed ekstra træthed, som manageren skal tage med i planlægningen. Begge modeller skal respektere, at holdets hjælp har en reel pris og ikke kan vokse ubegrænset.
+
+## Q-028 · Samspil ved klubskifte
+
+> Du køber en kaptajn og hans faste hjælper fra samme klub. De har arbejdet godt sammen gennem flere sæsoner. Skal de bevare deres indbyrdes samspil hos dig? Jeg anbefaler ja: Fælles erfaring følger de konkrete ryttere, mens de stadig skal opbygge samarbejde med dine øvrige ryttere. Det gør kendte makkerpar og kontinuitet værdifulde og giver transfermarkedet en ekstra overvejelse. Alternativt kan samspillet tilhøre klubben og skulle opbygges på ny efter et klubskifte.

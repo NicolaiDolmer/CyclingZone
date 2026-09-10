@@ -62,7 +62,9 @@ Ejeren tilføjer, at kaptajnens egen høje Holdarbejde også skal gøre hjælper
 mere villige til at arbejde for ham, fordi han har støttet dem. Forholdet
 er valgt i **D-023:** egenskaben giver en startvirkning, som faktisk godt
 samarbejde med holdet kan styrke.
-Dette skal afgrænses fra Lederskab, og den ekstra hjælps pris skal fastlægges.
+Dette skal afgrænses fra Lederskab. **D-024:** kaptajnens effekt er bedre
+samarbejde inden for valgte ordrer, uden automatisk ekstra træthed. Det eksisterende
+holdarbejde har stadig sin pris; effekten må ikke skabe ubegrænset hjælp.
 
 Det nye valg er: "Hvem hjælper bedst med denne opgave på denne rute?" En billigere
 rytter kan være et bedre køb til hjælperrollen, hvis hans profil passer bedre.
@@ -163,5 +165,6 @@ er ikke en undtagelse fra D-019 eller et nyt usynligt erfaringslag.
 at få de øvrige kandidater med; min oprindelige anbefaling om at afvente nogle
 er ikke en ejerbeslutning om at fravælge dem. D-022 vælger mere hjælp for samme
 indsats og tilføjer kaptajnens gensidige holdånd. D-023 vælger startvirkning
-plus fælles samarbejde. Q-027 om ekstra træthed kontra bedre koordinering afventer;
+plus fælles samarbejde. D-024 vælger bedre koordinering uden automatisk ekstra
+træthed. Q-028 om samspillets tilhørsforhold ved klubskifte afventer;
 den konkrete mekanik og balance er ikke godkendt til build.

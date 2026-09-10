@@ -12,13 +12,11 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-023 er registreret.
-**Aktuelt:** Q-020 førte til researchønske R-002 om løbskategorier, debuter og FM.
-Grundmodellen i [researchforslaget](design/gdd/TRAINING_RACE_DEVELOPMENT_RESEARCH.md)
-er valgt i D-018; D-019 vælger eksisterende evner som udbytte. Q-023 om
-erfaringsområder er besvaret i D-020. **Aktuelt: Q-027** om kaptajnstøttens pris
-og indsatsordrer afventer. [Evnekandidater](design/gdd/RIDER_ATTRIBUTES_RESEARCH.md).
-R-001 bevarer ejerens ønske om at følge ryttere "af egen avl".
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-024 er registreret.
+**Aktuelt: Q-028** om samspil ved klubskifte afventer. Hold kortet åbent indtil svar.
+Konceptspor: [Egen avl](design/gdd/RIDER_LEGACY.md),
+[træning og løb](design/gdd/TRAINING_RACE_DEVELOPMENT_RESEARCH.md) og
+[nye evner/Holdarbejde](design/gdd/RIDER_ATTRIBUTES_RESEARCH.md).
 [Genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md)
 bevarer pausepunktet; journalens sidste handoff er den aktuelle samtaletilstand.
 
@@ -209,8 +207,10 @@ En ny evne skal skabe et konkret valg og afgrænses mod taktik, positionering og
 Ejeren ønsker også, at en kaptajns høje Holdarbejde kan få mere ud af hjælperne
 som følge af hans støtte til dem. **D-023:** egenskaben giver en startvirkning,
 som faktisk godt samarbejde kan styrke. Relation til Lederskab, definition af
-godt samarbejde og prisen for ekstra hjælp skal afklares. Reglen er afstemt i
-RACE_ENGINE_RULES; ingen konkret formel er valgt.
+godt samarbejde og samspillets tilhørsforhold skal afklares. **D-024:** kaptajnens
+effekt forbedrer koordineringen inden for valgte ordrer uden automatisk ekstra
+træthed. Holdarbejdets pris og begrænsninger består. RACE_ENGINE_RULES er afstemt;
+ingen konkret formel er valgt.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -326,6 +326,6 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-019 om eksisterende evner og D-020 om fælles erfaringsområder valgt;
   R-003 evneforslag samlet; D-021 prioriterer Holdarbejde; D-022 vælger
   hjælpervirkning og kaptajnens gensidighed; D-023 om startvirkning og samarbejde
-  valgt; Q-027 om ekstra hjælp og træthed stillet.
+  valgt; D-024 om bedre koordinering uden ekstra træthed valgt; Q-028 om samspil stillet.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.
