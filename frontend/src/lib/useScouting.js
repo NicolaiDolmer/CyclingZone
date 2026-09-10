@@ -28,6 +28,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 import { daysUntil } from "./scoutingCentralDisplay.js";
+import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "./sharedRequestCache.js";
 
 const API = import.meta.env.VITE_API_URL;
 const BATCH_DELAY_MS = 25;
@@ -69,29 +70,41 @@ export function useScouting() {
     const headers = await authHeaders();
     if (!headers) { setLoading(false); return; }
     try {
-      const res = await fetch(`${API}/api/scouting/me`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setSlots(data.slots ?? null);
-        setMaxLevel(data.maxLevel ?? 3);
-        setLevels(data.levels ?? {});
-        setTeamId(data.teamId ?? null);
-        setScoutSystemEnabled(Boolean(data.scoutSystemEnabled));
-        const active = data.jobModel?.active ?? [];
-        const nextPending = {};
-        for (const a of active) {
-          // #3548: ready_at er serverens præcise klar-tidspunkt (created_at +
-          // etaMinutes) — null på ældre rækker, hvor UI'et falder tilbage til
-          // den flade ETA-copy.
-          if (a.kind === "target" && a.rider_id) {
-            nextPending[a.rider_id] = { readyOn: a.ready_on, readyAt: a.ready_at ?? null };
-          }
+      // #5089: /api/scouting/me er GLOBAL holdtilstand (slots, niveauer,
+      // job-model) — den svarer det samme uanset hvilken side der mounter
+      // hooken, men blev hentet forfra ved HVER mount. Rytterprofilen alene
+      // mountede den to gange pr. besoeg. Deles nu; scout-handlingerne nedenfor
+      // invaliderer, saa et brugt slot aldrig kan vises fra en TTL-kopi.
+      const data = await sharedRequestCache.get(
+        SHARED_KEYS.scoutingMe,
+        async () => {
+          // catch-ok: loaderens rejection bobler ud gennem sharedRequestCache.get()
+          // og fanges af refresh()s egen try/catch nedenfor (som ogsaa rydder loading).
+          const res = await fetch(`${API}/api/scouting/me`, { headers }); // catch-ok
+          if (!res.ok) throw new Error("scouting_me_failed");
+          return res.json();
+        },
+        SHARED_TTL_MS.scoutingMe,
+      );
+      setSlots(data.slots ?? null);
+      setMaxLevel(data.maxLevel ?? 3);
+      setLevels(data.levels ?? {});
+      setTeamId(data.teamId ?? null);
+      setScoutSystemEnabled(Boolean(data.scoutSystemEnabled));
+      const active = data.jobModel?.active ?? [];
+      const nextPending = {};
+      for (const a of active) {
+        // #3548: ready_at er serverens præcise klar-tidspunkt (created_at +
+        // etaMinutes) — null på ældre rækker, hvor UI'et falder tilbage til
+        // den flade ETA-copy.
+        if (a.kind === "target" && a.rider_id) {
+          nextPending[a.rider_id] = { readyOn: a.ready_on, readyAt: a.ready_at ?? null };
         }
-        setPendingTargets(nextPending);
-        setJobActiveCount(active.length);
-        setJobCapacity(data.jobModel?.capacity ?? 1);
-        setJobConfig(data.jobModel?.jobConfig ?? null);
       }
+      setPendingTargets(nextPending);
+      setJobActiveCount(active.length);
+      setJobCapacity(data.jobModel?.capacity ?? 1);
+      setJobConfig(data.jobModel?.jobConfig ?? null);
     } catch {
       /* netværk — behold tidligere state, UI falder tilbage til uscoutet */
     } finally {
@@ -159,6 +172,9 @@ export function useScouting() {
         method: "POST", headers, body: JSON.stringify({ kind: "target", riderId }),
       });
       const data = await res.json().catch(() => ({}));
+      // #5089: holdets scout-tilstand har aendret sig — ryd den delte kopi, saa
+      // naeste mount henter den nye kapacitet frem for en TTL-kopi.
+      sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe);
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed" };
       if (data.assignment?.readyOn) {
         setPendingTargets((prev) => ({
@@ -186,6 +202,7 @@ export function useScouting() {
     try {
       const res = await fetch(`${API}/api/scouting/${riderId}`, { method: "POST", headers });
       const data = await res.json().catch(() => ({}));
+      sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe); // #5089: slot brugt
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       if (data.slots) setSlots(data.slots);
       if (data.maxLevel) setMaxLevel(data.maxLevel);
