@@ -1,5 +1,36 @@
 export const PATCHES = [
   {
+    "version": "7.269",
+    "date": "2026-09-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved", "audience": "player", "topic": "Mobile",
+        "en": {
+          "title": "Tables on mobile: three columns, no sideways scrolling",
+          "body": "On a phone, tables now show the rider name plus three columns that fit the screen. Tap a chip above the table to swap a column in, and tap Full table to see every column with the name locked on the left. Your choice is remembered per table."
+        },
+        "da": {
+          "title": "Tabeller på mobil: tre kolonner, ingen scroll til siden",
+          "body": "På telefonen viser tabellerne nu rytternavnet plus tre kolonner der passer på skærmen. Tryk på en chip over tabellen for at bytte en kolonne ind, og tryk Fuld tabel for at se alle kolonner med navnet låst til venstre. Dit valg huskes pr. tabel."
+        },
+        "refs": [5102]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "Retirement notices no longer change mid-season",
+          "body": "A code change on 7 September altered the retirement notice for 58 riders. I have restored the notice you saw before that date, and notices are now stored at the start of a season so they cannot move again. The end-of-season retirement follows the stored notice."
+        },
+        "da": {
+          "title": "Pensionsvarsler skifter ikke længere midt i sæsonen",
+          "body": "En kodeændring den 7. september ændrede pensionsvarslet for 58 ryttere. Jeg har givet dem det varsel tilbage, I så før den dato, og varsler gemmes nu ved sæsonstart, så de ikke kan flytte sig igen. Pensioneringen ved sæsonskiftet følger det gemte varsel."
+        },
+        "refs": [5073]
+      }
+    ]
+  },
+  {
     "version": "7.268",
     "date": "2026-09-09",
     "label": "Beta",
