@@ -51,6 +51,30 @@ updates:
       # landet. Fremtidige majors (fx vite@9) er nu almindelige ejer-gatede
       # Dependabot-PRs uden for backend-minor-patch/frontend-minor-patch-grupperne.
 
+  # Marketing-site (Next.js) — tilføjet 10/9 efter Dependabot #43-46 (to
+  # critical i next, sharp, js-yaml) lå åbne uden patch-PR: mappen manglede i
+  # konfigurationen, så Dependabot kun alarmerede og aldrig bumpede (PR #5072
+  # lukkede dem manuelt). Samme cooldown/gruppering som frontend.
+  - package-ecosystem: npm
+    directory: /marketing
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    labels:
+      - dependencies
+      - javascript
+    groups:
+      marketing-minor-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Tailwind 4 kræver postcss-plugin migration (samme beslutning som
+      # frontend); Vercel-buildet fejlede på PR #5084 — #134 - review 2026-12-01
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+
   # Root scripts — sjældent ændret, men dækkes af Dependabot
   - package-ecosystem: npm
     directory: /

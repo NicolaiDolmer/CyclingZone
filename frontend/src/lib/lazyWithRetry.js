@@ -13,9 +13,18 @@ import { getErrorText, isChunkLoadError } from "./chunkErrors.js";
 // Fix: fang import-fejlen i factory'en. Ét stille retry (dækker transiente netværks-blips
 // / mid-deploy races); ved vedvarende fejl kast en *genkendelig* ChunkLoadError, så
 // SentryBoundary + vite:preloadError-reload-stien engagerer korrekt.
+//
+// #4595: fejlen der når loaderen skal være browserens EGEN — den er den eneste
+// der bærer URL'en på det chunk der fejlede. Det sikres i chunkErrors.js ved at
+// `onPreloadError` IKKE kalder preventDefault: så kaster Vites helper, og
+// import() rejecter med den rigtige fejl i stedet for at resolve `undefined`.
+//
+// Derfor kan et tomt modul her kun betyde ét: modulet loadede, men manglede
+// reelt sin default-export. Se validateModule nedenfor.
 function validateModule(module) {
   if (module?.default != null) return module;
 
+  // Navnet holdes som ChunkLoadError, så recovery-stien stadig engagerer.
   const error = new Error(
     "Failed to fetch dynamically imported module: resolved to an invalid module without a default export",
   );
@@ -67,6 +76,9 @@ export async function purgeStaleChunkFromCache(error, options = {}) {
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   if (typeof fetchFn !== "function") return [];
 
+  // Fejlteksten først: den peger på præcis det chunk der fejlede. Findes ingen
+  // URL i den (React.lazy's interne "_result"-varianter bærer ingen), renser vi
+  // dokumentets egne modul-URL'er — det bredere, men altid korrekte fallback.
   const direct = chunkUrlFromError(error);
   const urls = direct ? [direct] : moduleUrlsFromDocument(doc);
   if (urls.length === 0) return [];
@@ -103,8 +115,11 @@ export async function loadWithRetry(importFn, options = {}) {
   } catch (err) {
     if (!isChunkLoadError(err)) throw err;
     try {
-      // Transient? Ét retry. Hjælper ikke hvis chunk-hash'en permanent er væk —
-      // men så kaster vi nedenfor en genkendelig fejl der trigger reload (frisk index.html).
+      // Transient? Ét retry. Hjælper ikke hvis chunk-hash'en permanent er væk
+      // (browserens module map husker en fejlet modul-load) — men det redder
+      // den fejlede CSS-preload: Vites `seen`-map springer dep'en over anden
+      // gang, så modulet loader. Ved vedvarende fejl kaster vi nedenfor en
+      // genkendelig fejl der trigger reload (frisk index.html).
       return await validateModule(await importFn());
     } catch (retryErr) {
       // #4595: rens en evt. cachet 404 ud af browser-cachen FØR fejlen bobler op

@@ -59,6 +59,8 @@ To af fem mål er slået to en halv uge før deadline. De tre der mangler er all
 
 ### 2.1 Hvad der er målt
 
+📄 Hattrick og self-referral genkendes på præcist værtsnavn eller et underdomæne med punktum som grænse. Et domænenavn indlejret i et fremmed værtsnavn, URL-sti eller brugerinfo tæller ikke som den kanal. Eksplicit `utm_source` har fortsat forrang; domænemærker følger samme grænse. Regressionstest: `scripts/monday-numbers.test.mjs` (CodeQL #357/#358).
+
 ✅ Målt 8/9 mod `signup_attribution` (152 rækker i alt, sidste 30 dage i egen kolonne). Kanal bestemmes af `utm_source` hvis den findes, ellers af referrer-værtsnavnet (§3.4).
 
 | Kanal | Sidste 30 d | I alt | Kendt konvertering |

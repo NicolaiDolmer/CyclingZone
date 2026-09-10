@@ -12,6 +12,7 @@ import CookieBanner from "./components/CookieBanner.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import { logSessionStart } from "./lib/logEvent";
 import { setSentryUser, clearSentryUser, AnalyticsBoundary } from "./lib/sentry.jsx";
+import { sharedRequestCache } from "./lib/sharedRequestCache.js";
 import { safeNextPath } from "./lib/safeNextPath.js";
 
 // Layout + analytics integrations lazy-loaded for #479: public routes
@@ -225,6 +226,10 @@ export default function App() {
         setSentryUser(session.user.id);
       } else if (event === "SIGNED_OUT") {
         clearSentryUser();
+        // #5089: det delte request-cache holder holdbunden tilstand
+        // (scout-slots, egne transferlistings). Naeste bruger paa samme
+        // enhed maa ALDRIG kunne se en TTL-kopi af den forriges data.
+        sharedRequestCache.clear();
       }
     });
     return () => subscription.unsubscribe();

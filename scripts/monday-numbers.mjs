@@ -137,10 +137,10 @@ export function classifyChannel(row) {
   if (AI_ASSISTANT_HOSTS.some((h) => probe.includes(h))) return "AI assistant";
   if (OWN_EMAIL_HOSTS.some((h) => probe.includes(h)) || source === "email") return "email (vores egne mails)";
   if (REDDIT_HOSTS.some((h) => probe.includes(h)) || source === "reddit") return "reddit";
-  if (probe.includes("hattrick.org") || source === "hattrick") return "hattrick";
+  if (probe === "hattrick.org" || probe.endsWith(".hattrick.org") || source === "hattrick") return "hattrick";
   if (probe.includes("discord")) return "discord";
   if (SEARCH_HOSTS.some((h) => probe.includes(h))) return "soegning (organisk)";
-  if (probe.includes("cyclingzone.org") || probe.includes("cycling-zone.vercel.app")) return "self-referral";
+  if (probe === "cyclingzone.org" || probe.endsWith(".cyclingzone.org") || probe === "cycling-zone.vercel.app" || probe.endsWith(".cycling-zone.vercel.app")) return "self-referral";
   return probe;
 }
 

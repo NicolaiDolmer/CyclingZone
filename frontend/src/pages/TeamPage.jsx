@@ -7,6 +7,7 @@ import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { CONDITION_SELECT, flattenCondition, isRiderInjured } from "../lib/training.js";
 import { supabase } from "../lib/supabase";
+import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
@@ -227,6 +228,9 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
         body: JSON.stringify({ rider_id: rider.id, asking_price: transferPrice }),
       });
       const data = await res.json().catch(() => ({}));
+      // #5089: den delte GET /api/transfers-kopi (RiderStatsPage's salgs-knap)
+      // er stale efter en ny listing — ryd den uanset udfald.
+      sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
       if (res.ok) { setMsgOk(true); setMsg(t("actionModal.transfer.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
       else { setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`); }
     } catch {
@@ -1107,13 +1111,23 @@ export function TeamPage() {
   const loadDdStatus = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deadline-day/status`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDdActive(data.active === true);
-      }
+      if (!session) return; // ingen session — flash-valget forbliver skjult
+      // #5089: samme globale svar som RiderStatsPage bruger. Deles nu i stedet
+      // for at blive hentet forfra pr. side-mount.
+      const data = await sharedRequestCache.get(
+        SHARED_KEYS.deadlineDayStatus,
+        async () => {
+          // catch-ok: bobler ud gennem sharedRequestCache.get() til loadDdStatus'
+          // egen try/catch (non-critical: flash-valget forbliver skjult).
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deadline-day/status`, { // catch-ok
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (!res.ok) throw new Error("dd_status_failed");
+          return res.json();
+        },
+        SHARED_TTL_MS.deadlineDayStatus,
+      );
+      setDdActive(data?.active === true);
     } catch { /* non-critical: flash-valget falder bare tilbage til skjult */ }
   }, []);
 

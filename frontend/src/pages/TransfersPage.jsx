@@ -15,6 +15,10 @@ import { formatCz, getRiderMarketValue, getRiderSalary, computeBidValueDelta, co
 import { getEffectiveOfferAmount, isCounterAmount } from "../lib/offerAmount.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
+// #5089: rytterprofilens salgs-knap laeser GET /api/transfers gennem en delt
+// TTL-kopi (15 s). Hver listing-mutation HER skal rydde den noegle, ellers kan
+// profilen vise en listing spilleren lige har fjernet/omprissat.
+import { sharedRequestCache, SHARED_KEYS } from "../lib/sharedRequestCache.js";
 import { sortRows } from "../lib/useTableSort.js";
 import { previewBulkPriceAdjust } from "../lib/bulkPriceAdjust.js";
 import { parseAmountInput, parseAdjustmentValue } from "../lib/amountInput.js";
@@ -1329,6 +1333,9 @@ export default function TransfersPage() {
         headers: await getHeaders(),
       });
       const data = await res.json().catch(() => ({}));
+      // #5089: ryd den delte GET /api/transfers-kopi uanset udfald — rytter-
+      // profilens salgs-knap maa aldrig vise en listing der er fjernet her.
+      sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
       if (res.ok) {
         showMsg(t("toast.listingRemoved"));
         loadAll();
@@ -1350,6 +1357,7 @@ export default function TransfersPage() {
         body: JSON.stringify({ asking_price: askingPrice }),
       });
       const data = await res.json().catch(() => ({}));
+      sharedRequestCache.invalidate(SHARED_KEYS.transferListings); // #5089, se handleRemoveListing
       if (res.ok) {
         showMsg(t("toast.priceUpdated"));
         loadAll();
@@ -1555,6 +1563,9 @@ export default function TransfersPage() {
         body: JSON.stringify({ updates: preview.map(p => ({ id: p.id, asking_price: p.to })) }),
       });
       const data = await res.json().catch(() => ({}));
+      // #5089: bulk-endpointet svarer 200 selv med delvise fejl (`failed[]`),
+      // saa noeglen ryddes uanset udfald — se handleRemoveListing.
+      sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
       if (res.ok) {
         const updatedCount = data.updated?.length || 0;
         const failedCount = data.failed?.length || 0;
