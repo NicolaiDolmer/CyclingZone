@@ -1512,8 +1512,9 @@
   },
   "selectionReminder": {
     "title": "Squad selection missing",
-    "titleUrgent": "Squad selection closes soon",
+    "titleUrgent": "Your team will not start",
     "body": "{count, plural, one {# race starts} other {# races start}} without a full squad.",
+    "bodyUrgent": "{count, plural, one {# race is} other {# races are}} below the minimum to start.",
     "picked": "{picked}/{target} picked",
     "deadlinePassed": "deadline passed",
     "in": {

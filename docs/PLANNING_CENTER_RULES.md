@@ -72,7 +72,10 @@ tilstande; den eneste nye flade er én til/fra-kontakt på Profil, synlig kun i 
 
 **Påmindelsen før fristen (#4983, D-034) er ikke en sjette udfyldningsvej.** Den markerer
 "Planlægning" gult i navigationen og viser en boks øverst på planlægningssiden når en trup
-mangler før fristen, og rød inde i `assistant_late_fill_hours`. Den skriver intet, udtager
+mangler før fristen, og rød når truppen er under deltagelses-gulvet (`MIN_RACE_ENTRIES` = 6,
+regel 2's eget tal) inde i `assistant_late_fill_hours` - altså kun når holdet reelt ikke
+stiller op, samme skelnen som regel 3's `partialSquadOutlook` (ejer-beslutning 10/9). Den
+skriver intet, udtager
 intet og sender ingen besked - regel 1's forbud mod nye proaktive assistent-FLADER handler om
 flader der handler på spillerens vegne, og en markering der siger "du mangler noget" gør det
 modsatte. De to eskaleringstrin og deres kilder står i

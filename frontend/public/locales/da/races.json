@@ -1512,8 +1512,9 @@
   },
   "selectionReminder": {
     "title": "Trup mangler",
-    "titleUrgent": "Fristen er tæt på",
+    "titleUrgent": "Holdet stiller ikke op",
     "body": "{count, plural, one {# løb starter} other {# løb starter}} uden fuld trup.",
+    "bodyUrgent": "{count, plural, one {# løb er} other {# løb er}} under grænsen for at stille op.",
     "picked": "{picked}/{target} udtaget",
     "deadlinePassed": "fristen er passeret",
     "in": {

@@ -161,8 +161,8 @@
     "title": "Påmindelse før frist",
     "subtitle": "En manglende trup markeres i navigationen og på planlægningssiden.",
     "toggleLabel": "Påmind mig før udtagelsesfristen",
-    "toggleHint": "Til: Planlægning markeres når et løb starter inden for {windowHours} timer uden fuld trup, og markeringen bliver rød de sidste {urgentHours} timer. Fra: intet markeres, og fristen gælder stadig.",
-    "toggleHintGeneric": "Til: Planlægning markeres når et løb snart starter uden fuld trup, og markeringen bliver rød tæt på fristen. Fra: intet markeres, og fristen gælder stadig.",
+    "toggleHint": "Til: Planlægning markeres når et løb starter inden for {windowHours} timer uden fuld trup, og bliver rød hvis holdet ikke ville stille op med under {urgentHours} timer tilbage. Fra: intet markeres, og fristen gælder stadig.",
+    "toggleHintGeneric": "Til: Planlægning markeres når et løb snart starter uden fuld trup, og bliver rød hvis holdet ikke ville stille op. Fra: intet markeres, og fristen gælder stadig.",
     "on": "Påmindelsen er slået til.",
     "off": "Påmindelsen er slået fra."
   }

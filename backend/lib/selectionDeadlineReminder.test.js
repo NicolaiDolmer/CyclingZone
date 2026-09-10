@@ -5,12 +5,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   reminderToneForHours,
+  reminderToneForRace,
+  isBelowStartFloor,
   aggregateReminderTone,
   buildSelectionDeadlineReminder,
   SELECTION_REMINDER_TONES,
   SELECTION_REMINDER_WINDOW_HOURS,
+  SELECTION_REMINDER_FLOOR,
 } from "./selectionDeadlineReminder.js";
 import { SELECTION_WARNING_HOURS } from "./selectionWarningSweep.js";
+import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 
 const NOW = new Date("2026-09-10T12:00:00.000Z");
 const URGENT_HOURS = 24;
@@ -35,6 +39,44 @@ function schedule(entries) {
 test("gul-vinduet ER #2180's varslings-vindue — ingen ny frist opfundet", () => {
   assert.equal(SELECTION_REMINDER_WINDOW_HOURS, SELECTION_WARNING_HOURS);
   assert.equal(SELECTION_REMINDER_WINDOW_HOURS, 36);
+});
+
+test("rød-gulvet ER #4295's deltagelses-gulv — ingen ny grænse opfundet", () => {
+  assert.equal(SELECTION_REMINDER_FLOOR, MIN_RACE_ENTRIES);
+  assert.equal(SELECTION_REMINDER_FLOOR, 6);
+});
+
+test("isBelowStartFloor: tom og under gulvet er 'stiller ikke op', gulvet selv er ikke", () => {
+  assert.equal(isBelowStartFloor(0), true);
+  assert.equal(isBelowStartFloor(5), true);
+  assert.equal(isBelowStartFloor(6), false);
+  assert.equal(isBelowStartFloor(7), false);
+  // Ubrugeligt tal → behandl som under gulvet; en påmindelse må hellere haste
+  // for meget end at tie om et hold der ikke stiller op.
+  assert.equal(isBelowStartFloor(Number.NaN), true);
+});
+
+test("reminderToneForRace (ejer 10/9): kun trupper UNDER gulvet kan blive røde", () => {
+  const inUrgentWindow = { hoursUntilDeadline: 6, urgentHours: URGENT_HOURS };
+  // 6/8 er over gulvet: holdet stiller op, bare ikke i fuld styrke → aldrig rød.
+  assert.equal(
+    reminderToneForRace({ ...inUrgentWindow, entryCount: 6 }),
+    SELECTION_REMINDER_TONES.WARNING,
+  );
+  // 5/8 og 0/8 er under gulvet → rød inde i horisonten.
+  assert.equal(
+    reminderToneForRace({ ...inUrgentWindow, entryCount: 5 }),
+    SELECTION_REMINDER_TONES.URGENT,
+  );
+  assert.equal(
+    reminderToneForRace({ ...inUrgentWindow, entryCount: 0 }),
+    SELECTION_REMINDER_TONES.URGENT,
+  );
+  // Under gulvet, men UDEN for horisonten → stadig gul.
+  assert.equal(
+    reminderToneForRace({ hoursUntilDeadline: 30, urgentHours: URGENT_HOURS, entryCount: 0 }),
+    SELECTION_REMINDER_TONES.WARNING,
+  );
 });
 
 test("reminderToneForHours: over horisonten er gul, på og under er rød", () => {
@@ -118,6 +160,62 @@ test("Grand Tour-truppen måles mod klassens 8, ikke mod gulvet på 6", () => {
   });
   assert.equal(out.count, 1);
   assert.equal(out.races[0].target_size, 8);
+  assert.equal(out.races[0].min_size, 6, "gulvet står i svaret ved siden af klassens max");
+});
+
+// --- Ejer-beslutning 10/9: rød = under gulvet, ikke bare "ikke fuld" ----------
+// Målt i prod ville den gamle regel farve ~108 managere røde for trupper der
+// starter helt fint. De fire tilfælde nedenfor ER beslutningen.
+
+function grandTour({ entries, hours }) {
+  return buildSelectionDeadlineReminder({
+    races: [race("r1", { raceClass: "TourFrance" })],
+    scheduleByRace: schedule([["r1", [hours]]]),
+    entryCountByRace: new Map([["r1", entries]]),
+    team: { league_division_id: 1 }, now: NOW, urgentHours: URGENT_HOURS,
+  });
+}
+
+test("6/8 uden for horisonten er gul", () => {
+  const out = grandTour({ entries: 6, hours: 30 });
+  assert.equal(out.tone, SELECTION_REMINDER_TONES.WARNING);
+  assert.equal(out.races[0].will_not_start, false);
+});
+
+test("6/8 INDEN FOR horisonten er stadig gul — holdet stiller op", () => {
+  const out = grandTour({ entries: 6, hours: 4 });
+  assert.equal(out.count, 1, "truppen er stadig ikke fuld, så påmindelsen bliver stående");
+  assert.equal(out.tone, SELECTION_REMINDER_TONES.WARNING);
+  assert.equal(out.races[0].will_not_start, false);
+});
+
+test("5/8 inden for horisonten er rød — under gulvet, stiller ikke op", () => {
+  const out = grandTour({ entries: 5, hours: 4 });
+  assert.equal(out.tone, SELECTION_REMINDER_TONES.URGENT);
+  assert.equal(out.races[0].will_not_start, true);
+});
+
+test("0/8 inden for horisonten er rød", () => {
+  const out = grandTour({ entries: 0, hours: 4 });
+  assert.equal(out.tone, SELECTION_REMINDER_TONES.URGENT);
+  assert.equal(out.races[0].will_not_start, true);
+});
+
+test("5/8 UDEN for horisonten er gul — gulvet alene gør ikke rød", () => {
+  const out = grandTour({ entries: 5, hours: 30 });
+  assert.equal(out.tone, SELECTION_REMINDER_TONES.WARNING);
+  assert.equal(out.races[0].will_not_start, true, "tilstanden er sand, men tonen venter på tiden");
+});
+
+test("et rødt løb ved siden af et gult 6/8 gør hele markeringen rød", () => {
+  const out = buildSelectionDeadlineReminder({
+    races: [race("r1", { raceClass: "TourFrance" }), race("r2", { raceClass: "TourFrance" })],
+    scheduleByRace: schedule([["r1", [4]], ["r2", [8]]]),
+    entryCountByRace: new Map([["r1", 6], ["r2", 5]]),
+    team: { league_division_id: 1 }, now: NOW, urgentHours: URGENT_HOURS,
+  });
+  assert.deepEqual(out.races.map((r) => r.tone), ["warning", "urgent"]);
+  assert.equal(out.tone, SELECTION_REMINDER_TONES.URGENT);
 });
 
 test("afmeldt løb er et bevidst fravalg og påminder ikke", () => {

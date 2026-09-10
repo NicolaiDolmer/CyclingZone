@@ -19,6 +19,10 @@ export interface SelectionReminderRace {
   hours_until: number;
   entry_count: number;
   target_size: number;
+  /** Deltagelses-gulvet (MIN_RACE_ENTRIES). Kommer færdigt fra serveren. */
+  min_size?: number;
+  /** Truppen er under gulvet — holdet stiller ikke op. Serverens vurdering. */
+  will_not_start?: boolean;
   tone: SelectionReminderTone;
 }
 

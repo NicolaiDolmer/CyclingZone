@@ -21,6 +21,17 @@
 //   rød-vinduet      = app_config.assistant_late_fill_hours (default 24) fra
 //                      #4201/D-034 — assistentens egen horisont. Under den er
 //                      det sidste chance for at rette truppen selv.
+//   rød-GULVET       = MIN_RACE_ENTRIES (6) fra #4295 — samme flade gulv som
+//                      raceRunner bruger når den smider hold ud af startfeltet,
+//                      og som løbskortet siger "Under 6 ryttere. Stiller ikke
+//                      op." på (raceSelectionLogic.partialSquadOutlook).
+//
+// EJER-BESLUTNING 10/9: rød betyder "truppen STILLER IKKE OP", ikke "fristen er
+// tæt på". En trup under gulvet (fx 5/8 eller 0/8) bliver rød inde i late
+// fill-horisonten; en trup over gulvet men under klassens max (fx 6/8) bliver
+// ALDRIG rød — den starter, bare ikke i fuld styrke. Målingen i prod viste at
+// den gamle regel (rød = alt der ikke er fuldt, tæt på fristen) ville farve ~108
+// managere røde for trupper der starter helt fint. Gul-definitionen er uændret.
 //
 // Eskaleringstrinnene er nedskrevet i docs/ASSISTANT_RULES.md §1b ("Påmindelsen
 // (#4983)") — ændres et af tallene her, skal §1b opdateres i SAMME PR.
@@ -30,11 +41,19 @@
 // notifikation (issue-accept #4983: dette er UI-tilstand, ikke ny indbakke-støj).
 
 import { racesNeedingSelectionWarning, SELECTION_WARNING_HOURS } from "./selectionWarningSweep.js";
-import { selectionSizeForRace } from "./raceAutopick.js";
+import { selectionSizeForRace, MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { teamInRacePool } from "./raceBinding.js";
 
 /** Gul: hvor længe før første etape påmindelsen overhovedet vises. #2180's vindue. */
 export const SELECTION_REMINDER_WINDOW_HOURS = SELECTION_WARNING_HOURS;
+
+/**
+ * Rød: deltagelses-gulvet. Genbrugt, ikke nyt — samme konstant som
+ * raceRunner/raceFieldIntegrity smider hold ud på, og samme tal som
+ * "Under 6 ryttere. Stiller ikke op." på løbskortet. Re-eksporteret her så
+ * kaldere kan læse gulvet uden at kende raceAutopick.
+ */
+export const SELECTION_REMINDER_FLOOR = MIN_RACE_ENTRIES;
 
 export const SELECTION_REMINDER_TONES = Object.freeze({
   NONE: "none",
@@ -45,10 +64,13 @@ export const SELECTION_REMINDER_TONES = Object.freeze({
 const MS_PER_HOUR = 3600 * 1000;
 
 /**
- * Tonen for ÉN manglende trup ud fra timer til fristen.
+ * TIDS-halvdelen af det røde trin: er fristen inde i late fill-horisonten?
  * <= urgentHours → urgent (rød), ellers warning (gul). Negativ/NaN behandles som
  * urgent: er fristen passeret i samme tick som svaret bygges, er det ikke tiden
  * til at nedtone.
+ *
+ * Bruges ikke alene til at farve et løb — se reminderToneForRace, som lægger
+ * gulv-halvdelen oveni (ejer-beslutning 10/9).
  */
 export function reminderToneForHours(hoursUntilDeadline, urgentHours) {
   if (!Number.isFinite(hoursUntilDeadline)) return SELECTION_REMINDER_TONES.URGENT;
@@ -56,6 +78,37 @@ export function reminderToneForHours(hoursUntilDeadline, urgentHours) {
   return hoursUntilDeadline <= limit
     ? SELECTION_REMINDER_TONES.URGENT
     : SELECTION_REMINDER_TONES.WARNING;
+}
+
+/**
+ * Er truppen under deltagelses-gulvet, altså "stiller ikke op"? En tom trup er
+ * trivielt under gulvet (gulvet er 6), men skrives eksplicit ud fordi det er
+ * netop den tilstand ejer-beslutningen nævner.
+ */
+export function isBelowStartFloor(entryCount, floorSize = SELECTION_REMINDER_FLOOR) {
+  const count = Number(entryCount);
+  if (!Number.isFinite(count)) return true;
+  const floor = Number.isFinite(floorSize) ? floorSize : SELECTION_REMINDER_FLOOR;
+  return count === 0 || count < floor;
+}
+
+/**
+ * Tonen for ÉT løb (ejer-beslutning 10/9).
+ *
+ *   RØD  = truppen stiller ikke op (under gulvet, tom trup medregnet) OG første
+ *          etape starter inden for late fill-horisonten.
+ *   GUL  = alt andet der overhovedet er med i påmindelsen, dvs. truppen er ikke
+ *          fuld (under klassens max) inde i 36-timers vinduet. Et hold på 6/8 er
+ *          gult hele vejen ned til start — det starter, bare ikke i fuld styrke.
+ */
+export function reminderToneForRace({
+  hoursUntilDeadline,
+  urgentHours,
+  entryCount,
+  floorSize = SELECTION_REMINDER_FLOOR,
+}) {
+  if (!isBelowStartFloor(entryCount, floorSize)) return SELECTION_REMINDER_TONES.WARNING;
+  return reminderToneForHours(hoursUntilDeadline, urgentHours);
 }
 
 /**
@@ -83,6 +136,7 @@ export function aggregateReminderTone(races = []) {
  * @param {Date}  [args.now]
  * @param {number} [args.windowHours] gul-vinduet (default 36)
  * @param {number} [args.urgentHours] rød-vinduet (default = late fill-horisonten)
+ * @param {number} [args.floorSize]   deltagelses-gulvet (default MIN_RACE_ENTRIES)
  * @returns {{tone: string, count: number, races: Array}}
  */
 export function buildSelectionDeadlineReminder({
@@ -94,6 +148,7 @@ export function buildSelectionDeadlineReminder({
   now = new Date(),
   windowHours = SELECTION_REMINDER_WINDOW_HOURS,
   urgentHours,
+  floorSize = SELECTION_REMINDER_FLOOR,
 }) {
   const nowMs = now.getTime();
   const due = racesNeedingSelectionWarning({ races, scheduleByRace, now, windowHours });
@@ -121,7 +176,16 @@ export function buildSelectionDeadlineReminder({
       hours_until: Math.round(hoursUntil * 100) / 100,
       entry_count: entryCount,
       target_size: targetSize,
-      tone: reminderToneForHours(hoursUntil, urgentHours),
+      // Gulvet med i svaret, så fladen kan sige HVORFOR et løb er rødt uden at
+      // gen-beregne noget (klienten regner aldrig selv, jf. selectionReminder.ts).
+      min_size: floorSize,
+      will_not_start: isBelowStartFloor(entryCount, floorSize),
+      tone: reminderToneForRace({
+        hoursUntilDeadline: hoursUntil,
+        urgentHours,
+        entryCount,
+        floorSize,
+      }),
     });
   }
 
