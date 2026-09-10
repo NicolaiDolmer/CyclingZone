@@ -1900,7 +1900,7 @@ export default function TransfersPage() {
                               entydig "bedste" nation) — resten af kolonnerne er via SortableTh. */}
                           <th className={`px-2 py-3 text-left text-cz-3 w-12 hidden sm:table-cell ${MARKET_TH_BASE}`}>{t("marketRow.nation")}</th>
                           <SortableTh sortKey="rider" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className={`px-3 py-3 text-left w-40 sticky left-0 z-table-head bg-cz-card border-r border-cz-border ${MARKET_TH_BASE}`}>
+                            className={`px-3 py-3 text-left w-40 sticky left-0 z-table-corner bg-cz-card border-r border-cz-border ${MARKET_TH_BASE}`}>
                             {t("marketRow.rider")}
                           </SortableTh>
                           <SortableTh sortKey="seller" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}

@@ -134,8 +134,11 @@
   --ease: cubic-bezier(.2,.7,.2,1);
   --shadow-overlay: 0 12px 28px -10px rgba(14,15,21,.18);
   --z-base: 0; --z-dropdown: 1000; --z-sticky: 1100; --z-nav: 1150; --z-overlay: 1200; --z-modal: 1300; --z-toast: 1400;
-  /* #2952: table-local intra-sticky sub-scale (tailwind.config.js zIndex "table-col"/"table-head") — not part of the page-chrome scale above. */
-  --z-table-col: 1; --z-table-head: 2;
+  /* #2952: table-local intra-sticky sub-scale (tailwind.config.js zIndex "table-col"/"table-head"/"table-corner") — not part of the page-chrome scale above.
+     #5060: "table-corner" is the pinned column's OWN header cell, pinned on both
+     axes, so it has to out-rank both the rest of the header row (horizontal
+     scroll) and the body's pinned column (vertical scroll). */
+  --z-table-col: 1; --z-table-head: 2; --z-table-corner: 3;
 
   /* #4747: reserved chrome height above a DataTable card (page padding + page
      header + filter bar) so its scroller can be capped at `100dvh - this` and

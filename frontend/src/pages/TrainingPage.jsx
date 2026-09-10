@@ -851,7 +851,7 @@ export default function TrainingPage() {
       <tr className={`${trClass(null)} ${isSelected ? "bg-cz-accent/5" : ""}`}>
         {/* Multi-select — sticky sammen med navnekolonnen (#2446), fast w-10 så
             offsettet på navnekolonnen (left-10) matcher præcis. */}
-        <td className="border-t border-cz-border px-2 py-3 w-10 sticky-name-cell sticky left-0 z-sticky">
+        <td className="border-t border-cz-border px-2 py-3 w-10 sticky-name-cell sticky left-0 z-table-col">
           <input
             type="checkbox"
             checked={isSelected}
@@ -866,7 +866,7 @@ export default function TrainingPage() {
             opskrift som RidersPage/TeamPage (.sticky-name-cell). Ingen rå skygge-klasse
             (#2849 bølge 4 anti-slop) — den opake .sticky-name-cell-baggrund + 1px
             border-r ER den kanoniske sticky-first-column-recipe (T2). */}
-        <td className="border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-sticky border-r border-cz-border">
+        <td className="border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-table-col border-r border-cz-border">
           {/* whitespace-nowrap: navnet er kolonnens naturlige bredde (DataTable-opskriften)
               — uden den kollapser cellen til underlinjens max-w og ombryder navnet. */}
           <div className="flex items-center gap-1.5 whitespace-nowrap">
@@ -1581,7 +1581,7 @@ export default function TrainingPage() {
                     <tr>
                       {/* Sticky sammen med navne-headeren nedenfor (#2446) — fast w-10 så
                           offsettet på navne-kolonnen (left-10) matcher præcis. */}
-                      <th className={`${thClass({})} sticky-name-cell sticky left-0 z-sticky w-10`}>
+                      <th className={`${thClass({ pinned: true })} sticky-name-cell sticky left-0 w-10`}>
                         <input
                           type="checkbox"
                           checked={allSelected}
@@ -1591,7 +1591,7 @@ export default function TrainingPage() {
                         />
                       </th>
                       <SortTh sortKey="name" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                        className={`${thClass({})} sticky-name-cell sticky left-10 z-sticky border-r border-cz-border`}>
+                        className={`${thClass({ pinned: true })} sticky-name-cell sticky left-10 border-r border-cz-border`}>
                         {t("colRider")}
                       </SortTh>
                       {/* #3045: Type/Form/Træthed foldes ind i navne-underlinjen ≤640px

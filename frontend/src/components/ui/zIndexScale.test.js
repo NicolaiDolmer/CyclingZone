@@ -143,13 +143,38 @@ test("#2952: tailwind.config.js table-lokal z-skala (table-col/table-head) er un
 
   assert.equal(local["table-col"], 1, 'zIndex["table-col"] skal være "1"');
   assert.equal(local["table-head"], 2, 'zIndex["table-head"] skal være "2"');
+  assert.equal(local["table-corner"], 3, 'zIndex["table-corner"] skal være "3" (#5060)');
   assert.ok(
     local["table-head"] > local["table-col"],
     "table-head skal være > table-col — ellers vinder sticky-kolonnerne over header-rækken ved lodret scroll",
   );
   assert.ok(
-    local["table-col"] < 1000 && local["table-head"] < 1000,
+    local["table-corner"] > local["table-head"],
+    "table-corner skal være > table-head (#5060) — ellers males de øvrige header-celler hen over den pinnede kolonnes egen overskrift ved vandret scroll (samme z-index → DOM-rækkefølgen afgør)",
+  );
+  assert.ok(
+    local["table-col"] < 1000 && local["table-head"] < 1000 && local["table-corner"] < 1000,
     "table-lokal skala skal forblive under dropdown (1000) — ellers konkurrerer den med side-chrome",
+  );
+});
+
+// #5060 forward-guard. En tabelcelle hører i den table-lokale skala (#2952) —
+// `z-sticky` (1100) på en celle er både for højt (den kan male sig oven på en
+// dropdown) og forkert i tabellen (den slår den sticky header-række ud).
+test("#5060: ingen z-sticky på sticky tabelceller (<th>/<td>) — brug den table-lokale skala", () => {
+  const offenders = [];
+  for (const file of walk(srcRoot)) {
+    const src = readFileSync(file, "utf8");
+    for (const [, tag, attrs] of src.matchAll(/<(th|td)\b([^>]*)>/gis)) {
+      if (/\bz-sticky\b/.test(attrs)) {
+        offenders.push(`${file.slice(srcRoot.length).replace(/\\/g, "/")}: <${tag}> ... z-sticky`);
+      }
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `Brug z-table-col (kroppens pinnede kolonne) / z-table-head (header-rækken) / z-table-corner (den pinnede kolonnes egen header) i stedet for z-sticky på tabelceller (#5060):\n${offenders.join("\n")}`,
   );
 });
 

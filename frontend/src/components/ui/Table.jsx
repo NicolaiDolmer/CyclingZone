@@ -27,7 +27,11 @@ export function Tr({ className = "", children, ...rest }) {
 export function Th({ numeric = false, sticky = false, sortKey, sort, sortDir, onSort, className = "", children, ...rest }) {
   const sortable = typeof onSort === "function" && sortKey != null;
   const active = sortable && sort === sortKey;
-  const stickyCls = sticky ? "sticky left-0 z-sticky" : "";
+  // #5060: den table-lokale z-skala (#2952), ikke page-chrome-skalaens
+  // `z-sticky` (1100). En tabelcelle skal aldrig kunne male sig oven paa en
+  // dropdown (1000), og hjoernecellen skal ligge over baade den oevrige
+  // overskriftsraekke og kroppens pinnede kolonne.
+  const stickyCls = sticky ? "sticky left-0 z-table-corner" : "";
   const sortableCls = sortable
     ? `cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "hover:text-cz-2"}`
     : "";
@@ -45,7 +49,9 @@ export function Th({ numeric = false, sticky = false, sortKey, sort, sortDir, on
 }
 
 export function Td({ numeric = false, sticky = false, className = "", children, ...rest }) {
-  const stickyCls = sticky ? "sticky left-0 z-sticky bg-cz-card group-hover:bg-cz-subtle" : "";
+  // #5060: se Th ovenfor — kroppens pinnede kolonne hoerer i `z-table-col`,
+  // under overskriftsraekken.
+  const stickyCls = sticky ? "sticky left-0 z-table-col bg-cz-card group-hover:bg-cz-subtle" : "";
   return (
     <td className={`${cellClass({ numeric })} ${stickyCls} ${className}`} {...rest}>
       {children}

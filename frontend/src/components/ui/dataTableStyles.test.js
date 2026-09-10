@@ -73,6 +73,32 @@ test("sticky kolonne: opak bg + 1px højre-rule + mobil-min-bredde — ALDRIG r�
   assert.ok(!c.includes("shadow"), "sticky-skyggen er erstattet af opak celle + højre-rule");
 });
 
+// #5060: hjørnecellen (den pinnede kolonnes EGEN overskrift) skal ligge over
+// resten af overskriftsrækken. Delte de samme z-lag, vandt DOM-rækkefølgen ved
+// vandret scroll, og "Rider"-headeren blev malet over af "Salary"/"Wins" —
+// præcis når spilleren scrollede ud for at læse tallene (mobil, 375px).
+test("#5060: kun ÉT z-lag pr. header-celle, og hjørnet ligger over resten", () => {
+  const plain = thClass();
+  const corner = thClass({ sticky: true });
+  const pinned = thClass({ pinned: true });
+
+  assert.ok(plain.includes("z-table-head"));
+  assert.ok(!plain.includes("z-table-corner"));
+
+  assert.ok(corner.includes("z-table-corner"), "sticky header-celle skal have hjørne-laget");
+  assert.ok(!corner.includes("z-table-head"), "to z-index-utilities på samme celle er et cascade-væddeløb, ikke en beslutning");
+
+  // `pinned` = samme lag uden STICKY-opskriften; til håndrullede tabeller der
+  // pinner med deres egen offset (Træningssiden: left-0 + left-10).
+  assert.ok(pinned.includes("z-table-corner"));
+  assert.ok(!pinned.includes("z-table-head"));
+  assert.ok(!pinned.includes("left-0"), "pinned må ikke tvinge en offset — kaldstedet ejer den");
+  assert.ok(!pinned.includes("min-w-[148px]"));
+
+  // Kroppens pinnede kolonne bliver under header-rækken (lodret scroll).
+  assert.ok(tdClass({ sticky: true }).includes("z-table-col"));
+});
+
 test("zone-rækker: fuld-række-tint, ingen hover, 2px separator kun på boundary", () => {
   const tinted = tdClass({ zone: "success" });
   assert.ok(tinted.includes("bg-cz-success-bg"));

@@ -1896,7 +1896,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
       <tr className="border-b border-cz-border">
         <SortTh sortKey="firstname" sort={activeSort("firstname") ? "firstname" : riderFiltersSort}
           sortDir={activeSortDir("firstname")} onSort={handleSort}
-          className={`px-3 py-3 text-left sticky left-0 z-table-head bg-cz-card border-r border-cz-border ${TH_BASE}`}>{t("table.rider")}</SortTh>
+          className={`px-3 py-3 text-left sticky left-0 z-table-corner bg-cz-card border-r border-cz-border ${TH_BASE}`}>{t("table.rider")}</SortTh>
         {/* #228: Nation — samme sorterbare mønster som ryttersiden (NationCell). */}
         <SortTh sortKey="nationality_code" sort={activeSort("nationality_code") ? "nationality_code" : riderFiltersSort}
           sortDir={activeSortDir("nationality_code")} onSort={handleSort}
@@ -1965,7 +1965,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         ))}
         {/* Sticky bud-kolonne: 1px border-rule (border-l) erstatter den rå
             skygge; .auction-bid-cell giver opak cellebund (index.css). */}
-        <th className={`auction-bid-cell px-3 py-3 text-left text-cz-3 sticky right-0 z-table-head border-l border-cz-border ${TH_BASE}`}>{t("table.bid")}</th>
+        <th className={`auction-bid-cell px-3 py-3 text-left text-cz-3 sticky right-0 z-table-corner border-l border-cz-border ${TH_BASE}`}>{t("table.bid")}</th>
       </tr>
     </thead>
   );

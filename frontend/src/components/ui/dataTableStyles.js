@@ -76,13 +76,29 @@ function gutter(compact, tight) {
   return compact ? "px-2" : "px-4";
 }
 
-// #4747: `sticky top-0 z-table-head` paa ALLE header-celler (ikke kun den
-// pinnede navnekolonne) — hele overskriftsraekken laases i toppen ved lodret
-// scroll. Hjoernecellen (col.sticky) faar OGSAA `left-0` via STICKY nedenfor,
-// saa den staar fast paa begge akser (top+venstre) samtidig.
-export function thClass({ numeric = false, sticky = false, compact = false, tight = false, dense = false } = {}) {
+// #4747: `sticky top-0` paa ALLE header-celler (ikke kun den pinnede
+// navnekolonne) — hele overskriftsraekken laases i toppen ved lodret scroll.
+// Hjoernecellen (col.sticky) faar OGSAA `left-0` via STICKY nedenfor, saa den
+// staar fast paa begge akser (top+venstre) samtidig.
+//
+// #5060: hjoernecellen faar `z-table-corner` i stedet for `z-table-head`.
+// Hele overskriftsraekken delte foer eet lag, og ved VANDRET scroll males
+// celler med samme z-index i DOM-raekkefoelge: "Salary", "Wins", "Prize" gled
+// hen OVER "Rider", saa navnekolonnens overskrift forsvandt praecis naar
+// spilleren scrollede ud for at laese tallene (mobil, 375px). Kroppens pinnede
+// celler laa allerede rigtigt (z-table-col under z-table-head) — det var kun
+// hjoernet der manglede sit eget lag.
+//
+// `pinned` er samme lag UDEN STICKY-opskriften: til de faa haandrullede
+// tabeller der pinner med deres egen offset (Traeningssidens checkbox+navn paa
+// left-0/left-10, Auktioner/Transfers' navnekolonne). De skrev foer `z-sticky`
+// eller `z-table-head` ved siden af thClass' egen z-klasse — to z-index-
+// utilities paa samme element er et vaeddeloeb mod Tailwinds output-raekkefoelge,
+// ikke en beslutning.
+export function thClass({ numeric = false, sticky = false, pinned = false, compact = false, tight = false, dense = false } = {}) {
+  const zCls = sticky || pinned ? "z-table-corner" : "z-table-head";
   const base =
-    `whitespace-nowrap bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3 sticky top-0 z-table-head`;
+    `whitespace-nowrap bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3 sticky top-0 ${zCls}`;
   return [base, numeric ? "text-right" : "text-left", sticky ? STICKY : ""]
     .filter(Boolean)
     .join(" ");

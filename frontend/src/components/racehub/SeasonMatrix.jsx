@@ -307,7 +307,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
           </colgroup>
           <thead>
             <tr>
-              <th rowSpan={raceLanes.laneCount + 2} className="sticky left-0 z-sticky bg-cz-subtle border-b border-r border-cz-border px-3 py-1.5 text-left align-bottom" style={{ minWidth: 148 }}>
+              <th rowSpan={raceLanes.laneCount + 2} className="sticky left-0 z-table-corner bg-cz-subtle border-b border-r border-cz-border px-3 py-1.5 text-left align-bottom" style={{ minWidth: 148 }}>
                 <span className="text-2xs uppercase tracking-wide text-cz-3">{t("matrix.heading")}</span>
               </th>
               {dateBands.map((band, i) => (
@@ -381,7 +381,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                 const peakDays = peakDaysByRider.get(rider.id);
                 return (
                   <tr key={rider.id} className="group">
-                    <td className="sticky left-0 z-sticky bg-cz-card group-hover:bg-cz-subtle border-r border-b border-cz-border px-3 py-1 text-left">
+                    <td className="sticky left-0 z-table-col bg-cz-card group-hover:bg-cz-subtle border-r border-b border-cz-border px-3 py-1 text-left">
                       <span className="block text-xs font-medium text-cz-1 truncate">{rider.name}</span>
                       {loadDays != null && (
                         <span className="block font-data text-3xs tabular-nums text-cz-3">{t("matrix.loadSuffix", { count: loadDays })}</span>

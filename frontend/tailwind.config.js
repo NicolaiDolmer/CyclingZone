@@ -113,8 +113,17 @@ export default {
         // out-rank the body's sticky columns during vertical scroll, or the
         // columns cover the header. Kept far below "dropdown" (1000) so this
         // local scale can never accidentally outrank real page chrome.
+        //
+        // #5060: the corner cell (the pinned column's OWN header) needs a third
+        // layer. It used to share "table-head" with the rest of the header row,
+        // so during HORIZONTAL scroll the later header cells — same z-index,
+        // later in DOM order — painted straight over it, and the rider-name
+        // header vanished exactly when the player scrolled out to read the
+        // numbers. Corner > head > col: the corner is pinned on both axes and
+        // must out-rank both.
         "table-col": "1",
         "table-head": "2",
+        "table-corner": "3",
       },
     },
 
