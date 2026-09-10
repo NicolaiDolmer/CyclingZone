@@ -12,8 +12,8 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-015 er registreret.
-**Aktuelt:** Q-018 om personligt gennembrud kontra sportslig prestige afventer.
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-017 er registreret.
+**Aktuelt:** Q-020 om målrettet træning kontra passende løb afventer.
 R-001 bevarer ejerens ønske om at følge ryttere "af egen avl".
 [Genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md)
 bevarer pausepunktet; journalens sidste handoff er den aktuelle samtaletilstand.
@@ -162,7 +162,28 @@ følger ikke med. [SOCIAL_RULES](SOCIAL_RULES.md) ejer synlighedens principnote.
 **D-014, valgt 10/9:** Eget overblik samler udvalgte milepæle i "Siden sidst" med
 adgang til rytterens detaljer. Den præcise milepælsliste afventer; en strøm med
 alle løbsresultater og en ren liste uden opsummering er fravalgt som grundmodel.
+**D-016/D-017:** Personlige gennembrud vægter højt; i det forelagte eksempel står
+hjælperens første mindre sejr over stjernens endnu en almindelig WorldTour-etape.
+Manageren kan desuden manuelt følge en personlig favorit uden at tildele klubben
+et offentligt udviklingsmærke. Det samlede koncept, scenarier, åbne detaljer og
+verifikationsplan står i [Rytterhistorier og egen avl](design/gdd/RIDER_LEGACY.md).
 Der er endnu ikke valgt liste, notifikationer, loyalitetsbonus eller ny statistik.
+
+### Træningens allerede besluttede rework
+
+GDD-samtalen bygger videre på [TRAINING_RULES §13](TRAINING_RULES.md) og
+[designet fra 6/9](superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md),
+samlet i #4850. Ejeren fremhævede dette igen ved Q-020 den 10/9.
+
+- Hver rytter enten træner eller kører løb pr. løbsdag; løb giver selv udvikling.
+- Løbsdagen bliver træningens tidsenhed; divisionerne får samme antal løbsdage.
+- Programmerne kører automatisk; den manuelle træningsknap og klikbonus udgår.
+- Løbsintentionen vælges med de taktiske valg og forbinder løb, træthed og udvikling.
+- Træningsscoren måler passets kvalitet, er ærlig og ses kun af egen manager.
+
+Dette er tidligere ejerbeslutninger, ikke nye forslag eller et samlet bevis for
+leverance. Q-020 angår alene det relative udviklingsudbytte af de to aktiviteter
+og har endnu ikke ændret den ældre prioritering af passende løb.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -272,6 +293,7 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   om at følge egen avl og mere konkrete spørgsmål. D-011 om afgrænsningen valgt;
   D-012 om tre sæsoners ungdomstid og D-013 om offentlig/eget overblik valgt;
   D-014 om "Siden sidst" og D-015 om flere udviklingsklubber valgt;
-  Q-018 om historiernes prioritering stillet.
+  D-016 om personligt gennembrud og D-017 om manuel opfølgning valgt;
+  konceptkapitlet RIDER_LEGACY samlet; Q-020 om træning kontra løb stillet.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.

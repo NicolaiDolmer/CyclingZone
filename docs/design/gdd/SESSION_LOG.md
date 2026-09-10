@@ -227,13 +227,42 @@ får tilknytning og automatisk opfølgning; akademioprindelsen ændres ikke.
 Q-018 spørger til prioritering i "Siden sidst": hjælperens første mindre sejr
 kontra akademistjernens endnu en almindelig WorldTour-etapesejr.
 
+## Q-018 · Historiernes prioritering, ejerens svar ordret
+
+> Personlige gennembrud først i dette eksempel (anbefalet)
+
+Registreret som D-016. Hjælperens første mindre sejr fremhæves før stjernens
+endnu en almindelig WorldTour-etape i eksemplet. Ingen universel første-gang-regel.
+
+## Q-019 · Personlig opfølgning, ejerens svar ordret
+
+> Ja; manuel »Følg karrieren« ved siden af automatisk opfølgning (anbefalet)
+
+Registreret som D-017. Manuel opfølgning giver ikke klubben offentlige
+udviklingsmærker. D-016/D-017 er afstemt i SOCIAL_RULES. Konceptet om at følge
+egen avl er samlet i RIDER_LEGACY med åbne detaljer og foreslået verifikation.
+Checkpoint `ece1cb13` er pushet; det bevarer gennem D-015 og kort-betjeningsreglen.
+Q-020 vender tilbage til træningen og udfordrer den ældre retning om en generel
+udviklingsfordel ved passende løb. TRAINING_RULES §6/§13, spec 6/8 og kodesymboler
+er kontrolleret i E-006; ingen nye runtime-/kalibreringspåstande.
+
+## Q-020 · Ejerens afklaring om reworket, ordret
+
+> Er du klar over, at vi er ved at forsøge at få ind i spillet, at løb kan give træning? Jeg har været ved at arbejde på at skabe et system, hvor man enten kan træne eller køre løb i løbet af en dag.
+
+**Ingen balancebeslutning.** Ejeren fremhæver igangværende arbejde. Codex
+bekræftede at både løb og træning giver udvikling i den nye enten/eller-model,
+genlæste hele 6/9-spec'en og #4850 og præciserede spørgsmålet om relativt
+udbytte. Det godkendte reworkgrundlag er nu opsummeret eksplicit i GDD.
+Q-020 er genstillet i kortere form og står åbent. Det er ikke et nyt Q-021.
+
 ## Handoff · Genoptaget, 10/9 2026
 
 - Aktivt arbejde: samlet GDD og kritisk interview, status `in_progress`, genoptaget af ejer.
-- Q-001–017 har ejer-svar; Q-018 om historiernes prioritering afventer. Hold kortet åbent indtil svar.
-- Næste skridt: konkrete kort om R-001 og begivenheder; afklar åbne kriteriedetaljer før build.
+- Q-001–019 har ejer-svar; Q-020 har afklaringsspørgsmål, men intet balancevalg. Det præciserede kort står åbent.
+- Næste skridt: afklar udviklingsvalget; fortsæt træning. R-001-konceptet er samlet, åbne detaljer er bevaret.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001, D-001–015 og ønske R-001 er registreret; ingen ny funktion er godkendt til build.
+- V-001, D-001–017 og ønske R-001 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

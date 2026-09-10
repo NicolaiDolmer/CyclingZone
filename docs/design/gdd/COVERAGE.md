@@ -24,7 +24,7 @@ Senere kontrol skal også gennemgå baggrundsprocesser og funktioner uden egen r
 | G02 | Onboarding, første beslutning, læring, hjælp og comeback | FEATURE_REGISTRY; App.jsx; #1140 | D-005: to indgange og let betjening; detaljer afventer |
 | G03 | Besøgskadence, offline-spil, deadlines og assistance | ASSISTANT_RULES; PLANNING_CENTER_RULES; TRAINING_RULES | D-004/D-006: 2-3 besøg på 15-20 min; ASSISTANT_RULES §0-2 læst; E-001; D-007 om markedsaktivitet |
 | G04 | Rytteridentitet, generation, egenskaber og typer | RIDER_GENERATION; PROGRESSION_RULES | PROGRESSION_RULES §0-10 læst; D-010 valgt; ingen samlet kode-/prod-kontrol |
-| G05 | Træning, form, restitution, sygdom, skader og peaks | TRAINING_RULES; PROGRESSION_RULES | TRAINING_RULES §1, §12 og §13 læst; E-001; D-010; gammel støj-gate markeret afløst i PROGRESSION_RULES; ingen samlet mekaniktest |
+| G05 | Træning, form, restitution, sygdom, skader og peaks | TRAINING_RULES; PROGRESSION_RULES | TRAINING_RULES §1, §6, §12 og §13 læst; E-001/E-006; D-010; Q-020 afventer; ingen samlet mekaniktest |
 | G06 | Scouting, fog of war, potentiale og informationsværdi | PROGRESSION_RULES; YOUTH_RULES; scout-system i FEATURE_REGISTRY | Inventeret; egen reglerute afklares ved læsning |
 | G07 | Akademi, ungdomstrupper, karrierer og generationsskifte | YOUTH_RULES; RIDER_GENERATION; PROGRESSION_RULES | YOUTH_RULES læst; D-008: individuel ungdomsindsats valgfri; ingen samlet kodekontrol |
 | G08 | Kalender, udtagelse, kapacitet og sæsonplan | CALENDAR_RULES; PLANNING_CENTER_RULES; ASSISTANT_RULES | Inventeret |
@@ -37,7 +37,7 @@ Senere kontrol skal også gennemgå baggrundsprocesser og funktioner uden egen r
 | G15 | Bestyrelse, sponsorer, ambition og handlefrihed | BOARD_RULES; SPONSOR_RULES | Rework afstemt i SSOT §0 med kode/PR/prod-bevis 10/9; D-003 valgt; ingen fuld mål-/konsekvenstest |
 | G16 | AI-hold, verdensbefolkning, likviditet og skala | RIDER_GENERATION; TRANSFER_MARKET_RULES; #1151 | Inventeret |
 | G17 | Sociale relationer, beskeder, forum og rivalisering | SOCIAL_RULES; FORUM_RULES | Inventeret |
-| G18 | Historie, profiler, legender, anerkendelse og klubmuseum | SOCIAL_RULES; FEATURE_REGISTRY; #1148 | R-001/D-011–015: akademi/flere udviklingsklubber, tre sæsoner, offentlig + eget overblik, "Siden sidst"; Q-018 stillet; E-005; ingen UI-prøve |
+| G18 | Historie, profiler, legender, anerkendelse og klubmuseum | SOCIAL_RULES; FEATURE_REGISTRY; #1148 | R-001/D-011–017 samlet i RIDER_LEGACY med åbne detaljer og verifikationsforslag; E-005; ingen UI-prøve/build-go |
 | G19 | Dashboard, navigation, data, mobil/desktop og tilgængelighed | DASHBOARD_RULES; design/PAGE_TEMPLATES; design/TASTE | TASTE delvist læst; ruter inventeret |
 | G20 | Premium, convenience, sportslig fairness og misbrug | BILLING_STACK; doctrine Fair competition; #1142; fairplay-rute | Doktrinens princip læst; øvrigt afventer |
 | G21 | Notifikationer, kommunikation, surveys og spillerindflydelse | SOCIAL_RULES; COMMS_PLAYBOOK; EMAIL_STACK; SURVEY_SYSTEM | Inventeret |

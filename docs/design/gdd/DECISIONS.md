@@ -614,7 +614,7 @@ en tredje kortvarig køber gør ikke, og kun faktisk akademioprindelse vises.
 
 ## Q-018 · Personligt gennembrud eller sportslig prestige?
 
-**Status:** stillet 10/9; afventer.
+**Status:** besvaret 10/9; A valgt, se D-016.
 En hjemmeudviklet hjælper tager sin første sejr i et mindre løb; en tidligere
 akademistjerne vinder endnu en almindelig WorldTour-etape.
 **A, anbefalet:** hjælperens personlige gennembrud først i dette eksempel;
@@ -625,6 +625,78 @@ helt store bedrifter som en Tour-sejr kan stadig få særlig prioritet.
 men kræver en forståelig skelnen mellem personligt gennembrud og rutineresultat.
 Det er ikke forslag om en generel rangering af alle mindre løb over større.
 Kilder: D-010/D-014, SOCIAL_RULES' historikprincip og R-001.
+
+## D-016 · Personlige gennembrud har høj fortællingsværdi
+
+**Status:** ejer-valgt 10/9, svar på Q-018.
+**Ejerens svar, ordret:** "Personlige gennembrud først i dette eksempel (anbefalet)".
+Hjælperens første sejr i et mindre løb står som udgangspunkt over den tidligere
+akademistjernes endnu en almindelig WorldTour-etape. Store hovedbedrifter kan
+fortsat få særlig prioritet. **Fravalgt:** prestige som primært kriterium i
+eksemplet og ren kronologisk visning uden prioritering.
+**Åbent:** en fuld prioriteringsregel, lighedstilfælde og hvilke personlige
+gennembrud der kan dokumenteres. Ingen universel regel om at alle første-gange
+slår alle store sejre. Kilder: D-010/D-014, SOCIAL_RULES (afstemt).
+**Foreslået verifikation:** det forelagte par rangeres som valgt; kontrollér
+også et stort hovedresultat, så almindelige førstegange ikke skjuler det.
+
+## Q-019 / D-017 · Manuel karriereopfølgning uden udviklingsmærke
+
+**Status:** ejer-valgt 10/9.
+**Spørgsmål:** En veteran solgt efter én sæson er ikke "udviklet hos os". Kan
+manageren alligevel vælge "Følg karrieren" og få milepælene i eget overblik?
+**A, anbefalet:** ja, manuel opfølgning ved siden af den automatiske.
+**B:** nej, overblikket er kun for akademi-/udviklede ryttere.
+**Ejerens svar, ordret:** "Ja; manuel »Følg karrieren« ved siden af automatisk opfølgning (anbefalet)".
+
+Personlige favoritter kan følges uden at opfylde D-012. At følge giver ikke
+klubben et offentligt akademi-/udviklingsmærke og åbner ikke fremmed privat
+træning. **Fravalgt:** kun automatisk kvalificerede ryttere i eget overblik.
+**Åbent:** afmelding/muting, om andre end egne tidligere ryttere kan vælges,
+lofter og placering af handlingen. Kilder: D-011–014 og SOCIAL_RULES (afstemt).
+**Foreslået verifikation:** veteranen kan følges; hans milepæle kommer med;
+klubbens offentlige udviklingshistorik får ikke en ufortjent tilskrivning.
+
+## Q-020 · Kan målrettet træning slå passende løb på udvikling?
+
+**Status:** ejeren har svaret med afklaringsspørgsmål om det igangværende rework.
+Ingen A/B-beslutning modtaget. Efter kildekontrol genstillet i kortere form;
+det samme balancevalg afventer fortsat.
+En frisk 19-årig klatrer kan køre et passende bjergløb eller blive hjemme til en
+målrettet træningsblok. Skal blokken kunne være bedst for langsigtet evneudvikling?
+**A, anbefalet:** ja; målrettede træningsperioder skal kunne være udviklingsvalget,
+også når rytteren kunne klare løbet.
+**B:** passende løb skal normalt udvikle bedst; træning supplerer løbsprogrammet.
+
+**Eksplicit genåbnet tradeoff:** retningen fra 6/8 giver løb mere udvikling i
+relevante evner. Anbefalingen udfordrer denne retning for at give talentmanageren
+et reelt valg mellem udvikling og resultater. Løbets træthed/profil kan allerede
+gøre træning nyttig; det er ikke målt at løb altid dominerer. A spørger om
+træningens egen styrke, ikke kun om restitution eller mangel på passende løb.
+Enten løb eller træning på en løbsdag, besluttet 6/9, fastholdes. Ingen ny rate
+eller ændring af S4-leveranceplan valgt ved at stille spørgsmålet.
+Kilder: TRAINING_RULES §6/§13, spec 6/8 og E-006.
+**Ejerens afklaringsspørgsmål, ordret:** "Er du klar over, at vi er ved at forsøge at få ind i spillet, at løb kan give træning? Jeg har været ved at arbejde på at skabe et system, hvor man enten kan træne eller køre løb i løbet af en dag.".
+Codex bekræftede kendskab, genlæste hele 6/9-designet og #4850 og præciserede:
+begge aktiviteter giver udvikling; spørgsmålet handler kun om deres relative
+udbytte. Dette må ikke registreres som en ny idé om løbsudvikling eller et valg af A.
+
+## E-006 · Den ældre fordel til løbsudvikling
+
+**Status:** kilde-/kodekontrol 10/9 ved `ece1cb13`; ingen ny prod-måling eller simulering.
+TRAINING_RULES §6 og spec `2026-08-06-loebsdags-model-design.md` D2 angiver en
+udviklingsfordel ved løb, begrænset til relevante evner. `dailyTraining.js`
+har `RACE_DEV_CONFIG` og `applyRaceDevelopmentTick` som den kontrollerede
+implementationssti. SSOT §6 daterer udviklingsflaget som slukket i S3; den
+gamle formel er ikke dermed et bevis for nutidig live-adfærd. §13 fastlægger
+den nyere løbsdagsomlægning. Q-020 udfordrer formålet med løbsfordelen, ikke
+et konstateret runtimebugfund; ingen private multiplikatorer kopieres hertil.
+Efter ejerens afklaring: hele spec
+`2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md` læst; #4850 læst
+med kommentarer, status OPEN ved kontrollen 10/9. Den bekræfter reworket og
+de tidligere ejerbeslutninger; status alene siger ikke at enhver del er ubygget.
+Nyere noter om intentions-feltets konkrete placering findes i RACE_ENGINE_RULES
+§1b; den gamle specs kolonneforslag er ikke et tilstrækkeligt implementeringsgrundlag.
 
 ## E-005 · Årgange, intake og historik er forskellige kilder
 

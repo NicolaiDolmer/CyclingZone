@@ -94,3 +94,14 @@ Efter ejerens anmodning om at genvise kortet blev denne kortere tekst besvaret:
 ## Q-018 · Historiernes prioritering
 
 > To tidligere ryttere har nyt: Din hjemmeudviklede hjælper har taget sin allerførste sejr i et mindre løb, mens en stjerne fra akademiet har vundet endnu en almindelig WorldTour-etape. Hvilken historie bør som udgangspunkt stå øverst i »Siden sidst«? Jeg anbefaler hjælperens første sejr: Personlige gennembrud skal vægte højt, så historikken også gør almindelige karrierer værd at følge. Helt store bedrifter som en Tour-sejr kan stadig få særlig prioritet. Alternativet er primært at rangere efter løbenes sportslige prestige.
+
+## Q-019 · Manuel karriereopfølgning
+
+> Du sælger en populær veteran, som kun har været i klubben én sæson og derfor ikke er »udviklet hos os«. Skal du alligevel kunne vælge »Følg karrieren« og få hans milepæle i dit eget overblik? Jeg anbefaler ja: Manuel opfølgning giver plads til dine personlige favoritter, mens de offentlige mærker for akademioprindelse og udviklingsklub fortsat kræver deres egne kriterier. At følge en rytter giver altså ikke klubben æren for at have udviklet ham.
+
+## Q-020 · Træning kontra passende løb
+
+> En frisk 19-årig klatrer kan enten køre et passende bjergløb eller blive hjemme til en målrettet træningsblok. Skal træningsblokken kunne være det bedste valg for hans langsigtede evneudvikling, selv om han godt kunne klare løbet? Jeg anbefaler ja: Det giver talentmanageren et reelt valg mellem udvikling nu og løbsresultater nu. Den tidligere retning fra 6/8 giver løb en udviklingsfordel i løbets relevante evner; den vil jeg udfordre, så målrettet træning også kan vælges for sin styrke og ikke kun som løsning ved træthed eller manglende passende løb. Vi fastholder den allerede besluttede regel om enten løb eller træning på en løbsdag.
+
+Efter ejerens afklaringsspørgsmål om reworket blev balancevalget præciseret således:
+> I dit nye system giver både løb og træning udvikling, og rytteren vælger én af delene pr. løbsdag. Skal en målrettet træningsperiode nogle gange kunne give bedre evneudvikling end passende løb? Jeg anbefaler ja, så manageren bevidst kan ofre mulige resultater og præmiepenge for at udvikle rytteren. Alternativet er at fastholde passende løb som den normalt bedste udviklingsvej.
