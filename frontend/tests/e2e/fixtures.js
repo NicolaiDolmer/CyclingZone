@@ -431,6 +431,37 @@ export async function stabilizePage(page) {
   });
 }
 
+// ── Mobil-kolonner i DataTable (#5102 / D-047) ──────────────────────────────
+//
+// Paa <=640px viser en DataTable navnekolonnen + PRAECIS TRE datakolonner, og
+// resten ligger bag chip-raekken. En spec der bruger en kolonne uden for de tre
+// (fx Mit holds "Saelg / Auktion"-knap, som efter ejer-beslutningen 10/9 ikke
+// er en af Mit holds standardkolonner) skal derfor vaelge dens chip foerst.
+//
+// Helperen bytter kolonnen IND i standardtilstanden i stedet for at aabne
+// "Fuld tabel": to-lags-tilstanden deler raekken op i to tabeller, og saa kan
+// en `getByRole("row", { name: /Ada Pedersen/ }).getByRole("button", ...)`
+// ikke laengere finde baade navn og knap i samme <tr>.
+//
+// Paa desktop er den en no-op: chip-raekken findes slet ikke der.
+export const MOBILE_COLUMN_ACTION = /^(Action|Handling)$/;
+
+export async function revealMobileTableColumn(page, label) {
+  if ((page.viewportSize()?.width ?? 1280) > 640) return;
+  const chip = page
+    .getByRole("group", { name: /^(Choose columns|Vælg kolonner)$/ })
+    .getByRole("button", { name: label })
+    .first();
+  // Vent AKTIVT paa chippen i stedet for at springe over naar den ikke er
+  // tegnet endnu: en `count() === 0`-udvej gjorde helperen til en stille no-op
+  // naar den blev kaldt lige efter `page.goto()`, og fejlen dukkede foerst op
+  // som en timeout paa den knap kolonnen skulle have hentet frem.
+  await chip.waitFor({ state: "visible" });
+  if ((await chip.getAttribute("aria-pressed")) === "true") return;
+  await chip.click();
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+}
+
 // ── Bevis-screenshots (#3554) ───────────────────────────────────────────────
 //
 // Fem specs skrev deres bevis-screenshots DIREKTE til committede stier

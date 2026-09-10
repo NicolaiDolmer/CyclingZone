@@ -113,6 +113,11 @@ export default function AdminForumTab() {
     {
       key: "target",
       header: "Indhold",
+      // D-047 (#5102): entity-kolonnen. Uden `sticky: true` ved DataTable ikke
+      // hvad navneblokken er, og tabellen falder tilbage til den gamle vandrette
+      // scroller paa mobil — praecis det mønster PAGE_TEMPLATES nu kalder
+      // tilbagetrukket. Rapportens uddrag ER raekkens identitet her.
+      sticky: true,
       render: (r) => (
         <div className="min-w-0">
           <div className="truncate text-[13px]">{r.target?.excerpt || "(fjernet)"}</div>
@@ -213,7 +218,15 @@ export default function AdminForumTab() {
         />
       ) : (
         <>
-          <DataTable columns={columns} rows={state.items} rowKey={(r) => r.id} label="Forum-rapporter" />
+          <DataTable
+            columns={columns}
+            rows={state.items}
+            rowKey={(r) => r.id}
+            label="Forum-rapporter"
+            /* D-047 (#5102): en rapport haandteres paa hvornaar, status og
+               knapperne — resten er et chip-tryk vaek. */
+            mobileDefaults={["created_at", "status", "actions"]}
+          />
           {state.nextCursor != null && (
             <div className="mt-4 flex justify-center">
               <Button variant="secondary" size="sm" onClick={() => load(state.nextCursor)}>

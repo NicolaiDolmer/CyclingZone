@@ -231,6 +231,10 @@ export default function StaffOverviewPage() {
           columns={columns}
           rows={filtered}
           rowKey={(r) => r.id}
+          /* D-047 (#5102): staben vurderes paa niveau, samlet rating og loen. */
+          /* D-047 (#5102): "Frigiv"-knappen er sidens handling og skal kunne
+             trykkes uden at aabne "Fuld tabel" foerst — tier er et chip-tryk vaek. */
+          mobileDefaults={["overall", "salary", "actions"]}
           rowProps={(row) => ({ onClick: () => navigate(`/staff/${row.id}`), className: "cursor-pointer" })}
           count={t("table.count", {
             filtered: formatNumber(filtered.length),

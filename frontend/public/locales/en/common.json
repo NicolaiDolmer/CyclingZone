@@ -111,5 +111,10 @@
   "amountInput": {
     "invalid": "Enter a whole number, e.g. 150000 or 150.000",
     "parsedPreview": "= {amount} CZ$"
+  },
+  "table": {
+    "fullTable": "Full table",
+    "columnsLabel": "Choose columns",
+    "moreRight": "More columns to the right"
   }
 }

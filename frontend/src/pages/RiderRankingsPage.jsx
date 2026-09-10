@@ -343,6 +343,7 @@ export default function RiderRankingsPage() {
     ...WIN_COLS.map(col => ({
       key: col.key,
       header: <ColHeader t={t} labelKey={col.labelKey} shortKey={col.shortKey} />,
+      mobileLabel: t(col.shortKey),
       numeric: true,
       sortKey: col.key,
       render: (rider) => <StatCell value={rider[col.key]} active={sortKey === col.key} />,
@@ -501,6 +502,9 @@ export default function RiderRankingsPage() {
           columns={columns}
           rows={filtered}
           rowKey={(rider) => rider.id}
+          /* D-047 (#5102): en rangliste laeses paa point, sejre og praemiepenge;
+             kategori-sejrene ligger bag chip-raekken og "Fuld tabel". */
+          mobileDefaults={["points", "total_wins", "prize_earned"]}
           sort={sortKey}
           sortDir={sortAsc ? "asc" : "desc"}
           onSort={handleSort}
