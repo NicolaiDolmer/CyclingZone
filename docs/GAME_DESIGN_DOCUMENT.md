@@ -117,8 +117,22 @@ konkret (research i `design/gdd/REPUTATION_RESEARCH.md`). **D-045 (ejer-valgt
 4/9 §6); afgjort som hybrid: tallet består underliggende (sponsor, lån, AI),
 og "kendt for"-mærkerne er det verden ser. Rytter-omdømmets rørledning
 fortsætter; netværket lægges ovenpå. **D-046:** manageren er i netværket,
-men kun kosmetisk (doktrinen 8/6 består). Personale- og løbsomdømme er
-rene huller og designes i næste session.
+men kun kosmetisk (doktrinen 8/6 består). **D-048 (ejer-valgt 10/9):**
+løbsomdømme er et nyt prestige-tillæg oven på den låste kalender-klasse: det
+stiger med startfeltets samlede rytter-omdømme, falmer over sæsoner og har et
+loft; løbets omdømme = klasse + tillæg, og en sejr giver rytteren efter summen.
+Personale-omdømme er et senere lag.
+### Mobil: samme spil, tre kolonner ad gangen (D-047, ejer-valgt 10/9)
+
+Mobil er det samme spil, ikke et resumé (TASTE P10). Efter to sticky-lapper
+(#4747, #5099) valgte ejeren en ny standard for tabeller med mange kolonner:
+navnet + tre faste talkolonner pr. side uden vandret scroll, en chip-række til
+at bytte kolonner (huskes pr. side), og "Fuld tabel" der åbner alle kolonner med
+navneblokken som sin egen kolonne ved siden af en scrollbar datablok. Kort pr.
+rytter er fravalgt som standard, fordi man ikke kan sammenligne to ryttere uden
+at folde begge ud. Bygges én gang i `DataTable` (#5102); TASTE P10 og
+PAGE_TEMPLATES T2 opdateres i samme PR.
+
 ### Bestyrelsen og managerens retning (D-003, ejer-godkendt 10/9)
 
 Bestyrelsen udfordrer planens kvalitet inden for managerens valgte klubidentitet.
@@ -426,6 +440,11 @@ og hvad der ville få os til at ændre designet. Kodechecks kan bevise en regel,
 spillerens forståelse og glæde kræver observation og samtaler med spillere.
 
 ## Ændringslog
+
+- 10/9 2026 (eftermiddag, Claude Code): D-047 om mobiltabeller (tre faste
+  kolonner + "Fuld tabel" som to-lags, afløser TASTE P10 fork 6) og D-048 om
+  løbsomdømme som prestige-tillæg oven på den låste klasse; mockups i
+  `design/gdd/mockups/`.
 
 - 10/9 2026: mandat, kildestruktur og dækningsregister oprettet; vision V-001
   bevaret; D-001 om selvstændige succesveje og D-002 om klubidentitet valgt;

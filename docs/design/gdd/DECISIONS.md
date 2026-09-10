@@ -1697,6 +1697,81 @@ praksis (flag `rider_reputation_enabled`, ejer-gated).
 visning; en managers profil viser bedrifter, der stammer fra klubbens og
 rytternes dokumenterede handlinger.
 
+## Q-051 · Tabeller på mobil: hvilken standard afløser sticky-lappen?
+
+**Status:** stillet 10/9 kl. 15:15 (Claude Code) efter ejerens afvisning af PR #5099
+(14:40, "standarden for mobil visningen skal stige markant", #5102). Vist som fire
+billeder ved 375 px med ægte ryttere fra et menneskehold (Mit hold): 0 = i dag
+(sticky navn + vandret scroll), A = kort pr. rytter med fold, B = tre faste
+kolonner + kolonnevælger + "Fuld tabel", C = to-lags (navneblok som egen kolonne
+ved siden af en scrollbar datablok). Derefter et samlet billede "i dag mod
+anbefalet" med markering af hvad der fjernes og ændres, og et 3-trins billede af
+"Fuld tabel". Billederne ligger i `mockups/2026-09-10-5102-*`.
+**Anbefalet:** B som standard, C som teknikken bag "Fuld tabel". **Fravalgt i
+anbefalingen:** A (afvist som standard 2/9, TASTE fork 6: man kan ikke sammenligne
+to ryttere uden at folde begge ud).
+
+## D-047 · Mobiltabeller: tre faste kolonner uden scroll, "Fuld tabel" som to-lags
+
+**Status:** ejer-valgt 10/9 kl. 15:20, svar på Q-051. Afløser TASTE.md P10 fork 6
+(2/9, "pinned navn + vandret scroll") og PAGE_TEMPLATES T2 "Mobile ≤640px".
+**Ejerens svar, ordret:** "1 - Jeg vil gerne følge din anbefaling. Husk at tjekke
+for ai slop. Måske der skal være en knap til at låse rytterens navn/ Kollonnen
+længst til venstre? Vil det ikke være fed brugervenlighed?"
+**Opfølgende kort (låseknap), ejerens svar ordret:** "1 - Hvis vi vælger 1.
+Hvordan fungere "fuld tabel" så? Kan man zoome ind og ud? Eller hvor ligger
+brugervenligheden i det specifikt?" (valgt: ingen knap, navnet er altid låst;
+besvaret med 3-trins-billedet).
+**Standarden:** på mobil viser enhver T2-tabel navnekolonnen + tre faste
+talkolonner pr. side (Mit hold: OVR, værdi, løn) uden vandret scroll; en
+chip-række over tabellen lader spilleren bytte kolonner, og valget huskes pr.
+side; "Fuld tabel" åbner alle kolonner med navneblokken som sin egen kolonne ved
+siden af en scrollbar datablok (ikke CSS sticky, så #5060-fejlen ikke kan opstå).
+Sticky-kolonne og vandret scroll som standardtilstand fjernes. Zoom: ingen knap;
+telefonens knib-zoom virker som altid. Bygges én gang i `DataTable` og gælder
+alle T2-sider; hver side angiver kun sine tre standardkolonner. PR #5099 lukkes
+uden merge. TASTE P10 og PAGE_TEMPLATES T2 opdateres i samme PR som byggeriet
+(hard rule 30).
+**Fravalgt:** kort pr. rytter (A); to-lags alene (C); en til/fra-knap for
+navnekolonnen (styrer noget der aldrig kan slås fra).
+**Åbent:** standardkolonnerne pr. side (Træning, ranglister, rytterdatabasen,
+auktioner, transferlisten, sæsonmatricen), om spilleren må fastgøre én ekstra
+kolonne i "Fuld tabel" (kandidat til eget issue), og copy for chips (EN/DA).
+Ejerens krav: AI-slop-tjek mod TASTE §3-4 før merge. Byggeissue: #5102.
+**Foreslået verifikation:** på 375 px vises navn + tre talkolonner uden vandret
+scroll på alle T2-sider; "Fuld tabel" viser samme kolonner og sortering som
+desktop med navnet synligt ved fuld scroll; ingen side taber tal (P10).
+
+## Q-052 · Løbsomdømme: tillæg oven på klassen eller ændring af klassevægten?
+
+**Status:** stillet 10/9 kl. 15:30 (Claude Code) som hul 1 fra
+`REPUTATION_RESEARCH.md` §4-5 (pkt. 4), med diagram vist før kortet. **A,
+anbefalet:** klassen låst, nyt dynamisk prestige-tillæg med loft og falmning;
+løbets omdømme = klasse + tillæg. **B:** tillægget ændrer selve klassevægten
+over tid (spiralrisiko). D-041, D-045 og D-046 blev ikke genåbnet.
+
+## D-048 · Løbsomdømme som prestige-tillæg oven på den låste løbsklasse
+
+**Status:** ejer-valgt 10/9 kl. 15:31, svar på Q-052.
+**Ejerens svar, ordret:** "A: prestige-tillæg oven på klassen (Anbefalet)".
+Et løb beholder sin faste kalender-klasse (`race_class`, 9 klasser, W_CLASS
+i rytter-omdømmets pointtabel) og får et nyt dynamisk prestige-tillæg, der
+stiger med startfeltets samlede rytter-omdømme, falmer over sæsoner og har et
+loft. Løbets omdømme = klasse + tillæg; kun summen vises. En sejr giver rytteren
+omdømme efter klasse + tillæg, så D-041's "vinde et løb med højt omdømme" bliver
+konkret uden at kalenderens rangorden kan skride. Personale-omdømme følger
+D-046's ordlyd ("når det designes") og lægges som senere lag; det er ikke en del
+af denne beslutning.
+**Fravalgt:** at lade tillægget ændre klassevægten (B).
+**Åbent:** loftets størrelse i forhold til klassen, falmningens takt, om
+tillægget måles pr. løb eller pr. etape, hvilket felt-mål der bruges (top-N af
+rytternes omdømme eller sum), visning på løbssiden (ordbånd eller tal, jf.
+fog of war-kapitlet), og rækkefølgen i rytter-rørledningen (efter PR 3-4,
+D-045). Ingen build-go.
+**Foreslået verifikation:** to løb i samme klasse med forskelligt startfelt får
+forskelligt tillæg; tillægget kan aldrig overstige loftet; et løb der mister sit
+felt falder tilbage mod klassen over sæsoner; ingen kodesti ændrer `race_class`.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code

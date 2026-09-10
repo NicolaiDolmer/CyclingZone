@@ -108,6 +108,8 @@ Denne tabel er et kort; DECISIONS og de ordrette svar er detaljerne.
 | D-044 | Marked: kun mennesker byder nu; AI-bud på udbudte ryttere (aldrig uopfordret) udsat til egen grundig session efter 27/9. Uopfordrede AI-bud fravalgt så længe spillernes veto står. (Claude Code 10/9) |
 | D-045 | Klubomdømme = hybrid: spec §6's tal underliggende (sponsor/lån/AI, aldrig vist som score) + offentlige "kendt for"-mærker af handlinger. Rytter-rørledningen PR 2-4 fortsætter; netværk (manager/personale/løb) lægges ovenpå. (Claude Code 10/9) |
 | D-046 | Manageren er i omdømme-netværket, men kun kosmetisk (karrierehistorik/mærker på profilen, ingen spileffekt). Doktrin 8/6 består. (Claude Code 10/9) |
+| D-047 | Mobiltabeller: navn + tre faste kolonner uden scroll, chips til at bytte kolonner, "Fuld tabel" som to-lags (navneblok som egen kolonne). Sticky + vandret scroll som standard fjernes; bygges i DataTable for alle T2-sider; #5099 lukkes. Afløser TASTE P10 fork 6. (Claude Code 10/9, ejerens tilføjelse om låseknap bevaret: ingen knap, navnet altid låst) |
+| D-048 | Løbsomdømme = låst `race_class` + nyt prestige-tillæg (stiger med startfeltets omdømme, falmer, loft). Sejr giver rytteren efter klasse + tillæg. Personale-omdømme = senere lag (D-046). (Claude Code 10/9) |
 | Q-037 | PARKERET: hvad andre managere ser om nuværende evner; forum-afstemning med billede i `docs/drafts/forum-poll-fog-of-war-2026-09-10.md`, ejeren poster selv. |
 
 R-001: følg egen avl med FM-inspiration. R-002: undersøg kategori/debuter og

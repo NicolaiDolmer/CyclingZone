@@ -609,3 +609,20 @@ designpunkt (ny mobil-tabelstandard). #5097 og #5100 fik merge-go og gik i køen
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Historisk produktanker #1145; se GITHUB_HANDOFF for nye/eksisterende ejere og dubletbevis.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.
+
+## Design-kort 10/9 eftermiddag (Claude Code, workflow-session)
+
+**Q-051/D-047 (mobiltabeller), ejerens svar ordret (15:20):**
+> 1 - Jeg vil gerne følge din anbefaling. Husk at tjekke for ai slop. Måske der skal være en knap til at låse rytterens navn/ Kollonnen længst til venstre? Vil det ikke være fed brugervenlighed?
+
+Første kort (fire separate billeder) blev afvist som ulæseligt: "Jeg kan ikke se
+på dine billeder hvad der er hvad. Men kan du sende et billede af nu / sådan jeg
+kan se hvad der ændres / hvad der fjernes + din anbefaling". Lære: ét samlet
+billede med "i dag" ved siden af "anbefalet" og nummererede markeringer.
+
+**Opfølgende kort (låseknap), ordret (15:25):**
+> 1 - Hvis vi vælger 1. Hvordan fungere "fuld tabel" så? Kan man zoome ind og ud? Eller hvor ligger brugervenligheden i det specifikt?
+
+Besvaret med et 3-trins billede (standard → fuld tabel → swipet til evnerne).
+
+**Q-052/D-048 (løbsomdømme), ordret (15:31):** "A: prestige-tillæg oven på klassen (Anbefalet)".
