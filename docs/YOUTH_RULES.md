@@ -1,5 +1,35 @@
 # Ungdommens regler: akademi, junior, U23 og senior - SSOT
 
+> **GDD-retning, ejer 10/9 2026:** Egen ungdomsudvikling skal kunne vælges fra som
+> klubstrategi. En købeklub med minimal egen ungdomsindsats er en fuldgyldig vej,
+> ligesom talentfabrikken er et legitimt slutmål. Ungdom kan være vigtigt for den
+> fælles verden uden at være et nødvendigt individuelt succeskrav. Se
+> [GDD](GAME_DESIGN_DOCUMENT.md) og [D-001/D-008](design/gdd/DECISIONS.md).
+> Konkrete trupregler, omkostninger og flows nedenfor ændres ikke af dette principvalg;
+> deres sammenhæng med retningen skal efterprøves under designgennemgangen.
+> **D-032 (Claude Code, 10/9):** ungdomstruppernes kapacitet = samme grundloft pr.
+> trup for alle + købte facilitetstrin med stigende drift; aldrig af division. Se §6 pkt. 1.
+> **D-039 (Claude Code, 10/9, ejerens ord):** søndagens kuld får overvægt mod klubbens
+> ønskede profil (nationalitet/region + ryttertype), aldrig udelukkende; driveren er
+> akademifaciliteten (samme trin som D-032), ikke scoutniveau; potentialefordelingen er ens
+> for alle. §2.3/§4's intake-mekanik (2 kandidater, 7 dage, ungdomsauktion) er uændret indtil
+> slice-spec. Se [D-039](design/gdd/DECISIONS.md).
+
+> **Følg udviklede ryttere, ejer 10/9 (D-011):** Den fremtidige automatiske kreds
+> skal omfatte eget akademi samt unge købt og udviklet en væsentlig del af
+> karrieren hos klubben. "Fra vores akademi" og "udviklet hos os" skal være
+> tydeligt adskilt. **D-012, samme dag:** "Udviklet hos os" kræver mindst tre
+> sæsoners samlet ungdomstid hos klubben frem til og med U23-perioden; opholdstid,
+> ikke målt evnefremgang, er grundlaget. Opgørelse af delvise sæsoner, historiske
+> data, flade og begivenheder afventer design.
+> [R-001/D-011/D-012](design/gdd/DECISIONS.md) bevarer intentionen;
+> dette er ikke en påstand om leveret funktionalitet eller godkendelse til build.
+> **D-013:** offentlig klubhistorik og eget manageroverblik; synlighedens regel
+> står i [SOCIAL_RULES](SOCIAL_RULES.md), som læses sammen med denne afgrænsning.
+> **D-015:** flere klubber, der opfylder kriteriet, vises som udviklingsklubber
+> med opholdsperioder og kan følge rytteren automatisk. Akademioprindelsen
+> bliver hos den oprindelige akademiklub; der udpeges ikke én vigtigste udvikler.
+
 > **Læs denne FØR enhver opgave der rører akademiet, intake, ungdomsauktionen, graduering,
 > flyt mellem trupper, aldersgrænser for hold og løb, eller "kommer snart"-flader for
 > ungdomsholdene.** Området blev født uden SSOT: reglerne lå i tre design-specs
@@ -190,7 +220,7 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 
 | # | Parameter | Afgøres af |
 |---|---|---|
-| 1 | Loft pr. trup (forslag U23 12, junior 10) | økonomi-sim i slice 1/2 + ejer-go |
+| 1 | Loft pr. trup (forslag U23 12, junior 10). **Princip ejer-valgt 10/9 (D-032):** samme grundloft for alle klubber; ekstra pladser købes som facilitetstrin med anlægspris og stigende drift pr. plads; kapacitet følger aldrig division eller resultater | økonomi-sim i slice 1/2 + ejer-go (tal, trin, priser) |
 | 2 | Drift pr. plads pr. tier | økonomi-sim (Scorecard C3) + ejer-go |
 | 3 | Antal divisioner i ungdomspyramiderne | felt-gaten (C1) mod population + ejer-go |
 | 4 | Løbsfrekvens pr. tier | `CALENDAR_RULES.md`-arbejdet i slice 2 |

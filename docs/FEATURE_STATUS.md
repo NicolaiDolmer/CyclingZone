@@ -149,5 +149,5 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Rider reputation (`rider-reputation`) | building | `rider_reputation_enabled` | - | - | 2026-09-06 | - |
+| Rider reputation (`rider-reputation`) | building | `rider_reputation_enabled` | - | - | 2026-09-10 | - |
 | Survey banner (`survey-banner`) | building | `survey_banner_enabled` | - | - | 2026-09-06 | - |
