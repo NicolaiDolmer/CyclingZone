@@ -7,6 +7,15 @@
 > [beslutningen](design/gdd/DECISIONS.md). Det fastlægger ikke nye lofter,
 > tilfældighed eller sandsynligheder. Den ærlige score besluttet i TRAINING_RULES
 > §13 består; konkrete regler skal efterprøves mod oplevelsesmålet.
+> **D-018, samme dag:** grundmodel for løbsudvikling valgt til videre design:
+> passende udfordring og aftagende læring ved nye erfaringer. Se
+> [TRAINING_RULES' principnote](TRAINING_RULES.md). **D-019:** erfaring udvikler
+> relevante eksisterende evner; historikken styrer aftagende læring, ikke en
+> ekstra skjult præstationsbonus. Præcise evnefordelinger og erfaringstyper er åbne.
+> **D-020:** fælles erfaringsområder på tværs af løb; navnet alene giver ikke
+> ny evneudvikling. Hårdere relevant udfordring kan give ny læring, debut kan
+> fejres i historikken. Kataloget er åbent. **D-021:** Holdarbejde konkretiseres
+> først blandt R-003's fire ønskede kandidater; ingen ny stat er godkendt til build.
 
 > **Læs denne FØR enhver opgave der rører rytterudvikling, træning, potentiale, lofter, rating eller ryttertyper.** Ejer-direktiv 25/8 ([#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)):
 > *"Det må ALDRIG NOGENSINDE ske, at du ikke bruger et SSOT-dokument, når vi rent faktisk har lavet et. Der skal nogle hardcore regler på det her."*

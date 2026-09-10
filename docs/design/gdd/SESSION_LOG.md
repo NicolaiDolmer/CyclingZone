@@ -270,13 +270,65 @@ Q-021 er stillet om grundmodellen: passende udfordring og aftagende læring
 Checkpoint `f38ae626` er pushet og bevarer RIDER_LEGACY samt reworkafklaringen;
 R-002 og Q-021 er den efterfølgende fortsættelse.
 
+## Q-021 · Grundmodellen, ejerens svar ordret
+
+> Passende udfordring og aftagende læring ved nye erfaringer (anbefalet)
+
+Registreret som D-018, afstemt i TRAINING_RULES og PROGRESSION_RULES. Det er
+retning til videre design, ikke godkendelse af alle researchdetaljer eller build.
+Q-022 spørger, om erfaring skal udvikle eksisterende evner, være særskilt
+løbsrutine med selvstændig præstationseffekt, eller en nærmere afgrænset kombination.
+Researchcheckpoint `6370a4c5` og supplerende kodebevis `1e17a5ba` er pushet.
+
+## Q-022 · Erfaringens virkning, ejerens svar ordret
+
+> Erfaring udvikler relevante eksisterende evner (anbefalet)
+
+Registreret som D-019, afstemt i PROGRESSION_RULES med pointers i TRAINING_RULES
+og RACE_ENGINE_RULES. Historikken giver ikke separat skjult præstationsbonus.
+Q-023 spørger til fælles erfaringsområder kontra navngivne debuter/kategori alene.
+Ingen komplet liste over erfaringstyper eller evnefordeling er valgt.
+
+## Q-023 · Erfaringsområder og evneønske, ejerens svar ordret
+
+> 1 + Hvis du samme omgang, at vi arbejder på dette kan forslå nye stats/evner til spillet, som kunne give mening, må du meget gerne forslå det. Kig gerne imod football manager, for at se om der er noget derfra, som kan passe ind i vores spil.
+
+Registreret som D-020 og R-003. Kandidatrapporten sammenholder eksisterende
+registry, allerede planlagte stats og FM-inspiration. E-008 afgrænser beviset.
+
+## Q-024 · Første kandidat og de øvrige, ejerens svar ordret
+
+> 1 - Men det lyder som om, at jeg gerne vil have alle dine forslag med i spillet. DEt kan vi godt tale om.
+
+Registreret som D-021: Holdarbejde først og interesse i alle fire forelagte
+kandidater. Ingen fuld mekanik/build-godkendelse. Q-025 spørger til mere hjælp
+for samme egen indsats kontra mindre belastning eller begge effekter.
+
+## Q-025 · Holdarbejde og kaptajnen, ejerens svar ordret
+
+> 1 - Men når kaptajnen har høj "teamwork", så skal hjælperne være mere villige til at arbejde for ham, fordi han altid har støttet dem godt, så "dygtige" kaptajner på den måde, kan modtage lidt ekstra hjælp. Fordi han kan få mere ud af holdet omkring sig.
+
+Registreret som D-022: A plus kaptajnens gensidige holdånd. Det er mere end
+den forelagte hjælpervirkning alene. Q-026 spørger til startvirkning fra
+personlig egenskab kontra opbygget fælles historie for en ny kaptajn.
+Afgrænsning fra Lederskab og prisen for ekstra hjælp er fortsat åbne.
+
+## Q-026 · Kaptajnens startvirkning, ejerens svar ordret
+
+> Egenskaben giver en startvirkning; godt samarbejde kan styrke den (anbefalet)
+
+Registreret som D-023, afstemt i RACE_ENGINE_RULES. Q-027 afklarer, om kaptajnens
+ekstra støtte kommer af bedre samarbejde inden for ordrerne eller ekstra
+faktisk arbejde og træthed. Relationens data og konkrete samarbejdshændelser
+er ikke valgt; heller ikke Lederskabs afgrænsning.
+
 ## Handoff · Genoptaget, 10/9 2026
 
 - Aktivt arbejde: samlet GDD og kritisk interview, status `in_progress`, genoptaget af ejer.
-- Q-020 førte til R-002, ikke et balancevalg. Q-021 om researchmodellens retning står åbent; afvent svaret.
-- Næste skridt: afklar grundmodellen, så erfaringstyper, aldersvirkning og konkret udbytte ét ad gangen.
+- D-022/D-023 vælger hjælper/kaptajn/startvirkning; Q-027 om kræfter og ordrer står åbent. Hold kortet åbent.
+- Næste skridt: afklar pris/koordination, samarbejdshistorik og Lederskabs afgrænsning; øvrige kandidater er åbne.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001, D-001–017 og R-001/R-002 er registreret; ingen ny funktion er godkendt til build.
+- V-001, D-001–023 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

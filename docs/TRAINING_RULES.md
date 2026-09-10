@@ -1,5 +1,17 @@
 # Træningens regler - SSOT
 
+> **GDD-retning, ejer 10/9 (D-018):** videre design bygger på passende udfordring
+> og aftagende læring ved nye erfaringer. Begge dagsaktiviteter udvikler rytteren;
+> målrettet træning har præcision, passende løb giver fysisk stimulus og erfaring.
+> Højere kategori er ikke automatisk bedre for enhver rytter. Den eksisterende
+> enten/eller-model i §13 består. Erfaringstyper, aldersvirkning, konkrete
+> udviklingsfordele og forholdet til §6's ældre løbsfordel skal afstemmes før build.
+> [D-018](design/gdd/DECISIONS.md) vælger grundmodellen, ikke alle detaljer i
+> [researchforslaget](design/gdd/TRAINING_RACE_DEVELOPMENT_RESEARCH.md).
+> **D-019:** erfaringens udbytte går til relevante eksisterende evner. Reglen
+> om historik kontra selvstændig præstationsbonus står i [PROGRESSION_RULES](PROGRESSION_RULES.md).
+> **D-020:** fælles erfaringsområder, ikke bonus pr. nyt løbsnavn; se samme SSOT.
+
 > **Læs denne FØR enhver opgave der rører træning: det daglige tick, assistent-sweepen,
 > dagstyper og sessioner, ugerytme, restitution, form, skader fra træning, træner- og
 > facilitets-effekt, eller løbsdages forhold til træning.** Ejer-direktiv 25/8

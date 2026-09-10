@@ -12,10 +12,12 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-017 er registreret.
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-023 er registreret.
 **Aktuelt:** Q-020 førte til researchønske R-002 om løbskategorier, debuter og FM.
-Q-021 om grundmodellen i [researchforslaget](design/gdd/TRAINING_RACE_DEVELOPMENT_RESEARCH.md)
-afventer. Der er ikke valgt ny udviklingsbalance.
+Grundmodellen i [researchforslaget](design/gdd/TRAINING_RACE_DEVELOPMENT_RESEARCH.md)
+er valgt i D-018; D-019 vælger eksisterende evner som udbytte. Q-023 om
+erfaringsområder er besvaret i D-020. **Aktuelt: Q-027** om kaptajnstøttens pris
+og indsatsordrer afventer. [Evnekandidater](design/gdd/RIDER_ATTRIBUTES_RESEARCH.md).
 R-001 bevarer ejerens ønske om at følge ryttere "af egen avl".
 [Genoptagelsesbriefen](design/gdd/RESUME_PROMPT.md)
 bevarer pausepunktet; journalens sidste handoff er den aktuelle samtaletilstand.
@@ -188,8 +190,27 @@ leverance. Q-020 angår alene det relative udviklingsudbytte af de to aktivitete
 og har endnu ikke ændret den ældre prioritering af passende løb. Ejeren foreslog
 under Q-020 at undersøge kategori og unge rytteres første store erfaringer.
 [R-002-researchen](design/gdd/TRAINING_RACE_DEVELOPMENT_RESEARCH.md) sammenholder
-officielle FM-kilder, cykelstudier og UCI-praksis. Den anbefaler passende
-udfordring og aftagende læring ved ny erfaring; det er endnu kun et forslag.
+officielle FM-kilder, cykelstudier og UCI-praksis. **D-018, valgt 10/9:** passende
+udfordring og aftagende læring ved nye erfaringer er retningen til videre design.
+Begge dagsaktiviteter udvikler rytteren; træning har præcision, passende løb
+giver fysisk stimulus og erfaring. Højere kategori er ikke automatisk bedst
+for enhver rytter. **D-019:** erfaring udvikler relevante eksisterende evner;
+historikken styrer den aftagende læring uden særskilt skjult præstationsbonus.
+**D-020:** fælles erfaringsområder overfører læring mellem løb; løbsnavnet alene
+giver ikke ekstra udvikling. Katalog, alder og konkrete udbytter afklares; alle detaljer
+i researchen er ikke godkendt ved disse valg.
+
+**R-003/D-021:** Ejeren ønsker at arbejde videre med Holdarbejde, Ro under pres,
+Lederskab og Træningsdisciplin, med Holdarbejde først. Det er prioritering af
+design og interesse i kandidaterne; effekter, skala og build er ikke godkendt.
+De tre allerede planlagte stats i RACE_ENGINE_RULES holdes adskilt fra nye forslag.
+En ny evne skal skabe et konkret valg og afgrænses mod taktik, positionering og potentiale.
+**D-022:** Hjælperens Holdarbejde giver mere brugbar hjælp for samme egen indsats.
+Ejeren ønsker også, at en kaptajns høje Holdarbejde kan få mere ud af hjælperne
+som følge af hans støtte til dem. **D-023:** egenskaben giver en startvirkning,
+som faktisk godt samarbejde kan styrke. Relation til Lederskab, definition af
+godt samarbejde og prisen for ekstra hjælp skal afklares. Reglen er afstemt i
+RACE_ENGINE_RULES; ingen konkret formel er valgt.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -301,6 +322,10 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-014 om "Siden sidst" og D-015 om flere udviklingsklubber valgt;
   D-016 om personligt gennembrud og D-017 om manuel opfølgning valgt;
   konceptkapitlet RIDER_LEGACY samlet; Q-020 om træning kontra løb stillet.
-  Q-020 gav researchønske R-002; forslag med kilder gemt; Q-021 afventer.
+  Q-020 gav researchønske R-002; forslag med kilder gemt; D-018 grundmodel valgt;
+  D-019 om eksisterende evner og D-020 om fælles erfaringsområder valgt;
+  R-003 evneforslag samlet; D-021 prioriterer Holdarbejde; D-022 vælger
+  hjælpervirkning og kaptajnens gensidighed; D-023 om startvirkning og samarbejde
+  valgt; Q-027 om ekstra hjælp og træthed stillet.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.

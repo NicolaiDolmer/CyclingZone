@@ -1,8 +1,9 @@
 # Træning, løb og de første store erfaringer
 
-**Status: research og designforslag, 10/9 2026. Ikke ejerbesluttet eller godkendt
-til build.** Udarbejdet efter ejerens R-002 under Q-020. Det tidligere A/B-valg
-er ikke besvaret; denne undersøgelse udvider beslutningsgrundlaget.
+**Status: research og designforslag, 10/9 2026. Grundmodel B er valgt som retning
+i D-018 (Q-021); ikke samlet godkendt til build.** Konkrete mekanikker nedenfor
+er fortsat forslag. Udarbejdet efter R-002 under Q-020; det tidligere binære
+valg blev udvidet gennem researchen, ikke stiltiende besvaret.
 
 [GDD](../../GAME_DESIGN_DOCUMENT.md) · [Ejerens svar og beslutninger](DECISIONS.md)
 · [Journal](SESSION_LOG.md).
@@ -26,8 +27,9 @@ bestemme løbets udviklingsværdi. Kategorien bidrager som signal om miljøet, m
 er ikke en universel multiplikator for hele udviklingen. En WorldTour-start
 skal ikke mekanisk være det bedste udviklingsvalg for enhver ung rytter.
 
-Dette er mit forslag. Kilderne nedenfor giver inspiration og realismegrundlag;
-de beviser ikke den konkrete spilmodel eller en bestemt balance.
+Grundmodellen er valgt til videre design; udfoldningen nedenfor er fortsat
+forslag. Kilderne giver inspiration og realismegrundlag, ikke bevis for den
+konkrete spilmodel eller en bestemt balance.
 
 ## Hvad Football Manager faktisk beskriver
 
@@ -88,7 +90,7 @@ resultater bruges ikke til at fastsætte spillets konstanter.
 | Retning | Styrke | Risiko | Vurdering |
 |---|---|---|---|
 | A: højere løbskategori + debutbonus giver mere samlet udvikling | Let at forklare, gør store invitationer attraktive | Kapløb om for tidlige debuter, forspring til adgangsstærke klubber, gentagen bonusjagt | For simpelt som hovedmodel |
-| B: passende udfordring + fysisk stimulus + erfaring i relevante situationer | Giver træning, løbsvalg og gradvise debuter forskellige styrker | Kræver tydelig feedback og afgrænset historik om erfaring | **Anbefalet** |
+| B: passende udfordring + fysisk stimulus + erfaring i relevante situationer | Giver træning, løbsvalg og gradvise debuter forskellige styrker | Kræver tydelig feedback og afgrænset historik om erfaring | **Ejer-valgt retning D-018** |
 | C: fuld model med personlighed, selvtillid, mentorer og mange erfaringstal | Stor variation i karrierer | Mange nye systemer, uklare årsager, høj administrations- og balanceomkostning | Mulig senere udvidelse, ikke nødvendigt fundament |
 
 ## B udfoldet: dybde gennem managerens valg
@@ -101,9 +103,10 @@ for: terræn, varighed, rolle og indsats. Begge bruger samme grundlæggende
 udviklingsregler og restitution; der gives aldrig både fuldt pas og fuldt
 løbsudbytte for samme løbsdag.
 
-Fysisk udvikling og løbslæring er to **årsager til udvikling**, ikke nødvendigvis
-to nye valutaer i brugerfladen. Første version bør undersøge brug af eksisterende
-evner som tactics og positioning frem for en ny universel XP-bar. Teknik og
+Fysisk udvikling og løbslæring er to **årsager til udvikling**. **D-019, valgt
+10/9:** erfaring udvikler relevante eksisterende evner, og historikken styrer
+aftagende læring uden ekstra skjult præstationsbonus oveni. Eksempler som tactics
+og positioning er ikke en låst evnefordeling. Teknik og
 løbsforståelse kan også trænes; de gøres ikke eksklusivt tilgængelige ved løb.
 
 ### 2. Kategorien sætter scenen; passende udfordring er afgørende
@@ -124,6 +127,10 @@ må ikke alene skabe mere udvikling. Samtidig kræver modellen ikke en ny
 registreringslås: en risikabel debut kan være et frit valg med tydelige følger.
 
 ### 3. Debuter er begyndelsen på tilvænning, ikke et engangsloot
+
+**D-020, valgt 10/9:** relevant erfaring overføres mellem løb gennem fælles
+erfaringsområder; løbets navn alene giver ikke udviklingsbonus. En hårdere
+relevant udfordring kan stadig give læring. Det konkrete katalog er åbent.
 
 Lad de første meningsfulde erfaringer med et nyt konkurrencemiljø være særligt
 lærerige, og lad den ekstra læring aftage, når situationen bliver velkendt.
@@ -217,9 +224,14 @@ og valgfri indsats til udviklingsberegningen. Nye koblinger skal designes ekspli
 - Først afklar ejerretning, så kilde-/dataaudit, model/harness og visuel prototype.
   Ingen af disse checks er bestået alene ved denne research.
 
-## Næste beslutning
+## Beslutningsstatus og næste afklaring
 
-Jeg anbefaler at vælge **B som retning til videre design**. Det valg vil stadig
-efterlade konkrete spørgsmål om relevante erfaringer, aldersvirkning, fordeling
-af udbytte og feedback. Det er ikke en samlet godkendelse af alle forslag ovenfor,
-og det ændrer ikke automatisk S4-scope eller det eksisterende rework.
+Ejeren har valgt **B som retning til videre design**, D-018. Kortets anbefalede
+første mulighed i Q-021 svarer til rapportens model B. Valget efterlader konkrete
+spørgsmål om relevante erfaringer, aldersvirkning, udbytte og feedback. Det er
+ikke en samlet godkendelse af alle forslag og ændrer ikke automatisk S4-scope.
+Q-022 er besvaret som D-019: eksisterende evner, ingen særskilt skjult
+præstationsbonus. Q-023 er besvaret som D-020: fælles erfaringsområder.
+Ejeren bad også om nye evneforslag, R-003; se [kandidatrapporten](RIDER_ATTRIBUTES_RESEARCH.md).
+D-021 prioriterer Holdarbejde først og bevarer interessen for alle fire kandidater.
+Q-025 om Holdarbejdes konkrete virkning afventer. Erfaringstyper/alder/udbytte er stadig åbne.

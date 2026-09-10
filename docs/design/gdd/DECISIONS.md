@@ -700,7 +700,7 @@ stats, løbsrating som proxy, mentor-/selvtillidssystem, balance eller release-s
 
 ## Q-021 · Grundmodel efter researchen
 
-**Status:** stillet 10/9; afventer.
+**Status:** besvaret 10/9; A valgt, se D-018 (svarer til model B i researchrapporten).
 **A, anbefalet:** passende udfordring og aftagende læring ved nye erfaringer.
 Træning giver præcision; løb giver fysisk stimulus og konkurrencesituationens
 erfaring. Højere kategori er ikke automatisk bedre for enhver rytter.
@@ -711,6 +711,190 @@ Kortet vælger kun retning til videre design, ikke hele researchforslaget eller
 en komplet ny mekanik. Næste konkrete valg er erfaringstyper, aldersvirkning og
 udbytte. Ingen ny D-beslutning må udledes af R-002 alene. Kilder: R-002,
 TRAINING_RULES §6/§13, PROGRESSION_RULES og researchforslagets S1-S6.
+
+## D-018 · Passende udfordring og aftagende læring
+
+**Status:** ejer-valgt retning til videre design 10/9, svar på Q-021.
+**Ejerens svar, ordret:** "Passende udfordring og aftagende læring ved nye erfaringer (anbefalet)".
+
+Begge dagsaktiviteter udvikler rytteren. Målrettet træning har præcision;
+passende løb giver fysisk stimulus og erfaring. Nye, meningsfulde erfaringer
+kan give ekstra læring, som aftager ved gentagelse. Højere kategori er ikke
+automatisk bedre for enhver rytter. Kortets A svarer til rapportens model B.
+**Fravalgt som grundmodel:** generel ekstra evneudvikling alene fra højere
+kategori og debut. **Åbent:** konkrete erfaringstyper, aldersvirkning, måling
+af deltagelse, forholdet til eksisterende evner, udbytte og feedback.
+
+Dette godkender ikke rapportens samtlige forslag, nye stats, bestemte
+aldersregler eller kalibrering. Den ældre løbsfordel og det nye mål skal afstemmes
+konkret; der er ikke vedtaget et nyt tal eller ændret release-scope.
+Kilder: R-002, research S1-S6, TRAINING_RULES/PROGRESSION_RULES (principnoter afstemt).
+**Foreslået verifikation:** komplette forløb for træningsfokus, passende løb og
+for svær konkurrence, med rollehensyn og gentagen eksponering; ingen universel
+optimal kategori eller ubegrænset debutgevinst. Først fastlægges konkrete kriterier.
+
+## Q-022 · Erfaring i eksisterende evner eller selvstændig løbsrutine?
+
+**Status:** besvaret 10/9; A valgt, se D-019.
+**A, anbefalet:** erfaring udvikler relevante eksisterende evner, eksempelvis
+taktik/positionering ved større felter og brostensevne ved brostensløb.
+Erfaringen huskes til aftagende læring, men giver ikke en separat skjult
+præstationsbonus oveni evnerne.
+**B:** særskilt løbsrutine påvirker præstation ved siden af evnerne, så to
+ellers ens ryttere kan præstere forskelligt pga. kendskab til løbstypen.
+**C:** kombination, som skal afgrænses nærmere.
+**Tradeoff:** A bruger det eksisterende evnesprog; B giver selvstændig
+specialiseret rutine, men kræver mere forklaring og balance. Eksemplerne på
+evner er ikke en låst udviklingsfordeling. Kilder: D-018, PROGRESSION_RULES,
+RACE_ENGINE_RULES og researchforslagets afsnit B1.
+
+## D-019 · Erfaring udvikler eksisterende evner
+
+**Status:** ejer-valgt 10/9, svar på Q-022.
+**Ejerens svar, ordret:** "Erfaring udvikler relevante eksisterende evner (anbefalet)".
+Erfaringens udbytte mærkes i relevante eksisterende evner. Spillet husker
+erfaringer for at styre aftagende læring; historikken giver ikke også en separat
+skjult præstationsbonus oveni. **Fravalgt:** særskilt løbsrutine som ekstra
+præstationsdimension samt en uafklaret kombination som grundmodel.
+**Åbent:** erfaringstyper, relevante evner og fordeling, historikkens form og
+kalibrering. Taktik/positionering/brostensevne var eksempler, ikke en komplet liste.
+Kilder: D-018, PROGRESSION_RULES (regel afstemt), TRAINING_RULES/RACE_ENGINE_RULES
+(pointers afstemt). **Foreslået verifikation:** erfaring kan ændre evner gennem
+udvikling; samme erfaringshistorik giver ikke en skjult ekstra motorfordel.
+
+## Q-023 · Erfaringsområder kontra navngivne debuter
+
+**Status:** besvaret 10/9; A valgt samt R-003, se D-020.
+En ung rytter har kørt flere krævende brostensløb og debuterer i Paris–Roubaix.
+**A, anbefalet:** relevant erfaring overføres mellem løb i fælles områder som
+brosten, større felt og etapeløb. Navnet alene giver ikke udviklingsbonus;
+markant hårdere udfordring kan stadig give ny læring, debut kan fejres i historik.
+**B:** hvert stort navngivet løb har egen debutgevinst.
+**C:** kategorien alene bestemmer, om erfaringen er ny.
+**Tradeoff:** A belønner et sammenhængende udviklingsforløb og modvirker jagt
+på løbsnavne; den kræver forståelige områder og passende sværhedsgrad.
+Eksemplerne er ikke et endeligt katalog. Kilder: D-018/D-019, R-002,
+PROGRESSION_RULES og RACE_ENGINE_RULES' profil-/rollebegreber.
+
+## D-020 · Fælles erfaringsområder på tværs af løb
+
+**Status:** ejer-valgt 10/9, svar på Q-023.
+**Ejerens svar, ordret:** "1 + Hvis du samme omgang, at vi arbejder på dette kan forslå nye stats/evner til spillet, som kunne give mening, må du meget gerne forslå det. Kig gerne imod football manager, for at se om der er noget derfra, som kan passe ind i vores spil.".
+Valg 1 accepterer fælles erfaringsområder: relevant erfaring overføres mellem
+løb; navnet alene giver ikke ny evneudvikling. En hårdere relevant udfordring
+kan stadig give læring, og en debut kan fejres i historikken. **Fravalgt:**
+gevinst pr. stort løbsnavn og kategori alene som definition af nyhed.
+**Åbent:** katalog, sværhedsgrad og overførsel mellem områder. Kilder:
+D-018/D-019, PROGRESSION_RULES (afstemt), TRAINING_RULES (pointer).
+**Foreslået verifikation:** tidligere brostensløb tæller ved Roubaix; omdøbning
+af samme løb giver ikke mere udvikling.
+
+## R-003 · Nye evner med FM-inspiration
+
+**Status:** ejerønske 10/9, fra Q-023-svaret ovenfor; uddybet ved Q-024.
+Forslag og kildeafgrænsning: [RIDER_ATTRIBUTES_RESEARCH](RIDER_ATTRIBUTES_RESEARCH.md).
+Codex' prioritering var Holdarbejde først, Ro under pres som betinget næste,
+Lederskab senere med mentorsystem og Træningsdisciplin afventende pga. overlap.
+Ejeren ønsker at tale om **alle fire**; afventning er ikke et ejerfravalg.
+Tre allerede planlagte stats (stabilitet, vejrteknik, højdetolerance) tælles
+ikke som nye idéer. Ingen ny konkret stat-effekt er godkendt til build.
+
+## Q-024 / D-021 · Holdarbejde først, interesse i alle fire kandidater
+
+**Status:** ejer-valgt designprioritet 10/9.
+**A, anbefalet:** konkretisér Holdarbejde først. **B:** Ro under pres først.
+**C:** Lederskab/veteranernes rolle først.
+**Ejerens svar, ordret:** "1 - Men det lyder som om, at jeg gerne vil have alle dine forslag med i spillet. DEt kan vi godt tale om.".
+Holdarbejde konkretiseres først. Ejeren udtrykker samtidig interesse i de fire
+kandidater fra den forelagte liste: Holdarbejde, Ro under pres, Lederskab og
+Træningsdisciplin. Det er ikke en beslutning om at indføre alle forslag inklusive
+de eksplicit frarådede dubletter. **Åbent:** hver kandidats domæne, effekt,
+udvikling, visning og balance. Ingen release-, scope- eller build-godkendelse.
+Kilder: R-003, PROGRESSION_RULES (prioritetsnote), RACE_ENGINE_RULES og registry.
+**Næste designprøve:** to ellers ens hjælpere, forskellig Holdarbejde; hvad
+skal ændres, og hvad skal forblive ens? Q-025 forelægger den virkning.
+
+## Q-025 · Mere hjælp eller mindre egen belastning?
+
+**Status:** besvaret 10/9; A valgt med kaptajntilføjelse, se D-022.
+To lige stærke hjælpere med samme rolle/indsats, forskelligt Holdarbejde.
+**A, anbefalet:** mere brugbar hjælp til kaptajnen for samme egen indsats.
+**B:** samme hjælp, mindre belastning for hjælperen.
+**C:** begge effekter, balanceret samlet.
+**Tradeoff:** A gør evnen tydeligt rettet mod holdets præstation, mens hjælperen
+stadig betaler for arbejdet. B kan lade ham holde længere. C giver større
+samlet værdi og risiko for en dominerende evne. Kilder: R-003/D-021,
+RACE_ENGINE_RULES §2e; ingen ændret energi-/effektformel er valgt.
+
+## D-022 · Holdarbejde hjælper både med at give og modtage støtte
+
+**Status:** ejer-valgt retning 10/9, svar på Q-025.
+**Ejerens svar, ordret:** "1 - Men når kaptajnen har høj \"teamwork\", så skal hjælperne være mere villige til at arbejde for ham, fordi han altid har støttet dem godt, så \"dygtige\" kaptajner på den måde, kan modtage lidt ekstra hjælp. Fordi han kan få mere ud af holdet omkring sig.".
+
+**Valg A:** Bedre Holdarbejde hos hjælperen giver mere brugbar hjælp til
+kaptajnen for samme egen indsats. Primært at reducere hjælperens pris eller
+både reducere pris og øge hjælp er fravalgt som svaret på sammenligningen.
+**Ejerens tilføjelse:** høj Holdarbejde hos kaptajnen skal også kunne få mere
+ud af hjælperne. Han begrunder deres villighed med kaptajnens tidligere støtte.
+Den tilføjelse må ikke forsvinde i en registrering af kun "A valgt".
+
+**Åbent:** er statten en tilstrækkelig repræsentation, eller skal fælles historie
+også tælle? Hvordan afgrænses det fra Lederskab? Betyder mere villighed øget
+faktisk indsats eller bedre udnyttelse, og hvem bærer prisen? De spørgsmål er
+ikke afgjort af D-022. En ny kaptajn har ikke automatisk faktisk fælles historie.
+Kilder: R-003/D-021, RACE_ENGINE_RULES §2e (principnote afstemt).
+**Foreslået verifikation:** samme hjælperindsats, forskellig Holdarbejde; mål
+nytten for kaptajnen. Afprøv derefter kaptajnens tilføjelse særskilt, så effekter
+ikke tælles dobbelt eller bryder de eksisterende begrænsninger.
+
+## Q-026 · Ny kaptajn: personlig egenskab eller fælles historie?
+
+**Status:** besvaret 10/9; A valgt, se D-023.
+En nyindkøbt kaptajn har høj Holdarbejde, men intet fælles løbsforløb med hjælperne.
+**A, anbefalet:** mindre startvirkning fra egenskaben; faktisk godt samarbejde
+kan styrke den. **B:** hele virkningen følger statten med det samme.
+**C:** ekstra hjælp skal først optjenes gennem fælles historie.
+**Tradeoff:** A lader både profil og fælles forløb have betydning; B er enklere
+og mere forudsigelig. A/C kræver en særskilt definition af godt samarbejde og
+kontrol for forholdet til Lederskab. Ingen relationstabel, ny skala eller
+konkret bonus er forelagt. Kilder: D-022, RACE_ENGINE_RULES §2e og R-003.
+
+## D-023 · Kaptajnens startvirkning og fælles samarbejde
+
+**Status:** ejer-valgt 10/9, svar på Q-026.
+**Ejerens svar, ordret:** "Egenskaben giver en startvirkning; godt samarbejde kan styrke den (anbefalet)".
+En ny kaptajns personlige Holdarbejde giver en startvirkning; godt samarbejde
+med holdet kan styrke den. **Fravalgt:** hele effekten følger statten straks,
+eller ekstra hjælp først efter optjent fælles historie. **Åbent:** hvad godt
+samarbejde består i, hvem relationen knytter sig til, udvikling/tab over tid,
+grænser, feedback og pris. Der er ikke valgt et bestemt forholdstal mellem
+egenskab og historie eller en ny datamodel. Kilder: D-022 og RACE_ENGINE_RULES
+(afstemt). **Foreslået verifikation:** ny og velintegreret kaptajn med samme
+evne kan have forskellig støtte; en ny kaptajn må ikke få fiktiv fælles historie.
+
+## Q-027 · Kaptajnens ekstra hjælp og hjælpernes kræfter
+
+**Status:** stillet 10/9; afventer.
+**A, anbefalet:** bedre samarbejde inden for managerens roller og indsatsordrer;
+en bedre kaptajn udløser ikke automatisk ekstra træthed hos hjælperne.
+**B:** mere faktisk arbejde pga. villighed, med ekstra træthed til planlægningen.
+Begge modeller skal have reel pris på holdarbejdet og begrænset effekt.
+Dette afklarer kaptajnens tilføjede kanal i D-022, ikke den allerede valgte
+hjælpervirkning for samme egen indsats. Kilder: D-022/D-023, RACE_ENGINE_RULES §2e
+og managerens handlefrihed i V-001/D-008. Ingen ny belastningsformel er valgt.
+
+## E-008 · Evneinventar og FM-inspiration
+
+**Status:** kilde-/kodekontrol 10/9 ved `1e17a5ba`; ingen prod-/modelsim.
+ABILITY_REGISTRY har 15 poster, gengivet i kandidatrapporten. Det beviser ikke
+fravær af andre skjulte/planlagte egenskaber. RACE_ENGINE_RULES nævner tre
+tidligere ejer-valgte stats; deres enkelte leverancestatus er ikke genmålt.
+`teamPlay.ts` har hjælperpris/kaptajnbeskyttelse; `leadout.ts::QUALITY_KEYS`
+bruger positionering, tempo og acceleration. Nye effekter skal afgrænses mod
+dem, ikke bygge på en påstand om at holdspil mangler. HOWTO_ADD_ABILITY er læst;
+dens gamle #3668-status bruges ikke som aktuel blocker. FM24's officielle
+manual er læst om Teamwork, Composure og Leadership; ingen skjult FM-formel
+eller aktuel FM26-kalibrering påstås kendt. Vores effekter er forslag.
 
 ## E-007 · Ekstern research til R-002
 

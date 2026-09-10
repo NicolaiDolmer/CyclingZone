@@ -111,3 +111,27 @@ Ejeren svarede med researchønske R-002; dette var ikke et valgt A/B-udfald.
 ## Q-021 · Grundmodellen efter research
 
 > Hvilken grundmodel skal vi arbejde videre med for løbsudviklingen? Jeg anbefaler modellen i forslaget: Begge dagsaktiviteter udvikler rytteren; målrettet træning har præcision, mens passende løb giver fysisk stimulus og erfaring. Større kategorier kan give nye udfordringer, og de første meningsfulde erfaringer lærer rytteren ekstra, men gevinsten aftager ved gentagelse. Det valg godkender kun retningen til videre design — vi tager debuttyper, aldersvirkning og konkret udbytte ét ad gangen.
+
+## Q-022 · Erfaringens virkning
+
+> Når en ung rytter lærer af de første større løb, hvor skal fremgangen kunne mærkes? Jeg anbefaler primært i de eksisterende relevante evner: fx taktik og positionering ved erfaring med større felter og brostensevnen ved brostensløb. Spillet husker erfaringerne for at styre den aftagende læring, men giver ikke også en separat skjult præstationsbonus oveni. Alternativet er særskilt løbsrutine, så to ryttere med ellers ens evner kan præstere forskelligt, fordi den ene kender løbstypen bedre. Det giver en ekstra dimension, men også mere at forstå og balancere.
+
+## Q-023 · Erfaringsområder
+
+> En ung rytter har allerede kørt flere krævende brostensløb og skal nu debutere i Paris–Roubaix. Skal den særlige udviklingslæring primært afhænge af hans erfaring med brostensudfordringen, eller give en ny bonus fordi løbets navn er nyt? Jeg anbefaler fælles erfaringsområder, fx brosten, større felt og etapeløb: Tidligere relevant erfaring tæller med på tværs af løb. Roubaix-debuten kan stadig fejres i historikken, og et markant hårdere løb kan give en ny udfordring, men navnet alene giver ikke ekstra evneudvikling.
+
+## Q-024 · Første nye evnekandidat
+
+> Skal vi konkretisere Holdarbejde som den første nye evne? Den skal beskrive, hvor godt rytteren omsætter sin indsats til hjælp for andre — eksempelvis beskyttelse eller leadout — mens fysisk styrke afgør, hvad han kan levere. Jeg anbefaler at begynde dér, fordi det kan give hjælperryttere og udviklingen af dem en tydeligere værdi. Ro under pres og Lederskab bevarer vi som kandidater; dette valg er prioritering af designarbejdet, ikke godkendelse til at bygge alle de foreslåede stats.
+
+## Q-025 · Holdarbejdes virkning
+
+> To lige stærke hjælperryttere får samme rolle og indsatsordre. Den ene har bedre Holdarbejde. Hvad skal forskellen først og fremmest være? Jeg anbefaler, at han giver kaptajnen mere brugbar hjælp for samme egen indsats. Så er evnen tydeligt rettet mod holdets præstation, mens hjælperen stadig betaler for arbejdet. Alternativt kan evnen primært gøre arbejdet billigere for hjælperen, så han selv holder længere. Begge effekter på én gang giver mere værdi, men øger risikoen for, at Holdarbejde bliver for dominerende.
+
+## Q-026 · Kaptajnens egenskab og fælles historie
+
+> Du køber en kaptajn med høj Holdarbejde, men han har endnu ikke kørt sammen med dine hjælpere. Hvornår skal han få den ekstra hjælp, du beskriver? Jeg anbefaler en mindre virkning fra hans egenskab fra starten, som kan styrkes gennem faktisk godt samarbejde med holdet. Så betyder både rytterens profil og den fælles historie noget. Alternativt kan hele effekten følge statten med det samme, hvilket er enklere og mere forudsigeligt.
+
+## Q-027 · Ekstra hjælp og træthed
+
+> Når en respekteret kaptajn får ekstra hjælp fra holdet, skal hjælperne så bruge flere kræfter end ellers? Jeg anbefaler, at kaptajnen først og fremmest får holdet til at samarbejde bedre inden for de valgte roller og indsatsordrer. Hjælperne bliver dermed ikke automatisk mere trætte, blot fordi de får en bedre kaptajn. Alternativt kan deres villighed udløse mere faktisk arbejde og dermed ekstra træthed, som manageren skal tage med i planlægningen. Begge modeller skal respektere, at holdets hjælp har en reel pris og ikke kan vokse ubegrænset.
