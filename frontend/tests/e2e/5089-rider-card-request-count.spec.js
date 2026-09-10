@@ -46,7 +46,11 @@ function tally(calls) {
 }
 
 async function settleOnProfile(page) {
-  await expect(page.getByRole("tab", { name: /Overblik|Overview/ })).toBeVisible();
+  // Eksplicit timeout: profilen er en lazy chunk, og under parallelle workers
+  // kan foerste indlaesning overskride expect-defaulten paa 5 s lokalt. Det er
+  // "testen naaede ikke frem", ikke en langsom flade (samme afvejning som
+  // test-timeouten i #4647).
+  await expect(page.getByRole("tab", { name: /Overblik|Overview/ })).toBeVisible({ timeout: 15000 });
   await page.waitForLoadState("networkidle");
 }
 
@@ -57,6 +61,10 @@ test.beforeEach(async ({ page }) => {
 
 test("cold rider profile stays inside the api-baseline budget (#5089)", async ({ page }) => {
   await login(page);
+  // Dashboard'et mounter selv app-skallen (Layout -> useScoutingCentral). Lad den
+  // falde til ro FOER taelleren saettes paa, ellers lander dashboardets egne kald
+  // i profilens regnskab og tallet bliver stoej-afhaengigt.
+  await page.waitForLoadState("networkidle");
   const calls = countRiderCardCalls(page);
 
   // rider-2 er en RIVAL-rytter (fixture): ingen ejer-handlinger i hero'en.
@@ -104,12 +112,20 @@ test("global endpoints are not refetched when navigating into a rider profile (#
   expect(warm["GET /api/transfers"] ?? 0).toBeLessThanOrEqual(1);
 
   // Ratchet: den DYRE profil (egen rytter, med salgs-knap og kontrakt-panel)
-  // efter en klient-navigation. Maalt 10/9: 16 foer, 7 efter.
-  expect(calls.length).toBeLessThanOrEqual(7);
+  // efter en klient-navigation. Maalt 10/9: 16 foer, 7-8 efter.
+  //
+  // 7 ELLER 8: POST /api/scouting/estimates afhaenger af om profilens egen
+  // useScouting-instans naar at bede om rytterens potentiale-baand, og det er
+  // ikke deterministisk (25 ms batch-timer + mount-raekkefoelge). Estimaterne er
+  // bevidst IKKE lagt i sharedRequestCache: baandet er viewer-maskeret pr.
+  // (rytter, hold) og aendrer sig naar en scout-opgave modner, saa et delt
+  // cache uden invaliderings-kontrakt ville kunne vise et foraeldet baand.
+  expect(calls.length).toBeLessThanOrEqual(8);
 });
 
 test("tab data is fetched on tab open, once per rider (#5089)", async ({ page }) => {
   await login(page);
+  await page.waitForLoadState("networkidle");
   const calls = countRiderCardCalls(page);
 
   await page.goto("/riders/rider-2");
