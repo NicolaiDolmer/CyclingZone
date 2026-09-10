@@ -66,20 +66,20 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 19. **Aldrig skip-logik på prod-deploy-grenen.** main bygger ALTID. Enhver "spring buildet over"-optimering (ignoreCommand, diff-gates) hører til på branches, aldrig på main.GIT_PREVIOUS
 
-20. **Deploy-verify er en del af merge-handlingen.** En merge er ikke færdig før det NÆSTE production-deploy er SET i READY (Vercel) — efter hver merge-salve, ikke ved close-out. _18/8: prod-frontend sad fast på sidste gode deploy i timevis mens merges fortsatte ovenpå den knækkede ignoreCommand._
+20. **Deploy-verify er en del af merge-handlingen.** En merge er ikke færdig før det NÆSTE production-deploy er SET i READY (Vercel) — efter hver merge-salve, ikke ved close-out.
 
 21. **Per-agent-timeout dimensioneres efter samtidighed.** En timeout der er rimelig for én agent alene er forkert under fuldt tryk: skalér med antal samtidige agenter eller launch i forskudte chunks.
 
 22. **Dispatch-forfilter før HVER spawn.** `gh issue view N --json state,labels` + tjek om en merged PR allerede dækker scopet. Masterplan-/NOW-/promptlinjer er KILDER, ikke facts.
 
-23. **Post-merge guard-tjek af main.** Efter en salve verificeres at required checks OG de bløde vagter (warning-budget, feature-liveness, patch-note-guard) stadig er grønne på main-HEAD — en PR kan være grøn på egen base og alligevel knække main i kombination. _18/8 morgen: to vagter knækkede på main efter formiddagens merges og blokerede hele merge-køen (fix `6d5a232c`)._
+23. **Post-merge guard-tjek af main.** Efter en salve verificeres at required checks OG de bløde vagter (warning-budget, feature-liveness, patch-note-guard) stadig er grønne på main-HEAD — en PR kan være grøn på egen base og alligevel knække main i kombination.
 
 24. **Orkestratoren ejer e2e-slottet ved parallelle workers** (ejer 18/8, KS3). Spawn-prompter tildeler verifikations-niveau eksplicit; ingen worker kører fuld lokal e2e-suite på egen hånd; maks 3 tunge verifikationer samtidig.
 
 25. **Design-gate før build** (ejer-mandat 13/8, [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)). En ny spillervendt funktion implementeres ALDRIG uden forudgående design-blok med ejeren: problem, løsningsskitse (mockup/show_widget/artboard/preview) og et eksplicit "godkendt til build". Godkendelsen refereres i PR-body ("Design-go: dato/link"). Refactors og bugfixes uden ny adfærd er undtaget.
 
 26. **Visuelt bevis før release** (#3661). Alt brugerrettet vises visuelt for ejeren FØR merge: rigtige screenshots (`pr-screens/`) eller preview-link, mobil OG desktop ved layoutændringer. Ingen tekst-beskrivelser som godkendelsesgrundlag — dette skærper UI-merge-reglen til også at gælde små ændringer (copy-only undtaget når teksten er citeret ordret).
-    **Dev-/preview-serveren hentes ALDRIG over HTTP** ([#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024)): Vite injicerer `import.meta.env` — inkl. `VITE_SUPABASE_ANONpage` er fine; skal du inspicere kode, læs kildefilen fra disk. Se tabel H i [`docs/SECRET_LEAK_VECTORS.md`](docs/SECRET_LEAK_VECTORS.md).
+    **Dev-/preview-serveren hentes ALDRIG over HTTP** ([#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024)): Vite injicerer `import.meta.env` — inkl. `VITE_SUPABASE_ANON_KEY` — i hvert modul den serverer, så `curl`/`fetch`/`Invoke-WebRequest` mod localhost:5173/5174 lækker nøglen til transcriptet uanset hvilket modul du henter. Screenshots og `read_page` er fine; skal du inspicere kode, læs kildefilen fra disk. Se tabel H i [`docs/SECRET_LEAK_VECTORS.md`](docs/SECRET_LEAK_VECTORS.md).
 
 27. **Spørgsmål med anbefaling FØR udarbejdelse** (#3661). Valg med spilleroplevelses-konsekvens forelægges ejeren som beslutningskort (ét ad gangen, kontekst i kortet, A/B + anbefaling) FØR der bygges — ikke efter. Rent tekniske valg uden oplevelses-konsekvens træffes selv.
 
