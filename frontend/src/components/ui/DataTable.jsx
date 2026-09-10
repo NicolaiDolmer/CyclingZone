@@ -137,26 +137,34 @@ export function DataTable({
     orderMobileChips(columns, defaultMobileColumnKeys(columns, mobileDefaults)).map((c) => c.key)
   );
 
+  // Kalderne sender nye `columns`/`mobileDefaults`-literaler hver render, men
+  // kun kolonnesættets IDENTITET (signaturen ovenfor) må udløse arbejde. De
+  // friske arrays bor derfor i en ref i stedet for i dependency-arrays: refs er
+  // stabile, så kravet om komplette dependencies kan opfyldes uden at
+  // undertrykke reglen. Opdateringen sker i en effekt (aldrig under render) og
+  // er DEKLARERET FØRST, så den har skrevet de friske arrays før effekten
+  // nedenfor læser dem.
+  const latestColumnsRef = useRef({ columns, mobileDefaults });
+  useEffect(() => {
+    latestColumnsRef.current = { columns, mobileDefaults };
+  });
+
   // Læs det huskede valg EFTER mount (localStorage er per-browser og må ikke
   // gøre first render afhængig af en I/O der kan kaste i et privat vindue).
   useEffect(() => {
-    const stored = readMobileColumnKeys(columns, mobileDefaults);
+    const latest = latestColumnsRef.current;
+    const stored = readMobileColumnKeys(latest.columns, latest.mobileDefaults);
     setMobileKeys(stored);
-    setChipOrder(orderMobileChips(columns, stored).map((c) => c.key));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- kolonne-/defaults-IDENTITET, ikke de nye array-referencer hver render
+    setChipOrder(orderMobileChips(latest.columns, stored).map((c) => c.key));
   }, [columnSignature, defaultsSignature]);
 
-  const pickColumn = useCallback(
-    (key) => {
-      setMobileKeys((current) => {
-        const next = swapMobileColumn(current, key);
-        writeMobileColumnKeys(columns, next);
-        return next;
-      });
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- se columnSignature ovenfor
-    [columnSignature]
-  );
+  const pickColumn = useCallback((key) => {
+    setMobileKeys((current) => {
+      const next = swapMobileColumn(current, key);
+      writeMobileColumnKeys(latestColumnsRef.current.columns, next);
+      return next;
+    });
+  }, []);
 
   const mobileStandard = isMobile && Boolean(entityCol);
   const hasChips = mobileStandard && swappable.length > MOBILE_COLUMN_COUNT;

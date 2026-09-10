@@ -48,8 +48,12 @@ test("mobil-standarden viser navnekolonnen + praecis tre kolonner", () => {
 // Valget maa IKKE hænge på det viste label: det er oversat, tæller ofte rækker
 // med ("Trup (1)" / "Squad (1)") og deles af to linser på samme side.
 test("kolonnevalget huskes pr. KOLONNESAET, ikke pr. oversat label", () => {
-  assert.match(src, /readMobileColumnKeys\(columns, mobileDefaults\)/);
-  assert.match(src, /writeMobileColumnKeys\(columns, next\)/);
+  // Begge kald skal faa KOLONNESAETTET. Kolonnerne naas via en ref
+  // (latestColumnsRef) saa signaturen kan vaere effektens eneste dependency
+  // uden et eslint-disable — derfor tillader regexet et objekt-praefiks, men
+  // stadig kun feltnavnene `columns`/`mobileDefaults`.
+  assert.match(src, /readMobileColumnKeys\([\w.]*columns, [\w.]*mobileDefaults\)/);
+  assert.match(src, /writeMobileColumnKeys\([\w.]*columns, next\)/);
   assert.match(src, /const columnSignature = mobileColumnsSignature\(columns\)/);
   assert.doesNotMatch(src, /(read|write)MobileColumnKeys\(label/);
 });
