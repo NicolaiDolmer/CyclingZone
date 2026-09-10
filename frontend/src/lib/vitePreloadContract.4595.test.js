@@ -24,15 +24,12 @@
 //     return baseModule().catch(handlePreloadError);
 //   });
 //
-// Begge grene testes: preventDefault-stien (fejlen slugt => promisen resolver
-// undefined) og kaste-stien (den vi koerer efter #4595).
+// Begge grene testes: kaste-stien (den vi koerer efter #4595) og
+// preventDefault-stien — den vi netop har forladt, og som stadig skal vaere
+// pinned, saa ingen ved et uheld indfoerer den igen.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  getRecentPreloadError,
-  installChunkReloadHandlers,
-  recordPreloadError,
-} from "./chunkErrors.js";
+import { installChunkReloadHandlers } from "./chunkErrors.js";
 import { loadWithRetry } from "./lazyWithRetry.js";
 
 const CHUNK_URL = "https://cyclingzone.org/assets/TeamPage-CmQ8ux1a.js";
@@ -123,7 +120,6 @@ function install(target, schedule, release) {
 }
 
 test("__vitePreload kaste-stien — den ægte fejl med chunk-URL når loadWithRetry", async () => {
-  recordPreloadError(null);
   const target = fakeTarget();
   const timer = manualScheduler();
   install(target, timer.schedule, "rel-throw");
@@ -145,18 +141,18 @@ test("__vitePreload kaste-stien — den ægte fejl med chunk-URL når loadWithRe
   );
 
   assert.deepEqual(purged, [[CHUNK_URL, "reload"]], "cache-purgen rammer det chunk der faktisk fejlede");
-  assert.equal(getRecentPreloadError()?.message, chunkFetchError().message, "payload'en er gemt");
   await timer.flush(); // reload-stien skal stadig kunne fyre
-  recordPreloadError(null);
 });
 
-test("__vitePreload preventDefault-stien — resolved undefined giver stadig den ægte fejl", async () => {
-  // Rod-årsagen fra CYCLINGZONE-56: nogen preventDefault'er, Vite kaster ikke,
-  // `.catch()` returnerer undefined, og HELE promisen resolver med undefined.
-  // Vores egen handler gjorde det indtil 10/9; en tredjeparts-listener kan
-  // stadig gøre det. Loaderen skal alligevel kaste browserens fejl, ikke sin
-  // egen syntetiske streng uden URL.
-  recordPreloadError(null);
+test("__vitePreload preventDefault-stien — hele skaden ligger i preventDefault", async () => {
+  // Rod-årsagen fra CYCLINGZONE-56, pinned: nogen preventDefault'er, Vite
+  // kaster ikke, `.catch()` returnerer undefined, og HELE promisen resolver med
+  // undefined. Så mister loaderen browserens fejl OG chunk-URL'en, og tilbage
+  // er den syntetiske streng uden noget at rense cachen for.
+  //
+  // Testen er derfor bevidst en NEGATIV kontrakt: den viser præcis hvad prisen
+  // er, og den fejler den dag nogen sætter preventDefault tilbage i vores egen
+  // handler (så ville kaste-stien ovenfor ramme her i stedet).
   const target = fakeTarget();
   const timer = manualScheduler();
   install(target, timer.schedule, "rel-prevented");
@@ -176,18 +172,16 @@ test("__vitePreload preventDefault-stien — resolved undefined giver stadig den
     () => loadWithRetry(importFn, { fetchFn: async (url, init) => { purged.push([url, init.cache]); return { ok: true }; } }),
     (err) => {
       assert.equal(err.name, "ChunkLoadError");
-      assert.match(err.message, new RegExp(CHUNK_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-      assert.doesNotMatch(err.message, SYNTHETIC);
+      assert.match(err.message, SYNTHETIC, "en slugt fejl efterlader kun den syntetiske streng");
+      assert.doesNotMatch(err.message, new RegExp(CHUNK_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
       return true;
     },
   );
-  assert.deepEqual(purged, [[CHUNK_URL, "reload"]]);
+  assert.deepEqual(purged, [], "ingen URL at rense — præcis det tab preventDefault koster");
   await timer.flush();
-  recordPreloadError(null);
 });
 
 test("__vitePreload — fejlet CSS-preload reddes af det ene retry", async () => {
-  recordPreloadError(null);
   const target = fakeTarget();
   const timer = manualScheduler();
   install(target, timer.schedule, "rel-css");
@@ -209,11 +203,9 @@ test("__vitePreload — fejlet CSS-preload reddes af det ene retry", async () =>
   assert.equal(baseCalls, 1, "første forsøg nåede aldrig baseModule (CSS kastede først)");
   assert.deepEqual(purged, [], "ingen cache-purge når retry'et lykkes");
   await timer.flush();
-  recordPreloadError(null);
 });
 
-test("uden en frisk preload-payload bevares den syntetiske fejl (ægte manglende default)", async () => {
-  recordPreloadError(null);
+test("et modul der reelt mangler default-export giver stadig den syntetiske fejl", async () => {
   await assert.rejects(
     () => loadWithRetry(async () => ({ notDefault: 1 })),
     (err) => {

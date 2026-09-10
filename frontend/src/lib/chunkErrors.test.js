@@ -3,11 +3,9 @@ import assert from "node:assert/strict";
 import {
   documentIsStillLoadable,
   getChunkReloadKey,
-  getRecentPreloadError,
   installChunkReloadHandlers,
   isChunkLoadError,
   isUnambiguousChunkLoadError,
-  recordPreloadError,
   shouldAttemptChunkReload,
 } from "./chunkErrors.js";
 
@@ -125,31 +123,6 @@ test("installChunkReloadHandlers — vite:preloadError udløser præcis ét loop
   // #4595: preventDefault ville stoppe Vite i at kaste, så __vitePreload
   // resolvede med undefined og loaderen mistede den ægte fejl + chunk-URL'en.
   assert.equal(prevented, 0, "preventDefault kaldes ALDRIG på preloadError — Vite skal kaste videre");
-});
-
-test("installChunkReloadHandlers — #4595: gemmer event.payload som seneste preload-fejl", async () => {
-  const target = fakeTarget();
-  const timer = manualScheduler();
-  installChunkReloadHandlers({ target, release: "rel-payload", storage: memoryStorage(), reload: () => {}, schedule: timer.schedule, ...PROBE });
-
-  recordPreloadError(null); // ren tavle
-  const payload = new TypeError(
-    "Failed to fetch dynamically imported module: https://cyclingzone.org/assets/TeamPage-old.js",
-  );
-  target.dispatch("vite:preloadError", { payload });
-  await timer.flush();
-
-  assert.equal(getRecentPreloadError(), payload, "payload'en er tilgængelig for loader + cache-purge");
-  recordPreloadError(null);
-});
-
-test("getRecentPreloadError — en gammel payload maskerer ikke en senere, ubeslægtet fejl", () => {
-  const payload = new TypeError("Failed to fetch dynamically imported module: https://cz.org/assets/a.js");
-  recordPreloadError(payload, 1_000);
-  assert.equal(getRecentPreloadError({ now: 1_500 }), payload, "frisk payload bruges");
-  assert.equal(getRecentPreloadError({ now: 9_000 }), null, "udløbet payload ignoreres");
-  recordPreloadError(null);
-  assert.equal(getRecentPreloadError(), null, "null rydder recordet");
 });
 
 test("isChunkLoadError — #4595: Vites CSS-preload-fejl er en utvetydig chunk-fejl", () => {

@@ -54,10 +54,10 @@ Den ægte fejl — med chunk-URL'en — lå hele tiden i `event.payload` og blev
 
 ## Fix
 
-1. `onPreloadError` gemmer `event.payload` (`recordPreloadError`) og kalder **ikke** `preventDefault()`. Vite kaster videre, så den rigtige fejl med den rigtige URL bobler op ad den sti den hører til.
-2. `validateModule` kaster den gemte payload i stedet for den syntetiske streng, hvis der er en frisk (≤ 2 s). Den syntetiske fejl er kun tilbage for et modul der reelt mangler sin default-export.
-3. `purgeStaleChunkFromCache` falder tilbage til payload'ens URL før den falder tilbage til dokumentets modul-URL'er.
-4. `"Unable to preload CSS for <url>"` er tilføjet som utvetydigt chunk-mønster. Uden `preventDefault()` kaster Vite også ved en fejlet CSS-preload; uden mønsteret ville den blive klassificeret `render_error` og give fuldskærms-fallbacken i stedet for det ene retry der faktisk redder den (Vites `seen`-map springer dep'en over anden gang).
+1. `onPreloadError` kalder **ikke** `preventDefault()`. Det er hele fixet: Vite kaster videre, så den rigtige fejl med den rigtige URL bobler op ad den sti den hører til, og `validateModule` ser aldrig et `undefined`-modul efter en fejlet chunk-load. Recovery-reloadet (`reloadOncePerRelease`) kaldes uændret.
+2. `"Unable to preload CSS for <url>"` er tilføjet som utvetydigt chunk-mønster. Uden `preventDefault()` kaster Vite også ved en fejlet CSS-preload; uden mønsteret ville den blive klassificeret `render_error` og give fuldskærms-fallbacken i stedet for det ene retry der faktisk redder den (Vites `seen`-map springer dep'en over anden gang).
+
+**Fravalgt i review:** et første udkast gemte `event.payload` i modul-global state (`recordPreloadError`/`getRecentPreloadError`, 2 s TTL) og lod `validateModule` + `purgeStaleChunkFromCache` falde tilbage til den. Det blev fjernet igen. Den eneste tænkelige forbruger var en tredjeparts-listener der selv `preventDefault`'er `vite:preloadError` — der findes ingen i repoet, og hverken Sentry, PostHog eller Clarity lytter på eventet. Til gengæld kostede mekanikken en reel fejlkilde: under et deploy-skew fejler flere chunks inden for samme sekund, så det gemte record kan tilhøre et **andet** chunk end det der fejlede — og purgen erstattede så dokumentets entry-/vendor-URL'er med en fremmed chunk-URL. Mindre kode, ingen tidsbaseret global state, ingen fejlattribution.
 
 Uændret: Sentry-fingerprintet `frontend-chunk-load-error`, `release.inject: false` (#5021), skew protection-opsætningen, cache-/asset-headerne og #5033.
 
@@ -66,11 +66,11 @@ Uændret: Sentry-fingerprintet `frontend-chunk-load-error`, `release.inject: fal
 `frontend/src/lib/vitePreloadContract.4595.test.js` gengiver `__vitePreload` ordret og kører **begge** grene:
 
 - **kaste-stien** (det vi kører nu): den ægte fejl med chunk-URL når `loadWithRetry`, og cache-purgen rammer netop det chunk.
-- **preventDefault-stien**: en tredjeparts-listener der `preventDefault`'er må ikke kunne genskabe fejlen — loaderen skal stadig kaste browserens fejl.
+- **preventDefault-stien** (negativ kontrakt): når nogen `preventDefault`'er, mister loaderen både fejlen og URL'en. Testen pinner præcis det tab, så den dag `preventDefault()` sniger sig tilbage i vores egen handler, fejler kaste-stien ovenfor.
 - **CSS-preload-stien**: en fejlet stylesheet-preload må ikke tage siden ned.
 - **ægte manglende default-export**: den syntetiske fejl skal stadig være der.
 
-Målt regressions-bevis 10/9: med `preventDefault()` genindsat og payload-opslaget slået fra fejler de to første tests med præcis Sentry-strengen
+Målt regressions-bevis 10/9: med `preventDefault()` genindsat fejler den første test med præcis Sentry-strengen
 `Failed to fetch dynamically imported module (chunk reload needed): Failed to fetch dynamically imported module: resolved to an invalid module without a default export`.
 Med fixet er alle fire grønne.
 
