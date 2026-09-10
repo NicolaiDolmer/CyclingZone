@@ -114,18 +114,44 @@ function decorate(rows) {
   });
 }
 
+// Migrationen er maaske ikke applied endnu (dry-run FOER merge). I saa fald
+// findes varsel-kolonnerne ikke, og maalingen skal stadig kunne koere - den
+// laeser jo kun for at vise hvor mange der allerede er frosset. `--execute`
+// afvises til gengaeld, for man kan ikke skrive en kolonne der ikke findes.
+let noticeColumnsMissing = false;
+
+// `teams!riders_team_id_fkey` og ikke bare `teams`: riders har TRE fremmednoegler
+// til teams (team_id, ai_team_id, pending_team_id), saa PostgREST afviser den
+// uspecificerede embed med "more than one relationship was found". Det er
+// EJERSKABET vi vil have - ai_team_id er AI-poolens reservation, ikke rytterens hold.
+const BASE_RIDER_COLUMNS = "id, firstname, lastname, birthdate, team_id, contract_end_season, teams!riders_team_id_fkey(name, is_ai, is_bank, is_frozen, is_test_account)";
+
+async function fetchRiderPage(supabase, from, withNoticeColumns) {
+  // Bevidst INGEN team_id-filter: frie agenter paa transfermarked/auktion er
+  // netop dem koebere traeffer beslutninger om (se POPULATION i headeren).
+  const columns = withNoticeColumns
+    ? `${BASE_RIDER_COLUMNS}, ${RETIREMENT_NOTICE_COLUMNS}`
+    : BASE_RIDER_COLUMNS;
+  return supabase
+    .from("riders")
+    .select(columns)
+    .eq("is_retired", false)
+    .eq("is_academy", false)
+    .order("id")
+    .range(from, from + RIDER_PAGE - 1);
+}
+
 async function fetchRiders(supabase) {
   const rows = [];
   for (let from = 0; ; from += RIDER_PAGE) {
-    // Bevidst INGEN team_id-filter: frie agenter paa transfermarked/auktion er
-    // netop dem koebere traeffer beslutninger om (se POPULATION i headeren).
-    const { data, error } = await supabase
-      .from("riders")
-      .select(`id, firstname, lastname, birthdate, team_id, contract_end_season, ${RETIREMENT_NOTICE_COLUMNS}, teams(name, is_ai, is_bank, is_frozen, is_test_account)`)
-      .eq("is_retired", false)
-      .eq("is_academy", false)
-      .order("id")
-      .range(from, from + RIDER_PAGE - 1);
+    let { data, error } = await fetchRiderPage(supabase, from, !noticeColumnsMissing);
+    if (error && !noticeColumnsMissing && /retirement_notice/.test(error.message || "")) {
+      noticeColumnsMissing = true;
+      console.log("BEMAERK: varsel-kolonnerne findes ikke i denne database endnu");
+      console.log("        (migration 2026-09-10-5073 ikke applied). Maalingen koerer,");
+      console.log("        men --execute er ikke muligt foer migrationen er kommet ind.");
+      ({ data, error } = await fetchRiderPage(supabase, from, false));
+    }
     if (error) fail(`kunne ikke hente ryttere: ${error.message}`);
     if (!data?.length) break;
     rows.push(...decorate(data));
@@ -260,6 +286,9 @@ async function main() {
 
   if (process.env.OWNER_GO !== "1") {
     fail("--execute kraever OWNER_GO=1 i miljoeet. Ejeren skal have set tallene ovenfor FOERST (#5073).");
+  }
+  if (noticeColumnsMissing) {
+    fail("varsel-kolonnerne findes ikke i databasen - apply migration database/2026-09-10-5073-retirement-notice-column.sql foerst.");
   }
 
   const written = await writeFreeze(supabase, freezeRows);

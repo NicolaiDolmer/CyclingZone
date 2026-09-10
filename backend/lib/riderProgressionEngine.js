@@ -149,6 +149,9 @@ export async function developRidersForSeason({
       .from("riders")
       // #5073: varsel-kolonnerne med — cutover SKAL læse det svar spilleren
       // allerede har set, ikke rulle et nyt (se resolveSeasonRetirement).
+      // schema-columns-ok: retirement_notice_season/-after_season/-given_at
+      // tilfoejes af database/2026-09-10-5073-retirement-notice-column.sql i
+      // SAMME PR; snapshottet opdateres foerst efter merge.
       .select("id, primary_type, secondary_type, valuation_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname, retirement_notice_season, retirement_notice_after_season, retirement_notice_given_at")
       .eq("is_retired", false)
       .order("id")),

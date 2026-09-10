@@ -15265,6 +15265,9 @@ router.get("/riders/:id/view-count", requireAuth, async (req, res) => {
 // (riderProgressionEngine → developRiderSeason) læser SAMME kolonne, så
 // banneret og den faktiske pensionering aldrig kan sige to forskellige ting.
 router.get("/riders/:id/retirement-status", requireAuth, async (req, res) => {
+  // schema-columns-ok: retirement_notice_season/-after_season/-given_at tilfoejes
+  // af database/2026-09-10-5073-retirement-notice-column.sql i SAMME PR; snapshottet
+  // opdateres foerst efter merge (auto-migrate.yml applier migrationen).
   const { data: rider, error } = await supabase
     .from("riders")
     .select(`id, birthdate, ${RETIREMENT_NOTICE_COLUMNS}`)

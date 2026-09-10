@@ -162,6 +162,10 @@ export async function resolveRetirementNotice(supabase, riderRow, season, cfg = 
       return resolved;
     }
   } catch (err) {
+    // best-effort: frysningen er en OPTIMERING af et svar vi allerede har regnet
+    // ud. Fejler skrivningen (netvaerk, RLS, kolonnen findes ikke endnu foer
+    // migrationen er applied), returnerer vi praecis samme svar som foer og
+    // proever igen ved naeste visning. En fejl her maa aldrig braekke rytterkortet.
     console.error("[retirement-notice] lazy freeze threw:", err?.message || err);
     return resolved;
   }
