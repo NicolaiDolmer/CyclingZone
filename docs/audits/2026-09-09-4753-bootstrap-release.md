@@ -101,6 +101,27 @@ open. Deferred work #5067/#5068/#5069, #3069 and #4925 was not implemented here.
 Patch notes: no additional note for this documentation-only follow-up. Release
 note 7.268 already covers the AI prize fix; the pool-repair note remains withheld.
 
+## 10 September re-verification
+
+A 10 September handoff comment on #5071 called the league-size-invariant check
+"stale-red" and claimed the invariant had measured green on every PR since
+21:55 CEST on 9 September, with Division 4 F in `waiting` and zero findings.
+That claim is not backed by a fresh check result. Read-only re-verification
+against production on 10 September (this PR, via Supabase `execute_sql`) found:
+
+- `league_divisions` id 13 (Division 4 — F, tier 4, pool_index 5) still has
+  exactly 25 teams — unchanged from the 9 September measurement above.
+- 14 teams repo-wide have `league_division_id IS NULL` (never pool-allocated).
+  This sits outside the league-size-invariant's own scope by design (see the
+  exclusion comment in `backend/scripts/audit-league-size-invariant.js`), so it
+  does not change the check's pass/fail verdict, but it is a related
+  data-quality gap worth tracking separately from #4753.
+
+The finding is real, not stale. The check is still not a required GitHub
+context (branch protection unchanged, see above), and any repair — pool 13's
+surplus or the 14 unallocated teams — needs its own owner go per the release
+runbook. This PR does not activate, repair or reconfigure branch protection.
+
 ## Process limitation observed during this session
 
 For the NOW claim commit, bare bash was missing from PowerShell PATH. The shell
