@@ -728,6 +728,10 @@ noget kilderne dokumenterer som en præcis fysisk eller FM-intern regel.
 igen; den kontrollerede signatur rummer profil og indsats, ikke historik over
 debuter. Det er en observation af én kodevej, ikke bevis for fravær af al
 erfaringslogik i hele projektet. Intet nyt runtimebugfund eller feature-issue oprettet.
+Supplerende kontrol ved `6370a4c5`: `StageOutput` i v4's `types.ts` rummer
+belastningsdata og gruppesnapshots; de er kandidatkilder til deltagelse, ikke
+bevis for persisteret end-to-end-integration. TRAINING_RULES §2/§7 er desuden
+læst om tick-rækkefølge og træner/facilitet; gamle målinger er ikke genmålt.
 
 ## E-006 · Den ældre fordel til løbsudvikling
 

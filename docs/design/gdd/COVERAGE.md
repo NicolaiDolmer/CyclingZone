@@ -24,7 +24,7 @@ Senere kontrol skal også gennemgå baggrundsprocesser og funktioner uden egen r
 | G02 | Onboarding, første beslutning, læring, hjælp og comeback | FEATURE_REGISTRY; App.jsx; #1140 | D-005: to indgange og let betjening; detaljer afventer |
 | G03 | Besøgskadence, offline-spil, deadlines og assistance | ASSISTANT_RULES; PLANNING_CENTER_RULES; TRAINING_RULES | D-004/D-006: 2-3 besøg på 15-20 min; ASSISTANT_RULES §0-2 læst; E-001; D-007 om markedsaktivitet |
 | G04 | Rytteridentitet, generation, egenskaber og typer | RIDER_GENERATION; PROGRESSION_RULES | PROGRESSION_RULES §0-10 læst; D-010 valgt; ingen samlet kode-/prod-kontrol |
-| G05 | Træning, form, restitution, sygdom, skader og peaks | TRAINING_RULES; PROGRESSION_RULES | SSOT-afsnit + fuld 6/9-spec læst; R-002 ekstern research i TRAINING_RACE_DEVELOPMENT_RESEARCH; Q-021 afventer; E-001/E-006/E-007; ingen modelsim |
+| G05 | Træning, form, restitution, sygdom, skader og peaks | TRAINING_RULES; PROGRESSION_RULES | §1/§2/§6/§7/§12/§13 + fuld 6/9-spec læst; R-002 ekstern research i TRAINING_RACE_DEVELOPMENT_RESEARCH; Q-021 afventer; E-001/E-006/E-007; ingen modelsim |
 | G06 | Scouting, fog of war, potentiale og informationsværdi | PROGRESSION_RULES; YOUTH_RULES; scout-system i FEATURE_REGISTRY | Inventeret; egen reglerute afklares ved læsning |
 | G07 | Akademi, ungdomstrupper, karrierer og generationsskifte | YOUTH_RULES; RIDER_GENERATION; PROGRESSION_RULES | YOUTH_RULES læst; D-008: individuel ungdomsindsats valgfri; ingen samlet kodekontrol |
 | G08 | Kalender, udtagelse, kapacitet og sæsonplan | CALENDAR_RULES; PLANNING_CENTER_RULES; ASSISTANT_RULES | Inventeret |

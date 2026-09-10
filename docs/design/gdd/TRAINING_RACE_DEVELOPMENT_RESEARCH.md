@@ -191,6 +191,14 @@ forstå sin plan. En sådan flade skal godkendes visuelt senere.
 
 ## Det vi skal modbevise før build
 
+**Afgrænset kodekontrol 10/9 ved `6370a4c5`:** v4's `StageOutput` i
+`backend/lib/engine/v4/types.ts` rummer `loads`, `groupSnapshots` og valgfri
+uheldshændelser. Det giver kandidatkilder til faktisk belastning og deltagelse.
+Der er ikke verificeret en komplet persisteret datavej til udviklingssystemet,
+og tilstedeværelsen af felter beviser ikke en god læringsmåling. Den kontrollerede
+gamle tick-sti i `dailyTrainingEngine.js` sender program, ryttertilstand, profil
+og valgfri indsats til udviklingsberegningen. Nye koblinger skal designes eksplicit.
+
 - Højeste kategori er ikke bedst for alle unge, når kvaliteten af deltagelsen
   og forberedelsen varierer. Lavere divisionsadgang må ikke give en permanent
   udviklingslås. Det skal testes sammen med kalender og invitationer.
