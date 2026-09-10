@@ -1503,6 +1503,51 @@ mærker; en rytter der vinder et stort løb får mere omdømme end af et lille;
 et løb med stærkere startfelt får højere omdømme over tid; ingen af delene
 kan opnås ved at erklære noget uden at handle.
 
+## Q-046 · Hvordan udbetales et sponsormåls bonus?
+
+**Status:** stillet 10/9 (Claude Code) som første kort i kapitlet "økonomi og
+marked"; tre kolonner (mål "stjerne over 75", bonus 60.000 som illustration).
+Ejeren svarede B som forventet retning, men satte to ting foran, se D-042.
+**A:** bonus straks, målet er pynt (i dag; #3595, ejer-bekræftet 9/8).
+**B, anbefalet:** grundaftalen som i dag; bonussen først når målet er nået,
+ellers ikke; ingen straf, kun mulighedsomkostning; delmål kan give del-udbetaling.
+**C:** bonus straks, tilbagebetaling ved fiasko.
+**Tradeoff:** A er intet mål; B gør målet til en retning at spille efter
+(D-040) uden straf ("styrke straffes aldrig", ingen fyring); C rammer den der
+prøvede og fejlede oven i gælden ved sæsonskiftet (ECONOMY_RULES §3).
+Kilder: SPONSOR_RULES §1, §6, §8 pkt. 8; #3595; skema 10/9 ("små sponsorer
+med sidemål" idé 4,04 / vigtighed 3,54); forum 4/9 (sponsorer som identitetsvej).
+
+## D-042 · Sponsorbonus ved opfyldelse, efter to forudsætninger fra ejeren
+
+**Status:** ejer-forventet retning 10/9 (B), svar på Q-046, med to forudsætninger
+der skal på plads først. Bekræftes endeligt, når Q-047 (rollefordeling) er svaret.
+**Ejerens svar, ordret:** "Jeg tror vi lige skal have nogle ting på plads her
+først. Popularitet skal laves om til omdømme. Jeg vil gerne adskille sponsor og
+bestyrelsen yderligere, så de ikke minder for meget om hinanden. Dette vil jeg
+gerne tale lidt om. F.eks kan sponsorere have mest med penge og resultater at
+gøre. Og bestyrelsen kan så have mest at gøre med holdets identitet f.eks. Som
+primært elementer. Jeg er åben overfor forslag, men jeg synes de skal have en
+mere tydelig rolle, hver for sig, fremadrettet. I forhold til dit spørgsmål
+forventer jeg, at svaret er 1/b."
+**Retning:** sponsormålets bonus udbetales, når målet er nået; nås det ikke,
+udbetales den ikke; ingen tilbagebetaling og ingen straf.
+**Forudsætning 1 (ejer-direktiv):** "popularitet" laves om til **omdømme**:
+den eksisterende popularitetsstørrelse på ryttere (og sponsormål der peger på
+den, fx "popularitet over 75") skal erstattes af/indgå i omdømme-netværket i
+D-041. Ingen ny størrelse ved siden af.
+**Forudsætning 2 (ejer-direktiv, åbent for forslag):** sponsor og bestyrelse
+skal have tydeligt adskilte roller: sponsorer primært **penge og resultater**,
+bestyrelsen primært **holdets identitet**. Konkret rollefordeling stilles som
+Q-047 med designerens forslag.
+**Åbent:** delmål/del-udbetaling, sponsorens hukommelse ved mislykket mål
+(næste tilbud), om flere sponsorer (forum 4/9) kommer med samme model,
+migration af løbende kontrakter med forud-udbetalt bonus. Grundreglerne er
+udskudt til efter 27/9; ingen build-go.
+**Foreslået verifikation:** et hold der afviser målet, står økonomisk som et
+hold der tager det og fejler; et hold der når målet, får bonussen den dag;
+ingen kontrakt udbetaler en bonus for et mål, der ikke er nået.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code

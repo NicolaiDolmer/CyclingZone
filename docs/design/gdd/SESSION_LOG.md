@@ -528,11 +528,21 @@ Håndteret i MASTERPLAN (ikke GDD): vækst-fundament (SEO/markedsføring,
 hastighed, mobil) skrevet ind i bane 2; bestyrelsen gjort synlig ved navn i bane 1
 (Mandatet-flippet) og i ventelisten (D-040/D-041).
 
+## Q-046 · Sponsorbonus, ejerens svar ordret (10/9 kl. 15:55)
+
+> Jeg tror vi lige skal have nogle ting på plads her først. Popularitet skal laves om til omdømme.
+> Jeg vil gerne adskille sponsor og bestyrelsen yderligere, så de ikke minder for meget om hinanden. Dette vil jeg gerne tale lidt om. F.eks kan sponsorere have mest med penge og resultater at gøre. Og bestyrelsen kan så have mest at gøre med holdets identitet f.eks. Som primært elementer. Jeg er åben overfor forslag, men jeg synes de skal have en mere tydelig rolle, hver for sig, fremadrettet.
+> I forhold til dit spørgsmål forventer jeg, at svaret er 1/b.
+
+Registreret som D-042 (retning B med to forudsætninger): popularitet → omdømme
+(ejer-direktiv, kobles til D-041), og sponsor/bestyrelse skal adskilles
+tydeligt (Q-047 stilles med designerens forslag).
+
 ## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-045/D-041 (omdømme som netværk, med forbehold om at læse eksisterende planer). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-046 er ikke stillet.
-- Næste skridt: læs `REPUTATION_RESEARCH.md` (worker 10/9) FØR næste omdømme-kort; derefter økonomi/marked. Fog of war når spillerne har stemt.
+- Sidste svar: Q-046/D-042 (sponsorbonus ved opfyldelse, med to forudsætninger). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-047 (rollefordeling sponsor/bestyrelse) er næste.
+- Næste skridt: Q-047 rollefordeling; læs `REPUTATION_RESEARCH.md` (worker 10/9) FØR næste omdømme-kort, og indarbejd ejer-direktivet "popularitet → omdømme". Fog of war når spillerne har stemt.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.

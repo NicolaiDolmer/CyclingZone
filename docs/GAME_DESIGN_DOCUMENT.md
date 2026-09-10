@@ -306,6 +306,17 @@ med indsatskort og næste konkrete skridt erstatter dag 1-tips, når der
 findes et resultat; ingen besked uden hændelse i første uge. Samtykkehjemlen
 for en resultatudløst mail er ikke juridisk efterprøvet (EMAIL_STACK §2).
 
+### Sponsorer og bestyrelse: to roller (D-042, ejer-retning 10/9)
+
+[SPONSOR_RULES](SPONSOR_RULES.md) og [BOARD_RULES](BOARD_RULES.md) ejer reglerne.
+Ejeren satte 10/9 to ting foran ethvert sponsor-redesign: **popularitet laves
+om til omdømme** (ingen selvstændig popularitetsstørrelse ved siden af D-041's
+netværk), og **sponsor og bestyrelse skal have tydeligt adskilte roller**:
+sponsorer primært penge og resultater, bestyrelsen primært holdets identitet
+(rollefordelingen designes i Q-047). Inden for den ramme er retningen for
+sponsormål (D-042): bonussen udbetales, når målet er nået, ellers ikke; ingen
+tilbagebetaling og ingen straf. Grundreglerne er udskudt til efter 27/9.
+
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
 Dette er en samtalerækkefølge, ikke en ændring af leverancerne i MASTERPLAN.
@@ -442,3 +453,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-039 om profilstyret akademikuld drevet af faciliteten valgt (ejerens præcisering).
   D-040 om retning fra et bredt katalog valgt (kapitel: klubidentitet og ambitioner).
   D-041 om omdømme som netværk valgt med forbehold om at læse eksisterende planer.
+  D-042 om sponsorbonus ved opfyldelse valgt med to forudsætninger (popularitet →
+  omdømme; sponsor/bestyrelse adskilles).
