@@ -125,7 +125,9 @@ generel fysisk udviklingsbonus. Relevant egen kunnen er nødvendig; Lederskab
 alene gør ikke mentoren god til alt. Endelig evneliste og effekt afventer.
 **D-028:** påvirkningen er kun positiv. Et dårligt match giver begrænset
 udbytte og koster tid/mentorplads; dårlige vaner smitter ikke som negativ
-statpåvirkning. Kapacitet, varighed og den konkrete mulighedsomkostning er åbne.
+statpåvirkning. **D-029:** kapaciteten er højst to mentees pr. mentor i et
+navngivet par, som manageren selv vælger; passiv trupvirkning er fravalgt.
+Varighed, opbygningstid og den konkrete mulighedsomkostning er stadig åbne.
 
 **Træningsdisciplin** kan i princippet handle om stabile vaner og kvaliteten af
 at gennemføre programmet. Men hvis den bare ganger udviklingsfarten, dublerer

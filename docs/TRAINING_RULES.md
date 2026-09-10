@@ -16,6 +16,8 @@
 > [PROGRESSION_RULES](PROGRESSION_RULES.md); konkrete evner og effekt afklares videre.
 > **D-028:** mentorindflydelsen er kun positiv; et dårligt match giver begrænset
 > udbytte og mulighedsomkostning. Det er ikke en generel ekstra fysisk bonus.
+> **D-029:** mentorparret er navngivet og valgt af manageren (højst to mentees pr.
+> mentor); virkningen tikker pr. løbsdag ved siden af træningen, aldrig i stedet for.
 
 > **Læs denne FØR enhver opgave der rører træning: det daglige tick, assistent-sweepen,
 > dagstyper og sessioner, ugerytme, restitution, form, skader fra træning, træner- og

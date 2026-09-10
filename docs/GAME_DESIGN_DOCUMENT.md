@@ -224,7 +224,12 @@ læringsområder er i **D-027** afgrænset til mentale færdigheder og vaner som
 hovedområde. Mentoren skal selv have relevant kunnen. Endelig evneliste,
 antal mentees og effekt er ikke fastlagt. **D-028:** mentorindflydelsen er kun
 positiv; et dårligt match giver begrænset udbytte og mulighedsomkostning,
-ikke dårligere vaner/evner hos den unge.
+ikke dårligere vaner/evner hos den unge. **D-029 (Claude Code, 10/9):**
+manageren udpeger selv et navngivet mentorpar: én mentor og højst to mentees
+i samme klub, på tværs af trupper. Udbyttet bygges op pr. løbsdag, kun på
+mentale evner hvor mentoren er tydeligt bedre, og aftager når den unge nærmer
+sig mentoren. Passiv trupvirkning er fravalgt. Hvem der kan være mentor,
+opbygningstid, bindingstid, feedback og transfer af den ene part er åbne.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -347,3 +352,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   på ejerens ønske med kort beslutningsoversigt og GitHub-opgavekort.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.
+- 10/9 2026 (Claude Code): samtalen genoptaget efter overdragelsen. D-029 om
+  navngivet mentorpar med højst to mentees valgt. Designpartner er nu Claude Code.

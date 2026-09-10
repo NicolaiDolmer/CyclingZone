@@ -1002,6 +1002,45 @@ PROGRESSION_RULES/TRAINING_RULES (afstemt).
 **Foreslået verifikation:** mentor med lavere kunnen sænker ikke den unges
 evne; relevant mentor kan hjælpe; et dårligt match giver ikke universel bonus.
 
+## Q-032 · Hvordan tildeles en mentor?
+
+**Status:** stillet og besvaret 10/9 (Claude Code); A valgt, se D-029.
+Scenarie: en 33-årig tidligere kaptajn med høj taktik og højt Holdarbejde, men
+svag ro under pres, skal hjælpe et 19-årigt U23-talent, der er nervøst i finaler.
+**A, anbefalet:** manageren udpeger mentor og 1-2 mentees i samme klub (alle
+trupper). Effekten bygges op pr. løbsdag de begge er i klubben, kun på evner
+hvor mentoren er tydeligt bedre end den unge; aftagende udbytte når den unge
+nærmer sig mentoren. Feedback: "lærer af X: taktik" på rytterkortet og milepæl
+i "Siden sidst". **B:** enhver veteran med højt Lederskab løfter passivt alle
+unge i truppen; intet valg, ingen kapacitet. **C:** som A, men kun én mentee.
+**Tradeoff:** A skaber et reelt valg (hvem, og hvem ikke) uden nye tal-lag;
+B giver ingen managerbeslutning, og flere ledere lægger sig sammen til gratis
+holdstyrke (frarådet i RIDER_ATTRIBUTES_RESEARCH); C gør valget skarpere, men
+en dygtig veteran bliver mindre værd. Spillerbevis: roadmap-punktet
+"Road captains and mentors" har 31 stemmer, idé 4,77 og vigtighed 3,97 (målt 10/9).
+Kilder: D-026–028, TRAINING_RULES §7 (træneren straffer aldrig), YOUTH_RULES
+(Junior 16-18, U23 19-22, Senior 23+).
+
+## D-029 · Navngivet mentorpar med højst to mentees
+
+**Status:** ejer-valgt 10/9, svar på Q-032.
+**Ejerens svar, ordret:** "A · Navngivet par, max 2 mentees (anbefalet)".
+Manageren udpeger selv en mentor og højst to mentees i samme klub; mentees kan
+stå i enhver trup (Junior, U23 eller Senior). Relationen er navngivet og synlig
+for egen manager. Udbyttet bygges op over løbsdage, hvor begge er i klubben,
+og gælder kun de mentale evner/vaner (D-027), hvor mentoren er tydeligt bedre
+end den unge. Udbyttet aftager, når den unge nærmer sig mentorens niveau.
+**Fravalgt:** passiv, automatisk virkning på hele truppen (B) og streng
+én-til-én-model (C). **Åbent:** hvem der kan være mentor (Lederskabs synlighed,
+alders-/niveaukrav), hvor hurtigt udbyttet bygges op, hvad "tydeligt bedre"
+er i tal (privat kalibrering), om et par kan skiftes frit eller har bindingstid,
+hvordan feedback vises præcist, og hvad der sker ved transfer af den ene part
+(D-025's princip om at samspil følger rytterne er nærmeste analogi, ikke en
+allerede gældende regel). Ingen formel, skala eller UI er godkendt til build.
+**Foreslået verifikation:** to identiske unge, én med relevant mentor og én
+uden, adskiller sig kun på mentorens stærke mentale evner; en tredje ung med
+en mentor, der er svagere end ham selv, får intet udbytte og ingen straf.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code

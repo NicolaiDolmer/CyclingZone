@@ -371,11 +371,22 @@ og #1239/#1148/#1177/#1154/#4850 opdateret med konkrete aftaler. #1145 og #3514
 har fået kildepointers. Direkte kommentarlinks og labelafgrænsning er gemt i
 GITHUB_HANDOFF. Ingen dublet-featureissues, ændret prioritet eller implementation.
 
-## Handoff · Til Claude Code efter Q-031, 10/9 2026
+## Q-032 · Mentorens tildeling, ejerens svar ordret (Claude Code, 10/9 kl. 12:30)
 
-- Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske.
-- Sidste svar: Q-031/D-028. Intet spørgsmål står åbent; Q-032 er ikke stillet.
-- Næste skridt: læs CLAUDE_HANDOFF, fortsæt mentorens konkrete rammer og øvrige kandidater med ét kort ad gangen.
+> A · Navngivet par, max 2 mentees (anbefalet)
+
+Registreret som D-029. Samtalen fortsætter i Claude Code på ejerens ønske
+(sessionen 10/9 er samtidig en workflow-session med baggrundsworkers til
+spørgeskema-, Discord-, forum- og driftsanalyse; de rører ikke GDD-branchen).
+Spillerbeviset fra roadmap-stemmerne (31 stemmer på vejkaptajner/mentorer)
+blev vist i kortet. Åbne mentorrammer: hvem kan være mentor, opbygningstid,
+"tydeligt bedre" i tal, bindingstid, feedback og transfer af den ene part.
+
+## Handoff · Til Claude Code efter Q-032, 10/9 2026
+
+- Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
+- Sidste svar: Q-032/D-029. Intet spørgsmål står åbent; Q-033 er ikke stillet.
+- Næste skridt: mentorens resterende rammer (hvem kan være mentor, Lederskabs synlighed) med ét kort ad gangen; derefter bredere områder efter spillerdata (træning, holdudtagelse, akademi, mobil).
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
