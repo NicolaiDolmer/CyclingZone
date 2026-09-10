@@ -488,11 +488,19 @@ et nyt holds første løb skal måles før build.
 
 Registreret som D-038. Kapitlet dag 1 og de første 7 dage har nu D-037 og D-038.
 
+## Q-043 · Akademi-intake, ejerens svar ordret (10/9 kl. 15:15)
+
+> 1 -  Det skal være faciliteten, hvor man kan udvide sit akademi, som skal gøre sådan man får bedre muligheder her. Det skal stadig være muligt at få ryttertyper og nationaliteter man ikke har bedt om, men der skal være en overvægt mod det, som man ønkser at udvikle.
+
+Registreret som D-039: profilstyret kuld med overvægt, drevet af
+akademifaciliteten (ikke scoutniveau, som designeren foreslog). Tilføjelsen er
+bevaret som en del af beslutningen ("1 + ..."-reglen).
+
 ## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-042/D-038 (hændelsesdrevet krog). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-043 er ikke stillet.
-- Næste skridt: akademi-intake og scouting af unge (hvordan kandidater findes; "viser for få unge"), derefter fog of war når spillerne har stemt. Ro under pres og Træningsdisciplin er stadig kandidater uden mekanik.
+- Sidste svar: Q-043/D-039 (profilstyret kuld, faciliteten som driver). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-044 er ikke stillet.
+- Næste skridt: nyt kapitel efter ejerens valg (kandidater: økonomi/marked "svært at sælge"; klubidentitet og ambitioner, D-002's åbne del; Ro under pres/Træningsdisciplin). Fog of war når spillerne har stemt.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.

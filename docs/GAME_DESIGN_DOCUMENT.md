@@ -248,6 +248,12 @@ købeklubben (D-008) et frit fravalg, uden at styrke belønnes med struktur.
 Lofter, trin og priser afgøres af økonomi-simulationen i YOUTH_RULES §6.
 Spillerdata 10/9 (roadmap nr. 2, skema nr. 3) fik ejeren til at løfte området
 til nr. 3 på MASTERPLANs venteliste; det er en rækkefølge, ikke et build-go.
+**D-039 (ejer-valgt 10/9 med præcisering):** søndagens kuld trækkes med
+overvægt mod klubbens ønskede profil (nationalitet/region og ryttertype),
+aldrig udelukkende, og driveren er akademifaciliteten, ikke scoutniveauet:
+højere trin giver bedre muligheder i kuldet, men samme potentialefordeling
+som alle andre. Klubidentitet gennem nationalitet (V-001) bliver dermed en
+handling, uden at penge køber talent.
 **D-033 (ejer-valgt 10/9, mod designerens anbefaling):** ingen udlån af
 ryttere. Overskydende unge håndteres med købt kapacitet, salg eller bytte;
 designerens forbehold om permanent tab ved salg af talent er noteret til
@@ -421,3 +427,4 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-035 (assistenten fylder til gulvet, derover kun egnede) og D-036
   (indsatskort pr. rytter efter løbet) valgt. D-037 om første session og
   D-038 om den hændelsesdrevne krog valgt (kapitel: dag 1 og de første 7 dage).
+  D-039 om profilstyret akademikuld drevet af faciliteten valgt (ejerens præcisering).

@@ -9,6 +9,11 @@
 > deres sammenhæng med retningen skal efterprøves under designgennemgangen.
 > **D-032 (Claude Code, 10/9):** ungdomstruppernes kapacitet = samme grundloft pr.
 > trup for alle + købte facilitetstrin med stigende drift; aldrig af division. Se §6 pkt. 1.
+> **D-039 (Claude Code, 10/9, ejerens ord):** søndagens kuld får overvægt mod klubbens
+> ønskede profil (nationalitet/region + ryttertype), aldrig udelukkende; driveren er
+> akademifaciliteten (samme trin som D-032), ikke scoutniveau; potentialefordelingen er ens
+> for alle. §2.3/§4's intake-mekanik (2 kandidater, 7 dage, ungdomsauktion) er uændret indtil
+> slice-spec. Se [D-039](design/gdd/DECISIONS.md).
 
 > **Følg udviklede ryttere, ejer 10/9 (D-011):** Den fremtidige automatiske kreds
 > skal omfatte eget akademi samt unge købt og udviklet en væsentlig del af

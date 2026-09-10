@@ -1367,6 +1367,49 @@ Ingen build-go; kandidat til MASTERPLAN bane 2 (fastholdelse, #4964).
 en manager uden udtagelse modtager dagens dag 1-tekst; ingen mail sendes
 uden en hændelse i uge 1.
 
+## Q-043 · Hvordan skal søndagens akademikandidater findes?
+
+**Status:** stillet 10/9 (Claude Code), tre kolonner (dansk klatreklub). Ejeren
+valgte den anbefalede model med en præcisering, se D-039.
+**A:** to tilfældige kandidater (i dag). **B, anbefalet:** kuldet følger en
+scoutingprofil (region/nationalitet + ryttertype); designeren foreslog
+scoutniveau som driver af antal og match. **C:** kun åben ungdomsauktion.
+**Tradeoff:** A giver ingen styring og gør nationalitets-identitet til held;
+B gør klubidentitet til en handling (V-001) uden at købe potentiale; C lader
+den rige klub købe de gode unge hver søndag (mod "balance = struktur", D-001).
+Kilder: YOUTH_RULES §2.3/§4 (2 kandidater pr. hold hver søndag, 7 dages
+tilbud, ungdomsauktion, #2456 låst), D-032, #5064, skema 10/9 (akademi
+"fungerer dårligst" 11 af 36; "viser for få unge"), forum 8-9/9.
+
+## D-039 · Kuldet følger klubbens ønskede profil, drevet af akademifaciliteten
+
+**Status:** ejer-valgt 10/9, svar på Q-043, med ejerens præcisering.
+**Ejerens svar, ordret:** "1 -  Det skal være faciliteten, hvor man kan udvide
+sit akademi, som skal gøre sådan man får bedre muligheder her. Det skal stadig
+være muligt at få ryttertyper og nationaliteter man ikke har bedt om, men der
+skal være en overvægt mod det, som man ønkser at udvikle."
+Manageren angiver en ønsket profil for akademiet (nationalitet/region og
+ryttertype). Søndagens kuld trækkes med **overvægt** mod profilen, aldrig
+udelukkende: kandidater uden for profilen forekommer stadig. **Driveren er
+akademifaciliteten** (den man udvider, jf. D-032), ikke scoutniveauet:
+højere facilitetstrin giver bedre muligheder i kuldet (fx flere kandidater
+og stærkere overvægt mod profilen). Potentialefordelingen er den samme for
+alle; faciliteten køber bredde og match, ikke talent (doktrin: penge må ikke
+købe bedre potentiale). Tilbud, frist og ungdomsauktion er uændrede (#2456).
+**Fravalgt:** tilfældigt kuld uden styring (A), kun åben auktion (C), og
+scoutniveau som driver (designerens forslag; ejeren pegede på faciliteten).
+**Åbent:** profilens felter (én nationalitet/region og én type, eller flere),
+hvor stærk overvægten er pr. facilitetstrin (privat kalibrering), antal
+kandidater pr. trin, om profilen kan ændres frit eller pr. sæson, og om
+scouten/scoutniveauet spiller nogen sekundær rolle (fx synlighed af
+kandidaternes bånd, jf. #5064). Ingen build-go; hører til slice 1/2 i
+YOUTH_RULES §5 og til D-032's økonomi-sim.
+**Foreslået verifikation:** over mange søndage har en klub med profilen
+"Danmark + klatrer" en tydelig overvægt af danske klatrere, men modtager
+stadig andre typer/nationaliteter; potentialefordelingen i kuldet er
+uafhængig af facilitetstrin; to klubber med samme trin og forskellig profil
+får samme kvalitet, forskellig sammensætning.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code
