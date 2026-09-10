@@ -165,6 +165,9 @@ export default function KitchenSinkPage() {
             onSort={() => {}}
             rowZone={(r) => r.zone}
             rowKey={(r) => r.name}
+            /* D-047 (#5102): demoen viser ogsaa moenstret med raekkens handling
+               som en af de tre standardkolonner paa mobil. */
+            mobileDefaults={["form", "value", "bid"]}
             columns={[
               {
                 key: "name",

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   MOBILE_COLUMN_COUNT,
+  applyMobileChipOrder,
   defaultMobileColumnKeys,
   mobileColumnLabel,
   mobileColumnsStorageKey,
@@ -16,7 +17,7 @@ import {
 
 // D-047 (#5102) — mobilstandardens kolonnevalg. Reglerne der testes her er
 // beslutningens egne: PRÆCIS tre kolonner, navnekolonnen er aldrig en af dem,
-// visningsordenen er desktopens, og valget huskes pr. tabel-label.
+// visningsordenen er desktopens, og valget huskes pr. kolonnesæt.
 
 const COLUMNS = [
   { key: "nation", fold: true },
@@ -108,14 +109,27 @@ test("visningsordenen er desktopens kolonneorden, ikke valg-raekkefoelgen", () =
   );
 });
 
-test("localStorage-noeglen er pr. tabel-label, og et tabel uden tekst-label husker intet", () => {
-  assert.equal(mobileColumnsStorageKey("Mit hold"), "cz:table-cols:Mit hold");
-  assert.equal(mobileColumnsStorageKey("  "), null);
-  assert.equal(mobileColumnsStorageKey(undefined), null);
-  assert.equal(mobileColumnsStorageKey(42), null);
+// Noeglen bygges paa KOLONNESAETTET, ikke paa det viste label: labelet er
+// oversat ("Trup (1)" / "Squad (1)"), taeller raekker med, og to linser paa
+// samme side deler det. Alle tre ville tabe eller blande spillerens valg.
+test("localStorage-noeglen er pr. kolonnesaet, ikke pr. label", () => {
+  const key = mobileColumnsStorageKey(COLUMNS);
+  assert.match(key ?? "", /^cz:table-cols:v2:[0-9a-z]+$/);
+  // Samme kolonner igen = samme noegle (sproget/raekketallet aendrer intet).
+  assert.equal(mobileColumnsStorageKey([...COLUMNS]), key);
+  // Et ANDET kolonnesaet paa samme side (Mit holds Overblik vs. Evner) faar sin
+  // egen noegle, saa de to ikke stomper hinandens valg.
+  const abilities = [
+    { key: "name", sticky: true },
+    { key: "rating", numeric: true },
+    { key: "climbing", numeric: true },
+    { key: "sprint", numeric: true },
+  ];
+  assert.notEqual(mobileColumnsStorageKey(abilities), key);
+  assert.equal(mobileColumnsStorageKey([]), null);
 });
 
-test("valget huskes og laeses tilbage pr. label", () => {
+test("valget huskes og laeses tilbage pr. kolonnesaet", () => {
   const store = new Map<string, string>();
   const original = (globalThis as { window?: unknown }).window;
   (globalThis as { window?: unknown }).window = {
@@ -125,19 +139,25 @@ test("valget huskes og laeses tilbage pr. label", () => {
     },
   };
   try {
-    writeMobileColumnKeys("Trup", ["value", "salary", "popularity"]);
-    assert.equal(store.get("cz:table-cols:Trup"), JSON.stringify(["value", "salary", "popularity"]));
-    assert.deepEqual(readMobileColumnKeys("Trup", COLUMNS, ["rating", "value", "salary"]), [
+    writeMobileColumnKeys(COLUMNS, ["value", "salary", "popularity"]);
+    assert.equal(
+      store.get(mobileColumnsStorageKey(COLUMNS) as string),
+      JSON.stringify(["value", "salary", "popularity"])
+    );
+    assert.deepEqual(readMobileColumnKeys(COLUMNS, ["rating", "value", "salary"]), [
       "value",
       "salary",
       "popularity",
     ]);
-    // Et andet bord deler ikke valget.
-    assert.deepEqual(readMobileColumnKeys("Ryttere", COLUMNS, ["rating", "value", "salary"]), [
-      "rating",
-      "value",
-      "salary",
-    ]);
+    // En tabel med et andet kolonnesaet deler ikke valget.
+    const other = [
+      { key: "team", sticky: true },
+      { key: "points", numeric: true },
+      { key: "wins", numeric: true },
+      { key: "prize", numeric: true },
+      { key: "u25", numeric: true },
+    ];
+    assert.deepEqual(readMobileColumnKeys(other, ["points", "wins", "prize"]), ["points", "wins", "prize"]);
   } finally {
     (globalThis as { window?: unknown }).window = original;
   }
@@ -156,15 +176,32 @@ test("en localStorage der kaster faelder ikke tabellen — den falder tilbage pa
     },
   };
   try {
-    assert.deepEqual(readMobileColumnKeys("Trup", COLUMNS, ["rating", "value", "salary"]), [
+    assert.deepEqual(readMobileColumnKeys(COLUMNS, ["rating", "value", "salary"]), [
       "rating",
       "value",
       "salary",
     ]);
-    assert.doesNotThrow(() => writeMobileColumnKeys("Trup", ["rating"]));
+    assert.doesNotThrow(() => writeMobileColumnKeys(COLUMNS, ["rating"]));
   } finally {
     (globalThis as { window?: unknown }).window = original;
   }
+});
+
+// Chip-ordenen fryses ved aabning: de valgte foerst, men raekken maa ikke
+// omarrangere sig ved hvert tryk (fejlklik-generator paa mobil).
+test("den frosne chip-orden holder raekken stabil, ogsaa naar valget skifter", () => {
+  const frozen = orderMobileChips(COLUMNS, ["rating", "value", "salary"]).map((c) => c.key);
+  assert.deepEqual(frozen, ["rating", "value", "salary", "type", "popularity"]);
+  // Et byt aendrer IKKE ordenen — kun hvilke der er aktive.
+  assert.deepEqual(applyMobileChipOrder(COLUMNS, frozen).map((c) => c.key), frozen);
+  // Ukendte noegler ignoreres, og en kolonne der ikke stod i ordenen haenges bagpaa.
+  assert.deepEqual(applyMobileChipOrder(COLUMNS, ["salary", "vaek", "rating"]).map((c) => c.key), [
+    "salary",
+    "rating",
+    "type",
+    "value",
+    "popularity",
+  ]);
 });
 
 test("chip-labelet er kolonnens header naar den er tekst, ellers mobileLabel", () => {

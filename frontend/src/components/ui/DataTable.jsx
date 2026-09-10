@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SortIndicator } from "./SortableTh.jsx";
-import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
+import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
 import { TableRowContext } from "./tableRowContext.js";
 import { ChevronRightIcon, TableIcon } from "./icons/index.jsx";
 import { useIsMobileViewport } from "../../hooks/useMediaQuery.ts";
 import {
   MOBILE_COLUMN_COUNT,
+  applyMobileChipOrder,
   defaultMobileColumnKeys,
   mobileColumnLabel,
+  mobileColumnsSignature,
   mobileSwappableColumns,
   orderMobileChips,
   orderMobileColumns,
@@ -46,18 +48,25 @@ import {
 // rækker pr. skærm er pointen (truppen: 30 ryttere). Default = T2's 13px-rytme.
 //
 // ── Mobil ≤640px: D-047 (ejer 10/9 kl. 15:20, #5102) ────────────────────────
-// Standardtilstanden er navnekolonnen + PRÆCIS tre talkolonner UDEN vandret
+// Standardtilstanden er navnekolonnen + PRÆCIS tre datakolonner UDEN vandret
 // scroll. En chip-række over tabellen bytter kolonner (valget huskes pr.
-// `label`), og "Fuld tabel" åbner alle kolonner som TO-LAGS: navneblokken er sin
-// egen kolonne ved siden af en scrollbar datablok — ikke CSS sticky, så #5060's
-// fejlklasse ikke kan opstå igen. Sortering og kolonneorden er desktopens.
-// Sticky-kolonne + vandret scroll som DEFAULT er dermed væk (afløser TASTE P10
-// fork 6 / PAGE_TEMPLATES T2 "Mobile ≤640px"). Desktop er uændret.
+// KOLONNESÆT, ikke pr. oversat label), og "Fuld tabel" åbner alle kolonner som
+// TO-LAGS: navneblokken er sin egen kolonne ved siden af en scrollbar datablok —
+// ikke CSS sticky, så #5060's fejlklasse ikke kan opstå igen. Sortering og
+// kolonneorden er desktopens. Sticky-kolonne + vandret scroll som DEFAULT er
+// dermed væk (afløser TASTE P10 fork 6 / PAGE_TEMPLATES T2 "Mobile ≤640px").
+// Desktop er uændret.
 //
 //   mobileDefaults: ["ovr", "value", "salary"]  // sidens tre standardkolonner
-//   mobileFullTableTone: "gold" | "neutral"     // "neutral" når siden ALLEREDE
-//                                               // har en gold primary i mobil-
-//                                               // viewportet (én gold pr. view)
+//
+// "Ingen vandret scroll" er HÅNDHÆVET, ikke håbet: standardtilstanden ligger i
+// MOBILE_SCROLLER (overflow-x: hidden), og navnecellen wrapper i stedet for at
+// stå på én nowrap-linje, så et langt rytternavn eller et 8-cifret beløb bliver
+// to linjer i stedet for at skubbe tabellen ud over 375px.
+//
+// TASTE §3 (ejerens AI-slop-krav i D-047): ingen gradienter, ingen skygger,
+// ingen rå hex — og "Fuld tabel" er en NEUTRAL kontrol, aldrig gold: guld er
+// sidens ene primary, og en kolonne-kontrol er ikke sidens primære handling.
 export function DataTable({
   columns,
   rows,
@@ -74,7 +83,6 @@ export function DataTable({
   toolbar = null,
   empty = null,
   mobileDefaults = null,
-  mobileFullTableTone = "gold",
 }) {
   const { t } = useTranslation("common");
   const isMobile = useIsMobileViewport();
@@ -97,25 +105,40 @@ export function DataTable({
 
   const [mobileKeys, setMobileKeys] = useState(() => defaultMobileColumnKeys(columns, mobileDefaults));
   const [fullTable, setFullTable] = useState(false);
-  const columnSignature = columns.map((c) => c.key).join("|");
+  // Kolonnesættets IDENTITET (nøgler + sticky/fold-roller), ikke de nye
+  // array-referencer hver render. Den er også localStorage-nøglens grundlag, så
+  // en closure der er fanget på denne signatur kan aldrig skrive til en anden
+  // nøgle end den nuværende render ville.
+  const columnSignature = mobileColumnsSignature(columns);
   const defaultsSignature = (mobileDefaults ?? []).join("|");
+
+  // Chip-rækkens ORDEN fryses pr. kolonnesæt: de valgte først, men KUN som de
+  // stod da tabellen åbnede. Rækkefølgen må ikke ændre sig mens fingeren er på
+  // skærmen — en række der omarrangerer sig under trykket gør næste tryk på
+  // samme sted til et tryk på en anden kolonne (fejlklik-generator på mobil).
+  const [chipOrder, setChipOrder] = useState(() =>
+    orderMobileChips(columns, defaultMobileColumnKeys(columns, mobileDefaults)).map((c) => c.key)
+  );
 
   // Læs det huskede valg EFTER mount (localStorage er per-browser og må ikke
   // gøre first render afhængig af en I/O der kan kaste i et privat vindue).
   useEffect(() => {
-    setMobileKeys(readMobileColumnKeys(label, columns, mobileDefaults));
+    const stored = readMobileColumnKeys(columns, mobileDefaults);
+    setMobileKeys(stored);
+    setChipOrder(orderMobileChips(columns, stored).map((c) => c.key));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- kolonne-/defaults-IDENTITET, ikke de nye array-referencer hver render
-  }, [label, columnSignature, defaultsSignature]);
+  }, [columnSignature, defaultsSignature]);
 
   const pickColumn = useCallback(
     (key) => {
       setMobileKeys((current) => {
         const next = swapMobileColumn(current, key);
-        writeMobileColumnKeys(label, next);
+        writeMobileColumnKeys(columns, next);
         return next;
       });
     },
-    [label]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se columnSignature ovenfor
+    [columnSignature]
   );
 
   const mobileStandard = isMobile && Boolean(entityCol);
@@ -127,12 +150,11 @@ export function DataTable({
       <div className={className}>
         {hasChips && (
           <MobileColumnChips
-            columns={orderMobileChips(columns, mobileKeys)}
+            columns={applyMobileChipOrder(columns, chipOrder)}
             selected={mobileKeys}
             onPick={pickColumn}
             fullTable={fullTable}
             onToggleFullTable={() => setFullTable((v) => !v)}
-            tone={mobileFullTableTone}
             t={t}
           />
         )}
@@ -158,7 +180,7 @@ export function DataTable({
               t={t}
             />
           ) : (
-            <div className={SCROLLER}>
+            <div className={MOBILE_SCROLLER}>
               <table className={TABLE} aria-label={label} data-sortable>
                 <TableHead
                   columns={[entityCol, ...visibleMobileCols]}
@@ -175,8 +197,12 @@ export function DataTable({
                       const edges = zoneEdges(zones, i);
                       return (
                         <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zones[i], rowProps ? rowProps(row, i) : null)}>
-                          <td className={tdClass({ ...edges, zone: zones[i], dense })}>
-                            {renderStickyCell(entityCol, row, i, foldCols)}
+                          {/* w-full + max-w-0: navnekolonnen tager den plads der
+                              er tilovers og GIVER den fra sig igen naar tallene
+                              bliver brede — sammen med `wrap` nedenfor er det
+                              det der holder tabellen inden for 375px. */}
+                          <td className={`${tdClass({ ...edges, zone: zones[i], dense })} w-full max-w-0`}>
+                            {renderStickyCell(entityCol, row, i, foldCols, true)}
                           </td>
                           {visibleMobileCols.map((col) => (
                             <td
@@ -314,27 +340,27 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
 
 // D-047's chip-raekke. text-2xs uppercase som al anden meta i systemet, hairline
 // og 999px-pille (den ENE plads hvor pille-radius er tilladt, TASTE fork 6).
-// Aktiv kolonne = --text-1-kant. "Fuld tabel" staar for sig selv til hoejre;
-// gold outline naar siden ikke allerede bruger sin ene gold primary i mobil-
-// viewportet, ellers --text-1.
-function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, tone, t }) {
-  const scrollerRef = useRef(null);
-  // Et byt aendrer raekkefoelgen (valgte foerst), saa raekken rulles tilbage til
-  // start — ellers staar de tre netop valgte chips halvt uden for skaermen.
-  useEffect(() => {
-    if (scrollerRef.current) scrollerRef.current.scrollLeft = 0;
-  }, [selected]);
+// Aktiv kolonne = --text-1-kant.
+//
+// "Fuld tabel" er NEUTRAL (--text-1), aldrig gold: TASTE P3 giver hvert view
+// PRAECIS EEN gold primary, og paa hver af de sider tabellen bor paa er den
+// allerede brugt (auktions-banneret paa Mit hold, saldoen, den aktive fane).
+// En kolonne-kontrol er heller ikke sidens primaere handling. Derfor er der
+// ingen tone-prop at saette forkert.
+//
+// Raekken har hverken maske, gradient eller skygge (TASTE §3): den halvt
+// synlige chip i hoejre kant ER affordancen, praecis som i en hvilken som helst
+// vandret chip-raekke paa en telefon. Ordenen er FRYSSET af DataTable, saa et
+// tryk aldrig flytter chippen under fingeren; derfor ruller raekken heller ikke
+// tilbage til start af sig selv.
+function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, t }) {
   const base =
     "flex-none inline-flex items-center gap-1.5 rounded-cz-pill border px-2.5 min-h-[32px] " +
     "font-data text-2xs font-semibold uppercase tracking-[.06em] transition-colors duration-150";
-  const gold = tone !== "neutral";
   return (
     <div className="mb-2 flex items-center gap-1.5">
-      {/* Maske i hoejre kant: den eneste affordance for at raekken kan rulles.
-          Ingen skygge, ingen pil — kanten falmer, som i den godkendte mockup. */}
       <div
-        ref={scrollerRef}
-        className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [mask-image:linear-gradient(90deg,#000_88%,transparent)]"
+        className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto"
         role="group"
         aria-label={t("table.columnsLabel")}
       >
@@ -360,15 +386,7 @@ function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullT
         type="button"
         onClick={onToggleFullTable}
         aria-pressed={fullTable}
-        className={`${base} ${
-          fullTable
-            ? gold
-              ? "border-transparent bg-cz-accent text-cz-on-accent"
-              : "border-cz-1 bg-cz-1 text-cz-card"
-            : gold
-              ? "border-cz-accent text-cz-accent-t"
-              : "border-cz-1 text-cz-1"
-        }`}
+        className={`${base} ${fullTable ? "border-cz-1 bg-cz-1 text-cz-card" : "border-cz-1 text-cz-1"}`}
       >
         <TableIcon size={14} aria-hidden="true" />
         {t("table.fullTable")}
@@ -410,7 +428,13 @@ function MobileFullTable({
   const [headerHeight, setHeaderHeight] = useState(0);
   const [atEnd, setAtEnd] = useState(true);
 
-  const rowSignature = rows.length;
+  // Raekke-IDENTITET, ikke raekke-ANTAL: en sortering, et filter der giver samme
+  // antal, eller en async efterfyldning skifter hoejder uden at aendre laengden,
+  // og fordi sync() laaser en inline `height` paa hver <tr> aendrer tabellens
+  // samlede hoejde sig ikke noedvendigvis — saa ResizeObserver fanger det heller
+  // ikke. Signaturen fanger raekkeskift; MutationObserver nedenfor fanger
+  // indhold der aendrer sig inde i en uaendret raekke.
+  const rowSignature = rows.map((row, i) => (rowKey ? rowKey(row, i) : i)).join("|");
 
   useLayoutEffect(() => {
     const nameTable = nameRef.current;
@@ -449,10 +473,22 @@ function MobileFullTable({
       observer.observe(nameTable);
       observer.observe(dataTable);
     }
+    // Indhold der aendrer sig INDE i en uaendret raekke (scouting-stjerner der
+    // lander, en styrke der bliver hentet) aendrer ikke tabellens maalte hoejde,
+    // fordi raekkehoejderne er laast inline. Uden denne observer ville de to lag
+    // stille glide fra hinanden uden at noget rettede op paa det.
+    let mutations = null;
+    if (typeof MutationObserver !== "undefined") {
+      mutations = new MutationObserver(schedule);
+      const opts = { childList: true, subtree: true, characterData: true };
+      mutations.observe(nameTable, opts);
+      mutations.observe(dataTable, opts);
+    }
     window.addEventListener("resize", schedule);
     return () => {
       cancelAnimationFrame(frame);
       observer?.disconnect();
+      mutations?.disconnect();
       window.removeEventListener("resize", schedule);
     };
   }, [rowSignature, dataCols.length, dense]);
@@ -510,7 +546,10 @@ function MobileFullTable({
             />
             <TableRowContext.Provider value={true}>
               <tbody>
-                <EmptyRow rows={rows} empty={null} colSpan={dataCols.length} />
+                {/* Navneblokken faar den rigtige tomme tilstand; datablokken
+                    faar en TOM modsvarende raekke, saa de to lag har lige mange
+                    <tr> og hoejde-synkroniseringen ogsaa rammer tom-raekken. */}
+                <EmptyRow rows={rows} empty={empty ? <span aria-hidden="true">&nbsp;</span> : null} colSpan={dataCols.length} />
                 {rows.map((row, i) => {
                   const edges = zoneEdges(zones, i);
                   return (
@@ -541,9 +580,14 @@ function MobileFullTable({
             </TableRowContext.Provider>
           </table>
         </div>
+        {/* "Der er mere til hoejre"-mærket. Opak kort-baggrund + hairline mod
+            venstre — INGEN gradient og ingen skygge (TASTE §3, ejerens
+            AI-slop-krav i D-047). Det staar i header-baandet, hvor cellerne
+            alligevel har kort-baggrund, saa en hairline er nok til at skille
+            det fra den kolonne der ruller ind under det. */}
         {!atEnd && (
           <div
-            className="pointer-events-none absolute right-0 top-0 flex items-center justify-end bg-gradient-to-l from-cz-card via-cz-card to-transparent pl-8 pr-2 text-cz-3"
+            className="pointer-events-none absolute right-0 top-0 flex items-center justify-end border-l border-cz-border bg-cz-card px-2 text-cz-3"
             style={headerHeight ? { height: `${headerHeight}px` } : undefined}
             title={t("table.moreRight")}
           >
@@ -557,21 +601,29 @@ function MobileFullTable({
 
 // Sticky-celle: navnelinje 13.5/500 + text-3xs uppercase underlinje. På mobil
 // foldes `fold`-kolonnernes værdier ind forrest i underlinjen (" · "-adskilt).
-function renderStickyCell(col, row, i, foldCols) {
+//
+// `wrap` (mobil-standardtilstanden, D-047): navnet må BRYDE til to linjer i
+// stedet for at stå på én nowrap-linje. Det er dét der gør "ingen vandret
+// scroll" til en garanti frem for et held: uden det skubber et langt rytternavn
+// eller et bredt beløb tabellen ud over 375px, og desktopens scroller ville
+// snige sig tilbage ad bagvejen. `min-w-0` er nødvendig, fordi flex-børn ellers
+// har `min-width: auto` og nægter at krympe under deres indhold.
+function renderStickyCell(col, row, i, foldCols, wrap = false) {
   const primary = col.render ? col.render(row, i) : row[col.key];
   const sub = col.subline ? col.subline(row, i) : null;
   const folded = foldCols
     .map((c) => (c.foldValue ? c.foldValue(row) : row[c.key]))
     .filter((v) => v != null && v !== "");
   const indent = col.sublineIndent ? "pl-[17px]" : "";
+  const nowrap = wrap ? "min-w-0 [&>*]:min-w-0" : "whitespace-nowrap";
   return (
     <>
-      <span className="flex items-center gap-2 whitespace-nowrap text-[13.5px] font-medium text-cz-1">
+      <span className={`flex items-center gap-2 text-[13.5px] font-medium text-cz-1 ${nowrap}`}>
         {primary}
       </span>
       {(sub != null || folded.length > 0) && (
         <span
-          className={`mt-0.5 block whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${indent}`}
+          className={`mt-0.5 block font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${wrap ? "" : "whitespace-nowrap"} ${indent}`}
         >
           {folded.length > 0 && (
             <span className="sm:hidden">

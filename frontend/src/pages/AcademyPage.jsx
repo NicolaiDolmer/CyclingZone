@@ -732,8 +732,11 @@ export default function AcademyPage() {
             columns={rosterColumns}
             rows={sortedRoster}
             rowKey={(r) => r.id}
-            /* D-047 (#5102): akademiet vurderes paa potentiale, vaerdi og loen. */
-            mobileDefaults={["potential", "value", "salary"]}
+            /* D-047 (#5102): akademiet vurderes paa potentiale og vaerdi, og
+               raekkens handling ("Fremryk / Frigiv") er den tredje — sidens
+               primaere handling maa ikke ligge bag "Fuld tabel" paa mobil.
+               Loen er eet chip-tryk vaek. */
+            mobileDefaults={["potential", "value", "action"]}
             sort={sort}
             sortDir={sortDir}
             onSort={handleSort}

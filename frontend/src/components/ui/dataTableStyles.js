@@ -18,6 +18,13 @@ export const WRAP = "overflow-hidden rounded-cz border border-cz-border bg-cz-ca
 // AuctionsPage/TransfersPage's egne 220-260px), sider med usaedvanligt meget
 // chrome over tabellen kan overstyre variablen lokalt.
 export const SCROLLER = "overflow-auto max-h-[calc(100dvh-var(--table-sticky-offset))]";
+// #5102 (D-047): mobil-standardtilstanden. "Ingen vandret scroll" er en REGEL,
+// ikke et haab om at indholdet nok passer — derfor `overflow-x-hidden` her og
+// en navnecelle der wrapper (DataTable's renderStickyCell(..., wrap)). Sammen
+// kan et langt rytternavn eller et 8-cifret beloeb ikke laengere snige den
+// vandrette scroller tilbage ad bagvejen paa 375px.
+export const MOBILE_SCROLLER =
+  "overflow-y-auto overflow-x-hidden max-h-[calc(100dvh-var(--table-sticky-offset))]";
 export const TABLE = "w-full border-collapse";
 // Count-linjen under tabellen ("Showing 8 of 412 riders").
 export const COUNT = "mt-2 font-data text-xs text-cz-3";

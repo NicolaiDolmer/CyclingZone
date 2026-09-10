@@ -271,6 +271,9 @@ export default function AdminFeedbackTab() {
             rows={items}
             rowKey={(row) => row.id}
             label="Spillerfeedback"
+            /* D-047 (#5102): en indsendelse haandteres paa hvornaar, status og
+               knapperne — kategori og besked er et chip-tryk vaek. */
+            mobileDefaults={["created_at", "status", "actions"]}
             count={`Viser ${items.length} af ${counts.total ?? items.length} indsendelser`}
           />
           {nextCursor != null && (

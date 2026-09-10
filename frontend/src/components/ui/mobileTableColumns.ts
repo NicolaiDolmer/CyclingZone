@@ -1,10 +1,17 @@
 // D-047 (ejer 10/9 kl. 15:20, #5102) — mobilstandarden for T2-tabeller.
 //
-// På ≤640px viser enhver DataTable navnekolonnen + PRÆCIS tre talkolonner uden
+// På ≤640px viser enhver DataTable navnekolonnen + PRÆCIS tre datakolonner uden
 // vandret scroll. En chip-række over tabellen bytter kolonner, og valget huskes
-// pr. tabel-label. "Fuld tabel" åbner alle kolonner som to-lags (navneblok +
-// scrollbar datablok). Denne fil er den RENE logik bag kolonnevalget, så den kan
-// testes med `node --test` uden en DOM (DataTable.jsx ejer selve markuppen).
+// pr. KOLONNESÆT (ikke pr. oversat label — se `mobileColumnsStorageKey`).
+// "Fuld tabel" åbner alle kolonner som to-lags (navneblok + scrollbar datablok).
+// Denne fil er den RENE logik bag kolonnevalget, så den kan testes med
+// `node --test` uden en DOM (DataTable.jsx ejer selve markuppen).
+//
+// "Tre TALkolonner" er standard-fyldet, ikke en spærring: de tre pladser fyldes
+// numerisk-først, men en side må sætte en handlings- eller badge-kolonne som en
+// af sine tre (`mobileDefaults`), og spilleren må bytte en ind. Ønskelisten,
+// Mit hold og Akademiet gør det med rækkens handlingsknap — ellers ville sidens
+// primære handling ligge bag "Fuld tabel" på mobil.
 //
 // Kolonneroller på mobil:
 //   sticky  → navnekolonnen. Altid låst, aldrig en chip (D-047: en til/fra-knap
@@ -106,6 +113,27 @@ export function orderMobileChips<T extends MobileColumnLike>(
   ];
 }
 
+/**
+ * Chip-rækken tegnet i en FRYSSET orden (nøgler fra `orderMobileChips` ved
+ * åbning). Ukendte nøgler i ordenen ignoreres, og kolonner der ikke står i den
+ * hænges bagpå i kolonneorden — så en tabel der skifter kolonnesæt midt i livet
+ * ikke taber en chip.
+ */
+export function applyMobileChipOrder<T extends MobileColumnLike>(
+  columns: readonly T[],
+  order: readonly string[]
+): T[] {
+  const swappable = mobileSwappableColumns(columns);
+  const byKey = new Map(swappable.map((c) => [c.key, c]));
+  const out: T[] = [];
+  for (const key of order) {
+    const col = byKey.get(key);
+    if (col && !out.includes(col)) out.push(col);
+  }
+  for (const col of swappable) if (!out.includes(col)) out.push(col);
+  return out;
+}
+
 /** Visningsorden = desktopens kolonneorden (D-047: sortering og orden som desktop). */
 export function orderMobileColumns<T extends MobileColumnLike>(
   columns: readonly T[],
@@ -114,11 +142,31 @@ export function orderMobileColumns<T extends MobileColumnLike>(
   return mobileSwappableColumns(columns).filter((c) => selected.includes(c.key));
 }
 
-/** localStorage-nøgle pr. tabel-label. Uden et tekst-label huskes valget ikke. */
-export function mobileColumnsStorageKey(label: unknown): string | null {
-  if (typeof label !== "string") return null;
-  const trimmed = label.trim();
-  return trimmed ? `cz:table-cols:${trimmed}` : null;
+/**
+ * localStorage-nøglen. Den bygges på tabellens KOLONNESÆT, ikke på dens viste
+ * label: labelet er oversat og tæller ofte rækker med ("Trup (1)" / "Squad (1)"),
+ * så en nøgle af labelet ville tabe spillerens valg hver gang han køber en
+ * rytter eller skifter sprog. Kolonnesættet er derimod stabilt for en side og
+ * FORSKELLIGT for to linser på samme side (Mit holds Overblik/Evner, Standings'
+ * to visninger), som ellers ville overskrive hinandens valg.
+ *
+ * Nøglen er en kort FNV-1a-hash af nøglerne, så en tabel med 18 kolonner ikke
+ * får en 200 tegn lang localStorage-nøgle. `v2` er nøgle-generationen: v1 var
+ * label-baseret, og de gamle værdier skal ikke læses ind som om de hørte til.
+ */
+export function mobileColumnsSignature(columns: readonly MobileColumnLike[]): string {
+  let hash = 0x811c9dc5;
+  const source = columns.map((c) => `${c.sticky ? "!" : c.fold ? "~" : ""}${c.key}`).join("|");
+  for (let i = 0; i < source.length; i += 1) {
+    hash ^= source.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+export function mobileColumnsStorageKey(columns: readonly MobileColumnLike[]): string | null {
+  if (!Array.isArray(columns) || columns.length === 0) return null;
+  return `cz:table-cols:v2:${mobileColumnsSignature(columns)}`;
 }
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
@@ -132,11 +180,10 @@ function storage(): StorageLike | null {
 }
 
 export function readMobileColumnKeys(
-  label: unknown,
   columns: readonly MobileColumnLike[],
   mobileDefaults?: readonly string[] | null
 ): string[] {
-  const key = mobileColumnsStorageKey(label);
+  const key = mobileColumnsStorageKey(columns);
   const store = key ? storage() : null;
   if (!store) return normalizeMobileColumnKeys(null, columns, mobileDefaults);
   try {
@@ -146,8 +193,8 @@ export function readMobileColumnKeys(
   }
 }
 
-export function writeMobileColumnKeys(label: unknown, keys: readonly string[]): void {
-  const key = mobileColumnsStorageKey(label);
+export function writeMobileColumnKeys(columns: readonly MobileColumnLike[], keys: readonly string[]): void {
+  const key = mobileColumnsStorageKey(columns);
   const store = key ? storage() : null;
   if (!store) return;
   try {
