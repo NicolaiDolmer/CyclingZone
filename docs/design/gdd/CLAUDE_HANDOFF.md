@@ -1,15 +1,19 @@
-# Claude Code · Fortsæt GDD efter Q-031
+# Claude Code · Fortsæt GDD efter Q-052
 
 **Samlet opfølgning: [#5087](https://github.com/NicolaiDolmer/CyclingZone/issues/5087).**
 Fem eksisterende featureejere er opdateret; direkte kommentarlinks står i GITHUB_HANDOFF.
 
 **Overdraget af Nicolai 10/9 2026.** Codex-sessionen er afsluttet på ejerens
 ønske om at fortsætte i Claude og spare Codex-tokens. Den samlede GDD er fortsat
-`in_progress`. **Opdateret 10/9 kl. 16:30 (Claude Code):** sidste svar er D-046 (Q-050,
-manageromdømme kosmetisk); Q-037 er parkeret til spillerafstemning; intet spørgsmålskort
-er åbent. Q-051 er ikke stillet. Samtalen er pauset på ejerens ønske; næste session
-starter med `docs/drafts/next-session-prompt-2026-09-10-design-og-eksekvering.md`.
-Åbne design-huller: personale- og løbsomdømme (`REPUTATION_RESEARCH.md` §4), popularitet → omdømme.
+`in_progress`. **Opdateret 10/9 kl. 16:15 (Claude Code, workflow-session):** sidste svar er D-048
+(Q-052, løbsomdømme som prestige-tillæg); D-047 (Q-051, mobiltabeller) samme
+eftermiddag. Q-037 er parkeret til spillerafstemning; intet spørgsmålskort er åbent.
+Q-053 er ikke stillet. Popularitet → omdømme er IKKE et nyt designspørgsmål: spec 4/9
+§7-8 gælder, og PR 2 (backfill + flag `shadow`) blev kørt i prod 10/9 kl. 15:45
+efter ejer-go (#1099). Personale-omdømme er et senere lag (D-046/D-048).
+Assistent-flippet `late_fill` (D-034) flippes først når #4983 er live (ejer 10/9).
+Åbne design-huller: fog of war når spillerne har stemt (#5107), standardkolonner pr.
+side for D-047 (#5102), tal for D-048 (loft, falmning).
 **Ejer-direktiver 10/9:** popularitet → omdømme; sponsor = penge/resultater, bestyrelse =
 identitet. **Læs `REPUTATION_RESEARCH.md` før næste omdømme-kort.** Samme dag løftede
 ejeren trupper U23/junior til nr. 3 på MASTERPLANs venteliste (planvalg, ikke GDD-beslutning). Mentortråden (D-026 til D-031) er
@@ -56,7 +60,7 @@ Et "1 + ..." kræver at tilføjelsen bevares. "Måske" og "det kan vi tale om"
 er ikke færdige mekanikker. Angiv forskellen mellem ejerbeslutning, forslag,
 kodefund og observation i prod. Bevar præcise svar, fravalg og begrundelser i Git.
 
-## De 28 registrerede beslutninger
+## De registrerede beslutninger (D-001 til D-048)
 
 Denne tabel er et kort; DECISIONS og de ordrette svar er detaljerne.
 
@@ -118,9 +122,14 @@ generelle godkendelser af samtlige detaljer i rapporterne.
 
 ## Hvor vi fortsætter
 
-**Næste forslag, ikke et allerede stillet Q-032:** konkretisér mentorens rammer
-— hvem kan vejlede hvem, kapacitet, varighed, match og feedback — med korte
-scenarier. Spørg ikke igen om positiv påvirkning; det er netop afgjort.
+**Status 10/9 kl. 16:15:** D-001 til D-048 er registreret. Næste kort er ikke
+stillet; kandidater i prioriteret rækkefølge: fog of war efter afstemningen (#5107),
+tal for D-048 (loft og falmning på prestige-tillægget), og mentorens rammer (nedenfor).
+Spørg ikke igen om noget der står som D-nummer i tabellen ovenfor.
+
+**Ældre forslag (historik, stadig gyldigt som næste mentor-kort):** konkretisér
+mentorens rammer — hvem kan vejlede hvem, kapacitet, varighed, match og feedback —
+med korte scenarier. Spørg ikke igen om positiv påvirkning; det er afgjort (D-031).
 
 Bevar desuden disse åbne spor:
 

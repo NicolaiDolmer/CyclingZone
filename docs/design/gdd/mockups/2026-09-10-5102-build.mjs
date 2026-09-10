@@ -1,9 +1,12 @@
-import { createRequire } from "node:module"; const { chromium } = createRequire(import.meta.url)("C:/Dev/CyclingZone/frontend/node_modules/playwright");
+import { createRequire } from "node:module"; import { fileURLToPath } from "node:url"; import path from "node:path";
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const REPO = path.resolve(HERE, "../../../..");
+const { chromium } = createRequire(import.meta.url)(path.join(REPO, "frontend/node_modules/playwright"));
 import { writeFileSync, mkdirSync } from "node:fs";
 
-const OUT = "C:/Users/Nicolai/AppData/Local/Temp/claude/C--Dev-CyclingZone/8bdf5efd-86a3-453c-80dc-3a5470dfe290/scratchpad/mock5102";
+const OUT = path.join(HERE, "out");
 mkdirSync(OUT, { recursive: true });
-const FONTS = "file:///C:/Dev/CyclingZone/frontend/public/fonts";
+const FONTS = "file:///" + path.join(REPO, "frontend/public/fonts").replace(/\\/g, "/");
 const Y = 2028;
 const R = [
   ["Rubén","Lozano","ES",2004,"BAR","ROU",6742616,35839,6,"4,0",78,68,[71,66,67,70,64,68,69,66,67]],
@@ -86,6 +89,7 @@ ${body}
 const filterBar = (right) => `<div class="fb"><div class="in s">${I.search}Søg rytter</div>${right}</div>`;
 const sel = (label) => `<div class="in h">${label}${I.chev}</div>`;
 
+// Brug: node docs/design/gdd/mockups/2026-09-10-5102-build.mjs  (skriver PNG/HTML til ./out ved siden af scriptet)
 // ---------- 0: i dag (PR #5099-stilen: pinned navn + vandret scroll) ----------
 const today = () => {
   const rows = R.map(r => `<tr>
@@ -151,7 +155,8 @@ for (const [name, html] of Object.entries(files)) {
   writeFileSync(p, html);
   const page = await browser.newPage({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2 });
   await page.goto("file:///" + p.replace(/\\/g, "/"));
-  await page.waitForTimeout(300);
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(100);
   await page.screenshot({ path: `${OUT}/${name}.png` });
   await page.close();
 }

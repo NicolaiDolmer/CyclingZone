@@ -20,8 +20,8 @@ Senere kontrol skal også gennemgå baggrundsprocesser og funktioner uden egen r
 
 | ID | Område og designspørgsmål | Primære kilder under docs/ | Status i samtalen |
 |---|---|---|---|
-| G01 | Identitet, målspiller, managerfantasi og succeskriterier | Living World-doktrinen; #1145 | V-001, D-001 til D-008; ikke samlet reviewet |
-| G02 | Onboarding, første beslutning, læring, hjælp og comeback | FEATURE_REGISTRY; App.jsx; #1140 | D-005: to indgange og let betjening; detaljer afventer |
+| G01 | Identitet, målspiller, managerfantasi og succeskriterier | Living World-doktrinen; #1145 | V-001, D-001 til D-008; D-040 (klubidentitet som retninger), D-041/D-045/D-046/D-048 (omdømme-netværk); ikke samlet reviewet |
+| G02 | Onboarding, første beslutning, læring, hjælp og comeback | FEATURE_REGISTRY; App.jsx; #1140 | D-005: to indgange og let betjening; D-037 (dag 1 ender i første løb); D-047 (mobiltabeller); detaljer afventer |
 | G03 | Besøgskadence, offline-spil, deadlines og assistance | ASSISTANT_RULES; PLANNING_CENTER_RULES; TRAINING_RULES | D-004/D-006: 2-3 besøg på 15-20 min; ASSISTANT_RULES §0-2 læst; E-001; D-007 om markedsaktivitet |
 | G04 | Rytteridentitet, generation, egenskaber og typer | RIDER_GENERATION; PROGRESSION_RULES | §0-10 læst; R-003/registry i RIDER_ATTRIBUTES_RESEARCH/E-008; D-021–028 om Holdarbejde/samspil/mentor; videre design i Claude-handoff |
 | G05 | Træning, form, restitution, sygdom, skader og peaks | TRAINING_RULES; PROGRESSION_RULES | §1/§2/§6/§7/§12/§13 + fuld 6/9-spec læst; R-002; D-018–020; katalog/alder/udbytte åbne; E-001/E-006/E-007; ingen modelsim |

@@ -13,8 +13,9 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-028 er registreret.
-**Overdraget til Claude Code efter Q-031, 10/9:** intet åbent spørgsmålskort.
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-048 er registreret
+(D-029 til D-048 i Claude Code 10/9). **Status 10/9 kl. 16:15:** intet åbent
+spørgsmålskort; Q-037 parkeret til spillerafstemning; Q-053 ikke stillet.
 Læs [CLAUDE_HANDOFF](design/gdd/CLAUDE_HANDOFF.md) for kort beslutningsoversigt,
 næste designarbejde og læserækkefølge; [GitHub-kortet](design/gdd/GITHUB_HANDOFF.md)
 viser hvor de endnu ikke byggede dele er registreret.
