@@ -145,7 +145,7 @@ export async function resolveRetirementNotice(supabase, riderRow, season, cfg = 
 
   const patch = noticeFreezePatch(resolved.season, resolved.announced);
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("riders")
       .update(patch)
       // Skriv kun hvis ingen anden kørsel nåede det først (sæsonstart-sweep,
@@ -156,11 +156,38 @@ export async function resolveRetirementNotice(supabase, riderRow, season, cfg = 
       // senere sæson. `is.null` alene ville låse rytteren fast på sæson 2's
       // markør for evigt; `lt` lader et nyt sæsonår erstatte et forældet svar,
       // men aldrig et nyere.
-      .or(`retirement_notice_season.is.null,retirement_notice_season.lt.${Number(resolved.season)}`);
+      .or(`retirement_notice_season.is.null,retirement_notice_season.lt.${Number(resolved.season)}`)
+      // #5073 (review): `.select()` er ikke pynt. Uden den kan 0 ramte rækker
+      // ikke skelnes fra 1, og vi ville svare "frozen: true" med et `given_at`
+      // der aldrig blev skrevet — også i det tilfælde hvor guarden ovenfor
+      // blokerede fordi ops-kørslen (reparationen) vandt kapløbet og lagde et
+      // ANDET svar i rækken. Svaret til brugeren skal være det der står i DB.
+      .select(RETIREMENT_NOTICE_COLUMNS);
     if (error) {
       console.error("[retirement-notice] lazy freeze failed:", error.message);
       return resolved;
     }
+    const winner = data?.[0];
+    if (winner) {
+      // Vi vandt: rækken vi fik tilbage ER det gemte svar.
+      return { ...resolveNoticeFromRow({ ...riderRow, ...winner }, resolved.season, cfg), shouldFreeze: false };
+    }
+    // 0 rækker = en anden skrivning nåede det først (guarden holdt). Læs den
+    // vindende række og svar med DEN, i stedet for at påstå at vores egen
+    // beregning blev gemt.
+    // schema-columns-ok: retirement_notice_season/-after_season/-given_at
+    // tilfoejes af database/2026-09-10-5073-retirement-notice-column.sql i SAMME
+    // PR; snapshottet opdateres foerst efter merge.
+    const { data: fresh, error: readError } = await supabase
+      .from("riders")
+      .select(RETIREMENT_NOTICE_COLUMNS)
+      .eq("id", riderRow.id)
+      .maybeSingle();
+    if (readError || !fresh) {
+      if (readError) console.error("[retirement-notice] re-read after lost race failed:", readError.message);
+      return resolved;
+    }
+    return { ...resolveNoticeFromRow({ ...riderRow, ...fresh }, resolved.season, cfg), shouldFreeze: false };
   } catch (err) {
     // best-effort: frysningen er en OPTIMERING af et svar vi allerede har regnet
     // ud. Fejler skrivningen (netvaerk, RLS, kolonnen findes ikke endnu foer
@@ -169,5 +196,4 @@ export async function resolveRetirementNotice(supabase, riderRow, season, cfg = 
     console.error("[retirement-notice] lazy freeze threw:", err?.message || err);
     return resolved;
   }
-  return { ...resolved, frozen: true, givenAt: patch.retirement_notice_given_at, shouldFreeze: false };
 }

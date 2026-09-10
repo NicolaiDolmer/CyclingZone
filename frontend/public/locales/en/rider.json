@@ -202,7 +202,6 @@
       "auction": "In auction · ends in {endsIn} · highest bid {highBid}",
       "finalSeasonTitle": "Final season",
       "finalSeason": "Announced his retirement at the season start. He retires when season {season} ends.",
-      "finalSeasonAnnounced": "Announced before season {season}",
       "academy": "Academy rider",
       "expiry": "Contract expires after Season {season}."
     },

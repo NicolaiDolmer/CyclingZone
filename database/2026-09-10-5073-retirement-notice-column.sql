@@ -29,8 +29,13 @@
 --   retirement_notice_given_at      Hvornår varslet blev givet. Sat KUN når et
 --                                   varsel rent faktisk står (svaret er ja) —
 --                                   et "nej" er ikke et varsel og får ingen dato.
---                                   Rytterkortet viser datoens sæson som
---                                   "Announced before season N".
+--                                   Feltet er OPS-/revisionsdata, ikke UI: det
+--                                   er tidspunktet frysningen blev SKREVET, og
+--                                   for backfill'ede rækker er det kørslens
+--                                   tidsstempel — ikke "da varslet blev givet".
+--                                   Rytterkortet siger derfor stadig kun
+--                                   "Announced his retirement at the season
+--                                   start" (uændret #2748-tekst).
 --
 -- INGEN BACKFILL HER. Bevidst: sæson 3's værdier skal skrives med det GAMLE rul
 -- (seededUnit, som før #4990) for netop de ryttere spillerne allerede har
@@ -39,6 +44,16 @@
 -- `scripts/ops/retirement-notice-freeze-5073.mjs` (skriver kun med både
 -- `--execute` og `OWNER_GO=1`). Indtil da fryser koden selv lazily ved første
 -- visning med den GÆLDENDE regel.
+--
+-- KONSEKVENS AF RÆKKEFØLGEN (review-fund): merge af denne migration LEVERER
+-- IKKE reparationen, kun mekanikken. Fra det sekund migrationen og backend-
+-- deployet er inde, fryser hver visning af et rytterkort svaret med den
+-- gældende regel — altså netop det svar reparationen skal erstatte for de 58
+-- ryttere. Ops-kørslen skal derfor køres SNAREST efter merge; den overskriver
+-- bevidst markører for den AKTIVE sæson (de kan kun være skrevet af lazy freeze
+-- efter dette deploy, fordi kolonnen oprettes her) og rapporterer hvor mange
+-- rækker der nåede at blive frosset først, og hvor mange af dem der skifter
+-- svar. Markører for ANDRE sæsoner røres aldrig uden `--force`.
 --
 -- KOLONNE-GRANTS (#2238/#2241): `public.riders` bruger IKKE table-level SELECT —
 -- #1162 revoke'ede den og re-grantede kolonne for kolonne. En ny kolonne arver

@@ -55,6 +55,7 @@
     "email:day1": 5,
     "email:race-digest": 5,
     "resolveProxyBids": 10,
+    "retirement-notice": 5,
     "rider-view-log": 10,
     "runStarterSquadAllocation": 5,
     "starterSquadHealSweep": 10,
@@ -74,6 +75,7 @@
     "email:health": "#2853 (backend/lib/emailHealthReport.js): console.error naar recordEmailSweepRun ikke kan skrive sin statistik-raekke (Supabase insert fejler eller kaster). Best-effort skrivning - sweepen der HAR sendt sine mails er ikke i fare, kun naeste dags rapport faar et hul. Selve den daglige sundhedsrapport gaar til Discord via postOpsEmbed, ikke til console, saa tagget her ses KUN ved fejl. Lav taerskel (5) svarende til andre best-effort-log-tags (collect, feedback, forum).",
     "email:welcome": "#2853 (backend/lib/emailWelcomeSweep.js): console.error naar den samlede ops-alarm (postPermanentFailureAlert til Discord) fejler efter en welcome-mail-koersel. Best-effort - de permanente sende-fejl staar allerede i Sentry og i email_log.error, kun Discord-varslingen mangler. Lav taerskel (5), samme moenster som email:health.",
     "email:day1": "#2853 (backend/lib/emailDay1Sweep.js): console.error naar den samlede ops-alarm (postPermanentFailureAlert til Discord) fejler efter en day1-mail-koersel. Best-effort - de permanente sende-fejl staar allerede i Sentry og i email_log.error, kun Discord-varslingen mangler. Lav taerskel (5), samme moenster som email:health.",
+    "retirement-notice": "#5073 (backend/lib/retirementNotice.js): console.error naar lazy freeze af pensionsvarslet ikke kan skrive (Supabase-fejl, kastet exception, eller en re-laesning der fejler efter et tabt kaploeb). Best-effort - svaret til brugeren er det samme, kun frysningen udskydes til naeste visning - MEN linjen ligger paa en hot read-path (hvert rytterkort-visning i pensionsvinduet), saa et vedvarende udfald betyder at varslet aldrig bliver frosset og dermed stadig kan flytte sig. Lav taerskel (5), samme moenster som email:health.",
     "email:race-digest": "#2853 (backend/lib/emailRaceDigestSweep.js): console.error naar den samlede ops-alarm (postPermanentFailureAlert til Discord) fejler efter en race-digest-mail-koersel. Best-effort - de permanente sende-fejl staar allerede i Sentry og i email_log.error, kun Discord-varslingen mangler. Lav taerskel (5), samme moenster som email:health."
   },
   "_growthNotes": "Tag-TOTALEN (summen over alle spande for et tag) udloeser ogsaa et fund naar den er growthMultiplier gange stoerre end samme tag i det foregaaende vindue OG mindst growthMinimum. Formaal: et udfald der spreder sig over mange endpoints holder hver enkelt spand under sin taerskel - review af PR #4469 regnede eksemplet: 30 ruter x 250 [auth]-linjer = 7.500 linjer og NUL taerskel-brud under den rene per-spand-regel. Reglen er bevidst RATIO-baseret, saa den ikke kraever et volumental ingen har maalt endnu; growthMinimum 100 er et gulv mod stoej fra smaa tags og skal justeres efter foerste uges maaling ligesom auth: 300. Ignorerede tags er ogsaa undtaget her.",

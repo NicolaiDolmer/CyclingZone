@@ -25,21 +25,40 @@ import { announcedRetirementAfterSeason, developRiderSeason, retirementDecision 
 const S3 = 3;
 const bornForAge = (age, season = S3) => `${2026 + season - 1 - age}-06-01`;
 
-// Minimal Supabase-stub: registrerer update-kald uden at røre netværk.
-function stubSupabase() {
+// Minimal Supabase-stub med en RIGTIG række-tilstand. Den er ikke længere bare
+// en kalds-optæller: `.select()` på updaten skal returnere de ramte rækker, og
+// guarden (`or(is.null, lt.N)`) skal kunne AFVISE en skrivning — ellers kan
+// testen ikke se forskel på "vi vandt kapløbet" og "vi tabte det" (review-fund:
+// 0 ramte rækker blev tidligere rapporteret som frozen: true).
+function stubSupabase(seed = []) {
+  const store = new Map(seed.map((r) => [r.id, { ...r }]));
   const calls = [];
-  return {
-    calls,
-    from(table) {
-      const call = { table, patch: null, filters: [] };
-      const chain = {
-        update(patch) { call.patch = patch; calls.push(call); return chain; },
-        eq(col, val) { call.filters.push(["eq", col, val]); return chain; },
-        or(expr) { call.filters.push(["or", expr]); return Promise.resolve({ error: null }); },
-      };
-      return chain;
-    },
-  };
+  function makeChain(table) {
+    const call = { table, op: "select", patch: null, filters: [], columns: null };
+    function run() {
+      const idFilter = call.filters.find(([kind, col]) => kind === "eq" && col === "id");
+      const row = idFilter ? store.get(idFilter[2]) : null;
+      if (call.op !== "update") return { data: row ? { ...row } : null, error: null };
+      const orExpr = (call.filters.find(([kind]) => kind === "or") || [])[1] || "";
+      const lt = Number((orExpr.match(/lt\.(\d+)/) || [])[1]);
+      const marker = row?.retirement_notice_season ?? null;
+      const passes = row != null
+        && (marker == null || (Number.isFinite(lt) && Number(marker) < lt));
+      if (!passes) return { data: [], error: null };
+      Object.assign(row, call.patch);
+      return { data: [{ ...row }], error: null };
+    }
+    const chain = {
+      update(patch) { call.op = "update"; call.patch = patch; calls.push(call); return chain; },
+      select(columns) { call.columns = columns; return chain; },
+      eq(col, val) { call.filters.push(["eq", col, val]); return chain; },
+      or(expr) { call.filters.push(["or", expr]); return chain; },
+      maybeSingle() { return Promise.resolve(run()); },
+      then(onOk, onErr) { return Promise.resolve(run()).then(onOk, onErr); },
+    };
+    return chain;
+  }
+  return { calls, store, from: (table) => makeChain(table) };
 }
 
 test("#5073: kolonne-listen indeholder alle tre felter (et kaldested må ikke kunne glemme markøren)", () => {
@@ -108,8 +127,8 @@ test("#5073: uden frysning beregnes svaret med den gældende regel, og kun vindu
 });
 
 test("#5073: lazy freeze skriver præcis én gang, og kun for ryttere i vinduet", async () => {
-  const supabase = stubSupabase();
   const inWindow = { id: "w1", birthdate: bornForAge(37), retirement_notice_season: null, retirement_notice_after_season: null, retirement_notice_given_at: null };
+  const supabase = stubSupabase([{ ...inWindow }]);
 
   const res = await resolveRetirementNotice(supabase, inWindow, S3);
   assert.equal(supabase.calls.length, 1, "der skal skrives netop én gang");
@@ -138,13 +157,48 @@ test("#5073: lazy freeze skriver præcis én gang, og kun for ryttere i vinduet"
 test("#5073: en fejlet skrivning ændrer ikke svaret (lazy freeze er non-critical)", async () => {
   const failing = {
     from: () => ({
-      update: () => ({ eq: () => ({ or: () => Promise.resolve({ error: { message: "boom" } }) }) }),
+      update: () => ({
+        eq: () => ({ or: () => ({ select: () => Promise.resolve({ error: { message: "boom" } }) }) }),
+      }),
     }),
   };
   const rider = { id: "w1", birthdate: bornForAge(37) };
   const res = await resolveRetirementNotice(failing, rider, S3);
   assert.equal(res.announced, announcedRetirementAfterSeason(rider, S3));
   assert.equal(res.frozen, false, "en fejlet skrivning må ikke påstå at svaret er frosset");
+});
+
+test("#5073: taber lazy freeze kapløbet, svarer vi med DEN række der ligger i DB", async () => {
+  // Review-fund (blocker om rækkefølgen + major om `frozen: true`): mellem deploy
+  // og ops-kørslen kan reparationen nå at skrive et ANDET svar for samme sæson.
+  // Rækken vi læste var stadig ufrossen, så lazy freeze forsøger at skrive — men
+  // guarden afviser, og brugeren skal så se DB'ens svar, ikke vores egen
+  // beregning præsenteret som en frossen kendsgerning.
+  //
+  // Find en rytter hvor dagens rul siger JA, og lad reparationen have skrevet NEJ.
+  let rider = null;
+  for (let i = 0; i < 500 && !rider; i++) {
+    const cand = { id: `race-${i}`, birthdate: bornForAge(37) };
+    if (announcedRetirementAfterSeason(cand, S3)) rider = cand;
+  }
+  assert.ok(rider, "kunne ikke finde en rytter hvor dagens rul siger ja");
+
+  const supabase = stubSupabase([{
+    ...rider,
+    retirement_notice_season: S3,
+    retirement_notice_after_season: null,   // reparationens legacy-svar: intet varsel
+    retirement_notice_given_at: null,
+  }]);
+  // Vi læste rytteren FØR reparationen skrev — derfor ingen markør i vores kopi.
+  const stale = { ...rider, retirement_notice_season: null, retirement_notice_after_season: null, retirement_notice_given_at: null };
+
+  const res = await resolveRetirementNotice(supabase, stale, S3);
+  assert.equal(supabase.calls.length, 1, "vi forsøger at skrive (vores kopi så ufrossen ud)");
+  assert.equal(supabase.store.get(rider.id).retirement_notice_after_season, null, "guarden må ikke lade os overskrive");
+  assert.equal(res.announced, false, "svaret skal være DB's, ikke vores egen beregning");
+  assert.equal(res.frozen, true);
+  assert.equal(res.givenAt, null, "et given_at der aldrig blev skrevet må ikke rapporteres");
+  assert.equal(res.shouldFreeze, false);
 });
 
 test("#5073: cutover LÆSER kolonnen i stedet for at rulle igen", () => {

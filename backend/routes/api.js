@@ -15282,12 +15282,15 @@ router.get("/riders/:id/retirement-status", requireAuth, async (req, res) => {
   // flytte varslet midt i en sæson, sådan som #4990 gjorde 7/9.
   const seasonNumber = await getActiveSeasonNumber();
   const notice = await resolveRetirementNotice(supabase, rider, seasonNumber);
-  res.json({
-    announced_retirement: notice.announced,
-    // Sæsonen varslet gælder — rytterkortet skriver "Announced before season N".
-    notice_season: notice.announced ? notice.season : null,
-    notice_given_at: notice.givenAt,
-  });
+  // Svarformen er UÆNDRET fra #2748. Et udkast lagde `notice_season` og
+  // `notice_given_at` på, men banner-linjen der skulle vise dem sagde intet nyt
+  // (notice_season ER den aktive sæson, som allerede står i sætningen ovenover),
+  // og `given_at` er tidspunktet frysningen blev SKREVET — for de backfill'ede
+  // rækker ops-kørslens tidsstempel, ikke "da varslet blev givet". At vise det
+  // ville modsige "Announced his retirement at the season start". Felterne er
+  // derfor holdt ude af kontrakten indtil der findes en flade der faktisk har
+  // brug for dem (review-fund #5073).
+  res.json({ announced_retirement: notice.announced });
 });
 
 // POST /api/riders/:id/view — vis rytter-profil, log besøg (#963) + trigger evt. transferrygte

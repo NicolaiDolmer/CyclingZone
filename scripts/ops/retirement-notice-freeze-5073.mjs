@@ -37,23 +37,44 @@
 // dermed netop de ryttere over der ligger paa transfermarked/auktion, altsaa dem
 // koebere traeffer beslutninger om (praecis thelamba-casen i #5073).
 //
-// IDEMPOTENS: skriver kun raekker hvor retirement_notice_season er NULL. En
-// rytter der allerede har faaet sit varsel (lazy freeze ved en visning, eller en
-// tidligere koersel) roeres ikke - et givet loefte overskrives aldrig. `--force`
-// slaar den beskyttelse fra og er kun til en bevidst omkoersel.
+// RAEKKEFOELGE OG IDEMPOTENS (rettet efter review - dette var en blocker).
+// Migrationen og backend-deployet lander samtidig ved merge, saa fra det
+// sekund fryser HVER visning af et rytterkort svaret med den NUVAERENDE regel
+// (lazy freeze i backend/lib/retirementNotice.js). Koerte denne reparation kun
+// paa raekker hvor retirement_notice_season IS NULL, ville netop de mest sete
+// af de 58 divergerende ryttere faa POST-#4990-svaret cementeret permanent -
+// stik imod ejer-beslutningen 10/9 kl. 16:05, og uden en raekkefoelge ejeren
+// kunne vaelge sig ud af.
+//
+// Derfor: `--execute` skriver raekker hvor markoeren enten er NULL ELLER er
+// den AKTIVE saeson. Det er sikkert her og ikke en generel opblodning af
+// "et loefte overskrives aldrig", fordi kolonnen OPRETTES i samme PR: hver
+// eneste markoer for den aktive saeson er skrevet af lazy freeze EFTER dette
+// deploy, altsaa praecis de raekker reparationen findes for. Markoerer for
+// ANDRE saesoner (fx en cutover der allerede har afgjort en tidligere saeson)
+// roeres aldrig uden `--force`. Rapporten viser hvor mange raekker der naaede
+// at blive frosset foerst, og hvor mange af dem der faktisk skifter svar.
+//
+// `--force` slaar begge beskyttelser fra (ogsaa markoerer for andre saesoner)
+// og er kun til en bevidst omkoersel.
 //
 // Brug:
 //   # 1) maaling (default, INGEN skrivning)
 //   infisical run --env=prod -- node scripts/ops/retirement-notice-freeze-5073.mjs --dry-run
 //
-//   # 2) skriv frysningen (kraever BEGGE dele)
+//   # 2) skriv frysningen (kraever BEGGE dele) - KOER SNAREST MULIGT EFTER MERGE:
+//   #    hver time der gaar, fryser lazy freeze flere rytterkort med det svar
+//   #    reparationen skal erstatte (de overskrives, men rapporten er kun praecis
+//   #    naar tallet er lille - og en spiller kan naa at se det forkerte svar).
 //   OWNER_GO=1 infisical run --env=prod -- \
 //     node scripts/ops/retirement-notice-freeze-5073.mjs --execute
 //
 // Flag:
 //   --dry-run            eksplicit maaling (default-adfaerd; kan ikke kombineres med --execute)
 //   --execute            skriv frysningen (naegter uden OWNER_GO=1)
-//   --force              skriv ogsaa oven i ryttere der allerede har et frosset varsel
+//   --force              skriv ogsaa oven i markoerer for ANDRE saesoner (den aktive
+//                        saesons markoerer overskrives allerede uden --force, se
+//                        RAEKKEFOELGE ovenfor)
 //   --source=legacy      frys det svar spillerne saa FOER 7/9 (default, genopretter varslet)
 //   --source=current     frys det svar prod giver I DAG (hvis ejeren vil beholde det nye rul)
 //   --out=<sti>          skriv JSON-kvitteringen hertil (default: en fil i OS'ets
@@ -167,8 +188,25 @@ function printReport(report, freezeRows, riders, source) {
   // over, saa positionerne i de to lister er ikke garanteret de samme.
   const frozenIds = new Set(riders.filter((r) => r.retirement_notice_season != null).map((r) => r.id));
   const alreadyFrozen = frozenIds.size;
-  const willWrite = FORCE ? freezeRows.length : freezeRows.filter((r) => !frozenIds.has(r.riderId)).length;
+  // Markoerer for den AKTIVE saeson er skrevet af lazy freeze efter dette deploy
+  // (kolonnen findes ikke foer denne PR) - dem overskriver reparationen. Markoerer
+  // for en anden saeson er et aegte tidligere loefte og roeres kun med --force.
+  const byId = new Map(riders.filter((r) => r.id != null).map((r) => [r.id, r]));
+  const reclaimable = new Set(
+    riders.filter((r) => Number(r.retirement_notice_season) === Number(report.activeSeason)).map((r) => r.id),
+  );
+  const writable = (row) => FORCE || !frozenIds.has(row.riderId) || reclaimable.has(row.riderId);
+  const willWrite = freezeRows.filter(writable).length;
   const announcedAfter = freezeRows.filter((r) => r.announced).length;
+  // Hvor mange af de allerede frosne raekker for den aktive saeson faar et ANDET
+  // svar end det der staar i dem nu? Det er maalet paa hvor meget lazy freeze
+  // naaede at cementere forkert inden koerslen.
+  const flips = freezeRows.filter((row) => {
+    if (!reclaimable.has(row.riderId)) return false;
+    const stored = byId.get(row.riderId);
+    const storedAnnounced = Number(stored?.retirement_notice_after_season) === Number(report.activeSeason);
+    return storedAnnounced !== row.announced;
+  }).length;
 
   console.log(`Aktiv saeson: ${report.activeSeason} (referenceaar ${2026 + report.activeSeason - 1})`);
   console.log(`Pensionsvindue: ${PROGRESSION_CONFIG.retirement.windowStartAge}-${PROGRESSION_CONFIG.retirement.guaranteedAge - 1} (garanteret fra ${PROGRESSION_CONFIG.retirement.guaranteedAge})`);
@@ -181,7 +219,10 @@ function printReport(report, freezeRows, riders, source) {
   console.log(`  heraf paa menneskehold ... ${totals.humanDiverged} (fik: ${totals.humanGained}, mistede: ${totals.humanLost})`);
   console.log(`  heraf frie agenter ....... ${totals.freeAgentDiverged}`);
   console.log("");
-  console.log(`Allerede frosset i DB ...... ${alreadyFrozen} (roeres ikke uden --force)`);
+  console.log(`Allerede frosset i DB ...... ${alreadyFrozen}`);
+  console.log(`  heraf for saeson ${report.activeSeason} ....... ${reclaimable.size} (skrevet af lazy freeze EFTER deploy - overskrives)`);
+  console.log(`    heraf skifter svar .... ${flips} (det lazy freeze naaede at cementere forkert)`);
+  console.log(`  heraf for andre saesoner . ${alreadyFrozen - reclaimable.size} (aegte tidligere loefter - roeres ikke uden --force)`);
   console.log(`Skrives af denne koersel ... ${willWrite} raekker, kilde --source=${source}`);
   console.log(`  heraf MED varsel ........ ${announcedAfter} (rytteren stopper efter saeson ${report.activeSeason})`);
   console.log("");
@@ -221,7 +262,7 @@ function writeReceipt(report, freezeRows, source) {
 // Grupperet, ikke pr. rytter: patchen har praecis to former (varsel / intet
 // varsel), saa hele populationen kan skrives med to `.in(id, chunk)`-updates pr.
 // chunk i stedet for 2.000 enkeltkald.
-async function writeFreeze(supabase, freezeRows) {
+async function writeFreeze(supabase, freezeRows, activeSeason) {
   const groups = [
     { announced: true, rows: freezeRows.filter((r) => r.announced) },
     { announced: false, rows: freezeRows.filter((r) => !r.announced) },
@@ -233,8 +274,13 @@ async function writeFreeze(supabase, freezeRows) {
     for (let i = 0; i < group.rows.length; i += WRITE_CHUNK) {
       const ids = group.rows.slice(i, i + WRITE_CHUNK).map((r) => r.riderId);
       let q = supabase.from("riders").update(patch).in("id", ids);
-      // Idempotens: et allerede givet loefte overskrives aldrig utilsigtet.
-      if (!FORCE) q = q.is("retirement_notice_season", null);
+      // Idempotens + reparation i samme guard (se RAEKKEFOELGE i headeren):
+      // ufrosne raekker skrives, og raekker som lazy freeze naaede at fryse for
+      // den AKTIVE saeson efter deployet overskrives - det er netop dem
+      // reparationen findes for. Et loefte for en ANDEN saeson roeres aldrig.
+      if (!FORCE) {
+        q = q.or(`retirement_notice_season.is.null,retirement_notice_season.eq.${Number(activeSeason)}`);
+      }
       const { data, error } = await q.select("id");
       if (error) fail(`kunne ikke skrive frysningen: ${error.message}`);
       written += data?.length ?? 0;
@@ -291,7 +337,7 @@ async function main() {
     fail("varsel-kolonnerne findes ikke i databasen - apply migration database/2026-09-10-5073-retirement-notice-column.sql foerst.");
   }
 
-  const written = await writeFreeze(supabase, freezeRows);
+  const written = await writeFreeze(supabase, freezeRows, activeSeason);
 
   const { error: logErr } = await supabase.from("admin_log").insert({
     action_type: "retirement_notice_freeze",
