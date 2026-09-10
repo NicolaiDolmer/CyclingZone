@@ -432,6 +432,22 @@ Tal i kortet var illustration; lofter og priser afgøres i YOUTH_RULES §6's
 Registreret som D-033; ejeren fravalgte designerens anbefaling (udlån af unge).
 Forbeholdet om permanent tab ved salg af unge er noteret til økonomi-simulationen.
 
+## Q-037 · Fog of war, første kort: parkeret til spillerne (10/9 kl. 14:00)
+
+Kortet spurgte hvad andre managere ser om en rytters nuværende evner (præcist
+for alle som i dag / præcist når til salg, bånd ellers / bånd for alle fremmede).
+Ejerens svar, ordret:
+
+> Synes du, at spørgsmålet var sådan her formuleret i vores spørgeskema? Ellers vil jeg måske gerne stille det som et spørgsmål visuelt til spillerne
+
+Svar: nej; skemaets linje ("Other teams' rider abilities shown as ranges, revealed
+through scouting", idé 3,85, vigtighed 3,44, veto 11 %) havde hverken scenarie
+eller mellemvejen. Q-037 er derfor **parkeret uden beslutning**; materialet til en
+forum-afstemning med billede ligger i `docs/drafts/forum-poll-fog-of-war-2026-09-10.md`
+(ejeren poster selv). Designerens anbefaling (præcist når til salg, bånd ellers)
+står i kortet og genoptages, når spillerne har stemt. Potentiale-lækagen (#2798)
+er afgjort 2/9 og var ikke en del af kortet.
+
 ## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
