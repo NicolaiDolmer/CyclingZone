@@ -26,7 +26,9 @@
 > **D-030:** Lederskab bliver en ny evne i det almindelige evnesystem (ikke et
 > skjult sidelag); vokser med alder og kaptajn-/mentortid; mentor kræver tærskel
 > plus tydelig overlegenhed; ingen løbsvirkning. Synlighed afgøres i fog of
-> war-kapitlet. Endelig evneliste, opbygningstid, "tydeligt bedre" i tal og styrke er fortsat åbne.
+> war-kapitlet. **D-031:** parret kan altid skiftes, men et nyt par bygger
+> udbyttet op forfra over løbsdage; det lærte beholdes. Endelig evneliste,
+> opbygningens længde, "tydeligt bedre" i tal og styrke er fortsat åbne.
 
 > **Læs denne FØR enhver opgave der rører rytterudvikling, træning, potentiale, lofter, rating eller ryttertyper.** Ejer-direktiv 25/8 ([#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)):
 > *"Det må ALDRIG NOGENSINDE ske, at du ikke bruger et SSOT-dokument, når vi rent faktisk har lavet et. Der skal nogle hardcore regler på det her."*

@@ -402,11 +402,19 @@ mulighederne vises visuelt (kolonner med samme scenarie) før kortet, når
 valget har mere end to bevægelige dele. Fog of war (hvem ser hvilke tal)
 er parkeret som eget kapitel; det gælder også Lederskabs synlighed.
 
-## Handoff · Til Claude Code efter Q-033, 10/9 2026
+## Q-034 · Mentorparrets livscyklus, ejerens svar ordret (10/9 kl. 13:00)
+
+> A · Frit skift, opbygning forfra (anbefalet)
+
+Registreret som D-031 efter tre kurver over samme scenarie (skift på løbsdag
+15 af 40). Mentortråden (D-026 til D-031) er nu konkret nok til et koncept;
+kalibrering, synlighed og UI er åbne, og intet er build-godkendt.
+
+## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-033/D-030. Intet spørgsmål står åbent; Q-034 er ikke stillet.
-- Næste skridt: mentorparrets livscyklus (frit skift kontra bindingstid) som sidste mentorkort; derefter bredere områder efter spillerdata (træning, holdudtagelse, akademi, mobil). Fog of war som eget kapitel senere.
+- Sidste svar: Q-034/D-031. Intet spørgsmål står åbent; Q-035 er ikke stillet.
+- Næste skridt: bredere områder efter spillerdata (holdudtagelse, akademi/ungdomshold, mobil); træningsreworket er allerede ejer-besluttet 6/9. Fog of war som eget kapitel senere. Ro under pres og Træningsdisciplin er stadig kandidater uden mekanik.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.

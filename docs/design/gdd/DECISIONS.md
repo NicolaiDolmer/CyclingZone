@@ -1077,6 +1077,34 @@ scouting- eller værdikontrakt er ændret ved dette valg.
 mentor-egnethed og mentee-udbytte; ingen løbssimulation ændrer udfald ved
 ændret Lederskab; en ung rytter med højt Lederskab kan være mentor.
 
+## Q-034 · Kan mentorparret skiftes frit, eller er der bindingstid?
+
+**Status:** stillet 10/9 (Claude Code) med tre kurver over samme scenarie; A valgt, se D-031.
+Scenarie: 40 løbsdage; mentor X udpeges på løbsdag 1; på løbsdag 15 købes en
+bedre mentor Y, og manageren skifter. **A, anbefalet:** frit skift, men det nye
+par bygger udbyttet op forfra over nogle løbsdage; det lærte beholdes.
+**B:** parret låses for sæsonen og ændres kun i sæsonpausen. **C:** frit skift,
+fuld virkning fra dag ét. **Tradeoff:** A straffer rotation uden at låse; B er
+forudsigelig, men gør en midt-sæson-købt veteran ubrugelig som mentor til S+1;
+C belønner daglig rotation og rammer D-004/D-006 (den sjældne gæst taber).
+Kilder: D-029/D-030, D-004/D-006, D-025 (samspil følger rytterne).
+
+## D-031 · Frit mentorskift med opbygning forfra
+
+**Status:** ejer-valgt 10/9, svar på Q-034.
+**Ejerens svar, ordret:** "A · Frit skift, opbygning forfra (anbefalet)".
+Manageren kan altid ændre et mentorpar. Et nyt par starter med lav virkning og
+bygger den op over løbsdage; det, den unge allerede har lært, beholdes. Sælges
+eller frigives den ene part, ophører parret, og det lærte beholdes; en ny
+relation begynder forfra. **Fravalgt:** sæsonlås og omkostningsfrit skift.
+**Åbent:** opbygningens længde i løbsdage og kurvens form (privat kalibrering),
+om et tidligere par genoptages hurtigere end et helt nyt, og hvordan skiftet
+vises (rytterkort, "Siden sidst"). Ingen UI eller formel er godkendt til build.
+**Foreslået verifikation:** to identiske mentees, hvor den ene skifter mentor
+på løbsdag 15 til en bedre, ender højere end den, der bliver, kun hvis den nye
+mentor er tydeligt bedre; ugentlig rotation mellem ligeværdige mentorer ender
+lavere end at blive i ét par.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code

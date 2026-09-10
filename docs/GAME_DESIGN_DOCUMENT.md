@@ -232,8 +232,10 @@ sig mentoren. Passiv trupvirkning er fravalgt. **D-030:** Lederskab bliver en
 ny evne i det almindelige evnesystem; den vokser med alder og kaptajn-/mentortid,
 og mentor-egnethed kræver en tærskel plus tydelig overlegenhed på den mentale
 evne. Lederskab påvirker intet i løbet. Synlighed (hvem ser tallet) er
-udtrykkeligt parkeret til fog of war-kapitlet. Opbygningstid, bindingstid,
-feedback og transfer af den ene part er åbne.
+udtrykkeligt parkeret til fog of war-kapitlet. **D-031:** parret kan altid
+skiftes, men et nyt par bygger udbyttet op forfra over løbsdage; det lærte
+beholdes, også når parret ophører ved salg. Sæsonlås og omkostningsfrit skift
+er fravalgt. Opbygningens længde, feedback og UI er åbne.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -360,3 +362,4 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   navngivet mentorpar med højst to mentees valgt. Designpartner er nu Claude Code.
   D-030 om Lederskab som ny evne (kun mentor/trup) valgt; fog of war parkeret som
   eget kapitel på ejerens ønske; muligheder vises visuelt før kortet.
+  D-031 om frit mentorskift med opbygning forfra valgt; mentortråden samlet.
