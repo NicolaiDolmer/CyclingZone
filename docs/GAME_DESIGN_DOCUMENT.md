@@ -283,6 +283,10 @@ egen udtagelse til næste løb (assistenten forudvælger), én taktik, og
 resultatet med indsatskort (D-036). Auktion, træning og bestyrelse åbner i
 eget tempo bagefter. Før build skal afstanden fra tilmelding til første løb
 måles, og onboarding-kortets trin 4 skal måle en reel handling.
+**D-038 (dag 2-7):** krogen tilbage er hændelsesdrevet: "dit løb er kørt"
+med indsatskort og næste konkrete skridt erstatter dag 1-tips, når der
+findes et resultat; ingen besked uden hændelse i første uge. Samtykkehjemlen
+for en resultatudløst mail er ikke juridisk efterprøvet (EMAIL_STACK §2).
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -415,5 +419,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   Q-037 (fog of war) parkeret til spillerafstemning. D-034 om sen udfyldning
   24 t før start + påmindelse valgt (kapitel: holdudtagelse og løbsdagen).
   D-035 (assistenten fylder til gulvet, derover kun egnede) og D-036
-  (indsatskort pr. rytter efter løbet) valgt. D-037 om første session valgt
-  (kapitel: dag 1 og de første 7 dage).
+  (indsatskort pr. rytter efter løbet) valgt. D-037 om første session og
+  D-038 om den hændelsesdrevne krog valgt (kapitel: dag 1 og de første 7 dage).

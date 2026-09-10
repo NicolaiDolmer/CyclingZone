@@ -5,9 +5,9 @@ Fem eksisterende featureejere er opdateret; direkte kommentarlinks står i GITHU
 
 **Overdraget af Nicolai 10/9 2026.** Codex-sessionen er afsluttet på ejerens
 ønske om at fortsætte i Claude og spare Codex-tokens. Den samlede GDD er fortsat
-`in_progress`. **Opdateret 10/9 kl. 14:55 (Claude Code):** sidste svar er D-037 (Q-041,
-første session); Q-037 er parkeret til spillerafstemning; intet spørgsmålskort er åbent.
-Q-042 er ikke stillet. Samme dag løftede
+`in_progress`. **Opdateret 10/9 kl. 15:05 (Claude Code):** sidste svar er D-038 (Q-042,
+hændelsesdrevet krog); Q-037 er parkeret til spillerafstemning; intet spørgsmålskort er
+åbent. Q-043 er ikke stillet. Samme dag løftede
 ejeren trupper U23/junior til nr. 3 på MASTERPLANs venteliste (planvalg, ikke GDD-beslutning). Mentortråden (D-026 til D-031) er
 konceptuelt samlet; næste kapitler vælges efter spillerdata i `docs/audits/2026-09-10-*`. **Betjeningsregel fra ejeren
 10/9:** ét område pr. kort (fog of war/synlighed er eget kapitel, ikke en del af
@@ -95,6 +95,7 @@ Denne tabel er et kort; DECISIONS og de ordrette svar er detaljerne.
 | D-035 | Assistenten fylder altid til gulvet (6); pladser derover kun med ryttere over en egnetheds-/træthedsgrænse; tomme pladser vises med årsag. Grænsen er kalibrering (#3957). (Claude Code 10/9) |
 | D-036 | Løbsdagen: indsatskort pr. rytter (ordre, 2-4 hændelser med km, dom i klar tekst, ingen karakter) som grundmodel for feedback; #4916 supplerer. Kræver v4-flip. (Claude Code 10/9) |
 | D-037 | Dag 1: første session er én ledet bane, der ender i spillerens første løb (draft → egen udtagelse → én taktik → resultat med indsatskort); auktion/træning/bestyrelse åbner bagefter. Afstand til første løb måles før build. (Claude Code 10/9) |
+| D-038 | Dag 2-7: hændelsesdrevet krog ("dit løb er kørt" med indsatskort og næste skridt) erstatter dag 1-tips, når der er et resultat; ingen besked uden hændelse i uge 1. Samtykke-hjemmel ikke juridisk efterprøvet. (Claude Code 10/9) |
 | Q-037 | PARKERET: hvad andre managere ser om nuværende evner; forum-afstemning med billede i `docs/drafts/forum-poll-fog-of-war-2026-09-10.md`, ejeren poster selv. |
 
 R-001: følg egen avl med FM-inspiration. R-002: undersøg kategori/debuter og

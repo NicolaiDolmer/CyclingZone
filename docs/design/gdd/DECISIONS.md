@@ -1327,6 +1327,46 @@ løb; andelen der sætter egen udtagelse inden 48 t stiger fra 35 % (launch)
 mod 50 %+, og uge 1→2-retention følger med; trin 4 kan ikke længere blive
 grønt uden en spillerhandling.
 
+## Q-042 · Hvad skal bringe den nye manager tilbage på dag 2-7?
+
+**Status:** stillet 10/9 (Claude Code) med tre tidslinjer (tilmelding mandag
+aften, første løb onsdag kl. 11). A valgt, se D-038.
+**A, anbefalet:** hændelsesdrevet krog: beskeden udløses af det spilleren selv
+satte i gang (D-037): resultatet af første løb med indsatskort (D-036) og
+"næste løb: fredag 11, trup ikke sat"; dag 1-mailen bliver denne, når der er
+et resultat; ingen mail uden hændelse. **B:** kalenderdrevet som i dag
+(velkomst, dag 1-tips efter et døgn, fraværs-digest efter tre dage, slukket
+og samtykke-gated). **C:** kun i appen.
+**Tradeoff:** A gør hver besked til noget spilleren selv valgte; B sender
+tips før løbet er kørt og lader resultatet udløse ingenting; C giver nul
+støj, men den der ikke åbner appen, hører aldrig at holdet kørte.
+Kilder: EMAIL_STACK §2-3 (welcome/day1 transaktionelle, digest samtykke-gated,
+#4654), auditten 7/9 (#4964), D-036/D-037.
+
+## D-038 · Hændelsesdrevet krog: "dit løb er kørt"
+
+**Status:** ejer-valgt 10/9, svar på Q-042.
+**Ejerens svar, ordret:** "A · Hændelsesdrevet: 'dit løb er kørt' (anbefalet)".
+I den nye managers første uge udløses beskeder af spillerens egne handlinger,
+ikke af kalenderen: når det løb, han selv udtog til, er kørt, får han
+resultatet med indsatskort og næste konkrete skridt ("næste løb, trup ikke
+sat"). Dag 1-mailen erstattes af denne, når der findes et resultat; findes
+der intet resultat endnu, består dagens dag 1-tekst som fallback. Ingen
+besked uden hændelse i første uge. Kanaler: indbakke altid; mail efter
+EMAIL_STACK's gate-kæde; Discord-DM hvis koblet.
+**Fravalgt:** kalenderdrevne tips som grundmodel (B); kun i appen (C).
+**Åbent:** samtykke-hjemlen for en resultat-udløst mail (EMAIL_STACK §2:
+welcome/day1 regnes som kontoservice; en resultatbesked om spillerens egen
+udtagelse er samme klasse i designerens vurdering, men ejeren har ikke fået
+det juridisk efterprøvet), tekst (TONE_OF_VOICE, EN først), hvor mange
+hændelser der må udløse mail i uge 1 (loft), og om krogen skal fortsætte efter
+uge 1 som en generel "dit løb er kørt"-besked eller overgå til digesten.
+Ingen build-go; kandidat til MASTERPLAN bane 2 (fastholdelse, #4964).
+**Foreslået verifikation:** en ny manager, der udtog selv, modtager præcis
+én besked, når løbet er kørt, med resultat, indsatskort og næste skridt;
+en manager uden udtagelse modtager dagens dag 1-tekst; ingen mail sendes
+uden en hændelse i uge 1.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code
