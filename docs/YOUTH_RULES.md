@@ -19,6 +19,9 @@
 > dette er ikke en påstand om leveret funktionalitet eller godkendelse til build.
 > **D-013:** offentlig klubhistorik og eget manageroverblik; synlighedens regel
 > står i [SOCIAL_RULES](SOCIAL_RULES.md), som læses sammen med denne afgrænsning.
+> **D-015:** flere klubber, der opfylder kriteriet, vises som udviklingsklubber
+> med opholdsperioder og kan følge rytteren automatisk. Akademioprindelsen
+> bliver hos den oprindelige akademiklub; der udpeges ikke én vigtigste udvikler.
 
 > **Læs denne FØR enhver opgave der rører akademiet, intake, ungdomsauktionen, graduering,
 > flyt mellem trupper, aldersgrænser for hold og løb, eller "kommer snart"-flader for

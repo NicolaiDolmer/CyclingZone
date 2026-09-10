@@ -37,7 +37,7 @@ Senere kontrol skal også gennemgå baggrundsprocesser og funktioner uden egen r
 | G15 | Bestyrelse, sponsorer, ambition og handlefrihed | BOARD_RULES; SPONSOR_RULES | Rework afstemt i SSOT §0 med kode/PR/prod-bevis 10/9; D-003 valgt; ingen fuld mål-/konsekvenstest |
 | G16 | AI-hold, verdensbefolkning, likviditet og skala | RIDER_GENERATION; TRANSFER_MARKET_RULES; #1151 | Inventeret |
 | G17 | Sociale relationer, beskeder, forum og rivalisering | SOCIAL_RULES; FORUM_RULES | Inventeret |
-| G18 | Historie, profiler, legender, anerkendelse og klubmuseum | SOCIAL_RULES; FEATURE_REGISTRY; #1148 | R-001/D-011–013: akademi/udviklingsklub, tre sæsoner, offentlig + eget overblik; Q-016 stillet; E-005 kilde-stikprøve; ingen UI-prøve |
+| G18 | Historie, profiler, legender, anerkendelse og klubmuseum | SOCIAL_RULES; FEATURE_REGISTRY; #1148 | R-001/D-011–015: akademi/flere udviklingsklubber, tre sæsoner, offentlig + eget overblik, "Siden sidst"; Q-018 stillet; E-005; ingen UI-prøve |
 | G19 | Dashboard, navigation, data, mobil/desktop og tilgængelighed | DASHBOARD_RULES; design/PAGE_TEMPLATES; design/TASTE | TASTE delvist læst; ruter inventeret |
 | G20 | Premium, convenience, sportslig fairness og misbrug | BILLING_STACK; doctrine Fair competition; #1142; fairplay-rute | Doktrinens princip læst; øvrigt afventer |
 | G21 | Notifikationer, kommunikation, surveys og spillerindflydelse | SOCIAL_RULES; COMMS_PLAYBOOK; EMAIL_STACK; SURVEY_SYSTEM | Inventeret |

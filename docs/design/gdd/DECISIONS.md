@@ -554,7 +554,7 @@ bidrag, mens manageren kan følge videre; adgangen afslører ikke fremmed træni
 
 ## Q-016 · Opfølgning siden sidste besøg
 
-**Status:** stillet 10/9; afventer.
+**Status:** besvaret 10/9 efter genvisning; A valgt, se D-014.
 **A, anbefalet:** én samlet "Siden sidst" med udvalgte milepæle og mulighed for
 at åbne rytteren. Første sejr, stort karriereresultat, klubskifte og pension er
 eksempler; en præcis milepælsliste vælges senere.
@@ -566,6 +566,65 @@ ryttere og D-004's besøgskadence; de kræver kriterier for, hvad der er væsent
 Alle hændelser giver detalje, men kan skjule de vigtige historier. Spørgsmålet
 handler om eget overblik, ikke om push-, mail- eller Discord-beskeder.
 Kilder: D-004/D-006/D-013, SOCIAL_RULES §0/§6 og Living World-doktrinens returflade.
+
+## D-014 · Samlet "Siden sidst" med udvalgte milepæle
+
+**Status:** ejer-valgt 10/9, svar på Q-016.
+**Ejerens svar, ordret:** "Samlet »Siden sidst« med udvalgte milepæle (anbefalet)".
+
+Managerens eget overblik skal samle væsentlige hændelser for tidligere udviklede
+ryttere siden sidste besøg, med adgang til den enkelte rytters detaljer.
+**Fravalgt som grundmodel:** strøm med alle resultater og klubskifter; ren
+rytterliste uden opsummering. **Åbent:** konkret milepælsliste, prioritering,
+længde, hvad "sidste besøg" betyder, og eventuelle personlige valg.
+Første sejr, store resultater, klubskifte og pension var eksempler, ikke en
+endeligt godkendt hændelsesliste. Ingen mail-/Discord-/push-kadence er valgt.
+Kilder: D-004/D-006/D-013, SOCIAL_RULES (principnote afstemt).
+**Foreslået verifikation:** overblikket skal være nyttigt efter flere dages fravær
+og efter mange sæsoners udviklingsarbejde uden at væsentlige historier drukner.
+
+## Q-017 · Flere udviklingsklubber for samme rytter
+
+**Status:** besvaret 10/9; A valgt, se D-015.
+Eksempel: klub A fra 16 til 19 år, klub B fra 19 til 22. Begge opfylder tre
+sæsoners ungdomstid; spørgsmålet forudsætter kvalificerende ophold, ikke en ny
+opgørelsesregel for delvise sæsoner.
+**A, anbefalet:** begge vises som udviklingsklubber med opholdsperioder og følger
+rytteren automatisk. Akademioprindelsen bliver hos den oprindelige akademiklub.
+**B:** kun klubben med længst ungdomsophold får tilknytningen.
+**C:** kun første klub, der kvalificerer, får tilknytningen.
+**Tradeoff:** A anerkender flere bidrag uden at udpege én som vigtigst; den
+kræver tydelig visning, så oprindelse og flere udviklingsophold ikke forveksles.
+Kilder: D-011/D-012, YOUTH_RULES og E-005. Ingen fordeling af penge eller point foreslået.
+
+## D-015 · Flere udviklingsklubber med synlige ophold
+
+**Status:** ejer-valgt 10/9, svar på Q-017.
+**Ejerens svar, ordret:** "Ja; begge udviklingsklubber vises med opholdsperioder (anbefalet)".
+
+Alle klubber, der opfylder D-012's kriterium, kan få udviklingstilknytningen
+og følge rytteren automatisk. Opholdsperioder vises, og akademioprindelsen
+bliver hos den oprindelige akademiklub. **Fravalgt:** tilknytning kun til
+længste ungdomsophold eller kun til første kvalificerende klub.
+**Begrundelse:** anerkend flere bidrag uden at rangere uddannelsens ejerskab.
+**Åbent:** delvise/gentagne ophold og historisk bevis som i D-012; ingen
+penge-, point- eller bonusfordeling er valgt. Kilder: D-011/D-012 og YOUTH_RULES,
+opdateret her. **Foreslået verifikation:** A og B kvalificerer i eksemplet,
+en tredje kortvarig køber gør ikke, og kun faktisk akademioprindelse vises.
+
+## Q-018 · Personligt gennembrud eller sportslig prestige?
+
+**Status:** stillet 10/9; afventer.
+En hjemmeudviklet hjælper tager sin første sejr i et mindre løb; en tidligere
+akademistjerne vinder endnu en almindelig WorldTour-etape.
+**A, anbefalet:** hjælperens personlige gennembrud først i dette eksempel;
+helt store bedrifter som en Tour-sejr kan stadig få særlig prioritet.
+**B:** primært sportslig prestige; WorldTour-sejren først.
+**C:** ingen prioritering, kronologisk visning.
+**Tradeoff:** A gør almindelige karrierer værd at følge og støtter D-010,
+men kræver en forståelig skelnen mellem personligt gennembrud og rutineresultat.
+Det er ikke forslag om en generel rangering af alle mindre løb over større.
+Kilder: D-010/D-014, SOCIAL_RULES' historikprincip og R-001.
 
 ## E-005 · Årgange, intake og historik er forskellige kilder
 

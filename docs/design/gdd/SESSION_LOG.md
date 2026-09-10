@@ -199,13 +199,41 @@ beskeder. SOCIAL_RULES §0/§6 er læst; ingen kommunikation sendt.
 Checkpoint `bc9b5816` er pushet og bevarer svarene gennem Q-014 samt Q-015 som
 dengang åben. Aktuel fortsættelse er dokumenteret nedenfor og i DECISIONS.
 
+## Q-016 · Spørgsmålsbetjening og svaret, 10/9
+
+Ejeren kunne ikke finde/afslutte svaret på kortet og skrev blandt andet ordret:
+> Hold op med at lukke spørgsmål, jeg prøvede faktisk at svare
+
+Codex havde afsluttet ture og genudsendt spørgsmålet. Ejeren bad efterfølgende
+om at få det frem igen. **Fremtidig arbejdsregel:** ét åbent kort ad gangen;
+afvent svaret med uafhængigt arbejde eller korte waits. Ingen final eller
+genudsendelse midt i besvarelsen. Dette er en ejerpræference om interviewets
+betjening, ikke et undersøgt produktbugfund i Codex.
+
+**Ejerens svar på det genviste Q-016, ordret:**
+> Samlet »Siden sidst« med udvalgte milepæle (anbefalet)
+
+Registreret som D-014, afstemt i SOCIAL_RULES. Q-017 er derefter stillet om
+flere udviklingsklubber for samme rytter. Præcise milepæle og eksterne beskeder
+er fortsat ikke valgt. Checkpoint `043ba0fc` er pushet og bevarer beslutninger
+gennem D-013; journalens sidste handoff beskriver den aktuelle fortsættelse.
+
+## Q-017 · Flere udviklingsklubber, ejerens svar ordret
+
+> Ja; begge udviklingsklubber vises med opholdsperioder (anbefalet)
+
+Registreret som D-015 og afstemt i YOUTH_RULES. Flere kvalificerende klubber
+får tilknytning og automatisk opfølgning; akademioprindelsen ændres ikke.
+Q-018 spørger til prioritering i "Siden sidst": hjælperens første mindre sejr
+kontra akademistjernens endnu en almindelig WorldTour-etapesejr.
+
 ## Handoff · Genoptaget, 10/9 2026
 
 - Aktivt arbejde: samlet GDD og kritisk interview, status `in_progress`, genoptaget af ejer.
-- Q-001–015 har ejer-svar; Q-016 om "Siden sidst"-opfølgning afventer.
-- Næste skridt: konkrete kort om R-001, opfølgning og begivenheder; afklar åbne kriteriedetaljer før build.
+- Q-001–017 har ejer-svar; Q-018 om historiernes prioritering afventer. Hold kortet åbent indtil svar.
+- Næste skridt: konkrete kort om R-001 og begivenheder; afklar åbne kriteriedetaljer før build.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001, D-001–013 og ønske R-001 er registreret; ingen ny funktion er godkendt til build.
+- V-001, D-001–015 og ønske R-001 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
 - Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

@@ -83,3 +83,14 @@ Ejerens svar ændrede forslaget til **tre** sæsoner; se D-012.
 ## Q-016 · Siden sidst
 
 > Hvordan skal dit eget overblik fortælle, hvad de tidligere ryttere har oplevet siden dit sidste besøg? Jeg anbefaler én samlet »Siden sidst«-opsummering med udvalgte milepæle: eksempelvis første sejr, et stort karriereresultat, klubskifte eller pension. Fra opsummeringen kan du åbne rytteren og undersøge mere. Det holder forbindelsen levende, også når klubben efter mange sæsoner har udviklet mange ryttere, uden en besked for hvert løb. Eksemplerne er forslag; den præcise milepælsliste vælger vi senere.
+
+Efter ejerens anmodning om at genvise kortet blev denne kortere tekst besvaret:
+> Hvordan vil du følge nyt om de ryttere, din klub har udviklet og siden solgt? Jeg anbefaler et samlet »Siden sidst« i dit eget overblik med udvalgte milepæle: første sejr, store resultater, klubskifter og pension. Du kan åbne hver rytter for flere detaljer.
+
+## Q-017 · Flere udviklingsklubber
+
+> En rytter udvikles hos klub A fra 16 til 19 år og derefter hos klub B fra 19 til 22 år. Begge opfylder kravet om tre sæsoners ungdomstid. Skal begge stå som udviklingsklubber og kunne følge ham automatisk? Jeg anbefaler ja, med de konkrete opholdsperioder synlige. Akademioprindelsen bliver fortsat hos den oprindelige akademiklub. Det anerkender begge bidrag uden at skulle kåre én klub som den vigtigste.
+
+## Q-018 · Historiernes prioritering
+
+> To tidligere ryttere har nyt: Din hjemmeudviklede hjælper har taget sin allerførste sejr i et mindre løb, mens en stjerne fra akademiet har vundet endnu en almindelig WorldTour-etape. Hvilken historie bør som udgangspunkt stå øverst i »Siden sidst«? Jeg anbefaler hjælperens første sejr: Personlige gennembrud skal vægte højt, så historikken også gør almindelige karrierer værd at følge. Helt store bedrifter som en Tour-sejr kan stadig få særlig prioritet. Alternativet er primært at rangere efter løbenes sportslige prestige.
