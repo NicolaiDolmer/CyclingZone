@@ -1168,6 +1168,84 @@ på at købe kapacitet stiger; det bør indgå i økonomi-simulationen (YOUTH_RU
 **Genåbnes kun** med en konkret grund, fx målt AI-andel i ungdomsfelter eller
 gentagne spillerønsker efter slice 2. Ingen build-go.
 
+## Q-038 · Hvad sker der, når en manager glemmer at udtage til et løb?
+
+**Status:** stillet 10/9 (Claude Code) som første kort i kapitlet "holdudtagelse
+og løbsdagen" (ejerens valg af kapitel samme dag); tre tidslinjer over samme
+scenarie (Touren starter mandag kl. 11, besøg onsdag og fredag, næste besøg
+tirsdag). Første option valgt, se D-034.
+**Første option, anbefalet:** påmindelse i navigationen når en trup mangler
+(#4983); står truppen stadig helt tom 24 timer før start, sætter assistenten en
+trup, som manageren kan rette (`late_fill`, horisont 24 t, spillernes eget forslag
+24/8, #4201). **Anden option:** som i dag (kun sen redning ved etape 1) plus
+påmindelse. **Tredje option:** kontakt på profilen (`opt_in`), standard til.
+**Tradeoff:** første option passer til 2-3 besøg om ugen (D-004/D-006) og lader
+den der kigger ind dagen før rette truppen; anden option lader den glemsomme
+køre med assistentens trup uden at have set den; tredje giver mest frihed men
+én indstilling mere at forstå (D-005). Ingen af de tre skriver oven i noget
+spilleren selv har valgt eller ryddet (ejer 25/8, "pull, ikke push").
+Kilder: ASSISTANT_RULES §1, §1b, §12 pkt. 0; PLANNING_CENTER_RULES §4; #4201;
+#4983; skema 10/9 (holdudtagelse "fungerer dårligst" 14 af 36); ejerens egen
+oplevelse 7/9 ("Jeg glemte at udtage min trup til Touren").
+
+## D-034 · Sen udfyldning 24 timer før start plus synlig påmindelse
+
+**Status:** ejer-valgt 10/9, svar på Q-038.
+**Ejerens svar, ordret:** "1" (den anbefalede første option).
+Assistentens udtagelsestilstand skal være **sen udfyldning**: en helt tom trup
+fyldes af assistenten, når første etape starter inden for 24 timer, så
+manageren kan nå at rette den. Før det viser spillet en synlig påmindelse, når
+en trup mangler (gul markering i navigationen, tydelig boks på planlægningssiden,
+eskalering tæt på fristen; brugerstyret indstilling efter #4983). Den sene
+redning ved etape 1 består som sidste værn. En delvis trup, en manuelt valgt
+trup og en bevidst ryddet trup røres aldrig (§1b's fem egenskaber gælder).
+**Fravalgt:** at blive på `proactive` (kun redning) og `opt_in` som model.
+**Åbent:** om 24 t er den rigtige horisont efter måling (defaulten er
+spillernes forslag), om sæson-transitionen og admin-genvejen skal følge
+tilstanden (§12 pkt. 0), påmindelsens præcise flade og indstilling (#4983),
+og om `late_fill` senere også skal top-fylde en delvis trup. **Prod-skridt:**
+flippet af `assistant_selection_mode` og migrationen fra #4201 er ejer-gated
+prod-mutationer og sker kun på ejerens ordrette go; dette valg er retningen.
+**Foreslået verifikation:** en manager der intet gør, får en trup 24 t før
+start og en påmindelse før det; en manager med én manuel rytter får ingen
+assistent-tilføjelse før etape 1; en ryddet trup forbliver ryddet.
+
+## Q-039 · Må assistenten lade en plads stå tom?
+
+**Status:** stillet 10/9 (Claude Code) med tre kolonner (Københavns Klassiker,
+fem friske brostensryttere, resten trætte klatrere). A valgt, se D-035.
+**A, anbefalet:** altid gulvet (6); pladser derover kun med ryttere over en
+egnetheds-/træthedsgrænse; tomme pladser vises med årsag. **B:** fyld altid
+til max (i dag). **C:** fyld til max, men markér svage valg.
+**Tradeoff:** A skåner trætte, dårligt matchede ryttere (som ellers mister
+træningsdagen, D-018, og tager skaderisiko) og forklarer sig; B giver fulde
+trupper uden forklaring; C giver information, men den fraværende manager
+kører stadig med de svage valg. Kilder: ASSISTANT_RULES §4 trin 4, §12 pkt. 1
+(`raceAutopick.js:107`), #3957, CALENDAR_RULES §8 (gulv 6, låst 27-28/8).
+
+## D-035 · Assistenten fylder til gulvet, og derover kun egnede ryttere
+
+**Status:** ejer-valgt 10/9, svar på Q-039.
+**Ejerens svar, ordret:** "A · Fyld til gulvet, resten kun hvis egnet (anbefalet)".
+Assistenten (alle udfyldningsveje A/B/C i ASSISTANT_RULES §0, inkl. D-034's
+sene udfyldning) fylder altid op til klassens gulv (6), også med dårligt
+matchede ryttere, så holdet stiller op. Pladser over gulvet fyldes kun med
+ryttere, der ligger over en egnetheds- og træthedsgrænse. Tomme pladser vises
+for manageren med årsag ("ingen egnet rytter"), så han selv kan sætte en ind.
+**Fravalgt:** altid til max (B); markering alene (C). Markering af svage valg
+er ikke fravalgt som supplement og hører til §12 pkt. 9 (forklaring).
+**Åbent:** grænsens tal og om den er pr. løbstype (privat kalibrering,
+`AUTOPICK_FATIGUE_DAMPING`, §12 pkt. 2), om gulvet skal fyldes med de
+"mindst dårlige" efter samme score som i dag, hvordan årsagen formuleres
+(en+da), og om den sene redning ved etape 1 skal følge samme grænse eller
+fylde præcis som nu. Ingen build-go; #3957 kan nu få en løsning.
+**Foreslået verifikation:** med fem egnede og tre trætte klatrere giver
+assistenten 6 udtagne og én tom plads med årsag; med otte egnede giver den 7;
+med kun fire ryttere i alt stiller holdet op med 4 + de to mindst dårlige... 
+korrektion: med kun fire ryttere kan gulvet ikke nås, og reglen fra
+PLANNING_CENTER_RULES §4 pkt. 2 ("der skrives intet hvis gulvet ikke kan nås")
+består uændret.
+
 ## Overdragelse 10/9 efter Q-031
 
 Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code

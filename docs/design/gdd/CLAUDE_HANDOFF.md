@@ -5,8 +5,9 @@ Fem eksisterende featureejere er opdateret; direkte kommentarlinks står i GITHU
 
 **Overdraget af Nicolai 10/9 2026.** Codex-sessionen er afsluttet på ejerens
 ønske om at fortsætte i Claude og spare Codex-tokens. Den samlede GDD er fortsat
-`in_progress`. **Opdateret 10/9 kl. 13:50 (Claude Code):** sidste svar er D-033 (Q-036,
-ingen udlån); intet spørgsmålskort er åbent. Q-037 er ikke stillet. Samme dag løftede
+`in_progress`. **Opdateret 10/9 kl. 14:30 (Claude Code):** sidste svar er D-035 (Q-039,
+tom plads); Q-037 er parkeret til spillerafstemning; intet spørgsmålskort er åbent.
+Q-040 er ikke stillet. Samme dag løftede
 ejeren trupper U23/junior til nr. 3 på MASTERPLANs venteliste (planvalg, ikke GDD-beslutning). Mentortråden (D-026 til D-031) er
 konceptuelt samlet; næste kapitler vælges efter spillerdata i `docs/audits/2026-09-10-*`. **Betjeningsregel fra ejeren
 10/9:** ét område pr. kort (fog of war/synlighed er eget kapitel, ikke en del af
@@ -90,6 +91,9 @@ Denne tabel er et kort; DECISIONS og de ordrette svar er detaljerne.
 | D-031 | Mentorpar kan altid skiftes, men et nyt par bygger udbyttet op forfra over løbsdage; det lærte beholdes. Sæsonlås og omkostningsfrit skift fravalgt. (Claude Code 10/9) |
 | D-032 | Ungdomstrupper: samme grundloft pr. trup for alle; ekstra kapacitet købes som facilitetstrin med anlægspris og stigende drift, aldrig af division/resultater. Tal afgøres af økonomi-sim (YOUTH_RULES §6). (Claude Code 10/9) |
 | D-033 | Ingen udlån af ryttere (ejeren fravalgte designerens anbefaling om udlån af unge). Overskydende unge: købt kapacitet, salg eller bytte. (Claude Code 10/9) |
+| D-034 | Holdudtagelse: sen udfyldning af en helt tom trup 24 t før start + synlig påmindelse før fristen (#4983); sen redning ved etape 1 består. Flip af `assistant_selection_mode` er ejer-gated prod-skridt. (Claude Code 10/9) |
+| D-035 | Assistenten fylder altid til gulvet (6); pladser derover kun med ryttere over en egnetheds-/træthedsgrænse; tomme pladser vises med årsag. Grænsen er kalibrering (#3957). (Claude Code 10/9) |
+| Q-037 | PARKERET: hvad andre managere ser om nuværende evner; forum-afstemning med billede i `docs/drafts/forum-poll-fog-of-war-2026-09-10.md`, ejeren poster selv. |
 
 R-001: følg egen avl med FM-inspiration. R-002: undersøg kategori/debuter og
 cykeltroværdig udvikling. R-003: foreslå nye evner. Ønsker og research er ikke

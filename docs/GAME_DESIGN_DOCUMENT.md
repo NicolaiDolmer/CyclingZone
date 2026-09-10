@@ -253,6 +253,21 @@ ryttere. Overskydende unge håndteres med købt kapacitet, salg eller bytte;
 designerens forbehold om permanent tab ved salg af talent er noteret til
 økonomi-simulationen.
 
+### Holdudtagelse: den glemte trup (D-034, ejer-valgt 10/9)
+
+[ASSISTANT_RULES](ASSISTANT_RULES.md) og [PLANNING_CENTER_RULES](PLANNING_CENTER_RULES.md)
+ejer reglerne; ejerens grundregel fra 25/8 ("pull, ikke push") består. GDD-samtalen
+afgjorde §12 pkt. 0: assistenten skal køre **sen udfyldning**: en helt tom trup
+fyldes 24 timer før første etape, så manageren kan rette den, og spillet viser
+en synlig påmindelse før fristen (#4983). Den sene redning ved etape 1 er sidste
+værn. Det er svaret på D-004/D-006 for løbsdagen: 2-3 besøg om ugen må ikke
+koste en Tour. Selve flippet af tilstanden og #4201's migration er ejer-gatede
+prod-skridt. **D-035:** assistenten fylder altid til gulvet (6), men pladser
+derover kun med ryttere over en egnetheds- og træthedsgrænse; tomme pladser
+vises med årsag. Grænsen er kalibrering. **Fog of war (Q-037)** er parkeret:
+ejeren stiller spørgsmålet til spillerne som forum-afstemning med billede,
+før der besluttes.
+
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
 Dette er en samtalerækkefølge, ikke en ændring af leverancerne i MASTERPLAN.
@@ -381,3 +396,5 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-031 om frit mentorskift med opbygning forfra valgt; mentortråden samlet.
   D-032 om ungdomstruppernes kapacitet (fast grundloft + købte udvidelser) valgt.
   D-033: ingen udlån (ejerens fravalg af designerens anbefaling).
+  Q-037 (fog of war) parkeret til spillerafstemning. D-034 om sen udfyldning
+  24 t før start + påmindelse valgt (kapitel: holdudtagelse og løbsdagen).

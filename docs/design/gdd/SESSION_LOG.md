@@ -448,11 +448,31 @@ forum-afstemning med billede ligger i `docs/drafts/forum-poll-fog-of-war-2026-09
 står i kortet og genoptages, når spillerne har stemt. Potentiale-lækagen (#2798)
 er afgjort 2/9 og var ikke en del af kortet.
 
+## Kapitelvalg 10/9 kl. 14:10, ejerens svar ordret
+
+Kort med tre kapitler (dag 1 og de første 7 dage, anbefalet; holdudtagelse og
+løbsdagen; akademi-intake og scouting). Ejeren:
+
+> B · Holdudtagelse og løbsdagen
+
+## Q-038 · Glemt udtagelse, ejerens svar ordret (10/9 kl. 14:20)
+
+> 1
+
+Registreret som D-034 (sen udfyldning 24 t før + påmindelse). Flip og migration
+er prod-skridt med særskilt ejer-go.
+
+## Q-039 · Tom plads, ejerens svar ordret (10/9 kl. 14:30)
+
+> A · Fyld til gulvet, resten kun hvis egnet (anbefalet)
+
+Registreret som D-035. Grænsens tal er kalibrering; #3957 har nu en retning.
+
 ## Handoff · Til Claude Code efter Q-034, 10/9 2026
 
 - Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske, fortsat i Claude Code 10/9.
-- Sidste svar: Q-036/D-033 (ingen udlån). Intet spørgsmål står åbent; Q-037 er ikke stillet.
-- Næste skridt: fog of war-kapitlet (markedsværdi og potentiale, scouting, Lederskabs synlighed), derefter holdudtagelse og mobil efter spillerdata. Ro under pres og Træningsdisciplin er stadig kandidater uden mekanik.
+- Sidste svar: Q-039/D-035 (assistenten fylder til gulvet, derover kun egnede). Q-037 (fog of war) er parkeret til spillerafstemning. Intet spørgsmål står åbent; Q-040 er ikke stillet.
+- Næste skridt: løbsdagen (hvad spilleren får at vide om egne rytteres indsats), derefter dag 1/onboarding (forretningens blødende tal) og akademi-intake. Ro under pres og Træningsdisciplin er stadig kandidater uden mekanik.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
 - V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
