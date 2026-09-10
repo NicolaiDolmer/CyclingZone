@@ -49,7 +49,7 @@ De følgende effekter er vores egne forslag, ikke dokumenterede FM-formler.
 |---|---|---|---|
 | **Holdarbejde** | Vælg den rigtige beskytter/leadout frem for bare højeste samlede rating | Kvaliteten af hjælpen til andre, ikke egen rå styrke eller villighed til at adlyde | **Stærkeste første kandidat** |
 | **Ro under pres** | Skeln mellem gode ryttere i kritiske situationer | Situationsbestemt udførelse, ikke generel dagsform eller et skjult fradrag i alle evner | **Næste kandidat, hvis effekten kan afgrænses** |
-| **Lederskab** | Giv rutinerede ryttere værdi i udvikling og organisering | Påvirkning af andre, ikke nødvendigvis den sportsligt beskyttede kaptajn | Senere, sammen med et reelt mentor-/organiseringssystem |
+| **Lederskab** | Giv rutinerede ryttere værdi i udvikling og organisering | Påvirkning af andre, ikke nødvendigvis den sportsligt beskyttede kaptajn | D-026: mentorrollen/trupudvikling valgt som hovedformål |
 | **Træningsdisciplin** | Gør træningsmiljø og individuelle vaner relevante | Skal kunne påvirkes meningsfuldt; må ikke bare være et ekstra potentialetal | Afvent; stor risiko for overlap og en obligatorisk købsfiltrering |
 
 ## Holdarbejde: den tydeligste nye rolle for en evne
@@ -61,7 +61,9 @@ selvstændig afslutter. Det skaber en begrundelse for at udvikle og beholde ham.
 Ejeren tilføjer, at kaptajnens egen høje Holdarbejde også skal gøre hjælperne
 mere villige til at arbejde for ham, fordi han har støttet dem. Forholdet
 er valgt i **D-023:** egenskaben giver en startvirkning, som faktisk godt
-samarbejde med holdet kan styrke.
+samarbejde med holdet kan styrke. **D-025:** samspillet knytter sig til de
+konkrete ryttere og bevares mellem et makkerpar ved transfer; det giver ikke
+automatisk relation til nye holdkammerater.
 Dette skal afgrænses fra Lederskab. **D-024:** kaptajnens effekt er bedre
 samarbejde inden for valgte ordrer, uden automatisk ekstra træthed. Det eksisterende
 holdarbejde har stadig sin pris; effekten må ikke skabe ubegrænset hjælp.
@@ -110,12 +112,20 @@ tilføje D-019's fravalgte skjulte rutinebonus igen.
 
 ## Lederskab og træningsdisciplin kræver mere end et tal
 
-**Lederskab** kan give veteranen en legitim plads i en ung trup: organisering,
+**Lederskab (D-026, ejer-valgt hovedformål)** giver veteranen en legitim plads
+i en ung trup som udpeget mentor med påvirkning over tid: organisering,
 støtte eller videregivelse af kunnen. Men først skal der være et meningsfuldt
 system med et valg, en begrænset virkning og en forklaring. Flere ledere må ikke
 bare lægges sammen til gratis holdstyrke. Kaptajnrollen i løbet er ikke automatisk
-det samme som at være truppens leder. Derfor anbefaler jeg at parkere evnen,
-indtil vi har designet den relevante relation eller mentoropgave.
+det samme som at være truppens leder. Den konkrete mentoropgave skal nu designes;
+det oprindelige forslag om at parkere evnen er ikke længere det aktuelle fokus.
+
+**D-027:** Mentorens hovedområde er mentale færdigheder og vaner, ikke en
+generel fysisk udviklingsbonus. Relevant egen kunnen er nødvendig; Lederskab
+alene gør ikke mentoren god til alt. Endelig evneliste og effekt afventer.
+**D-028:** påvirkningen er kun positiv. Et dårligt match giver begrænset
+udbytte og koster tid/mentorplads; dårlige vaner smitter ikke som negativ
+statpåvirkning. Kapacitet, varighed og den konkrete mulighedsomkostning er åbne.
 
 **Træningsdisciplin** kan i princippet handle om stabile vaner og kvaliteten af
 at gennemføre programmet. Men hvis den bare ganger udviklingsfarten, dublerer
@@ -166,5 +176,8 @@ at få de øvrige kandidater med; min oprindelige anbefaling om at afvente nogle
 er ikke en ejerbeslutning om at fravælge dem. D-022 vælger mere hjælp for samme
 indsats og tilføjer kaptajnens gensidige holdånd. D-023 vælger startvirkning
 plus fælles samarbejde. D-024 vælger bedre koordinering uden automatisk ekstra
-træthed. Q-028 om samspillets tilhørsforhold ved klubskifte afventer;
+træthed. D-025 lader samspillet følge rytterne. D-026 vælger Lederskabs hovedformål
+som mentor/trupudvikling; D-027 vælger mentale færdigheder/vaner.
+D-028 vælger kun positiv påvirkning. Interviewet er overdraget til Claude Code
+efter Q-031; intet spørgsmål står ubesvaret i UI'et.
 den konkrete mekanik og balance er ikke godkendt til build.

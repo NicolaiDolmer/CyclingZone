@@ -12,8 +12,11 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-024 er registreret.
-**Aktuelt: Q-028** om samspil ved klubskifte afventer. Hold kortet åbent indtil svar.
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-028 er registreret.
+**Overdraget til Claude Code efter Q-031, 10/9:** intet åbent spørgsmålskort.
+Læs [CLAUDE_HANDOFF](design/gdd/CLAUDE_HANDOFF.md) for kort beslutningsoversigt,
+næste designarbejde og læserækkefølge; [GitHub-kortet](design/gdd/GITHUB_HANDOFF.md)
+viser hvor de endnu ikke byggede dele er registreret.
 Konceptspor: [Egen avl](design/gdd/RIDER_LEGACY.md),
 [træning og løb](design/gdd/TRAINING_RACE_DEVELOPMENT_RESEARCH.md) og
 [nye evner/Holdarbejde](design/gdd/RIDER_ATTRIBUTES_RESEARCH.md).
@@ -209,8 +212,18 @@ som følge af hans støtte til dem. **D-023:** egenskaben giver en startvirkning
 som faktisk godt samarbejde kan styrke. Relation til Lederskab, definition af
 godt samarbejde og samspillets tilhørsforhold skal afklares. **D-024:** kaptajnens
 effekt forbedrer koordineringen inden for valgte ordrer uden automatisk ekstra
-træthed. Holdarbejdets pris og begrænsninger består. RACE_ENGINE_RULES er afstemt;
+træthed. **D-025:** opbygget samspil følger de konkrete ryttere, også ved
+fælles klubskifte; nye relationer til resten af truppen skal opbygges.
+Holdarbejdets pris og begrænsninger består. RACE_ENGINE_RULES er afstemt;
 ingen konkret formel er valgt.
+**D-026:** Lederskab har sit hovedformål i en udpeget mentorrolle og truppens
+udvikling over tid. Veteranen kan være værdifuld uden at være blandt de stærkeste
+i løbsopstillingen, men optager stadig plads og koster løn. Konkrete
+læringsområder er i **D-027** afgrænset til mentale færdigheder og vaner som
+hovedområde. Mentoren skal selv have relevant kunnen. Endelig evneliste,
+antal mentees og effekt er ikke fastlagt. **D-028:** mentorindflydelsen er kun
+positiv; et dårligt match giver begrænset udbytte og mulighedsomkostning,
+ikke dårligere vaner/evner hos den unge.
 
 ## 3. Bogens planlagte indhold og undersøgelsesrækkefølge
 
@@ -326,6 +339,10 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
   D-019 om eksisterende evner og D-020 om fælles erfaringsområder valgt;
   R-003 evneforslag samlet; D-021 prioriterer Holdarbejde; D-022 vælger
   hjælpervirkning og kaptajnens gensidighed; D-023 om startvirkning og samarbejde
-  valgt; D-024 om bedre koordinering uden ekstra træthed valgt; Q-028 om samspil stillet.
+  valgt; D-024 om bedre koordinering uden ekstra træthed og D-025 om samspil ved
+  transfer valgt; D-026 om Lederskabs hovedformål og D-027 om mentalt læringsområde
+  valgt; Q-031 om dårlig påvirkning stillet.
+  D-028 vælger kun positiv mentorindflydelse. Session overdraget til Claude Code
+  på ejerens ønske med kort beslutningsoversigt og GitHub-opgavekort.
   Ingen nye spilmekanikker besluttet. Patch notes og FEATURE_REGISTRY-ændring er
   ikke relevante for dette dokumentationscheckpoint, fordi spilleradfærd og featuretilstande er uændrede.

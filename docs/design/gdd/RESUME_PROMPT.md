@@ -1,5 +1,9 @@
 # Genoptag GDD-interviewet · pause 10/9 2026 efter Q-009
 
+**NYERE HANDOFF:** Ejeren afsluttede senere Codex-sessionen efter Q-031 for at
+fortsætte i Claude Code. Start nu i [CLAUDE_HANDOFF](CLAUDE_HANDOFF.md), som
+giver et kortere, aktuelt overblik. Denne Q-009-prompt bevares som historik.
+
 **Historisk pausebrief:** Ejeren genoptog interviewet 10/9 fra `c51231e5`.
 Følg fortsat læserækkefølgen, men brug [journalens sidste handoff](SESSION_LOG.md)
 og [DECISIONS](DECISIONS.md) til aktuel status og spørgsmål efter Q-009.

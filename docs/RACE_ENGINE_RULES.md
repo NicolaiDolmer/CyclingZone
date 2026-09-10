@@ -13,7 +13,9 @@
 > **D-023:** kaptajnens egenskab giver en startvirkning; faktisk godt samarbejde
 > med holdet kan styrke den. **D-024:** den ekstra støtte er bedre samarbejde
 > inden for de valgte roller/indsatsordrer, uden automatisk ekstra træthed.
-> Holdarbejdet har fortsat reel pris og begrænset effekt. Q-028 afklarer samspil ved klubskifte.
+> Holdarbejdet har fortsat reel pris og begrænset effekt. **D-025:** opbygget
+> samspil følger de konkrete ryttere og bevares mellem dem ved klubskifte;
+> samarbejde med nye holdkammerater skal opbygges.
 
 > **Læs denne FØR enhver opgave der rører motoren, ruter, taktik eller resultater.** Ejer-direktiv 25/8 2026 ([#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)): *"Det må ALDRIG NOGENSINDE ske, at du ikke bruger et SSOT-dokument, når vi rent faktisk har lavet et."*
 

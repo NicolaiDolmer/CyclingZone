@@ -331,13 +331,49 @@ forbedrer koordinering frem for automatisk at kræve mere arbejde. Q-028 spørge
 til et makkerpars samspil ved fælles klubskifte. Checkpoint `b93d1d9b` er pushet
 og bevarer beslutninger gennem D-023 og Q-027 som dengang åben.
 
-## Handoff · Genoptaget, 10/9 2026
+## Q-028 · Makkerpar ved transfer, ejerens svar ordret
 
-- Aktivt arbejde: samlet GDD og kritisk interview, status `in_progress`, genoptaget af ejer.
-- D-024 vælger bedre koordinering; Q-028 om samspil ved klubskifte står åbent. Hold kortet åbent.
-- Næste skridt: afklar historik mellem ryttere og Lederskabs afgrænsning; øvrige kandidater og erfaringsdetaljer er åbne.
+> Samspillet følger rytterne og bevares mellem makkerparret (anbefalet)
+
+Registreret som D-025, afstemt i RACE_ENGINE_RULES med transferpointer.
+Q-029 går videre til Lederskabs hovedformål: mentor/trupudvikling, organisering
+i løb eller begge med adskilte effekter. Samspillets hændelser og levetid er
+fortsat åbne. Checkpoint `16a2f90e` er pushet og bevarer gennem D-024.
+
+## Q-029 · Lederskabs hovedformål, ejerens svar ordret
+
+> Lederskab har sit hovedformål i mentorrollen og truppens udvikling (anbefalet)
+
+Registreret som D-026, afstemt i PROGRESSION_RULES/TRAINING_RULES. Q-030
+spørger til mentale færdigheder/vaner kontra også fysisk/teknisk læring eller
+generel bonus. Ingen fuld mentorimplementation eller bonusstørrelse er valgt.
+
+## Q-030 · Mentorens hovedområde, ejerens svar ordret
+
+> Mentale færdigheder og vaner som mentorens hovedområde (anbefalet)
+
+Registreret som D-027, afstemt i PROGRESSION_RULES/TRAINING_RULES. Relevant
+egen kunnen kræves; ingen generel fysisk bonus valgt. Q-031 spørger til
+dårligt match: begrænset positivt udbytte kontra dårlige vaner der kan smitte.
+
+## Q-031 · Positiv påvirkning og overdragelse, ejerens svar ordret
+
+> 1 + Jeg vil gerne til at afslutte denne session nu og arbejde videre i claude code. Så du må gerne lave en prompt til mig nu her, hvor jeg kan fortsætte hvor vi slap inde i claude code, for at spare på tokens i codex. LAv en virkeligt god prompt, sådan arbejdet bliver endnu bedre og sørg for på fuldstændig fremragende måde, at konteksten er gme,t sådan claude code nemt kan tilgå den. De ting vi har aftalt men endnu ikke bygget, må gerne oprettes i github som issues
+
+Registreret som D-028: positiv/neutral mentorindflydelse, dårligt match giver
+begrænset udbytte. Interviewet stopper her på ejerens ønske; Q-032 er ikke stillet.
+Ejerens administrative mandat omfatter GitHub-opgaver og Claude-handoff.
+Kommende session skal fortsætte designsamtalen, ikke antage samlet build-go.
+Kort indgang: CLAUDE_HANDOFF; fulde ord/alternativer her og i DECISIONS;
+konkret opgavekort og dubletkontrol: GITHUB_HANDOFF.
+
+## Handoff · Til Claude Code efter Q-031, 10/9 2026
+
+- Aktivt arbejde: samlet GDD, status `in_progress`; Codex-interview afsluttet/overdraget på ejerens ønske.
+- Sidste svar: Q-031/D-028. Intet spørgsmål står åbent; Q-032 er ikke stillet.
+- Næste skridt: læs CLAUDE_HANDOFF, fortsæt mentorens konkrete rammer og øvrige kandidater med ét kort ad gangen.
 - Gennemgangens dækning: første inventar og træningsstikprøve, ikke fuld audit.
-- V-001, D-001–024 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
+- V-001, D-001–028 og R-001–003 er registreret; ingen ny funktion er godkendt til build.
 - GDD-branch er et udkast og skal ikke behandles som merget eller live adfærd.
-- Produktretningens eksisterende GitHub-samlingspunkt er #1145; ingen dublet oprettet.
+- Historisk produktanker #1145; se GITHUB_HANDOFF for nye/eksisterende ejere og dubletbevis.
 - Leverancer og sæsonfrister i MASTERPLAN er ikke ændret af denne designsamtale.

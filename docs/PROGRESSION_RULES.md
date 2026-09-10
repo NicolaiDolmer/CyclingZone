@@ -16,6 +16,12 @@
 > ny evneudvikling. Hårdere relevant udfordring kan give ny læring, debut kan
 > fejres i historikken. Kataloget er åbent. **D-021:** Holdarbejde konkretiseres
 > først blandt R-003's fire ønskede kandidater; ingen ny stat er godkendt til build.
+> **D-026:** Lederskab har sit hovedformål i en udpeget mentorrolle og truppens
+> udvikling over tid. **D-027:** hovedområdet er mentale færdigheder og vaner;
+> mentoren skal selv have relevant kunnen. Ingen generel udviklingsbonus.
+> **D-028:** kun positiv mentorindflydelse; et dårligt match giver begrænset
+> udbytte, ikke dårligere vaner/evner hos den unge. Endelig evneliste, kapacitet,
+> varighed og styrke er fortsat åbne.
 
 > **Læs denne FØR enhver opgave der rører rytterudvikling, træning, potentiale, lofter, rating eller ryttertyper.** Ejer-direktiv 25/8 ([#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)):
 > *"Det må ALDRIG NOGENSINDE ske, at du ikke bruger et SSOT-dokument, når vi rent faktisk har lavet et. Der skal nogle hardcore regler på det her."*

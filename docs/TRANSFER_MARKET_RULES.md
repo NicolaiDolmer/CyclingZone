@@ -1,5 +1,11 @@
 # Transfermarkedets regler - SSOT
 
+> **GDD-retning, ejer 10/9 (D-025):** fremtidigt samspil mellem konkrete ryttere
+> følger dem ved transfer. Købes et etableret makkerpar, bevarer de deres
+> indbyrdes samspil, ikke en relation til alle nye holdkammerater. Domænereglen
+> står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md); ingen ny værdi-/prisformel
+> eller transferimplementation er vedtaget. [D-025](design/gdd/DECISIONS.md).
+
 > **GDD-retning, ejer 10/9 2026:** Hyppigere besøg må give flere chancer for gode
 > handler, men en manager med 2-3 ugentlige besøg skal stadig kunne konkurrere på
 > markedet og drive en talentfabrik. Se [GDD](GAME_DESIGN_DOCUMENT.md) og

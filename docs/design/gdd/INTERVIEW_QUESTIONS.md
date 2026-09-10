@@ -139,3 +139,15 @@ Ejeren svarede med researchønske R-002; dette var ikke et valgt A/B-udfald.
 ## Q-028 · Samspil ved klubskifte
 
 > Du køber en kaptajn og hans faste hjælper fra samme klub. De har arbejdet godt sammen gennem flere sæsoner. Skal de bevare deres indbyrdes samspil hos dig? Jeg anbefaler ja: Fælles erfaring følger de konkrete ryttere, mens de stadig skal opbygge samarbejde med dine øvrige ryttere. Det gør kendte makkerpar og kontinuitet værdifulde og giver transfermarkedet en ekstra overvejelse. Alternativt kan samspillet tilhøre klubben og skulle opbygges på ny efter et klubskifte.
+
+## Q-029 · Lederskab og veteraner
+
+> En erfaren veteran er blevet for svag til dit bedste løbshold, men er en dygtig leder. Skal Lederskab især gøre ham værdifuld som udpeget mentor for yngre ryttere — fx ved at hjælpe dem med gode vaner og læring over tid? Det anbefaler jeg: Holdarbejde dækker samarbejdet i løbet, mens Lederskab giver dig et langsigtet valg om, hvem der former truppen. Veteranen optager stadig en plads og koster løn. Alternativt kan Lederskab primært være evnen til at organisere holdkammerater under løb, hvilket kræver en skarpere afgrænsning fra Holdarbejde.
+
+## Q-030 · Hvad mentoren lærer fra sig
+
+> Hvad skal en dygtig mentor især kunne udvikle hos en ung rytter? Jeg anbefaler mentale færdigheder og gode vaner — fx Holdarbejde, taktik, ro under pres og træningsdisciplin — frem for en direkte bonus til klatring eller sprint. Det adskiller mentorens menneskelige påvirkning fra træningsprogrammet og den faglige træner. Mentoren skal selv have noget relevant at lære fra sig; højt Lederskab alene skal ikke gøre ham god til at lære alt. Alternativt kan han også løfte fysiske og tekniske evner inden for sine egne styrkeområder.
+
+## Q-031 · Et dårligt mentor-match
+
+> En veteran har højt Lederskab, men dårlige vaner på et område, hvor den unge allerede er bedre. Skal mentorforløbet kunne gøre den unge dårligere dér? Jeg anbefaler, at mentoren kun bidrager positivt på områder, hvor han har noget at lære fra sig; et dårligt match giver begrænset udbytte og koster tid samt en mentorplads. Det passer til den eksisterende retning om, at en træner forbedrer eller er neutral. Alternativet er, at dårlige vaner kan smitte, med tydelig information før valget og mulighed for at stoppe forløbet.

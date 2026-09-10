@@ -899,7 +899,7 @@ at ændre hjælpernes indsatsordre eller automatisk øge deres belastning.
 
 ## Q-028 · Hvem ejer det opbyggede samspil?
 
-**Status:** stillet 10/9; afventer.
+**Status:** besvaret 10/9; A valgt, se D-025.
 Kaptajn og fast hjælper med flere sæsoners godt samarbejde købes samlet.
 **A, anbefalet:** deres indbyrdes samspil følger rytterne til den nye klub;
 samarbejde med øvrige ryttere skal opbygges. **B:** samspil tilhører klubben
@@ -907,6 +907,108 @@ og skal genopbygges efter klubskiftet.
 **Tradeoff:** A giver kontinuitet og makkerpar værdi ved transfer, men kræver
 historik mellem konkrete ryttere. Det foreslår ikke en ny købsprisformel eller
 en bonus til alle i den nye klub. Kilder: D-023/D-024, RACE_ENGINE_RULES §2e.
+
+## D-025 · Samspillet følger de konkrete ryttere
+
+**Status:** ejer-valgt 10/9, svar på Q-028.
+**Ejerens svar, ordret:** "Samspillet følger rytterne og bevares mellem makkerparret (anbefalet)".
+Et etableret makkerpar bevarer sit indbyrdes samspil ved klubskifte. Relationer
+til nye holdkammerater skal stadig opbygges. **Fravalgt:** klub-ejet samspil,
+der starter forfra alene pga. transfer. **Åbent:** retning/symmetri, hvilke
+hændelser bygger samspil, adskillelse over tid, datadækning og synlighed.
+Ingen ny købsprisformel eller bonus til alle nye holdkammerater er vedtaget.
+Kilder: D-023/D-024, RACE_ENGINE_RULES (afstemt), TRANSFER_MARKET_RULES (pointer).
+**Foreslået verifikation:** makkerparret bevarer samspil efter transfer; deres
+forhold til en tredje ny holdkammerat er ikke opfundet ud fra klubskiftet.
+
+## Q-029 · Lederskabs hovedformål
+
+**Status:** besvaret 10/9; A valgt, se D-026.
+En erfaren veteran er ikke længere blandt de bedste til løb, men er dygtig leder.
+**A, anbefalet:** hovedformål som udpeget mentor og påvirkning af truppens
+udvikling over tid. Holdarbejde dækker samarbejdet i løbet. Veteranen bruger
+stadig trupplads og løn. **B:** primært organisering under løb.
+**C:** begge, med tydeligt adskilte effekter.
+**Tradeoff:** A giver langsigtet trupvalg og mentorværdi; B/C kræver en skarp
+afgrænsning fra den allerede valgte Holdarbejde-/kaptajneffekt. Gode vaner og
+læring er eksempler, ikke en valgt liste over statpåvirkninger. Kilder: R-003,
+D-021–025, PROGRESSION_RULES/TRAINING_RULES og evnekandidatrapporten.
+
+## D-026 · Lederskab som mentor og udvikling af truppen
+
+**Status:** ejer-valgt hovedformål 10/9, svar på Q-029.
+**Ejerens svar, ordret:** "Lederskab har sit hovedformål i mentorrollen og truppens udvikling (anbefalet)".
+En erfaren rytter kan være værdifuld som udpeget mentor og påvirke andre over
+tid, selv uden plads på det bedste løbshold. Han optager stadig trupplads og
+koster løn. Holdarbejde dækker den allerede valgte løbssamarbejdsvirkning.
+**Fravalgt som hovedmodel:** primært organisering i løb eller begge områder
+uden denne hovedprioritering. Det er ikke valgt som en generel anden racebonus.
+**Åbent:** læringsområder, egnethed, mentor/mentee-relation, kapacitet, tid,
+effekt, feedback og påvirkning af eksisterende træning. Kilder: R-003,
+D-021–025, PROGRESSION_RULES/TRAINING_RULES (afstemt).
+**Foreslået verifikation:** en egnet veteran får konkret udviklingsrolle med
+en reel trupomkostning; effekten er afgrænset fra Holdarbejde og almindelig trænerbonus.
+
+## Q-030 · Mentorens læringsområder
+
+**Status:** besvaret 10/9; A valgt, se D-027.
+**A, anbefalet:** mentale færdigheder og vaner som hovedområde, fx Holdarbejde,
+taktik, ro under pres og træningsdisciplin; ikke direkte fysisk bonus.
+Mentoren skal selv have relevant kunnen; Lederskab alene er ikke nok til at lære alt.
+**B:** også fysiske/tekniske evner inden for mentorens styrker.
+**C:** generel udviklingsbonus til de vejledte unge.
+**Tradeoff:** A adskiller menneskelig påvirkning fra faglig træner/program;
+B/C kræver afgrænsning fra det eksisterende udviklingsudbytte. Eksemplerne er
+ikke en endelig evneliste. Kilder: D-026, TRAINING_RULES §7/§13 og R-003.
+
+## D-027 · Mentale færdigheder og vaner som mentorens hovedområde
+
+**Status:** ejer-valgt 10/9, svar på Q-030.
+**Ejerens svar, ordret:** "Mentale færdigheder og vaner som mentorens hovedområde (anbefalet)".
+Mentoren påvirker især mentale færdigheder og vaner. Relevant egen kunnen er
+nødvendig; Lederskab alene gør ikke mentoren til universel underviser.
+**Fravalgt som model:** en generel bonus eller generel direkte fysisk/teknisk
+udvikling. Holdarbejde, taktik, ro under pres og træningsdisciplin var eksempler,
+ikke en endelig låst liste. **Åbent:** læringshastighed, match, kapacitet,
+mulig dårlig påvirkning og samspil med eksisterende træning. Kilder: D-026,
+PROGRESSION_RULES/TRAINING_RULES (afstemt). **Foreslået verifikation:** mentor
+med relevant kunnen hjælper på sit område, men giver ikke uforklaret fysisk
+bonus eller samme universelle udbytte til enhver ung rytter.
+
+## Q-031 · Dårligt mentor-match og negativ påvirkning
+
+**Status:** besvaret 10/9; A valgt, se D-028. Ejeren bad derefter om Claude-handoff.
+En leder med dårlige vaner på et område vejleder en ung, der allerede er bedre.
+**A, anbefalet:** kun positiv påvirkning på områder med relevant kunnen;
+dårligt match giver begrænset udbytte og koster tid/mentorplads.
+**B:** dårlige vaner kan smitte, med tydelig information før valget og mulighed
+for at stoppe. **Tradeoff:** A bruger mulighedsomkostning frem for negativ
+statpåvirkning; B giver mere relationsrisiko og kræver forståelig varsling.
+Mentorkapacitet og varighed er ikke valgt alene ved at nævne en mentorplads.
+Kilder: D-026/D-027 og TRAINING_RULES §7's eksisterende positive/neutral trænerregel;
+en mentor er en anden rolle, så analogien er et forslag, ikke en allerede gældende regel.
+
+## D-028 · Mentorindflydelse er kun positiv
+
+**Status:** ejer-valgt 10/9, svar på Q-031.
+**Ejerens valg:** "1" (den anbefalede positive/neutral model); fuld besked med
+handoff- og GitHub-mandat står i SESSION_LOG.
+Mentoren bidrager positivt på områder, hvor han har relevant kunnen. Et dårligt
+match giver begrænset udbytte og mulighedsomkostning i tid/mentorplads, ikke
+negativ påvirkning af den unges vaner eller evner. **Fravalgt:** dårlige vaner
+som smittende negativ statpåvirkning, selv med advarsel. **Åbent:** kapacitet,
+varighed, matchkriterier, konkrete evner og størrelse. Kilder: D-026/D-027,
+PROGRESSION_RULES/TRAINING_RULES (afstemt).
+**Foreslået verifikation:** mentor med lavere kunnen sænker ikke den unges
+evne; relevant mentor kan hjælpe; et dårligt match giver ikke universel bonus.
+
+## Overdragelse 10/9 efter Q-031
+
+Ejeren bad udtrykkeligt om at afslutte Codex-sessionen, fortsætte i Claude Code
+og få aftalte, endnu ikke byggede dele registreret i GitHub. Ingen ny
+spildesignbeslutning eller build-godkendelse følger af den administrative
+anmodning. Q-032 er ikke stillet. [CLAUDE_HANDOFF](CLAUDE_HANDOFF.md) er den
+kompakte indgang; [GITHUB_HANDOFF](GITHUB_HANDOFF.md) ejer opgavekortet.
 
 ## E-008 · Evneinventar og FM-inspiration
 

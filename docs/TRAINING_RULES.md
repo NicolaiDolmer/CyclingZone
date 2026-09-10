@@ -11,6 +11,11 @@
 > **D-019:** erfaringens udbytte går til relevante eksisterende evner. Reglen
 > om historik kontra selvstændig præstationsbonus står i [PROGRESSION_RULES](PROGRESSION_RULES.md).
 > **D-020:** fælles erfaringsområder, ikke bonus pr. nyt løbsnavn; se samme SSOT.
+> **D-026:** Lederskab konkretiseres med mentorrollen/trupudvikling som hovedformål;
+> **D-027:** mentale færdigheder og vaner er hovedområdet. Se
+> [PROGRESSION_RULES](PROGRESSION_RULES.md); konkrete evner og effekt afklares videre.
+> **D-028:** mentorindflydelsen er kun positiv; et dårligt match giver begrænset
+> udbytte og mulighedsomkostning. Det er ikke en generel ekstra fysisk bonus.
 
 > **Læs denne FØR enhver opgave der rører træning: det daglige tick, assistent-sweepen,
 > dagstyper og sessioner, ugerytme, restitution, form, skader fra træning, træner- og
