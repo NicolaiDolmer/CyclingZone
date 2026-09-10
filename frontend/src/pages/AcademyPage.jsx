@@ -732,6 +732,8 @@ export default function AcademyPage() {
             columns={rosterColumns}
             rows={sortedRoster}
             rowKey={(r) => r.id}
+            /* D-047 (#5102): akademiet vurderes paa potentiale, vaerdi og loen. */
+            mobileDefaults={["potential", "value", "salary"]}
             sort={sort}
             sortDir={sortDir}
             onSort={handleSort}

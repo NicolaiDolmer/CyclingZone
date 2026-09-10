@@ -555,9 +555,11 @@ export default function StandingsPage() {
       render: renderTeamCell,
       subline: (s) => <ShareBar pct={Math.round((effectivePts(s) / maxPts) * 100)} color={colorSoft} />,
     },
-    { key: "stageWins", header: t("thStageWins"), numeric: true, fold: true, foldValue: (s) => String(s.stage_wins || 0), render: (s) => s.stage_wins || 0 },
-    { key: "teamComp", header: t("thTeamComp"), numeric: true, fold: true, foldValue: (s) => String(teamComp[s.team_id]?.wins || 0), render: (s) => teamComp[s.team_id]?.wins || 0 },
-    { key: "podiums", header: t("thPodiums"), numeric: true, fold: true, foldValue: (s) => String(podiums[s.team_id] || 0), render: (s) => podiums[s.team_id] || 0 },
+    // D-047 (#5102): sejre/podier folder ikke laengere ind i underlinjen — de er
+    // chip-kolonner, saa et umaerket tal aldrig staar alene under holdnavnet.
+    { key: "stageWins", header: t("thStageWins"), numeric: true, render: (s) => s.stage_wins || 0 },
+    { key: "teamComp", header: t("thTeamComp"), numeric: true, render: (s) => teamComp[s.team_id]?.wins || 0 },
+    { key: "podiums", header: t("thPodiums"), numeric: true, render: (s) => podiums[s.team_id] || 0 },
     {
       key: "prize", header: t("thPrize"), numeric: true,
       render: (s) => <>{formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-3xs text-cz-3">CZ$</span></>,
@@ -598,24 +600,24 @@ export default function StandingsPage() {
         ? <span className="text-cz-3">…</span>
         : <>{formatNumber(strength?.[s.team_id]?.totalValue || 0)} <span className="text-3xs text-cz-3">CZ$</span></>),
     },
-    { key: "riders", header: t("thRiders"), numeric: true, fold: true, foldValue: (s) => String(strength?.[s.team_id]?.riderCount || 0), render: (s) => strength?.[s.team_id]?.riderCount || 0 },
-    { key: "u25", header: t("thU25"), numeric: true, fold: true, foldValue: (s) => String(strength?.[s.team_id]?.u25Count || 0), render: (s) => strength?.[s.team_id]?.u25Count || 0 },
+    { key: "riders", header: t("thRiders"), numeric: true, render: (s) => strength?.[s.team_id]?.riderCount || 0 },
+    { key: "u25", header: t("thU25"), numeric: true, render: (s) => strength?.[s.team_id]?.u25Count || 0 },
     {
-      key: "climb", header: ABILITY_SHORT.climbing, numeric: true, fold: true,
+      key: "climb", header: ABILITY_SHORT.climbing, numeric: true,
       render: (s) => {
         const v = strength?.[s.team_id]?.avgBj || 0;
         return <span className={v >= STRONG_THRESHOLD ? "font-bold text-cz-accent-t" : ""}>{v}</span>;
       },
     },
     {
-      key: "sprint", header: ABILITY_SHORT.sprint, numeric: true, fold: true,
+      key: "sprint", header: ABILITY_SHORT.sprint, numeric: true,
       render: (s) => {
         const v = strength?.[s.team_id]?.avgSp || 0;
         return <span className={v >= STRONG_THRESHOLD ? "font-bold text-cz-accent-t" : ""}>{v}</span>;
       },
     },
     {
-      key: "tt", header: ABILITY_SHORT.time_trial, numeric: true, fold: true,
+      key: "tt", header: ABILITY_SHORT.time_trial, numeric: true,
       render: (s) => {
         const v = strength?.[s.team_id]?.avgTt || 0;
         return <span className={v >= STRONG_THRESHOLD ? "font-bold text-cz-accent-t" : ""}>{v}</span>;
@@ -654,6 +656,12 @@ export default function StandingsPage() {
   );
 
   const columns = lens === LENS_STANDINGS ? standingsColumns : strengthColumns;
+  // D-047 (#5102): stillingen handler om point, etapesejre og praemier; trup-
+  // linsen om trupvaerdi, antal ryttere og U25-andel. Resten (podier, holdkonkurrence,
+  // bjerg/sprint/enkeltstart) er et chip-tryk vaek.
+  const mobileDefaults = lens === LENS_STANDINGS
+    ? ["points", "stageWins", "prize"]
+    : ["squadValue", "riders", "u25"];
 
   return (
     // #2253: translate="no" — standings-tabellerne re-renderer hyppigt;
@@ -773,6 +781,7 @@ export default function StandingsPage() {
           columns={columns}
           rows={divStandings}
           rowKey={(s) => s.id}
+          mobileDefaults={mobileDefaults}
           rowZone={(s) => (isPromotionRow(s) ? "success" : isRelegationRow(s) ? "danger" : null)}
           rowProps={rowProps}
           count={

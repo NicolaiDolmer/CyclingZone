@@ -97,13 +97,14 @@ export function DataTable({
   const [mobileKeys, setMobileKeys] = useState(() => defaultMobileColumnKeys(columns, mobileDefaults));
   const [fullTable, setFullTable] = useState(false);
   const columnSignature = columns.map((c) => c.key).join("|");
+  const defaultsSignature = (mobileDefaults ?? []).join("|");
 
   // Læs det huskede valg EFTER mount (localStorage er per-browser og må ikke
   // gøre first render afhængig af en I/O der kan kaste i et privat vindue).
   useEffect(() => {
     setMobileKeys(readMobileColumnKeys(label, columns, mobileDefaults));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- kolonne-IDENTITET, ikke de nye objekt-referencer hver render
-  }, [label, columnSignature, mobileDefaults]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- kolonne-/defaults-IDENTITET, ikke de nye array-referencer hver render
+  }, [label, columnSignature, defaultsSignature]);
 
   const pickColumn = useCallback(
     (key) => {

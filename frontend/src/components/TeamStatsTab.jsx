@@ -208,6 +208,8 @@ export default function TeamStatsTab({ riders }) {
         columns={columns}
         rows={rows}
         rowKey={(r) => r.id}
+        /* D-047 (#5102): saesonen laeses paa sejre, point og praemiepenge. */
+        mobileDefaults={["wins", "points", "prize"]}
         sort={sortKey}
         sortDir={sortDir}
         onSort={handleSort}

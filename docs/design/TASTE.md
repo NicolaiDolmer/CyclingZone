@@ -105,8 +105,8 @@ En sætning på fladen, resten bag et Hjælp-link (ejer 20/8, #4025). Introtekst
 
 - **Forkert i dag:** `riders-mobile-light.png`: værdi, løn, alder, evner er væk. Ingen vandret scroll. Spilleren kan ikke gøre det siden er til.
 - **Rigtigt i dag:** `standings-mobile-light.png` og `rider-profile-mobile-light.png`: samme data, stablet.
-- **Ejer-retning 2/9 (fork 6, valg A "pinned navn + vandret scroll"):** navnekolonnen står fast (min ~148 px, navn 13 px/500 + `text-3xs`-meta), talkolonnerne scroller vandret under den, samme kolonner og sortering som desktop, filterbar kollapset til søg + to halve selects. Bygges én gang i `DataTable` og gælder alle T2-sider. Kort-pr.-rytter (variant B) afvist som standard.
-- **Spørgsmål:** Kan spilleren udføre sidens primære handling og se sidens primære tal på 375 px uden at tabe kolonner?
+- **Ejer-retning 10/9 (fork 6, D-047 — afløser 2/9's "pinned navn + vandret scroll"):** mobil viser navnekolonnen + **præcis tre talkolonner uden vandret scroll**. Ejerens svar ordret: *"1 - Jeg vil gerne følge din anbefaling. Husk at tjekke for ai slop."* En **chip-række** over tabellen bytter kolonner (`text-2xs` uppercase, hairline, 999 px-pille — det ENE sted pille-radius er tilladt; aktiv chip = `--text-1`-kant), og valget huskes pr. tabel. **"Fuld tabel"** (gold outline; `--text-1` hvis siden allerede bruger sin ene gold primary i mobil-viewportet) åbner alle kolonner som **to-lags**: navneblokken er sin egen kolonne ved siden af en scrollbar datablok — *ikke* CSS sticky, så #5060's fejlklasse ikke kan opstå igen. Sortering og kolonneorden = desktop; **ingen zoom-knap** (telefonens knib-zoom virker som altid). Nation/alder folder stadig ind i navnecellens underlinje. Bygges én gang i `DataTable`; hver side angiver kun sine tre standardkolonner (`mobileDefaults`). Kort-pr.-rytter (variant A) og to-lags alene (variant C) afvist som standard; en til/fra-knap for navnekolonnen afvist (den ville styre noget der aldrig kan slås fra). Se D-047 i GDD `DECISIONS.md` + #5102. **Den gamle regel (2/9, valg A) er trukket tilbage** — pinned kolonne + vandret scroll som DEFAULT-tilstand findes ikke længere.
+- **Spørgsmål:** Kan spilleren udføre sidens primære handling på 375 px, og står sidens tre vigtigste tal i standardtilstanden uden vandret scroll, med resten et tryk væk i "Fuld tabel"?
 
 ### P11 · Ingenting opdigtet
 
@@ -191,7 +191,7 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 14. Er al tekst på fladen label, værdi, handling eller én linje kontekst, sentence case, uden em-dash, EN først? (P9, TONE)
 
 **Mobil og mørk**
-15. Viser 375 px-udgaven sidens primære tal og handling uden at tabe kolonner, med 16 px sidepadding? (P10)
+15. Viser 375 px-udgaven navnekolonnen + tre talkolonner uden vandret scroll, med chip-rækken og "Fuld tabel" til resten, og 16 px sidepadding? (P10 / D-047)
 16. Holder mørk tilstand samme hierarki (ingen flader der forsvinder, ingen guld-tekst der ikke er `--accent-t`-ækvivalent)? (GUIDELINES §2)
 
 **Bonus-spørgsmålet der afgør verdensklasse**
@@ -204,7 +204,7 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 ## 5. Sådan bruges dokumentet
 
 - **Slice 2 (audit #4624):** screenshot af hver side i lys/mørk/mobil, tjeklisten besvares, ét fund pr. side, sorteret efter spillertrafik. Fund der gentager sig på 3+ sider er kit-fund (slice 3), ikke side-fund.
-- **Slice 3 (kit #4625):** tilbagevendende fund løses i `components/ui`, så de ikke kan opstå igen. Eksempel: `DataTable` med vandret scroll på mobil løser P10 for alle T2-sider på én gang.
+- **Slice 3 (kit #4625):** tilbagevendende fund løses i `components/ui`, så de ikke kan opstå igen. Eksempel: `DataTable`s mobil-standard (D-047: navn + tre kolonner + "Fuld tabel") løser P10 for alle T2-sider på én gang.
 - **Slice 4 (CI #4626):** kolonnen "sådan opdages det" i §3 er specifikationen. Det der kan greppes skal fejle et build. `scripts/check-anti-slop.mjs` håndhæver nu pile-som-ikon/arbitrær `text-[Npx]`/skygge-uden-for-overlay/gradient herfra (ratchet-baseline pr. fil); rounded-xl/2xl, emoji og rå hex dækkes allerede af `scripts/lint-ui-slop.mjs`.
 - **Slice 5 (spejl #4627):** §0-§3 kopieres som readme-afsnit i Claude Design-projektet `a332ec00`, så design-agenten tegner mod samme smag.
 - **Nye sider og design-briefs:** briefen citerer P1-P11 og tjeklisten. Et design-go skal kunne svare ja på spørgsmål 1-4 før der tegnes videre.

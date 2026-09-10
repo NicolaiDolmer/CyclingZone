@@ -173,6 +173,8 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       columns={columns}
       rows={rows}
       rowKey={(r) => r.id}
+      /* D-047 (#5102): udvikling handler om nu, forventet og loft. */
+      mobileDefaults={["rating", "projected", "ceiling"]}
       dense
       rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
       sort={sort}

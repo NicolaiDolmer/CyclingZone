@@ -473,6 +473,9 @@ export default function TeamProfilePage() {
                   columns={squadColumns}
                   rows={displayRiders}
                   rowKey={(r) => r.id}
+                  /* D-047 (#5102): et fremmed hold laeses paa vaerdi + de to
+                     evner der afgoer flest loeb; resten via chips/"Fuld tabel". */
+                  mobileDefaults={["value", "climbing", "sprint"]}
                   dense
                   rowZone={(r) => (r._isIncoming ? "success" : r._isOutgoing ? "danger" : null)}
                   rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
