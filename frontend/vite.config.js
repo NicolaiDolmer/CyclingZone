@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
+import { bootAssetsManifestPlugin } from "./vite-plugins/boot-assets-manifest.js";
 // #5159 (audit-fund H4): frontendens indholds-id + dist/version.json. Se
 // vite-plugins/frontend-content-id.js for hvorfor sha'en ikke må være det der
 // afgør om en åben fane genindlæser.
@@ -141,6 +142,12 @@ export default defineConfig({
     worktreeIdPlugin(),
     releaseMetaPlugin(),
     patchNotesJsonPlugin(),
+    // #5161: skriver boot-assets (entry + modulepreloads + asset-stylesheets) som
+    // JSON-datablok lige FOER /chunk-selfheal.js, saa boot-vagten har en komplet
+    // liste allerede mens parseren er midt i <head>.
+    bootAssetsManifestPlugin(),
+    // #5159: indholds-id'et hasher bundle-navnene og public/, og kører derfor
+    // med enforce:"post" — rækkefølgen her er kun for læsbarhed.
     frontendContentIdPlugin({ releaseSha }),
     enableSentryPlugin
       ? sentryVitePlugin({

@@ -59,6 +59,17 @@
 -- tripler fordelt på 61 policies og 2 funktioner (is_admin 62,
 -- is_offered_intake_rider 2). Ét fund, som er whitelistet nedenfor.
 --
+-- #5153 (11/9 2026) tilføjer ét fund mere, og kun ét: migrationen
+-- `database/2026-09-11-5153-security-advisors-hardening.sql` revoker
+-- anon-EXECUTE på `is_admin()` (advisor-lint 0028). Målt read-only mod prod
+-- 11/9 er `riders / "Public read riders"` den ENESTE policy med roles={public}
+-- der kalder `is_admin()`, så triplen (riders, is_admin, anon) er den eneste
+-- nye — den står whitelistet nedenfor ved siden af søsterfunktionen.
+-- Rækkefølge ved merge: whitelist-posten og migrationen lander samtidig, og
+-- auto-migrate.yml applier migrationen ved merge. Sker applyen IKKE, fyrer
+-- `policy_fn_whitelist_stale` på den nye post ved næste 6-timers kørsel — det
+-- er tilsigtet: den røde check er så det korrekte signal om at DDL'en mangler.
+--
 -- Kendte grænser, bevidst valgte:
 --   * Kun funktioner i `public`. Supabase' egne (auth.uid(), auth.role())
 --     er grantet bredt af platformen og ejes ikke herfra.
@@ -115,6 +126,9 @@ allowed(tbl, polname, proname, polrole, why) AS (
   VALUES (
     'riders', 'Public read riders', 'is_offered_intake_rider', 'anon',
     'Bevidst fail-closed. Fuld kodebase-audit 18/7 2026 viste at ingen pre-login-flade laeser riders. Beslutning + re-grant-opskrift: .claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md'
+  ), (
+    'riders', 'Public read riders', 'is_admin', 'anon',
+    'Bevidst fail-closed, samme beslutning som raekken ovenfor. #5153 revokede anon-EXECUTE paa is_admin() (advisor-lint 0028). anon-laesningen af riders fejlede allerede paa policyens ANDEN operand (is_offered_intake_rider, raekken ovenfor), saa revoken flytter kun hvilken funktion 42501 naevner - den aendrer ikke udfaldet for anon. Samme beslutning, samme re-grant-opskrift: .claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md'
   )
 )
 SELECT CASE WHEN m.polrole = 'authenticated' THEN 'CRITICAL' ELSE 'WARN' END AS severity,

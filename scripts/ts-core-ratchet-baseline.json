@@ -1,0 +1,129 @@
+{
+  "_comment": [
+    "#5158 — kerne-listen for TypeScript-retning A+ som DATA, plus skralde-",
+    "baseline maalt paa main. Gaten er scripts/check-ts-core-ratchet.mjs.",
+    "",
+    "areas.<id>.globs er backend-relative globs UDEN filendelse og skal vaere",
+    "praecis de samme som include i backend/tsconfig.core.json. Et omraade ejer",
+    "en fil ved FOERSTE match, saa tallene er disjunkte (auctionFinalization.js",
+    "hoerer til auktion, ikke finalisering).",
+    "",
+    "jsFileCount = utjekkede .js-filer i omraadet (tests talt fra).",
+    "tsErrorCount = tsc-fejl med strict + checkJs.",
+    "files = fejl pr. fil. ALLE tre tal maa falde, aldrig stige.",
+    "",
+    "Tallene er IKKE en opgaveliste for een PR. De falder naar nogen konverterer",
+    "en fil under 'konverter naar du roerer'. Raekkefoelge + opskrift:",
+    "docs/TYPESCRIPT_DIRECTION.md."
+  ],
+  "generatedAt": "2026-09-11",
+  "tsconfig": "backend/tsconfig.core.json",
+  "areas": {
+    "economy": {
+      "title": "Oekonomi (loen, vaerdier, prognose)",
+      "globs": [
+        "lib/economy*",
+        "lib/financeForecast*",
+        "lib/salaryDecoupling*"
+      ],
+      "jsFileCount": 5,
+      "tsErrorCount": 309,
+      "files": {
+        "lib/economyAdminDashboard.js": 4,
+        "lib/economyConstants.js": 0,
+        "lib/economyEngine.js": 221,
+        "lib/financeForecast.js": 57,
+        "lib/salaryDecoupling.js": 27
+      }
+    },
+    "auction": {
+      "title": "Auktion (motor, regler, finalisering, annullering)",
+      "globs": [
+        "lib/auction*"
+      ],
+      "jsFileCount": 4,
+      "tsErrorCount": 168,
+      "files": {
+        "lib/auctionCancellation.js": 10,
+        "lib/auctionEngine.js": 28,
+        "lib/auctionFinalization.js": 88,
+        "lib/auctionRules.js": 42
+      }
+    },
+    "academy": {
+      "title": "Akademi (generering, intake, graduering, transfer)",
+      "globs": [
+        "lib/academy*"
+      ],
+      "jsFileCount": 15,
+      "tsErrorCount": 283,
+      "files": {
+        "lib/academyFlag.js": 4,
+        "lib/academyGenerator.js": 35,
+        "lib/academyGraduation.js": 104,
+        "lib/academyGraduationSweep.js": 6,
+        "lib/academyHealSweep.js": 4,
+        "lib/academyIntake.js": 61,
+        "lib/academyIntakeExpiryFlag.js": 1,
+        "lib/academyIntakeExpirySweep.js": 8,
+        "lib/academyIntakePull.js": 10,
+        "lib/academyIntakePullFlag.js": 1,
+        "lib/academyIntakeReconcile.js": 9,
+        "lib/academyOfferProtection.js": 4,
+        "lib/academyPnl.js": 17,
+        "lib/academySigningDefer.js": 6,
+        "lib/academyTransfer.js": 13
+      }
+    },
+    "ownership": {
+      "title": "Ejerskab (rytter-ejerskab, handler, invariant-vagt)",
+      "globs": [
+        "lib/ownership*",
+        "lib/riderOwnershipAudit*",
+        "lib/transferExecution*"
+      ],
+      "jsFileCount": 3,
+      "tsErrorCount": 136,
+      "files": {
+        "lib/ownershipInvariantWatch.js": 29,
+        "lib/riderOwnershipAudit.js": 4,
+        "lib/transferExecution.js": 103
+      }
+    },
+    "finalization": {
+      "title": "Finalisering (loeb, bestyrelses-weekend, instrumentering)",
+      "globs": [
+        "lib/boardWeekendFinalization*",
+        "lib/finalizeInstrumentation*",
+        "lib/raceFinalize*"
+      ],
+      "jsFileCount": 5,
+      "tsErrorCount": 128,
+      "files": {
+        "lib/boardWeekendFinalization.js": 63,
+        "lib/finalizeInstrumentation.js": 12,
+        "lib/raceFinalizeResumableFlag.js": 1,
+        "lib/raceFinalizeState.js": 24,
+        "lib/raceFinalizeWatch.js": 28
+      }
+    },
+    "scheduler": {
+      "title": "Scheduler (etape-scheduler, loebskalender)",
+      "globs": [
+        "lib/stageScheduler*",
+        "lib/raceCalendarScheduling*"
+      ],
+      "jsFileCount": 3,
+      "tsErrorCount": 46,
+      "files": {
+        "lib/raceCalendarScheduling.js": 18,
+        "lib/stageScheduler.js": 27,
+        "lib/stageSchedulerFlag.js": 1
+      }
+    }
+  },
+  "totals": {
+    "jsFileCount": 35,
+    "tsErrorCount": 1070
+  }
+}
