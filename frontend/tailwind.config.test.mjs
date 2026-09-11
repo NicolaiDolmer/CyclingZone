@@ -6,12 +6,15 @@
 // browseren får ingenting. Fejlen er tavs — ingen build-warning, ingen
 // lint-fejl, kun en flade der mangler sin baggrund/kant.
 //
-// Guarden har to lag:
-//   1. ALLE farvetokens i configen skal bære `<alpha-value>`, så et nyt token
-//      ikke kan komme ind uden (issue-accept #5150).
+// Guarden har tre lag:
+//   1. ALLE farvetokens i configen skal reagere på en opacity-modifier, så et
+//      nyt token ikke kan komme ind uden (issue-accept #5150).
 //   2. Hver `xxx-cz-token/NN`-klasse i frontend/src skal ramme et token der
-//      findes OG bærer `<alpha-value>` — fanger både nye tokens uden alpha og
-//      opacity-brug på et token-navn der ikke eksisterer (typo).
+//      findes OG reagerer — fanger både nye tokens uden alpha og opacity-brug
+//      på et token-navn der ikke eksisterer (typo).
+//   3. Den BARE klasse (uden modifier) skal give præcis samme CSS-værdi som
+//      før #5150, så en alpha-kapabel definition aldrig ændrer udseendet eller
+//      serialiseringen af de tusinder af kaldsteder der ikke bruger `/NN`.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -48,6 +51,20 @@ const KNOWN_DEAD_CLASSES = new Set([
   "bg-cz-surface/90", // ForumImagePicker.jsx
 ]);
 
+/**
+ * Samme opslag som Tailwind selv laver: en farve kan være en streng med
+ * `<alpha-value>` eller en funktion der får opacity-modifieren ind.
+ */
+function resolveColor(value, opacityValue) {
+  if (typeof value === "function") return value({ opacityValue, opacityVariable: "--tw-test-opacity" });
+  return String(value).replace(/<alpha-value>/g, String(opacityValue));
+}
+
+/** Reagerer tokenet overhovedet på en modifier? Hvis ikke, dropper Tailwind klassen. */
+function supportsAlpha(value) {
+  return resolveColor(value, 0.4) !== resolveColor(value, 1);
+}
+
 function collectFiles(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -61,29 +78,21 @@ function collectFiles(dir) {
   return out;
 }
 
-/**
- * Længste token-navn der matcher, fordi `cz-accent-t` og `cz-accent` begge er
- * gyldige præfikser af den samme streng — en naiv match ville pege forkert.
- */
-function resolveToken(name) {
-  return Object.prototype.hasOwnProperty.call(colors, name) ? colors[name] : undefined;
-}
-
-test("#5150: alle farvetokens i tailwind.config.js bærer <alpha-value>", () => {
+test("#5150: alle farvetokens reagerer på en opacity-modifier", () => {
   const missing = Object.entries(colors)
-    .filter(([, value]) => typeof value === "string" && !value.includes("<alpha-value>"))
-    .map(([name, value]) => `${name}: ${value}`);
+    .filter(([, value]) => !supportsAlpha(value))
+    .map(([name]) => name);
 
   assert.deepEqual(
     missing,
     [],
-    `Farvetokens uden <alpha-value> — opacity-modifiere (fx bg-${missing[0]?.split(":")[0]}/40) ` +
+    "Farvetokens der ignorerer opacity-modifieren — klasser som bg-<token>/40 " +
       "genereres ALDRIG for dem. Brug alphaToken('--css-var') eller " +
       "'rgb(var(--css-var) / <alpha-value>)' i tailwind.config.js.",
   );
 });
 
-test("#5150: hver cz-token/NN i frontend/src rammer et token der findes og har <alpha-value>", () => {
+test("#5150: hver cz-token/NN i frontend/src rammer et token der findes og reagerer", () => {
   const problems = [];
 
   for (const file of collectFiles(SRC)) {
@@ -92,12 +101,11 @@ test("#5150: hver cz-token/NN i frontend/src rammer et token der findes og har <
     const source = readFileSync(file, "utf8");
     for (const match of source.matchAll(OPACITY_USE)) {
       if (KNOWN_DEAD_CLASSES.has(match[0])) continue;
-      const [, token] = match;
-      const value = resolveToken(token);
-      if (value === undefined) {
+      const token = match[1];
+      if (!Object.prototype.hasOwnProperty.call(colors, token)) {
         problems.push(`${rel}: ${match[0]} — token "${token}" findes ikke i configen`);
-      } else if (typeof value === "string" && !value.includes("<alpha-value>")) {
-        problems.push(`${rel}: ${match[0]} — token "${token}" mangler <alpha-value>`);
+      } else if (!supportsAlpha(colors[token])) {
+        problems.push(`${rel}: ${match[0]} — token "${token}" ignorerer opacity-modifieren`);
       }
     }
   }
@@ -105,14 +113,27 @@ test("#5150: hver cz-token/NN i frontend/src rammer et token der findes og har <
   assert.deepEqual(problems, [], `Opacity-klasser der ikke genererer CSS:\n${problems.join("\n")}`);
 });
 
-test("#5150: alphaToken-mønstret er identisk med kilden ved alpha = 1", () => {
-  // Tailwind indsætter `1` når der ingen modifier er. Regnestykket skal give
-  // 100 % af farven, ellers ville ALLE eksisterende kaldsteder uden `/NN`
-  // skifte udseende af denne ændring.
-  const value = colors["cz-card"];
-  assert.match(value, /^color-mix\(in srgb, var\(--bg-card\) calc\(<alpha-value> \* 100%\), transparent\)$/);
+test("#5150: den bare klasse er uændret — color-mix rammer kun /NN-brug", () => {
+  // Tailwind kalder farve-funktionen med `var(--tw-bg-opacity, 1)` for den
+  // bare `bg-cz-card`. Den skal give præcis den rå var(--x) som før #5150:
+  // ellers skifter computed value fra `rgb(252, 251, 247)` til `color(srgb …)`
+  // på tværs af hele appen, og kode der læser backgroundColor som rgb bryder.
+  for (const [name, cssVar] of [
+    ["cz-card", "--bg-card"],
+    ["cz-1", "--text-1"],
+    ["cz-border", "--border"],
+    ["cz-subtle", "--bg-subtle"],
+    ["cz-warning-bg", "--warning-bg"],
+  ]) {
+    assert.equal(
+      resolveColor(colors[name], "var(--tw-bg-opacity, 1)"),
+      `var(${cssVar})`,
+      `${name}: den bare klasse må ikke ændre CSS-værdi`,
+    );
+  }
+
   assert.equal(
-    value.replace("<alpha-value>", "1"),
-    "color-mix(in srgb, var(--bg-card) calc(1 * 100%), transparent)",
+    resolveColor(colors["cz-card"], 0.4),
+    "color-mix(in srgb, var(--bg-card) calc(0.4 * 100%), transparent)",
   );
 });

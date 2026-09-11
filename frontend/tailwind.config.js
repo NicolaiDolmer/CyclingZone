@@ -10,11 +10,22 @@
 // læses ~90 steder direkte som `var(--x)` i index.css og inline SVG-styles;
 // en omskrivning til tripler ville kræve at ALLE de kaldsteder samtidig blev
 // til `rgb(var(--x))`, og rgba-tokens kan slet ikke udtrykkes som tripel.
-// color-mix tager farven som den er. Ved alpha = 1 er resultatet identisk med
-// kilden (100 % af farven, 0 % transparent), så eksisterende brug UDEN
-// opacity-modifier er pixel-uændret.
-const alphaToken = (cssVar) =>
-  `color-mix(in srgb, var(${cssVar}) calc(<alpha-value> * 100%), transparent)`;
+// color-mix tager farven som den er.
+//
+// Hvorfor en FUNKTION og ikke bare en streng med `<alpha-value>`: Tailwind
+// kalder farve-funktionen med opacity-modifieren (`0.4`) for `bg-cz-card/40`,
+// men med strengen `var(--tw-bg-opacity, 1)` for den bare `bg-cz-card`. Begge
+// former ville male samme farve — men color-mix ændrer den SERIALISEREDE
+// computed value fra `rgb(252, 251, 247)` til `color(srgb …)`, og det bryder
+// kode der læser `getComputedStyle(el).backgroundColor` som rgb (fanget af
+// me-marker-cells.spec.js i CI). Den bare klasse beholder derfor sin rå
+// `var(--x)` præcis som før, og color-mix bruges KUN når en faktisk
+// opacity-modifier er i spil. Prisen: de legacy `bg-opacity-*`-utilities
+// virker ikke for disse tokens — de bruges nul steder i `src`.
+const alphaToken = (cssVar) => ({ opacityValue }) =>
+  opacityValue === undefined || String(opacityValue).includes("--tw-")
+    ? `var(${cssVar})`
+    : `color-mix(in srgb, var(${cssVar}) calc(${opacityValue} * 100%), transparent)`;
 
 /** @type {import('tailwindcss').Config} */
 export default {
