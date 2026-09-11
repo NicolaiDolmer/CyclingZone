@@ -1,12 +1,12 @@
 # MASTERPLAN — prioriteret rækkefølge (SSOT for rækkefølgen)
 
-> **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml` (#4921). **Intentionen** (hvad spillet skal være) ejes af GDD'en: `docs/GAME_DESIGN_DOCUMENT.md` (D-001–D-031, PR for #5087); MASTERPLAN ejer kun rækkefølgen. **Spillerdata 10/9:** `docs/audits/2026-09-10-spillerstemmer-survey-roadmap-forum.md` + `2026-09-10-discord-stemmer-s3.md` (skema 27 af 242, roadmap-stemmer, forum, Discord S3).
+> **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml` (#4921). **Intentionen** (hvad spillet skal være) ejes af GDD'en: `docs/GAME_DESIGN_DOCUMENT.md` (D-001–D-048); MASTERPLAN ejer kun rækkefølgen. Spillerdata: `docs/audits/2026-09-10-*.md`.
 
-**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ventelisten** rangeres efter langsigtet værdi. **Ejer-mandat 10/9: "der skal ikke længere komme fejl ofte"** → 🔴 brand går foran alle baner. **Målt 10/9:** 598 åbne (16 done-gated) · S3 529 løb. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
+**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9: "der skal ikke længere komme fejl ofte"** → 🔴 brand går foran alle baner. **Målt 11/9:** 633 åbne (18 done-gated).
 
 ## 🔴 Brand (rettes før alt andet; bølge startet 10/9 kl. 13:10, intet merges uden ejer-go)
 
-#4595 chunk-fejl (egen `preventDefault()`, 954 events/50 spillere) PR #5097 · #5089 rytterkortet 14 kald/rytter → 429, PR #5100 · #5060 mobil sticky navn, PR #5099 · #5073 pensionsvarsel skifter midt i sæsonen (ejer-valg: rod-årsag) · #4959 pulje 13 = 25 hold (ejer-gated) · #4872 rytterværdi står stille, meldt igen 9/9.
+#4595 chunk-fejl: lag 3 = PR #5139, holdes til Codex-audit (`docs/drafts/codex-audit-prompt-chunk-errors-2026-09-11.md`) · #4959 merget 11/9, puljer 9/13 frie 12-13/9 · #4872 rytterværdi står stille (9/9). Merget 10/9: #5097 #5100 #5099 #5073.
 
 ## Bane 1 · S4-cutover 27-28/9 (deadline; nul buffer)
 
@@ -29,9 +29,10 @@ Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d 
 
 ## Bane 3 · Færdiggør (>70 %; tømmes før nyt)
 
-13. **Lukkesession (ejer, 30 min):** 16 done-gated issues.
-14. 🟠 **Docs-SSOT:** #5087 GDD som docs-PR · #5088 matview-grants · #2259 78 backup-tabeller (48 MB, ejer-go til flyt).
-15. 🟠 #4921 feature-register · #4918/#4919/#4920 bølge-drift · #5004 preflight anti-slop · #5085 CI marketing.
+13. Lukkesession: se 15b (#5155).
+14. 🟠 **Docs-SSOT:** #5088 matview-grants · #2259 78 backup-tabeller (48 MB, ejer-go til flyt).
+15. 🟠 #4921 feature-register · #4918/#4919/#4920 bølge-drift → **#5142 wave.js-standard** (PR #5147) · #5004 preflight anti-slop.
+15b. 🔴 **Hygiejne-blok (ejer 11/9, fast rækkefølge):** #3069 rød vagt (48 t) → #5153 advisors (7-dages regel) → #4812 PAT (ejer) → ejer-valg #5154 PITR + #5156 CodeRabbit → #5155 prioritets-regel + lukkesession → #5157 drafts → #5085 CI marketing → #5158 TS-retning (ejer-valg) → #4924 worktrees.
 16. 🔵 Akademi: #4495 · #4213 · #4750 · #4423/#4418 (done-gated). Design-rest #4622: #4627 · #4628 · #4813 · #4814 · #4815 · #4613 → **Visuel identitet #5113** (3D-first; først #5115 livery). **Tailwind 4-kæde (ejer 11/9):** #5150 → #5151 (+#3952) → #5152, efter Codex-audit af chunk-forløbet (#5139 holdes).
 17. Drift: #4147 · #4866 · #4869 · #4877/#4900/#4899/#4896/#4903 · #4867 · #4828/#4829 · #5017 · #5015 · #2423 (rør ikke).
 18. Spillerfund: #4589 · #4702 · #4873 · #4875 · #4861 · #4981 · #4982 · #4983 · #5075 · #5059 sprint-tog gated · #5030 puncheur-opskrift.
