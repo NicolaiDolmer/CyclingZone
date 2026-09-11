@@ -29,6 +29,25 @@ function servesSpaFallback(path) {
   return new RegExp(`^${spaRewrite.source}$`).test(path);
 }
 
+// Generel oversaetter for Vercels path-to-regexp-`source`. Et raat regex er ikke
+// nok: "/:path" og "/:path*" er gyldige Vercel-kilder der rammer /version.json,
+// men som regex matcher de kun den bogstavelige streng ":path". Parameter-
+// segmenterne oversaettes derfor foerst; alt andet (fx "/(.*)") er allerede
+// regex og staar uroert.
+function vercelSourceMatches(source, path) {
+  const pattern = String(source)
+    // ":navn+"/":navn*" — ét eller flere segmenter, inkl. skraastreger.
+    .replace(/:[A-Za-z0-9_]+[*+]/g, "[^?]*")
+    // ":navn" — praecis ét segment.
+    .replace(/:[A-Za-z0-9_]+/g, "[^/?]+");
+  try {
+    return new RegExp(`^${pattern}$`).test(path);
+  } catch {
+    // En kilde vi ikke kan oversaette maa ALDRIG blive til et stille "nej".
+    return true;
+  }
+}
+
 test("SPA-fallback findes og peger paa app.html", () => {
   assert.ok(spaRewrite, "der skal vaere en catch-all rewrite til /app.html");
 });
@@ -110,16 +129,28 @@ test("/version.json revaliderer altid og faar aldrig lang cache (#5159)", () => 
 
   // Forward-guard: en bredere regel der OGSAA rammer /version.json med lang
   // cache ville give praecis samme tavse doed.
+  //
+  // Vercels `source` er path-to-regexp, ikke et raat regex: "/:path" og
+  // "/:path*" rammer begge /version.json, men som raat regex gjorde de ikke
+  // (CodeRabbit 11/9 — guarden kunne omgaas af netop den slags regel).
+  // `vercelSourceMatches` oversaetter derfor parameter-segmenterne foerst.
   const longCacheSources = config.headers
     .filter((h) => /immutable|max-age=(\d{3,})/.test(h.headers.find((x) => x.key === "Cache-Control")?.value ?? ""))
     .map((h) => h.source);
 
   for (const source of longCacheSources) {
     assert.ok(
-      !new RegExp(`^${source}$`).test("/version.json"),
+      !vercelSourceMatches(source, "/version.json"),
       `/version.json matcher "${source}" som har lang cache — saa ville tjekket svare med det gamle id efter et deploy`,
     );
   }
+
+  // Regressionstilfaelde: praecis de moenstre der slap forbi den raa
+  // regex-sammenligning.
+  for (const trap of ["/:path", "/:path*", "/(.*)", "/:file.json"]) {
+    assert.ok(vercelSourceMatches(trap, "/version.json"), `"${trap}" SKAL taelle som en traeffer`);
+  }
+  assert.ok(!vercelSourceMatches("/assets/(.*)", "/version.json"));
 });
 
 test("alle mapper med lang cache-header er undtaget fra fallback", () => {

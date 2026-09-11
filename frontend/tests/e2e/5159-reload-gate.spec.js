@@ -268,16 +268,17 @@ test("M3: tre dokumentstarter uden sessionStorage giver NUL automatiske reloads"
     if (frame === page.mainFrame()) reloadsObserved += 1;
   });
 
+  // Maalt som en DELTA omkring hver fastForward, ikke som et samlet tal: en
+  // browser fyrer ogsaa framenavigated for sine egne start-navigationer, og et
+  // absolut tal ville maale dem med i stedet for det testen handler om.
   for (let documentStart = 0; documentStart < 3; documentStart += 1) {
     await page.goto("/login");
     await expect(page.getByRole("heading", { name: "Cycling Zone" })).toBeVisible();
+    const before = reloadsObserved;
     await page.clock.fastForward(PERIODIC);
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(800);
+    expect(reloadsObserved, `dokumentstart ${documentStart + 1}: intet automatisk reload`).toBe(before);
   }
-
-  // Praecis de tre bevidste goto'er og ikke ét automatisk reload mere. (Kravet
-  // i issuet var "hoejst ét"; fail-closed giver nul, og det er det testen laaser.)
-  expect(reloadsObserved).toBe(3);
 });
 
 // --- den glade sti ----------------------------------------------------------

@@ -226,6 +226,22 @@ test("spillerens eget klik paa banneret gaar gennem porten — det er hans beslu
   assert.equal(reloads.length, 1, "men klikket virker");
 });
 
+test("banner-knappen er aldrig et doedt klik — heller ikke naar netvaerks-proben fejler", async () => {
+  // Proben er fail-closed og svarer false naar spilleren er offline eller kaldet
+  // blokeres. Paa den automatiske sti er det rigtigt; paa den manuelle ville det
+  // betyde at spilleren trykkede paa knappen og der skete INGENTING, uden en
+  // eneste besked (CodeRabbit 11/9).
+  const { reloader, reloads } = makeReloader({
+    canReload: async () => false,
+    watcher: okWatcher([{ status: "ok", release: "sha-b", frontendId: "fe-b", isNew: true }]),
+  });
+  await reloader.runCheck("interval");
+  assert.deepEqual(reloads, [], "automatisk: proben holder igen, som den skal");
+
+  await reloader.applyUpdate();
+  assert.equal(reloads.length, 1, "manuelt: klikket virker alligevel");
+});
+
 test("det manuelle klik bruger IKKE af recovery-budgettet", async () => {
   const storage = fakeStorage();
   storage.setItem(RECOVERY_BUDGET_KEY, JSON.stringify({ used: RECOVERY_BUDGET_MAX, windowStart: Date.now() }));

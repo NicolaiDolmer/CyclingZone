@@ -349,7 +349,13 @@ export function createReleaseReloader({
     }
     // Kausal navigations-guard FØR loop-guarden: en afbrudt navigation må ikke
     // brænde det ene reload denne frontend får.
-    if (!(await canReload(win))) return false;
+    //
+    // KUN på den automatiske sti (CodeRabbit 11/9). Proben findes for ikke at
+    // kapre en navigation spilleren allerede har startet — et klik på banneret
+    // ER spillerens navigation, så der beskytter den ingenting. Til gengæld er
+    // den fail-closed: er netværket nede eller kaldet blokeret, svarer den
+    // false, og så ville knappen være et dødt klik uden en eneste besked.
+    if (!manual && !(await canReload(win))) return false;
     // Verden kan have ændret sig mens proben løb.
     clearStaleReloading();
     if (state.reloading) return false;

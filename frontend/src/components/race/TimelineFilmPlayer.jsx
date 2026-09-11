@@ -58,7 +58,12 @@ function AnimatedFilm({ profile, built, distanceKm, riderNameById, teamNameById,
   // #5159 (B1): en koerende loebsfilm er ogsaa arbejde — spilleren ser noget der
   // ikke kan spoles tilbage til samme sted efter et reload. Pauser han, faar
   // opdateringen lov.
-  useReloadBlock(playing, RELOAD_BLOCK_REASONS.PLAYBACK);
+  //
+  // SAMME betingelse som afspilnings-effekten nedenfor (CodeRabbit 11/9): uden
+  // en positiv distance starter loopet aldrig, og saa ville `playing` blive
+  // staaende paa true for evigt — en blokering der aldrig slap, og et lag 3 der
+  // var tavst doedt paa den flade.
+  useReloadBlock(playing && distanceKm > 0, RELOAD_BLOCK_REASONS.PLAYBACK);
   // Ref-spejl af scrubKm så rAF-effekten kan læse "hvor vi er nu" uden at have
   // scrubKm som dependency (ville genstarte loopet hver frame — samme fælde
   // FinalKilometrePlayback undgår ved kun at depende af totalMs).

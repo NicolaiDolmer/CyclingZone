@@ -73,7 +73,11 @@ export function useAuctionBidding({
   // beviser IKKE at et accepteret serverbud kunne gaa tabt — kun at spilleren
   // kunne miste sit indtastede beloeb og sit svar.
   const bidBusy = bidStatus === "loading" || proxyStatus === "loading";
-  const bidDirty = bidAmount !== minBid || proxyExpanded || proxyInput > 0;
+  // `proxyInput` bliver STAAENDE efter et vellykket gem (kun panelet lukkes), saa
+  // den maa ikke vaere en del af signalet: saa ville porten vaere laast resten af
+  // kortets levetid uden at der var en eneste kladde tilbage (CodeRabbit 11/9).
+  // `proxyExpanded` daekker allerede "spilleren er ved at redigere loftet".
+  const bidDirty = bidAmount !== minBid || proxyExpanded;
   useReloadBlock(bidBusy, RELOAD_BLOCK_REASONS.BUSY);
   useReloadBlock(bidDirty, RELOAD_BLOCK_REASONS.DIRTY);
 

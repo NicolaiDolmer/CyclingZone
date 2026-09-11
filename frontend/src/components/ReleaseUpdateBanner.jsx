@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import Button from "./ui/Button.jsx";
-import { RefreshIcon } from "./ui/icons";
+// Eksplicit fil, ikke mappe-import: extensionless specifiers bestaar Vite men
+// fejler i Node's ESM-loader (projektreglen i .coderabbit.yaml).
+import { RefreshIcon } from "./ui/icons/index.jsx";
 
 // #5159 — den manuelle udvej. Banneret er selve grunden til at appen tør LADE
 // VÆRE med at genindlæse af sig selv: opdager watcheren en ny frontend mens
