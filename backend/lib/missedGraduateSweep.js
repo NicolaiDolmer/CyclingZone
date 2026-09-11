@@ -137,6 +137,10 @@ export async function runMissedGraduateSweep({
       });
       if (outcome === "created") created++; else duplicates++;
     } catch (err) {
+      // best-effort pr. rytter: fejlen sluges IKKE, den bæres videre i
+      // `errors` og captures aggregeret i cron.js (samme mønster som
+      // graduerings-sweepets resolve-loop). En Sentry-capture her ville give
+      // ét issue pr. rytter pr. tick for den samme, stående tilstand.
       failed++;
       errors.push({ riderId: c.riderId, teamId: c.teamId, message: err?.message || String(err) });
       console.error(`missed-graduate sweep failed (${c.riderId}):`, err?.message || err);
