@@ -50,6 +50,20 @@
 // Vi laener os IKKE paa notifyUser's dedupe-vindue (24 timer), som ville sende
 // igen paa dag to.
 //
+// EN FEJL STOPPER IKKE KOERSLEN. Hver modtager sendes i sin egen try/catch:
+// en transient fejl paa bruger 12 maa ikke afbryde de 206 der staar bagefter.
+// Fejlene taelles, opsummeringen printes til sidst (sendt / sprunget over /
+// fejlet), og scriptet slutter med exit 1 hvis bare een fejlede. FORDI dedupen
+// ovenfor er varig, er den rigtige reaktion paa exit 1 altid den samme: koer
+// scriptet igen. De der allerede fik beskeden springes over, og kun de
+// fejlede forsoeges paa ny.
+//
+// RACE. Grupperne beregnes een gang ved start, men en spiller kan naa at svare
+// mens de 218 beskeder sendes. Derfor tjekkes survey_completions igen lige foer
+// hver eneste insert (eet select pr. bruger). Har han svaret undervejs,
+// springes han over og taelles som "svarede undervejs" — ingen faar et skub til
+// et skema han lige har gennemfoert.
+//
 // MODTAGERE. Menneskelige managers med en konto: teams hvor is_ai = false,
 // is_test_account = false, is_bank = false og user_id ikke er null. Samme
 // afgraensning som sendSurveyInvite.mjs.
@@ -114,6 +128,41 @@ export function closeDateMismatch(closesAt, expected = MESSAGE_CLOSES_ON) {
   }).format(new Date(ms));
   if (actual === expected) return null;
   return `closes_at er ${actual} (dansk tid), men beskederne siger ${expected}. Ret teksten eller datoen.`;
+}
+
+/**
+ * Hvad skal der ske naar beskedens dato og databasens closes_at er uenige?
+ *
+ * Dry-run ADVARER: man skal kunne se tallene foer lukkedatoen er sat, og en
+ * dry-run sender ingenting.
+ *
+ * --execute STOPPER. En besked der siger "skemaet lukker den 14." mens
+ * closes_at er NULL eller en anden dag kan ikke kaldes tilbage, og 218
+ * spillere har den saa i indbakken. Saet datoen med --set-closes-at foerst.
+ *
+ * Returnerer { fatal, line } — line er null naar alt stemmer.
+ */
+export function closeDateGate({ closesAt, execute, expected = MESSAGE_CLOSES_ON }) {
+  const mismatch = closeDateMismatch(closesAt, expected);
+  if (!mismatch) return { fatal: false, line: null };
+  if (!execute) return { fatal: false, line: `ADVARSEL: ${mismatch}` };
+  return {
+    fatal: true,
+    line: `STOP: ${mismatch} Saet lukkedatoen med --set-closes-at foer du sender. Intet er sendt.`,
+  };
+}
+
+/**
+ * Antal gennemfoerte besvarelser — det tal beskedens {count} naevner.
+ *
+ * Tallet tages af GRUPPERNE og ikke af survey_completions direkte, saa det er
+ * samme afgraensning som dry-run-linjen "Gennemfoert": menneskehold med en
+ * konto. Laeste vi raekkerne direkte, ville en AI- eller testkonto med en
+ * completion faa beskeden til at sige et hoejere tal end rapporten viste
+ * ejeren lige foer han sagde "koer".
+ */
+export function completedCount(groups) {
+  return groups?.completed?.length ?? 0;
 }
 
 /** Hvor mange eksempel-brugere dry-run viser pr. gruppe. */
@@ -259,13 +308,72 @@ export function formatDryRunReport({ slug, status, closesAt, groups, pending }) 
   const alreadyNudged = eligible - notStartedPending.length - startedPending.length;
   return [
     `Skema:                ${slug} (status ${status}, lukker ${closesAt ?? "ikke sat"})`,
-    `Gennemfoert:          ${groups?.completed?.length ?? 0}`,
+    `Gennemfoert:          ${completedCount(groups)}`,
     `Ikke begyndt:         ${groups?.notStarted?.length ?? 0}`,
     `Begyndt, ikke sendt:  ${groups?.started?.length ?? 0}`,
     `Har allerede faaet:   ${alreadyNudged}`,
     `Ville faa besked:     ${notStartedPending.length + startedPending.length}`,
     `  ikke begyndt:       ${notStartedPending.length} ${sampleUserIds(notStartedPending).join(" ")}`,
     `  begyndt:            ${startedPending.length} ${sampleUserIds(startedPending).join(" ")}`,
+  ];
+}
+
+/**
+ * Sender skubbene, een modtager ad gangen.
+ *
+ * `notify(userId, payload)` og `hasCompleted(userId)` injiceres, saa hele
+ * loekken kan testes uden en database. Loekken har tre egenskaber der alle er
+ * kravet fra reviewet paa #5141:
+ *
+ *   1. Race-tjek FOER hver insert. Har modtageren naaet at gennemfoere skemaet
+ *      mens vi sendte til de foregaaende, springes han over.
+ *   2. try/catch PR. BRUGER. En fejl paa een modtager taelles og logges, og
+ *      loekken fortsaetter til den naeste. Ogsaa race-tjekket ligger inde i
+ *      try'en: fejler det select, er den rigtige reaktion at springe brugeren
+ *      over og taelle en fejl, ikke at sende i blinde.
+ *   3. Et regnskab der kan laeses bagefter: hvem fik, hvem blev sprunget over
+ *      og hvorfor, hvor mange fejlede.
+ *
+ * Returnerer { delivered, respondedDuringRun, skipped, failed, respondedIds }.
+ * respondedIds bruges af post-verify, som ellers ville kalde de oversprungne
+ * for "mangler stadig".
+ */
+export async function deliverNudges({ slug, count, pending, notify, hasCompleted, onError = () => {} }) {
+  const summary = { delivered: 0, respondedDuringRun: 0, skipped: 0, failed: 0, respondedIds: [] };
+  for (const [variant, ids] of [
+    [NUDGE_NOT_STARTED, pending?.notStarted ?? []],
+    [NUDGE_STARTED, pending?.started ?? []],
+  ]) {
+    if (!ids.length) continue;
+    const payload = buildNudge({ slug, variant, count });
+    for (const userId of ids) {
+      try {
+        if (await hasCompleted(userId)) {
+          summary.respondedDuringRun += 1;
+          summary.respondedIds.push(userId);
+          continue;
+        }
+        const result = await notify(userId, payload);
+        if (result?.delivered) summary.delivered += 1;
+        else summary.skipped += 1;
+      } catch (error) {
+        summary.failed += 1;
+        // Kun id-praefikset i loggen: en fejllinje er ikke et sted at lade et
+        // helt user_id ligge.
+        onError(`FEJL for ${sampleUserIds([userId])[0]} (${variant}): ${error?.message ?? error}`);
+      }
+    }
+  }
+  return summary;
+}
+
+/** Opsummeringen der printes naar loekken er faerdig. */
+export function formatSendSummary(summary) {
+  return [
+    `Sendt:                ${summary?.delivered ?? 0}`,
+    `Svarede undervejs:    ${summary?.respondedDuringRun ?? 0}`,
+    `Sprunget over:        ${summary?.skipped ?? 0}`,
+    `Fejlet:               ${summary?.failed ?? 0}`,
   ];
 }
 
@@ -378,8 +486,12 @@ async function main() {
     console.log(line);
   }
 
-  const mismatch = closeDateMismatch(survey.closes_at);
-  if (mismatch) console.log(`ADVARSEL: ${mismatch}`);
+  const gate = closeDateGate({ closesAt: survey.closes_at, execute });
+  if (gate.line) {
+    if (gate.fatal) console.error(gate.line);
+    else console.log(gate.line);
+  }
+  if (gate.fatal) process.exit(1);
 
   if (!execute) {
     console.log("DRY-RUN — intet er sendt. Koer med --execute naar ejeren har sagt til.");
@@ -397,26 +509,31 @@ async function main() {
     process.exit(1);
   }
 
-  const count = userIdSet(completions).size;
-  let delivered = 0;
-  let failed = 0;
-  for (const [variant, ids] of [
-    [NUDGE_NOT_STARTED, pending.notStarted],
-    [NUDGE_STARTED, pending.started],
-  ]) {
-    if (!ids.length) continue;
-    const payload = buildNudge({ slug, variant, count });
-    for (const userId of ids) {
-      // dedupeWindowMs: 0 med vilje. notifyUser dedupliker paa (user, type,
-      // title, message, related_id), og titel/tekst er de samme for alle
-      // modtagere af samme variant. Scriptets egen idempotens er
-      // metadata.surveyNudge-tjekket ovenfor, som er varigt.
-      const result = await notifyUser({ supabase: sb, userId, ...payload, dedupeWindowMs: 0 });
-      if (result?.delivered) delivered += 1;
-      else failed += 1;
-    }
-  }
-  console.log(`Sendt: ${delivered} · fejlet: ${failed}`);
+  const summary = await deliverNudges({
+    slug,
+    // Samme tal som dry-run-linjen "Gennemfoert" — ejeren skal kunne genkende
+    // tallet i beskeden fra rapporten han sagde ja til.
+    count: completedCount(groups),
+    pending,
+    // dedupeWindowMs: 0 med vilje. notifyUser dedupliker paa (user, type,
+    // title, message, related_id), og titel/tekst er de samme for alle
+    // modtagere af samme variant. Scriptets egen idempotens er
+    // metadata.surveyNudge-tjekket ovenfor, som er varigt.
+    notify: (userId, payload) => notifyUser({ supabase: sb, userId, ...payload, dedupeWindowMs: 0 }),
+    // Race-tjekket: eet select pr. bruger, lige foer hans insert.
+    hasCompleted: async (userId) => {
+      const { data, error } = await sb
+        .from("survey_completions")
+        .select("user_id")
+        .eq("survey_id", survey.id)
+        .eq("user_id", userId)
+        .limit(1);
+      if (error) throw error;
+      return Boolean(data?.length);
+    },
+    onError: (line) => console.error(line),
+  });
+  for (const line of formatSendSummary(summary)) console.log(line);
 
   // Post-verify: laes igen og tjek at ingen af de udvalgte mangler.
   const after = await fetchAllRows(() =>
@@ -427,9 +544,15 @@ async function main() {
       .eq("metadata->>surveySlug", slug)
       .order("id", { ascending: true })
   );
-  const stillMissing = pendingRecipients([...pending.notStarted, ...pending.started], after, slug);
-  if (stillMissing.length || failed) {
-    console.error(`Mangler stadig: ${stillMissing.length}. Koer scriptet igen.`);
+  // De der svarede undervejs skal IKKE have et skub, saa de taeller heller
+  // ikke som "mangler stadig".
+  const respondedDuringRun = new Set(summary.respondedIds);
+  const attempted = [...pending.notStarted, ...pending.started].filter((id) => !respondedDuringRun.has(id));
+  const stillMissing = pendingRecipients(attempted, after, slug);
+  if (stillMissing.length || summary.failed) {
+    console.error(
+      `Mangler stadig: ${stillMissing.length} (fejlede: ${summary.failed}). Koer scriptet igen — dedupen goer det sikkert.`
+    );
     process.exit(1);
   }
   console.log("Alle udvalgte modtagere har skubbet.");

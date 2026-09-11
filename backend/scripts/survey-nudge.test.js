@@ -11,8 +11,12 @@ import {
   NUDGE_STARTED,
   buildNudge,
   classifyRecipients,
+  closeDateGate,
   closeDateMismatch,
+  completedCount,
+  deliverNudges,
   formatDryRunReport,
+  formatSendSummary,
   nudgedUserIds,
   parseArgs,
   pendingRecipients,
@@ -173,6 +177,149 @@ test("14. september 2026 er en mandag, saa teksten naevner ingen ugedag", () => 
   const message = buildNudge({ slug: DEFAULT_SLUG, variant: NUDGE_NOT_STARTED, count: 28 }).message;
   assert.ok(!/sunday/i.test(message), "beskeden maa ikke paastaa en ugedag der ikke passer");
   assert.match(message, /14 September/);
+});
+
+test("en forkert lukkedato advarer i dry-run, men STOPPER --execute", () => {
+  // Det farlige tilfaelde: closes_at er NULL mens beskeden naevner en dato.
+  // 218 spillere ville faa et loefte databasen ikke holder.
+  const dryRun = closeDateGate({ closesAt: null, execute: false });
+  assert.equal(dryRun.fatal, false);
+  assert.match(dryRun.line, /^ADVARSEL: /);
+
+  const execute = closeDateGate({ closesAt: null, execute: true });
+  assert.equal(execute.fatal, true, "--execute skal stoppe, ikke bare advare");
+  assert.match(execute.line, /^STOP: /);
+  assert.match(execute.line, /--set-closes-at/);
+
+  // En anden dag end teksten er lige saa forkert som ingen dato.
+  assert.equal(closeDateGate({ closesAt: "2026-09-13T21:59:00+00:00", execute: true }).fatal, true);
+
+  // Stemmer datoen, er der hverken linje eller stop.
+  for (const execute of [false, true]) {
+    const ok = closeDateGate({ closesAt: "2026-09-14T21:59:00+00:00", execute });
+    assert.equal(ok.fatal, false);
+    assert.equal(ok.line, null);
+  }
+});
+
+test("{count} i beskeden er samme tal som dry-run-linjen Gennemfoert", () => {
+  // survey_completions indeholder ogsaa raekker fra konti der ikke er
+  // modtagere (AI/test). Beskeden maa ikke naevne et tal ejeren ikke saa i
+  // rapporten.
+  const recipientIds = ["u-done", "u-started", "u-cold"];
+  const completions = [{ user_id: "u-done" }, { user_id: "ai-1" }, { user_id: "test-1" }];
+  const groups = classifyRecipients({
+    recipientIds,
+    completedUserIds: userIdSet(completions),
+    respondedUserIds: userIdSet([...completions, { user_id: "u-started" }]),
+  });
+
+  assert.equal(userIdSet(completions).size, 3, "raa raekker taeller ogsaa ikke-modtagere");
+  assert.equal(completedCount(groups), 1);
+
+  const report = formatDryRunReport({
+    slug: DEFAULT_SLUG,
+    status: "open",
+    closesAt: "2026-09-14T21:59:00+00:00",
+    groups,
+    pending: { notStarted: groups.notStarted, started: groups.started },
+  }).join("\n");
+  assert.match(report, /Gennemfoert:\s+1/);
+
+  const nudge = buildNudge({ slug: DEFAULT_SLUG, variant: NUDGE_NOT_STARTED, count: completedCount(groups) });
+  assert.deepEqual(nudge.metadata.messageParams, { count: 1 });
+  assert.equal(completedCount({}), 0);
+});
+
+test("een fejlende insert stopper ikke de oevrige modtagere", async () => {
+  const attempted = [];
+  const summary = await deliverNudges({
+    slug: DEFAULT_SLUG,
+    count: 28,
+    pending: { notStarted: ["u-1", "u-boom", "u-3"], started: ["s-1"] },
+    hasCompleted: async () => false,
+    notify: async (userId) => {
+      attempted.push(userId);
+      if (userId === "u-boom") throw new Error("transient insert-fejl");
+      return { delivered: true };
+    },
+  });
+
+  assert.deepEqual(attempted, ["u-1", "u-boom", "u-3", "s-1"], "loekken koerer videre efter fejlen");
+  assert.equal(summary.delivered, 3);
+  assert.equal(summary.failed, 1);
+  assert.equal(summary.skipped, 0);
+  assert.equal(summary.respondedDuringRun, 0);
+});
+
+test("opsummeringen viser sendt, sprunget over og fejlet", async () => {
+  const errors = [];
+  const summary = await deliverNudges({
+    slug: DEFAULT_SLUG,
+    count: 28,
+    pending: { notStarted: ["u-1", "u-dupe", "u-boom"], started: [] },
+    hasCompleted: async () => false,
+    notify: async (userId) => {
+      if (userId === "u-boom") throw new Error("nede");
+      // notifyUser returnerer delivered:false naar raekken blev dedupliqueret.
+      return { delivered: userId !== "u-dupe" };
+    },
+    onError: (line) => errors.push(line),
+  });
+
+  const lines = formatSendSummary(summary).join("\n");
+  assert.match(lines, /Sendt:\s+1/);
+  assert.match(lines, /Sprunget over:\s+1/);
+  assert.match(lines, /Fejlet:\s+1/);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /u-boom\.\.\./, "fejllinjen viser kun id-praefikset");
+  assert.match(errors[0], /nede/, "aarsagen skal med, ellers kan fejlen ikke undersoeges");
+  // Kalderen bruger failed > 0 som sit exit 1.
+  assert.ok(summary.failed > 0);
+  assert.deepEqual(formatSendSummary(undefined).length, 4);
+});
+
+test("en spiller der svarer UNDER koerslen faar ikke skubbet", async () => {
+  const sent = [];
+  const checked = [];
+  const summary = await deliverNudges({
+    slug: DEFAULT_SLUG,
+    count: 28,
+    pending: { notStarted: ["u-1", "u-fast"], started: [] },
+    // u-fast naaede at gennemfoere efter grupperne blev beregnet.
+    hasCompleted: async (userId) => {
+      checked.push(userId);
+      return userId === "u-fast";
+    },
+    notify: async (userId) => {
+      sent.push(userId);
+      return { delivered: true };
+    },
+  });
+
+  assert.deepEqual(checked, ["u-1", "u-fast"], "eet tjek pr. bruger, lige foer hans insert");
+  assert.deepEqual(sent, ["u-1"]);
+  assert.equal(summary.respondedDuringRun, 1);
+  assert.deepEqual(summary.respondedIds, ["u-fast"]);
+  assert.equal(summary.failed, 0);
+});
+
+test("et fejlende race-tjek taelles som fejl og sender ikke i blinde", async () => {
+  const sent = [];
+  const summary = await deliverNudges({
+    slug: DEFAULT_SLUG,
+    count: 28,
+    pending: { notStarted: ["u-1"], started: [] },
+    hasCompleted: async () => {
+      throw new Error("select fejlede");
+    },
+    notify: async (userId) => {
+      sent.push(userId);
+      return { delivered: true };
+    },
+  });
+  assert.deepEqual(sent, []);
+  assert.equal(summary.failed, 1);
 });
 
 test("eksempel-brugere er anonymiserede id-praefikser", () => {

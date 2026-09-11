@@ -38,9 +38,15 @@
 --
 -- Post-verify:
 --   SELECT slug, status, closes_at FROM public.surveys WHERE slug = '2026-09-features';
---   SELECT polname FROM pg_policy
---     WHERE polrelid IN ('public.survey_responses'::regclass, 'public.survey_completions'::regclass)
---     ORDER BY 1;   -- forventet 6 raekker (4 paa responses, 2 paa completions)
+--   SELECT c.relname AS tabel, p.polname AS policy, p.polcmd AS kommando
+--     FROM pg_policy p
+--     JOIN pg_class c ON c.oid = p.polrelid
+--     WHERE p.polrelid IN ('public.survey_responses'::regclass, 'public.survey_completions'::regclass)
+--     ORDER BY 1, 2;
+--   -- Forventet 7 raekker: 4 paa survey_responses (SELECT/INSERT/UPDATE/DELETE)
+--   -- og 3 paa survey_completions (SELECT/INSERT/UPDATE), jf.
+--   -- database/2026-09-07-4943-in-app-survey.sql:186,192,215,242,254,265,283.
+--   -- Denne migration aendrer 5 af dem; laese-policyerne staar uroerte.
 --   -- Og som en almindelig spiller mens closes_at er i fremtiden: et svar kan
 --   -- stadig gemmes paa /survey/2026-09-features.
 --
