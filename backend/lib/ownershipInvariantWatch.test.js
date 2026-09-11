@@ -326,7 +326,7 @@ test("#2647 invariant C — stale offered academy_intake for ejet rytter alarmer
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].ctx.fingerprint, ["stale-offered-intake-owned-rider"]);
   assert.equal(calls[0].ctx.extra.count, 1);
-  assert.equal(calls[0].ctx.extra.sample[0].intakeId, "i-1");
+  assert.match(calls[0].ctx.extra.sample[0], /^intake=i-1 /);
   assert.equal(result.findings.staleIntake, 1);
   assert.equal(result.alerted, true);
 });
@@ -408,7 +408,7 @@ test("#2257 strandet akademi-fri-agent (is_academy, alt tilhørsforhold NULL) �
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].ctx.fingerprint, ["stranded-academy-free-agent"]);
   assert.equal(calls[0].ctx.extra.count, 1);
-  assert.equal(calls[0].ctx.extra.sample[0].id, "r-stranded");
+  assert.match(calls[0].ctx.extra.sample[0], /^rider=r-stranded /);
 });
 
 test("#2257 ren base (ingen strandede) → strandedAcademy=0, ingen capture", async () => {
@@ -448,8 +448,8 @@ test("#3330 syntetisk rytter med GAMMEL pending_team_id (>48t) → invariant-bru
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].ctx.fingerprint, ["stale-pending-team-id-transfer"]);
   assert.equal(calls[0].ctx.extra.count, 1);
-  assert.equal(calls[0].ctx.extra.sample[0].riderId, "r-vasco");
-  assert.equal(calls[0].ctx.extra.sample[0].pendingTeamId, "team-buyer");
+  assert.match(calls[0].ctx.extra.sample[0], /^rider=r-vasco /);
+  assert.match(calls[0].ctx.extra.sample[0], /pendingTeam=team-buyer/);
 });
 
 test("#3330 FRISK pending_team_id (< 48t) → INGEN invariant-brud (legitim igangværende deferral, #1995)", async () => {
@@ -572,7 +572,7 @@ test("CYCLINGZONE-48 blandet: én i løb + én uden løb → kun den uden løb t
   });
   assert.equal(result.findings.stalePendingTransfer, 1);
   assert.equal(calls[0].ctx.extra.sample.length, 1);
-  assert.equal(calls[0].ctx.extra.sample[0].riderId, "r-stranded");
+  assert.match(calls[0].ctx.extra.sample[0], /^rider=r-stranded /);
 });
 
 test("CYCLINGZONE-48 ingen alders-kandidater → race-opslaget kaldes SLET IKKE (ingen ekstra queries pr. tick)", async () => {
@@ -618,7 +618,7 @@ test("CYCLINGZONE-48 ÆGTE diskriminator (ingen DI-stub) mod races/race_entries 
     now: new Date("2026-08-04T12:00:00Z"),
   });
   assert.equal(result.findings.stalePendingTransfer, 1);
-  assert.equal(calls[0].ctx.extra.sample[0].riderId, "r-no-race",
+  assert.match(calls[0].ctx.extra.sample[0], /^rider=r-no-race /,
     "kun rytteren uden aktivt etapeløb er et brud — afsluttet løb og endagsløb dæmper ikke");
 });
 
@@ -714,7 +714,7 @@ test("CYCLINGZONE-4M blandet: den ene auktion lukkes, den anden består → kun 
   });
   assert.equal(result.findings.youthOwned, 1);
   assert.equal(calls[0].ctx.extra.sample.length, 1);
-  assert.equal(calls[0].ctx.extra.sample[0].auctionId, "auc-aegte");
+  assert.match(calls[0].ctx.extra.sample[0], /^auction=auc-aegte /);
 });
 
 test("CYCLINGZONE-4M ren tick: settle ventes ALDRIG når der intet fund er (0-fund-tick er gratis)", async () => {
@@ -740,7 +740,7 @@ test("CYCLINGZONE-4M samplet viser ejerskabet EFTER genlæsningen, ikke det for�
     sleepFn: async () => { riders[0].team_id = "team-NY"; },
   });
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].ctx.extra.sample[0].teamId, "team-NY");
+  assert.match(calls[0].ctx.extra.sample[0], /team=team-NY/);
 });
 
 // ─── Invariant F (#4664): menneskehold uden bestyrelsesmedlemmer ────────────
@@ -877,8 +877,39 @@ test("#4495 invariant G — akademirytter over graduerings-alderen uden aktiv au
   assert.equal(result.alerted, true);
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].ctx.fingerprint, ["stuck-academy-graduate"]);
-  assert.equal(calls[0].ctx.extra.sample[0].riderId, "r-stuck-grad");
-  assert.equal(calls[0].ctx.extra.sample[0].age, 22);
+  assert.match(calls[0].ctx.extra.sample[0], /^rider=r-stuck-grad /);
+  assert.match(calls[0].ctx.extra.sample[0], /age=22/);
+  // grads=none vs. grads=sold er de to forskellige historier bag invariant G
+  // (stuckAcademyGraduates.js): ingen række = override-vinduet blev aldrig
+  // åbnet; 'sold' = #4495's kerne-case. Kortet skal kunne skelne dem.
+  assert.match(calls[0].ctx.extra.sample[0], /grads=none/);
+});
+
+// #5017 forward-guard: Sentry-SDK'ens normalizeDepth kollapser nestede objekter
+// til "[Object]", så en sample af objekter gør kortet ubrugeligt og tvinger en
+// DB-udgravning ved hver alarm (CYCLINGZONE-5G, CYCLINGZONE-5M 11/9). ALLE
+// invarianternes samples skal derfor være flade strenge.
+test("#5017 alle invariant-captures sender extra.sample som flade strenge, aldrig objekter", async () => {
+  const calls = [];
+  await runOwnershipInvariantWatch({
+    supabase: makeMock({
+      riders: [
+        STUCK_GRADUATE,
+        { id: "r-stranded", is_academy: true, is_retired: false, team_id: null, ai_team_id: null, pending_team_id: null },
+      ],
+    }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+  });
+
+  assert.ok(calls.length > 0, "testen er værdiløs uden mindst én capture");
+  for (const { err, ctx } of calls) {
+    for (const entry of ctx.extra.sample ?? []) {
+      assert.equal(
+        typeof entry, "string",
+        `${err.message}: sample-element er ${typeof entry}, ikke string — Sentry viser "[Object]"`
+      );
+    }
+  }
 });
 
 test("#4495 invariant G — rytter i et åbent override-vindue alarmerer ikke", async () => {
