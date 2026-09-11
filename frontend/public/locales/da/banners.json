@@ -40,6 +40,11 @@
       }
     }
   },
+  "releaseUpdate": {
+    "title": "Ny version klar",
+    "action": "Opdater",
+    "regionAriaLabel": "Opdatering klar"
+  },
   "opsNotice": {
     "regionAriaLabel": "Driftsstatus",
     "dismissAriaLabel": "Luk besked",

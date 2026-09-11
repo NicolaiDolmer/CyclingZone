@@ -6,6 +6,11 @@ import { parseAuthErrorHash, isExpiredOrDeniedAuthError } from "./lib/authErrorH
 import { lazyWithRetry as lazy } from "./lib/lazyWithRetry.js";
 import { supabase } from "./lib/supabase";
 import CookieBanner from "./components/CookieBanner.jsx";
+// #5033/#5159: opdag et nyt frontend-deploy mens fanen er aaben, og genindlaes
+// paa et sikkert punkt — aldrig oven i ugemt arbejde. Banneret er den manuelle
+// udvej naar det sikre punkt ikke er kommet endnu.
+import useReleaseWatch from "./hooks/useReleaseWatch.js";
+import ReleaseUpdateBanner from "./components/ReleaseUpdateBanner.jsx";
 // LandingPage er eager (ikke lazy): den prerendres ved build og hydreres på "/",
 // så komponenten SKAL være synkront tilgængelig ved klientens første render —
 // en lazy-suspense-fallback ville ellers give et hydration-mismatch.
@@ -180,6 +185,13 @@ export default function App() {
   // server-render (renderToString kan ikke fuldføre en lazy boundary → React #419).
   const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
+
+  // #5033/#5159: proaktivt lag over lazyWithRetry. Tjekker ved route-skift, ved
+  // tab-fokus efter >5 min og hvert 5. minut om der er deployet en ny frontend,
+  // og laver i saa fald et fuldt dokument-load — men KUN naar reloadGate.js siger
+  // at ingen flade har ugemt arbejde. Ellers vises banneret, og spilleren tager
+  // opdateringen naar det passer.
+  const { updateReady, applyUpdate } = useReleaseWatch();
 
   // #2078: en udløbet/ugyldig email-confirm-link redirecter til Site URL ("/")
   // med fejlen i hash'et (#error=access_denied&error_code=otp_expired...) og
@@ -444,6 +456,7 @@ export default function App() {
         </Routes>
       </Suspense>
       <CookieBanner />
+      <ReleaseUpdateBanner show={updateReady} onUpdate={applyUpdate} />
     </>
   );
 }

@@ -18,6 +18,7 @@ import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -143,6 +144,15 @@ export default function RaceHubBoard() {
   const boardDirty = (data?.columns || []).some((col) => selectionDirty(drafts[col.id], col.selection));
   // Skift af dag/scope viser andre kolonner → ryd kladder (de hører til de gamle løb).
   useEffect(() => { setDrafts({}); }, [dayParam, scope]);
+  // #5159 (B1): PORTEN, ikke forlad-dialogen. Boardets drag/drop lever i
+  // `drafts` indtil de er en gyldig udtagelse. Et release-drevet reload maatte
+  // foer dette enten kassere kladden eller — endnu vaerre — udloese sidens EGEN
+  // forlad-advarsel uden at spilleren havde bedt om at forlade noget. Nu ved
+  // watcheren at boardet er dirty og roerer intet; banneret er den eneste vej
+  // ud, og det er spillerens eget klik. Vagten nedenfor er uaendret og daekker
+  // fortsat browserens egne luk/genindlaes.
+  useReloadBlock(boardDirty || busy, RELOAD_BLOCK_REASONS.DIRTY);
+
   // Forlad-vagt (ejer 28/6): advar ved luk/genindlæsning hvis der er ugemte ændringer.
   // (BrowserRouter → ingen useBlocker; beforeunload dækker browser-niveau.)
   useEffect(() => {

@@ -7,6 +7,7 @@ import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { mapSupabaseAuthError, isEmailNotConfirmedError } from "../lib/authErrors";
 import { suggestEmailFix } from "../lib/emailDomainSuggestion.js";
 import { cooldownSecondsLeft, cooldownUntil, parseRateLimitSeconds } from "../lib/resendCooldown.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Wordmark } from "../components/Brand";
 import DiscordJoinLink from "../components/DiscordJoinLink";
@@ -105,6 +106,16 @@ export default function LoginPage() {
   // (kind: "confirm") og login-forsøg der rammer Supabases "email not
   // confirmed"-fejl (bruger er stadig ubekræftet men prøver at logge ind).
   const [resendState, setResendState] = useState("idle"); // idle | sending | sent
+
+  // #5159 (B1) — dette er den flade auditten MAALTE: usendt tekst i loginfeltet
+  // forsvandt efter et blur + et simuleret release-tjek, i baade Chromium og
+  // WebKit. Felterne starter i tom React-state, saa et reload er et tab. Porten
+  // holder igen saa laenge der staar noget usendt, og mens et kald er i gang.
+  useReloadBlock(
+    Boolean(email || password || teamName || managerName),
+    RELOAD_BLOCK_REASONS.DIRTY,
+  );
+  useReloadBlock(loading || resendState === "sending", RELOAD_BLOCK_REASONS.BUSY);
   const [showResend, setShowResend] = useState(false);
   // Eget fejl-state (ikke den delte `error`) — resend kan trigges fra
   // success-skærmen, som ikke renderer #auth-error-blokken (den ligger kun i

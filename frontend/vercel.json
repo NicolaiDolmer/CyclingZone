@@ -100,6 +100,15 @@
           "value": "public, max-age=300, stale-while-revalidate=86400"
         }
       ]
+    },
+    {
+      "source": "/version.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     }
   ],
   "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*)exit 0;;main)exit 1;;*)git fetch -q --depth=50 origin main||exit 1;b=$(git merge-base HEAD FETCH_HEAD)||exit 1;git diff --quiet $b HEAD -- .;;esac"

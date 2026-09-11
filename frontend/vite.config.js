@@ -5,6 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
+// #5159 (audit-fund H4): frontendens indholds-id + dist/version.json. Se
+// vite-plugins/frontend-content-id.js for hvorfor sha'en ikke må være det der
+// afgør om en åben fane genindlæser.
+import { frontendContentIdPlugin } from "./vite-plugins/frontend-content-id.js";
 import { computeSkewDefines } from "./vite-plugins/skew-defines.js";
 // SSOT for om Skew Protection reelt er tændt i koden. Modulet har ingen
 // side-effects ved import (kun const- og funktions-eksporter), så det kan læses
@@ -137,6 +141,7 @@ export default defineConfig({
     worktreeIdPlugin(),
     releaseMetaPlugin(),
     patchNotesJsonPlugin(),
+    frontendContentIdPlugin({ releaseSha }),
     enableSentryPlugin
       ? sentryVitePlugin({
           authToken: process.env.SENTRY_AUTH_TOKEN,

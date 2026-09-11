@@ -14,6 +14,7 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 import { useScouting } from "../lib/useScouting.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { ageForSeason, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
@@ -438,6 +439,18 @@ export default function TrainingPage() {
   const [expandedRiderId, setExpandedRiderId] = useState(null);
   const [riderWeekDraftMap, setRiderWeekDraftMap] = useState({}); // { <rider_id>: days } — kun redigerede
   const [riderWeekMsgMap, setRiderWeekMsgMap] = useState({}); // { <rider_id>: {type,text} | null }
+
+  // #5159 (B1): holdets ugerytme og de individuelle ugeplaner er kladder indtil
+  // Gem. Et release-drevet reload kunne kassere dem uden en lyd — det tidligere
+  // vaern ("er der fokus i en select?") holdt kun mens select'en HAVDE fokus.
+  useReloadBlock(
+    weekDraft !== null || Object.keys(riderWeekDraftMap).length > 0,
+    RELOAD_BLOCK_REASONS.DIRTY,
+  );
+  useReloadBlock(
+    Boolean(savingWeekPlan || savingRiderWeekPlanId || savingId || bulkApplying || running),
+    RELOAD_BLOCK_REASONS.BUSY,
+  );
 
   // Træningsrapport-historik (#1533): seneste 30 dages kørsler. Egen RLS-låst
   // SELECT-hook (training_day_runs), uafhængig af useTraining's /me-state.

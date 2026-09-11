@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { toggleRider, validateSelectionClient, partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
@@ -90,6 +91,11 @@ export default function RaceSelectionPanel({
   // returnsene nedenfor til selve visningen (touched-listen).
   const earlySaving = status === "saving";
   const earlyBusy = earlySaving || autoStatus === "loading";
+  // #5159 (B1): de valgte ryttere og roller lever KUN lokalt indtil Gem. Et
+  // release-drevet reload her ville hente serverens forrige udtagelse og kassere
+  // managerens arbejde uden en lyd. Porten holder det tilbage indtil Gem eller
+  // et skift væk fra panelet; spilleren kan stadig opdatere selv via banneret.
+  useReloadBlock(touched || earlyBusy, RELOAD_BLOCK_REASONS.DIRTY);
   // `data?.size` og ikke bare `data`: flag-OFF-svaret (api.js: `{ enabled: false, race,
   // race_v3_enabled }`) har ingen `size`, og denne linje kører FOER den tidlige
   // return nedenfor. validateSelectionClient laeser `size.max` uden guard, saa et

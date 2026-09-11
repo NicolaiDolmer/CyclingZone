@@ -17,6 +17,7 @@ import { Button, RefreshIcon, PlayIcon, PauseIcon } from "../ui";
 import { formatNumber } from "../../lib/intl.js";
 import { buildFilmTimeline, eventsPlayedUpTo, describeEvent } from "../../lib/stageTimelineFilm.js";
 import StageFilmScrubber from "./StageFilmScrubber.jsx";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 
 // Hele etapens film afspiller over dette vindue ved auto-play (mount-baseret
 // timing, samme rAF-princip som FinalKilometrePlayback's useElapsedMs) — fri
@@ -54,6 +55,10 @@ function EventFeed({ events, riderNameById, teamNameById, emptyKey, t }) {
 function AnimatedFilm({ profile, built, distanceKm, riderNameById, teamNameById, t }) {
   const [scrubKm, setScrubKm] = useState(0);
   const [playing, setPlaying] = useState(true);
+  // #5159 (B1): en koerende loebsfilm er ogsaa arbejde — spilleren ser noget der
+  // ikke kan spoles tilbage til samme sted efter et reload. Pauser han, faar
+  // opdateringen lov.
+  useReloadBlock(playing, RELOAD_BLOCK_REASONS.PLAYBACK);
   // Ref-spejl af scrubKm så rAF-effekten kan læse "hvor vi er nu" uden at have
   // scrubKm som dependency (ville genstarte loopet hver frame — samme fælde
   // FinalKilometrePlayback undgår ved kun at depende af totalMs).

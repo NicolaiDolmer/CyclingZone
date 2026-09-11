@@ -40,6 +40,11 @@
       }
     }
   },
+  "releaseUpdate": {
+    "title": "New version ready",
+    "action": "Update",
+    "regionAriaLabel": "Update available"
+  },
   "opsNotice": {
     "regionAriaLabel": "Service status",
     "dismissAriaLabel": "Dismiss notice",
