@@ -31,7 +31,7 @@ Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d 
 
 13. Lukkesession: se 15b (#5155).
 14. 🟠 **Docs-SSOT:** #5088 matview-grants · #2259 78 backup-tabeller (48 MB, ejer-go til flyt).
-15. 🟠 #4921 feature-register · #4918/#4919/#4920 bølge-drift → **#5142 wave.js-standard** (PR #5147) · #5004 preflight anti-slop.
+15. 🟠 #4921 feature-register · #4918/#4919/#4920 bølge-drift → **#5142 wave.js-standard** · #5004 preflight anti-slop.
 15b. 🔴 **Hygiejne-blok (ejer 11/9, fast rækkefølge):** #3069 rød vagt (48 t) → #5153 advisors (7-dages regel) → #4812 PAT (ejer) → ejer-valg #5154 PITR + #5156 CodeRabbit → #5155 prioritets-regel + lukkesession → #5157 drafts → #5085 CI marketing → #5158 TS-retning (ejer-valg) → #4924 worktrees.
 16. 🔵 Akademi: #4495 · #4213 · #4750 · #4423/#4418 (done-gated). Design-rest #4622: #4627 · #4628 · #4813 · #4814 · #4815 · #4613 → **Visuel identitet #5113** (3D-first; først #5115 livery). **Tailwind 4-kæde (ejer 11/9):** #5150 → #5151 (+#3952) → #5152, efter Codex-audit af chunk-forløbet (#5139 holdes).
 17. Drift: #4147 · #4866 · #4869 · #4877/#4900/#4899/#4896/#4903 · #4867 · #4828/#4829 · #5017 · #5015 · #2423 (rør ikke).
