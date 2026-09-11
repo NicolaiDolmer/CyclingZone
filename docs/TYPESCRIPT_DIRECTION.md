@@ -154,8 +154,9 @@ har rørt i et halvt aar.
    `private`-felter i konstruktoer-parametre, ingen `namespace`. Brug
    `const`-objekter + union-typer — samme stil som
    `backend/lib/engine/v4/types.ts`.
-7. **Koer filens tests** (`node --test lib/foo.test.js` fra `backend/`) og
-   **saenk baseline** (`--update-baseline`). Begge dele i samme PR.
+7. **Koer filens egne tests** — fra `backend/`, `node --test` paa den
+   tilhoerende test-fil — og **saenk baseline** (`--update-baseline`). Begge
+   dele i samme PR.
 
 ### Naar en fil er for stor til én PR
 
