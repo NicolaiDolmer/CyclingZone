@@ -1176,7 +1176,7 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
                 {reservedBalance > 0 && (
-                  <p className="text-cz-3/70 text-xs">
+                  <p className="text-cz-2 text-xs">
                     {t("dashboard:header.lockedInBids", { value: formatNumber(reservedBalance) })}
                   </p>
                 )}
