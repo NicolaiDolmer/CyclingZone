@@ -386,6 +386,8 @@ function main() {
   );
 }
 
-if (process.argv[1] && toPosix(process.argv[1]).endsWith("check-ts-core-ratchet.mjs")) {
+// Koer kun gaten naar filen er entrypoint — test-filen importerer de rene
+// funktioner herfra og maa ikke starte en tsc-koersel som sideeffekt.
+if (process.argv[1] && path.basename(process.argv[1]) === "check-ts-core-ratchet.mjs") {
   main();
 }

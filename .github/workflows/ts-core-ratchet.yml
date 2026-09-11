@@ -1,0 +1,61 @@
+name: TypeScript core ratchet
+
+# #5158 — skralde-gate for TypeScript i kernen (oekonomi, auktion,
+# akademi/ejerskab, finalisering/scheduler).
+#
+# EGEN workflow, ikke et job i ci.yml. To grunde:
+#   1. ci.yml's backend-tests-job er allerede repoets laengste vej til groent
+#      lys; en tsc-koersel over hele kerne-importgrafen hoerer ikke hjemme i
+#      samme seriekaede.
+#   2. Gaten skal kunne slaaes til/fra og debattere sig selv uden at nogen
+#      roerer den workflow alt andet afhaenger af.
+#
+# Race engine v4's type-check (npx tsc -p tsconfig.engine.json) bliver i ci.yml
+# hvor den er — den er groen i dag og har ingen baseline at skralde.
+#
+# Check-navnet er "ts-core-ratchet". Skal det vaere required, tilfoejes det
+# baade i branch protection paa GitHub OG i spejlet scripts/ci-required-checks.json
+# (sandheden er GitHub; filen er en kontrakt-kopi, se dens header).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # Merge queue: required checks skal rapportere paa merge-group-SHA'en,
+  # ellers timer koeen ud. Samme moenster som ci.yml.
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ts-core-ratchet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ts-core-ratchet:
+    name: ts-core-ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # Selftesten koerer FOER installationen: fejler gaten paa sin egen logik,
+      # skal det vises paa sekunder, ikke efter et npm ci.
+      - name: Gate-selftest
+        run: node --test scripts/check-ts-core-ratchet.test.mjs
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Kernen maa ikke blive mere utjekket (skralde-gate)
+        run: node scripts/check-ts-core-ratchet.mjs
