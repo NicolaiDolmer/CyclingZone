@@ -37,8 +37,6 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
 - `docs/WORKTREE_WORKFLOW.md` — parallelle sessioner via `scripts/new-worktree.ps1`
 - `docs/NIGHT_WAVE_RUNBOOK.md` — natbølge-protokol. Læs FØR enhver natbølge.
 - `docs/AI_CHANNEL_ROUTING.md` — kanal-til-task-matrix; læs ved tvivl
-- `docs/AI_OPS_SCALING_ROADMAP.md` — AI/Ops- + skalerings-roadmap
-- `docs/AI_OPS_DISABLE_PLAYBOOK.md` — MCP/skills disable-handlinger
 - `database/schema-snapshot.json` — kolonnenavne i `relations.<tabel>.columns`. Slå op FØR ad-hoc SQL via MCP; gæt fylder prod-loggen (#3769). `riders`: `firstname`/`lastname`/`birthdate`, ikke `name`/`age`.
 
 ## Close-out (per session)
