@@ -76,6 +76,33 @@ const releaseMetaPlugin = () => ({
   },
 });
 
+// #5033: samme sha som meta-tagget ovenfor, men som en lille statisk fil klienten
+// kan spørge om der er deployet en ny release — uden at hente hele index.html
+// (den prerendrede landing er titusindvis af tegn; dette svar er under 60 bytes).
+//
+// Ligger bevidst i dist-roden og IKKE under /assets/, så `immutable`-headeren i
+// frontend/vercel.json ikke rammer den (det var netop den header der gjorde en
+// 404 permanent i #4595). Hentes altid med `cache: "no-store"`.
+//
+// SSR-buildet springes over: dist-ssr er ikke en server-rod.
+const versionFilePlugin = () => {
+  let isSsrBuild = false;
+  return {
+    name: "cz-version-file",
+    configResolved(config) {
+      isSsrBuild = Boolean(config.build?.ssr);
+    },
+    generateBundle() {
+      if (isSsrBuild) return;
+      this.emitFile({
+        type: "asset",
+        fileName: "version.json",
+        source: `${JSON.stringify({ release: releaseSha })}\n`,
+      });
+    },
+  };
+};
+
 // #2668: preview-værktøjets "autoPort" (.claude/launch.json) tildeler en fri port
 // pr. session via PORT-env i stedet for et hardcodet --port-flag, så parallelle
 // worktree-sessioner ikke kolliderer på samme dev-server-port. Vite læser ikke
@@ -110,6 +137,7 @@ export default defineConfig({
     react(),
     worktreeIdPlugin(),
     releaseMetaPlugin(),
+    versionFilePlugin(),
     patchNotesJsonPlugin(),
     enableSentryUpload
       ? sentryVitePlugin({
