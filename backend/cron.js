@@ -727,6 +727,15 @@ async function runGraduationSweepCron() {
   if (result.backfill?.created) {
     console.log(`🎓 Graduerings-backfill: ${result.backfill.created} akademiryttere fik det override-vindue de aldrig fik ved saesonskiftet`);
   }
+  if (result.backfill?.error) {
+    // Backfillen faldt helt fra hinanden (typisk en læsefejl mod Supabase).
+    // Sweepet kørte videre, men den løbende redningssti var ude af drift dette
+    // tick — og den er hele pointen med #5133, så den skal ses.
+    console.error(`❌ Graduerings-backfill: ${result.backfill.error}`);
+    sentryCapture(new Error(`missed-graduate sweep: ${result.backfill.error}`), {
+      tags: { cron: "graduation sweep" },
+    });
+  }
   if (result.backfill?.failed) {
     console.error(`❌ Graduerings-backfill: ${result.backfill.failed} fejlede (per-rytter try/catch isolerede)`);
     sentryCapture(new Error(`missed-graduate sweep: ${result.backfill.failed} ryttere fejlede`), {

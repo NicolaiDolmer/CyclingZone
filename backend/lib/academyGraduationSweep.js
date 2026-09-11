@@ -31,7 +31,16 @@ export async function runAcademyGraduationSweep({
 
   // Flaget er allerede tjekket her, så backfillen får isEnabled injiceret som
   // "ja" i stedet for at slå det op igen.
-  const backfill = await backfillFn({ supabase, now, season, isEnabled: async () => true });
+  let backfill;
+  try {
+    backfill = await backfillFn({ supabase, now, season, isEnabled: async () => true });
+  } catch (err) {
+    // best-effort: backfillen er en TILFØJELSE til sweepet og må aldrig kunne
+    // blokere auto-resolveringen af udløbne override-vinduer. Fejlen sluges
+    // ikke — den bæres videre i resultatet og captures i cron.js.
+    backfill = { created: 0, duplicates: 0, failed: 0, checked: 0, errors: [], error: err?.message || String(err) };
+    console.error("graduation backfill failed:", err?.message || err);
+  }
 
   const pending = await fetchAllRows(() =>
     supabase.from("academy_graduation")

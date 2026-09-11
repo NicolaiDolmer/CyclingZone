@@ -145,6 +145,19 @@ test("#5133 sweep: åbner override-vinduet for en rytter der aldrig fik et", asy
   assert.equal(res.failed, 0);
 });
 
+test("#5133 sweep: en fejlende backfill blokerer IKKE auto-resolveringen", async () => {
+  const pending = [{ team_id: "t1", rider_id: "expired", deadline: "2026-06-19T10:00:00Z" }];
+  const resolvedIds = [];
+  const res = await runAcademyGraduationSweep({
+    supabase: makeSupabase(pending), now: AFTER_WINDOW, isEnabled: async () => true,
+    resolveFn: async (_s, { riderId }) => { resolvedIds.push(riderId); return { riderId }; },
+    backfillFn: async () => { throw new Error("supabase nede"); },
+  });
+  assert.match(res.backfill.error, /supabase nede/);
+  assert.equal(res.resolved, 1, "det udløbne vindue bliver stadig resolveret");
+  assert.deepEqual(resolvedIds, ["expired"]);
+});
+
 test("#5133 sweep: ingen missede ryttere → backfillen er en no-op", async () => {
   const supabase = makeSupabase([], { riders: [] });
   const res = await runAcademyGraduationSweep({ supabase, now: AFTER_WINDOW, isEnabled: async () => true });
