@@ -19,6 +19,6 @@
 - **GDD-regler (ejer 10/9):** ét område pr. kort · ÉT samlet før/efter-billede før kortet · genåbn aldrig låste beslutninger.
 - **Mekanik:** byg KUN via wave.js (4 laner, semafor 2, hook); merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); migrationer applies af auto-migrate.yml, Claude post-verificerer; CI tavs på PR = merge-konflikt; go-kort på `gh pr diff` + billede; workers rører aldrig `docs/NOW.md`. `Get-Date` FØR hver logning.
 
-> **🤖 Working agent:** Claude Code (Fable) dagsession 11/9 fra kl. 13:15, fundament-boelgen koerer via wave.js (run wf_b225773a-57d, 9 spor). Anden session: STOP + spoerg ejeren.
+> **🤖 Working agent:** Claude Code (Fable) dagsession 11/9 fra kl. 13:15, bølge 2 kører via wave.js (run wf_b75376c2-1e7: #5159 #5150 #5158 #5131 #5155); åbne PR-kort: #5168 (afventer fallback-styling), #5166 (ret-trin), #5169 (S4-beslutning senest 14/9). Anden session: STOP + spoerg ejeren.
 
 _Historik i git-log, issue-tråde + docs/audits/._

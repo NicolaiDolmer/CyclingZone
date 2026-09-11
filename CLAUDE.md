@@ -8,7 +8,7 @@ Gælder også Claude Code (AGENTS.md auto-loades ikke her): verificér repo-root
 
 ## Orkestrator-standard (ejer 11/9, #5142)
 
-Parallelt byggearbejde har ÉN indgang: `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })` (`name: "wave"` afvises af appen, bidt 11/9). Aldrig håndskrevne Agent-spawns; `scripts/hooks/guard-agent-spawn.sh` blokerer dem mens en bølge kører (fritaget: `WAVE-*:`-præfikser, `READ-ONLY:`, `Explore`/`Plan`). Loft: **4 laner**, verifikations-semafor 2 (`scripts/verify-lock.ps1 -Max 2 -- <kommando>`), maks 5 åbne PR'er, livstegn (draft-PR 30 min, push 15 min, timeout 60 min, recovery i samme worktree). Bekræftet frys stopper bølgen. Fuld tekst: [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md).
+Parallelt byggearbejde har ÉN indgang: `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })` (filen SKAL have LF-linjeskift; CRLF afvises af appen som kontroltegn, `.gitattributes` sikrer det, bidt 2x 11/9). Aldrig håndskrevne Agent-spawns; `scripts/hooks/guard-agent-spawn.sh` blokerer dem mens en bølge kører (fritaget: `WAVE-*:`-præfikser, `READ-ONLY:`, `Explore`/`Plan`). Loft: **4 laner**, verifikations-semafor 2 (`scripts/verify-lock.ps1 -Max 2 -- <kommando>`), maks 5 åbne PR'er, livstegn (draft-PR 30 min, push 15 min, timeout 60 min, recovery i samme worktree). Bekræftet frys stopper bølgen. Fuld tekst: [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md).
 
 ## Page templates (binding — ejer-godkendt 23/7, #2849)
 
@@ -17,6 +17,7 @@ Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/
 ## Auto-loaded (intet at gøre)
 
 - `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory. Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin: `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md`.
+- **Security-advisors** (Supabase MCP `get_advisors`) tjekkes ved session-start; en WARN må aldrig stå over 7 dage (#5153).
 - `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (`scripts/session-prefetch-issue.sh`). Ikke source of truth.
 
 ## Start (eksplicit)

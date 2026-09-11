@@ -1,17 +1,18 @@
-# Postmortem · 2026-09-11 · `Workflow({ name: "wave" })` afvist af permission-handleren, brug `scriptPath`
+# Postmortem · 2026-09-11 · `Workflow({ name: "wave" })` afvist: CRLF i wave.js fra core.autocrlf
 
 ## Hvad skete der?
-Første bølge nogensinde gennem `.claude/workflows/wave.js` (orkestrator-standard v2, #5142) kunne ikke startes. `Workflow({ name: "wave", args })` blev afvist tre gange i træk af Claude Desktop-appens permission-handler med teksten "script contains control characters that would be hidden in the approval dialog". Bølgen blev forsinket ca. 25 minutter, og ejeren spurgte hvad der foregik.
+Første bølge gennem `.claude/workflows/wave.js` (orkestrator-standard v2, #5142) kunne ikke startes. Claude Desktop-appens permission-handler afviste `Workflow({ name: "wave" })` tre gange med "script contains control characters that would be hidden in the approval dialog". Efter en LF-konvertering af filen gik `Workflow({ scriptPath })` igennem, og bølgen kørte. Kl. 17:13 fejlede `scriptPath`-formen så med samme besked, fordi `git pull --rebase --autostash` i mellemtiden havde rørt filen og givet den CRLF igen. Samlet forsinkelse ca. 40 min, og en forkert første konklusion ("ikke CRLF") nåede at stå i denne fil og i CLAUDE.md.
 
 ## Root cause
-Ikke fastslået i appen (lukket kode), men indkredset: filen `wave.js` har 0 kontroltegn (målt med Node på alle kodepunkter; kun `é` som non-ASCII). Fejlen opstod både med CRLF og LF i arbejdskopien, og både med og uden linjeskift i `args`. Fejlen ligger i den vej hvor appen opløser et *navngivet* workflow til et `script`-felt i `updatedInput`, før godkendelsesdialogen. Samme fil via `scriptPath` passerer valideringen.
+`core.autocrlf=true` på Windows giver `.claude/workflows/wave.js` CRLF-linjeskift i arbejdskopien. Permission-handleren validerer det opløste script og regner `\r` (0x0D) som et kontroltegn der ville være skjult i godkendelsesdialogen. Både `name:` og `scriptPath:` læser filen fra disk, så begge fejler med CRLF og virker med LF. Min første måling ("0 kontroltegn") kørte mod filen EFTER min egen LF-konvertering, og derfor så jeg ikke sammenhængen; da git senere genskabte CRLF, kom fejlen tilbage.
 
 ## Fix
-Kald altid `Workflow({ scriptPath: "C:\\Dev\\CyclingZone\\.claude\\workflows\\wave.js", args: { tracks: [...] } })`. Verificeret 11/9 kl. 14:34 (dry-run, 27 ms) og 14:36 (rigtig bølge, run `wf_b225773a-57d`). Indgangen i `CLAUDE.md` (afsnit "Orkestrator-standard") og i wave-skillens beskrivelse rettet til `scriptPath`.
+`.gitattributes`: `.claude/workflows/*.js text eol=lf`, så checkouts på Windows altid har LF, uanset autocrlf. Verificeret: efter `sed -i 's/\r$//'` gik Workflow-kaldet igennem begge gange (14:34 dry-run, 14:36 bølge 1, 17:14 bølge 2).
 
 ## Forhindret-fremover
-- `CLAUDE.md` og skillen viser nu `scriptPath`-formen som den eneste.
-- Lad CRLF/LF i wave.js ligge som git leverer den; det var ikke årsagen (`.gitattributes`-ændring er unødvendig).
+- `.gitattributes`-reglen ovenfor (permanent).
+- CLAUDE.md-afsnittet "Orkestrator-standard" peger på `scriptPath` og nævner CRLF-årsagen kort.
+- Hvis fejlen dukker op igen: `file .claude/workflows/wave.js` viser "CRLF" → `sed -i 's/\r$//'` og prøv igen. Ingen anden fejlsøgning nødvendig.
 
 ## Læring
-Når et tool-kald afvises af "permission handler returned updatedInput", er det appens omskrivning af inputtet der fejler, ikke dit input. Prøv den alternative indgang (her `scriptPath` i stedet for `name`) FØR du fejlsøger filen. Det kostede tre forsøg og en linjeskift-konvertering at lære.
+Når et tool-kald afvises af "permission handler returned updatedInput", er det appens validering af det opløste input, ikke dit. Mål filen i den tilstand appen ser den, FØR du ændrer den; en konklusion draget efter egen rettelse er ikke en måling. Og: `git pull --rebase --autostash` normaliserer linjeskift i filer der er i stashen, så en manuel LF-konvertering uden `.gitattributes` overlever ikke næste pull.
