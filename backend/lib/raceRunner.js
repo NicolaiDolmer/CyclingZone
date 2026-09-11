@@ -103,7 +103,7 @@ import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { captureException } from "./sentry.js";
-import { raceBindingWindow, isRiderDayInvariantViolation } from "./raceBinding.js";
+import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
@@ -970,6 +970,24 @@ async function loadStartFieldRiderIds({ supabase, raceId }) {
 //      end 24 hold egnede, beholdes de 24 STÆRKESTE målt på aggregeret roster-
 //      base_value (markedsværdi-proxy). Det forener race-feltets størrelse med
 //      pulje-kapaciteten (#1608: pulje-target = race-feltcap = 24).
+// #4959: friskt billede af hvilke hold der er markeret til nedlæggelse (eller allerede
+// nedlagt) EFTER at DB-guarden afviste batchen. Returnerer rækkerne uden dem. Rører
+// intet andet: er ingen af holdene drænende, skyldtes afvisningen noget andet (fx en
+// pensioneret rytter) og kaldstedet kaster videre med det oprindelige signal.
+async function dropDrainingTeamRows({ supabase, rows }) {
+  const teamIds = [...new Set(rows.map((r) => r.team_id).filter(Boolean))];
+  if (!teamIds.length) return rows;
+  const { data, error } = await selectInChunks({
+    supabase, table: "teams", columns: "id, is_ai, pending_removal_at, retired_at",
+    inColumn: "id", ids: teamIds,
+  });
+  if (error) throw new Error(`teams (drain re-scan): ${error.message}`);
+  const draining = new Set((data || [])
+    .filter((t) => t.is_ai && (t.pending_removal_at || t.retired_at)).map((t) => t.id));
+  if (!draining.size) return rows;
+  return rows.filter((r) => !draining.has(r.team_id));
+}
+
 export async function fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist = true }) {
   // #2962: ufiltreret teams-select (kun test-konto-filtreret, ellers ALLE hold) —
   // 155 rækker 25/7, samme #2951-klasse (vokser med hver signup). Pagineret via
@@ -1165,6 +1183,25 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
           `race_entries insert: rider-day invariant (#3420) rejected the race-start autofill for race ${race.id} — ` +
           `the runtime autofill's own binding exclusion missed a double-booking (${insErr.message})`
         );
+      }
+      // #4959: et hold blev markeret til nedlæggelse i vinduet mellem hold-læsningen
+      // ovenfor og denne skrivning, så DB-guarden (#4753, trg_ai_drain_entries) afviste
+      // HELE batchen. Uden dette ville ét drænende hold blokere løbsstartens autofyld
+      // for alle andre hold i løbet. Vi dropper det drænende holds rækker (de skal
+      // netop ikke skrives) og skriver resten én gang.
+      if (isDrainingAiObligation(insErr)) {
+        const kept = await dropDrainingTeamRows({ supabase, rows });
+        if (kept.length === rows.length) throw new Error(`race_entries insert: ${insErr.message}`);
+        console.warn(
+          `⚠️  Løbsstart-autofyld ${race.id}: ${rows.length - kept.length} række(r) hørte til et hold ` +
+          `markeret til nedlæggelse — skrevet uden dem (#4959)`
+        );
+        rows.splice(0, rows.length, ...kept);
+        if (rows.length) {
+          const { error: retryErr } = await supabase.from("race_entries").insert(rows);
+          if (retryErr) throw new Error(`race_entries insert (efter drain-filter): ${retryErr.message}`);
+        }
+        return rows.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id, race_role: r.race_role }));
       }
       throw new Error(`race_entries insert: ${insErr.message}`);
     }

@@ -146,6 +146,20 @@ export function isConstraintNotDeferrable(error) {
   return /is not deferrable/i.test(String(error.message || ""));
 }
 
+// #4959: DB-guarden guard_draining_ai_obligation (trg_ai_drain_entries, #4753) afviser
+// en NY entry-raekke for et AI-hold der er markeret til nedlaeggelse eller allerede
+// nedlagt, med SQLSTATE 23514. App-laget filtrerer selv de hold fra (raceEntryGenerator
+// trin 5, raceRunner.fillMissingTeamEntries), saa den eneste vej hertil er TOCTOU:
+// holdet blev markeret i vinduet mellem hold-laesningen og skrivningen. Udfaldet er
+// dermed det oenskede — holdet skal ikke have flere tilmeldinger — og maa ikke
+// rapporteres som en fejlet enhed. Matcher KUN guardens egne beskeder, aldrig 23514
+// generelt (andre CHECK-constraints skal blive ved med at larme).
+export function isDrainingAiObligation(error) {
+  if (!error) return false;
+  return /AI (team is draining|rider is retired): no new (obligations|auction bids)/
+    .test(String(error.message || ""));
+}
+
 // To vinduer overlapper hvis de deler mindst én FAKTISK løbsdag (#4173) — bærer begge
 // sider en days-mængde, skæres den (et løb med pause binder IKKE pausedagene). Ellers
 // spænd-fallback: deler mindst ét tidspunkt, inklusiv ender (vinduer bygget manuelt/

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { assignTeamAcrossRaces, runRaceEntryGenerator } from "./raceEntryGenerator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { raceBindingWindow, windowsOverlap } from "./raceBinding.js";
+import { runRaceEntryGeneratorSweep } from "./raceEntryGeneratorSweep.js";
 
 const ab = (v) => ({
   climbing: v, time_trial: v, sprint: v, punch: v, endurance: v,
@@ -133,6 +134,7 @@ function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false, b
       gte(col, val) { q.filters.push(["gte", col, val]); return api; },
       range() { return api; }, // mock ignorer paginering (test-data < 1000 rækker)
       order() { return api; },
+      limit() { return api; },
       maybeSingle() { return api.then(r => ({...r,data:r.data?.[0] ?? null})); },
       delete() { q.op = "delete"; return api; },
       update(values) { q.op = "update"; q.values = values; return api; },
@@ -1755,6 +1757,97 @@ test('#4753 release gate off leaves automatic entry generation unchanged', async
   Object.assign(state.teams[0], {is_ai:true,pending_removal_at:'2026-07-10T07:00:00Z'});
   await runRaceEntryGenerator({supabase:makeSupabase(state),seasonId,dryRun:false,now:Date.parse('2026-07-10T08:00:00Z')});
   assert.ok(state.race_entries.some(e=>e.team_id==='ai1'));
+});
+
+// #4959: draeningen er kun halvdelen af reglen. Holdet skal ogsaa koere de loeb det
+// ALLEREDE er i faerdigt — det er dem der lukker inflight-vinduet og lader
+// heal-sweepen nedlaegge holdet. Ville generatoren rydde eller omskrive dem, ville
+// holdet aldrig naa at blive frit, og feltet i et koerende loeb ville aendre sig.
+const DRAIN_FLAGS = [
+  { key: 'ai_team_retire_enabled', value: 'on' },
+  { key: 'ai_pool_retirement_v2_enabled', value: 'on' },
+];
+
+test('#4959 draining AI: eksisterende entries roeres ikke — holdet koerer sine loeb faerdigt', async () => {
+  const { state, seasonId } = seedModeScenario();
+  state.app_config = [...DRAIN_FLAGS];
+  Object.assign(state.teams[0], { is_ai: true, pending_removal_at: '2026-07-10T07:00:00Z' });
+  // NEAR er i gang (etape 1 koert); FAR er endnu ikke startet. Begge har allerede
+  // et felt for ai1 — praecis tilstanden et markeret hold staar i.
+  state.races[0].stages_completed = 1;
+  for (const raceId of ['NEAR', 'FAR']) {
+    for (const rider of ['ai1-r0', 'ai1-r1', 'ai1-r2', 'ai1-r3', 'ai1-r4', 'ai1-r5']) {
+      state.race_entries.push({ race_id: raceId, rider_id: rider, team_id: 'ai1',
+        race_role: 'helper', is_auto_filled: true });
+    }
+  }
+  const before = state.race_entries.length;
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false, now: Date.parse('2026-07-10T08:00:00Z') });
+
+  assert.equal(entriesFor(state, 'NEAR', 'ai1').length, 6, 'det igangvaerende felt staar uroert');
+  assert.equal(entriesFor(state, 'FAR', 'ai1').length, 6, 'generatoren rydder ikke selv fremtidige entries');
+  assert.ok(state.race_entries.length >= before, 'ingen af holdets raekker blev fjernet');
+  assert.ok(
+    !supabase.__calls.some((c) => c.table === 'race_entries' && (c.insert || c.delete || c.update)
+      && JSON.stringify(c).includes('ai1')),
+    'ingen skrivning mod det draenende hold',
+  );
+});
+
+// Samme TOCTOU som i loebsstart-autofyldet: holdet var ikke markeret da trin 5 laeste
+// holdene, men er det naar raekkerne skrives. DB-guarden afviser dem, og det ER det
+// oenskede udfald - enheden skal springes over, ikke rapporteres som en fejlet enhed
+// der fyrer en Sentry-alarm hvert tick.
+test('#4959 generator: hold markeret midt i koerslen springes over, ikke fejlet', async () => {
+  const { state, seasonId } = seedModeScenario();
+  state.app_config = [...DRAIN_FLAGS];
+  Object.assign(state.teams[0], { is_ai: true }); // endnu ikke markeret ved hold-laesningen
+  const supabase = makeSupabase(state, {
+    failUpsert: ({ table }) => (table === 'race_entries' ? 'AI team is draining: no new obligations' : null),
+  });
+  const result = await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, now: Date.parse('2026-07-10T08:00:00Z'),
+  });
+  assert.equal(result.failed_units, 0, 'en afvist draenende enhed er ikke en fejl');
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.inserted, 0);
+  assert.equal(state.race_entries.filter((e) => e.team_id === 'ai1').length, 0);
+});
+
+test('#4959 generator: andre skrivefejl taeller stadig som fejlede enheder', async () => {
+  const { state, seasonId } = seedModeScenario();
+  state.app_config = [...DRAIN_FLAGS];
+  Object.assign(state.teams[0], { is_ai: true });
+  const supabase = makeSupabase(state, {
+    failUpsert: ({ table }) => (table === 'race_entries' ? 'some other database failure' : null),
+  });
+  const result = await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, now: Date.parse('2026-07-10T08:00:00Z'),
+  });
+  assert.ok(result.failed_units > 0);
+  assert.ok(result.errors.length > 0);
+});
+
+// Sweepen er den vej generatoren faktisk koerer i prod (5-min-kadence, cron.js).
+// Guarden sidder i generatoren, men den er intet vaerd hvis sweep-stien omgaar den,
+// saa den koeres her ende-til-ende med den AEGTE generator og de aegte flag-laesninger.
+test('#4959 sweep-stien: draining AI faar ingen nye entries, resten af puljen fyldes', async () => {
+  const { state, seasonId } = seedModeScenario();
+  state.seasons = [{ id: seasonId, number: 1, status: 'active' }];
+  state.app_config = [...DRAIN_FLAGS, { key: 'auto_entry_generator_enabled', value: 'on' }];
+  // ai2: kontrolholdet. Uden det kunne testen vaere groen fordi sweepen slet ikke koerte.
+  state.teams.push({ id: 'ai2', is_ai: true, is_test_account: false, is_frozen: false,
+    league_division_id: 1, user_id: null, assistant_autopick_enabled: true });
+  seedTeamRiders(state, 'ai2', 8);
+  Object.assign(state.teams[0], { is_ai: true, pending_removal_at: '2026-07-10T07:00:00Z' });
+
+  const result = await runRaceEntryGeneratorSweep({ supabase: makeSupabase(state) });
+
+  assert.equal(result.ran, true);
+  assert.equal(result.seasonId, seasonId);
+  assert.equal(state.race_entries.filter((e) => e.team_id === 'ai1').length, 0);
+  assert.ok(state.race_entries.some((e) => e.team_id === 'ai2'), 'sweepen fyldte faktisk puljen');
 });
 
 test("#4201 proactive (default): manager-hold roeres ikke, AI-hold fyldes", async () => {

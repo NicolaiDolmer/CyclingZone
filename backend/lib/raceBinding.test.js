@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation } from "./raceBinding.js";
 
 test("raceGameDaySpan: endagsløb → start===end fra game_day", () => {
   assert.deepEqual(raceGameDaySpan([{ game_day: 10, scheduled_at: "2026-07-04T13:00:00Z" }]), { start: 10, end: 10 });
@@ -727,4 +727,16 @@ test("isRiderDayInvariantViolation: navne-fallback dækker begge constraint-navn
     isRiderDayInvariantViolation({ message: 'violates exclusion constraint "no_rider_double_booking"' }),
     true
   );
+});
+
+// #4959: guard_draining_ai_obligation (#4753) bruger SQLSTATE 23514 - samme kode som
+// enhver anden CHECK-constraint. Matcheren maa derfor KUN kende guardens egne beskeder,
+// ellers ville et aegte CHECK-brud blive slugt som "holdet er ved at blive nedlagt".
+test("isDrainingAiObligation: kun guardens egne beskeder, aldrig 23514 generelt", () => {
+  assert.equal(isDrainingAiObligation({ code: "23514", message: "AI team is draining: no new obligations" }), true);
+  assert.equal(isDrainingAiObligation({ code: "23514", message: "AI rider is retired: no new obligations" }), true);
+  assert.equal(isDrainingAiObligation({ code: "23514", message: "AI team is draining: no new auction bids" }), true);
+  assert.equal(isDrainingAiObligation({ code: "23514", message: 'new row violates check constraint "riders_age_check"' }), false);
+  assert.equal(isDrainingAiObligation({ message: "race_entries_rider_id_fkey" }), false);
+  assert.equal(isDrainingAiObligation(null), false);
 });
