@@ -15,6 +15,11 @@
 // et menneske (eller en agent) skal committe saenkningen, ellers kan en
 // forbedring rulle tilbage ubemaerket.
 //
+// --update-baseline SAENKER kun. Fejler gaten, naegter den at skrive — ellers
+// var skralden en hensigt: enhver regression kunne "loeses" ved at koere
+// kommandoen. Eneste udvidelsesvej er et helt nyt omraade uden `files` i
+// baseline; se isAdopting.
+//
 // Kerne-listen er DATA, ikke kode: scripts/ts-core-ratchet-baseline.json.
 // backend/tsconfig.core.json skal have praecis de samme globs i "include" —
 // divergerer de to, fejler gaten med det samme (en glob der kun staar det ene
@@ -148,6 +153,20 @@ export function findFatalDiagnostics(stdout) {
 }
 
 /**
+ * Et omraade der endnu ALDRIG er maalt (`files` mangler helt i baseline) er
+ * under adoption: der er ikke noget at regressere fra, saa foerste maaling ER
+ * baseline. Det er den eneste vej til at udvide kerne-listen, og den kan ikke
+ * misbruges til at haeve tallene for et omraade der allerede er maalt — dér
+ * findes `files`, og saa gaelder skralden fuldt ud.
+ *
+ * Praktisk: tilfoej omraadet med globs og UDEN `files`, koer
+ * `--update-baseline`, og commit resultatet i samme PR.
+ */
+export function isAdopting(area) {
+  return !area || area.files === undefined;
+}
+
+/**
  * Kernen i gaten. Rent input -> rent resultat, saa den kan testes med fixtures.
  *
  * @param {object} args
@@ -184,7 +203,9 @@ export function evaluateRatchet({ baseline, files, errors }) {
     if (isJsFile(rel)) area.jsFileCount += 1;
     area.tsErrorCount += errorCount;
 
-    const baselineFiles = areas[areaId].files ?? {};
+    if (isAdopting(areas[areaId])) continue; // se isAdopting: intet at regressere fra
+
+    const baselineFiles = areas[areaId].files;
     if (!(rel in baselineFiles)) {
       if (isJsFile(rel)) {
         // Regel 3: nye filer i kernen skal vaere TypeScript.
@@ -229,6 +250,13 @@ export function evaluateRatchet({ baseline, files, errors }) {
   // Omraade-totaler. Per-fil-checket ovenfor fanger det meste, men totalerne
   // fanger ogsaa "en fil blev sletttet og en ny med samme fejl kom ind".
   for (const [areaId, area] of Object.entries(areas)) {
+    if (isAdopting(area)) {
+      improvements.push(
+        `omraade "${areaId}": maalt foerste gang (${next.areas[areaId].jsFileCount} .js-filer, ` +
+          `${next.areas[areaId].tsErrorCount} tsc-fejl) — koer --update-baseline og commit det`,
+      );
+      continue;
+    }
     const now = next.areas[areaId];
     if (now.jsFileCount > area.jsFileCount) {
       failures.push(
@@ -398,30 +426,23 @@ function main() {
   const errors = parseTscErrors(runTsc(backendDir));
   const result = evaluateRatchet({ baseline, files, errors });
 
+  // I --json-tilstand er stdout reserveret til JSON-dokumentet; al prosa gaar
+  // til stderr, saa `... --json | jq` ikke braekker naar der er forbedringer.
+  const say = asJson ? console.error : console.log;
+
   if (asJson) {
     console.log(JSON.stringify(result, null, 2));
   }
 
   if (result.improvements.length) {
-    console.log(
-      `Skralde-gaten kan saenkes (${result.improvements.length} forbedringer):`,
-    );
-    for (const line of result.improvements.slice(0, 40)) console.log(`  ${line}`);
+    say(`Skralde-gaten kan saenkes (${result.improvements.length} forbedringer):`);
+    for (const line of result.improvements.slice(0, 40)) say(`  ${line}`);
     if (result.improvements.length > 40) {
-      console.log(`  ... og ${result.improvements.length - 40} mere`);
+      say(`  ... og ${result.improvements.length - 40} mere`);
     }
-    console.log(
+    say(
       "  Koer: node scripts/check-ts-core-ratchet.mjs --update-baseline (og commit resultatet)",
     );
-  }
-
-  if (updateBaseline) {
-    const next = { ...result.next, generatedAt: new Date().toISOString().slice(0, 10) };
-    fs.writeFileSync(BASELINE_PATH, `${JSON.stringify(next, null, 2)}\n`, "utf8");
-    console.log(
-      `Baseline skrevet: ${next.totals.jsFileCount} .js-filer, ${next.totals.tsErrorCount} tsc-fejl i kernen.`,
-    );
-    process.exit(0);
   }
 
   if (!result.ok) {
@@ -432,11 +453,29 @@ function main() {
     console.error(
       "Kernen bevaeger sig mod strict TypeScript. Tallene maa falde, aldrig stige.",
     );
+    if (updateBaseline) {
+      // --update-baseline maa ALDRIG skrive hoejere tal. Kunne den det, var
+      // skralden en hensigt: enhver regression kunne "loeses" ved at koere
+      // kommandoen. Et helt nyt omraade (uden `files` i baseline) er den
+      // eneste udvidelsesvej — se isAdopting.
+      console.error(
+        "--update-baseline naegter at skrive: baseline maa kun SAENKES. Ret fundene ovenfor foerst.",
+      );
+    }
     console.error("Baggrund + opskrift: docs/TYPESCRIPT_DIRECTION.md");
     process.exit(1);
   }
 
-  console.log(
+  if (updateBaseline) {
+    const next = { ...result.next, generatedAt: new Date().toISOString().slice(0, 10) };
+    fs.writeFileSync(BASELINE_PATH, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+    say(
+      `Baseline skrevet: ${next.totals.jsFileCount} .js-filer, ${next.totals.tsErrorCount} tsc-fejl i kernen.`,
+    );
+    return;
+  }
+
+  say(
     `TypeScript-skralde-gaten er groen: ${result.next.totals.jsFileCount} .js-filer, ` +
       `${result.next.totals.tsErrorCount} tsc-fejl i kernen (baseline: ` +
       `${baseline.totals.jsFileCount} / ${baseline.totals.tsErrorCount}).`,

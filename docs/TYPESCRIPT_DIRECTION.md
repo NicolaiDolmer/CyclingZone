@@ -60,6 +60,10 @@ aldrig baseline selv — det skal committes:
 node scripts/check-ts-core-ratchet.mjs --update-baseline
 ```
 
+`--update-baseline` **saenker kun**. Fejler gaten, naegter den at skrive. Ellers
+var skralden bare en hensigt: enhver regression kunne "loeses" ved at koere
+kommandoen.
+
 Baseline pr. 11/9-2026: **35 `.js`-filer, 1070 `tsc`-fejl** i kernen. Tallet er
 en maaling, ikke en opgaveliste for én PR.
 
@@ -87,6 +91,18 @@ det samme i stedet for at blive laest som en forbedring.
 Tilfoej glob'en **begge** steder — `areas.<id>.globs` i baseline-JSON'en **og**
 `include` i `tsconfig.core.json`. Gaten fejler med det samme hvis de to
 divergerer; en glob der kun staar det ene sted er et hul i daekningen.
+
+Er det et **helt nyt omraade**, skriv det uden `files`-noeglen:
+
+```jsonc
+"routes": { "title": "Routes", "globs": ["routes/api*"] }   // ingen "files"
+```
+
+Et omraade uden `files` er **under adoption**: der er intet at regressere fra,
+saa foerste maaling *er* baseline. Koer `--update-baseline` og commit resultatet
+i samme PR. Det er den eneste udvidelsesvej, og den kan ikke bruges til at haeve
+tallene for et omraade der allerede er maalt — dér findes `files` (ogsaa hvis
+den er tom), og saa gaelder skralden fuldt ud.
 
 ## 4. Konvertér naar du roerer
 

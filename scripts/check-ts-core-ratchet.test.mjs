@@ -18,6 +18,7 @@ import {
   evaluateRatchet,
   findFatalDiagnostics,
   globToRegExp,
+  isAdopting,
   isJsFile,
   isTestFile,
   listCoreFiles,
@@ -267,6 +268,38 @@ test("fejl uden for kerne-globs ignoreres", () => {
   });
   assert.equal(result.ok, true);
   assert.equal(result.next.totals.tsErrorCount, 35);
+});
+
+test("et HELT NYT omraade (uden files) adopteres uden at blive kaldt regression", () => {
+  // Eneste maade at udvide kerne-listen paa: tilfoej omraadet uden `files`,
+  // koer --update-baseline, commit. Der er intet at regressere fra endnu.
+  const baseline = fixtureBaseline();
+  baseline.areas.economy = { title: "Oekonomi", globs: ["lib/economy*"] };
+  const result = evaluateRatchet({
+    baseline,
+    files: [...fixtureFiles(), "lib/economyEngine.js"],
+    errors: fixtureErrors({ "lib/economyEngine.js": 221 }),
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.next.areas.economy.jsFileCount, 1);
+  assert.equal(result.next.areas.economy.tsErrorCount, 221);
+  assert.match(result.improvements.join("\n"), /maalt foerste gang/);
+});
+
+test("adoption kan IKKE bruges til at haeve et allerede maalt omraade", () => {
+  // `files: {}` er ikke det samme som "manglende files": et omraade der én
+  // gang er maalt, er maalt — og saa gaelder skralden fuldt ud.
+  const baseline = fixtureBaseline();
+  baseline.areas.economy = { title: "Oekonomi", globs: ["lib/economy*"], files: {} };
+  const result = evaluateRatchet({
+    baseline,
+    files: [...fixtureFiles(), "lib/economyEngine.js"],
+    errors: fixtureErrors({ "lib/economyEngine.js": 221 }),
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.failures.join("\n"), /skriv den i TypeScript/);
+  assert.equal(isAdopting(baseline.areas.economy), false);
+  assert.equal(isAdopting({ globs: [] }), true);
 });
 
 test("diffGlobs fanger divergens mellem baseline og tsconfig", () => {
