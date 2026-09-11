@@ -64,38 +64,39 @@ export default function ReleaseUpdateBanner({ show, onUpdate, onDismiss }) {
       data-testid="release-update-banner"
       className="fixed inset-x-0 bottom-0 z-toast px-3 pb-3 sm:px-6 sm:pb-6 pointer-events-none"
     >
-      {/* flex-wrap + `basis-full` paa spoergsmaalet: to knapper og en hel
-          saetning kan ikke staa paa én linje paa 390 px uden at klemme teksten
-          ned i en smal soejle. I bekraeftelses-tilstanden faar teksten derfor sin
-          egen linje paa mobil og deler linje med knapperne fra sm og op. */}
+      {/* flex-wrap: ikon + spoergsmaal bliver paa samme linje, og det er
+          KNAPPERNE der bryder om til linje to paa 390 px. To knapper og en hel
+          saetning kan ikke staa paa én linje dér uden at klemme teksten ned i en
+          smal soejle — og et ikon alene paa foerste linje laeser som en fejl. */}
       <div className="mx-auto flex max-w-lg flex-wrap items-center gap-x-3 gap-y-2 rounded-cz border border-cz-border bg-cz-card px-4 py-3 pointer-events-auto">
         <RefreshIcon size={16} className="shrink-0 text-cz-3" aria-hidden="true" />
-        <p
-          className={`min-w-0 text-sm leading-snug text-cz-1 ${
-            confirming ? "basis-full sm:basis-0 sm:flex-1" : "flex-1"
-          }`}
-        >
+        <p className="min-w-0 flex-1 text-sm leading-snug text-cz-1">
           {confirming ? t("releaseUpdate.unsavedTitle") : t("releaseUpdate.title")}
         </p>
-        {confirming && (
+        <div
+          className={`flex shrink-0 items-center justify-end gap-2 ${
+            confirming ? "w-full sm:w-auto" : ""
+          }`}
+        >
+          {confirming && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleSaveFirst}
+              data-testid="release-update-save-first"
+            >
+              {t("releaseUpdate.saveFirst")}
+            </Button>
+          )}
           <Button
             size="sm"
-            variant="ghost"
-            className="ms-auto sm:ms-0"
-            onClick={handleSaveFirst}
-            data-testid="release-update-save-first"
+            variant="secondary"
+            onClick={handleUpdate}
+            data-testid="release-update-apply"
           >
-            {t("releaseUpdate.saveFirst")}
+            {confirming ? t("releaseUpdate.updateAnyway") : t("releaseUpdate.action")}
           </Button>
-        )}
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={handleUpdate}
-          data-testid="release-update-apply"
-        >
-          {confirming ? t("releaseUpdate.updateAnyway") : t("releaseUpdate.action")}
-        </Button>
+        </div>
       </div>
     </div>
   );
