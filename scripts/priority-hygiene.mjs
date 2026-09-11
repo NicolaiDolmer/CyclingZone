@@ -22,6 +22,15 @@
 // "cross-referenced"-events hvor kilden er en PR, og bruger PR'ens EGEN
 // (live) `updated_at` som aktivitets-signal - det er "linked PR-aktivitet".
 //
+// GOTCHA (fundet under 11/9-verifikationen mod det rigtige repo, se PR #5175):
+// GitHub auto-linker ETHVERT bart `#N` i en PR-body/kommentar/commit - også
+// inde i en markdown-tabel der bare RAPPORTERER om issue N. Det opretter en
+// ægte cross-referenced-event, og fordi PR'en er frisk, ser issue N pludselig
+// "linked-pr"-aktivt ud - stille selvforurening af netop det signal scriptet
+// måler. Derfor render formatReport() ALTID issue-numre i backticks
+// (`` `#N` ``, aldrig bart `#N`) - GitHub autolinker ikke inde i code spans.
+// Rør IKKE ved det uden at forstå hvorfor.
+//
 // Auth: bruger udelukkende den allerede-autentificerede `gh` CLI-session.
 // Scriptet laeser eller printer ALDRIG et token.
 //
@@ -217,7 +226,13 @@ export function findActiveChildForEpic(execGh, repo, epicNumber, days, now) {
     return { hasActiveChild: false, source, children: [] };
   }
 
-  const active = candidates.filter((c) => daysBetween(c.updatedAt, now) <= days);
+  // `sub_issues` er raa REST (snake_case `updated_at`); `search issues --json`
+  // er gh's egen GraphQL-baserede JSON (camelCase `updatedAt`) - normalisér
+  // begge, ellers filtrerer REST-sporet ALTID alt aktivt fra (#5155-review).
+  const active = candidates.filter((c) => {
+    const updated = c.updated_at || c.updatedAt;
+    return Boolean(updated) && daysBetween(updated, now) <= days;
+  });
   return { hasActiveChild: active.length > 0, source, children: candidates };
 }
 
@@ -238,13 +253,14 @@ export function applyDowngrade(execGh, repo, issueNumber, comment) {
  * @param {string} opts.repo
  * @param {number} opts.days
  * @param {Date} opts.now
- * @returns {{ candidates: object[], epicsFlagged: object[], epicsOk: object[], kept: object[] }}
+ * @returns {{ candidates: object[], epicsFlagged: object[], epicsOk: object[], kept: object[], errors: object[] }}
  */
 export function classifyIssues({ issues, execGh, repo, days, now }) {
   const candidates = [];
   const epicsFlagged = [];
   const epicsOk = [];
   const kept = [];
+  const errors = [];
 
   for (const issue of issues) {
     const labelNames = (issue.labels || []).map((l) => l.name);
@@ -257,7 +273,19 @@ export function classifyIssues({ issues, execGh, repo, days, now }) {
       continue;
     }
 
-    const timeline = fetchTimeline(execGh, repo, issue.number);
+    // Isolér timeline-fejl PR. issue - én utilgaengelig/slettet issue maa ikke
+    // vaelte hele koersel og efterlade ingen rapport (#5155-review). Vi
+    // bruger IKKE issue.updatedAt som stille fallback her: uden timeline kan
+    // vi ikke se "linked PR-aktivitet", saa issuet klassificeres slet ikke -
+    // det rapporteres separat i stedet, saa det tjekkes manuelt.
+    let timeline;
+    try {
+      timeline = fetchTimeline(execGh, repo, issue.number);
+    } catch (err) {
+      errors.push({ number: issue.number, title: issue.title, url: issue.url, message: err.message });
+      continue;
+    }
+
     const { lastActivity, reason } = computeLastActivity(issue, timeline);
     const daysInactive = daysBetween(lastActivity, now);
 
@@ -274,14 +302,14 @@ export function classifyIssues({ issues, execGh, repo, days, now }) {
     else kept.push(entry);
   }
 
-  return { candidates, epicsFlagged, epicsOk, kept };
+  return { candidates, epicsFlagged, epicsOk, kept, errors };
 }
 
 // ---------------------------------------------------------------------------
 // Rapport
 // ---------------------------------------------------------------------------
 
-export function formatReport({ candidates, epicsFlagged, days, now, executed }) {
+export function formatReport({ candidates, epicsFlagged, errors = [], days, now, executed }) {
   const lines = [];
   const dateStr = now.toISOString().slice(0, 10);
   const mode = executed ? 'EXECUTE (nedjusteret)' : 'DRY-RUN (ingen aendringer)';
@@ -300,7 +328,7 @@ export function formatReport({ candidates, epicsFlagged, days, now, executed }) 
       const why = c.reason === 'issue-updated'
         ? 'ingen kommentar/label-ændring/linket PR-aktivitet'
         : `seneste signal: ${c.reason}`;
-      lines.push(`| #${c.number} | ${c.title} | ${c.daysInactive} | ${why} |`);
+      lines.push(`| \`#${c.number}\` | ${c.title} | ${c.daysInactive} | ${why} |`);
     }
   }
 
@@ -313,7 +341,18 @@ export function formatReport({ candidates, epicsFlagged, days, now, executed }) 
     lines.push('| # | Titel | Kilde |');
     lines.push('|---|---|---|');
     for (const e of epicsFlagged) {
-      lines.push(`| #${e.number} | ${e.title} | ${e.source} |`);
+      lines.push(`| \`#${e.number}\` | ${e.title} | ${e.source} |`);
+    }
+  }
+
+  if (errors.length > 0) {
+    lines.push('');
+    lines.push(`## ${errors.length} issue(s) kunne IKKE tjekkes (gh-kald fejlede - tjek manuelt)`);
+    lines.push('');
+    lines.push('| # | Titel | Fejl |');
+    lines.push('|---|---|---|');
+    for (const e of errors) {
+      lines.push(`| \`#${e.number}\` | ${e.title} | ${e.message} |`);
     }
   }
 
@@ -374,7 +413,7 @@ export function main(argv, deps = {}) {
   const { execute, days, repo, now } = opts;
 
   const issues = fetchOpenPriorityHighIssues(execGh, repo);
-  const { candidates, epicsFlagged, epicsOk, kept } = classifyIssues({ issues, execGh, repo, days, now });
+  const { candidates, epicsFlagged, epicsOk, kept, errors } = classifyIssues({ issues, execGh, repo, days, now });
 
   let failures = 0;
   if (execute) {
@@ -389,7 +428,7 @@ export function main(argv, deps = {}) {
     }
   }
 
-  log(formatReport({ candidates, epicsFlagged, days, now, executed: execute }));
+  log(formatReport({ candidates, epicsFlagged, errors, days, now, executed: execute }));
   log('');
   log(`(${kept.length} priority:high inden for graensen, ${epicsOk.length} epic(s) med aktivt child-issue - ikke vist ovenfor.)`);
 

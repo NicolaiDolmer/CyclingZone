@@ -162,6 +162,8 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 **Grænsen** er en flag (`--days`, default 14), ikke hardcoded — juster ved behov uden kodeændring.
 
+**Gotcha (fundet under 11/9-verifikationen, PR #5175):** GitHub auto-linker ethvert bart `#N` i en PR-body, kommentar eller commit — også når det bare optræder i en rapport-tabel. Det opretter en ægte "cross-referenced"-event, og fordi PR'en/kommentaren er frisk, ser issue N pludselig "linket PR-aktivt" ud — scriptets eget output ville forurene sit eget signal. Derfor render `formatReport()` altid issue-numre i backticks (`` `#N` ``, aldrig bart `#N`) — GitHub autolinker ikke inde i code spans. Samme regel bør følges i enhver fremtidig PR-body eller kommentar der lister issue-numre fra dette script.
+
 ## Commit/PR-konvention
 - Commit-besked nævner issue: `Fix: gæld vises i Min aktivitet (#42)`
 - PR-body har `Refs #42` — brugeren lukker selv issuet efter manuel verifikation

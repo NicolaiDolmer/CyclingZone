@@ -176,7 +176,8 @@ test('classifyIssues: epic-undtagelse - epic med aktivt aabent child-issue rappo
   const issues = [
     { number: 931, title: '[Epic] Traeningssystem', labels: [{ name: 'priority:high' }, { name: 'epic:progression' }], updatedAt: '2026-06-26T00:00:00Z', url: 'x' },
   ];
-  const subIssues = [{ number: 4850, state: 'open', updatedAt: '2026-09-08T00:00:00Z' }];
+  // sub_issues er raa REST - snake_case updated_at, IKKE gh's camelCase updatedAt (#5155-review).
+  const subIssues = [{ number: 4850, state: 'open', updated_at: '2026-09-08T00:00:00Z' }];
   const execGh = mockExecGhFactory([
     { match: (a) => a[0] === 'api' && a.some((x) => typeof x === 'string' && x.includes('sub_issues')), result: JSON.stringify(subIssues) },
   ]);
@@ -218,6 +219,22 @@ test('classifyIssues: epic-fallback - sub_issues tom, men text-search finder aab
   assert.equal(epicsFlagged.length, 0);
 });
 
+test('classifyIssues: én issues fejlende gh-kald vaelter IKKE resten af koersel - isoleres i errors[]', () => {
+  const issues = [
+    { number: 400, title: 'Fejler under timeline-hentning', labels: [{ name: 'priority:high' }], updatedAt: '2026-01-01T00:00:00Z', url: 'x' },
+    { number: 401, title: 'Klassificeres fint bagefter', labels: [{ name: 'priority:high' }], updatedAt: '2026-01-01T00:00:00Z', url: 'x' },
+  ];
+  const execGh = (args) => {
+    if (args.includes('repos/NicolaiDolmer/CyclingZone/issues/400/timeline')) throw new Error('gh: Not Found (HTTP 404)');
+    return '[]';
+  };
+  const { candidates, errors } = classifyIssues({ issues, execGh, repo: REPO, days: 14, now: NOW });
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].number, 400);
+  assert.equal(candidates.length, 1); // #401 blev klassificeret normalt
+  assert.equal(candidates[0].number, 401);
+});
+
 // -------------------------------------------------------------------- formatReport
 
 test('formatReport: viser kandidat-tabel og epic-tabel, dry-run vs execute i overskriften', () => {
@@ -236,6 +253,25 @@ test('formatReport: ingen kandidater og ingen flagede epics giver tydelig "alt g
   const report = formatReport({ candidates: [], epicsFlagged: [], days: 14, now: NOW, executed: false });
   assert.match(report, /Ingen `priority:high`/);
   assert.match(report, /Ingen epics uden aktivt child-issue/);
+});
+
+test('formatReport: viser en errors-tabel naar gh-kald fejlede for et issue', () => {
+  const errors = [{ number: 400, title: 'Fejler', message: 'gh: Not Found (HTTP 404)' }];
+  const report = formatReport({ candidates: [], epicsFlagged: [], errors, days: 14, now: NOW, executed: false });
+  assert.match(report, /kunne IKKE tjekkes/);
+  assert.match(report, /#400/);
+});
+
+test('formatReport: issue-numre staar ALTID i backticks - aldrig bart #N (GitHub autolinker og forurener egne fund, se scriptets header)', () => {
+  const candidates = [{ number: 100, title: 'X', daysInactive: 40, reason: 'issue-updated' }];
+  const epicsFlagged = [{ number: 954, title: 'Y', source: 'sub_issues' }];
+  const errors = [{ number: 400, title: 'Z', message: 'boom' }];
+  const report = formatReport({ candidates, epicsFlagged, errors, days: 14, now: NOW, executed: false });
+  assert.match(report, /`#100`/);
+  assert.match(report, /`#954`/);
+  assert.match(report, /`#400`/);
+  // intet bart "#<tal>" uden en omsluttende backtick lige før
+  assert.doesNotMatch(report, /[^`]#\d+/);
 });
 
 // -------------------------------------------------------------------------- main

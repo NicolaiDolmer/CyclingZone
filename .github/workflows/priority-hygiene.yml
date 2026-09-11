@@ -35,6 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -43,15 +45,21 @@ jobs:
 
       - name: Run priority-hygiene (dry-run)
         if: github.event.inputs.execute != 'true'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/priority-hygiene.mjs --dry-run | tee priority-hygiene-report.md
+        run: |
+          set -euo pipefail
+          node scripts/priority-hygiene.mjs --dry-run | tee priority-hygiene-report.md
 
       - name: Run priority-hygiene (execute - ejer-udløst)
         if: github.event.inputs.execute == 'true'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/priority-hygiene.mjs --execute | tee priority-hygiene-report.md
+        run: |
+          set -euo pipefail
+          node scripts/priority-hygiene.mjs --execute | tee priority-hygiene-report.md
 
       - name: Skriv job-summary
         if: always()
