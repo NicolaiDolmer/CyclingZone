@@ -174,6 +174,111 @@ jobs:
           VERCEL_ENV: preview
         run: node scripts/check-skew-protection.mjs
 
+  # #5160 (audit 11/9, fund H1): det TO-BUILD-BEVIS `frontend-build`s
+  # markoer-guard ikke kan give. Den bygger EET build UDEN Sentry-
+  # transformationen og scanner det for kendte strenge - det beviser at netop de
+  # strenge mangler, ikke at to builds giver samme filnavne. Auditten maalte det
+  # modsatte i prod: to production-deploys UDEN frontend-diff havde 76 af 195
+  # chunk-referencer udskiftet, og den gamle chunk svarede 404 med
+  # `max-age=31536000, immutable` (CYCLINGZONE-56).
+  #
+  # Her bygges SAMME frontend to gange med forskellige release-id'er, alt andet
+  # ens, Sentry-transformationen AKTIV (CZ_SENTRY_TRANSFORM=1 - debug-id-
+  # injektion uden upload-token, se frontend/vite.config.js), og HELE dist-traeet
+  # sammenlignes fil for fil paa sha256. Kun HTML og release-metadata maa variere.
+  #
+  # Jobbet er IKKE advisory: ingen continue-on-error, et roedt resultat skal
+  # blokere. Navnet skal tilfoejes main's required status checks + spejlet i
+  # scripts/ci-required-checks.json (ejer-handling, kraever admin).
+  build-determinism-two-builds:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      VITE_API_URL: https://example.invalid
+      # Uden DSN dead-code-eliminerer Rollup hele Sentry.init-kaldet, og de to
+      # builds ville sammenligne en pipeline prod ikke bruger.
+      VITE_SENTRY_DSN: https://determinism-guard@o0.ingest.sentry.io/0
+      # Sentry-TRANSFORMATIONEN aktiv uden et rigtigt token (#5160). Upload er
+      # fortsat slaaet fra: der er hverken SENTRY_AUTH_TOKEN, SENTRY_ORG eller
+      # SENTRY_PROJECT i dette job, og pluginet koerer med
+      # `sourcemaps.disable: "disable-upload"` + `telemetry: false`.
+      CZ_SENTRY_TRANSFORM: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Kontrakt-testene koerer FOER de to builds: er sammenligneren selv
+      # brudt, skal jobbet fejle paa 5 sekunder i stedet for efter to builds.
+      - name: Test manifest comparison
+        run: node --test scripts/compare-build-manifests.test.mjs
+
+      - name: Test build-determinism contracts
+        run: node --test scripts/check-build-determinism.test.mjs
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build A (release 1111...)
+        working-directory: frontend
+        env:
+          VERCEL_GIT_COMMIT_SHA: "1111111111111111111111111111111111111111"
+          VITE_VERCEL_GIT_COMMIT_SHA: "1111111111111111111111111111111111111111"
+          SENTRY_RELEASE: "1111111111111111111111111111111111111111"
+        run: npm run build
+
+      - name: Keep build A
+        run: mv frontend/dist build-a
+
+      - name: Build B (release 2222...)
+        working-directory: frontend
+        env:
+          VERCEL_GIT_COMMIT_SHA: "2222222222222222222222222222222222222222"
+          VITE_VERCEL_GIT_COMMIT_SHA: "2222222222222222222222222222222222222222"
+          SENTRY_RELEASE: "2222222222222222222222222222222222222222"
+        run: npm run build
+
+      - name: Keep build B
+        run: mv frontend/dist build-b
+
+      # Det blokerende trin. Rapporten skrives uanset udfald, saa artifactet
+      # nedenfor altid har manifest + diff at uploade.
+      - name: Compare complete manifests of build A and B
+        run: >-
+          node scripts/compare-build-manifests.mjs build-a build-b
+          --label-a "build A (release 1111...)"
+          --label-b "build B (release 2222...)"
+          --out determinism-report
+
+      # Bevis at gaten KAN blive roed: samme testfil som ovenfor, men med build
+      # B's RIGTIGE bytes som fixture. Testen kopierer dist'en, skriver et
+      # deploy-unikt release-sha ind i en bundle (den kendte fejl fra #4595) og
+      # kraever at sammenligningen fejler OG navngiver sha'en.
+      - name: Prove the gate turns red on a reintroduced release-sha
+        if: ${{ !cancelled() }}
+        env:
+          CZ_DETERMINISM_FIXTURE_DIST: build-b
+        run: node --test scripts/compare-build-manifests.test.mjs
+
+      # Artifactet indeholder kun filnavne, stoerrelser og sha256-summer fra to
+      # syntetiske builds - ingen secrets, ingen kildekode.
+      - name: Upload manifests and diff
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-determinism-manifests
+          path: determinism-report/
+          if-no-files-found: error
+          retention-days: 14
+
   warning-budget:
     runs-on: ubuntu-latest
     permissions:
