@@ -221,6 +221,9 @@ export async function runMissedGraduateSweep({
       });
       notificationsSent++;
     } catch (err) {
+      // best-effort pr. rytter: fejlen sluges IKKE, den bæres videre i `errors`
+      // og captures aggregeret i cron.js. Rækken står stadig som pending, så
+      // næste tick prøver efter-leveringen igen af sig selv.
       failed++;
       errors.push({ riderId: m.riderId, teamId: m.teamId, phase: "notify_backfill", message: err?.message || String(err) });
       console.error(`missed-graduate notify backfill failed (${m.riderId}):`, err?.message || err);
