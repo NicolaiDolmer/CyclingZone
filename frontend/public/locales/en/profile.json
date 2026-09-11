@@ -156,5 +156,14 @@
     "hint": "Turn off a category and it stops telling you there is something new. Replies to your own threads still reach you.",
     "summary": "Following {count} of {total} categories.",
     "saveFailed": "Could not save your choice. Try again."
+  },
+  "selectionReminder": {
+    "title": "Deadline reminder",
+    "subtitle": "A missing squad is marked in the navigation and on the planning page.",
+    "toggleLabel": "Remind me before the selection deadline",
+    "toggleHint": "On: Planning is marked when a race starts within {windowHours} hours without a full squad, and turns red if your team would not start with under {urgentHours} hours left. Off: nothing is marked, and the deadline still applies.",
+    "toggleHintGeneric": "On: Planning is marked when a race starts soon without a full squad, and turns red if your team would not start. Off: nothing is marked, and the deadline still applies.",
+    "on": "Deadline reminders are on.",
+    "off": "Deadline reminders are off."
   }
 }

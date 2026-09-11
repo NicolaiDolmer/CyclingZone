@@ -10,6 +10,8 @@ import SeasonPlannerPage from "./SeasonPlannerPage.jsx";
 import StrategyPage from "./StrategyPage.jsx";
 import CalendarPage from "./CalendarPage.jsx";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
+import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx"; // #4983
+import { useSelectionReminder } from "../hooks/useSelectionReminder.ts"; // #4983
 
 // #3102 etape 3 (PR 1) — Planlægnings-hubben: Holdudtagelse (11.254 sessions/30
 // dage på /races), Formplan (planneren) og Strategi samlet under ét nav-punkt
@@ -51,6 +53,9 @@ export default function PlanningHubPage() {
   const { t } = useTranslation("races");
   const [searchParams, setSearchParams] = useSearchParams();
   const racesTourSteps = useMemo(() => getRacesTourSteps(t), [t]);
+  // #4983: samme kilde som nav-markeringen (Layout.jsx) — boksen her viser
+  // hvilke trupper der mangler og hvor lang tid der er til fristen.
+  const { reminder: selectionReminder } = useSelectionReminder();
 
   // URL'en ER fane-tilstanden (#3102 etape 2-læringen) — ingen useState-kopi,
   // så browserens tilbage/frem flytter fanen med.
@@ -116,6 +121,11 @@ export default function PlanningHubPage() {
           fane) — samme afvejning som da den boede på RacesPage. */}
       <OnboardingTour pageKey="races" steps={racesTourSteps} />
       <PageHeader title={t("hub.title")} />
+
+      {/* #4983: paamindelsen staar OEVERST paa fladen, foer fanerne — den
+          gaelder alle fire faner, og den er grunden til at manageren blev
+          sendt hertil af nav-markeringen. */}
+      <SelectionDeadlineReminder reminder={selectionReminder} />
 
       <Tabs value={tab} onChange={changeTab} className="mb-5">
         <TabList label={t("hub.title")}>

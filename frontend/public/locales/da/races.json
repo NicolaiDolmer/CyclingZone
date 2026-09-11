@@ -1509,5 +1509,18 @@
       "title": "Sæt dine præferencer én gang",
       "body": "Holdstrategi gemmer de ryttere du bygger omkring, dine kaptajner pr. terræn og de løb der betyder mest. Din assistent genbruger det hver gang den udfylder et hold for dig. Taktik inde i et etapeløb sættes på selve løbet."
     }
+  },
+  "selectionReminder": {
+    "title": "Trup mangler",
+    "titleUrgent": "Holdet stiller ikke op",
+    "body": "{count, plural, one {# løb starter} other {# løb starter}} uden fuld trup.",
+    "bodyUrgent": "{count, plural, one {# løb er} other {# løb er}} under grænsen for at stille op.",
+    "picked": "{picked}/{target} udtaget",
+    "deadlinePassed": "fristen er passeret",
+    "in": {
+      "minutes": "om {count} min",
+      "hours": "om {count} t",
+      "days": "om {count, plural, one {# dag} other {# dage}}"
+    }
   }
 }

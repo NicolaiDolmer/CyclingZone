@@ -156,5 +156,14 @@
     "hint": "Slå en kategori fra, så holder den op med at sige til, når der er noget nyt. Svar på dine egne tråde når dig stadig.",
     "summary": "Du følger {count} af {total} kategorier.",
     "saveFailed": "Dit valg kunne ikke gemmes. Prøv igen."
+  },
+  "selectionReminder": {
+    "title": "Påmindelse før frist",
+    "subtitle": "En manglende trup markeres i navigationen og på planlægningssiden.",
+    "toggleLabel": "Påmind mig før udtagelsesfristen",
+    "toggleHint": "Til: Planlægning markeres når et løb starter inden for {windowHours} timer uden fuld trup, og bliver rød hvis holdet ikke ville stille op med under {urgentHours} timer tilbage. Fra: intet markeres, og fristen gælder stadig.",
+    "toggleHintGeneric": "Til: Planlægning markeres når et løb snart starter uden fuld trup, og bliver rød hvis holdet ikke ville stille op. Fra: intet markeres, og fristen gælder stadig.",
+    "on": "Påmindelsen er slået til.",
+    "off": "Påmindelsen er slået fra."
   }
 }

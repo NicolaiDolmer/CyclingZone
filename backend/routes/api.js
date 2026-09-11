@@ -474,6 +474,11 @@ import {
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
 import { readAssistantSelectionConfig, ASSISTANT_MODES } from "../lib/assistantSelectionMode.js";
+import {
+  buildSelectionDeadlineReminder,
+  SELECTION_REMINDER_WINDOW_HOURS,
+  SELECTION_REMINDER_TONES,
+} from "../lib/selectionDeadlineReminder.js";
 import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { selectInChunks } from "../lib/dbChunk.js";
@@ -9413,7 +9418,118 @@ router.get("/me/assistant-settings", requireAuth, presencePulseLimiter, async (r
     // Kolonnen kommer med database/2026-09-03-4201-assistant-mode.sql. Er den
     // ikke applied endnu, er vaerdien undefined = ikke fravalgt.
     autopick_enabled: req.team?.assistant_autopick_enabled !== false,
+    // #4983: den synlige paamindelse foer udtagelsesfristen. Default TIL —
+    // samme "en manglende kolonne slukker ingenting"-recipe som ovenfor.
+    selection_reminder_enabled: req.team?.selection_reminder_enabled !== false,
+    selection_reminder_window_hours: SELECTION_REMINDER_WINDOW_HOURS,
   });
+});
+
+// #4983: spillerens til/fra for den synlige paamindelse. Egen PATCH-vej frem for
+// et felt paa autopick-PATCHen ovenfor, fordi den er gated paa opt_in-tilstanden
+// (409 i de to andre) — paamindelsen er en ren UI-tilstand og virker i ALLE tre
+// tilstande, saa den maa ikke arve den gate.
+router.patch("/me/selection-reminder-settings", requireAuth, marketWriteLimiter, async (req, res) => {
+  const { enabled } = req.body || {};
+  if (typeof enabled !== "boolean") {
+    return res.status(400).json({ error: "enabled must be a boolean", errorCode: "enabled_must_be_boolean" });
+  }
+  if (!req.team?.id) {
+    return res.status(400).json({ error: "You need a team first", errorCode: "team_required" });
+  }
+  const { error } = await supabase
+    .from("teams").update({ selection_reminder_enabled: enabled }).eq("id", req.team.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, selection_reminder_enabled: enabled });
+});
+
+// #4983 · GET /api/me/selection-reminder — den synlige del af D-034.
+//
+// Read-only. Ingen tilstands-flip, ingen notifikation, ingen skriv. Genbruger
+// #2180's frist (foerste etapes scheduled_at) og #4038's "trup mangler"-optaelling
+// via lib/selectionDeadlineReminder.js — se filhovedet der for hvorfor ingen af
+// tallene er nye. Roed eskalering foelger app_config.assistant_late_fill_hours.
+router.get("/me/selection-reminder", requireAuth, presencePulseLimiter, async (req, res) => {
+  const empty = (enabled) => ({
+    enabled,
+    tone: SELECTION_REMINDER_TONES.NONE,
+    count: 0,
+    races: [],
+    window_hours: SELECTION_REMINDER_WINDOW_HOURS,
+    urgent_hours: null,
+  });
+  try {
+    if (!req.team?.id) return res.json(empty(true));
+    // Kolonnen kommer med database/2026-09-10-4983-selection-reminder.sql; er den
+    // ikke applied endnu, er vaerdien undefined = paamindelsen er TIL.
+    if (req.team.selection_reminder_enabled === false) return res.json(empty(false));
+
+    const { lateFillHours } = await readAssistantSelectionConfig(supabase);
+    const now = new Date();
+    const windowEnd = new Date(now.getTime() + SELECTION_REMINDER_WINDOW_HOURS * 3600 * 1000);
+
+    // Kandidater = de loeb der har MINDST en etape inde i vinduet. Billigere end
+    // at hente hele saesonens schedule; den praecise "foerste etape"-frist
+    // udledes bagefter af ALLE rakker for netop de loeb.
+    const windowRows = await fetchAllRows(() =>
+      supabase
+        .from("race_stage_schedule").select("race_id")
+        .gte("scheduled_at", now.toISOString())
+        .lte("scheduled_at", windowEnd.toISOString())
+        .order("race_id")
+    );
+    const candidateIds = [...new Set(windowRows.map((r) => r.race_id))];
+    if (!candidateIds.length) return res.json({ ...empty(true), urgent_hours: lateFillHours });
+
+    const [raceRows, scheduleRows, entryRows, withdrawalRows] = await Promise.all([
+      fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
+        .from("races").select("id, name, status, stages_completed, league_division_id, race_class")
+        .in("id", chunk).eq("status", "scheduled").order("id")),
+      fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
+        .from("race_stage_schedule").select("race_id, scheduled_at")
+        .in("race_id", chunk).order("race_id").order("stage_number")),
+      fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
+        .from("race_entries").select("race_id")
+        .in("race_id", chunk).eq("team_id", req.team.id).order("race_id")),
+      fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
+        .from("race_withdrawals").select("race_id")
+        .in("race_id", chunk).eq("team_id", req.team.id).order("race_id")),
+    ]);
+
+    const scheduleByRace = new Map();
+    for (const row of scheduleRows) {
+      if (!scheduleByRace.has(row.race_id)) scheduleByRace.set(row.race_id, []);
+      scheduleByRace.get(row.race_id).push(row);
+    }
+    const entryCountByRace = new Map();
+    for (const row of entryRows) entryCountByRace.set(row.race_id, (entryCountByRace.get(row.race_id) || 0) + 1);
+
+    const reminder = buildSelectionDeadlineReminder({
+      races: raceRows,
+      scheduleByRace,
+      entryCountByRace,
+      withdrawnRaceIds: new Set(withdrawalRows.map((r) => r.race_id)),
+      team: req.team,
+      now,
+      urgentHours: lateFillHours,
+    });
+
+    res.json({
+      enabled: true,
+      ...reminder,
+      window_hours: SELECTION_REMINDER_WINDOW_HOURS,
+      urgent_hours: lateFillHours,
+    });
+  } catch (error) {
+    // En paamindelse maa aldrig vaelte navigationen: fail-safe er "ingen
+    // markering", ikke en fejl-flade (Layout mounter dette for hver side).
+    console.error("[selection-reminder] failed:", error?.message || error);
+    captureException(error, {
+      tags: { flow: "planning", stage: "selection-reminder" },
+      extra: { teamId: req.team?.id ?? null },
+    });
+    res.json(empty(true));
+  }
 });
 
 router.patch("/me/assistant-settings", requireAuth, marketWriteLimiter, async (req, res) => {

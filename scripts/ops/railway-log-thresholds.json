@@ -46,6 +46,7 @@
     "notifyTransferResponse:countered": 10,
     "notifyTransferResponse:rejected": 10,
     "presence": 10,
+    "selection-reminder": 5,
     "proxy-cancel": 10,
     "proxy-notif": 10,
     "raceEntryCleanup": 10,

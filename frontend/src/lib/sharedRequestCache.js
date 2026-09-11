@@ -97,6 +97,11 @@ export const SHARED_KEYS = {
   deadlineDayStatus: "GET /api/deadline-day/status",
   transferListings: "GET /api/transfers",
   scoutingMe: "GET /api/scouting/me",
+  // #4983: paamindelsen foer udtagelsesfristen. Svaret afhaenger KUN af holdet
+  // og uret, ikke af hvilken side der spoerger — og hooket mountes baade i
+  // Layout (hver side) og i PlanningHubPage, saa /planning ellers ville fyre to
+  // uafhaengige kald a 5 Supabase-runder ved hvert mount og hvert interval.
+  selectionReminder: "GET /api/me/selection-reminder",
 };
 
 // TTL pr. endpoint. Deadline day skifter tilstand paa minut-skala, mens
@@ -106,4 +111,7 @@ export const SHARED_TTL_MS = {
   deadlineDayStatus: 60_000,
   transferListings: 15_000,
   scoutingMe: 30_000,
+  // Kortere end hookets eget 5-minutters interval: TTL'en samler de SAMTIDIGE
+  // mounts, den udskyder ikke opdateringen gul -> roed.
+  selectionReminder: 60_000,
 };
