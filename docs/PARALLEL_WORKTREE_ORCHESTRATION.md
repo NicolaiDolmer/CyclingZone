@@ -1,13 +1,22 @@
 
 # Parallel Worktree Orchestration — Playbook
 
+## ⚠️ Eneste indgang siden 2026-09-11: `.claude/workflows/wave.js` ([#5142](https://github.com/NicolaiDolmer/CyclingZone/issues/5142))
+
+Parallelt byggearbejde startes med `Workflow({ name: "wave", args: { tracks: [...] } })`, aldrig med håndskrevne Agent-spawns. Resten af dette dokument beskriver **hvorfor** protokollen ser ud som den gør; workflowet er **hvordan** den udføres, og det håndhæver den selv.
+
+- **Loftet er 4 laner** hele døgnet (DOLMERPC, 8 kerner, 32 GB). Erstatter det tidligere "3 parallelle subagents" i TL;DR nedenfor — tallet var dimensioneret efter en ældre maskine og en ældre arbejdsform.
+- **Verifikations-semafor: maks 2 tunge kørsler ad gangen** på tværs af alle worktrees (`scripts/verify-lock.ps1`). Erstatter "maks 3 tunge verifikationer samtidig" i AGENTS.md hard rule 24. Målt 11/9 på DOLMERPC: 9 workers uden semafor = 100 % CPU i timevis, 6 = 83 %.
+- **Håndhævelse:** `scripts/hooks/guard-agent-spawn.sh` (PreToolUse på `Agent`/`Workflow`) afviser spawns mens `.claude/run/wave-active.json` findes, og mere end 4 spawns pr. 45 min uden for bølger. Én opfølgning ad gangen slipper igennem med præfikset `WAVE-FOLLOWUP:`.
+- **Dry-run før en rigtig bølge:** `Workflow({ name: "wave", args: { dryRun: true, tracks: [...] } })` printer planen uden at starte noget.
+
 > Etableret 2026-05-23 efter Session K (3 PRs merged i én parallel run, ~30 min wall-clock vs. 2-3h sekventielt).
 > Postmortem: [`.claude/learnings/2026-05-23-parallel-orchestration.md`](../.claude/learnings/2026-05-23-parallel-orchestration.md)
 > Setup: [`docs/WORKTREE_WORKFLOW.md`](WORKTREE_WORKFLOW.md)
 
 ## TL;DR
 
-Master-session spawner 3 parallelle subagents (1 pr. worktree) → 3 PRs merges sekventielt med rebase → én samlet close-out. Token-cost: roughly neutral vs. sekventielt. Wall-clock-besparelse: ~4-6×.
+Master-session kører `wave.js` med 4 laner (1 worktree pr. lane, semafor 2 på tunge kørsler, opdateret 11/9 pr. #5142 — tallet var 3 indtil da) → PRs merges sekventielt med rebase → én samlet close-out. Token-cost: roughly neutral vs. sekventielt. Wall-clock-besparelse: ~4-6×.
 
 ## ⚠️ KRITISK forudsætning (2026-05-29, #684): brug `permissions.deny` til hard-blocks — ikke hooks alene
 
