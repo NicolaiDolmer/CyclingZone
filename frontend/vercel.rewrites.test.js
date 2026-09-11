@@ -29,6 +29,25 @@ function servesSpaFallback(path) {
   return new RegExp(`^${spaRewrite.source}$`).test(path);
 }
 
+// Generel oversaetter for Vercels path-to-regexp-`source`. Et raat regex er ikke
+// nok: "/:path" og "/:path*" er gyldige Vercel-kilder der rammer /version.json,
+// men som regex matcher de kun den bogstavelige streng ":path". Parameter-
+// segmenterne oversaettes derfor foerst; alt andet (fx "/(.*)") er allerede
+// regex og staar uroert.
+function vercelSourceMatches(source, path) {
+  const pattern = String(source)
+    // ":navn+"/":navn*" — ét eller flere segmenter, inkl. skraastreger.
+    .replace(/:[A-Za-z0-9_]+[*+]/g, "[^?]*")
+    // ":navn" — praecis ét segment.
+    .replace(/:[A-Za-z0-9_]+/g, "[^/?]+");
+  try {
+    return new RegExp(`^${pattern}$`).test(path);
+  } catch {
+    // En kilde vi ikke kan oversaette maa ALDRIG blive til et stille "nej".
+    return true;
+  }
+}
+
 test("SPA-fallback findes og peger paa app.html", () => {
   assert.ok(spaRewrite, "der skal vaere en catch-all rewrite til /app.html");
 });
@@ -94,6 +113,54 @@ test("chunk-selfheal.js har en eksplicit KORT cache-header (#4595 review)", () =
   const maxAge = Number(cacheControl.match(/max-age=(\d+)/)?.[1]);
   assert.ok(Number.isFinite(maxAge) && maxAge <= 300, "max-age skal vaere kort nok til at et nyt deploy vinder hurtigt");
   assert.ok(!/immutable/.test(cacheControl), "boot-vagten maa ALDRIG vaere immutable");
+});
+
+// #5033/#5159: /version.json er kilden til sandhed for "koerer denne fane stadig
+// den nyeste frontend". Faar den en lang cache-header, svarer den med det GAMLE
+// id efter et deploy — og hele lag 3 er tavst doedt, uden at noget fejler.
+test("/version.json revaliderer altid og faar aldrig lang cache (#5159)", () => {
+  const rule = config.headers.find((h) => h.source === "/version.json");
+  assert.ok(rule, "der skal vaere en dedikeret header-regel for /version.json");
+
+  const cacheControl = rule.headers.find((h) => h.key === "Cache-Control")?.value ?? "";
+  assert.match(cacheControl, /max-age=0/, "version.json skal have max-age=0");
+  assert.match(cacheControl, /must-revalidate/, "version.json skal revalidere paa hvert kald");
+  assert.ok(!/immutable/.test(cacheControl), "version.json maa ALDRIG vaere immutable");
+
+  // Forward-guard: en bredere regel der OGSAA rammer /version.json med lang
+  // cache ville give praecis samme tavse doed.
+  //
+  // Vercels `source` er path-to-regexp, ikke et raat regex: "/:path" og
+  // "/:path*" rammer begge /version.json, men som raat regex gjorde de ikke
+  // (CodeRabbit 11/9 — guarden kunne omgaas af netop den slags regel).
+  // `vercelSourceMatches` oversaetter derfor parameter-segmenterne foerst.
+  // `s-maxage` styrer Vercels EDGE-cache og indeholder IKKE strengen "max-age",
+  // saa den skal matches for sig (CodeRabbit 11/9): en regel med
+  // `s-maxage=31536000` alene ville ellers slippe forbi guarden og servere det
+  // gamle id fra edgen efter et deploy — praecis den tavse doed guarden findes
+  // for at fange. Graensen er 300 s, fordi repoet selv kalder `max-age=300`
+  // (boot-vagten) kort; alt derover kan naa at svare forkert efter et deploy.
+  const longCacheSources = config.headers
+    .filter((h) => {
+      const value = h.headers.find((x) => x.key === "Cache-Control")?.value ?? "";
+      if (/immutable/.test(value)) return true;
+      return [...value.matchAll(/(?:s-maxage|max-age)=(\d+)/g)].some(([, seconds]) => Number(seconds) > 300);
+    })
+    .map((h) => h.source);
+
+  for (const source of longCacheSources) {
+    assert.ok(
+      !vercelSourceMatches(source, "/version.json"),
+      `/version.json matcher "${source}" som har lang cache — saa ville tjekket svare med det gamle id efter et deploy`,
+    );
+  }
+
+  // Regressionstilfaelde: praecis de moenstre der slap forbi den raa
+  // regex-sammenligning.
+  for (const trap of ["/:path", "/:path*", "/(.*)", "/:file.json"]) {
+    assert.ok(vercelSourceMatches(trap, "/version.json"), `"${trap}" SKAL taelle som en traeffer`);
+  }
+  assert.ok(!vercelSourceMatches("/assets/(.*)", "/version.json"));
 });
 
 test("alle mapper med lang cache-header er undtaget fra fallback", () => {

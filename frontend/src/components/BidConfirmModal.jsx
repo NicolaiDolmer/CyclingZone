@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { GavelIcon, AlertTriangleIcon, BriefcaseIcon } from "./ui/icons";
 import { RETIREMENT_WINDOW_START_AGE, RETIREMENT_GUARANTEED_AGE } from "../lib/riderAge";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 
 // Ikonet er ikke oversættelig tekst — det vælges af mode, ikke i18n.
 const MODE_ICON = { bid: GavelIcon, proxy: AlertTriangleIcon, transfer: BriefcaseIcon };
@@ -18,6 +19,10 @@ const MODE_ICON = { bid: GavelIcon, proxy: AlertTriangleIcon, transfer: Briefcas
 // fra useAuctionBidding.js's auctionSettlesAfterValueUpdate.
 export function BidConfirmModal({ show, mode = "bid", riderName, amount, retirementTier = null, settlesAfterValueUpdate = false, onCancel, onConfirm, busy = false }) {
   const { t } = useTranslation(["auctions", "common"]);
+  // #5159 (B1): en aaben bekraeftelsesdialog venter paa spillerens svar. Et
+  // release-drevet reload maatte ikke lukke den under ham. Hooket kaldes FOER
+  // det tidlige return, saa det er ubetinget (rules-of-hooks).
+  useReloadBlock(Boolean(show), RELOAD_BLOCK_REASONS.DIALOG);
   if (!show) return null;
 
   const retirementText = retirementTier

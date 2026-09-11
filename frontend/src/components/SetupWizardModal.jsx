@@ -3,6 +3,9 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { getAttribution } from "../lib/attribution";
 import { ChevronRightIcon } from "./ui/icons";
+// #5159 (B1): onboarding er foerste indtryk — et deploy midt i den maa ikke
+// nulstille holdnavn og managernavn under spilleren.
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -15,6 +18,12 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
   const [managerName, setManagerName] = useState(initialManagerName);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Modalen er kun monteret mens opsaetningen mangler, saa selve tilstedevaerelsen
+  // ER blokeringen: der er intet gemt endnu, og `onComplete` afmonterer den (og
+  // slipper blokeringen) i det oejeblik PUT'en er igennem.
+  useReloadBlock(true, RELOAD_BLOCK_REASONS.DIALOG);
+  useReloadBlock(saving, RELOAD_BLOCK_REASONS.BUSY);
 
   async function handleSave() {
     if (saving) return;

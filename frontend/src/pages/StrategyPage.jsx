@@ -15,6 +15,8 @@ import RoleRulesEditor from "../components/racehub/strategy/RoleRulesEditor.jsx"
 import CaptainBoard from "../components/racehub/strategy/CaptainBoard.jsx";
 import TargetRacePicker from "../components/racehub/strategy/TargetRacePicker.jsx";
 import PreviewDiff from "../components/racehub/strategy/PreviewDiff.jsx";
+// #5159 (B1): A-kaede, rolle-regler, kaptajner og maal-loeb er kladde indtil Gem.
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -26,6 +28,11 @@ export default function StrategyPage() {
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  // #5159 (B1): `saved` kan ikke baere porten alene — den er ogsaa false lige
+  // efter en ren indlaesning, hvor der intet er at miste. `touched` er det ene
+  // bit der mangler: sat af den `dirty()` der i forvejen koeres ved hver
+  // aendring, og ryddet naar PUT'en er igennem.
+  const [touched, setTouched] = useState(false);
   // #2465: preview/save/regenerate used to swallow every error silently (bare
   // catch, only set state on res.ok) — a failed save just stopped the spinner
   // with no explanation. Same shape/pattern as RaceHubBoard.jsx's mutate() error surface.
@@ -37,6 +44,12 @@ export default function StrategyPage() {
   // tavse gren - !res.ok og netværksfejl satte ingen state, og `!data?.enabled →
   // null` tegnede så en tom side. Samme rettelse som RaceHubBoard får her.
   const [loadError, setLoadError] = useState(null); // { kind, status? } | null
+
+  // #5159 (B1): en ugemt strategi-kladde maa ikke kasseres af et deploy, og et
+  // reload maa ikke ramme ned MIDT i en PUT eller en regenerering. Hookene kaldes
+  // foer sidens tidlige returns (loading/fejl/flag-off), saa de er ubetingede.
+  useReloadBlock(touched, RELOAD_BLOCK_REASONS.DIRTY);
+  useReloadBlock(busy, RELOAD_BLOCK_REASONS.BUSY);
 
   const load = useCallback(async () => {
     const headers = await authHeaders();
@@ -105,7 +118,7 @@ export default function StrategyPage() {
     </div>
   );
 
-  const dirty = () => { setSaved(false); };
+  const dirty = () => { setSaved(false); setTouched(true); };
   const payload = () => ({
     a_chain: draft.aChain, captain_priorities: draft.captainPriorities,
     role_rules: draft.roleRules, target_race_ids: draft.targetRaceIds,
@@ -134,6 +147,8 @@ export default function StrategyPage() {
       const res = await fetch(`${API}/api/races/strategy`, { method: "PUT", headers, body: JSON.stringify(payload()) });
       if (res.ok) {
         setSaved(true);
+        // Kladden er nu paa serveren: porten maa aabne igen (#5159 B1).
+        setTouched(false);
       } else {
         const body = await res.json().catch(() => ({}));
         setError({ code: body.error || "generic" });
