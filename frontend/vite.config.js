@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
+import { bootAssetsManifestPlugin } from "./vite-plugins/boot-assets-manifest.js";
 import { computeSkewDefines } from "./vite-plugins/skew-defines.js";
 // SSOT for om Skew Protection reelt er tændt i koden. Modulet har ingen
 // side-effects ved import (kun const- og funktions-eksporter), så det kan læses
@@ -137,6 +138,10 @@ export default defineConfig({
     worktreeIdPlugin(),
     releaseMetaPlugin(),
     patchNotesJsonPlugin(),
+    // #5161: skriver boot-assets (entry + modulepreloads + asset-stylesheets) som
+    // JSON-datablok lige FOER /chunk-selfheal.js, saa boot-vagten har en komplet
+    // liste allerede mens parseren er midt i <head>.
+    bootAssetsManifestPlugin(),
     enableSentryPlugin
       ? sentryVitePlugin({
           authToken: process.env.SENTRY_AUTH_TOKEN,
