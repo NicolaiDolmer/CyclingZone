@@ -53,8 +53,31 @@ async function setupReleaseHarness(page, { servedRelease }) {
   );
 }
 
+// Selve maalingen loeber ind i det den maaler: naar release-laget kalder
+// `location.assign()`, river Chromium execution-contexten ned midt i
+// `page.evaluate` ("Execution context was destroyed..."). `expect.poll` sluger
+// ikke exceptions fra poll-funktionen, saa EET uheldigt opslag = roed test —
+// og vinduet blev bredere da navigations-guarden (`canHardReload`) lagde en
+// fetch-round-trip ind foer reloadet. Derfor: behandl racen som "endnu ikke
+// faerdig", vent paa det nye dokument og maal igen.
+const NAVIGATION_RACE =
+  /Execution context was destroyed|Target (?:page|closed)|frame was detached|Cannot find context/i;
+
 async function documentLoads(page) {
-  return page.evaluate((key) => Number(window.sessionStorage.getItem(key) || 0), LOAD_COUNTER_KEY);
+  let lastError;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return await page.evaluate(
+        (key) => Number(window.sessionStorage.getItem(key) || 0),
+        LOAD_COUNTER_KEY,
+      );
+    } catch (error) {
+      if (!NAVIGATION_RACE.test(String(error?.message ?? ""))) throw error;
+      lastError = error;
+      await page.waitForLoadState("domcontentloaded").catch(() => {});
+    }
+  }
+  throw lastError;
 }
 
 test.beforeEach(async ({ page }) => {
@@ -86,7 +109,23 @@ test("ny release ved navigation giver ét fuldt dokument-load", async ({ page })
   // Og den holder: version.json melder stadig release B, saa den nye side
   // opdager "en ny release" igen ved naeste navigation — men loop-guarden giver
   // ikke et reload nummer to. Uden den ville fanen genindlaese i ring.
-  await page.locator('a[href="/privatlivspolitik"], a[href="/privacy-policy"]').first().click();
+  // Selektoren skal ramme login-sidens EGEN react-router <Link> i sidefoden, og
+  // der er to fælder paa vejen:
+  //   · WaitlistConsentText's privatlivs-link har target="_blank" — et klik der
+  //     aabner en ny fane efterlader denne fane paa /login.
+  //   · Indtil LoginPage's lazy chunk er inde, staar den PRERENDEREDE
+  //     landingsside-shell fra index.html i #root, og DENS sidefod har et raat
+  //     <a href="/privacy-policy"> uden data-discover — altsaa et fuldt
+  //     dokument-load, ikke client-side routing.
+  // `[data-discover]` (react-routers markoer paa <Link>) + `:not([target])`
+  // vaelger praecis den ene rigtige, og Playwright venter automatisk paa at den
+  // findes — dvs. paa at login-siden er renderet.
+  await page
+    .locator(
+      'a[data-discover]:not([target])[href="/privatlivspolitik"], a[data-discover]:not([target])[href="/privacy-policy"]',
+    )
+    .first()
+    .click();
   await expect(page).toHaveURL(/privatlivspolitik|privacy-policy/);
   await page.waitForTimeout(2000);
   expect(await documentLoads(page)).toBe(2);
