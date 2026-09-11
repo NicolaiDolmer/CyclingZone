@@ -65,16 +65,150 @@ export function getChunkReloadKey(release = "unknown") {
   return `cz:chunk-reload-attempted:${release || "unknown"}`;
 }
 
-export function shouldAttemptChunkReload({ error, release, storage } = {}) {
-  if (!isChunkLoadError(error) || !storage) return false;
-  const key = getChunkReloadKey(release);
+// ---------------------------------------------------------------------------
+// Fælles recovery-budget (#5159, Codex-fund M3)
+// ---------------------------------------------------------------------------
+//
+// Før dette havde de tre reparationslag hver sit budget: boot-vagten et
+// 60-sekunders vindue (`cz_chunk_selfheal_at` i public/chunk-selfheal.js),
+// den globale fejlhandler her ét reload pr. KILDE-release, og release-watcheren
+// ét reload pr. MÅL-release. Tre budgetter der ikke kender hinanden kan lægge
+// deres reloads oven i hinanden i ét og samme reparationsforløb.
+//
+// Nu deler alle tre ét tælleværk i sessionStorage. Boot-vagten skriver stadig
+// kun sin egen nøgle (den er ren, tidlig JS uden adgang til dette modul), så
+// dens reload bogføres bagefter af `accountBootGuardReload` ved app-boot — så
+// koordineringen sker gennem storage-nøglerne, uden at røre vagtens kode.
+//
+// Vinduet er rullende og ikke hele fanens levetid: et loop sker inden for
+// sekunder til minutter, mens en fane der står åben i dage stadig skal kunne
+// tage en opdatering i morgen. Er budgettet brugt, forsvinder opdateringen ikke
+// — den bliver til banneret med den manuelle "Update"-knap, som IKKE bruger af
+// budgettet, fordi den er spillerens eget klik.
+export const RECOVERY_BUDGET_KEY = "cz:recovery-budget";
+export const RECOVERY_BUDGET_MAX = 3;
+export const RECOVERY_BUDGET_WINDOW_MS = 60 * 60 * 1000;
+
+// Boot-vagtens egen nøgle (public/chunk-selfheal.js) plus markøren der siger at
+// vi allerede har bogført netop dét reload. Læses her, skrives aldrig af vagten.
+export const BOOT_GUARD_KEY = "cz_chunk_selfheal_at";
+export const BOOT_GUARD_ACCOUNTED_KEY = "cz:recovery-budget-bootguard-at";
+
+/**
+ * Selve OPSLAGET `window.sessionStorage` kaster i browsere hvor site-data er
+ * slået fra — ikke kun kaldene på objektet. Alle lag skal gennem denne accessor,
+ * også de tidligste (main.jsx før initSentry), ellers dør boot på en property-
+ * læsning (#5159 / M3).
+ * @returns {Storage|null} null betyder fail-closed hele vejen ned.
+ */
+export function safeSessionStorage(win = typeof window === "undefined" ? undefined : window) {
   try {
-    if (storage.getItem(key) === "1") return false;
-    storage.setItem(key, "1");
+    return win?.sessionStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readBudget(storage, now) {
+  let raw;
+  try {
+    raw = storage?.getItem(RECOVERY_BUDGET_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) return { used: 0, windowStart: now };
+  try {
+    const parsed = JSON.parse(raw);
+    const used = Number.isFinite(parsed?.used) ? parsed.used : 0;
+    const windowStart = Number.isFinite(parsed?.windowStart) ? parsed.windowStart : now;
+    // Rullende vindue: et udløbet budget starter forfra.
+    if (now - windowStart > RECOVERY_BUDGET_WINDOW_MS) return { used: 0, windowStart: now };
+    return { used, windowStart };
+  } catch {
+    return { used: 0, windowStart: now };
+  }
+}
+
+/**
+ * Er der plads til ét automatisk reload mere? Fail-closed: uden brugbar storage
+ * kan vi ikke bevise at vi ikke allerede har reloadet, og så gør vi det ikke.
+ * lazyWithRetry + den brandede fallback er sikkerhedsnettet i stedet.
+ */
+export function hasRecoveryBudget(storage, { max = RECOVERY_BUDGET_MAX, now = Date.now() } = {}) {
+  if (!storage) return false;
+  const budget = readBudget(storage, now);
+  if (!budget) return false;
+  return budget.used < max;
+}
+
+/**
+ * Bogfør ét brugt automatisk reload. Kaldes FØRST når reloadet faktisk sker, og
+ * efter lagets egen loop-guard er brændt — så et forsøg der blev afvist af en
+ * anden grund ikke koster budget.
+ * @param {Storage|null} storage
+ * @param {string} source hvilket lag brugte det ("chunk-error", "release-watch", "boot-guard")
+ */
+export function spendRecoverySlot(storage, source = "unknown", { now = Date.now() } = {}) {
+  if (!storage) return false;
+  const budget = readBudget(storage, now);
+  if (!budget) return false;
+  try {
+    storage.setItem(
+      RECOVERY_BUDGET_KEY,
+      JSON.stringify({ used: budget.used + 1, windowStart: budget.windowStart, last: source }),
+    );
     return true;
   } catch {
     return false;
   }
+}
+
+/**
+ * Bogfør boot-vagtens reload i det fælles budget. Vagten kører før moduler
+ * findes og kan derfor ikke selv gøre det; den efterlader blot sit tidsstempel.
+ *
+ * Kun ét tidsstempel bogføres én gang (markør-nøglen), og kun hvis det er
+ * friskt — en nøgle fra i går er ikke "lige sket". Samme friskheds-vindue som
+ * selvhelings-rapporteringen i main.jsx.
+ *
+ * @returns {boolean} true hvis der faktisk blev bogført et reload nu.
+ */
+export function accountBootGuardReload(storage, { now = Date.now(), freshnessMs = 5 * 60 * 1000 } = {}) {
+  if (!storage) return false;
+  let healedAt;
+  let accountedAt;
+  try {
+    healedAt = Number(storage.getItem(BOOT_GUARD_KEY)) || 0;
+    accountedAt = Number(storage.getItem(BOOT_GUARD_ACCOUNTED_KEY)) || 0;
+  } catch {
+    return false;
+  }
+  if (!healedAt) return false;
+  if (healedAt === accountedAt) return false;
+  if (now - healedAt > freshnessMs) return false;
+  try {
+    storage.setItem(BOOT_GUARD_ACCOUNTED_KEY, String(healedAt));
+  } catch {
+    return false;
+  }
+  return spendRecoverySlot(storage, "boot-guard", { now });
+}
+
+export function shouldAttemptChunkReload({ error, release, storage } = {}) {
+  if (!isChunkLoadError(error) || !storage) return false;
+  // #5159 (M3): samme fælles budget som den globale handler og release-watcheren.
+  // Peek FØR loop-guard-nøglen brændes — ellers koster et forsøg der alligevel
+  // ikke må køre det ene reload denne release har.
+  if (!hasRecoveryBudget(storage)) return false;
+  const key = getChunkReloadKey(release);
+  try {
+    if (storage.getItem(key) === "1") return false;
+    storage.setItem(key, "1");
+  } catch {
+    return false;
+  }
+  spendRecoverySlot(storage, "boundary");
+  return true;
 }
 
 // Kausal navigations-guard (#3602) — delt af BEGGE recovery-stier (denne fil og
@@ -178,12 +312,23 @@ export function installChunkReloadHandlers({ target, release, storage, reload, d
       ...(probeTimeoutMs === undefined ? {} : { timeoutMs: probeTimeoutMs }),
     });
     if (!alive || reloadedThisLoad || unloading) return;
+    // #5159 (M3): FAIL-CLOSED. Før faldt denne sti tilbage til `reloadedThisLoad`
+    // når sessionStorage manglede eller kastede — men det flag dør med
+    // dokumentet. Målt i en ren model: tre dokumentstarter uden storage, ét
+    // preload-error pr. start, gav TRE reloads. Uden bevis for at vi ikke
+    // allerede har reloadet, reloader vi ikke; lazyWithRetry og den brandede
+    // fallback med sin manuelle knap er sikkerhedsnettet.
+    if (!storage) return;
+    // Budget-tjekket FØR loop-guard-nøglen brændes, så et forsøg der alligevel
+    // ikke må køre ikke stjæler det ene reload denne release har.
+    if (!hasRecoveryBudget(storage)) return;
     try {
-      if (storage?.getItem(key) === "1") return;
-      storage?.setItem(key, "1");
+      if (storage.getItem(key) === "1") return;
+      storage.setItem(key, "1");
     } catch {
-      // sessionStorage utilgængelig (privat browsing) — fald tilbage til per-load-guard.
+      return;
     }
+    spendRecoverySlot(storage, "chunk-error");
     reloadedThisLoad = true;
     reload?.();
   };
