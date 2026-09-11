@@ -49,8 +49,14 @@ import { installNetworkMocks, stabilizePage } from "./fixtures.js";
 async function readBootAssets(page, documentPath) {
   const response = await page.request.get(documentPath);
   expect(response.ok(), `${documentPath} kunne ikke hentes fra preview-serveren`).toBeTruthy();
-  const html = await response.text();
-  const match = html.match(/id="cz-boot-assets">([^<]*)</);
+  // HTML-kommentarer FJERNES foerst: doc-kommentaren over guard-tagget i
+  // index.html citerer selve datablok-tagget ordret ("<script
+  // type=\"application/json\" id=\"cz-boot-assets\">") og staar FOER den
+  // plugin-injicerede blok i dokumentet. Uden strip rammer regexen
+  // kommentarteksten, og JSON.parse kaster paa prosaen i stedet.
+  const html = (await response.text()).replace(/<!--[\s\S]*?-->/g, "");
+  // Kraev ogsaa det lukkende tag, saa kun en rigtig datablok kan matche.
+  const match = html.match(/<script\b[^>]*\bid="cz-boot-assets"[^>]*>([\s\S]*?)<\/script>/);
   expect(
     match,
     `${documentPath} mangler <script id="cz-boot-assets"> — uden den er boot-vagten slukket (#5161)`,
