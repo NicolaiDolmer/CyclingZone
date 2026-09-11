@@ -1,0 +1,59 @@
+{
+  // #5158 — strict type-check af KERNEN (oekonomi, auktion, akademi/ejerskab,
+  // finalisering/scheduler). Til forskel fra tsconfig.engine.json (race engine
+  // v4, 100 % TS, 0 fejl) er kernen stadig JavaScript: derfor allowJs +
+  // checkJs, og derfor GIVER denne config fejl i dag. Det er med vilje.
+  //
+  // Fejlene er en BASELINE, ikke en opgaveliste for een PR. Skralde-gaten
+  // (scripts/check-ts-core-ratchet.mjs + scripts/ts-core-ratchet-baseline.json)
+  // holder tallene nede: de maa falde, aldrig stige. Konvertering sker eet
+  // spor ad gangen — se docs/TYPESCRIPT_DIRECTION.md.
+  //
+  // Compiler-optionerne er MED VILJE identiske med tsconfig.engine.json
+  // (nodenext + erasableSyntaxOnly + verbatimModuleSyntax), saa en fil der er
+  // groen her ogsaa er groen naar den en dag flyttes ind under engine-lignende
+  // strictness. Den eneste forskel er allowJs/checkJs + include/exclude.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "erasableSyntaxOnly": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": false,
+    "types": ["node"]
+  },
+  // Kerne-listen er defineret som DATA i scripts/ts-core-ratchet-baseline.json
+  // (omraade -> globs). Listen herunder skal vaere PRAECIS den samme maengde
+  // globs; check-ts-core-ratchet.mjs fejler hvis de to divergerer.
+  //
+  // Globs er MED VILJE uden filendelse ("lib/economy*", ikke "lib/economy*.js").
+  // Konverterer nogen economyEngine.js -> economyEngine.ts, skal filen blive
+  // ved med at vaere daekket; en .js-only glob ville tavst tabe den i samme
+  // sekund den blev konverteret — praecis den fil vi lige har gjort strict.
+  "include": [
+    "lib/economy*",
+    "lib/financeForecast*",
+    "lib/salaryDecoupling*",
+    "lib/auction*",
+    "lib/academy*",
+    "lib/ownership*",
+    "lib/riderOwnershipAudit*",
+    "lib/transferExecution*",
+    "lib/boardWeekendFinalization*",
+    "lib/finalizeInstrumentation*",
+    "lib/raceFinalize*",
+    "lib/stageScheduler*",
+    "lib/raceCalendarScheduling*"
+  ],
+  // Tests er UDENFOR kernen i denne omgang: de er mange, de er fixture-tunge,
+  // og en TS-konvertering af dem koeber ingen produktions-sikkerhed. Nye
+  // *.test.js-filer er derfor stadig tilladt i kerne-mapperne.
+  "exclude": ["**/*.test.js", "node_modules"]
+}
