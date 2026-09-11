@@ -1,8 +1,9 @@
 # Perf-baseline 2026-09-11 (#5131)
 
-READ-ONLY måling, ingen kodeændring. Metode: `npx lighthouse@latest`, headless Chromium
-(Playwright's `chromium-1234`, da systemets Chrome ikke findes), 3 kørsler pr.
-side × preset, **median** rapporteret. `--only-categories=performance`.
+READ-ONLY måling, ingen kodeændring. Metode: `npx lighthouse@latest` (resolved
+**v13.4.1**), headless Chromium (Playwright's `chromium-1234`, da systemets
+Chrome ikke findes), 3 kørsler pr. side × preset, **median** rapporteret.
+`--only-categories=performance`.
 Rå tal: [`perf-baseline-2026-09-11.json`](perf-baseline-2026-09-11.json).
 Fulde Lighthouse-JSON-rapporter (24 stk., ~650 KB/stk.) ligger kun i sessionens
 scratch-mappe, ikke i repoet — for store til at committe, og alt relevant er
@@ -70,13 +71,16 @@ inden for budget (1138 KB + 5% margin). `audit-perf-seo.mjs`: 0 🔴, 1 🟡 (bu
    formentlig alle sider der bruger den. **Forventet gevinst:** ét ét-linjes
    fix (sæt eksplicit `width`/`height` eller `aspect-ratio`) kan fjerne en
    væsentlig del af CLS sitewide — billigste/højeste-ROI fund på listen.
-2. **`/roadmap` er den svageste offentlige side.** Mobil: Performance 49, LCP
-   5,7 s, CLS 0,517 (langt over alle tærskler). Layout-shiftet er en stor
-   sektion ("Løb — hvor det er i dag") der forskyder ~5.365 px indhold efter
-   load. Desktop deler samme CLS-problem (0,553) selvom LCP er fint (1,3 s).
-   **Forventet gevinst:** hvis sektionen stabiliseres (reserveret plads/skeleton
-   før data er klar) kan siden realistisk gå fra rød til grøn/gul på både
-   Performance og CLS — den side der batter mest for én rettelse.
+2. **`/roadmap` er den svageste offentlige side, med to adskilte problemer.**
+   Mobil: Performance 49, LCP 5,7 s, CLS 0,517 (alle langt over tærsklerne).
+   Layout-shiftet er en stor sektion ("Løb — hvor det er i dag") der forskyder
+   ~5.365 px indhold efter load — det er et **CLS-spor** (reserveret
+   plads/skeleton før data er klar); det ændrer ikke LCP. Den høje mobil-LCP
+   (5,7 s) er et **separat spor** (se fund 3) og skal løses selvstændigt —
+   siden bliver ikke grøn/gul af CLS-fixet alene, da verdiktet bruger værste
+   metrik. Desktop deler CLS-problemet (0,553) selvom LCP der er fint (1,3 s).
+   **Forventet gevinst:** CLS-fixet er billigst og fjerner det værste enkelttal;
+   fuld grøn/gul kræver derudover LCP-arbejdet fra fund 3.
 3. **Mobil-LCP er rødt/gult på alle tre SPA-sider (forside 4,1 s, login 3,5 s,
    roadmap 5,7 s)** mens marketing-sitet (Next.js, prerenderet) ligger på 2,6 s.
    Fælles delårsag: render-blocking `index-*.css` + `chunk-selfheal.js` (~150-

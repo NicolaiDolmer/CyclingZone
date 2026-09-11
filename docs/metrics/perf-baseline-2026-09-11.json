@@ -1,7 +1,8 @@
 {
   "generated_at": "2026-09-11",
   "issue": 5131,
-  "method": "npx lighthouse@latest, headless Chromium (Playwright-chromium-1234), 3 koersler pr. side/preset, median rapporteret. only-categories=performance.",
+  "method": "npx lighthouse@latest (resolved 13.4.1), headless Chromium (Playwright-chromium-1234), 3 koersler pr. side/preset, median rapporteret. only-categories=performance.",
+  "lighthouse_version": "13.4.1",
   "thresholds": {
     "lcp_mobile_ms": 2500,
     "inp_ms": 200,
@@ -194,7 +195,8 @@
       }
     },
     "marketing": {
-      "url": "https://cycling-zone-marketing.vercel.app/ (separat Vercel-projekt, ikke koblet til cyclingzone.org endnu — #4067)",
+      "url": "https://cycling-zone-marketing.vercel.app/",
+      "note": "Separat Vercel-projekt (marketing/, Next.js), ikke koblet til cyclingzone.org endnu — #4067.",
       "mobile": {
         "performance_median": 96,
         "performance_runs": [
