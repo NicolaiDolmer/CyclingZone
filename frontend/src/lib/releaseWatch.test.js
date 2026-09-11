@@ -259,6 +259,27 @@ test("det manuelle klik bruger IKKE af recovery-budgettet", async () => {
 
 // --- M1 ---------------------------------------------------------------------
 
+test("et rollback fjerner banneret igen — knappen maa ikke love en opdatering der ikke findes", async () => {
+  let gone = 0;
+  const watcher = okWatcher([
+    { status: "ok", release: "sha-b", frontendId: "fe-b", isNew: true },
+    // Rollback / CDN-flip: serveren koerer igen den frontend vi allerede har.
+    { status: "ok", release: "sha-a", frontendId: "fe-a", isNew: false },
+  ]);
+  const { reloader, reloads } = makeReloader({ watcher, onUpdateGone: () => { gone += 1; } });
+  acquireReloadBlock("dirty");
+
+  await reloader.runCheck("interval");
+  assert.equal(reloader.isUpdateReady(), true);
+
+  await reloader.runCheck("interval");
+  assert.equal(reloader.isUpdateReady(), false, "banneret skal vaek igen");
+  assert.equal(gone, 1, "hooken faar besked, ellers bliver knappen staaende");
+
+  await reloader.applyUpdate();
+  assert.deepEqual(reloads, [], "og der er intet at klikke paa laengere");
+});
+
 test("M1: A -> forsoeg paa B -> stadig A -> C opdages (polling fryser ikke)", async () => {
   const storage = fakeStorage();
   // Foerste dokument brugte allerede B's slot; denne fane er starten paa nummer to.

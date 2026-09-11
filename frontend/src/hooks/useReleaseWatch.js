@@ -93,6 +93,10 @@ export default function useReleaseWatch() {
           blockedBy: reasons.join(",") || "none",
         });
       },
+      // Rollback eller CDN-flip: der er ikke laengere en nyere frontend, og saa
+      // skal banneret vaek igen. Ellers ville knappen love en opdatering der
+      // ikke findes.
+      onUpdateGone: () => setUpdateReady(false),
     });
     ctxRef.current = reloader;
 

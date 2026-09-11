@@ -278,6 +278,7 @@ export function createReleaseReloader({
   subscribeAllowed = onReloadAllowed,
   blockReasons = getReloadBlockReasons,
   onUpdateReady,
+  onUpdateGone,
   now = () => Date.now(),
   settleMs = RELOAD_SETTLE_MS,
 } = {}) {
@@ -404,7 +405,27 @@ export function createReleaseReloader({
     if (result?.status !== "ok") return;
     if (!result.isNew) {
       // Serveren kører den frontend vi allerede har: der er intet mål længere.
+      // Det sker ved et rollback, eller når en CDN-node vipper tilbage til den
+      // udgave denne fane allerede kører.
+      //
+      // Banneret SKAL væk igen (CodeRabbit 11/9). Blev det stående, ville
+      // klikket lave et fuldt dokument-load til en frontend vi allerede kører:
+      // spilleren mister sin side og får ingen opdatering, og telemetrien ville
+      // notere endnu et `no_effect`. At nulstille felterne her er ikke nok —
+      // React-tilstanden i hooken skal have besked, ellers bliver knappen
+      // stående uanset.
       state.pendingRelease = null;
+      if (state.updateReady) {
+        state.updateReady = false;
+        state.lastTarget = null;
+        state.lastTargetSha = "";
+        notifiedTarget = null;
+        try {
+          onUpdateGone?.();
+        } catch {
+          // et UI-kald må aldrig vælte recovery-stien
+        }
+      }
       return;
     }
     const target = result.frontendId;
