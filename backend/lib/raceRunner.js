@@ -958,18 +958,6 @@ async function loadStartFieldRiderIds({ supabase, raceId }) {
 // ikke, vælger assistenten fornuftigt; ingen straf for fravær"). Hold MED entries
 // (manager-udtagne) røres ikke. Skadede (injured_until >= i dag) udelades (#1306 6.5).
 //
-// #1688 (forever-relaunch race-scale): to additive felt-garantier oven på #1307:
-//   1. PULJE-FILTER — når løbet har en pulje (race.league_division_id), auto-fyldes
-//      KUN hold i den pulje. Et løb hører til én pulje (race/standings-gruppe, #1608);
-//      hold fra andre puljer hører ikke i feltet. Bærer løbet endnu ingen pulje
-//      (pre-per-pool-race-virkelighed — `races` har ingen pulje-kolonne i dag, og
-//      parallelle pulje-løb-instanser er bevidst out-of-scope), springes filteret
-//      over og hele feltet behandles som én pulje (uændret #1307-adfærd) — men
-//      felt-cap'et nedenfor beskytter stadig mod et urealistisk stort startfelt.
-//   2. FELT-CAP — feltet cappes til POOL_TARGET_SIZE (24, = pulje-target). Er flere
-//      end 24 hold egnede, beholdes de 24 STÆRKESTE målt på aggregeret roster-
-//      base_value (markedsværdi-proxy). Det forener race-feltets størrelse med
-//      pulje-kapaciteten (#1608: pulje-target = race-feltcap = 24).
 // #4959: friskt billede af hvilke hold der er markeret til nedlæggelse (eller allerede
 // nedlagt) EFTER at DB-guarden afviste batchen. Returnerer rækkerne uden dem. Rører
 // intet andet: er ingen af holdene drænende, skyldtes afvisningen noget andet (fx en
@@ -988,6 +976,18 @@ async function dropDrainingTeamRows({ supabase, rows }) {
   return rows.filter((r) => !draining.has(r.team_id));
 }
 
+// #1688 (forever-relaunch race-scale): to additive felt-garantier oven på #1307:
+//   1. PULJE-FILTER — når løbet har en pulje (race.league_division_id), auto-fyldes
+//      KUN hold i den pulje. Et løb hører til én pulje (race/standings-gruppe, #1608);
+//      hold fra andre puljer hører ikke i feltet. Bærer løbet endnu ingen pulje
+//      (pre-per-pool-race-virkelighed — `races` har ingen pulje-kolonne i dag, og
+//      parallelle pulje-løb-instanser er bevidst out-of-scope), springes filteret
+//      over og hele feltet behandles som én pulje (uændret #1307-adfærd) — men
+//      felt-cap'et nedenfor beskytter stadig mod et urealistisk stort startfelt.
+//   2. FELT-CAP — feltet cappes til POOL_TARGET_SIZE (24, = pulje-target). Er flere
+//      end 24 hold egnede, beholdes de 24 STÆRKESTE målt på aggregeret roster-
+//      base_value (markedsværdi-proxy). Det forener race-feltets størrelse med
+//      pulje-kapaciteten (#1608: pulje-target = race-feltcap = 24).
 export async function fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist = true }) {
   // #2962: ufiltreret teams-select (kun test-konto-filtreret, ellers ALLE hold) —
   // 155 rækker 25/7, samme #2951-klasse (vokser med hver signup). Pagineret via
