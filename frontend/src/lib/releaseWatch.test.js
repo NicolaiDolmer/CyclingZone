@@ -482,6 +482,68 @@ test("H3: et klik paa et internt link bliver til et dokument-load af DESTINATION
   assert.equal(doc.has("click", true), false);
 });
 
+test("H3: interceptoren braender hverken loop-guard eller budget — den aendrer kun spillerens eget klik", () => {
+  const doc = fakeDoc();
+  const win = fakeWin();
+  const storage = fakeStorage();
+  installPendingNavigationInterceptor({ doc, win, storage, getTarget: () => "fe-b" });
+  doc.fire("click", {
+    button: 0,
+    preventDefault: () => {},
+    target: { closest: () => ({ href: "https://cyclingzone.org/auctions", getAttribute: () => null, hasAttribute: () => false }) },
+  }, true);
+  assert.deepEqual(win.calls.assign, ["https://cyclingzone.org/auctions"]);
+  assert.equal(storage.getItem(getReloadGuardKey("fe-b")), null, "slottet skal vaere urørt");
+  assert.equal(storage.getItem(RECOVERY_BUDGET_KEY), null, "budgettet skal vaere urørt");
+});
+
+test("H3: loftet pr. dokument holder en fane fra at lave fulde sideskift i det uendelige", () => {
+  const doc = fakeDoc();
+  const win = fakeWin();
+  installPendingNavigationInterceptor({
+    doc, win, storage: fakeStorage(), getTarget: () => "fe-b", maxPerDocument: 2,
+  });
+  const click = (href) => doc.fire("click", {
+    button: 0,
+    preventDefault: () => {},
+    target: { closest: () => ({ href, getAttribute: () => null, hasAttribute: () => false }) },
+  }, true);
+  click("https://cyclingzone.org/a");
+  click("https://cyclingzone.org/b");
+  click("https://cyclingzone.org/c");
+  assert.deepEqual(win.calls.assign, ["https://cyclingzone.org/a", "https://cyclingzone.org/b"]);
+});
+
+test("H3: et opbrugt recovery-budget slukker ogsaa interceptoren", () => {
+  const doc = fakeDoc();
+  const win = fakeWin();
+  const storage = fakeStorage();
+  storage.setItem(RECOVERY_BUDGET_KEY, JSON.stringify({ used: RECOVERY_BUDGET_MAX, windowStart: Date.now() }));
+  installPendingNavigationInterceptor({ doc, win, storage, getTarget: () => "fe-b" });
+  doc.fire("click", {
+    button: 0,
+    preventDefault: () => { throw new Error("maa ikke ske"); },
+    target: { closest: () => ({ href: "https://cyclingzone.org/auctions", getAttribute: () => null, hasAttribute: () => false }) },
+  }, true);
+  assert.deepEqual(win.calls.assign, []);
+});
+
+test("M4: en NY maalrelease rapporteres ogsaa som deferred, ikke kun den foerste", async () => {
+  const notified = [];
+  const watcher = okWatcher([
+    { status: "ok", release: "sha-b", frontendId: "fe-b", isNew: true },
+    { status: "ok", release: "sha-c", frontendId: "fe-c", isNew: true },
+  ]);
+  const { reloader } = makeReloader({
+    watcher,
+    onUpdateReady: ({ target, sha }) => notified.push(`${target}/${sha}`),
+  });
+  acquireReloadBlock("dirty");
+  await reloader.runCheck("interval");
+  await reloader.runCheck("interval");
+  assert.deepEqual(notified, ["fe-b/sha-b", "fe-c/sha-c"]);
+});
+
 test("H3: interceptoren roerer IKKE klikket naar der er ugemt arbejde", () => {
   const doc = fakeDoc();
   const win = fakeWin();

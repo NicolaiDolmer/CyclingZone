@@ -311,11 +311,16 @@ export function createReleaseReloader({
     }
   };
 
+  // Pr. MAAL, ikke pr. fane: bliver B udskudt og C deployet bagefter, er C et nyt
+  // faktum der skal maales for sig. Med en ren "er banneret vist?"-gate ville C's
+  // sha og blokerings-aarsager aldrig blive registreret (CodeRabbit, 11/9).
+  let notifiedTarget = null;
   const markUpdateReady = (target, sha) => {
     state.lastTarget = target;
     state.lastTargetSha = sha || "";
-    if (state.updateReady) return;
     state.updateReady = true;
+    if (notifiedTarget === target) return;
+    notifiedTarget = target;
     try {
       onUpdateReady?.({ target, sha: sha || "", reasons: blockReasons() });
     } catch {
@@ -379,12 +384,23 @@ export function createReleaseReloader({
   const runCheck = async (trigger) => {
     clearStaleReloading();
     if (state.reloading) return;
-    if (state.pendingRelease) {
+    // Er porten aaben, er markøren alt vi har brug for: gør forsøget og spar
+    // netværkskaldet.
+    if (state.pendingRelease && isAllowed()) {
       await attemptReload(state.pendingRelease, trigger);
       return;
     }
+    // Er porten LUKKET, bliver vi ved med at tjekke (throttlet), så markøren
+    // følger med. Uden det kunne en spiller med ugemt arbejde stå med B som mål
+    // længe efter at C var deployet, og både loop-guard-nøglen og telemetrien
+    // ville pege på en release han aldrig kom til (CodeRabbit 11/9).
     const result = await watcher?.check();
-    if (result?.status !== "ok" || !result.isNew) return;
+    if (result?.status !== "ok") return;
+    if (!result.isNew) {
+      // Serveren kører den frontend vi allerede har: der er intet mål længere.
+      state.pendingRelease = null;
+      return;
+    }
     const target = result.frontendId;
     markUpdateReady(target, result.release);
     // Allerede brugt automatisk? Så er banneret hele svaret; bliv ved med at
@@ -436,19 +452,37 @@ export function createReleaseReloader({
  * Porten (B1) gælder uændret — er der ugemt arbejde, rører vi ikke klikket, og
  * routeren håndterer det som altid.
  *
+ * Hverken loop-guarden eller recovery-budgettet bruges her, og det er med vilje
+ * (CodeRabbit 11/9): interceptoren laver ikke et EKSTRA sideskift, den ændrer
+ * kun ét som spilleren allerede har bedt om, fra blødt til hårdt. Der er derfor
+ * ingen ring at guarde imod. Havde vi brændt loop-guarden her, ville en side der
+ * har en `beforeunload`-vagt UDEN at registrere en reloadGate-blokering kunne
+ * stjæle det ene reload en senere, ægte ny release har brug for, hver gang
+ * spilleren fortrød i browserens forlad-dialog. Budgettet læses (er det brugt
+ * op, er hele det automatiske lag slået fra), men debiteres ikke.
+ *
+ * Loftet er i stedet per DOKUMENT og kun i hukommelsen: leverer et hårdt
+ * sideskift ikke den nye frontend (CDN-skævhed midt i et rollout), skal fanen
+ * ikke blive ved med at lave fulde dokument-loads resten af sessionen. Tælleren
+ * dør med dokumentet, så den kan ikke efterlade noget bag sig.
+ *
  * Resterende race (ærligt): et deploy der sker i selve klikket, eller en
  * navigation startet på andre måder (programmatisk `navigate()`, browserens
  * tilbage-knap), fanges ikke. Der er lazyWithRetry stadig sikkerhedsnettet.
  */
+export const MAX_INTERCEPTED_NAVIGATIONS = 3;
+
 export function installPendingNavigationInterceptor({
   doc,
   win,
   getTarget,
   storage,
   isAllowed = isReloadAllowed,
+  maxPerDocument = MAX_INTERCEPTED_NAVIGATIONS,
   onIntercept,
 } = {}) {
   if (!doc?.addEventListener || !win) return () => {};
+  let intercepted = 0;
 
   const onClick = (event) => {
     if (event.defaultPrevented) return;
@@ -469,9 +503,11 @@ export function installPendingNavigationInterceptor({
     const pending = getTarget?.();
     if (!pending) return;
     if (!isAllowed()) return;
+    if (intercepted >= maxPerDocument) return;
+    // Kun LÆST: se hovedkommentaren for hvorfor der hverken brændes loop-guard
+    // eller budget her.
     if (!hasRecoveryBudget(storage)) return;
-    if (!claimReloadSlot(storage, pending)) return;
-    spendRecoverySlot(storage, "release-watch-nav");
+    intercepted += 1;
 
     event.preventDefault();
     try {

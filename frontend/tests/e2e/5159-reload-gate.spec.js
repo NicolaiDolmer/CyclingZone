@@ -243,7 +243,7 @@ test("M2: et haengende versionskald doeder ikke detektionen — naeste vindue he
 
 // --- M3 ---------------------------------------------------------------------
 
-test("M3: tre dokumentstarter uden sessionStorage giver hoejst ÉT reload", async ({ page }) => {
+test("M3: tre dokumentstarter uden sessionStorage giver NUL automatiske reloads", async ({ page }) => {
   const state = await setupReleaseHarness(page);
   // sessionStorage findes, men ENHVER operation kaster — privat browsing med
   // site-data slaaet fra. (Varianten hvor selve property-OPSLAGET kaster er
@@ -275,8 +275,9 @@ test("M3: tre dokumentstarter uden sessionStorage giver hoejst ÉT reload", asyn
     await page.waitForTimeout(500);
   }
 
-  // Tre bevidste goto'er + hoejst ét automatisk reload. Fail-closed giver nul.
-  expect(reloadsObserved).toBeLessThanOrEqual(4);
+  // Praecis de tre bevidste goto'er og ikke ét automatisk reload mere. (Kravet
+  // i issuet var "hoejst ét"; fail-closed giver nul, og det er det testen laaser.)
+  expect(reloadsObserved).toBe(3);
 });
 
 // --- den glade sti ----------------------------------------------------------
