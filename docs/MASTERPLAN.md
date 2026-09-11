@@ -6,7 +6,7 @@
 
 ## 🔴 Brand (rettes før alt andet; bølge startet 10/9 kl. 13:10, intet merges uden ejer-go)
 
-#4595 chunk-fejl: lag 3 = PR #5139, holdes til Codex-audit (`docs/drafts/codex-audit-prompt-chunk-errors-2026-09-11.md`) · #4959 merget 11/9, puljer 9/13 frie 12-13/9 · #4872 rytterværdi står stille (9/9). Merget 10/9: #5097 #5100 #5099 #5073.
+#4595 → **epic #5162** (Codex-audit 11/9: RET FØRST; spor #5159 #5160 #5161; #5139 draft; 3 krav før næste chunk-merge) · #4959 merget 11/9, puljer 9/13 frie 12-13/9 · #4872 rytterværdi står stille (9/9). Merget 10/9: #5097 #5100 #5099 #5073.
 
 ## Bane 1 · S4-cutover 27-28/9 (deadline; nul buffer)
 
