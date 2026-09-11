@@ -2,13 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  CLOSES_TIMEZONE,
   DEFAULT_SLUG,
+  MESSAGE_CLOSES_ON,
   NOTIFICATION_TYPE,
   NUDGE_CODES,
   NUDGE_NOT_STARTED,
   NUDGE_STARTED,
   buildNudge,
   classifyRecipients,
+  closeDateMismatch,
   formatDryRunReport,
   nudgedUserIds,
   parseArgs,
@@ -145,6 +148,31 @@ test("de to varianter har hver sin tekst", () => {
   assert.notEqual(cold.title, started.title);
   assert.notEqual(cold.message, started.message);
   assert.throws(() => buildNudge({ slug: DEFAULT_SLUG, variant: "nope", count: 1 }), /unknown nudge variant/);
+});
+
+test("beskedens dato skal stemme med databasens closes_at", () => {
+  // 14/9 23:59 dansk sommertid = 21:59Z. Datoen skal laeses i dansk tid,
+  // ellers ville en lukning kl. 01:00 dansk tid staa som dagen foer.
+  assert.equal(closeDateMismatch("2026-09-14T21:59:00+00:00"), null);
+  // 22:30Z er 00:30 dansk tid den 15/9 — altsaa en anden dag end teksten siger.
+  assert.match(closeDateMismatch("2026-09-14T22:30:00+00:00"), /2026-09-15 \(dansk tid\)/);
+
+  assert.match(closeDateMismatch("2026-09-13T21:59:00+00:00"), /2026-09-13 \(dansk tid\)/);
+  assert.match(closeDateMismatch(null), /ikke sat/);
+  assert.match(closeDateMismatch("i morgen"), /kunne ikke laeses/);
+});
+
+test("14. september 2026 er en mandag, saa teksten naevner ingen ugedag", () => {
+  // #5121's udkast skrev "soendag den 14. september". Det er forkert: 13/9 er
+  // soendag. Testen laaser at konstanten og kalenderen er enige, saa en
+  // fremtidig aendring ikke stille genindfoerer paastanden.
+  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: CLOSES_TIMEZONE }).format(
+    new Date(`${MESSAGE_CLOSES_ON}T12:00:00Z`)
+  );
+  assert.equal(weekday, "Monday");
+  const message = buildNudge({ slug: DEFAULT_SLUG, variant: NUDGE_NOT_STARTED, count: 28 }).message;
+  assert.ok(!/sunday/i.test(message), "beskeden maa ikke paastaa en ugedag der ikke passer");
+  assert.match(message, /14 September/);
 });
 
 test("eksempel-brugere er anonymiserede id-praefikser", () => {

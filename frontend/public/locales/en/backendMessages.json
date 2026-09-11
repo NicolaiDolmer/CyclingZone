@@ -91,11 +91,11 @@
       },
       "surveyNudge": {
         "title": "Three minutes for the next season?",
-        "message": "{count} managers have answered the feature survey so far. Youth teams, training and the race engine are on top. I would like to hear where you stand before I lock the plan. The survey closes Sunday 14 September. Open it from here."
+        "message": "{count} managers have answered the feature survey so far. Youth teams, training and the race engine are on top. I would like to hear where you stand before I lock the plan. The survey closes on 14 September. Open it from here."
       },
       "surveyNudgeStarted": {
         "title": "You only need to press send",
-        "message": "You started the feature survey but never sent it. Your answers are saved, so you can pick up where you left off. {count} managers have answered so far, and the survey closes Sunday 14 September. Open it from here."
+        "message": "You started the feature survey but never sent it. Your answers are saved, so you can pick up where you left off. {count} managers have answered so far, and the survey closes on 14 September. Open it from here."
       }
     },
     "loanCreatedShort": {

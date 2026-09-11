@@ -231,10 +231,52 @@ export function canSubmit(questions, answers) {
 // "closed" er default med vilje: en ukendt eller manglende status må aldrig
 // åbne et skema, og en kladde må aldrig lække til en ikke-admin gennem UI'et.
 // RLS beskytter uanset — det her er laget ovenpå, ikke i stedet for.
-export function resolveSurveyView({ status, isAdmin } = {}) {
-  if (status === "open") return "open";
+//
+// closesAt (#5121) lukker skemaet på klokken uden at nogen skal huske at flippe
+// status. Et skema med status 'open' og en passeret closes_at er lukket, også
+// for en admin: databasen afviser skrivningen (RLS-policyerne tjekker samme
+// dato, database/2026-09-11-5121-survey-closes-at.sql), og en formular der ser
+// åben ud men ikke kan gemme er værre end en lukket flade. closes_at = null
+// betyder "ingen lukkedato", ikke "lukket".
+export function resolveSurveyView({ status, isAdmin, closesAt = null, now = Date.now() } = {}) {
+  if (status === "open") return isSurveyPastClose(closesAt, now) ? "closed" : "open";
   if (status === "draft" && isAdmin === true) return "preview";
   return "closed";
+}
+
+/** Er lukketidspunktet passeret? En ulæselig dato lukker ikke skemaet. */
+export function isSurveyPastClose(closesAt, now = Date.now()) {
+  if (!closesAt) return false;
+  const closesMs = Date.parse(closesAt);
+  if (Number.isNaN(closesMs)) return false;
+  return closesMs <= now;
+}
+
+/**
+ * Lukkedatoen som den vises på skemaets forside: "Monday 14 September" /
+ * "mandag den 14. september". Ugedagen REGNES ud af datoen frem for at stå i
+ * en tekst — udkastet i #5121 kaldte 14/9 en søndag, og den slags fejl skal
+ * ikke kunne skrives ind i en oversættelse.
+ *
+ * Datoen vises i dansk tid uanset hvor spilleren sidder: det er den klokke
+ * lukningen faktisk følger, og et skema der lukker "den 14." i København må
+ * ikke stå som den 13. for en spiller i en vestligere tidszone.
+ */
+export const SURVEY_TIMEZONE = "Europe/Copenhagen";
+
+export function formatCloseDate(closesAt, language) {
+  if (!closesAt) return null;
+  const closesMs = Date.parse(closesAt);
+  if (Number.isNaN(closesMs)) return null;
+  const locale = DA(language) ? "da-DK" : "en-GB";
+  const formatted = new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: SURVEY_TIMEZONE,
+  }).format(new Date(closesMs));
+  // da-DK giver "mandag 14. september"; dansk skriver "mandag den 14.".
+  return DA(language) ? formatted.replace(/^(\S+) (\d)/, "$1 den $2") : formatted;
 }
 
 export function buildResponsePayload({ surveyId, userId, teamId = null, questionKey, value }) {

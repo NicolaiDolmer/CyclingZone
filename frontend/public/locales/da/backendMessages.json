@@ -91,11 +91,11 @@
       },
       "surveyNudge": {
         "title": "Tre minutter til næste sæson?",
-        "message": "{count} managere har svaret på spørgeskemaet om features. Ungdomshold, træning og race engine ligger øverst. Jeg vil gerne høre hvor du står, før jeg låser planen. Skemaet lukker søndag den 14. september. Åbn det herfra."
+        "message": "{count} managere har svaret på spørgeskemaet om features. Ungdomshold, træning og race engine ligger øverst. Jeg vil gerne høre hvor du står, før jeg låser planen. Skemaet lukker den 14. september. Åbn det herfra."
       },
       "surveyNudgeStarted": {
         "title": "Du mangler kun at trykke send",
-        "message": "Du er begyndt på spørgeskemaet men fik det aldrig sendt. Dine svar er gemt, så du kan fortsætte hvor du slap. {count} managere har svaret indtil nu, og skemaet lukker søndag den 14. september. Åbn det herfra."
+        "message": "Du er begyndt på spørgeskemaet men fik det aldrig sendt. Dine svar er gemt, så du kan fortsætte hvor du slap. {count} managere har svaret indtil nu, og skemaet lukker den 14. september. Åbn det herfra."
       }
     },
     "loanCreatedShort": {

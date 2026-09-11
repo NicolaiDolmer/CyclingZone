@@ -81,6 +81,41 @@ export const NUDGE_CODES = {
   },
 };
 
+/**
+ * Datoen de to beskeder NAEVNER i deres tekst ("lukker den 14. september").
+ * Datoen kan ikke vaere en parameter: den skal skrives forskelligt paa engelsk
+ * og dansk, og notifikationen rendres i modtagerens sprog LANGT efter scriptet
+ * er koert. Derfor staar den i de to locale-strenge, og derfor tjekker
+ * scriptet at databasen siger det samme foer det sender. Flytter ejeren
+ * lukkedatoen, skal begge locale-strenge og denne konstant flytte med.
+ *
+ * NB: 14. september 2026 er en MANDAG, ikke en soendag (13/9 er soendag).
+ * Issue #5121's udkast skrev "soendag den 14. september"; ugedagen er derfor
+ * taget ud af teksten, og selve skemaets forside regner ugedagen ud af
+ * closes_at i stedet for at paastaa den.
+ */
+export const MESSAGE_CLOSES_ON = "2026-09-14";
+export const CLOSES_TIMEZONE = "Europe/Copenhagen";
+
+/**
+ * Siger beskederne og databasen det samme om lukkedatoen? Returnerer null naar
+ * alt stemmer, ellers en linje der forklarer forskellen. En besked der lyver om
+ * datoen er vaerre end ingen besked.
+ */
+export function closeDateMismatch(closesAt, expected = MESSAGE_CLOSES_ON) {
+  if (!closesAt) return `closes_at er ikke sat, men beskederne siger ${expected}.`;
+  const ms = Date.parse(closesAt);
+  if (Number.isNaN(ms)) return `closes_at kunne ikke laeses: ${closesAt}`;
+  const actual = new Intl.DateTimeFormat("en-CA", {
+    timeZone: CLOSES_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(ms));
+  if (actual === expected) return null;
+  return `closes_at er ${actual} (dansk tid), men beskederne siger ${expected}. Ret teksten eller datoen.`;
+}
+
 /** Hvor mange eksempel-brugere dry-run viser pr. gruppe. */
 export const SAMPLE_SIZE = 3;
 /** Hvor mange tegn af et user_id der vises. Nok til at slaa op, for lidt til at vaere en identitet. */
@@ -342,6 +377,9 @@ async function main() {
   })) {
     console.log(line);
   }
+
+  const mismatch = closeDateMismatch(survey.closes_at);
+  if (mismatch) console.log(`ADVARSEL: ${mismatch}`);
 
   if (!execute) {
     console.log("DRY-RUN — intet er sendt. Koer med --execute naar ejeren har sagt til.");

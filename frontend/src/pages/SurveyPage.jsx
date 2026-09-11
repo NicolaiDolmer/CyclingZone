@@ -34,6 +34,7 @@ import {
   buildResponsePayload,
   computeProgress,
   displayTextAnswer,
+  formatCloseDate,
   groupQuestionsIntoSections,
   missingRequired,
   normalizeAnswer,
@@ -167,7 +168,11 @@ export default function SurveyPage() {
 
       const uid = auth?.user?.id ?? null;
       setUserId(uid);
-      const nextView = resolveSurveyView({ status: surveyRow.status, isAdmin: adminRaw === true });
+      const nextView = resolveSurveyView({
+        status: surveyRow.status,
+        isAdmin: adminRaw === true,
+        closesAt: surveyRow.closes_at,
+      });
       // Uden en bruger vises ALDRIG formularen. Ruten er login-gated, så det
       // her er en session der er faldet væk midt i navigationen: en tom
       // formular med en klikbar Send-knap ville love en aflevering der aldrig
@@ -368,6 +373,7 @@ export default function SurveyPage() {
   const missing = useMemo(() => missingRequired(questions, answers), [questions, answers]);
 
   const title = survey ? (language?.startsWith("da") ? survey.title_da : survey.title_en) : "";
+  const closeLabel = useMemo(() => formatCloseDate(survey?.closes_at, language), [survey, language]);
 
   if (status === "loading") {
     return (
@@ -470,7 +476,16 @@ export default function SurveyPage() {
           kladde-bjælken lige ovenfor siger det modsatte, og to linjer der
           modsiger hinanden er værre end én linje mindre. */}
       <p className={`text-sm leading-relaxed text-cz-2 ${isPreview ? "mb-4" : "mb-1"}`}>{t("page.introLead")}</p>
-      {!isPreview && <p className="mb-4 text-sm leading-relaxed text-cz-2">{t("page.introAccount")}</p>}
+      {!isPreview && (
+        <p className={`text-sm leading-relaxed text-cz-2 ${closeLabel ? "mb-1" : "mb-4"}`}>{t("page.introAccount")}</p>
+      )}
+      {/* Lukkedatoen (#5121). Ugedagen regnes ud af closes_at, så teksten
+          aldrig kan påstå en anden dag end den skemaet faktisk lukker. */}
+      {!isPreview && closeLabel && (
+        <p className="mb-4 text-sm leading-relaxed tabular-nums text-cz-1">
+          {t("page.closesOn", { date: closeLabel })}
+        </p>
+      )}
 
       <div className="sticky top-0 z-sticky -mx-4 mb-4 bg-cz-body border-b border-cz-border px-4 py-2 sm:-mx-8 sm:px-8">
         <ProgressMeter
