@@ -7,7 +7,19 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchAllRows } from '../lib/supabasePagination.js';
 import { planPoolRetirements } from '../lib/aiPoolRetirement.js';
+import { inflightReleaseByTeam } from '../lib/aiTeamRaceObligations.js';
 import { retireAiTeam } from '../lib/aiTeamRetirement.js';
+
+// #4959: owner-facing times are Europe/Copenhagen, never UTC (CALENDAR_RULES).
+const RELEASE_TIME_FORMAT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Copenhagen', year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hour12: false,
+});
+export function formatReleaseTime(iso) {
+  const at = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(at)) return null;
+  return RELEASE_TIME_FORMAT.format(new Date(at)).replace(', ', ' ');
+}
 
 export async function planRetirements({ supabase, now = new Date() }) {
   const [pools, teams] = await Promise.all([
@@ -29,6 +41,18 @@ export async function planRetirements({ supabase, now = new Date() }) {
       blocked: plan.filter(c => c.reason).map(c => ({ id: c.team_id, name: c.team_name, reason: c.reason })),
     });
   }
+  // #4959: a race-blocked team is only readable with the date the block lifts -
+  // otherwise "waiting" and "stuck forever" print identically. Read-only, and one
+  // batched lookup for every blocked team in every pool.
+  const raceBlocked = result.flatMap(p => p.blocked).filter(b => b.reason === 'inflight_entries');
+  if (raceBlocked.length) {
+    const release = await inflightReleaseByTeam(supabase, [...new Set(raceBlocked.map(b => b.id))]);
+    for (const blocked of raceBlocked) {
+      const found = release.get(blocked.id);
+      blocked.inflight_races = found?.raceIds.length ?? 0;
+      blocked.last_race_ends_at = found?.unscheduledRaceIds.length ? null : (found?.lastStageAt ?? null);
+    }
+  }
   return { generated_at: now.toISOString(), pools: result,
     total_candidates: result.reduce((n, p) => n + p.candidates.length, 0),
     total_blocked: result.reduce((n, p) => n + p.blocked.length, 0),
@@ -44,13 +68,23 @@ export async function applyOneRetirement({ supabase, plan, teamId, ownerGo, now 
   return { ...result, team: matches[0] };
 }
 
+// #4959: the release estimate is the last SCHEDULED stage of the races the team is
+// still in. A stalled or rescheduled stage moves it, so it is printed as an estimate.
+export function blockedSuffix(blocked) {
+  if (blocked.reason !== 'inflight_entries') return '';
+  const races = blocked.inflight_races ?? 0;
+  const at = formatReleaseTime(blocked.last_race_ends_at);
+  if (!at) return `; last in-flight race ends: unknown (${races} race(s) in flight)`;
+  return `; last in-flight race ends ${at} CPH (${races} race(s) in flight, final scheduled stage)`;
+}
+
 function printHuman(plan) {
   console.log(`#4753 DRY-RUN (read-only) — ${plan.generated_at}`);
   for (const p of plan.pools) {
     if (!p.candidates.length && !p.blocked.length) continue;
     console.log(`${p.label} (pool ${p.pool_id}): ${p.teams_now} → ${p.teams_after} teams`);
     for (const c of p.candidates) console.log(`  ${c.name} (${c.id}): ${c.riders_retired} riders retired; ${c.transfer_offers_preserved} offers preserved; 0 offers deleted; ${c.future_entries_removed} future entries removed`);
-    for (const c of p.blocked) console.log(`  WAIT ${c.name} (${c.id}): ${c.reason}`);
+    for (const c of p.blocked) console.log(`  WAIT ${c.name} (${c.id}): ${c.reason}${blockedSuffix(c)}`);
   }
   console.log(`${plan.total_candidates} candidates; ${plan.total_blocked} waiting. No writes performed.`);
 }
