@@ -34,6 +34,11 @@
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY (service-role required)
 // Requires: helper RPCs i database/2026-05-10-feature-liveness-helper.sql.
+//
+// Whitelist-disciplin + 48-timers-reglen for altid-røde vagter:
+// docs/FEATURE_LIVENESS.md. Kort: HVER whitelist-entry skal have (1) en
+// begrundelse for hvorfor fundet er bevidst og (2) en udløbsbetingelse der
+// siger hvornår entryen skal fjernes igen.
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -147,9 +152,19 @@ const WHITELIST_EMPTY_TABLES = new Set([
 ]);
 
 // PERMANENTE tom-tabel-suppressioner (fjernes ALDRIG ved rows — tom = sund
-// steady-state). Dræn-til-tom-køer / per-batch transient state; Detector A's
-// "write-but-no-data" mis-fyrer på dem by design, og forward-guarden (#2299)
-// skal heller ikke flage dem når de kortvarigt har rows.
+// steady-state). To klasser hører her:
+//
+//   1. Dræn-til-tom-køer / per-batch transient state. Detector A's
+//      "write-but-no-data" mis-fyrer på dem by design, og forward-guarden
+//      (#2299) skal heller ikke flage dem når de kortvarigt har rows.
+//   2. SJÆLDNE OPT-IN-HANDLINGER i en feature der ellers er bevist levende
+//      (blokér, anmeld, skjul, mute). 0 rows betyder "ingen spiller har haft
+//      brug for handlingen endnu", ikke "koden er død" — og detektoren kan
+//      IKKE skelne de to på en tabel hvis normaltilstand er tom. Evidensen for
+//      at skrive-stien virker er unit-tests på skrive-funktionen plus at
+//      moder-featuren har data; den evidens er stærkere end et row-count på en
+//      handling de fleste spillere aldrig bruger. Udløbsbetingelse for klasse
+//      2: fjern entryen når selve handlingen fjernes fra produktet.
 const PERMANENT_EMPTY_TABLES = new Set([
   // Discord DM-retry-kø (#1115): rows enqueues KUN når en DM fejler og slettes
   // igen når den leveres (processDmOutboxDrain). Tom = alle DM'er leveret.
@@ -175,6 +190,25 @@ const PERMANENT_EMPTY_TABLES = new Set([
   // Pending-imports er per-batch state — tomme uden for et aktivt import-run.
   "pending_race_results",
   "pending_race_result_rows",
+  // --- Klasse 2: sjældne opt-in-moderationshandlinger (#3069, 11/9) ---
+  // DM-featuren ER bevist levende: 5 samtaler / 28 beskeder i prod 11/9. De tre
+  // tabeller herunder skrives KUN når en spiller aktivt blokerer, anmelder
+  // eller skjuler en samtale — handlinger 0 af 3 aktive DM-brugere har haft
+  // brug for. Skrive-stierne er dækket af backend/lib/directMessages.test.js +
+  // backend/routes/directMessages.routes.test.js, så et row-count tilføjer
+  // ingen evidens. Uden disse tre entries var `audit` rød på HVER PR fra 7/9
+  // (#3069: 14 af 14 kørsler), hvilket gjorde rød til normaltilstand.
+  // Udløb: fjern når blokér/anmeld/skjul-handlingerne fjernes fra DM-featuren.
+  "dm_blocks",
+  "dm_reports",
+  "dm_conversation_hides",
+  // Forum-kategori-mute (#5013, migration 2026-09-08-5013-forum-category-mutes.sql):
+  // samme klasse. Forummet er bevist levende (26 posts i prod 11/9); tabellen
+  // skrives kun når en spiller selv slår en kategori fra via
+  // setForumCategoryMute (dækket af backend/lib/forum.test.js). Et forum hvor
+  // ingen har muted noget er den sunde tilstand, ikke død kode.
+  // Udløb: fjern når mute-handlingen fjernes fra forummet.
+  "forum_category_mutes",
 ]);
 
 // Detector A: tabeller hvis tomhed er STYRET af et app_config-flag, ikke af en
@@ -325,6 +359,15 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // koden. Intentional orphaned, ikke drift.
   "GET /email/unsubscribe",
   "POST /email/unsubscribe",
+  // Resend-webhook (#2853, manglede i registret — #3069): EKSTERN webhook som
+  // Resend POSTer leverings-/bounce-events til; Svix-signaturen er auth'en, og
+  // den rå body er wired i server.js (`express.raw` på pathen før
+  // express.json). Præcis samme klasse som POST /billing/alunta-webhook ovenfor
+  // — en frontend-kalder ville være en FEJL, ikke et fix. Entryen manglede bare
+  // fra 7/9, hvor endpointet blev tilføjet, og var et af de fem fund der gjorde
+  // `audit` rød på hver PR (#3069).
+  // Udløb: fjern når Resend-webhooken afmonteres fra backend/routes/api.js.
+  "POST /email/resend-webhook",
   // Race v3 S5 peak-planer (#2224, PR #2419): CRUD-API'et shippet FØR Planner-
   // cockpittet (næste slice wirer UI'et mod disse endpoints). Desuden launch-gated
   // bag peak_planner_enabled=OFF — ingen kalder dem endnu by design. Intentional
@@ -352,6 +395,32 @@ const WHITELIST_NON_MIGRATION_SQL = new Set([
   "database/supabase_setup.sql",
 ]);
 
+// Detector C, MODSATTE retning: rækker i schema_migrations hvis fil ikke (længere)
+// ligger i `database/`-topniveauet, men hvor vi har VERIFICERET at den SQL der kørte
+// stadig findes i repoet — typisk fordi filen er flyttet til en undermappe efter
+// apply. `listCommittedMigrations()` læser kun topniveauet (med vilje: filer i
+// `database/manual/` skal IKKE forventes applied af auto-migrate), så en flytning
+// ser ud som drift selv om intet er drevet.
+//
+// Krav til en entry her (ellers hører fundet IKKE på listen): git-bevis for at
+// indholdet er uændret. Forward-guarden nedenfor flager entryen som stale hvis
+// filen dukker op i topniveauet igen.
+const WHITELIST_APPLIED_WITHOUT_REPO_FILE = new Set([
+  // #4482/#3069: filen blev applied 31/8 kl. ~17:40 fra sin oprindelige sti
+  // (commit 113149cd9), og i dagens NÆSTE PR — commit 5b097178b, 31/8 kl. 19:25 —
+  // blev den flyttet til `database/manual/2026-08-31-expire-stale-bonus-offers-4482.sql`
+  // som en ren rename: git viser `R100` (100% identisk indhold), og
+  // `git diff 113149cd9:<gammel sti> HEAD:<ny sti>` er tom. Den SQL der kørte i
+  // prod ligger altså uændret i repoet — triagen 4/9 på #3069 frygtede at
+  // indholdet kunne afvige, og det bevis afviser netop det. Flytningen var
+  // bevidst: filen er en engangs-oprydning (udløb af 36 forældede bonustilbud),
+  // ikke skema, og `database/manual/` er stedet for den klasse.
+  // Udløb: fjern entryen hvis rækken normaliseres/slettes i schema_migrations,
+  // eller hvis filen flyttes tilbage til `database/`-topniveauet (forward-guarden
+  // flager den selv den dag).
+  "database/2026-08-31-expire-stale-bonus-offers-4482.sql",
+]);
+
 // Detector E: events listet i KNOWN_EVENTS men som vi p.t. accepterer 0 impressions for
 // (fx nye events tilføjet uden at være shipped endnu, eller events på milestone-gated
 // features). Tilføj entry når en finding er bekræftet "intentional zero".
@@ -366,6 +435,42 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // eventet flyder nu — 11 impressions i 30-dages-vinduet, verificeret mod prod
   // af audit-kørslen selv ("Stale whitelist-entry"-fund) — så Detector E
   // overvåger det normalt igen.)
+  //
+  // --- #3069 (11/9): de fire fund cron-kørslen har været rød på siden 7/9 ---
+  // Telemetrien ER levende: 3.547 feature_rider_scouting_tab_opened og 73
+  // onboarding_completed i samme 30-dages-vindue, så 0 impressions betyder
+  // "denne flade blev ikke åbnet", ikke "logEvent er i stykker".
+  //
+  // feature_hall_of_fame_opened: HoF-FLADEN ER AFMONTERET. App.jsx's route
+  // `hall-of-fame` er en `<Navigate to="/standings" replace />` (#2359 — HoF
+  // afløses af verdenshistorik i S3; sidekoden bevares bevidst indtil
+  // narrativ-fladen erstatter den). HallOfFamePage.jsx's mount-logEvent kan
+  // derfor ALDRIG fyre. Eventet burde strengt taget ud af KNOWN_EVENTS sammen
+  // med siden — samme oprydning som survey_banner_clicked 16/7 (#2467) — men
+  // det er frontend-ejerskab og uden for denne PR's scope.
+  // Udløb: fjern entryen den dag eventet fjernes fra KNOWN_EVENTS, eller den dag
+  // HoF-fladen får en rigtig route igen (så flager forward-guarden den selv).
+  "feature_hall_of_fame_opened",
+  // feature_board_meeting_opened + board_meeting_signed: instrumenteringen
+  // landede 3/9 (commit b0373c0a2, #4557 S-M2d), ALTSÅ EFTER at S3 startede
+  // 23/8. Årsmødet er et sæsonskifte-vindue: `feature_board_meeting_opened`
+  // fyrer kun når `meeting.mandate` findes ved mount, og board_meeting_signed
+  // kun når mødet underskrives. S3's vindue var lukket før koden var i prod, så
+  // 0 impressions er den forventede tilstand — ikke en død flade.
+  // Udløb: fjern BEGGE entries efter det første sæsonskifte efter 3/9 (S3→S4).
+  // Er de stadig 0 dér, er det et ægte fund, og det skal flages.
+  "feature_board_meeting_opened",
+  "board_meeting_signed",
+  // feature_board_consequences_panel_viewed: panelet rendrer kun for et hold der
+  // BÅDE åbner Bestyrelse-siden OG har en aktiv konsekvens i lag 2-5
+  // (BoardPage.jsx: `visible.length > 0`). Prod 11/9: 63 aktive lag 2-5-rækker
+  // fordelt på 239 hold, og Bestyrelse-siden havde kun 5 board_receipt_opened i
+  // hele 30-dages-vinduet. Krydset af to sjældne begivenheder gør 0 impressions
+  // forventeligt; detektoren kan ikke skelne "ingen ramte kombinationen" fra
+  // "panelet er dødt", og lav-trafik-støj må ikke holde merge-gaten rød (#3069).
+  // Udløb: genvurdér ved næste telemetri-gennemgang, og fjern entryen så snart
+  // eventet får impressions — forward-guarden nedenfor flager den selv dér.
+  "feature_board_consequences_panel_viewed",
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
@@ -664,6 +769,21 @@ function endpointMatchesAny(endpoint, callTokens) {
   return false;
 }
 
+// Ren beslutningsfunktion for ÉT endpoint — ingen fs/netværk, så whitelist-
+// logikken kan unit-testes (#3069). Samme mønster som evaluateDetectorARow.
+export function evaluateDetectorBEndpoint(endpoint, callTokens) {
+  const key = `${endpoint.method} ${endpoint.path}`;
+  if (WHITELIST_ORPHANED_ENDPOINTS.has(key)) return null;
+  if (endpointMatchesAny(endpoint, callTokens)) return null;
+  return {
+    detector: "B",
+    severity: "info",
+    method: endpoint.method,
+    path: endpoint.path,
+    reason: "Backend-endpoint uden frontend-caller",
+  };
+}
+
 async function detectorB() {
   const [endpoints, calls] = await Promise.all([
     listBackendEndpoints(),
@@ -672,16 +792,8 @@ async function detectorB() {
   const callTokens = [...calls].map(tokenize);
   const findings = [];
   for (const ep of endpoints) {
-    const key = `${ep.method} ${ep.path}`;
-    if (WHITELIST_ORPHANED_ENDPOINTS.has(key)) continue;
-    if (endpointMatchesAny(ep, callTokens)) continue;
-    findings.push({
-      detector: "B",
-      severity: "info",
-      method: ep.method,
-      path: ep.path,
-      reason: "Backend-endpoint uden frontend-caller",
-    });
+    const finding = evaluateDetectorBEndpoint(ep, callTokens);
+    if (finding) findings.push(finding);
   }
   return findings;
 }
@@ -710,6 +822,31 @@ async function listAppliedMigrations() {
   return (data || []).map((r) => r.filename).sort();
 }
 
+// Ren beslutningsfunktion for ÉN applied migration (retningen "findes i DB, men
+// ikke i repoet") — gør whitelist-logikken unit-testbar (#3069).
+export function evaluateDetectorCApplied(filename, committedSet) {
+  if (committedSet.has(filename)) {
+    // Forward-guard (#2299-mønstret): filen er tilbage i database/-topniveauet,
+    // så suppressionen er unødvendig og skal ryddes.
+    if (WHITELIST_APPLIED_WITHOUT_REPO_FILE.has(filename)) {
+      return {
+        detector: "C",
+        severity: "info",
+        filename,
+        reason: `Stale whitelist-entry: filen ligger igen i database/ — fjern "${filename}" fra WHITELIST_APPLIED_WITHOUT_REPO_FILE`,
+      };
+    }
+    return null;
+  }
+  if (WHITELIST_APPLIED_WITHOUT_REPO_FILE.has(filename)) return null;
+  return {
+    detector: "C",
+    severity: "warning",
+    filename,
+    reason: "Applied migration findes ikke i database/ — repo og DB driver",
+  };
+}
+
 async function detectorC() {
   const [committed, applied] = await Promise.all([
     listCommittedMigrations(),
@@ -730,14 +867,8 @@ async function detectorC() {
     }
   }
   for (const f of applied) {
-    if (!committedSet.has(f)) {
-      findings.push({
-        detector: "C",
-        severity: "warning",
-        filename: f,
-        reason: "Applied migration findes ikke i database/ — repo og DB driver",
-      });
-    }
+    const finding = evaluateDetectorCApplied(f, committedSet);
+    if (finding) findings.push(finding);
   }
   return findings;
 }
@@ -841,6 +972,31 @@ async function fetchEventCounts() {
   return data || [];
 }
 
+// Ren beslutningsfunktion for ÉT KNOWN_EVENTS-event — `row` er rækken fra
+// feature_liveness_event_counts (eller undefined når eventet slet ikke findes i
+// vinduet). Gør whitelist- og forward-guard-logikken unit-testbar (#3069).
+export function evaluateDetectorEEvent(eventName, row) {
+  if (WHITELIST_ZERO_IMPRESSION_EVENTS.has(eventName)) {
+    // Forward-guard (#2299): whitelist-entry hvis event nu flyder er stale.
+    if (row && row.event_count > 0) {
+      return {
+        detector: "E",
+        severity: "info",
+        event_name: eventName,
+        reason: `Stale whitelist-entry: eventet har ${row.event_count} impressions sidste ${IMPRESSION_WINDOW_DAYS} dage — fjern "${eventName}" fra WHITELIST_ZERO_IMPRESSION_EVENTS`,
+      };
+    }
+    return null;
+  }
+  if (row && row.event_count > 0) return null;
+  return {
+    detector: "E",
+    severity: "warning",
+    event_name: eventName,
+    reason: `Event listet i KNOWN_EVENTS men 0 impressions sidste ${IMPRESSION_WINDOW_DAYS} dage`,
+  };
+}
+
 async function detectorE() {
   const [known, counts] = await Promise.all([
     listKnownEvents(),
@@ -852,26 +1008,8 @@ async function detectorE() {
   for (const row of counts) seen.set(row.event_name, row);
   const findings = [];
   for (const eventName of known) {
-    const row = seen.get(eventName);
-    if (WHITELIST_ZERO_IMPRESSION_EVENTS.has(eventName)) {
-      // Forward-guard (#2299): whitelist-entry hvis event nu flyder er stale.
-      if (row && row.event_count > 0) {
-        findings.push({
-          detector: "E",
-          severity: "info",
-          event_name: eventName,
-          reason: `Stale whitelist-entry: eventet har ${row.event_count} impressions sidste ${IMPRESSION_WINDOW_DAYS} dage — fjern "${eventName}" fra WHITELIST_ZERO_IMPRESSION_EVENTS`,
-        });
-      }
-      continue;
-    }
-    if (row && row.event_count > 0) continue;
-    findings.push({
-      detector: "E",
-      severity: "warning",
-      event_name: eventName,
-      reason: `Event listet i KNOWN_EVENTS men 0 impressions sidste ${IMPRESSION_WINDOW_DAYS} dage`,
-    });
+    const finding = evaluateDetectorEEvent(eventName, seen.get(eventName));
+    if (finding) findings.push(finding);
   }
   return findings;
 }
