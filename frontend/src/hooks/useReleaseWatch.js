@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { getRelease } from "../lib/release.js";
 import { logEvent } from "../lib/logEvent.js";
-import { safeSessionStorage } from "../lib/chunkErrors.js";
+import { onRecoveryDeferred, safeSessionStorage } from "../lib/chunkErrors.js";
 import {
   createReleaseReloader,
   createReleaseWatcher,
@@ -44,6 +44,20 @@ export default function useReleaseWatch() {
   const location = useLocation();
   const ctxRef = useRef(null);
   const [updateReady, setUpdateReady] = useState(false);
+  // To UAFHAENGIGE grunde til at banneret staar, med hver sit liv:
+  //   · `updateReady`      — versionsopslaget fandt en ny frontend (lag 3). Den
+  //     forsvinder igen ved et rollback (`onUpdateGone`).
+  //   · `recoveryDeferred` — lag 2 ville reparere en chunk-fejl, men porten var
+  //     lukket (#5159, review-fund 1). Den har ingen mål-release, og et rollback
+  //     goer den ikke uaktuel: chunk'en mangler stadig.
+  // Samlet i én flag i returværdien, men de maa ikke kunne slukke hinanden.
+  const [recoveryDeferred, setRecoveryDeferred] = useState(false);
+  // Samme sandhed som `recoveryDeferred`, men laesbar fra en stabil callback.
+  const recoveryDeferredRef = useRef(false);
+  // Spilleren valgte "Save first" i bannerets bekraeftelse. Banneret lukkes uden
+  // reload; markoeren bliver liggende, saa opdateringen tages automatisk paa det
+  // sikre punkt i det sekund han HAR gemt.
+  const [dismissed, setDismissed] = useState(false);
   // Mount-renderen er ikke et route-skift: den HTML vi kigger på, kom fra det
   // deployment der lige har svaret. Et tjek dér ville være garanteret spild.
   const skippedFirstRef = useRef(false);
@@ -58,6 +72,18 @@ export default function useReleaseWatch() {
     const pending = takePendingTelemetry(safeSessionStorage(window), readFrontendIdMeta());
     if (pending) logEvent("app_version_reload", pending);
   }, []);
+
+  // #5159 (review-fund 1): lag 2 — den globale preload-/rejection-handler —
+  // udskyder nu ogsaa sit reparations-reload naar porten er lukket. Uden dette
+  // abonnement ville spilleren staa med en brudt chunk og INGEN synlig udvej.
+  // Abonnementet replayer et signal der allerede er faldet, fordi handlerne
+  // installeres i main.jsx foer React monterer.
+  useEffect(() => onRecoveryDeferred(() => {
+    setRecoveryDeferred(true);
+    recoveryDeferredRef.current = true;
+    // Et nyt, uafhaengigt problem: et tidligere "Save first" maa ikke skjule det.
+    setDismissed(false);
+  }), []);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") return undefined;
@@ -80,6 +106,9 @@ export default function useReleaseWatch() {
       }),
       onUpdateReady: ({ target, sha, reasons }) => {
         setUpdateReady(true);
+        // Et NYT maal er et nyt faktum: et "Save first" paa den forrige release
+        // maa ikke skjule det. `onUpdateReady` fyrer én gang pr. maal.
+        setDismissed(false);
         // M4: "deferred" er et selvstændigt udfald — vi VED der er en ny
         // frontend, men vi tog den ikke af os selv. Uden det ville en udskudt
         // opdatering være usynlig i målingen.
@@ -136,8 +165,25 @@ export default function useReleaseWatch() {
   }, [location.pathname, location.search]);
 
   const applyUpdate = useCallback(() => {
-    Promise.resolve(ctxRef.current?.applyUpdate?.()).catch(() => {});
+    Promise.resolve(ctxRef.current?.applyUpdate?.()).then((did) => {
+      if (did) return;
+      // Ingen maal-release at gaa til. Stod banneret alligevel, er det fordi lag
+      // 2 udskoed en chunk-REPARATION (#5159 review-fund 1) — der findes intet
+      // versions-maal, men der findes et brudt chunk. Klikket skal stadig virke,
+      // ellers er den manuelle udvej et doedt klik. Et fuldt dokument-load er
+      // praecis den reparation lag 2 ville have lavet af sig selv.
+      if (!recoveryDeferredRef.current || typeof window === "undefined") return;
+      window.location.reload();
+    }).catch(() => {});
   }, []);
 
-  return { updateReady, applyUpdate };
+  // "Save first": luk banneret, reload INTET. Watcheren beholder sin markoer, saa
+  // det automatiske reload sker paa det sikre punkt naar kladden er gemt.
+  const dismissUpdate = useCallback(() => setDismissed(true), []);
+
+  return {
+    updateReady: (updateReady || recoveryDeferred) && !dismissed,
+    applyUpdate,
+    dismissUpdate,
+  };
 }

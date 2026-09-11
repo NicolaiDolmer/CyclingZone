@@ -23,6 +23,8 @@ import MentionAutocomplete from "../components/forum/MentionAutocomplete.jsx";
 // #5000: samme relativ-tid-formatter som dashboardets ForumHighlightsCard —
 // "seneste svar" skal laese ens de to steder det staar.
 import { formatRelativeTime } from "../lib/intl.js";
+// #5159 (B1): et usendt opslag er ugemt arbejde som et deploy ikke maa kassere.
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 // #4818: kategori-raekkefoelge + skrive-rettigheder. Reglerne bor i modulet,
 // ikke her, saa de kan koeres under `node --test` (forumCategories.test.js).
 import {
@@ -144,6 +146,17 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCatego
     // i, falder valget tilbage til den første lovlige kategori.
     if (open) setCategory(choices.includes(defaultCategory) ? defaultCategory : choices[0]);
   }, [open, defaultCategory, choices]);
+
+  // #5159 (B1): et halvskrevet opslag findes KUN i denne komponents state indtil
+  // POST'en er igennem — et release-drevet reload ville kassere det uden en lyd.
+  // Blokeringen slippes af sig selv: `handleClose` rydder felterne, og en
+  // gennemført submit kalder netop den. Genbruger de state-felter der allerede
+  // fandtes; ingen ny tilstand.
+  useReloadBlock(
+    Boolean(open && (title || body || pollText || images.length > 0)),
+    RELOAD_BLOCK_REASONS.DIRTY,
+  );
+  useReloadBlock(Boolean(submitting || uploadingImage), RELOAD_BLOCK_REASONS.BUSY);
 
   function handleClose() {
     // Ogsaa `uploadingImage`: lukkede man mens et upload koerte, ryddede

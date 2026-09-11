@@ -474,7 +474,14 @@ export function createReleaseReloader({
   return {
     state,
     runCheck,
-    /** Spillerens eget klik på "Update"-banneret. */
+    /**
+     * Spillerens eget klik på "Update"-banneret.
+     *
+     * Returnerer false når der ikke er noget mål — fx efter et rollback, hvor
+     * banneret netop er blevet fjernet. Kalderen (useReleaseWatch) afgør hvad
+     * der så skal ske; denne funktion laver aldrig et reload "for en sikkerheds
+     * skyld" mod en frontend vi allerede kører.
+     */
     applyUpdate() {
       const target = state.pendingRelease || state.lastTarget;
       return attemptReload(target, "manual", { manual: true });

@@ -43,7 +43,10 @@
   "releaseUpdate": {
     "title": "New version ready",
     "action": "Update",
-    "regionAriaLabel": "Update available"
+    "regionAriaLabel": "Update available",
+    "unsavedTitle": "You have unsaved changes. Save first, or update anyway.",
+    "saveFirst": "Save first",
+    "updateAnyway": "Update anyway"
   },
   "opsNotice": {
     "regionAriaLabel": "Service status",

@@ -15,13 +15,22 @@ import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 //   · /version.json             = det edgen serverer lige nu
 // Testen skruer paa dem uafhaengigt af hinanden.
 //
-// Motor-fordeling (#4647-tidsbudgettet paa mobile-webkit-shard'en): de scenarier
-// der beviser MOTOR-SPECIFIK adfaerd koerer i BEGGE motorer — B1-reproduktionen
-// hvor loginfeltet blev toemt efter blur, det sikre punkt, bannerklikket og den
-// glade sti. De oevrige (M1, M2, M3, H4 og traenings-varianten af B1) er ren
-// mekanik uden motor-afhaengighed, er daekket linje for linje i
-// releaseWatch.test.js, og koerer derfor kun i Chromium. Uden den opdeling loeb
-// webkit-shard'en 12 min 21 s mod et budget paa 12 min.
+// Motor-fordeling (#4647-tidsbudgettet paa mobile-webkit-shard'en). Skillelinjen
+// er "afhaenger udfaldet af MOTOREN?", ikke "hvor hurtigt koerer scenariet":
+//
+//   Begge motorer: B1-reproduktionen hvor loginfeltet blev toemt efter blur, det
+//   sikre punkt, bannerets bekraeftelse + klik, den glade sti — og (efter
+//   review 11/9) M2 og M3. De to er de MEST motor-afhaengige i hele specen:
+//   M3 haenger paa hvordan motoren opfoerer sig naar sessionStorage kaster
+//   (WebKit's "The operation is insecure." er praecis den browser private mode
+//   rammer i praksis), og M2 paa at motorens fetch faktisk afbrydes af
+//   AbortController-deadlinen og frigiver `inFlight`.
+//
+//   Kun Chromium: M1, H4 og traenings-varianten af B1 — ren mekanik uden
+//   motor-afhaengighed (loop-guard-noegler, sha-vs-indholds-id, en select-kladde),
+//   daekket linje for linje i releaseWatch.test.js.
+//
+// Uden en opdeling loeb webkit-shard'en 12 min 21 s mod et budget paa 12 min.
 
 const CLIENT_SHA = "e2e-sha-a";
 const CLIENT_FRONTEND = "e2e-frontend-a";
@@ -153,7 +162,9 @@ test("B1 login: det sikre punkt — reloadet sker naar teksten er ryddet", async
   await expect.poll(() => documentLoads(page), { timeout: 15_000 }).toBe(2);
 });
 
-test("B1 login: bannerets Update-knap genindlaeser paa spillerens eget klik", async ({ page }) => {
+// Review-fund 2 (11/9): klikket springer stadig porten over — det er spillerens
+// egen beslutning — men det skal SIGE hvad det koster foerst, i banneret selv.
+test("B1 login: bannerets Update-klik bekraefter foerst, og genindlaeser saa", async ({ page }) => {
   const state = await setupReleaseHarness(page);
   await page.goto("/login");
   await page.getByPlaceholder("din@email.dk").fill("ugemt@cyclingzone.org");
@@ -163,7 +174,45 @@ test("B1 login: bannerets Update-knap genindlaeser paa spillerens eget klik", as
   await page.clock.fastForward(PERIODIC);
   await expect(banner(page)).toBeVisible();
 
+  // Foerste klik: porten er lukket (usendt tekst), saa banneret spoerger.
+  // Tilstanden aflaeses paa "Gem foerst"-knappen, ikke paa copyen: e2e koerer paa
+  // dansk (fixtures saetter cz_lang), og selve ordlyden er daekket i
+  // releaseUpdateBanner.source.test.js + skaermbillederne.
   await page.getByTestId("release-update-apply").click();
+  await expect(page.getByTestId("release-update-save-first")).toBeVisible();
+  expect(await documentLoads(page), "bekraeftelsen alene genindlaeser ingenting").toBe(1);
+
+  // Andet klik = "Update anyway": spilleren har set prisen og valgt alligevel.
+  await page.getByTestId("release-update-apply").click();
+  await expect.poll(() => documentLoads(page), { timeout: 15_000 }).toBe(2);
+});
+
+test("B1 login: 'Save first' lukker banneret uden at genindlaese", async ({ page, browserName }) => {
+  test.skip(
+    browserName !== "chromium",
+    "Ren UI-mekanik (én React-state der lukker banneret) uden motor-afhaengighed. WebKit-shard'en ligger paa tidsbudgettet (#4647); bekraeftelsen + selve reloadet koerer i BEGGE motorer i scenariet ovenfor.",
+  );
+  const state = await setupReleaseHarness(page);
+  await page.goto("/login");
+  const email = page.getByPlaceholder("din@email.dk");
+  await email.fill("ugemt@cyclingzone.org");
+  await page.getByRole("heading", { name: "Cycling Zone" }).click();
+
+  state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
+  await page.clock.fastForward(PERIODIC);
+  await expect(banner(page)).toBeVisible();
+
+  await page.getByTestId("release-update-apply").click();
+  await page.getByTestId("release-update-save-first").click();
+
+  await expect(banner(page)).toHaveCount(0);
+  expect(await documentLoads(page), "INTET reload — og teksten staar der endnu").toBe(1);
+  await expect(email).toHaveValue("ugemt@cyclingzone.org");
+
+  // Markoeren ligger der stadig: i det sekund der ikke laengere er noget at
+  // miste, tages opdateringen af sig selv — ogsaa efter et "Save first".
+  await email.fill("");
+  await page.getByRole("heading", { name: "Cycling Zone" }).click();
   await expect.poll(() => documentLoads(page), { timeout: 15_000 }).toBe(2);
 });
 
@@ -172,7 +221,7 @@ test("B1 login: bannerets Update-knap genindlaeser paa spillerens eget klik", as
 test("B1 traening: en ugemt ugekladde blokerer reloadet, Gem frigiver det", async ({ page, browserName }) => {
   test.skip(
     browserName !== "chromium",
-    "Ren mekanik, ikke motor-specifik adfaerd: daekket af releaseWatch.test.js og koert i Chromium. WebKit-shard'en ligger paa tidsbudgettet (#4647), og de motor-specifikke accept-scenarier — B1-blur-reproduktionen, det sikre punkt, bannerklikket og den glade sti — koerer fortsat i BEGGE motorer.",
+    "Ren mekanik uden motor-afhaengighed: daekket linje for linje af releaseWatch.test.js og koert i Chromium. WebKit-shard'en ligger paa tidsbudgettet (#4647); de motor-afhaengige scenarier — B1-blur-reproduktionen, det sikre punkt, bannerets bekraeftelse + klik, den glade sti, M2 og M3 — koerer i BEGGE motorer.",
   );
   const state = await setupReleaseHarness(page);
   await login(page);
@@ -207,7 +256,7 @@ test("B1 traening: en ugemt ugekladde blokerer reloadet, Gem frigiver det", asyn
 test("M1: A -> forgaeves forsoeg paa B -> C bliver stadig opdaget", async ({ page, browserName }) => {
   test.skip(
     browserName !== "chromium",
-    "Ren mekanik, ikke motor-specifik adfaerd: daekket af releaseWatch.test.js og koert i Chromium. WebKit-shard'en ligger paa tidsbudgettet (#4647), og de motor-specifikke accept-scenarier — B1-blur-reproduktionen, det sikre punkt, bannerklikket og den glade sti — koerer fortsat i BEGGE motorer.",
+    "Ren mekanik uden motor-afhaengighed: daekket linje for linje af releaseWatch.test.js og koert i Chromium. WebKit-shard'en ligger paa tidsbudgettet (#4647); de motor-afhaengige scenarier — B1-blur-reproduktionen, det sikre punkt, bannerets bekraeftelse + klik, den glade sti, M2 og M3 — koerer i BEGGE motorer.",
   );
   const state = await setupReleaseHarness(page);
   // Slottet for B er allerede brugt i en tidligere dokumentstart i samme fane.
@@ -232,11 +281,10 @@ test("M1: A -> forgaeves forsoeg paa B -> C bliver stadig opdaget", async ({ pag
 
 // --- M2 ---------------------------------------------------------------------
 
-test("M2: et haengende versionskald doeder ikke detektionen — naeste vindue henter igen", async ({ page, browserName }) => {
-  test.skip(
-    browserName !== "chromium",
-    "Ren mekanik, ikke motor-specifik adfaerd: daekket af releaseWatch.test.js og koert i Chromium. WebKit-shard'en ligger paa tidsbudgettet (#4647), og de motor-specifikke accept-scenarier — B1-blur-reproduktionen, det sikre punkt, bannerklikket og den glade sti — koerer fortsat i BEGGE motorer.",
-  );
+// Koerer i BEGGE motorer (review 11/9): udfaldet haenger paa at motorens fetch
+// faktisk afbrydes af AbortController-deadlinen OG at `inFlight` frigives — det
+// er motor-adfaerd, ikke vores bogholderi.
+test("M2: et haengende versionskald doeder ikke detektionen — naeste vindue henter igen", async ({ page }) => {
   const state = await setupReleaseHarness(page);
   state.hang = true;
   await page.goto("/login");
@@ -263,11 +311,10 @@ test("M2: et haengende versionskald doeder ikke detektionen — naeste vindue he
 
 // --- M3 ---------------------------------------------------------------------
 
-test("M3: tre dokumentstarter uden sessionStorage giver NUL automatiske reloads", async ({ page, browserName }) => {
-  test.skip(
-    browserName !== "chromium",
-    "Ren mekanik, ikke motor-specifik adfaerd: daekket af releaseWatch.test.js og koert i Chromium. WebKit-shard'en ligger paa tidsbudgettet (#4647), og de motor-specifikke accept-scenarier — B1-blur-reproduktionen, det sikre punkt, bannerklikket og den glade sti — koerer fortsat i BEGGE motorer.",
-  );
+// Koerer i BEGGE motorer (review 11/9): "sessionStorage der kaster" ER en
+// motor-tilstand — WebKit's "The operation is insecure." er praecis den browser
+// private mode rammer i praksis, og fail-closed-adfaerden skal bevises der.
+test("M3: tre dokumentstarter uden sessionStorage giver NUL automatiske reloads", async ({ page }) => {
   const state = await setupReleaseHarness(page);
   // sessionStorage findes, men ENHVER operation kaster — privat browsing med
   // site-data slaaet fra. (Varianten hvor selve property-OPSLAGET kaster er
@@ -325,7 +372,7 @@ test("uden ugemt arbejde tages opdateringen af sig selv — ÉT dokument-load", 
 test("H4: et deploy der kun aendrer git-sha'en genindlaeser ingen", async ({ page, browserName }) => {
   test.skip(
     browserName !== "chromium",
-    "Ren mekanik, ikke motor-specifik adfaerd: daekket af releaseWatch.test.js og koert i Chromium. WebKit-shard'en ligger paa tidsbudgettet (#4647), og de motor-specifikke accept-scenarier — B1-blur-reproduktionen, det sikre punkt, bannerklikket og den glade sti — koerer fortsat i BEGGE motorer.",
+    "Ren mekanik uden motor-afhaengighed: daekket linje for linje af releaseWatch.test.js og koert i Chromium. WebKit-shard'en ligger paa tidsbudgettet (#4647); de motor-afhaengige scenarier — B1-blur-reproduktionen, det sikre punkt, bannerets bekraeftelse + klik, den glade sti, M2 og M3 — koerer i BEGGE motorer.",
   );
   const state = await setupReleaseHarness(page);
   await page.goto("/login");

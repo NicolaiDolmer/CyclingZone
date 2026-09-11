@@ -18,6 +18,8 @@ import ForumImageAttachments from "../components/forum/ForumImageAttachments.jsx
 // #5011: @-tag af en manager — klikbart navn i teksten + navneforslag i editoren.
 import MentionText from "../components/forum/MentionText.jsx";
 import MentionAutocomplete from "../components/forum/MentionAutocomplete.jsx";
+// #5159 (B1): et usendt svar eller en halvskrevet rapport er ugemt arbejde.
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 
 // #3199 — tråd-detalje: opslag + evt. ejer-poll + svar. T1 (max-w-4xl).
 // Afstemning: single choice, genafstemning tilladt (backend upserter). Kun
@@ -59,6 +61,12 @@ function ReportModal({ open, onClose, onSubmit, t }) {
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);
+
+  // #5159 (B1): en begrundelse skal vaere mindst 10 tegn — det er et stykke
+  // skrevet tekst der kun findes her indtil POST'en er igennem. `sent` lukker
+  // porten igen: saa er der ikke laengere noget usendt.
+  useReloadBlock(Boolean(open && !sent && reason), RELOAD_BLOCK_REASONS.DIRTY);
+  useReloadBlock(submitting, RELOAD_BLOCK_REASONS.BUSY);
 
   function handleClose() {
     if (submitting) return;
@@ -278,6 +286,18 @@ export default function ForumPostPage() {
   const tError = useCallback(
     (code) => (code && i18n.exists(`errors:api.${code}`) ? tErrors(`api.${code}`) : t("errors.submitFailed")),
     [i18n, tErrors, t]
+  );
+
+  // #5159 (B1): et halvskrevet svar (tekst, citat eller vedhaeftede billeder)
+  // findes kun i denne sides state. Et release-drevet reload ville kassere det.
+  // Felterne ryddes ved en gennemfoert submit, saa porten aabner af sig selv.
+  useReloadBlock(
+    Boolean(replyBody || replyImages.length > 0 || quoteTarget),
+    RELOAD_BLOCK_REASONS.DIRTY,
+  );
+  useReloadBlock(
+    Boolean(replySubmitting || uploadingImage || voting || reactingKey),
+    RELOAD_BLOCK_REASONS.BUSY,
   );
 
   useEffect(() => {
