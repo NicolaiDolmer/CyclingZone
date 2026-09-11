@@ -8,10 +8,10 @@ Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér r
 
 ## Orkestrator-standard (ejer 11/9, #5142)
 
-Parallelt byggearbejde har ÉN indgang: `Workflow({ name: "wave", args: { tracks: [...] } })` ([`.claude/workflows/wave.js`](.claude/workflows/wave.js)) — aldrig håndskrevne Agent-spawns. Loftet er maskinen, ikke klokken: **4 laner** hele døgnet på DOLMERPC.
-**Verifikations-semafor: maks 2 tunge kørsler ad gangen** på tværs af alle worktrees — wrap dem: `pwsh -File scripts/verify-lock.ps1 -Max 2 -Timeout 1800 -- <kommando>`. Brief-generatoren (`scripts/make-wave-brief.mjs`) håndhæver det i hver lane.
-Livstegn: draft-PR inden 30 min, push hvert 15. min, per-spor-timeout 60 min, recovery i SAMME worktree (aldrig reset). Maks 5 åbne PR'er — fuld kø = merge før nyt startes.
-Agent-toolet bruges KUN til ÉN opfølgning ad gangen i et eksisterende worktree, med præfikset `WAVE-FOLLOWUP:`. `scripts/hooks/guard-agent-spawn.sh` blokerer resten mens en bølge kører.
+Parallelt byggearbejde har ÉN indgang: `Workflow({ name: "wave", args: { tracks: [...] } })` ([`.claude/workflows/wave.js`](.claude/workflows/wave.js)), aldrig håndskrevne Agent-spawns. Loftet er maskinen, ikke klokken: **4 laner**, ét kald pr. bølge. Ved bekræftet frys stopper bølgen og rapporterer de ustartede spor til relancering.
+**Verifikations-semafor: maks 2 tunge kørsler ad gangen** på tværs af alle worktrees: `pwsh -File scripts/verify-lock.ps1 -Max 2 -Timeout 1800 -- <kommando>`. Den tæller kun det der faktisk wrappes; `scripts/make-wave-brief.mjs` håndhæver wrappingen i hver lane.
+Livstegn: draft-PR inden 30 min, push hvert 15. min, per-spor-timeout 60 min, recovery i SAMME worktree (aldrig reset). Maks 5 åbne PR'er, så fuld kø = merge før nyt startes.
+`scripts/hooks/guard-agent-spawn.sh` blokerer alt andet mens en bølge kører. Fritaget: `WAVE-LANE:`, `WAVE-REVIEW:`, `WAVE-FOLLOWUP:`, `WAVE-SETUP:`, `WAVE-CLEANUP:` og read-only (`READ-ONLY:`, subagent_type `Explore`/`Plan`). Håndskrevet byggearbejde: kun ÉN `WAVE-FOLLOWUP:` ad gangen i et eksisterende worktree.
 
 ## Page templates (binding — ejer-godkendt 23/7, #2849)
 

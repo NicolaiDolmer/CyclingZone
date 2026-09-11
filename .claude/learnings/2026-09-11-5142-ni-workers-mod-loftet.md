@@ -32,7 +32,7 @@ Ejeren 11/9: *"vi skal vælge en standard som vi bruger hver gang i alle session
 To ting, begge i indgangen frem for i prosaen:
 
 1. **`.claude/workflows/wave.js`** — ét gemt workflow er nu eneste vej til parallelt byggearbejde. Det ejer lane-loftet (4), per-spor-timeouten (60 min), brief-genereringen, lane-vagten, reviewer-trinnet og oprydningen. Der er ikke længere en "hurtig vej udenom", fordi den hurtige vej nu er workflowet.
-2. **`scripts/hooks/guard-agent-spawn.sh`** — PreToolUse-hook på `Agent` og `Workflow`. Afviser spawns mens `.claude/run/wave-active.json` findes (kun `WAVE-FOLLOWUP:`/`WAVE-REVIEW:` slipper igennem), og afviser mere end 4 spawns inden for 45 min uden for bølger. Selvtestet: `bash scripts/test-guard-agent-spawn.sh`.
+2. **`scripts/hooks/guard-agent-spawn.sh`** — PreToolUse-hook på `Agent` og `Workflow`. Afviser spawns mens `.claude/run/wave-active.json` findes, og afviser mere end 4 spawns inden for 45 min uden for bølger. Igennem slipper bølgens egne præfikser (`WAVE-LANE:`, `WAVE-REVIEW:`, `WAVE-FOLLOWUP:`, `WAVE-SETUP:`, `WAVE-CLEANUP:`), read-only-agenter (`READ-ONLY:` eller subagent_type `Explore`/`Plan` — de ændrer ingen filer og bruger dermed ikke den ressource loftet beskytter) og `Workflow({ name: "wave" })` selv. Tællingen sker bag en mkdir-lås, fordi registret ellers læses, tælles og skrives uden lås: reviewer-målt på PR #5147 gav 9 samtidige kald 5 tilladte ved loft 4. Selvtestet, inkl. samtidighed: `bash scripts/test-guard-agent-spawn.sh`.
 
 Plus de to konkrete symptomer:
 
