@@ -88,6 +88,14 @@
       "survey": {
         "title": "Hjælp mig med at vælge hvad der skal bygges næste gang",
         "message": "Jeg har lagt et kort spørgeskema ind i spillet. Du giver hver idé to karakterer: om den overhovedet er en god idé, og hvor meget den betyder for dig lige nu. Det tager cirka 5 minutter, og du kan rette dine svar indtil det lukker. Åbn det herfra."
+      },
+      "surveyNudge": {
+        "title": "Tre minutter til næste sæson?",
+        "message": "{count} managere har svaret på spørgeskemaet om features. Ungdomshold, træning og race engine ligger øverst. Jeg vil gerne høre hvor du står, før jeg låser planen. Skemaet lukker den 14. september. Åbn det herfra."
+      },
+      "surveyNudgeStarted": {
+        "title": "Du mangler kun at trykke send",
+        "message": "Du er begyndt på spørgeskemaet men fik det aldrig sendt. Dine svar er gemt, så du kan fortsætte hvor du slap. {count} managere har svaret indtil nu, og skemaet lukker den 14. september. Åbn det herfra."
       }
     },
     "loanCreatedShort": {
