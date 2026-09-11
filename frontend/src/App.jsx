@@ -6,7 +6,6 @@ import { parseAuthErrorHash, isExpiredOrDeniedAuthError } from "./lib/authErrorH
 import { lazyWithRetry as lazy } from "./lib/lazyWithRetry.js";
 import { supabase } from "./lib/supabase";
 import CookieBanner from "./components/CookieBanner.jsx";
-import { useConsent } from "./lib/consent.jsx";
 // #5033/#5159: opdag et nyt frontend-deploy mens fanen er aaben, og genindlaes
 // paa et sikkert punkt — aldrig oven i ugemt arbejde. Banneret er den manuelle
 // udvej naar det sikre punkt ikke er kommet endnu.
@@ -193,16 +192,6 @@ export default function App() {
   // at ingen flade har ugemt arbejde. Ellers vises banneret, og spilleren tager
   // opdateringen naar det passer.
   const { updateReady, applyUpdate, dismissUpdate } = useReleaseWatch();
-  // #5159 (review-fund 5): banneret deler `fixed inset-x-0 bottom-0 z-toast` med
-  // cookie-banneret og NPS-prompten og tegner OVENPAA dem. Samme loesning som
-  // useNpsPrompt allerede bruger: cookie-banneret er en samtykke-beslutning der
-  // ejer bundkanten alene, saa release-banneret venter til den er truffet.
-  const { bannerOpen: consentBannerOpen } = useConsent();
-  const appLocation = useLocation();
-  // ... og ikke paa den PRERENDREDE landing for en anonym besoegende: der er
-  // ingen session, intet ugemt arbejde og ingen app-tilstand at redde — en
-  // opdaterings-stribe paa forsiden er ren stoej for en foerstegangsbesoegende.
-  const anonymousOnLanding = !session && appLocation.pathname === "/";
 
   // #2078: en udløbet/ugyldig email-confirm-link redirecter til Site URL ("/")
   // med fejlen i hash'et (#error=access_denied&error_code=otp_expired...) og
@@ -467,8 +456,14 @@ export default function App() {
         </Routes>
       </Suspense>
       <CookieBanner />
+      {/* #5159 (review-fund 5): de to stacking-gates — cookie-banneret og "anonym
+          paa forsiden" — ligger inde i banneret selv, ikke her. App er roden, og
+          et abonnement dér (samtykke-contexten, useLocation) gen-renderer HELE
+          traeet, inklusive den prerendrede landing. Banneret er et blad der
+          rendrer null naar gaten lukker, saa der koster et gen-render intet. */}
       <ReleaseUpdateBanner
-        show={updateReady && !consentBannerOpen && !anonymousOnLanding}
+        show={updateReady}
+        hasSession={Boolean(session)}
         onUpdate={applyUpdate}
         onDismiss={dismissUpdate}
       />

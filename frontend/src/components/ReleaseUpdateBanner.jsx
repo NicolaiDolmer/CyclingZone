@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import Button from "./ui/Button.jsx";
 // Eksplicit fil, ikke mappe-import: extensionless specifiers bestaar Vite men
 // fejler i Node's ESM-loader (projektreglen i .coderabbit.yaml).
 import { RefreshIcon } from "./ui/icons/index.jsx";
 import { isReloadAllowed } from "../lib/reloadGate.js";
+import { useConsent } from "../lib/consent.jsx";
 
 // #5159 — den manuelle udvej. Banneret er selve grunden til at appen tør LADE
 // VÆRE med at genindlæse af sig selv: opdager watcheren en ny frontend mens
@@ -27,17 +29,40 @@ import { isReloadAllowed } from "../lib/reloadGate.js";
 // Knappen er SECONDARY (review-fund 6, TASTE §P3): banneret er en stribe oven på
 // en vilkårlig side, og viewets egen gold primary — Gem, Log ind — skal blive ved
 // med at være den ene guld-flade i billedet.
-export default function ReleaseUpdateBanner({ show, onUpdate, onDismiss }) {
+// Review-fund 5: banneret deler `fixed inset-x-0 bottom-0 z-toast` med
+// cookie-banneret og NPS-prompten og tegner OVENPÅ dem. De to gates herunder bor
+// HER og ikke i App, med vilje: App er rodkomponenten, og et abonnement dér
+// (samtykke-contexten, `useLocation`) gen-renderer HELE træet — inklusive den
+// prerendrede landing — hver gang samtykket eller ruten ændrer sig. Banneret er
+// et blad der rendrer null i de tilfælde gaten lukker, så et gen-render koster
+// ingenting.
+//
+// (Første udkast lagde dem i App. Det blev flyttet mens jeg jagtede en React
+// #418-hydrationsfejl i WebKit. Flytningen fjernede IKKE fejlen: den er målt på
+// bee33ecf4 — altså helt uden dette spors ændringer — med 3/1/0 røde ud af 24
+// på tre kørsler, så den er et eksisterende, belastningsafhængigt flake i
+// landing-hydrationen og ikke noget denne PR indfører. Placeringen her er
+// beholdt fordi den er den rigtige uanset.)
+export default function ReleaseUpdateBanner({ show, hasSession = false, onUpdate, onDismiss }) {
   const { t } = useTranslation("banners");
+  // Cookie-banneret er en samtykke-beslutning der ejer bundkanten alene — samme
+  // løsning useNpsPrompt allerede bruger for NPS-baren.
+  const { bannerOpen: consentBannerOpen } = useConsent();
+  const { pathname } = useLocation();
   // Sat når spilleren klikkede Update mens porten var lukket. Nulstilles hvis
   // banneret forsvinder, så det aldrig kommer tilbage midt i en bekræftelse.
   const [confirming, setConfirming] = useState(false);
 
-  useEffect(() => {
-    if (!show) setConfirming(false);
-  }, [show]);
+  // Forsiden for en anonym besøgende: ingen session, intet ugemt arbejde og
+  // ingen app-tilstand at redde. En opdaterings-stribe dér er ren støj.
+  const anonymousOnLanding = !hasSession && pathname === "/";
+  const visible = Boolean(show) && !consentBannerOpen && !anonymousOnLanding;
 
-  if (!show) return null;
+  useEffect(() => {
+    if (!visible) setConfirming(false);
+  }, [visible]);
+
+  if (!visible) return null;
 
   function handleUpdate() {
     // Porten læses på KLIK-tidspunktet, ikke ved render: en kladde kan være gemt

@@ -46,9 +46,20 @@ test("bekraeftelses-copyen findes paa BEGGE sprog (EN foerst, DA under)", () => 
 
 // #5159 review-fund 5: banneret deler `fixed inset-x-0 bottom-0 z-toast` med
 // cookie-banneret og NPS-prompten og tegner ovenpaa dem.
-test("App gater banneret paa samtykke-banneret og paa anonym landing", () => {
+test("banneret gater sig selv paa samtykke-banneret og paa anonym landing", () => {
+  assert.match(src, /consentBannerOpen/);
+  assert.match(src, /anonymousOnLanding/);
+  assert.match(src, /!hasSession && pathname === "\/"/);
+  assert.match(src, /const visible = Boolean\(show\) && !consentBannerOpen && !anonymousOnLanding/);
+});
+
+// App er rodkomponenten: et abonnement dér gen-renderer HELE traeet, inklusive
+// den prerendrede landing, hver gang samtykket eller ruten aendrer sig. Gaten
+// hoerer derfor til i bladet. (Den blev flyttet under jagten paa et React
+// #418-flake i WebKit; flytningen fjernede ikke flaket — det er maalt paa
+// bee33ecf4 uden dette spors aendringer — men placeringen er den rigtige uanset.)
+test("App abonnerer IKKE paa samtykke-contexten (roden gen-renderer hele traeet)", () => {
   const app = readFileSync(join(here, "../App.jsx"), "utf8");
-  assert.match(app, /consentBannerOpen/);
-  assert.match(app, /anonymousOnLanding/);
-  assert.match(app, /show=\{updateReady && !consentBannerOpen && !anonymousOnLanding\}/);
+  assert.ok(!/useConsent/.test(app), "App maa ikke laese samtykke-contexten — banneret goer det selv");
+  assert.match(app, /hasSession=\{Boolean\(session\)\}/, "session kommer som prop, ikke som et nyt abonnement");
 });
