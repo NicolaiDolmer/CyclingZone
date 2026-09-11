@@ -89,12 +89,20 @@ process.stdin.on("end", () => {
   if (tool !== "Agent" && tool !== "Workflow") process.exit(0);
 
   const input = payload.tool_input || {};
-  // Agent bruger "prompt"; Workflow bruger "script"/"name". Vi kigger paa det
-  // felt der findes, saa et Workflow-kald ikke slipper igennem paa en tom prompt.
+  // Agent bruger "prompt"; Workflow har ingen prompt - det har "name"/"args".
   const prompt = String(input.prompt ?? input.description ?? "").trimStart();
+  const workflowName = String(input.name ?? "");
+
+  // Selve wave-workflowet er INDGANGEN og maa aldrig blokeres af sin egen vagt:
+  // ellers kan hverken en dryRun-plan eller en recovery-boelge efter en doed
+  // session startes, saa laenge wave-active.json ligger der.
+  if (tool === "Workflow" && workflowName === "wave") process.exit(0);
 
   const PREFIXES = ["WAVE-LANE:", "WAVE-REVIEW:", "WAVE-FOLLOWUP:", "WAVE-SETUP:", "WAVE-CLEANUP:"];
   const isWave = PREFIXES.some((p) => prompt.startsWith(p));
+  // Label til registret: et Workflow-kald har ingen prompt, saa uden dette blev
+  // hver linje skrevet med tom label og registret kunne ikke laeses tilbage.
+  const label = prompt || (workflowName ? `Workflow:${workflowName}` : `${tool}:(uden prompt)`);
 
   const runDir = process.env.CZ_RUN_DIR;
   const activeFile = path.join(runDir, "wave-active.json");
@@ -146,7 +154,7 @@ process.stdin.on("end", () => {
   // ikke vokser uendeligt.
   try {
     fs.mkdirSync(runDir, { recursive: true });
-    const entry = JSON.stringify({ ts: new Date(now).toISOString(), tool, label: prompt.slice(0, 80) });
+    const entry = JSON.stringify({ ts: new Date(now).toISOString(), tool, label: label.slice(0, 80) });
     fs.writeFileSync(registry, kept.concat(entry).join("\n") + "\n", "utf8");
   } catch { /* registrering er best-effort; den maa aldrig blokere et lovligt spawn */ }
   process.exit(0);

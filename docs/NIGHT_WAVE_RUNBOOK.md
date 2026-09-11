@@ -8,6 +8,7 @@ Bølgen startes med `Workflow({ name: "wave", args: { tracks: [...] } })` — al
 - **Verifikations-semafor: maks 2 tunge kørsler ad gangen** på tværs af alle worktrees, via `scripts/verify-lock.ps1`. Afløser "maks 3 tunge verifikationer samtidig" (AGENTS.md hard rule 24) og "kun ÉN fuld e2e-suite ad gangen" skærpes ikke — den gælder uændret oven i semaforen.
 - **Håndhævelse i indgangen:** `scripts/hooks/guard-agent-spawn.sh` afviser Agent-spawns mens en bølge kører; kun ÉN opfølgning ad gangen slipper igennem med præfikset `WAVE-FOLLOWUP:`.
 - **Dry-run:** `Workflow({ name: "wave", args: { dryRun: true, tracks: [...] } })` printer bølgeplanen uden at starte noget — brug den til trin 2's ejer-go.
+- **ÉT Workflow-kald pr. bølge.** Mønstret fra natbølgen 2-3/9 med to parallelle workflow-kald (for at nå 8 samtidige spor forbi concurrency-cappen på CPU-2) er stadig historisk korrekt, men er ikke længere den gældende form: loftet er 4 laner, og de får plads i ét kald.
 
 > **On-demand doc.** Auto-loader IKKE (bevidst: 0 cold-start-tokens — derfor doc, ikke skill/saved workflow; orkestreringen er konversationel med ejer-go pr. bølge). Læs FØR enhver natbølge claims. Kanonisk kilde for bølge-protokollen; memory `project_multiagent_fleet_playbook.md` peger hertil. Oprettet efter natbølge 3-postmortem (PC i Modern Standby 4 min efter claim → 0 agenter kørte).
 

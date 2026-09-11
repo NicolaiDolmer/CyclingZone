@@ -49,6 +49,14 @@ process.stdout.write(JSON.stringify(o));
 '
 }
 
+# workflow_payload NAME -> JSON for et Workflow-kald (ingen prompt, kun name/args)
+workflow_payload() {
+  WF="$1" node -e '
+const o = { hook_event_name: "PreToolUse", tool_name: "Workflow", tool_input: { name: process.env.WF, args: { tracks: [] } } };
+process.stdout.write(JSON.stringify(o));
+'
+}
+
 # run NAME WANT_EXIT WANT_STDERR_SUBSTR JSON
 run() {
   local name="$1" want_exit="$2" want_err="$3" json="$4"
@@ -141,6 +149,15 @@ expect_count "WAVE-praefikser taeller ikke i registret" 0
 
 run "boelge aktiv: Workflow-kald uden praefiks -> BLOKERET" \
   2 "en boelge koerer allerede" "$(payload Workflow 'koer endnu en boelge')"
+
+# Et Workflow-kald har ingen "prompt", kun "name"/"args". Selve wave-workflowet
+# ER indgangen og maa aldrig blokeres af sin egen vagt - ellers kan hverken en
+# dryRun-plan eller en recovery-boelge startes mens wave-active.json ligger der.
+run "boelge aktiv: Workflow({name:'wave'}) slipper igennem" \
+  0 "" "$(workflow_payload wave)"
+
+run "boelge aktiv: et ANDET gemt workflow -> BLOKERET" \
+  2 "en boelge koerer allerede" "$(workflow_payload andet-workflow)"
 
 run "boelge aktiv: fejlbeskeden peger paa registerfilen" \
   2 "wave-active.json" "$(payload Agent 'Ret bug i race-motoren')"

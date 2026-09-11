@@ -190,7 +190,9 @@ export function generateBrief(config) {
     `ABSOLUT WORKING DIR: ${wd}`,
     `BRANCH: ${branch} (allerede oprettet, tracker origin/main)`,
     `Brug \`git -C "${wd}"\` til ALLE git-kald - shell-cwd nulstilles mellem kald. Arbejd ALDRIG i hoved-checkoutet.`,
-    `SCRATCH-MAPPE (kun din): ${scratchDir} - opret den som allerfoerste handling (\`mkdir -p\`).`,
+    // Ikke `mkdir -p <sti>`: i Git Bash er backslash escape-tegn, saa
+    // C:\Dev\... bliver til een mappe ved navn "C:DevCyclingZone-worktrees...".
+    `SCRATCH-MAPPE (kun din): ${scratchDir} - opret den som allerfoerste handling: \`pwsh -NoProfile -Command "New-Item -ItemType Directory -Force -Path '${scratchDir}'"\`.`,
     `Model: ${model}.`,
     "",
     "# Scope",
