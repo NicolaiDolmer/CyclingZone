@@ -185,6 +185,10 @@
       "title": "Akademi-signing gennemført",
       "message": "Din akademikandidat er nu en del af dit akademi."
     },
+    "academyGraduationReady": {
+      "title": "Akademi-graduering",
+      "message": "{name} er vokset ud af dit akademi. Ryk ham op, sælg ham eller slip ham, inden fristen udløber."
+    },
     "academyGraduated": {
       "title": "Akademi-graduering afgjort",
       "promote": "{name} er rykket op i din seniortrup.",

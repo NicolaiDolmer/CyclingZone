@@ -26,11 +26,16 @@
 // Usage:
 //   node backend/scripts/detect-missed-graduates.js --dry-run          # default, READ-ONLY
 //   node backend/scripts/detect-missed-graduates.js --dry-run --json
-//   node backend/scripts/detect-missed-graduates.js --execute
+//   node backend/scripts/detect-missed-graduates.js --execute --owner-go
+//
+// --execute skriver mod prod og er bevidst gated bag BEGGE flag, praecis som
+// backend/scripts/repairStuckAcademyGraduates.js. Uden --owner-go afviser
+// scriptet at koere: handlingen er additiv, men den sender notifikationer til
+// rigtige managere, og en utilsigtet koersel kan ikke tages tilbage.
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY (service-role)
 // Exit: 0 = ok (0 kandidater, eller execute lykkedes), 1 = kandidater fundet i
-//       dry-run, 2 = kald-/konfigurationsfejl.
+//       dry-run, 2 = kald-/konfigurationsfejl (inkl. --execute uden --owner-go).
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -59,6 +64,27 @@ export async function fetchTeamLabels(supabase, teamIds) {
   return labels;
 }
 
+/**
+ * Dobbelt-gaten paa --execute, ren og testbar. Samme kontrakt som
+ * repairStuckAcademyGraduates.js: skrive-flaget alene er ikke nok.
+ *
+ * @param {string[]} args
+ * @returns {{jsonOut:boolean, execute:boolean, ownerGo:boolean, error:string|null, exitCode:number}}
+ */
+export function parseExecuteArgs(args = []) {
+  const jsonOut = args.includes("--json");
+  const execute = args.includes("--execute");
+  const ownerGo = args.includes("--owner-go");
+  if (execute && !ownerGo) {
+    return {
+      jsonOut, execute, ownerGo,
+      error: "--execute kraever ogsaa --owner-go. Koer dry-run, vis ejeren listen, og faa et eksplicit go foerst.",
+      exitCode: 2,
+    };
+  }
+  return { jsonOut, execute, ownerGo, error: null, exitCode: 0 };
+}
+
 function printHuman(result, labels, { execute }) {
   const mode = execute ? "EXECUTE" : "DRY-RUN (read-only)";
   const rows = result.candidates;
@@ -68,8 +94,17 @@ function printHuman(result, labels, { execute }) {
     console.log(`\nSprunget over: ${result.skipped}.`);
     return;
   }
+  const missingNotifs = result.missingNotifications || [];
+  if (missingNotifs.length > 0) {
+    console.log(`\n  ${missingNotifs.length} aabent graduerings-vindue(r) hvor manageren ALDRIG fik sin notifikation:\n`);
+    for (const m of missingNotifs) {
+      console.log(`  - rytter ${m.riderId}  ${m.name}  (hold ${m.teamId}, grad-raekke ${m.graduationId})`);
+    }
+    console.log("      handling: notifikationen sendes (raekken staar uroert).");
+  }
+
   if (rows.length === 0) {
-    console.log("\nIngen akademiryttere mangler et graduerings-vindue. Intet at goere.");
+    if (missingNotifs.length === 0) console.log("\nIngen akademiryttere mangler et graduerings-vindue. Intet at goere.");
     return;
   }
 
@@ -89,15 +124,20 @@ function printHuman(result, labels, { execute }) {
     `${GRADUATION.DEADLINE_DAYS} dage foer det eksisterende sweep tager over med default-kaeden.`
   );
   if (!execute) {
-    console.log("\nIngen skrivning foretaget. Koer med --execute naar ejeren har set listen.");
+    console.log("\nIngen skrivning foretaget. Koer med --execute --owner-go naar ejeren har set listen.");
   }
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 if (isMain) {
   const args = process.argv.slice(2);
-  const JSON_OUT = args.includes("--json");
-  const EXECUTE = args.includes("--execute");
+  const parsed = parseExecuteArgs(args);
+  if (parsed.error) {
+    console.error(parsed.error);
+    process.exit(parsed.exitCode);
+  }
+  const JSON_OUT = parsed.jsonOut;
+  const EXECUTE = parsed.execute;
 
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
@@ -115,17 +155,18 @@ if (isMain) {
 
     if (JSON_OUT && !EXECUTE) {
       console.log(JSON.stringify({ ...plan, teams: Object.fromEntries(labels) }, null, 2));
-      process.exit(plan.candidates.length > 0 ? 1 : 0);
+      process.exit(plan.candidates.length + (plan.missingNotifications || []).length > 0 ? 1 : 0);
     }
 
     printHuman(plan, labels, { execute: EXECUTE });
 
-    if (!EXECUTE) process.exit(plan.candidates.length > 0 ? 1 : 0);
+    const pendingWork = plan.candidates.length + (plan.missingNotifications || []).length;
+    if (!EXECUTE) process.exit(pendingWork > 0 ? 1 : 0);
 
     const outcome = await runMissedGraduateSweep({ supabase });
     console.log(
       `\n${outcome.created} override-vindue(r) aabnet, ${outcome.duplicates} allerede oprettet af en anden sti, ` +
-      `${outcome.failed} fejlede.`
+      `${outcome.notificationsSent} manglende notifikation(er) eftersendt, ${outcome.failed} fejlede.`
     );
     for (const e of outcome.errors || []) console.log(`   ⏭  rytter ${e.riderId} (hold ${e.teamId}): ${e.message}`);
     console.log("Post-verify: koer scriptet igen med --dry-run — den skal vise 0 kandidater.");

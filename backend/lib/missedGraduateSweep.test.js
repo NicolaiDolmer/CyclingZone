@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runMissedGraduateSweep, findMissedGraduates } from "./missedGraduateSweep.js";
-import { GRADUATION } from "./academyGraduation.js";
+import { runMissedGraduateSweep, findMissedGraduates, findPendingWithoutNotification } from "./missedGraduateSweep.js";
+import { GRADUATION, buildGraduationReadyNotification, notifyGraduationReady } from "./academyGraduation.js";
+import { notifyTeamOwner } from "./notificationService.js";
+import { translate } from "./i18nServer.js";
 
 // ─── Mock-supabase ─────────────────────────────────────────────────────────────
 // Samme fire tabeller som stuckAcademyGraduates.test.js (vagtens prædikat læses
@@ -10,11 +12,32 @@ import { GRADUATION } from "./academyGraduation.js";
 //
 // Hard rule 16: ingen vægur-tid — `now` injiceres i hver test.
 
+function tableQuery(getRows, extra = {}) {
+  const filters = [];
+  const b = {
+    select() { return b; },
+    eq(col, val) { filters.push((r) => (r[col] ?? null) === val); return b; },
+    not(col, op, val) { if (op === "is") filters.push((r) => (r[col] ?? null) !== val); return b; },
+    in(col, vals) { filters.push((r) => vals.includes(r[col])); return b; },
+    order() { return b; },
+    range(from, to) {
+      return Promise.resolve({ data: apply().slice(from, to + 1), error: null });
+    },
+    // notifyTeamOwner slår holdets ejer op med .single().
+    single() { return Promise.resolve({ data: apply()[0] ?? null, error: null }); },
+    maybeSingle() { return Promise.resolve({ data: apply()[0] ?? null, error: null }); },
+  };
+  function apply() { return getRows().filter((r) => filters.every((f) => f(r))); }
+  return Object.assign(b, extra);
+}
+
 function makeMock({
   activeSeason = { id: "s3", number: 3 },
   riders = [],
   auctions = [],
   graduations = [],
+  teams = [{ id: "t-human", user_id: "u-human" }, { id: "t-other", user_id: "u-other" }],
+  notifications = [],
   insertError = null,
 } = {}) {
   const rec = { inserts: [] };
@@ -30,68 +53,49 @@ function makeMock({
         };
         return b;
       }
-      if (table === "riders") {
-        const filters = [];
-        const b = {
-          select() { return b; },
-          eq(col, val) { filters.push(["eq", col, val]); return b; },
-          not(col, op, val) { if (op === "is") filters.push(["not-is", col, val]); return b; },
-          order() { return b; },
-          range(from, to) {
-            const out = riders.filter((r) => filters.every(([op, c, v]) => {
-              if (op === "eq") return (r[c] ?? false) === v;
-              if (op === "not-is") return (r[c] ?? null) !== v;
-              return true;
-            })).slice(from, to + 1);
-            return Promise.resolve({ data: out, error: null });
-          },
-        };
-        return b;
-      }
-      if (table === "auctions") {
-        const inFilters = [];
-        const b = {
-          select() { return b; },
-          in(col, vals) { inFilters.push([col, vals]); return b; },
-          order() { return b; },
-          range(from, to) {
-            const out = auctions.filter((a) => inFilters.every(([c, v]) => v.includes(a[c]))).slice(from, to + 1);
-            return Promise.resolve({ data: out, error: null });
-          },
-        };
-        return b;
-      }
+      if (table === "riders") return tableQuery(() => riders);
+      if (table === "auctions") return tableQuery(() => auctions);
+      if (table === "teams") return tableQuery(() => teams);
+      if (table === "notifications") return tableQuery(() => notifications);
       if (table === "academy_graduation") {
-        const inFilters = [];
-        const b = {
-          select() { return b; },
-          in(col, vals) { inFilters.push([col, vals]); return b; },
-          order() { return b; },
-          range(from, to) {
-            const out = graduations.filter((g) => inFilters.every(([c, v]) => v.includes(g[c]))).slice(from, to + 1);
-            return Promise.resolve({ data: out, error: null });
-          },
+        return tableQuery(() => graduations, {
           insert(row) {
             rec.inserts.push(row);
             if (insertError) return Promise.resolve({ error: insertError });
             // Skrivningen er synlig for efterfølgende læsninger i SAMME mock, så
             // "kør igen → ingen dublet" tester den ægte idempotens-kæde og ikke
             // bare en tom tabel.
-            graduations.push({ id: `g-${rec.inserts.length}`, rider_id: row.rider_id, status: row.status, deadline: row.deadline, created_at: row.deadline });
+            graduations.push({
+              id: `g-${rec.inserts.length}`, rider_id: row.rider_id, team_id: row.team_id,
+              season_id: row.season_id, status: row.status, deadline: row.deadline, created_at: row.deadline,
+            });
             return Promise.resolve({ error: null });
           },
-        };
-        return b;
+        });
       }
       throw new Error(`uventet tabel: ${table}`);
     },
   };
-  return { supabase, rec };
+  return { supabase, rec, teams, notifications, graduations };
 }
 
-function spyNotify() {
+/**
+ * Notify-spion der opfører sig som notifyTeamOwner: den slår holdets ejer op og
+ * SKRIVER notifikationsrækken i mocken. Uden den skrivning ville en test ikke
+ * kunne skelne "notifikationen nåede frem" fra "den blev aldrig sendt" — og
+ * præcis den skelnen er hele #5133-review-punkt 1.
+ */
+function spyNotify({ teams = [], notifications = [], failOn = () => false } = {}) {
   const calls = [];
-  const fn = async (payload) => { calls.push(payload); };
+  const fn = async (payload) => {
+    calls.push(payload);
+    if (failOn(payload)) throw new Error("notifikation kaputt");
+    const userId = teams.find((t) => t.id === payload.teamId)?.user_id ?? null;
+    // Samme kontrakt som notifyUser: uden modtager skrives ingen række.
+    if (!userId) return { delivered: false, deduped: false, reason: "missing_user" };
+    notifications.push({ user_id: userId, related_id: payload.relatedId, type: payload.type });
+    return { delivered: true, deduped: false };
+  };
   fn.calls = calls;
   return fn;
 }
@@ -115,102 +119,217 @@ const YOUNG = {
 const enabled = async () => true;
 
 test("sweep: finder rytter uden grad-række og opretter ÉN pending-række + notifikation", async () => {
-  const { supabase, rec } = makeMock({ riders: [MISSED, YOUNG] });
-  const notify = spyNotify();
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify });
+  const mock = makeMock({ riders: [MISSED, YOUNG] });
+  const notify = spyNotify(mock);
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
 
   assert.equal(res.created, 1);
   assert.equal(res.failed, 0);
-  assert.equal(rec.inserts.length, 1);
-  assert.equal(rec.inserts[0].rider_id, "r-missed");
-  assert.equal(rec.inserts[0].team_id, "t-human");
-  assert.equal(rec.inserts[0].season_id, "s3");
-  assert.equal(rec.inserts[0].status, "pending");
+  assert.equal(mock.rec.inserts.length, 1);
+  assert.equal(mock.rec.inserts[0].rider_id, "r-missed");
+  assert.equal(mock.rec.inserts[0].team_id, "t-human");
+  assert.equal(mock.rec.inserts[0].season_id, "s3");
+  assert.equal(mock.rec.inserts[0].status, "pending");
 
   // Managerens fulde override-vindue, ikke et udløbet et: deadline = now + 7 dage.
   const expected = new Date(NOW.getTime() + GRADUATION.DEADLINE_DAYS * 86_400_000).toISOString();
-  assert.equal(rec.inserts[0].deadline, expected);
+  assert.equal(mock.rec.inserts[0].deadline, expected);
 
   assert.equal(notify.calls.length, 1);
   assert.equal(notify.calls[0].type, "academy_graduation_ready");
   assert.equal(notify.calls[0].teamId, "t-human");
   assert.equal(notify.calls[0].relatedId, "r-missed");
-  assert.equal(notify.calls[0].metadata.titleParams.name, "Missed Graduate");
+  // Navnet hører til beskeden, ikke titlen — titlen har ingen placeholder.
+  assert.equal(notify.calls[0].metadata.messageParams.name, "Missed Graduate");
+  assert.equal(notify.calls[0].metadata.riderId, "r-missed");
+  assert.equal(notify.calls[0].metadata.titleCode, "notif.academyGraduationReady.title");
+  assert.equal(notify.calls[0].metadata.messageCode, "notif.academyGraduationReady.message");
+});
+
+test("notifikations-copy: title + message kommer fra backendMessages, ikke fra en haandskrevet streng", () => {
+  const payload = buildGraduationReadyNotification({ rider: { id: "r-1", team_id: "t-human", firstname: "Missed", lastname: "Graduate" } });
+  // EN-fallbacken udledes af samme noegle som frontend rendrer — de to kan
+  // derfor ikke sige noget forskelligt (#4734-kontrakten).
+  assert.equal(payload.title, translate("notif.academyGraduationReady.title", {}, { language: "en" }));
+  assert.equal(payload.message, translate("notif.academyGraduationReady.message", { name: "Missed Graduate" }, { language: "en" }));
+  assert.match(payload.message, /Missed Graduate/);
+
+  // DA findes ogsaa, saa en dansk manager faar dansk tekst i UI'et.
+  const da = translate("notif.academyGraduationReady.message", { name: "Missed Graduate" }, { language: "da" });
+  assert.match(da, /Missed Graduate/);
+  assert.notEqual(da, payload.message);
+  assert.doesNotMatch(da, /—/, "ingen em-dash i spiller-vendt copy");
 });
 
 test("sweep: anden kørsel opretter ingen dublet", async () => {
-  const { supabase, rec } = makeMock({ riders: [MISSED] });
-  const notify = spyNotify();
-  await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify });
-  const second = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify });
+  const mock = makeMock({ riders: [MISSED] });
+  const notify = spyNotify(mock);
+  await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
+  const second = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
 
   assert.equal(second.created, 0, "anden kørsel opretter intet");
-  assert.equal(rec.inserts.length, 1, "kun én insert i alt");
+  assert.equal(second.notificationsSent, 0, "notifikationen nåede frem første gang");
+  assert.equal(mock.rec.inserts.length, 1, "kun én insert i alt");
   assert.equal(notify.calls.length, 1, "manageren får ikke beskeden to gange");
+});
+
+// ─── Review-punkt 1: insert lykkedes, notifikationen kastede ───────────────────
+test("sweep: insert ok + notify kaster → næste kørsel eftersender notifikationen uden dublet-række", async () => {
+  const mock = makeMock({ riders: [MISSED] });
+  // Første kørsel: notifikationen fejler EFTER at rækken er skrevet. Præcis den
+  // tilstand gjorde rytteren usynlig for prædikatet (rækken findes) samtidig med
+  // at manageren intet vidste.
+  const failing = spyNotify({ ...mock, failOn: () => true });
+  const first = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify: failing });
+  assert.equal(mock.rec.inserts.length, 1, "rækken blev skrevet");
+  assert.equal(first.failed, 1);
+  assert.equal(mock.notifications.length, 0, "manageren fik ingen besked");
+
+  // Rytteren har nu en pending-række med åbent vindue → findMissedGraduates ser
+  // ham IKKE. Uden efter-leveringen ville han aldrig blive fanget igen.
+  const stillMissed = await findMissedGraduates(mock.supabase, { now: NOW, seasonNumber: 3 });
+  assert.equal(stillMissed.missed.length, 0);
+
+  const ok = spyNotify(mock);
+  const second = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify: ok });
+
+  assert.equal(second.notificationsSent, 1, "den manglende notifikation eftersendes");
+  assert.equal(second.created, 0, "ingen ny række");
+  assert.equal(mock.rec.inserts.length, 1, "stadig kun én insert i alt");
+  assert.equal(ok.calls[0].relatedId, "r-missed");
+  assert.equal(ok.calls[0].type, "academy_graduation_ready");
+
+  // Tredje kørsel: notifikationen findes nu, så der sendes ikke igen.
+  const third = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify: ok });
+  assert.equal(third.notificationsSent, 0);
+  assert.equal(ok.calls.length, 1, "manageren får den ikke to gange");
+});
+
+test("findPendingWithoutNotification: en leveret notifikation til en ANDEN manager tæller ikke", async () => {
+  const mock = makeMock({
+    riders: [MISSED],
+    graduations: [{ id: "g-open", rider_id: "r-missed", team_id: "t-human", season_id: "s3", status: "pending", deadline: "2026-09-15T08:00:00.000Z", created_at: "2026-09-10T08:00:00.000Z" }],
+    // Rytteren skiftede hold: beskeden ligger hos den forrige ejer, ikke hos den
+    // manager der nu skal træffe valget.
+    notifications: [{ user_id: "u-other", related_id: "r-missed", type: "academy_graduation_ready" }],
+  });
+  const missing = await findPendingWithoutNotification(mock.supabase, { seasonId: "s3" });
+  assert.deepEqual(missing.map((m) => m.riderId), ["r-missed"]);
+  assert.equal(missing[0].name, "Missed Graduate");
+  assert.equal(missing[0].graduationId, "g-open");
+});
+
+test("findPendingWithoutNotification: en resolveret række er ikke vores (kun status='pending')", async () => {
+  const mock = makeMock({
+    riders: [MISSED],
+    graduations: [{ id: "g-sold", rider_id: "r-missed", team_id: "t-human", season_id: "s3", status: "sold", deadline: "2026-08-30T18:00:00.000Z", created_at: "2026-08-23T18:00:00.000Z" }],
+  });
+  assert.deepEqual(await findPendingWithoutNotification(mock.supabase, { seasonId: "s3" }), []);
+});
+
+// ─── Review-punkt 2: AI-hold (teams.user_id = null) ───────────────────────────
+test("sweep: AI-hold uden manager får stadig sin række, og notifikationen svarer missing_user", async () => {
+  const aiRider = { ...MISSED, id: "r-ai", team_id: "t-ai", ai_team_id: "t-ai" };
+  const mock = makeMock({ riders: [aiRider], teams: [{ id: "t-ai", user_id: null }] });
+  const notify = spyNotify(mock);
+
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
+
+  // Rækken SKAL oprettes: uden den kan det natlige sweep ikke auto-resolvere
+  // rytteren ved deadline, og han bliver hængende på AI-holdet for altid.
+  assert.equal(res.created, 1);
+  assert.equal(res.failed, 0, "manglende modtager er ikke en fejl");
+  assert.equal(mock.rec.inserts.length, 1);
+  assert.equal(notify.calls.length, 1);
+  assert.equal(mock.notifications.length, 0, "ingen notifikationsrække uden en modtager");
+});
+
+test("notifyGraduationReady: uden holdejer svarer notifyTeamOwner missing_user og skriver intet", async () => {
+  const mock = makeMock({ riders: [], teams: [{ id: "t-ai", user_id: null }] });
+  const outcome = await notifyGraduationReady(mock.supabase, {
+    rider: { id: "r-ai", team_id: "t-ai", firstname: "AI", lastname: "Graduate" },
+    notify: notifyTeamOwner,
+  });
+  assert.deepEqual(outcome, { delivered: false, deduped: false, reason: "missing_user" });
+  assert.equal(mock.notifications.length, 0);
+});
+
+test("sweep: AI-holdets række prøves ikke eftersendt hver nat", async () => {
+  // Uden user_id kan notifikationen pr. definition ikke leveres. Ville
+  // efter-leveringen alligevel forsøge, ville hvert tick sende et kald af sted
+  // for en modtager der ikke findes.
+  const mock = makeMock({
+    riders: [{ ...MISSED, id: "r-ai", team_id: "t-ai" }],
+    teams: [{ id: "t-ai", user_id: null }],
+    graduations: [{ id: "g-ai", rider_id: "r-ai", team_id: "t-ai", season_id: "s3", status: "pending", deadline: "2026-09-15T08:00:00.000Z", created_at: "2026-09-10T08:00:00.000Z" }],
+  });
+  assert.deepEqual(await findPendingWithoutNotification(mock.supabase, { seasonId: "s3" }), []);
 });
 
 test("sweep: rytter med eksisterende grad-række springes over", async () => {
   // 'sold' uden gennemført salg er #4495's klasse (resolveUnsoldGraduate ejer
   // den) — dette sweep må ikke skrive oven i en anden histories reparation.
-  const { supabase, rec } = makeMock({
+  const mock = makeMock({
     riders: [MISSED],
-    graduations: [{ id: "g-old", rider_id: "r-missed", status: "sold", deadline: "2026-08-30T18:00:00.000Z", created_at: "2026-08-23T18:00:00.000Z" }],
+    graduations: [{ id: "g-old", rider_id: "r-missed", team_id: "t-human", season_id: "s3", status: "sold", deadline: "2026-08-30T18:00:00.000Z", created_at: "2026-08-23T18:00:00.000Z" }],
   });
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify: spyNotify() });
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify: spyNotify(mock) });
   assert.equal(res.created, 0);
-  assert.equal(rec.inserts.length, 0);
+  assert.equal(mock.rec.inserts.length, 0);
 });
 
 test("sweep: rytter med ÅBENT override-vindue røres ikke", async () => {
-  const { supabase, rec } = makeMock({
+  const mock = makeMock({
     riders: [MISSED],
-    graduations: [{ id: "g-open", rider_id: "r-missed", status: "pending", deadline: "2026-09-15T08:00:00.000Z", created_at: "2026-09-10T08:00:00.000Z" }],
+    graduations: [{ id: "g-open", rider_id: "r-missed", team_id: "t-human", season_id: "s3", status: "pending", deadline: "2026-09-15T08:00:00.000Z", created_at: "2026-09-10T08:00:00.000Z" }],
+    notifications: [{ user_id: "u-human", related_id: "r-missed", type: "academy_graduation_ready" }],
   });
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify: spyNotify() });
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify: spyNotify(mock) });
   assert.equal(res.created, 0);
-  assert.equal(rec.inserts.length, 0);
+  assert.equal(res.notificationsSent, 0);
+  assert.equal(mock.rec.inserts.length, 0);
 });
 
 test("sweep: rytter på åben graduate-auktion røres ikke", async () => {
-  const { supabase, rec } = makeMock({
+  const mock = makeMock({
     riders: [MISSED],
     auctions: [{ rider_id: "r-missed", status: "active" }],
   });
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify: spyNotify() });
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify: spyNotify(mock) });
   assert.equal(res.created, 0);
-  assert.equal(rec.inserts.length, 0);
+  assert.equal(mock.rec.inserts.length, 0);
 });
 
 test("sweep: akademi-fri-agent (team_id NULL) er invariant D's klasse, ikke vores", async () => {
   const stranded = { ...MISSED, id: "r-stranded", team_id: null };
-  const { supabase, rec } = makeMock({ riders: [stranded] });
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify: spyNotify() });
+  const mock = makeMock({ riders: [stranded] });
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify: spyNotify(mock) });
   assert.equal(res.created, 0);
-  assert.equal(rec.inserts.length, 0);
+  assert.equal(mock.rec.inserts.length, 0);
 });
 
 test("sweep: flag OFF → no-op", async () => {
-  const { supabase, rec } = makeMock({ riders: [MISSED] });
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: async () => false, notify: spyNotify() });
+  const mock = makeMock({ riders: [MISSED] });
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: async () => false, notify: spyNotify(mock) });
   assert.equal(res.skipped, "flag_off");
   assert.equal(res.created, 0);
-  assert.equal(rec.inserts.length, 0);
+  assert.equal(mock.rec.inserts.length, 0);
 });
 
 test("sweep: ingen aktiv sæson → no-op i stedet for et gæt", async () => {
-  const { supabase, rec } = makeMock({ riders: [MISSED], activeSeason: null });
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify: spyNotify() });
+  const mock = makeMock({ riders: [MISSED], activeSeason: null });
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify: spyNotify(mock) });
   assert.equal(res.skipped, "no_active_season");
-  assert.equal(rec.inserts.length, 0);
+  assert.equal(mock.rec.inserts.length, 0);
 });
 
 test("sweep (dryRun): lister kandidaten med hvad der ville blive oprettet, uden writes", async () => {
-  const { supabase, rec } = makeMock({ riders: [MISSED, YOUNG] });
-  const notify = spyNotify();
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, dryRun: true, isEnabled: enabled, notify });
+  const mock = makeMock({ riders: [MISSED, YOUNG] });
+  const notify = spyNotify(mock);
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, dryRun: true, isEnabled: enabled, notify });
 
   assert.equal(res.created, 0);
-  assert.equal(rec.inserts.length, 0);
+  assert.equal(mock.rec.inserts.length, 0);
   assert.equal(notify.calls.length, 0);
   assert.equal(res.candidates.length, 1);
   assert.equal(res.candidates[0].riderId, "r-missed");
@@ -221,13 +340,25 @@ test("sweep (dryRun): lister kandidaten med hvad der ville blive oprettet, uden 
   assert.equal(res.candidates[0].wouldCreate.status, "pending");
 });
 
+test("sweep (dryRun): manglende notifikationer listes uden at blive sendt", async () => {
+  const mock = makeMock({
+    riders: [MISSED],
+    graduations: [{ id: "g-open", rider_id: "r-missed", team_id: "t-human", season_id: "s3", status: "pending", deadline: "2026-09-15T08:00:00.000Z", created_at: "2026-09-10T08:00:00.000Z" }],
+  });
+  const notify = spyNotify(mock);
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, dryRun: true, isEnabled: enabled, notify });
+  assert.equal(res.missingNotifications.length, 1);
+  assert.equal(res.missingNotifications[0].riderId, "r-missed");
+  assert.equal(notify.calls.length, 0, "dry-run skriver ikke");
+});
+
 test("sweep: unique-violation tælles som duplicate, ikke som fejl", async () => {
-  const { supabase } = makeMock({
+  const mock = makeMock({
     riders: [MISSED],
     insertError: { code: "23505", message: "duplicate key value violates unique constraint" },
   });
-  const notify = spyNotify();
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify });
+  const notify = spyNotify(mock);
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
   assert.equal(res.created, 0);
   assert.equal(res.duplicates, 1);
   assert.equal(res.failed, 0);
@@ -236,16 +367,15 @@ test("sweep: unique-violation tælles som duplicate, ikke som fejl", async () =>
 
 test("sweep: per-rytter fejl isoleres — de øvrige får stadig deres vindue", async () => {
   const other = { ...MISSED, id: "r-other", team_id: "t-other", firstname: "Other", lastname: "Graduate" };
-  const { supabase, rec } = makeMock({ riders: [MISSED, other] });
-  const notify = async (payload) => {
-    if (payload.relatedId === "r-missed") throw new Error("notifikation kaputt");
-  };
-  const res = await runMissedGraduateSweep({ supabase, now: NOW, isEnabled: enabled, notify });
+  const mock = makeMock({ riders: [MISSED, other] });
+  const notify = spyNotify({ ...mock, failOn: (p) => p.relatedId === "r-missed" });
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
   assert.equal(res.failed, 1);
   assert.equal(res.created, 1);
   assert.equal(res.errors[0].riderId, "r-missed");
+  assert.equal(res.errors[0].phase, "open_window");
   assert.match(res.errors[0].message, /kaputt/);
-  assert.equal(rec.inserts.length, 2);
+  assert.equal(mock.rec.inserts.length, 2);
 });
 
 // Importen her er halvdelen af pointen: den beviser at scriptets modulkæde
@@ -270,13 +400,37 @@ test("detect-missed-graduates: holdnavne slås op så dry-run'en kan skelne menn
   assert.equal((await fetchTeamLabels(supabase, [])).size, 0, "tom liste rammer ikke databasen");
 });
 
+// ─── Review-punkt 3: --execute kræver også --owner-go ─────────────────────────
+test("detect-missed-graduates: --execute uden --owner-go afvises", async () => {
+  const { parseExecuteArgs } = await import("../scripts/detect-missed-graduates.js");
+
+  const blocked = parseExecuteArgs(["--execute"]);
+  assert.equal(blocked.exitCode, 2, "misbrug er en kald-fejl, ikke et 'kandidater fundet'-svar");
+  assert.match(blocked.error, /--owner-go/);
+
+  const ok = parseExecuteArgs(["--execute", "--owner-go"]);
+  assert.equal(ok.error, null);
+  assert.equal(ok.execute, true);
+  assert.equal(ok.ownerGo, true);
+
+  const dry = parseExecuteArgs(["--dry-run", "--json"]);
+  assert.equal(dry.error, null);
+  assert.equal(dry.execute, false);
+  assert.equal(dry.jsonOut, true);
+
+  // --owner-go alene er harmløst: uden --execute skriver scriptet intet.
+  const lonelyGo = parseExecuteArgs(["--owner-go"]);
+  assert.equal(lonelyGo.error, null);
+  assert.equal(lonelyGo.execute, false);
+});
+
 test("findMissedGraduates: kun ryttere uden nogen grad-række", async () => {
   const resolved = { ...MISSED, id: "r-resolved" };
-  const { supabase } = makeMock({
+  const mock = makeMock({
     riders: [MISSED, resolved],
-    graduations: [{ id: "g1", rider_id: "r-resolved", status: "released", deadline: "2026-08-30T18:00:00.000Z", created_at: "2026-08-23T18:00:00.000Z" }],
+    graduations: [{ id: "g1", rider_id: "r-resolved", team_id: "t-human", season_id: "s3", status: "released", deadline: "2026-08-30T18:00:00.000Z", created_at: "2026-08-23T18:00:00.000Z" }],
   });
-  const res = await findMissedGraduates(supabase, { now: NOW, seasonNumber: 3 });
+  const res = await findMissedGraduates(mock.supabase, { now: NOW, seasonNumber: 3 });
   assert.deepEqual(res.missed.map((m) => m.riderId), ["r-missed"]);
   assert.equal(res.checked, 2);
 });

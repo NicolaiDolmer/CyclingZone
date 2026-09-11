@@ -727,6 +727,12 @@ async function runGraduationSweepCron() {
   if (result.backfill?.created) {
     console.log(`🎓 Graduerings-backfill: ${result.backfill.created} akademiryttere fik det override-vindue de aldrig fik ved saesonskiftet`);
   }
+  if (result.backfill?.notificationsSent) {
+    // Et vindue stod aabent uden at manageren vidste det (insert ok, notify
+    // kastede). Beskeden er nu eftersendt, men tallet er et signal om at
+    // notifikations-vejen svigtede tidligere.
+    console.log(`🎓 Graduerings-backfill: ${result.backfill.notificationsSent} manglende graduerings-notifikation(er) eftersendt`);
+  }
   if (result.backfill?.error) {
     // Backfillen faldt helt fra hinanden (typisk en læsefejl mod Supabase).
     // Sweepet kørte videre, men den løbende redningssti var ude af drift dette

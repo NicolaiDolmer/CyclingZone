@@ -27,6 +27,12 @@
 // stier der skriver på den samme rytter med hver sin historie er præcis den
 // slags dobbelt-reparation der gør en prod-hændelse uoverskuelig.
 //
+// TO HULLER, ÉN sti: ud over rytteren helt uden række fanger sweepet også den
+// række der BLEV oprettet, men hvis notifikation aldrig nåede manageren (insert
+// ok, notify kastede). Den rytter er usynlig for prædikatet ovenfor — rækken
+// findes jo — men manageren ved stadig ingenting og får udfaldet trukket ned
+// over hovedet ved deadline. Se findPendingWithoutNotification.
+//
 // UDFALDET er managerens valg, ikke systemets: vi opretter den pending-række +
 // notifikation som sæson-transitionen ville have oprettet, med et fuldt
 // GRADUATION.DEADLINE_DAYS-vindue fra nu. Først når dét vindue udløber tager
@@ -35,7 +41,13 @@
 
 import { isAcademyEnabled } from "./academyFlag.js";
 import { notifyTeamOwner } from "./notificationService.js";
-import { graduationDeadlineFrom, openGraduationWindow } from "./academyGraduation.js";
+import {
+  GRADUATION_READY_TYPE,
+  graduationDeadlineFrom,
+  notifyGraduationReady,
+  openGraduationWindow,
+} from "./academyGraduation.js";
+import { fetchAllRows } from "./supabasePagination.js";
 import { findStuckAcademyGraduates, STUCK_GRADUATE_GRACE_HOURS } from "./stuckAcademyGraduates.js";
 
 /**
@@ -76,6 +88,73 @@ export async function findMissedGraduates(supabase, {
 }
 
 /**
+ * Pending graduerings-rækker hvis manager ALDRIG fik sin notifikation.
+ *
+ * Hullet: openGraduationWindow inserter rækken FØRST og notificerer bagefter.
+ * Lykkes inserten og kaster notifikationen (netværk, Supabase-hikke), står
+ * rækken i basen — og netop dén række gør rytteren usynlig for
+ * findMissedGraduates ("han har jo et vindue"). Manageren fik aldrig at vide at
+ * han skulle vælge, og ved deadline resolverer det natlige sweep for ham.
+ *
+ * Kompensationen er efter-levering frem for rollback: rækken ER den rigtige
+ * tilstand, og en sletning ville smide et allerede åbent vindue væk hvis
+ * notifikationen i virkeligheden nåede frem. Matchet er (holdets user_id, type,
+ * related_id = rytteren) — samme tre felter notifikationen skrives med.
+ *
+ * AI-hold (teams.user_id = null) har ingen modtager og udelades: ellers ville
+ * hvert tick prøve at levere en besked der pr. definition ikke kan leveres.
+ *
+ * @returns {Promise<Array<{graduationId:string, riderId:string, teamId:string, name:string}>>}
+ */
+export async function findPendingWithoutNotification(supabase, { seasonId } = {}) {
+  if (!seasonId) throw new Error("findPendingWithoutNotification: seasonId required");
+
+  const pending = await fetchAllRows(() =>
+    supabase.from("academy_graduation")
+      .select("id, rider_id, team_id")
+      .eq("season_id", seasonId)
+      .eq("status", "pending")
+      .order("rider_id"));
+  if (pending.length === 0) return [];
+
+  const riderIds = [...new Set(pending.map((g) => g.rider_id))];
+  const teamIds = [...new Set(pending.map((g) => g.team_id).filter(Boolean))];
+
+  const teams = await fetchAllRows(() =>
+    supabase.from("teams").select("id, user_id").in("id", teamIds).order("id"));
+  const ownerByTeam = new Map(teams.map((t) => [t.id, t.user_id ?? null]));
+
+  const notifications = await fetchAllRows(() =>
+    supabase.from("notifications")
+      .select("user_id, related_id")
+      .eq("type", GRADUATION_READY_TYPE)
+      .in("related_id", riderIds)
+      .order("related_id"));
+  const delivered = new Set(notifications.map((n) => `${n.user_id}::${n.related_id}`));
+
+  const riders = await fetchAllRows(() =>
+    supabase.from("riders").select("id, firstname, lastname").in("id", riderIds).order("id"));
+  const riderById = new Map(riders.map((r) => [r.id, r]));
+
+  const missing = [];
+  for (const g of pending) {
+    const userId = ownerByTeam.get(g.team_id);
+    if (!userId) continue;
+    if (delivered.has(`${userId}::${g.rider_id}`)) continue;
+    const r = riderById.get(g.rider_id);
+    missing.push({
+      graduationId: g.id,
+      riderId: g.rider_id,
+      teamId: g.team_id,
+      firstname: r?.firstname ?? "",
+      lastname: r?.lastname ?? "",
+      name: `${r?.firstname ?? ""} ${r?.lastname ?? ""}`.trim(),
+    });
+  }
+  return missing;
+}
+
+/**
  * Detektér-og-helbred: åbn override-vinduet for hver rytter der aldrig fik et.
  *
  * Idempotent på tre lag: (1) en rytter med en pending-række er ikke i
@@ -98,7 +177,10 @@ export async function runMissedGraduateSweep({
   graceHours = STUCK_GRADUATE_GRACE_HOURS,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
-  const empty = { created: 0, duplicates: 0, failed: 0, checked: 0, seasonNumber: null, candidates: [], errors: [] };
+  const empty = {
+    created: 0, duplicates: 0, failed: 0, checked: 0, seasonNumber: null,
+    candidates: [], errors: [], notificationsSent: 0, missingNotifications: [],
+  };
 
   if (!(await isEnabled(supabase))) return { ...empty, skipped: "flag_off" };
 
@@ -119,12 +201,31 @@ export async function runMissedGraduateSweep({
     wouldCreate: { season_id: active.id, status: "pending", deadline },
   }));
 
+  // Efter-leveringen kører FØR oprettelserne, så en række der oprettes i dette
+  // tick ikke kan blive vurderet af to stier i samme kørsel. Fejler notifikationen
+  // igen nu, fanger næste tick den igen.
+  const missingNotifications = await findPendingWithoutNotification(supabase, { seasonId: active.id });
+
   if (dryRun) {
-    return { ...empty, checked, seasonNumber: active.number, candidates, dryRun: true };
+    return { ...empty, checked, seasonNumber: active.number, candidates, missingNotifications, dryRun: true };
   }
 
-  let created = 0, duplicates = 0, failed = 0;
+  let created = 0, duplicates = 0, failed = 0, notificationsSent = 0;
   const errors = [];
+
+  for (const m of missingNotifications) {
+    try {
+      await notifyGraduationReady(supabase, {
+        rider: { id: m.riderId, team_id: m.teamId, firstname: m.firstname, lastname: m.lastname },
+        notify,
+      });
+      notificationsSent++;
+    } catch (err) {
+      failed++;
+      errors.push({ riderId: m.riderId, teamId: m.teamId, phase: "notify_backfill", message: err?.message || String(err) });
+      console.error(`missed-graduate notify backfill failed (${m.riderId}):`, err?.message || err);
+    }
+  }
   // Per-rytter try/catch: én rytter med et ødelagt hold må ikke koste de andre
   // deres vindue (samme isolation som graduerings-sweepets resolve-loop).
   for (const c of missed) {
@@ -142,10 +243,13 @@ export async function runMissedGraduateSweep({
       // graduerings-sweepets resolve-loop). En Sentry-capture her ville give
       // ét issue pr. rytter pr. tick for den samme, stående tilstand.
       failed++;
-      errors.push({ riderId: c.riderId, teamId: c.teamId, message: err?.message || String(err) });
+      errors.push({ riderId: c.riderId, teamId: c.teamId, phase: "open_window", message: err?.message || String(err) });
       console.error(`missed-graduate sweep failed (${c.riderId}):`, err?.message || err);
     }
   }
 
-  return { created, duplicates, failed, checked, seasonNumber: active.number, candidates, errors };
+  return {
+    created, duplicates, failed, checked, seasonNumber: active.number, candidates, errors,
+    notificationsSent, missingNotifications,
+  };
 }

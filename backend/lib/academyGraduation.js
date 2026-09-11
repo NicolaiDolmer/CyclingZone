@@ -9,12 +9,17 @@
 
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
-import { notifyTeamOwner } from "./notificationService.js";
+import { buildKeyedNotification, notifyTeamOwner } from "./notificationService.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { getTeamMarketState, calculateRiderMarketValue } from "./marketUtils.js";
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG, FREE_AGENT_MIN_DURATION_HOURS, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
 import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
+
+// Notifikationstypen for "manageren har et graduerings-valg at træffe". Den er
+// eksporteret fordi den nu bruges TO steder: når vinduet åbnes, og når det
+// løbende sweep leder efter pending-rækker hvis notifikation aldrig nåede frem.
+export const GRADUATION_READY_TYPE = "academy_graduation_ready";
 
 export const GRADUATION = Object.freeze({
   GRADUATE_AGE: 22,   // alder hvor akademi-ophold slutter (MAX_AGE 21 + 1)
@@ -96,18 +101,46 @@ export async function openGraduationWindow(supabase, { rider, seasonId, deadline
     throw new Error(`openGraduationWindow insert (${rider.id}): ${error.message}`);
   }
 
+  await notifyGraduationReady(supabase, { rider, notify });
+  return "created";
+}
+
+/**
+ * Byg "graduerings-valget venter"-notifikationen. ÉN kilde til type, koder og
+ * fallback-tekst, så vinduets åbning og #5133's efter-levering ikke kan sende
+ * to forskellige beskeder om den samme hændelse.
+ *
+ * `name` hører til i messageParams, ikke titleParams: titlen har ingen
+ * placeholder, mens beskeden ER "{name} has aged out ...". Før #5133's review
+ * stod navnet i titleParams, og de to koder fandtes slet ikke i
+ * backendMessages — i praksis fik hver manager derfor den rå EN-fallback,
+ * også med users.language = 'da'.
+ */
+export function buildGraduationReadyNotification({ rider }) {
   const name = `${rider.firstname} ${rider.lastname}`;
-  await notify({
-    supabase, teamId: rider.team_id, type: "academy_graduation_ready", relatedId: rider.id,
-    title: "Academy graduation",
-    message: `${name} has aged out of your academy. Promote, sell or release before the deadline.`,
-    metadata: {
+  return {
+    type: GRADUATION_READY_TYPE,
+    relatedId: rider.id,
+    ...buildKeyedNotification({
       titleCode: "notif.academyGraduationReady.title",
       messageCode: "notif.academyGraduationReady.message",
-      titleParams: { name },
-    },
-  });
-  return "created";
+      messageParams: { name },
+      metadata: { riderId: rider.id },
+    }),
+  };
+}
+
+/**
+ * Send notifikationen om det åbne graduerings-valg til holdets manager.
+ *
+ * Bruges både af openGraduationWindow og af missedGraduateSweep's
+ * efter-levering. AI-hold (teams.user_id = null) svarer
+ * {delivered:false, reason:"missing_user"} og er IKKE en fejl — rækken skal
+ * stadig findes, så det natlige sweep kan auto-resolvere den.
+ */
+export async function notifyGraduationReady(supabase, { rider, notify = notifyTeamOwner, now = undefined } = {}) {
+  const payload = buildGraduationReadyNotification({ rider });
+  return notify({ supabase, teamId: rider.team_id, ...payload, ...(now ? { now } : {}) });
 }
 
 /**
