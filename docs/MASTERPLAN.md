@@ -6,7 +6,7 @@
 
 ## 🔴 Brand (rettes før alt andet; bølge startet 10/9 kl. 13:10, intet merges uden ejer-go)
 
-#4595 → **epic #5162** (Codex-audit 11/9: RET FØRST; spor #5159 #5160 #5161; #5139 draft; 3 krav før næste chunk-merge) · #4959 merget 11/9, puljer 9/13 frie 12-13/9 · #4872 rytterværdi står stille (9/9). Merget 10/9: #5097 #5100 #5099 #5073.
+#4595 → **epic #5162** (spor 2+4 + rod-årsag #5170 merget 11/9, prod: 0/195 chunks udskiftet; spor 1 #5173 go-kort 12/9) · #4959 merget 11/9, puljer 9/13 frie 12-13/9 · #4872 rytterværdi står stille (9/9). Merget 10/9: #5097 #5100 #5099 #5073.
 
 ## Bane 1 · S4-cutover 27-28/9 (deadline; nul buffer)
 
@@ -32,7 +32,7 @@ Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d 
 13. Lukkesession: se 15b (#5155).
 14. 🟠 **Docs-SSOT:** #5088 matview-grants · #2259 78 backup-tabeller (48 MB, ejer-go til flyt).
 15. 🟠 #4921 feature-register · #4918/#4919/#4920 bølge-drift → **#5142 wave.js-standard** · #5004 preflight anti-slop.
-15b. 🔴 **Hygiejne-blok (ejer 11/9, fast rækkefølge):** #3069 rød vagt (48 t) → #5153 advisors (7-dages regel) → #4812 PAT (ejer) → #5154/#5156 afgjort 11/9 (B/B) → #5155 prioritets-regel + lukkesession → #5157 drafts → #5085 CI marketing → #5158 TS A+ (skralde-spor i bølgen 11/9) → #4924 worktrees.
+15b. 🔴 **Hygiejne-blok (ejer 11/9, fast rækkefølge):** #3069 ✅ → #5153 4/11 WARN lukket, rest = #5176 → #4812 PAT (ejer) → #5154/#5156 afgjort 11/9 (B/B) → #5155 PR #5175 (genoptag 12/9) + lukkesession → #5157 drafts → #5085 CI marketing → #5158 TS A+ (skralde-spor i bølgen 11/9) → #4924 worktrees.
 16. 🔵 Akademi: #4495 · #4213 · #4750 · #4423/#4418 (done-gated). Design-rest #4622: #4627 · #4628 · #4813 · #4814 · #4815 · #4613 → **Visuel identitet #5113** (3D-first; først #5115 livery). **Tailwind 4-kæde (ejer 11/9):** #5150 → #5151 (+#3952) → #5152, efter Codex-audit af chunk-forløbet (#5139 holdes).
 17. Drift: #4147 · #4866 · #4869 · #4877/#4900/#4899/#4896/#4903 · #4867 · #4828/#4829 · #5017 · #5015 · #2423 (rør ikke).
 18. Spillerfund: #4589 · #4702 · #4873 · #4875 · #4861 · #4981 · #4982 · #4983 · #5075 · #5059 sprint-tog gated · #5030 puncheur-opskrift.

@@ -1,0 +1,28 @@
+# Prompt til næste session: Fundament-bølgen, dag 2 (skrevet 11/9 2026 kl. 22:45)
+
+Model + indsats: hovedtråd Fable, high. Workers: opus til kode/review, sonnet til docs/målinger; `model` EKSPLICIT i hvert kald. Kopiér teksten under stregen ind som første besked i en ny Claude Code-session i `C:\Dev\CyclingZone`. Ejeren sidder med (dagsession) og svarer på kort ét ad gangen.
+
+Sådan kørte 11/9 (gentag): worker → read-only `WAVE-REVIEW:` → ret-trin i SAMME worktree → go-kort med ét samlet billede (UI) eller post-verify-tabel (backend) sendt i samme tur; merge-kø én ad gangen; "Reviewet af" i hvert kort; "selv tjekket" adskilt fra "agent tjekket". Bed: wave.js stoppede levende spor på 60-min-timeout (2 gange, dirty worktrees efterladt); `Workflow` kræver LF i wave.js (nu i `.gitattributes`); tre docs-commits fejlede først på token-budget (trim FØR commit). 12 PR'er merget, chunk-rod-årsagen bevist lukket i prod.
+
+---
+
+Ny session (fundament-bølgen dag 2, 12/9). Læs `docs/NOW.md` først, derefter CLAUDE.md-afsnittet "Orkestrator-standard", derefter dette. Ejeren er ved maskinen. Alt der skriver i prod venter på ordret "merge"/"kør" med tal i kortet. Byggearbejde starter KUN gennem `Workflow({ scriptPath: "C:/Dev/CyclingZone/.claude/workflows/wave.js", args })` (tjek `file .claude/workflows/wave.js` viser LF); Agent-tool kun til `WAVE-FOLLOWUP:` (én ad gangen) og `WAVE-REVIEW:`/`READ-ONLY:`.
+
+Fase 0 (Fable, 10 min, read-only): `Get-Date` · `git pull` · `gh pr list` (forvent: #5173 klar + grøn, #5175 draft, #5169 klar men ejer-gated, #5108/#5139 holdt, #4736/#3512 gamle drafts) · Sentry 24 t (`infisical run --env=dev -- node scripts/sentry-issues.mjs --period=24h`; forvent CYCLINGZONE-56 markant lavere end 126 events/28 spillere, log tallet på #5170 og luk hvis < 20 % af 11/9) · Supabase advisors (forvent 7 WARN, #5176) · puljer 9/13 dry-run (`infisical run --env=prod -- node backend/scripts/retire-stuck-ai-teams.js --dry-run`; lørdag 12:00 skal Solstice/Horizon være nede på 24, ellers kommentar på #4959) · spørgeskema-tal (`select count(*) from survey_completions`, lukker mandag 14/9 23:59, log på #5121) · late_fill-afstemning (`forum_poll_votes` for opslag d6079872-6bb2-4281-9a58-2f4c4a71d698, log på #5136) · CPU-sampler fra 11/9 kører muligvis stadig (pwsh, `cpu-sampler.ps1`), dræb den.
+
+Fase 1: kort, ét ad gangen.
+1. **#5173 (#5159 reload-koordination, chunk-epic spor 1):** ret-trin efter reviewer var kørt 11/9 aften (lag 2 gennem porten, banner spørger ved ugemt arbejde, forum/onboarding/strategi-flader, sikker storage, cookie-banner-stacking, sekundær knap, WebKit-dækning). Tjek CI grøn + at PR-body har "Resterende race-vinduer"; kør evt. en kort read-only re-review af ret-trinnets diff; send banner-billede (EN/DA, desktop+mobil, fra `frontend/test-results/5159-banner/`, gen-tag hvis slettet) + go-kort. Efter merge: luk #5139, done-flip #5159, E2-måling på næste deploy, patch note 7.271 (samlet: #5135 akademi-vindue, #5165/#5170 stabile filnavne, #5168 fallback-side, #5174 toninger, #5173 banner; workerens EN/DA-udkast står i #5159-rapporten i transcript + PR-body) og help.json-FAQ "Why does the game sometimes reload itself?" (udkast i #5159-kommentar 11/9 22:35).
+2. **#4270/#4845 S4-kalender (ejer senest 14/9):** PR #5169 klar. Dry-run: D1-D4 alle 80 løbsdage, men overlap-gulvet brydes i D2-D4 (43/22/22 % mod 55/40/40 %). Kort: A sænk `TIER_MULTI_RACE_DAY_MIN_SHARE` for D2-D4 / B slå §1d fra for S4. Derefter merge + ny dry-run + scorecard + apply-kort med tal.
+3. **#5155 prioritets-script:** genoptag som `WAVE-FOLLOWUP:` i `C:\Dev\CyclingZone-worktrees\chore-5155-priority-hygiene-script` (2 ucommittede filer, 212 linjer; vurdér, commit, færdiggør), reviewer, dry-run-liste (12 kandidater) i kortet; ejer siger go til `--execute`.
+4. Ejer-trin der stadig venter: AUTO_MERGE_PAT (#4812), Discord-opslag om spørgeskemaet (#5121), fog of war-afstemning #5107, nøgler, faktura 61,25 kr, Vercel Skew-toggle (uden betydning nu, #5170), PNG'er fra Claude Design (#5113).
+
+Fase 2: bølge 3 (ét Workflow-kald, 4 laner), prioriteret kø:
+1. **#5178 wave.js-kalibrering** (timeout != frys: 120 min, branch-aktivitet, reviewer gen-spawn, graceful WIP-commit) FØRST, ellers rammer de næste store spor samme fejl.
+2. **#5176 Supabase-rest:** 4 matviews bag backend/RPC (frontend 9 filer) + dokumentér/beslut de 3 definer-fund; frist 18/9.
+3. **#5177 perf top 3:** footer-CLS (Brand.jsx), /roadmap LCP+CLS, index-chunk 233 KB; ét spor pr. fund, Lighthouse før/efter.
+4. **#5151 Tailwind 4 trin 2** (spillet 3.4 → 4.x, radius-konvention; trin 1 #5174 merget) + #5152 trin 3.
+5. **#5158 konverteringsspor 1:** `backend/lib/economyEngine.js` (3.068 linjer) til strict TS + zod-skabelon ved route-grænsen; skralden (#5172, required `ts-core-ratchet`) skal falde.
+6. Bane 1: #4846 træning pr. løbsdag-tick (→ #4847 → #4851) når S4-kalenderbeslutningen er taget.
+7. Hygiejne: #5157 drafts #3512/#4736 (færdig eller luk), #5085 CI marketing, #5143 node_modules pr. dependency-lane, #4577 dotenv 17 (worktree `chore-4577-dotenv17-types-node24` har 26 ucommittede filer), #4924 worktree-oprydning (wave-cleanup fandt flere hundrede uregistrerede mapper i `C:\Dev\CyclingZone-worktrees`; ejer-go før sletning).
+
+Regler: én beslutning pr. kort med tal og kontekst i kortet; UI-kort altid med ét samlet billede i samme tur; workers rører aldrig NOW.md/MASTERPLAN/patch notes/help.json; NOW ≤ 1.200 tok, MASTERPLAN ≤ 1.500, CLAUDE.md ≤ 1.750 (kør `check-agent-token-hygiene.ps1` FØR hvert docs-commit); `Get-Date` før logning; done-flip PR for PR; aldrig udskyde selv.
