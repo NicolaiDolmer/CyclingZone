@@ -367,8 +367,18 @@ test("sessionStorage-vagt: et reload for <60 s siden blokerer det naeste (og vis
   assert.equal(g.reloads.length, 0, "loop-guarden skal holde");
   assert.equal(g.fetched.length, 1, "kun bekraeftelsen — refetch/reload sprunget over af loop-guarden");
   assert.match(g.warnings.join("\n"), /reload sprunget over/);
-  assert.match(g.rootEl.innerHTML, /The page could not load/);
-  assert.match(g.rootEl.innerHTML, /Siden kunne ikke indl/);
+  assert.match(g.rootEl.innerHTML, /The game did not start/);
+  assert.match(g.rootEl.innerHTML, /Spillet startede ikke/);
+  assert.match(g.rootEl.innerHTML, /The game's files did not load\. Reload to try again\./);
+  assert.match(g.rootEl.innerHTML, /Spillets filer blev ikke hentet\./);
+  // Brand-fladen (#5161, ejer-krav 11/9): den inline wordmark og guld-knappen er
+  // det der goer siden til Cycling Zone og ikke en browserfejl. Tokenerne er
+  // haardkodede i vagten (der er ingen :root at arve fra), saa en stille drift
+  // vaek fra spillets vaerdier skal fejle her.
+  assert.match(g.rootEl.innerHTML, /aria-label="Cycling Zone"/);
+  assert.match(g.rootEl.innerHTML, /#e8c547/, "guld-accenten (--accent) mangler");
+  assert.match(g.rootEl.innerHTML, /#0e0f15/, "moerk canvas (--bg-body) mangler");
+  assert.doesNotMatch(g.rootEl.innerHTML, /box-shadow/, "hairlines, ingen skygger");
 });
 
 test("fallback-UI'ens knap kan udloese et manuelt reload", async () => {

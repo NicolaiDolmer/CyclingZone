@@ -144,10 +144,16 @@ test("entry-404 ved boot: vagten renser boot-listen og genindlaeser ÉN gang, og
 
   // ... og det andet load skal faktisk give en booted app.
   await page.waitForLoadState("load");
-  await expect.poll(() => page.evaluate(() => Boolean(window.__czAppBooted)), {
-    timeout: 20000,
-    message: "appen booted ikke efter selvhelingen",
-  }).toBe(true);
+  // `.catch(() => false)`: vagtens reload kan rive konteksten vaek MIDT i en
+  // poll-runde ("Execution context was destroyed"), og i WebKit sker det ofte nok
+  // til at fejle koerslen. Det er ikke en fejl i vagten — det er beviset paa at
+  // den reloadede. En tabt runde skal derfor bare taelle som "ikke booted endnu".
+  await expect
+    .poll(() => page.evaluate(() => Boolean(window.__czAppBooted)).catch(() => false), {
+      timeout: 20000,
+      message: "appen booted ikke efter selvhelingen",
+    })
+    .toBe(true);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
   // Beviset for at listen IKKE var tom: advarslen taeller de URL'er der blev
@@ -187,11 +193,24 @@ test("allerede cachet entry-404: hoejst ét reload, derefter fallback-siden med 
   await page.goto("/app.html");
 
   // Fallback-siden er vagtens sidste udvej: EN foerst, DA under.
-  await expect(page.getByText("The page could not load. Reload to try again.")).toBeVisible({
+  await expect(page.getByRole("heading", { level: 1, name: "The game did not start" })).toBeVisible({
     timeout: 20000,
   });
-  await expect(page.getByText("Siden kunne ikke indlæses. Genindlæs for at prøve igen.")).toBeVisible();
+  await expect(page.getByText("Spillet startede ikke")).toBeVisible();
+  await expect(page.getByText("The game's files did not load. Reload to try again.")).toBeVisible();
+  await expect(
+    page.getByText("Spillets filer blev ikke hentet. Genindlæs for at prøve igen."),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Reload" })).toBeVisible();
+
+  // Brand-fladen (ejer-krav 11/9): siden skal se ud som Cycling Zone, ikke som en
+  // browserfejl. Wordmarken er inline SVG (app-CSS og brand-fontene findes ikke
+  // her), og den skal vaere synlig i BEGGE viewports uden vandret scroll.
+  await expect(page.getByRole("img", { name: "Cycling Zone" })).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow, "fallback-siden gav vandret scroll").toBeLessThanOrEqual(0);
 
   // Loop-sikkerheden: ét heal-reload, ikke flere — og advarslen skal forklare hvorfor.
   expect(loads(), "vagten reloadede mere end én gang").toBe(2);
