@@ -98,6 +98,11 @@ async function interceptBoot(page, { documentPath, entryPath, failEntry }) {
 
 function collectWarnings(page) {
   const lines = [];
+  // e2e-error-collector-exempt: denne spec asserter IKKE paa "ingen fejl" — den
+  // leder efter boot-vagtens EGNE "[chunk-selfheal]"-linjer, som er beviset paa at
+  // boot-listen ikke var tom. WebKit-dev-noise kan ikke matche det praefiks, saa
+  // fixtures.js' filter ville hverken hjaelpe eller skade. Uncaught fejl daekkes
+  // stadig af auto-fixturen i e2e-base.js.
   page.on("console", (msg) => {
     if (msg.text().includes("[chunk-selfheal]")) lines.push(msg.text());
   });
