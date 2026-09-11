@@ -18,7 +18,7 @@
 - **Relaterede issues i samme rod-domæne (fil-overlap) = ÉN agent**, ikke fan-out. Tjek fil-overlap før du spawner flere.
 - **Bølge:** 2+ issues uden fil-overlap, nok volumen til at retfærdiggøre preflight + stall-watch-overheadet. Fuldt protokol: `PARALLEL_WORKTREE_ORCHESTRATION.md` (dagbølge, 3+ spor) eller `NIGHT_WAVE_RUNBOOK.md` (natbølge, ejer sover).
 - **Hard cap (opdateret 11/9, #5142):** maks 5 åbne PR'er ad gangen (AGENTS.md regel 12), **4 laner** og **verifikations-semafor 2** — maks 2 tunge kørsler ad gangen på tværs af alle worktrees via `scripts/verify-lock.ps1` (afløser "maks 3 samtidige tunge frontend-verifikationer", regel 24). Fuld kø → merge før nyt startes.
-- **Ét kald, ikke chunks (opdateret 11/9, #5142):** bølgen startes med ét `Workflow({ name: "wave", ... })`-kald, og alle spor kører gennem dets lane-pool på 4. Det gamle chunk-råd (6-8 agenter pr. kald) hørte til den store `parallel()`-barriere og gælder ikke længere. Et frosset spor stopper i stedet bølgen, som rapporterer de ustartede spor til relancering (se §6).
+- **Ét kald, ikke chunks (opdateret 11/9, #5142):** bølgen startes med ét `Workflow({ scriptPath: ".claude/workflows/wave.js", ... })`-kald, og alle spor kører gennem dets lane-pool på 4. Det gamle chunk-råd (6-8 agenter pr. kald) hørte til den store `parallel()`-barriere og gælder ikke længere. Et frosset spor stopper i stedet bølgen, som rapporterer de ustartede spor til relancering (se §6).
 
 ## 3. Verifikations-trappen
 
