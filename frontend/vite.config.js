@@ -6,12 +6,34 @@ import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
 import { bootAssetsManifestPlugin } from "./vite-plugins/boot-assets-manifest.js";
+import { computeSkewDefines } from "./vite-plugins/skew-defines.js";
+// SSOT for om Skew Protection reelt er tændt i koden. Modulet har ingen
+// side-effects ved import (kun const- og funktions-eksporter), så det kan læses
+// direkte her i stedet for at duplikere flaget som en streng-parser.
+import { SKEW_PROTECTION_ENABLED } from "./src/lib/skewProtection.js";
 
+// #5160 (audit 11/9, fund H1): source-map-UPLOAD og selve Sentry-TRANSFORMATIONEN
+// er to forskellige ting, og kun den ene kræver et token.
+//
+//   UPLOAD        — sender source maps + release til Sentry. Kræver rigtigt token.
+//   TRANSFORMATION— pluginets `renderChunk` skriver et debug-id-snippet ind i HVER
+//                   JS-chunk (`_sentryDebugIds[...]="<uuid>"`). Den ændrer altså
+//                   de hashede assets og kræver INTET token.
+//
+// Fordi gaten hidtil kun kunne bygge uden token, målte den et build UDEN den
+// transformation prod kører med — og kunne derfor ikke bevise stabile asset-navne
+// (auditten målte 76 af 195 chunk-referencer udskiftet mellem to prod-deploys
+// uden frontend-diff). `CZ_SENTRY_TRANSFORM=1` slår transformationen til ALENE,
+// via pluginets egen dokumenterede `sourcemaps.disable: "disable-upload"`:
+// debug-id'er injiceres, intet sendes til Sentry. Prod-adfærd er uændret — med
+// token er `enableSentryUpload` true og alt kører som før.
 const enableSentryUpload = Boolean(
   process.env.SENTRY_AUTH_TOKEN &&
   process.env.SENTRY_ORG &&
   process.env.SENTRY_PROJECT
 );
+const forceSentryTransform = process.env.CZ_SENTRY_TRANSFORM === "1";
+const enableSentryPlugin = enableSentryUpload || forceSentryTransform;
 
 // Dev/preview-only endpoint der identificerer hvilken worktree serveren kører
 // fra, så Playwrights globalSetup kan afvise en fremmed worktrees server på
@@ -89,18 +111,22 @@ const explicitPort = process.env.PORT ? Number(process.env.PORT) : undefined;
 // og build-tidspunkt — som `src/lib/skewProtection.js` bruger til at sætte
 // Vercels `__vdpl`-cookie ved boot. Asset-URL'erne røres IKKE (se #4745-
 // postmortem: `experimental.renderBuiltUrl` med `?dpl=` gav dobbelt-loadede
-// moduler og knækkede hele appen). Uden begge Vercel-env-variabler er buildet
-// bit-for-bit uændret: id = "" og build-tid = 0 ⇒ cookie-koden er en no-op.
+// moduler og knækkede hele appen). Er Skew Protection slået fra — i koden ELLER
+// i env'en — er buildet bit-for-bit uændret: id = "" og build-tid = 0 ⇒
+// cookie-koden er en no-op.
 //
-// KUN PRODUCTION. Preview-deploys må ALDRIG pinnes: ejeren tester rettelser på
-// samme branch-alias, og en pinnet klient ville hænge fast på det gamle
-// preview-build. Værre: previews fjernes rutinemæssigt af retention, og en
-// cookie der peger på et slettet deployment giver en HÅRD 404 uden selvheling.
-// Derfor kræves både Vercels toggle OG `VERCEL_ENV === "production"`.
-const skewProtectionEnabled =
-  process.env.VERCEL_SKEW_PROTECTION_ENABLED === "1" && process.env.VERCEL_ENV === "production";
-const skewDeploymentId = skewProtectionEnabled ? process.env.VERCEL_DEPLOYMENT_ID || "" : "";
-const skewBuildTime = skewDeploymentId ? Date.now() : 0;
+// #5170: gaten ligger i `vite-plugins/skew-defines.js` og kræver BÅDE kode-
+// flaget `SKEW_PROTECTION_ENABLED` og Vercels env (toggle + production). Det er
+// ikke kosmetik: Vercels dashboard-toggle står stadig TIL, så env'en er sat på
+// hvert production-build, mens kode-flaget har været `false` siden hotfixet 4/9.
+// Før dette fix bagte `Date.now()` derfor en deploy-unik byte ind i modul-
+// indholdet FØR dead-code-elimineringen, og 77 af 200 JS-chunks skiftede
+// filnavn pr. deploy uden en eneste linje frontend-diff (CYCLINGZONE-56).
+// Beregningen er ren og unit-testet i `vite-plugins/skew-defines.test.js`.
+const { deploymentId: skewDeploymentId, buildTime: skewBuildTime } = computeSkewDefines({
+  env: process.env,
+  codeFlag: SKEW_PROTECTION_ENABLED,
+});
 
 export default defineConfig({
   define: {
@@ -116,13 +142,24 @@ export default defineConfig({
     // JSON-datablok lige FOER /chunk-selfheal.js, saa boot-vagten har en komplet
     // liste allerede mens parseren er midt i <head>.
     bootAssetsManifestPlugin(),
-    enableSentryUpload
+    enableSentryPlugin
       ? sentryVitePlugin({
           authToken: process.env.SENTRY_AUTH_TOKEN,
           org: process.env.SENTRY_ORG,
           project: process.env.SENTRY_PROJECT,
+          // #5160: transform-only-buildet skal være OFFLINE. Pluginets
+          // telemetri-signal sendes ellers til sentry.io alene fordi
+          // default-url'en er SaaS (allowedToSendTelemetry returnerer true uden
+          // token), og et netværkskald i en determinisme-gate er både spild og
+          // en kilde til flaky CI.
+          telemetry: enableSentryUpload,
           release: {
             name: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA,
+            // Uden token findes der ingen release at oprette eller afslutte.
+            // Pluginet ville blot logge en advarsel, men vi slår kaldene
+            // eksplicit fra, så transform-only-buildet ikke rører nettet.
+            create: enableSentryUpload,
+            finalize: enableSentryUpload,
             // #4595 rod-årsag 2: pluginets default (`inject: true`) skriver
             // `window.SENTRY_RELEASE={id:"<sha>"}` ind i ENTRY-chunken selv —
             // en deploy-unik streng i en hashet asset, præcis den klasse resten
@@ -139,6 +176,12 @@ export default defineConfig({
           },
           sourcemaps: {
             assets: "./dist/**",
+            // #5160: `"disable-upload"` er pluginets egen indstilling for
+            // "injicér debug-id'er, men upload ingenting". `true` ville slå
+            // HELE source-map-funktionaliteten fra — inklusive debug-id-
+            // injektionen — og så ville determinisme-gaten igen måle et build
+            // der ikke ligner prod.
+            ...(enableSentryUpload ? {} : { disable: "disable-upload" }),
           },
         })
       : null,
@@ -148,6 +191,11 @@ export default defineConfig({
     strictPort: Boolean(explicitPort),
   },
   build: {
-    sourcemap: enableSentryUpload,
+    // #5160: source maps følger PLUGINET, ikke uploadet. De ændrer de hashede
+    // assets (hver chunk får en `//# sourceMappingURL=`-linje), så et build der
+    // skal bevise noget om prod's asset-navne skal have dem slået til på samme
+    // måde som prod. Prod har token ⇒ uændret true; almindelige lokale builds
+    // har hverken token eller CZ_SENTRY_TRANSFORM ⇒ uændret false.
+    sourcemap: enableSentryPlugin,
   },
 });
