@@ -143,9 +143,26 @@ $$;
 --      en lækage. #3124s begrundelse for at beholde anon-granten (28/7 + 3/8)
 --      hviler på en tilstand — at is_admin() var det ENESTE der manglede — som
 --      ikke længere findes.
---   3. Ingen anden anon-nåelig vej kalder is_admin(): ingen anden funktion med
---      anon-/default-PUBLIC-EXECUTE har den i kroppen, og ingen view-definition
---      bruger den (V3).
+--   3. Ingen anden anon-nåelig vej INDE I DATABASEN kalder is_admin(): ingen
+--      anden funktion med anon-/default-PUBLIC-EXECUTE har den i kroppen, og
+--      ingen view-definition bruger den (V3).
+--   4. Der var derimod ÉN anon-nåelig vej i FRONTEND: /roadmap er en offentlig
+--      rute (#2042/#2824, App.jsx — ikke ProtectedRoute), og RoadmapPage.jsx
+--      kaldte rpc("is_admin") ubetinget, også uden session. Efter revoken ville
+--      hver udlogget besøgende få 403/42501. Ikke brugersynligt (fejlen
+--      destruktureres væk, isAdmin bliver false, listen loader via sin egen
+--      anon-policy fra #3457), men ren støj i prod-loggen. Rettet i samme PR:
+--      RPC'en kaldes nu kun når getSession() giver en session.
+--      SurveyPage.jsx (den anden rpc("is_admin")-kalder) er login-gated bag
+--      ProtectedRoute og rammes ikke.
+--
+-- DRIFT-VAGT: scripts/security-rls-policy-fn-grants.sql (kørt hver 6. time af
+-- .github/workflows/security-grants-audit.yml) finder efter denne REVOKE
+-- triplen (riders / "Public read riders", is_admin, anon) som et nyt WARN.
+-- Det er den tilsigtede fail-closed-tilstand, og den er derfor whitelistet i
+-- samme PR med reference til
+-- .claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md.
+-- Målt read-only mod prod 11/9: det er den ENESTE nye tripel.
 --
 -- ÅBENT FUND (eksisterende, ikke introduceret her): at anon-læsning af riders
 -- fejler med 42501 i stedet for at returnere rækker ELLER et tomt sæt, er en
@@ -156,7 +173,7 @@ $$;
 -- afgør også hvordan §F.2 lukkes.
 --
 -- `authenticated` BEHOLDER EXECUTE med vilje: frontend kalder den direkte som
--- RPC (frontend/src/pages/RoadmapPage.jsx:213 og SurveyPage.jsx:155 — begge
+-- RPC (frontend/src/pages/RoadmapPage.jsx og SurveyPage.jsx — begge
 -- client-side admin-gates hvor RLS er source of truth), og alle
 -- authenticated-role-policies der gater på is_admin() skal kunne kalde den.
 -- Derfor bliver 0029-fundet for is_admin() stående (§F.1).
@@ -255,14 +272,28 @@ NOTIFY pgrst, 'reload schema';
 --     AS service_beta,               -- forventet: true
 --   has_function_privilege('authenticated', 'public.is_offered_intake_rider(uuid)', 'EXECUTE')
 --     AS authn_intake,               -- forventet: true  (riders-policyen, §F.2)
---   has_table_privilege('anon', 'public.rider_rankings_mv', 'SELECT')
---     AS anon_mv;                    -- forventet: false
+--   has_function_privilege('anon', 'public.is_offered_intake_rider(uuid)', 'EXECUTE')
+--     AS anon_intake,                -- forventet: false (PRÆMISSEN for §C: anon
+--                                    --   fejler allerede på policyens anden
+--                                    --   operand. Er den true, holder §Cs
+--                                    --   argument ikke, og revoken på is_admin()
+--                                    --   skal revurderes.)
+--   has_table_privilege('anon', 'public.rider_rankings_mv',     'SELECT') AS anon_mv_riders,
+--   has_table_privilege('anon', 'public.global_rank_mv',        'SELECT') AS anon_mv_global,
+--   has_table_privilege('anon', 'public.team_race_points_mv',   'SELECT') AS anon_mv_points,
+--   has_table_privilege('anon', 'public.team_standings_ext_mv', 'SELECT') AS anon_mv_standings;
+--                                    -- forventet: false for alle fire (§E)
 --
 -- Derefter: get_advisors(type: security) skal vise 7 WARN (0016 ×4 + 0029 ×3)
 -- og 0 fund for 0011, 0014 og 0028.
 --
--- Funktionelt smoke-test (authenticated, preview eller prod):
---   /standings, /dashboard, /resultater, /teams/:id  → ranglister loader
---   /roadmap + survey-siden som admin                → admin-flade vises
---   forum-tråd åbnes                                 → view_count tæller op
+-- Funktionelt smoke-test (preview eller prod):
+--   authenticated:
+--     /standings, /dashboard, /resultater, /teams/:id → ranglister loader
+--     /roadmap + survey-siden som admin               → admin-flade vises
+--     forum-tråd åbnes                                → view_count tæller op
+--   UDLOGGET (privat vindue):
+--     /roadmap → items + shipped-historik loader, ingen admin-flade, og
+--                netværksfanen viser INGEN kald til /rest/v1/rpc/is_admin
+--                (frontend-gaten fra samme PR; uden den ville kaldet give 403)
 -- =============================================================================

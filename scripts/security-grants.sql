@@ -40,10 +40,27 @@
 -- Tilføj kun her sammen med en begrundelse — en tilføjelse uden begrundelse er
 -- præcis den fejl tjekket findes for at fange.
 --
---   is_admin                          anon+auth. Read-only, returnerer false for
---                                     anon. Bevidst grantet for at fjerne
---                                     42501-støj fra RLS-policies (#2858).
---   is_beta_tester                    auth. Read-only, kaldes fra RLS-policies.
+--   is_admin                          auth. Read-only. anon-EXECUTE blev revoket
+--                                     i #5153 (advisor-lint 0028) — den gamle
+--                                     begrundelse "grantet for at fjerne
+--                                     42501-støj" (#2858) holdt ikke længere:
+--                                     anon-læsningen af riders fejlede allerede
+--                                     på policyens ANDEN operand
+--                                     (is_offered_intake_rider), så revoken
+--                                     flyttede kun hvilken funktion 42501
+--                                     nævner. Fail-closed-tilstanden er
+--                                     whitelistet i
+--                                     scripts/security-rls-policy-fn-grants.sql.
+--   is_beta_tester                    Ingen klient-rolle. authenticated-EXECUTE
+--                                     revoket i #5153 (advisor-lint 0029): ingen
+--                                     RLS-policy, intet view, ingen anden
+--                                     funktionskrop og ingen frontend-RPC bruger
+--                                     den (målt mod prod 11/9) — kun
+--                                     service_role kalder den. Navnet står
+--                                     fortsat i undtagelses-listen nedenfor, så
+--                                     et gen-opstået klient-grant IKKE fanges;
+--                                     at fjerne det derfra er en oplagt
+--                                     opstramning, men skal verificeres for sig.
 --   is_offered_intake_rider           auth. Read-only, bærer riders-RLS-policyen
 --                                     "Public read riders" (#2581).
 --   get_cohort_retention              auth. Read-only admin-analytics, intern gate.
