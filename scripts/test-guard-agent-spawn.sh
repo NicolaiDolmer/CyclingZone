@@ -71,11 +71,14 @@ run() {
 
 # registry_count -> antal linjer i registret
 registry_count() {
+  local n=""
   if [ -f "$RUN_DIR/agent-slots.jsonl" ]; then
-    grep -c . "$RUN_DIR/agent-slots.jsonl" 2>/dev/null || echo 0
-  else
-    echo 0
+    # grep -c printer "0" OG exiter 1 naar der ingen match er. Et "|| echo 0"
+    # ville derfor give to linjer ("0\n0") og braekke sammenligningen.
+    n="$(grep -c . "$RUN_DIR/agent-slots.jsonl" 2>/dev/null)"
   fi
+  [ -z "$n" ] && n=0
+  printf '%s' "$n"
 }
 
 expect_count() {

@@ -479,7 +479,16 @@ if (queue.length > 0) {
       const track = queue.shift()
       if (!track) return
       try {
-        results.push(await runTrack(track))
+        const row = await runTrack(track)
+        results.push(row)
+        // En timeout AFBRYDER ikke agenten - den kan koere videre i baggrunden.
+        // Traekker lanen et nyt spor ind oven i den, ville det faktiske antal
+        // samtidige agenter overstige lane-loftet (natboelgen 5-6/9: 6 frosne
+        // spor aad laner i 2,5 time). Lanen trakker sig derfor tilbage i stedet.
+        if (row.status === 'timeout') {
+          log(`Lane trukket tilbage efter timeout paa #${track.issue} - den frosne agent holder stadig sin plads.`)
+          return
+        }
       } catch (err) {
         results.push({
           issue: track.issue,

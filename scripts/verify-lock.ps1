@@ -23,6 +23,14 @@
 # Exit-kode = kommandoens exit-kode. Timeout uden ledigt slot -> exit 75
 # (EX_TEMPFAIL: "proev igen", saa en caller kan skelne koe-timeout fra testfejl).
 #
+# KENDT HUL: slottet er bundet til WRAPPERENS PID, ikke til hele proces-traeet.
+# Draebes wrapperen udefra mens den underliggende kommando koerer videre, vil
+# Clear-DeadSlots frigive slottet selvom verifikationen stadig belaster maskinen.
+# Bevidst valg: alternativet (Windows job objects / traeafslutning) koster
+# betydelig kompleksitet for et scenarie der kraever at nogen draeber netop
+# wrapper-processen. Det normale ophoer - kommandoen slutter, finally-blokken
+# rydder - er daekket.
+#
 # Selvtest: node --test scripts/verify-lock.test.mjs
 #
 # Refs #5142, #4918.
