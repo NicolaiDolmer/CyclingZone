@@ -10,17 +10,20 @@
 
 ## Status 11/9 2026 (kl. 12:51)
 
-11 WARN + 117 INFO. Migrationen
-`database/2026-09-11-5153-security-advisors-hardening.sql` (#5153) lukker 4 af
-WARN'erne; de 7 resterende er alle blokeret af frontend-kaldesteder, ikke af
-manglende DDL.
+11 WARN + 117 INFO — **målt runtime-tilstand**, ikke forventet tilstand.
+Migrationen `database/2026-09-11-5153-security-advisors-hardening.sql` (#5153) er
+skrevet til at lukke 4 af WARN'erne, men den er endnu ikke appliceret: den kører
+af `auto-migrate.yml` ved merge. De fire står derfor som **afventer apply** her,
+og flippes først til "Lukket" når post-verify-blokken i migrationen + en ny
+`get_advisors`-kørsel bekræfter det. De 7 resterende er alle blokeret af
+frontend-kaldesteder, ikke af manglende DDL.
 
 | Lint | Objekt | Status | Hvorfor |
 |---|---|---|---|
-| `0011_function_search_path_mutable` | `record_forum_thread_view(uuid,uuid)` | **Lukket** (#5153) | `SET search_path = public, pg_catalog`. Funktionen er INVOKER og kun service_role-kaldbar, men slog op ukvalificeret. |
-| `0014_extension_in_public` | `btree_gist` | **Lukket** (#5153) | Flyttet til `extensions`. Verificeret ubrugt: 0 exclusion-constraints, 0 indekser med dens opclasses. |
-| `0028_anon_security_definer_function_executable` | `is_admin()` | **Lukket** (#5153) | `REVOKE EXECUTE ... FROM anon`. anon har ikke bord-SELECT på `riders`, så #2671/#2676-invarianten er allerede uden effekt — se note nedenfor. |
-| `0029_authenticated_security_definer_function_executable` | `is_beta_tester()` | **Lukket** (#5153) | Ingen policy, ingen view, ingen funktionskrop og ingen frontend-RPC bruger den. `service_role` beholder EXECUTE. |
+| `0011_function_search_path_mutable` | `record_forum_thread_view(uuid,uuid)` | **Afventer apply** (#5153) | `SET search_path = public, pg_catalog`. Funktionen er INVOKER og kun service_role-kaldbar, men slog op ukvalificeret. |
+| `0014_extension_in_public` | `btree_gist` | **Afventer apply** (#5153) | Flyttes til `extensions`. Verificeret ubrugt: 0 exclusion-constraints, 0 indekser med dens opclasses. |
+| `0028_anon_security_definer_function_executable` | `is_admin()` | **Afventer apply** (#5153) | `REVOKE EXECUTE ... FROM anon`. anon har ikke bord-SELECT på `riders`, så #2671/#2676-invarianten er allerede uden effekt — se note nedenfor. |
+| `0029_authenticated_security_definer_function_executable` | `is_beta_tester()` | **Afventer apply** (#5153) | Ingen policy, ingen view, ingen funktionskrop og ingen frontend-RPC bruger den. `service_role` beholder EXECUTE. |
 | `0029_...` | `is_admin()` | Åben — bevidst | Frontend kalder `rpc("is_admin")` som admin-gate (`RoadmapPage.jsx`, `SurveyPage.jsx`), og authenticated-policies evaluerer den. Kan ikke blive INVOKER: `users`' cross-user-read-policy gater selv på `is_admin()` → 42P17 infinite recursion. |
 | `0029_...` | `is_offered_intake_rider(uuid)` | Åben — bevidst | Ingen RPC-kalder, men `"Public read riders"` kalder den, og RLS-udtryk evalueres som den kaldende rolle → authenticated SKAL beholde EXECUTE. |
 | `0029_...` | `founder_public_list()` | Åben — bevidst | Kaldes direkte af `frontend/src/lib/useFounderTeams.js`. DEFINER for at kunne aggregere founder-numre uden at eksponere `users`-rækker. anon revoket i #4870. |
