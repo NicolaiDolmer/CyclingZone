@@ -101,3 +101,61 @@ test("optionelt ejerskab-afsnit medtages naar givet", () => {
   assert.match(brief, /# Ejerskab/);
   assert.match(brief, /scripts\/wave-lane-watch\.ps1/);
 });
+
+// ===== Orkestrator-standard v2 (#5142) =====
+// Hver af disse svarer til en konkret fejl fra 11/9-boelgen. De er tests og
+// ikke prosa, fordi praecis den slags regler er dem der forsvinder naar en
+// brief skrives i haanden under tidspres.
+
+test("kraever draft-PR inden 30 min", () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /Draft-PR'en SKAL eksistere senest 30 min/);
+});
+
+test("giver lanen sin egen scratch-mappe og en commit-besked-fil med branch-slug uden for worktreet", () => {
+  const brief = generateBrief(baseConfig);
+  // Egen mappe pr. lane (11/9: to workers delte scratchpad-sti).
+  assert.match(brief, /SCRATCH-MAPPE \(kun din\): C:\\Dev\\CyclingZone-worktrees\\\.wave-scratch\\chore-4918-wave-ops/);
+  // Slug i filnavnet, og filen ligger IKKE under selve worktreet.
+  assert.match(brief, /msg-chore-4918-wave-ops\.txt/);
+  assert.doesNotMatch(brief, /CyclingZone-worktrees\\chore-4918-wave-ops\\msg-/);
+  assert.match(brief, /commit -F "C:\\Dev\\CyclingZone-worktrees\\\.wave-scratch\\chore-4918-wave-ops\\msg-chore-4918-wave-ops\.txt"/);
+});
+
+test("tvinger tunge kommandoer gennem verifikations-semaforen", () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /verify-lock\.ps1" -Max 2 -Timeout 1800 --/);
+  assert.match(brief, /Maks 2 saadanne koerer ad gangen/);
+  // Preflight er tung og skal vaere wrappet.
+  const preflightLine = brief.split("\n").find((l) => l.includes("preflight-pr.ps1") && l.includes("foer push"));
+  assert.ok(preflightLine && preflightLine.includes("verify-lock.ps1"), "preflight skal koeres gennem semaforen");
+});
+
+test("forbyder baggrundsjob og 'vent paa monitoren'", () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /INGEN baggrundsjob/);
+  assert.match(brief, /FORGRUNDEN/);
+  assert.match(brief, /venter paa monitoren/);
+});
+
+test("TARGETED forbyder fuld e2e og verify-local", () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /FORBUDT paa TARGETED/);
+  assert.match(brief, /npm run test:e2e/);
+  assert.match(brief, /verify-local\.ps1/);
+});
+
+test("npm install er forbudt som default, tilladt med ownNodeModules", () => {
+  const uden = generateBrief(baseConfig);
+  assert.match(uden, /`npm install`\/`npm ci` er FORBUDT i dette worktree/);
+  assert.doesNotMatch(uden, /du MAA installere dependencies/);
+
+  const med = generateBrief({ ...baseConfig, ownNodeModules: true });
+  assert.match(med, /du MAA installere dependencies/);
+  assert.doesNotMatch(med, /`npm install`\/`npm ci` er FORBUDT/);
+});
+
+test("scratchRoot kan overstyres", () => {
+  const brief = generateBrief({ ...baseConfig, scratchRoot: "D:\\scratch" });
+  assert.match(brief, /D:\\scratch\\chore-4918-wave-ops/);
+});

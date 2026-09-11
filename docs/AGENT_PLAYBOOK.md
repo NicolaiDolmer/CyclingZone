@@ -17,8 +17,8 @@
 - **Én agent:** opgaven har ét scope, én fil-familie, ingen anden agent kan kollidere med den.
 - **Relaterede issues i samme rod-domæne (fil-overlap) = ÉN agent**, ikke fan-out. Tjek fil-overlap før du spawner flere.
 - **Bølge:** 2+ issues uden fil-overlap, nok volumen til at retfærdiggøre preflight + stall-watch-overheadet. Fuldt protokol: `PARALLEL_WORKTREE_ORCHESTRATION.md` (dagbølge, 3+ spor) eller `NIGHT_WAVE_RUNBOOK.md` (natbølge, ejer sover).
-- **Hard cap:** maks 5 åbne PR'er ad gangen (AGENTS.md regel 12) og maks 3 samtidige tunge frontend-verifikationer (regel 24). Fuld kø → merge før nyt startes.
-- **Chunking:** launch i chunks på 6-8 agenter, aldrig én stor barriere. Et frosset spor gidsler kun sit eget chunk (se §6).
+- **Hard cap (opdateret 11/9, #5142):** maks 5 åbne PR'er ad gangen (AGENTS.md regel 12), **4 laner** og **verifikations-semafor 2** — maks 2 tunge kørsler ad gangen på tværs af alle worktrees via `scripts/verify-lock.ps1` (afløser "maks 3 samtidige tunge frontend-verifikationer", regel 24). Fuld kø → merge før nyt startes.
+- **Ét kald, ikke chunks (opdateret 11/9, #5142):** bølgen startes med ét `Workflow({ name: "wave", ... })`-kald, og alle spor kører gennem dets lane-pool på 4. Det gamle chunk-råd (6-8 agenter pr. kald) hørte til den store `parallel()`-barriere og gælder ikke længere. Et frosset spor stopper i stedet bølgen, som rapporterer de ustartede spor til relancering (se §6).
 
 ## 3. Verifikations-trappen
 
@@ -57,7 +57,7 @@ Fuld skabelon: `PARALLEL_WORKTREE_ORCHESTRATION.md` §Sub-agent prompt template.
 
 ## 6. Orkestratorens pligter
 
-- **Stall-watch.** Kør `scripts/night-wave-stall-watch.ps1` hvert 8-10 min under en bølge. Frossen transcript-mtime + 0 worktree-fremdrift = hang, ikke en langsom agent (`status="running"` beviser intet). Ét frosset spor i en 6-8-agent-chunk gidsler kun det chunk, ikke hele natten. Uden chunking gidslede ét frossent spor hele bølgen i 7 timer, fordi hverken barrieren eller det eneste heartbeat-signal fyrede ([postmortem 17/7](../.claude/learnings/2026-07-17-night-wave-orchestrator-never-woke.md)).
+- **Stall-watch.** Kør `scripts/night-wave-stall-watch.ps1` hvert 8-10 min under en bølge. Frossen transcript-mtime + 0 worktree-fremdrift = hang, ikke en langsom agent (`status="running"` beviser intet). **Siden 11/9 (#5142) stopper `wave.js` selv bølgen ved første bekræftede frys og rapporterer de ustartede spor til relancering** — den frosne agent holder nemlig sin plads i samtidighedsloftet, så resten af bølgen ville køre videre med usynligt reduceret kapacitet. Tidligere gidslede ét frossent spor hele bølgen i 7 timer, fordi hverken barrieren eller det eneste heartbeat-signal fyrede ([postmortem 17/7](../.claude/learnings/2026-07-17-night-wave-orchestrator-never-woke.md)).
 - **Done-flip pr. merge, ikke til sidst.** `gh issue edit N --add-label claude:done --remove-label claude:todo` umiddelbart efter HVER merge, i selve merge-løkken. Den hyppigste close-out-fejl er en samlet done-flip man glemmer.
 - **Merge-rækkefølge.** Backend/lav-konflikt → store UI-PR'er → bredeste PR (med migration) sidst. Samme-fil-PR'er sekventieres. Auto-merge kan IKKE forudsættes: natbølgen 2/9 landede aldrig automatisk, orkestratoren mergede selv grønne PR'er med `gh pr merge --squash --admin` efter DERES egne checks var grønne.
 - **Audit-artifact.** Skriv `docs/audits/night-wave-YYYY-MM-DD.md` ved close-out (template i `NIGHT_WAVE_RUNBOOK.md`), inkl. udfyldt "Issues → claude:done"-række. Done-flip verificeres bagefter: `gh issue list --label claude:todo` viser ingen af bølgens merged issues.

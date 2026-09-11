@@ -74,7 +74,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 23. **Post-merge guard-tjek af main.** Efter en salve verificeres at required checks OG de bløde vagter (warning-budget, feature-liveness, patch-note-guard) stadig er grønne på main-HEAD — en PR kan være grøn på egen base og alligevel knække main i kombination.
 
-24. **Orkestratoren ejer e2e-slottet ved parallelle workers** (ejer 18/8, KS3). Spawn-prompter tildeler verifikations-niveau eksplicit; ingen worker kører fuld lokal e2e-suite på egen hånd; maks 3 tunge verifikationer samtidig.
+24. **Orkestratoren ejer e2e-slottet ved parallelle workers** (ejer 18/8, KS3). Spawn-prompter tildeler verifikations-niveau eksplicit; ingen worker kører fuld lokal e2e-suite på egen hånd. **Loftet er siden 11/9 ([#5142](https://github.com/NicolaiDolmer/CyclingZone/issues/5142)) maks 2 tunge verifikationer samtidig (var 3), håndhævet af `scripts/verify-lock.ps1` i stedet for af disciplin; parallelt byggearbejde startes kun via `.claude/workflows/wave.js` (4 laner). Semaforen tæller kun kommandoer der faktisk wrappes i `verify-lock.ps1` — starter en kørsel udenom, er den usynlig for loftet, og disciplinen er stadig din.**
 
 25. **Design-gate før build** (ejer-mandat 13/8, [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)). En ny spillervendt funktion implementeres ALDRIG uden forudgående design-blok med ejeren: problem, løsningsskitse (mockup/show_widget/artboard/preview) og et eksplicit "godkendt til build". Godkendelsen refereres i PR-body ("Design-go: dato/link"). Refactors og bugfixes uden ny adfærd er undtaget.
 
