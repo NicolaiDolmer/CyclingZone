@@ -85,7 +85,7 @@ function FaqItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: bo
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4">
         <span className="text-[15px] font-medium text-cz-1">{q}</span>
         <PlusIcon
-          className="w-5 h-5 flex-shrink-0 text-cz-accent-t transition-transform duration-200 group-open:rotate-45"
+          className="w-5 h-5 shrink-0 text-cz-accent-t transition-transform duration-200 group-open:rotate-45"
           aria-hidden="true"
         />
       </summary>

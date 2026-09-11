@@ -69,11 +69,8 @@ updates:
         update-types:
           - minor
           - patch
-    ignore:
-      # Tailwind 4 kræver postcss-plugin migration (samme beslutning som
-      # frontend); Vercel-buildet fejlede på PR #5084 — #134 - review 2026-12-01
-      - dependency-name: "tailwindcss"
-        update-types: ["version-update:semver-major"]
+    # Ingen tailwind-ignore her: marketing kører Tailwind 4 efter migrationen i
+    # #134 (PR #5084's postcss-fejl er løst med @tailwindcss/postcss).
 
   # Root scripts — sjældent ændret, men dækkes af Dependabot
   - package-ecosystem: npm
