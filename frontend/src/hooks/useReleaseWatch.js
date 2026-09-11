@@ -100,6 +100,9 @@ export default function useReleaseWatch() {
       target: window,
       doc: document,
       runCheck: reloader.runCheck,
+      // "feltet mistede fokus" er også et sikkert punkt — men kun mens der
+      // ligger en markør og venter.
+      hasPending: () => Boolean(reloader.state.pendingRelease),
     });
 
     // H3: beslut FØR routerens commit. Klik på et internt link, mens vi allerede

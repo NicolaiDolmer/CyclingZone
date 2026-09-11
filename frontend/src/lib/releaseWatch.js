@@ -504,6 +504,7 @@ export function installReleaseWatchHandlers({
   target,
   doc,
   runCheck,
+  hasPending,
   now = () => Date.now(),
   timers,
   backgroundThresholdMs = BACKGROUND_THRESHOLD_MS,
@@ -558,12 +559,26 @@ export function installReleaseWatchHandlers({
     triggerCheck("interval");
   }, periodicIntervalMs);
 
+  // Det TREDJE sikre punkt, målt frem i browsertesten: porten kan åbne mens
+  // markøren stadig står i feltet. Rydder spilleren et felt (eller gemmer med
+  // tastaturet), slipper blokeringen i samme render hvor inputtet endnu har
+  // fokus — og `isSafeToReload` afviser med rette. Uden dette lå markøren så
+  // stille indtil næste navigation eller næste interval. Nu er "feltet mistede
+  // fokus" også et sikkert punkt. Kun mens der ER en markør, så det koster
+  // ingenting i det normale tilfælde.
+  const onFocusOut = () => {
+    if (!hasPending?.()) return;
+    triggerCheck("focusout");
+  };
+  if (hasPending) doc.addEventListener("focusout", onFocusOut);
+
   doc.addEventListener("visibilitychange", onVisibilityChange);
   target.addEventListener("focus", onReturn);
   target.addEventListener("pageshow", onReturn);
   target.addEventListener("blur", markHidden);
 
   return () => {
+    if (hasPending) doc.removeEventListener("focusout", onFocusOut);
     doc.removeEventListener("visibilitychange", onVisibilityChange);
     target.removeEventListener("focus", onReturn);
     target.removeEventListener("pageshow", onReturn);

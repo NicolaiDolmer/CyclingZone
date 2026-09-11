@@ -164,15 +164,16 @@ test("B1 login: bannerets Update-knap genindlaeser paa spillerens eget klik", as
 test("B1 traening: en ugemt ugekladde blokerer reloadet, Gem frigiver det", async ({ page }) => {
   const state = await setupReleaseHarness(page);
   await login(page);
-  await page.goto("/training");
+  // Ugerytme-editoren bor paa "Week plan"-fanen (#3746 trin 7).
+  await page.goto("/training?tab=weekplan");
   await expect(page.locator("#root")).toBeVisible();
   const loadsBefore = await documentLoads(page);
 
   // Ugerytme-panelets select'er er kladde indtil Gem. Vi aendrer én og flytter
   // fokus vaek — den praecise tilstand auditten kaldte "beskytter fokus, ikke
   // arbejde".
-  const weekSelect = page.locator("select").first();
-  await expect(weekSelect).toBeVisible({ timeout: 15_000 });
+  const weekSelect = page.locator("select:visible").first();
+  await expect(weekSelect).toBeVisible({ timeout: 20_000 });
   const options = await weekSelect.locator("option").all();
   const values = [];
   for (const option of options) values.push(await option.getAttribute("value"));
@@ -223,13 +224,18 @@ test("M2: et haengende versionskald doeder ikke detektionen — naeste vindue he
   const loadsBefore = await documentLoads(page);
 
   await page.clock.fastForward(PERIODIC);
-  expect(state.versionCalls).toBeGreaterThan(0);
+  // fastForward returnerer naar timerne er fyret, ikke naar den fetch de startede
+  // er naaet frem til route-handleren.
+  await expect.poll(() => state.versionCalls, { timeout: 10_000 }).toBeGreaterThan(0);
 
-  // Deadlinen er 8 s: spol forbi den, slip forbindelsen fri og lad naeste
-  // vindue koere. Uden abort ville alle senere kald dele den samme
-  // uafsluttede promise, og fanen ville aldrig opdage noget igen.
+  // Deadlinen er 8 s: spol foerst forbi DEN alene, saa aborten faar lov at
+  // afvikle sig selv, og derefter frem til naeste vindue. Uden abort ville alle
+  // senere kald dele den samme uafsluttede promise, og fanen ville aldrig
+  // opdage noget igen.
   state.hang = false;
   state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
+  await page.clock.fastForward("00:15");
+  await page.waitForTimeout(500);
   await page.clock.fastForward(PERIODIC);
 
   await expect.poll(() => documentLoads(page), { timeout: 20_000 }).toBe(loadsBefore + 1);
@@ -239,12 +245,21 @@ test("M2: et haengende versionskald doeder ikke detektionen — naeste vindue he
 
 test("M3: tre dokumentstarter uden sessionStorage giver hoejst ÉT reload", async ({ page }) => {
   const state = await setupReleaseHarness(page);
-  // sessionStorage kaster ved selve OPSLAGET — den haardeste variant.
+  // sessionStorage findes, men ENHVER operation kaster — privat browsing med
+  // site-data slaaet fra. (Varianten hvor selve property-OPSLAGET kaster er
+  // daekket i unit-testen `safeSessionStorage overlever at selve OPSLAGET
+  // kaster`; i browseren ville den ogsaa vaelte tredjeparts-kode uden for
+  // dette spors ejerskab, og saa maalte testen noget andet end porten.)
   await page.addInitScript(() => {
-    Object.defineProperty(window, "sessionStorage", {
-      configurable: true,
-      get() { throw new Error("The operation is insecure."); },
-    });
+    const hostile = {
+      getItem() { throw new Error("The operation is insecure."); },
+      setItem() { throw new Error("The operation is insecure."); },
+      removeItem() { throw new Error("The operation is insecure."); },
+      clear() { throw new Error("The operation is insecure."); },
+      key() { throw new Error("The operation is insecure."); },
+      length: 0,
+    };
+    Object.defineProperty(window, "sessionStorage", { configurable: true, get: () => hostile });
   });
   state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
 
