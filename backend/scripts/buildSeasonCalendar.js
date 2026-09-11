@@ -257,10 +257,16 @@ if (isMain) {
         console.log(`  forslag: --race-day-target ${forslag.target} (${forslag.source}) — så ville alle fire divisioner have ${forslag.target} løbsdage`);
       }
     }
-    if (raceDayEquality.length) {
+    if (raceDayEquality.length && raceDayTarget != null) {
       console.error(`  ❌ §1d (#4845):`);
       for (const v of raceDayEquality) console.error(`     · ${v}`);
-      if (raceDayTarget != null) applyBlockingRaceDays.push(...raceDayEquality);
+      applyBlockingRaceDays.push(...raceDayEquality);
+    } else if (raceDayEquality.length) {
+      // Maalet er ikke sat for denne saeson: uligheden RAPPORTERES (den er hele grunden
+      // til #4845), men den doemmes ikke — praecis som scorecardets "--" for §1d. Et roedt
+      // kryds for en regel der ikke er slaaet til ville laese som en regression.
+      console.log(`  -- §1d (#4845) er ikke slået til for sæson ${seasonNumber} — målt ulighed:`);
+      for (const v of raceDayEquality) console.log(`     · ${v}`);
     } else if (raceDayTarget != null) {
       console.log(`  ✅ alle divisioner har ${raceDayTarget} løbsdage — #4846's tick tæller ens i hele spillet.`);
     }
