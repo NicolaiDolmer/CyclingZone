@@ -1,12 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  accountBootGuardReload,
+  BOOT_GUARD_KEY,
   documentIsStillLoadable,
   getChunkReloadKey,
+  hasRecoveryBudget,
   installChunkReloadHandlers,
   isChunkLoadError,
   isUnambiguousChunkLoadError,
+  RECOVERY_BUDGET_KEY,
+  RECOVERY_BUDGET_MAX,
+  RECOVERY_BUDGET_WINDOW_MS,
+  safeSessionStorage,
   shouldAttemptChunkReload,
+  spendRecoverySlot,
 } from "./chunkErrors.js";
 
 function memoryStorage() {
@@ -362,4 +370,97 @@ test("almindelige fejl rammes af ingen af dem", () => {
     assert.ok(!isChunkLoadError({ message }), message);
     assert.ok(!isUnambiguousChunkLoadError({ message }), message);
   }
+});
+
+// --- #5159 / audit-fund M3: ét fælles recovery-budget ------------------------
+
+// Auditten reproducerede præcis dette i en ren model: tre dokumentstarter, samme
+// release, sessionStorage utilgængelig, ét preload-error pr. start — og TRE
+// reloads, fordi den globale handler faldt tilbage på et per-load-flag der dør
+// med dokumentet. Nu er stien fail-closed: uden bevis for at vi ikke allerede
+// har reloadet, reloader vi ikke.
+test("M3 — tre dokumentstarter uden storage giver NUL automatiske reloads", async () => {
+  let reloads = 0;
+  for (let documentStart = 0; documentStart < 3; documentStart += 1) {
+    const target = fakeTarget();
+    const timer = manualScheduler();
+    installChunkReloadHandlers({
+      target, release: "rel1", storage: null,
+      reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE,
+    });
+    target.dispatch("vite:preloadError", { preventDefault() {} });
+    await timer.flush();
+  }
+  assert.equal(reloads, 0, "hoejst ét reload var kravet; fail-closed giver nul");
+});
+
+test("M3 — en storage der KASTER er lige så fail-closed som ingen storage", async () => {
+  const throwing = {
+    getItem() { throw new Error("SecurityError"); },
+    setItem() { throw new Error("SecurityError"); },
+  };
+  const target = fakeTarget();
+  const timer = manualScheduler();
+  let reloads = 0;
+  installChunkReloadHandlers({
+    target, release: "rel1", storage: throwing,
+    reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE,
+  });
+  target.dispatch("vite:preloadError", { preventDefault() {} });
+  await timer.flush();
+  assert.equal(reloads, 0);
+});
+
+test("M3 — budgettet er FÆLLES: boot-vagtens reload tæller med", () => {
+  const storage = memoryStorage();
+  storage.setItem(BOOT_GUARD_KEY, String(Date.now()));
+  assert.equal(accountBootGuardReload(storage), true, "vagtens reload bogfoeres");
+  assert.equal(JSON.parse(storage.getItem(RECOVERY_BUDGET_KEY)).used, 1);
+  // Samme tidsstempel må aldrig tælles to gange (fx ved en ekstra mount).
+  assert.equal(accountBootGuardReload(storage), false);
+  assert.equal(JSON.parse(storage.getItem(RECOVERY_BUDGET_KEY)).used, 1);
+});
+
+test("M3 — et gammelt selvhelings-tidsstempel er ikke 'lige sket'", () => {
+  const storage = memoryStorage();
+  storage.setItem(BOOT_GUARD_KEY, String(Date.now() - 60 * 60 * 1000));
+  assert.equal(accountBootGuardReload(storage), false);
+  assert.equal(storage.getItem(RECOVERY_BUDGET_KEY), null);
+});
+
+test("M3 — budgettet løber tør på tværs af lag og lukker så alle automatiske reloads", () => {
+  const storage = memoryStorage();
+  for (let i = 0; i < RECOVERY_BUDGET_MAX; i += 1) {
+    assert.equal(hasRecoveryBudget(storage), true, `slot ${i} skal findes`);
+    spendRecoverySlot(storage, "test");
+  }
+  assert.equal(hasRecoveryBudget(storage), false, "budgettet er brugt");
+  assert.equal(
+    shouldAttemptChunkReload({ error: { message: "ChunkLoadError" }, release: "helt-ny", storage }),
+    false,
+    "ogsaa en HELT ny release afvises — budgettet er delt, ikke pr. release",
+  );
+});
+
+test("M3 — budgettet er et RULLENDE vindue, ikke fanens levetid", () => {
+  const storage = memoryStorage();
+  const start = Date.now();
+  storage.setItem(RECOVERY_BUDGET_KEY, JSON.stringify({ used: RECOVERY_BUDGET_MAX, windowStart: start }));
+  assert.equal(hasRecoveryBudget(storage, { now: start + 1000 }), false);
+  assert.equal(
+    hasRecoveryBudget(storage, { now: start + RECOVERY_BUDGET_WINDOW_MS + 1 }),
+    true,
+    "en fane der staar aaben i dage skal kunne tage en opdatering i morgen",
+  );
+});
+
+test("M3 — safeSessionStorage overlever at selve OPSLAGET kaster", () => {
+  const hostile = {};
+  Object.defineProperty(hostile, "sessionStorage", {
+    get() { throw new Error("The operation is insecure."); },
+  });
+  assert.equal(safeSessionStorage(hostile), null);
+  assert.equal(safeSessionStorage(undefined), null);
+  const ok = { sessionStorage: memoryStorage() };
+  assert.equal(safeSessionStorage(ok), ok.sessionStorage);
 });

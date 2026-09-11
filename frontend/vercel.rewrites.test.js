@@ -96,6 +96,32 @@ test("chunk-selfheal.js har en eksplicit KORT cache-header (#4595 review)", () =
   assert.ok(!/immutable/.test(cacheControl), "boot-vagten maa ALDRIG vaere immutable");
 });
 
+// #5033/#5159: /version.json er kilden til sandhed for "koerer denne fane stadig
+// den nyeste frontend". Faar den en lang cache-header, svarer den med det GAMLE
+// id efter et deploy — og hele lag 3 er tavst doedt, uden at noget fejler.
+test("/version.json revaliderer altid og faar aldrig lang cache (#5159)", () => {
+  const rule = config.headers.find((h) => h.source === "/version.json");
+  assert.ok(rule, "der skal vaere en dedikeret header-regel for /version.json");
+
+  const cacheControl = rule.headers.find((h) => h.key === "Cache-Control")?.value ?? "";
+  assert.match(cacheControl, /max-age=0/, "version.json skal have max-age=0");
+  assert.match(cacheControl, /must-revalidate/, "version.json skal revalidere paa hvert kald");
+  assert.ok(!/immutable/.test(cacheControl), "version.json maa ALDRIG vaere immutable");
+
+  // Forward-guard: en bredere regel der OGSAA rammer /version.json med lang
+  // cache ville give praecis samme tavse doed.
+  const longCacheSources = config.headers
+    .filter((h) => /immutable|max-age=(\d{3,})/.test(h.headers.find((x) => x.key === "Cache-Control")?.value ?? ""))
+    .map((h) => h.source);
+
+  for (const source of longCacheSources) {
+    assert.ok(
+      !new RegExp(`^${source}$`).test("/version.json"),
+      `/version.json matcher "${source}" som har lang cache — saa ville tjekket svare med det gamle id efter et deploy`,
+    );
+  }
+});
+
 test("alle mapper med lang cache-header er undtaget fra fallback", () => {
   // Forward-guard: tilfoejes en ny mappe med lang max-age, skal den ogsaa undtages,
   // ellers genopstaar praecis den samme faelde et nyt sted.

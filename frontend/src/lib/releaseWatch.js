@@ -299,8 +299,15 @@ export function createReleaseReloader({
   // at watcheren aldrig arbejdede igen. Lever vi stadig efter settle-vinduet,
   // skete navigationen ikke.
   const clearStaleReloading = () => {
-    if (state.reloading && now() - state.reloadStartedAt > settleMs) {
-      state.reloading = false;
+    if (!state.reloading || now() - state.reloadStartedAt <= settleMs) return;
+    state.reloading = false;
+    // Reloadet skete ikke, og dets slot er brændt. Markøren må derfor ikke blive
+    // liggende og sluge alle senere triggere — så ville C aldrig blive opdaget
+    // efter et forgæves forsøg på B (M1). Banneret bliver stående, og den
+    // throttlede polling fortsætter.
+    if (state.pendingRelease) {
+      state.exhausted.add(state.pendingRelease);
+      state.pendingRelease = null;
     }
   };
 
