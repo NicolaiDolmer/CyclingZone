@@ -103,6 +103,17 @@ test('#4959 en rytters entry binder hans hold selv om entry-raekken staar paa et
   assert.deepEqual(release.get('ai1').raceIds, ['R1']);
 });
 
+// Ghost-raekken (entry paa hold A, rytter nu paa hold B) binder BEGGE hold, praecis
+// som SQL'ens (team_id = t.id OR rider_id IN holdets ryttere).
+test('#4959 en raekke der peger paa to blokerede hold binder dem begge', async () => {
+  const state = seedRunningStageRace();
+  state.riders.push({ id: 'ai2-r1', team_id: 'ai2' });
+  state.race_entries = [{ race_id: 'R1', team_id: 'ai1', rider_id: 'ai2-r1' }];
+  const release = await inflightReleaseByTeam(makeSupabase(state), ['ai1', 'ai2']);
+  assert.deepEqual(release.get('ai1').raceIds, ['R1']);
+  assert.deepEqual(release.get('ai2').raceIds, ['R1']);
+});
+
 test('#4959 et igangvaerende loeb uden etape-plan giver ukendt frigivelse, ikke en for tidlig dato', async () => {
   const state = seedRunningStageRace();
   state.races.push({ id: 'R4', status: 'scheduled', stages_completed: 2 });

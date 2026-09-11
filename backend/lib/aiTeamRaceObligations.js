@@ -101,12 +101,16 @@ export async function inflightReleaseByTeam(supabase, teamIds) {
     riderIds.length ? selectByIds(supabase, { table: 'race_entries', columns: 'race_id, team_id, rider_id',
       inColumn: 'rider_id', ids: riderIds, orderBy: ['race_id', 'rider_id'] }) : [],
   ]);
+  const wanted = new Set(teamIds);
   const teamsByRace = new Map();
   for (const e of [...byTeam, ...byRider]) {
-    const teamId = teamIds.includes(e.team_id) ? e.team_id : teamByRider.get(e.rider_id);
-    if (!teamId) continue;
-    if (!teamsByRace.has(e.race_id)) teamsByRace.set(e.race_id, new Set());
-    teamsByRace.get(e.race_id).add(teamId);
+    // Begge grene taeller, praecis som SQL'ens (team_id = t.id OR rider_id IN ...):
+    // en raekke kan baere eet blokeret holds team_id og en anden blokeret holds rytter.
+    for (const teamId of [e.team_id, teamByRider.get(e.rider_id)]) {
+      if (!teamId || !wanted.has(teamId)) continue;
+      if (!teamsByRace.has(e.race_id)) teamsByRace.set(e.race_id, new Set());
+      teamsByRace.get(e.race_id).add(teamId);
+    }
   }
   if (!teamsByRace.size) return result;
 
