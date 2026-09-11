@@ -8,6 +8,9 @@
 //   2. `release.inject: false` skal blive staaende (#4595 rod-aarsag 2).
 //   3. CI-jobbet skal bygge TO gange med FORSKELLIGE release-id'er, have
 //      transformationen slaaet til, og vaere blokerende - ikke advisory.
+//   4. (#5170) De to builds skal koere MED Vercels skew-env og hver sit
+//      deployment-id, og vite.config.js skal gate de deploy-unikke defines paa
+//      KODE-flaget SKEW_PROTECTION_ENABLED - ikke kun paa env'en.
 //
 // Hver af dem kan forsvinde i en refaktor uden at noget build fejler. Derfor
 // testes de som tekst-kontrakter her. Desuden testes at markoer-vaerdierne i
@@ -118,6 +121,62 @@ test("to-build-jobbet findes, bygger to gange og er ikke advisory", () => {
   // Upload skal koere OGSAA naar sammenligningen fejlede - ellers mangler
   // artifactet praecis naar det er noedvendigt.
   assert.match(block, /if:\s*\$\{\{\s*!cancelled\(\)\s*\}\}/);
+});
+
+test("to-build-jobbet bygger MED Vercels skew-env og forskellige deployment-id'er (#5170)", () => {
+  // Uden dette er jobbet blindt for rod-aarsagen bag chunk-rotationen: Vercels
+  // dashboard-toggle staar TIL, saa prod bygger altid med skew-env sat, mens
+  // kode-flaget er false. Bygger CI uden env'en, ville en regression der igen
+  // bager Date.now()/deployment-id ind gaa groent igennem.
+  const block = jobBlock("build-determinism-two-builds");
+
+  assert.match(
+    block,
+    /VERCEL_SKEW_PROTECTION_ENABLED:\s*"1"/,
+    "jobbet bygger uden Vercels skew-toggle - det maaler ikke den env prod bygger i"
+  );
+  assert.match(
+    block,
+    /VERCEL_ENV:\s*production/,
+    "jobbet saetter ikke VERCEL_ENV=production - skew-gaten i vite.config.js aktiveres aldrig"
+  );
+
+  const deploymentIds = [...block.matchAll(/VERCEL_DEPLOYMENT_ID:\s*(\S+)/g)].map((m) => m[1]);
+  assert.equal(
+    deploymentIds.length,
+    2,
+    `der saettes ${deploymentIds.length} deployment-id'er, ikke praecis to (et pr. build)`
+  );
+  assert.notEqual(
+    deploymentIds[0],
+    deploymentIds[1],
+    "de to builds bruger SAMME deployment-id - saa beviser jobbet ikke at id'et er uden effekt"
+  );
+});
+
+test("vite.config.js gater skew-defines paa KODE-flaget, ikke kun paa env (#5170)", () => {
+  // Rod-aarsagen (audit 11/9, fund H1) var at `Date.now()` blev bagt ind naar
+  // env'en var sat, uanset at koden aldrig bruger vaerdien. Kontrakten her
+  // fanger en refaktor der falder tilbage til den gamle beregning.
+  assert.match(
+    viteConfig,
+    /import\s*\{\s*computeSkewDefines\s*\}\s*from\s*"\.\/vite-plugins\/skew-defines\.js"/,
+    "vite.config.js bruger ikke laengere computeSkewDefines() - beregningen er ikke laengere unit-testet"
+  );
+  assert.match(
+    viteConfig,
+    /import\s*\{\s*SKEW_PROTECTION_ENABLED\s*\}\s*from\s*"\.\/src\/lib\/skewProtection\.js"/,
+    "vite.config.js laeser ikke laengere SSOT-flaget SKEW_PROTECTION_ENABLED"
+  );
+  assert.match(
+    viteConfig,
+    /codeFlag:\s*SKEW_PROTECTION_ENABLED/,
+    "kode-flaget sendes ikke ind i computeSkewDefines() - defines kan blive deploy-unikke igen"
+  );
+  assert.ok(
+    !/^\s*const\s+skewBuildTime\s*=.*Date\.now\(\)/m.test(viteConfig),
+    "vite.config.js kalder igen Date.now() direkte til skew-build-tiden - det roterer chunk-hashes pr. deploy"
+  );
 });
 
 test("jobbet indeholder selvtesten der beviser at gaten kan blive roed", () => {

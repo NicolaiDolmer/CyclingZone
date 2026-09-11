@@ -204,6 +204,21 @@ jobs:
       # SENTRY_PROJECT i dette job, og pluginet koerer med
       # `sourcemaps.disable: "disable-upload"` + `telemetry: false`.
       CZ_SENTRY_TRANSFORM: "1"
+      # #5170: de to builds koeres MED Vercels skew-env slaaet til, fordi det er
+      # praecis den tilstand prod bygger i - dashboard-toggle'en staar stadig TIL
+      # (docs/DEPLOYMENT.md), mens kode-flaget SKEW_PROTECTION_ENABLED er false.
+      # Foer fixet bagte vite.config.js Date.now() + deployment-id ind alligevel,
+      # og 154 af 677 assets blev udskiftet mellem to ellers identiske builds.
+      # Uden denne env ville jobbet vaere blindt for netop den regressionsklasse.
+      #
+      # NAAR FLAGET EN DAG FLIPPES TIL true (ejer-only, #2423): saa ER
+      # deployment-id'et en tilsigtet deploy-unik byte, og dette job bliver
+      # legitimt roedt paa den ene chunk der baerer id'et. Det er et sandt
+      # signal - chunkene roterer faktisk - og skal haandteres bevidst (fx ved
+      # at give begge builds SAMME VERCEL_DEPLOYMENT_ID), ikke ved at fjerne
+      # env'en her.
+      VERCEL_SKEW_PROTECTION_ENABLED: "1"
+      VERCEL_ENV: production
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -233,6 +248,8 @@ jobs:
           VERCEL_GIT_COMMIT_SHA: "1111111111111111111111111111111111111111"
           VITE_VERCEL_GIT_COMMIT_SHA: "1111111111111111111111111111111111111111"
           SENTRY_RELEASE: "1111111111111111111111111111111111111111"
+          # Deploy-unikt pr. build, praecis som Vercel saetter det (#5170).
+          VERCEL_DEPLOYMENT_ID: dpl_determinism_a
         run: npm run build
 
       - name: Keep build A
@@ -244,6 +261,7 @@ jobs:
           VERCEL_GIT_COMMIT_SHA: "2222222222222222222222222222222222222222"
           VITE_VERCEL_GIT_COMMIT_SHA: "2222222222222222222222222222222222222222"
           SENTRY_RELEASE: "2222222222222222222222222222222222222222"
+          VERCEL_DEPLOYMENT_ID: dpl_determinism_b
         run: npm run build
 
       - name: Keep build B
