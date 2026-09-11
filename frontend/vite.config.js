@@ -6,11 +6,28 @@ import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
 
+// #5160 (audit 11/9, fund H1): source-map-UPLOAD og selve Sentry-TRANSFORMATIONEN
+// er to forskellige ting, og kun den ene kræver et token.
+//
+//   UPLOAD        — sender source maps + release til Sentry. Kræver rigtigt token.
+//   TRANSFORMATION— pluginets `renderChunk` skriver et debug-id-snippet ind i HVER
+//                   JS-chunk (`_sentryDebugIds[...]="<uuid>"`). Den ændrer altså
+//                   de hashede assets og kræver INTET token.
+//
+// Fordi gaten hidtil kun kunne bygge uden token, målte den et build UDEN den
+// transformation prod kører med — og kunne derfor ikke bevise stabile asset-navne
+// (auditten målte 76 af 195 chunk-referencer udskiftet mellem to prod-deploys
+// uden frontend-diff). `CZ_SENTRY_TRANSFORM=1` slår transformationen til ALENE,
+// via pluginets egen dokumenterede `sourcemaps.disable: "disable-upload"`:
+// debug-id'er injiceres, intet sendes til Sentry. Prod-adfærd er uændret — med
+// token er `enableSentryUpload` true og alt kører som før.
 const enableSentryUpload = Boolean(
   process.env.SENTRY_AUTH_TOKEN &&
   process.env.SENTRY_ORG &&
   process.env.SENTRY_PROJECT
 );
+const forceSentryTransform = process.env.CZ_SENTRY_TRANSFORM === "1";
+const enableSentryPlugin = enableSentryUpload || forceSentryTransform;
 
 // Dev/preview-only endpoint der identificerer hvilken worktree serveren kører
 // fra, så Playwrights globalSetup kan afvise en fremmed worktrees server på
@@ -111,13 +128,24 @@ export default defineConfig({
     worktreeIdPlugin(),
     releaseMetaPlugin(),
     patchNotesJsonPlugin(),
-    enableSentryUpload
+    enableSentryPlugin
       ? sentryVitePlugin({
           authToken: process.env.SENTRY_AUTH_TOKEN,
           org: process.env.SENTRY_ORG,
           project: process.env.SENTRY_PROJECT,
+          // #5160: transform-only-buildet skal være OFFLINE. Pluginets
+          // telemetri-signal sendes ellers til sentry.io alene fordi
+          // default-url'en er SaaS (allowedToSendTelemetry returnerer true uden
+          // token), og et netværkskald i en determinisme-gate er både spild og
+          // en kilde til flaky CI.
+          telemetry: enableSentryUpload,
           release: {
             name: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA,
+            // Uden token findes der ingen release at oprette eller afslutte.
+            // Pluginet ville blot logge en advarsel, men vi slår kaldene
+            // eksplicit fra, så transform-only-buildet ikke rører nettet.
+            create: enableSentryUpload,
+            finalize: enableSentryUpload,
             // #4595 rod-årsag 2: pluginets default (`inject: true`) skriver
             // `window.SENTRY_RELEASE={id:"<sha>"}` ind i ENTRY-chunken selv —
             // en deploy-unik streng i en hashet asset, præcis den klasse resten
@@ -134,6 +162,12 @@ export default defineConfig({
           },
           sourcemaps: {
             assets: "./dist/**",
+            // #5160: `"disable-upload"` er pluginets egen indstilling for
+            // "injicér debug-id'er, men upload ingenting". `true` ville slå
+            // HELE source-map-funktionaliteten fra — inklusive debug-id-
+            // injektionen — og så ville determinisme-gaten igen måle et build
+            // der ikke ligner prod.
+            ...(enableSentryUpload ? {} : { disable: "disable-upload" }),
           },
         })
       : null,
@@ -143,6 +177,11 @@ export default defineConfig({
     strictPort: Boolean(explicitPort),
   },
   build: {
-    sourcemap: enableSentryUpload,
+    // #5160: source maps følger PLUGINET, ikke uploadet. De ændrer de hashede
+    // assets (hver chunk får en `//# sourceMappingURL=`-linje), så et build der
+    // skal bevise noget om prod's asset-navne skal have dem slået til på samme
+    // måde som prod. Prod har token ⇒ uændret true; almindelige lokale builds
+    // har hverken token eller CZ_SENTRY_TRANSFORM ⇒ uændret false.
+    sourcemap: enableSentryPlugin,
   },
 });
