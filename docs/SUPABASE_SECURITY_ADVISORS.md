@@ -110,9 +110,10 @@ Den reelle vej, pr. matview:
    `installPreviewMock.js`).
 3. `REVOKE ALL ON TABLE public.<mv> FROM authenticated` — først her forsvinder
    linten.
-4. Refresh-stien er DB-intern (fire RPC'er, `backend/lib/refreshRankingMatviews.js`
-   kalder dem via service_role), så den tåler at matview'et flyttes eller
-   omdøbes uden backend-ændring.
+4. Refresh-stien går via fire DB-RPC'er. `backend/lib/refreshRankingMatviews.js`
+   kalder dem via `service_role`, så matview'et kan flyttes eller omdøbes uden
+   ændring af backend-kaldet. RPC-implementeringerne skal til gengæld opdateres
+   med de nye matview-referencer i samme migration.
 
 ### Forward-note: btree_gist ligger ikke længere i `public`
 
