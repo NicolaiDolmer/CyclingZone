@@ -33,9 +33,9 @@ ikke samme lukke-arbejde:
 |---|---|---|---|
 | `0011_function_search_path_mutable` | `record_forum_thread_view(uuid,uuid)` | **Afventer apply** (#5153) | `SET search_path = public, pg_catalog`. Funktionen er INVOKER og kun service_role-kaldbar, men slog op ukvalificeret. |
 | `0014_extension_in_public` | `btree_gist` | **Afventer apply** (#5153) | Flyttes til `extensions`. Verificeret ubrugt: 0 exclusion-constraints, 0 indekser med dens opclasses. |
-| `0028_anon_security_definer_function_executable` | `is_admin()` | **Afventer apply** (#5153) | `REVOKE EXECUTE ... FROM anon`. anon-stien til `"Public read riders"` er aktiv (kolonne-grants, ikke bord-grant) men fejler allerede i dag med 42501 på policyens anden operand; revoken flytter kun hvilken funktion fejlen nævner. Se note nedenfor. |
+| `0028_anon_security_definer_function_executable` | `is_admin()` | **Afventer apply** (#5153) | `REVOKE EXECUTE ... FROM anon`. anon-stien til `"Public read riders"` er aktiv (kolonne-grants, ikke bord-grant) men fejler allerede i dag med 42501 på policyens anden operand; revoken flytter kun hvilken funktion fejlen nævner. Den ÉNE anon-sti der reelt blev ramt lå i frontend (`/roadmap`) og er lukket i samme PR. Se note nedenfor. |
 | `0029_authenticated_security_definer_function_executable` | `is_beta_tester()` | **Afventer apply** (#5153) | Ingen policy, ingen view, ingen funktionskrop og ingen frontend-RPC bruger den. `service_role` beholder EXECUTE. |
-| `0029_...` | `is_admin()` | Åben — bevidst | Frontend kalder `rpc("is_admin")` som admin-gate (`RoadmapPage.jsx`, `SurveyPage.jsx`), og authenticated-policies evaluerer den. Kan ikke blive INVOKER: `users`' cross-user-read-policy gater selv på `is_admin()` → 42P17 infinite recursion. |
+| `0029_...` | `is_admin()` | Åben — bevidst | Frontend kalder `rpc("is_admin")` som admin-gate (`RoadmapPage.jsx` — kun med session, `SurveyPage.jsx` — login-gated rute), og authenticated-policies evaluerer den. Kan ikke blive INVOKER: `users`' cross-user-read-policy gater selv på `is_admin()` → 42P17 infinite recursion. |
 | `0029_...` | `is_offered_intake_rider(uuid)` | Åben — **DB-policy-afhængig**, ikke frontend | Ingen RPC-kalder, men `"Public read riders"` kalder den, og RLS-udtryk evalueres som den kaldende rolle → authenticated SKAL beholde EXECUTE. Lukkes med DDL alene, når anon-spørgsmålet nedenfor er afgjort. |
 | `0029_...` | `founder_public_list()` | Åben — bevidst | Kaldes direkte af `frontend/src/lib/useFounderTeams.js`. DEFINER for at kunne aggregere founder-numre uden at eksponere `users`-rækker. anon revoket i #4870. |
 | `0016_materialized_view_in_api` ×4 | `rider_rankings_mv`, `global_rank_mv`, `team_standings_ext_mv`, `team_race_points_mv` | Åben — kræver frontend-PR | anon er allerede revoket (#3124, bekræftet 11/9). Linten kræver at HVERKEN anon NOR authenticated har SELECT, og alle fire læses direkte fra frontend. |
@@ -61,6 +61,26 @@ TO forskellige privilegie-spærringer i spil, og kun den ene er aktiv:
 Derfor gen-åbner `REVOKE EXECUTE ON FUNCTION public.is_admin() FROM anon` intet:
 anon-læsningen af `riders` fejler allerede, og revoken flytter kun hvilken af de
 to funktioner fejlen nævner.
+
+**Den anon-sti der FAKTISK blev ramt, lå i frontend.** `/roadmap` er en
+offentlig rute (#2042/#2824 — registreret uden for `ProtectedRoute` i
+`App.jsx`), og `RoadmapPage.jsx` kaldte `supabase.rpc("is_admin")` ubetinget,
+også uden session. Efter revoken ville hver udlogget besøgende få 403/42501.
+Det ville ikke være brugersynligt — fejlen destruktureres væk, `isAdmin` bliver
+`false`, og selve listen loader via `roadmap_items`' egen anon-policy (#3457) —
+men det ville lægge en fejlstrøm i prod-loggen. Rettet i samme PR: RPC'en kaldes
+kun når `supabase.auth.getSession()` giver en session. `SurveyPage.jsx`, den
+anden `rpc("is_admin")`-kalder, ligger bag `ProtectedRoute` og rammes ikke.
+
+**Drift-vagten er opdateret i samme PR.** `scripts/security-rls-policy-fn-grants.sql`
+(#2671, kørt hver 6. time af `.github/workflows/security-grants-audit.yml`,
+`exit 1` ved ethvert fund) ser efter revoken triplen `riders / "Public read
+riders"` / `is_admin` / `anon` som et nyt WARN. Det er den tilsigtede
+fail-closed-tilstand, så triplen er whitelistet ved siden af søsterposten for
+`is_offered_intake_rider`, med reference til den learning der bærer
+beslutningen. Målt read-only mod prod 11/9 er det den **eneste** nye tripel:
+`"Public read riders"` er den eneste policy med `roles={public}` der kalder
+`is_admin()`.
 
 **Eksisterende fund (ikke introduceret af #5153):** at anon-stien ender i 42501
 i stedet for i rækker eller i et tomt sæt, er en inkonsistens — policyen siger
