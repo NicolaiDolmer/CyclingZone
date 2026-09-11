@@ -394,8 +394,13 @@ export function createReleaseReloader({
     // Er porten aaben, er markøren alt vi har brug for: gør forsøget og spar
     // netværkskaldet.
     if (state.pendingRelease && isAllowed()) {
-      await attemptReload(state.pendingRelease, trigger);
-      return;
+      if (await attemptReload(state.pendingRelease, trigger)) return;
+      // Forsøget faldt på noget der IKKE løser sig selv: budgettet er brugt op,
+      // markøren står i et felt, eller proben svarede false. Bliver vi stående
+      // her, laver vi aldrig et versionsopslag igen, og en senere frontend C
+      // ville aldrig blive opdaget — præcis M1's fejlklasse, bare med en anden
+      // udløser (CodeRabbit 11/9). Fald derfor igennem til det THROTTLEDE
+      // opslag; det koster højst ét kald pr. minut.
     }
     // Er porten LUKKET, bliver vi ved med at tjekke (throttlet), så markøren
     // følger med. Uden det kunne en spiller med ugemt arbejde stå med B som mål

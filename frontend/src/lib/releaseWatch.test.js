@@ -299,6 +299,27 @@ test("M1: A -> forsoeg paa B -> stadig A -> C opdages (polling fryser ikke)", as
   assert.equal(reloads.length, 1, "C bliver opdaget og reloadet");
 });
 
+test("M1: et opbrugt budget stopper reloadet, men ikke opdagelsen af C", async () => {
+  const storage = fakeStorage();
+  storage.setItem(RECOVERY_BUDGET_KEY, JSON.stringify({ used: RECOVERY_BUDGET_MAX, windowStart: Date.now() }));
+  const watcher = okWatcher([
+    { status: "ok", release: "sha-b", frontendId: "fe-b", isNew: true },
+    { status: "ok", release: "sha-c", frontendId: "fe-c", isNew: true },
+  ]);
+  const { reloader, reloads } = makeReloader({ storage, watcher });
+
+  await reloader.runCheck("interval");
+  assert.deepEqual(reloads, [], "budgettet er brugt: intet automatisk reload");
+  assert.equal(reloader.state.pendingRelease, "fe-b");
+
+  // Uden gennemfaldet ville markoeren staa paa B for evigt, og der ville aldrig
+  // blive lavet et versionsopslag igen.
+  await reloader.runCheck("interval");
+  assert.equal(watcher.calls, 2, "der laves stadig versionsopslag");
+  assert.equal(reloader.state.pendingRelease, "fe-c", "markoeren foelger med til C");
+  assert.equal(reloader.state.lastTargetSha, "sha-c", "og telemetrien peger paa C");
+});
+
 test("M1: en afvist forlad-dialog fryser ikke watcheren for evigt", async () => {
   let clock = 1_000;
   const watcher = okWatcher([{ status: "ok", release: "sha-b", frontendId: "fe-b", isNew: true }]);
