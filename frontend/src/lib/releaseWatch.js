@@ -299,7 +299,7 @@ export function installReleaseWatchHandlers({
   // baggrunden" og tjekket aldrig ske.
   let hiddenAt = isVisible() ? 0 : now();
 
-  const fire = (trigger) => {
+  const triggerCheck = (trigger) => {
     // Fejl i recovery-stien maa aldrig blive til en unhandledrejection —
     // chunkErrors.js' globale handler lytter paa netop dem.
     try {
@@ -318,7 +318,7 @@ export function installReleaseWatchHandlers({
     const hiddenFor = hiddenAt ? now() - hiddenAt : 0;
     hiddenAt = 0;
     if (hiddenFor <= backgroundThresholdMs) return;
-    fire("focus");
+    triggerCheck("focus");
   };
 
   const onVisibilityChange = () => {
@@ -333,7 +333,7 @@ export function installReleaseWatchHandlers({
     // Aldrig i baggrunden: en skjult fane skal hverken bruge netvaerk eller
     // genindlaese sig selv under brugeren.
     if (!isVisible()) return;
-    fire("interval");
+    triggerCheck("interval");
   }, periodicIntervalMs);
 
   doc.addEventListener("visibilitychange", onVisibilityChange);
