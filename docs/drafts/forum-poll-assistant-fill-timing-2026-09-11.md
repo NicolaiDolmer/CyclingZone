@@ -16,7 +16,7 @@ The future of: when should the assistant step in on an empty squad?
 
 Hep! Quick one today, and it decides something I am about to ship.
 
-Right now, if you never pick a squad for a race, nothing happens until the race actually starts. The game fills the empty spots at the very last moment, the game clock, up to a minimum of 6 riders. You get no warning and no chance to fix it yourself first.
+Right now, if you never pick a squad for a race, nothing happens until the race actually starts. The game fills the empty spots at the very last moment, when the race begins, up to the minimum of 6 riders. You get no warning and no chance to fix it yourself first.
 
 I want to change that: if your squad is completely empty, the assistant fills it a set number of hours before the race starts instead of at the start itself. That gives you a window to notice and fix it before it locks in. A squad that already has some riders in it is not touched by this, it is only for squads that are 100% empty.
 
@@ -27,7 +27,7 @@ What I do not know yet is how many hours that window should be. Vote in the poll
 - A. 12 hours before start
 - B. 24 hours before start
 - C. 48 hours before start
-- D. At the squad-lock deadline (about a week out)
+- D. At the squad selection deadline
 - E. Never fill for me, I want to do it myself
 
 ---
@@ -51,7 +51,7 @@ Det jeg ikke ved endnu, er hvor mange timer det vindue skal være. Stem i afstem
 - A. 12 timer før start
 - B. 24 timer før start
 - C. 48 timer før start
-- D. Ved udtagelsesfristen (ca. en uge før)
+- D. Ved udtagelsesfristen
 - E. Assistenten skal aldrig fylde for mig, jeg vil selv
 
 ---
