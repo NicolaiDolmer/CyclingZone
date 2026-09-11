@@ -27,6 +27,9 @@ import apiRoutes from "./routes/api.js";
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
 
 const app = express();
+// Express 5 default; laast eksplicit 11/9 (#4565): ingen nestede/array-query-noegler
+// i repoet, simple er sikrere end qs. Aendr kun sammen med en test der viser behovet.
+app.set("query parser", "simple");
 const PORT = process.env.PORT || 3001;
 
 // Railway/Vercel terminate TLS upstream; trust the first proxy hop so req.ip
