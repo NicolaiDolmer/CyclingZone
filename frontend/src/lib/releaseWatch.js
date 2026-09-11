@@ -16,6 +16,8 @@
 // Fail-closed hele vejen: kan vi ikke BEVISE at der findes en ny release, sker
 // der intet, og lazyWithRetry er stadig sikkerhedsnettet.
 
+import { documentIsStillLoadable } from "./chunkErrors.js";
+
 export const RELEASE_ENDPOINT = "/version.json";
 
 // Hoejst eet tjek pr. 60 s pr. fane, uanset hvor meget brugeren klikker rundt.
@@ -24,6 +26,13 @@ export const MIN_CHECK_INTERVAL_MS = 60_000;
 // Tab-fokus tjekkes foerst naar fanen har ligget i baggrunden laengere end dette.
 // Et hurtigt alt-tab er ikke et deploy-vindue.
 export const BACKGROUND_THRESHOLD_MS = 5 * 60_000;
+
+// Periodisk tjek mens fanen er SYNLIG. Uden det ville en bruger der bliver
+// staaende paa samme side (fx en auktion) foerst opdage et deploy ved sin
+// naeste navigation — og navigations-stien tjekker async EFTER routeren har
+// committet, saa netop den navigation kan naa at hente et doedt chunk.
+// Tjekket gaar gennem den samme 60 s-throttle som alle andre triggere.
+export const PERIODIC_CHECK_INTERVAL_MS = 5 * 60_000;
 
 // Loop-guard-noegle: hoejst ÉT reload pr. maal-release pr. session. Uden den
 // kunne en klient der IKKE faar den nye HTML efter reloadet (fx en mellemliggende
@@ -100,18 +109,25 @@ export function getReloadGuardKey(targetRelease) {
 
 /**
  * Braender loop-guarden for én maal-release. Returnerer true foerste gang og
- * false derefter. Uden storage (privat browsing) tillader vi forsoeget — den
- * kaldende hook har sin egen per-page-load-guard.
+ * false derefter.
+ *
+ * Fail-CLOSED uden brugbar storage (privat browsing, setItem/getItem kaster):
+ * loop-guarden er det eneste der staar mellem os og en uendelig reload-ring.
+ * `ctx.reloading`-flaget doer med page-loadet, saa det kan ikke baere guarden;
+ * leverer reloadet ikke den nye release (CDN-skaevhed midt i et rollout),
+ * ville et fail-OPEN svar genindlaese igen og igen. Samme valg som
+ * `shouldAttemptChunkReload` i chunkErrors.js. Prisen ved fail-closed er at
+ * lazyWithRetry bliver sikkerhedsnettet i stedet — den er billigere.
  */
 export function claimReloadSlot(storage, targetRelease) {
+  if (!storage) return false;
   const key = getReloadGuardKey(targetRelease);
   try {
-    if (!storage) return true;
     if (storage.getItem(key) === "1") return false;
     storage.setItem(key, "1");
     return true;
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -167,6 +183,171 @@ export function hardReload(win) {
     return;
   }
   win.location.assign?.(href);
+}
+
+/**
+ * Navigations-guard for reload-stien (#3602) — den samme kausale probe som
+ * BEGGE eksisterende recovery-stier bruger (`documentIsStillLoadable` i
+ * chunkErrors.js, delt med error-boundary'en i lib/sentry.jsx), ikke en kopi.
+ *
+ * Uden den kan et release-reload kapre en navigation brugeren allerede har
+ * startet ("Navigation to /academy is interrupted by another navigation"):
+ * et dokument der er paa vej vaek afviser nye fetches, og det er praecis det
+ * probe'en spoerger om. Fail-closed: kan vi ikke bevise at dokumentet lever,
+ * genindlaeser vi ikke, og markoeren bliver liggende til naeste rolige
+ * oejeblik.
+ *
+ * Skal kaldes FOER `claimReloadSlot`, saa en afbrudt navigation ikke braender
+ * det ene reload en senere, aegte ny release har brug for.
+ */
+export function canHardReload(win, { fetchFn, timeoutMs, timers } = {}) {
+  const href = win?.location?.href;
+  if (!href) return Promise.resolve(false);
+  // Bindes: en loes fetch-reference kaldt uden `this` giver "Illegal invocation".
+  const probe = fetchFn ?? (typeof win.fetch === "function" ? win.fetch.bind(win) : undefined);
+  return documentIsStillLoadable({
+    fetchFn: probe,
+    url: href,
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
+    ...(timers === undefined ? {} : { timers }),
+  });
+}
+
+/**
+ * Samler hele beslutningen — tjek → er der en ny release → er det et roligt
+ * oejeblik → reload — i én enhed, saa stien kan unit-testes uden en browser.
+ * Hooken er derefter ren wiring.
+ *
+ * `pendingRelease` er markoeren: er en ny release foerst bevist, laver vi ikke
+ * flere netvaerkskald, men venter blot paa et roligt oejeblik.
+ */
+export function createReleaseReloader({
+  win,
+  doc,
+  storage,
+  watcher,
+  currentRelease,
+  reload = hardReload,
+  canReload = canHardReload,
+} = {}) {
+  const state = { pendingRelease: null, reloading: false };
+
+  const attemptReload = async (target, trigger) => {
+    if (state.reloading || !target) return false;
+    if (!isSafeToReload(doc)) return false;
+    // Navigations-guard FOER loop-guarden: en afbrudt navigation maa ikke
+    // braende det ene reload denne release faar.
+    if (!(await canReload(win))) return false;
+    // Verden kan have aendret sig mens proben loeb.
+    if (state.reloading || !isSafeToReload(doc)) return false;
+    if (!claimReloadSlot(storage, target)) return false;
+    state.reloading = true;
+    rememberPendingTelemetry(storage, { from: currentRelease, to: target, trigger });
+    reload(win);
+    return true;
+  };
+
+  return {
+    state,
+    async runCheck(trigger) {
+      if (state.reloading) return;
+      if (state.pendingRelease) {
+        await attemptReload(state.pendingRelease, trigger);
+        return;
+      }
+      const result = await watcher?.check();
+      if (result?.status !== "ok" || !result.isNew) return;
+      state.pendingRelease = result.release;
+      await attemptReload(result.release, trigger);
+    },
+  };
+}
+
+/**
+ * Kobler de proaktive triggere paa og returnerer en cleanup-funktion.
+ *
+ * Triggere (alle gennem SAMME `runCheck`, og dermed samme 60 s-throttle):
+ *   · `visibilitychange` → synlig igen efter mere end `backgroundThresholdMs`
+ *   · `focus`/`pageshow` paa window — desktop-alt-tab aendrer ofte IKKE
+ *     `visibilityState`, saa uden dem findes tab-fokus-stien reelt ikke paa
+ *     desktop. `blur` starter baggrunds-uret i netop det tilfaelde.
+ *   · et periodisk tjek mens fanen er synlig, saa et deploy fanges FOER
+ *     brugerens naeste navigation.
+ *
+ * Dobbelt-tjek er udelukket ved konstruktion: den foerste handler nulstiller
+ * `hiddenAt`, saa naar `visibilitychange` og `focus` fyrer sammen, ser nummer
+ * to en baggrundstid paa 0 og gaar ikke videre.
+ */
+export function installReleaseWatchHandlers({
+  target,
+  doc,
+  runCheck,
+  now = () => Date.now(),
+  timers,
+  backgroundThresholdMs = BACKGROUND_THRESHOLD_MS,
+  periodicIntervalMs = PERIODIC_CHECK_INTERVAL_MS,
+} = {}) {
+  if (!target?.addEventListener || !doc?.addEventListener) return () => {};
+
+  const setTimer = timers?.set ?? ((fn, ms) => target.setInterval(fn, ms));
+  const clearTimer = timers?.clear ?? ((handle) => target.clearInterval(handle));
+
+  const isVisible = () => !doc.visibilityState || doc.visibilityState === "visible";
+
+  // En fane der aabnes SKJULT (ctrl-klik i baggrunden) har ligget i baggrunden
+  // siden mount. Med en fast 0 ville dens foerste fokus vaere "0 ms i
+  // baggrunden" og tjekket aldrig ske.
+  let hiddenAt = isVisible() ? 0 : now();
+
+  const fire = (trigger) => {
+    // Fejl i recovery-stien maa aldrig blive til en unhandledrejection —
+    // chunkErrors.js' globale handler lytter paa netop dem.
+    try {
+      Promise.resolve(runCheck?.(trigger)).catch(() => {});
+    } catch {
+      // best-effort
+    }
+  };
+
+  const markHidden = () => {
+    if (!hiddenAt) hiddenAt = now();
+  };
+
+  const onReturn = () => {
+    if (!isVisible()) return;
+    const hiddenFor = hiddenAt ? now() - hiddenAt : 0;
+    hiddenAt = 0;
+    if (hiddenFor <= backgroundThresholdMs) return;
+    fire("focus");
+  };
+
+  const onVisibilityChange = () => {
+    if (!isVisible()) {
+      markHidden();
+      return;
+    }
+    onReturn();
+  };
+
+  const handle = setTimer(() => {
+    // Aldrig i baggrunden: en skjult fane skal hverken bruge netvaerk eller
+    // genindlaese sig selv under brugeren.
+    if (!isVisible()) return;
+    fire("interval");
+  }, periodicIntervalMs);
+
+  doc.addEventListener("visibilitychange", onVisibilityChange);
+  target.addEventListener("focus", onReturn);
+  target.addEventListener("pageshow", onReturn);
+  target.addEventListener("blur", markHidden);
+
+  return () => {
+    doc.removeEventListener("visibilitychange", onVisibilityChange);
+    target.removeEventListener("focus", onReturn);
+    target.removeEventListener("pageshow", onReturn);
+    target.removeEventListener("blur", markHidden);
+    clearTimer(handle);
+  };
 }
 
 /**
