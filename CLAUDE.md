@@ -16,7 +16,7 @@ Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/
 
 ## Auto-loaded (intet at gøre)
 
-- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory. Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin: `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md`.
+- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (gate >3.200 tok / >54 linjer; WARM: `MEMORY_REFERENCE.md`).
 - **Security-advisors** (Supabase MCP `get_advisors`) tjekkes ved session-start; en WARN må aldrig stå over 7 dage (#5153).
 - `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (`scripts/session-prefetch-issue.sh`). Ikke source of truth.
 
