@@ -11,6 +11,9 @@ import CookieBanner from "./components/CookieBanner.jsx";
 // en lazy-suspense-fallback ville ellers give et hydration-mismatch.
 import LandingPage from "./pages/LandingPage.jsx";
 import { logSessionStart } from "./lib/logEvent";
+// #5033: opdag et nyt deploy ved route-skift/tab-fokus og genindlaes roligt, saa
+// en aaben fane ikke lazy-loader et chunk der ikke findes laengere (CYCLINGZONE-56).
+import useReleaseWatch from "./hooks/useReleaseWatch.js";
 import { setSentryUser, clearSentryUser, AnalyticsBoundary } from "./lib/sentry.jsx";
 import { sharedRequestCache } from "./lib/sharedRequestCache.js";
 import { safeNextPath } from "./lib/safeNextPath.js";
@@ -180,6 +183,11 @@ export default function App() {
   // server-render (renderToString kan ikke fuldføre en lazy boundary → React #419).
   const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
+
+  // #5033: proaktivt lag over lazyWithRetry — tjekker ved route-skift og ved
+  // tab-fokus efter >5 min om der er deployet en ny release, og laver i saa fald
+  // et fuldt dokument-load i stedet for en client-side navigation.
+  useReleaseWatch();
 
   // #2078: en udløbet/ugyldig email-confirm-link redirecter til Site URL ("/")
   // med fejlen i hash'et (#error=access_denied&error_code=otp_expired...) og

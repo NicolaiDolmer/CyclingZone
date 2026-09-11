@@ -174,6 +174,12 @@ Navne med præfikset `feature_` grupperes af `get_sprint_metrics` som "top featu
 | `nps_submitted` | ja | `useNpsPrompt.js:97` | Svar gemt |
 | `nps_dismissed` | ja | `useNpsPrompt.js:114` | Prompten lukket uden svar. Forholdet mellem de to er selve målingen ([#4997](https://github.com/NicolaiDolmer/CyclingZone/issues/4997)) |
 
+### App-version
+
+| Event | Kendt | Fyrer fra | Betydning |
+|---|---|---|---|
+| `app_version_reload` | ja | `useReleaseWatch.js` (efter reloadet) | En aaben fane opdagede et nyt deploy og genindlaeste selv. Baerer `{from, to, trigger}` (`trigger` = `navigation` eller `focus`). Hvert event er en undgaaet ChunkLoadError ([#5033](https://github.com/NicolaiDolmer/CyclingZone/issues/5033)) |
+
 ### Server-side (ikke samtykke-gatet)
 
 | Event | Kendt | Fyrer fra | Betydning |

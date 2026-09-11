@@ -145,6 +145,11 @@ export const KNOWN_EVENTS = Object.freeze([
   // Forholdet mellem de to events er selve målingen ejeren bad om 7/9.
   "nps_submitted",
   "nps_dismissed",
+  // app_version_reload (#5033) — fyrer EFTER et release-drevet genindlaesning,
+  // fra den nye side (eventet kan ikke naa Supabase mens dokumentet river sig
+  // selv ned). Baerer {from, to, trigger} saa effekten kan maales direkte mod
+  // CYCLINGZONE-56: hver gang dette event fyrer, er en ChunkLoadError undgaaet.
+  "app_version_reload",
 ]);
 
 // #4321: spejl eventet til PostHog. Postgres-skrivningen nedenfor er og bliver
