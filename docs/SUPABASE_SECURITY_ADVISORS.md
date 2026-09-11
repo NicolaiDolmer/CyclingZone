@@ -33,7 +33,7 @@ ikke samme lukke-arbejde:
 |---|---|---|---|
 | `0011_function_search_path_mutable` | `record_forum_thread_view(uuid,uuid)` | **Afventer apply** (#5153) | `SET search_path = public, pg_catalog`. Funktionen er INVOKER og kun service_role-kaldbar, men slog op ukvalificeret. |
 | `0014_extension_in_public` | `btree_gist` | **Afventer apply** (#5153) | Flyttes til `extensions`. Verificeret ubrugt: 0 exclusion-constraints, 0 indekser med dens opclasses. |
-| `0028_anon_security_definer_function_executable` | `is_admin()` | **Afventer apply** (#5153) | `REVOKE EXECUTE ... FROM anon`. anon har ikke bord-SELECT på `riders`, så #2671/#2676-invarianten er allerede uden effekt — se note nedenfor. |
+| `0028_anon_security_definer_function_executable` | `is_admin()` | **Afventer apply** (#5153) | `REVOKE EXECUTE ... FROM anon`. anon-stien til `"Public read riders"` er aktiv (kolonne-grants, ikke bord-grant) men fejler allerede i dag med 42501 på policyens anden operand; revoken flytter kun hvilken funktion fejlen nævner. Se note nedenfor. |
 | `0029_authenticated_security_definer_function_executable` | `is_beta_tester()` | **Afventer apply** (#5153) | Ingen policy, ingen view, ingen funktionskrop og ingen frontend-RPC bruger den. `service_role` beholder EXECUTE. |
 | `0029_...` | `is_admin()` | Åben — bevidst | Frontend kalder `rpc("is_admin")` som admin-gate (`RoadmapPage.jsx`, `SurveyPage.jsx`), og authenticated-policies evaluerer den. Kan ikke blive INVOKER: `users`' cross-user-read-policy gater selv på `is_admin()` → 42P17 infinite recursion. |
 | `0029_...` | `is_offered_intake_rider(uuid)` | Åben — **DB-policy-afhængig**, ikke frontend | Ingen RPC-kalder, men `"Public read riders"` kalder den, og RLS-udtryk evalueres som den kaldende rolle → authenticated SKAL beholde EXECUTE. Lukkes med DDL alene, når anon-spørgsmålet nedenfor er afgjort. |
@@ -99,6 +99,12 @@ Den reelle vej, pr. matview:
    - `team_race_points_mv` ×3: `useNpsPrompt.js`, `DashboardPage.jsx`,
      `StandingsPage.jsx`
    - `team_standings_ext_mv` ×1: `StandingsPage.jsx`
+
+   Flad liste over de 9 unikke filer, så scope ikke kan misforstås:
+   `GlobalRankWidget.jsx`, `useGlobalRank.js`, `TeamProfilePage.jsx`,
+   `TeamStatsTab.jsx`, `useRiderRankings.js`, `ResultaterPage.jsx`,
+   `useNpsPrompt.js`, `DashboardPage.jsx`, `StandingsPage.jsx`. 10 reads, 9
+   filer — differencen er `StandingsPage.jsx`, der står i to grupper.
 
    Husk preview-mockene (`frontend/src/preview/mockHandlers.js`,
    `installPreviewMock.js`).
