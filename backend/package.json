@@ -42,7 +42,7 @@
     "@supabase/supabase-js": "^2.114.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
-    "express": "^4.22.2",
+    "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "fast-xml-parser": "^5.11.1",
     "helmet": "^8.3.0",
