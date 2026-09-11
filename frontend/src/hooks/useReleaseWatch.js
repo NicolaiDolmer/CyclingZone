@@ -50,7 +50,7 @@ export default function useReleaseWatch() {
   //   · `recoveryDeferred` — lag 2 ville reparere en chunk-fejl, men porten var
   //     lukket (#5159, review-fund 1). Den har ingen mål-release, og et rollback
   //     goer den ikke uaktuel: chunk'en mangler stadig.
-  // Samlet i én flag i returværdien, men de maa ikke kunne slukke hinanden.
+  // Samlet til ÉT flag i returværdien, men de maa ikke kunne slukke hinanden.
   const [recoveryDeferred, setRecoveryDeferred] = useState(false);
   // Samme sandhed som `recoveryDeferred`, men laesbar fra en stabil callback.
   const recoveryDeferredRef = useRef(false);

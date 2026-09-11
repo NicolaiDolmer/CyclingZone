@@ -216,6 +216,54 @@ test("B1 login: 'Save first' lukker banneret uden at genindlaese", async ({ page
   await expect.poll(() => documentLoads(page), { timeout: 15_000 }).toBe(2);
 });
 
+// --- stacking (review-fund 5) -----------------------------------------------
+
+test("banneret venter paa cookie-banneret — to bundbjaelker tegner ikke oven i hinanden", async ({ page, browserName }) => {
+  test.skip(
+    browserName !== "chromium",
+    "Ren layout-/state-mekanik uden motor-afhaengighed. WebKit-shard'en ligger paa tidsbudgettet (#4647).",
+  );
+  const state = await setupReleaseHarness(page);
+  // Ingen gemt samtykke: cookie-banneret staar, og det ejer bundkanten alene.
+  await page.addInitScript(() => {
+    try { window.localStorage.removeItem("cz_consent_v1"); } catch { /* noop */ }
+  });
+  await page.goto("/login");
+  await expect(page.getByRole("heading", { name: "Cycling Zone" })).toBeVisible();
+  // Usendt tekst: porten er lukket, saa der sker intet AUTOMATISK, og testen
+  // maaler netop bannerets synlighed — ikke en genindlaesning.
+  await page.getByPlaceholder("din@email.dk").fill("ugemt@cyclingzone.org");
+  await page.getByRole("heading", { name: "Cycling Zone" }).click();
+
+  state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
+  await page.clock.fastForward(PERIODIC);
+
+  const cookieBanner = page.getByRole("dialog", { name: /data|Cycling Zone/i }).first();
+  await expect(cookieBanner).toBeVisible();
+  await expect(banner(page)).toHaveCount(0);
+
+  // Samtykket er truffet: bundkanten er fri, og opdateringen maa vises.
+  await page.getByRole("button", { name: /Kun nødvendige|Necessary only/ }).click();
+  await expect(cookieBanner).toHaveCount(0);
+  await expect(banner(page)).toBeVisible();
+});
+
+test("ingen opdaterings-stribe for en anonym besoegende paa forsiden", async ({ page, browserName }) => {
+  test.skip(
+    browserName !== "chromium",
+    "Ren layout-/state-mekanik uden motor-afhaengighed. WebKit-shard'en ligger paa tidsbudgettet (#4647).",
+  );
+  const state = await setupReleaseHarness(page);
+  await page.goto("/");
+  await expect(page.locator("#root")).toBeVisible();
+
+  state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
+  await page.clock.fastForward(PERIODIC);
+  await page.waitForTimeout(500);
+
+  await expect(banner(page), "forsiden er ren markedsfoering — ingen app-tilstand at redde").toHaveCount(0);
+});
+
 // --- B1: en spilflade bag login --------------------------------------------
 
 test("B1 traening: en ugemt ugekladde blokerer reloadet, Gem frigiver det", async ({ page, browserName }) => {
