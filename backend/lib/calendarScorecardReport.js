@@ -56,6 +56,7 @@ import {
   detectMinOverlapViolations, detectQuotaViolations,
 } from "./calendarPlacementGates.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
+import { detectRaceDayEqualityViolations } from "./calendarRaceDayTargets.js";
 
 const pct = (n) => `${(n * 100).toFixed(1)} %`;
 const ok = (b) => (b ? "OK " : "FEJL");
@@ -143,6 +144,15 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
     løb: raceRows.length,
     etaper,
     løbsdage: new Set(stageRows.map((s) => s.game_day)).size,
+    // #4845 §1d: LOEBSDAGS-AKSENS laengde (tomme loebsdage med) — det tal der skal vaere ENS
+    // i alle fire divisioner. `løbsdage` ovenfor er kun dem der BAERER et loeb, og de to maa
+    // ikke forveksles: forskellen ER de rene traeningsdage (#4846's tick).
+    raceDayAxis: plan.raceDayAxisLength ?? plan.timelineLength ?? null,
+    raceDayTarget: plan.raceDayTarget ?? null,
+    naturalRaceDays: plan.naturalRaceDays ?? null,
+    træningsdage: plan.trainingGameDayCount ?? 0,
+    gtHviledage: plan.restDayGameDayCount ?? 0,
+    raceDayPaddingHeld: plan.raceDayPaddingHeld ?? null,
     kalenderdage: new Set(stageRows.map((s) => String(s.scheduled_at).slice(0, 10))).size,
     quota: plan.quota ?? null,
     totalGameDays: plan.totalGameDays ?? null,
@@ -214,6 +224,16 @@ export function scoreCalendarPlan({
 
   // Saeson-aggregatet gates mod de RAA baand (stor n); pr. division mod baand +
   // stikproeve-tillaeg. Se stageFinaleMetrics.js for hvorfor der er to lag.
+  // #4845 §1d: samme antal loebsdage i ALLE divisioner. Maales paa tvaers af tiers, derfor
+  // her og ikke i scoreTierPlan. Maalet er det tiers selv er pakket mod (null naar reglen
+  // ikke er slaaet til — da doemmes kun ligheden mellem divisionerne).
+  const axisByTier = Object.fromEntries(rapport.tiers.map((t) => [t.tier, t.raceDayAxis ?? 0]));
+  const raceDayTarget = rapport.tiers.find((t) => t.raceDayTarget != null)?.raceDayTarget ?? null;
+  rapport.raceDayTarget = raceDayTarget;
+  rapport.raceDayEqualityViol = detectRaceDayEqualityViolations({
+    axisByTier, target: raceDayTarget, tiers: rapport.tiers.map((t) => t.tier),
+  });
+
   rapport.sæsonFinale = mergeFinaleStats(rapport.tiers.map((t) => t.finale));
   rapport.sæsonFinaleViol = detectFinaleViolations({ stats: rapport.sæsonFinale, label: "sæson", strict: true });
 
@@ -229,7 +249,8 @@ export function scoreCalendarPlan({
   // monument-i-GT kan foerst blive groen naar pakkeren er aendret (#4203's eget spor).
   rapport.placeringsbrud = rapport.tiers.reduce((n, t) =>
     n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
-      + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0), 0);
+      + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0), 0)
+    + (rapport.raceDayEqualityViol?.length ?? 0);
   rapport.ok = rapport.regelbrud === 0 && dækning.ok && kollisioner.length === 0
     && unassessed.length === 0;
   return rapport;
@@ -295,6 +316,10 @@ export function scorecardGateGroups(rapport) {
     for (const v of t.uniformViol) uniformDrift.push(`uniformt mål (§6b) — ${v}`);
   }
   for (const v of rapport.sæsonFinaleViol ?? []) finaleDrift.push(`finale-bånd, sæson-aggregat (§7b) — ${v}`);
+  // §1d (#4845): ulige antal loebsdage stopper --apply uden override, som §1b's kvote.
+  // Kalenderen genereres kun EEN gang pr. saeson (§2c), saa en skaev akse kan ikke rettes
+  // bagefter - og den er selve tick-takten i #4846.
+  for (const v of rapport.raceDayEqualityViol ?? []) applyBlocking.push(`løbsdage pr. division (§1d/#4845) — ${v}`);
 
   return { blocking, applyBlocking, finaleDrift, uniformDrift };
 }
@@ -332,6 +357,17 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
     // eller 101: kvoten ER antallet af loebsdage divisionens tidsplan har.
     if (t.quota != null) {
       out.push(`  ${ok((t.quotaViol?.length ?? 0) === 0)} Kvote (§1b, eksakt 100 %): ${t.totalGameDays ?? "?"} af ${t.quota} løbsdage${t.shortfall ? ` · mangler ${t.shortfall}` : ""}`);
+      if (t.raceDayAxis != null) {
+        // §1d (#4845): aksens laengde + hvad de tomme loebsdage er. Dommen selv er
+        // paa tvaers af divisioner og staar i sae­son-blokken nederst.
+        out.push(
+          `  --  Løbsdage i alt (§1d/#4845): ${t.raceDayAxis}` +
+          ` (${t.løbsdage} med løb · ${t.træningsdage ?? 0} rene træningsdage · ${t.gtHviledage ?? 0} GT-hviledage)` +
+          `${t.raceDayTarget != null ? ` · mål ${t.raceDayTarget}` : " · intet mål sat"}` +
+          `${t.naturalRaceDays != null && t.naturalRaceDays !== t.raceDayAxis ? ` · uden reglen ${t.naturalRaceDays}` : ""}` +
+          `${t.raceDayPaddingHeld === false ? "  ⚠ MÅLET BLEV IKKE NÅET" : ""}`,
+        );
+      }
       for (const v of t.quotaViol ?? []) out.push(`     ! ${v}`);
     }
 
@@ -427,6 +463,13 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
   }
 
   out.push(`\n${"═".repeat(72)}`);
+  // §1d (#4845): ligheden er en SAESON-dom, ikke en pr.-division-dom.
+  out.push(
+    `${ok((rapport.raceDayEqualityViol?.length ?? 0) === 0)} LØBSDAGE PR. DIVISION (§1d/#4845): ` +
+    `${rapport.tiers.map((t) => `D${t.tier} ${t.raceDayAxis ?? "?"}`).join(" · ")}` +
+    `${rapport.raceDayTarget != null ? ` (mål ${rapport.raceDayTarget})` : " (intet mål sat)"}`,
+  );
+  for (const v of rapport.raceDayEqualityViol ?? []) out.push(`     ! ${v}`);
   out.push(`${ok(rapport.sæsonFinaleViol.length === 0)} SÆSON-AGGREGAT, finale-bånd uden stikprøve-tillæg (${rapport.sæsonFinale.total} etaper)`);
   for (const v of rapport.sæsonFinaleViol) out.push(`     ! ${v}`);
   out.push(`SAMLET: ${rapport.regelbrud} regelbrud`

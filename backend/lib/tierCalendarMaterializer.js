@@ -475,6 +475,10 @@ export function buildTierMaterializationPlan({
       naturalRaceDays,
       raceDayDeficit,
       trainingGameDays: packed.trainingGameDays ?? [],
+      // Kalenderdagen (real_day-indeks) hver traeningsdag hoerer til — en tom loebsdag har
+      // ingen raekke i stageRows, saa dens dato kan IKKE udledes af naboerne (§0's akse-
+      // faelde: den ville lande paa nabo-datoens baand).
+      trainingGameDayRealDays: packed.dateOfTrainingGameDay ?? [],
       trainingGameDayCount: (packed.trainingGameDays ?? []).length,
       restDayGameDayCount: (packed.restDayGameDays ?? []).length,
       raceDayPaddingHeld: raceDayDeficit === 0 ? true : Boolean(packed.raceDayTargetHeld),
