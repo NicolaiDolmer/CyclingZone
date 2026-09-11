@@ -54,9 +54,75 @@ export function isGraduateAge(age) {
 }
 
 /**
+ * Deadline for override-vinduet ud fra et tidspunkt. Ét sted, så season-
+ * transitionen og det løbende sweep (missedGraduateSweep.js) ikke kan give to
+ * forskellige vinduer for præcis samme hændelse.
+ *
+ * @param {Date} now
+ * @returns {string} ISO-timestamp
+ */
+export function graduationDeadlineFrom(now = new Date()) {
+  return new Date(now.getTime() + GRADUATION.DEADLINE_DAYS * 86_400_000).toISOString();
+}
+
+// UNIQUE(rider_id, season_id) er selve idempotens-garantien. Siden #5133 kan TO
+// stier oprette rækken (season-transitionen og det løbende sweep), og de kan i
+// princippet ramme samme rytter i samme sekund. Den tabende insert får 23505 —
+// det er "en anden nåede det først", ikke en fejl der skal vælte en cron.
+function isUniqueViolation(error) {
+  return error?.code === "23505" || /duplicate key value/i.test(error?.message || "");
+}
+
+/**
+ * Åbn ÉT override-vindue: pending grad-række + notifikation til manageren.
+ *
+ * SSOT for "hvad sker der når en akademirytter er vokset ud". Både
+ * detectGraduates (sæson-transition) og runMissedGraduateSweep (#5133's
+ * løbende redningssti) går gennem den, så række-felter, deadline og copy ikke
+ * kan divergere mellem de to opdagelses-veje.
+ *
+ * @returns {Promise<"created"|"duplicate">}
+ */
+export async function openGraduationWindow(supabase, { rider, seasonId, deadline, notify = notifyTeamOwner } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!rider?.id || !rider?.team_id) throw new Error("openGraduationWindow: rider med id + team_id required");
+  if (!seasonId || !deadline) throw new Error("openGraduationWindow: seasonId + deadline required");
+
+  const { error } = await supabase.from("academy_graduation").insert({
+    team_id: rider.team_id, rider_id: rider.id, season_id: seasonId, status: "pending", deadline,
+  });
+  if (error) {
+    if (isUniqueViolation(error)) return "duplicate";
+    throw new Error(`openGraduationWindow insert (${rider.id}): ${error.message}`);
+  }
+
+  const name = `${rider.firstname} ${rider.lastname}`;
+  await notify({
+    supabase, teamId: rider.team_id, type: "academy_graduation_ready", relatedId: rider.id,
+    title: "Academy graduation",
+    message: `${name} has aged out of your academy. Promote, sell or release before the deadline.`,
+    metadata: {
+      titleCode: "notif.academyGraduationReady.title",
+      messageCode: "notif.academyGraduationReady.message",
+      titleParams: { name },
+    },
+  });
+  return "created";
+}
+
+/**
  * Opret pending-graduerings-rows for akademiryttere der har passeret 21 i den
  * aktive (ny) sæson. Idempotent: rytter med eksisterende grad-row for season
  * skippes. deadline = now + GRADUATION.DEADLINE_DAYS. Kaldes i season-transition.
+ *
+ * #5133: rytter-prædikatet er nu identisk med vagtens
+ * (stuckAcademyGraduates.findStuckAcademyGraduates) på alders- OG ejerskabs-
+ * leddet — se academyGraduationPredicate.test.js, der låser dem sammen.
+ * `team_id IS NOT NULL` var den ENE reelle divergens: academy_graduation.team_id
+ * er NOT NULL i skemaet, så en strandet akademi-fri-agent (invariant D, #2257)
+ * ville få sin insert afvist, kaste, og afbryde HELE resten af batchen — hver
+ * rytter efter ham i id-orden mistede lydløst sit override-vindue. Vagten har
+ * altid ekskluderet den klasse; detektionen gør det nu også.
  *
  * @returns {Promise<{dryRun:boolean, graduates:number}>}
  */
@@ -67,13 +133,15 @@ export async function detectGraduates(supabase, { seasonId, seasonNumber, now = 
   const academy = await fetchAllRows(() =>
     supabase.from("riders")
       .select("id, team_id, firstname, lastname, birthdate")
-      .eq("is_academy", true).eq("is_retired", false).order("id"));
+      .eq("is_academy", true).eq("is_retired", false)
+      .not("team_id", "is", null)
+      .order("id"));
 
   const existing = await fetchAllRows(() =>
     supabase.from("academy_graduation").select("rider_id").eq("season_id", seasonId).order("rider_id"));
   const alreadyRowed = new Set(existing.map((r) => r.rider_id));
 
-  const deadline = new Date(now.getTime() + GRADUATION.DEADLINE_DAYS * 86_400_000).toISOString();
+  const deadline = graduationDeadlineFrom(now);
   let graduates = 0;
   for (const r of academy) {
     if (alreadyRowed.has(r.id)) continue;
@@ -81,22 +149,8 @@ export async function detectGraduates(supabase, { seasonId, seasonNumber, now = 
     if (!isGraduateAge(age)) continue;
     if (dryRun) { graduates++; continue; }
 
-    const { error } = await supabase.from("academy_graduation").insert({
-      team_id: r.team_id, rider_id: r.id, season_id: seasonId, status: "pending", deadline,
-    });
-    if (error) throw new Error(`detectGraduates insert (${r.id}): ${error.message}`);
-
-    await notify({
-      supabase, teamId: r.team_id, type: "academy_graduation_ready", relatedId: r.id,
-      title: "Academy graduation",
-      message: `${r.firstname} ${r.lastname} has aged out of your academy. Promote, sell or release before the deadline.`,
-      metadata: {
-        titleCode: "notif.academyGraduationReady.title",
-        messageCode: "notif.academyGraduationReady.message",
-        titleParams: { name: `${r.firstname} ${r.lastname}` },
-      },
-    });
-    graduates++;
+    const outcome = await openGraduationWindow(supabase, { rider: r, seasonId, deadline, notify });
+    if (outcome === "created") graduates++;
   }
   return { dryRun, graduates };
 }
