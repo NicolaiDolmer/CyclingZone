@@ -193,6 +193,10 @@
       "title": "Academy signing complete",
       "message": "Your academy prospect has joined your academy."
     },
+    "academyGraduationReady": {
+      "title": "Academy graduation",
+      "message": "{name} has aged out of your academy. Promote, sell or release before the deadline."
+    },
     "academyGraduated": {
       "title": "Academy graduate resolved",
       "promote": "{name} was promoted to your senior squad.",

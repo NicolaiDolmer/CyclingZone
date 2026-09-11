@@ -721,6 +721,40 @@ async function runWageDeductionSweepCron() {
 
 async function runGraduationSweepCron() {
   const result = await runAcademyGraduationSweep({ supabase, now: new Date() });
+  // #5133: backfillen åbner de override-vinduer sæson-transitionen missede.
+  // Et created > 0 er i sig selv et signal om at detektionen ved sæsonskiftet
+  // svigtede — log det synligt, også når alt andet gik godt.
+  if (result.backfill?.created) {
+    console.log(`🎓 Graduerings-backfill: ${result.backfill.created} akademiryttere fik det override-vindue de aldrig fik ved saesonskiftet`);
+  }
+  if (result.backfill?.notificationsSent) {
+    // Et vindue stod aabent uden at manageren vidste det (insert ok, notify
+    // kastede). Beskeden er nu eftersendt, men tallet er et signal om at
+    // notifikations-vejen svigtede tidligere.
+    console.log(`🎓 Graduerings-backfill: ${result.backfill.notificationsSent} manglende graduerings-notifikation(er) eftersendt`);
+  }
+  if (result.backfill?.error) {
+    // Backfillen faldt helt fra hinanden (typisk en læsefejl mod Supabase).
+    // Sweepet kørte videre, men den løbende redningssti var ude af drift dette
+    // tick — og den er hele pointen med #5133, så den skal ses.
+    console.error(`❌ Graduerings-backfill: ${result.backfill.error}`);
+    sentryCapture(new Error(`missed-graduate sweep: ${result.backfill.error}`), {
+      tags: { cron: "graduation sweep" },
+    });
+  }
+  if (result.backfill?.failed) {
+    console.error(`❌ Graduerings-backfill: ${result.backfill.failed} fejlede (per-rytter try/catch isolerede)`);
+    sentryCapture(new Error(`missed-graduate sweep: ${result.backfill.failed} ryttere fejlede`), {
+      tags: { cron: "graduation sweep" },
+      // #4902/#5132: flade strenge — nestede objekter klippes til "[Object]" af
+      // Sentrys normalizeDepth og gør kortet ubrugeligt.
+      extra: {
+        created: result.backfill.created,
+        failed: result.backfill.failed,
+        errors: (result.backfill.errors || []).map((e) => `${e.riderId}: ${e.message}`),
+      },
+    });
+  }
   if (result.resolved) {
     console.log(`🎓 Graduerings-sweep: ${result.resolved} akademiryttere auto-resolveret`);
   }
