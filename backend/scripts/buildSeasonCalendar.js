@@ -248,6 +248,15 @@ if (isMain) {
         `${t.raceDayPaddingHeld === false ? "  ⚠ MÅLET BLEV IKKE NÅET" : ""}`,
       );
     }
+    if (raceDayTarget == null) {
+      // Uden et maal: sig hvad maalet SKULLE vaere for denne saeson, saa tallet ikke skal
+      // gaettes naar reglen slaas til. Det er den hoejeste divisions egne loebsdage —
+      // laveret kan ikke naas ved at tilfoeje tomme loebsdage (§1d).
+      const forslag = resolveCommonRaceDayTarget({ axisByTier, season: seasonNumber });
+      if (forslag.target != null) {
+        console.log(`  forslag: --race-day-target ${forslag.target} (${forslag.source}) — så ville alle fire divisioner have ${forslag.target} løbsdage`);
+      }
+    }
     if (raceDayEquality.length) {
       console.error(`  ❌ §1d (#4845):`);
       for (const v of raceDayEquality) console.error(`     · ${v}`);
