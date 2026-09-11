@@ -148,6 +148,20 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 **Daglig digest:** comment på ledger-issue [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) (auto-lukket / reopened / eskaleret / label-drift). Scan den om morgenen; håndtér kun Tier 3. Skip-create ved 0 actions.
 
+## Priority-hygiejne (#5155, ejer-regel 11/9)
+
+`priority:high` er "tag først" — men uden håndhævelse hober den sig op som stille støj. Ejer-regel 11/9 (#5155): en `priority:high`-issue kræver en synlig handling (en PR, en kommentar med næste skridt, eller en eksplicit ejer-beslutning) inden **14 dage**, ellers nedjusteres den til `priority:med` med en kommentar om hvorfor. Målt 11/9: 53 af 175 `priority:high`-issues (30 %) havde ikke haft aktivitet i 14+ dage (`docs/audits/2026-09-11-github-audit.md`, afsnit 4).
+
+**Håndhævelse:** [`scripts/priority-hygiene.mjs`](../scripts/priority-hygiene.mjs) (via `gh` CLI, ingen tokens i koden) + [`.github/workflows/priority-hygiene.yml`](../.github/workflows/priority-hygiene.yml), som kører **hver mandag 07:00 UTC** som `--dry-run` og poster resultatet som job-summary + kommentar på [#5155](https://github.com/NicolaiDolmer/CyclingZone/issues/5155). Kun et eksplicit `workflow_dispatch` med `execute=true` nedjusterer og kommenterer for rigtigt — cron-kørslen rører aldrig labels, og Claude kører aldrig `--execute` selv; ejeren ser dry-run-listen og siger go.
+
+**"Sidste aktivitet"** er ikke bare issuets `updatedAt`: scriptet scanner også issuets timeline for kommentarer, label-ændringer, og — vigtigst — **"linked PR-aktivitet"**: hvis en linket PR selv har fået nyt liv (commit, kommentar, merge) uden at kommentere på issuet, tæller PR'ens egen `updated_at` som aktivitet på issuet.
+
+**Epic-undtagelse:** issues med label `epic` eller `epic:*` nedjusteres ALDRIG automatisk, men rapporteres separat hvis de ikke har et åbent child-issue med aktivitet inden for grænsen (native GitHub sub-issues, med fallback til tekst-søgning efter `#<nummer>`-omtaler — begge best-effort, se scriptets header). Bemærk: issues hvis TITEL starter med `[Epic]` men som IKKE har `epic:*`-labelen (fx historiske issues fra før label-konventionen) tælles IKKE som epics af dette script og kan blive nedjusteret som alle andre — det matcher hvordan `docs/audits/2026-09-11-github-audit.md` afsnit 4a selv anbefalede at nedjustere flere af dem.
+
+**Integration med `github-housekeeping`:** denne skill rører IKKE `priority:high`/`priority:med`-nedjustering i dag. Næste gang skillen opdateres bør den kalde `node scripts/priority-hygiene.mjs --dry-run` som en del af sin daglige gennemgang i stedet for at duplikere logikken — se `.claude/skills/github-housekeeping/routine-prompt.md`.
+
+**Grænsen** er en flag (`--days`, default 14), ikke hardcoded — juster ved behov uden kodeændring.
+
 ## Commit/PR-konvention
 - Commit-besked nævner issue: `Fix: gæld vises i Min aktivitet (#42)`
 - PR-body har `Refs #42` — brugeren lukker selv issuet efter manuel verifikation

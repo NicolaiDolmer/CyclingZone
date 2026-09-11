@@ -1,0 +1,71 @@
+name: Priority Hygiene
+
+# Ugentlig håndhævelse af ejer-reglen 11/9 (#5155): en `priority:high`-issue
+# kræver en synlig handling (PR, kommentar med næste skridt, eller en
+# eksplicit ejer-beslutning) inden 14 dage, eller den nedjusteres til
+# `priority:med` med en kommentar om hvorfor. Se scripts/priority-hygiene.mjs
+# for selve logikken (epic-undtagelse, "linked PR-aktivitet" via timeline).
+#
+# Standard-kørslen (cron, og workflow_dispatch uden input) er ALTID --dry-run:
+# den skriver resultatet som job-summary og som en kommentar på #5155, uden
+# at røre nogen labels. Kun et EKSPLICIT workflow_dispatch med execute=true
+# nedjusterer og kommenterer for rigtigt - Claude kører aldrig denne del selv
+# (se scripts/priority-hygiene.mjs header og docs/GITHUB_WORKFLOW.md).
+
+on:
+  schedule:
+    - cron: '0 7 * * 1' # Mandag 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: 'true = nedjuster + kommentér for rigtigt (default: kun dry-run)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: priority-hygiene
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Run priority-hygiene (dry-run)
+        if: github.event.inputs.execute != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/priority-hygiene.mjs --dry-run | tee priority-hygiene-report.md
+
+      - name: Run priority-hygiene (execute - ejer-udløst)
+        if: github.event.inputs.execute == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/priority-hygiene.mjs --execute | tee priority-hygiene-report.md
+
+      - name: Skriv job-summary
+        if: always()
+        run: cat priority-hygiene-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Kommentér resultatet på #5155
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          {
+            echo "**Priority-hygiene-kørsel** (${{ github.event_name }}, run ${{ github.run_id }}):"
+            echo ""
+            cat priority-hygiene-report.md
+          } > comment-body.md
+          gh issue comment 5155 --repo "${{ github.repository }}" --body-file comment-body.md
