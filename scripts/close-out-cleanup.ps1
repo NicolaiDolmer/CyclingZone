@@ -16,6 +16,10 @@
 #   - vite/preview-servere (node-processer med 'vite' i kommandolinjen)
 #   - playwright-processer (test-runner + headless browsere under ms-playwright)
 #   - 'node --test --watch' (watch-tilstand efterladt koerende)
+#   - wave-lane-watch.ps1 fra en AFSLUTTET boelge (#5142): vagten er et evigt
+#     loop startet i fase 0, og doer boelgen midtvejs overlever den. Den taeller
+#     KUN som efterladt naar .claude/run/wave-active.json er vaek eller udloebet
+#     - en koerende boelges egen vagt maa aldrig draebes.
 #
 # Rører ALDRIG (eksplicit ekskluderet, uanset match ovenfor):
 #   - keep-awake.ps1 (skal koere hele boelgens levetid, jf. #4918)
@@ -50,6 +54,22 @@ if (-not $RepoRoot) {
   $RepoRoot = (& git rev-parse --show-toplevel 2>$null)
   if (-not $RepoRoot) { Write-Error "Ikke i et git-repo, og ingen -RepoRoot angivet."; exit 1 }
   $RepoRoot = $RepoRoot.Trim().Replace('/', '\')
+}
+
+# Koerer der en boelge lige nu? Saa er dens lane-vagt legitim og fredet.
+# En udloebet wave-active.json er en efterladt fil fra en doed session - samme
+# regel som i scripts/hooks/guard-agent-spawn.sh.
+$script:WaveIsActive = $false
+$waveActiveFile = Join-Path $RepoRoot ".claude\run\wave-active.json"
+if (Test-Path $waveActiveFile) {
+  $script:WaveIsActive = $true
+  try {
+    $waveInfo = Get-Content $waveActiveFile -Raw | ConvertFrom-Json
+    if ($waveInfo.expiresAt) {
+      $expires = [datetime]::Parse($waveInfo.expiresAt)
+      if ($expires -lt (Get-Date)) { $script:WaveIsActive = $false }
+    }
+  } catch { $script:WaveIsActive = $true }
 }
 
 $dry = -not $Execute
@@ -96,6 +116,11 @@ function Get-MatchReason([string]$cmdLine, [string]$procName, [string]$repoRootF
   }
   if ($cmdLine -match '(?i)--test' -and $cmdLine -match '(?i)--watch') {
     return "node --test --watch"
+  }
+  # Boelge-vagten (#5142): evigt loop startet i wave.js' fase 0. Fredet saa
+  # laenge boelgen koerer; efterladt naar wave-active.json er vaek/udloebet.
+  if ($cmdLine -match '(?i)wave-lane-watch\.ps1') {
+    if (-not $script:WaveIsActive) { return "wave-lane-watch (boelge-vagt uden aktiv boelge)" }
   }
   return $null
 }

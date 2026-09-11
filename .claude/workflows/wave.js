@@ -35,10 +35,40 @@
 //       }
 //     ],
 //     dryRun: false,                  // true = print planen, spawn intet
-//     cleanup: "execute",             // 'execute' | 'dry-run'
+//     cleanup: "dry-run",             // 'dry-run' (default) | 'execute'
+//     allowExistingPr: false,         // true = koer spor der allerede har en aaben PR
 //     expiresInMinutes: 240,          // levetid paa wave-active.json
 //     lanes: 4                        // override af lane-loftet (brug sjaeldent)
 //   }
+//
+// TRE VALG DER IKKE ER OPLAGTE:
+//
+// 1. FRYS STOPPER BOELGEN (jf. .claude/learnings/
+//    2026-09-06-frozen-workflow-agents-hold-concurrency-slots.md). En timeout
+//    AFBRYDER ikke agenten: den frosne holder stadig sin plads i workflowets
+//    samtidigheds-loft. Traekker de oevrige laner nye spor ind, koerer boelgen
+//    videre med usynligt reduceret kapacitet - 5-6/9 koerte bolge A reelt paa
+//    2 laner fra 01:12 til 03:50 uden at det kunne ses i /workflows. Derfor:
+//    ved foerste bekraeftede frys stopper boelgen, og alle spor der ikke naaede
+//    at starte rapporteres som "unstarted" til relancering i en ny, ren boelge.
+//    Det koster to agenters kontekst og giver fuld kapacitet igen paa minutter.
+//
+// 2. ALLE UBEHANDLEDE SPOR RAPPORTERES. Hvert spor ender i praecis een af:
+//    results (koert), skipped (ikke klar efter fase 0) eller unstarted (naaede
+//    aldrig en lane). Ingen spor kan forsvinde tavst ud af koen.
+//
+// 3. cleanup ER DRY-RUN SOM DEFAULT. close-out-cleanup.ps1 -Execute draeber ALLE
+//    vite-processer paa maskinen, ogsaa ejerens egen preview-server. En boelge
+//    der slutter mens ejeren kigger paa en flade maa ikke lukke fladen. Send
+//    cleanup: "execute" naar ingen ser paa noget.
+//
+// RESUME: lane-poolens raekkefoelge er IKKE deterministisk (hvilken lane der
+// tager hvilket spor afhaenger af timing), saa Workflow({ resumeFromRunId })
+// kan gen-spawne spor der allerede er faerdige. Derfor tjekker fase 0
+// `gh pr list --head <branch>` og springer spor med en aaben PR over
+// (skipped: "existing-pr"). Skal et spor med aaben PR alligevel koeres - fx et
+// genoptaget spor hvis PR blev oprettet som draft foer frysningen - saettes
+// args.allowExistingPr = true.
 //
 // BEMAERK om fase 0: Workflow-scripts har hverken filsystem- eller
 // Node-API-adgang (og ingen Date.now()). Alt der skal roere disken - skrive
@@ -87,6 +117,7 @@ const SETUP_SCHEMA = {
           worktree: { type: 'string' },
           briefPath: { type: 'string' },
           ready: { type: 'boolean' },
+          openPr: { type: 'string', description: 'PR-nummer paa en AABEN PR for branchen, ellers "ingen"' },
           note: { type: 'string' },
         },
         required: ['branch', 'ready'],
@@ -170,12 +201,18 @@ function normalizeTrack(raw, index) {
 // Timeouten er en oevre graense paa hvor laenge lane-poolen VENTER paa et spor,
 // ikke en garanti for at ressourcen er tilbage.
 function withTimeout(promise, ms, label) {
+  let timer = null
   return Promise.race([
     promise,
-    new Promise((resolve) => setTimeout(() => resolve(TIMED_OUT), ms)),
+    new Promise((resolve) => { timer = setTimeout(() => resolve(TIMED_OUT), ms) }),
   ]).then((r) => {
     if (r === TIMED_OUT) log(`TIMEOUT efter ${Math.round(ms / 60000)} min: ${label}`)
     return r
+  }).finally(() => {
+    // Ryd timeren ogsaa naar lanen blev faerdig foerst (og ogsaa hvis den
+    // afviste): ellers holder en 60-minutters timer scriptet i live efter at
+    // alt arbejde er slut.
+    if (timer !== null) clearTimeout(timer)
   })
 }
 
@@ -304,6 +341,11 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
     `\`node ${MAIN_CHECKOUT}\\scripts\\make-wave-brief.mjs <scratch>\\brief-<slug>.json --out <scratch>\\brief-<slug>.md\``,
     'Verificér bagefter at hver .md-fil findes og ikke er tom. En lane uden brief maa IKKE meldes ready.',
     '',
+    '## 3b. Har sporet allerede en aaben PR?',
+    `For hver branch: \`gh pr list --repo ${REPO} --head <branch> --state open --json number,url,isDraft\`.`,
+    'Er der en aaben PR, saa rapportér dens nummer i "openPr" (ellers "ingen"). Sporet springes saa over:',
+    'en genstartet boelge (resumeFromRunId) maa ikke saette en ny agent i gang oven i et spor der allerede er bygget.',
+    '',
     '## 4. Lane-watch i baggrunden',
     'Start vagten som en SELVSTAENDIG proces (den skal overleve dig - det er den ene undtagelse fra baggrundsforbuddet, og den er orkestratorens, ikke en lanes):',
     `\`pwsh -NoProfile -Command "Start-Process pwsh -ArgumentList '-NoProfile','-File','${MAIN_CHECKOUT}\\scripts\\wave-lane-watch.ps1','-IntervalMinutes','15','-StallMinutes','45' -WindowStyle Minimized -PassThru | Select-Object -ExpandProperty Id"\``,
@@ -314,7 +356,7 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
     JSON.stringify(rows, null, 2),
     '```',
     '',
-    'Returnér struktureret: ok, watchPid, activeFile, lanes (branch, worktree, briefPath, ready, note), problems.',
+    'Returnér struktureret: ok, watchPid, activeFile, lanes (branch, worktree, briefPath, ready, openPr, note), problems.',
     'ready=false for ethvert spor hvor worktree eller brief mangler - saa springer boelgen sporet over i stedet for at starte en lane i blinde.',
   ].join('\n')
 }
@@ -349,7 +391,10 @@ if (rawTracks.length > MAX_TRACKS) {
 const tracks = rawTracks.map(normalizeTrack)
 const lanes = Math.max(1, Math.min(Number(input.lanes) || DEFAULT_LANES, tracks.length))
 const dryRun = input.dryRun === true
-const cleanupMode = input.cleanup === 'dry-run' ? 'dry-run' : 'execute'
+// Dry-run som default: -Execute draeber ALLE vite-processer paa maskinen, ogsaa
+// ejerens egen preview-server. Det maa kun ske paa eksplicit anmodning.
+const cleanupMode = input.cleanup === 'execute' ? 'execute' : 'dry-run'
+const allowExistingPr = input.allowExistingPr === true
 const expiresInMinutes = Number(input.expiresInMinutes) || 240
 
 const fullTiers = tracks.filter((t) => t.tier === 'FULL')
@@ -403,6 +448,15 @@ for (const track of tracks) {
   const laneInfo = readyByBranch.get(track.branch)
   if (!laneInfo || laneInfo.ready !== true) {
     skipped.push({ ...track, reason: (laneInfo && laneInfo.note) || 'worktree eller brief mangler efter fase 0' })
+    continue
+  }
+  // Resume-beskyttelse: lane-poolens raekkefoelge er ikke deterministisk, saa
+  // en genstart med resumeFromRunId kan ramme et spor der allerede er bygget.
+  // En aaben PR er det billigste bevis paa at sporet er koert.
+  const openPr = String((laneInfo && laneInfo.openPr) || '').trim()
+  const hasOpenPr = openPr !== '' && !/^(ingen|none|nej|-)$/i.test(openPr)
+  if (hasOpenPr && !allowExistingPr) {
+    skipped.push({ ...track, reason: `existing-pr (${openPr}) - sporet har allerede en aaben PR. Send args.allowExistingPr = true for at koere det alligevel.` })
     continue
   }
   queue.push(track)
@@ -473,20 +527,24 @@ async function runTrack(track) {
   return row
 }
 
+// Saettes ved foerste bekraeftede frys. Se punkt 1 i scriptets header: en
+// frossen agent holder sin plads i samtidigheds-loftet, saa boelgen ville
+// fortsaette med usynligt reduceret kapacitet. I stedet stopper vi og
+// rapporterer resten til relancering i en ny, ren boelge.
+let stoppedByFreeze = null
+
 if (queue.length > 0) {
   await parallel(Array.from({ length: laneCount }, () => async () => {
-    while (queue.length > 0) {
+    while (queue.length > 0 && !stoppedByFreeze) {
       const track = queue.shift()
       if (!track) return
       try {
         const row = await runTrack(track)
         results.push(row)
-        // En timeout AFBRYDER ikke agenten - den kan koere videre i baggrunden.
-        // Traekker lanen et nyt spor ind oven i den, ville det faktiske antal
-        // samtidige agenter overstige lane-loftet (natboelgen 5-6/9: 6 frosne
-        // spor aad laner i 2,5 time). Lanen trakker sig derfor tilbage i stedet.
         if (row.status === 'timeout') {
-          log(`Lane trukket tilbage efter timeout paa #${track.issue} - den frosne agent holder stadig sin plads.`)
+          stoppedByFreeze = { issue: track.issue, branch: track.branch }
+          log(`FRYS bekraeftet paa #${track.issue} ${track.branch}: den frosne agent holder stadig sin plads i samtidigheds-loftet.`)
+          log('Boelgen stopper her. De resterende spor rapporteres som "unstarted" og skal relanceres i en NY boelge (natboelgen 5-6/9: bolge A koerte reelt paa 2 laner i 2,5 time uden at det kunne ses).')
           return
         }
       } catch (err) {
@@ -501,6 +559,19 @@ if (queue.length > 0) {
   }))
 }
 
+// Alt der stadig staar i koen naaede aldrig en lane - enten fordi boelgen
+// stoppede paa et frys, eller fordi alle laner faldt fra. Det MAA rapporteres:
+// et spor der forsvinder tavst ud af koen ligner et spor der blev koert.
+const unstarted = queue.splice(0).map((t) => ({
+  issue: t.issue,
+  branch: t.branch,
+  worktree: t.worktree,
+  reason: stoppedByFreeze
+    ? `boelgen stoppede paa frys i #${stoppedByFreeze.issue} - relancér dette spor i en ny boelge`
+    : 'naaede aldrig en lane - relancér det i en ny boelge',
+}))
+for (const u of unstarted) log(`IKKE STARTET #${u.issue} ${u.branch}: ${u.reason}`)
+
 // --- Oprydning --------------------------------------------------------------
 phase('Oprydning')
 const cleanup = await agent(cleanupPrompt(tracks, cleanupMode, setup.watchPid || 'none'), {
@@ -510,7 +581,10 @@ const cleanup = await agent(cleanupPrompt(tracks, cleanupMode, setup.watchPid ||
 })
 
 const stopped = results.filter((r) => r.status === 'timeout' || r.status === 'doed' || r.status === 'fejl')
-log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over.`)
+log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${tracks.length} i alt).`)
+if (unstarted.length > 0) {
+  log(`RELANCER: ${unstarted.map((u) => '#' + u.issue).join(', ')} i en NY boelge - worktrees og PR'er staar urort.`)
+}
 if (cleanup && cleanup.activeFileRemoved !== true) {
   log('ADVARSEL: wave-active.json blev IKKE fjernet. Slet den i haanden, ellers blokerer Agent-guarden naeste session (den udloeber dog selv paa expiresAt).')
 }
@@ -519,7 +593,10 @@ return {
   lanes: laneCount,
   verifyMax: 2,
   cleanup: cleanup || { activeFileRemoved: false, notes: ['oprydnings-agenten svarede ikke'] },
+  cleanupMode,
+  stoppedByFreeze,
   skipped: skipped.map((s) => ({ issue: s.issue, branch: s.branch, reason: s.reason })),
   stopped: stopped.map((s) => ({ issue: s.issue, branch: s.branch, status: s.status, note: s.note })),
+  unstarted,
   tracks: results,
 }

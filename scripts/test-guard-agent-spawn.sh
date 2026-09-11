@@ -49,6 +49,14 @@ process.stdout.write(JSON.stringify(o));
 '
 }
 
+# typed_payload SUBAGENT_TYPE PROMPT -> JSON for et Agent-kald med subagent_type
+typed_payload() {
+  SUB="$1" PROMPT="$2" node -e '
+const o = { hook_event_name: "PreToolUse", tool_name: "Agent", tool_input: { prompt: process.env.PROMPT, subagent_type: process.env.SUB } };
+process.stdout.write(JSON.stringify(o));
+'
+}
+
 # workflow_payload NAME -> JSON for et Workflow-kald (ingen prompt, kun name/args)
 workflow_payload() {
   WF="$1" node -e '
@@ -145,7 +153,22 @@ run "boelge aktiv: WAVE-REVIEW slipper igennem" \
 run "boelge aktiv: WAVE-LANE slipper igennem" \
   0 "" "$(payload Agent 'WAVE-LANE: #1234 chore/x')"
 
-expect_count "WAVE-praefikser taeller ikke i registret" 0
+# Read-only-agenter aendrer ingen filer og koerer ingen tunge verifikationer,
+# saa de bruger ikke den ressource loftet beskytter. Uden den undtagelse
+# spaerrede en koerende boelge ogsaa for at SLAA NOGET OP.
+run "boelge aktiv: READ-ONLY-praefiks slipper igennem" \
+  0 "" "$(payload Agent 'READ-ONLY: find alle steder vi laeser app_config')"
+
+run "boelge aktiv: subagent_type Explore slipper igennem" \
+  0 "" "$(typed_payload Explore 'find alle steder vi laeser app_config')"
+
+run "boelge aktiv: subagent_type Plan slipper igennem" \
+  0 "" "$(typed_payload Plan 'laeg en plan for #1234')"
+
+run "boelge aktiv: subagent_type general-purpose -> stadig BLOKERET" \
+  2 "en boelge koerer allerede" "$(typed_payload general-purpose 'ret bug i race-motoren')"
+
+expect_count "WAVE-praefikser og read-only-agenter taeller ikke i registret" 0
 
 run "boelge aktiv: Workflow-kald uden praefiks -> BLOKERET" \
   2 "en boelge koerer allerede" "$(payload Workflow 'koer endnu en boelge')"
@@ -195,6 +218,52 @@ run "3 spawns inden for vinduet -> det fjerde er stadig tilladt" \
 expect_count "det fjerde spawn blev registreret" 4
 run "det femte er saa BLOKERET" \
   2 "loft: 4" "$(payload Agent 'opgave 5')"
+
+# ===== 2b. Samtidighed (reviewer-fund paa PR #5147) =====
+# Uden laas laeser N hook-processer der starter samtidig det SAMME register,
+# ser alle "under loftet" og skriver alle: revieweren maalte 9 samtidige kald
+# -> 5 tilladte ved loft 4, og skrivninger gik tabt fordi den sidste
+# writeFileSync vandt. Med mkdir-laasen skal 9 parallelle kald give PRAECIS 4
+# tilladte og et register med PRAECIS 4 linjer.
+
+reset_state
+CONC_DIR="$WORK/conc"
+mkdir -p "$CONC_DIR"
+
+for i in 1 2 3 4 5 6 7 8 9; do
+  CONC_JSON="$(payload Agent "samtidig opgave $i")"
+  (
+    printf '%s' "$CONC_JSON" | bash "$HOOK" >/dev/null 2>&1
+    echo $? > "$CONC_DIR/exit-$i"
+  ) &
+done
+wait
+
+CONC_ALLOWED=0
+CONC_BLOCKED=0
+for i in 1 2 3 4 5 6 7 8 9; do
+  code="$(cat "$CONC_DIR/exit-$i" 2>/dev/null || echo "?")"
+  case "$code" in
+    0) CONC_ALLOWED=$((CONC_ALLOWED+1)) ;;
+    2) CONC_BLOCKED=$((CONC_BLOCKED+1)) ;;
+  esac
+done
+
+if [ "$CONC_ALLOWED" = "4" ] && [ "$CONC_BLOCKED" = "5" ]; then
+  PASS=$((PASS+1)); echo "PASS  9 parallelle spawns -> praecis 4 tilladt, 5 blokeret"
+else
+  FAIL=$((FAIL+1))
+  echo "FAIL  9 parallelle spawns (tilladt=$CONC_ALLOWED forventet 4, blokeret=$CONC_BLOCKED forventet 5)"
+fi
+
+expect_count "registret har praecis 4 linjer efter 9 parallelle kald" 4
+
+# Laasen maa ikke efterlades: naeste kald ville ellers vente 5 sek pr. gang.
+if [ -d "$RUN_DIR/agent-slots.lock" ]; then
+  FAIL=$((FAIL+1)); echo "FAIL  laasemappen agent-slots.lock blev efterladt"
+else
+  PASS=$((PASS+1)); echo "PASS  laasemappen er ryddet efter koerslen"
+fi
 
 # ===== 3. Fail-open =====
 
