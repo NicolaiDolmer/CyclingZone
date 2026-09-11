@@ -1,0 +1,324 @@
+{
+  "generated_at": "2026-09-11",
+  "issue": 5131,
+  "method": "npx lighthouse@latest, headless Chromium (Playwright-chromium-1234), 3 koersler pr. side/preset, median rapporteret. only-categories=performance.",
+  "thresholds": {
+    "lcp_mobile_ms": 2500,
+    "inp_ms": 200,
+    "cls": 0.1,
+    "performance_score_public_pages": 90,
+    "note": "Lighthouse-lab maaler ikke INP (kraever field-data/CrUX); Total Blocking Time (TBT) brugt som lab-proxy her."
+  },
+  "pages": {
+    "home": {
+      "url": "https://cyclingzone.org/",
+      "mobile": {
+        "performance_median": 77,
+        "performance_runs": [
+          82,
+          77,
+          77
+        ],
+        "lcp_ms_median": 4112,
+        "lcp_ms_runs": [
+          3358,
+          4120,
+          4112
+        ],
+        "tbt_ms_median": 81,
+        "tbt_ms_runs": [
+          126,
+          81,
+          76
+        ],
+        "cls_median": 0.114,
+        "cls_runs": [
+          0.11,
+          0.114,
+          0.114
+        ],
+        "tti_ms_median": 4120,
+        "transfer_kb_median": 515,
+        "requests_median": 35
+      },
+      "desktop": {
+        "performance_median": 85,
+        "performance_runs": [
+          85,
+          85,
+          85
+        ],
+        "lcp_ms_median": 688,
+        "lcp_ms_runs": [
+          693,
+          685,
+          688
+        ],
+        "tbt_ms_median": 0,
+        "tbt_ms_runs": [
+          0,
+          0,
+          0
+        ],
+        "cls_median": 0.29,
+        "cls_runs": [
+          0.29,
+          0.29,
+          0.29
+        ],
+        "tti_ms_median": 688,
+        "transfer_kb_median": 515,
+        "requests_median": 35
+      }
+    },
+    "login": {
+      "url": "https://cyclingzone.org/login",
+      "mobile": {
+        "performance_median": 85,
+        "performance_runs": [
+          85,
+          81,
+          85
+        ],
+        "lcp_ms_median": 3489,
+        "lcp_ms_runs": [
+          3489,
+          3926,
+          3481
+        ],
+        "tbt_ms_median": 91,
+        "tbt_ms_runs": [
+          109,
+          80,
+          91
+        ],
+        "cls_median": 0,
+        "cls_runs": [
+          0,
+          0,
+          0
+        ],
+        "tti_ms_median": 4548,
+        "transfer_kb_median": 591,
+        "requests_median": 41
+      },
+      "desktop": {
+        "performance_median": 99,
+        "performance_runs": [
+          99,
+          99,
+          99
+        ],
+        "lcp_ms_median": 755,
+        "lcp_ms_runs": [
+          751,
+          763,
+          755
+        ],
+        "tbt_ms_median": 0,
+        "tbt_ms_runs": [
+          0,
+          0,
+          0
+        ],
+        "cls_median": 0,
+        "cls_runs": [
+          0,
+          0,
+          0
+        ],
+        "tti_ms_median": 755,
+        "transfer_kb_median": 591,
+        "requests_median": 41
+      }
+    },
+    "roadmap": {
+      "url": "https://cyclingzone.org/roadmap",
+      "mobile": {
+        "performance_median": 49,
+        "performance_runs": [
+          49,
+          70,
+          49
+        ],
+        "lcp_ms_median": 5665,
+        "lcp_ms_runs": [
+          5828,
+          5639,
+          5665
+        ],
+        "tbt_ms_median": 54,
+        "tbt_ms_runs": [
+          158,
+          42,
+          54
+        ],
+        "cls_median": 0.517,
+        "cls_runs": [
+          0.517,
+          0,
+          0.517
+        ],
+        "tti_ms_median": 5673,
+        "transfer_kb_median": 618,
+        "requests_median": 60
+      },
+      "desktop": {
+        "performance_median": 74,
+        "performance_runs": [
+          74,
+          74,
+          75
+        ],
+        "lcp_ms_median": 1320,
+        "lcp_ms_runs": [
+          1320,
+          1403,
+          1247
+        ],
+        "tbt_ms_median": 0,
+        "tbt_ms_runs": [
+          0,
+          0,
+          0
+        ],
+        "cls_median": 0.553,
+        "cls_runs": [
+          0.553,
+          0.553,
+          0.553
+        ],
+        "tti_ms_median": 1322,
+        "transfer_kb_median": 618,
+        "requests_median": 60
+      }
+    },
+    "marketing": {
+      "url": "https://cycling-zone-marketing.vercel.app/ (separat Vercel-projekt, ikke koblet til cyclingzone.org endnu — #4067)",
+      "mobile": {
+        "performance_median": 96,
+        "performance_runs": [
+          95,
+          96,
+          96
+        ],
+        "lcp_ms_median": 2590,
+        "lcp_ms_runs": [
+          2389,
+          2590,
+          2596
+        ],
+        "tbt_ms_median": 136,
+        "tbt_ms_runs": [
+          186,
+          136,
+          71
+        ],
+        "cls_median": 0,
+        "cls_runs": [
+          0,
+          0,
+          0
+        ],
+        "tti_ms_median": 2611,
+        "transfer_kb_median": 316,
+        "requests_median": 13
+      },
+      "desktop": {
+        "performance_median": 100,
+        "performance_runs": [
+          100,
+          100,
+          100
+        ],
+        "lcp_ms_median": 583,
+        "lcp_ms_runs": [
+          585,
+          514,
+          583
+        ],
+        "tbt_ms_median": 0,
+        "tbt_ms_runs": [
+          0,
+          0,
+          0
+        ],
+        "cls_median": 0,
+        "cls_runs": [
+          0,
+          0,
+          0
+        ],
+        "tti_ms_median": 583,
+        "transfer_kb_median": 315,
+        "requests_median": 13
+      }
+    }
+  },
+  "bundle": {
+    "total_chunks": 200,
+    "total_gzip_kb": 1144.1,
+    "top15": [
+      {
+        "name": "index",
+        "gzip_kb": 232.6
+      },
+      {
+        "name": "module",
+        "gzip_kb": 88.9
+      },
+      {
+        "name": "CategoricalChart",
+        "gzip_kb": 88.5
+      },
+      {
+        "name": "supabase",
+        "gzip_kb": 53
+      },
+      {
+        "name": "PlanningHubPage",
+        "gzip_kb": 40.8
+      },
+      {
+        "name": "RiderStatsPage",
+        "gzip_kb": 37.8
+      },
+      {
+        "name": "RaceDetailPage",
+        "gzip_kb": 33.3
+      },
+      {
+        "name": "AdminGrowthPage",
+        "gzip_kb": 29.9
+      },
+      {
+        "name": "DashboardPage",
+        "gzip_kb": 24.2
+      },
+      {
+        "name": "BoardPage",
+        "gzip_kb": 19.6
+      },
+      {
+        "name": "AdminEconomyTab",
+        "gzip_kb": 16.8
+      },
+      {
+        "name": "AuctionsPage",
+        "gzip_kb": 14
+      },
+      {
+        "name": "intl",
+        "gzip_kb": 13.8
+      },
+      {
+        "name": "NotificationsPage",
+        "gzip_kb": 13.3
+      },
+      {
+        "name": "TrainingPage",
+        "gzip_kb": 13
+      }
+    ]
+  }
+}
