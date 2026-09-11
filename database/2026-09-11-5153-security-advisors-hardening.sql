@@ -41,9 +41,15 @@
 --   V3. Ingen anden funktion i public med anon-EXECUTE (eller default-PUBLIC
 --       ACL) kalder is_admin() i sin krop; ingen view-definition og ingen
 --       policy i nogen rolle refererer is_beta_tester().
---   V4. has_table_privilege('anon','public.riders','SELECT') = FALSE. anon har
---       altså ikke bord-niveau-SELECT på riders og når ALDRIG frem til at
---       evaluere policyen i V2 (grant-checket ligger før RLS). Se §C.
+--   V4. RUNTIME-test som anon (`BEGIN; SET LOCAL ROLE anon;
+--       SELECT count(*) FROM public.riders; ROLLBACK;`) fejler i dag med
+--       ERROR 42501 "permission denied for function is_offered_intake_rider".
+--       anon når altså FREM til policy-udtrykket i V2 og fejler på dets ANDEN
+--       operand. (has_table_privilege('anon','public.riders','SELECT') er
+--       ganske vist false, men det er misvisende: riders bruger
+--       KOLONNE-grants, ikke bord-grant — has_any_column_privilege = true, 52
+--       af 56 kolonner er grantet til anon, jf. #2241/#4783. Samme billede for
+--       authenticated.) Se §C.
 --   V5. btree_gist: extrelocatable=true, extnamespace=public, skemaet
 --       `extensions` findes. 0 exclusion-constraints i HELE databasen
 --       (pg_constraint.contype='x') og 0 indekser bruger en opclass fra
@@ -124,21 +130,30 @@ $$;
 -- denied for function is_admin" på anon-læsninger af riders), og det
 -- gen-åbner den ikke:
 --
---   1. Policyen der udløste incidenten — "Public read riders", roles={public},
---      USING (is_admin() OR NOT is_offered_intake_rider(id)) — står stadig
---      (V2). MEN anon har ikke længere bord-niveau-SELECT på public.riders
---      (V4: has_table_privilege = FALSE). GRANT-checket ligger FØR RLS, så
---      anon afvises allerede inden policy-udtrykket evalueres. anon kalder
---      altså ikke is_admin() ad den vej i dag.
---   2. Selv hvis bord-granten kom tilbage, er anon-stien allerede fail-closed
---      på policyens ANDEN operand: anon har ikke EXECUTE på
---      is_offered_intake_rider(uuid) (V1). `false OR NOT f(x)` kan ikke
---      kortslutte, så den operand SKAL evalueres → 42501 uanset is_admin().
---      #3124s begrundelse for at beholde anon-granten (28/7 + 3/8) hviler på en
---      tilstand der ikke længere findes.
+--   1. anon-læsning af public.riders er ALLEREDE brudt i dag — ikke af denne
+--      migration. Runtime-testen i V4 giver ERROR 42501 "permission denied for
+--      function is_offered_intake_rider": anon har kolonne-SELECT på riders og
+--      når frem til policy-udtrykket, men mangler EXECUTE på policyens anden
+--      operand (V1). `false OR NOT f(x)` kan ikke kortslutte, så den operand
+--      SKAL evalueres. Det sker uanset is_admin()-granten.
+--   2. Denne REVOKE flytter derfor kun HVILKEN af de to funktioner anon fejler
+--      på først — fra "permission denied for function is_offered_intake_rider"
+--      til "... is_admin" (eller omvendt, afhængigt af evalueringsrækkefølge).
+--      Udfaldet for anon er uændret: en fejl, ikke et tomt resultatsæt, og ikke
+--      en lækage. #3124s begrundelse for at beholde anon-granten (28/7 + 3/8)
+--      hviler på en tilstand — at is_admin() var det ENESTE der manglede — som
+--      ikke længere findes.
 --   3. Ingen anden anon-nåelig vej kalder is_admin(): ingen anden funktion med
 --      anon-/default-PUBLIC-EXECUTE har den i kroppen, og ingen view-definition
 --      bruger den (V3).
+--
+-- ÅBENT FUND (eksisterende, ikke introduceret her): at anon-læsning af riders
+-- fejler med 42501 i stedet for at returnere rækker ELLER et tomt sæt, er en
+-- inkonsistens i sig selv — policyen siger roles={public}, men anon kan ikke
+-- evaluere den. Kalder noget rent faktisk riders som anon, producerer det en
+-- fejlstrøm i dag. Beslutningen "skal anon overhovedet kunne læse riders?"
+-- hører til ejeren og står beskrevet i docs/SUPABASE_SECURITY_ADVISORS.md; den
+-- afgør også hvordan §F.2 lukkes.
 --
 -- `authenticated` BEHOLDER EXECUTE med vilje: frontend kalder den direkte som
 -- RPC (frontend/src/pages/RoadmapPage.jsx:213 og SurveyPage.jsx:155 — begge
@@ -196,13 +211,14 @@ REVOKE ALL ON TABLE public.team_standings_ext_mv FROM anon;
 --     users-rækker. Kan ikke revokes uden at fjerne founder-mærket i UI'en.
 --     anon blev revoket i #4870.
 -- F.4 De fire matviews / 0016 (×4): alle fire læses DIREKTE fra frontend som
---     authenticated — global_rank_mv (GlobalRankWidget.jsx, useGlobalRank.js,
---     TeamProfilePage.jsx), rider_rankings_mv (TeamStatsTab.jsx,
---     useRiderRankings.js, ResultaterPage.jsx), team_race_points_mv
---     (useNpsPrompt.js, DashboardPage.jsx, StandingsPage.jsx),
---     team_standings_ext_mv (StandingsPage.jsx). Lint 0016 forsvinder først når
---     HVERKEN anon NOR authenticated har SELECT, så den kræver at alle otte
---     kaldesteder peges om. Det naive trick — flyt matview til privat skema og
+--     authenticated — i alt 10 reads fordelt på 9 filer: global_rank_mv ×3
+--     (GlobalRankWidget.jsx, useGlobalRank.js, TeamProfilePage.jsx),
+--     rider_rankings_mv ×3 (TeamStatsTab.jsx, useRiderRankings.js,
+--     ResultaterPage.jsx), team_race_points_mv ×3 (useNpsPrompt.js,
+--     DashboardPage.jsx, StandingsPage.jsx) og team_standings_ext_mv ×1
+--     (StandingsPage.jsx — samme fil læser altså to af dem). Lint 0016
+--     forsvinder først når HVERKEN anon NOR authenticated har SELECT, så den
+--     kræver at alle 10 reads peges om. Det naive trick — flyt matview til privat skema og
 --     læg et view med samme navn i public — virker IKKE her: et
 --     security_invoker-view kræver at kalderen selv har SELECT på matview'et
 --     (altså ingen gevinst), og et view UDEN security_invoker ejet af

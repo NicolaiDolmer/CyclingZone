@@ -15,8 +15,19 @@ Migrationen `database/2026-09-11-5153-security-advisors-hardening.sql` (#5153) e
 skrevet til at lukke 4 af WARN'erne, men den er endnu ikke appliceret: den kører
 af `auto-migrate.yml` ved merge. De fire står derfor som **afventer apply** her,
 og flippes først til "Lukket" når post-verify-blokken i migrationen + en ny
-`get_advisors`-kørsel bekræfter det. De 7 resterende er alle blokeret af
-frontend-kaldesteder, ikke af manglende DDL.
+`get_advisors`-kørsel bekræfter det.
+
+De 7 resterende falder i to forskellige kategorier — de har ikke samme ejer og
+ikke samme lukke-arbejde:
+
+- **Frontend-afhængige (6):** `is_admin()` (0029), `founder_public_list()`
+  (0029) og de fire matviews (0016). De kan først lukkes når et kaldested i
+  `frontend/src` er peget om. Ejes af en frontend-PR.
+- **DB-policy-afhængig (1):** `is_offered_intake_rider(uuid)` (0029). Ingen
+  frontend-kalder overhovedet — den holdes i live af `"Public read riders"`-RLS-
+  policyen. Lukkes udelukkende med database-ændringer (flyt hjælperen til et
+  privat skema + `ALTER POLICY`), men forudsætter en ejer-beslutning om anon-
+  adgang til `riders`. Venter altså IKKE på frontend-arbejde.
 
 | Lint | Objekt | Status | Hvorfor |
 |---|---|---|---|
@@ -25,25 +36,41 @@ frontend-kaldesteder, ikke af manglende DDL.
 | `0028_anon_security_definer_function_executable` | `is_admin()` | **Afventer apply** (#5153) | `REVOKE EXECUTE ... FROM anon`. anon har ikke bord-SELECT på `riders`, så #2671/#2676-invarianten er allerede uden effekt — se note nedenfor. |
 | `0029_authenticated_security_definer_function_executable` | `is_beta_tester()` | **Afventer apply** (#5153) | Ingen policy, ingen view, ingen funktionskrop og ingen frontend-RPC bruger den. `service_role` beholder EXECUTE. |
 | `0029_...` | `is_admin()` | Åben — bevidst | Frontend kalder `rpc("is_admin")` som admin-gate (`RoadmapPage.jsx`, `SurveyPage.jsx`), og authenticated-policies evaluerer den. Kan ikke blive INVOKER: `users`' cross-user-read-policy gater selv på `is_admin()` → 42P17 infinite recursion. |
-| `0029_...` | `is_offered_intake_rider(uuid)` | Åben — bevidst | Ingen RPC-kalder, men `"Public read riders"` kalder den, og RLS-udtryk evalueres som den kaldende rolle → authenticated SKAL beholde EXECUTE. |
+| `0029_...` | `is_offered_intake_rider(uuid)` | Åben — **DB-policy-afhængig**, ikke frontend | Ingen RPC-kalder, men `"Public read riders"` kalder den, og RLS-udtryk evalueres som den kaldende rolle → authenticated SKAL beholde EXECUTE. Lukkes med DDL alene, når anon-spørgsmålet nedenfor er afgjort. |
 | `0029_...` | `founder_public_list()` | Åben — bevidst | Kaldes direkte af `frontend/src/lib/useFounderTeams.js`. DEFINER for at kunne aggregere founder-numre uden at eksponere `users`-rækker. anon revoket i #4870. |
 | `0016_materialized_view_in_api` ×4 | `rider_rankings_mv`, `global_rank_mv`, `team_standings_ext_mv`, `team_race_points_mv` | Åben — kræver frontend-PR | anon er allerede revoket (#3124, bekræftet 11/9). Linten kræver at HVERKEN anon NOR authenticated har SELECT, og alle fire læses direkte fra frontend. |
 
 ### Note: hvorfor anon-revoken på `is_admin()` ikke gen-åbner #2671/#2676
 
 `"Public read riders"` har fortsat `roles={public}` og
-`USING (is_admin() OR NOT is_offered_intake_rider(id))`. Men:
+`USING (is_admin() OR NOT is_offered_intake_rider(id))`. Afgørende er at der er
+TO forskellige privilegie-spærringer i spil, og kun den ene er aktiv:
 
-1. `has_table_privilege('anon','public.riders','SELECT')` = **false** (11/9).
-   Grant-checket ligger før RLS, så anon evaluerer aldrig udtrykket.
-2. Selv med bord-granten tilbage er anon-stien allerede fail-closed på den
-   ANDEN operand: anon har ikke EXECUTE på `is_offered_intake_rider(uuid)`, og
-   `false OR NOT f(x)` kan ikke kortslutte.
+1. **Bord-/kolonne-privilegiet er IKKE spærret.** `has_table_privilege('anon',
+   'public.riders','SELECT')` = `false`, men det er misvisende: `riders` bruger
+   kolonne-grants (#2241/#4783), og `has_any_column_privilege` = `true` med 52
+   af 56 kolonner grantet til anon. anon kommer altså forbi ACL-checket og frem
+   til policy-udtrykket.
+2. **Funktions-privilegiet ER spærret — og det giver en FEJL, ikke `false`.**
+   Målt runtime 11/9 (`BEGIN; SET LOCAL ROLE anon; SELECT count(*) FROM
+   public.riders; ROLLBACK;`): `ERROR 42501 permission denied for function
+   is_offered_intake_rider`. anon mangler EXECUTE på policyens anden operand, og
+   `false OR NOT f(x)` kan ikke kortslutte den væk. Det er ikke en "fail-closed
+   nul rækker"-tilstand; det er en fejl.
 
-Den tilstand er i sig selv inkonsistent — policyen siger "public", granten siger
-nej. **Åbent ejer-spørgsmål:** skal anon kunne læse `riders` overhovedet? Svaret
+Derfor gen-åbner `REVOKE EXECUTE ON FUNCTION public.is_admin() FROM anon` intet:
+anon-læsningen af `riders` fejler allerede, og revoken flytter kun hvilken af de
+to funktioner fejlen nævner.
+
+**Eksisterende fund (ikke introduceret af #5153):** at anon-stien ender i 42501
+i stedet for i rækker eller i et tomt sæt, er en inkonsistens — policyen siger
+`roles={public}`, privilegierne siger delvist nej. Kalder noget faktisk `riders`
+som anon, ligger der en fejlstrøm i loggen i dag; det bør verificeres i Postgres-
+/PostgREST-loggen.
+
+**Åbent ejer-spørgsmål:** skal anon kunne læse `riders` overhovedet? Svaret
 afgør om 0029-fundet på `is_offered_intake_rider` lukkes ved at flytte hjælperne
-til et privat skema (og dermed gen-åbne anon-læsning), eller ved at scope
+til et privat skema (og dermed reparere anon-læsningen), eller ved at scope
 policyen `TO authenticated` (og dermed droppe anon-læsning eksplicit i stedet
 for ved et uheld). Ikke besluttet i #5153.
 
@@ -63,12 +90,17 @@ Den reelle vej, pr. matview:
    de filtre frontend faktisk bruger — husk `team_race_points_mv`s
    head+count-kald (`useNpsPrompt.js`) og `StandingsPage.jsx`' paginerede
    `fetchAllRows`.
-2. Peg de otte kaldesteder om: `global_rank_mv` (`GlobalRankWidget.jsx`,
-   `useGlobalRank.js`, `TeamProfilePage.jsx`), `rider_rankings_mv`
-   (`TeamStatsTab.jsx`, `useRiderRankings.js`, `ResultaterPage.jsx`),
-   `team_race_points_mv` (`useNpsPrompt.js`, `DashboardPage.jsx`,
-   `StandingsPage.jsx`), `team_standings_ext_mv` (`StandingsPage.jsx`). Husk
-   preview-mockene (`frontend/src/preview/mockHandlers.js`,
+2. Peg **alle 10 reads** om — de ligger i 9 filer, fordi `StandingsPage.jsx`
+   læser to forskellige matviews:
+   - `global_rank_mv` ×3: `GlobalRankWidget.jsx`, `useGlobalRank.js`,
+     `TeamProfilePage.jsx`
+   - `rider_rankings_mv` ×3: `TeamStatsTab.jsx`, `useRiderRankings.js`,
+     `ResultaterPage.jsx`
+   - `team_race_points_mv` ×3: `useNpsPrompt.js`, `DashboardPage.jsx`,
+     `StandingsPage.jsx`
+   - `team_standings_ext_mv` ×1: `StandingsPage.jsx`
+
+   Husk preview-mockene (`frontend/src/preview/mockHandlers.js`,
    `installPreviewMock.js`).
 3. `REVOKE ALL ON TABLE public.<mv> FROM authenticated` — først her forsvinder
    linten.
