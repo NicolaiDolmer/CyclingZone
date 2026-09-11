@@ -23,6 +23,7 @@
   ],
   "capturedAt": "2026-09-03",
   "contexts": [
+    "build-determinism-two-builds",
     "backend-tests",
     "frontend-build",
     "dependency-review",
