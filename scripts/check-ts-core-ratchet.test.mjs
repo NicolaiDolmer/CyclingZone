@@ -16,6 +16,7 @@ import {
   assignArea,
   diffGlobs,
   evaluateRatchet,
+  findFatalDiagnostics,
   globToRegExp,
   isJsFile,
   isTestFile,
@@ -119,6 +120,44 @@ test("parseTscErrors normaliserer Windows-separatorer", () => {
     "lib\\economyEngine.js(1,1): error TS1005: ';' expected.",
   );
   assert.equal(counts.get("lib/economyEngine.js"), 1);
+});
+
+test("findFatalDiagnostics fanger fejl uden fil-placering", () => {
+  // Den farligste fejlklasse for en skralde-gate: en knaekket tsconfig giver
+  // TS18003 UDEN fil og linje. parseTscErrors ser nul kerne-fejl, og gaten
+  // ville melde "baseline kan saenkes" i stedet for at stoppe.
+  const out = [
+    "error TS18003: No inputs were found in config file 'tsconfig.core.json'.",
+    "lib/economyEngine.js(1,1): error TS1005: ';' expected.",
+  ].join("\n");
+  assert.equal(parseTscErrors(out).size, 1);
+  const fatal = findFatalDiagnostics(out);
+  assert.equal(fatal.length, 1);
+  assert.match(fatal[0], /TS18003/);
+});
+
+test("findFatalDiagnostics fanger fejl placeret i selve tsconfig'en", () => {
+  // Verificeret 11/9 med en rigtig koersel: saetter man moduleResolution til
+  // 'bundler', klager tsc paa tsconfig.core.json(19,25) — MED fil-placering.
+  // Resultatet er nul fejl i alle 35 kerne-filer, altsaa 34 falske
+  // "forbedringer" og en baseline der kunne nulstilles.
+  const out = [
+    "tsconfig.core.json(19,25): error TS5095: Option 'bundler' can only be used when 'module' is set to 'preserve'.",
+    "tsconfig.core.json(19,25): error TS5109: Option 'moduleResolution' must be set to 'NodeNext'.",
+  ].join("\n");
+  const fatal = findFatalDiagnostics(out);
+  assert.equal(fatal.length, 2);
+  assert.match(fatal[0], /TS5095/);
+});
+
+test("findFatalDiagnostics forveksler ikke kilde-fejl med config-fejl", () => {
+  const out = [
+    "lib/economyEngine.js(12,3): error TS7006: Parameter 'x' implicitly has an 'any' type.",
+    "lib/engine/v4/types.ts(4,1): error TS1005: ';' expected.",
+    "  Fortsaettelseslinje der naevner error TS7006 igen.",
+    "Found 2 errors in 2 files.",
+  ].join("\n");
+  assert.deepEqual(findFatalDiagnostics(out), []);
 });
 
 test("assignArea: foerste match vinder, saa tallene er disjunkte", () => {

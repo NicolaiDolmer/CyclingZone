@@ -63,6 +63,13 @@ node scripts/check-ts-core-ratchet.mjs --update-baseline
 Baseline pr. 11/9-2026: **35 `.js`-filer, 1070 `tsc`-fejl** i kernen. Tallet er
 en maaling, ikke en opgaveliste for én PR.
 
+**Gaten stopper haardt hvis `tsc` klager over configen i stedet for over koden.**
+En knaekket `tsconfig.core.json` giver nul fejl i kerne-filerne, hvilket udefra
+ligner en perfekt ren kerne — og `--update-baseline` ville saa nulstille hele
+skralden. Derfor: en diagnose uden fil-placering (`TS18003`) eller placeret i
+selve configen (`tsconfig.core.json(19,25): error TS5095`) faelder gaten med
+det samme i stedet for at blive laest som en forbedring.
+
 ### Tre ting der overrasker foerste gang
 
 - **`backend/tsconfig.core.json` fejler med vilje.** Den er ikke i stykker; den

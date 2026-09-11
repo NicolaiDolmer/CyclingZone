@@ -120,6 +120,34 @@ export function parseTscErrors(stdout) {
 }
 
 /**
+ * Finder diagnoser der IKKE handler om en kildefil, og som derfor betyder at
+ * selve koerslen er ubrugelig — ikke at kernen er ren:
+ *
+ *   - uden fil-placering:  `error TS18003: No inputs were found ...`
+ *   - placeret i configen: `tsconfig.core.json(19,25): error TS5095: ...`
+ *
+ * Begge er farlige af samme grund: de producerer NUL fejl i kerne-filerne.
+ * Uden dette tjek ville en knaekket tsconfig faa gaten til at melde
+ * "baseline kan saenkes" for hver eneste fil — og `--update-baseline` ville
+ * skrive lutter 0'er ind, saa hele skralden var vaek. Verificeret 11/9: en
+ * `moduleResolution: bundler` i configen giver praecis det billede.
+ */
+export function findFatalDiagnostics(stdout) {
+  const SOURCE_EXT = /\.[cm]?[jt]sx?$/;
+  const found = [];
+  for (const rawLine of String(stdout).split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (/^error TS\d+:/.test(line)) {
+      found.push(line);
+      continue;
+    }
+    const m = /^(\S[^(]*)\(\d+,\d+\): error TS\d+:/.exec(line);
+    if (m && !SOURCE_EXT.test(m[1])) found.push(line);
+  }
+  return found;
+}
+
+/**
  * Kernen i gaten. Rent input -> rent resultat, saa den kan testes med fixtures.
  *
  * @param {object} args
@@ -294,25 +322,54 @@ function runTsc(backendDir) {
       `Fandt ikke ${toPosix(tscEntry)} — koer npm ci i backend/ foerst.`,
     );
   }
+  let stdout;
+  let status = 0;
   try {
-    const stdout = execFileSync(
+    stdout = execFileSync(
       process.execPath,
       [tscEntry, "-p", "tsconfig.core.json", "--pretty", "false"],
       { cwd: backendDir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
-    return stdout;
   } catch (err) {
-    // tsc afslutter med kode 1 naar der er fejl — det er den FORVENTEDE vej
-    // her: baseline er i dag > 0 fejl. Kun manglende output er en rigtig fejl.
-    const stdout = `${err.stdout ?? ""}${err.stderr ?? ""}`;
-    if (!stdout.trim()) {
+    // tsc afslutter med kode 1 naar der er type-fejl — det er den FORVENTEDE
+    // vej her: baseline er i dag > 0 fejl.
+    stdout = `${err.stdout ?? ""}${err.stderr ?? ""}`;
+    status = err.status ?? -1;
+    if (err.code === "ENOENT" || status === -1) {
       throw new Error(
-        `tsc gav hverken output eller fejl-linjer (exit ${err.status}). ` +
+        `tsc kunne ikke startes (${err.code ?? "ukendt fejl"}). ` +
           `Er backend/node_modules installeret?`,
       );
     }
-    return stdout;
   }
+
+  // FARLIGSTE fejlklasse for en skralde-gate: en diagnose om selve configen i
+  // stedet for om kildefilerne. Den giver NUL fejl i kerne-filerne, saa gaten
+  // ville melde "baseline kan saenkes" for hver eneste fil — og
+  // --update-baseline ville skrive 0'er ind. Altid hard stop.
+  const fatal = findFatalDiagnostics(stdout);
+  if (fatal.length) {
+    throw new Error(
+      `tsc klagede over konfigurationen, ikke over kernen — tsconfig.core.json ` +
+        `er i stykker:\n  ${fatal.join("\n  ")}`,
+    );
+  }
+
+  if (status !== 0 && status !== 1) {
+    throw new Error(
+      `tsc afsluttede med uventet exit-kode ${status}. Output:\n${stdout.slice(0, 2000)}`,
+    );
+  }
+
+  if (status === 1 && parseTscErrors(stdout).size === 0) {
+    throw new Error(
+      `tsc fejlede (exit 1) uden en eneste fil-placeret fejl. ` +
+        `Det er ikke en groen kerne — det er en koersel gaten ikke kan laese:\n` +
+        `${stdout.slice(0, 2000)}`,
+    );
+  }
+
+  return stdout;
 }
 
 function main() {
@@ -389,5 +446,12 @@ function main() {
 // Koer kun gaten naar filen er entrypoint — test-filen importerer de rene
 // funktioner herfra og maa ikke starte en tsc-koersel som sideeffekt.
 if (process.argv[1] && path.basename(process.argv[1]) === "check-ts-core-ratchet.mjs") {
-  main();
+  try {
+    main();
+  } catch (err) {
+    // En stack trace hjaelper ingen i en CI-log; beskeden gor.
+    console.error("");
+    console.error(`TypeScript-skralde-gaten kunne ikke koere: ${err.message}`);
+    process.exit(1);
+  }
 }
