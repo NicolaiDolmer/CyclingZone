@@ -67,7 +67,7 @@ inden for budget (1138 KB + 5% margin). `audit-perf-seo.mjs`: 0 🔴, 1 🟡 (bu
    `<img src="/brand/wordmark-ondark.svg" class="h-4 ...">` i footeren mangler
    `width`/`height` (Lighthouse: "Media element lacking an explicit size").
    Ses som layout-shift-årsag på både forside mobil (CLS 0,114) og forside
-   desktop (CLS 0,29) — samme footer ligger i `Layout.jsx` og rammer
+   desktop (CLS 0,29) — samme footer ligger i `Brand.jsx` og rammer
    formentlig alle sider der bruger den. **Forventet gevinst:** ét ét-linjes
    fix (sæt eksplicit `width`/`height` eller `aspect-ratio`) kan fjerne en
    væsentlig del af CLS sitewide — billigste/højeste-ROI fund på listen.
