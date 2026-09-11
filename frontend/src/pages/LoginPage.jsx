@@ -111,8 +111,15 @@ export default function LoginPage() {
   // forsvandt efter et blur + et simuleret release-tjek, i baade Chromium og
   // WebKit. Felterne starter i tom React-state, saa et reload er et tab. Porten
   // holder igen saa laenge der staar noget usendt, og mens et kald er i gang.
+  //
+  // `!success` er vigtigt (CodeRabbit 11/9): naar bekraeftelses- eller
+  // nulstillings-skaermen staar, er formularen ikke laengere paa skaermen, men
+  // `email` og de oevrige felter bliver staaende i state. Uden undtagelsen ville
+  // porten aldrig aabne igen, og en spiller der bare lod success-skaermen staa,
+  // ville aldrig faa opdateringen af sig selv. Der er intet usendt at miste paa
+  // den skaerm.
   useReloadBlock(
-    Boolean(email || password || teamName || managerName),
+    Boolean(!success && (email || password || teamName || managerName)),
     RELOAD_BLOCK_REASONS.DIRTY,
   );
   useReloadBlock(loading || resendState === "sending", RELOAD_BLOCK_REASONS.BUSY);

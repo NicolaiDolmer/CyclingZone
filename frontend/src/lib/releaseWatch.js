@@ -170,6 +170,20 @@ export function claimReloadSlot(storage, targetRelease) {
   }
 }
 
+/**
+ * Giver loop-guard-slottet tilbage. Bruges KUN naar vi braendte slottet, men
+ * alligevel ikke reloadede — fx fordi et andet recovery-lag naaede at bruge den
+ * sidste plads i det faelles budget imens. Uden det ville et reload der aldrig
+ * skete, koste den maalrelease sit ene forsoeg for altid.
+ */
+export function releaseReloadSlot(storage, targetRelease) {
+  try {
+    storage?.removeItem(getReloadGuardKey(targetRelease));
+  } catch {
+    // best-effort: kan vi ikke give det tilbage, er vi bare fail-closed.
+  }
+}
+
 export function rememberPendingTelemetry(storage, payload) {
   try {
     storage?.setItem(PENDING_TELEMETRY_KEY, JSON.stringify(payload));
@@ -371,7 +385,15 @@ export function createReleaseReloader({
         state.pendingRelease = null;
         return false;
       }
-      spendRecoverySlot(storage, "release-watch");
+      // Bogfoeringen er det autoritative tjek, ikke peeket ovenfor (CodeRabbit
+      // 11/9): `await canReload(win)` ligger imellem de to, og et andet
+      // recovery-lag kan naa at bruge den sidste plads i netop det vindue.
+      // Slaar bogfoeringen fejl, giver vi slottet tilbage, saa en senere,
+      // aegte ny release ikke staar tilbage uden sit ene forsoeg.
+      if (!spendRecoverySlot(storage, "release-watch")) {
+        releaseReloadSlot(storage, target);
+        return false;
+      }
     }
     state.reloading = true;
     state.reloadStartedAt = now();

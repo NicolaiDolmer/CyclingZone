@@ -323,6 +323,12 @@ export default function RaceSelectionPanel({
         return;
       }
       setStatus("saved");
+      // #5159 (CodeRabbit 11/9): kladden ER nu serverens, saa reload-porten skal
+      // aabne igen. Uden det blev `touched` staaende resten af panelets levetid,
+      // og en spiller der havde gemt for laenge siden ville aldrig faa
+      // opdateringen automatisk — kun via banneret. `touched` styrer ogsaa
+      // visningen af klient-valideringen, som er tom lige efter et lykkedes gem.
+      setTouched(false);
       // Efter manuel gem er udtagelsen ikke længere assistentens.
       setData((d) => (d
         ? {

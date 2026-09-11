@@ -442,6 +442,52 @@ test("M3 — budgettet løber tør på tværs af lag og lukker så alle automati
   );
 });
 
+test("M3 — en oedelagt budget-post er FAIL-CLOSED, ikke et frisk budget", () => {
+  // Foer denne aendring blev baade ugyldig JSON og ulaeselige felter laest som
+  // "ubrugt". En reload-loop der naaede at skrive skrald i noeglen, fik dermed
+  // tre friske forsoeg hver gang — praecis det budgettet findes for at stoppe.
+  for (const broken of ['{"used":', '"ikke et objekt"', '{"used":"3","windowStart":1}', "null", "[]"]) {
+    const storage = memoryStorage();
+    storage.setItem(RECOVERY_BUDGET_KEY, broken);
+    assert.equal(hasRecoveryBudget(storage), false, `skrald skal lukke porten: ${broken}`);
+    assert.equal(spendRecoverySlot(storage, "test"), false, `og der bogfoeres intet: ${broken}`);
+    assert.equal(
+      shouldAttemptChunkReload({ error: { message: "ChunkLoadError" }, release: "ny", storage }),
+      false,
+    );
+  }
+});
+
+test("M3 — spendRecoverySlot skriver ALDRIG forbi loftet", () => {
+  const storage = memoryStorage();
+  storage.setItem(RECOVERY_BUDGET_KEY, JSON.stringify({ used: RECOVERY_BUDGET_MAX, windowStart: Date.now() }));
+  assert.equal(spendRecoverySlot(storage, "for-sent"), false, "bogfoeringen selv skal afvise");
+  assert.equal(
+    JSON.parse(storage.getItem(RECOVERY_BUDGET_KEY)).used,
+    RECOVERY_BUDGET_MAX,
+    "taelleren maa ikke vokse forbi loftet",
+  );
+});
+
+test("M3 — et reload uden bogfoering sker ikke (fejlende skrivning)", () => {
+  // Storage der kan laeses men ikke skrives: peeket siger ja, bogfoeringen
+  // fejler. Uden at kraeve bogfoeringen ville vi reloade uden loft.
+  const data = new Map();
+  const storage = {
+    getItem: (key) => data.get(key) ?? null,
+    setItem: (key, value) => {
+      if (key === RECOVERY_BUDGET_KEY) throw new Error("kvote opbrugt");
+      data.set(key, String(value));
+    },
+  };
+  assert.equal(hasRecoveryBudget(storage), true, "peeket ser et ubrugt budget");
+  assert.equal(
+    shouldAttemptChunkReload({ error: { message: "ChunkLoadError" }, release: "ny", storage }),
+    false,
+    "men uden bogfoering reloader vi ikke",
+  );
+});
+
 test("M3 — budgettet er et RULLENDE vindue, ikke fanens levetid", () => {
   const storage = memoryStorage();
   const start = Date.now();

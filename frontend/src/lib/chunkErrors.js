@@ -119,13 +119,23 @@ function readBudget(storage, now) {
   if (!raw) return { used: 0, windowStart: now };
   try {
     const parsed = JSON.parse(raw);
-    const used = Number.isFinite(parsed?.used) ? parsed.used : 0;
-    const windowStart = Number.isFinite(parsed?.windowStart) ? parsed.windowStart : now;
+    // FAIL-CLOSED paa en ugyldig post (CodeRabbit 11/9). Foer blev baade
+    // ugyldig JSON og et ulaeseligt `used`/`windowStart` laest som "budgettet er
+    // ubrugt" — praecis omvendt af hvad budgettet er til for. En reload-loop der
+    // naaede at skrive skrald i noeglen, ville dermed faa tre friske forsoeg
+    // hver gang. Posten kan kun blive skrald hvis nogen har skrevet noget vi
+    // ikke selv skrev, og saa er "vi ved det ikke" det eneste aerlige svar.
+    // Konsekvensen er afgraenset: noeglen bor i sessionStorage, saa det gaelder
+    // netop denne fane, og lazyWithRetry + den brandede fallback staar tilbage.
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!Number.isFinite(parsed.used) || !Number.isFinite(parsed.windowStart)) return null;
+    const { used, windowStart } = parsed;
+    if (used < 0 || windowStart > now) return null;
     // Rullende vindue: et udløbet budget starter forfra.
     if (now - windowStart > RECOVERY_BUDGET_WINDOW_MS) return { used: 0, windowStart: now };
     return { used, windowStart };
   } catch {
-    return { used: 0, windowStart: now };
+    return null;
   }
 }
 
@@ -148,10 +158,16 @@ export function hasRecoveryBudget(storage, { max = RECOVERY_BUDGET_MAX, now = Da
  * @param {Storage|null} storage
  * @param {string} source hvilket lag brugte det ("chunk-error", "release-watch", "boot-guard")
  */
-export function spendRecoverySlot(storage, source = "unknown", { now = Date.now() } = {}) {
+export function spendRecoverySlot(storage, source = "unknown", { now = Date.now(), max = RECOVERY_BUDGET_MAX } = {}) {
   if (!storage) return false;
   const budget = readBudget(storage, now);
   if (!budget) return false;
+  // Bogfoeringen er det autoritative tjek, ikke `hasRecoveryBudget` (CodeRabbit
+  // 11/9). Kalderne peeker foerst, men mellem peek og bogfoering kan et ANDET
+  // lag naa at bruge den sidste plads — i release-watcheren ligger den kausale
+  // navigations-probes `await` praecis i det vindue. Uden denne graense kunne
+  // de to lag tilsammen skrive `used: 4` og reloade forbi loftet.
+  if (budget.used >= max) return false;
   try {
     storage.setItem(
       RECOVERY_BUDGET_KEY,
@@ -207,8 +223,8 @@ export function shouldAttemptChunkReload({ error, release, storage } = {}) {
   } catch {
     return false;
   }
-  spendRecoverySlot(storage, "boundary");
-  return true;
+  // Samme regel som den globale handler: ingen bogfoering, intet reload.
+  return spendRecoverySlot(storage, "boundary");
 }
 
 // Kausal navigations-guard (#3602) — delt af BEGGE recovery-stier (denne fil og
@@ -328,7 +344,10 @@ export function installChunkReloadHandlers({ target, release, storage, reload, d
     } catch {
       return;
     }
-    spendRecoverySlot(storage, "chunk-error");
+    // Lykkedes bogfoeringen ikke (skrivningen fejlede, eller et andet lag tog den
+    // sidste plads imens), saa reloader vi ikke. Et ubogfoert reload er et
+    // reload uden loft.
+    if (!spendRecoverySlot(storage, "chunk-error")) return;
     reloadedThisLoad = true;
     reload?.();
   };
