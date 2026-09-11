@@ -250,7 +250,8 @@ export function scoreCalendarPlan({
   rapport.placeringsbrud = rapport.tiers.reduce((n, t) =>
     n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
       + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0), 0)
-    + (rapport.raceDayEqualityViol?.length ?? 0);
+    // §1d taeller kun med naar saesonen har et maal — se scorecardGateGroups' begrundelse.
+    + (raceDayTarget != null ? (rapport.raceDayEqualityViol?.length ?? 0) : 0);
   rapport.ok = rapport.regelbrud === 0 && dækning.ok && kollisioner.length === 0
     && unassessed.length === 0;
   return rapport;
@@ -319,7 +320,15 @@ export function scorecardGateGroups(rapport) {
   // §1d (#4845): ulige antal loebsdage stopper --apply uden override, som §1b's kvote.
   // Kalenderen genereres kun EEN gang pr. saeson (§2c), saa en skaev akse kan ikke rettes
   // bagefter - og den er selve tick-takten i #4846.
-  for (const v of rapport.raceDayEqualityViol ?? []) applyBlocking.push(`løbsdage pr. division (§1d/#4845) — ${v}`);
+  //
+  // KUN naar saesonen HAR et maal. En kalender der er pakket UDEN §1d (S3, og enhver
+  // reparation af den) er ikke pludselig ulovlig fordi reglen kom til bagefter - samme
+  // disciplin som #4270 brugte da densiteten aendrede sig: en invariant maaler den kalender
+  // der staar der, mod de regler den er BYGGET med (se calendarOverlapInvariant.js's
+  // K-udledning). Uligheden staar stadig i rapporten, saa den ikke kan overses.
+  if (rapport.raceDayTarget != null) {
+    for (const v of rapport.raceDayEqualityViol ?? []) applyBlocking.push(`løbsdage pr. division (§1d/#4845) — ${v}`);
+  }
 
   return { blocking, applyBlocking, finaleDrift, uniformDrift };
 }
@@ -465,7 +474,9 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
   out.push(`\n${"═".repeat(72)}`);
   // §1d (#4845): ligheden er en SAESON-dom, ikke en pr.-division-dom.
   out.push(
-    `${ok((rapport.raceDayEqualityViol?.length ?? 0) === 0)} LØBSDAGE PR. DIVISION (§1d/#4845): ` +
+    // Uden et maal er reglen ikke slaaet til for denne saeson: da RAPPORTERES uligheden,
+    // men den doemmes ikke (se scorecardGateGroups).
+    `${rapport.raceDayTarget == null ? "--" : ok((rapport.raceDayEqualityViol?.length ?? 0) === 0)} LØBSDAGE PR. DIVISION (§1d/#4845): ` +
     `${rapport.tiers.map((t) => `D${t.tier} ${t.raceDayAxis ?? "?"}`).join(" · ")}` +
     `${rapport.raceDayTarget != null ? ` (mål ${rapport.raceDayTarget})` : " (intet mål sat)"}`,
   );
