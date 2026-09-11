@@ -17,9 +17,10 @@ gjort sit arbejde; kortet kunne bare ikke sige hvem.
 ## Rod-årsag
 
 Sentry-SDK'ens `normalizeDepth` (default 3) kollapser nestede strukturer til
-strengen `"[Object]"`. Alle fem invariant-captures i `ownershipInvariantWatch.js`
+strengen `"[Object]"`. **Fem sample-producenter** i `ownershipInvariantWatch.js`
 sendte `extra.sample` som et **array af objekter**, og blev derfor ubrugelige
-præcis når de var relevante.
+præcis når de var relevante. (Fem producenter, seks captures: `auctionFindingSample`
+fodrer både ungdoms- og sælgerløs-auktions-alarmen.)
 
 Invariant F (#4664) i **samme fil** var allerede immun — den sender flade strenge,
 med en kommentar der forklarer hvorfor, skrevet efter CYCLINGZONE-5G kostede det
@@ -54,9 +55,20 @@ med ja — ellers er den halvfærdig.
 ## Afledt fund
 
 Selve bruddet bag alarmen er **ikke** #4495 igen: rytteren har ingen
-`academy_graduation`-række overhovedet, dvs. han faldt ud af graduerings-flowet
-ved sæson-transitionen og **kan aldrig komme ind igen** — `detectGraduates` kører
-kun ved sæsonskifte, og graduerings-sweepet auto-resolverer kun eksisterende
-pending-rækker. Opsamlet i #5133 (ejer-gated: reparationen rører en spillers trup).
+`academy_graduation`-række overhovedet — hverken pending eller resolved.
+
+Hvad den manglende række **beviser**: graduerings-sweepet (`cron.js:1789`) rører
+ham ikke, for det selekterer kun eksisterende `status='pending'`-rækker. Han står
+derfor stille resten af S3.
+
+Hvad den **ikke** beviser: at sæson-transitionen 23/8 fejlede. `detectGraduates`
+kører ved hver sæson-transition og indsætter en række når den aktive sæson mangler
+én for en alderskvalificeret akademirytter — så han får efter al sandsynlighed sit
+vindue ved S4-skiftet 28/9. Vinduet imellem er ~5 uger uden nogen sti, ikke en
+permanent udelukkelse; den formulering var for stærk (CodeRabbit fangede den).
+Rod-årsagen til at han missede batchen er stadig ikke fastslået — de fire nemme
+hypoteser er afkræftet i #5133.
+
+Opsamlet i #5133 (ejer-gated: reparationen rører en spillers trup).
 
 Refs #5017 #5132 #5133 #4495 #4664

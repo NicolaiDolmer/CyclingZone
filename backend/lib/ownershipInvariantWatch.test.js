@@ -888,26 +888,74 @@ test("#4495 invariant G — akademirytter over graduerings-alderen uden aktiv au
 // #5017 forward-guard: Sentry-SDK'ens normalizeDepth kollapser nestede objekter
 // til "[Object]", så en sample af objekter gør kortet ubrugeligt og tvinger en
 // DB-udgravning ved hver alarm (CYCLINGZONE-5G, CYCLINGZONE-5M 11/9). ALLE
-// invarianternes samples skal derfor være flade strenge.
-test("#5017 alle invariant-captures sender extra.sample som flade strenge, aldrig objekter", async () => {
+// invarianternes lister skal derfor være flade strenge.
+//
+// Fixturen bryder ALLE invarianter på én gang, og fingerprint-assertionen
+// nedenfor låser det fast: uden den kunne guarden passere i det stille hvis en
+// capture-sti holdt op med at udløse (CodeRabbit 11/9). Guarden itererer over
+// enhver array-værdi i extra — ikke kun `sample` — så `teams` (invariant F) og
+// fremtidige felter arver beskyttelsen gratis.
+test("#5017 ALLE invariant-captures sender lister som flade strenge, aldrig objekter", async () => {
+  const auctions = [
+    { id: "auc-youth", rider_id: "r-1", is_youth: true, seller_team_id: null, status: "active" },
+    { id: "auc-sellerless", rider_id: "r-2", is_youth: false, seller_team_id: null, status: "extended" },
+  ];
+  const riders = [
+    { id: "r-1", team_id: "team-A", pending_team_id: null },
+    { id: "r-2", team_id: "team-B", pending_team_id: null },
+    { id: "r-3", team_id: "team-C", pending_team_id: null },
+    // Invariant E (#3330): parkering ældre end 48t, ingen aktivt etapeløb.
+    {
+      id: "r-vasco", firstname: "Vasco", lastname: "Fernandes",
+      team_id: "team-seller", pending_team_id: "team-buyer",
+      updated_at: "2026-06-22T13:48:45Z",
+    },
+    // Invariant D (#2257): akademirytter uden noget tilhørsforhold.
+    { id: "r-stranded", is_academy: true, is_retired: false, team_id: null, ai_team_id: null, pending_team_id: null },
+    // Invariant G (#4495): akademirytter over graduerings-alderen.
+    STUCK_GRADUATE,
+  ];
+  // Invariant C (#2647): 'offered' intake-række på en rytter der allerede er ejet.
+  const intake = [{ id: "i-1", team_id: "team-X", rider_id: "r-3", status: "offered" }];
+  // Invariant F (#4664): menneskehold med DNA valgt, men uden bestyrelse.
+  const teams = [{
+    id: "team-A", name: "Uden bestyrelse", is_ai: false, is_bank: false, is_frozen: false,
+    is_test_account: false, team_dna_key: "puncheur", season_1_identity_basis: { rider_count: 12 },
+  }];
+
   const calls = [];
   await runOwnershipInvariantWatch({
-    supabase: makeMock({
-      riders: [
-        STUCK_GRADUATE,
-        { id: "r-stranded", is_academy: true, is_retired: false, team_id: null, ai_team_id: null, pending_team_id: null },
-      ],
-    }),
+    supabase: makeMock({ auctions, riders, intake, teams, teamBoardMembers: [] }),
     captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    now: new Date("2026-08-04T12:00:00Z"),
+    sleepFn: async () => {}, // CYCLINGZONE-4M
   });
 
-  assert.ok(calls.length > 0, "testen er værdiløs uden mindst én capture");
+  // Uden denne assertion er guarden værdiløs: en capture-sti der holder op med
+  // at udløse ville få testen til at passere i stedet for at fejle.
+  assert.deepEqual(
+    calls.map((c) => c.ctx.fingerprint[0]).sort(),
+    [
+      "human-team-without-board-members",
+      "owned-rider-on-sellerless-auction",
+      "owned-rider-on-youth-auction",
+      "stale-offered-intake-owned-rider",
+      "stale-pending-team-id-transfer",
+      "stranded-academy-free-agent",
+      "stuck-academy-graduate",
+    ],
+    "alle syv capture-stier skal udløse — ellers dækker guarden ikke det den påstår"
+  );
+
   for (const { err, ctx } of calls) {
-    for (const entry of ctx.extra.sample ?? []) {
-      assert.equal(
-        typeof entry, "string",
-        `${err.message}: sample-element er ${typeof entry}, ikke string — Sentry viser "[Object]"`
-      );
+    for (const [field, value] of Object.entries(ctx.extra ?? {})) {
+      if (!Array.isArray(value)) continue;
+      for (const entry of value) {
+        assert.equal(
+          typeof entry, "string",
+          `${err.message}: extra.${field} indeholder ${typeof entry}, ikke string — Sentry viser "[Object]"`
+        );
+      }
     }
   }
 });
