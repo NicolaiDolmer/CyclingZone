@@ -259,6 +259,6 @@
       this.innerHTML = portrait(this.getAttribute('register') || 'flat', { outline: this.getAttribute('outline') || 1, mood: this.getAttribute('mood') || 'neutral', view: this.getAttribute('view') || 'front', helmet: this.hasAttribute('helmet') && this.getAttribute('helmet') !== 'off', inkColor: this.getAttribute('ink-color') || undefined, bad: this.getAttribute('bad') || '', helmetStyle: this.getAttribute('helmet-style') || this.getAttribute('helmetstyle') || this.getAttribute('hstyle') || 'a' });
     }
   }
-  if (!customElements.get('cz-portrait'), CZPortrait) customElements.define('cz-portrait', CZPortrait);
+  if (!customElements.get('cz-portrait')) customElements.define('cz-portrait', CZPortrait);
   window.czPortrait = portrait;
 })();
