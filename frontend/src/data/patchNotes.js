@@ -1,5 +1,48 @@
 export const PATCHES = [
   {
+    "version": "7.270",
+    "date": "2026-09-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved", "audience": "player", "topic": "Feedback",
+        "en": {
+          "title": "The features survey now closes itself, and shows when",
+          "body": "The 2026-09-features survey on the homepage now shows its closing date and closes itself on Monday 14 September at 23:59 Danish time. After that, it shows a closed screen with a link to the roadmap instead of the form."
+        },
+        "da": {
+          "title": "Spørgeskemaet lukker nu af sig selv, og viser hvornår",
+          "body": "Spørgeskemaet 2026-09-features på forsiden viser nu sin lukkedato og lukker af sig selv mandag den 14. september kl. 23:59 dansk tid. Derefter viser det en lukket flade med et link til roadmappet i stedet for selve formularen."
+        },
+        "refs": [5121, 5141]
+      },
+      {
+        "category": "new", "audience": "player", "topic": "Feedback",
+        "en": {
+          "title": "A reminder in your inbox if you have not answered the features survey",
+          "body": "If you have not opened the 2026-09-features survey, you get a reminder in your inbox before it closes. If you started it but did not send it, you get a different reminder nudging you to finish."
+        },
+        "da": {
+          "title": "En påmindelse i indbakken hvis du ikke har svaret på spørgeskemaet",
+          "body": "Har du ikke åbnet spørgeskemaet 2026-09-features, får du en påmindelse i indbakken før det lukker. Er du begyndt på det men ikke sendt det, får du en anden påmindelse, der skubber dig til at gøre det færdigt."
+        },
+        "refs": [5121]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Marketing",
+        "en": {
+          "title": "The public site got a small visual refresh",
+          "body": "The marketing site, not the game itself, moved to a new styling engine. Sections now alternate tone, the stage profile has an outline and a finish line, and riders in the standings are separated by a thin line."
+        },
+        "da": {
+          "title": "Det offentlige site fik et lille visuelt løft",
+          "body": "Marketingsitet, ikke selve spillet, er flyttet til en ny styling-motor. Sektioner skifter nu tone på skift, etapeprofilen har en konturlinje og en mållinje, og rytterne i klassementet er adskilt af en tynd streg."
+        },
+        "refs": [5138]
+      }
+    ]
+  },
+  {
     "version": "7.269",
     "date": "2026-09-10",
     "label": "Beta",
