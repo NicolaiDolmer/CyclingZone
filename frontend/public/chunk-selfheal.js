@@ -21,14 +21,33 @@
  * INTET af app-grafen — heller ikke `installChunkReloadHandlers` i main.jsx.
  * Denne fil er det eneste lag der stadig eksisterer i det scenarie.
  *
- * Boot-scope (review 4/9): kun URL'er der stod i dokumentets <head> VED INSTALL
- * ("bootUrls") accepteres som healbare targets. En modulepreload/stylesheet der
- * indsaettes af app-koden EFTER boot (fx en route-praefetch) skal IKKE kunne
- * udloese boot-vagten — den slags haandteres af `lazyWithRetry.js`. Samme snapshot
- * bruges naar vi renser cachen, saa vi aldrig querySelectorAll'er igen efter en
- * fejl (DOM'en kan se anderledes ud paa det tidspunkt). Vagten stopper ogsaa helt
- * saa snart appen har booted (`window.__czAppBooted`, sat af main.jsx) — en fejl
- * der opstaar efter et vellykket mount er ikke et boot-problem.
+ * Boot-scope (review 4/9): kun dokumentets EGNE boot-assets ("bootUrls")
+ * accepteres som healbare targets. En modulepreload/stylesheet der indsaettes af
+ * app-koden EFTER boot (fx en route-praefetch) skal IKKE kunne udloese
+ * boot-vagten — den slags haandteres af `lazyWithRetry.js`. Samme liste bruges
+ * naar vi renser cachen, saa vi aldrig querySelectorAll'er igen efter en fejl
+ * (DOM'en kan se anderledes ud paa det tidspunkt). Vagten stopper ogsaa helt saa
+ * snart appen har booted (`window.__czAppBooted`, sat af main.jsx) — en fejl der
+ * opstaar efter et vellykket mount er ikke et boot-problem.
+ *
+ * HVOR LISTEN KOMMER FRA (#5161, audit-fund H2 11/9): den blev tidligere KUN
+ * bygget med `querySelectorAll` ved install — men denne fil ligger i <head>, og
+ * paa det tidspunkt har parseren hverken naaet entry-scriptet eller Vites
+ * modulepreloads. Maalt i baade Chromium og WebKit: `count: 0,
+ * readyState: "loading"` ved install, 28 tags efter boot. Listen blev aldrig
+ * genopbygget, saa fejlhandleren afviste ENHVER fejlet ressource som "uden for
+ * boot-scope": ved en entry-404 var resultatet en tom `#root` UDEN selvheling og
+ * UDEN fallback. Derfor er den primaere kilde nu en build-genereret liste,
+ * injiceret af `vite-plugins/boot-assets-manifest.js` som en JSON-datablok lige
+ * FOER denne fil:
+ *
+ *   <script type="application/json" id="cz-boot-assets">["/assets/…"]</script>
+ *   <script src="/chunk-selfheal.js"></script>
+ *
+ * DOM-snapshottet beholdes som supplement (det daekker `npm run dev`, hvor
+ * listen kun rummer dev-entryen). Er begge tomme, er vagten reelt slukket — det
+ * maa aldrig ske i et bygget dokument, saa det logges eksplicit og saettes som
+ * `window.__czChunkSelfHealBootListEmpty` (se reportEmptyBootList).
  *
  * Falsk-alarm-guard (CI-evidens 4/9, mobile-webkit #4760): en igangvaerende
  * SPA-navigation kan afbryde en modulepreload-hentning i WebKit og udloese et
@@ -61,6 +80,9 @@
   var GUARD_KEY = "cz_chunk_selfheal_at";
   var MIN_RELOAD_INTERVAL_MS = 60000;
   var REFETCH_TIMEOUT_MS = 4000;
+  // Id'et paa JSON-datablokken vite-plugin'et cz-boot-assets-manifest skriver.
+  // Skal matche BOOT_ASSETS_ELEMENT_ID i vite-plugins/boot-assets-manifest.js.
+  var BOOT_ASSETS_ELEMENT_ID = "cz-boot-assets";
 
   function createChunkSelfHeal(win) {
     var doc = win && win.document;
@@ -92,6 +114,88 @@
         if (url && urls.indexOf(url) === -1) urls.push(url);
       }
       return urls;
+    }
+
+    // Build-listen staar som relative stier ("/assets/index-Xy42.js"), mens et
+    // fejl-events target baerer den ABSOLUTTE URL (`element.src`/`.href`). Uden
+    // denne normalisering ville intet nogensinde matche.
+    function absolutize(url) {
+      if (!url) return "";
+      try {
+        if (typeof win.URL === "function") {
+          var base = (doc && doc.baseURI) || (win.location && win.location.href) || undefined;
+          return new win.URL(url, base).href;
+        }
+      } catch {
+        // Ubrugelig base eller ingen URL-konstruktor: behold raastringen. En
+        // uoverensstemmelse koster et manglende match, ikke en fejl i booten.
+      }
+      return url;
+    }
+
+    // Primaer kilde: den build-genererede JSON-datablok (#5161). Den staar FOER
+    // denne fil i index.html, saa den er parset naar vi laeser den — i modsaetning
+    // til de modultags querySelectorAll leder efter.
+    function manifestUrls() {
+      var urls = [];
+      if (!doc || typeof doc.getElementById !== "function") return urls;
+      var node = doc.getElementById(BOOT_ASSETS_ELEMENT_ID);
+      if (!node) return urls;
+      var raw = node.textContent;
+      if (!raw) return urls;
+      var parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (err) {
+        warn(
+          "kunne ikke parse boot-listen i #" +
+            BOOT_ASSETS_ELEMENT_ID +
+            ": " +
+            (err && err.message ? err.message : err),
+        );
+        return urls;
+      }
+      if (!parsed || typeof parsed.length !== "number") return urls;
+      for (var i = 0; i < parsed.length; i += 1) {
+        var url = absolutize(parsed[i]);
+        if (url && urls.indexOf(url) === -1) urls.push(url);
+      }
+      return urls;
+    }
+
+    // Assertion/telemetri (#5161). I et BYGGET dokument er listen aldrig tom —
+    // vite-pluginet afbryder selv buildet hvis den ville blive det. Ser vi den
+    // alligevel tom her, er vagten reelt slukket: ingen URL kan matche
+    // boot-scope, og en entry-404 ville give praecis den tomme `#root` uden
+    // selvheling og uden fallback som audit-fund H2 beskriver. Flaget er
+    // laesbart for app-koden (og dermed for Sentry, som ikke er loaded endnu paa
+    // dette tidspunkt i booten).
+    function reportEmptyBootList() {
+      try {
+        win.__czChunkSelfHealBootListEmpty = true;
+      } catch {
+        // Frosset/proxied window: flaget er en bonus, advarslen er det vigtige.
+      }
+      warn(
+        "boot-listen er TOM ved install (readyState=" +
+          ((doc && doc.readyState) || "ukendt") +
+          ') — <script id="' +
+          BOOT_ASSETS_ELEMENT_ID +
+          '"> mangler. Vagten kan ikke genkende entry-404 i dette dokument.',
+      );
+    }
+
+    // Boot-scope-testen. Normalt: stod URL'en paa boot-listen?
+    //
+    // Undtagelsen daekker det tilfaelde der aldrig maa opstaa: en TOM liste. Da
+    // kan intet matche, og en entry-404 ville passere i stilhed (#5161). Et
+    // `<script type="module">` i dokumentet ER pr. definition et boot-asset —
+    // app-koden indsaetter aldrig den slags (lazy imports bruger
+    // `<link rel="modulepreload">`), saa netop den tag-type er sikker at
+    // acceptere uden liste. Preloads og stylesheets er det ikke.
+    function inBootScope(tag, url) {
+      if (url && bootUrls.indexOf(url) !== -1) return true;
+      return bootUrls.length === 0 && tag === "script";
     }
 
     // Fail-closed: uden laesbar sessionStorage kan vi ikke bevise at vi ikke
@@ -250,7 +354,10 @@
             return;
           }
 
-          var urls = bootUrls;
+          // Tom liste burde ikke kunne ske i et bygget dokument (se
+          // reportEmptyBootList), men skulle den alligevel: rens i det mindste
+          // den URL vi ved fejlede, saa den cachede 404 ikke overlever reload'et.
+          var urls = bootUrls.length ? bootUrls : confirmUrl ? [confirmUrl] : [];
           warn(reason + " — renser " + urls.length + " modul-URL'er med cache:'reload' og genindlaeser én gang");
 
           var reload = function () {
@@ -324,20 +431,20 @@
 
       if (tag === "script" && attr("type") === "module") {
         var src = target.src;
-        // Boot-scope: kun targets der stod i dokumentet ved install().
-        if (bootUrls.indexOf(src) === -1) return;
+        // Boot-scope: kun dokumentets egne boot-assets.
+        if (!inBootScope("script", src)) return;
         heal("entry-modulet kunne ikke hentes (" + (src || "ukendt URL") + ")", src);
         return;
       }
       if (tag === "link" && attr("rel") === "modulepreload") {
         var href = target.href;
-        if (bootUrls.indexOf(href) === -1) return;
+        if (!inBootScope("link", href)) return;
         heal("modulepreload fejlede (" + (href || "ukendt URL") + ")", href);
         return;
       }
       if (tag === "link" && attr("rel") === "stylesheet") {
         var cssHref = target.href;
-        if (bootUrls.indexOf(cssHref) === -1) return;
+        if (!inBootScope("link", cssHref)) return;
         heal("stylesheet fejlede (" + (cssHref || "ukendt URL") + ")", cssHref);
       }
     }
@@ -345,8 +452,16 @@
     function install() {
       if (!win || typeof win.addEventListener !== "function") return function () {};
 
-      // Snapshot FOER vi lytter efter noget — se boot-scope-noten oeverst i filen.
-      bootUrls = moduleUrls();
+      // Boot-listen FOER vi lytter efter noget — se boot-scope-noten oeverst i
+      // filen. Build-manifestet er den autoritative kilde; DOM-snapshottet
+      // supplerer det (dev-serveren har intet manifest-indhold ud over
+      // dev-entryen, og en fremtidig tag-variant vi ikke kender fanges stadig).
+      bootUrls = manifestUrls();
+      var domUrls = moduleUrls();
+      for (var u = 0; u < domUrls.length; u += 1) {
+        if (bootUrls.indexOf(domUrls[u]) === -1) bootUrls.push(domUrls[u]);
+      }
+      if (bootUrls.length === 0) reportEmptyBootList();
 
       win.addEventListener("error", onWindowError, true);
       win.addEventListener("pagehide", function () {

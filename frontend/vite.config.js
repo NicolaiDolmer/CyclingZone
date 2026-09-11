@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
+import { bootAssetsManifestPlugin } from "./vite-plugins/boot-assets-manifest.js";
 
 const enableSentryUpload = Boolean(
   process.env.SENTRY_AUTH_TOKEN &&
@@ -111,6 +112,10 @@ export default defineConfig({
     worktreeIdPlugin(),
     releaseMetaPlugin(),
     patchNotesJsonPlugin(),
+    // #5161: skriver boot-assets (entry + modulepreloads + asset-stylesheets) som
+    // JSON-datablok lige FOER /chunk-selfheal.js, saa boot-vagten har en komplet
+    // liste allerede mens parseren er midt i <head>.
+    bootAssetsManifestPlugin(),
     enableSentryUpload
       ? sentryVitePlugin({
           authToken: process.env.SENTRY_AUTH_TOKEN,
