@@ -9,6 +9,7 @@ function makeSupabase(state) {
   const queries = [];
   function builder(table) {
     const filters = [];
+    let currentQuery = null;
     const rows = () => {
       let out = [...(state[table] || [])];
       for (const [op, col, val] of filters) {
@@ -24,8 +25,15 @@ function makeSupabase(state) {
       eq(c, v) { filters.push(['eq', c, v]); return api; },
       neq(c, v) { filters.push(['neq', c, v]); return api; },
       gt(c, v) { filters.push(['gt', c, v]); return api; },
-      in(c, v) { queries.push({ table, column: c, ids: v }); filters.push(['in', c, v]); return api; },
-      order() { return api; },
+      in(c, v) {
+        currentQuery = { table, column: c, ids: v, orderBy: [] };
+        queries.push(currentQuery);
+        filters.push(['in', c, v]);
+        return api;
+      },
+      // #4959: fanger orderBy-kolonnerne saa tests kan laase fetchAllRows'
+      // sortering (stabil, unik) uden en rigtig Supabase-forbindelse.
+      order(col) { if (currentQuery) currentQuery.orderBy.push(col); return api; },
       range(from, to) { return Promise.resolve({ data: rows().slice(from, to + 1), error: null }); },
       then(resolve) { return resolve({ data: rows(), error: null }); },
     };
@@ -92,6 +100,22 @@ test('#4959 et claimet loeb taeller som igangvaerende', async () => {
   const release = await inflightReleaseByTeam(makeSupabase(state), ['ai1']);
   assert.deepEqual(release.get('ai1').raceIds, ['R1']);
   assert.equal(release.get('ai1').lastStageAt, '2026-09-14T18:48:00.000Z');
+});
+
+// #4959 reviewer-fund: fetchAllRows (backend/lib/supabasePagination.js) kraever en
+// stabil, UNIK sortering, ellers kan sider gabe paa store tabeller. race_id alene er
+// ikke unikt paa hverken race_stage_schedule eller race_stage_claims (flere etaper pr.
+// loeb) - laas at begge queries sorterer paa en sekundaer, unikgoerende kolonne.
+test('#4959 race_stage_schedule og race_stage_claims sorteres stabilt paa sekundaer noegle', async () => {
+  const state = seedRunningStageRace();
+  state.races = [{ id: 'R1', status: 'scheduled', stages_completed: 0 }];
+  state.race_stage_claims = [{ race_id: 'R1', stage_index: 0 }];
+  const supabase = makeSupabase(state);
+  await inflightReleaseByTeam(supabase, ['ai1']);
+  const scheduleQuery = supabase.__queries.find((q) => q.table === 'race_stage_schedule');
+  assert.deepEqual(scheduleQuery.orderBy, ['race_id', 'stage_number']);
+  const claimsQuery = supabase.__queries.find((q) => q.table === 'race_stage_claims');
+  assert.deepEqual(claimsQuery.orderBy, ['race_id', 'stage_index']);
 });
 
 // En entry-raekke kan baere et andet team_id end rytterens nuvaerende hold; det er

@@ -121,13 +121,13 @@ export async function inflightReleaseByTeam(supabase, teamIds) {
   const unstarted = open.filter((r) => !((r.stages_completed || 0) > 0)).map((r) => r.id);
   const claims = unstarted.length
     ? await selectByIds(supabase, { table: 'race_stage_claims', columns: 'race_id',
-      inColumn: 'race_id', ids: unstarted, orderBy: ['race_id'] })
+      inColumn: 'race_id', ids: unstarted, orderBy: ['race_id', 'stage_index'] })
     : [];
   const inflight = [...new Set([...started, ...claims.map((c) => c.race_id)])];
   if (!inflight.length) return result;
 
   const schedule = await selectByIds(supabase, { table: 'race_stage_schedule',
-    columns: 'race_id, scheduled_at', inColumn: 'race_id', ids: inflight, orderBy: ['race_id'] });
+    columns: 'race_id, scheduled_at', inColumn: 'race_id', ids: inflight, orderBy: ['race_id', 'stage_number'] });
   const lastStageByRace = new Map();
   for (const row of schedule) {
     const at = row.scheduled_at ? Date.parse(row.scheduled_at) : NaN;

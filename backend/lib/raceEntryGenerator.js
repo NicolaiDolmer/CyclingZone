@@ -1087,9 +1087,16 @@ export async function runRaceEntryGenerator({
         "dødvandet. Kør database/2026-08-24-4163-restore-deferrable-double-booking.sql (#4163)."
       );
     }
-    console.warn(
-      `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
-    );
+    // #4959: et drænende AI-hold afvises af DB-guarden (#4753) på batch-niveau for
+    // HVER tick indtil app-laget selv opdager markeringen (trin 5) — uden dette tjek
+    // logges "batch-RPC afvist" som en advarsel pr. tick for en helt forventet
+    // afvisning. Per-enheds-fallbacken nedenfor rammer allerede sin egen
+    // isDrainingAiObligation-gren (linje ~937) og springer enheden stille over.
+    if (!isDrainingAiObligation(batchErr)) {
+      console.warn(
+        `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
+      );
+    }
     for (const { unit } of changed) {
       await applyUnitWithRecovery(unit);
     }
