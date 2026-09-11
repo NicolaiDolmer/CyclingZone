@@ -17,11 +17,9 @@ updates:
         update-types:
           - minor
           - patch
-    # Major-bumps lever som separate PRs (kræver review)
-    ignore:
-      # Express 5 har breaking middleware-API — #4565 - review 2026-12-01
-      - dependency-name: "express"
-        update-types: ["version-update:semver-major"]
+    # Ingen ignore-entries: major-bumps lever som separate, ejer-gatede PRs.
+    # Express-ignoren er fjernet 2026-09-11 sammen med migrationen til
+    # express@5 (#4565) — Dependabot følger nu Express som alt andet.
 
   # Frontend dependencies — React, Vite, Tailwind mv.
   - package-ecosystem: npm
