@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { getSeasonHonours } from "../lib/rankingsApi.ts";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useParams } from "react-router";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
@@ -205,8 +206,7 @@ export default function SeasonEndPage() {
   const loadHonours = async (season) => {
     setHonours({ status: "loading", data: null });
     try {
-      const { data, error: honoursError } = await supabase
-        .rpc("get_season_honours", { p_season_id: season.id });
+      const { data, error: honoursError } = await getSeasonHonours(season.id);
       if (honoursError) throw honoursError;
       setHonours({ status: "ready", data: normalizeHonours(data) });
     } catch (e) {

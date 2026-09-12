@@ -22,7 +22,13 @@ eksisterende `requireAuth`, Zod-validering og eksplicitte SELECT-kolonner.
 Lister pagineres server-side med stabil sortering. De 10 direkte reads i
 9 frontend-filer er peget om; kontrakt og testplan står i
 [`slices/5176-matviews-behind-backend.md`](slices/5176-matviews-behind-backend.md).
-Preview og e2e anvender de samme API-matchers og seeds.
+Preview og e2e anvender de samme API-matchers og seeds. Review fandt også
+`get_season_honours()` som indirekte INVOKER-læsning: `SeasonEndPage.jsx`
+bruger nu `/api/rankings/honours`. Serveren henter aggregater via service_role
+og synlige ryttere/hold med den validerede brugers Authorization-header.
+Eksisterende RLS anvendes dermed før top-5, og database-sorteringen bevarer
+navne/id-tiebreaks. En test med en skjult historisk topscorer og seks synlige
+ryttere beviser, at de fem synlige vælges. Ingen nye DEFINER-funktioner.
 
 `database/2026-09-12-5176-revoke-matview-select.sql` revoker SELECT fra
 PUBLIC/anon/authenticated og giver eksplicit SELECT til service_role.
@@ -78,7 +84,13 @@ samme sortering, derefter revoke af authenticated-EXECUTE på RPC'en.
 Alternativt en separat public-safe projektion; ikke en bred subscriptions-
 policy. Live-RLS er ikke genverificeret her, og ingen founder-policy ændres.
 
-### `is_offered_intake_rider(uuid)`: ejerens adgangsbeslutning afventes
+### `is_offered_intake_rider(uuid)`: B godkendt af ejeren 12/9 2026
+
+Ejerens svar i Codex-sessionen: **"B: Kun indloggede må læse riders"**.
+Dette fastlægger adgangsreglen. Policy-ændringen og de tilhørende whitelist-
+ændringer er endnu ikke implementeret eller appliceret; den nuværende
+fail-closed-tilstand er uændret. Implementering kræver samlet post-verifikation
+af policy-roller, funktionsadgang og de to whitelist-poster nedenfor.
 
 Kodegennemgang 12/9: `App.jsx` placerer `/riders/:id`, `/teams/:id` og
 `/managers/:teamId` bag `ProtectedRoute`. `LandingPage.jsx` viser oversat
@@ -98,7 +110,7 @@ anon-SELECT på riders. Browser/prod-log-bevis for anon er ikke genkørt.
 Et `TO authenticated`-skift alene fjerner ikke 0029: authenticated skal
 stadig kunne evaluere hjælperen. Eliminering af WARN kræver desuden privat
 helper/schema eller en anden gennemtestet policy-kontrakt. Intet af dette
-ændres uden ejerens svar. De to anon-whitelist-poster i
+ændres som en samlet verificeret migration efter ejerens B-beslutning. De to anon-whitelist-poster i
 `scripts/security-rls-policy-fn-grants.sql` skal afstemmes ved et policy-skift,
 ellers giver vagten `policy_fn_whitelist_stale`.
 

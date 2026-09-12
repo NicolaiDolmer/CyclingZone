@@ -11,7 +11,7 @@ export function createRankingsClient({ baseUrl, headers, fetcher }: {
     if (!auth) throw new Error("Not signed in");
     const search = new URLSearchParams(query).toString();
     const response = await fetcher(`${baseUrl}${path}${search ? `?${search}` : ""}`, { headers: auth });
-    if (!response.ok) throw new Error(`Ranking request failed (${response.status})`);
+    if (!response.ok) throw Object.assign(new Error(`Ranking request failed (${response.status})`), { status: response.status });
     return response.json();
   }
 
@@ -43,6 +43,22 @@ export function createRankingsClient({ baseUrl, headers, fetcher }: {
     }),
     getTopRiderRankings: (seasonId: string) => rows("/api/rankings/riders", { season_id: seasonId, top: "5" }),
     fetchTeamStandings: (seasonId: string) => unwrap(rows("/api/rankings/standings", { season_id: seasonId })),
+    getSeasonHonours: async (seasonId: string): Promise<Result<{ points: Row[]; wins: Row[] }>> => {
+      try {
+        const body = await request("/api/rankings/honours", { season_id: seasonId }) as {
+          unavailable?: boolean; data?: { points?: unknown; wins?: unknown };
+        } | null;
+        if (!body?.data || !Array.isArray(body.data.points) || !Array.isArray(body.data.wins)) throw new Error("Invalid honours response");
+        return { data: { points: body.data.points, wins: body.data.wins }, error: null };
+      } catch (error) {
+        // During a staggered deployment only this optional block stays hidden.
+        // Preserve the existing unavailable UI contract; 500/403 remain errors.
+        if (error instanceof Error && "status" in error && error.status === 404) {
+          return { data: null, error: Object.assign(new Error("Honours endpoint not available yet"), { code: "PGRST202" }) };
+        }
+        return { data: null, error: error instanceof Error ? error : new Error("Honours request failed") };
+      }
+    },
     fetchTeamRacePoints: (seasonId: string) => unwrap(rows("/api/rankings/race-points", { season_id: seasonId })),
     getRaceDayPoints: (raceIds: string[]) => rows("/api/rankings/race-points", { race_ids: raceIds.join(",") }),
     getRaceCount: async (teamId: string): Promise<{ count: number | null; error: Error | null }> => {

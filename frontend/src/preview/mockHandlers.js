@@ -872,6 +872,7 @@ const SEASON_MATRIX_SEED = {
 // filtrerer server-side (feedback-indbakken) læser den.
 export function apiResponse(pathname, search = "") {
   const rankingQuery = new URLSearchParams(search);
+  if (pathname.endsWith("/api/rankings/honours")) return { data: SEED_SEASON_HONOURS };
   if (pathname.endsWith("/api/rankings/global")) {
     const teamId = rankingQuery.get("team_id");
     return { data: teamId ? SEED_GLOBAL_RANK.filter(row => row.team_id === teamId) : SEED_GLOBAL_RANK };

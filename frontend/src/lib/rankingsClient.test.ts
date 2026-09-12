@@ -45,3 +45,14 @@ test("network, HTTP and malformed-success failures reach existing error handling
     assert.equal((await client.getRaceCount("team")).count, null);
   }
 });
+
+test("honours preserves two lists and treats an undeployed endpoint separately from a server failure", async () => {
+  const clientFor = (status: number, body: unknown) => createRankingsClient({ baseUrl: "", headers: async () => ({}), fetcher: async () => Response.json(body, { status }) });
+  const honours = { points: [{ rider_id: "r", points: 12 }], wins: [] };
+  assert.deepEqual((await clientFor(200, { data: honours }).getSeasonHonours("s")).data, honours);
+  const missing = await clientFor(404, {}).getSeasonHonours("s");
+  assert.equal((missing.error as Error & { code?: string }).code, "PGRST202");
+  const failed = await clientFor(500, {}).getSeasonHonours("s");
+  assert.ok(failed.error);
+  assert.equal((failed.error as Error & { code?: string }).code, undefined);
+});

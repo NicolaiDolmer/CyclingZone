@@ -4,7 +4,7 @@ import { createRankingsClient } from "./rankingsClient.ts";
 export const {
   fetchGlobalRanks, getGlobalRank, fetchRiderRankings, getRiderRankings,
   getTopRiderRankings, fetchTeamStandings, fetchTeamRacePoints,
-  getRaceDayPoints, getRaceCount,
+  getRaceDayPoints, getRaceCount, getSeasonHonours,
 } = createRankingsClient({
   baseUrl: import.meta.env.VITE_API_URL || "",
   headers: () => authHeaders({ json: false }),

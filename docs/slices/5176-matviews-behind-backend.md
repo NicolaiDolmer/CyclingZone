@@ -9,7 +9,9 @@ SSOT: [SUPABASE_SECURITY_ADVISORS](../SUPABASE_SECURITY_ADVISORS.md),
 
 Læsningerne er kortlagt før kode i
 [#5176-kommentaren](https://github.com/NicolaiDolmer/CyclingZone/issues/5176#issuecomment-5647210272).
-10 reads i 9 filer; kontrakten kopieres ind i draft-PR før implementation.
+10 direkte reads i 9 filer; kontrakten blev lagt i draft-PR #5183 før kode.
+Review fandt desuden honours-INVOKER-afhængigheden i SeasonEndPage:
+11 læsestier i 10 filer i den endelige kontrakt.
 
 - [ ] `backend/routes/rankings.ts`: separat router med injiceret eksisterende
   `requireAuth`, service-client og fejllogger. Zod afviser ukendte filtre,
@@ -19,6 +21,8 @@ Læsningerne er kortlagt før kode i
   GET `/api/rankings/standings`: season_id kræves.
   GET `/api/rankings/race-points`: season_id eller race_ids kræves.
   GET `/api/rankings/race-count`: team_id kræves; alle sæsoner bevares.
+  GET `/api/rankings/honours`: season_id kræves; aggregater via service_role,
+  rytter/hold-display via brugerens RLS før top-5. Ingen skjulte kandidater.
   Eksplicitte SELECT-kolonner; serveren paginerer med stabil sortering.
 - [ ] `frontend/src/lib/rankingsApi.ts`: authHeaders + fetch; transportfejl
   returneres som `{ data: null, error }`; liste-helpers kaster til eksisterende
@@ -29,6 +33,7 @@ Læsningerne er kortlagt før kode i
   service_role. Kommenteret verify-blok; Codex anvender ingen SQL i prod.
 - [ ] SSOT opdateres med målingen 7 WARN / 117 INFO og de tre beslutningsfund.
   Founder INVOKER er ikke adfærdsneutral med subscriptions_select_own.
+  Ejeren har valgt B (loginpligtige rider-data); ingen policy er appliceret.
 
 ## Verifikation
 

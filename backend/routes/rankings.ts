@@ -1,8 +1,9 @@
 import { Router } from "express";
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { fetchAllRows } from "../lib/supabasePagination.js";
+import { readHonours } from "./rankingHonours.ts";
 
 const uuid = z.uuid();
 const ids = z.string().max(3699).transform(value => value.split(","))
@@ -21,20 +22,21 @@ const GLOBAL_COLUMNS = "team_id,name,division,is_ai,banked_points,season_points,
 const RIDER_COLUMNS = "season_id,rider_id,points,prize_earned,stage_wins,gc_wins,classic_wins,pts_wins,mtn_wins,young_wins,yellow_days,green_days,polka_days,white_days,top3,top10";
 const STANDINGS_COLUMNS = "season_id,team_id,comp_wins,comp_podiums,podiums,prize_earned";
 
-export function createRankingsRouter({ supabase, requireAuth, reportError }: {
+export function createRankingsRouter({ supabase, requireAuth, reportError, viewerClient }: {
   supabase: SupabaseClient;
   requireAuth: RequestHandler;
   reportError: (error: unknown) => void;
+  viewerClient: (authorization: string) => SupabaseClient;
 }) {
   const router = Router();
   router.use(requireAuth);
 
-  function get<T extends z.ZodType>(path: string, schema: T, read: (query: z.output<T>) => Promise<unknown>) {
+  function get<T extends z.ZodType>(path: string, schema: T, read: (query: z.output<T>, req: Request) => Promise<unknown>) {
     router.get(path, async (req, res) => {
       const parsed = schema.safeParse(req.query);
       if (!parsed.success) { res.status(400).json({ error: "Invalid ranking query" }); return; }
       try {
-        res.set("Cache-Control", "private, no-store").json(await read(parsed.data));
+        res.set("Cache-Control", "private, no-store").json(await read(parsed.data, req));
       } catch (error) {
         reportError(error);
         res.status(500).json({ error: "Unable to load rankings" });
@@ -72,6 +74,10 @@ export function createRankingsRouter({ supabase, requireAuth, reportError }: {
   get("/standings", seasonQuery, async ({ season_id }) => ({
     data: await fetchAllRows(() => supabase.from("team_standings_ext_mv").select(STANDINGS_COLUMNS)
       .eq("season_id", season_id).order("team_id")),
+  }));
+
+  get("/honours", seasonQuery, async ({ season_id }, req) => ({
+    data: await readHonours(supabase, viewerClient(req.headers.authorization || ""), season_id),
   }));
 
   get("/race-points", raceQuery, async ({ season_id, race_ids }) => ({

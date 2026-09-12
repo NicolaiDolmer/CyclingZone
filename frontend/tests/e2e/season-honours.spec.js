@@ -88,11 +88,8 @@ test("#2863 nr. 1's navn linker til rytterprofilen", async ({ page }) => {
 // Sikkerhedsnettet: RPC'en applies EFTER merge. Indtil da svarer PostgREST
 // PGRST202, og så skal siden bare undlade blokken. Resten af opsamlingen
 // (sæson-vælger, kalender, slutstilling) skal stå fuldstændig uberørt tilbage.
-test("#2863 en manglende RPC skjuler kun blokken, resten af siden overlever", async ({ page }) => {
-  await page.route("**/rest/v1/rpc/get_season_honours**", route => json(route, {
-    code: "PGRST202",
-    message: "Could not find the function public.get_season_honours(p_season_id) in the schema cache",
-  }, 404));
+test("#2863/#5176 et manglende honours-endpoint skjuler kun blokken", async ({ page }) => {
+  await page.route("**/api/rankings/honours**", route => json(route, { error: "Not found" }, 404));
 
   await login(page);
   await page.goto("/seasons");
@@ -105,11 +102,8 @@ test("#2863 en manglende RPC skjuler kun blokken, resten af siden overlever", as
 
 // En ÆGTE fejl (timeout, RLS, netværk) må ikke skjules — den skal ses, med en
 // retry der kun kører blokkens eget kald.
-test("#2863 en ægte RPC-fejl vises som fejl-tilstand i kortet", async ({ page }) => {
-  await page.route("**/rest/v1/rpc/get_season_honours**", route => json(route, {
-    code: "57014",
-    message: "canceling statement due to statement timeout",
-  }, 500));
+test("#2863/#5176 en ægte endpoint-fejl vises som fejl-tilstand i kortet", async ({ page }) => {
+  await page.route("**/api/rankings/honours**", route => json(route, { error: "Unable to load rankings" }, 500));
 
   await login(page);
   await page.goto("/seasons");
