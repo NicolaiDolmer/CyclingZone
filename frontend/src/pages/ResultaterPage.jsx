@@ -266,6 +266,7 @@ export default function ResultaterPage() {
         .or("status.eq.completed,stages_completed.gt.0"),
     ]);
     if (standingsRes.error) throw standingsRes.error;
+    if (topRiderStatsRes.error) throw topRiderStatsRes.error;
     if (racesWithResultsRes.error) throw racesWithResultsRes.error;
 
     const matchingTeams = filterByDivisionPool(standingsRes.data || [], s => s.team?.league_division_id, selection, divisionsById);
