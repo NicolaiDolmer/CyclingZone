@@ -19,6 +19,6 @@
 - **GDD-regler (ejer 10/9):** ét område pr. kort · ÉT samlet før/efter-billede før kortet · genåbn aldrig låste beslutninger.
 - **Mekanik:** byg KUN via wave.js (4 laner, semafor 2, hook); merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); migrationer applies af auto-migrate.yml, Claude post-verificerer; CI tavs på PR = merge-konflikt; go-kort på `gh pr diff` + billede; workers rører aldrig `docs/NOW.md`. `Get-Date` FØR hver logning.
 
-> **🤖 Working agent:** Codex — #5176 Supabase-rest (worktree fix-5176-matviews-behind-backend)
+> **🤖 Working agent:** Ingen aktiv session.
 
 _Historik i git-log, issue-tråde + docs/audits/._
