@@ -8,7 +8,101 @@
 > Den korte regel (tjek ved session-start, ingen WARN over 7 dage) står i
 > [`AI_OPS_REFERENCE.md`](AI_OPS_REFERENCE.md#supabase-security-advisors--7-dages-regel).
 
-## Status 11/9 2026 (kl. 12:51)
+## Status 12/9 2026 (kl. 18:27 dansk tid), #5176
+
+**Målt med `get_advisors(type: "security")`: 7 WARN + 117 INFO**,
+`observed_at=2026-09-12T16:27:58.178Z`. Fire `0016` og tre `0029`.
+De fire fund fra #5153 er dermed væk fra advisoren; grants og øvrige
+DDL-detaljer er ikke genmålt med SQL i denne session.
+
+### Fire matviews: forberedt, afventer merge og auto-migrate
+
+`backend/routes/rankings.ts` serverer de samme offentlige resultater bag
+eksisterende `requireAuth`, Zod-validering og eksplicitte SELECT-kolonner.
+Lister pagineres server-side med stabil sortering. De 10 direkte reads i
+9 frontend-filer er peget om; kontrakt og testplan står i
+[`slices/5176-matviews-behind-backend.md`](slices/5176-matviews-behind-backend.md).
+Preview og e2e anvender de samme API-matchers og seeds.
+
+`database/2026-09-12-5176-revoke-matview-select.sql` revoker SELECT fra
+PUBLIC/anon/authenticated og giver eksplicit SELECT til service_role.
+View-definitioner, refresh-RPC'er og aggregatberegninger ændres ikke.
+Lokalt PostgreSQL-bevis: migrationen køres to gange, begge klientroller
+afvises på alle fire views, og service_role kan fortsat læse dem.
+**Prod-apply er ikke udført af Codex.** Efter apply forventes 3 WARN,
+ikke 0; Claude kører kommentarens grant/kolonne-tjek og advisoren igen.
+
+**Release-afhængighed:** backenden og frontenden skal begge have denne
+version ved revoken. En gammel backend har ikke de nye routes, og en
+allerede åben gammel frontend læser fortsat matviews direkte. En preview
+med mocks beviser ikke deploy-rækkefølgen eller rettighederne i prod.
+Dette skal indgå i ejerens merge-beslutning og Claudes post-verifikation.
+
+### `is_admin()`: accepteret tilsigtet adgang, 12/9 2026
+
+0029 er her en accepteret klassifikation af tilsigtet adgang (falsk positiv
+som krav om at fjerne authenticated-EXECUTE), ikke bevis for et utilsigtet
+privilegium. Funktionen læser den aktuelle brugers admin-status og bruges
+både af session-gated frontend-RPC'er og af authenticated-RLS-policies.
+Det tidligere optalte antal er 61 policies; **ikke genmålt 12/9**.
+INVOKER er ikke en ren erstatning: users-policyens egen admin-kontrol
+ville give rekursion. Den aktuelle advisor bekræfter fortsat DEFINER-adgang.
+
+Re-verifikation ved ændring og næste ugentlige kontrol: Claude aflæser
+`pg_proc` (`prosecdef`, `proconfig`, `pg_get_functiondef`),
+`has_function_privilege` for anon/authenticated/service_role og
+`pg_policies`-referencer til funktionen; kontroller anonym afvisning samt
+admin/non-admin som hver sin session. Kontroller også session-gating i
+`RoadmapPage.jsx` og beskyttet route for `SurveyPage.jsx` i `App.jsx`.
+Genåbn vurderingen, hvis funktionens data eller kaldere ændres.
+
+Alternativ: privat skema til den privilegerede helper, policies der kalder
+den, og en public INVOKER-wrapper til frontend. Gevinst: privilegeret kode
+ligger uden for Data API og kan fjerne dette advisor-fund. Pris: migration
+af alle policy-referencer, schema-USAGE/EXECUTE-kontrakt og positive/negative
+auth-tests; wrapperens adgang må ikke blive en ny generisk privilegiekanal.
+Ikke implementeret i #5176. Accept fjerner **ikke** den målte WARN.
+
+### `founder_public_list()`: behold kontrakten, separat forslag
+
+Kilde: `2026-09-03-4649-founder-public.sql`. Funktionen læser
+**subscriptions**, ikke users, og returnerer kun team_id + founder_number.
+`2026-06-26-cz-pro-subscriptions.sql` giver authenticated SELECT, men RLS
+begrænser den til eget abonnement. INVOKER alene skjuler andre founders
+og ændrer deres rækkenummerering. En bredere SELECT-policy ville med det
+eksisterende tabel-grant også åbne betalingsstatus og providerreferencer.
+Det er derfor **ikke** en adfærdsneutral eller sikker enkeltændring.
+
+Anbefaling: separat backend-læseendpoint med præcis to outputfelter og
+samme sortering, derefter revoke af authenticated-EXECUTE på RPC'en.
+Alternativt en separat public-safe projektion; ikke en bred subscriptions-
+policy. Live-RLS er ikke genverificeret her, og ingen founder-policy ændres.
+
+### `is_offered_intake_rider(uuid)`: ejerens adgangsbeslutning afventes
+
+Kodegennemgang 12/9: `App.jsx` placerer `/riders/:id`, `/teams/:id` og
+`/managers/:teamId` bag `ProtectedRoute`. `LandingPage.jsx` viser oversat
+statisk indhold; `LaunchWaitlistForm.jsx` skriver kun launch_waitlist.
+`RoadmapPage.jsx` læser roadmap_items/votes og session-gater is_admin.
+`frontend/index.html` bruger den statiske `og-cycling-zone.png`; OG-billedet
+er ikke afhængigt af riders. Ingen af disse konkrete flader kræver
+anon-SELECT på riders. Browser/prod-log-bevis for anon er ikke genkørt.
+
+- **A: offentlig rider-adgang.** Fordel: giver plads til offentlige profiler.
+  Ulempe: kræver en eksplicit sikker feltliste og reparation af anon-
+  funktionsrettigheder; nuværende 42501 er ikke en fungerende public API.
+- **B: loginpligtig rider-adgang (anbefalet).** Fordel: matcher de eksisterende
+  routes og undgår policy-evaluering som anon. Ulempe: eksterne anon-klienter
+  får ingen riderdata; fremtidige offentlige profiler kræver et særskilt API.
+
+Et `TO authenticated`-skift alene fjerner ikke 0029: authenticated skal
+stadig kunne evaluere hjælperen. Eliminering af WARN kræver desuden privat
+helper/schema eller en anden gennemtestet policy-kontrakt. Intet af dette
+ændres uden ejerens svar. De to anon-whitelist-poster i
+`scripts/security-rls-policy-fn-grants.sql` skal afstemmes ved et policy-skift,
+ellers giver vagten `policy_fn_whitelist_stale`.
+
+## Historisk status 11/9 2026 (kl. 12:51, før #5166)
 
 11 WARN + 117 INFO — **målt runtime-tilstand**, ikke forventet tilstand.
 Migrationen `database/2026-09-11-5153-security-advisors-hardening.sql` (#5153) er

@@ -764,6 +764,9 @@ export const SEED_TEAM_RACE_POINTS_MV = [
   { season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 25 },
 ];
 
+// #5176: preserve the formerly empty standings-extension mock explicitly.
+export const SEED_TEAM_STANDINGS_EXT = [];
+
 // ── Global Rank-seed (#2792/#3193) ───────────────────────────────────────────
 // global_rank_mv — bevidst UDEN "team-ai-preview" (AI-holdet fra
 // SEED_SEASON_STANDINGS ovenfor): efter #2792 filtrerer selve matview'et

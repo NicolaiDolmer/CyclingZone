@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { supabase } from "../lib/supabase";
+import { getRiderRankings } from "../lib/rankingsApi.ts";
 import RiderLink from "./RiderLink";
 import NationCell from "./rider/NationCell";
 import { getCountryCode3 } from "../lib/countryUtils";
@@ -59,11 +60,7 @@ export default function TeamStatsTab({ riders }) {
 
         // #2891-lektionen: server-side aggregat, ikke rå race_results til klienten.
         const [rankingsRes, raceDaysRes] = await Promise.all([
-          supabase
-            .from("rider_rankings_mv")
-            .select("rider_id, points, prize_earned, stage_wins, gc_wins, classic_wins, pts_wins, mtn_wins, young_wins")
-            .eq("season_id", seasonData.id)
-            .in("rider_id", riderIds),
+          getRiderRankings(seasonData.id, riderIds),
           supabase.rpc("get_rider_race_days", { p_rider_ids: riderIds, p_season_id: seasonData.id }),
         ]);
         // Kast eksplicit (#1851-klassen): et tavst `|| []` ville vise en tom

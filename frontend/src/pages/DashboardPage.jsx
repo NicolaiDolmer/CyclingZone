@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, Fragment } from "react";
 import { useTranslation } from "react-i18next";
+import { getRaceDayPoints } from "../lib/rankingsApi.ts";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
@@ -297,8 +298,7 @@ export default function DashboardPage() {
               .eq("team_id", teamId).in("race_id", raceIds)
           : Promise.resolve({ data: [] }),
         lastRaceDay?.raceIds.length
-          ? supabase.from("team_race_points_mv").select("team_id, race_points")
-              .in("race_id", lastRaceDay.raceIds)
+          ? getRaceDayPoints(lastRaceDay.raceIds)
           : Promise.resolve({ data: [] }),
       ]);
       // #3751: distinkte race_id'er holdet har mindst een entry i.

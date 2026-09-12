@@ -94,7 +94,7 @@ Marked: [`TRANSFER_MARKET_RULES.md`](TRANSFER_MARKET_RULES.md). Lokalt verificer
 
 ## Matviews eksponeret i API (fog of war-gennemgang 6/9, [#4870](https://github.com/NicolaiDolmer/CyclingZone/issues/4870))
 
-Fire materialized views har `GRANT SELECT ... TO anon, authenticated` og læses direkte af klienten via PostgREST. **Et matview kender ikke RLS** — der er ingen row-policies på dem, så hver kolonne er reelt offentlig for enhver der kan kalde `/rest/v1/<mv>`. Reglen er derfor: en kolonne må kun stå i et matview hvis spilleren alligevel må se tallet.
+Fire materialized views indeholder offentlige resultataggregater. #5176 flytter klientlæsningen bag `/api/rankings/*` med eksisterende login-kontrol, validerede filtre, eksplicitte kolonner og stabil server-paginering. Migrationen revoker klient-SELECT og bevarer service_role; prod-apply afventer merge/auto-migrate, se [SUPABASE_SECURITY_ADVISORS.md](SUPABASE_SECURITY_ADVISORS.md). **Et matview kender ikke RLS**. Reglen er fortsat: et felt i API-kontrakten må kun være noget spilleren må se; et service_role-endpoint skal håndhæve denne kontrakt selv.
 
 Gennemgang 6/9 mod fog of war-listen (skjult = potentiale, løn, skjulte stats som dagsform-stabilitet/vejr-teknik/højde-tolerance, interne multiplikatorer, procenter og tærskler — `docs/RACE_ENGINE_RULES.md` §4 + §"Fog of war"): **ingen skjulte tal fundet.** Alle kolonner er aggregater af `race_results` / `season_standings` / `teams`, som spilleren i forvejen ser i resultater og ranglister.
 
@@ -105,7 +105,7 @@ Gennemgang 6/9 mod fog of war-listen (skjult = potentiale, løn, skjulte stats s
 | `team_race_points_mv` | `season_id`, `team_id`, `race_id`, `race_name`, `race_points` | ok. Bemærk navnet: `race_points` er `SUM(prize_money)` pr. løb, ikke point — proportionalt (præmie = point × 75), så progressionsgrafen er korrekt, men navnet lyver. |
 | `global_rank_mv` | `team_id`, `name`, `division`, `is_ai`, `banked_points`, `season_points`, `global_points`, `active_recent`, `is_rookie`, `global_rank` | ok — alle vises eller filtreres på af Global Rank-siden. `is_ai` er degenereret: basen filtrerer AI-hold fra (`WHERE ... t.is_ai = false`), så kolonnen er altid `false`. Ingen læk, men kolonnen kan fjernes næste gang matview'et alligevel bygges om. |
 
-Konsekvens for nye kolonner: **tilføjes en kolonne til et af disse matviews, er den offentlig fra det sekund matview'et refreshes.** Skal et nyt tal kun ses af rytterens/holdets ejer, hører det ikke hjemme her — brug en RLS-beskyttet tabel eller et admin-gatet backend-endpoint.
+Konsekvens for nye kolonner efter #5176: de eksponeres ikke automatisk gennem backendens eksplicitte SELECT-lister. Udvidelse af API-feltlisten kræver samme fog of war-gennemgang. Skal et nyt tal kun ses af rytterens/holdets ejer, bruges en RLS-beskyttet tabel eller et backend-endpoint med eksplicit ejerskabskontrol. Indtil revoken er verificeret, har authenticated stadig direkte adgang til matview-kolonnerne.
 
 ## Ved ændring
 

@@ -56,6 +56,7 @@ import {
   COMPLETED_AUCTIONS,
   COMPLETED_AUCTION_BIDS,
   SEED_TEAM_RACE_POINTS_MV,
+  SEED_TEAM_STANDINGS_EXT,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -870,6 +871,32 @@ const SEASON_MATRIX_SEED = {
 // fixtures og de øvrige preview-ruter — er uændrede. Kun ruter der faktisk
 // filtrerer server-side (feedback-indbakken) læser den.
 export function apiResponse(pathname, search = "") {
+  const rankingQuery = new URLSearchParams(search);
+  if (pathname.endsWith("/api/rankings/global")) {
+    const teamId = rankingQuery.get("team_id");
+    return { data: teamId ? SEED_GLOBAL_RANK.filter(row => row.team_id === teamId) : SEED_GLOBAL_RANK };
+  }
+  if (pathname.endsWith("/api/rankings/riders")) {
+    let rows = SEED_RIDER_RANKINGS.filter(row => row.season_id === rankingQuery.get("season_id"));
+    const riderIds = rankingQuery.get("rider_ids")?.split(",");
+    if (riderIds) rows = rows.filter(row => riderIds.includes(row.rider_id));
+    if (rankingQuery.get("top") === "5") rows = [...rows].sort((a, b) => Number(b.points) - Number(a.points)).slice(0, 5);
+    return { data: rows };
+  }
+  if (pathname.endsWith("/api/rankings/standings")) {
+    return { data: SEED_TEAM_STANDINGS_EXT.filter(row => row.season_id === rankingQuery.get("season_id")) };
+  }
+  if (pathname.endsWith("/api/rankings/race-points")) {
+    let rows = SEED_TEAM_RACE_POINTS_MV;
+    const seasonId = rankingQuery.get("season_id");
+    const raceIds = rankingQuery.get("race_ids")?.split(",");
+    if (seasonId) rows = rows.filter(row => row.season_id === seasonId);
+    if (raceIds) rows = rows.filter(row => raceIds.includes(row.race_id));
+    return { data: rows.map(({ team_id, race_id, race_points }) => ({ team_id, race_id, race_points })) };
+  }
+  if (pathname.endsWith("/api/rankings/race-count")) {
+    return { count: SEED_TEAM_RACE_POINTS_MV.filter(row => row.team_id === rankingQuery.get("team_id")).length };
+  }
   if (pathname.endsWith("/api/races/selection/season")) return SEASON_MATRIX_SEED;
 
   // Før de generiske endsWith-grene: managerprofilen bærer et id i pathen.
