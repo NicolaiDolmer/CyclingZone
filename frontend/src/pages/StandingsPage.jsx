@@ -11,6 +11,7 @@ import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { ABILITY_SELECT, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { mergeStandings } from "../lib/standingsMerge";
 import { fetchAllRows } from "../lib/supabasePagination";
+import { fetchTeamStandings, fetchTeamRacePoints } from "../lib/rankingsApi.ts";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import useFlipRows from "../hooks/useFlipRows";
 import {
@@ -154,14 +155,10 @@ export default function StandingsPage() {
     // efter hovedbolkens Promise.all resolver) sparer endnu en fuld round-trip;
     // await'es sammen med `merged` længere nede.
     const extDataPromise = activeSeason
-      ? fetchAllRows(() => supabase.from("team_standings_ext_mv").select("*")
-          .eq("season_id", activeSeason.id)
-          .order("team_id", { ascending: true }))
+      ? fetchTeamStandings(activeSeason.id)
       : Promise.resolve([]);
     const progDataPromise = activeSeason
-      ? fetchAllRows(() => supabase.from("team_race_points_mv").select("team_id, race_id, race_points")
-          .eq("season_id", activeSeason.id)
-          .order("team_id", { ascending: true }).order("race_id", { ascending: true }))
+      ? fetchTeamRacePoints(activeSeason.id)
       : Promise.resolve([]);
 
     const [teamsRes, standingsRes, racesRes, poolsRes] = await Promise.all([

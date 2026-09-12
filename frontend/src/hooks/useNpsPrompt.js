@@ -4,6 +4,7 @@ import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { useConsent } from "../lib/consent.jsx";
 import { logEvent } from "../lib/logEvent";
 import { shouldPromptNps, normalizeNpsSubmission } from "../lib/npsGating.js";
+import { getRaceCount } from "../lib/rankingsApi.ts";
 
 // #940 In-app NPS-prompt-hook. Omskrevet i #4997.
 //
@@ -54,7 +55,7 @@ export function useNpsPrompt({ teamId, surface } = {}) {
       const [{ data: userRow }, { data: existing }, { count: raceCount }] = await Promise.all([
         supabase.from("users").select("nps_last_prompted_at").eq("id", user.id).maybeSingle(),
         supabase.from("nps_responses").select("id").eq("user_id", user.id).limit(1),
-        supabase.from("team_race_points_mv").select("race_id", { count: "exact", head: true }).eq("team_id", teamId),
+        getRaceCount(teamId),
       ]);
       if (cancelled) return;
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getGlobalRank } from "../lib/rankingsApi.ts";
 import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
@@ -154,7 +155,7 @@ export default function TeamProfilePage() {
         .select("*, season:season_id(number, status)").eq("team_id", id)
         .order("updated_at", { ascending: false }).limit(1).single(),
       // #2453: Global Rank-placering (null hvis inaktiv/ikke rankeret — skjules i UI).
-      supabase.from("global_rank_mv").select("global_rank, global_points").eq("team_id", id).maybeSingle(),
+      getGlobalRank(id),
     ]);
 
     // #2849 bølge 5: en ægte query-/netværksfejl (error != null) er noget andet end

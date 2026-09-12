@@ -10,6 +10,7 @@
  */
 
 import express from "express";
+import { createRankingsRouter } from "./rankings.ts";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
@@ -854,6 +855,14 @@ async function requireAuth(req, res, next) {
   setSentryUser(user.id);
   next();
 }
+
+router.use("/rankings", createRankingsRouter({
+  supabase, requireAuth, reportError: captureException,
+  viewerClient: (authorization) => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }),
+}));
 
 async function requireAdmin(req, res, next) {
   await requireAuth(req, res, async () => {
