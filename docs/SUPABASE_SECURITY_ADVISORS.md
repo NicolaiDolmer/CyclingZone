@@ -15,7 +15,7 @@
 De fire fund fra #5153 er dermed væk fra advisoren; grants og øvrige
 DDL-detaljer er ikke genmålt med SQL i denne session.
 
-### Fire matviews: forberedt, afventer merge og auto-migrate
+### Fire matviews: to-trinsudgivelse godkendt 12/9, revoke afventer trin 2
 
 `backend/routes/rankings.ts` serverer de samme offentlige resultater bag
 eksisterende `requireAuth`, Zod-validering og eksplicitte SELECT-kolonner.
@@ -30,19 +30,30 @@ Eksisterende RLS anvendes dermed før top-5, og database-sorteringen bevarer
 navne/id-tiebreaks. En test med en skjult historisk topscorer og seks synlige
 ryttere beviser, at de fem synlige vælges. Ingen nye DEFINER-funktioner.
 
-`database/2026-09-12-5176-revoke-matview-select.sql` revoker SELECT fra
+`database/proposals/2026-09-12-5176-revoke-matview-select.sql` revoker SELECT fra
 PUBLIC/anon/authenticated og giver eksplicit SELECT til service_role.
 View-definitioner, refresh-RPC'er og aggregatberegninger ændres ikke.
 Lokalt PostgreSQL-bevis: migrationen køres to gange, begge klientroller
 afvises på alle fire views, og service_role kan fortsat læse dem.
-**Prod-apply er ikke udført af Codex.** Efter apply forventes 3 WARN,
+Filen ligger uden for auto-migrate-globben. **PR #5183 ændrer derfor ingen
+database-rettigheder. Prod-apply er ikke udført af Codex.** Efter trin 2 forventes 3 WARN,
 ikke 0; Claude kører kommentarens grant/kolonne-tjek og advisoren igen.
 
-**Release-afhængighed:** backenden og frontenden skal begge have denne
-version ved revoken. En gammel backend har ikke de nye routes, og en
-allerede åben gammel frontend læser fortsat matviews direkte. En preview
-med mocks beviser ikke deploy-rækkefølgen eller rettighederne i prod.
-Dette skal indgå i ejerens merge-beslutning og Claudes post-verifikation.
+**Godkendt rækkefølge:**
+
+1. PR #5183 udgiver den nye læsning. Ved udgivelsen skal backend-endpoints
+   være klar, før den nye frontend anvendes; begge deployments og alle seks
+   endpoints kontrolleres. Test med en almindelig authenticated manager:
+   stillinger, global/rytter-rangliste, holdstatistik, dashboard og honours.
+2. Revoken aktiveres i en særskilt ejer-godkendt PR ved at flytte forslaget
+   til `database/` og afstemme staging-testen. Forinden dokumenteres, hvordan
+   allerede åbne gamle klienter er overgået til den nye frontend. Det er en
+   release-forudsætning, ikke noget preview-mocks beviser. Hvis nye endpoints
+   eller klientovergangen ikke er verificeret, forbliver forslaget inaktivt.
+3. Claude verificerer grants/kolonneadgang og advisor-tal efter auto-migrate.
+
+Ejerens tilladelse til denne opdeling er ikke et merge-go. Begge merges
+kræver fortsat eksplicit godkendelse. Indtil trin 2 vil de fire WARN bestå.
 
 ### `is_admin()`: accepteret tilsigtet adgang, 12/9 2026
 

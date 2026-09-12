@@ -1,10 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 
-const migration = readFileSync(new URL("../../database/2026-09-12-5176-revoke-matview-select.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../../database/proposals/2026-09-12-5176-revoke-matview-select.sql", import.meta.url), "utf8");
 const views = ["rider_rankings_mv", "global_rank_mv", "team_standings_ext_mv", "team_race_points_mv"];
+
+test("first rollout does not auto-apply the staged revoke", () => {
+  assert.equal(existsSync(new URL("../../database/2026-09-12-5176-revoke-matview-select.sql", import.meta.url)), false,
+    "activate the revoke only in the separately approved second rollout");
+});
 
 test("matview revokes are idempotent and preserve only service access", async () => {
   const db = new PGlite();
