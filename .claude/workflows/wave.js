@@ -763,8 +763,12 @@ async function probeBranch(track, elapsedMinutes) {
     lastCommitAgeMinutes: probeOk ? age : null,
     dirty: probe.dirty === true,
     // -1 = kunne ikke maales. Coercer man den til 0, ser en branch uden
-    // upstream - hvor ALT ligger lokalt - ud som fuldt pushet.
-    unpushed: Number.isFinite(Number(probe.unpushed)) ? Number(probe.unpushed) : -1,
+    // upstream - hvor ALT ligger lokalt - ud som fuldt pushet. Bemaerk at
+    // null/'' skal fanges eksplicit: Number(null) er 0, ikke NaN.
+    unpushed: (probe.unpushed === null || probe.unpushed === undefined || probe.unpushed === ''
+      || !Number.isFinite(Number(probe.unpushed)))
+      ? -1
+      : Number(probe.unpushed),
     note: probe.note || '',
   }
 }
@@ -774,7 +778,7 @@ async function probeBranch(track, elapsedMinutes) {
 async function gracefulStop(track, probe) {
   if (!needsGracefulStop(probe)) {
     const note = probe && probe.verdict === 'hard-cap'
-      ? 'sprunget over: branchen lever, saa lane-agenten arbejder stadig i worktreet - den pusher selv, og to agenter i samme worktree ville slaas om index.lock'
+      ? 'sprunget over ved hard-cap: agenten er ikke afbrudt og kan stadig skrive i worktreet, og to agenter samme sted ville slaas om index.lock. Worktreet er IKKE verificeret rent - tjek det med scripts/worker-status.ps1.'
       : 'worktreet var rent og pushet'
     return { skipped: true, note }
   }
