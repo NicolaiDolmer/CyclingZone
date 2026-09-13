@@ -1,12 +1,22 @@
 // #5145 — UI-gaten for nedrykning til akademiet.
 //
-// Testen importerer backendens EGNE konstanter (ACADEMY.MAX_AGE,
-// GRADUATION.GRADUATE_AGE) og pinner frontendens kopi mod dem, i stedet for at
-// gentage 21/22 som literaler her. Havde vi skrevet tallene af, ville denne fil
-// være den fjerde håndholdte kopi af den samme regel — præcis det anti-mønster
-// academyPromoteContract.test.js blev skrevet for at undgå.
+// Testen læser backendens EGNE konstanter (ACADEMY.MAX_AGE,
+// GRADUATION.GRADUATE_AGE) ud af kildefilerne og pinner frontendens kopi mod dem,
+// i stedet for at gentage 21/22 som literaler her. Havde vi skrevet tallene af,
+// ville denne fil være den fjerde håndholdte kopi af den samme regel — præcis det
+// anti-mønster academyPromoteContract.test.js blev skrevet for at undgå.
+//
+// Hvorfor tekst-udtræk og ikke `import` som i academyPromoteContract.test.js:
+// contractSeed.js er dependency-fri, men academyFlag/academyGraduation trækker
+// @sentry/node og supabase-klienten med sig. CI's frontend-build-job installerer
+// KUN frontend/node_modules, så et import ville fejle med ERR_MODULE_NOT_FOUND dér
+// (og kun dér — lokalt findes backend-deps). Målt: rød CI på PR #5197.
+// MIN_AGE læses samme vej, så alderssløjfen herunder heller ikke er en kopi.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   ACADEMY_DEMOTE_MAX_AGE,
@@ -14,8 +24,23 @@ import {
   canDemoteToAcademy,
   isDemoteBlockedByAge,
 } from "./academyDemoteGate.js";
-import { ACADEMY } from "../../../backend/lib/academyFlag.js";
-import { GRADUATION } from "../../../backend/lib/academyGraduation.js";
+
+const backendLib = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "backend", "lib");
+
+// Træk `NAVN: <tal>` ud af en backend-konstant-blok. Fejler HØJLYDT hvis mønstret
+// forsvinder — en stille `null` ville gøre pin-testen til en no-op.
+function backendConstant(file, name) {
+  const src = readFileSync(join(backendLib, file), "utf8");
+  const match = new RegExp(`\\b${name}\\s*:\\s*(\\d+)`).exec(src);
+  assert.ok(match, `kunne ikke finde ${name} i backend/lib/${file} — er konstanten omdøbt?`);
+  return Number(match[1]);
+}
+
+const ACADEMY = {
+  MIN_AGE: backendConstant("academyFlag.js", "MIN_AGE"),
+  MAX_AGE: backendConstant("academyFlag.js", "MAX_AGE"),
+};
+const GRADUATION = { GRADUATE_AGE: backendConstant("academyGraduation.js", "GRADUATE_AGE") };
 
 // Sæson-referenceåret (LAUNCH_REFERENCE_YEAR + season - 1). Et konkret år, så
 // alderen i testen er nem at læse: fødselsår = SEASON_YEAR - alder.
