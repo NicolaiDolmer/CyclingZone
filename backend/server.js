@@ -22,6 +22,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { createClient } from "@supabase/supabase-js";
 import { isAllowedOrigin } from "./lib/corsOrigin.js";
+import { errorMiddleware, shouldReportToSentry } from "./lib/errorMiddleware.js";
 import { normalizeRequestBody } from "./lib/normalizeRequestBody.js";
 import apiRoutes from "./routes/api.js";
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
@@ -107,11 +108,11 @@ app.get("/health", async (_req, res) => {
   }
 });
 
-setupSentryExpressErrorHandler(app);
-app.use((err, _req, res, _next) => {
-  console.error("[express] unhandled error:", err?.message || err);
-  res.status(500).json({ error: "Internal server error" });
-});
+// #5144: Sentry ser fejlen FØR vores handler (den kalder next(err) videre).
+// `shouldHandleError` deler status-udledning med errorMiddleware, så en 4xx
+// aldrig capturees som driftshændelse, og de to kan ikke drifte fra hinanden.
+setupSentryExpressErrorHandler(app, { shouldHandleError: shouldReportToSentry });
+app.use(errorMiddleware);
 
 const server = app.listen(PORT, () => { console.log(`🚴 Cycling Zone Manager API — port ${PORT}`); startCron(); });
 
