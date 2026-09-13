@@ -80,7 +80,7 @@ function reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules) {
       // #5143: lanen skal selv oprette worktreet (scripts/new-worktree.ps1 -OwnNodeModules,
       // eller auto naar branchen starter med chore/deps/dependabot/) og selv koere npm ci -
       // ikke bruge et allerede-junctionet worktree og installere ovenpaa det.
-      "- Denne lane har `ownNodeModules: true`: opret dit worktree med `scripts/new-worktree.ps1 -Branch <branch> -OwnNodeModules` (eller lad auto-detect goere det for chore/deps*/dependabot/*-branches) - scriptet koerer selv `npm ci` for hver package.json-mappe (rod/backend/frontend/marketing) i stedet for junction. Er worktreet allerede oprettet uden flaget: koer selv `npm ci` i de relevante mapper, wrapped i verifikations-semaforen (se verifikations-blokken).",
+      "- Denne lane har `ownNodeModules: true`: opret dit worktree med `scripts/new-worktree.ps1 -Branch <branch> -OwnNodeModules` (eller lad auto-detect goere det for chore/deps*/dependabot/*-branches) - scriptet koerer selv `npm ci` for hver package.json-mappe (rod/backend/frontend/marketing) i stedet for junction. Er worktreet allerede oprettet UDEN flaget (stadig junction-node_modules): koer ALDRIG npm ci direkte i det - fjern worktreet og genskab det med `-OwnNodeModules` i stedet (`git worktree remove <sti>` foer genskabelsen).",
     );
   } else {
     lines.push(

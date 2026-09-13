@@ -102,13 +102,20 @@ if ($effectiveOwnNodeModules) {
       Write-Host "  [would-npm-ci] $runDir" -ForegroundColor Cyan
       continue
     }
-    Write-Host "  [npm ci] $runDir" -ForegroundColor Yellow
+    # npm ci er en TUNG koersel (jf. scripts/make-wave-brief.mjs's semafor-blok) -
+    # wrappes i verify-lock.ps1 ligesom enhver anden tung install, saa flere
+    # samtidige -OwnNodeModules-worktrees ikke overbelaster maskinen (#5142).
+    Write-Host "  [npm ci, verify-lock] $runDir" -ForegroundColor Yellow
+    $verifyLockScript = Join-Path $RepoRoot "scripts\verify-lock.ps1"
     Push-Location $runDir
     try {
-      & npm ci --no-audit --no-fund
+      & pwsh -NoProfile -File $verifyLockScript -Max 2 -Timeout 1800 -- npm ci --no-audit --no-fund
       $ciExit = $LASTEXITCODE
     } finally {
       Pop-Location
+    }
+    if ($ciExit -eq 75) {
+      throw "npm ci i $runDir kunne ikke faa et verify-lock-slot inden for tidsfristen (exit 75 - koe-timeout, ikke en npm-fejl). Proev igen."
     }
     if ($ciExit -ne 0) {
       throw "npm ci fejlede i $runDir (exit $ciExit) - worktreet er oprettet i $wt, men mangler $($t.Name)-node_modules."
