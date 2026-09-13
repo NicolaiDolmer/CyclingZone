@@ -19,3 +19,6 @@ Ikke rettet 11/9; issue #5178 oprettet (kode i wave.js kræver egen PR). Genopta
 
 ## Læring
 En timeout er en måling af agentens tavshed, ikke af arbejdets tilstand. Når reglen siger "frys måles på branchen", skal koden også måle på branchen; ellers straffer værktøjet netop de spor der giver mest værdi (de store).
+
+## Addendum 13/9 (aftenboelge wf_7bcd3cab)
+Samme fejl ramte igen: boelgen stoppede #5178-sporet (netop det spor der retter timeouten) paa 60-min-timeouten, mens branchen havde committet 8 min foer stoppet og worktreet var rent med alt pushet. Sporet var reelt faerdigt (PR #5194 draft, kun CodeRabbit-CLI-kvoten manglede). Boelgen naaede at koere alle 10 spor foerst, fordi #5178 stod sidst i koeen. Rettelsen i #5194 (frys maalt paa branch-aktivitet, 120/180 min) er merget 14/9; foerste rigtige boelge efter merge er proeven.
