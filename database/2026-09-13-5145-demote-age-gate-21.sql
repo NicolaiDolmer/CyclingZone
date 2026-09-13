@@ -14,7 +14,9 @@
 --   fejl af manageren — og hele turen ned var meningsløs.
 --
 --   Efter denne migration er 21 den sidste sæson-alder hvor en senior kan rykke ned,
---   så en nedrykket rytter altid får mindst én hel akademi-sæson før graduering.
+--   så ingen ANKOMMER til akademiet i gradueringsalderen. NB: gaten lover ikke en hel
+--   akademi-sæson — en 21-årig der rykkes ned midt i sæsonen gradueres stadig ved
+--   næste sæson-skift. Den lukker kun hullet hvor turen ned var meningsløs fra start.
 --
 -- FEJLKODEN
 --   `not_u23` BEHOLDES uændret. Den er et internt kontrakt-navn der læses tre steder

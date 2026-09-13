@@ -140,7 +140,7 @@
       "capCounterLabel": "Extensions used"
     },
     "demote": {
-      "description": "Move this young rider down into your academy. Available only for riders aged 21 or under, so they get a full academy season before they graduate.",
+      "description": "Move this young rider down into your academy. Available only for riders aged 21 or under, since riders leave the academy at 22.",
       "currentSalaryLabel": "Current salary",
       "youthSalaryLabel": "Youth salary",
       "hint": "They stop counting toward your senior squad and are pulled from any upcoming races. You confirm the full effect next.",

@@ -12,7 +12,7 @@ import { statStyle, statPlateStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
-import { ageBadgeKey, getRiderAge, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge";
+import { ageBadgeKey, getRiderAge, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { canDemoteToAcademy } from "../lib/academyDemoteGate.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, projectYouthSalary, detectStartPriceTypo } from "../lib/marketValues";
