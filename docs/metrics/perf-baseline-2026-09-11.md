@@ -25,9 +25,34 @@ Performance ≥ 90. Lighthouse-lab måler ikke INP (kræver field-data/CrUX) —
 | `/roadmap` | desktop | 74 | 1320 ms | 0 ms | 0,553 | 618 KB | 60 | 🔴 |
 | Marketing-forside (cycling-zone-marketing.vercel.app) | mobil | 96 | 2590 ms | 136 ms | 0,00 | 316 KB | 13 | 🟡 |
 | Marketing-forside | desktop | 100 | 583 ms | 0 ms | 0,00 | 315 KB | 13 | 🟢 |
+| Forside (`/`) — efter spor 1 (#5177) | mobil | 73 | 4296 ms | 143 ms | 0,114 | 490 KB | 35 | 🔴 |
+| Forside (`/`) — efter spor 1 (#5177) | desktop | 99 | 816 ms | 0 ms | **0,052** | 490 KB | 35 | 🟢 |
+| `/login` — efter spor 1 (#5177) | mobil | 72 | 4991 ms | 36 ms | 0,00 | 583 KB | 42 | 🔴 |
+| `/login` — efter spor 1 (#5177) | desktop | 98 | 1041 ms | 0 ms | 0,00 | 583 KB | 42 | 🟢 |
+| `/roadmap` — efter spor 1 (#5177) | mobil | 68 | 5834 ms | 54 ms | 0,00* | 596 KB | 59 | 🔴 |
+| `/roadmap` — efter spor 1 (#5177) | desktop | 75 | 1208 ms | 0 ms | 0,553 | 596 KB | 59 | 🔴 |
 
 Verdikt = værste enkeltmetrik mod tærsklerne (LCP/CLS/Performance; grænser:
 grøn = CWV "good"/≥90, gul = CWV "needs improvement"/50-89, rød = CWV "poor"/<50).
+
+**"Efter spor 1" (#5177, 13/9) — metode-forbehold:** disse rækker er målt mod
+en **lokal production-build** (`npm run build` + `npm run preview`,
+`localhost:4173`), IKKE mod `cyclingzone.org` som resten af tabellen —
+ændringen er endnu ikke deployet. Tal på tværs af de to metoder er derfor
+ikke 1:1 sammenlignelige (anden cache/CDN/netværk); brug kun disse rækker
+til at vurdere **CLS-effekten af selve fixet**, ikke til at genvurdere de
+øvrige metrikker (LCP/Performance) mod baseline. **Mål ramt:** forside
+desktop CLS 0,29 → **0,052** (< 0,1-tærsklen). Mobil-CLS og roadmap-CLS er
+uændrede/uafhængige som forventet — spor 1 rørte kun `Brand.jsx`-wordmarken;
+forside mobil (0,114) og roadmap-desktop (0,553) har andre/adskilte
+shift-kilder (se fund 2 nedenfor, uløst). `/login`-CLS gik fra ~0 til
+nøjagtigt 0 (støj i tredje decimal, ikke en reel ændring — `/login` bruger
+ikke footer-wordmarken).
+\* Roadmap mobil-CLS er kendt flaky (se spredningsnoten nedenfor): 2 af 3
+kørsler gav 0, én gav 0,517 (identisk med baseline) — medianen 0 er ikke et
+reelt fix, kun en tilfældig timing af sektionen "Løb — hvor det er i dag"
+(fund 2, urørt af denne PR). Roadmap-desktop (0,553, alle 3 kørsler ens)
+viser tydeligt at fund 2 stadig står uløst.
 
 **Offentlig ranglisteside uden login:** findes ikke. `/standings`
 (`RankingsHubPage`) ligger i `App.jsx` under `ProtectedRoute` — al rangliste
@@ -71,6 +96,9 @@ inden for budget (1138 KB + 5% margin). `audit-perf-seo.mjs`: 0 🔴, 1 🟡 (bu
    formentlig alle sider der bruger den. **Forventet gevinst:** ét ét-linjes
    fix (sæt eksplicit `width`/`height` eller `aspect-ratio`) kan fjerne en
    væsentlig del af CLS sitewide — billigste/højeste-ROI fund på listen.
+   **Status 13/9:** løst som #5177 spor 1 (PR #5189) — forside desktop CLS
+   0,29 → 0,052, se "efter spor 1"-rækkerne ovenfor. Mobil-CLS og roadmap
+   var uændrede (andre shift-kilder, jf. fund 2), som forventet.
 2. **`/roadmap` er den svageste offentlige side, med to adskilte problemer.**
    Mobil: Performance 49, LCP 5,7 s, CLS 0,517 (alle langt over tærsklerne).
    Layout-shiftet er en stor sektion ("Løb — hvor det er i dag") der forskyder

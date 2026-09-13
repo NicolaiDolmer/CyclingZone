@@ -18,11 +18,15 @@ const BRAND_NAME = "Cycling Zone";
  * Theme-aware wordmark logotype. Sizes by height; width is intrinsic (≈3.43:1).
  * Sidebar passes `forceDark` because the sidebar canvas is always navy.
  */
-// Intrinsic SVG size (viewBox 0 0 480 140, ratio 3.43:1) — passed as width/height
-// so the browser reserves the correct box before the file loads (avoids CLS).
-// className still controls the rendered size (height utility + w-auto/w-full).
-const WORDMARK_WIDTH = 480;
-const WORDMARK_HEIGHT = 140;
+// Intrinsic SVG ratio (viewBox 0 0 480 140 = 3.43:1), set as CSS `aspect-ratio`
+// so the browser reserves the correct box before the file loads (avoids CLS)
+// without waiting for the SVG to fetch. Deliberately NOT plain width/height
+// attributes: several call sites size by height only (no `w-auto`), and a
+// bare `width` HTML attribute becomes a definite 480px CSS width whenever the
+// caller's className doesn't also set width — stretching the mark instead of
+// keeping it proportional. `aspect-ratio` has no such failure mode: it only
+// ever fills in whichever dimension the className leaves as `auto`.
+const WORDMARK_RATIO_STYLE = { aspectRatio: "480 / 140" };
 
 export function Wordmark({ className = "h-5", forceDark = false, alt = BRAND_NAME }) {
   if (forceDark) {
@@ -30,8 +34,7 @@ export function Wordmark({ className = "h-5", forceDark = false, alt = BRAND_NAM
       <img
         src="/brand/wordmark-ondark.svg"
         alt={alt}
-        width={WORDMARK_WIDTH}
-        height={WORDMARK_HEIGHT}
+        style={WORDMARK_RATIO_STYLE}
         className={className}
         draggable="false"
       />
@@ -42,16 +45,14 @@ export function Wordmark({ className = "h-5", forceDark = false, alt = BRAND_NAM
       <img
         src="/brand/wordmark-onlight.svg"
         alt={alt}
-        width={WORDMARK_WIDTH}
-        height={WORDMARK_HEIGHT}
+        style={WORDMARK_RATIO_STYLE}
         className={`${className} block dark:hidden`}
         draggable="false"
       />
       <img
         src="/brand/wordmark-ondark.svg"
         alt={alt}
-        width={WORDMARK_WIDTH}
-        height={WORDMARK_HEIGHT}
+        style={WORDMARK_RATIO_STYLE}
         className={`${className} hidden dark:block`}
         draggable="false"
       />
