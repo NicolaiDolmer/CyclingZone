@@ -40,7 +40,11 @@ export function resolveErrorStatus(err) {
     err && typeof err === "object"
       ? err.status ?? err.statusCode ?? err.status_code ?? err.output?.statusCode
       : undefined;
-  const status = Number.parseInt(raw, 10);
+  // Bevidst IKKE Number.parseInt: den læser "404-oops" som 404, så en
+  // vrøvle-status ville blive besvaret som klient-fejl OG holdt ude af Sentry.
+  // Kun et heltal eller en fuldt numerisk streng accepteres.
+  const status =
+    typeof raw === "number" ? raw : typeof raw === "string" && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : Number.NaN;
   return Number.isInteger(status) && status >= 400 && status <= 499 ? status : 500;
 }
 

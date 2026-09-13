@@ -208,6 +208,12 @@ test("resolveErrorStatus: kun 400-499 respekteres", () => {
   assert.equal(resolveErrorStatus({ status: 302 }), 500);
   assert.equal(resolveErrorStatus({ status: 503 }), 500);
   assert.equal(resolveErrorStatus({ status: "ikke et tal" }), 500);
+  // CodeRabbit-fund: parseInt ville læse disse som 404/400 og både svare 4xx
+  // OG holde fejlen ude af Sentry. Kun fuldt numeriske værdier accepteres.
+  assert.equal(resolveErrorStatus({ status: "404-oops" }), 500);
+  assert.equal(resolveErrorStatus({ status: "400px" }), 500);
+  assert.equal(resolveErrorStatus({ status: 404.7 }), 500);
+  assert.equal(resolveErrorStatus({ status: " 404 " }), 404);
   assert.equal(resolveErrorStatus(new Error("ingen status")), 500);
   assert.equal(resolveErrorStatus(null), 500);
   assert.equal(resolveErrorStatus(undefined), 500);
