@@ -77,10 +77,11 @@
 //    kort WAVE-FOLLOWUP-agent i SAMME worktree, der committer WIP bag guarden
 //    og pusher. Den springes over i to tilfaelde: naar proben har set et rent
 //    OG pushet worktree, og ved 'hard-cap'. Det sidste er vigtigt - dér lever
-//    branchen pr. definition, saa lane-agenten arbejder stadig (en timeout
-//    afbryder den ikke). To agenter der committer i samme worktree ville slaas
-//    om index.lock og kunne commite halvskrevne filer. Sporet raabes i stedet
-//    op i loggen og i rapportens `stopped`.
+//    branchen, saa agenten kan stadig skrive i worktreet (en timeout afbryder
+//    den ikke). To agenter der committer samme sted ville slaas om index.lock
+//    og kunne commite halvskrevne filer. Sporet raabes i stedet op i loggen og
+//    i rapportens `stopped`, og LANEN LUKKES: den gamle agent holder stadig
+//    sin plads i samtidigheds-loftet, saa lanen maa ikke traekke et nyt spor.
 //
 // 4. ALLE UBEHANDLEDE SPOR RAPPORTERES. Hvert spor ender i praecis een af:
 //    results (koert), skipped (ikke klar efter fase 0) eller unstarted (naaede
@@ -819,7 +820,7 @@ async function runTrack(track, trackTimeoutMinutes) {
     row.freeze = { verdict: stopProbe.verdict, reason: stopProbe.reason, lastCommitAgeMinutes: stopProbe.lastCommitAgeMinutes, dirty: stopProbe.dirty, unpushed: stopProbe.unpushed }
     row.note = stopProbe.stopsWave
       ? `FRYS efter ${elapsedMinutes} min (${stopProbe.reason}, ${ageText}). Worktreet: ${track.worktree}. Genoptag i SAMME worktree - reset aldrig.`
-      : `Haardt loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min naaet med en LEVENDE branch (${ageText}) - ikke et frys. Lane-agenten koerer sandsynligvis VIDERE i ${track.worktree} (en timeout afbryder den ikke); boelgen venter bare ikke laengere. Foelg sporet i haanden og lad agenten pushe selv.`
+      : `Haardt loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min naaet med en LEVENDE branch (${ageText}) - ikke et frys. Boelgen venter ikke laengere, men agenten er ikke afbrudt og kan stadig skrive i ${track.worktree}, saa ingen stop-agent er sendt ind. Tjek worktreet selv (scripts/worker-status.ps1) - det er IKKE verificeret rent.`
     row.gracefulStop = await gracefulStop(track, stopProbe)
     return row
   }
@@ -907,7 +908,14 @@ if (queue.length > 0) {
           return
         }
         if (row.status === 'timeout') {
-          log(`#${track.issue} ${track.branch} ramte det haarde loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min med en levende branch - boelgen venter ikke laengere, men lane-agenten arbejder formentlig videre i worktreet. Ingen stop-agent sendt ind (to agenter i samme worktree slaas om index.lock); foelg sporet i haanden.`)
+          log(`#${track.issue} ${track.branch} ramte det haarde loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min med en levende branch - boelgen venter ikke laengere. Ingen stop-agent sendt ind (to agenter i samme worktree slaas om index.lock); foelg sporet i haanden.`)
+          // Lanen er IKKE fri. withTimeout afbryder ikke agenten, saa den
+          // gamle agent holder stadig sin plads i samtidigheds-loftet. Trak vi
+          // et nyt spor ind her, ville boelgen koere med flere byggeagenter end
+          // laner - praecis den oversubscription 4-lane-loftet og semaforen
+          // findes for at forhindre. Denne lane lukkes; de oevrige toemmer koen.
+          log(`Lane lukket efter #${track.issue}: den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen traekker ikke et nyt spor.`)
+          return
         }
       } catch (err) {
         results.push({
@@ -946,9 +954,18 @@ const stopped = results.filter((r) => r.status === 'frys' || r.status === 'timeo
 log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${tracks.length} i alt).`)
 // Et worktree der stadig er dirty efter den graceful stop-agent skal ses af et
 // menneske - det er praecis den tilstand boelge 2 den 11/9 efterlod usynligt.
-const stillDirty = results.filter((r) => r.gracefulStop && r.gracefulStop.skipped !== true && (r.gracefulStop.stillDirty === true || r.gracefulStop.committed !== true))
+// Bemaerk `pushed !== true`: en stop-agent der committede men ikke fik pushet
+// har lagt arbejdet i en LOKAL commit. Det er lige saa usynligt som et dirty
+// worktree, og det maa ikke slippe forbi advarslen.
+const stillDirty = results.filter((r) => r.gracefulStop && r.gracefulStop.skipped !== true
+  && (r.gracefulStop.stillDirty === true || r.gracefulStop.committed !== true || r.gracefulStop.pushed !== true))
 for (const r of stillDirty) {
-  log(`ADVARSEL: #${r.issue} ${r.branch} kan stadig have ucommittet arbejde i worktreet - ${(r.gracefulStop && r.gracefulStop.note) || 'ingen note fra stop-agenten'}. Tjek det i haanden.`)
+  log(`ADVARSEL: #${r.issue} ${r.branch} kan stadig have ucommittet ELLER upushet arbejde i worktreet - ${(r.gracefulStop && r.gracefulStop.note) || 'ingen note fra stop-agenten'}. Tjek det i haanden.`)
+}
+// Hard-cap faar aldrig en stop-agent (den levende lane-agent ejer worktreet),
+// saa de spor skal raabes op for sig - ellers forsvinder de i statistikken.
+for (const r of results.filter((x) => x.status === 'timeout')) {
+  log(`ADVARSEL: #${r.issue} ${r.branch} blev sluppet paa det haarde loft med en levende branch. Worktreet er hverken tjekket eller reddet - se selv efter med scripts/worker-status.ps1.`)
 }
 if (unstarted.length > 0) {
   log(`RELANCER: ${unstarted.map((u) => '#' + u.issue).join(', ')} i en NY boelge - worktrees og PR'er staar urort.`)

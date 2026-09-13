@@ -199,7 +199,12 @@ Maalingen sker via en kort read-only probe-agent i worktreet (`git log -1 --form
 
 Kan branchen ikke maales, doemmes der **frys** - konservativt: en frossen agent holder sin plads i samtidigheds-loftet, og usynligt reduceret kapacitet kostede 2,5 time natten 5-6/9.
 
-**Intet stop efterlader et dirty worktree.** Ved ethvert endeligt stop koerer `wave.js` en kort `WAVE-FOLLOWUP:`-agent i SAMME worktree, som committer WIP bag `guard-commit-branch.sh` med beskeden `wip(#N): boelge-timeout, ucommittet arbejde gemt` og pusher. Den springes kun over naar proben har set et rent OG pushet worktree. Lykkes den ikke, staar sporet i bolgens `dirtyWorktrees` - tjek det i haanden.
+**Intet frys efterlader et dirty worktree.** Ved et frys - eller en agent der doede tavst - koerer `wave.js` en kort `WAVE-FOLLOWUP:`-agent i SAMME worktree, som committer WIP bag `guard-commit-branch.sh` med beskeden `wip(#N): boelge-timeout, ucommittet arbejde gemt` og pusher. Lykkes det ikke, staar sporet i boelgens `dirtyWorktrees` - tjek det i haanden.
+
+Stop-agenten springes over i **to** tilfaelde:
+
+1. Proben har set et rent OG pushet worktree - der er intet at redde.
+2. **Hard-cap.** En boelge-timeout afbryder ikke lane-agenten, og ved hard-cap er branchen aktiv, saa agenten kan meget vel stadig skrive i worktreet. To agenter samme sted kaemper om `index.lock` og kan commite halvskrevne filer. Boelgen holder derfor fingrene vaek: sporet raabes op i loggen, og **lanen lukkes** (den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen maa ikke traekke et nyt spor ind). Det er ingen garanti for at agenten goer sit arbejde faerdigt eller faar pushet - tjek worktreet selv med `scripts/worker-status.ps1`.
 
 ## Foer du melder faerdig
 
