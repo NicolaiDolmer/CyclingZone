@@ -1,17 +1,31 @@
 type Row = Record<string, unknown>;
 type Result<T> = { data: T | null; error: Error | null };
 
-export function createRankingsClient({ baseUrl, headers, fetcher }: {
+export function createRankingsClient({ baseUrl, headers, fetcher, reportError = () => {} }: {
   baseUrl: string;
   headers: () => Promise<Record<string, string> | null>;
   fetcher: typeof fetch;
+  // #5186: en 4xx/5xx fra egen backend er en kontraktfejl, ikke et tomt resultat.
+  // rows()/getSeasonHonours()/getRaceCount() fanger den nedenfor og falder tavst
+  // tilbage til { data: null, error } for UI'et - uden dette hook var der derfor
+  // intet Sentry-signal for fem af de seks flader (kun unwrap() kastede videre).
+  // Default no-op, saa klienten stadig virker uden en telemetri-afhaengighed.
+  reportError?: (error: Error, context: { path: string; status?: number }) => void;
 }) {
   async function request(path: string, query: Record<string, string>): Promise<unknown> {
     const auth = await headers();
     if (!auth) throw new Error("Not signed in");
     const search = new URLSearchParams(query).toString();
     const response = await fetcher(`${baseUrl}${path}${search ? `?${search}` : ""}`, { headers: auth });
-    if (!response.ok) throw Object.assign(new Error(`Ranking request failed (${response.status})`), { status: response.status });
+    if (!response.ok) {
+      const error = Object.assign(new Error(`Ranking request failed (${response.status})`), { status: response.status });
+      // 401: session udloebet, ejes af auth-flowet, ikke et backend-kontraktbrud.
+      // 404 paa /honours: dokumenteret staggered-deploy-kontrakt (se getSeasonHonours).
+      const isSessionExpired = response.status === 401;
+      const isUndeployedHonours = response.status === 404 && path === "/api/rankings/honours";
+      if (!isSessionExpired && !isUndeployedHonours) reportError(error, { path, status: response.status });
+      throw error;
+    }
     return response.json();
   }
 
