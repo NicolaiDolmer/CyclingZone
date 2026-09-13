@@ -72,6 +72,10 @@ const SECTION_DEFS = [
     blocks: [
       { id: "intro", kind: "text" },
       { id: "firstSteps", kind: "steps" },
+      // D-047/#5102: mobile T2-tables (squad, rankings, rider database, ...)
+      // show name + 3 chip-selectable stat columns instead of horizontal
+      // scroll; "Full table" opens all columns with the name column locked.
+      { id: "mobileTables", kind: "text" },
     ],
   },
   {

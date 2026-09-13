@@ -30,6 +30,10 @@
           "Start en auktion på en rytter. Vinder du auktionen, er rytteren din.",
           "Du begynder med en {initialSquad}-rytters start-trup. Der håndhæves ingen minimumsholdstørrelse, men du skal have ryttere på holdet for at stille op i løb."
         ]
+      },
+      "mobileTables": {
+        "title": "Tabeller på mobil",
+        "text": "På mobil viser tabeller som din trup, ranglister og rytterdatabasen navnekolonnen plus tre centrale tal ad gangen i stedet for en bred tabel du skal scrolle sidelæns i. Chips over tabellen lader dig skifte hvilke tre tal der vises, og dit valg huskes separat for hver tabel. Tryk på \"Fuld tabel\" for at åbne alle kolonner på én gang, med navnekolonnen låst mens du scroller gennem resten."
       }
     },
     "board": {

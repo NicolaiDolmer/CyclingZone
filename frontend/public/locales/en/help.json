@@ -30,6 +30,10 @@
           "Start an auction on a rider. If you win the auction, the rider is yours.",
           "You begin with a {initialSquad}-rider starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
         ]
+      },
+      "mobileTables": {
+        "title": "Tables on mobile",
+        "text": "On mobile, tables like your squad, rankings and the rider database show your name column plus three key stats at a time instead of a wide table you scroll sideways through. Chips above the table let you swap which three stats are shown, and your choice is remembered separately for each table. Tap \"Full table\" to open every column at once, with the name column locked in place while you scroll through the rest."
       }
     },
     "board": {
