@@ -56,3 +56,77 @@ test("honours preserves two lists and treats an undeployed endpoint separately f
   assert.ok(failed.error);
   assert.equal((failed.error as Error & { code?: string }).code, undefined);
 });
+
+// #5186 - a 4xx/5xx from our own backend is a contract failure, not an empty
+// result: reportError must fire before the fallback to { data: null, error }
+// so the UI can still show empty/retry while the failure stays visible.
+test("reports a 400 exactly once with path+status, rows() contract unchanged", async () => {
+  const calls: Array<{ error: Error; context: { path: string; status?: number } }> = [];
+  const client = createRankingsClient({
+    baseUrl: "", headers: async () => ({}),
+    fetcher: async () => Response.json({ error: "Bad request" }, { status: 400 }),
+    reportError: (error, context) => { calls.push({ error, context }); },
+  });
+  const result = await client.getRiderRankings("season");
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].context, { path: "/api/rankings/riders", status: 400 });
+  assert.ok(calls[0].error instanceof Error);
+  assert.equal(result.data, null);
+  assert.ok(result.error);
+});
+
+test("reports a 500", async () => {
+  const calls: Array<{ path: string; status?: number }> = [];
+  const client = createRankingsClient({
+    baseUrl: "", headers: async () => ({}),
+    fetcher: async () => Response.json({}, { status: 500 }),
+    reportError: (_error, context) => { calls.push(context); },
+  });
+  await client.getRiderRankings("season");
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0], { path: "/api/rankings/riders", status: 500 });
+});
+
+test("does not report a 401 (session expired, owned by the auth flow)", async () => {
+  const calls: unknown[] = [];
+  const client = createRankingsClient({
+    baseUrl: "", headers: async () => ({}),
+    fetcher: async () => Response.json({}, { status: 401 }),
+    reportError: (_error, context) => { calls.push(context); },
+  });
+  await client.getRiderRankings("season");
+  assert.equal(calls.length, 0);
+});
+
+test("does not report a 404 on honours (staggered-deploy contract), PGRST202 still holds", async () => {
+  const calls: unknown[] = [];
+  const client = createRankingsClient({
+    baseUrl: "", headers: async () => ({}),
+    fetcher: async () => Response.json({}, { status: 404 }),
+    reportError: (_error, context) => { calls.push(context); },
+  });
+  const result = await client.getSeasonHonours("season");
+  assert.equal(calls.length, 0);
+  assert.equal((result.error as Error & { code?: string }).code, "PGRST202");
+});
+
+test("does not report a transport failure (fetch throws)", async () => {
+  const calls: unknown[] = [];
+  const client = createRankingsClient({
+    baseUrl: "", headers: async () => ({}),
+    fetcher: async () => { throw new Error("offline"); },
+    reportError: (_error, context) => { calls.push(context); },
+  });
+  await client.getRiderRankings("season");
+  assert.equal(calls.length, 0);
+});
+
+test("missing reportError dependency does not crash", async () => {
+  const client = createRankingsClient({
+    baseUrl: "", headers: async () => ({}),
+    fetcher: async () => Response.json({}, { status: 400 }),
+  });
+  const result = await client.getRiderRankings("season");
+  assert.equal(result.data, null);
+  assert.ok(result.error);
+});
