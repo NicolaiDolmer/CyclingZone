@@ -1,5 +1,96 @@
 export const PATCHES = [
   {
+    "version": "7.271",
+    "date": "2026-09-13",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "An update never reloads the page over your unsaved work",
+          "body": "When a new version of the game is deployed, a banner says New version ready. The page only reloads on its own at a safe moment: no unsaved selection, tactics, bids, training or text in a field, and no race film playing. Otherwise the banner waits until you click Update."
+        },
+        "da": {
+          "title": "En opdatering genindlæser aldrig siden over dit ugemte arbejde",
+          "body": "Når en ny version af spillet udkommer, viser et banner Ny version klar. Siden genindlæser kun af sig selv i et sikkert øjeblik: ingen ugemt udtagelse, taktik, bud, træning eller tekst i et felt, og ingen løbsfilm der kører. Ellers venter banneret, til du trykker Opdater."
+        },
+        "refs": [5159, 5173]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Races",
+        "en": {
+          "title": "Race start no longer skips every team if one AI rider retires at the wrong moment",
+          "body": "If an AI rider retired in the split second between being picked and being written to the start list, the automatic fill failed for every team in that race. Now only that rider is dropped and the rest of the field is written as normal."
+        },
+        "da": {
+          "title": "Løbsstarten springer ikke længere alle hold over, hvis én AI-rytter pensioneres i det forkerte øjeblik",
+          "body": "Blev en AI-rytter pensioneret i sekundet mellem udvælgelsen og skrivningen til startlisten, fejlede den automatiske udfyldning for alle hold i løbet. Nu droppes kun den rytter, og resten af feltet skrives som normalt."
+        },
+        "refs": [5146]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Help",
+        "en": {
+          "title": "Help now says when a rider's value starts to fall",
+          "body": "The Value and price section explains that value can already start slipping in the late twenties, before any ability turns, because it prices the whole remaining career and not the current level."
+        },
+        "da": {
+          "title": "Hjælpen fortæller nu, hvornår en rytters værdi begynder at falde",
+          "body": "Afsnittet Værdi og pris forklarer, at værdien kan begynde at falde allerede i slutningen af 20'erne, før nogen evne vender, fordi den priser hele den resterende karriere og ikke det nuværende niveau."
+        },
+        "refs": [5181]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Help",
+        "en": {
+          "title": "Help explains the mobile tables",
+          "body": "A new section under Getting started covers how tables work on a phone: the rider name plus three columns, chips that swap a column in, Full table to see everything with the name locked, and that your choice is remembered per table."
+        },
+        "da": {
+          "title": "Hjælpen forklarer mobiltabellerne",
+          "body": "Et nyt afsnit under Kom godt i gang beskriver, hvordan tabeller virker på telefonen: rytternavnet plus tre kolonner, chips der bytter en kolonne ind, Fuld tabel der viser alt med navnet låst, og at dit valg huskes pr. tabel."
+        },
+        "refs": [5112, 5102]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "The footer logo no longer nudges the homepage while loading",
+          "body": "The logo in the footer reserved no space before it was fetched, so the homepage shifted as it appeared. It now reserves its box up front. The footer looks exactly as before."
+        },
+        "da": {
+          "title": "Footer-logoet skubber ikke længere til forsiden, mens den indlæses",
+          "body": "Logoet i footeren reserverede ingen plads, før det var hentet, så forsiden hoppede, da det dukkede op. Nu reserverer det sin plads fra start. Footeren ser ud præcis som før."
+        },
+        "refs": [5177]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "Faster loads after an update",
+          "body": "The game's core library and all interface texts are now delivered as their own files. They stay in your browser cache across updates instead of being downloaded again every time something else changes."
+        },
+        "da": {
+          "title": "Hurtigere indlæsning efter en opdatering",
+          "body": "Spillets kernebibliotek og alle tekster leveres nu som egne filer. De bliver i browserens cache på tværs af opdateringer i stedet for at blive hentet igen, hver gang noget andet ændrer sig."
+        },
+        "refs": [5177]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "A broken request gets a clear error instead of a server error",
+          "body": "If the browser sends a request the server cannot read, the answer is now a short, honest error such as Invalid JSON body rather than Internal server error. Real server errors are unchanged."
+        },
+        "da": {
+          "title": "En defekt forespørgsel får en klar fejl i stedet for en serverfejl",
+          "body": "Sender browseren en forespørgsel, serveren ikke kan læse, er svaret nu en kort og ærlig fejl som Ugyldig JSON i stedet for Intern serverfejl. Ægte serverfejl er uændrede."
+        },
+        "refs": [5144]
+      }
+    ]
+  },
+  {
     "version": "7.270",
     "date": "2026-09-11",
     "label": "Beta",
