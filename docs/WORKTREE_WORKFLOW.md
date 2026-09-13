@@ -37,6 +37,22 @@ Scriptet:
 
 Åbn derefter en ny Claude Code-session med working dir `C:\dev\CyclingZone-worktrees\<slug>\`.
 
+### Egen node_modules for dependency-baner (`-OwnNodeModules`, #5143)
+
+> Nær-hændelse 11/9: en dependency-lane (Express 4→5) fik i sin brief besked om at køre `npm install` i et worktree med junction-node_modules. Målt samme dag: `npm ci`/`npm install` reificerer IKKE gennem junctionen — npm fjerner selve reparse-punktet og laver et rigtigt lokalt install, uden at røre den delte cache eller andre worktrees. Risikoen var derfor mindre end frygtet, men adfærden skete tavst og kostede ~500 MB + install-tid uden at nogen vidste det. Løsningen er et eksplicit, synligt valg — ikke tilfældighed.
+
+Default (se "Delt node_modules" nedenfor) er at `node_modules` junction-linkes til en delt, lockfile-hashet cache — `npm install`/`npm ci` er derfor **forbudt** i et almindeligt worktree. En bane der selv skal ændre dependencies (opgradere/nedgradere en pakke, teste en lockfile-ændring) skal i stedet have sit **eget** install:
+
+```powershell
+pwsh -File scripts/new-worktree.ps1 -Branch chore/deps-express-5 -OwnNodeModules
+```
+
+- **Auto-detect:** flaget sættes automatisk når branch-navnet starter med `chore/deps` eller `dependabot/` — ingen skal huske det for en dependency-PR.
+- **Effekt:** scriptet kører `npm ci` direkte i worktreet for hver mappe der har en `package.json` (rod, `backend`, `frontend`, `marketing` hvis den findes) — INGEN junction for denne lanes `node_modules`. `setup-worktree.ps1` opdager bagefter et allerede sundt, ikke-junction install og rører det ikke; `.env`-hardlinks sker som normalt.
+- **Koster:** et fuldt `npm ci` pr. mappe (ingen cache-genbrug) — det er prisen for isolation, betalt kun af de baner der faktisk ændrer dependencies.
+- **Forward-guard:** `scripts/preflight-pr.ps1` advarer (fejler ikke) hvis PR'ens diff mod `main` ændrer en `package-lock.json`, mens worktreets tilsvarende `node_modules` stadig er en junction — et tegn på at `-OwnNodeModules` burde have været brugt.
+- **Regel uanset flag:** kør ALDRIG `npm install`/`npm ci` i et worktree hvor `node_modules` er en junction til den delte cache — kun i et worktree med sit eget (`-OwnNodeModules`) install.
+
 ### Harness-oprettede worktrees (auto-setup) — #994
 
 Claude Code-harnessen opretter sine egne worktrees under `.claude/worktrees/<navn>` **uden om** `new-worktree.ps1`. De mangler derfor `node_modules`-junctions + `.env`-filer → backend `node --test` fejler lokalt med `Error: supabaseUrl is required.` og frontend kræver manuel `npm ci`.

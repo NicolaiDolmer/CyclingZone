@@ -148,11 +148,28 @@ test("TARGETED forbyder fuld e2e og verify-local", () => {
 test("npm install er forbudt som default, tilladt med ownNodeModules", () => {
   const uden = generateBrief(baseConfig);
   assert.match(uden, /`npm install`\/`npm ci` er FORBUDT i dette worktree/);
-  assert.doesNotMatch(uden, /du MAA installere dependencies/);
+  assert.doesNotMatch(uden, /opret dit worktree med .scripts\/new-worktree\.ps1/);
 
   const med = generateBrief({ ...baseConfig, ownNodeModules: true });
-  assert.match(med, /du MAA installere dependencies/);
+  assert.match(med, /opret dit worktree med .scripts\/new-worktree\.ps1/);
   assert.doesNotMatch(med, /`npm install`\/`npm ci` er FORBUDT/);
+});
+
+// #5143: naer-haendelse 11/9 - en dependency-lane fik besked om at koere `npm
+// install` i et worktree med junction-node_modules. Linjen skal staa for ALLE
+// laner (default OG ownNodeModules), saa den ikke kun findes i det ene tilfaelde.
+test("indeholder 'koer ALDRIG npm install i et worktree med junction' for ALLE laner", () => {
+  const uden = generateBrief(baseConfig);
+  const med = generateBrief({ ...baseConfig, ownNodeModules: true });
+  const universalLine = /Koer ALDRIG npm install i et worktree med junction-node_modules/;
+  assert.match(uden, universalLine);
+  assert.match(med, universalLine);
+});
+
+test("ownNodeModules-lanen faar besked om selv at oprette worktree/koere npm ci", () => {
+  const med = generateBrief({ ...baseConfig, ownNodeModules: true });
+  assert.match(med, /-OwnNodeModules/);
+  assert.match(med, /koerer selv .npm ci. for hver package\.json-mappe/);
 });
 
 test("scratchRoot kan overstyres", () => {

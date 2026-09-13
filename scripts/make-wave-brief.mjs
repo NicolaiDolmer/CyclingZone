@@ -70,10 +70,17 @@ function reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules) {
     "- INGEN baggrundsjob. Koer ALLE kommandoer i FORGRUNDEN og laes resultatet selv. Skriv aldrig at du \"venter paa monitoren\" eller paa et baggrundsjob - en lane der venter paa noget den ikke selv laeser, er stoppet.",
     "- Arbejd sekventielt. Spawn ALDRIG under-agenter - de ender i idle-vent paa notifikationer du aldrig ser.",
     "- Rebase foer push: `git fetch origin && git rebase origin/main`.",
+    // #5143: denne linje staar for ALLE laner, ogsaa ownNodeModules-lanen selv -
+    // den advarer mod at installere i ET ANDET worktree (eller hovedcheckoutet),
+    // som stadig kan have junction-node_modules, uanset denne lanes egen opsaetning.
+    "- Koer ALDRIG npm install i et worktree med junction-node_modules - kun i et worktree hvor node_modules er lanens EGET install (ownNodeModules), aldrig i et delt/junction-worktree.",
   ];
   if (ownNodeModules) {
     lines.push(
-      "- Denne lane har `ownNodeModules: true`: du MAA installere dependencies i dit eget worktree. Wrap installationen i verifikations-semaforen (se verifikations-blokken).",
+      // #5143: lanen skal selv oprette worktreet (scripts/new-worktree.ps1 -OwnNodeModules,
+      // eller auto naar branchen starter med chore/deps/dependabot/) og selv koere npm ci -
+      // ikke bruge et allerede-junctionet worktree og installere ovenpaa det.
+      "- Denne lane har `ownNodeModules: true`: opret dit worktree med `scripts/new-worktree.ps1 -Branch <branch> -OwnNodeModules` (eller lad auto-detect goere det for chore/deps*/dependabot/*-branches) - scriptet koerer selv `npm ci` for hver package.json-mappe (rod/backend/frontend/marketing) i stedet for junction. Er worktreet allerede oprettet uden flaget: koer selv `npm ci` i de relevante mapper, wrapped i verifikations-semaforen (se verifikations-blokken).",
     );
   } else {
     lines.push(
