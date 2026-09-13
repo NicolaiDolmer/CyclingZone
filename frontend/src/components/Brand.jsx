@@ -18,14 +18,43 @@ const BRAND_NAME = "Cycling Zone";
  * Theme-aware wordmark logotype. Sizes by height; width is intrinsic (≈3.43:1).
  * Sidebar passes `forceDark` because the sidebar canvas is always navy.
  */
+// Intrinsic SVG size (viewBox 0 0 480 140, ratio 3.43:1) — passed as width/height
+// so the browser reserves the correct box before the file loads (avoids CLS).
+// className still controls the rendered size (height utility + w-auto/w-full).
+const WORDMARK_WIDTH = 480;
+const WORDMARK_HEIGHT = 140;
+
 export function Wordmark({ className = "h-5", forceDark = false, alt = BRAND_NAME }) {
   if (forceDark) {
-    return <img src="/brand/wordmark-ondark.svg" alt={alt} className={className} draggable="false" />;
+    return (
+      <img
+        src="/brand/wordmark-ondark.svg"
+        alt={alt}
+        width={WORDMARK_WIDTH}
+        height={WORDMARK_HEIGHT}
+        className={className}
+        draggable="false"
+      />
+    );
   }
   return (
     <>
-      <img src="/brand/wordmark-onlight.svg" alt={alt} className={`${className} block dark:hidden`} draggable="false" />
-      <img src="/brand/wordmark-ondark.svg" alt={alt} className={`${className} hidden dark:block`} draggable="false" />
+      <img
+        src="/brand/wordmark-onlight.svg"
+        alt={alt}
+        width={WORDMARK_WIDTH}
+        height={WORDMARK_HEIGHT}
+        className={`${className} block dark:hidden`}
+        draggable="false"
+      />
+      <img
+        src="/brand/wordmark-ondark.svg"
+        alt={alt}
+        width={WORDMARK_WIDTH}
+        height={WORDMARK_HEIGHT}
+        className={`${className} hidden dark:block`}
+        draggable="false"
+      />
     </>
   );
 }
