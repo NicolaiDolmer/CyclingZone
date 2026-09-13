@@ -60,6 +60,21 @@ const MAX_TIMELINE_PAGES = 10; // 1.000 events - langt over hvad en enkelt issue
 // ---------------------------------------------------------------------------
 
 /**
+ * Gør en issue-titel sikker at saette i en markdown-taebel-celle: undgaar at
+ * en titel med et bart "#N" (fx "Post-merge #3798: ...") selv skaber en ny
+ * cross-reference naar rapporten postes som PR-body/kommentar (samme klasse
+ * som GOTCHA'en i filens header - fanget af CodeRabbit-reviewet, #5155).
+ * Escaper ogsaa taebel-delimiters og linjeskift.
+ * @param {string} title
+ */
+export function sanitizeTitle(title) {
+  return String(title)
+    .replace(/\r?\n/g, ' ')
+    .replace(/\|/g, '\\|')
+    .replace(/#(\d+)/g, '`#$1`');
+}
+
+/**
  * @param {string[]} labelNames
  * @returns {boolean} true hvis issuet er en epic (label `epic` eller `epic:*`)
  */
@@ -231,15 +246,50 @@ export function findActiveChildForEpic(execGh, repo, epicNumber, days, now) {
   // begge, ellers filtrerer REST-sporet ALTID alt aktivt fra (#5155-review).
   const active = candidates.filter((c) => {
     const updated = c.updated_at || c.updatedAt;
-    return Boolean(updated) && daysBetween(updated, now) <= days;
+    return Boolean(updated) && daysBetween(updated, now) < days;
   });
   return { hasActiveChild: active.length > 0, source, children: candidates };
 }
 
-/** Nedjusterer label + kommentér (kun kaldt under --execute). */
+/**
+ * Fejl fra applyDowngrade der bærer PRAECIS hvor langt vi kom - saa main()
+ * aldrig blot antager fuld succes, og et delvist forsoeg forbliver
+ * selvhelende (se rækkefoelge-kommentaren i applyDowngrade).
+ */
+export class DowngradeError extends Error {
+  constructor(message, { commented, labelChanged }) {
+    super(message);
+    this.name = 'DowngradeError';
+    this.commented = commented;
+    this.labelChanged = labelChanged;
+  }
+}
+
+/**
+ * Nedjusterer label + kommentér (kun kaldt under --execute).
+ *
+ * Raekkefoelge er bevidst: KOMMENTAR FOERST, label-aendring BAGEFTER. Hvis
+ * label-edittet skulle fejle efter en vellykket kommentar, forbliver issuet
+ * `priority:high` og bliver fanget igen af NAESTE koersel (selvhelende, om
+ * end med en dobbelt kommentar i sjaeldne tilfaelde). Omvendt raekkefoelge
+ * ville risikere en STILLE nedjusteret issue uden forklaring, som aldrig
+ * dukker op i en `priority:high`-soegning igen (CodeRabbit-review, #5155).
+ */
 export function applyDowngrade(execGh, repo, issueNumber, comment) {
-  execGh(['issue', 'edit', String(issueNumber), '--repo', repo, '--remove-label', 'priority:high', '--add-label', 'priority:med']);
-  execGh(['issue', 'comment', String(issueNumber), '--repo', repo, '--body', comment]);
+  try {
+    execGh(['issue', 'comment', String(issueNumber), '--repo', repo, '--body', comment]);
+  } catch (err) {
+    throw new DowngradeError(`kommentar fejlede, intet aendret: ${err.message}`, { commented: false, labelChanged: false });
+  }
+  try {
+    execGh(['issue', 'edit', String(issueNumber), '--repo', repo, '--remove-label', 'priority:high', '--add-label', 'priority:med']);
+  } catch (err) {
+    throw new DowngradeError(
+      `kommentar OK, men label-aendring fejlede - issuet er STADIG priority:high og fanges igen naeste koersel: ${err.message}`,
+      { commented: true, labelChanged: false },
+    );
+  }
+  return { commented: true, labelChanged: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -298,7 +348,7 @@ export function classifyIssues({ issues, execGh, repo, days, now }) {
       daysInactive,
     };
 
-    if (daysInactive > days) candidates.push(entry);
+    if (daysInactive >= days) candidates.push(entry);
     else kept.push(entry);
   }
 
@@ -309,10 +359,10 @@ export function classifyIssues({ issues, execGh, repo, days, now }) {
 // Rapport
 // ---------------------------------------------------------------------------
 
-export function formatReport({ candidates, epicsFlagged, errors = [], days, now, executed }) {
+export function formatReport({ candidates, epicsFlagged, errors = [], outcomes, days, now, executed }) {
   const lines = [];
   const dateStr = now.toISOString().slice(0, 10);
-  const mode = executed ? 'EXECUTE (nedjusteret)' : 'DRY-RUN (ingen aendringer)';
+  const mode = executed ? 'EXECUTE' : 'DRY-RUN (ingen aendringer)';
 
   lines.push(`# Priority-hygiejne — ${dateStr} (${mode}, graense ${days} dage)`);
   lines.push('');
@@ -320,15 +370,27 @@ export function formatReport({ candidates, epicsFlagged, errors = [], days, now,
   if (candidates.length === 0) {
     lines.push('Ingen `priority:high`-issues uden aktivitet i ' + days + '+ dage. ✅');
   } else {
-    lines.push(`## ${candidates.length} kandidat(er)${executed ? ' (nedjusteret til priority:med)' : ' til nedjustering'}`);
+    lines.push(`## ${candidates.length} kandidat(er) til nedjustering`);
     lines.push('');
-    lines.push('| # | Titel | Dage siden aktivitet | Hvorfor |');
+    const resultHeader = executed ? 'Resultat' : 'Hvorfor';
+    lines.push(`| # | Titel | Dage siden aktivitet | ${resultHeader} |`);
     lines.push('|---|---|---|---|');
     for (const c of candidates) {
-      const why = c.reason === 'issue-updated'
-        ? 'ingen kommentar/label-ændring/linket PR-aktivitet'
-        : `seneste signal: ${c.reason}`;
-      lines.push(`| \`#${c.number}\` | ${c.title} | ${c.daysInactive} | ${why} |`);
+      let statusText;
+      if (executed) {
+        // ALDRIG antag succes - vis det EGET udfald pr. issue (CodeRabbit-review, #5155).
+        const outcome = outcomes instanceof Map ? outcomes.get(c.number) : undefined;
+        statusText = outcome === 'ok'
+          ? 'nedjusteret til priority:med'
+          : outcome === 'partial'
+            ? '⚠️ DELVIST - kommentar OK, label IKKE aendret (fanges igen naeste koersel)'
+            : '❌ FEJLET - intet aendret';
+      } else {
+        statusText = c.reason === 'issue-updated'
+          ? 'ingen kommentar/label-ændring/linket PR-aktivitet'
+          : `seneste signal: ${c.reason}`;
+      }
+      lines.push(`| \`#${c.number}\` | ${sanitizeTitle(c.title)} | ${c.daysInactive} | ${statusText} |`);
     }
   }
 
@@ -341,7 +403,7 @@ export function formatReport({ candidates, epicsFlagged, errors = [], days, now,
     lines.push('| # | Titel | Kilde |');
     lines.push('|---|---|---|');
     for (const e of epicsFlagged) {
-      lines.push(`| \`#${e.number}\` | ${e.title} | ${e.source} |`);
+      lines.push(`| \`#${e.number}\` | ${sanitizeTitle(e.title)} | ${e.source} |`);
     }
   }
 
@@ -352,7 +414,7 @@ export function formatReport({ candidates, epicsFlagged, errors = [], days, now,
     lines.push('| # | Titel | Fejl |');
     lines.push('|---|---|---|');
     for (const e of errors) {
-      lines.push(`| \`#${e.number}\` | ${e.title} | ${e.message} |`);
+      lines.push(`| \`#${e.number}\` | ${sanitizeTitle(e.title)} | ${e.message} |`);
     }
   }
 
@@ -383,7 +445,11 @@ export function parseArgs(argv) {
       args.days = val;
       i += 1;
     } else if (arg === '--repo') {
-      args.repo = argv[i + 1];
+      const val = argv[i + 1];
+      if (!val || val.startsWith('--')) {
+        throw new Error(`--repo: mangler vaerdi (forventet "ejer/repo", fik "${val ?? ''}")`);
+      }
+      args.repo = val;
       i += 1;
     } else if (arg === '--now') {
       // test-hook, samme idiom som check-dependabot-exceptions.mjs
@@ -416,19 +482,26 @@ export function main(argv, deps = {}) {
   const { candidates, epicsFlagged, epicsOk, kept, errors } = classifyIssues({ issues, execGh, repo, days, now });
 
   let failures = 0;
+  const outcomes = new Map(); // number -> 'ok' | 'partial' | 'failed' (kun udfyldt under --execute)
   if (execute) {
     for (const c of candidates) {
       const comment = buildDowngradeComment(c.daysInactive, days);
       try {
         applyDowngrade(execGh, repo, c.number, comment);
+        outcomes.set(c.number, 'ok');
       } catch (err) {
         failures += 1;
-        errorLog(`#${c.number}: gh-kald fejlede - ${err.message}`);
+        if (err instanceof DowngradeError && err.commented && !err.labelChanged) {
+          outcomes.set(c.number, 'partial');
+        } else {
+          outcomes.set(c.number, 'failed');
+        }
+        errorLog(`#${c.number}: ${err.message}`);
       }
     }
   }
 
-  log(formatReport({ candidates, epicsFlagged, errors, days, now, executed: execute }));
+  log(formatReport({ candidates, epicsFlagged, errors, outcomes, days, now, executed: execute }));
   log('');
   log(`(${kept.length} priority:high inden for graensen, ${epicsOk.length} epic(s) med aktivt child-issue - ikke vist ovenfor.)`);
 
