@@ -587,6 +587,10 @@ export default function ProfilePage() {
   const positiveHours = value => (typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null);
   const selectionReminderWindowHours = positiveHours(assistant?.selection_reminder_window_hours);
   const selectionReminderUrgentHours = positiveHours(assistant?.late_fill_hours);
+  // Kontakten maa foerst kunne bruges naar vi KENDER den gemte vaerdi. Er kaldet
+  // fejlet (assistant er stadig null), ville `!== false` vise den som TIL og
+  // lade spilleren overskrive en indstilling ingen har laest.
+  const selectionReminderLoaded = typeof assistant?.selection_reminder_enabled === "boolean";
 
   return (
     // #2253: translate="no" — browser-oversættere muterede React's tekst-noder og
@@ -707,8 +711,8 @@ export default function ProfilePage() {
           </label>
           <Toggle
             id="profile-selection-reminder"
-            checked={assistant?.selection_reminder_enabled !== false}
-            disabled={savingSelectionReminder}
+            checked={selectionReminderLoaded && assistant.selection_reminder_enabled}
+            disabled={!selectionReminderLoaded || savingSelectionReminder}
             onChange={e => toggleSelectionReminder(e.target.checked)}
           />
         </div>

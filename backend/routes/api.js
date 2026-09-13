@@ -9495,7 +9495,12 @@ router.get("/me/selection-reminder", requireAuth, presencePulseLimiter, async (r
         .from("race_stage_schedule").select("race_id")
         .gte("scheduled_at", now.toISOString())
         .lte("scheduled_at", windowEnd.toISOString())
-        .order("race_id")
+        // race_id alene er IKKE en total orden (primærnøglen er race_id +
+        // stage_number), og fetchAllRows pagninerer med .range(): på tværs af to
+        // sider kan rækker med samme race_id bytte plads, og et løb kan falde
+        // helt ud af candidateIds. Samme sekundære nøgle som #3126 lagde på
+        // fetchAllScheduleRows af præcis den grund.
+        .order("race_id").order("stage_number")
     );
     const candidateIds = [...new Set(windowRows.map((r) => r.race_id))];
     if (!candidateIds.length) return res.json({ ...empty(true), urgent_hours: lateFillHours });
@@ -9508,8 +9513,10 @@ router.get("/me/selection-reminder", requireAuth, presencePulseLimiter, async (r
         .from("race_stage_schedule").select("race_id, scheduled_at")
         .in("race_id", chunk).order("race_id").order("stage_number")),
       fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
+        // Samme grund som ovenfor: holdet har op til 8 rækker pr. løb, så
+        // race_id alene er ikke en total orden på tværs af .range()-sider.
         .from("race_entries").select("race_id")
-        .in("race_id", chunk).eq("team_id", req.team.id).order("race_id")),
+        .in("race_id", chunk).eq("team_id", req.team.id).order("race_id").order("rider_id")),
       fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
         .from("race_withdrawals").select("race_id")
         .in("race_id", chunk).eq("team_id", req.team.id).order("race_id")),

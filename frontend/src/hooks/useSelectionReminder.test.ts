@@ -43,6 +43,17 @@ test("kun ÉN af de to forbrugere invaliderer cachen pr. refresh", () => {
   assert.match(SOURCE, /if \(force \|\| pendingRefresh\) \{\s*\n\s*pendingRefresh = false;/);
 });
 
+test("kun det SENESTE kald må skrive state", () => {
+  // invalidate() fjerner kun det cachede løfte — et interval-tick der allerede
+  // er sendt løber videre og ville ellers skrive gamle tal oven i et nyere svar
+  // (eller, på sin fejl-gren, rydde det).
+  assert.match(SOURCE, /const generation = \+\+loadGeneration\.current/);
+  assert.equal(
+    (SOURCE.match(/if \(isCurrent\(\)\)/g) ?? []).length, 4,
+    "alle fire state-skrivninger (no-session, svar, fejl, setLoaded) skal være vagtet",
+  );
+});
+
 test("ProfilePage kalder refreshSelectionReminder efter en vellykket PATCH", () => {
   const profile = readFileSync(new URL("../pages/ProfilePage.jsx", import.meta.url), "utf8");
   const start = profile.indexOf("async function toggleSelectionReminder");

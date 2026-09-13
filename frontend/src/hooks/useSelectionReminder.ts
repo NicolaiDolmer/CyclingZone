@@ -5,7 +5,7 @@
 // afhænger af TIDEN til fristen lige så meget som af race_entries, så en
 // abonnement-baseret opdatering ville alligevel ikke fange overgangen gul → rød.
 // Et roligt interval dækker begge dele, og endpointet er read-only + cache-let.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
 import {
@@ -49,14 +49,23 @@ export function useSelectionReminder(): {
   const [reminder, setReminder] = useState<SelectionReminder>(EMPTY_SELECTION_REMINDER);
   const [loaded, setLoaded] = useState(false);
 
+  // Generationen gør det SIDSTE kald til det gældende. Et interval-tick kan
+  // stadig være undervejs når profilens til/fra udløser et nyt: invalidate()
+  // fjerner kun det cachede løfte, den annullerer ikke kaldet. Lander det gamle
+  // svar sidst, ville det ellers skrive gamle tal — eller, på sin fejl-gren,
+  // rydde et NYERE svar der lige er lykkedes.
+  const loadGeneration = useRef(0);
+
   // #5089's delte request-lag: hooket mountes i Layout (hver eneste side) OG i
   // PlanningHubPage, så /planning ville ellers fyre to uafhængige kald — hver
   // med 5 Supabase-runder — ved mount og ved hvert interval-tick. TTL'en (60 s)
   // dækker kun de samtidige kald; den udskyder ikke overgangen gul → rød.
   const load = useCallback(async (force: boolean) => {
+    const generation = ++loadGeneration.current;
+    const isCurrent = () => generation === loadGeneration.current;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setReminder(EMPTY_SELECTION_REMINDER); return; }
+      if (!session) { if (isCurrent()) setReminder(EMPTY_SELECTION_REMINDER); return; }
       // Nøglen er bundet til den indloggede manager. Uden user-id'et ville et
       // svar der stadig er undervejs når manager A logger ud lande på den faste
       // nøgle bagefter — `clear()` ved logud fjerner kun det der ligger i
@@ -80,12 +89,12 @@ export function useSelectionReminder(): {
         },
         SHARED_TTL_MS.selectionReminder,
       );
-      setReminder(normalizeSelectionReminder(payload));
+      if (isCurrent()) setReminder(normalizeSelectionReminder(payload));
     } catch {
       // Fail-safe: ingen markering. En påmindelse må aldrig vælte navigationen.
-      setReminder(EMPTY_SELECTION_REMINDER);
+      if (isCurrent()) setReminder(EMPTY_SELECTION_REMINDER);
     } finally {
-      setLoaded(true);
+      if (isCurrent()) setLoaded(true);
     }
   }, []);
 
