@@ -145,6 +145,13 @@ export const KNOWN_EVENTS = Object.freeze([
   // Forholdet mellem de to events er selve målingen ejeren bad om 7/9.
   "nps_submitted",
   "nps_dismissed",
+  // app_version_reload (#5033/#5159) — release-koordineringen. Baerer
+  // {from, to, fromSha, sha, trigger, outcome}. `outcome` er hele pointen efter
+  // audit-fund M4: "arrived" (vi landede paa maalet), "no_effect" (reloadet
+  // aendrede ingenting) eller "deferred" (ny frontend fundet, men spilleren
+  // havde ugemt arbejde, saa vi viste banneret i stedet). Et event alene er
+  // IKKE bevis for en undgaaet ChunkLoadError.
+  "app_version_reload",
 ]);
 
 // #4321: spejl eventet til PostHog. Postgres-skrivningen nedenfor er og bliver

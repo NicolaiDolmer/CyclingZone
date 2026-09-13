@@ -47,6 +47,7 @@ param(
   [int] $IntervalMinutes = 15,
   [int] $StallMinutes = 45,
   [switch] $Once,
+  [double] $MaxHours = 8,
   [string] $OutDir = "",
   [datetime] $WaveStartTime = (Get-Date),
   [switch] $Json
@@ -295,9 +296,42 @@ if ($Once) {
 }
 
 # --- Loop-tilstand: koer hvert -IntervalMinutes, skriv recovery-brief ÉN gang pr. stall-episode.
+#
+# Selv-afslutning (#5142): vagten startes af wave.js' fase 0 som en selvstaendig
+# proces der overlever sin starter. Doer boelgen midtvejs, er der ingen der
+# stopper den, og den koerte videre i timevis med git fetch hvert 15. minut.
+# Derfor stopper den selv naar boelgen ikke laengere findes:
+#   - .claude/run/wave-active.json er vaek eller udloebet, ELLER
+#   - vagten har koert i mere end -MaxHours timer.
+# Sidste fase af wave.js stopper den stadig paa PID, og close-out-cleanup.ps1
+# fanger den hvis begge dele fejler. Tre lag, fordi et evigt loop paa ejerens
+# maskine er praecis den slags der foerst opdages naar CPU'en er varm.
+$waveActiveFile = Join-Path $repoRoot ".claude\run\wave-active.json"
+$watchStart = Get-Date
+
+function Test-WaveStillRunning {
+  if (-not (Test-Path $waveActiveFile)) { return $false }
+  try {
+    $info = Get-Content $waveActiveFile -Raw | ConvertFrom-Json
+    if ($info.expiresAt) {
+      $expires = [datetime]::Parse($info.expiresAt)
+      if ($expires -lt (Get-Date)) { return $false }
+    }
+  } catch { return $true }   # ulaeselig fil: antag boelgen koerer (fail-safe)
+  return $true
+}
+
 $reported = @{}
-Write-Host "[wave-lane-watch] Loop startet - interval ${IntervalMinutes}min, stall-graense ${StallMinutes}min. Ctrl-C for at stoppe." -ForegroundColor Green
+Write-Host "[wave-lane-watch] Loop startet - interval ${IntervalMinutes}min, stall-graense ${StallMinutes}min, selv-stop efter ${MaxHours}t eller naar boelgen er slut. Ctrl-C for at stoppe." -ForegroundColor Green
 while ($true) {
+  if (-not (Test-WaveStillRunning)) {
+    Write-Host "[wave-lane-watch] Ingen aktiv boelge ($waveActiveFile er vaek eller udloebet) - vagten stopper." -ForegroundColor Yellow
+    exit 0
+  }
+  if (((Get-Date) - $watchStart).TotalHours -ge $MaxHours) {
+    Write-Host "[wave-lane-watch] Vagten har koert i over $MaxHours timer - stopper. Koerer der stadig en boelge, saa start den igen." -ForegroundColor Yellow
+    exit 0
+  }
   try { & git -C $repoRoot fetch --prune origin *> $null } catch {}
   $rows = Invoke-OnePass
   $now = Get-Date -Format "HH:mm"

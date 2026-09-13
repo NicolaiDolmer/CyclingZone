@@ -1,5 +1,79 @@
 export const PATCHES = [
   {
+    "version": "7.270",
+    "date": "2026-09-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved", "audience": "player", "topic": "Feedback",
+        "en": {
+          "title": "The features survey now closes itself, and shows when",
+          "body": "The 2026-09-features survey on the homepage now shows its closing date and closes itself on Monday 14 September at 23:59 Danish time. After that, it shows a closed screen with a link to the roadmap instead of the form."
+        },
+        "da": {
+          "title": "Spørgeskemaet lukker nu af sig selv, og viser hvornår",
+          "body": "Spørgeskemaet 2026-09-features på forsiden viser nu sin lukkedato og lukker af sig selv mandag den 14. september kl. 23:59 dansk tid. Derefter viser det en lukket flade med et link til roadmappet i stedet for selve formularen."
+        },
+        "refs": [5121, 5141]
+      },
+      {
+        "category": "new", "audience": "player", "topic": "Feedback",
+        "en": {
+          "title": "A reminder in your inbox if you have not answered the features survey",
+          "body": "If you have not opened the 2026-09-features survey, you get a reminder in your inbox before it closes. If you started it but did not send it, you get a different reminder nudging you to finish."
+        },
+        "da": {
+          "title": "En påmindelse i indbakken hvis du ikke har svaret på spørgeskemaet",
+          "body": "Har du ikke åbnet spørgeskemaet 2026-09-features, får du en påmindelse i indbakken før det lukker. Er du begyndt på det men ikke sendt det, får du en anden påmindelse, der skubber dig til at gøre det færdigt."
+        },
+        "refs": [5121]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Marketing",
+        "en": {
+          "title": "The public site got a small visual refresh",
+          "body": "The marketing site, not the game itself, moved to a new styling engine. Sections now alternate tone, the stage profile has an outline and a finish line, and riders in the standings are separated by a thin line."
+        },
+        "da": {
+          "title": "Det offentlige site fik et lille visuelt løft",
+          "body": "Marketingsitet, ikke selve spillet, er flyttet til en ny styling-motor. Sektioner skifter nu tone på skift, etapeprofilen har en konturlinje og en mållinje, og rytterne i klassementet er adskilt af en tynd streg."
+        },
+        "refs": [5138]
+      }
+    ]
+  },
+  {
+    "version": "7.269",
+    "date": "2026-09-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved", "audience": "player", "topic": "Mobile",
+        "en": {
+          "title": "Tables on mobile: three columns, no sideways scrolling",
+          "body": "On a phone, tables now show the rider name plus three columns that fit the screen. Tap a chip above the table to swap a column in, and tap Full table to see every column with the name locked on the left. Your choice is remembered per table."
+        },
+        "da": {
+          "title": "Tabeller på mobil: tre kolonner, ingen scroll til siden",
+          "body": "På telefonen viser tabellerne nu rytternavnet plus tre kolonner der passer på skærmen. Tryk på en chip over tabellen for at bytte en kolonne ind, og tryk Fuld tabel for at se alle kolonner med navnet låst til venstre. Dit valg huskes pr. tabel."
+        },
+        "refs": [5102]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "Retirement notices no longer change mid-season",
+          "body": "A code change on 7 September altered the retirement notice for 58 riders. I have restored the notice you saw before that date, and notices are now stored at the start of a season so they cannot move again. The end-of-season retirement follows the stored notice."
+        },
+        "da": {
+          "title": "Pensionsvarsler skifter ikke længere midt i sæsonen",
+          "body": "En kodeændring den 7. september ændrede pensionsvarslet for 58 ryttere. Jeg har givet dem det varsel tilbage, I så før den dato, og varsler gemmes nu ved sæsonstart, så de ikke kan flytte sig igen. Pensioneringen ved sæsonskiftet følger det gemte varsel."
+        },
+        "refs": [5073]
+      }
+    ]
+  },
+  {
     "version": "7.268",
     "date": "2026-09-09",
     "label": "Beta",

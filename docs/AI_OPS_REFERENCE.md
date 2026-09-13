@@ -46,7 +46,7 @@ _Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/Nicola
 | TARGETED | Små UI-diffs | `node scripts/verify-affected.mjs` finder de relevante specs; CI bærer den fulde suite |
 | FULL | Backend, delte lib-hooks, i18n, config eller >6 filer | Fuld lokal suite |
 | E2E FULD | Frontend/i18n-PR'er | HELE `npm run test:e2e` (alle 3 projekter) lokalt før push — ejer-krav 7/8, CI kører ALLE specs |
-| **WAVE** (ejer 6/9) | Workers i en bølge (natbølge, byg-bølge med orkestrator) | Kun målrettede tests for de rørte filer + `tsc` + `preflight-pr.ps1`; `verify-affected.mjs` for UI. **CI er den fulde gate**, intet merges uden grøn CI. Harness: én baseline pr. main (orkestratoren), laner kører kun egen branch. Fuld e2e lokalt kun ved markup/snapshot-ændringer. Maks 3 samtidige byg-workers pr. PC. Detaljer: `NIGHT_WAVE_RUNBOOK.md` §Agent-regler |
+| **WAVE** (ejer 6/9) | Workers i en bølge (natbølge, byg-bølge med orkestrator) | Kun målrettede tests for de rørte filer + `tsc` + `preflight-pr.ps1`; `verify-affected.mjs` for UI. **CI er den fulde gate**, intet merges uden grøn CI. Harness: én baseline pr. main (orkestratoren), laner kører kun egen branch. Fuld e2e lokalt kun ved markup/snapshot-ændringer. **Loft (opdateret 11/9, #5142): 4 laner + verifikations-semafor 2** (`scripts/verify-lock.ps1`) — afløser "maks 3 samtidige byg-workers pr. PC". Detaljer: `NIGHT_WAVE_RUNBOOK.md` §Agent-regler |
 
 Visuelle ændringer eller snapshot-refresh: kør ALLE 3 Playwright-projekter, ellers fejler CI på mobile (#536, 21/5).
 
@@ -66,6 +66,30 @@ Omdøb aldrig `frontend-smoke`-jobbet: navnet er en kontrakt med branch protecti
 **Loop-guard:** 2 CI-fails på samme symptom → STOP + spørg brugeren. Se `.claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md`.
 
 **Natbølger:** der er ét serielt e2e-slot pr. maskine, og orkestratoren ejer det — parallelle workers kører aldrig fuld lokal suite samtidig.
+
+---
+
+## Supabase security-advisors — 7-dages regel
+
+_Ejer-krav 11/9 ([#5153](https://github.com/NicolaiDolmer/CyclingZone/issues/5153))._
+
+**Tjek ved hver session-start:** `get_advisors(type: "security")` på projekt
+`ghwvkxzhsbbltzfnuhhz` (Supabase MCP, read-only — koster ét kald). Er der nye
+WARN siden sidst, så noter dem i `docs/NOW.md` sammen med den dato de dukkede op.
+
+**Reglen:** en WARN må **aldrig** stå åben i mere end 7 dage. Bliver den ikke
+lukket inden for et par sessioner, er valget ikke "lad den ligge" men ét af to:
+luk den, eller skriv den ind i [`SUPABASE_SECURITY_ADVISORS.md`](SUPABASE_SECURITY_ADVISORS.md)
+som **bevidst åben** med begrundelse, blokerende afhængighed og issue-nummer.
+En udokumenteret WARN over 7 dage er et brud, ikke en prioritering — #4870 lukkede
+uden fix og lod fire matview-WARN stå i seks uger, præcis det mønster reglen
+findes for.
+
+INFO-fund er ikke omfattet af 7-dages reglen, men skal være klassificeret i
+samme fil (de 117 `rls_enabled_no_policy` er det).
+
+Migrationer der lukker advisor-fund kører som alle andre: idempotent fil i
+`database/`, applied af `auto-migrate.yml` ved merge, post-verify bagefter.
 
 ---
 

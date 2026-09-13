@@ -1,6 +1,61 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+@theme {
+  /* Radius-skalaen nulstilles (som i v3-configen, der satte `borderRadius` uden
+     `extend`) og genopbygges kun med de trin fladen faktisk bruger: rounded-cz,
+     rounded-cz-pill og rounded-full. De ubrugte v3-aliaser (none/sm/DEFAULT/md/
+     lg) er udeladt med vilje: `--radius-sm` ville kollidere med design-tokenet
+     `--radius-sm: 5px` i :root nedenfor, og rounded-sm ville så tegne 5px i
+     stedet for 2px. TASTE bestemmer i forvejen 5px som eneste card-radius. */
+  --radius-*: initial;
+  --radius-full: 9999px;
+  --radius-cz: var(--radius-sm);
+  --radius-cz-pill: var(--radius-pill);
+
+  --text-3xs: 10px;
+  --text-3xs--line-height: 1.3;
+  --text-2xs: 11px;
+  --text-2xs--line-height: 1.35;
+
+  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-data: 'Inter Tight', system-ui, sans-serif;
+  --font-display: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+
+  --color-cz-body: var(--bg-body);
+  --color-cz-card: var(--bg-card);
+  --color-cz-elevated: var(--bg-elevated);
+  --color-cz-subtle: var(--bg-subtle);
+  --color-cz-border: var(--border);
+  --color-cz-1: var(--text-1);
+  --color-cz-2: var(--text-2);
+  --color-cz-3: var(--text-3);
+  --color-cz-accent: rgb(var(--accent));
+  --color-cz-accent-t: rgb(var(--accent-t));
+  --color-cz-on-accent: var(--on-accent);
+  --color-cz-success: rgb(var(--success));
+  --color-cz-danger: rgb(var(--danger));
+  --color-cz-danger-bg: var(--danger-bg);
+
+  --z-index-sticky: 1100;
+  --z-index-toast: 1400;
+}
+
+/* Tailwind v4 skifter default border-color til currentcolor. Codemodden lægger
+   her en kompat-blok der tvinger gray-200 tilbage; den er fjernet, fordi hver
+   eneste border-utility på fladen allerede sætter sin egen farve (verificeret
+   ved gennemgang af alle `border*`-klasser i app/ + components/). Skriver du en
+   ny `border` uden farve, skal du sætte `border-cz-border` selv.
+
+   Tailwind v4 dropper også `cursor: pointer` på knapper. Her er v3-adfærden
+   bevaret bevidst, så CTA-knapperne stadig føles klikbare. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 /* Design-tokens porteret 1:1 fra frontend/src/index.css (#4067-port af den
    godkendte landing). Marketing-fladen kører kun light ("chalk") — dark-blokken

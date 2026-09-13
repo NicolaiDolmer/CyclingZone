@@ -463,14 +463,10 @@ export default function RidersPage() {
     {
       key: "rating",
       header: <span title={t("table.ratingTitle")}>{t("table.rating")}</span>,
+      mobileLabel: t("table.rating"),
       sortKey: "rating",
       numeric: true,
       compact: true,
-      fold: true,
-      foldValue: (r) => {
-        const ovr = riderOverallRating(r);
-        return Number.isFinite(ovr) ? String(ovr) : "—";
-      },
       render: (r) => {
         const ovr = riderOverallRating(r);
         return Number.isFinite(ovr) ? (
@@ -541,8 +537,6 @@ export default function RidersPage() {
       header: t("table.value"),
       sortKey: "value",
       numeric: true,
-      fold: true,
-      foldValue: (r) => formatNumber(getRiderMarketValue(r)),
       render: (r) => <span className="text-cz-accent-t font-bold">{formatNumber(getRiderMarketValue(r))}</span>,
     },
     {
@@ -561,11 +555,10 @@ export default function RidersPage() {
     {
       key: "popularity",
       header: <span title={t("table.popularityTitle")}>{t("table.popularity")}</span>,
+      mobileLabel: t("table.popularity"),
       sortKey: "popularity",
       numeric: true,
       compact: true,
-      fold: true,
-      foldValue: (r) => Number.isFinite(r.popularity) ? String(r.popularity) : "—",
       render: (r) => (
         <span className="text-cz-2 font-mono text-xs">
           {Number.isFinite(r.popularity) ? r.popularity : "—"}
@@ -575,6 +568,7 @@ export default function RidersPage() {
     ...visibleStatCols.map(({ key, label }) => ({
       key,
       header: <span title={tRider(`racePreview.derived.${key}`)}>{label}</span>,
+      mobileLabel: label,
       sortKey: key,
       numeric: true,
       // #2849 bølge 6 (ejer-feedback): evne-kolonnerne stod for spredt.
@@ -679,6 +673,9 @@ export default function RidersPage() {
                 columns={columns}
                 rows={riders}
                 rowKey={(r) => r.id}
+                /* D-047 (#5102): rating, vaerdi og loen er de tre tal markedet
+                   sammenlignes paa; evner og popularitet er et chip-tryk vaek. */
+                mobileDefaults={["rating", "value", "salary"]}
                 rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
                 sort={filters.sort}
                 sortDir={filters.sort_dir}

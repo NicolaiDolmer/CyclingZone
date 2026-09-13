@@ -22,10 +22,14 @@ import cors from "cors";
 import helmet from "helmet";
 import { createClient } from "@supabase/supabase-js";
 import { isAllowedOrigin } from "./lib/corsOrigin.js";
+import { normalizeRequestBody } from "./lib/normalizeRequestBody.js";
 import apiRoutes from "./routes/api.js";
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
 
 const app = express();
+// Express 5 default; laast eksplicit 11/9 (#4565): ingen nestede/array-query-noegler
+// i repoet, simple er sikrere end qs. Aendr kun sammen med en test der viser behovet.
+app.set("query parser", "simple");
 const PORT = process.env.PORT || 3001;
 
 // Railway/Vercel terminate TLS upstream; trust the first proxy hop so req.ip
@@ -49,12 +53,22 @@ const ALLOWED_ORIGINS = [
 ].filter(Boolean);
 app.use(cors({ origin: (origin, cb) => cb(null, isAllowedOrigin(origin, ALLOWED_ORIGINS)), credentials: true }));
 // Webhooks skal have rå body (signatur/verifikation) → undtag fra JSON-parseren.
-// Rå-parseren sætter req._body, så den globale express.json() springer pathen over.
+// #4565 (Express 5 / body-parser 2): mekanismen bag undtagelsen er skiftet. I
+// body-parser 1 satte rå-parseren `req._body`, og json-parseren tjekkede netop
+// det flag. body-parser 2 har ingen `_body` længere — den springer i stedet over
+// når `onFinished.isFinished(req)` er sand, hvilket den er efter at rå-parseren
+// har læst hele request-streamen. Nettoeffekten er uændret (verificeret: rå
+// Buffer overlever den globale express.json()), men kommentaren ville ellers
+// pege på et flag der ikke findes.
 app.use("/api/billing/alunta-webhook", express.raw({ type: "*/*" }));
 // #2853: Resend-webhooken signeres med Svix-skemaet — HMAC over de RÅ bytes,
 // se backend/lib/resendWebhook.js. Samme undtagelse fra JSON-parseren.
 app.use("/api/email/resend-webhook", express.raw({ type: "*/*" }));
 app.use(express.json({ limit: "10mb" }));
+// #4565 — Express 5's body-parser lader `req.body` være undefined når intet
+// parses; her sættes Express 4's `{}`-default tilbage. Fuld begrundelse +
+// webhook-analyse i lib/normalizeRequestBody.js. Skal stå EFTER alle parsere.
+app.use(normalizeRequestBody);
 
 app.use("/api", apiRoutes);
 // POST /api/admin/sync-uci fjernet 2026-06-12 (#1207, ejer-Option A): UCI-sync er

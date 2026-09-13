@@ -170,6 +170,16 @@
         ]
       },
       {
+        "matcher": "Agent|Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/guard-agent-spawn.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "Edit",
         "hooks": [
           {

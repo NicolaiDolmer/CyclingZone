@@ -1,9 +1,11 @@
 import * as Sentry from "@sentry/react";
 import { useEffect, useState } from "react";
 import {
+  attemptRecoveryReload,
   documentIsStillLoadable,
   isChunkLoadError,
   isUnambiguousChunkLoadError,
+  safeSessionStorage,
   shouldAttemptChunkReload,
 } from "./chunkErrors.js";
 // Direkte imports (IKKE barrel) — saa main-bundlen kun traekker ErrorState +
@@ -214,6 +216,12 @@ function AppErrorFallback({ error, eventId, resetError }) {
   //
   // documentIsStillLoadable() spørger dokumentet om det stadig kan hente noget.
   // Kun hvis ja brænder vi loop-guard-nøglen og reloader. Se chunkErrors.js.
+  //
+  // #5159 (review-fund 1): stien går nu gennem den SAMME `attemptRecoveryReload`
+  // som den globale preload-handler, og dermed gennem porten (reloadGate.js).
+  // Fallbacken herunder ER den manuelle udvej — den har sin egen "Genindlæs
+  // siden"-knap — så er porten lukket, står den og venter i stedet for at rive
+  // dokumentet væk. Vi vækkes igen når den sidste blokering slippes.
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
     // Gate på chunk-fejl FØR canary'en: en almindelig render-fejl skal ikke
@@ -224,27 +232,32 @@ function AppErrorFallback({ error, eventId, resetError }) {
     const cancel = () => { cancelled = true; };
     window.addEventListener("pagehide", cancel);
 
-    documentIsStillLoadable({
-      fetchFn: window.fetch?.bind(window),
-      url: window.location.href,
-    }).then((alive) => {
-      if (cancelled || !alive) return;
-      const shouldReload = shouldAttemptChunkReload({
+    attemptRecoveryReload({
+      probe: () => documentIsStillLoadable({
+        fetchFn: window.fetch?.bind(window),
+        url: window.location.href,
+      }),
+      // #5159 (M3/review-fund 4): den sikre accessor, ikke en rå property-
+      // læsning. `window.sessionStorage` KASTER i browsere hvor site-data er
+      // slået fra, og et kast her ville blive til en ny fejl inde i selve
+      // fejlskærmen.
+      claim: () => shouldAttemptChunkReload({
         error,
         release: getRelease(),
-        storage: window.sessionStorage,
-      });
-      if (shouldReload) {
-        window.location.reload();
-        return;
-      }
+        storage: safeSessionStorage(window),
+      }),
+      reload: () => window.location.reload(),
+      source: "boundary",
+      isCancelled: () => cancelled,
+    }).then((outcome) => {
+      if (cancelled || outcome !== "exhausted") return;
       // #4545: dokumentet ER i live, men loop-guarden er braendt — ét reload er
       // allerede brugt paa denne release. Der sker altsaa INTET automatisk herfra,
       // og copyen maa ikke blive ved med at love det. Uden dette flag sad
       // spilleren 1/9 i en loekke: samme "vi genindlaeser automatisk", nyt fejl-id,
       // i det uendelige, uden at faa at vide hvad han selv kunne goere.
       setRecoveryExhausted(true);
-    });
+    }).catch(() => {});
 
     return () => {
       cancel();

@@ -1,3 +1,32 @@
+// #5150 — alpha-capable farvetoken. Tailwind erstatter `<alpha-value>` med
+// opacity-modifieren (`bg-cz-card/40` → 0.4) og med `1` når der ingen modifier
+// er. Et token defineret som rå `var(--x)` har INGEN plads til den værdi, så
+// Tailwind springer klassen helt over: `bg-cz-card/40`, `border-cz-border/60`
+// og `stroke-cz-1/30` blev aldrig genereret, selv om koden bad om dem.
+//
+// `color-mix` i stedet for mønstret `rgb(var(--x) / <alpha-value>)`, fordi
+// sidstnævnte kræver at variablen er en kanal-tripel (`14 15 21`). De 19
+// tokens herunder er hex (`#0e0f15`) eller rgba (`rgba(21,119,47,.08)`) og
+// læses ~90 steder direkte som `var(--x)` i index.css og inline SVG-styles;
+// en omskrivning til tripler ville kræve at ALLE de kaldsteder samtidig blev
+// til `rgb(var(--x))`, og rgba-tokens kan slet ikke udtrykkes som tripel.
+// color-mix tager farven som den er.
+//
+// Hvorfor en FUNKTION og ikke bare en streng med `<alpha-value>`: Tailwind
+// kalder farve-funktionen med opacity-modifieren (`0.4`) for `bg-cz-card/40`,
+// men med strengen `var(--tw-bg-opacity, 1)` for den bare `bg-cz-card`. Begge
+// former ville male samme farve — men color-mix ændrer den SERIALISEREDE
+// computed value fra `rgb(252, 251, 247)` til `color(srgb …)`, og det bryder
+// kode der læser `getComputedStyle(el).backgroundColor` som rgb (fanget af
+// me-marker-cells.spec.js i CI). Den bare klasse beholder derfor sin rå
+// `var(--x)` præcis som før, og color-mix bruges KUN når en faktisk
+// opacity-modifier er i spil. Prisen: de legacy `bg-opacity-*`-utilities
+// virker ikke for disse tokens — de bruges nul steder i `src`.
+const alphaToken = (cssVar) => ({ opacityValue }) =>
+  opacityValue === undefined || String(opacityValue).includes("--tw-")
+    ? `var(${cssVar})`
+    : `color-mix(in srgb, var(${cssVar}) calc(${opacityValue} * 100%), transparent)`;
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
@@ -51,33 +80,33 @@ export default {
         display: ['"Bebas Neue"', "Impact", '"Arial Narrow"', "sans-serif"],
       },
       colors: {
-        "cz-body":      "var(--bg-body)",
-        "cz-card":      "var(--bg-card)",
-        "cz-elevated":  "var(--bg-elevated)",
-        "cz-subtle":    "var(--bg-subtle)",
-        "cz-border":    "var(--border)",
-        "cz-1":         "var(--text-1)",
-        "cz-2":         "var(--text-2)",
-        "cz-3":         "var(--text-3)",
+        "cz-body":      alphaToken("--bg-body"),
+        "cz-card":      alphaToken("--bg-card"),
+        "cz-elevated":  alphaToken("--bg-elevated"),
+        "cz-subtle":    alphaToken("--bg-subtle"),
+        "cz-border":    alphaToken("--border"),
+        "cz-1":         alphaToken("--text-1"),
+        "cz-2":         alphaToken("--text-2"),
+        "cz-3":         alphaToken("--text-3"),
         "cz-accent":    "rgb(var(--accent) / <alpha-value>)",
         "cz-accent-t":  "rgb(var(--accent-t) / <alpha-value>)",
-        "cz-on-accent": "var(--on-accent)",
+        "cz-on-accent": alphaToken("--on-accent"),
 
-        "cz-sidebar":         "var(--bg-sidebar)",
-        "cz-sidebar-hover":   "var(--bg-sidebar-hover)",
-        "cz-sidebar-border":  "var(--border-sidebar)",
-        "cz-sidebar-1":       "var(--text-sidebar-1)",
-        "cz-sidebar-2":       "var(--text-sidebar-2)",
-        "cz-sidebar-3":       "var(--text-sidebar-3)",
+        "cz-sidebar":         alphaToken("--bg-sidebar"),
+        "cz-sidebar-hover":   alphaToken("--bg-sidebar-hover"),
+        "cz-sidebar-border":  alphaToken("--border-sidebar"),
+        "cz-sidebar-1":       alphaToken("--text-sidebar-1"),
+        "cz-sidebar-2":       alphaToken("--text-sidebar-2"),
+        "cz-sidebar-3":       alphaToken("--text-sidebar-3"),
 
         "cz-success":    "rgb(var(--success) / <alpha-value>)",
-        "cz-success-bg": "var(--success-bg)",
+        "cz-success-bg": alphaToken("--success-bg"),
         "cz-danger":     "rgb(var(--danger) / <alpha-value>)",
-        "cz-danger-bg":  "var(--danger-bg)",
+        "cz-danger-bg":  alphaToken("--danger-bg"),
         "cz-warning":    "rgb(var(--warning) / <alpha-value>)",
-        "cz-warning-bg": "var(--warning-bg)",
+        "cz-warning-bg": alphaToken("--warning-bg"),
         "cz-info":       "rgb(var(--info) / <alpha-value>)",
-        "cz-info-bg":    "var(--info-bg)",
+        "cz-info-bg":    alphaToken("--info-bg"),
 
         // `cz-{status}-bg0` er FJERNET i #2849 bølge 6 (ejer-valg 25/7). Aliaset
         // var en typo for `cz-{status}` og skabte to familier til det samme:

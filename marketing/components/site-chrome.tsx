@@ -116,7 +116,7 @@ export function SiteHeader({
               <a
                 key={link.label}
                 href={navHref(lang, link.paths)}
-                className="font-data text-2xs font-semibold uppercase tracking-[0.1em] text-cz-2 hover:text-cz-1"
+                className="font-data text-2xs font-semibold uppercase tracking-widest text-cz-2 hover:text-cz-1"
               >
                 {link.label}
               </a>

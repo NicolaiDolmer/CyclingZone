@@ -8,7 +8,9 @@
 // Roadmap-vedligehold (#1600): "Already built"-historik-sektion (shipped-items,
 // nyeste først) + admin-only flade til at flytte item active↔shipped og oprette
 // nye items uden migration. Admin-gate = supabase.rpc("is_admin"); RLS er
-// source of truth (admin-INSERT/UPDATE-policies findes allerede).
+// source of truth (admin-INSERT/UPDATE-policies findes allerede). RPC'en
+// kaldes KUN med en session (#5153): siden er offentlig, og anon har ikke
+// EXECUTE på is_admin().
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -202,6 +204,12 @@ export default function RoadmapPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // #5153: /roadmap er en OFFENTLIG rute (#2042/#2824), og anon har ikke
+      // længere EXECUTE på is_admin(). Et ubetinget rpc-kald ville give 403 /
+      // 42501 for hver udlogget besøgende — usynligt i UI'et, men støj i
+      // prod-loggen. getSession() læser det lokale token uden ekstra netkald,
+      // så gaten koster ingenting for den indloggede sti.
+      const { data: { session } } = await supabase.auth.getSession();
       const [{ data: itemData }, { data: auth }, { data: adminRaw }] = await Promise.all([
         supabase
           .from("roadmap_items")
@@ -210,7 +218,7 @@ export default function RoadmapPage() {
           .in("status", ["active", "shipped"])
           .order("sort_order"),
         supabase.auth.getUser(),
-        supabase.rpc("is_admin"),
+        session ? supabase.rpc("is_admin") : Promise.resolve({ data: null }),
       ]);
       if (cancelled) return;
       const all = itemData ?? [];

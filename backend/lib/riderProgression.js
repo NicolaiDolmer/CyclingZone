@@ -520,8 +520,30 @@ export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRES
     // 36-40" — en rytter de har set som 35 hele sæsonen må ikke pensioneres
     // minutter efter sæsonslut. Konsekvens: ingen pension under synlig alder 36,
     // og garantien rammer efter sæsonen som synlig 40-årig (aldrig en 41-sæson).
-    retirement: retirementDecision(age - 1, rider.id, season, cfg),
+    retirement: resolveSeasonRetirement(rider, age, season, cfg),
   };
+}
+
+// #5073: pensionsrullet er et LØFTE, ikke støj. Er svaret allerede frosset for
+// den AFSLUTTEDE sæson (riders.retirement_notice_* — se retirementNotice.js),
+// læses det i stedet for at blive rullet igen. Uden det her ville cutover kunne
+// pensionere en rytter hvis kort hele sæsonen sagde "går ikke på pension" (og
+// omvendt), præcis som da #4990 skiftede hash-funktionen midt i sæson 3.
+//
+// `rider.frozenRetirementNotice` er boolean når svaret er frosset, og
+// null/undefined når det ikke er — så alle eksisterende kaldesteder (tests,
+// simuleringer) rammer nøjagtig samme rul som før.
+//
+// `source` er med så motoren kan skrive frysningen tilbage netop når den selv
+// rullede, uden at gætte.
+export function resolveSeasonRetirement(rider, age, season, cfg = PROGRESSION_CONFIG) {
+  const frozen = rider?.frozenRetirementNotice;
+  if (frozen === true || frozen === false) {
+    return { retire: frozen, notice: frozen, source: "frozen" };
+  }
+  // Ejer-regel 26/7 (cutover S1→S2): pension måles på den AFSLUTTEDE sæsons
+  // alder (age − 1), ikke den nye sæsons. Se kommentaren ved `retirement` ovenfor.
+  return { ...retirementDecision(age - 1, rider.id, season, cfg), source: "rolled" };
 }
 
 // Potentiale → vækst-rate-multiplikator (lineær interpolation på rateByPotential).

@@ -4,15 +4,20 @@
 
 ## Hard rules (fælles — fuld tekst i AGENTS.md)
 
-Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér repo-root (`git rev-parse --show-toplevel`) før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før du lister noget som TODO/bug · spørg ved tvivl (70-95%) · patch notes ved enhver brugerrettet ændring · auto-push efter commit · fler-PR-merge-koe (een ad gangen, vent paa deploy): `scripts/merge-queue.ps1` (#4919) · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; committer du via `git -C <dir>`, så giv guarden samme `<dir>` som 2. argument) · SQL/migrationer: Claude applier selv post-merge under #2642-rammer (idempotent + post-verify; destruktive klasser ejer-gated) — hard rule 9 i `AGENTS.md` · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst + slice-close-out-reglen: [`AGENTS.md`](AGENTS.md) (lean core). Cross-PC-detaljer, session-rytme-signaler + loops-quick-ref: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md) (WARM, on-demand — split per #733).
+Gælder også Claude Code (AGENTS.md auto-loades ikke her): verificér repo-root før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før TODO/bug · spørg ved tvivl (70-95 %) · patch notes ved brugerrettet ændring · auto-push efter commit · merge-kø én ad gangen: `scripts/merge-queue.ps1` (#4919) · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; ved `git -C <dir>` gives guarden samme `<dir>`) · migrationer: apply post-merge per #2642 (auto-migrate.yml), Claude post-verificerer; destruktivt ejer-gated · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst: [`AGENTS.md`](AGENTS.md); cross-PC + session-rytme: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md).
+
+## Orkestrator-standard (ejer 11/9, #5142)
+
+Parallelt byggearbejde har ÉN indgang: `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })` (filen SKAL have LF-linjeskift; CRLF afvises af appen som kontroltegn, `.gitattributes` sikrer det, bidt 2x 11/9). Aldrig håndskrevne Agent-spawns; `scripts/hooks/guard-agent-spawn.sh` blokerer dem mens en bølge kører (fritaget: `WAVE-*:`-præfikser, `READ-ONLY:`, `Explore`/`Plan`). Loft: **4 laner**, verifikations-semafor 2 (`scripts/verify-lock.ps1 -Max 2 -- <kommando>`), maks 5 åbne PR'er, livstegn (draft-PR 30 min, push 15 min, timeout 60 min, recovery i samme worktree). Bekræftet frys stopper bølgen. Fuld tekst: [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md).
 
 ## Page templates (binding — ejer-godkendt 23/7, #2849)
 
-Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/PAGE_TEMPLATES.md`](docs/design/PAGE_TEMPLATES.md) — læs den FØR du bygger eller ændrer en side: T1 standard content (max-w-4xl), T2 wide data (cap 1600px), T3 profile/detail (hero + tabs, max-w-5xl). **Smagen** (hvad verdensklasse er, forbudsliste, dommer-tjekliste ja/nej) står i [`docs/design/TASTE.md`](docs/design/TASTE.md) (#4623): skabelonen er gulvet, TASTE er målet; enhver UI-PR skal kunne svare ja på tjeklisten. Opfind ALDRIG eget sidehoved, container-bredde, padding, radius, typografi-trin eller loading/empty/error-markup. Bindende: én gold primary-knap pr. view, hairline-borders (ingen skygger), 5px card-radius, tabular figures på al numerik, stroke-ikoner (aldrig emoji). Artboards: `docs/design/design_handoff_page_templates/`.
+Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/PAGE_TEMPLATES.md`](docs/design/PAGE_TEMPLATES.md) — læs den FØR du bygger eller ændrer en side: T1 standard content (max-w-4xl), T2 wide data (cap 1600px), T3 profile/detail (hero + tabs, max-w-5xl). **Smagen** står i [`docs/design/TASTE.md`](docs/design/TASTE.md) (#4623): skabelonen er gulvet, TASTE er målet; enhver UI-PR skal kunne svare ja på tjeklisten. Opfind ALDRIG eget sidehoved, container-bredde, padding, radius, typografi-trin eller loading/empty/error-markup. Bindende: én gold primary-knap pr. view, hairline-borders (ingen skygger), 5px card-radius, tabular figures på al numerik, stroke-ikoner (aldrig emoji).
 
 ## Auto-loaded (intet at gøre)
 
-- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory. Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin: `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md`.
+- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (gate >3.200 tok / >54 linjer; WARM: `MEMORY_REFERENCE.md`).
+- **Security-advisors** (Supabase MCP `get_advisors`) tjekkes ved session-start; en WARN må aldrig stå over 7 dage (#5153).
 - `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (`scripts/session-prefetch-issue.sh`). Ikke source of truth.
 
 ## Start (eksplicit)
@@ -20,7 +25,7 @@ Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/
 1. Læs `docs/NOW.md` — kort status (**🎯 Next action** + **🤖 Working agent** øverst, aktiv slice + session-noter). Viser "Working agent" en anden aktiv session → STOP + spørg brugeren før pick-up (#559).
 2. **Aktivt issue:** `SESSION_CONTEXT.md` er cache; sandheden er GitHub + `docs/NOW.md`. Stale? `gh issue list --label "claude:todo" --state open --limit 10`
 3. `docs/GUARDRAILS_CORE.md` læses KUN ved labels `needs-contract` eller `shared-refactor` (~80% af sessioner skipper).
-4. **PR-preflight (alle PR'er):** `pwsh -File scripts/preflight-pr.ps1` FØR push; PR-body-krav står i scriptets header. Rørte du `frontend/`: også `npm run lint`, `node --test` (i `frontend/`) og build. **TIER FULL — backend, delte lib-hooks, i18n, config eller >6 filer — kræver fuld lokal suite (`scripts/verify-local.ps1`).** Frontend/i18n → HELE `npm run test:e2e` lokalt; visuelle ændringer/snapshot-refresh → ALLE 3 playwright-projekter (CI fejler ellers på mobile, #536); små UI-diffs → `node scripts/verify-affected.mjs`. Loop-guard: 2 CI-fails på samme symptom → STOP + spørg. Tier-tabel, e2e-krav og begrundelser: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md#pr-preflight-og-verifikations-tiers).
+4. **PR-preflight:** `pwsh -File scripts/preflight-pr.ps1` FØR push (PR-body-krav i headeren). `frontend/` rørt: også `npm run lint`, `node --test`, build. **TIER FULL** (backend, delte libs, i18n, config, >6 filer): `scripts/verify-local.ps1`; frontend/i18n: hele `npm run test:e2e`; snapshots: alle 3 Playwright-projekter (#536); små UI-diffs: `node scripts/verify-affected.mjs`. Loop-guard: 2 CI-fails på samme symptom → STOP + spørg. Tier-tabel: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md#pr-preflight-og-verifikations-tiers).
 5. **Efter `git pull` der rør ved en `*package-lock.json`** → `npm run sync-deps`; kun `npm ci` synker pålideligt ([hvorfor](docs/AI_OPS_REFERENCE.md#dependency-sync-efter-git-pull)).
 
 ## On-demand docs
@@ -32,14 +37,12 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
 - `docs/WORKTREE_WORKFLOW.md` — parallelle sessioner via `scripts/new-worktree.ps1`
 - `docs/NIGHT_WAVE_RUNBOOK.md` — natbølge-protokol. Læs FØR enhver natbølge.
 - `docs/AI_CHANNEL_ROUTING.md` — kanal-til-task-matrix; læs ved tvivl
-- `docs/AI_OPS_SCALING_ROADMAP.md` — AI/Ops- + skalerings-roadmap
-- `docs/AI_OPS_DISABLE_PLAYBOOK.md` — MCP/skills disable-handlinger
 - `database/schema-snapshot.json` — kolonnenavne i `relations.<tabel>.columns`. Slå op FØR ad-hoc SQL via MCP; gæt fylder prod-loggen (#3769). `riders`: `firstname`/`lastname`/`birthdate`, ikke `name`/`age`.
 
 ## Close-out (per session)
 
 1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Bruger lukker selv per label-state-maskinen i `GITHUB_WORKFLOW.md`.
-2. **NOW.md:** opdatér hvis aktiv slice ændrer sig — budget **maks ~1.200 tok** (primær gate #1275; ≤30 linjer sekundært, lange linjer tæller). Trim gamle close-out-blokke **direkte**; historikken ligger i git-log + issue-tråde. Opret IKKE `docs/archive/NOW-*.md` (hard-beskyttet af #684-deny, #750). **Obligatorisk:** opdatér **🎯 Next action** + nulstil **🤖 Working agent** til "Ingen aktiv session" (#558/#559).
+2. **NOW.md:** opdatér ved hvert merge; budget **maks ~1.200 tok** (#1275). Trim gamle blokke direkte (historik = git-log + issues); opret IKKE `docs/archive/NOW-*.md` (#684/#750). **Obligatorisk:** opdatér **🎯 Next action** + nulstil **🤖 Working agent** til "Ingen aktiv session" (#558/#559).
 3. **MASTERPLAN.md:** opdatér hvis den prioriterede kø ændrede sig (budget ≤1.500 tok; rækkefølgen er ejer-godkendt — spørg før omprioritering). **FEATURE_REGISTRY.yml:** opdatér ved flag-flip, feature-luk eller ny kernefunktion, og kør `node scripts/generate-feature-status.mjs` (FEATURE_STATUS.md er genereret, aldrig håndredigeret).
 4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). Samme rutine for `help.json` (en+da) ved ny/ændret spilmekanik (#1171).
 5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.

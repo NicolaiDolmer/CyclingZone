@@ -233,7 +233,9 @@ export default function AcademyPage() {
       render: (r) => {
         const busy = actionState[r.id] != null;
         return (
-          <div className="flex items-center gap-1.5 justify-end">
+          /* #5102/D-047: flex-wrap saa Fremryk/Fyr stables paa mobil i stedet
+             for at presse navnekolonnen sammen. */
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             <Button
               size="sm"
               variant="secondary"
@@ -732,6 +734,13 @@ export default function AcademyPage() {
             columns={rosterColumns}
             rows={sortedRoster}
             rowKey={(r) => r.id}
+            /* D-047 (#5102): en akademirytter vurderes paa potentiale og alder
+               (hvornaar han kan fremrykkes), og raekkens handling
+               ("Fremryk / Fyr") er den tredje — sidens primaere handling maa
+               ikke ligge bag "Fuld tabel" paa mobil. Vaerdien er allerede
+               foldet ind i navnets underlinje (`fold: true`), og loen er eet
+               chip-tryk vaek. */
+            mobileDefaults={["potential", "age", "action"]}
             sort={sort}
             sortDir={sortDir}
             onSort={handleSort}

@@ -569,7 +569,7 @@ export default function FinancePage() {
               {reservedBalance > 0 && (
                 <p className="text-cz-3 text-xs mt-2 leading-snug">
                   {t("balance.available", { value: formatNumber(Math.max(0, (team?.balance || 0) - reservedBalance)) })}<br />
-                  <span className="text-cz-3/70">{t("balance.lockedInBids", { value: formatNumber(reservedBalance) })}</span>
+                  <span className="text-cz-2">{t("balance.lockedInBids", { value: formatNumber(reservedBalance) })}</span>
                 </p>
               )}
             </Card>
@@ -818,7 +818,7 @@ export default function FinancePage() {
                       <p className="text-cz-3 text-xs leading-snug">
                         {t("loans.take.maxBorrowable", { value: formatNumber(maxPrincipal) })}
                         <br />
-                        <span className="text-cz-3/70">
+                        <span className="text-cz-2">
                           {t("loans.take.maxBorrowableDetail", {
                             fee: formatNumber(selectedConfig.max_fee || 0),
                             total: formatNumber(selectedConfig.max_total_debt || 0),

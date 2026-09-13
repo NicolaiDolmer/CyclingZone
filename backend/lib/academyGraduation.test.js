@@ -26,10 +26,22 @@ function makeSupabase(cfg = {}) {
       if (table === "riders") {
         return {
           select() {
+            // #5133: filtrene håndhæves nu (kun på kolonner fixturen faktisk
+            // bærer, så de eksisterende fixtures forbliver gyldige). Uden det
+            // kunne testen for `team_id IS NOT NULL` aldrig fejle — mocken ville
+            // levere akademi-fri-agenten uanset hvad prædikatet sagde.
+            const filters = [];
             const api = {
-              eq() { return api; },
+              eq(col, val) { filters.push(["eq", col, val]); return api; },
+              not(col, op, val) { if (op === "is") filters.push(["not-is", col, val]); return api; },
               order() { return api; },
-              range() { return Promise.resolve({ data: cfg.academyRiders || [], error: null }); },
+              range() {
+                const rows = (cfg.academyRiders || []).filter((r) => filters.every(([op, col, val]) => {
+                  if (!(col in r)) return true;
+                  return op === "eq" ? r[col] === val : r[col] !== val;
+                }));
+                return Promise.resolve({ data: rows, error: null });
+              },
               maybeSingle() { return Promise.resolve({ data: cfg.rider ?? null, error: null }); },
             };
             return api;
@@ -101,7 +113,7 @@ function makeSupabase(cfg = {}) {
             };
             return api;
           },
-          insert(row) { rec.gradInserts.push(row); return Promise.resolve({ error: null }); },
+          insert(row) { rec.gradInserts.push(row); return Promise.resolve({ error: cfg.gradInsertError ?? null }); },
           update(payload) {
             return { eq(col, val) { rec.gradUpdates.push({ ...payload, __eq: [col, val] }); return Promise.resolve({ error: null }); } };
           },
@@ -190,6 +202,49 @@ test("detectGraduates (dryRun): tæller uden writes", async () => {
   assert.equal(res.graduates, 1);
   assert.equal(rec.gradInserts.length, 0);
   assert.equal(notify.calls.length, 0);
+});
+
+// #5133: akademi-fri-agenten (team_id NULL) er invariant D's klasse, ikke
+// gradueringens — og academy_graduation.team_id er NOT NULL i skemaet. Uden
+// filteret ville hans insert kaste og afbryde HELE resten af batchen, så hver
+// rytter efter ham i id-orden lydløst mistede sit override-vindue.
+test("detectGraduates: springer akademi-fri-agent (team_id NULL) over og fortsætter batchen", async () => {
+  const { supabase, rec } = makeSupabase({
+    academyRiders: [
+      { id: "r-a-stranded", team_id: null, firstname: "Stranded", lastname: "Agent", birthdate: bornForAge(23) },
+      { id: "r-b-team", team_id: "t1", firstname: "Old", lastname: "Enough", birthdate: bornForAge(22) },
+    ],
+  });
+  const notify = spyNotify();
+  const res = await detectGraduates(supabase, { seasonId: "s1", seasonNumber: 1, notify });
+  assert.equal(res.graduates, 1, "kun rytteren med hold får en række");
+  assert.deepEqual(rec.gradInserts.map((r) => r.rider_id), ["r-b-team"]);
+  assert.equal(notify.calls.length, 1);
+});
+
+// Med to stier der kan indsætte (sæson-transition + #5133-sweepet) er en tabt
+// race på UNIQUE(rider_id, season_id) "en anden nåede det først", ikke en fejl
+// der skal vælte en sæson-transition.
+test("detectGraduates: unique-violation tælles ikke som ny graduate og kaster ikke", async () => {
+  const { supabase } = makeSupabase({
+    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", birthdate: bornForAge(22) }],
+    gradInsertError: { code: "23505", message: 'duplicate key value violates unique constraint "academy_graduation_rider_id_season_id_key"' },
+  });
+  const notify = spyNotify();
+  const res = await detectGraduates(supabase, { seasonId: "s1", seasonNumber: 1, notify });
+  assert.equal(res.graduates, 0);
+  assert.equal(notify.calls.length, 0, "ingen dublet-notifikation til manageren");
+});
+
+test("detectGraduates: ægte insert-fejl kaster stadig", async () => {
+  const { supabase } = makeSupabase({
+    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", birthdate: bornForAge(22) }],
+    gradInsertError: { code: "23503", message: "insert or update violates foreign key constraint" },
+  });
+  await assert.rejects(
+    () => detectGraduates(supabase, { seasonId: "s1", seasonNumber: 1, notify: spyNotify() }),
+    /foreign key constraint/,
+  );
 });
 
 // ─── resolveGraduation ────────────────────────────────────────────────────────

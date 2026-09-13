@@ -648,3 +648,14 @@ export function MoreIcon(props) {
     </IconBase>
   );
 }
+
+// #5102 (D-047): "Fuld tabel"-chippen paa mobil. Stroke-ikon paa samme IconBase
+// som resten — aldrig emoji (TASTE §3).
+export function TableIcon(props) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 10h18M3 15h18M9 4v16" />
+    </IconBase>
+  );
+}

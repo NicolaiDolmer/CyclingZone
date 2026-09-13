@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { riderSuitability } from "../../lib/suitability.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { fitTier } from "../../lib/raceHubLogic.js";
 import { Spinner, EmptyState, ErrorState, Button, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
 import SeasonMatrixCellPopover from "./SeasonMatrixCellPopover.jsx";
@@ -107,6 +108,11 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
+  // #5159: samme tilstand skal ogsaa lukke reload-porten. Uden det kunne
+  // release-watcheren genindlaese oven i en ugemt saeson-matrice - og saa ville
+  // spilleren se netop beforeunload-dialogen ovenfor, udloest af appen selv i
+  // stedet for af en handling han foretog.
+  useReloadBlock(isDirty || saving, RELOAD_BLOCK_REASONS.DIRTY);
 
   // Form & peak-linsen henter GET /api/peak-plans lazily (kun når linsen vælges
   // første gang) — samme frontend-tilgængelige read Season Planner allerede bruger.

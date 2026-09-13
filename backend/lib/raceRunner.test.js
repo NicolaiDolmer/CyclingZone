@@ -683,6 +683,70 @@ test('#4753 late auto-fill never reintroduces a draining AI team',async()=>{
   assert.ok(!supabase.__writes.some(w=>w.table==='race_entries' && w.op==='insert'));
 });
 
+// #4959: TOCTOU mod filteret ovenfor. Bliver et hold markeret til nedlæggelse i vinduet
+// mellem hold-læsningen og selve skrivningen, afviser DB-guarden (trg_ai_drain_entries)
+// HELE insert-batchen. Før denne rettelse kastede løbsstartens autofyld, så ét drænende
+// hold kunne tømme startfeltet for alle andre hold i løbet.
+test('#4959 loebsstart-autofyld: et hold markeret midt i skrivningen stopper ikke de oevrige hold', async () => {
+  const canned = padRoster(padRoster({
+    race_entries: [],
+    app_config: [{ key: 'ai_team_retire_enabled', value: 'on' }, { key: 'ai_pool_retirement_v2_enabled', value: 'on' }],
+    teams: [
+      { id: 'T1', is_ai: true, is_frozen: false, is_test_account: false, pending_removal_at: null },
+      { id: 'T2', is_ai: true, is_frozen: false, is_test_account: false, pending_removal_at: null },
+    ],
+    riders: [], rider_derived_abilities: [],
+  }, 'T1', 'a'), 'T2', 'b');
+  const supabase = makeSupabase(canned);
+
+  const baseFrom = supabase.from;
+  let rejected = false;
+  supabase.from = (table) => {
+    const b = baseFrom(table);
+    if (table !== 'race_entries') return b;
+    const insert = b.insert;
+    b.insert = (rows) => {
+      if (rejected) return insert(rows);
+      rejected = true;
+      // Markeringen lander præcis nu — genlæsningen nedenfor ser den, holdlæsningen gjorde ikke.
+      canned.teams[0].pending_removal_at = '2026-09-11T09:00:00Z';
+      return Promise.resolve({ error: { code: '23514', message: 'AI team is draining: no new obligations' } });
+    };
+    return b;
+  };
+
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: 'race-x' } });
+
+  assert.ok(entrants.length > 0, 'de oevrige hold staar stadig paa startlisten');
+  assert.ok(!entrants.some((e) => e.team_id === 'T1'), 'det draenende hold kom ikke med');
+  const inserts = supabase.__writes.filter((w) => w.table === 'race_entries' && w.op === 'insert');
+  assert.equal(inserts.length, 1, 'praecis een skrivning lykkedes (den foerste blev afvist af guarden)');
+  assert.ok(inserts[0].rows.every((r) => r.team_id === 'T2'));
+});
+
+test('#4959 loebsstart-autofyld: en afvisning der IKKE skyldes et draenende hold slugges ikke', async () => {
+  const canned = padRoster({
+    race_entries: [],
+    app_config: [{ key: 'ai_team_retire_enabled', value: 'on' }, { key: 'ai_pool_retirement_v2_enabled', value: 'on' }],
+    teams: [{ id: 'T2', is_ai: true, is_frozen: false, is_test_account: false, pending_removal_at: null }],
+    riders: [], rider_derived_abilities: [],
+  }, 'T2', 'b');
+  const supabase = makeSupabase(canned);
+  const baseFrom = supabase.from;
+  supabase.from = (table) => {
+    const b = baseFrom(table);
+    if (table !== 'race_entries') return b;
+    // Guardens anden gren: en pensioneret rytter. Intet hold er markeret, saa der er
+    // intet at filtrere fra - signalet skal bevares.
+    b.insert = () => Promise.resolve({ error: { code: '23514', message: 'AI rider is retired: no new obligations' } });
+    return b;
+  };
+  await assert.rejects(
+    () => loadEntrantsForRace({ supabase, race: { id: 'race-x' } }),
+    /AI rider is retired/,
+  );
+});
+
 test("loadEntrantsForRace: tomt felt → auto-fill skriver race_entries", async () => {
   // #4295: assistenten skal kunne finde mindst 6 kandidater, ellers stiller holdet
   // ikke op og der er ikke noget at auto-fylde — derfor en trup på gulvet, ikke én rytter.

@@ -43,6 +43,24 @@ test("RoadmapPage gater admin-flade via is_admin RPC (#1600)", () => {
   );
 });
 
+test("RoadmapPage kalder KUN is_admin-RPC'en naar der er en session (#5153)", () => {
+  // /roadmap er en OFFENTLIG rute (#2042/#2824 — registreret uden for
+  // ProtectedRoute i App.jsx), og #5153 revoker anon-EXECUTE paa is_admin().
+  // Et ubetinget kald giver derfor 403/42501 for hver udlogget besoegende.
+  // Ikke brugersynligt (fejlen destruktureres vaek, isAdmin bliver false), og
+  // netop derfor er det en fejl der kun fanges af en guard som denne.
+  assert.match(
+    source,
+    /supabase\.auth\.getSession\(\)/,
+    "session skal laeses foer RPC-kaldet (getSession er lokal, ingen ekstra rundtur)",
+  );
+  assert.match(
+    source,
+    /session \? supabase\.rpc\("is_admin"\) : Promise\.resolve\(/,
+    "rpc(\"is_admin\") skal vaere gated paa en session — ellers kalder anon den",
+  );
+});
+
 test("RoadmapPage har historik-sektion + admin status-toggle (#1600)", () => {
   assert.match(source, /shipped\.title/, "skal rendere en \"shipped\"-historik-sektion");
   assert.match(

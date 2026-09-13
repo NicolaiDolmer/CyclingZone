@@ -2,7 +2,8 @@
   "page": {
     "subtitle": "Cirka 5 minutter",
     "introLead": "Jeg spørger hellere dig end gætter, så jeg har samlet hele listen ét sted.",
-    "introAccount": "Dine svar gemmes på din konto, så du kan rette dem indtil skemaet lukker."
+    "introAccount": "Dine svar gemmes på din konto, så du kan rette dem indtil skemaet lukker.",
+    "closesOn": "Lukker {date}"
   },
   "progress": {
     "label": "Besvaret",

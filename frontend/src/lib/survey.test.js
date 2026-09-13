@@ -10,12 +10,14 @@ import {
   canSubmit,
   computeProgress,
   displayTextAnswer,
+  formatCloseDate,
   groupQuestionsIntoSections,
   INVITE_DISMISS_DAYS,
   inviteDismissKey,
   inviteDismissedUntil,
   isInviteDismissed,
   isAnswered,
+  isSurveyPastClose,
   missingRequired,
   normalizeAnswer,
   optionGroup,
@@ -409,6 +411,51 @@ test("et lukket eller ukendt skema er lukket, også for en admin", () => {
   assert.equal(resolveSurveyView({ status: "archived", isAdmin: true }), "closed");
   assert.equal(resolveSurveyView({ isAdmin: true }), "closed");
   assert.equal(resolveSurveyView(), "closed");
+});
+
+test("et åbent skema lukker af sig selv når closes_at er passeret (#5121)", () => {
+  const closesAt = "2026-09-14T21:59:00+00:00"; // 14/9 23:59 dansk sommertid
+  const before = Date.parse("2026-09-14T21:58:59+00:00");
+  const after = Date.parse("2026-09-14T21:59:01+00:00");
+
+  assert.equal(resolveSurveyView({ status: "open", isAdmin: false, closesAt, now: before }), "open");
+  assert.equal(resolveSurveyView({ status: "open", isAdmin: false, closesAt, now: after }), "closed");
+  // Også for en admin: databasen afviser alligevel skrivningen efter lukketid,
+  // og en formular der ikke kan gemme må ikke se åben ud.
+  assert.equal(resolveSurveyView({ status: "open", isAdmin: true, closesAt, now: after }), "closed");
+  // Selve lukkeminuttet er lukket, ikke åbent.
+  assert.equal(resolveSurveyView({ status: "open", closesAt, now: Date.parse(closesAt) }), "closed");
+});
+
+test("uden en gyldig closes_at er skemaet stadig åbent", () => {
+  const now = Date.parse("2026-09-11T08:00:00+00:00");
+  assert.equal(resolveSurveyView({ status: "open", closesAt: null, now }), "open");
+  assert.equal(resolveSurveyView({ status: "open", now }), "open");
+  // En ulæselig dato må ikke lukke et skema der ellers er åbent.
+  assert.equal(resolveSurveyView({ status: "open", closesAt: "på søndag", now }), "open");
+  assert.equal(isSurveyPastClose("på søndag", now), false);
+  assert.equal(isSurveyPastClose(null, now), false);
+});
+
+test("en kladde lukkes ikke af closes_at, den er allerede preview", () => {
+  const closesAt = "2026-09-14T21:59:00+00:00";
+  const after = Date.parse("2026-09-20T00:00:00+00:00");
+  assert.equal(resolveSurveyView({ status: "draft", isAdmin: true, closesAt, now: after }), "preview");
+});
+
+test("lukkedatoen vises med den ugedag datoen FAKTISK er", () => {
+  // #5121's udkast kaldte 14/9 2026 en søndag. Det er en mandag. Ugedagen
+  // regnes derfor ud af datoen og skrives aldrig i en oversættelse.
+  const closesAt = "2026-09-14T21:59:00+00:00";
+  assert.equal(formatCloseDate(closesAt, "en"), "Monday 14 September");
+  assert.equal(formatCloseDate(closesAt, "da"), "mandag den 14. september");
+  assert.equal(formatCloseDate(closesAt, "da-DK"), "mandag den 14. september");
+});
+
+test("ingen lukkedato giver ingen etiket", () => {
+  assert.equal(formatCloseDate(null, "en"), null);
+  assert.equal(formatCloseDate(undefined, "da"), null);
+  assert.equal(formatCloseDate("på søndag", "en"), null);
 });
 
 test("et tomt eller ulæseligt luk-flag betyder at kortet vises", () => {

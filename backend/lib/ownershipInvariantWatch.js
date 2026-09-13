@@ -331,15 +331,17 @@ async function confirmAuctionBreaches({ supabase, auctions, sleepFn, settleMs })
   };
 }
 
+// Flade strenge, ikke nestede objekter: Sentry-SDK'ens normalizeDepth kollapser
+// en liste af objekter til ["[Object]"], og triagen står så med et tal og ingen
+// id'er — præcis dét kostede CYCLINGZONE-5G og CYCLINGZONE-5M hver sin
+// DB-udgravning. Samme rettelse som #4594/#4902 og invariant F nedenfor.
 function auctionFindingSample(auctions, ridersById) {
   return auctions.slice(0, SAMPLE_LIMIT).map((a) => {
     const rider = ridersById.get(a.rider_id) || {};
-    return {
-      auctionId: a.id,
-      riderId: a.rider_id,
-      teamId: rider.team_id ?? null,
-      pendingTeamId: rider.pending_team_id ?? null,
-    };
+    return (
+      `auction=${a.id} rider=${a.rider_id} team=${rider.team_id ?? "null"} ` +
+      `pendingTeam=${rider.pending_team_id ?? "null"}`
+    );
   });
 }
 
@@ -488,7 +490,14 @@ export async function runOwnershipInvariantWatch({
       {
         tags: { cron: "ownership-invariant-watch" },
         fingerprint: ["stale-offered-intake-owned-rider"],
-        extra: { count: staleIntake.length, sample: staleIntake.slice(0, SAMPLE_LIMIT) },
+        extra: {
+          count: staleIntake.length,
+          sample: staleIntake.slice(0, SAMPLE_LIMIT).map(
+            (p) =>
+              `intake=${p.intakeId} rider=${p.riderId} offeredTeam=${p.offeredTeamId} ` +
+              `ownerTeam=${p.ownerTeamId} target=${p.targetStatus}`
+          ),
+        },
       }
     );
   }
@@ -502,7 +511,14 @@ export async function runOwnershipInvariantWatch({
       {
         tags: { cron: "ownership-invariant-watch" },
         fingerprint: ["stranded-academy-free-agent"],
-        extra: { count: strandedAcademy.length, sample: strandedAcademy.slice(0, SAMPLE_LIMIT) },
+        extra: {
+          count: strandedAcademy.length,
+          sample: strandedAcademy.slice(0, SAMPLE_LIMIT).map(
+            (r) =>
+              `rider=${r.id} (${r.firstname ?? "?"} ${r.lastname ?? "?"}) ` +
+              `contractEnd=${r.contract_end_season ?? "null"} acquired=${r.acquired_at ?? "null"}`
+          ),
+        },
       }
     );
   }
@@ -518,12 +534,11 @@ export async function runOwnershipInvariantWatch({
         fingerprint: ["stale-pending-team-id-transfer"],
         extra: {
           count: stalePendingTransfer.length,
-          sample: stalePendingTransfer.slice(0, SAMPLE_LIMIT).map((r) => ({
-            riderId: r.id,
-            teamId: r.team_id ?? null,
-            pendingTeamId: r.pending_team_id,
-            updatedAt: r.updated_at ?? null,
-          })),
+          sample: stalePendingTransfer.slice(0, SAMPLE_LIMIT).map(
+            (r) =>
+              `rider=${r.id} team=${r.team_id ?? "null"} pendingTeam=${r.pending_team_id} ` +
+              `updatedAt=${r.updated_at ?? "null"}`
+          ),
         },
       }
     );
@@ -565,13 +580,16 @@ export async function runOwnershipInvariantWatch({
         fingerprint: ["stuck-academy-graduate"],
         extra: {
           count: stuckGraduates.length,
-          sample: stuckGraduates.slice(0, SAMPLE_LIMIT).map((r) => ({
-            riderId: r.riderId,
-            teamId: r.teamId,
-            age: r.age,
-            pendingGraduationId: r.pendingGraduationId,
-            pendingDeadline: r.pendingDeadline,
-          })),
+          // grads= er selve diagnosen, jf. stuckAcademyGraduates.js: en rytter med
+          // en 'sold'-række er #4495's kerne-case (auktionen blev aldrig til noget),
+          // mens grads=none aldrig har fået sit override-vindue overhovedet. Uden
+          // den i kortet kan de to historier ikke skelnes uden et DB-opslag.
+          sample: stuckGraduates.slice(0, SAMPLE_LIMIT).map(
+            (r) =>
+              `rider=${r.riderId} team=${r.teamId} age=${r.age} ` +
+              `grads=${r.graduationStatuses?.length ? r.graduationStatuses.join("/") : "none"} ` +
+              `pendingGrad=${r.pendingGraduationId ?? "null"} deadline=${r.pendingDeadline ?? "null"}`
+          ),
         },
       }
     );

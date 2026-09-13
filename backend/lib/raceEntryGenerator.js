@@ -8,7 +8,7 @@ import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   windowsOverlap, raceBindingWindow,
-  isRiderDayInvariantViolation, isConstraintNotDeferrable,
+  isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation,
 } from "./raceBinding.js";
 import {
   ASSISTANT_MODES, DEFAULT_ASSISTANT_MODE, DEFAULT_LATE_FILL_HOURS,
@@ -929,6 +929,18 @@ export async function runRaceEntryGenerator({
     } catch (err) {
       // best-effort: fejl her aggregeres i failedUnits/errors og captures samlet
       // opstrøms i cron.js (én Sentry-capture pr. tick, #2375-hotfix) — ikke tavst.
+      // #4959: holdet blev markeret til nedlæggelse i vinduet mellem trin 5's
+      // hold-læsning og denne skrivning, og DB-guarden (#4753, trg_ai_drain_entries)
+      // afviste rækkerne. Udfaldet ER det ønskede — et drænende hold skal ikke have
+      // flere tilmeldinger — så enheden springes over som enhver anden ikke-egnet
+      // enhed i stedet for at tælle som en fejlet enhed og fyre en Sentry-alarm.
+      if (isDrainingAiObligation(err)) {
+        skipped += 1;
+        console.warn(
+          `⚠️  Entry-generator ${race_id}/${team_id}: holdet blev markeret til nedlæggelse under kørslen — enheden springes over (#4959)`
+        );
+        return;
+      }
       // #2436: manual-scannet (trin 6) blev forældet af en manager-gem der landede
       // i vinduet inden denne skrivning — genlæs enhedens manuelle rækker friskt og
       // kør enheden om PRÆCIS ÉN gang. Lykkes retry'en (var en samtidig manager-gem):
@@ -1075,9 +1087,16 @@ export async function runRaceEntryGenerator({
         "dødvandet. Kør database/2026-08-24-4163-restore-deferrable-double-booking.sql (#4163)."
       );
     }
-    console.warn(
-      `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
-    );
+    // #4959: et drænende AI-hold afvises af DB-guarden (#4753) på batch-niveau for
+    // HVER tick indtil app-laget selv opdager markeringen (trin 5) — uden dette tjek
+    // logges "batch-RPC afvist" som en advarsel pr. tick for en helt forventet
+    // afvisning. Per-enheds-fallbacken nedenfor rammer allerede sin egen
+    // isDrainingAiObligation-gren (linje ~937) og springer enheden stille over.
+    if (!isDrainingAiObligation(batchErr)) {
+      console.warn(
+        `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
+      );
+    }
     for (const { unit } of changed) {
       await applyUnitWithRecovery(unit);
     }

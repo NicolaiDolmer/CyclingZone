@@ -2,7 +2,8 @@
   "page": {
     "subtitle": "About 5 minutes",
     "introLead": "I would rather ask you than guess, so I have put the whole list in one place.",
-    "introAccount": "Your answers are saved to your account, so you can change them until the survey closes."
+    "introAccount": "Your answers are saved to your account, so you can change them until the survey closes.",
+    "closesOn": "Closes {date}"
   },
   "progress": {
     "label": "Answered",

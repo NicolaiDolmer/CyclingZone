@@ -691,8 +691,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     sortKey: "_ovr",
     numeric: true,
     compact: true,
-    fold: true,
-    foldValue: (r) => (Number.isFinite(r._ovr) ? String(r._ovr) : "—"),
+    mobileLabel: t("squad.headers.rating"),
     render: (r) => (Number.isFinite(r._ovr) ? (
       <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
         style={statPlateStyle(r._ovr)}>
@@ -720,6 +719,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   const abilityColumns = STATS.map(({ key, label }) => ({
     key,
     header: <span title={tRider(`racePreview.derived.${key}`)}>{label}</span>,
+    mobileLabel: label,
     sortKey: key,
     numeric: true,
     tight: true,
@@ -763,6 +763,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     {
       key: "potential",
       header: <span title={t("squad.headers.potentialTitle")}>{t("squad.headers.potential")}</span>,
+      mobileLabel: t("squad.headers.potential"),
       sortKey: "_scoutMid",
       compact: true,
       // #2849 bølge 6 + #2888: stjernerne alene — den kvalitative label ligger i
@@ -792,11 +793,10 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     {
       key: "popularity",
       header: <span title={t("squad.headers.popularityTitle")}>{t("squad.headers.popularity")}</span>,
+      mobileLabel: t("squad.headers.popularity"),
       sortKey: "popularity",
       numeric: true,
       compact: true,
-      fold: true,
-      foldValue: (r) => Number.isFinite(r.popularity) ? String(r.popularity) : "—",
       render: (r) => (
         <span className="text-cz-2 font-mono text-xs">
           {Number.isFinite(r.popularity) ? r.popularity : "—"}
@@ -852,8 +852,12 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       header: t("squad.headers.action"),
       compact: true,
       render: (r) => (!r._isIncoming ? (
+        // #5102/D-047: knappen bryder til to linjer paa mobil. Med nowrap er den
+        // 107px bred, og saa er der kun 63px tilbage til NAVNET paa 393px —
+        // navnet brød midt i et ord. "Navnet er helligt" (ejer 25/7) vinder
+        // over knappens een-linjes-form.
         <button onClick={(e) => { e.stopPropagation(); onSelectRider(r); }}
-          className="px-3 py-1 min-h-[44px] sm:min-h-[30px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-nowrap">
+          className="px-2 sm:px-3 py-1 min-h-[44px] sm:min-h-[30px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-normal sm:whitespace-nowrap">
           {t("squad.actionButton")}
         </button>
       ) : null),
@@ -865,6 +869,17 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // kolonne i stedet for at ligge under navnet.
   const abilityModeColumns = [nameColumn, ratingColumn, typeColumn, ...abilityColumns];
   const columns = tableMode === "abilities" ? abilityModeColumns : overviewColumns;
+
+  // D-047 (#5102): Mit holds tre standardkolonner paa mobil. Ejer-beslutning
+  // 10/9: OVR, vaerdi og LOEN — de tre tal en trup vurderes paa. Handlingen
+  // ("Saelg / Auktion") er eet chip-tryk vaek og ligger desuden paa
+  // rytterprofilen, som raekken selv linker til. Akademiet, Stab og Oensken
+  // beholder handlingen som deres tredje, fordi den DER er sidens primaere
+  // handling. I evne-tilstanden findes hverken vaerdi, loen eller handling, saa
+  // dér er de tre OVR + de to foerste evner.
+  const mobileDefaults = tableMode === "abilities"
+    ? ["rating", ...STATS.slice(0, 2).map((s) => s.key)]
+    : ["rating", "value", "salary"];
 
   // #4628 (audit 2026-09 række #2): kontrol-rækken lå som en LØSREVET række
   // mellem sidehovedet og tabellen — præcis PAGE_TEMPLATES' "no orphan action
@@ -964,6 +979,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
           columns={columns}
           rows={displayRiders}
           rowKey={(r) => r.id}
+          mobileDefaults={mobileDefaults}
           dense
           rowZone={(r) => (r._isIncoming ? "success" : r._isOutgoing ? "danger" : null)}
           rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}

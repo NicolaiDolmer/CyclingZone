@@ -131,6 +131,8 @@ export default function SurveyIdeasTab({ data }) {
           columns={columns}
           rows={rows}
           rowKey={(row) => row.key}
+          /* D-047 (#5102): de tre tal en idé rangeres paa. */
+          mobileDefaults={["idea", "importance", "priority"]}
           sort={sort}
           sortDir={sortDir}
           onSort={handleSort}

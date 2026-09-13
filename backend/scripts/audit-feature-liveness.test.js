@@ -1,7 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { evaluateDetectorARow, isFlagOff } from "./audit-feature-liveness.js";
+import {
+  evaluateDetectorARow,
+  evaluateDetectorBEndpoint,
+  evaluateDetectorCApplied,
+  evaluateDetectorEEvent,
+  isFlagOff,
+} from "./audit-feature-liveness.js";
 
 // #2985: Detector A ("write-but-no-data") skal skelne mellem "featuren er død"
 // og "featuren er slukket med vilje" ved at læse app_config LIVE i stedet for
@@ -178,4 +184,126 @@ test("PERMANENT_EMPTY_TABLES-entry (discord_dm_outbox) undertrykker uden flag og
   assert.equal(evaluateDetectorARow(row("discord_dm_outbox", 0), { insertPaths, flags }), null);
   // Permanent-listen har IKKE forward-guarden — rows er intet finding (by design).
   assert.equal(evaluateDetectorARow(row("discord_dm_outbox", 3), { insertPaths, flags }), null);
+});
+
+// ---------------------------------------------------------------------------
+// #3069: de fund der holdt `audit` rød i 14 af 14 kørsler fra 7/9. Hver test
+// herunder er "rød → grøn"-guarden for præcis én whitelist-entry: uden entryen
+// var fundet der, og med den er det væk — OG et NYT, uwhitelistet fund af samme
+// klasse flages stadig, så gaten ikke er blevet blind.
+// ---------------------------------------------------------------------------
+
+test("#3069 Detector A: DM-moderationstabeller er permanent-suppresset — også når de får rows", () => {
+  const flags = new Map();
+  for (const table of ["dm_blocks", "dm_reports", "dm_conversation_hides"]) {
+    const insertPaths = paths(table, "backend/lib/directMessages.js");
+    assert.equal(
+      evaluateDetectorARow(row(table, 0), { insertPaths, flags }),
+      null,
+      `${table}: sjælden opt-in-handling i en levende feature må ikke holde gaten rød`
+    );
+    // Permanent-listen har ingen forward-guard: den første blokering/anmeldelse
+    // må ikke gøre auditen rød igen.
+    assert.equal(evaluateDetectorARow(row(table, 1), { insertPaths, flags }), null);
+  }
+});
+
+test("#3069 Detector A: forum_category_mutes er permanent-suppresset — også når den får rows", () => {
+  const flags = new Map();
+  const insertPaths = paths("forum_category_mutes", "backend/lib/forum.js");
+
+  assert.equal(evaluateDetectorARow(row("forum_category_mutes", 0), { insertPaths, flags }), null);
+  assert.equal(evaluateDetectorARow(row("forum_category_mutes", 4), { insertPaths, flags }), null);
+});
+
+test("#3069 Detector B: whitelistet resend-webhook er intet fund, men et nyt orphan flages", () => {
+  const callTokens = [];
+
+  assert.equal(
+    evaluateDetectorBEndpoint({ method: "POST", path: "/email/resend-webhook" }, callTokens),
+    null,
+    "ekstern Svix-signeret webhook — en frontend-kalder ville være en fejl, ikke et fix"
+  );
+
+  const fresh = evaluateDetectorBEndpoint({ method: "POST", path: "/email/brand-new-hook" }, callTokens);
+  assert.ok(fresh, "et uwhitelistet endpoint uden kalder skal stadig flages");
+  assert.equal(fresh.detector, "B");
+  assert.equal(fresh.path, "/email/brand-new-hook");
+});
+
+test("#3069 Detector B: et endpoint med frontend-kalder er intet fund (matcher uændret)", () => {
+  const callTokens = [["email", "brand-new-hook"]];
+
+  assert.equal(
+    evaluateDetectorBEndpoint({ method: "POST", path: "/email/brand-new-hook" }, callTokens),
+    null
+  );
+});
+
+test("#3069 Detector C: den flyttede 4482-migration er intet fund, men ægte drift flages", () => {
+  const committed = new Set(["database/2026-09-01-noget-andet.sql"]);
+
+  assert.equal(
+    evaluateDetectorCApplied("database/2026-08-31-expire-stale-bonus-offers-4482.sql", committed),
+    null,
+    "filen blev flyttet til database/manual/ som R100-rename — samme SQL, ingen drift"
+  );
+
+  const drift = evaluateDetectorCApplied("database/2026-09-09-ukendt-migration.sql", committed);
+  assert.ok(drift, "en applied migration vi IKKE har verificeret skal stadig flages");
+  assert.equal(drift.detector, "C");
+  assert.equal(drift.severity, "warning");
+});
+
+test("#3069 Detector C: forward-guard — whitelistet fil der er tilbage i database/ er stale", () => {
+  const committed = new Set(["database/2026-08-31-expire-stale-bonus-offers-4482.sql"]);
+
+  const stale = evaluateDetectorCApplied(
+    "database/2026-08-31-expire-stale-bonus-offers-4482.sql",
+    committed
+  );
+  assert.ok(stale, "suppressionen er unødvendig når filen ligger i database/ igen");
+  assert.equal(stale.severity, "info");
+  assert.match(stale.reason, /Stale whitelist-entry/);
+  assert.match(stale.reason, /WHITELIST_APPLIED_WITHOUT_REPO_FILE/);
+});
+
+test("#3069 Detector C: en committed fil uden whitelist-entry er intet fund i applied-retningen", () => {
+  const committed = new Set(["database/2026-09-01-noget-andet.sql"]);
+
+  assert.equal(evaluateDetectorCApplied("database/2026-09-01-noget-andet.sql", committed), null);
+});
+
+test("#3069 Detector E: de fire whitelistede events er intet fund ved 0 impressions", () => {
+  for (const eventName of [
+    "feature_hall_of_fame_opened",
+    "feature_board_meeting_opened",
+    "board_meeting_signed",
+    "feature_board_consequences_panel_viewed",
+  ]) {
+    assert.equal(
+      evaluateDetectorEEvent(eventName, undefined),
+      null,
+      `${eventName}: bekræftet intentional zero — må ikke holde gaten rød`
+    );
+    assert.equal(evaluateDetectorEEvent(eventName, { event_name: eventName, event_count: 0 }), null);
+  }
+});
+
+test("#3069 Detector E: forward-guard — whitelistet event med impressions er stale", () => {
+  const stale = evaluateDetectorEEvent("feature_board_meeting_opened", {
+    event_name: "feature_board_meeting_opened",
+    event_count: 12,
+  });
+  assert.ok(stale, "entryen skal selv-rydde når årsmødet er åbnet efter S3→S4");
+  assert.equal(stale.severity, "info");
+  assert.match(stale.reason, /Stale whitelist-entry/);
+});
+
+test("#3069 Detector E: et uwhitelistet event med 0 impressions flages stadig", () => {
+  const finding = evaluateDetectorEEvent("feature_noget_helt_nyt", undefined);
+  assert.ok(finding);
+  assert.equal(finding.detector, "E");
+  assert.equal(finding.severity, "warning");
+  assert.match(finding.reason, /0 impressions/);
 });

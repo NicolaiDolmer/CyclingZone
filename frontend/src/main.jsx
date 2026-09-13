@@ -13,7 +13,11 @@ import * as Sentry from "@sentry/react";
 import App from "./App.jsx";
 import { AppProviders } from "./AppProviders.jsx";
 import { initSentry } from "./lib/sentry.jsx";
-import { installChunkReloadHandlers } from "./lib/chunkErrors.js";
+import {
+  accountBootGuardReload,
+  installChunkReloadHandlers,
+  safeSessionStorage,
+} from "./lib/chunkErrors.js";
 import { getRelease } from "./lib/release.js";
 import { installTranslationResilience } from "./lib/translationResilience.js";
 import { captureFirstTouch } from "./lib/attribution.js";
@@ -58,11 +62,22 @@ if (SKEW_PROTECTION_ENABLED) {
 // loop-guarder reloadet pr. release) — men nu står det i HTML'en i stedet for i
 // en hashet asset, så et deploy uden frontend-ændringer ikke længere roterer
 // asset-navnene. Se lib/release.js.
+// #5159 (M3): selve OPSLAGET `window.sessionStorage` kaster i browsere hvor
+// site-data er slaaet fra — ikke kun kaldene paa det. Fordi denne linje ligger
+// FOER initSentry(), ville en saadan browser doe paa boot uden at nogen fejl
+// naaede frem. Alle lag gaar nu gennem den samme sikre accessor.
+const _storage = safeSessionStorage(window);
+// #5159 (M3): boot-vagten (public/chunk-selfheal.js) er ren, tidlig JS uden
+// adgang til moduler og kan derfor ikke selv bogfoere sit reload i det faelles
+// recovery-budget. Den efterlader kun sit tidsstempel; vi bogfoerer det her, saa
+// boot-vagt, global fejlhandler, error-boundary og release-watcheren deler ÉT
+// budget i stedet for tre der ikke kender hinanden.
+accountBootGuardReload(_storage);
 const _release = getRelease();
 installChunkReloadHandlers({
   target: window,
   release: _release,
-  storage: window.sessionStorage,
+  storage: _storage,
   reload: () => window.location.reload(),
 });
 
@@ -163,14 +178,14 @@ captureFirstTouch();
   // sessionStorage-nøgle), og kun hvis vagtens tidsstempel er friskt (<5 min) —
   // en gammel noegle fra en tidligere session i samme fane er ikke "lige skete".
   try {
-    const selfHealAt = Number(window.sessionStorage.getItem("cz_chunk_selfheal_at"));
-    const alreadyReported = window.sessionStorage.getItem("cz_chunk_selfheal_reported");
+    const selfHealAt = Number(_storage?.getItem("cz_chunk_selfheal_at"));
+    const alreadyReported = _storage?.getItem("cz_chunk_selfheal_reported");
     if (selfHealAt && !alreadyReported && Date.now() - selfHealAt < 5 * 60 * 1000) {
       Sentry.captureMessage("chunk-selfheal reloaded", {
         level: "warning",
         extra: { pathname: window.location.pathname, referrer: document.referrer },
       });
-      window.sessionStorage.setItem("cz_chunk_selfheal_reported", "1");
+      _storage?.setItem("cz_chunk_selfheal_reported", "1");
     }
   } catch {
     // sessionStorage utilgaengelig — samme fail-closed holdning som selve vagten.

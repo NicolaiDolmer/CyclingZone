@@ -293,13 +293,9 @@ export default function WatchlistPage() {
     {
       key: "rating",
       header: <span title={t("thRatingTitle")}>{t("thRating")}</span>,
+      mobileLabel: t("thRating"),
       sortKey: "_ovr",
       numeric: true,
-      fold: true,
-      foldValue: (entry) => {
-        const ovr = riderOverallRating(entry.rider);
-        return Number.isFinite(ovr) ? String(ovr) : "—";
-      },
       render: (entry) => {
         const ovr = riderOverallRating(entry.rider);
         return Number.isFinite(ovr) ? (
@@ -358,8 +354,6 @@ export default function WatchlistPage() {
     },
     {
       key: "value", header: t("thValue"), numeric: true, sortKey: "value",
-      fold: true,
-      foldValue: (entry) => formatNumber(getRiderMarketValue(entry.rider)),
       render: (entry) => (
         <span className="font-bold text-cz-accent-t">
           {formatCz(getRiderMarketValue(entry.rider)).replace(" CZ$", "")}
@@ -481,6 +475,11 @@ export default function WatchlistPage() {
                 columns={columns}
                 rows={visible}
                 rowKey={(entry) => entry.id}
+                /* D-047 (#5102): oenskelistens POINT er handlingen — "Start
+                   auktion" / "I auktion"-status. Den er derfor en af de tre
+                   standardkolonner paa mobil (cellen er een lille knap eller ét
+                   badge, saa bredden holder); loen er et chip-tryk vaek. */
+                mobileDefaults={["rating", "value", "action"]}
                 sort={sort}
                 sortDir={sortDir}
                 onSort={handleSort}

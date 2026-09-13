@@ -18,10 +18,15 @@
 //       guarden ikke kan gå grøn på et build hvor mekanismen var slået fra).
 //
 //   --full
-//       Bygger frontend TO gange med forskellige sha'er og kræver at
-//       dist/assets er byte-identisk (samme filnavne, samme indhold). Fanger
-//       enhver deploy-unik byte, ikke kun de kendte markører. Koster ~2 builds,
-//       derfor kun lokalt/manuelt — se PR #4595 for begrundelsen.
+//       Bygger frontend TO gange med forskellige sha'er, Sentry-transformationen
+//       AKTIV (CZ_SENTRY_TRANSFORM=1, #5160) og kræver at HELE dist-træet er
+//       byte-identisk bortset fra HTML/release-metadata. Sammenligningen er
+//       scripts/compare-build-manifests.mjs — samme kode som CI-jobbet
+//       `build-determinism-two-builds`, så lokalt og CI måler det samme.
+//
+//       Indtil #5160 havde CI kun markør-varianten ovenfor, og den beviste
+//       intet om stabile filnavne: auditten 11/9 målte 76 af 195 chunk-
+//       referencer udskiftet mellem to prod-deploys uden frontend-diff.
 //
 // Kør lokalt:
 //   node scripts/check-build-determinism.mjs --full
@@ -31,10 +36,12 @@
 //   node scripts/check-build-determinism.mjs --verify-only
 
 import { spawnSync } from "node:child_process";
-import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { buildManifest, compareManifests, formatReport } from "./compare-build-manifests.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const frontendDir = path.join(repoRoot, "frontend");
@@ -44,7 +51,7 @@ const assetsDir = path.join(distDir, "assets");
 // De env-variabler der kan bære et deploy-unikt id ind i buildet. Værdierne er
 // vilkårlige, men skal være umulige at forveksle med rigtigt output og SKAL være
 // identiske med dem `.github/workflows/ci.yml` sætter på "Build frontend".
-const MARKERS = {
+export const MARKERS = {
   VERCEL_GIT_COMMIT_SHA: "c2de7e1211111111111111111111111111111111",
   VITE_VERCEL_GIT_COMMIT_SHA: "c2de7e1222222222222222222222222222222222",
   VITE_SENTRY_RELEASE: "c2de7e1233333333333333333333333333333333",
@@ -71,11 +78,10 @@ const viteConfigPath = path.join(frontendDir, "vite.config.js");
 // hvor nogen kører med et rigtigt token). Denne statiske kontrol kører derfor
 // ALTID — ingen build, intet token nødvendigt — og fejler hvis nogen fjerner
 // `inject: false` fra frontend/vite.config.js igen.
-function assertViteConfigDisablesReleaseInject() {
-  if (!fs.existsSync(viteConfigPath)) {
-    fail(`${path.relative(repoRoot, viteConfigPath)} findes ikke.`);
-  }
-  const source = fs.readFileSync(viteConfigPath, "utf-8");
+// Ren, testbar kerne af kontrollen nedenfor (#5160): tager kildeteksten og
+// svarer ja/nej, så både den rigtige config og bevidst brudte fixtures kan
+// dækkes af scripts/check-build-determinism.test.mjs uden at køre et build.
+export function viteConfigDisablesReleaseInject(source) {
   // Fjern linje-kommentarer først — flere af dem citerer kode-snippets med
   // deres egne krøllede parenteser (fx "Sentry.init({ release })"), som
   // ellers narrer den simple brace-matching nedenfor til at stoppe for tidligt.
@@ -84,7 +90,16 @@ function assertViteConfigDisablesReleaseInject() {
     .filter((line) => !line.trim().startsWith("//"))
     .join("\n");
   const releaseBlockMatch = sourceWithoutComments.match(/release:\s*\{[^}]*\}/s);
-  if (!releaseBlockMatch || !/inject:\s*false/.test(releaseBlockMatch[0])) {
+  if (!releaseBlockMatch) return false;
+  return /inject:\s*false/.test(releaseBlockMatch[0]);
+}
+
+function assertViteConfigDisablesReleaseInject() {
+  if (!fs.existsSync(viteConfigPath)) {
+    fail(`${path.relative(repoRoot, viteConfigPath)} findes ikke.`);
+  }
+  const source = fs.readFileSync(viteConfigPath, "utf-8");
+  if (!viteConfigDisablesReleaseInject(source)) {
     fail(
       "frontend/vite.config.js's sentryVitePlugin({ release: {...} }) mangler `inject: false`.",
       [
@@ -222,55 +237,42 @@ function build(envOverrides) {
   }
 }
 
-function snapshotAssets() {
-  const files = listAssets();
-  const snapshot = new Map();
-  for (const file of files) {
-    const rel = path.relative(assetsDir, file).split(path.sep).join("/");
-    snapshot.set(rel, crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex"));
-  }
-  return snapshot;
-}
-
-function diffSnapshots(a, b) {
-  const problems = [];
-  for (const name of a.keys()) if (!b.has(name)) problems.push(`kun i build A: ${name}`);
-  for (const name of b.keys()) if (!a.has(name)) problems.push(`kun i build B: ${name}`);
-  for (const [name, hash] of a) {
-    if (b.has(name) && b.get(name) !== hash) problems.push(`forskelligt indhold: ${name}`);
-  }
-  return problems;
-}
+export const FULL_SHA_A = "aaaaaaa1111111111111111111111111111aaaaa";
+export const FULL_SHA_B = "bbbbbbb2222222222222222222222222222bbbbb";
 
 function runFull() {
   assertViteConfigDisablesReleaseInject();
 
-  const shaA = "aaaaaaa1111111111111111111111111111aaaaa";
-  const shaB = "bbbbbbb2222222222222222222222222222bbbbb";
+  const shaA = FULL_SHA_A;
+  const shaB = FULL_SHA_B;
+  // #5160: transformationen SKAL være aktiv, ellers måler de to builds en
+  // pipeline prod ikke bruger. Den kræver intet Sentry-token.
+  const transform = { CZ_SENTRY_TRANSFORM: "1" };
+  const keptA = fs.mkdtempSync(path.join(os.tmpdir(), "cz-determinism-a-"));
 
-  console.log(`▶ Build A (sha ${shaA.slice(0, 7)})`);
-  build({ VERCEL_GIT_COMMIT_SHA: shaA, VITE_VERCEL_GIT_COMMIT_SHA: shaA, SENTRY_RELEASE: shaA });
-  const snapshotA = snapshotAssets();
+  console.log(`▶ Build A (sha ${shaA.slice(0, 7)}, Sentry-transformation aktiv)`);
+  build({ ...transform, VERCEL_GIT_COMMIT_SHA: shaA, VITE_VERCEL_GIT_COMMIT_SHA: shaA, SENTRY_RELEASE: shaA });
   const metaA = readMetaContent(path.join(distDir, "index.html"));
+  // Build B overskriver dist/, så A skal gemmes først.
+  fs.cpSync(distDir, path.join(keptA, "dist"), { recursive: true });
 
-  console.log(`▶ Build B (sha ${shaB.slice(0, 7)})`);
-  build({ VERCEL_GIT_COMMIT_SHA: shaB, VITE_VERCEL_GIT_COMMIT_SHA: shaB, SENTRY_RELEASE: shaB });
-  const snapshotB = snapshotAssets();
+  console.log(`▶ Build B (sha ${shaB.slice(0, 7)}, Sentry-transformation aktiv)`);
+  build({ ...transform, VERCEL_GIT_COMMIT_SHA: shaB, VITE_VERCEL_GIT_COMMIT_SHA: shaB, SENTRY_RELEASE: shaB });
   const metaB = readMetaContent(path.join(distDir, "index.html"));
 
-  const problems = diffSnapshots(snapshotA, snapshotB);
-  if (problems.length > 0) {
+  // Samme sammenligning som CI-jobbet: hele dist-træet, ikke kun dist/assets.
+  const manifestA = buildManifest(path.join(keptA, "dist"), `build-a (${shaA.slice(0, 7)})`);
+  const manifestB = buildManifest(distDir, `build-b (${shaB.slice(0, 7)})`);
+  const diff = compareManifests(manifestA, manifestB);
+  console.log(
+    formatReport(diff, { rootA: path.join(keptA, "dist"), rootB: distDir })
+  );
+  if (!diff.ok) {
     fail(
-      `dist/assets er IKKE identisk mellem to builds med forskellig commit-sha (${problems.length} afvigelser).`,
-      [
-        ...problems.slice(0, 25),
-        problems.length > 25 ? `... og ${problems.length - 25} mere` : "",
-        "",
-        "Alt deploy-unikt skal ud af de hashede assets — se frontend/src/lib/release.js.",
-      ].filter(Boolean)
+      `${diff.runtimeDifferences.length} runtime-asset(s) afviger mellem to builds med forskellig commit-sha.`,
+      ["Alt deploy-unikt skal ud af de hashede assets — se frontend/src/lib/release.js."]
     );
   }
-  console.log(`✓ ${snapshotA.size} assets byte-identiske på tværs af to builds med forskellig sha`);
 
   if (metaA === metaB || metaA !== shaA || metaB !== shaB) {
     fail(
@@ -293,6 +295,12 @@ function runVerifyOnly() {
   console.log("\n✅ Build-determinisme (verify-only) OK — ingen deploy-unikke bytes i hashede assets.");
 }
 
-const args = process.argv.slice(2);
-if (args.includes("--full")) runFull();
-else runVerifyOnly();
+// Kun som CLI: scripts/check-build-determinism.test.mjs importerer filen for at
+// teste de rene dele, og må ikke udløse en kørsel (eller et process.exit).
+const invokedDirectly =
+  process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
+if (invokedDirectly) {
+  const args = process.argv.slice(2);
+  if (args.includes("--full")) runFull();
+  else runVerifyOnly();
+}

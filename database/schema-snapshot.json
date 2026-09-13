@@ -1,6 +1,6 @@
 {
   "$comment": "Mirror of the live public schema (relation -> columns) + single-column foreign keys. Read by scripts/lint-schema-columns.mjs to reject selects against columns that do not exist. Generated — do NOT hand-edit. Refresh: node scripts/lint-schema-columns.mjs --update-snapshot (requires SUPABASE_DB_URL via Infisical). Refs #3586.",
-  "generatedAt": "2026-09-09T14:20:37.078Z",
+  "generatedAt": "2026-09-10T17:13:24.325Z",
   "relations": {
     "academy_graduation": {
       "kind": "table",
@@ -2887,7 +2887,10 @@
         "reputation",
         "reputation_floor",
         "reputation_form",
-        "reputation_updated_at"
+        "reputation_updated_at",
+        "retirement_notice_season",
+        "retirement_notice_after_season",
+        "retirement_notice_given_at"
       ]
     },
     "riders_3570_backup_20260811": {
