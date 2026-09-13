@@ -819,6 +819,7 @@
     },
     "demote": {
       "button": "Move to academy",
+      "ageBlocked": "Riders leave the academy at 22, so this one is already too old to move down.",
       "success": "Rider moved to your academy.",
       "errorPrefix": "Couldn't move rider:"
     }

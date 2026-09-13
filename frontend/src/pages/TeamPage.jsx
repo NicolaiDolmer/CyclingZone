@@ -12,7 +12,8 @@ import { statStyle, statPlateStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
-import { ageBadgeKey, getRiderAge, isU23, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge";
+import { ageBadgeKey, getRiderAge, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge";
+import { canDemoteToAcademy } from "../lib/academyDemoteGate.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, projectYouthSalary, detectStartPriceTypo } from "../lib/marketValues";
 import { formatHour } from "../lib/auctionEndTime.js";
@@ -43,9 +44,13 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 
 function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, ddActive, seasonYear }) {
   const { t } = useTranslation("team");
-  // #932 S7: demote (senior → akademi) er kun muligt for U23-seniorer (alder ≤ 22,
-  // ikke allerede akademi). Samme grænse som backend D5-gaten. #3071: sæson-alder.
-  const canDemote = !rider.is_academy && isU23(rider.birthdate, seasonYear);
+  // #932 S7: demote (senior → akademi) er kun muligt for unge seniorer der ikke
+  // allerede er akademi-ryttere. Samme grænse som backend D5-gaten. #3071:
+  // sæson-alder, ikke wall-clock. #5145: grænsen er ≤ 21 (ACADEMY.MAX_AGE), ikke
+  // U23/≤ 22 — en 22-årig ville lande i akademiet OVER gradueringsalderen og uden
+  // graduerings-vindue (#5133). Fanen forsvinder da helt; forklaringen af hvorfor
+  // står på rytter-profilen (RiderManageActions), hvor knappen vises deaktiveret.
+  const canDemote = !rider.is_academy && canDemoteToAcademy(rider.birthdate, seasonYear);
   const riderValue = getRiderMarketValue(rider);
   const [auctionPrice, setAuctionPrice] = useState(riderValue);
   const [transferPrice, setTransferPrice] = useState(riderValue);

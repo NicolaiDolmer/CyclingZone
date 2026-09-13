@@ -819,6 +819,7 @@
     },
     "demote": {
       "button": "Flyt til akademi",
+      "ageBlocked": "Ryttere forlader akademiet ved 22, så denne er allerede for gammel til at rykke ned.",
       "success": "Rytter flyttet til dit akademi.",
       "errorPrefix": "Kunne ikke flytte rytter:"
     }

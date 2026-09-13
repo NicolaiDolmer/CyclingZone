@@ -73,7 +73,7 @@
     "not_owned": "You don't own this rider",
     "not_academy": "This rider isn't in your academy",
     "already_academy": "This rider is already in your academy",
-    "not_u23": "Only U23 riders can be moved to the academy",
+    "not_u23": "Only riders aged 21 or under can be moved to the academy",
     "squad_cap_violation": "Your senior squad is full",
     "rider_on_market": "This rider is in an active auction. End it before moving the rider to the academy",
     "rider_listed": "This rider is on the transfer list. Remove the listing before moving the rider to the academy",

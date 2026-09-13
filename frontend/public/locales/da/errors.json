@@ -73,7 +73,7 @@
     "not_owned": "Du ejer ikke denne rytter",
     "not_academy": "Rytteren er ikke i dit akademi",
     "already_academy": "Rytteren er allerede i dit akademi",
-    "not_u23": "Kun U23-ryttere kan flyttes til akademiet",
+    "not_u23": "Kun ryttere på 21 år eller derunder kan flyttes til akademiet",
     "squad_cap_violation": "Din seniortrup er fuld",
     "rider_on_market": "Rytteren er i en aktiv auktion. Afslut den før du flytter rytteren til akademiet",
     "rider_listed": "Rytteren er på transferlisten. Fjern listingen før du flytter rytteren til akademiet",

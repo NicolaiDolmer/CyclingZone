@@ -2,7 +2,7 @@
 //
 // Samler de handlinger der hidtil KUN levede i holdsidens RiderActionModal:
 //   • Senior-rytter:  forlæng kontrakt (#1720) · flyt til akademi/demote (#932,
-//     kun U23) · fyr/release (#1719, destruktiv).
+//     kun sæson-alder ≤ 21, #5145) · fyr/release (#1719, destruktiv).
 //   • Akademi-rytter: forlæng kontrakt (#2179, samme panel som senior — ingen
 //     op-/nedrykning krævet) · promovér til senior-truppen (#932).
 //
@@ -12,7 +12,8 @@
 //
 // Akademi-delen ligger i en egen sub-komponent (RiderAcademyActions) der KUN
 // mountes når en akademi-handling faktisk kan være relevant (akademi-rytter eller
-// U23-senior) — så useAcademy (/api/academy/me) ikke hentes på enhver senior-profil.
+// senior i akademi-alder) — så useAcademy (/api/academy/me) ikke hentes på enhver
+// senior-profil.
 //
 // Æstetik (design-SSOT docs/design/rider-page): editorial cz-tokens, ingen slop
 // (ingen glow/gradient/emoji), forlæng/fyr som inline udvidelses-paneler (samme
@@ -22,7 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../lib/intl.js";
 import { resolveApiError } from "../../lib/apiError.js";
-import { isU23 } from "../../lib/riderAge.js";
+import { canDemoteToAcademy, isDemoteBlockedByAge } from "../../lib/academyDemoteGate.js";
 import { projectSeniorSalary } from "../../lib/marketValues.js";
 import { keepsExistingContractOnPromote } from "../../lib/academyPromoteContract.js";
 import { fetchRiderQuote, postRiderContractAction } from "../../lib/riderContractActions.js";
@@ -71,7 +72,7 @@ function academyError(code, t, fallback) {
 // side om side (kontrakt-brud, PAGE_TEMPLATES.md "one gold primary per view").
 // onPromoteVisibleChange er valgfri (den senior-demote-mount nedenfor sender
 // den ikke — der er intet promote-tilfælde at koordinere med der).
-function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onChanged, onPromoteVisibleChange }) {
+function RiderAcademyActions({ rider, isAcademyRider, canDemote, demoteAgeBlocked = false, onResult, onChanged, onPromoteVisibleChange }) {
   const { t } = useTranslation("rider");
   const academy = useAcademy();
   // { direction, newSalary, currentSalary, capLabel, capAfterLabel, racesCleared } | null
@@ -160,6 +161,18 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
           {t("manage.demote.button")}
         </button>
       )}
+      {/* #5145: rytteren har lige fyldt gradueringsalderen (22) — nedrykning er
+          spærret, men knappen forsvinder IKKE i tavshed. Samme princip som
+          extend-loftet ovenfor (#3186): mekanikken skal være synlig, ikke først
+          forklares efter et afvist klik. Kort linje her, resten i Hjælp. */}
+      {!isAcademyRider && !canDemote && demoteAgeBlocked && (
+        <>
+          <button type="button" disabled className={buttonClass({ variant: "secondary" })}>
+            {t("manage.demote.button")}
+          </button>
+          <p className={`${ACTION_PANEL} text-cz-3 text-xs`}>{t("manage.demote.ageBlocked")}</p>
+        </>
+      )}
       <AcademyTransferConfirmModal
         show={Boolean(academyModal)}
         direction={academyModal?.direction}
@@ -185,7 +198,12 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
   const isAcademyRider = Boolean(rider.is_academy);
   // #3071: sæson-alder (fra useActiveSeasonYear via kaldersiden RiderStatsPage),
   // ikke wall-clock — ellers kunne en 23-årig i S2 stadig demotes som U23.
-  const canDemote = !isAcademyRider && isU23(rider.birthdate, seasonYear);
+  // #5145: grænsen er 21 (ACADEMY.MAX_AGE), ikke U23/22 — en 22-årig ville lande
+  // i akademiet OVER gradueringsalderen og uden graduerings-vindue (#5133).
+  const canDemote = !isAcademyRider && canDemoteToAcademy(rider.birthdate, seasonYear);
+  // Præcis 22: knappen vises deaktiveret med en forklaring i stedet for at
+  // forsvinde uden ord. 23+ får ingenting (der har aldrig været en knap).
+  const demoteAgeBlocked = !isAcademyRider && isDemoteBlockedByAge(rider.birthdate, seasonYear);
 
   // Inline udvidelses-paneler (forlæng/fyr).
   const [extendOpen, setExtendOpen] = useState(false);
@@ -613,13 +631,24 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
         </>
       ) : (
         /* Senior-rytter, prototypens rækkefølge: forlæng (guld) · flyt til akademi
-           (kun U23) · markeds-handlinger (salg/auktion, injiceret) · fyr (destruktiv sidst). */
+           (sæson-alder ≤ 21) · markeds-handlinger (salg/auktion, injiceret) · fyr
+           (destruktiv sidst). */
         <>
           {extendPanel}
 
-          {/* Flyt til akademi (kun U23 + akademi aktivt) — mountes kun ved canDemote. */}
-          {canDemote && (
-            <RiderAcademyActions rider={rider} isAcademyRider={false} canDemote onResult={flashResult} onChanged={onChanged} />
+          {/* Flyt til akademi (sæson-alder ≤ 21, #5145 + akademi aktivt). Mountes
+              også ved demoteAgeBlocked (præcis 22), så den spærrede knap kan vise
+              HVORFOR — men aldrig for 23+, hvor useAcademy så ville blive hentet
+              på hver eneste senior-profil uden noget at vise. */}
+          {(canDemote || demoteAgeBlocked) && (
+            <RiderAcademyActions
+              rider={rider}
+              isAcademyRider={false}
+              canDemote={canDemote}
+              demoteAgeBlocked={demoteAgeBlocked}
+              onResult={flashResult}
+              onChanged={onChanged}
+            />
           )}
 
           {/* Markeds-handlinger (sæt til salg · start auktion) — injiceret af
