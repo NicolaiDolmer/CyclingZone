@@ -292,6 +292,25 @@ test("wave.js klemmer probens forlaengelse mod det haarde loft", () => {
   );
 });
 
+test("wave.js bogfoerer probens tid, saa det haarde loft ikke kan overskrides", () => {
+  // CodeRabbit 13/9: elapsedMinutes voksede kun med ventevinduerne, ikke med
+  // probernes egen tid, saa et spor kunne ligge ~1 time over det "absolutte"
+  // loft. Workflow-scripts har ingen Date.now(), saa loesningen er at bogfoere
+  // probens OEVRE graense - aldrig et for lavt tal.
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(
+    src.includes("elapsedMinutes += WAVE_FREEZE.PROBE_TIMEOUT_MINUTES"),
+    "wave.js skal laegge probens oevre tidsforbrug til elapsedMinutes",
+  );
+  // Kun KODE-linjer: headeren omtaler bevidst Date.now() som noget der mangler.
+  const code = src
+    .split("\n")
+    .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+    .join("\n");
+  assert.ok(!/\bDate\.now\(\)/.test(code), "Date.now() kaster i workflow-scripts - maa aldrig kaldes i wave.js");
+  assert.ok(!/\bMath\.random\(\)/.test(code), "Math.random() kaster i workflow-scripts");
+});
+
 test("wave.js har ikke laengere den gamle 60-minutters frys-model", () => {
   const src = readFileSync(WAVE_JS_PATH, "utf8");
   assert.ok(!src.includes("per-spor-timeout 60 min"), "den gamle 60-min-tekst staar stadig i wave.js");

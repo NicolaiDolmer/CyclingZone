@@ -780,7 +780,10 @@ async function gracefulStop(track, probe) {
     `graceful stop #${track.issue}`,
   )
   if (!stop || stop === TIMED_OUT) {
-    return { skipped: false, committed: false, pushed: false, note: 'stop-agenten svarede ikke - TJEK WORKTREET I HAANDEN' }
+    // `unknown` skelner "vi ved det ikke" fra "der var intet at gemme": en
+    // stop-agent i et rent worktree svarer med rette committed:false, og det
+    // maa ikke ende som en advarsel om ucommittet arbejde.
+    return { skipped: false, unknown: true, committed: false, pushed: false, note: 'stop-agenten svarede ikke - TJEK WORKTREET I HAANDEN' }
   }
   return { skipped: false, ...stop }
 }
@@ -803,6 +806,15 @@ async function runTrack(track, trackTimeoutMinutes) {
     elapsedMinutes += waitMinutes
     if (build !== TIMED_OUT) break
 
+    // Proben koster ogsaa tid (op til PROBE_TIMEOUT_MINUTES), og uden Date.now()
+    // kan scriptet ikke maale hvor laenge den faktisk tog. Vi bogfoerer derfor
+    // dens OEVRE graense FOER kaldet, saa baade probens egen beregning og
+    // klemningen mod loftet regner paa et tal der aldrig er for lavt. Summen af
+    // vinduer alene ville underdrive alderen med 5 min pr. runde, og et spor
+    // kunne saa ligge en time over det "absolutte" loft. Prisen er at et spor
+    // kan rammes af loftet lidt foer 180 min i vaeggur - den rigtige side at
+    // tage fejl paa, naar loftet er defineret som absolut.
+    elapsedMinutes += WAVE_FREEZE.PROBE_TIMEOUT_MINUTES
     const probe = await probeBranch(track, elapsedMinutes)
     const ageText = probe.lastCommitAgeMinutes === null ? 'ukendt' : `${Math.round(probe.lastCommitAgeMinutes)} min siden`
     if (probe.verdict === 'extend') {
@@ -954,11 +966,17 @@ const stopped = results.filter((r) => r.status === 'frys' || r.status === 'timeo
 log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${tracks.length} i alt).`)
 // Et worktree der stadig er dirty efter den graceful stop-agent skal ses af et
 // menneske - det er praecis den tilstand boelge 2 den 11/9 efterlod usynligt.
-// Bemaerk `pushed !== true`: en stop-agent der committede men ikke fik pushet
-// har lagt arbejdet i en LOKAL commit. Det er lige saa usynligt som et dirty
-// worktree, og det maa ikke slippe forbi advarslen.
+// Tre tilstande der alle skal raabes op, og ingen flere:
+//   unknown  - stop-agenten svarede ikke, saa worktreet er uafklaret
+//   stillDirty - den naaede ikke at faa alt med
+//   committed uden pushed - arbejdet ligger i en LOKAL commit, lige saa
+//     usynligt som et dirty worktree
+// Et rent worktree svarer med rette committed:false/pushed:false; det er ikke
+// en advarsel, og maa ikke taelle med.
 const stillDirty = results.filter((r) => r.gracefulStop && r.gracefulStop.skipped !== true
-  && (r.gracefulStop.stillDirty === true || r.gracefulStop.committed !== true || r.gracefulStop.pushed !== true))
+  && (r.gracefulStop.unknown === true
+    || r.gracefulStop.stillDirty === true
+    || (r.gracefulStop.committed === true && r.gracefulStop.pushed !== true)))
 for (const r of stillDirty) {
   log(`ADVARSEL: #${r.issue} ${r.branch} kan stadig have ucommittet ELLER upushet arbejde i worktreet - ${(r.gracefulStop && r.gracefulStop.note) || 'ingen note fra stop-agenten'}. Tjek det i haanden.`)
 }
