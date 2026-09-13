@@ -49,7 +49,7 @@ Review fandt desuden honours-INVOKER-afhængigheden i SeasonEndPage:
 - [x] CI grøn; aflevering med ændret/selv tjekket/antaget før merge-go.
 - [x] Trin 1: ejerens merge-go, backend/frontend-deploy og authenticated kontrol.
   PR #5183 merget 13/9, hotfix #5185 merget 13/9.
-- [ ] Trin 2: i gang, PR [#5187](https://github.com/NicolaiDolmer/CyclingZone/pull/5187).
+- [x] Trin 2: merget 13/9 (PR [#5187](https://github.com/NicolaiDolmer/CyclingZone/pull/5187), ab9a727e) og verificeret 21:45: grants 4 x f/f/t, kolonner 4 x f/f, advisor 0016 = 0, WARN 7 → 3.
   SQL flyttet til `database/2026-09-13-5176-revoke-matview-select.sql` (rammer
   auto-migrate-globben). Post-merge-plan: Claude kører de to kommenterede
   SELECT-verify-queries i filen (grants 4 x f/f/t, kolonneprivilegier 4 x f/f)

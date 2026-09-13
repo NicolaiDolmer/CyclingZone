@@ -57,10 +57,10 @@ kræver fortsat eksplicit godkendelse. Indtil trin 2 vil de fire WARN bestå.
 
 **Trin 2, 13/9:** SQL flyttet til `database/2026-09-13-5176-revoke-matview-select.sql`
 (PR [#5187](https://github.com/NicolaiDolmer/CyclingZone/pull/5187), rammer nu
-auto-migrate-globben). TODO Claude udfylder efter merge/apply: revoke applied
-via `database/2026-09-13-5176-revoke-matview-select.sql`, verificeret
-&lt;dato&gt; — grants 4 x f/f/t, kolonneprivilegier 4 x f/f, advisor 0016=0.
-Ikke verificeret endnu.
+auto-migrate-globben). **Applied og verificeret 13/9 kl. 21:45** (merge ab9a727e,
+auto-migrate run 34778100084): grants 4 x f/f/t, kolonneprivilegier 4 x f/f,
+advisor 0016 = 0. WARN 7 → 3 (kun 0029: `founder_public_list`, `is_admin`,
+`is_offered_intake_rider`). INFO 117 uændret.
 
 ### `is_admin()`: accepteret tilsigtet adgang, 12/9 2026
 
