@@ -2,7 +2,7 @@ import { useState, useEffect, Fragment, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { getSeasonHonours } from "../lib/rankingsApi.ts";
 import { supabase } from "../lib/supabase";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { formatNumber, formatDate } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
@@ -25,6 +25,7 @@ import {
   Button, Select, ZonePill, FlameIcon, PodiumIcon, LightningIcon,
   ArrowUpIcon, ArrowDownIcon,
 } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 
 // #2908: division-farven kommer nu fra den delte anti-drift-vokabular
 // (divisionColors.js, #671) i stedet for en lokal DIV_COLORS der stoppede ved 3 —
@@ -696,6 +697,11 @@ export default function SeasonEndPage() {
               icon={<FlagIcon size={26} aria-hidden="true" />}
               title={t("empty.title")}
               description={t("empty.body")}
+              action={
+                <Link to="/planning?tab=calendar" className={buttonClass({ variant: "primary", size: "sm" })}>
+                  {t("empty.cta")}
+                </Link>
+              }
             />
           ) : (
         <>

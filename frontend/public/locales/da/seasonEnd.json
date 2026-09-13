@@ -8,7 +8,8 @@
   "seasonOption": "Sæson {number} · {status}",
   "empty": {
     "title": "Ingen resultater endnu",
-    "body": "Afslut løb og sæsoner for at se resultater her"
+    "body": "Afslut løb og sæsoner for at se resultater her",
+    "cta": "Se kalenderen"
   },
   "status": {
     "completed": "Afsluttet",
