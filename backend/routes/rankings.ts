@@ -6,13 +6,16 @@ import { fetchAllRows } from "../lib/supabasePagination.js";
 import { readHonours } from "./rankingHonours.ts";
 
 const uuid = z.uuid();
+// seasons.id er ikke RFC-UUID (00000000-0000-0000-0000-00000000000N, version-nibble 0), saa z.uuid() afviser
+// ALLE saeson-kald med 400 i prod (CYCLINGZONE-5V/5W, 13/9). GUID-form (8-4-4-4-12 hex) er nok her.
+const seasonId = z.guid();
 const ids = z.string().max(3699).transform(value => value.split(","))
   .pipe(z.array(uuid).min(1).max(100));
 const globalQuery = z.strictObject({ team_id: uuid.optional() });
-const riderQuery = z.strictObject({ season_id: uuid, rider_ids: ids.optional(), top: z.literal("5").optional() })
+const riderQuery = z.strictObject({ season_id: seasonId, rider_ids: ids.optional(), top: z.literal("5").optional() })
   .refine(query => !(query.rider_ids && query.top));
-const seasonQuery = z.strictObject({ season_id: uuid });
-const raceQuery = z.strictObject({ season_id: uuid.optional(), race_ids: ids.optional() })
+const seasonQuery = z.strictObject({ season_id: seasonId });
+const raceQuery = z.strictObject({ season_id: seasonId.optional(), race_ids: ids.optional() })
   .refine(query => Boolean(query.season_id) !== Boolean(query.race_ids));
 const countQuery = z.strictObject({ team_id: uuid });
 
