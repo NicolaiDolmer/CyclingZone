@@ -479,6 +479,7 @@ import {
   buildSelectionDeadlineReminder,
   SELECTION_REMINDER_WINDOW_HOURS,
   SELECTION_REMINDER_TONES,
+  isSelectionReminderMigrationPending,
 } from "../lib/selectionDeadlineReminder.js";
 import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
@@ -9448,6 +9449,15 @@ router.patch("/me/selection-reminder-settings", requireAuth, marketWriteLimiter,
   }
   const { error } = await supabase
     .from("teams").update({ selection_reminder_enabled: enabled }).eq("id", req.team.id);
+  // Auto-migrate (#2642) applier kolonnen ca. 180 sekunder EFTER deployet. I det
+  // vindue er skrivningen ikke fejlet — den er for tidlig. Et retryable 503 med
+  // Retry-After er sandheden: valget er IKKE gemt, men det virker om lidt. En
+  // 500 ville se ud som en programfejl (og larme i Sentry), og et "ok" ville
+  // lyve om en indstilling der aldrig nåede databasen.
+  if (isSelectionReminderMigrationPending(error)) {
+    res.set("Retry-After", "60");
+    return res.status(503).json({ error: "Selection reminder settings are not available yet. Try again shortly" });
+  }
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true, selection_reminder_enabled: enabled });
 });

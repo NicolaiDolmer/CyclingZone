@@ -41,8 +41,8 @@ import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
 import { useActionSummary } from "../hooks/useActionSummary";
-import { useSelectionReminder } from "../hooks/useSelectionReminder.ts"; // #4983
-import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.ts"; // #4983
+import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
+import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.js"; // #4983
 import { useUserProfile } from "../lib/userProfile.jsx"; // #3034
 
 const API = import.meta.env.VITE_API_URL;

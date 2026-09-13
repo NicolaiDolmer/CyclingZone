@@ -20,6 +20,27 @@ const API = import.meta.env.VITE_API_URL;
 // på serveren. Fristen selv flytter sig ikke.
 const REFRESH_MS = 5 * 60 * 1000;
 
+// Hooket mountes to steder (Layout + PlanningHubPage) med hver sin useState, og
+// der er hverken context eller abonnement imellem dem. Efter ProfilePage's
+// til/fra-PATCH ville den gamle nav-markering derfor blive stående indtil næste
+// 5-minutters tick. De to linjer nedenfor er det mindste der lukker hullet:
+// et modul-lokalt sæt af "hent forfra"-lyttere — ingen ny store, ingen context.
+const refreshListeners = new Set<() => void>();
+
+// Sat af notify'en, ryddet af den FØRSTE loader der når frem: så invaliderer
+// kun én af de to forbrugere cachen, og den anden deler dens svar (in-flight-
+// dedupe i sharedRequestCache) i stedet for at fyre et kald mere.
+let pendingRefresh = false;
+
+/**
+ * Bed begge forbrugere om friske tal NU. Kaldes efter en mutation der ændrer
+ * påmindelsen — i dag kun spillerens til/fra på profilen.
+ */
+export function refreshSelectionReminder(): void {
+  pendingRefresh = true;
+  for (const listener of [...refreshListeners]) listener();
+}
+
 export function useSelectionReminder(): {
   reminder: SelectionReminder;
   loaded: boolean;
@@ -36,9 +57,18 @@ export function useSelectionReminder(): {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setReminder(EMPTY_SELECTION_REMINDER); return; }
-      if (force) sharedRequestCache.invalidate(SHARED_KEYS.selectionReminder);
+      // Nøglen er bundet til den indloggede manager. Uden user-id'et ville et
+      // svar der stadig er undervejs når manager A logger ud lande på den faste
+      // nøgle bagefter — `clear()` ved logud fjerner kun det der ligger i
+      // cachen, den kan ikke annullere et kald der allerede er sendt — og
+      // manager B ville se A's løb i op til TTL'en (60 s).
+      const cacheKey = `${SHARED_KEYS.selectionReminder}:${session.user.id}`;
+      if (force || pendingRefresh) {
+        pendingRefresh = false;
+        sharedRequestCache.invalidate(cacheKey);
+      }
       const payload = await sharedRequestCache.get(
-        SHARED_KEYS.selectionReminder,
+        cacheKey,
         async () => {
           // catch-ok: loaderens rejection bobler ud gennem sharedRequestCache.get()
           // og fanges af catch'en nedenfor (fail-safe = ingen markering).
@@ -65,7 +95,14 @@ export function useSelectionReminder(): {
   useEffect(() => {
     load(false);
     const timer = setInterval(() => load(false), REFRESH_MS);
-    return () => clearInterval(timer);
+    // `false`: invalideringen er allerede bestilt af refreshSelectionReminder()
+    // via pendingRefresh, så kun den første af de to forbrugere rammer nettet.
+    const listener = () => { void load(false); };
+    refreshListeners.add(listener);
+    return () => {
+      clearInterval(timer);
+      refreshListeners.delete(listener);
+    };
   }, [load]);
 
   return { reminder, loaded, refetch };

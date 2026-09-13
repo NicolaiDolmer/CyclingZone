@@ -8,6 +8,7 @@ import { useSubscription } from "../lib/useSubscription";
 import { useTheme } from "../lib/theme.jsx";
 import { useConsent } from "../lib/consent.jsx";
 import { parseDiscordHandle } from "../lib/discordHandle.js";
+import { refreshSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 // #5013: abonnement pr. forum-kategori — delt med ForumPage, så de to flader
 // aldrig kan vise hver sin sandhed.
 import {
@@ -402,9 +403,19 @@ export default function ProfilePage() {
         body: JSON.stringify({ enabled }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) showMsg(data.error || t("errors:generic.serverError"), "error");
+      // 503 = migrationen er ikke applied endnu (auto-migrate venter ~180 s
+      // efter deploy). Ikke en fejl der skal rapporteres — valget er bare ikke
+      // gemt endnu. Samme eksisterende "prøv igen om lidt"-besked som enhver
+      // anden midlertidig serverfejl, ingen ny streng.
+      if (res.status === 503) showMsg(t("errors:generic.serverError"), "error");
+      else if (!res.ok) showMsg(data.error || t("errors:generic.serverError"), "error");
       else {
         setAssistant(prev => ({ ...prev, selection_reminder_enabled: data.selection_reminder_enabled }));
+        // Layout og PlanningHubPage har hver sin useSelectionReminder-state og
+        // opdaterer ellers først om op til 5 minutter: uden det her ville
+        // nav-markeringen blive stående efter at spilleren har slået
+        // påmindelsen fra (og udeblive efter at have slået den til).
+        refreshSelectionReminder();
         showMsg(enabled ? t("selectionReminder.on") : t("selectionReminder.off"));
       }
     } catch (cause) {

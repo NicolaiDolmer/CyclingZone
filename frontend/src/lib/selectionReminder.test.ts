@@ -51,6 +51,47 @@ test("normalizeSelectionReminder: gyldigt svar bæres igennem med vinduerne", ()
   assert.equal(out.urgent_hours, 24);
 });
 
+// CodeRabbit-fund (#5108): et svar med `tone: "warning"` og en ubrugelig række
+// slap igennem. Boksen linkede så til /races/undefined og viste tomme felter.
+test("normalizeSelectionReminder: null i races kasserer HELE svaret", () => {
+  const out = normalizeSelectionReminder({
+    enabled: true, tone: "warning", count: 1, races: [null], window_hours: 36, urgent_hours: 24,
+  });
+  assert.equal(out.tone, "none");
+  assert.equal(out.count, 0);
+  assert.equal(out.races.length, 0);
+  // Vinduerne er stadig serverens — kun løbene kasseres.
+  assert.equal(out.window_hours, 36);
+  assert.equal(out.urgent_hours, 24);
+});
+
+test("normalizeSelectionReminder: en halv række kasserer hele svaret", () => {
+  const partial = [
+    { ...RACE, id: undefined },
+    { ...RACE, id: "" },
+    { ...RACE, name: undefined },
+    { ...RACE, deadline_at: undefined },
+    { ...RACE, deadline_at: "ikke en dato" },
+    { ...RACE, hours_until: "30" },
+    { ...RACE, hours_until: Number.NaN },
+    { ...RACE, entry_count: null },
+    { ...RACE, target_size: undefined },
+  ];
+  for (const race of partial) {
+    const out = normalizeSelectionReminder({ enabled: true, tone: "urgent", count: 2, races: [RACE, race] });
+    assert.equal(out.tone, "none", `ugyldig række slap igennem: ${JSON.stringify(race)}`);
+    assert.equal(out.races.length, 0);
+  }
+});
+
+test("normalizeSelectionReminder: de valgfrie felter er stadig valgfrie", () => {
+  // race_class/min_size/will_not_start er valgfrie i kontrakten — de må ikke
+  // kunne kassere et ellers gyldigt svar.
+  const out = normalizeSelectionReminder({ enabled: true, tone: "warning", count: 1, races: [RACE] });
+  assert.equal(out.races.length, 1);
+  assert.equal(out.tone, "warning");
+});
+
 test("resolveNavDotTone: kun punkter med dot: true markeres", () => {
   const tones = { "/planning": "urgent" as const };
   assert.equal(resolveNavDotTone({ to: "/planning", dot: true }, tones), "urgent");

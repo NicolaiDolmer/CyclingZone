@@ -51,13 +51,35 @@ function toTone(value: unknown): SelectionReminderTone {
 }
 
 /**
+ * Er rækken et brugbart løb? Uden tjekket ville `races: [null]` eller en halv
+ * række slippe igennem: boksen linker til `/races/undefined`, viser tomme felter
+ * og en frist der ikke findes. Kun de felter fladen faktisk læser kræves —
+ * `race_class`, `min_size` og `will_not_start` er valgfrie i kontrakten.
+ */
+function isValidRace(race: unknown): race is SelectionReminderRace {
+  if (!race || typeof race !== "object") return false;
+  const r = race as Record<string, unknown>;
+  return (
+    typeof r.id === "string" && r.id.length > 0 &&
+    typeof r.name === "string" &&
+    typeof r.deadline_at === "string" && Number.isFinite(Date.parse(r.deadline_at)) &&
+    typeof r.hours_until === "number" && Number.isFinite(r.hours_until) &&
+    typeof r.entry_count === "number" && Number.isFinite(r.entry_count) &&
+    typeof r.target_size === "number" && Number.isFinite(r.target_size)
+  );
+}
+
+/**
  * Normaliserer serverens svar. Et ufuldstændigt eller uventet svar bliver til
  * "ingen påmindelse" — en markering der lyver er værre end ingen markering, og
- * Layout mounter dette på hver eneste side.
+ * Layout mounter dette på hver eneste side. Alt-eller-intet på `races`: én
+ * ubrugelig række betyder at kontrakten er brudt, og så er tælleren i
+ * navigationen heller ikke til at stole på.
  */
 export function normalizeSelectionReminder(payload: unknown): SelectionReminder {
   const raw = (payload ?? {}) as Record<string, unknown>;
-  const races = Array.isArray(raw.races) ? (raw.races as SelectionReminderRace[]) : [];
+  const rawRaces = Array.isArray(raw.races) ? raw.races : [];
+  const races = rawRaces.every(isValidRace) ? (rawRaces as SelectionReminderRace[]) : [];
   const enabled = raw.enabled !== false;
   if (!enabled || !races.length) {
     return {

@@ -10,8 +10,8 @@ import SeasonPlannerPage from "./SeasonPlannerPage.jsx";
 import StrategyPage from "./StrategyPage.jsx";
 import CalendarPage from "./CalendarPage.jsx";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
-import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx"; // #4983
-import { useSelectionReminder } from "../hooks/useSelectionReminder.ts"; // #4983
+import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.js"; // #4983
+import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 
 // #3102 etape 3 (PR 1) — Planlægnings-hubben: Holdudtagelse (11.254 sessions/30
 // dage på /races), Formplan (planneren) og Strategi samlet under ét nav-punkt

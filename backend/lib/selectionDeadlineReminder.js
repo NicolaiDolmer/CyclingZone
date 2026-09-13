@@ -55,6 +55,25 @@ export const SELECTION_REMINDER_WINDOW_HOURS = SELECTION_WARNING_HOURS;
  */
 export const SELECTION_REMINDER_FLOOR = MIN_RACE_ENTRIES;
 
+/**
+ * Er fejlen "kolonnen/tabellen findes ikke endnu"? Auto-migrate (#2642) kører
+ * database/2026-09-10-4983-selection-reminder.sql ca. 180 sekunder EFTER at
+ * applikationen er deployet, så der er et vindue hvor koden kender
+ * `teams.selection_reminder_enabled`, men databasen ikke gør. I det vindue er
+ * en skrivning ikke en programfejl — den er for tidlig, og kalderen skal have
+ * et retryable svar (503 + Retry-After), ikke en 500 og ikke et falsk "gemt".
+ *
+ * Samme recipe som isMissingRetryColumnError (emailRetrySweep.js) og
+ * isMissingTableError (discordWebhookOutbox.js): SQLSTATE + PostgREST's egne
+ * schema-cache-koder, plus beskeden som sidste værn hvis koden mangler.
+ */
+export function isSelectionReminderMigrationPending(error) {
+  if (!error) return false;
+  const code = error.code ?? "";
+  if (code === "42703" || code === "42P01" || code === "PGRST204" || code === "PGRST205") return true;
+  return /selection_reminder_enabled|schema cache/i.test(error.message ?? "");
+}
+
 export const SELECTION_REMINDER_TONES = Object.freeze({
   NONE: "none",
   WARNING: "warning",
@@ -190,8 +209,12 @@ export function buildSelectionDeadlineReminder({
   }
 
   // Nærmeste frist først — boksen læses oppefra, og det mest presserende løb
-  // skal stå øverst.
-  items.sort((a, b) => a.hours_until - b.hours_until);
+  // skal stå øverst. Sorteringen sker på den U-AFRUNDEDE frist: `hours_until` er
+  // afrundet til to decimaler (= 36 sekunder), så to løb med mindre end 36
+  // sekunders forskel ville give komparatoren 0, og en stabil sort ville
+  // beholde kildens rækkefølge — det nærmeste løb kunne stå nummer to i en
+  // liste der lover nærmeste frist først.
+  items.sort((a, b) => Date.parse(a.deadline_at) - Date.parse(b.deadline_at));
 
   return { tone: aggregateReminderTone(items), count: items.length, races: items };
 }

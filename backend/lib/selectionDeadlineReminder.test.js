@@ -3,10 +3,12 @@
 // indbakke-varsel, plus ét nyt trin (rød under late fill-horisonten).
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   reminderToneForHours,
   reminderToneForRace,
   isBelowStartFloor,
+  isSelectionReminderMigrationPending,
   aggregateReminderTone,
   buildSelectionDeadlineReminder,
   SELECTION_REMINDER_TONES,
@@ -255,6 +257,50 @@ test("flere løb sorteres med nærmeste frist først, og den røde bestemmer ton
   assert.deepEqual(out.races.map((r) => r.id), ["r2", "r1"]);
   assert.deepEqual(out.races.map((r) => r.tone), ["urgent", "warning"]);
   assert.equal(out.tone, SELECTION_REMINDER_TONES.URGENT);
+});
+
+// CodeRabbit-fund (#5108): `hours_until` er afrundet til to decimaler = 36
+// sekunders opløsning. To frister tættere på hinanden end det gav komparatoren
+// 0, og en stabil sort beholdt kildens rækkefølge — det nærmeste løb kunne stå
+// nummer to. Sorteringen sker nu på den u-afrundede frist.
+test("to frister under 36 sekunders forskel sorteres stadig med den nærmeste først", () => {
+  // r1 ligger 20 sekunder EFTER r2, men står først i kilden.
+  const races = [race("r1", { name: "Later" }), race("r2", { name: "Sooner" })];
+  const out = buildSelectionDeadlineReminder({
+    races,
+    scheduleByRace: schedule([["r1", [10 + 20 / 3600]], ["r2", [10]]]),
+    entryCountByRace: new Map(), team: { league_division_id: 1 },
+    now: NOW, urgentHours: URGENT_HOURS,
+  });
+  assert.deepEqual(out.races.map((r) => r.hours_until), [10, 10.01],
+    "afrundingen alene kan ikke skelne de to — derfor sorteres der på deadline_at");
+  assert.deepEqual(out.races.map((r) => r.id), ["r2", "r1"]);
+});
+
+test("isSelectionReminderMigrationPending: kun 'kolonnen/tabellen findes ikke endnu'", () => {
+  assert.equal(isSelectionReminderMigrationPending({ code: "42703", message: 'column "selection_reminder_enabled" does not exist' }), true);
+  assert.equal(isSelectionReminderMigrationPending({ code: "42P01", message: 'relation "public.teams" does not exist' }), true);
+  assert.equal(isSelectionReminderMigrationPending({ code: "PGRST204", message: "Could not find the column in the schema cache" }), true);
+  assert.equal(isSelectionReminderMigrationPending({ code: "PGRST205", message: "Could not find the table in the schema cache" }), true);
+  // Beskeden som sidste værn hvis koden mangler.
+  assert.equal(isSelectionReminderMigrationPending({ message: "record 'selection_reminder_enabled' has no field" }), true);
+  // Alt andet er en rigtig fejl og skal blive ved med at give 500.
+  assert.equal(isSelectionReminderMigrationPending({ code: "23505", message: "duplicate key" }), false);
+  assert.equal(isSelectionReminderMigrationPending(null), false);
+  assert.equal(isSelectionReminderMigrationPending(undefined), false);
+});
+
+// Kilde-assert (samme recipe som dashboardUxPakke.routes.test.js): PATCHen har
+// ingen egen testharness, og pointen her er netop at ruten IKKE må svare 500
+// eller "ok" i migrations-vinduet.
+test("PATCH /me/selection-reminder-settings svarer 503 + Retry-After mens migrationen mangler", () => {
+  const api = readFileSync(new URL("../routes/api.js", import.meta.url), "utf8");
+  const block = api.slice(api.indexOf('router.patch("/me/selection-reminder-settings"'));
+  const route = block.slice(0, block.indexOf("\n});"));
+  assert.match(route, /isSelectionReminderMigrationPending\(error\)/, "skal genkende den manglende kolonne via helperen");
+  assert.match(route, /res\.set\("Retry-After"/, "et retryable svar skal sige HVORNÅR der kan prøves igen");
+  assert.match(route, /res\.status\(503\)/, "midlertidigt utilgængelig, ikke en programfejl");
+  assert.match(route, /res\.status\(500\)/, "rigtige fejl skal stadig give 500");
 });
 
 test("en anden late fill-horisont flytter det røde trin med", () => {
