@@ -182,6 +182,16 @@ test("ukendt tilstand koerer stop-agenten - et dirty worktree er dyrere", () => 
   assert.equal(needsGracefulStop(undefined), true);
 });
 
+test("hard-cap koerer ALDRIG stop-agenten - lane-agenten arbejder stadig i worktreet", () => {
+  // En boelge-timeout afbryder ikke agenten. Ved hard-cap lever branchen pr.
+  // definition, saa to agenter ville slaas om index.lock i samme worktree.
+  assert.equal(needsGracefulStop({ verdict: "hard-cap", probeOk: true, dirty: true, unpushed: 4 }), false);
+  assert.equal(needsGracefulStop({ verdict: "hard-cap", probeOk: false, dirty: true, unpushed: 4 }), false);
+  // Frys og doed agent redder derimod arbejdet som foer.
+  assert.equal(needsGracefulStop({ verdict: "frozen", probeOk: true, dirty: true, unpushed: 0 }), true);
+  assert.equal(needsGracefulStop({ verdict: "doed", probeOk: false }), true);
+});
+
 test("WIP-commit-beskeden er den ordret aftalte fra #5178", () => {
   assert.equal(wipCommitMessage(5159), "wip(#5159): boelge-timeout, ucommittet arbejde gemt");
 });
@@ -270,6 +280,16 @@ test("wave.js peger paa dette modul som kilde og bruger stadig LF", () => {
   const src = readFileSync(WAVE_JS_PATH, "utf8");
   assert.ok(src.includes("scripts/wave-freeze.mjs"), "wave.js skal pege paa kilden til frys-reglen");
   assert.ok(!src.includes("\r"), "wave.js skal have LF - Claude Desktop afviser CR som kontroltegn (#5142)");
+});
+
+test("wave.js klemmer probens forlaengelse mod det haarde loft", () => {
+  // CodeRabbit 13/9: paa den betroede sti kom extendMinutes direkte fra
+  // probe-agenten uden at blive holdt op mod loftet. Loftet er orkestratorens.
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(
+    src.includes("TRACK_HARD_CAP_MINUTES - elapsedMinutes"),
+    "wave.js skal klemme enhver forlaengelse mod den resterende tid under loftet",
+  );
 });
 
 test("wave.js har ikke laengere den gamle 60-minutters frys-model", () => {

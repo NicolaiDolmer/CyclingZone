@@ -71,12 +71,16 @@
 //    MODSAT: rammer et spor det haarde loft med en LEVENDE branch, er det ikke
 //    et frys - sporet er bare stort. Det stoppes, boelgen koerer videre.
 //
-// 3. TIMEOUT EFTERLADER ALDRIG ET DIRTY WORKTREE. Boelge 2 den 11/9 efterlod
+// 3. FRYS EFTERLADER ALDRIG ET DIRTY WORKTREE. Boelge 2 den 11/9 efterlod
 //    ucommittet arbejde i to worktrees (5 + 2 filer), som ingen opdagede foer
-//    naeste dag. Ved ethvert endeligt stop koeres derfor en kort
-//    WAVE-FOLLOWUP-agent i SAMME worktree, der committer WIP bag guarden og
-//    pusher. Den springes kun over naar proben har set et rent OG pushet
-//    worktree.
+//    naeste dag. Ved et frys (eller en agent der doede tavst) koeres derfor en
+//    kort WAVE-FOLLOWUP-agent i SAMME worktree, der committer WIP bag guarden
+//    og pusher. Den springes over i to tilfaelde: naar proben har set et rent
+//    OG pushet worktree, og ved 'hard-cap'. Det sidste er vigtigt - dér lever
+//    branchen pr. definition, saa lane-agenten arbejder stadig (en timeout
+//    afbryder den ikke). To agenter der committer i samme worktree ville slaas
+//    om index.lock og kunne commite halvskrevne filer. Sporet raabes i stedet
+//    op i loggen og i rapportens `stopped`.
 //
 // 4. ALLE UBEHANDLEDE SPOR RAPPORTERES. Hvert spor ender i praecis een af:
 //    results (koert), skipped (ikke klar efter fase 0) eller unstarted (naaede
@@ -308,8 +312,13 @@ function planReviewAttempt(attempt) {
 }
 
 // SPEJLING af needsGracefulStop() i scripts/wave-freeze.mjs.
+// 'hard-cap' undtages: dér lever branchen, saa lane-agenten arbejder stadig i
+// worktreet (en timeout afbryder ikke agenten). To agenter der committer samme
+// sted giver index.lock-kamp og halvskrevne WIP-commits.
 function needsGracefulStop(p) {
-  if (!p || p.probeOk !== true) return true
+  if (!p) return true
+  if (p.verdict === 'hard-cap') return false
+  if (p.probeOk !== true) return true
   if (p.dirty === true) return true
   return Number(p.unpushed || 0) > 0
 }
@@ -426,6 +435,11 @@ function stopPrompt(track, verdict) {
     '   Afvises pushet, saa `git fetch origin` + `git rebase origin/main` og push igen. Lykkes det stadig ikke: rapportér det.',
     '',
     'Markér ALDRIG en PR klar her, og luk aldrig issuet - arbejdet er pr. definition ufaerdigt.',
+    '',
+    'Sikkerhedsventil: en boelge-timeout AFBRYDER ikke den oprindelige lane-agent. Ser du tegn paa at',
+    'den stadig arbejder - `.git/index.lock` findes, et git-kald fejler med "another git process", eller',
+    'filer aendrer sig under dig - saa STOP med det samme og rapportér det i note. Lad vaere med at slette',
+    'index.lock, og kaemp ikke om worktreet: en halvskreven WIP-commit er vaerre end ingen.',
     '',
     'Returnér struktureret: committed, pushed, sha, stillDirty, note.',
   ].join('\n')
@@ -713,10 +727,27 @@ async function probeBranch(track, elapsedMinutes) {
         stopsWave: probe.verdict === 'frozen',
       }
     : classifyStall({ probeOk, lastCommitAgeMinutes: probeOk ? age : null, elapsedMinutes })
+  // Det haarde loft er ORKESTRATORENS, ikke probe-agentens: klem enhver
+  // forlaengelse mod den resterende tid, uanset hvad proben foreslog. Uden det
+  // kunne et forkert --elapsed-minutes i probens kald sende sporet forbi 180 min.
+  if (decision.verdict === 'extend') {
+    const remaining = WAVE_FREEZE.TRACK_HARD_CAP_MINUTES - elapsedMinutes
+    if (remaining <= 0) {
+      decision.verdict = 'hard-cap'
+      decision.reason = 'hard-cap-reached'
+      decision.extendMinutes = 0
+      decision.stopsWave = false
+    } else {
+      decision.extendMinutes = Math.min(decision.extendMinutes, remaining)
+    }
+  }
   // En "extend" uden brugbart minuttal ville give et 0-ms vindue og dermed en
-  // probe-storm. Fald tilbage paa bunden i stedet.
+  // probe-storm. Fald tilbage paa bunden i stedet (men aldrig over loftet).
   if (decision.verdict === 'extend' && !(decision.extendMinutes > 0)) {
-    decision.extendMinutes = WAVE_FREEZE.MIN_EXTENSION_MINUTES
+    decision.extendMinutes = Math.min(
+      WAVE_FREEZE.MIN_EXTENSION_MINUTES,
+      WAVE_FREEZE.TRACK_HARD_CAP_MINUTES - elapsedMinutes,
+    )
   }
   return {
     ...decision,
@@ -732,7 +763,10 @@ async function probeBranch(track, elapsedMinutes) {
 // efterlades dirty (#5178, punkt 3 i headeren).
 async function gracefulStop(track, probe) {
   if (!needsGracefulStop(probe)) {
-    return { skipped: true, note: 'worktreet var rent og pushet' }
+    const note = probe && probe.verdict === 'hard-cap'
+      ? 'sprunget over: branchen lever, saa lane-agenten arbejder stadig i worktreet - den pusher selv, og to agenter i samme worktree ville slaas om index.lock'
+      : 'worktreet var rent og pushet'
+    return { skipped: true, note }
   }
   const stop = await withTimeout(
     agent(stopPrompt(track, probe.verdict), {
@@ -785,7 +819,7 @@ async function runTrack(track, trackTimeoutMinutes) {
     row.freeze = { verdict: stopProbe.verdict, reason: stopProbe.reason, lastCommitAgeMinutes: stopProbe.lastCommitAgeMinutes, dirty: stopProbe.dirty, unpushed: stopProbe.unpushed }
     row.note = stopProbe.stopsWave
       ? `FRYS efter ${elapsedMinutes} min (${stopProbe.reason}, ${ageText}). Worktreet: ${track.worktree}. Genoptag i SAMME worktree - reset aldrig.`
-      : `Haardt loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min naaet med en LEVENDE branch (${ageText}) - ikke et frys. Worktreet: ${track.worktree}. Genoptag i SAMME worktree.`
+      : `Haardt loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min naaet med en LEVENDE branch (${ageText}) - ikke et frys. Lane-agenten koerer sandsynligvis VIDERE i ${track.worktree} (en timeout afbryder den ikke); boelgen venter bare ikke laengere. Foelg sporet i haanden og lad agenten pushe selv.`
     row.gracefulStop = await gracefulStop(track, stopProbe)
     return row
   }
@@ -873,7 +907,7 @@ if (queue.length > 0) {
           return
         }
         if (row.status === 'timeout') {
-          log(`#${track.issue} ${track.branch} ramte det haarde loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min med en levende branch - sporet stoppes, men boelgen koerer videre.`)
+          log(`#${track.issue} ${track.branch} ramte det haarde loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min med en levende branch - boelgen venter ikke laengere, men lane-agenten arbejder formentlig videre i worktreet. Ingen stop-agent sendt ind (to agenter i samme worktree slaas om index.lock); foelg sporet i haanden.`)
         }
       } catch (err) {
         results.push({

@@ -182,9 +182,19 @@ export function planReviewAttempt(attempt) {
  * Skal der koeres en graceful stop-agent der redder ucommittet arbejde?
  * Kan tilstanden ikke maales, koeres den - et dirty worktree der bliver
  * liggende er dyrere end et overfloedigt agent-kald.
+ *
+ * UNDTAGELSEN er 'hard-cap': dér er branchen pr. definition LEVENDE, saa
+ * lane-agenten arbejder stadig i worktreet (en timeout i workflowet afbryder
+ * ikke agenten - se .claude/learnings/2026-09-06-frozen-workflow-agents-hold-
+ * concurrency-slots.md). To agenter der committer i samme worktree giver
+ * index.lock-kamp, en WIP-commit af halvskrevne filer eller et afvist push.
+ * Den levende agent pusher selv hvert 15. minut; dér skal vi holde fingrene
+ * vaek og i stedet raabe op i rapporten.
  */
 export function needsGracefulStop(p) {
-  if (!p || p.probeOk !== true) return true;
+  if (!p) return true;
+  if (p.verdict === 'hard-cap') return false;
+  if (p.probeOk !== true) return true;
   if (p.dirty === true) return true;
   return Number(p.unpushed || 0) > 0;
 }
@@ -237,7 +247,7 @@ function main() {
             : Math.round(decision.lastCommitAgeMinutes * 10) / 10,
         dirty,
         unpushed,
-        gracefulStop: needsGracefulStop({ probeOk, dirty, unpushed }),
+        gracefulStop: needsGracefulStop({ verdict: decision.verdict, probeOk, dirty, unpushed }),
       },
       null,
       2,
