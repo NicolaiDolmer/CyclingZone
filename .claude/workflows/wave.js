@@ -14,8 +14,9 @@
 //   - 4 laner, eet uniformt loft hele doegnet (ikke "faerre om dagen").
 //   - Maks 2 tunge verifikationer ad gangen paa tvaers af alle worktrees
 //     (scripts/verify-lock.ps1; brief'en tvinger workers igennem den).
-//   - Livstegn: draft-PR inden 30 min, push hvert 15. min, per-spor-timeout
-//     60 min, recovery i SAMME worktree (aldrig reset).
+//   - Livstegn: draft-PR inden 30 min, push hvert 15. min, spor-vindue 120 min
+//     (haardt loft 180) maalt paa BRANCH-aktivitet, recovery i SAMME worktree
+//     (aldrig reset). Se punkt 1 herunder.
 //   - Maks 5 aabne PR'er (natboelge-regel 12) - orkestratoren tjekker FOER kald.
 //   - Sidste fase rydder op og fjerner .claude/run/wave-active.json.
 //
@@ -38,12 +39,27 @@
 //     cleanup: "dry-run",             // 'dry-run' (default) | 'execute'
 //     allowExistingPr: false,         // true = koer spor der allerede har en aaben PR
 //     expiresInMinutes: 240,          // levetid paa wave-active.json
-//     lanes: 4                        // override af lane-loftet (brug sjaeldent)
+//     lanes: 4,                       // override af lane-loftet (brug sjaeldent)
+//     trackTimeoutMinutes: 120        // foerste spor-vindue (klemmes til 10-180)
 //   }
 //
-// TRE VALG DER IKKE ER OPLAGTE:
+// FEM VALG DER IKKE ER OPLAGTE:
 //
-// 1. FRYS STOPPER BOELGEN (jf. .claude/learnings/
+// 1. FRYS MAALES PAA BRANCHEN, IKKE PAA TAVSHED (#5178, postmortem
+//    .claude/learnings/2026-09-11-wave-timeout-er-ikke-frys.md). Indtil 13/9
+//    var frys-signalet alene "ingen agent-svar inden for 60 min". Begge boelger
+//    11/9 stoppede derfor paa LEVENDE spor: #4845 havde committet 12 min foer
+//    stoppet, #5159 seks minutter foer. Nu er vinduet 120 min (haardt loft
+//    180), og naar det loeber ud, MAALES branchen af en lille read-only
+//    probe-agent foer der doemmes:
+//      commit < 45 min gammel  -> sporet lever, vinduet forlaenges
+//      commit >= 45 min gammel -> frys
+//      branchen kan ikke maales -> frys (konservativt, se punkt 2)
+//    Reglen som ren, testet kode: scripts/wave-freeze.mjs (+ .test.mjs).
+//    Konstanterne herunder er en SPEJLING af den fil - workflow-scripts kan
+//    ikke importere, og en test i wave-freeze.test.mjs fejler hvis de drifter.
+//
+// 2. FRYS STOPPER BOELGEN (jf. .claude/learnings/
 //    2026-09-06-frozen-workflow-agents-hold-concurrency-slots.md). En timeout
 //    AFBRYDER ikke agenten: den frosne holder stadig sin plads i workflowets
 //    samtidigheds-loft. Traekker de oevrige laner nye spor ind, koerer boelgen
@@ -52,12 +68,21 @@
 //    ved foerste bekraeftede frys stopper boelgen, og alle spor der ikke naaede
 //    at starte rapporteres som "unstarted" til relancering i en ny, ren boelge.
 //    Det koster to agenters kontekst og giver fuld kapacitet igen paa minutter.
+//    MODSAT: rammer et spor det haarde loft med en LEVENDE branch, er det ikke
+//    et frys - sporet er bare stort. Det stoppes, boelgen koerer videre.
 //
-// 2. ALLE UBEHANDLEDE SPOR RAPPORTERES. Hvert spor ender i praecis een af:
+// 3. TIMEOUT EFTERLADER ALDRIG ET DIRTY WORKTREE. Boelge 2 den 11/9 efterlod
+//    ucommittet arbejde i to worktrees (5 + 2 filer), som ingen opdagede foer
+//    naeste dag. Ved ethvert endeligt stop koeres derfor en kort
+//    WAVE-FOLLOWUP-agent i SAMME worktree, der committer WIP bag guarden og
+//    pusher. Den springes kun over naar proben har set et rent OG pushet
+//    worktree.
+//
+// 4. ALLE UBEHANDLEDE SPOR RAPPORTERES. Hvert spor ender i praecis een af:
 //    results (koert), skipped (ikke klar efter fase 0) eller unstarted (naaede
 //    aldrig en lane). Ingen spor kan forsvinde tavst ud af koen.
 //
-// 3. cleanup ER DRY-RUN SOM DEFAULT. close-out-cleanup.ps1 -Execute draeber ALLE
+// 5. cleanup ER DRY-RUN SOM DEFAULT. close-out-cleanup.ps1 -Execute draeber ALLE
 //    vite-processer paa maskinen, ogsaa ejerens egen preview-server. En boelge
 //    der slutter mens ejeren kigger paa en flade maa ikke lukke fladen. Send
 //    cleanup: "execute" naar ingen ser paa noget.
@@ -77,7 +102,7 @@
 // den eneste maade scriptet kan udfoere fase 0 paa, og det holder samtidig
 // tidsstempling der hvor uret faktisk findes.
 //
-// Refs #5142, #4918, #4919, #4920, #4924.
+// Refs #5142, #5178, #4918, #4919, #4920, #4924.
 
 export const meta = {
   name: 'wave',
@@ -85,17 +110,33 @@ export const meta = {
   whenToUse: 'Naar 2+ uafhaengige issues skal bygges parallelt. Eneste godkendte indgang til parallelt byggearbejde - haandskrevne Agent-spawns er blokeret af scripts/hooks/guard-agent-spawn.sh mens en boelge koerer.',
   phases: [
     { title: 'Fase 0 - opsaetning', detail: 'wave-active.json, worktrees, briefs, lane-watch' },
-    { title: 'Laner', detail: '4 laner over koen, 60 min timeout pr. spor' },
-    { title: 'Review', detail: 'read-only reviewer pr. spor + ret-trin ved BLOKERENDE' },
+    { title: 'Laner', detail: '4 laner over koen, spor-vindue 120 min (loft 180), frys maalt paa branch-aktivitet' },
+    { title: 'Review', detail: 'read-only reviewer pr. spor (30 min, eet gen-spawn) + ret-trin ved BLOKERENDE' },
     { title: 'Oprydning', detail: 'stop lane-watch, fjern wave-active.json, prune mergede worktrees' },
   ],
 }
 
 // ---------------------------------------------------------------- konstanter
 const DEFAULT_LANES = 4
-const TRACK_TIMEOUT_MS = 60 * 60 * 1000        // per-spor, jf. standardens livstegn
-const FIX_TIMEOUT_MS = 30 * 60 * 1000
 const MAX_TRACKS = 12
+
+// SPEJLING af scripts/wave-freeze.mjs (#5178). Workflow-scripts kan ikke
+// importere, saa vaerdierne staar to steder; drift-vagten
+// `node --test scripts/wave-freeze.test.mjs` laeser DENNE fil og fejler hvis
+// et af tallene ikke matcher modulet. Ret aldrig et tal her uden at rette det
+// samme sted i modulet.
+const WAVE_FREEZE = {
+  TRACK_TIMEOUT_MINUTES: 120,
+  TRACK_HARD_CAP_MINUTES: 180,
+  TRACK_MIN_TIMEOUT_MINUTES: 10,
+  BRANCH_STALL_MINUTES: 45,
+  MIN_EXTENSION_MINUTES: 5,
+  REVIEW_TIMEOUT_MINUTES: 30,
+  REVIEW_MAX_ATTEMPTS: 2,
+  PROBE_TIMEOUT_MINUTES: 5,
+  STOP_TIMEOUT_MINUTES: 15,
+}
+const FIX_TIMEOUT_MS = WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES * 60 * 1000
 const REPO = 'NicolaiDolmer/CyclingZone'
 const MAIN_CHECKOUT = 'C:\\Dev\\CyclingZone'
 const WORKTREES_ROOT = 'C:\\Dev\\CyclingZone-worktrees'
@@ -150,6 +191,36 @@ const REVIEW_SCHEMA = {
   required: ['verdict', 'summary'],
 }
 
+// Proben er read-only og maaler branchen i worktreet. Alle felter er
+// paakraevede: en probe der "glemmer" lastCommitAgeMinutes maa give et
+// eksplicit ok=false, ikke et hul der laeses som en frisk branch.
+const PROBE_SCHEMA = {
+  type: 'object',
+  properties: {
+    ok: { type: 'boolean', description: 'false hvis git-kaldene fejlede - saa doemmes der konservativt' },
+    verdict: { type: 'string', enum: ['frozen', 'extend', 'hard-cap', 'ukendt'] },
+    reason: { type: 'string' },
+    extendMinutes: { type: 'number' },
+    lastCommitAgeMinutes: { type: 'number', description: '-1 hvis den ikke kunne maales' },
+    dirty: { type: 'boolean' },
+    unpushed: { type: 'number' },
+    note: { type: 'string' },
+  },
+  required: ['ok', 'verdict', 'lastCommitAgeMinutes', 'dirty'],
+}
+
+const STOP_SCHEMA = {
+  type: 'object',
+  properties: {
+    committed: { type: 'boolean' },
+    pushed: { type: 'boolean' },
+    sha: { type: 'string' },
+    stillDirty: { type: 'boolean' },
+    note: { type: 'string' },
+  },
+  required: ['committed', 'pushed'],
+}
+
 const CLEANUP_SCHEMA = {
   type: 'object',
   properties: {
@@ -196,10 +267,68 @@ function normalizeTrack(raw, index) {
   }
 }
 
+// SPEJLING af classifyStall() i scripts/wave-freeze.mjs - hold dem identiske.
+// Bruges kun som fallback naar probe-agenten leverede raa tal men ikke selv
+// naaede at koere `node scripts/wave-freeze.mjs`.
+function classifyStall(p) {
+  const stall = WAVE_FREEZE.BRANCH_STALL_MINUTES
+  const hardCap = WAVE_FREEZE.TRACK_HARD_CAP_MINUTES
+  const elapsed = Number((p && p.elapsedMinutes) || 0)
+  const age = p && p.lastCommitAgeMinutes
+  const ageOk = age !== null && age !== undefined && age !== '' && Number.isFinite(Number(age)) && Number(age) >= 0
+  if (!p || p.probeOk !== true || !ageOk) {
+    return { verdict: 'frozen', reason: 'probe-failed', extendMinutes: 0, stopsWave: true }
+  }
+  const ageMin = Number(age)
+  if (ageMin >= stall) {
+    return { verdict: 'frozen', reason: 'branch-stall', extendMinutes: 0, stopsWave: true }
+  }
+  const remaining = hardCap - elapsed
+  if (remaining <= 0) {
+    return { verdict: 'hard-cap', reason: 'hard-cap-reached', extendMinutes: 0, stopsWave: false }
+  }
+  const wanted = Math.max(stall - ageMin, WAVE_FREEZE.MIN_EXTENSION_MINUTES)
+  return {
+    verdict: 'extend',
+    reason: 'branch-active',
+    extendMinutes: Math.round(Math.min(wanted, remaining) * 10) / 10,
+    stopsWave: false,
+  }
+}
+
+// SPEJLING af planReviewAttempt() i scripts/wave-freeze.mjs.
+function planReviewAttempt(attempt) {
+  const n = Math.max(1, Math.round(Number(attempt) || 1))
+  return {
+    attempt: n,
+    timeoutMinutes: WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES,
+    respawn: n < WAVE_FREEZE.REVIEW_MAX_ATTEMPTS,
+    final: n >= WAVE_FREEZE.REVIEW_MAX_ATTEMPTS,
+  }
+}
+
+// SPEJLING af needsGracefulStop() i scripts/wave-freeze.mjs.
+function needsGracefulStop(p) {
+  if (!p || p.probeOk !== true) return true
+  if (p.dirty === true) return true
+  return Number(p.unpushed || 0) > 0
+}
+
+// SPEJLING af resolveTrackTimeoutMinutes() i scripts/wave-freeze.mjs.
+function resolveTrackTimeoutMinutes(requested) {
+  const n = Number(requested)
+  if (!Number.isFinite(n) || n <= 0) return WAVE_FREEZE.TRACK_TIMEOUT_MINUTES
+  return Math.min(
+    WAVE_FREEZE.TRACK_HARD_CAP_MINUTES,
+    Math.max(WAVE_FREEZE.TRACK_MIN_TIMEOUT_MINUTES, Math.round(n)),
+  )
+}
+
 // Per-spor-timeout. VIGTIGT (natboelgen 5-6/9): en timeout frigiver IKKE lanen
 // hos den frosne agent - den frosne holder sin plads i samtidigheds-loftet.
 // Timeouten er en oevre graense paa hvor laenge lane-poolen VENTER paa et spor,
-// ikke en garanti for at ressourcen er tilbage.
+// ikke en garanti for at ressourcen er tilbage. Derfor MAALES branchen (#5178)
+// foer et udloebet vindue doemmes som frys.
 function withTimeout(promise, ms, label) {
   let timer = null
   return Promise.race([
@@ -210,7 +339,7 @@ function withTimeout(promise, ms, label) {
     return r
   }).finally(() => {
     // Ryd timeren ogsaa naar lanen blev faerdig foerst (og ogsaa hvis den
-    // afviste): ellers holder en 60-minutters timer scriptet i live efter at
+    // afviste): ellers holder en to-timers timer scriptet i live efter at
     // alt arbejde er slut.
     if (timer !== null) clearTimeout(timer)
   })
@@ -244,11 +373,72 @@ function laneBrief(track) {
   ].filter(Boolean).join('\n')
 }
 
-function reviewPrompt(track) {
+// Frys-probe (#5178). Read-only, sonnet, kort levetid: den maaler BRANCHEN, saa
+// et udloebet vindue ikke doemmes paa agentens tavshed alene. Regnestykket
+// ligger i scripts/wave-freeze.mjs, og proben kalder den CLI - saa dommen
+// kommer fra den testede kilde og ikke fra en agents hovedregning.
+function probePrompt(track, elapsedMinutes) {
+  return [
+    `READ-ONLY: frys-probe paa #${track.issue} ${track.branch} (#5178)`,
+    '',
+    'Du maa KUN laese. Ingen commits, ingen pushes, ingen checkout, ingen filaendringer.',
+    'Alt i FORGRUNDEN, ingen baggrundsjob, ingen under-agenter. Du er faerdig paa under et minut.',
+    '',
+    'Koer praecis disse fire kommandoer og laes outputtet selv:',
+    `1. \`git -C "${track.worktree}" --no-pager log -1 --format=%ct\`  -> sekunder siden epoch for seneste commit (tom = ingen commits)`,
+    '2. `pwsh -NoProfile -Command "[int][double]::Parse((Get-Date -UFormat %s))"`  -> nu, i sekunder siden epoch',
+    `3. \`git -C "${track.worktree}" status --porcelain\`  -> ucommittede aendringer (tom = rent)`,
+    `4. \`git -C "${track.worktree}" --no-pager rev-list --count @{u}..HEAD\`  -> upushede commits (fejler den, brug 0)`,
+    '',
+    'Laeg saa dommen ved at koere regnestykket i repoet (kilden til reglen, ikke hovedregning):',
+    `\`node "${MAIN_CHECKOUT}\\scripts\\wave-freeze.mjs" --last-commit-epoch <1> --now-epoch <2> --elapsed-minutes ${Math.round(elapsedMinutes)} [--dirty] --unpushed <4>\``,
+    'Den skriver JSON med verdict/reason/extendMinutes/lastCommitAgeMinutes. Send felterne videre uaendret.',
+    '',
+    'Fejler et git-kald, eller kan du ikke faa et tal ud af 1 eller 2: saet ok=false,',
+    'verdict="ukendt" og lastCommitAgeMinutes=-1. Gaet ALDRIG en alder - et gaet paa en',
+    'frisk branch holder en frossen lane i live, og et gaet paa en gammel stopper hele boelgen.',
+    '',
+    'Returnér struktureret: ok, verdict, reason, extendMinutes, lastCommitAgeMinutes, dirty, unpushed, note.',
+  ].join('\n')
+}
+
+// Graceful stop (#5178). Boelge 2 den 11/9 efterlod ucommittet arbejde i to
+// worktrees. Denne agent koerer i SAMME worktree som det stoppede spor og har
+// praecis een opgave: faa arbejdet ud af worktreet og op paa branchen.
+function stopPrompt(track, verdict) {
+  return [
+    `WAVE-FOLLOWUP: graceful stop paa #${track.issue} ${track.branch} (${verdict}, #5178)`,
+    '',
+    `ABSOLUT WORKING DIR: ${track.worktree} (EKSISTERENDE worktree - opret ALDRIG et nyt, reset ALDRIG, stash ALDRIG).`,
+    `Brug \`git -C "${track.worktree}"\` til alle git-kald.`,
+    '',
+    'Sporet blev stoppet af boelgen. Din ENESTE opgave er at redde arbejdet - du bygger INTET,',
+    'retter INTET og koerer INGEN tests. Ligger der ucommittet arbejde, er det halvfaerdigt; det',
+    'skal gemmes som det er, ikke goeres faerdigt.',
+    '',
+    '1. `git status --porcelain` - er der intet og ingen upushede commits, saa er du faerdig.',
+    `2. Ellers: \`git add\` de KONKRETE aendrede/nye filer (aldrig \`git add -A\` - lint-staged fejer untracked med).`,
+    `3. Skriv commit-beskeden til ${track.scratch}\\msg-${track.slug}-wip.txt med Write-vaerktoejet (aldrig heredoc).`,
+    `   Foerste linje ordret: \`wip(#${track.issue}): boelge-timeout, ucommittet arbejde gemt\``,
+    `4. Commit KUN bag guarden: \`bash "${track.worktree}/scripts/guard-commit-branch.sh" ${track.branch} "${track.worktree}" && git -C "${track.worktree}" commit -F "${track.scratch}\\msg-${track.slug}-wip.txt"\``,
+    '   Blokerer guarden: STOP og rapportér det. Gentag ALDRIG uden guarden.',
+    `5. \`git -C "${track.worktree}" push\` (foerste gang: \`push -u origin ${track.branch}\`).`,
+    '   Afvises pushet, saa `git fetch origin` + `git rebase origin/main` og push igen. Lykkes det stadig ikke: rapportér det.',
+    '',
+    'Markér ALDRIG en PR klar her, og luk aldrig issuet - arbejdet er pr. definition ufaerdigt.',
+    '',
+    'Returnér struktureret: committed, pushed, sha, stillDirty, note.',
+  ].join('\n')
+}
+
+function reviewPrompt(track, attempt) {
   // Read-only. Reviewere maa ALDRIG checke en branch ud (natboelge 19/6: en
   // verify-agent efterlod hoved-checkoutet paa en review-branch).
   return [
     `WAVE-REVIEW: #${track.issue} ${track.branch}`,
+    attempt > 1
+      ? `(gen-spawn ${attempt}/${WAVE_FREEZE.REVIEW_MAX_ATTEMPTS} - foerste reviewer svarede ikke inden ${WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES} min. Vaer kortfattet og svar inden for vinduet.)`
+      : '',
     '',
     'Du er READ-ONLY reviewer. Du maa IKKE aendre filer, committe, pushe eller checke branches ud.',
     `Laes diffen med \`gh pr diff --repo ${REPO} <PR-nummer>\` (find PR'en med \`gh pr list --repo ${REPO} --head ${track.branch} --state all --json number,url,isDraft\`).`,
@@ -396,6 +586,7 @@ const dryRun = input.dryRun === true
 const cleanupMode = input.cleanup === 'execute' ? 'execute' : 'dry-run'
 const allowExistingPr = input.allowExistingPr === true
 const expiresInMinutes = Number(input.expiresInMinutes) || 240
+const trackTimeoutMinutes = resolveTrackTimeoutMinutes(input.trackTimeoutMinutes)
 
 const fullTiers = tracks.filter((t) => t.tier === 'FULL')
 if (fullTiers.length > 1) {
@@ -403,7 +594,8 @@ if (fullTiers.length > 1) {
 }
 
 const planLines = tracks.map((t, i) => `  ${i + 1}. #${t.issue} ${t.branch} [${t.model}/${t.tier}] -> ${t.worktree}`)
-log(`Boelgeplan: ${tracks.length} spor, ${lanes} laner, verifikations-semafor 2, per-spor-timeout 60 min.`)
+log(`Boelgeplan: ${tracks.length} spor, ${lanes} laner, verifikations-semafor 2, spor-vindue ${trackTimeoutMinutes} min (haardt loft ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min).`)
+log(`Frys maales paa BRANCH-aktivitet (#5178): et udloebet vindue forlaenges saa laenge seneste commit er under ${WAVE_FREEZE.BRANCH_STALL_MINUTES} min gammel.`)
 for (const line of planLines) log(line)
 
 if (dryRun) {
@@ -412,7 +604,11 @@ if (dryRun) {
     dryRun: true,
     lanes,
     verifyMax: 2,
-    trackTimeoutMinutes: TRACK_TIMEOUT_MS / 60000,
+    trackTimeoutMinutes,
+    trackHardCapMinutes: WAVE_FREEZE.TRACK_HARD_CAP_MINUTES,
+    branchStallMinutes: WAVE_FREEZE.BRANCH_STALL_MINUTES,
+    reviewTimeoutMinutes: WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES,
+    reviewMaxAttempts: WAVE_FREEZE.REVIEW_MAX_ATTEMPTS,
     cleanup: cleanupMode,
     expiresInMinutes,
     tracks: tracks.map((t) => ({
@@ -478,36 +674,162 @@ phase('Laner')
 const results = []
 const laneCount = Math.max(1, Math.min(lanes, queue.length || 1))
 
-async function runTrack(track) {
+// Maaler branchen naar et spor-vindue er udloebet. Returnerer altid et objekt;
+// en probe der selv fejler eller tier giver den konservative dom (frys).
+async function probeBranch(track, elapsedMinutes) {
+  const probe = await withTimeout(
+    agent(probePrompt(track, elapsedMinutes), {
+      label: `frys-probe #${track.issue}`,
+      phase: 'Laner',
+      model: 'sonnet',
+      schema: PROBE_SCHEMA,
+    }),
+    WAVE_FREEZE.PROBE_TIMEOUT_MINUTES * 60 * 1000,
+    `frys-probe #${track.issue}`,
+  )
+  if (!probe || probe === TIMED_OUT) {
+    return {
+      probeOk: false,
+      verdict: 'frozen',
+      reason: 'probe-svarede-ikke',
+      extendMinutes: 0,
+      stopsWave: true,
+      lastCommitAgeMinutes: null,
+      dirty: null,
+      unpushed: null,
+    }
+  }
+  const age = Number(probe.lastCommitAgeMinutes)
+  const probeOk = probe.ok === true && Number.isFinite(age) && age >= 0
+  // Proben har allerede koert scripts/wave-freeze.mjs; stoler vi paa dens svar,
+  // bruger vi det. Kunne den ikke koere CLI'en, regner vi selv paa de raa tal
+  // med den spejlede classifyStall - samme regel, samme tal.
+  const trusted = probeOk && (probe.verdict === 'frozen' || probe.verdict === 'extend' || probe.verdict === 'hard-cap')
+  const decision = trusted
+    ? {
+        verdict: probe.verdict,
+        reason: probe.reason || probe.verdict,
+        extendMinutes: Number(probe.extendMinutes) || 0,
+        stopsWave: probe.verdict === 'frozen',
+      }
+    : classifyStall({ probeOk, lastCommitAgeMinutes: probeOk ? age : null, elapsedMinutes })
+  // En "extend" uden brugbart minuttal ville give et 0-ms vindue og dermed en
+  // probe-storm. Fald tilbage paa bunden i stedet.
+  if (decision.verdict === 'extend' && !(decision.extendMinutes > 0)) {
+    decision.extendMinutes = WAVE_FREEZE.MIN_EXTENSION_MINUTES
+  }
+  return {
+    ...decision,
+    probeOk,
+    lastCommitAgeMinutes: probeOk ? age : null,
+    dirty: probe.dirty === true,
+    unpushed: Number(probe.unpushed) || 0,
+    note: probe.note || '',
+  }
+}
+
+// Redder ucommittet arbejde ud af et stoppet spor, saa worktreet aldrig
+// efterlades dirty (#5178, punkt 3 i headeren).
+async function gracefulStop(track, probe) {
+  if (!needsGracefulStop(probe)) {
+    return { skipped: true, note: 'worktreet var rent og pushet' }
+  }
+  const stop = await withTimeout(
+    agent(stopPrompt(track, probe.verdict), {
+      label: `graceful stop #${track.issue}`,
+      phase: 'Laner',
+      model: 'sonnet',
+      schema: STOP_SCHEMA,
+    }),
+    WAVE_FREEZE.STOP_TIMEOUT_MINUTES * 60 * 1000,
+    `graceful stop #${track.issue}`,
+  )
+  if (!stop || stop === TIMED_OUT) {
+    return { skipped: false, committed: false, pushed: false, note: 'stop-agenten svarede ikke - TJEK WORKTREET I HAANDEN' }
+  }
+  return { skipped: false, ...stop }
+}
+
+async function runTrack(track, trackTimeoutMinutes) {
   const label = `#${track.issue} ${track.branch}`
   const row = { issue: track.issue, branch: track.branch, model: track.model, tier: track.tier }
 
-  const build = await withTimeout(
-    agent(laneBrief(track), { label, phase: 'Laner', model: track.model }),
-    TRACK_TIMEOUT_MS,
-    label,
-  )
-  if (build === TIMED_OUT) {
-    row.status = 'timeout'
-    row.note = `Ingen svar inden for 60 min. Worktreet staar urort: ${track.worktree}. Genoptag i SAMME worktree - reset aldrig.`
+  // EEN agent, flere ventevinduer. Promise'et spawnes praecis en gang og
+  // races mod et vindue ad gangen; loeber vinduet ud, maales branchen, og
+  // lever den, ventes der videre paa SAMME agent (#5178).
+  const buildPromise = agent(laneBrief(track), { label, phase: 'Laner', model: track.model })
+  let elapsedMinutes = 0
+  let waitMinutes = trackTimeoutMinutes
+  let build = TIMED_OUT
+  let stopProbe = null
+
+  for (;;) {
+    build = await withTimeout(buildPromise, waitMinutes * 60 * 1000, label)
+    elapsedMinutes += waitMinutes
+    if (build !== TIMED_OUT) break
+
+    const probe = await probeBranch(track, elapsedMinutes)
+    const ageText = probe.lastCommitAgeMinutes === null ? 'ukendt' : `${Math.round(probe.lastCommitAgeMinutes)} min siden`
+    if (probe.verdict === 'extend') {
+      waitMinutes = probe.extendMinutes
+      log(`${label}: branchen lever (seneste commit ${ageText}) efter ${elapsedMinutes} min - forlaenger med ${waitMinutes} min (loft ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min).`)
+      continue
+    }
+    stopProbe = probe
+    break
+  }
+
+  if (stopProbe) {
+    const ageText = stopProbe.lastCommitAgeMinutes === null ? 'kunne ikke maales' : `${Math.round(stopProbe.lastCommitAgeMinutes)} min siden seneste commit`
+    row.status = stopProbe.stopsWave ? 'frys' : 'timeout'
+    row.freeze = { verdict: stopProbe.verdict, reason: stopProbe.reason, lastCommitAgeMinutes: stopProbe.lastCommitAgeMinutes, dirty: stopProbe.dirty, unpushed: stopProbe.unpushed }
+    row.note = stopProbe.stopsWave
+      ? `FRYS efter ${elapsedMinutes} min (${stopProbe.reason}, ${ageText}). Worktreet: ${track.worktree}. Genoptag i SAMME worktree - reset aldrig.`
+      : `Haardt loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min naaet med en LEVENDE branch (${ageText}) - ikke et frys. Worktreet: ${track.worktree}. Genoptag i SAMME worktree.`
+    row.gracefulStop = await gracefulStop(track, stopProbe)
     return row
   }
+
   if (build === null) {
     row.status = 'doed'
     row.note = `Agenten stoppede uden svar. Worktreet staar urort: ${track.worktree}.`
+    // Ogsaa her kan der ligge ucommittet arbejde - tilstanden er ukendt, saa
+    // stop-agenten koeres (needsGracefulStop giver true paa probeOk=false).
+    row.gracefulStop = await gracefulStop(track, { probeOk: false, verdict: 'doed' })
     return row
   }
   row.status = 'bygget'
   row.report = String(build).slice(0, 4000)
 
-  const review = await withTimeout(
-    agent(reviewPrompt(track), { label: `review ${label}`, phase: 'Review', model: 'sonnet', schema: REVIEW_SCHEMA }),
-    FIX_TIMEOUT_MS,
-    `review ${label}`,
-  )
-  if (!review || review === TIMED_OUT) {
+  // Reviewer har sit eget, kortere vindue og faar praecis EET gen-spawn
+  // (#5178, punkt 3 i issuet). Tavshed er her billig at teste igen.
+  let review = null
+  for (let attempt = 1; attempt <= WAVE_FREEZE.REVIEW_MAX_ATTEMPTS; attempt += 1) {
+    const plan = planReviewAttempt(attempt)
+    const answer = await withTimeout(
+      agent(reviewPrompt(track, attempt), {
+        label: attempt > 1 ? `review ${label} (gen-spawn)` : `review ${label}`,
+        phase: 'Review',
+        model: 'sonnet',
+        schema: REVIEW_SCHEMA,
+      }),
+      plan.timeoutMinutes * 60 * 1000,
+      `review ${label}`,
+    )
+    if (answer && answer !== TIMED_OUT) {
+      review = answer
+      row.reviewAttempts = attempt
+      break
+    }
+    if (plan.final) {
+      row.reviewAttempts = attempt
+      break
+    }
+    log(`Reviewer paa ${label} svarede ikke inden ${plan.timeoutMinutes} min - gen-spawner EEN gang (#5178).`)
+  }
+  if (!review) {
     row.review = 'ikke gennemfoert'
-    row.note = 'Reviewer svarede ikke - PR\'en skal menneske-reviewes foer merge.'
+    row.note = `Reviewer svarede ikke i ${WAVE_FREEZE.REVIEW_MAX_ATTEMPTS} forsoeg - PR'en skal menneske-reviewes foer merge.`
     return row
   }
   row.review = review.verdict
@@ -539,13 +861,19 @@ if (queue.length > 0) {
       const track = queue.shift()
       if (!track) return
       try {
-        const row = await runTrack(track)
+        const row = await runTrack(track, trackTimeoutMinutes)
         results.push(row)
-        if (row.status === 'timeout') {
-          stoppedByFreeze = { issue: track.issue, branch: track.branch }
-          log(`FRYS bekraeftet paa #${track.issue} ${track.branch}: den frosne agent holder stadig sin plads i samtidigheds-loftet.`)
+        // KUN 'frys' stopper boelgen. Et 'timeout' er nu et spor der ramte det
+        // haarde loft med en LEVENDE branch (#5178) - stort, ikke frossent - og
+        // maa ikke koste de oevrige laner deres spor, som det gjorde 11/9.
+        if (row.status === 'frys') {
+          stoppedByFreeze = { issue: track.issue, branch: track.branch, reason: (row.freeze && row.freeze.reason) || 'ukendt' }
+          log(`FRYS bekraeftet paa #${track.issue} ${track.branch} (${stoppedByFreeze.reason}): branchen har staaet stille, og den frosne agent holder stadig sin plads i samtidigheds-loftet.`)
           log('Boelgen stopper her. De resterende spor rapporteres som "unstarted" og skal relanceres i en NY boelge (natboelgen 5-6/9: bolge A koerte reelt paa 2 laner i 2,5 time uden at det kunne ses).')
           return
+        }
+        if (row.status === 'timeout') {
+          log(`#${track.issue} ${track.branch} ramte det haarde loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min med en levende branch - sporet stoppes, men boelgen koerer videre.`)
         }
       } catch (err) {
         results.push({
@@ -580,8 +908,14 @@ const cleanup = await agent(cleanupPrompt(tracks, cleanupMode, setup.watchPid ||
   schema: CLEANUP_SCHEMA,
 })
 
-const stopped = results.filter((r) => r.status === 'timeout' || r.status === 'doed' || r.status === 'fejl')
+const stopped = results.filter((r) => r.status === 'frys' || r.status === 'timeout' || r.status === 'doed' || r.status === 'fejl')
 log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${tracks.length} i alt).`)
+// Et worktree der stadig er dirty efter den graceful stop-agent skal ses af et
+// menneske - det er praecis den tilstand boelge 2 den 11/9 efterlod usynligt.
+const stillDirty = results.filter((r) => r.gracefulStop && r.gracefulStop.skipped !== true && (r.gracefulStop.stillDirty === true || r.gracefulStop.committed !== true))
+for (const r of stillDirty) {
+  log(`ADVARSEL: #${r.issue} ${r.branch} kan stadig have ucommittet arbejde i worktreet - ${(r.gracefulStop && r.gracefulStop.note) || 'ingen note fra stop-agenten'}. Tjek det i haanden.`)
+}
 if (unstarted.length > 0) {
   log(`RELANCER: ${unstarted.map((u) => '#' + u.issue).join(', ')} i en NY boelge - worktrees og PR'er staar urort.`)
 }
@@ -592,11 +926,15 @@ if (cleanup && cleanup.activeFileRemoved !== true) {
 return {
   lanes: laneCount,
   verifyMax: 2,
+  trackTimeoutMinutes,
+  trackHardCapMinutes: WAVE_FREEZE.TRACK_HARD_CAP_MINUTES,
+  branchStallMinutes: WAVE_FREEZE.BRANCH_STALL_MINUTES,
   cleanup: cleanup || { activeFileRemoved: false, notes: ['oprydnings-agenten svarede ikke'] },
   cleanupMode,
   stoppedByFreeze,
+  dirtyWorktrees: stillDirty.map((r) => ({ issue: r.issue, branch: r.branch, gracefulStop: r.gracefulStop })),
   skipped: skipped.map((s) => ({ issue: s.issue, branch: s.branch, reason: s.reason })),
-  stopped: stopped.map((s) => ({ issue: s.issue, branch: s.branch, status: s.status, note: s.note })),
+  stopped: stopped.map((s) => ({ issue: s.issue, branch: s.branch, status: s.status, note: s.note, gracefulStop: s.gracefulStop })),
   unstarted,
   tracks: results,
 }
