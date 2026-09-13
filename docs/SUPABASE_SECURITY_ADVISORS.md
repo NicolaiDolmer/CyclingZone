@@ -55,6 +55,13 @@ ikke 0; Claude kører kommentarens grant/kolonne-tjek og advisoren igen.
 Ejerens tilladelse til denne opdeling er ikke et merge-go. Begge merges
 kræver fortsat eksplicit godkendelse. Indtil trin 2 vil de fire WARN bestå.
 
+**Trin 2, 13/9:** SQL flyttet til `database/2026-09-13-5176-revoke-matview-select.sql`
+(PR [#5187](https://github.com/NicolaiDolmer/CyclingZone/pull/5187), rammer nu
+auto-migrate-globben). TODO Claude udfylder efter merge/apply: revoke applied
+via `database/2026-09-13-5176-revoke-matview-select.sql`, verificeret
+&lt;dato&gt; — grants 4 x f/f/t, kolonneprivilegier 4 x f/f, advisor 0016=0.
+Ikke verificeret endnu.
+
 ### `is_admin()`: accepteret tilsigtet adgang, 12/9 2026
 
 0029 er her en accepteret klassifikation af tilsigtet adgang (falsk positiv
