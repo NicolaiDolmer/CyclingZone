@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { getGlobalRank } from "../lib/rankingsApi.ts";
 import { formatNumber } from "../lib/intl";
 import { Card, ArrowUpIcon, ArrowDownIcon } from "./ui";
 
@@ -21,7 +22,7 @@ export default function GlobalRankWidget() {
         const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
         if (!myTeam) return;
         const [{ data: mv }, { data: weekly }] = await Promise.all([
-          supabase.from("global_rank_mv").select("*").eq("team_id", myTeam.id).maybeSingle(),
+          getGlobalRank(myTeam.id),
           supabase.from("global_rank_weekly_snapshot").select("global_rank").eq("team_id", myTeam.id).maybeSingle(),
         ]);
         if (mv) {

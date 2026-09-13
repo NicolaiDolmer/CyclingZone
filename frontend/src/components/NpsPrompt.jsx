@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "./ui/Button.jsx";
 import { XIcon } from "./ui/icons/index.jsx";
+// #5159 (B1): et valgt tal og en halvskrevet begrundelse er usendt input.
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 
 // #940 In-app NPS — diskret bund-bar (IKKE blokerende modal). Omskrevet i #4997.
 //
@@ -24,6 +26,16 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
   const { t } = useTranslation("banners");
   const [score, setScore] = useState(null);
   const [reason, setReason] = useState("");
+
+  // #5159 (B1): har spilleren valgt et tal eller skrevet en begrundelse, ligger
+  // svaret KUN her indtil Send er igennem. `done` lukker porten igen — saa er der
+  // ikke laengere noget usendt. Hookene kaldes foer det tidlige return
+  // (rules-of-hooks).
+  useReloadBlock(
+    Boolean(visible && !done && (score !== null || reason)),
+    RELOAD_BLOCK_REASONS.DIRTY,
+  );
+  useReloadBlock(Boolean(submitting), RELOAD_BLOCK_REASONS.BUSY);
 
   if (!visible) return null;
 

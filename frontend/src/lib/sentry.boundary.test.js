@@ -104,3 +104,27 @@ test("fallbacken lover kun auto-reload naar et reload faktisk sker (#4545)", () 
   assert.match(src, /hold Shift and click Reload/);
   assert.match(src, /hold Shift nede, og klik Genindlæs/);
 });
+
+// #5159 review-fund 1 + 4 — boundary'ens auto-recovery skal gennem PORTEN, og
+// den maa ikke laese `window.sessionStorage` raat.
+test("auto-recovery gaar gennem den delte, port-gatede sti (#5159)", () => {
+  assert.match(src, /attemptRecoveryReload\(/, "boundary og lag 2 skal dele beslutningen");
+  assert.match(src, /source:\s*"boundary"/);
+  assert.match(src, /outcome\s*!==\s*"exhausted"/, "kun 'exhausted' maa saette stuck-copyen");
+  // Proben er nu et ARGUMENT (`probe:`), ikke boundary'ens egen beslutningskaede.
+  assert.match(src, /probe:\s*\(\)\s*=>\s*documentIsStillLoadable\(/);
+  assert.ok(
+    !/shouldReload/.test(src),
+    "den gamle 'probe -> shouldAttemptChunkReload -> reload'-kaede skal vaere vaek",
+  );
+});
+
+test("boundary laeser sessionStorage gennem safeSessionStorage (#5159 M3)", () => {
+  // Selve OPSLAGET kaster i browsere hvor site-data er slaaet fra. Et kast her
+  // ville blive til en ny fejl inde i selve fejlskaermen.
+  assert.match(src, /safeSessionStorage\(window\)/);
+  assert.ok(
+    !/storage:\s*window\.sessionStorage/.test(src),
+    "ingen raa window.sessionStorage i boundary-stien",
+  );
+});

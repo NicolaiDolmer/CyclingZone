@@ -1,13 +1,29 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  __resetRecoveryDeferredForTests,
+  accountBootGuardReload,
+  attemptRecoveryReload,
+  BOOT_GUARD_KEY,
   documentIsStillLoadable,
   getChunkReloadKey,
+  hasRecoveryBudget,
   installChunkReloadHandlers,
   isChunkLoadError,
   isUnambiguousChunkLoadError,
+  RECOVERY_BUDGET_KEY,
+  RECOVERY_BUDGET_MAX,
+  RECOVERY_BUDGET_WINDOW_MS,
+  safeSessionStorage,
   shouldAttemptChunkReload,
+  onRecoveryDeferred,
+  spendRecoverySlot,
 } from "./chunkErrors.js";
+import {
+  __resetReloadGateForTests,
+  acquireReloadBlock,
+  RELOAD_BLOCK_REASONS,
+} from "./reloadGate.js";
 
 function memoryStorage() {
   const data = new Map();
@@ -362,4 +378,313 @@ test("almindelige fejl rammes af ingen af dem", () => {
     assert.ok(!isChunkLoadError({ message }), message);
     assert.ok(!isUnambiguousChunkLoadError({ message }), message);
   }
+});
+
+// --- #5159 / audit-fund M3: ét fælles recovery-budget ------------------------
+
+// Auditten reproducerede præcis dette i en ren model: tre dokumentstarter, samme
+// release, sessionStorage utilgængelig, ét preload-error pr. start — og TRE
+// reloads, fordi den globale handler faldt tilbage på et per-load-flag der dør
+// med dokumentet. Nu er stien fail-closed: uden bevis for at vi ikke allerede
+// har reloadet, reloader vi ikke.
+test("M3 — tre dokumentstarter uden storage giver NUL automatiske reloads", async () => {
+  let reloads = 0;
+  for (let documentStart = 0; documentStart < 3; documentStart += 1) {
+    const target = fakeTarget();
+    const timer = manualScheduler();
+    installChunkReloadHandlers({
+      target, release: "rel1", storage: null,
+      reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE,
+    });
+    target.dispatch("vite:preloadError", { preventDefault() {} });
+    await timer.flush();
+  }
+  assert.equal(reloads, 0, "hoejst ét reload var kravet; fail-closed giver nul");
+});
+
+test("M3 — en storage der KASTER er lige så fail-closed som ingen storage", async () => {
+  const throwing = {
+    getItem() { throw new Error("SecurityError"); },
+    setItem() { throw new Error("SecurityError"); },
+  };
+  const target = fakeTarget();
+  const timer = manualScheduler();
+  let reloads = 0;
+  installChunkReloadHandlers({
+    target, release: "rel1", storage: throwing,
+    reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE,
+  });
+  target.dispatch("vite:preloadError", { preventDefault() {} });
+  await timer.flush();
+  assert.equal(reloads, 0);
+});
+
+test("M3 — budgettet er FÆLLES: boot-vagtens reload tæller med", () => {
+  const storage = memoryStorage();
+  storage.setItem(BOOT_GUARD_KEY, String(Date.now()));
+  assert.equal(accountBootGuardReload(storage), true, "vagtens reload bogfoeres");
+  assert.equal(JSON.parse(storage.getItem(RECOVERY_BUDGET_KEY)).used, 1);
+  // Samme tidsstempel må aldrig tælles to gange (fx ved en ekstra mount).
+  assert.equal(accountBootGuardReload(storage), false);
+  assert.equal(JSON.parse(storage.getItem(RECOVERY_BUDGET_KEY)).used, 1);
+});
+
+test("M3 — et gammelt selvhelings-tidsstempel er ikke 'lige sket'", () => {
+  const storage = memoryStorage();
+  storage.setItem(BOOT_GUARD_KEY, String(Date.now() - 60 * 60 * 1000));
+  assert.equal(accountBootGuardReload(storage), false);
+  assert.equal(storage.getItem(RECOVERY_BUDGET_KEY), null);
+});
+
+test("M3 — budgettet løber tør på tværs af lag og lukker så alle automatiske reloads", () => {
+  const storage = memoryStorage();
+  for (let i = 0; i < RECOVERY_BUDGET_MAX; i += 1) {
+    assert.equal(hasRecoveryBudget(storage), true, `slot ${i} skal findes`);
+    spendRecoverySlot(storage, "test");
+  }
+  assert.equal(hasRecoveryBudget(storage), false, "budgettet er brugt");
+  assert.equal(
+    shouldAttemptChunkReload({ error: { message: "ChunkLoadError" }, release: "helt-ny", storage }),
+    false,
+    "ogsaa en HELT ny release afvises — budgettet er delt, ikke pr. release",
+  );
+});
+
+test("M3 — en oedelagt budget-post er FAIL-CLOSED, ikke et frisk budget", () => {
+  // Foer denne aendring blev baade ugyldig JSON og ulaeselige felter laest som
+  // "ubrugt". En reload-loop der naaede at skrive skrald i noeglen, fik dermed
+  // tre friske forsoeg hver gang — praecis det budgettet findes for at stoppe.
+  for (const broken of ['{"used":', '"ikke et objekt"', '{"used":"3","windowStart":1}', "null", "[]"]) {
+    const storage = memoryStorage();
+    storage.setItem(RECOVERY_BUDGET_KEY, broken);
+    assert.equal(hasRecoveryBudget(storage), false, `skrald skal lukke porten: ${broken}`);
+    assert.equal(spendRecoverySlot(storage, "test"), false, `og der bogfoeres intet: ${broken}`);
+    assert.equal(
+      shouldAttemptChunkReload({ error: { message: "ChunkLoadError" }, release: "ny", storage }),
+      false,
+    );
+  }
+});
+
+test("M3 — spendRecoverySlot skriver ALDRIG forbi loftet", () => {
+  const storage = memoryStorage();
+  storage.setItem(RECOVERY_BUDGET_KEY, JSON.stringify({ used: RECOVERY_BUDGET_MAX, windowStart: Date.now() }));
+  assert.equal(spendRecoverySlot(storage, "for-sent"), false, "bogfoeringen selv skal afvise");
+  assert.equal(
+    JSON.parse(storage.getItem(RECOVERY_BUDGET_KEY)).used,
+    RECOVERY_BUDGET_MAX,
+    "taelleren maa ikke vokse forbi loftet",
+  );
+});
+
+test("M3 — et reload uden bogfoering sker ikke (fejlende skrivning)", () => {
+  // Storage der kan laeses men ikke skrives: peeket siger ja, bogfoeringen
+  // fejler. Uden at kraeve bogfoeringen ville vi reloade uden loft.
+  const data = new Map();
+  const storage = {
+    getItem: (key) => data.get(key) ?? null,
+    setItem: (key, value) => {
+      if (key === RECOVERY_BUDGET_KEY) throw new Error("kvote opbrugt");
+      data.set(key, String(value));
+    },
+  };
+  assert.equal(hasRecoveryBudget(storage), true, "peeket ser et ubrugt budget");
+  assert.equal(
+    shouldAttemptChunkReload({ error: { message: "ChunkLoadError" }, release: "ny", storage }),
+    false,
+    "men uden bogfoering reloader vi ikke",
+  );
+});
+
+test("M3 — budgettet er et RULLENDE vindue, ikke fanens levetid", () => {
+  const storage = memoryStorage();
+  const start = Date.now();
+  storage.setItem(RECOVERY_BUDGET_KEY, JSON.stringify({ used: RECOVERY_BUDGET_MAX, windowStart: start }));
+  assert.equal(hasRecoveryBudget(storage, { now: start + 1000 }), false);
+  assert.equal(
+    hasRecoveryBudget(storage, { now: start + RECOVERY_BUDGET_WINDOW_MS + 1 }),
+    true,
+    "en fane der staar aaben i dage skal kunne tage en opdatering i morgen",
+  );
+});
+
+test("M3 — safeSessionStorage overlever at selve OPSLAGET kaster", () => {
+  const hostile = {};
+  Object.defineProperty(hostile, "sessionStorage", {
+    get() { throw new Error("The operation is insecure."); },
+  });
+  assert.equal(safeSessionStorage(hostile), null);
+  assert.equal(safeSessionStorage(undefined), null);
+  const ok = { sessionStorage: memoryStorage() };
+  assert.equal(safeSessionStorage(ok), ok.sessionStorage);
+});
+
+// ---------------------------------------------------------------------------
+// #5159 review-fund 1 — de to REAKTIVE lag skal ogsaa gennem porten
+// ---------------------------------------------------------------------------
+//
+// Foer dette kaldte baade `installChunkReloadHandlers` (vite:preloadError /
+// unhandledrejection) og error-boundary'ens auto-recovery `reload()` uden at
+// spoerge reloadGate.js. Det er praecis den sti der fyrer lige efter et deploy,
+// altsaa i det samme minut hvor en spiller kan sidde med en ugemt holdudtagelse.
+
+test("review-fund 1 — porten AABEN: preloadError giver ét reload, intet banner-signal", async () => {
+  __resetReloadGateForTests();
+  __resetRecoveryDeferredForTests();
+  const target = fakeTarget();
+  const timer = manualScheduler();
+  let reloads = 0;
+  let deferrals = 0;
+  const off = onRecoveryDeferred(() => { deferrals += 1; });
+
+  installChunkReloadHandlers({
+    target, release: "gate-open", storage: memoryStorage(),
+    reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE,
+  });
+  target.dispatch("vite:preloadError", { preventDefault() {} });
+  await timer.flush();
+
+  assert.equal(reloads, 1, "ingen blokeringer -> lag 2 reparerer som foer");
+  assert.equal(deferrals, 0, "og der er intet at vise banneret for");
+  off();
+  __resetRecoveryDeferredForTests();
+});
+
+test("review-fund 1 — porten LUKKET: preloadError giver NUL reload + et banner-signal", async () => {
+  __resetReloadGateForTests();
+  __resetRecoveryDeferredForTests();
+  const target = fakeTarget();
+  const timer = manualScheduler();
+  const storage = memoryStorage();
+  let reloads = 0;
+  const seen = [];
+  const off = onRecoveryDeferred((notice) => { seen.push(notice.source); });
+
+  // En flade med ugemt arbejde — praecis B1's tilstand.
+  const release = acquireReloadBlock(RELOAD_BLOCK_REASONS.DIRTY);
+
+  installChunkReloadHandlers({
+    target, release: "gate-closed", storage,
+    reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE,
+  });
+  target.dispatch("vite:preloadError", { preventDefault() {} });
+  await timer.flush();
+
+  assert.equal(reloads, 0, "en ugemt kladde maa ikke kasseres af en chunk-reparation");
+  assert.deepEqual(seen, ["chunk-error"], "banneret er den manuelle udvej imens");
+  assert.equal(
+    storage.getItem(getChunkReloadKey("gate-closed")), null,
+    "loop-guarden maa ikke braendes for et reload der aldrig skete",
+  );
+  assert.equal(storage.getItem(RECOVERY_BUDGET_KEY), null, "og budgettet maa ikke debiteres");
+
+  // Det SIKRE PUNKT: spilleren gemmer, sidste blokering slippes.
+  release();
+  await new Promise((resolve) => { setTimeout(resolve, 0); });
+
+  assert.equal(reloads, 1, "reparationen sker foerst naar der ikke laengere er noget at miste");
+  assert.equal(storage.getItem(getChunkReloadKey("gate-closed")), "1");
+  assert.equal(JSON.parse(storage.getItem(RECOVERY_BUDGET_KEY)).used, 1, "og bogfoeres i det faelles budget");
+  off();
+  __resetReloadGateForTests();
+  __resetRecoveryDeferredForTests();
+});
+
+test("review-fund 1 — en lytter der kommer for sent faar signalet alligevel", async () => {
+  // Handlerne installeres i main.jsx FOER React monterer, saa et preload-error i
+  // boot-vinduet ville ellers vaere usynligt for banneret.
+  __resetReloadGateForTests();
+  __resetRecoveryDeferredForTests();
+  const target = fakeTarget();
+  const timer = manualScheduler();
+  const blocked = acquireReloadBlock(RELOAD_BLOCK_REASONS.DIALOG);
+  installChunkReloadHandlers({
+    target, release: "late-listener", storage: memoryStorage(),
+    reload: () => {}, schedule: timer.schedule, ...PROBE,
+  });
+  target.dispatch("vite:preloadError", { preventDefault() {} });
+  await timer.flush();
+
+  let replayed = 0;
+  const off = onRecoveryDeferred(() => { replayed += 1; });
+  assert.equal(replayed, 1, "abonnementet replayer et signal der allerede er faldet");
+
+  off();
+  blocked();
+  __resetReloadGateForTests();
+  __resetRecoveryDeferredForTests();
+});
+
+test("review-fund 1 — boundary-stien deler port og udfald med lag 2", async () => {
+  // Samme funktion som error-boundary'en i sentry.jsx kalder. De tre udfald er
+  // det fallbacken traeffer sin beslutning paa.
+  __resetReloadGateForTests();
+  __resetRecoveryDeferredForTests();
+  const alive = () => Promise.resolve(true);
+
+  // Porten aaben + et ledigt slot -> reload.
+  let reloads = 0;
+  assert.equal(
+    await attemptRecoveryReload({ probe: alive, claim: () => true, reload: () => { reloads += 1; }, source: "boundary" }),
+    "reloaded",
+  );
+  assert.equal(reloads, 1);
+
+  // Porten aaben, men lagets loop-guard/budget er brugt -> "exhausted".
+  // Det er dét udfald der saetter fallbackens "stuck"-copy (#4545).
+  assert.equal(
+    await attemptRecoveryReload({ probe: alive, claim: () => false, reload: () => { reloads += 1; }, source: "boundary" }),
+    "exhausted",
+  );
+  assert.equal(reloads, 1, "et exhausted forsoeg reloader ikke");
+
+  // Porten LUKKET -> "deferred": intet reload, men fallbackens egen
+  // "Genindlaes siden"-knap staar der som den manuelle udvej.
+  const deferredSources = [];
+  const off = onRecoveryDeferred((notice) => deferredSources.push(notice.source));
+  const blocked = acquireReloadBlock(RELOAD_BLOCK_REASONS.DIRTY);
+  let claims = 0;
+  assert.equal(
+    await attemptRecoveryReload({
+      probe: alive, claim: () => { claims += 1; return true; },
+      reload: () => { reloads += 1; }, source: "boundary",
+    }),
+    "deferred",
+  );
+  assert.equal(reloads, 1, "porten lukket -> intet automatisk reload");
+  assert.equal(claims, 0, "og hverken loop-guard eller budget roeres");
+  assert.deepEqual(deferredSources, ["boundary"]);
+
+  blocked();
+  await new Promise((resolve) => { setTimeout(resolve, 0); });
+  assert.equal(reloads, 2, "reloadet sker paa det sikre punkt");
+
+  off();
+  __resetReloadGateForTests();
+  __resetRecoveryDeferredForTests();
+});
+
+test("review-fund 1 — en doed navigations-probe slaar porten helt fra", async () => {
+  // Fail-closed-rækkefoelgen: er dokumentet paa vej vaek, spoerger vi slet ikke
+  // porten — vi ville ellers lægge et abonnement der reloadede et dokument der
+  // ikke findes laengere.
+  __resetReloadGateForTests();
+  __resetRecoveryDeferredForTests();
+  let deferrals = 0;
+  const off = onRecoveryDeferred(() => { deferrals += 1; });
+  const blocked = acquireReloadBlock(RELOAD_BLOCK_REASONS.DIRTY);
+  let reloads = 0;
+  assert.equal(
+    await attemptRecoveryReload({
+      probe: () => Promise.resolve(false), claim: () => true,
+      reload: () => { reloads += 1; }, source: "chunk-error",
+    }),
+    "cancelled",
+  );
+  assert.equal(reloads, 0);
+  assert.equal(deferrals, 0, "en kapret navigation er ikke en udskudt reparation");
+  off();
+  blocked();
+  __resetReloadGateForTests();
+  __resetRecoveryDeferredForTests();
 });

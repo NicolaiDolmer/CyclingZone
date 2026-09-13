@@ -38,7 +38,7 @@ jobs:
         run: npm ci
 
       - name: Type-check race engine v4 (#4030)
-        run: npx tsc -p tsconfig.engine.json
+        run: npx tsc -p tsconfig.engine.json && npx tsc -p tsconfig.routes.json
 
       - name: Run backend tests
         run: npm test -- --test-reporter=spec

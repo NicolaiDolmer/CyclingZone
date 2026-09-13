@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
+import { fetchGlobalRanks } from "../lib/rankingsApi.ts";
 
 // Global Rank (#2453): ÉN rangliste på tværs af alle managers. Point halveres
 // ved hvert sæsonskifte (se database/2026-07-17-global-rank.sql +
@@ -27,9 +28,7 @@ export function useGlobalRank() {
     setError(null);
     try {
       const [mvData, weeklyData, seasonStartData] = await Promise.all([
-        fetchAllRows(() => supabase
-          .from("global_rank_mv").select("*")
-          .order("global_rank", { ascending: true, nullsFirst: false })),
+        fetchGlobalRanks(),
         fetchAllRows(() => supabase
           .from("global_rank_weekly_snapshot").select("team_id, global_rank").order("team_id")),
         fetchAllRows(() => supabase

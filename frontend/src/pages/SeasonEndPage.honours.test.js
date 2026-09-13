@@ -25,12 +25,13 @@ const code = raw
   .replace(/\/\*[\s\S]*?\*\//g, "")
   .replace(/(^|[^:])\/\/.*$/gm, "$1");
 
-test("#2863 siden henter listerne via get_season_honours(p_season_id)", () => {
+test("#2863/#5176 siden henter honours via backend, ikke klientens INVOKER-RPC", () => {
   assert.match(
     code,
-    /\.rpc\(\s*["'`]get_season_honours["'`]\s*,\s*\{\s*p_season_id:/,
-    "listerne skal komme fra RPC'en, ikke fra en klient-side aggregering",
+    /getSeasonHonours\(season\.id\)/,
+    "serveren kalder RPC'en efter matview-revoken",
   );
+  assert.doesNotMatch(code, /\.rpc\(\s*["'`]get_season_honours/);
 });
 
 test("#2863 blokken læser ALDRIG rå race_results eller rider_rankings_mv til klienten", () => {

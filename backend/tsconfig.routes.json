@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.engine.json",
+  "include": ["routes/**/*.ts"]
+}
