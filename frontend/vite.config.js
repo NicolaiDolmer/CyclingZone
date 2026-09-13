@@ -204,5 +204,64 @@ export default defineConfig({
     // måde som prod. Prod har token ⇒ uændret true; almindelige lokale builds
     // har hverken token eller CZ_SENTRY_TRANSFORM ⇒ uændret false.
     sourcemap: enableSentryPlugin,
+    rolldownOptions: {
+      output: {
+        // #5177 spor 3 — entry-chunken skæres op i deploy-STABILE grupper.
+        //
+        // Målt før (13/9, `npm run build`): `index` var 236,3 KB gzip, og en
+        // source-map-attribution af netop den chunk viste at intet af vægten var
+        // route-kode eller charts (recharts/CategoricalChart er allerede sin egen
+        // chunk og hentes kun af FinancePage/AdminGrowth — entry'en indeholder
+        // kun chunk-NAVNET i Vites preload-manifest, ikke koden). De fem største
+        // bidrag var udelukkende bibliotek + i18n-tekst:
+        //
+        //   1. react-dom (react-dom-client.production.js)  171,2 KB raw
+        //   2. de INLINEDE locale-JSON (public/locales/**)  143,5 KB raw
+        //   3. @formatjs/icu-messageformat-parser            19,2 KB raw
+        //   4. src/App.jsx (rute-tabellen selv)              18,1 KB raw
+        //   5. @sentry/browser                               16,6 KB raw
+        //
+        // Alle fem er nødvendige på first paint, så de to grupper herunder
+        // flytter IKKE bytes væk fra det første besøg — de flytter dem ud af den
+        // chunk der får ny hash ved hver eneste app-ændring. react-dom ændrer
+        // sig kun ved et dependency-bump, og locale-JSON kun når teksten
+        // ændrer sig; som selvstændige chunks overlever de et deploy i
+        // browser-cachen i stedet for at blive hentet igen sammen med entry'en.
+        // Samme problemklasse som #4595/CYCLINGZONE-56 (roterende asset-hashes),
+        // bare fra den anden ende: 185 KB gzip er nu deploy-stabilt.
+        //
+        // Målt efter (samme build-kommando):
+        //   index 236,3 -> 54,9 KB gzip · first paint (entry + modulepreloads)
+        //   338,8 -> 338,7 KB · total gzippet JS 1148,0 -> 1148,8 KB (202 chunks).
+        //
+        // BEVIDST kun to grupper. En variant med fire (også `sentry-vendor` og
+        // `i18n-vendor`) blev målt og forkastet: gzip-ordbogen er pr. fil, så de
+        // to ekstra små chunks kostede +23,3 KB på first paint (338,8 -> 362,1)
+        // og +24,2 KB på totalen. Entry'en blev kun 22 KB mindre af det — en
+        // dårlig byttehandel når LCP er det spor faktisk handler om.
+        //
+        // Den eneste tilbageværende ÆGTE reduktion af first paint er at tage de
+        // ~20 login-only namespaces ud af `resources` i src/i18n/index.js. Det
+        // er bevidst IKKE gjort her: hvert flyttet namespace kræver en
+        // ready-gate på forbrugerfladen (#3697), og bundle-budget.json's note
+        // kalder det eksplicit en ejer-beslutning, ikke en ren gevinst.
+        codeSplitting: {
+          groups: [
+            {
+              name: "react-vendor",
+              test: /node_modules[\\/](react|react-dom|scheduler|react-is)[\\/]/,
+              priority: 30,
+            },
+            {
+              // De inlinede oversættelser (24 namespaces × en+da). Ligger som
+              // JSON-imports i src/i18n/index.js, så de matches på public/locales.
+              name: "i18n-messages",
+              test: /public[\\/]locales[\\/]/,
+              priority: 30,
+            },
+          ],
+        },
+      },
+    },
   },
 });
