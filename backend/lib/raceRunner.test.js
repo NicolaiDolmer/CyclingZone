@@ -724,7 +724,7 @@ test('#4959 loebsstart-autofyld: et hold markeret midt i skrivningen stopper ikk
   assert.ok(inserts[0].rows.every((r) => r.team_id === 'T2'));
 });
 
-test('#4959 loebsstart-autofyld: en afvisning der IKKE skyldes et draenende hold slugges ikke', async () => {
+test('#4959 loebsstart-autofyld: en afvisning der IKKE skyldes et draenende hold og IKKE en reelt pensioneret rytter slugges ikke', async () => {
   const canned = padRoster({
     race_entries: [],
     app_config: [{ key: 'ai_team_retire_enabled', value: 'on' }, { key: 'ai_pool_retirement_v2_enabled', value: 'on' }],
@@ -736,8 +736,9 @@ test('#4959 loebsstart-autofyld: en afvisning der IKKE skyldes et draenende hold
   supabase.from = (table) => {
     const b = baseFrom(table);
     if (table !== 'race_entries') return b;
-    // Guardens anden gren: en pensioneret rytter. Intet hold er markeret, saa der er
-    // intet at filtrere fra - signalet skal bevares.
+    // Guardens rytter-gren-tekst, men genlaesningen (dropRetiredRiderRows) finder INGEN
+    // reelt pensioneret rytter i batchen (fixturens riders har alle is_retired: falsy) -
+    // der er intet at filtrere fra, saa signalet skal bevares.
     b.insert = () => Promise.resolve({ error: { code: '23514', message: 'AI rider is retired: no new obligations' } });
     return b;
   };
@@ -745,6 +746,58 @@ test('#4959 loebsstart-autofyld: en afvisning der IKKE skyldes et draenende hold
     () => loadEntrantsForRace({ supabase, race: { id: 'race-x' } }),
     /AI rider is retired/,
   );
+});
+
+// #5146: samme TOCTOU-klasse som #4959 ovenfor, men guardens ANDEN gren — en AI-rytter
+// blev pensioneret i vinduet mellem rytter-udvælgelsen og selve skrivningen. Før denne
+// rettelse aborterede det HELE insert-batchen (se testen ovenfor), og løbsstartens
+// autofyld væltede for ALLE hold i løbet — ikke kun det hold den pensionerede rytter
+// hørte til.
+test('#5146 loebsstart-autofyld: en rytter pensioneret midt i skrivningen stopper ikke resten af feltet', async () => {
+  // T1 padded til 7 (ikke gulvets 6): dropper vi ÉN pensioneret rytter fra T1, skal
+  // holdet stadig naa gulvet og blive paa startlisten - kun den ene raekke skal mangle.
+  // T2 (uroert, floer=6) beviser at et helt ANDET hold slet ikke paavirkes.
+  const canned = padRoster(padRoster({
+    race_entries: [],
+    app_config: [{ key: 'ai_team_retire_enabled', value: 'on' }, { key: 'ai_pool_retirement_v2_enabled', value: 'on' }],
+    teams: [
+      { id: 'T1', is_ai: true, is_frozen: false, is_test_account: false, pending_removal_at: null },
+      { id: 'T2', is_ai: true, is_frozen: false, is_test_account: false, pending_removal_at: null },
+    ],
+    riders: [], rider_derived_abilities: [],
+  }, 'T1', 'a', 7), 'T2', 'b');
+  const supabase = makeSupabase(canned);
+
+  const baseFrom = supabase.from;
+  let rejected = false;
+  supabase.from = (table) => {
+    const b = baseFrom(table);
+    if (table !== 'race_entries') return b;
+    const insert = b.insert;
+    b.insert = (rows) => {
+      if (rejected) return insert(rows);
+      rejected = true;
+      // Rytteren pensioneres praecis nu — genlaesningen nedenfor (dropRetiredRiderRows)
+      // ser det, rytter-udvaelgelsen ovenfor gjorde ikke.
+      const retiredRider = canned.riders.find((r) => r.id === 'a1');
+      retiredRider.is_retired = true;
+      return Promise.resolve({ error: { code: '23514', message: 'AI rider is retired: no new obligations' } });
+    };
+    return b;
+  };
+
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: 'race-x' } });
+
+  assert.ok(entrants.some((e) => e.team_id === 'T1'), 'holdet med den pensionerede rytter naaede stadig gulvet');
+  assert.ok(entrants.some((e) => e.team_id === 'T2'), 'det uroerte hold staar stadig paa startlisten');
+  // makeSupabase-mocken respekterer ikke .in()-id-filtre (selectInChunks faar altid HELE
+  // den cannede tabel) — en droppet rytter kan derfor stadig dukke op i entrants med
+  // team_id: null (teamByRider kender ham ikke), men aldrig bundet til sit gamle hold.
+  const a1Entrant = entrants.find((e) => e.rider_id === 'a1');
+  assert.ok(!a1Entrant || a1Entrant.team_id !== 'T1', 'den pensionerede rytter blev ikke skrevet ind i T1s felt');
+  const inserts = supabase.__writes.filter((w) => w.table === 'race_entries' && w.op === 'insert');
+  assert.equal(inserts.length, 1, 'praecis een skrivning lykkedes (den foerste blev afvist af guarden)');
+  assert.ok(inserts[0].rows.every((r) => r.rider_id !== 'a1'), 'den skrevne batch udelader den pensionerede rytter');
 });
 
 test("loadEntrantsForRace: tomt felt → auto-fill skriver race_entries", async () => {

@@ -103,7 +103,7 @@ import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { captureException } from "./sentry.js";
-import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation } from "./raceBinding.js";
+import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
@@ -976,6 +976,25 @@ async function dropDrainingTeamRows({ supabase, rows }) {
   return rows.filter((r) => !draining.has(r.team_id));
 }
 
+// #5146: samme TOCTOU-opskrift som dropDrainingTeamRows lige ovenfor, men for guardens
+// ANDEN gren ('AI rider is retired', guard_draining_ai_obligation, #4753) — en AI-rytter
+// blev pensioneret i vinduet mellem rytter-udvælgelsen og denne skrivning. Guardens
+// fejlbesked bærer ikke selv rytterens id, så vi genlæser (samme grund som
+// dropDrainingTeamRows: et FRISK billede EFTER afvisningen, ikke et forsøg på at trække
+// et id ud af teksten). Dropper KUN rækker med den pensionerede rytter, rører intet andet.
+async function dropRetiredRiderRows({ supabase, rows }) {
+  const riderIds = [...new Set(rows.map((r) => r.rider_id).filter(Boolean))];
+  if (!riderIds.length) return rows;
+  const { data, error } = await selectInChunks({
+    supabase, table: "riders", columns: "id, is_retired",
+    inColumn: "id", ids: riderIds,
+  });
+  if (error) throw new Error(`riders (retired re-scan): ${error.message}`);
+  const retired = new Set((data || []).filter((r) => r.is_retired).map((r) => r.id));
+  if (!retired.size) return rows;
+  return rows.filter((r) => !retired.has(r.rider_id));
+}
+
 // #1688 (forever-relaunch race-scale): to additive felt-garantier oven på #1307:
 //   1. PULJE-FILTER — når løbet har en pulje (race.league_division_id), auto-fyldes
 //      KUN hold i den pulje. Et løb hører til én pulje (race/standings-gruppe, #1608);
@@ -1184,17 +1203,26 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
           `the runtime autofill's own binding exclusion missed a double-booking (${insErr.message})`
         );
       }
-      // #4959: et hold blev markeret til nedlæggelse i vinduet mellem hold-læsningen
-      // ovenfor og denne skrivning, så DB-guarden (#4753, trg_ai_drain_entries) afviste
-      // HELE batchen. Uden dette ville ét drænende hold blokere løbsstartens autofyld
-      // for alle andre hold i løbet. Vi dropper det drænende holds rækker (de skal
-      // netop ikke skrives) og skriver resten én gang.
+      // #4959/#5146: enten et hold blev markeret til nedlæggelse, eller en AI-rytter blev
+      // pensioneret, i vinduet mellem udvælgelsen ovenfor og denne skrivning, så DB-guarden
+      // (#4753, trg_ai_drain_entries) afviste HELE batchen. Uden dette ville ét ramt hold
+      // eller én pensioneret rytter blokere løbsstartens autofyld for alle andre hold i
+      // løbet. Guardens to grene rammer aldrig samme afvisning på én gang (#4753's SQL
+      // raiser den ene ELLER den anden), så isRetiredAiRiderRejection afgør hvilken
+      // genlæsning der er relevant — vi dropper KUN de(n) ramte række(r) og skriver
+      // resten én gang.
       if (isDrainingAiObligation(insErr)) {
-        const kept = await dropDrainingTeamRows({ supabase, rows });
+        const retiredRider = isRetiredAiRiderRejection(insErr);
+        const kept = retiredRider
+          ? await dropRetiredRiderRows({ supabase, rows })
+          : await dropDrainingTeamRows({ supabase, rows });
         if (kept.length === rows.length) throw new Error(`race_entries insert: ${insErr.message}`);
         console.warn(
-          `⚠️  Løbsstart-autofyld ${race.id}: ${rows.length - kept.length} række(r) hørte til et hold ` +
-          `markeret til nedlæggelse — skrevet uden dem (#4959)`
+          retiredRider
+            ? `⚠️  Løbsstart-autofyld ${race.id}: ${rows.length - kept.length} række(r) hørte til en ` +
+              `pensioneret AI-rytter — skrevet uden dem (#5146)`
+            : `⚠️  Løbsstart-autofyld ${race.id}: ${rows.length - kept.length} række(r) hørte til et hold ` +
+              `markeret til nedlæggelse — skrevet uden dem (#4959)`
         );
         rows.splice(0, rows.length, ...kept);
         if (rows.length) {

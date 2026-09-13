@@ -160,6 +160,21 @@ export function isDrainingAiObligation(error) {
     .test(String(error.message || ""));
 }
 
+// #5146: isDrainingAiObligation ovenfor matcher BEGGE guard-grene sammen — rigtigt for
+// kaldesteder der blot skal springe enheden stille over uanset hvilken gren der ramte
+// (raceEntryGenerator.js). raceRunner.js's TOCTOU-genskriv (dropDrainingTeamRows/
+// dropRetiredRiderRows, linje ~1192) skal derimod vide HVILKEN gren der ramte, for at
+// genlæse det rigtige (teams vs. riders) og kun droppe de rækker der faktisk er årsagen.
+// Guardens rytter-gren-besked bærer ikke selv rytterens id (kun teksten), så denne
+// matcher udelukkende hvilken gren der raiste — selve rytter-identifikationen sker ved
+// at genlæse riders.is_retired for batchens rider_ids (samme opskrift som
+// dropDrainingTeamRows genlæser teams). Matcher KUN guardens egen rytter-tekst, aldrig
+// hold-teksterne eller 23514 generelt.
+export function isRetiredAiRiderRejection(error) {
+  if (!error) return false;
+  return /AI rider is retired: no new (obligations|auction bids)/.test(String(error.message || ""));
+}
+
 // To vinduer overlapper hvis de deler mindst én FAKTISK løbsdag (#4173) — bærer begge
 // sider en days-mængde, skæres den (et løb med pause binder IKKE pausedagene). Ellers
 // spænd-fallback: deler mindst ét tidspunkt, inklusiv ender (vinduer bygget manuelt/

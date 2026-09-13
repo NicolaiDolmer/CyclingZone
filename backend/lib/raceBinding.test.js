@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation, isRetiredAiRiderRejection } from "./raceBinding.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..", "..");
@@ -774,4 +774,36 @@ test("isDrainingAiObligation: matcher hver RAISE-tekst fra guard_draining_ai_obl
     isDrainingAiObligation({ code: "23514", message: 'new row violates check constraint "some_other_check"' }),
     false
   );
+});
+
+// #5146: isDrainingAiObligation ovenfor matcher BEGGE guard-grene sammen (rigtigt for
+// kaldesteder der blot skal springe enheden stille over). raceRunner.js's TOCTOU-genskriv
+// skal derimod vide HVILKEN gren der ramte, for at vaelge mellem at genlaese teams (hold-
+// grenen) eller riders (rytter-grenen) — isRetiredAiRiderRejection matcher KUN sidstnaevnte.
+test("isRetiredAiRiderRejection: matcher KUN guardens rytter-gren, aldrig hold-grenen", () => {
+  assert.equal(isRetiredAiRiderRejection({ code: "23514", message: "AI rider is retired: no new obligations" }), true);
+  assert.equal(isRetiredAiRiderRejection({ code: "23514", message: "AI team is draining: no new obligations" }), false);
+  assert.equal(isRetiredAiRiderRejection({ code: "23514", message: "AI team is draining: no new auction bids" }), false);
+  assert.equal(isRetiredAiRiderRejection({ code: "23514", message: 'new row violates check constraint "riders_age_check"' }), false);
+  assert.equal(isRetiredAiRiderRejection({ message: "race_entries_rider_id_fkey" }), false);
+  assert.equal(isRetiredAiRiderRejection(null), false);
+});
+
+// Samme laasnings-princip som testen ovenfor for isDrainingAiObligation (#4959-fund):
+// laeser guardens egen SQL og laaser at isRetiredAiRiderRejection matcher rytter-RAISE-
+// teksten og KUN den — ikke hold-teksterne.
+test("isRetiredAiRiderRejection: matcher kun rytter-RAISE-teksten fra guard-SQL'en", () => {
+  const sql = readFileSync(
+    join(repoRoot, "database", "2026-09-09-4753-ai-pool-retirement.sql"),
+    "utf8"
+  );
+  const raiseMessages = [...sql.matchAll(/RAISE EXCEPTION '([^']+)' USING ERRCODE='23514'/g)].map((m) => m[1]);
+  assert.ok(raiseMessages.length > 0, "fandt ingen 23514-RAISE i guard-SQL'en - er stien/mønstret forældet?");
+  for (const message of raiseMessages) {
+    assert.equal(
+      isRetiredAiRiderRejection({ code: "23514", message }),
+      message.startsWith("AI rider is retired"),
+      `isRetiredAiRiderRejection matcher forkert for: "${message}"`
+    );
+  }
 });
