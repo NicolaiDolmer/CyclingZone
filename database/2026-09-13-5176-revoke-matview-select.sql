@@ -1,13 +1,8 @@
+-- Trin 2 af #5176: applies af auto-migrate.yml ved merge (ejer-go 13/9). Claude post-verificerer grants + advisor.
 -- #5176: materialized-view access is served by the authenticated backend.
 -- Idempotent: REVOKE/GRANT can be repeated. No rows, refresh functions or
 -- materialized-view definitions change. PUBLIC is included to prevent an
 -- inherited grant from defeating the explicit client-role revokes.
--- STAGED PROPOSAL: owner approved a two-step rollout on 2026-09-12.
--- This file is outside the auto-migrate glob and MUST NOT run with PR #5183.
--- Activate in a separately approved follow-up only after both deployments,
--- authenticated ranking flows, and the transition for older clients are checked.
--- Move to database/ in that follow-up; auto-migrate applies it after merge.
--- Codex does not execute this against production.
 
 BEGIN;
 

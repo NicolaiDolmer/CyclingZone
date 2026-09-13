@@ -46,10 +46,15 @@ Review fandt desuden honours-INVOKER-afhængigheden i SeasonEndPage:
   genverificeres med SQL/staging-test og preflight; runtime-koden er uændret.
 - [x] Preview: stillinger, globale/rytter-ranglister, sæsonafslutning,
   dashboard-widget og holdstatistik; Android/Chrome + desktop.
-- [ ] CI grøn; aflevering med ændret/selv tjekket/antaget før merge-go.
-- [ ] Trin 1: ejerens merge-go, backend/frontend-deploy og authenticated kontrol.
-- [ ] Trin 2: gamle klienters overgang dokumenteret, ny godkendt PR flytter
-  SQL til auto-migrate-mappen, Claude verificerer grants og advisor bagefter.
+- [x] CI grøn; aflevering med ændret/selv tjekket/antaget før merge-go.
+- [x] Trin 1: ejerens merge-go, backend/frontend-deploy og authenticated kontrol.
+  PR #5183 merget 13/9, hotfix #5185 merget 13/9.
+- [ ] Trin 2: i gang, PR [#5187](https://github.com/NicolaiDolmer/CyclingZone/pull/5187).
+  SQL flyttet til `database/2026-09-13-5176-revoke-matview-select.sql` (rammer
+  auto-migrate-globben). Post-merge-plan: Claude kører de to kommenterede
+  SELECT-verify-queries i filen (grants 4 x f/f/t, kolonneprivilegier 4 x f/f)
+  og `get_advisors(type: "security")`; forventet 0016-count 0, WARN 7 → 3
+  (de tre 0029-funktionsfund forbliver, lukkes ikke af denne PR).
 
 Patch note: ikke spillerrettet, ingen adfærdsændring.
 Fire revokes forventes at fjerne fire WARN. De tre accepterede/udestående
