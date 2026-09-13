@@ -2,7 +2,7 @@
 //
 // node --test har ingen DOM → kildekode-strukturelle guards (samme mønster som
 // BidConfirmModal.retirementWarning.test.js). Selve reglen er unit-testet i
-// lib/academyDemoteGate.test.js; DENNE fil beviser at begge steder knappen findes
+// lib/academyDemoteGate.test.ts; DENNE fil beviser at begge steder knappen findes
 // rent faktisk bruger den delte gate — og ikke er faldet tilbage til isU23.
 //
 // Hvorfor to steder: knappen bor både på rytter-profilen (RiderManageActions) og
@@ -26,10 +26,10 @@ test("RiderManageActions gater nedrykning på canDemoteToAcademy, ikke på isU23
   assert.match(
     actionsSrc,
     /const canDemote = !isAcademyRider && canDemoteToAcademy\(rider\.birthdate, seasonYear\)/,
-    "gaten skal komme fra den delte SSOT (academyDemoteGate.js)",
+    "gaten skal komme fra den delte SSOT (academyDemoteGate.ts)",
   );
   assert.doesNotMatch(actionsSrc, /\bisU23\b/, "U23-grænsen (≤22) er netop bug'en i #5145 — den må ikke bruges til demote");
-  assert.match(actionsSrc, /from "\.\.\/\.\.\/lib\/academyDemoteGate\.js"/, "helperen skal importeres, ikke gentages inline");
+  assert.match(actionsSrc, /from "\.\.\/\.\.\/lib\/academyDemoteGate\.ts"/, "helperen skal importeres, ikke gentages inline");
 });
 
 test("TeamPage's RiderActionModal bruger SAMME gate — ellers er fixet kun halvt", () => {
@@ -38,7 +38,7 @@ test("TeamPage's RiderActionModal bruger SAMME gate — ellers er fixet kun halv
     /const canDemote = !rider\.is_academy && canDemoteToAcademy\(rider\.birthdate, seasonYear\)/,
     "holdsidens demote-fane skal have samme grænse som rytter-profilen",
   );
-  assert.match(teamPageSrc, /from "\.\.\/lib\/academyDemoteGate\.js"/);
+  assert.match(teamPageSrc, /from "\.\.\/lib\/academyDemoteGate\.ts"/);
 });
 
 test("ved præcis gradueringsalderen vises knappen deaktiveret MED forklaring, ikke tavst fjernet", () => {

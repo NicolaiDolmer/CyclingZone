@@ -11,10 +11,18 @@
 // Reglen bor her (ét sted) fordi den skal bruges to steder i UI'et:
 // RiderManageActions (rytter-profilen) og TeamPage's RiderActionModal (holdsiden).
 // Hardkodet 21 fremfor et import fra backend: frontend importerer ikke backend-
-// moduler i runtime. Parret holdes ærligt af academyDemoteGate.test.js, som
+// moduler i runtime. Parret holdes ærligt af academyDemoteGate.test.ts, som
 // importerer backendens ACADEMY.MAX_AGE og pinner den mod konstanten herunder —
 // samme SSOT-paritets-mønster som academyPromoteContract.test.js.
 import { ageForSeason } from "./riderAge.js";
+
+// riderAge.js er (endnu) untypet JS (checkJs:false, jf. tsconfig.json) —
+// birthdate-kontrakten derfra: en dato-streng ("YYYY-MM-DD"), et Date-objekt,
+// eller null/undefined for "ukendt". seasonYear er sæsonens referenceår
+// (useActiveSeasonYear/seasonReferenceYear) eller null/undefined hvis endnu
+// ikke hentet.
+type Birthdate = string | Date | null | undefined;
+type SeasonYear = number | null | undefined;
 
 // Sidste sæson-alder hvor nedrykning er tilladt. Spejler ACADEMY.MAX_AGE.
 export const ACADEMY_DEMOTE_MAX_AGE = 21;
@@ -28,7 +36,7 @@ export const ACADEMY_GRADUATE_AGE = 22;
 // Må rytteren flyttes ned i akademiet, alders-mæssigt? Ukendt fødselsdato eller
 // ukendt sæson-år → false (samme null-over-gæt-kontrakt som riderAge.js: en
 // manglende alder må aldrig åbne en gate der er lukket i backend).
-export function canDemoteToAcademy(birthdate, seasonYear) {
+export function canDemoteToAcademy(birthdate: Birthdate, seasonYear: SeasonYear): boolean {
   const age = ageForSeason(birthdate, seasonYear);
   return age != null && age <= ACADEMY_DEMOTE_MAX_AGE;
 }
@@ -36,7 +44,7 @@ export function canDemoteToAcademy(birthdate, seasonYear) {
 // Er rytteren blokeret PRÆCIS af alders-gaten — dvs. lige fyldt gradueringsalderen
 // (22)? Kun i det tilfælde er en forklaring meningsfuld ved knappen: en 25-årig
 // senior har aldrig haft en nedryknings-knap at savne.
-export function isDemoteBlockedByAge(birthdate, seasonYear) {
+export function isDemoteBlockedByAge(birthdate: Birthdate, seasonYear: SeasonYear): boolean {
   const age = ageForSeason(birthdate, seasonYear);
   return age === ACADEMY_GRADUATE_AGE;
 }

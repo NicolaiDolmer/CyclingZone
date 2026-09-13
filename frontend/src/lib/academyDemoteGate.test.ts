@@ -23,13 +23,13 @@ import {
   ACADEMY_GRADUATE_AGE,
   canDemoteToAcademy,
   isDemoteBlockedByAge,
-} from "./academyDemoteGate.js";
+} from "./academyDemoteGate.ts";
 
 const backendLib = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "backend", "lib");
 
 // Træk `NAVN: <tal>` ud af en backend-konstant-blok. Fejler HØJLYDT hvis mønstret
 // forsvinder — en stille `null` ville gøre pin-testen til en no-op.
-function backendConstant(file, name) {
+function backendConstant(file: string, name: string): number {
   const src = readFileSync(join(backendLib, file), "utf8");
   const match = new RegExp(`\\b${name}\\s*:\\s*(\\d+)`).exec(src);
   assert.ok(match, `kunne ikke finde ${name} i backend/lib/${file} — er konstanten omdøbt?`);
@@ -45,7 +45,7 @@ const GRADUATION = { GRADUATE_AGE: backendConstant("academyGraduation.js", "GRAD
 // Sæson-referenceåret (LAUNCH_REFERENCE_YEAR + season - 1). Et konkret år, så
 // alderen i testen er nem at læse: fødselsår = SEASON_YEAR - alder.
 const SEASON_YEAR = 2027;
-const born = (age) => `${SEASON_YEAR - age}-05-14`;
+const born = (age: number): string => `${SEASON_YEAR - age}-05-14`;
 
 test("frontendens grænse ER backendens: MAX_AGE / GRADUATE_AGE, ikke en kopi der kan drifte", () => {
   assert.equal(ACADEMY_DEMOTE_MAX_AGE, ACADEMY.MAX_AGE, "sidste tilladte alder skal spejle ACADEMY.MAX_AGE");

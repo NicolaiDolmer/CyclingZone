@@ -23,7 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../lib/intl.js";
 import { resolveApiError } from "../../lib/apiError.js";
-import { canDemoteToAcademy, isDemoteBlockedByAge } from "../../lib/academyDemoteGate.js";
+import { canDemoteToAcademy, isDemoteBlockedByAge } from "../../lib/academyDemoteGate.ts";
 import { projectSeniorSalary } from "../../lib/marketValues.js";
 import { keepsExistingContractOnPromote } from "../../lib/academyPromoteContract.js";
 import { fetchRiderQuote, postRiderContractAction } from "../../lib/riderContractActions.js";
