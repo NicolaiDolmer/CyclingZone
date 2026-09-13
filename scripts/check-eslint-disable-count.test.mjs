@@ -168,11 +168,11 @@ test("nul ubegrundede direktiver paa nuvaerende traae", () => {
   );
 });
 
-test("ResultaterPage.jsx:180 (real file) is not counted as a directive", () => {
+test("ResultaterPage prose mentioning eslint-disable is not counted as a directive", () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const repoRoot = join(here, "..");
   const src = readFileSync(join(repoRoot, "frontend/src/pages/ResultaterPage.jsx"), "utf8");
-  const line180 = src.split("\n")[179]; // 0-indexed
-  assert.match(line180, /eslint-disable/);
-  assert.equal(countDisableDirectives(line180), 0);
+  const prose = src.split("\n").find(line => line.includes("eslint-disable. loadAll"));
+  assert.ok(prose, "the real prose example must still exist");
+  assert.equal(countDisableDirectives(prose), 0);
 });

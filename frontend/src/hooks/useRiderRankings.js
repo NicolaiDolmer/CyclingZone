@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { pickResultsSeason } from "../lib/seasonReference.js";
+import { fetchRiderRankings } from "../lib/rankingsApi.ts";
 
 // Rytter-rangliste for den aktive sæson (#2175). Erstatter den gamle client-agg
 // der hentede ALLE ~38k race_results til browseren og aggregerede der (én fejlet
@@ -58,10 +59,7 @@ export function useRiderRankings() {
       // top-rangerede (nyere id'er uden for de første 1000) forsvandt helt (#2206).
       // Stabil .order() er påkrævet af fetchAllRows for at undgå side-overlap.
       const [statsData, displayData] = await Promise.all([
-        fetchAllRows(() => supabase
-          .from("rider_rankings_mv").select("*")
-          .eq("season_id", seasonData.id)
-          .order("rider_id", { ascending: true })),
+        fetchRiderRankings(seasonData.id),
         // #3507: team-joinet inkluderer nu division + league_division_id
         // (pulje-id) — nødvendigt for rytterfanens division/pulje-filter
         // (RiderRankingsPage), som lader dashboardets "Fuld rangliste →"-link
