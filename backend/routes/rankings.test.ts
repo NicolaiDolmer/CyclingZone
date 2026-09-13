@@ -127,6 +127,22 @@ test("invalid, ambiguous, oversized or arbitrary query filters are rejected", as
   assert.equal(f.requests.length, 0);
 });
 
+test("legacy season ids (version-nibble 0, as in prod seasons) are accepted; junk season ids are still rejected", async t => {
+  // Prod: seasons.id = 00000000-0000-0000-0000-00000000000N. z.uuid() rejected them and every
+  // season-scoped call returned 400 right after #5183 deployed (CYCLINGZONE-5V/5W, 13/9).
+  const LEGACY = "00000000-0000-0000-0000-000000000003";
+  const f = await fixture(t, [{ season_id: LEGACY, team_id: TEAM, comp_wins: 1, comp_podiums: 2, podiums: 3, prize_earned: 4 }]);
+  for (const path of [`/standings?season_id=${LEGACY}`, `/riders?season_id=${LEGACY}`, `/riders?season_id=${LEGACY}&top=5`, `/race-points?season_id=${LEGACY}`]) {
+    assert.equal((await f.call(path)).status, 200, path);
+  }
+  assert.deepEqual(await (await f.call(`/standings?season_id=${LEGACY}`)).json(), { data: [{ season_id: LEGACY, team_id: TEAM, comp_wins: 1, comp_podiums: 2, podiums: 3, prize_earned: 4 }] });
+  const before = f.requests.length;
+  for (const path of ["/standings?season_id=00000000-0000-0000-0000-00000000000g", "/standings?season_id=0000-0000", `/standings?season_id=${LEGACY}'`]) {
+    assert.equal((await f.call(path)).status, 400, path);
+  }
+  assert.equal(f.requests.length, before);
+});
+
 test("database failures are reported without leaking database details", async t => {
   const f = await fixture(t, [], true);
   const response = await f.call("/global");
