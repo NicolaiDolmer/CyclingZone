@@ -216,7 +216,10 @@ samlet i #4850. Ejeren fremhævede dette igen ved Q-020 den 10/9.
 
 - Hver rytter enten træner eller kører løb pr. løbsdag; løb giver selv udvikling.
 - Løbsdagen bliver træningens tidsenhed; divisionerne får samme antal løbsdage.
-- Programmerne kører automatisk; den manuelle træningsknap og klikbonus udgår.
+- Fremtidig kontrakt, ikke bygget endnu (TRAINING_RULES §13, pkt. 2): programmerne skal køre
+  automatisk, og den manuelle "Træn i dag"-knap + 25 %-bonus skal fjernes. I dag kører runtime
+  stadig den gamle model — `DAILY_TRAINING_CONFIG.bonusMult = 1.25` og
+  `POST /api/training/run-today` findes uændret.
 - Løbsintentionen vælges med de taktiske valg og forbinder løb, træthed og udvikling.
 - Træningsscoren måler passets kvalitet, er ærlig og ses kun af egen manager.
 

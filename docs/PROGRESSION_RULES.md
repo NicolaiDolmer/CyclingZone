@@ -141,10 +141,18 @@ Andre spørgsmål om scouting og fremmede ryttere afgøres ikke af afstemningen.
 | Rating har historisk kørt to skalaer samtidig (ukalibreret og kalibreret) på forskellige flader | `weights/displayRecipes.js`, `scoutingReport.js` | se spec `2026-08-13-rating-fundament-v3-design.md` §1.1 — verificér nuværende status i koden før du regner med den er løst |
 | Signatur-raten (§1) er ANKERET til dagens ratingniveau, ikke til spidsen | `ROLE_CLASS_RATE.signatur`, kommentar i `riderProgression.js` | ✅ ejer-ramme 15/8 (audit §C17): alle ender lidt lavere i snit, men agens-spændet (det manageren kan påvirke) vokser |
 | Scouting-bånd maskeres FØR bias/halvbredde lægges på (rækkefølgen må ikke byttes) | `scoutingReport.js`, `scoutingInversionHarness.js` | ✅ |
-| Trænings-scorens dagsstøj skal hæves mod en privatlivs-gate (median ≥ X dage før potentiale kan aflæses) | `noiseSpan` i `dailyTraining.js` | ❌ gaten findes ikke |
 | Dags-/sæson-seedet støj (træning, race-dag, skade, aldring, form-nulstilling) SKAL bruge `seededUnitMixed()`, ikke rå `seededUnit()` — rå FNV-1a blander for lidt når kun nøglens hale (dato eller sæsonnummer) ændrer sig, så samme rytter sad fast i samme tredjedel af `[0,1)` i uger/sæsoner ad gangen (målt 7/9: 25 % af ryttere med 0 "over"-dage/30 dage) | `seededUnitMixed()` i `riderProgression.js` | ✅ #4987 |
 | **Pensionsrullet er et LØFTE, ikke støj.** `seededUnitMixed()`-kravet ovenfor gælder kun mens svaret rulles. Varslet ("går rytteren på pension når sæson N slutter?") afgøres ÉN gang og gemmes derefter på rytteren — `riders.retirement_notice_season` (sæsonen svaret gælder), `retirement_notice_after_season` (sæsonen han stopper efter, NULL = intet varsel) og `retirement_notice_given_at`. **ALLE TRE** brugerrettede kanaler LÆSER kolonnen — rytterkortet (`/api/riders/:id/retirement-status`), cutover-stien (`developRiderSeason` → `resolveSeasonRetirement`) og sæsonstartens indbakkebesked (`backend/scripts/dev/notifyRetirement2748.mjs`, #2748). Kun når frysningen mangler beregnes svaret, og så skrives det ned med det samme (visnings-stien og cutover skriver; notifikations-sweepen læser kun). Et skift af hash-funktionen kan derfor aldrig igen flytte et varsel midt i en sæson. **Tilføjer du en fjerde kanal, skal den læse `resolveNoticeFromRow` — ikke `announcedRetirementAfterSeason` direkte** | `backend/lib/retirementNotice.js`, `riderProgression.js`, `backend/scripts/dev/notifyRetirement2748.mjs`, `database/2026-09-10-5073-retirement-notice-column.sql` | ✅ #5073 (ejer-beslutning 10/9 kl. 16:05: "genopret løftet + gem varslet") |
-| Scouting afslører kun RETNINGEN, aldrig niveauet | — | ❌ ikke bygget, afhænger af trænings-scorens privatliv ovenfor |
+
+### Historik: privatlivs-/støjgaten (afløst af TRAINING_RULES §13, ejer 6/9)
+
+De to rækker herunder var aktive krav før TRAINING_RULES §13. De er **ikke** gældende byggekrav —
+se noten ovenfor.
+
+| Regel | Fil | Status |
+|---|---|---|
+| ~~Trænings-scorens dagsstøj skal hæves mod en privatlivs-gate (median ≥ X dage før potentiale kan aflæses)~~ | `noiseSpan` i `dailyTraining.js` | Historisk — afløst af TRAINING_RULES §13 (ærlig score fra dag ét) |
+| ~~Scouting afslører kun RETNINGEN, aldrig niveauet~~ | — | Historisk — afhang af privatlivs-gaten ovenfor, som ikke længere er kravet |
 
 ---
 
