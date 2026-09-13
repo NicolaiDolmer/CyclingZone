@@ -1,3 +1,5 @@
+import { isReloadAllowed, onReloadAllowed } from "./reloadGate.js";
+
 // Moenstre der KUN kan stamme fra en fejlet modul-/chunk-load. Sikre nok til
 // beslutninger hvor en falsk positiv koster noget — se isUnambiguousChunkLoadError.
 const UNAMBIGUOUS_CHUNK_ERROR_PATTERNS = [
@@ -65,16 +67,166 @@ export function getChunkReloadKey(release = "unknown") {
   return `cz:chunk-reload-attempted:${release || "unknown"}`;
 }
 
-export function shouldAttemptChunkReload({ error, release, storage } = {}) {
-  if (!isChunkLoadError(error) || !storage) return false;
-  const key = getChunkReloadKey(release);
+// ---------------------------------------------------------------------------
+// Fælles recovery-budget (#5159, Codex-fund M3)
+// ---------------------------------------------------------------------------
+//
+// Før dette havde de tre reparationslag hver sit budget: boot-vagten et
+// 60-sekunders vindue (`cz_chunk_selfheal_at` i public/chunk-selfheal.js),
+// den globale fejlhandler her ét reload pr. KILDE-release, og release-watcheren
+// ét reload pr. MÅL-release. Tre budgetter der ikke kender hinanden kan lægge
+// deres reloads oven i hinanden i ét og samme reparationsforløb.
+//
+// Nu deler alle tre ét tælleværk i sessionStorage. Boot-vagten skriver stadig
+// kun sin egen nøgle (den er ren, tidlig JS uden adgang til dette modul), så
+// dens reload bogføres bagefter af `accountBootGuardReload` ved app-boot — så
+// koordineringen sker gennem storage-nøglerne, uden at røre vagtens kode.
+//
+// Vinduet er rullende og ikke hele fanens levetid: et loop sker inden for
+// sekunder til minutter, mens en fane der står åben i dage stadig skal kunne
+// tage en opdatering i morgen. Er budgettet brugt, forsvinder opdateringen ikke
+// — den bliver til banneret med den manuelle "Update"-knap, som IKKE bruger af
+// budgettet, fordi den er spillerens eget klik.
+export const RECOVERY_BUDGET_KEY = "cz:recovery-budget";
+export const RECOVERY_BUDGET_MAX = 3;
+export const RECOVERY_BUDGET_WINDOW_MS = 60 * 60 * 1000;
+
+// Boot-vagtens egen nøgle (public/chunk-selfheal.js) plus markøren der siger at
+// vi allerede har bogført netop dét reload. Læses her, skrives aldrig af vagten.
+export const BOOT_GUARD_KEY = "cz_chunk_selfheal_at";
+export const BOOT_GUARD_ACCOUNTED_KEY = "cz:recovery-budget-bootguard-at";
+
+/**
+ * Selve OPSLAGET `window.sessionStorage` kaster i browsere hvor site-data er
+ * slået fra — ikke kun kaldene på objektet. Alle lag skal gennem denne accessor,
+ * også de tidligste (main.jsx før initSentry), ellers dør boot på en property-
+ * læsning (#5159 / M3).
+ * @returns {Storage|null} null betyder fail-closed hele vejen ned.
+ */
+export function safeSessionStorage(win = typeof window === "undefined" ? undefined : window) {
   try {
-    if (storage.getItem(key) === "1") return false;
-    storage.setItem(key, "1");
+    return win?.sessionStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readBudget(storage, now) {
+  let raw;
+  try {
+    raw = storage?.getItem(RECOVERY_BUDGET_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) return { used: 0, windowStart: now };
+  try {
+    const parsed = JSON.parse(raw);
+    // FAIL-CLOSED paa en ugyldig post (CodeRabbit 11/9). Foer blev baade
+    // ugyldig JSON og et ulaeseligt `used`/`windowStart` laest som "budgettet er
+    // ubrugt" — praecis omvendt af hvad budgettet er til for. En reload-loop der
+    // naaede at skrive skrald i noeglen, ville dermed faa tre friske forsoeg
+    // hver gang. Posten kan kun blive skrald hvis nogen har skrevet noget vi
+    // ikke selv skrev, og saa er "vi ved det ikke" det eneste aerlige svar.
+    // Konsekvensen er afgraenset: noeglen bor i sessionStorage, saa det gaelder
+    // netop denne fane, og lazyWithRetry + den brandede fallback staar tilbage.
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!Number.isFinite(parsed.used) || !Number.isFinite(parsed.windowStart)) return null;
+    const { used, windowStart } = parsed;
+    if (used < 0 || windowStart > now) return null;
+    // Rullende vindue: et udløbet budget starter forfra.
+    if (now - windowStart > RECOVERY_BUDGET_WINDOW_MS) return { used: 0, windowStart: now };
+    return { used, windowStart };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Er der plads til ét automatisk reload mere? Fail-closed: uden brugbar storage
+ * kan vi ikke bevise at vi ikke allerede har reloadet, og så gør vi det ikke.
+ * lazyWithRetry + den brandede fallback er sikkerhedsnettet i stedet.
+ */
+export function hasRecoveryBudget(storage, { max = RECOVERY_BUDGET_MAX, now = Date.now() } = {}) {
+  if (!storage) return false;
+  const budget = readBudget(storage, now);
+  if (!budget) return false;
+  return budget.used < max;
+}
+
+/**
+ * Bogfør ét brugt automatisk reload. Kaldes FØRST når reloadet faktisk sker, og
+ * efter lagets egen loop-guard er brændt — så et forsøg der blev afvist af en
+ * anden grund ikke koster budget.
+ * @param {Storage|null} storage
+ * @param {string} source hvilket lag brugte det ("chunk-error", "release-watch", "boot-guard")
+ */
+export function spendRecoverySlot(storage, source = "unknown", { now = Date.now(), max = RECOVERY_BUDGET_MAX } = {}) {
+  if (!storage) return false;
+  const budget = readBudget(storage, now);
+  if (!budget) return false;
+  // Bogfoeringen er det autoritative tjek, ikke `hasRecoveryBudget` (CodeRabbit
+  // 11/9). Kalderne peeker foerst, men mellem peek og bogfoering kan et ANDET
+  // lag naa at bruge den sidste plads — i release-watcheren ligger den kausale
+  // navigations-probes `await` praecis i det vindue. Uden denne graense kunne
+  // de to lag tilsammen skrive `used: 4` og reloade forbi loftet.
+  if (budget.used >= max) return false;
+  try {
+    storage.setItem(
+      RECOVERY_BUDGET_KEY,
+      JSON.stringify({ used: budget.used + 1, windowStart: budget.windowStart, last: source }),
+    );
     return true;
   } catch {
     return false;
   }
+}
+
+/**
+ * Bogfør boot-vagtens reload i det fælles budget. Vagten kører før moduler
+ * findes og kan derfor ikke selv gøre det; den efterlader blot sit tidsstempel.
+ *
+ * Kun ét tidsstempel bogføres én gang (markør-nøglen), og kun hvis det er
+ * friskt — en nøgle fra i går er ikke "lige sket". Samme friskheds-vindue som
+ * selvhelings-rapporteringen i main.jsx.
+ *
+ * @returns {boolean} true hvis der faktisk blev bogført et reload nu.
+ */
+export function accountBootGuardReload(storage, { now = Date.now(), freshnessMs = 5 * 60 * 1000 } = {}) {
+  if (!storage) return false;
+  let healedAt;
+  let accountedAt;
+  try {
+    healedAt = Number(storage.getItem(BOOT_GUARD_KEY)) || 0;
+    accountedAt = Number(storage.getItem(BOOT_GUARD_ACCOUNTED_KEY)) || 0;
+  } catch {
+    return false;
+  }
+  if (!healedAt) return false;
+  if (healedAt === accountedAt) return false;
+  if (now - healedAt > freshnessMs) return false;
+  try {
+    storage.setItem(BOOT_GUARD_ACCOUNTED_KEY, String(healedAt));
+  } catch {
+    return false;
+  }
+  return spendRecoverySlot(storage, "boot-guard", { now });
+}
+
+export function shouldAttemptChunkReload({ error, release, storage } = {}) {
+  if (!isChunkLoadError(error) || !storage) return false;
+  // #5159 (M3): samme fælles budget som den globale handler og release-watcheren.
+  // Peek FØR loop-guard-nøglen brændes — ellers koster et forsøg der alligevel
+  // ikke må køre det ene reload denne release har.
+  if (!hasRecoveryBudget(storage)) return false;
+  const key = getChunkReloadKey(release);
+  try {
+    if (storage.getItem(key) === "1") return false;
+    storage.setItem(key, "1");
+  } catch {
+    return false;
+  }
+  // Samme regel som den globale handler: ingen bogfoering, intet reload.
+  return spendRecoverySlot(storage, "boundary");
 }
 
 // Kausal navigations-guard (#3602) — delt af BEGGE recovery-stier (denne fil og
@@ -128,6 +280,129 @@ export async function documentIsStillLoadable({ fetchFn, url, timeoutMs = 3000, 
   }
 }
 
+// ---------------------------------------------------------------------------
+// Lag 2 gennem PORTEN (#5159, review-fund 1)
+// ---------------------------------------------------------------------------
+//
+// B1 handlede oprindeligt kun om lag 3 (release-watcheren). Men de to reaktive
+// stier — den globale preload-/rejection-handler herunder og error-boundary'ens
+// auto-recovery i lib/sentry.jsx — kaldte `reload()` UDEN at spørge porten. Det
+// er præcis den sti der fyrer lige efter et deploy (`vite:preloadError`, eller
+// et afvist dynamic import), altså i det samme minut hvor en spiller kan sidde
+// med en ugemt holdudtagelse. En automatisk genindlæsning dér koster det samme
+// arbejde som den release-watcheren havde lært at lade være med at tage.
+//
+// Beslutningen er nu ÉN funktion, delt af begge stier, så de ikke kan komme til
+// at drive fra hinanden igen:
+//
+//   1. den kausale navigations-probe (#3602) — reloader vi et dokument der er
+//      på vej væk, kaprer vi spillerens egen navigation,
+//   2. PORTEN (reloadGate.js) — er der ugemt arbejde, en åben dialog, en
+//      igangværende skrivning eller en kørende afspilning, sker der INTET
+//      automatisk. Vi abonnerer i stedet på det sikre punkt og lader den
+//      manuelle udvej stå imens,
+//   3. lagets egen loop-guard + det fælles recovery-budget (M3).
+//
+// Vi gemmer aldrig spillerens kladde for ham, og vi kasserer den heller ikke:
+// reparationen venter.
+
+/** @type {{source: string}|null} sidste udskudte recovery, fastholdt til sene lyttere. */
+let deferredNotice = null;
+/** @type {Set<(notice: {source: string}) => void>} */
+const deferredListeners = new Set();
+
+/**
+ * Abonnér på "et automatisk recovery-reload blev udskudt fordi porten var
+ * lukket". Banneret (den manuelle udvej) hænger på dette.
+ *
+ * Lytteren kaldes MED DET SAMME hvis der allerede ligger et udskudt reload:
+ * handlerne installeres i main.jsx før React overhovedet har monteret, så et
+ * preload-error i boot-vinduet ville ellers være usynligt for banneret.
+ *
+ * @param {(notice: {source: string}) => void} listener
+ * @returns {() => void} afmeld
+ */
+export function onRecoveryDeferred(listener) {
+  if (typeof listener !== "function") return () => {};
+  deferredListeners.add(listener);
+  if (deferredNotice) {
+    try {
+      listener(deferredNotice);
+    } catch {
+      // en UI-fejl må aldrig vælte recovery-stien
+    }
+  }
+  return () => deferredListeners.delete(listener);
+}
+
+function notifyRecoveryDeferred(source = "unknown") {
+  deferredNotice = { source: String(source) };
+  for (const listener of [...deferredListeners]) {
+    try {
+      listener(deferredNotice);
+    } catch {
+      // en fejl i én lytter må ikke stoppe de andre
+    }
+  }
+}
+
+/**
+ * Den fælles beslutning bag ÉT automatisk recovery-reload. Begge reaktive lag
+ * kalder denne, så porten, proben og budgettet aldrig kan gælde det ene lag og
+ * ikke det andet.
+ *
+ * @param {object} opts
+ * @param {() => Promise<boolean>} opts.probe den kausale navigations-guard.
+ * @param {() => boolean} opts.claim lagets egen loop-guard + budget-bogføring.
+ *   Returnerer false når laget ikke har flere automatiske forsøg.
+ * @param {() => void} opts.reload selve genindlæsningen.
+ * @param {string} [opts.source] hvilket lag der spørger (til banner-signalet).
+ * @param {() => boolean} [opts.isCancelled] sand når forsøget er blevet
+ *   irrelevant (dokumentet er på vej ud, eller vi har allerede reloadet).
+ * @returns {Promise<"reloaded"|"deferred"|"exhausted"|"cancelled">}
+ */
+export async function attemptRecoveryReload({
+  probe,
+  claim,
+  reload,
+  source = "unknown",
+  isCancelled = () => false,
+  isAllowed = isReloadAllowed,
+  subscribeAllowed = onReloadAllowed,
+  notifyDeferred = notifyRecoveryDeferred,
+} = {}) {
+  if (isCancelled()) return "cancelled";
+  const alive = await probe?.();
+  if (!alive || isCancelled()) return "cancelled";
+  if (!isAllowed()) {
+    // Porten er lukket: INTET automatisk reload. Abonnementet og signalet
+    // sættes SYNKRONT efter tjekket, så der ikke er et vindue hvor den sidste
+    // blokering kan slippes uden at nogen hører det.
+    let unsubscribe;
+    unsubscribe = subscribeAllowed(() => {
+      unsubscribe?.();
+      unsubscribe = undefined;
+      if (isCancelled()) return;
+      Promise.resolve(
+        attemptRecoveryReload({
+          probe, claim, reload, source, isCancelled, isAllowed, subscribeAllowed, notifyDeferred,
+        }),
+      ).catch(() => {});
+    });
+    notifyDeferred(source);
+    return "deferred";
+  }
+  if (!claim?.()) return "exhausted";
+  reload?.();
+  return "reloaded";
+}
+
+/** KUN til tests: nulstiller det udskudte signal mellem scenarier. */
+export function __resetRecoveryDeferredForTests() {
+  deferredNotice = null;
+  deferredListeners.clear();
+}
+
 // Globalt net for stale-chunk-fejl der aldrig når React's error-boundary (#906).
 // To kilder:
 //   1. `vite:preloadError` — Vite's helper dispatcher dette når en modulepreload
@@ -166,30 +441,65 @@ export function installChunkReloadHandlers({ target, release, storage, reload, d
   let reloadedThisLoad = false;
   let unloading = false;
   let pending = false;
+  // #5159 (review-fund 1): porten var lukket, og vi venter nu på det sikre
+  // punkt. Et nyt preload-error må ikke lægge endnu et abonnement oveni.
+  let waitingForGate = false;
+  // Cleanup skal også slukke et ventende port-abonnement — ellers ville en
+  // afmonteret handler stadig kunne reloade når porten åbner (og en test ville
+  // lække sin tilstand ind i den næste).
+  let disposed = false;
+
+  // Lagets egen loop-guard + det fælles budget. Kaldes KUN når proben og porten
+  // begge har sagt ja, så et forsøg der alligevel ikke må køre aldrig stjæler
+  // det ene reload denne release har.
+  const claimSlot = () => {
+    // #5159 (M3): FAIL-CLOSED. Før faldt denne sti tilbage til `reloadedThisLoad`
+    // når sessionStorage manglede eller kastede — men det flag dør med
+    // dokumentet. Målt i en ren model: tre dokumentstarter uden storage, ét
+    // preload-error pr. start, gav TRE reloads. Uden bevis for at vi ikke
+    // allerede har reloadet, reloader vi ikke; lazyWithRetry og den brandede
+    // fallback med sin manuelle knap er sikkerhedsnettet.
+    if (!storage) return false;
+    // Budget-tjekket FØR loop-guard-nøglen brændes.
+    if (!hasRecoveryBudget(storage)) return false;
+    try {
+      if (storage.getItem(key) === "1") return false;
+      storage.setItem(key, "1");
+    } catch {
+      return false;
+    }
+    // Lykkedes bogfoeringen ikke (skrivningen fejlede, eller et andet lag tog den
+    // sidste plads imens), saa reloader vi ikke. Et ubogfoert reload er et
+    // reload uden loft.
+    return spendRecoverySlot(storage, "chunk-error");
+  };
 
   const fireReload = async () => {
     pending = false;
     if (reloadedThisLoad || unloading) return;
-    // Kausal guard FØR vi brænder loop-guard-nøglen: en afbrudt navigation må
-    // ikke stjæle det ene reload en senere, ægte stale chunk har brug for.
-    const alive = await documentIsStillLoadable({
-      fetchFn: probeFetch,
-      url: probeUrl(),
-      ...(probeTimeoutMs === undefined ? {} : { timeoutMs: probeTimeoutMs }),
+    const outcome = await attemptRecoveryReload({
+      // Kausal guard FØR vi brænder loop-guard-nøglen: en afbrudt navigation må
+      // ikke stjæle det ene reload en senere, ægte stale chunk har brug for.
+      probe: () => documentIsStillLoadable({
+        fetchFn: probeFetch,
+        url: probeUrl(),
+        ...(probeTimeoutMs === undefined ? {} : { timeoutMs: probeTimeoutMs }),
+      }),
+      claim: claimSlot,
+      reload: () => {
+        reloadedThisLoad = true;
+        reload?.();
+      },
+      source: "chunk-error",
+      isCancelled: () => reloadedThisLoad || unloading || disposed,
     });
-    if (!alive || reloadedThisLoad || unloading) return;
-    try {
-      if (storage?.getItem(key) === "1") return;
-      storage?.setItem(key, "1");
-    } catch {
-      // sessionStorage utilgængelig (privat browsing) — fald tilbage til per-load-guard.
-    }
-    reloadedThisLoad = true;
-    reload?.();
+    // Porten var lukket. Der sker intet nu; abonnementet i attemptRecoveryReload
+    // vækker os når den sidste blokering slippes, og banneret er udvejen imens.
+    if (outcome === "deferred") waitingForGate = true;
   };
 
   const reloadOncePerRelease = () => {
-    if (reloadedThisLoad || unloading || pending) return;
+    if (reloadedThisLoad || unloading || pending || waitingForGate) return;
     pending = true;
     // fireReload er async (canary'en) → swallow, så en fejl i recovery-stien
     // ikke bliver en unhandledrejection som vores egen handler så ser igen.
@@ -236,6 +546,7 @@ export function installChunkReloadHandlers({ target, release, storage, reload, d
   target.addEventListener("pageshow", onPageshow);
 
   return () => {
+    disposed = true;
     target.removeEventListener("vite:preloadError", onPreloadError);
     target.removeEventListener("unhandledrejection", onUnhandledRejection);
     target.removeEventListener("pagehide", onPagehide);

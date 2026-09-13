@@ -4,6 +4,7 @@ import { formatBidWarning, computeAvailableForBid, isAuctionTimeExpired } from "
 import { logEvent, logFirstEvent } from "./logEvent";
 import { formatNumber } from "./intl";
 import { useBlockedAction } from "./useBlockedAction.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "./reloadGate.js";
 import { reportActionFailure } from "./actionTelemetry.js";
 import { retirementBidWarningTier } from "./riderAge";
 import { auctionSettlesAfterValueUpdate } from "./auctionValueUpdateWindow.js";
@@ -64,6 +65,21 @@ export function useAuctionBidding({
   const [proxyErrorText, setProxyErrorText] = useState("");
 
   const myProxy = auction.myProxyMax || null;
+
+  // #5159 (B1): budbeloeb og autobud-loft er lokale indtil de sendes, og et
+  // igangvaerende kald ("loading") er en skrivning vi endnu ikke har faaet svar
+  // paa. Et release-drevet reload maatte foer dette baade kassere et indtastet
+  // beloeb og rive svaret paa et sendt bud vaek under spilleren. Bemaerk: dette
+  // beviser IKKE at et accepteret serverbud kunne gaa tabt — kun at spilleren
+  // kunne miste sit indtastede beloeb og sit svar.
+  const bidBusy = bidStatus === "loading" || proxyStatus === "loading";
+  // `proxyInput` bliver STAAENDE efter et vellykket gem (kun panelet lukkes), saa
+  // den maa ikke vaere en del af signalet: saa ville porten vaere laast resten af
+  // kortets levetid uden at der var en eneste kladde tilbage (CodeRabbit 11/9).
+  // `proxyExpanded` daekker allerede "spilleren er ved at redigere loftet".
+  const bidDirty = bidAmount !== minBid || proxyExpanded;
+  useReloadBlock(bidBusy, RELOAD_BLOCK_REASONS.BUSY);
+  useReloadBlock(bidDirty, RELOAD_BLOCK_REASONS.DIRTY);
 
   // #3110: byd-/autobud-knappen forblev aktiv efter nedtællingen ramte 0 —
   // status-cronen der sætter auction.status="completed" kan tage et stykke

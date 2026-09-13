@@ -60,6 +60,7 @@ import SortableTh from "../ui/SortableTh.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
 import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import {
   buildDraftMatrix,
   diffToOverrides,
@@ -355,6 +356,17 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     () => untouchedStages({ matrix: draftMatrix, riders, editableStages, exceptStage: activeStage }),
     [draftMatrix, riders, editableStages, activeStage],
   );
+
+  // #5159 (B1): intentioner og rollevalg ligger i kladder indtil Gem, og Gem er
+  // TO sekventielle skrivninger naar ordrevisningen er aktiv. Et release-drevet
+  // reload maa hverken kassere kladden eller ramme ned MELLEM de to kald.
+  // Beregnes her — foer de tidlige returns — fordi et hook skal kaldes
+  // ubetinget; `dirty` nedenfor er den samme sandhed, blot stage-lock-filtreret
+  // til knappens tilstand.
+  const draftDirty =
+    isDirty(draftMatrix, initialMatrix) ||
+    (showOrders && JSON.stringify(ordersByStage) !== JSON.stringify(initialOrdersByStage));
+  useReloadBlock(draftDirty || status === "saving", RELOAD_BLOCK_REASONS.DIRTY);
 
   if (roles === null) {
     return (

@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
 import { bootAssetsManifestPlugin } from "./vite-plugins/boot-assets-manifest.js";
+// #5159 (audit-fund H4): frontendens indholds-id + dist/version.json. Se
+// vite-plugins/frontend-content-id.js for hvorfor sha'en ikke må være det der
+// afgør om en åben fane genindlæser.
+import { frontendContentIdPlugin } from "./vite-plugins/frontend-content-id.js";
 import { computeSkewDefines } from "./vite-plugins/skew-defines.js";
 // SSOT for om Skew Protection reelt er tændt i koden. Modulet har ingen
 // side-effects ved import (kun const- og funktions-eksporter), så det kan læses
@@ -142,6 +146,9 @@ export default defineConfig({
     // JSON-datablok lige FOER /chunk-selfheal.js, saa boot-vagten har en komplet
     // liste allerede mens parseren er midt i <head>.
     bootAssetsManifestPlugin(),
+    // #5159: indholds-id'et hasher bundle-navnene og public/, og kører derfor
+    // med enforce:"post" — rækkefølgen her er kun for læsbarhed.
+    frontendContentIdPlugin({ releaseSha }),
     enableSentryPlugin
       ? sentryVitePlugin({
           authToken: process.env.SENTRY_AUTH_TOKEN,

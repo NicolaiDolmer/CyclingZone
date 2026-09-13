@@ -38,6 +38,9 @@ import { focusPanelRows, hasAnySignal, hasAnyPerSeason, FOCUS_SIGNAL } from "../
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import RiderBadges from "../rider/RiderBadges.jsx";
 import { Modal, Button } from "../ui";
+// #5159 (B1): panelets valg er en kladde indtil Gem — et deploy maa ikke tage
+// den med sig.
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 
 // Signal-mærket. `strong` er den eneste positive påstand vi kan stå inde for;
 // `none` renderer bevidst ingenting (se focusSignal-kommentaren i libbet).
@@ -126,6 +129,11 @@ export default function FocusPanel({
 
   const complete = draftDayType != null && (!needsSession || draftSession != null);
   const dirty = draftDayType !== savedDayType || draftSession !== savedSession;
+
+  // #5159 (B1): panelet er en aaben dialog OG en kladde. `open && dirty` er
+  // praecis knappens egen sandhed — samme udtryk, ingen ny tilstand. Lukkes eller
+  // gemmes panelet, slipper blokeringen af sig selv.
+  useReloadBlock(Boolean(open && dirty), RELOAD_BLOCK_REASONS.DIRTY);
 
   const cols = ["18px", "minmax(96px,1fr)", "minmax(0,1.6fr)"];
   if (showPerSeason) cols.push("minmax(96px,auto)");
