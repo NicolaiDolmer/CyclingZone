@@ -177,6 +177,19 @@ test("et rent og pushet worktree behoever ingen stop-agent", () => {
   assert.equal(needsGracefulStop({ probeOk: true, dirty: false, unpushed: 0 }), false);
 });
 
+test("umaaleligt antal upushede commits er IKKE nul - branchen kan mangle upstream", () => {
+  // `git rev-list --count @{u}..HEAD` fejler netop naar branchen aldrig er
+  // pushet, og dér ligger HVER commit kun lokalt. -1/NaN/manglende felt maa
+  // aldrig laeses som "alt er i hus".
+  for (const unpushed of [-1, NaN, undefined, null, "n/a"]) {
+    assert.equal(
+      needsGracefulStop({ probeOk: true, dirty: false, unpushed }),
+      true,
+      `unpushed=${String(unpushed)} blev fejlagtigt laest som nul upushede commits`,
+    );
+  }
+});
+
 test("ukendt tilstand koerer stop-agenten - et dirty worktree er dyrere", () => {
   assert.equal(needsGracefulStop({ probeOk: false, dirty: false, unpushed: 0 }), true);
   assert.equal(needsGracefulStop(undefined), true);
@@ -235,6 +248,17 @@ test("CLI'en melder frys naar branchen har staaet stille", () => {
   assert.equal(d.verdict, "frozen");
   assert.equal(d.reason, "branch-stall");
   assert.equal(d.stopsWave, true);
+});
+
+test("CLI'en uden --unpushed melder ukendt (-1), ikke nul", () => {
+  const out = execFileSync(
+    process.execPath,
+    [MODULE_PATH, "--last-commit-epoch", "1757800000", "--now-epoch", "1757800600", "--elapsed-minutes", "120"],
+    { encoding: "utf8" },
+  );
+  const d = JSON.parse(out);
+  assert.equal(d.unpushed, -1);
+  assert.equal(d.gracefulStop, true, "ukendt push-status skal udloese en redning");
 });
 
 test("CLI'en melder frys naar branchen slet ikke kunne maales", () => {

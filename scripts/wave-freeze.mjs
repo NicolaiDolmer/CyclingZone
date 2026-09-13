@@ -196,7 +196,14 @@ export function needsGracefulStop(p) {
   if (p.verdict === 'hard-cap') return false;
   if (p.probeOk !== true) return true;
   if (p.dirty === true) return true;
-  return Number(p.unpushed || 0) > 0;
+  // Et umaaleligt tal (-1, NaN, mangler) er IKKE "nul upushede": netop naar
+  // `git rev-list --count @{u}..HEAD` fejler, fordi branchen aldrig er pushet
+  // og ingen upstream har, ligger HVER commit kun lokalt.
+  // null/undefined/"" glider ellers igennem som 0 via Number(null) === 0.
+  const raw = p.unpushed;
+  if (raw === null || raw === undefined || raw === '') return true;
+  const unpushed = Number(raw);
+  return !Number.isFinite(unpushed) || unpushed !== 0;
 }
 
 /** Commit-beskeden den graceful stop-agent skal bruge (ordret, jf. #5178). */
@@ -236,7 +243,9 @@ function main() {
     stallMinutes: a['stall-minutes'] !== undefined ? Number(a['stall-minutes']) : undefined,
   });
   const dirty = a.dirty === true || a.dirty === 'true';
-  const unpushed = Number(a.unpushed || 0);
+  // Uden --unpushed ved vi det ikke; -1 (ukendt) er det aerlige svar, og
+  // needsGracefulStop behandler det som "der kan ligge lokalt arbejde".
+  const unpushed = Number.isFinite(Number(a.unpushed)) && a.unpushed !== true ? Number(a.unpushed) : -1;
   process.stdout.write(
     `${JSON.stringify(
       {

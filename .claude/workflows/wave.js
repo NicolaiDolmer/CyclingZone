@@ -321,7 +321,12 @@ function needsGracefulStop(p) {
   if (p.verdict === 'hard-cap') return false
   if (p.probeOk !== true) return true
   if (p.dirty === true) return true
-  return Number(p.unpushed || 0) > 0
+  // Et umaaleligt tal (-1, NaN, mangler) er IKKE "nul upushede" - en branch
+  // uden upstream har hele sit arbejde liggende lokalt.
+  const raw = p.unpushed
+  if (raw === null || raw === undefined || raw === '') return true
+  const unpushed = Number(raw)
+  return !Number.isFinite(unpushed) || unpushed !== 0
 }
 
 // SPEJLING af resolveTrackTimeoutMinutes() i scripts/wave-freeze.mjs.
@@ -398,7 +403,9 @@ function probePrompt(track, elapsedMinutes) {
     `1. \`git -C "${track.worktree}" --no-pager log -1 --format=%ct\`  -> sekunder siden epoch for seneste commit (tom = ingen commits)`,
     '2. `pwsh -NoProfile -Command "[int][double]::Parse((Get-Date -UFormat %s))"`  -> nu, i sekunder siden epoch',
     `3. \`git -C "${track.worktree}" status --porcelain\`  -> ucommittede aendringer (tom = rent)`,
-    `4. \`git -C "${track.worktree}" --no-pager rev-list --count @{u}..HEAD\`  -> upushede commits (fejler den, brug 0)`,
+    `4. \`git -C "${track.worktree}" --no-pager rev-list --count @{u}..HEAD\`  -> upushede commits.`,
+    '   Fejler kaldet - fx fordi branchen aldrig er pushet og slet ingen upstream har - saa rapportér -1, ALDRIG 0.',
+    '   Netop dér ligger HVER eneste commit kun lokalt, og et 0 ville faa boelgen til at tro at alt var i hus.',
     '',
     'Laeg saa dommen ved at koere regnestykket i repoet (kilden til reglen, ikke hovedregning):',
     `\`node "${MAIN_CHECKOUT}\\scripts\\wave-freeze.mjs" --last-commit-epoch <1> --now-epoch <2> --elapsed-minutes ${Math.round(elapsedMinutes)} [--dirty] --unpushed <4>\``,
@@ -755,7 +762,9 @@ async function probeBranch(track, elapsedMinutes) {
     probeOk,
     lastCommitAgeMinutes: probeOk ? age : null,
     dirty: probe.dirty === true,
-    unpushed: Number(probe.unpushed) || 0,
+    // -1 = kunne ikke maales. Coercer man den til 0, ser en branch uden
+    // upstream - hvor ALT ligger lokalt - ud som fuldt pushet.
+    unpushed: Number.isFinite(Number(probe.unpushed)) ? Number(probe.unpushed) : -1,
     note: probe.note || '',
   }
 }
@@ -966,16 +975,23 @@ const stopped = results.filter((r) => r.status === 'frys' || r.status === 'timeo
 log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${tracks.length} i alt).`)
 // Et worktree der stadig er dirty efter den graceful stop-agent skal ses af et
 // menneske - det er praecis den tilstand boelge 2 den 11/9 efterlod usynligt.
-// Tre tilstande der alle skal raabes op, og ingen flere:
-//   unknown  - stop-agenten svarede ikke, saa worktreet er uafklaret
+// Fire tilstande der alle skal raabes op, og ingen flere:
+//   unknown - stop-agenten svarede ikke, saa worktreet er uafklaret
 //   stillDirty - den naaede ikke at faa alt med
+//   proben SAA arbejde (dirty, eller upushede/umaalelige commits), men
+//     stop-agenten fik ikke committet - fx fordi guarden blokerede. Uden det
+//     her ville en blokeret redning se ud som en vellykket.
 //   committed uden pushed - arbejdet ligger i en LOKAL commit, lige saa
 //     usynligt som et dirty worktree
 // Et rent worktree svarer med rette committed:false/pushed:false; det er ikke
 // en advarsel, og maa ikke taelle med.
+const hadWork = (f) => Boolean(f) && (f.dirty === true
+  || f.unpushed === null || f.unpushed === undefined
+  || !Number.isFinite(Number(f.unpushed)) || Number(f.unpushed) !== 0)
 const stillDirty = results.filter((r) => r.gracefulStop && r.gracefulStop.skipped !== true
   && (r.gracefulStop.unknown === true
     || r.gracefulStop.stillDirty === true
+    || (hadWork(r.freeze) && r.gracefulStop.committed !== true)
     || (r.gracefulStop.committed === true && r.gracefulStop.pushed !== true)))
 for (const r of stillDirty) {
   log(`ADVARSEL: #${r.issue} ${r.branch} kan stadig have ucommittet ELLER upushet arbejde i worktreet - ${(r.gracefulStop && r.gracefulStop.note) || 'ingen note fra stop-agenten'}. Tjek det i haanden.`)
