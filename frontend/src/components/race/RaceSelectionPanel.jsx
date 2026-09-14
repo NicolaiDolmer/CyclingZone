@@ -171,6 +171,10 @@ export default function RaceSelectionPanel({
     generationRef.current += 1;
     setData(null);
     setStatus("idle");
+    // #5098 (CodeRabbit): autoStatus manglede her. Et forældet auto-udtag der
+    // returnerede på stale-guarden efterlod "loading" stående, og `busy` låste
+    // så det NYE løbs panel for altid. Effekten rydder begge statusser nu.
+    setAutoStatus("idle");
     setErrorKey(null);
     setErrorDetail(null);
     // #5098: udkastet sættes SYNKRONT her, ikke først når fetch'et lander —
@@ -434,6 +438,7 @@ export default function RaceSelectionPanel({
       if (!res.ok) { setAutoStatus("error"); return; }
       dropDraft();
       await loadSelection();
+      if (isStale(gen)) return;
       setAutoStatus("idle");
     } catch {
       setAutoStatus("error");
