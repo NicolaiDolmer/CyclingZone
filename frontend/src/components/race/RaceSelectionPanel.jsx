@@ -11,6 +11,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { toggleRider, validateSelectionClient, partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
+// #5098: det ugemte udkast lever uden for komponenten, så en afmontering (et
+// fane-skift på løbssiden) ikke tager managerens arbejde med sig.
+import {
+  rememberSelectionDraft,
+  readSelectionDraft,
+  forgetSelectionDraft,
+  reconcileSelectionDraft,
+} from "../../lib/raceSelectionDraft.js";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
@@ -62,6 +70,10 @@ export default function RaceSelectionPanel({
   // fejlen skal sige HVEM/HVOR, ikke bare en opak kode). Sat af save() fra body.conflicts.
   const [errorDetail, setErrorDetail] = useState(null);
   const [touched, setTouched] = useState(false);
+  // #5098: sandt når panelet åbnede på et ugemt udkast i stedet for serverens
+  // udtagelse — så siger fladen det, i stedet for at lade manageren tro at det
+  // han ser er gemt.
+  const [restoredDraft, setRestoredDraft] = useState(false);
   // #1747: skjul-skadede-toggle. Default false (skadede vises dæmpet + deaktiveret)
   // så manageren stadig kan se hvem der er ude — toggler skjuler dem helt.
   const [hideInjured, setHideInjured] = useState(false);
@@ -134,7 +146,14 @@ export default function RaceSelectionPanel({
       const body = await res.json();
       if (requestGeneration !== generationRef.current) return;
       setData(body);
-      if (body.selection) {
+      // #5098: et ugemt udkast vinder over serverens gemte udtagelse — det er
+      // det nyeste manageren har lavet, og svaret her er netop den tilstand han
+      // var i gang med at ændre. Skåret til den rytterliste serveren svarer med
+      // NU, så en rytter der er faldet ud i mellemtiden ikke lever videre.
+      const draft = readSelectionDraft(raceId);
+      if (draft) {
+        setSel(reconcileSelectionDraft(draft, body.riders));
+      } else if (body.selection) {
         setSel({
           riderIds: body.selection.rider_ids ?? [],
           captainId: body.selection.captain_id ?? null,
@@ -154,7 +173,15 @@ export default function RaceSelectionPanel({
     setStatus("idle");
     setErrorKey(null);
     setErrorDetail(null);
-    setTouched(false);
+    // #5098: udkastet sættes SYNKRONT her, ikke først når fetch'et lander —
+    // ellers ville panelet blinke tomt på vej tilbage fra en anden fane. Og
+    // `sel` nulstilles nu eksplicit: uden det bar panelet det forrige løbs trup
+    // med over ved et raceId-skift uden remount (samme route, andet løb), hvis
+    // det nye løb ingen gemt udtagelse havde.
+    const draft = readSelectionDraft(raceId);
+    setSel(draft ?? EMPTY_SELECTION);
+    setTouched(Boolean(draft));
+    setRestoredDraft(Boolean(draft));
     loadSelection();
     return () => { generationRef.current += 1; };
   }, [raceId, loadSelection]);
@@ -269,6 +296,9 @@ export default function RaceSelectionPanel({
 
   function update(next) {
     setSel(next);
+    // #5098: hvert eneste klik lægger sig i udkastet, så det er der uanset
+    // hvornår manageren forlader panelet.
+    rememberSelectionDraft(raceId, next);
     if (!touched) setTouched(true);
     if (status !== "idle") setStatus("idle");
     if (errorKey) setErrorKey(null);
@@ -323,6 +353,10 @@ export default function RaceSelectionPanel({
         return;
       }
       setStatus("saved");
+      // #5098: serveren har overtaget sandheden — udkastet må ikke kunne dukke
+      // op igen og gen-vise en tilstand manageren allerede har gemt.
+      forgetSelectionDraft(raceId);
+      setRestoredDraft(false);
       // #5159 (CodeRabbit 11/9): kladden ER nu serverens, saa reload-porten skal
       // aabne igen. Uden det blev `touched` staaende resten af panelets levetid,
       // og en spiller der havde gemt for laenge siden ville aldrig faa
@@ -366,6 +400,11 @@ export default function RaceSelectionPanel({
     try {
       const res = await fetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
       if (!res.ok) { setAutoStatus("error"); return; }
+      // #5098: assistenten har netop skrevet truppen på serveren. Udkastet er
+      // dermed forældet og skal IKKE vinde over det svar loadSelection henter.
+      forgetSelectionDraft(raceId);
+      setRestoredDraft(false);
+      setTouched(false);
       await loadSelection();
       setAutoStatus("idle");
     } catch {
@@ -430,6 +469,15 @@ export default function RaceSelectionPanel({
             bucket: t(`strategy.buckets.${selectedStageBucket}`),
             name: riders.find((r) => r.id === bestId)?.name ?? "",
           })}
+        </p>
+      )}
+
+      {/* #5098: panelet åbnede på managerens ugemte udkast (han var forbi en
+          anden fane og kom tilbage). Én kort linje, så han ikke tror det står
+          gemt — den forsvinder i samme sekund han gemmer. */}
+      {restoredDraft && touched && (
+        <p data-testid="selection-draft-restored" className="px-4 py-2 text-xs text-cz-2 bg-cz-subtle border-b border-cz-border">
+          {t("selection.draftRestored")}
         </p>
       )}
 
