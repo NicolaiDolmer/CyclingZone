@@ -95,3 +95,22 @@ test("watchlist search filters the list by rider name (#5122)", async ({ page })
   await expect(page.getByRole("row", { name: /Stone/ })).toBeVisible();
   await expect(page.getByRole("row", { name: /Bjerre/ })).toHaveCount(0);
 });
+
+// CodeRabbit-fund (samme review-runde): et naivt fix der bare tilføjede
+// mobil-feltet UDEN at skjule RiderFilters' eget "q"-felt gav to søgefelter
+// synlige samtidig så snart man åbnede "FILTRÉR"-folden på mobil. WatchlistPage
+// skjuler nu RiderFilters' interne felt via hideFields=["q"] når isMobile er
+// sand — dette beviser der aldrig er to.
+test("watchlist does not show a duplicate search field when the mobile fold is opened (#5122)", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop-chromium", "folden findes kun på mobil");
+
+  await login(page);
+  await page.goto("/watchlist");
+
+  await page.getByTestId("filter-panel-toggle").click();
+
+  // RiderFilters' eget navnefelt er lige nu hideFields=["q"] og findes slet
+  // ikke i DOM'en — kun ét søgefelt (det mobil-only, allerede synlige) må stå.
+  await expect(page.getByTestId("filter-name")).toHaveCount(0);
+  await expect(page.getByTestId("watchlist-mobile-search")).toBeVisible();
+});
