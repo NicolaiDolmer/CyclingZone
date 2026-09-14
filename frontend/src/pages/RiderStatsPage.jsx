@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { getAuthedUser } from "../lib/getAuthedUser.js";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5089: Retry-After-respekt for development/value-trend
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
 import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
@@ -1153,10 +1154,14 @@ export default function RiderStatsPage() {
     try {
       const h = await authHeaders();
       if (!h) { if (developmentFetchIdRef.current === fetchId) setStatHistory([]); return; }
-      const res = await fetch(`${API}/api/riders/${fetchId}/development`, { headers: h });
-      const data = res.ok ? await res.json() : [];
+      // #5089: apiFetch, ikke bart fetch() — en 429 (rytter-switcher-byge) sætter
+      // et Retry-After-vindue pr. url og skal IKKE tømme tabben til en tom kurve;
+      // "limited" betyder "intet nyt endnu", ikke en fejl. Et 401 afleveres til
+      // networkErrorGuards' session-rejected-kæde, som allerede tager over.
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/development`, { headers: h });
       if (developmentFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
-      setStatHistory(data);
+      if (res.limited || res.unauthorized) return; // stille backoff / session-kæden overtager
+      setStatHistory(res.ok ? res.data : []);
     } catch {
       // non-critical: Udvikling-tabben falder tilbage til empty-state
       if (developmentFetchIdRef.current === fetchId) setStatHistory([]);
@@ -1192,10 +1197,11 @@ export default function RiderStatsPage() {
     try {
       const h = await authHeaders();
       if (!h) { if (valueTrendFetchIdRef.current === fetchId) setValueTrend(null); return; }
-      const res = await fetch(`${API}/api/riders/${fetchId}/value-trend`, { headers: h });
-      const data = res.ok ? await res.json() : null;
+      // #5089: samme apiFetch-kontrakt som loadDevelopmentHistory ovenfor.
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/value-trend`, { headers: h });
       if (valueTrendFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
-      setValueTrend(data);
+      if (res.limited || res.unauthorized) return; // stille backoff / session-kæden overtager
+      setValueTrend(res.ok ? res.data : null);
     } catch {
       if (valueTrendFetchIdRef.current === fetchId) setValueTrend(null);
     }
