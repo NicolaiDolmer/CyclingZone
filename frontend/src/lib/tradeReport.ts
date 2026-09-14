@@ -28,7 +28,7 @@ export interface TransferHistoryEventLike {
 export function parseTransferEventId(eventId: unknown): { type: string; id: string } | null {
   if (typeof eventId !== "string") return null;
   const idx = eventId.indexOf(":");
-  if (idx <= 0) return null;
+  if (idx <= 0 || idx === eventId.length - 1) return null;
   return { type: eventId.slice(0, idx), id: eventId.slice(idx + 1) };
 }
 

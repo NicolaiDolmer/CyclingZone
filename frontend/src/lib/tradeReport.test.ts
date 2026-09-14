@@ -25,6 +25,10 @@ test("parseTransferEventId returns null for malformed/missing ids", () => {
   assert.equal(parseTransferEventId(""), null);
   assert.equal(parseTransferEventId("no-colon-here"), null);
   assert.equal(parseTransferEventId(":leading-colon"), null);
+  // CodeRabbit-fund (PR #5214): tom rå-id efter kolon ("auction:") gav tidligere
+  // { type: "auction", id: "" } i stedet for null — et tomt id kan aldrig slå op
+  // i backend'en, så det skal afvises ligesom de andre malformed-former.
+  assert.equal(parseTransferEventId("auction:"), null);
   assert.equal(parseTransferEventId(null), null);
   assert.equal(parseTransferEventId(undefined), null);
 });
