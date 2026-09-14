@@ -294,6 +294,16 @@ export default function RaceSelectionPanel({
   // generel egnethed.
   const fitSortLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
 
+  // #5098 (CodeRabbit 14/9): save() og autoSelect() skrev deres resultat uden at
+  // spørge om de stadig hører til DET løb panelet viser. Skifter raceId mens et
+  // PUT/POST er undervejs (samme route, andet løb — panelet remountes ikke),
+  // kunne et gammelt svar markere det NYE løb som gemt, rydde dets `touched` og
+  // åbne reload-porten midt i en urørt udtagelse. Samme generations-guard som
+  // loadSelection allerede bruger (#3310), nu også på skrive-vejene.
+  function isStale(generation) {
+    return generation !== generationRef.current;
+  }
+
   // #5098: serveren har overtaget sandheden (et lykkedes Gem eller assistentens
   // udtagelse) — udkastet må ikke kunne dukke op igen bagefter og gen-vise en
   // tilstand manageren allerede er færdig med.
@@ -324,6 +334,8 @@ export default function RaceSelectionPanel({
   }
 
   async function save() {
+    // Snapshot FØR det første await (authHeaders kan gå på netværk) — se isStale.
+    const gen = generationRef.current;
     const headers = await authHeaders();
     if (!headers) return;
     setStatus("saving");
@@ -352,6 +364,7 @@ export default function RaceSelectionPanel({
         }),
       });
       const body = await res.json().catch(() => ({}));
+      if (isStale(gen)) return;
       if (!res.ok) {
         setStatus("error");
         setErrorKey(body.error || "generic");
@@ -384,6 +397,8 @@ export default function RaceSelectionPanel({
           }
         : d));
     } catch {
+      // Bevidst UGUARDET: en netværksfejl skriver kun en fejlbesked, ingen
+      // udtagelses-state. Guarden ligger hvor et forældet svar kunne gøre skade.
       setStatus("error");
       setErrorKey("generic");
     }
@@ -395,6 +410,7 @@ export default function RaceSelectionPanel({
   // Efter succes genindlæses panelet via loadSelection() så trup + roller + is_auto_filled
   // afspejler det assistenten netop gemte, uden en fuld sidegenindlæsning.
   async function autoSelect() {
+    const gen = generationRef.current;
     const headers = await authHeaders();
     if (!headers) return;
     setAutoStatus("loading");
@@ -405,8 +421,9 @@ export default function RaceSelectionPanel({
     if (errorDetail) setErrorDetail(null);
     try {
       const res = await fetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
+      if (isStale(gen)) return;
       if (!res.ok) { setAutoStatus("error"); return; }
-      dropDraft(); // #5098: assistentens udtagelse er nu sandheden
+      dropDraft();
       await loadSelection();
       setAutoStatus("idle");
     } catch {
@@ -791,7 +808,11 @@ export default function RaceSelectionPanel({
             </button>
             <button
               type="button"
-              onClick={saveBlock.guard(save)}
+              /* #5098: guarden bygges ved KLIKKET, ikke under render. save()
+                 spørger nu generationsref'en om svaret stadig hører til dette
+                 løb, og react-hooks/refs afviser (med rette) at sende en
+                 ref-læsende funktion videre midt i en render. */
+              onClick={(event) => saveBlock.guard(save)(event)}
               disabled={busy}
               {...saveBlock.blockedProps}
               className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
