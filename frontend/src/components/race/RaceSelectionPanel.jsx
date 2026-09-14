@@ -294,6 +294,15 @@ export default function RaceSelectionPanel({
   // generel egnethed.
   const fitSortLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
 
+  // #5098: serveren har overtaget sandheden (et lykkedes Gem eller assistentens
+  // udtagelse) — udkastet må ikke kunne dukke op igen bagefter og gen-vise en
+  // tilstand manageren allerede er færdig med.
+  function dropDraft() {
+    forgetSelectionDraft(raceId);
+    setRestoredDraft(false);
+    setTouched(false);
+  }
+
   function update(next) {
     setSel(next);
     // #5098: hvert eneste klik lægger sig i udkastet, så det er der uanset
@@ -353,16 +362,13 @@ export default function RaceSelectionPanel({
         return;
       }
       setStatus("saved");
-      // #5098: serveren har overtaget sandheden — udkastet må ikke kunne dukke
-      // op igen og gen-vise en tilstand manageren allerede har gemt.
-      forgetSelectionDraft(raceId);
-      setRestoredDraft(false);
       // #5159 (CodeRabbit 11/9): kladden ER nu serverens, saa reload-porten skal
       // aabne igen. Uden det blev `touched` staaende resten af panelets levetid,
       // og en spiller der havde gemt for laenge siden ville aldrig faa
       // opdateringen automatisk — kun via banneret. `touched` styrer ogsaa
       // visningen af klient-valideringen, som er tom lige efter et lykkedes gem.
-      setTouched(false);
+      // #5098: dropDraft() gør begge dele — glemmer udkastet OG åbner porten.
+      dropDraft();
       // Efter manuel gem er udtagelsen ikke længere assistentens.
       setData((d) => (d
         ? {
@@ -400,11 +406,7 @@ export default function RaceSelectionPanel({
     try {
       const res = await fetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
       if (!res.ok) { setAutoStatus("error"); return; }
-      // #5098: assistenten har netop skrevet truppen på serveren. Udkastet er
-      // dermed forældet og skal IKKE vinde over det svar loadSelection henter.
-      forgetSelectionDraft(raceId);
-      setRestoredDraft(false);
-      setTouched(false);
+      dropDraft(); // #5098: assistentens udtagelse er nu sandheden
       await loadSelection();
       setAutoStatus("idle");
     } catch {
