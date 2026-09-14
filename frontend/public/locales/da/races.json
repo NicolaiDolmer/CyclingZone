@@ -795,6 +795,8 @@
       "howItEndedHelp": "Endeligt samlet klassement.",
       "otherClassifications": "Point-, bjerg- og holdklassement ligger under Resultater.",
       "openResults": "Åbn resultater",
+      "latestStageResultHint": "Se hvem der vandt etape {number}, og hvordan den forløb.",
+      "latestStageResultCta": "Resultat af etape {number}",
       "raceIsDone": "Der er ikke mere at sætte. Løbet er kørt.",
       "beforeFlag": "Før flaget",
       "beforeFlagHelp": "Hvad der stadig står åbent i det her løb.",

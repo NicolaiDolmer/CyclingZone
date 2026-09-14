@@ -26,6 +26,7 @@
 //   "scopeText": "fri tekst - hvad skal loeses",
 //   "ownership": ["scripts/foo.ps1", "docs/BAR.md"],
 //   "tier": "TARGETED",              // "TARGETED" | "FULL"
+//   "kind": "build",                 // "build" (default) | "investigate" (#5220)
 //   "verifyCommands": ["node --test scripts/foo.test.mjs"],
 //   "repoWorktreesRoot": "C:\\Dev\\CyclingZone-worktrees", // optional, default vist herunder
 //   "scratchRoot": "...",            // optional, default <worktreesRoot>\.wave-scratch
@@ -40,6 +41,11 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+// Denne generator er en almindelig Node-modul (i modsaetning til
+// .claude/workflows/wave.js, som er en workflow-DSL-fil uden import-adgang og
+// derfor maa spejle konstanten manuelt) - saa den importerer INVESTIGATE_TIMEOUT_MINUTES
+// direkte fra kilden i stedet for endnu en spejling (#5220).
+import { WAVE_FREEZE } from "./wave-freeze.mjs";
 
 const DEFAULT_WORKTREES_ROOT = "C:\\Dev\\CyclingZone-worktrees";
 
@@ -90,6 +96,50 @@ function reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules) {
     );
   }
   return lines.join("\n");
+}
+
+// #5220: undersoegelsesspor (kind: "investigate") bygger intet - kun
+// undersoeger og leverer en dom. Fast, ikke-forlaengeligt vindue (orkestreres
+// i .claude/workflows/wave.js's runInvestigateTrack), og en TVUNGEN aflevering
+// skrevet ordret ind her, saa den ikke kan glemmes eller udvandes til et
+// tredje "ved ikke"-svar.
+function undersoegelseBlok() {
+  return [
+    "# Undersoegelsesspor (kind: investigate, #5220)",
+    "",
+    `Dette er et UNDERSOEGELSESSPOR, ikke et byggespor: fast vindue paa ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES} min, IKKE forlaengeligt (ingen frys-probe - der er maaske slet ingen commits at maale paa).`,
+    "Din slutrapport SKAL ende med PRAECIS EEN af disse to domme, ordret:",
+    "- \"bekraeftet + fix-plan\": problemet er reproduceret/bekraeftet, med en konkret plan for rettelsen (trin, filer, risiko).",
+    "- \"afvist + bevis-test\": problemet kunne IKKE bekraeftes, med beviset vedlagt - en test, et logudsnit, eller en konkret reproduktion du proevede og som IKKE fejlede.",
+    "Lever ALDRIG et tredje svar (\"ved ikke\", \"maaske\") - vaelg den dom bevisernevet peger paa.",
+  ].join("\n");
+}
+
+// CodeRabbit (denne PR): et undersoegelsesspor bygger intet - de fulde
+// build-regler (commit-guard, livstegn/push-kadence, TIER-verifikation,
+// draft-PR + CodeRabbit + gh pr ready) er ALLE meningsloese for et spor der
+// kun leverer en dom i sin slutrapport. Denne trimmede regelblok erstatter
+// dem for kind: "investigate" i stedet for at faa dem tilfoejet oveni.
+function reglerBlokInvestigate(scratchDir) {
+  return [
+    "# Regler (bindende, undersoegelsesspor)",
+    "",
+    "- Heredoc er FORBUDT (kendt bug i Bash-tool paa Windows): skal du gemme et bevis (logudsnit, en test du koerte), brug Write/Edit-vaerktoejet, aldrig heredoc.",
+    `- Scratch-mappe (kun din): \`${scratchDir}\` - eventuelle midlertidige filer (bevis-logs, test-output) laegges DER.`,
+    "- INGEN baggrundsjob. Koer ALLE kommandoer i FORGRUNDEN og laes resultatet selv.",
+    "- Arbejd sekventielt. Spawn ALDRIG under-agenter.",
+    "- Dette spor bygger INTET: intet commit, ingen push, ingen PR. Din leverance er en dom + bevis i slutrapporten, ikke kode.",
+  ].join("\n");
+}
+
+function slutrapportBlokInvestigate() {
+  return [
+    "# Slutrapport (sidste besked, kort, dansk)",
+    "",
+    "- Hvad du undersoegte og hvordan (kommandoer, filer, logs du kiggede paa).",
+    "- Din SIDSTE saetning SKAL vaere PRAECIS en af de to domme ovenfor, ordret - intet tredje svar.",
+    "- Ingen PR, intet commit, intet push - dette spor leverer kun en dom, ikke kode.",
+  ].join("\n");
 }
 
 function livstegnBlok(branch) {
@@ -149,8 +199,8 @@ function prSkabelonBlok(issue, wd, branch) {
     "- Skal indeholde `## Brugerverifikation` med mindst ét `- [x]`, ELLER label `docs-only`/`backend-only`.",
     `- Foerste push: opret PR'en som DRAFT: \`gh pr create --draft --base main --head ${branch} --title "..." --body-file "${wd}/.tmp-${issue}-pr.md" --label docs-only\` (skift label efter omfang).`,
     "- Push wip-commits mod draften som normalt (livstegn-reglen gaelder uaendret).",
-    "- FOER `gh pr ready`: koer `coderabbit review --base main --committed` i arbejdsmappen (CLI, egen kvote - adskilt fra skyens auto-review paa den endelige inkrementelle omgang). Tager ca. 2,5 min. Ret aegte fund; afvis stoej med en kort begrundelse i slutrapporten. Fandt reviewet noget der skulle rettes: commit + push rettelsen, og koer CLI-reviewet igen paa den endelige committed diff. PR'en maa IKKE markeres klar foer et rent (eller kun-stoej) CLI-review paa den endelige diff foreligger.",
-    "- Markér FOERST PR'en klar naar preflight er groen, det endelige CLI-review er koert (uden uafklarede fund) og PR-body er faerdig, som SIDSTE handling: `gh pr ready <N>` (CodeRabbit-attempts, 7/9 - undgaar at hvert wip-push taeller som et review-forsoeg).",
+    "- FOER `gh pr ready`: koer `coderabbit review --base main --committed` i arbejdsmappen PRAECIS EEN gang (maks 1 CodeRabbit CLI-runde pr. spor, #5220 - CLI'en har egen kvote, adskilt fra skyens auto-review paa den endelige inkrementelle omgang). Tager ca. 2,5 min. Ret aegte fund; afvis stoej med en kort begrundelse i slutrapporten. Fandt reviewet noget der skulle rettes: commit + push rettelsen - koer IKKE CLI-reviewet igen, den ene runde er brugt. Noter i slutrapporten hvilke fund der blev rettet uden en ny CLI-bekraeftelse.",
+    "- Markér FOERST PR'en klar naar preflight er groen, den ENE CodeRabbit CLI-runde er koert (og eventuelle fund er rettet og pushet) og PR-body er faerdig, som SIDSTE handling: `gh pr ready <N>` (CodeRabbit-attempts, 7/9 - undgaar at hvert wip-push taeller som et review-forsoeg).",
     `- Refs #${issue} i PR-body, ikke "Closes" - projektets close-protokol er "Refs #N", brugeren lukker selv.`,
   ].join("\n");
 }
@@ -177,6 +227,7 @@ export function generateBrief(config) {
   const tier = config.tier === "FULL" ? "FULL" : "TARGETED";
   const verifyCommands = config.verifyCommands || [];
   const model = config.model || "sonnet";
+  const kind = config.kind === "investigate" ? "investigate" : "build";
   const worktreesRoot = config.repoWorktreesRoot || DEFAULT_WORKTREES_ROOT;
   const wd = `${worktreesRoot}\\${slug}`;
   const ownNodeModules = config.ownNodeModules === true;
@@ -211,6 +262,16 @@ export function generateBrief(config) {
     parts.push("# Ejerskab - filer/omraader denne lane ejer");
     for (const item of ownership) parts.push(`- ${item}`);
     parts.push("");
+  }
+
+  if (kind === "investigate") {
+    // CodeRabbit (denne PR): de fire build-blokke herunder (regler, livstegn,
+    // TIER-verifikation, PR-skabelon) kraever ALLE commit/push/PR - modstrider
+    // "bygger intet". Erstattes med en trimmet regelblok + egen slutrapport.
+    parts.push(undersoegelseBlok(), "");
+    parts.push(reglerBlokInvestigate(scratchDir), "");
+    parts.push(slutrapportBlokInvestigate());
+    return parts.join("\n") + "\n";
   }
 
   parts.push(reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules), "");

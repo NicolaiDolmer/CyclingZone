@@ -795,6 +795,8 @@
       "howItEndedHelp": "Final general classification.",
       "otherClassifications": "Points, mountains and team classifications are in Results.",
       "openResults": "Open results",
+      "latestStageResultHint": "See who won stage {number} and how it played out.",
+      "latestStageResultCta": "Stage {number} result",
       "raceIsDone": "Nothing left to set. The race is done.",
       "beforeFlag": "Before the flag",
       "beforeFlagHelp": "What is still open on this race.",

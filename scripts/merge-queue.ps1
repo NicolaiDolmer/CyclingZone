@@ -126,6 +126,25 @@ function Get-PrPlanEntry([int]$number) {
   }
 }
 
+function Get-PrDraftState([int]$number) {
+  # Let, dedikeret laesning af draft-status - IKKE et fuldt Get-PrPlanEntry-kald
+  # (som ogsaa slaar checks og league-regler op), fordi denne kaldes FOERST i
+  # loopet, foer der ventes paa noget som helst.
+  #
+  # CodeRabbit (denne PR): fejler gh-kaldet eller JSON-parsingen, maa
+  # tilstanden ALDRIG stille laeses som "ikke draft" - saa ville koeen glide
+  # forbi netop den PR den ikke kunne verificere og vente forgaeves paa
+  # etape-tick-vinduet alligevel (samme fejlklasse guarden findes for at
+  # forhindre). Returnerer derfor $true/$false/$null (ukendt) - kalderen
+  # stopper koeen for BAADE $true og $null.
+  $viewJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'isDraft') -TolerateFailure
+  if (-not $viewJson) { return $null }
+  try {
+    $parsed = ($viewJson -join "") | ConvertFrom-Json
+    return [bool]$parsed.isDraft
+  } catch { return $null }
+}
+
 function Wait-OutOfMergeTickWindow {
   # Etape-tick hver hele time - merg aldrig i HH:57..HH:03.
   while ($true) {
@@ -220,6 +239,22 @@ foreach ($entry in $plan) {
   $n = $entry.number
   Write-Host ""
   Write-Host "=== PR #$n ===" -ForegroundColor Cyan
+
+  # Draft-tjek FOERST - foer der ventes paa noget som helst (heller ikke
+  # etape-tick-vinduet). #5220: merge-queue.ps1 opdagede foerst at PR #5216
+  # var draft ved selve merge-kaldet, EFTER at koeen havde ventet paa
+  # etape-tick-vinduet - 10 spildte minutter. Koeres i BEGGE tilstande
+  # (ogsaa -DryRun): read-only, samme moenster som checks-tjekket herunder.
+  # Ingen automatisk `gh pr ready` - det er orkestratorens valg, ikke koeens.
+  $draftState = Get-PrDraftState $n
+  if ($null -eq $draftState) {
+    Write-Host "STOP: kunne ikke afgoere om PR #$n er draft (gh-kaldet fejlede eller gav ulaeseligt JSON) - tjek manuelt med 'gh pr view $n' foer koeen fortsaetter." -ForegroundColor Red
+    exit 1
+  }
+  if ($draftState) {
+    Write-Host "STOP: PR #$n er draft: koer gh pr ready $n foerst." -ForegroundColor Red
+    exit 1
+  }
 
   Wait-OutOfMergeTickWindow
 

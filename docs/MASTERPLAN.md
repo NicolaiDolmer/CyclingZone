@@ -6,7 +6,7 @@
 
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
 
-**Dagbølge 14/9 (wf_d3c0d357):** #5182 board-trinnet 72-93 % af race-finalization → rod-årsag til forsinkede løb #3624 · #5202 ny kaptajn når kaptajnen er udgået · #5098 holdudtagelse nulstilles ved etapeskift (verificér først). **Rest:** #4595 → epic #5162 (spor 1-5 merget; prod-måling CYCLINGZONE-56 efter #5173) · #5089 429-byger (post-verify i Railway-log) · #4872 rytterværdi står stille (9/9). #4959 lukket 14/9 (0 puljer over 24).
+**Dagbølge 14/9 (wf_d3c0d357):** #5182 board-trinnet 72-93 % af race-finalization → rod-årsag til forsinkede løb #3624 · #5202 ny kaptajn når kaptajnen er udgået · #5098 holdudtagelse nulstilles ved etapeskift (verificér først). **Rest:** #4595 → epic #5162 (spor 1-5 merget; prod-måling CYCLINGZONE-56 efter #5173) · #5089 429-byger (post-verify) · #5242 apiFetch-wiring · #4872 rytterværdi står stille (9/9). #4959 lukket 14/9 (0 puljer over 24).
 
 ## Bane 1 · S4-cutover 27-28/9 (deadline; nul buffer)
 
@@ -14,7 +14,7 @@
 2. 🟠 **v4 før flip** (`RACE_ENGINE_RULES.md` §9): §7b grønne undtagen favorit-win-rate 62,6 % (ejer-gated: aldrig straf af styrke). Rest: M12 grupetto · #4915 TTT (ejer-valg) · #4948 raceDay-hjælp.
 3. 🔵 **v4-flip** (ejer-only) → #4916 følg løbet live.
 4. 🔵 **S4-kalender:** #4270 apply (ejer) · #4845 kalenderpakker (PR #5169 klar) · #4203 (done-gated).
-5. 🟠 **Træning pr. løbsdag #4850** (live senest 28/9; skemaets nr. 1): **#4846 tick pr. løbsdag i dagbølgen 14/9 bag flag** → #4847 → #4851 → #4852/#4853/#4854 → #4848 → #4849. #4801 · #4874 i pakken. #5076 + #5064 som help-tekst i #4849.
+5. 🟠 **Træning pr. løbsdag #4850** (live senest 28/9; skemaets nr. 1): **#4846 tick pr. løbsdag i dagbølgen 14/9 bag flag** → #4847 → #4851 → #4852/#4853/#4854 → #4848 → #4849. #4801 · #4874 i pakken. #5076 + #5064 som help-tekst i #4849. Efter #5205: #5236/#5237/#5238.
 6. 🔵 **Bestyrelsen: Mandatet-flip** (27/9): #4857 (ejer-go) → #4859 → #4858. Videre design: GDD D-040/D-041.
 7. 🔵 **Cutover-pakke:** #4592 inaktive (ejer godkender liste) → #452 → #4759 · #4619 · #4860 sponsorpris S4 · #4376 sponsor-base ved oprykning.
 
@@ -22,18 +22,18 @@
 
 Mål 2/10: ≥ 450 kr / ≥ 10 ✅ (Alunta 14/9: 659 kr / 18) · checkout ≥ 60 % ✅ · D7 ≥ 45 % (30 %) · aktive/7d ≥ 100 (90). **Tilgang + fastholdelse er flaskehalsen, ikke penge.**
 8. 🟠 **Spørgeskema #4943/#5121:** lukker 14/9 kl. 23:59; 214 skubbet 11/9; opsummering 15/9. Fog of war-afstemning: `docs/drafts/forum-poll-fog-of-war-2026-09-10.md` (ejeren poster).
-9. 🟠 **Fastholdelse (dagbølge 14/9):** #5103 onboarding trin 4 kræver spillerhandling · #5130 Discord-velkomst i indbakken + link (#427) · løfter #4821 flyt forumtråd · #4346 anmeld handel. Derefter #4964 launch-kohorte 28,6 % (ejer-valg) · #4751 social-rest · #4235 forum vs Discord (15/9) · GDD D-037/D-038.
-10. 🟠 **Vækst-fundament:** **SEO** #4067 rewrites cyclingzone.org → marketing (dagbølge, ejer-go) · #3796 · #4811 · #4321 · **hastighed** #5177 spor 2 (dagbølge) · #5055 · CWV-gate · **mobil** #1602 · #4982 · #5124 · #5123/#5122.
-11. 🔵 **Mail:** #5045 → testmail → #5038 ejer-trin → flip pr. type → #2760 win-back. **Nøgleblok #4616** → Pro i euro #4608 → #4646. Billing-vagter #4514 · #4512 · #5051 LTV (dagbølge, m. forward-guard #4645).
+9. 🟠 **Fastholdelse (dagbølge 14/9):** #5103 onboarding trin 4 kræver spillerhandling · #5130 Discord-velkomst i indbakken + link (#427) · løfter #4821 flyt forumtråd · #4346 anmeld handel. Derefter #4964 launch-kohorte 28,6 % (ejer-valg) → #5241 ét klik · #4751 social-rest · #4235 forum vs Discord (15/9) · GDD D-037/D-038. #5107 fog of war på hold (26 % imod).
+10. 🟠 **Vækst-fundament:** **SEO** #4067 marketing (dagbølge; rettelser #5239) · #3796 · #4811 · #4321 · **hastighed** #5177 merget (rest #5240) · #5055 · CWV-gate · **mobil** #1602 · #4982 · #5124 (#5235); #5123/#5122 merget.
+11. 🔵 **Mail:** #5045 → testmail → #5038 ejer-trin → flip pr. type → #2760 win-back (trin 5). **Nøgleblok #4616** → Pro i euro #4608 → #4646. Billing-vagter #4514 · #4512 · #5051 LTV (dagbølge, m. forward-guard #4645).
 12. 🔴 **Spiller-kommunikation #428/#4820:** ejeren poster selv. #5033 chunk lag 3 (efter #4595).
 
 ## Bane 3 · Færdiggør (>70 %; tømmes før nyt)
 
 13. 🟠 **Docs-SSOT:** #5088 matview-grants · #2259 78 backup-tabeller (48 MB, ejer-go til flyt).
 14. **Hygiejne-blok (ejer 11/9):** #3069 ✅ → #5153 ✅ (14/9) → #5176 rest 3 definer-WARN + CodeQL #360/#361 (dagbølge, frist 18/9) → #4812 PAT (ejer) → #5155 ✅ (lukkesession 14/9) → #5157 drafts #3512/#4736 (ejer: færdig eller luk) → #5085 CI marketing → #5158 ✅ (TS A+, konverteringsspor pr. bølge) → #4924 worktrees.
-15. 🔵 Akademi: #5145 (PR #5197 ejer-go) · #4495 · #4213 · #4750. Design-rest #4622: #4627 · #4628 · #4813 · #4814 · #4815 · #4613 → **Visuel identitet #5113** (3D-first; først #5115 livery). **Tailwind 4-kæde:** #5150 ✅ → #5151 (+#3952) → #5152.
+15. 🔵 Akademi: #5145 (PR #5197 parkeret til U23/junior) · #4495 · #4213 · #4750. Design-rest #4622: #4627 · #4628 · #4813 · #4814 · #4815 · #4613 → **Visuel identitet #5113** (3D-first; først #5115 livery). **Tailwind 4-kæde:** #5150 ✅ → #5151 (+#3952) → #5152.
 16. Drift: #4147 · #4866 · #4877/#4900 · #4867 · #4828/#4829 · #5017 · #5015 · #2423 (rør ikke).
-17. Spillerfund: #5184 (PR #5195 ejer-go) · #4983 (PR #5108 efter #5136-flip, A 12 t) · #4589 · #4702 · #4873 · #4875 · #4861 · #4981 · #4982 · #5075 · #5059 · #5030 · #5201 · #5200 · #5180 · #5179.
+17. Spillerfund: #4589 · #4702 · #4873 · #4875 · #4861 · #4981 · #4982 · #5075 · #5059 · #5030 · #5201 · #5200 · #5180 · #5179.
 
 ## Venteliste · langsigtet værdi (ejerens område-rækkefølge 2/9; **ejer 10/9: trupper U23/junior løftet fra 8 til 3, parret med træning**)
 

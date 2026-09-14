@@ -12,6 +12,7 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
+import { useIsMobileViewport } from "../hooks/useMediaQuery";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
@@ -21,7 +22,7 @@ import { reportActionFailure } from "../lib/actionTelemetry.js";
 import {
   ExchangeIcon, CheckIcon, PageLoader, ToastViewport,
   PageHeader, Button, DataTable, EmptyState, StarIcon, FilterIcon,
-  ChevronLeftIcon, ChevronRightIcon,
+  ChevronLeftIcon, ChevronRightIcon, Input, SearchIcon,
 } from "../components/ui";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
@@ -47,6 +48,9 @@ export default function WatchlistPage() {
   // #4036: mobil-fold-tekst for markeds-status (RiderBadges' korte labels — se nedenfor).
   const { t: tRider } = useTranslation("rider");
   const scouting = useScouting();
+  // #5122: styrer baade det udenfor-fold soegefelt og hvorvidt RiderFilters'
+  // eget "q"-felt skjules — se kommentaren ved render-stedet.
+  const isMobile = useIsMobileViewport();
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
   const [entries, setEntries] = useState([]);
@@ -456,7 +460,35 @@ export default function WatchlistPage() {
         />
       ) : (
         <>
-          <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} nationalities={riderFilters.nationalities} />
+          {/* #5122: soegefeltet var kun tilgaengeligt inde bag RiderFilters'
+              mobil-fold (panelOpen), skjult indtil man klikkede den aabent —
+              "umuligt at soege" paa mobil. Denne staar UDEN for folden og er
+              synlig som det foerste under sidehovedet paa mobil, uden klik.
+              isMobile (useIsMobileViewport, samme 640px-graense som Tailwinds
+              sm — D-047) styrer BEGGE sider af det samme valg: feltet vises
+              her OG skjules i RiderFilters' panel (hideFields=["q"]) saa der
+              aldrig staar to soegefelter naar folden aabnes paa mobil.
+              Desktop uaendret: isMobile er false, feltet her renderes slet
+              ikke, og RiderFilters viser sit oprindelige felt som foer. */}
+          {isMobile && (
+            <div className="relative mb-3">
+              <SearchIcon
+                size={15}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cz-3"
+              />
+              <Input
+                type="search"
+                data-testid="watchlist-mobile-search"
+                value={riderFilters.filters.q}
+                onChange={e => riderFilters.onChange("q", e.target.value)}
+                placeholder={t("searchPlaceholder")}
+                aria-label={t("searchAria")}
+                className="pl-8"
+              />
+            </div>
+          )}
+          <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} nationalities={riderFilters.nationalities} hideFields={isMobile ? ["q"] : []} />
 
           {filtered.length === 0 ? (
             <EmptyState
