@@ -5,7 +5,7 @@
 // Ren udflytning, ingen adfærdsændring.
 
 import { useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase.js";
 import { ENGINE_ORDER, ROADMAP_ITEM_COLUMNS } from "../lib/roadmapVoting.js";
 
 const EMPTY_DRAFT = { engine: "races", sort_order: 0, title_en: "", title_da: "", approved: true, status: "active" };
