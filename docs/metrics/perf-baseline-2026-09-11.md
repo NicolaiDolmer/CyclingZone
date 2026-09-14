@@ -64,8 +64,18 @@ lille i18n-STRAF; den engelske forbedring er større.
   og lå derfor i entry-chunkens CSS-graf; switcheren bruger nu inline SVG.
   `/login` −72 KB, `/roadmap` −72 KB transfer. `/` viste den aldrig (landing har
   ingen sprogvælger), så `/`-transferen er netto +11 KB fra i18n-splittet alene.
-- **FCP falder 350-450 ms på alle tre sider**, fordi den danske bundle ikke
-  længere skal hentes og parses før first paint.
+- **FCP falder 350-450 ms på alle tre sider** (3545→3192, 3453→3177,
+  3623→3169). *Ikke* fordi den danske bundle er ude af first paint — den
+  påstand ville være forkert: `main.jsx` venter stadig på `initialized` før
+  mount, så en dansk besøgende henter og parser fortsat bundlen før appen
+  mounter. First paint kommer under alle omstændigheder fra den prærenderede
+  HTML og gates af `index-*.css`, ikke af JS. Den mest sandsynlige forklaring
+  er at der ligger færre høj-prioritets-bytes foran det render-blokerende
+  stylesheet i hentnings-bølgen (−72 KB flag-CSS på `/login` og `/roadmap`,
+  −61,7 KB statisk i18n-JS overalt). **Mekanismen er ikke isoleret i denne
+  måling** — Lighthouse simulerer throttling (Lantern), så netværksloggens
+  tidsstempler kan ikke bevise rækkefølgen. Effektens størrelse er derimod
+  konsistent over alle 9 kørsler.
 - **TBT stiger 0-36 ms → 64-90 ms.** Reelt og reproducerbart, ikke støj: arbejde
   der før lå FØR FCP (entry-grafens modul-evaluering) ligger nu efter, og TBT
   måler kun vinduet efter FCP. Alle værdier er stadig klart under 200 ms-
