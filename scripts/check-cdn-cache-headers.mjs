@@ -29,6 +29,7 @@
 // exit 0 = alle regler holder, exit 1 = mindst én regression.
 
 import { pathToFileURL } from "node:url";
+import { appShellHeaders, fetchAppShell } from "./lib/fetchAppShell.mjs";
 
 const ORIGIN = (process.argv[2] || "https://cyclingzone.org").replace(/\/$/, "");
 
@@ -73,7 +74,7 @@ async function head(path, extraHeaders = {}) {
 let cachedHtml = null;
 async function getHtml() {
   if (cachedHtml === null) {
-    cachedHtml = await (await fetch(`${ORIGIN}/`, { headers: { cookie: "cz_session=1" } })).text();
+    cachedHtml = await (await fetchAppShell(`${ORIGIN}/`)).text();
   }
   return cachedHtml;
 }
@@ -93,7 +94,7 @@ async function main() {
       failures.push(`${rule.label}: ${e.message}`);
       continue;
     }
-    const { status, cc, ct } = await head(path, { cookie: "cz_session=1" });
+    const { status, cc, ct } = await head(path, appShellHeaders());
     if (status !== 200) {
       failures.push(`${rule.label}: ${path} svarede ${status}`);
       continue;
@@ -125,7 +126,7 @@ async function main() {
   // så vi rent faktisk måler appens egen index.html/app.html og ikke — siden #4067/#5239 —
   // marketing-originens svar, som middleware.ts nu proxy'er ind for anonyme på '/'.
   {
-    const { status, cc } = await head("/", { cookie: "cz_session=1" });
+    const { status, cc } = await head("/", appShellHeaders());
     const maxAge = parseMaxAge(cc);
     if (status === 200 && maxAge !== null && maxAge > ENTRY_MAX_MAX_AGE) {
       failures.push(`SPA-entry (/): max-age=${maxAge} > ${ENTRY_MAX_MAX_AGE} — nye deploys når ikke ud til brugerne`);
