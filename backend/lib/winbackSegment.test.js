@@ -6,7 +6,7 @@ import {
   distributionByPool,
   winbackDedupeKey,
   WINBACK_DORMANCY_DAYS,
-  WINBACK_EMAIL_TYPE,
+  WINBACK_EMAIL_KIND,
 } from "./winbackSegment.js";
 
 const NOW = new Date("2026-09-14T12:00:00.000Z");
@@ -120,19 +120,19 @@ test("excludes email_prefs.all === false (master opt-out)", () => {
 });
 
 test("excludes a user already contacted (email_log winback row, status=sent)", () => {
-  const emailLogRows = [{ user_id: "user-1", email_type: WINBACK_EMAIL_TYPE, status: "sent" }];
+  const emailLogRows = [{ user_id: "user-1", email_type: WINBACK_EMAIL_KIND, status: "sent" }];
   const candidates = selectWinbackCandidates({ teams: [humanTeam()], users: [consentingUser()], emailLogRows, now: NOW });
   assert.equal(candidates.length, 0);
 });
 
 test("excludes a user already contacted with a terminal failed row (no retry for a one-off send)", () => {
-  const emailLogRows = [{ user_id: "user-1", email_type: WINBACK_EMAIL_TYPE, status: "failed" }];
+  const emailLogRows = [{ user_id: "user-1", email_type: WINBACK_EMAIL_KIND, status: "failed" }];
   const candidates = selectWinbackCandidates({ teams: [humanTeam()], users: [consentingUser()], emailLogRows, now: NOW });
   assert.equal(candidates.length, 0);
 });
 
 test("does NOT exclude on a dry_run email_log row (dry_run never blocks, same rule as emailService.js)", () => {
-  const emailLogRows = [{ user_id: "user-1", email_type: WINBACK_EMAIL_TYPE, status: "dry_run" }];
+  const emailLogRows = [{ user_id: "user-1", email_type: WINBACK_EMAIL_KIND, status: "dry_run" }];
   const candidates = selectWinbackCandidates({ teams: [humanTeam()], users: [consentingUser()], emailLogRows, now: NOW });
   assert.equal(candidates.length, 1);
 });

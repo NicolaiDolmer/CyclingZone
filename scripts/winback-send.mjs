@@ -54,7 +54,7 @@ import {
   distributionByLanguage,
   distributionByPool,
   winbackDedupeKey,
-  WINBACK_EMAIL_TYPE,
+  WINBACK_EMAIL_KIND,
 } from "../backend/lib/winbackSegment.js";
 import { buildWinbackEmail } from "../backend/lib/emailTemplates.js";
 import { sendLoopEmail } from "../backend/lib/emailService.js";
@@ -116,7 +116,7 @@ async function fetchUsers(userIds) {
 
 async function fetchWinbackLogRows() {
   return fetchAllRows(() =>
-    supabase.from("email_log").select("user_id, email_type, status").eq("email_type", WINBACK_EMAIL_TYPE).order("id")
+    supabase.from("email_log").select("user_id, email_type, status").eq("email_type", WINBACK_EMAIL_KIND).order("id")
   );
 }
 
@@ -235,7 +235,7 @@ async function main() {
         supabase,
         userId: candidate.userId,
         teamId: candidate.teamId,
-        type: WINBACK_EMAIL_TYPE,
+        type: WINBACK_EMAIL_KIND,
         dedupeKey: winbackDedupeKey(candidate.userId),
         to: candidate.email,
         subject,

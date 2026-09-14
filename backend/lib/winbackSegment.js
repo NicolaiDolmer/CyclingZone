@@ -27,7 +27,7 @@ import { isDormantManager } from "./managerActivity.js";
 import { isEmailTypeEnabled } from "./emailPrefs.js";
 
 export const WINBACK_DORMANCY_DAYS = 30;
-export const WINBACK_EMAIL_TYPE = "winback";
+export const WINBACK_EMAIL_KIND = "winback";
 
 const DAY_MS = 86_400_000;
 
@@ -85,7 +85,7 @@ export function selectWinbackCandidates({
 
   const alreadyContacted = new Set(
     emailLogRows
-      .filter((row) => row?.email_type === WINBACK_EMAIL_TYPE && ALREADY_CONTACTED_STATUSES.has(row.status))
+      .filter((row) => row?.email_type === WINBACK_EMAIL_KIND && ALREADY_CONTACTED_STATUSES.has(row.status))
       .map((row) => row.user_id)
   );
 
@@ -96,7 +96,7 @@ export function selectWinbackCandidates({
     if (!team) continue;
     if (!isDormantManager(user, now, { days: WINBACK_DORMANCY_DAYS })) continue;
     if (!hasWinbackConsent(user)) continue;
-    if (!isEmailTypeEnabled(user.email_prefs, WINBACK_EMAIL_TYPE)) continue;
+    if (!isEmailTypeEnabled(user.email_prefs, WINBACK_EMAIL_KIND)) continue;
     if (alreadyContacted.has(user.id)) continue;
 
     const daysSinceLastSeen = user.last_seen
