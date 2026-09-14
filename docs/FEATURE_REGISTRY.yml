@@ -136,7 +136,8 @@ features:
     state: live
     flag: auto_entry_generator_enabled
     ssot: docs/CALENDAR_RULES.md
-    verified: 2026-09-06
+    verified: 2026-09-14
+    note: late_fill (12t) #5136.
 
   - id: race-detail-page
     area: race-day

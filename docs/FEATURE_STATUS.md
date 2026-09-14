@@ -24,7 +24,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Automatic race entries (`auto-entry-generator`) | live | `auto_entry_generator_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-06 | - |
+| Automatic race entries (`auto-entry-generator`) | live | `auto_entry_generator_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-14 | late_fill (12t) #5136. |
 | Race day engine (`race-day-engine`) | live | `race_day_engine_enabled` | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | - | 2026-09-06 | - |
 | Race page (`race-detail-page`) | live | - | - | - | 2026-09-07 | RaceDetailPage som hero + faner (Overblik/Hold/Taktik/Etaper/Resultater) siden #4913. |
 | Race page as tabs (v2) (`race-page-tabs-v2`) | live | - | - | #4613 | 2026-09-07 | PR #4913 merget 6/9 kl. 18:57; patch note 7.259. |
