@@ -10,7 +10,7 @@ Parallelt byggearbejde startes med `Workflow({ scriptPath: "C:\Dev\CyclingZone\.
 - **Håndhævelse:** `scripts/hooks/guard-agent-spawn.sh` (PreToolUse på `Agent`/`Workflow`) afviser spawns mens `.claude/run/wave-active.json` findes, og mere end 4 spawns pr. 45 min uden for bølger. Igennem slipper bølgens egne præfikser (`WAVE-LANE:`, `WAVE-REVIEW:`, `WAVE-FOLLOWUP:`, `WAVE-SETUP:`, `WAVE-CLEANUP:`), read-only-agenter (`READ-ONLY:` eller subagent_type `Explore`/`Plan`) og `Workflow({ scriptPath: ".claude/workflows/wave.js" })` selv. Håndskrevet byggearbejde: kun én opfølgning ad gangen med præfikset `WAVE-FOLLOWUP:`.
 - **Livstegn måles på branchen, ikke på tavshed** (#5178, se [Livstegn og frys](#livstegn-og-frys) nedenfor): spor-vindue 120 min, hårdt loft 180, frys først når branchen har stået stille i 45 min.
 - **Dry-run før en rigtig bølge:** `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { dryRun: true, tracks: [...] } })` printer planen uden at starte noget (nu i **blandet koe**-raekkefoelge, se punkt 3 nedenfor).
-- **Fire regler tilføjet 14-15/9** (#5220): investigate-spor (fast 60-min-vindue), maks 1 CodeRabbit CLI-runde/spor, blandet koe (lette spor forrest), livstegn-prik ved 15 min. Se [Fire regler tilfoejet 14-15/9](#fire-regler-tilfoejet-14-159-5220) nedenfor.
+- **Fire regler tilføjet 14/9** (#5220): investigate-spor (fast 60-min-vindue), maks 1 CodeRabbit CLI-runde/spor, blandet koe (lette spor forrest), livstegn-prik ved 15 min. Se [Fire regler tilfoejet 14/9](#fire-regler-tilfoejet-149-5220) nedenfor.
 
 > Etableret 2026-05-23 efter Session K (3 PRs merged i én parallel run, ~30 min wall-clock vs. 2-3h sekventielt).
 > Postmortem: [`.claude/learnings/2026-05-23-parallel-orchestration.md`](../.claude/learnings/2026-05-23-parallel-orchestration.md)
@@ -207,7 +207,7 @@ Stop-agenten springes over i **to** tilfaelde:
 1. Proben har set et rent OG pushet worktree - der er intet at redde.
 2. **Hard-cap.** En boelge-timeout afbryder ikke lane-agenten, og ved hard-cap er branchen aktiv, saa agenten kan meget vel stadig skrive i worktreet. To agenter samme sted kaemper om `index.lock` og kan commite halvskrevne filer. Boelgen holder derfor fingrene vaek: sporet raabes op i loggen, og **lanen lukkes** (den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen maa ikke traekke et nyt spor ind). Det er ingen garanti for at agenten goer sit arbejde faerdigt eller faar pushet - tjek worktreet selv med `scripts/worker-status.ps1`.
 
-## Fire regler tilfoejet 14-15/9 (#5220)
+## Fire regler tilfoejet 14/9 (#5220)
 
 **1. Undersoegelsesspor (`kind: "investigate"`).** Et spor der IKKE bygger noget - kun undersoeger og leverer en dom - faar et fast, IKKE-forlaengeligt vindue paa 60 min (`WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES`). Ingen probe-extend, ingen frys-maaling: der er maaske slet ingen commits at maale branch-fremdrift paa. Sluttrapporten SKAL ende med praecis en af to domme, skrevet ordret ind i briefen (`scripts/make-wave-brief.mjs` + `wave.js`s inline-fallback):
 - **"bekraeftet + fix-plan"** - problemet er reproduceret, med en konkret plan for rettelsen (trin, filer, risiko).

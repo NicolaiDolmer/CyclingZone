@@ -235,6 +235,25 @@ export function isLightTrack(t) {
 }
 
 /**
+ * #5220: udtraekker undersoegelssporets TVUNGNE dom fra slutrapporten.
+ * CodeRabbit (denne PR): wave.js accepterede foer dette ethvert svar
+ * ubetinget - en rapport der endte i "ved ikke" ville stille blive
+ * behandlet som en gyldig undersoegelse. Nu skal en af de to ordrette
+ * fraser vaere til stede, og kun EEN af dem - begge (modstridende) eller
+ * ingen giver null, som kalderen skal behandle som "ufuldstaendig
+ * aflevering", ALDRIG som en gaettet dom.
+ * @returns {'bekraeftet'|'afvist'|null}
+ */
+export function extractInvestigateVerdict(reportText) {
+  const text = String(reportText || "");
+  const hasConfirmed = /bekraeftet\s*\+\s*fix-plan/i.test(text);
+  const hasRejected = /afvist\s*\+\s*bevis-test/i.test(text);
+  if (hasConfirmed && !hasRejected) return "bekraeftet";
+  if (hasRejected && !hasConfirmed) return "afvist";
+  return null;
+}
+
+/**
  * Blandet koe (#5220): stabil sortering der stiller lette spor (isLightTrack)
  * forrest, uden at aendre den indbyrdes raekkefoelge inden for hver gruppe -
  * orkestratorens oprindelige raekkefoelge bevares som tie-breaker. Formaal:

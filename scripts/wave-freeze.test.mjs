@@ -14,6 +14,7 @@ import {
   WAVE_FREEZE,
   classifyStall,
   commitAgeMinutes,
+  extractInvestigateVerdict,
   isLightTrack,
   needsGracefulStop,
   planReviewAttempt,
@@ -257,6 +258,28 @@ test("sortMixedQueue: tom eller ugyldig liste giver et tomt array, ikke en fejl"
   assert.deepEqual(sortMixedQueue(undefined), []);
 });
 
+// ===== extractInvestigateVerdict (#5220, CodeRabbit-fund) =====
+
+test("extractInvestigateVerdict genkender begge tvungne domme", () => {
+  assert.equal(extractInvestigateVerdict("Undersoegt grundigt.\n\nbekraeftet + fix-plan: gør X."), "bekraeftet");
+  assert.equal(extractInvestigateVerdict("Kunne ikke reproducere.\n\nafvist + bevis-test: se test-output."), "afvist");
+});
+
+test("extractInvestigateVerdict er case-insensitiv", () => {
+  assert.equal(extractInvestigateVerdict("BEKRAEFTET + FIX-PLAN"), "bekraeftet");
+});
+
+test("extractInvestigateVerdict giver null naar ingen af de to fraser findes - ALDRIG en gaettet dom", () => {
+  assert.equal(extractInvestigateVerdict("ved ikke, maaske er der et problem"), null);
+  assert.equal(extractInvestigateVerdict(""), null);
+  assert.equal(extractInvestigateVerdict(null), null);
+  assert.equal(extractInvestigateVerdict(undefined), null);
+});
+
+test("extractInvestigateVerdict giver null ved modstridende svar (begge fraser til stede)", () => {
+  assert.equal(extractInvestigateVerdict("bekraeftet + fix-plan men ogsaa afvist + bevis-test"), null);
+});
+
 // ===== CLI'en som probe-agenten kalder =====
 
 test("CLI'en returnerer en JSON-dom paa stdout", () => {
@@ -398,6 +421,14 @@ test("#5220: wave.js har en investigate-gren med det spejlede faste vindue", () 
   assert.ok(
     src.includes("INVESTIGATE_TIMEOUT_MINUTES"),
     "investigate-grenen skal bruge den spejlede WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES, ikke et haardkodet tal",
+  );
+});
+
+test("#5220 (CodeRabbit-fund): wave.js validerer investigate-dommen i stedet for at acceptere ethvert svar", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(
+    src.includes("extractInvestigateVerdict"),
+    "runInvestigateTrack skal bruge den spejlede extractInvestigateVerdict() - ikke acceptere et vilkaarligt svar som gyldig dom",
   );
 });
 

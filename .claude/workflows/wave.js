@@ -369,6 +369,20 @@ function sortMixedQueue(list) {
     .map((x) => x.t)
 }
 
+// SPEJLING af extractInvestigateVerdict() i scripts/wave-freeze.mjs - hold
+// identiske (#5220, CodeRabbit-fund: enhver rapport blev foer accepteret
+// ubetinget som en gyldig undersoegelse - selv "ved ikke"). Returnerer
+// 'bekraeftet'|'afvist'|null (null = ufuldstaendig aflevering, ALDRIG en
+// gaettet dom - hverken ingen af de to fraser eller begge paa een gang).
+function extractInvestigateVerdict(reportText) {
+  const text = String(reportText || '')
+  const hasConfirmed = /bekraeftet\s*\+\s*fix-plan/i.test(text)
+  const hasRejected = /afvist\s*\+\s*bevis-test/i.test(text)
+  if (hasConfirmed && !hasRejected) return 'bekraeftet'
+  if (hasRejected && !hasConfirmed) return 'afvist'
+  return null
+}
+
 // Per-spor-timeout. VIGTIGT (natboelgen 5-6/9): en timeout frigiver IKKE lanen
 // hos den frosne agent - den frosne holder sin plads i samtidigheds-loftet.
 // Timeouten er en oevre graense paa hvor laenge lane-poolen VENTER paa et spor,
@@ -409,6 +423,34 @@ function laneBrief(track) {
   // bindende blokke kommer fra EEN kilde og ikke kan drifte fra dette script.
   // De faa gates der ALDRIG maa mangle staar alligevel her, saa en lane ikke
   // staar helt uden regler hvis fil-laesningen fejler.
+  //
+  // CodeRabbit (denne PR): et investigate-spor bygger intet - de generelle
+  // build-gates (commit-guard, draft-PR, CodeRabbit-CLI, Refs-i-PR-body) er
+  // ALLE meningsloese og selvmodsigende her ("bygger intet" men faar besked
+  // om commit-guarden). Egen, trimmet gren i stedet for at genbruge byggeteksten.
+  if (track.kind === 'investigate') {
+    return [
+      `WAVE-LANE: #${track.issue} ${track.branch} (undersoegelsesspor, kind: investigate, #5220)`,
+      '',
+      'Du er en autonom boelge-worker uden kontekst fra mor-samtalen.',
+      '',
+      `FOERSTE HANDLING: laes HELE din brief: ${track.briefPath}`,
+      'Den er din fulde kontrakt. Foelg den ordret. Kan du ikke laese den, saa STOP og rapporter det - gaet ikke.',
+      '',
+      'Dette spor bygger INTET: intet commit, ingen push, ingen PR. Gates der gaelder uanset hvad:',
+      `- Arbejdsmappe (kun til at LAESE/reproducere i, aendr intet): ${track.worktree}.`,
+      '- INGEN baggrundsjob, alt i FORGRUNDEN, ingen under-agenter.',
+      `- Fast vindue paa ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES} min - IKKE forlaengeligt.`,
+      '',
+      `Issue: #${track.issue} - ${track.title}`,
+      track.scopeText ? `Scope: ${track.scopeText}` : '',
+      '',
+      investigateBlok(track),
+      '',
+      'Slutrapport (kort, dansk): hvad du undersoegte og hvordan. Din SIDSTE saetning SKAL vaere PRAECIS en af de to domme ovenfor - intet commit, ingen PR.',
+    ].filter(Boolean).join('\n')
+  }
+
   return [
     `WAVE-LANE: #${track.issue} ${track.branch}`,
     '',
@@ -428,7 +470,6 @@ function laneBrief(track) {
     '',
     `Issue: #${track.issue} - ${track.title}`,
     track.scopeText ? `Scope: ${track.scopeText}` : '',
-    track.kind === 'investigate' ? investigateBlok(track) : '',
     '',
     'Slutrapport (kort, dansk): branch, PR-URL, commit-SHA, hovedaendringer, verifikations-status, hvad verifikationen IKKE daekker.',
   ].filter(Boolean).join('\n')
@@ -873,8 +914,20 @@ async function runInvestigateTrack(track) {
     row.note = `Undersoegelsesspor svarede ikke inden det faste vindue paa ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES} min (ingen forlaengelse - #5220). Ingen dom modtaget.`
     return row
   }
-  row.status = 'undersoegt'
-  row.report = String(build).slice(0, 4000)
+  const reportText = String(build)
+  const verdict = extractInvestigateVerdict(reportText)
+  row.report = reportText.slice(0, 4000)
+  if (verdict) {
+    row.status = 'undersoegt'
+    row.verdict = verdict
+  } else {
+    // CodeRabbit (denne PR): den tvungne aflevering staar i briefen, men et
+    // spor kan stadig svare uden for kontrakten (fx "ved ikke", eller begge
+    // domme paa een gang). Det maa ALDRIG stille tolkes som en gyldig
+    // undersoegelse - meld det tydeligt op i stedet.
+    row.status = 'undersoegt-ufuldstaendig'
+    row.note = 'Slutrapporten indeholder ikke praecis EEN af de to tvungne domme ("bekraeftet + fix-plan" / "afvist + bevis-test", #5220) - kraev en ny dom fra sporet foer det lukkes.'
+  }
   return row
 }
 
@@ -1062,7 +1115,7 @@ const cleanup = await agent(cleanupPrompt(tracks, cleanupMode, setup.watchPid ||
   schema: CLEANUP_SCHEMA,
 })
 
-const stopped = results.filter((r) => r.status === 'frys' || r.status === 'timeout' || r.status === 'investigate-timeout' || r.status === 'doed' || r.status === 'fejl')
+const stopped = results.filter((r) => r.status === 'frys' || r.status === 'timeout' || r.status === 'investigate-timeout' || r.status === 'undersoegt-ufuldstaendig' || r.status === 'doed' || r.status === 'fejl')
 log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${tracks.length} i alt).`)
 // Et worktree der stadig er dirty efter den graceful stop-agent skal ses af et
 // menneske - det er praecis den tilstand boelge 2 den 11/9 efterlod usynligt.
@@ -1094,6 +1147,9 @@ for (const r of results.filter((x) => x.status === 'timeout')) {
 }
 for (const r of results.filter((x) => x.status === 'investigate-timeout')) {
   log(`ADVARSEL: #${r.issue} ${r.branch} (undersoegelsesspor) svarede ikke inden ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES} min - ingen dom modtaget. Ingen forlaengelse per design (#5220); relancér som et nyt undersoegelsesspor om noedvendigt.`)
+}
+for (const r of results.filter((x) => x.status === 'undersoegt-ufuldstaendig')) {
+  log(`ADVARSEL: #${r.issue} ${r.branch} (undersoegelsesspor) leverede IKKE en af de to tvungne domme (#5220) - se r.report i resultatet. Kraev en ny dom, accepter ALDRIG stiltiende.`)
 }
 if (unstarted.length > 0) {
   log(`RELANCER: ${unstarted.map((u) => '#' + u.issue).join(', ')} i en NY boelge - worktrees og PR'er staar urort.`)

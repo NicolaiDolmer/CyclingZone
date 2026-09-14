@@ -197,6 +197,19 @@ test("kind: 'investigate' skriver den tvungne aflevering ordret ind i briefen", 
   assert.match(brief, /Lever ALDRIG et tredje svar/);
 });
 
+// CodeRabbit (#5220): et undersoegelsesspor bygger intet - briefen maa IKKE
+// samtidig kraeve commit/push/draft-PR/CodeRabbit-CLI/gh pr ready.
+test("kind: 'investigate' udelader ALLE build-only-blokke (livstegn, TIER-verifikation, PR-skabelon)", () => {
+  const brief = generateBrief({ ...baseConfig, kind: "investigate" });
+  assert.doesNotMatch(brief, /# Livstegn/);
+  assert.doesNotMatch(brief, /# Verifikation, niveau TIER WAVE/);
+  assert.doesNotMatch(brief, /# PR-skabelon/);
+  assert.doesNotMatch(brief, /guard-commit-branch\.sh/);
+  assert.doesNotMatch(brief, /coderabbit review/);
+  assert.doesNotMatch(brief, /gh pr ready/);
+  assert.match(brief, /Dette spor bygger INTET/);
+});
+
 test("et ugyldigt kind falder tilbage til 'build' (ingen undersoegelsesspor-blok)", () => {
   const brief = generateBrief({ ...baseConfig, kind: "noget-andet" });
   assert.doesNotMatch(brief, /# Undersoegelsesspor/);

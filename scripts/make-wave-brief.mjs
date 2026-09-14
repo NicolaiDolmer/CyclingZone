@@ -115,6 +115,33 @@ function undersoegelseBlok() {
   ].join("\n");
 }
 
+// CodeRabbit (denne PR): et undersoegelsesspor bygger intet - de fulde
+// build-regler (commit-guard, livstegn/push-kadence, TIER-verifikation,
+// draft-PR + CodeRabbit + gh pr ready) er ALLE meningsloese for et spor der
+// kun leverer en dom i sin slutrapport. Denne trimmede regelblok erstatter
+// dem for kind: "investigate" i stedet for at faa dem tilfoejet oveni.
+function reglerBlokInvestigate(scratchDir) {
+  return [
+    "# Regler (bindende, undersoegelsesspor)",
+    "",
+    "- Heredoc er FORBUDT (kendt bug i Bash-tool paa Windows): skal du gemme et bevis (logudsnit, en test du koerte), brug Write/Edit-vaerktoejet, aldrig heredoc.",
+    `- Scratch-mappe (kun din): \`${scratchDir}\` - eventuelle midlertidige filer (bevis-logs, test-output) laegges DER.`,
+    "- INGEN baggrundsjob. Koer ALLE kommandoer i FORGRUNDEN og laes resultatet selv.",
+    "- Arbejd sekventielt. Spawn ALDRIG under-agenter.",
+    "- Dette spor bygger INTET: intet commit, ingen push, ingen PR. Din leverance er en dom + bevis i slutrapporten, ikke kode.",
+  ].join("\n");
+}
+
+function slutrapportBlokInvestigate() {
+  return [
+    "# Slutrapport (sidste besked, kort, dansk)",
+    "",
+    "- Hvad du undersoegte og hvordan (kommandoer, filer, logs du kiggede paa).",
+    "- Din SIDSTE saetning SKAL vaere PRAECIS en af de to domme ovenfor, ordret - intet tredje svar.",
+    "- Ingen PR, intet commit, intet push - dette spor leverer kun en dom, ikke kode.",
+  ].join("\n");
+}
+
 function livstegnBlok(branch) {
   return [
     "# Livstegn (TIER WAVE, ejer-krav 6/9)",
@@ -238,7 +265,13 @@ export function generateBrief(config) {
   }
 
   if (kind === "investigate") {
+    // CodeRabbit (denne PR): de fire build-blokke herunder (regler, livstegn,
+    // TIER-verifikation, PR-skabelon) kraever ALLE commit/push/PR - modstrider
+    // "bygger intet". Erstattes med en trimmet regelblok + egen slutrapport.
     parts.push(undersoegelseBlok(), "");
+    parts.push(reglerBlokInvestigate(scratchDir), "");
+    parts.push(slutrapportBlokInvestigate());
+    return parts.join("\n") + "\n";
   }
 
   parts.push(reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules), "");

@@ -126,16 +126,23 @@ function Get-PrPlanEntry([int]$number) {
   }
 }
 
-function Test-PrIsDraft([int]$number) {
+function Get-PrDraftState([int]$number) {
   # Let, dedikeret laesning af draft-status - IKKE et fuldt Get-PrPlanEntry-kald
   # (som ogsaa slaar checks og league-regler op), fordi denne kaldes FOERST i
   # loopet, foer der ventes paa noget som helst.
+  #
+  # CodeRabbit (denne PR): fejler gh-kaldet eller JSON-parsingen, maa
+  # tilstanden ALDRIG stille laeses som "ikke draft" - saa ville koeen glide
+  # forbi netop den PR den ikke kunne verificere og vente forgaeves paa
+  # etape-tick-vinduet alligevel (samme fejlklasse guarden findes for at
+  # forhindre). Returnerer derfor $true/$false/$null (ukendt) - kalderen
+  # stopper koeen for BAADE $true og $null.
   $viewJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'isDraft') -TolerateFailure
-  if (-not $viewJson) { return $false }
+  if (-not $viewJson) { return $null }
   try {
     $parsed = ($viewJson -join "") | ConvertFrom-Json
     return [bool]$parsed.isDraft
-  } catch { return $false }
+  } catch { return $null }
 }
 
 function Wait-OutOfMergeTickWindow {
@@ -239,7 +246,12 @@ foreach ($entry in $plan) {
   # etape-tick-vinduet - 10 spildte minutter. Koeres i BEGGE tilstande
   # (ogsaa -DryRun): read-only, samme moenster som checks-tjekket herunder.
   # Ingen automatisk `gh pr ready` - det er orkestratorens valg, ikke koeens.
-  if (Test-PrIsDraft $n) {
+  $draftState = Get-PrDraftState $n
+  if ($null -eq $draftState) {
+    Write-Host "STOP: kunne ikke afgoere om PR #$n er draft (gh-kaldet fejlede eller gav ulaeseligt JSON) - tjek manuelt med 'gh pr view $n' foer koeen fortsaetter." -ForegroundColor Red
+    exit 1
+  }
+  if ($draftState) {
     Write-Host "STOP: PR #$n er draft: koer gh pr ready $n foerst." -ForegroundColor Red
     exit 1
   }

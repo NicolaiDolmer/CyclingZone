@@ -360,7 +360,10 @@ while ($true) {
     # naar branchen viser fremdrift igen.
     $isPoke = ($r.ageMin -ge $PokeMinutes) -and ($r.ageMin -lt $StallMinutes)
     if ($isPoke -and -not $poked.ContainsKey($r.branch)) {
-      Write-Host ("  [PRIK] lane $($r.lane) (#$($r.issue)): ingen commit i $([math]::Round($r.ageMin, 0)) min (frys-graense: $StallMinutes min) - bare et tidligt livstegn-tjek, IKKE en advarsel (#5220).") -ForegroundColor DarkYellow
+      # CodeRabbit (denne PR): $r.ageMin maaler push-alder (origin/$branch),
+      # ikke lokal commit-alder - en worker der lige har committet lokalt uden
+      # at pushe endnu ville ellers faa en misvisende "ingen commit"-besked.
+      Write-Host ("  [PRIK] lane $($r.lane) (#$($r.issue)): ingen push i $([math]::Round($r.ageMin, 0)) min (frys-graense: $StallMinutes min) - bare et tidligt livstegn-tjek, IKKE en advarsel (#5220).") -ForegroundColor DarkYellow
       $poked[$r.branch] = $true
     } elseif (-not $isPoke -and $poked.ContainsKey($r.branch)) {
       $poked.Remove($r.branch) | Out-Null
