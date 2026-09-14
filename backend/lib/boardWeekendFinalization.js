@@ -355,7 +355,12 @@ export async function processBoardWeekendFinalization({
   try {
     const snapshotRows = await fetchAllRowsChunkedIn(teamIds, (/** @type {string[]} */ chunk) => supabase
       .from("board_plan_snapshots")
-      .select("id, team_id, board_id, season_id, season_number, season_within_plan, created_at, goals_met, goals_total, satisfaction_delta")
+      // u25_stat_sum + u25_count SKAL med: rækkerne sendes uændret videre som
+      // prefetched.snapshots til loadGoalContextForBoard, der læser plan-start-
+      // baselinen for u25_development_delta ud af FØRSTE snapshot. PostgREST
+      // returnerer kun de selectede kolonner, så udelades de, bliver baselinen
+      // permanent null → målet scorer awaiting_data i stedet for en rigtig værdi.
+      .select("id, team_id, board_id, season_id, season_number, season_within_plan, created_at, goals_met, goals_total, satisfaction_delta, u25_stat_sum, u25_count")
       .in("team_id", chunk)
       .order("id", { ascending: true }));
     for (const row of snapshotRows) {

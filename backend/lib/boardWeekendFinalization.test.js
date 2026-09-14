@@ -22,6 +22,7 @@ import {
   resolveCrossedCheckpoint,
 } from "./boardWeekendFinalization.js";
 import { CHECKPOINT_KINDS } from "./boardWeekendUpdate.js";
+import { loadGoalContextForBoard } from "./boardGoalContext.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 import { SUPABASE_PAGE_SIZE } from "./supabasePagination.js";
 
@@ -936,6 +937,45 @@ test("#5182: board-finalization bruger <=5 DB-kald pr. hold (var ~10 i denne har
     (counts.byTable.get("board_plan_snapshots") || 0) <= 2,
     `board_plan_snapshots må kun læses én gang for hele populationen (dobbelt-læsningen pr. hold er væk), blev læst ${counts.byTable.get("board_plan_snapshots")} gange`
   );
+});
+
+// #5182 · Regressionsvagt for 2b-prefetchens SELECT-liste. Den tidligere
+// ækvivalens-test i boardGoalContext.test.js byggede prefetched.snapshots
+// direkte fra den rå fixture (alle kolonner) og kunne derfor ikke se at
+// select-strengen her manglede u25_stat_sum/u25_count. Denne test går gennem
+// den FAKTISKE select i boardWeekendFinalization.js; fake'en projicerer som
+// PostgREST, så en kolonne der ikke står i select'en bliver undefined — præcis
+// som i prod. Uden kolonnerne bliver plan-start-U25-baselinen permanent null
+// og u25_development_delta scorer awaiting_data i stedet for en rigtig værdi.
+test("#5182: 2b-prefetchen bærer U25-baseline-kolonnerne videre til goal-context", async () => {
+  const state = makeState({
+    board_plan_snapshots: [
+      {
+        id: "snap-1", team_id: "team-1", board_id: "board-1", season_id: "season-1",
+        season_number: 2, season_within_plan: 1, created_at: "2026-01-01T00:00:00.000Z",
+        goals_met: 1, goals_total: 3, satisfaction_delta: -2,
+        u25_stat_sum: 100, u25_count: 5,
+      },
+    ],
+  });
+  const seenSnapshots = [];
+  const summary = await processBoardWeekendFinalization({
+    supabase: makeFakeSupabase(state),
+    season: { ...SEASON },
+    previousRaceDaysCompleted: 6,
+    deps: baseDeps({
+      computeWeekendUpdate: stubComputeUpdate(),
+      loadGoalContext: async (args) => {
+        seenSnapshots.push(...(args.prefetched?.snapshots || []));
+        return loadGoalContextForBoard(args);
+      },
+    }),
+  });
+
+  assert.equal(summary.errors, 0);
+  assert.equal(seenSnapshots.length, 1, "boardets snapshot skal nå frem via prefetchen");
+  assert.equal(seenSnapshots[0].u25_stat_sum, 100, "u25_stat_sum må ikke være projiceret væk af 2b-select'en");
+  assert.equal(seenSnapshots[0].u25_count, 5, "u25_count må ikke være projiceret væk af 2b-select'en");
 });
 
 test("#5182: marginalprisen pr. ekstra hold er kun holdets EGNE skrivninger", async () => {
