@@ -1,5 +1,72 @@
 export const PATCHES = [
   {
+    "version": "7.272",
+    "date": "2026-09-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "topic": "Races",
+        "en": {
+          "title": "Race results arrive on time again when many stages finish in the same hour",
+          "body": "The board step after each race read the same season-wide tables once per team, 242 times in a row, and took up to eight minutes per race. It now reads them once and handles teams in batches, so a cluster of stages no longer pushes results 36 to 48 minutes past the time on the calendar."
+        },
+        "da": {
+          "title": "Løbsresultater kommer til tiden igen, når mange etaper slutter i samme time",
+          "body": "Bestyrelses-trinnet efter hvert løb læste de samme sæson-brede tabeller én gang pr. hold, 242 gange i træk, og tog op til otte minutter pr. løb. Nu læses de én gang og holdene køres i grupper, så en klynge af etaper ikke længere skubber resultaterne 36 til 48 minutter forbi tidspunktet i kalenderen."
+        },
+        "refs": [5182, 5204]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Races",
+        "en": {
+          "title": "You can promote a new captain after yours abandons a stage race",
+          "body": "If your captain, sprint captain or hunter crashed out, the game still counted the withdrawn rider as holding the role, so a new one was rejected as a duplicate. Withdrawn riders no longer count."
+        },
+        "da": {
+          "title": "Du kan udnævne en ny kaptajn, når din er udgået af et etapeløb",
+          "body": "Styrtede din kaptajn, sprintkaptajn eller jæger ud, talte spillet stadig den udgåede rytter med i rollen, så en ny blev afvist som dobbelt. Udgåede ryttere tæller ikke længere."
+        },
+        "refs": [5202, 5207]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Onboarding",
+        "en": {
+          "title": "Getting-started step 4 waits for you to negotiate the board plan yourself",
+          "body": "The step no longer ticks itself off when the board accepts a plan for you after the deadline. If the board has already set one, the step says so and asks you to take a look."
+        },
+        "da": {
+          "title": "Kom i gang-trin 4 venter på, at du selv forhandler bestyrelsesplanen",
+          "body": "Trinnet markerer sig ikke længere færdigt, når bestyrelsen accepterer en plan for dig efter fristen. Har bestyrelsen allerede sat en, siger trinnet det og beder dig se den."
+        },
+        "refs": [5103, 5208]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "An empty season summary now points you to the calendar",
+          "body": "Before any race has finished, the season summary showed No results yet with nothing to do. It now offers View calendar."
+        },
+        "da": {
+          "title": "En tom sæsonopsamling peger dig nu videre til kalenderen",
+          "body": "Før noget løb var afsluttet, viste sæsonopsamlingen Ingen resultater endnu uden en handling. Nu tilbyder den Se kalenderen."
+        },
+        "refs": [5184, 5195]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Forum",
+        "en": {
+          "title": "Threads that landed in the wrong category can be moved",
+          "body": "I can now move a thread to the right category instead of asking you to delete and repost it. Ask in the thread or on Discord."
+        },
+        "da": {
+          "title": "Tråde, der landede i den forkerte kategori, kan flyttes",
+          "body": "Jeg kan nu flytte en tråd til den rigtige kategori i stedet for at bede dig slette og skrive den igen. Sig til i tråden eller på Discord."
+        },
+        "refs": [4821, 5212]
+      }
+    ]
+  },
+  {
     "version": "7.271",
     "date": "2026-09-13",
     "label": "Beta",
