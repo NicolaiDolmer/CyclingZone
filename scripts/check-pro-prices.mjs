@@ -125,12 +125,29 @@ export function computeDiscountPct({ monthsInPeriod, periodPrice, monthlyPrice }
 // EKSKL.-moms-værdierne og afviser 4900/26500.
 
 // PUR: udtrækker {monthly, semiannual} øre-beløb fra compute_daily_growth_
-// snapshot()'s LTV-CASE, fx
-//   (CASE WHEN s.plan_interval IN ('semiannual', '6') THEN 21200 ELSE 4900 END)
-// Returnerer null hvis mønsteret ikke findes (fil har intet LTV-CASE).
+// snapshot()'s LTV-CASE. To former understøttes:
+//   1. Simpel (2026-08-03..2026-09-02-filerne), fx
+//      (CASE WHEN s.plan_interval IN ('semiannual', '6') THEN 21200 ELSE 4900 END)
+//   2. Dato-bevidst nested (#5215-migrationen, bevarer historisk moms-basis
+//      ved en evt. genberegning af en gammel dato), fx
+//      CASE WHEN s.plan_interval IN ('semiannual', '6')
+//        THEN CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 26500 ELSE 21200 END
+//        ELSE CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 4900 ELSE 3920 END
+//      END
+//      — her er det den GÆLDENDE pris (ELSE-grenen af hver indre CASE, dvs.
+//      prisen for p_snapshot_date >= cutoff) guarden skal sammenligne mod
+//      plankataloget, ikke den historiske.
+// Returnerer null hvis intet af mønstrene findes (fil har intet LTV-CASE).
 export function extractGrowthSnapshotSqlPrices(sqlSource) {
-  const re = /CASE\s+WHEN\s+s\.plan_interval\s+IN\s+\(\s*'semiannual'\s*,\s*'6'\s*\)\s+THEN\s+(\d+)\s+ELSE\s+(\d+)\s+END/gi;
-  const matches = [...String(sqlSource ?? "").matchAll(re)];
+  const src = String(sqlSource ?? "");
+  const nestedRe = /CASE\s+WHEN\s+s\.plan_interval\s+IN\s+\(\s*'semiannual'\s*,\s*'6'\s*\)\s+THEN\s+CASE\s+WHEN\s+p_snapshot_date\s*<\s*DATE\s*'[^']+'\s+THEN\s+\d+\s+ELSE\s+(\d+)\s+END\s+ELSE\s+CASE\s+WHEN\s+p_snapshot_date\s*<\s*DATE\s*'[^']+'\s+THEN\s+\d+\s+ELSE\s+(\d+)\s+END\s+END/gi;
+  const nestedMatches = [...src.matchAll(nestedRe)];
+  if (nestedMatches.length) {
+    const [, semiannual, monthly] = nestedMatches[0];
+    return { semiannual: Number(semiannual), monthly: Number(monthly) };
+  }
+  const simpleRe = /CASE\s+WHEN\s+s\.plan_interval\s+IN\s+\(\s*'semiannual'\s*,\s*'6'\s*\)\s+THEN\s+(\d+)\s+ELSE\s+(\d+)\s+END/gi;
+  const matches = [...src.matchAll(simpleRe)];
   if (!matches.length) return null;
   const [, semiannual, monthly] = matches[0];
   return { semiannual: Number(semiannual), monthly: Number(monthly) };

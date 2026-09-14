@@ -159,6 +159,20 @@ test("extractGrowthSnapshotSqlPrices: intet LTV-CASE i kilden -> null", () => {
   assert.equal(extractGrowthSnapshotSqlPrices(""), null);
 });
 
+// #5215-review (CodeRabbit): en genberegning af en HISTORISK dato må ikke
+// stille overskrive dens oprindelige moms-basis (ON CONFLICT DO UPDATE).
+// LTV-CASE'en er derfor nu dato-bevidst nested — guarden skal stadig kunne
+// udtrække den GÆLDENDE (nyeste) pris herfra.
+test("extractGrowthSnapshotSqlPrices: dato-bevidst nested CASE (#5215) -> udtrækker den GÆLDENDE (post-cutoff) pris", () => {
+  const sql = `
+    CASE WHEN s.plan_interval IN ('semiannual', '6')
+      THEN CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 26500 ELSE 21200 END
+      ELSE CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 4900 ELSE 3920 END
+    END
+  `;
+  assert.deepEqual(extractGrowthSnapshotSqlPrices(sql), { semiannual: 21200, monthly: 3920 });
+});
+
 test("findLatestGrowthSnapshotSqlFilename: ISO-datopræfiks sorterer nyeste sidst", () => {
   const files = [
     "2026-08-03-growth-snapshots-3196.sql",

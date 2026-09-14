@@ -16,6 +16,12 @@
 -- denne migration er derfor inkl. moms; INGEN BACKFILL — knækket i LTV-kurven
 -- omkring denne dato er forventet og dokumenteret her, ikke en bug.
 --
+-- LTV-CASE'en er dato-bevidst (p_snapshot_date < 2026-09-14 => gamle
+-- inkl.-moms-tal, ellers de nye ekskl.-moms-tal): funktionen er et UPSERT og
+-- kan i princippet blive kaldt for en historisk dato igen (ikke planlagt,
+-- men uden dette ville en sådan genberegning stille overskrive en gammel
+-- inkl.-moms-række med ekskl.-moms — se kommentaren ved selve CASE'en.
+--
 -- Alt andet i funktionen er uændret fra 2026-09-02-growth-snapshot-paying-
 -- only-4636.sql (DAU/WAU/MAU, retention, paying_customers-definition, NPS,
 -- upsert). CREATE OR REPLACE = idempotent. RLS-gate uændret: service_role-only.
@@ -117,24 +123,39 @@ BEGIN
       OR s.current_period_end IS NOT NULL
     );
 
-  -- #5215: periode-prisen herunder er nu EKSKL. moms (3920/21200 øre =
-  -- aluntaPlanCatalog.js's amount-felt), ikke inkl. moms (4900/26500) som
-  -- før denne migration. Hold i sync med backend/lib/growthSnapshot.js's
-  -- PLAN_PRICE_CENTS.
+  -- #5215: periode-prisen herunder er EKSKL. moms (3920/21200 øre =
+  -- aluntaPlanCatalog.js's amount-felt) for p_snapshot_date >= 2026-09-14,
+  -- ellers (uændret) inkl. moms (4900/26500). Denne funktion er et UPSERT og
+  -- kan i princippet genberegne en HISTORISK dato (ON CONFLICT DO UPDATE) —
+  -- uden dato-grenen ville en sådan genberegning stille og roligt overskrive
+  -- en gammel inkl.-moms-række med en ekskl.-moms-værdi (CodeRabbit-fund,
+  -- #5215-review). Ingen planlagt backfill af gamle datoer (se docs/
+  -- GROWTH_STACK.md), men grenen gør et uheld ufarligt. Hold i sync med
+  -- backend/lib/growthSnapshot.js's PLAN_PRICE_CENTS (som IKKE er dato-
+  -- afhængig — den estimerer altid med DAGENS pris, aldrig en lagret historisk
+  -- række).
   SELECT
     COALESCE(SUM(
       GREATEST(1, CEIL(
         EXTRACT(epoch FROM (
           LEAST(v_asof, CASE WHEN s.status = 'active' THEN v_asof ELSE COALESCE(s.current_period_end, s.created_at) END) - s.created_at
         )) / (CASE WHEN s.plan_interval IN ('semiannual', '6') THEN 15778800.0 ELSE 2629800.0 END)
-      )) * (CASE WHEN s.plan_interval IN ('semiannual', '6') THEN 21200 ELSE 3920 END)
+      )) * (CASE
+        WHEN s.plan_interval IN ('semiannual', '6')
+          THEN CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 26500 ELSE 21200 END
+        ELSE CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 4900 ELSE 3920 END
+      END)
     ), 0),
     COALESCE(AVG(
       GREATEST(1, CEIL(
         EXTRACT(epoch FROM (
           LEAST(v_asof, CASE WHEN s.status = 'active' THEN v_asof ELSE COALESCE(s.current_period_end, s.created_at) END) - s.created_at
         )) / (CASE WHEN s.plan_interval IN ('semiannual', '6') THEN 15778800.0 ELSE 2629800.0 END)
-      )) * (CASE WHEN s.plan_interval IN ('semiannual', '6') THEN 21200 ELSE 3920 END)
+      )) * (CASE
+        WHEN s.plan_interval IN ('semiannual', '6')
+          THEN CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 26500 ELSE 21200 END
+        ELSE CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 4900 ELSE 3920 END
+      END)
     ), NULL)
   INTO v_ltv_total, v_ltv_avg
   FROM public.subscriptions s
@@ -197,7 +218,7 @@ REVOKE EXECUTE ON FUNCTION public.compute_daily_growth_snapshot(date) FROM anon,
 GRANT EXECUTE ON FUNCTION public.compute_daily_growth_snapshot(date) TO service_role;
 
 COMMENT ON FUNCTION public.compute_daily_growth_snapshot(date) IS
-  '#3196/#4636/#5215 skriver ét vækst-snapshot (DAU/WAU/MAU/D1/D7/D30/abonnementer/LTV-estimat/NPS) for p_snapshot_date, UPSERT-idempotent. paying_customers + LTV tæller kun rækker med betalingsspor (Alunta-id, Pro-relevant status eller dækket periode), ikke rene vilkårsaccepter. LTV er ekskl. moms siden #5215 (før: inkl. moms — ingen backfill af historiske rækker). service_role-only.';
+  '#3196/#4636/#5215 skriver ét vækst-snapshot (DAU/WAU/MAU/D1/D7/D30/abonnementer/LTV-estimat/NPS) for p_snapshot_date, UPSERT-idempotent. paying_customers + LTV tæller kun rækker med betalingsspor (Alunta-id, Pro-relevant status eller dækket periode), ikke rene vilkårsaccepter. LTV-CASE''en er dato-bevidst: ekskl. moms for p_snapshot_date >= 2026-09-14 (#5215), inkl. moms før — ingen planlagt backfill, men en evt. genberegning af en gammel dato beholder dermed sin oprindelige moms-basis. service_role-only.';
 
 -- Post-verify (køres af Claude efter merge, #2642): dagens snapshot genberegnes
 -- og paying_customers skal matche Aluntas kundetal; ltv_avg_cents for en ren
