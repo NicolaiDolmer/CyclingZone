@@ -66,6 +66,11 @@
     "pin": "Fastgør",
     "unpin": "Frigør",
     "pinnedTag": "Fastgjort",
+    "move": "Flyt",
+    "moveModalTitle": "Flyt tråd",
+    "moveModalDescription": "Vælg den kategori tråden skal flyttes til.",
+    "moveConfirm": "Flyt",
+    "movedToast": "Tråden er flyttet til {category}",
     "notFoundTitle": "Opslaget blev ikke fundet",
     "notFoundDescription": "Opslaget kan være blevet fjernet."
   },

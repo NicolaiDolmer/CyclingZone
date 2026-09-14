@@ -6,11 +6,14 @@ import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch.js";
 import { computeForumUnreadFold } from "../lib/forumUnreadFold.js";
 import {
   Button, PageHeader, Section, SectionStack, SectionHeader, EmptyState, ErrorState,
-  SkeletonLines, Modal, Field, Textarea,
+  SkeletonLines, Modal, Field, Textarea, Select, ToastViewport,
 } from "../components/ui";
-import { InboxIcon, ArrowUpIcon, UndoIcon, ChevronDownIcon } from "../components/ui/icons/index.jsx";
+import { InboxIcon, ArrowUpIcon, UndoIcon, ChevronDownIcon, ExchangeIcon } from "../components/ui/icons/index.jsx";
 import ForumAuthorIdentity, { ForumSignature } from "../components/forum/ForumAuthorIdentity.jsx";
 import { authorDisplayName } from "../components/forum/forumIdentity.js";
+// #4821: mulige mål-kategorier til "Move"-modalen (den rene regel bor i
+// forumCategories.js, testet under node --test — se moveTargetCategories).
+import { moveTargetCategories } from "../components/forum/forumCategories.js";
 // #4819: billeder i indlaeg. Egen kolonne, ikke markup i body — body rendres
 // fortsat som REN tekst, saa fladen aldrig faar en XSS-vej.
 import ForumImagePicker from "../components/forum/ForumImagePicker.jsx";
@@ -27,6 +30,75 @@ import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 // Rapportér-knappen findes på både opslag og svar; admin ser Slet/Pin
 // (backend håndhæver rollen — knapperne er kun synlige for admins).
 //
+// #4821 — admin flytter en tråd til en anden kategori. Samme form/modal-
+// mønster som ReportModal ovenfor (open/onSubmit-props, egen submitting/
+// error-state); kun forskellen er en Select frem for en Textarea.
+function MoveModal({ open, onClose, onSubmit, currentCategory, t }) {
+  const choices = useMemo(() => moveTargetCategories(currentCategory), [currentCategory]);
+  const [category, setCategory] = useState(choices[0] || "");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (open) setCategory(choices[0] || "");
+  }, [open, choices]);
+
+  function handleClose() {
+    if (submitting) return;
+    onClose?.();
+    setError(null);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!category) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit(category);
+      handleClose();
+    } catch (err) {
+      setError(err?.message || t("errors.submitFailed"));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={handleClose} size="sm" ariaLabelledby="forum-move-title">
+      <div className="mb-4">
+        <h2 id="forum-move-title" className="font-display text-2xl leading-none tracking-[.01em] text-cz-1">
+          {t("post.moveModalTitle")}
+        </h2>
+        <p className="mt-1.5 text-sm text-cz-2">{t("post.moveModalDescription")}</p>
+      </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Field label={t("compose.categoryLabel")} htmlFor="forum-move-category">
+          <Select
+            id="forum-move-category"
+            value={category}
+            disabled={submitting}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            {choices.map((c) => (
+              <option key={c} value={c}>{t(`categories.${c}`)}</option>
+            ))}
+          </Select>
+        </Field>
+        {error && <p className="text-xs text-cz-danger">{error}</p>}
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={submitting}>
+            {t("compose.cancel")}
+          </Button>
+          <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting || !category}>
+            {t("post.moveConfirm")}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 // #3517 — opbakning (ÉN tæller, ingen emoji-palet — ejer-designvalg 25/8) på
 // både opslag og svar; citér-svar viser et kompakt uddrag af det citerede
 // svar over eget svar, med et klikbart spring til originalen (#reply-<id>).
@@ -272,6 +344,10 @@ export default function ForumPostPage() {
   // #4819: billed-stien ER ejerskabet (`<user_id>/...`).
   const [userId, setUserId] = useState(null);
   const [reportTarget, setReportTarget] = useState(null); // { type, id } | null
+  // #4821: admin flytter tråden til en anden kategori — egen modal-state +
+  // en lille toast-stak (samme controlled mønster som WatchlistPage).
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [toasts, setToasts] = useState([]);
   const [reactingKey, setReactingKey] = useState(null); // "post:<id>" | "reply:<id>" | null
   const [quoteTarget, setQuoteTarget] = useState(null); // { id, excerpt, author } | null
   // #3451: "sidst læst" FØR dette besøg — fanget fra det FØRSTE svar fra
@@ -513,6 +589,32 @@ export default function ForumPostPage() {
     if (res.ok) await load();
   }
 
+  function dismissToast(id) {
+    setToasts((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  function pushToast(tone, title) {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts((prev) => [...prev, { id, tone, title }]);
+  }
+
+  // #4821: PATCH .../move — admin-only indtil #4268's moderator-rolle lander
+  // (backend håndhæver rollen; knappen er kun synlig for isAdmin her).
+  async function handleAdminMove(category) {
+    const headers = await authHeaders();
+    // best-effort: MoveModal.handleSubmit fanger (samme mønster som submitReport
+    // + ReportModal.handleSubmit ovenfor, #3628-baseline for denne fil).
+    const res = /* best-effort */ await fetch(`${API}/api/admin/forum/posts/${postId}/move`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ category }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(tError(data?.errorCode));
+    await load();
+    pushToast("success", t("post.movedToast", { category: t(`categories.${category}`) }));
+  }
+
   const language = i18n.language;
   const { post, replies, poll } = state;
 
@@ -655,6 +757,10 @@ export default function ForumPostPage() {
                   <Button variant="secondary" size="sm" onClick={() => handleAdminPin(!post.is_pinned)}>
                     {post.is_pinned ? t("post.unpin") : t("post.pin")}
                   </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setMoveOpen(true)}>
+                    <ExchangeIcon size={14} aria-hidden="true" className="me-1 inline -mt-0.5" />
+                    {t("post.move")}
+                  </Button>
                   <Button variant="danger" size="sm" onClick={() => handleAdminDelete("post", post.id)}>
                     {t("post.delete")}
                   </Button>
@@ -753,6 +859,16 @@ export default function ForumPostPage() {
         onSubmit={submitReport}
         t={t}
       />
+      {isAdmin && (
+        <MoveModal
+          open={moveOpen}
+          onClose={() => setMoveOpen(false)}
+          onSubmit={handleAdminMove}
+          currentCategory={post?.category}
+          t={t}
+        />
+      )}
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
