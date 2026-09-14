@@ -161,6 +161,11 @@ async function loadPrefetchSource(loader) {
   try {
     return { byTeam: groupRowsByTeam(await loader()), error: null };
   } catch (error) {
+    // best-effort: fejlen sluges IKKE — den bæres videre som kildens `error`-flag,
+    // præcis som `{ data, error }` gjorde pr. board før prefetchen. Kaldstedet
+    // (loadGoalContextForBoard) oversætter den til null-sentinel → awaiting_data,
+    // og en captureException her ville sende én Sentry-hændelse for en fejl der
+    // allerede rapporteres af den finaliserings-sti der ejer kørslen.
     return { byTeam: new Map(), error: { message: error?.message ?? String(error) } };
   }
 }
@@ -191,12 +196,9 @@ export async function prefetchGoalContextSources({ supabase, teamIds, seasonIds 
   const seasons = [...new Set((seasonIds || []).filter((id) => id != null))];
   if (!ids.length || !seasons.length) return emptyPrefetch();
 
-  const chunked = (buildQueryForChunk) =>
-    fetchAllRowsChunkedIn(ids, buildQueryForChunk);
-
   const [classicResults, jerseyResults, transferTxs, oneDayResults, sponsorTxs] = await Promise.all([
     // Samme prædikater som den pr.-board-query den erstatter (se nedenfor).
-    loadPrefetchSource(() => chunked((chunk) => supabase
+    loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("race_results")
       .select("team_id, rank, races!inner(race_class, race_type, season_id)")
       .in("team_id", chunk)
@@ -205,7 +207,7 @@ export async function prefetchGoalContextSources({ supabase, teamIds, seasonIds 
       .in("races.race_class", CLASSIC_RACE_CLASSES)
       .in("races.season_id", seasons)
       .order("id", { ascending: true }))),
-    loadPrefetchSource(() => chunked((chunk) => supabase
+    loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("race_results")
       .select("team_id, rank, races!inner(season_id)")
       .in("team_id", chunk)
@@ -213,7 +215,7 @@ export async function prefetchGoalContextSources({ supabase, teamIds, seasonIds 
       .eq("rank", 1)
       .in("races.season_id", seasons)
       .order("id", { ascending: true }))),
-    loadPrefetchSource(() => chunked((chunk) => supabase
+    loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("finance_transactions")
       // season_id er tilføjet i forhold til den gamle pr.-board-select: den
       // server-side `.in("season_id", planSeasonIds)` erstattes af et JS-filter
@@ -223,7 +225,7 @@ export async function prefetchGoalContextSources({ supabase, teamIds, seasonIds 
       .in("type", ["transfer_in", "transfer_out"])
       .in("season_id", seasons)
       .order("id", { ascending: true }))),
-    loadPrefetchSource(() => chunked((chunk) => supabase
+    loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("race_results")
       .select("team_id, races!inner(season_id)")
       .in("team_id", chunk)
@@ -232,7 +234,7 @@ export async function prefetchGoalContextSources({ supabase, teamIds, seasonIds 
       .eq("races.race_type", "single")
       .in("races.season_id", seasons)
       .order("id", { ascending: true }))),
-    loadPrefetchSource(() => chunked((chunk) => supabase
+    loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("finance_transactions")
       .select("team_id, amount, season_id")
       .in("team_id", chunk)

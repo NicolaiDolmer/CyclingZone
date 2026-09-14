@@ -95,19 +95,27 @@ function toFiniteOr(value, fallback) {
 export const BOARD_FINALIZATION_TEAM_BATCH_SIZE = 8;
 
 // Postgres-paritet for `ORDER BY created_at DESC` (default NULLS FIRST).
+/**
+ * @param {{ created_at?: string|null }} a
+ * @param {{ created_at?: string|null }} b
+ * @returns {number}
+ */
 function byCreatedAtDesc(a, b) {
-  const aNull = a?.created_at === null || a?.created_at === undefined;
-  const bNull = b?.created_at === null || b?.created_at === undefined;
-  if (aNull && bNull) return 0;
-  if (aNull) return -1;
-  if (bNull) return 1;
-  if (a.created_at === b.created_at) return 0;
-  return a.created_at > b.created_at ? -1 : 1;
+  const left = a?.created_at ?? null;
+  const right = b?.created_at ?? null;
+  if (left === null && right === null) return 0;
+  if (left === null) return -1;
+  if (right === null) return 1;
+  if (left === right) return 0;
+  return left > right ? -1 : 1;
 }
 
 // Projektion til PRÆCIS de kolonner den gamle pr.-hold-query bad om, så
 // context.recentSnapshots har samme form som før (fake'en og PostgREST
 // projicerer begge outputtet ned til select()-listen).
+/**
+ * @param {{ goals_met?: number|null, goals_total?: number|null, satisfaction_delta?: number|null }} row
+ */
 function toRecentSnapshotRow(row) {
   return {
     goals_met: row?.goals_met,
@@ -341,27 +349,34 @@ export async function processBoardWeekendFinalization({
   // SPRANG HOLDET OVER. Fejler prefetchen, ville nøjagtig samme query fejle for
   // hvert hold — derfor bæres fejlen med ind i løkken og håndteres pr. hold på
   // præcis samme måde (samme tælling, samme log-linje, samme Sentry-tag).
-  let snapshotRowsByTeam = new Map();
-  let snapshotRowsByBoard = new Map();
-  let snapshotPrefetchError = null;
+  let snapshotRowsByTeam = /** @type {Map<string, any[]>} */ (new Map());
+  let snapshotRowsByBoard = /** @type {Map<string, any[]>} */ (new Map());
+  let snapshotPrefetchError = /** @type {Error|null} */ (null);
   try {
-    const snapshotRows = await fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
+    const snapshotRows = await fetchAllRowsChunkedIn(teamIds, (/** @type {string[]} */ chunk) => supabase
       .from("board_plan_snapshots")
       .select("id, team_id, board_id, season_id, season_number, season_within_plan, created_at, goals_met, goals_total, satisfaction_delta")
       .in("team_id", chunk)
       .order("id", { ascending: true }));
     for (const row of snapshotRows) {
       if (row?.team_id != null) {
-        if (!snapshotRowsByTeam.has(row.team_id)) snapshotRowsByTeam.set(row.team_id, []);
-        snapshotRowsByTeam.get(row.team_id).push(row);
+        let forTeam = snapshotRowsByTeam.get(row.team_id);
+        if (!forTeam) { forTeam = []; snapshotRowsByTeam.set(row.team_id, forTeam); }
+        forTeam.push(row);
       }
       if (row?.board_id != null) {
-        if (!snapshotRowsByBoard.has(row.board_id)) snapshotRowsByBoard.set(row.board_id, []);
-        snapshotRowsByBoard.get(row.board_id).push(row);
+        let forBoard = snapshotRowsByBoard.get(row.board_id);
+        if (!forBoard) { forBoard = []; snapshotRowsByBoard.set(row.board_id, forBoard); }
+        forBoard.push(row);
       }
     }
   } catch (error) {
-    snapshotPrefetchError = error;
+    // best-effort: fejlen sluges IKKE — den bæres med ind i hold-løkken og
+    // rapporteres dér PR. HOLD (summary.errors + console.error +
+    // captureExceptionFn), præcis som den gamle pr.-hold-query gjorde. Ville vi
+    // capture her i stedet, ville ÉN prefetch-fejl give ét Sentry-event i
+    // stedet for den pr.-hold-rapportering stien har i dag.
+    snapshotPrefetchError = /** @type {Error} */ (error);
     snapshotRowsByTeam = new Map();
     snapshotRowsByBoard = new Map();
   }
@@ -371,10 +386,12 @@ export async function processBoardWeekendFinalization({
   // Sæson-vinduet pr. board er en delmængde af unionen herunder (et boards
   // planSeasonIds = dets egne snapshots' season_id + den aktuelle sæson), så
   // prefetchen kan ikke mangle en række et board ville have set.
+  // `season.id` er allerede valideret ovenfor (tom → skipped_reason "no_season").
+  const currentSeasonId = /** @type {{ id: string }} */ (season).id;
   const goalContextSeasonIds = [
     ...new Set([
       ...[...snapshotRowsByBoard.values()].flat().map((row) => row?.season_id).filter(Boolean),
-      season.id,
+      currentSeasonId,
     ]),
   ];
   const goalContextPrefetch = await prefetchGoalContextSources({
@@ -392,8 +409,9 @@ export async function processBoardWeekendFinalization({
   summary.checkpoint = checkpoint;
   const boardTestMode = await isTestModeActiveFn(supabase);
 
-  const teamGoalContextSources = new Map();
+  const teamGoalContextSources = /** @type {Map<string, any>} */ (new Map());
 
+  /** @param {any} team */
   const processTeam = async (team) => {
     const boards = boardsByTeam.get(team.id) || [];
     const standing = standingByTeam.get(team.id) || null;
@@ -411,10 +429,11 @@ export async function processBoardWeekendFinalization({
       if (captureExceptionFn) captureExceptionFn(snapshotPrefetchError, { tags: { hook: "board-weekend" }, extra: { teamId: team.id } });
       return;
     }
-    const recentSnapshots = [...(snapshotRowsByTeam.get(team.id) || [])]
+    let recentSnapshots = [];
+    recentSnapshots = /** @type {any} */ ([...(snapshotRowsByTeam.get(team.id) || [])]
       .sort(byCreatedAtDesc)
       .slice(0, 3)
-      .map(toRecentSnapshotRow);
+      .map(toRecentSnapshotRow));
 
     if (!teamGoalContextSources.has(team.id)) {
       teamGoalContextSources.set(team.id, selectGoalContextSourcesForTeam(goalContextPrefetch, team.id));
@@ -687,7 +706,7 @@ export async function processBoardWeekendFinalization({
     ? 1
     : BOARD_FINALIZATION_TEAM_BATCH_SIZE;
   for (let i = 0; i < teams.length; i += batchSize) {
-    await Promise.all(teams.slice(i, i + batchSize).map((team) => processTeam(team)));
+    await Promise.all(teams.slice(i, i + batchSize).map((/** @type {any} */ team) => processTeam(team)));
   }
 
   return summary;
