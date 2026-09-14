@@ -114,10 +114,34 @@ export async function runDiscordWelcomeSweep({
         continue;
       }
 
-      const payload = buildDiscordWelcomeNotification();
-      const result = await notify({ supabase, userId: team.user_id, now, ...payload });
-      if (result?.delivered || result?.deduped) stats.sent += 1;
-      else stats.skipped += 1;
+      // CodeRabbit-fund (denne PR): claimet SKAL kunne rulles tilbage. Fejler
+      // notify() efter et vundet claim (netvaerksfejl, midlertidig Supabase-
+      // udfald), skal naeste sweep-tick proeve igen — ikke se holdet som
+      // "sendt" for evigt. Derfor forsoeges notify() i sin egen try, og et
+      // kast der naar helt hertil frigiver claimet FOER det logges som fejlet.
+      try {
+        const payload = buildDiscordWelcomeNotification();
+        const result = await notify({ supabase, userId: team.user_id, now, ...payload });
+        if (result?.delivered || result?.deduped) stats.sent += 1;
+        else stats.skipped += 1;
+      } catch (notifyErr) {
+        const { error: revertError } = await supabase
+          .from("teams")
+          .update({ discord_welcome_sent_at: null })
+          .eq("id", team.id);
+        if (revertError) {
+          // Claimet kunne ikke rulles tilbage — holdet STAAR som sendt uden at
+          // vaere det. Sjaeldent (kraever at BAADE notify OG selve rollback-
+          // updaten fejler), men skal raabe hoejt frem for at fejle stille:
+          // en manuel `UPDATE teams SET discord_welcome_sent_at = NULL WHERE
+          // id = '<teamId>'` er reparationen.
+          captureExceptionFn(
+            new Error(`discord-welcome: kunne IKKE rulle claim tilbage for hold ${team.id} efter fejlet notify: ${revertError.message}`),
+            { tags: { cron: "discord-welcome", stage: "claim-revert-failed" }, extra: { teamId: team.id } },
+          );
+        }
+        throw notifyErr;
+      }
     } catch (err) {
       stats.failed += 1;
       console.error(`  ❌ discord-welcome-sweep fejlede for hold ${team.id}:`, err?.message || err);

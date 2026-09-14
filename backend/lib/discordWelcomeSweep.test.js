@@ -141,6 +141,65 @@ test("runDiscordWelcomeSweep: ingen kandidater → tomt resultat, ingen kald", a
   assert.deepEqual(stats, { candidates: 0, sent: 0, skipped: 0, failed: 0 });
 });
 
+// Fake supabase der skelner claim-kald (.eq().is().select(), patch =
+// timestamp) fra revert-kald (bare .eq(), afventet direkte, patch = null) —
+// samme skelnen den ægte discordWelcomeSweep.js laver ved at kalde .is() kun
+// på claim-vejen.
+function makeRevertTrackingSupabase() {
+  const claims = [];
+  const reverts = [];
+  return {
+    claims,
+    reverts,
+    supabase: {
+      from(table) {
+        if (table !== "teams") throw new Error(`uventet tabel: ${table}`);
+        return {
+          update(patch) {
+            return {
+              eq(_col, id) {
+                if (patch.discord_welcome_sent_at === null) {
+                  reverts.push(id);
+                  return Promise.resolve({ error: null });
+                }
+                return {
+                  is() {
+                    return {
+                      async select() {
+                        claims.push(id);
+                        return { data: [{ id }], error: null };
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+}
+
+test("runDiscordWelcomeSweep: notify fejler EFTER vundet claim → claimet rulles tilbage (CodeRabbit-fund)", async () => {
+  const now = new Date("2026-09-14T12:00:00Z");
+  const { supabase, claims, reverts } = makeRevertTrackingSupabase();
+
+  const stats = await runDiscordWelcomeSweep({
+    supabase,
+    now,
+    notify: async () => { throw new Error("Supabase midlertidigt nede"); },
+    fetchCandidateTeams: async () => [{ id: "t1", user_id: "u1", created_at: now.toISOString() }],
+    fetchActiveRiderCounts: async () => new Map([["t1", 8]]),
+    captureExceptionFn: () => {},
+  });
+
+  assert.deepEqual(claims, ["t1"]);
+  assert.deepEqual(reverts, ["t1"], "et fejlet notify SKAL frigive claimet, ellers er holdet tabt for evigt");
+  assert.equal(stats.failed, 1);
+  assert.equal(stats.sent, 0);
+});
+
 test("runDiscordWelcomeSweep: en fejlet claim isoleres, resten af sweepen fortsaetter", async () => {
   const notified = [];
   const now = new Date("2026-09-14T12:00:00Z");

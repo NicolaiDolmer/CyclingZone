@@ -1,5 +1,5 @@
 import { DISCORD_INVITE_URL } from "../lib/externalLinks";
-import { logEvent } from "../lib/logEvent"; // #5130
+import { logEvent } from "../lib/logEvent.js"; // #5130
 
 // Discord-brand-glyf (officielt mærke). Inline her frem for i det delte
 // ui/icons-sæt: en ekstern social-glyf hører ikke hjemme i det generiske

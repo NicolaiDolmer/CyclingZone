@@ -13,7 +13,7 @@ import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
 import { formatNavBadgeCount } from "../lib/navBadges.js";
 import { resolveNotificationLink } from "../lib/notificationLink";
-import { DISCORD_INVITE_URL } from "../lib/externalLinks"; // #5130
+import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
 import { useActionSummary } from "../hooks/useActionSummary";
