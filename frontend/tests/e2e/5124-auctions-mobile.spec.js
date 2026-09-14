@@ -1,4 +1,6 @@
-// #5124 — D-047-audit af Auktioner på mobil (<768px).
+// #5124 — D-047-audit af Auktioner på mobil (#5124's ejer-tekst siger "<768px";
+// AuctionCard/tabel-splittet herunder bruger sin egen, allerede eksisterende
+// `md:hidden`/`hidden md:block`-grænse på 768px, forud for #5124).
 //
 // FUND (dokumenteret her i stedet for i kode, da ingen kode ændres): Auktions-
 // tabellen (AuctionRow, sticky navn venstre + sticky bud højre — se kommentaren

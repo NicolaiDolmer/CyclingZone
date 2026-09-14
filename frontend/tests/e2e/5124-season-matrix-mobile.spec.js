@@ -1,4 +1,5 @@
-// #5124 — D-047-audit af sæsonmatricen på mobil (<768px).
+// #5124 — D-047-audit af sæsonmatricen på mobil (testet ved 393px, godt under
+// baade #5124's egen "<768px"-tekst og D-047/DataTable.jsx's 640px-grænse).
 //
 // FUND (dokumenteret her + som kode-kommentar i SeasonMatrix.jsx, jf. #5124's
 // krav om skriftlig begrundelse for undtagelsen): matricen er en rytter ×

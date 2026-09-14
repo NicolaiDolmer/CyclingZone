@@ -1,4 +1,6 @@
-// #5124 — D-047 til Transferlisten på mobil (<768px). Markeds-tabellen kan
+// #5124 — D-047 til Transferlisten på mobil. #5124's ejer-tekst siger "<768px",
+// men mekanikken genbruger D-047/DataTable.jsx's egen 640px-grænse
+// (`useIsMobileViewport`) — ÉN grænse i hele appen, ikke to. Markeds-tabellen kan
 // ikke bruge <DataTable> (bulk-select-checkbokse i den sticky navne-celle + en
 // expander-handlingsrække pr. listing, se WRAP-kommentaren i TransfersPage.jsx),
 // og de 15 evne-kolonner havde ALDRIG en `hidden`-klasse — det er den reelle

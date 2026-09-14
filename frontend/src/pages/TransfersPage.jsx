@@ -1000,11 +1000,9 @@ function MarketRow({
               // #5124: navnet må bryde (ved ordgrænsen) i mobil-standardtilstanden
               // i stedet for at tvinge en nowrap-bredde — samme regel som
               // TrainingPage.jsx's roster og DataTable's renderStickyCell(wrap).
-              className={
-                isMobile && !showStatCols
-                  ? "text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors min-w-0"
-                  : undefined
-              }
+              // `wrap`-proppen (RiderNameCell.jsx) fjerner den ellers altid
+              // tilføjede whitespace-nowrap (CodeRabbit-fund, #5124).
+              wrap={isMobile && !showStatCols}
             />
           </div>
         </td>

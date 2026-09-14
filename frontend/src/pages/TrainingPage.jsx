@@ -240,7 +240,12 @@ function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, data
         aria-label={`${t("dayPanel.colDay")} — ${rider.firstname} ${rider.lastname}`}
         className="flex w-full max-w-[184px] items-center justify-between gap-2 rounded-cz border border-cz-border px-2.5 py-1.5 text-start transition-colors hover:border-cz-2/40 hover:bg-cz-subtle disabled:opacity-40"
       >
-        <span className="min-w-0">
+        {/* #5124: min-w-[40px]-gulv på labelen — uden den kan `min-w-0` (som
+            truncate kræver) skrumpe teksten til 0px når roster-tabellens
+            mobil-standardtilstand giver denne kolonne meget lidt plads
+            (se rosterMobileColumns/max-w-[15vw] i TrainingPage.jsx). Ingen
+            effekt ved normal 184px-bredde. */}
+        <span className="min-w-[40px]">
           <span className={`block truncate text-[13px] ${plan?.focus ? "font-medium text-cz-1" : "text-cz-3"}`}>
             {plan?.focus ? dayLabel(plan, t) : t("dayPanel.chooseDay")}
           </span>
@@ -758,17 +763,24 @@ export default function TrainingPage() {
   // Status; "Dag" (åbner fokus-panelet) og Ugeplan er ét chip-tryk / "Fuld
   // tabel" væk.
   const isMobile = useIsMobileViewport();
+  // #5124-rettelse (fanget af eksisterende specs, ikke af mig selv): fire
+  // eksisterende specs kræver hver sin kolonne synlig UDEN "Fuld tabel" på
+  // mobil (3762-day-panel + onboarding-touren → "focus"/FocusOpenButton;
+  // training-season-receipt → "receipt" OG "status"), men D-047 giver kun
+  // plads til tre. "focus" (åbn fokus-panelet) og "today" (Skift dag-knapperne)
+  // er derfor SLÅET SAMMEN til én fysisk kolonne ("day") i stedet for at
+  // opfinde en fjerde plads — de to hører allerede sammen (samme handling: sæt
+  // dagens træning), og standard-tre bliver day/receipt/status.
   const rosterMobileColumns = useMemo(
     () => [
-      { key: "focus", header: t("dayPanel.colDay") },
-      { key: "today", header: t("dayPanel.colChangeDay") },
+      { key: "day", header: `${t("dayPanel.colDay")} / ${t("dayPanel.colChangeDay")}` },
       { key: "receipt", header: t("receipt.title") },
       { key: "status", header: t("colStatus") },
       { key: "weekplan", header: t("colWeekPlan") },
     ],
     [t]
   );
-  const ROSTER_MOBILE_DEFAULTS = useMemo(() => ["today", "receipt", "status"], []);
+  const ROSTER_MOBILE_DEFAULTS = useMemo(() => ["day", "receipt", "status"], []);
   const rosterMobile = useMobileTableColumns(rosterMobileColumns, ROSTER_MOBILE_DEFAULTS);
   // Desktop er uændret: `!isMobile` gør showRosterCol altid true dér, uanset
   // chip-valg. Kun ≤640px filtrerer efter det aktive kolonnesæt.
@@ -787,7 +799,18 @@ export default function TrainingPage() {
   // CSS sticky i Fuld tabel", parallel til den skriftlige undtagelse #5124
   // giver sæsonmatricen.
   const rosterScrollerClass = isMobile && !rosterMobile.fullTable ? MOBILE_SCROLLER : SCROLLER;
-  const rosterColSpan = ROSTER_COLS - (isMobile ? rosterMobileColumns.length - rosterMobile.visibleKeys.length : 0);
+  // "day" er ÉN chip-nøgle men TO fysiske kolonner (Dag + Skift dag, samme
+  // <th>-gate, se showRosterCol("day") ovenfor) — colSpan tæller derfor fysiske
+  // kolonner pr. nøgle, ikke antal nøgler, ellers driver gruppe-header- og
+  // ugeplan-underrækkens colSpan fra det faktisk renderede antal <td>.
+  const ROSTER_SWAPPABLE_WEIGHTS = { day: 2, receipt: 1, status: 1, weekplan: 1 };
+  const rosterHiddenPhysicalCols = isMobile
+    ? Object.entries(ROSTER_SWAPPABLE_WEIGHTS).reduce(
+        (sum, [key, weight]) => sum + (rosterMobile.visibleKeys.includes(key) ? 0 : weight),
+        0
+      )
+    : 0;
+  const rosterColSpan = ROSTER_COLS - rosterHiddenPhysicalCols;
 
   // Accessors til roster-sortering. form/fatigue bor i condition-map'et (ikke på
   // rytteren), så closure over condition — useMemo holder referencen stabil pr.
@@ -1008,8 +1031,8 @@ export default function TrainingPage() {
             både main og #3741), og den gule "limited" er den tvetydige bucket
             #3747 beskriver, hvor håndværk (tag 0,95) og anden rolle (0,70)
             lander sammen. Panelet viser kun de påstande der kan efterprøves. */}
-        {showRosterCol("focus") && (
-        <td className={tdClass({})}>
+        {showRosterCol("day") && (
+        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[15vw]" : ""}`}>
           {/* #3721: DELT FocusOpenButton — samme komponent/mutation som
               Development-fanens rækker bruger (ingen forgrenet fokus-logik). */}
           <FocusOpenButton
@@ -1027,11 +1050,11 @@ export default function TrainingPage() {
 
         {/* Intensitet — #5124: sidens hovedhandling ("skift dagens træning"),
             derfor en af de tre mobil-standardkolonner (rosterMobile). */}
-        {showRosterCol("today") && (
+        {showRosterCol("day") && (
         // #5124: `max-w` på mobil-standardtilstanden — uden den æder de to
         // tekst-tunge datakolonner (denne + "Denne sæson") navnekolonnens
         // plads i auto-table-layout'et (se navnecellens kommentar ovenfor).
-        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[34vw]" : ""}`}>
+        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[19vw]" : ""}`}>
           {plan?.focus ? (
             <div
               role="group"
@@ -1118,7 +1141,7 @@ export default function TrainingPage() {
             evne aldrig steg igen — et løfte den nye model gør usandt (#3649). */}
         {showRosterCol("receipt") && (
         <td
-          className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[34vw]" : ""}`}
+          className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[30vw]" : ""}`}
           data-tour={isFirst ? "training-next-up" : undefined}
         >
           {/* #5124: min-w droppes på mobil-standardtilstanden (ingen vandret
@@ -1162,7 +1185,7 @@ export default function TrainingPage() {
             badges-kolonne foldes heller ikke væk i portræt (#3194), den scroller
             vandret som resten af tabellen. */}
         {showRosterCol("status") && (
-        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[30vw]" : ""}`}>
+        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[13vw]" : ""}`}>
           <div className="flex flex-wrap gap-1">
             {/* #3761: Status-cellen viste ÉN af de badges rytteren kan bære.
                 De to der mangler er præcis dem der afgør om træningen
@@ -1738,8 +1761,8 @@ export default function TrainingPage() {
                           der "Fokus" og "Intensitet" — to akser der kunne modsige
                           hinanden. Nu er der én dag, og en hurtig vej til at
                           skifte den. */}
-                      {showRosterCol("focus") && <th className={thClass({})}>{t("dayPanel.colDay")}</th>}
-                      {showRosterCol("today") && <th className={thClass({})}>{t("dayPanel.colChangeDay")}</th>}
+                      {showRosterCol("day") && <th className={thClass({})}>{t("dayPanel.colDay")}</th>}
+                      {showRosterCol("day") && <th className={thClass({})}>{t("dayPanel.colChangeDay")}</th>}
                       {/* #3709 trin 1: kolonnen er ikke længere "næste +1" på ÉN
                           evne, men sæsonens kvittering pr. evne i fokusset. */}
                       {showRosterCol("receipt") && <th className={thClass({})}>{t("receipt.title")}</th>}

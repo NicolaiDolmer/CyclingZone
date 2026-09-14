@@ -1,6 +1,9 @@
-// #5124 — D-047 til Daglig træning-rosteret på mobil (<768px, targettet
-// mobile-chromium ved 393px, samme viewport som playwright.config.js's
-// mobile-chromium-projekt). Roster-tabellen kan ikke bruge <DataTable> (multi-
+// #5124 — D-047 til Daglig træning-rosteret på mobil. #5124's ejer-tekst siger
+// "<768px", men selve mekanikken genbruger D-047/DataTable.jsx's EGEN,
+// kanoniske grænse (`useIsMobileViewport`, 640px — samme som Tailwinds `sm`)
+// for at holde ÉN grænse i hele appen, ikke to. Testet ved 393px, samme
+// viewport som playwright.config.js's mobile-chromium-projekt (godt under
+// begge grænser). Roster-tabellen kan ikke bruge <DataTable> (multi-
 // select-checkbox + gruppe-header-rækker + en udvidelig ugeplan-underrække),
 // så mobil-standarden bygges i TrainingPage.jsx selv oven på MobileTableChips.jsx
 // (se filens kommentar ved `rosterMobile`).
