@@ -300,6 +300,12 @@ export default function RaceSelectionPanel({
   // kunne et gammelt svar markere det NYE løb som gemt, rydde dets `touched` og
   // åbne reload-porten midt i en urørt udtagelse. Samme generations-guard som
   // loadSelection allerede bruger (#3310), nu også på skrive-vejene.
+  //
+  // Kaldes både lige efter authHeaders() (et "saving"/"loading" sat DER ville
+  // låse det nye løbs panel, og guarden længere nede rydder det aldrig) og efter
+  // svaret. autoSelect()'s catch-gren er bevidst uguardet: autoStatus "error"
+  // indgår ikke i `busy`, så den låser intet, og #3310's kontrakttest pinner
+  // netop den blok ordret.
   function isStale(generation) {
     return generation !== generationRef.current;
   }
@@ -334,10 +340,10 @@ export default function RaceSelectionPanel({
   }
 
   async function save() {
-    // Snapshot FØR det første await (authHeaders kan gå på netværk) — se isStale.
+    // #5098 (CodeRabbit): fladen låses FØR det første await. authHeaders() kan gå
+    // på netværk, og en ændring i det vindue ville dropDraft() bagefter slette som
+    // "gemt" — uden at den nogensinde nåede med i kaldet.
     const gen = generationRef.current;
-    const headers = await authHeaders();
-    if (!headers) return;
     setStatus("saving");
     setErrorKey(null);
     setErrorDetail(null);
@@ -346,6 +352,10 @@ export default function RaceSelectionPanel({
     // ellers kan et gammelt "Could not auto-select" stå tilbage ved siden af et
     // netop lykkedes manuelt Gem (og omvendt).
     if (autoStatus !== "idle") setAutoStatus("idle");
+    const headers = await authHeaders();
+    // Et forældet kald må hverken låse eller låse op det løb panelet nu viser.
+    if (isStale(gen)) return;
+    if (!headers) { setStatus("idle"); return; }
     // #2376: round-trip er OBLIGATORISK — panelet har intet UI til at ÆNDRE free_role,
     // men et gem herfra må ikke wipe free_role'r sat af boardet. Filtreret til ryttere
     // der stadig er i den (evt. lige nu redigerede) trup, så en fjernet rytter ikke
@@ -397,8 +407,7 @@ export default function RaceSelectionPanel({
           }
         : d));
     } catch {
-      // Bevidst UGUARDET: en netværksfejl skriver kun en fejlbesked, ingen
-      // udtagelses-state. Guarden ligger hvor et forældet svar kunne gøre skade.
+      if (isStale(gen)) return;
       setStatus("error");
       setErrorKey("generic");
     }
@@ -412,7 +421,7 @@ export default function RaceSelectionPanel({
   async function autoSelect() {
     const gen = generationRef.current;
     const headers = await authHeaders();
-    if (!headers) return;
+    if (!headers || isStale(gen)) return;
     setAutoStatus("loading");
     // #3310 quality-fix: ryd et evt. forældet manuelt gem-resultat (status/errorKey/
     // errorDetail) ved start af auto-select, af samme grund som ovenfor i save().
