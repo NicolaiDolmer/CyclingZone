@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { logEvent } from "./logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -33,9 +34,12 @@ export function useTraining() {
     const headers = await authHeaders();
     if (!headers) { setLoading(false); return; }
     try {
-      const res = await fetch(`${API}/api/training/me`, { headers });
+      // #5242: apiFetch — en 429/401-byge (rytterskift, mange faner) skal ikke
+      // overskrive den viste state; "limited"/"unauthorized" beholder den bare.
+      const res = await apiFetch(`${API}/api/training/me`, { headers });
+      if (res.limited || res.unauthorized) return;
       if (res.ok) {
-        const data = await res.json();
+        const data = res.data;
         setSlots(data.slots ?? null);
         setPlans(data.plans ?? {});
         setTeamId(data.teamId ?? null);
@@ -73,10 +77,10 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingId(riderId);
     try {
-      const res = await fetch(`${API}/api/training/${riderId}`, {
+      const res = await apiFetch(`${API}/api/training/${riderId}`, {
         method: "POST", headers, body: JSON.stringify({ dayType, session }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       if (data.slots) setSlots(data.slots);
       // Serveren returnerer det par den faktisk skrev — vi gætter ikke på det
@@ -99,8 +103,8 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingId(riderId);
     try {
-      const res = await fetch(`${API}/api/training/${riderId}`, { method: "DELETE", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/training/${riderId}`, { method: "DELETE", headers });
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       if (data.slots) setSlots(data.slots);
       setPlans((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
@@ -129,10 +133,10 @@ export function useTraining() {
     if (ids.length === 0) return { ok: true, applied: 0, failed: [] };
     setBulkApplying(true);
     try {
-      const res = await fetch(`${API}/api/training/bulk`, {
+      const res = await apiFetch(`${API}/api/training/bulk`, {
         method: "POST", headers, body: JSON.stringify({ riderIds: ids, dayType, session }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) {
         // Hele requestet fejlede (auth/validering/rate/5xx) → alle markeres fejlet,
         // så UI'et beholder dem valgt til et nyt forsøg.
@@ -167,10 +171,10 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingWeekPlan(true);
     try {
-      const res = await fetch(`${API}/api/training/week-plan`, {
+      const res = await apiFetch(`${API}/api/training/week-plan`, {
         method: "PUT", headers, body: JSON.stringify({ days }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       setWeekPlanState(data.weekPlan ?? days);
       logEvent("training_week_plan_set", {});
@@ -188,8 +192,8 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingWeekPlan(true);
     try {
-      const res = await fetch(`${API}/api/training/week-plan`, { method: "DELETE", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/training/week-plan`, { method: "DELETE", headers });
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       setWeekPlanState(null);
       return { ok: true };
@@ -208,10 +212,10 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingRiderWeekPlanId(riderId);
     try {
-      const res = await fetch(`${API}/api/training/week-plan/${riderId}`, {
+      const res = await apiFetch(`${API}/api/training/week-plan/${riderId}`, {
         method: "PUT", headers, body: JSON.stringify({ days }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       setRiderWeekPlansState((prev) => ({ ...prev, [riderId]: data.days ?? days }));
       logEvent("training_rider_week_plan_set", {});
@@ -229,8 +233,8 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingRiderWeekPlanId(riderId);
     try {
-      const res = await fetch(`${API}/api/training/week-plan/${riderId}`, { method: "DELETE", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/training/week-plan/${riderId}`, { method: "DELETE", headers });
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       setRiderWeekPlansState((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
       return { ok: true };
@@ -248,8 +252,8 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setRunning(true);
     try {
-      const res = await fetch(`${API}/api/training/run-today`, { method: "POST", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/training/run-today`, { method: "POST", headers });
+      const data = res.data || {};
       if (res.status === 409) {
         await refresh();
         return null;

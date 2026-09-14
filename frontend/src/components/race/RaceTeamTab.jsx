@@ -42,6 +42,7 @@ import FitBar from "../racehub/FitBar.jsx";
 import { Section, SectionHeader, Button, SkeletonLines, LockIcon } from "../ui/index.js";
 import { WRAP, SCROLLER } from "../ui/dataTableStyles.js";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import {
   overridesIndex,
   resolveCell,
@@ -265,12 +266,12 @@ export default function RaceTeamTab({
       const next = applyJerseyCaptainShortcut({
         matrix: draft, leaderId: jerseyLeaderRiderId, stageNumbers, stagesCompleted,
       });
-      const res = await fetch(`${API}/api/races/${raceId}/stage-roles`, {
+      const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, {
         method: "PUT",
         headers,
         body: JSON.stringify({ overrides: diffToOverrides({ matrix: next, riders }) }),
       });
-      if (!res.ok) { setJerseyStatus("error"); return; }
+      if (!res.ok) { setJerseyStatus("error"); return; } // dækker også limited/unauthorized
       setJerseyStatus("idle");
       onReload?.();
     } catch {

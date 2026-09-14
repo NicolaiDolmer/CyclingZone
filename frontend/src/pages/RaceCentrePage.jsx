@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import {
   Button,
   PageHeader,
@@ -210,11 +211,11 @@ export default function RaceCentrePage() {
       if (token && upcomingOwn.length) {
         const entries = await Promise.all(upcomingOwn.map(async (c) => {
           try {
-            const res = await fetch(`${API}/api/races/${c.raceId}/selection`, {
+            const res = await apiFetch(`${API}/api/races/${c.raceId}/selection`, {
               headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) return null;
-            const body = await res.json();
+            if (!res.ok) return null; // dækker også limited/unauthorized
+            const body = res.data;
             if (!body || body.enabled === false || !Number.isFinite(body.size?.max)) return null;
             return [c.raceId, {
               selected: body.selection?.rider_ids?.length ?? 0,
