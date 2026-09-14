@@ -8,14 +8,26 @@
 // nedenfor er derfor et ESTIMAT (antal betalte perioder ≈ dækket tid / periode-
 // længde, ganget periode-prisen), IKKE en eksakt regnskabssum. Formlen er
 // bevidst identisk med SQL-udgaven i compute_daily_growth_snapshot()
-// (database/2026-08-03-growth-snapshots-3196.sql) — hold dem i sync ved
-// prisændring. Priser matcher frontend/public/locales/{en,da}/pro.json
-// ("49 kr/mo" / "265 kr"); ingen fælles maskinlæsbar kilde findes i dag.
+// (nyeste database/*growth-snapshot*.sql) — hold dem i sync ved prisændring.
+//
+// #5215 (ejer-beslutning 14/9, ved merge af #5210): "de priser spillerne ser
+// skal være inkl. moms. Det er de ting jeg ser, som skal være ekskl. moms."
+// LTV er et EJER-tal (ligesom MRR/ARPU, se docs/GROWTH_STACK.md), så
+// PLAN_PRICE_CENTS er derfor øre EKSKL. moms — samme tal som
+// backend/scripts/lib/aluntaPlanCatalog.js's `amount`-felt (kataloget SELV
+// er den skrivebeskyttede SSOT; disse to konstanter er håndskrevne kopier,
+// hold dem i sync). Spillervendte priser (pro.json, /pro, checkout) forbliver
+// UÆNDRET inkl. moms — rør dem ikke ved en prisændring her.
+// Historik: før #5215 var disse tal inkl. moms (4900/26500, jf. #5051 der
+// undersøgte men IKKE ændrede dem, merget som #5210) — se
+// forward-guarden i scripts/check-pro-prices.mjs for hvorfor kravet nu er det
+// modsatte. growth_metric_snapshots-rækker fra FØR #5215 er derfor inkl.
+// moms; ingen backfill, se docs/GROWTH_STACK.md.
 import { normalizePlanInterval } from "./subscriptionPlanInterval.js";
 
 export const PLAN_PRICE_CENTS = {
-  monthly: 4900,
-  semiannual: 26500,
+  monthly: 3920,
+  semiannual: 21200,
 };
 
 const MONTH_SECONDS = 2629800; // 30.44 dage, gennemsnitlig månedslængde
