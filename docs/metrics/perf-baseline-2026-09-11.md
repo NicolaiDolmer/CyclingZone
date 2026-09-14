@@ -64,24 +64,30 @@ lille i18n-STRAF; den engelske forbedring er større.
   og lå derfor i entry-chunkens CSS-graf; switcheren bruger nu inline SVG.
   `/login` −72 KB, `/roadmap` −72 KB transfer. `/` viste den aldrig (landing har
   ingen sprogvælger), så `/`-transferen er netto +11 KB fra i18n-splittet alene.
-- **FCP falder 350-450 ms på alle tre sider** (3545→3192, 3453→3177,
-  3623→3169). *Ikke* fordi den danske bundle er ude af first paint — den
-  påstand ville være forkert: `main.jsx` venter stadig på `initialized` før
-  mount, så en dansk besøgende henter og parser fortsat bundlen før appen
-  mounter. First paint kommer under alle omstændigheder fra den prærenderede
-  HTML og gates af `index-*.css`, ikke af JS. Den mest sandsynlige forklaring
-  er at der ligger færre høj-prioritets-bytes foran det render-blokerende
-  stylesheet i hentnings-bølgen (−72 KB flag-CSS på `/login` og `/roadmap`,
-  −61,7 KB statisk i18n-JS overalt). **Mekanismen er ikke isoleret i denne
-  måling** — Lighthouse simulerer throttling (Lantern), så netværksloggens
-  tidsstempler kan ikke bevise rækkefølgen. Effektens størrelse er derimod
-  konsistent over alle 9 kørsler.
+- **FCP falder 276-454 ms** (`/` 3545→3192 = −353, `/login` 3453→3177 = −276,
+  `/roadmap` 3623→3169 = −454). *Ikke* fordi den danske bundle er ude af first
+  paint — den påstand ville være forkert: `main.jsx` venter stadig på
+  `initialized` før mount, så en dansk besøgende henter og parser fortsat
+  bundlen før appen mounter. First paint kommer under alle omstændigheder fra
+  den prærenderede HTML og gates af `index-*.css`, ikke af JS. Den mest
+  sandsynlige forklaring er at der ligger færre høj-prioritets-bytes foran det
+  render-blokerende stylesheet: flag-CSS'ens 72 KB er væk på `/login` og
+  `/roadmap`, og den STATISKE i18n-chunk er 61,7 KB mindre for alle — den
+  danske besøgende henter til gengæld sine 73 KB som en separat, senere
+  indsat (og dermed ikke foranstillet) chunk. **Mekanismen er ikke isoleret i
+  denne måling** — Lighthouse simulerer throttling (Lantern), så
+  netværksloggens tidsstempler kan ikke bevise rækkefølgen. Effektens
+  størrelse er derimod konsistent over alle 9 kørsler.
 - **TBT stiger 0-36 ms → 64-90 ms.** Reelt og reproducerbart, ikke støj: arbejde
   der før lå FØR FCP (entry-grafens modul-evaluering) ligger nu efter, og TBT
   måler kun vinduet efter FCP. Alle værdier er stadig klart under 200 ms-
   tærsklen, så INP-proxyen er fortsat grøn.
 - **`/roadmap`-CLS 0,000 → 0,037** — samme kendte flakiness som noten under
-  "efter spor 1" (2 af 3 kørsler 0,037, én 0). Begge tal er grønne.
+  "efter spor 1". Rå kørsler efter: **0,037 / 0,037 / 0,000** (medianen er
+  derfor 0,037); rå kørsler før: 0,000 / 0,000 / 0,000. `/login` opførte sig
+  identisk (0,037 / 0,037 / 0,000) både før og efter. Begge tal er grønne, og
+  spredningen er den samme sektion som fund 2 beskriver. `/login` gik fra
+  0,037 / 0,037 / 0,037 til 0,037 / 0,037 / 0,000 — samme median, kun støj.
 
 **LCP-målet (< 2.500 ms) er stadig IKKE ramt** — 5.228 ms på `/roadmap`. Se
 fund 3 for hvad der er tilbage.
@@ -216,10 +222,14 @@ inden for budget (1138 KB + 5% margin). `audit-perf-seo.mjs`: 0 🔴, 1 🟡 (bu
    `/roadmap` — stadig langt fra 2.500 ms.
    **Det der nu er tilbage, målt med `render-blocking-insight`:**
    estimeret spildtid faldt 330 ms → 160 ms, og de to poster er
-   `chunk-selfheal.js` (10 KB, **615 ms** parser-blokering — den er en
-   classic `<script src>` i `<head>` og skal blive der, men behøver ikke
-   være en separat REQUEST: inlines den, forsvinder rundturen uden at
-   semantikken ændres) og `index-*.css` (16,7 KB, 315 ms, 89,7 % ubrugt —
+   `chunk-selfheal.js` (10 KB, **615 ms** parser-blokering — en classic
+   `<script src>` i `<head>` der skal blive liggende dér; at inline den ville
+   fjerne rundturen, men det er IKKE en gratis eller semantik-bevarende
+   ændring: `cz-boot-assets-manifest` matcher på præcis det tag-udtryk, filen
+   har sin egen cache-politik, og et eksekverbart inline-script kræver en
+   hash/nonce under en håndhævende CSP. En tidsmåling beviser ikke semantisk
+   ækvivalens — det er et selvstændigt ejer- og sikkerhedsreview, ikke en
+   sidegevinst) og `index-*.css` (16,7 KB, 315 ms, 89,7 % ubrugt —
    Tailwinds sitewide utility-sæt; kan ikke gøres non-blocking uden FOUC på
    sidehovedet). Ingen af de to er rørt her: `chunk-selfheal` er den mest
    sikkerhedskritiske fil i repoet (#4595/CYCLINGZONE-56) og fortjener sin
