@@ -20,6 +20,6 @@
 - **GDD-regler (ejer 10/9):** ét område pr. kort · ÉT samlet før/efter-billede før kortet · genåbn aldrig låste beslutninger.
 - **Mekanik:** byg KUN via wave.js (4 laner, semafor 2, hook; frys = commit ≥45 min + tavshed, spor 120/180 min); merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); migrationer applies af auto-migrate.yml, Claude post-verificerer; CI tavs på PR = merge-konflikt; go-kort på `gh pr diff` + billede; workers rører aldrig `docs/NOW.md`. Preview-screenshots: dev-server UDEN `VITE_PREVIEW_MOCK` når Playwright-routes skal styre data. `Get-Date` FØR hver logning.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable, orkestrator) 14/9 aften fra kl. 19:45 — boelge 1 (#5230 #5241 #2760 #4067 #5242) + kort til ejeren. Anden session: STOP og spoerg.
 
 _Historik i git-log, issue-tråde + docs/audits/._
