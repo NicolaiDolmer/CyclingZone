@@ -105,7 +105,9 @@
     "searchHelp": "Søg i hjælp og FAQ",
     "selectSeason": "Vælg sæson",
     "unreadPatchNotes": "Nye patch notes",
-    "unreadForum": "Ny forum-aktivitet"
+    "unreadForum": "Ny forum-aktivitet",
+    "selectionReminder": "Trup mangler før fristen",
+    "selectionReminderUrgent": "Holdet stiller ikke op"
   },
   "leaderBadge": "Fører",
   "amountInput": {

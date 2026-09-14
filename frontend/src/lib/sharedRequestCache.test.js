@@ -94,8 +94,13 @@ test("clear rydder alt", async () => {
   assert.equal(cache.stats().size, 1);
 });
 
-test("de tre globale noegler fra #5089 har hver sin TTL", () => {
-  assert.deepEqual(Object.keys(SHARED_KEYS).sort(), ["deadlineDayStatus", "scoutingMe", "transferListings"]);
+test("hver global noegle har sin egen TTL", () => {
+  // #5089 lagde de tre foerste ind; #4983 lagde selectionReminder til. Listen er
+  // eksplicit, saa en ny noegle uden TTL fanges her og ikke i prod.
+  assert.deepEqual(
+    Object.keys(SHARED_KEYS).sort(),
+    ["deadlineDayStatus", "scoutingMe", "selectionReminder", "transferListings"],
+  );
   for (const key of Object.keys(SHARED_KEYS)) {
     assert.ok(SHARED_TTL_MS[key] > 0, `${key} mangler en TTL`);
     assert.ok(SHARED_TTL_MS[key] <= 60_000, `${key} har for lang TTL til at vaere sikker uden invalidering`);
