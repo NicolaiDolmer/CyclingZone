@@ -244,6 +244,31 @@ test("nyt hold, dag 5 siden åbning: bestyrelsen auto-accepterer", async () => {
   assert.equal(notifications[0].metadata.titleCode, "notif.boardAutoAccepted.title");
   const board = state.board_profiles.find((b) => b.team_id === "team-1" && b.plan_type === "5yr");
   assert.equal(board.negotiation_status, "completed");
+  // #5103 · negotiation_status alene måler ikke en spillerhandling (onboarding-
+  // trin 4 læser negotiated_at, ikke negotiation_status) — auto-accept må ALDRIG
+  // sætte den.
+  assert.equal(board.negotiated_at, null, "auto-accept må ikke sætte negotiated_at — det er spillerhandlings-signalet /me/onboarding-progress læser");
+});
+
+// #5103 · Uden en eksplicit null i auto-accept-upserten ville en tidligere
+// spiller-signeret negotiated_at overleve stående ind i den auto-accepterede
+// cyklus efter et /board/renew (som nulstiller negotiation_status til
+// 'pending' uden at røre feltet) — upsert-conflict-grenen opdaterer kun
+// kolonner der er med i payloaden. Reproducerer nøjagtig den situation.
+test("#5103: renewal-cyklus rydder en STAAENDE negotiated_at fra en tidligere spiller-signering, når auto-accept overtager", async () => {
+  const opened = new Date(NOW.getTime() - 5 * DAY_MS);
+  const state = baseState({ teamCreatedAt: daysAgo(200), boardUpdatedAt: opened.toISOString() });
+  // Simulerer: spilleren forhandlede selv sidste cyklus (/board/sign satte
+  // negotiated_at), planen blev siden fornyet (/board/renew → 'pending',
+  // negotiated_at URØRT) og er nu forhandlingsvindue-udløbet igen.
+  state.board_profiles[0].negotiated_at = daysAgo(30);
+
+  const { summary } = await runCron(state, NOW);
+
+  assert.equal(summary.auto_accepted, 1);
+  const board = state.board_profiles.find((b) => b.team_id === "team-1" && b.plan_type === "5yr");
+  assert.equal(board.negotiation_status, "completed");
+  assert.equal(board.negotiated_at, null, "en stående negotiated_at fra forrige cyklus skal ryddes — denne cyklus blev IKKE forhandlet af spilleren");
 });
 
 // ── Renew-flip: frisk updated_at nulstiller uret uanset holdets alder ────

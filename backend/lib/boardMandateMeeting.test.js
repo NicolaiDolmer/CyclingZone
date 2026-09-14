@@ -312,6 +312,60 @@ test("writeLegacyOneYearBoard: bevarer eksisterende satisfaction/budget_modifier
   assert.equal(written.negotiation_status, "completed");
 });
 
+// #5103 · Samme skel som /board/sign + boardAutoAccept.js: onboarding-trin 4
+// (board_plan_set) læser board_profiles.negotiated_at, ikke negotiation_status
+// alene — signedVia skal derfor styre om dual-write'et sætter feltet.
+test("#5103 writeLegacyOneYearBoard: signedVia='manager' (default) sætter negotiated_at", async () => {
+  const supabase = makeMeetingSupabase({ boardProfiles: [] });
+  await writeLegacyOneYearBoard(supabase, {
+    teamId: "t1", seasonId: "s4", seasonNumber: 4, focus: "balanced", goals: [sampleGoal], team: { balance: 1000, sponsor_income: 200 },
+  });
+  const written = supabase._state.boardProfiles[supabase._state.boardProfiles.length - 1];
+  assert.ok(written.negotiated_at, "manager-sign er en ægte spillerhandling — negotiated_at skal sættes");
+});
+
+test("#5103 writeLegacyOneYearBoard: signedVia='auto_accept' sætter IKKE negotiated_at", async () => {
+  const supabase = makeMeetingSupabase({ boardProfiles: [] });
+  await writeLegacyOneYearBoard(supabase, {
+    teamId: "t1", seasonId: "s4", seasonNumber: 4, focus: "balanced", goals: [sampleGoal],
+    team: { balance: 1000, sponsor_income: 200 }, signedVia: "auto_accept",
+  });
+  const written = supabase._state.boardProfiles[supabase._state.boardProfiles.length - 1];
+  assert.equal(written.negotiated_at, null, "mandat-auto-accept er ikke en spillerhandling — negotiated_at skal forblive null");
+});
+
+test("#5103 signMandate: signedVia='auto_accept' propagerer til dual-write'ets negotiated_at=null", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [{
+      id: "m1", team_id: "t1", season_number: 4, season_id: "s4", status: "proposed", focus: "balanced",
+      goals: [sampleGoal], adjustments_allowed: 2,
+      source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+    }],
+    relations: [{ id: "rel-1", team_id: "t1", confidence: 55, category_scores: {} }],
+    members: [{ team_id: "t1", archetype_key: "sponsoraten", is_chairman: true }],
+  });
+  await signMandate(supabase, {
+    teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: null, signedVia: "auto_accept",
+  });
+  const written = supabase._state.boardProfiles[supabase._state.boardProfiles.length - 1];
+  assert.equal(written.negotiated_at, null);
+});
+
+test("#5103 signMandate: default signedVia='manager' propagerer til dual-write'ets negotiated_at", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [{
+      id: "m1", team_id: "t1", season_number: 4, season_id: "s4", status: "proposed", focus: "balanced",
+      goals: [sampleGoal], adjustments_allowed: 2,
+      source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+    }],
+    relations: [{ id: "rel-1", team_id: "t1", confidence: 55, category_scores: {} }],
+    members: [{ team_id: "t1", archetype_key: "sponsoraten", is_chairman: true }],
+  });
+  await signMandate(supabase, { teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: null });
+  const written = supabase._state.boardProfiles[supabase._state.boardProfiles.length - 1];
+  assert.ok(written.negotiated_at, "manager-sign (default) er en ægte spillerhandling");
+});
+
 test("#4865 writeLegacyOneYearBoard taber aldrig et bonus_offer-mål ved genopbygning", async () => {
   // #4865 · Årsmødets dual-write skrev current_goals som et FRISKT array fra
   // mandatets mål (`goals`), samme fejlklasse som /board/sign og auto-accept
