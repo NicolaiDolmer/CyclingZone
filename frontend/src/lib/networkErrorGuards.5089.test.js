@@ -12,10 +12,15 @@ import assert from "node:assert/strict";
 import { reportUnauthorizedResponse, _resetForTests } from "./networkErrorGuards.js";
 
 function fakeClient({ sessionToken = "tok-1", deniedByUser = true, getUserThrows = false } = {}) {
-  const state = { signOutCalls: 0, getUserCalls: 0 };
+  const state = { signOutCalls: 0, getUserCalls: 0, sessionToken };
   state.client = {
     auth: {
-      getSession: async () => ({ data: { session: sessionToken ? { access_token: sessionToken } : null } }),
+      // `sessionToken` læses fra `state` ved HVERT kald (ikke closure'et ved
+      // oprettelse) — så en test kan simulere et re-login midt i sekvensen ved
+      // at ændre `state.sessionToken` mellem to kald, uden en ny fake-client.
+      getSession: async () => ({
+        data: { session: state.sessionToken ? { access_token: state.sessionToken } : null },
+      }),
       getUser: async () => {
         state.getUserCalls += 1;
         if (getUserThrows) throw new Error("network down");
@@ -25,6 +30,7 @@ function fakeClient({ sessionToken = "tok-1", deniedByUser = true, getUserThrows
       },
       signOut: async () => {
         state.signOutCalls += 1;
+        state.sessionToken = null; // spejler den ægte klients adfærd
       },
     },
   };
@@ -62,15 +68,36 @@ test("N samtidige 401'er deler ÉT Supabase-opslag, ikke N (23x401-loopet)", asy
   assert.equal(state.getUserCalls, 1, "kun ÉT opslag mod Supabase for hele bygen");
 });
 
-test("efter sessionen er erklæret død, spørger senere 401'er ALDRIG Supabase igen", async () => {
+test("efter sessionen er erklæret død, spørger senere 401'er (samme døde session) ALDRIG Supabase igen", async () => {
   const state = fakeClient();
   await reportUnauthorizedResponse(res401, headers, "first", state.client);
   assert.equal(state.signOutCalls, 1);
   assert.equal(state.getUserCalls, 1);
-  const later = await reportUnauthorizedResponse(res401, headers, "later", state.client);
-  assert.equal(later, true, "en sticky 'allerede erklæret død'-tilstand skal svare true uden ny forespørgsel");
+  // Simulerer #5089's faktiske bug: flere SEKVENTIELLE (ikke samtidige) 401'er
+  // spredt over tid, mens sessionen forbliver væk.
+  for (let i = 0; i < 5; i += 1) {
+    const later = await reportUnauthorizedResponse(res401, headers, `later-${i}`, state.client);
+    assert.equal(later, true, "en sticky 'allerede erklæret død'-tilstand skal svare true uden ny forespørgsel");
+  }
   assert.equal(state.signOutCalls, 1, "signOut må ikke kaldes igen for et allerede afgjort udfald");
   assert.equal(state.getUserCalls, 1, "Supabase må ikke spørges igen — det er selve 23x401-kuren");
+});
+
+test("et RE-LOGIN nulstiller låsen — en ny session skal kunne erklæres død igen (uden en full-reload)", async () => {
+  const state = fakeClient();
+  await reportUnauthorizedResponse(res401, headers, "first-session-dies", state.client);
+  assert.equal(state.signOutCalls, 1);
+  assert.equal(state.getUserCalls, 1);
+
+  // Spilleren logger ind igen — react-router's navigate(), ingen full reload,
+  // så modulets tilstand overlever i browseren. Uden token-sammenligningen ville
+  // guarden stå fast i "død" for evigt.
+  state.sessionToken = "tok-2";
+  const newHeaders = { Authorization: "Bearer tok-2" };
+  const result = await reportUnauthorizedResponse(res401, newHeaders, "second-session-dies", state.client);
+  assert.equal(result, true, "den NYE sessions 401 skal også blive erklæret død");
+  assert.equal(state.signOutCalls, 2, "signOut skal køre igen for den nye, uafhængige episode");
+  assert.equal(state.getUserCalls, 2, "en frisk session betyder en frisk — ægte — forespørgsel til Supabase");
 });
 
 test("et 401 der IKKE bekræftes af Supabase (fornyelses-race) rører ikke sessionen", async () => {

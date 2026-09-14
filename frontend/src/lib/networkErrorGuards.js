@@ -24,8 +24,13 @@
 // · Samtidige 401'er deler ÉT opslag: den anden kalder får samme promise
 //   igen, i stedet for at starte et nyt Supabase-opslag ved siden af.
 // · Når sessionen ÉN gang er erklæret død, returnerer alle efterfølgende kald
-//   `true` med det samme uden at spørge Supabase igen — det er selve kuren
-//   mod 23x401-loopet, ikke bare en dedupe af det første kald.
+//   `true` uden at spørge Supabase's `getUser()` igen, SÅ LÆNGE sessionen
+//   stadig er den samme døde (ingen token) — det er selve kuren mod
+//   23x401-loopet. Dukker der en NY session op (spilleren logger ind igen —
+//   react-router's `navigate()`, ingen full reload, så modulet ellers ville
+//   stå fast i "død" for evigt), falder låsen automatisk væk igen: den
+//   billige lokale `getSession()` afslører token-skiftet uden noget
+//   netværkskald, og næste 401 detekteres forfra.
 // · `client` er injicérbar og default-clienten lazy-importeres (i stedet for
 //   et top-niveau `import { supabase }`), så modulet kan unit-testes under
 //   Node's ESM-loader uden den env-afhængige Supabase-client + .ts-fil —
@@ -42,7 +47,12 @@ import {
 } from "./sessionExpiry.js";
 
 let inFlight = null;
-let sessionDeclaredExpired = false;
+// undefined = intet afgjort endnu. Ellers: det `currentToken` (typisk `null`,
+// "ingen session") vi sidst bekræftede var dødt — matcher næste kalds
+// currentToken stadig dette, er det den SAMME afgjorte episode, og vi spørger
+// aldrig Supabase igen. Er strict equality-sammenligningen falsk (fx et NYT
+// token efter et re-login), er det en frisk episode.
+let expiredForToken;
 
 /**
  * Aflever et 401-svar til session-rejected-kæden. Returnerer `true` når svaret
@@ -61,17 +71,23 @@ let sessionDeclaredExpired = false;
  */
 export async function reportUnauthorizedResponse(res, sentHeaders, source, client) {
   if (res.status !== 401) return false;
-  if (sessionDeclaredExpired) return true; // allerede afgjort — spørg aldrig Supabase igen
   if (inFlight) return inFlight;
 
   inFlight = (async () => {
     try {
       const c = client ?? (await import("./supabase")).supabase;
       const { data } = await c.auth.getSession();
+      const currentToken = data?.session?.access_token ?? null;
+
+      // Samme afgjorte episode som sidst (typisk: stadig ingen session efter en
+      // tidligere signOut()) — den billige lokale getSession() afslører det
+      // uden at skulle spørge Supabase's getUser() (netværkskald) igen.
+      if (expiredForToken !== undefined && currentToken === expiredForToken) return true;
+
       const expired = shouldDeclareExpired({
         status: res.status,
         sentToken: tokenFromAuthHeaders(sentHeaders),
-        currentToken: data?.session?.access_token ?? null,
+        currentToken,
       });
       if (!expired) return false;
 
@@ -91,9 +107,11 @@ export async function reportUnauthorizedResponse(res, sentHeaders, source, clien
       }
 
       console.warn(`[auth] session rejected by BOTH sources (${source}) - clearing it`);
-      sessionDeclaredExpired = true;
       markSessionExpired();
       await c.auth.signOut();
+      // Efter signOut() er sessionen væk — currentToken vil være `null` ved
+      // næste kald, uanset hvad den var HER. Det er den tilstand vi låser mod.
+      expiredForToken = null;
       return true;
     } finally {
       inFlight = null;
@@ -106,5 +124,5 @@ export async function reportUnauthorizedResponse(res, sentHeaders, source, clien
 /** Kun til tests: nulstil modulets tilstand mellem testcases. */
 export function _resetForTests() {
   inFlight = null;
-  sessionDeclaredExpired = false;
+  expiredForToken = undefined;
 }
