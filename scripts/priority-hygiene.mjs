@@ -65,10 +65,20 @@ const MAX_TIMELINE_PAGES = 10; // 1.000 events - langt over hvad en enkelt issue
  * cross-reference naar rapporten postes som PR-body/kommentar (samme klasse
  * som GOTCHA'en i filens header - fanget af CodeRabbit-reviewet, #5155).
  * Escaper ogsaa taebel-delimiters og linjeskift.
+ *
+ * REAEKKEFOELGE ER BINDENDE (CodeQL #361 "Incomplete string escaping", #5176):
+ * backslash escapes FOERST. Ellers "escaper" et senere trin en backslash der i
+ * virkeligheden hoerer til titlens EGEN tekst - en titel der allerede
+ * indeholder "\|" (bogstaveligt backslash-pipe, ikke en escape) ville faa sin
+ * pipe escapet OVENPAA den eksisterende backslash og lave en falsk "\\|" som
+ * markdown-parseren laeser forkert. Ved at escape "\" til "\\" foerst bliver
+ * ALLE senere indsatte "\" (fra pipe- og #N-escapes) entydigt tegn scriptet
+ * selv har tilfoejet.
  * @param {string} title
  */
 export function sanitizeTitle(title) {
   return String(title)
+    .replace(/\\/g, '\\\\')
     .replace(/\r?\n/g, ' ')
     .replace(/\|/g, '\\|')
     .replace(/#(\d+)/g, '`#$1`');
