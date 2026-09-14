@@ -938,7 +938,14 @@ export default function TrainingPage() {
               kræver ("ikke håbet om at indholdet passer"). */}
           <div
             className={`flex items-center gap-1.5 ${
-              isMobile && !rosterMobile.fullTable ? "min-w-0 break-words [&>*]:min-w-0" : "whitespace-nowrap"
+              // #5124: KUN `min-w-0` (bryd ved ordgrænser om nødvendigt), ikke
+              // `break-words` — den brød korte navne midt i ordet ("Peder-
+              // /sen"), fordi tabellens to øvrige mobil-kolonner (knap-gruppe
+              // + "Denne sæson"-teksten) ikke har nogen bredde-modvægt og
+              // derfor æder navnekolonnens plads i auto-table-layout'et. De to
+              // datakolonner får derfor deres egen `max-w` nedenfor, så navnet
+              // beholder en rimelig andel.
+              isMobile && !rosterMobile.fullTable ? "min-w-0" : "whitespace-nowrap"
             }`}
           >
             <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
@@ -1021,7 +1028,10 @@ export default function TrainingPage() {
         {/* Intensitet — #5124: sidens hovedhandling ("skift dagens træning"),
             derfor en af de tre mobil-standardkolonner (rosterMobile). */}
         {showRosterCol("today") && (
-        <td className={tdClass({})}>
+        // #5124: `max-w` på mobil-standardtilstanden — uden den æder de to
+        // tekst-tunge datakolonner (denne + "Denne sæson") navnekolonnens
+        // plads i auto-table-layout'et (se navnecellens kommentar ovenfor).
+        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[34vw]" : ""}`}>
           {plan?.focus ? (
             <div
               role="group"
@@ -1107,7 +1117,10 @@ export default function TrainingPage() {
             tættest på gennembrud (#3639), og de tre loft-tekster lovede at en
             evne aldrig steg igen — et løfte den nye model gør usandt (#3649). */}
         {showRosterCol("receipt") && (
-        <td className={tdClass({})} data-tour={isFirst ? "training-next-up" : undefined}>
+        <td
+          className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[34vw]" : ""}`}
+          data-tour={isFirst ? "training-next-up" : undefined}
+        >
           {/* #5124: min-w droppes på mobil-standardtilstanden (ingen vandret
               scroll) — 176px er for bredt sammen med navn + "Skift dag" på
               390px. Desktop/Fuld tabel uændret. */}
@@ -1149,7 +1162,7 @@ export default function TrainingPage() {
             badges-kolonne foldes heller ikke væk i portræt (#3194), den scroller
             vandret som resten af tabellen. */}
         {showRosterCol("status") && (
-        <td className={tdClass({})}>
+        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[30vw]" : ""}`}>
           <div className="flex flex-wrap gap-1">
             {/* #3761: Status-cellen viste ÉN af de badges rytteren kan bære.
                 De to der mangler er præcis dem der afgør om træningen
