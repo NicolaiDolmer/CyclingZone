@@ -24,7 +24,7 @@
 // Test af selve regnestykket (fixture-data, ingen filsystem-afhængighed):
 //   node --test scripts/check-pro-prices.test.mjs
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -103,6 +103,76 @@ export function computeDiscountPct({ monthsInPeriod, periodPrice, monthlyPrice }
   return Math.round((1 - periodPrice / flatTotal) * 1000) / 10; // én decimal
 }
 
+// ── LTV-pris-forward-guard (#5051-undersøgelse, samme fejlklasse som #4645) ─
+// growthSnapshot.js's PLAN_PRICE_CENTS og compute_daily_growth_snapshot()'s
+// LTV-CASE-udtryk er to HÅNDSKREVNE kopier af den pris kunden RENT FAKTISK
+// betaler pr. periode — øre INKL. moms, samme tal som pro.json viser ("49
+// kr/mo" = 4900, "265 kr" = 26500, jf. growthSnapshot.js's eget filhoved).
+// aluntaPlanCatalog.js's `amount`-felt er derimod øre EKSKL. moms (Aluntas
+// interne opkrævningsgrundlag, pro.json's vatNote: "Alle priser er inkl.
+// dansk moms (25%)") — IKKE det tal LTV skal bruge. #5051 foreslog fejlagtigt
+// at sætte halvårs-tallet til det ekskl.-moms-beløb (21200); det ville have
+// UNDERVURDERET LTV med 53 kr./periode og brudt konsistensen med
+// PLAN_PRICE_CENTS.monthly (der stadig, korrekt, er inkl.-moms). Se PR-body
+// for fuld verifikation. Denne guard sammenligner derfor begge LTV-kilder mod
+// den BEREGNEDE inkl.-moms-pris (samme formel som checkAllPrices/
+// computeInclVatMajor bruger til selve Alunta-planen), ikke mod det rå
+// ekskl.-moms `amount`-felt.
+
+// PUR: udtrækker {monthly, semiannual} øre-beløb fra compute_daily_growth_
+// snapshot()'s LTV-CASE, fx
+//   (CASE WHEN s.plan_interval IN ('semiannual', '6') THEN 21200 ELSE 4900 END)
+// Returnerer null hvis mønsteret ikke findes (fil har intet LTV-CASE).
+export function extractGrowthSnapshotSqlPrices(sqlSource) {
+  const re = /CASE\s+WHEN\s+s\.plan_interval\s+IN\s+\(\s*'semiannual'\s*,\s*'6'\s*\)\s+THEN\s+(\d+)\s+ELSE\s+(\d+)\s+END/gi;
+  const matches = [...String(sqlSource ?? "").matchAll(re)];
+  if (!matches.length) return null;
+  const [, semiannual, monthly] = matches[0];
+  return { semiannual: Number(semiannual), monthly: Number(monthly) };
+}
+
+// PUR: nyeste "growth-snapshot"-migration i en liste filnavne (ISO-dato-
+// præfiks sorterer korrekt leksikografisk — samme antagelse som auto-migrate.yml
+// bruger til at afspille migrationer i rækkefølge).
+export function findLatestGrowthSnapshotSqlFilename(filenames) {
+  const candidates = (filenames || []).filter((f) => /growth-snapshot/.test(f) && f.endsWith(".sql"));
+  candidates.sort();
+  return candidates.length ? candidates[candidates.length - 1] : null;
+}
+
+// PUR: sammenligner et {monthly, semiannual}-øre-kildepar (growthSnapshot.js
+// ELLER SQL-CASE'en) mod DKK-plankatalogets BEREGNEDE inkl.-moms-pris (øre) —
+// den kunden rent faktisk betaler, se filhoved-kommentaren ovenfor for hvorfor
+// det er inkl.-moms og ikke det rå `amount`-felt. Returnerer én finding pr.
+// interval der afviger.
+export function checkLtvPriceSource({ label, priceCentsByInterval, catalogInclVatCentsByInterval }) {
+  const findings = [];
+  for (const [key, catalogKey] of [["monthly", "monthly"], ["semiannual", "half-yearly"]]) {
+    const expected = catalogInclVatCentsByInterval[catalogKey];
+    const actual = priceCentsByInterval?.[key];
+    if (expected == null || actual == null) continue;
+    if (actual !== expected) {
+      findings.push({ label, interval: key, expectedCents: expected, actualCents: actual });
+    }
+  }
+  return findings;
+}
+
+// PUR: bygger {monthly, "half-yearly": inklMomsØre} fra DKK-planerne i
+// kataloget — fælles grundlag for growthSnapshot.js- og SQL-tjekket. Bruger
+// samme computeInclVatMajor-formel som checkAllPrices, ganget op til øre.
+export function dkkCatalogInclVatCentsByInterval(plans) {
+  const out = {};
+  for (const plan of plans || []) {
+    if (plan.currency === "DKK") out[plan.interval] = Math.round(computeInclVatMajor(plan.amount) * 100);
+  }
+  return out;
+}
+
+export function hasLtvDrift(findings) {
+  return (findings || []).length > 0;
+}
+
 // ── I/O (kun i CLI-tilstand, ikke ved import fra testen) ─────────────────────
 
 function fmt(n) {
@@ -119,7 +189,44 @@ async function main() {
 
   const results = checkAllPrices({ plans: PLANS, proJsonByLocale: { en: proEn, da: proDa } });
 
+  // ── #5051-forward-guard: growthSnapshot.js + nyeste growth-snapshot-SQL ────
+  const catalogInclVatCentsByInterval = dkkCatalogInclVatCentsByInterval(PLANS);
+  const { PLAN_PRICE_CENTS } = await import(new URL("../backend/lib/growthSnapshot.js", import.meta.url));
+  const jsFindings = checkLtvPriceSource({
+    label: "backend/lib/growthSnapshot.js PLAN_PRICE_CENTS",
+    priceCentsByInterval: PLAN_PRICE_CENTS,
+    catalogInclVatCentsByInterval,
+  });
+
+  const databaseDir = join(repoRoot, "database");
+  const latestSqlFilename = findLatestGrowthSnapshotSqlFilename(readdirSync(databaseDir));
+  let sqlFindings = [];
+  if (latestSqlFilename) {
+    const sqlSource = readFileSync(join(databaseDir, latestSqlFilename), "utf8");
+    const sqlPrices = extractGrowthSnapshotSqlPrices(sqlSource);
+    if (sqlPrices) {
+      sqlFindings = checkLtvPriceSource({
+        label: `database/${latestSqlFilename} LTV-CASE`,
+        priceCentsByInterval: sqlPrices,
+        catalogInclVatCentsByInterval,
+      });
+    }
+  }
+  const ltvFindings = [...jsFindings, ...sqlFindings];
+
   let drift = 0;
+  for (const f of ltvFindings) {
+    drift++;
+    console.error(
+      `DRIFT     ${f.label} (${f.interval}): ${f.actualCents} øre, katalog siger ${f.expectedCents} øre`
+    );
+  }
+  if (ltvFindings.length === 0) {
+    console.log(
+      `OK        LTV-priskilder (growthSnapshot.js${latestSqlFilename ? ` + database/${latestSqlFilename}` : ""}) matcher plankataloget.`
+    );
+  }
+
   for (const r of results) {
     const bits = [];
     if (!r.selfConsistent) {
