@@ -12,12 +12,13 @@
 // kaldes KUN med en session (#5153): siden er offentlig, og anon har ikke
 // EXECUTE på is_admin().
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import {
   SCALE,
   ENGINE_ORDER,
+  ROADMAP_ITEM_COLUMNS,
   groupItemsByEngine,
   isValidScore,
   itemTitle,
@@ -29,6 +30,7 @@ import {
   Section,
   SectionHeader,
   SectionStack,
+  Skeleton,
   FlagIcon,
   StopwatchIcon,
   TeamIcon,
@@ -36,6 +38,11 @@ import {
   CrownIcon,
   MinusIcon,
 } from "../components/ui";
+
+// #5177 spor 2 (LCP): admin-create-formen er ubrugt JS for ikke-admin
+// besøgende (RLS-gated alligevel, kun synlig for isAdmin). Lazy-splittet til
+// egen chunk, se frontend/src/components/RoadmapAdminCreateForm.jsx.
+const AdminCreateForm = lazy(() => import("../components/RoadmapAdminCreateForm.jsx"));
 
 const ENGINES = [
   { key: "races", Icon: FlagIcon },
@@ -50,8 +57,6 @@ const ENGINES = [
 // motor-ikonerne har aldrig været vist. Glyf-fallbacken var samtidig et brud på
 // anti-slop-reglen (stroke-ikoner, aldrig unicode-chrome).
 const ENGINE_ICON = Object.fromEntries(ENGINES.map((e) => [e.key, e.Icon]));
-
-const ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, shipped_at";
 
 function VoteAxis({ label, value, disabled, onSelect }) {
   return (
@@ -80,114 +85,23 @@ function VoteAxis({ label, value, disabled, onSelect }) {
   );
 }
 
-const EMPTY_DRAFT = { engine: "races", sort_order: 0, title_en: "", title_da: "", approved: true, status: "active" };
-
-function AdminCreateForm({ t, onCreated }) {
-  const [form, setForm] = useState(EMPTY_DRAFT);
-  const [state, setState] = useState(null); // null | "saving" | "saved" | "error" | "missing"
-
-  function update(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!form.title_en.trim() || !form.title_da.trim()) {
-      setState("missing");
-      return;
-    }
-    setState("saving");
-    const { data, error } = await supabase
-      .from("roadmap_items")
-      .insert({
-        engine: form.engine,
-        sort_order: Number(form.sort_order) || 0,
-        title_en: form.title_en.trim(),
-        title_da: form.title_da.trim(),
-        approved: form.approved,
-        status: form.status,
-        shipped_at: form.status === "shipped" ? new Date().toISOString() : null,
-      })
-      .select(ITEM_COLUMNS)
-      .single();
-    if (error) {
-      setState("error");
-      return;
-    }
-    setState("saved");
-    setForm(EMPTY_DRAFT);
-    onCreated(data);
-  }
-
-  const fieldClass =
-    "w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-1.5 text-sm text-cz-1 focus:border-cz-accent focus:outline-none";
-
+// #5177 spor 2 (CLS): reserverer samme layout-plads som et rigtigt "next"-item
+// (titel-linje + 2 vote-akser + status-spacer) mens items === null, så vi
+// undgår spranget "kort statisk bullet → høj stemme-UI" når Supabase-kaldet
+// lander. Bruger den kanoniske Skeleton (aldrig eget loading-markup, TASTE.md).
+function NextItemSkeleton() {
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <h3 className="text-cz-1 font-bold text-sm">{t("admin.createTitle")}</h3>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1">
-          <span className="text-cz-3 text-xs">{t("admin.engine")}</span>
-          <select className={fieldClass} value={form.engine} onChange={(e) => update("engine", e.target.value)}>
-            {ENGINE_ORDER.map((key) => (
-              <option key={key} value={key}>
-                {t(`engines.${key}.title`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-cz-3 text-xs">{t("admin.sortOrder")}</span>
-          <input
-            type="number"
-            className={fieldClass}
-            value={form.sort_order}
-            onChange={(e) => update("sort_order", e.target.value)}
-          />
-        </label>
+    <li aria-hidden="true">
+      <div className="flex items-start gap-2">
+        <div className="w-1 h-1 rounded-full flex-shrink-0 mt-1.5 bg-cz-border" />
+        <Skeleton className="h-4 w-3/4" />
       </div>
-      <label className="flex flex-col gap-1">
-        <span className="text-cz-3 text-xs">{t("admin.titleEn")}</span>
-        <input type="text" className={fieldClass} value={form.title_en} onChange={(e) => update("title_en", e.target.value)} />
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-cz-3 text-xs">{t("admin.titleDa")}</span>
-        <input type="text" className={fieldClass} value={form.title_da} onChange={(e) => update("title_da", e.target.value)} />
-      </label>
-      <div className="grid grid-cols-2 gap-2 items-end">
-        <label className="flex flex-col gap-1">
-          <span className="text-cz-3 text-xs">{t("admin.status")}</span>
-          <select className={fieldClass} value={form.status} onChange={(e) => update("status", e.target.value)}>
-            <option value="active">{t("admin.statusActive")}</option>
-            <option value="shipped">{t("admin.statusShipped")}</option>
-            <option value="archived">{t("admin.statusArchived")}</option>
-          </select>
-        </label>
-        <label className="inline-flex items-center gap-2 text-xs text-cz-2 select-none pb-1.5">
-          <input
-            type="checkbox"
-            checked={form.approved}
-            onChange={(e) => update("approved", e.target.checked)}
-            className="rounded-cz border-cz-border text-cz-accent focus:ring-cz-accent"
-          />
-          {t("admin.approved")}
-        </label>
+      <div className="mt-2 ms-3 flex flex-col gap-1.5">
+        <Skeleton className="h-7 w-full" />
+        <Skeleton className="h-7 w-full" />
+        <div className="min-h-[1rem]" aria-hidden="true" />
       </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={state === "saving"}
-          className="px-3 py-1.5 text-xs font-semibold bg-cz-accent text-cz-on-accent rounded-cz hover:opacity-90 disabled:opacity-50 transition-opacity"
-        >
-          {state === "saving" ? t("admin.creating") : t("admin.create")}
-        </button>
-        <span aria-live="polite" className="text-xs">
-          {state === "saved" && <span className="text-cz-3">{t("admin.created")}</span>}
-          {state === "error" && <span className="text-cz-danger">{t("admin.error")}</span>}
-          {state === "missing" && <span className="text-cz-danger">{t("admin.missingFields")}</span>}
-        </span>
-      </div>
-    </form>
+    </li>
   );
 }
 
@@ -213,7 +127,7 @@ export default function RoadmapPage() {
       const [{ data: itemData }, { data: auth }, { data: adminRaw }] = await Promise.all([
         supabase
           .from("roadmap_items")
-          .select(ITEM_COLUMNS)
+          .select(ROADMAP_ITEM_COLUMNS)
           .eq("approved", true)
           .in("status", ["active", "shipped"])
           .order("sort_order"),
@@ -283,7 +197,7 @@ export default function RoadmapPage() {
       .from("roadmap_items")
       .update({ status: nextStatus, shipped_at })
       .eq("id", item.id)
-      .select(ITEM_COLUMNS)
+      .select(ROADMAP_ITEM_COLUMNS)
       .single();
     if (error || !data) {
       setStatusState((prev) => ({ ...prev, [item.id]: "error" }));
@@ -317,7 +231,12 @@ export default function RoadmapPage() {
   }
 
   const grouped = groupItemsByEngine(items);
-  const hasVotableItems = (items?.length ?? 0) > 0;
+  // #5177 spor 2 (CLS): items === null er "endnu ikke hentet", ikke "ingen
+  // items" — i produktion har alle 5 motorer altid aktive items, så intro-
+  // linjen næsten altid ender synlig. Antag synlig UNDER load (reservér
+  // pladsen fra første paint) i stedet for at lade den poppe ind bagefter og
+  // skubbe hele SectionStack'en (inkl. allerede-malet "races"-sektion) ned.
+  const hasVotableItems = items === null || (items?.length ?? 0) > 0;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -350,7 +269,17 @@ export default function RoadmapPage() {
                 {t("labels.next")}
               </div>
 
-              {grouped[key].length > 0 ? (
+              {items === null ? (
+                // #5177 spor 2 (CLS): reservér plads i samme højde som den
+                // rigtige stemme-liste i stedet for at male de korte statiske
+                // bullets først og lade dem vokse dramatisk når Supabase-
+                // kaldet lander (var hovedkilden til CLS 0,517 på mobil).
+                <ul className="flex flex-col gap-4">
+                  {t(`engines.${key}.next`, { returnObjects: true }).map((_, i) => (
+                    <NextItemSkeleton key={i} />
+                  ))}
+                </ul>
+              ) : grouped[key].length > 0 ? (
                 <ul className="flex flex-col gap-4">
                   {grouped[key].map((item) => {
                     const draft = drafts[item.id] ?? {};
@@ -448,7 +377,9 @@ export default function RoadmapPage() {
         {isAdmin && (
           <Section>
             <SectionHeader title={t("admin.panel")} />
-            <AdminCreateForm t={t} onCreated={handleCreated} />
+            <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+              <AdminCreateForm t={t} onCreated={handleCreated} />
+            </Suspense>
           </Section>
         )}
       </SectionStack>
