@@ -62,19 +62,58 @@ import {
 import { evaluateAndApplyConsequences as evaluateAndApplyConsequencesShared } from "./boardConsequences.js";
 import { applyWeekendSync as applyMandateWeekendSyncShared } from "./boardMandateEngine.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
-import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
+import {
+  buildBoardEvalContext,
+  loadGoalContextForBoard,
+  prefetchGoalContextSources,
+  selectGoalContextSourcesForTeam,
+} from "./boardGoalContext.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 // #1237 · sumRiderSalaries = wageBillPerSeason-input til no_outstanding_debt
 // (scoreFinanceHealthGoal, boardUtils.js).
 import { sumRiderSalaries } from "./boardUtils.js";
 import { notifyTeamOwner } from "./notificationService.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
 function toFiniteOr(value, fallback) {
   if (value === null || value === undefined) return fallback;
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
+}
+
+// #5182 · Hvor mange hold der behandles SAMTIDIG (design-sessionens mulighed B,
+// docs/drafts/5182-board-flaskehals-designsession.md §5.B). Arbejdet pr. hold er
+// ren netværks-ventetid (~80 ms pr. Supabase-kald), så serveren sad stille i
+// 8½ minut pr. løb. 8 er bevidst lavt: nok til at skjule latenstiden, langt
+// under connection-pool-loftet, og en fejl rammer stadig kun ét holds boards
+// (try/catch pr. board er uændret).
+//
+// Sikkerheden hviler på at to hold ALDRIG skriver den samme række — se
+// `runTeamBatches` nedenfor for beviset og for hvorfor mid-season-checkpointet
+// bevidst holdes sekventielt.
+export const BOARD_FINALIZATION_TEAM_BATCH_SIZE = 8;
+
+// Postgres-paritet for `ORDER BY created_at DESC` (default NULLS FIRST).
+function byCreatedAtDesc(a, b) {
+  const aNull = a?.created_at === null || a?.created_at === undefined;
+  const bNull = b?.created_at === null || b?.created_at === undefined;
+  if (aNull && bNull) return 0;
+  if (aNull) return -1;
+  if (bNull) return 1;
+  if (a.created_at === b.created_at) return 0;
+  return a.created_at > b.created_at ? -1 : 1;
+}
+
+// Projektion til PRÆCIS de kolonner den gamle pr.-hold-query bad om, så
+// context.recentSnapshots har samme form som før (fake'en og PostgREST
+// projicerer begge outputtet ned til select()-listen).
+function toRecentSnapshotRow(row) {
+  return {
+    goals_met: row?.goals_met,
+    goals_total: row?.goals_total,
+    satisfaction_delta: row?.satisfaction_delta,
+  };
 }
 
 // #3144 · Denne finalization kører for ALLE rigtige hold på tværs af ALLE
@@ -290,6 +329,60 @@ export async function processBoardWeekendFinalization({
     debtByTeam.set(loan.team_id, (debtByTeam.get(loan.team_id) || 0) + (loan.amount_remaining || 0));
   }
 
+  // 2b. #5182 · board_plan_snapshots ÉN gang for hele populationen.
+  // ---------------------------------------------------------------------------
+  // Rækkerne blev tidligere læst TO gange pr. hold: én gang her i løkken
+  // (recentSnapshots, filtreret på team_id) og én gang inde i
+  // loadGoalContextForBoard (plan-cyklussen, filtreret på board_id). Begge
+  // delmængder ligger i det samme team_id-scope, så ét pagineret opslag dækker
+  // dem begge; filtrene anvendes i JS nedenfor med samme prædikater som før.
+  //
+  // Fejl-paritet: den gamle pr.-hold-query talte en fejl i summary.errors og
+  // SPRANG HOLDET OVER. Fejler prefetchen, ville nøjagtig samme query fejle for
+  // hvert hold — derfor bæres fejlen med ind i løkken og håndteres pr. hold på
+  // præcis samme måde (samme tælling, samme log-linje, samme Sentry-tag).
+  let snapshotRowsByTeam = new Map();
+  let snapshotRowsByBoard = new Map();
+  let snapshotPrefetchError = null;
+  try {
+    const snapshotRows = await fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
+      .from("board_plan_snapshots")
+      .select("id, team_id, board_id, season_id, season_number, season_within_plan, created_at, goals_met, goals_total, satisfaction_delta")
+      .in("team_id", chunk)
+      .order("id", { ascending: true }));
+    for (const row of snapshotRows) {
+      if (row?.team_id != null) {
+        if (!snapshotRowsByTeam.has(row.team_id)) snapshotRowsByTeam.set(row.team_id, []);
+        snapshotRowsByTeam.get(row.team_id).push(row);
+      }
+      if (row?.board_id != null) {
+        if (!snapshotRowsByBoard.has(row.board_id)) snapshotRowsByBoard.set(row.board_id, []);
+        snapshotRowsByBoard.get(row.board_id).push(row);
+      }
+    }
+  } catch (error) {
+    snapshotPrefetchError = error;
+    snapshotRowsByTeam = new Map();
+    snapshotRowsByBoard = new Map();
+  }
+
+  // 2c. #5182 · De sæson-brede mål-kilder (race_results/finance_transactions)
+  // ÉN gang for hele populationen i stedet for 5 opslag pr. board.
+  // Sæson-vinduet pr. board er en delmængde af unionen herunder (et boards
+  // planSeasonIds = dets egne snapshots' season_id + den aktuelle sæson), så
+  // prefetchen kan ikke mangle en række et board ville have set.
+  const goalContextSeasonIds = [
+    ...new Set([
+      ...[...snapshotRowsByBoard.values()].flat().map((row) => row?.season_id).filter(Boolean),
+      season.id,
+    ]),
+  ];
+  const goalContextPrefetch = await prefetchGoalContextSources({
+    supabase,
+    teamIds,
+    seasonIds: goalContextSeasonIds,
+  });
+
   // 3. Checkpoint + test-mode (én gang pr. kørsel).
   const checkpoint = resolveCrossedCheckpoint({
     previousRaceDaysCompleted,
@@ -299,32 +392,34 @@ export async function processBoardWeekendFinalization({
   summary.checkpoint = checkpoint;
   const boardTestMode = await isTestModeActiveFn(supabase);
 
-  for (const team of teams) {
+  const teamGoalContextSources = new Map();
+
+  const processTeam = async (team) => {
     const boards = boardsByTeam.get(team.id) || [];
     const standing = standingByTeam.get(team.id) || null;
-    if (!boards.length || !standing) continue;
+    if (!boards.length || !standing) return;
     summary.teams_checked += 1;
 
     const riders = ridersByTeam.get(team.id) || [];
     const teamWithRiders = { ...team, riders };
 
-    // recentSnapshots pr. team — samme query-form som processTeamSeasonEnd.
-    let recentSnapshots = [];
-    try {
-      const { data: snapshotRows, error: snapshotError } = await supabase
-        .from("board_plan_snapshots")
-        .select("goals_met, goals_total, satisfaction_delta")
-        .eq("team_id", team.id)
-        .order("created_at", { ascending: false })
-        .limit(3);
-      if (snapshotError) throw new Error(snapshotError.message);
-      recentSnapshots = snapshotRows || [];
-    } catch (error) {
+    // recentSnapshots pr. team — samme udsnit som den tidligere pr.-hold-query
+    // (`ORDER BY created_at DESC LIMIT 3`), nu skåret ud af 2b-prefetchen.
+    if (snapshotPrefetchError) {
       summary.errors += 1;
-      console.error(`  ⚠️  weekend board snapshots failed for ${team.name}:`, error.message);
-      if (captureExceptionFn) captureExceptionFn(error, { tags: { hook: "board-weekend" }, extra: { teamId: team.id } });
-      continue;
+      console.error(`  ⚠️  weekend board snapshots failed for ${team.name}:`, snapshotPrefetchError.message);
+      if (captureExceptionFn) captureExceptionFn(snapshotPrefetchError, { tags: { hook: "board-weekend" }, extra: { teamId: team.id } });
+      return;
     }
+    const recentSnapshots = [...(snapshotRowsByTeam.get(team.id) || [])]
+      .sort(byCreatedAtDesc)
+      .slice(0, 3)
+      .map(toRecentSnapshotRow);
+
+    if (!teamGoalContextSources.has(team.id)) {
+      teamGoalContextSources.set(team.id, selectGoalContextSourcesForTeam(goalContextPrefetch, team.id));
+    }
+    const goalContextSources = teamGoalContextSources.get(team.id);
 
     for (const board of boards) {
       try {
@@ -399,6 +494,13 @@ export async function processBoardWeekendFinalization({
           leagueDivisionId: standing.league_division_id ?? null,
           standings,
           planStartSeasonNumber: board.plan_start_season_number,
+          // #5182 · Kilderne er allerede hentet (2b/2c) — loaderen anvender
+          // stadig selv plan-cyklus- og sæson-vinduet, så resultatet er
+          // identisk med et friskt opslag.
+          prefetched: {
+            snapshots: snapshotRowsByBoard.get(board.id) || [],
+            sources: goalContextSources,
+          },
         });
 
         // #2469 · Delt context-bygger (planDuration/seasonsCompleted/isFinalSeason/
@@ -561,6 +663,31 @@ export async function processBoardWeekendFinalization({
         }
       }
     }
+  };
+
+  // #5182 · Hold behandles i batches (mulighed B). Beviset for at det er
+  // sikkert — ingen to hold rører den samme række:
+  //   · `board_profiles`-opdateringen rammer `.eq("id", board.id)`, og boards
+  //     kommer fra `boardsByTeam`, der er grupperet på `team_id`. Et board-row
+  //     hører til præcis ét hold, så to hold kan ikke ramme samme id.
+  //   · `board_satisfaction_events`-upsert'en har konflikt-nøglen
+  //     (`board_id`, `race_id`) — samme argument: `board_id` er holdets eget.
+  //   · `applyMandateWeekendSync` skriver kun på holdets egen `board_relations`-
+  //     række (`fetchRelationRow(supabase, teamId)`) + en kvittering med det
+  //     relations-id.
+  //   · Boards INDEN for ét hold kører fortsat sekventielt, så rækkefølgen pr.
+  //     hold er bit-for-bit som før.
+  // Mid-season-checkpointet er den ene kørsel pr. sæson hvor de hårde
+  // konsekvens-lag kører (`evaluateAndApplyConsequences`): de skriver i
+  // `board_consequences`, `transfer_listings` og notifikationer og har
+  // pulje-/markeds-bivirkninger der IKKE er bevist hold-lokale. Den kørsel
+  // holdes derfor bevidst sekventiel — den er sjælden, og gevinsten ligger i
+  // alle de andre finaliseringer.
+  const batchSize = checkpoint === CHECKPOINT_KINDS.MID_SEASON
+    ? 1
+    : BOARD_FINALIZATION_TEAM_BATCH_SIZE;
+  for (let i = 0; i < teams.length; i += batchSize) {
+    await Promise.all(teams.slice(i, i + batchSize).map((team) => processTeam(team)));
   }
 
   return summary;

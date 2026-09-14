@@ -26,6 +26,7 @@
 import { CLASSIC_RACE_CLASSES, isClassicRace, isMonumentRace } from "./boardConstants.js";
 import { getPlanDuration } from "./boardGoals.js";
 import { FINANCE_REASON } from "./economyConstants.js";
+import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
 // #3494 · sponsor_growth re-pointet fra det døde teams.sponsor_income-felt til
 // ægte kontrakt-økonomi: kontrakt-garanteret base (season_start_sponsor, evt.
@@ -117,6 +118,186 @@ export function buildBoardEvalContext({
   };
 }
 
+// #5182 · Prefetch af de sæson-brede kilder loadGoalContextForBoard ellers
+// læser ÉN GANG PR. BOARD.
+// ---------------------------------------------------------------------------
+// `race_results` og `finance_transactions` indeholder de samme rækker uanset
+// hvilket board vi evaluerer — kun `team_id` og plan-sæson-vinduet skifter.
+// I processBoardWeekendFinalization betød det 5 opslag × 242 hold × 1-3 boards
+// = langt størstedelen af de 6.364 sekventielle DB-kald der gjorde
+// board-trinnet til 72-93 % af finaliserings-tiden (måling 12/9, se
+// docs/drafts/5182-board-flaskehals-designsession.md).
+//
+// Prefetchen henter PRÆCIS de samme rækker med PRÆCIS de samme prædikater, blot
+// for hele holdpopulationen på én gang (`.in("team_id", …)`) og over UNIONEN af
+// alle plan-sæson-id'er. Det pr.-board-specifikke sæson-vindue anvendes derefter
+// i JS (`planSeasonIds`-filteret nedenfor), så resultatet pr. board er identisk
+// med det den gamle query returnerede.
+//
+// Fejl-semantikken er bevaret 1:1: hver kilde bærer sit eget `error`-flag, og
+// loadGoalContextForBoard behandler det som den gamle `monErr`/`jerErr`/… →
+// null-sentinel → `awaiting_data` i evaluator, aldrig et falsk 0.
+//
+// Pagineret + chunket: populationen er hele menneskefeltet (242 hold 12/9), så
+// både 1000-rækkers-PostgREST-loftet (#2932) og ~430-ids-URL-loftet (#3030)
+// er i spil — derfor fetchAllRowsChunkedIn med stabil .order("id").
+
+const EMPTY_SOURCE = Object.freeze({ byTeam: new Map(), error: null });
+
+function groupRowsByTeam(rows) {
+  const byTeam = new Map();
+  for (const row of rows || []) {
+    const key = row?.team_id;
+    if (key == null) continue;
+    if (!byTeam.has(key)) byTeam.set(key, []);
+    byTeam.get(key).push(row);
+  }
+  return byTeam;
+}
+
+// Supabase-fejl i ÉN kilde må ikke vælte de øvrige: den gamle Promise.all
+// destrukturerede `{ data, error }` pr. query og lod hver kilde fejle for sig.
+async function loadPrefetchSource(loader) {
+  try {
+    return { byTeam: groupRowsByTeam(await loader()), error: null };
+  } catch (error) {
+    return { byTeam: new Map(), error: { message: error?.message ?? String(error) } };
+  }
+}
+
+function emptyPrefetch() {
+  return {
+    classicResults: EMPTY_SOURCE,
+    jerseyResults: EMPTY_SOURCE,
+    transferTxs: EMPTY_SOURCE,
+    oneDayResults: EMPTY_SOURCE,
+    sponsorTxs: EMPTY_SOURCE,
+  };
+}
+
+/**
+ * Henter de fem sæson-brede kilder for HELE holdpopulationen på én gang.
+ *
+ * @param {object}   args
+ * @param {object}   args.supabase
+ * @param {string[]} args.teamIds   — alle hold der skal evalueres
+ * @param {string[]} args.seasonIds — UNIONEN af alle boards' planSeasonIds
+ *                                    (plan-snapshots' season_id + nuværende sæson)
+ * @returns {Promise<object>} kilder med { byTeam: Map<teamId, rows[]>, error }
+ */
+export async function prefetchGoalContextSources({ supabase, teamIds, seasonIds } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client is required");
+  const ids = [...new Set((teamIds || []).filter((id) => id != null))];
+  const seasons = [...new Set((seasonIds || []).filter((id) => id != null))];
+  if (!ids.length || !seasons.length) return emptyPrefetch();
+
+  const chunked = (buildQueryForChunk) =>
+    fetchAllRowsChunkedIn(ids, buildQueryForChunk);
+
+  const [classicResults, jerseyResults, transferTxs, oneDayResults, sponsorTxs] = await Promise.all([
+    // Samme prædikater som den pr.-board-query den erstatter (se nedenfor).
+    loadPrefetchSource(() => chunked((chunk) => supabase
+      .from("race_results")
+      .select("team_id, rank, races!inner(race_class, race_type, season_id)")
+      .in("team_id", chunk)
+      .eq("result_type", "gc")
+      .lte("rank", 3)
+      .in("races.race_class", CLASSIC_RACE_CLASSES)
+      .in("races.season_id", seasons)
+      .order("id", { ascending: true }))),
+    loadPrefetchSource(() => chunked((chunk) => supabase
+      .from("race_results")
+      .select("team_id, rank, races!inner(season_id)")
+      .in("team_id", chunk)
+      .in("result_type", ["points", "mountain", "young"])
+      .eq("rank", 1)
+      .in("races.season_id", seasons)
+      .order("id", { ascending: true }))),
+    loadPrefetchSource(() => chunked((chunk) => supabase
+      .from("finance_transactions")
+      // season_id er tilføjet i forhold til den gamle pr.-board-select: den
+      // server-side `.in("season_id", planSeasonIds)` erstattes af et JS-filter
+      // pr. board, og så skal kolonnen med over wire.
+      .select("team_id, amount, type, season_id")
+      .in("team_id", chunk)
+      .in("type", ["transfer_in", "transfer_out"])
+      .in("season_id", seasons)
+      .order("id", { ascending: true }))),
+    loadPrefetchSource(() => chunked((chunk) => supabase
+      .from("race_results")
+      .select("team_id, races!inner(season_id)")
+      .in("team_id", chunk)
+      .eq("result_type", "gc")
+      .eq("rank", 1)
+      .eq("races.race_type", "single")
+      .in("races.season_id", seasons)
+      .order("id", { ascending: true }))),
+    loadPrefetchSource(() => chunked((chunk) => supabase
+      .from("finance_transactions")
+      .select("team_id, amount, season_id")
+      .in("team_id", chunk)
+      .in("reason_code", SPONSOR_GROWTH_REASON_CODES)
+      .in("season_id", seasons)
+      .order("id", { ascending: true }))),
+  ]);
+
+  return { classicResults, jerseyResults, transferTxs, oneDayResults, sponsorTxs };
+}
+
+/**
+ * Skærer et prefetch-resultat ned til ÉT hold. Resultatet er formen
+ * loadGoalContextForBoard forventer i `prefetched.sources`.
+ */
+export function selectGoalContextSourcesForTeam(prefetch, teamId) {
+  if (!prefetch) return null;
+  const pick = (source) => ({
+    rows: source?.byTeam?.get(teamId) ?? [],
+    error: source?.error ?? null,
+  });
+  return {
+    classicResults: pick(prefetch.classicResults),
+    jerseyResults: pick(prefetch.jerseyResults),
+    transferTxs: pick(prefetch.transferTxs),
+    oneDayResults: pick(prefetch.oneDayResults),
+    sponsorTxs: pick(prefetch.sponsorTxs),
+  };
+}
+
+// Postgres-paritet for ORDER BY <col> ASC: NULL sorteres sidst.
+function compareAscNullsLast(a, b) {
+  const aNull = a === null || a === undefined;
+  const bNull = b === null || b === undefined;
+  if (aNull && bNull) return 0;
+  if (aNull) return 1;
+  if (bNull) return -1;
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
+/**
+ * JS-ækvivalent til den pr.-board board_plan_snapshots-query nedenfor:
+ * `.eq("board_id", …)` er allerede anvendt af kaldstedet (rækkerne er boardets
+ * egne), her anvendes `.gte("season_number", planStartSeasonNumber)` +
+ * `.order("season_within_plan", { ascending: true })`.
+ */
+export function selectPlanCycleSnapshots(rows, planStartSeasonNumber = null) {
+  const filtered = (rows || []).filter((row) => {
+    if (planStartSeasonNumber == null) return true;
+    // Postgres: NULL >= n er NULL → rækken falder ud af filteret.
+    if (row?.season_number == null) return false;
+    return row.season_number >= planStartSeasonNumber;
+  });
+  return [...filtered].sort((a, b) =>
+    compareAscNullsLast(a?.season_within_plan, b?.season_within_plan));
+}
+
+/**
+ * @param {object} [args.prefetched] — #5182. Valgfri prefetch:
+ *   { snapshots: board_plan_snapshots-rækker for DETTE board (ufiltrerede),
+ *     sources: selectGoalContextSourcesForTeam(...) for DETTE hold }.
+ *   Udelades den (eller en af de to nøgler), læses præcis som før fra DB —
+ *   adfærden er uændret for alle eksisterende kaldssteder.
+ */
 export async function loadGoalContextForBoard({
   supabase,
   teamId,
@@ -126,6 +307,7 @@ export async function loadGoalContextForBoard({
   leagueDivisionId = null,
   standings = null,
   planStartSeasonNumber = null,
+  prefetched = null,
 }) {
   // Plan-season-ids: alle tidligere snapshots i denne plan + nuværende sæson.
   // (Nuværende sæson har endnu ikke et snapshot på dette tidspunkt — den
@@ -140,15 +322,24 @@ export async function loadGoalContextForBoard({
   // allerede sådan (season_number >= plan_start_season_number, api.js:6196).
   // season_number indgår ikke i select'en — .gte() filtrerer server-side på
   // kolonnen uanset om den returneres, og vi bruger den ikke i resultatet.
-  let snapshotQuery = supabase
-    .from("board_plan_snapshots")
-    .select("season_id, u25_stat_sum, u25_count, season_within_plan")
-    .eq("board_id", boardId);
-  if (planStartSeasonNumber != null) {
-    snapshotQuery = snapshotQuery.gte("season_number", planStartSeasonNumber);
+  //
+  // #5182 · Er rækkerne allerede hentet af kaldstedet (ét opslag for hele
+  // holdpopulationen i stedet for ét pr. board), anvendes cyklus-filteret +
+  // sorteringen i JS i stedet — samme prædikat, samme rækkefølge.
+  let prevSnapshots;
+  if (prefetched?.snapshots) {
+    prevSnapshots = selectPlanCycleSnapshots(prefetched.snapshots, planStartSeasonNumber);
+  } else {
+    let snapshotQuery = supabase
+      .from("board_plan_snapshots")
+      .select("season_id, u25_stat_sum, u25_count, season_within_plan")
+      .eq("board_id", boardId);
+    if (planStartSeasonNumber != null) {
+      snapshotQuery = snapshotQuery.gte("season_number", planStartSeasonNumber);
+    }
+    ({ data: prevSnapshots } = await snapshotQuery
+      .order("season_within_plan", { ascending: true }));
   }
-  const { data: prevSnapshots } = await snapshotQuery
-    .order("season_within_plan", { ascending: true });
 
   const planSeasonIds = [
     ...((prevSnapshots || []).map((s) => s.season_id).filter(Boolean)),
@@ -186,13 +377,37 @@ export async function loadGoalContextForBoard({
     // teamId + planSeasonIds) og kørte tidligere sekventielt (3 round-trips
     // efter hinanden pr. plan-type, ×3 plan-typer i /board/status-loopet).
     // Promise.all parallelliserer dem til én round-trip-bredde.
-    const [
-      { data: classicResults, error: monErr },
-      { data: jerseyResults, error: jerErr },
-      { data: transferTxs, error: trxErr },
-      { data: oneDayResults, error: odErr },
-      { data: sponsorTxs, error: sponsorErr },
-    ] = await Promise.all([
+    //
+    // #5182 · …og er kilderne allerede hentet for hele holdpopulationen
+    // (prefetchGoalContextSources), springes hele runden over: det eneste
+    // pr.-board-specifikke prædikat er sæson-vinduet, som anvendes i JS her.
+    let classicResults; let monErr;
+    let jerseyResults; let jerErr;
+    let transferTxs; let trxErr;
+    let oneDayResults; let odErr;
+    let sponsorTxs; let sponsorErr;
+
+    if (prefetched?.sources) {
+      const planSeasonIdSet = new Set(planSeasonIds);
+      const inPlanWindow = (source, getSeasonId) => [
+        (source?.rows || []).filter((row) => planSeasonIdSet.has(getSeasonId(row))),
+        source?.error ?? null,
+      ];
+      const raceSeasonId = (row) => row?.races?.season_id;
+      const ownSeasonId = (row) => row?.season_id;
+      [classicResults, monErr] = inPlanWindow(prefetched.sources.classicResults, raceSeasonId);
+      [jerseyResults, jerErr] = inPlanWindow(prefetched.sources.jerseyResults, raceSeasonId);
+      [transferTxs, trxErr] = inPlanWindow(prefetched.sources.transferTxs, ownSeasonId);
+      [oneDayResults, odErr] = inPlanWindow(prefetched.sources.oneDayResults, raceSeasonId);
+      [sponsorTxs, sponsorErr] = inPlanWindow(prefetched.sources.sponsorTxs, ownSeasonId);
+    } else {
+      [
+        { data: classicResults, error: monErr },
+        { data: jerseyResults, error: jerErr },
+        { data: transferTxs, error: trxErr },
+        { data: oneDayResults, error: odErr },
+        { data: sponsorTxs, error: sponsorErr },
+      ] = await Promise.all([
       // Podie-placeringer (rank 1-3 i GC) i klassiker-kategorien. #1238: én query
       // over den kanoniske klasse-liste; Monuments-delmængden + den fulde
       // klassiker-optælling (kun endagsløb) splittes i JS via de delte helpers.
@@ -259,7 +474,8 @@ export async function loadGoalContextForBoard({
         .eq("team_id", teamId)
         .in("reason_code", SPONSOR_GROWTH_REASON_CODES)
         .in("season_id", planSeasonIds),
-    ]);
+      ]);
+    }
     // #3494 (CodeRabbit-fund, PR #4550) · `sponsorTxs || []` ville stille sig
     // tavst tilfreds med et malformet svar (error faldsk, data IKKE et array —
     // teoretisk uden for den ægte Supabase-klient, men denne funktion kaldes
