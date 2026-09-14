@@ -15,7 +15,7 @@ import { normalizePlanInterval } from "./subscriptionPlanInterval.js";
 
 export const PLAN_PRICE_CENTS = {
   monthly: 4900,
-  semiannual: 21200,
+  semiannual: 26500,
 };
 
 const MONTH_SECONDS = 2629800; // 30.44 dage, gennemsnitlig månedslængde
