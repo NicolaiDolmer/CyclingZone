@@ -24,13 +24,18 @@ export default function ReportTradeDialog({ open, onClose, transferType, transfe
 
   function handleClose() {
     if (submitting) return;
+    // Synkron reset (CodeRabbit-fund, ret 14/9): Modal.jsx har INGEN
+    // luk-animation (returnerer null øjeblikkeligt når open bliver false), så
+    // der er intet "animations-vindue" at vente ud. TeamTransferHistoryTab
+    // holder ReportTradeDialog monteret på tværs af åbn/luk (kun Modal-
+    // indholdet af- og genmonteres) — en forsinket reset kunne derfor nå at
+    // rydde en NY dialogs state, hvis spilleren lukker og genåbner inden for
+    // 200ms. FeedbackModal.jsx har samme mønster (og samme latente bug); ude
+    // af scope for denne PR, flagget som opfølgning.
+    setMessage("");
+    setError(null);
+    setResult(null);
     onClose?.();
-    // Reset after the close animation window, same pattern as FeedbackModal.
-    setTimeout(() => {
-      setMessage("");
-      setError(null);
-      setResult(null);
-    }, 200);
   }
 
   async function handleSubmit(e) {
