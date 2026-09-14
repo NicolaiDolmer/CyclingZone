@@ -61,6 +61,21 @@ export const WAVE_FREEZE = {
   PROBE_TIMEOUT_MINUTES: 5,
   /** Graceful stop-agenten der redder ucommittet arbejde. */
   STOP_TIMEOUT_MINUTES: 15,
+  /**
+   * #5220: et undersoegelsesspor (kind: "investigate") bygger intet og har
+   * maaske slet ingen commits at maale branch-frys paa. Det faar derfor et
+   * FAST, IKKE-forlaengeligt vindue i stedet for TRACK_TIMEOUT_MINUTES +
+   * probe-extend - ingen frys-maaling, bare et timeout hvis det ikke naar at
+   * levere sin dom.
+   */
+  INVESTIGATE_TIMEOUT_MINUTES: 60,
+  /**
+   * #5220: hvor laenge en branch maa staa uden commit, mens boelgen stadig er
+   * aktiv, foer lane-vagten sender en PRIK (besked) - IKKE et frys. Frys-
+   * graensen (BRANCH_STALL_MINUTES, 45 min) er uaendret; dette er et tidligt,
+   * harmloest tegn-tjek et godt stykke under den.
+   */
+  POKE_MINUTES: 15,
 };
 
 /**
@@ -209,6 +224,50 @@ export function needsGracefulStop(p) {
 /** Commit-beskeden den graceful stop-agent skal bruge (ordret, jf. #5178). */
 export function wipCommitMessage(issue) {
   return `wip(#${issue}): boelge-timeout, ucommittet arbejde gemt`;
+}
+
+/**
+ * Er sporet "let" (kan koere paa faa ressourcer, ingen tung verifikation)?
+ * #5220: bruges til at sortere koeen saa laner starter paa lette spor.
+ */
+export function isLightTrack(t) {
+  return Boolean(t) && t.model === "sonnet" && t.tier === "TARGETED";
+}
+
+/**
+ * #5220: udtraekker undersoegelssporets TVUNGNE dom fra slutrapporten.
+ * CodeRabbit (denne PR): wave.js accepterede foer dette ethvert svar
+ * ubetinget - en rapport der endte i "ved ikke" ville stille blive
+ * behandlet som en gyldig undersoegelse. Nu skal en af de to ordrette
+ * fraser vaere til stede, og kun EEN af dem - begge (modstridende) eller
+ * ingen giver null, som kalderen skal behandle som "ufuldstaendig
+ * aflevering", ALDRIG som en gaettet dom.
+ * @returns {'bekraeftet'|'afvist'|null}
+ */
+export function extractInvestigateVerdict(reportText) {
+  const text = String(reportText || "");
+  const hasConfirmed = /bekraeftet\s*\+\s*fix-plan/i.test(text);
+  const hasRejected = /afvist\s*\+\s*bevis-test/i.test(text);
+  if (hasConfirmed && !hasRejected) return "bekraeftet";
+  if (hasRejected && !hasConfirmed) return "afvist";
+  return null;
+}
+
+/**
+ * Blandet koe (#5220): stabil sortering der stiller lette spor (isLightTrack)
+ * forrest, uden at aendre den indbyrdes raekkefoelge inden for hver gruppe -
+ * orkestratorens oprindelige raekkefoelge bevares som tie-breaker. Formaal:
+ * hver af de 4 laner traekker med stor sandsynlighed et let spor foerst, saa
+ * verifikations-semaforen (maks 2 tunge koersler) ikke bliver flaskehalsen
+ * fra minut eet, hvis koeen tilfaeldigvis starter med 4 tunge spor.
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function sortMixedQueue(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((t, i) => ({ t, i, light: isLightTrack(t) ? 0 : 1 }))
+    .sort((a, b) => a.light - b.light || a.i - b.i)
+    .map((x) => x.t);
 }
 
 import { pathToFileURL } from 'node:url';
