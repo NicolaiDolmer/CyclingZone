@@ -22,6 +22,7 @@ import {
   resolveCrossedCheckpoint,
 } from "./boardWeekendFinalization.js";
 import { CHECKPOINT_KINDS } from "./boardWeekendUpdate.js";
+import { loadGoalContextForBoard } from "./boardGoalContext.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 import { SUPABASE_PAGE_SIZE } from "./supabasePagination.js";
 
@@ -826,6 +827,169 @@ test("#2932: riders/board_profiles/loans pagineres forbi 1000-row-loftet (samme 
   // BEVIDST udskudt i #2932-PR-bodyen — nu pagineret via samme fetchAllRows-sti.
   assert.ok(rangeCallsByTable.teams >= 1, "teams skal hentes via fetchAllRows (range())");
   assert.ok(rangeCallsByTable.season_standings >= 1, "season_standings skal hentes via fetchAllRows (range())");
+});
+
+// ─── #5182 · Kald-budget: board-trinnet må ikke skalere med antal hold ────────
+
+// Tæller hvert query-build (`supabase.from(...)`) = én round-trip. fetchAllRows
+// kalder buildQuery() pr. side, så paginering tælles ærligt med.
+function countSupabaseCalls(supabase) {
+  const counts = { total: 0, byTable: new Map() };
+  const originalFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    counts.total += 1;
+    counts.byTable.set(table, (counts.byTable.get(table) || 0) + 1);
+    return originalFrom(table);
+  };
+  return counts;
+}
+
+// Population med `teamCount` menneskehold, ét completed 1yr-board hver, standing,
+// rytter og et plan-snapshot — samme form som prod-stien der måltes 12/9.
+function makePopulationState(teamCount) {
+  const state = {
+    teams: [], board_profiles: [], season_standings: [], riders: [], loans: [],
+    board_plan_snapshots: [], board_satisfaction_events: [], app_config: [],
+    race_results: [], finance_transactions: [],
+  };
+  for (let i = 0; i < teamCount; i += 1) {
+    const teamId = `team-${String(i).padStart(3, "0")}`;
+    state.teams.push({
+      id: teamId, user_id: `user-${i}`, name: `Hold ${i}`, division: 1,
+      sponsor_income: 2_500_000, balance: 100_000,
+      is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+    });
+    state.board_profiles.push({
+      id: `board-${String(i).padStart(3, "0")}`, team_id: teamId, plan_type: "1yr",
+      focus: "balanced", satisfaction: 50, budget_modifier: 1.0, current_goals: [],
+      negotiation_status: "completed", is_baseline: false, seasons_completed: 0,
+      cumulative_stage_wins: 0, cumulative_gc_wins: 0,
+      plan_start_season_number: 1, plan_start_sponsor_income: 2_500_000,
+    });
+    state.season_standings.push({
+      id: `standing-${i}`, team_id: teamId, season_id: "season-2", division: 1,
+      league_division_id: 1, rank_in_division: (i % 20) + 1, total_points: 100,
+      stage_wins: 0, gc_wins: 0, team: { is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+    });
+    state.riders.push({
+      id: `rider-${i}`, team_id: teamId, firstname: "A", lastname: `${i}`,
+      is_u25: false, popularity: 10, market_value: 100_000, salary: 10_000,
+    });
+    state.board_plan_snapshots.push({
+      id: `snap-${String(i).padStart(3, "0")}`, team_id: teamId,
+      board_id: `board-${String(i).padStart(3, "0")}`, season_id: "season-1",
+      season_number: 1, season_within_plan: 1, created_at: "2026-01-01T00:00:00.000Z",
+      goals_met: 1, goals_total: 3, satisfaction_delta: -2, u25_stat_sum: 100, u25_count: 4,
+    });
+  }
+  return state;
+}
+
+// Bevidst UDEN loadGoalContext-stub: det er netop den rigtige loader (og dens
+// fem sæson-brede opslag) målingen 12/9 fandt i per-hold-løkken.
+function realGoalContextDeps() {
+  return {
+    isBoardTestModeActive: async () => false,
+    notifyTeamOwner: async () => ({ delivered: true }),
+    computeWeekendUpdate: stubComputeUpdate({ newSatisfaction: 45, newModifier: 1.0 }),
+  };
+}
+
+async function measureCallsForPopulation(teamCount) {
+  const state = makePopulationState(teamCount);
+  const supabase = makeFakeSupabase(state);
+  const counts = countSupabaseCalls(supabase);
+  const summary = await processBoardWeekendFinalization({
+    supabase,
+    season: { ...SEASON },
+    previousRaceDaysCompleted: 6,
+    race: { id: "race-1", name: "Målt løb" },
+    deps: realGoalContextDeps(),
+  });
+  return { counts, summary };
+}
+
+test("#5182: board-finalization bruger <=5 DB-kald pr. hold (var ~10 i denne harness, ~26 i prod 12/9)", async () => {
+  const teamCount = 24;
+  const { counts, summary } = await measureCallsForPopulation(teamCount);
+
+  assert.equal(summary.errors, 0);
+  assert.equal(summary.boards_updated, teamCount, "alle hold skal stadig opdateres");
+  assert.equal(summary.events_written, teamCount);
+
+  const perTeam = counts.total / teamCount;
+  assert.ok(
+    perTeam <= 5,
+    `board-trinnet skal bruge <=5 kald pr. hold, brugte ${perTeam.toFixed(2)} (${counts.total} kald / ${teamCount} hold)`
+  );
+
+  // De sæson-brede kilder må IKKE længere læses pr. hold. Med 24 hold i ÉN
+  // .in()-chunk og under 1000 rækker pr. tabel er ét opslag pr. kilde nok.
+  assert.ok(
+    (counts.byTable.get("race_results") || 0) <= 3,
+    `race_results skal læses som prefetch (<=3 opslag), blev læst ${counts.byTable.get("race_results")} gange`
+  );
+  assert.ok(
+    (counts.byTable.get("finance_transactions") || 0) <= 2,
+    `finance_transactions skal læses som prefetch (<=2 opslag), blev læst ${counts.byTable.get("finance_transactions")} gange`
+  );
+  assert.ok(
+    (counts.byTable.get("board_plan_snapshots") || 0) <= 2,
+    `board_plan_snapshots må kun læses én gang for hele populationen (dobbelt-læsningen pr. hold er væk), blev læst ${counts.byTable.get("board_plan_snapshots")} gange`
+  );
+});
+
+// #5182 · Regressionsvagt for 2b-prefetchens SELECT-liste. Den tidligere
+// ækvivalens-test i boardGoalContext.test.js byggede prefetched.snapshots
+// direkte fra den rå fixture (alle kolonner) og kunne derfor ikke se at
+// select-strengen her manglede u25_stat_sum/u25_count. Denne test går gennem
+// den FAKTISKE select i boardWeekendFinalization.js; fake'en projicerer som
+// PostgREST, så en kolonne der ikke står i select'en bliver undefined — præcis
+// som i prod. Uden kolonnerne bliver plan-start-U25-baselinen permanent null
+// og u25_development_delta scorer awaiting_data i stedet for en rigtig værdi.
+test("#5182: 2b-prefetchen bærer U25-baseline-kolonnerne videre til goal-context", async () => {
+  const state = makeState({
+    board_plan_snapshots: [
+      {
+        id: "snap-1", team_id: "team-1", board_id: "board-1", season_id: "season-1",
+        season_number: 2, season_within_plan: 1, created_at: "2026-01-01T00:00:00.000Z",
+        goals_met: 1, goals_total: 3, satisfaction_delta: -2,
+        u25_stat_sum: 100, u25_count: 5,
+      },
+    ],
+  });
+  const seenSnapshots = [];
+  const summary = await processBoardWeekendFinalization({
+    supabase: makeFakeSupabase(state),
+    season: { ...SEASON },
+    previousRaceDaysCompleted: 6,
+    deps: baseDeps({
+      computeWeekendUpdate: stubComputeUpdate(),
+      loadGoalContext: async (args) => {
+        seenSnapshots.push(...(args.prefetched?.snapshots || []));
+        return loadGoalContextForBoard(args);
+      },
+    }),
+  });
+
+  assert.equal(summary.errors, 0);
+  assert.equal(seenSnapshots.length, 1, "boardets snapshot skal nå frem via prefetchen");
+  assert.equal(seenSnapshots[0].u25_stat_sum, 100, "u25_stat_sum må ikke være projiceret væk af 2b-select'en");
+  assert.equal(seenSnapshots[0].u25_count, 5, "u25_count må ikke være projiceret væk af 2b-select'en");
+});
+
+test("#5182: marginalprisen pr. ekstra hold er kun holdets EGNE skrivninger", async () => {
+  // Den strukturelle egenskab: prefetchen er fast overhead, så forskellen
+  // mellem to populationsstørrelser må kun være de pr.-hold-kald der ER
+  // hold-specifikke (board_profiles-update, event-upsert, mandat-flag).
+  const small = await measureCallsForPopulation(8);
+  const large = await measureCallsForPopulation(32);
+
+  const marginal = (large.counts.total - small.counts.total) / (32 - 8);
+  assert.ok(
+    marginal <= 3,
+    `marginalprisen pr. hold skal være <=3 kald, var ${marginal.toFixed(2)}`
+  );
 });
 
 test("#2932: fejl i pagineret riders-load kaster med samme besked-format som før", async () => {

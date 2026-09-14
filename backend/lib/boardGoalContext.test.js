@@ -7,8 +7,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
+import {
+  buildBoardEvalContext,
+  loadGoalContextForBoard,
+  prefetchGoalContextSources,
+  selectGoalContextSourcesForTeam,
+} from "./boardGoalContext.js";
 import { CLASSIC_RACE_CLASSES } from "./boardConstants.js";
+import { FINANCE_REASON } from "./economyConstants.js";
 import { createRecorderSupabase, createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 // #2598 · Tynd wrapper om den delte, projektion-aware recorder-fake
@@ -405,4 +411,157 @@ test("#3494 · malformet svar (error null, data ikke et array) på sponsor-query
     "malformet data må ALDRIG blive til et stille 0 — skal forblive 'ukendt' (null)");
   assert.equal(ctx.sponsorGrowthBaselineIncome, null,
     "samme malformet-data-guard gælder baseline");
+});
+
+// ─── #5182 · prefetch-stien må ikke ændre ÉN eneste værdi ─────────────────────
+
+// Postgres filtrerer på den FULDE række, inkl. embedded resource
+// ("races.season_id"). createFakeSupabase's flade FILTER_MATCHERS kan ikke slå
+// dotted paths op, så den ville lade DB-stien returnere 0 rækker og
+// prefetch-stien (som filtrerer i JS på row.races.season_id) returnere dem alle
+// — præcis den forskel testen skal udelukke. Derfor denne minimale,
+// dotted-path-bevidste fake, der kører BEGGE stier mod det samme datasæt.
+function makeRelationalFake(tables) {
+  const get = (row, column) =>
+    String(column).split(".").reduce((acc, key) => (acc == null ? acc : acc[key]), row);
+  return {
+    from(table) {
+      const rows = tables[table] ?? [];
+      const filters = [];
+      const query = {
+        select() { return query; },
+        eq(column, value) { filters.push((row) => get(row, column) === value); return query; },
+        in(column, value) { filters.push((row) => value.includes(get(row, column))); return query; },
+        lte(column, value) { filters.push((row) => get(row, column) <= value); return query; },
+        // Postgres: NULL >= n er NULL → rækken falder ud.
+        gte(column, value) {
+          filters.push((row) => get(row, column) != null && get(row, column) >= value);
+          return query;
+        },
+        order() { return query; },
+        range() { return query; },
+        then(resolve, reject) {
+          const data = rows.filter((row) => filters.every((match) => match(row)));
+          return Promise.resolve({ data, error: null }).then(resolve, reject);
+        },
+      };
+      return query;
+    },
+  };
+}
+
+test("#5182 · prefetch-stien giver PRÆCIS samme kontekst som pr.-board-opslagene", async () => {
+  const race = (seasonId, raceClass, raceType) => ({
+    race_class: raceClass, race_type: raceType, season_id: seasonId,
+  });
+  const tables = {
+    board_plan_snapshots: [
+      // Aktuel plan-cyklus (season_number >= 4) for b1.
+      { id: 1, team_id: "t1", board_id: "b1", season_id: "s-2", season_number: 4, season_within_plan: 1, u25_stat_sum: 100, u25_count: 5 },
+      { id: 2, team_id: "t1", board_id: "b1", season_id: "s-3", season_number: 5, season_within_plan: 2, u25_stat_sum: 130, u25_count: 5 },
+      // GAMMEL cyklus (#54) — skal filtreres væk af season_number-filteret,
+      // og dermed også holde s-1 ude af plan-sæson-vinduet.
+      { id: 3, team_id: "t1", board_id: "b1", season_id: "s-1", season_number: 1, season_within_plan: 1, u25_stat_sum: 10, u25_count: 1 },
+      // Et andet hold/board — må ikke lække ind i t1's kontekst.
+      { id: 4, team_id: "t2", board_id: "b2", season_id: "s-2", season_number: 4, season_within_plan: 1, u25_stat_sum: 999, u25_count: 9 },
+    ],
+    race_results: [
+      { id: 1, team_id: "t1", result_type: "gc", rank: 2, races: race("s-2", CLASSIC_RACE_CLASSES[0], "single") },
+      { id: 2, team_id: "t1", result_type: "gc", rank: 1, races: race("s-3", CLASSIC_RACE_CLASSES[0], "single") },
+      // Uden for plan-vinduet (gammel cyklus) → må ikke tælle med.
+      { id: 3, team_id: "t1", result_type: "gc", rank: 1, races: race("s-1", CLASSIC_RACE_CLASSES[0], "single") },
+      // Andet hold → må ikke tælle med.
+      { id: 4, team_id: "t2", result_type: "gc", rank: 1, races: race("s-3", CLASSIC_RACE_CLASSES[0], "single") },
+      // Trøjer.
+      { id: 5, team_id: "t1", result_type: "points", rank: 1, races: race("s-3", "WT", "stage") },
+      { id: 6, team_id: "t1", result_type: "mountain", rank: 1, races: race("s-2", "WT", "stage") },
+    ],
+    finance_transactions: [
+      { id: 1, team_id: "t1", type: "transfer_in", amount: 500, season_id: "s-3", reason_code: null },
+      { id: 2, team_id: "t1", type: "transfer_out", amount: -200, season_id: "s-2", reason_code: null },
+      { id: 3, team_id: "t1", type: "transfer_in", amount: 9999, season_id: "s-1", reason_code: null },
+      { id: 4, team_id: "t2", type: "transfer_in", amount: 7777, season_id: "s-3", reason_code: null },
+      { id: 5, team_id: "t1", type: "income", amount: 1200, season_id: "s-3", reason_code: FINANCE_REASON.SEASON_START_SPONSOR },
+      { id: 6, team_id: "t1", type: "income", amount: 800, season_id: "s-2", reason_code: FINANCE_REASON.SEASON_START_SPONSOR },
+    ],
+  };
+  const shared = {
+    teamId: "t1", boardId: "b1", currentSeasonId: "s-3",
+    leagueDivisionId: 7, planStartSeasonNumber: 4,
+    standings: [
+      { league_division_id: 7, team: { is_ai: false } },
+      { league_division_id: 7, team: { is_ai: true } },
+      { league_division_id: 8, team: { is_ai: false } },
+    ],
+  };
+
+  const viaDb = await loadGoalContextForBoard({ supabase: makeRelationalFake(tables), ...shared });
+
+  const supabase = makeRelationalFake(tables);
+  const prefetch = await prefetchGoalContextSources({
+    supabase,
+    teamIds: ["t1", "t2"],
+    // Unionen som orkestratoren bygger: alle snapshots' season_id + aktuel sæson.
+    seasonIds: ["s-1", "s-2", "s-3"],
+  });
+  const viaPrefetch = await loadGoalContextForBoard({
+    supabase,
+    ...shared,
+    prefetched: {
+      snapshots: tables.board_plan_snapshots.filter((row) => row.board_id === "b1"),
+      sources: selectGoalContextSourcesForTeam(prefetch, "t1"),
+    },
+  });
+
+  assert.deepEqual(viaPrefetch, viaDb);
+  // Sanity: datasættet rammer rent faktisk de felter vi sammenligner — ellers
+  // ville to tomme kontekster bestå testen.
+  assert.equal(viaDb.cumulativeClassicPodiums, 2, "gammel cyklus + andet hold holdes ude");
+  assert.equal(viaDb.cumulativeJerseyWins, 2);
+  assert.equal(viaDb.seasonJerseyWins, 1);
+  assert.equal(viaDb.cumulativeTransferBalance, 300);
+  assert.equal(viaDb.cumulativeOneDayWins, 1);
+  assert.equal(viaDb.sponsorGrowthCurrentIncome, 1200);
+  assert.equal(viaDb.sponsorGrowthBaselineIncome, 800);
+  assert.equal(viaDb.planStartU25StatSum, 100, "u25-baseline fra FØRSTE snapshot i cyklussen");
+  assert.equal(viaDb.divisionManagerCount, 1);
+});
+
+test("#5182 · en fejlende prefetch-kilde giver samme null-sentinel som en fejlende query", async () => {
+  const boom = {
+    from() {
+      const query = {
+        select() { return query; },
+        eq() { return query; },
+        in() { return query; },
+        lte() { return query; },
+        gte() { return query; },
+        order() { return query; },
+        range() { return query; },
+        then(resolve, reject) {
+          return Promise.resolve({ data: null, error: { message: "connection reset" } })
+            .then(resolve, reject);
+        },
+      };
+      return query;
+    },
+  };
+
+  const prefetch = await prefetchGoalContextSources({
+    supabase: boom, teamIds: ["t1"], seasonIds: ["s-1"],
+  });
+  assert.ok(prefetch.classicResults.error, "kilde-fejl bæres med, ikke kastet");
+
+  const ctx = await loadGoalContextForBoard({
+    supabase: boom, teamId: "t1", boardId: "b1", currentSeasonId: "s-1",
+    prefetched: { snapshots: [], sources: selectGoalContextSourcesForTeam(prefetch, "t1") },
+  });
+
+  // Samme sentinel som en fejlende pr.-board-query: "ukendt", ikke 0.
+  assert.equal(ctx.cumulativeMonumentPodiums, null);
+  assert.equal(ctx.cumulativeClassicPodiums, null);
+  assert.equal(ctx.cumulativeJerseyWins, null);
+  assert.equal(ctx.cumulativeTransferBalance, null);
+  assert.equal(ctx.cumulativeOneDayWins, null);
+  assert.equal(ctx.sponsorGrowthCurrentIncome, null);
 });
