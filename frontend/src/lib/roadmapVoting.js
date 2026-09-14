@@ -6,6 +6,12 @@
 // renommé, stab, museum og social bor dér (ejer-godkendt 11/6).
 export const ENGINE_ORDER = ["races", "training", "youth", "market", "club"];
 
+// Delt kolonne-liste mellem RoadmapPage (liste + admin-status-toggle) og
+// RoadmapAdminCreateForm (admin-insert) — #5177 spor 2 splittede AdminCreateForm
+// ud i egen lazy-loaded chunk (LCP: mindre JS for de ~99% der ikke er admin),
+// men begge steder skal stadig SELECT'e/INSERT'e de samme kolonner.
+export const ROADMAP_ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, shipped_at";
+
 export const SCORE_MIN = 1;
 export const SCORE_MAX = 6;
 export const SCALE = [1, 2, 3, 4, 5, 6];

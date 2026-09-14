@@ -13,6 +13,13 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "RoadmapPage.jsx"), "utf8");
+// #5177 spor 2 (LCP): admin-create-formen blev udskilt til egen lazy-loaded
+// chunk (mindre JS for ikke-admin besøgende) — dens kilde ligger derfor ikke
+// længere i RoadmapPage.jsx.
+const adminFormSource = readFileSync(
+  join(__dirname, "..", "components", "RoadmapAdminCreateForm.jsx"),
+  "utf8",
+);
 
 test("RoadmapPage bevarer privacy-fix: egne stemmer + votesByItemId-lag (#1599)", () => {
   assert.match(
@@ -77,8 +84,16 @@ test("RoadmapPage har historik-sektion + admin status-toggle (#1600)", () => {
 
 test("RoadmapPage admin-create indsætter i roadmap_items uden migration (#1600)", () => {
   assert.match(
-    source,
+    adminFormSource,
     /from\("roadmap_items"\)\s*\.insert\(/,
     "admin-create-form skal INSERT'e direkte i roadmap_items (RLS admin-policy)",
+  );
+});
+
+test("RoadmapPage lazy-loader admin-create-formen via lazyWithRetry (#5177 spor 2, LCP + #5014 chunk-retry)", () => {
+  assert.match(
+    source,
+    /lazyWithRetry\(\(\) => import\("\.\.\/components\/RoadmapAdminCreateForm\.jsx"\)\)/,
+    "AdminCreateForm skal splittes via lazyWithRetry (ikke bart React.lazy — #5014 chunk-retry-guard), og ikke bundles ind i alles roadmap-chunk",
   );
 });
