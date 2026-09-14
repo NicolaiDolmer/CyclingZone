@@ -52,6 +52,17 @@ test('sanitizeTitle: pakker bare #N i backticks, escaper "|" og linjeskift (Code
   assert.equal(sanitizeTitle('Auktioner efter #2884 og #100'), 'Auktioner efter `#2884` og `#100`');
 });
 
+test('sanitizeTitle: backslash escapes FOERST - en titel med bogstavelig "\\|" faar begge tegn escapet entydigt (CodeQL #361, #5176)', () => {
+  // Input har ÉN bogstavelig backslash efterfulgt af en pipe - IKKE en
+  // allerede-escapet pipe. Forkert raekkefoelge (pipe foer backslash) ville
+  // producere den samme streng som en allerede-escapet pipe og goere
+  // backslashen "usynlig" for laeseren af markdown-taebellen.
+  assert.equal(sanitizeTitle('sti C:\\Dev\\repo | ryddet'), 'sti C:\\\\Dev\\\\repo \\| ryddet');
+  // Backslash lige foer et #N: backslashen skal blive staaende ESCAPET, og
+  // #N skal stadig pakkes i backticks bagefter.
+  assert.equal(sanitizeTitle('fejl\\ i #42'), 'fejl\\\\ i `#42`');
+});
+
 // --------------------------------------------------------- computeLastActivity
 
 test('computeLastActivity: falder tilbage til issue.updatedAt uden timeline-events', () => {

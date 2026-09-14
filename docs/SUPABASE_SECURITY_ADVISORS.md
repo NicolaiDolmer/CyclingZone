@@ -8,6 +8,65 @@
 > Den korte regel (tjek ved session-start, ingen WARN over 7 dage) står i
 > [`AI_OPS_REFERENCE.md`](AI_OPS_REFERENCE.md#supabase-security-advisors--7-dages-regel).
 
+## Re-verificeret 14/9 2026 (kl. 08:09 UTC), #5176
+
+**Målt med `get_advisors(type: "security")`: 3 WARN + 117 INFO**,
+`observed_at=2026-09-14T08:08:56.275Z` — **uændret** siden trin 2 blev
+appliceret 13/9 (se nedenfor). De tre resterende `0029`-fund er PRÆCIS de
+samme tre funktioner som 12/9: `founder_public_list()`, `is_admin()`,
+`is_offered_intake_rider(p_rider_id uuid)`. Ingen ny WARN, ingen lukket.
+Grants verificeret mod `database/*.sql` (ikke genmålt med live SQL i denne
+lane): `is_admin()` og `founder_public_list()` har anon revoket
+(hhv. `2026-09-11-5153-security-advisors-hardening.sql` §C og
+`2026-09-06-4870-revoke-metrics-rpcs.sql`), `is_offered_intake_rider(uuid)`
+havde aldrig anon-EXECUTE (bekræftet i 5153s egen V1-verifikation). Alle tre
+har fortsat `authenticated`-EXECUTE — det er selve grunden til 0029-fundet,
+og ingen af de tre kan miste den uden at knække et eksisterende kaldested
+(se hver funktions afsnit nedenfor, uændret siden 12/9).
+
+Alle tre er dokumenteret "bevidst åben" med begrundelse, blokerende
+afhængighed og issue-nummer siden 11-12/9 — inden for 7-dages fristen
+(#5153, se [`AI_OPS_REFERENCE.md`](AI_OPS_REFERENCE.md#supabase-security-advisors--7-dages-regel)).
+Ingen af de tre kræver en ny beslutning i dag; se **B-policy-forslaget**
+nedenfor for hvornår en dokumenteret "bevidst åben"-status skal tages op
+igen.
+
+### B-policy-forslag: hvad "bevidst åben" betyder for 7-dages fristen (#5153, forslag — ikke vedtaget)
+
+7-dages reglen ([`AI_OPS_REFERENCE.md`](AI_OPS_REFERENCE.md#supabase-security-advisors--7-dages-regel))
+siger en WARN skal **lukkes** eller **dokumenteres som bevidst åben** inden
+7 dage. Den siger ikke hvad der sker EFTER dokumentationen — uden et svar
+her ville en re-verifikation som denne (14/9) ende med at genskrive samme
+begrundelse hver session, uden at noget nyt er sket.
+
+**Forslag:** en WARN der allerede er dokumenteret som bevidst åben (begrundelse
++ blokerende afhængighed + issue-nummer, som de tre `0029`-fund er) tæller som
+**opfyldt** af 7-dages reglen — den skal IKKE genbekræftes eller omformuleres
+hver session. Den skal derimod genåbnes til fornyet vurdering, når mindst ét
+af følgende sker:
+
+1. `get_advisors` viser et NYT fund for samme objekt (fx en anden rolle får
+   EXECUTE, eller lint-typen ændrer sig) — dokumentationen matcher da ikke
+   længere den faktiske tilstand.
+2. Funktionens grants, definition eller den policy der kalder den ændres i en
+   migration (som `database/2026-09-11-5153-security-advisors-hardening.sql`
+   selv gjorde for `is_admin()`s anon-grant).
+3. Ejeren træffer en eksplicit ny beslutning (som "B: Kun indloggede må læse
+   riders" for `is_offered_intake_rider` 12/9) — dokumentationen opdateres da
+   med beslutningen, ikke fordi fristen udløb.
+4. 30 dage er gået siden sidste re-verifikation, som en yderste bagstopper —
+   ikke fordi begrundelsen forventes at være forældet, men fordi en
+   funktions kaldere i praksis ændrer sig over tid, og en aldrig-genbesøgt
+   "bevidst åben" er præcis den stille gæld #5153 blev skrevet for at undgå.
+
+Formålet er at skelne "ny/udokumenteret WARN" (et brud, jf. reglens egen
+`#4870`-advarsel) fra "kendt, dokumenteret, uændret" (ikke et brud) — uden at
+gøre re-verifikation til en ren formalitet der aldrig rent faktisk tjekker om
+noget ændrede sig. Denne re-verifikation (14/9) er selv et eksempel: den
+bekræftede uændret tilstand via `get_advisors` FØR den konkluderede
+"intet at gøre", ikke i stedet for at tjekke. Kræver ejer-go før den bliver
+bindende — indtil da er ovenstående en observation, ikke en regel.
+
 ## Status 12/9 2026 (kl. 18:27 dansk tid), #5176
 
 **Målt med `get_advisors(type: "security")`: 7 WARN + 117 INFO**,

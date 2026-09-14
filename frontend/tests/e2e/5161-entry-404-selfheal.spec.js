@@ -54,7 +54,20 @@ async function readBootAssets(page, documentPath) {
   // type=\"application/json\" id=\"cz-boot-assets\">") og staar FOER den
   // plugin-injicerede blok i dokumentet. Uden strip rammer regexen
   // kommentarteksten, og JSON.parse kaster paa prosaen i stedet.
-  const html = (await response.text()).replace(/<!--[\s\S]*?-->/g, "");
+  //
+  // Én enkelt .replace() fanger IKKE nestede/overlappende kommentar-markoerer
+  // (CodeQL #360 "Incomplete multi-character sanitization", #5176): en streng
+  // som "<!-- a <!-- b --> c -->" giver efter ÉT pass "<!-- a  c -->" tilbage
+  // — det yderste "<!--...-->"-par overlevede, fordi det ikke-graadige match
+  // stoppede ved den FOERSTE "-->" (efter "b"). Loeb derfor replace() indtil
+  // strengen holder op med at aendre sig (CodeQL-anerkendt moenster) — det
+  // fjerner ogsaa kommentarer der blev "afsloeret" af et tidligere pass.
+  let html = await response.text();
+  let previous;
+  do {
+    previous = html;
+    html = html.replace(/<!--[\s\S]*?-->/g, "");
+  } while (html !== previous);
   // Kraev ogsaa det lukkende tag, saa kun en rigtig datablok kan matche.
   const match = html.match(/<script\b[^>]*\bid="cz-boot-assets"[^>]*>([\s\S]*?)<\/script>/);
   expect(
