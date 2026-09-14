@@ -505,6 +505,7 @@
     "boundIn": "Kører {race}",
     "boundConflict": "Overlapper {race}",
     "autoPicked": "Assistentens valg. Justér og gem for selv at tage styringen.",
+    "draftRestored": "Jeg holdt fast i dine ugemte valg. Husk at gemme dem inden starten.",
     "autoFill": "Auto-udtag",
     "autoFillError": "Auto-udtag mislykkedes. Prøv igen.",
     "save": "Gem udtagelse",

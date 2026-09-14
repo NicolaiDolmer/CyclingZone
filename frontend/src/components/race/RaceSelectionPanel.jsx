@@ -11,6 +11,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { toggleRider, validateSelectionClient, partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
+// #5098: det ugemte udkast lever uden for komponenten, så en afmontering (et
+// fane-skift på løbssiden) ikke tager managerens arbejde med sig.
+import {
+  rememberSelectionDraft,
+  readSelectionDraft,
+  forgetSelectionDraft,
+  reconcileSelectionDraft,
+} from "../../lib/raceSelectionDraft.js";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
@@ -62,6 +70,10 @@ export default function RaceSelectionPanel({
   // fejlen skal sige HVEM/HVOR, ikke bare en opak kode). Sat af save() fra body.conflicts.
   const [errorDetail, setErrorDetail] = useState(null);
   const [touched, setTouched] = useState(false);
+  // #5098: sandt når panelet åbnede på et ugemt udkast i stedet for serverens
+  // udtagelse — så siger fladen det, i stedet for at lade manageren tro at det
+  // han ser er gemt.
+  const [restoredDraft, setRestoredDraft] = useState(false);
   // #1747: skjul-skadede-toggle. Default false (skadede vises dæmpet + deaktiveret)
   // så manageren stadig kan se hvem der er ude — toggler skjuler dem helt.
   const [hideInjured, setHideInjured] = useState(false);
@@ -134,7 +146,14 @@ export default function RaceSelectionPanel({
       const body = await res.json();
       if (requestGeneration !== generationRef.current) return;
       setData(body);
-      if (body.selection) {
+      // #5098: et ugemt udkast vinder over serverens gemte udtagelse — det er
+      // det nyeste manageren har lavet, og svaret her er netop den tilstand han
+      // var i gang med at ændre. Skåret til den rytterliste serveren svarer med
+      // NU, så en rytter der er faldet ud i mellemtiden ikke lever videre.
+      const draft = readSelectionDraft(raceId);
+      if (draft) {
+        setSel(reconcileSelectionDraft(draft, body.riders));
+      } else if (body.selection) {
         setSel({
           riderIds: body.selection.rider_ids ?? [],
           captainId: body.selection.captain_id ?? null,
@@ -152,9 +171,21 @@ export default function RaceSelectionPanel({
     generationRef.current += 1;
     setData(null);
     setStatus("idle");
+    // #5098 (CodeRabbit): autoStatus manglede her. Et forældet auto-udtag der
+    // returnerede på stale-guarden efterlod "loading" stående, og `busy` låste
+    // så det NYE løbs panel for altid. Effekten rydder begge statusser nu.
+    setAutoStatus("idle");
     setErrorKey(null);
     setErrorDetail(null);
-    setTouched(false);
+    // #5098: udkastet sættes SYNKRONT her, ikke først når fetch'et lander —
+    // ellers ville panelet blinke tomt på vej tilbage fra en anden fane. Og
+    // `sel` nulstilles nu eksplicit: uden det bar panelet det forrige løbs trup
+    // med over ved et raceId-skift uden remount (samme route, andet løb), hvis
+    // det nye løb ingen gemt udtagelse havde.
+    const draft = readSelectionDraft(raceId);
+    setSel(draft ?? EMPTY_SELECTION);
+    setTouched(Boolean(draft));
+    setRestoredDraft(Boolean(draft));
     loadSelection();
     return () => { generationRef.current += 1; };
   }, [raceId, loadSelection]);
@@ -267,8 +298,36 @@ export default function RaceSelectionPanel({
   // generel egnethed.
   const fitSortLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
 
+  // #5098 (CodeRabbit 14/9): save() og autoSelect() skrev deres resultat uden at
+  // spørge om de stadig hører til DET løb panelet viser. Skifter raceId mens et
+  // PUT/POST er undervejs (samme route, andet løb — panelet remountes ikke),
+  // kunne et gammelt svar markere det NYE løb som gemt, rydde dets `touched` og
+  // åbne reload-porten midt i en urørt udtagelse. Samme generations-guard som
+  // loadSelection allerede bruger (#3310), nu også på skrive-vejene.
+  //
+  // Kaldes på HVERT punkt hvor handleren vågner igen efter et await: efter
+  // authHeaders(), efter fetch'et, efter loadSelection() og i catch-grenen. Begge
+  // handlere sætter til gengæld deres låse-status ("saving"/"loading") SYNKRONT
+  // før det første await — ellers står fladen åben for redigering i det vindue,
+  // og den ændring ville dropDraft() bagefter slette som "gemt".
+  function isStale(generation) {
+    return generation !== generationRef.current;
+  }
+
+  // #5098: serveren har overtaget sandheden (et lykkedes Gem eller assistentens
+  // udtagelse) — udkastet må ikke kunne dukke op igen bagefter og gen-vise en
+  // tilstand manageren allerede er færdig med.
+  function dropDraft() {
+    forgetSelectionDraft(raceId);
+    setRestoredDraft(false);
+    setTouched(false);
+  }
+
   function update(next) {
     setSel(next);
+    // #5098: hvert eneste klik lægger sig i udkastet, så det er der uanset
+    // hvornår manageren forlader panelet.
+    rememberSelectionDraft(raceId, next);
     if (!touched) setTouched(true);
     if (status !== "idle") setStatus("idle");
     if (errorKey) setErrorKey(null);
@@ -285,8 +344,10 @@ export default function RaceSelectionPanel({
   }
 
   async function save() {
-    const headers = await authHeaders();
-    if (!headers) return;
+    // #5098 (CodeRabbit): fladen låses FØR det første await. authHeaders() kan gå
+    // på netværk, og en ændring i det vindue ville dropDraft() bagefter slette som
+    // "gemt" — uden at den nogensinde nåede med i kaldet.
+    const gen = generationRef.current;
     setStatus("saving");
     setErrorKey(null);
     setErrorDetail(null);
@@ -295,6 +356,10 @@ export default function RaceSelectionPanel({
     // ellers kan et gammelt "Could not auto-select" stå tilbage ved siden af et
     // netop lykkedes manuelt Gem (og omvendt).
     if (autoStatus !== "idle") setAutoStatus("idle");
+    const headers = await authHeaders();
+    // Et forældet kald må hverken låse eller låse op det løb panelet nu viser.
+    if (isStale(gen)) return;
+    if (!headers) { setStatus("idle"); return; }
     // #2376: round-trip er OBLIGATORISK — panelet har intet UI til at ÆNDRE free_role,
     // men et gem herfra må ikke wipe free_role'r sat af boardet. Filtreret til ryttere
     // der stadig er i den (evt. lige nu redigerede) trup, så en fjernet rytter ikke
@@ -313,6 +378,7 @@ export default function RaceSelectionPanel({
         }),
       });
       const body = await res.json().catch(() => ({}));
+      if (isStale(gen)) return;
       if (!res.ok) {
         setStatus("error");
         setErrorKey(body.error || "generic");
@@ -328,7 +394,8 @@ export default function RaceSelectionPanel({
       // og en spiller der havde gemt for laenge siden ville aldrig faa
       // opdateringen automatisk — kun via banneret. `touched` styrer ogsaa
       // visningen af klient-valideringen, som er tom lige efter et lykkedes gem.
-      setTouched(false);
+      // #5098: dropDraft() gør begge dele — glemmer udkastet OG åbner porten.
+      dropDraft();
       // Efter manuel gem er udtagelsen ikke længere assistentens.
       setData((d) => (d
         ? {
@@ -344,6 +411,7 @@ export default function RaceSelectionPanel({
           }
         : d));
     } catch {
+      if (isStale(gen)) return;
       setStatus("error");
       setErrorKey("generic");
     }
@@ -355,20 +423,26 @@ export default function RaceSelectionPanel({
   // Efter succes genindlæses panelet via loadSelection() så trup + roller + is_auto_filled
   // afspejler det assistenten netop gemte, uden en fuld sidegenindlæsning.
   async function autoSelect() {
-    const headers = await authHeaders();
-    if (!headers) return;
+    const gen = generationRef.current;
     setAutoStatus("loading");
     // #3310 quality-fix: ryd et evt. forældet manuelt gem-resultat (status/errorKey/
     // errorDetail) ved start af auto-select, af samme grund som ovenfor i save().
     if (status !== "idle") setStatus("idle");
     if (errorKey) setErrorKey(null);
     if (errorDetail) setErrorDetail(null);
+    const headers = await authHeaders();
+    if (isStale(gen)) return;
+    if (!headers) { setAutoStatus("idle"); return; }
     try {
       const res = await fetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
+      if (isStale(gen)) return;
       if (!res.ok) { setAutoStatus("error"); return; }
+      dropDraft();
       await loadSelection();
+      if (isStale(gen)) return;
       setAutoStatus("idle");
     } catch {
+      if (isStale(gen)) return;
       setAutoStatus("error");
     }
   }
@@ -430,6 +504,15 @@ export default function RaceSelectionPanel({
             bucket: t(`strategy.buckets.${selectedStageBucket}`),
             name: riders.find((r) => r.id === bestId)?.name ?? "",
           })}
+        </p>
+      )}
+
+      {/* #5098: panelet åbnede på managerens ugemte udkast (han var forbi en
+          anden fane og kom tilbage). Én kort linje, så han ikke tror det står
+          gemt — den forsvinder i samme sekund han gemmer. */}
+      {restoredDraft && touched && (
+        <p data-testid="selection-draft-restored" className="px-4 py-2 text-xs text-cz-2 bg-cz-subtle border-b border-cz-border">
+          {t("selection.draftRestored")}
         </p>
       )}
 
@@ -741,7 +824,11 @@ export default function RaceSelectionPanel({
             </button>
             <button
               type="button"
-              onClick={saveBlock.guard(save)}
+              /* #5098: guarden bygges ved KLIKKET, ikke under render. save()
+                 spørger nu generationsref'en om svaret stadig hører til dette
+                 løb, og react-hooks/refs afviser (med rette) at sende en
+                 ref-læsende funktion videre midt i en render. */
+              onClick={(event) => saveBlock.guard(save)(event)}
               disabled={busy}
               {...saveBlock.blockedProps}
               className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
