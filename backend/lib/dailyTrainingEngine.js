@@ -695,6 +695,10 @@ export async function runTeamTrainingDay({
         if (error) throw new Error(error.message);
       }
     } catch (histErr) {
+      // best-effort: loebsdags-snapshottet er AFLEDT visning, ikke spil-state. Et
+      // kast her ville vaelte en traeningsdag hvis evne-writes allerede er landet
+      // (Phase 2 bevarer reservationen med vilje) — samme kontrakt som
+      // kalenderdags-historikken ovenfor. Fejlen logges, dagen staar.
       console.error(`  ⚠️ ability-history snapshot (race day) fejlede for hold ${teamId}:`, histErr.message);
     }
   }
