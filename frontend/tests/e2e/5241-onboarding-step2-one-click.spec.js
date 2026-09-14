@@ -195,6 +195,70 @@ test("eet klik saetter fokus, koerer ugens traening og krydser trin 2 af (#5241)
   }
 });
 
+// Go-kort-billeder til ejer-godkendelse af de to knaptekster ("Kør ugens
+// træning" / "Run this week's training" primær, "Vælg selv" / "Pick it
+// myself" sekundær) FØR klik — PR #5244 havde kun efter-klik-billeder.
+// Klipper til kom-i-gang-kortets egen ramme (den yderste
+// "border rounded-cz"-container omkring hele onboarding-blokken, ikke bare
+// CTA-rækkens egen border-t-skillelinje), så nok kontekst er synligt til at
+// se at det er dashboardet, uden hele siden.
+async function captureBeforeClickShot(page, testInfo, lang, primaryButton) {
+  const shortName = testInfo.project.name.replace("-chromium", "").replace("-webkit", "");
+  // Kun de to Chromium-projekter der matcher PR-billedernes navngivning;
+  // webkit koerer testen for daekning uden at gemme et tredje billede (samme
+  // filter som after-click-billedet).
+  if (testInfo.project.name.includes("webkit") || !["desktop", "mobile"].includes(shortName)) return;
+
+  const handle = await primaryButton.elementHandle();
+  const box = await page.evaluate((btn) => {
+    let node = btn;
+    while (node.parentElement) {
+      node = node.parentElement;
+      if (node.classList?.contains("rounded-cz") && node.classList.contains("border")) break;
+    }
+    node.scrollIntoView({ block: "start" });
+    const r = node.getBoundingClientRect();
+    return {
+      x: Math.max(0, r.x - 6),
+      y: Math.max(0, r.y - 6),
+      width: Math.min(r.width + 12, window.innerWidth - Math.max(0, r.x - 6)),
+      height: Math.min(r.height + 12, window.innerHeight - Math.max(0, r.y - 6)),
+    };
+  }, handle);
+
+  await page.screenshot({
+    path: evidenceShotPath(`pr-screens/5241/${shortName}-before-click-${lang}.png`),
+    ...(box && box.height > 40 ? { clip: box } : { fullPage: true }),
+  });
+}
+
+test("skaermbillede foer klik viser kom-i-gang-kortet paa dansk (#5241)", async ({ page }, testInfo) => {
+  await installOnboardingMocks(page);
+  await login(page);
+
+  const primaryButton = page.getByRole("button", { name: "Kør ugens træning" });
+  await expect(primaryButton).toBeVisible();
+  await expect(page.getByRole("link", { name: "Vælg selv" })).toBeVisible();
+
+  await captureBeforeClickShot(page, testInfo, "da", primaryButton);
+});
+
+test("skaermbillede foer klik viser kom-i-gang-kortet paa engelsk (#5241)", async ({ page }, testInfo) => {
+  await installOnboardingMocks(page);
+  await login(page);
+
+  // Samme mekanisme som language-resync-flicker.spec.js: skift sprog via den
+  // dev-only i18n-instans (window.__i18n) i stedet for at duplikere fixturens
+  // hardkodede danske login-selectors for et engelsk login-flow.
+  await page.evaluate(() => window.__i18n.changeLanguage("en"));
+
+  const primaryButton = page.getByRole("button", { name: "Run this week's training" });
+  await expect(primaryButton).toBeVisible();
+  await expect(page.getByRole("link", { name: "Pick it myself" })).toBeVisible();
+
+  await captureBeforeClickShot(page, testInfo, "en", primaryButton);
+});
+
 test("idempotent: dagens traening allerede koert viser 'ugen er allerede koert' uden nye kald (#5241)", async ({ page }) => {
   // Racy tilfaelde: onboarding-progress-proppen siger endnu ikke done, men
   // useTraining()'s EGEN friske GET /api/training/me viser at dagen allerede
