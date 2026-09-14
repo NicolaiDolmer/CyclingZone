@@ -7,7 +7,12 @@
 // filter, print the report, and -- only with --execute AND the app_config
 // gate below -- actually send via the existing #2725 Resend infrastructure
 // (backend/lib/emailService.js's sendLoopEmail, same email_log bookkeeping,
-// same unsubscribe flow, same Reply-To as welcome/day1/race_digest).
+// same unsubscribe flow, same Reply-To as welcome/day1/race_digest). --execute
+// re-checks consent_preferences.email_marketing per recipient IMMEDIATELY
+// before sending (CodeRabbit review, this PR) -- the candidate list is a
+// snapshot from before the (rate-limited, potentially minutes-long) send
+// loop started, and sendLoopEmail itself only re-checks the email_prefs
+// opt-out, never the consent opt-in this whole campaign is gated on.
 //
 // BRUG:
 //   # 1) maaling (default, INGEN mails, ingen email_log-skrivning):
@@ -199,6 +204,24 @@ async function main() {
   let failed = 0;
   for (const candidate of candidates) {
     try {
+      // CodeRabbit review (this PR, #2760): selectWinbackCandidates ran
+      // against a SNAPSHOT fetched before this loop started. sendLoopEmail
+      // only re-checks email_prefs (opt-out) at send time, never
+      // consent_preferences (the opt-in gate this campaign is built on) --
+      // a manager who revokes email_marketing consent WHILE this one-off
+      // (potentially long-running, rate-limited) script is mid-run must not
+      // still receive the mail. Re-read the current value immediately
+      // before sending, per recipient, and skip on anything but an explicit
+      // true (NULL/false/revoked all read the same as "no consent", same
+      // rule as winbackSegment.js's hasWinbackConsent).
+      const { data: freshUser, error: consentErr } = await supabase
+        .from("users").select("consent_preferences").eq("id", candidate.userId).maybeSingle();
+      if (consentErr) throw new Error(`consent re-check failed: ${consentErr.message}`);
+      if (freshUser?.consent_preferences?.email_marketing !== true) {
+        skipped += 1;
+        continue;
+      }
+
       const unsubscribeUrl = unsubscribeUrlForStage({ userId: candidate.userId, secret: process.env.EMAIL_UNSUB_SECRET, stage: "on" });
       const { subject, html, text } = buildWinbackEmail({
         teamName: candidate.teamName,
@@ -221,7 +244,13 @@ async function main() {
         unsubscribeUrl,
         stage: "on",
       });
+      // CodeRabbit review (this PR, #2760): sendLoopEmail returns
+      // {status:"failed"} for a Resend provider failure (permanent or
+      // exhausted-retry) -- that must count as `failed`, not `skipped`, or
+      // the final report can print failed=0 while emails silently did not
+      // go out.
       if (result?.status === "sent") sent += 1;
+      else if (result?.status === "failed") failed += 1;
       else skipped += 1;
     } catch (err) {
       failed += 1;
