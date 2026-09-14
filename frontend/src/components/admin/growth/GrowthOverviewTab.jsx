@@ -205,7 +205,7 @@ export default function GrowthOverviewTab() {
               ]}
             />
             <p className="text-cz-3 text-xs mt-2">
-              LTV-total (seneste): {fmtCents(snapshots.at(-1)?.ltv_total_cents)} · gennemsnit pr. kunde: {fmtCents(snapshots.at(-1)?.ltv_avg_cents)}
+              LTV-total (seneste): {fmtCents(snapshots.at(-1)?.ltv_total_cents)} · gennemsnit pr. kunde: {fmtCents(snapshots.at(-1)?.ltv_avg_cents)} · ekskl. moms
             </p>
           </Card>
         </>

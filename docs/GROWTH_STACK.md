@@ -15,6 +15,8 @@
 
 Hvorfor lige det tal: økonomien er ikke et konverteringsproblem. ✅ 8/9 er der 17 til 18 betalende abonnementer mod 74 aktive/7d, altså omkring en fjerdedel. (Bemærk: at hver betaler også er aktiv/7d er ikke verificeret, så de to tal er et forhold, ikke en konverteringsrate.) 📄 ARPU er ~37 kr. ekskl. moms, så et levebrød på 25.000 kr./md. kræver i omegnen af 680 betalende og dermed tusindvis af aktive spillere. **Tilgang er flaskehalsen, ikke konvertering.**
 
+**LTV (`/admin/growth`) er ekskl. moms — #5215.** Ejer-regel: spillervendte priser (`/pro`, checkout, `pro.json`) er inkl. moms; ejer-tal (LTV, MRR, ARPU, `growth_metric_snapshots`) er ekskl. moms, så de tre nøgletal er sammenlignelige. `backend/lib/growthSnapshot.js`'s `PLAN_PRICE_CENTS` og den nyeste `database/*growth-snapshot*.sql` bruger derfor 3920/21200 øre (= `aluntaPlanCatalog.js`'s `amount`-felt), ikke 4900/26500. Se `BILLING_STACK.md` §"Spillerpris inkl. moms, ejer-tal ekskl. moms" for reglen i fuld længde. **`growth_metric_snapshots`-rækker fra før `database/2026-09-14-5215-growth-snapshot-ltv-ex-vat.sql` er inkl. moms — ingen backfill; et knæk i LTV-kurven omkring den dato er forventet.**
+
 ### 1.2 De tre mandagstal
 
 Måles **hver mandag** som ugens første handling. Rækkefølgen er fast, så en uge kan sammenlignes med den forrige.

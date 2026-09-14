@@ -61,6 +61,15 @@ Alunta gemmer beløb i **øre ekskl. moms** og lægger moms oveni når `charge_v
 
 Bekræftet mod prod-faktura: total 49,00 + moms 12,25 = 61,25. **Vil du ramme 49 kr. inkl., skal du taste 3920.** Denne fælde kostede en fejlpris på den eneste betalende kunde.
 
+### Spillerpris inkl. moms, ejer-tal ekskl. moms — #5215
+
+Ejer-regel (14/9, ordret): *"de priser spillerne ser skal være inkl moms. Det er de ting jeg ser, som skal være ekskl moms."*
+
+- **Spillervendt** (`/pro`, checkout, `frontend/public/locales/{en,da}/pro.json`): **inkl. moms** — uændret, rør IKKE ved en LTV/MRR/ARPU-prisændring.
+- **Ejer-tal** (LTV, MRR, ARPU, `growth_metric_snapshots`): **ekskl. moms** — samme tal som `aluntaPlanCatalog.js`'s rå `amount`-felt (3920/21200 øre), så de tre nøgletal taler samme sprog (docs/GROWTH_STACK.md §1).
+- `backend/lib/growthSnapshot.js`'s `PLAN_PRICE_CENTS` og den nyeste `database/*growth-snapshot*.sql`'s LTV-CASE holder derfor **ekskl.**-moms-tal siden #5215 (før: inkl. moms, 4900/26500). Forward-guarden i `scripts/check-pro-prices.mjs` (`checkLtvPriceSource`) håndhæver det — den afviser nu 4900/26500.
+- `growth_metric_snapshots`-rækker skrevet **før** #5215 (`database/2026-09-14-5215-growth-snapshot-ltv-ex-vat.sql`) er inkl. moms. Ingen backfill — et knæk i LTV-kurven omkring den dato er forventet, ikke en bug.
+
 ### Priser kan kun redigeres uden aktive abonnenter ❓
 
 Halvårsplanen kunne reprises (26500 → 23600); månedsplanen kunne ikke. Forskellen ser ud til at være at månedsplanen har en aktiv abonnent. **Ikke bekræftet af Alunta-dokumentation** — behandl som arbejdshypotese.

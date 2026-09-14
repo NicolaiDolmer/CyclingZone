@@ -17,7 +17,7 @@ import {
   extractGrowthSnapshotSqlPrices,
   findLatestGrowthSnapshotSqlFilename,
   checkLtvPriceSource,
-  dkkCatalogInclVatCentsByInterval,
+  dkkCatalogExclVatCentsByInterval,
   hasLtvDrift,
 } from "./check-pro-prices.mjs";
 
@@ -140,11 +140,12 @@ test("computeDiscountPct: 6 x 49 = 294 (den dokumenterede regnefejl fra #4645's 
   assert.ok(pct < 0, `295 kr. for 6 mdr. er dyrere end 6x49=294 kr. — forventede negativ rabat, fik ${pct}%`);
 });
 
-// ── #5051-forward-guard: growthSnapshot.js + SQL LTV-CASE mod plankataloget ──
-// VIGTIGT (se undersøgelses-note i check-pro-prices.mjs og PR-body for #5051):
-// LTV-priskilderne holder øre INKL. moms (samme tal pro.json viser), IKKE
-// aluntaPlanCatalog.js's rå `amount`-felt (øre EKSKL. moms). Katalogets egen
-// inclVat-beregning (computeInclVatMajor) er derfor facit her.
+// ── #5215-forward-guard: growthSnapshot.js + SQL LTV-CASE mod plankataloget ──
+// VIGTIGT (se undersøgelses-note i check-pro-prices.mjs og PR-body for #5215):
+// LTV-priskilderne holder øre EKSKL. moms — IDENTISK med
+// aluntaPlanCatalog.js's rå `amount`-felt, IKKE det beregnede inkl.-moms-tal
+// pro.json viser spilleren. Katalogets rå `amount`-felt er derfor facit her,
+// ingen omregning.
 
 test("extractGrowthSnapshotSqlPrices: udtrækker {semiannual, monthly} fra LTV-CASE'en", () => {
   const sql = `
@@ -172,34 +173,37 @@ test("findLatestGrowthSnapshotSqlFilename: ingen match -> null", () => {
   assert.equal(findLatestGrowthSnapshotSqlFilename([]), null);
 });
 
-test("dkkCatalogInclVatCentsByInterval: øre EKSKL. moms -> øre INKL. moms, kun DKK-planer", () => {
+test("dkkCatalogExclVatCentsByInterval: rå ekskl.-moms `amount`-felt, kun DKK-planer, ingen omregning", () => {
   const plans = [
     { currency: "DKK", interval: "monthly", amount: 3920 },
     { currency: "DKK", interval: "half-yearly", amount: 21200 },
     { currency: "EUR", interval: "monthly", amount: 519 },
   ];
-  assert.deepEqual(dkkCatalogInclVatCentsByInterval(plans), { monthly: 4900, "half-yearly": 26500 });
+  assert.deepEqual(dkkCatalogExclVatCentsByInterval(plans), { monthly: 3920, "half-yearly": 21200 });
 });
 
-test("checkLtvPriceSource: selv-konsistent kilde -> ingen findings", () => {
-  const catalogInclVatCentsByInterval = { monthly: 4900, "half-yearly": 26500 };
+test("checkLtvPriceSource: selv-konsistent kilde (ekskl.-moms-værdier, #5215) -> ingen findings", () => {
+  const catalogExclVatCentsByInterval = { monthly: 3920, "half-yearly": 21200 };
   const findings = checkLtvPriceSource({
     label: "fixture",
-    priceCentsByInterval: { monthly: 4900, semiannual: 26500 },
-    catalogInclVatCentsByInterval,
+    priceCentsByInterval: { monthly: 3920, semiannual: 21200 },
+    catalogExclVatCentsByInterval,
   });
   assert.deepEqual(findings, []);
   assert.equal(hasLtvDrift(findings), false);
 });
 
-test("checkLtvPriceSource: #5051's foreslåede (forkerte) rettelse 21200 FLAGES som drift", () => {
-  const catalogInclVatCentsByInterval = { monthly: 4900, "half-yearly": 26500 };
+test("checkLtvPriceSource: de gamle inkl.-moms-værdier (4900/26500, pre-#5215) FLAGES nu som drift", () => {
+  const catalogExclVatCentsByInterval = { monthly: 3920, "half-yearly": 21200 };
   const findings = checkLtvPriceSource({
     label: "fixture",
-    priceCentsByInterval: { monthly: 4900, semiannual: 21200 },
-    catalogInclVatCentsByInterval,
+    priceCentsByInterval: { monthly: 4900, semiannual: 26500 },
+    catalogExclVatCentsByInterval,
   });
-  assert.deepEqual(findings, [{ label: "fixture", interval: "semiannual", expectedCents: 26500, actualCents: 21200 }]);
+  assert.deepEqual(findings, [
+    { label: "fixture", interval: "monthly", expectedCents: 3920, actualCents: 4900 },
+    { label: "fixture", interval: "semiannual", expectedCents: 21200, actualCents: 26500 },
+  ]);
   assert.equal(hasLtvDrift(findings), true);
 });
 
@@ -215,11 +219,11 @@ test("de tre ægte LTV-priskilder (growthSnapshot.js, nyeste growth-snapshot-SQL
   const { PLAN_PRICE_CENTS } = await import("../backend/lib/growthSnapshot.js");
   const { readdirSync } = await import("node:fs");
 
-  const catalogInclVatCentsByInterval = dkkCatalogInclVatCentsByInterval(PLANS);
+  const catalogExclVatCentsByInterval = dkkCatalogExclVatCentsByInterval(PLANS);
   const jsFindings = checkLtvPriceSource({
     label: "backend/lib/growthSnapshot.js",
     priceCentsByInterval: PLAN_PRICE_CENTS,
-    catalogInclVatCentsByInterval,
+    catalogExclVatCentsByInterval,
   });
   assert.deepEqual(jsFindings, [], `growthSnapshot.js's PLAN_PRICE_CENTS afviger fra plankataloget: ${JSON.stringify(jsFindings)}`);
 
@@ -231,7 +235,7 @@ test("de tre ægte LTV-priskilder (growthSnapshot.js, nyeste growth-snapshot-SQL
   const sqlFindings = checkLtvPriceSource({
     label: `database/${latestSqlFilename}`,
     priceCentsByInterval: sqlPrices,
-    catalogInclVatCentsByInterval,
+    catalogExclVatCentsByInterval,
   });
   assert.deepEqual(sqlFindings, [], `${latestSqlFilename}'s LTV-CASE afviger fra plankataloget: ${JSON.stringify(sqlFindings)}`);
 });
