@@ -108,6 +108,24 @@ i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
+    // #5177: pseudo-sproget sættes HER i stedet for med et `changeLanguage`-kald
+    // lige efter `.init()`. Det kald var en race der først blev farlig da dansk
+    // holdt op med at være inline:
+    //   • `init()` kalder selv `this.changeLanguage(this.options.lng, finish)`
+    //     (i18next.js ~L1907), og `options.lng` er undefined her fordi vi bruger
+    //     LanguageDetector.
+    //   • Da BEGGE sprog lå i `resources`, resolvede det kalds `loadResources`
+    //     synkront, så init var helt færdig før næste linje kørte.
+    //   • Nu henter en dansk besøgende sin bundle asynkront. Så nåede
+    //     `changeLanguage("en-XA")` at gøre sig færdig FØRST og nulstille
+    //     `isLanguageChangingTo` til undefined — hvorefter init'ens sene
+    //     `done(err, "da")` ramte sin egen vagt `isLanguageChangingTo === lng`
+    //     som `undefined === undefined` ⇒ true, og satte sproget tilbage til da.
+    //     Pseudo-locale var dermed slukket (fanget af
+    //     tests/e2e/i18n-layout-overflow.spec.js).
+    // Med `lng` sat eksplicit findes der kun ÉT sprogskifte, og ingen rækkefølge
+    // at tabe. Kald ALDRIG changeLanguage før `initialized` er udsendt.
+    ...(PSEUDO_ENABLED ? { lng: PSEUDO_LANG } : {}),
     fallbackLng: "en",
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
@@ -160,8 +178,9 @@ i18n
     },
   });
 
+// Selve t()-wrappen er uafhængig af sprog-opslaget og kan sættes med det samme;
+// sproget er allerede valgt i init-options ovenfor (#5177).
 if (PSEUDO_ENABLED) {
-  i18n.changeLanguage("en-XA");
   applyPseudoTransform(i18n, PSEUDO.padPercent);
 }
 

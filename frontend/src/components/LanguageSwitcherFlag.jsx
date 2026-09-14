@@ -54,6 +54,22 @@ const FLAGS = { gb: UnionJack, dk: Dannebrog };
 /**
  * Lille firkantet flag til sprogvælgeren.
  *
+ * Ydre <span> er en NØJAGTIG klon af flag-icons' egen `.fi`-boks:
+ *
+ *   .fi        { position:relative; display:inline-block; width:1.333333em; line-height:1em }
+ *   .fi:before { content:" " }
+ *   .fi        { background-size:contain; background-position:50% }
+ *
+ * Det er ikke kosmetik. Første forsøg var en bar <svg> med `height:1em` og en
+ * lille `vertical-align`-justering, og det flyttede linjeboksen i den mobile
+ * topbar 1 px — nok til at `calendar-page.png`-snapshottet fejlede i alle tre
+ * Playwright-projekter (`main` blev 1095 px i stedet for 1094). En tom
+ * inline-block's baseline er dens UNDERKANT, mens `.fi` har et mellemrum fra
+ * sin `:before` og derfor en rigtig tekst-baseline. Derfor beholdes
+ * `:before`-tegnet her som et rigtigt tegn, og SVG'en ligger absolut oven i
+ * boksen — samme rolle som background-image havde. Ændrer du boksen, så kør
+ * `calendar.spec.js`-snapshottet igen.
+ *
  * @param {{ code: string, className?: string }} props
  *   `code` er flag-koden fra i18n/languages.js (`gb` / `dk`), ikke locale-koden.
  */
@@ -63,15 +79,21 @@ export default function LanguageSwitcherFlag({ code, className = "" }) {
   // en shape her giver dermed et tekst-only valg, ikke et layout-hul.
   if (!Shape) return null;
   return (
-    <svg
-      viewBox={VIEWBOX}
+    <span
       role="img"
       aria-hidden="true"
-      focusable="false"
-      className={`inline-block shrink-0 align-[-0.1em] ${className}`.trim()}
-      style={{ width: "1.3333em", height: "1em" }}
+      className={`relative inline-block ${className}`.trim()}
+      style={{ width: "1.333333em", lineHeight: "1em" }}
     >
-      <Shape />
-    </svg>
+      {" "}
+      <svg
+        viewBox={VIEWBOX}
+        focusable="false"
+        aria-hidden="true"
+        className="absolute inset-0 block h-full w-full"
+      >
+        <Shape />
+      </svg>
+    </span>
   );
 }
