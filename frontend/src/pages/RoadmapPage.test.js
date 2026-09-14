@@ -90,10 +90,10 @@ test("RoadmapPage admin-create indsætter i roadmap_items uden migration (#1600)
   );
 });
 
-test("RoadmapPage lazy-loader admin-create-formen (#5177 spor 2, LCP)", () => {
+test("RoadmapPage lazy-loader admin-create-formen via lazyWithRetry (#5177 spor 2, LCP + #5014 chunk-retry)", () => {
   assert.match(
     source,
-    /lazy\(\(\) => import\("\.\.\/components\/RoadmapAdminCreateForm\.jsx"\)\)/,
-    "AdminCreateForm skal være React.lazy-splittet, ikke bundlet ind i alles roadmap-chunk",
+    /lazyWithRetry\(\(\) => import\("\.\.\/components\/RoadmapAdminCreateForm\.jsx"\)\)/,
+    "AdminCreateForm skal splittes via lazyWithRetry (ikke bart React.lazy — #5014 chunk-retry-guard), og ikke bundles ind i alles roadmap-chunk",
   );
 });

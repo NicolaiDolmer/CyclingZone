@@ -12,12 +12,12 @@
 // kaldes KUN med en session (#5153): siden er offentlig, og anon har ikke
 // EXECUTE på is_admin().
 
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import {
   SCALE,
-  ENGINE_ORDER,
   ROADMAP_ITEM_COLUMNS,
   groupItemsByEngine,
   isValidScore,
@@ -42,7 +42,7 @@ import {
 // #5177 spor 2 (LCP): admin-create-formen er ubrugt JS for ikke-admin
 // besøgende (RLS-gated alligevel, kun synlig for isAdmin). Lazy-splittet til
 // egen chunk, se frontend/src/components/RoadmapAdminCreateForm.jsx.
-const AdminCreateForm = lazy(() => import("../components/RoadmapAdminCreateForm.jsx"));
+const AdminCreateForm = lazyWithRetry(() => import("../components/RoadmapAdminCreateForm.jsx"));
 
 const ENGINES = [
   { key: "races", Icon: FlagIcon },
