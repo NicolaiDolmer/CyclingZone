@@ -70,7 +70,12 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
   const nextStep = effectiveSteps.find(s => !s.done);
   const tourPage = nextStep ? TOUR_PAGE_BY_STEP[nextStep.key] : null;
   const tourTarget = nextStep ? STEP_TARGETS[nextStep.key] : null;
-  const trainingIsNext = nextStep?.key === "first_training_run";
+  // #5241: "var det den aktive næste-trin da vi startede" ELLER "vi har lige
+  // gjort det færdigt i denne session". Uden det sidste ben forsvinder hele
+  // blokken (knapperne OG resultatlinjen) i samme øjeblik trin 2 krydses af,
+  // fordi nextStep straks flytter videre til trin 3 — og resultatlinjen kan
+  // aldrig nå at blive vist.
+  const trainingIsNext = nextStep?.key === "first_training_run" || trainingCompletedLocally;
 
   function handleStartTour() {
     if (!tourPage || !tourTarget) return;
@@ -181,7 +186,7 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
           {rawTrainingStep && !rawTrainingStep.done && trainingIsNext && useOneClick && (
             <div className="mt-3 pt-3 border-t border-cz-border">
               {trainingCompletedLocally ? (
-                weekResult?.alreadyRan ? (
+                alreadyRanToday || weekResult?.alreadyRan ? (
                   <p className="text-xs text-cz-2">{t("onboardingProgress.oneClick.alreadyRun")}</p>
                 ) : (
                   <p className="text-xs text-cz-2">
