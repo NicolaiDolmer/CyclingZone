@@ -5,11 +5,17 @@
 //   • HTTP backend lazy-loader namespaces fra /locales/{lng}/{ns}.json
 //     (filer i frontend/public/locales/ — served af Vite på begge
 //      dev og prod via samme URL)
-//   • Namespaces der kan ramme first paint bundles INLINE
+//   • Namespaces der kan ramme first paint er klar FØR mount
 //     (FOUC-fri first paint — Refs #411, #412, #470).
-//     React renderer med `useSuspense: false`, så ikke-inlinet namespace =
+//     React renderer med `useSuspense: false`, så et namespace der ikke er klar =
 //     t() returnerer raw key på first paint ("dashboard:stats.balance" i UI).
 //     Forward-guard: `scripts/i18n-check-namespace-inline.mjs` (kører i CI).
+//   • #5177: "klar før mount" ≠ "inline i entry-chunken". Engelsk ligger inline
+//     i `resources` (default + fallbackLng). Dansk ligger i én lazy chunk,
+//     `messages.da.js`, som `localeBundleBackend.js` henter gennem i18nexts eget
+//     backend-hook; main.jsx monterer først på `initialized`, så garantien er
+//     uændret. Før #5177 lå begge sprog statisk i entry-grafen = 131 KB gzippet
+//     kritisk JS på hver side, hvoraf halvdelen aldrig blev brugt.
 //   • #3697: namespaces hvis eneste forbrugere ligger bag en lazy route med
 //     en `ready`-gate lazy-loades via HttpBackend i stedet. JSON-filerne
 //     shippes allerede statisk i dist/locales/, så det fjerner ren JS-vægt
@@ -29,59 +35,38 @@
 
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import HttpBackend from "i18next-http-backend";
+// #5177: LocaleBundleBackend indkapsler i18next-http-backend og serverer oveni
+// hele det danske first-paint-saet fra ÉN lazy chunk. Se filens header for
+// hvorfor det er en backend og ikke en changeLanguage-wrapper.
+import LocaleBundleBackend from "./localeBundleBackend.js";
 import LanguageDetector from "i18next-browser-languagedetector";
 import ICU from "i18next-icu";
 
 import { SUPPORTED_LANGS, PSEUDO_LANG } from "./languages.js";
 
-import commonDa from "../../public/locales/da/common.json";
 import commonEn from "../../public/locales/en/common.json";
-import authDa from "../../public/locales/da/auth.json";
 import authEn from "../../public/locales/en/auth.json";
-import errorsDa from "../../public/locales/da/errors.json";
 import errorsEn from "../../public/locales/en/errors.json";
-import auctionsDa from "../../public/locales/da/auctions.json";
 import auctionsEn from "../../public/locales/en/auctions.json";
-import transfersDa from "../../public/locales/da/transfers.json";
 import transfersEn from "../../public/locales/en/transfers.json";
-import dashboardDa from "../../public/locales/da/dashboard.json";
 import dashboardEn from "../../public/locales/en/dashboard.json";
-import bannersDa from "../../public/locales/da/banners.json";
 import bannersEn from "../../public/locales/en/banners.json";
-import feedbackDa from "../../public/locales/da/feedback.json";
 import feedbackEn from "../../public/locales/en/feedback.json";
-import riderDa from "../../public/locales/da/rider.json";
 import riderEn from "../../public/locales/en/rider.json";
-import ridersDa from "../../public/locales/da/riders.json";
 import ridersEn from "../../public/locales/en/riders.json";
-import riderFiltersDa from "../../public/locales/da/riderFilters.json";
 import riderFiltersEn from "../../public/locales/en/riderFilters.json";
-import teamDa from "../../public/locales/da/team.json";
 import teamEn from "../../public/locales/en/team.json";
-import financeDa from "../../public/locales/da/finance.json";
 import financeEn from "../../public/locales/en/finance.json";
-import sponsorDa from "../../public/locales/da/sponsor.json";
 import sponsorEn from "../../public/locales/en/sponsor.json";
-import headtoheadDa from "../../public/locales/da/headtohead.json";
 import headtoheadEn from "../../public/locales/en/headtohead.json";
-import halloffameDa from "../../public/locales/da/halloffame.json";
 import halloffameEn from "../../public/locales/en/halloffame.json";
-import riderTypesDa from "../../public/locales/da/riderTypes.json";
 import riderTypesEn from "../../public/locales/en/riderTypes.json";
-import racesDa from "../../public/locales/da/races.json";
 import racesEn from "../../public/locales/en/races.json";
-import trainingDa from "../../public/locales/da/training.json";
 import trainingEn from "../../public/locales/en/training.json";
-import academyDa from "../../public/locales/da/academy.json";
 import academyEn from "../../public/locales/en/academy.json";
-import klubDa from "../../public/locales/da/klub.json";
 import klubEn from "../../public/locales/en/klub.json";
-import staffDa from "../../public/locales/da/staff.json";
 import staffEn from "../../public/locales/en/staff.json";
-import landingDa from "../../public/locales/da/landing.json";
 import landingEn from "../../public/locales/en/landing.json";
-import globalRankDa from "../../public/locales/da/globalRank.json";
 import globalRankEn from "../../public/locales/en/globalRank.json";
 
 // Pseudo-locale-flag læses ÉN gang ved modul-init.
@@ -119,7 +104,7 @@ const SUPPORTED = PSEUDO_ENABLED ? [...SUPPORTED_LANGS, PSEUDO_LANG] : SUPPORTED
 
 i18n
   .use(ICU)
-  .use(HttpBackend)
+  .use(LocaleBundleBackend)
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
@@ -145,8 +130,18 @@ i18n
     // flipper true og siderne renderer rå nøgler (help crashede på
     // returnObjects). Fanget af ejeren på Vercel-preview 24/7.
     partialBundledLanguages: true,
+    // #5177: KUN engelsk ligger inline her. Dansk laa her ogsaa indtil 14/9, og
+    // de to sprog tilsammen var 426 KB raat / 131 KB gzippet STATISK JS i
+    // entry'ens kritiske sti — halvdelen af det altid det sprog den besoegende
+    // ikke bruger. Engelsk skal blive: det er baade default og `fallbackLng`, saa
+    // en manglende dansk noegle skal kunne falde tilbage uden netvaerk. Dansk
+    // hentes nu som ÉN lazy chunk (src/i18n/messages.da.js) gennem
+    // LocaleBundleBackend — samme 24 namespaces, samme "klar foer first paint"
+    // (main.jsx venter paa `initialized` foer mount), bare hentet parallelt i
+    // stedet for at ligge i entry-grafen. index.html preloader chunken naar
+    // sproget ER dansk (vite-plugins/i18n-lang-preload.js), saa en dansk
+    // besoegende ikke betaler en ekstra rundtur.
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, feedback: feedbackDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, team: teamDa, finance: financeDa, sponsor: sponsorDa, headtohead: headtoheadDa, halloffame: halloffameDa, races: racesDa, training: trainingDa, academy: academyDa, klub: klubDa, staff: staffDa, landing: landingDa, globalRank: globalRankDa },
       en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, feedback: feedbackEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, headtohead: headtoheadEn, halloffame: halloffameEn, races: racesEn, training: trainingEn, academy: academyEn, klub: klubEn, staff: staffEn, landing: landingEn, globalRank: globalRankEn },
     },
     detection: {
