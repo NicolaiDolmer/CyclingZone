@@ -434,7 +434,7 @@
     "oneClick": {
       "primaryCta": "Kør ugens træning",
       "secondaryCta": "Vælg selv",
-      "resultLine": "Ugen kørt: {count} ryttere trænet.",
+      "resultLine": "Ugen kørt: {count, plural, one {# rytter trænet} other {# ryttere trænet}}.",
       "resultLink": "Se træning",
       "alreadyRun": "Ugen er allerede kørt.",
       "error": "Kunne ikke køre ugens træning. Prøv igen."

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { startTour, TOUR_PAGE_BY_STEP } from "../lib/onboardingTour";
-import { useTraining } from "../lib/useTraining";
-import { logEvent } from "../lib/logEvent";
-import { CheckIcon, ChevronRightIcon, XIcon, Button } from "./ui";
+import { startTour, TOUR_PAGE_BY_STEP } from "../lib/onboardingTour.js";
+import { useTraining } from "../lib/useTraining.js";
+import { logEvent } from "../lib/logEvent.js";
+import { CheckIcon, ChevronRightIcon, XIcon, Button } from "./ui/index.js";
 
 // #2288 Slice A: 4 ægte spiller-handlinger (se backend/routes/api.js's
 // /me/onboarding-progress-kommentar for hvorfor de gamle team_named/
@@ -95,7 +95,14 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
     try {
       const riderIds = Object.keys(training.smartDefaultFocus || {});
       if (riderIds.length > 0) {
-        await training.setPlanBulk(riderIds, "training", "smart");
+        // CodeRabbit-fund: setPlanBulk kan returnere { ok: false } (auth/
+        // netvaerk/rate/delvis anvendelse) — koer ALDRIG dagens traening hvis
+        // fokus ikke reelt blev sat, ellers koeres dagen med manglende planer.
+        const bulkResult = await training.setPlanBulk(riderIds, "training", "smart");
+        if (!bulkResult.ok) {
+          setWeekError(true);
+          return;
+        }
       }
       const result = await training.runToday();
       if (result === null) {
