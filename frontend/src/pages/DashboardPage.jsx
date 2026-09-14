@@ -2,6 +2,7 @@
 import { useTranslation } from "react-i18next";
 import { getRaceDayPoints } from "../lib/rankingsApi.ts";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { Link, useNavigate } from "react-router";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
@@ -325,8 +326,13 @@ export default function DashboardPage() {
     const headers = { Authorization: `Bearer ${token}` };
     const getJson = async (path) => {
       try {
-        const res = await fetch(`${API}${path}`, { headers });
-        return res.ok ? await res.json() : null;
+        // #5242: apiFetch — en 429-byge på et af disse fire uafhængige
+        // best-effort-kald skal ikke selv hamre videre; "limited"/"unauthorized"
+        // opfører sig som "intet nyt" (samme som en anden fejl her: modulet
+        // udebliver stille).
+        const res = await apiFetch(`${API}${path}`, { headers });
+        if (res.limited || res.unauthorized) return null;
+        return res.ok ? res.data : null;
       } catch {
         return null; // best-effort
       }
@@ -400,9 +406,9 @@ export default function DashboardPage() {
     setTeam(teamData);
 
     const boardStatusPromise = token
-      ? fetch(`${API}/api/board/status`, {
+      ? apiFetch(`${API}/api/board/status`, {
         headers: { Authorization: `Bearer ${token}` },
-      }).then(async (response) => (response.ok ? response.json() : null))
+      }).then((res) => (res.limited || res.unauthorized ? null : (res.ok ? res.data : null)))
       : Promise.resolve(null);
 
     // #1829: per-pulje løbsdage-tæller — ALLE løb i managerens egen pulje (inkl. afsluttede),
@@ -470,7 +476,8 @@ export default function DashboardPage() {
         : Promise.resolve({ data: [] }),
       boardStatusPromise,
       token
-        ? fetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+        ? apiFetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } })
+            .then((r) => (r.limited || r.unauthorized ? { sent: [], received: [] } : r.data))
         : Promise.resolve({ sent: [], received: [] }),
       poolRacesPromise,
       // #2182: alle puljer — samme reference-query som StandingsPage/ResultaterPage.
@@ -630,12 +637,12 @@ export default function DashboardPage() {
       const token = session?.access_token;
       if (!token) return;
       try {
-        const r = await fetch(`${API}/api/races/${nextRace.id}/selection`, { headers: { Authorization: `Bearer ${token}` } });
+        const r = await apiFetch(`${API}/api/races/${nextRace.id}/selection`, { headers: { Authorization: `Bearer ${token}` } });
         // Fejl/ukendt svar må ikke udløse et falsk "udtagelse mangler" — samme
         // forsigtighed som den tidligere count===0-only-regel (#2296-regression).
-        if (!r.ok || cancelled) return;
-        const body = await r.json();
-        if (!cancelled) setSquadSelectionMissingRace(isSquadSelectionMissing(body) ? nextRace : null);
+        // #5242: limited/unauthorized behandles som "ukendt svar" — samme gren.
+        if (!r.ok || r.limited || r.unauthorized || cancelled) return;
+        if (!cancelled) setSquadSelectionMissingRace(isSquadSelectionMissing(r.data) ? nextRace : null);
       } catch { /* netværk — nudgen forbliver som den var */ }
     })();
     return () => { cancelled = true; };
@@ -649,10 +656,9 @@ export default function DashboardPage() {
       const token = session?.access_token;
       if (!token) return;
       try {
-        const r = await fetch(`${API}/api/training/today-status`, { headers: { Authorization: `Bearer ${token}` } });
-        if (r.ok && !cancelled) {
-          const body = await r.json();
-          setNotTrainedToday(Boolean(body.enabled) && !body.ran_today);
+        const r = await apiFetch(`${API}/api/training/today-status`, { headers: { Authorization: `Bearer ${token}` } });
+        if (r.ok && !r.limited && !r.unauthorized && !cancelled) {
+          setNotTrainedToday(Boolean(r.data.enabled) && !r.data.ran_today);
         }
       } catch { /* best-effort */ }
     })();
@@ -838,30 +844,29 @@ export default function DashboardPage() {
       await Promise.all([
         recentResultsVisible && (async () => {
           try {
-            const r = await fetch(`${API}/api/dashboard/recent-results`, { headers });
-            if (cancelled) return;
+            const r = await apiFetch(`${API}/api/dashboard/recent-results`, { headers });
+            if (cancelled || r.limited || r.unauthorized) return;
             // #3510 — svaret er nu SANDHEDEN uanset ok/fejl: r.ok → de rigtige
             // resultater (evt. []); ellers eksplicit [] så modulet falder tilbage
             // til empty-state fremfor at blive hængende i skeleton for evigt.
-            setRecentResults(r.ok ? (await r.json()).races || [] : []);
+            setRecentResults(r.ok ? r.data.races || [] : []);
           } catch { if (!cancelled) setRecentResults([]); }
         })(),
         riderRankingVisible && (async () => {
           try {
-            const r = await fetch(`${API}/api/dashboard/rider-ranking`, { headers });
-            if (cancelled) return;
-            setRiderRanking(r.ok ? (await r.json()).riders || [] : []);
+            const r = await apiFetch(`${API}/api/dashboard/rider-ranking`, { headers });
+            if (cancelled || r.limited || r.unauthorized) return;
+            setRiderRanking(r.ok ? r.data.riders || [] : []);
           } catch { if (!cancelled) setRiderRanking([]); }
         })(),
         // #2466: "How your team did" — holdets eget seneste løbsresultat.
         myLatestResultVisible && (async () => {
           try {
-            const r = await fetch(`${API}/api/dashboard/my-latest-result`, { headers });
-            if (r.ok && !cancelled) {
-              const body = await r.json();
+            const r = await apiFetch(`${API}/api/dashboard/my-latest-result`, { headers });
+            if (r.ok && !r.limited && !r.unauthorized && !cancelled) {
               // race === undefined (fx mock-fallback {}) normaliseres til null →
               // kortets empty state i stedet for en død boks.
-              setMyLatestResult({ ...body, race: body.race ?? null });
+              setMyLatestResult({ ...r.data, race: r.data.race ?? null });
             }
           } catch { /* best-effort — kortet renderer intet ved fejl */ }
         })(),
@@ -890,7 +895,7 @@ export default function DashboardPage() {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
         if (!token) return;
-        await fetch(`${API}/api/me/onboarding-progress/dismiss`, {
+        await apiFetch(`${API}/api/me/onboarding-progress/dismiss`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -930,16 +935,15 @@ export default function DashboardPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
-      const res = await fetch(`${API}/api/season/signup`, {
+      const res = await apiFetch(`${API}/api/season/signup`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const body = await res.json();
         setSeasonSignupStatus((prev) => ({
           ...(prev || {}),
           signed_up: true,
-          next_season_number: body.next_season_number ?? prev?.next_season_number,
+          next_season_number: res.data?.next_season_number ?? prev?.next_season_number,
         }));
       }
     } catch {
