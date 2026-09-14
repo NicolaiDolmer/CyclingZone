@@ -422,7 +422,8 @@
       "first_bid_placed": "Place your first bid",
       "first_training_run": "Run your first training day",
       "first_squad_selected": "Select your squad for a race",
-      "board_plan_set": "Negotiate a board plan"
+      "board_plan_set": "Negotiate a board plan",
+      "board_plan_set_auto": "Your board has set a plan. Take a look."
     },
     "ctas": {
       "first_bid_placed": "See auctions",

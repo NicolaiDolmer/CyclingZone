@@ -314,7 +314,7 @@ export async function regenerateMandateFocus(supabase, { teamId, focus, isBetaTe
  * `BoardPage.jsx` pensioneres (S-M2d).
  */
 export async function writeLegacyOneYearBoard(supabase, {
-  teamId, seasonId, seasonNumber, focus, goals, team = null,
+  teamId, seasonId, seasonNumber, focus, goals, team = null, signedVia = "manager",
 } = {}) {
   ensureSupabase(supabase);
   const { data: existingBoard, error: existingError } = await supabase
@@ -343,6 +343,12 @@ export async function writeLegacyOneYearBoard(supabase, {
     satisfaction: existingBoard?.satisfaction ?? 50,
     budget_modifier: existingBoard?.budget_modifier ?? 1.0,
     negotiation_status: "completed",
+    // #5103 · Samme skel som /board/sign + boardAutoAccept.js: onboarding-trin 4
+    // (board_plan_set, routes/api.js /me/onboarding-progress) læser negotiated_at,
+    // ikke negotiation_status — signMandate's `signedVia` ('manager' vs 'auto_accept',
+    // se dens JSDoc) er ALLEREDE det rigtige signal, den blev bare aldrig ført med
+    // over i dette dual-write før nu.
+    negotiated_at: signedVia === "auto_accept" ? null : new Date().toISOString(),
     plan_start_season_number: seasonNumber,
     plan_end_season_number: seasonNumber,
     plan_start_balance: team?.balance ?? 0,
@@ -565,6 +571,7 @@ export async function signMandate(supabase, {
     focus: finalFocus,
     goals: goalsAfterRequest,
     team,
+    signedVia,
   });
 
   const payload = await buildBoardRoomPayload({ supabase, teamId });

@@ -9605,8 +9605,19 @@ function isEstablishedTeam(team) {
 //                              (economyEngine.processSeasonStart, alle 3 plan-typer,
 //                              negotiation_status='pending'), så "findes en board_profiles-
 //                              række" var altid sand. negotiation_status='completed'
-//                              sættes derimod kun når manageren selv har forhandlet en
-//                              plan færdig (PUT board-negotiate-ruten) — det ÆGTE signal.
+//                              er HELLER IKKE nok (#5103): boardAutoAccept.js' cron
+//                              sætter PRÆCIS samme status når bestyrelsen overtager
+//                              planen efter fristen uden nogen spillerhandling — verificeret
+//                              prod-mønster identisk med #3007 (trin 2): ~90% af hold stod
+//                              "færdige" på trin 4 uden selv at have rørt bestyrelsen.
+//                              Fix: kræv OGSÅ negotiated_at IS NOT NULL — kun sat af
+//                              /board/sign (routes/api.js) og signMandate(signedVia='manager')
+//                              (boardMandateMeeting.js, dual-write), ALDRIG af auto-accept
+//                              (boardAutoAccept.js, boardMandateAutoAccept.js). Ingen
+//                              backfill: historiske "færdige" rækker uden negotiated_at
+//                              (skrevet før denne fix) forbliver som de er — trinnet kan
+//                              derfor gå fra grønt til åbent igen for etablerede hold, hvilket
+//                              er korrekt: de har rent faktisk aldrig selv forhandlet.
 //
 // #2439: `dismissed` er nu SERVER-persisteret (teams.onboarding_progress_
 // dismissed_at) i stedet for det session-scopede sessionStorage-dismiss fra
@@ -9630,7 +9641,7 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
     });
   }
 
-  const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes] = await Promise.all([
+  const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes, boardsAutoRes] = await Promise.all([
     supabase.from("auction_bids").select("id", { count: "exact", head: true }).eq("team_id", teamId),
     // #3007: executed_by='manager' — se kommentaren ovenfor. Uden dette filter
     // tælles også de rækker den kl. 22-assistent-sweep skriver, og trinnet
@@ -9639,14 +9650,25 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
     // #2516: race_entries har INGEN id-kolonne (composite key race_id+rider_id+team_id)
     // — select("id") gav 42703 "column race_entries.id does not exist" (CYCLINGZONE-34).
     supabase.from("race_entries").select("race_id", { count: "exact", head: true }).eq("team_id", teamId).eq("is_auto_filled", false),
-    supabase.from("board_profiles").select("id", { count: "exact", head: true }).eq("team_id", teamId).eq("negotiation_status", "completed"),
+    // #5103: negotiated_at IS NOT NULL — se kommentaren ovenfor. Kun sat ved en
+    // ægte spillerhandling, aldrig af auto-accept-cronen.
+    supabase.from("board_profiles").select("id", { count: "exact", head: true })
+      .eq("team_id", teamId).eq("negotiation_status", "completed").not("negotiated_at", "is", null),
+    // #5103: samme filter, modsat fortegn — bruges KUN til at give frontend et
+    // "bestyrelsen har allerede sat en plan"-signal (auto_set) mens trinnet
+    // stadig står åbent, så opfordringen kan afvige fra "gå i gang"-teksten.
+    supabase.from("board_profiles").select("id", { count: "exact", head: true })
+      .eq("team_id", teamId).eq("negotiation_status", "completed").is("negotiated_at", null),
   ]);
+
+  const boardPlanNegotiated = (boardsRes.count || 0) > 0;
+  const boardPlanAutoSet = !boardPlanNegotiated && (boardsAutoRes.count || 0) > 0;
 
   const steps = [
     { key: "first_bid_placed", done: (bidsRes.count || 0) > 0 },
     { key: "first_training_run", done: (trainingRunsRes.count || 0) > 0 },
     { key: "first_squad_selected", done: (squadSelectedRes.count || 0) > 0 },
-    { key: "board_plan_set", done: (boardsRes.count || 0) > 0 },
+    { key: "board_plan_set", done: boardPlanNegotiated, auto_set: boardPlanAutoSet },
   ];
   const completed_count = steps.filter(s => s.done).length;
   const dismissed = Boolean(req.team?.onboarding_progress_dismissed_at);
@@ -16404,6 +16426,11 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
       satisfaction: existingBoard?.satisfaction ?? 50,
       budget_modifier: existingBoard?.budget_modifier ?? 1.0,
       negotiation_status: "completed",
+      // #5103 · Det ÆGTE spillerhandling-signal onboarding-trin 4 (board_plan_set)
+      // læser (se /me/onboarding-progress nedenfor) — negotiation_status='completed'
+      // sættes IDENTISK af boardAutoAccept.js' cron, så den alene kan ikke skelne
+      // en spillers underskrift fra bestyrelsens auto-accept efter fristen.
+      negotiated_at: new Date().toISOString(),
       plan_start_season_number: startSeasonNumber,
       plan_end_season_number: endSeasonNumber,
       plan_start_balance: team?.balance ?? 0,

@@ -422,7 +422,8 @@
       "first_bid_placed": "Afgiv dit første bud",
       "first_training_run": "Kør din første træningsdag",
       "first_squad_selected": "Udtag din trup til et løb",
-      "board_plan_set": "Forhandl en bestyrelsesplan"
+      "board_plan_set": "Forhandl en bestyrelsesplan",
+      "board_plan_set_auto": "Din bestyrelse har sat en plan. Se den."
     },
     "ctas": {
       "first_bid_placed": "Se auktioner",

@@ -79,7 +79,16 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
                         ? "text-cz-1 font-medium"
                         : "text-cz-2"
                   }>
-                    {t(`onboardingProgress.steps.${step.key}`, { defaultValue: step.key })}
+                    {/* #5103 · Trin 4 kan stå åbent MENS bestyrelsen allerede har
+                        sat en plan (auto-accept efter fristen — se backend
+                        /me/onboarding-progress). Samme trin, anden opfordring:
+                        ikke "gå i gang", men "se hvad bestyrelsen valgte". */}
+                    {t(
+                      step.key === "board_plan_set" && step.auto_set
+                        ? "onboardingProgress.steps.board_plan_set_auto"
+                        : `onboardingProgress.steps.${step.key}`,
+                      { defaultValue: step.key }
+                    )}
                   </span>
                   {isNext && (
                     <Link
