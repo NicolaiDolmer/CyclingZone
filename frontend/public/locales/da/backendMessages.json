@@ -489,6 +489,10 @@
       "title": "Velkommen til Cycling Zone",
       "message": "Dit hold er klar. Byd i auktionshuset for at hente din første rytter."
     },
+    "discordWelcome": {
+      "title": "Kom med på Discord",
+      "message": "Jeg er derinde, og det er de andre managere også: spørg mig om alt, byt taktik, og få roadbook'en før nogen andre."
+    },
     "scoutChanged": {
       "title": "Ny spejder, rapporter genberegnet",
       "message": "{scoutName} vurderer nu dine ryttere. Eksisterende scoutingrapporter genberegnes efter hans/hendes præcision, men dine rytteres faktiske evner er uændrede."

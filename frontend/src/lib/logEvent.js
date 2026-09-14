@@ -152,6 +152,12 @@ export const KNOWN_EVENTS = Object.freeze([
   // havde ugemt arbejde, saa vi viste banneret i stedet). Et event alene er
   // IKKE bevis for en undgaaet ChunkLoadError.
   "app_version_reload",
+  // discord_invite_clicked (#5130, ejer-direktiv 10/9) — fyrer fra
+  // NotificationsPage.jsx (discord_welcome-kortet) og fra Layout.jsx's
+  // footer-Discord-link (DiscordJoinLink onClick), begge steder brugeren kan
+  // klikke sig ind på Discord-invitationen. Måler konvertering fra
+  // velkomstbeskeden i indbakken.
+  "discord_invite_clicked",
 ]);
 
 // #4321: spejl eventet til PostHog. Postgres-skrivningen nedenfor er og bliver

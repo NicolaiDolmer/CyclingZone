@@ -1,4 +1,5 @@
 import { DISCORD_INVITE_URL } from "../lib/externalLinks";
+import { logEvent } from "../lib/logEvent"; // #5130
 
 // Discord-brand-glyf (officielt mærke). Inline her frem for i det delte
 // ui/icons-sæt: en ekstern social-glyf hører ikke hjemme i det generiske
@@ -11,18 +12,45 @@ function DiscordGlyph({ className = "" }) {
   );
 }
 
-// Persistent "Join Discord"-CTA mod community-serveren. To varianter:
+// Persistent "Join Discord"-CTA mod community-serveren. Tre varianter:
 //   "button"  → fuld-bredde Discord-blurple-knap (signup-success, #415)
 //   "sidebar" → kompakt rad der matcher nav-items i sidebar-footeren (#679)
+//   "icon"    → lille ikon-only-link til en sekundær raekke/footer, hvor en
+//               fuld label ikke passer (#427/#5130: sidebar-footerraekken,
+//               ved siden af LanguageSwitcher — headeren selv baerer KUN
+//               wordmarket, jf. Layout.jsx's #671-kommentar).
 // Ekstern destination → <a target=_blank rel=noopener noreferrer>, ikke router-Link.
 export default function DiscordJoinLink({ variant = "button", label, className = "", onClick }) {
+  // #5130: alle tre varianter maaler samme konvertering (dedupe sker ikke her
+  // — det er en ren instrumentering, ikke idempotens-kilden for
+  // indbakke-beskeden, som ligger i teams.discord_welcome_sent_at).
+  const handleClick = (e) => {
+    logEvent("discord_invite_clicked", { source: `discord_join_link_${variant}` });
+    onClick?.(e);
+  };
+
+  if (variant === "icon") {
+    return (
+      <a
+        href={DISCORD_INVITE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleClick}
+        aria-label={label}
+        title={label}
+        className={`inline-flex items-center justify-center w-7 h-7 rounded-cz text-cz-sidebar-3 transition-colors hover:bg-cz-sidebar-hover hover:text-cz-discord ${className}`}
+      >
+        <DiscordGlyph className="h-4 w-4" />
+      </a>
+    );
+  }
   if (variant === "sidebar") {
     return (
       <a
         href={DISCORD_INVITE_URL}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={onClick}
+        onClick={handleClick}
         className={`group mx-2 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-cz-sidebar-2 transition-colors hover:bg-cz-sidebar-hover hover:text-cz-discord ${className}`}
       >
         <DiscordGlyph className="h-4 w-4 flex-shrink-0 text-cz-discord" />
@@ -35,7 +63,7 @@ export default function DiscordJoinLink({ variant = "button", label, className =
       href={DISCORD_INVITE_URL}
       target="_blank"
       rel="noopener noreferrer"
-      onClick={onClick}
+      onClick={handleClick}
       className={`inline-flex w-full items-center justify-center gap-2 rounded-cz bg-cz-discord px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cz-discord-hover ${className}`}
     >
       <DiscordGlyph className="h-4 w-4" />
