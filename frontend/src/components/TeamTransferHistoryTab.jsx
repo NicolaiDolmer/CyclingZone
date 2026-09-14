@@ -367,10 +367,6 @@ export default function TeamTransferHistoryTab({ teamId }) {
                 <th className="text-left py-2 text-cz-3">{t("history.header.rider")}</th>
                 <th className="text-left py-2 text-cz-3">{t("history.header.counterparty")}</th>
                 <SortableTh sortKey="amount" sort={sortKey} sortDir={sortDir} onSort={handleSort} className="text-right py-2">{t("history.header.amount")}</SortableTh>
-                {/* #4346: ingen tekst-header for handling-kolonnen — knappen bærer sin
-                    egen aria-label, og en tekst-header ville bare gentage den på hver
-                    eneste ikke-rapporterbare række (academy/no_sale). */}
-                <th className="py-2 w-8"><span className="sr-only">{t("history.reportAction")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -403,17 +399,25 @@ export default function TeamTransferHistoryTab({ teamId }) {
                       <span className="text-cz-3">—</span>
                     )}
                   </td>
-                  <td className="py-2 text-right font-mono whitespace-nowrap">
-                    {/* Fortegn/farve følger kontobevægelsen (cash_flow), ikke rytter-retningen:
-                        salg = +grøn (penge ind), køb = -rød (penge ud) (#984) */}
-                    {ev.amount > 0
-                      ? <span className={ev.cash_flow === "in" ? "text-cz-success" : ev.cash_flow === "out" ? "text-cz-danger" : "text-cz-2"}>
-                          {ev.cash_flow === "in" ? "+" : ev.cash_flow === "out" ? "-" : ""}{formatNumber(ev.amount)} CZ$
-                        </span>
-                      : <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>}
-                  </td>
-                  <td className="py-2 text-right">
-                    <ReportTradeButton event={ev} onReport={openReportDialog} />
+                  <td className="py-2">
+                    {/* #4346: rapport-knappen deler celle med Beløb i stedet for sin egen
+                        kolonne — en 7. kolonne tvang tabellen ud i vandret scroll på mobil
+                        (393px), hvilket flyttede Modpart-linket delvist ind under den faste
+                        bund-nav og gjorde den ustabil at klikke (CI: e2e-shard mobile-chromium,
+                        team-profile-tab-state.spec.js #3916, fund + rettet 14/9). Ingen ny
+                        kolonne = uændret tabelbredde. */}
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="font-mono whitespace-nowrap">
+                        {/* Fortegn/farve følger kontobevægelsen (cash_flow), ikke rytter-retningen:
+                            salg = +grøn (penge ind), køb = -rød (penge ud) (#984) */}
+                        {ev.amount > 0
+                          ? <span className={ev.cash_flow === "in" ? "text-cz-success" : ev.cash_flow === "out" ? "text-cz-danger" : "text-cz-2"}>
+                              {ev.cash_flow === "in" ? "+" : ev.cash_flow === "out" ? "-" : ""}{formatNumber(ev.amount)} CZ$
+                            </span>
+                          : <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>}
+                      </span>
+                      <ReportTradeButton event={ev} onReport={openReportDialog} />
+                    </div>
                   </td>
                 </tr>
               ))}
