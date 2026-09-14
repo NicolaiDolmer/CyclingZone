@@ -29,10 +29,45 @@
 // · Alt andet (2xx, 4xx≠401/429, 5xx) sendes uændret videre; modulet opfinder
 //   ingen ny fejlhåndtering for dem.
 
-import { reportUnauthorizedResponse } from "./networkErrorGuards.js";
+import { reportUnauthorizedResponse, type AuthClientLike } from "./networkErrorGuards.ts";
 
-/** @type {Map<string, number>} url -> epoch ms hvor vinduet slutter */
-const retryNotBefore = new Map();
+/**
+ * Det underliggende svar apiFetch selv har brug for — løst nok til at både
+ * det ægte `fetch()`s `Response` og testenes duck-typede fakes opfylder det
+ * uden cast ved kaldsstedet.
+ */
+export interface ApiFetchResponseLike {
+  readonly status: number;
+  readonly ok: boolean;
+  readonly headers?: { get?: (name: string) => string | null };
+  json(): Promise<unknown>;
+  clone(): ApiFetchResponseLike;
+}
+
+export type ApiFetchImpl = (url: string, options?: RequestInit) => Promise<ApiFetchResponseLike>;
+
+export interface ApiFetchContext {
+  /** injicérbart ur — tests kører uden det ægte. */
+  now?: () => number;
+  /** injicérbar fetch — default er browserens globale `fetch`. */
+  fetchImpl?: ApiFetchImpl;
+  /** navngiver kaldstedet i 401-loggen (networkErrorGuards); default er url'en selv. */
+  source?: string;
+  /** videresendes uændret til networkErrorGuards (samme injektions-mønster, se der). */
+  authClient?: AuthClientLike;
+}
+
+export interface ApiFetchResult {
+  ok: boolean;
+  status: number;
+  data: unknown;
+  limited?: boolean;
+  unauthorized?: boolean;
+  retryAt?: number | null;
+}
+
+/** url -> epoch ms hvor vinduet slutter */
+const retryNotBefore = new Map<string, number>();
 
 /**
  * Læs Retry-After ud af et 429-svar. Backenden sender altid sekunder (heltal)
@@ -40,14 +75,17 @@ const retryNotBefore = new Map();
  * indpakningen ikke antager en bestemt kropsform for endpoints der en dag
  * svarer 429 uden JSON.
  *
- * @param {Response} res
- * @param {unknown} body
- * @param {() => number} [now] - injicérbar ur (samme værdi apiFetch selv bruger
- *   til at sætte vinduet) — uden den ville dato-grenen regne mod DET RIGTIGE
- *   ur selv når kaldstedet kører med et fiktivt (CodeRabbit-fund, #5089).
- * @returns {number | null} sekunder, eller null hvis intet brugbart tal fandtes.
+ * `now` er et injicérbart ur (samme værdi apiFetch selv bruger til at sætte
+ * vinduet) — uden det ville dato-grenen regne mod DET RIGTIGE ur selv når
+ * kaldstedet kører med et fiktivt (CodeRabbit-fund, #5089).
+ *
+ * @returns sekunder, eller null hvis intet brugbart tal fandtes.
  */
-export function parseRetryAfterSeconds(res, body, now = () => Date.now()) {
+export function parseRetryAfterSeconds(
+  res: ApiFetchResponseLike,
+  body: unknown,
+  now: () => number = () => Date.now(),
+): number | null {
   const header = res.headers?.get?.("Retry-After");
   if (header != null && header !== "") {
     const seconds = Number(header);
@@ -59,24 +97,19 @@ export function parseRetryAfterSeconds(res, body, now = () => Date.now()) {
     const dateMs = Date.parse(header);
     if (!Number.isNaN(dateMs)) return Math.max(0, Math.ceil((dateMs - now()) / 1000));
   }
-  const bodySeconds = body?.retry_after_seconds;
+  const bodySeconds = (body as { retry_after_seconds?: unknown } | null | undefined)?.retry_after_seconds;
   if (typeof bodySeconds === "number" && Number.isFinite(bodySeconds) && bodySeconds >= 0) {
     return bodySeconds;
   }
   return null;
 }
 
-/**
- * @param {string} url
- * @param {RequestInit} [options]
- * @param {{ now?: () => number, fetchImpl?: typeof fetch, source?: string, authClient?: object }} [ctx]
- *   `now`/`fetchImpl` injiceres i tests. `source` navngiver kaldstedet i
- *   401-loggen (networkErrorGuards) — default er url'en selv. `authClient`
- *   videresendes til networkErrorGuards (samme injektions-mønster, se der).
- * @returns {Promise<{ ok: boolean, status: number, data: unknown, limited?: boolean, unauthorized?: boolean, retryAt?: number }>}
- */
-export async function apiFetch(url, options = {}, ctx = {}) {
-  const { now = () => Date.now(), fetchImpl = fetch, source = url, authClient } = ctx;
+export async function apiFetch(
+  url: string,
+  options: RequestInit = {},
+  ctx: ApiFetchContext = {},
+): Promise<ApiFetchResult> {
+  const { now = () => Date.now(), fetchImpl = fetch as ApiFetchImpl, source = url, authClient } = ctx;
 
   const blockedUntil = retryNotBefore.get(url);
   if (blockedUntil != null && blockedUntil > now()) {
@@ -88,7 +121,12 @@ export async function apiFetch(url, options = {}, ctx = {}) {
   const res = await fetchImpl(url, options);
 
   if (res.status === 401) {
-    await reportUnauthorizedResponse(res, options.headers, source, authClient);
+    await reportUnauthorizedResponse(
+      res,
+      options.headers as Record<string, string> | null | undefined,
+      source,
+      authClient,
+    );
     // Ingen retry-loop (#5089 punkt 3): kaldstedet får et entydigt svar og skal
     // IKKE selv forsøge igen — session-rejected-kæden tager over (eller gjorde
     // det ikke, men så var 401'en ikke en død session, og en ny nu ville bare
@@ -97,7 +135,7 @@ export async function apiFetch(url, options = {}, ctx = {}) {
   }
 
   if (res.status === 429) {
-    let body = null;
+    let body: unknown = null;
     try {
       body = await res.clone().json();
     } catch {
@@ -108,7 +146,7 @@ export async function apiFetch(url, options = {}, ctx = {}) {
     return { ok: false, status: 429, limited: true, retryAt: retryNotBefore.get(url) ?? null, data: body };
   }
 
-  let data = null;
+  let data: unknown = null;
   try {
     data = await res.json();
   } catch {
@@ -118,6 +156,6 @@ export async function apiFetch(url, options = {}, ctx = {}) {
 }
 
 /** Kun til tests: ryd alle aktive Retry-After-vinduer. */
-export function _clearRetryWindowsForTests() {
+export function _clearRetryWindowsForTests(): void {
   retryNotBefore.clear();
 }

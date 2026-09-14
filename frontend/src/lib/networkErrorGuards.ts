@@ -45,15 +45,24 @@ import {
   markSessionExpired,
 } from "./sessionExpiry.js";
 
+/** Minimal form af Supabase-clienten dette modul har brug for — injicérbar for test. */
+export interface AuthClientLike {
+  auth: {
+    getSession(): Promise<{ data?: { session?: { access_token?: string | null } | null } | null }>;
+    getUser(): Promise<{ data?: { user?: unknown } | null; error?: unknown }>;
+    signOut(): Promise<unknown>;
+  };
+}
+
 /** @type {Map<string | null, Promise<boolean>>} sendt token -> igangværende afgørelse */
-const inFlightByToken = new Map();
+const inFlightByToken = new Map<string | null, Promise<boolean>>();
 
 // undefined = intet afgjort endnu. Ellers: det `currentToken` (typisk `null`,
 // "ingen session") vi sidst bekræftede var dødt — matcher et kalds
 // currentToken stadig dette, er det den SAMME afgjorte episode, og vi spørger
 // aldrig Supabase igen. Er strict equality-sammenligningen falsk (fx et NYT
 // token efter et re-login), er det en frisk episode.
-let expiredForToken;
+let expiredForToken: string | null | undefined;
 
 /**
  * Aflever et 401-svar til session-rejected-kæden. Returnerer `true` når svaret
@@ -61,25 +70,27 @@ let expiredForToken;
  * kørt) — kaldstedet skal IKKE vise en fejlkasse eller selv forsøge en retry i
  * så fald, kun lade den eksisterende ProtectedRoute-redirect tage over.
  *
- * @param {{ status: number }} res
- * @param {Record<string, string> | null | undefined} sentHeaders - headers
- *   kaldet blev sendt med (fra `authHeaders()`), bruges til at afgøre om 401'en
- *   gælder et token sessionen selv allerede har skiftet væk fra.
- * @param {string} source - kaldstedets navn, kun til logging.
- * @param {{ auth: { getSession: Function, getUser: Function, signOut: Function } }} [client]
- *   Supabase-client; injicérbar for test, default lazy-importeres.
- * @returns {Promise<boolean>}
+ * @param sentHeaders headers kaldet blev sendt med (fra `authHeaders()`),
+ *   bruges til at afgøre om 401'en gælder et token sessionen selv allerede
+ *   har skiftet væk fra.
+ * @param source kaldstedets navn, kun til logging.
+ * @param client Supabase-client; injicérbar for test, default lazy-importeres.
  */
-export async function reportUnauthorizedResponse(res, sentHeaders, source, client) {
+export async function reportUnauthorizedResponse(
+  res: { status: number },
+  sentHeaders: Record<string, string> | null | undefined,
+  source: string,
+  client?: AuthClientLike,
+): Promise<boolean> {
   if (res.status !== 401) return false;
 
   const sentToken = tokenFromAuthHeaders(sentHeaders);
   const existing = inFlightByToken.get(sentToken);
   if (existing) return existing;
 
-  const decision = (async () => {
+  const decision = (async (): Promise<boolean> => {
     try {
-      const c = client ?? (await import("./supabase.js")).supabase;
+      const c: AuthClientLike = client ?? ((await import("./supabase.js")) as unknown as { supabase: AuthClientLike }).supabase;
       const { data } = await c.auth.getSession();
       const currentToken = data?.session?.access_token ?? null;
 
@@ -91,7 +102,7 @@ export async function reportUnauthorizedResponse(res, sentHeaders, source, clien
       const expired = shouldDeclareExpired({ status: res.status, sentToken, currentToken });
       if (!expired) return false;
 
-      let denied;
+      let denied: boolean;
       try {
         const { data: userData, error } = await c.auth.getUser();
         denied = isDefinitiveAuthDenial({ user: userData?.user ?? null, error });
@@ -136,7 +147,7 @@ export async function reportUnauthorizedResponse(res, sentHeaders, source, clien
 }
 
 /** Kun til tests: nulstil modulets tilstand mellem testcases. */
-export function _resetForTests() {
+export function _resetForTests(): void {
   inFlightByToken.clear();
   expiredForToken = undefined;
 }

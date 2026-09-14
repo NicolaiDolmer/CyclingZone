@@ -9,10 +9,34 @@
 // mønster som getAuthedUser.test.js.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { reportUnauthorizedResponse, _resetForTests } from "./networkErrorGuards.js";
+import { reportUnauthorizedResponse, _resetForTests, type AuthClientLike } from "./networkErrorGuards.ts";
 
-function fakeClient({ sessionToken = "tok-1", deniedByUser = true, getUserThrows = false, renewDuringGetUser = null } = {}) {
-  const state = { signOutCalls: 0, getUserCalls: 0, sessionToken };
+interface FakeClientOptions {
+  sessionToken?: string | null;
+  deniedByUser?: boolean;
+  getUserThrows?: boolean;
+  renewDuringGetUser?: string | null;
+}
+
+interface FakeClientState {
+  signOutCalls: number;
+  getUserCalls: number;
+  sessionToken: string | null;
+  client: AuthClientLike;
+}
+
+function fakeClient({
+  sessionToken = "tok-1",
+  deniedByUser = true,
+  getUserThrows = false,
+  renewDuringGetUser = null,
+}: FakeClientOptions = {}): FakeClientState {
+  const state: FakeClientState = {
+    signOutCalls: 0,
+    getUserCalls: 0,
+    sessionToken,
+    client: null as unknown as AuthClientLike,
+  };
   state.client = {
     auth: {
       // `sessionToken` læses fra `state` ved HVERT kald (ikke closure'et ved

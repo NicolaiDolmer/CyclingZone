@@ -2,11 +2,18 @@
 // af at vente ("stille backoff") + ét 401-dispatch, aldrig en retry.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { apiFetch, parseRetryAfterSeconds, _clearRetryWindowsForTests } from "./apiFetch.js";
+import {
+  apiFetch,
+  parseRetryAfterSeconds,
+  _clearRetryWindowsForTests,
+  type ApiFetchResponseLike,
+  type ApiFetchImpl,
+} from "./apiFetch.ts";
+import type { AuthClientLike } from "./networkErrorGuards.ts";
 
 test.beforeEach(() => _clearRetryWindowsForTests());
 
-function fakeAuthClient() {
+function fakeAuthClient(): AuthClientLike {
   return {
     auth: {
       getSession: async () => ({ data: { session: null } }),
@@ -16,12 +23,12 @@ function fakeAuthClient() {
   };
 }
 
-function jsonResponse(status, body, headers = {}) {
+function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): ApiFetchResponseLike {
   const headerMap = new Map(Object.entries(headers));
   return {
     status,
     ok: status >= 200 && status < 300,
-    headers: { get: (k) => headerMap.get(k) ?? null },
+    headers: { get: (k: string) => headerMap.get(k) ?? null },
     json: async () => body,
     clone() {
       return jsonResponse(status, body, headers);
@@ -72,7 +79,7 @@ test("parseRetryAfterSeconds returnerer null uden hverken header eller krop", ()
 test("et 429 sætter et vindue — ingen automatisk retry før det er udløbet (#5089 punkt 2)", async () => {
   let now = 1_000_000;
   let fetchCalls = 0;
-  const fetchImpl = async () => {
+  const fetchImpl: ApiFetchImpl = async () => {
     fetchCalls += 1;
     return jsonResponse(429, { retry_after_seconds: 10 }, { "Retry-After": "10" });
   };
@@ -90,15 +97,15 @@ test("et 429 sætter et vindue — ingen automatisk retry før det er udløbet (
 });
 
 test("et 429-vindue er stille backoff, ikke en fejl (#5089 punkt 2: ingen fejlkasse)", async () => {
-  const fetchImpl = async () => jsonResponse(429, { retry_after_seconds: 5 }, { "Retry-After": "5" });
+  const fetchImpl: ApiFetchImpl = async () => jsonResponse(429, { retry_after_seconds: 5 }, { "Retry-After": "5" });
   const result = await apiFetch("https://api.test/x", {}, { now: () => 0, fetchImpl });
   assert.equal(result.ok, false);
   assert.equal(result.limited, true, "kaldstedet skal kunne skelne 'vent stille' fra en rigtig fejl");
 });
 
 test("vinduet er pr. url — en anden ressource rammes ikke af naboens 429", async () => {
-  let now = 0;
-  const fetchImpl = async (url) =>
+  const now = 0;
+  const fetchImpl: ApiFetchImpl = async (url) =>
     url.endsWith("/development")
       ? jsonResponse(429, { retry_after_seconds: 10 }, { "Retry-After": "10" })
       : jsonResponse(200, { ok: true });
@@ -111,7 +118,7 @@ test("vinduet er pr. url — en anden ressource rammes ikke af naboens 429", asy
 test("efter vinduet er udløbet, når kaldet netværket igen", async () => {
   let now = 0;
   let calls = 0;
-  const fetchImpl = async () => {
+  const fetchImpl: ApiFetchImpl = async () => {
     calls += 1;
     return calls === 1
       ? jsonResponse(429, { retry_after_seconds: 5 }, { "Retry-After": "5" })
@@ -127,7 +134,7 @@ test("efter vinduet er udløbet, når kaldet netværket igen", async () => {
 
 test("et 401 afleveres til networkErrorGuards og retry'es aldrig automatisk (#5089 punkt 3)", async () => {
   let fetchCalls = 0;
-  const fetchImpl = async () => {
+  const fetchImpl: ApiFetchImpl = async () => {
     fetchCalls += 1;
     return jsonResponse(401, { error: "invalid_token" });
   };
@@ -141,14 +148,14 @@ test("et 401 afleveres til networkErrorGuards og retry'es aldrig automatisk (#50
 });
 
 test("en almindelig 2xx passerer uændret igennem", async () => {
-  const fetchImpl = async () => jsonResponse(200, { riders: [] });
+  const fetchImpl: ApiFetchImpl = async () => jsonResponse(200, { riders: [] });
   const result = await apiFetch("https://api.test/x", {}, { now: () => 0, fetchImpl });
   assert.equal(result.ok, true);
   assert.deepEqual(result.data, { riders: [] });
 });
 
 test("en 404/500 sendes uændret videre — modulet opfinder ingen ny fejlhåndtering for dem", async () => {
-  const fetchImpl = async () => jsonResponse(500, { error: "boom" });
+  const fetchImpl: ApiFetchImpl = async () => jsonResponse(500, { error: "boom" });
   const result = await apiFetch("https://api.test/x", {}, { now: () => 0, fetchImpl });
   assert.equal(result.ok, false);
   assert.equal(result.status, 500);
