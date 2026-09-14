@@ -6,32 +6,18 @@
 
 // ── Rate-rekalibrering (gate G1) ─────────────────────────────────────────────
 //
-// FORMLEN. dailyAbilityDelta's base er gap-proportional:
+// Naar tick-enheden skifter fra kalenderdag til loebsdag, aendrer ANTALLET af ticks
+// pr. saeson sig. Sæsonens samlede evne-udvikling afhaenger af forholdet mellem antal
+// ticks og budget-deleren, saa G1 ("sæsonens samlede evne-udvikling pr. rytter
+// uaendret") er praecis kravet: hold det forhold konstant. Deleren nedenfor er derfor
+// kalibreret, ikke valgt frit.
 //
-//     base = gap × growthFractionForAge(age) × dailyBudgetBoost / D
+// Rekalibreringen BEVARER nutiden i stedet for at genoprette den oprindelige
+// design-intention; at lukke det gab er en selvstaendig balance-beslutning ejeren
+// ejer, ikke en foelgevirkning af en noegle-omlaegning.
 //
-// og deltaerne compounder over sæsonen, saa den andel af gappet en sæson bruger er
-//
-//     seasonFraction(T, D) = 1 − (1 − f/D)^T ≈ 1 − e^(−f·T/D)
-//
-// hvor T = antal ticks pr. sæson og D = deleren. Sæsonens samlede udvikling afhaenger
-// altsaa KUN af forholdet T/D. G1 ("sæsonens samlede evne-udvikling pr. rytter uaendret")
-// er dermed praecis kravet: hold T/D konstant.
-//
-// TALLENE.
-//   I dag:  T = 31 kalenderdage (maalt S3, spec §3.2), D = daysPerSeason = 28  → T/D = 1,1071
-//   Efter:  T = 80 loebsdage (#4845 / PR #5169's maal for S4)
-//           D = 80 × 28 / 31 = 72,2581                                          → T/D = 1,1071
-//
-// Maalt paa de fire alders-baand i PROGRESSION_CONFIG.growthFractionByAge (diskret
-// compounding, ikke approksimationen) aendrer sæsonens forbrugte gap-andel sig med
-// under 0,31 % i alle baand — se PR-body for tabellen.
-//
-// HVORFOR IKKE D = 80? Fordi det ville GENOPRETTE design-intentionen (T/D = 1,0) i
-// stedet for at holde nutiden uaendret, og koste 8,4 til 9,3 % af sæsonens udvikling
-// for alle. Den ~10 % drift findes allerede i dag (S3 koerer 31 dage mod en deler paa
-// 28); at fjerne den er en balance-beslutning ejeren ejer, ikke en foelgevirkning af
-// en noegle-omlaegning. Derfor er drifteten BEVARET her, og valget staar i PR-body.
+// Rule 17 (AGENTS.md §17): formler, eksponenter og maalte drift-tal hoerer ikke
+// hjemme i det offentlige repo — de er delt med ejeren i chat.
 export const TRAINING_RACE_DAY_CONFIG = Object.freeze({
   // #4845 / PR #5169: ens antal loebsdage i ALLE fire divisioner (gate G2). Tallet er
   // pakkerens maal for S4. PR #5169 er endnu ikke merged; naar den lander, er
@@ -40,7 +26,7 @@ export const TRAINING_RACE_DAY_CONFIG = Object.freeze({
   raceDaysPerSeason: 80,
   // Maalt antal kalenderdags-ticks pr. sæson i dag (S3), spec §3.2.
   calendarTicksPerSeasonToday: 31,
-  // DAILY_TRAINING_CONFIG.daysPerSeason — gentaget her som reference for formlen.
+  // DAILY_TRAINING_CONFIG.daysPerSeason — gentaget her som reference for deleren.
   // Bevidst ikke importeret: dailyTraining.js skal kunne koere uden denne fil.
   legacyDaysPerSeason: 28,
   // #4801: loftet paa hele point pr. evne pr. tick. Med loebsdagen som tick-enhed

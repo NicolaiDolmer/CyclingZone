@@ -64,7 +64,7 @@ function calendarTables({ divisionId = DIVISION_ID } = {}) {
 }
 
 // ── G1: sæsonens samlede udvikling ───────────────────────────────────────────
-test("G1: deleren holder T/D konstant — 80 × 28 / 31", () => {
+test("G1: deleren holder forholdet mellem antal ticks og deler konstant", () => {
   assert.equal(TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason, 80);
   assert.equal(TRAINING_RACE_DAY_CONFIG.legacyDaysPerSeason, DAILY_TRAINING_CONFIG.daysPerSeason,
     "referencen i formlen skal foelge den faktiske deler i DAILY_TRAINING_CONFIG");
