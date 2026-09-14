@@ -151,7 +151,26 @@
     "loadError": "Kunne ikke hente transferhistorik",
     "noSaleToggle": "Vis auktioner uden bud",
     "noSaleHiddenNote": "{count, plural, one {# auktion uden bud er skjult} other {# auktioner uden bud er skjult}}. Ingen rytter skiftede ejer.",
-    "emptyFilteredNoSaleOnly": "Ingen faktiske transfers i den valgte sæson: kun auktioner uden bud (skjult, se filter ovenfor)."
+    "emptyFilteredNoSaleOnly": "Ingen faktiske transfers i den valgte sæson: kun auktioner uden bud (skjult, se filter ovenfor).",
+    "reportAction": "Rapportér til gennemsyn",
+    "reportActionAria": "Rapportér denne handel til gennemsyn"
+  },
+  "report": {
+    "title": "Rapportér denne handel",
+    "subtitle": "Send den til mig, så kigger jeg nærmere på den. Det er ikke en anklage, bare et praj til mig.",
+    "messageLabel": "Hvad virkede forkert?",
+    "messagePlaceholder": "Beskriv hvad der fik dig til at reagere...",
+    "messageHelper": "{count} tegn tilbage",
+    "cancel": "Annullér",
+    "confirm": "Send rapport",
+    "close": "Luk",
+    "closeAction": "Luk",
+    "done": "Tak. Jeg kigger på den.",
+    "alreadyDone": "Dit hold har allerede rapporteret denne handel. Jeg har den.",
+    "error": "Rapporten kunne ikke sendes. Prøv igen om et øjeblik.",
+    "rateLimited": "Du har allerede sendt et par rapporter. Prøv igen om lidt.",
+    "tooShort": "Skriv lidt mere: mindst {min} tegn.",
+    "tooLong": "Hold den under {max} tegn."
   },
   "profit": {
     "title": "Transfer-gevinst pr. rytter",

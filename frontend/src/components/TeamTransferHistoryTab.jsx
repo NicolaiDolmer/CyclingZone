@@ -7,8 +7,10 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { computeTransferProfit } from "../lib/transferProfit.js";
 import { filterTransferHistoryNoSale } from "../lib/transferHistoryNoSale.js";
 import { useTableSort } from "../lib/useTableSort.js";
+import { isTradeReportable, parseTransferEventId } from "../lib/tradeReport.js";
 import SortableTh from "./ui/SortableTh.jsx";
-import { Card, Select, Checkbox, ExchangeIcon, ArrowDownIcon, ArrowUpIcon } from "./ui";
+import ReportTradeDialog from "./ReportTradeDialog.jsx";
+import { Card, Select, Checkbox, ExchangeIcon, ArrowDownIcon, ArrowUpIcon, EyeIcon } from "./ui";
 
 const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", academy: "type.academy" };
 
@@ -30,6 +32,28 @@ const PROFIT_SORT_ACCESSORS = {
   sold: (tr) => (typeof tr.sellAmount === "number" ? tr.sellAmount : null),
   profit: (tr) => (typeof tr.profit === "number" ? tr.profit : null),
 };
+
+// #4346 — "Report for review" pr. handel. Sekundær ikon-knap, IKKE en ny gold
+// primary-knap (row action buttons er altid secondary, jf. Button.jsx's egen
+// DataTable-raekke-tvang + PAGE_TEMPLATES T2). Ingen tekst i selve knappen på
+// tværs af hele rækken (pladsknapt tabel) — labelen lever i aria-label + title.
+// Tone (#3139): et neutralt "gennemsyn"-ikon (EyeIcon), aldrig et advarende
+// rødt flag — det her er ikke en anklage.
+function ReportTradeButton({ event, onReport }) {
+  const { t } = useTranslation("transfers");
+  if (!isTradeReportable(event)) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => onReport(event)}
+      aria-label={t("history.reportActionAria")}
+      title={t("history.reportAction")}
+      className="inline-flex h-6 w-6 items-center justify-center rounded-cz text-cz-3 transition-colors hover:bg-cz-subtle hover:text-cz-1"
+    >
+      <EyeIcon size={14} aria-hidden="true" />
+    </button>
+  );
+}
 
 // #1741: retning skal kunne aflæses på et øjeblik. Tidligere var det kun en
 // lille farvet tekst (let at overse, "Køb"/"Salg" forveksles). Nu: pil-ikon +
@@ -190,6 +214,17 @@ export default function TeamTransferHistoryTab({ teamId }) {
   // en auktion ikke fandt en køber).
   const [showNoSale, setShowNoSale] = useState(false);
 
+  // #4346 — hvilken handel "Report for review"-dialogen er åbnet for lige nu
+  // (null = lukket). Parses fra event.id (`${type}:${rawId}`, sat af
+  // teamTransferHistory.js) i stedet for at gemme hele event-objektet — kun
+  // det backend-endpointet rent faktisk skal bruge.
+  const [reportTarget, setReportTarget] = useState(null);
+  function openReportDialog(event) {
+    const parsed = parseTransferEventId(event.id);
+    if (!parsed) return;
+    setReportTarget(parsed);
+  }
+
   // #4448: t bruges kun til fejlbeskeden nedenfor. Som direkte dependency ville
   // et sprogskifte hente transfer-historikken forfra — ref'en holder teamId som
   // den eneste trigger uden at teksten hænger på gammelt sprog.
@@ -332,6 +367,10 @@ export default function TeamTransferHistoryTab({ teamId }) {
                 <th className="text-left py-2 text-cz-3">{t("history.header.rider")}</th>
                 <th className="text-left py-2 text-cz-3">{t("history.header.counterparty")}</th>
                 <SortableTh sortKey="amount" sort={sortKey} sortDir={sortDir} onSort={handleSort} className="text-right py-2">{t("history.header.amount")}</SortableTh>
+                {/* #4346: ingen tekst-header for handling-kolonnen — knappen bærer sin
+                    egen aria-label, og en tekst-header ville bare gentage den på hver
+                    eneste ikke-rapporterbare række (academy/no_sale). */}
+                <th className="py-2 w-8"><span className="sr-only">{t("history.reportAction")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -373,6 +412,9 @@ export default function TeamTransferHistoryTab({ teamId }) {
                         </span>
                       : <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>}
                   </td>
+                  <td className="py-2 text-right">
+                    <ReportTradeButton event={ev} onReport={openReportDialog} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -382,6 +424,13 @@ export default function TeamTransferHistoryTab({ teamId }) {
     </Card>
 
     <TransferProfitPanel trades={profit.trades} totals={profit.totals} />
+
+    <ReportTradeDialog
+      open={reportTarget != null}
+      onClose={() => setReportTarget(null)}
+      transferType={reportTarget?.type}
+      transferId={reportTarget?.id}
+    />
     </div>
   );
 }
