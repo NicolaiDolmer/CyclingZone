@@ -8,7 +8,8 @@
   "seasonOption": "Season {number} · {status}",
   "empty": {
     "title": "No results yet",
-    "body": "Finish races and seasons to see results here"
+    "body": "Finish races and seasons to see results here",
+    "cta": "View calendar"
   },
   "status": {
     "completed": "Completed",
