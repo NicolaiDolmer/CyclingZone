@@ -1017,14 +1017,22 @@ function MarketRow({
             {listing.created_at ? formatDate(listing.created_at, null, { day: "numeric", month: "short" }) : "—"}
           </span>
         </td>
-        <td className="px-3 py-2.5 text-right">
+        {/* #5124: max-w på mobil-standardtilstanden — uden den æder Værdi/
+            Udbudspris (ingen af dem havde en bredde-grænse) navnekolonnens
+            plads i tabellens auto-layout, præcis samme fejlklasse som
+            TrainingPage.jsx's roster (se navnecellens kommentar ovenfor). */}
+        <td className={`px-3 py-2.5 text-right ${isMobile && !showStatCols ? "max-w-[22vw]" : ""}`}>
           <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderMarketValue(rider))}</span>
         </td>
         <td className="px-3 py-2.5 text-right hidden sm:table-cell">
           <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderSalary(rider))}</span>
         </td>
-        <td className="px-3 py-2.5 text-right">
-          <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap">
+        <td className={`px-3 py-2.5 text-right ${isMobile && !showStatCols ? "max-w-[26vw]" : ""}`}>
+          <span
+            className={`text-cz-accent-t font-mono text-sm font-bold ${
+              isMobile && !showStatCols ? "" : "whitespace-nowrap"
+            }`}
+          >
             {formatNumber(listing.asking_price)} CZ$
           </span>
           {/* #3191: udbudspris vs. estimeret markedsværdi — paritet med Auktioners
