@@ -31,6 +31,8 @@ Performance ≥ 90. Lighthouse-lab måler ikke INP (kræver field-data/CrUX) —
 | `/login` — efter spor 1 (#5177) | desktop | 98 | 1041 ms | 0 ms | 0,00 | 583 KB | 42 | 🟢 |
 | `/roadmap` — efter spor 1 (#5177) | mobil | 68 | 5834 ms | 54 ms | 0,00* | 596 KB | 59 | 🔴 |
 | `/roadmap` — efter spor 1 (#5177) | desktop | 75 | 1208 ms | 0 ms | 0,553 | 596 KB | 59 | 🔴 |
+| `/roadmap` — efter spor 2 (#5177, 14/9) | mobil | 72 | 5573 ms | 0 ms | **0,000** | 610 KB | 60 | 🔴 |
+| `/roadmap` — efter spor 2 (#5177, 14/9) | desktop | 97 | 1188 ms | 0 ms | **0,038** | 610 KB | 60 | 🟢 |
 
 Verdikt = værste enkeltmetrik mod tærsklerne (LCP/CLS/Performance; grænser:
 grøn = CWV "good"/≥90, gul = CWV "needs improvement"/50-89, rød = CWV "poor"/<50).
@@ -53,6 +55,29 @@ kørsler gav 0, én gav 0,517 (identisk med baseline) — medianen 0 er ikke et
 reelt fix, kun en tilfældig timing af sektionen "Løb — hvor det er i dag"
 (fund 2, urørt af denne PR). Roadmap-desktop (0,553, alle 3 kørsler ens)
 viser tydeligt at fund 2 stadig står uløst.
+
+**"Efter spor 2" (#5177, 14/9) — samme metode-forbehold som spor 1** (lokal
+preview-build, `localhost:4173`, IKKE 1:1 sammenlignelig med
+`cyclingzone.org`-rækkerne). **CLS-målet er ramt, robust denne gang:** mobil
+0,517 → **0,000** (alle 3 kørsler, ikke kun medianen — ingen af spor 1's
+flakiness) og desktop 0,553 → **0,038**, begge klart under 0,1-tærsklen.
+Fund 2's "next"-liste skiftede fra korte statiske i18n-bullets til en langt
+højere stemme-UI når Supabase-kaldet landede; fix var en `Skeleton`-baseret
+placeholder i samme højde som den rigtige stemme-UI (reserverer pladsen fra
+første paint) + at intro-linjen ikke længere popper ind bagefter og skubber
+den allerede-malede races-sektion ned. Se PR #5217 for detaljer.
+**LCP-målet (< 2.500 ms) er IKKE ramt:** mobil 5.834 ms → 5.573 ms (kun
+-261 ms; performance-score 68→72, primært CLS-scorens bidrag). Roadmap-
+scoped JS blev reduceret (AdminCreateForm lazy-splittet ud, -3,8 KB fra
+roadmap-chunken), men LCP-elementet er stadig en tekst-node hvis paint-tid
+domineres af sitewide, delte assets uden for denne branch' fil-ejerskab:
+render-blokerende `chunk-selfheal.js` + `index-*.css` (uændret siden fund 3,
+ikke rørt her) OG to store, globalt-loadede chunks fundet under denne
+måling — `i18n-messages-*.js` (131 KB transfer) og `flag-icons-*.css`
+(85 KB transfer, importeret fra `main.jsx` for en lille sprog-vælger-ikon) —
+tilsammen ~216 KB af siden 610 KB total, uafhængigt af hvilken side der
+besøges. Disse to bør blive egne fund/spor (ikke løst her — ude af
+`frontend/src/pages/Roadmap*`-ejerskabet, se PR-slutrapport).
 
 **Offentlig ranglisteside uden login:** findes ikke. `/standings`
 (`RankingsHubPage`) ligger i `App.jsx` under `ProtectedRoute` — al rangliste
@@ -109,6 +134,9 @@ inden for budget (1138 KB + 5% margin). `audit-perf-seo.mjs`: 0 🔴, 1 🟡 (bu
    metrik. Desktop deler CLS-problemet (0,553) selvom LCP der er fint (1,3 s).
    **Forventet gevinst:** CLS-fixet er billigst og fjerner det værste enkelttal;
    fuld grøn/gul kræver derudover LCP-arbejdet fra fund 3.
+   **Status 14/9:** CLS-delen løst som #5177 spor 2 (PR #5217) — mobil
+   0,517 → **0,000**, desktop 0,553 → **0,038**, se "efter spor 2"-rækkerne
+   ovenfor. LCP-delen (5,7 s → 5,6 s) er IKKE løst — se opdateret fund 3.
 3. **Mobil-LCP er rødt/gult på alle tre SPA-sider (forside 4,1 s, login 3,5 s,
    roadmap 5,7 s)** mens marketing-sitet (Next.js, prerenderet) ligger på 2,6 s.
    Fælles delårsag: render-blocking `index-*.css` + `chunk-selfheal.js` (~150-
@@ -117,6 +145,17 @@ inden for budget (1138 KB + 5% margin). `audit-perf-seo.mjs`: 0 🔴, 1 🟡 (bu
    render-blokerende CSS og splitte uudnyttet JS kan realistisk barbere flere
    hundrede ms af LCP på tværs af hele SPA'en, ikke kun én side — størst
    spredningseffekt af de tre fund.
+   **Status 14/9 (#5177 spor 2, PR #5217):** roadmap-scoped JS reduceret
+   (AdminCreateForm lazy-splittet, -3,8 KB), men LCP stod stort set stille
+   (5.834 ms → 5.573 ms). Netværkslog fra samme måling fandt to yderligere,
+   STORE, sitewide bidragsydere — begge uden for `frontend/src/pages/
+   Roadmap*`-ejerskabet, så urørt her: `i18n-messages-*.js` (131 KB transfer,
+   `vite.config.js`-chunking) og `flag-icons-*.css` (85 KB transfer, eager
+   import i `main.jsx` for `LanguageSwitcher`s flag-ikon) — tilsammen ~35 %
+   af sidens 610 KB, uafhængigt af hvilken rute der besøges. Sammen med
+   render-blocking `chunk-selfheal.js`/`index-*.css` er dette den reelle
+   LCP-flaskehals; bør blive sit eget spor/issue (global scope, ikke en
+   enkelt-side-fix).
 
 Alle tre bør blive egne spor/issues (ikke løst i denne PR — ren måling).
 
