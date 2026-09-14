@@ -49,7 +49,9 @@ import {
   ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon,
   Tabs, TabList, Tab, TabPanel, CollapsibleSection,
 } from "../components/ui";
-import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
+import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
+import { useIsMobileViewport } from "../hooks/useMediaQuery.ts";
+import { useMobileTableColumns, MobileColumnChips } from "../components/ui/MobileTableChips.jsx";
 
 // #3721: siden fik faner (Train today / Development / History), ?tab=-
 // synkroniseret efter samme mønster som FinancePage/RiderStatsPage. Ukendt
@@ -743,6 +745,50 @@ export default function TrainingPage() {
   // #3815: +1 kolonne (Alder).
   const ROSTER_COLS = 11;
 
+  // #5124 — D-047 for roster-tabellen. Den kan ikke bruge <DataTable> (multi-
+  // select-checkbox + gruppe-header-rækker + en udvidelig ugeplan-underrække,
+  // se filhovedets note), så mobil-standarden bygges her ovenpå de SAMME
+  // primitiver DataTable bruger (MobileTableChips.jsx → mobileTableColumns.ts).
+  // Type/Alder/Form/Træthed er allerede foldet ind i navne-underlinjen (#3045/
+  // #3815, `hidden sm:table-cell`) og tæller derfor ikke som "swappable" her —
+  // de fem RESTERENDE kolonner (Dag, Skift dag, Kvittering, Status, Ugeplan)
+  // er for mange til at vise samtidig uden vandret scroll på 375-390px, så de
+  // går gennem chip-bytteren. "Skift dag" er sidens hovedhandling ("vælg
+  // træning" i #5124) og står derfor i standard-tre sammen med Kvittering og
+  // Status; "Dag" (åbner fokus-panelet) og Ugeplan er ét chip-tryk / "Fuld
+  // tabel" væk.
+  const isMobile = useIsMobileViewport();
+  const rosterMobileColumns = useMemo(
+    () => [
+      { key: "focus", header: t("dayPanel.colDay") },
+      { key: "today", header: t("dayPanel.colChangeDay") },
+      { key: "receipt", header: t("receipt.title") },
+      { key: "status", header: t("colStatus") },
+      { key: "weekplan", header: t("colWeekPlan") },
+    ],
+    [t]
+  );
+  const ROSTER_MOBILE_DEFAULTS = useMemo(() => ["today", "receipt", "status"], []);
+  const rosterMobile = useMobileTableColumns(rosterMobileColumns, ROSTER_MOBILE_DEFAULTS);
+  // Desktop er uændret: `!isMobile` gør showRosterCol altid true dér, uanset
+  // chip-valg. Kun ≤640px filtrerer efter det aktive kolonnesæt.
+  const showRosterCol = (key) => !isMobile || rosterMobile.visibleKeys.includes(key);
+  const showRosterChips = isMobile && rosterMobile.hasChips;
+  // "Fuld tabel" på mobil genbruger den kontaminerede (egen scroller, ikke
+  // sidescroll) sticky-navnekolonne-mekanik denne tabel allerede bruger på
+  // desktop (.sticky-name-cell) — IKKE DataTable's to-lags-teknik. Rækkens
+  // model (checkbox + gruppe-header-rækker + en udvidelig ugeplan-underrække
+  // der skal spænde ALLE kolonner) lader sig ikke splitte i to uafhængige
+  // <table>-elementer uden at bryde netop den underrække. Da mekanikken er
+  // KONTAINERET (egen overflow-auto, aldrig side-scroll) kan den ikke gengive
+  // #5060 (navnekolonnen fulgte slet ikke med — den var ikke sticky, ikke et
+  // spørgsmål om at være kontaineret), og den er allerede battle-tested på
+  // netop denne tabel på desktop. Dokumenteret afvigelse fra D-047's "aldrig
+  // CSS sticky i Fuld tabel", parallel til den skriftlige undtagelse #5124
+  // giver sæsonmatricen.
+  const rosterScrollerClass = isMobile && !rosterMobile.fullTable ? MOBILE_SCROLLER : SCROLLER;
+  const rosterColSpan = ROSTER_COLS - (isMobile ? rosterMobileColumns.length - rosterMobile.visibleKeys.length : 0);
+
   // Accessors til roster-sortering. form/fatigue bor i condition-map'et (ikke på
   // rytteren), så closure over condition — useMemo holder referencen stabil pr.
   // condition-ændring så sorteringen ikke re-kører hver render.
@@ -879,10 +925,22 @@ export default function TrainingPage() {
             opskrift som RidersPage/TeamPage (.sticky-name-cell). Ingen rå skygge-klasse
             (#2849 bølge 4 anti-slop) — den opake .sticky-name-cell-baggrund + 1px
             border-r ER den kanoniske sticky-first-column-recipe (T2). */}
-        <td className="border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-sticky border-r border-cz-border">
+        <td
+          className={`border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-sticky border-r border-cz-border ${
+            isMobile && !rosterMobile.fullTable ? "w-full max-w-0" : ""
+          }`}
+        >
           {/* whitespace-nowrap: navnet er kolonnens naturlige bredde (DataTable-opskriften)
-              — uden den kollapser cellen til underlinjens max-w og ombryder navnet. */}
-          <div className="flex items-center gap-1.5 whitespace-nowrap">
+              — uden den kollapser cellen til underlinjens max-w og ombryder navnet.
+              #5124: i mobil-standardtilstanden (ingen vandret scroll) BRYDER navnet i
+              stedet — samme regel som DataTable's renderStickyCell(wrap=true): uden det
+              kan et langt navn skubbe tabellen ud over 390px, præcis den garanti D-047
+              kræver ("ikke håbet om at indholdet passer"). */}
+          <div
+            className={`flex items-center gap-1.5 ${
+              isMobile && !rosterMobile.fullTable ? "min-w-0 break-words [&>*]:min-w-0" : "whitespace-nowrap"
+            }`}
+          >
             <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
               {rider.firstname} {rider.lastname}
             </RiderLink>
@@ -943,6 +1001,7 @@ export default function TrainingPage() {
             både main og #3741), og den gule "limited" er den tvetydige bucket
             #3747 beskriver, hvor håndværk (tag 0,95) og anden rolle (0,70)
             lander sammen. Panelet viser kun de påstande der kan efterprøves. */}
+        {showRosterCol("focus") && (
         <td className={tdClass({})}>
           {/* #3721: DELT FocusOpenButton — samme komponent/mutation som
               Development-fanens rækker bruger (ingen forgrenet fokus-logik). */}
@@ -957,8 +1016,11 @@ export default function TrainingPage() {
             dataTour={isFirst ? "training-focus" : undefined}
           />
         </td>
+        )}
 
-        {/* Intensitet */}
+        {/* Intensitet — #5124: sidens hovedhandling ("skift dagens træning"),
+            derfor en af de tre mobil-standardkolonner (rosterMobile). */}
+        {showRosterCol("today") && (
         <td className={tdClass({})}>
           {plan?.focus ? (
             <div
@@ -966,7 +1028,13 @@ export default function TrainingPage() {
               aria-label={`${t("dayPanel.colChangeDay")} — ${rider.firstname} ${rider.lastname}`}
               // #3459 V3: dæmpet (ikke deaktiveret) på løbsdage — planen er urørt og
               // gælder alle ikke-løbsdage, knapperne forbliver derfor fuldt aktive.
-              className={`inline-flex rounded-cz border border-cz-border overflow-hidden ${raceToday ? "opacity-[0.55]" : ""}`}
+              // #5124: på mobil (ingen vandret scroll) bryder knap-gruppen til to
+              // linjer i stedet for at tvinge cellen bredere end skærmen —
+              // `overflow-hidden` droppes samtidig, ellers klippes anden linje væk.
+              // Desktop uændret (isMobile er altid false dér).
+              className={`inline-flex rounded-cz border border-cz-border ${
+                isMobile ? "flex-wrap" : "overflow-hidden"
+              } ${raceToday ? "opacity-[0.55]" : ""}`}
             >
               {/* #3762: intensiteten er ikke længere et frit valg — den er en
                   egenskab ved sessionen. Knapperne skifter derfor DAGEN.
@@ -1031,15 +1099,20 @@ export default function TrainingPage() {
             </div>
           )}
         </td>
+        )}
 
         {/* #3709 trin 1: kvitteringen for fokussets egne evner. Hver evne får
             sin egen linje med nu / point i sæsonen / på vej, og en låst evne
             skriver "færdig". Den gamle ene aggregerede bar viste kun evnen
             tættest på gennembrud (#3639), og de tre loft-tekster lovede at en
             evne aldrig steg igen — et løfte den nye model gør usandt (#3649). */}
+        {showRosterCol("receipt") && (
         <td className={tdClass({})} data-tour={isFirst ? "training-next-up" : undefined}>
+          {/* #5124: min-w droppes på mobil-standardtilstanden (ingen vandret
+              scroll) — 176px er for bredt sammen med navn + "Skift dag" på
+              390px. Desktop/Fuld tabel uændret. */}
           {focusReceipt ? (
-            <div className="min-w-[176px]">
+            <div className={isMobile && !rosterMobile.fullTable ? "" : "min-w-[176px]"}>
               {focusReceipt.map((row) => (
                 <AbilityReceiptRow key={row.ability} row={row} />
               ))}
@@ -1055,6 +1128,7 @@ export default function TrainingPage() {
             </div>
           )}
         </td>
+        )}
 
         {/* Form */}
         <td className={`${tdClass({})} hidden sm:table-cell`}>
@@ -1074,6 +1148,7 @@ export default function TrainingPage() {
             inline i navne-cellen. Ingen `hidden sm:table-cell` — TeamPages
             badges-kolonne foldes heller ikke væk i portræt (#3194), den scroller
             vandret som resten af tabellen. */}
+        {showRosterCol("status") && (
         <td className={tdClass({})}>
           <div className="flex flex-wrap gap-1">
             {/* #3761: Status-cellen viste ÉN af de badges rytteren kan bære.
@@ -1103,11 +1178,13 @@ export default function TrainingPage() {
             )}
           </div>
         </td>
+        )}
 
         {/* Individuel ugeplan — egen kolonne (rework af #3300, ejer-feedback: knappen
             der åbner rytterens egen ugeplan skal ikke ligge i navne-cellen, men have
             sin egen kolonne, ligesom akademi-badgen ovenfor). Ingen `hidden sm:table-
             cell` — skal virke på mobil ligesom badges-kolonnen. */}
+        {showRosterCol("weekplan") && (
         <td className={tdClass({})}>
           <div className="flex flex-col items-start gap-1">
             <button
@@ -1129,13 +1206,14 @@ export default function TrainingPage() {
             )}
           </div>
         </td>
+        )}
       </tr>
 
       {/* #1895 PR 2: individuel ugeplan-flade — udvidet inline-række under rytteren.
           Rører ALDRIG fokus; overstyrer KUN holdets ugerytme for netop denne rytter. */}
       {isExpanded && (
         <tr className="bg-cz-subtle/40">
-          <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-3">
+          <td colSpan={rosterColSpan} className="border-t border-cz-border px-4 py-3">
             <div className="flex flex-col gap-2">
               <p className="text-[13px] text-cz-3 leading-relaxed">
                 {t("individualWeekPlanIntro", { name: `${rider.firstname} ${rider.lastname}` })}
@@ -1587,8 +1665,20 @@ export default function TrainingPage() {
                 {t(SEASON_RECEIPT_NOTE_KEY[history.seasonState], { date: formatDate(history.seasonStart) })}
               </p>
             )}
+            {/* #5124 — D-047's chip-række (genbrugt fra MobileTableChips.jsx/
+                DataTable.jsx, se noten ved rosterMobile ovenfor). Kun ≤640px
+                og kun når der reelt er flere end tre kolonner at vælge imellem. */}
+            {showRosterChips && (
+              <MobileColumnChips
+                columns={rosterMobile.chipColumns}
+                selected={rosterMobile.selectedKeys}
+                onPick={rosterMobile.pick}
+                fullTable={rosterMobile.fullTable}
+                onToggleFullTable={rosterMobile.toggleFullTable}
+              />
+            )}
             <div ref={rosterTableRef} className={WRAP}>
-              <div className={SCROLLER}>
+              <div className={rosterScrollerClass}>
                 <table className={TABLE} data-sortable>
                   <thead>
                     <tr>
@@ -1635,11 +1725,11 @@ export default function TrainingPage() {
                           der "Fokus" og "Intensitet" — to akser der kunne modsige
                           hinanden. Nu er der én dag, og en hurtig vej til at
                           skifte den. */}
-                      <th className={thClass({})}>{t("dayPanel.colDay")}</th>
-                      <th className={thClass({})}>{t("dayPanel.colChangeDay")}</th>
+                      {showRosterCol("focus") && <th className={thClass({})}>{t("dayPanel.colDay")}</th>}
+                      {showRosterCol("today") && <th className={thClass({})}>{t("dayPanel.colChangeDay")}</th>}
                       {/* #3709 trin 1: kolonnen er ikke længere "næste +1" på ÉN
                           evne, men sæsonens kvittering pr. evne i fokusset. */}
-                      <th className={thClass({})}>{t("receipt.title")}</th>
+                      {showRosterCol("receipt") && <th className={thClass({})}>{t("receipt.title")}</th>}
                       <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={`${thClass({})} hidden sm:table-cell`}>
                         {t("form")}
                       </SortTh>
@@ -1650,13 +1740,15 @@ export default function TrainingPage() {
                           at der skete noget (@cybersimon, Discord 13/8). Nu samme
                           SortTh-recipe som navn/type/form/træthed, med en
                           comparator der samler akademi-rytterne. */}
-                      <SortTh sortKey="status" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                        className={thClass({})}>
-                        {t("colStatus")}
-                      </SortTh>
+                      {showRosterCol("status") && (
+                        <SortTh sortKey="status" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                          className={thClass({})}>
+                          {t("colStatus")}
+                        </SortTh>
+                      )}
                       {/* #3300-rework: individuel ugeplan-knap i egen kolonne (ejer-
                           feedback), samme mønster som badges-kolonnen ovenfor. */}
-                      <th className={thClass({})}>{t("colWeekPlan")}</th>
+                      {showRosterCol("weekplan") && <th className={thClass({})}>{t("colWeekPlan")}</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -1664,7 +1756,7 @@ export default function TrainingPage() {
                       ? groups.map((group, gi) => (
                           <Fragment key={group.type}>
                             <tr className="bg-cz-subtle/60">
-                              <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-2">
+                              <td colSpan={rosterColSpan} className="border-t border-cz-border px-4 py-2">
                                 <span className="font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-2">
                                   {groupLabel(group.type)}
                                 </span>
