@@ -118,17 +118,24 @@ export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
 // før trin 4. Det er BEVIDST: harnesses og fixtures der måler noget andet end
 // rolleklasser skal kunne køre uden at kende rytterens anlæg, og produktionens
 // sti (dailyTrainingEngine.js) sender dem altid.
+// #4846 (fase B2): `budgetDivisor` er VALGFRI med samme "udeladt = bit-identisk"-
+// kontrakt som staff/facility/academy ovenfor. Udeladt/ugyldig ⇒ cfg.daysPerSeason,
+// altsaa praecis dagens model. Sat ⇒ kalibreret deler for en anden tick-kadence.
+// Gate G1 kraever at T/D er konstant naar T (ticks pr. sæson) skifter; formlen og
+// tallene staar i trainingRaceDayTick.js (raceDayBudgetDivisor).
 export function dailyAbilityDelta({
   ability, current, cap, age, program, conditionMult, bonus, noise, potentiale,
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
   primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
+  budgetDivisor = null,
 }) {
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
   const mult = abilityMult(ability, program, trainingCfg);
   if (mult === 0) return 0;
   const cfg = DAILY_TRAINING_CONFIG;
-  const base = (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
+  const divisor = Number.isFinite(budgetDivisor) && budgetDivisor > 0 ? budgetDivisor : cfg.daysPerSeason;
+  const base = (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / divisor;
   // ── DEN ANDEN KNAP (#3709 trin 4, spec §2.2) ──────────────────────────────
   // Indtil nu satte loftet både hvor højt en evne kunne komme OG hvor hurtigt,
   // fordi `base` er gap-proportional. Rolle-raten er den knap der skiller de to
@@ -192,16 +199,22 @@ export function computeAcademySeasonCeiling({ seasonStartAbilities, lifetimeCaps
 // (dailyTrainingEngine.js) sender dem videre til dailyAbilityDelta pr. evne.
 // #2437: academyRateMult sendes bare videre til dailyAbilityDelta pr. evne — samme
 // midlertidige interim-knap, samme sikre default 1.0 (se kommentar ved dailyAbilityDelta).
+// #4846 (fase B2, arkitekt-beslutning A3): `tickSeedKey` er VALGFRI og defaulter til
+// `dateStr`, saa enhver eksisterende caller er bit-identisk. Med loebsdagen som
+// tick-enhed sendes `${seasonId}#gd${gameDay}` i stedet — ellers ville tre loebsdage
+// paa samme kalenderdato give tre IDENTISKE stoej-udfald (spec §3.2).
 export function applyDailyTick({
   riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale, hardDailyCap,
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
   primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
+  tickSeedKey = null, budgetDivisor = null,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
+  const seedScope = tickSeedKey ?? dateStr;
   // #4987: seededUnitMixed (avalanche-finaliseret), IKKE rå seededUnit — rå FNV-1a
   // blandede for lidt når kun dato-halen skiftede, så samme rytter sad fast i
   // samme tredjedel af [0,1) i ugevis (25 % af ryttere med 0 "over"-dage/30 dage).
-  const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnitMixed(`dtick:${riderId}:${dateStr}`);
+  const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnitMixed(`dtick:${riderId}:${seedScope}`);
   const nextAbilities = { ...abilities };
   const nextProgress = { ...(progress ?? {}) };
   const gains = {};
@@ -213,6 +226,7 @@ export function applyDailyTick({
     const delta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
       staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
+      budgetDivisor,
     });
     if (delta <= 0) continue;
     score += delta;
@@ -266,6 +280,9 @@ export function applyRaceDevelopmentTick({
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
   primaryType = null, secondaryType = null,
   profileType, devMult = RACE_DEV_CONFIG.devMult,
+  // #4846 (fase B2): samme valgfrie kontrakt som applyDailyTick ovenfor — udeladt
+  // ⇒ dato-seed og cfg.daysPerSeason ⇒ bit-identisk med foer.
+  tickSeedKey = null, budgetDivisor = null,
   // #4632 (loebsdagens intention, Model C punkt 3): dagens intention for netop
   // denne rytter paa netop denne etape (race_stage_roles.effort / race_team_
   // orders.riders[].effort). DORMANT SEAM: kald-stedet i dailyTrainingEngine.js
@@ -279,7 +296,7 @@ export function applyRaceDevelopmentTick({
   // ramme begge stier samme dag (gensidigt udelukkende), men et separat namespace
   // holder de to tick-typers noise uafhængige for læsbarhed/fremtidssikring.
   // #4987: samme mixer-fix som applyDailyTick ovenfor (avalanche-finaliseret seed).
-  const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnitMixed(`rtick:${riderId}:${dateStr}`);
+  const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnitMixed(`rtick:${riderId}:${tickSeedKey ?? dateStr}`);
   const nextAbilities = { ...abilities };
   const nextProgress = { ...(progress ?? {}) };
   const gains = {};
@@ -294,6 +311,7 @@ export function applyRaceDevelopmentTick({
     replacedTotal += dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
       staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType,
+      budgetDivisor,
     });
   }
 

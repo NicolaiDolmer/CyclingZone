@@ -296,6 +296,16 @@ features:
     epic: 4850
     verified: 2026-09-06
 
+  - id: training-tick-per-race-day
+    area: training
+    title_en: Training tick per race day
+    title_da: Træningstick pr. løbsdag
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 4846
+    verified: 2026-09-14
+    note: Nøgle/mutex/seeds/historik/rate bygget bag app_config-nøglen training_tick_per_race_day (default off); udløseren "løbsdagen lukker" mangler.
+
   - id: season-fatigue-reset
     area: training
     title_en: Season fatigue and form reset
