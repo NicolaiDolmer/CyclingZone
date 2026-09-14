@@ -46,6 +46,12 @@ param(
   [string] $WorktreeRoot = "",
   [int] $IntervalMinutes = 15,
   [int] $StallMinutes = 45,
+  # #5220: en PRIK, ikke en frys - et tidligt, harmloest tegn-tjek et godt
+  # stykke under $StallMinutes. Naar en branch har staaet uden commit i
+  # $PokeMinutes, mens boelgen stadig er aktiv, skrives en besked (ingen
+  # recovery-brief, intet exit-kode-flag) - kun for at goere fremdriften
+  # synlig foer den evt. naar frys-graensen.
+  [int] $PokeMinutes = 15,
   [switch] $Once,
   [double] $MaxHours = 8,
   [string] $OutDir = "",
@@ -322,7 +328,8 @@ function Test-WaveStillRunning {
 }
 
 $reported = @{}
-Write-Host "[wave-lane-watch] Loop startet - interval ${IntervalMinutes}min, stall-graense ${StallMinutes}min, selv-stop efter ${MaxHours}t eller naar boelgen er slut. Ctrl-C for at stoppe." -ForegroundColor Green
+$poked = @{}
+Write-Host "[wave-lane-watch] Loop startet - interval ${IntervalMinutes}min, prik ${PokeMinutes}min (besked, ikke frys), stall-graense ${StallMinutes}min, selv-stop efter ${MaxHours}t eller naar boelgen er slut. Ctrl-C for at stoppe." -ForegroundColor Green
 while ($true) {
   if (-not (Test-WaveStillRunning)) {
     Write-Host "[wave-lane-watch] Ingen aktiv boelge ($waveActiveFile er vaek eller udloebet) - vagten stopper." -ForegroundColor Yellow
@@ -343,6 +350,20 @@ while ($true) {
       $reported[$r.branch] = $true
     } elseif (-not $r.stalled -and $reported.ContainsKey($r.branch)) {
       $reported.Remove($r.branch) | Out-Null
+    }
+
+    # #5220: prik ved $PokeMinutes uden commit - en BESKED, ikke et frys.
+    # Adskilt fra $reported/stall-flaget ovenfor: en prik skrives kun EEN gang
+    # pr. episode (samme dedup-moenster som recovery-briefen), og forsvinder
+    # aldrig til en frys-eskalering af sig selv - naar branchen rammer
+    # $StallMinutes, tager stall-grenen ovenfor over, og prikken nulstilles
+    # naar branchen viser fremdrift igen.
+    $isPoke = ($r.ageMin -ge $PokeMinutes) -and ($r.ageMin -lt $StallMinutes)
+    if ($isPoke -and -not $poked.ContainsKey($r.branch)) {
+      Write-Host ("  [PRIK] lane $($r.lane) (#$($r.issue)): ingen commit i $([math]::Round($r.ageMin, 0)) min (frys-graense: $StallMinutes min) - bare et tidligt livstegn-tjek, IKKE en advarsel (#5220).") -ForegroundColor DarkYellow
+      $poked[$r.branch] = $true
+    } elseif (-not $isPoke -and $poked.ContainsKey($r.branch)) {
+      $poked.Remove($r.branch) | Out-Null
     }
   }
   Start-Sleep -Seconds ($IntervalMinutes * 60)
