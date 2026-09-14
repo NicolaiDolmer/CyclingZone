@@ -141,6 +141,18 @@ test("static Organization + WebSite JSON-LD is present on every route; VideoGame
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const MARKETING_BASE = "https://cycling-zone-marketing.vercel.app";
 
+// #5230 (CodeQL #362) — startsWith accepterer også fx
+// "https://cycling-zone-marketing.vercel.app.evil.example", som ikke er
+// MARKETING_BASE. Sammenlign origin i stedet. Relative destinationer (fx
+// "/index.html") kan ikke parses som URL og skal give false, ikke kaste.
+function isMarketingDestination(destination) {
+  try {
+    return new URL(destination).origin === new URL(MARKETING_BASE).origin;
+  } catch {
+    return false;
+  }
+}
+
 function marketingPageRoutes(appDir) {
   // Route-groups ("(en)"/"(da)") bidrager ikke til URL'en; alle andre mapper
   // gør. Kun mapper der reelt indeholder en page.(t|j)sx tæller som en rute.
@@ -166,7 +178,7 @@ test("frontend/vercel.json's marketing-rewrites matcher marketing/app 1:1 (#4067
   );
   const rewrittenPaths = new Set(
     vercelConfig.rewrites
-      .filter((r) => r.destination.startsWith(MARKETING_BASE) && r.source !== "/_next/:path(.*)")
+      .filter((r) => isMarketingDestination(r.destination) && r.source !== "/_next/:path(.*)")
       .map((r) => r.source),
   );
 
