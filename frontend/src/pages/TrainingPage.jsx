@@ -779,7 +779,7 @@ export default function TrainingPage() {
   // desktop (.sticky-name-cell) — IKKE DataTable's to-lags-teknik. Rækkens
   // model (checkbox + gruppe-header-rækker + en udvidelig ugeplan-underrække
   // der skal spænde ALLE kolonner) lader sig ikke splitte i to uafhængige
-  // <table>-elementer uden at bryde netop den underrække. Da mekanikken er
+  // table-elementer uden at bryde netop den underrække. Da mekanikken er
   // KONTAINERET (egen overflow-auto, aldrig side-scroll) kan den ikke gengive
   // #5060 (navnekolonnen fulgte slet ikke med — den var ikke sticky, ikke et
   // spørgsmål om at være kontaineret), og den er allerede battle-tested på
