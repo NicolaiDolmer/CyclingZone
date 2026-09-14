@@ -56,9 +56,13 @@ test("#3310 busy kombinerer saving OG autoStatus === \"loading\" (ikke kun savin
 });
 
 test("#3310 autoSelect() genindlæser via loadSelection() efter et vellykket POST i stedet for at sætte state direkte", () => {
+  // #5098 hævede vinduet fra 700 til 900 tegn: autoSelect() fik en
+  // generations-guard på hvert opvågnings-punkt (efter authHeaders, efter
+  // fetch) plus en idle-nulstilling uden session. Kontrakten er uændret —
+  // loadSelection() skal stadig være den der genindlæser truppen.
   assert.match(
     source,
-    /async function autoSelect\(\) \{[\s\S]{0,700}?await loadSelection\(\);/,
+    /async function autoSelect\(\) \{[\s\S]{0,900}?await loadSelection\(\);/,
     "autoSelect skal genbruge loadSelection() (samme staleness-guard) frem for at duplikere state-opdateringen",
   );
 });
@@ -69,9 +73,12 @@ test("#3310 autoSelect() sætter autoStatus til error ved non-ok svar eller netv
     /if \(!res\.ok\) \{ setAutoStatus\("error"\); return; \}/,
     "en fejlet auto-select skal ramme autoStatus, ikke det manuelle gem-flows status/errorKey",
   );
+  // #5098: catch-grenen må nu indledes med generations-guarden (og KUN den) —
+  // et forældet netværksudfald fra et andet løb skal ikke skrive en fejl på det
+  // panel spilleren står i nu. Alt andet i blokken er stadig forbudt.
   assert.match(
     source,
-    /async function autoSelect\(\) \{[\s\S]*?\} catch \{\s*setAutoStatus\("error"\);\s*\}/,
+    /async function autoSelect\(\) \{[\s\S]*?\} catch \{(?:\s*if \(isStale\(gen\)\) return;)?\s*setAutoStatus\("error"\);\s*\}/,
     "netværksfejl under auto-select skal også ramme autoStatus (catch-grenen)",
   );
 });

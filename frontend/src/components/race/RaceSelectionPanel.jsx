@@ -305,11 +305,11 @@ export default function RaceSelectionPanel({
   // åbne reload-porten midt i en urørt udtagelse. Samme generations-guard som
   // loadSelection allerede bruger (#3310), nu også på skrive-vejene.
   //
-  // Kaldes både lige efter authHeaders() (et "saving"/"loading" sat DER ville
-  // låse det nye løbs panel, og guarden længere nede rydder det aldrig) og efter
-  // svaret. autoSelect()'s catch-gren er bevidst uguardet: autoStatus "error"
-  // indgår ikke i `busy`, så den låser intet, og #3310's kontrakttest pinner
-  // netop den blok ordret.
+  // Kaldes på HVERT punkt hvor handleren vågner igen efter et await: efter
+  // authHeaders(), efter fetch'et, efter loadSelection() og i catch-grenen. Begge
+  // handlere sætter til gengæld deres låse-status ("saving"/"loading") SYNKRONT
+  // før det første await — ellers står fladen åben for redigering i det vindue,
+  // og den ændring ville dropDraft() bagefter slette som "gemt".
   function isStale(generation) {
     return generation !== generationRef.current;
   }
@@ -424,14 +424,15 @@ export default function RaceSelectionPanel({
   // afspejler det assistenten netop gemte, uden en fuld sidegenindlæsning.
   async function autoSelect() {
     const gen = generationRef.current;
-    const headers = await authHeaders();
-    if (!headers || isStale(gen)) return;
     setAutoStatus("loading");
     // #3310 quality-fix: ryd et evt. forældet manuelt gem-resultat (status/errorKey/
     // errorDetail) ved start af auto-select, af samme grund som ovenfor i save().
     if (status !== "idle") setStatus("idle");
     if (errorKey) setErrorKey(null);
     if (errorDetail) setErrorDetail(null);
+    const headers = await authHeaders();
+    if (isStale(gen)) return;
+    if (!headers) { setAutoStatus("idle"); return; }
     try {
       const res = await fetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
       if (isStale(gen)) return;
@@ -441,6 +442,7 @@ export default function RaceSelectionPanel({
       if (isStale(gen)) return;
       setAutoStatus("idle");
     } catch {
+      if (isStale(gen)) return;
       setAutoStatus("error");
     }
   }
