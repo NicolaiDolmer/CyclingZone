@@ -5,6 +5,8 @@
   "emptyTitle": "Your watchlist is empty",
   "emptyBody": "Click the ⭐ next to a rider in the rider database to add them here",
   "emptyCta": "Go to Riders",
+  "searchPlaceholder": "Search riders...",
+  "searchAria": "Search riders",
   "thNation": "Nation",
   "thRider": "Rider",
   "thRating": "Rating",

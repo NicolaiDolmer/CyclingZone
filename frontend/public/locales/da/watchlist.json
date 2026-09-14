@@ -5,6 +5,8 @@
   "emptyTitle": "Din ønskeliste er tom",
   "emptyBody": "Klik på ⭐ ved siden af en rytter i rytterdatabasen for at tilføje dem her",
   "emptyCta": "Gå til Ryttere",
+  "searchPlaceholder": "Søg ryttere...",
+  "searchAria": "Søg ryttere",
   "thNation": "Nation",
   "thRider": "Rytter",
   "thRating": "Rating",
