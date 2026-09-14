@@ -1256,10 +1256,14 @@ export default function TransfersPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { Authorization: `Bearer ${session.access_token}` };
 
+      // #5242 (CodeRabbit-fund): fald tilbage til den tomme facit for ETHVERT
+      // ikke-ok svar, ikke kun limited/unauthorized — apiFetch giver data:null
+      // for et tomt/ikke-JSON 5xx-svar, og .sent/.received-læsningerne nedenfor
+      // ville ellers kaste på en null-læsning i stedet for at falde tilbage.
       const [listingsRes, offersRes, swapsRes] = await Promise.all([
-        apiFetch(`${API}/api/transfers`, { headers }).then((r) => (r.limited || r.unauthorized ? [] : r.data)),
-        apiFetch(`${API}/api/transfers/my-offers`, { headers }).then((r) => (r.limited || r.unauthorized ? {} : r.data)),
-        apiFetch(`${API}/api/transfers/swaps`, { headers }).then((r) => (r.limited || r.unauthorized ? {} : r.data)),
+        apiFetch(`${API}/api/transfers`, { headers }).then((r) => (r.ok ? (r.data ?? []) : [])),
+        apiFetch(`${API}/api/transfers/my-offers`, { headers }).then((r) => (r.ok ? (r.data ?? {}) : {})),
+        apiFetch(`${API}/api/transfers/swaps`, { headers }).then((r) => (r.ok ? (r.data ?? {}) : {})),
       ]);
 
       // #1529: backend leverer rider.rider_derived_abilities (nested) — flad evnerne op

@@ -476,8 +476,12 @@ export default function DashboardPage() {
         : Promise.resolve({ data: [] }),
       boardStatusPromise,
       token
+        // #5242 (CodeRabbit-fund): fald tilbage til den tomme facit for ETHVERT
+        // ikke-ok svar, ikke kun limited/unauthorized — apiFetch giver data:null
+        // for et tomt/ikke-JSON 5xx-svar, og offersRes.received nedenfor ville
+        // ellers kaste på en null-læsning i stedet for at falde tilbage.
         ? apiFetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } })
-            .then((r) => (r.limited || r.unauthorized ? { sent: [], received: [] } : r.data))
+            .then((r) => (r.ok ? (r.data ?? { sent: [], received: [] }) : { sent: [], received: [] }))
         : Promise.resolve({ sent: [], received: [] }),
       poolRacesPromise,
       // #2182: alle puljer — samme reference-query som StandingsPage/ResultaterPage.

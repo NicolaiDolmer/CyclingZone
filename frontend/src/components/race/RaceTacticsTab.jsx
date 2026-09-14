@@ -274,7 +274,13 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         apiFetch(`${API}/api/races/${raceId}/stage-roles`, { headers }),
         fetchTeamOrders({ raceId }).catch(() => null),
       ]);
-      if (!rolesRes.ok) { setRoles(false); return; } // dækker også limited/unauthorized
+      // #5242 (CodeRabbit-fund): et 2xx med tom/ikke-JSON krop giver apiFetch's
+      // res.data:null — uden dette tjek ville rolesBody.stage_count nedenfor
+      // (UDEN FOR denne try) kaste i stedet for at falde tilbage til roles:false.
+      if (!rolesRes.ok || !rolesRes.data || typeof rolesRes.data !== "object") {
+        setRoles(false);
+        return;
+      }
       rolesBody = rolesRes.data;
       orderCtx = orderResult;
     } catch {
