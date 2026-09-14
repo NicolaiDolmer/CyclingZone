@@ -91,6 +91,33 @@ export function useMobileTableColumns(columns, mobileDefaults = null) {
 // uppercase pille, hairline, aktiv = --text-1-kant; "Fuld tabel" neutral,
 // aldrig gold — TASTE §3/D-047). Genbruger common.json's `table.*`-nøgler,
 // samme tre der allerede findes til DataTable, så der ikke skal duplikeres copy.
+// #5124 — samme "Fuld tabel"-knap som MobileColumnChips bærer, men standalone
+// for tabeller der ikke swapper mellem alternative 3-kolonnesæt (Transferlisten/
+// Auktioner: de tre altid-synlige kolonner er FASTE — værdi, pris, handling —
+// og "Fuld tabel" afslører i stedet de mange evne-/bud-kolonner der ellers ville
+// tvinge siden til vandret scroll). Samme visuelle sprog (TASTE §3: neutral,
+// aldrig gold), så et view der bruger denne og et der bruger MobileColumnChips
+// ikke kan se ud som to forskellige mekanikker.
+export function FullTableToggle({ fullTable, onToggle }) {
+  const { t } = useTranslation("common");
+  const base =
+    "flex-none inline-flex items-center gap-1.5 rounded-cz-pill border px-2.5 min-h-[32px] " +
+    "font-data text-2xs font-semibold uppercase tracking-[.06em] transition-colors duration-150";
+  return (
+    <div className="mb-2 flex justify-end">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={fullTable}
+        className={`${base} ${fullTable ? "border-cz-1 bg-cz-1 text-cz-card" : "border-cz-1 text-cz-1"}`}
+      >
+        <TableIcon size={14} aria-hidden="true" />
+        {t("table.fullTable")}
+      </button>
+    </div>
+  );
+}
+
 export function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable }) {
   const { t } = useTranslation("common");
   const base =
