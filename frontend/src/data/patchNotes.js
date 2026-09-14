@@ -1,5 +1,36 @@
 export const PATCHES = [
   {
+    "version": "7.274",
+    "date": "2026-09-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "topic": "Dashboard",
+        "en": {
+          "title": "Run your first training day with one click",
+          "body": "The Get started card now has a Run this week's training button. It sets the assistant's recommended focus for your whole squad and runs the day. Pick it myself still takes you to the training page."
+        },
+        "da": {
+          "title": "Kør din første træningsdag med ét klik",
+          "body": "Kom i gang-kortet har nu knappen Kør ugens træning. Den sætter assistentens anbefalede fokus for hele truppen og kører dagen. Vælg selv fører dig stadig til træningssiden."
+        },
+        "refs": [5241, 5244]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "Pages wait quietly when the server is briefly busy",
+          "body": "Dashboard, training, auctions, transfers and the race page now wait and retry instead of showing an error when the server asks them to slow down for a moment."
+        },
+        "da": {
+          "title": "Sider venter stille, når serveren er kortvarigt travl",
+          "body": "Dashboard, træning, auktioner, transfers og løbssiden venter nu og prøver igen i stedet for at vise en fejl, når serveren beder dem om at sætte tempoet ned et øjeblik."
+        },
+        "refs": [5242, 5248]
+      }
+    ]
+  },
+  {
     "version": "7.273",
     "date": "2026-09-14",
     "label": "Beta",

@@ -136,7 +136,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | In-app player survey (`in-app-survey`) | live | - | [SURVEY_SYSTEM.md](SURVEY_SYSTEM.md) | #4943 | 2026-09-08 | Skemaet 2026-09-features åbnet 8/9 14:15 (241 inviteret via indbakken); admin-resultatside /admin/surveys/:slug live (#5043). |
-| Email retention loop (`email-loop`) | beta | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK.md](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-08 | welcome + day1 = "on" i prod siden 8/9 18:07 (ejer-go, #2853), race_digest stadig "off". Første rigtige welcome leveret 8/9 18:07. Webhook (email_events) afventer RESEND_WEBHOOK_SECRET fra ejeren. |
+| Email retention loop (`email-loop`) | beta | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK.md](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-14 | welcome + day1 = "on" i prod siden 8/9 18:07 (ejer-go, #2853), race_digest stadig "off". Webhook afventer RESEND_WEBHOOK_SECRET (ejer). Win-back #2760 bygget 14/9 (flag false, 92 i segment, ejer-go 21-24/9). |
 
 ## billing
 
