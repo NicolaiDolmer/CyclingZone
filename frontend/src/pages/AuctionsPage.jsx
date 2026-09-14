@@ -2035,6 +2035,15 @@ function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, rid
 // genbruges cz-table-recipens VÆRDIER direkte (WRAP-radius/border, header-
 // typografi, border-rule i stedet for box-shadow) uden at bytte selve
 // tabel-primitivet.
+//
+// #5124-audit (D-047 til de fire håndrullede tabeller): tabellen med den
+// sticky bud-kolonne herunder er `hidden md:block` og vises ALDRIG under
+// 768px — under den grænse viser `md:hidden`-grenen ovenfor AuctionCard i
+// stedet, en fuldt stablet kort-visning uden tabel/sticky-kolonne/vandret
+// scroll, bygget før #5124 (se AuctionCard's egne #228/#2849 bølge 6/#3956-
+// kommentarer). Der er derfor ingen sticky bud-kolonne at gøre "brugbar" på
+// mobil — den findes ikke dér. Verificeret med
+// frontend/tests/e2e/5124-auctions-mobile.spec.js.
 function AuctionList({ auctions, sectionId, sharedProps, onHide = null }) {
   const sorted = applyAuctionSort(auctions, sharedProps.auctionSort);
   return (
