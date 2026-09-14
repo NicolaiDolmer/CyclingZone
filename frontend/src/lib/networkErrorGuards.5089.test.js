@@ -1,0 +1,102 @@
+// #5089 — reportUnauthorizedResponse: ét dispatch pr. "session er død"-episode.
+//
+// Egen fil (ikke networkErrorGuards.test.js, som allerede dækker #3628's
+// stuck-loading-handlere og er urelateret til denne 401-guard) — samme
+// nummererede-testfil-konvention som sessionRejection.4350.test.js og
+// deadClickGuard3012.test.js.
+//
+// Fake-clienten injiceres i stedet for at mocke Supabase-modulet — samme
+// mønster som getAuthedUser.test.js.
+import test from "node:test";
+import assert from "node:assert/strict";
+import { reportUnauthorizedResponse, _resetForTests } from "./networkErrorGuards.js";
+
+function fakeClient({ sessionToken = "tok-1", deniedByUser = true, getUserThrows = false } = {}) {
+  const state = { signOutCalls: 0, getUserCalls: 0 };
+  state.client = {
+    auth: {
+      getSession: async () => ({ data: { session: sessionToken ? { access_token: sessionToken } : null } }),
+      getUser: async () => {
+        state.getUserCalls += 1;
+        if (getUserThrows) throw new Error("network down");
+        return deniedByUser
+          ? { data: { user: null }, error: { status: 401 } }
+          : { data: { user: { id: "u1" } }, error: null };
+      },
+      signOut: async () => {
+        state.signOutCalls += 1;
+      },
+    },
+  };
+  return state;
+}
+
+const res401 = { status: 401 };
+const headers = { Authorization: "Bearer tok-1" };
+
+test.beforeEach(() => _resetForTests());
+
+test("en 403 rører aldrig sessionen (kun 401 tæller som afvisning, #4350-skellet)", async () => {
+  const state = fakeClient();
+  const result = await reportUnauthorizedResponse({ status: 403 }, headers, "test", state.client);
+  assert.equal(result, false);
+  assert.equal(state.signOutCalls, 0);
+});
+
+test("et 401 der bekræftes af Supabase logger ud ÉN gang", async () => {
+  const state = fakeClient();
+  const result = await reportUnauthorizedResponse(res401, headers, "test-A", state.client);
+  assert.equal(result, true);
+  assert.equal(state.signOutCalls, 1);
+});
+
+test("N samtidige 401'er deler ÉT Supabase-opslag, ikke N (23x401-loopet)", async () => {
+  const state = fakeClient();
+  const results = await Promise.all([
+    reportUnauthorizedResponse(res401, headers, "a", state.client),
+    reportUnauthorizedResponse(res401, headers, "b", state.client),
+    reportUnauthorizedResponse(res401, headers, "c", state.client),
+  ]);
+  assert.deepEqual(results, [true, true, true]);
+  assert.equal(state.signOutCalls, 1, "signOut skal kun kaldes én gang for de samtidige kald");
+  assert.equal(state.getUserCalls, 1, "kun ÉT opslag mod Supabase for hele bygen");
+});
+
+test("efter sessionen er erklæret død, spørger senere 401'er ALDRIG Supabase igen", async () => {
+  const state = fakeClient();
+  await reportUnauthorizedResponse(res401, headers, "first", state.client);
+  assert.equal(state.signOutCalls, 1);
+  assert.equal(state.getUserCalls, 1);
+  const later = await reportUnauthorizedResponse(res401, headers, "later", state.client);
+  assert.equal(later, true, "en sticky 'allerede erklæret død'-tilstand skal svare true uden ny forespørgsel");
+  assert.equal(state.signOutCalls, 1, "signOut må ikke kaldes igen for et allerede afgjort udfald");
+  assert.equal(state.getUserCalls, 1, "Supabase må ikke spørges igen — det er selve 23x401-kuren");
+});
+
+test("et 401 der IKKE bekræftes af Supabase (fornyelses-race) rører ikke sessionen", async () => {
+  const state = fakeClient({ deniedByUser: false });
+  const result = await reportUnauthorizedResponse(res401, headers, "renewal-race", state.client);
+  assert.equal(result, false);
+  assert.equal(state.signOutCalls, 0);
+});
+
+test("401 for et token sessionen allerede har skiftet væk fra ignoreres (fornyelses-race)", async () => {
+  const state = fakeClient({ sessionToken: "tok-2" }); // sessionen har fornyet SIDEN kaldet blev sendt
+  const result = await reportUnauthorizedResponse(res401, headers, "stale-token", state.client);
+  assert.equal(result, false);
+  assert.equal(state.signOutCalls, 0);
+});
+
+test("ingen session tilbage overhovedet → 401'en er sandheden, log ud", async () => {
+  const state = fakeClient({ sessionToken: null });
+  const result = await reportUnauthorizedResponse(res401, headers, "no-session", state.client);
+  assert.equal(result, true);
+  assert.equal(state.signOutCalls, 1);
+});
+
+test("kunne slet ikke spørge Supabase (netværksudfald) → rør ikke sessionen", async () => {
+  const state = fakeClient({ getUserThrows: true });
+  const result = await reportUnauthorizedResponse(res401, headers, "network-down", state.client);
+  assert.equal(result, false);
+  assert.equal(state.signOutCalls, 0);
+});
