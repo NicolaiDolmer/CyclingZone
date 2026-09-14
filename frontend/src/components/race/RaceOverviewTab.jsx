@@ -163,6 +163,7 @@ export default function RaceOverviewTab({
   teamNameById,
   stageRoles,           // svaret fra useStageRoles: null | false | objekt
   onOpenTab,            // (tabKey) => void
+  onOpenStageResult,    // (stageNumber) => void — #5123: direkte til étape-resultatet, ikke kun "samlet"
   recapSlot = null,     // "Din uge" (EFTER) — bygget af siden af de eksisterende momenter
 }) {
   const { t } = useTranslation("races");
@@ -289,6 +290,17 @@ export default function RaceOverviewTab({
                 {t("racePage.overview.openResults")}
               </Button>
             </div>
+            {/* #5123: "Sådan endte det" viser kun det ENDELIGE samlede klassement —
+                den sidste etapes EGET resultat (hvem vandt selve etapen) er et andet
+                spørgsmål, og fandtes ingen steder som et direkte link herfra. */}
+            {isStageRace && lastRidden > 0 && (
+              <div className="mt-3 pt-3 border-t border-cz-border flex flex-wrap items-center justify-between gap-3">
+                <p className="text-cz-3 text-xs">{t("racePage.overview.latestStageResultHint", { number: lastRidden })}</p>
+                <Button variant="secondary" size="sm" onClick={() => onOpenStageResult?.(lastRidden)}>
+                  {t("racePage.overview.latestStageResultCta", { number: lastRidden })}
+                </Button>
+              </div>
+            )}
           </Section>
         </SectionStack>
         <SectionStack>
@@ -321,6 +333,17 @@ export default function RaceOverviewTab({
           {extract.length
             ? <StandingsExtract t={t} rows={extract} myTeamId={myTeamId} />
             : <p className="text-cz-3 text-sm">{t("racePage.overview.noStandingsYet")}</p>}
+          {/* #5123: dette er den LØBENDE samlede stilling — hvem der vandt DEN
+              seneste etape er et andet spørgsmål, og var kun findbart via
+              dashboardets "i dag"-kort eller kalenderen, aldrig herfra. */}
+          {isStageRace && lastRidden > 0 && (
+            <div className="mt-3 pt-3 border-t border-cz-border flex flex-wrap items-center justify-between gap-3">
+              <p className="text-cz-3 text-xs">{t("racePage.overview.latestStageResultHint", { number: lastRidden })}</p>
+              <Button variant="secondary" size="sm" onClick={() => onOpenStageResult?.(lastRidden)}>
+                {t("racePage.overview.latestStageResultCta", { number: lastRidden })}
+              </Button>
+            </div>
+          )}
         </Section>
         {lastRidden > 0 && (
           <LatestFromTheRoad

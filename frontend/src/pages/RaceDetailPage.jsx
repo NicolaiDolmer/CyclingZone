@@ -344,6 +344,20 @@ export default function RaceDetailPage() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  // #5123: Overblik-fanens "Seneste etape: resultat"-link skal åbne PRÆCIS den
+  // etapes eget resultat — ikke "Samlet" (changeMainTab("results") alene ville
+  // lande på resultView="samlet", se useState-initialiseringen ovenfor) og ikke
+  // kun ?stage= uden ?tab= (virker kun som fallback ved FØRSTE load, ikke når
+  // ?tab allerede er sat, jf. tabParam nedenfor). Sætter derfor begge dele i
+  // samme kald, samme mønster som changeResultView + changeMainTab hver for sig.
+  const openStageResult = useCallback((stageNumber) => {
+    setResultView(`stage-${stageNumber}`);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", "results");
+    next.set("stage", String(stageNumber));
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   // #4613: fanerne (Overblik/Hold) og hero'ens "valgt N"-tal læser alle samme
   // stage-roles-svar. Hentes ÉN gang her og sendes ned, i stedet for ét kald pr.
   // fane-skift. Hooken svarer null (henter) / false (fejlede) / objekt.
@@ -620,6 +634,15 @@ export default function RaceDetailPage() {
   );
   const stageParam = Number(searchParams.get("stage"));
   const scheduledStage = scheduledStageNums.includes(stageParam) ? stageParam : (scheduledStageNums[0] ?? 1);
+  // #5123: Etaper-fanen (StageStripe+StageDetailPanel nedenfor) åbnede ALTID på
+  // etape 1 uden et eksplicit ?stage= — også midt i eller efter et løb, hvor
+  // spilleren netop har kørt en senere etape og forventer at fanen viser DEN.
+  // Kun fanens EGEN default ændres her (stagesTabStage); scheduledStage ovenfor
+  // bruges stadig uændret af Hold-fanens selectedStageIndexForPanel nedenfor.
+  const latestRiddenStageNum = (race?.stages_completed && scheduledStageNums.includes(race.stages_completed))
+    ? race.stages_completed
+    : null;
+  const stagesTabStage = scheduledStageNums.includes(stageParam) ? stageParam : (latestRiddenStageNum ?? scheduledStageNums[0] ?? 1);
   const changeStage = useCallback((n) => {
     const next = new URLSearchParams(searchParams);
     next.set("stage", String(n));
@@ -1032,6 +1055,7 @@ export default function RaceDetailPage() {
               teamNameById={teamNameById}
               stageRoles={stageRoles}
               onOpenTab={changeMainTab}
+              onOpenStageResult={openStageResult}
               recapSlot={<RaceRecap results={results} scopeType="overall" incidents={incidents} />}
             />
           )}
@@ -1078,14 +1102,14 @@ export default function RaceDetailPage() {
                 ) : null;
               })()}
               {scheduledStageNums.length > 0 && (
-                <StageStripe stages={stageProfiles} activeStage={scheduledStage} onSelect={changeStage} times={stripeTimes} />
+                <StageStripe stages={stageProfiles} activeStage={stagesTabStage} onSelect={changeStage} times={stripeTimes} />
               )}
               {/* Sub-4 (#2448): ruten SKAL være synlig i fuld tier her — det er
                   siden man planlægger efter, og stigningernes navn/længde/
                   gradient er præcis det man planlægger på. */}
               <StageDetailPanel
-                profile={profileByStage[scheduledStage]}
-                stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+                profile={profileByStage[stagesTabStage]}
+                stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: stagesTabStage }) : undefined}
                 tier="full"
                 hasClassifications={race.race_type === "stage_race"}
               />
