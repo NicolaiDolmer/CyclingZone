@@ -57,6 +57,13 @@ const RUN_TODAY_REPORT = {
 };
 
 async function installOnboardingMocks(page, { todayRun = null } = {}) {
+  // CodeRabbit-fund (blokerende): denne skulle tidligere være en FAST
+  // lukket-over værdi, uanset hvor mange gange /api/training/me blev kaldt —
+  // så testen kunne aldrig fange at komponentens egen refresh() (efter et
+  // succesfuldt run-today) ser dagen som kørt. `currentTodayRun` er mutabel
+  // og opdateres af run-today-handleren nedenfor, så GET'et efter klikket
+  // matcher rigtig backend-adfærd (training_day_runs har nu en række for i dag).
+  let currentTodayRun = todayRun;
   await page.route("**/api/me/onboarding-progress", route => {
     const req = route.request();
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(req) });
@@ -65,7 +72,7 @@ async function installOnboardingMocks(page, { todayRun = null } = {}) {
   await page.route("**/api/training/me", route => {
     const req = route.request();
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(req) });
-    return json(route, trainingMeResponse({ todayRun }));
+    return json(route, trainingMeResponse({ todayRun: currentTodayRun }));
   });
   await page.route("**/api/training/bulk", route => {
     const req = route.request();
@@ -85,6 +92,12 @@ async function installOnboardingMocks(page, { todayRun = null } = {}) {
   await page.route("**/api/training/run-today", route => {
     const req = route.request();
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(req) });
+    // Simulerer rigtig backend: efter et vellykket run-today rapporterer en
+    // efterfølgende GET /api/training/me dagen som kørt.
+    currentTodayRun = {
+      executed_by: "manager", bonus_applied: true, report: RUN_TODAY_REPORT,
+      tick_date: "2026-09-14", created_at: "2026-09-14T06:00:00.000Z",
+    };
     return json(route, { ok: true, tickDate: "2026-09-14", report: RUN_TODAY_REPORT });
   });
 }

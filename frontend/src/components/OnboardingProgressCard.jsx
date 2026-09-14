@@ -193,15 +193,25 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
           {rawTrainingStep && !rawTrainingStep.done && trainingIsNext && useOneClick && (
             <div className="mt-3 pt-3 border-t border-cz-border">
               {trainingCompletedLocally ? (
-                alreadyRanToday || weekResult?.alreadyRan ? (
-                  <p className="text-xs text-cz-2">{t("onboardingProgress.oneClick.alreadyRun")}</p>
-                ) : (
+                // CodeRabbit-fund (blokerende): et VELLYKKET klik her sætter
+                // weekResult.count OG (via runToday -> refresh()) det friske
+                // training.todayRun — i vilkårlig indbyrdes rækkefølge. Et
+                // tjek der spørger "har dagen kørt?" FØR "vandt dette klik en
+                // rapport?" rammer derfor altid "Ugen er allerede kørt" efter
+                // et rigtigt succesfuldt klik, og resultatlinjen (med tal +
+                // link) kan aldrig vises. weekResult.count skal vinde når det
+                // er sat i DENNE session — "allerede kørt" er kun for
+                // 409/alleredeKørt-tilfælde og for load hvor dagen var kørt
+                // FØR spilleren klikkede noget som helst.
+                weekResult?.count != null ? (
                   <p className="text-xs text-cz-2">
-                    {t("onboardingProgress.oneClick.resultLine", { count: weekResult?.count ?? 0 })}{" "}
+                    {t("onboardingProgress.oneClick.resultLine", { count: weekResult.count })}{" "}
                     <Link to="/training" className="text-cz-accent-t hover:underline font-medium">
                       {t("onboardingProgress.oneClick.resultLink")}
                     </Link>
                   </p>
+                ) : (
+                  <p className="text-xs text-cz-2">{t("onboardingProgress.oneClick.alreadyRun")}</p>
                 )
               ) : (
                 <div className="flex flex-wrap items-center gap-3">
