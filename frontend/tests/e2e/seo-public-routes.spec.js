@@ -136,8 +136,9 @@ test("static Organization + WebSite JSON-LD is present on every route; VideoGame
 // faktisk eksponerer. Uden denne test kan en ny page.tsx i marketing/ blive
 // tilføjet uden en tilsvarende rewrite (404 på cyclingzone.org), eller en
 // rewrite overleve efter en side er fjernet dér (spøgelses-rute) — begge dele
-// opdages først i produktion. Forsiden "/" er bevidst undtaget: den ejes af
-// den prerenderede LandingPage i denne PR (#4067-scope), ikke af marketing/.
+// opdages først i produktion. Forsiden "/" var tidligere bevidst undtaget (den
+// ejedes af den prerenderede LandingPage); siden #4067-opfølgeren (betinget
+// cookie-rewrite på "/") tæller "/" nu med som en almindelig marketing-rewrite.
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const MARKETING_BASE = "https://cycling-zone-marketing.vercel.app";
 
@@ -170,9 +171,7 @@ test("frontend/vercel.json's marketing-rewrites matcher marketing/app 1:1 (#4067
       .map((r) => r.source),
   );
 
-  const actualRoutes = new Set(
-    marketingPageRoutes(join(repoRoot, "marketing", "app")).filter((r) => r !== "/"),
-  );
+  const actualRoutes = new Set(marketingPageRoutes(join(repoRoot, "marketing", "app")));
 
   for (const route of actualRoutes) {
     expect(rewrittenPaths.has(route), `marketing/app har siden ${route}, men vercel.json rewriter den ikke`).toBe(

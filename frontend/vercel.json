@@ -42,6 +42,11 @@
       "destination": "https://cycling-zone-marketing.vercel.app/_next/:path"
     },
     {
+      "source": "/",
+      "missing": [{ "type": "cookie", "key": "cz_session" }],
+      "destination": "https://cycling-zone-marketing.vercel.app/"
+    },
+    {
       "source": "/((?!assets/|fonts/|brand/|locales/).*)",
       "destination": "/app.html"
     }
