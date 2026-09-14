@@ -37,4 +37,24 @@
   <url>
     <loc>https://cyclingzone.org/patch-notes</loc>
   </url>
+  <!-- #4067: offentlige marketing-sider, rewritet til marketing/-deploymentet
+       via frontend/vercel.json. Kilden til sandhed for disse URL'er (inkl.
+       hreflang-alternates) er marketing/app/sitemap.ts, som marketing.vercel.app
+       selv eksponerer paa /sitemap.xml - denne fil er den statiske sitemap for
+       cyclingzone.org (filsystem-match slaar rewrites paa /sitemap.xml). -->
+  <url>
+    <loc>https://cyclingzone.org/how-it-works</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/pro-cycling-manager-alternative</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/da</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/da/saadan-fungerer-det</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/da/pro-cycling-manager-alternativ</loc>
+  </url>
 </urlset>
