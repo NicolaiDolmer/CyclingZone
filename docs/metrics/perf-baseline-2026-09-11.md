@@ -34,6 +34,48 @@ Performance ≥ 90. Lighthouse-lab måler ikke INP (kræver field-data/CrUX) —
 | `/roadmap` — efter spor 2 (#5177, 14/9) | mobil | 72 | 5573 ms | 0 ms | **0,000** | 610 KB | 60 | 🔴 |
 | `/roadmap` — efter spor 2 (#5177, 14/9) | desktop | 97 | 1188 ms | 0 ms | **0,038** | 610 KB | 60 | 🟢 |
 
+### Spor 3 (#5177, 14/9) — sitewide i18n-bundle + flag-icons-CSS
+
+Egen før/efter-serie, målt i ÉN session med samme metode (lokal
+`npm run build` + `npm run preview`, `localhost`, Lighthouse **mobil**, 3
+kørsler pr. side, median, Playwright-Chromium). Rækkerne herunder skal kun
+sammenlignes indbyrdes — ikke med `cyclingzone.org`-rækkerne ovenfor.
+
+| Side | Perf | LCP | FCP | TBT | CLS | Transfer | Requests |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `/` før | 76 | 3990 ms | 3545 ms | 36 ms | 0,114 | 490 KB | 35 |
+| `/` **efter** | 77 | **3919 ms** | **3192 ms** | 90 ms | 0,114 | 501 KB | 36 |
+| `/login` før | 75 | 4878 ms | 3453 ms | 0 ms | 0,037 | 584 KB | 42 |
+| `/login` **efter** | 78 | **4392 ms** | **3177 ms** | 85 ms | 0,037 | 512 KB | 41 |
+| `/roadmap` før | 70 | 5850 ms | 3623 ms | 0 ms | 0,000 | 612 KB | 61 |
+| `/roadmap` **efter** | 74 | **5228 ms** | **3169 ms** | 64 ms | 0,037 | 540 KB | 60 |
+
+**Vigtigt forbehold — dette er WORST CASE.** Lighthouse-Chromium på målemaskinen
+melder et dansk `navigator.language`, så alle rækker er målt som en **dansk**
+besøgende. Netop dén besøgende er den eneste der ikke får i18n-gevinsten:
+engelsk er `fallbackLng` og ligger stadig inline, så dansk henter begge bundles
+(69,5 + 73,0 KB gzip mod 131,2 KB før = +11,4 KB, fordi gzip-ordbogen er pr.
+fil). En **engelsk** besøgende henter kun de 69,5 KB, altså −61,7 KB kritisk JS
+oveni flag-gevinsten. Tallene ovenfor viser derfor kun flag-CSS-effekten plus en
+lille i18n-STRAF; den engelske forbedring er større.
+
+- **Flag-icons-CSS (85 KB, 99,9 % ubrugt ifølge `unused-css-rules`) er væk fra
+  alle tre sider.** Den blev trukket ind af `LanguageSwitcher`s to 20×15 px flag
+  og lå derfor i entry-chunkens CSS-graf; switcheren bruger nu inline SVG.
+  `/login` −72 KB, `/roadmap` −72 KB transfer. `/` viste den aldrig (landing har
+  ingen sprogvælger), så `/`-transferen er netto +11 KB fra i18n-splittet alene.
+- **FCP falder 350-450 ms på alle tre sider**, fordi den danske bundle ikke
+  længere skal hentes og parses før first paint.
+- **TBT stiger 0-36 ms → 64-90 ms.** Reelt og reproducerbart, ikke støj: arbejde
+  der før lå FØR FCP (entry-grafens modul-evaluering) ligger nu efter, og TBT
+  måler kun vinduet efter FCP. Alle værdier er stadig klart under 200 ms-
+  tærsklen, så INP-proxyen er fortsat grøn.
+- **`/roadmap`-CLS 0,000 → 0,037** — samme kendte flakiness som noten under
+  "efter spor 1" (2 af 3 kørsler 0,037, én 0). Begge tal er grønne.
+
+**LCP-målet (< 2.500 ms) er stadig IKKE ramt** — 5.228 ms på `/roadmap`. Se
+fund 3 for hvad der er tilbage.
+
 Verdikt = værste enkeltmetrik mod tærsklerne (LCP/CLS/Performance; grænser:
 grøn = CWV "good"/≥90, gul = CWV "needs improvement"/50-89, rød = CWV "poor"/<50).
 
@@ -156,6 +198,24 @@ inden for budget (1138 KB + 5% margin). `audit-perf-seo.mjs`: 0 🔴, 1 🟡 (bu
    render-blocking `chunk-selfheal.js`/`index-*.css` er dette den reelle
    LCP-flaskehals; bør blive sit eget spor/issue (global scope, ikke en
    enkelt-side-fix).
+   **Status 14/9 (#5177 spor 3):** begge de to sitewide bidragsydere er
+   behandlet — se "Spor 3"-tabellen ovenfor. Flag-CSS'en er helt væk fra
+   den kritiske sti (−72 KB på `/login` og `/roadmap`), og i18n-bundlen er
+   splittet pr. sprog (−61,7 KB for en engelsk besøgende; en dansk betaler
+   +11,4 KB, bevidst bytte, EN-first). LCP faldt 5.850 → 5.228 ms på
+   `/roadmap` — stadig langt fra 2.500 ms.
+   **Det der nu er tilbage, målt med `render-blocking-insight`:**
+   estimeret spildtid faldt 330 ms → 160 ms, og de to poster er
+   `chunk-selfheal.js` (10 KB, **615 ms** parser-blokering — den er en
+   classic `<script src>` i `<head>` og skal blive der, men behøver ikke
+   være en separat REQUEST: inlines den, forsvinder rundturen uden at
+   semantikken ændres) og `index-*.css` (16,7 KB, 315 ms, 89,7 % ubrugt —
+   Tailwinds sitewide utility-sæt; kan ikke gøres non-blocking uden FOUC på
+   sidehovedet). Ingen af de to er rørt her: `chunk-selfheal` er den mest
+   sikkerhedskritiske fil i repoet (#4595/CYCLINGZONE-56) og fortjener sin
+   egen PR med ejer-go, ikke en sidegevinst i et perf-spor. Resten af
+   LCP'en er `elementRenderDelay` (975 ms målt i `lcp-breakdown-insight`),
+   altså ren JS-eksekvering frem til at roadmap-teksten males.
 
 Alle tre bør blive egne spor/issues (ikke løst i denne PR — ren måling).
 
