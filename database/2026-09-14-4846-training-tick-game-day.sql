@@ -45,11 +45,16 @@ BEGIN
   WHERE n.nspname = 'public'
     AND t.relname = 'training_day_runs'
     AND c.contype = 'u'
-    AND c.conkey = ARRAY(
-      SELECT a.attnum FROM pg_attribute a
-      WHERE a.attrelid = t.oid AND a.attname IN ('team_id', 'tick_date')
-      ORDER BY a.attnum
-    )
+    -- Sammenlign NAVNE-MAENGDEN, ikke conkey direkte: conkey baerer kolonnerne i
+    -- den raekkefoelge constrainten erklaerer dem. Var den skrevet
+    -- UNIQUE (tick_date, team_id), ville en attnum-sammenligning ikke matche,
+    -- con_name forblive NULL, DROP'en udeblive — og den gamle constraint ville
+    -- saa tavst afvise loebsdag 2 paa samme kalenderdato med 23505 (alreadyRan).
+    AND (
+      SELECT array_agg(a.attname ORDER BY a.attname)
+      FROM pg_attribute a
+      WHERE a.attrelid = t.oid AND a.attnum = ANY (c.conkey)
+    ) = ARRAY['team_id', 'tick_date']
   LIMIT 1;
 
   IF con_name IS NOT NULL THEN
