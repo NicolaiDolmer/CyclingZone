@@ -1,6 +1,10 @@
 # Win-back consent-audit, segment og mail-udkast
 
-> **Status:** docs-only, ingen kode aendret. Refs #2760 #4592 #2853.
+> **Status (14/9):** implementeret i #2760 (mailtype `winback` + `scripts/winback-send.mjs`,
+> se `backend/lib/winbackSegment.js` for den kodede udgave af segment-SQL'en i afsnit 2).
+> Denne fil forbliver den historiske consent-audit; dette afsnit erstatter ikke resten.
+>
+> **Oprindelig status:** docs-only, ingen kode aendret. Refs #2760 #4592 #2853.
 > **Opgave:** ejer-direktiv 20/7 (#2760): "Har vi indsamlet korrekt tilladelse til at sende dem mails? Tjek venligst, eller forslaa endnu bedre setup."
 > **Forfatter:** Claude Code (docs/2760-winback-consent), 2026-09-02.
 

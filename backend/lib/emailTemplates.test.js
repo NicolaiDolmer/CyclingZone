@@ -5,6 +5,7 @@ import {
   buildWelcomeEmail,
   buildDay1Email,
   buildRaceDigestEmail,
+  buildWinbackEmail,
   buildLoopEmail,
 } from "./emailTemplates.js";
 import { WORDMARK_FILENAME } from "./emailWordmarkAsset.js";
@@ -53,8 +54,8 @@ function assertHasSharedFooter(template) {
   );
 }
 
-test("TEMPLATE_TYPES lists the three loop email types", () => {
-  assert.deepEqual(TEMPLATE_TYPES, ["welcome", "day1", "race_digest"]);
+test("TEMPLATE_TYPES lists the loop email types plus winback (#2760)", () => {
+  assert.deepEqual(TEMPLATE_TYPES, ["welcome", "day1", "race_digest", "winback"]);
 });
 
 // ─── welcome ────────────────────────────────────────────────────────────────
@@ -195,6 +196,86 @@ test("race_digest email no longer renders a #3399 narrative headline (#2853 v2 d
   assert.ok(!t.html.includes("Your best moment"));
 });
 
+// ─── winback (#2760) ────────────────────────────────────────────────────────
+
+test("winback email: subject, days-since, rank/pool, dashboard link, unsubscribe link, shared footer, no em-dash", () => {
+  const t = buildWinbackEmail({
+    teamName: "Team Velodrome",
+    daysSinceLastSeen: 45,
+    rankInDivision: 4,
+    poolLabel: "D3 Pool A",
+    unsubscribeUrl: UNSUB_URL,
+  });
+  assert.equal(t.subject, "Team Velodrome raced while you were away");
+  assert.ok(t.html.includes("Team Velodrome"));
+  assert.ok(t.html.includes("45 days ago"));
+  assert.ok(t.html.includes("sits 4 in D3 Pool A"));
+  assert.ok(t.text.includes("45 days ago"));
+  assert.ok(t.text.includes("sits 4 in D3 Pool A"));
+  assert.ok(t.html.includes("https://cyclingzone.org/dashboard"));
+  assertHasUnsubscribeLink(t);
+  assertHasSharedFooter(t);
+  assertNoEmDash(t, "winback");
+});
+
+test("winback email: rank/pool line is omitted (not blank/undefined) when the manager has no active-season standing", () => {
+  const t = buildWinbackEmail({ teamName: "Team Velodrome", daysSinceLastSeen: 60, rankInDivision: null, poolLabel: null, unsubscribeUrl: UNSUB_URL });
+  assert.ok(!t.html.includes("undefined"));
+  assert.ok(!t.html.includes("null"));
+  assert.ok(t.html.includes("60 days ago"));
+  assert.ok(!t.html.includes("sits"), "no dangling 'sits N in POOL' fragment when rank/pool are absent");
+});
+
+test("winback email: daysSinceLastSeen null (never logged back in) renders a truthful generic line, not an invented number", () => {
+  const t = buildWinbackEmail({ teamName: "Team Velodrome", daysSinceLastSeen: null, rankInDivision: null, poolLabel: null, unsubscribeUrl: UNSUB_URL });
+  assert.ok(!t.html.includes("null days"));
+  assert.ok(!t.html.includes("undefined"));
+  assert.ok(t.html.includes("have not been by in a while"));
+});
+
+test("winback email falls back to a generic team name when teamName is missing", () => {
+  const t = buildWinbackEmail({ teamName: "", daysSinceLastSeen: 40, unsubscribeUrl: UNSUB_URL });
+  assert.equal(t.subject, "your team raced while you were away");
+  assert.ok(t.html.includes("your team"));
+});
+
+test("winback email escapes the pool label (no HTML injection from league_divisions.label)", () => {
+  const t = buildWinbackEmail({
+    teamName: "T",
+    daysSinceLastSeen: 30,
+    rankInDivision: 1,
+    poolLabel: "<b>Pool</b>",
+    unsubscribeUrl: UNSUB_URL,
+  });
+  assert.ok(!t.html.includes("<b>Pool</b>"));
+  assert.ok(t.html.includes("&lt;b&gt;Pool&lt;/b&gt;"));
+});
+
+test("winback email CTA carries utm_source=email&utm_medium=winback&utm_campaign=winback", () => {
+  const t = buildWinbackEmail({ teamName: "T", daysSinceLastSeen: 40, unsubscribeUrl: UNSUB_URL });
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&amp;utm_medium=winback&amp;utm_campaign=winback"/);
+  assert.match(t.text, /Open your dashboard: https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&utm_medium=winback&utm_campaign=winback$/m);
+});
+
+test("winback email: language 'da' renders the Danish copy, no em-dash, no English residue", () => {
+  const t = buildWinbackEmail({
+    teamName: "Team Velodrome",
+    daysSinceLastSeen: 45,
+    rankInDivision: 4,
+    poolLabel: "D3 Pool A",
+    unsubscribeUrl: UNSUB_URL,
+    language: "da",
+  });
+  assert.equal(t.subject, "Team Velodrome kørte mens du var væk");
+  assert.ok(t.html.includes("Hej,"));
+  assert.ok(t.html.includes("45 dage siden"));
+  assert.ok(t.html.includes("Åbn dit dashboard"));
+  assert.ok(t.text.includes("Åbn dit dashboard"));
+  assertNoEmDash(t, "winback da");
+  assert.ok(!t.html.includes("Hi,"));
+  assert.ok(!t.html.includes("Open your dashboard"));
+});
+
 test("unsubscribe URL is quote-escaped so a value cannot break out of the href attribute", () => {
   // The unsubscribe URL is the one caller-provided value that lands inside an
   // href="..." attribute. A double quote in it must be entity-encoded, or the
@@ -238,6 +319,8 @@ test("buildLoopEmail dispatches by type", () => {
   assert.equal(day1.subject, "Day 1: your riders have already raced");
   const digest = buildLoopEmail("race_digest", { teamName: "T", results: [], unsubscribeUrl: UNSUB_URL });
   assert.equal(digest.subject, "T raced while you were away");
+  const winback = buildLoopEmail("winback", { teamName: "T", unsubscribeUrl: UNSUB_URL });
+  assert.equal(winback.subject, "T raced while you were away");
 });
 
 test("buildLoopEmail throws for an unknown type", () => {
@@ -348,6 +431,8 @@ test("buildLoopEmail passes language through for all three types", () => {
   assert.equal(day1.subject, "Dag 1: dine ryttere har allerede kørt");
   const digest = buildLoopEmail("race_digest", { teamName: "T", results: [], unsubscribeUrl: UNSUB_URL, language: "da" });
   assert.equal(digest.subject, "T kørte mens du var væk");
+  const winback = buildLoopEmail("winback", { teamName: "T", unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.equal(winback.subject, "T kørte mens du var væk");
 });
 
 // ─── shell: dark-mode lock, wordmark, radius (#2853 follow-up 2026-09-08) ────
@@ -371,6 +456,16 @@ function allTemplates() {
       buildRaceDigestEmail({
         teamName: "T",
         results: [{ riderName: "R", rank: 1, raceName: "Race" }],
+        unsubscribeUrl: UNSUB_URL,
+      }),
+    ],
+    [
+      "winback",
+      buildWinbackEmail({
+        teamName: "T",
+        daysSinceLastSeen: 45,
+        rankInDivision: 4,
+        poolLabel: "D3 Pool A",
         unsubscribeUrl: UNSUB_URL,
       }),
     ],

@@ -29,7 +29,7 @@
 
 import { WORDMARK_FILENAME } from "./emailWordmarkAsset.js";
 
-export const TEMPLATE_TYPES = Object.freeze(["welcome", "day1", "race_digest"]);
+export const TEMPLATE_TYPES = Object.freeze(["welcome", "day1", "race_digest", "winback"]);
 
 const DASHBOARD_URL = "https://cyclingzone.org/dashboard";
 const RESULTS_URL = "https://cyclingzone.org/resultater";
@@ -516,9 +516,100 @@ export function buildRaceDigestEmail({ teamName, results, unsubscribeUrl, langua
   };
 }
 
+/**
+ * One-off #2760 win-back email, sent at most once ever per manager by
+ * scripts/winback-send.mjs to a manager absent WINBACK_DORMANCY_DAYS+
+ * (backend/lib/winbackSegment.js) who has explicitly opted into
+ * consent_preferences.email_marketing (audit section 1.3 -- this is
+ * marketing, not a transactional/service message).
+ *
+ * DRAFT CONTENT -- per ejer-beslutning 14/9 (#2760) the owner writes the
+ * final prose himself; this is the structure + fact points only (S4 starts
+ * 28/9, what changed since August), following the skeleton rule in
+ * docs/TONE_OF_VOICE.md's "Founder voice: template". Every prose line below
+ * is flagged "EJER SKAL GODKENDE" in this PR's body -- do not flip
+ * winback_send_enabled before the owner has reviewed/rewritten this copy.
+ * rankInDivision/poolLabel are optional (a manager who never reached an
+ * active-season standing has neither) -- the sentence degrades gracefully
+ * instead of printing a blank/undefined.
+ * @param {{teamName: string, daysSinceLastSeen: number|null, rankInDivision: number|null, poolLabel: string|null, unsubscribeUrl: string, language?: string}} args
+ */
+export function buildWinbackEmail({ teamName, daysSinceLastSeen, rankInDivision, poolLabel, unsubscribeUrl, language }) {
+  const lang = normalizeLanguage(language);
+  const copy = copyFor(lang);
+  const name = escapeHtml(teamName) || copy.fallbackTeamName;
+  const plainName = teamName || copy.fallbackTeamName;
+  const dashboardUrl = withEmailUtm(DASHBOARD_URL, "winback");
+  const eyebrow = lang === "da" ? "SÆSON 4" : "SEASON 4";
+  const hasRank = rankInDivision != null && poolLabel;
+
+  const subject = lang === "da" ? `${plainName} kørte mens du var væk` : `${plainName} raced while you were away`;
+
+  // Two renderings of the same sentence: `statusLine` for the HTML body
+  // (escaped team name + pool label), `statusLinePlain` for the plaintext
+  // part (raw values) -- same split buildDay1Email/buildRaceDigestEmail use
+  // above. daysSinceLastSeen null means the manager never logged back in at
+  // all (see winbackSegment.js), a real, distinct case from "N days ago".
+  function buildStatusLine({ escaped }) {
+    const teamWord = escaped ? name : plainName;
+    const checkInClause =
+      daysSinceLastSeen != null
+        ? lang === "da"
+          ? `${teamWord} kørte mens du var væk. Sidst du tjekkede ind var for ${daysSinceLastSeen} dage siden`
+          : `${teamWord} kept racing while you were away. You last checked in ${daysSinceLastSeen} days ago`
+        : lang === "da"
+          ? `${teamWord} kørte, men du har ikke været forbi et stykke tid`
+          : `${teamWord} kept racing, but you have not been by in a while`;
+    if (!hasRank) return `${checkInClause}.`;
+    const pool = escaped ? escapeHtml(poolLabel) : poolLabel;
+    return lang === "da"
+      ? `${checkInClause}, og holdet ligger lige nu som ${rankInDivision} i ${pool}.`
+      : `${checkInClause}, and the team currently sits ${rankInDivision} in ${pool}.`;
+  }
+  const statusLine = buildStatusLine({ escaped: true });
+  const statusLinePlain = buildStatusLine({ escaped: false });
+
+  // Fact points only (ejer-brief 14/9): mobile, pre-race reminder, assistant
+  // late-fill, training-per-race-day "on the way". Every clause here is a
+  // verified shipped feature, not an invented one -- see PR body for the
+  // per-line "EJER SKAL GODKENDE" flags before this ships.
+  const newsLine =
+    lang === "da"
+      ? "Et par ting er nye siden du var her sidst: spillet virker nu på mobilen, du får en påmindelse før dit hold kører, og assistenten fylder din opstilling hvis du glemmer det. Træning pr. løbsdag er på vej."
+      : "A few things are new since you were last here: the game now works on your phone, you get a reminder before your team races, and the assistant fills your lineup if you forget. Training per race day is on the way.";
+
+  const seasonLine =
+    lang === "da"
+      ? "Næste sæson starter 28. september. Vil du med igen inden da, er det nu."
+      : "The next season starts 28 September. If you want back in before then, now is the time.";
+
+  const bodyHtml = `
+    <p style="margin:0 0 16px;">${copy.greeting}</p>
+    <p style="margin:0 0 16px;">${statusLine}</p>
+    <p style="margin:0 0 16px;">${newsLine}</p>
+    <p style="margin:0 0 16px;">${seasonLine}</p>
+    <p style="margin:0 0 8px;">${primaryButtonHtml(dashboardUrl, copy.dashboardButton)}</p>
+  `.trim();
+
+  const bodyText = [
+    copy.greeting,
+    statusLinePlain,
+    newsLine,
+    seasonLine,
+    `${copy.dashboardButton}: ${dashboardUrl}`,
+  ].join("\n\n");
+
+  return {
+    subject,
+    html: wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language: lang }),
+    text: wrapText({ bodyText, unsubscribeUrl, language: lang }),
+  };
+}
+
 export function buildLoopEmail(type, data) {
   if (type === "welcome") return buildWelcomeEmail(data);
   if (type === "day1") return buildDay1Email(data);
   if (type === "race_digest") return buildRaceDigestEmail(data);
+  if (type === "winback") return buildWinbackEmail(data);
   throw new Error(`buildLoopEmail: unknown type "${type}"`);
 }
