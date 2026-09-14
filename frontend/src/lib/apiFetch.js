@@ -42,17 +42,22 @@ const retryNotBefore = new Map();
  *
  * @param {Response} res
  * @param {unknown} body
+ * @param {() => number} [now] - injicérbar ur (samme værdi apiFetch selv bruger
+ *   til at sætte vinduet) — uden den ville dato-grenen regne mod DET RIGTIGE
+ *   ur selv når kaldstedet kører med et fiktivt (CodeRabbit-fund, #5089).
  * @returns {number | null} sekunder, eller null hvis intet brugbart tal fandtes.
  */
-export function parseRetryAfterSeconds(res, body) {
+export function parseRetryAfterSeconds(res, body, now = () => Date.now()) {
   const header = res.headers?.get?.("Retry-After");
   if (header != null && header !== "") {
     const seconds = Number(header);
     if (Number.isFinite(seconds) && seconds >= 0) return seconds;
     // Retry-After MÅ ifølge HTTP-spec'en også være en dato — backenden gør det
     // aldrig i dag, men en fremtidig proxy/CDN-429 kunne. Konverter forsigtigt.
+    // Math.ceil (ikke round): et vindue der rundes NED kan udløbe FØR den dato
+    // serveren bad om at vente til — det bryder selve "ikke før X"-kontrakten.
     const dateMs = Date.parse(header);
-    if (!Number.isNaN(dateMs)) return Math.max(0, Math.round((dateMs - Date.now()) / 1000));
+    if (!Number.isNaN(dateMs)) return Math.max(0, Math.ceil((dateMs - now()) / 1000));
   }
   const bodySeconds = body?.retry_after_seconds;
   if (typeof bodySeconds === "number" && Number.isFinite(bodySeconds) && bodySeconds >= 0) {
@@ -98,7 +103,7 @@ export async function apiFetch(url, options = {}, ctx = {}) {
     } catch {
       // Ikke-JSON eller tomt 429-svar — vinduet sættes stadig hvis headeren findes.
     }
-    const seconds = parseRetryAfterSeconds(res, body);
+    const seconds = parseRetryAfterSeconds(res, body, now);
     if (seconds != null) retryNotBefore.set(url, now() + seconds * 1000);
     return { ok: false, status: 429, limited: true, retryAt: retryNotBefore.get(url) ?? null, data: body };
   }

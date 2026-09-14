@@ -39,11 +39,29 @@ test("parseRetryAfterSeconds falder tilbage til retry_after_seconds i kroppen", 
   assert.equal(parseRetryAfterSeconds(res, { retry_after_seconds: 17 }), 17);
 });
 
-test("parseRetryAfterSeconds accepterer en HTTP-dato-form (fremtidssikring, backenden gør det aldrig i dag)", () => {
-  const future = new Date(Date.now() + 5000).toUTCString();
+test("parseRetryAfterSeconds accepterer en HTTP-dato-form, og runder OP (Math.ceil, ikke Math.round)", () => {
+  // toUTCString formaterer altid til et helt sekund — vælg derfor et "nu" der
+  // IKKE selv ligger på et helt sekund, så differencen bliver brøkdel-sekunder
+  // og round/ceil rent faktisk kan give forskellige svar (3.2s: round → 3,
+  // ceil → 4). Epoch-millisekunder skrevet direkte, ikke "now + X", for ikke
+  // selv at snuble i toUTCString's afrunding.
+  const now = 1_000_800;
+  const future = new Date(1_004_000).toUTCString(); // helt sekund, som HTTP-date kræver
   const res = jsonResponse(429, null, { "Retry-After": future });
-  const seconds = parseRetryAfterSeconds(res, null);
-  assert.ok(seconds >= 4 && seconds <= 5, `forventede ~5s, fik ${seconds}`);
+  const seconds = parseRetryAfterSeconds(res, null, () => now);
+  assert.equal(seconds, 4, "3.2s skal rundes OP til 4 — Math.round ville i stedet give 3, FØR den dato serveren bad om");
+});
+
+test("parseRetryAfterSeconds bruger det INJICEREDE ur til dato-grenen, ikke det ægte (CodeRabbit-fund)", () => {
+  // Fiktivt "nu" = 1970 (epoch 0), vidt forskelligt fra det ægte ur (2026).
+  // Datoen er 10s EFTER det fiktive nu. Brugte koden det ægte Date.now() ved
+  // en fejl, ville 1970+10s ligge langt i FORTIDEN og klampes til 0 — så
+  // enhver værdi ANDET end 0 beviser at det er det injicerede ur der bruges.
+  const fakeNow = 0;
+  const future = new Date(fakeNow + 10_000).toUTCString();
+  const res = jsonResponse(429, null, { "Retry-After": future });
+  const seconds = parseRetryAfterSeconds(res, null, () => fakeNow);
+  assert.equal(seconds, 10, "skal regnes mod det injicerede ur, ikke mod Date.now()");
 });
 
 test("parseRetryAfterSeconds returnerer null uden hverken header eller krop", () => {

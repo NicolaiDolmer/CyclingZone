@@ -11,19 +11,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { reportUnauthorizedResponse, _resetForTests } from "./networkErrorGuards.js";
 
-function fakeClient({ sessionToken = "tok-1", deniedByUser = true, getUserThrows = false } = {}) {
+function fakeClient({ sessionToken = "tok-1", deniedByUser = true, getUserThrows = false, renewDuringGetUser = null } = {}) {
   const state = { signOutCalls: 0, getUserCalls: 0, sessionToken };
   state.client = {
     auth: {
       // `sessionToken` læses fra `state` ved HVERT kald (ikke closure'et ved
-      // oprettelse) — så en test kan simulere et re-login midt i sekvensen ved
-      // at ændre `state.sessionToken` mellem to kald, uden en ny fake-client.
+      // oprettelse) — så en test kan simulere et re-login midt i sekvensen,
+      // eller en fornyelse midt i getUser()'s netværkskald, uden en ny client.
       getSession: async () => ({
         data: { session: state.sessionToken ? { access_token: state.sessionToken } : null },
       }),
       getUser: async () => {
         state.getUserCalls += 1;
         if (getUserThrows) throw new Error("network down");
+        // TOCTOU-simulation (CodeRabbit-fund, #5089): sessionen fornyer sig
+        // MENS dette (langsomme) netværkskald er undervejs.
+        if (renewDuringGetUser) state.sessionToken = renewDuringGetUser;
         return deniedByUser
           ? { data: { user: null }, error: { status: 401 } }
           : { data: { user: { id: "u1" } }, error: null };
@@ -125,5 +128,28 @@ test("kunne slet ikke spørge Supabase (netværksudfald) → rør ikke sessionen
   const state = fakeClient({ getUserThrows: true });
   const result = await reportUnauthorizedResponse(res401, headers, "network-down", state.client);
   assert.equal(result, false);
+  assert.equal(state.signOutCalls, 0);
+});
+
+test("to samtidige 401'er for FORSKELLIGE tokens afgøres HVER for sig, ikke af et globalt lås (CodeRabbit-fund)", async () => {
+  // Sessionen er allerede fornyet til tok-B da bygen rammer — men en sen
+  // fetch der blev afsendt FØR fornyelsen lander stadig med tok-A i sin 401.
+  const state = fakeClient({ sessionToken: "tok-B" });
+  const headersOld = { Authorization: "Bearer tok-A" };
+  const headersNew = { Authorization: "Bearer tok-B" };
+  const [resultOld, resultNew] = await Promise.all([
+    reportUnauthorizedResponse(res401, headersOld, "stale-request", state.client),
+    reportUnauthorizedResponse(res401, headersNew, "current-request", state.client),
+  ]);
+  assert.equal(resultOld, false, "401'en for det GAMLE token er en fornyelses-race, ikke en død session");
+  assert.equal(resultNew, true, "401'en for det AKTUELLE token skal stadig blive erklæret død selvstændigt");
+  assert.equal(state.signOutCalls, 1, "kun ÉN reel afvisning fandt sted, og den skal stadig udløse signOut");
+});
+
+test("sessionen fornyer sig MENS getUser() er undervejs → ingen signOut (TOCTOU, CodeRabbit-fund)", async () => {
+  const state = fakeClient({ sessionToken: "tok-dead", renewDuringGetUser: "tok-fresh" });
+  const headersDead = { Authorization: "Bearer tok-dead" };
+  const result = await reportUnauthorizedResponse(res401, headersDead, "toctou", state.client);
+  assert.equal(result, false, "en sen bekræftelse af en gammel 401 må ikke rydde en session der blev frisk undervejs");
   assert.equal(state.signOutCalls, 0);
 });
