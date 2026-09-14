@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -7,11 +8,11 @@ import {
   parseTransferEventId,
   isTradeReportable,
   validateTradeReport,
-} from "./tradeReport.js";
+} from "./tradeReport.ts";
 
 test("TRADE_REPORT_TYPES excludes academy — it has no counterparty to report against", () => {
   assert.deepEqual(TRADE_REPORT_TYPES, ["auction", "transfer", "swap"]);
-  assert.equal(TRADE_REPORT_TYPES.includes("academy"), false);
+  assert.equal((TRADE_REPORT_TYPES as readonly string[]).includes("academy"), false);
 });
 
 test("parseTransferEventId splits the teamTransferHistory.js composite id", () => {

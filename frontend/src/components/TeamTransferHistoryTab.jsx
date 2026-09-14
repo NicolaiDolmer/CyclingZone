@@ -7,9 +7,9 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { computeTransferProfit } from "../lib/transferProfit.js";
 import { filterTransferHistoryNoSale } from "../lib/transferHistoryNoSale.js";
 import { useTableSort } from "../lib/useTableSort.js";
-import { isTradeReportable, parseTransferEventId } from "../lib/tradeReport.js";
+import { isTradeReportable, parseTransferEventId } from "../lib/tradeReport";
 import SortableTh from "./ui/SortableTh.jsx";
-import ReportTradeDialog from "./ReportTradeDialog.jsx";
+import ReportTradeDialog from "./ReportTradeDialog";
 import { Card, Select, Checkbox, ExchangeIcon, ArrowDownIcon, ArrowUpIcon, EyeIcon } from "./ui";
 
 const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", academy: "type.academy" };

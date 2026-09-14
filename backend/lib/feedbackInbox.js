@@ -58,7 +58,7 @@ const TRADE_REPORT_OFFER_STATUSES = ["accepted", "window_pending"];
  * den overhovedet er en rapporterbar, gennemført to-holds-handel. Returnerer
  * null hvis handlen ikke findes/ikke er afsluttet/ikke har en rigtig modpart
  * (fx en no_sale-auktion eller et garanteret AI-salg uden current_bidder_id —
- * samme udelukkelse som frontend allerede laver, se lib/tradeReport.js).
+ * samme udelukkelse som frontend allerede laver, se lib/tradeReport.ts).
  */
 function resolveTradeParties(transferType, row) {
   if (!row) return null;

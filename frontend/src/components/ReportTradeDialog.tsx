@@ -1,26 +1,34 @@
-import { useState } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import Modal from "./ui/Modal.jsx";
 import Field from "./ui/Field.jsx";
 import Textarea from "./ui/Textarea.jsx";
 import Button from "./ui/Button.jsx";
 import { authHeaders } from "../lib/supabase";
-import { validateTradeReport, TRADE_REPORT_MESSAGE_MAX_LENGTH, TRADE_REPORT_MESSAGE_MIN_LENGTH } from "../lib/tradeReport.js";
+import { validateTradeReport, TRADE_REPORT_MESSAGE_MAX_LENGTH, TRADE_REPORT_MESSAGE_MIN_LENGTH } from "../lib/tradeReport";
 
 const API = import.meta.env.VITE_API_URL;
+
+type ReportResult = "sent" | "alreadyReported" | null;
+
+interface ReportTradeDialogProps {
+  open: boolean;
+  onClose?: () => void;
+  transferType?: string | null;
+  transferId?: string | null;
+}
 
 // #4346 — "Report for review" på den enkelte gennemførte handel
 // (TeamTransferHistoryTab). Samme dialog-form som FeedbackModal.jsx (#2602):
 // et lille fritekst-felt, sendt til samme player_feedback-kanal. Tone (#3139):
 // "rapportér til gennemsyn", ALDRIG en anklage — ingen rød/advarende farver,
 // ingen "mistænkelig"-ordvalg i copy.
-export default function ReportTradeDialog({ open, onClose, transferType, transferId }) {
+export default function ReportTradeDialog({ open, onClose, transferType, transferId }: ReportTradeDialogProps) {
   const { t } = useTranslation("transfers");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  // null | "sent" | "alreadyReported"
-  const [result, setResult] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<ReportResult>(null);
 
   function handleClose() {
     if (submitting) return;
@@ -38,7 +46,7 @@ export default function ReportTradeDialog({ open, onClose, transferType, transfe
     onClose?.();
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const validationError = validateTradeReport({ message });
     if (validationError) {
@@ -85,6 +93,8 @@ export default function ReportTradeDialog({ open, onClose, transferType, transfe
       closeLabel={t("report.close")}
       title={t("report.title")}
       description={t("report.subtitle")}
+      footer={undefined}
+      ariaLabelledby={undefined}
     >
       {result ? (
         <div className="flex flex-col gap-4">
@@ -95,14 +105,19 @@ export default function ReportTradeDialog({ open, onClose, transferType, transfe
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Field label={t("report.messageLabel")} htmlFor="report-trade-message" helper={t("report.messageHelper", { count: remaining })}>
+          <Field
+            label={t("report.messageLabel")}
+            htmlFor="report-trade-message"
+            helper={t("report.messageHelper", { count: remaining })}
+            error={undefined}
+          >
             <Textarea
               id="report-trade-message"
               rows={4}
               value={message}
               disabled={submitting}
               maxLength={TRADE_REPORT_MESSAGE_MAX_LENGTH}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
               placeholder={t("report.messagePlaceholder")}
             />
           </Field>
