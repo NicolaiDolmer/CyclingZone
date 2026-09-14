@@ -154,6 +154,7 @@ import {
   listForumReports,
   resolveForumReport,
   setForumPostPinned,
+  moveForumPost,
   deleteForumPost,
   deleteForumReply,
   deleteForumImage,
@@ -14823,6 +14824,17 @@ router.patch("/admin/forum/reports/:id/resolve", requireAdmin, adminWriteLimiter
 router.patch("/admin/forum/posts/:id/pin", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { status, body } = await setForumPostPinned({ supabase, id: req.params.id, pinned: req.body?.pinned });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/admin/forum/posts/:id/move — flyt tråd til anden kategori (#4821).
+router.patch("/admin/forum/posts/:id/move", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await moveForumPost({ supabase, id: req.params.id, category: req.body?.category });
     res.status(status).json(body);
   } catch (e) {
     captureException(e);
