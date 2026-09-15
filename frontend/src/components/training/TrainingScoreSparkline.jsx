@@ -53,7 +53,6 @@ export default function TrainingScoreSparkline({ points, label, width = VIEW_W, 
       role="img"
       aria-label={label}
       className="block overflow-visible"
-      preserveAspectRatio="none"
     >
       {fillPaths.map((d) => (
         <path key={d} d={d} className="fill-cz-subtle" />

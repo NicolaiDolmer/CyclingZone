@@ -159,10 +159,10 @@
         "race": "Løb",
         "raceNote": "Løbsdag — løbet erstatter træningen",
         "sparkAria": "Træningsscore, seneste 7 dage",
-        "avg": "Gennemsnit, {{days}} dage",
+        "avg": "Gennemsnit, {days} dage",
         "best": "Bedste, 30 dage",
-        "driverUp": "{{driver}} løfter den {{points}}",
-        "driverDown": "{{driver}} koster {{points}}"
+        "driverUp": "{driver} +{points}",
+        "driverDown": "{driver} −{points}"
       }
     },
     "tabs": {

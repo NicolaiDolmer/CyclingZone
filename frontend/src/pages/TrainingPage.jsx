@@ -952,6 +952,35 @@ export default function TrainingPage() {
           <span className="text-cz-2">{ageForSeason(rider.birthdate, seasonYear) ?? "—"}</span>
         </td>
 
+        {/* #4851: Score — dagens tal + de sidste 7 dage. Loebsdage viser
+            "loeb" uden tal og efterlader et hul i kurven (spec §4.4).
+            Tabular figures, saa cifrene flugter lodret ned gennem truppen. */}
+        {scoreVisible && (
+          <td className={tdClass({ numeric: true, compact: true })}>
+            {riderScore?.todayIsRaceDay && !Number.isFinite(riderScore?.today) ? (
+              <span className="font-data text-3xs uppercase tracking-[.06em] text-cz-3">
+                {t("score.raceDay")}
+              </span>
+            ) : Number.isFinite(riderScore?.today) ? (
+              <div className="flex flex-col items-end gap-1">
+                <span className="font-mono tabular-nums text-sm font-bold leading-none text-cz-1">
+                  {riderScore.today}
+                </span>
+                {(riderScore.spark?.length ?? 0) > 1 && (
+                  <TrainingScoreSparkline
+                    points={riderScore.spark}
+                    label={t("score.sparkAria", { name: `${rider.firstname} ${rider.lastname}` })}
+                    width={64}
+                    height={18}
+                  />
+                )}
+              </div>
+            ) : (
+              <span className="text-cz-3 text-xs">—</span>
+            )}
+          </td>
+        )}
+
         {/* #3721: fokus-vælgeren er et panel, ikke en <select> (ejer-godkendt
             14/8). Cellen bar før fire signaler i 184 px — fokussets navn, et
             trænbarheds-mærke klistret ind i option-teksten (som klippede:
@@ -1077,35 +1106,6 @@ export default function TrainingPage() {
             </div>
           )}
         </td>
-
-        {/* #4851: Score — dagens tal + de sidste 7 dage. Loebsdage viser
-            "loeb" uden tal og efterlader et hul i kurven (spec §4.4).
-            Tabular figures, saa cifrene flugter lodret ned gennem truppen. */}
-        {scoreVisible && (
-          <td className={tdClass({ numeric: true, compact: true })}>
-            {riderScore?.todayIsRaceDay && !Number.isFinite(riderScore?.today) ? (
-              <span className="font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-                {t("score.raceDay")}
-              </span>
-            ) : Number.isFinite(riderScore?.today) ? (
-              <div className="flex flex-col items-end gap-1">
-                <span className="font-mono tabular-nums text-sm font-bold leading-none text-cz-1">
-                  {riderScore.today}
-                </span>
-                {(riderScore.spark?.length ?? 0) > 1 && (
-                  <TrainingScoreSparkline
-                    points={riderScore.spark}
-                    label={t("score.sparkAria", { name: `${rider.firstname} ${rider.lastname}` })}
-                    width={64}
-                    height={18}
-                  />
-                )}
-              </div>
-            ) : (
-              <span className="text-cz-3 text-xs">—</span>
-            )}
-          </td>
-        )}
 
         {/* Form */}
         <td className={`${tdClass({})} hidden sm:table-cell`}>
@@ -1682,15 +1682,6 @@ export default function TrainingPage() {
                         className={`${thClass({ numeric: true, compact: true })} hidden sm:table-cell`}>
                         {t("colAge")}
                       </SortTh>
-                      {/* #3762: kolonnerne hedder nu det de indeholder. Før stod
-                          der "Fokus" og "Intensitet" — to akser der kunne modsige
-                          hinanden. Nu er der én dag, og en hurtig vej til at
-                          skifte den. */}
-                      <th className={thClass({})}>{t("dayPanel.colDay")}</th>
-                      <th className={thClass({})}>{t("dayPanel.colChangeDay")}</th>
-                      {/* #3709 trin 1: kolonnen er ikke længere "næste +1" på ÉN
-                          evne, men sæsonens kvittering pr. evne i fokusset. */}
-                      <th className={thClass({})}>{t("receipt.title")}</th>
                       {/* #4851: Score. Ejer-beslutning 6 (6/9): dagens tal +
                           de sidste 7 dage som monokrom sparkline, sortérbar.
                           IKKE `hidden sm:table-cell` — tallet er et af dem
@@ -1703,6 +1694,15 @@ export default function TrainingPage() {
                           {t("score.column")}
                         </SortTh>
                       )}
+                      {/* #3762: kolonnerne hedder nu det de indeholder. Før stod
+                          der "Fokus" og "Intensitet" — to akser der kunne modsige
+                          hinanden. Nu er der én dag, og en hurtig vej til at
+                          skifte den. */}
+                      <th className={thClass({})}>{t("dayPanel.colDay")}</th>
+                      <th className={thClass({})}>{t("dayPanel.colChangeDay")}</th>
+                      {/* #3709 trin 1: kolonnen er ikke længere "næste +1" på ÉN
+                          evne, men sæsonens kvittering pr. evne i fokusset. */}
+                      <th className={thClass({})}>{t("receipt.title")}</th>
                       <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={`${thClass({})} hidden sm:table-cell`}>
                         {t("form")}
                       </SortTh>

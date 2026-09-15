@@ -159,10 +159,10 @@
         "race": "Race",
         "raceNote": "Race day — the race replaces training",
         "sparkAria": "Training score, last 7 days",
-        "avg": "Average, {{days}} days",
+        "avg": "Average, {days} days",
         "best": "Best, 30 days",
-        "driverUp": "{{driver}} lifts it {{points}}",
-        "driverDown": "{{driver}} costs {{points}}"
+        "driverUp": "{driver} +{points}",
+        "driverDown": "{driver} −{points}"
       }
     },
     "tabs": {
