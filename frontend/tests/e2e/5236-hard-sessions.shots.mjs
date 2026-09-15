@@ -131,7 +131,22 @@ for (const locale of [
     // grupperet efter niveau — de tre nye sessioner ligger i "hård"-gruppen.
     await openDayPanel(page, locale.name);
     const dialog = page.getByRole("dialog");
-    await dialog.locator("text=/hard|hård/i").first().scrollIntoViewIfNeeded().catch(() => {});
+
+    // Trin 1 → trin 2: panelet åbner uden gemt plan for denne rytter (mock
+    // har ingen `plans`-post), så "Training" skal vælges eksplicit for at
+    // afsløre sessionsvælgeren (step 2). DAY_TYPES = [rest, recovery, skill,
+    // training] (trainingDayTypes.js) — 4. radio i trin 1-gruppen.
+    await dialog.getByRole("radiogroup").first().getByRole("radio").nth(3).click();
+    await dialog.locator("text=/hard|hård/i").first().waitFor();
+
+    // Vælg en af de tre nye sessioner (Cobbled Sectors / Brostenssektorer,
+    // øverst i "hård"-gruppen) så skærmbilledet også viser den valgte
+    // tilstand, ikke kun listen. Scroll til den (ikke til "hård"-overskriften
+    // — på mobil ville det scrolle tilbage OP forbi de tre nye sessioner,
+    // som ligger nederst i gruppen).
+    const cobbledSectors = dialog.getByRole("radio", { name: /Cobbled Sectors|Brostenssektorer/i });
+    await cobbledSectors.click();
+    await cobbledSectors.scrollIntoViewIfNeeded();
     await page.screenshot({ path: resolve(OUT, `5236-session-selector-${locale.code}-${vp.name}.png`) });
 
     await context.close();
