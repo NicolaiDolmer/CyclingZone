@@ -93,7 +93,7 @@ function makeMarkingSupabase({ markError = null } = {}) {
       from(table) {
         if (table !== "teams") throw new Error(`uventet tabel: ${table}`);
         return {
-          update(patch) {
+          update(_patch) {
             return {
               eq(_col, id) {
                 return {
