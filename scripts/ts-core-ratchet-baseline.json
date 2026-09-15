@@ -16,7 +16,7 @@
     "en fil under 'konverter naar du roerer'. Raekkefoelge + opskrift:",
     "docs/TYPESCRIPT_DIRECTION.md."
   ],
-  "generatedAt": "2026-09-14",
+  "generatedAt": "2026-09-15",
   "tsconfig": "backend/tsconfig.core.json",
   "areas": {
     "economy": {
@@ -56,11 +56,11 @@
         "lib/academy*"
       ],
       "jsFileCount": 15,
-      "tsErrorCount": 283,
+      "tsErrorCount": 274,
       "files": {
         "lib/academyFlag.js": 4,
-        "lib/academyGenerator.js": 35,
-        "lib/academyGraduation.js": 104,
+        "lib/academyGenerator.js": 30,
+        "lib/academyGraduation.js": 100,
         "lib/academyGraduationSweep.js": 6,
         "lib/academyHealSweep.js": 4,
         "lib/academyIntake.js": 61,
@@ -124,6 +124,6 @@
   },
   "totals": {
     "jsFileCount": 35,
-    "tsErrorCount": 1069
+    "tsErrorCount": 1060
   }
 }

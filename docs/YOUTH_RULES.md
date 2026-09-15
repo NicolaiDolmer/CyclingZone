@@ -49,7 +49,9 @@
 > 17, [#3436](https://github.com/NicolaiDolmer/CyclingZone/issues/3436)). Aldersgrænser,
 > trupstørrelser og flag-tilstande er strukturregler og står ordret.
 >
-> Verificeret mod kode på `main` og mod issues **2/9 2026**. Målbilledet (§2) er ejer-låst;
+> Verificeret mod kode på `main` og mod issues **2/9 2026**, §2/§4/§6/§7 opdateret **15/9 2026**
+> med slice 1 ([#4619](https://github.com/NicolaiDolmer/CyclingZone/issues/4619): `riders.squad`,
+> loft pr. trup, to graduerings-overgange). Målbilledet (§2) er ejer-låst;
 > byggestatus (§4) er hvad der faktisk kører.
 
 ---
@@ -89,7 +91,7 @@ Intake (tilbud)  →  Junior team 16-18  →  U23 team 19-22  →  Senior team 2
 | Junior team | Sæsonalder 16-18. Bliver rytteren 19, skal han ud | ejer 2/9, svar 2 ("junior max 18") |
 | U23 team | Sæsonalder 19-22. Bliver rytteren 23, skal han ud | ejer 2/9, svar 2; matcher `isU23ForSeason` |
 | Senior team | Ingen aldersgrænse, 30-cap uændret | `GAME_INVARIANTS.md` |
-| En rytter tilhører præcis én trup ad gangen | Truppen afgør hvilken kalender han kører (§2.3) | addendum 16/7 §1.1 |
+| En rytter tilhører præcis én trup ad gangen | Truppen afgør hvilken kalender han kører (§2.3). **BYGGET (#4619, slice 1):** `riders.squad` (`senior`/`u23`/`junior`) bærer den. Aldersgrænser + `squadForSeasonAge()` bor i `backend/lib/squads.js`, som selv kalder `riderSeasonAge.js` — aldersformlen findes ét sted og beregnes ALDRIG i SQL. `riders.is_academy` bliver stående i en overgangsperiode og vedligeholdes som `squad <> 'senior'` (35+ kaldsteder + RLS-funktionen `is_offered_intake_rider()`); de to felter skrives altid sammen | addendum 16/7 §1.1 · #4619 |
 | AI-hold har også Junior team og U23 team | Tynde felter fyldes med AI. Samme maskine som verdens-influx (#2064) | addendum 16/7 §1.1, ejer-låst |
 
 ### 2.2 Flyt mellem trupper (ejer 2/9, svar 2)
@@ -100,10 +102,10 @@ Ejer, ordret: *"Spilleren skal som udgangspunkt selv vælge hvor rytterne er. [.
 |---|---|
 | Opad er altid tilladt | En 17-årig må stå på U23 team, en 20-årig på Senior team. Kræver ledig plads i mål-truppen |
 | Nedad kun inden for aldersloftet | En 24-årig kan ikke flyttes til U23 team. En 19-årig kan ikke flyttes til Junior team |
-| Alderen tvinger kun opad | Ved sæsonskifte får spilleren listen over ryttere der er vokset ud af deres trup (Graduation Day). Han flytter selv. Gør han intet inden fristen, flytter systemet rytteren én trup op hvis der er plads og råd, ellers sælges han, ellers slippes han (dagens default-kæde, `academyGraduationSweep.js`) |
+| Alderen tvinger kun opad | Ved sæsonskifte får spilleren listen over ryttere der er vokset ud af deres trup (Graduation Day). Han flytter selv. Gør han intet inden fristen, flytter systemet rytteren én trup op hvis der er plads og råd, ellers sælges han, ellers slippes han (dagens default-kæde, `academyGraduationSweep.js`). **BYGGET (#4619):** `detectGraduates` finder nu BEGGE overgange (junior → u23 ved sæsonalder 19, u23 → senior ved 23) og skriver dem på `academy_graduation.from_squad`/`to_squad`. Default-kæden og `DEADLINE_DAYS` er UÆNDREDE |
 | **Salget skal terminere** (#4495, 5/9 · skærpet ejer 6/9) | Vælges "sælg", oprettes en senior-auktion og rytteren bliver bevidst stående `is_academy=true` (uden for cap) mens auktionen kører. **Ender auktionen uden bud, prøves oprykning IGEN** med et friskt tjek af plads i seniortruppen og ikke-negativ saldo (samme kriterier som default-kædens promovér-trin, samme kontraktpatch `contractOnAcquirePatch`) — han bliver på holdet, `is_academy=false`, kontrakten arves uændret. **Kun hvis oprykning stadig ikke er mulig, slippes han: fri agent** (`team_id=NULL`, `is_academy=false`, kontraktfelter nullet). Ejerens begrundelse 6/9: *"Kan han ikke automatisk rykkes op på seniorholdet, når han ikke kan være på ungdomsholdet mere?"* — manageren hentede ham selv, så manglende bud er ingen grund til at forære ham væk. Grad-rækkens fejlagtige `sold`-stempling rettes til det der faktisk skete (`promoted`/`released`). Kæden må aldrig ende i en tilstand hvor rytteren hverken er solgt, promoveret eller sluppet. Kode: `academyGraduation.resolveUnsoldGraduate` (→ `completeStuckPromotion` / `releaseUnsoldGraduate`), kaldt fra `auctionFinalization.js`s no-bid-gren |
 | **Ingen akademirytter over graduerings-alderen** (#4495) | En rytter med `is_academy=true` og sæsonalder ≥ `GRADUATE_AGE` må kun eksistere mens (a) hans override-vindue er åbent, eller (b) han er på en aktiv auktion. Alt andet er et invariant-brud. Vagt: `ownershipInvariantWatch` invariant G (dagligt, read-only, alarmerer kun). Prædikat + grace-vindue: `backend/lib/stuckAcademyGraduates.js`. Reparation: `backend/scripts/repairStuckAcademyGraduates.js` (`--dry-run` default, `--apply --owner-go` ejer-gated) — vælger handling PR. rytter efter hans historie (ejer 5/9, skærpet 6/9): grad-række `sold` uden gennemført salg → oprykning hvis plads + råd, ellers slip; `promoted` men stadig `is_academy=true` → fuldfør promoveringen; INGEN grad-række → default-kæden ovenfor (promovér → sælg → slip) |
-| Det tvungne valg flytter fra 22 til 23 | I dag: akademi 16-21, `GRADUATE_AGE: 22`. Nyt: ud af U23 ved 23. Bevidst regelændring |
+| Det tvungne valg flytter fra 22 til 23 | **BYGGET (#4619):** `GRADUATION.GRADUATE_AGE` er nu `SQUAD_MAX_AGE.u23 + 1` = 23 (afledt, ikke hardkodet). En 22-årig er stadig U23, samme grænse som UCIs U23-kategori og `isU23ForSeason`. Bevidst regelændring, ikke en bugfix — den flytter også vagten `stuckAcademyGraduates`, som nu først alarmerer ved 23 |
 | Flyt er gratis og øjeblikkeligt | Ingen transfervindue, ingen gebyr. Rytteren beholder kontrakt og løn (§2.4). Kan ikke flyttes mens han er i aktiv auktion eller midt i et etapeløb (dagens gates i `academyTransfer.js` bevares) |
 | 1 rytter = 1 løb pr. løbsdag | Urørt. Flyt midt på en løbsdag ændrer ikke dagens udtagelse |
 
@@ -128,7 +130,7 @@ Ejer, ordret: *"Spilleren skal som udgangspunkt selv vælge hvor rytterne er. [.
 | Samme kontrakt for alle | Ungdomsryttere signeres, forlænges, sælges og slippes efter samme regler og formler som seniorer (`TRANSFER_MARKET_RULES.md`, `ECONOMY_RULES.md`) | Dagens ungdomskontrakt, `ACADEMY.SIGNING_FEE_RATE` og akademi-lønsatsen udgår som særregler når tier-modellen bygges |
 | Løn frosset ved signering | Uændret (#1309, `GAME_INVARIANTS.md`) | Intet |
 | Drift pr. besat ungdomsplads | Bevares som princip: hver besat plads i Junior team og U23 team koster fast drift pr. sæson (guld-dræn). Konstanten hedder i dag `ACADEMY.DRIFT_PER_SEASON` i `backend/lib/academyFlag.js` | Beløbet pr. tier afgøres i økonomi-sim (Scorecard C3), ikke her |
-| Loft pr. trup (ejer 2/9, svar 3: A) | Senior 30 (uændret). **Forslag:** U23 12, junior 10. Endelige tal via økonomi-sim i slice 2-spec | Erstatter den flade 8-plads-cap (`academy_full` ved `academy_count >= 8`) |
+| Loft pr. trup (ejer 2/9, svar 3: A) | Senior 30 (uændret). **U23 12 · junior 10** — ejer-valgt 15/9 som SIM-STARTPUNKT (spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md` §10.6), kalibreres efter S4's første økonomidata sammen med D-032's facilitetstrin | **BYGGET (#4619):** `SQUAD_CAPS` i `backend/lib/squads.js`; `academyTransfer.demote()` tæller pr. mål-trup i stedet for den flade 8-plads-cap. Fejlkoden `academy_full` beholdes (frontend læser strengen), men betyder nu "mål-truppen er fuld". ⚠ RPC'erne `demote_rider_to_academy` + `finalize_academy_acquisition` har stadig deres egen hårde 8-cap i SQL — den lift er ikke en del af slice 1, så U23-loftet på 12 er endnu ikke reelt virksomt på de stier |
 | Intake og ungdomsauktion | Uændret scope (#2456): tilbud udløber efter `INTAKE_OFFER_EXPIRY_DAYS`, afvist kandidat går på ungdomsauktion uden sælger, usolgt = forlader sporten | Signeret kandidat lander i Junior team i stedet for "akademiet" |
 
 ### 2.6 Fladerne (ejer-beslutninger i Claude Design-handoffet 2/9)
@@ -187,8 +189,9 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 | Intake-status-livscyklus (#1756, ejer-SSOT for engangsoprydninger som #4576) | `backend/lib/academyIntakeReconcile.js` | `academy_intake.status`: `offered` → `signed` (RPC finaliserer erhvervelsen), `rejected` (holdet afviste/hentede ikke, ELLER en stale `offered`-raekke opdager at rytteren blev vundet af et ANDET hold, typisk via ungdomsauktionen). En `offered`-raekke med rytter allerede ejet er stale: maal-status afgoeres af HVEM der ejer rytteren nu — ejet af det TILBUDTE hold → `signed` (sign-flippet fuldfoerte aldrig); ejet af et ANDET hold → `rejected`. `team_id IS NULL` (fri rytter) er IKKE stale — legitimt aabent tilbud, roeres aldrig |
 | Signing fee | `academyIntake.js:483`, `ACADEMY.SIGNING_FEE_RATE` | andel af markedsværdi (udgår, §2.4) |
 | Drift | `ACADEMY.DRIFT_PER_SEASON`, opkræves i `processSeasonStart` | pr. besat plads pr. sæson |
-| Plads-loft | `academy_full` ved `academy_count >= 8` | 8 (erstattes af loft pr. trup) |
-| Graduering | `backend/lib/academyGraduation.js` `GRADUATE_AGE: 22`, `DEADLINE_DAYS: 7`; sweep i `academyGraduationSweep.js` | pending-række pr. rytter ≥ 22, default-kæde promovér → sælg → slip |
+| Trup pr. rytter (#4619) | `riders.squad` (`senior`/`u23`/`junior`), CHECK + partielt indeks `(team_id, squad)`; `backend/lib/squads.js` er SSOT for grænser og lofter | junior ≤ 18 · u23 19-22 · senior ≥ 23 (sæsonalder). `is_academy` bevares og skrives sammen med `squad` |
+| Plads-loft | `SQUAD_CAPS` i `backend/lib/squads.js`; gate i `academyTransfer.demote()` | U23 12, junior 10 pr. hold. ⚠ RPC'erne (`demote_rider_to_academy`, `finalize_academy_acquisition`) har STADIG deres egen hårde 8-cap i SQL — den er indtil videre strammere og skal hæves i en egen slice |
+| Graduering | `backend/lib/academyGraduation.js` `GRADUATE_AGE: 23` (afledt af `SQUAD_MAX_AGE.u23 + 1`), `DEADLINE_DAYS: 7`; sweep i `academyGraduationSweep.js` | to overgange: junior → u23 ved 19, u23 → senior ved 23. Rækken bærer `from_squad`/`to_squad`. Default-kæde promovér → sælg → slip uændret |
 | Usolgt graduate-auktion (#4495, 5/9 · ejer 6/9) | `academyGraduation.resolveUnsoldGraduate`, kaldt fra `auctionFinalization.js` | ingen bud → oprykning hvis plads + råd, ellers fri agent (§2.2). Genbruger `completeStuckPromotion` og `releaseUnsoldGraduate`; conditional + idempotent; retter samtidig grad-rækkens fejlagtige `sold`-stempling til `promoted`/`released` |
 | Vagt: fastlåst akademi-graduate (#4495) | `backend/lib/stuckAcademyGraduates.js` + `ownershipInvariantWatch` invariant G | dagligt read-only tjek, grace `STUCK_GRADUATE_GRACE_HOURS` (48t) så et åbent/nyligt override-vindue ikke alarmerer |
 | Flyt op/ned uden for graduering | `backend/lib/academyTransfer.js` `promote()`/`demote()`; RPC `demote_rider_to_academy` i `database/2026-06-25-academy-promote-demote.sql` | ned kræver sæsonalder ≤ 22, ingen aktiv auktion, akademi ikke fuldt |
@@ -196,9 +199,11 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 | Årgangsmærke | `riders.generation_tag` ('s<sæson>') | sættes på alle ungdoms-genererede ryttere (#2493-fundament) |
 | Akademi-regnskab | `backend/lib/academyPnl.js` (#2485) | P&L pr. akademi, kun realiseret værdi |
 
-**Tabeller:** `academy_intake`, `academy_graduation`, `academy_intake_ticks`, `academy_season_intake_runs`, `auctions.is_youth`, `riders.is_academy`, `riders.is_u25`.
+**Tabeller:** `academy_intake`, `academy_graduation` (siden #4619 med `from_squad`/`to_squad`), `academy_intake_ticks`, `academy_season_intake_runs`, `auctions.is_youth`, `riders.is_academy`, `riders.is_u25`, `riders.squad` (#4619), `rider_career_events`.
 
-**Findes IKKE:** en trup-/tier-kolonne på `riders` (kun `is_academy` bool), ungdomskalender, ungdomspyramide, `rider_career_events`. `frontend/public/locales/en/help.json:1151` nævner allerede "your club's Senior/U23/Junior squad structure" i træner-forklaringen. Det er et løfte uden feature; ryd op eller lad det pege på "coming soon" i slice 0.
+**Findes IKKE:** ungdomskalender, ungdomspyramide, ungdoms-UI (trupsider, trup-Select, Graduation Day-siden — bølge 6). `frontend/public/locales/en/help.json:1151` nævner allerede "your club's Senior/U23/Junior squad structure" i træner-forklaringen. Det er et løfte uden feature; ryd op eller lad det pege på "coming soon" i slice 0.
+
+**Rettet 15/9 (#4619, spec §3.1):** denne fil påstod tidligere at `rider_career_events` ikke fandtes. Den findes i skemaet (`database/schema-snapshot.json`); det var faktuelt forkert.
 
 ---
 
@@ -208,7 +213,7 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 |---|---|---|
 | **Wireframes** ([#4617](https://github.com/NicolaiDolmer/CyclingZone/issues/4617), ejer) | **LEVERET 2/9:** hi-fi (artboards 3a-3k), wireframes (runde 1-2) og `HANDOFF.md` ligger i `docs/design/youth-tiers/`. Ejer-beslutningerne er indarbejdet i §2.6 | Handoff gemt i `docs/design/youth-tiers/` ✅ |
 | **0 · Kommer snart** ([#4618](https://github.com/NicolaiDolmer/CyclingZone/issues/4618)) | Akademi-siden får den nye ramme (§3). Bygges mod wireframe S1b | Ejer-visuelt go på screenshots før merge (UI-reglen) |
-| **1 · Trup-datamodel** ([#4619](https://github.com/NicolaiDolmer/CyclingZone/issues/4619)) | `riders.squad` (senior / u23 / junior) erstatter `is_academy`; migration mapper efter sæsonalder (16-18 → junior, 19-22 → u23, ≥ 23 med `is_academy` → pending flyt); flyt-endpoint generaliseres; Graduation Day for begge overgange; loft pr. trup; én kontraktmodel. **UI pr. handoff (§2.6):** trupsider i Klubhus-nav (ikke tabeller på Academy), trup-Select i alle rostere, `Move to squad` i rytterprofilen, Graduation Day-siden (3g/3h), rejse-kortet (3i/3j) | Idempotent migration + post-verify; snapshot før mutation; ejer ser dry-run-diff (antal ryttere pr. mål-trup pr. hold) |
+| **1 · Trup-datamodel** ([#4619](https://github.com/NicolaiDolmer/CyclingZone/issues/4619)) | `riders.squad` (senior / u23 / junior) kommer til **ved siden af** `is_academy`, som bevares og skrives sammen med den i en overgangsperiode (ikke erstattet); et Node-backfill-script mapper efter sæsonalder (16-18 → junior, 19-22 → u23, ≥ 23 med `is_academy` → u23 + pending flyt) — migrationen selv indeholder ingen backfill, fordi sæsonalder aldrig beregnes i SQL; flyt-endpoint generaliseres; Graduation Day for begge overgange; loft pr. trup; én kontraktmodel. **UI pr. handoff (§2.6):** trupsider i Klubhus-nav (ikke tabeller på Academy), trup-Select i alle rostere, `Move to squad` i rytterprofilen, Graduation Day-siden (3g/3h), rejse-kortet (3i/3j) | Idempotent migration + post-verify; snapshot før mutation; ejer ser dry-run-diff (antal ryttere pr. mål-trup pr. hold). **DATAFUNDAMENTET LEVERET 15/9 (#4619):** `riders.squad` + `academy_graduation.from_squad`/`to_squad`, `SQUAD_CAPS`, begge overgange, backfill-script (`--dry-run` default). UI'en (trupsider, trup-Select, Graduation Day, rejse-kortet) og flyt-endpointets generalisering er IKKE med — de ligger i bølge 6 |
 | **2 · U23 team + U23-kalender + U23-pyramide** ([#4620](https://github.com/NicolaiDolmer/CyclingZone/issues/4620)) | Kalender, AI-fyld, udtagelse via assistent, taktik via Planning Center, ranglister, op/nedrykning | Scorecard C1-C3, C7 (addendum §5); `CALENDAR_RULES.md` opdateres i samme PR |
 | **3 · Junior team + junior-kalender + junior-pyramide** ([#4621](https://github.com/NicolaiDolmer/CyclingZone/issues/4621)) | Fuld tre-tier | Samme gates, genmålt mod da-aktuel population |
 
@@ -220,11 +225,11 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 
 | # | Parameter | Afgøres af |
 |---|---|---|
-| 1 | Loft pr. trup (forslag U23 12, junior 10). **Princip ejer-valgt 10/9 (D-032):** samme grundloft for alle klubber; ekstra pladser købes som facilitetstrin med anlægspris og stigende drift pr. plads; kapacitet følger aldrig division eller resultater | økonomi-sim i slice 1/2 + ejer-go (tal, trin, priser) |
+| 1 | Loft pr. trup — **sim-startpunkt ejer-valgt 15/9: U23 12, junior 10** (bygget i `SQUAD_CAPS`, #4619; kalibreres stadig). **Princip ejer-valgt 10/9 (D-032):** samme grundloft for alle klubber; ekstra pladser købes som facilitetstrin med anlægspris og stigende drift pr. plads; kapacitet følger aldrig division eller resultater | økonomi-sim i slice 1/2 + ejer-go (tal, trin, priser) |
 | 2 | Drift pr. plads pr. tier | økonomi-sim (Scorecard C3) + ejer-go |
 | 3 | Antal divisioner i ungdomspyramiderne | felt-gaten (C1) mod population + ejer-go |
 | 4 | Løbsfrekvens pr. tier | `CALENDAR_RULES.md`-arbejdet i slice 2 |
-| 5 | Frist på Graduation Day (`DEADLINE_DAYS`, i dag 7, "SIM-STARTPUNKT") | stadig ikke ejer-godkendt siden 18/6; afgøres i slice 1 |
+| 5 | Frist på Graduation Day (`DEADLINE_DAYS`, i dag 7, "SIM-STARTPUNKT") | stadig ikke ejer-godkendt siden 18/6. #4619 lod tallet stå UÆNDRET på 7 — slice 1 byggede de to overgange, ikke fristen. Afventer ejer-go |
 | 6 | Tidlig oprykning "wonderkid" (addendum §7.1: fra 21) | bortfalder: opad er altid tilladt (§2.2) |
 | 7 | Præmiepenge i ungdomsløb | efter slice 2-økonomidata, egen ejer-beslutning |
 
@@ -237,9 +242,9 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 | 1 | Addendum 16/7 §1.1/§2: potentiale 1-99 i DB vs. `PROGRESSION_RULES.md` §3: 1-6 internt (ejer 13/8) | `PROGRESSION_RULES.md` |
 | 2 | Addendum 16/7 §1.1: "Junior-hold (16-18)" vs. doktrin 8/6: "Junior = U19, normally 17-18" | Denne fil §2.1: trup 16-18, løb fra 17. Begge tilfredsstilles |
 | 3 | Addendum §7.1: tidlig oprykning fra 21 som undtagelse | Denne fil §2.2: opad altid tilladt |
-| 4 | `GAME_INVARIANTS.md`: "8-plads akademi-cap håndhæves på ENHVER akademi-tilføjelse" | Gælder indtil slice 1. Rettes i samme PR som loft pr. trup (filen er frossen, ejer-godkender) |
+| 4 | ~~`GAME_INVARIANTS.md`: "8-plads akademi-cap håndhæves på ENHVER akademi-tilføjelse"~~ | **LUKKET 15/9 (#4619):** `GAME_INVARIANTS.md` §Akademi siger nu loft pr. trup (`SQUAD_CAPS`, U23 12 / junior 10). Restgæld: RPC'ernes egen 8-cap i SQL |
 | 5 | `help.json:1151` lover en trupstruktur der ikke findes | Slice 0 |
-| 6 | Akademi-promotion-spec 18/6: tvunget valg ved 22 | Denne fil §2.2: ved 23 (ud af U23) |
+| 6 | ~~Akademi-promotion-spec 18/6: tvunget valg ved 22~~ | **LUKKET 15/9 (#4619):** `GRADUATE_AGE = 23`, afledt af `SQUAD_MAX_AGE.u23 + 1` i `backend/lib/squads.js`. **Restgæld:** `help.json` (en+da) `academy.graduation` siger stadig 22 — spiller-vendt copy skrives sammen med patch noten ved bølgens close-out, ikke i datamodel-PR'en |
 | 7 | `academy_graduation.status='sold'` stemples når auktionen **oprettes**, ikke når den **afgøres** — status siger "listet", ikke "solgt" (#4495 punkt 2) | Indtil videre: `resolveUnsoldGraduate` retter rækken til det der faktisk skete (`promoted`/`released`) når salget ikke blev til noget. En egentlig `listed` → `sold`/`unsold`-livscyklus kræver migration + ejer-go og er ikke bygget |
 
 ---
