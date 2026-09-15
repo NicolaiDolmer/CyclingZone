@@ -949,6 +949,21 @@ med stabile UUID'er og `u23-`/`jun-`-præfikser. Genkørsel bruger
 senior-fixturen og præcis de samme katalogfelter som SQL. `pools: []` er bevidst:
 dry-run-pakkeren skal levere ungdomspuljerne og filtrere `catalog` på `squad`.
 
+`country` bruger fulde engelske landenavne som prod-kataloget, fx `France`,
+`Italy`, `Belgium` og `Czech Republic`, så landefiltre og flag deler format.
+Alle 54 rækker følger konventionen; `Ireland` er et nyt land i ungdomskataloget.
+
+Ejer-godkendte navne efter review 15/9:
+
+| Stabilt `external_id` | Løbsnavn |
+|---|---|
+| `u23-nations-chrono` | Chrono de Vendée Espoirs |
+| `u23-thuringen` | Thüringer Land-Rundfahrt der Talente |
+| `jun-basque` | Euskal Haranak Gazteak |
+
+ID'erne er geografiske/katalogbaserede identiteter og bevares ved omdøbningen;
+dermed ændres hverken parcours-seed eller SQL-seedets idempotens.
+
 ### Forsyning og frekvens
 
 | Måling / ejer-mål | U23 | Junior |
@@ -1018,7 +1033,10 @@ Pakkeren, puljer, udtagelse og flader bygges i et separat spor. Migrationen
 auto-applies ved merge, inklusive PostgREST schema-reload; den er ikke et inaktivt SQL-udkast.
 
 `backend/lib/racePoolCatalog.youth.test.js` verificerer forsyning, navne og ID'er
-(også mod senior), tilladte terræner/klasser, datoer, juniorloft og SQL/JSON-paritet.
+(også mod senior), fulde engelske landenavne, de ejer-godkendte omdøbninger,
+tilladte terræner/klasser, datoer, juniorloft og SQL/JSON-paritet.
+Terrænværdierne læses fra `racePoolCatalog.prod.json`; junior-asserten kræver
+eksplicit `stages <= 5` på hver juniorrække.
 Testkørsler pakkes altid i `scripts/verify-lock.ps1 -Max 2 -Timeout 1800`.
 Ingen patch note i dette forberedende draft-spor, jf. briefen; spillerkommunikation
 hører til aktiveringen af ungdomskalenderen.

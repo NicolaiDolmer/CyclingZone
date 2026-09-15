@@ -11,7 +11,7 @@
       "race_type": "stage_race",
       "stages": 8,
       "date_text": "23/8 - 30/8",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "summit_tour",
       "retired_at": null,
       "squad": "u23"
@@ -24,7 +24,7 @@
       "race_type": "stage_race",
       "stages": 8,
       "date_text": "14/6 - 21/6",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "mountain_tour",
       "retired_at": null,
       "squad": "u23"
@@ -37,7 +37,7 @@
       "race_type": "stage_race",
       "stages": 7,
       "date_text": "25/4 - 1/5",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "hilly_tour",
       "retired_at": null,
       "squad": "u23"
@@ -50,7 +50,7 @@
       "race_type": "stage_race",
       "stages": 5,
       "date_text": "15/7 - 19/7",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "summit_tour",
       "retired_at": null,
       "squad": "u23"
@@ -63,7 +63,7 @@
       "race_type": "stage_race",
       "stages": 5,
       "date_text": "29/7 - 2/8",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "balanced_week",
       "retired_at": null,
       "squad": "u23"
@@ -76,7 +76,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "18/6 - 21/6",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "summit_tour",
       "retired_at": null,
       "squad": "u23"
@@ -89,7 +89,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "21/5 - 24/5",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "mountain_tour",
       "retired_at": null,
       "squad": "u23"
@@ -102,7 +102,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "28/5 - 31/5",
-      "country": "CZE",
+      "country": "Czech Republic",
       "terrain_archetype": "hilly_tour",
       "retired_at": null,
       "squad": "u23"
@@ -115,7 +115,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "13/8 - 16/8",
-      "country": "POL",
+      "country": "Poland",
       "terrain_archetype": "hilly_tour",
       "retired_at": null,
       "squad": "u23"
@@ -128,7 +128,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "7/4",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "puncheur",
       "retired_at": null,
       "squad": "u23"
@@ -141,7 +141,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "9/8",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "puncheur",
       "retired_at": null,
       "squad": "u23"
@@ -154,7 +154,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "31/5",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "cobbled_classic",
       "retired_at": null,
       "squad": "u23"
@@ -167,7 +167,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "11/4",
-      "country": "BEL",
+      "country": "Belgium",
       "terrain_archetype": "cobbled_classic",
       "retired_at": null,
       "squad": "u23"
@@ -180,7 +180,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "18/4",
-      "country": "BEL",
+      "country": "Belgium",
       "terrain_archetype": "hilly_classic",
       "retired_at": null,
       "squad": "u23"
@@ -188,12 +188,12 @@
     {
       "id": "46200915-2026-4000-8000-000000000015",
       "external_id": "u23-thuringen",
-      "name": "Thüringen-Rundfahrt der Talente",
+      "name": "Thüringer Land-Rundfahrt der Talente",
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 5,
       "date_text": "8/6 - 12/6",
-      "country": "GER",
+      "country": "Germany",
       "terrain_archetype": "hilly_tour",
       "retired_at": null,
       "squad": "u23"
@@ -206,7 +206,7 @@
       "race_type": "stage_race",
       "stages": 5,
       "date_text": "20/5 - 24/5",
-      "country": "IRL",
+      "country": "Ireland",
       "terrain_archetype": "balanced_week",
       "retired_at": null,
       "squad": "u23"
@@ -219,7 +219,7 @@
       "race_type": "stage_race",
       "stages": 5,
       "date_text": "18/3 - 22/3",
-      "country": "NED",
+      "country": "Netherlands",
       "terrain_archetype": "cobbled_tour",
       "retired_at": null,
       "squad": "u23"
@@ -232,7 +232,7 @@
       "race_type": "stage_race",
       "stages": 5,
       "date_text": "23/3 - 27/3",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "balanced_week",
       "retired_at": null,
       "squad": "u23"
@@ -245,7 +245,7 @@
       "race_type": "stage_race",
       "stages": 3,
       "date_text": "28/5 - 30/5",
-      "country": "POL",
+      "country": "Poland",
       "terrain_archetype": "sprinters_week",
       "retired_at": null,
       "squad": "u23"
@@ -253,12 +253,12 @@
     {
       "id": "46200915-2026-4000-8000-000000000020",
       "external_id": "u23-nations-chrono",
-      "name": "Chrono des Herbiers Espoirs",
+      "name": "Chrono de Vendée Espoirs",
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
       "date_text": "20/9",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "itt_classic",
       "retired_at": null,
       "squad": "u23"
@@ -271,7 +271,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "13/9",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "itt_classic",
       "retired_at": null,
       "squad": "u23"
@@ -284,7 +284,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "19/4",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "puncheur",
       "retired_at": null,
       "squad": "u23"
@@ -297,7 +297,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "25/4",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "u23"
@@ -310,7 +310,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "6/4",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "hilly_classic",
       "retired_at": null,
       "squad": "u23"
@@ -323,7 +323,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "5/7",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "hilly_classic",
       "retired_at": null,
       "squad": "u23"
@@ -336,7 +336,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "16/8",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "puncheur",
       "retired_at": null,
       "squad": "u23"
@@ -349,7 +349,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "29/9",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "hilly_classic",
       "retired_at": null,
       "squad": "u23"
@@ -362,7 +362,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "29/3",
-      "country": "BEL",
+      "country": "Belgium",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "u23"
@@ -375,7 +375,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "20/3",
-      "country": "BEL",
+      "country": "Belgium",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "u23"
@@ -388,7 +388,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "1/5",
-      "country": "GER",
+      "country": "Germany",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "u23"
@@ -401,7 +401,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "26/4",
-      "country": "NED",
+      "country": "Netherlands",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "u23"
@@ -414,7 +414,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "15/3",
-      "country": "NED",
+      "country": "Netherlands",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "u23"
@@ -427,7 +427,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "12/7",
-      "country": "BEL",
+      "country": "Belgium",
       "terrain_archetype": "hilly_classic",
       "retired_at": null,
       "squad": "u23"
@@ -440,7 +440,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "23/8",
-      "country": "DEN",
+      "country": "Denmark",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "u23"
@@ -453,7 +453,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "3/9 - 6/9",
-      "country": "POR",
+      "country": "Portugal",
       "terrain_archetype": "balanced_week",
       "retired_at": null,
       "squad": "u23"
@@ -466,7 +466,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "6/9",
-      "country": "GER",
+      "country": "Germany",
       "terrain_archetype": "itt_classic",
       "retired_at": null,
       "squad": "u23"
@@ -479,7 +479,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "12/4",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "cobbled_classic",
       "retired_at": null,
       "squad": "junior"
@@ -492,7 +492,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "28/5 - 31/5",
-      "country": "SUI",
+      "country": "Switzerland",
       "terrain_archetype": "balanced_week",
       "retired_at": null,
       "squad": "junior"
@@ -505,7 +505,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "7/5 - 10/5",
-      "country": "CZE",
+      "country": "Czech Republic",
       "terrain_archetype": "hilly_tour",
       "retired_at": null,
       "squad": "junior"
@@ -518,7 +518,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "29/3",
-      "country": "BEL",
+      "country": "Belgium",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "junior"
@@ -531,7 +531,7 @@
       "race_type": "stage_race",
       "stages": 3,
       "date_text": "12/6 - 14/6",
-      "country": "GER",
+      "country": "Germany",
       "terrain_archetype": "hilly_tour",
       "retired_at": null,
       "squad": "junior"
@@ -544,7 +544,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "3/9 - 6/9",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "mountain_tour",
       "retired_at": null,
       "squad": "junior"
@@ -557,7 +557,7 @@
       "race_type": "stage_race",
       "stages": 3,
       "date_text": "7/8 - 9/8",
-      "country": "BEL",
+      "country": "Belgium",
       "terrain_archetype": "hilly_tour",
       "retired_at": null,
       "squad": "junior"
@@ -570,7 +570,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "30/4 - 3/5",
-      "country": "ITA",
+      "country": "Italy",
       "terrain_archetype": "mountain_tour",
       "retired_at": null,
       "squad": "junior"
@@ -583,7 +583,7 @@
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "10/7 - 13/7",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "summit_tour",
       "retired_at": null,
       "squad": "junior"
@@ -591,12 +591,12 @@
     {
       "id": "46200915-2026-4000-8000-000000000046",
       "external_id": "jun-basque",
-      "name": "Itzulia Gazteen Haranak",
+      "name": "Euskal Haranak Gazteak",
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 4,
       "date_text": "21/5 - 24/5",
-      "country": "ESP",
+      "country": "Spain",
       "terrain_archetype": "mountain_tour",
       "retired_at": null,
       "squad": "junior"
@@ -609,7 +609,7 @@
       "race_type": "stage_race",
       "stages": 2,
       "date_text": "23/5 - 24/5",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "sprinters_week",
       "retired_at": null,
       "squad": "junior"
@@ -622,7 +622,7 @@
       "race_type": "stage_race",
       "stages": 3,
       "date_text": "22/5 - 24/5",
-      "country": "NED",
+      "country": "Netherlands",
       "terrain_archetype": "cobbled_tour",
       "retired_at": null,
       "squad": "junior"
@@ -635,7 +635,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "22/3",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "junior"
@@ -648,7 +648,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "15/3",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "junior"
@@ -661,7 +661,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "20/3",
-      "country": "BEL",
+      "country": "Belgium",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "junior"
@@ -674,7 +674,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "16/8",
-      "country": "DEN",
+      "country": "Denmark",
       "terrain_archetype": "flat_sprint",
       "retired_at": null,
       "squad": "junior"
@@ -687,7 +687,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "20/9",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "itt_classic",
       "retired_at": null,
       "squad": "junior"
@@ -700,7 +700,7 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "13/9",
-      "country": "FRA",
+      "country": "France",
       "terrain_archetype": "itt_classic",
       "retired_at": null,
       "squad": "junior"

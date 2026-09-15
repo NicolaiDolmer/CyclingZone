@@ -31,7 +31,27 @@ test('names and identities are unique, including against the senior catalogue', 
   }
 });
 
-test('classes, existing terrain, stages and calendar dates respect youth formats', () => {
+test('countries use full English names matching the production catalogue convention', () => {
+  // Production's spelling is Czech Republic; Ireland is new to the youth catalogue.
+  const countries = new Set([
+    'France', 'Italy', 'Czech Republic', 'Poland', 'Belgium', 'Germany',
+    'Ireland', 'Netherlands', 'Denmark', 'Portugal', 'Switzerland', 'Spain',
+  ]);
+  for (const row of readJson(fixtureUrl).catalog) {
+    assert.ok(countries.has(row.country), `${row.external_id}: ${row.country}`);
+  }
+});
+
+test('owner-approved race names retain stable catalogue identities', () => {
+  const rows = new Map(readJson(fixtureUrl).catalog.map(row => [row.external_id, row]));
+  for (const [id, name] of [
+    ['u23-nations-chrono', 'Chrono de Vendée Espoirs'],
+    ['u23-thuringen', 'Thüringer Land-Rundfahrt der Talente'],
+    ['jun-basque', 'Euskal Haranak Gazteak'],
+  ]) assert.equal(rows.get(id)?.name, name, id);
+});
+
+test('classes, prod-fixture terrain, junior stage limit and calendar dates respect youth formats', () => {
   const terrains = new Set(senior.map(row => row.terrain_archetype));
   for (const row of readJson(fixtureUrl).catalog) {
     const classes = row.squad === 'u23' ? ['Class1', 'Class2', 'ProSeries'] : ['Class1', 'Class2'];
@@ -40,7 +60,6 @@ test('classes, existing terrain, stages and calendar dates respect youth formats
     assert.ok(Number.isInteger(row.stages) && row.stages > 0, row.external_id);
     if (row.squad === 'junior') assert.ok(row.stages <= 5, row.external_id);
     assert.equal(row.race_type, row.stages === 1 ? 'single' : 'stage_race');
-    assert.match(row.country, /^[A-Z]{3}$/);
     assert.equal(row.retired_at, null);
     assert.match(row.date_text, /^\d{1,2}\/\d{1,2}( - \d{1,2}\/\d{1,2})?$/);
     const dates = row.date_text.split(' - ').map(text => {
