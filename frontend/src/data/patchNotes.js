@@ -5,6 +5,18 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "new", "audience": "player", "topic": "Inbox",
+        "en": {
+          "title": "A welcome message that points you to Discord",
+          "body": "Once your team has its first eight riders, or a day after you started, you get one message in your inbox from me about Discord. Cycling Zone is more than the website, and most of what happens next gets decided in there. The Discord link also sits in the sidebar footer now."
+        },
+        "da": {
+          "title": "En velkomstbesked der peger dig mod Discord",
+          "body": "Når dit hold har sine første otte ryttere, eller en dag efter du startede, får du én besked i indbakken fra mig om Discord. Cycling Zone er mere end hjemmesiden, og det meste af det der sker herfra bliver besluttet derinde. Discord-linket sidder nu også i sidebjælkens bund."
+        },
+        "refs": [5130, 5211]
+      },
+      {
         "category": "new", "audience": "player", "topic": "Training",
         "en": {
           "title": "Three new hard sessions: cobbled sectors, echelon drills and attack repeats",
