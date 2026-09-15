@@ -5,6 +5,7 @@ import Field from "./ui/Field.jsx";
 import Textarea from "./ui/Textarea.jsx";
 import Button from "./ui/Button.jsx";
 import { authHeaders } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej (fetch-wiring-ratchet, main roed 15/9)
 import { validateTradeReport, TRADE_REPORT_MESSAGE_MAX_LENGTH, TRADE_REPORT_MESSAGE_MIN_LENGTH } from "../lib/tradeReport";
 
 const API = import.meta.env.VITE_API_URL;
@@ -61,12 +62,12 @@ export default function ReportTradeDialog({ open, onClose, transferType, transfe
         setError(t("report.error"));
         return;
       }
-      const res = await fetch(`${API}/api/transfers/${transferType}/${transferId}/report`, {
+      const res = await apiFetch(`${API}/api/transfers/${transferType}/${transferId}/report`, {
         method: "POST",
         headers,
         body: JSON.stringify({ message: message.trim() }),
-      });
-      if (res.status === 429) {
+      }, { source: "trade-report" });
+      if (res.limited) {
         setError(t("report.rateLimited"));
         return;
       }
@@ -74,7 +75,7 @@ export default function ReportTradeDialog({ open, onClose, transferType, transfe
         setError(t("report.error"));
         return;
       }
-      const data = await res.json();
+      const data = res.data as { alreadyReported?: boolean } | null;
       setResult(data?.alreadyReported ? "alreadyReported" : "sent");
     } catch {
       setError(t("report.error"));

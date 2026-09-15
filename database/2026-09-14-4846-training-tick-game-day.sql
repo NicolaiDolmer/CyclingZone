@@ -51,7 +51,7 @@ BEGIN
     -- con_name forblive NULL, DROP'en udeblive — og den gamle constraint ville
     -- saa tavst afvise loebsdag 2 paa samme kalenderdato med 23505 (alreadyRan).
     AND (
-      SELECT array_agg(a.attname ORDER BY a.attname)
+      SELECT array_agg(a.attname::text ORDER BY a.attname)
       FROM pg_attribute a
       WHERE a.attrelid = t.oid AND a.attnum = ANY (c.conkey)
     ) = ARRAY['team_id', 'tick_date']
