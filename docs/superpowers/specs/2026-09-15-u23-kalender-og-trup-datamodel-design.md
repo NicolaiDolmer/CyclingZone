@@ -291,7 +291,7 @@ Målinger før build [A, read-only prod]: ryttere 19-22 pr. hold (menneske/AI); 
 
 ## 10. Åbne beslutninger til ejeren (6, ét kort ad gangen)
 
-**10.1 Køre fra dag 1, eller genereres nu og tændes i uge 1?** A (anbefalet): generér nu, tænd bag `u23_racing_enabled` når Fase B er grøn. B: alt live 28/9 (88-94 timer på 12 dage). C: U23 til S5 (bryder 15/9-beslutningen).
+**10.1 Køre fra dag 1, eller genereres nu og tændes i uge 1?** **EJER-VALGT 15/9 kl. 11:1x: B, alt live 28/9.** Ordret tillæg: *"du skal ikke udskyde ting uden aftale. Det er mit område. Senere i dag skal vi lave en aftale om hvad der skal laves i denne uge og hvad der skal laves inden sæsonskiftet uanset hvad."* Dvs. §11's "hvad viger"-tabel er INPUT til ejerens ugeplan, ikke en beslutning Claude træffer. Fravalgt: A (flag i uge 1), C (S5).
 
 **10.2 Holdets plads i to pyramider?** A (anbefalet): `teams.u23_league_division_id` (spejler `league_division_id`, ét felt, junior senere). B: tabel `team_squad_divisions` (renere, rører ~8 puljeopslag).
 
