@@ -914,6 +914,16 @@
             "Taktik",
             "Race-forståelse og at læse et løb",
             "Holdtidskørsler, taktiske løb"
+          ],
+          [
+            "Holdarbejde",
+            "Hvor meget en hjælper er værd for sin kaptajn",
+            "Enhver dag du kører for en anden"
+          ],
+          [
+            "Lederskab",
+            "Om truppen kører bag ham",
+            "Kaptajndage, og at give det videre til en ung rytter"
           ]
         ]
       },
@@ -1689,7 +1699,7 @@
     },
     "riderAbilities": {
       "q": "Hvad betyder de 15 rytter-evner?",
-      "a": "Hver rytter vurderes 0-99 på 15 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (2): Aggression (lysten til at angribe og komme med i udbrud) og Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb). Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
+      "a": "Hver rytter vurderes 0-99 på 17 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (4): Aggression (lysten til at angribe og komme med i udbrud), Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb), Holdarbejde (hvor meget en hjælper er værd for den kaptajn han kører for) og Lederskab (om truppen kører bag ham, og hvad han giver videre til en ung rytter). Holdarbejde og Lederskab er nye: du kan se og træne dem nu, og de begynder at ændre løb i en senere opdatering. Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
     },
     "riderRating": {
       "q": "Hvad betyder en rytters samlede rating?",

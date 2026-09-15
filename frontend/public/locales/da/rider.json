@@ -589,7 +589,9 @@
       "cobblestone": "Brosten",
       "positioning": "Positionering",
       "aggression": "Angrebslyst",
-      "tactics": "Taktik"
+      "tactics": "Taktik",
+      "teamwork": "Holdarbejde",
+      "leadership": "Lederskab"
     }
   },
   "skills": {

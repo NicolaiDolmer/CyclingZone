@@ -13,7 +13,8 @@ export const DISPLAY_RECIPES = Object.freeze([
       "acceleration": 3,
       "positioning": 2,
       "flat": 2,
-      "durability": 1
+      "durability": 1,
+      "leadership": 1
     }
   },
   {
@@ -35,7 +36,8 @@ export const DISPLAY_RECIPES = Object.freeze([
       "recovery": 1,
       "durability": 1,
       "descending": 1,
-      "punch": 1
+      "punch": 1,
+      "teamwork": 1
     }
   },
   {
@@ -69,7 +71,8 @@ export const DISPLAY_RECIPES = Object.freeze([
       "durability": 1,
       "positioning": 1,
       "recovery": 1,
-      "sprint": 1
+      "sprint": 1,
+      "teamwork": 1
     }
   },
   {
@@ -93,7 +96,8 @@ export const DISPLAY_RECIPES = Object.freeze([
       "endurance": 2,
       "tempo": 2,
       "durability": 1,
-      "descending": 1
+      "descending": 1,
+      "leadership": 1
     }
   }
 ]);

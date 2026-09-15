@@ -589,7 +589,9 @@
       "cobblestone": "Cobbles",
       "positioning": "Positioning",
       "aggression": "Aggression",
-      "tactics": "Tactics"
+      "tactics": "Tactics",
+      "teamwork": "Teamwork",
+      "leadership": "Leadership"
     }
   },
   "skills": {

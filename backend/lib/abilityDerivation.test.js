@@ -24,11 +24,11 @@ function rider(stat = 60, extra = {}) {
 
 // ── v3-tests (#1122) ─────────────────────────────────────────────────────────
 
-test("#1122 v3: formula_version=3, 15 synlige evner, INGEN prolog", () => {
+test("#1122 v3: formula_version=3, 17 synlige evner, INGEN prolog", () => {
   const a = deriveAbilities(physFor("climber"), rider(60));
   assert.equal(a.formula_version, 3);
   assert.equal(FORMULA_VERSION, 3);
-  assert.equal(VISIBLE_ABILITIES.length, 15);
+  assert.equal(VISIBLE_ABILITIES.length, 17); // #5268: + teamwork, leadership
   assert.ok(!("prolog" in a), "prolog skal være fjernet i v3");
   assert.ok(!VISIBLE_ABILITIES.includes("prolog"));
 });
@@ -141,10 +141,10 @@ test("rider_id falder tilbage til physiology.rider_id", () => {
   assert.equal(a.rider_id, "phys-id");
 });
 
-test("producerer alle 15 synlige + hidden_potential", () => {
+test("producerer alle 17 synlige + hidden_potential", () => {
   const a = deriveAbilities({}, rider(60));
   for (const k of ALL_ABILITY_KEYS) assert.ok(k in a, `mangler ${k}`);
-  assert.equal(VISIBLE_ABILITIES.length, 15);
+  assert.equal(VISIBLE_ABILITIES.length, 17); // #5268: + teamwork, leadership
   assert.ok(!("prolog" in a), "prolog skal ikke forekomme i output");
 });
 
@@ -213,12 +213,42 @@ test("hver disciplin-evne følger sin egen primær-stat (fallback)", () => {
   }
 });
 
-// ── Alders-effekt: erfaring driver tactics, ungdom driver hidden_potential ─────
+// ── Alders-effekt (#5268 vender denne test om) ───────────────────────────────
+//
+// FØR: `tactics = 0,55·experience + 0,45·aggressionFrac`, og denne test
+// HÅNDHÆVEDE at en ældre rytter havde højere taktik. Det var ikke en invariant,
+// det var fejlen: målt i prod 15/9 havde taktik median 14 ved 16-21 år og 57 ved
+// 31-33 år — et aldersmålerur uden sammenhæng med kunnen
+// (docs/audits/2026-09-15-3668-ability-scale-investigation.md §1.3).
+//
+// EFTER (ejer-beslutning 15/9): taktik og aggression må HVERKEN bygge på alder
+// eller på en anden evne. Testen vender derfor om og bliver en forward-guard:
+// den fejler hvis nogen lægger et alders-led tilbage i en af de to.
+// `leadership` er den ENE mentale evne hvor alder er lovlig (spec L1, GDD D-030),
+// og `hidden_potential` er uændret ungdoms-drevet.
 
-test("ældre rytter har højere tactics; yngre har højere hidden_potential", () => {
+test("#5268: hverken tactics eller aggression må reagere på alder", () => {
   const young = deriveAbilities({}, rider(60, { birthdate: "2005-01-01", potentiale: 6 }));
   const old = deriveAbilities({}, rider(60, { birthdate: "1992-01-01", potentiale: 6 }));
-  assert.ok(old.tactics > young.tactics, `tactics: old ${old.tactics} ikke > young ${young.tactics}`);
+  // Samme id, samme stats ⇒ samme støj ⇒ identiske tal. Kun alderen er forskellig.
+  assert.equal(old.tactics, young.tactics,
+    `tactics må ikke afhænge af alder: old ${old.tactics} vs young ${young.tactics}`);
+  assert.equal(old.aggression, young.aggression,
+    `aggression må ikke afhænge af alder: old ${old.aggression} vs young ${young.aggression}`);
+  assert.equal(old.teamwork, young.teamwork,
+    `teamwork må ikke afhænge af alder: old ${old.teamwork} vs young ${young.teamwork}`);
+});
+
+test("#5268: leadership stiger med alder (den ene lovlige aldersfaktor, D-030)", () => {
+  const young = deriveAbilities({}, rider(60, { birthdate: "2005-01-01", potentiale: 6 }));
+  const old = deriveAbilities({}, rider(60, { birthdate: "1992-01-01", potentiale: 6 }));
+  assert.ok(old.leadership > young.leadership,
+    `leadership: old ${old.leadership} ikke > young ${young.leadership}`);
+});
+
+test("ungdom driver hidden_potential (uændret)", () => {
+  const young = deriveAbilities({}, rider(60, { birthdate: "2005-01-01", potentiale: 6 }));
+  const old = deriveAbilities({}, rider(60, { birthdate: "1992-01-01", potentiale: 6 }));
   assert.ok(young.hidden_potential > old.hidden_potential, `hidden: young ${young.hidden_potential} ikke > old ${old.hidden_potential}`);
 });
 
