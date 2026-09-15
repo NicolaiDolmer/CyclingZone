@@ -187,6 +187,65 @@ test("#4344: basis-kaptajn sat til captain igen på etapen tæller ÉN gang", ()
   assert.deepEqual(result, { ok: true, errors: [] });
 });
 
+// ── #5202: udgået basis-indehaver af en eksklusiv rolle tæller IKKE med ──────
+//
+// Kaptajnen (eller sprint_captain/hunter) styrter og udgår af løbet. Han er
+// stadig holdets ikke-overskrevne basis-kaptajn (race_entries.race_role
+// ændres ikke af et styrt), men han kører ikke flere etaper (samme kilde som
+// raceRunner ekskluderer ham fra). Overlap-guarden skal derfor IKKE tælle
+// ham med, ellers kan spilleren aldrig forfremme en ny kaptajn efter et styrt
+// (issue #5202).
+
+test("#5202: udgået basis-kaptajn + ny forfremmet kaptajn → ok (den udgåede tæller ikke)", () => {
+  const result = ok(
+    [{ stage_number: 3, rider_id: "r2", race_role: "captain", effort: "normal" }],
+    { baseRoleByRider: BASE_ROLES, abandonedRiderIds: new Set(["r1"]) },
+  );
+  assert.deepEqual(result, { ok: true, errors: [] });
+});
+
+test("#5202: samme hul for sprint_captain", () => {
+  const result = ok(
+    [{ stage_number: 4, rider_id: "r3", race_role: "sprint_captain", effort: "normal" }],
+    {
+      baseRoleByRider: new Map([["r1", "sprint_captain"], ["r2", "helper"], ["r3", "helper"]]),
+      abandonedRiderIds: new Set(["r1"]),
+    },
+  );
+  assert.deepEqual(result, { ok: true, errors: [] });
+});
+
+test("#5202: samme hul for hunter", () => {
+  const result = ok(
+    [{ stage_number: 3, rider_id: "r2", race_role: "hunter", effort: "normal" }],
+    {
+      baseRoleByRider: new Map([["r1", "hunter"], ["r2", "helper"], ["r3", "helper"]]),
+      abandonedRiderIds: new Set(["r1"]),
+    },
+  );
+  assert.deepEqual(result, { ok: true, errors: [] });
+});
+
+test("#5202: basis-kaptajn IKKE udgået + ny forfremmet kaptajn → stadig overlap (regression, ikke bare slukket guard)", () => {
+  const result = ok(
+    [{ stage_number: 3, rider_id: "r2", race_role: "captain", effort: "normal" }],
+    { baseRoleByRider: BASE_ROLES, abandonedRiderIds: new Set() },
+  );
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.includes("stage_roles_role_overlap"));
+});
+
+test("#5202: to IKKE-udgåede kaptajner i bodyen → stadig overlap, selvom en ANDEN rytter er udgået", () => {
+  const result = ok(
+    [
+      { stage_number: 3, rider_id: "r1", race_role: "captain", effort: "normal" },
+      { stage_number: 3, rider_id: "r2", race_role: "captain", effort: "normal" },
+    ],
+    { abandonedRiderIds: new Set(["r3"]) },
+  );
+  assert.ok(result.errors.includes("stage_roles_role_overlap"));
+});
+
 test("captain PÅ FORSKELLIGE etaper → INTET overlap (roller er per-etape-scopede)", () => {
   const result = ok([
     { stage_number: 3, rider_id: "r1", race_role: "captain", effort: "normal" },

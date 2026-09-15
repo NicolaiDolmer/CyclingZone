@@ -13,6 +13,13 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "RoadmapPage.jsx"), "utf8");
+// #5177 spor 2 (LCP): admin-create-formen blev udskilt til egen lazy-loaded
+// chunk (mindre JS for ikke-admin besøgende) — dens kilde ligger derfor ikke
+// længere i RoadmapPage.jsx.
+const adminFormSource = readFileSync(
+  join(__dirname, "..", "components", "RoadmapAdminCreateForm.jsx"),
+  "utf8",
+);
 
 test("RoadmapPage bevarer privacy-fix: egne stemmer + votesByItemId-lag (#1599)", () => {
   assert.match(
@@ -43,6 +50,24 @@ test("RoadmapPage gater admin-flade via is_admin RPC (#1600)", () => {
   );
 });
 
+test("RoadmapPage kalder KUN is_admin-RPC'en naar der er en session (#5153)", () => {
+  // /roadmap er en OFFENTLIG rute (#2042/#2824 — registreret uden for
+  // ProtectedRoute i App.jsx), og #5153 revoker anon-EXECUTE paa is_admin().
+  // Et ubetinget kald giver derfor 403/42501 for hver udlogget besoegende.
+  // Ikke brugersynligt (fejlen destruktureres vaek, isAdmin bliver false), og
+  // netop derfor er det en fejl der kun fanges af en guard som denne.
+  assert.match(
+    source,
+    /supabase\.auth\.getSession\(\)/,
+    "session skal laeses foer RPC-kaldet (getSession er lokal, ingen ekstra rundtur)",
+  );
+  assert.match(
+    source,
+    /session \? supabase\.rpc\("is_admin"\) : Promise\.resolve\(/,
+    "rpc(\"is_admin\") skal vaere gated paa en session — ellers kalder anon den",
+  );
+});
+
 test("RoadmapPage har historik-sektion + admin status-toggle (#1600)", () => {
   assert.match(source, /shipped\.title/, "skal rendere en \"shipped\"-historik-sektion");
   assert.match(
@@ -59,8 +84,16 @@ test("RoadmapPage har historik-sektion + admin status-toggle (#1600)", () => {
 
 test("RoadmapPage admin-create indsætter i roadmap_items uden migration (#1600)", () => {
   assert.match(
-    source,
+    adminFormSource,
     /from\("roadmap_items"\)\s*\.insert\(/,
     "admin-create-form skal INSERT'e direkte i roadmap_items (RLS admin-policy)",
+  );
+});
+
+test("RoadmapPage lazy-loader admin-create-formen via lazyWithRetry (#5177 spor 2, LCP + #5014 chunk-retry)", () => {
+  assert.match(
+    source,
+    /lazyWithRetry\(\(\) => import\("\.\.\/components\/RoadmapAdminCreateForm\.jsx"\)\)/,
+    "AdminCreateForm skal splittes via lazyWithRetry (ikke bart React.lazy — #5014 chunk-retry-guard), og ikke bundles ind i alles roadmap-chunk",
   );
 });

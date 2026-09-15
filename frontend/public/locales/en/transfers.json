@@ -151,7 +151,26 @@
     "loadError": "Could not load transfer history",
     "noSaleToggle": "Show auctions with no bids",
     "noSaleHiddenNote": "{count, plural, one {# auction with no bids is} other {# auctions with no bids are}} hidden. No rider changed hands.",
-    "emptyFilteredNoSaleOnly": "No actual transfers in the selected season: only auctions with no bids (hidden, see filter above)."
+    "emptyFilteredNoSaleOnly": "No actual transfers in the selected season: only auctions with no bids (hidden, see filter above).",
+    "reportAction": "Report for review",
+    "reportActionAria": "Report this trade for review"
+  },
+  "report": {
+    "title": "Report this trade",
+    "subtitle": "Send it to me for a closer look. This isn't an accusation, just a flag for me to check.",
+    "messageLabel": "What looked off?",
+    "messagePlaceholder": "Describe what stood out to you...",
+    "messageHelper": "{count} characters left",
+    "cancel": "Cancel",
+    "confirm": "Send report",
+    "close": "Close",
+    "closeAction": "Close",
+    "done": "Thanks. I'll take a look.",
+    "alreadyDone": "Your team already reported this trade. I've got it.",
+    "error": "Could not send the report. Try again in a moment.",
+    "rateLimited": "You've sent a few reports already. Try again in a bit.",
+    "tooShort": "Say a bit more: at least {min} characters.",
+    "tooLong": "Keep it under {max} characters."
   },
   "profit": {
     "title": "Transfer profit per rider",

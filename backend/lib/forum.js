@@ -1375,6 +1375,36 @@ export async function setForumPostPinned({ supabase, id, pinned }) {
   return { status: 200, body: { ok: true, id: data.id, is_pinned: data.is_pinned } };
 }
 
+/**
+ * PATCH /api/admin/forum/posts/:id/move (#4821, ejer-løfte 4/9: "det får jeg
+ * gjort"). Flytter en tråd til en anden kategori — kategori-strukturen driver
+ * ellers fra hinanden med det samme, fordi der ingen vej er tilbage efter
+ * oprettelse (#4492 landede syv kategorier 4/9, uden en flytte-funktion).
+ *
+ * Admin-only indtil videre: rettigheden burde hænge på en moderator-rolle
+ * (#4268, ejer-direktiv 25/8), men den er ikke landet endnu, så ruten deler
+ * kun requireAdmin med de øvrige moderations-ruter ovenfor. Kobles om når
+ * #4268 lander.
+ *
+ * Ingen dedikeret admin_log/moderations-log-tabel findes i skemaet (kun
+ * forum_reports, som er noget andet) — der er derfor intet at skrive til.
+ */
+export async function moveForumPost({ supabase, id, category }) {
+  if (!id) return { status: 400, body: { error: "Missing id", errorCode: "forum_missing_id" } };
+  if (!isValidForumCategory(category)) {
+    return { status: 400, body: { error: "Invalid category", errorCode: "forum_invalid_category" } };
+  }
+  const { data, error } = await supabase
+    .from("forum_posts")
+    .update({ category })
+    .eq("id", id)
+    .select("id, category")
+    .maybeSingle();
+  if (error) throw new Error(`forum: could not move post ${id}: ${error.message}`);
+  if (!data) return { status: 404, body: { error: "Post not found", errorCode: "forum_post_not_found" } };
+  return { status: 200, body: { ok: true, id: data.id, category: data.category } };
+}
+
 /** Auto-resolver åbne rapporter på et target der netop er modereret væk. */
 async function resolveReportsForTarget({ supabase, targetType, targetId, adminUserId, now }) {
   const { error } = await supabase

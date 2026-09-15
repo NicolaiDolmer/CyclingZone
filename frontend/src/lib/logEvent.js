@@ -119,6 +119,12 @@ export const KNOWN_EVENTS = Object.freeze([
   // Naturligt 0 indtil træningsmotoren er aktiv for spillere.
   "training_focus_set_bulk",
   "training_run_today",
+  // onboarding_step2_one_click (#5241) — fyrer fra OnboardingProgressCard.jsx
+  // når "Run this week's training"/"Kør ugens træning" sætter assistentens
+  // anbefalede fokus for truppen og kører dagen i ét klik. Måler #4964-fundet:
+  // trin 2 var det eneste faldende onboarding-trin (52 % → 34 %), fordi det
+  // krævede fokus rytter for rytter på træningssiden.
+  "onboarding_step2_one_click",
   // #4557 (S-M2d) · instrumentering for aarsmoedet/Boardroom (#1141:
   // mødegennemførelse + kvitterings-åbninger). feature_board_meeting_opened
   // (canary, kun ved mount) og board_meeting_signed (funnel-modstykke, kun
@@ -145,6 +151,13 @@ export const KNOWN_EVENTS = Object.freeze([
   // Forholdet mellem de to events er selve målingen ejeren bad om 7/9.
   "nps_submitted",
   "nps_dismissed",
+  // app_version_reload (#5033/#5159) — release-koordineringen. Baerer
+  // {from, to, fromSha, sha, trigger, outcome}. `outcome` er hele pointen efter
+  // audit-fund M4: "arrived" (vi landede paa maalet), "no_effect" (reloadet
+  // aendrede ingenting) eller "deferred" (ny frontend fundet, men spilleren
+  // havde ugemt arbejde, saa vi viste banneret i stedet). Et event alene er
+  // IKKE bevis for en undgaaet ChunkLoadError.
+  "app_version_reload",
 ]);
 
 // #4321: spejl eventet til PostHog. Postgres-skrivningen nedenfor er og bliver

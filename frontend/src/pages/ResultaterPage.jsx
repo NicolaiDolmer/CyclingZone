@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getTopRiderRankings } from "../lib/rankingsApi.ts";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -252,12 +253,7 @@ export default function ResultaterPage() {
         .eq("season_id", seasonRow.id)
         .order("total_points", { ascending: false })
         .limit(1000),
-      supabase
-        .from("rider_rankings_mv")
-        .select("rider_id, points, stage_wins, gc_wins")
-        .eq("season_id", seasonRow.id)
-        .order("points", { ascending: false })
-        .limit(5),
+      getTopRiderRankings(seasonRow.id),
       // #3333: status alene er IKKE en pålidelig "afsluttet"-markør — et etapeløb
       // beholder status='scheduled' under HELE afviklingen (kun stages_completed
       // er pålidelig, se backend/lib/stageRaceTransferDefer.js). .or() henter
@@ -270,6 +266,7 @@ export default function ResultaterPage() {
         .or("status.eq.completed,stages_completed.gt.0"),
     ]);
     if (standingsRes.error) throw standingsRes.error;
+    if (topRiderStatsRes.error) throw topRiderStatsRes.error;
     if (racesWithResultsRes.error) throw racesWithResultsRes.error;
 
     const matchingTeams = filterByDivisionPool(standingsRes.data || [], s => s.team?.league_division_id, selection, divisionsById);

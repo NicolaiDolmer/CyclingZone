@@ -1,5 +1,304 @@
 export const PATCHES = [
   {
+    "version": "7.275",
+    "date": "2026-09-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "topic": "Transfers",
+        "en": {
+          "title": "Report a trade",
+          "body": "Every completed trade in a team's trade history now has a Report button. The report carries the trade itself, so you do not have to describe it. The contact form also has a new Fair play category."
+        },
+        "da": {
+          "title": "Anmeld en handel",
+          "body": "Hver gennemført handel i et holds handelshistorik har nu knappen Anmeld. Anmeldelsen bærer selve handlen, så du behøver ikke beskrive den. Kontaktformularen har også fået kategorien Fair play."
+        },
+        "refs": [4346, 5214]
+      }
+    ]
+  },
+  {
+    "version": "7.274",
+    "date": "2026-09-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "topic": "Dashboard",
+        "en": {
+          "title": "Run your first training day with one click",
+          "body": "The Get started card now has a Run this week's training button. It sets the assistant's recommended focus for your whole squad and runs the day. Pick it myself still takes you to the training page."
+        },
+        "da": {
+          "title": "Kør din første træningsdag med ét klik",
+          "body": "Kom i gang-kortet har nu knappen Kør ugens træning. Den sætter assistentens anbefalede fokus for hele truppen og kører dagen. Vælg selv fører dig stadig til træningssiden."
+        },
+        "refs": [5241, 5244]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "Pages wait quietly when the server is briefly busy",
+          "body": "Dashboard, training, auctions, transfers and the race page now wait and retry instead of showing an error when the server asks them to slow down for a moment."
+        },
+        "da": {
+          "title": "Sider venter stille, når serveren er kortvarigt travl",
+          "body": "Dashboard, træning, auktioner, transfers og løbssiden venter nu og prøver igen i stedet for at vise en fejl, når serveren beder dem om at sætte tempoet ned et øjeblik."
+        },
+        "refs": [5242, 5248]
+      }
+    ]
+  },
+  {
+    "version": "7.273",
+    "date": "2026-09-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "topic": "Squad",
+        "en": {
+          "title": "Your squad selection survives switching to the Stages tab",
+          "body": "Unsaved changes in team selection used to reset if you switched to the Stages tab and back. They now survive the switch, and a short line reminds you they are unsaved until you hit save."
+        },
+        "da": {
+          "title": "Din holdudtagelse overlever nu et skift til Etaper-fanen",
+          "body": "Ugemte ændringer i holdudtagelsen blev nulstillet, hvis du skiftede til Etaper-fanen og tilbage. De overlever nu skiftet, og en kort linje minder dig om, at de er ugemte, indtil du trykker gem."
+        },
+        "refs": [5098, 5206]
+      },
+      {
+        "category": "new", "audience": "player", "topic": "Planning",
+        "en": {
+          "title": "A visible reminder before the squad deadline",
+          "body": "Planning now shows a yellow highlight before a race's selection deadline, and the race page shows a box if a race starts without a full squad, turning red as the assistant is about to take over. You can turn this off on your profile."
+        },
+        "da": {
+          "title": "En synlig påmindelse før udtagelsesfristen",
+          "body": "Planlægning viser nu en gul markering før et løbs udtagelsesfrist, og løbssiden viser en boks, hvis et løb starter uden fuld trup, der bliver rød, når assistenten er ved at tage over. Du kan slå det fra på din profil."
+        },
+        "refs": [4983, 5108]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Squad",
+        "en": {
+          "title": "The assistant only fills a squad that is completely empty",
+          "body": "Before, the assistant could also fill a squad you had partly picked yourself. Now it only steps in 12 hours before a race starts if your squad is completely empty; picking even one rider yourself keeps the assistant out."
+        },
+        "da": {
+          "title": "Assistenten fylder kun en trup, der er helt tom",
+          "body": "Før kunne assistenten også fylde en trup, du selv delvist havde sat. Nu træder den kun til 12 timer før et løb starter, hvis din trup er helt tom; vælger du bare én rytter selv, rører assistenten intet."
+        },
+        "refs": [5136]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Watchlist",
+        "en": {
+          "title": "The wishlist search field is visible on mobile",
+          "body": "The search field on your wishlist was hidden under the page header on small screens. It now sits where you can see and use it."
+        },
+        "da": {
+          "title": "Søgefeltet på ønskelisten er synligt på mobil",
+          "body": "Søgefeltet på din ønskeliste lå skjult under sidehovedet på små skærme. Det ligger nu, hvor du kan se og bruge det."
+        },
+        "refs": [5122, 5232]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Races",
+        "en": {
+          "title": "Find the latest stage result straight from Overview",
+          "body": "The race page's Overview tab now has a Result of stage N button, and the Stages tab opens on the most recently run stage instead of the first one."
+        },
+        "da": {
+          "title": "Find det seneste etaperesultat direkte fra Overblik",
+          "body": "Løbssidens Overblik-fane har nu en Resultat af etape N-knap, og Etaper-fanen åbner på den senest kørte etape i stedet for den første."
+        },
+        "refs": [5123, 5229]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Roadmap",
+        "en": {
+          "title": "The roadmap page no longer jumps while it loads",
+          "body": "Content used to shift around on /roadmap while images and cards finished loading, especially on mobile. The layout now holds still from the first paint."
+        },
+        "da": {
+          "title": "Roadmap-siden hopper ikke længere under indlæsning",
+          "body": "Indhold flyttede sig på /roadmap, mens billeder og kort blev færdige med at indlæse, især på mobil. Layoutet holder sig nu i ro fra første visning."
+        },
+        "refs": [5177, 5217]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Auth",
+        "en": {
+          "title": "Fewer error boxes when your session has expired",
+          "body": "The app now waits as long as the server asks before retrying a busy request, and sends you to login once your session has actually expired, instead of showing repeated error boxes on the rider profile."
+        },
+        "da": {
+          "title": "Færre fejlbokse, når din session er udløbet",
+          "body": "Appen venter nu lige så længe, som serveren beder om, før den prøver en travl forespørgsel igen, og sender dig til login, når sessionen faktisk er udløbet, i stedet for at vise gentagne fejlbokse på rytterprofilen."
+        },
+        "refs": [5089, 5233]
+      }
+    ]
+  },
+  {
+    "version": "7.272",
+    "date": "2026-09-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "topic": "Races",
+        "en": {
+          "title": "Race results arrive on time again when many stages finish in the same hour",
+          "body": "The board step after each race read the same season-wide tables once per team, 242 times in a row, and took up to eight minutes per race. It now reads them once and handles teams in batches, so a cluster of stages no longer pushes results 36 to 48 minutes past the time on the calendar."
+        },
+        "da": {
+          "title": "Løbsresultater kommer til tiden igen, når mange etaper slutter i samme time",
+          "body": "Bestyrelses-trinnet efter hvert løb læste de samme sæson-brede tabeller én gang pr. hold, 242 gange i træk, og tog op til otte minutter pr. løb. Nu læses de én gang og holdene køres i grupper, så en klynge af etaper ikke længere skubber resultaterne 36 til 48 minutter forbi tidspunktet i kalenderen."
+        },
+        "refs": [5182, 5204]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Races",
+        "en": {
+          "title": "You can promote a new captain after yours abandons a stage race",
+          "body": "If your captain, sprint captain or hunter crashed out, the game still counted the withdrawn rider as holding the role, so a new one was rejected as a duplicate. Withdrawn riders no longer count."
+        },
+        "da": {
+          "title": "Du kan udnævne en ny kaptajn, når din er udgået af et etapeløb",
+          "body": "Styrtede din kaptajn, sprintkaptajn eller jæger ud, talte spillet stadig den udgåede rytter med i rollen, så en ny blev afvist som dobbelt. Udgåede ryttere tæller ikke længere."
+        },
+        "refs": [5202, 5207]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Onboarding",
+        "en": {
+          "title": "Getting-started step 4 waits for you to negotiate the board plan yourself",
+          "body": "The step no longer ticks itself off when the board accepts a plan for you after the deadline. If the board has already set one, the step says so and asks you to take a look."
+        },
+        "da": {
+          "title": "Kom i gang-trin 4 venter på, at du selv forhandler bestyrelsesplanen",
+          "body": "Trinnet markerer sig ikke længere færdigt, når bestyrelsen accepterer en plan for dig efter fristen. Har bestyrelsen allerede sat en, siger trinnet det og beder dig se den."
+        },
+        "refs": [5103, 5208]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "An empty season summary now points you to the calendar",
+          "body": "Before any race has finished, the season summary showed No results yet with nothing to do. It now offers View calendar."
+        },
+        "da": {
+          "title": "En tom sæsonopsamling peger dig nu videre til kalenderen",
+          "body": "Før noget løb var afsluttet, viste sæsonopsamlingen Ingen resultater endnu uden en handling. Nu tilbyder den Se kalenderen."
+        },
+        "refs": [5184, 5195]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Forum",
+        "en": {
+          "title": "Threads that landed in the wrong category can be moved",
+          "body": "I can now move a thread to the right category instead of asking you to delete and repost it. Ask in the thread or on Discord."
+        },
+        "da": {
+          "title": "Tråde, der landede i den forkerte kategori, kan flyttes",
+          "body": "Jeg kan nu flytte en tråd til den rigtige kategori i stedet for at bede dig slette og skrive den igen. Sig til i tråden eller på Discord."
+        },
+        "refs": [4821, 5212]
+      }
+    ]
+  },
+  {
+    "version": "7.271",
+    "date": "2026-09-13",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "An update never reloads the page over your unsaved work",
+          "body": "When a new version of the game is deployed, a banner says New version ready. The page only reloads on its own at a safe moment: no unsaved selection, tactics, bids, training or text in a field, and no race film playing. Otherwise the banner waits until you click Update."
+        },
+        "da": {
+          "title": "En opdatering genindlæser aldrig siden over dit ugemte arbejde",
+          "body": "Når en ny version af spillet udkommer, viser et banner Ny version klar. Siden genindlæser kun af sig selv i et sikkert øjeblik: ingen ugemt udtagelse, taktik, bud, træning eller tekst i et felt, og ingen løbsfilm der kører. Ellers venter banneret, til du trykker Opdater."
+        },
+        "refs": [5159, 5173]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Races",
+        "en": {
+          "title": "Race start no longer skips every team if one AI rider retires at the wrong moment",
+          "body": "If an AI rider retired in the split second between being picked and being written to the start list, the automatic fill failed for every team in that race. Now only that rider is dropped and the rest of the field is written as normal."
+        },
+        "da": {
+          "title": "Løbsstarten springer ikke længere alle hold over, hvis én AI-rytter pensioneres i det forkerte øjeblik",
+          "body": "Blev en AI-rytter pensioneret i sekundet mellem udvælgelsen og skrivningen til startlisten, fejlede den automatiske udfyldning for alle hold i løbet. Nu droppes kun den rytter, og resten af feltet skrives som normalt."
+        },
+        "refs": [5146]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Help",
+        "en": {
+          "title": "Help now says when a rider's value starts to fall",
+          "body": "The Value and price section explains that value can already start slipping in the late twenties, before any ability turns, because it prices the whole remaining career and not the current level."
+        },
+        "da": {
+          "title": "Hjælpen fortæller nu, hvornår en rytters værdi begynder at falde",
+          "body": "Afsnittet Værdi og pris forklarer, at værdien kan begynde at falde allerede i slutningen af 20'erne, før nogen evne vender, fordi den priser hele den resterende karriere og ikke det nuværende niveau."
+        },
+        "refs": [5181]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Help",
+        "en": {
+          "title": "Help explains the mobile tables",
+          "body": "A new section under Getting started covers how tables work on a phone: the rider name plus three columns, chips that swap a column in, Full table to see everything with the name locked, and that your choice is remembered per table."
+        },
+        "da": {
+          "title": "Hjælpen forklarer mobiltabellerne",
+          "body": "Et nyt afsnit under Kom godt i gang beskriver, hvordan tabeller virker på telefonen: rytternavnet plus tre kolonner, chips der bytter en kolonne ind, Fuld tabel der viser alt med navnet låst, og at dit valg huskes pr. tabel."
+        },
+        "refs": [5112, 5102]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "The footer logo no longer nudges the homepage while loading",
+          "body": "The logo in the footer reserved no space before it was fetched, so the homepage shifted as it appeared. It now reserves its box up front. The footer looks exactly as before."
+        },
+        "da": {
+          "title": "Footer-logoet skubber ikke længere til forsiden, mens den indlæses",
+          "body": "Logoet i footeren reserverede ingen plads, før det var hentet, så forsiden hoppede, da det dukkede op. Nu reserverer det sin plads fra start. Footeren ser ud præcis som før."
+        },
+        "refs": [5177]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "Faster loads after an update",
+          "body": "The game's core library and all interface texts are now delivered as their own files. They stay in your browser cache across updates instead of being downloaded again every time something else changes."
+        },
+        "da": {
+          "title": "Hurtigere indlæsning efter en opdatering",
+          "body": "Spillets kernebibliotek og alle tekster leveres nu som egne filer. De bliver i browserens cache på tværs af opdateringer i stedet for at blive hentet igen, hver gang noget andet ændrer sig."
+        },
+        "refs": [5177]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "A broken request gets a clear error instead of a server error",
+          "body": "If the browser sends a request the server cannot read, the answer is now a short, honest error such as Invalid JSON body rather than Internal server error. Real server errors are unchanged."
+        },
+        "da": {
+          "title": "En defekt forespørgsel får en klar fejl i stedet for en serverfejl",
+          "body": "Sender browseren en forespørgsel, serveren ikke kan læse, er svaret nu en kort og ærlig fejl som Ugyldig JSON i stedet for Intern serverfejl. Ægte serverfejl er uændrede."
+        },
+        "refs": [5144]
+      }
+    ]
+  },
+  {
     "version": "7.270",
     "date": "2026-09-11",
     "label": "Beta",

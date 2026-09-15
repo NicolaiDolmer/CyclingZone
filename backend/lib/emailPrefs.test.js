@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { EMAIL_PREF_TYPES, isEmailTypeEnabled, sanitizeEmailPrefs } from "./emailPrefs.js";
 
-test("EMAIL_PREF_TYPES lists the three loop email types", () => {
-  assert.deepEqual(EMAIL_PREF_TYPES, ["welcome", "day1", "race_digest"]);
+test("EMAIL_PREF_TYPES lists the loop email types plus winback (#2760)", () => {
+  assert.deepEqual(EMAIL_PREF_TYPES, ["welcome", "day1", "race_digest", "winback"]);
 });
 
 test("isEmailTypeEnabled defaults to on when prefs are absent", () => {

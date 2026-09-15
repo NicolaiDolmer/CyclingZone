@@ -16,3 +16,9 @@ frontend/src/lib/generated/*.js text eol=lf
 # Bidt under selve #4734 — en rebase gav filen CRLF, og --check fejlede uden at
 # en eneste streng havde ændret sig. Vagten normaliserer også selv.
 backend/lib/locales/*.generated.json text eol=lf
+
+# Workflow-scripts laeses af Claude Desktop-appens permission-handler, som afviser
+# kontroltegn (CR) i scriptet. core.autocrlf=true giver CRLF i et Windows-checkout,
+# og Workflow({ scriptPath/name }) fejler saa med 'script contains control characters'.
+# Bidt 11/9 (to gange samme dag). Refs #5142.
+.claude/workflows/*.js text eol=lf

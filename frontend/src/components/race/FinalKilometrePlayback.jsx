@@ -12,6 +12,7 @@ import RiderLink from "../RiderLink";
 import { Flag } from "../Flag";
 import { Section, SectionHeader, Button, FlagIcon, RefreshIcon } from "../ui";
 import { buildFinalKilometrePlayback, countdownAt } from "../../lib/finalKilometre.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 
 function formatDistance(m, t) {
   if (m >= 1000) return t("detail.finalKm.distanceKm", { value: (m / 1000).toFixed(1) });
@@ -86,6 +87,10 @@ function useElapsedMs(totalMs) {
 
 function AnimatedPlayback({ playback, t }) {
   const elapsed = useElapsedMs(playback.totalDurationMs);
+  // #5159 (B1): de 90 sekunders finale er en enkeltstaaende oplevelse — den kan
+  // kun ses igen ved at trykke Replay. Et release-drevet reload midt i den er et
+  // tab, saa porten holder igen indtil afspilningen er slut.
+  useReloadBlock(elapsed < playback.totalDurationMs, RELOAD_BLOCK_REASONS.PLAYBACK);
   // Bevidst IKKE `Math.max(0, elapsed - countdownMs)` — det ville klampe til 0
   // under HELE nedtællingen, og vinderens atMs=0 ville matche `<= 0` med det
   // samme (rytteren "ankom" ved t=0). Kun når vi rent faktisk ER i ankomst-

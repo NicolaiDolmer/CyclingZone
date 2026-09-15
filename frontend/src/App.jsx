@@ -6,6 +6,11 @@ import { parseAuthErrorHash, isExpiredOrDeniedAuthError } from "./lib/authErrorH
 import { lazyWithRetry as lazy } from "./lib/lazyWithRetry.js";
 import { supabase } from "./lib/supabase";
 import CookieBanner from "./components/CookieBanner.jsx";
+// #5033/#5159: opdag et nyt frontend-deploy mens fanen er aaben, og genindlaes
+// paa et sikkert punkt — aldrig oven i ugemt arbejde. Banneret er den manuelle
+// udvej naar det sikre punkt ikke er kommet endnu.
+import useReleaseWatch from "./hooks/useReleaseWatch.js";
+import ReleaseUpdateBanner from "./components/ReleaseUpdateBanner.jsx";
 // LandingPage er eager (ikke lazy): den prerendres ved build og hydreres på "/",
 // så komponenten SKAL være synkront tilgængelig ved klientens første render —
 // en lazy-suspense-fallback ville ellers give et hydration-mismatch.
@@ -14,6 +19,7 @@ import { logSessionStart } from "./lib/logEvent";
 import { setSentryUser, clearSentryUser, AnalyticsBoundary } from "./lib/sentry.jsx";
 import { sharedRequestCache } from "./lib/sharedRequestCache.js";
 import { safeNextPath } from "./lib/safeNextPath.js";
+import { setSessionCookie, clearSessionCookie } from "./lib/sessionCookie.js";
 
 // Layout + analytics integrations lazy-loaded for #479: public routes
 // (/founder-supporter, /login, /privacy-*) ikke betaler for app-shell + Clarity/Vercel
@@ -181,6 +187,13 @@ export default function App() {
   const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
 
+  // #5033/#5159: proaktivt lag over lazyWithRetry. Tjekker ved route-skift, ved
+  // tab-fokus efter >5 min og hvert 5. minut om der er deployet en ny frontend,
+  // og laver i saa fald et fuldt dokument-load — men KUN naar reloadGate.js siger
+  // at ingen flade har ugemt arbejde. Ellers vises banneret, og spilleren tager
+  // opdateringen naar det passer.
+  const { updateReady, applyUpdate, dismissUpdate } = useReleaseWatch();
+
   // #2078: en udløbet/ugyldig email-confirm-link redirecter til Site URL ("/")
   // med fejlen i hash'et (#error=access_denied&error_code=otp_expired...) og
   // UDEN session. Uden dette landede brugeren tavst på landing page. Vi fanger
@@ -205,6 +218,12 @@ export default function App() {
         // "Affected users"-counter virker. Initial session-restore-path.
         setSentryUser(session.user?.id);
         logSessionStart();
+        // #4067 — forny markør-cookien ved hvert vellykket session-restore, så
+        // Vercel-rewriten på "/" ikke sender en aktiv spiller til marketing
+        // efter en periode uden besøg.
+        setSessionCookie();
+      } else {
+        clearSessionCookie();
       }
     }).catch((err) => {
       // #1347 — getSession() kan reject ved offline/network-fejl eller en
@@ -214,18 +233,22 @@ export default function App() {
       // login-flowet i stedet for at strande på en uendelig spinner.
       console.warn("[auth] initial getSession() fejlede — falder tilbage til unauthenticated", err);
       setSession(null);
+      clearSessionCookie();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       if (event === "SIGNED_IN") {
         setSentryUser(session?.user?.id);
         logSessionStart();
+        setSessionCookie();
       } else if (event === "TOKEN_REFRESHED" && session?.user?.id) {
         // Token-refresh kan ske efter cold-start uden SIGNED_IN — sørg for at
         // user-context aldrig taber sig pga. en refresh.
         setSentryUser(session.user.id);
+        setSessionCookie();
       } else if (event === "SIGNED_OUT") {
         clearSentryUser();
+        clearSessionCookie();
         // #5089: det delte request-cache holder holdbunden tilstand
         // (scout-slots, egne transferlistings). Naeste bruger paa samme
         // enhed maa ALDRIG kunne se en TTL-kopi af den forriges data.
@@ -444,6 +467,17 @@ export default function App() {
         </Routes>
       </Suspense>
       <CookieBanner />
+      {/* #5159 (review-fund 5): de to stacking-gates — cookie-banneret og "anonym
+          paa forsiden" — ligger inde i banneret selv, ikke her. App er roden, og
+          et abonnement dér (samtykke-contexten, useLocation) gen-renderer HELE
+          traeet, inklusive den prerendrede landing. Banneret er et blad der
+          rendrer null naar gaten lukker, saa der koster et gen-render intet. */}
+      <ReleaseUpdateBanner
+        show={updateReady}
+        hasSession={Boolean(session)}
+        onUpdate={applyUpdate}
+        onDismiss={dismissUpdate}
+      />
     </>
   );
 }

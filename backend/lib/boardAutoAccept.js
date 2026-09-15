@@ -595,6 +595,16 @@ async function autoAcceptPendingPlan({
     satisfaction: existingBoard?.satisfaction ?? 50,
     budget_modifier: existingBoard?.budget_modifier ?? 1.0,
     negotiation_status: "completed",
+    // #5103 · negotiation_status='completed' alene måler IKKE en spillerhandling
+    // — auto-accept sætter den præcis som et rigtigt /board/sign. onboarding-
+    // trin 4 (board_plan_set) skelner derfor på negotiated_at i stedet
+    // (routes/api.js /me/onboarding-progress): sat af /board/sign +
+    // signMandate(signedVia='manager'), ALTID null her. Eksplicit null (ikke
+    // udeladt) er bevidst — upsert-conflict-grenen opdaterer kun de kolonner
+    // der er med i payloaden, så et tidligere spiller-signeret negotiated_at
+    // ville ellers overleve stående ind i denne auto-accepterede cyklus (fx
+    // efter /board/renew nulstiller status til 'pending' uden at røre feltet).
+    negotiated_at: null,
     plan_start_season_number: startSeasonNumber,
     plan_end_season_number: endSeasonNumber,
     plan_start_balance: team.balance ?? 0,

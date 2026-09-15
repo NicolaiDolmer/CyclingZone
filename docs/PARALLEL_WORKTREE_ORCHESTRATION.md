@@ -8,7 +8,9 @@ Parallelt byggearbejde startes med `Workflow({ scriptPath: "C:\Dev\CyclingZone\.
 - **Loftet er 4 laner** hele døgnet (DOLMERPC, 8 kerner, 32 GB). Erstatter det tidligere "3 parallelle subagents" i TL;DR nedenfor — tallet var dimensioneret efter en ældre maskine og en ældre arbejdsform.
 - **Verifikations-semafor: maks 2 tunge kørsler ad gangen** på tværs af alle worktrees (`scripts/verify-lock.ps1`). Erstatter "maks 3 tunge verifikationer samtidig" i AGENTS.md hard rule 24. Målt 11/9 på DOLMERPC: 9 workers uden semafor = 100 % CPU i timevis, 6 = 83 %. Semaforen tæller kun kommandoer der faktisk wrappes i `verify-lock.ps1`; brief-generatoren er det eneste sted der håndhæver wrappingen, så en kørsel der starter udenom er usynlig for loftet.
 - **Håndhævelse:** `scripts/hooks/guard-agent-spawn.sh` (PreToolUse på `Agent`/`Workflow`) afviser spawns mens `.claude/run/wave-active.json` findes, og mere end 4 spawns pr. 45 min uden for bølger. Igennem slipper bølgens egne præfikser (`WAVE-LANE:`, `WAVE-REVIEW:`, `WAVE-FOLLOWUP:`, `WAVE-SETUP:`, `WAVE-CLEANUP:`), read-only-agenter (`READ-ONLY:` eller subagent_type `Explore`/`Plan`) og `Workflow({ scriptPath: ".claude/workflows/wave.js" })` selv. Håndskrevet byggearbejde: kun én opfølgning ad gangen med præfikset `WAVE-FOLLOWUP:`.
-- **Dry-run før en rigtig bølge:** `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { dryRun: true, tracks: [...] } })` printer planen uden at starte noget.
+- **Livstegn måles på branchen, ikke på tavshed** (#5178, se [Livstegn og frys](#livstegn-og-frys) nedenfor): spor-vindue 120 min, hårdt loft 180, frys først når branchen har stået stille i 45 min.
+- **Dry-run før en rigtig bølge:** `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { dryRun: true, tracks: [...] } })` printer planen uden at starte noget (nu i **blandet koe**-raekkefoelge, se punkt 3 nedenfor).
+- **Fire regler tilføjet 14/9** (#5220): investigate-spor (fast 60-min-vindue), maks 1 CodeRabbit CLI-runde/spor, blandet koe (lette spor forrest), livstegn-prik ved 15 min. Se [Fire regler tilfoejet 14/9](#fire-regler-tilfoejet-149-5220) nedenfor.
 
 > Etableret 2026-05-23 efter Session K (3 PRs merged i én parallel run, ~30 min wall-clock vs. 2-3h sekventielt).
 > Postmortem: [`.claude/learnings/2026-05-23-parallel-orchestration.md`](../.claude/learnings/2026-05-23-parallel-orchestration.md)
@@ -180,7 +182,48 @@ pwsh -File scripts/worker-status.ps1
 
 Eet kald viser alle worktrees: minutter siden sidste commit, **antal ucommitted filer**, upushede commits, aaben PR. Koer den hver gang du alligevel tjekker ind - den fanger den farlige tilstand (ucommitted arbejde), som en tavs worker ikke selv rapporterer.
 
-Eskalering: 30 min uden push -> krav om status og oejeblikkeligt push. Yderligere 15 min -> `TaskStop`, red arbejdet med en `wip`-commit, overtag selv.
+Eskalering ved haandholdt opfoelgning: 30 min uden push -> krav om status og oejeblikkeligt push. Yderligere 15 min -> `TaskStop`, red arbejdet med en `wip`-commit, overtag selv.
+
+### Livstegn og frys
+
+`wave.js` haandhaever dette selv siden 13/9 ([#5178](https://github.com/NicolaiDolmer/CyclingZone/issues/5178)). **En timeout er ikke et frys.** Indtil da var frys-signalet alene "ingen agent-svar inden for 60 min", og begge boelger 11/9 stoppede paa levende spor: #4845 havde committet 12 min foer stoppet, #5159 seks minutter foer. Fordi et bekraeftet frys pr. design stopper HELE boelgen, naaede fire spor i boelge 1 aldrig at starte, og boelge 2 efterlod ucommittet arbejde i to worktrees. Postmortem: [`.claude/learnings/2026-09-11-wave-timeout-er-ikke-frys.md`](../.claude/learnings/2026-09-11-wave-timeout-er-ikke-frys.md).
+
+| Maaling | Vaerdi | Hvad der sker |
+|---|---|---|
+| Foerste spor-vindue | 120 min (`args.trackTimeoutMinutes`, klemmes til 10-180) | Naar det loeber ud, **maales branchen** - der doemmes ikke paa tavshed |
+| Branch-stall | 45 min uden commit | Commit yngre end det = sporet lever, vinduet forlaenges paa SAMME agent |
+| Haardt loft | 180 min | Naaet med en levende branch: sporet stoppes, men **boelgen koerer videre** (stort spor, ikke frossent) |
+| Reviewer | 30 min | Praecis **eet** automatisk gen-spawn foer sporet meldes uden review |
+| Draft-PR / push | 30 min / 15 min | Uaendret - brief-generatoren skriver dem ind i hver lane |
+
+Maalingen sker via en kort read-only probe-agent i worktreet (`git log -1 --format=%ct`, `git status --porcelain`, `git rev-list --count @{u}..HEAD`), som koerer `node scripts/wave-freeze.mjs` for selve dommen. Regelen er ren, testet kode - [`scripts/wave-freeze.mjs`](../scripts/wave-freeze.mjs) med [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs); `wave.js` spejler konstanterne (workflow-scripts kan ikke importere), og testen fejler hvis de to drifter fra hinanden.
+
+Kan branchen ikke maales, doemmes der **frys** - konservativt: en frossen agent holder sin plads i samtidigheds-loftet, og usynligt reduceret kapacitet kostede 2,5 time natten 5-6/9.
+
+**Intet frys efterlader et dirty worktree.** Ved et frys - eller en agent der doede tavst - koerer `wave.js` en kort `WAVE-FOLLOWUP:`-agent i SAMME worktree, som committer WIP bag `guard-commit-branch.sh` med beskeden `wip(#N): boelge-timeout, ucommittet arbejde gemt` og pusher. Lykkes det ikke, staar sporet i boelgens `dirtyWorktrees` - tjek det i haanden.
+
+Stop-agenten springes over i **to** tilfaelde:
+
+1. Proben har set et rent OG pushet worktree - der er intet at redde.
+2. **Hard-cap.** En boelge-timeout afbryder ikke lane-agenten, og ved hard-cap er branchen aktiv, saa agenten kan meget vel stadig skrive i worktreet. To agenter samme sted kaemper om `index.lock` og kan commite halvskrevne filer. Boelgen holder derfor fingrene vaek: sporet raabes op i loggen, og **lanen lukkes** (den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen maa ikke traekke et nyt spor ind). Det er ingen garanti for at agenten goer sit arbejde faerdigt eller faar pushet - tjek worktreet selv med `scripts/worker-status.ps1`.
+
+## Fire regler tilfoejet 14/9 (#5220)
+
+**1. Undersoegelsesspor (`kind: "investigate"`).** Et spor der IKKE bygger noget - kun undersoeger og leverer en dom - faar et fast, IKKE-forlaengeligt vindue paa 60 min (`WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES`). Ingen probe-extend, ingen frys-maaling: der er maaske slet ingen commits at maale branch-fremdrift paa. Sluttrapporten SKAL ende med praecis en af to domme, skrevet ordret ind i briefen (`scripts/make-wave-brief.mjs` + `wave.js`s inline-fallback):
+- **"bekraeftet + fix-plan"** - problemet er reproduceret, med en konkret plan for rettelsen (trin, filer, risiko).
+- **"afvist + bevis-test"** - problemet kunne ikke bekraeftes, med beviset vedlagt (en test, et logudsnit, eller en reproduktion der ikke fejlede).
+
+Et tredje svar ("ved ikke") er ikke tilladt.
+
+**2. Maks EEN CodeRabbit CLI-runde pr. spor.** `coderabbit review --base main --committed` koeres praecis eengang foer `gh pr ready`. Finder den aegte fund, rettes de og pushes - men CLI'en koeres IKKE igen (den er kvote-begraenset og adskilt fra skyens auto-review paa PR-niveau, som stadig koerer uafhaengigt). Ret i `scripts/make-wave-brief.mjs`s PR-skabelon-blok.
+
+**3. Blandet koe.** `wave.js` sorterer spor-koeen stabilt saa lette spor (`model: "sonnet"` + `tier: "TARGETED"`) staar forrest, foer tunge spor (opus og/eller FULL) - uden at aendre den indbyrdes raekkefoelge inden for hver gruppe. Formaal: hver af de 4 laner starter med stor sandsynlighed paa et let spor, saa verifikations-semaforen (maks 2 tunge koersler) ikke bliver flaskehalsen fra minut eet, hvis koeen tilfaeldigvis starter med flere tunge spor paa raekke. `dryRun` printer den sorterede koe. Den rene regel: [`scripts/wave-freeze.mjs`](../scripts/wave-freeze.mjs) (`isLightTrack`/`sortMixedQueue`), spejlet i `wave.js`.
+
+**4. Livstegn-prik ved 15 min (ikke frys).** Naar en branch har staaet uden commit i 15 min, mens boelgen stadig er aktiv, sender `wave-lane-watch.ps1` en `[PRIK]`-besked i loop-tilstanden - IKKE en frys, ingen recovery-brief, intet exit-kode-flag. Frys-graensen er stadig 45 min (se [Livstegn og frys](#livstegn-og-frys) ovenfor); prikken er et tidligt, harmloest tegn-tjek, ikke en eskalering, og nulstilles saa snart branchen viser fremdrift igen.
+
+## Ejer-regel 14/9: backend-only-merges kan spoerges igennem uden go-kort
+
+Rene backend-fixes (ingen UI-aendring, reviewer-verdikt GODKENDT, CI groen) maa orkestratoren **SPOERGE** ejeren om at merge uden et fuldt go-kort med skaermbillede - men ALDRIG antage det stiltiende og merge uden svar. Forskellen fra den generelle UI-regel ("aldrig merge uden ejer-go paa en preview med skaermbillede") er at et backend-only spor ikke har noget visuelt at godkende; et konkret spoergsmaal ("PR #N: backend-fix, reviewer GODKENDT, CI groen - maa jeg merge?") traeder i stedet for kortet, det fjerner ikke selve godkendelsen.
 
 ## Foer du melder faerdig
 

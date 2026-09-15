@@ -69,6 +69,30 @@ Omdøb aldrig `frontend-smoke`-jobbet: navnet er en kontrakt med branch protecti
 
 ---
 
+## Supabase security-advisors — 7-dages regel
+
+_Ejer-krav 11/9 ([#5153](https://github.com/NicolaiDolmer/CyclingZone/issues/5153))._
+
+**Tjek ved hver session-start:** `get_advisors(type: "security")` på projekt
+`ghwvkxzhsbbltzfnuhhz` (Supabase MCP, read-only — koster ét kald). Er der nye
+WARN siden sidst, så noter dem i `docs/NOW.md` sammen med den dato de dukkede op.
+
+**Reglen:** en WARN må **aldrig** stå åben i mere end 7 dage. Bliver den ikke
+lukket inden for et par sessioner, er valget ikke "lad den ligge" men ét af to:
+luk den, eller skriv den ind i [`SUPABASE_SECURITY_ADVISORS.md`](SUPABASE_SECURITY_ADVISORS.md)
+som **bevidst åben** med begrundelse, blokerende afhængighed og issue-nummer.
+En udokumenteret WARN over 7 dage er et brud, ikke en prioritering — #4870 lukkede
+uden fix og lod fire matview-WARN stå i seks uger, præcis det mønster reglen
+findes for.
+
+INFO-fund er ikke omfattet af 7-dages reglen, men skal være klassificeret i
+samme fil (de 117 `rls_enabled_no_policy` er det).
+
+Migrationer der lukker advisor-fund kører som alle andre: idempotent fil i
+`database/`, applied af `auto-migrate.yml` ved merge, post-verify bagefter.
+
+---
+
 ## CodeRabbit — review-allowance (målt 7/9)
 
 CodeRabbit (plan Essentials, `.coderabbit.yaml` `auto_review.enabled=true`) tæller hvert push til en **ikke-draft** PR som ét review-forsøg; allowance skrumper med antal forsøg over de seneste 7 dage (108 forsøg over 7 dage → 1 review/time). Derfor: PR'er oprettes som **draft** ved første push (`gh pr create --draft`), wip-commits pushes mod draften uden at trigge review, FØR PR'en markeres klar kører workeren desuden CodeRabbit CLI (`coderabbit review --base main --committed`, egen kvote adskilt fra sky-reviewet, ~2,5 min) og retter ægte fund; finder reviewet noget, commit + push + kør reviewet igen på den endelige diff. PR'en må ikke markeres klar før et rent (eller kun-støj) CLI-review foreligger. Først derefter sidste handling: `gh pr ready <N>` — se `scripts/make-wave-brief.mjs` og `docs/NIGHT_WAVE_RUNBOOK.md`. `@coderabbitai review` i en PR-kommentar er en manuel trigger og tæller separat fra draft/ready-flowet. Spending cap og plan-valg styres af ejeren i CodeRabbits eget billing-fane — ikke noget Claude ændrer.

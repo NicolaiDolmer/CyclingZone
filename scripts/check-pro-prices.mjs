@@ -24,7 +24,7 @@
 // Test af selve regnestykket (fixture-data, ingen filsystem-afhængighed):
 //   node --test scripts/check-pro-prices.test.mjs
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -103,6 +103,98 @@ export function computeDiscountPct({ monthsInPeriod, periodPrice, monthlyPrice }
   return Math.round((1 - periodPrice / flatTotal) * 1000) / 10; // én decimal
 }
 
+// ── LTV-pris-forward-guard (#5215, historik: #5051-undersøgelse/#5210) ──────
+// growthSnapshot.js's PLAN_PRICE_CENTS og compute_daily_growth_snapshot()'s
+// LTV-CASE-udtryk er to HÅNDSKREVNE kopier af den periode-pris LTV-estimatet
+// regner med.
+//
+// #5215 (ejer-beslutning 14/9, ved merge af #5210): LTV er et EJER-tal, ikke
+// et spillervendt tal — ligesom MRR og ARPU (docs/GROWTH_STACK.md) skal det
+// derfor være øre EKSKL. moms, dvs. IDENTISK med
+// aluntaPlanCatalog.js's rå `amount`-felt (Aluntas interne opkrævnings-
+// grundlag), ikke det beregnede inkl.-moms-tal pro.json viser spilleren.
+//
+// Historik (hvorfor denne guard tidligere krævede det MODSATTE): #5051
+// undersøgte om LTV-kilderne skulle sættes til 21200 (ekskl. moms) og
+// konkluderede dengang nej — LTV fulgte på det tidspunkt definitionen "det
+// kunden rent faktisk betaler" (inkl. moms, 4900/26500), og en guard blev
+// merget (#5210) for at forhindre en utilsigtet tilbagevenden til det. #5215
+// er en BEVIDST, ejer-godkendt ombestemmelse af selve LTV-definitionen (for
+// konsistens med MRR/ARPU), ikke en gentagelse af #5051's fejl — se PR-body
+// for #5215 for fuld verifikation. Guarden er derfor vendt om: den kræver nu
+// EKSKL.-moms-værdierne og afviser 4900/26500.
+
+// PUR: udtrækker {monthly, semiannual} øre-beløb fra compute_daily_growth_
+// snapshot()'s LTV-CASE. To former understøttes:
+//   1. Simpel (2026-08-03..2026-09-02-filerne), fx
+//      (CASE WHEN s.plan_interval IN ('semiannual', '6') THEN 21200 ELSE 4900 END)
+//   2. Dato-bevidst nested (#5215-migrationen, bevarer historisk moms-basis
+//      ved en evt. genberegning af en gammel dato), fx
+//      CASE WHEN s.plan_interval IN ('semiannual', '6')
+//        THEN CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 26500 ELSE 21200 END
+//        ELSE CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 4900 ELSE 3920 END
+//      END
+//      — her er det den GÆLDENDE pris (ELSE-grenen af hver indre CASE, dvs.
+//      prisen for p_snapshot_date >= cutoff) guarden skal sammenligne mod
+//      plankataloget, ikke den historiske.
+// Returnerer null hvis intet af mønstrene findes (fil har intet LTV-CASE).
+export function extractGrowthSnapshotSqlPrices(sqlSource) {
+  const src = String(sqlSource ?? "");
+  const nestedRe = /CASE\s+WHEN\s+s\.plan_interval\s+IN\s+\(\s*'semiannual'\s*,\s*'6'\s*\)\s+THEN\s+CASE\s+WHEN\s+p_snapshot_date\s*<\s*DATE\s*'[^']+'\s+THEN\s+\d+\s+ELSE\s+(\d+)\s+END\s+ELSE\s+CASE\s+WHEN\s+p_snapshot_date\s*<\s*DATE\s*'[^']+'\s+THEN\s+\d+\s+ELSE\s+(\d+)\s+END\s+END/gi;
+  const nestedMatches = [...src.matchAll(nestedRe)];
+  if (nestedMatches.length) {
+    const [, semiannual, monthly] = nestedMatches[0];
+    return { semiannual: Number(semiannual), monthly: Number(monthly) };
+  }
+  const simpleRe = /CASE\s+WHEN\s+s\.plan_interval\s+IN\s+\(\s*'semiannual'\s*,\s*'6'\s*\)\s+THEN\s+(\d+)\s+ELSE\s+(\d+)\s+END/gi;
+  const matches = [...src.matchAll(simpleRe)];
+  if (!matches.length) return null;
+  const [, semiannual, monthly] = matches[0];
+  return { semiannual: Number(semiannual), monthly: Number(monthly) };
+}
+
+// PUR: nyeste "growth-snapshot"-migration i en liste filnavne (ISO-dato-
+// præfiks sorterer korrekt leksikografisk — samme antagelse som auto-migrate.yml
+// bruger til at afspille migrationer i rækkefølge).
+export function findLatestGrowthSnapshotSqlFilename(filenames) {
+  const candidates = (filenames || []).filter((f) => /growth-snapshot/.test(f) && f.endsWith(".sql"));
+  candidates.sort();
+  return candidates.length ? candidates[candidates.length - 1] : null;
+}
+
+// PUR: sammenligner et {monthly, semiannual}-øre-kildepar (growthSnapshot.js
+// ELLER SQL-CASE'en) mod DKK-plankatalogets rå EKSKL.-moms `amount`-felt (øre)
+// — se filhoved-kommentaren ovenfor for hvorfor det er ekskl.-moms og ikke det
+// beregnede inkl.-moms-tal (#5215). Returnerer én finding pr. interval der
+// afviger.
+export function checkLtvPriceSource({ label, priceCentsByInterval, catalogExclVatCentsByInterval }) {
+  const findings = [];
+  for (const [key, catalogKey] of [["monthly", "monthly"], ["semiannual", "half-yearly"]]) {
+    const expected = catalogExclVatCentsByInterval[catalogKey];
+    const actual = priceCentsByInterval?.[key];
+    if (expected == null || actual == null) continue;
+    if (actual !== expected) {
+      findings.push({ label, interval: key, expectedCents: expected, actualCents: actual });
+    }
+  }
+  return findings;
+}
+
+// PUR: bygger {monthly, "half-yearly": eksklMomsØre} fra DKK-planerne i
+// kataloget — fælles grundlag for growthSnapshot.js- og SQL-tjekket. Rå
+// `amount`-feltet ER allerede ekskl. moms (#5215), ingen omregning.
+export function dkkCatalogExclVatCentsByInterval(plans) {
+  const out = {};
+  for (const plan of plans || []) {
+    if (plan.currency === "DKK") out[plan.interval] = plan.amount;
+  }
+  return out;
+}
+
+export function hasLtvDrift(findings) {
+  return (findings || []).length > 0;
+}
+
 // ── I/O (kun i CLI-tilstand, ikke ved import fra testen) ─────────────────────
 
 function fmt(n) {
@@ -119,7 +211,44 @@ async function main() {
 
   const results = checkAllPrices({ plans: PLANS, proJsonByLocale: { en: proEn, da: proDa } });
 
+  // ── #5215-forward-guard: growthSnapshot.js + nyeste growth-snapshot-SQL ────
+  const catalogExclVatCentsByInterval = dkkCatalogExclVatCentsByInterval(PLANS);
+  const { PLAN_PRICE_CENTS } = await import(new URL("../backend/lib/growthSnapshot.js", import.meta.url));
+  const jsFindings = checkLtvPriceSource({
+    label: "backend/lib/growthSnapshot.js PLAN_PRICE_CENTS",
+    priceCentsByInterval: PLAN_PRICE_CENTS,
+    catalogExclVatCentsByInterval,
+  });
+
+  const databaseDir = join(repoRoot, "database");
+  const latestSqlFilename = findLatestGrowthSnapshotSqlFilename(readdirSync(databaseDir));
+  let sqlFindings = [];
+  if (latestSqlFilename) {
+    const sqlSource = readFileSync(join(databaseDir, latestSqlFilename), "utf8");
+    const sqlPrices = extractGrowthSnapshotSqlPrices(sqlSource);
+    if (sqlPrices) {
+      sqlFindings = checkLtvPriceSource({
+        label: `database/${latestSqlFilename} LTV-CASE`,
+        priceCentsByInterval: sqlPrices,
+        catalogExclVatCentsByInterval,
+      });
+    }
+  }
+  const ltvFindings = [...jsFindings, ...sqlFindings];
+
   let drift = 0;
+  for (const f of ltvFindings) {
+    drift++;
+    console.error(
+      `DRIFT     ${f.label} (${f.interval}): ${f.actualCents} øre, katalog siger ${f.expectedCents} øre`
+    );
+  }
+  if (ltvFindings.length === 0) {
+    console.log(
+      `OK        LTV-priskilder (growthSnapshot.js${latestSqlFilename ? ` + database/${latestSqlFilename}` : ""}) matcher plankataloget.`
+    );
+  }
+
   for (const r of results) {
     const bits = [];
     if (!r.selfConsistent) {

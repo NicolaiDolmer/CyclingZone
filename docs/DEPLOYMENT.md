@@ -49,9 +49,20 @@ Vite-SPA'en serverer content-hashede chunks. Deployer vi mens en bruger har appe
 `frontend/src/lib/skewProtection.js` Vercels cookie `__vdpl=<deployment-id>`.
 Vercels edge ruter så både dokumentet og alle assets til netop det deployment
 klienten kører. Deployment-id og build-tidspunkt bages ind via `define` i
-`frontend/vite.config.js` fra `VERCEL_DEPLOYMENT_ID` — kun når
-`VERCEL_SKEW_PROTECTION_ENABLED === "1"` **og** `VERCEL_ENV === "production"`.
-Uden alle tre betingelser er buildet bit-for-bit uændret og cookien sættes aldrig.
+`frontend/vite.config.js` fra `VERCEL_DEPLOYMENT_ID` — kun når **kode-flaget**
+`SKEW_PROTECTION_ENABLED` er `true` **og** `VERCEL_SKEW_PROTECTION_ENABLED === "1"`
+**og** `VERCEL_ENV === "production"`. Uden alle betingelser er buildet
+bit-for-bit uændret og cookien sættes aldrig.
+
+> **#5170 (11/9):** kode-flaget blev tilføjet som betingelse her. Før det gatede
+> `vite.config.js` kun på env'en — og da Vercels dashboard-toggle stadig står TIL,
+> blev `Date.now()` + deployment-id bagt ind i modulindholdet på hvert
+> production-build selvom koden aldrig brugte værdien. Rollup hasher chunkene før
+> dead-code-elimineringen, så 77 af 200 JS-chunks skiftede filnavn pr. deploy uden
+> en eneste linje frontend-diff (CYCLINGZONE-56). Beregningen ligger nu i den rene,
+> unit-testede `frontend/vite-plugins/skew-defines.js`, og CI-jobbet
+> `build-determinism-two-builds` bygger to gange MED skew-env og hver sit
+> deployment-id, så regressionen ikke kan komme tilbage ubemærket.
 
 **Kun production pinnes.** Preview-deploys må aldrig sætte cookien: ejeren tester
 rettelser på samme branch-alias, og en pinnet klient ville hænge fast på det

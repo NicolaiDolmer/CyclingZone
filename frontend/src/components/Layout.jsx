@@ -2,12 +2,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
-import {
-  isDefinitiveAuthDenial,
-  markSessionExpired,
-  shouldDeclareExpired,
-  tokenFromAuthHeaders,
-} from "../lib/sessionExpiry"; // #4350
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej (afløser den lokale expireSessionIfRejected, se #5233 fund 2)
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import { ACTIVE_SURVEY_SLUG } from "../lib/survey.js"; // #4943
@@ -41,6 +36,8 @@ import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
 import { useActionSummary } from "../hooks/useActionSummary";
+import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
+import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.js"; // #4983
 import { useUserProfile } from "../lib/userProfile.jsx"; // #3034
 
 const API = import.meta.env.VITE_API_URL;
@@ -185,7 +182,15 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       // nav-punkt; fanen selv viser plannerens tom-state når flaget er off.
       key: "planlaegning", label: t("nav.group.planlaegning"),
       items: [
-        { to: "/planning", label: t("nav.item.planning") },
+        // #4983: dot: true — gul markering når en kommende trup mangler før
+        // fristen, rød inde i assistentens late fill-horisont. Samme
+        // item-specifikke prik-recipe som Patch Notes (#3811); tonen slås op
+        // i dotTones (selectionReminder.ts), så en almindelig prik forbliver guld.
+        {
+          to: "/planning", label: t("nav.item.planning"), dot: true,
+          dotLabel: t("a11y.selectionReminder"),
+          dotLabelUrgent: t("a11y.selectionReminderUrgent"),
+        },
       ],
     },
     {
@@ -250,16 +255,15 @@ async function fetchUnreadCount(userId) {
 async function fetchForumUnread(headers) {
   if (!API || !headers) return null;
   try {
-    const res = await fetch(`${API}/api/forum/unread-status`, { headers });
-    if (!res.ok) return null;
-    const data = await res.json().catch(() => null);
-    return typeof data?.has_unread === "boolean" ? data.has_unread : null;
+    const res = await apiFetch(`${API}/api/forum/unread-status`, { headers }, { source: "forum-unread" });
+    if (!res.ok) return null; // dækker også limited/unauthorized
+    return typeof res.data?.has_unread === "boolean" ? res.data.has_unread : null;
   } catch {
     return null;
   }
 }
 
-function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCounts, dotFlags, exact, excludeQuery, excludePaths, title }) {
+function NavItem({ to, label, badge, dot, dotLabel, dotLabelUrgent, onClick, location, badgeCounts, dotFlags, dotTones, exact, excludeQuery, excludePaths, title }) {
   const isActive = pathMatchesNavItem(location, { to, exact, excludeQuery, excludePaths });
   // #3521: badge-tallet er nu item-specifikt (Indbakke ≠ Transfers) — se
   // navBadges.js. resolveNavBadgeCount returnerer 0 for items uden badge: true.
@@ -268,6 +272,14 @@ function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCoun
   // #3811: ulæst-prik (Patch Notes) — samme item-specifikke opslags-recipe som
   // badge ovenfor, men boolean i stedet for tal (ingen "hvor mange", kun "nyt").
   const showDot = resolveNavDot({ to, dot }, dotFlags);
+  // #4983: prikkens FARVE. "none" = ingen tone-nøgle for punktet → guld som før
+  // (#3811's ulæst-prik er uændret). Gul/rød bruger de eksisterende
+  // status-tokens, aldrig nye farver.
+  const dotTone = resolveNavDotTone({ to, dot }, dotTones);
+  const dotToneClass = dotTone === "none" ? "bg-cz-accent" : NAV_DOT_TONE_CLASS[dotTone];
+  // Farve alene må ikke bære forskellen gul/rød (P8 + skærmlæsere): den
+  // presserende tilstand har sin egen sr-only-tekst.
+  const dotText = dotTone === "urgent" ? (dotLabelUrgent || dotLabel) : dotLabel;
   // #3102: Link, ikke NavLink. NavLink beregner selv aktiv-tilstand på et rent
   // prefix-match og sætter aria-current="page" ud fra DEN — den kender hverken
   // excludeQuery eller excludePaths. Med tre nav-items under /races-prefixet
@@ -296,9 +308,9 @@ function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCoun
           patch notes" er ikke en meningsfuld optælling for spilleren), samme
           guld som badgen ovenfor. Forsvinder når /patch-notes åbnes (Layout()). */}
       {showDot && (
-        <span className="flex-shrink-0" title={dotLabel}>
-          <span aria-hidden="true" className="block w-2 h-2 rounded-full bg-cz-accent" />
-          <span className="sr-only">{dotLabel}</span>
+        <span className="flex-shrink-0" title={dotText}>
+          <span aria-hidden="true" className={`block w-2 h-2 rounded-full ${dotToneClass}`} />
+          <span className="sr-only">{dotText}</span>
         </span>
       )}
       {/* #481 PR-2: hover indicator — the wordmark's short thick accent-dash, scales
@@ -311,7 +323,7 @@ function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCoun
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, logoutLabel, onOpenFeedback, contactLabel }) {
+function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, onOpenFeedback, contactLabel }) {
   const { t } = useTranslation("common");
   const { isPro, isFounder } = useSubscription(team?.id);
   return (
@@ -385,7 +397,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
               {isOpen && (
                 <div className="py-0.5">
                   {group.items.map(item => (
-                    <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} />
+                    <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} dotTones={dotTones} />
                   ))}
                 </div>
               )}
@@ -396,7 +408,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
         {bottomItems.map(item => (
-          <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} />
+          <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} dotTones={dotTones} />
         ))}
 
         {/* #2602: Contact/feedback-indgang — samme sted som Help (bottom nav),
@@ -428,86 +440,6 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       </div>
     </div>
   );
-}
-
-// #4350 — detektoren der mangler for at den EKSISTERENDE udlognings-kæde kan
-// starte. Kæden (SIGNED_OUT → App.jsx rydder session → ProtectedRoute sender til
-// /login?next=) virker allerede; den udløses bare aldrig når serveren afviser et
-// token som supabase-js lokalt stadig tror på. Derfor logger vi ikke ud her —
-// vi kalder signOut(), som fyrer SIGNED_OUT og lader kæden gøre sit arbejde med
-// deep-linket bevaret.
-//
-// Ligger på modul-niveau, ikke i komponenten: den rører ingen React-state, og
-// et 401-svar kan lande efter at fanen er navigeret væk.
-async function expireSessionIfRejected(res, sentHeaders, source) {
-  if (res.status !== 401) return false;
-  // Sessionens token NU — ikke det vi sendte. Forskellen er hele værnet mod at
-  // smide en rask spiller ud midt i en normal token-fornyelse.
-  const { data } = await supabase.auth.getSession();
-  const expired = shouldDeclareExpired({
-    status: res.status,
-    sentToken: tokenFromAuthHeaders(sentHeaders),
-    currentToken: data?.session?.access_token ?? null,
-  });
-  if (!expired) return false;
-
-  // ── Anden kilde, før vi rører noget ────────────────────────────────────────
-  //
-  // Vores egen backend svarede 401 i TO forskellige situationer (requireAuth i
-  // routes/api.js): tokenet blev afvist, ELLER backenden kunne ikke få fat i
-  // Supabase til at tjekke det —
-  //
-  //   const { data: { user }, error } = await supabase.auth.getUser(token);
-  //   if (error || !user) return res.status(401)...
-  //
-  // `error` dækkede også et netværksudfald mellem backend og Supabase. De to
-  // tilstande så ens ud herfra, men betyder stik modsat: den ene er en død
-  // session, den anden er en rask spiller midt i et kortvarigt udfald.
-  //
-  // #4369 rettede signalet ved kilden: backenden svarer nu 503
-  // {error:"auth_unavailable"} når den ikke kunne verificere, og 401 kun på en
-  // ægte afvisning. Vi når altså kun hertil på et 401-svar der allerede betyder
-  // det det siger.
-  //
-  // Anden-kilde-opslaget bliver alligevel stående. Det koster ét kald pr.
-  // afvisning og dækker de tilfælde backendens skel ikke kan se: et 401-svar
-  // fra en ældre backend-version midt i et deploy, eller et proxy-lag der
-  // svarer 401 uden at have spurgt nogen. Prisen er lav, og fejlen den værner
-  // mod - alle spillere logget ud under et udfald - er den dyre af de to.
-  //
-  // Derfor spørger vi autoriteten selv i stedet for at tro på 401'eren alene.
-  // Først når BEGGE kilder er enige — backenden afviste tokenet, og Supabase
-  // heller ikke kender brugeren — rydder vi noget.
-  //
-  // Kan vi ikke nå Supabase, kaster getAuthedUser(), og kaldstedernes catch
-  // fanger den: intet sker. Hver usikkerhed peger samme vej, mod at lade
-  // spilleren være.
-  // Vi spørger Supabase direkte i stedet for getAuthedUser(), fordi vi har brug
-  // for `error`: helperen kaster fejlen væk, og uden den kan et netværksudfald
-  // ikke skelnes fra en ægte afvisning. getUser() svarer user=null MED en
-  // AuthRetryableFetchError ved udfald i stedet for at kaste — læses det som en
-  // afvisning, logger et Supabase-udfald alle spillere ud.
-  let denied;
-  try {
-    const { data, error } = await supabase.auth.getUser();
-    denied = isDefinitiveAuthDenial({ user: data?.user ?? null, error });
-  } catch {
-    // Kunne slet ikke spørge. Så ved vi det ikke, og så gør vi ingenting.
-    return false;
-  }
-  if (!denied) {
-    console.warn(
-      `[auth] 401 from ${source}, but Supabase did not confirm it - leaving the session alone`,
-    );
-    return false;
-  }
-
-  // Samme form som backendens "[auth] 401 invalid_token" (routes/api.js): kun
-  // kaldstedet, aldrig token eller header.
-  console.warn(`[auth] session rejected by BOTH sources (${source}) - clearing it`);
-  markSessionExpired();
-  await supabase.auth.signOut();
-  return true;
 }
 
 export default function Layout() {
@@ -561,6 +493,9 @@ export default function Layout() {
   // når alle tilbud er besvaret uden ekstra wiring her.
   const { pending: pendingActions } = useActionSummary();
   const badgeCounts = buildNavBadgeCounts({ unread, pendingOffersCount: pendingActions.counts.total });
+  // #4983: den synlige paamindelse foer udtagelsesfristen. Read-only og
+  // fail-safe: uden svar er tonen "none", og navigationen ser ud som foer.
+  const { reminder: selectionReminder } = useSelectionReminder();
 
   async function fetchOnlineCount(headers) {
     if (!API) return;
@@ -569,16 +504,14 @@ export default function Layout() {
       // #4347/#4348: uden session sprang det her kald før igennem med "Bearer
       // undefined" i stedet for at blive sprunget over.
       if (!h) return;
-      const res = await fetch(`${API}/api/online-count`, { headers: h });
-      // #4350: 401 afgøres FØR !res.ok-grenen nedenfor. Den gren bevarer sidst
-      // kendte tal — præcis den frosne-tal-tilstand bugget handler om — så en
-      // afvist session skal fanges her i stedet for at blive slugt der.
-      if (await expireSessionIfRejected(res, h, "online-count")) return;
-      // #4351: en 401/5xx (fx en afvist session) blev læst som et gyldigt svar,
-      // og `data.count || 0` skrev "0 online". Behold sidst kendte tal i stedet.
-      if (!res.ok) return;
-      const data = await res.json();
-      setOnlineCount(data.count || 0);
+      // #5242: apiFetch afleverer et 401 direkte til networkErrorGuards
+      // (afløser den lokale expireSessionIfRejected, #5233 fund 2).
+      const res = await apiFetch(`${API}/api/online-count`, { headers: h }, { source: "online-count" });
+      // #4351: en 401/429/5xx (fx en afvist session, eller en stille backoff)
+      // blev læst som et gyldigt svar, og `data.count || 0` skrev "0 online".
+      // Behold sidst kendte tal i stedet.
+      if (!res.ok || res.limited || res.unauthorized) return;
+      setOnlineCount(res.data.count || 0);
     } catch (e) { console.error("online-count:", e); }
   }
 
@@ -604,8 +537,8 @@ export default function Layout() {
     (async () => {
       // #3750: kun ejeren (OWNER_USER_IDS) ser ejer-only-punkter. Fail-closed: fejl ⇒ skjult.
       try {
-        const r = await fetch(`${API}/api/admin/owner-check`, { headers: { Authorization: `Bearer ${session.access_token}` } });
-        const d = r.ok ? await r.json() : null;
+        const r = await apiFetch(`${API}/api/admin/owner-check`, { headers: { Authorization: `Bearer ${session.access_token}` } }, { source: "owner-check" });
+        const d = r.ok ? r.data : null; // dækker også limited/unauthorized
         if (!cancelled) setIsOwner(Boolean(d?.isOwner));
       } catch {
         // best-effort: ejer-check er kun menu-synlighed; backend håndhæver selve gaten.
@@ -644,7 +577,7 @@ export default function Layout() {
             // at den er væk nu er en ægte undtagelse — lad den eksisterende catch
             // logge fallback'en til SetupWizard i stedet for at PUT'e uden token.
             if (!h) throw new Error("ingen session ved auto-bootstrap");
-            const res = await fetch(`${API}/api/teams/my`, {
+            const res = await apiFetch(`${API}/api/teams/my`, {
               method: "PUT",
               headers: h,
               body: JSON.stringify({
@@ -655,9 +588,9 @@ export default function Layout() {
                 // attribution-snapshottet som LoginPage gemte i auth-metadata.
                 attribution: getAttribution() || meta.attribution || null,
               }),
-            });
+            }, { source: "team-bootstrap" });
             if (res.ok) {
-              const bootstrapped = await res.json();
+              const bootstrapped = res.data;
               setTeam(bootstrapped.team);
               setBalance(bootstrapped.team.balance);
               // #2102: siderne (fx DashboardPage) mountede PARALLELT med denne
@@ -693,9 +626,9 @@ export default function Layout() {
       // Akademi-nav-synlighed (#1308): bestem via /api/academy/me, men fejl LUKKER
       // ikke punktet. Kun 200/409 er autoritative (opdater state + cache); 401
       // (udløbet/fornyende session, #1792), 5xx og netværksfejl bevarer sidst kendte.
-      fetch(`${API}/api/academy/me`, { headers: h })
-        .then(async res => {
-          const data = res.status === 200 ? await res.json().catch(() => null) : null;
+      apiFetch(`${API}/api/academy/me`, { headers: h }, { source: "academy-me" })
+        .then(res => {
+          const data = res.status === 200 ? res.data : null;
           const visible = resolveAcademyNavVisible({
             status: res.status,
             enabled: data?.enabled,
@@ -705,12 +638,13 @@ export default function Layout() {
           if (res.status === 200 || res.status === 409) writeCachedAcademyNav(visible);
         })
         .catch(() => { /* netværksfejl: behold sidst kendte (state uændret) */ });
-      fetch(`${API}/api/presence`,     { method: "POST", headers: h })
-        .then(res => expireSessionIfRejected(res, h, "presence"))
+      // #5242: 401 håndteres nu centralt af apiFetch->networkErrorGuards
+      // (afløser den lokale expireSessionIfRejected, #5233 fund 2).
+      apiFetch(`${API}/api/presence`, { method: "POST", headers: h }, { source: "presence" })
         .catch(e => console.error("presence:", e));
       // Login-streak power-mekanik fjernet (#1139) — ingen daglig login-tvang.
       // Achievements-check kører fortsat (kosmetiske unlocks), uafhængigt af streak.
-      fetch(`${API}/api/achievements/check`, {
+      apiFetch(`${API}/api/achievements/check`, {
         method: "POST",
         headers: h,
         body: JSON.stringify({ context: "team_update", data: {} }),
@@ -821,8 +755,9 @@ export default function Layout() {
       // afvise det. Uden svar-tjekket nedenfor kørte intervallet videre mod en
       // død session i det uendelige, og fanen så indlogget ud med frosne tal.
       if (!h) return;
-      fetch(`${API}/api/presence`, { method: "POST", headers: h })
-        .then(res => expireSessionIfRejected(res, h, "heartbeat"))
+      // #5242: 401 håndteres nu centralt af apiFetch->networkErrorGuards
+      // (afløser den lokale expireSessionIfRejected, #5233 fund 2).
+      apiFetch(`${API}/api/presence`, { method: "POST", headers: h }, { source: "heartbeat" })
         .catch(e => console.error("heartbeat:", e));
       fetchOnlineCount(h);
     }, 60000);
@@ -856,9 +791,17 @@ export default function Layout() {
   // #3811: ulæst-prik-flag pr. `to` — samme recipe som badgeCounts ovenfor.
   // #4118/#3451: forum-prikken lever uden for buildNavDotFlags (den er
   // patch-notes-specifik og lokalt drevet) — samme kort, egen nøgle.
-  const dotFlags = { ...buildNavDotFlags({ patchNotesUnread }), "/forum": forumUnread };
+  const dotFlags = {
+    ...buildNavDotFlags({ patchNotesUnread }),
+    "/forum": forumUnread,
+    // #4983: prikken ved Planlægning tændes af serverens påmindelse. "none"
+    // (ingen manglende trup, eller spilleren har slået den fra) = ingen prik.
+    "/planning": selectionReminder.tone !== "none",
+  };
+  // #4983: samme kort-recipe, men tonen (gul/rød) i stedet for kun "vis den".
+  const dotTones = { "/planning": selectionReminder.tone };
   const sidebarProps = {
-    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags,
+    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones,
     logoutLabel: t("nav.item.logout"),
     onOpenFeedback: () => setFeedbackOpen(true),
     contactLabel: t("nav.item.contact"),
@@ -905,7 +848,29 @@ export default function Layout() {
         {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
             og ikke "følge med op" og stjæle plads på små skærme (#1007). */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">
-          <button onClick={() => setMobileOpen(true)} aria-label={t("a11y.openMenu")} className="text-cz-sidebar-2 hover:text-cz-sidebar-1"><MenuIcon aria-hidden="true" className="w-6 h-6" /></button>
+          {/* #4983: prikken ved "Planlægning" bor inde i drawer'en, så på mobil
+              ville markeringen først være synlig EFTER at manageren selv åbnede
+              menuen — og accept-kriteriet i #4983 er netop "uden at skulle
+              opdage det ved et tilfælde". Hamburger-knappen bærer derfor samme
+              tone som nav-prikken. Bevidst KUN påmindelsen: patch notes-/forum-
+              prikkerne (#3811/#4118) har samme begrænsning, men at give dem
+              passiv mobil-synlighed er en selvstændig beslutning, ikke noget
+              denne PR skal afgøre. */}
+          <button
+            onClick={() => setMobileOpen(true)}
+            aria-label={selectionReminder.tone === "none"
+              ? t("a11y.openMenu")
+              : `${t("a11y.openMenu")} (${selectionReminder.tone === "urgent" ? t("a11y.selectionReminderUrgent") : t("a11y.selectionReminder")})`}
+            className="relative text-cz-sidebar-2 hover:text-cz-sidebar-1"
+          >
+            <MenuIcon aria-hidden="true" className="w-6 h-6" />
+            {selectionReminder.tone !== "none" && (
+              <span
+                aria-hidden="true"
+                className={`absolute -top-0.5 -right-0.5 block w-2 h-2 rounded-full ${NAV_DOT_TONE_CLASS[selectionReminder.tone]}`}
+              />
+            )}
+          </button>
           <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex items-center gap-2 rounded hover:opacity-80 transition-opacity">
             <Wordmark forceDark className="h-5 w-auto" alt="" />
           </Link>

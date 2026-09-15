@@ -40,6 +40,14 @@
       }
     }
   },
+  "releaseUpdate": {
+    "title": "Ny version klar",
+    "action": "Opdater",
+    "regionAriaLabel": "Opdatering klar",
+    "unsavedTitle": "Du har ugemte ændringer. Gem først, eller opdatér alligevel.",
+    "saveFirst": "Gem først",
+    "updateAnyway": "Opdatér alligevel"
+  },
   "opsNotice": {
     "regionAriaLabel": "Driftsstatus",
     "dismissAriaLabel": "Luk besked",

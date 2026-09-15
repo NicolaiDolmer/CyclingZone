@@ -24,6 +24,7 @@ import {
   listForumReports,
   resolveForumReport,
   setForumPostPinned,
+  moveForumPost,
   deleteForumPost,
   deleteForumReply,
   getForumReportCounts,
@@ -969,6 +970,21 @@ test("resolveForumReport + setForumPostPinned: 404 på ukendt id, ellers opdater
   const pinned = await setForumPostPinned({ supabase: fake, id: "p1", pinned: true });
   assert.equal(pinned.body.is_pinned, true);
   assert.equal(fake.state.forum_posts[0].is_pinned, true);
+});
+
+test("moveForumPost: 400 ved ukendt/archive-kategori, 404 på ukendt id, ellers flyttet", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", category: "general" })],
+  }));
+
+  assert.equal((await moveForumPost({ supabase: fake, id: "p1", category: "nope" })).body.errorCode, "forum_invalid_category");
+  assert.equal((await moveForumPost({ supabase: fake, id: "p1", category: FORUM_ARCHIVE_FILTER })).body.errorCode, "forum_invalid_category");
+  assert.equal((await moveForumPost({ supabase: fake, id: "nope", category: "transfers" })).status, 404);
+
+  const moved = await moveForumPost({ supabase: fake, id: "p1", category: "transfers" });
+  assert.equal(moved.status, 200);
+  assert.equal(moved.body.category, "transfers");
+  assert.equal(fake.state.forum_posts[0].category, "transfers");
 });
 
 test("deleteForumPost: soft delete, idempotent 404 anden gang, auto-resolver åbne rapporter", async () => {

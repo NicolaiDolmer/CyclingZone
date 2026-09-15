@@ -305,7 +305,7 @@ bestyrelsen kan ikke ændre din kontrakt.
 | 2 | Loftet defineres af `MAX_BOARD_MODIFIER` | **Blive**, men omdøbes i kode og tekst | Det er et *sponsor*-loft; at det er kalibreret mod bestyrelsens maksimum er en implementationsdetalje, ikke en regel spilleren skal læse |
 | 3 | Sponsor-pullout er en bestyrelses-konsekvens på sponsor-penge | **Blive** | Den er den hårde ende af samme modifier-akse |
 | 4 | Bestyrelsen har et **sponsor-vækstmål** | **GÅ** — eller bygges færdig | I dag umuligt at opfylde (§3). Så længe det findes, blander det de to systemer på den værst tænkelige måde: et bestyrelsesmål der måler sponsoren og altid siger 0 |
-| 5 | **Sponsorforhandlingen bor på `/board`** (`BoardPage.jsx:2822` CTA + `:3152` modal) | **GÅ** | Den direkte, mekaniske årsag til at spillerne blander systemerne sammen. Designet 21/6 kaldte det "hybrid"; i praksis betyder det at sponsoren ikke har nogen egen flade |
+| 5 | ~~**Sponsorforhandlingen bor på `/board`** (`BoardPage.jsx:2822` CTA + `:3152` modal)~~ **GÅET — leveret** | **Historisk** | #4265 (ejer-direktiv 25/8): sponsorforhandlingen bor nu på egen side `/sponsors` (`SponsorsPage.jsx`); `/board` beholder kun et stille link dertil (`BoardPage.jsx:2814-2820`) |
 | 6 | Bestyrelsessidens tilfredshedsmåler forklarer sig selv med **sponsor-modifieren** (`BoardPage.jsx:655`) | **BLIVE, men vendes om** | Det er den rigtige forklaring på det forkerte sted. Den hører hjemme som "hvad din tillid gør ved sponsorudbetalingen", ikke som målerens undertekst |
 
 **Rækkefølgen er bindende:** #4 og #5 skal løses før UI-adskillelsen (#4265) kan bygges. #4 er en
@@ -379,7 +379,7 @@ verificerede skyggeskrivning. Øvrige rækker er ikke genverificeret som del af 
 
 | # | Modsigelse | Bevis |
 |---|---|---|
-| 1 | **`sponsor_growth` er umuligt at opfylde** og har været det for alle 135 profiler der bar det. Ejer-beslutning 7/8 om at rette det er ikke bygget | §3, målt 29/8 |
+| 1 | ~~**`sponsor_growth` er umuligt at opfylde** og har været det for alle 135 profiler der bar det. Ejer-beslutning 7/8 om at rette det er ikke bygget~~ **Rettet 2/9 (PR #4550, #3494/#4377):** målet måler nu ægte `sponsor_contracts`-udbetalinger, ikke det døde `teams.sponsor_income`-felt | §3, PR #4550 |
 | 2 | **#3514 bærer `claude:done`** mens fase 2 ikke er flippet for spillerne (flaget står `beta`, 0 reelle seere). Label-tilstanden lyver om leverancen | `gh issue view 3514` |
 | 3 | **Skyggemodellen er frosset siden rebuild 1/9 15:42** og driver længere fra `board_profiles` for hver dag. Rod-årsag fundet 6/9: cron-kaldet kører uden `isBetaTester`-kontekst, så beta-flaget aldrig evaluerer sandt for skrivevejen. Ingen vagt måler afstanden | §6, #4839 |
 | 4 | **Hvorfor flaget blev sat `off` 17/8 kan ikke findes** — hverken i commits eller issue-tekst. Fem dage før den migration det gater | inventaret §5 |

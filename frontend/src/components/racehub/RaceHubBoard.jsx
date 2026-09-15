@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
@@ -18,6 +19,7 @@ import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -143,6 +145,15 @@ export default function RaceHubBoard() {
   const boardDirty = (data?.columns || []).some((col) => selectionDirty(drafts[col.id], col.selection));
   // Skift af dag/scope viser andre kolonner → ryd kladder (de hører til de gamle løb).
   useEffect(() => { setDrafts({}); }, [dayParam, scope]);
+  // #5159 (B1): PORTEN, ikke forlad-dialogen. Boardets drag/drop lever i
+  // `drafts` indtil de er en gyldig udtagelse. Et release-drevet reload maatte
+  // foer dette enten kassere kladden eller — endnu vaerre — udloese sidens EGEN
+  // forlad-advarsel uden at spilleren havde bedt om at forlade noget. Nu ved
+  // watcheren at boardet er dirty og roerer intet; banneret er den eneste vej
+  // ud, og det er spillerens eget klik. Vagten nedenfor er uaendret og daekker
+  // fortsat browserens egne luk/genindlaes.
+  useReloadBlock(boardDirty || busy, RELOAD_BLOCK_REASONS.DIRTY);
+
   // Forlad-vagt (ejer 28/6): advar ved luk/genindlæsning hvis der er ugemte ændringer.
   // (BrowserRouter → ingen useBlocker; beforeunload dækker browser-niveau.)
   useEffect(() => {
@@ -233,7 +244,9 @@ export default function RaceHubBoard() {
       const res = await req(headers);
       if (res && !res.ok) {
         ok = false;
-        const body = await res.json().catch(() => ({}));
+        // #5242: req() bruger apiFetch — kroppen er allerede parset (res.data),
+        // også for limited/unauthorized (der fanges her som "generic").
+        const body = res.data || {};
         setError({ code: body.error || "generic", params: errParams });
       }
     } catch {
@@ -305,12 +318,12 @@ export default function RaceHubBoard() {
       // alle fejl og viser hvilke løb der IKKE blev gemt.
       let res;
       try {
-        res = await fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
+        res = await apiFetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
       } catch {
         return { ok: false, error: { code: "generic", params: { min: col.size?.min, max: col.size?.max } } };
       }
       if (res && !res.ok) {
-        const b = await res.json().catch(() => ({}));
+        const b = res.data || {};
         // #1983/#1984/#2637: backend's overlap-afvisning er opak ("en rytter kører et
         // overlappende løb"). Den NAVNGIVES her — rytter + det konkrete overlappende løb.
         if (b.error === "selection_rider_bound") {
@@ -461,7 +474,7 @@ export default function RaceHubBoard() {
   // withdraw=true (afmelding, ikke gen-deltag) og kun ved et FAKTISK gennemført kald:
   // en fejlet afmelding (fx løbet allerede startet) skal ikke koste manageren kladden.
   const toggleWithdraw = (raceId, withdraw) =>
-    mutate((headers) => fetch(`${API}/api/races/${raceId}/withdrawal`, { method: withdraw ? "POST" : "DELETE", headers }))
+    mutate((headers) => apiFetch(`${API}/api/races/${raceId}/withdrawal`, { method: withdraw ? "POST" : "DELETE", headers }))
       .then((ok) => {
         if (ok && withdraw) setDrafts((d) => { const next = { ...d }; delete next[raceId]; return next; });
       });
@@ -473,7 +486,7 @@ export default function RaceHubBoard() {
       if (hasManual && !window.confirm(t("racehub.regenerateWarn"))) return;
     }
     return mutate((headers) =>
-      fetch(`${API}/api/races/distribution/regenerate?day=${day}&mode=${mode}`, { method: "POST", headers }));
+      apiFetch(`${API}/api/races/distribution/regenerate?day=${day}&mode=${mode}`, { method: "POST", headers }));
   }
 
   // #2599: "Ryd dag" / "Ryd alt" — ALTID en bekræftelses-dialog (i modsætning til
@@ -493,7 +506,7 @@ export default function RaceHubBoard() {
     if (scope !== "all") {
       if (!window.confirm(t("racehub.clearDayWarn", dayClearImpact))) return;
       mutate((headers) =>
-        fetch(`${API}/api/races/distribution/clear?day=${day}&scope=day`, { method: "POST", headers }))
+        apiFetch(`${API}/api/races/distribution/clear?day=${day}&scope=day`, { method: "POST", headers }))
         .then(() => setDrafts({}));
       return;
     }
@@ -501,9 +514,9 @@ export default function RaceHubBoard() {
       const headers = await authHeaders();
       if (!headers) return;
       try {
-        const res = await fetch(`${API}/api/races/distribution/clear-preview?scope=all`, { headers });
-        if (!res.ok) throw new Error("preview_failed");
-        const { races } = await res.json();
+        const res = await apiFetch(`${API}/api/races/distribution/clear-preview?scope=all`, { headers });
+        if (!res.ok) throw new Error("preview_failed"); // dækker også limited/unauthorized
+        const { races } = res.data;
         if (shouldShowClearAllDialog(races)) { setClearAllPreview({ races, now: Date.now() }); return; }
         // Ingen ægte kommende løb rammes (alt allerede kørt, eller intet valgt) — intet at
         // advare om, dialogen ville kun være støj man klikker forbi (#3061-krav).
@@ -519,7 +532,7 @@ export default function RaceHubBoard() {
   function doClearAll() {
     setClearAllPreview(null);
     mutate((headers) =>
-      fetch(`${API}/api/races/distribution/clear?day=${day}&scope=all`, { method: "POST", headers }))
+      apiFetch(`${API}/api/races/distribution/clear?day=${day}&scope=all`, { method: "POST", headers }))
       .then(() => setDrafts({}));
   }
 

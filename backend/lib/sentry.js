@@ -220,9 +220,14 @@ export function captureException(error, context = {}) {
   });
 }
 
-export function setupSentryExpressErrorHandler(app) {
+// options videresendes uændret til Sentry — i praksis `{ shouldHandleError }`
+// (#5144), så server.js kan gate capture til 5xx med samme status-udledning
+// som lib/errorMiddleware.js bruger til selve svaret. Sentrys default gør
+// allerede status >= 500, men den er implicit; en eksplicit predicate gør at
+// de to steder ikke kan drifte fra hinanden uden at en test fanger det.
+export function setupSentryExpressErrorHandler(app, options) {
   if (!enabled || typeof Sentry.setupExpressErrorHandler !== "function") return;
-  Sentry.setupExpressErrorHandler(app);
+  Sentry.setupExpressErrorHandler(app, options);
 }
 
 // #2077 (#621 punkt 5) — Sentry Cron-heartbeat. Wrap et cron-tick så Sentry ved

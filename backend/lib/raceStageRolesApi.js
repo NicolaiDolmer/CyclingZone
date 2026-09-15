@@ -112,15 +112,27 @@ export function validateStageRoleOverrides({
   // uden overrides falder tilbage til race_entries alene, hvor de partielle
   // unique-indexes (uq_race_entries_captain/_sprint_captain/_hunter) allerede
   // garanterer højst én af hver pr. (løb, hold).
+  //
+  // #5202: en udgået/skadet basis-indehaver af en eksklusiv rolle tæller
+  // IKKE med. Et styrt ændrer aldrig race_entries.race_role (basis-rollen
+  // består "på papiret"), men rytteren kører ikke flere etaper — samme
+  // eksklusion som raceRunner/#4538 allerede bruger til at holde ham ude af
+  // motoren. Uden denne linje så guarden den udgåede kaptajn som stadig
+  // aktiv, og en forfremmet ny kaptajn blev afvist som et falsk overlap.
   const stagesInBody = [...new Set(overrides.map((o) => o?.stage_number))];
   const roleOverlap = stagesInBody.some((stageNumber) => {
     const rowsForStage = overrides.filter((o) => o?.stage_number === stageNumber);
     const overriddenRiders = new Set(rowsForStage.map((o) => o?.rider_id));
     return ["captain", "sprint_captain", "hunter"].some((role) => {
       let count = rowsForStage.filter((o) => o?.race_role === role).length;
-      // Ryttere UDEN override på etapen beholder deres basis-rolle.
+      // Ryttere UDEN override på etapen beholder deres basis-rolle —
+      // medmindre de er udgået, for så tæller de slet ikke (#5202).
       for (const riderId of teamRiderIds) {
-        if (!overriddenRiders.has(riderId) && baseRoleByRider.get(riderId) === role) count += 1;
+        if (
+          !overriddenRiders.has(riderId) &&
+          !abandonedRiderIds.has(riderId) &&
+          baseRoleByRider.get(riderId) === role
+        ) count += 1;
       }
       return count > 1;
     });

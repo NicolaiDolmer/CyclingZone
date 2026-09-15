@@ -60,6 +60,15 @@
 
 ## Backend API Endpoints (primært `backend/routes/api.js`)
 
+### Rankings (#5176)
+`backend/routes/rankings.ts` monteres af api.js bag den eksisterende auth- og
+rate-limit-kæde. GET `/api/rankings/global` (valgfri team_id), `/riders`
+(season_id, valgfri rider_ids eller top=5), `/standings` (season_id),
+`/race-points` (season_id eller race_ids), `/race-count` (team_id) og
+`/honours` (season_id). Matview-aggregater læses med service_role; honours
+anvender desuden brugerens RLS på rider/team-display før top-5.
+Kontrakt og release-status: [SUPABASE_SECURITY_ADVISORS.md](SUPABASE_SECURITY_ADVISORS.md).
+
 ### Riders
 ```
 GET  /api/riders                  q, team_id, free_agent, u25, min_uci, max_uci, sort, order, page (skjuler is_retired)

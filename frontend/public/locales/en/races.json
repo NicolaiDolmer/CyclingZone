@@ -505,6 +505,7 @@
     "boundIn": "Riding {race}",
     "boundConflict": "Overlaps {race}",
     "autoPicked": "Assistant's pick. Adjust and save to take control.",
+    "draftRestored": "I kept your unsaved picks. Save them before the flag drops.",
     "autoFill": "Auto-select",
     "autoFillError": "Could not auto-select. Try again.",
     "save": "Save selection",
@@ -794,6 +795,8 @@
       "howItEndedHelp": "Final general classification.",
       "otherClassifications": "Points, mountains and team classifications are in Results.",
       "openResults": "Open results",
+      "latestStageResultHint": "See who won stage {number} and how it played out.",
+      "latestStageResultCta": "Stage {number} result",
       "raceIsDone": "Nothing left to set. The race is done.",
       "beforeFlag": "Before the flag",
       "beforeFlagHelp": "What is still open on this race.",
@@ -1508,6 +1511,19 @@
     "tactics": {
       "title": "Set your preferences once",
       "body": "Team strategy stores the riders you build around, your captains per terrain and the races that matter most. Your assistant reuses it every time it fills a lineup for you. Tactics inside a stage race are set on the race itself."
+    }
+  },
+  "selectionReminder": {
+    "title": "Squad selection missing",
+    "titleUrgent": "Your team will not start",
+    "body": "{count, plural, one {# race starts} other {# races start}} without a full squad.",
+    "bodyUrgent": "{count, plural, one {# race is} other {# races are}} below the minimum to start.",
+    "picked": "{picked}/{target} picked",
+    "deadlinePassed": "deadline passed",
+    "in": {
+      "minutes": "in {count} min",
+      "hours": "in {count}h",
+      "days": "in {count, plural, one {# day} other {# days}}"
     }
   }
 }

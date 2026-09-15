@@ -7,9 +7,11 @@
 // switch — {"all": false} mutes every loop email type regardless of the
 // per-type keys.
 
-// The three loop email types (#2725 scope). Matches emailTemplates.js's
-// exported TEMPLATE_TYPES.
-export const EMAIL_PREF_TYPES = Object.freeze(["welcome", "day1", "race_digest"]);
+// The retention-loop email types (#2725) plus the one-off win-back campaign
+// (#2760, its own type so a manager can mute win-back specifically without
+// touching welcome/day1/race_digest). Matches emailTemplates.js's exported
+// TEMPLATE_TYPES.
+export const EMAIL_PREF_TYPES = Object.freeze(["welcome", "day1", "race_digest", "winback"]);
 
 const EMAIL_PREF_TYPE_SET = new Set(EMAIL_PREF_TYPES);
 

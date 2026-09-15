@@ -63,6 +63,39 @@ test("onboarding-progress: board_plan_set kræver negotiation_status='completed'
   );
 });
 
+// #5103 · negotiation_status='completed' ALENE måler ikke en spillerhandling —
+// boardAutoAccept.js' cron sætter præcis samme status uden nogen spillerhandling
+// (samme fejlklasse som #3007/trin 2 ovenfor). board_plan_set skal derfor OGSÅ
+// kræve negotiated_at IS NOT NULL — kun sat af /board/sign + signMandate
+// (signedVia='manager'), aldrig af auto-accept.
+test("#5103 onboarding-progress: board_plan_set kræver OGSÅ negotiated_at IS NOT NULL (auto-accept sætter negotiation_status='completed' uden spillerhandling)", () => {
+  const block = routeBlock('router.get("/me/onboarding-progress"', 4500);
+  assert.match(
+    block,
+    /\.from\("board_profiles"\)[\s\S]*?\.eq\("negotiation_status",\s*"completed"\)[\s\S]*?\.not\("negotiated_at",\s*"is",\s*null\)/,
+    "board_plan_set-tællingen skal filtrere på negotiated_at IS NOT NULL oveni negotiation_status='completed'",
+  );
+  assert.match(
+    block,
+    /done:\s*boardPlanNegotiated/,
+    "steps-arrayet skal bruge det negotiated_at-afledte flag, ikke en rå count>0 på negotiation_status alene",
+  );
+});
+
+test("#5103 onboarding-progress: eksponerer auto_set på board_plan_set (bestyrelsen har sat en plan, spilleren har ikke selv forhandlet endnu)", () => {
+  const block = routeBlock('router.get("/me/onboarding-progress"', 4500);
+  assert.match(
+    block,
+    /auto_set:\s*boardPlanAutoSet/,
+    "board_plan_set-trinnet skal bære et auto_set-flag så frontend kan vise en anden opfordring",
+  );
+  assert.match(
+    block,
+    /boardPlanAutoSet\s*=\s*!boardPlanNegotiated\s*&&\s*\(boardsAutoRes\.count\s*\|\|\s*0\)\s*>\s*0/,
+    "auto_set skal kun være sandt når trinnet IKKE er spiller-forhandlet, men der findes en auto-accepteret række",
+  );
+});
+
 // #2439: onboarding-progress-kortet re-triggerede for etablerede spillere,
 // fordi dismiss var session-scopet (sessionStorage, #1569) — completed_count
 // nåede aldrig total_count for veteraner der fx altid bruger squad-auto-fill,

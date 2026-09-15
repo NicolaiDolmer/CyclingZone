@@ -61,6 +61,17 @@ export function postableForumCategories({ isAdmin = false } = {}) {
 }
 
 /**
+ * #4821 — kategorierne "Move"-modalen kan flytte TIL: den fulde raekkefoelge
+ * minus den kategori traaden allerede staar i (at "flytte" til samme sted er
+ * ikke en handling). Ingen isAdmin-parameter — kun admin naar modalen
+ * overhovedet, saa der er ingen skjult kategori at filtrere fra her (i
+ * modsaetning til postableForumCategories, som ogsaa gater roadmap).
+ */
+export function moveTargetCategories(currentCategory) {
+  return FORUM_CATEGORY_ORDER.filter((category) => category !== currentCategory);
+}
+
+/**
  * Skal "New post"-knappen vises paa /forum?
  *
  * Kun skjult naar man staar PAA en admin-only fane som ikke-admin: paa "All"

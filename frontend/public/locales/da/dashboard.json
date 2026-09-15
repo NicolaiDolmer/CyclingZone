@@ -422,13 +422,22 @@
       "first_bid_placed": "Afgiv dit første bud",
       "first_training_run": "Kør din første træningsdag",
       "first_squad_selected": "Udtag din trup til et løb",
-      "board_plan_set": "Forhandl en bestyrelsesplan"
+      "board_plan_set": "Forhandl en bestyrelsesplan",
+      "board_plan_set_auto": "Din bestyrelse har sat en plan. Se den."
     },
     "ctas": {
       "first_bid_placed": "Se auktioner",
       "first_training_run": "Gå til træning",
       "first_squad_selected": "Gå til løb",
       "board_plan_set": "Mød bestyrelsen"
+    },
+    "oneClick": {
+      "primaryCta": "Kør ugens træning",
+      "secondaryCta": "Vælg selv",
+      "resultLine": "Ugen kørt: {count, plural, one {# rytter trænet} other {# ryttere trænet}}.",
+      "resultLink": "Se træning",
+      "alreadyRun": "Ugen er allerede kørt.",
+      "error": "Kunne ikke køre ugens træning. Prøv igen."
     },
     "tour": "Vis mig hvordan",
     "dismissAria": "Skjul"

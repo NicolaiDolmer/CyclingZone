@@ -10,8 +10,10 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { riderSuitability } from "../../lib/suitability.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { fitTier } from "../../lib/raceHubLogic.js";
 import { Spinner, EmptyState, ErrorState, Button, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
 import SeasonMatrixCellPopover from "./SeasonMatrixCellPopover.jsx";
@@ -107,6 +109,11 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
+  // #5159: samme tilstand skal ogsaa lukke reload-porten. Uden det kunne
+  // release-watcheren genindlaese oven i en ugemt saeson-matrice - og saa ville
+  // spilleren se netop beforeunload-dialogen ovenfor, udloest af appen selv i
+  // stedet for af en handling han foretog.
+  useReloadBlock(isDirty || saving, RELOAD_BLOCK_REASONS.DIRTY);
 
   // Form & peak-linsen henter GET /api/peak-plans lazily (kun når linsen vælges
   // første gang) — samme frontend-tilgængelige read Season Planner allerede bruger.
@@ -117,9 +124,9 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
       if (!headers) return;
       const qs = Number.isFinite(seasonNumber) ? `?season_number=${seasonNumber}` : "";
       try {
-        const res = await fetch(`${API}/api/peak-plans${qs}`, { headers });
-        if (!res.ok) { setPeakPlans(new Map()); return; }
-        const json = await res.json();
+        const res = await apiFetch(`${API}/api/peak-plans${qs}`, { headers });
+        if (!res.ok) { setPeakPlans(new Map()); return; } // dækker også limited/unauthorized
+        const json = res.data;
         const byRider = new Map();
         for (const p of json.plans || []) {
           if (!byRider.has(p.riderId)) byRider.set(p.riderId, []);
@@ -217,11 +224,11 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     try {
       for (let i = 0; i < changes.length; i += BULK_CHUNK) {
         const chunk = changes.slice(i, i + BULK_CHUNK);
-        const res = await fetch(`${API}/api/races/selection/bulk`, {
+        const res = await apiFetch(`${API}/api/races/selection/bulk`, {
           method: "PUT", headers, body: JSON.stringify({ changes: chunk }),
         });
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
+          const body = res.data || {};
           setSaveError(buildSaveError(body, races, riders));
           setSaving(false);
           return;

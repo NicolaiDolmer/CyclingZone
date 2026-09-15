@@ -11,6 +11,19 @@
 //   2. en 401 SKAL vejes mod sessionens nuværende token (ellers har vi byttet
 //      bugget ud med et værre: raske spillere smidt ud midt i en normal
 //      token-fornyelse).
+//
+// #5242 (opfoelger #5233 fund 2): Layout.jsx's egen kopi af begge regler
+// (den lokale `expireSessionIfRejected`) er FJERNET og erstattet af
+// apiFetch → networkErrorGuards.reportUnauthorizedResponse — samme kæde
+// RiderStatsPage m.fl. allerede delte. De to regler ovenfor findes derfor
+// ikke længere i Layout.jsx som tekst at scanne efter; de er strukturelt
+// GARANTERET af apiFetch.ts (401 afgøres ALTID inden apiFetch returnerer —
+// se apiFetch.test.ts's "et 401 afleveres til networkErrorGuards og
+// retry'es aldrig automatisk") og af networkErrorGuards.ts (getSession/
+// shouldDeclareExpired/getUser/isDefinitiveAuthDenial/signOut-kæden — se
+// networkErrorGuards.5089.test.ts's fulde dedup/anden-kilde-dækning).
+// Denne fils job er nu kun at pinne at Layout.jsx rent faktisk DELEGERER
+// (bruger apiFetch på de tre 401-følsomme kaldsteder, genopfinder intet selv).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -20,33 +33,36 @@ const layout = read("../components/Layout.jsx");
 const loginPage = read("../pages/LoginPage.jsx");
 const sessionExpiry = read("./sessionExpiry.js");
 
+test("#4350/#5242 Layout.jsx har ikke længere sin egen 401-kopi", () => {
+  assert.ok(
+    !layout.includes("async function expireSessionIfRejected"),
+    "den lokale 401-detektor skal være væk — #5242 erstattede den med apiFetch->networkErrorGuards (#5233 fund 2)",
+  );
+  assert.match(
+    layout,
+    /import \{ apiFetch \} from "\.\.\/lib\/apiFetch\.ts"/,
+    "Layout.jsx skal importere apiFetch — det er den nye 401-vej",
+  );
+});
+
 test("#4350 hjerteslaget kigger på svaret i stedet for at fyre og glemme", () => {
   const heartbeat = layout.slice(layout.indexOf("heartbeatRef.current = setInterval"));
   assert.match(
-    heartbeat.slice(0, 900),
-    /api\/presence[\s\S]{0,200}expireSessionIfRejected/,
-    "hjerteslagets presence-kald må ikke igen kaste svaret væk — det er #4350's rod",
+    heartbeat.slice(0, 1400),
+    /apiFetch\(`\$\{API\}\/api\/presence`/,
+    "hjerteslagets presence-kald skal gå gennem apiFetch — den kigger ALTID på status (401 afgøres inden den returnerer, se apiFetch.test.ts), så #4350's 'fyr og glem' ikke kan genopstå",
   );
 });
 
 test("#4350 online-count afgør 401 FØR den bevarer sidst kendte tal", () => {
-  const idx401 = layout.indexOf('expireSessionIfRejected(res, h, "online-count")');
-  const idxOk = layout.indexOf("if (!res.ok) return;", layout.indexOf("api/online-count"));
-  assert.ok(idx401 > -1, "online-count mangler 401-tjekket");
+  const block = layout.slice(layout.indexOf("async function fetchOnlineCount"), layout.indexOf("async function fetchOnlineCount") + 900);
+  const idxFetch = block.indexOf("apiFetch(`${API}/api/online-count`");
+  const idxOk = block.indexOf("if (!res.ok");
+  assert.ok(idxFetch > -1, "online-count mangler apiFetch-kaldet");
   assert.ok(
-    idx401 < idxOk,
-    "401-tjekket skal ligge før !res.ok-grenen — ellers sluges den afviste session som 'behold sidst kendte tal'",
+    idxFetch < idxOk,
+    "apiFetch-kaldet (som selv afgør 401 FØR det returnerer) skal ligge før !res.ok-grenen — ellers kunne en afvist session sluges som 'behold sidst kendte tal'",
   );
-});
-
-test("#4350 detektoren vejer 401'eren mod sessionens NUVÆRENDE token", () => {
-  const fn = layout.slice(
-    layout.indexOf("async function expireSessionIfRejected"),
-    layout.indexOf("export default function Layout"),
-  );
-  assert.match(fn, /getSession\(\)/, "uden et opslag af den nuværende session kan et fornyelses-race ikke skelnes");
-  assert.match(fn, /shouldDeclareExpired/, "beslutningen skal gå gennem den testede regel, ikke en lokal if");
-  assert.match(fn, /signOut\(\)/, "detektoren skal udløse den eksisterende udlognings-kæde");
 });
 
 test("#4350 reglen afviser stadig et fornyet token (regressions-lås på selve reglen)", () => {
@@ -54,36 +70,6 @@ test("#4350 reglen afviser stadig et fornyet token (regressions-lås på selve r
     sessionExpiry,
     /if \(sentToken && currentToken !== sentToken\) return false;/,
     "fornyelses-race-grenen er værnet mod at logge raske spillere ud — den må ikke forsvinde",
-  );
-});
-
-// Backendens requireAuth svarer 401 BÅDE når tokenet er afvist og når den ikke
-// kunne nå Supabase til at tjekke det (`if (error || !user)`). De to tilstande
-// ser ens ud herfra og betyder stik modsat. Uden en anden kilde ville et
-// kortvarigt Supabase-udfald logge raske spillere ud — værre end bugget vi
-// fikser. Denne guard er låsen på at den anden kilde bliver stående.
-test("#4350 to uafhængige kilder skal være enige før noget ryddes", () => {
-  const fn = layout.slice(
-    layout.indexOf("async function expireSessionIfRejected"),
-    layout.indexOf("export default function Layout"),
-  );
-  assert.match(fn, /supabase.auth.getUser()/, "Supabase skal spørges direkte, ikke kun vores egen backends 401");
-  assert.match(
-    fn,
-    /isDefinitiveAuthDenial/,
-    "svaret skal gennem entydigheds-reglen - user=null betyder ogsaa kunne-ikke-naa-Supabase",
-  );
-  const askIdx = fn.indexOf("supabase.auth.getUser()");
-  const signOutIdx = fn.indexOf("signOut()");
-  assert.ok(askIdx > -1 && signOutIdx > -1, "begge trin skal findes");
-  assert.ok(
-    askIdx < signOutIdx,
-    "den anden kilde skal spørges FØR sessionen ryddes — ellers er værnet dekoration",
-  );
-  const guardBlock = fn.slice(fn.indexOf("if (!denied)"), fn.indexOf("if (!denied)") + 260);
-  assert.ok(
-    guardBlock.includes("return false;"),
-    "bekraefter Supabase ikke afvisningen, skal sessionen staa uroert",
   );
 });
 

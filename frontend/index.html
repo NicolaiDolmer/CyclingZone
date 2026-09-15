@@ -38,7 +38,15 @@
          og genindlaeser ÉN gang. Classic script og placeret FOER Vites
          modulepreloads, fordi den skal lytte allerede naar den foerste
          ressource-fejl fyrer — og fordi intet af app-grafen koerer i netop det
-         scenarie. Se frontend/public/chunk-selfheal.js. -->
+         scenarie. Se frontend/public/chunk-selfheal.js.
+
+         #5161: vite-pluginet cz-boot-assets-manifest (vite-plugins/
+         boot-assets-manifest.js) indsaetter ved build en JSON-datablok
+         <script type="application/json" id="cz-boot-assets"> LIGE FOER linjen
+         herunder. Den er vagtens liste over boot-filer. Flyt ikke guard-tagget
+         efter Vites modulepreloads: parseren har ikke indsat dem endnu naar
+         vagten installeres, og et runtime-querySelectorAll finder derfor nul
+         tags (maalt i Chromium + WebKit, audit-fund H2). -->
     <script src="/chunk-selfheal.js"></script>
 
     <title>Cycling Zone</title>

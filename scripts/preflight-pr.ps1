@@ -122,6 +122,36 @@ try {
   node scripts/lint-workflow-output-masking.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "workflow-output-guard" }
 
+  # #5143 (naer-haendelse 11/9): advarsel, IKKE fail - en aendret package-lock.json
+  # er lovlig, men koeres denne PR i et worktree hvor node_modules stadig er en
+  # junction til den delte cache, boer lanen have brugt
+  # `scripts/new-worktree.ps1 -OwnNodeModules` i stedet. Formaalet er at goere
+  # valget synligt, ikke at blokere en ellers gyldig PR.
+  Write-Host "== own-node-modules-advisory (package-lock.json aendret + junction-node_modules, #5143) ==" -ForegroundColor Cyan
+  try {
+    $lockDiff = @()
+    $lockDiffOutput = & git --no-pager diff --name-only origin/main...HEAD 2>$null
+    if ($LASTEXITCODE -eq 0 -and $lockDiffOutput) {
+      $lockDiff = @($lockDiffOutput | Where-Object { $_ -match 'package-lock\.json$' })
+    }
+    if ($lockDiff.Count -eq 0) {
+      Write-Host "  (ingen aendret package-lock.json mod origin/main - sprunget over)" -ForegroundColor DarkGray
+    } else {
+      foreach ($lockFile in $lockDiff) {
+        $lockDir = Split-Path $lockFile -Parent
+        $nmPath = if ($lockDir) { Join-Path $root (Join-Path $lockDir 'node_modules') } else { Join-Path $root 'node_modules' }
+        if (-not (Test-Path $nmPath)) { continue }
+        $nmItem = Get-Item $nmPath -Force -ErrorAction SilentlyContinue
+        if ($nmItem -and ($nmItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+          Write-Host "  [warn] $lockFile er aendret, men $nmPath er stadig en junction/reparse point til den delte cache." -ForegroundColor Yellow
+          Write-Host "         Overvej at have oprettet dette worktree med 'scripts/new-worktree.ps1 -OwnNodeModules' (#5143)." -ForegroundColor Yellow
+        }
+      }
+    }
+  } catch {
+    # Advisory-only - fejler aldrig preflight paa git-/filsystem-infrastruktur.
+  }
+
   Write-Host "== dependabot-exceptions-guard (ignores/allowlists uden issue+review-dato, #4551) ==" -ForegroundColor Cyan
   node scripts/check-dependabot-exceptions.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "dependabot-exceptions-guard" }

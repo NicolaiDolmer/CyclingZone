@@ -53,6 +53,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { profileLabelKey } from "../../lib/stageProfileConfig.js";
 import { formatLocalTime } from "../../lib/intl.js";
 import { LockIcon, CheckIcon, Button, Section, SectionHeader, SkeletonLines } from "../ui/index.js";
@@ -60,6 +61,7 @@ import SortableTh from "../ui/SortableTh.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
 import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import {
   buildDraftMatrix,
   diffToOverrides,
@@ -269,11 +271,17 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     let orderCtx = null;
     try {
       const [rolesRes, orderResult] = await Promise.all([
-        fetch(`${API}/api/races/${raceId}/stage-roles`, { headers }),
+        apiFetch(`${API}/api/races/${raceId}/stage-roles`, { headers }),
         fetchTeamOrders({ raceId }).catch(() => null),
       ]);
-      if (!rolesRes.ok) { setRoles(false); return; }
-      rolesBody = await rolesRes.json();
+      // #5242 (CodeRabbit-fund): et 2xx med tom/ikke-JSON krop giver apiFetch's
+      // res.data:null — uden dette tjek ville rolesBody.stage_count nedenfor
+      // (UDEN FOR denne try) kaste i stedet for at falde tilbage til roles:false.
+      if (!rolesRes.ok || !rolesRes.data || typeof rolesRes.data !== "object") {
+        setRoles(false);
+        return;
+      }
+      rolesBody = rolesRes.data;
       orderCtx = orderResult;
     } catch {
       setRoles(false);
@@ -355,6 +363,17 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     () => untouchedStages({ matrix: draftMatrix, riders, editableStages, exceptStage: activeStage }),
     [draftMatrix, riders, editableStages, activeStage],
   );
+
+  // #5159 (B1): intentioner og rollevalg ligger i kladder indtil Gem, og Gem er
+  // TO sekventielle skrivninger naar ordrevisningen er aktiv. Et release-drevet
+  // reload maa hverken kassere kladden eller ramme ned MELLEM de to kald.
+  // Beregnes her — foer de tidlige returns — fordi et hook skal kaldes
+  // ubetinget; `dirty` nedenfor er den samme sandhed, blot stage-lock-filtreret
+  // til knappens tilstand.
+  const draftDirty =
+    isDirty(draftMatrix, initialMatrix) ||
+    (showOrders && JSON.stringify(ordersByStage) !== JSON.stringify(initialOrdersByStage));
+  useReloadBlock(draftDirty || status === "saving", RELOAD_BLOCK_REASONS.DIRTY);
 
   if (roles === null) {
     return (
@@ -450,12 +469,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     try {
       // 1) Intentionen: hele diffen for de redigerbare etaper (REPLACE-semantik).
       const overrides = diffToOverrides({ matrix: draftMatrix, riders });
-      const res = await fetch(`${API}/api/races/${raceId}/stage-roles`, {
+      const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, {
         method: "PUT",
         headers,
         body: JSON.stringify({ overrides }),
       });
-      const body = await res.json().catch(() => ({}));
+      const body = res.data || {};
       if (!res.ok) {
         setStatus("error");
         setErrorKey(body.error || "generic");

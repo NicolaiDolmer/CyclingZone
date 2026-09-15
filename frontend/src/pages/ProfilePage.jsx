@@ -8,6 +8,7 @@ import { useSubscription } from "../lib/useSubscription";
 import { useTheme } from "../lib/theme.jsx";
 import { useConsent } from "../lib/consent.jsx";
 import { parseDiscordHandle } from "../lib/discordHandle.js";
+import { refreshSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 // #5013: abonnement pr. forum-kategori — delt med ForumPage, så de to flader
 // aldrig kan vise hver sin sandhed.
 import {
@@ -45,6 +46,7 @@ export default function ProfilePage() {
   const [dmStatus, setDmStatus] = useState(null);
   const [assistant, setAssistant] = useState(null);
   const [savingAssistant, setSavingAssistant] = useState(false);
+  const [savingSelectionReminder, setSavingSelectionReminder] = useState(false); // #4983
   // #5013: én række pr. forum-kategori med "følger jeg den?".
   const [forumCategories, setForumCategories] = useState(() => normalizeCategoryMutes(null));
   const [savingForumCategory, setSavingForumCategory] = useState(null);
@@ -384,6 +386,50 @@ export default function ProfilePage() {
     }
   }
 
+  // #4983: paamindelsen foer udtagelsesfristen. Egen endpoint frem for et felt
+  // paa assistant-settings, fordi den PATCH er gated paa opt_in-tilstanden —
+  // paamindelsen er ren UI og virker i alle tre tilstande.
+  async function toggleSelectionReminder(enabled) {
+    setSavingSelectionReminder(true);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        showMsg(t("discord.noSession"), "error");
+        return;
+      }
+      const res = await fetch(`${API}/api/me/selection-reminder-settings`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      // 503 = migrationen er ikke applied endnu (auto-migrate venter ~180 s
+      // efter deploy). Ikke en fejl der skal rapporteres — valget er bare ikke
+      // gemt endnu. Samme eksisterende "prøv igen om lidt"-besked som enhver
+      // anden midlertidig serverfejl, ingen ny streng.
+      if (res.status === 503) showMsg(t("errors:generic.serverError"), "error");
+      else if (!res.ok) showMsg(data.error || t("errors:generic.serverError"), "error");
+      else {
+        setAssistant(prev => ({ ...prev, selection_reminder_enabled: data.selection_reminder_enabled }));
+        // Layout og PlanningHubPage har hver sin useSelectionReminder-state og
+        // opdaterer ellers først om op til 5 minutter: uden det her ville
+        // nav-markeringen blive stående efter at spilleren har slået
+        // påmindelsen fra (og udeblive efter at have slået den til).
+        refreshSelectionReminder();
+        showMsg(enabled ? t("selectionReminder.on") : t("selectionReminder.off"));
+      }
+    } catch (cause) {
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_selection_reminder", {
+        reason: "network",
+        cause,
+        context: { enabled },
+      });
+    } finally {
+      setSavingSelectionReminder(false);
+    }
+  }
+
   async function toggleDmPref(prefKey, enabled) {
     // Læses FØR den optimistiske opdatering, så tilbagerulningen er lokal.
     // refreshDmStatus() kan IKKE bære den: den er selv et fetch med en tavs
@@ -533,6 +579,19 @@ export default function ProfilePage() {
     );
   };
 
+  // #4983: paamindelsens to trin kommer FRA serveren (GET /api/me/assistant-settings),
+  // aldrig fra copy. window = SELECTION_REMINDER_WINDOW_HOURS, urgent =
+  // app_config.assistant_late_fill_hours. Se hint-teksten nedenfor.
+  // null (ikke 0) naar tallet mangler: Number(null) er 0 og ville sende "inden
+  // for 0 timer" ud paa fladen.
+  const positiveHours = value => (typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null);
+  const selectionReminderWindowHours = positiveHours(assistant?.selection_reminder_window_hours);
+  const selectionReminderUrgentHours = positiveHours(assistant?.late_fill_hours);
+  // Kontakten maa foerst kunne bruges naar vi KENDER den gemte vaerdi. Er kaldet
+  // fejlet (assistant er stadig null), ville `!== false` vise den som TIL og
+  // lade spilleren overskrive en indstilling ingen har laest.
+  const selectionReminderLoaded = typeof assistant?.selection_reminder_enabled === "boolean";
+
   return (
     // #2253: translate="no" — browser-oversættere muterede React's tekst-noder og
     // udløste NotFoundError-crashes (Sentry-events med url=/profile). Se PR #2272.
@@ -639,6 +698,39 @@ export default function ProfilePage() {
             );
           })}
         </div>
+      </Card>
+
+      {/* Paamindelse foer udtagelsesfristen (#4983) — vises ALTID: den er ren
+          UI-tilstand og afhaenger ikke af assistentens tilstand. */}
+      <Card className="p-5 mb-4">
+        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("selectionReminder.title")}</h2>
+        <p className="text-cz-3 text-xs mb-4">{t("selectionReminder.subtitle")}</p>
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="profile-selection-reminder" className="text-cz-1 text-sm font-medium">
+            {t("selectionReminder.toggleLabel")}
+          </label>
+          <Toggle
+            id="profile-selection-reminder"
+            checked={selectionReminderLoaded && assistant.selection_reminder_enabled}
+            disabled={!selectionReminderLoaded || savingSelectionReminder}
+            onChange={e => toggleSelectionReminder(e.target.checked)}
+          />
+        </div>
+        {/* De to trin er RUNTIME-tal, ikke copy: gul er
+            SELECTION_REMINDER_WINDOW_HOURS og roed er
+            app_config.assistant_late_fill_hours (ASSISTANT_RULES §1b: "flyttes
+            assistant_late_fill_hours, flytter det roede trin med af sig selv").
+            Skrev vi 36/24 i strengen, ville teksten lyve foerste gang horisonten
+            justeres — D-034 har den eksplicit som et aabent punkt. Kender vi dem
+            ikke endnu (svaret er ikke hentet), staar den tal-loese variant. */}
+        <p className="text-cz-3 text-xs leading-relaxed mt-3">
+          {selectionReminderWindowHours && selectionReminderUrgentHours
+            ? t("selectionReminder.toggleHint", {
+                windowHours: selectionReminderWindowHours,
+                urgentHours: selectionReminderUrgentHours,
+              })
+            : t("selectionReminder.toggleHintGeneric")}
+        </p>
       </Card>
 
       {/* Assistent (#4201) — kun naar tilstanden er "opt_in"; ellers er der intet valg */}

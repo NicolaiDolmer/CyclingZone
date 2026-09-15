@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage } from "./fixtures.js";
 
@@ -126,4 +129,74 @@ test("static Organization + WebSite JSON-LD is present on every route; VideoGame
     () => !!document.querySelector('script[type="application/ld+json"][data-cz-jsonld="videogame"]'),
   );
   expect(videoGameOnLogin, "VideoGame JSON-LD må ikke lække til /login").toBe(false);
+});
+
+// #4067 — statisk guard, INGEN netværk: rewrites-listen i frontend/vercel.json
+// (marketing/-destinationer) skal matche 1:1 med de sider marketing/app/
+// faktisk eksponerer. Uden denne test kan en ny page.tsx i marketing/ blive
+// tilføjet uden en tilsvarende rewrite (404 på cyclingzone.org), eller en
+// rewrite overleve efter en side er fjernet dér (spøgelses-rute) — begge dele
+// opdages først i produktion. Forsiden "/" er fortsat undtaget her: den routes
+// IKKE via vercel.json's rewrites-array (Vercels filsystem vinder over
+// rewrites for en literal "/index.html" i output — bekræftet empirisk på
+// preview-deployet i #4067-opfølgeren), men via frontend/middleware.ts, som
+// kører FØR filsystem-matchet og derfor kan overstyre det.
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const MARKETING_BASE = "https://cycling-zone-marketing.vercel.app";
+
+// #5230 (CodeQL #362) — startsWith accepterer også fx
+// "https://cycling-zone-marketing.vercel.app.evil.example", som ikke er
+// MARKETING_BASE. Sammenlign origin i stedet. Relative destinationer (fx
+// "/index.html") kan ikke parses som URL og skal give false, ikke kaste.
+function isMarketingDestination(destination) {
+  try {
+    return new URL(destination).origin === new URL(MARKETING_BASE).origin;
+  } catch {
+    return false;
+  }
+}
+
+function marketingPageRoutes(appDir) {
+  // Route-groups ("(en)"/"(da)") bidrager ikke til URL'en; alle andre mapper
+  // gør. Kun mapper der reelt indeholder en page.(t|j)sx tæller som en rute.
+  const routes = [];
+  function walk(dir, segments) {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (!statSync(full).isDirectory()) continue;
+      const isGroup = entry.startsWith("(") && entry.endsWith(")");
+      const nextSegments = isGroup ? segments : [...segments, entry];
+      const hasPage = readdirSync(full).some((f) => /^page\.(tsx|ts|jsx|js)$/.test(f));
+      if (hasPage) routes.push(`/${nextSegments.join("/")}`);
+      walk(full, nextSegments);
+    }
+  }
+  walk(appDir, []);
+  return routes;
+}
+
+test("frontend/vercel.json's marketing-rewrites matcher marketing/app 1:1 (#4067)", () => {
+  const vercelConfig = JSON.parse(
+    readFileSync(join(repoRoot, "frontend", "vercel.json"), "utf8"),
+  );
+  const rewrittenPaths = new Set(
+    vercelConfig.rewrites
+      .filter((r) => isMarketingDestination(r.destination) && r.source !== "/_next/:path(.*)")
+      .map((r) => r.source),
+  );
+
+  const actualRoutes = new Set(
+    marketingPageRoutes(join(repoRoot, "marketing", "app")).filter((r) => r !== "/"),
+  );
+
+  for (const route of actualRoutes) {
+    expect(rewrittenPaths.has(route), `marketing/app har siden ${route}, men vercel.json rewriter den ikke`).toBe(
+      true,
+    );
+  }
+  for (const source of rewrittenPaths) {
+    expect(actualRoutes.has(source), `vercel.json rewriter ${source} til marketing/, men siden findes ikke der`).toBe(
+      true,
+    );
+  }
 });
