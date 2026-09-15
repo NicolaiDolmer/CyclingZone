@@ -532,3 +532,54 @@ test("#4631 · en eksisterende hybrid-plan er BIT-IDENTISK med før splittet", (
   const forventet = base * TRAINING_CONFIG.focusGrowthMult.hard * youthMultiplier(22) * youthRateForPotential(70);
   assert.ok(Math.abs(dailyAbilityDelta(args) - forventet) < 1e-12);
 });
+
+// ── #4846 fase B2: de to nye VALGFRIE parametre ──────────────────────────────
+
+const B2_TICK_ARGS = Object.freeze({
+  riderId: "r-4846", dateStr: "2026-09-14", age: 22,
+  abilities: { climbing: 50, endurance: 50, sprint: 50 },
+  caps: { climbing: 80, endurance: 80, sprint: 80 },
+  progress: {}, program: { focus: "endurance", intensity: "normal" },
+  conditionMult: 1, bonus: false, potentiale: 4,
+});
+
+test("#4846 · udeladt tickSeedKey/budgetDivisor er BIT-IDENTISK med før", () => {
+  const uden = applyDailyTick({ ...B2_TICK_ARGS });
+  const eksplicitNull = applyDailyTick({ ...B2_TICK_ARGS, tickSeedKey: null, budgetDivisor: null });
+  assert.deepEqual(eksplicitNull, uden);
+
+  // Ugyldige vaerdier maa heller ikke kunne aendre adfaerd (fail-safe, ikke NaN).
+  for (const bad of [0, -5, Number.NaN, "72"]) {
+    assert.deepEqual(applyDailyTick({ ...B2_TICK_ARGS, budgetDivisor: bad }), uden, `budgetDivisor=${String(bad)}`);
+  }
+});
+
+test("#4846 A3 · tickSeedKey flytter støjen væk fra kalenderdatoen", () => {
+  const datoSeed = applyDailyTick({ ...B2_TICK_ARGS });
+  const gd12 = applyDailyTick({ ...B2_TICK_ARGS, tickSeedKey: "s1#gd12" });
+  const gd13 = applyDailyTick({ ...B2_TICK_ARGS, tickSeedKey: "s1#gd13" });
+
+  assert.notEqual(gd12.noise, datoSeed.noise, "loebsdags-seed er ikke dato-seed");
+  assert.notEqual(gd12.noise, gd13.noise, "to loebsdage samme dato skal give forskellig stoej");
+  // Determinisme: samme noegle, samme udfald.
+  assert.equal(applyDailyTick({ ...B2_TICK_ARGS, tickSeedKey: "s1#gd12" }).noise, gd12.noise);
+});
+
+test("#4846 G1 · budgetDivisor skalerer basen præcist (og kun basen)", () => {
+  const args = {
+    ability: "endurance", current: 50, cap: 80, age: 22,
+    program: { focus: "endurance", intensity: "normal" },
+    conditionMult: 1, bonus: false, noise: 1, potentiale: 4,
+  };
+  const standard = dailyAbilityDelta(args);
+  const halvRate = dailyAbilityDelta({ ...args, budgetDivisor: DAILY_TRAINING_CONFIG.daysPerSeason * 2 });
+  assert.ok(Math.abs(halvRate * 2 - standard) < 1e-12, "deleren er ren proportionalitet");
+});
+
+test("#4846 · +1-loftet pr. evne klipper bar-loopet (hardDailyCap)", () => {
+  const args = { ...B2_TICK_ARGS, progress: { endurance: 1.9 } };
+  const utenLoft = applyDailyTick(args);
+  const medLoft = applyDailyTick({ ...args, hardDailyCap: 1 });
+  assert.ok(utenLoft.gains.endurance >= 2, `uden loft: ${utenLoft.gains.endurance}`);
+  assert.equal(medLoft.gains.endurance, 1);
+});

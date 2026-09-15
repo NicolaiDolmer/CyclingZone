@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-63 poster: live 43 · beta 2 · dormant 5 · building 8 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+64 poster: live 43 · beta 2 · dormant 5 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -59,6 +59,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Daily training (`daily-training`) | live | `daily_training_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
 | Peak planner (`peak-planner`) | live | `peak_planner_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | #2224 | 2026-09-06 | - |
 | Season fatigue and form reset (`season-fatigue-reset`) | live | `season_fatigue_reset_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
+| Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4846 | 2026-09-14 | Nøgle/mutex/seeds/historik/rate bygget bag app_config-nøglen training_tick_per_race_day (default off); udløseren "løbsdagen lukker" mangler. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
 ## academy

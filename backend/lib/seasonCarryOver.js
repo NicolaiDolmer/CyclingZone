@@ -189,6 +189,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     why: "Spejder-JOBS er igangværende opgaver med started_on/ready_on-datoer, ikke en sæson-opsætning der skal genskabes. Aktive jobs løber videre på tværs af skiftet (ingen season-gate i sweep'en).",
   },
   {
+    table: "rider_ability_race_day_history",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#4846: motor-output. Søsterbord til rider_derived_ability_history, nøglet på (rider_id, season_id, game_day, source) fordi game_day er sæson-RELATIV og nulstilles hvert skifte — season_id ligger på rækken af den grund, ikke fordi manageren konfigurerer noget. Snapshots fra tidligere sæsoner bliver liggende som historik; den nye sæson begynder med en tom løbsdags-akse og fylder den op af sig selv.",
+  },
+  {
     table: "season_standings",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "Motor-beregnet stilling pr. sæson. Nulstilles korrekt af sig selv fordi den nye sæson starter uden resultater.",
