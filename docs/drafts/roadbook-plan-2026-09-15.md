@@ -1,6 +1,6 @@
-# Roadbook: hvad der bygges de kommende maaneder (udkast 15/9, ejeren poster selv)
+# Roadbook: hvad der bygges de kommende maaneder (udkast 15/9 v2, ejeren poster selv)
 
-> Ejerens egen liste 15/9 udvidet (intet slettet, kun tilfoejet). Tilfoejelser bygger paa: in-game roadmap (roadmap_items), #the-roadbook 2/9 (traening), forum "The future of"-traadene, state of development 18/8, MASTERPLAN 15/9. Regler: ingen datoer ud over saesonskifte, ingen tal, glad tone, EN foerst, DA under (docs/TONE_OF_VOICE.md). Blidt varsel om de mentale evner; detaljerne kommer i ejerens egen besked naar migrationen koeres.
+> Ejerens egen liste 15/9 udvidet (intet slettet, kun tilfoejet/omformuleret efter ejerens rettelser 15/9 kl. 13:0x). Verificeret mod live-tilstand 15/9 (7 punkter var allerede live, 13 delvist). Regler: ingen datoer ud over saesonskifte, ingen tal, glad tone, EN foerst, DA under (docs/TONE_OF_VOICE.md). Blidt varsel om de mentale evner. Sponsor-punktet staar i ejerens oprindelige ordlyd indtil ejeren har gennemgaaet #5263. Intet om at skjule evner.
 
 ---
 
@@ -10,19 +10,25 @@ Hep!
 
 Here is the plan for the next few months, in one place. I have taken what you asked for on Discord, in the forum threads and in the survey, and put it in order. Some of it is nearly done, some of it is big. Nothing here has a date except the season switch itself: that is the one deadline I have promised you, and I intend to keep it.
 
+**Already in the game since the last update**
+
+- Punch and climbing have their own sessions now, and the old hard ceilings are gone, as promised on the 2nd.
+- Ask the assistant: the button on Daily training already suggests plans for riders with no plan.
+- Messages between managers, and @mentions in the forum.
+- The season planner with form peaks and stage profiles.
+
 **During season 3 (now)**
 
-- Rider values are being corrected, along with the bugs you have reported.
+- Rider values already update every Sunday. What is coming is a clear explanation of why some riders seem to stand still, plus the bugs you have reported.
 - Clearing up how a rider's secondary type works.
 - New training sessions: cobbled sectors, echelon work and attack repeats, so cobbles, flat and aggression can finally be trained hard. Plus a short race sharpener the day before a race, for every rider.
-- Punch and climbing get their own sessions, and the old hard ceilings are being loosened, as promised on the 2nd.
-- The mental abilities are getting more room: a couple of new ones, and tactics and aggression become their own abilities that develop on their own. No rider loses anything. You will get the full story from me before it lands.
-- A better training page on the phone. Transfers and training on mobile are getting fixed first, as you asked.
+- The mental abilities are getting more room: a couple of new ones, and tactics and aggression stop depending on a rider's age and develop on their own, like the rest. No rider loses anything. You will get the full story from me before it lands.
+- The mobile table standard is live on most pages. The last four, daily training, transfers, auctions and the season matrix, get it next, as you asked.
 - The season 4 calendar, including the U23 and junior calendars.
 - Every division gets the same number of race days from season 4. Lower divisions do not get more races, they get more days to train.
-- The beta program opens: opt in, and you see things first and help me decide.
+- The beta program opens for real: the switch has been in the game for a while, but nobody is in it yet. Opt in, and you see things first and help me decide.
 - The training score: one number that tells you how good today's session was for that rider, and why.
-- A welcome message in your inbox that points you to Discord, because that is where most of this gets decided.
+- The welcome message in your inbox will point you to Discord, because that is where most of this gets decided.
 
 **Maybe, if there is room**
 
@@ -36,15 +42,15 @@ Here is the plan for the next few months, in one place. I have taken what you as
 
 - Race engine v4 finished and switched on. It goes live when it beats the current engine, not on a date.
 - The board rework finished: mandates and a proper meeting instead of a list of goals.
-- U23 team and junior team, with their own squads.
+- U23 team and junior team become real squads. The "coming soon" card on the Academy page turns into the real thing.
 - U23 races and junior races, on their own calendars and their own leagues.
-- Graduation Day: the week before the switch you decide where every rider who has outgrown his squad goes. Riders stay in their old squad until you move them.
-- Training from racing: a rider either trains or races on a given day, and racing develops the abilities the race actually uses.
-- Planning your training: a program for each race day of the week, for one rider or the whole squad.
+- Graduation Day replaces today's graduation list: the week before the switch you decide where every rider who has outgrown his squad goes. Riders stay in their old squad until you move them.
+- Training from racing comes back. It was live at the start of season 3 and I switched it off in August because it was not right yet. From season 4 a rider either trains or races on a given day, and racing develops the abilities the race actually uses.
+- Planning your training: the weekly plan already sets intensity per day. From season 4 it also sets the session for each race day, for one rider or the whole squad.
 - The daily training runs once, in the evening, after the last race of the day. The "train today" button with the extra percent is going away; a voluntary "run today's training now" button comes instead, with no bonus.
 - Injuries counted in race days, so "back in three race days" means what it says.
 - The training page rebuilt once, with the score, the program and the new sessions in one place.
-- Sponsor fixes: next season's deal is priced at season start against your final standings, and the base follows the division you actually ride in.
+- Sponsor fixes.
 - One rider update with a message from me: three squads, the mental abilities sorted out, nothing taken away.
 - Inactive managers are parked at the switch, and a clear sign-up for the new season.
 - The assistant tells you when it picked your squad.
@@ -58,14 +64,12 @@ Here is the plan for the next few months, in one place. I have taken what you as
 - More depth in your club's identity. Pick a country you want more young riders from. Influence which rider types show up in your academy.
 - Dashboard rework.
 - Inbox rework.
-- Teamwork in the race engine: the helper who makes his captain's day better, and the captain who gets more out of his helpers.
+- Teamwork becomes a rider ability. Helpers already pay a price for protecting their captain; from now on a good helper also makes that protection worth more, and a captain gets more out of his helpers.
 - Road captains and mentors: a veteran who teaches a young rider, chosen by you.
 - Promotion, relegation and rankings for U23 and junior, counted at the end of the season.
 - Prize money in youth races, once I have seen the numbers.
-- A global transfer list.
-- More fog of war, following the poll.
+- A global transfer feed: one place to see every trade in the world. The transfer list you know stays.
 - Default training programs, and later a place to share your own.
-- "Ask the assistant": one button that suggests plans for the riders who have none.
 
 **Before season 5 starts**
 
@@ -74,14 +78,14 @@ Here is the plan for the next few months, in one place. I have taken what you as
 **Not decided yet**
 
 - Logos, faces and team colours.
-- Staff features, from the forum thread.
+- Staff features: more roles, more attributes and more depth, from the forum thread.
 - Sponsor rework, including more than one sponsor.
 - National championships, worlds and europeans, national coaches.
-- New scouting features, including a market where you only see what your scouts have found.
-- Better history and palmares: a club museum with the riders and races people still talk about.
+- Scouting gets better. It is too thin today, and I know it. I do not know when yet.
+- Better statistics and history: look back at what happened around you, in your league and your division, season after season.
 - Improved assistant features: grouped messages, act straight from the inbox.
 - Friends and following, inviting a friend, a world feed of results and transfers.
-- Negotiating your board's goals upward, and deeper negotiation between managers.
+- Negotiate your board's goals upward (today you can accept or decline its proposals), and deeper negotiation between managers.
 - A smarter season planner, and the racing maths explained in plain words.
 
 Be blunt with me about the order. If something here matters more to you than what is above it, say so. That is what this thread is for.
@@ -96,19 +100,25 @@ Hep!
 
 Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har bedt om på Discord, i forum-trådene og i spørgeskemaet, og sat det i rækkefølge. Noget er næsten færdigt, noget er stort. Intet her har en dato ud over selve sæsonskiftet: det er den ene deadline jeg har lovet jer, og den holder jeg.
 
+**Allerede i spillet siden sidst**
+
+- Punch og bjerg har nu hver sin session, og de gamle hårde lofter er væk, som lovet den 2.
+- Spørg assistenten: knappen på Daglig træning foreslår allerede planer til ryttere uden plan.
+- Beskeder mellem managere, og @-mentions i forummet.
+- Sæsonplanlæggeren med formtoppe og etapeprofiler.
+
 **Undervejs i sæson 3 (nu)**
 
-- Rytterværdierne rettes, sammen med de fejl I har meldt.
+- Rytterværdierne opdateres allerede hver søndag. Det der kommer, er en klar forklaring på hvorfor nogle ryttere ser ud til at stå stille, plus de fejl I har meldt.
 - Afklaring af hvordan en rytters sekundære ryttertype virker.
 - Nye træningssessioner: brostenssektorer, vifteøvelser og angrebsintervaller, så brosten, flad og aggression endelig kan trænes hårdt. Plus et kort formpas dagen før løb, for alle ryttere.
-- Punch og bjerg får hver sin session, og de gamle hårde lofter løsnes, som lovet den 2.
-- De mentale evner får mere plads: et par nye, og taktik og aggression bliver egne evner der udvikler sig selv. Ingen rytter mister noget. I får hele historien fra mig før det lander.
-- Bedre træningsside på telefonen. Transfers og træning på mobil rettes først, som I bad om.
+- De mentale evner får mere plads: et par nye, og taktik og aggression holder op med at afhænge af rytterens alder og udvikler sig selv, som de andre. Ingen rytter mister noget. I får hele historien fra mig før det lander.
+- Mobil-standarden for tabeller er live på de fleste sider. De sidste fire, daglig træning, transfers, auktioner og sæsonmatricen, får den nu, som I bad om.
 - Løbskalenderen for sæson 4, inklusive U23- og junior-kalenderen.
 - Alle divisioner får samme antal løbsdage fra sæson 4. Lavere divisioner får ikke flere løb, de får flere dage at træne på.
-- Beta-programmet åbner: meld dig til, se tingene først og hjælp mig med at beslutte.
+- Beta-programmet åbner for alvor: kontakten har ligget i spillet et stykke tid, men ingen er med endnu. Meld dig til, se tingene først og hjælp mig med at beslutte.
 - Træningsscoren: ét tal der fortæller hvor godt dagens pas var for netop den rytter, og hvorfor.
-- En velkomstbesked i indbakken der peger på Discord, fordi det er der det meste bliver besluttet.
+- Velkomstbeskeden i indbakken kommer til at pege på Discord, fordi det er der det meste bliver besluttet.
 
 **Måske, hvis der er plads**
 
@@ -122,15 +132,15 @@ Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har b
 
 - Race engine v4 færdig og tændt. Den går live når den slår den nuværende motor, ikke på en dato.
 - Bestyrelses-reworket færdigt: mandater og et rigtigt møde i stedet for en liste af mål.
-- U23-hold og juniorhold, med hver deres trup.
+- U23-hold og juniorhold bliver rigtige trupper. "Kommer snart"-kortet på Akademi-siden bliver til den ægte vare.
 - U23-løb og junior-løb, på egne kalendere og i egne ligaer.
-- Graduation Day: ugen før skiftet bestemmer du hvor hver rytter der er vokset ud af sin trup skal hen. Rytterne bliver i deres gamle trup indtil du flytter dem.
-- Træning fra løb: en rytter enten træner eller kører løb på en given dag, og løbet udvikler de evner løbet faktisk bruger.
-- Planlægning af træning: et program for hver løbsdag i ugen, for én rytter eller hele truppen.
+- Graduation Day erstatter den nuværende gradueringsliste: ugen før skiftet bestemmer du hvor hver rytter der er vokset ud af sin trup skal hen. Rytterne bliver i deres gamle trup indtil du flytter dem.
+- Træning fra løb kommer tilbage. Det var live i starten af sæson 3, og jeg slukkede det i august fordi det ikke var rigtigt endnu. Fra sæson 4 enten træner en rytter eller kører løb på en given dag, og løbet udvikler de evner løbet faktisk bruger.
+- Planlægning af træning: ugeplanen sætter allerede intensitet pr. dag. Fra sæson 4 sætter den også sessionen for hver løbsdag, for én rytter eller hele truppen.
 - Den daglige træning kører én gang, om aftenen, efter dagens sidste løb. "Træn i dag"-knappen med de ekstra procent forsvinder; en frivillig "kør dagens træning nu"-knap kommer i stedet, uden bonus.
 - Skader tælles i løbsdage, så "tilbage om tre løbsdage" betyder det der står.
 - Træningssiden bygget færdig én gang, med scoren, programmet og de nye sessioner samlet.
-- Sponsor-rettelser: næste sæsons aftale prissættes ved sæsonstart mod din slutstilling, og basen følger den division du faktisk kører i.
+- Fejlrettelser angående sponsor.
 - Én rytter-opdatering med en besked fra mig: tre trupper, de mentale evner på plads, intet taget fra nogen.
 - Inaktive managere parkeres ved skiftet, og en tydelig tilmelding til den nye sæson.
 - Assistenten fortæller dig når den har udtaget dit hold.
@@ -144,14 +154,12 @@ Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har b
 - Mere dybde i klubbens identitet. Vælg et land du ønsker flere unge ryttere fra. Få indflydelse på hvilke ryttertyper der kommer ind i akademiet.
 - Dashboard-rework.
 - Indbakke-rework.
-- Holdarbejde i løbsmotoren: hjælperen der gør sin kaptajns dag bedre, og kaptajnen der får mere ud af sine hjælpere.
+- Holdarbejde bliver en rytter-evne. Hjælpere betaler allerede en pris for at beskytte kaptajnen; fremover gør en god hjælper også den beskyttelse mere værd, og en kaptajn får mere ud af sine hjælpere.
 - Vejkaptajner og mentorer: en veteran der lærer fra sig til en ung rytter, valgt af dig.
 - Op- og nedrykning og ranglister for U23 og junior, gjort op ved sæsonens slutning.
 - Præmiepenge i ungdomsløb, når jeg har set tallene.
-- En global handelsliste.
-- Mere fog of war, efter afstemningen.
+- Et globalt handelsfeed: ét sted hvor du kan se alle handler i verden. Transferlisten du kender bliver.
 - Standard-træningsprogrammer, og senere et sted at dele dine egne.
-- "Spørg assistenten": én knap der foreslår planer til de ryttere der ingen har.
 
 **Inden sæson 5 starter**
 
@@ -160,14 +168,14 @@ Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har b
 **Det ved jeg ikke endnu**
 
 - Logoer, ansigter og holdfarver.
-- Personale-funktioner, ud fra forum-tråden.
+- Personale-funktioner: flere roller, flere egenskaber og mere dybde, ud fra forum-tråden.
 - Sponsor-rework, herunder mere end én sponsor.
 - Nationale mesterskaber, VM og EM, landstrænere.
-- Nye talentspejder-funktioner, herunder et marked hvor du kun ser det dine spejdere har fundet.
-- Bedre historik og palmares: et klubmuseum med de ryttere og løb folk stadig taler om.
+- Talentspejderen bliver bedre. Den er for tynd i dag, og det ved jeg godt. Hvornår ved jeg ikke endnu.
+- Bedre statistik og historik: se tilbage på det der skete omkring dig, i din liga og din division, sæson efter sæson.
 - Forbedrede assistent-funktioner: grupperede beskeder, handl direkte fra indbakken.
 - Venner og følgere, inviter en ven, et verdensfeed med resultater og transfers.
-- Forhandl bestyrelsens mål opad, og dybere forhandling mellem managere.
+- Forhandl bestyrelsens mål opad (i dag kan du acceptere eller afvise dens forslag), og dybere forhandling mellem managere.
 - En klogere sæsonplanlægger, og løbsmatematikken forklaret i klart sprog.
 
 Vær ærlig om rækkefølgen. Hvis noget her betyder mere for dig end det der står over det, så sig det. Det er det denne tråd er til.
