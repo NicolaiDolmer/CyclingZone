@@ -2853,9 +2853,31 @@ router.get("/training/me", requireAuth, async (req, res) => {
       if (cappedForRider.length) capped[row.rider_id] = cappedForRider;
     }
 
+    // #4847: knappens aabne-tilstand ("Koer dagens traening nu"). Feltet udelades
+    // HELT naar `training_tick_per_race_day` er off — samme kontrakt som racingToday
+    // nedenfor, saa ingen consumer kan forveksle "flag off" med "dagen er ikke lukket".
+    const raceDayTickOn = await isTrainingTickPerRaceDayEnabled(supabase, { isBetaTester });
+    let dayClose = null;
+    if (raceDayTickOn) {
+      const windowOpen = trainingWindowOpen(new Date());
+      const close = windowOpen && activeSeasonId
+        ? await resolveDayCloseStatus({
+          supabase, seasonId: activeSeasonId, now: new Date(),
+          divisionId: req.team.league_division_id ?? null,
+        })
+        : { closed: false, reason: windowOpen ? "no_active_season" : "before_window", gameDays: [] };
+      dayClose = {
+        open: close.closed,
+        reason: close.reason,
+        gameDays: close.gameDays ?? [],
+        opensAtHour: TRAINING_SWEEP_FROM_HOUR,
+      };
+    }
+
     res.json({
       ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped,
       trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans,
+      ...(dayClose ? { dayClose } : {}),
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer
       // kan skelne "flag off" fra "ingen data" på et felt der ikke findes.

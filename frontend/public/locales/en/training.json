@@ -1,6 +1,11 @@
 {
   "title": "Daily Training",
   "trainToday": "Train today (+25% consistency bonus)",
+  "runDayNow": "Run today's training now",
+  "dayClose": {
+    "waiting": "Today's training runs on its own once the last race is done, from {hour}:00.",
+    "ready": "Today's training is ready. Run it now, or let it run on its own."
+  },
   "trainedToday_you": "Trained today (by you)",
   "trainedToday_assistant": "Trained today (by assistant)",
   "trainedTodayAt_you": "Trained today at {time} (by you)",
