@@ -1,4 +1,4 @@
-# Roadbook: hvad der bygges de kommende maaneder (udkast 15/9 v2, ejeren poster selv)
+# Roadbook: hvad der bygges de kommende maaneder (udkast 15/9 v3, ejeren poster selv; alt shippet t.o.m. 7.276 er fjernet)
 
 > Ejerens egen liste 15/9 udvidet (intet slettet, kun tilfoejet/omformuleret efter ejerens rettelser 15/9 kl. 13:0x). Verificeret mod live-tilstand 15/9 (7 punkter var allerede live, 13 delvist). Regler: ingen datoer ud over saesonskifte, ingen tal, glad tone, EN foerst, DA under (docs/TONE_OF_VOICE.md). Blidt varsel om de mentale evner. Sponsor-punktet staar i ejerens oprindelige ordlyd indtil ejeren har gennemgaaet #5263. Intet om at skjule evner.
 
@@ -10,25 +10,17 @@ Hep!
 
 Here is the plan for the next few months, in one place. I have taken what you asked for on Discord, in the forum threads and in the survey, and put it in order. Some of it is nearly done, some of it is big. Nothing here has a date except the season switch itself: that is the one deadline I have promised you, and I intend to keep it.
 
-**Already in the game since the last update**
-
-- Punch and climbing have their own sessions now, and the old hard ceilings are gone, as promised on the 2nd.
-- Ask the assistant: the button on Daily training already suggests plans for riders with no plan.
-- Messages between managers, and @mentions in the forum.
-- The season planner with form peaks and stage profiles.
-
 **During season 3 (now)**
 
-- Rider values already update every Sunday. What is coming is a clear explanation of why some riders seem to stand still, plus the bugs you have reported.
+- A clear explanation of why some riders seem to stand still in value, plus the bugs you have reported.
 - Clearing up how a rider's secondary type works.
-- New training sessions: cobbled sectors, echelon work and attack repeats, so cobbles, flat and aggression can finally be trained hard. Plus a short race sharpener the day before a race, for every rider.
+- A short race sharpener the day before a race, for every rider.
 - The mental abilities are getting more room: a couple of new ones, and tactics and aggression stop depending on a rider's age and develop on their own, like the rest. No rider loses anything. You will get the full story from me before it lands.
-- The mobile table standard is live on most pages. The last four, daily training, transfers, auctions and the season matrix, get it next, as you asked.
+- A better mobile view for daily training, transfers, auctions and the season matrix. I am not happy with the current tables on the phone either, so this one gets designed properly first.
 - The season 4 calendar, including the U23 and junior calendars.
 - Every division gets the same number of race days from season 4. Lower divisions do not get more races, they get more days to train.
 - The beta program opens for real: the switch has been in the game for a while, but nobody is in it yet. Opt in, and you see things first and help me decide.
-- The training score: one number that tells you how good today's session was for that rider, and why.
-- The welcome message in your inbox will point you to Discord, because that is where most of this gets decided.
+- The training score for everyone: one number that tells you how good today's session was for that rider, and why. It is in beta now.
 
 **Maybe, if there is room**
 
@@ -100,25 +92,17 @@ Hep!
 
 Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har bedt om på Discord, i forum-trådene og i spørgeskemaet, og sat det i rækkefølge. Noget er næsten færdigt, noget er stort. Intet her har en dato ud over selve sæsonskiftet: det er den ene deadline jeg har lovet jer, og den holder jeg.
 
-**Allerede i spillet siden sidst**
-
-- Punch og bjerg har nu hver sin session, og de gamle hårde lofter er væk, som lovet den 2.
-- Spørg assistenten: knappen på Daglig træning foreslår allerede planer til ryttere uden plan.
-- Beskeder mellem managere, og @-mentions i forummet.
-- Sæsonplanlæggeren med formtoppe og etapeprofiler.
-
 **Undervejs i sæson 3 (nu)**
 
-- Rytterværdierne opdateres allerede hver søndag. Det der kommer, er en klar forklaring på hvorfor nogle ryttere ser ud til at stå stille, plus de fejl I har meldt.
+- En klar forklaring på hvorfor nogle ryttere ser ud til at stå stille i værdi, plus de fejl I har meldt.
 - Afklaring af hvordan en rytters sekundære ryttertype virker.
-- Nye træningssessioner: brostenssektorer, vifteøvelser og angrebsintervaller, så brosten, flad og aggression endelig kan trænes hårdt. Plus et kort formpas dagen før løb, for alle ryttere.
+- Et kort formpas dagen før løb, for alle ryttere.
 - De mentale evner får mere plads: et par nye, og taktik og aggression holder op med at afhænge af rytterens alder og udvikler sig selv, som de andre. Ingen rytter mister noget. I får hele historien fra mig før det lander.
-- Mobil-standarden for tabeller er live på de fleste sider. De sidste fire, daglig træning, transfers, auktioner og sæsonmatricen, får den nu, som I bad om.
+- En bedre mobilvisning af daglig træning, transfers, auktioner og sæsonmatricen. Jeg er heller ikke selv tilfreds med tabellerne på telefonen, så den bliver designet ordentligt først.
 - Løbskalenderen for sæson 4, inklusive U23- og junior-kalenderen.
 - Alle divisioner får samme antal løbsdage fra sæson 4. Lavere divisioner får ikke flere løb, de får flere dage at træne på.
 - Beta-programmet åbner for alvor: kontakten har ligget i spillet et stykke tid, men ingen er med endnu. Meld dig til, se tingene først og hjælp mig med at beslutte.
-- Træningsscoren: ét tal der fortæller hvor godt dagens pas var for netop den rytter, og hvorfor.
-- Velkomstbeskeden i indbakken kommer til at pege på Discord, fordi det er der det meste bliver besluttet.
+- Træningsscoren for alle: ét tal der fortæller hvor godt dagens pas var for netop den rytter, og hvorfor. Den er i beta nu.
 
 **Måske, hvis der er plads**
 
