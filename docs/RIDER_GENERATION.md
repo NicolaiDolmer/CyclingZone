@@ -201,10 +201,10 @@ altså faktor `98/35 = 2,8` og `evne(50) = 1`. `ARCHETYPES`, `TIERS` og `YOUTH_G
 Markøren ligger i `riders.archetype_draw` (jsonb, persisteres allerede) som et `birth`-felt ved siden af `primary`/`secondary` — **ingen migration**:
 
 ```json
-{ "primary": "gc", "secondary": "tt", "birth": { "v": 1, "tier": "solid", "seed": 2285543883, "cap": 21 } }
+{ "primary": "gc", "secondary": "tt", "birth": { "v": 1, "tier": "solid", "seed": 2285543883, "age": 27, "cap": 21 } }
 ```
 
-`seed` gør trækket reproducerbart fra rækken alene. `cap` (valgfri) er et evne-loft der følger rytteren — det er own-priors-stiens erstatning for `buildWeakStarterPool`s STAT-vindue ([#1487](https://github.com/NicolaiDolmer/CyclingZone/issues/1487)): `[50,57]` → loft 21, `[50,52]` → loft 7, tier 4 `[51,55]` → loft 15. Enhver eksisterende læser (`draw.primary`, `draw.secondary`) ser præcis det samme som før.
+`seed` gør trækket reproducerbart fra rækken alene. `age` er **fødsels**-alderen, ikke rytterens nuværende: ungdomsbåndets niveau er `baseAt16 + (alder − 16)·perYearOver16`, så en re-derive mod den nuværende alder ville løfte hans start-evner gratis hver sæson — uden træning og uden at nogen skrev det. Trækket reproducerer fødslen; udvikling ejes af `riderProgression.js`. (`hidden_potential` følger stadig den NUVÆRENDE alder, præcis som for alle andre ryttere.) `cap` (valgfri) er et evne-loft der følger rytteren — det er own-priors-stiens erstatning for `buildWeakStarterPool`s STAT-vindue ([#1487](https://github.com/NicolaiDolmer/CyclingZone/issues/1487)): `[50,57]` → loft 21, `[50,52]` → loft 7, tier 4 `[51,55]` → loft 15. Enhver eksisterende læser (`draw.primary`, `draw.secondary`) ser præcis det samme som før.
 
 ### Hvem bruger den nye sti
 

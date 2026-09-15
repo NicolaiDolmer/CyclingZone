@@ -290,6 +290,45 @@ test("deriveBirthAbilities reproducerer traekket fra den persisterede raekke ale
   assert.ok(Number.isInteger(first.hidden_potential));
 });
 
+// CodeRabbit-fund 15/9 (major, aegte): ungdomsbaandets niveau er
+// `baseAt16 + (alder − 16)·perYearOver16`. Brugte re-derivationen rytterens
+// NUVAERENDE alder, ville hver saeson loefte hans start-evner gratis — uden
+// traening og uden at nogen skrev det. Foedsels-alderen persisteres derfor i
+// markoeren, og traekket reproducerer FOEDSLEN, ikke en genberegning af den.
+test("#5269 re-derivation er alders-STABIL: en saeson senere giver samme evner", () => {
+  const draw = {
+    primary: "climber", secondary: "gc",
+    birth: makeYouthBirthMarker({ seed: 4242, age: 17 }),
+  };
+  const row = { id: "y1", archetype_draw: draw, potentiale: 4, birthdate: "2009-06-15" };
+  const vedFoedsel = deriveBirthAbilities(row, { age: 17, classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE });
+  for (const senere of [18, 19, 22, 30]) {
+    const nu = deriveBirthAbilities(row, { age: senere, classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE });
+    for (const key of REGISTRY_ABILITY_KEYS) {
+      assert.equal(nu[key], vedFoedsel[key], `${key} flyttede sig ved re-derive i alder ${senere}`);
+    }
+  }
+  // NEGATIV-TEST: baandet SKAL reagere paa alder — ellers maaler gaten ingenting.
+  const aeldreFoedsel = deriveBirthAbilities(
+    { ...row, archetype_draw: { ...draw, birth: makeYouthBirthMarker({ seed: 4242, age: 21 }) } },
+    { age: 21, classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE },
+  );
+  const sum = (a) => REGISTRY_ABILITY_KEYS.reduce((s, k) => s + a[k], 0);
+  assert.ok(sum(aeldreFoedsel) > sum(vedFoedsel), "alders-rampen i baandet virker ikke");
+});
+
+test("#5269 voksen-traekket er ogsaa alders-stabilt (AGE_CURVED kan ikke drive)", () => {
+  const keys = [...REGISTRY_ABILITY_KEYS, "leadership"];
+  const draw = { primary: "gc", secondary: "tt", birth: makeBirthMarker({ tier: "solid", seed: 99, age: 24 }) };
+  const row = { id: "a1", archetype_draw: draw, potentiale: 4, birthdate: "2002-01-01" };
+  // deriveBirthAbilities bruger registrets liste; leadership testes direkte paa
+  // traekket, som er dét foedsels-alderen styrer.
+  const a = drawBirthAbilities({ rng: makeBirthRng(99), tier: "solid", archetype: "gc", secondaryArchetype: "tt", age: 24, abilityKeys: keys });
+  const b = drawBirthAbilities({ rng: makeBirthRng(99), tier: "solid", archetype: "gc", secondaryArchetype: "tt", age: 24, abilityKeys: keys });
+  assert.deepEqual(a, b);
+  assert.equal(row.archetype_draw.birth.age, 24, "foedsels-alderen persisteres for voksne ogsaa");
+});
+
 test("det persisterede evne-loft klemmer ved re-derivation", () => {
   const draw = { primary: "sprinter", secondary: "tt", birth: makeBirthMarker({ tier: "superstar", seed: 11, cap: 7 }) };
   const abilities = deriveBirthAbilities({ id: "r", archetype_draw: draw, potentiale: 2 }, { age: 27 });

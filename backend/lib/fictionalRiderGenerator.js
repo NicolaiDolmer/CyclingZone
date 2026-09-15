@@ -639,7 +639,7 @@ export function generateFictionalRiders({
     let birthAbilities = null;
     if (ownPriors) {
       const riderBirthSeed = Math.floor(birthRng() * 4294967296) >>> 0;
-      birthMarker = makeBirthMarker({ tier: tier.value, seed: riderBirthSeed });
+      birthMarker = makeBirthMarker({ tier: tier.value, seed: riderBirthSeed, age: demo.age });
       birthAbilities = drawBirthAbilities({
         rng: makeBirthRng(riderBirthSeed),
         tier: tier.value,

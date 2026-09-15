@@ -148,7 +148,7 @@ export function generateAcademyCandidates({
     let birthAbilities = null;
     if (ownPriors) {
       const birthSeed = Math.floor(rng() * 4294967296) >>> 0;
-      archetypeDraw.birth = makeYouthBirthMarker({ seed: birthSeed });
+      archetypeDraw.birth = makeYouthBirthMarker({ seed: birthSeed, age });
       birthAbilities = drawYouthBirthAbilities({
         rng: makeBirthRng(birthSeed),
         age,

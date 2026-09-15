@@ -547,10 +547,11 @@ export function birthHiddenPotential({ potentiale, age, id }) {
 // reproduceres PRÆCIS det oprindelige træk, fordi seed'en ligger i rækken.
 export const BIRTH_MARKER_VERSION = 1;
 
-export function makeBirthMarker({ tier, seed, cap = null }) {
+export function makeBirthMarker({ tier, seed, cap = null, age = null }) {
   if (!BIRTH_TIERS[tier]) throw new Error(`riderBirthPriors: unknown tier ${tier}`);
   if (!Number.isInteger(seed)) throw new Error("riderBirthPriors: birth seed must be an integer");
   const marker = { v: BIRTH_MARKER_VERSION, tier, seed: seed >>> 0 };
+  if (age != null && Number.isFinite(Number(age))) marker.age = Math.round(Number(age));
   // `cap` = et EVNE-loft der følger rytteren resten af livet gennem
   // re-derivationen. Det er own-priors-stiens erstatning for det STAT-vindue
   // buildWeakStarterPool (#1487) klemte fyld-/start-trups-ryttere ind i: uden et
@@ -582,9 +583,16 @@ export function withBirthAbilityCap(archetypeDraw, cap) {
   };
 }
 
-export function makeYouthBirthMarker({ seed }) {
+export function makeYouthBirthMarker({ seed, age = null }) {
   if (!Number.isInteger(seed)) throw new Error("riderBirthPriors: birth seed must be an integer");
-  return { v: BIRTH_MARKER_VERSION, tier: "youth", seed: seed >>> 0 };
+  const marker = { v: BIRTH_MARKER_VERSION, tier: "youth", seed: seed >>> 0 };
+  // FØDSELS-alderen, ikke den nuværende. Ungdomsbåndets niveau er
+  // `baseAt16 + (alder − 16)·perYearOver16`; brugte re-derivationen rytterens
+  // NUVÆRENDE alder, ville hver sæson løfte hans start-evner gratis — uden
+  // træning og uden at nogen skrev det. Trækket skal reproducere fødslen, ikke
+  // genberegne den. Udvikling ejes af riderProgression, ikke af denne fil.
+  if (age != null && Number.isFinite(Number(age))) marker.age = Math.round(Number(age));
+  return marker;
 }
 
 /** Er denne rytter født af spillets egne priors (og altså UDEN PCM-stats)? */
@@ -613,10 +621,23 @@ export function deriveBirthAbilities(riderRow, { age = null, classifierWeightsBy
   const { tier, seed } = draw.birth;
   const rng = makeBirthRng(Number(seed) >>> 0);
 
+  // FØDSELS-alderen styrer trækket, ikke rytterens nuværende. Ellers ville hver
+  // re-derive (heal-sweep, backfill) genberegne fødslen mod en ny alder: på
+  // ungdoms-stien løfter alderen hele niveauet (`perYearOver16`), så en rytter
+  // ville blive stærkere for hver sæson der gik, uden træning og uden at nogen
+  // skrev det. Udvikling ejes af riderProgression.js — ikke af fødslen.
+  //
+  // `age`-argumentet (rytterens NUVÆRENDE alder) bruges stadig til
+  // hidden_potential, præcis som abilityDerivation.js gør for alle andre
+  // ryttere: skjult potentiale falder med alderen, og det er tilsigtet.
+  const birthAge = draw.birth.age != null && Number.isFinite(Number(draw.birth.age))
+    ? Number(draw.birth.age)
+    : age;
+
   const abilities = tier === "youth"
     ? drawYouthBirthAbilities({
       rng,
-      age: age ?? 18,
+      age: birthAge ?? 18,
       potentiale: riderRow.potentiale,
       archetype: draw.primary,
       secondaryArchetype: draw.secondary ?? null,
@@ -627,7 +648,7 @@ export function deriveBirthAbilities(riderRow, { age = null, classifierWeightsBy
       tier,
       archetype: draw.primary,
       secondaryArchetype: draw.secondary ?? null,
-      age,
+      age: birthAge,
     });
 
   abilities.hidden_potential = birthHiddenPotential({
