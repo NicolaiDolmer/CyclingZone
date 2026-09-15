@@ -64,11 +64,14 @@ To nye evner i det almindelige evnesystem (`backend/lib/abilityRegistry.js`, kat
 - Træningsrapport: én linje "lærte af X" (L2). Løbsrapport: én linje pr. registreret holdarbejde (H4).
 - Fog of war for fremmede ryttere: følger #5107, ingen særregel.
 
-## 4. Rækkefølge og gates før build
+## 4. Rækkefølge og gates før build (ejer-låst 15/9 kl. 11:4x, "A: én samlet migration")
 
-1. **#3668 besluttes og anvendes** (undersøgelse kørt 15/9, PR #5260; beslutningskort til ejeren; migration ejer-gated fordi viste tal ændres). Nye evner fødes på den valgte skala. Hvis behandling D (split) vælges, er taktik-overskuddet frø for `teamwork` (H2) og `leadership` (L1) hos eksisterende ryttere.
-2. **Holdarbejde først** (D-021): registry + kolonne + generering + migration af eksisterende (dry-run-diff til ejeren, apply ejer-gated) → motor-kobling bag flag `teamwork_in_engine` (off) → harness-gate H6 → flip ejer-only → udviklingsvej (kræver #4850 løbsdags-tick + #4853 holdpas) → kemi-tabel + rytterkort-linje.
-3. **Lederskab derefter**: registry + kolonne + generering + migration → mentorpar (data + L3-flader) → mentor-delta bag flag `mentor_pairs_enabled` (off) → måling af udvikling pr. sæson mod budget → flip.
+**Ejer-beslutninger på #3668 samme dag (ordret i issuet):** taktik og aggression må fremadrettet hverken bygge på alder eller på en anden evne; de er egne evner med egen udvikling. *"Intet skal være vægtet på PCM-stats mere. Spillet skal kunne holde sig selv oppe nu."* Eksisterende ryttere må IKKE miste evne-masse: taktik/aggression sænkes, men de tabte point flyttes til de nye mentale evner. Nye mentale evner fordeles ordentligt fra start.
+
+1. **Nye evner først som data:** `teamwork` og `leadership` får registry-poster, kolonner og egen prior ved fødsel (profil + støj, H2/L1; ingen PCM, ingen alder som input for `teamwork`; alder er en lovlig faktor for `leadership` jf. D-030).
+2. **ÉN samlet migration** (idempotent, backup-tabel, rollback): taktik/aggression sænkes (byggesporet viser to varianter med tal: flad procent vs. procent pr. aldersbånd; delta-princip bevarer træningsfremgang), tabte point flyttes til `teamwork`/`leadership` (helt eller delvist, mest til den evne profilen peger på), resten af bestanden får de nye evner fordelt efter profil + støj. Lofter for taktik/aggression rettes i samme PR (capsShaping = ejer-go med tal). **Apply i prod = eget go-kort med spillerbesked** ("taktik er delt i flere mentale evner").
+3. **Derefter motor og trup bag flag:** Holdarbejde i v4 (`teamwork_in_engine`, off) → harness-gate H6 → flip ejer-only → udviklingsvej (kræver #4850 løbsdags-tick + #4853 holdpas) → kemi-tabel + rytterkort-linje. Lederskab: mentorpar (data + L3-flader) → mentor-delta (`mentor_pairs_enabled`, off) → måling mod sæsonbudget → flip.
+4. **PCM-afkobling af al rytter-fødsel** (#3458/#3512-retningen) kører som eget spor parallelt: `fictionalRiderGenerator.js` genererer i dag stadig `stat_*`-værdier og udleder evner via `abilityDerivation.js`; målet er at evner fødes direkte fra spillets egne priors. Ejeren har ikke sat dato; det hører til ugeplanen 15/9 eftermiddag.
 4. **Gates:** G-A1 evnerne fødes på samme skala som de øvrige mentale (#3668); G-A2 H6-harness; G-A3 samlet sæsonudvikling uændret ±tolerance med mentor-delta tændt; G-A4 0 rækker hvor en rytter er mentor for >2 eller på tværs af klubber; G-A5 kemi bevares ved fælles transfer (test); G-U1 ejer-visuelt go på flader (screenshots, 3 Playwright-projekter).
 5. **Docs i samme PR'er:** `PROGRESSION_RULES.md`, `RACE_ENGINE_RULES.md`, `TRAINING_RULES.md`, `RIDER_GENERATION.md`, `HOWTO_ADD_ABILITY.md` (trin verificeret), `help.json`, patch note, `FEATURE_REGISTRY.yml`.
 

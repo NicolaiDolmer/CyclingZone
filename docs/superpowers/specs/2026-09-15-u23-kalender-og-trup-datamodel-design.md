@@ -293,15 +293,17 @@ Målinger før build [A, read-only prod]: ryttere 19-22 pr. hold (menneske/AI); 
 
 **10.1 Køre fra dag 1, eller genereres nu og tændes i uge 1?** **EJER-VALGT 15/9 kl. 11:1x: B, alt live 28/9.** Ordret tillæg: *"du skal ikke udskyde ting uden aftale. Det er mit område. Senere i dag skal vi lave en aftale om hvad der skal laves i denne uge og hvad der skal laves inden sæsonskiftet uanset hvad."* Dvs. §11's "hvad viger"-tabel er INPUT til ejerens ugeplan, ikke en beslutning Claude træffer. Fravalgt: A (flag i uge 1), C (S5).
 
-**10.2 Holdets plads i to pyramider?** A (anbefalet): `teams.u23_league_division_id` (spejler `league_division_id`, ét felt, junior senere). B: tabel `team_squad_divisions` (renere, rører ~8 puljeopslag).
+**10.2 Holdets plads i to pyramider?** **Arkitekt-valg (Claude 15/9, teknisk, ikke stillet til ejeren): A**, `teams.u23_league_division_id` (spejler `league_division_id`, ét felt; junior får egen kolonne senere). B (tabel `team_squad_divisions`) fravalgt fordi den rører ~8 puljeopslag ni dage før cutover. Må udfordres i build hvis A viser sig at bryde et opslag.
 
-**10.3 U23-løbenes navne?** A (anbefalet): eget U23-katalog, `race_pool.squad` + ~30-40 rækker med rigtige U23-navne (Tour de l'Avenir, Giro Next Gen, Paris-Roubaix Espoirs), "ligesom i virkeligheden". B: seniorkatalog med suffiks "U23".
+**10.3 U23-løbenes navne?** **EJER-VALGT 15/9 kl. 11:5x: A**, eget U23-katalog (`race_pool.squad` + ~30-40 rækker) så tæt på virkeligheden som muligt, MEN med navnene let ændret som spillets øvrige løb (rettigheder). Ordret: *"så tæt på virkeligheden som vi kan med 1 - Men det skal nok være ligesom vi gør inde i spillet, hvor vi laver navnene lidt om, for ikke at blive sagsøgt angående rettigheder."* Byggesporet følger den eksisterende navne-konvention i `race_pool` (fx samme grad af omskrivning som seniorløbene). Fravalgt: suffiks-kopier (B), blanding (C).
 
-**10.4 U23-ryttere til AI-holdene? (C1 fejler ved dagens population)** A (anbefalet): generér U23-ryttere til alle hold ved cutover (~1.800-3.200; fordobling, måles mod træningssweep). B: flyt AI-holdenes 19-22-årige (tømmer seniortrupper midt i cutover). C: sænk gulvet under 6 (felt der ikke ligner cykelløb).
+**10.4 U23-ryttere til AI-holdene? (C1 fejler ved dagens population)** **EJER-VALGT 15/9 kl. 11:5x: A**, generér en U23-trup på 6-9 ryttere (19-22 år) til alle AI-hold ved cutover, født på spillets egne priors uden PCM (#3668-princippet). ~1.800-3.200 nye ryttere; træningssweep, værdiberegning og `rider_rankings_mv` måles mod fordoblingen (gate G6-klassen). Seniorfelterne røres ikke. Fravalgt: flyt af 19-22-årige (B), lavere gulv (C).
 
-**10.5 "Løb hver kalenderdag" også for U23?** A (anbefalet): nej, 1-2 løb/uge, resten træningsdage. B: ja (4x flere løb, C1 4x værre).
+**10.5 "Løb hver kalenderdag" også for U23?** **EJER-VALGT 15/9 kl. 11:5x: A**, nej: 1-2 U23-løb om ugen, 140 løbsdage hvoraf de fleste er rene træningsdage. 25/8-reglen gælder seniorkalenderen. Fravalgt: hver dag (B), 3-4/uge (C).
 
-**10.6 U23-grundloft?** A (anbefalet): lås §2.4's forslag U23 = 12 som SIM-STARTPUNKT, kalibrér efter S4's første data. B: økonomi-sim først.
+**10.6 U23-grundloft?** **EJER-VALGT 15/9 kl. 12:0x: A**, U23 = 12 pladser som SIM-STARTPUNKT (migration + dry-run-diff bygges på det), kalibreres efter S4's første økonomidata sammen med facilitetstrinnene (D-032). Fravalgt: sim først (B).
+
+**Status efter 15/9:** alle seks punkter er afgjort (10.2 som arkitekt-valg). Specen er klar til byggeplan når ejerens ugeplan (15/9 eftermiddag) har placeret U23 i forhold til resten af Bane 1.
 
 ---
 
