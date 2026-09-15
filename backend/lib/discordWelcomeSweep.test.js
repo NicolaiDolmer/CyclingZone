@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   DISCORD_WELCOME_FALLBACK_WINDOW_MS,
   isDiscordWelcomeDue,
+  isDiscordWelcomeSchemaPending,
   runDiscordWelcomeSweep,
 } from "./discordWelcomeSweep.js";
 import { DISCORD_WELCOME_TYPE } from "./discordWelcomeNotification.js";
@@ -49,33 +50,56 @@ test("isDiscordWelcomeDue: intet created_at → false (defensivt)", () => {
   assert.equal(isDiscordWelcomeDue({ team: {}, activeRiders: 8, now: new Date() }), false);
 });
 
+// #5130 haerdning 15/9 · schema-readiness-guard (CodeRabbit minor,
+// discordWelcomeSweep.js:31) — samme recipe som
+// isSelectionReminderMigrationPending/isMissingRetryColumnError.
+
+test("isDiscordWelcomeSchemaPending: Postgres 42703 (undefined_column) → true", () => {
+  assert.equal(isDiscordWelcomeSchemaPending({ code: "42703", message: "column does not exist" }), true);
+});
+
+test("isDiscordWelcomeSchemaPending: PostgREST PGRST204/PGRST205 → true", () => {
+  assert.equal(isDiscordWelcomeSchemaPending({ code: "PGRST204" }), true);
+  assert.equal(isDiscordWelcomeSchemaPending({ code: "PGRST205" }), true);
+});
+
+test("isDiscordWelcomeSchemaPending: besked naevner kolonnen/schema cache uden kendt kode → true", () => {
+  assert.equal(
+    isDiscordWelcomeSchemaPending({ code: "PGRST100", message: "column teams.discord_welcome_sent_at does not exist" }),
+    true,
+  );
+  assert.equal(isDiscordWelcomeSchemaPending({ message: "schema cache is stale" }), true);
+});
+
+test("isDiscordWelcomeSchemaPending: uafhaengig fejl → false", () => {
+  assert.equal(isDiscordWelcomeSchemaPending({ code: "23505", message: "duplicate key" }), false);
+  assert.equal(isDiscordWelcomeSchemaPending(null), false);
+});
+
 function makeNoopSupabase() {
   return { from: () => ({}) };
 }
 
-// Fake claim: efterligner .update(...).eq("id", …).is(col, null).select("id") —
-// registrerer forsoeg og lader kalderen styre om raekken "vindes".
-function makeClaimingSupabase({ alreadyClaimedIds = new Set() } = {}) {
-  const claims = [];
+// Fake "mark sendt"-supabase: efterligner .update(...).eq("id", …).is(col,
+// null) — det betingede skriv der SKER EFTER notify() i den nye raekkefoelge
+// (rent bogfoering, ikke en laas). Registrerer forsoeg i rækkefølge sammen
+// med notify-kald via et fælles `order`-array, så testene kan bevise at
+// notify() altid kommer FØR markeringen (CodeRabbit major, linje ~105).
+function makeMarkingSupabase({ markError = null } = {}) {
+  const marks = [];
   return {
-    claims,
+    marks,
     supabase: {
       from(table) {
         if (table !== "teams") throw new Error(`uventet tabel: ${table}`);
         return {
-          update() {
+          update(patch) {
             return {
               eq(_col, id) {
                 return {
                   is() {
-                    return {
-                      async select() {
-                        claims.push(id);
-                        if (alreadyClaimedIds.has(id)) return { data: [], error: null };
-                        alreadyClaimedIds.add(id);
-                        return { data: [{ id }], error: null };
-                      },
-                    };
+                    marks.push(id);
+                    return Promise.resolve({ error: markError });
                   },
                 };
               },
@@ -87,15 +111,18 @@ function makeClaimingSupabase({ alreadyClaimedIds = new Set() } = {}) {
   };
 }
 
-test("runDiscordWelcomeSweep: modne hold claimes + notify'es, umodne springes over", async () => {
-  const notified = [];
-  const { supabase, claims } = makeClaimingSupabase();
+test("runDiscordWelcomeSweep: modne hold notify'es FOERST + markeres BAGEFTER, umodne springes over", async () => {
+  const order = [];
+  const { supabase, marks } = makeMarkingSupabase();
   const now = new Date("2026-09-14T12:00:00Z");
 
   const stats = await runDiscordWelcomeSweep({
     supabase,
     now,
-    notify: async (payload) => { notified.push(payload); return { delivered: true }; },
+    notify: async (payload) => {
+      order.push(`notify:${payload.userId}`);
+      return { delivered: true };
+    },
     fetchCandidateTeams: async () => [
       { id: "t1", user_id: "u1", created_at: now.toISOString() }, // moden via ryttertal
       { id: "t2", user_id: "u2", created_at: now.toISOString() }, // umoden, for ny
@@ -107,28 +134,42 @@ test("runDiscordWelcomeSweep: modne hold claimes + notify'es, umodne springes ov
   assert.equal(stats.sent, 1);
   assert.equal(stats.skipped, 1);
   assert.equal(stats.failed, 0);
-  assert.deepEqual(claims, ["t1"]);
-  assert.equal(notified.length, 1);
-  assert.equal(notified[0].userId, "u1");
-  assert.equal(notified[0].type, DISCORD_WELCOME_TYPE);
+  assert.deepEqual(order, ["notify:u1"]);
+  assert.deepEqual(marks, ["t1"], "markeringen skal ske EFTER notify, kun for det modne hold");
 });
 
-test("runDiscordWelcomeSweep: tabt claim-race (0 raekker) springer over uden notify", async () => {
-  const notified = [];
-  const { supabase } = makeClaimingSupabase({ alreadyClaimedIds: new Set(["t1"]) });
+test("runDiscordWelcomeSweep: notify() returnerer deduped (selv-helet efter tidligere crash) → markeres stadig, ingen ny besked", async () => {
+  const { supabase, marks } = makeMarkingSupabase();
   const now = new Date("2026-09-14T12:00:00Z");
 
   const stats = await runDiscordWelcomeSweep({
     supabase,
     now,
-    notify: async (payload) => { notified.push(payload); return { delivered: true }; },
+    notify: async () => ({ delivered: false, deduped: true, reason: "recent_duplicate" }),
+    fetchCandidateTeams: async () => [{ id: "t1", user_id: "u1", created_at: now.toISOString() }],
+    fetchActiveRiderCounts: async () => new Map([["t1", 8]]),
+  });
+
+  assert.equal(stats.sent, 1);
+  assert.equal(stats.skipped, 0);
+  assert.deepEqual(marks, ["t1"]);
+});
+
+test("runDiscordWelcomeSweep: notify() hverken leverer eller dedupliker (fx missing_user) → springes over, INGEN markering", async () => {
+  const { supabase, marks } = makeMarkingSupabase();
+  const now = new Date("2026-09-14T12:00:00Z");
+
+  const stats = await runDiscordWelcomeSweep({
+    supabase,
+    now,
+    notify: async () => ({ delivered: false, deduped: false, reason: "missing_user" }),
     fetchCandidateTeams: async () => [{ id: "t1", user_id: "u1", created_at: now.toISOString() }],
     fetchActiveRiderCounts: async () => new Map([["t1", 8]]),
   });
 
   assert.equal(stats.sent, 0);
   assert.equal(stats.skipped, 1);
-  assert.equal(notified.length, 0);
+  assert.deepEqual(marks, [], "uden leveret/deduplikeret notifikation skal der IKKE markeres");
 });
 
 test("runDiscordWelcomeSweep: ingen kandidater → tomt resultat, ingen kald", async () => {
@@ -141,49 +182,41 @@ test("runDiscordWelcomeSweep: ingen kandidater → tomt resultat, ingen kald", a
   assert.deepEqual(stats, { candidates: 0, sent: 0, skipped: 0, failed: 0 });
 });
 
-// Fake supabase der skelner claim-kald (.eq().is().select(), patch =
-// timestamp) fra revert-kald (bare .eq(), afventet direkte, patch = null) —
-// samme skelnen den ægte discordWelcomeSweep.js laver ved at kalde .is() kun
-// på claim-vejen.
-function makeRevertTrackingSupabase() {
-  const claims = [];
-  const reverts = [];
-  return {
-    claims,
-    reverts,
-    supabase: {
-      from(table) {
-        if (table !== "teams") throw new Error(`uventet tabel: ${table}`);
-        return {
-          update(patch) {
-            return {
-              eq(_col, id) {
-                if (patch.discord_welcome_sent_at === null) {
-                  reverts.push(id);
-                  return Promise.resolve({ error: null });
-                }
-                return {
-                  is() {
-                    return {
-                      async select() {
-                        claims.push(id);
-                        return { data: [{ id }], error: null };
-                      },
-                    };
-                  },
-                };
-              },
-            };
-          },
-        };
-      },
-    },
-  };
-}
-
-test("runDiscordWelcomeSweep: notify fejler EFTER vundet claim → claimet rulles tilbage (CodeRabbit-fund)", async () => {
+test("runDiscordWelcomeSweep: schema mangler endnu (kolonnen ikke migreret) → tomt resultat, log-varsel, intet kast", async () => {
   const now = new Date("2026-09-14T12:00:00Z");
-  const { supabase, claims, reverts } = makeRevertTrackingSupabase();
+  let fetchActiveCalled = false;
+
+  const stats = await runDiscordWelcomeSweep({
+    supabase: makeNoopSupabase(),
+    now,
+    notify: async () => { throw new Error("skal ikke kaldes"); },
+    fetchCandidateTeams: async () => {
+      const err = new Error('column teams.discord_welcome_sent_at does not exist');
+      err.code = "42703";
+      throw err;
+    },
+    fetchActiveRiderCounts: async () => { fetchActiveCalled = true; return new Map(); },
+  });
+
+  assert.deepEqual(stats, { candidates: 0, sent: 0, skipped: 0, failed: 0 });
+  assert.equal(fetchActiveCalled, false);
+});
+
+test("runDiscordWelcomeSweep: en UKENDT fejl fra fetchCandidateTeams kastes videre (kun schema-pending haandteres tavst)", async () => {
+  await assert.rejects(
+    runDiscordWelcomeSweep({
+      supabase: makeNoopSupabase(),
+      fetchCandidateTeams: async () => { throw new Error("noget helt andet gik galt"); },
+      fetchActiveRiderCounts: async () => new Map(),
+    }),
+    /noget helt andet gik galt/,
+  );
+});
+
+test("runDiscordWelcomeSweep: notify() fejler (kastet) → isoleres som failed, INGEN markering, INGEN rollback noedvendig", async () => {
+  const now = new Date("2026-09-14T12:00:00Z");
+  const { supabase, marks } = makeMarkingSupabase();
+  let captured = null;
 
   const stats = await runDiscordWelcomeSweep({
     supabase,
@@ -191,48 +224,48 @@ test("runDiscordWelcomeSweep: notify fejler EFTER vundet claim → claimet rulle
     notify: async () => { throw new Error("Supabase midlertidigt nede"); },
     fetchCandidateTeams: async () => [{ id: "t1", user_id: "u1", created_at: now.toISOString() }],
     fetchActiveRiderCounts: async () => new Map([["t1", 8]]),
-    captureExceptionFn: () => {},
+    captureExceptionFn: (err) => { captured = err; },
   });
 
-  assert.deepEqual(claims, ["t1"]);
-  assert.deepEqual(reverts, ["t1"], "et fejlet notify SKAL frigive claimet, ellers er holdet tabt for evigt");
   assert.equal(stats.failed, 1);
   assert.equal(stats.sent, 0);
+  assert.deepEqual(marks, [], "et fejlet notify skal IKKE markere holdet som sendt");
+  assert.match(captured?.message || "", /Supabase midlertidigt nede/);
 });
 
-test("runDiscordWelcomeSweep: en fejlet claim isoleres, resten af sweepen fortsaetter", async () => {
-  const notified = [];
+test("runDiscordWelcomeSweep: markeringen fejler EFTER leveret notify → capture, men holdet taeller stadig som sendt", async () => {
   const now = new Date("2026-09-14T12:00:00Z");
-  let calls = 0;
-  const supabase = {
-    from(table) {
-      assert.equal(table, "teams");
-      return {
-        update() {
-          return {
-            eq(_col, id) {
-              return {
-                is() {
-                  return {
-                    async select() {
-                      calls += 1;
-                      if (id === "t1") return { data: null, error: { message: "boom" } };
-                      return { data: [{ id }], error: null };
-                    },
-                  };
-                },
-              };
-            },
-          };
-        },
-      };
-    },
-  };
+  const { supabase, marks } = makeMarkingSupabase({ markError: { message: "netvaerksfejl" } });
+  let captured = null;
 
   const stats = await runDiscordWelcomeSweep({
     supabase,
     now,
-    notify: async (payload) => { notified.push(payload); return { delivered: true }; },
+    notify: async () => ({ delivered: true }),
+    fetchCandidateTeams: async () => [{ id: "t1", user_id: "u1", created_at: now.toISOString() }],
+    fetchActiveRiderCounts: async () => new Map([["t1", 8]]),
+    captureExceptionFn: (err) => { captured = err; },
+  });
+
+  assert.equal(stats.sent, 1, "notifikationen ER leveret — en fejlet markering er ikke en fejlet afsendelse");
+  assert.equal(stats.failed, 0);
+  assert.deepEqual(marks, ["t1"], "markeringen SKAL vaere forsoegt");
+  assert.match(captured?.message || "", /kunne ikke markere hold t1 som sendt/);
+});
+
+test("runDiscordWelcomeSweep: et fejlet hold isoleres, resten af sweepen fortsaetter", async () => {
+  const now = new Date("2026-09-14T12:00:00Z");
+  const { supabase, marks } = makeMarkingSupabase();
+  const notified = [];
+
+  const stats = await runDiscordWelcomeSweep({
+    supabase,
+    now,
+    notify: async (payload) => {
+      if (payload.userId === "u1") throw new Error("boom");
+      notified.push(payload);
+      return { delivered: true };
+    },
     fetchCandidateTeams: async () => [
       { id: "t1", user_id: "u1", created_at: now.toISOString() },
       { id: "t2", user_id: "u2", created_at: now.toISOString() },
@@ -241,9 +274,10 @@ test("runDiscordWelcomeSweep: en fejlet claim isoleres, resten af sweepen fortsa
     captureExceptionFn: () => {},
   });
 
-  assert.equal(calls, 2);
   assert.equal(stats.failed, 1);
   assert.equal(stats.sent, 1);
+  assert.deepEqual(marks, ["t2"]);
   assert.equal(notified.length, 1);
   assert.equal(notified[0].userId, "u2");
+  assert.equal(notified[0].type, DISCORD_WELCOME_TYPE);
 });

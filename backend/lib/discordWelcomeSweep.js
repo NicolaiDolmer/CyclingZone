@@ -7,13 +7,42 @@
 // trupstoerrelse (dette sweeps naeste tick fanger den fallback, ingen
 // separat route-hook noedvendig).
 //
-// IDEMPOTENS (dedupe paa team_id): teams.discord_welcome_sent_at (se
-// database/2026-09-14-5130-discord-welcome-sent-at.sql) claimes FOER
-// notifikationen sendes — en optimistisk update betinget af IS NULL, med
-// .select() saa et tabt raceloeb (to sweep-tick der rammer samme hold
-// samtidig) opdages og springes over i stedet for at sende to gange.
-// notifyUser's egen 24t-dedup (RECENT_DUPLICATE_WINDOW_MS) er et rent
-// defensivt andet lag, ligesom i directMessages.js/notificationService.js.
+// IDEMPOTENS (dedupe paa team_id) — haerdet 15/9 (CodeRabbit major, PR
+// #5211, discordWelcomeSweep.js:105): raekkefoelgen er notifikation FOERST,
+// markering af teams.discord_welcome_sent_at BAGEFTER. Den omvendte
+// raekkefoelge (marker sent_at FOER notify() kaldes, saadan denne fil
+// startede) har en usynlig fejlvej: doer processen (crash/OOM/deploy-
+// genstart) MELLEM claim-updaten og notify()-kaldet, staar holdet for evigt
+// som "sendt" uden at beskeden nogensinde blev skrevet — kandidat-
+// forespoergslen filtrerer netop paa at kolonnen er NULL, saa der findes
+// ingen naeste tick der proever igen.
+//
+// Med raekkefoelgen byttet om er det vaerste udfald ved samme crash i
+// stedet: notify() er gennemfoert (beskeden ER skrevet til notifications),
+// men markeringen naar aldrig at committe. Holdet ses som kandidat igen
+// naeste tick, sweepen kalder notify() igen — og notifyUser's EGEN 24t-dedup
+// (matcher paa type + title + message + related_id,
+// RECENT_DUPLICATE_WINDOW_MS i notificationService.js) fanger det og
+// returnerer deduped:true UDEN at skrive en ny raekke. Denne tick markerer
+// saa discord_welcome_sent_at. Selv-helende, ingen dobbelt besked, intet
+// hold tabt permanent.
+//
+// RACE-SIKRING mod parallelle sweep-ticks der begge naar notify() for samme
+// hold FOER nogen af dem markerer: samme forsvar som ovenfor —
+// notifyUser's dedup-opslag er det der forhindrer to raekker i
+// notifications, ikke markeringen. Markeringen er nu ren bogfoering (den
+// forhindrer at holdet FORTSAT ses som kandidat), ikke en laas mod dobbelt
+// afsendelse. Den bruger stadig en betinget UPDATE (WHERE
+// discord_welcome_sent_at IS NULL), saa en tick der taber loebet mod en
+// anden ikke unoedvendigt overskriver en allerede sat markering.
+//
+// SCHEMA-READINESS (CodeRabbit minor, PR #5211, discordWelcomeSweep.js:31):
+// auto-migrate (#2642) koerer
+// database/2026-09-14-5130-discord-welcome-sent-at.sql foerst ca. 180s
+// EFTER deploy, og selve kolonnen kan derfor mangle i op til 120s efter
+// appen er live (cron'en der driver denne sweep starter efter 300s).
+// isDiscordWelcomeSchemaPending fanger den fejl og springer tick'en over med
+// et log-varsel i stedet for at raabe stoej i Sentry i det vindue.
 
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
@@ -23,6 +52,20 @@ import { buildDiscordWelcomeNotification } from "./discordWelcomeNotification.js
 import { captureException } from "./sentry.js";
 
 export const DISCORD_WELCOME_FALLBACK_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Er fejlen "discord_welcome_sent_at findes ikke endnu"? Samme recipe som
+ * isSelectionReminderMigrationPending (selectionDeadlineReminder.js) og
+ * isMissingRetryColumnError (emailRetrySweep.js): SQLSTATE + PostgRESTs egne
+ * schema-cache-koder tjekkes foerst (stabile signal), beskeden er sidste
+ * vaern hvis koden mangler i et fremtidigt driver-skift.
+ */
+export function isDiscordWelcomeSchemaPending(error) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  if (code === "42703" || code === "PGRST204" || code === "PGRST205") return true;
+  return /discord_welcome_sent_at|schema cache/i.test(String(error.message ?? ""));
+}
 
 async function defaultFetchCandidateTeams({ supabase }) {
   return fetchAllRows(() =>
@@ -84,7 +127,18 @@ export async function runDiscordWelcomeSweep({
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
-  const teams = await fetchCandidateTeams({ supabase });
+  let teams;
+  try {
+    teams = await fetchCandidateTeams({ supabase });
+  } catch (err) {
+    if (isDiscordWelcomeSchemaPending(err)) {
+      console.warn(
+        "[discord-welcome] discord_welcome_sent_at findes ikke endnu (migration ikke anvendt) — springer tick over",
+      );
+      return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+    }
+    throw err;
+  }
   const stats = { candidates: teams.length, sent: 0, skipped: 0, failed: 0 };
   if (!teams.length) return stats;
 
@@ -97,50 +151,39 @@ export async function runDiscordWelcomeSweep({
       continue;
     }
     try {
-      // Claim FØRST, betinget af IS NULL — .select() afslører om raekken
-      // faktisk blev vores (0 raekker = en anden sweep-tick naaede foerst,
-      // spring over i stedet for at risikere en dobbelt notifikation).
-      const { data: claimed, error: claimError } = await supabase
-        .from("teams")
-        .update({ discord_welcome_sent_at: now.toISOString() })
-        .eq("id", team.id)
-        .is("discord_welcome_sent_at", null)
-        .select("id");
-      if (claimError) {
-        throw new Error(`discord-welcome: could not claim team ${team.id}: ${claimError.message}`);
-      }
-      if (!claimed?.length) {
+      // notify() FOERST — se filens toppkommentar for hvorfor denne
+      // raekkefoelge er selv-helende ved en process-crash, mens det
+      // omvendte (markering foer notify) kunne tabe et hold permanent.
+      const payload = buildDiscordWelcomeNotification();
+      const result = await notify({ supabase, userId: team.user_id, now, ...payload });
+      if (!result?.delivered && !result?.deduped) {
         stats.skipped += 1;
         continue;
       }
 
-      // CodeRabbit-fund (denne PR): claimet SKAL kunne rulles tilbage. Fejler
-      // notify() efter et vundet claim (netvaerksfejl, midlertidig Supabase-
-      // udfald), skal naeste sweep-tick proeve igen — ikke se holdet som
-      // "sendt" for evigt. Derfor forsoeges notify() i sin egen try, og et
-      // kast der naar helt hertil frigiver claimet FOER det logges som fejlet.
-      try {
-        const payload = buildDiscordWelcomeNotification();
-        const result = await notify({ supabase, userId: team.user_id, now, ...payload });
-        if (result?.delivered || result?.deduped) stats.sent += 1;
-        else stats.skipped += 1;
-      } catch (notifyErr) {
-        const { error: revertError } = await supabase
-          .from("teams")
-          .update({ discord_welcome_sent_at: null })
-          .eq("id", team.id);
-        if (revertError) {
-          // Claimet kunne ikke rulles tilbage — holdet STAAR som sendt uden at
-          // vaere det. Sjaeldent (kraever at BAADE notify OG selve rollback-
-          // updaten fejler), men skal raabe hoejt frem for at fejle stille:
-          // en manuel `UPDATE teams SET discord_welcome_sent_at = NULL WHERE
-          // id = '<teamId>'` er reparationen.
-          captureExceptionFn(
-            new Error(`discord-welcome: kunne IKKE rulle claim tilbage for hold ${team.id} efter fejlet notify: ${revertError.message}`),
-            { tags: { cron: "discord-welcome", stage: "claim-revert-failed" }, extra: { teamId: team.id } },
-          );
-        }
-        throw notifyErr;
+      stats.sent += 1;
+
+      // Ren bogfoering herfra: notifikationen ER skrevet (leveret eller
+      // deduplikeret af notifyUser). Betinget paa IS NULL saa en tick der
+      // taber loebet mod en anden ikke unoedvendigt overskriver
+      // markeringen — men uanset udfald her er der INGEN dobbelt besked,
+      // for det er notifyUser's egen dedup der garanterer det, ikke denne
+      // UPDATE.
+      const { error: markError } = await supabase
+        .from("teams")
+        .update({ discord_welcome_sent_at: now.toISOString() })
+        .eq("id", team.id)
+        .is("discord_welcome_sent_at", null);
+      if (markError) {
+        // Notifikationen ER leveret. En fejlet markering betyder KUN at
+        // holdet fejlagtigt ses som kandidat igen naeste tick —
+        // notifyUser's dedup fanger det uden en ny besked, og den tick
+        // markerer saa korrekt. Ikke tabt data, men skal stadig raabe
+        // hoejt frem for at fejle stille.
+        captureExceptionFn(
+          new Error(`discord-welcome: kunne ikke markere hold ${team.id} som sendt: ${markError.message}`),
+          { tags: { cron: "discord-welcome", stage: "mark-failed" }, extra: { teamId: team.id } },
+        );
       }
     } catch (err) {
       stats.failed += 1;
