@@ -26,6 +26,21 @@
       "autoPort": true
     },
     {
+      "name": "training-5236-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
+      "port": 5250,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
       "name": "z1-season",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
