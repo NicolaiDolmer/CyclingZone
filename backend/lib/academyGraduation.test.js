@@ -151,40 +151,65 @@ const bornForAge = (age) => `${2026 - age}-06-15`;
 // ─── konstanter + helper ────────────────────────────────────────────────────────
 
 test("GRADUATION-konstanter", () => {
-  assert.equal(GRADUATION.GRADUATE_AGE, 22);
+  // #4619: 22 → 23. Det tvungne valg ligger nu ved udgangen af U23-truppen,
+  // ikke ved udgangen af det gamle akademi (YOUTH_RULES §2.2 + §7 modsigelse 6).
+  assert.equal(GRADUATION.GRADUATE_AGE, 23);
   assert.ok(GRADUATION.DEADLINE_DAYS >= 1, "override-vindue mindst 1 dag");
 });
 
-test("isGraduateAge: 22+ er graduate, 21 og under er ikke", () => {
+test("isGraduateAge: 23+ er graduate, 22 og under er ikke (#4619)", () => {
   assert.equal(isGraduateAge(21), false);
-  assert.equal(isGraduateAge(22), true);
+  assert.equal(isGraduateAge(22), false, "en 22-årig er stadig U23");
+  assert.equal(isGraduateAge(23), true);
   assert.equal(isGraduateAge(25), true);
   assert.equal(isGraduateAge(null), false);
 });
 
 // ─── detectGraduates ──────────────────────────────────────────────────────────
 
-test("detectGraduates: opretter pending-row for 22-årig, ignorerer 19-årig", async () => {
+test("#4619 detectGraduates: BEGGE overgange — junior→u23 ved 19, u23→senior ved 23", async () => {
   const { supabase, rec } = makeSupabase({
     academyRiders: [
-      { id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", birthdate: bornForAge(22) },
-      { id: "r19", team_id: "t1", firstname: "Still", lastname: "Young", birthdate: bornForAge(19) },
+      { id: "r23", team_id: "t1", firstname: "Out", lastname: "OfU23", is_academy: true, squad: "u23", birthdate: bornForAge(23) },
+      { id: "r19", team_id: "t1", firstname: "Out", lastname: "OfJunior", is_academy: true, squad: "junior", birthdate: bornForAge(19) },
+      { id: "r18", team_id: "t1", firstname: "Still", lastname: "Junior", is_academy: true, squad: "junior", birthdate: bornForAge(18) },
+      { id: "r22", team_id: "t1", firstname: "Still", lastname: "U23", is_academy: true, squad: "u23", birthdate: bornForAge(22) },
     ],
   });
   const notify = spyNotify();
   const res = await detectGraduates(supabase, { seasonId: "s1", seasonNumber: 1, now: new Date("2026-06-20T10:00:00Z"), notify });
-  assert.equal(res.graduates, 1);
-  assert.equal(rec.gradInserts.length, 1);
-  assert.equal(rec.gradInserts[0].rider_id, "r22");
-  assert.equal(rec.gradInserts[0].status, "pending");
-  assert.ok(rec.gradInserts[0].deadline, "deadline sat");
-  assert.equal(notify.calls.length, 1);
+  assert.equal(res.graduates, 2, "kun de to der er vokset ud");
+  assert.deepEqual(rec.gradInserts.map((r) => r.rider_id).sort(), ["r19", "r23"]);
+
+  const byRider = Object.fromEntries(rec.gradInserts.map((r) => [r.rider_id, r]));
+  assert.equal(byRider.r19.from_squad, "junior");
+  assert.equal(byRider.r19.to_squad, "u23");
+  assert.equal(byRider.r23.from_squad, "u23");
+  assert.equal(byRider.r23.to_squad, "senior");
+  assert.equal(byRider.r23.status, "pending");
+  assert.ok(byRider.r23.deadline, "deadline sat");
+  assert.equal(notify.calls.length, 2);
   assert.equal(notify.calls[0].type, "academy_graduation_ready");
+});
+
+test("#4619 detectGraduates: FØR backfill (squad='senior' + is_academy=true) findes graduaten stadig", async () => {
+  // Mellem migration og backfill står alle rækker på kolonnens DEFAULT. Et
+  // direkte opslag på riders.squad ville tavst finde nul graduates i det vindue.
+  const { supabase, rec } = makeSupabase({
+    academyRiders: [
+      { id: "r23", team_id: "t1", firstname: "Pre", lastname: "Backfill", is_academy: true, squad: "senior", birthdate: bornForAge(23) },
+      { id: "r19", team_id: "t1", firstname: "Pre", lastname: "Junior", is_academy: true, squad: "senior", birthdate: bornForAge(19) },
+    ],
+  });
+  const res = await detectGraduates(supabase, { seasonId: "s1", seasonNumber: 1, notify: spyNotify() });
+  assert.equal(res.graduates, 1, "kun 23-årigen: en 19-årig uden squad udledes som u23, ikke junior");
+  assert.equal(rec.gradInserts[0].from_squad, "u23");
+  assert.equal(rec.gradInserts[0].to_squad, "senior");
 });
 
 test("detectGraduates: idempotent — rytter med eksisterende grad-row skippes", async () => {
   const { supabase, rec } = makeSupabase({
-    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", birthdate: bornForAge(22) }],
+    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", is_academy: true, squad: "u23", birthdate: bornForAge(23) }],
     existingGradRiderIds: ["r22"],
   });
   const res = await detectGraduates(supabase, { seasonId: "s1", seasonNumber: 1, notify: spyNotify() });
@@ -194,7 +219,7 @@ test("detectGraduates: idempotent — rytter med eksisterende grad-row skippes",
 
 test("detectGraduates (dryRun): tæller uden writes", async () => {
   const { supabase, rec } = makeSupabase({
-    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", birthdate: bornForAge(22) }],
+    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", is_academy: true, squad: "u23", birthdate: bornForAge(23) }],
   });
   const notify = spyNotify();
   const res = await detectGraduates(supabase, { seasonId: "s1", seasonNumber: 1, dryRun: true, notify });
@@ -211,8 +236,8 @@ test("detectGraduates (dryRun): tæller uden writes", async () => {
 test("detectGraduates: springer akademi-fri-agent (team_id NULL) over og fortsætter batchen", async () => {
   const { supabase, rec } = makeSupabase({
     academyRiders: [
-      { id: "r-a-stranded", team_id: null, firstname: "Stranded", lastname: "Agent", birthdate: bornForAge(23) },
-      { id: "r-b-team", team_id: "t1", firstname: "Old", lastname: "Enough", birthdate: bornForAge(22) },
+      { id: "r-a-stranded", team_id: null, firstname: "Stranded", lastname: "Agent", is_academy: true, squad: "u23", birthdate: bornForAge(24) },
+      { id: "r-b-team", team_id: "t1", firstname: "Old", lastname: "Enough", is_academy: true, squad: "u23", birthdate: bornForAge(23) },
     ],
   });
   const notify = spyNotify();
@@ -227,7 +252,7 @@ test("detectGraduates: springer akademi-fri-agent (team_id NULL) over og fortsæ
 // der skal vælte en sæson-transition.
 test("detectGraduates: unique-violation tælles ikke som ny graduate og kaster ikke", async () => {
   const { supabase } = makeSupabase({
-    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", birthdate: bornForAge(22) }],
+    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", is_academy: true, squad: "u23", birthdate: bornForAge(23) }],
     gradInsertError: { code: "23505", message: 'duplicate key value violates unique constraint "academy_graduation_rider_id_season_id_key"' },
   });
   const notify = spyNotify();
@@ -238,7 +263,7 @@ test("detectGraduates: unique-violation tælles ikke som ny graduate og kaster i
 
 test("detectGraduates: ægte insert-fejl kaster stadig", async () => {
   const { supabase } = makeSupabase({
-    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", birthdate: bornForAge(22) }],
+    academyRiders: [{ id: "r22", team_id: "t1", firstname: "Old", lastname: "Enough", is_academy: true, squad: "u23", birthdate: bornForAge(23) }],
     gradInsertError: { code: "23503", message: "insert or update violates foreign key constraint" },
   });
   await assert.rejects(
@@ -295,10 +320,34 @@ test("resolveGraduation promote: #2881 — eksisterende akademi-kontrakt overlev
   const res = await resolveGraduation(supabase, { teamId: "t1", riderId: "r5", action: "promote", seasonNumber: 2, getMarketState, notify });
   assert.equal(res.action, "promoted");
   assert.equal(rec.riderUpdates.length, 1);
-  assert.deepEqual(rec.riderUpdates[0], { is_academy: false }, "kun is_academy sat — kontraktfelter UBERØRT");
+  // #4619: squad skrives nu SAMMEN med is_academy (is_academy er afledt).
+  // Kontraktfelterne er stadig UBERØRT — det er hele #2881-invarianten.
+  assert.deepEqual(rec.riderUpdates[0], { squad: "senior", is_academy: false }, "kun trup-felterne sat — kontraktfelter UBERØRT");
   assert.equal(res.salary, RIDER_WITH_ACADEMY_CONTRACT.salary, "løn arvet uændret");
   assert.equal(rec.gradUpdates[0].status, "promoted");
   assert.equal(notify.calls[0].type, "academy_graduated");
+});
+
+test("#4619 resolveGraduation promote: junior→u23 laander i U23, IKKE i senior", async () => {
+  // Den anden overgang. `to_squad` paa grad-raekken afgoer maalet, og is_academy
+  // skal BLIVE true — rytteren er stadig ungdom, bare en trup hoejere.
+  const { supabase, rec } = makeSupabase({
+    gradRow: { id: "g2", status: "pending", from_squad: "junior", to_squad: "u23" },
+    rider: RIDER_WITH_ACADEMY_CONTRACT,
+  });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const res = await resolveGraduation(supabase, { teamId: "t1", riderId: "r5", action: "promote", seasonNumber: 2, getMarketState, notify: spyNotify() });
+  assert.equal(res.action, "promoted");
+  assert.deepEqual(rec.riderUpdates[0], { squad: "u23", is_academy: true });
+});
+
+test("#4619 resolveGraduation promote: grad-raekke UDEN trup-felter falder tilbage til senior", async () => {
+  // Raekker fra foer #4619 har from_squad/to_squad = NULL. Fallback skal vaere
+  // den gamle adfaerd (akademi → senior), ikke et kast.
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER_WITH_ACADEMY_CONTRACT });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  await resolveGraduation(supabase, { teamId: "t1", riderId: "r5", action: "promote", seasonNumber: 2, getMarketState, notify: spyNotify() });
+  assert.deepEqual(rec.riderUpdates[0], { squad: "senior", is_academy: false });
 });
 
 test("resolveGraduation promote: afviser ved fuld senior-trup", async () => {

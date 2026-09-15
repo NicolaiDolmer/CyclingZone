@@ -123,6 +123,47 @@ export function squadForReferenceYear(birthdate, referenceYear) {
 }
 
 /**
+ * Ungdomstruppen en AKADEMIRYTTER hører til ud fra sin sæsonalder.
+ *
+ * Forskellen fra squadForSeasonAge: en akademirytter der er fyldt 23 er IKKE
+ * senior endnu — han er en U23-rytter der er vokset ud af sin trup og skal
+ * igennem Graduation Day. Præcis backfill-reglen i spec §3.2 ("is_academy = true
+ * OG sæsonalder ≤ 18 → junior; 19-22 → u23; ≥ 23 → u23 + pending graduation").
+ *
+ * @param {number|null|undefined} seasonAge
+ * @returns {"junior"|"u23"|null}
+ */
+export function academySquadForSeasonAge(seasonAge) {
+  const squad = squadForSeasonAge(seasonAge);
+  if (squad === null) return null;
+  return squad === "senior" ? "u23" : squad;
+}
+
+/**
+ * Rytterens trup, robust i OVERGANGSPERIODEN mellem migration og backfill.
+ *
+ * Migrationen giver ALLE ryttere `squad = 'senior'` (kolonnens DEFAULT), og
+ * backfill'en køres først efter ejer-go på dry-run-tallene. I det vindue er
+ * `is_academy` stadig den kolonne der bærer sandheden. Enhver læsende sti skal
+ * derfor spørge her og ikke direkte på `squad` — ellers holder graduerings-
+ * detektionen og cap-tællingen op med at finde nogen som helst, tavst, indtil
+ * backfill'en er kørt.
+ *
+ * Rækkefølgen er bevidst: en eksplicit ungdomstrup på rækken vinder altid; først
+ * derefter falder vi tilbage på is_academy + alder.
+ *
+ * @param {{squad?:string, is_academy?:boolean}|null|undefined} rider
+ * @param {number|null|undefined} seasonAge
+ * @returns {"junior"|"u23"|"senior"|null}
+ */
+export function effectiveSquad(rider, seasonAge) {
+  if (isYouthSquad(rider?.squad)) return rider.squad;
+  if (rider?.is_academy === true) return academySquadForSeasonAge(seasonAge);
+  if (isSquad(rider?.squad)) return rider.squad;
+  return rider?.is_academy === false ? DEFAULT_SQUAD : null;
+}
+
+/**
  * Pladsloftet for en trup, eller `null` hvis truppen ikke har et eget loft
  * (senior styres af divisionens `squad_limits.max`).
  *

@@ -8,6 +8,7 @@
 // rigtige penge — promover/sælg/slip købes/udføres med in-game-økonomi.
 
 import { ageForSeason } from "./riderProgressionEngine.js";
+import { SQUAD_MAX_AGE, effectiveSquad, transitionForRider, isYouthSquad } from "./squads.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { buildKeyedNotification, notifyTeamOwner } from "./notificationService.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
@@ -22,7 +23,15 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 export const GRADUATION_READY_TYPE = "academy_graduation_ready";
 
 export const GRADUATION = Object.freeze({
-  GRADUATE_AGE: 22,   // alder hvor akademi-ophold slutter (MAX_AGE 21 + 1)
+  // #4619: sidste alder i U23-truppen + 1. Var 22 (akademiets MAX_AGE 21 + 1) og
+  // er nu 23 — en BEVIDST REGELÆNDRING, ikke en bugfix: YOUTH_RULES §2.2 "Det
+  // tvungne valg flytter fra 22 til 23" + §7 modsigelse 6 (akademi-promotion-
+  // specen 18/6 sagde 22, trup-modellen vinder). En 22-årig er stadig U23, samme
+  // grænse som UCIs egen U23-kategori og `isU23ForSeason`.
+  //
+  // Afledt af SQUAD_MAX_AGE frem for hardkodet, så aldersgrænsen bor ÉT sted
+  // (backend/lib/squads.js) og ikke i to filer der kan drive fra hinanden.
+  GRADUATE_AGE: SQUAD_MAX_AGE.u23 + 1,
   DEADLINE_DAYS: 7,   // override-vindue i dage. SIM-STARTPUNKT — ejer-godkendes (scorecard).
 });
 
@@ -45,7 +54,7 @@ const VALID_ACTIONS = new Set(["promote", "sell", "release"]);
  */
 export async function findPendingGraduation(supabase, { teamId, riderId } = {}) {
   const { data, error } = await supabase.from("academy_graduation")
-    .select("id, status")
+    .select("id, status, from_squad, to_squad")
     .eq("team_id", teamId).eq("rider_id", riderId).eq("status", "pending")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -56,6 +65,27 @@ export async function findPendingGraduation(supabase, { teamId, riderId } = {}) 
 
 export function isGraduateAge(age) {
   return Number.isFinite(age) && age >= GRADUATION.GRADUATE_AGE;
+}
+
+/**
+ * Rytter-patch for "denne graduering blev gennemført": sæt BEGGE trup-felter.
+ *
+ * `riders.is_academy` er afledt af `riders.squad` i overgangsperioden (spec §3.2
+ * — 35+ kaldsteder og RLS-funktionen `is_offered_intake_rider()` læser den), så
+ * de to må ALDRIG skrives hver for sig. Ét sted at gøre det, så promote-stien i
+ * resolveGraduation, completeStuckPromotion og academyTransfer.promote() ikke kan
+ * ende med tre lidt forskellige patches.
+ *
+ * `to_squad` er nullable på rækker fra før #4619 (og på rækker åbnet uden kendt
+ * trup). Fallback er 'senior', præcis den adfærd stien havde før: en graduering
+ * uden trup-information ER den gamle akademi → senior-overgang.
+ *
+ * @param {{to_squad?:string|null}|null|undefined} grad
+ * @returns {{squad:string, is_academy:boolean}}
+ */
+export function graduationSquadPatch(grad) {
+  const target = grad?.to_squad ?? "senior";
+  return { squad: target, is_academy: isYouthSquad(target) };
 }
 
 /**
@@ -86,15 +116,23 @@ function isUniqueViolation(error) {
  * løbende redningssti) går gennem den, så række-felter, deadline og copy ikke
  * kan divergere mellem de to opdagelses-veje.
  *
+ * #4619: rækken bærer nu HVILKEN overgang det er (`from_squad`/`to_squad`).
+ * Med tre trupper findes der to (junior → u23 ved sæsonalder 19, u23 → senior
+ * ved 23), og Graduation Day skal kunne vise forskellen. Felterne er nullable i
+ * skemaet, så en kalder der endnu ikke kender truppen (ældre sti, eller en rytter
+ * uden fødselsdato) stadig kan åbne et vindue — vi gætter dem ikke.
+ *
  * @returns {Promise<"created"|"duplicate">}
  */
-export async function openGraduationWindow(supabase, { rider, seasonId, deadline, notify = notifyTeamOwner } = {}) {
+export async function openGraduationWindow(supabase, { rider, seasonId, deadline, transition = null, notify = notifyTeamOwner } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!rider?.id || !rider?.team_id) throw new Error("openGraduationWindow: rider med id + team_id required");
   if (!seasonId || !deadline) throw new Error("openGraduationWindow: seasonId + deadline required");
 
   const { error } = await supabase.from("academy_graduation").insert({
     team_id: rider.team_id, rider_id: rider.id, season_id: seasonId, status: "pending", deadline,
+    from_squad: transition?.from ?? null,
+    to_squad: transition?.to ?? null,
   });
   if (error) {
     if (isUniqueViolation(error)) return "duplicate";
@@ -157,6 +195,14 @@ export async function notifyGraduationReady(supabase, { rider, notify = notifyTe
  * rytter efter ham i id-orden mistede lydløst sit override-vindue. Vagten har
  * altid ekskluderet den klasse; detektionen gør det nu også.
  *
+ * #4619 — TO OVERGANGE. Før fandtes én (akademi → senior ved 22). Nu findes
+ * junior → u23 (sæsonalder 19) og u23 → senior (sæsonalder 23), og rytterens
+ * nuværende trup afgør hvilken. Truppen læses via `effectiveSquad`, IKKE direkte
+ * fra `riders.squad`: mellem migrationen og backfill'en står alle rækker på
+ * kolonnens DEFAULT ('senior'), og et direkte opslag ville derfor tavst holde op
+ * med at finde nogen som helst i det vindue. Prædikatet er `transitionForRider`
+ * fra backend/lib/squads.js — samme funktion backfill-scriptet bruger.
+ *
  * @returns {Promise<{dryRun:boolean, graduates:number}>}
  */
 export async function detectGraduates(supabase, { seasonId, seasonNumber, now = new Date(), dryRun = false, notify = notifyTeamOwner } = {}) {
@@ -165,7 +211,7 @@ export async function detectGraduates(supabase, { seasonId, seasonNumber, now = 
 
   const academy = await fetchAllRows(() =>
     supabase.from("riders")
-      .select("id, team_id, firstname, lastname, birthdate")
+      .select("id, team_id, firstname, lastname, birthdate, squad, is_academy")
       .eq("is_academy", true).eq("is_retired", false)
       .not("team_id", "is", null)
       .order("id"));
@@ -179,10 +225,11 @@ export async function detectGraduates(supabase, { seasonId, seasonNumber, now = 
   for (const r of academy) {
     if (alreadyRowed.has(r.id)) continue;
     const age = ageForSeason(r.birthdate, seasonNumber);
-    if (!isGraduateAge(age)) continue;
+    const transition = transitionForRider({ squad: effectiveSquad(r, age), seasonAge: age });
+    if (!transition) continue;
     if (dryRun) { graduates++; continue; }
 
-    const outcome = await openGraduationWindow(supabase, { rider: r, seasonId, deadline, notify });
+    const outcome = await openGraduationWindow(supabase, { rider: r, seasonId, deadline, transition, notify });
     if (outcome === "created") graduates++;
   }
   return { dryRun, graduates };
@@ -238,7 +285,7 @@ export async function resolveGraduation(supabase, {
     // løn-formel der bruges til en NY kontrakt, ikke om ubetinget overskrivning).
     const contractPatch = contractOnAcquirePatch(rider, seasonNumber);
     const { error } = await supabase.from("riders").update({
-      is_academy: false,
+      ...graduationSquadPatch(grad),
       ...contractPatch,
     }).eq("id", riderId);
     if (error) throw new Error(`resolveGraduation promote update: ${error.message}`);
@@ -269,7 +316,7 @@ export async function resolveGraduation(supabase, {
   // stale kontrakt i stedet for at give en frisk (#2881-følgefund).
   const { error } = await supabase.from("riders")
     .update({
-      team_id: null, is_academy: false,
+      team_id: null, squad: "senior", is_academy: false,
       salary: null, contract_length: null, contract_end_season: null,
     }).eq("id", riderId);
   if (error) throw new Error(`resolveGraduation release update: ${error.message}`);
@@ -357,7 +404,7 @@ export async function releaseUnsoldGraduate(supabase, {
 
   const { data: updated, error } = await supabase.from("riders")
     .update({
-      team_id: null, is_academy: false,
+      team_id: null, squad: "senior", is_academy: false,
       salary: null, contract_length: null, contract_end_season: null,
     })
     .eq("id", id).eq("team_id", teamId).eq("is_academy", true)
@@ -441,7 +488,7 @@ export async function completeStuckPromotion(supabase, {
 
   const contractPatch = contractOnAcquirePatch(target, seasonNumber);
   const { data: updated, error } = await supabase.from("riders")
-    .update({ is_academy: false, ...contractPatch })
+    .update({ squad: "senior", is_academy: false, ...contractPatch })
     .eq("id", riderId).eq("team_id", teamId).eq("is_academy", true)
     .select("id");
   if (error) throw new Error(`completeStuckPromotion update: ${error.message}`);
