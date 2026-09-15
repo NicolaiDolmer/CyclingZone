@@ -9,34 +9,55 @@
 // kurven skal have et HUL dér. Punkterne tegnes derfor som sammenhaengende
 // SEGMENTER, ikke som én polyline med interpolerede huller — en linje der
 // fortsaetter hen over en loebsdag ville paastaa en maaling der ikke findes.
+//
+// Hard rule 31: nye frontend-filer skrives i .ts/.tsx, saa filen faar fuld
+// strict-daekning fra `frontend/tsconfig.json` med det samme.
+
+// Ét punkt i kurven. `score` er NULLABLE, fordi en loebsdag faar en raekke uden
+// tal (backend/lib/trainingScore.js, buildTrainingScoreView).
+export type TrainingScorePoint = {
+  date: string;
+  score: number | null;
+  raceDay?: boolean;
+};
+
+// Et punkt der HAR et tal, plus dets plads paa den faste x-akse.
+type ScoredPoint = TrainingScorePoint & { score: number; i: number };
 
 const VIEW_W = 100;
 const VIEW_H = 28;
 const PAD = 3;
 
 // Sammenhaengende stykker af punkter der HAR et tal.
-function segmentsOf(points) {
-  const out = [];
-  let current = [];
+function segmentsOf(points: TrainingScorePoint[]): ScoredPoint[][] {
+  const out: ScoredPoint[][] = [];
+  let current: ScoredPoint[] = [];
   points.forEach((p, i) => {
-    if (Number.isFinite(p?.score)) current.push({ ...p, i });
+    const score = p?.score;
+    if (typeof score === "number" && Number.isFinite(score)) current.push({ ...p, score, i });
     else if (current.length) { out.push(current); current = []; }
   });
   if (current.length) out.push(current);
   return out;
 }
 
-export default function TrainingScoreSparkline({ points, label, width = VIEW_W, height = VIEW_H }) {
+export default function TrainingScoreSparkline({ points, label, width = VIEW_W, height = VIEW_H }: {
+  points: TrainingScorePoint[] | null | undefined;
+  label?: string;
+  width?: number;
+  height?: number;
+}) {
   const list = Array.isArray(points) ? points : [];
   const segments = segmentsOf(list);
   if (segments.length === 0) return null;
 
   // Fast 1-99-akse. En auto-skaleret akse ville faa to helt forskellige uger til
   // at ligne hinanden — og scoren ER en absolut skala, ikke en relativ.
-  const x = (i) => (list.length <= 1 ? width / 2 : PAD + (i / (list.length - 1)) * (width - 2 * PAD));
-  const y = (score) => PAD + (1 - (Math.max(1, Math.min(99, score)) - 1) / 98) * (height - 2 * PAD);
+  const x = (i: number) => (list.length <= 1 ? width / 2 : PAD + (i / (list.length - 1)) * (width - 2 * PAD));
+  const y = (score: number) => PAD + (1 - (Math.max(1, Math.min(99, score)) - 1) / 98) * (height - 2 * PAD);
 
-  const last = segments[segments.length - 1][segments[segments.length - 1].length - 1];
+  const lastSegment = segments[segments.length - 1];
+  const last = lastSegment[lastSegment.length - 1];
   // Fyldet lukkes mod bunden pr. segment, saa hullet ogsaa er et hul i fyldet.
   const fillPaths = segments
     .filter((seg) => seg.length > 1)

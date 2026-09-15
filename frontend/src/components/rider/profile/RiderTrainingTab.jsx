@@ -33,7 +33,7 @@ import FocusPanel from "../../training/FocusPanel.jsx";
 import { dayTypeForProgram, sessionForProgram } from "../../../lib/trainingDayTypes.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
-import RiderTrainingScoreCard from "./RiderTrainingScoreCard.jsx";
+import RiderTrainingScoreCard from "./RiderTrainingScoreCard.tsx";
 
 const LOG_DAYS = 7;
 

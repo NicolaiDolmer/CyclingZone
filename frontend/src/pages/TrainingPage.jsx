@@ -42,7 +42,7 @@ import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistant
 import DevelopmentGlyph from "../components/development/DevelopmentGlyph.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
-import TrainingScoreSparkline from "../components/training/TrainingScoreSparkline.jsx";
+import TrainingScoreSparkline from "../components/training/TrainingScoreSparkline.tsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Button, Select, Checkbox,
