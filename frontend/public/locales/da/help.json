@@ -1177,8 +1177,8 @@
         "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med {academySlots} ryttere har en mærkbar løbende omkostning hver sæson."
       },
       "graduation": {
-        "title": "At forlade akademiet ved 22",
-        "text": "Når en akademirytter fylder 22, forlader de Akademiet, og du træffer et valg for hver enkelt: ryk dem op i din senior-trup (kræver en ledig senior-plads og giver dem en senior-kontrakt), sælg dem på transfermarkedet, eller slip dem som free agent. Du får et vindue til at beslutte; handler du ikke i tide, vælger klubben et fornuftigt standardvalg for dig (ryk op når der er plads, ellers sælg). Sådan får hjemmeavlet talent en klar vej til din senior-trup."
+        "title": "At forlade akademiet ved 23",
+        "text": "Når en akademirytter fylder 23, forlader de Akademiet, og du træffer et valg for hver enkelt: ryk dem op i din senior-trup (kræver en ledig senior-plads og giver dem en senior-kontrakt), sælg dem på transfermarkedet, eller slip dem som free agent. Du får et vindue til at beslutte; handler du ikke i tide, vælger klubben et fornuftigt standardvalg for dig (ryk op når der er plads, ellers sælg). Sådan får hjemmeavlet talent en klar vej til din senior-trup."
       },
       "promoteDemote": {
         "title": "Ryk op og flyt ryttere ned",
