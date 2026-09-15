@@ -81,7 +81,7 @@ const TRAINING_TABS = ["today", "weekplan", "development", "history"];
 // hård træning i?", så ét klik skal give de ældste øverst.
 // #4851: Score er numerisk og stiller spoergsmaalet "hvem fik det bedste pas"
 // — ét klik skal give de hoejeste oeverst, samme desc-foerst-konvention.
-const ROSTER_DESC_FIRST = new Set(["age", "form", "fatigue", "status", "score"]);
+const ROSTER_DESC_FIRST = new Set(["age", "form", "fatigue", "score", "status"]);
 
 // #3706: Status-kolonnens comparator. Overskriften var et bart <th> uden
 // SortTh, så et klik gjorde bogstavelig talt ingenting (@cybersimon, Discord
@@ -398,9 +398,9 @@ export default function TrainingPage() {
     savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
     weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan,
     riderWeekPlans, savingRiderWeekPlanId, setRiderWeekPlan, clearRiderWeekPlan,
-    racingToday,
     // #4851: null naar training_score_visible er off ⇒ kolonnen findes ikke.
     trainingScore,
+    racingToday,
   } = training;
   const scoreVisible = trainingScore != null;
 
@@ -747,8 +747,11 @@ export default function TrainingPage() {
   // #3300-rework: +1 kolonne (individuel ugeplan-knap flyttet ud af navne-cellen
   // og ind i sin egen kolonne, jf. ejer-feedback).
   // #3815: +1 kolonne (Alder).
-  // #4851: +1 naar Score-kolonnen er synlig (flag on).
-  const ROSTER_COLS = 11 + (scoreVisible ? 1 : 0);
+  const ROSTER_COLS = 11;
+  // #4851: Score-kolonnen laegges oveni naar flaget er on. Basistallet ovenfor
+  // er pinnet af TrainingPage.wiring.test.js (#3300-rework), saa den betingede
+  // kolonne bor i sit eget tal i stedet for at goere basistallet dynamisk.
+  const ROSTER_COLS_TOTAL = ROSTER_COLS + (scoreVisible ? 1 : 0);
 
   // Accessors til roster-sortering. form/fatigue bor i condition-map'et (ikke på
   // rytteren), så closure over condition — useMemo holder referencen stabil pr.
@@ -1186,7 +1189,7 @@ export default function TrainingPage() {
           Rører ALDRIG fokus; overstyrer KUN holdets ugerytme for netop denne rytter. */}
       {isExpanded && (
         <tr className="bg-cz-subtle/40">
-          <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-3">
+          <td colSpan={ROSTER_COLS_TOTAL} className="border-t border-cz-border px-4 py-3">
             <div className="flex flex-col gap-2">
               <p className="text-[13px] text-cz-3 leading-relaxed">
                 {t("individualWeekPlanIntro", { name: `${rider.firstname} ${rider.lastname}` })}
@@ -1727,7 +1730,7 @@ export default function TrainingPage() {
                       ? groups.map((group, gi) => (
                           <Fragment key={group.type}>
                             <tr className="bg-cz-subtle/60">
-                              <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-2">
+                              <td colSpan={ROSTER_COLS_TOTAL} className="border-t border-cz-border px-4 py-2">
                                 <span className="font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-2">
                                   {groupLabel(group.type)}
                                 </span>
