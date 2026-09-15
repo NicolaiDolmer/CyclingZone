@@ -15,7 +15,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
 
 test("#3459 racingToday hentes fra useTraining (ingen ny fetch/config-endpoint på siden)", () => {
-  assert.match(src, /racingToday,\s*\n?\s*\} = training;/, "skal destrukturere racingToday fra useTraining()");
+  // #4847: destruktureringen deler nu linje med `dayClose` (knappens åbne-tilstand),
+  // så mønstret matcher "racingToday i SIDSTE destrukturerings-linje" frem for
+  // "racingToday alene på linjen". Gaten er uændret: feltet skal komme fra
+  // useTraining(), ikke fra et nyt fetch på siden.
+  assert.match(src, /racingToday,[^\n]*\n?\s*\} = training;/, "skal destrukturere racingToday fra useTraining()");
   assert.match(src, /const raceToday = racingToday\[rider\.id\] \?\? null;/, "tilstedeværelse pr. rytter er hele gaten");
 });
 
