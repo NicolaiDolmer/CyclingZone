@@ -655,6 +655,26 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 
 Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet lukning ≥ kl. 20), sweep-kapacitet (én sweep/dag), skadesvarighed (løbsdage). PR #5205 (fundamentet, flag off) merget 15/9.
 
+### 13.4 Status pr. 15/9 (hvad der er bygget bag flaget, og hvad der mangler)
+
+Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off er bit-identisk med kalenderdags-ticket.
+
+| Del | Status | Hvor |
+|---|---|---|
+| Nøgle, seeds, historik-snapshot, +1-loft pr. løbsdag (B2) | **bygget** (#4846, PR #5205) | `trainingRaceDayTick.js`, `dailyTrainingEngine.js` |
+| Udløser: én samlet sweep pr. kalenderdag, tidligst kl. 20 **og** først når dagens sidste finalization er færdig (B4) | **bygget** (#4847) | `trainingDayCloseTrigger.js`, cron-slug `training-day-close` |
+| Overlap-guard + dags-claim på sweepen (G6) | **bygget**, kode-invariant + test | `trainingDayCloseTrigger.js` |
+| Maks-ventetid på hængende finalization (kl. 23) + Sentry-alarm | **bygget** | `trainingDayCloseTrigger.js`, `cron.js` |
+| Frivillig knap "Run today's training now" / "Kør dagens træning nu", uden bonus, samme åbne-betingelse som sweepen | **bygget** | `POST /api/training/run-today`, `TrainingPage.jsx` |
+| Deleren kalibreret til 140 løbsdage, **læst** fra `calendarRaceDayTargets.js` (#4845) | **bygget**, defensiv import med fallback indtil PR #5169 er merget | `trainingRaceDayTick.js` |
+| Trup-akse i nøglen (`squad`, default `senior`) til #4620's tre akser pr. hold | **bygget** | `database/2026-09-15-4847-training-day-close-trigger.sql` |
+| Manager-bonussen (`bonusMult` 1,25) + `bonus_applied` **slettet** fra kode og skema (B3) | **mangler** — neutraliseret på løbsdags-stien, men lever uændret på den gamle sti, så flag off er bit-identisk. Ryddes ved cutover | `dailyTraining.js:16`, `dailyTrainingEngine.js` |
+| Skadesvarighed i løbsdage (beslutning 7) | **mangler** — stadig kalenderdage | `dailyTrainingEngine.js` |
+| Program pr. løbsdag, 7 × 5 celler (beslutning 8) | **mangler** | `training_week_plans` |
+| Ops-vagter + peak-plannerens konsistens-signal rekalibreret (B5) | **mangler** | `trainingSlotHealth.js`, `racePeakPlans.js` |
+
+**Gate G6 (målt 15/9, harness `backend/scripts/dev/trainingDayCloseCapacity4847.mjs`):** 362 hold × 5 løbsdage × 18 ryttere = 1.810 ticks, ca. 27.200 DB-kald, ca. 134.000 skrevne rækker. Sekventielt ved 12 ms latens pr. kald: ca. 152 s mod cron-intervallets 300 s (49 % margin). Ved 25 ms latens: ca. 317 s — over intervallet; knappen er `TEAM_CONCURRENCY` i `trainingDayCloseTrigger.js` (4 parallelt giver ca. 79 s). Overlap-guarden gør en langsom dag sikker: den forsinker, den fordobler aldrig.
+
 **Deadline (ejer 6/9, ordret): "skiftet til det nye træningssystem senest sker til sæson 4 starten"**, dvs. live 28/9 2026; kalender-delen skal før S4-genereringen.
 
 **Fuldt design, faseplan og de konkrete brud pr. fil:linje:** [`docs/superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md`](superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md). Kortlægningen bag den er session-workflow 6/9 (fire lanes: tick, kalender, score, flader + kritiker), verificeret mod `main` og prod.

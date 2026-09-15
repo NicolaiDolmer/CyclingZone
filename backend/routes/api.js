@@ -209,6 +209,10 @@ import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitio
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
+// #4847: den frivillige knap "Koer dagens traening nu" haenger paa PRAECIS samme
+// lukke-betingelse som cron-sweepen (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3).
+import { resolveDayCloseStatus, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
+import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
@@ -2753,10 +2757,16 @@ router.get("/training/me", requireAuth, async (req, res) => {
       activeSeasonId
         ? supabase
             .from("training_day_runs")
+            // #4847: limit(1) frem for maybeSingle() — paa loebsdags-noeglen kan
+            // holdet have flere raekker pr. kalenderdato (én pr. loebsdag), og
+            // maybeSingle() ville svare 406 praecis naar flaget flippes.
+            // created_at DESC = dagens SENESTE pas, som er det fladen viser.
             .select("executed_by, bonus_applied, report, tick_date, created_at")
             .eq("team_id", teamId)
             .eq("tick_date", todayDate)
-            .maybeSingle()
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .then(({ data, error }) => ({ data: data?.[0] ?? null, error }))
         : Promise.resolve({ data: null }),
       riderIds.length
         ? supabase
@@ -2843,9 +2853,31 @@ router.get("/training/me", requireAuth, async (req, res) => {
       if (cappedForRider.length) capped[row.rider_id] = cappedForRider;
     }
 
+    // #4847: knappens aabne-tilstand ("Koer dagens traening nu"). Feltet udelades
+    // HELT naar `training_tick_per_race_day` er off — samme kontrakt som racingToday
+    // nedenfor, saa ingen consumer kan forveksle "flag off" med "dagen er ikke lukket".
+    const raceDayTickOn = await isTrainingTickPerRaceDayEnabled(supabase, { isBetaTester });
+    let dayClose = null;
+    if (raceDayTickOn) {
+      const windowOpen = trainingWindowOpen(new Date());
+      const close = windowOpen && activeSeasonId
+        ? await resolveDayCloseStatus({
+          supabase, seasonId: activeSeasonId, now: new Date(),
+          divisionId: req.team.league_division_id ?? null,
+        })
+        : { closed: false, reason: windowOpen ? "no_active_season" : "before_window", gameDays: [] };
+      dayClose = {
+        open: close.closed,
+        reason: close.reason,
+        gameDays: close.gameDays ?? [],
+        opensAtHour: TRAINING_SWEEP_FROM_HOUR,
+      };
+    }
+
     res.json({
       ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped,
       trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans,
+      ...(dayClose ? { dayClose } : {}),
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer
       // kan skelne "flag off" fra "ingen data" på et felt der ikke findes.
@@ -2862,11 +2894,24 @@ router.get("/training/me", requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/training/run-today — dagens ét-kliks-træning (#1305). Manager = +25 % bonus.
+// POST /api/training/run-today — den frivillige knap.
+//
+// TO STIER, afgjort af `training_tick_per_race_day`:
+//
+//   flag OFF (i dag) — uaendret #1305-adfaerd: dagens ét-kliks-traening med manager-
+//     bonus. Bit-identisk med foer #4847.
+//
+//   flag ON (#4847, ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3) — "Koer dagens
+//     traening nu": INGEN BONUS (motoren saetter bonus=false paa loebsdags-stien), og
+//     knappen AABNER foerst naar dagens sidste loeb er lukket — PRAECIS samme
+//     betingelse som cron-sweepen (kl. 20 dansk tid + ingen aaben finalization).
+//     Den koerer holdets EGNE loebsdage for i dag, i stigende raekkefoelge, og er
+//     idempotent via mutexen: anden gang giver 409 already_trained_today.
+//
 // Idempotent: samme dag → 409 already_trained_today. Flag OFF → 409 daily_training_disabled.
 // NB (#1479): SKAL stå FØR POST /training/:riderId — ellers matcher Express den
 // statiske "run-today"-sti som et :riderId, kalder isValidFocus(undefined) og
-// returnerer "invalid_focus", hvilket blokerer "Træn i dag"-knappen helt.
+// returnerer "invalid_focus", hvilket blokerer knappen helt.
 router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -2876,6 +2921,60 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
 
     const { activeSeasonId, activeSeasonNumber } = await loadTrainingState(req.team.id);
     if (!activeSeasonId) return res.status(409).json({ error: "no_active_season" });
+
+    const raceDayTickOn = await isTrainingTickPerRaceDayEnabled(supabase, { isBetaTester });
+
+    if (raceDayTickOn) {
+      // ── Loebsdags-stien ────────────────────────────────────────────────────
+      if (!trainingWindowOpen(new Date())) {
+        return res.status(409).json({ error: "day_not_closed", reason: "before_window", opensAtHour: TRAINING_SWEEP_FROM_HOUR });
+      }
+      const close = await resolveDayCloseStatus({
+        supabase, seasonId: activeSeasonId, now: new Date(),
+        divisionId: req.team.league_division_id ?? null,
+      });
+      if (!close.closed) {
+        return res.status(409).json({ error: "day_not_closed", reason: close.reason, opensAtHour: TRAINING_SWEEP_FROM_HOUR });
+      }
+      // Holdet uden division har ingen loebsdags-akse — samme definerede svar som
+      // sweepen giver: ÉT tick paa den gamle kalenderdags-noegle (gameDay udeladt
+      // ⇒ motorens fail-safe-kaskade).
+      const gameDays = req.team.league_division_id ? close.gameDays : [null];
+      if (!gameDays.length) {
+        return res.status(409).json({ error: "day_not_closed", reason: "no_race_day_today", opensAtHour: TRAINING_SWEEP_FROM_HOUR });
+      }
+
+      const reports = [];
+      let ranAny = false;
+      let lastTickDate = null;
+      for (const gameDay of gameDays) {
+        const r = await runTeamTrainingDay({
+          supabase,
+          teamId: req.team.id,
+          seasonId: activeSeasonId,
+          seasonNumber: activeSeasonNumber,
+          executedBy: "manager",
+          gameDay,
+        });
+        lastTickDate = r.tickDate;
+        if (!r.alreadyRan) {
+          ranAny = true;
+          if (r.report) reports.push({ gameDay: r.gameDay, report: r.report });
+        }
+      }
+      if (!ranAny) {
+        return res.status(409).json({ error: "already_trained_today", tickDate: lastTickDate });
+      }
+      // Sidste loebsdags rapport er den frontend viser som "dagens"; hele listen
+      // foelger med saa fladen kan vise alle dagens pas naar den bliver bygget (B6).
+      return res.json({
+        ok: true,
+        tickDate: lastTickDate,
+        gameDays,
+        report: reports[reports.length - 1]?.report ?? null,
+        reports,
+      });
+    }
 
     const result = await runTeamTrainingDay({
       supabase,
@@ -9886,14 +9985,46 @@ router.get("/training/today-status", requireAuth, async (req, res) => {
     if (!enabled) return res.json({ enabled: false, ran_today: false });
 
     const todayDate = copenhagenDateString(new Date());
+    // #4847: limit(1) frem for maybeSingle() — med loebsdags-noeglen kan holdet have
+    // FLERE raekker paa samme tick_date (én pr. loebsdag), og maybeSingle() ville
+    // svare 406 i praecis den tilstand flaget skal kunne flippes i.
     const { data, error } = await supabase
       .from("training_day_runs")
       .select("team_id")
       .eq("team_id", req.team.id)
       .eq("tick_date", todayDate)
-      .maybeSingle();
+      .limit(1);
     if (error) return res.status(500).json({ error: error.message });
-    res.json({ enabled: true, ran_today: Boolean(data) });
+    const ranToday = Array.isArray(data) && data.length > 0;
+
+    // #4847: knappens aabne-tilstand. Flag off ⇒ feltet udelades helt (uaendret
+    // kontrakt for Dashboardets "Naeste traek"). Flag on ⇒ frontend kan vise
+    // PRAECIS hvorfor knappen er lukket i stedet for en tavs disabled knap.
+    const raceDayTickOn = await isTrainingTickPerRaceDayEnabled(supabase, { isBetaTester });
+    if (!raceDayTickOn) return res.json({ enabled: true, ran_today: ranToday });
+
+    const windowOpen = trainingWindowOpen(new Date());
+    let close = { closed: false, reason: "before_window", gameDays: [] };
+    if (windowOpen) {
+      const { data: season, error: seasonError } = await supabase
+        .from("seasons").select("id").eq("status", "active").maybeSingle();
+      if (seasonError) return res.status(500).json({ error: seasonError.message });
+      close = season?.id
+        ? await resolveDayCloseStatus({
+          supabase, seasonId: season.id, now: new Date(),
+          divisionId: req.team.league_division_id ?? null,
+        })
+        : { closed: false, reason: "no_active_season", gameDays: [] };
+    }
+    res.json({
+      enabled: true,
+      ran_today: ranToday,
+      race_day_tick: true,
+      day_closed: close.closed,
+      day_close_reason: close.reason,
+      game_days: close.gameDays ?? [],
+      opens_at_hour: TRAINING_SWEEP_FROM_HOUR,
+    });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

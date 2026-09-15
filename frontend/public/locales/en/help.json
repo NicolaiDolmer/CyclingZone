@@ -1029,6 +1029,10 @@
         "title": "Train today and the +25% boost",
         "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training. Only the boost is missed when you don't click."
       },
+      "runDayNow": {
+        "title": "Run today's training now",
+        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, so nothing is lost by not being online. 'Run today's training now' is there only if you don't want to wait: it runs exactly the same training, with no bonus and no advantage, and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again."
+      },
       "raceDays": {
         "title": "Race days and training",
         "text": "A race day does not change that day's training. Your rider still does the session you planned, and the race adds its own fatigue on top of the training load. Racing itself does not raise abilities: development comes from training, whether a rider races that day or not. What racing does cost is freshness, and every stage adds its own load while recovery only comes once a day, so a rider on a heavy stage race tires fast. Keep an eye on Fatigue for the riders you enter often, and give them easier sessions or rest before their Form falls away."

@@ -85,18 +85,21 @@ function createMockSupabase(state, opts = {}) {
           opts.injectUniqueViolation = false; // kun én gang
           return Promise.resolve({ error: { code: "23505", message: "duplicate key" } });
         }
-        // #4846: spejler de TO partielle unikke indexe fra migrationen.
+        // #4846/#4847: spejler de TO partielle unikke indexe fra migrationerne.
         //   game_day IS NULL     → UNIQUE (team_id, tick_date)
-        //   game_day IS NOT NULL → UNIQUE (team_id, season_id, game_day)
+        //   game_day IS NOT NULL → UNIQUE (team_id, season_id, COALESCE(squad,'senior'), game_day)
         // En raekke med game_day kolliderer ALDRIG med en raekke uden (og omvendt),
-        // praecis som partielle indexe opfoerer sig i Postgres.
+        // praecis som partielle indexe opfoerer sig i Postgres. COALESCE'en spejles
+        // ogsaa her: en manglende squad ER 'senior' i noeglen.
         const r = Array.isArray(row) ? row[0] : row;
         const hasGameDay = r.game_day !== null && r.game_day !== undefined;
+        const squadOf = (x) => x.squad ?? "senior";
         const exists = state[table].some((x) => {
           const xHasGameDay = x.game_day !== null && x.game_day !== undefined;
           if (hasGameDay !== xHasGameDay) return false;
           return hasGameDay
-            ? x.team_id === r.team_id && x.season_id === r.season_id && x.game_day === r.game_day
+            ? x.team_id === r.team_id && x.season_id === r.season_id
+              && squadOf(x) === squadOf(r) && x.game_day === r.game_day
             : x.team_id === r.team_id && x.tick_date === r.tick_date;
         });
         if (exists) {
@@ -1377,6 +1380,50 @@ test("#4846 (flag on): to forskellige løbsdage på SAMME kalenderdato kører be
   );
 });
 
+// ── #4847: trup-aksen i nøglen ───────────────────────────────────────────────
+test("#4847 (flag on): reservationen bærer squad, default 'senior'", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+
+  const result = await runDay(state);
+
+  assert.equal(result.squad, "senior", "motoren rapporterer truppen");
+  assert.equal(state.training_day_runs[0].squad, "senior",
+    "uden squad i nøglen kolliderer #4620's U23-akse med senior på samme game_day");
+});
+
+test("#4847 (flag on): motoren AFVISER en ikke-senior trup indtil rytter-udvælgelsen er trup-scopet", async () => {
+  // Nøglen er klar til #4620's tre akser (migrationen), men rytter-queryet vælger
+  // stadig HELE holdet. Et 'u23'-tick ville derfor træne hele truppen én gang til
+  // under en anden nøgle — dobbelt-kredit, ikke en U23-session. Grænsen er dét der
+  // gør det sikkert at have nøglen liggende før #4620 lander.
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+
+  const senior = await runDay(state, { squad: "senior" });
+  assert.equal(senior.alreadyRan, false);
+  assert.equal(senior.squad, "senior");
+
+  await assert.rejects(
+    () => runDay(state, { squad: "u23" }),
+    /squad 'u23' not supported yet/,
+    "en trup uden verificeret medlemskab må ALDRIG kunne åbne en ny nøgle",
+  );
+  assert.equal(state.training_day_runs.length, 1, "afvisningen må ikke efterlade en reservation");
+});
+
+test("#4847 (flag on): ingen manager-bonus på løbsdags-stien", async () => {
+  // Ejer 15/9 (§13.3 beslutning 3): knappen giver ingen fordel, kun utålmodighed.
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+
+  const result = await runDay(state, { executedBy: "manager" });
+
+  assert.equal(result.report.bonus_applied, false,
+    "de 25 % er væk når løbsdagen er tick-enheden (beslutning 2, 6/9)");
+  assert.equal(state.training_day_runs[0].bonus_applied, false);
+});
+
 test("#4846 (flag on): støj-seedet følger løbsdagen, ikke datoen (A3)", async () => {
   const dayA = seedState();
   seedRaceDayTick(dayA, { gameDay: 12 });
@@ -1399,6 +1446,7 @@ test("#4846 (flag on): støj-seedet følger løbsdagen, ikke datoen (A3)", async
         !== JSON.stringify(dayB.rider_derived_abilities[i]?.ability_progress)),
     "to løbsdage samme kalenderdato må ikke give identisk udfald (seed = sæson + løbsdag)",
   );
+  assert.ok(a.report.riders[0].score >= 0 && b.report.riders[0].score >= 0);
   assert.equal(raceDaySeedKey({ seasonId: SEASON_ID, gameDay: 12 }), `${SEASON_ID}#gd12`);
 });
 
