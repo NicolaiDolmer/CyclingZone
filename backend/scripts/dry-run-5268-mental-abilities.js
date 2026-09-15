@@ -283,9 +283,17 @@ export function summarise(applied) {
     return { band: band.key, n: inBand.length, ...stat };
   });
 
+  // Rating-konsekvensen har TO kilder, og de skal skilles ad for at kunne
+  // bedømmes: (a) taktik/aggression falder, (b) to nye evner kommer ind i fire
+  // af de otte opskrifter. Et samlet tal ville skjule hvilken af de to der gør
+  // arbejdet, og de har hver sin knap.
   let roleChanged = 0;
+  let roleChangedRescaleOnly = 0;
   for (const entry of applied) {
-    if (bestRole(entry.abilities) !== bestRole(abilitiesAfter(entry))) roleChanged += 1;
+    const before = bestRole(entry.abilities);
+    if (before !== bestRole(abilitiesAfter(entry))) roleChanged += 1;
+    const rescaleOnly = { ...entry.abilities, tactics: entry.next.tactics, aggression: entry.next.aggression };
+    if (before !== bestRole(rescaleOnly)) roleChangedRescaleOnly += 1;
   }
 
   return {
@@ -295,6 +303,7 @@ export function summarise(applied) {
     sums,
     bands,
     roleChanged,
+    roleChangedRescaleOnly,
     massViolations: applied.filter((e) => !e.massOk).length,
     massLossPoints: applied.reduce((s, e) => s + e.massLoss, 0),
     totalMassBefore: applied.reduce((s, e) => s + e.massBefore, 0),
@@ -312,7 +321,9 @@ export function renderSummary(summary, sampleNames = []) {
   lines.push(`Ryttere i alt: ${summary.n} · ryttere der mister point: ${summary.touched}`);
   lines.push(`Masse før: ${summary.totalMassBefore} · efter: ${summary.totalMassAfter} `
     + `· brud på masse-gaten: ${summary.massViolations} · point tabt i clamp: ${summary.massLossPoints}`);
-  lines.push(`Ryttere der skifter bedste rolle (8 displayRecipes-roller): ${summary.roleChanged}`);
+  lines.push(`Ryttere der skifter bedste rolle (8 displayRecipes-roller): ${summary.roleChanged} `
+    + `(heraf ${summary.roleChangedRescaleOnly} alene af taktik/aggression-sænkningen; `
+    + `resten kommer af at de to nye evner tæller med i 4 af de 8 opskrifter)`);
   lines.push("");
   lines.push("| Evne | Sum før | Sum efter | Forskel |");
   lines.push("|---|---:|---:|---:|");
@@ -487,7 +498,12 @@ async function main() {
   const results = {};
   for (const v of VARIANTS) {
     const applied = applyVariant(plan, v);
-    const named = [...applied].sort((a, b) => b.lost - a.lost).slice(0, sample);
+    // Navngivne eksempler SPREDT over fordelingen, ikke de fem hårdest ramte:
+    // yderpunkterne alene ville give et forkert indtryk af hvad en typisk rytter
+    // oplever (rapportens §3.3 valgte også en blanding af profiler).
+    const sorted = [...applied].sort((a, b) => a.lost - b.lost);
+    const named = Array.from({ length: sample }, (_, i) =>
+      sorted[Math.min(sorted.length - 1, Math.round((i / Math.max(1, sample - 1)) * (sorted.length - 1)))]);
     results[v] = applied;
     console.log("");
     console.log(renderSummary(summarise(applied), named));
