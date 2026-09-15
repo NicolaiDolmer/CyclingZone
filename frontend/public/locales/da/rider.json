@@ -108,7 +108,10 @@
         "aero": "Aero",
         "tempo": "Tempo",
         "restitution": "Aktiv restitution",
-        "loebslaere": "Løbslære"
+        "loebslaere": "Løbslære",
+        "cobbled_sectors": "Brostenssektorer",
+        "echelon_drills": "Vifteøvelser",
+        "attack_repeats": "Angrebsintervaller"
       },
       "active": "Aktiv: {focus} · {intensity} · træner {abilities}",
       "activeRest": "Hviler ({focus}-fokus på pause)",
@@ -916,6 +919,9 @@
     "focus_aero": "Aero",
     "focus_loebslaere": "Løbslære",
     "focus_restitution": "Aktiv restitution",
+    "focus_cobbled_sectors": "Brostenssektorer",
+    "focus_echelon_drills": "Vifteøvelser",
+    "focus_attack_repeats": "Angrebsintervaller",
     "intensity_rest": "Hvile",
     "intensity_easy": "Let",
     "intensity_normal": "Normal",
