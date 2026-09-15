@@ -1004,7 +1004,7 @@
         "steps": [
           "Gå til Daglig træning i menuen.",
           "Find en rytter og vælg hvad det er for en dag: Hvile, Aktiv restitution, en Færdighedsdag eller Træning.",
-          "På en træningsdag vælger du sessionen: Lang tur (let), Tempo (mellem), eller Blandede intervaller, Klatreintervaller, Punch-intervaller, Tærskel eller Sprint (hård). På en færdighedsdag: Teknik, Aero eller Løbslære.",
+          "På en træningsdag vælger du sessionen: Lang tur (let), Tempo (mellem), eller Blandede intervaller, Klatreintervaller, Punch-intervaller, Tærskel, Sprint, Brostenssektorer, Vifteøvelser eller Angrebsintervaller (hård). På en færdighedsdag: Teknik, Aero eller Løbslære.",
           "Gem. Dagen kører hver dag, indtil du ændrer den.",
           "Der er ingen grænse for hvor mange ryttere der kan have et program: du kan sætte et for hele truppen."
         ]
@@ -1015,7 +1015,7 @@
       },
       "focusAbilities": {
         "title": "Hvad hver session træner",
-        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Blandede intervaller træner Bjerg, Punch og Tempo med lige stor andel. Klatreintervaller træner Bjerg og Tempo, og Bjerg får mere end i den blandede session, men Punch trænes slet ikke. Punch-intervaller er spejlbilledet: Punch og Tempo, hvor Punch får mere, og Bjerg er ude. De tre dækker den samme mængde arbejde, så et andet valg flytter dit udbytte, det lægger ikke noget til. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Aggression. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel og sprint er hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
+        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Blandede intervaller træner Bjerg, Punch og Tempo med lige stor andel. Klatreintervaller træner Bjerg og Tempo, og Bjerg får mere end i den blandede session, men Punch trænes slet ikke. Punch-intervaller er spejlbilledet: Punch og Tempo, hvor Punch får mere, og Bjerg er ude. De tre dækker den samme mængde arbejde, så et andet valg flytter dit udbytte, det lægger ikke noget til. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Brostenssektorer træner Brosten, Modstandskraft og Positionering, hvor Brosten får mest. Vifteøvelser træner Fladt, Positionering og Modstandskraft, hvor Fladt får mest. Angrebsintervaller træner Angrebslyst, Punch og Acceleration, hvor Angrebslyst får mest. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Aggression. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel, sprint, Brostenssektorer, Vifteøvelser og Angrebsintervaller er alle hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
       },
       "typeGating": {
         "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
@@ -1476,8 +1476,8 @@
       "a": "Det koster ingen evneudvikling i sæson 3 at køre løb: dit talent får stadig præcis det pas du planlagde den dag, uanset om han kører løb eller ej. Den reelle pris er træthed: et løb lægger sin egen belastning oven i træningen, og et talent der ofte kører løb, har brug for lettere pas og rigtige hviledage for at holde sig under skadetærsklen, ligesom enhver senior-rytter. Der er ingen akademi-specifik straf for at køre løb, så afvejningen handler om at styre trætheden, ikke om tabt udvikling."
     },
     "flatCobblesHardTrainingFaq": {
-      "q": "Hvorfor kan jeg ikke træne Fladt eller Brosten med Hård intensitet?",
-      "a": "Det er en bevidst del af designet, at ingen Hård-session rammer de to evner i dag. De Hårde sessioner er Blandede intervaller (Bjerg, Punch, Tempo), Klatreintervaller (Bjerg, Tempo), Punch-intervaller (Punch, Tempo), Tærskel (Enkeltstart, Tempo) og Sprint (Sprint, Acceleration). Fladt trænes af Tempo (Normal) og Aero (Let); Brosten kun af Teknik (Let). Der findes i dag ingen måde at presse nogen af de to på Hård."
+      "q": "Kan jeg træne Fladt eller Brosten med Hård intensitet?",
+      "a": "Ja, med Brostenssektorer og Vifteøvelser. Brostenssektorer træner Brosten hårdest, og modstandskraft og positionering følger med i prisen. Vifteøvelser træner Fladt hårdest, med positionering og modstandskraft på samme måde. De ældre Hårde sessioner rammer stadig ikke nogen af de to: Blandede intervaller (Bjerg, Punch, Tempo), Klatreintervaller (Bjerg, Tempo), Punch-intervaller (Punch, Tempo), Tærskel (Enkeltstart, Tempo) og Sprint (Sprint, Acceleration). Tempo (Normal), Aero og Teknik (begge Let) virker stadig også, bare på en lavere intensitet."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Forbedrer et bedre scouting-netværk også hvor godt jeg ser mine egne ryttere?",
