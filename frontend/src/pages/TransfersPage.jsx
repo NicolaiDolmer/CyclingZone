@@ -1036,17 +1036,19 @@ function MarketRow({
             Udbudspris (ingen af dem havde en bredde-grænse) navnekolonnens
             plads i tabellens auto-layout, præcis samme fejlklasse som
             TrainingPage.jsx's roster (se navnecellens kommentar ovenfor).
-            #5124 ejer-fund 15/9: 22vw/26vw levnede stadig for lidt til navnets
-            gulv (min-w-[72px] ovenfor) + den FASTE Handling-knap (nu strammet
-            nedenfor) — strammet til 16vw/20vw, verificeret mod de længste
-            reelle tal (7-cifrede beløb bryder pænt til 2 linjer, ingen klipning). */}
-        <td className={`px-3 py-2.5 text-right ${mobileWrapAlign} ${isMobile && !showStatCols ? "max-w-[16vw]" : ""}`}>
+            #5124 ejer-fund 15/9: et forsøg på at stramme disse to (16vw/20vw)
+            for at give navnet mere plads gik for langt den ANDEN vej — et
+            7-cifret beløb ("1.200.000") er ~9 tegn og passer ikke i 16vw,
+            så DET overlappede i stedet ind i Udbudspris. 22vw/26vw er det
+            verificerede minimum for tal på tværs af hele beløbsintervallet;
+            navnets plads kommer i stedet fra min-w-[72px]-gulvet nedenfor. */}
+        <td className={`px-3 py-2.5 text-right ${mobileWrapAlign} ${isMobile && !showStatCols ? "max-w-[22vw]" : ""}`}>
           <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderMarketValue(rider))}</span>
         </td>
         <td className="px-3 py-2.5 text-right hidden sm:table-cell">
           <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderSalary(rider))}</span>
         </td>
-        <td className={`px-3 py-2.5 text-right ${mobileWrapAlign} ${isMobile && !showStatCols ? "max-w-[20vw]" : ""}`}>
+        <td className={`px-3 py-2.5 text-right ${mobileWrapAlign} ${isMobile && !showStatCols ? "max-w-[26vw]" : ""}`}>
           <span
             className={`text-cz-accent-t font-mono text-sm font-bold ${
               isMobile && !showStatCols ? "" : "whitespace-nowrap"
