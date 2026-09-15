@@ -98,8 +98,8 @@ export function graduationSquadPatch(grad) {
  * academyTransfer importerer allerede denne fil (findPendingGraduation) — den
  * omvendte retning ville lave en cyklisk import.
  *
- * @param {object} supabase
- * @param {{teamId:string, squad:string}} args
+ * @param {any} supabase
+ * @param {{teamId?:string, riderId?:string, squad?:string}} [args]
  * @returns {Promise<number>}
  */
 export async function countSquadMembers(supabase, { teamId, squad } = {}) {
@@ -128,6 +128,8 @@ export async function countSquadMembers(supabase, { teamId, squad } = {}) {
  *
  * Senior beholder division-cappen uændret; ungdomstrupperne bruger SQUAD_CAPS.
  *
+ * @param {any} supabase
+ * @param {{teamId?:string, targetSquad?:string, getMarketState?:Function, countSquad?:Function}} [args]
  * @returns {Promise<boolean>}
  */
 export async function hasRoomInTargetSquad(supabase, {
@@ -177,6 +179,8 @@ function isUniqueViolation(error) {
  * skemaet, så en kalder der endnu ikke kender truppen (ældre sti, eller en rytter
  * uden fødselsdato) stadig kan åbne et vindue — vi gætter dem ikke.
  *
+ * @param {any} supabase
+ * @param {{rider?:any, seasonId?:string, deadline?:string, transition?:{from:string,to:string}|null, notify?:Function}} [args]
  * @returns {Promise<"created"|"duplicate">}
  */
 export async function openGraduationWindow(supabase, { rider, seasonId, deadline, transition = null, notify = notifyTeamOwner } = {}) {

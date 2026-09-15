@@ -212,7 +212,7 @@ export const SQUAD_TRANSITIONS = Object.freeze([
  * en evt. vagt ikke kan blive uenige om hvem der skal flyttes (samme
  * "prædikatet låses sammen"-disciplin som academyGraduationPredicate.test.js).
  *
- * @param {{squad:string, seasonAge:number|null|undefined}} args
+ * @param {{squad?:string|null, seasonAge?:number|null}} [args]
  * @returns {boolean}  false ved ukendt alder eller ukendt trup (aldrig et gæt)
  */
 export function hasOutgrownSquad({ squad, seasonAge } = {}) {
@@ -226,7 +226,7 @@ export function hasOutgrownSquad({ squad, seasonAge } = {}) {
  * fejl eller et manuelt flyt) sendes til u23, ikke direkte til senior, så
  * default-kæden og Graduation Day behandler ham som en almindelig overgang.
  *
- * @param {{squad:string, seasonAge:number|null|undefined}} args
+ * @param {{squad?:string|null, seasonAge?:number|null}} [args]
  * @returns {{from:string, to:string, atSeasonAge:number}|null}
  */
 export function transitionForRider({ squad, seasonAge } = {}) {
