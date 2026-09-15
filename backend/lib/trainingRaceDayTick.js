@@ -65,8 +65,10 @@ async function loadRaceDayTargetModule() {
   try {
     raceDayTargetModuleCache = await import("./calendarRaceDayTargets.js");
   } catch {
-    // ERR_MODULE_NOT_FOUND (#5169 ikke merget endnu) — eller enhver anden
-    // indlaesningsfejl. Begge betyder det samme her: brug fallbacken.
+    // best-effort: ERR_MODULE_NOT_FOUND (#5169 ikke merget endnu) — eller enhver
+    // anden indlaesningsfejl. Begge betyder det samme her: brug fallbacken. En
+    // capture ville fyre ved HVERT boot saa laenge #5169 ikke er merget, altsaa
+    // stoej om en tilstand vi allerede kender og har et defineret svar paa.
     raceDayTargetModuleCache = null;
   }
   return raceDayTargetModuleCache;

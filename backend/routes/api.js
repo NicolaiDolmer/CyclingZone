@@ -10006,8 +10006,9 @@ router.get("/training/today-status", requireAuth, async (req, res) => {
     const windowOpen = trainingWindowOpen(new Date());
     let close = { closed: false, reason: "before_window", gameDays: [] };
     if (windowOpen) {
-      const { data: season } = await supabase
+      const { data: season, error: seasonError } = await supabase
         .from("seasons").select("id").eq("status", "active").maybeSingle();
+      if (seasonError) return res.status(500).json({ error: seasonError.message });
       close = season?.id
         ? await resolveDayCloseStatus({
           supabase, seasonId: season.id, now: new Date(),

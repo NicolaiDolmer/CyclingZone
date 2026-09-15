@@ -246,6 +246,9 @@ export async function resolveDayCloseStatus({ supabase, seasonId, now = new Date
 
     const dayStart = copenhagenMidnightUTC(now);
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    // pagination-safe: afgraenset til ÉT dansk kalenderdoegn, og naar `divisionId`
+    // er sat endda til ÉN division. D1 koerer 5 slots/dag, saa raekkerne er i
+    // titals-, ikke tusindtals-omraadet (PostgREST's loft er 1000).
     const { data: stageRows, error: stageError } = await supabase
       .from("race_stage_schedule")
       .select("race_id, stage_number, game_day, scheduled_at")
@@ -264,6 +267,9 @@ export async function resolveDayCloseStatus({ supabase, seasonId, now = new Date
     }
     return { closed: true, reason: "closed", gameDays, pending: 0 };
   } catch {
+    // best-effort: en netvaerks-/synkron fejl maa ALDRIG kunne AABNE knappen eller
+    // sweepen. En ukendt tilstand svarer "ikke lukket"; naeste cron-tick (5 min)
+    // spoerger igen. Fejlen er derfor selv-helbredende og ikke Sentry-vaerdig.
     return { ...empty, reason: "exception" };
   }
 }
@@ -372,7 +378,10 @@ export async function runTrainingDayCloseSweep({
       logger.error?.(`  ⚠️ Traenings-lukning: ${pending.length} etape(r) stadig aabne efter kl. ${MAX_WAIT_HOUR} — koerer alligevel (alarm sendt)`);
       try {
         await onAlarm?.(err, { tickDate, pending });
-      } catch { /* en fejlende alarm maa aldrig vaelte sweepen */ }
+      } catch {
+        // best-effort: en fejlende alarm (Sentry nede, DNS-fejl) maa ALDRIG vaelte
+        // sweepen — dagens traening er vigtigere end notifikationen om at den er sen.
+      }
     }
 
     // ── Hold ──────────────────────────────────────────────────────────────────
@@ -395,6 +404,11 @@ export async function runTrainingDayCloseSweep({
     // kalenderdags-noegle for de division-loese AI-hold.
     const [raceDayRunsRes, legacyRunsRes] = await Promise.all([
       todaysGameDays.length
+        // schema-columns-ok: `game_day`/`season_id` tilfoejes af database/
+        // 2026-09-14-4846-training-tick-game-day.sql og `squad` af database/
+        // 2026-09-15-4847-training-day-close-trigger.sql i denne PR. Snapshottet er
+        // fra 10/9 og kender dem derfor ikke endnu (refresh kraever prod-adgang og
+        // koeres post-merge af ejer/orkestrator).
         ? supabase
           .from("training_day_runs")
           .select("team_id, game_day, squad")
@@ -447,6 +461,11 @@ export async function runTrainingDayCloseSweep({
           if (result?.alreadyRan) alreadyRan += 1;
           else swept += 1;
         } catch (err) {
+          // best-effort PR. HOLD: ét holds fejl maa aldrig stoppe de oevrige 361
+          // (samme per-team-isolation som trainingSweep.js). Fejlen sluges IKKE —
+          // den taelles i `failed` og returneres i `failures`, og cron.js laver ÉN
+          // aggregeret sentryCapture pr. tick af dem (#2389 A2-moenstret). En
+          // capture pr. hold ville give 362 Sentry-issues af én systemisk aarsag.
           failed += 1;
           failures.push({ teamId: item.teamId, gameDay: item.gameDay, message: err.message });
           logger.error?.(`  ❌ Traenings-lukning fejlede for hold ${item.teamId} (loebsdag ${item.gameDay}):`, err.message);
