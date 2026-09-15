@@ -50,6 +50,8 @@ Verificeret 15/9 på `database/2026-09-15-5268-mental-abilities.sql` — den er 
 
 For en MENTAL evne: giv den sin egen prior (profil + deterministisk, centreret støj salted pr. `(rytter, evne)`) og lad være med at bygge den på alder eller på en anden afledt evne — det var præcis rodårsagen i #3668. Konstanterne hører i `MENTAL_PRIOR`, ikke spredt i formlerne.
 
+**Undtagelsen er dokumenteret og snæver:** `leadership` BRUGER alder, fordi lederskab pr. design er lavt hos unge og topper sent (GDD D-030, spec L1). Vægten er bevidst lille — et tungt alders-led er netop den fejl taktik havde, og gaten (fødsels-median/p90 i samme spænd som `descending`/`positioning`) fælder det. Vil din nye evne også bruge alder, skal begrundelsen stå i en ejer-besluttet spec, ikke i en kommentar, og tallet skal måles mod gaten før merge. Se `docs/PROGRESSION_RULES.md` §1.1.
+
 ## 4. Plads i mindst én visnings-opskrift
 
 `backend/lib/weights/displayRecipes.js`. **Dette er ikke valgfrit** — vagt 1 fejler bygningen hvis en registry-evne ikke tæller nogen steder.

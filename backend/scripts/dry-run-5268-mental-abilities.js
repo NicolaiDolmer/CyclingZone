@@ -28,8 +28,12 @@
 //
 // ── DE TO VARIANTER ─────────────────────────────────────────────────────────
 // Referencen er formel-sandheden, men den er svær at forklare en spiller. Begge
-// varianter rammer PRÆCIS samme samlede sænkning som referencen (kalibreret på
-// data, ikke gættet) og adskiller sig kun i HVEM der betaler:
+// varianters procent-sats er LØST mod referencens samlede sænkning (kalibreret på
+// data, ikke gættet), ikke valgt — men den anvendes pr. rytter med en afrunding og
+// en clamp ved 1, så den faktiske sum lander TÆT PÅ referencens, ikke eksakt på
+// den. Derfor rapporterer dry-run altid sum før/efter pr. evne: det er de MÅLTE
+// tal der er go-kortets grundlag, aldrig en lovet procent. De to varianter
+// adskiller sig kun i HVEM der betaler:
 //
 //   V1  én flad procent pr. evne for hele bestanden.
 //       "Alle mistede 31 % af deres taktik."  Enkel at sige, men en 17-årig
@@ -167,8 +171,13 @@ export function referencePlan(rows, asOfYear = CALIBRATION.asOfYear) {
 
 // ── Trin 2: kalibrér variantens procenter mod referencens samlede sænkning ──
 // Procenten er IKKE valgt, den er LØST: for hver gruppe (hele bestanden i V1, ét
-// aldersbånd i V2) findes den p der flytter præcis lige så mange point som
+// aldersbånd i V2) findes den p der ville flytte lige så mange point som
 // referencen gjorde i den gruppe. Ingen håndsat konstant, intet at tune.
+//
+// Satsen er kontinuert, anvendelsen er heltallig: `round(current × (1 − p))` pr.
+// rytter plus clamp ved 1 gør den faktiske sum en smule anderledes end referencens
+// (afrunding kan gå begge veje, clampen kun én). Afvigelsen er lille og MÅLT — se
+// `summarise().sums` — men den er der, og ingen tekst må love andet.
 export function calibrateRates(plan, variant) {
   const groupKey = (entry) => (variant === "v1" ? "all" : entry.band);
   const rates = {};
@@ -207,15 +216,21 @@ export function applyVariant(plan, variant) {
     const denom = baseTw + baseLd;
     const shareLd = clamp(denom > 0 ? baseLd / denom : 0.5, SHARE_CLAMP.min, SHARE_CLAMP.max);
 
-    let teamwork = clamp(round(baseTw + (1 - shareLd) * lost), 1, 99);
-    let leadership = clamp(round(baseLd + shareLd * lost), 1, 99);
+    // HELTALS-split, ikke to uafhængige afrundinger: `round(a) + round(b)` kan
+    // give ét point MERE end `lost` (lost 1, share 0,5 ⇒ 1 + 1 = 2). Det ville
+    // opfinde evne-masse ud af ingenting. Her rundes kun det ene ben, og det
+    // andet får resten, så summen er `lost` pr. konstruktion.
+    const leadershipGain = round(shareLd * lost);
+    const teamworkGain = lost - leadershipGain;
+    let teamwork = clamp(baseTw + teamworkGain, 1, 99);
+    let leadership = clamp(baseLd + leadershipGain, 1, 99);
     // Spild over i den anden evne hvis en af dem ramte 99, så massen bliver i
     // rytteren i stedet for at forsvinde i en clamp.
     let placed = (teamwork - baseTw) + (leadership - baseLd);
     if (placed < lost) {
       const spill = lost - placed;
-      if (teamwork < 99) teamwork = clamp(teamwork + round(spill), 1, 99);
-      else if (leadership < 99) leadership = clamp(leadership + round(spill), 1, 99);
+      if (teamwork < 99) teamwork = clamp(teamwork + spill, 1, 99);
+      else if (leadership < 99) leadership = clamp(leadership + spill, 1, 99);
       placed = (teamwork - baseTw) + (leadership - baseLd);
     }
 
@@ -316,7 +331,8 @@ const cell = (v) => (v == null ? "-" : String(v));
 
 export function renderSummary(summary, sampleNames = []) {
   const lines = [];
-  lines.push(`### Variant ${summary.variant.toUpperCase()}`);
+  // `variant` er null når planen er tom (summarise læser den af første post).
+  lines.push(`### Variant ${(summary.variant ?? "—").toUpperCase()}`);
   lines.push("");
   lines.push(`Ryttere i alt: ${summary.n} · ryttere der mister point: ${summary.touched}`);
   lines.push(`Masse før: ${summary.totalMassBefore} · efter: ${summary.totalMassAfter} `
@@ -399,6 +415,15 @@ export function readOnlyFetch(input, init = {}) {
   return fetch(input, init);
 }
 
+// Postgres 42P01 = undefined_table; PostgREST svarer PGRST205 når skema-cachen
+// ikke kender tabellen. Alt andet er en RIGTIG fejl og skal op.
+export function isMissingTableError(err) {
+  const code = err?.code ?? err?.cause?.code;
+  if (code === "42P01" || code === "PGRST205") return true;
+  const msg = String(err?.message ?? "");
+  return /does not exist|could not find the table/i.test(msg) && /relation|table|schema cache/i.test(msg);
+}
+
 export async function loadRows(supabase) {
   const riders = await fetchAllRows(() => supabase.from("riders")
     .select("id, firstname, lastname, birthdate, potentiale, generation_tag, team_id, "
@@ -417,7 +442,13 @@ export async function loadRows(supabase) {
     const already = await fetchAllRows(() => supabase.from(BACKUP_TABLE)
       .select("rider_id").order("rider_id"));
     migrated = new Set(already.map((r) => r.rider_id));
-  } catch {
+  } catch (err) {
+    // KUN "tabellen findes ikke" må blive til en tom mængde. Enhver anden fejl
+    // (auth, netværk, timeout, rate limit) ville ellers stille nulstille
+    // idempotens-markøren, og en `--apply` ville sænke allerede migrerede
+    // ryttere ANDEN gang. Det er den dyreste fejl scriptet kan lave, så den er
+    // eksplicit fremfor fail-open.
+    if (!isMissingTableError(err)) throw err;
     console.log(`(${BACKUP_TABLE} findes ikke endnu — migrationen er ikke kørt. Ingen ryttere springes over.)`);
   }
   return selectRows(riders, abilityRows, migrated);
@@ -447,31 +478,46 @@ export function selectRows(riders, abilityRows, migrated = new Set()) {
 // Apply: backup FØRST (den er idempotens-markøren), derefter opdateringen.
 // Rækkefølgen er ikke kosmetisk — en afbrudt kørsel skal efterlade en rytter
 // enten urørt eller med et før-billede, aldrig opdateret uden backup.
-export async function applyPlan(supabase, applied, variant, { chunkSize = 200 } = {}) {
+// PR. RYTTER, ikke pr. chunk. Der findes ingen transaktion over to PostgREST-kald,
+// så vinduet mellem backup og opdatering kan ikke lukkes helt herfra — men det kan
+// gøres ÉN rytter bredt i stedet for 200. Tog vi backup for hele chunken først og
+// en opdatering derefter fejlede, ville op til 199 urørte ryttere stå med en
+// backup-række, og markøren ville få næste kørsel til at springe dem over: en
+// permanent halv migration som ingen gentagelse kan hele.
+//
+// Her er sekvensen pr. rytter: skriv backup → opdatér → ved fejl, fjern backuppen
+// igen og kast. Restrisikoen er et crash i selve fejl-stien (proces dræbt mellem
+// en mislykket opdatering og oprydningen), altså præcis ÉN rytter, og den er
+// synlig: hans backup-række findes, men hans evner er uændrede.
+// Den fulde løsning er en service-role-RPC der gør begge dele i én transaktion —
+// den hører til i apply-sporet med ejer-go, ikke her, hvor intet skrives.
+export async function applyPlan(supabase, applied, variant) {
   let written = 0;
-  for (let i = 0; i < applied.length; i += chunkSize) {
-    const chunk = applied.slice(i, i + chunkSize);
-    const backup = chunk.map((e) => ({
-      rider_id: e.riderId,
-      old_tactics: e.current.tactics,
-      old_aggression: e.current.aggression,
-      old_teamwork: e.abilities.teamwork ?? null,
-      old_leadership: e.abilities.leadership ?? null,
-      variant,
-    }));
+  for (const e of applied) {
     const { error: backupError } = await supabase.from(BACKUP_TABLE)
-      .upsert(backup, { onConflict: "rider_id", ignoreDuplicates: true });
+      .upsert([{
+        rider_id: e.riderId,
+        old_tactics: e.current.tactics,
+        old_aggression: e.current.aggression,
+        old_teamwork: e.abilities.teamwork ?? null,
+        old_leadership: e.abilities.leadership ?? null,
+        variant,
+      }], { onConflict: "rider_id", ignoreDuplicates: true });
     if (backupError) throw backupError;
-    for (const e of chunk) {
-      const { error } = await supabase.from("rider_derived_abilities")
-        .update({
-          tactics: e.next.tactics, aggression: e.next.aggression,
-          teamwork: e.next.teamwork, leadership: e.next.leadership,
-        })
-        .eq("rider_id", e.riderId);
-      if (error) throw error;
-      written += 1;
+
+    const { error } = await supabase.from("rider_derived_abilities")
+      .update({
+        tactics: e.next.tactics, aggression: e.next.aggression,
+        teamwork: e.next.teamwork, leadership: e.next.leadership,
+      })
+      .eq("rider_id", e.riderId);
+    if (error) {
+      // Fjern markøren igen, ellers ville en gentagelse springe en rytter over
+      // der aldrig blev opdateret.
+      await supabase.from(BACKUP_TABLE).delete().eq("rider_id", e.riderId);
+      throw error;
     }
+    written += 1;
   }
   return written;
 }
@@ -502,8 +548,13 @@ async function main() {
     // yderpunkterne alene ville give et forkert indtryk af hvad en typisk rytter
     // oplever (rapportens §3.3 valgte også en blanding af profiler).
     const sorted = [...applied].sort((a, b) => a.lost - b.lost);
-    const named = Array.from({ length: sample }, (_, i) =>
-      sorted[Math.min(sorted.length - 1, Math.round((i / Math.max(1, sample - 1)) * (sorted.length - 1)))]);
+    // Tom plan (alle allerede migreret) ⇒ ingen eksempler. Uden guarden ville
+    // Array.from fylde `undefined` ind og rapporten crashe på e.name, altså
+    // fejle netop når kørslen korrekt er et no-op.
+    const named = sorted.length
+      ? Array.from({ length: sample }, (_, i) =>
+        sorted[Math.min(sorted.length - 1, Math.round((i / Math.max(1, sample - 1)) * (sorted.length - 1)))])
+      : [];
     results[v] = applied;
     console.log("");
     console.log(renderSummary(summarise(applied), named));

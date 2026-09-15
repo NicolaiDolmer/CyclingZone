@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 
 import {
   parseArgs, readOnlyFetch, referencePlan, applyVariant, calibrateRates, summarise,
-  legacyMentalBirthValues, ageOf, bandOf, percentile, VARIANTS, SHARE_CLAMP, selectRows,
+  legacyMentalBirthValues, ageOf, bandOf, percentile, VARIANTS, SHARE_CLAMP, selectRows, isMissingTableError,
 } from "./dry-run-5268-mental-abilities.js";
 import { CALIBRATION } from "../lib/abilityDerivation.js";
 
@@ -163,6 +163,30 @@ test("#5268: ryttere uden evne-række eller uden taktik/aggression springes over
     selectRows(riders, [{ rider_id: riders[0].id, tactics: null, aggression: 20 }], new Set()).rows.length,
     0,
   );
+});
+
+test("#5268: fordelingen opfinder aldrig et ekstra point (heltals-split)", () => {
+  // To uafhængige afrundinger kunne give lost+1: lost 1 og share 0,5 ⇒ 1 + 1.
+  // Det ville skabe evne-masse ud af ingenting — modsat massetabet er det ikke
+  // et brud på ejer-kravet, men det er stadig et tal ingen kan gøre rede for.
+  const applied = applyVariant(referencePlan(makeRows(600)), "v2");
+  for (const e of applied) {
+    const placed = (e.next.teamwork - e.newBirth.teamwork) + (e.next.leadership - e.newBirth.leadership);
+    assert.ok(placed <= e.lost,
+      `${e.riderId}: fordelte ${placed} point men mistede kun ${e.lost}`);
+  }
+});
+
+test("#5268: kun 'tabellen findes ikke' må læses som en tom backup-tabel", () => {
+  // Fail-open på en netværks- eller auth-fejl ville nulstille idempotens-markøren
+  // og sænke allerede migrerede ryttere anden gang. Det er kørslens dyreste fejl.
+  assert.equal(isMissingTableError({ code: "42P01" }), true);
+  assert.equal(isMissingTableError({ code: "PGRST205" }), true);
+  assert.equal(isMissingTableError({ message: 'relation "x" does not exist' }), true);
+  assert.equal(isMissingTableError({ code: "PGRST301", message: "JWT expired" }), false);
+  assert.equal(isMissingTableError({ message: "fetch failed" }), false);
+  assert.equal(isMissingTableError({ message: "canceling statement due to statement timeout" }), false);
+  assert.equal(isMissingTableError(new Error("permission denied for table")), false);
 });
 
 // ── 4. Gates på selve kørslen ───────────────────────────────────────────────

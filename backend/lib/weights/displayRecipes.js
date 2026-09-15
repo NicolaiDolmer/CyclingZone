@@ -56,6 +56,18 @@
 //                (sprint-toget kører på hans kald).
 // Vagt 3 (ingen opskrift må være delmængde af en anden) er verificeret efter
 // tilføjelsen — de fire udvidede sæt skaber ingen ny delmængde-relation.
+//
+// ⚠ KENDT MELLEMTILSTAND mellem merge og den ejer-gatede point-flytning:
+// `ratingForRole` springer en NULL evne over i BÅDE tæller og nævner. En
+// eksisterende rytter (teamwork/leadership = NULL indtil migrationen kører) får
+// derfor de fire berørte roller regnet på den GAMLE nævner — altså præcis sit
+// nuværende tal — mens en nyfødt eller re-derived rytter får den nye. To ryttere
+// på samme skærm kan i det vindue være regnet med hver sin opskrift-bredde.
+// Det er den direkte pris for ejerens rækkefølge A ("nye evner som data først,
+// så ÉN migration, så go-kort", spec §4) og er bevidst valgt frem for at gate
+// vægtene bag et migrations-flag: forskellen er ét ben ud af 8-9 i opskriften,
+// og vinduet lukkes af den migration der allerede er skrevet. Vagt 1 tillader
+// desuden ikke at evnen står uden for enhver opskrift.
 export const DISPLAY_RECIPES = Object.freeze([
   { key: "sprinter", weights: Object.freeze({ sprint: 4, acceleration: 3, positioning: 2, flat: 2, durability: 1, leadership: 1 }) },
   { key: "tt", weights: Object.freeze({ time_trial: 5, tempo: 2, endurance: 1, durability: 1, positioning: 1 }) },
