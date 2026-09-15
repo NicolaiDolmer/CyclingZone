@@ -304,8 +304,8 @@ features:
     state: building
     ssot: docs/TRAINING_RULES.md
     epic: 4846
-    verified: 2026-09-14
-    note: Nøgle/mutex/seeds/historik/rate bygget bag app_config-nøglen training_tick_per_race_day (default off); udløseren "løbsdagen lukker" mangler.
+    verified: 2026-09-15
+    note: Fundament merget 15/9 bag flag (off); design låst §13.3; B4-udløser mangler.
 
   - id: season-fatigue-reset
     area: training
@@ -597,7 +597,7 @@ features:
     ssot: docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md
     epic: 4616
     verified: 2026-09-14
-    note: welcome + day1 = "on" i prod siden 8/9 18:07 (ejer-go, #2853), race_digest stadig "off". Webhook afventer RESEND_WEBHOOK_SECRET (ejer). Win-back #2760 bygget 14/9 (flag false, 92 i segment, ejer-go 21-24/9).
+    note: welcome + day1 on siden 8/9 (#2853), race_digest off; webhook afventer RESEND_WEBHOOK_SECRET (ejer); win-back #2760 bygget (flag false, ejer-go 21-24/9).
 
   - id: in-app-survey
     area: comms

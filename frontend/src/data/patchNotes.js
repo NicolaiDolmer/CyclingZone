@@ -1,5 +1,24 @@
 export const PATCHES = [
   {
+    "version": "7.275",
+    "date": "2026-09-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "topic": "Transfers",
+        "en": {
+          "title": "Report a trade",
+          "body": "Every completed trade in a team's trade history now has a Report button. The report carries the trade itself, so you do not have to describe it. The contact form also has a new Fair play category."
+        },
+        "da": {
+          "title": "Anmeld en handel",
+          "body": "Hver gennemført handel i et holds handelshistorik har nu knappen Anmeld. Anmeldelsen bærer selve handlen, så du behøver ikke beskrive den. Kontaktformularen har også fået kategorien Fair play."
+        },
+        "refs": [4346, 5214]
+      }
+    ]
+  },
+  {
     "version": "7.274",
     "date": "2026-09-14",
     "label": "Beta",

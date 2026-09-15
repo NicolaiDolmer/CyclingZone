@@ -1,48 +1,44 @@
-# Session-prompt til 15/9 (skrevet ved close-out 14/9 sent aften)
+# Session-prompt til 16/9 (skrevet ved close-out 15/9 formiddag)
 
-> Kopiér blokken herunder som første besked i en ny Claude Code-session i `C:\Dev\CyclingZone`. Aftenbølgen 14/9 (5 spor, 6 merges, 1 CI-fix) er lukket.
+> Kopiér blokken herunder som første besked i en ny Claude Code-session i `C:\Dev\CyclingZone`. Sessionen 15/9 (kort, design + PR-gennemgang + audit) er lukket.
 
 ---
 
-Trin 0: Forrige session (14/9 sen aften) er lukket. Læs `docs/NOW.md`. Ignorér "Working agent"-linjen hvis den ikke siger "Ingen aktiv session". Kør `pwsh -File scripts/close-out-cleanup.ps1` (dry-run) og tjek at `.claude/run/wave-active.json` ikke findes; findes den, så slet den før noget andet.
+Trin 0: Forrige session (15/9 formiddag) er lukket. Læs `docs/NOW.md`. Ignorér "Working agent"-linjen hvis den ikke siger "Ingen aktiv session". Kør `pwsh -File scripts/close-out-cleanup.ps1` (dry-run) og tjek at `.claude/run/wave-active.json` ikke findes.
 
-Du er orkestrator (Fable). Du udfører aldrig selv byggearbejde; workers bygger (model eksplicit: opus til motor/perf/undersøgelse, sonnet til afgrænsede fixes og UI). Følg start-rutinen i CLAUDE.md.
+Du er orkestrator (Fable). Du udfører aldrig selv byggearbejde; workers bygger (model eksplicit: opus til motor/perf/undersøgelse, sonnet til afgrænsede fixes og UI). Følg start-rutinen i CLAUDE.md. **Ét delpunkt pr. kort** (lært 15/9: et kort med tre nummererede punkter blev afvist). **Læs issuets seneste kommentarer FØR et beslutningskort** (15/9: #4633 var allerede besluttet 14/9, NOW.md var stale).
 
-**Dagens opgaver, i rækkefølge. Én beslutning pr. kort. Aldrig go-kort uden skærmbillede for UI.**
+**Dagens opgaver, i rækkefølge.**
 
-1. **Træningsdesignet** (#5205, træning pr. løbsdag). Jeg udskød svaret 14/9 aften. Send mig billedet og fakta-arket igen ved start (filerne ligger i forrige sessions scratchpad; gen-generér hvis de er væk: READ-ONLY opus, samme brief) og stil retningsspørgsmålet som første kort. Derefter de tre åbne spørgsmål ÉT ad gangen: A) #4633 formtræning (a/b/c, #5238 venter på det), B) skadesvarighed løbsdage/kalenderdage, C) ugeplanens rytme på løbsdage. Først når retningen er godkendt: planlæg B4 (udløser "løbsdagen lukker") → B3 (fjern "Train today +25 %") → B6 (læse-flader + hjælp) som egne spor. #5236/#5237/#5238 bygges først når jeg siger ja.
+1. **Post-verify #5258** (main grøn igen + migration #4846): `schema_migrations` har `database/2026-09-14-4846-training-tick-game-day.sql`, 2 partielle unikke indexe på `training_day_runs`, tabellen `rider_ability_race_day_history`, `app_config.training_tick_per_race_day = off`, CI på main grøn. Rød? Undersøg før noget andet.
 
-2. **Mine tekster til #5211 (Discord-velkomst i indbakken, PR #5211) og #5214 (anmeld handel, PR #5214).** Jeg skriver EN + DA i chatten; sonnet-worker sætter dem ind ordret, CI, go-kort med skærmbillede. Begge PR'er har grøn CI pr. 14/9 aften.
+2. **Bølge 1 via wave.js (maks 4 laner), træningens byggeplan efter ejer-beslutningerne 15/9** (`docs/TRAINING_RULES.md` §13.3, #4850 kommentar 15/9):
+   - **#5169 → 140**: `SEASON_RACE_DAY_TARGET[4] = 140`, antal løb pr. division URØRT, tomme-løbsdags-budget pr. kalenderdag hævet til 5; dry-run-tabel i PR-body; derefter go-kort (ikke UI, ejer-go på tal). Opus.
+   - **B4 udløser** (#4847-området): ÉN samlet sweep for alle dagens løbsdage, tidligst kl. 20 dansk tid og efter dagens sidste finalization; frivillig knap "Kør dagens træning nu" uden bonus (åbner når dagens sidste løb er lukket); deleren kalibreret til 140; G6-kapacitetstest (skrivetryk ≈ 5×) som krav i PR'en. Opus, TIER FULL.
+   - **Skader i løbsdage** (beslutning 7): `injured_until` i løbsdage, UI "ca. <dato>". Sonnet.
+   - **Program pr. løbsdag** (beslutning 8): `training_week_plans` får slot-dimension (7 × 5 = 35 celler), ugedagens session som default i alle 5 slots, migration af 27 holds data; UI-grid mobil-først (D-047). Mockup FØRST, go-kort med billede før byg. Sonnet.
+   Efter disse: B3 (fjern "Train today +25 %"), B6 (læse-flader + hjælp, træningssiden bygges ÉN gang; PR #4736 lukket 15/9, branchen bevaret), #5236/#5237/#5238 når ejeren siger ja.
 
-3. **Spørgeskema #5121:** fakta-arket ligger på issuet. Jeg skriver forum-opslaget selv; luk #5121 når jeg siger det er postet.
+3. **#4620 U23-kalender ind i Bane 1** (ejer 15/9: "byg med i S4-cutover"). Læs `docs/YOUTH_RULES.md` §2.3 + `docs/superpowers/specs/2026-09-02-akademi-tre-trupper-design.md` §6. Egen slice-spec FØR build; én løbsdags-akse pr. trup, samme 140-mål. Første kort til ejeren: hvad viger i Bane 1 hvis det ikke når det (bestyrelses-flip #4857 eller cutover-pakken)? Ejeren rangerer, Claude skærer aldrig selv.
 
-4. **Assistent-måling nr. 2** (#5136, late_fill 12 t beholdt): efter 11:00-løbene, READ-ONLY: fyldte hold pr. sweep-kørsel, selvrettelser før start, klager, Sentry-fejl fra raceEntryGeneratorSweep. Ét tal-kort. Opfølger #5246 (log-tabel + auto-flag) kan gå i dagens bølge som lille spor.
+4. **Beta-adgang #5259** (ejer-ønske 15/9, høj prioritet): sonnet-lane, halv dag. Skærmbilleder admin + profil før go-kort.
 
-5. **Bølge 2 via wave.js**, maks 4 laner, små først: #5246 (sonnet, lille) · #5124 resten af mobiltabellerne (PR #5235 lever med WIP; træningsside-tests røde: 3762-day-panel, onboarding-tour, training-season-receipt) · #5177 del i to: flag-ikon-delen fra PR #5240 som egen grøn PR først, sprog-lazy-load (en-XA-testen) som eget spor · #5242 PR 2 (214 kaldsteder i 74 filer, sonnet, TIER FULL) · #5249 forsiden statisk (mål TTFB først, read-only, tal i issuet før byg). #5250 (ægte session-cookie) er opus + FULL og venter til #5249 er inde.
+5. **Resterende PR'er:** #5211 (Discord-velkomst: CodeRabbit CLI-review + FEATURE_REGISTRY → go-kort m. skærmbillede) · #5235 (mobiltabeller: PR'ens egne skærmbilleder viser overlap i rytter-cellen på træning + transfers, fix-spor før go-kort) · #5240 (split i to: flag-ikoner først, sprog-lazy-load som eget spor) · #3512 (ejeren vil have en EGEN designsession med spørgsmål ét ad gangen; ikke i denne session medmindre han beder om det).
 
-6. **Win-back #2760:** når jeg har skrevet mailens prosa (EN først, DA under) her i chatten: sonnet sætter den ind i `buildWinbackEmail`, CI, go-kort med rendret mail (skærmbillede). Udsendelse ca. 21-24/9 kræver mit go med dry-run-tal foran (92 i segmentet 14/9).
+6. **Global handelsliste #5257** (ejer 15/9): Bane 2, efter beta-adgang.
 
-7. **Post-verify på 14/9-aftenens merges:** #5244 (event `onboarding_step2_one_click` i player_events, ingen Sentry-fejl på dashboardet), #5248 apiFetch PR 1 (ingen nye 401-loops, ingen Sentry-fejl på de fem sider), #5252 (Deploy verify grøn på main), #5239 forside (anonym / = marketing, med cookie = app; ingen Sentry-fejl fra middleware).
+7. **Sentry-tjek kl. 9 og 15**; CYCLINGZONE-56 måles på døgn uden bølge (15/9 havde ingen bølge, kun 4 merges).
 
-8. **Sentry-tjek kl. 9 og kl. 15:** nye issues siden 14/9 kl. 22. CYCLINGZONE-56 måles på et døgn uden aftenbølge (14/9 aften HAVDE bølge, så vinduet starter 15/9 kl. 00).
+8. **Patch note 7.276** ved close-out for dagens merges (7.275 dækker 15/9: anmeld handel).
 
-9. **Search Console:** kun hvis `GSC_SERVICE_ACCOUNT_JSON` nu ligger i Infisical dev: `infisical run --env=dev -- node scripts/gsc-report.mjs --days=28`.
+9. **Close-out:** NOW.md (Next action + Working agent = ingen), MASTERPLAN, FEATURE_REGISTRY ved flag-flip, patch note, done-flips PR-for-PR, token-hygiejne, close-out-cleanup.ps1, prompt til 17/9.
 
-10. **Railway:** MCP'en svarede "Unauthorized" 14/9; jeg kører `railway login` selv. Tjek om den svarer igen.
+**Regler jeg holder fast i (lært 14-15/9):**
+- Merge-køen: en PR grøn på sin egen base kan være rød mod main (ratchet fra #5248 fældede #5214 15/9). Før merge: `gh pr update-branch N` hvis branchen er bag main, og vent på ny CI. Postmortem: `.claude/learnings/2026-09-15-ratchet-stale-base-og-migration-name-array.md`.
+- Migration-PR'er: post-verify STRAKS efter merge (auto-migrate fejlede 15/9 på `name[] = text[]`; fail-safe holdt).
+- Reviewer-verdikt læses KUN fra workflow-journalens `result.verdict`.
+- Founder-prosa til spillere skriver JEG. Priser spillerne ser er inkl. moms; mine tal ekskl. moms.
+- Undersøgelsesspor: 60 min, "bekræftet + fix-plan" eller "afvist + bevis".
+- Svar på hver besked fra mig med det samme, også midt i en bølge.
 
-11. **Patch note 7.275** for dagens merges ved close-out (7.274 dækker 14/9 aften).
-
-12. **Close-out:** NOW.md (Next action + Working agent = ingen), MASTERPLAN, FEATURE_REGISTRY ved flag-flip, patch note, done-flips PR-for-PR, token-hygiejne, close-out-cleanup.ps1, og en prompt til 17/9.
-
-**Regler jeg holder fast i (lært 14/9, begge sessioner):**
-- Reviewer-verdikt læses KUN fra workflow-journalens `result.verdict`. Ret-trin uden ny review = sig "ingen re-review" og kør en READ-ONLY re-review før go-kort (virkede 14/9 aften på #5244).
-- Backend-/ops-fixes uden UI med reviewer GODKENDT og grøn CI: spørg mig om merge uden kort. Ved BEMÆRKNINGER: nævn dem i kortet.
-- Founder-prosa til spillere skriver JEG. Du leverer fakta-punkter og markerer AI-linjer som "EJER SKAL GODKENDE".
-- Priser spillerne ser er inkl. moms; tal jeg ser er ekskl. moms.
-- Undersøgelsesspor: 60 min, "bekræftet + fix-plan" eller "afvist + bevis". Stop sporet når det har svaret.
-- Merge-køen én ad gangen; `gh pr ready N` FØR køen; køen stopper selv på rød Deploy verify: undersøg FØR næste merge (14/9 aften: rød pga. #5239, ikke pga. den PR der lige var merget). Flip issue til done straks efter merge.
-- Enhver ændring af hvad anonym `/` serverer skal køre `node scripts/check-cdn-cache-headers.mjs` lokalt før merge (postmortem 14/9).
-- Svar på hver besked fra mig med det samme, også midt i en bølge. Én beslutning pr. kort med tallene INDE i kortet. Når jeg spørger "hvad gør denne opgave?", forklar i klar tekst FØR du spørger igen.
-- Bane 1 (kalender #5169) rører du ikke før jeg har set designet.
-
-Start med trin 0, læs NOW.md, og giv mig træningsdesignet som første kort.
+Start med trin 0, læs NOW.md, og giv mig post-verify-tallene fra trin 1 som første besked.
