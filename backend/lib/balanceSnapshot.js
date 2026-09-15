@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 
 import { generateFictionalRiders, makeRng } from "./fictionalRiderGenerator.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { isBornFromPriors, deriveBirthAbilities } from "./riderBirthPriors.js";
 import { computeRiderTypes, RIDER_TYPES } from "./riderTypes.js";
 import { predictBaseValue, riderOverall } from "./riderValuation.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
@@ -125,7 +126,13 @@ export function buildBalanceSnapshot(options = {}) {
   const { riders: raw } = generateFictionalRiders({ count, seed, referenceYear });
   const field = raw.map((r, i) => {
     const id = `r${i}`;
-    const abilities = deriveAbilities({}, { ...r, id }, { asOfYear: referenceYear });
+    // #5269: spejler deriveForRiderIds' fødsels-forgrening. Snapshottet skal
+    // måle den population spillet FAKTISK producerer — ikke en PCM-fallback der
+    // ville give hver eneste nyfødt evne 1.
+    const riderRow = { ...r, id, archetype_draw: r._meta?.archetypeDraw ?? null };
+    const abilities = isBornFromPriors(riderRow)
+      ? deriveBirthAbilities(riderRow, { age: r._meta?.age ?? null })
+      : deriveAbilities({}, riderRow, { asOfYear: referenceYear });
     const derived = computeRiderTypes(abilities, baseline).primary?.key ?? "?";
     return {
       id,
