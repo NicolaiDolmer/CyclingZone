@@ -21,6 +21,7 @@ import { ageForSeason, seasonReferenceYear } from "./riderSeasonAge.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { ABILITY_REGISTRY } from "./abilityRegistry.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 
 // ── In-memory riders+teams-mock til single-team-allokering (#1560/#1563) ───────
@@ -271,7 +272,14 @@ test("buildWeakStarterPool: alle stats clampet til vinduet, pcm_id null, korrekt
 // give svage ryttere. Fanger en fremtidig generator-/kalibrerings-ændring der ved
 // et uheld gør start-puljen stærk igen. Tærskel 25 = ejer-målet "ingen over ~25".
 test("svag start-pulje: afledte styrke-evner forbliver svage (≤25) (#1487 forward-guard)", () => {
-  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => k !== "tactics" && k !== "aggression");
+  // De MENTALE evner er undtaget, og det er ikke en bekvemmelighed: de foedes af
+  // en egen prior (profil + bred, deterministisk stoej, og for leadership et lille
+  // alders-led), ikke af en enkelt stat. Et stat-vindue siger derfor intet om dem,
+  // og denne gate maaler netop om STYRKE-evnerne foelger stat-klemmen. Foer #5268
+  // stod tactics og aggression navngivet her af samme grund; listen udledes nu af
+  // registret, saa en fremtidig mental evne ikke skal huskes ind i haanden.
+  const MENTAL = new Set(ABILITY_REGISTRY.filter((a) => a.category === "mental").map((a) => a.key));
+  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => !MENTAL.has(k));
   const pool = buildWeakStarterPool({ count: 200, seed: 2026, referenceYear: 2026 });
   let globalMax = 0;
   for (const r of pool) {
@@ -559,7 +567,14 @@ test("#2894/#2902 single-team heal (re-derived): eksisterende TOTAL_SIZE-trup ud
 // svage afledte evner (top ≤25) + trup-styrke i [50,57]. Spejler den eksisterende
 // multi-team forward-guard, men for single-team-seedet (deriveTeamSeed).
 test("#1560 forward-guard: single-team gen-kæde → top-evne ≤25 + stats i [50,57]", () => {
-  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => k !== "tactics" && k !== "aggression");
+  // De MENTALE evner er undtaget, og det er ikke en bekvemmelighed: de foedes af
+  // en egen prior (profil + bred, deterministisk stoej, og for leadership et lille
+  // alders-led), ikke af en enkelt stat. Et stat-vindue siger derfor intet om dem,
+  // og denne gate maaler netop om STYRKE-evnerne foelger stat-klemmen. Foer #5268
+  // stod tactics og aggression navngivet her af samme grund; listen udledes nu af
+  // registret, saa en fremtidig mental evne ikke skal huskes ind i haanden.
+  const MENTAL = new Set(ABILITY_REGISTRY.filter((a) => a.category === "mental").map((a) => a.key));
+  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => !MENTAL.has(k));
   const teamSeed = deriveTeamSeed((2026 + 1487) >>> 0, "fwd-guard-team");
   const pool = buildWeakStarterPool({ count: STARTER_SQUAD.CORE_SIZE, seed: teamSeed, referenceYear: 2026 });
   assert.equal(pool.length, STARTER_SQUAD.CORE_SIZE);

@@ -239,11 +239,17 @@ test("#3570: LØKKEN ER SELVBEKRÆFTENDE — en forkert type cementeres for evig
   //   trin 4     (1,30/1,10/0,95/0,70/0,20) → `baroudeur`, ét skridt væk
   //   15/8, tilbagerullet til trin 3    → `sprinter` igen
   //   trin 7 (16/8, fladt tag 93/80/70/55/25) → `baroudeur` igen
+  //   #5268 (15/9, loft-loft på de mentale evner) → `sprinter` igen
   //
   // Under det flade tag bærer lofterne MINDRE type-signal (magnitude-
   // information er bevidst fjernet — taget må ikke røbe anlægget), så løkken
-  // glider ét skridt væk fra fejl-labelen men finder stadig aldrig hjem. Det er
-  // en accepteret omkostning, fordi forankringen (archetype_draw, testet
+  // glider ét skridt væk fra fejl-labelen men finder stadig aldrig hjem.
+  // #5268 skar baroudeurens `aggression`-tag ned fra signatur-taget til det
+  // mentale loft, og aggression ER i klassifikatorens input — så caps-signalet
+  // for netop baroudeur blev svagere, og fikspunktet gled tilbage til
+  // fejl-labelen selv. Værre, ikke bedre: løkken låser nu på sin egen fejl i
+  // første runde i stedet for ét skridt væk. Det er en accepteret omkostning,
+  // fordi forankringen (archetype_draw, testet
   // nedenfor) er live og løser den i prod. Skulle forankringen nogensinde blive
   // slået fra, er denne løkke igen den defekt #3570 rapporterede.
   //
@@ -262,8 +268,8 @@ test("#3570: LØKKEN ER SELVBEKRÆFTENDE — en forkert type cementeres for evig
     "uden forankring finder rytteren aldrig tilbage til sit anlæg (gc)");
   assert.equal(forkert.primary.key, spor[spor.length - 2],
     "løkken skal stå stille på ET fikspunkt — driver den stadig efter 10 runder, er defekten en anden");
-  assert.equal(forkert.primary.key, "baroudeur",
-    "fikspunktet under trin 7's flade tag — se noten ovenfor");
+  assert.equal(forkert.primary.key, "sprinter",
+    "fikspunktet efter #5268's loft-loft på de mentale evner — se noten ovenfor");
 
   // Med forankring finder han tilbage i FØRSTE runde og bliver der.
   const draw = { primary: "gc", secondary: null, isHybrid: false };
