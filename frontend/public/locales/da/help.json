@@ -1026,8 +1026,8 @@
         "text": "Det er nu usædvanligt. Hver evne har stadig et livstidsloft sat af type og potentiale, men ryttere ankommer ikke længere bare derhen. Hvor tæt en rytter kommer, og på hvilke evner, afgøres af hvordan du træner ham. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder i stedet for at vokse, og det han har er det han beholder. Eller også ligger evnen allerede over hvad hans type og potentiale ville bygge op af sig selv, hvilket sker for ryttere der er båret over fra en tidligere udgave af spillet. Der bliver ikke taget noget fra ham, den stiger bare ikke videre. Hver evne har sin egen linje på træningssiden og på rytterprofilen, og en færdig evne står som færdig hvor de andre viser fremdrift. Tallet ved siden af en evne er altid dens nuværende værdi, aldrig loftet i sig selv, som aldrig vises som et tal noget sted i spillet, og fremgangen aftager naturligt jo tættere rytteren kommer, så en værdi der står stille i nogle dage ikke nødvendigvis betyder at den er færdig."
       },
       "trainToday": {
-        "title": "Træn i dag og +25%-boostet",
-        "text": "Klik 'Træn i dag' én gang om dagen for at køre alle aktive programmer med +25% træningsboost. Springer du knappen over, kører assistenten træningen automatisk efter kl. 22. Du mister aldrig en træningsdag. Kun boostet går tabt, når du ikke klikker."
+        "title": "Træn i dag",
+        "text": "Klik 'Træn i dag' én gang om dagen for at køre alle aktive programmer med det samme. Springer du knappen over, kører assistenten den samme træning automatisk efter kl. 22. Du mister aldrig en træningsdag, og et klik giver dig aldrig mere end at vente."
       },
       "raceDays": {
         "title": "Løbsdage og træning",
@@ -1071,7 +1071,7 @@
       },
       "weeklyRhythm": {
         "title": "Ugentlig rytme",
-        "text": "\"Ugentlig rytme\"-panelet på Trænings-siden lader dig sætte en ønsket intensitet pr. ugedag (mandag til søndag) for hele holdet på én gang. Den styrer kun intensitet, aldrig fokus. Vigtigt: rytmen er en DEFAULT for ryttere der ikke selv har sat en intensitet på deres fokus. Har en rytter selv valgt fokus og intensitet (på sin rytter-række, eller som et sæson-program), vinder rytterens EGEN indstilling altid for netop den rytter, hver dag, også mens en holdrytme er aktiv; rytmen overstyrer aldrig i stilhed en rytter du har sat til Hvile eller Let. Den udfylder kun en mål-intensitet for ryttere du ikke selv har tilpasset. Hver rytters række viser dagens faktiske intensitet plus hvor den kommer fra (\"holdets ugentlige rytme\" eller \"rytterens egen indstilling\"), så intet er skjult. Konsistens-bonussen (+25%) fra \"Træn i dag\" gives stadig kun når du selv klikker; rytmen giver den ikke automatisk."
+        "text": "\"Ugentlig rytme\"-panelet på Trænings-siden lader dig sætte en ønsket intensitet pr. ugedag (mandag til søndag) for hele holdet på én gang. Den styrer kun intensitet, aldrig fokus. Vigtigt: rytmen er en DEFAULT for ryttere der ikke selv har sat en intensitet på deres fokus. Har en rytter selv valgt fokus og intensitet (på sin rytter-række, eller som et sæson-program), vinder rytterens EGEN indstilling altid for netop den rytter, hver dag, også mens en holdrytme er aktiv; rytmen overstyrer aldrig i stilhed en rytter du har sat til Hvile eller Let. Den udfylder kun en mål-intensitet for ryttere du ikke selv har tilpasset. Hver rytters række viser dagens faktiske intensitet plus hvor den kommer fra (\"holdets ugentlige rytme\" eller \"rytterens egen indstilling\"), så intet er skjult. Rytmen kører aldrig selv træningen: den sætter kun en standard-intensitet for dagens pas, uanset om det pas køres af dit eget klik på \"Træn i dag\" eller af assistenten efter kl. 22."
       },
       "individualWeeklyPlan": {
         "title": "Individuel ugeplan pr. rytter",

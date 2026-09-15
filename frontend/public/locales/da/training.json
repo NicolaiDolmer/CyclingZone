@@ -1,6 +1,6 @@
 {
   "title": "Daglig træning",
-  "trainToday": "Træn i dag (+25% konsistens-bonus)",
+  "trainToday": "Træn i dag",
   "trainedToday_you": "Trænet i dag (af dig)",
   "trainedToday_assistant": "Trænet i dag (af assistenten)",
   "trainedTodayAt_you": "Trænet i dag kl. {time} (af dig)",
@@ -35,7 +35,7 @@
   "injured_plural": "Skadet: {days} dage tilbage",
   "noRiders": "Ingen ryttere på holdet endnu.",
   "report": "Dagens træningsrapport",
-  "bonusApplied": "Konsistens-bonus aktiveret: +25% fremgang",
+  "bonusApplied": "Trænet af dig",
   "gains": "+{n} {ability}",
   "gainJump": "{from} → {to} {ability}",
   "noGains": "Ingen fremgang i dag",
@@ -103,7 +103,7 @@
   "riderHistoryEmpty": "Ingen træningshistorik for rytteren endnu.",
   "riderHistoryRest": "Hviledag",
   "weekRhythmTitle": "Ugentlig rytme",
-  "weekRhythmIntro": "Sæt holdets ønskede intensitet pr. ugedag. Dette er kun default for ryttere UDEN egen indstilling: en rytters eget fokus og intensitet, eller deres individuelle ugeplan, vinder altid over holdets rytme for netop den rytter. \"Træn i dag\" kræver stadig dit klik for konsistens-bonussen.",
+  "weekRhythmIntro": "Sæt holdets ønskede intensitet pr. ugedag. Dette er kun default for ryttere UDEN egen indstilling: en rytters eget fokus og intensitet, eller deres individuelle ugeplan, vinder altid over holdets rytme for netop den rytter. \"Træn i dag\" kræver stadig dit klik, hvis du vil have passet kørt med det samme i stedet for i aften.",
   "weekday_mon": "Man",
   "weekday_tue": "Tir",
   "weekday_wed": "Ons",
@@ -121,7 +121,7 @@
   "planActionError_not_own_rider": "Du kan kun træne dine egne ryttere.",
   "planActionError_auth": "Din session er udløbet. Log ind igen.",
   "planActionError_network": "Forbindelsen fejlede. Tjek dit netværk og prøv igen.",
-  "weekRhythmBonusNote": "Rytmen er en default: den gælder kun for ryttere uden egen fokus/intensitet eller individuel ugeplan, og den rører aldrig fokus. Manager-konsistens-bonussen (+25%) gives stadig kun når du selv klikker \"Træn i dag\".",
+  "weekRhythmBonusNote": "Rytmen er en default: den gælder kun for ryttere uden egen fokus/intensitet eller individuel ugeplan, og den rører aldrig fokus. Klikker du selv \"Træn i dag\", ændrer det kun HVORNÅR passet køres, ikke hvor meget rytteren udvikler sig.",
   "weekRhythmTodayShort": "I dag: {intensity}",
   "weekRhythmTodayHint": "i dag: {intensity} (holdets ugentlige rytme)",
   "weekRhythmTodayHintOwn": "i dag: {intensity} (egen ugeplan)",
@@ -211,7 +211,7 @@
     },
     "runToday": {
       "title": "Træn én gang om dagen",
-      "body": "Trykker du her, træner truppen med +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
+      "body": "Trykker du her, træner truppen med det samme. Springer du over, kører din assistent samme pas efter kl. 22, med samme resultat. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
     },
     "nextUp": {
       "title": "Hvor træningen viser sig",
