@@ -316,6 +316,31 @@ describe("runTrainingDayCloseSweep", () => {
     assert.equal(second.skipped, "already_done_today");
   });
 
+  it("en fejlet koersel LAASER IKKE dagen: naeste tick proever igen", async () => {
+    // Dags-claimen er kapacitet, ikke korrekthed. Saettes den mens et hold fejlede,
+    // kigger resten af aftenens ticks slet ikke paa det hold igen — og den gamle
+    // trainingSweep.js er ingen bagstopper (den filtrerer paa (team_id, tick_date),
+    // saa en ANDEN vellykket loebsdag samme dato faar den til at springe holdet over).
+    const supabase = makeSupabase({
+      flags: ALL_ON,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 3, finalize_state: null }],
+      stages: [{ race_id: "r1", stage_number: 3, game_day: 40, scheduled_at: "2026-09-15T09:00:00Z" }],
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    let attempts = 0;
+    const runDay = async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("forbigaaende netvaerksfejl");
+      return { alreadyRan: false };
+    };
+    const first = await runTrainingDayCloseSweep({ supabase, now: inWindow, runDay, logger: { error() {} } });
+    assert.equal(first.failed, 1);
+
+    const second = await runTrainingDayCloseSweep({ supabase, now: inWindow, runDay, logger: { error() {} } });
+    assert.notEqual(second.skipped, "already_done_today", "en fejlet dag maa ALDRIG claimes");
+    assert.equal(second.swept, 1, "naeste tick koerer holdet igen");
+  });
+
   it("en fejlende hold-koersel stopper ikke resten", async () => {
     const supabase = makeSupabase({
       flags: ALL_ON,

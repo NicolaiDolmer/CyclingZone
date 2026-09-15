@@ -473,10 +473,24 @@ export async function runTrainingDayCloseSweep({
       }));
     }
 
-    // Dags-claimen saettes KUN naar hele planen er gennemloebet uden at vaere
-    // afbrudt — ellers ville en enkelt exception laase dagen ude for resten af
-    // aftenens ticks.
-    lastCompletedDate = tickDate;
+    // Dags-claimen saettes KUN naar HELE planen gik igennem uden fejl.
+    //
+    // Hvorfor ikke ubetinget: en Phase 1-fejl i motoren SLETTER reservationen igen
+    // (dailyTrainingEngine.js's catch), saa netop det (hold, loebsdag) ville staa
+    // paa planen igen ved naeste tick — men en claim ville forhindre naeste tick i
+    // overhovedet at kigge. Den gamle trainingSweep.js er ingen bagstopper: den
+    // filtrerer paa (team_id, tick_date), saa en ANDEN vellykket loebsdag samme dato
+    // faar den til at springe holdet over. Uden guarden her ville en forbigaaende
+    // netvaerksfejl altsaa koste netop det hold netop den loebsdag, permanent.
+    //
+    // BEGRAENSNING (bevidst): en Phase 2-fejl BEVARER reservationen med vilje (en
+    // blokeret dag er sikrere end et dobbelt-tick efter delvise evne-writes), og
+    // buildSweepPlan laeser enhver eksisterende raekke som "koert". Retry-forsoeget
+    // her hjaelper derfor kun Phase 1-fejl. AEgte pending/completed-semantik paa
+    // training_day_runs er et selvstaendigt stykke arbejde — se PR-body.
+    if (failed === 0) {
+      lastCompletedDate = tickDate;
+    }
 
     return {
       ran: true,

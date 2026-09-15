@@ -154,6 +154,22 @@ export async function runTeamTrainingDay({
 
   const tickDate = copenhagenDateString(now);
   const squadKey = typeof squad === "string" && squad.trim() ? squad.trim() : TRAINING_DAY_RUN_DEFAULT_SQUAD;
+  // ── #4847: truppen er KLAR I NOEGLEN, men ikke i rytter-udvaelgelsen ─────────
+  // Migrationen (database/2026-09-15-4847-*.sql) lader et hold have én raekke pr.
+  // (saeson, trup, loebsdag), saa #4620's tre loebsdags-akser ikke kolliderer.
+  // Rytter-queryet nedenfor vaelger derimod STADIG `team_id = X AND is_retired =
+  // false` — der findes ingen trup-tilhoersforhold paa `riders` endnu.
+  //
+  // Et "u23"-tick ville derfor traene HELE truppen EN GANG TIL under en anden
+  // noegle: dobbelt-kredit, ikke en U23-session. Motoren afviser derfor alt andet
+  // end senior indtil #4620 tilfoejer et verificerbart trup-felt og dette query
+  // filtrerer paa det. Noeglen er bygget foerst med vilje (skemaet skal ligge klar
+  // foer cutover); grænsen her er det der goer den sikker at have liggende.
+  if (squadKey !== TRAINING_DAY_RUN_DEFAULT_SQUAD) {
+    throw new Error(
+      `squad '${squadKey}' not supported yet: rider selection is not squad-scoped (see #4620). Only '${TRAINING_DAY_RUN_DEFAULT_SQUAD}' is accepted.`,
+    );
+  }
 
   // ── 0) #4846: hvilken noegle er mutexen i dag? ───────────────────────────────
   // Flaget SKAL laeses FOER reservationen, fordi noeglen ER laasen. `engineWrite`

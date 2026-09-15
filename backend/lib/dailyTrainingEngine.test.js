@@ -1392,18 +1392,24 @@ test("#4847 (flag on): reservationen bærer squad, default 'senior'", async () =
     "uden squad i nøglen kolliderer #4620's U23-akse med senior på samme game_day");
 });
 
-test("#4847 (flag on): et U23-tick er en EGEN række på samme (hold, sæson, løbsdag)", async () => {
+test("#4847 (flag on): motoren AFVISER en ikke-senior trup indtil rytter-udvælgelsen er trup-scopet", async () => {
+  // Nøglen er klar til #4620's tre akser (migrationen), men rytter-queryet vælger
+  // stadig HELE holdet. Et 'u23'-tick ville derfor træne hele truppen én gang til
+  // under en anden nøgle — dobbelt-kredit, ikke en U23-session. Grænsen er dét der
+  // gør det sikkert at have nøglen liggende før #4620 lander.
   const state = seedState();
   seedRaceDayTick(state, { gameDay: 12 });
 
   const senior = await runDay(state, { squad: "senior" });
-  const u23 = await runDay(state, { squad: "u23" });
-
   assert.equal(senior.alreadyRan, false);
-  assert.equal(u23.alreadyRan, false,
-    "senior-tick'et må ALDRIG blokere U23-tick'et på samme løbsdag (#4620, ejer 15/9)");
-  assert.equal(state.training_day_runs.length, 2);
-  assert.deepEqual(state.training_day_runs.map((r) => r.squad).sort(), ["senior", "u23"]);
+  assert.equal(senior.squad, "senior");
+
+  await assert.rejects(
+    () => runDay(state, { squad: "u23" }),
+    /squad 'u23' not supported yet/,
+    "en trup uden verificeret medlemskab må ALDRIG kunne åbne en ny nøgle",
+  );
+  assert.equal(state.training_day_runs.length, 1, "afvisningen må ikke efterlade en reservation");
 });
 
 test("#4847 (flag on): ingen manager-bonus på løbsdags-stien", async () => {
