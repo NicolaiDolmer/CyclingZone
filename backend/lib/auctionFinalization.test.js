@@ -2351,7 +2351,7 @@ test("#4495 usolgt graduate-auktion rykker rytteren op på seniorholdet når der
   // aldrig (kun release-grenen nulstiller det), og kontrakten arves uændret
   // (#2881/#1309 — rytteren HAR en komplet kontrakt, regenerér den aldrig).
   assert.equal(riderUpdates.length, 1);
-  assert.deepEqual(riderUpdates[0], { is_academy: false });
+  assert.deepEqual(riderUpdates[0], { squad: "senior", is_academy: false }); // #4619: squad skrives sammen med is_academy
   assert.equal("team_id" in riderUpdates[0], false, "oprykning flytter ikke rytteren væk fra holdet");
   // Grad-rækken stemples til udfaldet, ikke til 'released'.
   assert.equal(academyGraduationUpdates.length, 1);
@@ -2399,6 +2399,7 @@ test("#4495 usolgt graduate-auktion slipper rytteren som fri agent når seniortr
   assert.equal(riderUpdates.length, 1);
   assert.deepEqual(riderUpdates[0], {
     team_id: null,
+    squad: "senior", // #4619: squad skrives sammen med is_academy
     is_academy: false,
     salary: null,
     contract_length: null,
@@ -2473,7 +2474,7 @@ test("#4495 usolgt graduate-auktion: rytter der allerede er kommet videre skrive
 
   // Kun oprykningsforsøget — ingen efterfølgende slip-skrivning.
   assert.equal(riderUpdates.length, 1);
-  assert.deepEqual(riderUpdates[0], { is_academy: false });
+  assert.deepEqual(riderUpdates[0], { squad: "senior", is_academy: false }); // #4619: squad skrives sammen med is_academy
   assert.deepEqual(academyGraduationUpdates, [], "intet restemplet — intet udfald indtraf");
   assert.equal(notifications.filter((n) => n.type === "academy_graduated").length, 0);
 });
