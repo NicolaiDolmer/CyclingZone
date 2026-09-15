@@ -123,16 +123,39 @@ export async function runPhysiologyBackfill(supabase, { dryRun = true, physiolog
   // generation_tag med i selectet (#4311): fyld-ryttere ('fill_tail') skal have deres
   // evner klemt AF deriveAbilities selv (abilityDerivation.js) ved enhver re-derive —
   // uden taggen i rider-rækken kan deriveAbilities ikke se den.
-  const select = ["id", "height", "weight", "birthdate", "potentiale", "generation_tag", ...STAT_KEYS].join(", ");
+  // #5269: archetype_draw med i selectet af PRÆCIS samme grund som
+  // generation_tag ovenfor — uden den kan denne globale backfill ikke se at en
+  // rytter er født af spillets egne priors, og ville udlede hele hans evne-sæt
+  // til 1 fra de stat_* han aldrig fik. Den her sti kører over ALLE ryttere på
+  // én gang, så den fejl ville ikke ramme én rytter, men hele årgangen.
+  const select = ["id", "height", "weight", "birthdate", "potentiale", "generation_tag", "archetype_draw", ...STAT_KEYS].join(", ");
   const riders = await fetchAllRows(() =>
     supabase.from("riders").select(select).order("id", { ascending: true }));
   log(`physiology: ${riders.length} ryttere`);
 
-  const profiles = riders.map((r) => ({ ...seedPhysiologyFromLegacy(r), updated_at: stamp }));
+  const seasonNumber = await activeSeasonNumber(supabase);
+  const bornById = new Map();
+  for (const r of riders) {
+    if (!isBornFromPriors(r)) continue;
+    bornById.set(r.id, deriveBirthAbilities(r, {
+      age: ageForSeason(r.birthdate, seasonNumber),
+      classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+    }));
+  }
+  if (bornById.size) log(`  prior-fødte ryttere (evner reproduceres, ikke udledt): ${bornById.size}`);
+
+  const profiles = riders.map((r) => {
+    const born = bornById.get(r.id);
+    return { ...seedPhysiologyFromLegacy(born ? physiologySeedInputFromAbilities(r, born) : r), updated_at: stamp };
+  });
   log(`  ftp_wkg: ${spread(profiles.map((p) => p.ftp_wkg))}`);
   let abilities = [];
   if (!physiologyOnly) {
-    abilities = profiles.map((p, i) => ({ ...deriveAbilities(p, riders[i]), generated_at: stamp }));
+    abilities = profiles.map((p, i) => {
+      const born = bornById.get(riders[i].id);
+      if (born) return { rider_id: riders[i].id, formula_version: FORMULA_VERSION, ...born, generated_at: stamp };
+      return { ...deriveAbilities(p, riders[i]), generated_at: stamp };
+    });
     log(`  climbing: ${spread(abilities.map((a) => a.climbing))}`);
     log(`  sprint:   ${spread(abilities.map((a) => a.sprint))}`);
   }

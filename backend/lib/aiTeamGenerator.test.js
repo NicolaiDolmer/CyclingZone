@@ -5,6 +5,7 @@ import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, _
 import { POOL_TARGET_SIZE, MAX_DIVISION, MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 import { AI_SQUAD, AI_TIER_STAT_WINDOWS, AI_TIER_VALUE_CAP } from "./starterSquadAllocator.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
+import { isBornFromPriors, deriveBirthAbilities, birthAbilityKeys, statLevelToAbility } from "./riderBirthPriors.js";
 
 // #1688 — AI-fill-generator. Politik (frosset):
 //   tier 1 OG tier 2-puljer  → fyld ALTID med AI op til POOL_TARGET_SIZE (24).
@@ -566,8 +567,18 @@ test("defaultAllocateSquadForTeam giver nye AI-hold en AI_SQUAD.TOTAL_SIZE-trup 
   // bredere spredning for langt de fleste. Tærsklen er bevidst lav (10, ikke 15) og
   // kravet 50% (ikke 80%) — den skal fange REGRESSION til uniform clamping, ikke
   // håndhæve en præcis statistisk fordeling.
-  const spreads = teamRiders.map((r) => {
-    const vals = STAT_KEYS.map((k) => r[k]);
+  //
+  // #5269: målingen ligger nu i EVNE-rummet. En nyfødt rytter har ingen stat_*
+  // at måle spredning over — han fødes direkte som evner — så vagten ville
+  // ellers være blevet tavs præcis dér hvor den skal bide. Tærsklen (10) er
+  // uændret: evne- og stat-rummet er den samme lineære skala, blot strakt med
+  // faktor 98/35, så en spredning der før krævede ~3,6 stat-point nu kræver 10
+  // evne-point — altså et STRENGERE krav, ikke et løsere.
+  const spreads = teamRiders.map((r, i) => {
+    const row = { ...r, id: r.id ?? `ai-spread-${i}` };
+    const vals = isBornFromPriors(row)
+      ? birthAbilityKeys().map((k) => deriveBirthAbilities(row, { age: 27 })[k])
+      : STAT_KEYS.map((k) => row[k]);
     return Math.max(...vals) - Math.min(...vals);
   });
   const wideSpread = spreads.filter((s) => s >= 10).length;
@@ -617,7 +628,22 @@ test("defaultAllocateSquadForTeam bruger tier-4-vinduet for en tier-4-pulje", as
   const { core, tail } = AI_TIER_STAT_WINDOWS[4];
   const lo = Math.min(core.lo, tail.lo);
   const hi = Math.max(core.hi, tail.hi);
+  // #5269: vinduet er oversat til et PERSISTERET evne-loft (archetype_draw.birth.cap),
+  // fordi en nyfødt rytter ikke har stat_* at klemme. Loftet skal både findes og
+  // ligge inden for tier-4-vinduets evne-billede — ellers er division-realismen
+  // (tier 4 svagere end tier 3) tavst forsvundet.
+  const abilityHi = Math.round(statLevelToAbility(hi));
   for (const r of teamRiders) {
+    if (isBornFromPriors(r)) {
+      const cap = r.archetype_draw?.birth?.cap;
+      assert.ok(Number.isInteger(cap), "tier-4-rytter mangler sit persisterede evne-loft");
+      assert.ok(cap <= abilityHi, `evne-loft ${cap} over tier-4-vinduets ${abilityHi}`);
+      const abilities = deriveBirthAbilities({ ...r, id: r.id ?? "ai-t4" }, { age: 27 });
+      for (const k of birthAbilityKeys()) {
+        assert.ok(abilities[k] <= cap, `${k}=${abilities[k]} over det persisterede loft ${cap}`);
+      }
+      continue;
+    }
     for (const k of STAT_KEYS) {
       assert.ok(r[k] >= lo && r[k] <= hi, `${k}=${r[k]} skal være i [${lo},${hi}]`);
     }

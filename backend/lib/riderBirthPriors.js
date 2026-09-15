@@ -547,10 +547,39 @@ export function birthHiddenPotential({ potentiale, age, id }) {
 // reproduceres PRÆCIS det oprindelige træk, fordi seed'en ligger i rækken.
 export const BIRTH_MARKER_VERSION = 1;
 
-export function makeBirthMarker({ tier, seed }) {
+export function makeBirthMarker({ tier, seed, cap = null }) {
   if (!BIRTH_TIERS[tier]) throw new Error(`riderBirthPriors: unknown tier ${tier}`);
   if (!Number.isInteger(seed)) throw new Error("riderBirthPriors: birth seed must be an integer");
-  return { v: BIRTH_MARKER_VERSION, tier, seed: seed >>> 0 };
+  const marker = { v: BIRTH_MARKER_VERSION, tier, seed: seed >>> 0 };
+  // `cap` = et EVNE-loft der følger rytteren resten af livet gennem
+  // re-derivationen. Det er own-priors-stiens erstatning for det STAT-vindue
+  // buildWeakStarterPool (#1487) klemte fyld-/start-trups-ryttere ind i: uden et
+  // stat-felt at klemme skal loftet stå i markøren, ellers ville en heal-sweep
+  // genoplive en ukLEMT profil. Se withBirthAbilityCap nedenfor.
+  // `cap == null` betyder INTET loft. Testen skal være mod null/undefined og ikke
+  // kun Number.isFinite: Number(null) er 0 og fuldt finit, så en ren
+  // isFinite-test ville give hver eneste rytter loftet 1.
+  if (cap != null && Number.isFinite(Number(cap))) {
+    marker.cap = Math.round(clamp(Number(cap), ABILITY_FLOOR, ABILITY_CEIL));
+  }
+  return marker;
+}
+
+/**
+ * Sæt (eller sænk) evne-loftet i en allerede trukket fødsels-markør.
+ * Ren funktion — returnerer et NYT draw-objekt, muterer ikke input.
+ * Loftet kan kun sænkes, aldrig hæves: et kuld der først er født svagt må ikke
+ * kunne blive stærkt af at passere endnu et kaldsted.
+ */
+export function withBirthAbilityCap(archetypeDraw, cap) {
+  if (!archetypeDraw?.birth || cap == null || !Number.isFinite(Number(cap))) return archetypeDraw;
+  const next = Math.round(clamp(Number(cap), ABILITY_FLOOR, ABILITY_CEIL));
+  const prev = archetypeDraw.birth.cap;
+  const current = prev != null && Number.isFinite(Number(prev)) ? Number(prev) : ABILITY_CEIL;
+  return {
+    ...archetypeDraw,
+    birth: { ...archetypeDraw.birth, cap: Math.min(current, next) },
+  };
 }
 
 export function makeYouthBirthMarker({ seed }) {
@@ -606,6 +635,17 @@ export function deriveBirthAbilities(riderRow, { age = null, classifierWeightsBy
     age,
     id: riderRow.id,
   });
+
+  // Evne-loftet fra markøren (#1487's stat-vindue, oversat til evne-rummet).
+  // Ligger FØR fill_tail-klemmen, men begge er min() så rækkefølgen er ligegyldig.
+  // Samme null-fælde som i makeBirthMarker: Number(null) === 0 er finit, og en
+  // ren isFinite-test ville klemme hele rytteren til 0.
+  const cap = draw.birth.cap == null ? NaN : Number(draw.birth.cap);
+  if (Number.isFinite(cap)) {
+    for (const key of Object.keys(abilities)) {
+      if (Number.isFinite(abilities[key])) abilities[key] = Math.min(abilities[key], cap);
+    }
+  }
 
   // #4311: fyld-ryttere klemmes ved kilden. Loftet ligger i abilityDerivation.js
   // (FILL_TAIL_ABILITY_CAP) og er IMPORTERET, ikke kopieret — den fil ejes af en

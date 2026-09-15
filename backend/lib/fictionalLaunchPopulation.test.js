@@ -17,8 +17,18 @@ import { deriveAbilities } from "./abilityDerivation.js";
 import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue, riderOverall } from "./riderValuation.js";
+import { isBornFromPriors, deriveBirthAbilities } from "./riderBirthPriors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// #5269: spejler deriveForRiderIds' forgrening — en rytter født af spillets
+// egne priors får evnerne reproduceret fra fødsels-seed'en, ikke udledt af de
+// stat_* han aldrig fik.
+function abilitiesForLaunchRider(riderRow, age) {
+  return isBornFromPriors(riderRow)
+    ? deriveBirthAbilities(riderRow, { age })
+    : deriveAbilities({}, riderRow, { asOfYear: LAUNCH_POPULATION.referenceYear });
+}
 const baseline = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "./riderValuationModel.json"), "utf8"));
 
@@ -45,8 +55,9 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   let maxOverall = 0;
   const typeSet = new Set();
   for (let i = 0; i < riders.length; i++) {
-    const riderRow = { ...riders[i], id: `fic-test-${i}` };
-    const abilities = deriveAbilities({}, riderRow, { asOfYear: LAUNCH_POPULATION.referenceYear });
+    const riderRow = { ...riders[i], id: `fic-test-${i}`, archetype_draw: riders[i]._meta?.archetypeDraw ?? null };
+    const riderAge = LAUNCH_POPULATION.referenceYear - Number(String(riderRow.birthdate).slice(0, 4));
+    const abilities = abilitiesForLaunchRider(riderRow, riderAge);
     // TRIN 7 (16/8): kæden spejler deriveForRiderIds' DRAW-FØRSTE sti. Generatoren
     // persisterer sit trukne anlæg (_meta.archetypeDraw → riders.archetype_draw),
     // og #3570's anker gælder: anlægget ER sandheden, caps formes af det, og den
