@@ -305,7 +305,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 4846
     verified: 2026-09-15
-    note: Fundament merget 15/9 bag flag (off); design låst §13.3; B4-udløser mangler.
+    note: B4-udløser (samlet sweep ved dagens lukning, kl. 20+) bygget 15/9 bag flag (off); mangler ejer-flip.
 
   - id: training-score
     area: training

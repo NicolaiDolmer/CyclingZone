@@ -60,7 +60,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Peak planner (`peak-planner`) | live | `peak_planner_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | #2224 | 2026-09-06 | - |
 | Season fatigue and form reset (`season-fatigue-reset`) | live | `season_fatigue_reset_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
 | Training score 1-99 (`training-score`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4851 | 2026-09-15 | Motoren skriver rækker fra dag 1; visningen venter på flaget training_score_visible (off). |
-| Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4846 | 2026-09-15 | Fundament merget 15/9 bag flag (off); design låst §13.3; B4-udløser mangler. |
+| Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4846 | 2026-09-15 | B4-udløser (samlet sweep ved dagens lukning, kl. 20+) bygget 15/9 bag flag (off); mangler ejer-flip. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
 ## academy
