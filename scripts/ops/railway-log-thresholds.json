@@ -30,6 +30,7 @@
     "discord-dm:outbox": 10,
     "discord-dm:reset-failed": 5,
     "discord-dm:undeliverable": 5,
+    "discord-welcome": 5,
     "discord-webhook:outbox": 10,
     "economy": 10,
     "email-unsubscribe": 5,

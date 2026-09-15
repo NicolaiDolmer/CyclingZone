@@ -248,6 +248,10 @@ Næsten hver tredje aktive plan står på Hvile, og det er forudsætningen for a
 
 ---
 
+### 3.2 Tre hårde sessioner for brosten, vifter og angreb (#5236/#5237, ejer 14/9, live 15/9)
+
+Merget 15/9 (PR #5265): `cobbled_sectors` (cobblestone 2, durability 1, positioning 1), `echelon_drills` (flat 2, positioning 1, durability 1) og `attack_repeats` (aggression 2, punch 1, acceleration 1) som hårde sessioner. Vægtsummen er låst mod den hårde families (`focusWeightSum`, pinnet i `training.test.js`), så splittet flytter udbytte, det skaber ikke nyt. `technique`, `tempo` og `loebslaere` er uændrede hybrider (ingen datamigration); nøglerne er IKKE i `SMART_DEFAULT_FOCUS_KEYS`. Brosten, flad og aggression kan dermed trænes hårdt for første gang (#4874). Formpas før løb (Åbnere, #5238) er stadig ikke bygget.
+
 ## 4. Ugerytme: hvem vinder når to lag siger noget forskelligt
 
 `resolveDayIntensity` (`backend/lib/training.js:372-386`) er ÉN ren funktion, delt mellem

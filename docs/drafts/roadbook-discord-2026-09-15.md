@@ -1,17 +1,17 @@
-# Roadbook: hvad der bygges de kommende maaneder (udkast 15/9 v3, ejeren poster selv; alt shippet t.o.m. 7.276 er fjernet)
+# Roadbook til Discord (copy-paste, v3, 15/9)
 
-> Ejerens egen liste 15/9 udvidet (intet slettet, kun tilfoejet/omformuleret efter ejerens rettelser 15/9 kl. 13:0x). Verificeret mod live-tilstand 15/9 (7 punkter var allerede live, 13 delvist). Regler: ingen datoer ud over saesonskifte, ingen tal, glad tone, EN foerst, DA under (docs/TONE_OF_VOICE.md). Blidt varsel om de mentale evner. Sponsor-punktet staar i ejerens oprindelige ordlyd indtil ejeren har gennemgaaet #5263. Intet om at skjule evner.
-
----
+> Hver blok herunder er én Discord-besked (under 2.000 tegn). Kopiér indholdet af kodeblokken, ikke selve backticks-linjerne. Bindestreger som punkttegn, fed med **. EN i #the-roadbook, DA i den danske kanal.
 
 ## EN
 
+Besked 1/4
+
+```
 Hep!
 
 Here is the plan for the next few months, in one place. I have taken what you asked for on Discord, in the forum threads and in the survey, and put it in order. Some of it is nearly done, some of it is big. Nothing here has a date except the season switch itself: that is the one deadline I have promised you, and I intend to keep it.
 
 **During season 3 (now)**
-
 - A clear explanation of why some riders seem to stand still in value, plus the bugs you have reported.
 - Clearing up how a rider's secondary type works.
 - A short race sharpener the day before a race, for every rider.
@@ -23,15 +23,17 @@ Here is the plan for the next few months, in one place. I have taken what you as
 - The training score for everyone: one number that tells you how good today's session was for that rider, and why. It is in beta now.
 
 **Maybe, if there is room**
-
 - Opening more facilities.
 - Mobile improvements beyond training and transfers.
 - Speed: the game should load faster on every page.
 - More tools for financial fair play.
 - Fixes and additions to the Pro features, based on the forum thread.
+```
 
+Besked 2/4
+
+```
 **Before season 4 starts**
-
 - Race engine v4 finished and switched on. It goes live when it beats the current engine, not on a date.
 - The board rework finished: mandates and a proper meeting instead of a list of goals.
 - U23 team and junior team become real squads. The "coming soon" card on the Academy page turns into the real thing.
@@ -48,11 +50,13 @@ Here is the plan for the next few months, in one place. I have taken what you as
 - The assistant tells you when it picked your squad.
 
 **Maybe**
-
 - Upkeep rework.
+```
 
+Besked 3/4
+
+```
 **During season 4**
-
 - More depth in your club's identity. Pick a country you want more young riders from. Influence which rider types show up in your academy.
 - Dashboard rework.
 - Inbox rework.
@@ -64,11 +68,13 @@ Here is the plan for the next few months, in one place. I have taken what you as
 - Default training programs, and later a place to share your own.
 
 **Before season 5 starts**
-
 - Decided together with you when season 4 is running. The threads in the forum are where that happens.
+```
 
+Besked 4/4
+
+```
 **Not decided yet**
-
 - Logos, faces and team colours.
 - Staff features: more roles, more attributes and more depth, from the forum thread.
 - Sponsor rework, including more than one sponsor.
@@ -83,17 +89,18 @@ Here is the plan for the next few months, in one place. I have taken what you as
 Be blunt with me about the order. If something here matters more to you than what is above it, say so. That is what this thread is for.
 
 Dolmer
-
----
+```
 
 ## DA
 
+Besked 1/4
+
+```
 Hep!
 
 Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har bedt om på Discord, i forum-trådene og i spørgeskemaet, og sat det i rækkefølge. Noget er næsten færdigt, noget er stort. Intet her har en dato ud over selve sæsonskiftet: det er den ene deadline jeg har lovet jer, og den holder jeg.
 
 **Undervejs i sæson 3 (nu)**
-
 - En klar forklaring på hvorfor nogle ryttere ser ud til at stå stille i værdi, plus de fejl I har meldt.
 - Afklaring af hvordan en rytters sekundære ryttertype virker.
 - Et kort formpas dagen før løb, for alle ryttere.
@@ -105,15 +112,17 @@ Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har b
 - Træningsscoren for alle: ét tal der fortæller hvor godt dagens pas var for netop den rytter, og hvorfor. Den er i beta nu.
 
 **Måske, hvis der er plads**
-
 - Åbning af flere faciliteter.
 - Mobiloptimering ud over træning og transfers.
 - Hastighed: spillet skal loade hurtigere på alle sider.
 - Flere funktioner til financial fair play.
 - Rettelser og tilføjelser til Pro-funktionerne, ud fra forum-tråden.
+```
 
+Besked 2/4
+
+```
 **Inden sæson 4 starter**
-
 - Race engine v4 færdig og tændt. Den går live når den slår den nuværende motor, ikke på en dato.
 - Bestyrelses-reworket færdigt: mandater og et rigtigt møde i stedet for en liste af mål.
 - U23-hold og juniorhold bliver rigtige trupper. "Kommer snart"-kortet på Akademi-siden bliver til den ægte vare.
@@ -130,11 +139,13 @@ Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har b
 - Assistenten fortæller dig når den har udtaget dit hold.
 
 **Måske**
-
 - Upkeep-rework.
+```
 
+Besked 3/4
+
+```
 **Undervejs i sæson 4**
-
 - Mere dybde i klubbens identitet. Vælg et land du ønsker flere unge ryttere fra. Få indflydelse på hvilke ryttertyper der kommer ind i akademiet.
 - Dashboard-rework.
 - Indbakke-rework.
@@ -146,11 +157,13 @@ Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har b
 - Standard-træningsprogrammer, og senere et sted at dele dine egne.
 
 **Inden sæson 5 starter**
-
 - Besluttes sammen med jer mens sæson 4 kører. Trådene i forummet er der det sker.
+```
 
+Besked 4/4
+
+```
 **Det ved jeg ikke endnu**
-
 - Logoer, ansigter og holdfarver.
 - Personale-funktioner: flere roller, flere egenskaber og mere dybde, ud fra forum-tråden.
 - Sponsor-rework, herunder mere end én sponsor.
@@ -165,3 +178,4 @@ Her er planen for de næste måneder, samlet ét sted. Jeg har taget det I har b
 Vær ærlig om rækkefølgen. Hvis noget her betyder mere for dig end det der står over det, så sig det. Det er det denne tråd er til.
 
 Dolmer
+```

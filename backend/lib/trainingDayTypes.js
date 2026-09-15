@@ -47,10 +47,18 @@ export const SKILL_SESSIONS = Object.freeze(["technique", "aero", "loebslaere"])
 // #4631: `vo2max_climb` og `vo2max_punch` er de to specialiserede halvdele af
 // intervaldagen; `vo2max` er den uændrede hybrid og står FØRST, fordi den er den
 // tilstand alle eksisterende planer allerede er i.
+// #5236/#5237 (ejer-valg 14/9): tre nye hårde sessioner — cobbled_sectors og
+// echelon_drills lukker #4874 (brosten/flat faldt bagud på en let/normal dag),
+// attack_repeats giver aggression en session for første gang. Tilføjet efter
+// sprint, så de eksisterende hårde sessioners rækkefølge (og alt der
+// [...TRAINING_SESSIONS_BY_LEVEL.hard]-sammenligner) forbliver uændret foran dem.
 export const TRAINING_SESSIONS_BY_LEVEL = Object.freeze({
   easy:   Object.freeze(["endurance"]),               // Lang tur
   normal: Object.freeze(["tempo"]),                   // Tempo
-  hard:   Object.freeze(["vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint"]),
+  hard:   Object.freeze([
+    "vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint",
+    "cobbled_sectors", "echelon_drills", "attack_repeats",
+  ]),
 });
 export const TRAINING_LEVELS = Object.freeze(Object.keys(TRAINING_SESSIONS_BY_LEVEL));
 
@@ -69,6 +77,9 @@ export const SESSION_INTENSITY = Object.freeze({
   vo2max_punch: "hard",
   threshold: "hard",
   sprint: "hard",
+  cobbled_sectors: "hard",
+  echelon_drills: "hard",
+  attack_repeats: "hard",
 });
 
 // Fokus-nøglen der bæres på en aktiv restitutions-dag. Den har sin egen nøgle

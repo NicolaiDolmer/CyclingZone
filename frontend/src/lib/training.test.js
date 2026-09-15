@@ -12,7 +12,18 @@ test("fokus-nøgler matcher abilities-mappens nøgler", () => {
   // trin 2 (#3746, 16/8): `loebslaere` kom til (positioning/tactics/aggression).
   // #4631 (2/9): intervaldagen blev tre pakker — hybriden `vo2max` plus
   // `vo2max_climb` og `vo2max_punch`.
-  assert.equal(TRAINING_FOCUS_KEYS.length, 11);
+  // #5236/#5237 (14/9): tre nye hårde sessioner — cobbled_sectors,
+  // echelon_drills, attack_repeats.
+  assert.equal(TRAINING_FOCUS_KEYS.length, 14);
+});
+
+// #5236/#5237: fladens kopi af de tre nye sessioner. Drift mod backend fanges
+// af backend/lib/handheldCopyGuards.test.js; her vogtes selve pakkerne.
+test("#5236/#5237 · fladen kender de tre nye hårde sessioner", () => {
+  assert.deepEqual([...TRAINING_FOCUS_ABILITIES.cobbled_sectors], ["cobblestone", "durability", "positioning"]);
+  assert.deepEqual([...TRAINING_FOCUS_ABILITIES.echelon_drills], ["flat", "positioning", "durability"]);
+  assert.deepEqual([...TRAINING_FOCUS_ABILITIES.attack_repeats], ["aggression", "punch", "acceleration"]);
+  for (const key of ["cobbled_sectors", "echelon_drills", "attack_repeats"]) assert.ok(isValidFocus(key));
 });
 
 // #4631: fladens kopi af pakke-tabellen skal vise præcis det motoren træner.
