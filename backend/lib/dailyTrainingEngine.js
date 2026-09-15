@@ -4,19 +4,22 @@
 // bruger en pending-row som mutex. Postgres 23505 unique-violation ved INSERT
 // → alreadyRan=true uden videre DB-skriv.
 //
-// #4846: HVILKET index der er mutexen afgoeres af `training_tick_per_race_day`:
-//   flag off → UNIQUE(team_id, tick_date)              WHERE game_day IS NULL
-//   flag on  → UNIQUE(team_id, season_id, game_day)    WHERE game_day IS NOT NULL
-// De to lever side om side (database/2026-09-14-4846-training-tick-game-day.sql), og
-// flag off er bit-identisk med foer: hverken season_id eller game_day skrives.
+// #4846/#4847: HVILKET index der er mutexen afgoeres af `training_tick_per_race_day`:
+//   flag off → UNIQUE(team_id, tick_date)                                   WHERE game_day IS NULL
+//   flag on  → UNIQUE(team_id, season_id, COALESCE(squad,'senior'), game_day) WHERE game_day IS NOT NULL
+// De to lever side om side (database/2026-09-14-4846-training-tick-game-day.sql +
+// database/2026-09-15-4847-training-day-close-trigger.sql), og flag off er bit-identisk
+// med foer: hverken season_id, game_day eller squad skrives.
 //
 // Spejler riderProgressionEngine.js: DI-supabase, loft genberegnet pr. tick
 // (buildCapsForRider, #2471 — ikke lazy-initeret), batched writes (runBatched),
 // ageForSeason-helper genbrugt herfra.
 //
-// Kaldes af: POST /api/training/run-today (manager, bonus=true) + cron-sweep
-// (assistant, bonus=false). Ingen nondeterminisme udover `now`-default +
-// updated_at-timestamps.
+// Kaldes af: POST /api/training/run-today (manager) + cron-sweeps (assistant):
+// trainingSweep.js paa den gamle kalenderdags-sti, trainingDayCloseTrigger.js paa
+// loebsdags-stien (#4847). BONUS: `bonus` er true KUN paa den gamle sti — loebsdags-
+// stien har ingen bonus (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3). Ingen
+// nondeterminisme udover `now`-default + updated_at-timestamps.
 
 import { copenhagenDateString, copenhagenWeekdayKey, copenhagenMidnightUTC } from "./copenhagenTime.js";
 import { resolveProgram, applyDailyTick, applyRaceDevelopmentTick } from "./dailyTraining.js";
@@ -31,8 +34,13 @@ import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import {
-  TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
+  TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
 } from "./trainingRaceDayTick.js";
+
+// #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
+// i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
+// findes for at sweepens noegle-strenge og motorens INSERT kan dele ÉN sandhed.
+export const TRAINING_DAY_RUN_DEFAULT_SQUAD = "senior";
 
 // Batched async-runner (samme hjælper som riderProgressionEngine.js).
 async function runBatched(items, concurrency, fn) {
@@ -126,10 +134,15 @@ async function loadRaceStageProfiles(supabase, raceIds) {
  * @param {number}  [args.gameDay]      — #4846: eksplicit loebsdag. SEAM til fase B4
  *   (udloeseren "loebsdagen lukker" kender selv dagen og skal ikke slaa den op igen).
  *   Udeladt + flag on ⇒ resolveTeamRaceDay. Ignoreret naar flaget er off.
- * @returns {Promise<{ alreadyRan: boolean, tickDate: string, gameDay: number|null, report?: object }>}
+ * @param {string}  [args.squad]        — #4847: hvilken loebsdags-akse ticket hoerer til
+ *   ("senior" | "u23" | "junior"). Default "senior". Indgaar i mutexens noegle paa
+ *   loebsdags-stien, saa #4620's tre akser pr. hold ikke kolliderer. Ignoreret naar
+ *   flaget er off (den gamle noegle er (team_id, tick_date)).
+ * @returns {Promise<{ alreadyRan: boolean, tickDate: string, gameDay: number|null, squad: string, report?: object }>}
  */
 export async function runTeamTrainingDay({
   supabase, teamId, seasonId, seasonNumber, executedBy, now = new Date(), gameDay = null,
+  squad = TRAINING_DAY_RUN_DEFAULT_SQUAD,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -140,7 +153,7 @@ export async function runTeamTrainingDay({
   }
 
   const tickDate = copenhagenDateString(now);
-  const bonus = executedBy === "manager";
+  const squadKey = typeof squad === "string" && squad.trim() ? squad.trim() : TRAINING_DAY_RUN_DEFAULT_SQUAD;
 
   // ── 0) #4846: hvilken noegle er mutexen i dag? ───────────────────────────────
   // Flaget SKAL laeses FOER reservationen, fordi noeglen ER laasen. `engineWrite`
@@ -157,19 +170,33 @@ export async function runTeamTrainingDay({
       : (await resolveTeamRaceDay({ supabase, teamId, seasonId, now })).gameDay;
   }
   const useRaceDayKey = raceDayTickOn && Number.isFinite(raceDay);
+  // ── #4847 (ejer-beslutning 15/9, §13.3 beslutning 3): INGEN BONUS paa loebsdags-
+  // stien. Den frivillige knap "Koer dagens traening nu" giver kun utaalmodighed, ikke
+  // fordel — beslutning 2 (6/9) fjerner de 25 %. Bonussen lever videre PRAECIS saa
+  // laenge den gamle kalenderdags-sti goer (flag off = bit-identisk med i dag); den
+  // sidste rest af `bonusMult`/`bonus_applied` ryddes ved cutover, ikke her, fordi
+  // #4847 skal kunne merges uden at aendre live-balance mens flaget er slukket.
+  const bonus = executedBy === "manager" && !useRaceDayKey;
   // Loebsdags-stoej/skade-seed (A3) og den G1-kalibrerede budget-deler. null paa den
   // gamle sti ⇒ dailyTraining.js falder tilbage til dato-seed + cfg.daysPerSeason.
   const tickSeedKey = useRaceDayKey ? raceDaySeedKey({ seasonId, gameDay: raceDay }) : null;
   const seedScope = tickSeedKey ?? tickDate;
-  const budgetDivisor = useRaceDayKey ? raceDayBudgetDivisor() : null;
+  // #4847 punkt 5: deleren kalibreres mod det maal kalenderpakkeren faktisk pakker
+  // efter (calendarRaceDayTargets.js' SEASON_RACE_DAY_TARGET, 140 fra S4) i stedet
+  // for et duplikeret tal. Async fordi kilden er en defensiv dynamisk import.
+  const budgetDivisor = useRaceDayKey
+    ? await resolveRaceDayBudgetDivisor({ seasonNumber })
+    : null;
   // #4801: "+1 pr. evne pr. dag" betyder pr. LOEBSDAG naar loebsdagen er tick-enheden.
   // Roret (hardDailyCap) har altid vaeret der, men blev aldrig sendt — reglen er ny.
   const hardDailyCap = useRaceDayKey ? TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay : undefined;
 
   // Raekke-filter for de senere update/delete-kald: samme noegle som reservationen,
   // ellers ville en update paa (team_id, tick_date) ramme ALLE loebsdage samme dato.
+  // #4847: truppen er en del af noeglen paa loebsdags-stien — uden den ville et
+  // U23-tick's update ramme senior-raekken paa samme (team, season, game_day).
   const runRowFilter = (query) => (useRaceDayKey
-    ? query.eq("team_id", teamId).eq("season_id", seasonId).eq("game_day", raceDay)
+    ? query.eq("team_id", teamId).eq("season_id", seasonId).eq("squad", squadKey).eq("game_day", raceDay)
     : query.eq("team_id", teamId).eq("tick_date", tickDate));
 
   // ── 1) Reservation: INSERT pending-row; 23505 → alreadyRan ───────────────────
@@ -185,12 +212,14 @@ export async function runTeamTrainingDay({
       // (team_id, season_id, game_day) WHERE game_day IS NOT NULL rejser 23505
       // praecis som tabel-constrainten gjorde. Udelades felterne, falder raekken
       // tilbage under (team_id, tick_date) WHERE game_day IS NULL.
-      ...(useRaceDayKey ? { season_id: seasonId, game_day: raceDay } : {}),
+      // #4847: `squad` sendes KUN paa loebsdags-stien. Den gamle sti lader kolonnens
+      // DEFAULT 'senior' staa, saa raekken er bit-identisk med foer.
+      ...(useRaceDayKey ? { season_id: seasonId, game_day: raceDay, squad: squadKey } : {}),
     });
 
   if (insertError) {
     if (insertError.code === "23505") {
-      return { alreadyRan: true, tickDate, gameDay: useRaceDayKey ? raceDay : null };
+      return { alreadyRan: true, tickDate, gameDay: useRaceDayKey ? raceDay : null, squad: squadKey };
     }
     throw new Error(`training_day_runs insert: ${insertError.message}`);
   }
@@ -212,7 +241,7 @@ export async function runTeamTrainingDay({
       game_day: useRaceDayKey ? raceDay : null,
     };
     await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }));
-    return { alreadyRan: false, tickDate, gameDay: useRaceDayKey ? raceDay : null, report: emptyReport };
+    return { alreadyRan: false, tickDate, gameDay: useRaceDayKey ? raceDay : null, squad: squadKey, report: emptyReport };
   }
 
   const riderIds = riders.map((r) => r.id);
@@ -793,5 +822,5 @@ export async function runTeamTrainingDay({
   );
   if (updateError) throw new Error(`training_day_runs update: ${updateError.message}`);
 
-  return { alreadyRan: false, tickDate, gameDay: useRaceDayKey ? raceDay : null, report };
+  return { alreadyRan: false, tickDate, gameDay: useRaceDayKey ? raceDay : null, squad: squadKey, report };
 }

@@ -213,6 +213,62 @@ export function buildSweepPlan({
 }
 
 /**
+ * Slaa dagens LUKKE-TILSTAND op — den betingelse BAADE sweepen og den frivillige
+ * knap "Koer dagens traening nu" haenger paa (ejer 15/9, beslutning 3: "samme
+ * betingelse som sweepen"). Een sandhed, to forbrugere.
+ *
+ * `divisionId` afgraenser til EEN divisions loebsdage (knappen: holdets egne).
+ * Udeladt ⇒ hele bestanden (sweepen).
+ *
+ * FAIL-SAFE: kaster aldrig. Alt der ikke kan besvares giver closed:false med en
+ * `reason` — en ukendt tilstand maa ikke kunne AABNE knappen.
+ *
+ * @param {{supabase: object, seasonId: string, now?: Date, divisionId?: string|null}} args
+ * @returns {Promise<{closed: boolean, reason: string, gameDays: number[], pending: number}>}
+ */
+export async function resolveDayCloseStatus({ supabase, seasonId, now = new Date(), divisionId = null }) {
+  const empty = { closed: false, reason: "unknown", gameDays: [], pending: 0 };
+  if (!supabase?.from || !seasonId) return { ...empty, reason: "bad_args" };
+  try {
+    let racesQuery = supabase
+      .from("races")
+      // schema-columns-ok: finalize_state tilfoejes af database/2026-08-23-4147-*.sql
+      .select("id, league_division_id, stages_completed, finalize_state")
+      .eq("season_id", seasonId);
+    if (divisionId) racesQuery = racesQuery.eq("league_division_id", divisionId);
+    const { data: races, error: racesError } = await racesQuery;
+    if (racesError) return { ...empty, reason: "races_error" };
+    const raceRows = races ?? [];
+    if (!raceRows.length) return { closed: true, reason: "no_races", gameDays: [], pending: 0 };
+
+    const raceById = new Map(raceRows.map((r) => [r.id, r]));
+    const divisionByRace = new Map(raceRows.map((r) => [r.id, r.league_division_id ?? null]));
+
+    const dayStart = copenhagenMidnightUTC(now);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const { data: stageRows, error: stageError } = await supabase
+      .from("race_stage_schedule")
+      .select("race_id, stage_number, game_day, scheduled_at")
+      .in("race_id", [...raceById.keys()])
+      .gte("scheduled_at", dayStart.toISOString())
+      .lt("scheduled_at", dayEnd.toISOString());
+    if (stageError) return { ...empty, reason: "stages_error" };
+
+    const todaysStages = stageRows ?? [];
+    const pending = pendingStagesFor(todaysStages, raceById);
+    const byDivision = gameDaysByDivision(todaysStages, divisionByRace);
+    const gameDays = [...new Set([...byDivision.values()].flat())].sort((a, b) => a - b);
+
+    if (pending.length > 0) {
+      return { closed: false, reason: "awaiting_finalization", gameDays, pending: pending.length };
+    }
+    return { closed: true, reason: "closed", gameDays, pending: 0 };
+  } catch {
+    return { ...empty, reason: "exception" };
+  }
+}
+
+/**
  * Koer den samlede daglige sweep.
  *
  * @param {object} args
