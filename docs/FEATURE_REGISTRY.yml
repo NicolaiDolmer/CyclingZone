@@ -136,7 +136,8 @@ features:
     state: live
     flag: auto_entry_generator_enabled
     ssot: docs/CALENDAR_RULES.md
-    verified: 2026-09-06
+    verified: 2026-09-14
+    note: late_fill (12t) #5136.
 
   - id: race-detail-page
     area: race-day
@@ -295,6 +296,26 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 4850
     verified: 2026-09-06
+
+  - id: training-tick-per-race-day
+    area: training
+    title_en: Training tick per race day
+    title_da: Træningstick pr. løbsdag
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 4846
+    verified: 2026-09-15
+    note: Fundament merget 15/9 bag flag (off); design låst §13.3; B4-udløser mangler.
+
+  - id: training-score
+    area: training
+    title_en: Training score 1-99
+    title_da: Træningsscore 1-99
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 4851
+    verified: 2026-09-15
+    note: Motoren skriver rækker fra dag 1; visningen venter på flaget training_score_visible (off).
 
   - id: season-fatigue-reset
     area: training
@@ -585,8 +606,8 @@ features:
     state: beta
     ssot: docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md
     epic: 4616
-    verified: 2026-09-08
-    note: welcome + day1 = "on" i prod siden 8/9 18:07 (ejer-go, #2853), race_digest stadig "off". Første rigtige welcome leveret 8/9 18:07. Webhook (email_events) afventer RESEND_WEBHOOK_SECRET fra ejeren.
+    verified: 2026-09-14
+    note: welcome + day1 on siden 8/9 (#2853), race_digest off; webhook afventer RESEND_WEBHOOK_SECRET (ejer); win-back #2760 bygget (flag false, ejer-go 21-24/9).
 
   - id: in-app-survey
     area: comms

@@ -1,6 +1,10 @@
 # Win-back consent-audit, segment og mail-udkast
 
-> **Status:** docs-only, ingen kode aendret. Refs #2760 #4592 #2853.
+> **Status (14/9):** implementeret i #2760 (mailtype `winback` + `scripts/winback-send.mjs`,
+> se `backend/lib/winbackSegment.js` for den kodede udgave af segment-SQL'en i afsnit 2).
+> Denne fil forbliver den historiske consent-audit; dette afsnit erstatter ikke resten.
+>
+> **Oprindelig status:** docs-only, ingen kode aendret. Refs #2760 #4592 #2853.
 > **Opgave:** ejer-direktiv 20/7 (#2760): "Har vi indsamlet korrekt tilladelse til at sende dem mails? Tjek venligst, eller forslaa endnu bedre setup."
 > **Forfatter:** Claude Code (docs/2760-winback-consent), 2026-09-02.
 
@@ -188,7 +192,19 @@ Dolmer, Cycling Zone
 
 **Ikke inkluderet, bevidst:** resultatliste/detaljer fra "raced while you were away" (i modsaetning til den daglige digest) fordi win-back-modtagere per definition ikke har vaeret inde i 30+ dage, saa en fuld resultatliste ville vaere lang og upraecis om hvad der reelt betyder noget. Rank + pulje er det tal ejeren selv har fremhaevet som relevant i patch-note-reglen ("tal der siger om spilleren er beroert").
 
-## 4. Teknisk forslag: ny mailtype `winback`
+## 4. Teknisk forslag: ny mailtype `winback` (SUPERSEDED af #2760, se status-note øverst)
+
+> **Denne sektion beskriver et forslag der IKKE er hvad der blev bygget.**
+> Ejer-beslutningen 14/9 forenklede det til: `app_config.winback_send_enabled`
+> (plain boolean, ikke `email_loop_winback`s tre-tilstand off/dry_run/on),
+> engangs-dedupe pr. bruger uden tidskomponent (ikke et 60-dages-vindue),
+> `--dry-run` er en ren, skrivningsfri rapport (ingen `email_log`-rækker,
+> heller ikke dry_run-status), og DA-teksten er live fra dag 1 (ikke afventer
+> en separat sprog-pr.-modtager-opfølger). Punkterne 1-3 og 5-6 nedenfor er
+> historik/kontekst, ikke en runbook: følg IKKE denne sektions konkrete
+> nøglenavne eller trin. Den faktiske implementering: `backend/lib/
+> winbackSegment.js`, `scripts/winback-send.mjs`,
+> `database/2026-09-14-2760-winback-app-config.sql`.
 
 Foelger #2853's eksisterende moenster (`emailLoopFlag.js`, `emailPrefs.js`, `app_config`) 1:1, ingen ny infrastruktur:
 

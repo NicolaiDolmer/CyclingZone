@@ -378,6 +378,9 @@ const SECTION_DEFS = [
       { id: "formFatigue", kind: "text" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
+      // #4851: the training score is the other half of "how much did today move" —
+      // the bars show what the rider got, the score shows how good the session was.
+      { id: "trainingScore", kind: "text" },
       { id: "longTermGrowth", kind: "text" },
       // #4066: wired in — the type-gating percentages and the "why did my
       // ability stop rising" FAQ both elaborate on longTermGrowth directly

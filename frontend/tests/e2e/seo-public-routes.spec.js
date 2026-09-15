@@ -136,10 +136,25 @@ test("static Organization + WebSite JSON-LD is present on every route; VideoGame
 // faktisk eksponerer. Uden denne test kan en ny page.tsx i marketing/ blive
 // tilføjet uden en tilsvarende rewrite (404 på cyclingzone.org), eller en
 // rewrite overleve efter en side er fjernet dér (spøgelses-rute) — begge dele
-// opdages først i produktion. Forsiden "/" er bevidst undtaget: den ejes af
-// den prerenderede LandingPage i denne PR (#4067-scope), ikke af marketing/.
+// opdages først i produktion. Forsiden "/" er fortsat undtaget her: den routes
+// IKKE via vercel.json's rewrites-array (Vercels filsystem vinder over
+// rewrites for en literal "/index.html" i output — bekræftet empirisk på
+// preview-deployet i #4067-opfølgeren), men via frontend/middleware.ts, som
+// kører FØR filsystem-matchet og derfor kan overstyre det.
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const MARKETING_BASE = "https://cycling-zone-marketing.vercel.app";
+
+// #5230 (CodeQL #362) — startsWith accepterer også fx
+// "https://cycling-zone-marketing.vercel.app.evil.example", som ikke er
+// MARKETING_BASE. Sammenlign origin i stedet. Relative destinationer (fx
+// "/index.html") kan ikke parses som URL og skal give false, ikke kaste.
+function isMarketingDestination(destination) {
+  try {
+    return new URL(destination).origin === new URL(MARKETING_BASE).origin;
+  } catch {
+    return false;
+  }
+}
 
 function marketingPageRoutes(appDir) {
   // Route-groups ("(en)"/"(da)") bidrager ikke til URL'en; alle andre mapper
@@ -166,7 +181,7 @@ test("frontend/vercel.json's marketing-rewrites matcher marketing/app 1:1 (#4067
   );
   const rewrittenPaths = new Set(
     vercelConfig.rewrites
-      .filter((r) => r.destination.startsWith(MARKETING_BASE) && r.source !== "/_next/:path(.*)")
+      .filter((r) => isMarketingDestination(r.destination) && r.source !== "/_next/:path(.*)")
       .map((r) => r.source),
   );
 

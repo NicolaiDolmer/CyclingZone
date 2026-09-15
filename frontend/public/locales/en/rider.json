@@ -135,7 +135,7 @@
         "trained": "Sessions trained",
         "breakthroughs": "Breakthroughs",
         "sharp": "Sharp days",
-        "note": "A comparable training score is coming."
+        "note": "Counted from the last 30 days of training runs."
       },
       "form": {
         "title": "Form & recovery",
@@ -152,7 +152,18 @@
         "body": "Retired riders aren't trained, so there's no active program, form or fatigue to show."
       },
       "changeFocus": "Change",
-      "chooseFocus": "Choose"
+      "chooseFocus": "Choose",
+      "score": {
+        "title": "Training score",
+        "todayLabel": "Today's session",
+        "race": "Race",
+        "raceNote": "Race day: the race replaces training",
+        "sparkAria": "Training score, last 7 days",
+        "avg": "Average, {days} days",
+        "best": "Best, 30 days",
+        "driverUp": "{driver} +{points}",
+        "driverDown": "{driver} −{points}"
+      }
     },
     "tabs": {
       "overview": "Overview",

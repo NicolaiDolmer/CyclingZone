@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { logEvent } from "./logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -24,6 +25,10 @@ export function useTraining() {
   const [weekPlan, setWeekPlanState] = useState(null); // holdets ugerytme { mon:{intensity}, ..., sun:{intensity} } | null (#1895)
   const [riderWeekPlans, setRiderWeekPlansState] = useState({}); // { <rider_id>: {mon:{intensity},...} } — pr-rytter-override (#1895 PR 2)
   const [racingToday, setRacingToday] = useState({}); // { <rider_id>: { race } } - #3459 V3, leveres kun bag race_day_development_enabled (#4375)
+  // #4851: { <rider_id>: { today, todayIsRaceDay, spark[], avg, best, days,
+  // contributions } }. Feltet UDELADES helt af /api/training/me naar
+  // training_score_visible er off, saa null = "fladen viser ingen score".
+  const [trainingScore, setTrainingScore] = useState(null);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -33,9 +38,12 @@ export function useTraining() {
     const headers = await authHeaders();
     if (!headers) { setLoading(false); return; }
     try {
-      const res = await fetch(`${API}/api/training/me`, { headers });
+      // #5242: apiFetch — en 429/401-byge (rytterskift, mange faner) skal ikke
+      // overskrive den viste state; "limited"/"unauthorized" beholder den bare.
+      const res = await apiFetch(`${API}/api/training/me`, { headers });
+      if (res.limited || res.unauthorized) return;
       if (res.ok) {
-        const data = await res.json();
+        const data = res.data;
         setSlots(data.slots ?? null);
         setPlans(data.plans ?? {});
         setTeamId(data.teamId ?? null);
@@ -52,6 +60,9 @@ export function useTraining() {
         // er on for brugeren (api.js udelader det helt ellers) - `?? {}` giver samme
         // "ingen badge for nogen" tomme-state uanset om feltet mangler eller er tomt.
         setRacingToday(data.racingToday ?? {});
+        // #4851: null naar feltet mangler (flag off) — IKKE {} — saa fladerne
+        // kan skelne "slukket" fra "taendt, men ingen data endnu".
+        setTrainingScore(data.trainingScore ?? null);
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -73,10 +84,10 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingId(riderId);
     try {
-      const res = await fetch(`${API}/api/training/${riderId}`, {
+      const res = await apiFetch(`${API}/api/training/${riderId}`, {
         method: "POST", headers, body: JSON.stringify({ dayType, session }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       if (data.slots) setSlots(data.slots);
       // Serveren returnerer det par den faktisk skrev — vi gætter ikke på det
@@ -99,8 +110,8 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingId(riderId);
     try {
-      const res = await fetch(`${API}/api/training/${riderId}`, { method: "DELETE", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/training/${riderId}`, { method: "DELETE", headers });
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       if (data.slots) setSlots(data.slots);
       setPlans((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
@@ -129,10 +140,10 @@ export function useTraining() {
     if (ids.length === 0) return { ok: true, applied: 0, failed: [] };
     setBulkApplying(true);
     try {
-      const res = await fetch(`${API}/api/training/bulk`, {
+      const res = await apiFetch(`${API}/api/training/bulk`, {
         method: "POST", headers, body: JSON.stringify({ riderIds: ids, dayType, session }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) {
         // Hele requestet fejlede (auth/validering/rate/5xx) → alle markeres fejlet,
         // så UI'et beholder dem valgt til et nyt forsøg.
@@ -167,10 +178,10 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingWeekPlan(true);
     try {
-      const res = await fetch(`${API}/api/training/week-plan`, {
+      const res = await apiFetch(`${API}/api/training/week-plan`, {
         method: "PUT", headers, body: JSON.stringify({ days }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       setWeekPlanState(data.weekPlan ?? days);
       logEvent("training_week_plan_set", {});
@@ -188,8 +199,8 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingWeekPlan(true);
     try {
-      const res = await fetch(`${API}/api/training/week-plan`, { method: "DELETE", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/training/week-plan`, { method: "DELETE", headers });
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       setWeekPlanState(null);
       return { ok: true };
@@ -208,10 +219,10 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingRiderWeekPlanId(riderId);
     try {
-      const res = await fetch(`${API}/api/training/week-plan/${riderId}`, {
+      const res = await apiFetch(`${API}/api/training/week-plan/${riderId}`, {
         method: "PUT", headers, body: JSON.stringify({ days }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       setRiderWeekPlansState((prev) => ({ ...prev, [riderId]: data.days ?? days }));
       logEvent("training_rider_week_plan_set", {});
@@ -229,8 +240,8 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setSavingRiderWeekPlanId(riderId);
     try {
-      const res = await fetch(`${API}/api/training/week-plan/${riderId}`, { method: "DELETE", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/training/week-plan/${riderId}`, { method: "DELETE", headers });
+      const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       setRiderWeekPlansState((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
       return { ok: true };
@@ -248,8 +259,8 @@ export function useTraining() {
     if (!headers) return { ok: false, error: "auth" };
     setRunning(true);
     try {
-      const res = await fetch(`${API}/api/training/run-today`, { method: "POST", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/training/run-today`, { method: "POST", headers });
+      const data = res.data || {};
       if (res.status === 409) {
         await refresh();
         return null;
@@ -268,7 +279,7 @@ export function useTraining() {
   }, [refresh]);
 
   return {
-    slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus,
+    slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, trainingScore,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
     riderWeekPlans, savingRiderWeekPlanId, racingToday,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,

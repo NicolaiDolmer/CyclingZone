@@ -638,6 +638,23 @@ Når et af issuerne merges, flyttes indholdet ind i det relevante afsnit, og ræ
 
 Løbsdagens rytme i rigtig tid (antal pr. kalenderdag, klokkeslæt, hvornår tick'et lukker) · hvad der kan nå sæson 4 · om en løbsdag med løb også får en score på samme skala · off-season-hullet mellem to sæsoner · økonomi pr. kalenderdag mod udvikling pr. løbsdag · sweep-kapacitet (ca. 3x writes pr. døgn) · ops-vagter kalibreret pr. kalenderdag · skadesvarighed i løbsdage eller kalenderdage · historikkens akse · rytter solgt mellem divisioner midt i sæsonen · Grand Tour-hviledage · hvad der sker med eksisterende `training_day_runs` uden `game_day`.
 
+### 13.3 Ejerens beslutninger 15/9 (design-session, 8 kort ét ad gangen; låste, genåbn ikke)
+
+Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 15/9](https://github.com/NicolaiDolmer/CyclingZone/issues/4850)). Ændrer §13's beslutning 1-2 på disse punkter:
+
+| # | Beslutning | Konsekvens |
+|---|---|---|
+| 1 | **Løbsdagen er tick-enheden** (bekræftet mod billedet) | uændret fra 6/9 |
+| 2 | **140 løbsdage pr. sæson i alle divisioner**, ikke 80. Antal LØB pr. division er urørt ("jeg vil ikke have at dette laver om i løbskalenderen") | `SEASON_RACE_DAY_TARGET[4] = 140` (= 28 løbsdatoer × D1's 5 slots); ekstra løbsdage er rene træningsdage. Deleren i `trainingRaceDayTick.js` kalibreres til 140. Skrivetryk ≈ 5× → gate G6 er krav før flip |
+| 3 | **Dagens træning kører samlet** (alle dagens løbsdage i ÉN sweep efter dagens sidste finalization) **+ frivillig knap "Kør dagens træning nu" uden bonus** | 25 %-bonussen fjernes stadig (beslutning 2, 6/9). Knappen giver ingen fordel, kun utålmodighed |
+| 4 | **Tidligst kl. 20 dansk tid** (målt: aktive spillerdage/time kl. 16 = 218, 17-20 ≈ 185-199, 21 = 127) | Træningsrapport i indbakken kl. 20 = dagens øjeblik |
+| 5 | **U23-kalenderen (#4620) bygges MED i S4-cutover**; én løbsdags-akse pr. trup (senior/U23/junior), samme 140-mål | #4620 ind i Bane 1. Risiko flagget (13 dage, nul buffer) |
+| 6 | Formtræning = (b), besluttet 14/9 i #4633 | Åbnere #5238 først |
+| 7 | **Skadesvarighed i løbsdage** | UI viser "ca. <dato>". PR #5205's kalenderdags-valg ændres i B4 |
+| 8 | **Program pr. løbsdag**: 7 ugedage × 5 løbsdage = 35 celler (ejeren afviste "én session pr. ugedag gælder alle løbsdage" efter at have set billedet) | Arkitekt-valg (må udfordres): ugedagens session udfylder alle 5 slots som default, spilleren overstyrer enkelte; migration af `training_week_plans` (27 hold har data) |
+
+Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet lukning ≥ kl. 20), sweep-kapacitet (én sweep/dag), skadesvarighed (løbsdage). PR #5205 (fundamentet, flag off) merget 15/9.
+
 **Deadline (ejer 6/9, ordret): "skiftet til det nye træningssystem senest sker til sæson 4 starten"**, dvs. live 28/9 2026; kalender-delen skal før S4-genereringen.
 
 **Fuldt design, faseplan og de konkrete brud pr. fil:linje:** [`docs/superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md`](superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md). Kortlægningen bag den er session-workflow 6/9 (fire lanes: tick, kalender, score, flader + kritiker), verificeret mod `main` og prod.

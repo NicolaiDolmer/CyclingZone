@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { NavLink, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
@@ -1247,11 +1248,11 @@ export default function AuctionsPage() {
       const token = session?.access_token;
       if (!token) return;
       try {
-        const res = await fetch(`${API}/api/me/onboarding-progress`, {
+        const res = await apiFetch(`${API}/api/me/onboarding-progress`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) return;
-        const prog = await res.json();
+        if (!res.ok) return; // dækker også limited/unauthorized (begge sætter ok:false)
+        const prog = res.data;
         const firstBid = prog.steps?.find(s => s.key === "first_bid_placed");
         if (firstBid && !firstBid.done) setShowFirstBidHint(true);
       } catch {
@@ -1415,14 +1416,17 @@ export default function AuctionsPage() {
       // #194 race-guard: send sidste pris vi så, så server kan returnere 409 hvis stale
       body.expected_current_price = auction.current_price;
     }
-    const res = await fetch(`${API}/api/auctions/${auctionId}/bid`, {
+    // #5242: apiFetch — en byge af hurtige bud-klik mod SAMME auktion sætter et
+    // Retry-After-vindue i stedet for at hamre bid-endpointet igen og igen; et
+    // 401 afleveres én gang til networkErrorGuards i stedet for at give en
+    // forvirrende bidFailed-besked oven i login-redirectet.
+    const res = await apiFetch(`${API}/api/auctions/${auctionId}/bid`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(body),
     });
     if (res.status === 409) {
-      let raceData = {};
-      try { raceData = await res.json(); } catch { /* ignore */ }
+      const raceData = res.data || {};
       if (raceData.error === "price_changed") {
         setRaceConfirm({
           auctionId,
@@ -1434,18 +1438,16 @@ export default function AuctionsPage() {
       }
     }
     if (res.ok) {
-      fetch(`${API}/api/achievements/check`, {
+      apiFetch(`${API}/api/achievements/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ context: "auction_bid", data: { amount } }),
       }).catch(() => {});
       loadAll();
-      let okData = {};
-      try { okData = await res.json(); } catch { /* tolerér tom body */ }
+      const okData = res.data || {};
       return { ok: true, warnings: okData.warnings || [] };
     }
-    let data = {};
-    try { data = await res.json(); } catch { /* non-JSON error response — fall back to default error message below */ }
+    const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.bidFailed")) };
   }
 
@@ -1459,14 +1461,13 @@ export default function AuctionsPage() {
   async function handleSetProxy(auctionId, maxAmount) {
     const { data: { session } } = await supabase.auth.getSession();
     const API = import.meta.env.VITE_API_URL;
-    const res = await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+    const res = await apiFetch(`${API}/api/auctions/${auctionId}/proxy`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ max_amount: maxAmount }),
     });
     if (res.ok) { loadAll(); return { ok: true }; }
-    let data = {};
-    try { data = await res.json(); } catch { /* ignore */ }
+    const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyFailed")) };
   }
 
@@ -1476,13 +1477,12 @@ export default function AuctionsPage() {
   async function handleRemoveProxy(auctionId) {
     const { data: { session } } = await supabase.auth.getSession();
     const API = import.meta.env.VITE_API_URL;
-    const res = await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+    const res = await apiFetch(`${API}/api/auctions/${auctionId}/proxy`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (res.ok) { loadAll(); return { ok: true }; }
-    let data = {};
-    try { data = await res.json(); } catch { /* ignore */ }
+    const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyRemoveFailed")) };
   }
 

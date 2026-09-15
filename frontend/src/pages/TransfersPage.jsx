@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import RiderLink from "../components/RiderLink";
 import MessageManagerButton from "../components/messages/MessageManagerButton.jsx"; // #3200
 import TeamLink from "../components/TeamLink";
@@ -1310,10 +1311,14 @@ export default function TransfersPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { Authorization: `Bearer ${session.access_token}` };
 
+      // #5242 (CodeRabbit-fund): fald tilbage til den tomme facit for ETHVERT
+      // ikke-ok svar, ikke kun limited/unauthorized — apiFetch giver data:null
+      // for et tomt/ikke-JSON 5xx-svar, og .sent/.received-læsningerne nedenfor
+      // ville ellers kaste på en null-læsning i stedet for at falde tilbage.
       const [listingsRes, offersRes, swapsRes] = await Promise.all([
-        fetch(`${API}/api/transfers`, { headers }).then(r => r.json()),
-        fetch(`${API}/api/transfers/my-offers`, { headers }).then(r => r.json()),
-        fetch(`${API}/api/transfers/swaps`, { headers }).then(r => r.json()),
+        apiFetch(`${API}/api/transfers`, { headers }).then((r) => (r.ok ? (r.data ?? []) : [])),
+        apiFetch(`${API}/api/transfers/my-offers`, { headers }).then((r) => (r.ok ? (r.data ?? {}) : {})),
+        apiFetch(`${API}/api/transfers/swaps`, { headers }).then((r) => (r.ok ? (r.data ?? {}) : {})),
       ]);
 
       // #1529: backend leverer rider.rider_derived_abilities (nested) — flad evnerne op
@@ -1368,12 +1373,12 @@ export default function TransfersPage() {
 
   async function handleOffer(riderId, amount, message) {
     try {
-      const res = await fetch(`${API}/api/transfers/offer`, {
+      const res = await apiFetch(`${API}/api/transfers/offer`, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify({ rider_id: riderId, offer_amount: amount, message }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (res.ok) { showMsg(t("toast.offerSent")); loadAll(); setTab("sent"); }
       else showMsg(resolveApiError(data, t), "error");
     } catch {
@@ -1383,11 +1388,11 @@ export default function TransfersPage() {
 
   async function handleRemoveListing(listingId) {
     try {
-      const res = await fetch(`${API}/api/transfers/${listingId}`, {
+      const res = await apiFetch(`${API}/api/transfers/${listingId}`, {
         method: "DELETE",
         headers: await getHeaders(),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       // #5089: ryd den delte GET /api/transfers-kopi uanset udfald — rytter-
       // profilens salgs-knap maa aldrig vise en listing der er fjernet her.
       sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
@@ -1406,12 +1411,12 @@ export default function TransfersPage() {
   // Returnerer true ved succes så OwnListingActions kun lukker edit-formen da.
   async function handleUpdateListingPrice(listingId, askingPrice) {
     try {
-      const res = await fetch(`${API}/api/transfers/${listingId}`, {
+      const res = await apiFetch(`${API}/api/transfers/${listingId}`, {
         method: "PATCH",
         headers: await getHeaders(),
         body: JSON.stringify({ asking_price: askingPrice }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       sharedRequestCache.invalidate(SHARED_KEYS.transferListings); // #5089, se handleRemoveListing
       if (res.ok) {
         showMsg(t("toast.priceUpdated"));
@@ -1428,12 +1433,12 @@ export default function TransfersPage() {
 
   async function handleOfferAction(offerId, action, extra = {}) {
     try {
-      const res = await fetch(`${API}/api/transfers/offers/${offerId}`, {
+      const res = await apiFetch(`${API}/api/transfers/offers/${offerId}`, {
         method: "PATCH",
         headers: await getHeaders(),
         body: JSON.stringify({ action, ...extra }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (res.ok) {
         if (action === "confirm" && data.action === "accepted") {
           setCelebration({
@@ -1442,7 +1447,7 @@ export default function TransfersPage() {
             amount: data.price || 0,
             icon: <ExchangeIcon size={56} className="text-cz-accent-t" aria-hidden="true" />,
           });
-          fetch(`${API}/api/achievements/check`, {
+          apiFetch(`${API}/api/achievements/check`, {
             method: "POST",
             headers: await getHeaders(),
             body: JSON.stringify({ context: "transfer_done", data: {} }),
@@ -1472,12 +1477,12 @@ export default function TransfersPage() {
 
   async function handleSwapAction(swapId, action, extra = {}) {
     try {
-      const res = await fetch(`${API}/api/transfers/swaps/${swapId}`, {
+      const res = await apiFetch(`${API}/api/transfers/swaps/${swapId}`, {
         method: "PATCH",
         headers: await getHeaders(),
         body: JSON.stringify({ action, ...extra }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (res.ok) {
         if (action === "confirm" && data.action === "accepted") {
           setCelebration({
@@ -1612,12 +1617,12 @@ export default function TransfersPage() {
     }
     setBulkBusy(true);
     try {
-      const res = await fetch(`${API}/api/transfers/bulk-price`, {
+      const res = await apiFetch(`${API}/api/transfers/bulk-price`, {
         method: "PATCH",
         headers: await getHeaders(),
         body: JSON.stringify({ updates: preview.map(p => ({ id: p.id, asking_price: p.to })) }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       // #5089: bulk-endpointet svarer 200 selv med delvise fejl (`failed[]`),
       // saa noeglen ryddes uanset udfald — se handleRemoveListing.
       sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
