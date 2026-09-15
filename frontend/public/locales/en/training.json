@@ -277,5 +277,18 @@
     "save": "Save day",
     "bulkSetDay": "Set day",
     "bulkWholeDay": "Whole day"
+  },
+  "score": {
+    "column": "Score",
+    "raceDay": "Race",
+    "sparkAria": "Training score, last 7 days — {{name}}",
+    "factor_intensity": "the session",
+    "factor_focusMatch": "the focus match",
+    "factor_condition": "form and fatigue",
+    "factor_coach": "the coach",
+    "factor_facility": "the facilities",
+    "factor_potential": "the talent",
+    "factor_youth": "the age",
+    "factor_noise": "the day itself"
   }
 }

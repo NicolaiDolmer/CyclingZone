@@ -135,7 +135,7 @@
         "trained": "Gennemførte pas",
         "breakthroughs": "Gennembrud",
         "sharp": "Skarpe dage",
-        "note": "En sammenlignelig træningsscore er på vej."
+        "note": "Talt op over de seneste 30 dages træningskørsler."
       },
       "form": {
         "title": "Form & restitution",
@@ -152,7 +152,18 @@
         "body": "Pensionerede ryttere trænes ikke, så der er intet aktivt program, form eller træthed at vise."
       },
       "changeFocus": "Skift",
-      "chooseFocus": "Vælg"
+      "chooseFocus": "Vælg",
+      "score": {
+        "title": "Træningsscore",
+        "todayLabel": "Dagens pas",
+        "race": "Løb",
+        "raceNote": "Løbsdag — løbet erstatter træningen",
+        "sparkAria": "Træningsscore, seneste 7 dage",
+        "avg": "Gennemsnit, {{days}} dage",
+        "best": "Bedste, 30 dage",
+        "driverUp": "{{driver}} løfter den {{points}}",
+        "driverDown": "{{driver}} koster {{points}}"
+      }
     },
     "tabs": {
       "overview": "Overblik",

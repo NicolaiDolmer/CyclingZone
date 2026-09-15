@@ -307,6 +307,16 @@ features:
     verified: 2026-09-15
     note: Fundament merget 15/9 bag flag (off); design låst §13.3; B4-udløser mangler.
 
+  - id: training-score
+    area: training
+    title_en: Training score 1-99
+    title_da: Træningsscore 1-99
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 4851
+    verified: 2026-09-15
+    note: Motoren skriver rider_training_scores fra dag 1; visningen venter på flaget training_score_visible (off), som ejeren flipper.
+
   - id: season-fatigue-reset
     area: training
     title_en: Season fatigue and form reset

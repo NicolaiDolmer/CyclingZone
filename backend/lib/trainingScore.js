@@ -260,3 +260,57 @@ export function computeTrainingScore(args, cfg = TRAINING_SCORE_CONFIG) {
     deltaQualityMult,
   };
 }
+
+// ── Fladens udsnit (spec §4.4) ───────────────────────────────────────────────
+// Ren funktion over `rider_training_scores`-raekker, saa API'et ikke bygger
+// visningslogik i en route-handler og saa den kan unit-testes uden DB.
+//
+// Kontrakten pr. rytter:
+//   today          dagens tal, eller null (hviledag, loebsdag, ingen raekke)
+//   todayIsRaceDay dagen var et loeb ⇒ fladen skriver "loeb", ikke et tal
+//   spark          de sidste `sparkDays` pas, AELDST foerst (sparkline-retning).
+//                  Loebsdage er med som { score: null } saa kurven faar sit hul.
+//   avg / best     gennemsnit og bedste over vinduet, kun dage MED et tal
+//   days           antal dage med et tal i vinduet (er 30-dages-boksens naevner)
+//   contributions  dagens 3-4 stoerste bidrag op/ned
+export const TRAINING_SCORE_VIEW = Object.freeze({ sparkDays: 7, windowDays: 30 });
+
+export function buildTrainingScoreView(rows, {
+  today = null,
+  sparkDays = TRAINING_SCORE_VIEW.sparkDays,
+  windowDays = TRAINING_SCORE_VIEW.windowDays,
+} = {}) {
+  const byRider = new Map();
+  for (const row of rows ?? []) {
+    if (!row?.rider_id) continue;
+    if (!byRider.has(row.rider_id)) byRider.set(row.rider_id, []);
+    byRider.get(row.rider_id).push(row);
+  }
+
+  const out = {};
+  for (const [riderId, riderRows] of byRider) {
+    // AELDST foerst. tick_date er en DATE-streng, saa leksikografisk = kronologisk.
+    riderRows.sort((a, b) => String(a.tick_date).localeCompare(String(b.tick_date)));
+    const window = riderRows.slice(-windowDays);
+    const withNumber = window.filter((r) => Number.isFinite(Number(r.score)));
+
+    const todayRow = today ? riderRows.find((r) => String(r.tick_date) === String(today)) : null;
+    const sum = withNumber.reduce((s, r) => s + Number(r.score), 0);
+
+    out[riderId] = {
+      today: todayRow && Number.isFinite(Number(todayRow.score)) ? Number(todayRow.score) : null,
+      todayIsRaceDay: !!todayRow?.was_race_day,
+      todaySession: todayRow?.session ?? null,
+      spark: window.slice(-sparkDays).map((r) => ({
+        date: String(r.tick_date),
+        score: Number.isFinite(Number(r.score)) ? Number(r.score) : null,
+        raceDay: !!r.was_race_day,
+      })),
+      avg: withNumber.length ? Math.round(sum / withNumber.length) : null,
+      best: withNumber.length ? Math.max(...withNumber.map((r) => Number(r.score))) : null,
+      days: withNumber.length,
+      contributions: Array.isArray(todayRow?.contributions) ? todayRow.contributions : null,
+    };
+  }
+  return out;
+}
