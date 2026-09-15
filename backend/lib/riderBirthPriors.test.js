@@ -338,6 +338,41 @@ test("fysiologi-broen oversaetter evner til de 0-99-felter seedingen forventer",
   }
 });
 
+// #5269 grep-bevis, i kode: INGEN kaldsted kraever stat_* for en nyfoedt.
+//
+// `grep -rn "stat_" backend/lib backend/routes` (ekskl. tests) giver 13 filer.
+// De falder i fire grupper:
+//   1. abilityDerivation / abilityRegistry / academyGenerator / fictionalRider-
+//      Generator — PCM-stien, som prior-foedte ryttere ikke gaar igennem.
+//   2. boardGoalContext / boardWeekendFinalization / economyEngine — bruger
+//      `u25_stat_sum`, en SNAPSHOT-kolonne, ikke en stat_*-kolonne.
+//      economyEngine:184 joiner desuden rider_derived_abilities, saa
+//      computeU25StatSum laeser EVNER for netop disse ryttere.
+//   3. physiologySeeding — tolererer manglende stats (`?? DEFAULTS.stat`), og
+//      prior-foedte seedes i stedet fra deres egne evner (broen ovenfor).
+//   4. boardConstants / boardGoals / boardIdentity / routes/api.js — laeser
+//      stat_* med `Number(x || 0)` eller i et SELECT. Ingen af dem KRAEVER en
+//      vaerdi; testen nedenfor pinner det.
+test("#5269 grep-bevis: board-stien tolererer NULL-stats uden at kaste eller give NaN", async () => {
+  const { computeU25StatSum, U25_ABILITY_KEYS } = await import("./boardGoals.js");
+  const { normalizeBoardRider } = await import("./boardIdentity.js");
+
+  const nyfoedt = { id: "n1", firstname: "Ny", lastname: "Rytter", is_u25: true, nationality_code: "DK" };
+  for (const k of STAT_KEYS) nyfoedt[k] = null;
+
+  const normalized = normalizeBoardRider(nyfoedt);
+  for (const k of STAT_KEYS) {
+    if (!(k in normalized)) continue;
+    assert.ok(Number.isFinite(normalized[k]), `${k} blev NaN i board-normaliseringen`);
+  }
+
+  // Uden join: falder tilbage paa stats -> 0. Ingen crash, men heller intet bidrag.
+  assert.equal(computeU25StatSum([nyfoedt]), 0);
+  // MED join (den sti economyEngine:184 faktisk bruger): evnerne taeller.
+  const medEvner = { ...nyfoedt, rider_derived_abilities: Object.fromEntries(U25_ABILITY_KEYS.map((k) => [k, 10])) };
+  assert.equal(computeU25StatSum([medEvner]), U25_ABILITY_KEYS.length * 10);
+});
+
 test("ARCHETYPE_BY_TYPE og prior-tabellen daekker samme otte arketyper", () => {
   assert.deepEqual(Object.keys(ARCHETYPE_BY_TYPE).sort(), BIRTH_ARCHETYPE_KEYS.slice().sort());
 });

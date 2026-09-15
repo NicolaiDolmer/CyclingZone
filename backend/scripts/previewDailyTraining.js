@@ -63,7 +63,7 @@
 //                                           [--seed=2026] [--real-days=60] [--enforce-targets]
 //      (eller: npm run training:gate)
 
-import { generateFictionalRiders } from "../lib/fictionalRiderGenerator.js";
+import { generateFictionalRiders, BIRTH_MODE_PCM } from "../lib/fictionalRiderGenerator.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import {
   buildCaps,
@@ -116,7 +116,14 @@ const fmt1 = (n) => n.toFixed(1);
 console.log(`\n🚴  TRAINING-GATE — seed=${SEED} count=${COUNT} seasons=${SEASONS} dailyBudgetBoost=${trainCfg.dailyBudgetBoost} (in-memory, rører ikke prod)\n`);
 
 // ── 1. Generér population ÉN gang ────────────────────────────────────────────
-const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR });
+// #5269: BEVIDST pinnet til den gamle PCM-foedselssti (mode "pcm"). Denne
+// harness er en GOLDEN-POPULATION-fixture: baandene er tunet mod praecis den
+// population generatoren producerede da de blev sat, og enhver aendring af
+// kroppen tripper dem (maalingen staar i SECONDARY_SIGNATURE_WEIGHT's
+// kommentar i fictionalRiderGenerator.js). Gaten skal maale MOTOREN, ikke en
+// ny population; en rekalibrering mod own-priors-stien er sit eget,
+// ejer-gatede arbejde.
+const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR, mode: BIRTH_MODE_PCM });
 
 // Byd abilities og caps; gem start-state til deep-copy.
 const population = raw.map((r, i) => {
