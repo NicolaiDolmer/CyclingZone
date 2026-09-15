@@ -619,6 +619,15 @@ features:
     verified: 2026-09-08
     note: Skemaet 2026-09-features åbnet 8/9 14:15 (241 inviteret via indbakken); admin-resultatside /admin/surveys/:slug live (#5043).
 
+  - id: discord-welcome-inbox
+    area: comms
+    title_en: Discord welcome inbox notification
+    title_da: Discord-velkomstbesked i indbakken
+    state: beta
+    epic: 5130
+    verified: 2026-09-15
+    note: Sweep (discordWelcomeSweep.js) sender én gang pr. hold ved draft-tærsklen eller 24t-fallback; PR #5211 hærdes (haerd-foerst-saa-merge) inden merge.
+
   # --- billing -------------------------------------------------------------
   - id: cz-pro
     area: billing
