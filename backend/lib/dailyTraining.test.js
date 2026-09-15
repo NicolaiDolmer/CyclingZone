@@ -41,28 +41,69 @@ test("rest-dag giver nul progress", () => {
   const d = dailyAbilityDelta({
     ability: "sprint", current: 70, cap: 80, age: 20,
     program: { focus: "sprint", intensity: "rest" },
-    conditionMult: 1, bonus: false, noise: 1,
+    conditionMult: 1, noise: 1,
   });
   assert.equal(d, 0);
 });
 
-test("fokus-evne vokser hurtigere end off-fokus ved samme gap; bonus = ×1.25", () => {
+test("fokus-evne vokser hurtigere end off-fokus ved samme gap", () => {
   const base = { current: 70, cap: 80, age: 20, program: { focus: "sprint", intensity: "normal" }, conditionMult: 1, noise: 1 };
-  const focusDelta = dailyAbilityDelta({ ...base, ability: "sprint", bonus: false });   // sprint er i sprint-fokus
-  const offDelta = dailyAbilityDelta({ ...base, ability: "climbing", bonus: false });   // climbing er ikke
-  const boosted = dailyAbilityDelta({ ...base, ability: "sprint", bonus: true });
+  const focusDelta = dailyAbilityDelta({ ...base, ability: "sprint" });   // sprint er i sprint-fokus
+  const offDelta = dailyAbilityDelta({ ...base, ability: "climbing" });   // climbing er ikke
   assert.ok(focusDelta > 0 && offDelta > 0);
   assert.ok(focusDelta > offDelta);
   // forholdet = focusGrowthMult.normal / offFocusMult (samme gap, samme alder) — brug reelle config-værdier
   const expectedRatio = TRAINING_CONFIG.focusGrowthMult.normal / TRAINING_CONFIG.offFocusMult;
   assert.ok(Math.abs(focusDelta / offDelta - expectedRatio) < 1e-9);
-  assert.ok(Math.abs(boosted / focusDelta - DAILY_TRAINING_CONFIG.bonusMult) < 1e-9);
+});
+
+// #4847 B3 (ejer-go 6/9): manager-klik-bonussen (bonusMult: 1.25) er FJERNET —
+// et "aktivt manager-klik" giver ikke længere +25 %. dailyAbilityDelta tager
+// ikke længere et `bonus`-argument overhovedet; et ekstra `bonus: true/false`
+// fra en gammel caller ignoreres bare (harmløst, se testen nedenfor).
+test("#4847 B3 · intet manager-klik-bonus tilbage: samme args giver samme delta uanset et evt. leftover bonus-flag", () => {
+  const base = { current: 70, cap: 80, age: 20, program: { focus: "sprint", intensity: "normal" }, ability: "sprint", conditionMult: 1, noise: 1 };
+  const plain = dailyAbilityDelta(base);
+  const leftoverBonusKey = "bonus";
+  const withLeftoverBonusTrue = dailyAbilityDelta({ ...base, [leftoverBonusKey]: true });
+  const withLeftoverBonusFalse = dailyAbilityDelta({ ...base, [leftoverBonusKey]: false });
+  assert.equal(withLeftoverBonusTrue, plain, "bonus:true fra en gammel caller må ikke længere ændre outputtet");
+  assert.equal(withLeftoverBonusFalse, plain);
+});
+
+// #4847 B3: DEN BÆRENDE bit-identisk-test — output for bonus=false skal være
+// PRÆCIS det samme før/efter fjernelsen af bonus-leddet. Den gamle kæde havde
+// et sidste multiplikator-led (bonus ? cfg.bonusMult : 1); med bonus=false var
+// det leddet ALTID nøjagtig 1, og × 1 er bit-identisk i IEEE754 (ingen
+// afrundingsforskel) — at fjerne leddet fra kæden må derfor give PRÆCIS samme
+// tal som før for enhver bonus=false-kørsel. staffBonus/facilityMult/
+// academyRateMult/noise er UÆNDREDE (som krævet af #4847 B3-briefen).
+test("#4847 B3 · KRITISK: dailyAbilityDelta-output for bonus=false er bit-identisk før/efter bonusMult-fjernelsen", () => {
+  const cfg = DAILY_TRAINING_CONFIG;
+  const program = { focus: "vo2max", intensity: "hard" };
+  const args = { ability: "climbing", current: 32, cap: 91, age: 24, program, conditionMult: 0.88, noise: 1.06, potentiale: 5 };
+  const got = dailyAbilityDelta(args); // ny kæde: intet bonus-led
+
+  const gap = 91 - 32;
+  const base = (gap * growthFractionForAge(24) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
+  const mult = abilityMult("climbing", program);
+  const roleRate = 1; // primaryType udeladt
+  const oldBonusFactor = 1; // (bonus ? cfg.bonusMult : 1) med bonus=false
+  // Reproducerer den GAMLE kæde ordret (staffBonus/facilityMult/academyRateMult
+  // alle 1.0 uden staff/facilityTier), med bonus-leddet skrevet eksplicit ud:
+  const oldFormulaBonusFalse = base * mult * roleRate * 0.88 * youthMultiplier(24) * youthRateForPotential(5)
+    * oldBonusFactor * 1.06 * 1 /* staffBonus */ * 1 /* facilityMult */ * 1 /* academyRateMult */;
+  assert.ok(
+    Math.abs(got - oldFormulaBonusFalse) < 1e-15,
+    `bit-identisk (bonus=false): got ${got}, expected ${oldFormulaBonusFalse}`,
+  );
+  assert.equal(got, oldFormulaBonusFalse, "skal være PRÆCIS ens, ikke kun 'tæt på'");
 });
 
 test("evne på cap giver nul", () => {
   const d = dailyAbilityDelta({
     ability: "sprint", current: 80, cap: 80, age: 20,
-    program: { focus: "sprint", intensity: "hard" }, conditionMult: 1, bonus: false, noise: 1,
+    program: { focus: "sprint", intensity: "hard" }, conditionMult: 1, noise: 1,
   });
   assert.equal(d, 0);
 });
@@ -79,7 +120,7 @@ test("applyDailyTick: fuld bar giver +1, remainder bevares, clamp ved cap, deter
     caps: { sprint: 80, climbing: 60, endurance: 75 },
     progress: { sprint: 0.995 },
     program: { focus: "sprint", intensity: "hard" },
-    conditionMult: 1, bonus: true,
+    conditionMult: 1,
   };
   const out = applyDailyTick({ ...input, abilities: { ...input.abilities }, progress: { ...input.progress } });
   // Robust for ALLE noise-værdier i [0.85, 1.15]: delta ∈ [0.2125, 0.2875] og bar=0.995+delta ⇒ præcis ét +1.
@@ -98,7 +139,7 @@ test("applyDailyTick muterer ikke input", () => {
   applyDailyTick({
     riderId: "r2", dateStr: "2026-06-21", age: 22,
     abilities, caps: { sprint: 80 }, progress,
-    program: { focus: "sprint", intensity: "normal" }, conditionMult: 1, bonus: false,
+    program: { focus: "sprint", intensity: "normal" }, conditionMult: 1,
   });
   assert.equal(abilities.sprint, 70);
   assert.equal(progress.sprint, 0.5);
@@ -108,7 +149,7 @@ test("ukendt intensitet giver neutral multiplikator, aldrig NaN", () => {
   const d = dailyAbilityDelta({
     ability: "sprint", current: 70, cap: 80, age: 20,
     program: { focus: "sprint", intensity: "extreme" },
-    conditionMult: 1, bonus: false, noise: 1,
+    conditionMult: 1, noise: 1,
   });
   assert.ok(Number.isFinite(d) && d > 0);
 });
@@ -117,7 +158,7 @@ test("ukendt intensitet giver neutral multiplikator, aldrig NaN", () => {
 
 test("dailyAbilityDelta: akademi-alder (17) får youthMultiplier som faktor", () => {
   const program = { focus: "sprint", intensity: "normal" };
-  const args = { ability: "sprint", current: 50, cap: 85, age: 17, program, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
+  const args = { ability: "sprint", current: 50, cap: 85, age: 17, program, conditionMult: 1, noise: 1, potentiale: 4 };
   const cfg = DAILY_TRAINING_CONFIG;
   const gap = 85 - 50;
   const base = (gap * growthFractionForAge(17) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
@@ -130,7 +171,7 @@ test("dailyAbilityDelta: akademi-alder (17) får youthMultiplier som faktor", ()
 test("dailyAbilityDelta: senior (age 27) uændret — youthMultiplier(27)===1.0", () => {
   assert.equal(youthMultiplier(27), 1.0);
   const program = { focus: "sprint", intensity: "normal" };
-  const args = { ability: "sprint", current: 50, cap: 85, age: 27, program, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
+  const args = { ability: "sprint", current: 50, cap: 85, age: 27, program, conditionMult: 1, noise: 1, potentiale: 4 };
   const cfg = DAILY_TRAINING_CONFIG;
   const gap = 85 - 50;
   const base = (gap * growthFractionForAge(27) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
@@ -142,7 +183,7 @@ test("dailyAbilityDelta: senior (age 27) uændret — youthMultiplier(27)===1.0"
 
 test("potentiale skalerer daglig vækst: pot6 > pot2 ved samme gap/alder/program", () => {
   const base = { ability: "climbing", current: 20, cap: 80, age: 18,
-    program: { focus: "vo2max", intensity: "hard" }, conditionMult: 1, bonus: false, noise: 1 };
+    program: { focus: "vo2max", intensity: "hard" }, conditionMult: 1, noise: 1 };
   const low = dailyAbilityDelta({ ...base, potentiale: 2 });
   const high = dailyAbilityDelta({ ...base, potentiale: 6 });
   assert.ok(high > low, `pot6 ${high} skal > pot2 ${low}`);
@@ -178,7 +219,7 @@ test("applyDailyTick: hardDailyCap=1 begrænser én evnes dags-gevinst til +1 ua
     caps: { climbing: 99 },
     progress: { climbing: 0 },
     program: { focus: "vo2max", intensity: "hard" },
-    conditionMult: 1, bonus: true, potentiale: 6, hardDailyCap: 1,
+    conditionMult: 1, potentiale: 6, hardDailyCap: 1,
   };
   const out = applyDailyTick(input);
   assert.equal(out.gains.climbing, 1, "maks +1 selvom rå delta ville give mere");
@@ -192,7 +233,7 @@ test("applyDailyTick: uden hardDailyCap (default) kan samme scenarie give mere e
     caps: { climbing: 99 },
     progress: { climbing: 0 },
     program: { focus: "vo2max", intensity: "hard" },
-    conditionMult: 1, bonus: true, potentiale: 6,
+    conditionMult: 1, potentiale: 6,
   };
   const out = applyDailyTick(input);
   assert.ok(out.gains.climbing > 1, `forventede >1 uden cap, fik ${out.gains.climbing}`);
@@ -217,19 +258,20 @@ test("dailyAbilityDelta: uden staff (default-params) = bit-identisk med den gaml
   // Regressions-vagt: den EKSPLICITTE gamle formel (uden staffBonus) skal give præcis
   // samme tal som dailyAbilityDelta uden staff-params. Ét bevis for nul regression.
   const program = { focus: "sprint", intensity: "normal" };
-  const args = { ability: "sprint", current: 40, cap: 85, age: 19, program, conditionMult: 0.97, bonus: true, noise: 1.07, potentiale: 5 };
+  const args = { ability: "sprint", current: 40, cap: 85, age: 19, program, conditionMult: 0.97, noise: 1.07, potentiale: 5 };
   const cfg = DAILY_TRAINING_CONFIG;
   const gap = 85 - 40;
   const base = (gap * growthFractionForAge(19) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
   const mult = abilityMult("sprint", program);
-  const expected = base * mult * 0.97 * youthMultiplier(19) * youthRateForPotential(5) * cfg.bonusMult * 1.07;
+  // #4847 B3: bonusMult er fjernet fra kæden (var 1.0 for bonus=false/ikke-manager).
+  const expected = base * mult * 0.97 * youthMultiplier(19) * youthRateForPotential(5) * 1.07;
   const got = dailyAbilityDelta(args); // ingen staff/facilityTier/riderLevel → staffBonus = 1.0
   assert.ok(Math.abs(got - expected) < 1e-12, `bit-identisk: got ${got}, expected ${expected}`);
 });
 
 test("dailyAbilityDelta: fysisk-ungdoms-coach hæver en ung rytters fysiske delta proportionalt", () => {
   const program = { focus: "vo2max", intensity: "hard" };
-  const base = { ability: "climbing", current: 40, cap: 85, age: 18, program, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
+  const base = { ability: "climbing", current: 40, cap: 85, age: 18, program, conditionMult: 1, noise: 1, potentiale: 4 };
   const withoutStaff = dailyAbilityDelta(base);
   const withStaff = dailyAbilityDelta({ ...base, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "u23" });
   const factor = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "u23" })
@@ -246,7 +288,7 @@ test("dailyAbilityDelta: dimension-miss (mental) + niveau-miss (senior) → uæn
   // aggression = mental-evne; coachens mental-akse er under baseline → ingen
   // SPECIALISERINGS-bonus. Plan B: facilitets-MAGNITUDEN gælder dog stadig (den er
   // evne-uafhængig), så delta = uden-staff × facilityTrainingMultiplier præcist.
-  const mentalBase = { ability: "aggression", current: 40, cap: 85, age: 18, program: { focus: "aggression", intensity: "normal" }, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
+  const mentalBase = { ability: "aggression", current: 40, cap: 85, age: 18, program: { focus: "aggression", intensity: "normal" }, conditionMult: 1, noise: 1, potentiale: 4 };
   const facMult = facilityTrainingMultiplier({ facilityTier: 5, staff: PHYS_YOUTH_COACH });
   const mentalWith = dailyAbilityDelta({ ...mentalBase, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "u23" });
   const mentalWithout = dailyAbilityDelta(mentalBase);
@@ -255,7 +297,7 @@ test("dailyAbilityDelta: dimension-miss (mental) + niveau-miss (senior) → uæn
     "mental-evne (dimension-miss) → KUN facilitets-magnitude, ingen specialiserings-bonus"
   );
   // En senior rytters fysiske evne løftes MINDRE end en ungdoms (niveau-target).
-  const physBase = { ability: "climbing", current: 40, cap: 85, age: 30, program, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
+  const physBase = { ability: "climbing", current: 40, cap: 85, age: 30, program, conditionMult: 1, noise: 1, potentiale: 4 };
   const senior = dailyAbilityDelta({ ...physBase, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "senior" });
   const youth = dailyAbilityDelta({ ...physBase, age: 18, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "u23" });
   const youthNoStaff = dailyAbilityDelta({ ...physBase, age: 18 });
@@ -273,7 +315,7 @@ test("KRITISK non-regression: staff-bonus ændrer KUN daglig delta — cap-loope
     caps: { climbing: 85 },            // kun 1 point tilbage til cap
     progress: { climbing: 0.999 },     // bar næsten fuld → ét +1 er lige på trapperne
     program: { focus: "vo2max", intensity: "hard" },
-    conditionMult: 1, bonus: true, potentiale: 6,
+    conditionMult: 1, potentiale: 6,
     // Stor bonus: fysisk-ungdoms-coach + fuld facilitet + u23-rytter.
     staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "u23",
   };
@@ -290,7 +332,7 @@ test("applyDailyTick: uden staff (default) = bit-identisk med samme tick uden st
     caps: { sprint: 80, climbing: 78, endurance: 75 },
     progress: { sprint: 0.4, climbing: 0.7 },
     program: { focus: "sprint", intensity: "hard" },
-    conditionMult: 0.95, bonus: true, potentiale: 5,
+    conditionMult: 0.95, potentiale: 5,
   };
   const withoutParams = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress } });
   const withNullStaff = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress }, staff: null, facilityTier: 0, riderLevel: "u23" });
@@ -303,7 +345,7 @@ test("dailyAbilityDelta: academyRateMult udeladt = bit-identisk med eksplicit 1.
   const args = {
     ability: "sprint", current: 50, cap: 85, age: 17,
     program: { focus: "sprint", intensity: "normal" },
-    conditionMult: 1, bonus: false, noise: 1, potentiale: 4,
+    conditionMult: 1, noise: 1, potentiale: 4,
   };
   const omitted = dailyAbilityDelta(args);
   const explicit1 = dailyAbilityDelta({ ...args, academyRateMult: 1.0 });
@@ -315,7 +357,7 @@ test("dailyAbilityDelta: academyRateMult=1/3 giver præcis en tredjedel af delta
   const args = {
     ability: "sprint", current: 50, cap: 85, age: 17,
     program: { focus: "sprint", intensity: "normal" },
-    conditionMult: 1, bonus: false, noise: 1, potentiale: 4,
+    conditionMult: 1, noise: 1, potentiale: 4,
   };
   const full = dailyAbilityDelta(args);
   const third = dailyAbilityDelta({ ...args, academyRateMult: 1 / 3 });
@@ -329,7 +371,7 @@ test("applyDailyTick: academyRateMult udeladt = bit-identisk regression mod samm
     caps: { sprint: 85, climbing: 80, endurance: 78 },
     progress: { sprint: 0.3, climbing: 0.6 },
     program: { focus: "sprint", intensity: "normal" },
-    conditionMult: 1, bonus: true, potentiale: 5,
+    conditionMult: 1, potentiale: 5,
   };
   const withoutParam = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress } });
   const withExplicit1 = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress }, academyRateMult: 1.0 });
@@ -348,7 +390,7 @@ test("applyDailyTick: academyRateMult=1/3 skalerer progress-akkumulering præcis
     caps: { sprint: 55 },
     progress: { sprint: 0 },
     program: { focus: "sprint", intensity: "normal" },
-    conditionMult: 1, bonus: false, potentiale: 4,
+    conditionMult: 1, potentiale: 4,
   };
   const full = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress } });
   const third = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress }, academyRateMult: 1 / 3 });
@@ -372,7 +414,7 @@ function raceDevFixture(overrides = {}) {
     caps: { climbing: 55, endurance: 55, durability: 55, sprint: 55, flat: 55 },
     progress: {},
     program: { focus: "sprint", intensity: "normal" },
-    conditionMult: 1, bonus: false, potentiale: 3,
+    conditionMult: 1, potentiale: 3,
     ...overrides,
   };
 }
@@ -529,7 +571,7 @@ test("#4631 · en evne på sit loft giver stadig nul, også i den specialiserede
   const delta = dailyAbilityDelta({
     ability: "climbing", current: 70, cap: 70, age: 22,
     program: { focus: "vo2max_climb", intensity: "hard" },
-    conditionMult: 1, bonus: false, noise: 1, potentiale: 70,
+    conditionMult: 1, noise: 1, potentiale: 70,
   });
   assert.equal(delta, 0);
 });
@@ -540,7 +582,7 @@ test("#4631 · en eksisterende hybrid-plan er BIT-IDENTISK med før splittet", (
   const args = {
     ability: "climbing", current: 50, cap: 70, age: 22,
     program: { focus: "vo2max", intensity: "hard" },
-    conditionMult: 1, bonus: false, noise: 1, potentiale: 70,
+    conditionMult: 1, noise: 1, potentiale: 70,
   };
   const base = 20 * growthFractionForAge(22) * DAILY_TRAINING_CONFIG.dailyBudgetBoost / DAILY_TRAINING_CONFIG.daysPerSeason;
   const forventet = base * TRAINING_CONFIG.focusGrowthMult.hard * youthMultiplier(22) * youthRateForPotential(70);
@@ -554,7 +596,7 @@ const B2_TICK_ARGS = Object.freeze({
   abilities: { climbing: 50, endurance: 50, sprint: 50 },
   caps: { climbing: 80, endurance: 80, sprint: 80 },
   progress: {}, program: { focus: "endurance", intensity: "normal" },
-  conditionMult: 1, bonus: false, potentiale: 4,
+  conditionMult: 1, potentiale: 4,
 });
 
 test("#4846 · udeladt tickSeedKey/budgetDivisor er BIT-IDENTISK med før", () => {
@@ -583,7 +625,7 @@ test("#4846 G1 · budgetDivisor skalerer basen præcist (og kun basen)", () => {
   const args = {
     ability: "endurance", current: 50, cap: 80, age: 22,
     program: { focus: "endurance", intensity: "normal" },
-    conditionMult: 1, bonus: false, noise: 1, potentiale: 4,
+    conditionMult: 1, noise: 1, potentiale: 4,
   };
   const standard = dailyAbilityDelta(args);
   const halvRate = dailyAbilityDelta({ ...args, budgetDivisor: DAILY_TRAINING_CONFIG.daysPerSeason * 2 });
