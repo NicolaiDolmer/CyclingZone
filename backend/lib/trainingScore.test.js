@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   computeTrainingScore, trainingScoreFactors, scoreFromRelativeQuality,
-  TRAINING_SCORE_CONFIG, SCORE_FACTOR_KEYS,
+  buildTrainingScoreView, TRAINING_SCORE_CONFIG, SCORE_FACTOR_KEYS,
 } from "./trainingScore.js";
 import { applyDailyTick, dailyAbilityDelta } from "./dailyTraining.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
@@ -184,4 +184,45 @@ test("loebsdags-tick'et bruger samme score-kobling som en traeningsdag", async (
   });
   assert.ok(result.trainingScore, "loebsdagen skal have en intern score (den driver udviklingen)");
   assert.ok(result.trainingScore.score >= 1 && result.trainingScore.score <= 99);
+});
+
+// ── buildTrainingScoreView (fladens udsnit) ─────────────────────────────────
+
+test("view: en loebsdags NULL-score forgifter hverken gennemsnit, bedste eller dags-taelleren", () => {
+  // Number(null) er 0 — uden en eksplicit null-tjek ville loebsdagen taelle som
+  // et nul-pas og traekke gennemsnittet ned.
+  const rows = [
+    { rider_id: "r1", tick_date: "2026-09-10", score: 60, was_race_day: false },
+    { rider_id: "r1", tick_date: "2026-09-11", score: null, was_race_day: true },
+    { rider_id: "r1", tick_date: "2026-09-12", score: 80, was_race_day: false },
+  ];
+  const view = buildTrainingScoreView(rows, { today: "2026-09-12" });
+  assert.equal(view.r1.avg, 70, "gennemsnittet maa kun regne paa dage MED et tal");
+  assert.equal(view.r1.best, 80);
+  assert.equal(view.r1.days, 2, "loebsdagen taeller ikke som en maalt dag");
+  assert.deepEqual(view.r1.spark.map((p) => p.score), [60, null, 80], "hullet skal vaere null, ikke 0");
+});
+
+test("view: loebsdag som DAGENS raekke giver today = null, ikke 0", () => {
+  const rows = [{ rider_id: "r1", tick_date: "2026-09-12", score: null, was_race_day: true }];
+  const view = buildTrainingScoreView(rows, { today: "2026-09-12" });
+  assert.equal(view.r1.today, null);
+  assert.equal(view.r1.todayIsRaceDay, true);
+});
+
+test("view: flere loebsdage samme kalenderdato sorteres paa game_day, og 'i dag' er den seneste", () => {
+  // Fase B (#4846): den partielle unikke noegle tillader flere game_day pr. dato.
+  const rows = [
+    { rider_id: "r1", tick_date: "2026-09-12", game_day: 14, score: 70, was_race_day: false },
+    { rider_id: "r1", tick_date: "2026-09-12", game_day: 12, score: 40, was_race_day: false },
+    { rider_id: "r1", tick_date: "2026-09-12", game_day: 13, score: 55, was_race_day: false },
+  ];
+  const view = buildTrainingScoreView(rows, { today: "2026-09-12" });
+  assert.deepEqual(view.r1.spark.map((p) => p.score), [40, 55, 70], "kurven skal foelge loebsdagen");
+  assert.equal(view.r1.today, 70, "'i dag' er den SENESTE loebsdag paa datoen");
+});
+
+test("view: tom raekkeliste giver et tomt objekt, ikke et kast", () => {
+  assert.deepEqual(buildTrainingScoreView([], { today: "2026-09-12" }), {});
+  assert.deepEqual(buildTrainingScoreView(null), {});
 });

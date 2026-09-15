@@ -2785,13 +2785,22 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // ⇒ ingen ekstra DB-kald, samme moenster som racingToday ovenfor).
       // team_id-filteret matcher RLS-politikkens egen noegle og rammer
       // idx_rider_training_scores_team_date.
+      // PAGINERET: 38 ryttere (30 senior + 8 akademi) x 31 kalenderdage er
+      // ~1.180 raekker, OVER PostgRESTs 1.000-raekkers-cap — og historiske
+      // raekker fra solgte ryttere bliver liggende under det gamle hold
+      // (team_id fryses ved skrivningen), saa tallet vokser kun. Uden
+      // paginering ville svaret blive TAVST afkortet og kurven vise et
+      // ufuldstaendigt vindue uden et eneste signal om at data manglede.
+      // `id` som sekundaer, UNIK sortering: fetchAllRows kraever en stabil
+      // raekkefoelge paa tvaers af sider.
       trainingScoreOn && riderIds.length
-        ? supabase
-            .from("rider_training_scores")
-            .select("rider_id, tick_date, score, session, was_race_day, contributions")
-            .eq("team_id", teamId)
-            .gte("tick_date", trainingScoreSince)
-            .order("tick_date", { ascending: false })
+        ? fetchAllRows(() => supabase
+          .from("rider_training_scores")
+          .select("id, rider_id, tick_date, game_day, score, session, was_race_day, contributions")
+          .eq("team_id", teamId)
+          .gte("tick_date", trainingScoreSince)
+          .order("tick_date", { ascending: false })
+          .order("id", { ascending: true })).then((data) => ({ data }))
         : Promise.resolve({ data: [] }),
     ]);
 

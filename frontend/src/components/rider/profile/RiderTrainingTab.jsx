@@ -515,9 +515,14 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   }
 
   const runs = trainingHistory?.runs ?? [];
-  // #4851: null naar training_score_visible er off (feltet udelades helt af
-  // /api/training/me) ELLER naar rytteren endnu ikke har en maalt dag.
-  const riderScore = training.trainingScore?.[rider.id] ?? null;
+  // #4851: FEATURE-tilstanden er gaten, ikke rytterens egen raekke. `null` =
+  // flaget er off (feltet udelades helt af /api/training/me). Er flaget on men
+  // rytteren endnu ikke har en maalt dag, skal kortet stadig staa — med sin
+  // tomme tilstand — ellers ville fladen falde tilbage til den boks kortet
+  // netop ERSTATTER, og to ryttere paa samme hold ville vise to forskellige
+  // kort-typer.
+  const scoreVisible = training.trainingScore != null;
+  const riderScore = training.trainingScore?.[rider.id] ?? {};
   const condition = training.condition?.[rider.id] ?? null;
   const plan = training.planFor(rider.id);
 
@@ -546,7 +551,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
         </div>
         <div className="flex flex-col gap-[13px] min-w-0">
           {/* #4851: kortet erstatter 30-dages-boksen naar flaget er on. */}
-          {riderScore ? (
+          {scoreVisible ? (
             <RiderTrainingScoreCard score={riderScore} t={t} />
           ) : (
             <TrendCard riderId={rider.id} runs={runs} t={t} />

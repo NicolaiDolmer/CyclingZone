@@ -745,11 +745,20 @@ export async function runTeamTrainingDay({
   if (scoreRows.length > 0) {
     try {
       for (let i = 0; i < scoreRows.length; i += 500) {
-        const { error } = await supabase
-          .from("rider_training_scores")
-          .insert(scoreRows.slice(i, i + 500));
-        // 23505 = raekken fandtes: idempotent no-op, ikke en fejl.
-        if (error && error.code !== "23505") throw new Error(error.message);
+        const batch = scoreRows.slice(i, i + 500);
+        const { error } = await supabase.from("rider_training_scores").insert(batch);
+        if (!error) continue;
+        if (error.code !== "23505") throw new Error(error.message);
+        // 23505 paa et MULTI-row INSERT afbryder HELE saetningen: de raekker der
+        // IKKE var dubletter ville gaa tavst tabt hvis vi bare gik videre. Det
+        // kan ske selv med training_day_runs-reservationen, fordi score-noeglen
+        // ikke indeholder team_id — en rytter der er skiftet hold beholder sine
+        // gamle raekker. Vi falder derfor tilbage til raekke-for-raekke og
+        // sluger kun den enkelte dublet.
+        for (const row of batch) {
+          const { error: rowError } = await supabase.from("rider_training_scores").insert(row);
+          if (rowError && rowError.code !== "23505") throw new Error(rowError.message);
+        }
       }
     } catch (scoreErr) {
       // best-effort: scoren er AFLEDT visning (+ en kvittering paa dagens

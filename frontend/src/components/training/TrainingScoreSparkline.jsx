@@ -57,7 +57,12 @@ export default function TrainingScoreSparkline({ points, label, width = VIEW_W, 
       {fillPaths.map((d) => (
         <path key={d} d={d} className="fill-cz-subtle" />
       ))}
-      {segments.map((seg) => (
+      {/* Et segment med ÉT punkt giver kun "M x,y", som SVG ikke tegner. Uden
+          denne gren ville en maalt dag mellem to loebsdage forsvinde helt —
+          hullet ville sluge selve maalingen. Den tegnes som en prik i stedet. */}
+      {segments.map((seg) => (seg.length === 1 ? (
+        <circle key={seg[0].date} cx={x(seg[0].i)} cy={y(seg[0].score)} r="2" className="fill-cz-1" />
+      ) : (
         <path
           key={seg[0].date}
           d={`M${seg.map((p) => `${x(p.i)},${y(p.score)}`).join(" L")}`}
@@ -68,7 +73,7 @@ export default function TrainingScoreSparkline({ points, label, width = VIEW_W, 
           vectorEffect="non-scaling-stroke"
           className="stroke-cz-1"
         />
-      ))}
+      )))}
       <circle cx={x(last.i)} cy={y(last.score)} r="2.4" className="fill-cz-1" />
     </svg>
   );

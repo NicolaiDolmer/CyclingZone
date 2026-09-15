@@ -272,6 +272,21 @@ export function computeTrainingScore(args, cfg = TRAINING_SCORE_CONFIG) {
 //   contributions  dagens 3-4 stoerste bidrag op/ned
 export const TRAINING_SCORE_VIEW = Object.freeze({ sparkDays: 7, windowDays: 30 });
 
+// `score` er NULLABLE i skemaet (loebsdag = raekke uden tal). Number(null) er 0,
+// saa en bar `Number.isFinite(Number(row.score))` ville lade loebsdage taelle som
+// nuller i baade gennemsnit, bedste og dags-taelleren — praecis den tavse
+// forgiftning kolonnen er nullable for at undgaa.
+function hasNumericScore(row) {
+  return row != null && row.score != null && Number.isFinite(Number(row.score));
+}
+
+// Sorterings-noegle for fase B. Raekker uden loebsdag (fase A) sorteres foerst
+// inden for datoen; de kan alligevel kun vaere én pr. dato pr. rytter.
+function gameDayOf(row) {
+  const n = Number(row?.game_day);
+  return Number.isFinite(n) ? n : -1;
+}
+
 export function buildTrainingScoreView(rows, {
   today = null,
   sparkDays = TRAINING_SCORE_VIEW.sparkDays,
@@ -286,21 +301,32 @@ export function buildTrainingScoreView(rows, {
 
   const out = {};
   for (const [riderId, riderRows] of byRider) {
-    // AELDST foerst. tick_date er en DATE-streng, saa leksikografisk = kronologisk.
-    riderRows.sort((a, b) => String(a.tick_date).localeCompare(String(b.tick_date)));
+    // AELDST foerst. tick_date er en DATE-streng, saa leksikografisk =
+    // kronologisk. `game_day` er den SEKUNDAERE noegle: naar #4846 flipper, kan
+    // flere loebsdage dele samme kalenderdato, og en sortering paa datoen alene
+    // ville lade input-raekkefoelgen afgoere baade "i dag" og kurvens retning.
+    riderRows.sort((a, b) => {
+      const byDate = String(a.tick_date).localeCompare(String(b.tick_date));
+      if (byDate !== 0) return byDate;
+      return gameDayOf(a) - gameDayOf(b);
+    });
     const window = riderRows.slice(-windowDays);
-    const withNumber = window.filter((r) => Number.isFinite(Number(r.score)));
+    const withNumber = window.filter(hasNumericScore);
 
-    const todayRow = today ? riderRows.find((r) => String(r.tick_date) === String(today)) : null;
+    // SIDSTE raekke paa dagen, ikke den foerste: med flere loebsdage samme dato
+    // er "i dag" den seneste af dem.
+    const todayRow = today
+      ? riderRows.filter((r) => String(r.tick_date) === String(today)).at(-1) ?? null
+      : null;
     const sum = withNumber.reduce((s, r) => s + Number(r.score), 0);
 
     out[riderId] = {
-      today: todayRow && Number.isFinite(Number(todayRow.score)) ? Number(todayRow.score) : null,
+      today: hasNumericScore(todayRow) ? Number(todayRow.score) : null,
       todayIsRaceDay: !!todayRow?.was_race_day,
       todaySession: todayRow?.session ?? null,
       spark: window.slice(-sparkDays).map((r) => ({
         date: String(r.tick_date),
-        score: Number.isFinite(Number(r.score)) ? Number(r.score) : null,
+        score: hasNumericScore(r) ? Number(r.score) : null,
         raceDay: !!r.was_race_day,
       })),
       avg: withNumber.length ? Math.round(sum / withNumber.length) : null,
