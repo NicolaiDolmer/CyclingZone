@@ -307,6 +307,27 @@ features:
     verified: 2026-09-15
     note: Fundament merget 15/9 bag flag (off); design låst §13.3; B4-udløser mangler.
 
+  - id: training-score
+    area: training
+    title_en: Training score 1-99
+    title_da: Træningsscore 1-99
+    state: beta
+    flag: training_score_visible
+    ssot: docs/TRAINING_RULES.md
+    epic: 4851
+    verified: 2026-09-15
+    note: PR #5261 merget 15/9; flag beta (admin + beta-testere). Flip til on = ejer.
+
+  - id: training-hard-sessions-cobbles-echelon-attack
+    area: training
+    title_en: Hard sessions for cobbles, echelons and attacks
+    title_da: Hårde sessioner for brosten, vifter og angreb
+    state: live
+    ssot: docs/TRAINING_RULES.md
+    epic: 4874
+    verified: 2026-09-15
+    note: PR #5265 merget 15/9; TRAINING_RULES §3.2.
+
   - id: season-fatigue-reset
     area: training
     title_en: Season fatigue and form reset
@@ -608,6 +629,15 @@ features:
     epic: 4943
     verified: 2026-09-08
     note: Skemaet 2026-09-features åbnet 8/9 14:15 (241 inviteret via indbakken); admin-resultatside /admin/surveys/:slug live (#5043).
+
+  - id: discord-welcome-inbox
+    area: comms
+    title_en: Discord welcome inbox notification
+    title_da: Discord-velkomstbesked i indbakken
+    state: live
+    epic: 5130
+    verified: 2026-09-15
+    note: PR #5211 merget 15/9; én besked pr. nyt hold, eksisterende hold backfillet.
 
   # --- billing -------------------------------------------------------------
   - id: cz-pro

@@ -25,7 +25,11 @@ import { RACE_DAY_ENGINE_FLAG_KEY } from "./raceDayEngineFlag.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const apiSource = readFileSync(resolve(__dirname, "../routes/api.js"), "utf8");
 
-function routeBlock(marker, len = 7200) {
+// #4851: vinduet er en HEURISTIK, ikke en kontrakt — det skal bare daekke hele
+// /training/me-handleren. Hævet fra 7200 da traeningsscoren lagde et flag-opslag,
+// en query og et betinget responsfelt ind i samme route; res.json faldt ellers
+// uden for vinduet og guarderne holdt op med at maale noget.
+function routeBlock(marker, len = 9200) {
   const start = apiSource.indexOf(marker);
   assert.ok(start !== -1, `${marker} skal findes i api.js`);
   return apiSource.slice(start, start + len);

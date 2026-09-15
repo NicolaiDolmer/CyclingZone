@@ -6,10 +6,17 @@
 // Retry-After-vindue") — hurtig prev → næste → prev tilbage til SAMME rytter
 // inden for vinduet rammer den identiske url to gange.
 //
-// Scenarie (issue #5242 punkt 5): mock 429 med Retry-After: 2 på ÉT
-// kaldsted → intet andet kald mod SAMME url i 2 sekunder, og INGEN fejlboks
+// Scenarie (issue #5242 punkt 5): mock 429 med Retry-After på ÉT kaldsted →
+// intet andet kald mod SAMME url inden for vinduet, og INGEN fejlboks
 // (apiFetch.ts's kontrakt: "limited" er ikke en fejl kaldstedet skal vise en
 // fejlkasse for — modulets fil-header, punkt 2).
+//
+// Vinduets LÆNGDE er ikke under test — kun at det findes. Testen venter aldrig
+// på udløb, så mocken bruger et vindue ingen runner kan overhale: med de
+// oprindelige 2 s (backendens rigtige værdi) tog prev→next→prev 2,3-2,4 s på
+// GitHubs Windows-runner mod 0,6-1,0 s lokalt, og value-trend blev ramt igen
+// 300-400 ms efter vinduet udløb (PR #5235, 2x deterministisk, trace-verificeret;
+// postmortem: .claude/learnings/2026-09-15-5242-e2e-real-clock-window-ci-flake.md).
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, corsHeaders, json } from "./fixtures.js";
 import { RIDERS } from "../../src/preview/seedData.js";
@@ -21,6 +28,12 @@ import { RIDERS } from "../../src/preview/seedData.js";
 // rives ned mellem de to ryttere.
 const RIDER_A = RIDERS.find((r) => r.id === "rider-1");
 const RIDER_B = { ...RIDER_A, id: "rider-5242b", firstname: "Bo", lastname: "Zenberg" };
+
+// Se fil-headeren: vinduet skal være længere end NOGEN runner bruger på
+// prev→next→prev (CI målt til 2,4 s; testens egen timeout er 30 s). Ikke 2,
+// som backenden sender i dag — den værdi er allerede dækket af apiFetch's
+// unit-suite, her handler det kun om "rammer aldrig netværket igen".
+const RETRY_AFTER_SECONDS = 60;
 
 test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fejlboks", () => {
   test("gentaget kald mod SAMME url inden for Retry-After-vinduet rammer aldrig netværket, og viser ingen fejl", async ({ page }) => {
@@ -43,7 +56,7 @@ test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fej
 
     // #5242 kerne-fixturen: rider-1's value-trend (hentes UBETINGET ved hver
     // rytter-profil-visning, ikke fane-gated — se RiderStatsPage.jsx's
-    // hoved-effekt) svarer ALTID 429 med Retry-After: 2. Et 2. kald mod
+    // hoved-effekt) svarer ALTID 429 med Retry-After. Et 2. kald mod
     // PRÆCIS denne url inden for vinduet må aldrig nå hertil.
     let riderAValueTrendHits = 0;
     await page.route("**/api/riders/rider-1/value-trend**", (route) => {
@@ -53,8 +66,8 @@ test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fej
       return route.fulfill({
         status: 429,
         contentType: "application/json",
-        headers: { ...corsHeaders(request), "Retry-After": "2" },
-        body: JSON.stringify({ error: "rate_limited", retry_after_seconds: 2 }),
+        headers: { ...corsHeaders(request), "Retry-After": String(RETRY_AFTER_SECONDS) },
+        body: JSON.stringify({ error: "rate_limited", retry_after_seconds: RETRY_AFTER_SECONDS }),
       });
     });
     // rider-5242b's tilsvarende endpoint svarer normalt — kun rider-1's url er
@@ -72,9 +85,9 @@ test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fej
     await expect.poll(() => riderAValueTrendHits).toBeGreaterThanOrEqual(1);
     expect(riderAValueTrendHits).toBe(1);
 
-    // Hurtig prev/next — næste rytter, så tilbage til rider-1 igen, INDEN for
-    // Retry-After-vinduet (2s). Samme mønster som en spiller der klikker sig
-    // frem og tilbage i switcheren (apiFetch.ts's "rytter-switcher-byge").
+    // Prev/next — næste rytter, så tilbage til rider-1 igen, INDEN for
+    // Retry-After-vinduet. Samme mønster som en spiller der klikker sig frem og
+    // tilbage i switcheren (apiFetch.ts's "rytter-switcher-byge").
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("heading", { name: "Bo Zenberg" }).first()).toBeVisible();
     await page.keyboard.press("ArrowLeft");

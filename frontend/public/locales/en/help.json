@@ -1004,7 +1004,7 @@
         "steps": [
           "Go to Daily Training in the navigation.",
           "Find a rider and choose what kind of day it is: Rest, Active recovery, a Skill day or Training.",
-          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Mixed intervals, Climbing intervals, Punch intervals, Threshold or Sprint (hard). On a skill day: Technique, Aero or Race craft.",
+          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Mixed intervals, Climbing intervals, Punch intervals, Threshold, Sprint, Cobbled Sectors, Echelon Drills or Attack Repeats (hard). On a skill day: Technique, Aero or Race craft.",
           "Save. The day runs every day until you change it.",
           "There is no cap on how many riders can have a program: you can set one for your entire squad."
         ]
@@ -1015,7 +1015,7 @@
       },
       "focusAbilities": {
         "title": "What each session trains",
-        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Mixed intervals train Climbing, Punch and Tempo at an even share. Climbing intervals train Climbing and Tempo, and Climbing gains more than it does in the mixed session, but Punch is not trained at all. Punch intervals are the mirror image: Punch and Tempo, with Punch gaining more and Climbing left out. The three cover the same amount of work, so picking one over another moves your gains, it does not add any. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending and Cobbles. Aero trains Time trial and Flat. Race craft trains Positioning, Tactics and Aggression. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard; technique, aero and race craft are all easy. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
+        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Mixed intervals train Climbing, Punch and Tempo at an even share. Climbing intervals train Climbing and Tempo, and Climbing gains more than it does in the mixed session, but Punch is not trained at all. Punch intervals are the mirror image: Punch and Tempo, with Punch gaining more and Climbing left out. The three cover the same amount of work, so picking one over another moves your gains, it does not add any. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Cobbled Sectors trains Cobbles, Durability and Positioning, with Cobbles gaining most. Echelon Drills trains Flat, Positioning and Durability, with Flat gaining most. Attack Repeats trains Aggression, Punch and Acceleration, with Aggression gaining most. Technique trains Descending and Cobbles. Aero trains Time trial and Flat. Race craft trains Positioning, Tactics and Aggression. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold, sprint, Cobbled Sectors, Echelon Drills and Attack Repeats are all hard; technique, aero and race craft are all easy. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
       },
       "typeGating": {
         "title": "Why does a focus grow faster for some riders?",
@@ -1052,6 +1052,10 @@
       "progressBars": {
         "title": "Progress bars and ability points",
         "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. Every ability has a hidden lifetime ceiling set by the rider's potential and age; an ability that has reached it reads 'done' on its own line instead of a bar. The rider profile's Training tab lists all 15 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. Switch focus if another area still has room, or enjoy the rider at full strength. Older riders past their career peak naturally have little or no room left. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
+      },
+      "trainingScore": {
+        "title": "The training score",
+        "text": "Every session a rider completes gets a training score from 1 to 99. It measures the QUALITY of that session, not what the rider got out of it: how demanding the session was, how well it matched the rider's strengths, the rider's form and fatigue that day, the coach and the facilities behind it, the rider's talent and age, and the day itself. The score is what drives development: a better session moves the abilities more. It does not depend on how close an ability is to its ceiling, so a rider who is nearly finished in his focus abilities still gets an honest reading of how good the session was. Rest days get no score, because there was no session to measure. On a day where a race takes the place of the session, the column reads 'Race' instead of a number and the curve leaves a gap. Only you can see the scores for your own riders."
       },
       "longTermGrowth": {
         "title": "Long-term growth",
@@ -1472,8 +1476,8 @@
       "a": "Racing costs no ability development in season 3: your talent still gets the exact session you planned that day, whether he races or not. The real cost is fatigue: a race adds its own load on top of training, and a talent who races often needs lighter sessions and real rest days to stay under the injury threshold, same as any senior rider. There's no Academy-specific penalty for racing, so the trade-off is about managing fatigue, not lost development."
     },
     "flatCobblesHardTrainingFaq": {
-      "q": "Why can't I train Flat or Cobbles at Hard intensity?",
-      "a": "By design, no Hard session targets those two abilities today. The Hard sessions are Mixed intervals (Climbing, Punch, Tempo), Climbing intervals (Climbing, Tempo), Punch intervals (Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Flat is trained by Tempo (Normal) and Aero (Easy); Cobbles only by Technique (Easy). There's currently no way to push either one at Hard."
+      "q": "Can I train Flat or Cobbles at Hard intensity?",
+      "a": "Yes, with Cobbled Sectors and Echelon Drills. Cobbled Sectors trains Cobbles hardest, with Durability and Positioning coming along for the price. Echelon Drills trains Flat hardest, with Positioning and Durability coming along the same way. The older Hard sessions still leave both out: Mixed intervals (Climbing, Punch, Tempo), Climbing intervals (Climbing, Tempo), Punch intervals (Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Tempo (Normal), Aero and Technique (both Easy) still work too, just at a lower intensity."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Does a better scouting network also improve how well I see my own riders?",

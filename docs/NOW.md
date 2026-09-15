@@ -1,26 +1,27 @@
 # NOW - Aktuel arbejdsstatus
 
-> **Kompas:** [Living World Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) · **Intention-SSOT:** [GAME_DESIGN_DOCUMENT.md](GAME_DESIGN_DOCUMENT.md) (D-001–D-048) · **Rækkefølge-SSOT:** [MASTERPLAN.md](MASTERPLAN.md) (15/9 formiddag) · **Områdernes SSOT'er:** hard rule 30 i AGENTS.md · **Orkestrator-standard v2:** CLAUDE.md-afsnit + `.claude/workflows/wave.js` (#5142/#5220).
+> **Kompas:** [Living World Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) · **Intention-SSOT:** [GAME_DESIGN_DOCUMENT.md](GAME_DESIGN_DOCUMENT.md) (D-001–D-048) · **Rækkefølge-SSOT:** [MASTERPLAN.md](MASTERPLAN.md) (ejer-godkendt bølge-rækkefølge 15/9) · **Områdernes SSOT'er:** hard rule 30 i AGENTS.md · **Orkestrator-standard v2:** CLAUDE.md-afsnit + `.claude/workflows/wave.js` (#5142/#5220).
 
 ## Aktiv styring
 
-> **🎯 Next action (15/9 kl. 10:2x):** Bølge 1 kører (#3668 evne-skala undersøgelse · #5169 → 140 · #4851 træningsscore); bølge 2 = #5238 Åbnere · B4 sweep+knap+G6 · skader i løbsdage · program 7×5 (mockup først) · #5235-fix; bølge 3 = #5259 · #5240 split · #5257. Forgrund: Holdarbejde/Lederskab-design (spec), U23 "hvad viger"-kort + slice-spec #4619/#4620. **Merget 15/9:** #5205 · #5214 (7.275) · #5258. **Beslutninger 15/9:**  §13.3 (8 kort). **PR-status:** #5211 go-kort først · #5235 fix-spor · #5240 rød, splittes · #3512 egen designsession. Nye evner bygges først efter #3668-beslutning.
+> **🎯 Next action (15/9 kl. 15:4x):** Prompt: `docs/drafts/session-prompt-2026-09-16.md`. Først post-verify merges 15/9 (#5261 score bag flag `training_score_visible` = **beta** · #5265 tre hårde sessioner · #5211 Discord-velkomst · #5277 patch note 7.276). Derefter to parkerede beslutninger ét kort ad gangen, forklaret med et konkret hold: **sponsor** (#4860, PR #5263 klar) og **løbsdage 112/140** (#5267, PR #5169 klar); **B4** (#4847, PR #5264 klar) i træningssession 16/9. Så bølge 3 (rytter-fundament: #5268 evne-migration · #5269 fødsel uden PCM · #4619 trup-datamodel) → bølge 4 (kalender m. trupper; #5262 katalog merges SAMMEN med pakkeren). **Merget 15/9 (8):** #5205 · #5214 · #5258 · #5261 · #5265 · #5211 · #5277 · #5276 (e2e-flake #5242 rettet; #5235 har fået main ind). **Parkeret (ejer):** #5263 · #5169 · #5264 · #5235 (mobil: egen designsession, D-047 revurderes, #5124) · #5262 · #5260 (docs). **Specs 15/9:** Holdarbejde/Lederskab (9 kort) · U23/junior (6 + 2 kort) · #3668 = E (egne evner, ingen PCM, ingen rytter mister masse). **Udkast (ejeren poster selv):** `docs/drafts/roadbook-plan-2026-09-15.md` · `patch-notes-audit-2026-09-15.md` (Discord-post). Nye issues 15/9: #5266-#5275.
 
-> **🔴 Åbne fund:** main var rød 15/9 09:04-09:3x (fetch-wiring-ratchet mod forældet PR-base + migration-fejl); postmortem `.claude/learnings/2026-09-15-ratchet-stale-base-og-migration-name-array.md`, forward-guards foreslået (merge-kø kræver opdateret base; migrationer mod ægte Postgres i CI). CYCLINGZONE-56 måles på døgn uden bølge. Railway-MCP "Unauthorized" (ejeren kører `railway login`). GSC-nøgle ikke i Infisical. AGENTS.md over token-budget (Codex-only FAIL). MEMORY.md ~3.050 tok (over mål, under gate).
+> **🔴 Åbne fund:** Kendt webkit-flake `landing-hydration.spec` (#4925) faldt igen 15/9, grøn ved rerun. Beta-testere: 0 i prod, så score i beta = kun admin indtil ejeren udpeger holdnavne. CYCLINGZONE-56 chunk-fejl fortsat. Railway-MCP "Unauthorized". AGENTS.md + FEATURE_STATUS.md over token-budget.
 
 > **📊 Triage:** `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. **💳** [`BILLING_STACK.md`](BILLING_STACK.md); tal i [`GROWTH_STACK.md`](GROWTH_STACK.md) §12. **S3:** 529 løb, 28/8 → 27/9; etaper kl. 11-19 dansk tid.
 
 ## Standing context (forever-relaunch)
 
-- **Liga:** pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8). **Mere fog of war** (ejer 6/9; Q-037 → #5107; skema 14/9: 68,6 % vil have mere skjult, 25,7 % ikke).
-- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (#4209). Pension: afsluttet sæsons alder; referenceår `riderSeasonAge.js` (S3=2028). U25 = 25 og yngre. Akademi: nedrykning kun ≤ 21 (#5145, PR #5197 lukket, branch bevaret).
-- **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` OFF; v3 kører S3 færdig. Ankre §7b; hale-gate `v4TailSpread.js --gate`.
-- **Træning (ejer 15/9, §13.3):** løbsdag som tick, **140 løbsdage/sæson** i alle divisioner, samlet sweep ≥ kl. 20 + knap uden bonus, skader i løbsdage, program 7×5. Fundament #5205 merget bag flag `training_tick_per_race_day` (off); live senest 28/9. Kalenderpakker #4845 (PR #5169 → 140) FØR #4270. U23-kalender #4620 i Bane 1.
-- **Forside `/`:** anonym = marketing-sitet (proxy i `frontend/middleware.ts`, cookie `cz_session`), spiller = app. Enhver ændring af anonym `/` → kør `node scripts/check-cdn-cache-headers.mjs` lokalt før merge (#5251).
-- **Priser (ejer 14/9):** spillere ser INKL. moms; ejerens tal (LTV/MRR/ARPU) EKSKL. moms (#5215).
-- **Kort-regler (ejer 10/9 + 15/9):** ét område pr. kort · ÉT DELPUNKT pr. kort · ÉT samlet før/efter-billede før kortet · læs issuets seneste kommentarer FØR kortet · genåbn aldrig låste beslutninger.
-- **Mekanik:** byg KUN via wave.js (4 laner, semafor 2, hook; frys = commit ≥45 min + tavshed, spor 120/180 min); merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`; stopper på pending checks og på rød Deploy verify: undersøg FØR næste merge; **branch bag main → `gh pr update-branch` + ny CI før merge**); migrationer applies af auto-migrate.yml, Claude post-verificerer STRAKS; CI tavs på PR = merge-konflikt; go-kort på `gh pr diff` + billede; workers rører aldrig `docs/NOW.md`; `gh --body` aldrig med backticks, brug `--body-file`. `Get-Date` FØR hver logning.
+- **Liga:** pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8). **Mere fog of war** (ejer 6/9; #5107).
+- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (#4209). Pension: afsluttet sæsons alder; referenceår `riderSeasonAge.js` (S3=2028). U25 = 25 og yngre. Akademi: nedrykning kun ≤ 21 (#5145).
+- **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` OFF; v3 kører S3 færdig.
+- **Træning (ejer 15/9, §13.3):** løbsdag som tick, samlet sweep ≥ kl. 20 + knap uden bonus, skader i løbsdage, program 7×5. #5205 + B4 #5264 (parkeret) bag flag `training_tick_per_race_day` (off); live senest 28/9. Løbsdage pr. sæson 140 vs 112 afgøres i #5267.
+- **Evner (ejer 15/9):** taktik/aggression = egne evner uden alder/PCM; ingen rytter mister masse; ÉN migration (#5268) FØR U23-ryttere fødes (#5269). Holdarbejde/Lederskab: spec `2026-09-15-holdarbejde-og-lederskab-evner-design.md`.
+- **Trupper (ejer 15/9):** U23 + junior alt live 28/9; spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md`; Graduation Day ugen før skiftet.
+- **Forside `/`:** anonym = marketing-sitet; ændring → `node scripts/check-cdn-cache-headers.mjs` før merge (#5251). **Priser:** spillere inkl. moms; ejerens tal ekskl. (#5215).
+- **Kort-regler (ejer 15/9):** ét delpunkt pr. kort · konkret eksempel med prod-tal · læs issuets seneste kommentarer FØR kortet · genåbn aldrig låste beslutninger · udskyd aldrig selv.
+- **Mekanik:** byg KUN via wave.js; merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`, kun påkrævede checks; `gh pr update-branch` først); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES` i samme PR; migrationer applies af auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; `gh --body-file`, aldrig backticks.
 
-> **🤖 Working agent:** Fable 15/9 fra kl. 10:20 (bølge 1 + design-forgrund). Anden session: STOP + spørg ejeren.
+> **🤖 Working agent:** Ingen aktiv session.
 
 _Historik i git-log, issue-tråde + docs/audits/._

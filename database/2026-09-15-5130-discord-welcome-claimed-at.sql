@@ -1,0 +1,35 @@
+-- #5130 — WAVE-FOLLOWUP-fund (reviewer, 15/9): raekkefoelge-haerdningen
+-- (notify() FOER markering) fjernede den atomiske "claim FOER notify"-laas
+-- uden at erstatte den, og haerdnings-letteren
+-- (docs/drafts/discord-welcome-copy-2026-09-15.md punkt 1) kraevede EN af to
+-- ting bevaret: en separat claim-kolonne/-tidsstempel MED UDLOEB, eller et
+-- unikt databasecontraint paa notifications med dedupe-noegle. Denne
+-- migration implementerer den foerste.
+--
+-- teams.discord_welcome_claimed_at: NULL indtil en sweep-tick atomisk
+-- claimer holdet (betinget UPDATE i discordWelcomeSweep.js, WHERE
+-- discord_welcome_sent_at IS NULL AND (claimed_at IS NULL ELLER aeldre end
+-- DISCORD_WELCOME_CLAIM_LEASE_MS)). To sweep-ticks der raekker frem til
+-- samme hold SAMTIDIG kan derfor aldrig begge vinde claimet — Postgres'
+-- raekke-laasning under UPDATE'en afgoer det, ikke applikationskoden.
+--
+-- MED udloeb (i modsaetning til den gamle, fjernede laas): doer processen
+-- MELLEM claim og notify() (crash/OOM/deploy-genstart), taber holdet IKKE
+-- retten til beskeden for evigt — claimet bliver blot "koldt" efter leasen,
+-- og en senere tick maa genclaime og proeve igen. Selv-helende, samme
+-- egenskab som var pointen med at bytte notify()/markering om 15/9.
+--
+-- Additiv, nullable, ingen backfill noedvendig: NULL betyder "ikke claimet
+-- lige nu", hvilket er den korrekte starttilstand for ALLE raekker (i
+-- modsaetning til discord_welcome_sent_at, hvor en NULL-default ville have
+-- vist maaneder-gamle hold som kandidater — claimed_at gater ikke
+-- kandidat-udvaelgelsen, kun raekkefoelgen naar to ticks kolliderer).
+-- Applies post-merge under #2642-rammerne (ikke-destruktiv → ikke
+-- ejer-gated).
+--
+-- Post-verify:
+--   SELECT column_name, data_type, is_nullable FROM information_schema.columns
+--   WHERE table_name = 'teams' AND column_name = 'discord_welcome_claimed_at';
+
+ALTER TABLE public.teams
+  ADD COLUMN IF NOT EXISTS discord_welcome_claimed_at timestamptz;
