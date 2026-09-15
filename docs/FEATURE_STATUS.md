@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-67 poster: live 45 · beta 3 · dormant 5 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+68 poster: live 45 · beta 3 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -51,6 +51,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Contracts, renewal and expiry (`contracts`) | live | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | extend-contract, contractExpiryRelease og aiContractAutoRenewal i sæsonskiftet. |
 | Rider comparison and watchlist (`rider-compare-and-watchlist`) | live | - | - | - | 2026-09-06 | - |
 | Squad management (`squad-management`) | live | - | - | - | 2026-09-06 | TeamPage med trup, løn, kontrakter og udviklingsfane. |
+| Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [2026-09-15-holdarbejde-og-lederskab-evner-design.md](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-09-15 | Data-only i #5268 (registry, kolonner, fødsels-prior, lofter); motor og mentorpar kommer bag flag senere. |
 
 ## training
 

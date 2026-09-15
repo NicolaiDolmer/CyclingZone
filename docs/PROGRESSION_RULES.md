@@ -62,7 +62,7 @@ Hver (rytter, evne)-kombination hører til én af fem rolleklasser, afgjort af `
 |---|---|---|---|
 | signatur | rytterens primære type-evner | `ROLE_CLASS_TAG.signatur` | `ROLE_CLASS_RATE.signatur` — **ankeret** til dagens ratingniveau, se §6 |
 | sekundær | rytterens sekundære type-evner | `ROLE_CLASS_TAG.sekundaer` | `ROLE_CLASS_RATE.sekundaer` |
-| håndværk | KUN `positioning` + `tactics` (`CRAFT_ABILITIES`) | `craftFactor`-løftet tag | `ROLE_CLASS_RATE.haandvaerk` |
+| håndværk | `positioning`, `tactics`, `teamwork`, `leadership` (`CRAFT_ABILITIES`) | `craftFactor`-løftet tag | `ROLE_CLASS_RATE.haandvaerk` |
 | anden rolle | evner uden for rytterens type | `neutralFactor` | `ROLE_CLASS_RATE.andenRolle` |
 | svaghed | evner rytterens type er dårlig til | `oppositeFactor` | `ROLE_CLASS_RATE.svaghed` |
 
@@ -71,6 +71,26 @@ Låst 14/8 (spec `2026-08-14-3659-rytterudvikling-og-traening-design.md`, beslut
 > ⚠ **Status er 🟡, ikke ✅.** Trin 4's rolle-tag blev leveret 14/8 og RULLET TILBAGE 15/8 (PR #3791), fordi 748 ryttere brød loftet. Nuværende `ROLE_CLASS_TAG` er en genopbygning via #3709/#3798, og er ikke genmålt mod de oprindelige success-kriterier siden. Se audit-filen §C1, §C6.
 
 > 🔧 **4/9 ([#4634](https://github.com/NicolaiDolmer/CyclingZone/issues/4634)/[#4098](https://github.com/NicolaiDolmer/CyclingZone/issues/4098), ejer-beslutning, variant A3+C2 af `docs/audits/4634-cap-varianter-2026-09-04.md`):** `roleTags.svaghed` hævet — 635 ryttere/867 evne-felter stod på bund-loftet ("done") i prod, halvdelen 29+ (aldersaftrapning, urørt). Samtidig fik `gc`-ryttere et nyt gulv på `punch`-taget (`GC_PUNCH_FLOOR`, `riderProgression.js`), fordi `gc` ikke har en `punch`-post i `CAPS_SHAPING_WEIGHTS` og derfor arvede sit punch-tag alene fra sekundærtypen. `ROLE_CLASS_RATE.svaghed` er UÆNDRET — raten er en separat beslutning (egen session, se opfølger-issue). Præcise tal: se konstanterne selv (hard rule 17).
+
+> 🔧 **15/9 ([#5268](https://github.com/NicolaiDolmer/CyclingZone/issues/5268)/[#3668](https://github.com/NicolaiDolmer/CyclingZone/issues/3668), ejer-beslutning):** to nye mentale evner, `teamwork` (Holdarbejde) og `leadership` (Lederskab), og et LOFT på de mentale evners tag (`MENTAL_ABILITY_TAG_CEILING` i `riderProgression.js`).
+>
+> Loftet er ikke pynt. Træningen er gap-proportional (`dailyTraining.js`: `gap = max(0, cap − current)`), så en sænket evne under et uændret loft bare får et større gap og bliver trukket op igen. `tactics` havde et fladt håndværks-tag sat dengang taktik-medianen var alder frem for kunnen, og `aggression` kunne nå signatur-taget hos en baroudeur. Begge er nu skåret ned, og de to nye evner får samme håndværks-tag. Præcise tal: se konstanten selv (hard rule 17).
+>
+> `teamwork`/`leadership` har KUN positive vægte i `capsShapingWeights.js`. Det er en regel, ikke et tilfælde: `abilityRoleClass` sætter klassen `svaghed` så snart primær- ELLER sekundærtypen har en negativ vægt, og en "dobbelt svaghed" på en evne alle skal kunne lære er forbudt (spec `2026-09-15-holdarbejde-og-lederskab-evner-design.md` §3.1, retning A i `TRAINING_RULES.md` §12). En test i `riderProgression.test.js` går alle 64 typepar igennem.
+
+---
+
+## 1.1 Taktik og aggression bygger ikke længere på alder (#5268, 15/9)
+
+Ejer-beslutning 15/9, ordret: *"taktik og aggression må fremadrettet hverken bygge på alder eller på en anden evne; de er egne evner med egen udvikling."*
+
+Før havde begge et additivt alders-led i `abilityDerivation.js`. Målt i prod 15/9 gjorde det taktik til et aldersmålerur: median 14 ved 16-21 år mod 57 ved 31-33 år, uden sammenhæng med rytterens kunnen — mens `descending`, der har samme kilde-kvalitet og intet alders-led, faldt pænt med alderen som man ville forvente. Aggression gav op til +15 gratis point til unge. Fuld måling: [`docs/audits/2026-09-15-3668-ability-scale-investigation.md`](audits/2026-09-15-3668-ability-scale-investigation.md) §1.2-§1.3.
+
+Efter #5268 har hver mental evne sin EGEN prior: rytterens profil (rå stats, aldrig en anden afledt evne) plus deterministisk, centreret støj salted pr. (rytter, evne). `leadership` er den eneste undtagelse — dér er alder en lovlig faktor (GDD D-030: lederskab er lavt hos unge og topper sent), og vægten er bevidst lille, netop fordi et tungt alders-led er den fejl taktik havde.
+
+To tests i `abilityDerivation.test.js` er forward-guarden: den ene fejler hvis nogen lægger et alders-led tilbage i taktik, aggression eller holdarbejde; den anden kræver at lederskab stadig stiger med alderen.
+
+De eksisterende ryttere migreres som en ÉN samlet delta-migration (`backend/scripts/dry-run-5268-mental-abilities.js`, ejer-gated apply): træningsfremgangen bevares, og de point taktik/aggression afgiver flyttes til de to nye evner, så ingen rytter mister evne-masse.
 
 ---
 
