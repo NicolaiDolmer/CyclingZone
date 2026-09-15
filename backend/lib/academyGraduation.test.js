@@ -350,6 +350,53 @@ test("#4619 resolveGraduation promote: grad-raekke UDEN trup-felter falder tilba
   assert.deepEqual(rec.riderUpdates[0], { squad: "senior", is_academy: false });
 });
 
+test("#4619 resolveGraduation promote: fuld U23-trup (12) afviser junior->u23", async () => {
+  const { supabase } = makeSupabase({
+    gradRow: { id: "g2", status: "pending", from_squad: "junior", to_squad: "u23" },
+    rider: RIDER,
+  });
+  // Seniortruppen er HALVTOM — den maa ikke redde en fuld U23-trup.
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 5, balance: 5000 });
+  await assert.rejects(
+    () => resolveGraduation(supabase, {
+      teamId: "t1", riderId: "r1", action: "promote", seasonNumber: 1,
+      getMarketState, countSquad: async () => 12, notify: spyNotify(),
+    }),
+    /squad_cap_violation/,
+  );
+});
+
+test("#4619 resolveGraduation promote: FULD seniortrup blokerer IKKE junior->u23", async () => {
+  // Den falske blokering: getTeamMarketState taeller kun seniorryttere
+  // (akademiryttere tæller ALDRIG mod 30-cappen), saa en flytning der slet ikke
+  // roerer seniortruppen maa ikke afvises af dens cap.
+  const { supabase, rec } = makeSupabase({
+    gradRow: { id: "g2", status: "pending", from_squad: "junior", to_squad: "u23" },
+    rider: RIDER,
+  });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 });
+  const res = await resolveGraduation(supabase, {
+    teamId: "t1", riderId: "r1", action: "promote", seasonNumber: 1,
+    getMarketState, countSquad: async () => 3, notify: spyNotify(),
+  });
+  assert.equal(res.action, "promoted");
+  assert.deepEqual(rec.riderUpdates[0].squad, "u23");
+});
+
+test("#4619 defaultResolveGraduate: fuld seniortrup saelger IKKE en junior-graduate der har plads i U23", async () => {
+  const { supabase, rec } = makeSupabase({
+    gradRow: { id: "g2", status: "pending", from_squad: "junior", to_squad: "u23" },
+    rider: RIDER,
+  });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 });
+  const res = await defaultResolveGraduate(supabase, {
+    teamId: "t1", riderId: "r1", seasonNumber: 1,
+    getMarketState, countSquad: async () => 3, notify: spyNotify(),
+  });
+  assert.equal(res.action, "promoted");
+  assert.equal(rec.auctionInserts.length, 0, "ingen auktion oprettet");
+});
+
 test("resolveGraduation promote: afviser ved fuld senior-trup", async () => {
   const { supabase } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 });

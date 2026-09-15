@@ -89,10 +89,14 @@ export function targetSquadFor(rider, seasonNumber) {
  * kan testes uden en database: kør plan → anvend patcherne på fixturen → kør
  * plan igen → 0 ændringer.
  *
- * @param {{riders:Array, teams:Array, graduations:Array, seasonNumber:number, now?:Date}} args
+ * @param {{riders:Array, teams:Array, graduations:Array, seasonNumber:number, seasonId:string, now?:Date}} args
  */
-export function planSquadBackfill({ riders = [], teams = [], graduations = [], seasonNumber, now = new Date() } = {}) {
+export function planSquadBackfill({ riders = [], teams = [], graduations = [], seasonNumber, seasonId, now = new Date() } = {}) {
   if (!Number.isFinite(seasonNumber)) throw new Error("planSquadBackfill: seasonNumber required");
+  // academy_graduation.season_id er NOT NULL uden default — uden den ville
+  // --apply fejle på den første graduerings-insert, og kun DER (dry-run'en ville
+  // se rigtig ud). Krævet op front i stedet.
+  if (!seasonId) throw new Error("planSquadBackfill: seasonId required");
 
   const teamName = new Map(teams.map((t) => [t.id, t.name ?? t.id]));
   // En rytter har HØJST én pending-række; opslaget er (rider_id, season_id) og
@@ -131,7 +135,7 @@ export function planSquadBackfill({ riders = [], teams = [], graduations = [], s
       // (invariant D, #2257) kan ikke få en række og hører ikke til her.
       if (r.team_id && !pendingRiderIds.has(r.id)) {
         newGraduations.push({
-          team_id: r.team_id, rider_id: r.id, status: "pending",
+          team_id: r.team_id, rider_id: r.id, season_id: seasonId, status: "pending",
           deadline: graduationDeadlineFrom(now),
           from_squad: "u23", to_squad: "senior",
         });
@@ -363,7 +367,7 @@ async function main() {
 
   const supabase = createClient(url, key, { auth: { persistSession: false } });
   const { season, riders, teams, graduations, preMigration } = await loadPopulation(supabase);
-  const plan = planSquadBackfill({ riders, teams, graduations, seasonNumber: season.number });
+  const plan = planSquadBackfill({ riders, teams, graduations, seasonNumber: season.number, seasonId: season.id });
   plan.preMigration = preMigration;
 
   printReport(plan, { json });

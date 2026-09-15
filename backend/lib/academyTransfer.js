@@ -34,30 +34,8 @@ import { getTeamMarketState } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
 import { countOngoingRaceEntries } from "./raceEntryCleanup.js";
-import { findPendingGraduation } from "./academyGraduation.js";
+import { findPendingGraduation, countSquadMembers } from "./academyGraduation.js";
 import { squadForSeason, capForSquad, wouldExceedSquadCap } from "./squads.js";
-
-/**
- * Antal ryttere holdet har i en given trup. #4619: den flade 8-plads-cap
- * (`academy_count >= 8`, ét tal for HELE akademiet) erstattes af et loft PR.
- * TRUP — U23 12, junior 10 (SQUAD_CAPS, ejer 15/9 spec §10.6 + YOUTH_RULES §2.4).
- *
- * Eksporteret så tests kan injicere en tæller uden at mocke PostgREST's
- * count-protokol, og så et senere kaldested (intake, auktions-finalization) kan
- * genbruge præcis denne tælling i stedet for at skrive sin egen.
- *
- * @param {object} supabase
- * @param {{teamId:string, squad:string}} args
- * @returns {Promise<number>}
- */
-export async function countSquadMembers(supabase, { teamId, squad } = {}) {
-  const { count, error } = await supabase.from("riders")
-    .select("id", { count: "exact", head: true })
-    .eq("team_id", teamId)
-    .eq("squad", squad);
-  if (error) throw new Error(`countSquadMembers: ${error.message}`);
-  return count ?? 0;
-}
 
 /**
  * Demote-løn (#2594): samme delte formel som al anden løn —
