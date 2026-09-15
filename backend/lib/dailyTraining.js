@@ -9,7 +9,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 import { effortDevelopmentMultiplier } from "./raceRoles.js";
-import { computeTrainingScore } from "./trainingScore.js";
+import { computeTrainingScore, TRAINING_SCORE_CONFIG } from "./trainingScore.js";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -223,6 +223,10 @@ export function applyDailyTick({
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
   primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
   tickSeedKey = null, budgetDivisor = null,
+  // #4851: score-konfigurationen er injicerbar af samme grund som `trainingCfg`
+  // ovenfor (#3709 trin 4): gate G1 kraever en FOER/EFTER-maaling, og "foer" er
+  // koblingen med gamma = 0. En gate man ikke kan koere er ikke en gate.
+  scoreCfg = TRAINING_SCORE_CONFIG,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const seedScope = tickSeedKey ?? dateStr;
@@ -244,7 +248,7 @@ export function applyDailyTick({
   const trainingScore = computeTrainingScore({
     program, age, potentiale, conditionMult, noise,
     staff, facilityTier, riderLevel, primaryType, secondaryType, trainingCfg,
-  });
+  }, scoreCfg);
   const riderQualityMult = trainingScore?.deltaQualityMult ?? null;
 
   for (const ability of VISIBLE_ABILITIES) {

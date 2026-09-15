@@ -90,8 +90,12 @@ export const TRAINING_SCORE_CONFIG = Object.freeze({
   // Scoren for u = 1 (referencen ovenfor). Kalibreret i
   // backend/scripts/dev/trainingScoreHarness.mjs mod en seedet bestand.
   midpoint: 50,
-  // Hvor haardt kvaliteten slaar igennem. Lavere = fladere fordeling.
-  curve: 0.65,
+  // Hvor haardt kvaliteten slaar igennem. Lavere = fladere fordeling. 0,95 er
+  // valgt i harnessen mod 500 aegte prod-ryttere × 14 dage (5.166 pas): den
+  // bruger skalaen (10 til 86, median 55) uden at bunke i nogen af enderne —
+  // 0 pas i 1-5 og 0 i 95-99, altsaa gate G3 og G4 med margin. En hoejere
+  // vaerdi presser bunden mod 1; en lavere klemmer alt ind i 30-70.
+  curve: 0.95,
   reference: REFERENCE,
   // ── Koblingen til udviklingen (ejer-beslutning 4) ─────────────────────────
   // Delta'ens rytter-led er scorens afvigelse fra midtpunktet loeftet i
@@ -102,7 +106,7 @@ export const TRAINING_SCORE_CONFIG = Object.freeze({
   //               (S/midpoint)^gamma, saa SAEEONENS SAMLEDE udvikling er
   //               uaendret — reshaping, ikke power creep (gate G1).
   // Begge tal er maalt i harnessen; se PR-body for foer/efter over 14 dage.
-  deltaCoupling: Object.freeze({ gamma: 0.25, normalizer: 1.0521 }),
+  deltaCoupling: Object.freeze({ gamma: 0.25, normalizer: 1.0745 }),
 });
 
 // m saa kurven rammer `midpoint` praecis ved u = 1.

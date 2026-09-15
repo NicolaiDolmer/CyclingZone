@@ -447,12 +447,21 @@ test("applyRaceDevelopmentTick: caps respekteres — evne allerede på cap får 
   assert.equal(capped.progress.endurance ?? 0, 0, "på cap ⇒ ingen progress-akkumulering, budget tabes (ikke omfordelt)");
 });
 
-test("applyRaceDevelopmentTick: conditionMult skalerer proportionalt (samme led som dailyAbilityDelta)", () => {
+// #4851: konditionen var FØR proportional, fordi den var ét bart led i
+// delta-kæden. Nu gaar den gennem TRAENINGSSCOREN (ejer-beslutning 4, 6/9):
+// en daarlig dag saenker scoren, og en lavere score giver et lidt lavere
+// udbytte end det rent proportionale — koblingen er bevidst superlineaer
+// (TRAINING_SCORE_CONFIG.deltaCoupling.gamma). Testen holder derfor RETNINGEN
+// og et baand, ikke den eksakte proportionalitet.
+test("applyRaceDevelopmentTick: conditionMult trækker udbyttet med sig (via scoren, #4851)", () => {
   const full = applyRaceDevelopmentTick(raceDevFixture({ profileType: "mountain", conditionMult: 1.0 }));
   const half = applyRaceDevelopmentTick(raceDevFixture({ profileType: "mountain", conditionMult: 0.5 }));
   for (const a of RACE_PROFILE_ABILITY_MAP.mountain) {
-    assert.ok(Math.abs(half.progress[a] - full.progress[a] * 0.5) < 1e-9,
-      `${a}: conditionMult=0.5 skal halvere progress ift. conditionMult=1.0`);
+    const proportional = full.progress[a] * 0.5;
+    assert.ok(half.progress[a] < proportional + 1e-9,
+      `${a}: halveret kondition maa aldrig give MERE end det proportionale`);
+    assert.ok(half.progress[a] > proportional * 0.7,
+      `${a}: koblingen maa daempe, ikke kollapse (fik ${half.progress[a]} mod ${proportional})`);
   }
 });
 
@@ -465,9 +474,14 @@ test("applyRaceDevelopmentTick: staff/facility/academyRateMult-kæden ganger ind
   }
 });
 
-test("applyRaceDevelopmentTick: samme kontrakt-form som applyDailyTick (abilities/gains/progress/score/noise/status)", () => {
+test("applyRaceDevelopmentTick: samme kontrakt-form som applyDailyTick (abilities/gains/progress/score/trainingScore/noise/status)", () => {
   const out = applyRaceDevelopmentTick(raceDevFixture({ profileType: "flat" }));
-  assert.deepEqual(Object.keys(out).sort(), ["abilities", "gains", "noise", "progress", "score", "status"]);
+  // #4851: `trainingScore` er kommet til i BEGGE tick-typer — skrivestien i
+  // dailyTrainingEngine.js er fortsat blind for kilden.
+  assert.deepEqual(
+    Object.keys(out).sort(),
+    ["abilities", "gains", "noise", "progress", "score", "status", "trainingScore"],
+  );
   assert.ok(["over", "normal", "under"].includes(out.status));
 });
 
