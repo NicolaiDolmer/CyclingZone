@@ -53,6 +53,9 @@ const VALID_ACTIONS = new Set(["promote", "sell", "release"]);
  * Kaster ved DB-fejl — en fejlet SELECT må ikke maskere sig som "ingen række".
  */
 export async function findPendingGraduation(supabase, { teamId, riderId } = {}) {
+  // schema-columns-ok: from_squad/to_squad tilfoejes af
+  // database/2026-09-15-4619-riders-squad.sql i SAMME PR (#4619); auto-migrate.yml
+  // applier den ved merge, hvorefter schema-snapshot.json opdateres.
   const { data, error } = await supabase.from("academy_graduation")
     .select("id, status, from_squad, to_squad")
     .eq("team_id", teamId).eq("rider_id", riderId).eq("status", "pending")
@@ -209,6 +212,9 @@ export async function detectGraduates(supabase, { seasonId, seasonNumber, now = 
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!seasonId || !Number.isFinite(seasonNumber)) throw new Error("detectGraduates: seasonId + seasonNumber required");
 
+  // schema-columns-ok: riders.squad tilfoejes af database/2026-09-15-4619-riders-squad.sql
+  // i SAMME PR (#4619); auto-migrate.yml applier den ved merge, hvorefter
+  // schema-snapshot.json opdateres. Snapshotten kan ikke kende kolonnen foer da.
   const academy = await fetchAllRows(() =>
     supabase.from("riders")
       .select("id, team_id, firstname, lastname, birthdate, squad, is_academy")

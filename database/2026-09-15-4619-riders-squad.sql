@@ -68,6 +68,14 @@ BEGIN
   END IF;
 END $$;
 
+-- KOLONNE-GRANT (#2238/#2241/#1309 — OBLIGATORISK i SAMME migration)
+-- public.riders bruger kolonne-niveau SELECT-grants, ikke tabel-niveau. En ny
+-- kolonne er USYNLIG for anon/authenticated indtil den er granted, og det fejler
+-- ikke ved apply: PostgREST svarer 403 på enhver klient-query der rører kolonnen,
+-- hvilket i #2238 blankede hele RidersPage for samtlige brugere. squad SKAL være
+-- læsbar for klienten: den er lige så offentlig som is_academy (spec §3.3).
+GRANT SELECT (squad) ON public.riders TO anon, authenticated;
+
 -- Partielt: kun ungdomsrækkerne indekseres. Langt de fleste ryttere er 'senior',
 -- og hvert eneste opslag der skal bruge indekset ("holdets U23-trup", "holdets
 -- junior-trup", cap-tællingen i academyTransfer) filtrerer netop squad <> 'senior'.

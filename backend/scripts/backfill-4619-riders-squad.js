@@ -190,6 +190,10 @@ async function loadPopulation(supabase) {
   let preMigration = false;
   let riders;
   try {
+    // schema-columns-ok: riders.squad tilfoejes af database/2026-09-15-4619-riders-squad.sql
+    // i SAMME PR (#4619). Netop DERFOR er kaldet pakket ind i try/catch: scriptet
+    // SKAL kunne koere read-only foer migrationen er applied (42703-fallbacken
+    // nedenfor), saa ejeren ser go-kort-tallene foer merge.
     riders = await fetchAllRows(() =>
       supabase.from("riders")
         .select("id, team_id, firstname, lastname, birthdate, is_academy, squad, is_retired")
@@ -208,6 +212,9 @@ async function loadPopulation(supabase) {
 
   let graduations;
   try {
+    // schema-columns-ok: academy_graduation.from_squad/to_squad tilfoejes af
+    // database/2026-09-15-4619-riders-squad.sql i SAMME PR (#4619); samme
+    // 42703-fallback som riders-opslaget ovenfor.
     graduations = await fetchAllRows(() =>
       supabase.from("academy_graduation")
         .select("id, rider_id, team_id, season_id, status, from_squad, to_squad")

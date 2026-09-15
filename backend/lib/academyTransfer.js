@@ -35,7 +35,7 @@ import { ACADEMY } from "./academyFlag.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
 import { countOngoingRaceEntries } from "./raceEntryCleanup.js";
 import { findPendingGraduation } from "./academyGraduation.js";
-import { squadForSeason, capForSquad, wouldExceedSquadCap, SQUAD_CAPS } from "./squads.js";
+import { squadForSeason, capForSquad, wouldExceedSquadCap } from "./squads.js";
 
 /**
  * Antal ryttere holdet har i en given trup. #4619: den flade 8-plads-cap
