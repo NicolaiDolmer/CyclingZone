@@ -268,6 +268,16 @@ features:
     state: live
     verified: 2026-09-06
 
+  - id: mental-abilities-teamwork-leadership
+    area: squad
+    title_en: Teamwork and Leadership abilities
+    title_da: Holdarbejde og Lederskab som evner
+    state: building
+    ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
+    epic: 1177
+    verified: 2026-09-15
+    note: Data-only i #5268 (registry, kolonner, fødsels-prior, lofter); motor og mentorpar kommer bag flag senere.
+
   # --- training ------------------------------------------------------------
   - id: daily-training
     area: training

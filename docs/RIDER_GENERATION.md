@@ -145,6 +145,23 @@ Siden [#5269](https://github.com/NicolaiDolmer/CyclingZone/issues/5269) forgrene
 
 Kaldes som `deriveForRiderIds(supabase, insertedIds, { dryRun: false })` umiddelbart efter insert. Både batch- og single-varianten SKAL bruge `insertDeriveAndReadPool`, så start-truppernes balance ikke kan drifte mellem de to stier.
 
+### 6.1 De mentale evner fødes med deres EGEN prior (#5268, 15/9)
+
+`deriveAbilities` giver de fire mentale evner — `aggression`, `tactics`, `teamwork`, `leadership` — hver sin prior i stedet for at lægge et alders-led oveni en stat:
+
+| Evne | Fødes af | Alder som input |
+|---|---|---|
+| `aggression` | rytterens fighter-profil + centreret støj | **nej** |
+| `tactics` | fighter- + nedkørsels-profil + centreret støj | **nej** |
+| `teamwork` | de allerede udledte `positioning` + `tactics` + `durability` + bred støj (spec H2) | **nej** |
+| `leadership` | lille grundniveau + alders-rampe + lille træk på `tactics`/`positioning` + støj (spec L1) | ja (GDD D-030) |
+
+Støjen er deterministisk og salted pr. (rytter, evne), så to ryttere med identisk profil ikke får identiske mentale tal — og så en re-derive af den samme rytter giver det samme tal igen (determinisme-kontrakten, §1).
+
+**Måltallet (gate G-A1):** de fire skal fødes i samme spænd som `descending` og `positioning`. Målt mod hele prod-bestanden 15/9 (n = 8.150): fødsels-median 7-12 og fødsels-p90 22-25 mod descending/positioning på 7/21. Kørslen der måler det er `backend/scripts/dry-run-5268-mental-abilities.js --dry-run` (read-only).
+
+> **De to nye evner vægter ingen PCM-stats** (ejer-beslutning 15/9: *"intet skal være vægtet på PCM-stats mere"*). `teamwork` og `leadership` fødes af andre AFLEDTE evner, omregnet med `abilityFrac` (præcis invers af `scoreFrac`), så de lever på samme skala som kilderne — det er gate G-A1. At kilderne selv er PCM-afledte på fallback-stien er eksisterende legacy: `abilityDerivation.js` er PCM-fallback-stien for den eksisterende bestand, og den PCM-frie fødselssti bygges i `fictionalRiderGenerator.js` ([#5269](https://github.com/NicolaiDolmer/CyclingZone/issues/5269)). Kontrakten mellem de to: **registret** (`abilityRegistry.js`) er sandheden om hvilke evner der findes, og den nye sti giver enhver mental evne den ikke kender en default-prior. Tilføj aldrig en evne kun det ene sted.
+
 ## 7. Kommentarer der lyver (status 24/8)
 
 Fundet under #4178. De siger det stik modsatte af koden lige under dem, og de kostede et helt fejlspor i den session der fandt dem. Rettes de, så slet denne tabel.

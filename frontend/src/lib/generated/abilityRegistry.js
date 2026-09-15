@@ -23,7 +23,9 @@ export const ABILITY_CATEGORIES = Object.freeze([
     "key": "mental",
     "keys": [
       "aggression",
-      "tactics"
+      "tactics",
+      "teamwork",
+      "leadership"
     ]
   },
   {
@@ -53,7 +55,9 @@ export const ABILITY_SHORT = Object.freeze({
   "tactics": "TAC",
   "descending": "DSC",
   "cobblestone": "COB",
-  "positioning": "POS"
+  "positioning": "POS",
+  "teamwork": "TWK",
+  "leadership": "LDR"
 });
 
 export const ABILITY_ICONS = Object.freeze({
@@ -71,7 +75,9 @@ export const ABILITY_ICONS = Object.freeze({
   "tactics": "⌖",
   "descending": "▽",
   "cobblestone": "⬡",
-  "positioning": "⊹"
+  "positioning": "⊹",
+  "teamwork": "⇄",
+  "leadership": "⚑"
 });
 
 export const ABILITY_I18N_KEYS = Object.freeze({
@@ -89,5 +95,7 @@ export const ABILITY_I18N_KEYS = Object.freeze({
   "tactics": "rider:racePreview.derived.tactics",
   "descending": "rider:racePreview.derived.descending",
   "cobblestone": "rider:racePreview.derived.cobblestone",
-  "positioning": "rider:racePreview.derived.positioning"
+  "positioning": "rider:racePreview.derived.positioning",
+  "teamwork": "rider:racePreview.derived.teamwork",
+  "leadership": "rider:racePreview.derived.leadership"
 });

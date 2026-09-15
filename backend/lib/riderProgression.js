@@ -181,8 +181,49 @@ export const ROLE_CLASS_TAG = YOUTH_PROGRESSION_CONFIG.roleTags;
 export const GC_PUNCH_FLOOR = 80;
 
 // Evner ingen ryttertype fødes med, men alle kan lære (spec §2.1 "håndværk").
-// Se craftFactor i YOUTH_PROGRESSION_CONFIG for hvorfor listen er præcis disse to.
-export const CRAFT_ABILITIES = Object.freeze(["positioning", "tactics"]);
+// Se craftFactor i YOUTH_PROGRESSION_CONFIG for hvorfor listen startede på to.
+// #5268: `teamwork` og `leadership` hører til samme klasse — de er lærte evner,
+// ikke medfødte. Håndværks-gulvet er det der holder dem ude af `andenRolle` (55)
+// for de fem-seks typer der ikke ejer dem, og det er et GULV-LØFT: en rytter hvis
+// type EJER holdarbejde (rouleur/climber) beholder sin signatur-klasse.
+export const CRAFT_ABILITIES = Object.freeze(["positioning", "tactics", "teamwork", "leadership"]);
+
+// ── LOFT-LOFT FOR DE MENTALE EVNER (#5268, ejer-go-punkt 15/9) ───────────────
+// Spejlvendt GC_PUNCH_FLOOR: dét er et GULV på ét (type, evne)-tag, dette er et
+// LOFT på ét evne-tag på tværs af alle typer. Begge lægges på i youthAbilityCap,
+// så de tapres med alderen som ethvert andet tag.
+//
+// HVORFOR DET SKAL MED I SAMME PR SOM MIGRATIONEN (rapportens §4.3): træningen er
+// GAP-proportional (`dailyTraining.js:132`: `gap = max(0, cap − current)`). Sænker
+// man kun den nuværende værdi og lader loftet stå, bliver gappet STØRRE, og
+// træningen trækker tallet op igen. Migrationen ville ikke holde en sæson.
+//
+// Målt i prod 15/9 (n = 5.756): `tactics` har et fladt håndværks-tag på 70 for
+// ALLE ryttere — sat dengang taktik havde median 38, og den median var alder, ikke
+// kunnen. `aggression` ligger på cap-median 55 / p90 80 / max 93 (baroudeur-signatur).
+// Efter migrationen ligger de to evner på median ~9-12. Et loft på 70-93 over en
+// værdi på 10 er ikke et loft, det er en rampe tilbage til udgangspunktet.
+//
+// Tallene (det ejeren skal sige ja til):
+//   tactics    55 — andenRolle-taget. Taktik er stadig et håndværk alle kan træne,
+//                   men den kan ikke længere blive spillets højeste tal for en rytter
+//                   hvis eneste kvalifikation er at han er 31.
+//   aggression 70 — håndværks-taget. En baroudeur må stadig have aggression som sin
+//                   bedste evne (signatur-RATEN 0,45 er urørt, kun taget flyttes),
+//                   men ikke op i 93 mens resten af feltet ligger på 9.
+//   teamwork   70 — samme håndværks-tag. Aldrig `svaghed` (45): ingen negativ vægt
+//                   findes for den i capsShapingWeights.
+//   leadership 70 — samme.
+//
+// Ændres et af tallene senere, ændres KUN vækst-hovedrummet: `dailyTraining` lægger
+// kun til (cap under evnen ⇒ gap 0 ⇒ ingen vækst, aldrig tab), og
+// `declineByYearsPastPeak` læser slet ikke loftet. Ingen rytter mister en evne af det.
+export const MENTAL_ABILITY_TAG_CEILING = Object.freeze({
+  tactics: 55,
+  aggression: 70,
+  teamwork: 70,
+  leadership: 70,
+});
 
 // De fem rolleklasser (spec §2.1). Rækkefølgen er faldende tag og er den
 // rækkefølge `abilityRoleClass` afgør dem i.
@@ -583,6 +624,11 @@ export function youthAbilityCap(potentiale, primaryType, secondaryType, ability,
   if (primaryType === "gc" && ability === "punch") {
     tag = Math.max(tag, GC_PUNCH_FLOOR);
   }
+  // #5268: loft-loftet for de mentale evner lægges SIDST, så det også trumfer
+  // GC-punch-gulvet hvis de to nogensinde skulle ramme samme evne. Rækkefølgen
+  // er bevidst: gulvet løfter, loftet skærer, og loftet vinder.
+  const ceiling = MENTAL_ABILITY_TAG_CEILING[ability];
+  if (Number.isFinite(ceiling)) tag = Math.min(tag, ceiling);
   return clamp(Math.round(tag), 0, 99);
 }
 

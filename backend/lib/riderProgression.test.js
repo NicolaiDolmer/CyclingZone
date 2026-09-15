@@ -10,8 +10,9 @@ import {
   buildCapsForRider, buildProgressInit,
   taperedAbsoluteCap, CAP_TAPER_CONFIG,
   CRAFT_ABILITIES, abilityRoleClass, roleRateFactor, ROLE_CLASSES, ROLE_CLASS_RATE,
-  announcedRetirementAfterSeason, GC_PUNCH_FLOOR,
+  announcedRetirementAfterSeason, GC_PUNCH_FLOOR, MENTAL_ABILITY_TAG_CEILING,
 } from "./riderProgression.js";
+import { CAPS_SHAPING_WEIGHTS } from "./weights/capsShapingWeights.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { ageForSeason } from "./riderSeasonAge.js";
@@ -474,8 +475,10 @@ test("youthRoleFactor: primær-naturlig > sekundær-naturlig > neutral > modsat"
 
 // ── Håndværks-gulvet (#3709 trin 3, spec §2.1 + beslutning 3) ────────────────
 
-test("håndværk: positioning + tactics er de ENESTE to evner med gulv (beslutning 3)", () => {
-  assert.deepEqual([...CRAFT_ABILITIES], ["positioning", "tactics"]);
+test("håndværk: de fire lærte evner har gulv (beslutning 3 + #5268)", () => {
+  // #5268 udvidede listen fra to til fire: `teamwork` og `leadership` er lige så
+  // meget håndværk som positionering og taktik — ingen ryttertype fødes med dem.
+  assert.deepEqual([...CRAFT_ABILITIES], ["positioning", "tactics", "teamwork", "leadership"]);
   // `aggression` hører BEVIDST ikke til: den ER ejet (baroudeur, vægt 3). Dens
   // problem er at intet fokus træner den — det løser trin 2, ikke et tag.
   assert.ok(!CRAFT_ABILITIES.includes("aggression"));
@@ -484,12 +487,47 @@ test("håndværk: positioning + tactics er de ENESTE to evner med gulv (beslutni
 test("håndværk: en type der hverken ejer eller modarbejder evnen får gulvet, ikke neutral", () => {
   // gc ejer hverken positioning eller tactics — uden håndværks-klassen stod
   // begge som andenRolle. Trin 7: håndværks-taget er absolut (roleTags).
+  // `teamwork`/`leadership` er udeladt her: gc EJER leadership og climber ejer
+  // teamwork (capsShapingWeights, #5268), så netop dette typepar giver dem
+  // signatur/sekundær — hvilket er gulv-løft-invarianten, ikke en undtagelse.
   const tags = YOUTH_PROGRESSION_CONFIG.roleTags;
-  for (const ability of CRAFT_ABILITIES) {
+  for (const ability of ["positioning", "tactics"]) {
     assert.equal(abilityRoleClass("gc", "climber", ability), "haandvaerk");
-    assert.equal(youthAbilityCap(3, "gc", "climber", ability), tags.haandvaerk);
   }
+  assert.equal(youthAbilityCap(3, "gc", "climber", "positioning"), tags.haandvaerk);
   assert.ok(tags.haandvaerk > tags.andenRolle);
+});
+
+// ── #5268: loft-loftet for de mentale evner ─────────────────────────────────
+// Rapportens §4.3: træningen er gap-proportional, så en sænket VÆRDI uden et
+// sænket LOFT bliver trukket tilbage. Disse to tests er forward-guarden.
+test("#5268: mentale evners tag er loftet uanset rolleklasse", () => {
+  for (const [ability, ceiling] of Object.entries(MENTAL_ABILITY_TAG_CEILING)) {
+    for (const [primary, secondary] of [["gc", "climber"], ["baroudeur", "rouleur"], ["sprinter", "tt"], ["tt", "puncheur"]]) {
+      const cap = youthAbilityCap(6, primary, secondary, ability);
+      assert.ok(cap <= ceiling,
+        `${ability} hos ${primary}/${secondary}: tag ${cap} over loftet ${ceiling}`);
+    }
+  }
+  // Konkret: baroudeurens aggression var signatur-taget 93; den er nu 70.
+  assert.equal(youthAbilityCap(6, "baroudeur", "rouleur", "aggression"), 70);
+  // Taktik var fladt 70 (håndværk) for alle; den er nu 55 for alle.
+  assert.equal(youthAbilityCap(6, "gc", "climber", "tactics"), 55);
+  assert.equal(youthAbilityCap(1, "sprinter", "tt", "tactics"), 55);
+});
+
+test("#5268: teamwork/leadership kan aldrig lande i svaghed-klassen", () => {
+  // Ingen negativ vægt findes for dem i capsShapingWeights — "dobbelt svaghed"
+  // er dermed strukturelt umuligt, ikke bare usandsynligt (spec §3.1, retning A).
+  const types = CAPS_SHAPING_WEIGHTS.map((t) => t.key);
+  for (const ability of ["teamwork", "leadership"]) {
+    for (const primary of types) {
+      for (const secondary of types) {
+        assert.notEqual(abilityRoleClass(primary, secondary, ability), "svaghed",
+          `${ability} hos ${primary}/${secondary} landede i svaghed`);
+      }
+    }
+  }
 });
 
 test("håndværk: gulvet LØFTER, det erstatter aldrig — signatur slår gulvet (#3682's gulv-løft-krav)", () => {
