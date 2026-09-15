@@ -7,6 +7,7 @@ import {
   isAdminOnlyCategory,
   canCreateForumThread,
   postableForumCategories,
+  moveTargetCategories,
   showsNewThreadButton,
 } from "./forumCategories.js";
 
@@ -59,6 +60,19 @@ test("postableForumCategories: roadmap kun med i admins vaelger", () => {
   // Raekkefoelgen bevares naar roadmap filtreres fra.
   assert.equal(playerChoices[0], "general");
   assert.deepEqual(postableForumCategories(), playerChoices);
+});
+
+test("moveTargetCategories: hele raekkefoelgen minus traadens egen kategori (#4821)", () => {
+  assert.equal(moveTargetCategories("general").includes("general"), false);
+  assert.equal(moveTargetCategories("general").length, FORUM_CATEGORY_ORDER.length - 1);
+  // Roadmap er stadig et gyldigt maal — flytte-knappen er admin-only i sig
+  // selv (backend haandhaever requireAdmin), saa der er intet at filtrere fra.
+  assert.ok(moveTargetCategories("general").includes("roadmap"));
+  // Raekkefoelgen bevares.
+  assert.deepEqual(moveTargetCategories("roadmap"), FORUM_CATEGORY_ORDER.slice(1));
+  // Ukendt/tom kategori findes ikke i listen i forvejen — filteret er en no-op.
+  assert.deepEqual(moveTargetCategories("nonsense"), FORUM_CATEGORY_ORDER);
+  assert.deepEqual(moveTargetCategories(undefined), FORUM_CATEGORY_ORDER);
 });
 
 test("showsNewThreadButton: skjules kun paa roadmap-fanen for ikke-admin", () => {

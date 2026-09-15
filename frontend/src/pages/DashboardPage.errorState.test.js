@@ -101,11 +101,20 @@ test("#3510 begge post-paint-moduler renderer skeleton for null og empty-state k
   );
 });
 
-test("#3510 en fejlet/ikke-ok post-paint-fetch falder eksplicit tilbage til [] (undgår evig skeleton)", () => {
+test("#3510/#5242 en fejlet/ikke-ok/limited post-paint-fetch falder eksplicit tilbage til [] (undgår evig skeleton)", () => {
+  // #5242: kaldene gik via apiFetch — res.data er allerede parset, og en
+  // limited/unauthorized (429/401) returnes tidligt (`if (cancelled ||
+  // r.limited || r.unauthorized) return;`) FØR denne linje, med samme
+  // "stille backoff, ingen fejlboks"-effekt som apiFetch.ts's kontrakt kræver.
   assert.match(
     source,
-    /setRecentResults\(r\.ok \? \(await r\.json\(\)\)\.races \|\| \[\] : \[\]\);/,
+    /setRecentResults\(r\.ok \? r\.data\.races \|\| \[\] : \[\]\);/,
     "recentResults skal sættes til [] når responsen ikke er ok",
+  );
+  assert.match(
+    source,
+    /if \(cancelled \|\| r\.limited \|\| r\.unauthorized\) return;/,
+    "en 429/401 skal returnere tidligt (stille backoff), ikke falde igennem til r.ok-tjekket",
   );
   assert.match(
     source,
@@ -114,7 +123,7 @@ test("#3510 en fejlet/ikke-ok post-paint-fetch falder eksplicit tilbage til [] (
   );
   assert.match(
     source,
-    /setRiderRanking\(r\.ok \? \(await r\.json\(\)\)\.riders \|\| \[\] : \[\]\);/,
+    /setRiderRanking\(r\.ok \? r\.data\.riders \|\| \[\] : \[\]\);/,
     "riderRanking skal sættes til [] når responsen ikke er ok",
   );
   assert.match(

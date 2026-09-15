@@ -66,6 +66,11 @@
     "pin": "Pin",
     "unpin": "Unpin",
     "pinnedTag": "Pinned",
+    "move": "Move",
+    "moveModalTitle": "Move thread",
+    "moveModalDescription": "Choose the category this thread should move to.",
+    "moveConfirm": "Move",
+    "movedToast": "Thread moved to {category}",
     "notFoundTitle": "Post not found",
     "notFoundDescription": "This post may have been removed."
   },

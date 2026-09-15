@@ -84,7 +84,8 @@ export default function GrowthCustomersTab() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-cz-3 text-sm">
           Betalende kunder + estimeret livstidsværdi pr. kunde + konverteringsrate. LTV er et ESTIMAT
-          (ingen faktura-historik findes — se tooltip på tabellen). Vilkårsaccept uden betaling tæller ikke som kunde.
+          (ingen faktura-historik findes; se tooltip på tabellen), ekskl. moms (#5215, samme konvention som MRR/ARPU).
+          Vilkårsaccept uden betaling tæller ikke som kunde.
         </p>
         <Button
           variant="secondary"

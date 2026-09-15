@@ -14,7 +14,7 @@
     "test": "node --test",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/check-fetch-wiring.mjs",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown .",

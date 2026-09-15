@@ -119,6 +119,12 @@ export const KNOWN_EVENTS = Object.freeze([
   // Naturligt 0 indtil træningsmotoren er aktiv for spillere.
   "training_focus_set_bulk",
   "training_run_today",
+  // onboarding_step2_one_click (#5241) — fyrer fra OnboardingProgressCard.jsx
+  // når "Run this week's training"/"Kør ugens træning" sætter assistentens
+  // anbefalede fokus for truppen og kører dagen i ét klik. Måler #4964-fundet:
+  // trin 2 var det eneste faldende onboarding-trin (52 % → 34 %), fordi det
+  // krævede fokus rytter for rytter på træningssiden.
+  "onboarding_step2_one_click",
   // #4557 (S-M2d) · instrumentering for aarsmoedet/Boardroom (#1141:
   // mødegennemførelse + kvitterings-åbninger). feature_board_meeting_opened
   // (canary, kun ved mount) og board_meeting_signed (funnel-modstykke, kun

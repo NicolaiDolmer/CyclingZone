@@ -13,6 +13,10 @@ import {
   getFeedbackCounts,
   setFeedbackStatus,
   replyToFeedback,
+  submitTradeReport,
+  TRADE_REPORT_CATEGORY,
+  TRADE_REPORT_TYPES,
+  TRADE_REPORT_MESSAGE_MAX_LENGTH,
 } from "./feedbackInbox.js";
 
 function seedState({ rows = null } = {}) {
@@ -292,4 +296,214 @@ test("replyToFeedback giver 404 på ukendt id", async () => {
   const result = await replyToFeedback({ supabase, id: "nope", reply: "hi", notify: async () => {} });
   assert.equal(result.status, 404);
   assert.equal(result.body.errorCode, "feedback_not_found");
+});
+
+// ── Handel-rapport (#4346) ───────────────────────────────────────────────────
+
+function seedTradeState() {
+  return {
+    player_feedback: [],
+    auctions: [
+      { id: "a1", status: "completed", seller_team_id: "t1", current_bidder_id: "t2" },
+      { id: "a-nosale", status: "completed", seller_team_id: "t1", current_bidder_id: null },
+      { id: "a-open", status: "active", seller_team_id: "t1", current_bidder_id: "t2" },
+    ],
+    transfer_offers: [
+      { id: "o1", status: "accepted", seller_team_id: "t1", buyer_team_id: "t3" },
+      { id: "o-pending", status: "pending", seller_team_id: "t1", buyer_team_id: "t3" },
+    ],
+    swap_offers: [
+      { id: "s1", status: "window_pending", proposing_team_id: "t2", receiving_team_id: "t3" },
+    ],
+  };
+}
+
+test("TRADE_REPORT_TYPES udelader academy — den har ingen modpart at rapportere mod", () => {
+  assert.deepEqual(TRADE_REPORT_TYPES, ["auction", "transfer", "swap"]);
+});
+
+test("submitTradeReport gemmer transfer_id + begge hold-id'er i metadata (auktion)", async () => {
+  const state = seedTradeState();
+  const supabase = createFakeSupabase(state);
+  const result = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "auction", transferId: "a1",
+    message: "This looked suspicious to me.",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.ok, true);
+  assert.equal(result.body.alreadyReported, false);
+
+  const row = state.player_feedback.find((r) => r.id === result.body.id);
+  assert.equal(row.category, TRADE_REPORT_CATEGORY);
+  assert.equal(row.team_id, "t9", "den RAPPORTERENDE hold — ikke nødvendigvis part i handlen");
+  assert.equal(row.user_id, "u1");
+  assert.deepEqual(row.metadata, {
+    transfer_type: "auction",
+    transfer_id: "a1",
+    reporting_team_id: "t9",
+    team_a_id: "t1",
+    team_b_id: "t2",
+  }, "begge hold-id'er skal komme fra DATABASE-rækken, ikke fra klienten");
+});
+
+test("submitTradeReport kræver ikke at det rapporterende hold er part i handlen", async () => {
+  // #4346's egen baggrund: spilleren rapporterede en handel nævnt på Discord,
+  // ikke nødvendigvis sin egen. Reglen er "hold X rapporterer handel Y",
+  // ikke "hold X var med i handel Y".
+  const supabase = createFakeSupabase(seedTradeState());
+  const result = await submitTradeReport({
+    supabase, teamId: "t-bystander", userId: "u9", transferType: "transfer", transferId: "o1",
+    message: "Someone flagged this trade in Discord.",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.ok, true);
+});
+
+test("submitTradeReport afviser en no_sale-auktion (ingen rigtig modpart)", async () => {
+  const supabase = createFakeSupabase(seedTradeState());
+  const result = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "auction", transferId: "a-nosale",
+    message: "Reporting this trade for review.",
+  });
+  assert.equal(result.status, 404);
+  assert.equal(result.body.errorCode, "trade_report_not_found");
+});
+
+test("submitTradeReport afviser en auktion der ikke er afsluttet endnu", async () => {
+  const supabase = createFakeSupabase(seedTradeState());
+  const result = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "auction", transferId: "a-open",
+    message: "Reporting this trade for review.",
+  });
+  assert.equal(result.status, 404);
+  assert.equal(result.body.errorCode, "trade_report_not_found");
+});
+
+test("submitTradeReport afviser et transfer-tilbud der ikke er accepteret/window_pending", async () => {
+  const supabase = createFakeSupabase(seedTradeState());
+  const result = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "transfer", transferId: "o-pending",
+    message: "Reporting this trade for review.",
+  });
+  assert.equal(result.status, 404);
+  assert.equal(result.body.errorCode, "trade_report_not_found");
+});
+
+test("submitTradeReport henter swap-modparter fra proposing/receiving_team_id", async () => {
+  const state = seedTradeState();
+  const supabase = createFakeSupabase(state);
+  const result = await submitTradeReport({
+    supabase, teamId: "t2", userId: "u1", transferType: "swap", transferId: "s1",
+    message: "Reporting this swap for review.",
+  });
+  assert.equal(result.status, 200);
+  const row = state.player_feedback.find((r) => r.id === result.body.id);
+  assert.equal(row.metadata.team_a_id, "t2");
+  assert.equal(row.metadata.team_b_id, "t3");
+});
+
+test("submitTradeReport giver 404 på en ukendt handel-id (aldrig 500)", async () => {
+  const supabase = createFakeSupabase(seedTradeState());
+  const result = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "auction", transferId: "does-not-exist",
+    message: "Reporting this trade for review.",
+  });
+  assert.equal(result.status, 404);
+  assert.equal(result.body.errorCode, "trade_report_not_found");
+});
+
+test("submitTradeReport afviser en ugyldig transferType", async () => {
+  const supabase = createFakeSupabase(seedTradeState());
+  const result = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "academy", transferId: "a1",
+    message: "Reporting this trade for review.",
+  });
+  assert.equal(result.status, 400);
+  assert.equal(result.body.errorCode, "trade_report_invalid_type");
+});
+
+test("submitTradeReport kræver et hold", async () => {
+  const supabase = createFakeSupabase(seedTradeState());
+  const result = await submitTradeReport({
+    supabase, teamId: null, userId: "u1", transferType: "auction", transferId: "a1", message: "x".repeat(20),
+  });
+  assert.equal(result.status, 400);
+  assert.equal(result.body.errorCode, "trade_report_no_team");
+});
+
+test("submitTradeReport afviser en for kort/tom besked", async () => {
+  const supabase = createFakeSupabase(seedTradeState());
+  for (const message of ["", "   ", "too short", null, undefined]) {
+    const result = await submitTradeReport({
+      supabase, teamId: "t9", userId: "u1", transferType: "auction", transferId: "a1", message,
+    });
+    assert.equal(result.status, 400);
+    assert.equal(result.body.errorCode, "trade_report_message_too_short");
+  }
+});
+
+test("submitTradeReport afviser en for lang besked", async () => {
+  const supabase = createFakeSupabase(seedTradeState());
+  const result = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "auction", transferId: "a1",
+    message: "x".repeat(TRADE_REPORT_MESSAGE_MAX_LENGTH + 1),
+  });
+  assert.equal(result.status, 400);
+  assert.equal(result.body.errorCode, "trade_report_message_too_long");
+});
+
+test("submitTradeReport er idempotent pr. (handel, rapporterende hold) — maks 1 rapport pr. handel pr. hold", async () => {
+  const state = seedTradeState();
+  const supabase = createFakeSupabase(state);
+
+  const first = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "auction", transferId: "a1",
+    message: "First report.",
+  });
+  assert.equal(first.body.alreadyReported, false);
+
+  const second = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u2", transferType: "auction", transferId: "a1",
+    message: "Trying again.",
+  });
+  assert.equal(second.status, 200);
+  assert.equal(second.body.ok, true);
+  assert.equal(second.body.alreadyReported, true, "samme hold, samme handel — ingen ny sag");
+  assert.equal(second.body.id, first.body.id, "peger på den EKSISTERENDE rapport");
+
+  const tradeReports = state.player_feedback.filter(
+    (r) => r.metadata?.transfer_type === "auction" && r.metadata?.transfer_id === "a1"
+  );
+  assert.equal(tradeReports.length, 1, "må ikke have insertet en ny række ved dobbelt-rapport");
+});
+
+test("submitTradeReport dedupe er PR. HOLD, ikke globalt — et andet hold kan stadig rapportere samme handel", async () => {
+  const state = seedTradeState();
+  const supabase = createFakeSupabase(state);
+
+  await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "auction", transferId: "a1", message: "First report.",
+  });
+  const second = await submitTradeReport({
+    supabase, teamId: "t-other", userId: "u2", transferType: "auction", transferId: "a1", message: "Also reporting.",
+  });
+  assert.equal(second.body.alreadyReported, false, "et ANDET holds rapport om samme handel er ikke en dublet");
+
+  const tradeReports = state.player_feedback.filter(
+    (r) => r.metadata?.transfer_type === "auction" && r.metadata?.transfer_id === "a1"
+  );
+  assert.equal(tradeReports.length, 2);
+});
+
+test("submitTradeReport dedupe skelner på transferId, ikke bare kategori+hold", async () => {
+  const state = seedTradeState();
+  const supabase = createFakeSupabase(state);
+
+  await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "auction", transferId: "a1", message: "First report.",
+  });
+  const second = await submitTradeReport({
+    supabase, teamId: "t9", userId: "u1", transferType: "transfer", transferId: "o1", message: "Different trade.",
+  });
+  assert.equal(second.body.alreadyReported, false, "en anden handel er ikke en dublet, selvom samme hold rapporterede før");
 });

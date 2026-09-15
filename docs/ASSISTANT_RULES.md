@@ -144,6 +144,49 @@ altid `proactive`. Skal de følge tilstanden, er det en selvstændig beslutning 
 `409 assistant_opt_in_not_active` i de to andre. En synlig kontakt uden virkning ville være
 en løgn om hvad spilleren styrer.
 
+### Påmindelsen før fristen ([#4983](https://github.com/NicolaiDolmer/CyclingZone/issues/4983), D-034)
+
+D-034's synlige halvdel: **før** assistenten må gøre noget, får manageren at vide at truppen
+mangler. Ren UI-tilstand - den skriver intet, sender ingen notifikation og læser ikke
+`assistant_selection_mode`. Den virker derfor ens i alle tre tilstande.
+
+| Regel | Værdi | Kilde | Fil |
+|---|---|---|:--|
+| Fristen | første etapes `scheduled_at` | egenskab 2 ovenfor (wall-clock, ikke binding-vinduet) | `selectionWarningSweep.js` (`racesNeedingSelectionWarning`) |
+| "Trup mangler" | `race_entries` (manuelle + auto) `< selectionSizeForRace(race).max` | [#4038](https://github.com/NicolaiDolmer/CyclingZone/issues/4038) | `raceAutopick.js`, `raceSelection.js` |
+| **Gul markering** | truppen er ikke fuld OG fristen er inden for **36 t** (`SELECTION_WARNING_HOURS`) | [#2180](https://github.com/NicolaiDolmer/CyclingZone/issues/2180) - samme vindue som indbakke-varslet | `selectionWarningSweep.js:41` |
+| **Rød eskalering** | truppen er UNDER gulvet (`MIN_RACE_ENTRIES` = **6**, tom trup medregnet) OG fristen er inden for `assistant_late_fill_hours` (**24 t** default) | ejer-beslutning 10/9 + [#4295](https://github.com/NicolaiDolmer/CyclingZone/issues/4295) + [#4201](https://github.com/NicolaiDolmer/CyclingZone/issues/4201)/D-034 | `raceAutopick.js:47`, `assistantSelectionMode.js` |
+| Spillerens eget valg | `teams.selection_reminder_enabled`, default **true** | #4983 | `database/2026-09-10-4983-selection-reminder.sql` |
+| Endpoint | `GET /api/me/selection-reminder` (read-only), `PATCH /api/me/selection-reminder-settings` | #4983 | `backend/lib/selectionDeadlineReminder.js` |
+
+**Alle tre tal er lånt.** Påmindelsen opfinder hverken en frist, et vindue eller et gulv: gul
+er det vindue indbakke-varslet allerede bruger, rød er den horisont assistenten selv ville
+handle inden for, og rød-gulvet er det deltagelses-gulv `raceRunner` allerede smider hold ud
+på. Flyttes `assistant_late_fill_hours` i `app_config`, flytter det røde trin med af sig selv.
+Ændres et af tallene, **skal denne tabel opdateres i samme PR** (hard rule 30).
+
+**Rød = "stiller ikke op", ikke "fristen er tæt på" (ejer-beslutning 10/9, valg A).** Det
+åbne punkt fra det første udkast er lukket. Udkastet lod rød betyde "ikke fuld trup, tæt på
+fristen", og en måling i prod viste at ca. **108 managere** ville blive farvet røde ved merge
+for trupper der starter helt fint - fordi "mangler" måles mod klassens `max`, og assistenten i
+`proactive` først fylder ved etape 1. Reglen er derfor delt i to:
+
+- **Gul** er uændret #4038-definition: `race_entries` (manuelle + auto) `< selectionSizeForRace(race).max`
+  inde i 36-timers vinduet. Et Grand Tour-hold på 6/8 er gult - det starter, bare ikke i fuld styrke.
+- **Rød** kræver at truppen er under `MIN_RACE_ENTRIES` (6) - altså at holdet ville blive
+  smidt ud af startfeltet - inde i late fill-horisonten. Samme gulv og samme konsekvens som
+  `partialSquadOutlook`'s "Under 6 ryttere. Stiller ikke op." på løbskortet, så de to flader
+  ikke længere kan sige hver sit om det samme hold.
+
+Det betyder også at D-035 (ejer-valgt 10/9, beslutningsloggen ligger i GDD-PR'en
+[#5090](https://github.com/NicolaiDolmer/CyclingZone/pull/5090)) og et flip til `late_fill` ikke
+længere kolliderer med markeringen: en TILSIGTET 6/8-sluttilstand står gult og bliver aldrig rødt.
+
+**Afmeldte hold og fulde trupper markeres aldrig** - samme to udeladelser som sweepet. En
+trup assistenten selv har fyldt tæller som fuld; det var præcis #4038's rettelse, og
+påmindelsen må ikke genindføre fejlen på en anden flade. Kontakten på Profil er synlig i alle
+tre tilstande, netop fordi påmindelsen virker i alle tre - modsat autopick-kontakten ovenfor.
+
 ---
 
 ## 2. De indgange der findes

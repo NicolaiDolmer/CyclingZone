@@ -14,9 +14,12 @@ import {
   WAVE_FREEZE,
   classifyStall,
   commitAgeMinutes,
+  extractInvestigateVerdict,
+  isLightTrack,
   needsGracefulStop,
   planReviewAttempt,
   resolveTrackTimeoutMinutes,
+  sortMixedQueue,
   wipCommitMessage,
 } from "./wave-freeze.mjs";
 
@@ -33,6 +36,15 @@ test("spor-timeout er 120 min med haardt loft 180", () => {
 test("stall-graensen er 45 min og reviewer har sit eget 30-min-vindue", () => {
   assert.equal(WAVE_FREEZE.BRANCH_STALL_MINUTES, 45);
   assert.equal(WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES, 30);
+});
+
+test("#5220: undersoegelsesspor har et fast 60-min-vindue, prik-graensen er 15 min", () => {
+  assert.equal(WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES, 60);
+  assert.equal(WAVE_FREEZE.POKE_MINUTES, 15);
+  assert.ok(
+    WAVE_FREEZE.POKE_MINUTES < WAVE_FREEZE.BRANCH_STALL_MINUTES,
+    "prikken skal ligge et godt stykke under frys-graensen, ellers er den bare et frys med et andet navn",
+  );
 });
 
 test("resolveTrackTimeoutMinutes: default 120, klemmes af det haarde loft", () => {
@@ -209,6 +221,65 @@ test("WIP-commit-beskeden er den ordret aftalte fra #5178", () => {
   assert.equal(wipCommitMessage(5159), "wip(#5159): boelge-timeout, ucommittet arbejde gemt");
 });
 
+// ===== Blandet koe (#5220) =====
+
+test("isLightTrack: kun sonnet+TARGETED er let - opus og/eller FULL er tungt", () => {
+  assert.equal(isLightTrack({ model: "sonnet", tier: "TARGETED" }), true);
+  assert.equal(isLightTrack({ model: "opus", tier: "TARGETED" }), false);
+  assert.equal(isLightTrack({ model: "sonnet", tier: "FULL" }), false);
+  assert.equal(isLightTrack({ model: "opus", tier: "FULL" }), false);
+  assert.equal(isLightTrack(null), false);
+  assert.equal(isLightTrack(undefined), false);
+});
+
+test("sortMixedQueue: lette spor forrest, stabil inden for hver gruppe", () => {
+  const heavy1 = { id: "heavy1", model: "opus", tier: "FULL" };
+  const light1 = { id: "light1", model: "sonnet", tier: "TARGETED" };
+  const heavy2 = { id: "heavy2", model: "opus", tier: "TARGETED" };
+  const light2 = { id: "light2", model: "sonnet", tier: "TARGETED" };
+  const sorted = sortMixedQueue([heavy1, light1, heavy2, light2]);
+  assert.deepEqual(
+    sorted.map((t) => t.id),
+    ["light1", "light2", "heavy1", "heavy2"],
+    "lette spor forrest, og den indbyrdes raekkefoelge inden for hver gruppe er uaendret (stabil)",
+  );
+});
+
+test("sortMixedQueue: en koe der allerede kun har lette eller kun tunge spor rykkes ikke rundt", () => {
+  const allLight = [{ model: "sonnet", tier: "TARGETED" }, { model: "sonnet", tier: "TARGETED" }];
+  assert.deepEqual(sortMixedQueue(allLight), allLight);
+  const allHeavy = [{ model: "opus", tier: "FULL" }, { model: "opus", tier: "TARGETED" }];
+  assert.deepEqual(sortMixedQueue(allHeavy), allHeavy);
+});
+
+test("sortMixedQueue: tom eller ugyldig liste giver et tomt array, ikke en fejl", () => {
+  assert.deepEqual(sortMixedQueue([]), []);
+  assert.deepEqual(sortMixedQueue(null), []);
+  assert.deepEqual(sortMixedQueue(undefined), []);
+});
+
+// ===== extractInvestigateVerdict (#5220, CodeRabbit-fund) =====
+
+test("extractInvestigateVerdict genkender begge tvungne domme", () => {
+  assert.equal(extractInvestigateVerdict("Undersoegt grundigt.\n\nbekraeftet + fix-plan: gør X."), "bekraeftet");
+  assert.equal(extractInvestigateVerdict("Kunne ikke reproducere.\n\nafvist + bevis-test: se test-output."), "afvist");
+});
+
+test("extractInvestigateVerdict er case-insensitiv", () => {
+  assert.equal(extractInvestigateVerdict("BEKRAEFTET + FIX-PLAN"), "bekraeftet");
+});
+
+test("extractInvestigateVerdict giver null naar ingen af de to fraser findes - ALDRIG en gaettet dom", () => {
+  assert.equal(extractInvestigateVerdict("ved ikke, maaske er der et problem"), null);
+  assert.equal(extractInvestigateVerdict(""), null);
+  assert.equal(extractInvestigateVerdict(null), null);
+  assert.equal(extractInvestigateVerdict(undefined), null);
+});
+
+test("extractInvestigateVerdict giver null ved modstridende svar (begge fraser til stede)", () => {
+  assert.equal(extractInvestigateVerdict("bekraeftet + fix-plan men ogsaa afvist + bevis-test"), null);
+});
+
 // ===== CLI'en som probe-agenten kalder =====
 
 test("CLI'en returnerer en JSON-dom paa stdout", () => {
@@ -286,6 +357,8 @@ test("wave.js spejler konstanterne fra dette modul", () => {
     REVIEW_MAX_ATTEMPTS: WAVE_FREEZE.REVIEW_MAX_ATTEMPTS,
     PROBE_TIMEOUT_MINUTES: WAVE_FREEZE.PROBE_TIMEOUT_MINUTES,
     STOP_TIMEOUT_MINUTES: WAVE_FREEZE.STOP_TIMEOUT_MINUTES,
+    INVESTIGATE_TIMEOUT_MINUTES: WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES,
+    POKE_MINUTES: WAVE_FREEZE.POKE_MINUTES,
   };
   for (const [key, value] of Object.entries(mirrored)) {
     const m = src.match(new RegExp(`^\\s*${key}:\\s*(\\d+)\\s*,`, "m"));
@@ -333,6 +406,30 @@ test("wave.js bogfoerer probens tid, saa det haarde loft ikke kan overskrides", 
     .join("\n");
   assert.ok(!/\bDate\.now\(\)/.test(code), "Date.now() kaster i workflow-scripts - maa aldrig kaldes i wave.js");
   assert.ok(!/\bMath\.random\(\)/.test(code), "Math.random() kaster i workflow-scripts");
+});
+
+test("#5220: wave.js sorterer koeen med den spejlede sortMixedQueue-regel", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(src.includes("sortMixedQueue"), "wave.js skal bruge en spejlet sortMixedQueue()");
+  assert.ok(src.includes("isLightTrack"), "wave.js skal bruge en spejlet isLightTrack()");
+  assert.ok(src.includes("'sonnet'") && src.includes("'TARGETED'"), "det lette kriterie skal vaere model sonnet + tier TARGETED");
+});
+
+test("#5220: wave.js har en investigate-gren med det spejlede faste vindue", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(src.includes("'investigate'"), "wave.js skal kende sporets kind: 'investigate'");
+  assert.ok(
+    src.includes("INVESTIGATE_TIMEOUT_MINUTES"),
+    "investigate-grenen skal bruge den spejlede WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES, ikke et haardkodet tal",
+  );
+});
+
+test("#5220 (CodeRabbit-fund): wave.js validerer investigate-dommen i stedet for at acceptere ethvert svar", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(
+    src.includes("extractInvestigateVerdict"),
+    "runInvestigateTrack skal bruge den spejlede extractInvestigateVerdict() - ikke acceptere et vilkaarligt svar som gyldig dom",
+  );
 });
 
 test("wave.js har ikke laengere den gamle 60-minutters frys-model", () => {

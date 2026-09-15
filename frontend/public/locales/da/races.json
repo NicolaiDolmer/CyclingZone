@@ -505,6 +505,7 @@
     "boundIn": "Kører {race}",
     "boundConflict": "Overlapper {race}",
     "autoPicked": "Assistentens valg. Justér og gem for selv at tage styringen.",
+    "draftRestored": "Jeg holdt fast i dine ugemte valg. Husk at gemme dem inden starten.",
     "autoFill": "Auto-udtag",
     "autoFillError": "Auto-udtag mislykkedes. Prøv igen.",
     "save": "Gem udtagelse",
@@ -794,6 +795,8 @@
       "howItEndedHelp": "Endeligt samlet klassement.",
       "otherClassifications": "Point-, bjerg- og holdklassement ligger under Resultater.",
       "openResults": "Åbn resultater",
+      "latestStageResultHint": "Se hvem der vandt etape {number}, og hvordan den forløb.",
+      "latestStageResultCta": "Resultat af etape {number}",
       "raceIsDone": "Der er ikke mere at sætte. Løbet er kørt.",
       "beforeFlag": "Før flaget",
       "beforeFlagHelp": "Hvad der stadig står åbent i det her løb.",
@@ -1508,6 +1511,19 @@
     "tactics": {
       "title": "Sæt dine præferencer én gang",
       "body": "Holdstrategi gemmer de ryttere du bygger omkring, dine kaptajner pr. terræn og de løb der betyder mest. Din assistent genbruger det hver gang den udfylder et hold for dig. Taktik inde i et etapeløb sættes på selve løbet."
+    }
+  },
+  "selectionReminder": {
+    "title": "Trup mangler",
+    "titleUrgent": "Holdet stiller ikke op",
+    "body": "{count, plural, one {# løb starter} other {# løb starter}} uden fuld trup.",
+    "bodyUrgent": "{count, plural, one {# løb er} other {# løb er}} under grænsen for at stille op.",
+    "picked": "{picked}/{target} udtaget",
+    "deadlinePassed": "fristen er passeret",
+    "in": {
+      "minutes": "om {count} min",
+      "hours": "om {count} t",
+      "days": "om {count, plural, one {# dag} other {# dage}}"
     }
   }
 }

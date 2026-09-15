@@ -5,6 +5,8 @@
 // Kør `node scripts/check-pro-prices.mjs` for at tjekke de ÆGTE repo-filer.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   computeInclVatMajor,
   parseDisplayedAmount,
@@ -12,6 +14,11 @@ import {
   checkAllPrices,
   hasDrift,
   computeDiscountPct,
+  extractGrowthSnapshotSqlPrices,
+  findLatestGrowthSnapshotSqlFilename,
+  checkLtvPriceSource,
+  dkkCatalogExclVatCentsByInterval,
+  hasLtvDrift,
 } from "./check-pro-prices.mjs";
 
 // ── computeInclVatMajor — de fire priser fra #4645's spec ───────────────────
@@ -131,4 +138,118 @@ test("computeDiscountPct: 6 mdr. a 265 mod 6x49=294 er en ~9.9% rabat (IKKE ~17%
 test("computeDiscountPct: 6 x 49 = 294 (den dokumenterede regnefejl fra #4645's postmortem) -> 295 er DYRERE, negativ rabat", () => {
   const pct = computeDiscountPct({ monthsInPeriod: 6, periodPrice: 295, monthlyPrice: 49 });
   assert.ok(pct < 0, `295 kr. for 6 mdr. er dyrere end 6x49=294 kr. — forventede negativ rabat, fik ${pct}%`);
+});
+
+// ── #5215-forward-guard: growthSnapshot.js + SQL LTV-CASE mod plankataloget ──
+// VIGTIGT (se undersøgelses-note i check-pro-prices.mjs og PR-body for #5215):
+// LTV-priskilderne holder øre EKSKL. moms — IDENTISK med
+// aluntaPlanCatalog.js's rå `amount`-felt, IKKE det beregnede inkl.-moms-tal
+// pro.json viser spilleren. Katalogets rå `amount`-felt er derfor facit her,
+// ingen omregning.
+
+test("extractGrowthSnapshotSqlPrices: udtrækker {semiannual, monthly} fra LTV-CASE'en", () => {
+  const sql = `
+    ) * (CASE WHEN s.plan_interval IN ('semiannual', '6') THEN 26500 ELSE 4900 END)
+  `;
+  assert.deepEqual(extractGrowthSnapshotSqlPrices(sql), { semiannual: 26500, monthly: 4900 });
+});
+
+test("extractGrowthSnapshotSqlPrices: intet LTV-CASE i kilden -> null", () => {
+  assert.equal(extractGrowthSnapshotSqlPrices("SELECT 1;"), null);
+  assert.equal(extractGrowthSnapshotSqlPrices(""), null);
+});
+
+// #5215-review (CodeRabbit): en genberegning af en HISTORISK dato må ikke
+// stille overskrive dens oprindelige moms-basis (ON CONFLICT DO UPDATE).
+// LTV-CASE'en er derfor nu dato-bevidst nested — guarden skal stadig kunne
+// udtrække den GÆLDENDE (nyeste) pris herfra.
+test("extractGrowthSnapshotSqlPrices: dato-bevidst nested CASE (#5215) -> udtrækker den GÆLDENDE (post-cutoff) pris", () => {
+  const sql = `
+    CASE WHEN s.plan_interval IN ('semiannual', '6')
+      THEN CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 26500 ELSE 21200 END
+      ELSE CASE WHEN p_snapshot_date < DATE '2026-09-14' THEN 4900 ELSE 3920 END
+    END
+  `;
+  assert.deepEqual(extractGrowthSnapshotSqlPrices(sql), { semiannual: 21200, monthly: 3920 });
+});
+
+test("findLatestGrowthSnapshotSqlFilename: ISO-datopræfiks sorterer nyeste sidst", () => {
+  const files = [
+    "2026-08-03-growth-snapshots-3196.sql",
+    "2026-09-02-growth-snapshot-paying-only-4636.sql",
+    "2026-01-01-unrelated.sql",
+  ];
+  assert.equal(findLatestGrowthSnapshotSqlFilename(files), "2026-09-02-growth-snapshot-paying-only-4636.sql");
+});
+
+test("findLatestGrowthSnapshotSqlFilename: ingen match -> null", () => {
+  assert.equal(findLatestGrowthSnapshotSqlFilename(["2026-01-01-unrelated.sql"]), null);
+  assert.equal(findLatestGrowthSnapshotSqlFilename([]), null);
+});
+
+test("dkkCatalogExclVatCentsByInterval: rå ekskl.-moms `amount`-felt, kun DKK-planer, ingen omregning", () => {
+  const plans = [
+    { currency: "DKK", interval: "monthly", amount: 3920 },
+    { currency: "DKK", interval: "half-yearly", amount: 21200 },
+    { currency: "EUR", interval: "monthly", amount: 519 },
+  ];
+  assert.deepEqual(dkkCatalogExclVatCentsByInterval(plans), { monthly: 3920, "half-yearly": 21200 });
+});
+
+test("checkLtvPriceSource: selv-konsistent kilde (ekskl.-moms-værdier, #5215) -> ingen findings", () => {
+  const catalogExclVatCentsByInterval = { monthly: 3920, "half-yearly": 21200 };
+  const findings = checkLtvPriceSource({
+    label: "fixture",
+    priceCentsByInterval: { monthly: 3920, semiannual: 21200 },
+    catalogExclVatCentsByInterval,
+  });
+  assert.deepEqual(findings, []);
+  assert.equal(hasLtvDrift(findings), false);
+});
+
+test("checkLtvPriceSource: de gamle inkl.-moms-værdier (4900/26500, pre-#5215) FLAGES nu som drift", () => {
+  const catalogExclVatCentsByInterval = { monthly: 3920, "half-yearly": 21200 };
+  const findings = checkLtvPriceSource({
+    label: "fixture",
+    priceCentsByInterval: { monthly: 4900, semiannual: 26500 },
+    catalogExclVatCentsByInterval,
+  });
+  assert.deepEqual(findings, [
+    { label: "fixture", interval: "monthly", expectedCents: 3920, actualCents: 4900 },
+    { label: "fixture", interval: "semiannual", expectedCents: 21200, actualCents: 26500 },
+  ]);
+  assert.equal(hasLtvDrift(findings), true);
+});
+
+// ── Integrationstest: importerer de TRE ÆGTE repo-kilder (ikke fixtures) ────
+// aluntaPlanCatalog.js, backend/lib/growthSnapshot.js og den nyeste
+// database/*growth-snapshot*.sql — beviser at de tre håndskrevne kopier af
+// LTV-prisen rent faktisk er i sync lige nu, og fejler fremover hvis nogen
+// af dem drifter (samme rolle som scriptets CLI-tilstand, men som en test
+// der kan køres i CI/preflight uden filsystem-antagelser om cwd).
+test("de tre ægte LTV-priskilder (growthSnapshot.js, nyeste growth-snapshot-SQL, aluntaPlanCatalog.js) er i sync", async () => {
+  const repoRoot = join(import.meta.dirname, "..");
+  const { PLANS } = await import("../backend/scripts/lib/aluntaPlanCatalog.js");
+  const { PLAN_PRICE_CENTS } = await import("../backend/lib/growthSnapshot.js");
+  const { readdirSync } = await import("node:fs");
+
+  const catalogExclVatCentsByInterval = dkkCatalogExclVatCentsByInterval(PLANS);
+  const jsFindings = checkLtvPriceSource({
+    label: "backend/lib/growthSnapshot.js",
+    priceCentsByInterval: PLAN_PRICE_CENTS,
+    catalogExclVatCentsByInterval,
+  });
+  assert.deepEqual(jsFindings, [], `growthSnapshot.js's PLAN_PRICE_CENTS afviger fra plankataloget: ${JSON.stringify(jsFindings)}`);
+
+  const latestSqlFilename = findLatestGrowthSnapshotSqlFilename(readdirSync(join(repoRoot, "database")));
+  assert.ok(latestSqlFilename, "ingen database/*growth-snapshot*.sql fundet");
+  const sqlSource = readFileSync(join(repoRoot, "database", latestSqlFilename), "utf8");
+  const sqlPrices = extractGrowthSnapshotSqlPrices(sqlSource);
+  assert.ok(sqlPrices, `intet LTV-CASE fundet i ${latestSqlFilename}`);
+  const sqlFindings = checkLtvPriceSource({
+    label: `database/${latestSqlFilename}`,
+    priceCentsByInterval: sqlPrices,
+    catalogExclVatCentsByInterval,
+  });
+  assert.deepEqual(sqlFindings, [], `${latestSqlFilename}'s LTV-CASE afviger fra plankataloget: ${JSON.stringify(sqlFindings)}`);
 });

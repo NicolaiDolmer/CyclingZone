@@ -431,6 +431,14 @@
       "first_squad_selected": "Go to races",
       "board_plan_set": "Meet the board"
     },
+    "oneClick": {
+      "primaryCta": "Run this week's training",
+      "secondaryCta": "Pick it myself",
+      "resultLine": "Week run: {count, plural, one {# rider trained} other {# riders trained}}.",
+      "resultLink": "See training",
+      "alreadyRun": "This week is already run.",
+      "error": "Could not run this week's training. Try again."
+    },
     "tour": "Show me how",
     "dismissAria": "Hide"
   },

@@ -15,6 +15,8 @@
 
 Hvorfor lige det tal: økonomien er ikke et konverteringsproblem. ✅ 8/9 er der 17 til 18 betalende abonnementer mod 74 aktive/7d, altså omkring en fjerdedel. (Bemærk: at hver betaler også er aktiv/7d er ikke verificeret, så de to tal er et forhold, ikke en konverteringsrate.) 📄 ARPU er ~37 kr. ekskl. moms, så et levebrød på 25.000 kr./md. kræver i omegnen af 680 betalende og dermed tusindvis af aktive spillere. **Tilgang er flaskehalsen, ikke konvertering.**
 
+**LTV (`/admin/growth`) er ekskl. moms — #5215.** Ejer-regel: spillervendte priser (`/pro`, checkout, `pro.json`) er inkl. moms; ejer-tal (LTV, MRR, ARPU, `growth_metric_snapshots`) er ekskl. moms, så de tre nøgletal er sammenlignelige. `backend/lib/growthSnapshot.js`'s `PLAN_PRICE_CENTS` og den nyeste `database/*growth-snapshot*.sql` bruger derfor 3920/21200 øre (= `aluntaPlanCatalog.js`'s `amount`-felt), ikke 4900/26500. Se `BILLING_STACK.md` §"Spillerpris inkl. moms, ejer-tal ekskl. moms" for reglen i fuld længde. **`growth_metric_snapshots`-rækker fra før `database/2026-09-14-5215-growth-snapshot-ltv-ex-vat.sql` er inkl. moms — ingen backfill; et knæk i LTV-kurven omkring den dato er forventet.**
+
 ### 1.2 De tre mandagstal
 
 Måles **hver mandag** som ugens første handling. Rækkefølgen er fast, så en uge kan sammenlignes med den forrige.
@@ -86,7 +88,7 @@ Tre kanaler man kunne tro vi har. Vi har dem ikke:
 |---|---|---|
 | **Referral / invitér en ven** | Findes ikke i kode 📄 | Ejer-beslutning 23/7 (#1173): trappet belønning, 7 dages Pro for en ven der bliver aktiv, 1 måneds Pro hvis vennen betaler. Afhængighed: Pro skal låse noget op, ellers er belønningen tom. Uafklaret: hvad "bliver aktiv" betyder, og hvordan selv-referral med flere konti forhindres |
 | **Betalte annoncer** | Ikke startet 📄 | Ejer-direktiv 20/7 (#2759). **Ejer-beslutning 8/9:** én lille test på 500 til 1.000 kr. (Reddit/Facebook, UTM-tagget) i ugen op til S4 (starter 28/9). Claude leverer udkast og målgruppe, ejeren godkender budget. **Betinget af G4-princippet, se §4.3** |
-| **SEO-site** | Deployet på eget Vercel-subdomæne, ikke koblet til cyclingzone.org ✅ | `marketing/` (Next.js App Router) er merget 2/9 (#4659) med `/`, `/how-it-works`, `/pro-cycling-manager-alternative` + `/da/...`. Vercel-projektet `cycling-zone-marketing` er git-koblet og bygger fra main; sitet er live på https://cycling-zone-marketing.vercel.app (verificeret 8/9 kl. 21:05 med curl: forside, `/da`, `/how-it-works`, `/da/saadan-fungerer-det`, `/pro-cycling-manager-alternative`, sitemap og robots svarer 200). Mangler stadig rewrites fra cyclingzone.org (separat PR, ejer-go). Forsiden er indtil videre `LandingPage.jsx` prerenderet på engelsk. Google-indeks: 1 side (målt 21/8, #4067) |
+| **SEO-site** | Rewrites bygget, afventer ejer-go + merge 🔧 | `marketing/` (Next.js App Router) er merget 2/9 (#4659) med `/`, `/how-it-works`, `/pro-cycling-manager-alternative` + `/da/...`. Vercel-projektet `cycling-zone-marketing` er git-koblet og bygger fra main; sitet er live på https://cycling-zone-marketing.vercel.app. **#4067 (14/9):** PR med `frontend/vercel.json`-rewrites for de 5 stier (undtagen forsiden) + `_next/`-assets, robots-noindex på selve vercel.app-domænet (undgår dubletindeksering) og udvidet sitemap.xml er klar til ejer-review — ikke merget endnu. Forsiden er fortsat `LandingPage.jsx` prerenderet på engelsk (rørt ikke i #4067; kræver egen beslutning at flytte). Google-indeks: 1 side (målt 21/8, #4067) |
 
 ### 2.3 Kanaler vi bevidst ikke bruger
 

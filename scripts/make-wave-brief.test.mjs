@@ -67,12 +67,15 @@ test("instruerer draft-PR ved foerste push og gh pr ready som sidste handling (C
   assert.match(brief, /gh pr ready/);
 });
 
-test("instruerer CodeRabbit CLI-review foer gh pr ready", () => {
+test("instruerer CodeRabbit CLI-review foer gh pr ready, maks EEN runde (#5220)", () => {
   const brief = generateBrief(baseConfig);
   assert.match(brief, /coderabbit review --base main --committed/);
   assert.match(brief, /Ret aegte fund/);
-  assert.match(brief, /koer CLI-reviewet igen paa den endelige committed diff/);
-  assert.match(brief, /maa IKKE markeres klar foer et rent/);
+  assert.match(brief, /maks 1 CodeRabbit CLI-runde pr\. spor/);
+  assert.match(brief, /koer IKKE CLI-reviewet igen, den ene runde er brugt/);
+  // Den gamle "koer CLI-reviewet igen" (flere runder) maa vaere vaek - #5220
+  // saetter et hardt loft paa EEN CLI-runde pr. spor.
+  assert.doesNotMatch(brief, /koer CLI-reviewet igen paa den endelige committed diff/);
   const cliIdx = brief.indexOf("coderabbit review --base main --committed");
   const readyIdx = brief.indexOf("gh pr ready <N>");
   assert.ok(cliIdx > 0 && readyIdx > cliIdx, "CLI-review skal staa FOER gh pr ready");
@@ -175,4 +178,39 @@ test("ownNodeModules-lanen faar besked om selv at oprette worktree/koere npm ci"
 test("scratchRoot kan overstyres", () => {
   const brief = generateBrief({ ...baseConfig, scratchRoot: "D:\\scratch" });
   assert.match(brief, /D:\\scratch\\chore-4918-wave-ops/);
+});
+
+// ===== kind: "investigate" (#5220) =====
+
+test("kind: 'build' (default) faar INGEN undersoegelsesspor-blok", () => {
+  const brief = generateBrief(baseConfig);
+  assert.doesNotMatch(brief, /# Undersoegelsesspor/);
+  assert.doesNotMatch(brief, /bekraeftet \+ fix-plan/);
+});
+
+test("kind: 'investigate' skriver den tvungne aflevering ordret ind i briefen", () => {
+  const brief = generateBrief({ ...baseConfig, kind: "investigate" });
+  assert.match(brief, /# Undersoegelsesspor \(kind: investigate, #5220\)/);
+  assert.match(brief, /fast vindue paa 60 min, IKKE forlaengeligt/);
+  assert.match(brief, /"bekraeftet \+ fix-plan"/);
+  assert.match(brief, /"afvist \+ bevis-test"/);
+  assert.match(brief, /Lever ALDRIG et tredje svar/);
+});
+
+// CodeRabbit (#5220): et undersoegelsesspor bygger intet - briefen maa IKKE
+// samtidig kraeve commit/push/draft-PR/CodeRabbit-CLI/gh pr ready.
+test("kind: 'investigate' udelader ALLE build-only-blokke (livstegn, TIER-verifikation, PR-skabelon)", () => {
+  const brief = generateBrief({ ...baseConfig, kind: "investigate" });
+  assert.doesNotMatch(brief, /# Livstegn/);
+  assert.doesNotMatch(brief, /# Verifikation, niveau TIER WAVE/);
+  assert.doesNotMatch(brief, /# PR-skabelon/);
+  assert.doesNotMatch(brief, /guard-commit-branch\.sh/);
+  assert.doesNotMatch(brief, /coderabbit review/);
+  assert.doesNotMatch(brief, /gh pr ready/);
+  assert.match(brief, /Dette spor bygger INTET/);
+});
+
+test("et ugyldigt kind falder tilbage til 'build' (ingen undersoegelsesspor-blok)", () => {
+  const brief = generateBrief({ ...baseConfig, kind: "noget-andet" });
+  assert.doesNotMatch(brief, /# Undersoegelsesspor/);
 });

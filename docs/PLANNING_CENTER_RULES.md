@@ -74,6 +74,18 @@ tilstande; den eneste nye flade er én til/fra-kontakt på Profil, synlig kun i 
 (#4983); regel 1-5 gælder uændret, og flippet er et ejer-gated prod-skridt. Se
 [ASSISTANT_RULES §12 pkt. 0](ASSISTANT_RULES.md) og [D-034](design/gdd/DECISIONS.md).
 
+**Påmindelsen før fristen (#4983, D-034) er ikke en sjette udfyldningsvej.** Den markerer
+"Planlægning" gult i navigationen og viser en boks øverst på planlægningssiden når en trup
+mangler før fristen, og rød når truppen er under deltagelses-gulvet (`MIN_RACE_ENTRIES` = 6,
+regel 2's eget tal) inde i `assistant_late_fill_hours` - altså kun når holdet reelt ikke
+stiller op, samme skelnen som regel 3's `partialSquadOutlook` (ejer-beslutning 10/9). Den
+skriver intet, udtager
+intet og sender ingen besked - regel 1's forbud mod nye proaktive assistent-FLADER handler om
+flader der handler på spillerens vegne, og en markering der siger "du mangler noget" gør det
+modsatte. De to eskaleringstrin og deres kilder står i
+[`ASSISTANT_RULES.md`](ASSISTANT_RULES.md) §1b ("Påmindelsen før fristen") - duplikér dem ikke
+her. Spilleren kan slå den fra på Profil (`teams.selection_reminder_enabled`, default til).
+
 **Kendt rest (kode, hører til P3):** symmetriske kontroller (man kan rydde dag OG sæson, men kun udfylde en dag), én forklarende linje på boardet, Hjælp-afsnit (en+da). AI-holds autofill er uændret (felterne afhænger af den, jf. #2622-bindingen).
 
 ---

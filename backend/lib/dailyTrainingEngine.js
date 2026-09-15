@@ -1,8 +1,14 @@
 // Daglig trænings-orchestrator (#1305) — eksekverer ÉN trænings-dag for ÉT hold.
 //
-// Idempotent via UNIQUE(team_id, tick_date) i training_day_runs: reservation-first
-// strategi bruger en pending-row som mutex. Postgres 23505 unique-violation ved INSERT
+// Idempotent via et unique-index i training_day_runs: reservation-first strategi
+// bruger en pending-row som mutex. Postgres 23505 unique-violation ved INSERT
 // → alreadyRan=true uden videre DB-skriv.
+//
+// #4846: HVILKET index der er mutexen afgoeres af `training_tick_per_race_day`:
+//   flag off → UNIQUE(team_id, tick_date)              WHERE game_day IS NULL
+//   flag on  → UNIQUE(team_id, season_id, game_day)    WHERE game_day IS NOT NULL
+// De to lever side om side (database/2026-09-14-4846-training-tick-game-day.sql), og
+// flag off er bit-identisk med foer: hverken season_id eller game_day skrives.
 //
 // Spejler riderProgressionEngine.js: DI-supabase, loft genberegnet pr. tick
 // (buildCapsForRider, #2471 — ikke lazy-initeret), batched writes (runBatched),
@@ -23,6 +29,10 @@ import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 import { riderLevelBand } from "./staffAbilityConstants.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
+import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
+import {
+  TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
+} from "./trainingRaceDayTick.js";
 
 // Batched async-runner (samme hjælper som riderProgressionEngine.js).
 async function runBatched(items, concurrency, fn) {
@@ -113,10 +123,13 @@ async function loadRaceStageProfiles(supabase, raceIds) {
  * @param {number}  args.seasonNumber   — sæson-nummer (til alder + seed)
  * @param {string}  args.executedBy     — "manager" | "assistant"
  * @param {Date}    [args.now]          — referencetid (default new Date())
- * @returns {Promise<{ alreadyRan: boolean, tickDate: string, report?: object }>}
+ * @param {number}  [args.gameDay]      — #4846: eksplicit loebsdag. SEAM til fase B4
+ *   (udloeseren "loebsdagen lukker" kender selv dagen og skal ikke slaa den op igen).
+ *   Udeladt + flag on ⇒ resolveTeamRaceDay. Ignoreret naar flaget er off.
+ * @returns {Promise<{ alreadyRan: boolean, tickDate: string, gameDay: number|null, report?: object }>}
  */
 export async function runTeamTrainingDay({
-  supabase, teamId, seasonId, seasonNumber, executedBy, now = new Date(),
+  supabase, teamId, seasonId, seasonNumber, executedBy, now = new Date(), gameDay = null,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -129,6 +142,36 @@ export async function runTeamTrainingDay({
   const tickDate = copenhagenDateString(now);
   const bonus = executedBy === "manager";
 
+  // ── 0) #4846: hvilken noegle er mutexen i dag? ───────────────────────────────
+  // Flaget SKAL laeses FOER reservationen, fordi noeglen ER laasen. `engineWrite`
+  // fordi et cron-sweep ingen viewer har (featureStage.js' skrive-gate).
+  //
+  // Fail-safe-kaskade: flag off, hold uden division, eller en loebsdag der ikke kan
+  // slaas op ⇒ `useRaceDayKey = false` ⇒ PRAECIS den gamle kalenderdags-sti. Et hold
+  // stopper aldrig stille med at udvikle sig fordi kalenderen mangler et svar.
+  const raceDayTickOn = await isTrainingTickPerRaceDayEnabled(supabase, { engineWrite: true });
+  let raceDay = null;
+  if (raceDayTickOn) {
+    raceDay = Number.isFinite(gameDay)
+      ? Number(gameDay)
+      : (await resolveTeamRaceDay({ supabase, teamId, seasonId, now })).gameDay;
+  }
+  const useRaceDayKey = raceDayTickOn && Number.isFinite(raceDay);
+  // Loebsdags-stoej/skade-seed (A3) og den G1-kalibrerede budget-deler. null paa den
+  // gamle sti ⇒ dailyTraining.js falder tilbage til dato-seed + cfg.daysPerSeason.
+  const tickSeedKey = useRaceDayKey ? raceDaySeedKey({ seasonId, gameDay: raceDay }) : null;
+  const seedScope = tickSeedKey ?? tickDate;
+  const budgetDivisor = useRaceDayKey ? raceDayBudgetDivisor() : null;
+  // #4801: "+1 pr. evne pr. dag" betyder pr. LOEBSDAG naar loebsdagen er tick-enheden.
+  // Roret (hardDailyCap) har altid vaeret der, men blev aldrig sendt — reglen er ny.
+  const hardDailyCap = useRaceDayKey ? TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay : undefined;
+
+  // Raekke-filter for de senere update/delete-kald: samme noegle som reservationen,
+  // ellers ville en update paa (team_id, tick_date) ramme ALLE loebsdage samme dato.
+  const runRowFilter = (query) => (useRaceDayKey
+    ? query.eq("team_id", teamId).eq("season_id", seasonId).eq("game_day", raceDay)
+    : query.eq("team_id", teamId).eq("tick_date", tickDate));
+
   // ── 1) Reservation: INSERT pending-row; 23505 → alreadyRan ───────────────────
   const { error: insertError } = await supabase
     .from("training_day_runs")
@@ -138,18 +181,23 @@ export async function runTeamTrainingDay({
       executed_by: executedBy,
       bonus_applied: bonus,
       report: { pending: true },
+      // Bart INSERT uden ON CONFLICT: det PARTIELLE unique-index paa
+      // (team_id, season_id, game_day) WHERE game_day IS NOT NULL rejser 23505
+      // praecis som tabel-constrainten gjorde. Udelades felterne, falder raekken
+      // tilbage under (team_id, tick_date) WHERE game_day IS NULL.
+      ...(useRaceDayKey ? { season_id: seasonId, game_day: raceDay } : {}),
     });
 
   if (insertError) {
     if (insertError.code === "23505") {
-      return { alreadyRan: true, tickDate };
+      return { alreadyRan: true, tickDate, gameDay: useRaceDayKey ? raceDay : null };
     }
     throw new Error(`training_day_runs insert: ${insertError.message}`);
   }
 
   // ── Phase 1: Loads + ren beregning (ingen writes) ────────────────────────────
   // Ved fejl her slettes reservationen, så holdet kan retrye samme dag.
-  let abilityUpdates, conditionUpserts, reportRiders, historyRows;
+  let abilityUpdates, conditionUpserts, reportRiders, historyRows, raceDayHistoryRows;
   try {
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
   const { data: riders, error: ridersError } = await supabase
@@ -159,12 +207,12 @@ export async function runTeamTrainingDay({
     .eq("is_retired", false);
   if (ridersError) throw new Error(`riders load: ${ridersError.message}`);
   if (!riders || riders.length === 0) {
-    const emptyReport = { riders: [], bonus_applied: bonus, executed_by: executedBy, tick_date: tickDate };
-    await supabase.from("training_day_runs")
-      .update({ report: emptyReport })
-      .eq("team_id", teamId)
-      .eq("tick_date", tickDate);
-    return { alreadyRan: false, tickDate, report: emptyReport };
+    const emptyReport = {
+      riders: [], bonus_applied: bonus, executed_by: executedBy, tick_date: tickDate,
+      game_day: useRaceDayKey ? raceDay : null,
+    };
+    await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }));
+    return { alreadyRan: false, tickDate, gameDay: useRaceDayKey ? raceDay : null, report: emptyReport };
   }
 
   const riderIds = riders.map((r) => r.id);
@@ -279,6 +327,8 @@ export async function runTeamTrainingDay({
   conditionUpserts = []; // { rider_id, form, fatigue, injured_until, injury_cause, updated_at }
   reportRiders = [];
   historyRows = []; // { rider_id, snapshot_date, source, season_number, abilities } — #2000 Udvikling-fane
+  // #4846: soester-raekker paa loebsdags-aksen. Tom naar flaget er off.
+  raceDayHistoryRows = [];
 
   for (const rider of riders) {
     const abRow = abilityByRider.get(rider.id);
@@ -407,6 +457,13 @@ export async function runTeamTrainingDay({
         staff: trainingStaff,
         facilityTier: trainingFacilityTier,
         riderLevel: riderLevelBand({ is_academy: rider.is_academy, age }),
+        // ── #4846 (fase B2) ──────────────────────────────────────────────────
+        // Alle tre er null/undefined naar flaget er off ⇒ dailyTraining.js
+        // falder tilbage til dato-seed, cfg.daysPerSeason og Infinity-loftet,
+        // altsaa BIT-IDENTISK med foer.
+        tickSeedKey,
+        budgetDivisor,
+        hardDailyCap,
       };
       if (racedToday) {
         // #3459 D2: profil-typen slås op pr. rytter (racedRiderProfileByRider,
@@ -457,7 +514,16 @@ export async function runTeamTrainingDay({
     if (!injuredToday) {
       const risk = injuryRisk({ intensity: effectiveIntensity, fatigue: preFatigue });
       if (risk > 0) {
-        const roll = rollInjury({ riderId: rider.id, dateStr: tickDate, risk });
+        // #4846 A3: skade-rullet seedes paa SAMME scope som traenings-stoejen.
+        // Med dato-seed ville to loebsdage samme kalenderdag give identisk
+        // skade-udfald; rollInjury bruger `dateStr` udelukkende som seed-hale,
+        // saa scopet kan skiftes her uden at roere riderCondition.js.
+        // BEMAERK: skadens VARIGHED er fortsat i hele KALENDERDAGE (injured_until
+        // = tickDate + N nedenfor). Spec §5 lader valget staa aabent; B2 beholder
+        // kalenderdage, fordi spilleren laeser skaden som en dato i UI'et. Med
+        // flere loebsdage pr. kalenderdag daekker N kalenderdage dermed flere
+        // ticks end i dag — en balance-aendring der hoerer til ejerens bord.
+        const roll = rollInjury({ riderId: rider.id, dateStr: seedScope, risk });
         if (roll.injured) {
           injuryDays = roll.days;
           newlyInjured = true;
@@ -509,6 +575,23 @@ export async function runTeamTrainingDay({
         season_number: seasonNumber,
         abilities: snapshot,
       });
+      // #4846: paa loebsdags-aksen skrives snapshottet OGSAA til soesterbordet, som
+      // har (rider_id, season_id, game_day, source) som noegle. Den gamle tabel
+      // beholder sin kalenderdags-noegle — hele vaerditrend-/rating-laesesiden
+      // (riderValueTrend, proRiderHistory, marketValueSundaySweep,
+      // riderRatingTrajectory) haenger paa den, og en divisionsafhaengig takt dér
+      // ville give systematisk forskellige kurver mellem D1 og D4 (spec §3.2).
+      if (useRaceDayKey) {
+        raceDayHistoryRows.push({
+          rider_id: rider.id,
+          season_id: seasonId,
+          game_day: raceDay,
+          source: racedToday ? "race_development" : "daily_training",
+          season_number: seasonNumber,
+          snapshot_date: tickDate,
+          abilities: snapshot,
+        });
+      }
     }
 
     // Gennembruds-detalje (#1305 polish): faktisk tal-spring pr. gevinst, så
@@ -555,16 +638,15 @@ export async function runTeamTrainingDay({
       // dagens træning erstattes af løbet"). false når flag off (bit-identisk
       // datamodel, ingen eksisterende consumer læser feltet endnu).
       race_day: racedToday,
+      // #4846: hvilken loebsdag ticket hoerer til. null paa den gamle sti.
+      game_day: useRaceDayKey ? raceDay : null,
     });
   }
 
   } catch (phase1Err) {
     // Load/beregnings-fejl: slet reservationen så holdet kan retrye samme dag.
     try {
-      await supabase.from("training_day_runs")
-        .delete()
-        .eq("team_id", teamId)
-        .eq("tick_date", tickDate);
+      await runRowFilter(supabase.from("training_day_runs").delete());
     } catch { /* swallow — original fejl er vigtigst */ }
     throw phase1Err;
   }
@@ -599,6 +681,28 @@ export async function runTeamTrainingDay({
     }
   }
 
+  // #4846: loebsdags-snapshottet. Samme best-effort-kontrakt som ovenfor — en fejl
+  // her maa ALDRIG kaste (afledt visning, ikke spil-state). Idempotent via
+  // UNIQUE(rider_id, season_id, game_day, source).
+  if (raceDayHistoryRows.length > 0) {
+    try {
+      for (let i = 0; i < raceDayHistoryRows.length; i += 500) {
+        const { error } = await supabase
+          .from("rider_ability_race_day_history")
+          .upsert(raceDayHistoryRows.slice(i, i + 500), {
+            onConflict: "rider_id,season_id,game_day,source", ignoreDuplicates: true,
+          });
+        if (error) throw new Error(error.message);
+      }
+    } catch (histErr) {
+      // best-effort: loebsdags-snapshottet er AFLEDT visning, ikke spil-state. Et
+      // kast her ville vaelte en traeningsdag hvis evne-writes allerede er landet
+      // (Phase 2 bevarer reservationen med vilje) — samme kontrakt som
+      // kalenderdags-historikken ovenfor. Fejlen logges, dagen staar.
+      console.error(`  ⚠️ ability-history snapshot (race day) fejlede for hold ${teamId}:`, histErr.message);
+    }
+  }
+
   // Condition upserts.
   if (conditionUpserts.length) {
     for (let i = 0; i < conditionUpserts.length; i += 500) {
@@ -615,13 +719,12 @@ export async function runTeamTrainingDay({
     bonus_applied: bonus,
     executed_by: executedBy,
     tick_date: tickDate,
+    game_day: useRaceDayKey ? raceDay : null,
   };
-  const { error: updateError } = await supabase
-    .from("training_day_runs")
-    .update({ report })
-    .eq("team_id", teamId)
-    .eq("tick_date", tickDate);
+  const { error: updateError } = await runRowFilter(
+    supabase.from("training_day_runs").update({ report }),
+  );
   if (updateError) throw new Error(`training_day_runs update: ${updateError.message}`);
 
-  return { alreadyRan: false, tickDate, report };
+  return { alreadyRan: false, tickDate, gameDay: useRaceDayKey ? raceDay : null, report };
 }

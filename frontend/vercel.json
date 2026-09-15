@@ -18,6 +18,30 @@
       "destination": "https://eu.i.posthog.com/:path"
     },
     {
+      "source": "/how-it-works",
+      "destination": "https://cycling-zone-marketing.vercel.app/how-it-works"
+    },
+    {
+      "source": "/pro-cycling-manager-alternative",
+      "destination": "https://cycling-zone-marketing.vercel.app/pro-cycling-manager-alternative"
+    },
+    {
+      "source": "/da",
+      "destination": "https://cycling-zone-marketing.vercel.app/da"
+    },
+    {
+      "source": "/da/saadan-fungerer-det",
+      "destination": "https://cycling-zone-marketing.vercel.app/da/saadan-fungerer-det"
+    },
+    {
+      "source": "/da/pro-cycling-manager-alternativ",
+      "destination": "https://cycling-zone-marketing.vercel.app/da/pro-cycling-manager-alternativ"
+    },
+    {
+      "source": "/_next/:path(.*)",
+      "destination": "https://cycling-zone-marketing.vercel.app/_next/:path"
+    },
+    {
       "source": "/((?!assets/|fonts/|brand/|locales/).*)",
       "destination": "/app.html"
     }
