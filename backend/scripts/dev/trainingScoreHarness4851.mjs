@@ -34,10 +34,14 @@ import { buildCapsForRider } from "../../lib/riderProgression.js";
 import { nextFatigue, nextForm, conditionMultiplier } from "../../lib/riderCondition.js";
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
 import { riderLevelBand } from "../../lib/staffAbilityConstants.js";
+// Launch-referenceaaret erklaeres ÉT sted (lib/riderSeasonAge.js) — guarden i
+// riderSeasonAge.test.js faelder enhver kopi. Udtraekket baerer foedselsaaret,
+// saa alderen udledes af det og saesonnummeret via samme SSOT som motoren.
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const POPULATION_PATH = process.argv[2];
 const DAYS = Number(process.argv[3] ?? 14);
-const SEASON_YEAR = 2026;
+const SEASON_NUMBER = Number(process.argv[4] ?? 3);
 
 if (!POPULATION_PATH) {
   console.error("brug: node backend/scripts/dev/trainingScoreHarness4851.mjs <population.json> [dage]");
@@ -64,7 +68,8 @@ function totalAbilityPoints(abilities) {
 // Én rytters 14 dage under én score-konfiguration. Returnerer de samlede point
 // rytteren vandt + hver dags score.
 function simulateRider(rider, scoreCfg) {
-  const age = SEASON_YEAR - Number(rider.birthYear ?? SEASON_YEAR - 25);
+  const birthYear = Number(rider.birthYear ?? LAUNCH_REFERENCE_YEAR - 25);
+  const age = LAUNCH_REFERENCE_YEAR + (SEASON_NUMBER - 1) - birthYear;
   let abilities = {};
   for (const k of VISIBLE_ABILITIES) abilities[k] = Number(rider.abilities?.[k] ?? 0);
   const startPoints = totalAbilityPoints(abilities);

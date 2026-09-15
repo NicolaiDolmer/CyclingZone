@@ -1055,7 +1055,7 @@
       },
       "trainingScore": {
         "title": "Træningsscoren",
-        "text": "Hvert pas en rytter gennemfører får en træningsscore fra 1 til 99. Den måler KVALITETEN af passet, ikke hvad rytteren fik ud af det: hvor krævende passet var, hvor godt det ramte rytterens styrker, rytterens form og træthed den dag, træneren og faciliteterne bag, rytterens talent og alder, og dagen selv. Scoren er det, der driver udviklingen — et bedre pas rykker evnerne mere. Den afhænger ikke af, hvor tæt en evne er på sit loft, så en rytter der næsten er færdig i sine fokus-evner, får stadig en ærlig aflæsning af, hvor godt passet var. Hviledage får ingen score, for der var intet pas at måle. På en løbsdag står der 'Løb' i kolonnen: løbet erstatter træningen den dag, og kurven har et hul. Kun du kan se scorerne for dine egne ryttere."
+        "text": "Hvert pas en rytter gennemfører får en træningsscore fra 1 til 99. Den måler KVALITETEN af passet, ikke hvad rytteren fik ud af det: hvor krævende passet var, hvor godt det ramte rytterens styrker, rytterens form og træthed den dag, træneren og faciliteterne bag, rytterens talent og alder, og dagen selv. Scoren er det, der driver udviklingen: et bedre pas rykker evnerne mere. Den afhænger ikke af, hvor tæt en evne er på sit loft, så en rytter der næsten er færdig i sine fokus-evner, får stadig en ærlig aflæsning af, hvor godt passet var. Hviledage får ingen score, for der var intet pas at måle. På en løbsdag står der 'Løb' i kolonnen: løbet erstatter træningen den dag, og kurven har et hul. Kun du kan se scorerne for dine egne ryttere."
       },
       "longTermGrowth": {
         "title": "Udvikling på lang sigt",

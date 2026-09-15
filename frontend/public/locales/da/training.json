@@ -281,7 +281,7 @@
   "score": {
     "column": "Score",
     "raceDay": "Løb",
-    "sparkAria": "Træningsscore, seneste 7 dage — {name}",
+    "sparkAria": "Træningsscore, seneste 7 dage: {name}",
     "factor_intensity": "Passet",
     "factor_focusMatch": "Fokus-match",
     "factor_condition": "Form og træthed",

@@ -157,7 +157,7 @@
         "title": "Træningsscore",
         "todayLabel": "Dagens pas",
         "race": "Løb",
-        "raceNote": "Løbsdag — løbet erstatter træningen",
+        "raceNote": "Løbsdag: løbet erstatter træningen",
         "sparkAria": "Træningsscore, seneste 7 dage",
         "avg": "Gennemsnit, {days} dage",
         "best": "Bedste, 30 dage",

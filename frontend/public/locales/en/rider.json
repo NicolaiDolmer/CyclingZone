@@ -157,7 +157,7 @@
         "title": "Training score",
         "todayLabel": "Today's session",
         "race": "Race",
-        "raceNote": "Race day — the race replaces training",
+        "raceNote": "Race day: the race replaces training",
         "sparkAria": "Training score, last 7 days",
         "avg": "Average, {days} days",
         "best": "Best, 30 days",

@@ -88,11 +88,11 @@ export const TRAINING_SCORE_CONFIG = Object.freeze({
   // Asymptoten. Kurven naar den aldrig, saa `max` er en garanti, ikke en klippe.
   asymptote: 99,
   // Scoren for u = 1 (referencen ovenfor). Kalibreret i
-  // backend/scripts/dev/trainingScoreHarness.mjs mod en seedet bestand.
+  // backend/scripts/dev/trainingScoreHarness4851.mjs mod et prod-udtraek.
   midpoint: 50,
   // Hvor haardt kvaliteten slaar igennem. Lavere = fladere fordeling. 0,95 er
   // valgt i harnessen mod 500 aegte prod-ryttere × 14 dage (5.166 pas): den
-  // bruger skalaen (10 til 86, median 55) uden at bunke i nogen af enderne —
+  // bruger skalaen (8 til 86, median 55) uden at bunke i nogen af enderne —
   // 0 pas i 1-5 og 0 i 95-99, altsaa gate G3 og G4 med margin. En hoejere
   // vaerdi presser bunden mod 1; en lavere klemmer alt ind i 30-70.
   curve: 0.95,
@@ -103,14 +103,11 @@ export const TRAINING_SCORE_CONFIG = Object.freeze({
   //   gamma = 0  ⇒ praecis dagens model (koblingen er inert)
   //   gamma > 0  ⇒ en hoej score giver et hoejere udbytte end i dag, en lav et
   //               lavere. `normalizer` er bestandens middelvaerdi af
-  //               (S/midpoint)^gamma, saa SAEEONENS SAMLEDE udvikling er
+  //               (S/midpoint)^gamma, saa SAESONENS SAMLEDE udvikling er
   //               uaendret — reshaping, ikke power creep (gate G1).
   // Begge tal er maalt i harnessen; se PR-body for foer/efter over 14 dage.
   deltaCoupling: Object.freeze({ gamma: 0.25, normalizer: 1.0745 }),
 });
-
-// m saa kurven rammer `midpoint` praecis ved u = 1.
-const CURVE_M = TRAINING_SCORE_CONFIG.asymptote / TRAINING_SCORE_CONFIG.midpoint - 1;
 
 function finiteOr(value, fallback) {
   const n = Number(value);

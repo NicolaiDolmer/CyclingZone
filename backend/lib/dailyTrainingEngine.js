@@ -752,6 +752,11 @@ export async function runTeamTrainingDay({
         if (error && error.code !== "23505") throw new Error(error.message);
       }
     } catch (scoreErr) {
+      // best-effort: scoren er AFLEDT visning (+ en kvittering paa dagens
+      // kvalitet), ikke spil-state. Et kast her ville vaelte en traeningsdag
+      // hvis evne-writes allerede er landet (Phase 2 bevarer reservationen med
+      // vilje) — samme kontrakt som historik-snapshottene ovenfor. Fejlen
+      // logges, dagen staar, og naeste tick skriver videre.
       console.error(`  ⚠️ training-score write fejlede for hold ${teamId}:`, scoreErr.message);
     }
   }
