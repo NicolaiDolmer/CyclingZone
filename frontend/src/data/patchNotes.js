@@ -17,7 +17,7 @@ export const PATCHES = [
         "refs": [5268, 5280]
       },
       {
-        "category": "changed", "audience": "player", "topic": "Riders",
+        "category": "improved", "audience": "player", "topic": "Riders",
         "en": {
           "title": "Tactics and aggression no longer come with a hidden age bonus",
           "body": "A new rider used to get tactics mostly from his age and aggression partly from being young. From now on both are abilities of their own for new riders. The ceilings for tactics and aggression were lowered to match. A ceiling only limits future growth, so no rider loses a single point."
@@ -29,7 +29,7 @@ export const PATCHES = [
         "refs": [3668, 5268, 5280]
       },
       {
-        "category": "changed", "audience": "player", "topic": "Academy",
+        "category": "improved", "audience": "player", "topic": "Academy",
         "en": {
           "title": "Graduation Day comes at 23, not 22",
           "body": "The forced choice for an academy rider (promote, sell or release) now comes the season he turns 23. A 22-year-old stays in your academy one more season. Help is updated to match."
