@@ -107,9 +107,11 @@ Kvoten er ikke ét tal noget sted. Den er tre, og de kender ikke hinanden:
 
 Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om ingen løbsfrie dage holder. D4 kører præcis 1 løbsdag pr. kalenderdag, som `minGameDaysPerRealDay(4) = 1` foreskriver. Målt 0 brud på `TIER_OVERLAP_CAP` i alle fire divisioner.
 
-### 1d. Samme antal løbsdage i alle fire divisioner (ejer-beslutning 6/9, [#4845](https://github.com/NicolaiDolmer/CyclingZone/issues/4845))
+### 1d. Samme antal løbsdage i alle fire divisioner (ejer-beslutning 6/9, mål sat 15/9, [#4845](https://github.com/NicolaiDolmer/CyclingZone/issues/4845))
 
-**Ejeren ordret:** *"Det skal være samme antal dage ind i spillet. Men divisionerne behøves ikke nødvendigvis at køre lige mange løb. Altså det kan sagtens være, at divisionerne der er lidt lavere, de bare får flere muligheder for at træne."*
+**Ejeren ordret 6/9 (reglen):** *"Det skal være samme antal dage ind i spillet. Men divisionerne behøves ikke nødvendigvis at køre lige mange løb. Altså det kan sagtens være, at divisionerne der er lidt lavere, de bare får flere muligheder for at træne."*
+
+**Ejeren ordret 15/9 (tallet):** 140 løbsdage pr. sæson i alle fire divisioner, ikke 80 — *"jeg vil ikke have at dette laver om i løbskalenderen"*, altså antal LØB pr. division er urørt. Kilde: [`docs/TRAINING_RULES.md` §13.3](TRAINING_RULES.md#133-ejerens-beslutninger-159-design-session-8-kort-ét-ad-gangen-låste-genåbn-ikke) beslutning 2 + [#4850](https://github.com/NicolaiDolmer/CyclingZone/issues/4850)s kommentar 15/9. 140 = 28 løbsdatoer × D1's 5 slots.
 
 **Reglen:** løbsdags-aksens LÆNGDE (`max(game_day) + 1`) skal være det samme tal i alle fire divisioner. Løbsdage uden løb er rene træningsdage. Antallet af LØB må gerne være forskelligt — kvoten (§1b) er uændret.
 
@@ -117,23 +119,42 @@ Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om 
 
 | Hvor | Hvad |
 |---|---|
-| Målet (data) | `SEASON_RACE_DAY_TARGET` i `backend/lib/calendarRaceDayTargets.js` — S4 = **80** |
+| Målet (data) | `SEASON_RACE_DAY_TARGET` i `backend/lib/calendarRaceDayTargets.js` — S4 = **140** |
 | Binding i pakkeren | R12 i `raceCalendarLanePacker.js` (`raceDayTarget` + `maxEmptyGameDaysPerDate`) |
 | Gate | `detectRaceDayEqualityViolations` — **hårdt krav uden override**, stopper `--apply` (som §1b) |
-| CLI | `node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-day-target 80` (udelades flaget, bruges sæsonens eget mål; `--race-day-target 0` slår reglen fra) |
+| CLI | `node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-day-target 140` (udelades flaget, bruges sæsonens eget mål; `--race-day-target 0` slår reglen fra) |
 
-**Målet kan ikke sættes under den højeste divisions naturlige antal.** D1's 80 løbsdage er ikke et valg: en Grand Tour skal have sine 21 etaper inden for `MAX_GT_SPAN_DAYS` kalenderdage, og det kræver netop de mange løbsdage pr. kalenderdag. De tre andre divisioner fyldes derfor OP til D1's tal — aldrig omvendt.
+**Målet kan ikke sættes under den højeste divisions naturlige antal.** D1's 80 løbsdage er ikke et valg: en Grand Tour skal have sine 21 etaper inden for `MAX_GT_SPAN_DAYS` kalenderdage, og det kræver netop de mange løbsdage pr. kalenderdag. De tre andre divisioner fyldes derfor OP — aldrig omvendt.
 
 **En tom løbsdag må kun ligge dér hvor intet løb er i gang.** Ellers ville den blive en hviledag midt i et etapeløb, og ejer-reglen 25/8 siger at et løbs løbsdage ligger i træk ("Løbsdag 4-5-6-7"). Kun Grand Tours har hviledage. Derfor er reglen en BINDING i selve søgningen og ikke en efterbehandling: i den pakning søgningen finder uden R12 er der kun 4-10 punkter pr. division hvor intet løb er i gang (målt 11/9), så de tomme løbsdage kunne ellers kun klumpe i få store bunker.
 
-> ⚠ **PRISEN ER MÅLT, OG DEN ER IKKE GRATIS (dry-run 11/9, S4, mål 80).** Aksen kan kun forlænges på to måder: tomme løbsdage (begrænset af reglen ovenfor) eller færre samtidige løb pr. løbsdag. Kataloget rækker ikke til det første alene, så resten betales i overlap:
+#### 1d-vægen: D1 kan ikke nå 140 med `MAX_GT_STAGES_PER_DAY = 4` (målt 15/9)
+
+**Målt, ikke udledt** (dry-run 15/9, S4, samme katalog som den grønne 80-kørsel): D2, D3 og D4 når 140. **D1 gør ikke** — den falder tilbage til sine naturlige 80.
+
+Årsagen er `MAX_GT_STAGES_PER_DAY = 4` ([#4103](https://github.com/NicolaiDolmer/CyclingZone/issues/4103), ejer 22/8, ordret i koden: *"ingen dag med 5"*). En kalenderdato der ligger HELT inde i et Grand Tours spænd kan kun bære 4 løbsdage: hver løbsdag i spændet bærer præcis én GT-etape (R1: etaperne ligger i træk), og datoen må højst have 4 GT-etaper. D1 har tre GT'er à 21 etaper, som hver fylder præcis 6 kalenderdatoer (`ceil(21/4) = 6 = MAX_GT_SPAN_DAYS`) — altså 18 af sæsonens 28 datoer. 140 kræver 5 løbsdage på hver dato.
+
+Tre målinger afgrænser det, så bindingen ikke skal gættes:
+
+| Målt 15/9 | Resultat |
+|---|---|
+| Mål 140, skridtbudget 20× (40 mio. i stedet for 2 mio.) | D1 stadig 80 — **ikke** et søgebudget-problem |
+| Mål 140, tomme-løbsdags-budget 10 pr. kalenderdag i stedet for 4 | D1 stadig 80 — **ikke** et budget-problem |
+| Mål 140, `MAX_GT_STAGES_PER_DAY = 5` | D1 **140** (113 med løb + 27 træningsdage) — bindingen er fundet |
+| Mål 112 (= 28 × 4), alt andet urørt | **alle fire** divisioner 112 ✅ |
+
+**Åben ejer-beslutning:** enten hæves `MAX_GT_STAGES_PER_DAY` til 5 (en låst GT-regel, #4103 — ejeren sagde eksplicit "ingen dag med 5"), eller målet sænkes til 112. De to kan ikke begge holde med det katalog der er i dag. Ingen af delene er valgt her: `SEASON_RACE_DAY_TARGET[4] = 140` står som ejerens beslutning 15/9, og gaten rapporterer højlydt at D1 ikke når den.
+
+> ⚠ **PRISEN ER MÅLT, OG DEN ER IKKE GRATIS (dry-run 15/9, S4, mål 140).** Aksen kan kun forlænges på to måder: tomme løbsdage (begrænset af reglen ovenfor) eller færre samtidige løb pr. løbsdag. Kataloget rækker ikke til det første alene, så resten betales i overlap:
 >
-> | | Løbsdage før → efter | Løb på samme løbsdag (≥2) før → efter | Gulv (§1/#3329) |
+> | | Løbsdage uden reglen → med mål 140 | Løb på samme løbsdag (≥2) uden reglen → med mål | Gulv (§1/#3329) |
 > |---|---|---|---|
-> | D1 | 80 → 80 | 56,3 % → 56,3 % | 45 % ✅ |
-> | D2 | 56 → 80 (72 med løb + 8 træningsdage) | 78,6 % → 43,1 % | 55 % ❌ |
-> | D3 | 56 → 80 (69 med løb + 11 træningsdage) | 50,0 % → 21,7 % | 40 % ❌ |
-> | D4 | 56 → 80 (69 med løb + 11 træningsdage) | 50,0 % → 21,7 % | 40 % ❌ |
+> | D1 | 80 → 80 (målet **ikke** nået) | 56,3 % → 56,3 % | 45 % ✅ |
+> | D2 | 56 → 140 (91 med løb + 49 træningsdage) | 78,6 % → 16,5 % | 55 % ❌ |
+> | D3 | 56 → 140 (76 med løb + 64 træningsdage) | 50,0 % → 10,5 % | 40 % ❌ |
+> | D4 | 56 → 140 (75 med løb + 65 træningsdage) | 50,0 % → 12,0 % | 40 % ❌ |
+>
+> Til sammenligning kostede mål 80 kun D2 43,1 % · D3 21,7 % · D4 21,7 % (dry-run 11/9). Antal LØB og ETAPER er identiske i alle fire kørsler — målet flytter løbsdage, ikke løb (D1 32/140 · D2 37/112 · D3 32/84 · D4 37/84).
 >
 > **Åben ejer-beslutning før S4 genereres:** enten sættes `TIER_MULTI_RACE_DAY_MIN_SHARE` (§1) ned til det niveau ens løbsdage koster, eller §1d slås fra for S4. De to kan ikke begge holde med det katalog og de kvoter der er i dag. Gulvene er selv beskrevet som *"regressionsvagter, ikke kvalitetsmål"* (`calendarTierCaps.js`) og er kalibreret på den GAMLE kalenderform, så de skal under alle omstændigheder efterregnes hvis §1d bliver stående.
 

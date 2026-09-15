@@ -89,6 +89,44 @@ export function seasonUuid(n) {
 // nedenfor og eksisterende kaldere/tests af `./buildSeasonCalendar.js` er upåvirkede.
 export { gatePlan };
 
+/**
+ * #4845 §1d: hvor mange LØBSDAGE hver KALENDERDAG bærer — min/maks/snit.
+ *
+ * Aksens samlede længde siger intet om FORDELINGEN, og fordelingen er hele pointen når
+ * løbsdagen bliver trænings-ticket (#4846): 140 løbsdage jævnt fordelt er 5 ticks hver
+ * dag, mens 140 med 9 på nogle dage og 2 på andre er en helt anden spilfølelse. Tallet
+ * er også dét der viser hvor loftet sidder: en kalenderdato helt inde i et Grand Tours
+ * spænd kan kun bære MAX_GT_STAGES_PER_DAY løbsdage, fordi hver løbsdag i spændet bærer
+ * præcis én GT-etape.
+ *
+ * Måles på pulje 0 — alle puljer i en division har samme signatur (detectPoolSignature-
+ * Mismatch gater det) — plus de tomme løbsdages egne kalenderdage, som IKKE har en række
+ * i stageRows og derfor ikke kan udledes af naboerne (§0's akse-fælde).
+ */
+export function spreadLabel(tierPlan, days) {
+  const perDate = new Map();
+  const gameDaysByDate = new Map();
+  for (const s of tierPlan?.pools?.[0]?.stageRows ?? []) {
+    const dato = String(s.scheduled_at ?? "").slice(0, 10);
+    if (!dato) continue;
+    if (!gameDaysByDate.has(dato)) gameDaysByDate.set(dato, new Set());
+    gameDaysByDate.get(dato).add(s.game_day);
+  }
+  const datoer = [...gameDaysByDate.keys()].sort();
+  for (const [i, dato] of datoer.entries()) perDate.set(i, gameDaysByDate.get(dato).size);
+  for (const rd of tierPlan?.trainingGameDayRealDays ?? []) {
+    perDate.set(rd, (perDate.get(rd) ?? 0) + 1);
+  }
+  const antalDage = Math.max(1, Number(days) || datoer.length || 1);
+  // Slot-tiderne kunne i princippet krydse UTC-midnat og give flere dato-strenge end der
+  // er kalenderdage. Så er grupperingen forskudt, og et tal der ser rigtigt ud ville være
+  // forkert — sig det i stedet for at rapportere det.
+  if (datoer.length !== antalDage) return `løbsdage pr. kalenderdag: ikke målt (${datoer.length} datoer mod ${antalDage} kalenderdage)`;
+  const tal = Array.from({ length: antalDage }, (_, i) => perDate.get(i) ?? 0);
+  const sum = tal.reduce((a, b) => a + b, 0);
+  return `løbsdage pr. kalenderdag: ${Math.min(...tal)}–${Math.max(...tal)} (snit ${(sum / antalDage).toFixed(1)})`;
+}
+
 /** Kvoten pr. tier: density × løbsdatoer (CALENDAR_RULES.md §1b — den gyldige af de tre). */
 export function quotasForRaceDays(raceDays, density = TIER_DENSITY) {
   return Object.fromEntries(Object.entries(density).map(([tier, d]) => [Number(tier), d * raceDays]));
@@ -245,6 +283,7 @@ if (isMain) {
         `  D${t.tier}: ${String(akse).padStart(3)} løbsdage` +
         ` (${medLoeb} med løb · ${t.trainingGameDayCount ?? 0} rene træningsdage · ${t.restDayGameDayCount ?? 0} GT-hviledage)` +
         `${t.naturalRaceDays != null ? ` · uden reglen: ${t.naturalRaceDays}` : ""}` +
+        ` · ${spreadLabel(t, realDays)}` +
         `${t.raceDayPaddingHeld === false ? "  ⚠ MÅLET BLEV IKKE NÅET" : ""}`,
       );
     }
