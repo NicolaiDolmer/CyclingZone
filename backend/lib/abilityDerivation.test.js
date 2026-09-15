@@ -268,3 +268,35 @@ test("#1122 v3 hasPhysiology: DB-NULL felter afvises (falder til fallback)", () 
   const a = deriveAbilities(nullish, rider(85));
   assert.equal(a.climbing, 99, "null-profil skal bruge fallback");
 });
+
+// ── #5268 reviewer-fund: teamwork/leadership må ALDRIG vægte rå PCM-stats ─────
+//
+// Ejer-beslutning 15/9 (#3668): "Intet skal være vægtet på PCM-stats mere."
+// Spec §4 trin 1 + H2/L1: de to nye mentale evner fødes af ALLEREDE AFLEDTE evner
+// (teamwork ← positioning/tactics/durability; leadership ← tactics/positioning),
+// ikke af stat_fl/stat_udh/stat_mod/stat_ftr. Første runde af PR'en gjorde netop
+// det, med en kodekommentar der kaldte det "legacy". Testen her er forward-guarden:
+// skruer man på en rå stat UDEN at flytte de tre kilde-evner, må de to nye ikke
+// rykke sig. stat_res driver kun `recovery` — som ingen af de to har som kilde.
+
+test("#5268: teamwork/leadership reagerer ikke på en stat der ikke er kilde-evne", () => {
+  const base = deriveAbilities({}, rider(60));
+  const bumped = deriveAbilities({}, rider(60, { stat_res: 85 }));
+  assert.ok(bumped.recovery > base.recovery, "stat_res skal stadig drive recovery");
+  assert.equal(bumped.teamwork, base.teamwork,
+    `teamwork må ikke afhænge af stat_res: ${bumped.teamwork} vs ${base.teamwork}`);
+  assert.equal(bumped.leadership, base.leadership,
+    `leadership må ikke afhænge af stat_res: ${bumped.leadership} vs ${base.leadership}`);
+});
+
+test("#5268: teamwork følger sine tre kilde-evner (positioning/tactics/durability)", () => {
+  // stat_ned løfter descending → positioning OG tactics; stat_mod løfter durability.
+  const low = deriveAbilities({}, rider(52, { stat_ned: 52, stat_mod: 52, stat_ftr: 52 }));
+  const high = deriveAbilities({}, rider(52, { stat_ned: 85, stat_mod: 85, stat_ftr: 85 }));
+  assert.ok(high.positioning > low.positioning && high.tactics > low.tactics
+    && high.durability > low.durability, "kilde-evnerne skal faktisk stige i opsætningen");
+  assert.ok(high.teamwork > low.teamwork,
+    `teamwork: high ${high.teamwork} ikke > low ${low.teamwork}`);
+  assert.ok(high.leadership > low.leadership,
+    `leadership: high ${high.leadership} ikke > low ${low.leadership}`);
+});

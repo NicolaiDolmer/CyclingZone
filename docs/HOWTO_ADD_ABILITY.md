@@ -48,7 +48,7 @@ Verificeret 15/9 på `database/2026-09-15-5268-mental-abilities.sql` — den er 
 - `source: "pcm"` → tilføj PCM-stat-mapningen i registry-posten; `abilityDerivation.js` samler den op automatisk via `REGISTRY_PRIMARY_STAT`.
 - `source: "skill"` → udled evnen i `abilityDerivation.js`' skill-gren.
 
-For en MENTAL evne: giv den sin egen prior (profil + deterministisk, centreret støj salted pr. `(rytter, evne)`) og lad være med at bygge den på alder eller på en anden afledt evne — det var præcis rodårsagen i #3668. Konstanterne hører i `MENTAL_PRIOR`, ikke spredt i formlerne.
+For en MENTAL evne: giv den sin egen prior (profil + deterministisk, centreret støj salted pr. `(rytter, evne)`) og lad være med at bygge den på alder — det var præcis rodårsagen i #3668. Byg den heller ikke på rå PCM-stats: ejer-beslutning 15/9, *"intet skal være vægtet på PCM-stats mere"*. Profil-leddet skal komme fra de evner der allerede er udledt (`teamwork` ← positioning/tactics/durability, `leadership` ← tactics/positioning; spec §4 trin 1), omregnet med `abilityFrac` så den nye evne lever på samme skala som dem. Konstanterne hører i `MENTAL_PRIOR`, ikke spredt i formlerne, og din evne skal stå EFTER sine kilder i `deriveAbilities`.
 
 **Undtagelsen er dokumenteret og snæver:** `leadership` BRUGER alder, fordi lederskab pr. design er lavt hos unge og topper sent (GDD D-030, spec L1). Vægten er bevidst lille — et tungt alders-led er netop den fejl taktik havde, og gaten (fødsels-median/p90 i samme spænd som `descending`/`positioning`) fælder det. Vil din nye evne også bruge alder, skal begrundelsen stå i en ejer-besluttet spec, ikke i en kommentar, og tallet skal måles mod gaten før merge. Se `docs/PROGRESSION_RULES.md` §1.1.
 

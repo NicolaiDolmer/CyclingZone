@@ -133,6 +133,15 @@ function pcmFrac(stat) {
 // Fraktion ∈ [0,1] → spil-score ∈ [1,99] (frac 0 → 1, frac 1 → 99).
 const scoreFrac = (f) => clamp(Math.round(1 + clamp(f, 0, 1) * 98), 1, 99);
 
+// Spil-score ∈ [1,99] → fraktion ∈ [0,1]. Præcis invers af scoreFrac (ikke score/99),
+// så en evne der fødes af ANDRE evner lever på nøjagtig samme skala som dem — det er
+// selve gaten G-A1. Bruges af teamwork/leadership (spec H2/L1).
+const abilityFrac = (score) => {
+  const v = Number(score);
+  if (!Number.isFinite(v)) return 0;
+  return clamp((v - 1) / 98, 0, 1);
+};
+
 // ── MENTALE EVNER: EGEN PRIOR (#5268, ejer-beslutninger 15/9 på #3668) ───────
 //
 // Ordret fra ejeren 15/9: *"taktik og aggression må fremadrettet hverken bygge på
@@ -159,12 +168,15 @@ const scoreFrac = (f) => clamp(Math.round(1 + clamp(f, 0, 1) * 98), 1, 99);
 // median/p90 skal ligge i samme spænd som descending/positioning, og et
 // maturity-led over ~0,2 sprænger p90 alene på de 11 % ryttere der er 31+.
 //
-// PCM-AFHÆNGIGHEDEN ER LEGACY, IKKE EN NY BESLUTNING: ejeren sagde samme dag
-// *"intet skal være vægtet på PCM-stats mere."* Denne fil ER PCM-fallback-stien for
-// den EKSISTERENDE bestand (8.160 ryttere født af PCM-stats). Den nye, PCM-frie
-// fødselssti bygges i `fictionalRiderGenerator.js` (#5269); kontrakten mellem de to
-// spor er at REGISTRET er sandheden om hvilke evner der findes, og at #5269 giver
-// enhver mental evne den ikke kender en default-prior. Rør ikke den ene herfra.
+// INGEN NY PCM-VÆGTNING: ejeren sagde samme dag *"intet skal være vægtet på PCM-stats
+// mere."* De to NYE evner (`teamwork`, `leadership`) rører derfor ingen `stat_*`-felter.
+// De fødes af ALLEREDE AFLEDTE evner — positioning/tactics/durability (H2) og
+// tactics/positioning (L1) — præcis som den ejer-låste spec skriver:
+// docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md §4 trin 1.
+// At de evner SELV er PCM-afledte på fallback-stien er den legacy der findes i forvejen;
+// den nye, PCM-frie fødselssti bygges i `fictionalRiderGenerator.js` (#5269). Kontrakten
+// mellem de to spor er at REGISTRET er sandheden om hvilke evner der findes, og at #5269
+// giver enhver mental evne den ikke kender en default-prior. Rør ikke den ene herfra.
 export const MENTAL_PRIOR = Object.freeze({
   // Bredden på den centrerede støj i frac-rummet. 0,10 ≈ ±5 evne-point.
   aggressionSpread: 0.10,
@@ -176,16 +188,21 @@ export const MENTAL_PRIOR = Object.freeze({
   // Vægtene er rapportens behandling C minus alders-leddet.
   tacticsFighter: 0.60,
   tacticsDescent: 0.40,
-  // Holdarbejde: domestique-profilen (flad motor + udholdenhed + modstandskraft).
-  // Ingen kobling til rå styrke (spec H2) — derfor ingen klatre-/sprint-stat.
-  teamworkFlat: 0.45,
-  teamworkStamina: 0.30,
-  teamworkResilience: 0.25,
+  // Holdarbejde (spec H2, ordret): "arketype + positionering/taktik/durability giver
+  // et gennemsnit, stor støj oveni; ingen kobling til rå styrke". Kilden er derfor de
+  // ALLEREDE AFLEDTE evner, ikke rå PCM-stats. Arketypen kommer med af sig selv: det
+  // er arketypen der skæver fysiologien bag `durability` og skill-stats bag
+  // `positioning`/`tactics` — den er ikke et selvstændigt fjerde led.
+  teamworkPositioning: 0.40,
+  teamworkTactics: 0.30,
+  teamworkDurability: 0.30,
   // Lederskab: lille grundniveau + alder (den ene lovlige aldersfaktor) + lille
   // profil-træk. Alders-vægten er loftet af G-A1, ikke af smag — se ovenfor.
+  // Profil-trækket er taktik/positionering (spec L1 ordret), igen afledte evner.
   leadershipBase: 0.04,
   leadershipMaturity: 0.16,
-  leadershipProfile: 0.50,
+  leadershipTactics: 0.30,
+  leadershipPositioning: 0.20,
   // maturity = clamp((alder − 20) / (34 − 20), 0, 1): 20 → 0, 34+ → 1.
   leadershipMaturityFrom: 20,
   leadershipMaturityTo: 34,
@@ -319,16 +336,20 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
     + M.tacticsDescent * pcmFrac(riderRow.stat_ned)
     + mentalNoise("tactics", M.tacticsSpread),
   );
+  // Holdarbejde + lederskab afledes af de evner der ER udledt ovenfor (abilityFrac),
+  // ALDRIG af rå PCM-stats. Rækkefølgen er derfor bindende: durability (fysisk blok,
+  // efter kontrast), positioning og tactics skal stå før disse to linjer.
   out.teamwork = scoreFrac(
-    M.teamworkFlat * pcmFrac(riderRow.stat_fl)
-    + M.teamworkStamina * pcmFrac(riderRow.stat_udh)
-    + M.teamworkResilience * pcmFrac(riderRow.stat_mod)
+    M.teamworkPositioning * abilityFrac(out.positioning)
+    + M.teamworkTactics * abilityFrac(out.tactics)
+    + M.teamworkDurability * abilityFrac(out.durability)
     + mentalNoise("teamwork", M.teamworkSpread),
   );
   out.leadership = scoreFrac(
     M.leadershipBase
     + M.leadershipMaturity * maturity
-    + M.leadershipProfile * (0.5 * pcmFrac(riderRow.stat_fl) + 0.5 * pcmFrac(riderRow.stat_ftr))
+    + M.leadershipTactics * abilityFrac(out.tactics)
+    + M.leadershipPositioning * abilityFrac(out.positioning)
     + mentalNoise("leadership", M.leadershipSpread),
   );
 

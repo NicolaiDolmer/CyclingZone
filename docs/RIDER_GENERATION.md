@@ -150,14 +150,14 @@ Kaldes som `deriveForRiderIds(supabase, insertedIds, { dryRun: false })` umiddel
 |---|---|---|
 | `aggression` | rytterens fighter-profil + centreret støj | **nej** |
 | `tactics` | fighter- + nedkørsels-profil + centreret støj | **nej** |
-| `teamwork` | domestique-profilen (flad motor, udholdenhed, modstandskraft) + bred støj | **nej** |
-| `leadership` | lille grundniveau + alders-rampe + lille profil-træk + støj | ja (GDD D-030) |
+| `teamwork` | de allerede udledte `positioning` + `tactics` + `durability` + bred støj (spec H2) | **nej** |
+| `leadership` | lille grundniveau + alders-rampe + lille træk på `tactics`/`positioning` + støj (spec L1) | ja (GDD D-030) |
 
 Støjen er deterministisk og salted pr. (rytter, evne), så to ryttere med identisk profil ikke får identiske mentale tal — og så en re-derive af den samme rytter giver det samme tal igen (determinisme-kontrakten, §1).
 
 **Måltallet (gate G-A1):** de fire skal fødes i samme spænd som `descending` og `positioning`. Målt mod hele prod-bestanden 15/9 (n = 8.150): fødsels-median 7-12 og fødsels-p90 22-25 mod descending/positioning på 7/21. Kørslen der måler det er `backend/scripts/dry-run-5268-mental-abilities.js --dry-run` (read-only).
 
-> **PCM-afhængigheden her er legacy.** `abilityDerivation.js` er PCM-fallback-stien for den eksisterende bestand; den PCM-frie fødselssti bygges i `fictionalRiderGenerator.js` ([#5269](https://github.com/NicolaiDolmer/CyclingZone/issues/5269)). Kontrakten mellem de to: **registret** (`abilityRegistry.js`) er sandheden om hvilke evner der findes, og den nye sti giver enhver mental evne den ikke kender en default-prior. Tilføj aldrig en evne kun det ene sted.
+> **De to nye evner vægter ingen PCM-stats** (ejer-beslutning 15/9: *"intet skal være vægtet på PCM-stats mere"*). `teamwork` og `leadership` fødes af andre AFLEDTE evner, omregnet med `abilityFrac` (præcis invers af `scoreFrac`), så de lever på samme skala som kilderne — det er gate G-A1. At kilderne selv er PCM-afledte på fallback-stien er eksisterende legacy: `abilityDerivation.js` er PCM-fallback-stien for den eksisterende bestand, og den PCM-frie fødselssti bygges i `fictionalRiderGenerator.js` ([#5269](https://github.com/NicolaiDolmer/CyclingZone/issues/5269)). Kontrakten mellem de to: **registret** (`abilityRegistry.js`) er sandheden om hvilke evner der findes, og den nye sti giver enhver mental evne den ikke kender en default-prior. Tilføj aldrig en evne kun det ene sted.
 
 ## 7. Kommentarer der lyver (status 24/8)
 
