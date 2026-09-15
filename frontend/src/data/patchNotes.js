@@ -1,5 +1,48 @@
 export const PATCHES = [
   {
+    "version": "7.277",
+    "date": "2026-09-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "Two new mental abilities: Teamwork and Leadership",
+          "body": "The rider profile and Help now show Teamwork (how much a helper is worth to his captain) and Leadership (whether the squad rides behind him). For riders already in the game the two fields stay empty until a later update fills them in, and the race engine does not use them yet. That update gets its own note."
+        },
+        "da": {
+          "title": "To nye mentale evner: Holdarbejde og Lederskab",
+          "body": "Rytterprofilen og Hjælp viser nu Holdarbejde (hvor meget en hjælper er værd for sin kaptajn) og Lederskab (om truppen kører bag ham). For ryttere der allerede er i spillet står de to felter tomme, indtil en senere opdatering udfylder dem, og løbsmotoren bruger dem ikke endnu. Den opdatering får sin egen note."
+        },
+        "refs": [5268, 5280]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "Tactics and aggression no longer come with a hidden age bonus",
+          "body": "A new rider used to get tactics mostly from his age and aggression partly from being young. From now on both are abilities of their own for new riders. The ceilings for tactics and aggression were lowered to match. A ceiling only limits future growth, so no rider loses a single point."
+        },
+        "da": {
+          "title": "Taktik og angrebslyst får ikke længere en skjult aldersbonus",
+          "body": "En ny rytter fik før taktik mest fra sin alder og angrebslyst delvist fra at være ung. Fra nu af er begge egne evner for nye ryttere. Lofterne for taktik og angrebslyst er sænket tilsvarende. Et loft begrænser kun fremtidig vækst, så ingen rytter mister et eneste point."
+        },
+        "refs": [3668, 5268, 5280]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Academy",
+        "en": {
+          "title": "Graduation Day comes at 23, not 22",
+          "body": "The forced choice for an academy rider (promote, sell or release) now comes the season he turns 23. A 22-year-old stays in your academy one more season. Help is updated to match."
+        },
+        "da": {
+          "title": "Graduation Day kommer ved 23, ikke 22",
+          "body": "Det tvungne valg for en akademirytter (ryk op, sælg eller slip) kommer nu i den sæson han fylder 23. En 22-årig bliver i dit akademi en sæson mere. Hjælp er rettet til."
+        },
+        "refs": [4619, 5279]
+      }
+    ]
+  },
+  {
     "version": "7.276",
     "date": "2026-09-15",
     "label": "Beta",
