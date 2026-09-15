@@ -298,6 +298,19 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         )}
       </div>
 
+      {/* #5124 — D-047-undtagelse (skriftlig begrundelse, jf. issuets krav):
+          gitteret her er en RYTTER × LØBSDAG-matrix, ikke en liste af entiteter
+          med tre valgfrie egenskaber. D-047's "navn + tre faste kolonner" giver
+          kun mening når kolonnerne er UDSKIFTELIGE datapunkter om ÉN entitet
+          (OVR/værdi/løn for en rytter); her er hver kolonne en FORSKELLIG
+          kalenderdag — de kan ikke vælges "3 ad gangen" uden at gøre kalenderen
+          ulæselig (spilleren skal se rækkefølgen af løb, ikke tre tilfældige
+          dage). Sticky navnekolonne (`sticky left-0`) + kontaineret vandret
+          scroll (denne `overflow-x-auto`, ALDRIG page-level) er derfor den
+          rigtige mobil-løsning, ikke chips: samme mønster har allerede levet
+          her siden #1146 (ejer-godkendt design 27/8, FØR #5124) og er dækket af
+          frontend/tests/e2e/1146-season-matrix.spec.js's "mobil 375px"-test —
+          verificeret på ny for #5124, ingen kodeændring nødvendig. */}
       <div className="rounded-cz border border-cz-border bg-cz-card overflow-x-auto">
         <table
           data-sort-exempt="rytter x loebsdag-gitter, ikke en sorterbar liste"
