@@ -246,7 +246,17 @@ if (isMain) {
 
     // #4845 (ejer 6/9): maalet for antal loebsdage pr. division. Praecedens: eksplicit flag
     // > saesonens eget maal. 0/"off" = reglen er slaaet fra (foer-tilstanden).
-    const raceDayTargetExplicit = raceDayTargetArg != null ? Number(raceDayTargetArg) : null;
+    // En TASTEFEJL maa aldrig slaa gaten fra i tavshed: `Number("14O")` er NaN, og NaN
+    // faldt foer igennem til `null` = "reglen er slaaet fra". Et --apply kunne da skrive
+    // en skae­v kalender selv om gaten var taenkt som et haardt krav uden override.
+    // Derfor: kun et ikke-negativt HELTAL (eller "off") accepteres, alt andet stopper.
+    let raceDayTargetExplicit = null;
+    if (raceDayTargetArg != null) {
+      const raa = String(raceDayTargetArg).trim();
+      if (raa.toLowerCase() === "off") raceDayTargetExplicit = 0;
+      else if (/^\d+$/.test(raa)) raceDayTargetExplicit = Number(raa);
+      else throw new Error(`--race-day-target: "${raceDayTargetArg}" er hverken et ikke-negativt heltal eller "off". Kalenderen er IKKE bygget.`);
+    }
     const raceDayTarget = raceDayTargetExplicit != null
       ? (raceDayTargetExplicit > 0 ? raceDayTargetExplicit : null)
       : (SEASON_RACE_DAY_TARGET[seasonNumber] ?? null);
@@ -291,7 +301,13 @@ if (isMain) {
       // Uden et maal: sig hvad maalet SKULLE vaere for denne saeson, saa tallet ikke skal
       // gaettes naar reglen slaas til. Det er den hoejeste divisions egne loebsdage —
       // laveret kan ikke naas ved at tilfoeje tomme loebsdage (§1d).
-      const forslag = resolveCommonRaceDayTarget({ axisByTier, season: seasonNumber });
+      //
+      // UDEN `season`: her staar vi kun naar maalet er FRA - enten fordi saesonen ingen
+      // har, eller fordi `--race-day-target 0` slog det fra. I det sidste tilfaelde ville
+      // saeson-opslaget give saesonens eget tal tilbage (S4: 140) og paastaa at alle fire
+      // divisioner VILLE have det - et tal vi netop ikke har maalt her. Forslaget skal
+      // komme fra det MAALTE, ikke fra den konstant brugeren lige bad os se bort fra.
+      const forslag = resolveCommonRaceDayTarget({ axisByTier });
       if (forslag.target != null) {
         console.log(`  forslag: --race-day-target ${forslag.target} (${forslag.source}) — så ville alle fire divisioner have ${forslag.target} løbsdage`);
       }
@@ -431,9 +447,13 @@ if (isMain) {
       }
 
       console.log(`\n── APPLY ──`);
+      // #4845: SAMME maal som dry-runnet. Uden det defaulter materializeren til `null` og
+      // skriver den NATURLIGE, skae­ve akse - altsaa en anden kalender end den gaten netop
+      // godkendte. Kalenderen genereres kun EEN gang pr. saeson (§2c), saa den fejl kunne
+      // ikke rettes bagefter.
       const applied = await materializeTierCalendars({
         supabase, seasonId, seasonStartDate: firstDay, from, dryRun: false, log: (m) => console.log(m),
-        realDays, quotas, useUniformTierTilt: uniformTilt,
+        realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget,
       });
       console.log(`\n  ${applied.racesInserted} løb · ${applied.stageProfiles} etape-profiler · ${applied.stageSchedules} etape-tider indsat.`);
 
