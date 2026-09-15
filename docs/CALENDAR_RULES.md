@@ -156,6 +156,8 @@ Tre målinger afgrænser det, så bindingen ikke skal gættes:
 >
 > Til sammenligning kostede mål 80 kun D2 43,1 % · D3 21,7 % · D4 21,7 % (dry-run 11/9). Antal LØB og ETAPER er identiske i alle fire kørsler — målet flytter løbsdage, ikke løb (D1 32/140 · D2 37/112 · D3 32/84 · D4 37/84).
 >
+> **RYTMEN BLIVER OGSÅ SKÆVERE, og den er #4846's egentlige valuta.** Løbsdage pr. KALENDERDAG (min–maks, snit), målt 15/9: ved mål 80 lå alle fire divisioner på 2–5/2–6 med snit 2,9. Ved mål 140 bliver D2 **2–8**, D3 og D4 **2–7** — snit 5,0. Med løbsdagen som trænings-tick og dagens træning kørt samlet (`TRAINING_RULES.md` §13.3, beslutning 3) betyder det 2 ticks den ene dag og 8 den næste for samme spiller. Tallet står nu i dry-runnets §1d-blok pr. division, så det ikke skal udledes af aksens længde.
+>
 > **Åben ejer-beslutning før S4 genereres:** enten sættes `TIER_MULTI_RACE_DAY_MIN_SHARE` (§1) ned til det niveau ens løbsdage koster, eller §1d slås fra for S4. De to kan ikke begge holde med det katalog og de kvoter der er i dag. Gulvene er selv beskrevet som *"regressionsvagter, ikke kvalitetsmål"* (`calendarTierCaps.js`) og er kalibreret på den GAMLE kalenderform, så de skal under alle omstændigheder efterregnes hvis §1d bliver stående.
 
 ---
