@@ -20,7 +20,97 @@ import {
 import { renownTarget } from "./renownEngine.js";
 import { generateOffers, FULL_CALENDAR_DAYS } from "./sponsorOffers.js";
 import { FINANCE_REASON } from "./economyConstants.js";
-import { computeDivisionAdjustment } from "./divisionAdjustment.js";
+import { computeDivisionAdjustment, resolveDivisionAdjustment } from "./divisionAdjustment.js";
+
+const S4_FINAL_STANDINGS = [
+  { team_id: "t1", division: 2, rank_in_division: 1, total_points: 1200 },
+  { team_id: "t2", division: 2, rank_in_division: 2, total_points: 300 },
+];
+
+async function activateS4Choice({ variant = "safe", early = true, division = 2 } = {}) {
+  const team = { id: "t1", division: 2 };
+  const standings = { s3: early ? [] : structuredClone(S4_FINAL_STANDINGS) };
+  const pendingByTeam = {};
+  const supabase = makeSupabase({
+    team,
+    seasonsByNumber: { 3: { id: "s3", number: 3 }, 4: { id: "s4", number: 4, race_days_total: 140 } },
+    activeSeason: { race_days_total: 140 },
+    standingsBySeasonId: standings,
+    pendingContractByTeam: pendingByTeam,
+    teamsById: { t1: team },
+  });
+  const selected = await acceptOffer({ supabase, teamId: "t1", upcomingSeasonNumber: 4, variant });
+  pendingByTeam.t1 = { ...selected, id: "pending-s4" };
+  standings.s3 = structuredClone(S4_FINAL_STANDINGS);
+  team.division = division;
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 4, teamIds: ["t1"] });
+  return { supabase, selected, activated: await getActiveContract({ supabase, teamId: "t1" }) };
+}
+
+for (const variant of ["safe", "loyal", "racing", "results", "ambition"]) {
+  test(`#4860 S4: ${variant} signed before/after racing has identical final price and clauses`, async () => {
+    const early = await activateS4Choice({ variant, early: true });
+    const late = await activateS4Choice({ variant, early: false });
+    assert.notEqual(early.selected.guaranteed_base, late.selected.guaranteed_base);
+    assert.equal(early.activated.guaranteed_base, late.activated.guaranteed_base);
+    assert.deepEqual(early.activated.bonus_clauses, late.activated.bonus_clauses);
+    assert.equal(early.activated.per_race_day_rate, late.activated.per_race_day_rate);
+    for (const field of ["variant", "length_seasons", "signed_division", "sponsor_name", "expires_after_season"]) {
+      assert.equal(early.activated[field], early.selected[field], field);
+    }
+    const beforeRetry = structuredClone(early.activated);
+    const writes = early.supabase.state.updates.length;
+    const payments = early.supabase.state.rpcCalls.length;
+    await expireAndRenewContracts({ supabase: early.supabase, newSeasonNumber: 4, teamIds: ["t1"] });
+    assert.deepEqual(await getActiveContract({ supabase: early.supabase, teamId: "t1" }), beforeRetry);
+    assert.equal(early.supabase.state.updates.length, writes);
+    assert.equal(early.supabase.state.rpcCalls.length, payments);
+  });
+}
+
+for (const division of [1, 3]) {
+  test(`#4376 S4: activation uses actual D${division} after promotion/relegation`, async () => {
+    const { activated, selected } = await activateS4Choice({ division });
+    const target = renownTarget({
+      division, lastSeasonStanding: S4_FINAL_STANDINGS[0], divisionStandings: S4_FINAL_STANDINGS,
+    });
+    assert.equal(activated.guaranteed_base, Math.round(target * selected.guaranteed_fraction));
+    assert.equal(activated.signed_division, 2);
+    assert.equal(activated.activation_division, division);
+    assert.equal(resolveDivisionAdjustment({
+      team: { division }, contract: activated, seasonNumber: 4,
+    }).payout, 0, "rebased contract must not receive the old division adjustment too");
+    assert.equal(activated.per_race_day_rate, recomputeActivationRate(activated, 140));
+  });
+}
+
+test("#4376 S4: default and manual safe choice activate at the same price after promotion", async () => {
+  const { activated } = await activateS4Choice({ division: 1 });
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 1 },
+    seasonsByNumber: { 3: { id: "s3", number: 3 }, 4: { id: "s4", number: 4, race_days_total: 140 } },
+    standingsBySeasonId: { s3: structuredClone(S4_FINAL_STANDINGS) },
+  });
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 4, teamIds: ["t1"] });
+  assert.equal(supabase.state.inserts[0].guaranteed_base, activated.guaranteed_base);
+  assert.equal(supabase.state.inserts[0].signed_division, 1);
+  assert.equal(supabase.state.inserts[0].activation_division, 1);
+  const target = renownTarget({
+    division: 1, lastSeasonStanding: S4_FINAL_STANDINGS[0], divisionStandings: S4_FINAL_STANDINGS,
+  });
+  for (const pendingContract of [null, { ...activated, activation_division: null, guaranteed_base: 1 }]) {
+    const preview = resolveContractForNewSeason({
+      teamId: "t1", newSeasonNumber: 4, pendingContract,
+      renownTargetValue: target, teamDivision: 1, calendarDays: 140,
+    });
+    assert.equal(preview.contract.guaranteed_base, activated.guaranteed_base);
+    assert.equal(preview.contract.activation_division, 1);
+    assert.equal(preview.contract.per_race_day_rate, activated.per_race_day_rate);
+  }
+  for (const contract of [activated, supabase.state.inserts[0]]) {
+    assert.equal(resolveDivisionAdjustment({ team: { division: 1 }, contract, seasonNumber: 4 }).payout, 0);
+  }
+});
 
 // ─── Faithful service_role-mock ────────────────────────────────────────────────
 // Modelleret efter prizePayoutEngine.test.js. Dækker præcis de queries servicen

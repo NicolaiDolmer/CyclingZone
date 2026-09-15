@@ -6,6 +6,7 @@ import { formatNumber } from "../lib/intl";
 import { projectDivisionAdjustment } from "../lib/divisionAdjustment";
 import { buildSponsorPayments, projectRemainingStages } from "../lib/sponsorPayments";
 import { projectOffer } from "../lib/sponsorOfferProjection";
+import { RULES_NUMBERS } from "../lib/rulesNumbers.js";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import {
@@ -58,6 +59,10 @@ const API = import.meta.env.VITE_API_URL;
 // puljens etapetal) og GET /api/sponsor/offers (forhandlings-tilstand).
 // Ingen tal opfindes: mangler etapetallet eller raten, vises linjen ikke (P11).
 const VALID_TABS = ["overview", "deal", "payments", "next"];
+const SPONSOR_BASES = {
+  1: RULES_NUMBERS.sponsorD1, 2: RULES_NUMBERS.sponsorD2,
+  3: RULES_NUMBERS.sponsorD3, 4: RULES_NUMBERS.sponsorD4,
+};
 
 function money(n) {
   return `${formatNumber(n || 0)} CZ$`;
@@ -179,8 +184,8 @@ export default function SponsorsPage() {
   );
 
   const teamDivision = offersState?.teamDivision ?? null;
-  const offers = offersState?.offers ?? [];
-  const offersOpen = offersState?.negotiable === true && offers.length > 0;
+  const sourceOffers = offersState?.offers ?? [];
+  const offersOpen = offersState?.negotiable === true && sourceOffers.length > 0;
   const upcomingSeason = offersState?.upcomingSeasonNumber ?? null;
 
   const divisions = useMemo(
@@ -193,6 +198,18 @@ export default function SponsorsPage() {
   const activeDivision =
     previewDivision ??
     (divisions.includes(Number(teamDivision)) ? Number(teamDivision) : (divisions[0] ?? null));
+  const pricesAtActivation = !offersState?.immediate && Number(upcomingSeason) >= 4;
+  const priceRatio = pricesAtActivation && SPONSOR_BASES[teamDivision] && SPONSOR_BASES[activeDivision]
+    ? SPONSOR_BASES[activeDivision] / SPONSOR_BASES[teamDivision] : 1;
+  const offers = sourceOffers.map((offer) => {
+    if (priceRatio === 1 || !(Number(offer.guaranteedFraction) > 0)) return offer;
+    const target = Math.round(Math.round(offer.guaranteedBase / offer.guaranteedFraction) * priceRatio);
+    return {
+      ...offer,
+      guaranteedBase: Math.round(target * offer.guaranteedFraction),
+      clauses: (offer.clauses || []).map((clause) => ({ ...clause, amount: Math.round(clause.amount * priceRatio) })),
+    };
+  });
   const offerStages =
     (activeDivision != null ? offersState?.stageCounts?.byTier?.[activeDivision] : null) ??
     offersState?.stageCounts?.fallbackDays ??
@@ -203,7 +220,7 @@ export default function SponsorsPage() {
 
   const offerDivisionAdjustment = projectDivisionAdjustment({
     targetDivision: activeDivision,
-    signedDivision: Number(teamDivision),
+    signedDivision: pricesAtActivation ? activeDivision : Number(teamDivision),
   });
 
   // Divisions-tillaegget paa den LOEBENDE aftale: kontrakten baerer selv den
@@ -211,7 +228,7 @@ export default function SponsorsPage() {
   // Mangler den, er svaret 0 — aldrig et gaet.
   const contractDivisionAdjustment = projectDivisionAdjustment({
     targetDivision: Number(teamDivision),
-    signedDivision: Number(contract?.signed_division),
+    signedDivision: Number(contract?.activation_division ?? contract?.signed_division),
   });
 
   const remaining = projectRemainingStages({
@@ -456,7 +473,7 @@ export default function SponsorsPage() {
                     <DealRow
                       label={t("page.deal.divisionAdjustment")}
                       labelSub={t("page.deal.divisionAdjustmentSub", {
-                        signed: contract.signed_division,
+                        signed: contract.activation_division ?? contract.signed_division,
                         current: teamDivision,
                       })}
                       value={money(contractDivisionAdjustment)}
