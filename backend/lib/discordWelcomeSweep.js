@@ -36,6 +36,24 @@
 // discord_welcome_sent_at IS NULL), saa en tick der taber loebet mod en
 // anden ikke unoedvendigt overskriver en allerede sat markering.
 //
+// KENDT RESTRISIKO (CodeRabbit major, denne haerdningsrunde 15/9, IKKE
+// rettet her): notifyUser's dedup er selv et opslag+insert i to adskilte
+// trin, ikke en atomisk databaseoperation — to sweep-ticks der REELT
+// overlapper (ikke bare to almindelige 5-min-tick's, men en faktisk
+// samtidig koersel, fx en fejlkonfigureret dobbelt cron-dyno) kunne i
+// princippet begge bestaa dedup-opslaget foer nogen af dem har indsat
+// raekken, og saa begge sende. Denne sweep havde FOER 15/9 en aegte atomisk
+// team-niveau-laas her (claim-foer-notify), men den laas var netop hvad der
+// gjorde et hold tabt for evigt ved en process-crash (se ovenfor) — med kun
+// ÉN tidsstempel-kolonne kan man ikke faa begge egenskaber samtidig. En
+// rigtig loesning kraever enten en separat claim-kolonne med udloeb, eller
+// et unikt databasecontraint paa notifications (user_id, type) haandhaevet
+// atomisk (fx ON CONFLICT DO NOTHING) — begge dele en schema-aendring uden
+// for denne lanes scope (se docs/drafts/discord-welcome-copy-2026-09-15.md
+// punkt 1). Ejer-vurdering: langt mindre sandsynligt i praksis end den
+// crash-buggen der blev rettet (kun ÉN cron-kilde koerer sweepen), men
+// stadig ikke en garanti.
+//
 // SCHEMA-READINESS (CodeRabbit minor, PR #5211, discordWelcomeSweep.js:31):
 // auto-migrate (#2642) koerer
 // database/2026-09-14-5130-discord-welcome-sent-at.sql foerst ca. 180s

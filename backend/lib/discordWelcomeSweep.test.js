@@ -85,7 +85,12 @@ function makeNoopSupabase() {
 // (rent bogfoering, ikke en laas). Registrerer forsoeg i rækkefølge sammen
 // med notify-kald via et fælles `order`-array, så testene kan bevise at
 // notify() altid kommer FØR markeringen (CodeRabbit major, linje ~105).
-function makeMarkingSupabase({ markError = null } = {}) {
+// CodeRabbit-fund (denne runde): de to array'er (order/marks) blev tidligere
+// ført hver for sig, så en regression der markerede FØR notify() stadig
+// kunne bestå begge assertions isoleret. `order` er nu det FÆLLES,
+// delte bevis — marking pushes ind i det samme array som notify() —
+// så assertion på `order` alene beviser den fulde rækkefølge.
+function makeMarkingSupabase({ markError = null, order = null } = {}) {
   const marks = [];
   return {
     marks,
@@ -98,6 +103,7 @@ function makeMarkingSupabase({ markError = null } = {}) {
               eq(_col, id) {
                 return {
                   is() {
+                    order?.push(`mark:${id}`);
                     marks.push(id);
                     return Promise.resolve({ error: markError });
                   },
@@ -113,7 +119,7 @@ function makeMarkingSupabase({ markError = null } = {}) {
 
 test("runDiscordWelcomeSweep: modne hold notify'es FOERST + markeres BAGEFTER, umodne springes over", async () => {
   const order = [];
-  const { supabase, marks } = makeMarkingSupabase();
+  const { supabase, marks } = makeMarkingSupabase({ order });
   const now = new Date("2026-09-14T12:00:00Z");
 
   const stats = await runDiscordWelcomeSweep({
@@ -134,7 +140,7 @@ test("runDiscordWelcomeSweep: modne hold notify'es FOERST + markeres BAGEFTER, u
   assert.equal(stats.sent, 1);
   assert.equal(stats.skipped, 1);
   assert.equal(stats.failed, 0);
-  assert.deepEqual(order, ["notify:u1"]);
+  assert.deepEqual(order, ["notify:u1", "mark:t1"], "beviser den FULDE raekkefoelge: notify FOER mark, i samme delte log");
   assert.deepEqual(marks, ["t1"], "markeringen skal ske EFTER notify, kun for det modne hold");
 });
 
