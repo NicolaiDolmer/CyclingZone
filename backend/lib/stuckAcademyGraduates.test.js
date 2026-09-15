@@ -87,29 +87,32 @@ const NOW = new Date("2026-09-05T08:00:00.000Z");
 // ageForSeason(birthdate, 3) = 2026 + 2 − fødselsår.
 const bornForSeason3Age = (age) => `${2028 - age}-04-11`;
 
-const STUCK_22 = { id: "r-stuck", team_id: "t1", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(22) };
-const YOUNG_21 = { id: "r-young", team_id: "t1", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(21) };
+// #4619: graduerings-alderen flyttede 22 -> 23 (YOUTH_RULES §2.2). Fixturerne
+// foelger graensen: den fastlaaste er 23, og 22-aarigen er nu den der IKKE er
+// vokset ud endnu.
+const STUCK_23 = { id: "r-stuck", team_id: "t1", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(23) };
+const YOUNG_22 = { id: "r-young", team_id: "t1", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(22) };
 
 test("#4495 fanger akademirytter over graduerings-alderen uden aktiv auktion", async () => {
-  const supabase = makeMock({ riders: [STUCK_22, YOUNG_21] });
+  const supabase = makeMock({ riders: [STUCK_23, YOUNG_22] });
   const { seasonNumber, checked, stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
   assert.equal(seasonNumber, 3);
   assert.equal(checked, 2);
   assert.equal(stuck.length, 1);
   assert.equal(stuck[0].riderId, "r-stuck");
-  assert.equal(stuck[0].age, 22);
+  assert.equal(stuck[0].age, 23); // #4619: graduerings-alder 22 -> 23
   assert.deepEqual(stuck[0].graduationStatuses, []);
 });
 
 test("#4495 en rytter UNDER graduerings-alderen er aldrig et fund", async () => {
-  const supabase = makeMock({ riders: [YOUNG_21] });
+  const supabase = makeMock({ riders: [YOUNG_22] });
   const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
   assert.deepEqual(stuck, []);
 });
 
 test("#4495 en igangværende graduate-auktion er den dokumenterede mellemtilstand, ikke et brud", async () => {
   const supabase = makeMock({
-    riders: [STUCK_22],
+    riders: [STUCK_23],
     auctions: [{ rider_id: "r-stuck", status: "active" }],
   });
   const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
@@ -118,7 +121,7 @@ test("#4495 en igangværende graduate-auktion er den dokumenterede mellemtilstan
 
 test("#4495 en lukket auktion beskytter ikke længere — det er præcis den fastlåste tilstand", async () => {
   const supabase = makeMock({
-    riders: [STUCK_22],
+    riders: [STUCK_23],
     auctions: [{ rider_id: "r-stuck", status: "completed" }],
     graduations: [{ id: "g1", rider_id: "r-stuck", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }],
   });
@@ -129,7 +132,7 @@ test("#4495 en lukket auktion beskytter ikke længere — det er præcis den fas
 
 test("#4495 et ÅBENT override-vindue alarmerer ikke (manageren har stadig sit valg)", async () => {
   const supabase = makeMock({
-    riders: [STUCK_22],
+    riders: [STUCK_23],
     graduations: [{ id: "g1", rider_id: "r-stuck", status: "pending", deadline: "2026-09-10T00:00:00.000Z", created_at: "2026-09-03T00:00:00.000Z" }],
   });
   const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
@@ -139,7 +142,7 @@ test("#4495 et ÅBENT override-vindue alarmerer ikke (manageren har stadig sit v
 test("#4495 et NETOP udløbet override-vindue alarmerer ikke inden for grace (sweepet har ikke kørt endnu)", async () => {
   const deadline = new Date(NOW.getTime() - 3 * 3_600_000).toISOString();
   const supabase = makeMock({
-    riders: [STUCK_22],
+    riders: [STUCK_23],
     graduations: [{ id: "g1", rider_id: "r-stuck", status: "pending", deadline, created_at: "2026-08-29T00:00:00.000Z" }],
   });
   const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
@@ -149,7 +152,7 @@ test("#4495 et NETOP udløbet override-vindue alarmerer ikke inden for grace (sw
 test("#4495 et LÆNGE udløbet override-vindue er et brud (sweepet er gået i stå — #4484-klassen)", async () => {
   const deadline = new Date(NOW.getTime() - (STUCK_GRADUATE_GRACE_HOURS + 1) * 3_600_000).toISOString();
   const supabase = makeMock({
-    riders: [STUCK_22],
+    riders: [STUCK_23],
     graduations: [{ id: "g1", rider_id: "r-stuck", status: "pending", deadline, created_at: "2026-08-20T00:00:00.000Z" }],
   });
   const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
@@ -158,13 +161,13 @@ test("#4495 et LÆNGE udløbet override-vindue er et brud (sweepet er gået i st
 });
 
 test("#4495 en holdløs akademirytter hører til invariant D (#2257), ikke her", async () => {
-  const supabase = makeMock({ riders: [{ ...STUCK_22, team_id: null }] });
+  const supabase = makeMock({ riders: [{ ...STUCK_23, team_id: null }] });
   const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
   assert.deepEqual(stuck, []);
 });
 
 test("#4495 uden aktiv sæson gættes der ikke — 0 fund", async () => {
-  const supabase = makeMock({ activeSeason: null, riders: [STUCK_22] });
+  const supabase = makeMock({ activeSeason: null, riders: [STUCK_23] });
   const res = await findStuckAcademyGraduates(supabase, { now: NOW });
   assert.equal(res.seasonNumber, null);
   assert.deepEqual(res.stuck, []);
@@ -180,7 +183,7 @@ test("#4495 fetchActiveSeasonNumber returnerer sæsonnummeret", async () => {
 // den værste fejlklasse i et reparations-script. Derfor er der ét prædikat, og
 // disse tests låser fast at scriptet ikke har sit eget.
 
-// Alle STUCK_22-fixtures nedenfor bruger som udgangspunkt INGEN grad-række
+// Alle STUCK_23-fixtures nedenfor bruger som udgangspunkt INGEN grad-række
 // (klassificeres "no_graduation_row"), medmindre en graduations-fixture siger
 // andet. En fake getMarketState() undgår at røre en "teams"-tabel der ikke
 // findes i denne mock — samme injektions-mønster som academyGraduation.test.js
@@ -192,10 +195,10 @@ const marketNoFunds = async () => ({ squad_limits: { max: 30 }, future_count: 5,
 test("#4495 planRepair bruger SAMME prædikat som vagten", async () => {
   const fixture = {
     riders: [
-      STUCK_22,
-      YOUNG_21,
-      { id: "r-on-auction", team_id: "t2", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(23) },
-      { id: "r-in-window", team_id: "t2", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(22) },
+      STUCK_23,
+      YOUNG_22,
+      { id: "r-on-auction", team_id: "t2", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(24) },
+      { id: "r-in-window", team_id: "t2", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(23) },
     ],
     auctions: [{ rider_id: "r-on-auction", status: "extended" }],
     graduations: [{ id: "g-open", rider_id: "r-in-window", status: "pending", deadline: "2026-09-11T00:00:00.000Z", created_at: "2026-09-04T00:00:00.000Z" }],
@@ -211,7 +214,7 @@ test("#4495 planRepair bruger SAMME prædikat som vagten", async () => {
 
 test("#4495 planRepair tæller ryttere der aldrig fik et override-vindue (ejer-beslutning)", async () => {
   const supabase = makeMock({
-    riders: [STUCK_22, { id: "r-sold", team_id: "t3", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(22) }],
+    riders: [STUCK_23, { id: "r-sold", team_id: "t3", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(23) }],
     graduations: [{ id: "g-sold", rider_id: "r-sold", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }],
   });
   const plan = await planRepair({ supabase, now: NOW, getMarketState: marketWithRoomAndFunds });
@@ -228,7 +231,7 @@ test("#4495 planRepair tæller ryttere der aldrig fik et override-vindue (ejer-b
 // query — se docblokken i repairStuckAcademyGraduates.js.
 
 const R_SOLD = { id: "r-sold-no-sale", team_id: "t1", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(23) };
-const R_PROMOTED = { id: "r-promoted-incomplete", team_id: "t2", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(22) };
+const R_PROMOTED = { id: "r-promoted-incomplete", team_id: "t2", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(23) };
 const R_NEVER = { id: "r-never-graduated", team_id: "t3", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(24) };
 
 function threeStateFixture() {
@@ -373,7 +376,7 @@ test("#4495 applyRepair: manual_review-kandidater rører ALDRIG en af de tre fun
 });
 
 test("#4495 applyRepair rører PRÆCIS dry-run'ens sold_no_sale-kandidat og intet andet", async () => {
-  const fixture = { riders: [R_SOLD, YOUNG_21], graduations: [{ id: "g-sold", rider_id: "r-sold-no-sale", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }] };
+  const fixture = { riders: [R_SOLD, YOUNG_22], graduations: [{ id: "g-sold", rider_id: "r-sold-no-sale", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }] };
   const plan = await planRepair({ supabase: makeMock(fixture), now: NOW, getMarketState: marketNoRoom });
 
   const calls = [];
@@ -411,7 +414,7 @@ test("#4495 applyRepair tæller en rytter der imens er kommet videre som skipped
 test("#4495 planRepair: en overskredet PENDING grad-række klassificeres pending_overdue → manuel gennemgang (sweepet bør have håndteret den)", async () => {
   const deadline = new Date(NOW.getTime() - (STUCK_GRADUATE_GRACE_HOURS + 1) * 3_600_000).toISOString();
   const supabase = makeMock({
-    riders: [STUCK_22],
+    riders: [STUCK_23],
     graduations: [{ id: "g-overdue", rider_id: "r-stuck", status: "pending", deadline, created_at: "2026-08-20T00:00:00.000Z" }],
   });
   const plan = await planRepair({ supabase, now: NOW });

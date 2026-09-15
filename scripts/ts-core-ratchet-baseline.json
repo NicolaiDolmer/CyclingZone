@@ -56,11 +56,11 @@
         "lib/academy*"
       ],
       "jsFileCount": 15,
-      "tsErrorCount": 278,
+      "tsErrorCount": 274,
       "files": {
         "lib/academyFlag.js": 4,
         "lib/academyGenerator.js": 30,
-        "lib/academyGraduation.js": 104,
+        "lib/academyGraduation.js": 100,
         "lib/academyGraduationSweep.js": 6,
         "lib/academyHealSweep.js": 4,
         "lib/academyIntake.js": 61,
@@ -124,6 +124,6 @@
   },
   "totals": {
     "jsFileCount": 35,
-    "tsErrorCount": 1064
+    "tsErrorCount": 1060
   }
 }

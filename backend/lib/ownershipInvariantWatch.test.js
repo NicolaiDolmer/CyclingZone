@@ -862,8 +862,9 @@ test("#4664 springer AI-, bank-, frosne og test-hold over, samt hold uden identi
 // stabilt fingerprint.
 
 // ageForSeason(birthdate, 3) = 2028 − fødselsår.
+// #4619: graduerings-alderen flyttede 22 → 23, så fixturen er født 2005 (23 i S3).
 const STUCK_GRADUATE = {
-  id: "r-stuck-grad", team_id: "team-A", is_academy: true, is_retired: false, birthdate: "2006-04-11",
+  id: "r-stuck-grad", team_id: "team-A", is_academy: true, is_retired: false, birthdate: "2005-04-11",
 };
 
 test("#4495 invariant G — akademirytter over graduerings-alderen uden aktiv auktion alarmerer", async () => {
@@ -878,7 +879,7 @@ test("#4495 invariant G — akademirytter over graduerings-alderen uden aktiv au
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].ctx.fingerprint, ["stuck-academy-graduate"]);
   assert.match(calls[0].ctx.extra.sample[0], /^rider=r-stuck-grad /);
-  assert.match(calls[0].ctx.extra.sample[0], /age=22/);
+  assert.match(calls[0].ctx.extra.sample[0], /age=23/); // #4619: graduerings-alder 22 -> 23
   // grads=none vs. grads=sold er de to forskellige historier bag invariant G
   // (stuckAcademyGraduates.js): ingen række = override-vinduet blev aldrig
   // åbnet; 'sold' = #4495's kerne-case. Kortet skal kunne skelne dem.

@@ -111,7 +111,11 @@ test("#5133 lag 2: samme population ind → samme ryttere ud", async () => {
   const { stuck } = await findStuckAcademyGraduates(guard.supabase, { now: NOW, seasonNumber: SEASON.number });
   const flagged = stuck.map((s) => s.riderId).sort();
 
-  assert.deepEqual(detected, ["r-22", "r-23"], "22 og 23 er vokset ud; 20/21 er ikke, og fri-agent/pensioneret/senior hører ikke til her");
+  // #4619: graduerings-alderen flyttede fra 22 til 23 (YOUTH_RULES §2.2) — en
+  // 22-årig er stadig U23 og er dermed IKKE vokset ud længere. Populationen
+  // bærer ingen `squad`-kolonne, så begge stier udleder truppen af is_academy +
+  // alder: præcis overgangsperioden mellem migration og backfill.
+  assert.deepEqual(detected, ["r-23"], "kun 23 er vokset ud; 20/21/22 er ikke, og fri-agent/pensioneret/senior hører ikke til her");
   assert.deepEqual(detected, flagged);
 });
 

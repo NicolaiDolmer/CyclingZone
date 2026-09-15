@@ -2351,7 +2351,7 @@ test("#4495 usolgt graduate-auktion rykker rytteren op på seniorholdet når der
   // aldrig (kun release-grenen nulstiller det), og kontrakten arves uændret
   // (#2881/#1309 — rytteren HAR en komplet kontrakt, regenerér den aldrig).
   assert.equal(riderUpdates.length, 1);
-  assert.deepEqual(riderUpdates[0], { is_academy: false });
+  assert.deepEqual(riderUpdates[0], { squad: "senior", is_academy: false }); // #4619: squad skrives sammen med is_academy
   assert.equal("team_id" in riderUpdates[0], false, "oprykning flytter ikke rytteren væk fra holdet");
   // Grad-rækken stemples til udfaldet, ikke til 'released'.
   assert.equal(academyGraduationUpdates.length, 1);
@@ -2399,6 +2399,7 @@ test("#4495 usolgt graduate-auktion slipper rytteren som fri agent når seniortr
   assert.equal(riderUpdates.length, 1);
   assert.deepEqual(riderUpdates[0], {
     team_id: null,
+    squad: "senior", // #4619: squad skrives sammen med is_academy
     is_academy: false,
     salary: null,
     contract_length: null,
@@ -2473,7 +2474,7 @@ test("#4495 usolgt graduate-auktion: rytter der allerede er kommet videre skrive
 
   // Kun oprykningsforsøget — ingen efterfølgende slip-skrivning.
   assert.equal(riderUpdates.length, 1);
-  assert.deepEqual(riderUpdates[0], { is_academy: false });
+  assert.deepEqual(riderUpdates[0], { squad: "senior", is_academy: false }); // #4619: squad skrives sammen med is_academy
   assert.deepEqual(academyGraduationUpdates, [], "intet restemplet — intet udfald indtraf");
   assert.equal(notifications.filter((n) => n.type === "academy_graduated").length, 0);
 });
@@ -2724,10 +2725,14 @@ test("finalizeAuctionById graduates an own-team academy rider to senior for the 
   assert.equal(result.code, "completed");
   // Graduerer til senior (is_academy=false) — kontrakten arves UÆNDRET, samme
   // #2881/#3620-invariant som transfer-delen (#3650, PR #3845).
+  // #4619: squad skrives SAMMEN med is_academy. Uden den ville en solgt
+  // U23-rytter efter backfill'en blive liggende med squad='u23' og optage en
+  // U23-plads på køberens loft (countSquadMembers tæller på kolonnen).
   assert.deepEqual(riderUpdates, [{
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-08-17T11:00:00.000Z",
+    squad: "senior",
     is_academy: false,
   }]);
 });
@@ -2795,6 +2800,7 @@ test("finalizeAuctionById graduates a contractless own-team academy rider and gi
     salary: computeFrozenSalary({ current_production_value: 500_000 }),
     contract_length: 2,
     contract_end_season: 2,
+    squad: "senior", // #4619: begge trup-felter skrives sammen
     is_academy: false,
   }]);
 });
@@ -3174,6 +3180,10 @@ test("youth-auktion MED bud + senior-plads + balance: vinder placeres på SENIOR
   assert.equal(supabase._riderUpdates.length, 1, "præcis én rider-update (placering)");
   const upd = supabase._riderUpdates[0];
   assert.equal(upd.is_academy, false, "senior-først: placeret på senior, ikke akademi");
+  // #4619: squad skrives SAMMEN med is_academy. Ungdomsauktionens rytter er
+  // fri (team_id=null) og kan efter backfill'en bære squad='u23'/'junior';
+  // uden dette felt ville han optage en ungdomsplads på vinderens loft.
+  assert.equal(upd.squad, "senior", "squad følger med is_academy=false");
   assert.equal(upd.team_id, "buyer-team");
   assert.equal(upd.pending_team_id, null);
   assert.ok(upd.acquired_at, "acquired_at sat");
@@ -3774,4 +3784,67 @@ test("finalizeAuctionById parkerer holdskiftet når rytteren er i et aktivt etap
   // Vinder-beskeden forklarer at rytteren ankommer efter løbet.
   const won = notifications.find((n) => n.type === "auction_won" && n.teamId === "buyer-team");
   assert.match(won.message, /ongoing stage race/);
+});
+
+// ── #4619: den GARANTEREDE bank-handel skriver også begge trup-felter
+//
+// Stien er uafhængig af Graduation Day: en akademirytter hvis auktion udløber
+// uden bud og som har en garanteret bankpris, overdrages til banken. Flippede vi
+// kun is_academy, ville han efter backfill'en ligge hos banken med squad='u23' —
+// `effectiveSquad()` læser squad først, så han ville fortsat blive klassificeret
+// som U23-rytter, og en senere gen-auktion ville sende ham videre i den tilstand.
+test("#4619: garanteret bank-handel af en U23-akademirytter sætter squad='senior' sammen med is_academy=false", async () => {
+  const riderUpdates = [];
+  const auctionUpdates = [];
+  const financeInserts = [];
+  const listingUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-guaranteed-u23",
+        status: "active",
+        current_bidder_id: null,
+        current_price: 50,
+        seller_team_id: "seller-team",
+        is_guaranteed_sale: true,
+        guaranteed_price: 50,
+        rider: {
+          id: "rider-guaranteed-u23",
+          firstname: "Ung",
+          lastname: "Rytter",
+          team_id: "seller-team",
+          is_academy: true,
+          squad: "u23",
+          salary: 5_000,
+          contract_length: 2,
+          contract_end_season: 3,
+        },
+      },
+      teams: {
+        "seller-team": {
+          id: "seller-team", name: "Seller", balance: 200, division: 3,
+          user_id: "user-seller", is_ai: false,
+        },
+        bank: {
+          id: "bank", name: "AI", balance: 999999, division: 1,
+          user_id: null, is_ai: true, is_bank: true,
+        },
+      },
+      auctionUpdates,
+      riderUpdates,
+      financeInserts,
+      listingUpdates,
+    }),
+    auctionId: "auction-guaranteed-u23",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-06-10T12:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "guaranteed_sale");
+  const bankUpdate = riderUpdates.find((u) => u.team_id === "bank");
+  assert.ok(bankUpdate, "rytteren overdrages til banken");
+  assert.equal(bankUpdate.is_academy, false, "banken har intet akademi (#4495)");
+  assert.equal(bankUpdate.squad, "senior", "squad følger med — ellers står han som U23 hos banken");
 });

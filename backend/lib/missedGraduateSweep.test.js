@@ -104,11 +104,13 @@ const NOW = new Date("2026-09-11T08:00:00.000Z");
 // ageForSeason(birthdate, 3) = 2026 + 2 − fødselsår.
 const bornForSeason3Age = (age) => `${2028 - age}-10-25`;
 
-// Den konkrete rytter fra #5133: 22 i S3, menneskehold, ingen grad-række.
+// Den konkrete rytter fra #5133, flyttet til den nye graduerings-alder: 23 i S3
+// (#4619 rykkede det tvungne valg fra 22 til 23, YOUTH_RULES §2.2), menneskehold,
+// ingen grad-række.
 const MISSED = {
   id: "r-missed", team_id: "t-human", ai_team_id: null,
   firstname: "Missed", lastname: "Graduate",
-  is_academy: true, is_retired: false, birthdate: bornForSeason3Age(22),
+  is_academy: true, is_retired: false, birthdate: bornForSeason3Age(23),
 };
 const YOUNG = {
   id: "r-young", team_id: "t-human", ai_team_id: null,
@@ -334,7 +336,7 @@ test("sweep (dryRun): lister kandidaten med hvad der ville blive oprettet, uden 
   assert.equal(res.candidates.length, 1);
   assert.equal(res.candidates[0].riderId, "r-missed");
   assert.equal(res.candidates[0].teamId, "t-human");
-  assert.equal(res.candidates[0].age, 22);
+  assert.equal(res.candidates[0].age, 23); // #4619: graduerings-alder 22 -> 23
   assert.equal(res.candidates[0].name, "Missed Graduate");
   assert.equal(res.candidates[0].wouldCreate.season_id, "s3");
   assert.equal(res.candidates[0].wouldCreate.status, "pending");
