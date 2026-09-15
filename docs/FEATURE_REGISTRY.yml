@@ -315,7 +315,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 4851
     verified: 2026-09-15
-    note: Motoren skriver rider_training_scores fra dag 1; visningen venter på flaget training_score_visible (off), som ejeren flipper.
+    note: Motoren skriver rækker fra dag 1; visningen venter på flaget training_score_visible (off).
 
   - id: season-fatigue-reset
     area: training
