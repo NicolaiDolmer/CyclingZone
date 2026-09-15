@@ -23,8 +23,8 @@ helt forskellige regler. Det er den hyppigste fejlkilde i området.
 
 | Tal | Hvad det er | Rører sig |
 |---|---|---|
-| `renownTarget` | Aftalens samlede værdi ved fuld deltagelse = `SPONSOR_INCOME_BY_DIVISION[division] × renownMultiplier`. Beregnes **kun** når tilbud genereres | Ved hver tilbuds-generering. Er **ikke** en kolonne — den findes ikke i DB og kan kun bagud-udledes som `guaranteed_base / guaranteed_fraction` |
-| `guaranteed_base` | Den garanterede del, udbetalt ved sæsonstart | **Frosset ved valg-tidspunktet.** Rører sig ALDRIG i kontraktens løbetid — heller ikke ved divisions-skift (se §3) |
+| `renownTarget` | Aftalens samlede værdi ved fuld deltagelse = `SPONSOR_INCOME_BY_DIVISION[division] × renownMultiplier` | Ved tilbud og, fra S4, aktivering mod afsluttet sæsons slutstilling og holdets faktiske nye division. Er **ikke** en kolonne; udledes som `guaranteed_base / guaranteed_fraction` |
+| `guaranteed_base` | Den garanterede del, udbetalt ved sæsonstart | Fra S4 er tilbuddet foreløbigt; basen fastsættes ved aktivering og er derefter låst i løbetiden. Eksisterende aktive aftaler genprises ikke |
 | `per_race_day_rate` | Betaling pr. **etape** holdet starter i | Frosset ved valg, men **genberegnes ved aktivering** mod divisionens etapetal (#2913). Det er den ene af de tre der ikke er låst som spec 21/6 §4.3 lover |
 
 **#4376-tilføjelse (4/9):** fordi `guaranteed_base` er et engangsbeløb (ikke en løbende ydelse), tilbagefører S3-korrektionen (`backend/scripts/repair-4376-sponsor-division-correction.js`) det for meget udbetalte fra timing-hul-hold direkte via `incrementBalanceWithAudit`, samme dag basen rettes ned.
@@ -33,9 +33,11 @@ helt forskellige regler. Det er den hyppigste fejlkilde i området.
 skal udlede den fra `guaranteed_base / guaranteed_fraction` — præcis som `recomputeActivationRate`
 og `contractRaceDayPool` gør. Gæt aldrig på divisionen; udled fra fraktionen.
 
-**Anden fælde:** basen skrives mod `teams.division` som den er **på valg-tidspunktet**. Manageren
-vælger midt i sæsonen, altså før op-/nedrykningen er skrevet. Aftalen er derfor prissat mod den
-division han forlader, ikke den han lander i. Det er #4376, og §3 er svaret.
+**Anden fælde:** `signed_division` er signeringshistorik. Fra S4 skrives
+`activation_division` ved aktivering, efter op-/nedrykningen er skrevet til `teams.division`.
+Basen og divisions-tillægget bruger denne prisdivision. Ellers ville en oprykker både få
+den nye divisions fulde base og det gamle tillæg. NULL betyder en eksisterende aftale,
+som fortsat bruger `signed_division`. Ejer-beslutning 15/9, #4860/#4376.
 
 **Renown-multiplieren** (`renownEngine.js`): `clamp(1 + W_RESULTS × resultsScore, 1.00, MAX_MULTIPLIER)`
 med `W_RESULTS = 0,45` og `MAX_MULTIPLIER = 1,40`, harness-kalibreret 21/6
@@ -81,8 +83,9 @@ Der findes ingen CI-gate eller prod-vagt der fanger det i dag — se §8.
 
 | Tidspunkt | Hvad der skrives | Hvad der genberegnes |
 |---|---|---|
-| **Valg** (`acceptOffer`) | `guaranteed_base`, `guaranteed_fraction`, `race_day_share`, `length_seasons`, `bonus_clauses` (frosset i **kroner**, ikke andele), `sponsor_name`, `signed_division` | — |
-| **Aktivering** (`expireAndRenewContracts`, pending → active) | `status`, signing-bonus krediteres | **KUN `per_race_day_rate`**, mod holdets faktiske etapetal (#2913) |
+| **Valg** (`acceptOffer`) | Variant, andele, længde, navn og `signed_division`; foreløbige beløb for kommende sæson | Tilbuddet afspejler den aktuelle stilling |
+| **Aktivering fra S4** (`expireAndRenewContracts`, pending → active) | `status` og `activation_division`; signing-bonus krediteres | Base og bonusklausuler fastsættes mod afsluttet sæsons slutstilling og faktisk division; etaperaten beregnes fra den nye base mod holdets etapetal |
+| **Aktivering før S4** | Historisk regel: base og klausuler beholdes | Kun etaperaten genberegnes (#2913) |
 | **Hver sæsonstart derefter** | — | Intet. Basen bæres uændret med, hele løbetiden |
 | **Udløb** | `status = 'expired'` | Nye tilbud genereres mod da-aktuel division + renown |
 
@@ -92,9 +95,29 @@ Flip altid den eksisterende væk FØR insert af en ny af samme status.
 **Bonusklausuler fryses i kroner, ikke i andele** (`freezeClauses`). En kontraktrække må aldrig
 afhænge af et live-driftende `renownTarget` — det var lektien fra #2589.
 
+Fra S4 sker den endelige fastfrysning ved aktivering. Managerens variant, andele, længde,
+navn og `signed_division` bevares. Automatisk fornyelse bruger samme slutstilling og nye
+division; et tidligt valg kan derfor ikke give en anden pris end et sent identisk valg.
+Pris, klausuler, prisdivision og status skrives samlet. Genkørsel finder den aktive aftale
+og springer genprisningen over; der kræves ingen separat `repriced_at`-markør.
+
+Verifikation: `sponsorContractsService.test.js` dækker alle varianter, signering før/efter
+første løb, op-/nedrykning, automatisk fornyelse og gentaget aktivering.
+`backend/scripts/dry-run-4860-sponsor-activation.js --dry-run` er SELECT-only og viser base
+og separat tillæg før/efter for valgte og automatiske aftaler. En kørsel før sæsonslut
+er et øjebliksbillede, ikke endelige cutover-beløb.
+
 ---
 
-## 3. Divisions-tillægget (ejer-besluttet 29/8, opad-reglen ændret 4/9 · afventer merge + apply)
+## 3. Divisions-tillægget (historisk regel 29/8 og 4/9; prisgrundlag opdateret 15/9)
+
+**Fra S4:** beregningen bruger `activation_division ?? signed_division`. En nyaktiveret
+aftale er allerede prissat til den division holdet spiller i, så den får ikke samtidigt
+et tillæg for divisionen på signeringsdagen. Senere divisionsskift under en løbende aftale
+bruger aktiveringens prisdivision som udgangspunkt. Formlen, nedad-flaget og bestyrelsens
+modifier ændres ikke. Eksisterende aktive aftaler uden `activation_division` beholder
+deres gamle tillæg. Nedenstående beskriver denne regel og S3-korrektionens historik;
+S3's valg af gammel prisdivision ved automatisk fornyelse gælder kun før S4.
 
 Aftalen er prissat mod den division holdet var i da det valgte. Rykker holdet op, betaler det den
 nye divisions upkeep fra dag ét mod en sponsor prissat til den gamle. Rykker det ned, beholder det
@@ -230,8 +253,8 @@ uden den kunne en spiller se ét beløb i modalen og få et andet udbetalt (#434
 
 | Tilfælde | Hvad der sker i dag | Fil |
 |---|---|---|
-| **Oprykning** | Basen følger IKKE med. Fra S4: divisions-tillæg opad. I S3: tillæg opad, efterbetalt | `expireAndRenewContracts` |
-| **Nedrykning** | Basen følger IKKE med, men faldskærmen udbetales (kun D1→D2 og D2→D3; D3→D4 er bevidst ekskluderet fordi D4-upkeep er 0). Fra S4: fradrag der ophæver faldskærmen for løbende aftaler | `economyEngine` fase parachute |
+| **Oprykning** | Fra S4 følger basen den faktiske division ved ny aktivering. En allerede aktiv aftale er låst og bruger fortsat divisions-tillægget | `expireAndRenewContracts` |
+| **Nedrykning** | Fra S4 følger basen den faktiske division ved ny aktivering. Løbende aftaler bevares; faldskærm og nedad-flag ændres ikke | `expireAndRenewContracts` |
 | **Nyt hold, sæson 1** | Division-skaleret intro-sponsor, ingen variabel del. Springes over hvis holdet stadig har uberørt `INITIAL_BALANCE` (#1678) | `computeSponsorForSeason` intro-gren |
 | **Hold uden aktiv kontrakt** | Forhandler for **indeværende** sæson og aktiverer straks. **Ingen** base-udbetaling her — den krediteres først ved næste rigtige sæsonstart. Race-day og signing-bonus gælder fra `activated_at`, så der aldrig sker bagudbetaling | `acceptOfferImmediately` (#3316) |
 | **Hold oprettet midt i sæsonen** | Får kontrakt ved oprettelse + **forholdsmæssig** base efter resterende løbsdage. Løste en målt 10× indtægtsforskel i D4 | `midSeasonSponsor.js` (#3730) |
@@ -313,7 +336,7 @@ Klausul-typen `top_half` (før 3/8) og `top_40pct` (efter) lever side om side i
 | 6 | **Sponsoren kører på omdømme-proxy v1** (division + resultat-historik), eksplicit markeret midlertidig i spec §9 indtil #1099 lander. Der findes **ingen aftalt udgang**: ingen dato, intet issue der ejer hvad der sker med løbende kontrakter den dag den rigtige motor kommer | §8, inventaret §5 |
 | 7 | **Renown-multiplieren mætter i praksis.** Alle 24 D1-hold har `resultsScore = 1,0` → multiplier 1,40, fordi de alle blev forfremmet og derfor lå i toppen af deres pulje. Proxy'en giver nul differentiering inden for den øverste division | målt 29/8 |
 | 8 | **#3595: retning valgt 10/9 (GDD D-042/D-043):** bonussen udbetales først, når målet er nået; nås det ikke, udbetales den ikke; ingen tilbagebetaling, ingen straf. Sponsormål = resultater/synlighed/omdømme (popularitet → omdømme, D-041); identitetsmål hører til bestyrelsen. Ikke bygget; grundregler efter 27/9 | #3595, [D-042](design/gdd/DECISIONS.md) |
-| 9 | **Næste-sæsons-tilbud prissættes mod den IGANGVÆRENDE sæsons standings.** `loadRenownTargetValue` læser `start_season − 1`, som for et S4-tilbud er S3, tom indtil første løb. Vælger manageren før første løb → multiplier 1,00, låst i `guaranteed_base`; vælger han en uge senere → typisk 1,40. Ikke-valg (default 'safe' ved skiftet) bruger de ENDELIGE standings og slår derfor et tidligt valg af samme variant. Målt 6/9: 30 af 43 pending S4-aftaler tegnet 23–28/8 på præcis 1,00; gab ≈ 3,0 mio. CZ$. Hjælpeteksten ("results over recent seasons", "choice locks when the season starts") beskriver en anden regel end koden. Ejer-valg A (genpris ved aktivering) / B (sidste afsluttede sæson) afventer | [#4860](https://github.com/NicolaiDolmer/CyclingZone/issues/4860) |
+| 9 | **#4860: ejer-valg A 15/9.** Fra S4 genprises pending ved aktivering mod slutstillingen. Valg og automatisk fornyelse bruger faktisk ny division. Eksisterende aktive aftaler bevares | §2, regressionstests og read-only dry-run |
 | 10 | **Sæsonstart-linjen i finansloggen hedder "intro" for alle hold med kontrakt.** `buildSponsorMetadata` mangler grenen for `mode: "contract"` | [#4861](https://github.com/NicolaiDolmer/CyclingZone/issues/4861) |
 
 ---

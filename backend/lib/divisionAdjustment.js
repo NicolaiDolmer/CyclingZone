@@ -152,8 +152,11 @@ export function resolveDivisionAdjustment({
   modifier = 1,
 } = {}) {
   const currentDivision = Number.isInteger(team?.division) ? team.division : null;
-  const signedDivision = Number.isInteger(contract?.signed_division)
-    ? contract.signed_division
+  // S4+ prices are fixed at activation. signed_division remains signing history;
+  // legacy contracts without the new field retain their existing adjustment.
+  const priceDivision = contract?.activation_division ?? contract?.signed_division;
+  const signedDivision = Number.isInteger(priceDivision)
+    ? priceDivision
     : null;
 
   const raw = computeDivisionAdjustment({ currentDivision, signedDivision, seasonNumber });

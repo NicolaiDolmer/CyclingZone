@@ -56,7 +56,7 @@ test("én guld pr. view: sidehovedets primary dæmpes på Next season-fanen", ()
 });
 
 test("sidehovedets CTA findes kun når der reelt er åbne tilbud", () => {
-  assert.match(src, /const offersOpen = offersState\?\.negotiable === true && offers\.length > 0/);
+  assert.match(src, /const offersOpen = offersState\?\.negotiable === true && sourceOffers\.length > 0/);
   assert.match(src, /const headerActions = offersOpen \?/);
 });
 

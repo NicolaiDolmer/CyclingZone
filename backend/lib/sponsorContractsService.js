@@ -182,6 +182,34 @@ export function recomputeActivationRate(pending, divisor) {
   return Math.round((originalRenownTarget - guaranteedBase) / div);
 }
 
+// #4860/#4376: selection fixes the contract terms; S4+ activation fixes its price.
+// Shared by activation and the read-only audit. generateOffers freezes the bonus
+// clauses through freezeClauses; signed division and duration remain historical facts.
+export function repricePendingContract({ pending, renownTargetValue, divisor, activationDivision }) {
+  if (!Number.isInteger(activationDivision) || activationDivision < 1 || activationDivision > 4) {
+    throw new Error("Cannot reprice sponsor contract without its actual division");
+  }
+  const chosen = generateOffers({
+    teamId: pending.team_id,
+    seasonNumber: pending.start_season,
+    renownTargetValue,
+    calendarDays: divisor,
+  }).find((offer) => offer.variant === pending.variant);
+  if (!chosen) throw new Error(`Cannot reprice unknown sponsor variant: ${pending.variant}`);
+  const fraction = Number(pending.guaranteed_fraction);
+  if (!(fraction > 0) || !Number.isFinite(renownTargetValue) || renownTargetValue <= 0) {
+    throw new Error("Cannot reprice sponsor contract without a valid fraction and target");
+  }
+  const repriced = {
+    ...pending,
+    guaranteed_base: Math.round(renownTargetValue * fraction),
+    bonus_clauses: chosen.clauses,
+    activation_division: activationDivision,
+  };
+  repriced.per_race_day_rate = recomputeActivationRate(repriced, divisor);
+  return repriced;
+}
+
 // ─── #2926 · Delte, rene kontrakt-regler (preview ⇄ udførelse) ────────────────
 // Sæson-transitionens dry-run modellerede tidligere en KONTRAKTFRI tilstand
 // (division-base + variabel pulje) selvom udbetalingen sker EFTER
@@ -228,7 +256,15 @@ export function resolveContractForNewSeason({
     return { source: "locked", contract: activeContract };
   }
   if (pendingAppliesToSeason(pendingContract, newSeasonNumber)) {
-    return { source: "pending", contract: pendingContract };
+    return {
+      source: "pending",
+      contract: newSeasonNumber >= 4
+        ? repricePendingContract({
+          pending: pendingContract, renownTargetValue, divisor: calendarDays,
+          activationDivision: teamDivision,
+        })
+        : pendingContract,
+    };
   }
   const offers = generateOffers({
     teamId,
@@ -254,6 +290,7 @@ export function resolveContractForNewSeason({
       race_day_share: chosen.raceDayShare,
       bonus_clauses: chosen.clauses,
       signed_division: Number.isInteger(teamDivision) ? teamDivision : null,
+      ...(newSeasonNumber >= 4 ? { activation_division: teamDivision } : {}),
       // Markør: rækken findes ikke i DB endnu — den OPRETTES af
       // expireAndRenewContracts ved skiftet. Kun til preview/rapportering.
       simulated: true,
@@ -849,21 +886,45 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
     if (pending && pending.start_season === newSeasonNumber) {
       // Aktivér managerens valg: pending -> active, MED genberegnet
       // per_race_day_rate mod holdets etape-divisor (#2589 + #2913).
-      const perRaceDayRate = recomputeActivationRate(pending, divisor);
+      const repriced = newSeasonNumber >= 4
+        ? repricePendingContract({
+          pending,
+          renownTargetValue: await loadRenownTargetValue({
+            supabase, teamId, seasonNumber: newSeasonNumber,
+            priceDivision: teamById.get(teamId)?.division,
+          }),
+          divisor,
+          activationDivision: teamById.get(teamId)?.division,
+        })
+        : { ...pending, per_race_day_rate: recomputeActivationRate(pending, divisor) };
+      // Price and status change in one write. A repeated transition sees the
+      // active contract above and never reprices it or pays its signing bonus twice.
+      const activation = {
+        status: "active",
+        per_race_day_rate: repriced.per_race_day_rate,
+        ...(newSeasonNumber >= 4 ? {
+          guaranteed_base: repriced.guaranteed_base,
+          bonus_clauses: repriced.bonus_clauses,
+          activation_division: repriced.activation_division,
+        } : {}),
+      };
       const { error } = await supabase
         .from("sponsor_contracts")
-        .update({ status: "active", per_race_day_rate: perRaceDayRate })
-        .eq("id", pending.id);
+        .update(activation)
+        .eq("id", pending.id)
+        .eq("status", "pending");
       if (error) throw error;
       await creditSigningBonus({
         supabase,
-        contract: { ...pending, per_race_day_rate: perRaceDayRate },
+        contract: { ...repriced, status: "active" },
       });
       continue;
     }
 
     // Ingen matchende pending → default-forny med 'safe' for den nye sæson (#2914).
     //
+    // From S4 use the actual new division, like manual activation (#4860).
+    // The historical rule below is retained only for transitions before S4.
     // #4376 timing-fix: prissæt mod holdets division FØR denne transitions
     // oprykning/nedrykning (season_standings-rækken fra sæsonen der lige sluttede),
     // ikke teams.division — komprimeringen har allerede skrevet den NYE division på
@@ -872,8 +933,9 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
     // Målt i prod 4/9 (docs/audits/sponsor-timing-hul-alle-divisioner-2026-09-04.md):
     // 30 hold ramt på tværs af D1-D3. Falder tilbage til teams.division for hold
     // uden en standings-række (nyoprettet midt i sæson — ingen flytning at ramme af).
-    const priceDivision =
-      preTransitionDivisionByTeam.get(teamId) ?? teamById.get(teamId)?.division ?? null;
+    const priceDivision = newSeasonNumber >= 4
+      ? teamById.get(teamId)?.division ?? null
+      : preTransitionDivisionByTeam.get(teamId) ?? teamById.get(teamId)?.division ?? null;
     const offers = await getOffers({
       supabase,
       teamId,
@@ -897,10 +959,10 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
       guaranteed_fraction: chosen.guaranteedFraction,
       race_day_share: chosen.raceDayShare,
       bonus_clauses: chosen.clauses,
-      // #4376: samme division tilbuddet lige blev prissat mod ovenfor — et hold der
-      // rykkede op/ned får dermed et divisions-tillæg (gulv+50%) i stedet for at
-      // aftalen tavst låser den nye divisions fulde base.
+      // Auto-renewal signs and activates together, so both historical signing
+      // division and activation price division describe this same moment.
       signed_division: priceDivision,
+      ...(newSeasonNumber >= 4 ? { activation_division: priceDivision } : {}),
     };
     const { error } = await supabase
       .from("sponsor_contracts")

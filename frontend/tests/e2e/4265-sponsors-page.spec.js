@@ -233,7 +233,7 @@ test("Next season: tilbuddene inline, Review & sign → confirm-strip, og kun é
 
   await expect(page.getByText("5 tilbud · division 2 · 124 etaper")).toBeVisible();
   await expect(
-    page.getByText(/Dit valg låses når sæson 4 starter. Vælger du ikke, underskriver klubben den sikre 1-sæsons aftale/),
+    page.getByText(/Beløbene fastsættes når sæson 4 starter, ud fra denne sæsons slutstilling og din nye division/),
   ).toBeVisible();
 
   // Fem tilbud som tabelrækker (ikke en modal).
@@ -281,18 +281,19 @@ test("prissætnings-forklaringen overlevede modalen: enhed, division og tillæg 
     page.getByText(/Division 2 kører 124 etaper i sæson 4, og hver eneste af dem betaler/),
   ).toBeVisible();
 
-  // #3020: samme maksimum uanset hvilken division man kigger paa.
+  // #4860/#4376: S4 activation prices the deal for the actual new division.
   await expect(
-    page.getByText(/udbetaler det samme maksimum uanset hvilken division du vælger/),
+    page.getByText(/Fra sæson 4 bruger forhåndsvisningen den valgte divisions base og kalender/),
   ).toBeVisible();
 
   // #4376: tillægget vises IKKE for holdets egen division, men SKAL staa der
   // naar man kigger paa en anden — forbeholdet spilleren stillede da reglen blev valgt.
   await expect(page.getByText(/divisions-tillæg på .* CZ\$/)).toHaveCount(0);
   await page.getByRole("button", { name: "Division 1 · 140 etaper" }).click();
-  await expect(page.getByText(/divisions-tillæg på 100\.000 CZ\$/)).toBeVisible();
-  // Raten følger den valgte divisions etapetal (140 i D1).
-  await expect(page.getByText("256 CZ$")).toBeVisible();
+  await expect(page.getByText(/divisions-tillæg på .* CZ\$/)).toHaveCount(0);
+  await expect(page.getByText("618.240 CZ$")).toBeVisible();
+  // Both the pool and its stage divisor follow the projected division.
+  await expect(page.getByText("384 CZ$")).toBeVisible();
 
   // Bestyrelsens modifier rører kun garantien (BOARD_RULES.md §5).
   await expect(page.getByText(/Den rører ikke etape-pengene eller bonusserne/)).toBeVisible();

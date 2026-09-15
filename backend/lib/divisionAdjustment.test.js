@@ -200,6 +200,15 @@ test("intet hold og ingen kontrakt kaster ikke", () => {
   assert.equal(result.applies, false);
 });
 
+test("activation division replaces signing history without changing later adjustments or modifiers", () => {
+  const contract = { signed_division: 3, activation_division: 2 };
+  assert.equal(resolveDivisionAdjustment({ team: { division: 2 }, contract, seasonNumber: 4 }).payout, 0);
+  const laterPromotion = resolveDivisionAdjustment({ team: { division: 1 }, contract, seasonNumber: 5, modifier: 1.1 });
+  const legacyEquivalent = resolveDivisionAdjustment({ team: { division: 1 }, contract: { signed_division: 2 }, seasonNumber: 5, modifier: 1.1 });
+  assert.deepEqual(laterPromotion, legacyEquivalent);
+  assert.equal(contract.signed_division, 3, "historical signature remains untouched");
+});
+
 test("idempotency-nøglen er stabil og entydig pr. hold+sæson", () => {
   assert.equal(
     divisionAdjustmentIdempotencyKey("team-a", "season-1"),

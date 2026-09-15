@@ -638,6 +638,8 @@ function buildSponsorPreviewRow(
     ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
     : [];
 
+  // Before S4, preserve the historical #4376 timing rule below. From S4,
+  // activation and preview both use the actual new division (#4860).
   // #4376 timing-fix: prissæt previewets default-aftale mod PRÆCIS samme division
   // som expireAndRenewContracts nu gør — holdets division FØR denne transitions
   // oprykning/nedrykning (lastSeasonStanding.division), ikke team.division. På
@@ -645,7 +647,9 @@ function buildSponsorPreviewRow(
   // teams (samme rækkefølge som i den rigtige transition), så team.division ville
   // vise den nye division og lade previewet love et tillæg der aldrig udbetales
   // (eller omvendt: skjule det tillæg der faktisk udbetales).
-  const priceDivision = lastSeasonStanding?.division ?? team.division ?? null;
+  const priceDivision = toSeasonNumber >= 4
+    ? team.division ?? null
+    : lastSeasonStanding?.division ?? team.division ?? null;
   const renownTargetValue = renownTarget({
     division: priceDivision,
     lastSeasonStanding,
