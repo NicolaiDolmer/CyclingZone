@@ -197,7 +197,7 @@ export async function runTeamTrainingDay({
 
   // ── Phase 1: Loads + ren beregning (ingen writes) ────────────────────────────
   // Ved fejl her slettes reservationen, så holdet kan retrye samme dag.
-  let abilityUpdates, conditionUpserts, reportRiders, historyRows, raceDayHistoryRows;
+  let abilityUpdates, conditionUpserts, reportRiders, historyRows, raceDayHistoryRows, scoreRows;
   try {
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
   const { data: riders, error: ridersError } = await supabase
@@ -329,6 +329,10 @@ export async function runTeamTrainingDay({
   historyRows = []; // { rider_id, snapshot_date, source, season_number, abilities } — #2000 Udvikling-fane
   // #4846: soester-raekker paa loebsdags-aksen. Tom naar flaget er off.
   raceDayHistoryRows = [];
+  // #4851: traeningsscoren pr. rytter pr. pas. Skrives UANSET
+  // training_score_visible — flaget gater kun visningen, og uden historik ville
+  // den foerste sparkline vaere ét punkt den dag flaget taendes.
+  scoreRows = [];
 
   for (const rider of riders) {
     const abRow = abilityByRider.get(rider.id);
@@ -594,6 +598,34 @@ export async function runTeamTrainingDay({
       }
     }
 
+    // ── #4851: traeningsscoren for dagens pas ────────────────────────────────
+    // ÉN raekke pr. rytter pr. pas. Skrivningen sker i SAMME kald som tick'et
+    // (Phase 2 nedenfor), bag samme reservation/mutex som resten af dagen, saa
+    // en score aldrig kan staa uden det tick den beskriver.
+    //
+    // Tre tilstande, praecis som spec §4.4 kraever:
+    //   hviledag / skadet   ⇒ INGEN raekke (der var intet pas at maale)
+    //   loebsdag            ⇒ raekke med score NULL + was_race_day (fladen: "loeb")
+    //   traeningsdag        ⇒ raekke med tallet 1-99 + de stoerste bidrag
+    // `intention` er NULL i fase A: race_entries har ingen intentions-kolonne
+    // endnu (#4632). Kolonnen findes for at den kan udfyldes uden migration.
+    const scoreDetail = tickResult?.trainingScore ?? null;
+    if (scoreDetail) {
+      scoreRows.push({
+        rider_id: rider.id,
+        team_id: teamId,
+        season_id: seasonId,
+        tick_date: tickDate,
+        game_day: useRaceDayKey ? raceDay : null,
+        score: racedToday ? null : scoreDetail.score,
+        session: scoreDetail.session,
+        day_type: scoreDetail.dayType,
+        was_race_day: racedToday,
+        intention: null,
+        contributions: racedToday ? null : scoreDetail.contributions,
+      });
+    }
+
     // Gennembruds-detalje (#1305 polish): faktisk tal-spring pr. gevinst, så
     // rapporten kan vise "71 → 72" frem for flad "+1". from = pre-tick, to = post-tick.
     const gainsDetail = {};
@@ -700,6 +732,41 @@ export async function runTeamTrainingDay({
       // (Phase 2 bevarer reservationen med vilje) — samme kontrakt som
       // kalenderdags-historikken ovenfor. Fejlen logges, dagen staar.
       console.error(`  ⚠️ ability-history snapshot (race day) fejlede for hold ${teamId}:`, histErr.message);
+    }
+  }
+
+  // #4851: traeningsscoren. Samme best-effort-kontrakt som historik-snapshottene
+  // ovenfor — scoren er AFLEDT visning (+ en kvittering paa dagens kvalitet),
+  // ikke spil-state, og et kast her ville vaelte en traeningsdag hvis
+  // evne-writes allerede er landet. Bart INSERT: de to partielle unikke indexe
+  // (database/2026-09-15-4851-rider-training-scores.sql) rejser 23505 hvis
+  // raekken allerede findes, og en gentagelse er praecis det
+  // training_day_runs-reservationen i forvejen forhindrer.
+  if (scoreRows.length > 0) {
+    try {
+      for (let i = 0; i < scoreRows.length; i += 500) {
+        const batch = scoreRows.slice(i, i + 500);
+        const { error } = await supabase.from("rider_training_scores").insert(batch);
+        if (!error) continue;
+        if (error.code !== "23505") throw new Error(error.message);
+        // 23505 paa et MULTI-row INSERT afbryder HELE saetningen: de raekker der
+        // IKKE var dubletter ville gaa tavst tabt hvis vi bare gik videre. Det
+        // kan ske selv med training_day_runs-reservationen, fordi score-noeglen
+        // ikke indeholder team_id — en rytter der er skiftet hold beholder sine
+        // gamle raekker. Vi falder derfor tilbage til raekke-for-raekke og
+        // sluger kun den enkelte dublet.
+        for (const row of batch) {
+          const { error: rowError } = await supabase.from("rider_training_scores").insert(row);
+          if (rowError && rowError.code !== "23505") throw new Error(rowError.message);
+        }
+      }
+    } catch (scoreErr) {
+      // best-effort: scoren er AFLEDT visning (+ en kvittering paa dagens
+      // kvalitet), ikke spil-state. Et kast her ville vaelte en traeningsdag
+      // hvis evne-writes allerede er landet (Phase 2 bevarer reservationen med
+      // vilje) — samme kontrakt som historik-snapshottene ovenfor. Fejlen
+      // logges, dagen staar, og naeste tick skriver videre.
+      console.error(`  ⚠️ training-score write fejlede for hold ${teamId}:`, scoreErr.message);
     }
   }
 

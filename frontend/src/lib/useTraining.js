@@ -25,6 +25,10 @@ export function useTraining() {
   const [weekPlan, setWeekPlanState] = useState(null); // holdets ugerytme { mon:{intensity}, ..., sun:{intensity} } | null (#1895)
   const [riderWeekPlans, setRiderWeekPlansState] = useState({}); // { <rider_id>: {mon:{intensity},...} } — pr-rytter-override (#1895 PR 2)
   const [racingToday, setRacingToday] = useState({}); // { <rider_id>: { race } } - #3459 V3, leveres kun bag race_day_development_enabled (#4375)
+  // #4851: { <rider_id>: { today, todayIsRaceDay, spark[], avg, best, days,
+  // contributions } }. Feltet UDELADES helt af /api/training/me naar
+  // training_score_visible er off, saa null = "fladen viser ingen score".
+  const [trainingScore, setTrainingScore] = useState(null);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -56,6 +60,9 @@ export function useTraining() {
         // er on for brugeren (api.js udelader det helt ellers) - `?? {}` giver samme
         // "ingen badge for nogen" tomme-state uanset om feltet mangler eller er tomt.
         setRacingToday(data.racingToday ?? {});
+        // #4851: null naar feltet mangler (flag off) — IKKE {} — saa fladerne
+        // kan skelne "slukket" fra "taendt, men ingen data endnu".
+        setTrainingScore(data.trainingScore ?? null);
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -272,7 +279,7 @@ export function useTraining() {
   }, [refresh]);
 
   return {
-    slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus,
+    slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, trainingScore,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
     riderWeekPlans, savingRiderWeekPlanId, racingToday,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,

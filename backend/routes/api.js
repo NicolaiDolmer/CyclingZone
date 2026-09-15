@@ -210,6 +210,8 @@ import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTra
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
+import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
+import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
@@ -2690,11 +2692,16 @@ router.get("/training/me", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const teamId = req.team.id;
-    const [{ activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage] = await Promise.all([
+    const [
+      { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
+    ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
       readFlagStage(supabase, DAILY_TRAINING_FLAG_KEY),
       readFlagStage(supabase, RACE_DAY_DEVELOPMENT_FLAG_KEY),
+      // #4851: gater KUN visningen. Motoren skriver rider_training_scores
+      // uanset flaget, saa der er historik den dag det taendes.
+      readFlagStage(supabase, TRAINING_SCORE_VISIBLE_FLAG_KEY),
     ]);
     const enabled = evaluateFlagStage(stage, { isBetaTester });
     // #3459 V3 / #4375: racingToday-feltet (trænings-UI'ets løbsdags-badge) leveres
@@ -2705,6 +2712,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // dailyTrainingEngine.js's raceDayDevelopmentOn, så UI og motor ikke kan komme
     // ud af sync igen. Flag off = feltet udelades helt, ikke bare tomt.
     const raceDayDevelopmentOn = evaluateFlagStage(raceDayDevelopmentStage, { isBetaTester });
+    const trainingScoreOn = evaluateFlagStage(trainingScoreStage, { isBetaTester });
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
@@ -2734,7 +2742,14 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // Today's run-row + condition + progress + holdets ugerytme (#1895 PR 1) —
     // batched (max 5 ekstra queries mod DB).
     const todayDate = copenhagenDateString(new Date());
-    const [todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday] = await Promise.all([
+    // #4851: 30-dages-vinduet profilkortet aggregerer over. Samme kalenderdags-
+    // akse som tick_date (Europe/Copenhagen, CALENDAR_RULES §0).
+    const trainingScoreSince = copenhagenDateString(
+      new Date(Date.now() - TRAINING_SCORE_VIEW.windowDays * 86_400_000),
+    );
+    const [
+      todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult,
+    ] = await Promise.all([
       activeSeasonId
         ? supabase
             .from("training_day_runs")
@@ -2766,6 +2781,27 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // (returnerer {} ved fejl), så den kan indgå direkte i Promise.all uden
       // try/catch her.
       raceDayDevelopmentOn ? loadRacingTodayByRider(supabase, teamId, riderIds, new Date()) : Promise.resolve({}),
+      // #4851: traeningsscoren, KUN naar visningen er on for brugeren (flag off
+      // ⇒ ingen ekstra DB-kald, samme moenster som racingToday ovenfor).
+      // team_id-filteret matcher RLS-politikkens egen noegle og rammer
+      // idx_rider_training_scores_team_date.
+      // PAGINERET: 38 ryttere (30 senior + 8 akademi) x 31 kalenderdage er
+      // ~1.180 raekker, OVER PostgRESTs 1.000-raekkers-cap — og historiske
+      // raekker fra solgte ryttere bliver liggende under det gamle hold
+      // (team_id fryses ved skrivningen), saa tallet vokser kun. Uden
+      // paginering ville svaret blive TAVST afkortet og kurven vise et
+      // ufuldstaendigt vindue uden et eneste signal om at data manglede.
+      // `id` som sekundaer, UNIK sortering: fetchAllRows kraever en stabil
+      // raekkefoelge paa tvaers af sider.
+      trainingScoreOn && riderIds.length
+        ? fetchAllRows(() => supabase
+          .from("rider_training_scores")
+          .select("id, rider_id, tick_date, game_day, score, session, was_race_day, contributions")
+          .eq("team_id", teamId)
+          .gte("tick_date", trainingScoreSince)
+          .order("tick_date", { ascending: false })
+          .order("id", { ascending: true })).then((data) => ({ data }))
+        : Promise.resolve({ data: [] }),
     ]);
 
     const todayRun = todayRunResult.data ?? null;
@@ -2814,6 +2850,12 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer
       // kan skelne "flag off" fra "ingen data" på et felt der ikke findes.
       ...(raceDayDevelopmentOn ? { racingToday } : {}),
+      // #4851: samme "udelad HELT naar flaget er off"-kontrakt som racingToday.
+      // Formen er { <rider_id>: { today, todayIsRaceDay, spark[], avg, best,
+      // days, contributions } } — se buildTrainingScoreView.
+      ...(trainingScoreOn
+        ? { trainingScore: buildTrainingScoreView(scoreResult?.data ?? [], { today: todayDate }) }
+        : {}),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

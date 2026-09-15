@@ -1386,8 +1386,17 @@ test("#4846 (flag on): støj-seedet følger løbsdagen, ikke datoen (A3)", async
   const a = await runDay(dayA, { gameDay: 12 });
   const b = await runDay(dayB, { gameDay: 13 });
 
-  assert.notEqual(
-    a.report.riders[0].score, b.report.riders[0].score,
+  // #4851: rapportens `score` er afrundet til 2 decimaler og er derfor en for
+  // grov proxy for seedet — to forskellige støj-udfald kan lande på samme
+  // afrundede tal. Vi sammenligner i stedet den PERSISTEREDE fremdrift, som er
+  // rå floats, og kræver at MINDST én evne adskiller sig.
+  const progressA = a.report.riders[0];
+  const progressB = b.report.riders[0];
+  assert.ok(
+    progressA.score !== progressB.score
+      || JSON.stringify(progressA.gains) !== JSON.stringify(progressB.gains)
+      || dayA.rider_derived_abilities.some((row, i) => JSON.stringify(row.ability_progress)
+        !== JSON.stringify(dayB.rider_derived_abilities[i]?.ability_progress)),
     "to løbsdage samme kalenderdato må ikke give identisk udfald (seed = sæson + løbsdag)",
   );
   assert.equal(raceDaySeedKey({ seasonId: SEASON_ID, gameDay: 12 }), `${SEASON_ID}#gd12`);

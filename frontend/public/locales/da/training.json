@@ -277,5 +277,18 @@
     "save": "Gem dag",
     "bulkSetDay": "Sæt dag",
     "bulkWholeDay": "Hele dagen"
+  },
+  "score": {
+    "column": "Score",
+    "raceDay": "Løb",
+    "sparkAria": "Træningsscore, seneste 7 dage: {name}",
+    "factor_intensity": "Passet",
+    "factor_focusMatch": "Fokus-match",
+    "factor_condition": "Form og træthed",
+    "factor_coach": "Træneren",
+    "factor_facility": "Faciliteterne",
+    "factor_potential": "Talentet",
+    "factor_youth": "Alderen",
+    "factor_noise": "Dagen"
   }
 }
