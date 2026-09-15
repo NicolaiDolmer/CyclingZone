@@ -19,8 +19,9 @@
 // fortsat ALDRIG udledes af `scheduled_at`.
 //
 // MEKANIKKEN: TOMME LOEBSDAGE, IKKE FLERE LOEB. En division der naturligt lander paa 56
-// loebsdage faar de manglende 24 som loebsdage UDEN loeb - rene traeningsdage. Loebene
-// selv roeres ikke: samme antal, samme typefordeling, samme overlap-struktur.
+// loebsdage faar resten op til maalet som loebsdage UDEN loeb - rene traeningsdage. Loebene
+// selv roeres ikke: samme antal, samme typefordeling, samme overlap-struktur. Ejeren
+// bekraeftede det ordret 15/9: "jeg vil ikke have at dette laver om i loebskalenderen".
 //
 // HVOR EN TOM LOEBSDAG MAA LIGGE (den bindende begraensning). Ejer-reglen 25/8 siger at et
 // loebs loebsdage ligger I TRAEK ("Loebsdag 4-5-6-7"), og kun Grand Tours har hviledage
@@ -41,18 +42,36 @@
 /**
  * Maalet pr. saeson (antal loebsdage paa `game_day`-aksen, ens i alle fire divisioner).
  *
- * TALLET ER MAALT, IKKE VALGT PAA FORNEMMELSE: 80 er D1's EGET naturlige antal loebsdage i
- * S4-dry-runnet 11/9 (28 loebsdatoer, density 5, cap 3, 140 etaper). Maalet kan ikke
- * saettes LAVERE end den hoejeste divisions naturlige antal, fordi en division ikke kan
- * presses sammen paa loebsdags-aksen uden at bryde andre laaste regler: D1's Grand Tours
- * skal have 21 etaper inden for MAX_GT_SPAN_DAYS kalenderdage, og det kraever netop de
- * mange loebsdage pr. kalenderdag. Derfor er maalet = D1's naturlige antal, og de tre
- * andre divisioner fyldes OP til det.
+ * TALLET ER EN EJER-BESLUTNING, IKKE ET SOEGERESULTAT (15/9, TRAINING_RULES.md §13.3
+ * beslutning 2, og #4850's kommentar 15/9): 140 loebsdage pr. saeson i ALLE fire
+ * divisioner = 28 loebsdatoer x D1's 5 slots. Antallet af LOEB pr. division er uroert
+ * ("jeg vil ikke have at dette laver om i loebskalenderen"); de ekstra loebsdage er rene
+ * traeningsdage.
+ *
+ * FOER 15/9 stod her 80 - D1's EGET naturlige antal loebsdage i S4-dry-runnet 11/9. Det
+ * tal var gulvet (maalet kan ikke saettes LAVERE end den hoejeste divisions naturlige
+ * antal, for en division kan ikke presses sammen paa loebsdags-aksen uden at bryde andre
+ * laaste regler). 140 er loftet: hver af de 28 loebsdatoer baerer D1's 5 slots.
+ *
+ * MAALT VAEG (dry-run 15/9, S4, samme katalog som PR #5169's groenne 80-koersel):
+ * D2/D3/D4 naar 140 uden problemer, men D1 naar det IKKE - den falder tilbage til sine
+ * naturlige 80. Aarsagen er MAX_GT_STAGES_PER_DAY = 4 (#4103) i raceCalendarLanePacker.js:
+ * en kalenderdato der ligger HELT inde i et Grand Tours spaend kan kun baere 4 loebsdage,
+ * fordi hver loebsdag i spaendet baerer praecis een GT-etape og datoen hoejst maa have 4
+ * GT-etaper. D1 har tre GT'er a 21 etaper, som hver fylder praecis 6 kalenderdatoer
+ * (ceil(21/4) = 6 = MAX_GT_SPAN_DAYS), altsaa 18 af saesonens 28 datoer. Maalt bekraeftelse:
+ * 28 x 4 = 112 loebsdage loeser i ALLE fire divisioner; 140 loeser ikke for D1 - hverken
+ * med 20x skridtbudget (40 mio.) eller med et tomme-loebsdags-budget paa 10 pr. kalenderdag.
+ * Budgettet og skridtloftet er altsaa IKKE bindingen; MAX_GT_STAGES_PER_DAY er.
+ *
+ * Det tal staar her uae­ndret som ejerens beslutning. Skal D1 naa 140, er valget ejerens:
+ * enten haeves MAX_GT_STAGES_PER_DAY til 5 (en laast GT-regel, #4103), eller maalet
+ * saenkes til 112. Se CALENDAR_RULES.md §1d.
  *
  * Saetter du en ny saeson ind her, skal tallet efterregnes mod et dry-run af netop den
  * saesons D1-pakning (CALENDAR_RULES.md §1d) - ikke arves fra S4.
  */
-export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 80 });
+export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 140 });
 
 /**
  * Divisionerne der skal have samme antal loebsdage. Ikke udledt af TIER_DENSITY, fordi

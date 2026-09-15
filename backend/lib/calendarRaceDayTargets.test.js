@@ -38,7 +38,11 @@ test("resolveCommonRaceDayTarget: saesonens eget maal slaar det maalte", () => {
   const r = resolveCommonRaceDayTarget({ axisByTier: { 1: 80, 2: 56, 3: 56, 4: 56 }, season: 4 });
   assert.equal(r.target, SEASON_RACE_DAY_TARGET[4]);
   assert.equal(r.source, "saeson 4");
-  assert.deepEqual(r.deficitByTier, { 1: 0, 2: 24, 3: 24, 4: 24 });
+  // Ejer-beslutning 15/9 (TRAINING_RULES.md §13.3): S4-maalet er 140 = 28 loebsdatoer x
+  // D1's 5 slots, saa ALLE fire divisioner har et underskud at fylde med traeningsdage -
+  // ogsaa D1, der foer 15/9 ramte maalet naturligt.
+  assert.equal(SEASON_RACE_DAY_TARGET[4], 140);
+  assert.deepEqual(r.deficitByTier, { 1: 60, 2: 84, 3: 84, 4: 84 });
   assert.deepEqual(r.impossibleTiers, []);
 });
 
