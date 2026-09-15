@@ -38,7 +38,11 @@ dotenv.config({ path: join(REPO_ROOT, "backend", ".env"), quiet: true });
 const args = new Set(process.argv.slice(2));
 const JSON_OUT = args.has("--json");
 const daysArg = [...args].find((a) => a.startsWith("--days="));
-const WINDOW_DAYS = daysArg ? parseInt(daysArg.split("=")[1], 10) : 14;
+const WINDOW_DAYS = daysArg ? Number(daysArg.split("=")[1]) : 14;
+if (!Number.isInteger(WINDOW_DAYS) || WINDOW_DAYS < 1) {
+  console.error(`--days skal være et positivt heltal, fik "${daysArg?.split("=")[1]}".`);
+  process.exit(1);
+}
 
 const TARGET_ABILITIES = ["cobblestone", "flat", "aggression"];
 const REFERENCE_ABILITIES = ["climbing", "punch", "tempo"];
