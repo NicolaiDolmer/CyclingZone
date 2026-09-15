@@ -799,6 +799,18 @@ export default function TrainingPage() {
   // CSS sticky i Fuld tabel", parallel til den skriftlige undtagelse #5124
   // giver sæsonmatricen.
   const rosterScrollerClass = isMobile && !rosterMobile.fullTable ? MOBILE_SCROLLER : SCROLLER;
+  // #5124 ejer-fund 15/9: `<td>`'s browser-default er `vertical-align: middle`.
+  // Navnecellen kan nu blive markant højere end de andre celler i rækken (2-linjers
+  // navn + op til 4-linjers type/alder/form/træthed-underlinje, alt sammen wrappet
+  // for D-047's "ingen vandret scroll"). De ANDRE, kortere celler (checkbox,
+  // Fokus-knappen, Skift dag-knapperne) centrerede sig derfor lodret i den nu høje
+  // række og landede visuelt midt inde i navnecellens ombrudte undertekst i stedet
+  // for øverst ved navnet — set af ejeren som "overlap i rytter-cellen" på både
+  // Træning og Transfers. Kun et layout-spørgsmål (ingen elementer flyttede sig
+  // fysisk uden for deres egen kolonne) — align-top løser det uden at ændre
+  // kolonnebredder. Kun nødvendigt når navnet rent faktisk kan wrappe (mobil-
+  // standardtilstanden); "Fuld tabel" og desktop beholder browser-default.
+  const rosterMobileWrapAlign = isMobile && !rosterMobile.fullTable ? "align-top" : "";
   // "day" er ÉN chip-nøgle men TO fysiske kolonner (Dag + Skift dag, samme
   // <th>-gate, se showRosterCol("day") ovenfor) — colSpan tæller derfor fysiske
   // kolonner pr. nøgle, ikke antal nøgler, ellers driver gruppe-header- og
@@ -933,7 +945,7 @@ export default function TrainingPage() {
       <tr className={`${trClass(null)} ${isSelected ? "bg-cz-accent/5" : ""}`}>
         {/* Multi-select — sticky sammen med navnekolonnen (#2446), fast w-10 så
             offsettet på navnekolonnen (left-10) matcher præcis. */}
-        <td className="border-t border-cz-border px-2 py-3 w-10 sticky-name-cell sticky left-0 z-sticky">
+        <td className={`border-t border-cz-border px-2 py-3 w-10 sticky-name-cell sticky left-0 z-sticky ${rosterMobileWrapAlign}`}>
           <input
             type="checkbox"
             checked={isSelected}
@@ -949,7 +961,7 @@ export default function TrainingPage() {
             (#2849 bølge 4 anti-slop) — den opake .sticky-name-cell-baggrund + 1px
             border-r ER den kanoniske sticky-first-column-recipe (T2). */}
         <td
-          className={`border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-sticky border-r border-cz-border ${
+          className={`border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-sticky border-r border-cz-border ${rosterMobileWrapAlign} ${
             isMobile && !rosterMobile.fullTable ? "w-full max-w-0" : ""
           }`}
         >
@@ -1032,7 +1044,7 @@ export default function TrainingPage() {
             #3747 beskriver, hvor håndværk (tag 0,95) og anden rolle (0,70)
             lander sammen. Panelet viser kun de påstande der kan efterprøves. */}
         {showRosterCol("day") && (
-        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[15vw]" : ""}`}>
+        <td className={`${tdClass({})} ${rosterMobileWrapAlign} ${isMobile && !rosterMobile.fullTable ? "max-w-[15vw]" : ""}`}>
           {/* #3721: DELT FocusOpenButton — samme komponent/mutation som
               Development-fanens rækker bruger (ingen forgrenet fokus-logik). */}
           <FocusOpenButton
@@ -1054,7 +1066,7 @@ export default function TrainingPage() {
         // #5124: `max-w` på mobil-standardtilstanden — uden den æder de to
         // tekst-tunge datakolonner (denne + "Denne sæson") navnekolonnens
         // plads i auto-table-layout'et (se navnecellens kommentar ovenfor).
-        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[19vw]" : ""}`}>
+        <td className={`${tdClass({})} ${rosterMobileWrapAlign} ${isMobile && !rosterMobile.fullTable ? "max-w-[19vw]" : ""}`}>
           {plan?.focus ? (
             <div
               role="group"
@@ -1141,7 +1153,7 @@ export default function TrainingPage() {
             evne aldrig steg igen — et løfte den nye model gør usandt (#3649). */}
         {showRosterCol("receipt") && (
         <td
-          className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[30vw]" : ""}`}
+          className={`${tdClass({})} ${rosterMobileWrapAlign} ${isMobile && !rosterMobile.fullTable ? "max-w-[30vw]" : ""}`}
           data-tour={isFirst ? "training-next-up" : undefined}
         >
           {/* #5124: min-w droppes på mobil-standardtilstanden (ingen vandret
@@ -1185,7 +1197,7 @@ export default function TrainingPage() {
             badges-kolonne foldes heller ikke væk i portræt (#3194), den scroller
             vandret som resten af tabellen. */}
         {showRosterCol("status") && (
-        <td className={`${tdClass({})} ${isMobile && !rosterMobile.fullTable ? "max-w-[13vw]" : ""}`}>
+        <td className={`${tdClass({})} ${rosterMobileWrapAlign} ${isMobile && !rosterMobile.fullTable ? "max-w-[13vw]" : ""}`}>
           <div className="flex flex-wrap gap-1">
             {/* #3761: Status-cellen viste ÉN af de badges rytteren kan bære.
                 De to der mangler er præcis dem der afgør om træningen
@@ -1221,7 +1233,7 @@ export default function TrainingPage() {
             sin egen kolonne, ligesom akademi-badgen ovenfor). Ingen `hidden sm:table-
             cell` — skal virke på mobil ligesom badges-kolonnen. */}
         {showRosterCol("weekplan") && (
-        <td className={tdClass({})}>
+        <td className={`${tdClass({})} ${rosterMobileWrapAlign}`}>
           <div className="flex flex-col items-start gap-1">
             <button
               type="button"

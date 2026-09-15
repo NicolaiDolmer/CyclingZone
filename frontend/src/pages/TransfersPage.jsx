@@ -962,6 +962,13 @@ function MarketRow({
   // mod listing.asking_price i stedet for auktionens current_price — paritet
   // mellem de to sider af samme marked.
   const valueDelta = computeBidValueDelta(listing.asking_price, rider);
+  // #5124 ejer-fund 15/9: navnet kan nu wrappe til 2 linjer på mobil (RiderNameCell
+  // wrap=true), og `<td>`'s browser-default `vertical-align: middle` centrerede
+  // derfor Værdi/Udbudspris/Handling-cellernes ENKELT-linje-indhold lodret midt i
+  // den nu 2-linjers række — samme linje som navnets 2. linje, ikke øverst ved
+  // linje 1. Set af ejeren som rytternavnet og Værdi-tallet der stod OVEN I
+  // hinanden. Kun et lodret layout-spørgsmål, align-top løser det.
+  const mobileWrapAlign = isMobile && !showStatCols ? "align-top" : "";
 
   return (
     <>
@@ -973,8 +980,15 @@ function MarketRow({
             giver allerede opak cellebund; border-r er den ene hairline-rule
             (cz-table-recipen), samme fix som AuctionsPage bølge 1. */}
         <td
-          className={`px-3 py-2.5 sticky-name-cell sticky left-0 z-table-col border-r border-cz-border ${
-            isMobile && !showStatCols ? "w-full max-w-0" : ""
+          className={`px-3 py-2.5 sticky-name-cell sticky left-0 z-table-col border-r border-cz-border ${mobileWrapAlign} ${
+            // #5124 ejer-fund 15/9: `max-w-0` alene gav navnekolonnen intet BUNDMÅL —
+            // et enkelt ord ("Sander") rendrede bredere end den plads Værdi/Udbudspris/
+            // Handling (nu strammet, se deres celler nedenfor) reelt levnede den, og
+            // teksten overlappede visuelt ind i Værdi-kolonnen. `min-w-[72px]` er et
+            // gulv, ikke et mål — table-layout:auto vokser stadig kolonnen til det
+            // faktiske indhold; gulvet forhindrer bare at den kollapser under det korte
+            // ord der ikke kan brydes yderligere.
+            isMobile && !showStatCols ? "w-full max-w-0 min-w-[72px]" : ""
           }`}
         >
           <div className={`flex items-center gap-2 ${isMobile && !showStatCols ? "min-w-0" : ""}`}>
@@ -1020,14 +1034,18 @@ function MarketRow({
         {/* #5124: max-w på mobil-standardtilstanden — uden den æder Værdi/
             Udbudspris (ingen af dem havde en bredde-grænse) navnekolonnens
             plads i tabellens auto-layout, præcis samme fejlklasse som
-            TrainingPage.jsx's roster (se navnecellens kommentar ovenfor). */}
-        <td className={`px-3 py-2.5 text-right ${isMobile && !showStatCols ? "max-w-[22vw]" : ""}`}>
+            TrainingPage.jsx's roster (se navnecellens kommentar ovenfor).
+            #5124 ejer-fund 15/9: 22vw/26vw levnede stadig for lidt til navnets
+            gulv (min-w-[72px] ovenfor) + den FASTE Handling-knap (nu strammet
+            nedenfor) — strammet til 16vw/20vw, verificeret mod de længste
+            reelle tal (7-cifrede beløb bryder pænt til 2 linjer, ingen klipning). */}
+        <td className={`px-3 py-2.5 text-right ${mobileWrapAlign} ${isMobile && !showStatCols ? "max-w-[16vw]" : ""}`}>
           <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderMarketValue(rider))}</span>
         </td>
         <td className="px-3 py-2.5 text-right hidden sm:table-cell">
           <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderSalary(rider))}</span>
         </td>
-        <td className={`px-3 py-2.5 text-right ${isMobile && !showStatCols ? "max-w-[26vw]" : ""}`}>
+        <td className={`px-3 py-2.5 text-right ${mobileWrapAlign} ${isMobile && !showStatCols ? "max-w-[20vw]" : ""}`}>
           <span
             className={`text-cz-accent-t font-mono text-sm font-bold ${
               isMobile && !showStatCols ? "" : "whitespace-nowrap"
