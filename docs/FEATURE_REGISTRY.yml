@@ -311,11 +311,22 @@ features:
     area: training
     title_en: Training score 1-99
     title_da: Træningsscore 1-99
-    state: building
+    state: beta
+    flag: training_score_visible
     ssot: docs/TRAINING_RULES.md
     epic: 4851
     verified: 2026-09-15
-    note: Motoren skriver rækker fra dag 1; visningen venter på flaget training_score_visible (off).
+    note: PR #5261 merget 15/9; flag beta (admin + beta-testere). Flip til on = ejer.
+
+  - id: training-hard-sessions-cobbles-echelon-attack
+    area: training
+    title_en: Hard sessions for cobbles, echelons and attacks
+    title_da: Hårde sessioner for brosten, vifter og angreb
+    state: live
+    ssot: docs/TRAINING_RULES.md
+    epic: 4874
+    verified: 2026-09-15
+    note: PR #5265 merget 15/9; TRAINING_RULES §3.2.
 
   - id: season-fatigue-reset
     area: training
@@ -623,10 +634,10 @@ features:
     area: comms
     title_en: Discord welcome inbox notification
     title_da: Discord-velkomstbesked i indbakken
-    state: beta
+    state: live
     epic: 5130
     verified: 2026-09-15
-    note: Sweep (discordWelcomeSweep.js) sender én gang pr. hold ved draft-tærsklen eller 24t-fallback; PR #5211 hærdes (haerd-foerst-saa-merge) inden merge.
+    note: PR #5211 merget 15/9; én besked pr. nyt hold, eksisterende hold backfillet.
 
   # --- billing -------------------------------------------------------------
   - id: cz-pro
