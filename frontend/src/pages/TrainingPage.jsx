@@ -42,6 +42,7 @@ import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistant
 import DevelopmentGlyph from "../components/development/DevelopmentGlyph.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
+import TrainingScoreSparkline from "../components/training/TrainingScoreSparkline.tsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Button, Select, Checkbox,
@@ -78,7 +79,9 @@ const TRAINING_TABS = ["today", "weekplan", "development", "history"];
 // #3815: alder er ligeledes numerisk og følger derfor samme desc-først-konvention.
 // Spørgsmålet man stiller kolonnen her er "hvem er for gammel til at investere
 // hård træning i?", så ét klik skal give de ældste øverst.
-const ROSTER_DESC_FIRST = new Set(["age", "form", "fatigue", "status"]);
+// #4851: Score er numerisk og stiller spoergsmaalet "hvem fik det bedste pas"
+// — ét klik skal give de hoejeste oeverst, samme desc-foerst-konvention.
+const ROSTER_DESC_FIRST = new Set(["age", "form", "fatigue", "score", "status"]);
 
 // #3706: Status-kolonnens comparator. Overskriften var et bart <th> uden
 // SortTh, så et klik gjorde bogstavelig talt ingenting (@cybersimon, Discord
@@ -395,8 +398,11 @@ export default function TrainingPage() {
     savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
     weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan,
     riderWeekPlans, savingRiderWeekPlanId, setRiderWeekPlan, clearRiderWeekPlan,
+    // #4851: null naar training_score_visible er off ⇒ kolonnen findes ikke.
+    trainingScore,
     racingToday,
   } = training;
+  const scoreVisible = trainingScore != null;
 
   // #2578: dagens vundne hele point pr. rytter fra dagens kørsel — så roster-
   // rækkens progress-celle kan vise "+N i dag" når baren netop har wrappet efter
@@ -742,6 +748,10 @@ export default function TrainingPage() {
   // og ind i sin egen kolonne, jf. ejer-feedback).
   // #3815: +1 kolonne (Alder).
   const ROSTER_COLS = 11;
+  // #4851: Score-kolonnen laegges oveni naar flaget er on. Basistallet ovenfor
+  // er pinnet af TrainingPage.wiring.test.js (#3300-rework), saa den betingede
+  // kolonne bor i sit eget tal i stedet for at goere basistallet dynamisk.
+  const ROSTER_COLS_TOTAL = ROSTER_COLS + (scoreVisible ? 1 : 0);
 
   // Accessors til roster-sortering. form/fatigue bor i condition-map'et (ikke på
   // rytteren), så closure over condition — useMemo holder referencen stabil pr.
@@ -760,7 +770,14 @@ export default function TrainingPage() {
     // ikke drive fra det man ser.
     status: (r) => (r.is_academy ? STATUS_ACADEMY_WEIGHT : 0)
       + (injuryDaysLeft(condition[r.id]?.injured_until, today) > 0 ? STATUS_INJURED_WEIGHT : 0),
-  }), [condition, today, seasonYear]);
+    // #4851: dagens tal. Ryttere uden et tal (hvile, loebsdag, ingen koersel
+    // endnu) giver null, og sortRows laegger null'er sidst uanset retning — de
+    // kan derfor ikke forurene toppen af en "hvem traente bedst"-sortering.
+    score: (r) => {
+      const value = trainingScore?.[r.id]?.today;
+      return Number.isFinite(value) ? value : null;
+    },
+  }), [condition, today, seasonYear, trainingScore]);
   const rosterAccessor = rosterSort.sort ? rosterAccessors[rosterSort.sort] : null;
   const sortRoster = (list) => sortRows(list, rosterAccessor, rosterSort.sortDir);
 
@@ -803,6 +820,9 @@ export default function TrainingPage() {
     const highRisk = !injured && (cond.risk ?? 0) >= 0.05;
     const busy = savingId === rider.id || bulkApplying;
     const isSelected = selected.has(rider.id);
+    // #4851: dagens traeningsscore + de sidste 7 dage. undefined naar flaget er
+    // off (trainingScore er null) — cellen tegnes saa slet ikke.
+    const riderScore = trainingScore?.[rider.id] ?? null;
     // #3709 trin 1: kvitteringen for fokussets 2-3 evner. Erstatter den ene
     // aggregerede progress-bar, som var rod-årsagen bag #3639: baren viste kun
     // evnen tættest på gennembrud, så en låst evne ved siden af var usynlig.
@@ -912,6 +932,11 @@ export default function TrainingPage() {
               `${t("colAge")} ${ageForSeason(rider.birthdate, seasonYear) ?? "—"}`,
               `${t("form")} ${cond.form ?? "—"}`,
               `${t("fatigue")} ${cond.fatigue ?? "—"}`,
+              // #4851: scoren staar ogsaa i portraet-underlinjen, saa dagens
+              // vigtigste tal kan laeses uden vandret scroll (D-047's princip).
+              scoreVisible && Number.isFinite(riderScore?.today)
+                ? `${t("score.column")} ${riderScore.today}`
+                : null,
             ].filter(Boolean).join(" · ")}
           </div>
         </td>
@@ -929,6 +954,35 @@ export default function TrainingPage() {
         <td className={`${tdClass({ numeric: true, compact: true })} hidden sm:table-cell`}>
           <span className="text-cz-2">{ageForSeason(rider.birthdate, seasonYear) ?? "—"}</span>
         </td>
+
+        {/* #4851: Score — dagens tal + de sidste 7 dage. Loebsdage viser
+            "loeb" uden tal og efterlader et hul i kurven (spec §4.4).
+            Tabular figures, saa cifrene flugter lodret ned gennem truppen. */}
+        {scoreVisible && (
+          <td className={tdClass({ numeric: true, compact: true })}>
+            {riderScore?.todayIsRaceDay && !Number.isFinite(riderScore?.today) ? (
+              <span className="font-data text-3xs uppercase tracking-[.06em] text-cz-3">
+                {t("score.raceDay")}
+              </span>
+            ) : Number.isFinite(riderScore?.today) ? (
+              <div className="flex flex-col items-end gap-1">
+                <span className="font-mono tabular-nums text-sm font-bold leading-none text-cz-1">
+                  {riderScore.today}
+                </span>
+                {(riderScore.spark?.length ?? 0) > 1 && (
+                  <TrainingScoreSparkline
+                    points={riderScore.spark}
+                    label={t("score.sparkAria", { name: `${rider.firstname} ${rider.lastname}` })}
+                    width={64}
+                    height={18}
+                  />
+                )}
+              </div>
+            ) : (
+              <span className="text-cz-3 text-xs">—</span>
+            )}
+          </td>
+        )}
 
         {/* #3721: fokus-vælgeren er et panel, ikke en <select> (ejer-godkendt
             14/8). Cellen bar før fire signaler i 184 px — fokussets navn, et
@@ -1135,7 +1189,7 @@ export default function TrainingPage() {
           Rører ALDRIG fokus; overstyrer KUN holdets ugerytme for netop denne rytter. */}
       {isExpanded && (
         <tr className="bg-cz-subtle/40">
-          <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-3">
+          <td colSpan={ROSTER_COLS_TOTAL} className="border-t border-cz-border px-4 py-3">
             <div className="flex flex-col gap-2">
               <p className="text-[13px] text-cz-3 leading-relaxed">
                 {t("individualWeekPlanIntro", { name: `${rider.firstname} ${rider.lastname}` })}
@@ -1631,6 +1685,18 @@ export default function TrainingPage() {
                         className={`${thClass({ numeric: true, compact: true })} hidden sm:table-cell`}>
                         {t("colAge")}
                       </SortTh>
+                      {/* #4851: Score. Ejer-beslutning 6 (6/9): dagens tal +
+                          de sidste 7 dage som monokrom sparkline, sortérbar.
+                          IKKE `hidden sm:table-cell` — tallet er et af dem
+                          spilleren traeffer dagens valg paa, saa det skal kunne
+                          ses i portraet (D-047's princip; rosteret er ikke en
+                          <DataTable>, saa chip-mekanikken gaelder ikke her). */}
+                      {scoreVisible && (
+                        <SortTh sortKey="score" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                          className={thClass({ numeric: true, compact: true })}>
+                          {t("score.column")}
+                        </SortTh>
+                      )}
                       {/* #3762: kolonnerne hedder nu det de indeholder. Før stod
                           der "Fokus" og "Intensitet" — to akser der kunne modsige
                           hinanden. Nu er der én dag, og en hurtig vej til at
@@ -1664,7 +1730,7 @@ export default function TrainingPage() {
                       ? groups.map((group, gi) => (
                           <Fragment key={group.type}>
                             <tr className="bg-cz-subtle/60">
-                              <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-2">
+                              <td colSpan={ROSTER_COLS_TOTAL} className="border-t border-cz-border px-4 py-2">
                                 <span className="font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-2">
                                   {groupLabel(group.type)}
                                 </span>

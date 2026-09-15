@@ -266,6 +266,12 @@
     "sessionNote_vo2max_punch": "Climbing is not trained. Punch gains more instead.",
     "session_threshold": "Threshold",
     "session_sprint": "Sprint",
+    "session_cobbled_sectors": "Cobbled Sectors",
+    "session_echelon_drills": "Echelon Drills",
+    "session_attack_repeats": "Attack Repeats",
+    "sessionNote_cobbled_sectors": "Built for the pavé. Cobbles gains most, durability and positioning come along for the price.",
+    "sessionNote_echelon_drills": "Built for crosswinds. Flat gains most, positioning and durability come along for the price.",
+    "sessionNote_attack_repeats": "Built for racing aggressively. Aggression gains most, punch and acceleration come along for the price.",
     "session_technique": "Technique",
     "session_aero": "Aero",
     "session_loebslaere": "Race craft",
@@ -277,5 +283,18 @@
     "save": "Save day",
     "bulkSetDay": "Set day",
     "bulkWholeDay": "Whole day"
+  },
+  "score": {
+    "column": "Score",
+    "raceDay": "Race",
+    "sparkAria": "Training score, last 7 days: {name}",
+    "factor_intensity": "Session",
+    "factor_focusMatch": "Focus match",
+    "factor_condition": "Form and fatigue",
+    "factor_coach": "Coach",
+    "factor_facility": "Facilities",
+    "factor_potential": "Talent",
+    "factor_youth": "Age",
+    "factor_noise": "The day"
   }
 }

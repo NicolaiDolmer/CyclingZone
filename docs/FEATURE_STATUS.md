@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-65 poster: live 43 · beta 3 · dormant 5 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+66 poster: live 43 · beta 3 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -59,6 +59,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Daily training (`daily-training`) | live | `daily_training_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
 | Peak planner (`peak-planner`) | live | `peak_planner_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | #2224 | 2026-09-06 | - |
 | Season fatigue and form reset (`season-fatigue-reset`) | live | `season_fatigue_reset_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
+| Training score 1-99 (`training-score`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4851 | 2026-09-15 | Motoren skriver rækker fra dag 1; visningen venter på flaget training_score_visible (off). |
 | Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4846 | 2026-09-15 | Fundament merget 15/9 bag flag (off); design låst §13.3; B4-udløser mangler. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 

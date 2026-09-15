@@ -262,6 +262,13 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
   // flages automatisk som ægte fund.
   ["market_value_level_correction_apply_log", { flagKey: "market_value_level_correction_youth_auction_start_rate" }],
   ["market_value_level_correction_rider_receipts", { flagKey: "market_value_level_correction_youth_auction_start_rate" }],
+  // Traening pr. loebsdag (#4846, PR #5205 merged 15/9 bag flag): historik-tabellen
+  // skrives KUN af dailyTrainingEngine.js naar training_tick_per_race_day er
+  // taendt (ejer-plan: live senest S4 28/9). Flaget er seedet som "false" i
+  // app_config (migration 2026-09-14-4846), derfor offValues. Taendes flaget og
+  // tabellen forbliver tom efter foerste loebsdags-tick, er det en aegte bug og
+  // Detector A flager som normalt. Fundet 15/9: auditen var roed paa ALLE PR'er.
+  ["rider_ability_race_day_history", { flagKey: "training_tick_per_race_day", offValues: ["false", "0"] }],
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
