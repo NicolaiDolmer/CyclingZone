@@ -21,6 +21,6 @@
 - **GDD-regler (ejer 10/9):** ét område pr. kort · ÉT samlet før/efter-billede før kortet · genåbn aldrig låste beslutninger.
 - **Mekanik:** byg KUN via wave.js (4 laner, semafor 2, hook; frys = commit ≥45 min + tavshed, spor 120/180 min); merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`; stopper på pending checks og på rød Deploy verify: undersøg FØR næste merge); migrationer applies af auto-migrate.yml, Claude post-verificerer; CI tavs på PR = merge-konflikt; go-kort på `gh pr diff` + billede; workers rører aldrig `docs/NOW.md`; `gh --body` aldrig med backticks, brug `--body-file`. `Get-Date` FØR hver logning.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable) 15/9 fra kl. 08:xx - kort session: træningsdesign-kort, PR-gennemgang, GitHub-audit, MASTERPLAN + artifact.
 
 _Historik i git-log, issue-tråde + docs/audits/._
