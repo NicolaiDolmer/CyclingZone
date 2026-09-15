@@ -45,8 +45,19 @@
 // det var en sideeffekt af at hver opskrift blev bredere, ikke et designmål, og
 // vagten er der for at sideeffekten ikke kan krybe tilbage ubemærket.
 
+// #5268 — de to nye mentale evner får hver sin plads (vagt 1 kræver ≥1 opskrift).
+// Vægten er 1 i begge tilfælde: opskrifterne er RATING-tallet spilleren ser, og
+// ingen af de to evner flytter et løb endnu (motor + mentor ligger bag flag i et
+// senere spor). En tungere vægt ville lade et tal ingen mekanik bruger dominere
+// ratingen. Placeringen følger spec §3.1:
+//   teamwork   → hjælper-/leadout-rollerne: `rouleur` (leadout-manden, har allerede
+//                sprint 1 af netop den grund) og `climber` (bjerg-domestiquen).
+//   leadership → kaptajn-rollerne: `gc` (etapeløbs-kaptajnen) og `sprinter`
+//                (sprint-toget kører på hans kald).
+// Vagt 3 (ingen opskrift må være delmængde af en anden) er verificeret efter
+// tilføjelsen — de fire udvidede sæt skaber ingen ny delmængde-relation.
 export const DISPLAY_RECIPES = Object.freeze([
-  { key: "sprinter", weights: Object.freeze({ sprint: 4, acceleration: 3, positioning: 2, flat: 2, durability: 1 }) },
+  { key: "sprinter", weights: Object.freeze({ sprint: 4, acceleration: 3, positioning: 2, flat: 2, durability: 1, leadership: 1 }) },
   { key: "tt", weights: Object.freeze({ time_trial: 5, tempo: 2, endurance: 1, durability: 1, positioning: 1 }) },
   // punch 1 er IKKE i spec §3's udkast — den er tilføjet 13/8 fordi vagt 3 fandt
   // `climber ⊆ gc` på sin allerførste kørsel: bjergrytterens seks evner lå alle
@@ -54,12 +65,12 @@ export const DISPLAY_RECIPES = Object.freeze([
   // fire par. punch findes ikke i gc-opskriften og bryder derfor delmængden.
   // Valget er tematisk (en klatrer angriber på stigningen) og trækker tættere på
   // i dag, ikke længere væk: den gamle formel havde punch 1 hos climber i forvejen.
-  { key: "climber", weights: Object.freeze({ climbing: 5, tempo: 2, endurance: 2, recovery: 1, durability: 1, descending: 1, punch: 1 }) },
+  { key: "climber", weights: Object.freeze({ climbing: 5, tempo: 2, endurance: 2, recovery: 1, durability: 1, descending: 1, punch: 1, teamwork: 1 }) },
   { key: "puncheur", weights: Object.freeze({ punch: 5, tempo: 2, acceleration: 1, climbing: 1, positioning: 1, endurance: 1 }) },
   { key: "brostensrytter", weights: Object.freeze({ cobblestone: 5, flat: 2, durability: 2, positioning: 1, punch: 1, endurance: 1 }) },
-  { key: "rouleur", weights: Object.freeze({ flat: 4, endurance: 2, tempo: 2, durability: 1, positioning: 1, recovery: 1, sprint: 1 }) },
+  { key: "rouleur", weights: Object.freeze({ flat: 4, endurance: 2, tempo: 2, durability: 1, positioning: 1, recovery: 1, sprint: 1, teamwork: 1 }) },
   { key: "baroudeur", weights: Object.freeze({ aggression: 4, endurance: 2, descending: 1, recovery: 1, punch: 1, flat: 1, tactics: 1 }) },
-  { key: "gc", weights: Object.freeze({ climbing: 3, time_trial: 3, recovery: 2, endurance: 2, tempo: 2, durability: 1, descending: 1 }) },
+  { key: "gc", weights: Object.freeze({ climbing: 3, time_trial: 3, recovery: 2, endurance: 2, tempo: 2, durability: 1, descending: 1, leadership: 1 }) },
 ]);
 
 export const DISPLAY_RECIPE_KEYS = Object.freeze(DISPLAY_RECIPES.map((t) => t.key));

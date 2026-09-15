@@ -84,7 +84,8 @@ function applyContrast(out, { k = CONTRAST.k, floor = CONTRAST.floor } = {}) {
   return out;
 }
 
-// 15 synlige evner (§3). prolog merged ind i time_trial (§0.1 Beslutning 2).
+// De synlige evner (§3) — 17 efter #5268 (teamwork + leadership).
+// prolog merged ind i time_trial (§0.1 Beslutning 2).
 // #3665: udledt af evne-registrets `storageOrder` = visnings-/lagrings-orden.
 // At tilføje en evne kræver nu én registry-post, ikke en jagt gennem tredive
 // filer — se docs/HOWTO_ADD_ABILITY.md.
@@ -116,7 +117,7 @@ export const FILL_TAIL_MAX_POTENTIALE = 2.5;
 // Disciplin-evne → primær PCM-stat (§3 "Kilde"). Bruges kun i FALLBACK-stien
 // (ingen fysiologi). prolog FJERNET. Ren 50-85 → 1-99-mapping.
 // #3665: udledt af registrets `derivation: { source: "pcm", stat }`. De tre evner
-// med `source: "skill"` (positioning, aggression, tactics) har ingen PCM-kilde og
+// med `source: "skill"` (positioning, aggression, tactics, teamwork, leadership) har ingen PCM-kilde og
 // optræder derfor bevidst ikke her — præcis som før.
 export const PRIMARY_STAT = REGISTRY_PRIMARY_STAT;
 
@@ -131,6 +132,64 @@ function pcmFrac(stat) {
 
 // Fraktion ∈ [0,1] → spil-score ∈ [1,99] (frac 0 → 1, frac 1 → 99).
 const scoreFrac = (f) => clamp(Math.round(1 + clamp(f, 0, 1) * 98), 1, 99);
+
+// ── MENTALE EVNER: EGEN PRIOR (#5268, ejer-beslutninger 15/9 på #3668) ───────
+//
+// Ordret fra ejeren 15/9: *"taktik og aggression må fremadrettet hverken bygge på
+// alder eller på en anden evne; de er egne evner med egen udvikling."*
+//
+// Hvad der var galt (docs/audits/2026-09-15-3668-ability-scale-investigation.md
+// §1.2/§1.3): de to formler lagde et ADDITIVT ALDERS-LED oveni en stat.
+//   tactics    = 0,55·experience + 0,45·aggressionFrac  → et aldersmålerur:
+//                median 14 ved 16-21 år, 57 ved 31-33 år, uden sammenhæng med kunnen.
+//                En 31-årig fik MINDST 55 i taktik uanset hvor dårlig han var.
+//   aggression = 0,85·pcmFrac(stat_ftr) + 0,15·youth    → +15 gratis point til unge.
+// Rapportens behandling C fjernede de to led og målte begge evner tilbage inde i
+// de ti fysiske evners eget spænd (median 12 / p90 29). Ejeren gik et skridt
+// længere end C: C beholdt `0,15·experience` i taktik — det er væk her.
+//
+// Hvad der er tilbage: hver mental evne har sin EGEN prior = rytterens egen
+// PROFIL (rå stats, aldrig en anden AFLEDT evne) + deterministisk støj. Støjen er
+// CENTRERET om 0, så den spreder uden at løfte medianen, og den er salted pr.
+// (rytter, evne), så to ryttere med identisk profil ikke får identiske mentale tal.
+//
+// Undtagelsen er `leadership`: alder er dér en LOVLIG faktor (spec L1 / GDD D-030
+// — lederskab er lavt hos unge og topper sent). Vægten er bevidst lille, netop
+// fordi et tungt alders-led er præcis den fejl taktik havde: gaten (G-A1) er at
+// median/p90 skal ligge i samme spænd som descending/positioning, og et
+// maturity-led over ~0,2 sprænger p90 alene på de 11 % ryttere der er 31+.
+//
+// PCM-AFHÆNGIGHEDEN ER LEGACY, IKKE EN NY BESLUTNING: ejeren sagde samme dag
+// *"intet skal være vægtet på PCM-stats mere."* Denne fil ER PCM-fallback-stien for
+// den EKSISTERENDE bestand (8.160 ryttere født af PCM-stats). Den nye, PCM-frie
+// fødselssti bygges i `fictionalRiderGenerator.js` (#5269); kontrakten mellem de to
+// spor er at REGISTRET er sandheden om hvilke evner der findes, og at #5269 giver
+// enhver mental evne den ikke kender en default-prior. Rør ikke den ene herfra.
+export const MENTAL_PRIOR = Object.freeze({
+  // Bredden på den centrerede støj i frac-rummet. 0,10 ≈ ±5 evne-point.
+  aggressionSpread: 0.10,
+  tacticsSpread: 0.14,
+  // Spec H2: "stor støj oveni" — holdarbejde må ikke kunne aflæses af profilen alene.
+  teamworkSpread: 0.20,
+  leadershipSpread: 0.10,
+  // Taktik: rytterens egen profil for at LÆSE et løb (fighter + nedkørsel).
+  // Vægtene er rapportens behandling C minus alders-leddet.
+  tacticsFighter: 0.60,
+  tacticsDescent: 0.40,
+  // Holdarbejde: domestique-profilen (flad motor + udholdenhed + modstandskraft).
+  // Ingen kobling til rå styrke (spec H2) — derfor ingen klatre-/sprint-stat.
+  teamworkFlat: 0.45,
+  teamworkStamina: 0.30,
+  teamworkResilience: 0.25,
+  // Lederskab: lille grundniveau + alder (den ene lovlige aldersfaktor) + lille
+  // profil-træk. Alders-vægten er loftet af G-A1, ikke af smag — se ovenfor.
+  leadershipBase: 0.04,
+  leadershipMaturity: 0.16,
+  leadershipProfile: 0.50,
+  // maturity = clamp((alder − 20) / (34 − 20), 0, 1): 20 → 0, 34+ → 1.
+  leadershipMaturityFrom: 20,
+  leadershipMaturityTo: 34,
+});
 
 // Deterministisk støj ∈ [0,1) fra rider_id (FNV-1a). Kun til skjult potentiale.
 function hashNoise(id) {
@@ -190,8 +249,10 @@ const hasPhysiology = (phys) =>
 // opts.pool:   accepteres for bagudkompat (v1/v2) men ignoreres.
 export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CALIBRATION.asOfYear } = {}) {
   const age = ageFrom(riderRow.birthdate, asOfYear);
-  const youth = clamp((32 - age) / (32 - 21), 0, 1);       // 21→1, 32→0
-  const experience = clamp((age - 20) / (31 - 20), 0, 1);  // 20→0, 31+→1
+  const youth = clamp((32 - age) / (32 - 21), 0, 1);       // 21→1, 32→0 — KUN hidden_potential
+  // #5268: `experience` er fjernet. Den fodrede udelukkende taktik-formlens
+  // alders-led, og det led er væk (se MENTAL_PRIOR). `leadership` bruger sin egen
+  // maturity-rampe med egne ankre, så de to ikke kan drive fra hinanden i det skjulte.
   const potRaw = Number(riderRow.potentiale);
   const potential = Number.isFinite(potRaw) ? clamp((potRaw - 1) / 5, 0, 1) : 0.4; // 1-6 → 0..1
 
@@ -235,13 +296,43 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
   if (fromPhysiology) applyContrast(out);
 
   // ── Tekniske/mentale ← skill-stats (skæv pr. arketype, §0.1 Beslutning 1) ────
-  const aggressionFrac = 0.85 * pcmFrac(riderRow.stat_ftr) + 0.15 * youth;
-  out.aggression  = scoreFrac(aggressionFrac);
+  const M = MENTAL_PRIOR;
+  const riderKey = riderRow.id ?? physiology.rider_id;
+  // Centreret støj ∈ [−spread/2, +spread/2], deterministisk pr. (rytter, evne).
+  const mentalNoise = (abilityKey, spread) => (hashNoise(`${riderKey}:${abilityKey}`) - 0.5) * spread;
+  // Lederskabets alders-rampe. Egne ankre, bevidst adskilt fra `youth`.
+  const maturity = clamp(
+    (age - M.leadershipMaturityFrom) / (M.leadershipMaturityTo - M.leadershipMaturityFrom), 0, 1,
+  );
+
   out.descending  = scoreFrac(pcmFrac(riderRow.stat_ned));
   out.cobblestone = scoreFrac(0.85 * pcmFrac(riderRow.stat_bro) + 0.15 * (out.durability / 99));
   out.positioning = scoreFrac(0.50 * pcmFrac(riderRow.stat_fl) + 0.30 * pcmFrac(riderRow.stat_ned) + 0.20 * pcmFrac(riderRow.stat_ftr));
-  out.tactics     = scoreFrac(0.55 * experience + 0.45 * aggressionFrac);
-  out.hidden_potential = scoreFrac(0.60 * potential + 0.25 * youth + 0.15 * hashNoise(riderRow.id ?? physiology.rider_id));
+
+  // Mentale evner — egen prior, ingen alder (undtagen leadership), ingen anden evne.
+  out.aggression = scoreFrac(
+    pcmFrac(riderRow.stat_ftr)
+    + mentalNoise("aggression", M.aggressionSpread),
+  );
+  out.tactics = scoreFrac(
+    M.tacticsFighter * pcmFrac(riderRow.stat_ftr)
+    + M.tacticsDescent * pcmFrac(riderRow.stat_ned)
+    + mentalNoise("tactics", M.tacticsSpread),
+  );
+  out.teamwork = scoreFrac(
+    M.teamworkFlat * pcmFrac(riderRow.stat_fl)
+    + M.teamworkStamina * pcmFrac(riderRow.stat_udh)
+    + M.teamworkResilience * pcmFrac(riderRow.stat_mod)
+    + mentalNoise("teamwork", M.teamworkSpread),
+  );
+  out.leadership = scoreFrac(
+    M.leadershipBase
+    + M.leadershipMaturity * maturity
+    + M.leadershipProfile * (0.5 * pcmFrac(riderRow.stat_fl) + 0.5 * pcmFrac(riderRow.stat_ftr))
+    + mentalNoise("leadership", M.leadershipSpread),
+  );
+
+  out.hidden_potential = scoreFrac(0.60 * potential + 0.25 * youth + 0.15 * hashNoise(riderKey));
 
   // #4311: evne-loft EFTER afledning for fyld-ryttere. Ligger sidst saa den fanger
   // ALLE seksten evner uanset kilde (fysiologi/PCM-fallback/skill-stat/alder/potentiale).
