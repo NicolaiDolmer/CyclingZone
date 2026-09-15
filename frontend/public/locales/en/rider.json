@@ -108,7 +108,10 @@
         "aero": "Aero",
         "tempo": "Tempo",
         "restitution": "Active recovery",
-        "loebslaere": "Race craft"
+        "loebslaere": "Race craft",
+        "cobbled_sectors": "Cobbled Sectors",
+        "echelon_drills": "Echelon Drills",
+        "attack_repeats": "Attack Repeats"
       },
       "active": "Active: {focus} · {intensity} · trains {abilities}",
       "activeRest": "Resting ({focus} focus paused)",
@@ -916,6 +919,9 @@
     "focus_aero": "Aero",
     "focus_loebslaere": "Race craft",
     "focus_restitution": "Active recovery",
+    "focus_cobbled_sectors": "Cobbled Sectors",
+    "focus_echelon_drills": "Echelon Drills",
+    "focus_attack_repeats": "Attack Repeats",
     "intensity_rest": "Rest",
     "intensity_easy": "Easy",
     "intensity_normal": "Normal",

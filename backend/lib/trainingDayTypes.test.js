@@ -249,7 +249,10 @@ test("naadesdagen er idempotent — anden koersel flytter intet", () => {
 // ── #4631 · de to specialiserede intervaldage i stigen ──────────────────────
 
 test("#4631 · begge nye sessioner ligger paa HAARD, og hybriden staar foerst", () => {
-  assert.deepEqual([...TRAINING_SESSIONS_BY_LEVEL.hard], ["vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint"]);
+  assert.deepEqual([...TRAINING_SESSIONS_BY_LEVEL.hard], [
+    "vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint",
+    "cobbled_sectors", "echelon_drills", "attack_repeats",
+  ]);
   assert.equal(SESSION_INTENSITY.vo2max_climb, "hard");
   assert.equal(SESSION_INTENSITY.vo2max_punch, "hard");
   assert.ok(sessionsForDayType("training").includes("vo2max_climb"));
@@ -278,6 +281,32 @@ test("#4631 · en gemt specialiseret plan laeses tilbage som sig selv", () => {
   for (const session of ["vo2max_climb", "vo2max_punch"]) {
     const out = normalizeProgram({ focus: session, intensity: "hard" });
     assert.equal(out.session, session);
+    assert.equal(out.changed, false);
+  }
+});
+
+// ── #5236/#5237 · brosten, vifte og angreb (ejer-valg 14/9) ─────────────────
+
+test("#5236/#5237 · de tre nye sessioner ligger paa HAARD", () => {
+  for (const session of ["cobbled_sectors", "echelon_drills", "attack_repeats"]) {
+    assert.equal(SESSION_INTENSITY[session], "hard");
+    assert.ok(sessionsForDayType("training").includes(session));
+    assert.ok(!sessionsForDayType("skill").includes(session), "de nye sessioner er ikke faerdighedsdage");
+  }
+});
+
+test("#5236/#5237 · skrivestien accepterer de tre nye og gemmer dem som haarde traeningsdage", () => {
+  for (const session of ["cobbled_sectors", "echelon_drills", "attack_repeats"]) {
+    const out = programForChoice({ dayType: "training", session });
+    assert.deepEqual(out, { ok: true, focus: session, intensity: "hard" });
+  }
+});
+
+test("#5236/#5237 · en gemt plan paa en af de tre nye laeses tilbage som sig selv", () => {
+  for (const session of ["cobbled_sectors", "echelon_drills", "attack_repeats"]) {
+    const out = normalizeProgram({ focus: session, intensity: "hard" });
+    assert.equal(out.session, session);
+    assert.equal(out.dayType, "training");
     assert.equal(out.changed, false);
   }
 });
