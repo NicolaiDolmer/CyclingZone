@@ -143,6 +143,8 @@ import {
   getFeedbackCounts,
   setFeedbackStatus,
   replyToFeedback,
+  submitTradeReport,
+  TRADE_REPORT_TYPES,
 } from "../lib/feedbackInbox.js";
 import {
   listForumPosts,
@@ -14496,7 +14498,11 @@ router.get("/online-count", requireAuth, async (req, res) => {
 // PLAYER FEEDBACK (#2602) — in-game kontakt/feedback/bug-rapport uden Discord
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const FEEDBACK_CATEGORIES = ["feedback", "bug", "idea"];
+// #4346: 'fairplay' tilføjet — kontaktformularens dropdown får en
+// "Fair play / report a trade"-kategori. Skal matche
+// player_feedback_category_check (database/2026-09-14-4346-fairplay-trade-
+// report.sql) og frontend/src/lib/feedbackForm.js — udvid alle tre sammen.
+const FEEDBACK_CATEGORIES = ["feedback", "bug", "idea", "fairplay"];
 const FEEDBACK_MESSAGE_MAX_LENGTH = 4000;
 
 // POST /api/feedback — spillerindsendt feedback/bug/idé. user_id/team_id
@@ -14547,6 +14553,46 @@ router.post("/feedback", requireAuth, feedbackLimiter, async (req, res) => {
   }).catch(err => console.error("[feedback] discord mirror failed:", err.message));
 
   res.json({ ok: true, id: data.id });
+});
+
+// POST /api/transfers/:type/:id/report — "Report for review" på den enkelte
+// gennemførte handel (#4346), fra transferhistorik/handelsdetaljen. Deler
+// player_feedback-kanalen med kontaktformularens fairplay-kategori
+// (submitTradeReport), men bærer transfer_id + begge hold-id'er strukturerede
+// i metadata — se database/2026-09-14-4346-fairplay-trade-report.sql.
+// Tone (#3139): "rapportér til gennemsyn", ALDRIG en anklage — der er
+// bevidst INGEN "er du part i handlen"-tjek, enhver spiller kan rapportere en
+// handel hun har set (#4346's egen baggrund).
+router.post("/transfers/:type/:id/report", requireAuth, feedbackLimiter, async (req, res) => {
+  try {
+    if (!TRADE_REPORT_TYPES.includes(req.params.type) || !UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ error: "Trade not found", errorCode: "trade_report_not_found" });
+    }
+    const { status, body } = await submitTradeReport({
+      supabase,
+      teamId: req.team?.id || null,
+      userId: req.user.id,
+      transferType: req.params.type,
+      transferId: req.params.id,
+      message: req.body?.message,
+    });
+
+    if (status === 200 && body?.ok && !body.alreadyReported) {
+      // Best-effort mirror, samme mønster som POST /feedback ovenfor — må
+      // aldrig fejle selve indsendelsen for spilleren.
+      notifyPlayerFeedback({
+        category: "fairplay",
+        message: typeof req.body?.message === "string" ? req.body.message.trim() : "",
+        pagePath: null,
+        teamName: req.team?.name || null,
+      }).catch(err => console.error("[feedback] trade-report discord mirror failed:", err.message));
+    }
+
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Admin-indbakke (#2842) ───────────────────────────────────────────────────

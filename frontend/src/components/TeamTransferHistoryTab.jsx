@@ -7,8 +7,10 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { computeTransferProfit } from "../lib/transferProfit.js";
 import { filterTransferHistoryNoSale } from "../lib/transferHistoryNoSale.js";
 import { useTableSort } from "../lib/useTableSort.js";
+import { isTradeReportable, parseTransferEventId } from "../lib/tradeReport.js";
 import SortableTh from "./ui/SortableTh.jsx";
-import { Card, Select, Checkbox, ExchangeIcon, ArrowDownIcon, ArrowUpIcon } from "./ui";
+import ReportTradeDialog from "./ReportTradeDialog.js";
+import { Card, Select, Checkbox, ExchangeIcon, ArrowDownIcon, ArrowUpIcon, EyeIcon } from "./ui/index.js";
 
 const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", academy: "type.academy" };
 
@@ -30,6 +32,28 @@ const PROFIT_SORT_ACCESSORS = {
   sold: (tr) => (typeof tr.sellAmount === "number" ? tr.sellAmount : null),
   profit: (tr) => (typeof tr.profit === "number" ? tr.profit : null),
 };
+
+// #4346 — "Report for review" pr. handel. Sekundær ikon-knap, IKKE en ny gold
+// primary-knap (row action buttons er altid secondary, jf. Button.jsx's egen
+// DataTable-raekke-tvang + PAGE_TEMPLATES T2). Ingen tekst i selve knappen på
+// tværs af hele rækken (pladsknapt tabel) — labelen lever i aria-label + title.
+// Tone (#3139): et neutralt "gennemsyn"-ikon (EyeIcon), aldrig et advarende
+// rødt flag — det her er ikke en anklage.
+function ReportTradeButton({ event, onReport }) {
+  const { t } = useTranslation("transfers");
+  if (!isTradeReportable(event)) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => onReport(event)}
+      aria-label={t("history.reportActionAria")}
+      title={t("history.reportAction")}
+      className="inline-flex h-6 w-6 items-center justify-center rounded-cz text-cz-3 transition-colors hover:bg-cz-subtle hover:text-cz-1"
+    >
+      <EyeIcon size={14} aria-hidden="true" />
+    </button>
+  );
+}
 
 // #1741: retning skal kunne aflæses på et øjeblik. Tidligere var det kun en
 // lille farvet tekst (let at overse, "Køb"/"Salg" forveksles). Nu: pil-ikon +
@@ -189,6 +213,17 @@ export default function TeamTransferHistoryTab({ teamId }) {
   // tilgængelig via toggle (ikke slettet — kan stadig være nyttigt at se at
   // en auktion ikke fandt en køber).
   const [showNoSale, setShowNoSale] = useState(false);
+
+  // #4346 — hvilken handel "Report for review"-dialogen er åbnet for lige nu
+  // (null = lukket). Parses fra event.id (`${type}:${rawId}`, sat af
+  // teamTransferHistory.js) i stedet for at gemme hele event-objektet — kun
+  // det backend-endpointet rent faktisk skal bruge.
+  const [reportTarget, setReportTarget] = useState(null);
+  function openReportDialog(event) {
+    const parsed = parseTransferEventId(event.id);
+    if (!parsed) return;
+    setReportTarget(parsed);
+  }
 
   // #4448: t bruges kun til fejlbeskeden nedenfor. Som direkte dependency ville
   // et sprogskifte hente transfer-historikken forfra — ref'en holder teamId som
@@ -364,14 +399,25 @@ export default function TeamTransferHistoryTab({ teamId }) {
                       <span className="text-cz-3">—</span>
                     )}
                   </td>
-                  <td className="py-2 text-right font-mono whitespace-nowrap">
-                    {/* Fortegn/farve følger kontobevægelsen (cash_flow), ikke rytter-retningen:
-                        salg = +grøn (penge ind), køb = -rød (penge ud) (#984) */}
-                    {ev.amount > 0
-                      ? <span className={ev.cash_flow === "in" ? "text-cz-success" : ev.cash_flow === "out" ? "text-cz-danger" : "text-cz-2"}>
-                          {ev.cash_flow === "in" ? "+" : ev.cash_flow === "out" ? "-" : ""}{formatNumber(ev.amount)} CZ$
-                        </span>
-                      : <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>}
+                  <td className="py-2">
+                    {/* #4346: rapport-knappen deler celle med Beløb i stedet for sin egen
+                        kolonne — en 7. kolonne tvang tabellen ud i vandret scroll på mobil
+                        (393px), hvilket flyttede Modpart-linket delvist ind under den faste
+                        bund-nav og gjorde den ustabil at klikke (CI: e2e-shard mobile-chromium,
+                        team-profile-tab-state.spec.js #3916, fund + rettet 14/9). Ingen ny
+                        kolonne = uændret tabelbredde. */}
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="font-mono whitespace-nowrap">
+                        {/* Fortegn/farve følger kontobevægelsen (cash_flow), ikke rytter-retningen:
+                            salg = +grøn (penge ind), køb = -rød (penge ud) (#984) */}
+                        {ev.amount > 0
+                          ? <span className={ev.cash_flow === "in" ? "text-cz-success" : ev.cash_flow === "out" ? "text-cz-danger" : "text-cz-2"}>
+                              {ev.cash_flow === "in" ? "+" : ev.cash_flow === "out" ? "-" : ""}{formatNumber(ev.amount)} CZ$
+                            </span>
+                          : <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>}
+                      </span>
+                      <ReportTradeButton event={ev} onReport={openReportDialog} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -382,6 +428,13 @@ export default function TeamTransferHistoryTab({ teamId }) {
     </Card>
 
     <TransferProfitPanel trades={profit.trades} totals={profit.totals} />
+
+    <ReportTradeDialog
+      open={reportTarget != null}
+      onClose={() => setReportTarget(null)}
+      transferType={reportTarget?.type}
+      transferId={reportTarget?.id}
+    />
     </div>
   );
 }
