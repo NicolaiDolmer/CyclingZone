@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import {
   SQUADS, DEFAULT_SQUAD, SQUAD_CAPS, SQUAD_MAX_AGE, SQUAD_TRANSITIONS,
   isSquad, isYouthSquad, squadForSeasonAge, squadForSeason, squadForReferenceYear,
-  capForSquad, wouldExceedSquadCap, hasOutgrownSquad, transitionForRider,
+  capForSquad, wouldExceedSquadCap, hasOutgrownSquad, transitionForRider, seniorSquadPatch,
 } from "./squads.js";
 import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 
@@ -160,4 +160,18 @@ test("transitionForRider: en OVER-aldrende junior rykker ET trin, ikke to", () =
   // Kun muligt via en fejl eller et manuelt flyt, men default-kaeden skal
   // behandle ham som en almindelig overgang i stedet for at springe u23 over.
   assert.deepEqual(transitionForRider({ squad: "junior", seasonAge: 25 }), { from: "junior", to: "u23", atSeasonAge: 19 });
+});
+
+test("seniorSquadPatch: saetter BEGGE trup-felter og giver et FRISK objekt hver gang", () => {
+  // Reviewer-fund paa #4619: auktions-, transfer-, swap- og bank-stierne skrev
+  // kun is_academy. En delt patch der saetter begge felter er svaret; den skal
+  // vaere en frisk reference, fordi alle kaldsteder spreder den ind i et
+  // stoerre update-objekt.
+  assert.deepEqual(seniorSquadPatch(), { squad: "senior", is_academy: false });
+  assert.equal(seniorSquadPatch().squad, DEFAULT_SQUAD, "bruger kolonnens DEFAULT, ikke en kopi af strengen");
+  assert.notEqual(seniorSquadPatch(), seniorSquadPatch(), "ny reference pr. kald");
+  // Patchen skal efterlade rytteren i en tilstand hvor de to kolonner er ENIGE:
+  // is_academy er afledt som (squad <> 'senior').
+  const patch = seniorSquadPatch();
+  assert.equal(isYouthSquad(patch.squad), patch.is_academy);
 });

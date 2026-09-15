@@ -244,7 +244,7 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 | 3 | Addendum §7.1: tidlig oprykning fra 21 som undtagelse | Denne fil §2.2: opad altid tilladt |
 | 4 | ~~`GAME_INVARIANTS.md`: "8-plads akademi-cap håndhæves på ENHVER akademi-tilføjelse"~~ | **LUKKET 15/9 (#4619):** `GAME_INVARIANTS.md` §Akademi siger nu loft pr. trup (`SQUAD_CAPS`, U23 12 / junior 10). Restgæld: RPC'ernes egen 8-cap i SQL |
 | 5 | `help.json:1151` lover en trupstruktur der ikke findes | Slice 0 |
-| 6 | ~~Akademi-promotion-spec 18/6: tvunget valg ved 22~~ | **LUKKET 15/9 (#4619):** `GRADUATE_AGE = 23`, afledt af `SQUAD_MAX_AGE.u23 + 1` i `backend/lib/squads.js` |
+| 6 | ~~Akademi-promotion-spec 18/6: tvunget valg ved 22~~ | **LUKKET 15/9 (#4619):** `GRADUATE_AGE = 23`, afledt af `SQUAD_MAX_AGE.u23 + 1` i `backend/lib/squads.js`. **Restgæld:** `help.json` (en+da) `academy.graduation` siger stadig 22 — spiller-vendt copy skrives sammen med patch noten ved bølgens close-out, ikke i datamodel-PR'en |
 | 7 | `academy_graduation.status='sold'` stemples når auktionen **oprettes**, ikke når den **afgøres** — status siger "listet", ikke "solgt" (#4495 punkt 2) | Indtil videre: `resolveUnsoldGraduate` retter rækken til det der faktisk skete (`promoted`/`released`) når salget ikke blev til noget. En egentlig `listed` → `sold`/`unsold`-livscyklus kræver migration + ejer-go og er ikke bygget |
 
 ---

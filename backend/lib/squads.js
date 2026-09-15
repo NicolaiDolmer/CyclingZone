@@ -80,6 +80,29 @@ export function isYouthSquad(squad) {
 }
 
 /**
+ * Rytter-patch for "denne rytter lander i SENIORTRUPPEN" — begge trup-felter.
+ *
+ * Bruges af hver eneste sti der i dag flipper `is_academy: false` for at tage en
+ * ungdomsrytter UD af akademiet: auktions-vinderen (#932), den garanterede
+ * bank-handel (#932/#4495), ungdomsauktionens senior-placering (#2701), det
+ * direkte transfersalg (#3650), byttehandlen (#2797) og beta-reset'ets
+ * frigivelse til fri agent (#2264). De skrev tidligere KUN `is_academy`, og
+ * efter backfill'en ville en solgt U23-rytter derfor blive liggende med
+ * `squad = 'u23'`: `effectiveSquad()` læser `squad` FØRST og ville fortsat
+ * kalde ham U23, og `countSquadMembers` tæller direkte på kolonnen, så han
+ * optog en U23-plads på sit nye holds loft uden at være akademirytter.
+ *
+ * Den er bevidst en FUNKTION og ikke en frossen konstant: alle kaldsteder
+ * spreder den ind i et større update-objekt, og en delt objekt-reference der
+ * spredes ind i seks patches er præcis den slags fælde der ikke fejler i test.
+ *
+ * @returns {{squad:string, is_academy:boolean}}
+ */
+export function seniorSquadPatch() {
+  return { squad: DEFAULT_SQUAD, is_academy: false };
+}
+
+/**
  * Truppen en rytter hører til ud fra sin SÆSONALDER (ikke wall-clock alder).
  *
  * junior ≤ 18 · u23 19-22 · senior ≥ 23.
