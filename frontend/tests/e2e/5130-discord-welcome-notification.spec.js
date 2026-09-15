@@ -49,12 +49,13 @@ test("discord_welcome-notifikationen renderes med titel, besked og et eksternt D
 
   // Titel + besked via metadata.{titleCode,messageCode} — bilingval regex
   // (locale er låst til DA af stabilizePage, men fallbackLng kan stadig
-  // vinde afhængigt af browser-locale i CI).
+  // vinde afhængigt af browser-locale i CI). Ejer-godkendt copy 15/9
+  // (docs/drafts/discord-welcome-copy-2026-09-15.md) — ordlyden må ikke ændres.
   await expect(
-    page.getByText(/^Come hang out on Discord$|^Kom med på Discord$/),
+    page.getByText(/^Hep! Come join us on Discord$|^Hep! Kom med på Discord$/),
   ).toBeVisible();
   await expect(
-    page.getByText(/ask me anything, swap tactics|spørg mig om alt, byt taktik/),
+    page.getByText(/it is a community, and a lot of it happens on Discord|Det er et fællesskab, og meget af det sker på Discord/),
   ).toBeVisible();
 
   // Kortets link peger på den RIGTIGE eksterne invite-URL — ikke en intern
@@ -64,7 +65,7 @@ test("discord_welcome-notifikationen renderes med titel, besked og et eksternt D
   // isExternalNotificationLink-grenen manglet, ville et link der starter
   // med "https://" være sendt til react-router's navigate() og enten fejle
   // eller lave en ugyldig intern navigation).
-  const card = page.getByText(/^Come hang out on Discord$|^Kom med på Discord$/);
+  const card = page.getByText(/^Hep! Come join us on Discord$|^Hep! Kom med på Discord$/);
   const [popup] = await Promise.all([
     page.waitForEvent("popup"),
     card.click(),
@@ -90,7 +91,7 @@ test("discord_welcome-notifikationen på mobil-bredde 390 (#5130)", async ({ pag
   await page.goto("/notifications");
 
   await expect(
-    page.getByText(/^Come hang out on Discord$|^Kom med på Discord$/),
+    page.getByText(/^Hep! Come join us on Discord$|^Hep! Kom med på Discord$/),
   ).toBeVisible();
 
   await page.screenshot({

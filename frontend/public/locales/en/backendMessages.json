@@ -490,8 +490,8 @@
       "message": "Your team is ready. Place a bid in the auction house to sign your first rider."
     },
     "discordWelcome": {
-      "title": "Come hang out on Discord",
-      "message": "I'm in there, and so are the other managers: ask me anything, swap tactics, and get the roadbook before anyone else."
+      "title": "Hep! Come join us on Discord",
+      "message": "Cycling Zone is more than the website. It is a community, and a lot of it happens on Discord: that is where I hang out, where I ask you what to build next, and where the other managers talk cycling all day. Be blunt with me in there, it is way more useful than praise. Come as you are, you do not need results to belong. See you in there :)"
     },
     "scoutChanged": {
       "title": "New scout, reports recalculated",

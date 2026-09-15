@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-64 poster: live 43 · beta 2 · dormant 5 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+65 poster: live 43 · beta 3 · dormant 5 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -137,6 +137,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | In-app player survey (`in-app-survey`) | live | - | [SURVEY_SYSTEM.md](SURVEY_SYSTEM.md) | #4943 | 2026-09-08 | Skemaet 2026-09-features åbnet 8/9 14:15 (241 inviteret via indbakken); admin-resultatside /admin/surveys/:slug live (#5043). |
+| Discord welcome inbox notification (`discord-welcome-inbox`) | beta | - | - | #5130 | 2026-09-15 | Sweep (discordWelcomeSweep.js) sender én gang pr. hold ved draft-tærsklen eller 24t-fallback; PR #5211 hærdes (haerd-foerst-saa-merge) inden merge. |
 | Email retention loop (`email-loop`) | beta | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK.md](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-14 | welcome + day1 on siden 8/9 (#2853), race_digest off; webhook afventer RESEND_WEBHOOK_SECRET (ejer); win-back #2760 bygget (flag false, ejer-go 21-24/9). |
 
 ## billing
