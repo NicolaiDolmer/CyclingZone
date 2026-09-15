@@ -9,6 +9,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 import { effortDevelopmentMultiplier } from "./raceRoles.js";
+import { computeTrainingScore } from "./trainingScore.js";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -123,11 +124,19 @@ export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
 // altsaa praecis dagens model. Sat ⇒ kalibreret deler for en anden tick-kadence.
 // Gate G1 kraever at T/D er konstant naar T (ticks pr. sæson) skifter; formlen og
 // tallene staar i trainingRaceDayTick.js (raceDayBudgetDivisor).
+// #4851 (fase A1): `riderQualityMult` er VALGFRI med samme "udeladt =
+// bit-identisk"-kontrakt som staff/facility/academy/budgetDivisor ovenfor.
+// Udeladt/null ⇒ den gamle inline-kaede (conditionMult × youthMultiplier ×
+// youthRateForPotential × noise × facilityMult), tegn for tegn uaendret.
+// Sat ⇒ rytter-leddet kommer fra TRAENINGSSCOREN (trainingScore.js), som
+// ejer-beslutning 4 (6/9) kraever: scoren beregnes FOERST, og udviklingen
+// udledes AF den. `staffTrainingBonus` bliver pr. evne i begge grene — den er
+// dimension×niveau-specifik og maa ikke kollapse til ét rytter-tal i udbyttet.
 export function dailyAbilityDelta({
   ability, current, cap, age, program, conditionMult, bonus, noise, potentiale,
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
   primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
-  budgetDivisor = null,
+  budgetDivisor = null, riderQualityMult = null,
 }) {
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
@@ -166,6 +175,12 @@ export function dailyAbilityDelta({
   // Plan B (#1441): facilitets-MAGNITUDE (spec §2.1) — samme effectiveBonus som Klub-UI'et
   // viser. facilityTier null/0 → PRÆCIS 1.0 (nul regression for hold uden faciliteter).
   const facilityMult = facilityTrainingMultiplier({ facilityTier, staff });
+  // #4851: score-stien. Den gamle gren nedenfor staar UROERT tegn for tegn, saa
+  // enhver caller der ikke sender `riderQualityMult` er bit-identisk.
+  if (Number.isFinite(riderQualityMult) && riderQualityMult >= 0) {
+    return base * mult * roleRate * riderQualityMult
+      * (bonus ? cfg.bonusMult : 1) * staffBonus * academyRateMult;
+  }
   // academyRateMult (#2437) ganges SIDST i kæden — samme "ekstra multiplikator-led,
   // default 1.0" kontrakt som staffBonus/facilityMult. Interim-knap: ingen kalder i
   // dagens prod sender den, så udeladt = uændret adfærd.
@@ -220,13 +235,25 @@ export function applyDailyTick({
   const gains = {};
   let score = 0;
 
+  // ── #4851: SCOREN BEREGNES FOERST, delta'en udledes af den ─────────────────
+  // Ejer-beslutning 4 (6/9) vender kausalretningen om. `trainingScore` er
+  // cap-uafhaengig (ingen af dens faktorer kender `caps`), saa en rytter paa
+  // loftet kan ikke laengere faa 0 efter et perfekt pas — spec §4.1, gate G4.
+  // null paa hviledage (ingen kvalitet at maale) ⇒ rytter-leddet falder tilbage
+  // til den gamle inline-kaede, og alle deltaer er alligevel 0.
+  const trainingScore = computeTrainingScore({
+    program, age, potentiale, conditionMult, noise,
+    staff, facilityTier, riderLevel, primaryType, secondaryType, trainingCfg,
+  });
+  const riderQualityMult = trainingScore?.deltaQualityMult ?? null;
+
   for (const ability of VISIBLE_ABILITIES) {
     const current = Number(nextAbilities[ability] ?? 0);
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
     const delta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
       staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
-      budgetDivisor,
+      budgetDivisor, riderQualityMult,
     });
     if (delta <= 0) continue;
     score += delta;
@@ -248,7 +275,11 @@ export function applyDailyTick({
     abilities: nextAbilities,
     progress: nextProgress,
     gains,
+    // `score` er fortsat KVITTERINGEN (summen af raa evne-deltaer) — den er
+    // rapport-feltet frontend allerede laeser. Det NYE tal er `trainingScore`.
     score: Math.round(score * 100) / 100,
+    // #4851: passets kvalitet 1-99 + faktorerne bag. null paa hviledage.
+    trainingScore,
     noise,
     status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal",
   };
@@ -304,6 +335,16 @@ export function applyRaceDevelopmentTick({
   // "Det erstattede pas": sum af dailyAbilityDelta over ALLE VISIBLE_ABILITIES med
   // rytterens FAKTISKE program (resolveProgram + dagens intensitets-opløsning) —
   // samme faktor-kæde en normal træningsdag ville brugt.
+  // #4851: "det erstattede pas" beregnes med SAMME score-kobling som en normal
+  // traeningsdag — ellers ville en loebsdag og en traeningsdag for samme rytter
+  // bruge to forskellige delta-modeller. Selve TALLET vises ikke paa loebsdage
+  // (fladen skriver "loeb", spec §4.4), men det driver udviklingen.
+  const trainingScore = computeTrainingScore({
+    program, age, potentiale, conditionMult, noise,
+    staff, facilityTier, riderLevel, primaryType, secondaryType,
+  });
+  const riderQualityMult = trainingScore?.deltaQualityMult ?? null;
+
   let replacedTotal = 0;
   for (const ability of VISIBLE_ABILITIES) {
     const current = Number(abilities[ability] ?? 0);
@@ -311,7 +352,7 @@ export function applyRaceDevelopmentTick({
     replacedTotal += dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
       staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType,
-      budgetDivisor,
+      budgetDivisor, riderQualityMult,
     });
   }
 
@@ -351,6 +392,9 @@ export function applyRaceDevelopmentTick({
     progress: nextProgress,
     gains,
     score: Math.round(score * 100) / 100,
+    // #4851: beregnet, men fladen viser "loeb" i stedet for tallet (spec §4.4).
+    // Om en loebsdag SKAL have et tal paa samme skala er et AABENT punkt (§5).
+    trainingScore,
     noise,
     status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal",
   };
