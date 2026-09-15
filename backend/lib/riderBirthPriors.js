@@ -547,6 +547,13 @@ export function birthHiddenPotential({ potentiale, age, id }) {
 // reproduceres PRÆCIS det oprindelige træk, fordi seed'en ligger i rækken.
 export const BIRTH_MARKER_VERSION = 1;
 
+/**
+ * @param {object} args
+ * @param {string} args.tier
+ * @param {number} args.seed
+ * @param {number|null} [args.cap] evne-loft der følger rytteren (se nedenfor)
+ * @param {number|null} [args.age] FØDSELS-alderen, ikke den nuværende
+ */
 export function makeBirthMarker({ tier, seed, cap = null, age = null }) {
   if (!BIRTH_TIERS[tier]) throw new Error(`riderBirthPriors: unknown tier ${tier}`);
   if (!Number.isInteger(seed)) throw new Error("riderBirthPriors: birth seed must be an integer");
@@ -583,6 +590,11 @@ export function withBirthAbilityCap(archetypeDraw, cap) {
   };
 }
 
+/**
+ * @param {object} args
+ * @param {number} args.seed
+ * @param {number|null} [args.age] FØDSELS-alderen (se kommentaren nedenfor)
+ */
 export function makeYouthBirthMarker({ seed, age = null }) {
   if (!Number.isInteger(seed)) throw new Error("riderBirthPriors: birth seed must be an integer");
   const marker = { v: BIRTH_MARKER_VERSION, tier: "youth", seed: seed >>> 0 };

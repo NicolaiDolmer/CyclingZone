@@ -133,6 +133,7 @@ export function generateAcademyCandidates({
     // Stats: lav, anlægs-formet, talent-skaleret ungdoms-profil (#1791). Anlæg vælges deterministisk
     // fra arketype-mål-fordelingen (#3458 fase 2; altid to-delt siden #3632); de lave stats giver
     // via fallback-derivationen lave evner i ungdoms-båndet.
+    /** @type {{ primary: string, secondary: string, birth?: object }} */
     const archetypeDraw = pickYouthArchetype(rng); // { primary, secondary }
 
     // #5269: på own-priors-stien trækkes INGEN stats. Evnerne fødes direkte i
@@ -144,7 +145,9 @@ export function generateAcademyCandidates({
     // Invarianten fra #2064 §2a / #3561 er bevaret i båndet: en ungdomsrytters
     // NUVÆRENDE evne mætter ~12, så ability_caps fortsat styres af potentiale-
     // loftet og ikke af hans start-evner (G5).
+    /** @type {Record<string, number>|null} */
     let stats = null;
+    /** @type {Record<string, number>|null} */
     let birthAbilities = null;
     if (ownPriors) {
       const birthSeed = Math.floor(rng() * 4294967296) >>> 0;
@@ -447,6 +450,15 @@ function blendArchetypeSignature(primaryKey, secondaryKey, cfg) {
 // secondaryArchetypeType (#3458; siden #3632 sat for ALLE kandidater): blander
 // bi-typens signatur let ind (se blendArchetypeSignature + secondarySignatureWeight).
 // null er stadig tilladt — kalibrerings-harnesses måler den rene primær-profil.
+/**
+ * @param {object} args
+ * @param {function} args.rng
+ * @param {number} args.age
+ * @param {number} args.potentiale
+ * @param {string} args.archetypeType
+ * @param {string|null} [args.secondaryArchetypeType]
+ * @param {any} [args.cfg] YOUTH_GEN_CONFIG eller en kalibrerings-variant af den
+ */
 export function generateYouthStats({ rng, age, potentiale, archetypeType, secondaryArchetypeType = null, cfg = YOUTH_GEN_CONFIG }) {
   if (!ARCHETYPE_BY_TYPE[archetypeType]) throw new Error(`generateYouthStats: ukendt arketype ${archetypeType}`);
   const arch = secondaryArchetypeType
