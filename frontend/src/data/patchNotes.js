@@ -1,5 +1,156 @@
 export const PATCHES = [
   {
+    "version": "7.276",
+    "date": "2026-09-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "topic": "Training",
+        "en": {
+          "title": "Three new hard sessions: cobbled sectors, echelon drills and attack repeats",
+          "body": "Cobbles, flat and aggression could only be trained on light days until now. Cobbled sectors trains cobbles with durability and positioning, echelon drills trains flat with positioning and durability, and attack repeats trains aggression with punch and acceleration. All three are hard sessions with the same total weight as the other hard packages, so nothing gets cheaper. Your existing programs are untouched."
+        },
+        "da": {
+          "title": "Tre nye hårde sessioner: brostenssektorer, vifteøvelser og angrebsintervaller",
+          "body": "Brosten, flad og aggression kunne indtil nu kun trænes på lette dage. Brostenssektorer træner brosten med durability og positionering, vifteøvelser træner flad med positionering og durability, og angrebsintervaller træner aggression med punch og acceleration. Alle tre er hårde sessioner med samme samlede vægt som de andre hårde pakker, så intet bliver billigere. Dine eksisterende programmer er urørte."
+        },
+        "refs": [5236, 5237, 4874, 5265]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "Fewer blank pages after an update",
+          "body": "When a page asked for a file that an update had just replaced, it could go blank or show a fault you could not act on. It now fetches the new file and carries on, and it tells you plainly if it cannot."
+        },
+        "da": {
+          "title": "Færre tomme sider efter en opdatering",
+          "body": "Når en side bad om en fil, som en opdatering lige havde skiftet ud, kunne den gå i sort eller vise en fejl, du ikke kunne gøre noget ved. Nu henter den den nye fil og kører videre, og siger det ligeud, hvis den ikke kan."
+        },
+        "refs": [5014, 5161, 5028, 5168]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Rankings",
+        "en": {
+          "title": "Rankings are back, and they say so when something breaks",
+          "body": "A security change on Sunday made every rankings page answer with an error. That is fixed. Rankings now show a real message instead of an empty table when a request fails."
+        },
+        "da": {
+          "title": "Ranglisterne er tilbage, og de siger til når noget går galt",
+          "body": "En sikkerhedsændring i søndags fik alle ranglistesider til at svare med en fejl. Det er rettet. Ranglisterne viser nu en rigtig besked i stedet for en tom tabel, når et kald fejler."
+        },
+        "refs": [5176, 5186, 5185, 5188]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Profile",
+        "en": {
+          "title": "Your profile loads before you have a team",
+          "body": "Looking up your own profile or a team could answer with a fault instead of simply saying there is nothing there yet. It answers plainly now."
+        },
+        "da": {
+          "title": "Din profil indlæses, før du har et hold",
+          "body": "Et opslag på din egen profil eller et hold kunne svare med en fejl i stedet for bare at sige, at der ikke er noget endnu. Nu svarer den ligeud."
+        },
+        "refs": [4869, 4884]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Academy",
+        "en": {
+          "title": "Academy riders who missed their graduation window get it now",
+          "body": "A rider who slipped past the graduation batch had no way back in, and stood still. A sweep now finds him and opens his window the way the season change would have."
+        },
+        "da": {
+          "title": "Akademiryttere, der missede deres gradueringsvindue, får det nu",
+          "body": "En rytter, der gled forbi gradueringsbatchen, kunne ikke komme ind igen og stod stille. Et sweep finder ham nu og åbner hans vindue, præcis som sæsonskiftet ville have gjort."
+        },
+        "refs": [5133, 5135]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Races",
+        "en": {
+          "title": "AI teams on their way out stop taking start slots",
+          "body": "A team marked for removal kept being entered in new races, so some pools were bigger than they should be. It stops taking slots now, and it leaves when its last race is done."
+        },
+        "da": {
+          "title": "AI-hold på vej ud tager ikke længere startpladser",
+          "body": "Et hold, der var markeret til nedlæggelse, blev ved med at blive tilmeldt nye løb, så nogle puljer var større end de skulle være. Det tager ikke pladser mere og forsvinder, når dets sidste løb er kørt."
+        },
+        "refs": [4959, 5137]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Discord",
+        "en": {
+          "title": "Race results in Discord go to your own group channel only",
+          "body": "Results used to land in both your group channel and the division channel. That made the division channels noisy without adding anything. Now they land in one place."
+        },
+        "da": {
+          "title": "Løbsresultater i Discord går kun til din egen gruppekanal",
+          "body": "Resultater landede før både i din gruppekanal og i divisionskanalen. Det gjorde divisionskanalerne larmende uden at give noget. Nu lander de ét sted."
+        },
+        "refs": [4999, 5009]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Site",
+        "en": {
+          "title": "The public pages live on cyclingzone.org now",
+          "body": "How it works and the comparison page sat on a separate address. They are on the main site now, in English and Danish, so a link you send lands where it should."
+        },
+        "da": {
+          "title": "De offentlige sider bor nu på cyclingzone.org",
+          "body": "Siden om hvordan spillet fungerer og sammenligningssiden lå på en anden adresse. De ligger på hovedsitet nu, på engelsk og dansk, så et link du sender, lander hvor det skal."
+        },
+        "refs": [4067, 4659, 5216]
+      },
+      {
+        "category": "new", "audience": "player", "topic": "Email",
+        "en": {
+          "title": "Emails arrive in your own language",
+          "body": "The welcome mail, the first day mail and the race digest are written in Danish for you if that is the language you play in."
+        },
+        "da": {
+          "title": "Mails kommer på dit eget sprog",
+          "body": "Velkomstmailen, dag-1-mailen og løbsopsamlingen er skrevet på dansk til dig, hvis det er det sprog du spiller på."
+        },
+        "refs": [2853, 4650, 4690]
+      },
+      {
+        "category": "fixed", "audience": "player", "topic": "Feedback",
+        "en": {
+          "title": "Survey polish",
+          "body": "The bar at the top of the survey was see-through in dark mode, and the invitation promised a shorter survey than the one I ended up writing. Both corrected."
+        },
+        "da": {
+          "title": "Spørgeskemaet er pudset af",
+          "body": "Linjen i toppen af skemaet var gennemsigtig i mørkt tema, og invitationen lovede et kortere skema end det, jeg endte med at skrive. Begge dele er rettet."
+        },
+        "refs": [4943, 5039, 5044]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Interface",
+        "en": {
+          "title": "Toned-down elements are toned down again",
+          "body": "Some colours were drawn at full strength where the design called for them to fade back. They fade the way they should now."
+        },
+        "da": {
+          "title": "Nedtonede elementer er nedtonet igen",
+          "body": "Nogle farver blev tegnet i fuld styrke, hvor designet bad om, at de trådte tilbage. De træder tilbage nu, som de skal."
+        },
+        "refs": [5150, 5174]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "The rider card loads faster",
+          "body": "It shares the lookups the rest of the page already made, and a tab fetches its own data only when you open it."
+        },
+        "da": {
+          "title": "Rytterkortet indlæser hurtigere",
+          "body": "Det deler de opslag, resten af siden allerede har lavet, og en fane henter først sine egne data, når du åbner den."
+        },
+        "refs": [5089, 5100]
+      }
+    ]
+  },
+  {
     "version": "7.275",
     "date": "2026-09-15",
     "label": "Beta",
