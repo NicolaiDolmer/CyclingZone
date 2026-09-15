@@ -1026,8 +1026,8 @@
         "text": "That is now unusual. Every ability still has a lifetime ceiling set by type and potential, but riders no longer simply arrive there. How close a rider gets, and on which abilities, is decided by how you train him. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline rather than grow, and what he has is what he keeps. Or the ability already sits above what his type and potential would build on their own, which happens with riders carried over from an earlier version of the game. Nothing is taken away from him, it simply will not climb further. Every ability has its own line on the Daily Training page and the rider profile, and a finished one reads 'done' where the others show progress. The number next to an ability is always its current value, never the ceiling itself, which is never shown as a number anywhere in the game, and progress naturally slows the closer a rider gets, so a value that holds still for a few days doesn't necessarily mean it's finished."
       },
       "trainToday": {
-        "title": "Train today and the +25% boost",
-        "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training. Only the boost is missed when you don't click."
+        "title": "Train today",
+        "text": "Click 'Train today' once per day to run all active programs right now. If you skip the button, the assistant runs the exact same training automatically after 22:00. You never lose a day of training, and clicking the button never gains you more than waiting."
       },
       "raceDays": {
         "title": "Race days and training",
@@ -1071,7 +1071,7 @@
       },
       "weeklyRhythm": {
         "title": "Weekly rhythm",
-        "text": "The 'Weekly rhythm' panel on the Training page lets you set a target intensity for each day of the week (Monday to Sunday) for your whole team at once. It steers intensity only, never focus. Important: the rhythm is a DEFAULT for riders who have no own intensity set on their focus. If a rider has their own focus and intensity chosen (on their roster row, or as a season program), that rider's own setting always wins for that rider, on every day, even while a team rhythm is active; the rhythm never silently overrides a rider you've set to Rest or Easy. It only fills in a target intensity for riders you haven't customized yourself. Each rider's row shows today's actual intensity plus where it comes from ('team weekly rhythm' or 'this rider's own setting'), so nothing is hidden. The 'Train today' consistency bonus (+25%) still only applies when you click it yourself; the rhythm does not grant it automatically."
+        "text": "The 'Weekly rhythm' panel on the Training page lets you set a target intensity for each day of the week (Monday to Sunday) for your whole team at once. It steers intensity only, never focus. Important: the rhythm is a DEFAULT for riders who have no own intensity set on their focus. If a rider has their own focus and intensity chosen (on their roster row, or as a season program), that rider's own setting always wins for that rider, on every day, even while a team rhythm is active; the rhythm never silently overrides a rider you've set to Rest or Easy. It only fills in a target intensity for riders you haven't customized yourself. Each rider's row shows today's actual intensity plus where it comes from ('team weekly rhythm' or 'this rider's own setting'), so nothing is hidden. The rhythm never runs training itself: it only sets a default intensity for the day's session, whether that session runs from your own 'Train today' click or from the assistant after 22:00."
       },
       "individualWeeklyPlan": {
         "title": "Individual weekly plan per rider",

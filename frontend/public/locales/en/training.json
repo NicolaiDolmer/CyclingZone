@@ -1,6 +1,6 @@
 {
   "title": "Daily Training",
-  "trainToday": "Train today (+25% consistency bonus)",
+  "trainToday": "Train today",
   "trainedToday_you": "Trained today (by you)",
   "trainedToday_assistant": "Trained today (by assistant)",
   "trainedTodayAt_you": "Trained today at {time} (by you)",
@@ -35,7 +35,7 @@
   "injured_plural": "Injured: {days} days left",
   "noRiders": "No riders on your squad yet.",
   "report": "Today's training report",
-  "bonusApplied": "Consistency bonus applied: +25% gains",
+  "bonusApplied": "Trained by you",
   "gains": "+{n} {ability}",
   "gainJump": "{from} → {to} {ability}",
   "noGains": "No gains today",
@@ -103,7 +103,7 @@
   "riderHistoryEmpty": "No training history for this rider yet.",
   "riderHistoryRest": "Rest day",
   "weekRhythmTitle": "Weekly rhythm",
-  "weekRhythmIntro": "Set your team's target intensity for each day of the week. This is only the default for riders without their own setting: a rider's own focus and intensity, or their individual weekly plan, always take priority over the team rhythm for that rider. \"Train today\" still needs your click for the consistency bonus.",
+  "weekRhythmIntro": "Set your team's target intensity for each day of the week. This is only the default for riders without their own setting: a rider's own focus and intensity, or their individual weekly plan, always take priority over the team rhythm for that rider. \"Train today\" still needs your click if you want the session run right now instead of overnight.",
   "weekday_mon": "Mon",
   "weekday_tue": "Tue",
   "weekday_wed": "Wed",
@@ -121,7 +121,7 @@
   "planActionError_not_own_rider": "You can only train your own riders.",
   "planActionError_auth": "Your session expired. Sign in again.",
   "planActionError_network": "Connection failed. Check your network and try again.",
-  "weekRhythmBonusNote": "The rhythm is a default: it only applies to riders without their own focus/intensity or individual weekly plan, and it never touches focus. The manager consistency bonus (+25%) still only applies when you click \"Train today\" yourself.",
+  "weekRhythmBonusNote": "The rhythm is a default: it only applies to riders without their own focus/intensity or individual weekly plan, and it never touches focus. Clicking \"Train today\" yourself only changes when the session runs, not how much a rider gains.",
   "weekRhythmTodayShort": "Today: {intensity}",
   "weekRhythmTodayHint": "today: {intensity} (team weekly rhythm)",
   "weekRhythmTodayHintOwn": "today: {intensity} (own weekly plan)",
@@ -211,7 +211,7 @@
     },
     "runToday": {
       "title": "Train once a day",
-      "body": "Press this and the squad trains with a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus. Hard intensity gains more but leaves riders tired for their next race."
+      "body": "Press this and the squad trains right away. Skip it and your assistant runs the same session after 22:00. The outcome is the same either way. Hard intensity gains more but leaves riders tired for their next race."
     },
     "nextUp": {
       "title": "Where the training shows up",
