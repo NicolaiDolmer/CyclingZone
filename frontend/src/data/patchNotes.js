@@ -1,5 +1,29 @@
 export const PATCHES = [
   {
+    "version": "7.280",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Withdrawing from a race now shows everywhere",
+          "body": "Your saved line-up stays behind when you withdraw, so you can re-enter with one click. But four screens read it as if you were still starting: the division start list, the season matrix, the race page and the dashboard. All four now know you have withdrawn. Your riders were never going to start, so nothing changed in any result. Re-entering now tells you which rider is racing elsewhere instead of failing."
+        },
+        "da": {
+          "title": "Afmelding fra et løb vises nu alle steder",
+          "body": "Din gemte opstilling bliver stående, når du melder fra, så du kan melde til igen med ét klik. Men fire skærme læste den, som om du stadig stillede op: divisionens startliste, sæsonmatrixen, løbssiden og dashboardet. Alle fire ved nu, at du har meldt fra. Dine ryttere skulle aldrig have startet, så intet resultat er ændret. Melder du til igen, får du nu at vide, hvilken rytter der kører et andet sted, i stedet for en fejl."
+        },
+        "refs": [
+          5301,
+          4306
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.279",
     "date": "2026-09-16",
     "label": "Beta",

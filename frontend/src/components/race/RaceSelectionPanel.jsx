@@ -206,6 +206,35 @@ export default function RaceSelectionPanel({
     );
   }
 
+  // #5301: holdet har trukket sig. Samme read-only-mønster som wrongPool ovenfor og af
+  // præcis samme grund (#1954): backend afviser alligevel et gem (409 selection_withdrawn,
+  // #4306-gaten), så et fuldt udtageligt panel er en blindgyde. Før dette viste panelet
+  // den BEVAREDE opstilling med kaptajn og sprint-kaptajn afkrydset, som om holdet stillede
+  // op — spilleren måtte spørge på Discord om rytterne ville køre alligevel (16/9,
+  // egomadsen). Opstillingen VISES stadig, men som det den er: gemt, ikke startende.
+  if (data.withdrawn) {
+    const keptIds = data.selection?.rider_ids ?? [];
+    const keptRiders = (data.riders || []).filter((r) => keptIds.includes(r.id));
+    return (
+      <section data-testid="race-selection-withdrawn" className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
+        <p className="text-sm font-semibold text-cz-1">{t("selection.withdrawnPanel.title")}</p>
+        <p className="text-xs text-cz-3 mt-0.5">{t("selection.withdrawnPanel.note")}</p>
+        {keptRiders.length > 0 && (
+          <>
+            <p className="mt-3 text-2xs uppercase tracking-wide text-cz-3">
+              {t("selection.withdrawnPanel.keptHeading", { count: keptRiders.length })}
+            </p>
+            <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+              {keptRiders.map((r) => (
+                <li key={r.id} className="text-xs text-cz-2">{r.name}</li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+    );
+  }
+
   const { size, riders } = data;
   // #2265: ryttere bundet i et ANDET løb med overlappende in-game-dag-vindue (server-
   // beregnet). Bundne ryttere greyes + kan ikke tilføjes; er en bunden rytter allerede

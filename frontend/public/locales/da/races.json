@@ -75,6 +75,7 @@
     "errorTitle": "Udtagelsesmatrixen kunne ikke hentes",
     "empty": "Ingen løb i denne sæson endnu",
     "restDay": "Hviledag",
+    "withdrawnHint": "Du har meldt fra til dette løb. Den gemte opstilling bliver stående, hvis du melder til igen, men rytterne stiller ikke op.",
     "dayAria": "Løbsdag {index}, {date}. Åbn dagens board.",
     "cellEmptyAria": "{rider}, {race}: ikke udtaget. Klik for at tilføje.",
     "cellFilledAria": "{rider}, {race}: {role}. Klik for at skifte.",
@@ -515,6 +516,11 @@
     "wrongPool": {
       "title": "Dette løb er i en anden division",
       "note": "Du kan kun udtage hold til løb i din egen division, så der er ingen opstilling at sætte her."
+    },
+    "withdrawnPanel": {
+      "title": "Du har meldt fra til dette løb",
+      "note": "Holdet stiller frivilligt ikke op, så der er ingen opstilling at sætte. Meld til igen fra løbstavlen, hvis du ombestemmer dig inden start.",
+      "keptHeading": "{count, plural, one {# rytter gemt til en gentilmelding} other {# ryttere gemt til en gentilmelding}}"
     },
     "errors": {
       "selection_wrong_size": "Du kan højst udtage {max} ryttere.",
