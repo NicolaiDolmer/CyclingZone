@@ -58,11 +58,11 @@ test("summarizeEmailLogWindow respekterer baade fra- og til-graensen (doegnet FO
 });
 
 test("summarizeSweepRunsWindow lister alle tre typer, ogsaa dem uden koersler", () => {
-  const runs = [{ email_type: "welcome", candidates: 4, sent: 4, created_at: iso(2 * HOUR) }];
+  const runs = [{ email_type: "welcome", stage: "on", candidates: 4, sent: 4, skipped: 0, failed: 0, created_at: iso(2 * HOUR) }];
   const s = summarizeSweepRunsWindow(runs, { fromIso: iso(DAY) });
   assert.deepEqual(Object.keys(s).sort(), ["day1", "race_digest", "welcome"]);
-  assert.deepEqual(s.welcome, { candidates: 4, sent: 4, runs: 1 });
-  assert.deepEqual(s.day1, { candidates: 0, sent: 0, runs: 0 });
+  assert.deepEqual(s.welcome, { candidates: 4, sent: 4, skipped: 0, failed: 0, runs: 1 });
+  assert.deepEqual(s.day1, { candidates: 0, sent: 0, skipped: 0, failed: 0, runs: 0 });
 });
 
 // ─── taerskler ───────────────────────────────────────────────────────────────
@@ -71,6 +71,113 @@ const cleanWindow = {
   sent: 100, dryRun: 0, delivered: 99, bounced: 1, complained: 0,
   failedPermanent: 0, failedRetryable: 0, deadRetries: 0,
 };
+
+// #5296: exercise the actual report, including its SELECT projection. A fake
+// returning every column would hide the original missing skipped/failed read.
+async function reportWithRuns(runs, now = NOW, logs = []) {
+  const posts = [];
+  const supabase = {
+    from(table) {
+      if (table === "ops_alert_state") return {
+        select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+        upsert: async () => ({ error: null }),
+      };
+      assert.ok(["email_log", "email_sweep_runs"].includes(table));
+      let columns;
+      let from;
+      const query = {
+        select(value) { columns = value.split(",").map((c) => c.trim()); return query; },
+        gte(column, value) { assert.equal(column, "created_at"); from = value; return query; },
+        order() { return query; },
+        async range(start, end) {
+          const source = table === "email_log" ? logs : runs;
+          return { data: source.filter((row) => row.created_at >= from).slice(start, end + 1)
+            .map((row) => Object.fromEntries(columns.map((column) => [column, row[column]]))), error: null };
+        },
+      };
+      return query;
+    },
+  };
+  const result = await runEmailHealthReport({
+    supabase, now,
+    sendWebhookFn: async (_url, payload) => posts.push(payload),
+    getOpsWebhookFn: async () => "https://discord.example/ops",
+  });
+  return { result, payload: posts[0] };
+}
+
+const runRow = (hoursAgo, extra = {}) => ({
+  email_type: "welcome", stage: "on", candidates: 1, sent: 0, skipped: 1, failed: 0,
+  created_at: iso(hoursAgo * HOUR), ...extra,
+});
+
+test("#5296: already delivered welcome remains a candidate for 48h without a false alert", async () => {
+  // One successful send just outside the 48h report span, followed by normal
+  // dedupe observations in BOTH rolling windows. No new signup is required.
+  const { result, payload } = await reportWithRuns([
+    runRow(49, { sent: 1, skipped: 0 }), runRow(47), runRow(25), runRow(23),
+  ], NOW, [logRow("delivered", { created_at: iso(49 * HOUR) })]);
+  assert.deepEqual(result.breaches, []);
+  assert.deepEqual(result.types24h.welcome, { candidates: 1, sent: 0, skipped: 1, failed: 0, runs: 1 });
+  assert.equal(payload.content, undefined, "normal dedupe must not mention the owner");
+  const details = payload.embeds[0].fields.find((field) => field.name.startsWith("Pr. type")).value;
+  assert.match(details, /1 observation/);
+  assert.match(details, /0 sendt/);
+  assert.match(details, /1 skippet/);
+  assert.match(details, /0 fejlet/);
+});
+
+test("#5296: skipped candidates do not hide real sweep failures or unaccounted candidates", async () => {
+  for (const failed of [0, 1]) {
+    const { result } = await reportWithRuns([
+      runRow(30, { candidates: 2, failed }), runRow(2, { candidates: 2, failed }),
+    ]);
+    assert.equal(result.breaches.length, 1, "one non-skipped candidate per window must still alert");
+    assert.match(result.breaches[0], /to doegn i traek/);
+  }
+  const { result } = await reportWithRuns([runRow(30), runRow(2, { candidates: 2, failed: 1 })]);
+  assert.deepEqual(result.breaches, [], "a skipped-only previous window is not a second failed day");
+});
+
+test("#5296: dry_run neither creates a live-send alarm nor masks an on-stage failure", async () => {
+  const dry = [runRow(30, { stage: "dry_run", skipped: 0, failed: 1 }), runRow(2, { stage: "dry_run", skipped: 0, failed: 1 })];
+  const { result: dryResult } = await reportWithRuns(dry);
+  assert.deepEqual(dryResult.breaches, []);
+  assert.equal(dryResult.types24h.welcome.candidates, 0);
+  const { result } = await reportWithRuns([
+    runRow(30, { stage: "dry_run", sent: 1, skipped: 0 }),
+    runRow(2, { stage: "dry_run", sent: 1, skipped: 0 }),
+    runRow(30, { skipped: 0, failed: 1 }), runRow(2, { skipped: 0, failed: 1 }),
+  ]);
+  assert.equal(result.breaches.length, 1);
+  assert.equal(result.types24h.welcome.sent, 0, "a dry run is not a sent email");
+});
+
+test("#5296: rolling 24h boundaries include late UTC deliveries across Copenhagen dates and DST", async () => {
+  for (const now of [
+    new Date("2026-09-16T06:00:00Z"), // 08 CEST
+    new Date("2026-01-16T07:00:00Z"), // 08 CET
+    new Date("2026-03-29T06:00:00Z"), // DST starts
+    new Date("2026-10-25T07:00:00Z"), // DST ends
+  ]) {
+    const at = (hoursAgo) => new Date(now.getTime() - hoursAgo * HOUR).toISOString();
+    const rows = [
+      runRow(0, { created_at: at(24), sent: 1, skipped: 0 }),
+      runRow(0, { created_at: at(48), sent: 2, candidates: 2, skipped: 0 }),
+      runRow(0, { created_at: at(48 + 1 / 3600), sent: 99, candidates: 99, skipped: 0 }),
+    ];
+    const { result } = await reportWithRuns(rows, now);
+    assert.equal(result.posted, true);
+    assert.equal(result.types24h.welcome.sent, 1, "24h cutoff belongs to latest window");
+    const earlier = summarizeSweepRunsWindow(rows, { fromIso: at(48), toIso: at(24) });
+    assert.equal(earlier.welcome.sent, 2, "previous window is half-open with no overlap");
+  }
+  const { result } = await reportWithRuns([
+    runRow(0, { created_at: "2026-09-15T23:08:01.000Z", sent: 1, skipped: 0 }),
+  ], new Date("2026-09-16T06:00:00Z"), [logRow("delivered", { created_at: "2026-09-15T23:08:01.000Z" })]);
+  assert.equal(result.types24h.welcome.sent, 1);
+  assert.equal(result.window24h.sent, 1);
+});
 
 test("rene tal bryder ingen taerskel", () => {
   assert.deepEqual(evaluateEmailHealthThresholds({ window24h: cleanWindow }), []);
