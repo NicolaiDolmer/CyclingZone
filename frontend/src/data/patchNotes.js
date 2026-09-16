@@ -1,5 +1,24 @@
 export const PATCHES = [
   {
+    "version": "7.278",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "Your fighters got their potential back",
+          "body": "Yesterday's update lowered the ceiling on aggression, and that hit one rider type far harder than the rest. Aggression is the signature ability of a fighter, so his expected ceiling fell by up to eight points overnight, while a puncheur lost nothing. That was not what I intended. Aggression is back at full height, and your fighters show their old numbers again after their next training session. Tactics, teamwork and leadership keep the ceilings they got yesterday. Nobody lost a single point of ability along the way, only the projection you see."
+        },
+        "da": {
+          "title": "Dine udbrudsryttere har fået deres potentiale tilbage",
+          "body": "Gårsdagens opdatering sænkede loftet for angrebslyst, og det ramte én ryttertype langt hårdere end resten. Angrebslyst er udbrudsrytterens signaturevne, så hans forventede loft faldt op til otte point på én nat, mens en puncheur intet mistede. Sådan var det ikke tænkt. Angrebslyst er tilbage i fuld højde, og dine udbrudsryttere viser deres gamle tal igen efter næste træningspas. Taktik, holdarbejde og lederskab beholder de lofter, de fik i går. Ingen rytter mistede et eneste evne-point undervejs, kun den forventning du kunne se."
+        },
+        "refs": [5288, 5280, 5268]
+      }
+    ]
+  },
+  {
     "version": "7.276",
     "date": "2026-09-15",
     "label": "Beta",

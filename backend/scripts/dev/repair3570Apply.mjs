@@ -414,6 +414,24 @@ export const FACIT_MODELDRIFT = Object.freeze([
       + "Medianen flytter sig IKKE (15) — loftet rammer kun de fire mentale evner, ikke "
       + "de tretten andre, så halen bevæger sig mens midten står stille.",
   }),
+  // ── #5288 (ejer-beslutning 16/9) ────────────────────────────────────────────
+  // Delvis tilbagerulning af posten ovenfor: `aggression` er ude af
+  // MENTAL_ABILITY_TAG_CEILING igen, fordi loftet på 70 kun ramte baroudeurens
+  // SIGNATUREVNE (eneste caps-opskrift med aggression, og ikke en craft-evne).
+  // `tactics` (55) og teamwork/leadership (70) står uændret, så kun den ene
+  // fjerdedel af #5268-posten rulles tilbage — derfor 47 og ikke 489.
+  Object.freeze({
+    dato: "2026-09-16",
+    ref: "#5288",
+    felt: "loftSaenketAntal",
+    fra: 4873,
+    til: 4826,
+    hvorfor:
+      "Aggression tilbage på baroudeurens signatur-tag (93). 47 (rytter, evne)-par har "
+      + "derfor ikke længere et formel-loft under deres 10/8-loft. Peger opad igen, "
+      + "modsat #5268-posten, præcis som en tilbagerulning af ét af de fire lofter skal. "
+      + "saenkningP90 flytter sig IKKE (34): de 47 par lå i midten, ikke i halen.",
+  }),
 ]);
 
 /** Det godkendte facit med ledgerens bevidste drift lagt oven på. */
