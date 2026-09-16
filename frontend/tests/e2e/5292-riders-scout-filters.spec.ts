@@ -59,6 +59,38 @@ test("returning through history restores the URL filters while the list stays mo
   await expect(page.getByTestId("filter-name")).toHaveValue("");
 });
 
+test("rapid typing never loses characters to an older URL transition", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile-webkit", "CPU throttling uses Chromium CDP; history is covered on every browser above.");
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await page.goto("/riders");
+  const input = page.getByTestId("filter-name");
+  const historyLength = await page.evaluate(() => history.length);
+  for (const name of ["Mikkel Hansen", "abcdefghijklmnopqrstuv", "Ada Pedersen"]) {
+    await input.fill("");
+    await input.pressSequentially(name, { delay: 0 });
+    await expect(input).toHaveValue(name);
+    await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(name);
+  }
+  expect(await page.evaluate(() => history.length)).toBe(historyLength);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  await page.getByRole("link", { name: "Ada Pedersen", exact: true }).click();
+  await page.goBack();
+  await expect(input).toHaveValue("Ada Pedersen");
+});
+
+test("legacy filter URL normalizes once and reset stays empty after profile/back", async ({ page }) => {
+  await page.goto("/riders?min_uci=150000&sort=uci_points&q=Ada");
+  await expect.poll(() => new URL(page.url()).searchParams.get("min_value")).toBe("150000");
+  await expect.poll(() => new URL(page.url()).searchParams.has("min_uci")).toBe(false);
+  await page.getByTestId("filter-reset").click();
+  await expect(page.getByTestId("filter-name")).toHaveValue("");
+  await page.getByRole("link", { name: "Ada Pedersen", exact: true }).click();
+  await page.goBack();
+  await expect(page.getByTestId("filter-name")).toHaveValue("");
+  await expect.poll(() => new URL(page.url()).search).toBe("");
+});
+
 test("quick scout needs no column switch or horizontal scroll and stays on the filtered list", async ({ page }, testInfo) => {
   const requests: unknown[] = [];
   await page.route("**/api/scouting/me", route => json(route, {

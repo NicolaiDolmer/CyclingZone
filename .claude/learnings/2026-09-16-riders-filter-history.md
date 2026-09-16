@@ -4,6 +4,8 @@
 - RidersPage already used ridersUrlState before this change. The ordinary profile visit/browser-back test passed on the base revision; its existing persistence was present and working for that case.
 - Reproduced gap: navigate from a filtered list to the same route via app navigation, edit filters, then go back. The component stays mounted. Its initializer does not run again and its effect writes stale filters over the restored URL.
 - Restore changed URL state before effects run. Keep the existing parser, serializer and session fallback; skip redundant URL replacements.
+- Final review caught a race: a delayed own URL replacement could undo newer typing. Android stress failed on the first PR version; the base passed three repetitions.
+- Tag own replacements with a per-mount writer identity. Only that writer's REPLACE skips restoration; POP always restores history. The stress probe is now a regression test.
 - Reuse AuctionsPage's ScoutablePotentiale and useScouting. No new scouting rules or API mutations are introduced.
 - Owner approved design A on September 16 after mobile sketches: name plus rating, value and potential/scout by default. Salary remains selectable.
 - UI references: docs/design/PAGE_TEMPLATES.md (T2/D-047), docs/design/TASTE.md; market rules: docs/TRANSFER_MARKET_RULES.md. Gameplay contracts remain unchanged.

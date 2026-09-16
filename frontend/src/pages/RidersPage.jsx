@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useId } from "react";
 import { useTranslation } from "react-i18next";
 import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
 import { fetchRidersPage } from "../lib/useRiderFilters";
@@ -12,13 +12,13 @@ import {
 import { supabase } from "../lib/supabase";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
-import { useNavigate, Link, useSearchParams } from "react-router";
+import { useNavigate, Link, useSearchParams, useLocation, useNavigationType } from "react-router";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
-import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
-import { useScouting } from "../lib/useScouting";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
+import { useScouting } from "../lib/useScouting.js";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
@@ -193,6 +193,9 @@ export default function RidersPage() {
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const filterWriterId = useId();
   const scouting = useScouting();
   const [riders, setRiders] = useState([]);
   const [total, setTotal] = useState(0);
@@ -208,10 +211,13 @@ export default function RidersPage() {
   const [lastSearch, setLastSearch] = useState(currentSearch);
   // #5292: history can change the URL without unmounting this page. Restore
   // before effects run, so stale filters cannot overwrite the history entry.
-  // Our own URL writes already match filters and need no second data fetch.
+  // Our own REPLACE can arrive after newer typing. Identify its writer rather
+  // than comparing it to current input, or an older query can undo a clear.
+  // POP must restore history even when that entry was originally written here.
   if (lastSearch !== currentSearch) {
     setLastSearch(currentSearch);
-    if (filtersToSearchParams(filters, FILTER_DEFAULTS).toString() !== currentSearch) {
+    const ownWrite = navigationType === "REPLACE" && location.state?.ridersFilterWriter === filterWriterId;
+    if (!ownWrite && filtersToSearchParams(filters, FILTER_DEFAULTS).toString() !== currentSearch) {
       setFilters(searchParamsToFilters(searchParams, FILTER_DEFAULTS));
     }
   }
@@ -388,10 +394,13 @@ export default function RidersPage() {
   useEffect(() => {
     const params = filtersToSearchParams(filters, FILTER_DEFAULTS);
     if (params.toString() !== searchParams.toString()) {
-      setSearchParams(params, { replace: true });
+      setSearchParams(params, {
+        replace: true,
+        state: { ...location.state, ridersFilterWriter: filterWriterId },
+      });
     }
     saveFiltersToSession(filters);
-  }, [filters, searchParams, setSearchParams]);
+  }, [filters, searchParams, setSearchParams, location.state, filterWriterId]);
 
   // #229: scroll til toppen ved side-skift, så en ny side ikke starter i bunden
   // (window er scroll-containeren — <main> i Layout er ikke en overflow-scroll-boks).
