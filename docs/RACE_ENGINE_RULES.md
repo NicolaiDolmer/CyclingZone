@@ -102,6 +102,13 @@ De tre midterste er de oprindelige S3-værdier med **uændret navn og semantik**
 
 ## 2. Mekanik-kataloget (ejer-godkendt 20/8)
 
+**Taktikfanens datomarkering (#5290).** "I dag" ved en etape betyder, at dens
+`scheduled_at` falder på den aktuelle kalenderdato i Europe/Copenhagen, jf.
+[`CALENDAR_RULES.md` §0](CALENDAR_RULES.md). Næste uafviklede etape og `game_day`
+er ikke datobevis. Uden en brugbar tidsplan vises kun etapenummeret.
+Markeringen opdateres også, når fanen står åben over midnat. Lås og udtagelse
+følger fortsat deres eksisterende regler.
+
 Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 
 | # | Mekanik | Fase |
