@@ -112,9 +112,17 @@ function getAuctionLeaderId(auction) {
 }
 
 // #5301: hvor mange kommende loeb nudgen hoejst gaar igennem, naar de foerste er
-// afmeldte. Nudgen handler om det NAERE loeb, saa loftet er lavt med vilje - og
-// hver kandidat koster ét /selection-kald.
-const SQUAD_NUDGE_LOOKAHEAD = 3;
+// afmeldte.
+//
+// Tallet er MAALT, ikke gaettet. Lidl-Leffe Pro Drinking (D3) havde 16/9 tre
+// afmeldte loeb i TRAEK - Tour Wallon (16/9), Tour Belge (17/9), Tour des Hauts
+// Plateaux (19/9) - foer Danmark Rundt (19/9), som han faktisk stiller op i. Et
+// loft paa 3 ville have tiet om netop det loeb han skulle mindes om. En spiller
+// der melder fra ofte er praecis den nudgen skal virke for.
+//
+// Prisen bæres KUN af den spiller: loekken stopper ved det foerste loeb der ikke
+// er afmeldt, saa normaltilfaeldet er ét kald - uaendret fra foer #5301.
+const SQUAD_NUDGE_LOOKAHEAD = 5;
 
 export default function DashboardPage() {
   const navigate = useNavigate();

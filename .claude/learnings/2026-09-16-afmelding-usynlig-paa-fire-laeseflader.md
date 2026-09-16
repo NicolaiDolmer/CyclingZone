@@ -40,6 +40,18 @@ Ingen ændring af motoren, af withdrawal-semantikken eller af at entries bevares
 - `raceWithdrawal.test.js` — pagineringens `.order()` er testet eksplicit: en tabt afmeldings-række over en `.range()`-grænse ville genindføre præcis denne bug.
 - Begge retninger testet overalt: et *aktivt* overlappende løb skal stadig låse, og et manglende `withdrawn`-felt skal opføre sig som før.
 
+## Efterspil: rettelsen aabnede selv et hul
+
+To ting kom frem EFTER den foerste gronne CI, begge fordi jeg kiggede i rigtige data i stedet for at stole paa ræsonnementet:
+
+**1. En anden spiller, en anden variant.** knud_r_flink (Lidl-Leffe Pro Drinking, D3) havde samme symptom, men med NUL bevarede entries - nudgen fyrede paa `selection: null`, ikke paa en delvis trup. Samme gate daekker begge, men de to former var ikke aabenlyst den samme fejl uden at se dem side om side.
+
+**2. Gaten alene var en regression.** Dashboard-nudgen tjekkede kun ÉT loeb. "Tavs ved afmeldt" ville derfor have skjult et AEGTE manglende udtag i det naeste loeb - jeg havde byttet en forkert paamindelse for en manglende. Nudgen gaar nu kandidaterne igennem indtil ét ikke er afmeldt.
+
+Loftet paa det gennemloeb blev foerst sat til 3 paa fornemmelse. Lidl-holdets faktiske kalender havde **tre afmeldte loeb i traek** (Tour Wallon 16/9, Tour Belge 17/9, Tour des Hauts Plateaux 19/9) foer Danmark Rundt, som han stiller op i. Et loft paa 3 ville have tiet om netop det loeb han skulle mindes om. Loftet er nu 5, valgt paa den maalte kalender.
+
+**3. Doed kode der omgik den nye guard.** `reinstateTeam()` slettede en afmelding uden konflikt-tjek og havde nul kaldere. Den er fjernet sammen med `withdrawTeam()`: en ubrugt genvej uden om en ny guard er ikke neutral, den er en ladt fejl der venter paa en kaldevej.
+
 ## Læring
 
 **Når et felt bevidst holdes i live efter at have mistet sin betydning, skal den nye betydning have sin egen delte indgang — ellers arver enhver ny læseflade den gamle.** #4306 traf det rigtige valg (bevar opstillingen, så fortrydelse er gratis) og lukkede skrive- og afviklingsvejene. Men beslutningen gjorde `race_entries` tvetydig for *alle fremtidige læsere*, og den del blev aldrig lukket. Motoren var korrekt i tre uger, mens UI'et løj — og det er værre end en åbenlys fejl, fordi spilleren ikke kan se forskel på "spillet tager fejl" og "jeg tog fejl".
@@ -47,3 +59,5 @@ Ingen ændring af motoren, af withdrawal-semantikken eller af at entries bevares
 Beslægtet med #3410's postmortem (lås og årsag udledt to steder driver fra hinanden). Fælles regel: **to flader må aldrig udlede samme tilstand hver for sig.** Her var det værre end drift — tavlen og matrixen gav modsatte svar på det samme spørgsmål, i samme session, for den samme rytter.
 
 Sekundær læring: rapporten kom fra en spiller, ikke fra en test eller en alarm. Den eneste grund til at vi ved, hvor længe det stod på, er at han skrev det ned i stedet for at arbejde udenom.
+
+Sekundaer laering nummer to: **vaelg taerskler paa maalte data, ikke paa fornemmelse.** Bade "hvor mange loeb skal nudgen kigge frem" og selve diagnosen kom fra at slaa op i prod - to gange fandt det noget ræsonnementet havde misset.

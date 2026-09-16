@@ -5,18 +5,14 @@
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { loadTeamBindingContext, mapRiderBindingDetails } from "./raceBinding.js";
 
-export async function withdrawTeam({ supabase, raceId, teamId, reason = null }) {
-  const { error } = await supabase
-    .from("race_withdrawals")
-    .upsert({ race_id: raceId, team_id: teamId, withdrawn_reason: reason }, { onConflict: "race_id,team_id" });
-  if (error) throw new Error(`race_withdrawals upsert: ${error.message}`);
-}
-
-export async function reinstateTeam({ supabase, raceId, teamId }) {
-  const { error } = await supabase
-    .from("race_withdrawals").delete().eq("race_id", raceId).eq("team_id", teamId);
-  if (error) throw new Error(`race_withdrawals delete: ${error.message}`);
-}
+// withdrawTeam/reinstateTeam er FJERNET (#5301). De var doed kode: ruterne
+// (POST/DELETE /races/:raceId/withdrawal) upserter og sletter selv inline, og
+// funktionerne havde nul kaldere i hele repoet. reinstateTeam var desuden
+// aktivt farlig efter #5301 - den slettede en afmelding UDEN
+// findRejoinConflicts-guarden nedenfor, saa en fremtidig kaldevej kunne have
+// genindfoert dobbeltbookingen guarden netop lukker. Praecis den fejlklasse
+// ("endnu en kopi der glemmer reglen") var rod-aarsagen i #5301.
+// Historik: docs/superpowers/plans/2026-06-23-race-hub-fase-0b-generator-afmeld.md
 
 // Set af team_id der har trukket sig fra et løb.
 export async function loadWithdrawnTeamIds({ supabase, raceId }) {
