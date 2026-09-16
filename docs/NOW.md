@@ -4,13 +4,13 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Codex-vækstgennemgang 17/9** — `docs/drafts/codex-brief-vaekst-2026-09-17.md` (analyse, INGEN kode/PR). **NB:** `codex-prompts-2026-09-17.md` er delvist forældet (#5289/#5290 merget). **Nye 16/9:** #5304 click-ids · #5305 PostHog 0 events · #5306 NPS tavs · #5307 arkitektur+PWA. Uafklaret: loft-designet (🟡) · sponsor #4860/#5263 **deadline 27/9** · apply-go #5268 + #4619. **Merget 16/9:** 5 PR'er (senest #5301), køen TOM. **Parkeret:** #5281 (vent på B4) · #5267 løbsdage → #5169 + B4 #5264s grid; #5264 CONFLICTING. **Øvrigt:** #5263 · #5235 · #5262 · #3512.
+> **🎯 Next action:** **Merge-kø (ejer, i DENNE orden): #5311 → #5308.** #5311 = e2e-gaten omlagt (#5309), grøn på sig selv. #5308 fejler INTET — blokeret af den gamle gate; review i PR-kommentar. Derefter **Codex-vækstgennemgang 17/9** — `docs/drafts/codex-brief-vaekst-2026-09-17.md` (analyse, INGEN kode/PR; `codex-prompts-2026-09-17.md` delvist forældet). **Nye 16/9:** #5304-#5307 (click-ids, PostHog, NPS, arkitektur+PWA). Uafklaret: loft-designet (🟡) · sponsor #4860/#5263 **deadline 27/9** · apply-go #5268 + #4619. **Parkeret:** #5281 (vent på B4) · #5267 løbsdage → #5169 + B4 #5264s grid; #5264 CONFLICTING. **Øvrigt:** #5263 · #5235 · #5262 · #3512.
 
 > **🟡 Loft-designet (ejer 16/9 — byg intet, afventer samtale):** `abilityRoleClass` er **binær på fortegn**, så vægt 1 og vægt 3 begge giver `signatur` (93). Derfor ramte loftet skævt: `aggression` (vægt 3) kostede 8,4 ratingpoint, `teamwork`/`leadership` (vægt 1) koster 1,5-1,8. Ejeren vil have en langsigtet løsning (vægtet rolleklasse eller gulv à la `GC_PUNCH_FLOOR`). **#5268-point-flytningen bør afvente samtalen.**
 
-> **🔴 Åbne fund:** **#5296 welcome-mail = formentlig falsk alarm** — Resend viser mailen delivered 10-15/9, kæden intakt; mistanken er mail-drift-**vagten**, ikke udsendelsen (evidens i issuet). **Webkit-flaken #4925 er bredere end titlen:** mobile-webkit fejler på skiftende specs på tværs af PR'er. Rerun, ikke fix. Deploy verify tom-JSON → #5286. #5223 dobbelt sprint-kaptajn. `zod` mangler lokalt → 3 route-tests fejler, kør `npm run sync-deps`. Beta-testere: 0 i prod. AGENTS.md/FEATURE_STATUS over budget. **Discord-sweep 16/9:** 8 nye. #5285 tilhører anden sessions bølge #5284 — rør den ikke; tjek `wave-active.json` FØR spawn.
+> **🔴 Åbne fund:** **#5296 welcome-mail = formentlig falsk alarm** — Resend viser den delivered 10-15/9; mistanken er mail-drift-**vagten**, ikke udsendelsen (evidens i issuet). **Webkit-flaken #4925 er bredere end titlen:** mobile-webkit fejler på skiftende specs på tværs af PR'er. Rerun, ikke fix. Målt 16/9: webkit er jævnt ~2× langsommere (intet hot spot) og BLIVER på PR-gaten — 25 % af sessionerne kører WebKit. Deploy verify tom-JSON → #5286. #5223 dobbelt sprint-kaptajn. `zod` mangler lokalt → `npm run sync-deps`. Beta-testere: 0 i prod. AGENTS.md/FEATURE_STATUS over budget. **Discord-sweep 16/9:** 8 nye.
 
-> **📊 Triage:** `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. **💳** [`BILLING_STACK.md`](BILLING_STACK.md), tal i [`GROWTH_STACK.md`](GROWTH_STACK.md) §12. **S3:** 529 løb, 28/8 → 27/9, etaper 11-19.
+> **📊 Triage:** `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. **💳** [`BILLING_STACK.md`](BILLING_STACK.md) (tal: [`GROWTH_STACK.md`](GROWTH_STACK.md) §12). **S3:** 529 løb, 28/8 → 27/9.
 
 ## Standing context (forever-relaunch)
 
@@ -24,6 +24,6 @@
 - **Kort-regler (ejer 15/9):** ét delpunkt · prod-tal som eksempel · læs issuets seneste kommentarer FØR kortet · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur.
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`; `gh pr update-branch` først, konflikt → worker fletter main ind); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES` samme PR; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; `gh --body-file`.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (DOLMERPC) — #5308-review + e2e-gate #5309/#5311.
 
 _Historik i git-log, issue-tråde + docs/audits/._
