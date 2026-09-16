@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.280",
+    "version": "7.281",
     "date": "2026-09-16",
     "label": "Beta",
     "changes": [
@@ -20,6 +20,27 @@ export const PATCHES = [
           5301,
           4306
         ]
+      }
+    ]
+  },
+  {
+    "version": "7.280",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The right day in tactics",
+          "body": "Your tactics tab now marks a stage as today only when it is scheduled for today in Copenhagen time. Tomorrow's stage no longer says today."
+        },
+        "da": {
+          "title": "Den rigtige dag i taktik",
+          "body": "Din taktikfane markerer nu kun en etape som i dag, når den er planlagt til i dag i dansk tid. Morgendagens etape vises ikke længere som i dag."
+        },
+        "refs": [5290]
       }
     ]
   },
