@@ -208,19 +208,39 @@ export const CRAFT_ABILITIES = Object.freeze(["positioning", "tactics", "teamwor
 //   tactics    55 — andenRolle-taget. Taktik er stadig et håndværk alle kan træne,
 //                   men den kan ikke længere blive spillets højeste tal for en rytter
 //                   hvis eneste kvalifikation er at han er 31.
-//   aggression 70 — håndværks-taget. En baroudeur må stadig have aggression som sin
-//                   bedste evne (signatur-RATEN 0,45 er urørt, kun taget flyttes),
-//                   men ikke op i 93 mens resten af feltet ligger på 9.
-//   teamwork   70 — samme håndværks-tag. Aldrig `svaghed` (45): ingen negativ vægt
+//   teamwork   70 — håndværks-taget. Aldrig `svaghed` (45): ingen negativ vægt
 //                   findes for den i capsShapingWeights.
 //   leadership 70 — samme.
+//
+// ── AGGRESSION ER UDE AF TABELLEN (ejer-beslutning 16/9, #5288) ─────────────
+// Den stod her på 70 fra 15/9 til 16/9 med begrundelsen "en baroudeur må stadig
+// have aggression som sin bedste evne, men ikke op i 93 mens resten af feltet
+// ligger på 9". Den begrundelse overså HVEM loftet rammer:
+//
+//   `aggression` har caps-vægt i præcis ÉN opskrift — `baroudeur`, vægt 3, altså
+//   hans SIGNATUREVNE (capsShapingWeights.js) — og den er IKKE i CRAFT_ABILITIES.
+//   Alle andre typer falder derfor til `andenRolle` (55) eller `svaghed` (45),
+//   begge allerede UNDER 70. Loftet var altså en no-op for hver eneste rytter i
+//   spillet undtagen baroudeurs, og dets eneste målbare virkning var at skære
+//   baroudeurens signatur fra 93 ned til håndværks-niveau — 23 point, mens alle
+//   andre arketyper beholdt en uloftet fysisk signaturevne.
+//
+// Målt i prod: fire spillere meldte faldet inden for et døgn efter udrulningen
+// (#5288). Baroudeurens display-opskrift vejer `aggression: 4` af 11, så
+// −23 × 4/11 = −8,4 point på det forventede loft. Observeret: −7 til −8.
+//
+// PRISEN, som ejeren har taget stilling til: når point-flytningen sænker en
+// baroudeurs aggression, kan han træne den op til 93 igen (gap-proportional
+// træning, se ovenfor). For netop hans signaturevne er det tilsigtet — det er
+// den evne hans arketype ER — men det udvander point-flytningen for den type.
+// Skal det strammes senere, er det et GULV-problem (som GC_PUNCH_FLOOR), ikke et
+// loft-problem: et loft kan ikke skelne mellem "ejer evnen" og "bruger evnen".
 //
 // Ændres et af tallene senere, ændres KUN vækst-hovedrummet: `dailyTraining` lægger
 // kun til (cap under evnen ⇒ gap 0 ⇒ ingen vækst, aldrig tab), og
 // `declineByYearsPastPeak` læser slet ikke loftet. Ingen rytter mister en evne af det.
 export const MENTAL_ABILITY_TAG_CEILING = Object.freeze({
   tactics: 55,
-  aggression: 70,
   teamwork: 70,
   leadership: 70,
 });

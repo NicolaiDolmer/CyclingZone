@@ -1,5 +1,24 @@
 export const PATCHES = [
   {
+    "version": "7.278",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "Your fighters got their potential back",
+          "body": "Yesterday's update lowered the ceiling on aggression, and that hit one rider type far harder than the rest. Aggression is the signature ability of a fighter, so his expected ceiling fell by up to eight points overnight, while a puncheur lost nothing. That was not what I intended. Aggression is back at full height, and your fighters show their old numbers again after their next training session. Tactics, teamwork and leadership keep the ceilings they got yesterday. Nobody lost a single point of ability along the way, only the projection you see."
+        },
+        "da": {
+          "title": "Dine udbrudsryttere har fået deres potentiale tilbage",
+          "body": "Gårsdagens opdatering sænkede loftet for angrebslyst, og det ramte én ryttertype langt hårdere end resten. Angrebslyst er udbrudsrytterens signaturevne, så hans forventede loft faldt op til otte point på én nat, mens en puncheur intet mistede. Sådan var det ikke tænkt. Angrebslyst er tilbage i fuld højde, og dine udbrudsryttere viser deres gamle tal igen efter næste træningspas. Taktik, holdarbejde og lederskab beholder de lofter, de fik i går. Ingen rytter mistede et eneste evne-point undervejs, kun den forventning du kunne se."
+        },
+        "refs": [5288, 5280, 5268]
+      }
+    ]
+  },
+  {
     "version": "7.277",
     "date": "2026-09-15",
     "label": "Beta",
@@ -20,11 +39,11 @@ export const PATCHES = [
         "category": "improved", "audience": "player", "topic": "Riders",
         "en": {
           "title": "Tactics and aggression no longer come with a hidden age bonus",
-          "body": "A new rider used to get tactics mostly from his age and aggression partly from being young. From now on both are abilities of their own for new riders. The ceilings for tactics and aggression were lowered to match. A ceiling only limits future growth, so no rider loses a single point."
+          "body": "A new rider used to get tactics mostly from his age and aggression partly from being young. From now on both are abilities of their own for new riders. The ceiling for tactics was lowered to match. A ceiling only limits future growth, so no rider loses a single point."
         },
         "da": {
           "title": "Taktik og angrebslyst får ikke længere en skjult aldersbonus",
-          "body": "En ny rytter fik før taktik mest fra sin alder og angrebslyst delvist fra at være ung. Fra nu af er begge egne evner for nye ryttere. Lofterne for taktik og angrebslyst er sænket tilsvarende. Et loft begrænser kun fremtidig vækst, så ingen rytter mister et eneste point."
+          "body": "En ny rytter fik før taktik mest fra sin alder og angrebslyst delvist fra at være ung. Fra nu af er begge egne evner for nye ryttere. Loftet for taktik er sænket tilsvarende. Et loft begrænser kun fremtidig vækst, så ingen rytter mister et eneste point."
         },
         "refs": [3668, 5268, 5280]
       },
