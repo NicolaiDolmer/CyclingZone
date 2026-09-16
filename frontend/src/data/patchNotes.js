@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.282",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scout from the rider database",
+          "body": "What changed: You can scout directly from the rider list, including on your phone. Going back now restores the filters from that page.\n\nWhat it means for you: Compare riders without opening every profile or setting your filters again. On mobile, salary is one column tap away."
+        },
+        "da": {
+          "title": "Scout direkte fra rytterdatabasen",
+          "body": "Hvad er ændret: Du kan scoute direkte fra rytterlisten, også på din telefon. Tilbage-navigation gendanner nu filtrene fra den side.\n\nHvad betyder det for dig: Sammenlign ryttere uden at åbne hver profil eller sætte dine filtre igen. På mobil er løn ét kolonnevalg væk."
+        },
+        "refs": [5292]
+      }
+    ]
+  },
+  {
     "version": "7.281",
     "date": "2026-09-16",
     "label": "Beta",

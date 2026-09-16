@@ -6,6 +6,7 @@ import { ABILITY_STATS as STATS } from "../lib/abilities";
 import {
   filtersToSearchParams,
   initialFiltersFromUrlOrSession,
+  searchParamsToFilters,
   saveFiltersToSession,
 } from "../lib/ridersUrlState";
 import { supabase } from "../lib/supabase";
@@ -16,6 +17,8 @@ import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
+import { useScouting } from "../lib/useScouting";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
@@ -190,6 +193,7 @@ export default function RidersPage() {
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
   const [searchParams, setSearchParams] = useSearchParams();
+  const scouting = useScouting();
   const [riders, setRiders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -200,6 +204,17 @@ export default function RidersPage() {
   const [filters, setFilters] = useState(() =>
     initialFiltersFromUrlOrSession(searchParams, FILTER_DEFAULTS),
   );
+  const currentSearch = searchParams.toString();
+  const [lastSearch, setLastSearch] = useState(currentSearch);
+  // #5292: history can change the URL without unmounting this page. Restore
+  // before effects run, so stale filters cannot overwrite the history entry.
+  // Our own URL writes already match filters and need no second data fetch.
+  if (lastSearch !== currentSearch) {
+    setLastSearch(currentSearch);
+    if (filtersToSearchParams(filters, FILTER_DEFAULTS).toString() !== currentSearch) {
+      setFilters(searchParamsToFilters(searchParams, FILTER_DEFAULTS));
+    }
+  }
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
   // #4649: gemte filtre (del C) — Pro-gated i UI, se SavedFiltersBar.
@@ -372,9 +387,11 @@ export default function RidersPage() {
   // navigation (klik på rytter → tilbage).
   useEffect(() => {
     const params = filtersToSearchParams(filters, FILTER_DEFAULTS);
-    setSearchParams(params, { replace: true });
+    if (params.toString() !== searchParams.toString()) {
+      setSearchParams(params, { replace: true });
+    }
     saveFiltersToSession(filters);
-  }, [filters, setSearchParams]);
+  }, [filters, searchParams, setSearchParams]);
 
   // #229: scroll til toppen ved side-skift, så en ny side ikke starter i bunden
   // (window er scroll-containeren — <main> i Layout er ikke en overflow-scroll-boks).
@@ -477,6 +494,20 @@ export default function RidersPage() {
         ) : <span className="text-cz-3">—</span>;
       },
     },
+    // #5292: keep value and the shared scout action beside rating, before
+    // secondary identity columns, so desktop scouting is not off-screen.
+    {
+      key: "value",
+      header: t("table.value"),
+      sortKey: "value",
+      numeric: true,
+      render: (r) => <span className="text-cz-accent-t font-bold">{formatNumber(getRiderMarketValue(r))}</span>,
+    },
+    {
+      key: "potential",
+      header: tRider("header.potential"),
+      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} showScout />,
+    },
     {
       key: "team",
       header: t("table.team"),
@@ -530,14 +561,6 @@ export default function RidersPage() {
         return hasSecondary ? `${primary}/${tTypes(`types.${r.secondary_type}`)}` : primary;
       },
       render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
-    },
-    // #1537: Potentiale-kolonnen fjernet — potentiale skjules helt i visningen (doctrine #1138).
-    {
-      key: "value",
-      header: t("table.value"),
-      sortKey: "value",
-      numeric: true,
-      render: (r) => <span className="text-cz-accent-t font-bold">{formatNumber(getRiderMarketValue(r))}</span>,
     },
     {
       key: "salary",
@@ -673,9 +696,9 @@ export default function RidersPage() {
                 columns={columns}
                 rows={riders}
                 rowKey={(r) => r.id}
-                /* D-047 (#5102): rating, vaerdi og loen er de tre tal markedet
-                   sammenlignes paa; evner og popularitet er et chip-tryk vaek. */
-                mobileDefaults={["rating", "value", "salary"]}
+                /* #5292, design A: scouting is available without opening a
+                   profile. Salary and abilities remain one column-chip away. */
+                mobileDefaults={["rating", "value", "potential"]}
                 rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
                 sort={filters.sort}
                 sortDir={filters.sort_dir}
