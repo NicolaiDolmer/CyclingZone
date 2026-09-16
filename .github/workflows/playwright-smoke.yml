@@ -429,7 +429,11 @@ jobs:
                 'som ingen PR-kørsel nødvendigvis vil fange igen (se [#4281](https://github.com/${{ github.repository }}/issues/4281)).',
               '',
               'main kan have stået rød siden den PR der introducerede fejlen blev merget - check artifacts på run-linket: ' +
-                '`playwright-report-<projekt>` for selve fejlene, `e2e-flakes` for tests der kun bestod ved retry.',
+                '`playwright-report-<lane>` for selve fejlene, `e2e-flakes` for tests der kun bestod ved retry.',
+              '',
+              'Er kørslen rød UDEN en fejlet test, er det vækst-alarmen (#5309): den natlige kørsel er den eneste der ' +
+                'håndhæver shard-planen. Se `Lane ceiling gate + plan verdict` i job-summary - den skriver det præcise ' +
+                'nye laneantal, som rettes i `frontend/tests/e2e/shard-plan.json`.',
               '',
               `Run-link: ${runUrl}`,
             ].join('\n');
