@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   withdrawTeam, reinstateTeam, loadWithdrawnTeamIds,
-  loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey,
+  loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, findRejoinConflicts,
 } from "./raceWithdrawal.js";
 
 function makeSupabase({ rows = [], upsertError = null, deleteError = null } = {}) {
@@ -142,4 +142,150 @@ test("#5301: tomme id-lister rammer slet ikke DB'en", async () => {
 test("#5301 withdrawalKey: race FOER team, og felterne kan ikke bytte plads ubemaerket", () => {
   assert.equal(withdrawalKey("r1", "t1"), "r1|t1");
   assert.notEqual(withdrawalKey("r1", "t1"), withdrawalKey("t1", "r1"));
+});
+
+// ---------------------------------------------------------------------------
+// #5301 — gen-deltag-guarden, EKSEKVERET (ikke kilde-scannet).
+//
+// Reproducerer prod-tilstanden 16/9: Bacon Fraesers meldte fra til Tour du Hedjaz
+// (dag 55-57) med 5 bevarede entries, og satte derefter tre af de samme ryttere i
+// L'Enfer du Nord (dag 55). Det er LOVLIGT, saa laenge Hedjaz er afmeldt - men
+// fjernes afmeldingen, genberegner trg_race_withdrawals_resync_binding
+// binding_span paa de bevarede entries, og exclusion-constrainten afviser med en
+// raa Postgres-fejl. Guarden skal fange det FOER sletningen og navngive begge dele.
+// ---------------------------------------------------------------------------
+
+const HEDJAZ = { id: "hedjaz", season_id: "s3" };
+
+// Stub for loadTeamBindingContext's kaedeform: .select().eq()/.in()/.neq() der
+// afventes direkte (ingen .range()). `tables` er rene raekke-arrays.
+function makeBindingSupabase(tables, { entriesError = null } = {}) {
+  return {
+    from(table) {
+      const f = { table, eqs: {}, ins: {}, neqs: {} };
+      const b = {
+        select() { return b; },
+        eq(c, v) { f.eqs[c] = v; return b; },
+        in(c, v) { f.ins[c] = v; return b; },
+        neq(c, v) { f.neqs[c] = v; return b; },
+        then(resolve, reject) {
+          if (table === "race_entries" && entriesError) {
+            return Promise.resolve({ data: null, error: entriesError }).then(resolve, reject);
+          }
+          const rows = (tables[table] || []).filter((r) => {
+            for (const [c, v] of Object.entries(f.eqs)) if (r[c] !== v) return false;
+            for (const [c, v] of Object.entries(f.ins)) if (!v.includes(r[c])) return false;
+            for (const [c, v] of Object.entries(f.neqs)) if (r[c] === v) return false;
+            return true;
+          });
+          return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+        },
+      };
+      return b;
+    },
+  };
+}
+
+// Feltet der genskaber prod: Dekker + Sandberg er i BEGGE loeb, Haddad kun i Hedjaz.
+const REJOIN_TABLES = {
+  race_entries: [
+    { race_id: "hedjaz", team_id: "bacon", rider_id: "dekker" },
+    { race_id: "hedjaz", team_id: "bacon", rider_id: "sandberg" },
+    { race_id: "hedjaz", team_id: "bacon", rider_id: "haddad" },
+    { race_id: "enfer", team_id: "bacon", rider_id: "dekker" },
+    { race_id: "enfer", team_id: "bacon", rider_id: "sandberg" },
+  ],
+  race_withdrawals: [{ race_id: "hedjaz", team_id: "bacon" }],
+  races: [
+    { id: "hedjaz", season_id: "s3", name: "Tour du Hedjaz" },
+    { id: "enfer", season_id: "s3", name: "L'Enfer du Nord" },
+  ],
+  race_stage_schedule: [
+    { race_id: "hedjaz", scheduled_at: "2026-09-16T17:00:00Z", game_day: 55 },
+    { race_id: "hedjaz", scheduled_at: "2026-09-18T15:00:00Z", game_day: 57 },
+    { race_id: "enfer", scheduled_at: "2026-09-17T13:00:00Z", game_day: 55 },
+  ],
+  riders: [
+    { id: "dekker", firstname: "Joris", lastname: "Dekker", team_id: "bacon" },
+    { id: "sandberg", firstname: "Henrik", lastname: "Sandberg", team_id: "bacon" },
+    { id: "haddad", firstname: "Ismail", lastname: "Haddad", team_id: "bacon" },
+  ],
+};
+
+test("#5301 findRejoinConflicts: fanger dobbeltbookingen og NAVNGIVER rytter + loeb", async () => {
+  const conflicts = await findRejoinConflicts({
+    supabase: makeBindingSupabase(REJOIN_TABLES), race: HEDJAZ, teamId: "bacon",
+  });
+  const byRider = new Map(conflicts.map((c) => [c.rider_id, c]));
+  assert.deepEqual([...byRider.keys()].sort(), ["dekker", "sandberg"],
+    "kun de ryttere der ogsaa koerer det overlappende loeb");
+  assert.equal(byRider.get("dekker").rider_name, "Joris Dekker");
+  assert.equal(byRider.get("dekker").bound_race_id, "enfer");
+  assert.equal(byRider.get("dekker").bound_race_name, "L'Enfer du Nord");
+  assert.ok(!byRider.has("haddad"), "Haddad koerer kun Hedjaz - han binder ikke");
+});
+
+test("#5301 findRejoinConflicts: intet overlap -> gen-deltag er frit", async () => {
+  const tables = structuredClone(REJOIN_TABLES);
+  // Flyt L'Enfer vaek fra Hedjaz' spaend (dag 55-57).
+  tables.race_stage_schedule = tables.race_stage_schedule.map((r) =>
+    r.race_id === "enfer" ? { ...r, game_day: 70 } : r);
+  const conflicts = await findRejoinConflicts({
+    supabase: makeBindingSupabase(tables), race: HEDJAZ, teamId: "bacon",
+  });
+  assert.deepEqual(conflicts, []);
+});
+
+test("#5301 findRejoinConflicts: ingen bevarede entries -> intet at kollidere med", async () => {
+  const tables = structuredClone(REJOIN_TABLES);
+  tables.race_entries = tables.race_entries.filter((e) => e.race_id !== "hedjaz");
+  const conflicts = await findRejoinConflicts({
+    supabase: makeBindingSupabase(tables), race: HEDJAZ, teamId: "bacon",
+  });
+  assert.deepEqual(conflicts, [], "knud_r_flink-formen: afmeldt UDEN bevaret opstilling");
+});
+
+test("#5301 findRejoinConflicts: et ANDET holds entries binder ikke", async () => {
+  const tables = structuredClone(REJOIN_TABLES);
+  tables.race_entries = tables.race_entries.map((e) =>
+    e.race_id === "enfer" ? { ...e, team_id: "andet-hold" } : e);
+  const conflicts = await findRejoinConflicts({
+    supabase: makeBindingSupabase(tables), race: HEDJAZ, teamId: "bacon",
+  });
+  assert.deepEqual(conflicts, []);
+});
+
+test("#5301 findRejoinConflicts: et ANDET afmeldt loeb binder heller ikke (Rod A/#1823)", async () => {
+  const tables = structuredClone(REJOIN_TABLES);
+  tables.race_withdrawals = [
+    { race_id: "hedjaz", team_id: "bacon" },
+    { race_id: "enfer", team_id: "bacon" }, // ogsaa afmeldt
+  ];
+  const conflicts = await findRejoinConflicts({
+    supabase: makeBindingSupabase(tables), race: HEDJAZ, teamId: "bacon",
+  });
+  assert.deepEqual(conflicts, [], "to afmeldte loeb kan ikke binde hinanden");
+});
+
+test("#5301 findRejoinConflicts: en ANDEN saesons loeb binder ikke (#3070)", async () => {
+  const tables = structuredClone(REJOIN_TABLES);
+  tables.races = tables.races.map((r) => (r.id === "enfer" ? { ...r, season_id: "s2" } : r));
+  const conflicts = await findRejoinConflicts({
+    supabase: makeBindingSupabase(tables), race: HEDJAZ, teamId: "bacon",
+  });
+  assert.deepEqual(conflicts, [], "game_day er saeson-relativ - s2 og s3 deler tal");
+});
+
+test("#5301 findRejoinConflicts: race uden id er en no-op, ikke et kald", async () => {
+  assert.deepEqual(await findRejoinConflicts({ supabase: null, race: null, teamId: "bacon" }), []);
+  assert.deepEqual(await findRejoinConflicts({ supabase: null, race: {}, teamId: "bacon" }), []);
+});
+
+test("#5301 findRejoinConflicts: en DB-fejl kastes, den slugges ikke", async () => {
+  const supabase = makeBindingSupabase(REJOIN_TABLES, { entriesError: { message: "rls denied" } });
+  await assert.rejects(
+    () => findRejoinConflicts({ supabase, race: HEDJAZ, teamId: "bacon" }),
+    /race_entries \(rejoin\): rls denied/,
+    "en tavs fejl her ville lade gen-deltag fortsaette ind i constraint-fejlen"
+  );
 });

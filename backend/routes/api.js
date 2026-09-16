@@ -90,7 +90,7 @@ import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
 // #5301: afmeldings-opslag som ALLE læseflader deler, så "har entries" aldrig igen
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
-import { loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey } from "../lib/raceWithdrawal.js";
+import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey } from "../lib/raceWithdrawal.js";
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
@@ -5876,47 +5876,15 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
     // til spilleren. Vi måler konflikten FØR sletningen, med præcis samme maskineri
     // som PUT /selection's egen gate (loadTeamBindingContext + mapRiderBindingDetails),
     // så gen-deltag og gem ikke kan være uenige om hvad der binder.
+    // Logikken bor i findRejoinConflicts (raceWithdrawal.js) — ikke inline her — så
+    // den kan EKSEKVERES i test mod en mocket supabase. En kilde-scanning kan kun
+    // bevise at koden indeholder det rigtige, ikke at den gør det rigtige.
     if (race) {
-      // pagination-safe: ÉT løb × ÉT hold — feltstørrelsen er hårdt loftet til
-      // size.max (8, selectionSizeForRace) og håndhæves af PUT /selection's
-      // validering, så rækketallet er tocifret, ikke i nærheden af 1000-cappet.
-      const { data: kept, error: keptErr } = await supabase
-        .from("race_entries").select("rider_id")
-        .eq("race_id", race.id).eq("team_id", req.team.id);
-      if (keptErr) return res.status(500).json({ error: keptErr.message });
-      if (kept?.length) {
-        const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
-        const details = mapRiderBindingDetails({
-          riderIds: kept.map((e) => e.rider_id),
-          thisWindow: binding.thisWindow,
-          otherRaces: binding.otherRaces,
-        });
-        if (details.size) {
-          const conflictRaceIds = [...new Set(details.values())];
-          const [{ data: conflictRaces }, { data: conflictRiders }] = await Promise.all([
-            supabase.from("races").select("id, name").in("id", conflictRaceIds),
-            // pagination-safe: details' nøgler er et undersæt af `kept` ovenfor
-            // (maks feltstørrelsen, 8) — én række pr. id, aldrig flere.
-            supabase.from("riders").select("id, firstname, lastname").in("id", [...details.keys()]),
-          ]);
-          const raceNameById = new Map((conflictRaces || []).map((r) => [r.id, r.name]));
-          const riderById = new Map((conflictRiders || []).map((r) => [r.id, r]));
-          return res.status(409).json({
-            error: "rejoin_rider_bound",
-            // Navngivet, ikke bare et antal: spilleren skal kunne se HVEM han først
-            // må fjerne fra HVILKET løb — ellers er 409'en lige så ubrugelig som den
-            // rå DB-fejl den erstatter.
-            conflicts: [...details.entries()].map(([riderId, raceId]) => ({
-              rider_id: riderId,
-              rider_name: riderById.has(riderId)
-                ? [riderById.get(riderId).firstname, riderById.get(riderId).lastname].filter(Boolean).join(" ")
-                : null,
-              bound_race_id: raceId,
-              bound_race_name: raceNameById.get(raceId) ?? null,
-            })),
-          });
-        }
-      }
+      // Navngivet, ikke bare et antal: spilleren skal kunne se HVEM han først må
+      // fjerne fra HVILKET løb — ellers er 409'en lige så ubrugelig som den rå
+      // DB-fejl den erstatter.
+      const conflicts = await findRejoinConflicts({ supabase, race, teamId: req.team.id });
+      if (conflicts.length) return res.status(409).json({ error: "rejoin_rider_bound", conflicts });
     }
 
     const { error: delErr } = await supabase

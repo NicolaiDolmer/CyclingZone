@@ -3,6 +3,7 @@
 // i race_withdrawals = holdet deltager ikke. Generator + afvikling respekterer det.
 
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { loadTeamBindingContext, mapRiderBindingDetails } from "./raceBinding.js";
 
 export async function withdrawTeam({ supabase, raceId, teamId, reason = null }) {
   const { error } = await supabase
@@ -62,4 +63,63 @@ export async function loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds = 
   const rows = await fetchAllRows(() =>
     supabase.from("race_withdrawals").select("race_id").eq("team_id", teamId).order("race_id"));
   return new Set(rows.map((r) => r.race_id));
+}
+
+/**
+ * #5301: kan holdet gen-deltage i `race` uden at dobbeltbooke en rytter?
+ *
+ * Afmeldingen NULLer de bevarede entries' binding_span (race_entries_binding_span
+ * + trg_race_withdrawals_resync_binding), så holdet lovligt kan bruge de samme
+ * ryttere i et OVERLAPPENDE løb imens. Fjernes afmeldingen, genberegner trigger'en
+ * spanet på de bevarede entries (#4306) — og rammer så exclusion-constrainten med
+ * en rå Postgres-fejl uden nogen forklaring til spilleren.
+ *
+ * Måles med PRÆCIS samme maskineri som PUT /selection's egen gate
+ * (loadTeamBindingContext + mapRiderBindingDetails), så gen-deltag og gem aldrig
+ * kan blive uenige om hvad der binder — #3410's postmortem: to separate
+ * udledninger af samme tilstand driver fra hinanden.
+ *
+ * `race` skal bære id + season_id (loadTeamBindingContext's sæson-filter, #3070).
+ * Returnerer [] når gen-deltag er sikkert, ellers én post pr. bunden rytter med
+ * NAVNE — et antal ville være lige så ubrugeligt som den rå DB-fejl.
+ *
+ * Fejler ÅBENT (tomt array) når løbet ikke har et binding-vindue: det er samme
+ * regel som PUT-gaten, og en guard der gætter ville blokere lovlige gen-deltag.
+ */
+export async function findRejoinConflicts({ supabase, race, teamId }) {
+  if (!race?.id) return [];
+  // pagination-safe: ÉT løb × ÉT hold — feltstørrelsen er hårdt loftet til size.max
+  // (8, selectionSizeForRace), så rækketallet er tocifret, ikke nær 1000-cappet.
+  const { data: kept, error: keptErr } = await supabase
+    .from("race_entries").select("rider_id")
+    .eq("race_id", race.id).eq("team_id", teamId);
+  if (keptErr) throw new Error(`race_entries (rejoin): ${keptErr.message}`);
+  if (!kept?.length) return [];
+
+  const binding = await loadTeamBindingContext({ supabase, race, teamId });
+  const details = mapRiderBindingDetails({
+    riderIds: kept.map((e) => e.rider_id),
+    thisWindow: binding.thisWindow,
+    otherRaces: binding.otherRaces,
+  });
+  if (!details.size) return [];
+
+  const conflictRaceIds = [...new Set(details.values())];
+  const [{ data: conflictRaces }, { data: conflictRiders }] = await Promise.all([
+    supabase.from("races").select("id, name").in("id", conflictRaceIds),
+    // pagination-safe: details' nøgler er et undersæt af `kept` ovenfor (maks
+    // feltstørrelsen) — én række pr. id, aldrig flere.
+    supabase.from("riders").select("id, firstname, lastname").in("id", [...details.keys()]),
+  ]);
+  const raceNameById = new Map((conflictRaces || []).map((r) => [r.id, r.name]));
+  const riderById = new Map((conflictRiders || []).map((r) => [r.id, r]));
+
+  return [...details.entries()].map(([riderId, raceId]) => ({
+    rider_id: riderId,
+    rider_name: riderById.has(riderId)
+      ? [riderById.get(riderId).firstname, riderById.get(riderId).lastname].filter(Boolean).join(" ") || null
+      : null,
+    bound_race_id: raceId,
+    bound_race_name: raceNameById.get(raceId) ?? null,
+  }));
 }

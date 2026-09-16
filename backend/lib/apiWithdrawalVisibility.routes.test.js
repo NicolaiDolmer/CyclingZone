@@ -18,9 +18,15 @@
 // trg_race_withdrawals_resync_binding genberegner binding_span paa de bevarede
 // entries og saa rammer exclusion-constrainten med en raa Postgres-fejl.
 //
-// Route-wiring daekkes via kilde-scanning (samme moenster som
+// Route-WIRING daekkes via kilde-scanning (samme moenster som
 // apiSelectionWithdrawalGate.routes.test.js) — der er ingen supertest-harness i denne
 // kodebase til at eksekvere Express-handlere mod en mocket supabase-klient.
+//
+// VIGTIGT om raekkevidden: en kilde-scanning beviser at ruten KALDER det rigtige,
+// aldrig at den GOER det rigtige. Derfor bor den eneste nye LOGIK i denne PR —
+// gen-deltag-guarden — i raceWithdrawal.js og eksekveres i raceWithdrawal.test.js
+// mod en mocket supabase. Testen "guardens logik er testbar" nedenfor er den laas
+// der forhindrer at logikken flytter tilbage inline i ruten og dermed ud af daekning.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -98,39 +104,49 @@ test("#5301/3: loebssidens selection-endpoint fortaeller om holdet har trukket s
 test("#5301/5: gen-deltag afviser i stedet for at dobbeltbooke", () => {
   const block = routeBlock('router.delete("/races/:raceId/withdrawal"');
 
-  // season_id + id SKAL med i race-opslaget: loadTeamBindingContext kraever begge
-  // (saeson-filteret i #3070 er ikke valgfrit).
+  // season_id + id SKAL med i race-opslaget: findRejoinConflicts giver dem videre
+  // til loadTeamBindingContext, hvis saeson-filter (#3070) ikke er valgfrit.
   assert.match(
     block, /\.select\("id, status, stages_completed, season_id"\)/,
     "DELETE skal hente id + season_id, ellers kan binding-konteksten ikke bygges"
   );
+  // Selve logikken er EKSEKVERET i raceWithdrawal.test.js — her bindes kun wiringen.
   assert.match(
-    block, /loadTeamBindingContext\(\{ supabase, race, teamId: req\.team\.id \}\)/,
-    "gen-deltag skal bruge SAMME binding-maskineri som PUT /selection's gate"
-  );
-  assert.match(block, /mapRiderBindingDetails\(\{/);
-  assert.match(
-    block, /res\.status\(409\)\.json\(\{\s*\n\s*error: "rejoin_rider_bound",/,
-    "en konflikt skal give en forklarende 409, ikke en raa DB-fejl"
+    block, /findRejoinConflicts\(\{ supabase, race, teamId: req\.team\.id \}\)/,
+    "ruten skal bruge den delte, testbare guard — ikke en inline kopi"
   );
   assert.match(
-    block, /bound_race_name: raceNameById\.get\(raceId\) \?\? null,/,
-    "409'en skal NAVNGIVE det bindende loeb — et antal er lige saa ubrugeligt som DB-fejlen"
+    block, /res\.status\(409\)\.json\(\{ error: "rejoin_rider_bound", conflicts \}\)/,
+    "en konflikt skal give en forklarende 409 med de navngivne poster, ikke en raa DB-fejl"
   );
-  assert.match(block, /rider_name:/, "409'en skal navngive rytteren");
 
   // Guarden skal ligge FOER sletningen: efter er for sent, saa har trigger'en
   // allerede genberegnet binding_span og constrainten allerede fejlet.
-  const guardIdx = block.indexOf('error: "rejoin_rider_bound"');
+  const guardIdx = block.indexOf("findRejoinConflicts(");
   const deleteIdx = block.indexOf('.from("race_withdrawals").delete()');
   assert.ok(guardIdx !== -1 && deleteIdx !== -1, "begge markoerer skal findes");
   assert.ok(guardIdx < deleteIdx, "konflikt-guarden skal afvise FOER afmeldingen slettes");
 });
 
+// Den EKSEKVERENDE daekning af selve guarden bor i raceWithdrawal.test.js. Denne
+// test findes for at en fremtidig inline-kopi i ruten ikke kan snige sig uden om
+// den daekning — en kilde-scanning kan bevise at koden kalder det rigtige, men
+// aldrig at den GOER det rigtige.
+test("#5301/5: guardens logik er testbar (ligger i lib, ikke inline i ruten)", () => {
+  const libSource = readFileSync(resolve(__dirname, "./raceWithdrawal.js"), "utf8");
+  assert.match(libSource, /export async function findRejoinConflicts\(/);
+  const testSource = readFileSync(resolve(__dirname, "./raceWithdrawal.test.js"), "utf8");
+  assert.ok(
+    testSource.includes("findRejoinConflicts({")
+      && testSource.includes("makeBindingSupabase"),
+    "guarden skal KOERES i test mod en mocket supabase, ikke kun kilde-scannes"
+  );
+});
+
 test("#5301: afmeldings-opslagene deles fra raceWithdrawal.js (ingen femte kopi)", () => {
   assert.match(
     apiSource,
-    /import \{ loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey \} from "\.\.\/lib\/raceWithdrawal\.js";/,
+    /import \{ findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey \} from "\.\.\/lib\/raceWithdrawal\.js";/,
     "hver flade der ruller sit eget race_withdrawals-opslag er en ny chance for at glemme det — det var rod-aarsagen i #5301"
   );
 });
