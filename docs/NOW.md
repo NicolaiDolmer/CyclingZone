@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Opsamlingssession** (ejer 16/9), tre uafklarede: 1) loft-designet (se 🟡) · 2) sponsor #4860/PR #5263 — forklaret, **deadline 27/9** (S4-start låser de 33 aftaler) · 3) apply-go-kort #5268 + #4619. **Merget 16/9:** #5297 · #5287. **Klar, mangler merge-go:** #5240 (49 pass). **Parkeret af ejer 16/9:** #5281 (vent på B4, så bonus+erstatning lander samtidig) · #5267 løbsdage (1-2 sessioner) → dermed også #5169 + B4 #5264s 7×5-grid; #5264 er CONFLICTING, kræver worker. **Øvrigt:** #5263 · #5235 · #5262 · #3512.
+> **🎯 Next action:** **Opsamlingssession** — prompt: `docs/drafts/session-prompt-2026-09-16-opsamling.md` (detaljer dér). Tre uafklarede: loft-designet (se 🟡) · sponsor #4860/PR #5263, **deadline 27/9** · apply-go-kort #5268 + #4619. **Merget 16/9:** #5297 · #5287 · #5240 (ejer-go, tjek at den kom igennem). **Parkeret af ejer 16/9:** #5281 (vent på B4; den er IKKE bag flag) · #5267 løbsdage (1-2 sessioner) → dermed også #5169 + B4 #5264s grid; #5264 er CONFLICTING, kræver worker. **Øvrigt:** #5263 · #5235 · #5262 · #3512.
 
 > **🟡 Loft-designet (ejer 16/9 — byg intet, afventer samtale):** `abilityRoleClass` er **binær på fortegn**, så vægt 1 og vægt 3 begge giver `signatur` (93). Derfor ramte loftet skævt: `aggression` (vægt 3) kostede 8,4 ratingpoint, `teamwork`/`leadership` (vægt 1) koster 1,5-1,8. Ejeren vil have en langsigtet løsning (vægtet rolleklasse eller gulv à la `GC_PUNCH_FLOOR`). **#5268-point-flytningen bør afvente samtalen.**
 
