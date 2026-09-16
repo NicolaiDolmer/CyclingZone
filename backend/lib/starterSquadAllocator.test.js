@@ -21,7 +21,9 @@ import { ageForSeason, seasonReferenceYear } from "./riderSeasonAge.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { ABILITY_REGISTRY } from "./abilityRegistry.js";
 import { computeFrozenSalary } from "./contractSeed.js";
+import { isBornFromPriors, deriveBirthAbilities, statLevelToAbility } from "./riderBirthPriors.js";
 
 // ── In-memory riders+teams-mock til single-team-allokering (#1560/#1563) ───────
 // Riders: select(firstname/lastname).order().range() (navne-fetch),
@@ -271,7 +273,14 @@ test("buildWeakStarterPool: alle stats clampet til vinduet, pcm_id null, korrekt
 // give svage ryttere. Fanger en fremtidig generator-/kalibrerings-ændring der ved
 // et uheld gør start-puljen stærk igen. Tærskel 25 = ejer-målet "ingen over ~25".
 test("svag start-pulje: afledte styrke-evner forbliver svage (≤25) (#1487 forward-guard)", () => {
-  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => k !== "tactics" && k !== "aggression");
+  // De MENTALE evner er undtaget, og det er ikke en bekvemmelighed: de foedes af
+  // en egen prior (profil + bred, deterministisk stoej, og for leadership et lille
+  // alders-led), ikke af en enkelt stat. Et stat-vindue siger derfor intet om dem,
+  // og denne gate maaler netop om STYRKE-evnerne foelger stat-klemmen. Foer #5268
+  // stod tactics og aggression navngivet her af samme grund; listen udledes nu af
+  // registret, saa en fremtidig mental evne ikke skal huskes ind i haanden.
+  const MENTAL = new Set(ABILITY_REGISTRY.filter((a) => a.category === "mental").map((a) => a.key));
+  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => !MENTAL.has(k));
   const pool = buildWeakStarterPool({ count: 200, seed: 2026, referenceYear: 2026 });
   let globalMax = 0;
   for (const r of pool) {
@@ -559,36 +568,61 @@ test("#2894/#2902 single-team heal (re-derived): eksisterende TOTAL_SIZE-trup ud
 // svage afledte evner (top ≤25) + trup-styrke i [50,57]. Spejler den eksisterende
 // multi-team forward-guard, men for single-team-seedet (deriveTeamSeed).
 test("#1560 forward-guard: single-team gen-kæde → top-evne ≤25 + stats i [50,57]", () => {
-  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => k !== "tactics" && k !== "aggression");
+  // De MENTALE evner er undtaget, og det er ikke en bekvemmelighed: de foedes af
+  // en egen prior (profil + bred, deterministisk stoej, og for leadership et lille
+  // alders-led), ikke af en enkelt stat. Et stat-vindue siger derfor intet om dem,
+  // og denne gate maaler netop om STYRKE-evnerne foelger stat-klemmen. Foer #5268
+  // stod tactics og aggression navngivet her af samme grund; listen udledes nu af
+  // registret, saa en fremtidig mental evne ikke skal huskes ind i haanden.
+  const MENTAL = new Set(ABILITY_REGISTRY.filter((a) => a.category === "mental").map((a) => a.key));
+  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => !MENTAL.has(k));
   const teamSeed = deriveTeamSeed((2026 + 1487) >>> 0, "fwd-guard-team");
   const pool = buildWeakStarterPool({ count: STARTER_SQUAD.CORE_SIZE, seed: teamSeed, referenceYear: 2026 });
   assert.equal(pool.length, STARTER_SQUAD.CORE_SIZE);
 
+  // #5269: vinduet er ikke længere et STAT-vindue — de felter findes ikke for en
+  // nyfødt. Det er oversat til et EVNE-loft der PERSISTERES i
+  // archetype_draw.birth.cap, så en re-derive ikke kan genoplive en uklemt
+  // profil. Oversættelsen er den samme lineære afbildning stats altid har haft.
+  const abilitiesOf = (r, i) => {
+    const row = { ...r, id: `fwd-${i}` };
+    return isBornFromPriors(row) ? deriveBirthAbilities(row, { age: 27 }) : deriveAbilities({}, row, { asOfYear: 2026 });
+  };
+  const coreCap = Math.round(statLevelToAbility(STARTER_POOL_STAT_WINDOW.hi));
+  const tailCap = Math.round(statLevelToAbility(STARTER_TAIL_STAT_WINDOW.hi));
+
   let globalMax = 0;
-  for (const r of pool) {
-    // Alle clampede stats inde i ejer-vinduet.
-    for (const k of STAT_KEYS) {
-      assert.ok(r[k] >= STARTER_POOL_STAT_WINDOW.lo && r[k] <= STARTER_POOL_STAT_WINDOW.hi,
-        `${k}=${r[k]} udenfor [${STARTER_POOL_STAT_WINDOW.lo},${STARTER_POOL_STAT_WINDOW.hi}]`);
+  pool.forEach((r, i) => {
+    if (isBornFromPriors(r)) {
+      assert.equal(r.archetype_draw.birth.cap, coreCap, "kerne-puljen mangler sit persisterede evne-loft");
+    } else {
+      for (const k of STAT_KEYS) {
+        assert.ok(r[k] >= STARTER_POOL_STAT_WINDOW.lo && r[k] <= STARTER_POOL_STAT_WINDOW.hi,
+          `${k}=${r[k]} udenfor [${STARTER_POOL_STAT_WINDOW.lo},${STARTER_POOL_STAT_WINDOW.hi}]`);
+      }
     }
-    // Prod-fallback-sti (relaunch/akademi/signup): tomt fysiologi-objekt.
-    const abilities = deriveAbilities({}, r, { asOfYear: 2026 });
+    const abilities = abilitiesOf(r, i);
     globalMax = Math.max(globalMax, ...STAT_DRIVEN.map((k) => abilities[k]));
-  }
+  });
   assert.ok(globalMax <= 25, `stærkeste styrke-evne ${globalMax} > 25 — single-team-puljen er ikke svag`);
 
-  // Halen ([50,52]) er endnu svagere end kernen.
+  // Halen ([50,52] → evne-loft 7) er endnu svagere end kernen.
   const tailSeed = deriveTeamSeed((2026 + 1487 + 7) >>> 0, "fwd-guard-team");
   const tailPool = buildWeakStarterPool({ count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear: 2026, window: STARTER_TAIL_STAT_WINDOW });
   let tailMax = 0;
-  for (const r of tailPool) {
-    for (const k of STAT_KEYS) {
-      assert.ok(r[k] >= STARTER_TAIL_STAT_WINDOW.lo && r[k] <= STARTER_TAIL_STAT_WINDOW.hi, `${k}=${r[k]} udenfor hale-vindue`);
+  tailPool.forEach((r, i) => {
+    if (isBornFromPriors(r)) {
+      assert.equal(r.archetype_draw.birth.cap, tailCap, "hale-puljen mangler sit persisterede evne-loft");
+    } else {
+      for (const k of STAT_KEYS) {
+        assert.ok(r[k] >= STARTER_TAIL_STAT_WINDOW.lo && r[k] <= STARTER_TAIL_STAT_WINDOW.hi, `${k}=${r[k]} udenfor hale-vindue`);
+      }
     }
-    const abilities = deriveAbilities({}, r, { asOfYear: 2026 });
+    const abilities = abilitiesOf(r, i);
     tailMax = Math.max(tailMax, ...STAT_DRIVEN.map((k) => abilities[k]));
-  }
+  });
   assert.ok(tailMax <= 12, `hale-top-evne ${tailMax} > 12 — halen er ikke ekstra-svag`);
+  assert.ok(tailMax < globalMax, `halen (${tailMax}) skal være svagere end kernen (${globalMax})`);
 });
 
 test("#1560 determinisme + variation: forskellige hold → forskellige reproducerbare trupper", async () => {

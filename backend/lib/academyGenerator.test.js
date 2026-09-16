@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { makeRng, STAT_KEYS } from "./fictionalRiderGenerator.js";
+import { makeRng, STAT_KEYS, BIRTH_MODE_PCM } from "./fictionalRiderGenerator.js";
+import {
+  isBornFromPriors, deriveBirthAbilities, birthAbilityKeys, YOUTH_BIRTH_BAND,
+} from "./riderBirthPriors.js";
+import { RIDER_TYPES } from "./riderTypes.js";
 import { generateAcademyCandidates, generateYouthStats, drawPotentiale, POTENTIALE_TIERS, YOUTH_GEN_CONFIG } from "./academyGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities } from "./abilityDerivation.js";
@@ -8,8 +12,10 @@ import { deriveAbilities } from "./abilityDerivation.js";
 const REF_YEAR = 2026;
 
 test("generateAcademyCandidates: 3-5 kandidater, is_serious afledt (pot>=4.5), alder 16-21", () => {
+  // #5269: stat-delen af kontrakten gælder kun den gamle PCM-sti; den nye
+  // default-sti har sin egen blok nederst i filen.
   const rng = makeRng(2026);
-  const out = generateAcademyCandidates({ rng, referenceYear: REF_YEAR, existingNames: new Set() });
+  const out = generateAcademyCandidates({ rng, referenceYear: REF_YEAR, existingNames: new Set(), mode: BIRTH_MODE_PCM });
   assert.ok(out.length >= 3 && out.length <= 5, `antal ${out.length}`);
   for (const c of out) {
     assert.equal(c.is_serious, c.rider.potentiale >= 4.5, "is_serious afledes af potentiale");
@@ -136,7 +142,7 @@ test("generateYouthStats: 19-årig fødes stærkere end 16-årig (alders-skaleri
 // Omskrevet 2026-08-09 (#3561) til den modsatte, korrekte invariant: INGEN rå stat må
 // overstige statCeil, og signaturen viser sig ved at ramme TOPPEN af båndet.
 test("akademi-kandidat holder sig i ungdoms-båndet, med signaturen i toppen", () => {
-  const out = generateAcademyCandidates({ rng: makeRng(2026), referenceYear: REF_YEAR, existingNames: new Set() });
+  const out = generateAcademyCandidates({ rng: makeRng(2026), referenceYear: REF_YEAR, existingNames: new Set(), mode: BIRTH_MODE_PCM });
   const allStatKeys = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_sp","stat_acc","stat_udh","stat_mod","stat_res","stat_ftr","stat_bro"];
   for (const c of out) {
     const maxStat = Math.max(...allStatKeys.map((k) => c.rider[k]));
@@ -193,4 +199,52 @@ test("generateYouthStats: 16-årig kohorte har ingen ÆGTE datahuller (evne mang
   }
   assert.equal(dataHoles, 0, `forventede 0 ægte datahuller (mangler/<1), fandt ${dataHoles}`);
   assert.ok(pot6BestSum / pot6N >= 5, `pot-6-talenter skal i snit have bedste anlæg ≥5 (signal bevaret), fik ${(pot6BestSum / pot6N).toFixed(1)}`);
+});
+
+// ── #5269: akademi-foedsel uden PCM-stats ────────────────────────────────────
+
+test("#5269: akademi-kandidater foedes uden stat_* og med en foedsels-markoer", () => {
+  const out = generateAcademyCandidates({ rng: makeRng(2026), referenceYear: REF_YEAR, existingNames: new Set(), countOverride: 200 });
+  for (const c of out) {
+    for (const k of STAT_KEYS) assert.ok(!(k in c.rider), `${k} findes stadig paa kandidaten`);
+    assert.equal(c.archetypeDraw.birth.v, 1);
+    assert.equal(c.archetypeDraw.birth.tier, "youth");
+    assert.ok(isBornFromPriors({ archetype_draw: c.archetypeDraw }));
+  }
+});
+
+test("#5269: akademi-evner reproduceres praecis ved re-derivation", () => {
+  const weightsByType = Object.fromEntries(RIDER_TYPES.map((t) => [t.key, t.weights]));
+  const out = generateAcademyCandidates({ rng: makeRng(4242), referenceYear: REF_YEAR, existingNames: new Set(), countOverride: 200 });
+  out.forEach((c, i) => {
+    const age = REF_YEAR - Number(String(c.rider.birthdate).slice(0, 4));
+    const again = deriveBirthAbilities(
+      { id: `a${i}`, ...c.rider, archetype_draw: c.archetypeDraw },
+      { age, classifierWeightsByType: weightsByType },
+    );
+    for (const key of birthAbilityKeys()) {
+      assert.equal(again[key], c.birthAbilities[key], `${key} drev ved re-derivation`);
+    }
+  });
+});
+
+test("#5269: ungdomsbaandets loft holder (afledt evne maetter ~12, G5-invarianten)", () => {
+  // #2064 §2a / #3561: en ungdomsrytters NUVAERENDE evne maa ikke loefte
+  // ability_caps over potentiale-loftet. Baandet er derfor det samme i
+  // evne-rummet som YOUTH_GEN_CONFIG var i stat-rummet.
+  const out = generateAcademyCandidates({ rng: makeRng(7), referenceYear: REF_YEAR, existingNames: new Set(), countOverride: 600 });
+  const ceil = Math.ceil(YOUTH_BIRTH_BAND.ceil);
+  for (const c of out) {
+    for (const key of birthAbilityKeys()) {
+      assert.ok(c.birthAbilities[key] <= ceil, `${key}=${c.birthAbilities[key]} over ungdoms-loftet ${ceil}`);
+      assert.ok(c.birthAbilities[key] >= 1);
+    }
+  }
+});
+
+test("#5269: ukendt mode afvises haardt", () => {
+  assert.throws(
+    () => generateAcademyCandidates({ rng: makeRng(1), referenceYear: REF_YEAR, existingNames: new Set(), mode: "nope" }),
+    /unknown mode/,
+  );
 });

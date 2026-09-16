@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { toggleRider, validateSelectionClient, partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
 // #5098: det ugemte udkast lever uden for komponenten, så en afmontering (et
 // fane-skift på løbssiden) ikke tager managerens arbejde med sig.
@@ -141,9 +142,9 @@ export default function RaceSelectionPanel({
     const headers = await authHeaders();
     if (!headers) return;
     try {
-      const res = await fetch(`${API}/api/races/${raceId}/selection`, { headers });
-      if (!res.ok) return;
-      const body = await res.json();
+      const res = await apiFetch(`${API}/api/races/${raceId}/selection`, { headers });
+      if (!res.ok) return; // dækker også limited/unauthorized
+      const body = res.data;
       if (requestGeneration !== generationRef.current) return;
       setData(body);
       // #5098: et ugemt udkast vinder over serverens gemte udtagelse — det er
@@ -366,7 +367,7 @@ export default function RaceSelectionPanel({
     // efterlader et forældet id i arrayet.
     const freeRoleIds = (sel.freeRoleIds || []).filter((id) => sel.riderIds.includes(id));
     try {
-      const res = await fetch(`${API}/api/races/${raceId}/selection`, {
+      const res = await apiFetch(`${API}/api/races/${raceId}/selection`, {
         method: "PUT",
         headers,
         body: JSON.stringify({
@@ -377,7 +378,7 @@ export default function RaceSelectionPanel({
           free_role_ids: freeRoleIds,
         }),
       });
-      const body = await res.json().catch(() => ({}));
+      const body = res.data || {};
       if (isStale(gen)) return;
       if (!res.ok) {
         setStatus("error");
@@ -434,9 +435,9 @@ export default function RaceSelectionPanel({
     if (isStale(gen)) return;
     if (!headers) { setAutoStatus("idle"); return; }
     try {
-      const res = await fetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
+      const res = await apiFetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
       if (isStale(gen)) return;
-      if (!res.ok) { setAutoStatus("error"); return; }
+      if (!res.ok) { setAutoStatus("error"); return; } // dækker også limited/unauthorized
       dropDraft();
       await loadSelection();
       if (isStale(gen)) return;

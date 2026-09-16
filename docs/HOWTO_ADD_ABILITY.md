@@ -4,7 +4,9 @@ Ejer-krav 13/8: *"vi skal lave systemer fra nu af, så de nemmere kan håndtere 
 
 Før evne-registret krævede en ny evne redigering af mindst syv parallelle lister der ikke kendte til hinanden — og glemte du én, fejlede intet; den drev bare stille. Nu er det fire skridt.
 
-> **Læs først:** [#3668](https://github.com/NicolaiDolmer/CyclingZone/issues/3668). De 15 evner er ikke på samme skala indbyrdes — de 10 fysiske køres gennem kontrast-forstærkning, de 5 tekniske/mentale gør ikke. Ejer-ønske 13/8: **rod-fixet bør ske FØR der tilføjes nye evner**, så en ny evne fødes ind på en skala der holder. Tilføjer du en evne inden da, arver den skævheden.
+> ~~**Læs først:** [#3668](https://github.com/NicolaiDolmer/CyclingZone/issues/3668) — rod-fixet bør ske FØR der tilføjes nye evner.~~ **Lukket 15/9.** Forudsætningen er indfriet: undersøgelsen ([`docs/audits/2026-09-15-3668-ability-scale-investigation.md`](audits/2026-09-15-3668-ability-scale-investigation.md)) viste at kontrast-forstærkningen slet ikke kører i prod, og at skævheden i stedet kom fra to additive alders-led i `abilityDerivation.js`. De er fjernet i [#5268](https://github.com/NicolaiDolmer/CyclingZone/issues/5268), og målt over hele bestanden fødes alle fire mentale evner nu i samme spænd som `descending`/`positioning`. En ny evne arver ikke længere en skævhed.
+>
+> **Det du skal gøre i stedet:** vis at din nye evne fødes i det spænd. Mønstret ligger i `backend/scripts/dry-run-5268-mental-abilities.js` (`birthScaleReport`) — en read-only kørsel mod prod der stiller den nye evnes fødsels-median/p90 op ved siden af `descending` og `positioning`.
 
 ## 1. Én registry-post
 
@@ -37,10 +39,18 @@ Begge ordener skal forblive `1..n` uden huller — en test håndhæver det.
 
 `smallint` på `rider_derived_abilities`, i en idempotent migration. Husk kolonne-grant'en (`riders-column-grant-guard` i CI fanger den hvis du glemmer).
 
+Verificeret 15/9 på `database/2026-09-15-5268-mental-abilities.sql` — den er skabelonen: `ADD COLUMN IF NOT EXISTS`, `GRANT SELECT (kolonne) ON public.rider_derived_abilities TO anon, authenticated`, `COMMENT ON COLUMN`, og `NOTIFY pgrst, 'reload schema'` til sidst. **Kolonnen skal være nullable og uden DEFAULT:** `deriveAbilities` begynder at skrive evnen i samme deploy, så kolonnen skal eksistere før backenden ruller, og en DEFAULT på 0 ville lyve om de eksisterende ryttere (0 er ikke "endnu ikke beregnet"). En NULL evne tæller hverken i `ratingForRole()` eller i træningen, så mellemtilstanden er sikker.
+
+**Skal eksisterende ryttere have en værdi, er det ikke SQL-arbejde.** Læg data-migrationen i et Node-script med `--dry-run` som default (mønster: `backend/scripts/dry-run-5268-mental-abilities.js`). To grunde: `auto-migrate.yml` kører SQL'en automatisk ved merge, og en mutation af hele bestanden må ikke kunne ske som bivirkning af en merge; og en SQL-kopi af derivations-formlen ville være en anden kilde til sandhed der driver fra JS'en ved første kalibrering.
+
 ## 3. Én derivations-regel
 
 - `source: "pcm"` → tilføj PCM-stat-mapningen i registry-posten; `abilityDerivation.js` samler den op automatisk via `REGISTRY_PRIMARY_STAT`.
 - `source: "skill"` → udled evnen i `abilityDerivation.js`' skill-gren.
+
+For en MENTAL evne: giv den sin egen prior (profil + deterministisk, centreret støj salted pr. `(rytter, evne)`) og lad være med at bygge den på alder — det var præcis rodårsagen i #3668. Byg den heller ikke på rå PCM-stats: ejer-beslutning 15/9, *"intet skal være vægtet på PCM-stats mere"*. Profil-leddet skal komme fra de evner der allerede er udledt (`teamwork` ← positioning/tactics/durability, `leadership` ← tactics/positioning; spec §4 trin 1), omregnet med `abilityFrac` så den nye evne lever på samme skala som dem. Konstanterne hører i `MENTAL_PRIOR`, ikke spredt i formlerne, og din evne skal stå EFTER sine kilder i `deriveAbilities`.
+
+**Undtagelsen er dokumenteret og snæver:** `leadership` BRUGER alder, fordi lederskab pr. design er lavt hos unge og topper sent (GDD D-030, spec L1). Vægten er bevidst lille — et tungt alders-led er netop den fejl taktik havde, og gaten (fødsels-median/p90 i samme spænd som `descending`/`positioning`) fælder det. Vil din nye evne også bruge alder, skal begrundelsen stå i en ejer-besluttet spec, ikke i en kommentar, og tallet skal måles mod gaten før merge. Se `docs/PROGRESSION_RULES.md` §1.1.
 
 ## 4. Plads i mindst én visnings-opskrift
 
@@ -53,6 +63,12 @@ Efter du har rettet opskrifterne:
 ```bash
 node scripts/generate-ability-registry.mjs
 ```
+
+Vagt 3 (ingen opskrifts evne-sæt må være delmængde af en andens) kan fælde dig selv når du kun TILFØJER: gør du én opskrift bredere, kan en anden pludselig være indeholdt i den. Kør `node --test backend/lib/abilityRegistryGuards.test.js` før du går videre.
+
+## 4b. Antallet er pinnet
+
+`EXPECTED_ABILITY_COUNT` i `abilityRegistryGuards.test.js` skal opdateres i samme PR. Det er med vilje: en evne der forsvinder ved et uheld skal fælde bygningen, ikke bare give et mindre tal. Det samme gælder de to `VISIBLE_ABILITIES.length`-assertions i `abilityDerivation.test.js`. Er antallet nævnt i spillervendt tekst (`help.json` en+da siger "rated 0-99 on N abilities"), skal den følge med — ellers står der et forkert tal på Hjælp-siden fra dag ét.
 
 ## Vagterne der holder dig ærlig
 

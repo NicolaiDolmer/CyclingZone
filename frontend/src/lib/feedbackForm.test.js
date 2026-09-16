@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { validateFeedback, captureContext, FEEDBACK_CATEGORIES, FEEDBACK_MESSAGE_MAX_LENGTH } from "./feedbackForm.js";
 
 test("FEEDBACK_CATEGORIES matches the backend whitelist", () => {
-  assert.deepEqual(FEEDBACK_CATEGORIES, ["feedback", "bug", "idea"]);
+  assert.deepEqual(FEEDBACK_CATEGORIES, ["feedback", "bug", "idea", "fairplay"]);
 });
 
 test("validateFeedback — rejects an unknown category", () => {

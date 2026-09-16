@@ -115,10 +115,12 @@ test("sweep: per-rytter fejl isoleres (failed tælles, fortsætter)", async () =
 // ─── #5133: backfillen kører som en del af sweepet ─────────────────────────────
 
 // ageForSeason(birthdate, 1) = 2026 − fødselsår (mocken har aktiv sæson 1).
+// #4619: graduerings-alderen flyttede 22 → 23, så fixturen er nu født 2003
+// (sæsonalder 23 i sæson 1). En 22-årig er efter YOUTH_RULES §2.2 stadig U23.
 const MISSED_RIDER = {
   id: "r-missed", team_id: "t9", ai_team_id: null,
   firstname: "Missed", lastname: "Graduate",
-  is_academy: true, is_retired: false, birthdate: "2004-10-25",
+  is_academy: true, is_retired: false, birthdate: "2003-10-25",
 };
 
 function backfillWithSpyNotify(notify) {

@@ -105,3 +105,58 @@ test("admin-indbakken sender ALDRIG et klient-leveret user_id videre", () => {
   const block = apiSource.slice(idx, idx + 700);
   assert.match(block, /adminUserId:\s*req\.user\.id/, "afsenderen af svaret er den autentificerede admin, ikke noget i req.body");
 });
+
+// ── Handel-rapport (#4346) — POST /api/transfers/:type/:id/report ──────────
+
+test("POST /api/transfers/:type/:id/report er registreret + kræver auth + rate-limites", () => {
+  const idx = apiSource.indexOf('router.post("/transfers/:type/:id/report"');
+  assert.ok(idx !== -1, "POST /transfers/:type/:id/report skal findes");
+  const block = apiSource.slice(idx, idx + 200);
+  assert.match(block, /requireAuth/, "skal kræve auth");
+  assert.match(block, /feedbackLimiter/, "skal rate-limites");
+});
+
+test("POST /api/transfers/:type/:id/report validerer type + UUID FØR den kalder submitTradeReport", () => {
+  const idx = apiSource.indexOf('router.post("/transfers/:type/:id/report"');
+  const block = apiSource.slice(idx, idx + 1200);
+  assert.match(block, /TRADE_REPORT_TYPES\.includes\(req\.params\.type\)/, "skal validere :type mod whitelisten");
+  assert.match(block, /UUID_RE\.test\(req\.params\.id\)/, "skal UUID-validere :id");
+});
+
+test("POST /api/transfers/:type/:id/report udleder team_id/user_id fra req.team/req.user, ALDRIG fra req.body", () => {
+  const idx = apiSource.indexOf('router.post("/transfers/:type/:id/report"');
+  const block = apiSource.slice(idx, idx + 1200);
+  assert.match(block, /teamId:\s*req\.team\?\.id/, "teamId skal komme fra auth-resolved req.team");
+  assert.match(block, /userId:\s*req\.user\.id/, "userId skal komme fra auth");
+  assert.match(block, /transferType:\s*req\.params\.type/);
+  assert.match(block, /transferId:\s*req\.params\.id/);
+});
+
+test("POST /api/transfers/:type/:id/report delegerer til submitTradeReport (ikke inline logik i api.js)", () => {
+  assert.match(apiSource, /submitTradeReport\(/, "skal kalde submitTradeReport fra lib");
+  const idx = apiSource.indexOf('router.post("/transfers/:type/:id/report"');
+  const block = apiSource.slice(idx, idx + 1200);
+  assert.match(block, /submitTradeReport\(/, "routen selv skal delegere");
+});
+
+test("POST /api/transfers/:type/:id/report mirrorer til Discord kun når rapporten faktisk er NY (ikke ved dedupe)", () => {
+  const idx = apiSource.indexOf('router.post("/transfers/:type/:id/report"');
+  const block = apiSource.slice(idx, idx + 1600);
+  assert.match(block, /notifyPlayerFeedback\(/, "skal kalde notifyPlayerFeedback-mirroret");
+  assert.match(block, /!body\.alreadyReported/, "må ikke re-mirrore en dedupe-hit");
+  assert.match(block, /notifyPlayerFeedback\(\{[\s\S]*?\}\)\.catch\(/, "Discord-mirror skal være .catch'et — må aldrig kaste ind i request-handleren");
+});
+
+test("contract: api.js importerer submitTradeReport + TRADE_REPORT_TYPES fra feedbackInbox.js", () => {
+  const idx = apiSource.indexOf('from "../lib/feedbackInbox.js"');
+  assert.ok(idx !== -1, "import-blokken skal findes");
+  const importBlock = apiSource.slice(Math.max(0, idx - 300), idx);
+  assert.match(importBlock, /submitTradeReport/, "skal importeres sammen med de øvrige feedbackInbox-handlere");
+  assert.match(importBlock, /TRADE_REPORT_TYPES/, "skal importeres sammen med de øvrige feedbackInbox-handlere");
+});
+
+test("FEEDBACK_CATEGORIES i api.js inkluderer fairplay (kontaktformularens dropdown, #4346)", () => {
+  const idx = apiSource.indexOf("const FEEDBACK_CATEGORIES");
+  const line = apiSource.slice(idx, apiSource.indexOf("\n", idx));
+  assert.match(line, /"fairplay"/, "FEEDBACK_CATEGORIES skal matche player_feedback_category_check + frontend/src/lib/feedbackForm.js");
+});

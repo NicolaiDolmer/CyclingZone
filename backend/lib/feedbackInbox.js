@@ -27,6 +27,56 @@ export const FEEDBACK_INBOX_DEFAULT_LIMIT = 25;
 export const FEEDBACK_INBOX_MAX_LIMIT = 100;
 export const FEEDBACK_REPLY_MAX_LENGTH = 4000;
 
+// #4346 — "Report for review" på en enkelt gennemført handel (transferhistorik).
+// Deler player_feedback-kanalen (samme tabel, samme admin-indbakke, samme
+// Discord-mirror) med kontaktformularens generiske 'fairplay'-kategori, men
+// bærer strukturerede felter i metadata så fair-play-review (#3138) får
+// transfer_id + begge hold-id'er gratis i stedet for at skulle rekonstruere
+// dem fra fritekst.
+export const TRADE_REPORT_CATEGORY = "fairplay";
+export const TRADE_REPORT_TYPES = ["auction", "transfer", "swap"];
+export const TRADE_REPORT_MESSAGE_MIN_LENGTH = 10;
+export const TRADE_REPORT_MESSAGE_MAX_LENGTH = 1000;
+
+const TRADE_REPORT_TABLE_BY_TYPE = {
+  auction: "auctions",
+  transfer: "transfer_offers",
+  swap: "swap_offers",
+};
+
+// PUBLIC_OFFER_STATUSES matcher hvad TeamTransferHistoryTab rent faktisk
+// viser (teamTransferHistory.js re-eksporterer den fra riderHistory.js) — en
+// spiller kan kun rapportere en handel hun kan SE. Importeres ikke direkte
+// (ville trække riderHistory.js's Supabase-uafhængige, men alligevel unødvendige,
+// kobling ind) — samme to statusser gentaget bevidst lokalt, ligesom
+// teamTransferHistory.js selv re-eksporterer dem frem for at duplikere listen
+// et tredje sted ville have gjort.
+const TRADE_REPORT_OFFER_STATUSES = ["accepted", "window_pending"];
+
+/**
+ * Slår handlens to hold op FRA DATABASEN (aldrig fra klienten) og afgør om
+ * den overhovedet er en rapporterbar, gennemført to-holds-handel. Returnerer
+ * null hvis handlen ikke findes/ikke er afsluttet/ikke har en rigtig modpart
+ * (fx en no_sale-auktion eller et garanteret AI-salg uden current_bidder_id —
+ * samme udelukkelse som frontend allerede laver, se lib/tradeReport.ts).
+ */
+function resolveTradeParties(transferType, row) {
+  if (!row) return null;
+  if (transferType === "auction") {
+    if (row.status !== "completed" || !row.current_bidder_id) return null;
+    return { teamA: row.seller_team_id, teamB: row.current_bidder_id };
+  }
+  if (transferType === "transfer") {
+    if (!TRADE_REPORT_OFFER_STATUSES.includes(row.status)) return null;
+    return { teamA: row.seller_team_id, teamB: row.buyer_team_id };
+  }
+  if (transferType === "swap") {
+    if (!TRADE_REPORT_OFFER_STATUSES.includes(row.status)) return null;
+    return { teamA: row.proposing_team_id, teamB: row.receiving_team_id };
+  }
+  return null;
+}
+
 // Kolonner indbakken læser. `message` er med (det er hele pointen), men
 // user_agent udelades bevidst fra listen: den er ren diagnostik, den er den
 // mest fingerprint-agtige kolonne i tabellen, og den fylder listen uden at
@@ -250,4 +300,93 @@ export async function replyToFeedback({
   if (updateError) throw new Error(`feedbackInbox: could not persist reply for ${id}: ${updateError.message}`);
 
   return { status: 200, body: { ok: true, id: row.id, status: "closed", replied_at: now.toISOString() } };
+}
+
+/**
+ * POST /api/transfers/:type/:id/report — "Report for review" på en enkelt
+ * gennemført handel (#4346). ALDRIG en anklage-flade: fritekst lander samme
+ * sted som kontaktformularens fairplay-kategori, til admin-gennemsyn.
+ *
+ * teamId er IKKE nødvendigvis part i handlen — enhver spiller kan rapportere
+ * en handel hun har set (fx nævnt andetsteds, #4346's egen baggrund: "mener
+ * ikke de var de hold der blev nævnt ... men er ikke 100%"). Derfor er der
+ * ingen "er du part i handlen"-tjek her, kun at handlen faktisk FINDES og er
+ * en afsluttet to-holds-handel — begge hold-id'er slås op i databasen, aldrig
+ * fra klienten, så payloaden ikke kan forfalskes.
+ *
+ * Dedupe ("maks 1 rapport pr. handel pr. hold", #4346): idempotent som
+ * reportConversation (directMessages.js) — en gentaget rapport fra samme hold
+ * på samme handel giver 200 + alreadyReported:true, ikke en fejl.
+ */
+export async function submitTradeReport({ supabase, teamId, userId, transferType, transferId, message }) {
+  if (!teamId) {
+    return { status: 400, body: { error: "No team", errorCode: "trade_report_no_team" } };
+  }
+  if (!TRADE_REPORT_TYPES.includes(transferType)) {
+    return { status: 400, body: { error: "Invalid transfer type", errorCode: "trade_report_invalid_type" } };
+  }
+  if (!transferId) {
+    return { status: 400, body: { error: "Missing transfer id", errorCode: "trade_report_missing_id" } };
+  }
+  const trimmed = typeof message === "string" ? message.trim() : "";
+  if (trimmed.length < TRADE_REPORT_MESSAGE_MIN_LENGTH) {
+    return { status: 400, body: { error: "Tell us what looked off, in a sentence or two", errorCode: "trade_report_message_too_short" } };
+  }
+  if (trimmed.length > TRADE_REPORT_MESSAGE_MAX_LENGTH) {
+    return { status: 400, body: { error: "Message is too long", errorCode: "trade_report_message_too_long" } };
+  }
+
+  const table = TRADE_REPORT_TABLE_BY_TYPE[transferType];
+  const { data: tradeRow, error: loadError } = await supabase
+    .from(table)
+    .select("*")
+    .eq("id", transferId)
+    .maybeSingle();
+  if (loadError) throw new Error(`feedbackInbox: could not load ${transferType} ${transferId}: ${loadError.message}`);
+
+  const parties = resolveTradeParties(transferType, tradeRow);
+  if (!parties) {
+    return { status: 404, body: { error: "Trade not found", errorCode: "trade_report_not_found" } };
+  }
+
+  // Dedupe: læs holdets EGNE fairplay-rækker og sammenlign metadata i JS — se
+  // migrationens begrundelse for hvorfor ikke en DB-unique-constraint.
+  // schema-columns-ok: metadata tilføjes af database/2026-09-14-4346-fairplay-trade-report.sql, applied post-merge.
+  const { data: existingRows, error: dupeError } = await supabase
+    .from("player_feedback")
+    .select("id, metadata")
+    .eq("category", TRADE_REPORT_CATEGORY)
+    .eq("team_id", teamId);
+  if (dupeError) throw new Error(`feedbackInbox: could not check existing trade reports: ${dupeError.message}`);
+  const existing = (existingRows || []).find(
+    (r) => r.metadata?.transfer_type === transferType && r.metadata?.transfer_id === transferId
+  );
+  if (existing) {
+    return { status: 200, body: { ok: true, id: existing.id, alreadyReported: true } };
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("player_feedback")
+    .insert({
+      user_id: userId,
+      team_id: teamId,
+      category: TRADE_REPORT_CATEGORY,
+      message: trimmed,
+      metadata: {
+        transfer_type: transferType,
+        transfer_id: transferId,
+        reporting_team_id: teamId,
+        // Bevidst NEUTRALT navngivet (ikke "counterparty") — det rapporterende
+        // hold behøver ikke være part i handlen (#4346: en spiller kan
+        // rapportere en handel hun har set, ikke kun sine egne), så "hvem er
+        // modparten SET FRA rapportøren" giver ikke altid mening.
+        team_a_id: parties.teamA,
+        team_b_id: parties.teamB,
+      },
+    })
+    .select("id")
+    .single();
+  if (insertError) throw new Error(`feedbackInbox: could not insert trade report: ${insertError.message}`);
+
+  return { status: 200, body: { ok: true, id: inserted.id, alreadyReported: false } };
 }

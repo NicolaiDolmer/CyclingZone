@@ -19,6 +19,15 @@
 // cache-header. Den er slaaet fra indtil #2423 P1 (Skew Protection) eller en
 // aendret header-regel goer den opnaaelig; indtil da rapporteres den som advarsel,
 // saa resten er uovervaaget. Se #4545.
+//
+// #5251 runde 2: app-shell-hentningen af `base` (for at finde entry-bundlen) skal
+// sende cz_session-cookien, se scripts/lib/fetchAppShell.mjs — ellers faar proben
+// siden #4067/#5239 marketing-sitets HTML for et ægte anonymt GET "/", som ikke har
+// nogen /assets/index-*.js-reference at finde. De to asset-probes (rigtig + manglende)
+// rammer konkrete /assets/*-stier, som IKKE er ramt af middleware'ens matcher, og
+// forbliver derfor bevidst helt anonyme — det er dem der reelt tester #4545's adfærd.
+
+import { fetchAppShell } from "./lib/fetchAppShell.mjs";
 
 const DEFAULT_BASE = "https://cyclingzone.org";
 const MISSING_ASSET = "/assets/ProbeMissingChunk-DEADBEEF.js";
@@ -103,7 +112,7 @@ async function main() {
   const args = parseArgs(process.argv);
   const base = (args.base || DEFAULT_BASE).replace(/\/$/, "");
 
-  const shell = await fetch(base, { redirect: "follow" });
+  const shell = await fetchAppShell(base, { redirect: "follow" });
   const html = await shell.text();
   const entryPath = findEntryAsset(html);
 

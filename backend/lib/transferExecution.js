@@ -16,6 +16,7 @@ import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwners
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
+import { seniorSquadPatch } from "./squads.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { buildContractExpiringNotification } from "./notificationService.js";
 import {
@@ -546,7 +547,12 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // atomisk ved handlens gennemførelse — lander hos køberen som SENIOR, ikke i
   // købers akademi. Samme graduatePatch-mønster som auktions-finalization
   // bruger for en graduate-sælg-auktion (auctionFinalization.js: "#932").
-  const graduatePatch = rider.is_academy ? { is_academy: false } : {};
+  // #4619: BEGGE trup-felter. Med kun is_academy=false ville en solgt
+  // U23-/junior-rytter efter backfill'en beholde sin ungdoms-`squad` og dermed
+  // optage en ungdomsplads på KØBERENS loft (countSquadMembers tæller direkte
+  // på kolonnen), selvom han reelt er en almindelig seniorrytter.
+  const riderGraduatesOnSale = rider.is_academy === true;
+  const graduatePatch = riderGraduatesOnSale ? seniorSquadPatch() : {};
 
   // #19: parkér = sæt pending_team_id (kræver at rytteren ikke allerede er
   // reserveret til en anden handel); registrér = flyt team_id direkte.
@@ -592,7 +598,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // via et DIREKTE salg på transfermarkedet (#3845) — resolver en evt. hængende
   // PENDING academy_graduation-row hos sælgeren så academyGraduationSweep ikke
   // senere finder den og forsøger at auto-resolve en rytter der allerede er solgt.
-  if (graduatePatch.is_academy === false && offer.seller_team_id) {
+  if (riderGraduatesOnSale && offer.seller_team_id) {
     await resolvePendingGraduationOnSale(supabase, {
       teamId: offer.seller_team_id, riderId: rider.id,
     });
@@ -762,12 +768,20 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // hold og forblive is_academy=true dér, uden om akademiets 8-plads-cap (som
   // ellers kun håndhæves ved intake/auktion/promote/demote). Samme
   // graduatePatch-mønster som executeTransferOffer (#3650) anvendes nedenfor.
+  // #4619: squad MED — rollback-grenen nedenfor skal kunne sætte BEGGE trup-
+  // felter tilbage. Ruller man kun is_academy tilbage, står rytteren med
+  // is_academy=true og squad='senior', altså præcis den uenighed mellem de to
+  // kolonner som squad-patchen findes for at undgå.
+  // schema-columns-ok: riders.squad tilfoejes af
+  // database/2026-09-15-4619-riders-squad.sql i SAMME PR (#4619); auto-migrate.yml
+  // applier den ved merge, hvorefter schema-snapshot.json opdateres.
   const [offered, requested] = await Promise.all([
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy").eq("id", swap.offered_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy, squad").eq("id", swap.offered_rider_id)
     ),
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy").eq("id", swap.requested_rider_id)
+      // schema-columns-ok: riders.squad tilfoejes af migrationen i SAMME PR (#4619) — se ovenfor.
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy, squad").eq("id", swap.requested_rider_id)
     ),
   ]);
   const [proposingState, receivingState, proposingCommitment, receivingCommitment] = await Promise.all([
@@ -859,8 +873,17 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // modparten — samme graduatePatch-mønster som executeTransferOffer (#3650).
   // Uden dette landede rytteren som is_academy=true på modpartens hold, uden om
   // 8-plads-cap'en (som ellers kun håndhæves ved intake/auktion/promote/demote).
-  const offeredGraduatePatch = offered.is_academy ? { is_academy: false } : {};
-  const requestedGraduatePatch = requested.is_academy ? { is_academy: false } : {};
+  // #4619: BEGGE trup-felter — ellers beholder en byttet U23-/junior-rytter sin
+  // ungdoms-`squad` og optager en ungdomsplads på modpartens loft.
+  const offeredGraduatePatch = offered.is_academy ? seniorSquadPatch() : {};
+  const requestedGraduatePatch = requested.is_academy ? seniorSquadPatch() : {};
+  // Rollback-patchen for det FØRSTE ben: præcis den trup-tilstand rytteren
+  // havde før byttet. `squad` udelades hvis rækken ikke bar en (kun muligt før
+  // migrationen er applied), så vi aldrig skriver undefined over en god værdi.
+  const offeredSquadRestorePatch = {
+    is_academy: offered.is_academy,
+    ...(offered.squad ? { squad: offered.squad } : {}),
+  };
 
   // #19: parkér = sæt pending_team_id på begge ryttere (kræver at ingen af dem
   // allerede er reserveret til en anden handel); registrér = flyt team_id direkte.
@@ -917,13 +940,14 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     // #2797: is_academy rulles OGSÅ tilbage til den oprindelige værdi — ellers
     // ville en fejlet swap efterlade en gradueret akademi-rytter hos SIN EGEN
     // sælger (han bliver aldrig sendt af sted, men mistede sin akademi-plads).
+    // #4619: squad rulles tilbage SAMMEN med is_academy (offeredSquadRestorePatch).
     if (deferRegistration) {
       await expectMutation(
-        supabase.from("riders").update({ pending_team_id: null, is_academy: offered.is_academy }).eq("id", offered.id)
+        supabase.from("riders").update({ pending_team_id: null, ...offeredSquadRestorePatch }).eq("id", offered.id)
       );
     } else {
       await expectMutation(
-        supabase.from("riders").update({ team_id: swap.proposing_team_id, acquired_at: swapTimestamp, is_academy: offered.is_academy }).eq("id", offered.id)
+        supabase.from("riders").update({ team_id: swap.proposing_team_id, acquired_at: swapTimestamp, ...offeredSquadRestorePatch }).eq("id", offered.id)
       );
     }
     await withdrawSwapOffer(supabase, swap.id);

@@ -12,11 +12,17 @@ import {
   DEFAULT_NATIONALITY_WEIGHTS,
   ARCHETYPE_BY_TYPE,
 } from "./fictionalRiderGenerator.js";
+import {
+  BIRTH_MODE_OWN_PRIORS, BIRTH_MODE_PCM, DEFAULT_BIRTH_MODE,
+} from "./fictionalRiderGenerator.js";
 import { clusterForNationality } from "./fictionalRiderNames.js";
 import { NAME_CLUSTERS } from "./fictionalRiderNames.js";
 import { ACADEMY } from "./academyFlag.js";
 import { drawArchetypePair } from "./archetypeDistribution.js";
 import { RIDER_TYPES } from "./riderTypes.js";
+import {
+  drawYouthBirthAbilities, makeBirthRng, makeYouthBirthMarker,
+} from "./riderBirthPriors.js";
 
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
@@ -66,6 +72,9 @@ function pickYouthArchetype(rng) {
  * @param {object} [opts.genCfg]  stat-genererings-config; default YOUTH_GEN_CONFIG.
  *   KUN til kalibrerings-harnesses (simArchetypeCalibration.js) — produktionsstien
  *   sender den ALDRIG, så en fejlkalibrering kan ikke snige sig ind via en call-site.
+ * @param {"own-priors"|"pcm"} [opts.mode]  #5269: fødsels-tilstand. Default
+ *   "own-priors" — kandidaten fødes direkte i evne-rummet fra ungdomsbåndet i
+ *   riderBirthPriors.js og får INGEN stat_*. "pcm" er den gamle sti (uændret).
  * @returns {{ is_serious: boolean, rider: object }[]}
  */
 export function generateAcademyCandidates({
@@ -75,7 +84,12 @@ export function generateAcademyCandidates({
   identityBasis = null,
   countOverride = null,
   genCfg = YOUTH_GEN_CONFIG,
+  mode = DEFAULT_BIRTH_MODE,
 }) {
+  if (mode !== BIRTH_MODE_OWN_PRIORS && mode !== BIRTH_MODE_PCM) {
+    throw new Error(`generateAcademyCandidates: unknown mode ${mode}`);
+  }
+  const ownPriors = mode === BIRTH_MODE_OWN_PRIORS;
   // ── Antal kandidater ─────────────────────────────────────────────────────────
   // #2064 S0: `??` sikrer at rng()-trækkene sker i NØJAGTIG samme rækkefølge som
   // før når countOverride er null (determinisme for eksisterende kaldere uændret).
@@ -119,15 +133,43 @@ export function generateAcademyCandidates({
     // Stats: lav, anlægs-formet, talent-skaleret ungdoms-profil (#1791). Anlæg vælges deterministisk
     // fra arketype-mål-fordelingen (#3458 fase 2; altid to-delt siden #3632); de lave stats giver
     // via fallback-derivationen lave evner i ungdoms-båndet.
+    /** @type {{ primary: string, secondary: string, birth?: object }} */
     const archetypeDraw = pickYouthArchetype(rng); // { primary, secondary }
-    const { stats } = generateYouthStats({
-      rng,
-      age,
-      potentiale,
-      archetypeType: archetypeDraw.primary,
-      secondaryArchetypeType: archetypeDraw.secondary,
-      cfg: genCfg,
-    });
+
+    // #5269: på own-priors-stien trækkes INGEN stats. Evnerne fødes direkte i
+    // ungdomsbåndet (riderBirthPriors.YOUTH_BIRTH_BAND — den samme ramme som
+    // YOUTH_GEN_CONFIG, blot udtrykt i evne-enheder), og fødsels-seed'en
+    // persisteres i archetype_draw.birth sammen med anlægget, så
+    // deriveForRiderIds reproducerer præcis dette træk ved hver re-derive.
+    //
+    // Invarianten fra #2064 §2a / #3561 er bevaret i båndet: en ungdomsrytters
+    // NUVÆRENDE evne mætter ~12, så ability_caps fortsat styres af potentiale-
+    // loftet og ikke af hans start-evner (G5).
+    /** @type {Record<string, number>|null} */
+    let stats = null;
+    /** @type {Record<string, number>|null} */
+    let birthAbilities = null;
+    if (ownPriors) {
+      const birthSeed = Math.floor(rng() * 4294967296) >>> 0;
+      archetypeDraw.birth = makeYouthBirthMarker({ seed: birthSeed, age });
+      birthAbilities = drawYouthBirthAbilities({
+        rng: makeBirthRng(birthSeed),
+        age,
+        potentiale,
+        archetype: archetypeDraw.primary,
+        secondaryArchetype: archetypeDraw.secondary,
+        classifierWeightsByType: RIDER_TYPE_WEIGHTS_BY_KEY,
+      });
+    } else {
+      ({ stats } = generateYouthStats({
+        rng,
+        age,
+        potentiale,
+        archetypeType: archetypeDraw.primary,
+        secondaryArchetypeType: archetypeDraw.secondary,
+        cfg: genCfg,
+      }));
+    }
 
     // Krop: spred højde/vægt så physiology-seedingen ikke defaulter alle til
     // 180cm/70kg (#1478). Neutralt WorldTour-range; weight afledt af plausibel BMI.
@@ -143,6 +185,11 @@ export function generateAcademyCandidates({
       // tildeles udelukkende af deriveForRiderIds-kæden (klassifikatoren skal selv
       // GENFINDE arketypen — se G1 i design-spec'en).
       archetypeDraw,
+      // #5269: evnerne som de blev trukket ved fødslen — IKKE en DB-kolonne
+      // (academyIntake spreader kun `.rider`). Findes så sim-harnesses og tests
+      // kan læse dem uden en DB-rundtur; den persisterede sandhed skrives af
+      // deriveForRiderIds, som reproducerer trækket fra archetype_draw.birth.
+      ...(birthAbilities ? { birthAbilities } : {}),
       rider: {
         firstname,
         lastname,
@@ -154,7 +201,7 @@ export function generateAcademyCandidates({
         potentiale,
         height,
         weight,
-        ...stats,
+        ...(stats ?? {}),
       },
     });
   }
@@ -403,6 +450,15 @@ function blendArchetypeSignature(primaryKey, secondaryKey, cfg) {
 // secondaryArchetypeType (#3458; siden #3632 sat for ALLE kandidater): blander
 // bi-typens signatur let ind (se blendArchetypeSignature + secondarySignatureWeight).
 // null er stadig tilladt — kalibrerings-harnesses måler den rene primær-profil.
+/**
+ * @param {object} args
+ * @param {function} args.rng
+ * @param {number} args.age
+ * @param {number} args.potentiale
+ * @param {string} args.archetypeType
+ * @param {string|null} [args.secondaryArchetypeType]
+ * @param {any} [args.cfg] YOUTH_GEN_CONFIG eller en kalibrerings-variant af den
+ */
 export function generateYouthStats({ rng, age, potentiale, archetypeType, secondaryArchetypeType = null, cfg = YOUTH_GEN_CONFIG }) {
   if (!ARCHETYPE_BY_TYPE[archetypeType]) throw new Error(`generateYouthStats: ukendt arketype ${archetypeType}`);
   const arch = secondaryArchetypeType

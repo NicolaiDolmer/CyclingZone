@@ -18,7 +18,8 @@ Finder du en påstand her uden kilde, så stol ikke på den — verificér den o
 
 | Modul | Ejer reglerne om | Rolle |
 |---|---|---|
-| `lib/fictionalRiderGenerator.js` | navnevalg, tier-kvoter, nationalitetsfordeling, stat-sampling | produktion |
+| `lib/fictionalRiderGenerator.js` | navnevalg, tier-kvoter, nationalitetsfordeling, fødsels-tilstand (`mode`) | produktion |
+| `lib/riderBirthPriors.js` | arketype-prior pr. evne + fødsels-markør ([#5269](https://github.com/NicolaiDolmer/CyclingZone/issues/5269)) — se §8b | produktion |
 | `lib/fictionalRiderNames.js` | navne-clusters + ISO-landemapping | produktion |
 | `lib/fictionalLaunchPopulation.js` | grund-seed for hele populationen | produktion |
 | `lib/starterSquadAllocator.js` | trupstørrelser, stat-vinduer pr. tier, værdilofter | produktion |
@@ -140,7 +141,26 @@ Enhver nyskabt rytter skal igennem hele kæden, ellers står han med huller i da
 seedPhysiologyFromLegacy → deriveAbilities → computeRiderTypes → predictBaseValue
 ```
 
+Siden [#5269](https://github.com/NicolaiDolmer/CyclingZone/issues/5269) forgrener kæden på fødsels-markøren: en rytter født af spillets egne priors får evnerne REPRODUCERET fra `archetype_draw.birth.seed` i stedet for udledt af `stat_*`. Se §8b.
+
 Kaldes som `deriveForRiderIds(supabase, insertedIds, { dryRun: false })` umiddelbart efter insert. Både batch- og single-varianten SKAL bruge `insertDeriveAndReadPool`, så start-truppernes balance ikke kan drifte mellem de to stier.
+
+### 6.1 De mentale evner fødes med deres EGEN prior (#5268, 15/9)
+
+`deriveAbilities` giver de fire mentale evner — `aggression`, `tactics`, `teamwork`, `leadership` — hver sin prior i stedet for at lægge et alders-led oveni en stat:
+
+| Evne | Fødes af | Alder som input |
+|---|---|---|
+| `aggression` | rytterens fighter-profil + centreret støj | **nej** |
+| `tactics` | fighter- + nedkørsels-profil + centreret støj | **nej** |
+| `teamwork` | de allerede udledte `positioning` + `tactics` + `durability` + bred støj (spec H2) | **nej** |
+| `leadership` | lille grundniveau + alders-rampe + lille træk på `tactics`/`positioning` + støj (spec L1) | ja (GDD D-030) |
+
+Støjen er deterministisk og salted pr. (rytter, evne), så to ryttere med identisk profil ikke får identiske mentale tal — og så en re-derive af den samme rytter giver det samme tal igen (determinisme-kontrakten, §1).
+
+**Måltallet (gate G-A1):** de fire skal fødes i samme spænd som `descending` og `positioning`. Målt mod hele prod-bestanden 15/9 (n = 8.150): fødsels-median 7-12 og fødsels-p90 22-25 mod descending/positioning på 7/21. Kørslen der måler det er `backend/scripts/dry-run-5268-mental-abilities.js --dry-run` (read-only).
+
+> **De to nye evner vægter ingen PCM-stats** (ejer-beslutning 15/9: *"intet skal være vægtet på PCM-stats mere"*). `teamwork` og `leadership` fødes af andre AFLEDTE evner, omregnet med `abilityFrac` (præcis invers af `scoreFrac`), så de lever på samme skala som kilderne — det er gate G-A1. At kilderne selv er PCM-afledte på fallback-stien er eksisterende legacy: `abilityDerivation.js` er PCM-fallback-stien for den eksisterende bestand, og den PCM-frie fødselssti bygges i `fictionalRiderGenerator.js` ([#5269](https://github.com/NicolaiDolmer/CyclingZone/issues/5269)). Kontrakten mellem de to: **registret** (`abilityRegistry.js`) er sandheden om hvilke evner der findes, og den nye sti giver enhver mental evne den ikke kender en default-prior. Tilføj aldrig en evne kun det ene sted.
 
 ## 7. Kommentarer der lyver (status 24/8)
 
@@ -168,6 +188,62 @@ Se §5. Rettelsen er identificeret, men filen er frossen og kræver ejer-godkend
 
 **3. Bør `balanceSnapshot.js` bruge V4?**
 Den bygger balance-snapshots med v3, mens prod prissætter med V4. Hvis snapshottet skal afspejle virkeligheden, er det formentlig en fejl. Hvis det bevidst er en historisk sammenligningsakse, er det korrekt. Ikke undersøgt.
+
+## 8b. Fødsel uden PCM (fra 15/9) — [#5269](https://github.com/NicolaiDolmer/CyclingZone/issues/5269)
+
+**Ejer-beslutning 15/9, ordret:** *"Intet skal vaere vaegtet paa pcm stats mere. Spillet skal kunne holde sig selv oppe nu. Men ryttere skal stadig vaere de samme nu her inde i spillet. Det er bare fremadrettet det skal stoppe."*
+
+Fra 15/9 fødes en NY rytter direkte i evne-rummet (1-99) fra spillets egne arketype-priors. `stat_*` skrives ikke — kolonnerne står `NULL` i `riders` — og er ikke længere input til nogen evne for en nyfødt. **Eksisterende ryttere er urørte:** ingen migration, ingen re-derivation, ingen ændring af `abilityDerivation.js`.
+
+### Hvor priorerne kommer fra
+
+`lib/riderBirthPriors.js` er ikke en ny kalibrering. Den er den ABILITY-RUMS-SPEJLING af de tabeller der allerede fandtes, så populationen ikke flytter sig. Den gamle kæde var en ren lineær afbildning:
+
+```
+stat ∈ [50,85]  →  pcmFrac = (stat − 50)/35  →  evne = 1 + 98·pcmFrac
+```
+
+altså faktor `98/35 = 2,8` og `evne(50) = 1`. `ARCHETYPES`, `TIERS` og `YOUTH_GEN_CONFIG` er skrevet om med præcis den faktor. `riderBirthPriors.test.js` beviser spejlingen numerisk mod begge sider — drifter den ene, fejler testen.
+
+### De tre steder den bevidst afviger
+
+1. **`aggression` mister sit alders-led.** I dag er den `0,85·pcmFrac(stat_ftr) + 0,15·youth`, dvs. op til +15 gratis evne-point til en 21-årig ([evne-skala-rapporten](audits/2026-09-15-3668-ability-scale-investigation.md) §1.2).
+2. **`tactics` mister sit alders-led.** I dag er den `0,55·experience + 0,45·aggressionFrac` — et aldersmålerur (median 14 ved 16-21 år, 57 ved 31-33, §1.3). Nyfødte får `0,60·aggression + 0,40·descending`.
+3. **`leadership` MÅ bruge alder** (design-beslutning D-030) — `AGE_CURVED` i `riderBirthPriors.js`. Evnen findes ikke i registret endnu; kurven aktiveres af sig selv den dag nøglen lander.
+
+### Fødsels-markøren (hvorfor en heal-sweep ikke nulstiller kuldet)
+
+`deriveForRiderIds` kaldes IGEN ved hver re-derive (`riderDeriveHealSweep` [#1673](https://github.com/NicolaiDolmer/CyclingZone/issues/1673), `starterSquadHealSweep`, backfill-scripts). Uden en markør ville PCM-fallbacken udlede evne 1 af en `NULL`-stat og nulstille hele årgangen.
+
+Markøren ligger i `riders.archetype_draw` (jsonb, persisteres allerede) som et `birth`-felt ved siden af `primary`/`secondary` — **ingen migration**:
+
+```json
+{ "primary": "gc", "secondary": "tt", "birth": { "v": 1, "tier": "solid", "seed": 2285543883, "age": 27, "cap": 21 } }
+```
+
+`seed` gør trækket reproducerbart fra rækken alene. `age` er **fødsels**-alderen, ikke rytterens nuværende: ungdomsbåndets niveau er `baseAt16 + (alder − 16)·perYearOver16`, så en re-derive mod den nuværende alder ville løfte hans start-evner gratis hver sæson — uden træning og uden at nogen skrev det. Trækket reproducerer fødslen; udvikling ejes af `riderProgression.js`. (`hidden_potential` følger stadig den NUVÆRENDE alder, præcis som for alle andre ryttere.) `cap` (valgfri) er et evne-loft der følger rytteren — det er own-priors-stiens erstatning for `buildWeakStarterPool`s STAT-vindue ([#1487](https://github.com/NicolaiDolmer/CyclingZone/issues/1487)): `[50,57]` → loft 21, `[50,52]` → loft 7, tier 4 `[51,55]` → loft 15. Enhver eksisterende læser (`draw.primary`, `draw.secondary`) ser præcis det samme som før.
+
+### Hvem bruger den nye sti
+
+| Fødselsvej | Indgang | Status |
+|---|---|---|
+| Launch-population | `generateLaunchPopulation` → `generateFictionalRiders` | own-priors (default) |
+| AI-fyld tier 1/2 | `generateAiRiderBatchWithCap` | own-priors (default) |
+| AI-fyld tier 3/4 + start-trupper | `buildWeakStarterPool` | own-priors + persisteret evne-loft |
+| Akademi-intake | `generateAcademyCandidates` → `academyIntake` | own-priors (ungdomsbåndet) |
+| Pool-import | `lib/racePoolImport.js` | **føder ingen ryttere** — modulet importerer LØB (`race_pool`) fra CSV. Ingen ændring. |
+
+`mode: "pcm"` bevarer den gamle sti og er ikke fjernet: de golden-population-harnesses der kalibrerer balancen (`previewFictionalPopulation.js`, `simSecondaryArchetype3634.js`, `raceGate.js`) måler mod netop den fordeling og skal kunne sammenlignes med historikken indtil ejeren fjerner stien.
+
+### Gates enhver ny kaldsted skal respektere
+
+Enhver gate der prissætter eller vurderer en kandidat **før** insert skal se de evner `deriveForRiderIds` bagefter persisterer. Gør den ikke det, vurderer den en anden rytter end den der lander i DB'en — [#2065](https://github.com/NicolaiDolmer/CyclingZone/issues/2065)-klassen. Målt under #5269: uden spejlingen i `generateAiRiderBatchWithCap` passerede en tier-1-rytter med `base_value` 856.501 mod loftet 200.000.
+
+Spejlingen er `isBornFromPriors(row) ? deriveBirthAbilities(row, { age }) : deriveAbilities(physiology, row)` og findes i dag i `backfillCores.js` (begge backfills), `starterSquadAllocator.js`, `balanceSnapshot.js` og `fictionalPopulationPreview.js`.
+
+### Fysiologi
+
+En prior-født rytter seeder sin fysiologi fra sine EGNE evner (samme 0-99-skala som `seedPhysiologyFromLegacy` forventer) i stedet for filens 60-default, som ville gøre hver eneste nyfødt fysiologisk identisk. Profilen forbliver `version 1 / seeded_from_legacy` som resten af populationen. v2-arketype-seeding (`aero`) er Task D2 og hører ikke til her — den ville tænde fysiologi-stien i `abilityDerivation` for netop disse ryttere og give dem en anden evne-fordeling end resten af spillet.
 
 ## 9. Kendte faldgruber
 
