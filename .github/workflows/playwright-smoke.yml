@@ -124,10 +124,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # Kun `matrix` eksponeres: samle-jobbet laeser planen direkte fra filen, saa
+    # laner og loft aldrig kan komme fra to kilder. `keys`/`ceiling-minutes`
+    # skrives stadig af scriptet og staar i step-loggen til fejlsoegning.
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
-      keys: ${{ steps.plan.outputs.keys }}
-      ceiling-minutes: ${{ steps.plan.outputs.ceiling-minutes }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
