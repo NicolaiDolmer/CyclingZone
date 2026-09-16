@@ -41,7 +41,7 @@ import TodayStagesStrip from "../components/TodayStagesStrip";
 import DevTransitionCard from "../components/DevTransitionCard";
 import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
-import { pickNextSelectableRace } from "../lib/nextSelectableRace";
+import { orderedSelectableRaces } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces, filterTeamEnteredRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
@@ -110,6 +110,11 @@ function getAuctionLeaderId(auction) {
   }
   return null;
 }
+
+// #5301: hvor mange kommende loeb nudgen hoejst gaar igennem, naar de foerste er
+// afmeldte. Nudgen handler om det NAERE loeb, saa loftet er lavt med vilje - og
+// hver kandidat koster ét /selection-kald.
+const SQUAD_NUDGE_LOOKAHEAD = 3;
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -632,22 +637,39 @@ export default function DashboardPage() {
   // en trup raceEntryGenerator havde top-fyldt fuldt automatisk (0 manuelle
   // entries) blev fejlagtigt vist som "udtagelse mangler" på Dashboard, selvom
   // løbssiden viste en fuld trup (#3042, Discord-bug 25/7).
+  // #5301: nudgen SPRINGER afmeldte løb over i stedet for at stoppe ved dem.
+  // Endpointet siger nu `withdrawn`, saa nudgen holder op med at bede om en trup
+  // til et løb spilleren har forladt (knud_r_flink 16/9: Tour Wallon, afmeldt ni
+  // dage før). Men den tjekkede kun ÉT løb, saa "tavs ved afmeldt" ville have
+  // skjult et ÆGTE manglende udtag i det NÆSTE løb. Derfor gaas kandidaterne
+  // igennem i kalenderorden indtil ét ikke er afmeldt. Loftet er lavt: nudgen
+  // handler om det nære løb, og hver kandidat koster ét kald.
   useEffect(() => {
     let cancelled = false;
-    const nextRace = pickNextSelectableRace(nextRaces);
-    if (!nextRace || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
+    const candidates = orderedSelectableRaces(nextRaces).slice(0, SQUAD_NUDGE_LOOKAHEAD);
+    if (!candidates.length || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
-      try {
-        const r = await apiFetch(`${API}/api/races/${nextRace.id}/selection`, { headers: { Authorization: `Bearer ${token}` } });
-        // Fejl/ukendt svar må ikke udløse et falsk "udtagelse mangler" — samme
-        // forsigtighed som den tidligere count===0-only-regel (#2296-regression).
-        // #5242: limited/unauthorized behandles som "ukendt svar" — samme gren.
-        if (!r.ok || r.limited || r.unauthorized || cancelled) return;
-        if (!cancelled) setSquadSelectionMissingRace(isSquadSelectionMissing(r.data) ? nextRace : null);
-      } catch { /* netværk — nudgen forbliver som den var */ }
+      for (const race of candidates) {
+        if (cancelled) return;
+        try {
+          const r = await apiFetch(`${API}/api/races/${race.id}/selection`, { headers: { Authorization: `Bearer ${token}` } });
+          // Fejl/ukendt svar må ikke udløse et falsk "udtagelse mangler" — samme
+          // forsigtighed som den tidligere count===0-only-regel (#2296-regression).
+          // #5242: limited/unauthorized behandles som "ukendt svar" — samme gren.
+          // Her stopper den ogsaa gennemloebet: et ukendt svar er ikke et bevis paa
+          // at loebet er afmeldt, saa vi maa ikke springe det over og nudge om et
+          // senere loeb i stedet.
+          if (!r.ok || r.limited || r.unauthorized || cancelled) return;
+          if (r.data?.withdrawn) continue; // afmeldt — se efter det naeste loeb
+          if (!cancelled) setSquadSelectionMissingRace(isSquadSelectionMissing(r.data) ? race : null);
+          return;
+        } catch { return; /* netværk — nudgen forbliver som den var */ }
+      }
+      // Alle kandidater inden for loftet er afmeldt: intet at minde om.
+      if (!cancelled) setSquadSelectionMissingRace(null);
     })();
     return () => { cancelled = true; };
   }, [nextRaces, team?.id]);
