@@ -235,6 +235,37 @@ test("parsePlan afviser en plan der ikke entydigt kan koeres", () => {
   );
 });
 
+// CodeRabbit-fund paa #5311: lane-navnet bliver til et filnavn, et artifact-navn
+// og et job-navn, og `browser` gaar ubehandlet videre til `npx playwright
+// install`. Uden denne validering doer lanen foerst midt i en Windows-koersel
+// med en kryptisk redirect-fejl - plan-jobbet skal fange det paa ti sekunder.
+test("parsePlan afviser navne der ikke kan bruges som filnavn eller i en kommando", () => {
+  const withProject = (project) => ({
+    targetSecondsPerShard: 300,
+    ceilingSecondsPerShard: 600,
+    projects: [{ project, browser: "chromium", shards: 1 }],
+  });
+  const withBrowser = (browser) => ({
+    targetSecondsPerShard: 300,
+    ceilingSecondsPerShard: 600,
+    projects: [{ project: "ok-navn", browser, shards: 1 }],
+  });
+
+  for (const bad of ["mobile/webkit", "mobile\\webkit", "mobile webkit", "mobile:webkit", "-leading-dash", "..", "web*kit", "web?kit"]) {
+    assert.throws(() => parsePlan(withProject(bad)), /maa kun indeholde/, `project "${bad}" skulle vaere afvist`);
+  }
+  for (const bad of ["chromium; rm -rf /", "chromium && echo", "$(whoami)", "chro mium", "chromium|cat", "`id`"]) {
+    assert.throws(() => parsePlan(withBrowser(bad)), /maa kun indeholde/, `browser "${bad}" skulle vaere afvist`);
+  }
+
+  // De gyldige former skal fortsat passere - reglen maa ikke vaere saa stram at
+  // den committede plan eller en fremtidig browser-variant falder igennem.
+  for (const good of ["desktop-chromium", "mobile_webkit", "chromium-headless-shell", "webkit2.0"]) {
+    assert.doesNotThrow(() => parsePlan(withProject(good)), `project "${good}" skulle vaere accepteret`);
+    assert.doesNotThrow(() => parsePlan(withBrowser(good)), `browser "${good}" skulle vaere accepteret`);
+  }
+});
+
 test("expandPlan giver een lane pr. shard med stabile, artifact-sikre navne", () => {
   const lanes = expandPlan(planFixture());
   assert.deepEqual(

@@ -132,6 +132,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobbet koerer kun `node` paa en committet fil og skal aldrig tale
+          # med GitHub. Samme mindste-privilegium som league-size-invariant-audit,
+          # priority-hygiene og ts-core-ratchet allerede bruger.
+          persist-credentials: false
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -186,7 +191,7 @@ jobs:
       # browser hvis snapshots kunne drive uset - se playwright.config.js for
       # hvorfor #1342's rodårsag ikke findes længere.
       - name: Install Playwright browser
-        run: npx playwright install ${{ matrix.browser }}
+        run: npx playwright install "${{ matrix.browser }}"
 
       # #1342: byg frontend FØR Playwright, så webServer-kommandoen i CI kun er
       # den statiske server (én proces). `npm run build && npm run preview` i én

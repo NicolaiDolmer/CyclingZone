@@ -127,6 +127,18 @@ export function readPlan(file) {
  * @param {unknown} parsed
  * @returns {{targetSeconds: number, ceilingSeconds: number, projects: {project: string, browser: string, shards: number}[]}}
  */
+// Lane-navnet bliver til et FILNAVN (`e2e-shard-metrics/<key>.json`), et
+// ARTIFACT-navn og et job-navn, og `browser` gaar ubehandlet videre til
+// `npx playwright install <browser>`. Et navn som "mobile/webkit" ville derfor
+// pege redirectionen ned i en mappe der ikke findes, og et navn med
+// shell-metategn kunne aendre install-kommandoen. Det er ikke en ny
+// tillidsgraense - den der kan rette planen kan i forvejen rette workflowet -
+// men det flytter fejlen fra en kryptisk doed Windows-lane midt i en koersel
+// til en tydelig fejl i det 10-sekunders plan-job. Validering er hele grunden
+// til at plan-jobbet findes; saa skal den ogsaa daekke det den lover.
+// (CodeRabbit-fund paa #5311.)
+const PLAN_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
 export function parsePlan(parsed) {
   const targetSeconds = Number(parsed?.targetSecondsPerShard);
   const ceilingSeconds = Number(parsed?.ceilingSecondsPerShard);
@@ -148,7 +160,13 @@ export function parsePlan(parsed) {
     const browser = entry?.browser;
     const shards = Number(entry?.shards);
     if (typeof project !== "string" || !project) throw new Error("shard-plan: hver post skal have et project-navn");
+    if (!PLAN_NAME_RE.test(project)) {
+      throw new Error(`shard-plan: project "${project}" maa kun indeholde bogstaver, tal, punktum, bindestreg og underscore - navnet bliver til et filnavn og et artifact-navn`);
+    }
     if (typeof browser !== "string" || !browser) throw new Error(`shard-plan: ${project} mangler browser`);
+    if (!PLAN_NAME_RE.test(browser)) {
+      throw new Error(`shard-plan: ${project}.browser "${browser}" maa kun indeholde bogstaver, tal, punktum, bindestreg og underscore - vaerdien gaar videre til "npx playwright install"`);
+    }
     if (!Number.isInteger(shards) || shards < 1) throw new Error(`shard-plan: ${project}.shards skal vaere et helt tal >= 1 (fik ${entry?.shards})`);
     if (seen.has(project)) throw new Error(`shard-plan: ${project} staar to gange`);
     seen.add(project);
