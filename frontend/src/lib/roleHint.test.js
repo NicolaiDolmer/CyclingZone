@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { createInstance } from "i18next";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -134,3 +136,25 @@ test("hunterBreakawayStrength: itt/ttt/classic + ukendt profil → none (intet u
   assert.equal(hunterBreakawayStrength(null, null), "none");
   assert.equal(hunterBreakawayStrength(undefined, undefined), "none");
 });
+
+// #5289: real resources, with fallback disabled so EN cannot hide a DA gap.
+for (const language of ["en", "da"]) {
+  test("all roles resolve across planning, selection and tactics: " + language, async () => {
+    const races = JSON.parse(readFileSync(new URL("../../public/locales/" + language + "/races.json", import.meta.url), "utf8"));
+    const i18n = createInstance();
+    await i18n.init({ lng: language, fallbackLng: false, defaultNS: "races", resources: { [language]: { races } } });
+    const keys = ["selection.captain", "selection.sprintCaptain", "selection.hunter", "selection.freeRole", "racehub.hunterExplainer.pickTitle"];
+    for (const role of ROLE_KEYS_V3) {
+      keys.push("tacticsOrders.roleLabel." + (role === "rider" ? "helper" : role));
+      for (const bucket of TERRAIN_BUCKETS) {
+        const hint = roleHint(role, bucket);
+        keys.push(hint.titleKey, hint.descKey);
+      }
+    }
+    for (const key of new Set(keys)) {
+      assert.ok(i18n.exists(key), language + ":" + key);
+      assert.notEqual(i18n.t(key), key);
+      assert.ok(i18n.t(key).trim());
+    }
+  });
+}

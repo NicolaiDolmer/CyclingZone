@@ -461,6 +461,7 @@
     "willNotStartShort": "Under {min} riders. Does not start.",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
+    "hunter": "Breakaway hunter",
     "freeRole": "Free role",
     "noRole": "None",
     "thRider": "Rider",
