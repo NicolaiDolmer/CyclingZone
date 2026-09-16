@@ -13,6 +13,7 @@ import {
   announcedRetirementAfterSeason, GC_PUNCH_FLOOR, MENTAL_ABILITY_TAG_CEILING,
 } from "./riderProgression.js";
 import { CAPS_SHAPING_WEIGHTS } from "./weights/capsShapingWeights.js";
+import { DISPLAY_RECIPES, ratingForRole } from "./weights/displayRecipes.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { ageForSeason } from "./riderSeasonAge.js";
@@ -509,11 +510,59 @@ test("#5268: mentale evners tag er loftet uanset rolleklasse", () => {
         `${ability} hos ${primary}/${secondary}: tag ${cap} over loftet ${ceiling}`);
     }
   }
-  // Konkret: baroudeurens aggression var signatur-taget 93; den er nu 70.
-  assert.equal(youthAbilityCap(6, "baroudeur", "rouleur", "aggression"), 70);
   // Taktik var fladt 70 (håndværk) for alle; den er nu 55 for alle.
   assert.equal(youthAbilityCap(6, "gc", "climber", "tactics"), 55);
   assert.equal(youthAbilityCap(1, "sprinter", "tt", "tactics"), 55);
+});
+
+// ── #5288: loftet må aldrig skære en evne dens ejer har som signatur ─────────
+// Regressionen: `aggression: 70` stod i tabellen 15/9-16/9 og skar baroudeurens
+// SIGNATUREVNE fra 93 til 70, mens loftet var en no-op for alle andre typer
+// (aggression har caps-vægt i kun én opskrift og er ikke en craft-evne, så alle
+// andre faldt til 55/45 i forvejen). Fire spillere meldte faldet inden for et
+// døgn. Denne guard er invarianten der ville have fanget det FØR merge.
+// At måle på KLASSEN duer ikke som guard: `abilityRoleClass` er binær på fortegn,
+// så enhver positiv vægt — også vægt 1 — giver `signatur` (93). Derfor skærer det
+// ejer-godkendte loft på 70 også teamwork (climber, rouleur) og leadership (gc,
+// sprinter) ned fra 93. Det er accepteret, fordi de vejer 1 i display-opskriften
+// og koster under 2 point på ratingen.
+//
+// Guarden måler derfor dét spilleren FAKTISK ser: hvor mange point af sit
+// forventede loft en arketype mister på loft-tabellen. aggression kostede
+// baroudeuren 8,4 point (vægt 4 af 11); de accepterede snit koster 1,4-1,8.
+const RATING_COST_BUDGET = 3;
+
+test("#5288: loft-tabellen koster ingen arketype mere end 3 ratingpoint", () => {
+  const uncappedTag = (primary, secondary, ability) => {
+    const tag = YOUTH_PROGRESSION_CONFIG.roleTags[abilityRoleClass(primary, secondary, ability)];
+    return (primary === "gc" && ability === "punch") ? Math.max(tag, GC_PUNCH_FLOOR) : tag;
+  };
+  for (const { key: type } of DISPLAY_RECIPES) {
+    const capped = {};
+    const uncapped = {};
+    for (const ability of VISIBLE_ABILITIES) {
+      capped[ability] = youthAbilityCap(6, type, type, ability);
+      uncapped[ability] = uncappedTag(type, type, ability);
+    }
+    const cost = ratingForRole(uncapped, type) - ratingForRole(capped, type);
+    assert.ok(cost <= RATING_COST_BUDGET,
+      `${type} mister ${cost} ratingpoint på MENTAL_ABILITY_TAG_CEILING `
+      + `(budget ${RATING_COST_BUDGET}). Loftet rammer en evne der vejer tungt i `
+      + `typens display-opskrift — brug et gulv (GC_PUNCH_FLOOR) eller hæv loftet.`);
+  }
+});
+
+test("#5288: baroudeurens aggression er tilbage på signatur-taget", () => {
+  // Ejer-beslutning 16/9: aggression ude af MENTAL_ABILITY_TAG_CEILING.
+  assert.ok(!("aggression" in MENTAL_ABILITY_TAG_CEILING));
+  assert.equal(youthAbilityCap(6, "baroudeur", "rouleur", "aggression"),
+    YOUTH_PROGRESSION_CONFIG.roleTags.signatur);
+  // Og loftet var beviseligt en no-op for alle andre: de lå under 70 i forvejen.
+  for (const primary of CAPS_SHAPING_WEIGHTS.map((t) => t.key)) {
+    if (primary === "baroudeur") continue;
+    assert.ok(youthAbilityCap(6, primary, "rouleur", "aggression") <= 70,
+      `${primary} lå over 70 på aggression — loftet var ikke en no-op for den type`);
+  }
 });
 
 test("#5268: teamwork/leadership kan aldrig lande i svaghed-klassen", () => {
