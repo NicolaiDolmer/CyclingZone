@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.279",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Role names in planning",
+          "body": "Your assigned breakaway hunter now shows the correct role name in planning, in English and Danish. Your selections stay the same."
+        },
+        "da": {
+          "title": "Rollenavne i planlægningen",
+          "body": "Din udbrudsjæger vises nu med det rigtige rollenavn i planlægningen på både engelsk og dansk. Dine udtagelser er uændrede."
+        },
+        "refs": [
+          5289
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.278",
     "date": "2026-09-16",
     "label": "Beta",

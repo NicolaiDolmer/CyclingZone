@@ -115,6 +115,58 @@ for (const ns of allNamespaces) {
   }
 }
 
+
+// #5289: parity cannot catch a lookup absent from EVERY language. Expand the
+// finite local string maps used in translation template lookups and check the
+// resulting keys against the actual namespace in every locale. No eval and no
+// duplicated role list. This deliberately covers local literal maps, not
+// arbitrary JS expressions, imported maps or multiple hook namespaces per file.
+function sourceFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.name.startsWith('.') || entry.name === 'node_modules') return [];
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return sourceFiles(full);
+    return /\.(?:[jt]sx?|mjs)$/.test(entry.name) && !/\.(?:test|spec)\./.test(entry.name) ? [full] : [];
+  });
+}
+
+let mappedKeyCount = 0;
+for (const file of sourceFiles(join(ROOT, 'frontend', 'src'))) {
+  const src = readFileSync(file, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  const namespaces = new Set([...src.matchAll(/useTranslation\(\s*["']([\w-]+)["']/g)].map((m) => m[1]));
+  const maps = new Map();
+  for (const match of src.matchAll(/\bconst\s+(\w+)\s*=\s*\{([^{}]*)\}/g)) {
+    const entries = match[2].split(',').map((v) => v.trim()).filter(Boolean);
+    const values = entries.map((entry) => entry.match(/^(?:\w+|["'][^"']+["'])\s*:\s*["']([^"']+)["']$/)?.[1]);
+    if (values.length && values.every((value) => value !== undefined)) maps.set(match[1], values);
+  }
+  const calls = /\bt\(\s*\x60([^\x60$]*)\$\{(\w+)\[[^\]]+\](?:\s*\?\?\s*["']([^"']+)["'])?\}([^\x60$]*)\x60/g;
+  for (const call of src.matchAll(calls)) {
+    const values = maps.get(call[2]);
+    if (!values) continue;
+    const colon = call[1].indexOf(':');
+    const ns = colon >= 0 ? call[1].slice(0, colon) : namespaces.size === 1 ? [...namespaces][0] : null;
+    if (!ns) continue;
+    const prefix = colon >= 0 ? call[1].slice(colon + 1) : call[1];
+    const suffixes = new Set([...values, ...(call[3] ? [call[3]] : [])]);
+    for (const suffix of suffixes) {
+      const key = prefix + suffix + call[4];
+      mappedKeyCount++;
+      for (const lng of lngs) {
+        let value;
+        try { value = valueAtPath(loadJSON(lng, ns), key); } catch { /* reported as a missing lookup below */ }
+        if (typeof value !== 'string' || !value.trim() || value === PLACEHOLDER) {
+          issues.push('[' + lng + '/' + ns + '] mapped key "' + key + '" missing or untranslated (' + relative(ROOT, file) + ')');
+          errorCount++;
+        }
+      }
+    }
+  }
+}
+console.log('[i18n-check] Checked ' + mappedKeyCount + ' mapped source keys in every language');
+
 if (issues.length === 0) {
   console.log(`✓ i18n key-coverage OK — ${lngs.length} languages × ${allNamespaces.size} namespaces`);
   process.exit(0);
