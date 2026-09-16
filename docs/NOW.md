@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Codex-vækstgennemgang 17/9** — `docs/drafts/codex-brief-vaekst-2026-09-17.md` (analyse, INGEN kode/PR). **NB:** `codex-prompts-2026-09-17.md` er delvist forældet (#5289/#5290 merget). **Nye 16/9:** #5304 click-ids · #5305 PostHog 0 events · #5306 NPS tavs · #5307 arkitektur+PWA. Uafklaret: loft-designet (🟡) · sponsor #4860/#5263 **deadline 27/9** · apply-go #5268 + #4619. **Merget 16/9:** 5 PR'er (senest #5301), køen TOM. **Parkeret:** #5281 (vent på B4) · #5267 løbsdage → #5169 + B4 #5264s grid; #5264 CONFLICTING. **Øvrigt:** #5263 · #5235 · #5262 · #3512.
+> **🎯 Next action:** **Ejer + Claude-review 17/9:** [vækstplan, fuld A-H-dækning og design](strategy/2026-09-16-growth-review/README.md), indgang **#4964**, nyt hul **#5310**. Vælg MASTERPLAN-placering; forslag er IKKE build-go. Gemt på `codex/growth-plan-2026-09-16`, ingen PR/merge. **Øvrig styring:** loft 🟡 · sponsor #4860/#5263 **27/9** · apply-go #5268/#4619. **Parkeret:** #5281 på B4; #5264 CONFLICTING; #5267 → #5169. Øvrige #5235/#5262/#3512. Gamle Codex-prompts er delvist stale (#5289/#5290 merget).
 
 > **🟡 Loft-designet (ejer 16/9 — byg intet, afventer samtale):** `abilityRoleClass` er **binær på fortegn**, så vægt 1 og vægt 3 begge giver `signatur` (93). Derfor ramte loftet skævt: `aggression` (vægt 3) kostede 8,4 ratingpoint, `teamwork`/`leadership` (vægt 1) koster 1,5-1,8. Ejeren vil have en langsigtet løsning (vægtet rolleklasse eller gulv à la `GC_PUNCH_FLOOR`). **#5268-point-flytningen bør afvente samtalen.**
 
