@@ -24,11 +24,13 @@ import { captureFirstTouch } from "./lib/attribution.js";
 import { BrowserRouter } from "react-router";
 import i18n from "./i18n";
 import "./index.css";
-// #2047: flag-icons-CSS (~ukomprimeret sprite) importeres IKKE længere globalt her.
-// Landing bruger ingen `fi fi-*`-glyffer (LanguageToggle er ren tekst), så den
-// blokerede boot uden gevinst. CSS'en scopes nu til de to moduler der faktisk
-// renderer flag: `Flag.jsx` og `LanguageSwitcher.jsx` — Vite deduper importen,
-// så den loades præcis én gang, første gang et flag-modul indlæses.
+// #2047 + #5177: flag-icons-CSS (~ukomprimeret sprite) importeres IKKE globalt her.
+// #2047 scopede den til `Flag.jsx` + `LanguageSwitcher.jsx`, men switcheren hænger
+// i sidehovedet (Layout.jsx, ikke lazy), så spritet landede alligevel i ENTRY-
+// chunkens CSS-graf og blev hentet på hver side (85 KB transfer, render-
+// blokerende, målt i #5217). #5177 gav switcheren inline SVG-flag
+// (`LanguageSwitcherFlag.jsx`), så sprite-CSS'en nu KUN hænger på `Flag.jsx`, hvis
+// forbrugere alle ligger bag lazy ruter.
 
 // Skew Protection (#2423): pin denne klient til det deployment den kører, så en
 // lazy chunk hentet EFTER et deploy stadig findes. Første statement, så pinnen
