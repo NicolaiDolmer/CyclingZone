@@ -1027,12 +1027,21 @@ jobs:
     # Genererer S3-kalenderen 100 % OFFLINE (lib/__fixtures__/racePoolCatalog.prod.json +
     # scripts/dev/lib/s3OfflineCalendarPlan.mjs). Ingen secrets, ingen prod-adgang.
     #
-    # RÅDGIVENDE, IKKE PÅKRÆVET: står bevidst UDENFOR scripts/ci-required-checks.json i
-    # første omgang (spawn-prompt-direktiv #4270) — samme mønster som
-    # supabase-ops-scripts ovenfor. En rød diff her er ikke nødvendigvis en fejl (se
-    # lib/calendarGoldenSnapshot.test.js's egen docstring: kan også være en TILSIGTET
-    # ændring der mangler en `refreshCalendarGoldenSnapshot.mjs`-kørsel), så den skal
-    # kunne læses og vurderes af et menneske før den evt. gøres blokerende.
+    # BLOKERENDE FRA 17/9 (#4123). Jobbet stod indtil da bevidst UDENFOR
+    # scripts/ci-required-checks.json (spawn-prompt-direktiv #4270), så en rød diff kunne
+    # læses og vurderes af et menneske først. Den vurdering er gjort: begge tests har kørt
+    # grønt mod main, og determinismen er selv en test (to regenereringer skal være
+    # byte-identiske), så et rødt resultat her er enten en ægte regression eller en
+    # TILSIGTET ændring der mangler sin snapshot-opdatering.
+    #
+    # Er den tilsigtet, er rettelsen ét skridt og hører til i SAMME PR:
+    #   cd backend && node scripts/dev/refreshCalendarGoldenSnapshot.mjs
+    # Vil du se HVAD der ændrede sig, pr. division/dag/løbstype, før du beslutter:
+    #   cd backend && node scripts/dev/calendarGoldenDiff.mjs
+    # (samme offline kilde, ingen credentials — se docs/CALENDAR_RULES.md §2d).
+    #
+    # Navnet er tilføjet til scripts/ci-required-checks.json; selve branch protection er
+    # ejerens flag at vippe (kommandoen står i den fils _comment).
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
