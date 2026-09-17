@@ -22,6 +22,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+import { SPONSOR_INCOME_BY_DIVISION } from "../lib/economyConstants.js";
 import { renownTarget } from "../lib/renownEngine.js";
 import { generateOffers } from "../lib/sponsorOffers.js";
 
@@ -124,8 +125,21 @@ async function main() {
     const windowOpenTarget = targetFrom(windowOpenStandings, contract.team_id, division);
     const finalTarget = targetFrom(finalStandings, contract.team_id, division);
 
+    // A bider KUN på aftaler der blev tegnet mens stillingen var tom — dem hvor det
+    // frosne target ligger på divisionens flade base (multiplier 1,00). Er aftalen
+    // tegnet efter sæsonens første løb, har den allerede en rigtig multiplier, og A
+    // ville ikke have ændret noget. Udledningen af target er den samme baglæns-regning
+    // som recomputeActivationRate bruger (docs/SPONSOR_RULES.md §1).
+    const signedTarget = contract.guaranteed_fraction
+      ? Math.round(contract.guaranteed_base / contract.guaranteed_fraction)
+      : null;
+    const flatBase = SPONSOR_INCOME_BY_DIVISION[division] ?? null;
+    const appliesA =
+      signedTarget !== null && flatBase !== null && Math.abs(signedTarget - flatBase) <= 1;
     // A: managerens EGEN variant, prissat mod den stilling A ville have fundet.
-    const aBase = baseForVariant(contract.team_id, TARGET_START_SEASON, windowOpenTarget, variant);
+    const aBase = appliesA
+      ? baseForVariant(contract.team_id, TARGET_START_SEASON, windowOpenTarget, variant)
+      : contract.guaranteed_base;
     // D: default-'safe' til vindues-prisen, begrænset opad af slutstillingen.
     const dBase = baseForVariant(
       contract.team_id,
