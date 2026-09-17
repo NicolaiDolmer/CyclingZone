@@ -949,3 +949,115 @@ Fra `.claude/learnings/`. De står her fordi mønstret gentager sig, og fordi hv
 | 30/8 | `2026-08-31-kalender-ssot-tre-kvotetal-og-en-vagt-der-gik-groen.md` | tre kvote-tal, en familie uden gulv, og en vagt der gik grøn på sit eget fejlsvar |
 
 **Det gennemgående mønster, tre gange på tre måneder:** skaden kom i **data**, ikke i kode, og gaten der skulle fange den var enten fraværende (#4155), uden tilstandstjek (9/8), eller grøn på sit eget fejlsvar (30/8, §9b).
+
+---
+
+## §16 Ungdomskataloger
+
+Katalogforberedelse til [#4620](https://github.com/NicolaiDolmer/CyclingZone/issues/4620),
+[#4621](https://github.com/NicolaiDolmer/CyclingZone/issues/4621) og #4845.
+Design-go: ejerens beslutninger 15/9 i
+[`U23-spec §4.4 og §10.3/§10.5`](superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md#44-katalog-og-ai-fyld)
+og [`YOUTH_RULES.md §2.3`](YOUTH_RULES.md#23-ungdomsløb-ejer-29-svar-4-og-5).
+§10.3 erstatter §4.4's forslag om at genbruge overskydende seniorløb: ungdom får egne navne.
+
+`race_pool.squad` er `TEXT NOT NULL DEFAULT 'senior'` med CHECK på `senior`, `u23`,
+`junior`. Eksisterende rækker får senior-defaulten; deres identitet bevares.
+Migrationen `2026-09-15-4620-race-pool-squad-and-youth-catalog.sql` tilføjer 54 rækker
+med stabile UUID'er og `u23-`/`jun-`-præfikser. Genkørsel bruger
+`ON CONFLICT (external_id) DO NOTHING`. Ingen RLS-regler ændres.
+`backend/lib/__fixtures__/racePoolCatalog.youth.json` har samme envelope som
+senior-fixturen og præcis de samme katalogfelter som SQL. `pools: []` er bevidst:
+dry-run-pakkeren skal levere ungdomspuljerne og filtrere `catalog` på `squad`.
+
+`country` bruger fulde engelske landenavne som prod-kataloget, fx `France`,
+`Italy`, `Belgium` og `Czech Republic`, så landefiltre og flag deler format.
+Alle 54 rækker følger konventionen; `Ireland` er et nyt land i ungdomskataloget.
+
+Ejer-godkendte navne efter review 15/9:
+
+| Stabilt `external_id` | Løbsnavn |
+|---|---|
+| `u23-nations-chrono` | Chrono de Vendée Espoirs |
+| `u23-thuringen` | Thüringer Land-Rundfahrt der Talente |
+| `jun-basque` | Euskal Haranak Gazteak |
+
+ID'erne er geografiske/katalogbaserede identiteter og bevares ved omdøbningen;
+dermed ændres hverken parcours-seed eller SQL-seedets idempotens.
+
+### Forsyning og frekvens
+
+| Måling / ejer-mål | U23 | Junior |
+|---|---:|---:|
+| Katalogløb (reserve inkluderet) | 36 | 18 |
+| ProSeries | 3 | 0 |
+| Class1 | 10 | 9 |
+| Class2 | 23 | 9 |
+| Endagsløb / etapeløb | 21 / 15 | 8 / 10 |
+| Etaper pr. løb | 1-8 | 1-4 (briefens hårde loft: 5) |
+| Ejer-mål for den pakkede kalenders uge-tæthed | 1-2 løb | 1 løb |
+| Dato-ankre | marts-september | marts-september |
+
+Antallet er katalogforsyning, ikke en måling af pakkede uger eller et løfte om at
+alle løb bruges. Uge-tætheden, 140-løbsdagsaksen og felt-gaten skal verificeres
+separat i ungdomspakkeren. Junior-deltagelse kræver sæsonalder 17-18;
+16-årige i juniortruppen er ikke løbsberettigede.
+
+Navne er omskrevet med lokale løbsord og stednavne, inspireret af virkelige og
+historiske ungdomsløb. Datoerne er tilbagevendende spilankre, ikke en officiel
+2026-kalender. Format-referencer: [UCI's ungdomsløb](https://www.uci.org/article/uci-under-23-nations-cup-italy-back-on-top-with-finn/4QoI5JIT2QqdgYSkiW8EAq),
+[Tour du Pays de Vaud](https://tpv.ch/) og [Giro della Lunigiana](https://www.girodellalunigiana.org/).
+
+### Terræn-forsyning og måling
+
+Alle nedenstående arketyper er verificeret blandt eksisterende `race_pool`-værdier
+med read-only SELECT 15/9. Tabellen tæller katalogløb, ikke genererede etaper.
+
+| `terrain_archetype` | U23 | Junior |
+|---|---:|---:|
+| `summit_tour` | 3 | 1 |
+| `mountain_tour` | 2 | 3 |
+| `hilly_tour` | 4 | 3 |
+| `hilly_classic` | 5 | 0 |
+| `puncheur` | 4 | 0 |
+| `balanced_week` | 4 | 1 |
+| `cobbled_tour` | 1 | 1 |
+| `cobbled_classic` | 2 | 1 |
+| `sprinters_week` | 1 | 1 |
+| `flat_sprint` | 7 | 5 |
+| `itt_classic` | 3 | 2 |
+
+Baseline gennem `generateRaceStageProfiles(row)` uden sæson-suffiks, alle rækker
+én gang: U23 **97 etaper**, junior **43**. Genmåles med den faktiske sæsonakse
+og pr. division efter pakning; dette er ikke et tier-scorecard eller en gate-godkendelse.
+
+| Etapefamilie | U23, antal (andel) | Junior, antal (andel) |
+|---|---:|---:|
+| Bjerg (`mountain` + `high_mountain`) | 28 (28,9 %) | 13 (30,2 %) |
+| Bakke (`hilly` + `rolling` + `classic`) | 30 (30,9 %) | 8 (18,6 %) |
+| Flad | 27 (27,8 %) | 16 (37,2 %) |
+| Brosten | 3 (3,1 %) | 2 (4,7 %) |
+| ITT | 9 (9,3 %) | 4 (9,3 %) |
+
+Briefens retning er senior-lignende komposition med bjerg omkring 28 %. Junior-baseline
+ligger lidt højere; kataloget leverer alle fem familier. Det endelige ungdomsudvalg
+skal måles mod ejerens kompositionsmål i §6/§6b. Ingen regressionsgulve er her
+omfortolket til mål, og ingen tier-gate erklæres bestået af en katalogtælling.
+
+### Merge- og verifikationskontrakt
+
+**Merge afhænger af squad-filtrering i kataloglæserne.** Den nuværende
+`tierCalendarMaterializer.js` læser alle ikke-retirerede rækker uden squad-filter;
+også katalog-/genereringsstier i `backend/routes/api.js` skal vurderes i pakkersporet.
+Seedet må derfor ikke bruges af senior-generering før disse læsere er afgrænset.
+Pakkeren, puljer, udtagelse og flader bygges i et separat spor. Migrationen
+auto-applies ved merge, inklusive PostgREST schema-reload; den er ikke et inaktivt SQL-udkast.
+
+`backend/lib/racePoolCatalog.youth.test.js` verificerer forsyning, navne og ID'er
+(også mod senior), fulde engelske landenavne, de ejer-godkendte omdøbninger,
+tilladte terræner/klasser, datoer, juniorloft og SQL/JSON-paritet.
+Terrænværdierne læses fra `racePoolCatalog.prod.json`; junior-asserten kræver
+eksplicit `stages <= 5` på hver juniorrække.
+Testkørsler pakkes altid i `scripts/verify-lock.ps1 -Max 2 -Timeout 1800`.
+Ingen patch note i dette forberedende draft-spor, jf. briefen; spillerkommunikation
+hører til aktiveringen af ungdomskalenderen.
