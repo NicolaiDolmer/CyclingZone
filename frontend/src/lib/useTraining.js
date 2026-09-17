@@ -29,6 +29,11 @@ export function useTraining() {
   // contributions } }. Feltet UDELADES helt af /api/training/me naar
   // training_score_visible er off, saa null = "fladen viser ingen score".
   const [trainingScore, setTrainingScore] = useState(null);
+  // #4847: knappens aabne-tilstand. null = `training_tick_per_race_day` er OFF (feltet
+  // leveres slet ikke af /api/training/me), altsaa den gamle "Train today"-adfaerd.
+  // Sat = { open, reason, gameDays, opensAtHour }: knappen aabner foerst naar dagens
+  // sidste loeb er lukket — PRAECIS samme betingelse som cron-sweepen.
+  const [dayClose, setDayClose] = useState(null);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -63,6 +68,8 @@ export function useTraining() {
         // #4851: null naar feltet mangler (flag off) — IKKE {} — saa fladerne
         // kan skelne "slukket" fra "taendt, men ingen data endnu".
         setTrainingScore(data.trainingScore ?? null);
+        // #4847: feltet mangler HELT naar flaget er off → null = gammel adfaerd.
+        setDayClose(data.dayClose ?? null);
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -281,7 +288,7 @@ export function useTraining() {
   return {
     slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, trainingScore,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
-    riderWeekPlans, savingRiderWeekPlanId, racingToday,
+    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,
     setRiderWeekPlan, clearRiderWeekPlan,
   };

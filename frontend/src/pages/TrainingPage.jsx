@@ -401,6 +401,8 @@ export default function TrainingPage() {
     // #4851: null naar training_score_visible er off ⇒ kolonnen findes ikke.
     trainingScore,
     racingToday,
+    // #4847: knappens aabne-tilstand (null = flaget training_tick_per_race_day er off).
+    dayClose,
   } = training;
   const scoreVisible = trainingScore != null;
 
@@ -1366,7 +1368,14 @@ export default function TrainingPage() {
     ? <span className="text-cz-success font-medium">{trainedTodayLabel()}</span>
     : !enabled
       ? <span className="italic">{t("disabledNote")}</span>
-      : t("notTrainedYetToday");
+      // #4847: naar loebsdags-ticket er on, koerer programmet af sig selv naar dagens
+      // sidste loeb er lukket. Én KORT linje paa fladen; prosaen bor i help.json
+      // (feedback "kort paa fladen, manualer i Hjaelp", ejer 20/8).
+      : dayClose && !dayClose.open
+        ? t("dayClose.waiting", { hour: dayClose.opensAtHour ?? 20 })
+        : dayClose
+          ? t("dayClose.ready")
+          : t("notTrainedYetToday");
 
   if (isLoading) {
     return (
@@ -1407,9 +1416,11 @@ export default function TrainingPage() {
                 variant={assistantPanelOpen ? "secondary" : "primary"}
                 size="sm"
                 onClick={handleRunToday}
-                disabled={!enabled || !!todayRun || running}
+                // #4847: paa loebsdags-stien aabner knappen foerst naar dagens
+                // sidste loeb er lukket (samme betingelse som cron-sweepen).
+                disabled={!enabled || !!todayRun || running || !!(dayClose && !dayClose.open)}
               >
-                {running ? t("loading") : t("trainToday")}
+                {running ? t("loading") : (dayClose ? t("runDayNow") : t("trainToday"))}
               </Button>
             </span>
           </div>

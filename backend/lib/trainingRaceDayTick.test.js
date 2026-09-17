@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 import {
   TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
+  resolveRaceDaysPerSeason, resolveRaceDayBudgetDivisor,
 } from "./trainingRaceDayTick.js";
 import { dailyAbilityDelta, DAILY_TRAINING_CONFIG, growthFractionForAge } from "./dailyTraining.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
@@ -65,11 +66,13 @@ function calendarTables({ divisionId = DIVISION_ID } = {}) {
 
 // ── G1: sæsonens samlede udvikling ───────────────────────────────────────────
 test("G1: deleren holder forholdet mellem antal ticks og deler konstant", () => {
-  assert.equal(TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason, 80);
+  // #4847 (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 2): 140 loebsdage pr. saeson,
+  // ikke 80. Tallet er ejer-besluttet og samtidig kalenderpakkerens maal.
+  assert.equal(TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason, 140);
   assert.equal(TRAINING_RACE_DAY_CONFIG.legacyDaysPerSeason, DAILY_TRAINING_CONFIG.daysPerSeason,
     "referencen i formlen skal foelge den faktiske deler i DAILY_TRAINING_CONFIG");
   const D = raceDayBudgetDivisor();
-  assert.ok(Math.abs(D - (80 * 28) / 31) < 1e-9, `D = ${D}`);
+  assert.ok(Math.abs(D - (140 * 28) / 31) < 1e-9, `D = ${D}`);
   const before = TRAINING_RACE_DAY_CONFIG.calendarTicksPerSeasonToday / DAILY_TRAINING_CONFIG.daysPerSeason;
   const after = TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason / D;
   assert.ok(Math.abs(before - after) < 1e-9, "T/D er uaendret");
@@ -102,7 +105,7 @@ test("G1: sæsonens samlede evne-udvikling er uændret i ALLE fire alders-bånd 
   }
 });
 
-test("G1: UDEN rekalibrering ville 80 ticks overtræne markant (negativ-test)", () => {
+test("G1: UDEN rekalibrering ville flere ticks overtræne markant (negativ-test)", () => {
   const program = { focus: "endurance", intensity: "normal" };
   const run = (ticks, divisor) => {
     let current = 40;
@@ -115,8 +118,40 @@ test("G1: UDEN rekalibrering ville 80 ticks overtræne markant (negativ-test)", 
     return current - 40;
   };
   const today = run(31, null);
-  const naive = run(80, null); // samme deler, 80 ticks — den fejl gaten fanger
+  // Samme deler, men det NYE antal ticks (140) — praecis den fejl gaten fanger.
+  const naive = run(TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason, null);
   assert.ok(naive / today > 1.8, `uden rekalibrering ${(naive / today).toFixed(2)}x — gaten skal kunne se det`);
+});
+
+// ── #4847 punkt 5: deleren LAESER maalet, duplikerer det ikke ─────────────────
+test("#4847: maalet laeses fra calendarRaceDayTargets.js naar filen findes", async (t) => {
+  let mod;
+  try {
+    mod = await import("./calendarRaceDayTargets.js");
+  } catch {
+    // PR #5169 er ikke merget endnu — den defensive import falder tilbage, og
+    // fallbacken ER ejerens tal. Testen bliver skarp af sig selv naar filen lander.
+    t.diagnostic("calendarRaceDayTargets.js findes ikke endnu (PR #5169) — tester fallbacken");
+    assert.equal(await resolveRaceDaysPerSeason({ seasonNumber: 4 }), 140);
+    return;
+  }
+  assert.equal(
+    await resolveRaceDaysPerSeason({ seasonNumber: 4 }),
+    mod.SEASON_RACE_DAY_TARGET[4],
+    "traeningsdeleren og kalenderpakkeren skal dele ÉN sandhed — ikke to kopier af 140",
+  );
+});
+
+test("#4847: en ukendt saeson arver det hoejeste kendte maal, aldrig 0", async () => {
+  const n = await resolveRaceDaysPerSeason({ seasonNumber: 99 });
+  assert.ok(Number.isFinite(n) && n > 0, `maalet skal altid vaere et positivt tal, fik ${n}`);
+  assert.ok(n >= 80, "et maal under D1's naturlige antal loebsdage ville vaere uopnaaeligt");
+});
+
+test("#4847: den asynkrone deler matcher den synkrone formel", async () => {
+  const D = await resolveRaceDayBudgetDivisor({ seasonNumber: 4 });
+  const raceDays = await resolveRaceDaysPerSeason({ seasonNumber: 4 });
+  assert.ok(Math.abs(D - (raceDays * 28) / 31) < 1e-9, `D = ${D}`);
 });
 
 // ── Seed-nøglen (A3) ─────────────────────────────────────────────────────────

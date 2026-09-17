@@ -140,6 +140,11 @@ export const ALL_CRON_MONITORS = [
   ["discord-dm-outbox-drain", CRON_MONITOR_5MIN],
   ["discord-webhook-outbox-drain", CRON_MONITOR_5MIN],
   ["training-sweep", CRON_MONITOR_5MIN],
+  // #4847: samlet daglig traening naar dagens loebsdage lukker. Tikker hvert 5. minut
+  // hele doegnet og returnerer normalt (ran:false, skipped:"flag_off"/"before_window"/
+  // "awaiting_finalization") uden for vinduet — praecis samme "aerlig check-in hele
+  // doegnet"-moenster som sunday-value-refresh, saa 5MIN ikke false-positiver.
+  ["training-day-close", CRON_MONITOR_5MIN],
   ["ai-recovery-sweep", CRON_MONITOR_5MIN],
   ["graduation-sweep", CRON_MONITOR_5MIN],
   ["scout-sweep", CRON_MONITOR_5MIN],

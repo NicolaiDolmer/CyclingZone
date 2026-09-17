@@ -62,7 +62,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Season fatigue and form reset (`season-fatigue-reset`) | live | `season_fatigue_reset_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
 | Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) | live | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4874 | 2026-09-15 | PR #5265 merget 15/9; TRAINING_RULES §3.2. |
 | Training score 1-99 (`training-score`) | beta | `training_score_visible` | [TRAINING_RULES.md](TRAINING_RULES.md) | #4851 | 2026-09-15 | PR #5261 merget 15/9; flag beta (admin + beta-testere). Flip til on = ejer. |
-| Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4846 | 2026-09-15 | Fundament merget 15/9 bag flag (off); design låst §13.3; B4-udløser mangler. |
+| Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4846 | 2026-09-15 | B4-udløser (samlet sweep ved dagens lukning, kl. 20+) bygget 15/9 bag flag (off); mangler ejer-flip. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
 ## academy
