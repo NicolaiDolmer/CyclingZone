@@ -1299,6 +1299,11 @@ async function loadSponsorStandingsContextForSeason(supabaseClient, seasonNumber
 // integrationstest bare for at ramme metadata-forgreningen pr. sponsor-mode.
 export function buildSponsorMetadata(breakdown, modifier, pulloutActive) {
   const mode = breakdown.mode || "intro";
+  // #5158 ts-core-ratchet: uden denne annotation infererer tsc params' type fra
+  // FØRSTE tildeling ({ modifier }) og flager hver senere gren-specifikke
+  // property (base/variable/amount/sponsor) som "does not exist". Alle felter
+  // er optional, fordi kun ÉN gren udfylder hver af dem.
+  /** @type {{ modifier: number, base?: number, variable?: number, amount?: number, sponsor?: string }} */
   const params = { modifier };
   let codeKey;
   if (mode === "variable") {
