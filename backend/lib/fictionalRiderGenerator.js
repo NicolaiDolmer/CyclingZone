@@ -16,6 +16,28 @@ import { NAME_CLUSTERS, clusterForNationality } from "./fictionalRiderNames.js";
 import { seedArchetypePhysiology } from "./archetypePhysiology.js";
 import { drawSecondaryArchetype } from "./archetypeDistribution.js";
 import { isU25ForReferenceYear } from "./riderSeasonAge.js";
+import {
+  drawBirthAbilities, makeBirthRng, makeBirthMarker,
+  BIRTH_SECONDARY_SIGNATURE_WEIGHT,
+} from "./riderBirthPriors.js";
+
+// ── Fødsels-tilstand (#5269, ejer-beslutning 15/9) ───────────────────────────
+// "own-priors" = rytteren fødes direkte i evne-rummet fra spillets egne
+// arketype-priors (riderBirthPriors.js). Ingen `stat_*` skrives — kolonnerne
+// står NULL i `riders`, og PCM-vokabularet er dermed historik for enhver rytter
+// født efter 15/9.
+//
+// "pcm" = den GAMLE sti: 14 PCM-stats i [50,85], evner udledt af dem bagefter
+// (abilityDerivation.js). Den er BEVARET — ikke som fallback i produktionen,
+// men fordi de golden-population-harnesses der kalibrerer balancen
+// (backend/scripts/previewFictionalPopulation.js, simSecondaryArchetype3634.js,
+// raceGate.js) måler mod netop den fordeling. De skal kunne sammenlignes med
+// historikken indtil ejeren fjerner stien.
+//
+// DEFAULT er "own-priors" — ejer-mandat 15/9: "fremadrettet skal det stoppe".
+export const BIRTH_MODE_OWN_PRIORS = "own-priors";
+export const BIRTH_MODE_PCM = "pcm";
+export const DEFAULT_BIRTH_MODE = BIRTH_MODE_OWN_PRIORS;
 
 // ── Seeded PRNG (mulberry32) ──────────────────────────────────────────────────
 export function makeRng(seed) {
@@ -454,7 +476,10 @@ export function makeUniqueName(rng, cluster, usedFolded) {
  *        Kun til sim-sweepet (scripts/simSecondaryArchetype3634.js); produktionen bruger
  *        modul-konstanten SECONDARY_SIGNATURE_WEIGHT. 0 = kroppen formes af primæren alene
  *        (referencearmen — bit-identisk med koden før #3634).
- * @returns {{ riders: object[], coverage: object, seed: number }}
+ * @param {"own-priors"|"pcm"} [opts.mode]  #5269: fødsels-tilstand. Default "own-priors"
+ *        (evner fra spillets egne priors, INGEN stat_*). "pcm" er den gamle sti og er
+ *        bit-identisk med koden før #5269 — se BIRTH_MODE_* ovenfor.
+ * @returns {{ riders: object[], coverage: object, seed: number, mode: string }}
  */
 export function generateFictionalRiders({
   seed,
@@ -465,10 +490,15 @@ export function generateFictionalRiders({
   tierFractions = null,
   tierTypeWeights = null,
   secondarySignatureWeight = SECONDARY_SIGNATURE_WEIGHT,
+  mode = DEFAULT_BIRTH_MODE,
 }) {
   if (!Number.isInteger(seed)) throw new Error("seed skal være et heltal");
   if (!Number.isInteger(count) || count < 1) throw new Error("count skal være et positivt heltal");
   if (!Number.isInteger(referenceYear)) throw new Error("referenceYear skal være et heltal");
+  if (mode !== BIRTH_MODE_OWN_PRIORS && mode !== BIRTH_MODE_PCM) {
+    throw new Error(`generateFictionalRiders: unknown mode ${mode}`);
+  }
+  const ownPriors = mode === BIRTH_MODE_OWN_PRIORS;
 
   const rng = makeRng(seed);
   // #4180: navnene traekkes fra en EGEN rng-understroem, ikke fra hovedstroemmen.
@@ -551,6 +581,15 @@ export function generateFictionalRiders({
   const secondaryRng = makeRng((seed + 0x9e3779b9) >>> 0);
   const secondarySeq = typeSeq.map((primary) => drawSecondaryArchetype(secondaryRng, primary));
 
+  // #5269: EGEN rng-understrøm til fødsels-seeds på own-priors-stien. Samme
+  // begrundelse som nameRng (#4180) og secondaryRng (#3634): evne-trækket må
+  // ikke kunne forskyde krop, alder eller navne. Lige så vigtigt: strømmen
+  // forbruges KUN når mode er "own-priors", så "pcm"-stien er bit-identisk med
+  // koden før #5269 — det er dét, balance-baselinen og race:gate hviler på.
+  // 0x85ebca6b er murmur3's finaliserings-konstant, valgt forskellig fra
+  // nameRng's 0x6a09e667 og secondaryRng's 0x9e3779b9.
+  const birthRng = makeRng((seed + 0x85ebca6b) >>> 0);
+
   // Byg nationalitets-sekvens: garanterede nationer først, resten vægtet, så
   // deterministisk blandet, så garanterede ikke altid klumper i starten.
   const nationalities = [];
@@ -584,8 +623,32 @@ export function generateFictionalRiders({
     const secondaryArchetype = ARCHETYPE_BY_TYPE[secondarySeq[i]];
 
     const { firstname, lastname } = makeUniqueName(nameRng, cluster, usedFolded);
-    const stats = buildStats(rng, tier, archetype, secondaryArchetype, secondarySignatureWeight);
+    // #5269: på own-priors-stien trækkes der INGEN stats. Kolonnerne udelades
+    // helt af rækken (DB-default NULL) — ikke sat til 0, som ville læse som en
+    // ægte PCM-værdi i enhver kaldsted der summerer dem.
+    const stats = ownPriors
+      ? null
+      : buildStats(rng, tier, archetype, secondaryArchetype, secondarySignatureWeight);
     const demo = buildDemographics(rng, tier, archetype, referenceYear, secondaryArchetype, secondarySignatureWeight);
+
+    // #5269: fødsels-trækket. Seed'en persisteres i archetype_draw.birth, så
+    // ENHVER senere re-derive (riderDeriveHealSweep, starterSquadHealSweep,
+    // backfill-scripts) reproducerer præcis de samme evner i stedet for at
+    // udlede dem af de NULL-stats rytteren aldrig fik.
+    let birthMarker = null;
+    let birthAbilities = null;
+    if (ownPriors) {
+      const riderBirthSeed = Math.floor(birthRng() * 4294967296) >>> 0;
+      birthMarker = makeBirthMarker({ tier: tier.value, seed: riderBirthSeed, age: demo.age });
+      birthAbilities = drawBirthAbilities({
+        rng: makeBirthRng(riderBirthSeed),
+        tier: tier.value,
+        archetype: archetype.type,
+        secondaryArchetype: secondaryArchetype.type,
+        secondaryWeight: BIRTH_SECONDARY_SIGNATURE_WEIGHT,
+        age: demo.age,
+      });
+    }
     const physiology = seedArchetypePhysiology({
       archetype: archetype.type,
       tierLevel: TIER_PHYSIOLOGY_LEVEL[tier.value] ?? 0.5,
@@ -608,7 +671,7 @@ export function generateFictionalRiders({
       uci_points,
       is_u25: demo.is_u25,
       potentiale: demo.potentiale,
-      ...stats,
+      ...(stats ?? {}),
       // Bevidst udeladt (DB udleder/defaulter, backfill ejer base_value): id, base_value, market_value, salary,
       // team_id, ai_team_id, pending_team_id, prize_earnings_bonus, is_retired,
       // created_at, updated_at, acquired_at.
@@ -633,13 +696,32 @@ export function generateFictionalRiders({
         // peger) og heller ikke klassifikatorens gæt (det ville fryse netop gættet,
         // rodårsagen bag #3570, ind som identitet). Kroppen formes nu efter BEGGE
         // anlæg, med SECONDARY_SIGNATURE_WEIGHT som vægt — se blendArchetypeShape.
-        archetypeDraw: { primary: archetype.type, secondary: secondaryArchetype.type },
+        //
+        // #5269: på own-priors-stien bærer trækket desuden `birth`
+        // ({ v, tier, seed }) — fødsels-markøren. Den ligger BEVIDST inde i
+        // archetype_draw og ikke i en ny kolonne: feltet er jsonb og
+        // persisteres allerede for hver generator-født rytter, så der er ingen
+        // migration, og enhver eksisterende læser (draw.primary/draw.secondary
+        // i backfillCores.js og riderTypes.js) ser præcis det samme som før.
+        archetypeDraw: {
+          primary: archetype.type,
+          secondary: secondaryArchetype.type,
+          ...(birthMarker ? { birth: birthMarker } : {}),
+        },
         age: demo.age,
         cluster: clusterKey,
         physiology,
+        // Kun own-priors: evnerne som de blev trukket ved fødslen. IKKE en
+        // DB-kolonne (toInsertPayload strippper hele `_meta`) — den
+        // persisterede sandhed skrives af deriveForRiderIds, som reproducerer
+        // netop dette træk fra `birth.seed`. Feltet findes så in-memory-
+        // harnesses (balanceSnapshot, fordelings-gaten) kan læse evnerne uden
+        // en DB-rundtur. `hidden_potential` mangler bevidst: den afhænger af
+        // rytterens id, som DB'en først tildeler ved insert.
+        ...(birthAbilities ? { birthAbilities } : {}),
       },
     });
   }
 
-  return { riders, coverage, seed };
+  return { riders, coverage, seed, mode };
 }

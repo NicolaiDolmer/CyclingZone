@@ -18,9 +18,15 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language";
 import { CheckIcon, ChevronDownIcon } from "./ui/icons/index.jsx";
-// #2047: flag-icons-CSS scopes hertil (ud af global boot i main.jsx) — switcheren
-// viser `fi fi-*`-flag, så den skal have spritet. Vite deduper på tværs af moduler.
-import "flag-icons/css/flag-icons.min.css";
+// #5177 (afløser #2047): switcheren importerer IKKE længere flag-icons' sprite-CSS.
+// #2047 flyttede den ud af main.jsx og ind her — men LanguageSwitcher hænger i
+// sidehovedet (Layout.jsx, ikke lazy), så importen trak hele spritet (421 KB rå /
+// 84,7 KB gzippet, ~260 landes data-URI'er) ind i ENTRY-chunkens CSS-graf og
+// blokerede render på HVER side, inkl. `/`, `/login` og `/roadmap` som ikke viser
+// et eneste rytter-flag. De to flag switcheren faktisk bruger er nu inline SVG.
+// Flag.jsx beholder sprite-CSS'en (alle nationaliteter), og fordi ALLE dens
+// forbrugere ligger bag lazy ruter, følger CSS'en nu rute-chunken.
+import LanguageSwitcherFlag from "./LanguageSwitcherFlag.jsx";
 // #4733: kode + flag kommer nu fra den ene sprog-konfigurationsfil i stedet
 // for hardcodet her. LABEL_KEYS mapper code -> den eksisterende
 // common.json-nøgle (language.danish/language.english er ordnøgler, ikke
@@ -108,7 +114,7 @@ export default function LanguageSwitcher({ className = "" }) {
         title={t("language.switchTooltip")}
         className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-cz-2 hover:bg-cz-subtle focus:outline-none focus:ring-2 focus:ring-cz-accent"
       >
-        <span className={`fi fi-${active.flag}`} role="img" aria-hidden="true" />
+        <LanguageSwitcherFlag code={active.flag} />
         <span className="hidden sm:inline uppercase text-xs font-medium">{active.code}</span>
         <ChevronDownIcon className="w-3 h-3 opacity-60" aria-hidden="true" />
       </button>
@@ -150,7 +156,7 @@ export default function LanguageSwitcher({ className = "" }) {
                       selected ? "font-semibold" : ""
                     }`}
                   >
-                    <span className={`fi fi-${opt.flag}`} role="img" aria-hidden="true" />
+                    <LanguageSwitcherFlag code={opt.flag} />
                     <span>{t(opt.labelKey)}</span>
                     {selected && (
                       <CheckIcon className="ms-auto w-3.5 h-3.5 text-cz-accent" aria-hidden="true" />

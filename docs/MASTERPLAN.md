@@ -2,22 +2,23 @@
 
 > **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml` (#4921). **Intentionen** ejes af GDD'en: `docs/GAME_DESIGN_DOCUMENT.md` (D-001–D-048); MASTERPLAN ejer kun rækkefølgen. Spillerdata: `docs/audits/2026-09-10-*.md`.
 
-**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9: "der skal ikke længere komme fejl ofte"** → 🔴 brand går foran alle baner. **Målt 15/9:** 628 åbne (21 lukket i audit 15/9; 2 done-gated: #452, #3463).
+**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9: "der skal ikke længere komme fejl ofte"** → 🔴 brand går foran alle baner. **Målt 15/9:** 628 åbne.
 
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
 
-**#5182** board-trinnet 72-93 % af race-finalization → rod-årsag til forsinkede løb #3624 (#5202/#5098 lukket 15/9). **15/9:** main rød 09:04-09:3x (fix #5258; postmortem `.claude/learnings/2026-09-15-*`; forward-guards: opdateret base før merge, migrationer mod ægte Postgres i CI). **Rest:** #4595 → epic #5162 (CYCLINGZONE-56 flad) · #5242 apiFetch PR 2 = 214 kaldsteder · #4872 rytterværdi står stille (9/9) · #5222 · #5256 TTT-vægt.
+**#5323 Quad9 låser spillere HELT ude** (#5312): SERVFAIL på hele `up.railway.app` (reproduceret) — de ramte klager ikke, de forsvinder. Ejer-handling + DNS-test i issuet; **#5324** først.
+**#5182** board-trinnet 72-93 % af race-finalization → rod-årsag til forsinkede løb #3624. **Rest:** #4595 → epic #5162 (CYCLINGZONE-56 flad) · #5242 apiFetch PR 2 = 214 kaldsteder · #4872 rytterværdi står stille (9/9) · #5222 · #5256 TTT-vægt.
 
-## Bane 1 · S4-cutover 27-28/9 (deadline; nul buffer). **Rækkefølge ejer-godkendt 15/9 kl. 11:2x** (bølger, ikke datoer; intet udskydes uden ejer-aftale)
+## Bane 1 · S4-cutover 27-28/9 (bølge-rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
 
-1. 🟠 **Bølge 1 (kører):** #5169 → **140 løbsdage** (#4845) · #4851 træningsscore · #3668-rapport ✅ (PR #5260; ejer-valg: taktik/aggression egne evner, ingen PCM/alder fremadrettet, ingen rytter mister masse).
-2. 🔵 **Bølge 2, små låste + udløser:** #4860 sponsorpris S4 + #4376 sponsor-base (Codex, ca. 3,0 mio. CZ$) · #5235 mobiltabel-fix → merge · #5211 Discord-hærdning → merge · **B4 #4847** samlet sweep ≥ kl. 20 + knap + G6 + trup-nøgle på `training_day_runs` · **#5236/#5237 tre hårde sessioner (ejer: leveres 15/9)** · B3.
-3. ⚪ **Bølge 3, rytter-fundament (ÉN migration, ÉN spillerbesked):** rytter-fødsel uden PCM med egen prior + Holdarbejde/Lederskab som data (spec `2026-09-15-holdarbejde-og-lederskab-evner-design.md`) · `riders.squad` + loft pr. trup 12/10 (#4619) · migration: trup-backfill + taktik/aggression-fix + nye evner → dry-run → go-kort m. tal → ejer skriver besked → apply.
-4. ⚪ **Bølge 4, kalender med trupper (FØR S4-generering, kun én gang):** trup-dimension i pakkeren · U23- + junior-katalog (Codex) · AI U23/junior-ryttere · felt-gate C1 · S4 dry-run → go-kort → #4270 apply (ejer). Spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md` (#4620/#4621, alt live 28/9).
-5. ⚪ **Bølge 5, træning færdig (live senest 28/9):** skader i løbsdage · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden ÉN gang + hjælp (#4849) · #4852-#4854 · #4848.
-6. ⚪ **Bølge 6, trup-flader:** Graduation Day-side (#2491, live senest 20/9, ugen før skiftet) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
-7. 🔵 **Bølge 7, cutover-pakke:** #4592 inaktive (ejer godkender liste) → #452 → #4759 · Mandatet-flip #4857 (ejer-go) → #4859 → #4858 · v4 før flip (M12 · #4948; #4915 ejer-valg) → **v4-flip ejer-only** → #4916.
-8. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag, efter #3668-apply) · PCM-afkobling af al fødsel (#3458/#3512).
+1. ✅ **Bølge 1 (15/9):** #4851 score (flag beta) · #3668 → E (#5268).
+2. 🟠 **Bølge 2:** ✅ #5236/#5237 · ✅ #5211 · 🔵 #5264 B4 + #5281 B3 **træningssession 16/9** · 🔵 #5263 sponsor **ejer 16/9** · ⏸ #5235 mobil (#5124).
+3. 🟠 **Bølge 3, rytter-fundament:** ✅ #5278 fødsel uden PCM (gate #5283 før U23) · ✅ #5279 `riders.squad` (backfill ejer-gated) · ✅ #5280 evner som data (point-flyt ejer-gated) · 🔵 #5267 112/140 **ejer 16/9** (#5169 parkeret).
+4. ⚪ **Bølge 4, kalender m. trupper (FØR S4-generering):** pakker pr. trup · #5262 katalog · AI U23/junior-ryttere · C1 · dry-run → go → #4270 apply (ejer). Spec `2026-09-15-u23-*.md`.
+5. ⚪ **Bølge 5, træning færdig (28/9):** skader i løbsdage · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849) · #4852-#4854 · #4848.
+6. ⚪ **Bølge 6, trup-flader:** Graduation Day (#2491, senest 20/9) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
+7. 🔵 **Bølge 7, cutover:** #4592 → #452 → #4759 · Mandatet-flip #4857 (ejer-go) → #4859 → #4858 · v4 (M12 · #4948) → **flip ejer-only** → #4916.
+8. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag) · #3458/#3512.
 
 ## Bane 2 · Forretning (viger aldrig; SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 

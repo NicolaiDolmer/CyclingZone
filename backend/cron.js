@@ -90,6 +90,7 @@ import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #272
 import { processEmailRetryDrain } from "./lib/emailRetrySweep.js"; // #3600
 import { runEmailHealthReport } from "./lib/emailHealthReport.js"; // #2853
 import { runDiscordRaceDigestSweep } from "./lib/discordRaceDigestSweep.js"; // #3400
+import { runDiscordWelcomeSweep } from "./lib/discordWelcomeSweep.js"; // #5130
 import { runSeasonDocumentarySweep } from "./lib/seasonDocumentarySweep.js"; // #3402
 import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
@@ -1464,6 +1465,14 @@ async function runEmailWelcomeSweepCron() {
   if (r.sent) console.log(`✉️  Email-welcome: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
 }
 
+// #5130: Discord-velkomstbesked i indbakken. Ren sweep — dedupe på
+// teams.discord_welcome_sent_at (idempotent claim inde i selve sweepen),
+// ingen ekstra flag/stage nødvendig som email-loopet ovenfor.
+async function runDiscordWelcomeSweepCron() {
+  const r = await runDiscordWelcomeSweep({ supabase, now: new Date() });
+  if (r.sent) console.log(`💬 Discord-welcome: ${r.sent} sendt (${r.candidates} kandidater, ${r.failed} fejlet)`);
+}
+
 async function runEmailDay1SweepCron() {
   const r = await runEmailDay1Sweep({ supabase, now: new Date(), ...emailOpsWiring });
   if (r.sent) console.log(`✉️  Email-day1: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
@@ -2079,6 +2088,13 @@ export function startCron() {
   // approves the copy; all three sweeps are cheap no-ops while off.
   setInterval(
     trackedTick("email-welcome sweep", monitorCron("email-welcome", runEmailWelcomeSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+  // #5130 — Discord-velkomstbesked. Samme 5-min-kadence som email-welcome:
+  // tidsvinduet der betyder noget (draft-taerskel/24t-fallback) er timer, ikke
+  // minutter, så en 5-min-poll rammer det praktisk talt med det samme.
+  setInterval(
+    trackedTick("discord-welcome sweep", monitorCron("discord-welcome", runDiscordWelcomeSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
   setInterval(

@@ -98,16 +98,23 @@ test("#3665 vagt 4: frontendens evne-filer er genereret fra backend-kilden, ikke
 });
 
 // ── Registrets egen integritet ───────────────────────────────────────────────
+// Antallet er PINNET, ikke afledt: en evne der forsvinder ved et uheld (en dårlig
+// merge, en fjernet linje) skal fælde bygningen, ikke bare give et mindre tal.
+// Ændres tallet, skal migrationen (DB-kolonnen) og docs følge med i samme PR —
+// se docs/HOWTO_ADD_ABILITY.md. 15 → 17 ved #5268 (teamwork + leadership).
+const EXPECTED_ABILITY_COUNT = 17;
+
 test("#3665: registret har unikke keys og sammenhængende ordener", () => {
   const keys = ABILITY_REGISTRY.map((a) => a.key);
   assert.equal(new Set(keys).size, keys.length, "dublet-key i registret");
-  assert.equal(keys.length, 15, "de 15 synlige evner skal alle stå i registret");
+  assert.equal(keys.length, EXPECTED_ABILITY_COUNT,
+    `de ${EXPECTED_ABILITY_COUNT} synlige evner skal alle stå i registret`);
 
   for (const field of ["storageOrder", "displayOrder"]) {
     const orders = ABILITY_REGISTRY.map((a) => a[field]).sort((x, y) => x - y);
     assert.deepEqual(
-      orders, Array.from({ length: 15 }, (_, i) => i + 1),
-      `${field} skal være 1..15 uden huller eller dubletter`
+      orders, Array.from({ length: EXPECTED_ABILITY_COUNT }, (_, i) => i + 1),
+      `${field} skal være 1..${EXPECTED_ABILITY_COUNT} uden huller eller dubletter`
     );
   }
 

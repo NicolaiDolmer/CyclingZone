@@ -158,6 +158,13 @@ export function conflictingEntryForRace(riderId, race, races, draftByRace) {
   if (!race || !Number.isFinite(race.gameDayStart) || !Number.isFinite(race.gameDayEnd)) return null;
   for (const other of races || []) {
     if (other.id === race.id) continue;
+    // #5301: et AFMELDT løb binder ikke. Entries bevares bevidst ved afmelding
+    // (#4306), men holdet stiller ikke op — rytterne er frie de dage. Serveren har
+    // altid vidst det (loadTeamBindingContext udelader afmeldte løb, Rod A/#1823),
+    // og Race Hub-tavlen ligeså. Matrixen gjorde IKKE, så den låste ryttere ude af
+    // løb tavlen samtidig tillod dem i — to flader kan ikke svare forskelligt på
+    // samme spørgsmål (Discord 16/9, egomadsen).
+    if (other.withdrawn) continue;
     if (!Number.isFinite(other.gameDayStart) || !Number.isFinite(other.gameDayEnd)) continue;
     if (roleOf(draftByRace.get(other.id), riderId) == null) continue;
     const overlap = race.gameDayStart <= other.gameDayEnd && other.gameDayStart <= race.gameDayEnd;
@@ -320,6 +327,8 @@ export function buildRaceHeaderGroups(dayColumns) {
 export function riderLoadDays(races, draftByRace, riderId) {
   let total = 0;
   for (const r of races) {
+    // #5301: afmeldte løb tæller ikke som belastning — rytteren kører dem ikke.
+    if (r.withdrawn) continue;
     if (roleOf(draftByRace.get(r.id), riderId) != null) total += r.gameDayEnd - r.gameDayStart + 1;
   }
   return total;
@@ -332,9 +341,14 @@ export function riderLoadDays(races, draftByRace, riderId) {
  * konflikt-tjekket i PUT /races/selection/bulk).
  */
 export function countProblems(races, draftByRace) {
-  const overSize = races.filter((r) => (draftByRace.get(r.id)?.rider_ids?.length ?? 0) > r.sizeMax);
+  // #5301: afmeldte løb er ikke problemer. Deres bevarede opstilling (#4306) kan
+  // hverken gemmes eller starte, så en "for stor trup" eller en overlaps-konflikt
+  // dér er ikke noget spilleren skal rette — og flagede man den, ville fodnoten
+  // tælle problemer han umuligt kunne komme af med.
+  const live = (races || []).filter((r) => !r.withdrawn);
+  const overSize = live.filter((r) => (draftByRace.get(r.id)?.rider_ids?.length ?? 0) > r.sizeMax);
   const byRider = new Map(); // riderId -> race[]
-  for (const r of races) {
+  for (const r of live) {
     for (const riderId of draftByRace.get(r.id)?.rider_ids ?? []) {
       if (!byRider.has(riderId)) byRider.set(riderId, []);
       byRider.get(riderId).push(r);

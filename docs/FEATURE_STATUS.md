@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-65 poster: live 43 · beta 2 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+68 poster: live 45 · beta 3 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -51,6 +51,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Contracts, renewal and expiry (`contracts`) | live | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | extend-contract, contractExpiryRelease og aiContractAutoRenewal i sæsonskiftet. |
 | Rider comparison and watchlist (`rider-compare-and-watchlist`) | live | - | - | - | 2026-09-06 | - |
 | Squad management (`squad-management`) | live | - | - | - | 2026-09-06 | TeamPage med trup, løn, kontrakter og udviklingsfane. |
+| Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [2026-09-15-holdarbejde-og-lederskab-evner-design.md](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-09-15 | Data-only i #5268 (registry, kolonner, fødsels-prior, lofter); motor og mentorpar kommer bag flag senere. |
 
 ## training
 
@@ -59,7 +60,8 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Daily training (`daily-training`) | live | `daily_training_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
 | Peak planner (`peak-planner`) | live | `peak_planner_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | #2224 | 2026-09-06 | - |
 | Season fatigue and form reset (`season-fatigue-reset`) | live | `season_fatigue_reset_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
-| Training score 1-99 (`training-score`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4851 | 2026-09-15 | Motoren skriver rækker fra dag 1; visningen venter på flaget training_score_visible (off). |
+| Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) | live | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4874 | 2026-09-15 | PR #5265 merget 15/9; TRAINING_RULES §3.2. |
+| Training score 1-99 (`training-score`) | beta | `training_score_visible` | [TRAINING_RULES.md](TRAINING_RULES.md) | #4851 | 2026-09-15 | PR #5261 merget 15/9; flag beta (admin + beta-testere). Flip til on = ejer. |
 | Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4846 | 2026-09-15 | B4-udløser (samlet sweep ved dagens lukning, kl. 20+) bygget 15/9 bag flag (off); mangler ejer-flip. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
@@ -137,6 +139,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| Discord welcome inbox notification (`discord-welcome-inbox`) | live | - | - | #5130 | 2026-09-15 | PR #5211 merget 15/9; én besked pr. nyt hold, eksisterende hold backfillet. |
 | In-app player survey (`in-app-survey`) | live | - | [SURVEY_SYSTEM.md](SURVEY_SYSTEM.md) | #4943 | 2026-09-08 | Skemaet 2026-09-features åbnet 8/9 14:15 (241 inviteret via indbakken); admin-resultatside /admin/surveys/:slug live (#5043). |
 | Email retention loop (`email-loop`) | beta | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK.md](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-14 | welcome + day1 on siden 8/9 (#2853), race_digest off; webhook afventer RESEND_WEBHOOK_SECRET (ejer); win-back #2760 bygget (flag false, ejer-go 21-24/9). |
 

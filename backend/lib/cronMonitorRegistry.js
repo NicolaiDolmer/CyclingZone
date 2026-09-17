@@ -182,6 +182,8 @@ export const ALL_CRON_MONITORS = [
   // dedupe ligger i selve sweepen), så kadencen her er 60 min, ikke 24 t.
   ["email-health-report", CRON_MONITOR_60MIN],
   ["discord-race-digest", CRON_MONITOR_60MIN],
+  // #5130: Discord-velkomstbesked, samme kadence som email-welcome.
+  ["discord-welcome", CRON_MONITOR_5MIN],
   ["alunta-subscription-reconcile", CRON_MONITOR_60MIN],
   // #4514 — forfalds-vagt. Ikke gated bag et flag: en vagt der er slukket som
   // default er præcis den fejl den findes for at fange. Den skriver intet.

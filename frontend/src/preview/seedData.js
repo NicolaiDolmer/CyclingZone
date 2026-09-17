@@ -130,6 +130,9 @@ export const RIDERS = [
       climbing: 19, time_trial: 22, flat: 29, tempo: 23, sprint: 31, acceleration: 29,
       punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23,
       cobblestone: 21, positioning: 27, aggression: 22, tactics: 25,
+      // #5268: de to nye mentale evner. Ada er sprint-kaptajn, så lederskab
+      // ligger over holdarbejde; begge på samme skala som de øvrige mentale.
+      teamwork: 18, leadership: 26,
     },
   },
   {
@@ -161,6 +164,8 @@ export const RIDERS = [
       climbing: 28, time_trial: 24, flat: 18, tempo: 23, sprint: 13, acceleration: 19,
       punch: 24, endurance: 27, recovery: 25, durability: 23, descending: 22,
       cobblestone: 16, positioning: 22, aggression: 21, tactics: 24,
+      // #5268: Mikkel er bjerg-domestique for sin kaptajn — holdarbejde over lederskab.
+      teamwork: 27, leadership: 19,
     },
   },
 ];
@@ -188,11 +193,13 @@ export const SEED_ABILITY_CAPS = Object.freeze({
     climbing: 25, time_trial: 28, flat: 45, tempo: 29, sprint: 47, acceleration: 45,
     punch: 32, endurance: 30, recovery: 31, durability: 45, descending: 29,
     cobblestone: 27, positioning: 41, aggression: 28, tactics: 31,
+    teamwork: 24, leadership: 34,
   }),
   "rider-2": Object.freeze({
     climbing: 38, time_trial: 28, flat: 22, tempo: 28, sprint: 17, acceleration: 23,
     punch: 26, endurance: 32, recovery: 29, durability: 27, descending: 24,
     cobblestone: 20, positioning: 26, aggression: 25, tactics: 28,
+    teamwork: 33, leadership: 24,
   }),
 });
 
@@ -1763,7 +1770,10 @@ export const SEED_SCOUTING_REPORT = {
     { key: "puncheur", now: 25, progLo: 28, progHi: 36, ceilLo: 28, ceilHi: 36, loft: 61 },
     { key: "brostensrytter", now: 24, progLo: 30, progHi: 39, ceilLo: 30, ceilHi: 39, loft: 73 },
     { key: "baroudeur", now: 24, progLo: 29, progHi: 37, ceilLo: 29, ceilHi: 37, loft: 64 },
-    { key: "rouleur", now: 27, progLo: 33, progHi: 42, ceilLo: 33, ceilHi: 42, loft: 81 },
+    // #5268: 27 → 26. `teamwork` kom ind i rouleur-opskriften, og Adas
+    // holdarbejde (18) ligger under hendes øvrige rouleur-evner. Loft-båndet
+    // rummer stadig sandheden (37 i [33,42]) og er derfor urørt.
+    { key: "rouleur", now: 26, progLo: 33, progHi: 42, ceilLo: 33, ceilHi: 42, loft: 81 },
     { key: "gc", now: 23, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35, loft: 55 },
   ],
   verdict: { headlineKey: "monitor", confidence: "high", factorKeys: ["ceiling_gap", "value_gap", "type_match", "form_unknown"] },

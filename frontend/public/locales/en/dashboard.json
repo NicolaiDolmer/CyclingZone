@@ -1,5 +1,6 @@
 {
   "loadError": "Couldn't load the dashboard. Please try again.",
+  "offlineError": "Can't reach the game server. Check your connection, then try again.",
   "retry": "Try again",
   "todayStages": {
     "title": "Today's stages",

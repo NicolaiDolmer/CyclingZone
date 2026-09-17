@@ -8,6 +8,7 @@
 // rigtige penge — promover/sælg/slip købes/udføres med in-game-økonomi.
 
 import { ageForSeason } from "./riderProgressionEngine.js";
+import { SQUAD_MAX_AGE, effectiveSquad, transitionForRider, isYouthSquad, wouldExceedSquadCap } from "./squads.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { buildKeyedNotification, notifyTeamOwner } from "./notificationService.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
@@ -22,7 +23,15 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 export const GRADUATION_READY_TYPE = "academy_graduation_ready";
 
 export const GRADUATION = Object.freeze({
-  GRADUATE_AGE: 22,   // alder hvor akademi-ophold slutter (MAX_AGE 21 + 1)
+  // #4619: sidste alder i U23-truppen + 1. Var 22 (akademiets MAX_AGE 21 + 1) og
+  // er nu 23 — en BEVIDST REGELÆNDRING, ikke en bugfix: YOUTH_RULES §2.2 "Det
+  // tvungne valg flytter fra 22 til 23" + §7 modsigelse 6 (akademi-promotion-
+  // specen 18/6 sagde 22, trup-modellen vinder). En 22-årig er stadig U23, samme
+  // grænse som UCIs egen U23-kategori og `isU23ForSeason`.
+  //
+  // Afledt af SQUAD_MAX_AGE frem for hardkodet, så aldersgrænsen bor ÉT sted
+  // (backend/lib/squads.js) og ikke i to filer der kan drive fra hinanden.
+  GRADUATE_AGE: SQUAD_MAX_AGE.u23 + 1,
   DEADLINE_DAYS: 7,   // override-vindue i dage. SIM-STARTPUNKT — ejer-godkendes (scorecard).
 });
 
@@ -44,8 +53,11 @@ const VALID_ACTIONS = new Set(["promote", "sell", "release"]);
  * Kaster ved DB-fejl — en fejlet SELECT må ikke maskere sig som "ingen række".
  */
 export async function findPendingGraduation(supabase, { teamId, riderId } = {}) {
+  // schema-columns-ok: from_squad/to_squad tilfoejes af
+  // database/2026-09-15-4619-riders-squad.sql i SAMME PR (#4619); auto-migrate.yml
+  // applier den ved merge, hvorefter schema-snapshot.json opdateres.
   const { data, error } = await supabase.from("academy_graduation")
-    .select("id, status")
+    .select("id, status, from_squad, to_squad")
     .eq("team_id", teamId).eq("rider_id", riderId).eq("status", "pending")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -56,6 +68,81 @@ export async function findPendingGraduation(supabase, { teamId, riderId } = {}) 
 
 export function isGraduateAge(age) {
   return Number.isFinite(age) && age >= GRADUATION.GRADUATE_AGE;
+}
+
+/**
+ * Rytter-patch for "denne graduering blev gennemført": sæt BEGGE trup-felter.
+ *
+ * `riders.is_academy` er afledt af `riders.squad` i overgangsperioden (spec §3.2
+ * — 35+ kaldsteder og RLS-funktionen `is_offered_intake_rider()` læser den), så
+ * de to må ALDRIG skrives hver for sig. Ét sted at gøre det, så promote-stien i
+ * resolveGraduation, completeStuckPromotion og academyTransfer.promote() ikke kan
+ * ende med tre lidt forskellige patches.
+ *
+ * `to_squad` er nullable på rækker fra før #4619 (og på rækker åbnet uden kendt
+ * trup). Fallback er 'senior', præcis den adfærd stien havde før: en graduering
+ * uden trup-information ER den gamle akademi → senior-overgang.
+ *
+ * @param {{to_squad?:string|null}|null|undefined} grad
+ * @returns {{squad:string, is_academy:boolean}}
+ */
+export function graduationSquadPatch(grad) {
+  const target = grad?.to_squad ?? "senior";
+  return { squad: target, is_academy: isYouthSquad(target) };
+}
+
+/**
+ * Antal ryttere holdet har i en given trup (#4619).
+ *
+ * Bor her frem for i academyTransfer.js fordi BEGGE filer skal bruge den, og
+ * academyTransfer importerer allerede denne fil (findPendingGraduation) — den
+ * omvendte retning ville lave en cyklisk import.
+ *
+ * @param {any} supabase
+ * @param {{teamId?:string, riderId?:string, squad?:string}} [args]
+ * @returns {Promise<number>}
+ */
+export async function countSquadMembers(supabase, { teamId, squad } = {}) {
+  const { count, error } = await supabase.from("riders")
+    .select("id", { count: "exact", head: true })
+    .eq("team_id", teamId)
+    .eq("squad", squad);
+  if (error) throw new Error(`countSquadMembers: ${error.message}`);
+  return count ?? 0;
+}
+
+/**
+ * Er der plads til ÉN rytter mere i MÅL-truppen?
+ *
+ * #4619, CodeRabbit-fund: med to overgange er "har holdet plads" ikke længere
+ * ét spørgsmål. Før gik ENHVER promovering gennem seniortruppens division-cap
+ * (`squad_limits.max`), og det er forkert på begge ledder for en
+ * junior → u23-overgang:
+ *
+ *   • FALSK BLOKERING — `getTeamMarketState` tæller kun seniorryttere
+ *     (akademiryttere tæller ALDRIG mod 30-cappen, GAME_INVARIANTS). Et hold
+ *     med fuld seniortrup ville derfor få blokeret en flytning der slet ikke
+ *     rører seniortruppen.
+ *   • MANGLENDE LOFT — U23-loftet (SQUAD_CAPS.u23 = 12) blev ikke tjekket, så
+ *     den 13. U23-rytter kunne glide ind.
+ *
+ * Senior beholder division-cappen uændret; ungdomstrupperne bruger SQUAD_CAPS.
+ *
+ * @param {any} supabase
+ * @param {{teamId?:string, targetSquad?:string, getMarketState?:Function, countSquad?:Function}} [args]
+ * @returns {Promise<boolean>}
+ */
+export async function hasRoomInTargetSquad(supabase, {
+  teamId, targetSquad, getMarketState = getTeamMarketState, countSquad = countSquadMembers,
+} = {}) {
+  if (isYouthSquad(targetSquad)) {
+    const occupied = await countSquad(supabase, { teamId, squad: targetSquad });
+    return !wouldExceedSquadCap({ squad: targetSquad, currentCount: occupied });
+  }
+  const state = await getMarketState(supabase, teamId);
+  const cap = state?.squad_limits?.max ?? 30;
+  const future = state?.future_count ?? state?.rider_count ?? 0;
+  return future + 1 <= cap;
 }
 
 /**
@@ -86,15 +173,25 @@ function isUniqueViolation(error) {
  * løbende redningssti) går gennem den, så række-felter, deadline og copy ikke
  * kan divergere mellem de to opdagelses-veje.
  *
+ * #4619: rækken bærer nu HVILKEN overgang det er (`from_squad`/`to_squad`).
+ * Med tre trupper findes der to (junior → u23 ved sæsonalder 19, u23 → senior
+ * ved 23), og Graduation Day skal kunne vise forskellen. Felterne er nullable i
+ * skemaet, så en kalder der endnu ikke kender truppen (ældre sti, eller en rytter
+ * uden fødselsdato) stadig kan åbne et vindue — vi gætter dem ikke.
+ *
+ * @param {any} supabase
+ * @param {{rider?:any, seasonId?:string, deadline?:string, transition?:{from:string,to:string}|null, notify?:Function}} [args]
  * @returns {Promise<"created"|"duplicate">}
  */
-export async function openGraduationWindow(supabase, { rider, seasonId, deadline, notify = notifyTeamOwner } = {}) {
+export async function openGraduationWindow(supabase, { rider, seasonId, deadline, transition = null, notify = notifyTeamOwner } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!rider?.id || !rider?.team_id) throw new Error("openGraduationWindow: rider med id + team_id required");
   if (!seasonId || !deadline) throw new Error("openGraduationWindow: seasonId + deadline required");
 
   const { error } = await supabase.from("academy_graduation").insert({
     team_id: rider.team_id, rider_id: rider.id, season_id: seasonId, status: "pending", deadline,
+    from_squad: transition?.from ?? null,
+    to_squad: transition?.to ?? null,
   });
   if (error) {
     if (isUniqueViolation(error)) return "duplicate";
@@ -157,15 +254,26 @@ export async function notifyGraduationReady(supabase, { rider, notify = notifyTe
  * rytter efter ham i id-orden mistede lydløst sit override-vindue. Vagten har
  * altid ekskluderet den klasse; detektionen gør det nu også.
  *
+ * #4619 — TO OVERGANGE. Før fandtes én (akademi → senior ved 22). Nu findes
+ * junior → u23 (sæsonalder 19) og u23 → senior (sæsonalder 23), og rytterens
+ * nuværende trup afgør hvilken. Truppen læses via `effectiveSquad`, IKKE direkte
+ * fra `riders.squad`: mellem migrationen og backfill'en står alle rækker på
+ * kolonnens DEFAULT ('senior'), og et direkte opslag ville derfor tavst holde op
+ * med at finde nogen som helst i det vindue. Prædikatet er `transitionForRider`
+ * fra backend/lib/squads.js — samme funktion backfill-scriptet bruger.
+ *
  * @returns {Promise<{dryRun:boolean, graduates:number}>}
  */
 export async function detectGraduates(supabase, { seasonId, seasonNumber, now = new Date(), dryRun = false, notify = notifyTeamOwner } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!seasonId || !Number.isFinite(seasonNumber)) throw new Error("detectGraduates: seasonId + seasonNumber required");
 
+  // schema-columns-ok: riders.squad tilfoejes af database/2026-09-15-4619-riders-squad.sql
+  // i SAMME PR (#4619); auto-migrate.yml applier den ved merge, hvorefter
+  // schema-snapshot.json opdateres. Snapshotten kan ikke kende kolonnen foer da.
   const academy = await fetchAllRows(() =>
     supabase.from("riders")
-      .select("id, team_id, firstname, lastname, birthdate")
+      .select("id, team_id, firstname, lastname, birthdate, squad, is_academy")
       .eq("is_academy", true).eq("is_retired", false)
       .not("team_id", "is", null)
       .order("id"));
@@ -179,10 +287,11 @@ export async function detectGraduates(supabase, { seasonId, seasonNumber, now = 
   for (const r of academy) {
     if (alreadyRowed.has(r.id)) continue;
     const age = ageForSeason(r.birthdate, seasonNumber);
-    if (!isGraduateAge(age)) continue;
+    const transition = transitionForRider({ squad: effectiveSquad(r, age), seasonAge: age });
+    if (!transition) continue;
     if (dryRun) { graduates++; continue; }
 
-    const outcome = await openGraduationWindow(supabase, { rider: r, seasonId, deadline, notify });
+    const outcome = await openGraduationWindow(supabase, { rider: r, seasonId, deadline, transition, notify });
     if (outcome === "created") graduates++;
   }
   return { dryRun, graduates };
@@ -207,7 +316,7 @@ export async function detectGraduates(supabase, { seasonId, seasonNumber, now = 
  */
 export async function resolveGraduation(supabase, {
   teamId, riderId, action, seasonNumber, now = new Date(),
-  getMarketState = getTeamMarketState, auctionConfig, notify = notifyTeamOwner,
+  getMarketState = getTeamMarketState, countSquad = countSquadMembers, auctionConfig, notify = notifyTeamOwner,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!VALID_ACTIONS.has(action)) throw new Error("invalid_action");
@@ -224,10 +333,12 @@ export async function resolveGraduation(supabase, {
   if (!rider) throw new Error("rider_not_found");
 
   if (action === "promote") {
-    const state = await getMarketState(supabase, teamId);
-    const cap = state?.squad_limits?.max ?? 30;
-    const future = state?.future_count ?? state?.rider_count ?? 0;
-    if (future + 1 > cap) throw new Error("squad_cap_violation");
+    // #4619: loftet er MÅL-truppens, ikke altid seniortruppens — se
+    // hasRoomInTargetSquad for hvorfor den gamle enkelt-gate var forkert begge
+    // veje ved en junior → u23-overgang.
+    const targetSquad = grad?.to_squad ?? "senior";
+    const room = await hasRoomInTargetSquad(supabase, { teamId, targetSquad, getMarketState, countSquad });
+    if (!room) throw new Error("squad_cap_violation");
 
     // #2881/#1309: samme gate som academyTransfer.js promote() + al anden
     // erhvervelse — kun en rytter der reelt er kontraktløs (salary/end_season
@@ -238,7 +349,7 @@ export async function resolveGraduation(supabase, {
     // løn-formel der bruges til en NY kontrakt, ikke om ubetinget overskrivning).
     const contractPatch = contractOnAcquirePatch(rider, seasonNumber);
     const { error } = await supabase.from("riders").update({
-      is_academy: false,
+      ...graduationSquadPatch(grad),
       ...contractPatch,
     }).eq("id", riderId);
     if (error) throw new Error(`resolveGraduation promote update: ${error.message}`);
@@ -269,7 +380,7 @@ export async function resolveGraduation(supabase, {
   // stale kontrakt i stedet for at give en frisk (#2881-følgefund).
   const { error } = await supabase.from("riders")
     .update({
-      team_id: null, is_academy: false,
+      team_id: null, squad: "senior", is_academy: false,
       salary: null, contract_length: null, contract_end_season: null,
     }).eq("id", riderId);
   if (error) throw new Error(`resolveGraduation release update: ${error.message}`);
@@ -287,18 +398,23 @@ export async function resolveGraduation(supabase, {
  */
 export async function defaultResolveGraduate(supabase, {
   teamId, riderId, seasonNumber, now = new Date(),
-  getMarketState = getTeamMarketState, auctionConfig, notify = notifyTeamOwner,
+  getMarketState = getTeamMarketState, countSquad = countSquadMembers, auctionConfig, notify = notifyTeamOwner,
 } = {}) {
+  // #4619: "er der plads" måles mod MÅL-truppen (samme gate som
+  // resolveGraduation's promote-gren bruger), ikke ubetinget mod seniortruppen.
+  // Ellers ville et hold med fuld seniortrup få SOLGT sine junior-graduates i
+  // stedet for at flytte dem op i en halvtom U23-trup.
+  const grad = await findPendingGraduation(supabase, { teamId, riderId });
+  const targetSquad = grad?.to_squad ?? "senior";
   const state = await getMarketState(supabase, teamId);
-  const cap = state?.squad_limits?.max ?? 30;
-  const future = state?.future_count ?? state?.rider_count ?? 0;
   const balance = Number(state?.balance ?? 0);
-  const action = future + 1 <= cap && balance >= 0 ? "promote" : "sell";
+  const room = await hasRoomInTargetSquad(supabase, { teamId, targetSquad, getMarketState, countSquad });
+  const action = room && balance >= 0 ? "promote" : "sell";
   try {
-    return await resolveGraduation(supabase, { teamId, riderId, action, seasonNumber, now, getMarketState, auctionConfig, notify });
+    return await resolveGraduation(supabase, { teamId, riderId, action, seasonNumber, now, getMarketState, countSquad, auctionConfig, notify });
   } catch (err) {
     if (action === "promote") {
-      return await resolveGraduation(supabase, { teamId, riderId, action: "sell", seasonNumber, now, getMarketState, auctionConfig, notify });
+      return await resolveGraduation(supabase, { teamId, riderId, action: "sell", seasonNumber, now, getMarketState, countSquad, auctionConfig, notify });
     }
     throw err;
   }
@@ -357,7 +473,7 @@ export async function releaseUnsoldGraduate(supabase, {
 
   const { data: updated, error } = await supabase.from("riders")
     .update({
-      team_id: null, is_academy: false,
+      team_id: null, squad: "senior", is_academy: false,
       salary: null, contract_length: null, contract_end_season: null,
     })
     .eq("id", id).eq("team_id", teamId).eq("is_academy", true)
@@ -441,7 +557,7 @@ export async function completeStuckPromotion(supabase, {
 
   const contractPatch = contractOnAcquirePatch(target, seasonNumber);
   const { data: updated, error } = await supabase.from("riders")
-    .update({ is_academy: false, ...contractPatch })
+    .update({ squad: "senior", is_academy: false, ...contractPatch })
     .eq("id", riderId).eq("team_id", teamId).eq("is_academy", true)
     .select("id");
   if (error) throw new Error(`completeStuckPromotion update: ${error.message}`);

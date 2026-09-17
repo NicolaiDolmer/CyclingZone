@@ -632,8 +632,9 @@ test("#4631 · specialiseringen henter sin gevinst fra den evne der forsvinder",
 });
 
 test("#4631 · alle ANDRE fokus vejer præcis 1,0 pr. evne (bit-identisk med før)", () => {
+  const WEIGHTED_FOCUSES = ["vo2max_climb", "vo2max_punch", "cobbled_sectors", "echelon_drills", "attack_repeats"];
   for (const focus of TRAINING_FOCUS_KEYS) {
-    if (focus === "vo2max_climb" || focus === "vo2max_punch") continue;
+    if (WEIGHTED_FOCUSES.includes(focus)) continue;
     for (const ability of TRAINING_FOCUSES[focus]) {
       assert.equal(focusAbilityWeight(focus, ability), 1, `${focus}/${ability} må ikke have fået en vægt`);
     }
@@ -646,6 +647,58 @@ test("#4631 · smartDefaultFocus er UÆNDRET af de to nye pakker", () => {
   // De nye nøgler står bevidst ikke i SMART_DEFAULT_FOCUS_KEYS: assistenten
   // træner tusindvis af ryttere, og dens valg må aldrig flytte sig som
   // sideeffekt af at et fokus kom til (#3762-reglen, frossen liste).
+  assert.equal(smartDefaultFocus("climber"), "vo2max");
+  assert.equal(smartDefaultFocus("sprinter"), "sprint");
+  assert.equal(smartDefaultFocus(null), "endurance");
+});
+
+// ── #5236/#5237 · brosten, vifte og angreb (ejer-valg 14/9) ─────────────────
+// Tre nye HÅRDE sessioner der lukker #4874: brosten og flat kunne før kun
+// trænes på en let/normal dag, og aggression kun på en let dag. Samme
+// invariant-mønster som #4631 ovenfor: pakke-tabellen, vægtsum og
+// hovedevne-vægten er selve garantien mod power creep.
+
+test("#5236/#5237 · pakke-tabellen for de tre nye hårde sessioner", () => {
+  assert.deepEqual([...TRAINING_FOCUSES.cobbled_sectors], ["cobblestone", "durability", "positioning"]);
+  assert.deepEqual([...TRAINING_FOCUSES.echelon_drills], ["flat", "positioning", "durability"]);
+  assert.deepEqual([...TRAINING_FOCUSES.attack_repeats], ["aggression", "punch", "acceleration"]);
+  for (const key of ["cobbled_sectors", "echelon_drills", "attack_repeats"]) assert.ok(isValidFocus(key));
+});
+
+test("#5236/#5237 · de nye sessioner rører ikke technique/tempo/loebslaere (ingen migration)", () => {
+  // Ejer-krav: technique (descending+cobblestone), tempo (tempo/flat/durability)
+  // og loebslaere (positioning/tactics/aggression) skal forblive UÆNDREDE
+  // hybrider, præcis som vo2max ved #4631 — ingen spiller vågner op til en
+  // anden session end i går.
+  assert.deepEqual([...TRAINING_FOCUSES.technique], ["descending", "cobblestone"]);
+  assert.deepEqual([...TRAINING_FOCUSES.tempo], ["tempo", "flat", "durability"]);
+  assert.deepEqual([...TRAINING_FOCUSES.loebslaere], ["positioning", "tactics", "aggression"]);
+});
+
+test("#5236/#5237 · UDBYTTE-SUMMEN er den samme i alle tre nye sessioner (ingen power creep)", () => {
+  const sum = focusWeightSum("cobbled_sectors");
+  assert.equal(focusWeightSum("echelon_drills"), sum, "vifte må ikke indeholde mere dag end brosten");
+  assert.equal(focusWeightSum("attack_repeats"), sum, "angreb må ikke indeholde mere dag end brosten/vifte");
+});
+
+test("#5236/#5237 · hovedevnen vejer mere end de to evner der betaler prisen", () => {
+  assert.equal(focusAbilityWeight("cobbled_sectors", "cobblestone"), 2);
+  assert.equal(focusAbilityWeight("cobbled_sectors", "durability"), 1);
+  assert.equal(focusAbilityWeight("cobbled_sectors", "positioning"), 1);
+
+  assert.equal(focusAbilityWeight("echelon_drills", "flat"), 2);
+  assert.equal(focusAbilityWeight("echelon_drills", "positioning"), 1);
+  assert.equal(focusAbilityWeight("echelon_drills", "durability"), 1);
+
+  assert.equal(focusAbilityWeight("attack_repeats", "aggression"), 2);
+  assert.equal(focusAbilityWeight("attack_repeats", "punch"), 1);
+  assert.equal(focusAbilityWeight("attack_repeats", "acceleration"), 1);
+
+  // Uden for pakken vejer enhver evne stadig 1,0 (sikker default).
+  assert.equal(focusAbilityWeight("cobbled_sectors", "tempo"), 1);
+});
+
+test("#5236/#5237 · smartDefaultFocus er UÆNDRET (SMART_DEFAULT_FOCUS_KEYS er frosset)", () => {
   assert.equal(smartDefaultFocus("climber"), "vo2max");
   assert.equal(smartDefaultFocus("sprinter"), "sprint");
   assert.equal(smartDefaultFocus(null), "endurance");
