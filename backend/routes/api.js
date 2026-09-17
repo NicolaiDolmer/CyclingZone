@@ -14688,6 +14688,10 @@ router.post("/transfers/:type/:id/report", requireAuth, feedbackLimiter, async (
         reportingTeamId: req.team?.id || null,
       })
         .catch(err => {
+          // resolveTradeForReport kaster KUN ved ægte DB-fejl (ikke-fundet giver
+          // { trade: null }), så en fejl her er et bug/outage værd at se i Sentry —
+          // mirroret sendes alligevel, bare uden handelsdata.
+          captureException(err, { tags: { route: "POST /transfers/:type/:id/report" }, step: "discord-mirror-trade-resolve" });
           console.error("[feedback] trade-report resolve for discord mirror failed:", err.message);
           return { trade: null };
         })
