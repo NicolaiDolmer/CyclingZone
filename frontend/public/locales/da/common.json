@@ -118,5 +118,6 @@
     "fullTable": "Fuld tabel",
     "columnsLabel": "Vælg kolonner",
     "moreRight": "Flere kolonner til højre"
-  }
+  },
+  "networkError": "Kan ikke nå serveren lige nu. Tjek din forbindelse og prøv igen."
 }

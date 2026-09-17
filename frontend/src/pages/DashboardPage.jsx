@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { getRaceDayPoints } from "../lib/rankingsApi.ts";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
-import { isBackendUnreachable } from "../lib/backendReachability.js"; // #5312
+import { isNetworkError } from "../lib/networkErrorGuards.ts"; // #5312/#5322
 import { Link, useNavigate } from "react-router";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
@@ -99,6 +99,27 @@ const API = import.meta.env.VITE_API_URL;
 // finaliserings-signal — hver etape/løbs-afslutning bumper races-rækken, så UX er
 // identisk, men realtime slipper for at WAL-dekode masseskrivningerne.
 const REALTIME_TABLES = ["seasons", "races"];
+
+/**
+ * #5322 — loeft et "naaede aldrig serveren"-resultat til sidens fejlflade.
+ *
+ * apiFetch kaster ikke laengere ved en transportfejl; den returnerer
+ * `{ networkError: true }`. De to kald nedenfor ligger i loadAll'ets
+ * blokerende Promise.all, hvor en kastet transportfejl FOER #5322 boblede op
+ * i loadAll's catch og gav spilleren "kan ikke naa serveren" (#5312). Uden
+ * dette ville samme fejl nu falde stille ned i `res.ok`-grenen og vise et
+ * halvtomt dashboard uden forklaring. Resultatet kastes som det ER — det
+ * baerer baade flaget og den oprindelige exception, saa isNetworkError paa
+ * fejlfladen kan klassificere det.
+ *
+ * Gaelder KUN de blokerende kald. De best-effort-kald der hver styrer sit
+ * eget lille kort (DASHBOARD_RULES.md §3: et modul maa aldrig vaelte
+ * dashboardet) beholder deres stille fallback.
+ */
+function failOnUnreachable(res) {
+  if (res.networkError) throw res;
+  return res;
+}
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -422,7 +443,7 @@ export default function DashboardPage() {
     const boardStatusPromise = token
       ? apiFetch(`${API}/api/board/status`, {
         headers: { Authorization: `Bearer ${token}` },
-      }).then((res) => (res.limited || res.unauthorized ? null : (res.ok ? res.data : null)))
+      }).then(failOnUnreachable).then((res) => (res.limited || res.unauthorized ? null : (res.ok ? res.data : null)))
       : Promise.resolve(null);
 
     // #1829: per-pulje løbsdage-tæller — ALLE løb i managerens egen pulje (inkl. afsluttede),
@@ -495,6 +516,7 @@ export default function DashboardPage() {
         // for et tomt/ikke-JSON 5xx-svar, og offersRes.received nedenfor ville
         // ellers kaste på en null-læsning i stedet for at falde tilbage.
         ? apiFetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(failOnUnreachable)
             .then((r) => (r.ok ? (r.data ?? { sent: [], received: [] }) : { sent: [], received: [] }))
         : Promise.resolve({ sent: [], received: [] }),
       poolRacesPromise,
@@ -1018,10 +1040,12 @@ export default function DashboardPage() {
   // indlaese dashboardet" — en besked der peger paa spillet og ikke giver
   // ham noget at handle paa. `error` er selve fejl-objektet fra loadAll's
   // catch, saa klassifikationen kan ske her uden ekstra plumbing.
+  // #5322: `error` kan nu OGSAA vaere apiFetch's resultat (som ikke laengere
+  // kaster ved en transportfejl) — isNetworkError daekker begge former.
   if (error) return (
     <div translate="no" className="max-w-5xl mx-auto">
       <ErrorState
-        title={isBackendUnreachable(error) ? t("dashboard:offlineError") : t("dashboard:loadError")}
+        title={isNetworkError(error) ? t("dashboard:offlineError") : t("dashboard:loadError")}
         action={<Button size="sm" variant="secondary" onClick={() => { setLoading(true); loadAll(); }}>{t("dashboard:retry")}</Button>}
       />
     </div>

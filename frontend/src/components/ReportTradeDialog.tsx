@@ -6,6 +6,7 @@ import Textarea from "./ui/Textarea.jsx";
 import Button from "./ui/Button.jsx";
 import { authHeaders } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej (fetch-wiring-ratchet, main roed 15/9)
+import { NETWORK_ERROR_MESSAGE_KEY } from "../lib/networkErrorGuards.ts"; // #5322
 import { validateTradeReport, TRADE_REPORT_MESSAGE_MAX_LENGTH, TRADE_REPORT_MESSAGE_MIN_LENGTH } from "../lib/tradeReport";
 
 const API = import.meta.env.VITE_API_URL;
@@ -67,6 +68,13 @@ export default function ReportTradeDialog({ open, onClose, transferType, transfe
         headers,
         body: JSON.stringify({ message: message.trim() }),
       }, { source: "trade-report" });
+      // #5322: "naaede aldrig serveren" faar den DELTE besked i stedet for den
+      // generiske "kunne ikke sende". Den ene er noget spilleren selv kan
+      // handle paa (tjek forbindelsen), den anden er ikke.
+      if (res.networkError) {
+        setError(t(NETWORK_ERROR_MESSAGE_KEY));
+        return;
+      }
       if (res.limited) {
         setError(t("report.rateLimited"));
         return;
