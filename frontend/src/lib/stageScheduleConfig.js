@@ -93,7 +93,20 @@ export function relativeDayKey(scheduledAt, now = new Date(), timeZone = RACE_TI
   const targetDay = dayOf(target);
   const todayDay = dayOf(now);
   if (targetDay === todayDay) return "today";
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  if (targetDay === dayOf(tomorrow)) return "tomorrow";
+  // #5302: "tomorrow" skal være NÆSTE KALENDERDAG i København, ikke "nu +24t
+  // elapsed ms". På den danske efterårs-DST-dag (25 timer, urene stilles
+  // tilbage) skubbede +24t timen ikke helt over i næste København-dag, så
+  // 'tomorrow' forsvandt fra StageScheduleCard lige efter urskiftet. Fix:
+  // læg 1 KALENDERDAG til todayDay's Y-M-D-komponenter via UTC-aritmetik
+  // (ingen klokkeslæt hæftet på → immun over for DST) i stedet for at bruge
+  // forløbet realtid. Date.UTC normaliserer selv måneds-/årsskifte.
+  const [y, m, d] = todayDay.split("-").map(Number);
+  const tomorrowUtc = new Date(Date.UTC(y, m - 1, d + 1));
+  const tomorrowDay = [
+    tomorrowUtc.getUTCFullYear(),
+    String(tomorrowUtc.getUTCMonth() + 1).padStart(2, "0"),
+    String(tomorrowUtc.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+  if (targetDay === tomorrowDay) return "tomorrow";
   return null;
 }
