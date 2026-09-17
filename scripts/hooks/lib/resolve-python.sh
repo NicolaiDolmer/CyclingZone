@@ -16,7 +16,31 @@ resolve_hook_python() {
   return 1
 }
 
+# Sanitér scanner-stderr til ÉN kort linje der kan vises i en blokeringsbesked.
+# $1 = fil med scannerens stderr. Printer en afkortet, redacted enkelt-linje.
+#
+# Hvorfor (#5326): uden aarsagen i beskeden er en runtime-fejl i vagten umulig at
+# fejlsoege — man starter forfra hver gang. Men stderr maa aldrig baere payload
+# videre, saa: kun de sidste 10 linjer, alle lange token-lignende koerer
+# maskeres, og resultatet klippes til 400 tegn. Bevidst uden Python: helperen
+# bruges netop naar Python er den der fejlede.
+secret_sanitize_detail() {
+  local f="${1:-}"
+  if [ -z "$f" ] || [ ! -s "$f" ]; then
+    printf '%s' '(scanner wrote nothing to stderr)'
+    return 0
+  fi
+  tail -n 10 "$f" 2>/dev/null \
+    | tr '\r\n\t' '   ' \
+    | sed -E 's/[A-Za-z0-9_+=-]{25,}/[REDACTED-LONG-TOKEN]/g' \
+    | cut -c1-400
+}
+
+# $1 = kort aarsag (uaendret kontrakt). $2 = valgfri, allerede saniteret detalje.
 secret_runtime_failure() {
   printf 'SECRET GUARD BLOCKED: %s. Input/output could not be checked; nothing is assumed safe.\n' "$1" >&2
+  if [ -n "${2:-}" ]; then
+    printf '  cause: %s\n' "$2" >&2
+  fi
   return 2
 }
