@@ -33,14 +33,28 @@ function makeSupabase(initial = {}) {
     if (!state[table]) state[table] = [];
     const rows = () => state[table];
     const filters = [];
+    // #5330: .or("squad.is.null,squad.eq.senior") — PostgREST-or'ens mini-grammatik
+    // (kolonne.operator.værdi, komma-separeret). Kun is/eq bruges af race_pool-
+    // senior-filteret, og mocken skal fælde ENHVER anden operator hellere end at
+    // matche alt tavst.
+    const matchOrCond = (row, cond) => {
+      const [col, op, ...rest] = String(cond).split(".");
+      const raw = rest.join(".");
+      if (op === "is") return (row[col] ?? null) === (raw === "null" ? null : raw);
+      if (op === "eq") return row[col] === raw;
+      throw new Error(`mock-supabase: uunderstøttet .or()-operator "${op}" i "${cond}"`);
+    };
     const matches = (row) => filters.every((f) =>
-      f.t === "eq" ? row[f.c] === f.v : f.t === "in" ? f.v.includes(row[f.c]) : f.t === "is" ? (row[f.c] ?? null) === f.v : true);
+      f.t === "eq" ? row[f.c] === f.v : f.t === "in" ? f.v.includes(row[f.c])
+        : f.t === "is" ? (row[f.c] ?? null) === f.v
+          : f.t === "or" ? f.conds.some((cond) => matchOrCond(row, cond)) : true);
     let selectOpts = null;
     const builder = {
       select(_cols, opts) { selectOpts = opts || null; return builder; },
       eq(c, v) { filters.push({ t: "eq", c, v }); return builder; },
       in(c, v) { filters.push({ t: "in", c, v }); return builder; },
       is(c, v) { filters.push({ t: "is", c, v }); return builder; },
+      or(expr) { filters.push({ t: "or", conds: String(expr).split(",") }); return builder; },
       order() { return builder; },
       limit() { return builder; },
       // #2962 · materializeTierCalendars' teams-select pagineres nu via fetchAllRows
@@ -1003,4 +1017,81 @@ test("#4075 materialize: pensionerede katalog-rækker (retired_at) er usynlige f
   const seen = new Set(catalogSeen.map((c) => c.id));
   assert.ok(!seen.has("gt-1-old"), "pensioneret række er filtreret fra katalog-læsningen");
   assert.ok(seen.has("gt-1"), "den aktive Giro er stadig i kataloget");
+});
+
+
+// ── #5330: seniorlæseren filtrerer på squad ────────────────────────────────────
+// race_pool rummer efter #4620/#5262 også U23- og juniorløb. Seniorkalenderen skal
+// være BIT-IDENTISK før og efter de rækker findes — derfor køres den samme
+// materialisering to gange: én gang mod et rent seniorkatalog, én gang mod det samme
+// katalog plus ungdomsrækker, og de to resultater sammenlignes række for række.
+// Ungdomsrækker der ER attraktive for Div 3's selektion (ProSeries/Class1), så en
+// manglende filtrering beviseligt ville ændre kalenderen — se kontrol-assertionen.
+const YOUTH_ROWS = [
+  { id: "u23-ps-od-0", name: "U23 PS OD 0", race_class: "ProSeries", race_type: "single", stages: 1, squad: "u23" },
+  { id: "u23-ps-sr-0", name: "U23 PS 0", race_class: "ProSeries", race_type: "stage_race", stages: 5, squad: "u23" },
+  { id: "u23-c1-od-0", name: "U23 C1 OD 0", race_class: "Class1", race_type: "single", stages: 1, squad: "u23" },
+  { id: "jr-ps-od-0", name: "Junior PS OD 0", race_class: "ProSeries", race_type: "single", stages: 1, squad: "junior" },
+  { id: "jr-c1-sr-0", name: "Junior C1 0", race_class: "Class1", race_type: "stage_race", stages: 4, squad: "junior" },
+];
+
+const seniorRaceFingerprint = (sb) => sb.state.races
+  .map((r) => `${r.league_division_id}|${r.pool_race_id}|${r.name}|${r.race_type}|${r.stages}`)
+  .sort();
+
+// Div 3 alene: fullCatalog()'s tre 21-etapers GT'er har ingen date_text og ville
+// overlappe i Div 1 (samme fallback-sti som #3470-testene). Tier 3 har ingen GT'er,
+// så apply-gaten er ren — og det er netop ProSeries/Class1-udvalget ungdomsrækkerne
+// konkurrerer om.
+async function materializeDiv3WithCatalog(catalog) {
+  const league_divisions = [
+    { id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" },
+    { id: 5, tier: 3, pool_index: 1, label: "Division 3 — B" },
+  ];
+  const teams = [mgrTeam("a1", 4), mgrTeam("a2", 4), mgrTeam("b1", 5), mgrTeam("b2", 5)];
+  const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
+  await materializeTierCalendars({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, tiers: [3], dryRun: false, ...LEGACY_MIX,
+  });
+  return sb;
+}
+
+test("#5330 materialize: U23-/juniorrækker i race_pool er usynlige for seniorselektionen", async () => {
+  const seniorOnly = fullCatalog().map((c) => ({ ...c, squad: "senior" }));
+  const withYouth = [...seniorOnly, ...YOUTH_ROWS.map((r) => ({ ...r }))];
+  // Kontrol: de SAMME ekstra løb mærket 'senior' SKAL ændre kalenderen. Uden den
+  // assertion kunne testen bestå fordi rækkerne var uinteressante, ikke fordi de blev
+  // filtreret fra.
+  const asSenior = [...seniorOnly, ...YOUTH_ROWS.map((r) => ({ ...r, squad: "senior" }))];
+
+  const before = await materializeDiv3WithCatalog(seniorOnly);
+  const after = await materializeDiv3WithCatalog(withYouth);
+  const control = await materializeDiv3WithCatalog(asSenior);
+
+  assert.ok(before.state.races.length > 0, "fixturen skal faktisk materialisere løb");
+  const youthIds = new Set(YOUTH_ROWS.map((r) => r.id));
+  assert.equal(
+    after.state.races.filter((r) => youthIds.has(r.pool_race_id)).length, 0,
+    "ingen U23-/juniorløb må materialiseres i seniorkalenderen",
+  );
+  assert.deepEqual(
+    seniorRaceFingerprint(after), seniorRaceFingerprint(before),
+    "seniorkalenderen skal være identisk før og efter ungdomsrækkerne findes i race_pool",
+  );
+  assert.notDeepEqual(
+    seniorRaceFingerprint(control), seniorRaceFingerprint(before),
+    "kontrol: som seniorrækker ville de samme løb ændre kalenderen — testen har tænder",
+  );
+});
+
+test("#5330 materialize: NULL squad (og en race_pool uden squad-kolonne) tæller som senior", async () => {
+  // Rækker helt UDEN feltet = skemaet før #5262's migration. Kataloget skal være
+  // uændret synligt — det er hele bagudkompatibiliteten.
+  const noColumn = await materializeDiv3WithCatalog(fullCatalog());
+  const explicitNull = await materializeDiv3WithCatalog(fullCatalog().map((c) => ({ ...c, squad: null })));
+  assert.ok(noColumn.state.races.length > 0, "katalog uden squad-kolonne skal stadig give en kalender");
+  assert.deepEqual(
+    seniorRaceFingerprint(explicitNull), seniorRaceFingerprint(noColumn),
+    "squad=NULL skal behandles præcis som en række uden feltet",
+  );
 });

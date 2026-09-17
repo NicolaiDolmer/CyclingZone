@@ -88,6 +88,14 @@ import {
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
+// #5330 — seniorlæserne af race_pool. Se backend/lib/racePoolCatalog.js.
+import {
+  fetchRacePoolWithSquad,
+  filterSeniorSquadRows,
+  isSeniorSquad,
+  selectRacePoolWithSquad,
+  selectSeniorRacePool,
+} from "../lib/racePoolCatalog.js";
 // #5301: afmeldings-opslag som ALLE læseflader deler, så "har entries" aldrig igen
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
 import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey } from "../lib/raceWithdrawal.js";
@@ -11386,8 +11394,13 @@ router.get("/admin/seasons/:id/generate-calendar/preview", requireAdmin, async (
     const poolsWithCounts = (pools || []).map((p) => ({ ...p, realManagerCount: realCountByPool.get(p.id) || 0 }));
     const labelByPool = new Map(poolsWithCounts.map((p) => [p.id, p.label ?? null]));
 
-    const { data: catalog, error: catErr } = await supabase
-      .from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
+    // #5330: seniorkalenderens preview må kun se seniorkataloget (NULL/manglende
+    // squad = senior). Samme filter som materializeTierCalendars, så preview og
+    // apply ser præcis samme katalog.
+    const { data: catalog, error: catErr } = await selectSeniorRacePool(
+      (columns) => supabase.from("race_pool").select(columns),
+      { columns: "id, external_id, terrain_archetype, name, race_class, race_type, stages" },
+    );
     if (catErr) return res.status(500).json({ error: catErr.message });
 
     const { from, realDays, baseSeed, firstRaceDay } = resolveCalendarAnchor(season, req.query);
@@ -11655,11 +11668,12 @@ router.put("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (req, 
 // Cached 10 min; admin race-pool import-csv invalidates the namespace.
 router.get("/race-pool", cached({ namespace: "race-pool", ttlMs: CACHE_TTL.racePool }, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("race_pool")
-      .select("id, name, race_class, race_type, stages, date_text, country")
-      .order("race_class")
-      .order("name");
+    // #5330: seniorkatalog. U23-/juniorløb (#4620) får deres egen flade; denne rute
+    // fodrer seniorkalenderens UI og skal blive ved med at vise præcis det den viste før.
+    const { data, error } = await selectSeniorRacePool(
+      (columns) => supabase.from("race_pool").select(columns).order("race_class").order("name"),
+      { columns: "id, name, race_class, race_type, stages, date_text, country" },
+    );
     if (error) return res.status(500).json({ error: error.message });
     res.json({ pool: data || [], summary: summarizePool(data || []) });
   } catch (e) {
@@ -11671,11 +11685,13 @@ router.get("/race-pool", cached({ namespace: "race-pool", ttlMs: CACHE_TTL.raceP
 // GET /api/admin/race-pool — admin overblik (samme data, men som admin)
 router.get("/admin/race-pool", requireAdmin, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("race_pool")
-      .select("id, external_id, name, race_class, race_type, stages, date_text, country, created_at")
-      .order("race_class")
-      .order("name");
+    // #5330: seniorkatalog (samme afgrænsning som den offentlige rute) — total_count og
+    // total_race_days er admin'ens seniorkalender-nøgletal og må ikke vokse når U23-/
+    // juniorkataloget lander i samme tabel (#4620).
+    const { data, error } = await selectSeniorRacePool(
+      (columns) => supabase.from("race_pool").select(columns).order("race_class").order("name"),
+      { columns: "id, external_id, name, race_class, race_type, stages, date_text, country, created_at" },
+    );
     if (error) return res.status(500).json({ error: error.message });
     const pool = data || [];
     res.json({
@@ -11739,9 +11755,11 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
       single_race_boost,
     } = req.body || {};
 
-    const { data: pool, error: poolError } = await supabase
-      .from("race_pool")
-      .select("id, name, race_class, race_type, stages, date_text, country");
+    // #5330: seniorudvalg — forslaget må aldrig kunne pege på et U23-/juniorløb.
+    const { data: pool, error: poolError } = await selectSeniorRacePool(
+      (columns) => supabase.from("race_pool").select(columns),
+      { columns: "id, name, race_class, race_type, stages, date_text, country" },
+    );
     if (poolError) return res.status(500).json({ error: poolError.message });
 
     // Hent gemt whitelist fra seasons-tabellen som fallback hvis body ikke override'er
@@ -11833,12 +11851,23 @@ router.put("/admin/seasons/:seasonId/race-priority", requireAdmin, adminWriteLim
       ...(Array.isArray(single_race_boost) ? single_race_boost : []),
     ];
     if (allIds.length > 0) {
-      const { data: poolRows, error: poolError } = await supabase
-        .from("race_pool")
-        .select("id, race_type")
-        .in("id", allIds);
+      // #5330: hentes UDEN senior-filter, så vi kan skelne "id findes ikke" (uændret
+      // adfærd: accepteres tavst, som før) fra "id findes, men er et U23-/juniorløb"
+      // (afvises højlydt — en seniorsæsons whitelist må ikke pege på ungdomskataloget).
+      const { data: poolRows, error: poolError } = await selectRacePoolWithSquad(
+        (columns) => supabase.from("race_pool").select(columns).in("id", allIds),
+        { columns: "id, race_type" },
+      );
       if (poolError) return res.status(500).json({ error: poolError.message });
-      const poolMap = new Map((poolRows || []).map((r) => [r.id, r.race_type]));
+      const seniorPoolRows = filterSeniorSquadRows(poolRows);
+      const poolMap = new Map(seniorPoolRows.map((r) => [r.id, r.race_type]));
+
+      const youthIds = (poolRows || []).filter((r) => !isSeniorSquad(r?.squad)).map((r) => r.id);
+      if (youthIds.length > 0) {
+        return res.status(400).json({
+          error: `whitelist contains youth races (squad != senior): ${youthIds.join(", ")}`,
+        });
+      }
 
       const invalidStage = Array.isArray(stage_race_priority)
         ? stage_race_priority.filter((id) => poolMap.get(id) && poolMap.get(id) !== "stage_race")
@@ -12148,11 +12177,22 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
     // S2) — chunket via fetchAllRowsChunkedIn (samme id-URL-længde-cap som
     // countPendingRaceResults i denne fil). Kaster ved DB-fejl — fanges af
     // routens ydre try/catch (captureApiRouteError) ligesom resten af routen.
-    const poolRaces = await fetchAllRowsChunkedIn(pool_race_ids, (chunk) => supabase
-      .from("race_pool")
-      .select("id, name, race_class, race_type, stages")
-      .in("id", chunk)
-      .order("id"));
+    // #5330: squad hentes med, uden filter — ungdomsløb afvises højlydt nedenfor.
+    const poolRacesWithSquad = await fetchRacePoolWithSquad(
+      (columns) => fetchAllRowsChunkedIn(pool_race_ids, (chunk) => supabase
+        .from("race_pool")
+        .select(columns)
+        .in("id", chunk)
+        .order("id")),
+      { columns: "id, name, race_class, race_type, stages" },
+    );
+    const youthPoolRaceIds = (poolRacesWithSquad || []).filter((r) => !isSeniorSquad(r?.squad)).map((r) => r.id);
+    if (youthPoolRaceIds.length > 0) {
+      return res.status(400).json({
+        error: `pool_race_ids contains youth races (squad != senior): ${youthPoolRaceIds.join(", ")}`,
+      });
+    }
+    const poolRaces = filterSeniorSquadRows(poolRacesWithSquad);
 
     let replacedCount = 0;
     if (replace) {
