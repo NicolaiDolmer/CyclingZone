@@ -3,7 +3,8 @@
 // er blevet rørt siden (proxy: riders.updated_at).
 //
 // Bruger backend/.env, kun SELECT. Ingen rytternavne i output.
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);

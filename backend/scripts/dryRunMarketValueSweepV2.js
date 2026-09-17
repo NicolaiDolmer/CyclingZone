@@ -29,7 +29,8 @@
 // som fit-scriptet. Peg på et andet miljø ved at sætte dem i miljøet:
 //   SUPABASE_URL=... SUPABASE_SERVICE_KEY=... node scripts/dryRunMarketValueSweepV2.js
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";

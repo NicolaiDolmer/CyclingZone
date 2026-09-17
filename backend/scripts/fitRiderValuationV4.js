@@ -22,7 +22,8 @@
 // enkelt-sæson-produktion) i scale_ref, så integrations-/scorecard-trinnet kan
 // beregne den rigtige skalafaktor uden at gætte.
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

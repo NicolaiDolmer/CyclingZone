@@ -28,7 +28,8 @@
 
 import { writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { normalizeProgram, dayTypeForProgram, migrationTargetFor } from "../lib/trainingDayTypes.js";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {

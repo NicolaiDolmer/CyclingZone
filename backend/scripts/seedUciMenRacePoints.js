@@ -1,4 +1,5 @@
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 import { buildUciMenRacePointRows } from "../lib/uciRacePointDefaults.js";
 

@@ -20,7 +20,8 @@
  * Kræver SUPABASE_URL + SUPABASE_SERVICE_KEY i miljøet (som øvrige backend/scripts).
  * Kør IKKE mod prod uden orkestratorens eksplicitte kommando — se PR-body.
  */
-import 'dotenv/config';
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../lib/supabasePagination.js';
 import { daysSinceLastSeen, dormancyBucket } from '../lib/managerActivity.js';

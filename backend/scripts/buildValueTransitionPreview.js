@@ -33,7 +33,8 @@
 // TYPE_DAMPENING_ENABLED — det er hele pointen: forhåndsvise flippet før det
 // sker. Live-værdier påvirkes ikke.
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

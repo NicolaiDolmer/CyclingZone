@@ -16,7 +16,8 @@
 //   - Claim-dedup pr. dato: er dagens dato allerede målt (manuelt eller af
 //     cron), er kørslen en no-op ("already_measured_today").
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 
 import { runMarketValueLevelCorrectionGateSweep } from "../lib/marketValueLevelCorrectionGate.js";

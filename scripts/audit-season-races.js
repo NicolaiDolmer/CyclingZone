@@ -12,7 +12,8 @@
 //
 // Refs: GitHub issue #503.
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 import path from "node:path";

@@ -27,7 +27,8 @@
 // Env: SUPABASE_URL + SUPABASE_SERVICE_KEY (service-role, læse-adgang).
 
 import { createClient } from "@supabase/supabase-js";
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { simulateStage } from "../lib/raceSimulator.js";
 import { seasonResetFatigue } from "../lib/seasonFatigueReset.js";
 import { planSeasonAcademyIntake } from "../lib/seasonAcademyIntake.js";

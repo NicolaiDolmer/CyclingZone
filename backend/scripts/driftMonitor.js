@@ -3,7 +3,8 @@
  * Verificerer økonomisk konsistens og system-invarianter.
  * Kører dagligt via GitHub Actions.
  */
-import 'dotenv/config';
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from '@supabase/supabase-js';
 import ws from 'ws';
 import fetch from 'node-fetch';

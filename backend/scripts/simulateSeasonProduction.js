@@ -25,7 +25,8 @@
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY (service-role, se backend/.env)
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";

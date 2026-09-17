@@ -13,7 +13,8 @@
 //          Default OFF: ren re-seed forbliver idempotent uden sletninger.
 // --dry-run: print hvad der ville ske (upsert-antal + prune-plan) uden writes.
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";

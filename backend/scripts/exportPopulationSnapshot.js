@@ -30,7 +30,8 @@
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY (service-role required for fuld læsning)
 
 import { createClient } from "@supabase/supabase-js";
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { mkdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

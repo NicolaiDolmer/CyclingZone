@@ -18,7 +18,8 @@
 // Idempotens: A er dedup'et af reason_code-filteret (genkørsel betaler 0);
 // B er dedup'et af et deterministisk idempotency-key pr. hold (repair-2308-retired-<team>).
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
 import { payDivisionBonuses } from "../../lib/economyEngine.js";

@@ -22,7 +22,8 @@
 //   node backend/scripts/exportSeasonStageProfiles.js --season=3 [--out=path/to/file.json]
 
 import { createClient } from "@supabase/supabase-js";
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

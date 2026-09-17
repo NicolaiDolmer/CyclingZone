@@ -87,7 +87,8 @@
 // blandingsformel, så et "er MAE blevet 10 % værre"-tjek mod v1.1 ville
 // sammenligne to forskellige ting.
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";

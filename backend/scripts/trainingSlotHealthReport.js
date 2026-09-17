@@ -12,7 +12,8 @@
  *   node scripts/trainingSlotHealthReport.js --teams    # + pr. hold
  *   node scripts/trainingSlotHealthReport.js --json     # maskinlæsbart
  */
-import 'dotenv/config';
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRowsChunkedIn } from '../lib/supabasePagination.js';
 import { cappedVisibleAbilities, TRAINING_FOCUSES, smartDefaultFocus } from '../lib/training.js';

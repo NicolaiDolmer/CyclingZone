@@ -4,7 +4,8 @@
 //
 // Bruger backend/.env (SUPABASE_URL + SUPABASE_SERVICE_KEY), kun SELECT.
 // Ingen rytternavne, ingen rå vægte i output — kun aggregerede rangfordelinger.
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 import { ratingForRole, DISPLAY_RECIPE_KEYS } from "../../backend/lib/weights/displayRecipes.js";
 

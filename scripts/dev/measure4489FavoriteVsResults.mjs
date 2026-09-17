@@ -4,7 +4,8 @@
 //
 // Ingen skrivning. Bruger backend/.env (SUPABASE_URL + SUPABASE_SERVICE_KEY).
 // Kun aggregerede tal skrives til stdout — ingen rytternavne, ingen rå vægte.
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);

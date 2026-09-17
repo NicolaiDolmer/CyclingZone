@@ -32,7 +32,8 @@
 // Fejler et sent trin, er værdierne allerede skrevet — konsolen + Sentry gør
 // fejlen højlydt, samme filosofi som resten af #3448/#3449-familien.
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";

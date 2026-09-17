@@ -31,7 +31,8 @@
  * prod-indgreb" — denne parkering er reversibel/ikke-destruktiv for selve
  * holdet, men rammer stadig en produktions-tilstand mange spillere ser).
  */
-import 'dotenv/config';
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../lib/supabasePagination.js';
 import { selectTeamsToPark, parkDormantTeams } from '../lib/managerParking.js';

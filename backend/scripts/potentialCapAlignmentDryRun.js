@@ -21,7 +21,8 @@
  *   node scripts/potentialCapAlignmentDryRun.js --managers # + pr. manager
  *   node scripts/potentialCapAlignmentDryRun.js --json
  */
-import 'dotenv/config';
+import { config } from "dotenv";
+config({ quiet: true });
 import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
 import path from 'node:path';

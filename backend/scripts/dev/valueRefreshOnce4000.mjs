@@ -18,7 +18,8 @@
 // CPV-fald. Apply kræver BÅDE flag OG env-var (samme to-bekræftelses-mønster som
 // cutover3645-værktøjet) og kører post-verify: en ny dry-run skal give 0 ændrede.
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ quiet: true });
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
