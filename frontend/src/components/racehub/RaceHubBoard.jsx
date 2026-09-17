@@ -198,7 +198,7 @@ export default function RaceHubBoard() {
           onScopeChange={setScope}
           onDayChange={setDay}
         />
-        <div role="alert" className="mx-auto max-w-xl py-6">
+        <div className="mx-auto max-w-xl py-6">
           <ErrorState
             title={t("racehub.error.title")}
             description={loadError.kind === "auth" ? t("racehub.error.session") : t("racehub.error.body")}
