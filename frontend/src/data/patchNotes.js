@@ -1,5 +1,68 @@
 export const PATCHES = [
   {
+    "version": "7.286",
+    "date": "2026-09-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Ratings",
+        "en": {
+          "title": "One rating per rider, everywhere",
+          "body": "What changed: Your squad list, the rider profile and the scouting tab showed different ratings for the same rider since Tuesday. The two new abilities, Teamwork and Leadership, were counted as zero on some pages before any rider actually has them. I have taken them out of the rating again until they are really in the game, and a missing value can never count as zero. Ratings are back to the numbers you knew. No rider got better or worse. The season planner and the daily training page now use the same rating as everything else."
+        },
+        "da": {
+          "title": "Én rating pr. rytter, overalt",
+          "body": "Hvad er ændret: Din trup, rytterprofilen og scouting-fanen viste forskellige ratings for samme rytter siden tirsdag. De to nye evner, Holdarbejde og Lederskab, blev talt som nul på nogle sider, før nogen rytter reelt har dem. Jeg har taget dem ud af ratingen igen, indtil de rigtigt er i spillet, og en manglende værdi kan aldrig tælle som nul. Ratings er tilbage på de tal du kendte. Ingen rytter er blevet bedre eller dårligere. Sæsonplanlæggeren og den daglige træning bruger nu samme rating som resten."
+        },
+        "refs": [5321]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Manager status shows minutes, hours and days again",
+          "body": "What changed: On another team's page, the manager's status jumped from Online now straight to Never. The page could no longer read when the manager was last seen. It now gets that one detail through a dedicated route, so you see the real time since they were last online."
+        },
+        "da": {
+          "title": "Manager-status viser igen minutter, timer og dage",
+          "body": "Hvad er ændret: På et andet holds side sprang managerens status fra Online nu direkte til Aldrig. Siden kunne ikke længere læse, hvornår manageren sidst var set. Den henter nu netop den oplysning via en egen rute, så du ser den rigtige tid siden vedkommende sidst var online."
+        },
+        "refs": [4873]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finances",
+        "en": {
+          "title": "The season start sponsor line names your contract",
+          "body": "What changed: In the finance log, the season start payment from your sponsor was labelled as an intro payment for every team with a contract. It now says it is your contract payment and names the sponsor."
+        },
+        "da": {
+          "title": "Sæsonstart-linjen fra sponsoren hedder nu din kontrakt",
+          "body": "Hvad er ændret: I finansloggen stod sæsonstart-udbetalingen fra din sponsor som en intro-udbetaling for alle hold med kontrakt. Nu står der, at det er din kontraktudbetaling, og sponsoren nævnes ved navn."
+        },
+        "refs": [4861]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Stability",
+        "en": {
+          "title": "Clearer messages when the server cannot be reached",
+          "body": "What changed: When the game cannot reach the server at all, you now get a message that says so, instead of a generic error. The race board on the planning page also tells you plainly if it could not load, rather than failing silently. And the stage card says Tomorrow correctly around the change to winter time."
+        },
+        "da": {
+          "title": "Klarere beskeder når serveren ikke kan nås",
+          "body": "Hvad er ændret: Når spillet slet ikke kan nå serveren, får du nu en besked der siger det, i stedet for en generisk fejl. Løbstavlen på planlægningssiden siger også tydeligt, hvis den ikke kunne hentes, i stedet for at fejle tavst. Og etapekortet siger I morgen korrekt omkring skiftet til vintertid."
+        },
+        "refs": [5322, 5291, 5302]
+      }
+    ]
+  },
+  {
     "version": "7.285",
     "date": "2026-09-17",
     "label": "Beta",
