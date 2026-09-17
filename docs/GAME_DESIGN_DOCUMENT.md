@@ -317,7 +317,8 @@ ryttere mister ikke evne-masse ved omlægningen: de point der fjernes fra taktik
 og aggression flyttes til de nye mentale evner Holdarbejde og Lederskab i én
 samlet, idempotent migration. **D-056 (lofter, NOW-standing 15/9):** de
 mentale evners lofter er `{tactics: 55, teamwork: 70, leadership: 70}`;
-aggression får intet loft og er taget helt ud af evnesystemet (#5297).
+aggression forbliver egen evne (D-053) men holdes uden for dette loft-sæt
+og får ikke selv et tal-loft (#5297).
 
 ### Ungdomstrupper: kapacitet (D-032, ejer-valgt 10/9)
 
