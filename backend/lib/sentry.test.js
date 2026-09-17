@@ -6,6 +6,7 @@ import {
   captureCheckIn,
   toSentryError,
   postgrestExtraFields,
+  captureException,
   normalizeMessageForGrouping,
   getEventGroupKey,
   createVolumeLimiter,
@@ -157,6 +158,17 @@ test("postgrestExtraFields — kun de felter der faktisk findes, ingen undefined
   assert.deepEqual(postgrestExtraFields(new Error("boom")), {});
   assert.deepEqual(postgrestExtraFields(null), {});
   assert.deepEqual(postgrestExtraFields("noget gik galt"), {});
+});
+
+// ── #5015: captureException understøtter et eksplicit `level` ───────────────
+// (nedgraderer en boot-netværksfejl der overlevede sine retries til "warning"
+// i stedet for Sentrys default "error"). Sentry er disabled i test-env, så
+// selve Sentry.captureException-kaldet kan ikke observeres her direkte — men
+// funktionen skal i det mindste acceptere `level` uden at kaste, og IKKE lade
+// den lække ind i `extra` som en overset nøgle (den var tidligere en del af
+// `...extra`-resten før #5015 gav den sin egen destructuring).
+test("captureException — accepterer et level-felt i context uden at kaste (Sentry disabled i test)", () => {
+  assert.doesNotThrow(() => captureException(new Error("boom"), { level: "warning", fingerprint: ["x"] }));
 });
 
 // ── #2900: volumen-guard — normalizeMessageForGrouping ──────────────────────

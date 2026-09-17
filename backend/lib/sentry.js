@@ -249,13 +249,16 @@ export function postgrestExtraFields(error) {
   return extra;
 }
 
-// context: { tags?, fingerprint?, ...extra }. fingerprint (#2434) tvinger Sentry-
-// gruppering — sæt en FAST fingerprint på en aggregeret alarm, så den lander i ÉT
-// issue uanset at beskeden/antallet varierer pr. tick (ellers splitter Sentry på
-// den variable besked). Øvrige nøgler ender som `extra` på eventet.
+// context: { tags?, fingerprint?, level?, ...extra }. fingerprint (#2434) tvinger
+// Sentry-gruppering — sæt en FAST fingerprint på en aggregeret alarm, så den
+// lander i ÉT issue uanset at beskeden/antallet varierer pr. tick (ellers
+// splitter Sentry på den variable besked). `level` (#5015) nedgraderer en
+// forventet/selv-helende hændelse (fx en netværks-blip der overlevede sine
+// retries) fra Sentrys default "error" til "warning", uden at ændre hvordan
+// den logges lokalt. Øvrige nøgler ender som `extra` på eventet.
 export function captureException(error, context = {}) {
   if (!enabled) return;
-  const { tags, fingerprint, ...extra } = context;
+  const { tags, fingerprint, level, ...extra } = context;
   const sentryError = toSentryError(error);
   Sentry.captureException(sentryError, {
     // #5224: code/details/hint søgbare i Sentrys "Additional Data", ikke kun
@@ -263,6 +266,7 @@ export function captureException(error, context = {}) {
     extra: { ...postgrestExtraFields(sentryError), ...extra },
     ...(tags ? { tags } : {}),
     ...(fingerprint ? { fingerprint } : {}),
+    ...(level ? { level } : {}),
   });
 }
 

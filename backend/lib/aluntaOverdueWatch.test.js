@@ -285,6 +285,44 @@ test("REGRESSION #4514: den faktiske 31/8-tilstand ville have udloest alarm", as
   assert.ok(!logged.join("\n").includes("pay-invoice"), "ingen betalingslink i logstroemmen");
 });
 
+// ── #5017 (triage 12/9): fast fingerprint + dagstal KUN i extra ──────────────
+// CYCLINGZONE-54 ("værste 33 dage") og CYCLINGZONE-5R ("værste 31 dage") var
+// SAMME ubetalte faktura, splittet i to Sentry-issues fordi beskeden bar
+// dagstallet og ingen fingerprint var sat. Disse to tests pinner begge dele.
+
+test("#5017: capture-beskeden er FAST uanset hvor mange dage fakturaen har været forfalden", async () => {
+  const clientFor = (dueDate) => ({
+    listInvoices: async () => ({ data: [{ uuid: "a", number: 2, outstanding: 6125, due_date: dueDate }], meta: { last_page: 1 } }),
+  });
+  const capturedDay22 = [];
+  await runAluntaOverdueWatch({
+    client: clientFor("2026-08-08"), supabase: null, now: NOW,
+    captureExceptionFn: (e) => capturedDay22.push(e), logger: { warn: () => {} },
+  });
+  const capturedDay1 = [];
+  await runAluntaOverdueWatch({
+    client: clientFor("2026-08-29"), supabase: null, now: NOW,
+    captureExceptionFn: (e) => capturedDay1.push(e), logger: { warn: () => {} },
+  });
+  assert.equal(capturedDay22[0].message, capturedDay1[0].message,
+    "beskeden må IKKE ændre sig med dagstallet - ellers splitter Sentry samme sag i flere issues");
+  assert.doesNotMatch(capturedDay22[0].message, /\d/, "intet tal i selve beskeden - dagstal hører til i extra");
+});
+
+test("#5017: fast fingerprint + dagstal i extra.worstDaysOverdue (samme mønster som ownershipInvariantWatch.js)", async () => {
+  const client = {
+    listInvoices: async () => ({ data: [{ uuid: "a", number: 2, outstanding: 6125, due_date: "2026-08-08" }], meta: { last_page: 1 } }),
+  };
+  const captured = [];
+  await runAluntaOverdueWatch({
+    client, supabase: null, now: NOW,
+    captureExceptionFn: (e, ctx) => captured.push(ctx), logger: { warn: () => {} },
+  });
+  assert.equal(captured.length, 1);
+  assert.deepEqual(captured[0].fingerprint, ["billing-watch-overdue"]);
+  assert.equal(captured[0].extra.worstDaysOverdue, 22); // samme due_date som REGRESSION #4514-testen ovenfor
+});
+
 test("NEGATIV PROEVE: vagten kan faktisk gaa roed - en groen vagt uden faejlesti er ingen vagt", async () => {
   // Jf. #4463-laeringen: en vagt der ikke kan fejle beviser ingenting.
   const client = {
