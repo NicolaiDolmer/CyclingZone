@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # Pre-commit gate:
+#   0. Branch-guard-markør (hard rule 18) — #5094
 #   1. Secret-leak scan (gitleaks primary, python fallback) — #634 AC5
 #   2. lint-staged (frontend/backend lint på staged changes)
 # Aktiveres via scripts/install-git-hooks.ps1 (core.hooksPath=.githooks).
 set -e
+
+# --- (0) Branch-guard-markør (#5094) ---
+# Source'es, ikke exec'es: den skal kunne afslutte DENNE hook med exit 1, og
+# sourcing kræver ingen interpreter-opslag på PATH — hele pointen er at laget
+# også virker når `bash` ikke kan resolves i den kaldende proces.
+. "$(dirname "$0")/check-commit-guard-marker.sh"
 
 # Agent-independent archive/NOW policy, including merge/rebase commits.
 node scripts/check-staged-docs.mjs
