@@ -8895,6 +8895,38 @@ router.get("/teams/:id", requireAuth, async (req, res) => {
   res.json({ ...team, riders: riders || [] });
 });
 
+// GET /teams/:id/manager-status — #4873: last_seen/is_online for HOLDETS
+// manager (kan være et andet hold end ens eget, fx TeamProfilePage). Root
+// cause for at statussen faldt fra "Online now" til "Never" for andre
+// spilleres hold: database/2026-05-22-rls-permissive-policy-lockdown.sql:65-69
+// fjernede med rette "Public read basic user info" (P1 PII-leak — email +
+// discord_id + consent_preferences lækkede til alle authenticated brugere) og
+// beholdt kun "Users can read own profile" (auth.uid()=id). Men
+// TeamProfilePage.jsx læste FØR dette last_seen via en rå frontend-Supabase-
+// join (`manager:user_id(last_seen)`), som nu rammer samme RLS-default-deny
+// for ALLE andre brugeres rækker — embedded join'et blev tavst null, og
+// OnlineBadge (korrekt implementeret, se dens egne tests) falder kun til
+// "Never" når lastSeen er falsy. last_seen er IKKE PII på niveau med
+// email/discord_id — den vises allerede offentligt via ManagerProfilePage
+// (samme felt, hentet service-role via GET /managers/:teamId ovenfor, som
+// derfor aldrig ramte bugget). Denne route giver samme smalle, ikke-PII felt
+// til TeamProfilePage uden at genåbne den brede policy.
+router.get("/teams/:id/manager-status", requireAuth, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Ugyldigt hold-id" });
+  try {
+    const { data: team } = await supabase.from("teams")
+      .select("user_id").eq("id", req.params.id).maybeSingle();
+    if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
+    // AI-styrede hold har user_id=null (samme guard som GET /managers/:teamId).
+    if (!team.user_id) return res.json({ last_seen: null, is_online: false });
+    const { data: user } = await supabase.from("users")
+      .select("last_seen").eq("id", team.user_id).maybeSingle();
+    const lastSeen = user?.last_seen || null;
+    const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000 : false;
+    res.json({ last_seen: lastSeen, is_online: isOnline });
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
 // #1264: GET /teams/my er fjernet — den blev skygget af GET /teams/:id
 // (registreret først, :id="my" → 404) og var dermed død kode. Intet
 // frontend-kald bruger den; klienter læser holdet via PUT-responsen nedenfor
