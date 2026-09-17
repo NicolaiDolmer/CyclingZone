@@ -234,7 +234,7 @@ test("Next season: tilbuddene inline, Review & sign → confirm-strip, og kun é
 
   await expect(page.getByText("5 tilbud · division 2 · 124 etaper")).toBeVisible();
   await expect(
-    page.getByText(/Dit valg låses når sæson 4 starter. Vælger du ikke, underskriver klubben den sikre 1-sæsons aftale/),
+    page.getByText(/Beløbet låses i det øjeblik du skriver under/),
   ).toBeVisible();
 
   // Fem tilbud som tabelrækker (ikke en modal).
