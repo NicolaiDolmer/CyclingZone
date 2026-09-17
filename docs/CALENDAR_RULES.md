@@ -846,7 +846,8 @@ Resten af tabellerne i denne fil har endnu ikke alle tre niveauer. Se [#4176](ht
 
 | Regel | Hvorfor |
 |---|---|
-| `NULL` og manglende kolonne = senior | Bagudkompatibelt: filteret virker BÅDE før og efter #5262's migration er applied. Mangler kolonnen, fejler PostgREST (42703/PGRST204), og `selectSeniorRacePool` kører ét fallback-select uden `squad` |
+| `NULL` og manglende kolonne = senior | Bagudkompatibelt: filteret virker BÅDE før og efter #5262's migration er applied. Svarer Postgres `42703` (`undefined_column`), kan migrationen ikke være kørt — den tilføjer kolonnen og ungdomsrækkerne i samme fil — så `selectSeniorRacePool` kører ét fallback-select uden `squad` |
+| En stale skema-cache (`PGRST204`) fejler **lukket** | `PGRST204` siger kun at PostgREST's cache ikke kender kolonnen. Cachen kan mangle den i vinduet EFTER migrationen har lagt ungdomsrækkerne ind, men før `NOTIFY pgrst, 'reload schema'` er slået igennem. Et fallback dér ville materialisere U23-løb ind i seniorkalenderen. Et 500 i nogle sekunder er billigere end en forkert kalender |
 | Fallback'et caches ikke | `auto-migrate.yml` applier migrationen mens backend'en kører. Et cachet "kolonnen mangler" ville lade ungdomsløb sive ind i seniorkalenderen indtil næste restart |
 | Ukendte squad-værdier er IKKE senior | CHECK-constrainten forbyder dem; et fejl-tolerant "alt andet er senior" ville lade en fremtidig trup sive ind |
 | Ungdoms-ID'er i en senior-whitelist afvises med 400 | `PUT .../race-priority` og `POST .../race-selection` dropper dem ikke tavst — et tavst drop ligner "løbet forsvandt" |

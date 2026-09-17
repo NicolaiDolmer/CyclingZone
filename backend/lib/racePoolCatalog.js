@@ -13,10 +13,10 @@
 //     fixture uden feltet) ikke tavst taber hele kataloget.
 //  2. Kolonnen kan MANGLE. #5330 merges FØR #5262, og auto-migrate.yml kører
 //     migrationen ved merge af #5262 — dvs. der findes et vindue hvor koden her kører
-//     mod et skema uden `squad`. PostgREST fejler hårdt på både et select af en ukendt
-//     kolonne (42703) og på et filter mod den (PGRST204 fra skema-cachen). Derfor
-//     kører selectSeniorRacePool ET fallback-kald uden squad, hvor HELE kataloget pr.
-//     definition er senior.
+//     mod et skema uden `squad`. Postgres svarer da 42703 (undefined_column), og
+//     selectSeniorRacePool kører ET fallback-kald uden squad, hvor HELE kataloget pr.
+//     definition er senior. En STALE SKEMA-CACHE (PGRST204) er derimod IKKE et bevis
+//     for at kolonnen mangler, og der fejler vi lukket — se isMissingSquadColumnError.
 //
 // Fallback'et caches bevidst IKKE: backend'en kører videre mens auto-migrate.yml
 // applier migrationen, og et cachet "kolonnen mangler" ville lade ungdomsløb sive ind
@@ -60,17 +60,29 @@ export function applySeniorSquadFilter(query) {
 }
 
 /**
- * Er fejlen "kolonnen squad findes ikke (endnu)"? 42703 = Postgres undefined_column,
- * PGRST204 = PostgREST's skema-cache kender ikke kolonnen. Begge betyder: kør uden
- * squad. Alt andet (netværk, RLS, syntaks) skal boble op uændret.
+ * Er fejlen "kolonnen squad findes IKKE i databasen"? Kun `42703`
+ * (Postgres `undefined_column`) tæller. Den kommer fra Postgres selv og er derfor et
+ * bevis: findes kolonnen ikke, kan #5262's migration ikke være kørt — og den tilføjer
+ * kolonnen og ungdomsrækkerne i SAMME fil. Ingen ungdomsrækker kan altså eksistere, og
+ * et ufiltreret select er per definition rent senior.
+ *
+ * `PGRST204` ("could not find the column ... in the schema cache") tæller bevidst IKKE
+ * (CodeRabbit 17/9). Den siger kun at PostgREST's CACHE ikke kender kolonnen — og det
+ * kan den mangle i vinduet EFTER migrationen har lagt ungdomsrækkerne ind, men før
+ * `NOTIFY pgrst, 'reload schema'` er slået igennem. Et fallback dér ville læse hele
+ * kataloget uden senior-prædikat og materialisere U23-løb ind i seniorkalenderen. Vi
+ * fejler lukket: fejlen bobler op, ruten svarer 500, og kalenderen bliver ikke forkert.
+ *
+ * Alt andet (netværk, RLS, syntaks) bobler ligeledes op uændret.
  */
 export function isMissingSquadColumnError(error) {
   if (!error) return false;
   const code = String(error.code ?? "");
   const text = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
   if (!text.includes(SQUAD_COLUMN)) return false;
-  if (code === "42703" || code === "PGRST204") return true;
-  return /does not exist|schema cache|unknown column|undefined column/.test(text);
+  if (code === "PGRST204" || text.includes("schema cache")) return false;
+  if (code === "42703") return true;
+  return /does not exist|undefined column/.test(text);
 }
 
 /**

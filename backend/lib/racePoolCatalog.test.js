@@ -73,10 +73,14 @@ test("#5330 filteret dækker BÅDE NULL og 'senior' (NULL ville ellers falde ud 
 
 // ── Manglende kolonne (vinduet før #5262's migration) ─────────────────────────
 
-test("#5330 isMissingSquadColumnError: 42703/PGRST204 om squad — og intet andet", () => {
+test("#5330 isMissingSquadColumnError: kun 42703 om squad — schema-cache fejler LUKKET", () => {
   assert.equal(isMissingSquadColumnError({ code: "42703", message: 'column race_pool.squad does not exist' }), true);
-  assert.equal(isMissingSquadColumnError({ code: "PGRST204", message: "Could not find the 'squad' column of 'race_pool' in the schema cache" }), true);
   assert.equal(isMissingSquadColumnError({ message: "column race_pool.squad does not exist" }), true);
+  // PGRST204 siger kun at PostgREST's CACHE ikke kender kolonnen. Den kan mangle i
+  // vinduet EFTER migrationen har lagt ungdomsrækkerne ind, men før schema-reloaden er
+  // slået igennem — et fallback dér ville materialisere U23-løb ind i seniorkalenderen.
+  assert.equal(isMissingSquadColumnError({ code: "PGRST204", message: "Could not find the 'squad' column of 'race_pool' in the schema cache" }), false);
+  assert.equal(isMissingSquadColumnError({ message: "could not find the 'squad' column of 'race_pool' in the schema cache" }), false);
   // Ikke om squad → boble op uændret.
   assert.equal(isMissingSquadColumnError({ code: "42703", message: 'column race_pool.country does not exist' }), false);
   // Rigtige driftsfejl må ALDRIG udløse et fallback der tavst dropper filteret.
@@ -142,6 +146,14 @@ test("#5330 selectSeniorRacePool: en rigtig DB-fejl returneres uændret (intet f
   const error = { code: "42501", message: "permission denied for table race_pool" };
   const res = await selectSeniorRacePool(fakeQuery({ error, calls }), { columns: "id" });
   assert.equal(calls.length, 1, "et ufiltreret fallback-kald ville skjule fejlen");
+  assert.deepEqual(res.error, error);
+});
+
+test("#5330 selectSeniorRacePool: stale schema-cache (PGRST204) fejler LUKKET, ikke ufiltreret", async () => {
+  const calls = [];
+  const error = { code: "PGRST204", message: "Could not find the 'squad' column of 'race_pool' in the schema cache" };
+  const res = await selectSeniorRacePool(fakeQuery({ error, calls }), { columns: "id" });
+  assert.equal(calls.length, 1, "et ufiltreret fallback ville kunne læse ungdomsrækker ind i seniorkalenderen");
   assert.deepEqual(res.error, error);
 });
 
