@@ -215,6 +215,38 @@ test("resolveStageEntrants: rytter uden hold tælles aldrig med i en hold-konfli
   assert.deepEqual(conflicts, []);
 });
 
+test("resolveStageEntrants: en udgået rytter kan ikke vinde en konflikt og degraderer ikke en aktiv holdkammerat (CodeRabbit-fund)", () => {
+  // To etape-overrides på samme rolle, hvor den LAVESTE rider_id er udgået.
+  // Uden ineligibleRiderIds ville han vinde, r9 blev degraderet — og kald-stedet
+  // filtrerer så vinderen væk. Holdet ville stå uden sprint_captain.
+  const entrants = [
+    { rider_id: "r1", team_id: "T", race_role: "helper" },
+    { rider_id: "r9", team_id: "T", race_role: "helper" },
+  ];
+  const overrides = ov([["r1", "sprint_captain"], ["r9", "sprint_captain"]]);
+
+  const naive = resolveStageEntrants(entrants, overrides);
+  assert.equal(naive.entrants[0].race_role, "sprint_captain", "uden eksklusion vinder r1");
+
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, overrides, {
+    ineligibleRiderIds: new Set(["r1"]),
+  });
+  assert.equal(resolved[1].race_role, "sprint_captain", "r9 er den eneste der kører — han beholder rollen");
+  assert.deepEqual(conflicts, [], "kun én berettiget indehaver tilbage → ingen konflikt");
+});
+
+test("resolveStageEntrants: udgået basis-indehaver blokerer ikke en aktiv etape-override", () => {
+  const entrants = [
+    { rider_id: "rDNF", team_id: "T", race_role: "captain" },
+    { rider_id: "rNew", team_id: "T", race_role: "helper" },
+  ];
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, ov([["rNew", "captain"]]), {
+    ineligibleRiderIds: new Set(["rDNF"]),
+  });
+  assert.equal(resolved[1].race_role, "captain");
+  assert.deepEqual(conflicts, []);
+});
+
 test("resolveStageEntrants: tom liste → tomt resultat", () => {
   assert.deepEqual(resolveStageEntrants([], undefined), { entrants: [], conflicts: [] });
 });

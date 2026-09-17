@@ -459,7 +459,14 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // sprint_captains i samme rollesæt. `resolved` er index-parallel med
     // `entrants` (og dermed med simEntrants, der er bygget som entrants.map).
     const overridesForStage = v3 ? stageRoleOverrides?.get(stageNumber) : undefined;
-    const stageResolved = v3 ? resolveStageEntrants(entrants, overridesForStage) : null;
+    // abandonedSet er abandons fra TIDLIGERE etaper i denne loop-instans. De
+    // filtreres først fra nedenfor (stageEntrants), så resolutionen skal have dem
+    // med: ellers kunne en udgået rytter vinde en rolle-konflikt, degradere den
+    // aktive holdkammerat og derefter selv blive filtreret væk — holdet ville stå
+    // uden lederen (CodeRabbit-fund, #5223).
+    const stageResolved = v3
+      ? resolveStageEntrants(entrants, overridesForStage, { ineligibleRiderIds: abandonedSet })
+      : null;
     if (stageResolved?.conflicts.length) {
       reportStageRoleConflicts({ raceId: race.id, stageNumber, conflicts: stageResolved.conflicts });
     }
