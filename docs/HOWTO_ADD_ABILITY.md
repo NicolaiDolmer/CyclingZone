@@ -62,7 +62,13 @@ Vagten findes fordi `positioning` og `tactics` indgik i **nul** af de 8 gamle op
 >
 > **En ny evne må ikke ind i display-opskrifterne før den har værdier på alle ryttere.**
 >
-> `displayRecipes` er RATING-tallet spilleren ser. Giver du en ny evne en vægt mens kolonnen stadig er NULL for bestanden, ændrer du hele bestandens synlige rating uden at en eneste rytter har flyttet sig. Det skete 15/9 i [#5268](https://github.com/NicolaiDolmer/CyclingZone/issues/5268): `teamwork` og `leadership` fik en vægt i fire opskrifter, kolonnerne var NULL for alle 8.731 eksisterende ryttere, og `Number(null)` er 0 — så evnen talte som et ægte nul i både tæller og nævner. Spillerne meldte det i #general dagen efter, og nogle flader viste oven i købet et andet tal end andre, fordi ikke alle flader hentede de to kolonner.
+> `displayRecipes` er RATING-tallet spilleren ser.
+>
+> **Sådan gik det galt 15/9** ([#5268](https://github.com/NicolaiDolmer/CyclingZone/issues/5268)): `teamwork` og `leadership` fik en vægt i fire opskrifter mens kolonnerne var NULL for alle 8.731 eksisterende ryttere. `Number(null)` er 0, så evnen talte som et ægte nul i både tæller og nævner, og hele bestandens synlige rating faldt uden at en eneste rytter havde flyttet sig. Nogle flader viste oven i købet et andet tal end andre, fordi ikke alle flader hentede de to kolonner. Spillerne meldte det i #general dagen efter.
+>
+> **Den defekt findes ikke længere** — `abilityValue()` (#5321) holder NULL ude af både tæller og nævner, så en vægt på en kolonne der er NULL for hele bestanden ændrer i dag ingen ratings.
+>
+> **Risikoen der er tilbage er den delvise backfill.** I det vindue hvor nogle ryttere har fået en værdi og andre ikke har, regnes de to grupper på hver sin opskrift-bredde: de udfyldte ryttere flytter sig, de tomme står stille, og to ryttere på samme skærm er ikke sammenlignelige. Det er stadig et synligt tal der ændrer sig uden ejerens go — bare for en delmængde i stedet for for alle.
 >
 > **Ejerens tre regler (17/9):** (a) én rating overalt, (b) spillernes synlige ratings må aldrig falde uden ejerens vidende, (c) nye evner tæller først med i ratingen når de reelt er i spillet.
 >
