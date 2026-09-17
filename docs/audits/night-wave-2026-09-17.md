@@ -4,7 +4,7 @@
 |---|---|
 | Start/slut (lokal tid) | 16:30 → ca. 21:00 |
 | Agenter launched / fuldført / døde | 23 + 4 (rating-spor) / 27 / 0 |
-| PR'er åbnet / merged | 12 / 11 + patch note #5353 |
+| PR'er åbnet / merged | 13 / 12 (inkl. patch note #5353, c7c7af5d6) |
 | Issues → claude:done | #5085 #5004 #5253 #5286 #5291 #5224 #5015 #5017 #5088 #5302 #4873 #4861 #5322 #5223 #5326 #5094 #4123 #5272 (+ #5321 ved merge) |
 | Lukket som allerede lavet (bølge 0) | #4645 |
 | Nye issues oprettet | #5348 #5349 (Holdarbejde/Lederskab i motoren) · #5350 (træningsside mobil) · #5351 (rating-fald, beslutning) |
