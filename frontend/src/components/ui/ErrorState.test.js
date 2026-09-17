@@ -27,9 +27,12 @@ test("role=alert sidder på selve rod-div'en, ikke et vilkårligt underelement",
 });
 
 test("ingen aria-live tilføjet ved siden af — role=alert er tilstrækkeligt for et fresh-mounted element", () => {
+  // Kigger kun på selve return-blokken (JSX'en), ikke kommentarerne ovenfor
+  // den, som forklarer hvorfor aria-live IKKE er tilføjet.
+  const jsx = src.slice(src.indexOf("return ("));
   assert.doesNotMatch(
-    src,
-    /aria-live/,
+    jsx,
+    /aria-live=/,
     "ErrorState monteres altid conditionally, så aria-live er overflødigt ved siden af role=alert",
   );
 });
