@@ -174,6 +174,80 @@ jobs:
           VERCEL_ENV: preview
         run: node scripts/check-skew-protection.mjs
 
+  # #5085: marketing/ (Next.js App Router, offentligt SEO-site på
+  # cyclingzone.org) havde ingen CI-vagt overhovedet - kun Vercels
+  # preview-deploy byggede den, så en lint-/build-fejl blev først synlig i
+  # Vercels UI, ikke i PR-tjeklisten. Workflow-niveau `paths:` på ci.yml selv
+  # kan ikke bruges: filen har allerede required jobs der SKAL rapportere på
+  # enhver PR (se i18n-check.yml's begrundelse ovenfor for samme faldgrube).
+  # Path-filteret ligger derfor i sit eget lette `marketing-changes`-job, samme
+  # mønster som playwright-smoke.yml's `changes`-job. Jobbet er bevidst IKKE i
+  # scripts/ci-required-checks.json endnu (ejer-beslutning i issuet: required
+  # efter en uges stabil kørsel).
+  marketing-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      marketing: ${{ steps.filter.outputs.marketing }}
+    steps:
+      - name: Detect marketing changes
+        id: filter
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename')
+          # Ikke `grep -q`: tidlig exit + pipefail kan SIGPIPE printf og vende
+          # svaret til falsk "ingen marketing-ændringer" (samme fælde som
+          # playwright-smoke.yml's changes-job).
+          if printf '%s\n' "$FILES" | grep -E '^marketing/' > /dev/null; then
+            echo "marketing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "marketing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  marketing-lint-build:
+    needs: marketing-changes
+    if: needs.marketing-changes.outputs.marketing == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: marketing
+    steps:
+      # Pinnet til fuld commit-SHA (samme v7 som playwright-smoke.yml bruger),
+      # ikke @v7 - .coderabbit.yaml kræver pinning af actions for .github/workflows/**.
+      # persist-credentials: false, fordi jobbet kører `npm ci` (PR-styrede
+      # install-scripts) og ikke har noget senere Git-trin der behøver tokenet.
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: marketing/package-lock.json
+
+      - name: Install marketing dependencies
+        run: npm ci
+
+      - name: Lint marketing
+        run: npm run lint
+
+      # Buildet kræver ingen env (waitlist-form.tsx opretter kun sin
+      # Supabase-klient lazy ved submit, se komponentens egen kommentar) - så
+      # ingen dummy-værdier er nødvendige her, i modsætning til frontend- og
+      # backend-jobbene ovenfor.
+      - name: Build marketing
+        run: npm run build
+
   # #5160 (audit 11/9, fund H1): det TO-BUILD-BEVIS `frontend-build`s
   # markoer-guard ikke kan give. Den bygger EET build UDEN Sentry-
   # transformationen og scanner det for kendte strenge - det beviser at netop de
