@@ -906,7 +906,7 @@
             "Hektiske etaper, enkeltstarter"
           ],
           [
-            "Aggression",
+            "Angrebslyst",
             "Lysten til at angribe",
             "Udbrud"
           ],
@@ -968,7 +968,7 @@
           [
             "Baroudeur",
             "Angrebslyst, med i udbrud hele dagen.",
-            "Løbslære (Aggression)"
+            "Løbslære (Angrebslyst)"
           ],
           [
             "Rouleur",
@@ -1025,7 +1025,7 @@
       },
       "focusAbilities": {
         "title": "Hvad hver session træner",
-        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Blandede intervaller træner Bjerg, Punch og Tempo med lige stor andel. Klatreintervaller træner Bjerg og Tempo, og Bjerg får mere end i den blandede session, men Punch trænes slet ikke. Punch-intervaller er spejlbilledet: Punch og Tempo, hvor Punch får mere, og Bjerg er ude. De tre dækker den samme mængde arbejde, så et andet valg flytter dit udbytte, det lægger ikke noget til. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Brostenssektorer træner Brosten, Robusthed og Positionering, hvor Brosten får mest. Vifteøvelser træner Fladt, Positionering og Robusthed, hvor Fladt får mest. Angrebsintervaller træner Aggression, Punch og Acceleration, hvor Aggression får mest. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Aggression. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel, sprint, Brostenssektorer, Vifteøvelser og Angrebsintervaller er alle hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
+        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Blandede intervaller træner Bjerg, Punch og Tempo med lige stor andel. Klatreintervaller træner Bjerg og Tempo, og Bjerg får mere end i den blandede session, men Punch trænes slet ikke. Punch-intervaller er spejlbilledet: Punch og Tempo, hvor Punch får mere, og Bjerg er ude. De tre dækker den samme mængde arbejde, så et andet valg flytter dit udbytte, det lægger ikke noget til. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Brostenssektorer træner Brosten, Robusthed og Positionering, hvor Brosten får mest. Vifteøvelser træner Fladt, Positionering og Robusthed, hvor Fladt får mest. Angrebsintervaller træner Angrebslyst, Punch og Acceleration, hvor Angrebslyst får mest. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Angrebslyst. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel, sprint, Brostenssektorer, Vifteøvelser og Angrebsintervaller er alle hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
       },
       "typeGating": {
         "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
@@ -1187,8 +1187,8 @@
         "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med {academySlots} ryttere har en mærkbar løbende omkostning hver sæson."
       },
       "graduation": {
-        "title": "At forlade akademiet ved 22",
-        "text": "Når en akademirytter fylder 22, forlader de Akademiet, og du træffer et valg for hver enkelt: ryk dem op i din senior-trup (kræver en ledig senior-plads og giver dem en senior-kontrakt), sælg dem på transfermarkedet, eller slip dem som free agent. Du får et vindue til at beslutte; handler du ikke i tide, vælger klubben et fornuftigt standardvalg for dig (ryk op når der er plads, ellers sælg). Sådan får hjemmeavlet talent en klar vej til din senior-trup."
+        "title": "At forlade akademiet ved 23",
+        "text": "Når en akademirytter fylder 23, forlader de Akademiet, og du træffer et valg for hver enkelt: ryk dem op i din senior-trup (kræver en ledig senior-plads og giver dem en senior-kontrakt), sælg dem på transfermarkedet, eller slip dem som free agent. Du får et vindue til at beslutte; handler du ikke i tide, vælger klubben et fornuftigt standardvalg for dig (ryk op når der er plads, ellers sælg). Sådan får hjemmeavlet talent en klar vej til din senior-trup."
       },
       "promoteDemote": {
         "title": "Ryk op og flyt ryttere ned",
@@ -1699,7 +1699,7 @@
     },
     "riderAbilities": {
       "q": "Hvad betyder de 17 rytter-evner?",
-      "a": "Hver rytter vurderes 0-99 på 17 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (4): Aggression (lysten til at angribe og komme med i udbrud), Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb), Holdarbejde (hvor meget en hjælper er værd for den kaptajn han kører for) og Lederskab (om truppen kører bag ham, og hvad han giver videre til en ung rytter). Holdarbejde og Lederskab er nye: du kan se og træne dem nu, og de begynder at ændre løb i en senere opdatering. Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
+      "a": "Hver rytter vurderes 0-99 på 17 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (4): Angrebslyst (lysten til at angribe og komme med i udbrud), Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb), Holdarbejde (hvor meget en hjælper er værd for den kaptajn han kører for) og Lederskab (om truppen kører bag ham, og hvad han giver videre til en ung rytter). Holdarbejde og Lederskab er nye: du kan se og træne dem nu, og de begynder at ændre løb i en senere opdatering. Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
     },
     "riderRating": {
       "q": "Hvad betyder en rytters samlede rating?",

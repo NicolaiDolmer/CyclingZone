@@ -1,5 +1,6 @@
 {
   "loadError": "Kunne ikke indlæse dashboardet. Prøv igen.",
+  "offlineError": "Kan ikke få forbindelse til spillets server. Tjek din forbindelse, og prøv igen.",
   "retry": "Prøv igen",
   "todayStages": {
     "title": "Dagens etaper",

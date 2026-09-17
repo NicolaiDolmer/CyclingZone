@@ -1,5 +1,158 @@
 export const PATCHES = [
   {
+    "version": "7.282",
+    "date": "2026-09-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "A clearer message when the server cannot be reached",
+          "body": "If your browser cannot reach the game server, the dashboard used to say it could not load. That points at the game, when the problem is the connection between you and it. It now tells you what actually happened, so you know to check your network first. These failures are also recorded properly now, so I can see how often they happen instead of hearing about them one player at a time."
+        },
+        "da": {
+          "title": "Tydeligere besked når serveren ikke kan nås",
+          "body": "Hvis din browser ikke kan få forbindelse til spillets server, sagde dashboardet før, at det ikke kunne indlæses. Det peger på spillet, når problemet er forbindelsen mellem dig og det. Nu står der, hvad der faktisk skete, så du ved, at du skal tjekke dit netværk først. Fejlene bliver også registreret ordentligt nu, så jeg kan se, hvor ofte de sker, i stedet for at høre om dem én spiller ad gangen."
+        },
+        "refs": [
+          5312
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.281",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Withdrawing from a race now shows everywhere",
+          "body": "Your saved line-up stays behind when you withdraw, so you can re-enter with one click. But four screens read it as if you were still starting: the division start list, the season matrix, the race page and the dashboard. All four now know you have withdrawn. Your riders were never going to start, so nothing changed in any result. Re-entering now tells you which rider is racing elsewhere instead of failing."
+        },
+        "da": {
+          "title": "Afmelding fra et løb vises nu alle steder",
+          "body": "Din gemte opstilling bliver stående, når du melder fra, så du kan melde til igen med ét klik. Men fire skærme læste den, som om du stadig stillede op: divisionens startliste, sæsonmatrixen, løbssiden og dashboardet. Alle fire ved nu, at du har meldt fra. Dine ryttere skulle aldrig have startet, så intet resultat er ændret. Melder du til igen, får du nu at vide, hvilken rytter der kører et andet sted, i stedet for en fejl."
+        },
+        "refs": [
+          5301,
+          4306
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.280",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The right day in tactics",
+          "body": "Your tactics tab now marks a stage as today only when it is scheduled for today in Copenhagen time. Tomorrow's stage no longer says today."
+        },
+        "da": {
+          "title": "Den rigtige dag i taktik",
+          "body": "Din taktikfane markerer nu kun en etape som i dag, når den er planlagt til i dag i dansk tid. Morgendagens etape vises ikke længere som i dag."
+        },
+        "refs": [5290]
+      }
+    ]
+  },
+  {
+    "version": "7.279",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Role names in planning",
+          "body": "Your assigned breakaway hunter now shows the correct role name in planning, in English and Danish. Your selections stay the same."
+        },
+        "da": {
+          "title": "Rollenavne i planlægningen",
+          "body": "Din udbrudsjæger vises nu med det rigtige rollenavn i planlægningen på både engelsk og dansk. Dine udtagelser er uændrede."
+        },
+        "refs": [
+          5289
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.278",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "Your fighters got their potential back",
+          "body": "Yesterday's update lowered the ceiling on aggression, and that hit one rider type far harder than the rest. Aggression is the signature ability of a fighter, so his expected ceiling fell by up to eight points overnight, while a puncheur lost nothing. That was not what I intended. Aggression is back at full height, and your fighters show their old numbers again after their next training session. Tactics, teamwork and leadership keep the ceilings they got yesterday. Nobody lost a single point of ability along the way, only the projection you see."
+        },
+        "da": {
+          "title": "Dine udbrudsryttere har fået deres potentiale tilbage",
+          "body": "Gårsdagens opdatering sænkede loftet for angrebslyst, og det ramte én ryttertype langt hårdere end resten. Angrebslyst er udbrudsrytterens signaturevne, så hans forventede loft faldt op til otte point på én nat, mens en puncheur intet mistede. Sådan var det ikke tænkt. Angrebslyst er tilbage i fuld højde, og dine udbrudsryttere viser deres gamle tal igen efter næste træningspas. Taktik, holdarbejde og lederskab beholder de lofter, de fik i går. Ingen rytter mistede et eneste evne-point undervejs, kun den forventning du kunne se."
+        },
+        "refs": [5288, 5280, 5268]
+      }
+    ]
+  },
+  {
+    "version": "7.277",
+    "date": "2026-09-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "Two new mental abilities: Teamwork and Leadership",
+          "body": "The rider profile and Help now show Teamwork (how much a helper is worth to his captain) and Leadership (whether the squad rides behind him). For riders already in the game the two fields stay empty until a later update fills them in, and the race engine does not use them yet. That update gets its own note."
+        },
+        "da": {
+          "title": "To nye mentale evner: Holdarbejde og Lederskab",
+          "body": "Rytterprofilen og Hjælp viser nu Holdarbejde (hvor meget en hjælper er værd for sin kaptajn) og Lederskab (om truppen kører bag ham). For ryttere der allerede er i spillet står de to felter tomme, indtil en senere opdatering udfylder dem, og løbsmotoren bruger dem ikke endnu. Den opdatering får sin egen note."
+        },
+        "refs": [5268, 5280]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Riders",
+        "en": {
+          "title": "Tactics and aggression no longer come with a hidden age bonus",
+          "body": "A new rider used to get tactics mostly from his age and aggression partly from being young. From now on both are abilities of their own for new riders. The ceiling for tactics was lowered to match. A ceiling only limits future growth, so no rider loses a single point."
+        },
+        "da": {
+          "title": "Taktik og angrebslyst får ikke længere en skjult aldersbonus",
+          "body": "En ny rytter fik før taktik mest fra sin alder og angrebslyst delvist fra at være ung. Fra nu af er begge egne evner for nye ryttere. Loftet for taktik er sænket tilsvarende. Et loft begrænser kun fremtidig vækst, så ingen rytter mister et eneste point."
+        },
+        "refs": [3668, 5268, 5280]
+      },
+      {
+        "category": "improved", "audience": "player", "topic": "Academy",
+        "en": {
+          "title": "Graduation Day comes at 23, not 22",
+          "body": "The forced choice for an academy rider (promote, sell or release) now comes the season he turns 23. A 22-year-old stays in your academy one more season. Help is updated to match."
+        },
+        "da": {
+          "title": "Graduation Day kommer ved 23, ikke 22",
+          "body": "Det tvungne valg for en akademirytter (ryk op, sælg eller slip) kommer nu i den sæson han fylder 23. En 22-årig bliver i dit akademi en sæson mere. Hjælp er rettet til."
+        },
+        "refs": [4619, 5279]
+      }
+    ]
+  },
+  {
     "version": "7.276",
     "date": "2026-09-15",
     "label": "Beta",
