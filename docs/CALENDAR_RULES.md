@@ -168,6 +168,9 @@ vejen. `regenSeason3Calendar.mjs` var S3-specifik og skal ikke kopieres - dens h
 `REAL_DAYS = 31` og `OWNER_FIRST_RACE_DAY` gælder kun S3.
 
 ```
+# 0) GYLDEN KALENDER-DIFF - hvad har koden ændret siden sidst? (#4123, kræver intet login)
+node scripts/dev/calendarGoldenDiff.mjs
+
 # 1) tørkørsel - skriver ALDRIG, uanset flag
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
 
@@ -177,6 +180,48 @@ node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --uniform-
 # 3) skrivning - kun efter ejer-go, og kun med en EKSPLICIT længde
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --apply
 ```
+
+### Trin 0: den gyldne kalender-diff (obligatorisk, [#4123](https://github.com/NicolaiDolmer/CyclingZone/issues/4123))
+
+**Kør den FØR tørkørslen.** §2c giver én regenerering pr. sæson, så spørgsmålet
+"hvad har koden ændret siden sidste gang nogen kiggede?" skal besvares **inden** den ene
+chance bruges — ikke bagefter, i en scorecard-rapport ingen sammenligner med noget.
+
+`backend/scripts/dev/calendarGoldenDiff.mjs` genererer kalenderen **100 % offline** fra
+`backend/lib/__fixtures__/racePoolCatalog.prod.json` ([#4121](https://github.com/NicolaiDolmer/CyclingZone/issues/4121))
+med samme parametre som prod-dry-runnen, og diff'er mod den committede gyldne snapshot
+`backend/lib/__fixtures__/calendarGoldenSnapshot.s3.json`. Ingen credentials, ingen DB,
+intet ur — den kan køres når som helst uden risiko for at røre prod.
+
+Den svarer på tre ting, i den rækkefølge et menneske skal bruge dem:
+
+| Sektion | Hvad du ser |
+|---|---|
+| **pr. division** | løb, etaper og antal berørte dage, D1-D4 |
+| **pr. løbstype** | endagsløb / etapeløb / Grand Tour — løb og etaper, før → efter |
+| **pr. dag** | hvilke datoer ændrede form, og hvilke etaper kom til / faldt væk |
+| **hårde invarianter** | to GT'er samme dag, GT-loft, GT-spænd, kronologi, tom kalenderdag |
+
+**Exit-koderne betyder noget forskelligt, og det er hele pointen:**
+
+- **exit 1** = en hård invariant er brudt (§3/§7/§2). Kalenderen må **ikke** genereres på
+  den kode. Det er ikke et kalibrerings-spørgsmål, det er en fejl.
+- **exit 0 med en diff** = kalenderen er ændret. Det er **ikke automatisk en fejl**: det
+  kan være en tilsigtet ændring der mangler sin snapshot-opdatering. Er den tilsigtet, kør
+  `node scripts/dev/refreshCalendarGoldenSnapshot.mjs` og commit den nye fil i **samme PR**
+  som koden der ændrede kalenderen (§12's forward-guard-princip). Er den ikke tilsigtet,
+  er det en regression i pakkeren — ret koden.
+- **exit 0 uden diff** = intet har flyttet sig.
+
+`--fail-on-diff` gør den rene diff til exit 1 (til brug i et script), `--json` giver
+maskinlæsbar form, og `--golden <fil>` / `--candidate <fil>` lader dig diffe to vilkårlige
+snapshots mod hinanden.
+
+**Det samme dømmes nu i CI, og det blokerer.** Jobbet `calendar-invariant-ci-gate`
+(`.github/workflows/ci.yml`) kører `lib/calendarInvariantsCiGate4123.test.js` +
+`lib/calendarGoldenSnapshot.test.js` på hver PR og står fra 17/9 i
+`scripts/ci-required-checks.json`. Det var rådgivende indtil da (#4270's direktiv: en rød
+diff skulle kunne læses og vurderes af et menneske først). Vurderingen er gjort — se §9.
 
 ### Længden udledes af §2 - den arves ikke
 
@@ -231,6 +276,46 @@ så en pre-oprettet række kolliderer ikke med cutoveren.
 
 **Sæsontilmelding (`season_signup_enabled`, #452/#4592):** bygget, men flaget er dormant
 frem til S4-cutoveren 27.-28/9 — samme cutover-vindue som sæson-rækken ovenfor.
+
+---
+
+## 2e. En pulje der aktiveres MIDT i sæsonen ([#5272](https://github.com/NicolaiDolmer/CyclingZone/issues/5272))
+
+`reconcilePoolCalendarOnActivation` (`backend/lib/tierCalendarMaterializer.js`) bygger
+kalenderen for en pulje der vågner efter sæsonen er gået i gang — §2c's ene undtagelse.
+Den er ikke en regenerering, men den skal ramme **begge** akser i §0:
+
+| Akse | Hvordan den afkortes | Siden |
+|---|---|---|
+| **Kalenderdage** (`scheduled_at`) | til de-facto sæson-slut: sidste planlagte etape i sæsonen | #2149 (4/7) |
+| **Løbsdage** (`game_day`) | til **remaining horizon**: sæsonens mål − de allerede afviklede | #5272 (17/9) |
+
+**Hvorfor løbsdags-aksen har sit eget mål.** Kalenderdagene har været afkortet siden #2149,
+men aksens LÆNGDE har været et rent søgeresultat: pakkeren fyldte de resterende dage op mod
+overlap-cap'en og landede hvor den landede. En pulje der vågner på dag 18 af 28 fik derfor
+en anden udviklingstakt end alle andre i divisionen — nøjagtig den ulighed §1d/#4845 lukker
+for sæson-genereringen, ad en bagdør ingen kiggede på. Når løbsdagen bliver trænings-ticket
+([#4846](https://github.com/NicolaiDolmer/CyclingZone/issues/4846)) er det ikke en
+balance-nuance, det er spillets udviklingstakt.
+
+**Hvordan målet findes** (`backend/lib/calendarActivationRaceDays.js`, ren funktion):
+
+1. Er der givet et eksplicit sæson-mål (`seasonRaceDayTarget` — indgangen for #4845's
+   `SEASON_RACE_DAY_TARGET`), vinder det.
+2. Ellers **måles** de divisioner der allerede har en kalender i sæsonen. Længste akse
+   vinder — samme præcedens som #4845's `resolveCommonRaceDayTarget`, og af samme grund:
+   et mål under en divisions naturlige antal kan ikke opnås ved at tilføje tomme løbsdage.
+3. Aksen måles som **`max(game_day) + 1`**, ikke som antal distinkte løbsdage (§0b:
+   0-baseret, og en løbsdag uden løb har ingen række at tælle).
+4. Målet og de afviklede løbsdage læses af **samme division**. Er akserne skæve, ville de
+   to tal ellers være målt på hver sin skala; spredningen logges så uligheden er synlig.
+5. Kan intet mål afgøres (helt frisk sæson uden andre kalendere), sendes **intet** mål —
+   der gættes ikke, og adfærden er da uændret.
+
+> ⚠ **Virkningen afhænger af #4845.** `raceDayTarget` forbruges først af pakkeren når
+> [PR #5169](https://github.com/NicolaiDolmer/CyclingZone/pull/5169) er merget. Indtil da
+> **beregnes og rapporteres** målet (returværdiens `raceDayPlan`), men det ændrer ikke den
+> skrevne kalender. Beslutningen er truffet ét sted, så #5169 kun skal landes.
 
 ---
 
@@ -745,6 +830,34 @@ Det tredje niveau er dét der manglede da #4155 brød overlap-cap'en. Tre invari
 Overlap-cap'en (§8) er tættest på: niveau 1 (`calendarOverlapInvariant.test.js`, `raceCalendarLanePacker.test.js`) og niveau 3 (`calendar_overlap_within_tier_cap`) er på plads. Niveau 2 er IKKE verificeret: `detectCalendarViolations` tjekker GT-rygrad og klasse-whitelist, ikke cap'en — pakkeren får cap'en med som input, men preflighten måler den ikke bagefter. Ingen regel i denne fil er derfor bekræftet på alle tre niveauer. Se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
 
 **Fjernet 31/8 ([#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465)): `calendar_monument_exclusive_game_day`.** Den håndhævede #4075's eksklusive monument-løbsdag, som ejeren ophævede 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236), se §4). Reglen forsvandt fra tabellen i §4, men gaten fulgte ikke med, og nat-vagten stod derfor rød 27/8, 28/8 og 29/8 på noget der er tilladt. Læringen er led (c) i hard rule 30: ophæver du en regel, skal SSOT, generator og gate ændres i SAMME PR — ellers vogter gaten en regel der ikke findes.
+
+### 9f. `calendar-invariant-ci-gate` er BLOKERENDE fra 17/9 ([#4123](https://github.com/NicolaiDolmer/CyclingZone/issues/4123))
+
+Jobbet i `.github/workflows/ci.yml` kører to filer på hver PR:
+
+| Fil | Hvad den dømmer |
+|---|---|
+| `backend/lib/calendarInvariantsCiGate4123.test.js` | de objektivt afgjorte invarianter (§3 GT-regler, §7 kronologi, §1b kvote, §2 ingen tomme dage, monument-distance, klasse↔etapebånd) |
+| `backend/lib/calendarGoldenSnapshot.test.js` | den gyldne kalender-diff + at genereringen er deterministisk |
+
+Begge kører 100 % offline mod `racePoolCatalog.prod.json`. De kom med
+[PR #4571](https://github.com/NicolaiDolmer/CyclingZone/pull/4571) (2/9), men jobbet stod
+**rådgivende** uden for `scripts/ci-required-checks.json` — #4270's direktiv: en rød diff
+skulle kunne læses og vurderes af et menneske, før den kunne stoppe en merge.
+
+Vurderingen er gjort 17/9: begge filer kørte grønt mod `origin/main` (12 beståede, 3 skip
+— de tre er §11's ejer-ubesluttede bånd), og determinismen er selv en test, så en rød diff
+er enten en ægte regression eller en tilsigtet ændring der mangler sin
+`refreshCalendarGoldenSnapshot.mjs`-kørsel. Navnet står nu i kontrakt-filen.
+
+> ⚠ **Kontrakt-filen er et MANUELT spejl af branch protection ([#4330](https://github.com/NicolaiDolmer/CyclingZone/issues/4330)).**
+> Selve flaget vippes af ejeren i repo-indstillingerne; `gh`-kommandoen står i filens
+> `_comment`. Indtil da blokerer navnet ingenting — retningen er den sikre, modsat et navn
+> GitHub kræver og intet job producerer (det er dødvandet guarden findes for).
+
+**De tre ubesluttede bånd står stadig som `test.skip` med issue-reference**, ikke som et
+gættet tal. En gate der gætter en ejer-beslutning på plads er værre end ingen gate: den
+gør gættet til en regel næste læser tror er besluttet (§11).
 
 ### 9a. CI-fixturens kendte tilstand
 
