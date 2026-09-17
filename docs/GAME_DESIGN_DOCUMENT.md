@@ -283,12 +283,12 @@ rolle lige nu (`max over 8 roller af ratingForRole`), vist sammen med rollenavne
 ("54 Bjergrytter"). Anlægget vises separat som badge "Natural / Naturlig" og
 lover kun det medfødte, aldrig en plads i loft-toppen; badget bygges som preview
 og vises spillerne, før det går live. Sekundært anlæg trækkes fremover jævnt fra
-næste kuld nye ryttere; eksisterende ryttere røres ikke. **D-050:** bjergrytterens
-punch-loft sænkes fra signatur (93) til 80, fordi opskrift-stramning ikke løser
-at bjergrytteren i dag dominerer bakkerytter-loftet (climber rang 1-2 hos 99,8 %
-af puncheurerne). Ændringen er harness-målt og lander i sæsonpausen efter 27/9
-via `CLIMBER_PUNCH_FLOOR` i `riderProgression.js`; eksisterende ryttere med
-punch over 80 beholder evnen, men vokser ikke videre i den.
+næste kuld nye ryttere; eksisterende ryttere røres ikke. **D-050:**
+signaturbjergrytterens punch-loft sænkes markant, fordi opskrift-stramning ikke
+løser at bjergrytteren i dag dominerer bakkerytter-loftet (climber rang 1-2 hos
+99,8 % af puncheurerne). Ændringen er harness-målt og lander i sæsonpausen
+efter 27/9; eksisterende ryttere over det nye loft beholder evnen, men vokser
+ikke videre i den.
 
 ### Holdarbejde og Lederskab: mekanik og #3668-aftalen (D-051/D-052/D-053, ejer-valgt 15/9)
 
@@ -512,14 +512,15 @@ spillerens forståelse og glæde kræver observation og samtaler med spillere.
 
 - 17/9 2026 (Claude Code, retroaktiv registrering, #5087): D-049 og D-050 om
   ryttertype-visning, rating som bedste rolle nu og bjergrytterens punch-loft
-  (93→80) fra spec 11/9. D-051 og D-052 om Holdarbejde- og Lederskab-mekanikken
-  (H1-H6/L1-L3) og D-053 om #3668-aftalen (taktik/aggression uden PCM/alder)
-  fra spec 15/9. D-054 om U23-kalenderens samlede lancering 28/9 (eget katalog,
-  AI-hold-population, ikke løb hver kalenderdag) fra samme spec §10. D-055 til
-  D-057 løfter tre allerede besluttede NOW-regler ind i loggen: Graduation Day
-  ved 23 (#5279), de mentale evners lofter og aggression ude af evnesystemet
-  (#5297), og ét løb pr. rytter pr. løbsdag (#4209). Ingen nye designvalg;
-  kun eksisterende beslutninger fra specs og NOW.md registreret med D-numre.
+  (sænket markant) fra spec 11/9. D-051 og D-052 om Holdarbejde- og Lederskab-
+  mekanikken (H1-H6/L1-L3) og D-053 om #3668-aftalen (taktik/aggression uden
+  PCM/alder) fra spec 15/9. D-054 om U23-kalenderens samlede lancering 28/9
+  (eget katalog, AI-hold-population, ikke løb hver kalenderdag) fra samme spec
+  §10. D-055 til D-057 løfter tre allerede besluttede NOW-regler ind i loggen:
+  Graduation Day ved 23 (#5279), de mentale evners lofter og aggression ude af
+  evnesystemet (#5297), og ét løb pr. rytter pr. løbsdag (#4209). Ingen nye
+  designvalg; kun eksisterende beslutninger fra specs og NOW.md registreret med
+  D-numre.
 
 - 10/9 2026 (eftermiddag, Claude Code): D-047 om mobiltabeller (tre faste
   kolonner + "Fuld tabel" som to-lags, afløser TASTE P10 fork 6) og D-048 om
