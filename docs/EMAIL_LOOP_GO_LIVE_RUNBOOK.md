@@ -6,6 +6,10 @@ Del D af #2853. Kode er merged og dormant. Denne runbook er ejerens tjekliste
 for at tænde loopet — Claude flipper `app_config` og læser `email_log`,
 ejeren lægger secrets og godkender copy.
 
+**Status 15/9:** welcome + day1 er `"on"`, `race_digest` er `"off"`. Win-back (#2760)
+er bygget som en separat mailtype (samme app_config-mønster) med flaget sat til `false`
+i afventning af ejer-go, målsat 21.-24/9.
+
 ## 1. Secrets (Infisical → Railway)
 
 | Nøgle | Krav | Bruges i |

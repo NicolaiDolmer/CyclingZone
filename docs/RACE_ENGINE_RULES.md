@@ -542,6 +542,8 @@ Naboområder: [`CALENDAR_RULES.md`](CALENDAR_RULES.md) (hvornår løbene køres)
 
 **Én motor.** Der findes præcis én v4: `backend/lib/engine/v4`. Ny motor-logik uden for den mappe er forbudt. Mekanik-kataloget skal altid vise **bygget** og **koblet ind** som to kolonner; "bygget" alene betyder at motoren ikke kalder det.
 
+**Prod-status (#4951):** `app_config`-rækken `race_engine_v4` er `"off"`. Flip planlagt til 28/9, ejer-only (jf. mål-vs-garanti i regel 1 nedenfor).
+
 | # | Regel | Ejer |
 |---|---|---|
 | 1 | **Flip-scope = v3-paritet + de tre krav.** v4 må først kaldes klar når alt spillerne har i v3 er koblet ind (styrt, bonussekunder, indsatsvalg, holdspil, vejr/brosten/grus/distance-slid) plus #2789, #2944, #2582, plus flag, kaldssted, output → `race_results`, kill-switch til v3. Ankre grønne før "klar". 28/9 er et mål, ikke en garanti; S3 kører færdig på v3 | 5/9 |
