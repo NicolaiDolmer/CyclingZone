@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.282",
+    "version": "7.283",
     "date": "2026-09-16",
     "label": "Beta",
     "changes": [
@@ -17,6 +17,29 @@ export const PATCHES = [
           "body": "Hvad er ændret: Du kan scoute direkte fra rytterlisten, også på din telefon. Tilbage-navigation gendanner nu filtrene fra den side. Klikker du på Ryttere i menuen, mens du allerede er der, starter du stadig med en ren liste.\n\nHvad betyder det for dig: Sammenlign ryttere uden at åbne hver profil eller sætte dine filtre igen. På mobil er løn ét kolonnevalg væk."
         },
         "refs": [5292]
+      }
+    ]
+  },
+  {
+    "version": "7.282",
+    "date": "2026-09-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "A clearer message when the server cannot be reached",
+          "body": "If your browser cannot reach the game server, the dashboard used to say it could not load. That points at the game, when the problem is the connection between you and it. It now tells you what actually happened, so you know to check your network first. These failures are also recorded properly now, so I can see how often they happen instead of hearing about them one player at a time."
+        },
+        "da": {
+          "title": "Tydeligere besked når serveren ikke kan nås",
+          "body": "Hvis din browser ikke kan få forbindelse til spillets server, sagde dashboardet før, at det ikke kunne indlæses. Det peger på spillet, når problemet er forbindelsen mellem dig og det. Nu står der, hvad der faktisk skete, så du ved, at du skal tjekke dit netværk først. Fejlene bliver også registreret ordentligt nu, så jeg kan se, hvor ofte de sker, i stedet for at høre om dem én spiller ad gangen."
+        },
+        "refs": [
+          5312
+        ]
       }
     ]
   },
