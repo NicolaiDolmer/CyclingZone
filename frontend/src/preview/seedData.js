@@ -1770,10 +1770,11 @@ export const SEED_SCOUTING_REPORT = {
     { key: "puncheur", now: 25, progLo: 28, progHi: 36, ceilLo: 28, ceilHi: 36, loft: 61 },
     { key: "brostensrytter", now: 24, progLo: 30, progHi: 39, ceilLo: 30, ceilHi: 39, loft: 73 },
     { key: "baroudeur", now: 24, progLo: 29, progHi: 37, ceilLo: 29, ceilHi: 37, loft: 64 },
-    // #5268: 27 → 26. `teamwork` kom ind i rouleur-opskriften, og Adas
-    // holdarbejde (18) ligger under hendes øvrige rouleur-evner. Loft-båndet
-    // rummer stadig sandheden (37 i [33,42]) og er derfor urørt.
-    { key: "rouleur", now: 26, progLo: 33, progHi: 42, ceilLo: 33, ceilHi: 42, loft: 81 },
+    // #5321: 26 → 27 igen. #5268 satte den til 26 fordi `teamwork` kom ind i
+    // rouleur-opskriften; den vægt er rullet ud igen (evnen har ikke værdier på
+    // alle ryttere endnu). Loft-båndet rummer stadig sandheden (37 i [33,42])
+    // og er derfor urørt.
+    { key: "rouleur", now: 27, progLo: 33, progHi: 42, ceilLo: 33, ceilHi: 42, loft: 81 },
     { key: "gc", now: 23, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35, loft: 55 },
   ],
   verdict: { headlineKey: "monitor", confidence: "high", factorKeys: ["ceiling_gap", "value_gap", "type_match", "form_unknown"] },
