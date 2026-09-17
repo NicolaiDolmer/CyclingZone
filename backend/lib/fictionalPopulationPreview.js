@@ -3,6 +3,7 @@
 // preview-scriptet OG admin Rider Explorer-endpointet (#1364-enabler).
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveAbilities } from "./abilityDerivation.js";
+import { isBornFromPriors, deriveBirthAbilities } from "./riderBirthPriors.js";
 import { computeRiderTypes } from "./riderTypes.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
@@ -21,8 +22,12 @@ export function buildFictionalPopulationPreview({
   const { riders, coverage } = generateFictionalRiders({ seed, count, referenceYear });
   const rows = riders.map((r, i) => {
     const id = `fic-${seed}-${i}`;
-    const riderRow = { ...r, id };
-    const abilities = deriveAbilities({}, riderRow, { asOfYear: referenceYear });
+    // #5269: spejler deriveForRiderIds' foedsels-forgrening - en rytter
+    // foedt af spillets egne priors faar evnerne reproduceret fra foedsels-seed'en.
+    const riderRow = { ...r, id, archetype_draw: r._meta?.archetypeDraw ?? null };
+    const abilities = isBornFromPriors(riderRow)
+      ? deriveBirthAbilities(riderRow, { age: r._meta?.age ?? null })
+      : deriveAbilities({}, riderRow, { asOfYear: referenceYear });
     const { primary, secondary } = computeRiderTypes(abilities, baseline);
     // rider-type-write-ok: preview af en syntetisk population (ingen DB, ingen
     // rytter-id'er der findes) — typen vises, persisteres aldrig.

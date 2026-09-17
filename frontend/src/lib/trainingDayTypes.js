@@ -15,7 +15,11 @@ export const TRAINING_SESSIONS_BY_LEVEL = Object.freeze({
   easy: Object.freeze(["endurance"]),
   normal: Object.freeze(["tempo"]),
   // #4631: intervaldagen findes nu som hybrid + to specialiserede halvdele.
-  hard: Object.freeze(["vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint"]),
+  // #5236/#5237: brosten, vifte og angreb — se backend trainingDayTypes.js.
+  hard: Object.freeze([
+    "vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint",
+    "cobbled_sectors", "echelon_drills", "attack_repeats",
+  ]),
 });
 export const TRAINING_LEVELS = Object.freeze(Object.keys(TRAINING_SESSIONS_BY_LEVEL));
 export const SESSION_INTENSITY = Object.freeze({
@@ -29,6 +33,9 @@ export const SESSION_INTENSITY = Object.freeze({
   vo2max_punch: "hard",
   threshold: "hard",
   sprint: "hard",
+  cobbled_sectors: "hard",
+  echelon_drills: "hard",
+  attack_repeats: "hard",
 });
 export const RECOVERY_FOCUS = "restitution";
 export const RECOVERY_INTENSITY = "recovery";

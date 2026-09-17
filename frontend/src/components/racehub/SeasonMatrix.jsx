@@ -83,7 +83,16 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
 
   useEffect(() => { setLoading(true); setLoadError(null); load(); }, [load]);
 
-  const races = useMemo(() => data?.races ?? [], [data]);
+  // #5301: afmeldingen hænges på selve løbs-objektet, så ÉN kilde fodrer alle
+  // forbrugere (conflictingEntryForRace, countProblems, riderLoadDays, cellerne) —
+  // samme mønster som Race Hub-kolonnernes `c.withdrawn`. Entries bevares bevidst
+  // ved afmelding (#4306), så uden dette flag udleder matrixen "deltager" af
+  // entries alene og låser ryttere ude af løb de faktisk må køre.
+  const races = useMemo(() => {
+    const withdrawn = new Set(data?.withdrawnRaceIds ?? []);
+    if (!withdrawn.size) return data?.races ?? [];
+    return (data?.races ?? []).map((r) => (withdrawn.has(r.id) ? { ...r, withdrawn: true } : r));
+  }, [data]);
   const riders = useMemo(() => [...(data?.riders ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [data]);
   const raceById = useMemo(() => new Map(races.map((r) => [r.id, r])), [races]);
   // Akse-konvertering (kontrakt #7, ejer-låst 27-28/8, spillertest-punkt 6): ÉN
@@ -298,6 +307,19 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         )}
       </div>
 
+      {/* #5124 — D-047-undtagelse (skriftlig begrundelse, jf. issuets krav):
+          gitteret her er en RYTTER × LØBSDAG-matrix, ikke en liste af entiteter
+          med tre valgfrie egenskaber. D-047's "navn + tre faste kolonner" giver
+          kun mening når kolonnerne er UDSKIFTELIGE datapunkter om ÉN entitet
+          (OVR/værdi/løn for en rytter); her er hver kolonne en FORSKELLIG
+          kalenderdag — de kan ikke vælges "3 ad gangen" uden at gøre kalenderen
+          ulæselig (spilleren skal se rækkefølgen af løb, ikke tre tilfældige
+          dage). Sticky navnekolonne (`sticky left-0`) + kontaineret vandret
+          scroll (denne `overflow-x-auto`, ALDRIG page-level) er derfor den
+          rigtige mobil-løsning, ikke chips: samme mønster har allerede levet
+          her siden #1146 (ejer-godkendt design 27/8, FØR #5124) og er dækket af
+          frontend/tests/e2e/1146-season-matrix.spec.js's "mobil 375px"-test —
+          verificeret på ny for #5124, ingen kodeændring nødvendig. */}
       <div className="rounded-cz border border-cz-border bg-cz-card overflow-x-auto">
         <table
           data-sort-exempt="rytter x loebsdag-gitter, ikke en sorterbar liste"
@@ -347,9 +369,16 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                       {race ? (
                         <span className="flex items-center justify-between gap-1">
                           {hasError && <AlertTriangleIcon size={10} className="shrink-0" aria-hidden="true" />}
+                          {/* #5301: afmeldt løb bærer sit eget mærke i headeren, så
+                              spilleren ser det uden at klikke en celle op — og ser
+                              HVORFOR den bevarede opstilling står tonet ned. Samme
+                              ord som Race Hub-kolonnen (selection.status.withdrawn). */}
+                          {race.withdrawn && <LockIcon size={9} className="shrink-0 text-cz-3" aria-hidden="true" />}
                           <span className="truncate">{race.name}</span>
                           <span className="tabular-nums text-cz-3 shrink-0">
-                            {t("matrix.squadCount", { count: raceCurrentCount(draftByRace, race.id), max: race.sizeMax })}
+                            {race.withdrawn
+                              ? t("racehub.status.withdrawn")
+                              : t("matrix.squadCount", { count: raceCurrentCount(draftByRace, race.id), max: race.sizeMax })}
                           </span>
                         </span>
                       ) : null}
@@ -444,8 +473,16 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                           <button
                             type="button"
                             onClick={(e) => openCellPopover(e, { kind: "filled", raceId: race.id, riderId: rider.id })}
-                            title={[t("matrix.cellFilledAria", { rider: rider.name, race: race.name, role: t(`tacticsOrders.roleLabel.${role}`) }), peakInfo].filter(Boolean).join(" · ")}
-                            className="w-full h-7 flex cursor-pointer hover:opacity-90"
+                            // #5301: den bevarede opstilling i et afmeldt løb (#4306) skal
+                            // LÆSES som "gemt, men kører ikke" — ikke som en normal udtagelse.
+                            // Tonet ned + afmeldt-teksten i tooltippen; klik åbner stadig
+                            // popoveren, der forklarer låsen.
+                            title={[
+                              t("matrix.cellFilledAria", { rider: rider.name, race: race.name, role: t(`tacticsOrders.roleLabel.${role}`) }),
+                              race.withdrawn ? t("matrix.withdrawnHint") : null,
+                              peakInfo,
+                            ].filter(Boolean).join(" · ")}
+                            className={`w-full h-7 flex cursor-pointer hover:opacity-90 ${race.withdrawn ? "opacity-40 saturate-50" : ""}`}
                           >
                             {lens === "routeMatch" ? (
                               <span className={`flex-1 flex items-center justify-center gap-1 text-3xs font-semibold ${roleBadgeClass(role)}`}>
@@ -496,6 +533,13 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         // kunne vælges, hvis det overlapper rytterens eksisterende udtagelse
         // et andet sted (kontrakt #6).
         const conflict = !fixed ? conflictingEntryForRace(rider.id, race, races, draftByRace) : null;
+        // #5301: et afmeldt løb er låst PÅ SAMME MÅDE som en anden sæson — cellen
+        // viser kun årsagen. PUT /races/selection/bulk afviser alligevel hele batchen
+        // med 409 selection_withdrawn (#4306-gaten), så en redigerbar celle her var en
+        // blindgyde der OGSÅ blokerede spillerens øvrige, lovlige ændringer i samme gem.
+        const lockedReasonText = readOnly
+          ? t("seasonView.readOnlyHint")
+          : race.withdrawn ? t("matrix.withdrawnHint") : null;
         return (
           <SeasonMatrixCellPopover
             anchorEl={popoverAnchor}
@@ -504,13 +548,13 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             race={race}
             fixed={fixed}
             currentRole={currentRole}
-            lockedReasonText={readOnly ? t("seasonView.readOnlyHint") : null}
+            lockedReasonText={lockedReasonText}
             conflict={conflict}
             onSelectRole={(role) => {
-              setRaceDraft(race.id, (d) => setRiderRole(d, rider.id, role, !!conflict));
+              setRaceDraft(race.id, (d) => setRiderRole(d, rider.id, role, !!conflict || !!race.withdrawn));
               closeCellPopover();
             }}
-            onRemove={fixed ? () => { setRaceDraft(race.id, (d) => removeRiderFromRace(d, rider.id)); closeCellPopover(); } : undefined}
+            onRemove={fixed && !race.withdrawn ? () => { setRaceDraft(race.id, (d) => removeRiderFromRace(d, rider.id)); closeCellPopover(); } : undefined}
           />
         );
       })()}

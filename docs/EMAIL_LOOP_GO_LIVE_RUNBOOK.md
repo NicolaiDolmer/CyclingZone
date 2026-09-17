@@ -6,6 +6,10 @@ Del D af #2853. Kode er merged og dormant. Denne runbook er ejerens tjekliste
 for at tænde loopet — Claude flipper `app_config` og læser `email_log`,
 ejeren lægger secrets og godkender copy.
 
+**Status 15/9:** welcome + day1 er `"on"`, `race_digest` er `"off"`. Win-back (#2760)
+er bygget, men er IKKE en fjerde loop-type — se §2b for dens eget flag og kommando.
+Målsat send-vindue: 21.-24/9, efter ejer-go.
+
 ## 1. Secrets (Infisical → Railway)
 
 | Nøgle | Krav | Bruges i |
@@ -63,6 +67,25 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 UPDATE public.app_config SET value = '"on"'::jsonb, updated_at = NOW()
 WHERE key = 'email_loop_welcome'; -- eller email_loop_day1 / email_loop_race_digest
 ```
+
+## 2b. Win-back (#2760) — separat one-off flag, ikke en fjerde loop-type
+
+Win-back har ingen cron-stage og deler IKKE `EMAIL_LOOP_TYPE_KEYS`-mønstret ovenfor.
+Det er en plain boolean-gate for et enkeltstående ops-script, ikke en sweep:
+
+- **Nøgle:** `winback_send_enabled` (`app_config`, boolean, ikke `off`/`dry_run`/`on`).
+  Migration: `database/2026-09-14-2760-winback-app-config.sql`. Default `false`.
+- **Gater:** `scripts/winback-send.mjs --execute`. Med flaget `false` afviser
+  `--execute` med exit 1. `--dry-run` sender aldrig og er altid tilgængeligt
+  uanset flaget — der er ikke brug for en gate på selve tørkørslen.
+- **Segment/samtykke/dedupe-logik:** `backend/lib/winbackSegment.js`.
+  Copy: `backend/lib/emailTemplates.js` (`buildWinbackEmail`) — skal
+  ejer-godkendes FØR flippet, ikke bare før sendingen.
+- **Flip til on:**
+  ```sql
+  UPDATE public.app_config SET value = 'true'::jsonb, updated_at = NOW()
+  WHERE key = 'winback_send_enabled';
+  ```
 
 ## 3. Verifikations-SQL (email_log)
 
@@ -237,7 +260,7 @@ når noget er galt. En rolig rapport er en rapport du ikke behøver læse.
 | Bounce-rate | over 2 % af sendte, min. 10 sendte | Find de bouncede adresser (SQL i 6.6). Er de stavefejl eller døde konti, er brugerne allerede undertrykt automatisk. Fortsætter raten, så sæt typen til `off` og se på targeting. Over 5 % begynder Gmail at straffe hele domænet. |
 | Klage-rate | over 0,1 % af sendte, min. 10 sendte | Alvorligt. Læs den mail klagen ramte. Er der noget uventet ved den (forkert modtager, for hyppig, uklar afsender), så sluk typen mens du retter. Klage-raten er den enkeltfaktor der hurtigst ødelægger et afsender-domæne. |
 | Døde retries | over 0 | Mailen nåede aldrig frem og prøves ikke igen. Slå `error`-teksten op på rækken (SQL i §3). En stribe 5xx betyder Resend-nedbrud; alt andet er en fejl hos os. |
-| Type med kandidater men 0 sendt, to døgn i træk | | Sweepen finder folk, men ingen får mail. Det var præcis formen på fejlen 8/9. Tjek Sentry for `email-loop`-tagget og at nøglerne står korrekt. |
+| Aktiv type med ikke-skippede kandidater men 0 sendt i begge rullende 24-timersvinduer | | Tjek `candidates > skipped` for `stage = on`, samt `failed`. Allerede behandlede kandidater tæller igen i 48 timer og er ikke nye modtagere. Tjek Sentry for `email-loop`-tagget og at nøglerne står korrekt. Definition: `EMAIL_STACK.md` §5.2. |
 
 Akut nødbremse er altid den samme: sæt de(n) berørte `app_config`-nøgle til
 `off` (§5). Ingen deploy nødvendig.
@@ -329,12 +352,16 @@ ORDER BY created_at DESC
 LIMIT 20;
 ```
 
-**Sweep-kørsler: fandt vi kandidater vi ikke fik sendt til?**
+**Sweep-kørsler: observationer og udfald, ikke unikke modtagere.**
+`dry_run`-rækkers `sent` er simuleringer. `skipped` omfatter både dedupe/opt-out
+og returnerede Resend-fejl; læs derfor også `email_log` og fejlalarmerne.
 
 ```sql
 SELECT email_type, stage,
        SUM(candidates) AS kandidater,
        SUM(sent)       AS sendt,
+       SUM(skipped)    AS skippet,
+       SUM(failed)     AS fejlet,
        COUNT(*)        AS koersler
 FROM email_sweep_runs
 WHERE created_at > NOW() - INTERVAL '48 hours'

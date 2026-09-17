@@ -36,6 +36,8 @@ import { useBlockedAction } from "../lib/useBlockedAction.js";
 // (bulk-select-checkbokse + en expander-handlingsrække pr. listing er uden for
 // DataTable's API, ligesom AuctionsPage's sticky bud-kolonne i bølge 1).
 import { WRAP } from "../components/ui/dataTableStyles.js";
+import { useIsMobileViewport } from "../hooks/useMediaQuery.ts";
+import { FullTableToggle } from "../components/ui/MobileTableChips.jsx";
 import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { getRiderAge, retirementBidWarningTier } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
@@ -950,7 +952,7 @@ function MarketOfferForm({ listing, onOffer, seasonYear }) {
 
 // Én listing = én rytterrække (+ optionel action-expander-række under).
 function MarketRow({
-  listing, myTeamId, statCols, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice,
+  listing, myTeamId, statCols, showStatCols = true, isMobile = false, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice,
   selected, onToggleSelect, seasonYear,
 }) {
   const { t } = useTranslation("transfers");
@@ -961,6 +963,13 @@ function MarketRow({
   // mod listing.asking_price i stedet for auktionens current_price — paritet
   // mellem de to sider af samme marked.
   const valueDelta = computeBidValueDelta(listing.asking_price, rider);
+  // #5124 ejer-fund 15/9: navnet kan nu wrappe til 2 linjer på mobil (RiderNameCell
+  // wrap=true), og `<td>`'s browser-default `vertical-align: middle` centrerede
+  // derfor Værdi/Udbudspris/Handling-cellernes ENKELT-linje-indhold lodret midt i
+  // den nu 2-linjers række — samme linje som navnets 2. linje, ikke øverst ved
+  // linje 1. Set af ejeren som rytternavnet og Værdi-tallet der stod OVEN I
+  // hinanden. Kun et lodret layout-spørgsmål, align-top løser det.
+  const mobileWrapAlign = isMobile && !showStatCols ? "align-top" : "";
 
   return (
     <>
@@ -971,8 +980,19 @@ function MarketRow({
         {/* #2849 bølge 2: rå box-shadow fjernet — .sticky-name-cell (index.css)
             giver allerede opak cellebund; border-r er den ene hairline-rule
             (cz-table-recipen), samme fix som AuctionsPage bølge 1. */}
-        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-table-col border-r border-cz-border">
-          <div className="flex items-center gap-2">
+        <td
+          className={`px-3 py-2.5 sticky-name-cell sticky left-0 z-table-col border-r border-cz-border ${mobileWrapAlign} ${
+            // #5124 ejer-fund 15/9: `max-w-0` alene gav navnekolonnen intet BUNDMÅL —
+            // et enkelt ord ("Sander") rendrede bredere end den plads Værdi/Udbudspris/
+            // Handling (nu strammet, se deres celler nedenfor) reelt levnede den, og
+            // teksten overlappede visuelt ind i Værdi-kolonnen. `min-w-[72px]` er et
+            // gulv, ikke et mål — table-layout:auto vokser stadig kolonnen til det
+            // faktiske indhold; gulvet forhindrer bare at den kollapser under det korte
+            // ord der ikke kan brydes yderligere.
+            isMobile && !showStatCols ? "w-full max-w-0 min-w-[72px]" : ""
+          }`}
+        >
+          <div className={`flex items-center gap-2 ${isMobile && !showStatCols ? "min-w-0" : ""}`}>
             {/* #2451: markering til bulk-prisredigering — kun egne listinger kan
                 bulk-redigeres, så checkboxen findes kun for dem. Ligger i selve
                 den sticky navne-celle (ikke en ny kolonne) så den forbliver synlig
@@ -988,7 +1008,17 @@ function MarketRow({
                 className="min-w-[18px] min-h-[18px] w-[18px] h-[18px] cursor-pointer accent-cz-accent"
               />
             )}
-            <RiderNameCell id={rider?.id} firstname={rider?.firstname} lastname={rider?.lastname} />
+            <RiderNameCell
+              id={rider?.id}
+              firstname={rider?.firstname}
+              lastname={rider?.lastname}
+              // #5124: navnet må bryde (ved ordgrænsen) i mobil-standardtilstanden
+              // i stedet for at tvinge en nowrap-bredde — samme regel som
+              // TrainingPage.jsx's roster og DataTable's renderStickyCell(wrap).
+              // `wrap`-proppen (RiderNameCell.jsx) fjerner den ellers altid
+              // tilføjede whitespace-nowrap (CodeRabbit-fund, #5124).
+              wrap={isMobile && !showStatCols}
+            />
           </div>
         </td>
         <td className="px-3 py-2.5 hidden sm:table-cell">
@@ -1002,21 +1032,35 @@ function MarketRow({
             {listing.created_at ? formatDate(listing.created_at, null, { day: "numeric", month: "short" }) : "—"}
           </span>
         </td>
-        <td className="px-3 py-2.5 text-right">
+        {/* #5124: max-w på mobil-standardtilstanden — uden den æder Værdi/
+            Udbudspris (ingen af dem havde en bredde-grænse) navnekolonnens
+            plads i tabellens auto-layout, præcis samme fejlklasse som
+            TrainingPage.jsx's roster (se navnecellens kommentar ovenfor).
+            #5124 ejer-fund 15/9: et forsøg på at stramme disse to (16vw/20vw)
+            for at give navnet mere plads gik for langt den ANDEN vej — et
+            7-cifret beløb ("1.200.000") er ~9 tegn og passer ikke i 16vw,
+            så DET overlappede i stedet ind i Udbudspris. 22vw/26vw er det
+            verificerede minimum for tal på tværs af hele beløbsintervallet;
+            navnets plads kommer i stedet fra min-w-[72px]-gulvet nedenfor. */}
+        <td className={`px-3 py-2.5 text-right ${mobileWrapAlign} ${isMobile && !showStatCols ? "max-w-[22vw]" : ""}`}>
           <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderMarketValue(rider))}</span>
         </td>
         <td className="px-3 py-2.5 text-right hidden sm:table-cell">
           <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderSalary(rider))}</span>
         </td>
-        <td className="px-3 py-2.5 text-right">
-          <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap">
+        <td className={`px-3 py-2.5 text-right ${mobileWrapAlign} ${isMobile && !showStatCols ? "max-w-[26vw]" : ""}`}>
+          <span
+            className={`text-cz-accent-t font-mono text-sm font-bold ${
+              isMobile && !showStatCols ? "" : "whitespace-nowrap"
+            }`}
+          >
             {formatNumber(listing.asking_price)} CZ$
           </span>
           {/* #3191: udbudspris vs. estimeret markedsværdi — paritet med Auktioners
               bud-vs-vurdering-indikator (#2464), delt via ValueDeltaBadge. */}
           <ValueDeltaBadge valueDelta={valueDelta} ns="transfers" as="p" className="text-3xs mt-0.5" />
         </td>
-        {statCols.map(({ key }) => (
+        {showStatCols && statCols.map(({ key }) => (
           <td key={key} className="px-1.5 py-2.5 w-14 text-center">
             <MarketStatBar value={rider?.[key]} />
           </td>
@@ -1036,7 +1080,7 @@ function MarketRow({
       </tr>
       {expanded && (
         <tr className="border-b border-cz-border bg-cz-subtle">
-          <td colSpan={8 + statCols.length + 1} className="px-3 pb-4 pt-1">
+          <td colSpan={8 + (showStatCols ? statCols.length : 0) + 1} className="px-3 pb-4 pt-1">
             <div className="max-w-xl rounded-cz border border-cz-border bg-cz-card p-3">
               {isOwn ? (
                 <OwnListingActions
@@ -1219,6 +1263,19 @@ export default function TransfersPage() {
     setMarketSortState((cur) => cycleSortState(cur, key, MARKET_SORT_DESC_FIRST_KEYS));
   }
   const [expandedListingId, setExpandedListingId] = useState(null); // #1523: åben action-række i market-tabellen
+  // #5124 — D-047 for markeds-tabellen (kan ikke bruge <DataTable>, se WRAP-
+  // kommentaren ved tabellen: bulk-select-checkbokse + en expander-handlings-
+  // række pr. listing). De 15 evne-kolonner har ALDRIG haft en `hidden`-klasse,
+  // så de er den reelle årsag til at Transferlisten er "almost unplayable" på
+  // mobil (#5124) — sammen med Nation/Sælger/Alder/Listet (allerede sm:/md:-
+  // foldet) sprænger de langt over 390px. Ingen chip-bytter her: de tre
+  // altid-synlige kolonner (Værdi, Pris, Handling) er FASTE, ikke et valg
+  // blandt mange — så mobil-standarden er blot "skjul de 15 evnekolonner,
+  // FullTableToggle afslører dem" (samme visuelle sprog som MobileColumnChips,
+  // se MobileTableChips.jsx).
+  const isMobile = useIsMobileViewport();
+  const [marketFullTable, setMarketFullTable] = useState(false);
+  const showMarketStatCols = !isMobile || marketFullTable;
 
   function toggleExpandedListing(id) {
     setExpandedListingId(prev => (prev === id ? null : id));
@@ -1907,8 +1964,12 @@ export default function TransfersPage() {
                    via dataTableStyles' WRAP (samme konstant som AuctionsPage bruger
                    for sin håndrullede tabel); header-typografien deler MARKET_TH_BASE
                    med cz-table-recipen. */
+                <>
+                {isMobile && (
+                  <FullTableToggle fullTable={marketFullTable} onToggle={() => setMarketFullTable((v) => !v)} />
+                )}
                 <div className={WRAP}>
-                  <div className="overflow-auto max-h-[calc(100vh-260px)]">
+                  <div className={`overflow-y-auto max-h-[calc(100vh-260px)] ${isMobile && !marketFullTable ? "overflow-x-hidden" : "overflow-x-auto"}`}>
                     <table data-sortable className="w-full text-xs">
                       <thead className="sticky top-0 z-table-head bg-cz-card">
                         <tr className="border-b border-cz-border">
@@ -1943,7 +2004,7 @@ export default function TransfersPage() {
                             className={`px-3 py-3 text-right w-32 ${MARKET_TH_BASE}`}>
                             {t("marketRow.price")}
                           </SortableTh>
-                          {LISTING_STATS.map(({ key, label }) => (
+                          {showMarketStatCols && LISTING_STATS.map(({ key, label }) => (
                             <SortableTh key={key} sortKey={key} sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
                               className={`px-1.5 py-3 text-center w-14 ${MARKET_TH_BASE}`}>
                               {label}
@@ -1959,6 +2020,8 @@ export default function TransfersPage() {
                             listing={l}
                             myTeamId={myTeamId}
                             statCols={LISTING_STATS}
+                            showStatCols={showMarketStatCols}
+                            isMobile={isMobile}
                             expanded={expandedListingId === l.id}
                             onToggleExpand={toggleExpandedListing}
                             onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
@@ -1973,6 +2036,7 @@ export default function TransfersPage() {
                     </table>
                   </div>
                 </div>
+                </>
               )}
               {/* #2849 T2-kontrakt: count-linje under markeds-tabellen (docs/design/PAGE_TEMPLATES.md). */}
               {filteredListings.length > 0 && (

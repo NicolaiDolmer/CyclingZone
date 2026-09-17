@@ -58,7 +58,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 1306
     verified: 2026-09-06
-    note: Autoritativ motor i prod; flagnavnet er historisk (v2-æraen).
+    note: Autoritativ; flagnavn historisk.
 
   - id: race-engine-v3-scoring
     area: race-engine
@@ -69,7 +69,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 2353
     verified: 2026-09-06
-    note: Dagsform, jour sans, arbejdsomkostning og rolle-opløsning i raceSimulator.
+    note: 4 score-faktorer i raceSimulator.
 
   - id: race-engine-v4
     area: race-engine
@@ -79,7 +79,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 3855
     verified: 2026-09-07
-    note: Række race_engine_v4 = "off" i prod (#4951). Flip planlagt 28/9, ejer-only.
+    note: Off i prod (#4951).
 
   - id: form-and-fatigue
     area: race-engine
@@ -89,7 +89,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 2353
     verified: 2026-09-06
-    note: Vægter reelt ind via formRaceWeightV3, ikke neutrale 0-stubs.
+    note: Reel vægt via formRaceWeightV3.
 
   - id: team-selection-and-roles
     area: race-engine
@@ -108,7 +108,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 4632
     verified: 2026-09-07
-    note: UI er live i Taktik-fanen (RaceTacticsTab, #4913); motoreffekten venter på v4-flip (dormant nøgle race_day_intention_enabled).
+    note: UI live; effekt venter v4-flip.
 
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
@@ -145,7 +145,7 @@ features:
     title_da: Løbsside
     state: live
     verified: 2026-09-07
-    note: RaceDetailPage som hero + faner (Overblik/Hold/Taktik/Etaper/Resultater) siden #4913.
+    note: Hero + faner (#4913).
 
   - id: race-replay
     area: race-day
@@ -154,7 +154,7 @@ features:
     state: live
     flag: race_stage_timeline
     verified: 2026-09-06
-    note: FinalKilometrePlayback, TimelineFilmPlayer og StageFilmScrubber.
+    note: 3 replay-komponenter i UI.
 
   - id: race-page-tabs-v2
     area: race-day
@@ -163,7 +163,7 @@ features:
     state: live
     epic: 4613
     verified: 2026-09-07
-    note: PR #4913 merget 6/9 kl. 18:57; patch note 7.259.
+    note: PR #4913, 6/9; patch note 7.259.
 
   - id: race-day-development
     area: race-day
@@ -174,7 +174,7 @@ features:
     ssot: docs/PROGRESSION_RULES.md
     epic: 4850
     verified: 2026-09-07
-    note: Bygget (D2); flaget åbnes når træningstick-omlægningen (#4850) er klar, senest S4 28/9.
+    note: Bygget (D2); afventer #4850.
 
   # --- market --------------------------------------------------------------
   - id: auctions
@@ -200,7 +200,7 @@ features:
     state: live
     ssot: docs/TRANSFER_MARKET_RULES.md
     verified: 2026-09-06
-    note: Knap på rytterprofilen; den separate fane er fjernet.
+    note: Knap på profilen, ikke egen fane.
 
   - id: rider-loans
     area: market
@@ -210,7 +210,7 @@ features:
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 1994
     verified: 2026-09-06
-    note: Afviklet; kun finansielle lån findes i dag.
+    note: Afviklet; kun lån findes.
 
   - id: auction-entry-gate
     area: market
@@ -240,7 +240,7 @@ features:
     ssot: docs/ECONOMY_RULES.md
     epic: 3448
     verified: 2026-09-07
-    note: Bygget; flaget åbnes efter ejer-go (#4449, global vægt 0,15). Kun ren måling kører i dag (#4419).
+    note: Afventer ejer-go (#4449).
 
   # --- squad ---------------------------------------------------------------
   - id: contracts
@@ -251,7 +251,7 @@ features:
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 1310
     verified: 2026-09-06
-    note: extend-contract, contractExpiryRelease og aiContractAutoRenewal i sæsonskiftet.
+    note: Tre kontrakt-stier ved sæsonskifte.
 
   - id: squad-management
     area: squad
@@ -259,7 +259,7 @@ features:
     title_da: Trupstyring
     state: live
     verified: 2026-09-06
-    note: TeamPage med trup, løn, kontrakter og udviklingsfane.
+    note: 4 faner i TeamPage.
 
   - id: rider-compare-and-watchlist
     area: squad
@@ -267,6 +267,16 @@ features:
     title_da: Sammenlign ryttere og overvågningsliste
     state: live
     verified: 2026-09-06
+
+  - id: mental-abilities-teamwork-leadership
+    area: squad
+    title_en: Teamwork and Leadership abilities
+    title_da: Holdarbejde og Lederskab som evner
+    state: building
+    ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
+    epic: 1177
+    verified: 2026-09-15
+    note: Data-only (#5268), resten senere.
 
   # --- training ------------------------------------------------------------
   - id: daily-training
@@ -305,7 +315,28 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 4846
     verified: 2026-09-15
-    note: Fundament merget 15/9 bag flag (off); design låst §13.3; B4-udløser mangler.
+    note: Merget 15/9, flag off (§13.3).
+
+  - id: training-score
+    area: training
+    title_en: Training score 1-99
+    title_da: Træningsscore 1-99
+    state: beta
+    flag: training_score_visible
+    ssot: docs/TRAINING_RULES.md
+    epic: 4851
+    verified: 2026-09-15
+    note: PR #5261, flag beta.
+
+  - id: training-hard-sessions-cobbles-echelon-attack
+    area: training
+    title_en: Hard sessions for cobbles, echelons and attacks
+    title_da: Hårde sessioner for brosten, vifter og angreb
+    state: live
+    ssot: docs/TRAINING_RULES.md
+    epic: 4874
+    verified: 2026-09-15
+    note: PR #5265; TRAINING_RULES §3.2.
 
   - id: season-fatigue-reset
     area: training
@@ -363,7 +394,7 @@ features:
     ssot: docs/YOUTH_RULES.md
     epic: 3550
     verified: 2026-09-07
-    note: Bygget; erstatter søndagsdrippet når flaget flippes ved cutover (#3550).
+    note: Erstatter søndagsdrip (#3550).
 
   - id: season-academy-intake
     area: academy
@@ -401,7 +432,7 @@ features:
     flag: season_signup_enabled
     ssot: docs/CALENDAR_RULES.md
     verified: 2026-09-07
-    note: Bygget; flaget åbnes ved S4-cutover 27-28/9 (#452, #4592).
+    note: Dormant til S4-cutover (#452).
 
   - id: season-end-recap
     area: season
@@ -410,7 +441,7 @@ features:
     state: live
     epic: 1311
     verified: 2026-09-06
-    note: SeasonEndPage med recap og hædersbevisninger.
+    note: SeasonEndPage m. recap.
 
   - id: ai-team-retire
     area: season
@@ -427,7 +458,7 @@ features:
     title_da: Atomisk nedlæggelse af AI-hold i puljer
     state: building
     verified: 2026-09-09
-    note: 'ai_pool_retirement_v2_enabled: fravær/off, ejer-go.'
+    note: 'v2-flag: off, afventer ejer-go.'
 
   - id: season-documentary-llm
     area: season
@@ -482,7 +513,7 @@ features:
     state: live
     flag: facilities_enabled
     verified: 2026-09-06
-    note: Trænings- og scoutingeffekter er live; medical og commercial er ikke bygget.
+    note: Træning/scouting live, resten ikke.
 
   - id: staff
     area: club
@@ -501,7 +532,7 @@ features:
     ssot: docs/BOARD_RULES.md
     epic: 3514
     verified: 2026-09-06
-    note: Mandat, vision, tillid, bonus og DNA-valg i Boardroom.
+    note: Mandat, vision, tillid, bonus, DNA.
 
   - id: board-firing-and-review
     area: board
@@ -538,7 +569,7 @@ features:
     state: live
     ssot: docs/SOCIAL_RULES.md
     verified: 2026-09-06
-    note: Cirka 55 typer i backend/lib/notificationTypes.js.
+    note: ~55 typer, notificationTypes.js.
 
   # --- stats ---------------------------------------------------------------
   - id: standings-and-rankings
@@ -554,7 +585,7 @@ features:
     title_da: Resultater og løbshistorik
     state: live
     verified: 2026-09-06
-    note: RaceHistoryPage, ResultaterPage og AuctionHistoryPage.
+    note: 3 historik-sider.
 
   - id: profiles
     area: stats
@@ -579,7 +610,7 @@ features:
     title_da: Onboarding i første session
     state: live
     verified: 2026-09-06
-    note: OnboardingProgressCard (4 trin) og OnboardingTour på riders, auctions og board.
+    note: ProgressCard + Tour, 3 sider.
 
   - id: season-start-guide
     area: onboarding
@@ -597,7 +628,7 @@ features:
     ssot: docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md
     epic: 4616
     verified: 2026-09-14
-    note: welcome + day1 on siden 8/9 (#2853), race_digest off; webhook afventer RESEND_WEBHOOK_SECRET (ejer); win-back #2760 bygget (flag false, ejer-go 21-24/9).
+    note: Win-back afventer ejer-go (#2760).
 
   - id: in-app-survey
     area: comms
@@ -607,7 +638,26 @@ features:
     ssot: docs/SURVEY_SYSTEM.md
     epic: 4943
     verified: 2026-09-08
-    note: Skemaet 2026-09-features åbnet 8/9 14:15 (241 inviteret via indbakken); admin-resultatside /admin/surveys/:slug live (#5043).
+    note: Skemaet åbnet 8/9 (241 inviteret).
+
+  - id: discord-welcome-inbox
+    area: comms
+    title_en: Discord welcome inbox notification
+    title_da: Discord-velkomstbesked i indbakken
+    state: live
+    epic: 5130
+    verified: 2026-09-15
+    note: PR #5211, 15/9; hold backfillet.
+
+  - id: manager-dm-v1
+    area: comms
+    title_en: Manager-to-manager DM
+    title_da: Manager-til-manager-DM
+    state: live
+    ssot: docs/superpowers/specs/2026-09-08-manager-dm-v1-design.md
+    epic: 5019
+    verified: 2026-09-17
+    note: PR #5019, 8/9; ingen flag.
 
   # --- billing -------------------------------------------------------------
   - id: cz-pro
@@ -617,7 +667,7 @@ features:
     state: live
     ssot: docs/BILLING_STACK.md
     verified: 2026-09-06
-    note: Betalingsrails og Founder Supporter live; checkout-sprog og EUR er åbent (#4616).
+    note: Live; EUR-checkout åbent (#4616).
 
   - id: alunta-reconcile
     area: billing

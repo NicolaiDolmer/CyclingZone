@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
 import { bootAssetsManifestPlugin } from "./vite-plugins/boot-assets-manifest.js";
+// #5177: modulepreload-hint for det ikke-engelske sprogs lazy message-chunk.
+import { i18nLangPreloadPlugin } from "./vite-plugins/i18n-lang-preload.js";
 // #5159 (audit-fund H4): frontendens indholds-id + dist/version.json. Se
 // vite-plugins/frontend-content-id.js for hvorfor sha'en ikke må være det der
 // afgør om en åben fane genindlæser.
@@ -146,6 +148,9 @@ export default defineConfig({
     // JSON-datablok lige FOER /chunk-selfheal.js, saa boot-vagten har en komplet
     // liste allerede mens parseren er midt i <head>.
     bootAssetsManifestPlugin(),
+    // #5177: skriver { da: "/assets/i18n-messages-da-<hash>.js" } + et lille
+    // inline-script der kun preloader chunken naar sproget FAKTISK er dansk.
+    i18nLangPreloadPlugin(),
     // #5159: indholds-id'et hasher bundle-navnene og public/, og kører derfor
     // med enforce:"post" — rækkefølgen her er kun for læsbarhed.
     frontendContentIdPlugin({ releaseSha }),
@@ -253,10 +258,24 @@ export default defineConfig({
               priority: 30,
             },
             {
-              // De inlinede oversættelser (24 namespaces × en+da). Ligger som
-              // JSON-imports i src/i18n/index.js, så de matches på public/locales.
-              name: "i18n-messages",
-              test: /public[\\/]locales[\\/]/,
+              // #5177: ÉN gruppe pr. sprog i stedet for én fælles.
+              //
+              // Før: begge sprog (24 namespaces × en+da = 426 KB raw / 131 KB
+              // gzip) lå i samme chunk, statisk importeret af entry'en og
+              // modulepreloadet i <head>. Hver besøgende hentede altså også det
+              // sprog de aldrig ser.
+              //
+              // Nu: engelsk er stadig en statisk import (default + fallbackLng,
+              // se src/i18n/index.js), dansk importeres kun dynamisk fra
+              // src/i18n/messages.da.js. Wrapper-modulet matches med i gruppen,
+              // så den danske bundle bliver ÉN chunk og ikke to requests.
+              name: "i18n-messages-en",
+              test: /public[\\/]locales[\\/]en[\\/]/,
+              priority: 30,
+            },
+            {
+              name: "i18n-messages-da",
+              test: /(public[\\/]locales[\\/]da[\\/]|src[\\/]i18n[\\/]messages\.da\.js)/,
               priority: 30,
             },
           ],

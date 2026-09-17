@@ -110,11 +110,33 @@ export const ABILITY_REGISTRY = Object.freeze([
     shortLabel: "TAC", icon: "⌖", derivation: { source: "skill" },
     inContrast: false, inClassifier: false, storageOrder: 15, displayOrder: 12,
   },
+  // ── #5268: to nye mentale evner (spec 2026-09-15-holdarbejde-og-lederskab §3.1) ──
+  // DATA-ONLY i denne PR: registry-post, kolonne, fødsels-prior, visnings-opskrift.
+  // Motor-integrationen (teamwork i v4 teamPlay/leadout) og mentor-parrene ligger bag
+  // flag i et senere spor — evnerne er synlige og trænbare, men flytter endnu intet løb.
+  //
+  // `inClassifier: false` er IKKE et valgfrit felt her: klassifikator-vægttabellen er
+  // frosset (HOWTO_ADD_ABILITY.md "Det du IKKE skal røre"), og en ny evne i
+  // klassifikatorens input ville flytte ryttertyper for hele bestanden uden ejer-go.
+  // `inContrast: false`: kontrast-forstærkningen er de 10 FYSISKE evners
+  // mætnings-remedie (#1122) og kører i dag slet ikke i prod (aero = NULL på alle
+  // 8.480 fysiologi-profiler, docs/audits/2026-09-15-3668-ability-scale-investigation.md
+  // §1.1). En mental evne hører ikke hjemme der uanset om den er tændt.
+  {
+    key: "teamwork", category: "mental", i18nKey: "rider:racePreview.derived.teamwork",
+    shortLabel: "TWK", icon: "⇄", derivation: { source: "skill" },
+    inContrast: false, inClassifier: false, storageOrder: 16, displayOrder: 16,
+  },
+  {
+    key: "leadership", category: "mental", i18nKey: "rider:racePreview.derived.leadership",
+    shortLabel: "LDR", icon: "⚑", derivation: { source: "skill" },
+    inContrast: false, inClassifier: false, storageOrder: 17, displayOrder: 17,
+  },
 ]);
 
 const byStorage = [...ABILITY_REGISTRY].sort((a, b) => a.storageOrder - b.storageOrder);
 
-/** Alle 15 evne-keys i lagrings-/derivations-orden. */
+/** Alle evne-keys i lagrings-/derivations-orden (17 efter #5268). */
 export const REGISTRY_ABILITY_KEYS = Object.freeze(byStorage.map((a) => a.key));
 
 /** De 10 evner der køres gennem kontrast-forstærkning. */

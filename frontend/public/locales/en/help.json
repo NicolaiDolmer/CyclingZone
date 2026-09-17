@@ -833,7 +833,7 @@
         "text": "Each rider's annual salary is set at signing based on what the rider is expected to produce in the current season, and is then frozen: it does not change automatically as the rider develops. Value and salary answer two different questions: value is the price of the rider's future, salary is the cost of what he delivers right now. Young talents are therefore cheap to keep on the payroll, while established stars earn wages that match their output. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
       },
       "abilitiesExplained": {
-        "title": "The 15 abilities and where they matter",
+        "title": "The 17 abilities and where they matter",
         "rows": [
           [
             "Ability",
@@ -914,6 +914,16 @@
             "Tactics",
             "Race-craft and reading a race",
             "Team time trials, tactical races"
+          ],
+          [
+            "Teamwork",
+            "How much a helper is worth to his captain",
+            "Any day you ride for someone else"
+          ],
+          [
+            "Leadership",
+            "Whether the squad rides behind him",
+            "Captain days, and passing it on to a young rider"
           ]
         ]
       },
@@ -1004,7 +1014,7 @@
         "steps": [
           "Go to Daily Training in the navigation.",
           "Find a rider and choose what kind of day it is: Rest, Active recovery, a Skill day or Training.",
-          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Mixed intervals, Climbing intervals, Punch intervals, Threshold or Sprint (hard). On a skill day: Technique, Aero or Race craft.",
+          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Mixed intervals, Climbing intervals, Punch intervals, Threshold, Sprint, Cobbled Sectors, Echelon Drills or Attack Repeats (hard). On a skill day: Technique, Aero or Race craft.",
           "Save. The day runs every day until you change it.",
           "There is no cap on how many riders can have a program: you can set one for your entire squad."
         ]
@@ -1015,7 +1025,7 @@
       },
       "focusAbilities": {
         "title": "What each session trains",
-        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Mixed intervals train Climbing, Punch and Tempo at an even share. Climbing intervals train Climbing and Tempo, and Climbing gains more than it does in the mixed session, but Punch is not trained at all. Punch intervals are the mirror image: Punch and Tempo, with Punch gaining more and Climbing left out. The three cover the same amount of work, so picking one over another moves your gains, it does not add any. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending and Cobbles. Aero trains Time trial and Flat. Race craft trains Positioning, Tactics and Aggression. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard; technique, aero and race craft are all easy. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
+        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Mixed intervals train Climbing, Punch and Tempo at an even share. Climbing intervals train Climbing and Tempo, and Climbing gains more than it does in the mixed session, but Punch is not trained at all. Punch intervals are the mirror image: Punch and Tempo, with Punch gaining more and Climbing left out. The three cover the same amount of work, so picking one over another moves your gains, it does not add any. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Cobbled Sectors trains Cobbles, Durability and Positioning, with Cobbles gaining most. Echelon Drills trains Flat, Positioning and Durability, with Flat gaining most. Attack Repeats trains Aggression, Punch and Acceleration, with Aggression gaining most. Technique trains Descending and Cobbles. Aero trains Time trial and Flat. Race craft trains Positioning, Tactics and Aggression. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold, sprint, Cobbled Sectors, Echelon Drills and Attack Repeats are all hard; technique, aero and race craft are all easy. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
       },
       "typeGating": {
         "title": "Why does a focus grow faster for some riders?",
@@ -1051,7 +1061,11 @@
       },
       "progressBars": {
         "title": "Progress bars and ability points",
-        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. Every ability has a hidden lifetime ceiling set by the rider's potential and age; an ability that has reached it reads 'done' on its own line instead of a bar. The rider profile's Training tab lists all 15 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. Switch focus if another area still has room, or enjoy the rider at full strength. Older riders past their career peak naturally have little or no room left. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
+        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. Every ability has a hidden lifetime ceiling set by the rider's potential and age; an ability that has reached it reads 'done' on its own line instead of a bar. The rider profile's Training tab lists all 17 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. Switch focus if another area still has room, or enjoy the rider at full strength. Older riders past their career peak naturally have little or no room left. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
+      },
+      "trainingScore": {
+        "title": "The training score",
+        "text": "Every session a rider completes gets a training score from 1 to 99. It measures the QUALITY of that session, not what the rider got out of it: how demanding the session was, how well it matched the rider's strengths, the rider's form and fatigue that day, the coach and the facilities behind it, the rider's talent and age, and the day itself. The score is what drives development: a better session moves the abilities more. It does not depend on how close an ability is to its ceiling, so a rider who is nearly finished in his focus abilities still gets an honest reading of how good the session was. Rest days get no score, because there was no session to measure. On a day where a race takes the place of the session, the column reads 'Race' instead of a number and the curve leaves a gap. Only you can see the scores for your own riders."
       },
       "longTermGrowth": {
         "title": "Long-term growth",
@@ -1173,8 +1187,8 @@
         "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of {academySlots} riders carries a noticeable running cost each season."
       },
       "graduation": {
-        "title": "Graduating at 22",
-        "text": "When an academy rider turns 22 they age out of the Academy and you make a choice for each one: promote them into your senior squad (needs a free senior place and gives them a senior contract), sell them on the transfer market, or release them as a free agent. You get a window to decide; if you do not act in time, the club picks a sensible default for you (promote when there is room, otherwise sell). This gives home-grown talent a clear path to your senior team."
+        "title": "Graduating at 23",
+        "text": "When an academy rider turns 23 they age out of the Academy and you make a choice for each one: promote them into your senior squad (needs a free senior place and gives them a senior contract), sell them on the transfer market, or release them as a free agent. You get a window to decide; if you do not act in time, the club picks a sensible default for you (promote when there is room, otherwise sell). This gives home-grown talent a clear path to your senior team."
       },
       "promoteDemote": {
         "title": "Promoting up and moving riders down",
@@ -1472,8 +1486,8 @@
       "a": "Racing costs no ability development in season 3: your talent still gets the exact session you planned that day, whether he races or not. The real cost is fatigue: a race adds its own load on top of training, and a talent who races often needs lighter sessions and real rest days to stay under the injury threshold, same as any senior rider. There's no Academy-specific penalty for racing, so the trade-off is about managing fatigue, not lost development."
     },
     "flatCobblesHardTrainingFaq": {
-      "q": "Why can't I train Flat or Cobbles at Hard intensity?",
-      "a": "By design, no Hard session targets those two abilities today. The Hard sessions are Mixed intervals (Climbing, Punch, Tempo), Climbing intervals (Climbing, Tempo), Punch intervals (Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Flat is trained by Tempo (Normal) and Aero (Easy); Cobbles only by Technique (Easy). There's currently no way to push either one at Hard."
+      "q": "Can I train Flat or Cobbles at Hard intensity?",
+      "a": "Yes, with Cobbled Sectors and Echelon Drills. Cobbled Sectors trains Cobbles hardest, with Durability and Positioning coming along for the price. Echelon Drills trains Flat hardest, with Positioning and Durability coming along the same way. The older Hard sessions still leave both out: Mixed intervals (Climbing, Punch, Tempo), Climbing intervals (Climbing, Tempo), Punch intervals (Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Tempo (Normal), Aero and Technique (both Easy) still work too, just at a lower intensity."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Does a better scouting network also improve how well I see my own riders?",
@@ -1684,8 +1698,8 @@
       "a": "Results are decided by how well your riders' abilities fit the terrain. Every race is split into stages, and each stage has a terrain type (flat, hilly, mountain, time trial, cobbles and so on) that asks for specific abilities. A flat stage rewards Sprint above all; a mountain stage rewards Climbing; a time trial rewards Time trial; a cobbled stage rewards Cobbles; a hilly stage rewards Punch. For each rider the engine adds up the matching abilities, weighted by what the stage demands, into a stage score. On top of that score sit a few smaller effects: good form gives a small edge and high fatigue a small penalty (each capped at about ±3%, so a fresh rider beats a tired one of equal ability but a favourite still wins on class), a captain protected by strong, fresh helpers gets a boost, breakaways occasionally stay away on the right terrain, and a small random factor means the strongest rider wins most of the time but not always. Across a stage race, the time gaps from every stage add up into the overall classification: mountains and time trials open the biggest gaps and usually decide the GC, while flat stages finish in a bunch. Finishing positions become points, and points become both your leaderboard score and your prize money. The practical takeaway: match each rider to the stages that suit him, keep your stars rested for the days that matter, and set the right captain in Team selection. Each race also has a team classification, won by the team whose best three riders have the lowest combined time."
     },
     "riderAbilities": {
-      "q": "What do the 15 rider abilities mean?",
-      "a": "Every rider is rated 0-99 on 15 abilities, grouped in three families. Physical (10): Climbing (long ascents and mountain stages), Time trial (riding alone against the clock), Flat (holding speed on flat roads as a rouleur), Tempo (sustained efforts on mid-mountain and rolling terrain), Sprint (top-end speed for a bunch finish), Acceleration (the explosive kick to launch a sprint or jump a gap), Punch (short steep climbs and hilly finales), Endurance (lasting the full distance of long and hard days), Recovery (bouncing back between stages and days), and Durability (resisting fatigue so the rider fades less late in hard races). Technical (3): Descending (a small edge on stages that finish on a downhill), Cobbles (the bike-handling and power for cobbled classics), and Positioning (staying near the front to avoid splits, and a factor in time trials). Tactical/mental (2): Aggression (the willingness to attack and get into breakaways) and Tactics (race-craft that helps in team time trials and reading a race). The race engine matches these to each stage's terrain, so the same rider can be a star on one profile and ordinary on another. Tip: a balanced squad covering several profiles scores more consistently across a calendar than a one-trick team."
+      "q": "What do the 17 rider abilities mean?",
+      "a": "Every rider is rated 0-99 on 17 abilities, grouped in three families. Physical (10): Climbing (long ascents and mountain stages), Time trial (riding alone against the clock), Flat (holding speed on flat roads as a rouleur), Tempo (sustained efforts on mid-mountain and rolling terrain), Sprint (top-end speed for a bunch finish), Acceleration (the explosive kick to launch a sprint or jump a gap), Punch (short steep climbs and hilly finales), Endurance (lasting the full distance of long and hard days), Recovery (bouncing back between stages and days), and Durability (resisting fatigue so the rider fades less late in hard races). Technical (3): Descending (a small edge on stages that finish on a downhill), Cobbles (the bike-handling and power for cobbled classics), and Positioning (staying near the front to avoid splits, and a factor in time trials). Tactical/mental (4): Aggression (the willingness to attack and get into breakaways), Tactics (race-craft that helps in team time trials and reading a race), Teamwork (how much a helper is worth to the captain he rides for) and Leadership (whether the squad rides behind him, and what he passes on to a young rider). Teamwork and Leadership are new: you can see and train them now, and they start changing races in a later update. The race engine matches these to each stage's terrain, so the same rider can be a star on one profile and ordinary on another. Tip: a balanced squad covering several profiles scores more consistently across a calendar than a one-trick team."
     },
     "riderRating": {
       "q": "What does a rider's overall rating mean?",

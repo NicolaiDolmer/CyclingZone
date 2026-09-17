@@ -41,9 +41,14 @@ test("#3459 løbsdags-linjen ERSTATTER (ikke supplerer) den normale weekRhythmTo
 });
 
 test("#3459 intensitets-knapperne dæmpes (opacity) på løbsdage, men forbliver AKTIVE (ingen ny disabled-betingelse)", () => {
+  // #5124: gruppen bryder til to linjer på mobil (flex-wrap i stedet for
+  // overflow-hidden, ingen vandret scroll-garanti brydes) — desktop beholder
+  // overflow-hidden uændret (isMobile er altid false dér). Regexen tolererer
+  // begge grene af `isMobile ? "flex-wrap" : "overflow-hidden"`, men kræver
+  // stadig den samme raceToday-dæmpning som før #5124.
   assert.match(
     src,
-    /className=\{`inline-flex rounded-cz border border-cz-border overflow-hidden \$\{raceToday \? "opacity-\[0\.55\]" : ""\}`\}/,
+    /className=\{`inline-flex rounded-cz border border-cz-border \$\{[\s\S]{0,120}"overflow-hidden"[\s\S]{0,20}\} \$\{raceToday \? "opacity-\[0\.55\]" : ""\}`\}/,
     "intensitets-gruppen skal dæmpes visuelt når raceToday er sat",
   );
   // disabled-betingelsen på selve knapperne er UÆNDRET (kun busy) — raceToday må

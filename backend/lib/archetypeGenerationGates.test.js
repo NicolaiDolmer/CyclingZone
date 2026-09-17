@@ -14,11 +14,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { generateAcademyCandidates } from "./academyGenerator.js";
-import { makeRng } from "./fictionalRiderGenerator.js";
+import { makeRng, BIRTH_MODE_PCM } from "./fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { buildCapsForRider, buildYouthCaps } from "./riderProgression.js";
-import { computeRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { computeRiderTypes, NEUTRAL_BASELINE, RIDER_TYPES } from "./riderTypes.js";
+import {
+  isBornFromPriors, deriveBirthAbilities, physiologySeedInputFromAbilities,
+} from "./riderBirthPriors.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { YOUTH_GEN_CONFIG } from "./academyGenerator.js";
 import { readFileSync } from "node:fs";
@@ -26,6 +29,23 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// #5269: klassifikator-vægtene som opslagstabel — ungdoms-signaturen i
+// riderBirthPriors er proportional med dem, præcis som generateYouthStats var.
+const CLASSIFIER_WEIGHTS_BY_TYPE = Object.fromEntries(RIDER_TYPES.map((t) => [t.key, t.weights]));
+
+// #5269: spejler backfillCores.deriveForRiderIds' nye forgrening — en kandidat
+// FØDT af spillets egne priors får evnerne reproduceret fra fødsels-seed'en
+// (archetype_draw.birth) i stedet for udledt af stat_*, og seeder sin fysiologi
+// fra sine egne evner. En kandidat uden markøren rammer den uændrede kodesti.
+function deriveForCandidate(riderRow, age) {
+  const born = isBornFromPriors(riderRow)
+    ? deriveBirthAbilities(riderRow, { age, classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE })
+    : null;
+  const physiology = seedPhysiologyFromLegacy(
+    born ? physiologySeedInputFromAbilities(riderRow, born) : riderRow,
+  );
+  return { physiology, abilities: born ?? deriveAbilities(physiology, riderRow) };
+}
 const typesBaseline = JSON.parse(readFileSync(join(__dirname, "riderTypesBaseline.json"), "utf8"));
 // #3570: den ENDELIGE klassifikation for akademi-kandidater (altid < 22 år) skal nu
 // gennem selectTypesBaseline ligesom deriveForRiderIds/backfillCores.js — ellers
@@ -135,15 +155,20 @@ const GRADUATION_LEVEL_ABILITY = 12;
 //     trukne anlæg) til caps — reproducerer FASE 1-KÆDENS defekt (0/303 gc-trukne
 //     genkendt, målt 9/8) OG er den faktiske "intet draw"-kodesti for eksisterende
 //     ryttere (backfillCores.js's fallback-gren).
-function runCohort(n, seed, { useAdultBaselineOnly = false, useBootstrapCaps = false } = {}) {
+//   mode (#5269): hvilken FØDSELS-sti kuldet genereres ad. Default er
+//     produktionens ("own-priors"); "pcm" reproducerer den historiske
+//     stat-baserede fødsel og bruges KUN af den ene negativ-test der måler den
+//     dokumenterede pre-#3570-defekt på præcis den kode den blev målt på.
+function runCohort(n, seed, { useAdultBaselineOnly = false, useBootstrapCaps = false, mode } = {}) {
   const rng = makeRng(seed);
   const candidates = generateAcademyCandidates({
     rng, referenceYear: REFERENCE_YEAR, existingNames: new Set(), countOverride: n,
+    ...(mode ? { mode } : {}),
   });
   return candidates.map((c, i) => {
-    const riderRow = { id: `g1-${seed}-${i}`, ...c.rider };
-    const physiology = seedPhysiologyFromLegacy(riderRow);
-    const abilities = deriveAbilities(physiology, riderRow);
+    const riderRow = { id: `g1-${seed}-${i}`, ...c.rider, archetype_draw: c.archetypeDraw };
+    const cohortAge = REFERENCE_YEAR - Number(String(riderRow.birthdate).slice(0, 4));
+    const { abilities } = deriveForCandidate(riderRow, cohortAge);
     const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
     const baseline = {};
     for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
@@ -153,7 +178,7 @@ function runCohort(n, seed, { useAdultBaselineOnly = false, useBootstrapCaps = f
     const capsSecondary = useBootstrapCaps ? bootstrap.secondary.key : (c.archetypeDraw.secondary || null);
     // #3570: akademi-kandidater er ALTID 16-21 år (< 22) — samme alders-gate som
     // deriveForRiderIds/backfillCores.js bruger i produktion.
-    const age = REFERENCE_YEAR - Number(String(riderRow.birthdate).slice(0, 4));
+    const age = cohortAge;
     // #3591: alderen med i kaldformen, som produktionen gør. For denne population
     // (16-21) er taperen per definition inaktiv — den bider først efter peakAge — så
     // gate-tallene er uændrede; kaldformen er nu blot den samme som produktionens.
@@ -235,8 +260,17 @@ test("#3632: kroppen matcher mindst ét af rytterens to anlæg ≥80 %", () => {
 // #3570 FASE 2 NEGATIV-TEST (designprincip: en gate skal fejle på KENDT defekt kode).
 // Den ORIGINALE, dokumenterede pre-#3570-defekt (bootstrap-caps OG voksen-baseline —
 // 76,7 % baroudeur målt i prod 9/8) skal falde LANGT under det nye gulv.
+//
+// #5269: testen kører BEVIDST på den gamle PCM-fødselssti (mode "pcm"). Defekten
+// den reproducerer er en HISTORISK måling foretaget på præcis den kode, og den
+// skal blive ved med at måle netop dét. MÅLT 15/9 på den nye fødselssti er den
+// samme defekte kæde 52,0 % (mod 28,3 % historisk): prior-fødte evner er så meget
+// mere adskilte at selv bootstrap-gættet rammer anlægget halvdelen af tiden.
+// Det er en forbedring, ikke en svækket gate — den LEVENDE sti er stadig
+// bevogtet af G1-gulvet og af den relative fase 2-negativ-test nedenfor, som
+// begge kører på produktionens fødselssti.
 test(`#3570 NEGATIV-TEST (original defekt): bootstrap-caps + voksen-baseline falder under det nye gulv ${G1_REGRESSION_FLOOR_PCT}%`, () => {
-  const riders = runCohort(N, SEED, { useAdultBaselineOnly: true, useBootstrapCaps: true });
+  const riders = runCohort(N, SEED, { useAdultBaselineOnly: true, useBootstrapCaps: true, mode: BIRTH_MODE_PCM });
   const pct = g1Pct(riders);
   assert.ok(
     pct < G1_REGRESSION_FLOOR_PCT,
@@ -296,8 +330,9 @@ test(`G2-regression: specialiserings-dybde median ≥${G2_REGRESSION_MEDIAN_FLOO
   const gaps = candidates
     .filter((c) => REFERENCE_YEAR - Number(String(c.rider.birthdate).slice(0, 4)) <= G2_MAX_AGE)
     .map((c) => {
-      const riderRow = { id: "g2", ...c.rider };
-      const abilities = deriveAbilities(seedPhysiologyFromLegacy(riderRow), riderRow);
+      const riderRow = { id: "g2", ...c.rider, archetype_draw: c.archetypeDraw };
+      const age = REFERENCE_YEAR - Number(String(c.rider.birthdate).slice(0, 4));
+      const { abilities } = deriveForCandidate(riderRow, age);
       const vals = PHYSICAL_ABILITIES.map((k) => abilities[k]).sort((a, b) => b - a);
       return vals[0] - vals[1];
     }).sort((a, b) => a - b);

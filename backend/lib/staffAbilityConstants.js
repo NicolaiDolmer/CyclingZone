@@ -1,6 +1,6 @@
 // Staff-evne-model SSOT (#2216 A4). Ingen I/O — ren konstant-/mapping-modul.
 // Spejler rytter-evne-taksonomien: de 3 coaching-DIMENSIONER (physical/mental/technical)
-// partitionerer de 15 synlige rytter-evner (abilityDerivation.VISIBLE_ABILITIES) præcist,
+// partitionerer `abilityDerivation.VISIBLE_ABILITIES` præcist (17 evner efter #5268),
 // så en trænings-chefs dimension direkte matcher hvilke rytter-evner han løfter.
 // Drift-guard-test (staffAbilityConstants.test.js) asserterer union == abilityDerivation.VISIBLE_ABILITIES.
 
@@ -15,12 +15,18 @@ export const STAFF_ROLES = Object.freeze(["training", "scouting", "medical", "ac
 // (Senior/U23/Junior), som er noget andet (klub-niveau, ikke trænings-affinitet).
 export const LEVEL_BANDS = Object.freeze(["u23", "senior"]);
 
-// Dimension → hvilke af de 15 VISIBLE_ABILITIES den dækker. Præcis partition (drift-guard).
-// physical(10): fysiologi-drevne disciplin-evner. mental(2): aggression/tactics.
-// technical(3): descending/cobblestone/positioning.
+// Dimension → hvilke af VISIBLE_ABILITIES den dækker. Præcis partition (drift-guard).
+// physical(10): fysiologi-drevne disciplin-evner. mental(4): aggression/tactics +
+// teamwork/leadership (#5268). technical(3): descending/cobblestone/positioning.
+//
+// #5268: de to nye mentale evner SKAL med her — drift-guarden nedenfor kræver at
+// unionen er præcis VISIBLE_ABILITIES, og en evne uden dimension ville betyde at
+// ingen trænings-chef kunne løfte den. Konsekvensen er reel og tilsigtet: en
+// mental trænings-chef dækker nu fire evner i stedet for to, altså samme
+// chef-effekt spredt bredere. Kalibreringen af selve chef-effekten er ikke rørt.
 export const DIMENSION_TO_ABILITIES = Object.freeze({
   physical: ["climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch", "endurance", "recovery", "durability"],
-  mental: ["aggression", "tactics"],
+  mental: ["aggression", "tactics", "teamwork", "leadership"],
   technical: ["descending", "cobblestone", "positioning"],
 });
 

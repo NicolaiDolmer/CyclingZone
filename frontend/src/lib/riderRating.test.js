@@ -35,9 +35,12 @@ test("riderStatRating: klampes til 0-99", () => {
   assert.equal(riderStatRating(negative), 0);
 });
 
-test("STAT_KEYS: 15 unikke CZ-evne-noegler (#1529)", () => {
-  assert.equal(STAT_KEYS.length, 15);
-  assert.equal(new Set(STAT_KEYS).size, 15);
+// 15 → 17 ved #5268 (teamwork + leadership). Antallet er pinnet frem for afledt:
+// en evne der forsvinder ved et uheld skal fælde bygningen, ikke bare give et
+// mindre tal. Se docs/HOWTO_ADD_ABILITY.md §4b for de øvrige steder tallet står.
+test("STAT_KEYS: 17 unikke CZ-evne-noegler (#1529, #5268)", () => {
+  assert.equal(STAT_KEYS.length, 17);
+  assert.equal(new Set(STAT_KEYS).size, 17);
   for (const k of STAT_KEYS) assert.match(k, /^[a-z][a-z_]+$/);
 });
 

@@ -5,7 +5,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // #1537 — Rytterdatabasen: sortér på status + hold, ryttertype i egen kolonne,
-// potentiale fjernet fra visning + sortering (doctrine #1138). Kilde-tekst-test
+// #5292 adds viewer-masked scouting back; raw potential stays hidden and unsortable.
+// Kilde-tekst-test
 // (samme mønster som RidersPage.statBar/pendingTeam) holder strukturen ærlig
 // hvis nogen ruller en af kolonnerne tilbage.
 //
@@ -45,16 +46,16 @@ test("Ryttertype har sin egen sortérbare kolonne (#1537)", () => {
   );
 });
 
-test("Potentiale er fjernet fra visning + sortering på rytterdatabasen (#1537/#1138)", () => {
-  assert.doesNotMatch(
+test("scouting reuses masked estimates without enabling raw potential sorting (#5292/#1138)", () => {
+  assert.match(
     src,
-    /ScoutablePotentiale/,
-    "Potentiale-kolonnen (ScoutablePotentiale) skal være helt ude af rytterdatabasen — doctrine #1138",
+    /<ScoutablePotentiale rider=\{r\} scouting=\{scouting\} showScout/,
+    "Rider database must reuse the auction scouting component",
   );
   assert.doesNotMatch(
     src,
-    /t\("table\.potential"\)/,
-    "Potentiale-headeren må ikke længere rendres på rytterdatabasen",
+    /sortKey:\s*["'](?:potentiale?|_scoutMid)["']/,
+    "Scouting must not introduce sorting on hidden potential or page-local estimates",
   );
 });
 

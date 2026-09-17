@@ -22,6 +22,12 @@ export const TRAINING_FOCUS_ABILITIES = Object.freeze({
   // #3709 trin 2 (spec §2.3, ejer-go 16/8): positioning flytter hertil fra
   // `technique`. tactics + aggression kunne før ikke trænes af NOGET fokus.
   loebslaere:  Object.freeze(["positioning", "tactics", "aggression"]),
+  // #5236/#5237 (ejer-valg 14/9): brosten, vifte og angreb — se backend
+  // training.js for den fulde begrundelse. Rækkefølgen/evnerne skal matche
+  // backend PRÆCIST (håndhævet af backend/lib/handheldCopyGuards.test.js).
+  cobbled_sectors: Object.freeze(["cobblestone", "durability", "positioning"]),
+  echelon_drills:  Object.freeze(["flat", "positioning", "durability"]),
+  attack_repeats:  Object.freeze(["aggression", "punch", "acceleration"]),
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUS_ABILITIES));
 

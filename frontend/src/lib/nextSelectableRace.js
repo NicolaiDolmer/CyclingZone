@@ -17,14 +17,19 @@ export function selectableRaces(races) {
   return races.filter((r) => deriveRaceStatus(r?.status, r?.stages_completed, r?.stages) === "scheduled");
 }
 
-// Det tidligste scheduled-løb (efter kalenderdato), eller null hvis intet findes.
-// Muterer ikke input.
-export function pickNextSelectableRace(races) {
-  const candidates = selectableRaces(races);
-  if (candidates.length === 0) return null;
-  return [...candidates].sort(
+// Scheduled-løb i kalenderorden, tidligste først. Muterer ikke input.
+// #5301: Dashboard-nudgen har brug for RÆKKEFØLGEN, ikke kun det første løb —
+// se nextSelectableRaces' kaldested i DashboardPage.
+export function orderedSelectableRaces(races) {
+  return [...selectableRaces(races)].sort(
     (a, b) =>
       dateTextToDayOfYear(a.pool_race?.date_text) -
       dateTextToDayOfYear(b.pool_race?.date_text)
-  )[0];
+  );
+}
+
+// Det tidligste scheduled-løb (efter kalenderdato), eller null hvis intet findes.
+// Muterer ikke input.
+export function pickNextSelectableRace(races) {
+  return orderedSelectableRaces(races)[0] ?? null;
 }

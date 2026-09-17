@@ -1,44 +1,35 @@
-# Session-prompt til 16/9 (skrevet ved close-out 15/9 formiddag)
+# Session-prompt til 16/9 (skrevet ved close-out 15/9 aften)
 
-> Kopiér blokken herunder som første besked i en ny Claude Code-session i `C:\Dev\CyclingZone`. Sessionen 15/9 (kort, design + PR-gennemgang + audit) er lukket.
+> Kopiér blokken herunder som første besked i en ny Claude Code-session i `C:\Dev\CyclingZone`. Sessionen 15/9 aften (post-verify, sponsor-kort, løbsdage-undersøgelse, bølge 3) er lukket.
 
 ---
 
-Trin 0: Forrige session (15/9 formiddag) er lukket. Læs `docs/NOW.md`. Ignorér "Working agent"-linjen hvis den ikke siger "Ingen aktiv session". Kør `pwsh -File scripts/close-out-cleanup.ps1` (dry-run) og tjek at `.claude/run/wave-active.json` ikke findes.
+Trin 0: Forrige session (15/9 aften) er lukket. Læs `docs/NOW.md`. Ignorér "Working agent"-linjen hvis den ikke siger "Ingen aktiv session". Kør `pwsh -File scripts/close-out-cleanup.ps1` (dry-run) og tjek `.claude/run/wave-active.json`: findes den, kan den tilhøre en ANDEN session (15/9 aften kørte en parallel orkestrator bølge på #5284); læs indholdet før du sletter.
 
-Du er orkestrator (Fable). Du udfører aldrig selv byggearbejde; workers bygger (model eksplicit: opus til motor/perf/undersøgelse, sonnet til afgrænsede fixes og UI). Følg start-rutinen i CLAUDE.md. **Ét delpunkt pr. kort** (lært 15/9: et kort med tre nummererede punkter blev afvist). **Læs issuets seneste kommentarer FØR et beslutningskort** (15/9: #4633 var allerede besluttet 14/9, NOW.md var stale).
+Du er orkestrator (Fable). Du udfører aldrig selv byggearbejde; workers bygger (model eksplicit: opus til motor/migration/undersøgelse, sonnet til afgrænsede fixes og UI). Ét delpunkt pr. kort, ét konkret eksempel med prod-tal, én anbefaling; læs issuets seneste kommentarer FØR kortet. UI-PR = skærmbillede i samme tur som kortet. Rækkefølgen er ejer-godkendt 15/9 og står i `docs/MASTERPLAN.md` Bane 1; intet udskydes uden ejer-aftale.
 
-**Dagens opgaver, i rækkefølge.**
+Dagens opgaver, i rækkefølge.
 
-1. **Post-verify #5258** (main grøn igen + migration #4846): `schema_migrations` har `database/2026-09-14-4846-training-tick-game-day.sql`, 2 partielle unikke indexe på `training_day_runs`, tabellen `rider_ability_race_day_history`, `app_config.training_tick_per_race_day = off`, CI på main grøn. Rød? Undersøg før noget andet.
+0. **FØRST — ejer-direktiv 16/9: "det opfattede fald i potentiale for fightere rettes i dag."** Issue #5288. Fire spillere (thelamba, valverde4ever, friisisch, egomadsen) meldte 15-16/9 at deres forventede loft faldt; baroudeurs hårdest (-7 til -8), gc/sprinter ca. -2, puncheur nul. **Rodårsag er verificeret i koden og er IKKE den ejeren gættede på i Discord** (at teamwork/leadership står som "-"): NULL-evner springes over i både tæller og nævner i `ratingForRole()`, så de kan ikke sænke nogen. Den reelle årsag er `MENTAL_ABILITY_TAG_CEILING` fra PR #5280, hvor `aggression` gik 93 → 70. `aggression` har caps-vægt i præcis ÉN opskrift — baroudeur, vægt 3, altså hans SIGNATUREVNE — og er ikke en craft-evne, så for alle andre arketyper lå loftet allerede på 55/45. **Loftet på 70 rammer derfor kun baroudeuren, og det skærer hans signatur 23 point ned til håndværks-niveau.** Ejeren skal vælge tallet (capsShaping = ejer-go med tal, spec §4 trin 2) — se go-kortet i #5288's kommentar. Anbefaling: fjern `aggression` fra loft-tabellen (tilbage til 93); `tactics: 55` og `teamwork`/`leadership: 70` bliver stående. Bagefter: patch note + kort besked i #feedback-and-ideas-tråden, fordi spillerne fik et forkert svar i Discord.
 
-2. **Bølge 1 via wave.js (maks 4 laner), træningens byggeplan efter ejer-beslutningerne 15/9** (`docs/TRAINING_RULES.md` §13.3, #4850 kommentar 15/9):
-   - **#5169 → 140**: `SEASON_RACE_DAY_TARGET[4] = 140`, antal løb pr. division URØRT, tomme-løbsdags-budget pr. kalenderdag hævet til 5; dry-run-tabel i PR-body; derefter go-kort (ikke UI, ejer-go på tal). Opus.
-   - **B4 udløser** (#4847-området): ÉN samlet sweep for alle dagens løbsdage, tidligst kl. 20 dansk tid og efter dagens sidste finalization; frivillig knap "Kør dagens træning nu" uden bonus (åbner når dagens sidste løb er lukket); deleren kalibreret til 140; G6-kapacitetstest (skrivetryk ≈ 5×) som krav i PR'en. Opus, TIER FULL.
-   - **Skader i løbsdage** (beslutning 7): `injured_until` i løbsdage, UI "ca. <dato>". Sonnet.
-   - **Program pr. løbsdag** (beslutning 8): `training_week_plans` får slot-dimension (7 × 5 = 35 celler), ugedagens session som default i alle 5 slots, migration af 27 holds data; UI-grid mobil-først (D-047). Mockup FØRST, go-kort med billede før byg. Sonnet.
-   Efter disse: B3 (fjern "Train today +25 %"), B6 (læse-flader + hjælp, træningssiden bygges ÉN gang; PR #4736 lukket 15/9, branchen bevaret), #5236/#5237/#5238 når ejeren siger ja.
+1. Post-verify: tjek at patch note 7.277 (PR #5287) er merget og synlig på /patch-notes; ellers `gh pr update-branch 5287` + `scripts/merge-queue.ps1 -Pr "5287"`. Tjek main grøn. Sentry kl. 9 og 15.
+2. Sponsor (#4860, PR #5263, grøn): ejeren sagde 15/9 "det kigger vi på i morgen". Kortet + før/efter-billedet ligger i `docs/audits/2026-09-15-5267-visuals/4860-sponsor-foer-efter.png` og i #4860's seneste kommentar. Vis billedet igen, forklar med Team WolkerWessels (368.000 → 515.200), merge først ved "det er det jeg bestilte".
+3. Løbsdage (#5267): rapporten `docs/audits/2026-09-15-5267-loebsdage-s3-undersoegelse.md` + to visuelle kort (samme mappe) blev vist 15/9; ejerens ord: "Det her er rigtigt dårligt tror jeg sku. Er nød til at se på det i morgen." Start med at spørge HVAD der er dårligt (én linje), før du foreslår noget. Fakta der holder: D1 havde 86 løbsdage i S3, "140" er etaper (5 klokkeslæt × 28 dage). PR #5169 forbliver parkeret til afgørelse.
+4. Træningssession (ejerens ord): B4 #5264 (go-kort med skærmbillede af knappen + G6-tal, `gh pr update-branch` først, den er DIRTY) og B3 #5281 (grøn, bonus væk, ejeren: "vent til træningssessionen"). Programmets 7×5-grid afhænger af pkt. 3.
+5. To apply-go-kort (ejer ser tal live, én mutation ad gangen, spillerbesked skrives af ejeren): a) evne-point-flyt #5268: `infisical run --env=prod -- node backend/scripts/dry-run-5268-mental-abilities.js --dry-run` (V1 vs V2, anbefalet V2; evt. ANDEL da masse ellers +54 %); b) trup-backfill #4619: `node backend/scripts/backfill-4619-riders-squad.js --dry-run` (282 u23 / 249 junior / 0 hold over loft, valg A). Backup-tabeller findes; rollback står i PR-bodies #5280/#5279.
+6. Bølge 4 (kalender med trupper, MASTERPLAN pkt. 4), maks 4 laner via wave.js, når pkt. 5b er kørt (eller parallelt hvis ejeren siger go på datamodellen som den er): #5283 synlig generator-test (gate, opus; tabel i chat + fil, ingen balance-tal i issues) · trup-dimension i pakkeren (to akser, senior bit-identisk, squad-scoped dedup; #4620) · #5262 ungdomskatalog merges SAMMEN med pakkeren · AI U23/junior-ryttere 6-9 pr. AI-hold født uden PCM (#5278-stien) · felt-gate C1 · S4 dry-run → go-kort → #4270 apply (ejer). Afhænger af #5267 kun hvis kalenderen ændres.
+7. Resterende PR'er: #5235 mobiltabeller (før/efter-kort) · #5260 er merget · #5240 split · #3512 egen designsession. Codex-PR'er går gennem samme go-kort og merge-kø.
+8. Roadbook-opslag: `docs/drafts/roadbook-plan-2026-09-15.md` finpudses SAMMEN med ejeren efter patch-note-opslaget (Discord-teksten i `patch-notes-audit-2026-09-15.md` + 7.277-linjerne; ejeren poster selv). Beta-testere: ejeren udpeger holdnavne; markér `users.is_beta_tester`.
+9. Close-out: NOW.md (Next action + Working agent = ingen), MASTERPLAN, FEATURE_REGISTRY ved flag-flip, patch note, done-flips PR-for-PR, token-hygiejne, close-out-cleanup.ps1, prompt til 17/9.
 
-3. **#4620 U23-kalender ind i Bane 1** (ejer 15/9: "byg med i S4-cutover"). Læs `docs/YOUTH_RULES.md` §2.3 + `docs/superpowers/specs/2026-09-02-akademi-tre-trupper-design.md` §6. Egen slice-spec FØR build; én løbsdags-akse pr. trup, samme 140-mål. Første kort til ejeren: hvad viger i Bane 1 hvis det ikke når det (bestyrelses-flip #4857 eller cutover-pakken)? Ejeren rangerer, Claude skærer aldrig selv.
+Regler jeg holder fast i (lært 14-15/9):
 
-4. **Beta-adgang #5259** (ejer-ønske 15/9, høj prioritet): sonnet-lane, halv dag. Skærmbilleder admin + profil før go-kort.
+- Ejeren læser ikke lange kort. Ét delpunkt, ét eksempel med rigtige tal fra prod, én anbefaling. Forstår han det ikke, er det mit problem.
+- Ejeren stiller spørgsmål ved automatik der træffer valg for managers (15/9: "hvorfor bestemmer du hvilket hold managers vil have deres ryttere på?"). Sig altid hvad der sker automatisk, hvad manageren selv kan, og giv A/B.
+- Merge-køen kigger kun på påkrævede checks. Webkit-flake `seo-public-routes.spec` (#4925) rammer frontend-PR'er; rerun, ikke fix.
+- Guard-agent-spawn blokerer alle Agent-kald mens NOGEN bølge kører, også en anden sessions. Byg via wave.js eller vent.
+- Udskyd aldrig noget selv; "hvad viger" er ejerens beslutning. Ugeplanen er låst i MASTERPLAN.
+- Founder-prosa til spillere skriver ejeren; jeg leverer udkast i hans tone (Hep!, du-form, ingen em-dash, jeg/I aldrig vi).
+- Svar på hver besked fra ejeren med det samme, også midt i en bølge. Én PR i merge-køen ad gangen, `gh pr update-branch` først, konflikt → worker fletter main ind (rebase aldrig).
 
-5. **Resterende PR'er:** #5211 (Discord-velkomst: CodeRabbit CLI-review + FEATURE_REGISTRY → go-kort m. skærmbillede) · #5235 (mobiltabeller: PR'ens egne skærmbilleder viser overlap i rytter-cellen på træning + transfers, fix-spor før go-kort) · #5240 (split i to: flag-ikoner først, sprog-lazy-load som eget spor) · #3512 (ejeren vil have en EGEN designsession med spørgsmål ét ad gangen; ikke i denne session medmindre han beder om det).
-
-6. **Global handelsliste #5257** (ejer 15/9): Bane 2, efter beta-adgang.
-
-7. **Sentry-tjek kl. 9 og 15**; CYCLINGZONE-56 måles på døgn uden bølge (15/9 havde ingen bølge, kun 4 merges).
-
-8. **Patch note 7.276** ved close-out for dagens merges (7.275 dækker 15/9: anmeld handel).
-
-9. **Close-out:** NOW.md (Next action + Working agent = ingen), MASTERPLAN, FEATURE_REGISTRY ved flag-flip, patch note, done-flips PR-for-PR, token-hygiejne, close-out-cleanup.ps1, prompt til 17/9.
-
-**Regler jeg holder fast i (lært 14-15/9):**
-- Merge-køen: en PR grøn på sin egen base kan være rød mod main (ratchet fra #5248 fældede #5214 15/9). Før merge: `gh pr update-branch N` hvis branchen er bag main, og vent på ny CI. Postmortem: `.claude/learnings/2026-09-15-ratchet-stale-base-og-migration-name-array.md`.
-- Migration-PR'er: post-verify STRAKS efter merge (auto-migrate fejlede 15/9 på `name[] = text[]`; fail-safe holdt).
-- Reviewer-verdikt læses KUN fra workflow-journalens `result.verdict`.
-- Founder-prosa til spillere skriver JEG. Priser spillerne ser er inkl. moms; mine tal ekskl. moms.
-- Undersøgelsesspor: 60 min, "bekræftet + fix-plan" eller "afvist + bevis".
-- Svar på hver besked fra mig med det samme, også midt i en bølge.
-
-Start med trin 0, læs NOW.md, og giv mig post-verify-tallene fra trin 1 som første besked.
+Start med trin 0, læs NOW.md, og giv mig post-verify-status fra trin 1 som første besked.

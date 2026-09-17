@@ -14,9 +14,12 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "./supabasePagination.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
-import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { deriveAbilities, VISIBLE_ABILITIES, FORMULA_VERSION } from "./abilityDerivation.js";
 import { buildCapsForRider, buildProgressInit } from "./riderProgression.js";
-import { computeRiderTypes, resolveRiderTypes, RIDER_TYPE_KEYS, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { computeRiderTypes, resolveRiderTypes, RIDER_TYPE_KEYS, NEUTRAL_BASELINE, RIDER_TYPES } from "./riderTypes.js";
+import {
+  isBornFromPriors, deriveBirthAbilities, physiologySeedInputFromAbilities,
+} from "./riderBirthPriors.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
@@ -26,6 +29,15 @@ import { computeFrozenSalary } from "./contractSeed.js";
 import { applyTypeDampening } from "./riderValuationTypeDampening.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// #5269: klassifikator-vægtene som opslagstabel, sendt IND i riderBirthPriors
+// (ungdoms-signaturen er proportional med dem, #3458 fase 2). Vægt-tabellen
+// læses READ-ONLY her og ejes af weights/classifierWeights.js — den er FROSSET
+// (ejer 13/8) og må ikke ændres fra denne sti.
+const CLASSIFIER_WEIGHTS_BY_TYPE = Object.freeze(
+  Object.fromEntries(RIDER_TYPES.map((t) => [t.key, t.weights])),
+);
+
 const UPSERT_BATCH = 500;
 const WRITE_CONCURRENCY = 25;
 // Hvor mange id'er der må stå i ÉT `.in(...)`-filter. PostgREST sender filteret i
@@ -111,16 +123,39 @@ export async function runPhysiologyBackfill(supabase, { dryRun = true, physiolog
   // generation_tag med i selectet (#4311): fyld-ryttere ('fill_tail') skal have deres
   // evner klemt AF deriveAbilities selv (abilityDerivation.js) ved enhver re-derive —
   // uden taggen i rider-rækken kan deriveAbilities ikke se den.
-  const select = ["id", "height", "weight", "birthdate", "potentiale", "generation_tag", ...STAT_KEYS].join(", ");
+  // #5269: archetype_draw med i selectet af PRÆCIS samme grund som
+  // generation_tag ovenfor — uden den kan denne globale backfill ikke se at en
+  // rytter er født af spillets egne priors, og ville udlede hele hans evne-sæt
+  // til 1 fra de stat_* han aldrig fik. Den her sti kører over ALLE ryttere på
+  // én gang, så den fejl ville ikke ramme én rytter, men hele årgangen.
+  const select = ["id", "height", "weight", "birthdate", "potentiale", "generation_tag", "archetype_draw", ...STAT_KEYS].join(", ");
   const riders = await fetchAllRows(() =>
     supabase.from("riders").select(select).order("id", { ascending: true }));
   log(`physiology: ${riders.length} ryttere`);
 
-  const profiles = riders.map((r) => ({ ...seedPhysiologyFromLegacy(r), updated_at: stamp }));
+  const seasonNumber = await activeSeasonNumber(supabase);
+  const bornById = new Map();
+  for (const r of riders) {
+    if (!isBornFromPriors(r)) continue;
+    bornById.set(r.id, deriveBirthAbilities(r, {
+      age: ageForSeason(r.birthdate, seasonNumber),
+      classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+    }));
+  }
+  if (bornById.size) log(`  prior-fødte ryttere (evner reproduceres, ikke udledt): ${bornById.size}`);
+
+  const profiles = riders.map((r) => {
+    const born = bornById.get(r.id);
+    return { ...seedPhysiologyFromLegacy(born ? physiologySeedInputFromAbilities(r, born) : r), updated_at: stamp };
+  });
   log(`  ftp_wkg: ${spread(profiles.map((p) => p.ftp_wkg))}`);
   let abilities = [];
   if (!physiologyOnly) {
-    abilities = profiles.map((p, i) => ({ ...deriveAbilities(p, riders[i]), generated_at: stamp }));
+    abilities = profiles.map((p, i) => {
+      const born = bornById.get(riders[i].id);
+      if (born) return { rider_id: riders[i].id, formula_version: FORMULA_VERSION, ...born, generated_at: stamp };
+      return { ...deriveAbilities(p, riders[i]), generated_at: stamp };
+    });
     log(`  climbing: ${spread(abilities.map((a) => a.climbing))}`);
     log(`  sprint:   ${spread(abilities.map((a) => a.sprint))}`);
   }
@@ -259,8 +294,41 @@ export async function deriveForRiderIds(supabase, riderIds, {
   log(`deriveForRiderIds: ${riders.length}/${ids.length} ryttere fundet`);
 
   // 1) Physiology + abilities (rene transformationer).
-  const profiles = riders.map((r) => ({ ...seedPhysiologyFromLegacy(r), updated_at: stamp }));
-  const abilities = profiles.map((p, i) => ({ ...deriveAbilities(p, riders[i]), generated_at: stamp }));
+  //
+  // #5269 (ejer 15/9, "fremadrettet skal det stoppe"): en rytter FØDT af
+  // spillets egne priors bærer `archetype_draw.birth` og har `stat_* = NULL`.
+  // For ham REPRODUCERES evnerne fra fødsels-seed'en i stedet for at blive
+  // udledt af stats. Det er ikke en bekvemmelighed — det er nødvendigt:
+  // deriveForRiderIds kaldes IGEN ved hver re-derive (riderDeriveHealSweep
+  // #1673, starterSquadHealSweep, backfill-scripts), og PCM-fallbacken i
+  // deriveAbilities ville udlede evne 1 af en NULL-stat og dermed nulstille
+  // hele kuldet ved næste sweep.
+  //
+  // Ryttere UDEN `birth`-markøren — hver eneste eksisterende rytter i spillet —
+  // rammer PRÆCIS samme kodesti som før: `isBornFromPriors` er falsk, og
+  // `deriveAbilities` kaldes uændret med den uændrede legacy-profil.
+  const birthAbilitiesByRider = new Map();
+  const profiles = riders.map((r) => {
+    const born = isBornFromPriors(r)
+      ? deriveBirthAbilities(r, {
+        age: ageForSeason(r.birthdate, seasonNumber),
+        classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+      })
+      : null;
+    if (born) birthAbilitiesByRider.set(r.id, born);
+    // Fysiologien seedes af rytterens EGNE evner (samme 0-99-skala som
+    // seedPhysiologyFromLegacy forventer) i stedet for filens 60-default, som
+    // ville gøre hver eneste nyfødt fysiologisk identisk. Profilen forbliver
+    // version 1 / seeded_from_legacy som resten af populationen.
+    const seedRow = born ? physiologySeedInputFromAbilities(r, born) : r;
+    return { ...seedPhysiologyFromLegacy(seedRow), updated_at: stamp };
+  });
+  const abilities = profiles.map((p, i) => {
+    const r = riders[i];
+    const born = birthAbilitiesByRider.get(r.id);
+    if (born) return { rider_id: r.id, formula_version: FORMULA_VERSION, ...born, generated_at: stamp };
+    return { ...deriveAbilities(p, r), generated_at: stamp };
+  });
 
   // 2) BOOTSTRAP-type (#3325): en helt ny rytter har intet forudgående primary_type
   // at seede ability_caps' rolle-faktor med (buildYouthCaps/buildCapsForRider læser

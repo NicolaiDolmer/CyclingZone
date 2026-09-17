@@ -436,7 +436,13 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
           className="inline-flex items-center gap-1 text-2xs text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
           <ChevronLeftIcon aria-hidden="true" className="w-3 h-3" /> {logoutLabel}
         </button>
-        <LanguageSwitcher />
+        <div className="flex items-center gap-1">
+          {/* #427/#5130: ikon-only Discord-link i footer-raekken — den mobile
+              topbar (nedenfor) baerer KUN wordmarket, saa CTA'en lever her og
+              i nav'ets fulde DiscordJoinLink (linje ovenfor) i stedet. */}
+          <DiscordJoinLink variant="icon" label={t("sidebar.joinDiscord")} onClick={onNav} />
+          <LanguageSwitcher />
+        </div>
       </div>
     </div>
   );

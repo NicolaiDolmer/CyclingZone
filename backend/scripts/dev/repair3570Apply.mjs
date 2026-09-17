@@ -378,6 +378,60 @@ export const FACIT_MODELDRIFT = Object.freeze([
     til: 32,
     hvorfor: "Samme årsag som sænkning-medianen.",
   }),
+  // ── #5268 (ejer-beslutning 15/9) ────────────────────────────────────────────
+  // `MENTAL_ABILITY_TAG_CEILING` (riderProgression.js) lægger et LOFT på tagget
+  // for de fire mentale evner: taktik skæres fra håndværkstaget, aggression fra
+  // baroudeurens signatur-tag, og de to nye evner (teamwork/leadership) kommer
+  // til med samme loft. Scriptet selv er URØRT — kun buildCapsForRider-formlen
+  // flytter sig, præcis den slags drift ledgeren findes for.
+  //
+  // RETNINGEN ER OMVENDT AF ALLE POSTER OVENFOR, og det er selve beviset for at
+  // det ER loftet der taler: hver tidligere post var et rent MAX-løft og kunne
+  // derfor kun gøre `loftSaenketAntal` MINDRE. Denne er den første der SÆNKER et
+  // tag, så flere (rytter, evne)-par får et formel-loft under den arvede evne,
+  // og de sænkninger der er tilbage bliver større. Faldt tælleren i stedet, var
+  // noget galt.
+  Object.freeze({
+    dato: "2026-09-15",
+    ref: "#5268",
+    felt: "loftSaenketAntal",
+    fra: 4384,
+    til: 4873,
+    hvorfor:
+      "Loft-loftet på de mentale evner sænker tagget for taktik og aggression, og de to "
+      + "nye mentale evner får samme loft. 489 flere (rytter, evne)-par har derfor et "
+      + "formel-loft under deres 10/8-loft. Første post i ledgeren der peger nedad, fordi "
+      + "den er den første ændring der sænker et tag i stedet for at løfte det.",
+  }),
+  Object.freeze({
+    dato: "2026-09-15",
+    ref: "#5268",
+    felt: "saenkningP90",
+    fra: 32,
+    til: 34,
+    hvorfor:
+      "Følger direkte af det sænkede tag: de sænkninger der er tilbage er større. "
+      + "Medianen flytter sig IKKE (15) — loftet rammer kun de fire mentale evner, ikke "
+      + "de tretten andre, så halen bevæger sig mens midten står stille.",
+  }),
+  // ── #5288 (ejer-beslutning 16/9) ────────────────────────────────────────────
+  // Delvis tilbagerulning af posten ovenfor: `aggression` er ude af
+  // MENTAL_ABILITY_TAG_CEILING igen, fordi loftet på 70 kun ramte baroudeurens
+  // SIGNATUREVNE (eneste caps-opskrift med aggression, og ikke en craft-evne).
+  // `tactics` (55) og teamwork/leadership (70) står uændret, så kun den ene
+  // fjerdedel af #5268-posten rulles tilbage — derfor 47 og ikke 489.
+  Object.freeze({
+    dato: "2026-09-16",
+    ref: "#5288",
+    felt: "loftSaenketAntal",
+    fra: 4873,
+    til: 4826,
+    hvorfor:
+      "Aggression tilbage på baroudeurens signatur-tag (93). 47 (rytter, evne)-par har "
+      + "derfor ikke længere et formel-loft under deres 10/8-loft. Peger opad igen, "
+      + "modsat #5268-posten, præcis som en tilbagerulning af ét af de fire lofter skal. "
+      + "saenkningP90 flytter sig IKKE (34): de 47 par lå i midten, ikke i halen.",
+  }),
 ]);
 
 /** Det godkendte facit med ledgerens bevidste drift lagt oven på. */

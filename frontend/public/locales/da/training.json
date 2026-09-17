@@ -266,6 +266,12 @@
     "sessionNote_vo2max_punch": "Klatring trænes ikke. Punch får mere i stedet.",
     "session_threshold": "Tærskel",
     "session_sprint": "Sprint",
+    "session_cobbled_sectors": "Brostenssektorer",
+    "session_echelon_drills": "Vifteøvelser",
+    "session_attack_repeats": "Angrebsintervaller",
+    "sessionNote_cobbled_sectors": "Bygget til brostenene. Brosten får mest, robusthed og positionering følger med i prisen.",
+    "sessionNote_echelon_drills": "Bygget til sidevind. Fladt terræn får mest, positionering og robusthed følger med i prisen.",
+    "sessionNote_attack_repeats": "Bygget til at køre aggressivt. Angrebslyst får mest, punch og acceleration følger med i prisen.",
     "session_technique": "Teknik",
     "session_aero": "Aero",
     "session_loebslaere": "Løbslære",
@@ -277,5 +283,18 @@
     "save": "Gem dag",
     "bulkSetDay": "Sæt dag",
     "bulkWholeDay": "Hele dagen"
+  },
+  "score": {
+    "column": "Score",
+    "raceDay": "Løb",
+    "sparkAria": "Træningsscore, seneste 7 dage: {name}",
+    "factor_intensity": "Passet",
+    "factor_focusMatch": "Fokus-match",
+    "factor_condition": "Form og træthed",
+    "factor_coach": "Træneren",
+    "factor_facility": "Faciliteterne",
+    "factor_potential": "Talentet",
+    "factor_youth": "Alderen",
+    "factor_noise": "Dagen"
   }
 }

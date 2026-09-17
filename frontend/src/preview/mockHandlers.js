@@ -857,6 +857,13 @@ const SEASON_MATRIX_SEED = {
     { raceId: "smx-tsa", riderId: "smx-r6", raceRole: "helper" },
     { raceId: "smx-ocean", riderId: "smx-r4", raceRole: "free_role" },
   ],
+  // #5301: ét afmeldt loeb i seeden, formet som prod-sagen (Discord 16/9,
+  // egomadsen): et fler-dages loeb holdet har trukket sig fra, hvis BEVAREDE
+  // opstilling (#4306) stadig ligger i `entries` ovenfor. Uden feltet her ville
+  // preview vise praecis den bug fixet fjerner — r2/r6 laast ude af de
+  // overlappende endagsloeb (smx-open dag 1, smx-ocean dag 3) af et loeb de
+  // ikke stiller op i.
+  withdrawnRaceIds: ["smx-tsa"],
   dayDates: [
     { gameDay: 1, date: "2026-08-28" }, { gameDay: 2, date: "2026-08-28" },
     { gameDay: 3, date: "2026-08-29" }, { gameDay: 4, date: "2026-08-29" },

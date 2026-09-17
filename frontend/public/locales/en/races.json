@@ -75,6 +75,7 @@
     "errorTitle": "Selection matrix could not be loaded",
     "empty": "No races this season yet",
     "restDay": "Rest day",
+    "withdrawnHint": "You have withdrawn from this race. The saved line-up is kept in case you re-enter, but these riders will not start.",
     "dayAria": "Race day {index}, {date}. Open its day board.",
     "cellEmptyAria": "{rider}, {race}: not selected. Click to add.",
     "cellFilledAria": "{rider}, {race}: {role}. Click to change.",
@@ -461,6 +462,7 @@
     "willNotStartShort": "Under {min} riders. Does not start.",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
+    "hunter": "Breakaway hunter",
     "freeRole": "Free role",
     "noRole": "None",
     "thRider": "Rider",
@@ -514,6 +516,11 @@
     "wrongPool": {
       "title": "This race is in another division",
       "note": "You can only enter races in your own division, so there's no line-up to set here."
+    },
+    "withdrawnPanel": {
+      "title": "You have withdrawn from this race",
+      "note": "Your team is voluntarily not starting, so there is no line-up to set. Re-enter from the race board if you change your mind before the start.",
+      "keptHeading": "{count, plural, one {# rider kept for a re-entry} other {# riders kept for a re-entry}}"
     },
     "errors": {
       "selection_wrong_size": "You can pick at most {max} riders.",

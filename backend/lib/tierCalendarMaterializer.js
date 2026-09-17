@@ -18,6 +18,7 @@ import { generateRaceStageProfiles, toStageProfileRow } from "./raceStageProfile
 import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { filterSeniorSquadRows, selectSeniorRacePool } from "./racePoolCatalog.js";
 import {
   TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, CLASS_STAGE_LENGTH_BAND,
   SCARCE_TERRAIN_ARCHETYPES, TIER_TERRAIN_FAMILY_MIN, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
@@ -536,7 +537,13 @@ export async function materializeTierCalendars({
   // #4075: pensionerede katalog-rækker (retired_at sat af seedRacePool --prune, når en
   // række er ude af CSV'en men stadig FK-refereret af historiske sæsoners races) må
   // ALDRIG kunne vælges til nye kalendere — det var rod-årsagen til dublet-GT'erne i S3.
-  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text").is("retired_at", null);
+  // #5330: SENIOR-læser. race_pool rummer efter #4620/#5262 også U23-/juniorløb; uden
+  // squad-filteret ville de kunne vælges til seniorkalenderen. NULL/manglende kolonne =
+  // senior (se racePoolCatalog.js).
+  const { data: dbCatalog, error: cErr } = await selectSeniorRacePool(
+    (columns) => supabase.from("race_pool").select(columns).is("retired_at", null),
+    { columns: "id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text" },
+  );
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
   // #3295: HYPOTETISKE katalog-rækker til "hvad nu hvis vi tilføjede disse løb?"-analyse
   // (scripts/proposeCatalogExpansion.js). De findes ikke i race_pool, så de kan aldrig
@@ -545,7 +552,10 @@ export async function materializeTierCalendars({
   if (extraCatalogRows.length && !dryRun) {
     throw new Error("extraCatalogRows er KUN til dry-run-analyse — de findes ikke i race_pool og kan ikke materialiseres");
   }
-  const catalog = extraCatalogRows.length ? [...(dbCatalog || []), ...extraCatalogRows] : dbCatalog;
+  // #5330: extraCatalogRows er hypotetiske senior-rækker (uden squad → senior), men
+  // filteret køres på det samlede katalog så en fremtidig kalder ikke kan smugle en
+  // u23-/junior-række ind ad den vej.
+  const catalog = extraCatalogRows.length ? filterSeniorSquadRows([...(dbCatalog || []), ...extraCatalogRows]) : dbCatalog;
   // Seed-nøgle pr. katalog-løb: external_id binder parcours til løbets VIRKELIGE
   // identitet (identisk parcours i en divisions puljer); terrain_archetype driver
   // terrænfordelingen (jf. raceStageProfileGenerator.js).

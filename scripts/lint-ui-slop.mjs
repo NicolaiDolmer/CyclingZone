@@ -71,6 +71,12 @@ export const EXEMPT_FILES = new Set([
   // canvas-tegnet PNG kan ikke bruge CSS-tokens; paletten er bevidst PINNET
   // så et delt kort ser ens ud uanset eksportørens lys/mørk-indstilling.
   "frontend/src/lib/seasonDocumentaryExport.js",
+  // #5177: sprogvaelgerens to flag som inline SVG (afloeser flag-icons' 421 KB
+  // sprite-CSS i entry-chunkens kritiske sti). Et nationalflags farver ER
+  // specifikationen — Union Jack er #012169/#C8102E/#FFF, Dannebrog #C8102E/#FFF —
+  // og maa hverken theme-skifte eller foelge cz-paletten. Der findes ingen
+  // design-token for "korrekt rod i et flag", saa hex'ene er bevidst literale.
+  "frontend/src/components/LanguageSwitcherFlag.jsx",
 ]);
 
 // --- Detektorer (rene funktioner paa kildestrenge) ------------------------

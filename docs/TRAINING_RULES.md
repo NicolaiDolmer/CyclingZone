@@ -248,6 +248,10 @@ Næsten hver tredje aktive plan står på Hvile, og det er forudsætningen for a
 
 ---
 
+### 3.2 Tre hårde sessioner for brosten, vifter og angreb (#5236/#5237, ejer 14/9, live 15/9)
+
+Merget 15/9 (PR #5265): `cobbled_sectors` (cobblestone 2, durability 1, positioning 1), `echelon_drills` (flat 2, positioning 1, durability 1) og `attack_repeats` (aggression 2, punch 1, acceleration 1) som hårde sessioner. Vægtsummen er låst mod den hårde families (`focusWeightSum`, pinnet i `training.test.js`), så splittet flytter udbytte, det skaber ikke nyt. `technique`, `tempo` og `loebslaere` er uændrede hybrider (ingen datamigration); nøglerne er IKKE i `SMART_DEFAULT_FOCUS_KEYS`. Brosten, flad og aggression kan dermed trænes hårdt for første gang (#4874). Formpas før løb (Åbnere, #5238) er stadig ikke bygget.
+
 ## 4. Ugerytme: hvem vinder når to lag siger noget forskelligt
 
 `resolveDayIntensity` (`backend/lib/training.js:372-386`) er ÉN ren funktion, delt mellem
@@ -353,6 +357,10 @@ eller total udmattelse kan gøre en dag ekstrem.
 under den median på 57 der blev målt efter D3-rekalibreringen. Tallet er ikke opdelt på
 menneske- og AI-hold her, så det er **ikke** en verifikation af at D3-målet holder - det er
 et øjebliksbillede af hele bestanden.
+
+**Form vægter reelt ind i løbssimuleringen** via `formRaceWeightV3()` (`raceRoles.js`),
+som v3-kaldet i `raceSimulator.js` bruger i stedet for den lavere `FORM_RACE_WEIGHT`-konstant
+fra v1-stien — formen er altså ikke en neutral 0-stub på løbsdage.
 
 ### 5.4 Skader fra træning
 
@@ -613,6 +621,8 @@ Når et af issuerne merges, flyttes indholdet ind i det relevante afsnit, og ræ
 ## 13. Ejerens beslutninger 6/9: træning pr. løbsdag (retning, ikke bygget)
 
 > **Status: låste beslutninger fra design-session 6/9 2026 (Claude Code, ét spørgsmål ad gangen). Intet af det er bygget; §1-§7 gælder indtil en PR ændrer dem. Mål: sæson 4 (fra 28/9), ikke midt i S3. Genåbn dem ikke.**
+
+> **Træningsscore-delen (beslutning 4-6) er delvist leveret:** PR #5261 (merget 15/9) bygger scoren bag et beta-flag — synlig for admin og beta-testere. Flip til `on` for alle spillere er ejer-only.
 
 **Ejerens udgangspunkt (ordret):** *"Jeg vil gerne begynde at designe spillet mod, at man træner på en løbsdag i stedet for hver irl dag. Så er det også nemmere at finde ud, om en rytter kører et løb eller træner den enkelte dag. Jeg vil også gerne have designet vores system til træningsscoren."*
 

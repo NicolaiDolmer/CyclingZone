@@ -14,6 +14,11 @@
 // tælle-logik, ingen egen size-tabel at holde i sync.
 export function isSquadSelectionMissing(selectionResponse) {
   if (!selectionResponse || selectionResponse.enabled === false) return false;
+  // #5301: et hold der har meldt fra MANGLER ikke en udtagelse — det har truffet et
+  // valg. Nudgen bad om en trup til et løb spilleren bevidst havde trukket sig fra,
+  // fordi den bevarede opstilling (#4306) næsten altid er mindre end size.max, og
+  // endpointet ikke fortalte at holdet var afmeldt (Discord 16/9, egomadsen).
+  if (selectionResponse.withdrawn) return false;
   const selected = selectionResponse.selection?.rider_ids?.length ?? 0;
   const target = selectionResponse.size?.max;
   if (!Number.isFinite(target)) return false; // ukendt kontrakt → ingen falsk nudge

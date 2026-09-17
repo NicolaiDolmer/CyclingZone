@@ -73,6 +73,18 @@ export const TRAINING_CONFIG = Object.freeze({
 // Nøglen `vo2max` beholdes bevidst for hybriden: hver eneste gemte plan i
 // `training_plans` peger allerede på den, så splittet kræver INGEN datamigration
 // og ingen spiller vågner op til en anden session end i går.
+// ── #4874/#5236/#5237: brosten, vifte og angreb (ejer-valg 14/9) ───────────
+// Brosten kunne før KUN trænes på en let færdighedsdag (`technique`, klippet af
+// håndværks-raten), og flat kun på let (`aero`) eller normal (`tempo`) — brosten-
+// og rouleur-talenter faldt bagud (#4874, ejer 5/9: "100% valid"). Aggression
+// kunne kun trænes på `loebslaere` (også en let dag). De tre nye nøgler er
+// bevidst HÅRDE pakker (trainingDayTypes.js), så disse evner endelig får en
+// session der matcher deres realistiske træningsbelastning.
+//
+// `technique` (descending + cobblestone), `tempo` (tempo/flat/durability) og
+// `loebslaere` (positioning/tactics/aggression) beholdes UÆNDREDE som hybrider,
+// præcis som `vo2max` ved #4631: ingen datamigration, ingen spiller vågner op
+// til en anden session end i går.
 export const TRAINING_FOCUSES = Object.freeze({
   vo2max:       Object.freeze(["climbing", "punch", "tempo"]),
   vo2max_climb: Object.freeze(["climbing", "tempo"]),
@@ -87,6 +99,19 @@ export const TRAINING_FOCUSES = Object.freeze({
   // #3709 trin 2 (spec §2.3, ejer-go 16/8): positioning flytter hertil fra
   // `technique`. tactics + aggression kunne før ikke trænes af NOGET fokus.
   loebslaere:  Object.freeze(["positioning", "tactics", "aggression"]),
+  // #5236: brostensektorer — cobblestone er hovedevnen, durability og
+  // positioning (samme evne som løbslære) deler resten. Prisen for at flytte
+  // brosten fra let til hård betales med positioning, så ingen får brosten
+  // gratis oveni løbslære.
+  cobbled_sectors: Object.freeze(["cobblestone", "durability", "positioning"]),
+  // #5236: vifteøvelser — flat er hovedevnen, positioning og durability deler
+  // resten. Samme balance-greb som cobbled_sectors.
+  echelon_drills:  Object.freeze(["flat", "positioning", "durability"]),
+  // #5237: angrebsintervaller — aggression er hovedevnen, punch og
+  // acceleration deler resten. Ligger tæt på vo2max_punch, men rammer
+  // aggression i stedet for climbing/tempo: de to skal være reelle
+  // alternativer, ikke rangordnede.
+  attack_repeats:  Object.freeze(["aggression", "punch", "acceleration"]),
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUSES));
 
@@ -110,9 +135,19 @@ export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUSES));
 // motoren må ikke håndholde fordelingen).
 //
 // Fokus uden en post her vægter 1,0 pr. evne, dvs. bit-identisk med før.
+// #5236/#5237: samme greb som #4631 — uden en vægt ville tre-evners-pakken
+// bare være tre lige store tredjedele, og hovedevnen (brosten/flat/angreb)
+// ville ikke stå tydeligere end de to evner der er der for at holde prisen
+// (durability/positioning). INVARIANTEN: de tre nye sessioner har samme
+// vægtsum (2+1+1=4) som hinanden — pinnet i training.test.js, samme mønster
+// som vo2max-familiens interne invariant. Uden det ville én pakke give mere
+// "dag" end en anden for samme pris, hvilket er power creep.
 export const FOCUS_ABILITY_WEIGHT = Object.freeze({
   vo2max_climb: Object.freeze({ climbing: 2, tempo: 1 }),
   vo2max_punch: Object.freeze({ punch: 2, tempo: 1 }),
+  cobbled_sectors: Object.freeze({ cobblestone: 2, durability: 1, positioning: 1 }),
+  echelon_drills:  Object.freeze({ flat: 2, positioning: 1, durability: 1 }),
+  attack_repeats:  Object.freeze({ aggression: 2, punch: 1, acceleration: 1 }),
 });
 
 // Vægten for én evne i ét fokus. Ren opslag med sikker default.

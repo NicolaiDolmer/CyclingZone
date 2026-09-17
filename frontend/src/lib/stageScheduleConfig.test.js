@@ -131,3 +131,18 @@ test("formatCountdown falls back to minutes-only under an hour", () => {
   const scheduledMs = 12 * 60 * 1000; // 12 min
   assert.equal(formatCountdown(scheduledMs, nowMs, fakeT), "in 12 min");
 });
+
+test("#5290: explicit Copenhagen dates before and after midnight", () => {
+  const nextStage = "2026-09-16T12:00:00Z";
+  const previousStage = "2026-09-15T13:00:00Z";
+  for (const now of ["2026-09-15T16:06:00Z", "2026-09-15T21:30:00Z"]) {
+    const reference = new Date(now);
+    assert.equal(relativeDayKey(nextStage, reference), "tomorrow");
+    assert.equal(relativeDayKey(previousStage, reference), "today");
+  }
+  const afterMidnight = new Date("2026-09-15T22:30:00Z");
+  assert.equal(relativeDayKey(nextStage, afterMidnight), "today");
+  assert.equal(relativeDayKey(previousStage, afterMidnight), null);
+  assert.equal(relativeDayKey("2026-09-17T12:00:00Z", afterMidnight), "tomorrow");
+  assert.equal(relativeDayKey("not-a-date", afterMidnight), null);
+});
