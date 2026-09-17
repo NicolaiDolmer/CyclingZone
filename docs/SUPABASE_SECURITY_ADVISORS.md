@@ -48,15 +48,30 @@ ville gen-åbne `0016` uden nogen kalder.
 
 **Accept-listen er afstemt med tabellen.**
 `scripts/ops/supabase-advisor-allowlist.json` (brugt af
-`.github/workflows/supabase-advisor-sweep.yml`) har fået `founder_public_list`
-som cache_key-post, så den eneste udokumenterede af de tre levende WARN ikke
-larmer hver uge. Klasse-posten `materialized_view_in_api` er **fjernet**: den
-accepterede hele lint-klassen med begrundelsen "authenticated-SELECT
-tilsigtet", hvilket ikke længere er sandt, og den ville have gjort sweepen
-blind for præcis den regression denne migration lukker. Klassen har 0 fund i
-dag, så fjernelsen larmer ikke. `extension_in_public` bliver stående: den
-dækker en stående ejer-beslutning (19/8) om at acceptere extensions i `public`
-frem for at drop/recreate afhængige constraints, ikke et enkelt lukket fund.
+`.github/workflows/supabase-advisor-sweep.yml`) indeholder nu præcis de tre
+levende WARN og intet andet:
+
+- **Tilføjet:** `founder_public_list` — den eneste af de tre levende `0029` der
+  ikke var dækket, så sweepen åbnede et ugentligt issue om et fund der har
+  været dokumenteret bevidst åbent siden 11/9.
+- **Fjernet, fordi fundet er LUKKET:** `materialized_view_in_api` (klasse-post,
+  begrundelsen "authenticated-SELECT tilsigtet" er ikke sand efter #5176),
+  `anon ... is_admin` (#5153 §C), `authenticated ... is_beta_tester`
+  (#5153 §D) og de tre metrics-RPC'er `get_cohort_retention`,
+  `get_retention_scorecard_activity`, `get_sprint_metrics` (#4870).
+- **Beholdt:** `authenticated ... is_admin` og
+  `authenticated ... is_offered_intake_rider` (begge stadig levende WARN), samt
+  klasse-posterne `rls_enabled_no_policy` (120 levende INFO) og
+  `extension_in_public` (stående ejer-beslutning 19/8 om hele klassen, ikke et
+  enkelt lukket fund — ændring kræver ejer-go).
+
+**Reglen bag oprydningen:** en accept-post for et fund der allerede er lukket
+dæmper ikke støj — den gør sweepen blind for regressionen. `isAllowed()`
+matcher på cache_key-præfiks, så en post for `is_beta_tester` ville også
+sluge fundet hvis EXECUTE-grantet kom tilbage. Alle fem fjernede poster er
+verificeret væk fra advisoren 17/9 kl. 15:30 UTC, så fjernelsen larmer ikke i
+dag. `scripts/ops/supabase-advisor-sweep.test.mjs` har fået tre forward-guards:
+de tre levende fund SKAL være dækket, de lukkede fund må IKKE være det.
 
 ## Re-verificeret 14/9 2026 (kl. 08:09 UTC), #5176
 

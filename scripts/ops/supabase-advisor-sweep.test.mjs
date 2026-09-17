@@ -84,3 +84,23 @@ test("materialized_view_in_api er IKKE blanket-accepteret (#5088)", () => {
   };
   assert.equal(isAllowed(finding, real), false);
 });
+
+// #5088 forward-guard, samme klasse som testen ovenfor: en accept-post for et
+// LUKKET fund skjuler regressionen i stedet for at daempe stoej. De fem fund
+// herunder blev revoket i #4870 (de tre metrics-RPC'er) og #5153 (§C anon-
+// is_admin, §D is_beta_tester), og advisoren maalte dem som vaek 17/9 kl.
+// 15:30 UTC. Kommer et af dem tilbage, SKAL sweepen aabne et issue.
+test("accept-listen daekker ikke fund der allerede er lukket (#5088)", () => {
+  const real = loadAllowlist();
+  const closed = [
+    ["anon_security_definer_function_executable", "public_is_admin_", "#5153 §C"],
+    ["authenticated_security_definer_function_executable", "public_is_beta_tester_", "#5153 §D"],
+    ["authenticated_security_definer_function_executable", "public_get_cohort_retention_", "#4870"],
+    ["authenticated_security_definer_function_executable", "public_get_retention_scorecard_activity_", "#4870"],
+    ["authenticated_security_definer_function_executable", "public_get_sprint_metrics_", "#4870"],
+  ];
+  for (const [name, suffix, closedBy] of closed) {
+    const finding = { name, cache_key: `${name}_${suffix}` };
+    assert.equal(isAllowed(finding, real), false, `${suffix} er lukket i ${closedBy} og maa ikke vaere accepteret`);
+  }
+});
