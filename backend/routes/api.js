@@ -8911,7 +8911,7 @@ router.get("/teams/:id", requireAuth, async (req, res) => {
 // (samme felt, hentet service-role via GET /managers/:teamId ovenfor, som
 // derfor aldrig ramte bugget). Denne route giver samme smalle, ikke-PII felt
 // til TeamProfilePage uden at genåbne den brede policy.
-router.get("/teams/:id/manager-status", requireAuth, async (req, res) => {
+router.get("/teams/:id/manager-status", requireAuth, presencePulseLimiter, async (req, res) => {
   if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Ugyldigt hold-id" });
   try {
     const { data: team, error: teamError } = await supabase.from("teams")
