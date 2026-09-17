@@ -11,9 +11,9 @@
 //
 //   • demote(...)   — flyt en U23-senior-rytter NED i akademiet (D5-berettigelse).
 //     Kører via demote_rider_to_academy-RPC'en under advisory-lås (akademi-8-cap +
-//     atomisk sletning af fremtidige race_entries). Løn gen-beregnes til ungdomsrate,
-//     men kontrakt-TERMEN arves uændret hvis rytteren allerede har en komplet
-//     kontrakt (#3620) — kun en kontraktløs rytter får akademi-aftalen.
+//     atomisk sletning af fremtidige race_entries). HELE kontrakten — løn OG term —
+//     arves uændret hvis rytteren allerede har en komplet kontrakt (#3620 for
+//     termen, #4582 for lønnen) — kun en kontraktløs rytter får akademi-aftalen.
 //
 // Spec: docs/superpowers/specs/2026-06-25-race-hub-program-design.md §5 S7 + D5.
 //
@@ -25,6 +25,16 @@
 //      hver eneste kontrakt: længde 3 → 2, udløb → aktiv sæson + 1.
 //   2) demote(): skrev ubetinget en frisk akademi-kontrakt forankret i den
 //      aktuelle sæson og forkortede dermed enhver kontrakt med udløb længere ude.
+//
+// #4582 (4/9, ejer-beslutning) — sidste halvdel af den samme asymmetri: #3620
+// fredede kontrakt-TERMEN ved demote, men lod lønnen gen-beregne fra
+// current_production_value. Promote arvede hele kontrakten, demote kun halvdelen,
+// og fordi CPV vokser hen over sæsonen betød en tur ned i akademiet en STIGNING
+// (3 spillere rapporterede 17k → 22k, 1/9). Ejer-reglen til spillerne er
+// "when you buy a rider, you also buy the contract, until you renew it" — derfor
+// arver demote nu HELE kontrakten (løn + længde + udløb), præcis som promote.
+// Én betingelse, ét sted: demoteContractPatch() nedenfor, brugt af BÅDE demote()
+// og quote-routen (#3784-læringen: preview og udførelse må aldrig regne hver for sig).
 
 import { notifyTeamOwner } from "./notificationService.js";
 import { computeFrozenSalary, computeContractEndSeason, contractOnAcquirePatch } from "./contractSeed.js";
@@ -41,6 +51,56 @@ import { findPendingGraduation } from "./academyGraduation.js";
  */
 export function demoteSalary({ current_production_value } = {}) {
   return computeFrozenSalary({ current_production_value });
+}
+
+/**
+ * Demote-kontrakt (#4582) — create-if-missing / inherit-if-present, SAMME
+ * invariant som contractOnAcquirePatch (#1309) og promote (#2881):
+ *
+ *   • Har rytteren en KOMPLET kontrakt (salary + contract_length +
+ *     contract_end_season) → hele kontrakten arves UÆNDRET. Lønnen gen-beregnes
+ *     ALDRIG. "When you buy a rider, you also buy the contract, until you renew
+ *     it" (ejer-beslutning 4/9, #4582).
+ *   • Er rytteren reelt kontraktløs → akademi-aftalen oprettes
+ *     (demoteSalary + ACADEMY.CONTRACT_LENGTH forankret i den aktive sæson).
+ *
+ * Ren funktion, ingen DB. Brugt af BÅDE demote() og GET
+ * /riders/:id/academy-demote-quote, så dialogen og selve flyttet aldrig kan
+ * regne forskelligt (#3784).
+ *
+ * #3620-guarden gentages her: er `salary` sat, men kolonnen
+ * `contract_end_season` slet ikke hentet af kalderens SELECT, kan vi ikke
+ * skelne "ingen kontrakt" fra "kolonnen mangler" — det er en programmeringsfejl
+ * hos kalderen, og vi kaster i stedet for at gætte (og dermed regenerere en
+ * kontrakt vi skulle have arvet).
+ *
+ * @returns {{salary:number, contract_length:number, contract_end_season:number, keepsContract:boolean}}
+ */
+export function demoteContractPatch(rider, seasonNumber) {
+  if (rider && rider.salary != null && !("contract_end_season" in rider)) {
+    throw new Error(
+      "demoteContractPatch: rider mangler feltet contract_end_season — " +
+      "tilføj kolonnen til kalderens SELECT (ellers gen-beregnes en eksisterende kontrakt, #3620/#4582)"
+    );
+  }
+  const keepsContract = rider?.salary != null
+    && rider?.contract_end_season != null
+    && rider?.contract_length != null;
+
+  if (keepsContract) {
+    return {
+      salary: rider.salary,
+      contract_length: rider.contract_length,
+      contract_end_season: rider.contract_end_season,
+      keepsContract: true,
+    };
+  }
+  return {
+    salary: demoteSalary(rider ?? {}),
+    contract_length: ACADEMY.CONTRACT_LENGTH,
+    contract_end_season: computeContractEndSeason(seasonNumber, ACADEMY.CONTRACT_LENGTH),
+    keepsContract: false,
+  };
 }
 
 /**
@@ -134,9 +194,10 @@ const DEMOTE_ERROR_CODES = new Set([
 /**
  * Demote en U23-senior-rytter ned i akademiet (D5).
  *
- * - newSalary = demoteSalary(rider) = max(1, round(current_production_value ×
- *   SALARY_RATE_PRODUCTION)). Samme delte formel som promote og alle andre
- *   erhvervelses-stier (#2083-princippet: ét fælles løn-system).
+ * - kontrakt: demoteContractPatch(rider, seasonNumber) — en komplet kontrakt
+ *   (løn + længde + udløb) arves UÆNDRET (#4582); kun en kontraktløs rytter får
+ *   akademi-aftalen (demoteSalary + ACADEMY.CONTRACT_LENGTH), efter samme delte
+ *   formel som alle andre erhvervelses-stier (#2083-princippet: ét fælles løn-system).
  * - p_season_start_year = LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) (spejler
  *   ageForSeason, så RPC'ens alders-gate matcher motoren).
  * - kalder demote_rider_to_academy-RPC'en (advisory-lås + akademi-cap + atomisk
@@ -157,26 +218,22 @@ export async function demote(supabase, {
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
 
-  // #3989: løn-satsen er global, så demote behøver ikke holdets division længere.
-  const newSalary = demoteSalary(rider);
   const seasonStartYear = LAUNCH_REFERENCE_YEAR + (Number(seasonNumber) - 1);
 
-  // #3620: KONTRAKT-TERMEN følger rytteren ned i akademiet. Før skrev demote
-  // ubetinget en frisk 3-sæsoners akademi-aftale forankret i den AKTUELLE sæson
-  // — så en rytter manageren havde forlænget til sæson 5 kom ud af akademiet med
-  // udløb i sæson 4 (rapporteret i prod 10/8). Samme create-if-missing /
+  // #3620 + #4582: HELE kontrakten følger rytteren ned i akademiet. Før skrev
+  // demote ubetinget en frisk 3-sæsoners akademi-aftale forankret i den AKTUELLE
+  // sæson (#3620: udløb sæson 5 → sæson 4, rapporteret i prod 10/8) og
+  // gen-beregnede lønnen fra current_production_value (#4582: 17k → 22k,
+  // rapporteret af 3 spillere 1/9). Samme create-if-missing /
   // inherit-if-present-invariant som contractOnAcquirePatch og promote(): kun en
   // rytter UDEN komplet kontrakt får akademi-aftalen. Dermed er promote/demote
-  // hinandens inverse på kontrakt-termen, og en tur gennem akademiet kan hverken
-  // forkorte eller forlænge en kontrakt.
-  // NB: lønnen gen-beregnes stadig (uændret, #2083/#2594) — kun udløbet er fredet.
-  const hasContract = rider.salary != null
-    && rider.contract_end_season != null
-    && rider.contract_length != null;
-  const contractLength = hasContract ? rider.contract_length : ACADEMY.CONTRACT_LENGTH;
-  const contractEnd = hasContract
-    ? rider.contract_end_season
-    : computeContractEndSeason(seasonNumber, ACADEMY.CONTRACT_LENGTH);
+  // hinandens inverse på HELE kontrakten, og en tur gennem akademiet kan hverken
+  // forkorte, forlænge eller om-prise den.
+  const {
+    salary: newSalary,
+    contract_length: contractLength,
+    contract_end_season: contractEnd,
+  } = demoteContractPatch(rider, seasonNumber);
 
   const { data, error } = await supabase.rpc("demote_rider_to_academy", {
     p_team_id: teamId,

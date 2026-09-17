@@ -98,9 +98,9 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
   }
 
   async function openDemote() {
-    // #3784/#3805: newSalary + racesCleared + racesOngoing kommer ALLE fra
-    // backendens academy-demote-quote-route, som kalder LIGE PRÆCIS de samme
-    // funktioner (demoteSalary + countFutureRaceEntries/countOngoingRaceEntries)
+    // #3784/#3805/#4582: newSalary + keepsContract + racesCleared + racesOngoing
+    // kommer ALLE fra backendens academy-demote-quote-route, som kalder LIGE
+    // PRÆCIS de samme funktioner (demoteContractPatch + countFutureRaceEntries/countOngoingRaceEntries)
     // som selve demote() bruger til at udføre flyttet. Ingen frontend-JS-kopi
     // af løn-formlen tilbage her — det tidligere projectYouthSalary-kald
     // brugte rider-objektet fra RiderStatsPage's SELECT, som ALDRIG hentede
@@ -123,6 +123,10 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
       capAfterLabel: `${used + 1} / ${max}`,
       racesCleared: quote?.racesCleared ?? 0,
       racesOngoing: quote?.racesOngoing ?? 0,
+      // #4582: backendens quote afgør om kontrakten arves — samme funktion
+      // (demoteContractPatch) som flyttet selv bruger. Falder quoten ud, står
+      // flaget false og dialogen lover ingenting om kontrakten.
+      keepsContract: quote?.keepsContract === true,
     });
   }
 

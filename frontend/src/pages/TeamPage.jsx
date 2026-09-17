@@ -1042,9 +1042,9 @@ export function TeamPage() {
   // ved hvert besøg på holdsiden uden at noget længere brugte svaret.
   // Bevægelsen vises fortsat på rytterprofilens hero, som henter sin egen.
 
-  // Åbn demote-bekræftelsen. #3784/#3805: newSalary/racesCleared/racesOngoing
-  // kommer fra backendens academy-demote-quote-route — SAMME funktioner
-  // (demoteSalary + countFutureRaceEntries/countOngoingRaceEntries) som selve
+  // Åbn demote-bekræftelsen. #3784/#3805/#4582: newSalary/keepsContract/
+  // racesCleared/racesOngoing kommer fra backendens academy-demote-quote-route —
+  // SAMME funktioner (demoteContractPatch + countFutureRaceEntries/countOngoingRaceEntries) som selve
   // demote() bruger til at udføre flyttet, se RiderManageActions.jsx's
   // openDemote() for den fulde root-cause-forklaring. Akademi-cap-tællingen
   // (8-cap-effekten) er uafhængig af quoten og hentes stadig direkte.
@@ -1070,6 +1070,9 @@ export function TeamPage() {
       currentSalary: quote?.currentSalary ?? rider.salary ?? null,
       racesCleared: quote?.racesCleared ?? 0,
       racesOngoing: quote?.racesOngoing ?? 0,
+      // #4582: kontrakten (løn + term) arves ved demote, præcis som ved promote.
+      // Flaget kommer fra quoten, så dialogen kun lover det backenden gør.
+      keepsContract: quote?.keepsContract === true,
       academyCount,
     });
   }
@@ -1322,6 +1325,7 @@ export function TeamPage() {
         capAfterLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount + 1} / 8` : null}
         racesCleared={demoteConfirm?.racesCleared ?? 0}
         racesOngoing={demoteConfirm?.racesOngoing ?? 0}
+        keepsContract={!!demoteConfirm?.keepsContract}
         busy={demoteBusy}
         onCancel={() => { if (!demoteBusy) { setDemoteConfirm(null); setDemoteError(null); } }}
         onConfirm={confirmDemote}

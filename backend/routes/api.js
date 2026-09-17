@@ -208,7 +208,7 @@ import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
-import { promote as promoteAcademyRider, demote as demoteAcademyRider, demoteSalary } from "../lib/academyTransfer.js";
+import { promote as promoteAcademyRider, demote as demoteAcademyRider, demoteContractPatch } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
@@ -1657,9 +1657,10 @@ router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
 // flyttet (demote() → demoteSalary()) regnede med den ægte, friskhentede
 // current_production_value og landede et helt andet sted (5.191). Samme
 // rate-tabel, samme formel — forskellen var UDELUKKENDE hvilken data den fik.
-// Fix: denne route kalder LIGE PRÆCIS demoteSalary() — den samme funktion
-// demote() selv bruger til at sætte den faktiske løn — på en fuldt frisk
+// Fix: denne route kalder LIGE PRÆCIS demoteContractPatch() — den samme funktion
+// demote() selv bruger til at sætte den faktiske kontrakt — på en fuldt frisk
 // server-side SELECT. Ingen frontend-kopi af formlen tilbage i demote-stien.
+// (#4582 udvidede den delte funktion fra lønnen alene til hele kontrakten.)
 //
 // #3805: samme route leverer racesCleared (kommende løb der reelt ryddes) OG
 // racesOngoing (igangværende løb rytteren falder ud af uden at nogen entry
@@ -1672,17 +1673,26 @@ router.get("/riders/:id/academy-demote-quote", requireAuth, async (req, res) => 
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
 
-  const [racesCleared, racesOngoing] = await Promise.all([
+  const [racesCleared, racesOngoing, seasonNumber] = await Promise.all([
     countFutureRaceEntries(supabase, rider.id),
     countOngoingRaceEntries(supabase, rider.id),
+    getActiveSeasonNumber(),
   ]);
+
+  // #4582: dialogen skal vise DEN kontrakt flyttet rent faktisk skriver — og
+  // siden demote nu ARVER en eksisterende kontrakt, må preview'et ikke længere
+  // vise en gen-beregnet ungdomsløn. Samme funktion som demote() selv kalder
+  // (demoteContractPatch), på den samme friske server-side SELECT — #3784-læringen
+  // udvidet fra lønnen alene til hele kontrakten. keepsContract styrer dialogens
+  // tekst, så den siger "kontrakten fortsætter uændret" i stedet for "ungdomsløn".
+  const patch = demoteContractPatch(rider, seasonNumber);
 
   res.json({
     currentSalary: rider.salary ?? null,
-    newSalary: demoteSalary({
-      current_production_value: rider.current_production_value,
-      division: req.team.division,
-    }),
+    newSalary: patch.salary,
+    keepsContract: patch.keepsContract,
+    contractLength: patch.contract_length,
+    contractEndSeason: patch.contract_end_season,
     racesCleared,
     racesOngoing,
   });

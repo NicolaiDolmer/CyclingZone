@@ -2,9 +2,13 @@
 // begge retninger via direction='promote'|'demote':
 //   • promote (op): akademi → senior. Viser cap-effekt (senior-trup nu → efter)
 //     + ny senior-løn. Accent = guld (cz-accent).
-//   • demote (ned): senior → akademi. Viser ny ungdomsløn (delta fra nuværende)
-//     + akademi-cap-effekt + antal fremtidige løb der ryddes. Accent = amber
-//     (cz-warning).
+//   • demote (ned): senior → akademi. Viser lønnen efter flyttet + akademi-cap-
+//     effekt + antal fremtidige løb der ryddes. Accent = amber (cz-warning).
+//     #4582: demote ARVER nu en eksisterende kontrakt (løn + term), præcis som
+//     promote — så bærer rytteren en kontrakt (keepsContract fra backendens
+//     quote), siger dialogen "kontrakten fortsætter uændret" og dropper
+//     ungdomsløn-etiketten + delta-rækken. Kun en kontraktløs rytter får
+//     akademi-aftalen, og kun dér er "ungdomsløn" sandt.
 // Spejler AcademySignConfirmModal: overlay + cz-card-panel + useModalA11y +
 // editorial dl-tabel. INGEN slop (ingen glow/gradient/emoji-ikon).
 import { useTranslation } from "react-i18next";
@@ -22,7 +26,7 @@ export function AcademyTransferConfirmModal({
   racesCleared = null,  // demote: antal KOMMENDE løb der ryddes (entries slettes; kan være 0/null)
   racesOngoing = null,  // #3805: demote: antal IGANGVÆRENDE løb rytteren falder ud af (entry
                          // bevares, men rytteren er ikke længere løbsberettiget — kan være 0/null)
-  keepsContract = false, // promote: rytteren har allerede en kontrakt (#3620)
+  keepsContract = false, // rytteren har allerede en kontrakt: promote #3620, demote #4582
   onCancel,
   onConfirm,
   busy = false,
@@ -45,7 +49,10 @@ export function AcademyTransferConfirmModal({
   const salaryLoading = newSalary == null;
   const newSalaryNum = Number(newSalary);
   const curSalaryNum = currentSalary != null ? Number(currentSalary) : null;
-  const hasSalaryDelta = curSalaryNum != null && Number.isFinite(newSalaryNum);
+  // #4582: arver rytteren sin kontrakt, er der intet delta at vise — to
+  // identiske tal over hinanden ("Ungdomsløn" + "Nuværende løn") ville antyde en
+  // ændring der ikke sker.
+  const hasSalaryDelta = curSalaryNum != null && Number.isFinite(newSalaryNum) && !keepsContract;
   const racesNum = Number(racesCleared);
   const showRaces = !isPromote && Number.isFinite(racesNum) && racesNum > 0;
   const ongoingNum = Number(racesOngoing);
@@ -76,7 +83,11 @@ export function AcademyTransferConfirmModal({
           {/* Ny løn (begge retninger). Demote viser delta fra nuværende. */}
           <div className="flex items-center justify-between px-3 py-2">
             <dt className="text-cz-3">
-              {isPromote ? t("academy:transferModal.seniorSalaryLabel") : t("academy:transferModal.youthSalaryLabel")}
+              {isPromote
+                ? t("academy:transferModal.seniorSalaryLabel")
+                : keepsContract
+                  ? t("academy:transferModal.salaryLabel")
+                  : t("academy:transferModal.youthSalaryLabel")}
             </dt>
             <dd className="font-mono font-bold text-cz-1">
               {salaryLoading ? "..." : `${formatNumber(newSalaryNum)} CZ$`}
@@ -111,7 +122,10 @@ export function AcademyTransferConfirmModal({
               slettes IKKE (resultat-/snapshot-invarians), men rytteren er ikke
               længere løbsberettiget som akademi-rytter, så han udgår reelt af
               feltet. Dialogen skal sige det i stedet for kun at nævne
-              "kommende løb ryddet" (som er 0 for netop denne sag — #3805). */}
+              "kommende løb ryddet" (som er 0 for netop denne sag — #3805).
+            #4582: demote har nu OGSÅ kontrakt-sandheden — bærer rytteren en
+            kontrakt, arves den uændret, og det skal stå FØRST i noten, fordi det
+            er præcis dét spillerne troede gik tabt (17k → 22k, 1/9). */}
           {showOngoing && (
             <div className="flex items-center justify-between px-3 py-2">
               <dt className="text-cz-3">{t("academy:transferModal.racesOngoingLabel")}</dt>
@@ -127,6 +141,9 @@ export function AcademyTransferConfirmModal({
             udgår af DET løb (ikke kun "kommende løb"), ellers underrapporterer
             den præcis som den bug der blev rapporteret. */}
         <p className="text-cz-3 text-xs mb-4">
+          {!isPromote && keepsContract
+            ? `${t("academy:transferModal.demoteNoteKeepsContract")} `
+            : null}
           {!isPromote
             ? (showOngoing ? t("academy:transferModal.demoteNoteOngoing") : t("academy:transferModal.demoteNote"))
             : keepsContract
