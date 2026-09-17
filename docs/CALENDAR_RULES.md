@@ -838,6 +838,23 @@ Vær ærlig om dem. Et grønt scorecard der ikke dækker dem, lyver om hvad det 
 
 Resten af tabellerne i denne fil har endnu ikke alle tre niveauer. Se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
 
+### 9e. Seniorkalenderen læser kun `squad = 'senior'` ([#5330](https://github.com/NicolaiDolmer/CyclingZone/issues/5330))
+
+`race_pool` er fra [#4620](https://github.com/NicolaiDolmer/CyclingZone/issues/4620)/[#5262](https://github.com/NicolaiDolmer/CyclingZone/pull/5262) ÉN tabel med tre trupper (`squad IN ('senior','u23','junior')`, `NOT NULL DEFAULT 'senior'`). Alle eksisterende læsere er seniorlæsere, og et U23-løb i seniorkalenderen ville være usynligt forkert: det ville bare se ud som et løb ingen kender.
+
+**Reglen:** enhver race_pool-**læsning** på seniorsporet går gennem `backend/lib/racePoolCatalog.js`. Ingen rå `.from("race_pool").select(...)` på seniorsporet. Skrive-stien (admin CSV-import) er undtaget — den upserter hele kataloget.
+
+| Regel | Hvorfor |
+|---|---|
+| `NULL` og manglende kolonne = senior | Bagudkompatibelt: filteret virker BÅDE før og efter #5262's migration er applied. Mangler kolonnen, fejler PostgREST (42703/PGRST204), og `selectSeniorRacePool` kører ét fallback-select uden `squad` |
+| Fallback'et caches ikke | `auto-migrate.yml` applier migrationen mens backend'en kører. Et cachet "kolonnen mangler" ville lade ungdomsløb sive ind i seniorkalenderen indtil næste restart |
+| Ukendte squad-værdier er IKKE senior | CHECK-constrainten forbyder dem; et fejl-tolerant "alt andet er senior" ville lade en fremtidig trup sive ind |
+| Ungdoms-ID'er i en senior-whitelist afvises med 400 | `PUT .../race-priority` og `POST .../race-selection` dropper dem ikke tavst — et tavst drop ligner "løbet forsvandt" |
+
+Håndhævet på niveau 1: `racePoolCatalog.test.js` (dommen, fallback'et, S3-fixturens før/efter-diff og en **forward-guard** der fælder enhver ny ufiltreret race_pool-læsning i `api.js`/`tierCalendarMaterializer.js`) plus to materialiserings-tests i `tierCalendarMaterializer.test.js`. Niveau 2 og 3 mangler: en prod-invariant *"ingen `races`-række peger på et `race_pool` med `squad <> 'senior'`"* hører til når U23-aksen selv genererer ([#4620](https://github.com/NicolaiDolmer/CyclingZone/issues/4620)).
+
+**Cross-tier-dedup'en (U23-specens §4.2) er IKKE løst her.** `detectCalendarViolations` akkumulerer navne på tværs af tiers i én kørsel; to squad-kørsler deler ikke sættet. Filteret gør kørslerne uafhængige, men navne-kollisionen mellem senior og U23 skal fanges af eget katalog (ejer-valg 15/9, §10.3) eller en squad-scoped dedup i pakkeren.
+
 ---
 
 ## 10. Kendte åbne modsigelser
