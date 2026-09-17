@@ -67,3 +67,44 @@ Catch-up: v7.276 til v7.283 (15. til 17. september)
 - Dæmpede elementer er dæmpede igen, og spørgeskemaets bjælke er ikke længere gennemsigtig i mørkt tema.
 
 Alle detaljer som altid på cyclingzone.org/patch-notes.
+
+
+---
+
+## Tilføjelse aften 17/9 (v7.286)
+
+> Udsnit af "What changed" ordret fra patchNotes.js v7.286. Ejeren poster selv.
+
+Update: v7.286 (17 Sep, evening)
+
+**Ratings**
+- One rating per rider, everywhere. Your squad list, the rider profile and the scouting tab showed different ratings for the same rider since Tuesday. The two new abilities, Teamwork and Leadership, were counted as zero on some pages before any rider actually has them. I have taken them out of the rating again until they are really in the game, and a missing value can never count as zero. Ratings are back to the numbers you knew. No rider got better or worse.
+
+**Team**
+- Manager status shows minutes, hours and days again. On another team's page, the manager's status jumped from Online now straight to Never. You now see the real time since they were last online.
+
+**Finances**
+- The season start sponsor line names your contract. It was labelled as an intro payment for every team with a contract. It now says it is your contract payment and names the sponsor.
+
+**Stability**
+- Clearer messages when the server cannot be reached. When the game cannot reach the server at all, you now get a message that says so. The race board on the planning page tells you plainly if it could not load. And the stage card says Tomorrow correctly around the change to winter time.
+
+All details as always at cyclingzone.org/patch-notes.
+
+---
+
+Opdatering: v7.286 (17. september, aften)
+
+**Ratings**
+- Én rating pr. rytter, overalt. Din trup, rytterprofilen og scouting-fanen viste forskellige ratings for samme rytter siden tirsdag. De to nye evner, Holdarbejde og Lederskab, blev talt som nul på nogle sider, før nogen rytter reelt har dem. Jeg har taget dem ud af ratingen igen, indtil de rigtigt er i spillet, og en manglende værdi kan aldrig tælle som nul. Ratings er tilbage på de tal du kendte. Ingen rytter er blevet bedre eller dårligere.
+
+**Hold**
+- Manager-status viser igen minutter, timer og dage. På et andet holds side sprang managerens status fra Online nu direkte til Aldrig. Nu ser du den rigtige tid siden vedkommende sidst var online.
+
+**Økonomi**
+- Sæsonstart-linjen fra sponsoren hedder nu din kontrakt. Den stod som en intro-udbetaling for alle hold med kontrakt. Nu står der, at det er din kontraktudbetaling, og sponsoren nævnes ved navn.
+
+**Stabilitet**
+- Klarere beskeder når serveren ikke kan nås. Når spillet slet ikke kan nå serveren, får du nu en besked der siger det. Løbstavlen på planlægningssiden siger tydeligt, hvis den ikke kunne hentes. Og etapekortet siger I morgen korrekt omkring skiftet til vintertid.
+
+Alle detaljer som altid på cyclingzone.org/patch-notes.
