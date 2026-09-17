@@ -1646,6 +1646,69 @@ export function trackedTick(label, fn, deps = {}) {
   };
 }
 
+// ─── Boot-only netværks-retry for Alunta-vagterne (#5015, CYCLINGZONE-5N) ───
+// Backend'en forsøger disse read-only vagter STRAKS ved boot (se kaldene i
+// startCron() nedenfor) — men Railway-containerens netværk er ikke altid klar
+// i det første sekund efter en kold start (IPv6 uden rute, DNS ikke varmet
+// op), og Alunta-klienten kaster en ren netværksfejl der intet siger om
+// vagten selv eller om Alunta som tjeneste. Uden dette retry-lag rejste HVER
+// kold boot et generisk error-issue uden fingerprint, så en harmløs
+// opstarts-blip så ud som en driftshændelse.
+//
+// KUN boot-kaldene bruger dette — den periodiske setInterval-kørsel har fået
+// lov at vente på at netværket varmer op og skal stadig fejle normalt
+// (error-niveau via trackedTick) hvis Alunta reelt er nede eller svarer en
+// ægte HTTP-fejl (4xx/5xx bliver ALDRIG klassificeret som netværksfejl her,
+// jf. issuets eget krav: "ægte HTTP-fejl forbliver error som i dag").
+const BOOT_NETWORK_ERROR_RE = /\b(fetch failed|ECONNRESET|ETIMEDOUT|ENETUNREACH)\b/;
+
+// True hvis fejlen (eller en af en AggregateErrors underliggende fejl) hører
+// til netværksklassen fra #5015. Eksporteret for tests.
+export function isBootNetworkError(err) {
+  if (!err) return false;
+  if (err.name === "AggregateError" && Array.isArray(err.errors)) {
+    return err.errors.some((inner) => isBootNetworkError(inner));
+  }
+  const haystack = `${err.message || ""} ${err.code || ""}`;
+  return BOOT_NETWORK_ERROR_RE.test(haystack);
+}
+
+// Kører `fn` med op til `attempts` forsøg, men KUN retry'er netværksklassen
+// (se isBootNetworkError) — enhver anden fejl (ægte Alunta-svar, programfejl)
+// kastes videre med det samme, uændret, til trackedTick's normale error-vej.
+// Overlever fejlen alle forsøg, capturer VI selv som "warning" med en FAST
+// fingerprint (så hver kolde boot ikke bliver et nyt Sentry-issue) og sluger
+// den derefter — trackedTick skal IKKE capture den en gang til som "error".
+export async function runBootWithNetworkRetry(label, fn, {
+  attempts = 3,
+  minDelayMs = 15_000,
+  maxDelayMs = 30_000,
+  captureExceptionFn = sentryCapture,
+  sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  randomFn = Math.random,
+} = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await fn();
+      return;
+    } catch (err) {
+      if (!isBootNetworkError(err)) throw err; // ægte fejl — bobler uændret til trackedTick
+      lastErr = err;
+      if (attempt === attempts) break; // sidste forsøg brugt — fald til warning-capture nedenfor
+      const delay = minDelayMs + randomFn() * (maxDelayMs - minDelayMs);
+      console.warn(`[${label}] boot-netværksfejl (forsøg ${attempt}/${attempts}), prøver igen om ~${Math.round(delay / 1000)}s: ${err.message}`);
+      await sleepFn(delay);
+    }
+  }
+  console.warn(`[${label}] boot-netværksfejl efter ${attempts} forsøg — Alunta uden for rækkevidde ved opstart: ${lastErr.message}`);
+  captureExceptionFn(lastErr, {
+    level: "warning",
+    fingerprint: ["alunta-network-unreachable"],
+    tags: { flow: "billing", cron: label },
+  });
+}
+
 // ─── Deploy-grace: boot-priming af cron-monitors (#2440) ────────────────────
 // Rod-årsag: hver Railway-redeploy genstarter processen midt i en cron-cyklus.
 // Ved en deploy-KLYNGE (flere redeploys på kort tid — 6 på 30 min 12/7,
@@ -2113,14 +2176,19 @@ export function startCron() {
     trackedTick("alunta forfalds-vagt", monitorCron("alunta-overdue-watch", runAluntaOverdueWatchCron, CRON_MONITOR_24H)),
     24 * 60 * 60 * 1000
   );
-  void trackedTick("alunta forfalds-vagt (boot)", runAluntaOverdueWatchCron)();
+  // #5015: boot-kaldet får sit eget netværks-retry-lag FØR trackedTick — se
+  // runBootWithNetworkRetry ovenfor. En netværks-blip der overlever 3 forsøg
+  // capture'es der selv som warning+fingerprint; alt andet (inkl. en ægte
+  // Alunta-fejl) bobler uændret videre til trackedTick's normale error-vej.
+  void trackedTick("alunta forfalds-vagt (boot)", () => runBootWithNetworkRetry("alunta-overdue-watch (boot)", runAluntaOverdueWatchCron))();
 
   // #4555 — periode-rul-vagt. Read-only, samme boot-run-rationale som ovenfor.
   setInterval(
     trackedTick("alunta periode-rul-vagt", monitorCron("alunta-period-roll-watch", runAluntaPeriodRollWatchCron, CRON_MONITOR_24H)),
     24 * 60 * 60 * 1000
   );
-  void trackedTick("alunta periode-rul-vagt (boot)", runAluntaPeriodRollWatchCron)();
+  // #5015: samme boot-only netværks-retry som forfalds-vagten ovenfor.
+  void trackedTick("alunta periode-rul-vagt (boot)", () => runBootWithNetworkRetry("alunta-period-roll-watch (boot)", runAluntaPeriodRollWatchCron))();
 
   // #3138 — dagligt fair-play scoring-sweep. Read-only analyse (upsert i
   // service-role-only fairplay_flags); skipper roligt indtil migrationen er

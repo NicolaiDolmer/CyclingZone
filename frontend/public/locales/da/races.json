@@ -94,6 +94,7 @@
     "error": {
       "title": "Holdudtagelsen kunne ikke hentes",
       "body": "Intet gik tabt. Dine opstillinger er sikre.",
+      "parse": "Løbstavlen kunne ikke hentes. Genindlæs siden.",
       "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
       "retry": "Prøv igen"
     },

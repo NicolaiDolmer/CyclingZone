@@ -94,6 +94,7 @@
     "error": {
       "title": "Team selection could not be loaded",
       "body": "Nothing was lost. Your line-ups are safe.",
+      "parse": "The race board could not be loaded. Please reload the page.",
       "session": "Your session has ended. Sign in again to keep planning.",
       "retry": "Try again"
     },
