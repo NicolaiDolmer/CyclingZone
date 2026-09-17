@@ -18,7 +18,7 @@ import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
 import { useScouting } from "../lib/useScouting.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { ageForSeason, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
-import { riderStatRating } from "../lib/riderRating.js";
+import { riderOverallRating } from "../lib/riderRating.js";
 import { TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import {
@@ -2200,7 +2200,12 @@ export default function TrainingPage() {
                         </>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="font-mono tabular-nums text-2xs text-cz-1">{riderStatRating(rider) || "—"}</span>
+                          {/* #5321: rytteren uden prognose-bånd viste her et
+                              uvægtet snit af ALLE evner — et helt andet tal end
+                              den rating Mit hold, rytterprofilen, auktionerne og
+                              ønskelisten viser for samme rytter. Nu er det den
+                              samme rating som alle andre steder. */}
+                          <span className="font-mono tabular-nums text-2xs text-cz-1">{riderOverallRating(rider) ?? "—"}</span>
                           <span className="text-cz-3 text-3xs italic">{t("development.noForecastYet")}</span>
                         </div>
                       )}
