@@ -118,5 +118,6 @@
     "fullTable": "Full table",
     "columnsLabel": "Choose columns",
     "moreRight": "More columns to the right"
-  }
+  },
+  "networkError": "Can't reach the server right now. Check your connection and try again."
 }

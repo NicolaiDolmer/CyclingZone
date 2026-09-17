@@ -46,9 +46,12 @@ test("#3510 fejlet load renderer den kanoniske ErrorState med retry, ikke et tom
   // ANDET end "kunne ikke indlaese dashboardet", fordi de to fejl kraever hver
   // sin handling af spilleren. Komponenten er stadig den kanoniske ErrorState,
   // og loadError er stadig faldbagsteksten; det er hele pointen med guarden.
+  // #5322: klassifikatoren er nu isNetworkError, som daekker BEGGE former
+  // fejlen kan have — en kastet exception (Supabase-opslagene) OG apiFetch's
+  // resultat, der efter #5322 ikke laengere kaster ved en transportfejl.
   assert.match(
     source,
-    /<ErrorState[\s\S]{0,300}?title=\{isBackendUnreachable\(error\) \? t\("dashboard:offlineError"\) : t\("dashboard:loadError"\)\}/,
+    /<ErrorState[\s\S]{0,300}?title=\{isNetworkError\(error\) \? t\("dashboard:offlineError"\) : t\("dashboard:loadError"\)\}/,
     "ErrorState skal bruge den kanoniske komponent (docs/design/PAGE_TEMPLATES.md), ikke ny markup",
   );
   assert.match(
@@ -61,6 +64,28 @@ test("#3510 fejlet load renderer den kanoniske ErrorState med retry, ikke et tom
     source,
     /<Button size="sm" variant="secondary" onClick=\{\(\) => \{ setLoading\(true\); loadAll\(\); \}\}>\{t\("dashboard:retry"\)\}<\/Button>/,
     "retry-knappen skal være secondary sm, aldrig gold",
+  );
+});
+
+test("#5322 et 'naaede aldrig serveren'-resultat loeftes til sidens fejlflade, ikke stille til null", () => {
+  // apiFetch kaster ikke laengere ved en transportfejl (#5322). Uden dette
+  // loeft ville de to BLOKERENDE kald falde ned i deres `res.ok`-gren, og
+  // spilleren ville se et halvtomt dashboard i stedet for "kan ikke naa
+  // serveren" — praecis den tilstand #5312 handlede om.
+  assert.match(
+    source,
+    /function failOnUnreachable\(res\) \{\s*if \(res\.networkError\) throw res;\s*return res;\s*\}/,
+    "der skal findes en helper der kaster apiFetch-resultatet videre ved networkError",
+  );
+  assert.match(
+    source,
+    /apiFetch\(`\$\{API\}\/api\/board\/status`[\s\S]{0,200}?\.then\(failOnUnreachable\)/,
+    "board/status (blokerende) skal loefte et netvaerks-resultat til fejlfladen",
+  );
+  assert.match(
+    source,
+    /apiFetch\(`\$\{API\}\/api\/transfers\/my-offers`[\s\S]{0,200}?\.then\(failOnUnreachable\)/,
+    "my-offers (blokerende) skal loefte et netvaerks-resultat til fejlfladen",
   );
 });
 
