@@ -53,3 +53,87 @@ for (const script of ['.claude/hooks/block-dangerous-secret-commands.sh','.claud
     } finally { assert.ok(dir.startsWith(join(root,'.codex.local'))); rmSync(dir,{recursive:true,force:true}); }
   });
 }
+
+// --- #5326: aarsag i blokeringsbeskeden + stort payload paa stdin -----------
+//
+// Symptomet var en Edit afbrudt med 'output scan failed' og intet andet: Python
+// exitede non-zero, men stderr blev kastet vaek med 2>/dev/null. Uden aarsagen
+// starter fejlsoegningen forfra hver gang.
+//
+// Bemaerk: hypotesen om Windows' env-var-graense blev IKKE reproduceret (payloads
+// op til 2,8 MB med aeoeaa gik igennem den gamle env-var-rute paa denne PC).
+// Testene nedenfor gaelder de to ting fixet faktisk garanterer: aarsagen er
+// synlig, og stoerrelse/encoding kan ikke laengere vaere fejlkilden.
+
+const sanitize = '.claude/hooks/sanitize-secrets.sh';
+
+test(`${sanitize}: scanner failure names its exit code in the block message (#5326)`, () => {
+  const dir = mkdtempSync(join(root, '.codex.local/python-cause-'));
+  try {
+    // Probe'n skal bestaa, selve scanningen skal fejle - praecis #5326-formen.
+    writeFileSync(join(dir, 'python'),
+      '#!/bin/sh\ncase "$*" in *CZ_HOOK_PYTHON_OK*) printf CZ_HOOK_PYTHON_OK;; *) echo "boom: simulated scanner crash" >&2; exit 19;; esac\n',
+      { mode: 0o755 });
+    const result = run(sanitize,
+      JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: 'x.js' }, tool_response: 'harmless '.repeat(20) }),
+      dir + delimiter + utilities);
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /SECRET GUARD BLOCKED: output scan failed/);
+    assert.match(result.stderr, /cause:/);
+    assert.match(result.stderr, /scanner exit=19/);
+    assert.match(result.stderr, /boom: simulated scanner crash/);
+    assert.doesNotMatch(result.stderr, /SECRET LEAK DETECTED/);
+  } finally { assert.ok(dir.startsWith(join(root, '.codex.local'))); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test(`${sanitize}: scanner stderr is redacted before it is shown (#5326)`, () => {
+  const dir = mkdtempSync(join(root, '.codex.local/python-redact-'));
+  const token = 'A'.repeat(20) + 'b'.repeat(20) + '1234567890';
+  try {
+    writeFileSync(join(dir, 'python'),
+      `#!/bin/sh\ncase "$*" in *CZ_HOOK_PYTHON_OK*) printf CZ_HOOK_PYTHON_OK;; *) echo "leaked ${token}" >&2; exit 7;; esac\n`,
+      { mode: 0o755 });
+    const result = run(sanitize,
+      JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: 'x.js' }, tool_response: 'harmless '.repeat(20) }),
+      dir + delimiter + utilities);
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /REDACTED-LONG-TOKEN/);
+    assert.ok(!result.stderr.includes(token), 'scanner-stderr maa ikke baere en lang token videre');
+  } finally { assert.ok(dir.startsWith(join(root, '.codex.local'))); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test(`${sanitize}: large Danish payload passes on stdin, no false block (#5326)`, () => {
+  // >32 KB (den formodede Windows-env-var-graense) med aeoeaa, i den form et
+  // rigtigt Edit-kald har. Ingen secret-patterns -> skal vaere tavs exit 0.
+  const line = 'Patch note med danske tegn æøå ÆØÅ og lidt fyld 0123456789 abcdef\n';
+  const payload = JSON.stringify({
+    tool_name: 'Edit',
+    tool_input: { file_path: 'frontend/src/data/patchNotes.js', new_string: line.repeat(3000) },
+    tool_response: 'ok',
+  });
+  assert.ok(payload.length > 32768, `payload skal overstige 32 KB (var ${payload.length})`);
+  const result = run(sanitize, payload);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '');
+});
+
+test(`${sanitize}: a real secret in a large Danish payload still blocks (#5326)`, () => {
+  // Modproeven: stoerrelses-fixet maa ikke goere vagten blind. Fixturen samles
+  // ved runtime, saa denne fil ikke selv indeholder et komplet pattern.
+  const line = 'Patch note med danske tegn æøå ÆØÅ og lidt fyld 0123456789 abcdef\n';
+  // FIXTURE_DO_NOT_USE er allow-listet i high-entropy-fallbacken og i
+  // .gitleaks.toml; det navngivne supabase-secret-pattern koerer FOER den
+  // allow-liste, saa fixturen blokerer stadig - den stoejer bare ikke i
+  // uvedkommende tool-output.
+  const fake = 'sb' + '_secret_' + 'FIXTURE_DO_NOT_USE_1234567890abcdefghij';
+  const payload = JSON.stringify({
+    tool_name: 'Edit',
+    tool_input: { file_path: 'frontend/src/data/patchNotes.js', new_string: line.repeat(3000) + fake },
+    tool_response: 'ok',
+  });
+  assert.ok(payload.length > 32768);
+  const result = run(sanitize, payload);
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /SECRET LEAK DETECTED/);
+  assert.match(result.stderr, /supabase-secret/);
+});

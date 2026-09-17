@@ -13,8 +13,7 @@ export const DISPLAY_RECIPES = Object.freeze([
       "acceleration": 3,
       "positioning": 2,
       "flat": 2,
-      "durability": 1,
-      "leadership": 1
+      "durability": 1
     }
   },
   {
@@ -36,8 +35,7 @@ export const DISPLAY_RECIPES = Object.freeze([
       "recovery": 1,
       "durability": 1,
       "descending": 1,
-      "punch": 1,
-      "teamwork": 1
+      "punch": 1
     }
   },
   {
@@ -71,8 +69,7 @@ export const DISPLAY_RECIPES = Object.freeze([
       "durability": 1,
       "positioning": 1,
       "recovery": 1,
-      "sprint": 1,
-      "teamwork": 1
+      "sprint": 1
     }
   },
   {
@@ -96,24 +93,40 @@ export const DISPLAY_RECIPES = Object.freeze([
       "endurance": 2,
       "tempo": 2,
       "durability": 1,
-      "descending": 1,
-      "leadership": 1
+      "descending": 1
     }
   }
 ]);
 
 export const DISPLAY_RECIPE_KEYS = Object.freeze(DISPLAY_RECIPES.map((r) => r.key));
 
-// Spejler backend ratingForRole() 1:1. Evner der mangler på rækken tæller
-// hverken i tæller eller nævner, så en delvist udfyldt række ikke trækkes mod 0.
+// Spejler backend abilityValue() 1:1 (#5321). Number(null) og Number("") er 0
+// og finite — derfor talte en NULL-kolonne som et ægte nul og trak ratingen
+// ned, mens en manglende nøgle (NaN) blev sprunget over. Samme rytter fik
+// forskellig rating alt efter hvilke kolonner fladen hentede. Et ægte 0 tæller
+// stadig med.
+export function abilityValue(raw) {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  if (typeof raw === "string") {
+    if (raw.trim() === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+// Spejler backend ratingForRole() 1:1. Evner der mangler på rækken — eller
+// står NULL — tæller hverken i tæller eller nævner, så en delvist udfyldt
+// række ikke trækkes mod 0.
 export function ratingForRole(abilities, roleKey) {
   const recipe = DISPLAY_RECIPES.find((r) => r.key === roleKey);
   if (!recipe) return null;
   let sum = 0;
   let wsum = 0;
   for (const [ability, weight] of Object.entries(recipe.weights)) {
-    const v = Number(abilities?.[ability]);
-    if (!Number.isFinite(v)) continue;
+    const v = abilityValue(abilities?.[ability]);
+    if (v === null) continue;
     sum += v * weight;
     wsum += weight;
   }
