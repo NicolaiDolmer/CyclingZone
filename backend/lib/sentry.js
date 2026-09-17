@@ -13,17 +13,20 @@ let enabled = false;
 // Sentry på type+besked, hvilket er præcis den ønskede adfærd for DB-fejl.
 
 // #5224: en tom `message` er ikke en grund til at give op — PostgREST sætter
-// ofte `code`/`details`/`hint` selvom `message` er tom (fx et HEAD-svar hvor
-// body er strippet af protokollen, eller et postgres-svar uden tekst). En kort
-// `code=… details=… hint=…`-linje er langt mere brugbar i en Sentry-issue-titel
-// end det uforudsigelige `JSON.stringify(error)`-fallback nedenfor.
+// ofte `code` selvom `message` er tom (fx et HEAD-svar hvor body er strippet af
+// protokollen, eller et postgres-svar uden tekst). En kort `code=…`-linje er
+// langt mere brugbar i en Sentry-issue-titel end det uforudsigelige
+// `JSON.stringify(error)`-fallback nedenfor.
+//
+// CodeRabbit (denne PR): `details`/`hint` er BEVIDST udeladt her — PostgREST
+// lægger ofte de faktiske rækkeværdier i `details` (fx en unique-constraint-
+// fejl: "Key (email)=(bruger@eksempel.dk) already exists"), og `hint` kan
+// citere samme data. `code` er et stabilt, dataløst enum-lignende felt
+// (Postgres SQLSTATE / PostgREST-kode) og er det eneste af de tre der er
+// sikkert at sende til Sentry uden risiko for at lække PII.
 function postgrestFieldsSummary(error) {
   if (!error || typeof error !== "object") return "";
-  const parts = [];
-  if (error.code) parts.push(`code=${error.code}`);
-  if (error.details) parts.push(`details=${error.details}`);
-  if (error.hint) parts.push(`hint=${error.hint}`);
-  return parts.join(" ");
+  return error.code ? `code=${error.code}` : "";
 }
 
 export function toSentryError(error) {
@@ -236,16 +239,17 @@ export function initSentry() {
   });
 }
 
-// #5224: code/details/hint sidder på selve Error-objektet (toSentryError),
-// men uden en ExtraErrorData-integration ser Sentry dem IKKE automatisk. Løftet
-// ud som sin egen (testbar) funktion, så `captureException` selv forbliver
-// utestet uden om `enabled`-flaget (Sentry er altid disabled i test-env).
+// #5224: code sidder på selve Error-objektet (toSentryError), men uden en
+// ExtraErrorData-integration ser Sentry det IKKE automatisk. Løftet ud som sin
+// egen (testbar) funktion, så `captureException` selv forbliver utestet uden
+// om `enabled`-flaget (Sentry er altid disabled i test-env).
+//
+// CodeRabbit (denne PR): kun `code` — se `postgrestFieldsSummary` ovenfor for
+// hvorfor `details`/`hint` bevidst ALDRIG forwardes (kan bære rækkeværdier/PII).
 export function postgrestExtraFields(error) {
   const extra = {};
   if (!error || typeof error !== "object") return extra;
   if (error.code != null) extra.pg_code = error.code;
-  if (error.details != null) extra.pg_details = error.details;
-  if (error.hint != null) extra.pg_hint = error.hint;
   return extra;
 }
 

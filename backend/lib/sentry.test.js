@@ -118,12 +118,14 @@ test("toSentryError — #5224 acceptkriterie: { code, message: '' } giver koden 
   assert.equal(err.code, "57014");
 });
 
-test("toSentryError — code+details+hint uden message serialiseres som en læsbar linje, ikke rå JSON", () => {
+test("toSentryError — code uden message serialiseres som en læsbar linje, ikke rå JSON", () => {
   const err = toSentryError({ code: "42501", details: "Key (id)=(1)", hint: "Grant SELECT", message: "" });
-  assert.equal(err.message, "code=42501 details=Key (id)=(1) hint=Grant SELECT");
+  // CodeRabbit (denne PR): kun `code` i beskeden — `details`/`hint` kan bære
+  // rækkeværdier (PII) og må ALDRIG ende i en Sentry-issue-titel.
+  assert.equal(err.message, "code=42501");
   assert.equal(err.code, "42501");
-  assert.equal(err.details, "Key (id)=(1)");
-  assert.equal(err.hint, "Grant SELECT");
+  assert.doesNotMatch(err.message, /Key \(id\)/, "details må ikke lække ind i beskeden");
+  assert.doesNotMatch(err.message, /Grant SELECT/, "hint må ikke lække ind i beskeden");
 });
 
 test("toSentryError — en Error-INSTANS med tom besked (PostgrestError via .throwOnError()) fikses også", () => {
@@ -148,9 +150,9 @@ test("toSentryError — objekt HELT uden message/code/details/hint falder tilbag
   assert.equal(toSentryError({ status: 500 }).message, '{"status":500}');
 });
 
-test("postgrestExtraFields — løfter code/details/hint op som Sentry-extra-nøgler", () => {
-  const extra = postgrestExtraFields({ code: "57014", details: "d", hint: "h", message: "" });
-  assert.deepEqual(extra, { pg_code: "57014", pg_details: "d", pg_hint: "h" });
+test("postgrestExtraFields — løfter KUN code op som Sentry-extra (CodeRabbit: details/hint kan bære PII)", () => {
+  const extra = postgrestExtraFields({ code: "57014", details: "Key (email)=(bruger@eksempel.dk)", hint: "h", message: "" });
+  assert.deepEqual(extra, { pg_code: "57014" });
 });
 
 test("postgrestExtraFields — kun de felter der faktisk findes, ingen undefined-støj", () => {
