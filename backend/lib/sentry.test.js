@@ -5,6 +5,7 @@ import {
   monitorCron,
   captureCheckIn,
   toSentryError,
+  postgrestExtraFields,
   normalizeMessageForGrouping,
   getEventGroupKey,
   createVolumeLimiter,
@@ -104,6 +105,58 @@ test("toSentryError — string og objekt uden message får brugbar titel", () =>
 test("toSentryError — Cloudflare HTML-fejlside normaliseres til én læsbar linje", () => {
   const html = "<!DOCTYPE html><html><title>supabase.co | 522: Connection timed out</title></html>";
   assert.equal(toSentryError({ message: html }).message, "Supabase unavailable (522 Connection timed out)");
+});
+
+// ── #5224: PostgREST-fejl uden message ({message:""} i Sentry, CYCLINGZONE-5X) ──
+
+test("toSentryError — #5224 acceptkriterie: { code, message: '' } giver koden en synlig plads i beskeden", () => {
+  const err = toSentryError({ code: "57014", message: "" });
+  assert.ok(err instanceof Error);
+  assert.notEqual(err.message, "", "en tom besked er netop den bug der skal fikses");
+  assert.match(err.message, /57014/);
+  assert.equal(err.code, "57014");
+});
+
+test("toSentryError — code+details+hint uden message serialiseres som en læsbar linje, ikke rå JSON", () => {
+  const err = toSentryError({ code: "42501", details: "Key (id)=(1)", hint: "Grant SELECT", message: "" });
+  assert.equal(err.message, "code=42501 details=Key (id)=(1) hint=Grant SELECT");
+  assert.equal(err.code, "42501");
+  assert.equal(err.details, "Key (id)=(1)");
+  assert.equal(err.hint, "Grant SELECT");
+});
+
+test("toSentryError — en Error-INSTANS med tom besked (PostgrestError via .throwOnError()) fikses også", () => {
+  // @supabase/postgrest-js' PostgrestError arver fra Error - den tidligere
+  // "instanceof Error"-shortcut lod den passere UÆNDRET selv med message: "".
+  const original = Object.assign(new Error(""), { code: "57014", name: "PostgrestError" });
+  const err = toSentryError(original);
+  assert.equal(err, original, "samme instans genbruges, ikke en syntetisk kopi");
+  assert.notEqual(err.message, "");
+  assert.match(err.message, /57014/);
+});
+
+test("toSentryError — en ægte Error med en RIGTIG besked ændres ikke, heller ikke når den også har code/details", () => {
+  // Skal IKKE overskrive en brugbar besked bare fordi code/details findes.
+  const original = Object.assign(new Error("permission denied for table \"riders\""), { code: "42501" });
+  assert.equal(toSentryError(original), original);
+  assert.equal(original.message, "permission denied for table \"riders\"");
+});
+
+test("toSentryError — objekt HELT uden message/code/details/hint falder tilbage til JSON.stringify (uændret fra før)", () => {
+  // Fastholder den eksisterende adfærd for #2389's egen test ({status:500}).
+  assert.equal(toSentryError({ status: 500 }).message, '{"status":500}');
+});
+
+test("postgrestExtraFields — løfter code/details/hint op som Sentry-extra-nøgler", () => {
+  const extra = postgrestExtraFields({ code: "57014", details: "d", hint: "h", message: "" });
+  assert.deepEqual(extra, { pg_code: "57014", pg_details: "d", pg_hint: "h" });
+});
+
+test("postgrestExtraFields — kun de felter der faktisk findes, ingen undefined-støj", () => {
+  assert.deepEqual(postgrestExtraFields({ code: "57014" }), { pg_code: "57014" });
+  assert.deepEqual(postgrestExtraFields(new Error("boom")), {});
+  assert.deepEqual(postgrestExtraFields(null), {});
+  assert.deepEqual(postgrestExtraFields("noget gik galt"), {});
 });
 
 // ── #2900: volumen-guard — normalizeMessageForGrouping ──────────────────────
