@@ -56,6 +56,13 @@ export function measureDivisionRaceDayAxes({ stageRows = [], from = null } = {})
   for (const row of stageRows) {
     const divId = row?.league_division_id;
     if (divId == null) continue;
+    // NULL/"" SKAL afvises FØR Number(): `Number(null)` og `Number("")` er begge 0, så en
+    // række uden game_day ville ellers snige sig ind som løbsdag 0 — og
+    // `race_stage_schedule.game_day` kan være NULL i skemaet. Konsekvensen ville være
+    // stille: en sådan række før `from` hæver elapsedRaceDays med 1 (et mål afkortet af en
+    // løbsdag der aldrig blev kørt), og en division hvis rækker ALLE mangler game_day
+    // ville få axisLength 1 og kunne sætte målet. Fanget af CodeRabbit 17/9.
+    if (row.game_day == null || row.game_day === "") continue;
     const gd = Number(row.game_day);
     if (!Number.isInteger(gd) || gd < 0) continue;
 

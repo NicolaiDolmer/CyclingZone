@@ -121,6 +121,34 @@ test("#5272: ugyldige rækker springes over i stedet for at forgifte aksen med N
   assert.equal(m.size, 1);
 });
 
+test("#5272: NULL/tom game_day er IKKE løbsdag 0 (Number(null) === 0)", () => {
+  // CodeRabbit 17/9: testen ovenfor kunne ikke se fejlen, fordi den injicerede 0 lå under
+  // det eksisterende maksimum. Her er der INTET gyldigt game_day at gemme sig bag, så en
+  // manglende værdi ville stå bart som en løbsdag der aldrig fandtes.
+  const m = measureDivisionRaceDayAxes({
+    stageRows: [
+      { league_division_id: 1, game_day: null, scheduled_at: "2026-06-20T12:00:00Z" },
+      { league_division_id: 1, game_day: "", scheduled_at: "2026-06-20T12:00:00Z" },
+      { league_division_id: 1, game_day: undefined, scheduled_at: "2026-06-20T12:00:00Z" },
+    ],
+    from: FROM,
+  });
+  assert.equal(m.size, 0, "en division hvis rækker ALLE mangler game_day har ingen akse at måle");
+
+  // Og den må heller ikke kunne afkorte et ægte mål: uden guarden ville NULL-rækken før
+  // from give elapsedRaceDays = 1 og trække en løbsdag fra der aldrig blev kørt.
+  const r = resolveActivationRaceDayTarget({
+    stageRows: [
+      { league_division_id: 1, game_day: null, scheduled_at: "2026-06-20T12:00:00Z" },
+      { league_division_id: 1, game_day: 39, scheduled_at: "2026-07-05T12:00:00Z" },
+    ],
+    from: FROM,
+    excludeDivisionId: 8,
+  });
+  assert.equal(r.elapsedRaceDays, 0, "intet er afviklet — NULL-rækken må ikke tælle som løbsdag 0");
+  assert.equal(r.raceDayTarget, 40);
+});
+
 test("#5272: division-id som tal og streng er den SAMME division", () => {
   const m = measureDivisionRaceDayAxes({
     stageRows: [

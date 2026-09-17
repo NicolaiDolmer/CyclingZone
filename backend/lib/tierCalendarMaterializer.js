@@ -17,7 +17,7 @@ import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, toStageProfileRow } from "./raceStageProfileGenerator.js";
 import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { filterSeniorSquadRows, selectSeniorRacePool } from "./racePoolCatalog.js";
 import {
   TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, CLASS_STAGE_LENGTH_BAND,
@@ -837,17 +837,37 @@ export async function reconcilePoolCalendarOnActivation({
   // kalender slutter samme dag som de øvrige divisioner. Etaper lægges på from+1..from+realDays.
   const horizon = {};
   let raceDayPlan = null; // #5272 — rapporteres i returværdien, også når intet mål kunne afgøres
-  const { data: seasonRaces, error: allErr } = await supabase
-    .from("races").select("id, league_division_id").eq("season_id", season.id);
-  if (allErr) throw new Error(`races (season horizon): ${allErr.message}`);
+  // #2951/#2962-klassen: begge læsninger herunder er UFILTREREDE op mod PostgREST's
+  // 1000-rækkers loft. Målt på S3: ~530 races og ~1.240 race_stage_schedule-rækker pr.
+  // sæson — stage-læsningen er altså allerede OVER loftet i dag. En afkortet side ville
+  // give en for tidlig sæson-slut OG (efter #5272) en for kort løbsdags-akse, begge
+  // tavst. Fanget af CodeRabbit 17/9.
+  let seasonRaces;
+  try {
+    seasonRaces = await fetchAllRows(() => (
+      supabase.from("races").select("id, league_division_id")
+        .eq("season_id", season.id)
+        .order("id", { ascending: true })
+    ));
+  } catch (allErr) {
+    throw new Error(`races (season horizon): ${allErr.message}`, { cause: allErr });
+  }
   const seasonRaceIds = (seasonRaces || []).map((r) => r.id);
   if (seasonRaceIds.length) {
     // #5272: game_day + race_id kom til her. scheduled_at alene kan afgøre HORISONTEN
     // (hvornår sæsonen slutter), men ikke LØBSDAGS-AKSEN — §0's grundregel er at game_day
     // ALDRIG kan udledes af scheduled_at, så aksen skal læses, ikke regnes ud.
-    const { data: sched, error: schErr } = await supabase
-      .from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", seasonRaceIds);
-    if (schErr) throw new Error(`race_stage_schedule (season horizon): ${schErr.message}`);
+    let sched;
+    try {
+      sched = await fetchAllRowsChunkedIn(seasonRaceIds, (chunk) => (
+        supabase.from("race_stage_schedule").select("race_id, scheduled_at, game_day")
+          .in("race_id", chunk)
+          .order("race_id", { ascending: true })
+          .order("stage_number", { ascending: true })
+      ));
+    } catch (schErr) {
+      throw new Error(`race_stage_schedule (season horizon): ${schErr.message}`, { cause: schErr });
+    }
 
     // #5272: mål de eksisterende divisioners løbsdags-akser og udled hvor meget der er
     // TILBAGE af sæsonens mål. Uden det får en pulje der vågner midt i sæsonen sin egen
