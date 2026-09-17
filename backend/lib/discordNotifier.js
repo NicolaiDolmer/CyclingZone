@@ -899,19 +899,62 @@ const FEEDBACK_CATEGORY_LABELS = {
   feedback: "💬 Feedback",
   bug: "🐛 Bug report",
   idea: "💡 Idea",
+  // #5284: fairplay-rapporter delte tidligere "fairplay" som rå kategorinavn
+  // (samme fallback som en helt ukendt kategori ville få) — usynligt i en
+  // kanal fuld af feedback/bug/idea-embeds.
+  fairplay: "🚩 Fair play report",
 };
 
-export async function notifyPlayerFeedback({ category, message, pagePath, teamName, sendWebhookFn = sendWebhook }) {
+function tradeRiderName(rider) {
+  if (!rider) return null;
+  return [rider.firstname, rider.lastname].filter(Boolean).join(" ") || null;
+}
+
+// Bygger de ekstra Discord-felter for en fairplay-rapport HVOR handlen kunne
+// opløses (trade != null) — rytter, A → B, pris og ratio. Ingen af felterne
+// tilføjes for andre kategorier eller når trade er null (manglende/slettet
+// handel, eller en kontaktformular-fairplay-rapport uden metadata) — samme
+// fritekst-only-visning som før #5284 i så fald.
+function buildTradeFields(trade) {
+  if (!trade) return [];
+  const fields = [];
+
+  const riderName = trade.rider
+    ? tradeRiderName(trade.rider)
+    : trade.riders
+      ? [tradeRiderName(trade.riders.offered) || "?", tradeRiderName(trade.riders.requested) || "?"].join(" ↔ ")
+      : null;
+  if (riderName) fields.push({ name: "Rider", value: riderName });
+
+  if (trade.team_a?.name && trade.team_b?.name) {
+    fields.push({ name: "Teams", value: `${trade.team_a.name} → ${trade.team_b.name}` });
+  }
+
+  if (typeof trade.price === "number") {
+    fields.push({ name: trade.type === "swap" ? "Cash adjustment" : "Price", value: trade.price.toLocaleString("en-US") });
+  }
+
+  if (trade.market_value_ratio != null) {
+    fields.push({ name: "Ratio vs. market value", value: `${Math.round(trade.market_value_ratio * 100)}%` });
+  }
+
+  return fields;
+}
+
+export async function notifyPlayerFeedback({ category, message, pagePath, teamName, trade = null, sendWebhookFn = sendWebhook }) {
   const url = (process.env.DISCORD_FEEDBACK_WEBHOOK_URL || "").trim();
   if (!url) return;
   const fields = [];
   if (teamName) fields.push({ name: "Team", value: teamName });
   if (pagePath) fields.push({ name: "Page", value: pagePath });
+  // Trade-felter er fairplay-only og kommer FØR footer men EFTER team/page —
+  // andre kategorier sender aldrig `trade`, så adfærden for dem er uændret.
+  if (category === "fairplay") fields.push(...buildTradeFields(trade));
   const payload = {
     embeds: [{
       title: FEEDBACK_CATEGORY_LABELS[category] || category,
       description: message.length > 1800 ? `${message.slice(0, 1800)}…` : message,
-      color: category === "bug" ? 0xe74c3c : category === "idea" ? 0xe8c547 : 0x3498db,
+      color: category === "bug" ? 0xe74c3c : category === "idea" ? 0xe8c547 : category === "fairplay" ? 0xe67e22 : 0x3498db,
       fields,
       footer: { text: "Cycling Zone · in-game feedback" },
       timestamp: new Date().toISOString(),

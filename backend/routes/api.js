@@ -148,6 +148,7 @@ import {
   replyToFeedback,
   submitTradeReport,
   TRADE_REPORT_TYPES,
+  resolveTradeForReport,
 } from "../lib/feedbackInbox.js";
 import {
   listForumPosts,
@@ -14676,13 +14677,32 @@ router.post("/transfers/:type/:id/report", requireAuth, feedbackLimiter, async (
 
     if (status === 200 && body?.ok && !body.alreadyReported) {
       // Best-effort mirror, samme mønster som POST /feedback ovenfor — må
-      // aldrig fejle selve indsendelsen for spilleren.
-      notifyPlayerFeedback({
-        category: "fairplay",
-        message: typeof req.body?.message === "string" ? req.body.message.trim() : "",
-        pagePath: null,
-        teamName: req.team?.name || null,
-      }).catch(err => console.error("[feedback] trade-report discord mirror failed:", err.message));
+      // aldrig fejle selve indsendelsen for spilleren. #5284: giver de OPLØSTE
+      // handelsdata med (rytter, hold, pris, ratio), ikke kun fritekst — hvis
+      // opløsningen selv fejler/ikke finder handlen, sendes mirroret alligevel
+      // uden trade-felterne i stedet for at fejle notifikationen.
+      resolveTradeForReport({
+        supabase,
+        transferType: req.params.type,
+        transferId: req.params.id,
+        reportingTeamId: req.team?.id || null,
+      })
+        .catch(err => {
+          // resolveTradeForReport kaster KUN ved ægte DB-fejl (ikke-fundet giver
+          // { trade: null }), så en fejl her er et bug/outage værd at se i Sentry —
+          // mirroret sendes alligevel, bare uden handelsdata.
+          captureException(err, { tags: { route: "POST /transfers/:type/:id/report" }, step: "discord-mirror-trade-resolve" });
+          console.error("[feedback] trade-report resolve for discord mirror failed:", err.message);
+          return { trade: null };
+        })
+        .then(({ trade } = {}) => notifyPlayerFeedback({
+          category: "fairplay",
+          message: typeof req.body?.message === "string" ? req.body.message.trim() : "",
+          pagePath: null,
+          teamName: req.team?.name || null,
+          trade: trade || null,
+        }))
+        .catch(err => console.error("[feedback] trade-report discord mirror failed:", err.message));
     }
 
     res.status(status).json(body);
