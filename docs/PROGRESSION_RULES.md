@@ -139,6 +139,7 @@ Ejer-beslutning 13/8, "tredje vej": potentiale forbliver **1-6 internt**, UI vis
 | Løbsprofil → hvilke evner der udvikles | `RACE_PROFILE_ABILITY_MAP` | `dailyTrainingEngine.js` | ✅ |
 | Restitution + AI-paritet (D3+D4) er styret af feature-flag | `race_day_engine_enabled` i `app_config` | — | ✅ on siden 7/8 |
 | Løbsdags-UDVIKLINGEN (D1+D2) er styret af sit EGET flag | `race_day_development_enabled` i `app_config` | `backend/lib/raceDayDevelopmentFlag.js` | ⛔ off for S3 (#4277), tilbage til S4 |
+| D2-delen af løbsdags-udviklingen er bygget; flaget åbnes først når træningstick-omlægningen (#4850) er klar, senest S4 28/9 | `race_day_development_enabled` | `backend/lib/raceDayDevelopmentFlag.js` | 🚧 afventer #4850 |
 | Restitution justeres når `race_day_engine_enabled` er on | `RACE_DAY_ENGINE_RECOVERY_CONFIG` | `backend/lib/riderCondition.js` | ✅ |
 | Trænings-UI'ets løbsdags-badge følger UDVIKLINGS-flaget, ikke motor-flaget | `racingToday` i `GET /api/training/me` | `backend/routes/api.js` | ✅ rettet i #4375 |
 | `rest`-intensitet giver ingen udvikling | `abilityMult(ability, {intensity:"rest"})` → 0 | `dailyTraining.js` | ✅ |

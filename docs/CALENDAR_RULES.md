@@ -229,6 +229,9 @@ at filtrere på status, og springer ALLE hold over indtil rækken findes. Opslag
 `seasonTransition.js`s `insertSeasonIfMissing` promoverer selv `'upcoming'` → `'active'`,
 så en pre-oprettet række kolliderer ikke med cutoveren.
 
+**Sæsontilmelding (`season_signup_enabled`, #452/#4592):** bygget, men flaget er dormant
+frem til S4-cutoveren 27.-28/9 — samme cutover-vindue som sæson-rækken ovenfor.
+
 ---
 
 ## 3. Grand Tours
