@@ -45,6 +45,7 @@ import type {
 import { boundRngFor } from "./rng.ts";
 import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
+import { WORK_COST_EXTRA_TUNING } from "./tuning.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -137,7 +138,11 @@ function tickGroupRiders(
     const positionFactor = tempo.frontRiderIds.has(riderId)
       ? tuning.work.frontWorkFactor[segment.kind]
       : tuning.work.draftFactor[segment.kind];
-    const demand = baseDemand * positionFactor;
+    // WORK_COST_EXTRA_TUNING.demandScaleByKind (tuning.ts, #4030 F3): skalerer
+    // KUN fysiologi-demanden (W'/CP-taering) mod den aegte populations maalte
+    // CP-fordeling - terrain.baseDemand selv (bruges af computeSegmentSpeedKmh
+    // ovenfor) er URORT, saa hastigheds-modellen paavirkes ikke.
+    const demand = baseDemand * positionFactor * WORK_COST_EXTRA_TUNING.demandScaleByKind[segment.kind];
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
     // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
     // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's

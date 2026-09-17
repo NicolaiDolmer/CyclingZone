@@ -361,3 +361,65 @@ const physiologySubTick = {
 
 /** Sub-tick-fysiologi-tuning (deep-frosset). Se physiologySubTick-kommentaren ovenfor. */
 export const PHYSIOLOGY_SUBTICK_TUNING = deepFreeze(physiologySubTick);
+
+// ── Work-cost demand-skalering (#4030 F3, head-to-head-kalibrering 2/9) ───────
+// ADDITIV, samme moenster som finaleExtra ovenfor: WorkCostTuning (types.ts) er
+// en del af den frosne EngineTuning-kontrakt, saa denne separate konstant
+// aendrer IKKE den frosne type. segmentLoop.ts importerer den direkte og
+// skalerer KUN fysiologi-tickets `demand` (W'/CP-taering) - terrain.baseDemand
+// selv (bruges ogsaa af computeSegmentSpeedKmh's hastigheds-model) er URORT.
+//
+// AARSAG (evidens, 2/9-h2h-scorecard-recovery): terrain.baseDemand (0.3-0.8,
+// design-antagelse om en population med abilities spredt bredt paa 0-99-skalaen)
+// er kalibreret mod en HYPOTETISK population - den AEGTE prod-population (2/9-
+// eksport, 5936 ryttere) har median tempo=9/endurance=10 (0-99-skala), hvilket
+// giver median deriveCp(flat)~=0.105 og p90~=0.278 - langt under selv DRAFT-
+// demand (baseDemand.flat*draftFactor.flat = 0.55*0.55 = 0.3025). Uskaleret
+// braendte praktisk talt HELE feltet sin W' af inden for det FOERSTE segment
+// paa enhver etape (uanset terraen), hvorefter klatre-selektionens energi-
+// underskuds-term (M2) reelt blev den ENESTE selektions-driver - ogsaa paa
+// flade etaper med kun en enkelt kort kategori-4-stigning langt fra maalstregen
+// (headToHeadV4-diagnostik, stage=1 "Rund um Koeln Neu": 60+ af 180 samplede
+// ryttere splittede paa "wprime_depleted" fra en 1,8 km/5,6%-stigning 19 km fra
+// maal) - dette er den maalte roedaarsag bag BAADE sprinter-integritets-ankeret
+// (rene sprintere mister kontakten paa smaa stigninger langt fra maal, foer
+// selve spurten overhovedet afgoeres) OG bjerg-spredningen (kaskaderende splits
+// over flere stigninger uden nogen genopladnings-mulighed, da naesten alle
+// allerede staar paa 0 W').
+//
+// demandScale=0.3 (UNIFORT pr. terraen - forsoegt asymmetrisk skalering,
+// climb naermere 1.0 end flat/rolling, blev afvist: selv med climb skaleret
+// til kun 0.85 blev p99-ELITE-ryttere stadig konstant over-CP paa en klatring
+// (0.8·0.9·0.85=0.612 draft-demand vs. p99-climb-CP~=0.585) - baseDemand.climb
+// (0.8) er relativt SET endnu haardere fejlkalibreret end flat/rolling, saa en
+// enkelt global faktor kalibreret mod hele feltets CP-fordeling ramte bedre end
+// et haandplukket pr.-terraen-saet) kalibreret saa MEDIAN-rytterens CP(flat)~0.105
+// ligger taet paa den skalerede DRAFT-flat-demand (0.55*0.55*0.3~=0.0908) - de
+// fleste ryttere kan saaledes sidde med paa flad/rullende vej uden konstant
+// taering, mens FRONT-arbejde og klatring stadig taerer meningsfuldt differentieret
+// (p90-CP(climb)~=0.28 er stadig under skaleret draft-climb-demand
+// 0.8*0.9*0.3~=0.216 kun for den staerkeste tredjedel - resten maerker stadig
+// stigningen, som tilsigtet).
+//
+// KENDT AFVEJNING (maalt, ikke skjult): denne rekalibrering fjerner den
+// SPURIOESE kilde til uforudsigelighed (tilfaeldig fuld-felt-udtoemning), hvilket
+// OGSAA hoejner "felt-favoritters win-rate"-ankeret (§5, baand 25-40%) - v4 gaar
+// fra 31.7% [PASS] til ca. 72-76% [FAIL] paa tvaers af HELE kalenderen (ikke kun
+// sprint-etaper), fordi den evne-baserede "hvem BURDE vinde"-beregning nu i
+// hoejere grad ogsaa er den der REELT vinder. Testet modgift (dayform.sd 0.018->
+// 0.06, jourSansPBase 0.03->0.15) flyttede kun 2 procentpoint - M5 (udbrud)/M10
+// (incidents)/M11 (vejr) er de mekanikker der reelt skal give uforudsigelighed
+// (alle F3-scope, unwired), ikke stoej-konstanterne her. Ude af scope for DENNE
+// PR (sprinter-integritet) - se PR-beskrivelsen for fuld foer/efter-tabel.
+const workCostExtra = {
+  demandScaleByKind: {
+    flat: 0.3,
+    rolling: 0.3,
+    climb: 0.3,
+    descent: 0.3,
+    cobbles: 0.3,
+  } as Record<SegmentKind, number>,
+};
+
+/** Work-cost demand-skalerings-tuning (deep-frosset). Se workCostExtra-kommentaren ovenfor. */
+export const WORK_COST_EXTRA_TUNING = deepFreeze(workCostExtra);
