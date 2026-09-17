@@ -82,12 +82,16 @@ fi
 # vælte scanneren. Vi bruger ikke Python til at scanne dens egen stderr —
 # helperen i resolve-python.sh er ren bash, netop fordi Python kan være den
 # der fejlede.
-SCAN_ERR="$(mktemp 2>/dev/null || printf '%s' "${TMPDIR:-/tmp}/cz-secret-scan-$$.err")"
+# Én temp-fil til al scanner-stderr, ryddet af en EXIT-trap: hooken kører på hvert
+# eneste tool-kald, så et ekstra procesopstart pr. kald er ikke gratis, og
+# trap'en rydder også op når vi exiter 2 undervejs.
+SECRET_ERR_FILE="$(mktemp 2>/dev/null || printf '%s' "${TMPDIR:-/tmp}/cz-secret-scan-$$.err")"
+trap 'rm -f "$SECRET_ERR_FILE" 2>/dev/null || true' EXIT
+
 SCAN_RESULT=$(printf '%s' "$INPUT" \
-  | PYTHONUTF8=1 PYTHONIOENCODING=utf-8 "$PY" "$SCANNER" 2>"$SCAN_ERR")
+  | PYTHONUTF8=1 PYTHONIOENCODING=utf-8 "$PY" "$SCANNER" 2>"$SECRET_ERR_FILE")
 SCAN_EXIT=$?
-SCAN_DETAIL="$(secret_sanitize_detail "$SCAN_ERR")"
-rm -f "$SCAN_ERR" 2>/dev/null || true
+SCAN_DETAIL="$(secret_sanitize_detail "$SECRET_ERR_FILE")"
 
 if [ "$SCAN_EXIT" -ne 0 ]; then
   secret_runtime_failure 'output scan failed' \
@@ -135,11 +139,9 @@ if [ -n "$STATS_LINE" ]; then
   echo "$TS $STATS_LINE" >> "$STATS_FILE" 2>/dev/null || true
 fi
 
-VERDICT_ERR="$(mktemp 2>/dev/null || printf '%s' "${TMPDIR:-/tmp}/cz-secret-verdict-$$.err")"
-LEAK=$(printf '%s' "$SCAN_RESULT" | "$PY" -c 'import sys,json; d=json.load(sys.stdin); assert isinstance(d.get("leak_detected"), bool); print("yes" if d["leak_detected"] else "no")' 2>"$VERDICT_ERR")
+LEAK=$(printf '%s' "$SCAN_RESULT" | "$PY" -c 'import sys,json; d=json.load(sys.stdin); assert isinstance(d.get("leak_detected"), bool); print("yes" if d["leak_detected"] else "no")' 2>"$SECRET_ERR_FILE")
 VERDICT_EXIT=$?
-VERDICT_DETAIL="$(secret_sanitize_detail "$VERDICT_ERR")"
-rm -f "$VERDICT_ERR" 2>/dev/null || true
+VERDICT_DETAIL="$(secret_sanitize_detail "$SECRET_ERR_FILE")"
 if [ "$VERDICT_EXIT" -ne 0 ]; then
   secret_runtime_failure 'scan verdict parsing failed' \
     "verdict exit=$VERDICT_EXIT | stderr: $VERDICT_DETAIL"
