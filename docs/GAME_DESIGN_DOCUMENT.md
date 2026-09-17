@@ -13,8 +13,9 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-048 er registreret
-(D-029 til D-048 i Claude Code 10/9). **Status 10/9 kl. 16:15:** intet åbent
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-057 er registreret
+(D-029 til D-048 i Claude Code 10/9; D-049 til D-057 i Claude Code 17/9,
+retroaktivt fra specs 11/9+15/9 og NOW.md, se #5087). **Status 10/9 kl. 16:15:** intet åbent
 spørgsmålskort; Q-037 parkeret til spillerafstemning; Q-053 ikke stillet.
 Læs [CLAUDE_HANDOFF](design/gdd/CLAUDE_HANDOFF.md) for kort beslutningsoversigt,
 næste designarbejde og læserækkefølge; [GitHub-kortet](design/gdd/GITHUB_HANDOFF.md)
@@ -273,6 +274,51 @@ skiftes, men et nyt par bygger udbyttet op forfra over løbsdage; det lærte
 beholdes, også når parret ophører ved salg. Sæsonlås og omkostningsfrit skift
 er fravalgt. Opbygningens længde, feedback og UI er åbne.
 
+### Ryttertype-visning: rating og badge (D-049/D-050, ejer-valgt 11/9)
+
+[Spec 11/9](superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md)
+afgjorde fem kort om hvordan anlæg og rating vises, målt mod 4.170 rytterhold.
+**D-049:** rating-tallet på rytterkort, i tabeller og på markedet er den bedste
+rolle lige nu (`max over 8 roller af ratingForRole`), vist sammen med rollenavnet
+("54 Bjergrytter"). Anlægget vises separat som badge "Natural / Naturlig" og
+lover kun det medfødte, aldrig en plads i loft-toppen; badget bygges som preview
+og vises spillerne, før det går live. Sekundært anlæg trækkes fremover jævnt fra
+næste kuld nye ryttere; eksisterende ryttere røres ikke. **D-050:** bjergrytterens
+punch-loft sænkes fra signatur (93) til 80, fordi opskrift-stramning ikke løser
+at bjergrytteren i dag dominerer bakkerytter-loftet (climber rang 1-2 hos 99,8 %
+af puncheurerne). Ændringen er harness-målt og lander i sæsonpausen efter 27/9
+via `CLIMBER_PUNCH_FLOOR` i `riderProgression.js`; eksisterende ryttere med
+punch over 80 beholder evnen, men vokser ikke videre i den.
+
+### Holdarbejde og Lederskab: mekanik og #3668-aftalen (D-051/D-052/D-053, ejer-valgt 15/9)
+
+Design-sessionen 15/9 ([spec](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md))
+omsatte D-021 til D-031 til ni konkrete kort. **D-051 (Holdarbejde):** evnen
+virker kun i løbet, på nytten af hjælp. Hjælperens Holdarbejde skalerer den
+beskyttelse kaptajnen får og leadoutets levering; hjælperens egen pris er
+uændret. Kaptajnens eget Holdarbejde skalerer, hvor stor en andel af hjælpernes
+ordre der reelt leveres. Tallet fødes af profil og støj, uden kobling til rå
+styrke, og udvikles kun ved faktisk hjælper-/leadoutrolle i løb eller ved
+rollefordelt holdpas. Kemien mellem to ryttere bor i en par-tabel
+(`rider_pair_chemistry`), nøglet på rytterne, så den følger med ved fælles
+transfer. Effekten holdes i et mildt bånd, og en harness-gate sikrer at en
+stærkere hjælper med lavere Holdarbejde aldrig giver kaptajnen mindre end en
+svagere med højt Holdarbejde: styrke straffes aldrig. **D-052 (Lederskab):**
+evnen fødes af alder og profil og vokser med kaptajn- og mentortid, topper
+sent (30+), og påvirker intet i selve løbet. Mentorens elev får et lille ekstra
+evne-delta pr. løbsdag på taktik, positionering og Holdarbejde, skaleret af
+mentorens Lederskab og parrets opbygningstid, og altid kun positivt. Mentorpar
+vælges fra elevens udviklingsfane (kandidater sorteret efter Lederskab) og
+opsummeres i holdsidens Squad-fane. **D-053 (#3668-aftalen, ejer 15/9, ordret):**
+taktik og aggression skal fremadrettet hverken bygge på alder eller på en anden
+evne; de er egne evner med egen udvikling ("intet skal være vægtet på
+PCM-stats mere. Spillet skal kunne holde sig selv oppe nu"). Eksisterende
+ryttere mister ikke evne-masse ved omlægningen: de point der fjernes fra taktik
+og aggression flyttes til de nye mentale evner Holdarbejde og Lederskab i én
+samlet, idempotent migration. **D-056 (lofter, NOW-standing 15/9):** de
+mentale evners lofter er `{tactics: 55, teamwork: 70, leadership: 70}`;
+aggression får intet loft og er taget helt ud af evnesystemet (#5297).
+
 ### Ungdomstrupper: kapacitet (D-032, ejer-valgt 10/9)
 
 [YOUTH_RULES](YOUTH_RULES.md) ejer strukturen (Junior 16-18, U23 19-22, egne
@@ -295,6 +341,21 @@ ryttere. Overskydende unge håndteres med købt kapacitet, salg eller bytte;
 designerens forbehold om permanent tab ved salg af talent er noteret til
 økonomi-simulationen.
 
+### U23-kalenderen: lancering og population (D-054/D-055, ejer-valgt 15/9)
+
+[Spec 15/9](superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md)
+§10 afgjorde fem åbne punkter om U23-aksen, ét kort ad gangen. **D-054:**
+U23-kalenderen genereres nu og går live samlet 28/9, ikke bag flag i uge 1
+(§10.1). U23-løbene får eget katalog i `race_pool` med navne omskrevet efter
+samme rettighedskonvention som seniorløbene, ikke suffiks-kopier af
+seniornavne (§10.3). Hvert AI-hold får en genereret U23-trup på 6-9 ryttere
+(19-22 år), født på spillets egne priors uden PCM, fordi dagens AI-alderfordeling
+giver for få 19-22-årige til at fylde et køreligt felt (§10.4). U23 følger ikke
+25/8-reglen om løb hver kalenderdag: aksen har 1-2 løb om ugen inden for de
+samme 140 løbsdage, resten er rene træningsdage (§10.5). **D-055 (Graduation
+Day, NOW-standing #5279):** en U23-rytter graduerer til seniortruppen ved 23
+år; academy-nedrykning er fortsat kun tilladt til og med 21 år (#5145).
+
 ### Holdudtagelse: den glemte trup (D-034, ejer-valgt 10/9)
 
 [ASSISTANT_RULES](ASSISTANT_RULES.md) og [PLANNING_CENTER_RULES](PLANNING_CENTER_RULES.md)
@@ -310,7 +371,10 @@ vises med årsag. Grænsen er kalibrering. **D-036 (løbsdagen):** efter et løb
 får manageren et indsatskort pr. rytter: ordren, 2-4 hændelser med km fra
 v4's tidslinje og én dom i klar tekst, ingen karakter; den levende tidslinje
 (#4916) supplerer. Det er svaret på GDD §4's krav om konsekvens og feedback
-og kræver v4-flippet. **Fog of war (Q-037)** er parkeret:
+og kræver v4-flippet. **D-057 (NOW-standing #4209):** en rytter kan aldrig
+starte i mere end ét løb pr. løbsdag; reglen håndhæves af `race_entry_days`'
+unikke nøgle og gælder på tværs af trupper, fordi en rytter kun har én
+`squad`-værdi ad gangen. **Fog of war (Q-037)** er parkeret:
 ejeren stiller spørgsmålet til spillerne som forum-afstemning med billede,
 før der besluttes.
 
@@ -444,6 +508,17 @@ og hvad der ville få os til at ændre designet. Kodechecks kan bevise en regel,
 spillerens forståelse og glæde kræver observation og samtaler med spillere.
 
 ## Ændringslog
+
+- 17/9 2026 (Claude Code, retroaktiv registrering, #5087): D-049 og D-050 om
+  ryttertype-visning, rating som bedste rolle nu og bjergrytterens punch-loft
+  (93→80) fra spec 11/9. D-051 og D-052 om Holdarbejde- og Lederskab-mekanikken
+  (H1-H6/L1-L3) og D-053 om #3668-aftalen (taktik/aggression uden PCM/alder)
+  fra spec 15/9. D-054 om U23-kalenderens samlede lancering 28/9 (eget katalog,
+  AI-hold-population, ikke løb hver kalenderdag) fra samme spec §10. D-055 til
+  D-057 løfter tre allerede besluttede NOW-regler ind i loggen: Graduation Day
+  ved 23 (#5279), de mentale evners lofter og aggression ude af evnesystemet
+  (#5297), og ét løb pr. rytter pr. løbsdag (#4209). Ingen nye designvalg;
+  kun eksisterende beslutninger fra specs og NOW.md registreret med D-numre.
 
 - 10/9 2026 (eftermiddag, Claude Code): D-047 om mobiltabeller (tre faste
   kolonner + "Fuld tabel" som to-lags, afløser TASTE P10 fork 6) og D-048 om
