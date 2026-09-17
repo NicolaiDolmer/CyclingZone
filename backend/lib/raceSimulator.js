@@ -267,6 +267,15 @@ function finaleModifier(entrant, stageProfile) {
 // dobbeltrolle må ikke fælde en hel etape-simulering. #4353 (28/8) forhindrer NYE
 // dobbeltkaptajner fra stage-tactics-UI'et, så en konflikt her er forsvar-i-dybden
 // mod legacy-data/direkte DB-skrivninger, ikke en forventet sti.
+//
+// #5223: den dublet Sentry faktisk så (CYCLINGZONE-5Z) kom IKKE herfra som
+// kilde — den opstod ét lag tidligere, i den PR. RYTTER-vise sammenfletning af
+// basisrolle og etape-rolle (raceStageRoles.resolveStageEntrant). Den flettes nu
+// på holdniveau (resolveStageEntrants), så v3-stien ikke længere kan levere to
+// indehavere hertil. Denne guard bliver dermed en ren BAGSTOPPER for de stier der
+// ikke går gennem etape-rollerne (v3=false, direkte kaldere, tests). Fast
+// fingerprint pr. rolle (#2434-mønstret): ét Sentry-issue pr. rolle uanset
+// løb/hold/rytter, så en gentagelse er synlig som antal og ikke som støj.
 function assignProtectedRole({ teamCtx, field, entrant, captureExceptionFn, raceRoleLabel }) {
   if (teamCtx[field] == null) {
     teamCtx[field] = entrant.rider_id;
@@ -277,6 +286,7 @@ function assignProtectedRole({ teamCtx, field, entrant, captureExceptionFn, race
     new Error(`buildTeamContext: duplicate ${raceRoleLabel} on same team/stage`),
     {
       tags: { flow: "race-simulator", stage: "build-team-context" },
+      fingerprint: ["race-simulator", "build-team-context", "duplicate-protected-role", raceRoleLabel],
       teamId: entrant.team_id,
       keptRiderId: teamCtx[field],
       droppedRiderId: entrant.rider_id,

@@ -67,7 +67,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, stageEnteringFatigues, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
 import {
   loadStageRoleOverrides,
-  resolveStageEntrant,
+  resolveStageEntrants,
   effortsSequenceForRider,
   effortByRiderForStage,
   serializeStageRoleOverrides,
@@ -313,6 +313,32 @@ export async function resolveRaceEngineV4({
  *   motorens EGEN tidslinje under `timeline_version` 2 (buildStageTimelineV4)
  *   — ikke v3's syntetiske version 1.
  */
+// #5223: telemetri for de dublet-tilfælde `resolveStageEntrants` IKKE kan
+// forklare med "etape-rollen slog basisrollen" — to etape-overrides på samme
+// eksklusive rolle, eller to basisroller, på samme (hold, etape). Hverken
+// gemme-guarden eller `uq_race_entries_*` tillader det, så en forekomst er rå
+// data-drift og ikke almindelig taktik. Fast fingerprint: ÉT Sentry-issue
+// uanset løb/hold/rytter (samme mønster som #2434's aggregerede alarmer), så
+// den ikke splitter i hundredvis af enkelt-events.
+function reportStageRoleConflicts({ raceId, stageNumber, conflicts, captureExceptionFn = captureException }) {
+  for (const c of conflicts) {
+    captureExceptionFn(
+      new Error(`resolveStageEntrants: ambiguous ${c.role} on same team/stage`),
+      {
+        tags: { flow: "race-simulator", stage: "resolve-stage-roles" },
+        fingerprint: ["race-stage-roles", "ambiguous-exclusive-role"],
+        raceId,
+        stageNumber,
+        teamId: c.teamId,
+        role: c.role,
+        source: c.source,
+        keptRiderId: c.keptRiderId,
+        droppedRiderIds: c.droppedRiderIds,
+      }
+    );
+  }
+}
+
 export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [] }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stages.length) throw new Error("no stage profiles");
@@ -425,16 +451,24 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     const stage = stagesSorted[i];
     const stageNumber = stage.stage_number || 1;
     // S3 (#2034): denne etapes race_stage_roles-overrides — KUN opslået/anvendt
-    // når v3=true. Resolution kører altid mod det ORIGINALE entrant (entrants[idx],
-    // ikke det mutérede simEntrants[idx]) så en etapes override aldrig lækker ind i
+    // når v3=true. Resolution kører altid mod de ORIGINALE entrants (`entrants`,
+    // ikke de mutérede simEntrants) så en etapes override aldrig lækker ind i
     // en senere etape uden sin egen override (hver etape resolves uafhængigt).
+    // #5223: resolution sker på HOLD-niveau (resolveStageEntrants), ikke pr.
+    // rytter — ellers kan basis-sprint_captain A + etape-override på B give to
+    // sprint_captains i samme rollesæt. `resolved` er index-parallel med
+    // `entrants` (og dermed med simEntrants, der er bygget som entrants.map).
     const overridesForStage = v3 ? stageRoleOverrides?.get(stageNumber) : undefined;
+    const stageResolved = v3 ? resolveStageEntrants(entrants, overridesForStage) : null;
+    if (stageResolved?.conflicts.length) {
+      reportStageRoleConflicts({ raceId: race.id, stageNumber, conflicts: stageResolved.conflicts });
+    }
     for (let idx = 0; idx < simEntrants.length; idx++) {
       const se = simEntrants[idx];
       // Akkumuleret træthed gående ind til DENNE etape (idx i).
       se.fatigue = fatigueSeqById.get(se.rider_id)[i];
       if (v3) {
-        const resolved = resolveStageEntrant(entrants[idx], overridesForStage);
+        const resolved = stageResolved.entrants[idx];
         if (resolved.race_role) se.race_role = resolved.race_role;
         else delete se.race_role;
         se.effort = resolved.effort;
@@ -2204,9 +2238,17 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
 
   // S3 (#2034): denne etapes race_stage_roles-overrides — KUN opslået/anvendt når
   // v3=true (flag-off skal forblive bit-identisk, jf. buildRaceResults' note).
+  // #5223: hold-niveau-sammenfletning, se buildRaceResults' tilsvarende note —
+  // det er DENNE sti (stage-scheduler → simulateStageByIndex) Sentry
+  // CYCLINGZONE-5Z kom fra. `stageResolved.entrants` er index-parallel med
+  // `entrants`.
   const overridesForStage = v3 ? stageRoleOverrides?.get(stageNumber) : undefined;
-  const simEntrants = entrants.map((e) => {
-    const resolved = v3 ? resolveStageEntrant(e, overridesForStage) : null;
+  const stageResolved = v3 ? resolveStageEntrants(entrants, overridesForStage) : null;
+  if (stageResolved?.conflicts.length) {
+    reportStageRoleConflicts({ raceId: race.id, stageNumber, conflicts: stageResolved.conflicts });
+  }
+  const simEntrants = entrants.map((e, idx) => {
+    const resolved = v3 ? stageResolved.entrants[idx] : null;
     return {
       rider_id: e.rider_id,
       team_id: e.team_id,
