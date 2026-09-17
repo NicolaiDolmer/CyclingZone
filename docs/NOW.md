@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer-samtale (aften 17/9 eller 18/9), ét kort ad gangen:** 1) træningsdesign kort 1-4 (brief `audits/2026-09-17-traeningsdesign-session-brief.html`) → 2) win-back-tekst rettes sammen (udkast 17/9, `buildWinbackEmail`) → dry-run → send-go → 3) icebox-batch 2: ejeren vil BYGGE nogle af de 25 (`audits/2026-09-17-styringssession-triage.md` Del B + #5293 #4942 #1148); ingen parkering før gennemgang → 4) 31 needs-decision (beslutningsark https://claude.ai/code/artifact/97e0ea2d-f9bc-45d2-88a3-7798f1d5fd93) → 5) ejeren poster `drafts/discord-patch-notes-2026-09-17.md` + S4-opslaget. **Kørsel 2 (17/9 em):** #5336 merget · 22 lukket · 656 → 637 åbne · audit `.claude/audits/audit-2026-09-17.md`. **Åbne PR'er:** B3 #5281 + B4 #5264 · #5169 · #3512 → #5327. `infisical login` udløbet.
+> **🎯 Next action:** **Ejer-samtale (aften 17/9 eller 18/9), ét kort ad gangen:** 1) træningsdesign kort 1-4 (brief `audits/2026-09-17-traeningsdesign-session-brief.html`) → 2) win-back-tekst rettes sammen (udkast 17/9, `buildWinbackEmail`) → dry-run → send-go → 3) icebox-batch 2: ejeren vil BYGGE nogle af de 25 (`audits/2026-09-17-styringssession-triage.md` Del B + #5293 #4942 #1148); ingen parkering før gennemgang → 4) 31 needs-decision (beslutningsark https://claude.ai/code/artifact/97e0ea2d-f9bc-45d2-88a3-7798f1d5fd93) → 5) ejeren poster `drafts/discord-patch-notes-2026-09-17.md` + S4-opslaget. **Kørsel 2 (17/9):** #5336 merget, 22 lukket, audit `.claude/audits/audit-2026-09-17.md`. **Åbne PR'er:** #5281 #5264 #5169 #3512. `infisical login` udløbet.
 
 > **🟡 Loft-designet (ejer 16/9 — byg intet, afventer samtale):** `abilityRoleClass` er **binær på fortegn**, så vægt 1 og vægt 3 begge giver `signatur` (93). Derfor ramte loftet skævt: `aggression` (vægt 3) kostede 8,4 ratingpoint, `teamwork`/`leadership` (vægt 1) koster 1,5-1,8. Ejeren vil have en langsigtet løsning (vægtet rolleklasse eller gulv à la `GC_PUNCH_FLOOR`). **#5268-point-flytningen bør afvente samtalen.**
 
@@ -24,6 +24,6 @@
 - **Kort-regler (ejer 15/9):** ét delpunkt · prod-tal som eksempel · læs issuets seneste kommentarer FØR kortet · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur.
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`; `gh pr update-branch` først, konflikt → worker fletter main ind); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES` samme PR; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; `gh --body-file`.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Aftenbølge 17/9 (wave.js, Fable) — ejer væk til ca. kl. 21.
 
 _Historik i git-log, issue-tråde + docs/audits/._
