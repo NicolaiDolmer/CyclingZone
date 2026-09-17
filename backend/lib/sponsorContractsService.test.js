@@ -1134,17 +1134,24 @@ test("expireAndRenewContracts default-fornyer med ELEVERET renown for et hold de
   // tidspunkt. Samtidig skal den elevated-renown-regression fra #2909 stadig
   // holde: rank-1-formen i D3 skal stadig løfte target over D3s flade base,
   // ikke falde tilbage til 1,0-multiplikatoren.
+  //
+  // #4860 D: default-fornyelsen prissættes nu til den pris tilbudsvinduet åbnede
+  // på (sæson 1s slutstilling), begrænset opad af slutstillingen. Fixturen bærer
+  // derfor BEGGE sæsoner, med samme D3-rank-1-form i dem begge, så det er
+  // #2909/#4376-adfærden testen måler — ikke et hul i fixturen.
   const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
   const prevSeason = { id: "s1", number: 2 };
+  const windowOpenSeason = { id: "s0", number: 1 };
   const standings = [
     { season_id: "s1", team_id: "t1", division: 3, rank_in_division: 1, total_points: 900 },
     { season_id: "s1", team_id: "t3b", division: 3, rank_in_division: 2, total_points: 200 },
     { season_id: "s1", team_id: "t2a", division: 2, rank_in_division: 1, total_points: 500 },
   ];
+  const windowOpenStandings = standings.map((s) => ({ ...s, season_id: "s0" }));
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 }, // NYE division efter oprykning fra D3
-    seasonsByNumber: { 2: prevSeason },
-    standingsBySeasonId: { s1: standings },
+    seasonsByNumber: { 1: windowOpenSeason, 2: prevSeason },
+    standingsBySeasonId: { s0: windowOpenStandings, s1: standings },
     activeContractByTeam: { t1: expiring },
     pendingContractByTeam: { t1: null },
   });

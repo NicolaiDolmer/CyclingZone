@@ -343,7 +343,41 @@ export async function loadTeamDivision({ supabase, teamId }) {
 // værdi (komprimeringen skriver den FØR denne funktion kaldes) og aftalen
 // låser den nye divisions fulde base. Alle andre kaldere (interaktiv
 // tilbudsvisning/-valg) lader den stå på null og beholder eksisterende adfærd.
-async function loadRenownTargetValue({ supabase, teamId, seasonNumber, priceDivision = null }) {
+//
+// `renownSeasonNumber` (#4860 D): hvilken sæsons tilbudsvindue multiplieren skal
+// læses som-af. Default er `seasonNumber` (= i dag: standings for seasonNumber-1).
+// expireAndRenewContracts' default-fornyelse sætter den ét trin tilbage for at
+// genskabe den pris safe-tilbuddet blev VIST til da vinduet åbnede — se dér.
+
+// Én sæsons placeringer, ufiltreret. #2909: et hold der er rykket op/ned mellem
+// sæsoner findes IKKE i sin NYE division sidste sæson — filtrér derfor aldrig FØR
+// opslag på team_id. Præcis samme mønster som udbetalings-stien (economyEngine.js
+// processSeasonStart / seasonTransition.js preview).
+async function loadStandingsForSeasonNumber({ supabase, seasonNumber }) {
+  if (!Number.isFinite(seasonNumber) || seasonNumber < 1) return [];
+  const { data: season, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id, number")
+    .eq("number", seasonNumber)
+    .maybeSingle();
+  if (seasonError) throw seasonError;
+  if (!season?.id) return [];
+
+  const { data: rows, error: standingsError } = await supabase
+    .from("season_standings")
+    .select("season_id, team_id, division, rank_in_division, total_points")
+    .eq("season_id", season.id);
+  if (standingsError) throw standingsError;
+  return rows || [];
+}
+
+async function loadRenownTargetValue({
+  supabase,
+  teamId,
+  seasonNumber,
+  priceDivision = null,
+  renownSeasonNumber = null,
+}) {
   const { data: team, error: teamError } = await supabase
     .from("teams")
     .select("id, division")
@@ -352,38 +386,38 @@ async function loadRenownTargetValue({ supabase, teamId, seasonNumber, priceDivi
   if (teamError) throw teamError;
   const division = Number.isInteger(priceDivision) ? priceDivision : (team?.division ?? null);
 
-  // Forrige sæsons id (number = seasonNumber - 1).
-  const prevNumber = seasonNumber - 1;
-  let prevSeasonId = null;
-  if (prevNumber >= 1) {
-    const { data: prevSeason, error: seasonError } = await supabase
-      .from("seasons")
-      .select("id, number")
-      .eq("number", prevNumber)
-      .maybeSingle();
-    if (seasonError) throw seasonError;
-    prevSeasonId = prevSeason?.id ?? null;
-  }
+  const asOfSeason = Number.isInteger(renownSeasonNumber) ? renownSeasonNumber : seasonNumber;
 
-  // Forrige sæsons ALLE placeringer, ufiltreret. #2909: et hold der er rykket
-  // op/ned mellem sæsoner findes IKKE i sin NYE division sidste sæson — filtrér
-  // derfor aldrig FØR opslag på team_id. Præcis samme mønster som udbetalings-
-  // stien (economyEngine.js processSeasonStart / seasonTransition.js preview).
-  let allStandings = [];
-  if (prevSeasonId) {
-    const { data: rows, error: standingsError } = await supabase
-      .from("season_standings")
-      .select("season_id, team_id, division, rank_in_division, total_points")
-      .eq("season_id", prevSeasonId);
-    if (standingsError) throw standingsError;
-    allStandings = rows || [];
-  }
+  // Primærkilden er sæsonen lige før tilbudsvinduet (asOfSeason - 1).
+  let allStandings = await loadStandingsForSeasonNumber({
+    supabase,
+    seasonNumber: asOfSeason - 1,
+  });
+  let lastSeasonStanding = allStandings.find((s) => s.team_id === teamId) || null;
 
-  const lastSeasonStanding =
-    allStandings.find((s) => s.team_id === teamId) || null;
+  // #4860 A (ejer-beslutning 17/9): findes der INGEN stilling for holdet i den
+  // sæson — typisk fordi sæsonen lige er begyndt og season_standings stadig er
+  // tom — så brug sidste AFSLUTTEDE sæsons SLUTSTILLING (asOfSeason - 2) i stedet
+  // for tavst at falde til multiplier 1,00. Et etableret hold der vælger sponsor
+  // FØR sæsonens første løb fik ellers 1,00, mens nøjagtig samme valg en uge
+  // senere gav op til 1,40 (målt i prod 6/9: 30 af 43 pending S4-aftaler).
+  // Findes heller ikke den, er svaret 1,00 som hidtil (renownTarget med
+  // lastSeasonStanding = null) — aldrig et gæt.
+  if (!lastSeasonStanding) {
+    const olderStandings = await loadStandingsForSeasonNumber({
+      supabase,
+      seasonNumber: asOfSeason - 2,
+    });
+    const olderStanding = olderStandings.find((s) => s.team_id === teamId) || null;
+    if (olderStanding) {
+      allStandings = olderStandings;
+      lastSeasonStanding = olderStanding;
+    }
+  }
 
   // Sammenligningskonteksten (median/rank-faktor) er divisionen holdet FAKTISK
-  // konkurrerede i sidste sæson — standingens EGEN division, ikke holdets nye.
+  // konkurrerede i den sæson stillingen kommer fra — standingens EGEN division,
+  // ikke holdets nye.
   const divisionStandings = lastSeasonStanding
     ? allStandings.filter((s) => s.division === lastSeasonStanding.division)
     : [];
@@ -391,15 +425,67 @@ async function loadRenownTargetValue({ supabase, teamId, seasonNumber, priceDivi
   return renownTarget({ division, lastSeasonStanding, divisionStandings });
 }
 
-export async function getOffers({ supabase, teamId, seasonNumber, priceDivision = null }) {
-  const renownTargetValue = await loadRenownTargetValue({
-    supabase,
+// `renownTargetValue`: allerede beregnet target (springer opslaget over). Bruges af
+// expireAndRenewContracts' default-fornyelse, der selv skal sammenholde to targets
+// (#4860 D). Alle andre kaldere lader den stå på null.
+export async function getOffers({
+  supabase,
+  teamId,
+  seasonNumber,
+  priceDivision = null,
+  renownTargetValue = null,
+}) {
+  const resolvedTarget = Number.isFinite(renownTargetValue)
+    ? renownTargetValue
+    : await loadRenownTargetValue({
+        supabase,
+        teamId,
+        seasonNumber,
+        priceDivision,
+      });
+  const calendarDays = await loadCalendarDays({ supabase });
+  return generateOffers({
     teamId,
     seasonNumber,
+    renownTargetValue: resolvedTarget,
+    calendarDays,
+  });
+}
+
+// #4860 D (ejer-beslutning 17/9): prisen på den default-'safe'-aftale et hold får
+// tildelt ved sæsonskiftet, når det ALDRIG svarede.
+//
+// Tilbudsvinduet for `newSeasonNumber` åbnede den dag `newSeasonNumber - 1` startede.
+// Dér var season_standings for den igangværende sæson tom, så prisen der blev VIST
+// kom fra sæsonen før (med A ovenfor: `newSeasonNumber - 2`s slutstilling). Det er
+// den pris tavsheden skal koste — ikke slutstillingen efter en hel sæsons resultater,
+// som i dag gav de fleste 1,40 og dermed MERE end det hold der valgte samme variant
+// tidligt i sæsonen.
+//
+// Ejerens invariant står over frysningen: "tavshed må aldrig give mere end handling
+// samme dag". Et hold der er blevet DÅRLIGERE i løbet af sæsonen ville ellers vinde
+// på at tie (frossen 1,40 mod en slutstilling på 1,10), så der tages `min` af de to.
+// Tavshed lander derfor altid på eller under et manuelt valg truffet samme dag.
+async function loadDefaultRenewTargetValue({
+  supabase,
+  teamId,
+  newSeasonNumber,
+  priceDivision,
+}) {
+  const windowOpenTarget = await loadRenownTargetValue({
+    supabase,
+    teamId,
+    seasonNumber: newSeasonNumber,
+    priceDivision,
+    renownSeasonNumber: newSeasonNumber - 1,
+  });
+  const finalStandingTarget = await loadRenownTargetValue({
+    supabase,
+    teamId,
+    seasonNumber: newSeasonNumber,
     priceDivision,
   });
-  const calendarDays = await loadCalendarDays({ supabase });
-  return generateOffers({ teamId, seasonNumber, renownTargetValue, calendarDays });
+  return Math.min(windowOpenTarget, finalStandingTarget);
 }
 
 // #4376 timing-fix: holdets division i sæsonen der lige sluttede (season_standings
@@ -874,11 +960,20 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
     // uden en standings-række (nyoprettet midt i sæson — ingen flytning at ramme af).
     const priceDivision =
       preTransitionDivisionByTeam.get(teamId) ?? teamById.get(teamId)?.division ?? null;
+    // #4860 D: prissæt tavsheden til den pris safe-tilbuddet blev vist til da
+    // tilbudsvinduet åbnede, aldrig højere end et manuelt valg samme dag ville give.
+    const renownTargetValue = await loadDefaultRenewTargetValue({
+      supabase,
+      teamId,
+      newSeasonNumber,
+      priceDivision,
+    });
     const offers = await getOffers({
       supabase,
       teamId,
       seasonNumber: newSeasonNumber,
       priceDivision,
+      renownTargetValue,
     });
     const chosen = offers.find((o) => o.variant === DEFAULT_RENEW_VARIANT);
     if (!chosen) throw new Error(`Ukendt variant: ${DEFAULT_RENEW_VARIANT}`);
