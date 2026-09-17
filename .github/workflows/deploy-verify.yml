@@ -56,20 +56,33 @@ jobs:
           # selv på gen-kørsel (flake 15/9). En commit uden nogen PR (direkte
           # push, docs/chore) er en LOVLIG sti — den skal give et tomt NUMBER,
           # ikke en fejl.
+          #
+          # CodeRabbit (denne PR): `|| true` må ikke sluge en RIGTIG gh-fejl
+          # (rate-limit/auth/netværk) og lade den se ud som "ingen PR" — så
+          # skipper begge PR-kommentar-trin stille for en commit der RENT
+          # FAKTISK har en PR. Derfor holdes exit-koden ($rc) adskilt fra et
+          # tomt-men-succesfuldt svar: kun et ægte 200-svar (evt. med et tomt
+          # `[]`) tæller som "bekræftet ingen PR"; blev alle 3 forsøg ved med
+          # at FEJLE (rc != 0) kan vi ikke afgøre det, og trinnet vælter
+          # bevidst med en tydelig fejl i stedet for at gætte "ingen PR".
           resolve_pr_number() {
             local sha="$1"
-            local attempt out
+            local attempt out rc
             for attempt in 1 2 3; do
-              out=$(gh api "repos/${{ github.repository }}/commits/$sha/pulls" 2>/dev/null || true)
-              if [[ -n "$out" ]]; then
+              if out=$(gh api "repos/${{ github.repository }}/commits/$sha/pulls" 2>/dev/null); then
+                rc=0
+              else
+                rc=$?
+              fi
+              if [[ "$rc" -eq 0 && -n "$out" ]]; then
                 echo "$out" | jq -r '.[0].number // empty'
                 return 0
               fi
-              echo "::warning::Tomt svar fra gh api commits/$sha/pulls (forsøg $attempt/3)" >&2
+              echo "::warning::gh api commits/$sha/pulls fejlede eller gav tomt svar (forsøg $attempt/3, exit=$rc)" >&2
               [[ "$attempt" -lt 3 ]] && sleep 2
             done
-            echo "::warning::gh api commits/$sha/pulls blev ved med at give tomt svar efter 3 forsøg — antager direkte push uden PR" >&2
-            echo ""
+            echo "::error::gh api commits/$sha/pulls blev ved med at fejle/give tomt svar efter 3 forsøg (sidste exit=$rc) — kan ikke afgøre PR-tilknytning" >&2
+            return 1
           }
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
