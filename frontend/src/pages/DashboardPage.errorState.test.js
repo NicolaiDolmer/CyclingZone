@@ -42,9 +42,13 @@ test("#3510 fejlet load renderer den kanoniske ErrorState med retry, ikke et tom
     /if \(error\) return \(/,
     "der skal være et eksplicit error-early-return, ligesom loading-checket",
   );
+  // #5312: titlen er nu betinget — "naaede aldrig serveren" skal sige noget
+  // ANDET end "kunne ikke indlaese dashboardet", fordi de to fejl kraever hver
+  // sin handling af spilleren. Komponenten er stadig den kanoniske ErrorState,
+  // og loadError er stadig faldbagsteksten; det er hele pointen med guarden.
   assert.match(
     source,
-    /<ErrorState[\s\S]{0,200}?title=\{t\("dashboard:loadError"\)\}/,
+    /<ErrorState[\s\S]{0,300}?title=\{isBackendUnreachable\(error\) \? t\("dashboard:offlineError"\) : t\("dashboard:loadError"\)\}/,
     "ErrorState skal bruge den kanoniske komponent (docs/design/PAGE_TEMPLATES.md), ikke ny markup",
   );
   assert.match(
@@ -153,7 +157,13 @@ test("locale keys referenced by the new dashboard error surface exist in both en
   assert.ok(en.retry, "en dashboard.json mangler retry");
   assert.ok(da.loadError, "da dashboard.json mangler loadError");
   assert.ok(da.retry, "da dashboard.json mangler retry");
+  // #5312 — den separate "kan ikke naa serveren"-tekst skal findes i BEGGE
+  // sprog, ellers falder den ene ned i raa-noegle-visning paa fejlfladen.
+  assert.ok(en.offlineError, "en dashboard.json mangler offlineError");
+  assert.ok(da.offlineError, "da dashboard.json mangler offlineError");
   // #2849 — no em-dash in player-facing copy (tone-check-em-dash.mjs gate).
   assert.doesNotMatch(en.loadError, /—/);
   assert.doesNotMatch(da.loadError, /—/);
+  assert.doesNotMatch(en.offlineError, /—/);
+  assert.doesNotMatch(da.offlineError, /—/);
 });
