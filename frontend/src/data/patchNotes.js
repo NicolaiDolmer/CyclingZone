@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.285",
+    "date": "2026-09-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Mobile",
+        "en": {
+          "title": "Daily training and the transfer list work on a phone",
+          "body": "What changed: On a phone, the training roster shows the rider name plus three columns, with a chip row to swap a column in and Full table to see everything. The transfer list no longer forces the page wider than the screen: the fifteen ability columns are hidden until you tap Full table, and value, asking price and the action stay in view.\n\nWhat it means for you: You can set training and browse the market on your phone without sideways scrolling. Auctions already used cards on small screens, and the season matrix keeps its sticky name column by design."
+        },
+        "da": {
+          "title": "Daglig træning og transferlisten virker på telefonen",
+          "body": "Hvad er ændret: På telefonen viser træningstabellen rytternavnet plus tre kolonner, med en chip-række til at bytte en kolonne ind og Fuld tabel til at se alt. Transferlisten tvinger ikke længere siden bredere end skærmen: de femten evnekolonner er skjult, indtil du trykker Fuld tabel, og værdi, udbudspris og handling bliver stående.\n\nHvad betyder det for dig: Du kan sætte træning og kigge på markedet på telefonen uden at scrolle til siden. Auktioner brugte allerede kort på små skærme, og sæsonmatrixen beholder sin låste navnekolonne med vilje."
+        },
+        "refs": [5124, 5235]
+      }
+    ]
+  },
+  {
     "version": "7.284",
     "date": "2026-09-17",
     "label": "Beta",

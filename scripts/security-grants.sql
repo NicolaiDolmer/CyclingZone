@@ -87,7 +87,11 @@ WITH secdef AS (
       'is_offered_intake_rider',
       'get_cohort_retention',
       'get_sprint_metrics',
-      'get_retention_scorecard_activity'
+      'get_retention_scorecard_activity',
+      -- Founder-badgen (#4649, database/2026-09-03-4649-founder-public.sql):
+      -- read-only liste af founder-brugere til profil/forum; EXECUTE for
+      -- authenticated er tilsigtet. Audit 17/9 flaggede den som WARN.
+      'founder_public_list'
     )
 )
 SELECT

@@ -2,7 +2,7 @@
 
 > **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml`. **Intentionen** ejes af `docs/GAME_DESIGN_DOCUMENT.md` (D-001+); MASTERPLAN ejer kun rækkefølgen.
 
-**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9: "der skal ikke længere komme fejl ofte"** → 🔴 brand går foran alle baner. **Målt 17/9:** 669 åbne; rytme: [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
+**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9: "der skal ikke længere komme fejl ofte"** → 🔴 brand går foran alle baner. **Målt 17/9 em:** 637 åbne; rytme: [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md); udestående ejer-kort i NOW.
 
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
 
@@ -12,7 +12,7 @@
 ## Bane 1 · S4-cutover 27-28/9 (bølge-rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
 
 1. ✅ **Bølge 1:** #4851 score (flag beta) · #3668 → #5268.
-2. 🟠 **Bølge 2:** ✅ #5236/#5237 · ✅ #5211 · 🔵 **træningsdesign-session** (#5267 tick-akse, B3 #5281 + B4 #5264 merges sammen bagefter, #5169) · 🔵 #5263 sponsor (ejer-samtale udestår, **deadline 27/9**) · 🟠 #5235 mobil grøn → UI-kort (#5124).
+2. 🟠 **Bølge 2:** ✅ #5236/#5237 · ✅ #5211 · 🔵 **træningsdesign-session** (#5267 tick-akse, B3 #5281 + B4 #5264 merges sammen bagefter, #5169) · ✅ sponsor #5336 (17/9; #4860/#4376 done) · ✅ #5235 mobil (#5124).
 3. 🟠 **Bølge 3, rytter-fundament:** ✅ #5278 fødsel uden PCM (gate #5283 før U23) · ✅ #5279 `riders.squad` (backfill ejer-gated) · ✅ #5280 evner som data (point-flyt #5268 ejer-gated) · #5269 · #5273.
 4. ⚪ **Bølge 4, kalender m. trupper (FØR S4-generering):** **U23-filter i seniorlæserne** (unblocker #5262 katalog, draft grøn) · #5272 · pakker pr. trup · AI U23/junior-ryttere · #5327 arketype (#3512) m. #5269 · C1 · dry-run → go → #4270 apply (ejer). Spec `2026-09-15-u23-*.md`.
 5. ⚪ **Bølge 5, træning færdig (28/9):** skader i løbsdage · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849) · #4852-#4854 · #4848.
@@ -24,9 +24,9 @@
 
 Mål 2/10: ≥ 450 kr / ≥ 10 ✅ (Alunta 14/9: 659 kr / 18) · checkout ≥ 60 % ✅ · D7 ≥ 45 % (30 %) · aktive/7d ≥ 100 (90). **Tilgang + fastholdelse er flaskehalsen, ikke penge.**
 8. ✅ Spørgeskema #4943 lukket 15/9; ejeren poster forum-opslag + fog of war-afstemning selv.
-9. 🟠 **Fastholdelse:** #5241 ét klik ✅ (måles 28/9, #4964) · #4346 anmeld handel ✅ · #5284 admin-fairplay ✅ 17/9 · #5282 transfer-ring · #5320 · **#5259 beta-adgang** (ejer 15/9, opt-in, høj prio) · #5257 global handelsliste · #5130 · #4751 · #5107 fog of war · late_fill (#5246, #5136).
+9. 🟠 **Fastholdelse:** #5241 ét klik ✅ (måles 28/9, #4964) · #4346 anmeld handel ✅ · #5284 admin-fairplay ✅ 17/9 · #5282 transfer-ring · #5320 · **#5259 beta-adgang** (ejer 15/9, opt-in, høj prio) · #5257 global handelsliste · #4751 · #3517 forum-links (3. ønske) · #5107 fog of war · late_fill (#5246).
 10. 🟠 **Vækst-fundament:** **måling først** #5304 #5310 #5305 #5306 · **SEO** #5239 ✅ → #5249 statisk + #5250 session-cookie · rest #4067 #3796 #4811 #4321 · **hastighed** #5177 #5240 #5055 CWV-gate · **mobil** #1602 #4982 #5131. Uge-blok: 2 handlinger + 1 måling (`drafts/growth-s4-launch-2026-09-17.md`).
-11. 🔵 **Mail:** #2760 win-back ✅ bygget (ejer-prosa + go inden 24/9, 92 i segmentet) · #5045 → testmail → #5038 → flip pr. type. **Nøgleblok #4616** → #4608 → #4646. Billing-vagter #4514 · #4512.
+11. 🔵 **Mail:** #2760 win-back bygget bag flag; tekst v2 rettes m. ejeren → dry-run → send-go inden 24/9 · #5045 → testmail → #5038 → flip pr. type. **Nøgleblok #4616** → #4608 → #4646. Billing-vagter #4514 · #4512.
 12. 🔴 **Spiller-kommunikation #428/#4820:** ejeren poster selv. #5033 (efter #4595).
 
 ## Bane 3 · Færdiggør (>70 %; tømmes før nyt)

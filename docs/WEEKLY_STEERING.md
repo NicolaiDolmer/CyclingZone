@@ -28,3 +28,4 @@
 | Dato | Åbne | Nye/lukkede 7d | PR'er afgjort | Icebox | Udkast |
 |---|---|---|---|---|---|
 | 2026-09-17 (kørsel 1) | 669 → 656 | 105 / 67 | 10 afgjort, 8 merget (#5324 #5285 #5308 #5235 #5335 #5332 #5333 #5334 #5262), 1 lukket (#5263) | 18 (interne, batch 1) | S4-opslag åbning godkendt; win-back afvist (tone) → 18/9 |
+| 2026-09-17 (kørsel 2, "til bunds") | 656 → 637 | – / 22 lukket i dag | #5336 merget (sponsor); B3/B4/#5169/#3512 afventer træningsdesign | 0 (batch 2 udskudt: ejeren vil bygge nogle) | Discord patch-notes-udsnit klar; win-back-udkast v2 (rettes sammen); ejer udskød træning/icebox/decisions til aften/18/9 |
