@@ -358,6 +358,10 @@ under den median på 57 der blev målt efter D3-rekalibreringen. Tallet er ikke 
 menneske- og AI-hold her, så det er **ikke** en verifikation af at D3-målet holder - det er
 et øjebliksbillede af hele bestanden.
 
+**Form vægter reelt ind i løbssimuleringen** via `formRaceWeightV3()` (`raceRoles.js`),
+som v3-kaldet i `raceSimulator.js` bruger i stedet for den lavere `FORM_RACE_WEIGHT`-konstant
+fra v1-stien — formen er altså ikke en neutral 0-stub på løbsdage.
+
 ### 5.4 Skader fra træning
 
 | Regel | Kilde |
@@ -617,6 +621,8 @@ Når et af issuerne merges, flyttes indholdet ind i det relevante afsnit, og ræ
 ## 13. Ejerens beslutninger 6/9: træning pr. løbsdag (retning, ikke bygget)
 
 > **Status: låste beslutninger fra design-session 6/9 2026 (Claude Code, ét spørgsmål ad gangen). Intet af det er bygget; §1-§7 gælder indtil en PR ændrer dem. Mål: sæson 4 (fra 28/9), ikke midt i S3. Genåbn dem ikke.**
+
+> **Træningsscore-delen (beslutning 4-6) er delvist leveret:** PR #5261 (merget 15/9) bygger scoren bag et beta-flag — synlig for admin og beta-testere. Flip til `on` for alle spillere er ejer-only.
 
 **Ejerens udgangspunkt (ordret):** *"Jeg vil gerne begynde at designe spillet mod, at man træner på en løbsdag i stedet for hver irl dag. Så er det også nemmere at finde ud, om en rytter kører et løb eller træner den enkelte dag. Jeg vil også gerne have designet vores system til træningsscoren."*
 
