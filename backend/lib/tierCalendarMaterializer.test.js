@@ -1095,3 +1095,87 @@ test("#5330 materialize: NULL squad (og en race_pool uden squad-kolonne) tæller
     "squad=NULL skal behandles præcis som en række uden feltet",
   );
 });
+
+// ── #5272 · reconcile giver materializeren et LØBSDAGS-mål ────────────────────────────
+// Kalenderdagene har altid været afkortet til sæson-slut (#2149 ovenfor), men
+// løbsdags-aksen (`game_day`) har været et rent søgeresultat. En pulje der vågner på dag
+// 18 af 28 fik derfor en anden udviklingstakt end alle andre i divisionen. Målet er
+// sæsonens antal løbsdage MINUS de allerede afviklede — se calendarActivationRaceDays.js.
+//
+// Testene her måler hvad reconcile SENDER VIDERE (materialize er injectable). At
+// `raceDayTarget` også ÆNDRER den pakkede kalender kræver #4845/#5169's packer-støtte;
+// indtil PR #5169 er merget, destruktureres nøglen ikke af materializeTierCalendars.
+
+/** D1-kalender i den aktive sæson: etaper på (game_day, dato)-par. */
+function medDiv1Kalender(state, par) {
+  state.league_divisions.push({ id: 1, tier: 1, pool_index: 0, label: "Division 1" });
+  state.teams.push(mgrTeam("d1-m1", 1));
+  state.races = [{ id: "race-d1", season_id: "s1", league_division_id: 1, pool_race_id: "eksisterende-d1" }];
+  state.race_stage_schedule = par.map(([game_day, dato], i) => ({
+    race_id: "race-d1", stage_number: i + 1, scheduled_at: `${dato}T16:00:00Z`, game_day,
+  }));
+  return state;
+}
+
+test("#5272 reconcile: en pulje aktiveret MIDT i sæsonen får sæsonens mål minus de afviklede løbsdage", async () => {
+  // D1's akse er 0-79 (80 løbsdage). game_day 0-39 er afviklet før from (29/6), så der er
+  // 40 tilbage. Uden #5272 fik pulje 8 i stedet den akse pakkeren tilfældigvis fandt.
+  const state = medDiv1Kalender(tier4ActivationState(), [
+    [0, "2026-06-15"], [39, "2026-06-28"], [40, "2026-06-29"], [79, "2026-07-09"],
+  ]);
+  const sb = makeSupabase(state);
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, materialize: recording });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].raceDayTarget, 40, "remaining-horizon: 80 − 40 afviklede");
+  assert.equal(summary.raceDayTarget, 40, "målet skal også kunne efterprøves fra returværdien");
+  assert.equal(summary.raceDayPlan.seasonRaceDayTarget, 80);
+  assert.equal(summary.raceDayPlan.elapsedRaceDays, 40);
+  assert.equal(summary.raceDayPlan.sourceDivisionId, "1");
+  // Kalenderdags-horisonten er uændret af #5272 — de to akser er stadig adskilte (§0).
+  assert.equal(summary.realDays, 10, "29/6 → 9/7 = 10 rest-dage");
+});
+
+test("#5272 reconcile: en pulje aktiveret ved SÆSONSTART får hele målet (uændret adfærd)", async () => {
+  const state = medDiv1Kalender(tier4ActivationState(), [[0, "2026-06-29"], [79, "2026-07-09"]]);
+  const sb = makeSupabase(state);
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, materialize: recording });
+
+  assert.equal(calls[0].raceDayTarget, 80, "intet er afviklet, så målet er ikke afkortet");
+  assert.equal(summary.raceDayPlan.elapsedRaceDays, 0);
+});
+
+test("#5272 reconcile: helt frisk sæson uden andre kalendere sender INTET mål videre", async () => {
+  // Der er intet at måle mod, og et gæt ville være værre end ingenting. Adfærden skal
+  // være bit-identisk med før #5272.
+  const sb = makeSupabase(tier4ActivationState());
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, materialize: recording });
+
+  assert.ok(!("raceDayTarget" in calls[0]), "nøglen må slet ikke sendes, ikke sendes som null");
+  assert.equal(summary.raceDayTarget, null);
+  assert.equal(summary.raceDayPlan, null);
+});
+
+test("#5272 reconcile: et eksplicit sæson-mål slår det målte (indgangen for #4845/#5169)", async () => {
+  const state = medDiv1Kalender(tier4ActivationState(), [
+    [0, "2026-06-15"], [39, "2026-06-28"], [40, "2026-06-29"], [79, "2026-07-09"],
+  ]);
+  const sb = makeSupabase(state);
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+
+  await reconcilePoolCalendarOnActivation({
+    supabase: sb, poolId: 8, now: FROM, materialize: recording, seasonRaceDayTarget: 140,
+  });
+
+  assert.equal(calls[0].raceDayTarget, 100, "140 (#4845's S4-mål) − 40 afviklede");
+});
