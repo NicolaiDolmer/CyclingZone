@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 import {
   resolveStageEntrant,
+  resolveStageEntrants,
   effortsSequenceForRider,
   effortByRiderForStage,
   serializeStageRoleOverrides,
@@ -56,6 +57,198 @@ test("resolveStageEntrant: bevarer entrantens øvrige felter (spread)", () => {
   const resolved = resolveStageEntrant(entrant, undefined);
   assert.equal(resolved.team_id, "A");
   assert.deepEqual(resolved.abilities, { climbing: 50 });
+});
+
+// ── #5223: resolveStageEntrants — hold-niveau-sammenfletning ──────────────────
+//
+// Rodårsagen bag Sentry CYCLINGZONE-5Z: basisrollen (race_entries.race_role) og
+// etape-rollen (race_stage_roles) blev flettet PR. RYTTER, så holdets basis-
+// sprint_captain og en etape-override på en ANDEN rytter begge kom igennem som
+// sprint_captain for samme (hold, etape).
+
+const ov = (rows) => new Map(rows.map(([riderId, race_role, effort = "normal"]) => [riderId, { race_role, effort }]));
+
+test("resolveStageEntrants: basis-sprint_captain A + etape-override sprint_captain på B → PRÆCIS én sprint_captain (dublet-input, #5223)", () => {
+  const entrants = [
+    { rider_id: "rA", team_id: "T", race_role: "sprint_captain" },
+    { rider_id: "rB", team_id: "T", race_role: "helper" },
+  ];
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, ov([["rB", "sprint_captain"]]));
+
+  const captains = resolved.filter((r) => r.race_role === "sprint_captain");
+  assert.equal(captains.length, 1, "netop én sprint_captain på holdet");
+  assert.equal(captains[0].rider_id, "rB", "etape-rollen vinder over basisrollen");
+  assert.equal(resolved[0].race_role, "helper", "basis-indehaveren degraderes til helper for DENNE etape");
+  assert.deepEqual(conflicts, [], "tilsigtet taktik — ikke en data-anomali, intet signal");
+});
+
+test("resolveStageEntrants: samme dublet ville i dag udløse motorens duplicate-signal — efter sammenfletningen gør den ikke (#5223/#4357)", async () => {
+  const { buildTeamContext } = await import("./raceSimulator.js");
+  const ability = Object.fromEntries(["climbing", "sprinting", "time_trial", "endurance", "recovery", "durability", "positioning", "descending", "cobbles", "punch"].map((k) => [k, 60]));
+  const entrants = [
+    { rider_id: "rA", team_id: "T", race_role: "sprint_captain", abilities: ability },
+    { rider_id: "rB", team_id: "T", race_role: "helper", abilities: ability },
+  ];
+  const overrides = ov([["rB", "sprint_captain"]]);
+  const terrainById = new Map([["rA", 0.5], ["rB", 0.5]]);
+
+  // FØR-tilstanden: pr.-rytter-resolution (den gamle sti) → to sprint_captains.
+  const perRider = entrants.map((e) => resolveStageEntrant(e, overrides));
+  const before = [];
+  buildTeamContext({ entrants: perRider, terrainById, captureExceptionFn: (err, ctx) => before.push({ message: err.message, ctx }) });
+  assert.equal(before.length, 1, "pr.-rytter-resolution udløser dublet-signalet");
+  assert.match(before[0].message, /duplicate sprint_captain/);
+
+  // EFTER: hold-niveau-resolution → intet signal, og B (etape-rollen) er lederen.
+  const after = [];
+  const ctx = buildTeamContext({
+    entrants: resolveStageEntrants(entrants, overrides).entrants,
+    terrainById,
+    captureExceptionFn: (err, c) => after.push({ message: err.message, c }),
+  });
+  assert.deepEqual(after, [], "ingen dublet tilbage at rapportere");
+  assert.equal(ctx.get("T").sprintCaptainId, "rB");
+});
+
+test("resolveStageEntrants: forfremmelses-stien (#5202) — udgået basis-kaptajn stadig i entrants + ny etape-kaptajn → ingen dublet", () => {
+  // Gemme-guarden lader en forfremmelse passere når basis-indehaveren er udgået
+  // (#5202). Er han af en anden grund stadig med i entrant-listen, må motoren
+  // ikke se to captains.
+  const entrants = [
+    { rider_id: "rDNF", team_id: "T", race_role: "captain" },
+    { rider_id: "rNew", team_id: "T", race_role: "helper" },
+    { rider_id: "rC", team_id: "T", race_role: "helper" },
+  ];
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, ov([["rNew", "captain"]]));
+  assert.deepEqual(resolved.map((r) => r.race_role), ["helper", "captain", "helper"]);
+  assert.deepEqual(conflicts, []);
+});
+
+test("resolveStageEntrants: hunter er også eksklusiv pr. hold/etape (#4746, RACE_ENGINE_RULES §7 modsigelse 12)", () => {
+  const entrants = [
+    { rider_id: "rA", team_id: "T", race_role: "hunter" },
+    { rider_id: "rB", team_id: "T", race_role: "helper" },
+  ];
+  const { entrants: resolved } = resolveStageEntrants(entrants, ov([["rB", "hunter"]]));
+  assert.equal(resolved.filter((r) => r.race_role === "hunter").length, 1);
+  assert.equal(resolved[1].race_role, "hunter");
+});
+
+test("resolveStageEntrants: to ETAPE-overrides med samme rolle (rå/legacy-data) → laveste rider_id vinder + conflict rapporteres", () => {
+  const entrants = [
+    { rider_id: "r9", team_id: "T", race_role: "helper" },
+    { rider_id: "r1", team_id: "T", race_role: "helper" },
+  ];
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, ov([["r9", "sprint_captain"], ["r1", "sprint_captain"]]));
+  assert.equal(resolved.filter((r) => r.race_role === "sprint_captain").length, 1);
+  assert.equal(resolved[1].race_role, "sprint_captain", "r1 < r9 → r1 vinder");
+  assert.equal(conflicts.length, 1);
+  assert.deepEqual(conflicts[0], {
+    teamId: "T", role: "sprint_captain", source: "stage_override", keptRiderId: "r1", droppedRiderIds: ["r9"],
+  });
+});
+
+test("resolveStageEntrants: vinderen er uafhængig af entrants-rækkefølgen (determinisme, ikke DB-orden)", () => {
+  const a = { rider_id: "r1", team_id: "T", race_role: "helper" };
+  const b = { rider_id: "r9", team_id: "T", race_role: "helper" };
+  const overrides = ov([["r1", "captain"], ["r9", "captain"]]);
+  const ab = resolveStageEntrants([a, b], overrides).entrants.find((r) => r.race_role === "captain");
+  const ba = resolveStageEntrants([b, a], overrides).entrants.find((r) => r.race_role === "captain");
+  assert.equal(ab.rider_id, "r1");
+  assert.equal(ba.rider_id, "r1");
+});
+
+test("resolveStageEntrants: to BASIS-indehavere uden overrides (DB-indexet forhindrer det) → laveste rider_id vinder, source=base_role", () => {
+  const entrants = [
+    { rider_id: "r9", team_id: "T", race_role: "captain" },
+    { rider_id: "r1", team_id: "T", race_role: "captain" },
+  ];
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, undefined);
+  assert.equal(resolved[1].race_role, "captain");
+  assert.equal(resolved[0].race_role, "helper");
+  assert.equal(conflicts[0].source, "base_role");
+});
+
+test("resolveStageEntrants: forskellige hold påvirker ikke hinanden", () => {
+  const entrants = [
+    { rider_id: "a1", team_id: "A", race_role: "sprint_captain" },
+    { rider_id: "b1", team_id: "B", race_role: "sprint_captain" },
+  ];
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, undefined);
+  assert.deepEqual(resolved.map((r) => r.race_role), ["sprint_captain", "sprint_captain"]);
+  assert.deepEqual(conflicts, []);
+});
+
+test("resolveStageEntrants: helper/free_role er IKKE eksklusive — flere af hver pr. hold er lovligt", () => {
+  const entrants = [
+    { rider_id: "r1", team_id: "T", race_role: "helper" },
+    { rider_id: "r2", team_id: "T", race_role: "helper" },
+    { rider_id: "r3", team_id: "T", race_role: "free_role" },
+    { rider_id: "r4", team_id: "T", race_role: "free_role" },
+  ];
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, undefined);
+  assert.deepEqual(resolved.map((r) => r.race_role), ["helper", "helper", "free_role", "free_role"]);
+  assert.deepEqual(conflicts, []);
+});
+
+test("resolveStageEntrants: uden dublet er outputtet identisk med entrants.map(resolveStageEntrant) (bit-identitet)", () => {
+  const entrants = [
+    { rider_id: "r1", team_id: "T", race_role: "captain", abilities: { climbing: 50 } },
+    { rider_id: "r2", team_id: "T", race_role: "helper" },
+    { rider_id: "r3", team_id: "U", race_role: "sprint_captain" },
+    { rider_id: "r4", team_id: null },
+  ];
+  const overrides = ov([["r2", "hunter", "all_out"]]);
+  assert.deepEqual(
+    resolveStageEntrants(entrants, overrides).entrants,
+    entrants.map((e) => resolveStageEntrant(e, overrides))
+  );
+});
+
+test("resolveStageEntrants: rytter uden hold tælles aldrig med i en hold-konflikt", () => {
+  const entrants = [
+    { rider_id: "r1", race_role: "captain" },
+    { rider_id: "r2", race_role: "captain" },
+  ];
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, undefined);
+  assert.deepEqual(resolved.map((r) => r.race_role), ["captain", "captain"]);
+  assert.deepEqual(conflicts, []);
+});
+
+test("resolveStageEntrants: en udgået rytter kan ikke vinde en konflikt og degraderer ikke en aktiv holdkammerat (CodeRabbit-fund)", () => {
+  // To etape-overrides på samme rolle, hvor den LAVESTE rider_id er udgået.
+  // Uden ineligibleRiderIds ville han vinde, r9 blev degraderet — og kald-stedet
+  // filtrerer så vinderen væk. Holdet ville stå uden sprint_captain.
+  const entrants = [
+    { rider_id: "r1", team_id: "T", race_role: "helper" },
+    { rider_id: "r9", team_id: "T", race_role: "helper" },
+  ];
+  const overrides = ov([["r1", "sprint_captain"], ["r9", "sprint_captain"]]);
+
+  const naive = resolveStageEntrants(entrants, overrides);
+  assert.equal(naive.entrants[0].race_role, "sprint_captain", "uden eksklusion vinder r1");
+
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, overrides, {
+    ineligibleRiderIds: new Set(["r1"]),
+  });
+  assert.equal(resolved[1].race_role, "sprint_captain", "r9 er den eneste der kører — han beholder rollen");
+  assert.deepEqual(conflicts, [], "kun én berettiget indehaver tilbage → ingen konflikt");
+});
+
+test("resolveStageEntrants: udgået basis-indehaver blokerer ikke en aktiv etape-override", () => {
+  const entrants = [
+    { rider_id: "rDNF", team_id: "T", race_role: "captain" },
+    { rider_id: "rNew", team_id: "T", race_role: "helper" },
+  ];
+  const { entrants: resolved, conflicts } = resolveStageEntrants(entrants, ov([["rNew", "captain"]]), {
+    ineligibleRiderIds: new Set(["rDNF"]),
+  });
+  assert.equal(resolved[1].race_role, "captain");
+  assert.deepEqual(conflicts, []);
+});
+
+test("resolveStageEntrants: tom liste → tomt resultat", () => {
+  assert.deepEqual(resolveStageEntrants([], undefined), { entrants: [], conflicts: [] });
 });
 
 // ── effortsSequenceForRider ────────────────────────────────────────────────────

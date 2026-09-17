@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildRaceResults,
+  buildStageRowsAccumulated,
   loadEntrantsForRace,
   simulateRace,
   deriveIsU25FromBirthdate,
@@ -356,6 +357,48 @@ test("checksum: samme overrides → deterministisk (samme checksum på tværs af
   const a = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: true, stageRoleOverrides: overrides });
   const b = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: true, stageRoleOverrides: overrides });
   assert.deepEqual(a.runs.map((r) => r.input_checksum), b.runs.map((r) => r.input_checksum));
+});
+
+// ── #5223: dublet sprint_captain i rolle-sammenfletningen ────────────────────
+//
+// Sentry CYCLINGZONE-5Z kom fra stage-scheduler-stien (runStageSchedulerCron →
+// simulateStageByIndex → buildStageRowsAccumulated). Kontrakten her: et
+// DUBLET-input (basis-sprint_captain på A + etape-override sprint_captain på B)
+// skal give PRÆCIS samme udfald som det allerede rene input, hvor A's basisrolle
+// er 'helper'. Holder den, kan motoren pr. konstruktion ikke se to indehavere.
+
+// A = basis-sprint_captain, B (sprinter) får etape-overriden på etape 1.
+const DUP_ENTRANTS = ENTRANTS.map((e) => (e.rider_id === "climber" ? { ...e, race_role: "sprint_captain" } : { ...e, race_role: "helper" }));
+const CLEAN_ENTRANTS = DUP_ENTRANTS.map((e) => (e.rider_id === "climber" ? { ...e, race_role: "helper" } : e));
+const SC_OVERRIDE = new Map([[1, new Map([["sprinter", { race_role: "sprint_captain", effort: "normal" }]])]]);
+
+test("#5223 buildStageRowsAccumulated: basis-sprint_captain + etape-override på en anden rytter → samme udfald som rent input (ingen dublet)", () => {
+  const args = { race: STAGE_RACE, stagesSorted: STAGES_3, stageIndex: 0, pointsLookup: POINTS, priorStageRows: [], v3: true, stageRoleOverrides: SC_OVERRIDE };
+  const dup = buildStageRowsAccumulated({ ...args, entrants: DUP_ENTRANTS.map((e) => ({ ...e, fatigue: 0 })) });
+  const clean = buildStageRowsAccumulated({ ...args, entrants: CLEAN_ENTRANTS.map((e) => ({ ...e, fatigue: 0 })) });
+  assert.deepEqual(dup, clean, "dublet-inputtet må ikke kunne skelnes fra det rene input");
+});
+
+test("#5223 buildRaceResults: samme garanti på hele-løbs-stien (etape 1, hvor overriden ligger)", () => {
+  const args = { race: STAGE_RACE, stages: STAGES_3, pointsLookup: POINTS, v3: true, stageRoleOverrides: SC_OVERRIDE };
+  const dup = buildRaceResults({ ...args, entrants: DUP_ENTRANTS });
+  const clean = buildRaceResults({ ...args, entrants: CLEAN_ENTRANTS });
+  const stage1 = (out) => out.resultRows.filter((r) => r.result_type === "stage" && r.stage_number === 1);
+  // KUN etape 1: på etape 2-3 har DUP_ENTRANTS ingen override, så climber ER
+  // holdets sprint_captain dér — de to input er da reelt forskellige, og et
+  // afvigende udfald er korrekt (basisrollen gælder når etapen ingen override har).
+  assert.equal(dup.runs[0].input_checksum, clean.runs[0].input_checksum);
+  assert.deepEqual(stage1(dup), stage1(clean));
+});
+
+test("#5223: etape-rollen gælder KUN sin egen etape — basisrollen er intakt på etape 2", () => {
+  // Overriden ligger på etape 1. På etape 2 skal climber igen være holdets
+  // sprint_captain (ingen degradering lækker videre).
+  const args = { race: STAGE_RACE, stagesSorted: STAGES_3, pointsLookup: POINTS, priorStageRows: [], v3: true, stageRoleOverrides: SC_OVERRIDE };
+  const entrants = DUP_ENTRANTS.map((e) => ({ ...e, fatigue: 0 }));
+  const withDup = buildStageRowsAccumulated({ ...args, stageIndex: 1, entrants });
+  const noOverride = buildStageRowsAccumulated({ ...args, stageIndex: 1, entrants, stageRoleOverrides: new Map() });
+  assert.deepEqual(withDup.resultRows, noOverride.resultRows, "etape 2 er upåvirket af etape 1's override");
 });
 
 test("endagsløb: kun gc(all) + team — ingen stage/dag-ledere", () => {
