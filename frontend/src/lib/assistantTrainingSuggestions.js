@@ -57,3 +57,37 @@ export function filterAssistantSuggestions(rows, onlyWithoutPlan) {
   if (!onlyWithoutPlan) return rows ?? [];
   return (rows ?? []).filter((row) => !row.hasPlan);
 }
+
+// #4699: hvilke af de VISTE forslag accept-stien faktisk kan skrive.
+//
+// Accept går gennem POST /api/training/bulk med session="smart", og serveren
+// springer HVER rytter der allerede har en plan i den aktive sæson over
+// (partitionSmartBulkTargets, §9.3 i docs/ASSISTANT_RULES.md) — assistenten
+// overskriver aldrig managerens eget valg. Panelet tilbød dem alligevel: en
+// aktiv checkbox på hver række og en aktiv "Accept all". Målt i prod 3/9 har
+// 65 af 241 manager-hold en plan på HVER ikke-pensioneret rytter, og det er
+// præcis de aktive hold. For dem sendte et klik hele truppen afsted og fik
+// "Updated 0 riders" tilbage — knappen lovede noget serveren aldrig kunne
+// levere, hverken enkeltvis eller via accept-alle.
+//
+// Denne funktion er den ENE kilde til hvad der er acceptabelt, så panelets
+// checkboxe, "Accept selected"-tælleren og "Accept all" ikke kan komme ud af
+// sync med serverens kontrakt igen.
+export function acceptableAssistantSuggestions(rows) {
+  return (rows ?? []).filter((row) => !row.hasPlan);
+}
+
+// Rytter-id'erne for de acceptable rækker, i visnings-rækkefølge — det er dem
+// "Accept all" må sende.
+export function acceptableSuggestionIds(rows) {
+  return acceptableAssistantSuggestions(rows).map((row) => row.riderId);
+}
+
+// Den anden accept-sti: markerede rækker. Beskærer et valg til det serveren
+// faktisk kan skrive, så en markering der er blevet uacceptabel siden den blev
+// sat (rytteren fik en plan i en anden fane) ikke sender et kald der skriver 0
+// rækker. Bevarer rækkefølgen fra `rows`, ikke fra Set'ets indsættelse.
+export function acceptableSelectionIds(selected, rows) {
+  const picked = selected instanceof Set ? selected : new Set(selected ?? []);
+  return acceptableSuggestionIds(rows).filter((id) => picked.has(id));
+}

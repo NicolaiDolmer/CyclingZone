@@ -10,6 +10,12 @@
 // Accept — accept-knapperne kalder TrainingPages handlers, som skriver via
 // den EKSISTERENDE smart-bulk-endpoint (samme sti som roster-værktøjs-
 // linjens "Smart focus"-bulk-valg), ikke en ny skrive-sti.
+//
+// #4699: skrive-stien springer server-side hver rytter med en EGEN plan over,
+// så panelet må ikke tilbyde dem. `acceptableCount` (fra
+// lib/assistantTrainingSuggestions.js) er den ene kilde til hvad der kan
+// accepteres; rækker med managerens egen plan får en "Your plan"-markør og en
+// slået-fra checkbox i stedet for et klik der skriver 0 rækker.
 import { useTranslation } from "react-i18next";
 import { Section, Button, Toggle, StarIcon } from "../ui";
 
@@ -26,6 +32,7 @@ export default function AssistantSuggestionsPanel({
   onDismiss,
   busy,
   message,
+  acceptableCount,
 }) {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
@@ -62,21 +69,30 @@ export default function AssistantSuggestionsPanel({
                 key={row.riderId}
                 className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? "border-t border-cz-border" : ""}`}
               >
+                {/* #4699: en række med managerens EGEN plan kan accept-stien
+                    ikke skrive (serveren springer den over, §9.3). Checkboxen
+                    er derfor slået fra i stedet for at love en handling der
+                    aldrig sker. */}
                 <input
                   type="checkbox"
                   checked={selected.has(row.riderId)}
+                  disabled={busy || row.hasPlan}
                   onChange={() => onToggleSelect(row.riderId)}
-                  aria-label={`${t("assistantSuggestions.selectRow")} — ${row.name}`}
-                  className="h-4 w-4 shrink-0 rounded-[3px] accent-cz-accent"
+                  aria-label={
+                    row.hasPlan
+                      ? `${t("assistantSuggestions.yourPlanMarker")} — ${row.name}`
+                      : `${t("assistantSuggestions.selectRow")} — ${row.name}`
+                  }
+                  className="h-4 w-4 shrink-0 rounded-[3px] accent-cz-accent disabled:opacity-40"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-sm font-medium text-cz-1">{row.name}</span>
-                    {!row.hasPlan && (
-                      <span className="inline-block rounded-cz-pill border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-3xs uppercase tracking-[.06em] text-cz-3">
-                        {t("assistantSuggestions.noPlanMarker")}
-                      </span>
-                    )}
+                    <span className="inline-block rounded-cz-pill border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-3xs uppercase tracking-[.06em] text-cz-3">
+                      {row.hasPlan
+                        ? t("assistantSuggestions.yourPlanMarker")
+                        : t("assistantSuggestions.noPlanMarker")}
+                    </span>
                   </div>
                   <p className="mt-0.5 text-2xs text-cz-3">
                     {t("assistantSuggestions.suggestionLine", {
@@ -89,6 +105,12 @@ export default function AssistantSuggestionsPanel({
             ))}
           </ul>
         </div>
+      )}
+
+      {/* #4699: sig hvorfor der ikke er noget at acceptere, i stedet for at
+          efterlade to aktive knapper der skriver 0 rækker. */}
+      {visibleRows.length > 0 && acceptableCount === 0 && (
+        <p className="mt-3 text-xs text-cz-3">{t("assistantSuggestions.allHavePlanNote")}</p>
       )}
 
       {message && (
@@ -111,10 +133,10 @@ export default function AssistantSuggestionsPanel({
           type="button"
           variant="secondary"
           size="sm"
-          disabled={busy || visibleRows.length === 0}
+          disabled={busy || acceptableCount === 0}
           onClick={onAcceptAll}
         >
-          {t("assistantSuggestions.acceptAll")}
+          {t("assistantSuggestions.acceptAll", { n: acceptableCount })}
         </Button>
         <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onDismiss}>
           {t("assistantSuggestions.dismiss")}

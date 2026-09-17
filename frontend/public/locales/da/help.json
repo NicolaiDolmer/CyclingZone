@@ -952,7 +952,7 @@
       },
       "assistantSuggestions": {
         "title": "Modtag forslag fra assistenten",
-        "text": "Knappen 'Modtag forslag fra assistenten' i sidehovedet på Daglig træning åbner et gennemsyns-panel med et type-matchet fokus til hver rytter (samme forslag som det smarte default bruger). Hver række viser rytteren, en 'Ingen plan'-markering når rytteren endnu ikke har et fokus, og hvad assistenten ville sætte. Intet anvendes før du accepterer: markér de ryttere du vil have, og klik 'Accepter valgte', eller klik 'Accepter alle'. Slå 'Kun ryttere uden en plan' til for kun at gennemse dem der endnu ikke er trænet. At acceptere overskriver aldrig en rytter der allerede har sit eget fokus sat, samme regel som rosterets 'Smart fokus'-bulk-valg."
+        "text": "Knappen 'Modtag forslag fra assistenten' i sidehovedet på Daglig træning åbner et gennemsyns-panel med et type-matchet fokus til hver rytter (samme forslag som det smarte default bruger). Hver række viser rytteren, en 'Ingen plan'- eller 'Din plan'-markering, og hvad assistenten ville sætte. Intet anvendes før du accepterer: markér de ryttere du vil have, og klik 'Accepter valgte', eller klik 'Accepter alle', som dækker alle ryttere med markeringen 'Ingen plan'. Slå 'Kun ryttere uden en plan' til for kun at gennemse dem der endnu ikke er trænet. At acceptere overskriver aldrig en rytter der allerede har sit eget fokus sat, samme regel som rosterets 'Smart fokus'-bulk-valg, så rækker med 'Din plan' kan ikke markeres. Ryd rytterens fokus først, hvis assistenten skal overtage."
       },
       "formFatigue": {
         "title": "Form og Træthed",

@@ -37,7 +37,7 @@ import FocusPanel from "../components/training/FocusPanel.jsx";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import AssistantSuggestionsPanel from "../components/training/AssistantSuggestionsPanel.jsx";
-import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistantSuggestions } from "../lib/assistantTrainingSuggestions.js";
+import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistantSuggestions, acceptableSuggestionIds, acceptableSelectionIds } from "../lib/assistantTrainingSuggestions.js";
 import DevelopmentGlyph from "../components/development/DevelopmentGlyph.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
@@ -1214,6 +1214,14 @@ export default function TrainingPage() {
     () => filterAssistantSuggestions(assistantSuggestionRows, assistantOnlyNoPlan),
     [assistantSuggestionRows, assistantOnlyNoPlan],
   );
+  // #4699: DE eneste id'er accept-kaldet må sende. Smart-bulk springer server-
+  // side hver rytter med en egen plan over (§9.3), så et valg der indeholder
+  // dem skriver 0 rækker — panelets checkboxe, tælleren og "Accept all" læser
+  // alle det HER sæt, så UI og server-kontrakt ikke kan komme ud af sync.
+  const assistantAcceptableIds = useMemo(
+    () => new Set(acceptableSuggestionIds(assistantVisibleRows)),
+    [assistantVisibleRows],
+  );
 
   function handleToggleAssistantOnlyNoPlan(checked) {
     setAssistantOnlyNoPlan(checked);
@@ -1222,6 +1230,8 @@ export default function TrainingPage() {
     setAssistantSelected(new Set());
   }
   function toggleAssistantSelect(riderId) {
+    // Kan serveren ikke skrive rytteren, må han ikke kunne vælges (#4699).
+    if (!assistantAcceptableIds.has(riderId)) return;
     setAssistantSelected((prev) => {
       const next = new Set(prev);
       if (next.has(riderId)) next.delete(riderId);
@@ -1256,10 +1266,15 @@ export default function TrainingPage() {
     }
   }
   function handleAcceptAssistantSelected() {
-    applyAssistantSuggestions([...assistantSelected]);
+    // Dobbelt-sikring: et valg kan være blevet uacceptabelt siden det blev
+    // sat (fx fordi rytteren fik en plan i en anden fane).
+    applyAssistantSuggestions(acceptableSelectionIds(assistantSelected, assistantVisibleRows));
   }
   function handleAcceptAssistantAll() {
-    applyAssistantSuggestions(assistantVisibleRows.map((row) => row.riderId));
+    // #4699: "Accept all" = alle ACCEPTABLE synlige rækker, ikke alle synlige.
+    // Før sendte den også ryttere med managerens egen plan, som serveren
+    // springer over, så et fuldt planlagt hold fik "Updated 0 riders".
+    applyAssistantSuggestions([...assistantAcceptableIds]);
   }
 
   // Sidehoved-status (T2 PageHeader subtitle) — samme 3 tilstande som før, nu i
@@ -1349,6 +1364,7 @@ export default function TrainingPage() {
               onDismiss={handleDismissAssistantPanel}
               busy={bulkApplying}
               message={assistantMsg}
+              acceptableCount={assistantAcceptableIds.size}
             />
           </div>
         )}
