@@ -258,6 +258,21 @@ else
   ok "pre-commit: markoeren er engangsbrug (anden commit blokeres)"
 fi
 
+# DEFER: pre-commit forbruger foerst markoeren naar HELE hooken er bestaaet.
+# Blokerer gitleaks/lint-staged bagefter, skal naeste forsoeg kunne bruge samme
+# godkendelse - ellers faar man "guarden blev ikke koert" om en guard der KOERTE.
+bash "$MAIN_GUARD" main "$MAIN"
+if (cd "$MAIN" && CZ_GUARD_DEFER_MARKER=1 bash "$CHECK") >"$STDOUT_TMP" 2>"$STDERR_TMP"; then
+  if [ -f "$(marker_path "$MAIN")/cz-commit-guard-ok" ]; then
+    ok "pre-commit: DEFER beholder markoeren, saa et senere trins fejl ikke kraever ny guard"
+  else
+    bad "pre-commit: DEFER beholder markoeren" "markoeren blev slettet alligevel"
+  fi
+else
+  bad "pre-commit: DEFER beholder markoeren" "$(head -c 200 "$STDERR_TMP")"
+fi
+rm -f "$(marker_path "$MAIN")/cz-commit-guard-ok" 2>/dev/null || true
+
 # --- markoer fra en anden branch daekker ikke ---
 bash "$MAIN_GUARD" main "$MAIN"
 g -C "$MAIN" checkout -q -b other
@@ -271,13 +286,18 @@ fi
 g -C "$MAIN" checkout -q main
 g -C "$MAIN" branch -q -D other
 
-# --- markoer fra et ANDET trae daekker ikke (kopieret paa plads) ---
-bash "$MAIN_GUARD" feat/x "$WT"
-cp "$(marker_path "$WT")/cz-commit-guard-ok" "$(marker_path "$MAIN")/cz-commit-guard-ok"
+# --- markoer fra et ANDET trae daekker ikke ---
+# Branchen SKAL matche, ellers stopper branch-tjekket markoeren foer trae-tjekket
+# naas, og testen ville bevise noget andet end den paastaar.
+printf 'v1\nbranch=main\nepoch=%s\ntree=%s\npid=1\n' \
+  "$(date +%s)" "$(git -C "$WT" rev-parse --show-toplevel)" \
+  > "$(marker_path "$MAIN")/cz-commit-guard-ok"
 if check_in "$MAIN"; then
-  bad "pre-commit: kopieret markoer fra andet trae afvises" "exit 0"
+  bad "pre-commit: markoer med fremmed trae-sti afvises" "exit 0"
 else
-  ok "pre-commit: kopieret markoer fra andet trae afvises"
+  grep -qF 'andet arbejdstrae' "$STDERR_TMP" \
+    && ok "pre-commit: markoer med fremmed trae-sti afvises" \
+    || bad "pre-commit: markoer med fremmed trae-sti afvises" "$(head -c 200 "$STDERR_TMP")"
 fi
 
 # --- for gammel markoer daekker ikke ---

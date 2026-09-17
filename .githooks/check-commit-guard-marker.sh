@@ -100,8 +100,21 @@ guard_marker_check() {
       tree=*)   m_tree="${line#tree=}" ;;
     esac
   done < "$marker"
-  # Engangsbrug: væk uanset udfald, så den ikke kan dække næste commit.
-  rm -f "$marker" 2>/dev/null || true
+
+  # Engangsbrug — men HVORNÅR markøren forbrugtes betyder noget.
+  #
+  # Kører vi som pre-commits trin 0, kan senere trin (gitleaks, lint-staged)
+  # stadig afvise commit'et. Slettede vi markøren her, ville næste forsøg blive
+  # mødt med "guarden blev ikke koert for dette commit" — en årsag der ikke
+  # passer: guarden KØRTE og godkendte. Derfor sætter pre-commit
+  # CZ_GUARD_DEFER_MARKER=1 og sletter selv markøren når ALLE trin er bestået.
+  # 300s-grænsen sikrer stadig at en efterladt markør ikke dækker et senere
+  # commit. Køres scriptet direkte (test/manuel brug) er der intet senere trin,
+  # og markøren forbruges med det samme.
+  CZ_GUARD_MARKER="$marker"
+  if [ "${CZ_GUARD_DEFER_MARKER:-}" != "1" ]; then
+    rm -f "$marker" 2>/dev/null || true
+  fi
 
   if [ "$m_branch" != "$branch" ]; then
     guard_marker_block "markoeren gjaldt branch \"$m_branch\", commit'et er paa \"$branch\"" "$branch" "$toplevel"
