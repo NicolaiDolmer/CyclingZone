@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { getRaceDayPoints } from "../lib/rankingsApi.ts";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
+import { isBackendUnreachable } from "../lib/backendReachability.js"; // #5312
 import { Link, useNavigate } from "react-router";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
@@ -1012,10 +1013,15 @@ export default function DashboardPage() {
   // falde igennem til et fuldt tomt dashboard. Retry gen-kalder loadAll direkte
   // (samme mønster som StandingsPage/#2175); setLoading(true) genviser
   // PageLoader mens den nye forespørgsel er i flugt.
+  // #5312: skeln "naaede aldrig serveren" fra "serveren svarede en fejl".
+  // En spiller hvis netvaerk ikke kan naa backenden fik foer "Kunne ikke
+  // indlaese dashboardet" — en besked der peger paa spillet og ikke giver
+  // ham noget at handle paa. `error` er selve fejl-objektet fra loadAll's
+  // catch, saa klassifikationen kan ske her uden ekstra plumbing.
   if (error) return (
     <div translate="no" className="max-w-5xl mx-auto">
       <ErrorState
-        title={t("dashboard:loadError")}
+        title={isBackendUnreachable(error) ? t("dashboard:offlineError") : t("dashboard:loadError")}
         action={<Button size="sm" variant="secondary" onClick={() => { setLoading(true); loadAll(); }}>{t("dashboard:retry")}</Button>}
       />
     </div>

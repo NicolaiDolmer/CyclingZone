@@ -14,6 +14,9 @@ import ErrorState from "../components/ui/ErrorState.jsx";
 import Button from "../components/ui/Button.jsx";
 // denyUrls-moenstre i ren .js-fil (unit-testbar uden JSX-import), se #2018.
 import { DENY_URLS, isKnownExtensionNoise } from "./sentryDenyUrls.js";
+// #5312: fire browser-ordlyd for "kaldet naaede aldrig frem" — ét sted, i en
+// ren .js-fil uden sidevirkninger (samme begrundelse som DENY_URLS ovenfor).
+import { isBackendUnreachableMessage } from "./backendReachability.js";
 // #4595: release-sha'en læses fra <meta name="cz-release"> i HTML'en, IKKE fra
 // import.meta.env — en deploy-unik streng i bundlen roterer entry-chunkens hash
 // på hvert deploy og gør alle åbne faner stale. Se lib/release.js.
@@ -25,6 +28,14 @@ const ENABLED = import.meta.env.PROD && Boolean(DSN);
 // Ét fingerprint for alle chunk-load-fejl, saa de lander i EN gruppe der kan
 // arkiveres i Sentry i stedet for at blive slettet i klienten (#4545).
 const CHUNK_ERROR_FINGERPRINT = "frontend-chunk-load-error";
+
+// Samme greb for transport-fejl mod backenden (#5312): ét fingerprint, saa de
+// fire browser-ordlyd lander i EN gruppe man kan maale og arkivere i Sentry.
+// Foer 17/9 blev Firefox-ordlyden ("NetworkError when attempting to fetch
+// resource") droppet helt herunder — omfanget kunne derfor ikke ses, og
+// foerste signal paa haendelsen 16/9 var en Discord-besked fra en spiller,
+// ikke dashboardet. Praecis samme laering som #4545 om chunk-fejl.
+const NETWORK_ERROR_FINGERPRINT = "frontend-backend-network-error";
 
 let started = false;
 
@@ -59,7 +70,7 @@ export function initSentry() {
     denyUrls: DENY_URLS,
     beforeSend(event) {
       const value = event.exception?.values?.[0]?.value || event.message || "";
-      if (/ResizeObserver loop completed|NetworkError when attempting to fetch resource/i.test(value)) {
+      if (/ResizeObserver loop completed/i.test(value)) {
         return null;
       }
       // #4499: erstatter den tidligere URL-baserede webkit-masked-url-regel i
@@ -86,6 +97,16 @@ export function initSentry() {
       if (event.tags?.frontend_error_kind === "chunk_load_error" || isUnambiguousChunkLoadError({ message: value })) {
         event.level = "warning";
         event.fingerprint = [CHUNK_ERROR_FINGERPRINT];
+      } else if (isBackendUnreachableMessage(value)) {
+        // #5312: "naaede aldrig serveren" er ikke en kodefejl — men den skal
+        // KUNNE TAELLES. Warning (ikke error) holder den ude af alarmerne;
+        // det faste fingerprint goer den til én gruppe i stedet for én pr.
+        // side, saa man kan se om det rammer 3 spillere eller 30.
+        // Rækkefølgen er bevidst: chunk-grenen vinder, fordi en fejlet
+        // modul-load ogsaa hedder "Failed to fetch".
+        event.level = "warning";
+        event.fingerprint = [NETWORK_ERROR_FINGERPRINT];
+        event.tags = { ...event.tags, frontend_error_kind: "network_error" };
       }
       return event;
     },
