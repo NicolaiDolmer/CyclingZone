@@ -223,6 +223,11 @@ export function resolveContractForNewSeason({
   // #4376: den division default-aftalen ville blive prissat mod. Preview og udfoerelse
   // skal skrive samme vaerdi, ellers viser previewet et divisions-tillaeg der ikke opstaar.
   teamDivision = null,
+  // #4860 D: default-grenen prissaettes til vindues-prisen (min af vindues- og
+  // slutstillings-target, jf. loadDefaultRenewTargetValue), ikke slutstillingen.
+  // Udelades den, bruges `renownTargetValue` som hidtil — kaldere der ikke kender
+  // vindues-prisen faar altsaa uaendret adfaerd.
+  defaultRenownTargetValue = null,
 } = {}) {
   if (contractCoversSeason(activeContract, newSeasonNumber)) {
     return { source: "locked", contract: activeContract };
@@ -233,7 +238,9 @@ export function resolveContractForNewSeason({
   const offers = generateOffers({
     teamId,
     seasonNumber: newSeasonNumber,
-    renownTargetValue,
+    renownTargetValue: Number.isFinite(defaultRenownTargetValue)
+      ? defaultRenownTargetValue
+      : renownTargetValue,
     calendarDays,
   });
   const chosen = offers.find((o) => o.variant === DEFAULT_RENEW_VARIANT);
@@ -472,6 +479,13 @@ async function loadDefaultRenewTargetValue({
   newSeasonNumber,
   priceDivision,
 }) {
+  // Findes der ingen AFSLUTTET sæson før vinduet åbnede (sæson 1 → 2), er der ingen
+  // vist pris at fryse til, og alle ville ellers lande på den flade 1,00. Dér gælder
+  // den hidtidige regel uændret.
+  if (newSeasonNumber - 2 < 1) {
+    return loadRenownTargetValue({ supabase, teamId, seasonNumber: newSeasonNumber, priceDivision });
+  }
+
   const windowOpenTarget = await loadRenownTargetValue({
     supabase,
     teamId,

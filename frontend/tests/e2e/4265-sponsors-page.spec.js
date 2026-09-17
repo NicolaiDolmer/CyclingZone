@@ -166,7 +166,8 @@ test("Overview er default og svarer sidens spørgsmål uden at skifte fane", asy
     page.getByText("Pr. etape 345 CZ$, 91 etaper tilbage er 31.395 CZ$ værd"),
   ).toBeVisible();
   await expect(
-    page.getByText(/Næste sæson: 5 tilbud er åbne, valget låses når sæson 4 starter/),
+    // #4860 E: beløbet låses ved underskrift, ikke ved sæsonstart.
+    page.getByText(/Næste sæson: 5 tilbud er åbne, beløbet låses når du skriver under/),
   ).toBeVisible();
 });
 

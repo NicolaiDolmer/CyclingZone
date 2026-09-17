@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.284",
+    "date": "2026-09-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Picking your sponsor early no longer costs you",
+          "body": "What changed: An offer is priced from your latest ranked season. Until the running season has a standing of its own, I now use the season before it, instead of treating an established club as one with no record. If you never pick, the safe deal signed for you is priced at what the offers opened at, never above what picking it yourself that day would have given.\n\nWhat it means for you: Day one and the last day are no longer two prices for the same deal, and saying nothing cannot pay more than choosing. The help text now says what the rule is: the amount locks when you sign, and a promotion does not re-price your base, it pays a separate division adjustment on top."
+        },
+        "da": {
+          "title": "Det koster ikke længere at vælge sponsor tidligt",
+          "body": "Hvad er ændret: Et tilbud prissættes ud fra din seneste sæson med en stilling. Indtil den igangværende sæson har sin egen stilling, bruger jeg nu sæsonen før, i stedet for at behandle en etableret klub som en uden resultater. Vælger du slet ikke, prissættes den sikre aftale, klubben skriver under for dig, til den pris tilbuddene åbnede på, aldrig over hvad det samme valg den dag ville have givet.\n\nHvad betyder det for dig: Dag et og sidste dag er ikke længere to priser på samme aftale, og det at tie kan ikke betale mere end at vælge. Hjælpeteksten siger nu, hvad reglen er: beløbet låses når du skriver under, og en oprykning prissætter ikke din base om, den udløser et separat divisions-tillæg oveni."
+        },
+        "refs": [4860, 4376]
+      }
+    ]
+  },
+  {
     "version": "7.283",
     "date": "2026-09-16",
     "label": "Beta",
