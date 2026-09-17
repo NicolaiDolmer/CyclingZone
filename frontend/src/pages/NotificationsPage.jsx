@@ -654,7 +654,7 @@ export default function NotificationsPage() {
           {notifLoading ? (
             <Section><SkeletonLines lines={5} /></Section>
           ) : notifLoadError ? (
-            <Section role="alert">
+            <Section>
               <ErrorState
                 description={t("error.notifications")}
                 action={<Button size="sm" variant="secondary" onClick={loadNotifications}>{t("error.retry")}</Button>}
@@ -901,7 +901,7 @@ export default function NotificationsPage() {
           {feedLoading ? (
             <Section><SkeletonLines lines={5} /></Section>
           ) : feedLoadError ? (
-            <Section role="alert">
+            <Section>
               <ErrorState
                 description={t("error.feed")}
                 action={<Button size="sm" variant="secondary" onClick={loadFeed}>{t("error.retry")}</Button>}

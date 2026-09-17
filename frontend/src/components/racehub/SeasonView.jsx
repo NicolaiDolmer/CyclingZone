@@ -288,7 +288,7 @@ export default function SeasonView({ onSwitchView }) {
   // fejlet hentning igen tegnet som "ingen løb på kalenderen endnu".
   if (failed) {
     return (
-      <div role="alert">
+      <div>
         {header}
         <ErrorState
           // #4165: uden title faldt ErrorState tilbage på sin hardkodede

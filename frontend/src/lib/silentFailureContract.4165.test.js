@@ -107,9 +107,18 @@ for (const { name, source, slug, emptyBranch } of SURFACES) {
       "ligger tom-grenen først, tegnes en fejlet hentning igen som en tom flade",
     );
     // ErrorState + secondary retry, kanonisk mønster fra SeasonPlannerPage.
+    // #5325: role="alert" sidder på selve ErrorState (components/ui/ErrorState.jsx,
+    // dækket af ErrorState.test.js) - før den ændring satte hver flade SIN EGEN
+    // wrapper til role="alert", hvilket gav to alert-noder i DOM'en pr. fejl
+    // (getByRole("alert") matchede 2 elementer, e2e strict mode violation).
+    // Denne branch skal derfor IKKE gentage role="alert" på sin egen wrapper.
     const branch = source.slice(errorIdx, flagIdx);
     assert.match(branch, /<ErrorState/);
-    assert.match(branch, /role="alert"/);
+    assert.doesNotMatch(
+      branch,
+      /role="alert"/,
+      "wrapperen om <ErrorState> må ikke selv sætte role=\"alert\" - ErrorState gør det allerede (#5325)",
+    );
     assert.match(branch, /onClick=\{retryLoad\}/);
     // ErrorState uden title falder tilbage på komponentens hardkodede engelske
     // default - engelsk overskrift over dansk brødtekst (ErrorState.jsx:8).

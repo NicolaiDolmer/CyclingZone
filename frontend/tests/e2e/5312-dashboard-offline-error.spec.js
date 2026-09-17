@@ -19,10 +19,9 @@
 // spec-override (LIFO) -> login -> goto, samme som 4165-planning-load-error.
 // Copyen der assertes paa er derfor den danske.
 //
-// NB: dashboardets ErrorState har ingen role="alert" (components/ui/ErrorState
-// .jsx er en ren div), saa der assertes paa selve teksten. Det er en a11y-
-// mangel i den KANONISKE komponent, ikke i denne flade — noteret som
-// opfoelger, ikke rettet her, fordi den rammer hver eneste side der bruger den.
+// #5325: den kanoniske ErrorState (components/ui/ErrorState.jsx) har nu
+// role="alert" paa rod-elementet, saa fejlen kan findes via getByRole("alert")
+// i stedet for kun paa tekstindholdet.
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, corsHeaders } from "./fixtures.js";
 
@@ -38,7 +37,10 @@ test("naar backenden slet ikke kan naas, siger dashboardet det - ikke 'kunne ikk
   await login(page);
   await page.goto("/dashboard");
 
-  await expect(page.getByText(OFFLINE_COPY)).toBeVisible();
+  // #5325: ErrorState har nu role="alert" — assert via rollen, ikke kun teksten.
+  const alert = page.getByRole("alert");
+  await expect(alert).toBeVisible();
+  await expect(alert).toContainText(OFFLINE_COPY);
   // Selve bugget: den gamle, misvisende besked maa IKKE staa her.
   await expect(page.getByText(GENERIC_COPY)).toHaveCount(0);
   // Retry skal stadig findes — en netvaerksfejl er ofte forbigaaende.

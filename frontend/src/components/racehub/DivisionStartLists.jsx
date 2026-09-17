@@ -147,7 +147,7 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
           lockTier={scope === "division" ? shellOwnTier : null}
           onSelect={setPool}
         />
-        <div role="alert" className="mx-auto max-w-xl py-6">
+        <div className="mx-auto max-w-xl py-6">
           <ErrorState
             title={t("browse.error.title")}
             description={loadError.kind === "auth" ? t("browse.error.session") : t("browse.error.body")}

@@ -1797,7 +1797,7 @@ export default function AuctionsPage() {
         // #1350: terminal, retry-bar fejl — aldrig en evig spinner og aldrig en
         // tom-state der ligner "ingen aktive auktioner". Canonical ErrorState
         // inde i en Section (chrome renderer altid, kun body swapper).
-        <Section role="alert">
+        <Section>
           <ErrorState
             description={t("auctions:loadError.message")}
             action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("auctions:loadError.retry")}</Button>}

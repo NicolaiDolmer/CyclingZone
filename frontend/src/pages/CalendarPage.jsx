@@ -203,7 +203,7 @@ export default function CalendarPage() {
           t={t} division={division} onDivision={setDivision} data={data}
           availableSeasons={availableSeasons} seasonNumber={displaySeasonNumber} onSeasonChange={onSeasonChange}
         />
-        <div role="alert">
+        <div>
           <ErrorState
             title={t("error.title")}
             description={loadError.kind === "auth" ? t("error.session") : t("error.description")}

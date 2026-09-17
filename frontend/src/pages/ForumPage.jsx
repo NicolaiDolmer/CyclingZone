@@ -623,7 +623,7 @@ export default function ForumPage() {
       {state.status === "loading" ? (
         <Section><SkeletonLines lines={6} /></Section>
       ) : state.status === "error" ? (
-        <Section role="alert">
+        <Section>
           <ErrorState
             description={t("errors.loadFailed")}
             action={<Button size="sm" variant="secondary" onClick={() => load(null)}>{t("errors.retry")}</Button>}

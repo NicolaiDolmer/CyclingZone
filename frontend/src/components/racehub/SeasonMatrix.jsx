@@ -178,7 +178,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   if (loading) return <div className="flex justify-center py-8"><Spinner size={20} /></div>;
   if (loadError) {
     return (
-      <div role="alert" className="mt-4">
+      <div className="mt-4">
         <ErrorState
           title={t("matrix.errorTitle")}
           description={loadError.kind === "auth" ? t("seasonView.errorSession") : t("seasonView.error")}
