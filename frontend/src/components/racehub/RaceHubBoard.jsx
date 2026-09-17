@@ -19,7 +19,7 @@ import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
-import { isJsonContentType, responseContentType } from "../../lib/raceHubResponseGuard.js";
+import { isJsonContentType, responseContentType } from "../../lib/raceHubResponseGuard.ts";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 

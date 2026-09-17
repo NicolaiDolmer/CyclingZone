@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 // Ingen jsdom i denne kodebase (se silentFailureContract.4165.test.js), så
 // selve komponent-wiringen pin'es som kildekode-guards her — den ægte
 // klassifikations-LOGIK (Content-Type → JSON eller ej) er dækket af en rigtig
-// unit-test med et mock fetch-svar i raceHubResponseGuard.test.js.
+// unit-test med et mock fetch-svar i raceHubResponseGuard.test.ts.
 const source = readFileSync(new URL("./RaceHubBoard.jsx", import.meta.url), "utf8");
 
 test("load(): en tom API-base fejler tydeligt i stedet for at ramme et relativt path", () => {
@@ -31,7 +31,7 @@ test("load(): en tom API-base fejler tydeligt i stedet for at ramme et relativt 
 test("load(): Content-Type tjekkes FØR res.json(), så en HTML-200 rammer parse-grenen direkte", () => {
   assert.match(
     source,
-    /import \{ isJsonContentType, responseContentType \} from "\.\.\/\.\.\/lib\/raceHubResponseGuard\.js"/,
+    /import \{ isJsonContentType, responseContentType \} from "\.\.\/\.\.\/lib\/raceHubResponseGuard\.ts"/,
   );
   const okIdx = source.indexOf("if (!res.ok) {");
   const jsonTryIdx = source.indexOf("let json;");

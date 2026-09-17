@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isJsonContentType, responseContentType } from "./raceHubResponseGuard.js";
+import { isJsonContentType, responseContentType, type ResponseLike } from "./raceHubResponseGuard.ts";
 
 // #5291: en spiller fik /api/races/distribution til at svare 200 med HTML
 // (SPA-fallback) i stedet for JSON. Disse tests bruger et mock fetch-svar (ikke
 // den ægte browser-fetch) til at pin at klassifikationen faktisk fanger den
 // klasse af svar, i stedet for kun at antage det via kildekode-regex.
-function mockResponse(contentType) {
+function mockResponse(contentType: string | null): ResponseLike & { ok: boolean; status: number } {
   return {
     ok: true,
     status: 200,
