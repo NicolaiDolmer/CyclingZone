@@ -27,4 +27,4 @@
 
 | Dato | Åbne | Nye/lukkede 7d | PR'er afgjort | Icebox | Udkast |
 |---|---|---|---|---|---|
-| 2026-09-17 (kørsel 1) | 669 | 105 / 67 | — | — | — |
+| 2026-09-17 (kørsel 1) | 669 → 656 | 105 / 67 | 10 afgjort, 8 merget (#5324 #5285 #5308 #5235 #5335 #5332 #5333 #5334 #5262), 1 lukket (#5263) | 18 (interne, batch 1) | S4-opslag åbning godkendt; win-back afvist (tone) → 18/9 |

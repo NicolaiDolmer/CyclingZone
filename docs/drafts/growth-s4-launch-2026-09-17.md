@@ -24,7 +24,9 @@ Nyt siden sidst (spillervendt, fra patch notes): to nye mentale evner (Holdarbej
 
 ### Reddit / forum (EN, historie før link, ingen emoji)
 
-[FOUNDER-PROSA: 2-3 linjer om hvad der ændrer sig for en manager lige nu.]
+Åbning godkendt af ejeren 17/9 (tilpasses lidt før afsendelse):
+
+This started as a summer game with friends: multiplayer Pro Cycling Manager, run through a Google Doc and a small Discord. It got out of hand, in the best way. So I built our own browser game around it, with its own race engine and its own riders, and now other managers race in it every day. Season 4 starts soon. If you have ever wished PCM had real opponents who check in every day, this is that.
 
 A few things that shipped recently: two new mental rider stats (Teamwork and Leadership), three new hard training sessions built around cobbles and echelons, and a one-click way to run your first training day.
 
@@ -36,7 +38,7 @@ https://cyclingzone.org/?utm_source=reddit&utm_medium=community&utm_campaign=s4-
 
 ### Reddit / forum (DA)
 
-[FOUNDER-PROSA: samme hook på dansk.]
+Det her startede som et sommerspil med vennerne: multiplayer Pro Cycling Manager, kørt gennem et Google-dokument og en lille Discord. Det løb løbsk, på den gode måde. Så jeg byggede vores eget browserspil omkring det, med egen løbsmotor og egne ryttere, og nu kører andre managere i det hver dag. Sæson 4 starter snart. Har du nogensinde ønsket, at PCM havde rigtige modstandere, der kigger forbi hver dag, så er det det her.
 
 Et par ting der er kommet for nylig: to nye mentale rytter-stats (Holdarbejde og Lederskab), tre nye hårde træningssessioner bygget om brosten og vifter, og en måde at køre din første træningsdag på med ét klik.
 
