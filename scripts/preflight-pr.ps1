@@ -173,6 +173,17 @@ try {
   if ($LASTEXITCODE -ne 0) { $failed += "frontend-lint" }
   Pop-Location
 
+  # #5004: CI's static-guards-job koerer BEGGE disse (ci.yml, "Test anti-slop
+  # guard" + "Run anti-slop guard"), men preflight koerte dem ikke - saa et
+  # nyt slop-fund (docs/design/TASTE.md §3: unicode-pile-som-ikon, arbitraer
+  # text-[Npx] under 12px, shadow-* uden for shadow-overlay, CSS/Tailwind-
+  # gradient) blev foerst synligt i CI, aldrig lokalt.
+  Write-Host "== anti-slop-guard (TASTE.md §3 forbudsliste, #4626/#5004) ==" -ForegroundColor Cyan
+  node --test scripts/check-anti-slop.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "anti-slop-guard (selvtest)" }
+  node scripts/check-anti-slop.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "anti-slop-guard" }
+
   # Forward-guard mod bart React.lazy() i frontend/src (#5014) — se scriptets
   # header for hvorfor et stale-chunk-load ellers klassificeres forkert
   # (render_error i stedet for chunk_load_error, ingen auto-reload/#4595).
