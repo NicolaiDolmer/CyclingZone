@@ -8,6 +8,71 @@
 > Den korte regel (tjek ved session-start, ingen WARN over 7 dage) står i
 > [`AI_OPS_REFERENCE.md`](AI_OPS_REFERENCE.md#supabase-security-advisors--7-dages-regel).
 
+## Triage-tabel: hvilke fund er falske positiver (#5088, 17/9 2026)
+
+Denne tabel er det ene sted den daglige advisor-rutine
+([#4269](https://github.com/NicolaiDolmer/CyclingZone/issues/4269), 7-dages
+reglen i [`AI_OPS_REFERENCE.md`](AI_OPS_REFERENCE.md#supabase-security-advisors--7-dages-regel))
+skal slå op, før den rejser et fund igen. Kilden er drift-triagen i
+[#5088](https://github.com/NicolaiDolmer/CyclingZone/issues/5088) (10/9), som
+gik alle seks WARN igennem mod de faktiske funktionsbodies, policies og grants.
+Konklusionen dengang: **5 af 6 var falske positiver, ét var ægte.**
+
+**Målt tilstand 17/9 2026 kl. 15:30 UTC** (`get_advisors(type: "security")`,
+read-only MCP, projekt `ghwvkxzhsbbltzfnuhhz`): **3 WARN + 120 INFO**. De tre
+WARN er `0029` på `founder_public_list()`, `is_admin()` og
+`is_offered_intake_rider(uuid)` — de samme tre som 12/9 og 14/9. INFO er
+`0008_rls_enabled_no_policy` og er steget 117 → 120 siden 14/9 (tre nye
+backup-/ops-tabeller, samme klasse som resten — se INFO-afsnittet nederst).
+
+| Fund | Advisor-status 17/9 | Dom | Hvorfor |
+|---|---|---|---|
+| `is_admin()` kaldbar af `anon` (`0028`) | **Væk** (lukket i #5153 §C) | Var falsk positiv | Funktionen svarer på "er **kalderen** admin?". For `anon` er `auth.uid()` NULL → tom subquery → `COALESCE(...)` → `false`. Lækker intet, giver ingen rettigheder. Grantet blev alligevel fjernet som oprydning. |
+| `is_admin()` kaldbar af `authenticated` (`0029`) | **Åben — bevidst** | Falsk positiv | Indgår i ~70 RLS-policies i `public`. En policy-expression evalueres med kalderens rettigheder, så `authenticated` SKAL beholde EXECUTE. INVOKER er ikke en erstatning: `users`-policyen gater selv på `is_admin()` → 42P17 rekursion. Detaljer i afsnittet nedenfor. |
+| `is_beta_tester()` kaldbar af `authenticated` (`0029`) | **Væk** (lukket i #5153 §D) | Var falsk positiv | Indgik i 0 policies og havde ingen kaldesteder. Samme caller-scoped mønster som `is_admin()`. Kunne derfor lukkes uden at knække noget. |
+| `is_offered_intake_rider(uuid)` kaldbar af `authenticated` (`0029`) | **Åben — bevidst** | Falsk positiv | Indgår i `"Public read riders"`-policyen på `riders`. Fjernes EXECUTE, knækker rytter-synligheden for hele spillet. Lækker ét bit pr. rytter-id ("tilbudt academy-intake uden hold") til indloggede spillere; nødvendigt for at policyen kan evalueres. Ejer-beslutning 12/9: **B — kun indloggede må læse riders**. |
+| `founder_public_list()` kaldbar af `authenticated` (`0029`) | **Åben — bevidst** | Falsk positiv | Returnerer kun `team_id` + løbenummer for founders, læser `subscriptions` (ikke `users`), ingen personhenførbare data. `anon` er revoket (#4870). Lukning kræver et separat backend-endpoint, ikke en bredere SELECT-policy — se afsnittet nedenfor. |
+| `record_forum_thread_view(uuid,uuid)` med mutable `search_path` (`0011`) | **Væk** (lukket i #5153 §A) | Var lav, ikke falsk | `SECURITY INVOKER` (`prosecdef = false`), så ingen privilege escalation — men et ægte hygiejnefund. Lukket med `SET search_path = public, pg_catalog`. |
+| `btree_gist` i `public` (`0014`) | **Væk** (flyttet i #5153 §B) | Kosmetisk | Blev anbefalet WONTFIX i #5088, fordi en flytning normalt kræver drop+recreate af afhængige exclusion-constraints. #5153 kunne flytte den alligevel: der var 0 exclusion-constraints og 0 indekser med dens opclasses. |
+| **Matviews med `GRANT ALL` til `authenticated` (`0016` ×4)** | **Væk fra advisoren efter #5176 — men ACL'en var kun halvt ryddet** | **Ægte fund** | `pg_class.relacl` viste `authenticated=arwdxtm` på alle fire matviews: et historisk `GRANT ALL`, ikke et bevidst valg. #5176 fjernede kun `r` (SELECT), så `awdxtm` stod tilbage og advisoren blev tavs uden at ACL'en var rigtig. Lukkes af `database/2026-09-17-5088-revoke-matview-grants.sql` (`REVOKE ALL`). |
+
+**Ingen `GRANT SELECT` tilbage til `authenticated` på matviews.** Issuets
+oprindelige forslag gav SELECT tilbage, fordi ranglisterne er offentlig
+spil-information. Den forudsætning faldt med #5176/PR #5183: alle ti
+klient-reads ligger nu i `backend/routes/rankings.ts` (linje 52, 56, 63, 70,
+78, 88, 97) og `backend/routes/rankingHonours.ts:34`, som læser med
+service_role bag `requireAuth`. `frontend/src/**` har ingen
+`from("<matview>")` tilbage — de eneste forekomster er to negative tests der
+netop forbyder dem (`SeasonEndPage.honours.test.js:41`). Et grant tilbage
+ville gen-åbne `0016` uden nogen kalder.
+
+**Accept-listen er afstemt med tabellen.**
+`scripts/ops/supabase-advisor-allowlist.json` (brugt af
+`.github/workflows/supabase-advisor-sweep.yml`) indeholder nu præcis de tre
+levende WARN og intet andet:
+
+- **Tilføjet:** `founder_public_list` — den eneste af de tre levende `0029` der
+  ikke var dækket, så sweepen åbnede et ugentligt issue om et fund der har
+  været dokumenteret bevidst åbent siden 11/9.
+- **Fjernet, fordi fundet er LUKKET:** `materialized_view_in_api` (klasse-post,
+  begrundelsen "authenticated-SELECT tilsigtet" er ikke sand efter #5176),
+  `anon ... is_admin` (#5153 §C), `authenticated ... is_beta_tester`
+  (#5153 §D) og de tre metrics-RPC'er `get_cohort_retention`,
+  `get_retention_scorecard_activity`, `get_sprint_metrics` (#4870).
+- **Beholdt:** `authenticated ... is_admin` og
+  `authenticated ... is_offered_intake_rider` (begge stadig levende WARN), samt
+  klasse-posterne `rls_enabled_no_policy` (120 levende INFO) og
+  `extension_in_public` (stående ejer-beslutning 19/8 om hele klassen, ikke et
+  enkelt lukket fund — ændring kræver ejer-go).
+
+**Reglen bag oprydningen:** en accept-post for et fund der allerede er lukket
+dæmper ikke støj — den gør sweepen blind for regressionen. `isAllowed()`
+matcher på cache_key-præfiks, så en post for `is_beta_tester` ville også
+sluge fundet hvis EXECUTE-grantet kom tilbage. Alle fem fjernede poster er
+verificeret væk fra advisoren 17/9 kl. 15:30 UTC, så fjernelsen larmer ikke i
+dag. `scripts/ops/supabase-advisor-sweep.test.mjs` har fået tre forward-guards:
+de tre levende fund SKAL være dækket, de lukkede fund må IKKE være det.
+
 ## Re-verificeret 14/9 2026 (kl. 08:09 UTC), #5176
 
 **Målt med `get_advisors(type: "security")`: 3 WARN + 117 INFO**,
