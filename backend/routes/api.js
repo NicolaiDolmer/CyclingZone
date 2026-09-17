@@ -8914,13 +8914,15 @@ router.get("/teams/:id", requireAuth, async (req, res) => {
 router.get("/teams/:id/manager-status", requireAuth, async (req, res) => {
   if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Ugyldigt hold-id" });
   try {
-    const { data: team } = await supabase.from("teams")
+    const { data: team, error: teamError } = await supabase.from("teams")
       .select("user_id").eq("id", req.params.id).maybeSingle();
+    if (teamError) throw teamError;
     if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
     // AI-styrede hold har user_id=null (samme guard som GET /managers/:teamId).
     if (!team.user_id) return res.json({ last_seen: null, is_online: false });
-    const { data: user } = await supabase.from("users")
+    const { data: user, error: userError } = await supabase.from("users")
       .select("last_seen").eq("id", team.user_id).maybeSingle();
+    if (userError) throw userError;
     const lastSeen = user?.last_seen || null;
     const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000 : false;
     res.json({ last_seen: lastSeen, is_online: isOnline });

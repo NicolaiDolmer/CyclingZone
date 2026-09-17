@@ -140,7 +140,11 @@ const BASELINE = {
   // (den delte kerne for /board/request og /board/request/preview) flyttede den
   // eksisterende loadGoalContextForBoard-catch fra /board/request uændret; den
   // tæller ikke ekstra her.
-  "backend/routes/api.js": 182,
+  // #4873 (17/9): +1 for GET /teams/:id/manager-status — samme captureApiRouteError-
+  // mønster som resten af filen. Fejlen rethrow'es fra begge Supabase-kald (teamError/
+  // userError) FØR catch'en, så selve fejlhåndteringen er reelt korrekt — kun denne
+  // guards regex genkender ikke wrapperen, samme kendte gab.
+  "backend/routes/api.js": 183,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,
