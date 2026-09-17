@@ -37,6 +37,13 @@ og `contractRaceDayPool` gør. Gæt aldrig på divisionen; udled fra fraktionen.
 vælger midt i sæsonen, altså før op-/nedrykningen er skrevet. Aftalen er derfor prissat mod den
 division han forlader, ikke den han lander i. Det er #4376, og §3 er svaret.
 
+**#4860-tilføjelse (17/9, ejer-beslutning):** `loadRenownTargetValue` læste kun `season_standings`
+for `start_season − 1`. Den tabel er TOM indtil sæsonens første løb er kørt, så et etableret hold der
+valgte sponsor før første løb fik 1,00, mens nøjagtig samme valg en uge senere gav op til 1,40
+(30 af 43 pending S4-aftaler, målt i prod 6/9). Findes der ingen stilling for holdet i
+`start_season − 1`, bruges nu `start_season − 2`s SLUTSTILLING; findes heller ikke den, 1,00 som før.
+Prisen låses fortsat ved underskrift, og en underskrevet aftale prissættes aldrig om.
+
 **Renown-multiplieren** (`renownEngine.js`): `clamp(1 + W_RESULTS × resultsScore, 1.00, MAX_MULTIPLIER)`
 med `W_RESULTS = 0,45` og `MAX_MULTIPLIER = 1,40`, harness-kalibreret 21/6
 (`audits/2026-06-21-renown-sponsor-calibration.md`). `resultsScore ∈ [0,1]` = sidste sæsons point mod
@@ -85,6 +92,15 @@ Der findes ingen CI-gate eller prod-vagt der fanger det i dag — se §8.
 | **Aktivering** (`expireAndRenewContracts`, pending → active) | `status`, signing-bonus krediteres | **KUN `per_race_day_rate`**, mod holdets faktiske etapetal (#2913) |
 | **Hver sæsonstart derefter** | — | Intet. Basen bæres uændret med, hele løbetiden |
 | **Udløb** | `status = 'expired'` | Nye tilbud genereres mod da-aktuel division + renown |
+
+**Default-'safe' ved et ikke-valg prissættes til vindues-prisen (#4860 D, ejer 17/9).**
+Auto-tildelingen kaldte `getOffers` på selve skiftedagen og ramte dermed den netop afsluttede sæsons
+SLUTSTILLING — tavshed gav altså mere end et tidligt manuelt valg af samme variant. Den prissættes nu
+til den pris safe-tilbuddet blev VIST til da tilbudsvinduet åbnede (starten af `start_season − 1`, hvor
+standings var tom og fallbacken i §1 derfor gælder), via `loadDefaultRenewTargetValue`. Ejerens
+invariant står over frysningen: der tages `min` af vindues-prisen og slutstillings-prisen, så et hold
+i tilbagegang ikke kan vinde på at tie. **Tavshed må aldrig give mere end handling samme dag.**
+Manuelle valg er uændrede: de prissættes stadig mod dagens stilling og fryses ved underskrift.
 
 Højst **én** `active` og højst **én** `pending` pr. hold — håndhævet af to delvise UNIQUE-indekser.
 Flip altid den eksisterende væk FØR insert af en ny af samme status.
