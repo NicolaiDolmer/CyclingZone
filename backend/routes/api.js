@@ -12177,9 +12177,7 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
     // S2) — chunket via fetchAllRowsChunkedIn (samme id-URL-længde-cap som
     // countPendingRaceResults i denne fil). Kaster ved DB-fejl — fanges af
     // routens ydre try/catch (captureApiRouteError) ligesom resten af routen.
-    //
-    // #5330: hentes med squad (uden filter), så et U23-/juniorløb afvises HØJLYDT i
-    // stedet for tavst at forsvinde ud af seniorudvalget.
+    // #5330: squad hentes med, uden filter — ungdomsløb afvises højlydt nedenfor.
     const poolRacesWithSquad = await fetchRacePoolWithSquad(
       (columns) => fetchAllRowsChunkedIn(pool_race_ids, (chunk) => supabase
         .from("race_pool")
