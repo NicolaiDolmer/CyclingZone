@@ -16,7 +16,6 @@
 // fordoble et par tusinde noder for at skjule den ene halvdel med CSS.
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { riderOverallRating } from "../../lib/riderRating";
 import { riderSuitability } from "../../lib/suitability";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
@@ -251,10 +250,14 @@ export default function PlannerSquad({
   const rows = useMemo(() => (riders || [])
     .map((rd) => ({
       rider: rd,
-      ovr: riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType }),
+      // #5321: samme server-beregnede rating som resten af appen — se
+      // MasterCanvas for hvorfor den aldrig regnes lokalt af `rd.abilities`.
+      ovr: rd.rating,
       load: riderSeasonLoad({ rider: rd, races }),
     }))
-    .sort((a, b) => b.ovr - a.ovr || String(a.rider.lastname).localeCompare(String(b.rider.lastname))),
+    // Rytter uden beregnelig rating (ingen af rollens evner på rækken) sorterer
+    // sidst i stedet for at blive NaN-sammenlignet.
+    .sort((a, b) => (b.ovr ?? -1) - (a.ovr ?? -1) || String(a.rider.lastname).localeCompare(String(b.rider.lastname))),
   [riders, races]);
 
   return (
@@ -284,8 +287,8 @@ export default function PlannerSquad({
                   <div className="flex items-center gap-2.5">
                     <span
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-cz font-data text-[12.5px] font-medium tabular-nums"
-                      style={statStyle(ovr)}
-                    >{ovr}</span>
+                      style={statStyle(ovr, { scale: "rating" })}
+                    >{ovr ?? "—"}</span>
                     <div className="min-w-0">
                       <button
                         type="button"

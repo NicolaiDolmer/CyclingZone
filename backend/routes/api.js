@@ -500,6 +500,7 @@ import {
 } from "../lib/selectionDeadlineReminder.js";
 import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
+import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
@@ -3839,7 +3840,10 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       return res.json({ enabled: true, season, availableSeasons, divisionPending: !divisionSettled, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
     }
 
-    const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
+    // #5321: planlæggeren VISER en rating og skal derfor have hele evne-rækken,
+    // ikke kun de evner løbsmotoren bruger. Motoren og visningen deler
+    // udtrækket; de bruger hver sin projektion af det (se nedenfor).
+    const abilityCols = ["rider_id", ...new Set([...RACE_SIM_ABILITY_KEYS, ...REGISTRY_ABILITY_KEYS])].join(", ");
     const [abilitiesRes, condRes, plansRes] = await Promise.all([
       supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderIds),
       supabase.from("rider_condition").select("rider_id, form, fatigue, injured_until").in("rider_id", riderIds),
@@ -3852,10 +3856,15 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     if (plansRes.error) throw new Error(`rider_peak_plans (planner board): ${plansRes.error.message}`);
 
     const abilByRider = new Map();
+    // #5321: den RÅ evne-række gemmes ved siden af motorens projektion. Motorens
+    // map nulstiller manglende evner (`?? 0`) fordi simulatoren kræver tal;
+    // rating-beregningen skal se NULL som NULL, præcis som alle andre flader.
+    const ratingRowByRider = new Map();
     for (const row of abilitiesRes.data || []) {
       const ab = {};
       for (const k of RACE_SIM_ABILITY_KEYS) ab[k] = row[k] ?? 0;
       abilByRider.set(row.rider_id, ab);
+      ratingRowByRider.set(row.rider_id, row);
     }
     const condByRider = new Map((condRes.data || []).map((c) => [c.rider_id, c]));
 
@@ -3960,6 +3969,13 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
         // forbliver skjult, som overalt ellers på rytter-fladen.
         age: ageForSeason(r.birthdate, season.number),
         abilities: abilByRider.get(r.id) || {},
+        // #5321: ratingen leveres FÆRDIGBEREGNET. Planlæggeren regnede den før
+        // selv ud af `abilities` ovenfor — og det felt er motorens udsnit, ikke
+        // hele evne-rækken, så samme rytter kunne stå med ét tal her og et
+        // andet på Mit hold, rytterprofilen, auktionerne og ønskelisten.
+        // Kilden er den samme opskrift som alle andre flader (ratingFromAbilities
+        // → weights/displayRecipes.ratingForRole).
+        rating: ratingFromAbilities(ratingRowByRider.get(r.id) ?? null, r.primary_type ?? null),
         form: cond.form ?? null,
         fatigue: cond.fatigue ?? null,
         injuredUntil: cond.injured_until ?? null,
