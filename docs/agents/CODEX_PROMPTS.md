@@ -121,6 +121,14 @@ Du er Codex i CyclingZone. Følg AGENTS.md. Før du rører noget:
 5. Opret din worktree: pwsh -File scripts/new-worktree.ps1 -Branch <branch>
    Arbejd derinde. Commit med:
    bash scripts/guard-commit-branch.sh <branch> <worktree-sti> && git -C <sti> commit ...
+   Kører du fra PowerShell, så brug wrapperen i stedet — den finder Git Bash selv
+   og fejler HÅRDT hvis den ikke findes, i stedet for at lade kæden løbe forbi
+   guarden (#5094):
+   pwsh -File scripts/guard-commit-branch.ps1 <branch> <worktree-sti>
+   if ($LASTEXITCODE -ne 0) { exit 1 }
+   git -C <sti> commit ...
+   Springer du guarden over, afviser `.githooks/pre-commit` commit'et: guarden
+   skriver en engangs-markør, og pre-commit kræver den.
 6. Én issue per session. Rører opgaven et område med et SSOT-dokument
    (hard rule 30), så læs det FØR du rører kode.
 
