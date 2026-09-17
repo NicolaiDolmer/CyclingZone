@@ -52,14 +52,20 @@ Visuelle ændringer eller snapshot-refresh: kør ALLE 3 Playwright-projekter, el
 
 **E2E-kommandoerne er uændrede efter #4647, kun hastigheden er det.** `npm run test:e2e` kører stadig alle specs i alle 3 projekter, men nu parallelt: `workers` er `"50%"` lokalt (halvdelen af kernerne, så maskinen kan bruges imens) og `"100%"` i CI. `PW_WORKERS=1 npm run test:e2e` isolerer en enkelt flaky test igen.
 
-**Sådan ser e2e ud i CI efter #4647:**
+**Sådan ser e2e ud i CI efter #4647, omlagt i #5309:**
 
 | Del | Job | Note |
 |---|---|---|
-| Kørslen | `e2e-shard (desktop-chromium / mobile-chromium / mobile-webkit)` | ét job pr. Playwright-projekt, windows-latest (snapshots er Windows-baselines) |
-| Dommen | `frontend-smoke` | required check på main. Samle-job, `if: always()`. Rødt hvis en shard fejlede, hvis en shard tog over **12 min**, eller hvis en tidsmåling mangler |
+| Planen | `plan` | udfolder [`frontend/tests/e2e/shard-plan.json`](../frontend/tests/e2e/shard-plan.json) til matrixen. **Antal laner ændres ved at rette ét tal i den fil** — aldrig i workflowet |
+| Kørslen | `e2e-shard (<projekt>-<i>of<n>)` | én lane pr. post i planen, windows-latest (snapshots er Windows-baselines). Playwright `--shard` deler projektets testliste efter grep-filteret |
+| Dommen | `frontend-smoke` | required check på main. Samle-job, `if: always()`. Rødt hvis en lane fejlede, hvis en lane brød **loftet pr. lane** (`ceilingSecondsPerShard`, i dag 10 min), eller hvis en tidsmåling mangler |
+| Vækst-alarmen | `frontend-smoke` på **schedule** | kun den natlige main-kørsel kører `--enforce-plan`. Er et projekts samlede tid vokset forbi `targetSecondsPerShard × laner`, bliver natten rød med det præcise nye lanetal. På PR'er står anbefalingen i job-summary som info |
 | Flake-sporing | artifact `e2e-flakes` | tests der fejlede første forsøg og bestod ved retry (#4292s klasse). Rapporten er IKKE en gate |
-| Karantæne | tag en test `@flaky` | den blokerende kørsel ekskluderer den (`--grep-invert @flaky`), et separat ikke-blokerende step kører den. Listen skal være tom for at #4647 kan lukkes |
+| Karantæne | tag en test `@flaky` | den blokerende kørsel ekskluderer den (`--grep-invert @flaky`), et separat ikke-blokerende step kører den på projektets FØRSTE lane. Listen skal være tom for at #4647 kan lukkes |
+
+**Hvorfor loftet har så meget luft:** de samme 323 tests har målt fra 514 s til 961 s på GitHubs delte runnere (33 kørsler 15.–16/9). En grænse man kører tæt på er et møntkast — #5308 blev blokeret af 3 sekunder uden selv at fejle noget, og gaten var allerede rød dagen før på uændret testantal. Luft er kuren; loftet er sikkerhedsnettet mod ÉN løbsk test, ikke vækst-alarmen.
+
+**Vokser suiten?** Det er ventet — hver bugfix får sin regressionstest (207 → 335 tests pr. projekt på 14 dage, målt 16/9). Svaret er en lane mere i planen, aldrig en test mindre. Overforsyning er gratis på et public repo og er tavs; underforsyning koster ventetid og melder sig selv om natten.
 
 Omdøb aldrig `frontend-smoke`-jobbet: navnet er en kontrakt med branch protection (`scripts/ci-required-checks.json`), og et matrix-job kan aldrig bære et required check-navn (GitHub suffikser det med matrix-værdien).
 
@@ -164,6 +170,13 @@ Prod-backenden (service **CyclingZone**, projekt **fantastic-connection**, envir
   ```
 - **Gotcha:** `railway whoami` returnerer `Unauthorized` med en project-token — det er **forventet** (tokenen har ingen user-kontekst). Brug `railway status`/`railway logs` som liveness-tjek, ikke `whoami`.
 - **Railway MCP** kan også være logget ind via interaktiv session, men den udløber; Infisical-token-vejen er den kanoniske, ikke-udløbende adgang.
+- **Gotcha (HTTP-logs ser tomme ud) — bidt 17/9 under #5312:** docs-only commits giver **SKIPPED** deploys, så den ØVERSTE række i `list_deployments` er typisk en deploy der aldrig kørte. Alle MCP-kald der defaulter til "latest deployment" (`get_logs`, `http_requests`, `http_error_rate`) svarer så `No HTTP logs found` — det ligner et nedbrud, men er tom-hændet opslag på en død deployment. **Find først den nyeste `SUCCESS`-deploy og send dens id med:**
+  ```
+  list_deployments                              → find nyeste SUCCESS-id
+  get_logs log_type=http deployment_id=<SUCCESS-id> since=3h
+  ```
+  Deploy-logs (`log_type=deploy`) er også den hurtigste måde at afgøre om processen levede i et givent vindue: de periodiske sweeps (prize-sweep hvert 5. min, board auto-accept) er et livstegn man kan aflæse direkte.
+- **Kendt begrænsning:** `until` sammen med `log_type=http` fejler med `Problem processing request`. Brug `since` + `path`/`status`-filtre i stedet; et vindue langt tilbage i tiden kan ikke nås præcist ad den vej.
 - **Secret-hygiejne:** dump aldrig tokenen. `railway logs`/`status` er sikre; undgå `railway variables` (dumper alle secret-værdier — jf. secret-leak-reglerne).
 
 ---

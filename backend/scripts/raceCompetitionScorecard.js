@@ -48,7 +48,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { generateFictionalRiders, makeRng } from "../lib/fictionalRiderGenerator.js";
+import { generateFictionalRiders, makeRng, BIRTH_MODE_PCM } from "../lib/fictionalRiderGenerator.js";
 import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { riderOverall } from "../lib/riderValuation.js";
@@ -115,7 +115,14 @@ function sampleField(rng, pool, n) {
 // → computeRiderTypes (arketype-klassifikation, primary.key ∈ sprinter/tt/climber/
 // puncheur/brostensrytter/baroudeur/rouleur/gc).
 function buildPopulation(seed) {
-  const { riders: raw } = generateFictionalRiders({ count: COUNT, seed, referenceYear: REFERENCE_YEAR });
+  // #5269: BEVIDST pinnet til den gamle PCM-foedselssti (mode "pcm"). Denne
+  // harness er en GOLDEN-POPULATION-fixture: baandene er tunet mod praecis den
+  // population generatoren producerede da de blev sat, og enhver aendring af
+  // kroppen tripper dem (maalingen staar i SECONDARY_SIGNATURE_WEIGHT's
+  // kommentar i fictionalRiderGenerator.js). Gaten skal maale MOTOREN, ikke en
+  // ny population; en rekalibrering mod own-priors-stien er sit eget,
+  // ejer-gatede arbejde.
+  const { riders: raw } = generateFictionalRiders({ count: COUNT, seed, referenceYear: REFERENCE_YEAR, mode: BIRTH_MODE_PCM });
   return raw.map((r, i) => {
     const id = `r${i}`;
     const abilities = deriveAbilities(r._meta?.physiology ?? {}, { ...r, id }, { asOfYear: REFERENCE_YEAR });

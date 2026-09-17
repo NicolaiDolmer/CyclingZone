@@ -10,7 +10,7 @@
 // linjen) — ikke titlen, som allerede virkede — og forventer navigation. Mønster
 // lånt fra transfers-deadclick.spec.js (#1421).
 import { expect, test } from "./e2e-base.js";
-import { corsHeaders, installNetworkMocks, json, login, stabilizePage } from "./fixtures.js";
+import { evidenceShotPath, corsHeaders, installNetworkMocks, json, login, stabilizePage } from "./fixtures.js";
 
 const DISTRIBUTION = {
   enabled: true,
@@ -116,3 +116,47 @@ test("StartListColumn (browse): klik på type/klasse-linjen navigerer til løbet
   await browse.getByText("Enkeltdagsløb · ProSeries · 0 hold").click();
   await expect(page).toHaveURL(/\/races\/race-hainan$/);
 });
+
+// #5289: exercise real translations after assigning roles, including locked lineups.
+for (const locked of [false, true]) {
+  test(`all assigned role labels resolve in DA and EN, locked=${locked} (#5289)`, async ({ page }, testInfo) => {
+    await page.clock.install({ time: new Date("2026-09-01T10:00:00Z") });
+    await stabilizePage(page);
+    await installNetworkMocks(page);
+    const distribution = structuredClone(DISTRIBUTION);
+    distribution.race_v3_enabled = true;
+    const column = distribution.columns[0];
+    column.lineup_locked = locked;
+    column.counts.selected = 6;
+    column.riders = Array.from({ length: 6 }, (_, i) => ({
+      id: `role-${i}`, name: `Role Rider ${i}`, suitability: 75, form: 80, fatigue: 10,
+    }));
+    column.selection = {
+      rider_ids: column.riders.map((r) => r.id),
+      captain_id: "role-0", sprint_captain_id: "role-1", hunter_id: "role-2", free_role_ids: ["role-3"],
+    };
+    await mockDistribution(page, distribution);
+    await login(page);
+    await page.goto("/planning");
+    const race = page.locator("#race-col-race-adriatique");
+    await expect(race).toBeVisible();
+    for (const label of ["Kaptajn", "Spurt-kaptajn (valgfri)", "Udbrudsjæger", "Fri rolle"]) {
+      await expect(race.getByText(label, { exact: true })).toBeVisible();
+    }
+    // Helpers have no badge by design. Their role card must still translate.
+    if (!locked) {
+      await race.getByRole("button", { name: "Role Rider 4" }).click();
+      await expect(race.getByText("Kun rytter", { exact: true })).toBeVisible();
+      await race.getByRole("button", { name: "Role Rider 4" }).click();
+    }
+    await expect(race).not.toContainText(/selection\.|tacticsOrders\.|racehub\.roleCard\./i);
+    await page.screenshot({ path: evidenceShotPath(`pr-screens/5289-roles-da-${locked ? "locked" : "editable"}-${testInfo.project.name}.png`), fullPage: true });
+    const languageButton = page.getByRole("button", { name: /Skift sprog/ }).filter({ visible: true }).first();
+    await languageButton.click();
+    await page.getByRole("option", { name: /^English$/ }).click();
+    for (const label of ["Captain", "Sprint captain (optional)", "Breakaway hunter", "Free role"]) {
+      await expect(race.getByText(label, { exact: true })).toBeVisible();
+    }
+    await expect(race).not.toContainText(/selection\.|tacticsOrders\.|racehub\.roleCard\./i);
+  });
+}

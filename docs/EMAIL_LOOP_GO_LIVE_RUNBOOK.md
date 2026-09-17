@@ -237,7 +237,7 @@ når noget er galt. En rolig rapport er en rapport du ikke behøver læse.
 | Bounce-rate | over 2 % af sendte, min. 10 sendte | Find de bouncede adresser (SQL i 6.6). Er de stavefejl eller døde konti, er brugerne allerede undertrykt automatisk. Fortsætter raten, så sæt typen til `off` og se på targeting. Over 5 % begynder Gmail at straffe hele domænet. |
 | Klage-rate | over 0,1 % af sendte, min. 10 sendte | Alvorligt. Læs den mail klagen ramte. Er der noget uventet ved den (forkert modtager, for hyppig, uklar afsender), så sluk typen mens du retter. Klage-raten er den enkeltfaktor der hurtigst ødelægger et afsender-domæne. |
 | Døde retries | over 0 | Mailen nåede aldrig frem og prøves ikke igen. Slå `error`-teksten op på rækken (SQL i §3). En stribe 5xx betyder Resend-nedbrud; alt andet er en fejl hos os. |
-| Type med kandidater men 0 sendt, to døgn i træk | | Sweepen finder folk, men ingen får mail. Det var præcis formen på fejlen 8/9. Tjek Sentry for `email-loop`-tagget og at nøglerne står korrekt. |
+| Aktiv type med ikke-skippede kandidater men 0 sendt i begge rullende 24-timersvinduer | | Tjek `candidates > skipped` for `stage = on`, samt `failed`. Allerede behandlede kandidater tæller igen i 48 timer og er ikke nye modtagere. Tjek Sentry for `email-loop`-tagget og at nøglerne står korrekt. Definition: `EMAIL_STACK.md` §5.2. |
 
 Akut nødbremse er altid den samme: sæt de(n) berørte `app_config`-nøgle til
 `off` (§5). Ingen deploy nødvendig.
@@ -329,12 +329,16 @@ ORDER BY created_at DESC
 LIMIT 20;
 ```
 
-**Sweep-kørsler: fandt vi kandidater vi ikke fik sendt til?**
+**Sweep-kørsler: observationer og udfald, ikke unikke modtagere.**
+`dry_run`-rækkers `sent` er simuleringer. `skipped` omfatter både dedupe/opt-out
+og returnerede Resend-fejl; læs derfor også `email_log` og fejlalarmerne.
 
 ```sql
 SELECT email_type, stage,
        SUM(candidates) AS kandidater,
        SUM(sent)       AS sendt,
+       SUM(skipped)    AS skippet,
+       SUM(failed)     AS fejlet,
        COUNT(*)        AS koersler
 FROM email_sweep_runs
 WHERE created_at > NOW() - INTERVAL '48 hours'

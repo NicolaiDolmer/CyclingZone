@@ -420,3 +420,76 @@ test("buildSaveError: ukendt/manglende body falder tilbage til generic uden at k
   assert.equal(err.raceId, null);
   assert.equal(err.raceName, null);
 });
+
+// ---------------------------------------------------------------------------
+// #5301 — afmeldte loeb i matrixen (Discord 16/9, egomadsen).
+//
+// Rod-aarsag: race_entries BEVARES bevidst ved afmelding (#4306, saa gen-deltag
+// kan gendanne opstillingen), men matrixen udledte "deltager" af entries ALENE.
+// Serveren (loadTeamBindingContext, Rod A/#1823) og Race Hub-tavlen har altid
+// udeladt afmeldte loeb — matrixen laaste derfor ryttere ude af praecis de loeb
+// tavlen samtidig tillod dem i. To flader kan ikke svare forskelligt paa samme
+// spoergsmaal.
+// ---------------------------------------------------------------------------
+const W_HEDJAZ = { id: "hedjaz", name: "Tour du Hedjaz", gameDayStart: 55, gameDayEnd: 57, sizeMax: 8, withdrawn: true };
+const W_ENFER = { id: "enfer", name: "L'Enfer du Nord", gameDayStart: 55, gameDayEnd: 55, sizeMax: 7 };
+const W_RIDER = "dekker";
+
+function withdrawnFixture() {
+  // Rytteren er udtaget i BEGGE loeb — praecis prod-tilstanden 16/9: lovlig, fordi
+  // Hedjaz er afmeldt og derfor ikke binder.
+  const drafts = new Map();
+  drafts.set(W_HEDJAZ.id, { rider_ids: [W_RIDER], captain_id: W_RIDER, sprint_captain_id: null, hunter_id: null, free_role_ids: [] });
+  drafts.set(W_ENFER.id, { rider_ids: [W_RIDER], captain_id: W_RIDER, sprint_captain_id: null, hunter_id: null, free_role_ids: [] });
+  return drafts;
+}
+
+test("#5301: et afmeldt loeb binder IKKE en rytter i et overlappende loeb", () => {
+  const drafts = new Map();
+  drafts.set(W_HEDJAZ.id, { rider_ids: [W_RIDER], captain_id: W_RIDER, sprint_captain_id: null, hunter_id: null, free_role_ids: [] });
+  assert.equal(
+    conflictingEntryForRace(W_RIDER, W_ENFER, [W_HEDJAZ, W_ENFER], drafts),
+    null,
+    "Hedjaz er afmeldt — rytteren er fri paa dag 55"
+  );
+});
+
+test("#5301: samme loeb UDEN afmelding binder stadig (fixet maa ikke aabne hullet)", () => {
+  const live = { ...W_HEDJAZ, withdrawn: false };
+  const drafts = new Map();
+  drafts.set(live.id, { rider_ids: [W_RIDER], captain_id: W_RIDER, sprint_captain_id: null, hunter_id: null, free_role_ids: [] });
+  const conflict = conflictingEntryForRace(W_RIDER, W_ENFER, [live, W_ENFER], drafts);
+  assert.equal(conflict?.id, live.id, "et AKTIVT overlappende loeb skal stadig laase cellen (#4323)");
+});
+
+test("#5301: countProblems tæller ikke et afmeldt loeb som peer-konflikt", () => {
+  const { count, peerConflicts } = countProblems([W_HEDJAZ, W_ENFER], withdrawnFixture());
+  assert.equal(peerConflicts.length, 0);
+  assert.equal(count, 0, "spilleren kan ikke fjerne en konflikt i et loeb han allerede har meldt fra");
+});
+
+test("#5301: countProblems ser stadig peer-konflikten naar loebet IKKE er afmeldt", () => {
+  const live = { ...W_HEDJAZ, withdrawn: false };
+  const { peerConflicts } = countProblems([live, W_ENFER], withdrawnFixture());
+  assert.equal(peerConflicts.length, 1);
+});
+
+test("#5301: countProblems ignorerer over-size i et afmeldt loeb", () => {
+  const drafts = new Map();
+  drafts.set(W_HEDJAZ.id, { rider_ids: Array.from({ length: 12 }, (_, i) => `r${i}`), captain_id: null, sprint_captain_id: null, hunter_id: null, free_role_ids: [] });
+  assert.equal(countProblems([W_HEDJAZ], drafts).count, 0);
+});
+
+test("#5301: riderLoadDays tæller ikke dage i et afmeldt loeb", () => {
+  const drafts = withdrawnFixture();
+  assert.equal(
+    riderLoadDays([W_HEDJAZ, W_ENFER], drafts, W_RIDER),
+    1,
+    "kun L'Enfer du Nord (1 dag) — Hedjaz' 3 dage koeres ikke"
+  );
+  assert.equal(
+    riderLoadDays([{ ...W_HEDJAZ, withdrawn: false }, W_ENFER], drafts, W_RIDER),
+    4,
+    "uden afmelding taeller begge loeb"
+  );
+});

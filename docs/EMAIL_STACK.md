@@ -155,7 +155,22 @@ Segment-definitionen står i `docs/audits/winback-consent-audit-2026-09-02.md` �
 | Bounce-rate | over 2 % af sendte, min. 10 sendte | `BOUNCE_RATE_THRESHOLD`, `MIN_SENT_FOR_RATE` |
 | Klage-rate | over 0,1 % af sendte, min. 10 sendte | `COMPLAINT_RATE_THRESHOLD` |
 | Døde retries | over 0 | |
-| Type med kandidater men 0 sendt to døgn i træk | | Fanges via `email_sweep_runs` |
+| Aktiv type med ikke-skippede kandidater men 0 sendt i begge seneste 24-timersvinduer | | `email_sweep_runs`: `stage = on`, `candidates > skipped`, `sent = 0` |
+
+**Vindue og kandidatdefinition (#5296):** Rapporten bruger rullende intervaller
+`[nu - 24 t, nu]` og `[nu - 48 t, nu - 24 t)`, ikke UTC-kalenderdøgn eller danske
+kalenderdøgn. Europe/Copenhagen styrer kun kl. 08-gaten og dags-dedupe. Welcome
+finder hold fra de seneste 48 timer med samme UTC-instant-beregning. Et hold med
+en allerede leveret mail bliver derfor stadig observeret af sweepen, men dedupe
+skipper afsendelsen. Opt-out og manglende mailadresse kan også give skips.
+
+Rapporten viser `candidates` som **observationer**, samt `sent`, `skipped` og
+`failed` særskilt for `stage = on`. Kun observationer ud over `skipped` udløser
+nul-send-alarmen; exceptions og uafklarede udfald tæller stadig. `dry_run` indgår
+ikke i disse tal, da dens `sent` betyder simuleret. `failed` i sweep-loggen tæller
+exceptions; Resend-fejl kan ligge under `skipped` og følges fortsat via
+`email_log`, permanent-fejl-alarmen og retry-vagten. Et skip er ikke i sig selv
+bevis for en vellykket levering. Afsendelsesstien ændres ikke af rettelsen.
 
 Handling ved brud: se runbookens §6.5.
 

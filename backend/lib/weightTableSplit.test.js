@@ -79,7 +79,17 @@ test("#3665: de tre data-styrende vægt-tabeller er bit-identiske ved splittet (
 // Tidskøreren er BEVIDST ikke med (ejer 13/8) — han kører alene mod uret.
 const POSITIONING_SIGNATURE_TYPES = ["sprinter", "brostensrytter", "puncheur", "rouleur"];
 
-test("#3682: capsShapingWeights divergerer PRÆCIS som beskrevet — positioning hos fire roller, intet andet", () => {
+// #5268 (ejer-beslutning 15/9): de to nye mentale evner får positiv vægt i de
+// roller der tematisk EJER dem. Kun positive vægte, og kun disse fire poster —
+// se capsShapingWeights.js for hvorfor en negativ vægt er forbudt for dem.
+const MENTAL_SIGNATURE_WEIGHTS = Object.freeze({
+  climber: { teamwork: 1 },
+  rouleur: { teamwork: 1 },
+  gc: { leadership: 1 },
+  sprinter: { leadership: 1 },
+});
+
+test("#3682/#5268: capsShapingWeights divergerer PRÆCIS som beskrevet — intet andet", () => {
   // Da capsShapingWeights forlod IDENTICAL_AT_SPLIT mistede den sin eneste vagt.
   // Denne test er erstatningen: den tillader nøjagtig ÉN divergens mod formen før
   // splittet og fejler på enhver anden. Uden den kunne en fremtidig vægt-ændring
@@ -92,10 +102,13 @@ test("#3682: capsShapingWeights divergerer PRÆCIS som beskrevet — positioning
   for (const row of CAPS_SHAPING_WEIGHTS) {
     const expected = { ...before.get(row.key) };
     if (POSITIONING_SIGNATURE_TYPES.includes(row.key)) expected.positioning = 1;
+    Object.assign(expected, MENTAL_SIGNATURE_WEIGHTS[row.key] ?? {});
     assert.deepEqual(
       { ...row.weights }, expected,
-      `${row.key}: eneste tilladte afvigelse fra formen før splittet er positioning:1 hos `
-      + `${POSITIONING_SIGNATURE_TYPES.join(", ")} (#3682). Alt andet kræver egen ejer-beslutning.`
+      `${row.key}: de eneste tilladte afvigelser fra formen før splittet er positioning:1 hos `
+      + `${POSITIONING_SIGNATURE_TYPES.join(", ")} (#3682) og teamwork/leadership:1 hos `
+      + `${Object.keys(MENTAL_SIGNATURE_WEIGHTS).join(", ")} (#5268). `
+      + "Alt andet kræver egen ejer-beslutning."
     );
   }
 });

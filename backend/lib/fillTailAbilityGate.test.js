@@ -87,16 +87,42 @@ test("#4311: tactics og hidden_potential (ikke stat-drevne) er klemt ligesom de 
 // rider-raekken (simulerer koden FOER #4311, hvor deriveAbilities ikke saa nogen
 // tag) og bevis at DEN samme kohorte saa bryder loftet — ellers maaler denne
 // gate ikke laengere den oprindelige defekt.
-test("#4311 NEGATIV-TEST: uden generation_tag springer tactics/hidden_potential loftet over (reproducerer den originale defekt)", () => {
+//
+// #5268 (15/9): `tactics` er IKKE laengere en af de to. Den originale defekt var
+// at taktik udledtes af ALDER og derfor sprang uden om stat-klemmen; de additive
+// alders-led er fjernet (ejer-beslutning 15/9, se MENTAL_PRIOR i
+// abilityDerivation.js), saa taktik foelger nu stats som de fjorten oevrige og
+// klemmes automatisk med dem. Rapporten forudsagde praecis det:
+// "Efter C er den bug vaek ved roden og loftet bliver et rent sikkerhedsnet i
+// stedet for en lap" (docs/audits/2026-09-15-3668-ability-scale-investigation.md
+// §4.1). `hidden_potential` er stadig ikke stat-drevet (den udledes af
+// `potentiale`), og negativ-testen maaler derfor nu paa DEN.
+test("#4311 NEGATIV-TEST: uden generation_tag springer hidden_potential loftet over (reproducerer den originale defekt)", () => {
   const pool = buildWeakStarterPool({ count: N, seed: SEED, referenceYear: REFERENCE_YEAR, window: STARTER_TAIL_STAT_WINDOW });
   const untaggedAbilities = pool.map((r) => {
     const untagged = { ...r, generation_tag: null };
     return deriveAbilities(seedPhysiologyFromLegacy(untagged), untagged);
   });
-  const overCap = untaggedAbilities.filter((a) => a.tactics > FILL_TAIL_ABILITY_CAP);
+  const overCap = untaggedAbilities.filter((a) => a.hidden_potential > FILL_TAIL_ABILITY_CAP);
   assert.ok(
     overCap.length > 0,
-    "forventede mindst én rytter med tactics over loftet UDEN taggen — hvis 0, maaler negativ-testen ikke laengere den oprindelige defekt"
+    "forventede mindst én rytter med hidden_potential over loftet UDEN taggen — hvis 0, maaler negativ-testen ikke laengere den oprindelige defekt"
+  );
+});
+
+// Forward-guard paa selve aendringen: taktik maa ikke igen blive en evne der kan
+// springe stat-klemmen over. Bryder den, er et alders- eller potentiale-led
+// kravlet tilbage i formlen.
+test("#5268: taktik foelger nu stats — den kan ikke laengere springe stat-vinduet over", () => {
+  const pool = buildWeakStarterPool({ count: N, seed: SEED, referenceYear: REFERENCE_YEAR, window: STARTER_TAIL_STAT_WINDOW });
+  const untaggedAbilities = pool.map((r) => {
+    const untagged = { ...r, generation_tag: null };
+    return deriveAbilities(seedPhysiologyFromLegacy(untagged), untagged);
+  });
+  const maxTactics = Math.max(...untaggedAbilities.map((a) => a.tactics));
+  assert.ok(
+    maxTactics <= FILL_TAIL_ABILITY_CAP,
+    `taktik-max ${maxTactics} over ${FILL_TAIL_ABILITY_CAP} UDEN klemmen — et alders-led er kravlet tilbage i formlen (#5268)`
   );
 });
 

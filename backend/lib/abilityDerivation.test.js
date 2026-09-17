@@ -24,11 +24,11 @@ function rider(stat = 60, extra = {}) {
 
 // ── v3-tests (#1122) ─────────────────────────────────────────────────────────
 
-test("#1122 v3: formula_version=3, 15 synlige evner, INGEN prolog", () => {
+test("#1122 v3: formula_version=3, 17 synlige evner, INGEN prolog", () => {
   const a = deriveAbilities(physFor("climber"), rider(60));
   assert.equal(a.formula_version, 3);
   assert.equal(FORMULA_VERSION, 3);
-  assert.equal(VISIBLE_ABILITIES.length, 15);
+  assert.equal(VISIBLE_ABILITIES.length, 17); // #5268: + teamwork, leadership
   assert.ok(!("prolog" in a), "prolog skal være fjernet i v3");
   assert.ok(!VISIBLE_ABILITIES.includes("prolog"));
 });
@@ -141,10 +141,10 @@ test("rider_id falder tilbage til physiology.rider_id", () => {
   assert.equal(a.rider_id, "phys-id");
 });
 
-test("producerer alle 15 synlige + hidden_potential", () => {
+test("producerer alle 17 synlige + hidden_potential", () => {
   const a = deriveAbilities({}, rider(60));
   for (const k of ALL_ABILITY_KEYS) assert.ok(k in a, `mangler ${k}`);
-  assert.equal(VISIBLE_ABILITIES.length, 15);
+  assert.equal(VISIBLE_ABILITIES.length, 17); // #5268: + teamwork, leadership
   assert.ok(!("prolog" in a), "prolog skal ikke forekomme i output");
 });
 
@@ -213,12 +213,42 @@ test("hver disciplin-evne følger sin egen primær-stat (fallback)", () => {
   }
 });
 
-// ── Alders-effekt: erfaring driver tactics, ungdom driver hidden_potential ─────
+// ── Alders-effekt (#5268 vender denne test om) ───────────────────────────────
+//
+// FØR: `tactics = 0,55·experience + 0,45·aggressionFrac`, og denne test
+// HÅNDHÆVEDE at en ældre rytter havde højere taktik. Det var ikke en invariant,
+// det var fejlen: målt i prod 15/9 havde taktik median 14 ved 16-21 år og 57 ved
+// 31-33 år — et aldersmålerur uden sammenhæng med kunnen
+// (docs/audits/2026-09-15-3668-ability-scale-investigation.md §1.3).
+//
+// EFTER (ejer-beslutning 15/9): taktik og aggression må HVERKEN bygge på alder
+// eller på en anden evne. Testen vender derfor om og bliver en forward-guard:
+// den fejler hvis nogen lægger et alders-led tilbage i en af de to.
+// `leadership` er den ENE mentale evne hvor alder er lovlig (spec L1, GDD D-030),
+// og `hidden_potential` er uændret ungdoms-drevet.
 
-test("ældre rytter har højere tactics; yngre har højere hidden_potential", () => {
+test("#5268: hverken tactics eller aggression må reagere på alder", () => {
   const young = deriveAbilities({}, rider(60, { birthdate: "2005-01-01", potentiale: 6 }));
   const old = deriveAbilities({}, rider(60, { birthdate: "1992-01-01", potentiale: 6 }));
-  assert.ok(old.tactics > young.tactics, `tactics: old ${old.tactics} ikke > young ${young.tactics}`);
+  // Samme id, samme stats ⇒ samme støj ⇒ identiske tal. Kun alderen er forskellig.
+  assert.equal(old.tactics, young.tactics,
+    `tactics må ikke afhænge af alder: old ${old.tactics} vs young ${young.tactics}`);
+  assert.equal(old.aggression, young.aggression,
+    `aggression må ikke afhænge af alder: old ${old.aggression} vs young ${young.aggression}`);
+  assert.equal(old.teamwork, young.teamwork,
+    `teamwork må ikke afhænge af alder: old ${old.teamwork} vs young ${young.teamwork}`);
+});
+
+test("#5268: leadership stiger med alder (den ene lovlige aldersfaktor, D-030)", () => {
+  const young = deriveAbilities({}, rider(60, { birthdate: "2005-01-01", potentiale: 6 }));
+  const old = deriveAbilities({}, rider(60, { birthdate: "1992-01-01", potentiale: 6 }));
+  assert.ok(old.leadership > young.leadership,
+    `leadership: old ${old.leadership} ikke > young ${young.leadership}`);
+});
+
+test("ungdom driver hidden_potential (uændret)", () => {
+  const young = deriveAbilities({}, rider(60, { birthdate: "2005-01-01", potentiale: 6 }));
+  const old = deriveAbilities({}, rider(60, { birthdate: "1992-01-01", potentiale: 6 }));
   assert.ok(young.hidden_potential > old.hidden_potential, `hidden: young ${young.hidden_potential} ikke > old ${old.hidden_potential}`);
 });
 
@@ -237,4 +267,36 @@ test("#1122 v3 hasPhysiology: DB-NULL felter afvises (falder til fallback)", () 
   const nullish = { rider_id: "x", ftp_wkg: null, aero: null };
   const a = deriveAbilities(nullish, rider(85));
   assert.equal(a.climbing, 99, "null-profil skal bruge fallback");
+});
+
+// ── #5268 reviewer-fund: teamwork/leadership må ALDRIG vægte rå PCM-stats ─────
+//
+// Ejer-beslutning 15/9 (#3668): "Intet skal være vægtet på PCM-stats mere."
+// Spec §4 trin 1 + H2/L1: de to nye mentale evner fødes af ALLEREDE AFLEDTE evner
+// (teamwork ← positioning/tactics/durability; leadership ← tactics/positioning),
+// ikke af stat_fl/stat_udh/stat_mod/stat_ftr. Første runde af PR'en gjorde netop
+// det, med en kodekommentar der kaldte det "legacy". Testen her er forward-guarden:
+// skruer man på en rå stat UDEN at flytte de tre kilde-evner, må de to nye ikke
+// rykke sig. stat_res driver kun `recovery` — som ingen af de to har som kilde.
+
+test("#5268: teamwork/leadership reagerer ikke på en stat der ikke er kilde-evne", () => {
+  const base = deriveAbilities({}, rider(60));
+  const bumped = deriveAbilities({}, rider(60, { stat_res: 85 }));
+  assert.ok(bumped.recovery > base.recovery, "stat_res skal stadig drive recovery");
+  assert.equal(bumped.teamwork, base.teamwork,
+    `teamwork må ikke afhænge af stat_res: ${bumped.teamwork} vs ${base.teamwork}`);
+  assert.equal(bumped.leadership, base.leadership,
+    `leadership må ikke afhænge af stat_res: ${bumped.leadership} vs ${base.leadership}`);
+});
+
+test("#5268: teamwork følger sine tre kilde-evner (positioning/tactics/durability)", () => {
+  // stat_ned løfter descending → positioning OG tactics; stat_mod løfter durability.
+  const low = deriveAbilities({}, rider(52, { stat_ned: 52, stat_mod: 52, stat_ftr: 52 }));
+  const high = deriveAbilities({}, rider(52, { stat_ned: 85, stat_mod: 85, stat_ftr: 85 }));
+  assert.ok(high.positioning > low.positioning && high.tactics > low.tactics
+    && high.durability > low.durability, "kilde-evnerne skal faktisk stige i opsætningen");
+  assert.ok(high.teamwork > low.teamwork,
+    `teamwork: high ${high.teamwork} ikke > low ${low.teamwork}`);
+  assert.ok(high.leadership > low.leadership,
+    `leadership: high ${high.leadership} ikke > low ${low.leadership}`);
 });

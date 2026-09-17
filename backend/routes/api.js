@@ -88,6 +88,9 @@ import {
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
+// #5301: afmeldings-opslag som ALLE læseflader deler, så "har entries" aldrig igen
+// forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
+import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey } from "../lib/raceWithdrawal.js";
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
@@ -4273,6 +4276,17 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
     const eligible = teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id });
     const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
 
+    // #5301: har holdet trukket sig? PUT /selection har allerede gaten (409
+    // selection_withdrawn, #4306) — men GET fortalte det ikke, så panelet viste en
+    // redigerbar opstilling hvis gem altid ville fejle, og Dashboard-nudgen
+    // (isSquadSelectionMissing, #3042) bad om en trup til et løb holdet havde meldt
+    // fra. Samme opslag som gaten, så visning og gem ikke kan drive fra hinanden.
+    const { data: withdrawalRow, error: wErr } = await supabase
+      .from("race_withdrawals").select("race_id")
+      .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
+    if (wErr) return res.status(500).json({ error: wErr.message });
+    const withdrawn = Boolean(withdrawalRow);
+
     // #2265: binding-info pr. rytter — hvem er allerede optaget i et ANDET løb hvis
     // in-game-dag-vindue overlapper DETTE løbs? Samme datavej som PUT-guarden
     // (loadTeamBindingContext), så panelet kan gråne bundne ryttere op-front i stedet
@@ -4297,7 +4311,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
         }));
       }
     }
-    res.json({ enabled: true, eligible, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
+    res.json({ enabled: true, eligible, withdrawn, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -4584,7 +4598,7 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
     if (activeErr) throw new Error(`seasons (active check, selection/season): ${activeErr.message}`);
     const ownPoolId = req.team?.league_division_id ?? null;
     if (!season) {
-      return res.json({ enabled: true, season: null, ownPoolId, readOnly: false, races: [], riders: [], entries: [], dayDates: [] });
+      return res.json({ enabled: true, season: null, ownPoolId, readOnly: false, races: [], riders: [], entries: [], withdrawnRaceIds: [], dayDates: [] });
     }
     const readOnly = activeSeasonRow != null && season.number !== activeSeasonRow.number;
 
@@ -4680,6 +4694,15 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
     });
 
     const entries = await fetchTeamRaceEntriesWithRider(supabase, req.team.id, ownRaceIds);
+    // #5301: matrixen SKAL kende holdets afmeldinger. Entries bevares bevidst ved
+    // afmelding (#4306), så uden denne liste udleder matrixen "deltager" af entries
+    // alene — og conflictingEntryForRace (seasonMatrix.js) låser så rytterne ude af
+    // overlappende løb de faktisk MÅ køre, mens Race Hub-tavlen tillader netop det
+    // træk. To flader kan ikke svare forskelligt på samme spørgsmål; entries sendes
+    // stadig med, så kolonnen kan VISE den bevarede opstilling som afmeldt.
+    const withdrawnRaceIds = await loadWithdrawnRaceIdsForTeam({
+      supabase, teamId: req.team.id, raceIds: ownRaceIds,
+    });
 
     res.json({
       enabled: true,
@@ -4689,6 +4712,7 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
       races,
       riders,
       entries: entries.map((e) => ({ raceId: e.race_id, riderId: e.rider_id, raceRole: e.race_role })),
+      withdrawnRaceIds: [...withdrawnRaceIds],
       dayDates: [...dayDateMap.entries()].map(([gameDay, date]) => ({ gameDay, date })),
     });
   } catch (err) {
@@ -5013,7 +5037,16 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
     if (visibleIds.length) {
       const { data: entries } = await supabase
         .from("race_entries").select("race_id, team_id, rider_id").in("race_id", visibleIds);
-      const entryRows = entries || [];
+      // #5301: et AFMELDT hold må ikke stå på startlisten. race_entries bevares
+      // bevidst ved afmelding (#4306), så denne flade — som er den eneste der viser
+      // ANDRE managers' opstillinger — viste et fantom-hold til hele puljen og lod
+      // modstanderne lægge taktik efter ryttere der aldrig kom til start
+      // (Discord 16/9, egomadsen: Tour du Hedjaz). Filtreres FØR rytter-/holdopslaget,
+      // så et løb hvor alle har trukket sig heller ikke koster to tomme kald.
+      const withdrawnPairs = await loadWithdrawnPairs({ supabase, raceIds: visibleIds });
+      const entryRows = (entries || []).filter(
+        (e) => !withdrawnPairs.has(withdrawalKey(e.race_id, e.team_id))
+      );
       const ids = [...new Set(entryRows.map((e) => e.rider_id))];
       const teamIds = [...new Set(entryRows.map((e) => e.team_id).filter(Boolean))];
       const [{ data: riders }, { data: teams }] = await Promise.all([
@@ -5829,9 +5862,31 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     // Frys (#1825): gen-deltagelse i et igangværende etapeløb ville ændre startfeltet.
+    // #5301: season_id + id skal med — loadTeamBindingContext nedenfor kræver begge
+    // (sæson-filteret i #3070 er ikke valgfrit).
     const { data: race } = await supabase
-      .from("races").select("status, stages_completed").eq("id", req.params.raceId).maybeSingle();
+      .from("races").select("id, status, stages_completed, season_id").eq("id", req.params.raceId).maybeSingle();
     if (race && (race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
+
+    // #5301: gen-deltag kan dobbeltbooke. Afmeldingen NULLer entries' binding_span
+    // (race_entries_binding_span + trg_race_withdrawals_resync_binding), så holdet
+    // lovligt kan bruge de samme ryttere i et overlappende løb imens. Fjernes
+    // afmeldingen, genberegner trigger'en spanet på de BEVAREDE entries (#4306) — og
+    // rammer så exclusion-constrainten med en rå Postgres-fejl uden nogen forklaring
+    // til spilleren. Vi måler konflikten FØR sletningen, med præcis samme maskineri
+    // som PUT /selection's egen gate (loadTeamBindingContext + mapRiderBindingDetails),
+    // så gen-deltag og gem ikke kan være uenige om hvad der binder.
+    // Logikken bor i findRejoinConflicts (raceWithdrawal.js) — ikke inline her — så
+    // den kan EKSEKVERES i test mod en mocket supabase. En kilde-scanning kan kun
+    // bevise at koden indeholder det rigtige, ikke at den gør det rigtige.
+    if (race) {
+      // Navngivet, ikke bare et antal: spilleren skal kunne se HVEM han først må
+      // fjerne fra HVILKET løb — ellers er 409'en lige så ubrugelig som den rå
+      // DB-fejl den erstatter.
+      const conflicts = await findRejoinConflicts({ supabase, race, teamId: req.team.id });
+      if (conflicts.length) return res.status(409).json({ error: "rejoin_rider_bound", conflicts });
+    }
+
     const { error: delErr } = await supabase
       .from("race_withdrawals").delete().eq("race_id", req.params.raceId).eq("team_id", req.team.id);
     if (delErr) return res.status(500).json({ error: delErr.message });
