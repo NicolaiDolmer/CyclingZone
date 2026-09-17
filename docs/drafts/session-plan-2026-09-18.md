@@ -25,6 +25,7 @@
 - **Label-hygiejne:** `needs-ai-triage` (25), `needs-decision` (48), `needs-user-action` (24): hver får en afgørelse eller et kort. `claude:done` (16+): ejer-verify-kort samlet i ét billede.
 - **Epics (57):** hvert epic får status-linje (leveret/rest) i sin body; døde epics lukkes med ejer-go.
 - **Duplikater:** kør dublet-scriptet; foreslå merges.
+- **#feedback-from-dolmer (Discord `1522915781766283296`, 7-10/9):** hvert ejer-direktiv skal have et issue med status: founder-badge på profilen · NPS-svarrate (#5306) · direkte indbakke-besked om Discord (#5130) · upkeep knyttet til løb (ventet "maybe") · oprydning i admin-funktioner · flyt forum-indlægs kategori som admin + roller Admin/Beta/Moderator (deadline var 10/9!) · links i forummet · hastighed + mobil (#5131) · rapportér transfers og afsluttede auktioner (#4346 ✅, #5226). Mangler et issue → opret; mangler status → kort.
 - **Mål ved close-out:** åbne issues < 550 (fra 656), `triage:new` ældre end 7 dage = 0, 0 BLOCKED PR'er uden aftalt næste skridt.
 
 ## Blok C: projekt-oprydning
