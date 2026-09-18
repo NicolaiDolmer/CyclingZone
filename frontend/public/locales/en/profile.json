@@ -173,7 +173,7 @@
     "memberBody": "You are in. Features still in testing show up for you first, and some of them will break. Tell me when they do.",
     "noneBody": "I open new features to a small group first, so I can read every reply. Ask to join and I will answer it myself.",
     "pendingBody": "Your request is with me. I answer them by hand, so give it a day or two.",
-    "rejectedBody": "Not this round — I keep the group small. You are welcome to ask again.",
+    "rejectedBody": "Not this round. I keep the group small, and you are welcome to ask again.",
     "whereToReport": "Report what feels wrong in Discord, or through the feedback form.",
     "requestButton": "Ask to join",
     "cancelButton": "Withdraw request",

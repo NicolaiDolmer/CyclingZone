@@ -173,7 +173,7 @@
     "memberBody": "Du er med. Funktioner under test dukker op hos dig først, og nogle af dem går i stykker. Sig til når de gør.",
     "noneBody": "Jeg åbner nye funktioner for en lille gruppe først, så jeg kan nå at læse hvert svar. Bed om at komme med, så svarer jeg selv.",
     "pendingBody": "Din ansøgning ligger hos mig. Jeg svarer i hånden, så giv den en dag eller to.",
-    "rejectedBody": "Ikke denne gang — jeg holder gruppen lille. Du er velkommen til at spørge igen.",
+    "rejectedBody": "Ikke denne gang. Jeg holder gruppen lille, og du er velkommen til at spørge igen.",
     "whereToReport": "Sig hvad der føles forkert på Discord eller gennem feedback-formularen.",
     "requestButton": "Bed om at komme med",
     "cancelButton": "Træk ansøgningen tilbage",
