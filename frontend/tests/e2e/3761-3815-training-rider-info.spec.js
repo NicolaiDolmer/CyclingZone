@@ -92,6 +92,12 @@ async function mockRoster(page) {
 
 test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
+  // #3643: denne spec maaler DESKTOP-rosterets indhold. Telefonen har siden
+  // 18/9 sin egen visning (tabel med dagens loebsdage, mockup 2), og den er
+  // daekket af 3643-training-mobile.spec.js. Viewporten saettes derfor
+  // eksplicit, saa alle tre projekter bliver ved med at koere DENNE flade i
+  // deres egen motor i stedet for at teste en flade der ikke findes laengere.
+  await page.setViewportSize({ width: 1280, height: 900 });
   await installNetworkMocks(page);
   await mockRoster(page);
 });
@@ -130,7 +136,7 @@ test("#3761 Status-kolonnen viser kontraktudløb + pensionsrisiko, og kun på de
   }
 });
 
-test("#3815 alderen står på rytteren i landskab OG i portræt", async ({ page }, testInfo) => {
+test("#3815 alderen står på rytteren i sin egen kolonne", async ({ page }, testInfo) => {
   await login(page);
   await page.goto("/training");
 
@@ -138,25 +144,34 @@ test("#3815 alderen står på rytteren i landskab OG i portræt", async ({ page 
   const youngRow = page.locator("tbody tr", { hasText: "Ida Bendtsen" }).first();
   await expect(veteranRow).toBeVisible();
 
-  if (testInfo.project.name === "desktop-chromium") {
-    // Egen kolonne med sæson-alderen (2026 − 1988 = 38, 2026 − 2004 = 22).
-    // Cellen adresseres på kolonne-indeks (0 vælg, 1 navn, 2 type, 3 alder) —
-    // et bart tal-match ville også ramme træthed/fremdrift i samme række.
-    const header = page.getByRole("columnheader", { name: /^Alder/ }).first();
-    await expect(header).toBeVisible();
-    await expect(veteranRow.locator("td").nth(3)).toHaveText("38");
-    await expect(youngRow.locator("td").nth(3)).toHaveText("22");
-  } else {
-    // #3045-folden: kolonnen er skjult ≤640px, tallet står i navne-underlinjen.
-    // Uden dette ville ønsket kun være opfyldt på desktop.
-    await expect(veteranRow.getByText(/Alder 38/i)).toBeVisible();
-    await expect(youngRow.getByText(/Alder 22/i)).toBeVisible();
-  }
+  // Egen kolonne med sæson-alderen (2026 − 1988 = 38, 2026 − 2004 = 22).
+  // Cellen adresseres på kolonne-indeks (0 vælg, 1 navn, 2 type, 3 alder) —
+  // et bart tal-match ville også ramme træthed/fremdrift i samme række.
+  const header = page.getByRole("columnheader", { name: /^Alder/ }).first();
+  await expect(header).toBeVisible();
+  await expect(veteranRow.locator("td").nth(3)).toHaveText("38");
+  await expect(youngRow.locator("td").nth(3)).toHaveText("22");
 
   await testInfo.attach(`3815-alder-${testInfo.project.name}`, {
     body: await veteranRow.screenshot(),
     contentType: "image/png",
   });
+});
+
+// #3815 gjaldt oprindeligt "landskab OG portræt", fordi alderen dengang lå i
+// navne-underlinjen på telefonen (#3045-folden). Telefonen har siden 18/9 sin
+// egen visning, hvor rækken kun bærer type + form + træthed — alderen står i
+// rytterens kort ét tryk væk (ejer 18/9: "intet tal forsvinder helt på mobil").
+// Kravet er altså uændret, kun stedet er flyttet, og det er DET denne test
+// holder på.
+test("#3815 alderen forsvinder ikke på mobil — den står i rytterens kort", async ({ page }) => {
+  await login(page);
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto("/training");
+  await page.locator('[data-testid="training-mobile-roster"]').waitFor();
+
+  await page.getByRole("button", { name: /M\. Aagaard/ }).click();
+  await expect(page.getByText(/Alder 38/i)).toBeVisible();
 });
 
 test("#3815 Alder-kolonnen er sorterbar som de øvrige", async ({ page }, testInfo) => {

@@ -1445,6 +1445,7 @@ export default function TrainingPage() {
             selectedRiderId={mobileRiderId}
             onSelectRider={(riderId) => setMobileRiderId((prev) => (prev === riderId ? null : riderId))}
             conditionFor={(riderId) => condition[riderId] ?? null}
+            ageFor={(riderId) => ageForSeason(riderById.get(riderId)?.birthdate, seasonYear)}
             isRacing={racingFor}
             raceNameFor={(riderId) => racingToday[riderId]?.race ?? null}
             sessionFor={(riderId, column) => {

@@ -46,6 +46,7 @@ export default function TrainingMobileToday({
   selectedRiderId,
   onSelectRider,
   conditionFor,
+  ageFor,
   isRacing,
   raceNameFor,
   sessionFor,
@@ -69,6 +70,11 @@ export default function TrainingMobileToday({
   selectedRiderId: string | null;
   onSelectRider: (riderId: string) => void;
   conditionFor: (riderId: string) => { form?: number | null; fatigue?: number | null } | null;
+  // #3815: saeson-alderen. Den er den vigtigste enkeltvariabel naar man vaelger
+  // hvem der skal traenes haardt, saa den maa ikke forsvinde paa telefonen —
+  // den staar i rytterens kort, eet tryk vaek (ejer 18/9: "intet tal
+  // forsvinder helt paa mobil").
+  ageFor: (riderId: string) => number | null;
   isRacing: (riderId: string, column: RaceDayColumn) => boolean;
   raceNameFor: (riderId: string, column: RaceDayColumn) => string | null;
   sessionFor: (riderId: string, column: RaceDayColumn) => string | null;
@@ -162,13 +168,18 @@ export default function TrainingMobileToday({
           id={detailId}
           name={`${selected.firstname ?? ""} ${selected.lastname ?? ""}`.trim()}
           meta={[
-            selected.primary_type ? tTypes(`types.${selected.primary_type}`) : null,
-            selected.secondary_type && selected.secondary_type !== selected.primary_type
-              ? tTypes(`types.${selected.secondary_type}`)
-              : null,
+            [
+              selected.primary_type ? tTypes(`types.${selected.primary_type}`) : null,
+              selected.secondary_type && selected.secondary_type !== selected.primary_type
+                ? tTypes(`types.${selected.secondary_type}`)
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" / ") || null,
+            ageFor(selected.id) != null ? `${t("colAge")} ${ageFor(selected.id)}` : null,
           ]
             .filter(Boolean)
-            .join(" / ")}
+            .join(" · ")}
           form={conditionFor(selected.id)?.form ?? null}
           fatigue={conditionFor(selected.id)?.fatigue ?? null}
           dayLabel={dayLabelFor(selected.id)}
