@@ -591,9 +591,10 @@ export async function enqueueRaceResultNotify({ raceId, messageType, webhookUrl,
   try {
     safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
   } catch {
-    // Samme haandtering som sendWebhook: en ugyldig URL er ikke noget koen skal
-    // baere videre. Kalderens fallback rammer sendWebhook, som afviser den igen
-    // og logger det ÉT sted.
+    // best-effort: en ugyldig webhook-URL er ikke noget koen skal baere videre,
+    // og en kø-aflevering maa aldrig kunne kaste ind i afviklingen. Kalderens
+    // fallback rammer sendWebhook, som afviser URL'en igen og logger/capturer
+    // den ÉT sted — en capture her ville give to events for samme fejl.
     return { enqueued: false, duplicate: false, missingTable: false };
   }
   return enqueueRaceNotify({

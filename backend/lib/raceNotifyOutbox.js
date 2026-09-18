@@ -329,6 +329,10 @@ export async function processRaceNotifyOutboxDrain({
     try {
       result = await deliverFn({ webhookUrl: row.webhook_url, payload: row.payload });
     } catch (err) {
+      // best-effort: fejlen sluges IKKE — den konverteres til et retryable
+      // leverings-resultat, saa den nedenfor bliver til backoff + (naar forsoegene
+      // er brugt) `failed` + Sentry. En capture her ville alarmere paa hvert
+      // eneste forsoeg i stedet for foerst naar beskeden reelt er opgivet.
       result = {
         ok: false,
         status: null,
