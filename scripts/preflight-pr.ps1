@@ -177,6 +177,17 @@ try {
   node scripts/check-event-catalog.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "event-catalog-guard" }
 
+  # #5093 (ejer-valg 18/9: A): docs/NOW.md er den eneste kilde til "aktivt
+  # issue" + "Working agent"-claim - en PR der roerer den skal fejle i CI
+  # medmindre PR-titlen er en close-out (docs(now)/docs(close-out)). Lokalt
+  # (her) er PR_TITLE typisk usat foer PR'en er oprettet - scriptet advarer i
+  # det tilfaelde i stedet for at fejle; CI paa selve PR'en haandhaever.
+  Write-Host "== now-md-sidecar-guard (PR der roerer docs/NOW.md kraever docs(now)/docs(close-out)-titel, #5093) ==" -ForegroundColor Cyan
+  node --test scripts/check-now-md-sidecar.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "now-md-sidecar-guard (selvtest)" }
+  node scripts/check-now-md-sidecar.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "now-md-sidecar-guard" }
+
   Write-Host "== frontend eslint ==" -ForegroundColor Cyan
   Push-Location (Join-Path $root "frontend")
   npm run lint
