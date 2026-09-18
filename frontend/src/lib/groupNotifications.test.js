@@ -321,6 +321,65 @@ test("groupNotifications — bud-bøtter for forskellige auktioner holdes adskil
   assert.equal(result.find((r) => r.related_id === "auc-B").count, 2);
 });
 
+// #5384 — race_result (#1952) og career_milestone (#3398, Maiden Win Engine)
+// deler related_id = race.id og fyrer begge når en managers rytter vinder sin
+// FØRSTE sejr i det løb der lige blev afviklet. Samme bøtte-mønster som
+// #4981 (auction_bidding): ÉN linje pr. løb i stedet for to.
+
+test("aggregateGroup — race_result, stage_result og career_milestone deler bøtten race_completed", () => {
+  assert.equal(aggregateGroup("race_result"), "race_completed");
+  assert.equal(aggregateGroup("stage_result"), "race_completed");
+  assert.equal(aggregateGroup("career_milestone"), "race_completed");
+});
+
+test("groupNotifications — race_result og career_milestone for SAMME løb samles til én linje", () => {
+  const input = [
+    notif({ id: "cm1", type: "career_milestone", related_id: "race-A", created_at: "2026-09-15T14:00:05Z", title: "Maiden win", message: "Rytter X vandt for foerste gang" }),
+    notif({ id: "rr1", type: "race_result", related_id: "race-A", created_at: "2026-09-15T14:00:00Z", title: "Race result is in", message: "Se resultatet" }),
+  ];
+  const result = groupNotifications(input);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].kind, "aggregate");
+  assert.equal(result[0].group, "race_completed");
+  assert.equal(result[0].count, 2);
+  // career_milestone er nyeste (14:00:05) og bestemmer gruppens vist tekst.
+  assert.equal(result[0].type, "career_milestone");
+  assert.deepEqual(result[0].type_counts, { career_milestone: 1, race_result: 1 });
+});
+
+test("groupNotifications — race_result uden nogen career_milestone forbliver single (ingen dobbelt-besked at loese)", () => {
+  const input = [notif({ id: "rr1", type: "race_result", related_id: "race-B", created_at: "2026-09-15T14:00:00Z" })];
+  const result = groupNotifications(input);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].kind, "single");
+  assert.equal(result[0].notification.type, "race_result");
+});
+
+test("groupNotifications — race_completed-boetter for FORSKELLIGE loeb holdes adskilt", () => {
+  const input = [
+    notif({ id: "rr1", type: "race_result", related_id: "race-A", created_at: "2026-09-15T14:00:00Z" }),
+    notif({ id: "cm1", type: "career_milestone", related_id: "race-A", created_at: "2026-09-15T14:00:05Z" }),
+    notif({ id: "cm2", type: "career_milestone", related_id: "race-B", created_at: "2026-09-16T09:00:00Z" }),
+  ];
+  const result = groupNotifications(input);
+  assert.equal(result.length, 2);
+  const aggA = result.find((r) => r.related_id === "race-A");
+  const single = result.find((r) => r.kind === "single");
+  assert.equal(aggA.count, 2);
+  assert.equal(single.notification.related_id, "race-B");
+});
+
+test("groupNotifications — stage_result (mellem-etape) og career_milestone samme etape samles", () => {
+  const input = [
+    notif({ id: "sr1", type: "stage_result", related_id: "gt-1", created_at: "2026-09-15T14:00:00Z", title: "Stage result is in" }),
+    notif({ id: "cm1", type: "career_milestone", related_id: "gt-1", created_at: "2026-09-15T14:00:03Z", title: "Maiden win" }),
+  ];
+  const result = groupNotifications(input);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].group, "race_completed");
+  assert.equal(result[0].count, 2);
+});
+
 test("groupNotifications — bid_received blandes ikke ind i bud-bøtten", () => {
   const input = [
     notif({ id: "s1", type: "bid_received", related_id: "auc-A", created_at: "2026-05-15T10:00:00Z" }),

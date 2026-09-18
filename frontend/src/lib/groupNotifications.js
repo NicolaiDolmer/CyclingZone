@@ -13,10 +13,20 @@
 // SAMME bøtte ("auction_bidding"): én linje pr. auktion, ikke én pr. type.
 // Bøtten findes netop fordi nøglen ikke må være selve typen — så ville et
 // tabt/genvundet føringsskifte splitte auktionen i to linjer igen.
+// #5384: et afviklet løb kunne give manageren TO indbakkelinjer for SAMME
+// løb — "Race result is in" (race_result/#1952 · stage_result/#2523) OG
+// "Career milestone" (career_milestone/#3398, Maiden Win Engine) når en af
+// managerens ryttere samtidig fik sin første sejr/podie/trøje. Alle tre
+// deler related_id = race.id allerede (se notificationService.js/
+// careerFirsts.js), så samme bøtte-mønster som #4981 (auction_bidding)
+// samler dem til ÉN linje pr. løb uden at røre backendens notify-trin.
 const AGGREGATE_GROUPS = {
   auction_outbid: "auction_bidding",
   auction_proxy_outbid: "auction_bidding",
   bid_received: "bid_received",
+  race_result: "race_completed",
+  stage_result: "race_completed",
+  career_milestone: "race_completed",
 };
 
 // #3549: sælgerens "afsluttet"-besked skiftede type fra "auction_won" til

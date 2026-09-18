@@ -13,7 +13,8 @@
     "deleteRead": "Slet læste",
     "deleteAria": "Slet",
     "deleteAllAria": "Slet alle",
-    "viewAuction": "Vis auktion"
+    "viewAuction": "Vis auktion",
+    "viewDetails": "Vis detaljer"
   },
   "tabs": {
     "mine": "Mine",

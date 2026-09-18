@@ -838,7 +838,11 @@ export default function NotificationsPage() {
                         {config.link && (
                           <Button variant="secondary" size="sm" className="self-end inline-flex items-center gap-1"
                             onClick={e => { e.stopPropagation(); navigate(config.link); }}>
-                            {t("actions.viewAuction")} <ChevronRightIcon size={14} aria-hidden="true" />
+                            {/* #5384: bøtten dækker nu også race_completed (race_result/
+                                stage_result/career_milestone), ikke kun auktioner —
+                                "View auction" er derfor kun rigtig for auction_bidding;
+                                enhver anden gruppe bruger den generiske "View details". */}
+                            {t(entry.group === "auction_bidding" ? "actions.viewAuction" : "actions.viewDetails")} <ChevronRightIcon size={14} aria-hidden="true" />
                           </Button>
                         )}
                       </div>
