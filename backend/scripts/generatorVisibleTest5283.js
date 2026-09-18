@@ -27,6 +27,8 @@
 //   node backend/scripts/generatorVisibleTest5283.js                      (stdout)
 //   node backend/scripts/generatorVisibleTest5283.js --out=../balance-internals/x.md
 //   node backend/scripts/generatorVisibleTest5283.js --count=1000 --seed=20260918
+//   node backend/scripts/generatorVisibleTest5283.js --u23=400   (§8c-varianterne)
+//   node backend/scripts/generatorVisibleTest5283.js --tuning=../balance-internals/u23-band-tuning.json
 //
 // CI-siden af den samme gate er `backend/lib/riderBirthDistribution.test.js`:
 // rapporten her er til ØJNENE, testen er til maskinen. Ændrer generatoren sig,
@@ -54,6 +56,9 @@ import {
   drawYouthBirthAbilities,
   makeBirthRng,
   YOUTH_BIRTH_BAND,
+  BIRTH_ARCHETYPE_KEYS,
+  statLevelToAbility,
+  statPointsToAbility,
 } from "../lib/riderBirthPriors.js";
 import { REGISTRY_ABILITY_KEYS, abilityMeta } from "../lib/abilityRegistry.js";
 import {
@@ -88,6 +93,12 @@ const CLASSIFIER_WEIGHTS_BY_TYPE = Object.freeze(
 export const DEFAULT_SEED = 20260918;
 export const DEFAULT_COUNT = 1000;
 export const DEFAULT_YOUTH_COUNT = 300;
+/** Træk pr. alder pr. bånd-variant i §8c (#5376). */
+export const DEFAULT_U23_PER_AGE = 200;
+// Loft, ikke en balance-grænse: sweepet er 4 varianter × 4 aldre × hele
+// evne-registret pr. træk, så et fejlindtastet stort tal er en kørsel der
+// aldrig bliver færdig. Rigeligt til enhver stikprøve rapporten har brug for.
+export const MAX_U23_PER_AGE = 100_000;
 
 // ── Statistik-hjælpere ───────────────────────────────────────────────────────
 // Nearest-rank-percentil (ingen interpolation): p10 er den værdi 10 % af
@@ -280,6 +291,275 @@ export function youthAgeSweep({ seed = DEFAULT_SEED, perAge = 200, potentiale = 
     const atCeil = values.filter((v) => v >= Math.round(YOUTH_BIRTH_BAND.ceil)).length;
     return { age, ...s, atCeilPct: pct(atCeil, values.length) };
   });
+}
+
+// ── U23-fødselsbåndets varianter (#5376) ─────────────────────────────────────
+// Ejer-beslutning 18/9: U23-GENERERING (D-054 §10.4) ER BLOKERET indtil et
+// designkort med 2-3 konkrete bånd-forslag er vist og valgt. Dette afsnit ER
+// det kort. Hver variant køres gennem PRÆCIS den samme
+// `drawYouthBirthAbilities` produktionen kalder — et forslag der måles ad en
+// anden kodesti end den der senere fødes på, måler en anden rytter (#2065).
+//
+// BINDENDE for hele afsnittet:
+//   - `YOUTH_BIRTH_BAND` er AKADEMIETS bånd og RØRES IKKE. Hver variant er et
+//     NYT, frosset objekt afledt af det. Akademiets mætning ved 16-21 er en
+//     TILSIGTET invariant (G5, #3561/#2064 §2a: en ungdomsrytters nuværende
+//     evne må ikke løfte `ability_caps` over hans potentiale-loft) og skal
+//     blive stående uændret.
+//   - Ingen variant er vedtaget. Det er FORSLAG til ejeren, ikke konfiguration,
+//     og intet kaldsted i produktionen læser dem.
+//   - Sweepets tal hører til `balance-internals/` (gitignoreret), aldrig i
+//     repoet, i en PR-body eller i en issue-kommentar (hard rule 17, #3436).
+//
+// Aldrene er IKKE frit valgte. De følger `riderSeasonAge.js`: U23 er sæson-
+// alder < 23 (`isU23ForReferenceYear`), så Graduation Day falder ved 23 og de
+// fire fødselsaldre er 19-22. U25 er sæson-alder ≤ 25 (UCI-reglen, ejer 2/9) og
+// rører ikke fødslen. Akademi-nedrykning gælder kun ≤ 21 — derfor OVERLAPPER
+// 19-21 akademiets interval, og det er præcis dér en variant enten kan bevare
+// akademiets fordeling eller bevidst afvige fra den.
+export const U23_BIRTH_AGES = Object.freeze([19, 20, 21, 22]);
+/** Øverste alder akademiet selv dækker — grænsen C's loft-rampe starter over. */
+export const ACADEMY_TOP_AGE = 21;
+/** Yngste U23-fødselsalder; B forankres her, så akademi-overlappet holdes fast. */
+export const U23_ENTRY_AGE = U23_BIRTH_AGES[0];
+
+/** Afledt bånd — ALTID et nyt frosset objekt, aldrig en mutation af akademiets. */
+const derivedBand = (overrides) => Object.freeze({ ...YOUTH_BIRTH_BAND, ...overrides });
+
+// ── Kalibrerings-tallene ligger UDEN FOR repoet (hard rule 17, #3436) ────────
+// HVOR højt et loft og HVOR stejl en rampe hvert forslag har, ER selve den
+// balance-beslutning ejeren skal træffe (#5376) — og repoet er offentligt
+// læsbart. Derfor står STRUKTUREN her (hvilken knap hver variant drejer på, og
+// hvordan den forankres), mens VÆRDIERNE læses fra en lokal, gitignoreret fil:
+//
+//   balance-internals/u23-band-tuning.json
+//
+// Enhederne er PCM-stat-enheder — samme sprog `YOUTH_BIRTH_BAND` selv er
+// skrevet i (`statLevelToAbility` / `statPointsToAbility`): et stat-NIVEAU er
+// et loft på PCM-skalaen, stat-POINT er et tillæg. Filen kan også udpeges med
+// `--tuning=<sti>` eller miljøvariablen `CZ_U23_BAND_TUNING`.
+//
+// Mangler filen, renderes §8c som det kvalitative kort UDEN måletabel. Det er
+// med vilje: et designkort med opdigtede tal er værre end et uden tal.
+export const U23_TUNING_FIELDS = Object.freeze({
+  aCeilStatLevel: "A: loftet, som stat-NIVEAU",
+  bPerYearStatPoints: "B: alders-rampe, stat-point pr. år over 16",
+  bCeilStatLevel: "B: loftet, som stat-NIVEAU",
+  bSpreadFactor: "B: faktor på akademiets spredning (`sd` + `startLuckSd`)",
+  cCeilStatPointsPerYearOverAcademy:
+    "C: stat-point loftet vokser pr. år over akademiets øverste alder",
+});
+
+/** Sti-etiketten der vises i rapporten — repo-relativ, så den er ens på alle maskiner. */
+export const U23_TUNING_LABEL = "balance-internals/u23-band-tuning.json";
+export const U23_TUNING_PATH = resolve(__dirname, "..", "..", U23_TUNING_LABEL);
+
+/**
+ * Læs kalibrerings-filen. Returnerer `null` hvis den ikke findes — det er en
+ * normal tilstand (enhver der ikke sidder med ejerens lokale mappe), ikke en
+ * fejl. Er filen der, valideres HVERT felt: et manglende eller ikke-numerisk
+ * felt ville ellers give `NaN` i et bånd, og sweepet ville vise "–" i hver
+ * celle som om båndet ikke kunne måles.
+ */
+export function loadU23Tuning({ path = process.env.CZ_U23_BAND_TUNING || U23_TUNING_PATH } = {}) {
+  let raw;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch (err) {
+    if (err?.code === "ENOENT") return null;
+    throw err;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`${path}: ugyldig JSON — ${err.message}`, { cause: err });
+  }
+  const tuning = {};
+  for (const [field, meaning] of Object.entries(U23_TUNING_FIELDS)) {
+    const value = parsed?.[field];
+    if (!Number.isFinite(value)) {
+      throw new Error(
+        `${path}: feltet \`${field}\` (${meaning}) skal være et tal — fik ${JSON.stringify(value)}`,
+      );
+    }
+    tuning[field] = value;
+  }
+  if (tuning.bSpreadFactor <= 0) {
+    throw new Error(`${path}: \`bSpreadFactor\` skal være > 0 — fik ${tuning.bSpreadFactor}`);
+  }
+  return Object.freeze(tuning);
+}
+
+/**
+ * De tre forslag + dagens bånd som referencerække.
+ *
+ * `bandFor(age, tuning)` er en FUNKTION og ikke et fladt objekt af to grunde:
+ * C's loft afhænger af alderen, og alle tal kommer udefra. Baseline og A/B
+ * returnerer det samme objekt for alle aldre; kun C varierer.
+ *
+ * Teksterne er KVALITATIVE med vilje ("højere loft", "stejlere rampe"): en
+ * kvalitativ beskrivelse af en mekanik må gerne stå i repoet, et præcist tal
+ * må ikke (hard rule 17).
+ */
+export const U23_BAND_VARIANT_SPECS = Object.freeze([
+  Object.freeze({
+    key: "baseline",
+    label: "I dag — akademiets bånd brugt som det er",
+    summary:
+      "U23-fødslen genbruger `YOUTH_BIRTH_BAND` uændret. Referencerækken, ikke et forslag.",
+    tradeoff:
+      "Ingen ny kode og ingen risiko for akademiet — men båndet er kalibreret til 16-21, og i den øvre ende af U23-intervallet er loftet mættet, så alderen holder op med at flytte noget.",
+    // Referencerækken er dagens bånd og har derfor ingen kalibrering at læse.
+    needsTuning: false,
+    bandFor: () => YOUTH_BIRTH_BAND,
+  }),
+  Object.freeze({
+    key: "a-loeft-loftet",
+    label: "A — løft loftet, behold rampen",
+    summary:
+      "Én knap: U23-stien får et højere loft, mens forankring, alders-rampe og spredning er akademiets. Alders-rampen findes allerede; det var kun klipningen mod loftet der fjernede dens virkning.",
+    tradeoff:
+      "Mindst mulig ny mekanik og mindst mulig overflade at vedligeholde. Til gengæld ændrer den fordelingen på HELE U23-intervallet, også i de tre år (19-21) der overlapper akademiet — en akademi-graduand og en nyfødt U23-rytter på samme alder trækkes derefter forskelligt.",
+    needsTuning: true,
+    bandFor: (age, tuning) => {
+      const ceil = statLevelToAbility(tuning.aCeilStatLevel);
+      return derivedBand({ ceil, ceilBoosted: ceil });
+    },
+  }),
+  Object.freeze({
+    key: "b-eget-baand",
+    label: "B — eget U23-bånd med egen rampe og spredning",
+    summary:
+      "U23 får sit eget bånd, forankret så indgangsalderen (19) lander præcis hvor akademiets bånd gør i dag, og med en stejlere alders-rampe og bredere spredning derefter. Akademiets bånd er urørt og lever videre ved siden af.",
+    tradeoff:
+      "Mest kontrol: alder og potentiale kan gøres til at betyde præcis så meget som ejeren vil, uafhængigt af akademiet. Prisen er to bånd at holde i sync og en fordeling der fanner tydeligt ud over de fire år — den ældste U23-rytter bliver markant stærkere end den yngste.",
+    needsTuning: true,
+    bandFor: (age, tuning) => {
+      const perYearOver16 = statPointsToAbility(tuning.bPerYearStatPoints);
+      const ceil = statLevelToAbility(tuning.bCeilStatLevel);
+      return derivedBand({
+        // Forankret i U23_ENTRY_AGE: den stejlere rampe trækkes ud af
+        // grundniveauet, så alder 19 giver NØJAGTIG samme udgangspunkt som i
+        // dag og kun 20-22 fanner ud. Uden denne modregning ville en stejlere
+        // rampe også løfte indgangsalderen, og så ville forslaget flytte to
+        // ting på én gang.
+        baseAt16:
+          YOUTH_BIRTH_BAND.baseAt16 -
+          (U23_ENTRY_AGE - 16) * (perYearOver16 - YOUTH_BIRTH_BAND.perYearOver16),
+        perYearOver16,
+        sd: YOUTH_BIRTH_BAND.sd * tuning.bSpreadFactor,
+        startLuckSd: YOUTH_BIRTH_BAND.startLuckSd * tuning.bSpreadFactor,
+        ceil,
+        ceilBoosted: ceil,
+      });
+    },
+  }),
+  Object.freeze({
+    key: "c-alders-rampet-loft",
+    label: "C — alders-rampet loft, akademiets fordeling bevaret til og med 21",
+    summary:
+      "Båndet er akademiets, men loftet vokser med alderen OVER akademiets øverste alder. Ved 19-21 er fordelingen bit for bit den samme som i dag; kun den ældste årgang får luft.",
+    tradeoff:
+      "Den mest skånsomme: overlappet med akademiet er bevist uændret, så G5 og akademiets kalibrering ikke kan flytte sig som sideeffekt. Til gengæld løser den kun toppen af intervallet — er mætningen også et problem længere nede, gør C ikke noget ved det.",
+    needsTuning: true,
+    bandFor: (age, tuning) => {
+      const yearsOverAcademy = Math.max(0, Number(age) - ACADEMY_TOP_AGE);
+      // Identitet, ikke en kopi: de aldre C ikke rører, SKAL køre på præcis det
+      // samme objekt som baseline, så kontinuitets-testen kan bevise det.
+      if (!yearsOverAcademy) return YOUTH_BIRTH_BAND;
+      const ceil =
+        YOUTH_BIRTH_BAND.ceil +
+        yearsOverAcademy * statPointsToAbility(tuning.cCeilStatPointsPerYearOverAcademy);
+      return derivedBand({ ceil, ceilBoosted: ceil });
+    },
+  }),
+]);
+
+/**
+ * Bind kalibreringen til specs'ene. Uden kalibrerings-fil returneres KUN
+ * referencerækken: et forslag hvis tal ingen har valgt, kan ikke måles, og en
+ * opdigtet stand-in ville gøre designkortet misvisende i præcis den ene ting
+ * det skal bruges til.
+ */
+export function buildU23BandVariants(tuning = loadU23Tuning()) {
+  return Object.freeze(
+    U23_BAND_VARIANT_SPECS.filter((spec) => !spec.needsTuning || tuning).map((spec) =>
+      Object.freeze({
+        key: spec.key,
+        label: spec.label,
+        summary: spec.summary,
+        tradeoff: spec.tradeoff,
+        bandFor: (age) => spec.bandFor(age, tuning),
+      }),
+    ),
+  );
+}
+
+/**
+ * Kør hver variant gennem hver U23-alder og mål mætningen.
+ *
+ * Sweepet trækker over ALLE arketyper og fire potentiale-trin, ikke kun én
+ * arketype som §8b: en signatur-evne får et boost oven i grundniveauet og
+ * rammer derfor loftet FØRST. Måltes kun én arketype, ville mætningen se
+ * mildere ud end den bliver i en rigtig trup.
+ *
+ * "På loftet %" måles mod VARIANTENS eget loft — det er hele pointen: et
+ * forslag der hæver loftet skal bedømmes på om det stadig klipper, ikke på
+ * hvor mange der ligger over akademiets gamle grænse.
+ */
+export function u23VariantSweep({
+  seed = DEFAULT_SEED,
+  perAge = DEFAULT_U23_PER_AGE,
+  variants = buildU23BandVariants(),
+} = {}) {
+  // `perAge` er loop-grænsen. Et NaN eller et 0 giver en tom stikprøve, og
+  // rapporten ville så vise "–" i hver celle som om båndet ikke kunne måles;
+  // et Infinity ville få kørslen til at hænge i stedet for at sige fra. Begge
+  // dele er værre end en fejl, fordi designkortet er det ejeren beslutter ud
+  // fra — så den forkerte værdi stoppes her, ikke i tabellen.
+  if (!Number.isInteger(perAge) || perAge < 1 || perAge > MAX_U23_PER_AGE) {
+    throw new Error(
+      `u23VariantSweep: perAge skal være et helt tal i [1,${MAX_U23_PER_AGE}] — fik ${perAge}`,
+    );
+  }
+  return variants.map((variant) => ({
+    key: variant.key,
+    label: variant.label,
+    summary: variant.summary,
+    tradeoff: variant.tradeoff,
+    ages: U23_BIRTH_AGES.map((age) => {
+      const band = variant.bandFor(age);
+      const ceilInt = Math.round(band.ceil);
+      const values = [];
+      let atCeil = 0;
+      for (let i = 0; i < perAge; i++) {
+        const abilities = drawYouthBirthAbilities({
+          // Samme seed-familie pr. (alder, i) på tværs af varianter, så to
+          // varianter sammenlignes på de SAMME træk. Ellers ville en del af
+          // forskellen mellem to rækker bare være to forskellige stikprøver.
+          rng: makeBirthRng((seed + age * 1000 + i) >>> 0),
+          age,
+          potentiale: 2 + (i % 4),
+          archetype: BIRTH_ARCHETYPE_KEYS[i % BIRTH_ARCHETYPE_KEYS.length],
+          secondaryArchetype: null,
+          classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+          band,
+        });
+        for (const key of REGISTRY_ABILITY_KEYS) {
+          const v = abilities[key];
+          values.push(v);
+          if (v >= ceilInt) atCeil++;
+        }
+      }
+      return {
+        age,
+        ceil: ceilInt,
+        ...describe(values),
+        atCeilPct: pct(atCeil, values.length),
+      };
+    }),
+  }));
 }
 
 // ── Kompletthed: hvad MÅ ikke mangle på en nyfødt ────────────────────────────
@@ -483,7 +763,54 @@ function sampleTable(rows, n = 15) {
   );
 }
 
-export function renderReport({ seed, count, referenceYear, adult, youth }) {
+/**
+ * Mætning pr. alder pr. variant — designkortets ene tabel.
+ *
+ * Den afgørende kolonne er IKKE "På loftet %", men "Δ median" : hvor meget ét
+ * års aldersforskel faktisk flytter. Står den på 0, er alderen holdt op med at
+ * betyde noget uanset hvor pænt resten af rækken ser ud.
+ */
+function u23VariantTable(sweep) {
+  const rows = [];
+  for (const variant of sweep) {
+    for (const a of variant.ages) {
+      const prev = variant.ages.find((x) => x.age === a.age - 1);
+      rows.push([
+        variant.label,
+        String(a.age),
+        String(a.ceil),
+        String(a.median),
+        String(a.p90),
+        String(a.max),
+        fmt1(a.atCeilPct),
+        prev ? fmt1(a.median - prev.median) : "–",
+      ]);
+    }
+  }
+  return table(
+    ["Variant", "Alder", "Loft", "Median", "p90", "Max", "På loftet %", "Δ median vs. året før"],
+    rows,
+  );
+}
+
+// Den kvalitative halvdel af kortet. Den kan ALTID renderes: den indeholder
+// ingen tal, kun hvad hver variant gør og hvad den koster.
+function u23VariantSummaryTable(specs) {
+  return table(
+    ["Variant", "Hvad den gør", "Hvad den koster"],
+    specs.map((v) => [v.label, v.summary, v.tradeoff]),
+  );
+}
+
+export function renderReport({
+  seed,
+  count,
+  referenceYear,
+  adult,
+  youth,
+  u23PerAge = 200,
+  u23Tuning = loadU23Tuning(),
+}) {
   const rows = adult.rows;
   const c = completenessReport(rows);
   const ages = describe(rows.map((r) => r.age));
@@ -493,6 +820,11 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
   const recog = recognitionRate(rows);
   const clamped = clampReport(rows);
   const sweep = youthAgeSweep({ seed });
+  // Uden kalibrerings-fil er der kun referencerækken at måle — så springes
+  // måletabellen over, og §8c viser den kvalitative side af kortet alene.
+  const variantSweep = u23Tuning
+    ? u23VariantSweep({ seed, perAge: u23PerAge, variants: buildU23BandVariants(u23Tuning) })
+    : null;
 
   const findings = [];
   // U23-gaten, det vigtigste fund i rapporten: båndet er kalibreret til
@@ -506,8 +838,20 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
       "en ungdomsrytters NUVÆRENDE evne må ikke løfte `ability_caps` over hans potentiale-loft). Bruges det SOM DET ER " +
       "til U23-trupperne, fødes 19-22-årige praktisk talt ens, og alderen holder op med at betyde noget i netop den ende " +
       "af intervallet U23-kalenderen kører i. **Dokumenteret, ikke rettet** — et nyt eller udvidet bånd er en " +
-      "balance-beslutning der hører til U23-generings-sporet, ikke til denne test.",
+      "balance-beslutning der hører til U23-generings-sporet, ikke til denne test. **Forslagene står i §8c** (#5376).",
     );
+  }
+  // §8c's ene konklusion, skrevet ud så den ikke skal læses ud af tabellen:
+  // en variant duer kun hvis alderen stadig flytter medianen ved HVERT trin.
+  for (const variant of variantSweep ?? []) {
+    if (variant.key === "baseline") continue;
+    const flat = variant.ages.filter((a, i) => i > 0 && a.median - variant.ages[i - 1].median <= 0);
+    if (flat.length) {
+      findings.push(
+        `**U23-variant "${variant.label}" (§8c):** alderen flytter ikke medianen ved ` +
+        `${flat.map((a) => `${a.age - 1} → ${a.age}`).join(", ")}. Varianten løser ikke det den er foreslået for.`,
+      );
+    }
   }
   if (clamped.floor / clamped.total > 0.05) {
     const worst = [...clamped.floorByAbility.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
@@ -640,6 +984,36 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
       sweep.map((s) => [String(s.age), String(s.min), String(s.median), String(s.p90), String(s.max), fmt1(s.atCeilPct)]),
     ),
     "",
+    "### 8c. Mætning pr. alder pr. variant — designkortet (#5376)",
+    "",
+    "Ejer-beslutning 18/9: **U23-generering er blokeret indtil båndet er valgt.** Nedenfor er dagens bånd plus tre forslag, kørt gennem PRÆCIS samme `drawYouthBirthAbilities` som produktionen bruger, ved hver af de fire U23-fødselsaldre.",
+    "",
+    `Aldrene kommer fra \`riderSeasonAge.js\` og er ikke frit valgte: U23 er sæson-alder < 23, så Graduation Day falder ved 23 og fødselsintervallet er ${U23_BIRTH_AGES[0]}-${U23_BIRTH_AGES[U23_BIRTH_AGES.length - 1]}. U25 (sæson-alder ≤ 25, UCI-reglen, ejer 2/9) rører ikke fødslen. Akademi-nedrykning gælder kun til og med ${ACADEMY_TOP_AGE} — derfor OVERLAPPER ${U23_BIRTH_AGES[0]}-${ACADEMY_TOP_AGE} akademiets eget interval, og det er dér en variant enten bevarer akademiets fordeling eller bevidst afviger fra den.`,
+    "",
+    "**Akademiets bånd røres ikke.** Hver variant er et nyt, afledt bånd; `YOUTH_BIRTH_BAND` og dets mætnings-invariant (G5, #3561/#2064 §2a) står uændret, og ingen variant er vedtaget — de er forslag til ejeren, ikke konfiguration.",
+    "",
+    u23VariantSummaryTable(U23_BAND_VARIANT_SPECS),
+    "",
+    ...(variantSweep
+      ? [
+          `${u23PerAge} træk pr. alder pr. variant, fordelt over alle arketyper og fire potentiale-trin (en signatur-evne får et boost oven i grundniveauet og rammer loftet først — måltes kun én arketype, ville mætningen se mildere ud end i en rigtig trup). Samme seed-familie pr. (alder, træk) på tværs af varianter, så rækkerne sammenlignes på de samme træk.`,
+          "",
+          "Den afgørende kolonne er **Δ median vs. året før**, ikke \"På loftet %\": står Δ på 0, er alderen holdt op med at betyde noget, uanset hvor pænt resten af rækken ser ud. \"På loftet %\" måles mod variantens EGET loft.",
+          "",
+          u23VariantTable(variantSweep),
+          "",
+        ]
+      : [
+          `**Måletabellen er ikke med.** Forslagenes præcise tal — loft, rampe, spredning — er balance-tal og ligger derfor i den gitignorerede \`${U23_TUNING_LABEL}\`, ikke i repoet (hard rule 17, #3436: repoet er offentligt læsbart). Filen blev ikke fundet, så kun kortets kvalitative side er renderet.`,
+          "",
+          `Opret den med felterne nedenfor — eller peg på en anden sti med \`--tuning=<sti>\` — og kør rapporten igen:`,
+          "",
+          table(
+            ["Felt", "Betydning"],
+            Object.entries(U23_TUNING_FIELDS).map(([field, meaning]) => [`\`${field}\``, meaning]),
+          ),
+          "",
+        ]),
     "## 9. Fund",
     "",
     findings.length
@@ -654,6 +1028,15 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
 }
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
+/** Streng heltals-parser: `Number()` slipper NaN, 0, brøker og Infinity igennem. */
+export function positiveIntArg(raw, name, max = MAX_U23_PER_AGE) {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > max) {
+    throw new Error(`--${name} skal være et helt tal i [1,${max}] — fik "${raw}"`);
+  }
+  return n;
+}
+
 function parseArgs(argv) {
   const get = (name, fallback) => {
     const hit = argv.find((a) => a.startsWith(`--${name}=`));
@@ -664,15 +1047,32 @@ function parseArgs(argv) {
     count: Number(get("count", DEFAULT_COUNT)),
     youthCount: Number(get("youth", DEFAULT_YOUTH_COUNT)),
     referenceYear: Number(get("year", LAUNCH_REFERENCE_YEAR)),
+    // `--u23` er den ENE CLI-værdi der styrer en loop-grænse. Den parses
+    // strengt her, så en tastefejl bliver en fejlbesked med det samme i
+    // stedet for en tom eller uendelig kørsel.
+    u23PerAge: positiveIntArg(get("u23", String(DEFAULT_U23_PER_AGE)), "u23"),
+    // Sti til den gitignorerede kalibrerings-fil til §8c. Tallene må ikke ligge
+    // i repoet (hard rule 17, #3436), så de kommer udefra.
+    tuning: get("tuning", null),
     out: get("out", null),
   };
 }
 
 export function main(argv = process.argv.slice(2)) {
-  const { seed, count, youthCount, referenceYear, out } = parseArgs(argv);
+  const { seed, count, youthCount, referenceYear, u23PerAge, tuning, out } = parseArgs(argv);
   const adult = buildAdultCohort({ seed, count, referenceYear });
   const youth = buildYouthCohort({ seed, count: youthCount, referenceYear });
-  const md = renderReport({ seed, count, referenceYear, adult, youth });
+  // En UDPEGET sti der ikke findes er en tastefejl, ikke en normal tilstand:
+  // den skal sige fra, ikke stille og roligt rendere kortet uden måletabel.
+  let u23Tuning;
+  if (tuning) {
+    const path = resolve(process.cwd(), tuning);
+    u23Tuning = loadU23Tuning({ path });
+    if (!u23Tuning) throw new Error(`--tuning: filen findes ikke — ${path}`);
+  } else {
+    u23Tuning = loadU23Tuning();
+  }
+  const md = renderReport({ seed, count, referenceYear, adult, youth, u23PerAge, u23Tuning });
   if (out) {
     const target = resolve(process.cwd(), out);
     mkdirSync(dirname(target), { recursive: true });

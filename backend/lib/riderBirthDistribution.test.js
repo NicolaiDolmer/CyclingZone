@@ -36,6 +36,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   buildAdultCohort,
@@ -46,10 +47,27 @@ import {
   percentile,
   describe as describeStats,
   REQUIRED_RECORD_FIELDS,
+  U23_BAND_VARIANT_SPECS,
+  buildU23BandVariants,
+  loadU23Tuning,
+  U23_TUNING_FIELDS,
+  U23_BIRTH_AGES,
+  ACADEMY_TOP_AGE,
+  U23_ENTRY_AGE,
+  u23VariantSweep,
+  positiveIntArg,
+  DEFAULT_U23_PER_AGE,
+  MAX_U23_PER_AGE,
 } from "../scripts/generatorVisibleTest5283.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { MENTAL_ABILITY_TAG_CEILING } from "./riderProgression.js";
-import { ABILITY_FLOOR, ABILITY_CEIL } from "./riderBirthPriors.js";
+import {
+  ABILITY_FLOOR,
+  ABILITY_CEIL,
+  YOUTH_BIRTH_BAND,
+  PCM_TO_ABILITY_GAIN,
+} from "./riderBirthPriors.js";
+import { isU23ForReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import { STAT_KEYS, BIRTH_MODE_OWN_PRIORS } from "./fictionalRiderGenerator.js";
 
 const SEED = 20260918;
@@ -326,4 +344,162 @@ test("#5283 hver nyfødt prissættes af V4-kæden", () => {
   assert.ok(byTier("superstar").median > byTier("star").median);
   assert.ok(byTier("star").median > byTier("solid").median);
   assert.ok(byTier("solid").median > byTier("domestique").median);
+});
+
+// ── 15. U23-bånd-varianterne (#5376) ─────────────────────────────────────────
+// Ejer-beslutning 18/9: U23-generering er blokeret indtil et designkort med
+// 2-3 bånd-forslag er vist og valgt. Rapportens §8c ER det kort. Testene her
+// låser forslagenes STRUKTUR — ikke deres tal: hvilke tal båndet skal have er
+// præcis den beslutning kortet skal give ejeren, og en test der låste dem ville
+// foregribe den. Balance-tallene lever i `balance-internals/` (hard rule 17).
+
+const VARIANT_SWEEP_SEED = 20260918;
+// Lille n: testene her måler struktur og invarianter, ikke fordelingsform, og
+// sweepet kører fire aldre × fire varianter × hele evne-registret.
+const VARIANT_PER_AGE = 12;
+
+// Forslagenes RIGTIGE kalibrering ligger i den gitignorerede
+// `balance-internals/u23-band-tuning.json` (hard rule 17, #3436 — repoet er
+// offentligt læsbart). Fixturen her er derfor bevidst IKKE noget forslag: den
+// er afledt af akademiets eget bånd med et symbolsk tillæg (ét og to stat-point
+// over loftet), netop stor nok til at strukturen kan måles, og den siger intet
+// om hvad ejeren skal vælge. Testene låser struktur, ikke tal.
+const statLevelOf = (ability) => (ability - 1) / PCM_TO_ABILITY_GAIN + 50;
+const statPointsOf = (ability) => ability / PCM_TO_ABILITY_GAIN;
+const ACADEMY_CEIL_STAT_LEVEL = statLevelOf(YOUTH_BIRTH_BAND.ceil);
+const FIXTURE_TUNING = Object.freeze({
+  aCeilStatLevel: ACADEMY_CEIL_STAT_LEVEL + 1,
+  bPerYearStatPoints: statPointsOf(YOUTH_BIRTH_BAND.perYearOver16) * 2,
+  bCeilStatLevel: ACADEMY_CEIL_STAT_LEVEL + 2,
+  bSpreadFactor: 1.5,
+  cCeilStatPointsPerYearOverAcademy: 1,
+});
+const FIXTURE_VARIANTS = buildU23BandVariants(FIXTURE_TUNING);
+
+// Selve pointen med finden: ingen af forslagenes tal må kunne læses ud af
+// repoet. Kalibreringen kommer udefra, og uden den fil findes kun dagens bånd.
+test("#5376 kalibrerings-tallene ligger uden for repoet", () => {
+  const src = readFileSync(new URL("../scripts/generatorVisibleTest5283.js", import.meta.url), "utf8");
+  const section = src.slice(src.indexOf("U23_BAND_VARIANT_SPECS"));
+  for (const call of section.match(/stat(?:Level|Points)ToAbility\(([^)]*)\)/g) ?? []) {
+    assert.ok(
+      /tuning\./.test(call),
+      `${call}: variant-afsnittet må ikke omregne et literalt balance-tal — værdien skal komme fra kalibrerings-filen`,
+    );
+  }
+  assert.deepEqual(
+    buildU23BandVariants(null).map((v) => v.key),
+    ["baseline"],
+    "uden kalibrerings-fil må kun dagens bånd kunne måles",
+  );
+  // Filen er ikke i repoet; findes den lokalt, er den gitignoreret (PR-tjek).
+  assert.ok(Object.keys(U23_TUNING_FIELDS).length >= 3);
+  assert.doesNotThrow(() => loadU23Tuning({ path: "ingen-saadan-fil-5376.json" }));
+});
+
+test("#5376 U23-fødselsaldrene følger riderSeasonAge, ikke en lokal kopi", () => {
+  const birthdateForAge = (age) => `${LAUNCH_REFERENCE_YEAR - age}-06-01`;
+  for (const age of U23_BIRTH_AGES) {
+    assert.ok(
+      isU23ForReferenceYear(birthdateForAge(age), LAUNCH_REFERENCE_YEAR),
+      `alder ${age} skal være U23 efter riderSeasonAge.isU23ForReferenceYear`,
+    );
+  }
+  // Graduation Day ved 23: årgangen over intervallet må IKKE være U23, ellers
+  // ville fødslen lave ryttere der straks er for gamle til deres egen trup.
+  const graduationAge = U23_BIRTH_AGES[U23_BIRTH_AGES.length - 1] + 1;
+  assert.equal(isU23ForReferenceYear(birthdateForAge(graduationAge), LAUNCH_REFERENCE_YEAR), false);
+  // Akademiet dækker til og med ACADEMY_TOP_AGE, så indgangsalderen ligger
+  // inde i akademiets interval — det er DET overlap varianterne forholder sig til.
+  assert.ok(U23_ENTRY_AGE <= ACADEMY_TOP_AGE);
+});
+
+test("#5376 designkortet har dagens bånd plus mindst to forslag, med unikke nøgler", () => {
+  const keys = U23_BAND_VARIANT_SPECS.map((v) => v.key);
+  assert.equal(new Set(keys).size, keys.length, `dublet-nøgle blandt ${keys.join(", ")}`);
+  assert.ok(keys.includes("baseline"), "referencerækken (dagens bånd) mangler");
+  assert.ok(keys.length - 1 >= 2, `kun ${keys.length - 1} forslag — ejeren skal have 2-3`);
+  for (const v of U23_BAND_VARIANT_SPECS) {
+    // Et forslag uden begrundelse og pris er ikke et beslutningsgrundlag.
+    assert.ok(v.label && v.summary && v.tradeoff, `${v.key}: mangler label/summary/tradeoff`);
+    assert.equal(typeof v.bandFor, "function");
+  }
+});
+
+// Den vigtigste test i blokken. Akademiets bånd og dets mætnings-invariant (G5,
+// #3561/#2064 §2a) må IKKE flytte sig som sideeffekt af et U23-forslag — hele
+// akademiet hænger på at en ungdomsrytters nuværende evne ikke løfter
+// `ability_caps` over hans potentiale-loft.
+test("#5376 ingen variant muterer akademiets bånd", () => {
+  const before = JSON.stringify(YOUTH_BIRTH_BAND);
+  for (const variant of FIXTURE_VARIANTS) {
+    for (const age of U23_BIRTH_AGES) {
+      const band = variant.bandFor(age);
+      assert.ok(Object.isFrozen(band), `${variant.key}@${age}: båndet er ikke frosset`);
+    }
+  }
+  u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE, variants: FIXTURE_VARIANTS });
+  assert.equal(JSON.stringify(YOUTH_BIRTH_BAND), before, "YOUTH_BIRTH_BAND blev ændret");
+});
+
+// Kontinuitets-invarianten for den skånsomme variant: ved de aldre der
+// overlapper akademiet skal den køre på PRÆCIS akademiets bånd — samme objekt,
+// ikke bare samme tal. Ellers er "akademiets fordeling er bevaret" en påstand.
+test("#5376 den alders-rampede variant er identisk med akademiets bånd i overlappet", () => {
+  const variant = FIXTURE_VARIANTS.find((v) => v.key === "c-alders-rampet-loft");
+  assert.ok(variant, "variant c mangler");
+  for (const age of U23_BIRTH_AGES) {
+    const band = variant.bandFor(age);
+    if (age <= ACADEMY_TOP_AGE) {
+      assert.equal(band, YOUTH_BIRTH_BAND, `alder ${age} skal bruge akademiets bånd uændret`);
+    } else {
+      assert.ok(band.ceil > YOUTH_BIRTH_BAND.ceil, `alder ${age} skal have luft over akademiets loft`);
+    }
+  }
+});
+
+test("#5376 hver variant føder gyldige heltals-evner ved hver U23-alder", () => {
+  const sweep = u23VariantSweep({
+    seed: VARIANT_SWEEP_SEED,
+    perAge: VARIANT_PER_AGE,
+    variants: FIXTURE_VARIANTS,
+  });
+  assert.equal(sweep.length, U23_BAND_VARIANT_SPECS.length);
+  for (const variant of sweep) {
+    assert.deepEqual(variant.ages.map((a) => a.age), [...U23_BIRTH_AGES]);
+    for (const a of variant.ages) {
+      assert.ok(Number.isInteger(a.min) && Number.isInteger(a.max), `${variant.key}@${a.age}: ikke-heltal`);
+      assert.ok(
+        a.min >= ABILITY_FLOOR && a.max <= ABILITY_CEIL,
+        `${variant.key}@${a.age}: ${a.min}-${a.max} uden for [${ABILITY_FLOOR},${ABILITY_CEIL}]`,
+      );
+      assert.ok(a.atCeilPct >= 0 && a.atCeilPct <= 100);
+    }
+  }
+});
+
+// Determinisme er forudsætningen for at designkortet overhovedet kan bruges:
+// ejeren skal kunne se den samme tabel igen, og to varianter skal kunne
+// sammenlignes på de samme træk i stedet for på to stikprøver.
+// Designkortet er det ejeren BESLUTTER ud fra. En tom stikprøve ville vise "–"
+// i hver celle som om båndet ikke kunne måles, og et ubundet tal ville få
+// kørslen til at hænge — begge dele er værre end en fejlbesked.
+test("#5376 sweepet afviser en ugyldig stikprøvestørrelse i stedet for at måle forkert", () => {
+  for (const bad of [0, -1, 1.5, NaN, Infinity, MAX_U23_PER_AGE + 1]) {
+    assert.throws(
+      () => u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: bad, variants: FIXTURE_VARIANTS }),
+      /perAge/,
+      `perAge=${bad} skulle være afvist`,
+    );
+  }
+  for (const bad of ["", "abc", "0", "-5", "1e400"]) {
+    assert.throws(() => positiveIntArg(bad, "u23"), /u23/, `--u23=${bad} skulle være afvist`);
+  }
+  assert.equal(positiveIntArg(String(DEFAULT_U23_PER_AGE), "u23"), DEFAULT_U23_PER_AGE);
+});
+
+test("#5376 variant-sweepet er deterministisk for samme seed", () => {
+  const a = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE, variants: FIXTURE_VARIANTS });
+  const b = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE, variants: FIXTURE_VARIANTS });
+  assert.deepEqual(b, a);
 });
