@@ -39,8 +39,39 @@ const ALLOWED = new Set([join("lib", "squads.js")]);
 // Mapper der scannes. backend/scripts er bevidst udenfor, se headeren.
 const SCANNED_DIRS = ["lib", "routes"];
 
-// `.eq("is_academy", false)` i begge citationsformer, med vilkårlig whitespace.
+// `.eq("is_academy", false)` i begge citationsformer, med vilkårlig whitespace —
+// OGSÅ på tværs af linjeskift. `\s` dækker newline, så en prettier-brudt
+// .eq(\n  "is_academy",\n  false\n) fanges også; derfor scannes hele filen som
+// ÉN streng i stedet for linje for linje (CodeRabbit-fund, #4619-reviewet:
+// en linjevis scanner kan omgås ved bare at ombryde kaldet).
 const SENIOR_FILTER_RE = /\.eq\(\s*["']is_academy["']\s*,\s*false\s*\)/g;
+
+// Linjenummeret (1-indekseret) for et tegn-indeks i kildeteksten.
+function lineNumberAt(src, index) {
+  let line = 1;
+  for (let i = 0; i < index; i++) if (src[i] === "\n") line += 1;
+  return line;
+}
+
+// Fund i en KOMMENTAR tæller ikke: flere headere citerer bevidst filteret for at
+// forklare hvorfor det flyttede. Afgøres på den linje matchet STARTER på — et
+// kald ombrudt inde i en blok-kommentar starter på en `*`/`//`-linje.
+function isCommentLine(line) {
+  return /^\s*(\/\/|\*|\/\*)/.test(line);
+}
+
+function findOffendingLines(src) {
+  const lines = src.split("\n");
+  const hits = [];
+  SENIOR_FILTER_RE.lastIndex = 0;
+  let m;
+  while ((m = SENIOR_FILTER_RE.exec(src)) !== null) {
+    const lineNo = lineNumberAt(src, m.index);
+    if (isCommentLine(lines[lineNo - 1] ?? "")) continue;
+    hits.push(lineNo);
+  }
+  return hits;
+}
 
 function jsFilesIn(dir) {
   const out = [];
@@ -65,15 +96,9 @@ test("ingen haandskrevet .eq(\"is_academy\", false) uden for squads.js", () => {
       const rel = relative(BACKEND_DIR, file);
       if (ALLOWED.has(rel)) continue;
       const src = readFileSync(file, "utf8");
-      const lines = src.split("\n");
-      lines.forEach((line, i) => {
-        // Kommentarlinjer maa gerne CITERE filteret (det goer flere headere).
-        if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
-        SENIOR_FILTER_RE.lastIndex = 0;
-        if (SENIOR_FILTER_RE.test(line)) {
-          offenders.push(`${rel.split(sep).join("/")}:${i + 1}`);
-        }
-      });
+      for (const lineNo of findOffendingLines(src)) {
+        offenders.push(`${rel.split(sep).join("/")}:${lineNo}`);
+      }
     }
   }
   assert.deepEqual(
@@ -91,18 +116,36 @@ test("guarden ville faktisk fange en ny kopi (regex-selvtest)", () => {
     '.eq("is_academy", false)',
     ".eq('is_academy', false)",
     '.eq( "is_academy" ,  false )',
+    // Den ombrudte form en formatter kan lave — og som en linjevis scanner
+    // ville lade glide igennem.
+    '  query\n    .eq(\n      "is_academy",\n      false\n    );',
   ]) {
-    SENIOR_FILTER_RE.lastIndex = 0;
-    assert.ok(SENIOR_FILTER_RE.test(sample), `skulle matche: ${sample}`);
+    assert.deepEqual(
+      findOffendingLines(sample).length > 0,
+      true,
+      `skulle matche: ${JSON.stringify(sample)}`
+    );
   }
   for (const sample of [
     '.eq("is_academy", true)',
     "is_academy: false,",
     '.eq("is_retired", false)',
+    // Et citat i en kommentar er ikke en kopi.
+    '// forklaring: her stod foer .eq("is_academy", false)',
+    ' * ...og her stod .eq("is_academy", false) ogsaa',
   ]) {
-    SENIOR_FILTER_RE.lastIndex = 0;
-    assert.ok(!SENIOR_FILTER_RE.test(sample), `skulle IKKE matche: ${sample}`);
+    assert.deepEqual(
+      findOffendingLines(sample),
+      [],
+      `skulle IKKE matche: ${JSON.stringify(sample)}`
+    );
   }
+});
+
+test("guarden rapporterer linjenummeret hvor et ombrudt kald STARTER", () => {
+  // Linje 1 er tom (kildeteksten starter med \n), kaldet starter paa linje 3.
+  const src = '\nquery\n  .eq(\n    "is_academy",\n    false\n  );\n';
+  assert.deepEqual(findOffendingLines(src), [3]);
 });
 
 test("squads.js indeholder faktisk det ene tilladte forekomst", () => {
