@@ -7525,7 +7525,10 @@ router.post("/auctions/:id/finalize", requireAdmin, adminWriteLimiter, async (re
 // Ingen user_id, ingen e-mail, ingen beskeder. Al validering af query-params
 // (inkl. UUID-guard på ?team= før .or()-interpolation) sker i
 // parseTradeFeedQuery, se lib/tradeListFeed.js.
-router.get("/transfers/feed", requireAuth, async (req, res) => {
+// presencePulseLimiter (120/min): dette er en spiller-drevet LÆSNING (fanen
+// åbnes, "Vis flere" trykkes), ikke en skrivning. Et loft skal der være — ruten
+// kører op til seks queries pr. kald (#530's rate-limit-ratchet).
+router.get("/transfers/feed", requireAuth, presencePulseLimiter, async (req, res) => {
   const parsed = parseTradeFeedQuery(req.query);
   if (!parsed.ok) {
     return res.status(400).json({ error: parsed.error, errorCode: parsed.errorCode });

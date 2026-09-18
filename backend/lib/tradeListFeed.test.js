@@ -35,15 +35,22 @@ function createSupabase({ auctions = [], transferOffers = [], swapOffers = [], s
   const tableData = { auctions, transfer_offers: transferOffers, swap_offers: swapOffers, seasons, teams };
   const calls = [];
 
+  // Minimal or-parser: `col.eq.val`, `col.not.is.null` og `col.is.true`.
+  // Flere .or()-kald AND'es af PostgREST, så stubben holder dem i en liste.
   function matchOr(expr, row) {
     return expr.split(",").some((p) => {
-      const m = p.match(/^([a-z_]+)\.eq\.(.+)$/);
-      return m ? row[m[1]] === m[2] : false;
+      let m = p.match(/^([a-z_]+)\.eq\.(.+)$/);
+      if (m) return row[m[1]] === m[2];
+      m = p.match(/^([a-z_]+)\.not\.is\.null$/);
+      if (m) return row[m[1]] != null;
+      m = p.match(/^([a-z_]+)\.is\.true$/);
+      if (m) return row[m[1]] === true;
+      return false;
     });
   }
 
   function buildQuery(table) {
-    const state = { table, select: "", or: null, in: [], eq: [], limit: null };
+    const state = { table, select: "", or: [], in: [], eq: [], limit: null };
     calls.push(state);
     function rows() {
       let list = tableData[table] || [];
@@ -54,7 +61,7 @@ function createSupabase({ auctions = [], transferOffers = [], swapOffers = [], s
         for (const { column, value } of state.eq) {
           if (row[column] !== value) return false;
         }
-        if (state.or && !matchOr(state.or, row)) return false;
+        for (const expr of state.or) if (!matchOr(expr, row)) return false;
         return true;
       });
       if (state.limit != null) list = list.slice(0, state.limit);
@@ -62,7 +69,7 @@ function createSupabase({ auctions = [], transferOffers = [], swapOffers = [], s
     }
     const chain = {
       select(sel) { state.select = sel; return chain; },
-      or(expr) { state.or = expr; return chain; },
+      or(expr) { state.or.push(expr); return chain; },
       in(column, values) { state.in.push({ column, values }); return chain; },
       eq(column, value) { state.eq.push({ column, value }); return chain; },
       order() { return chain; },
@@ -160,19 +167,40 @@ test("private offer-statuser slipper aldrig ud", async () => {
   assert.deepEqual(events.map((e) => e.id), ["transfer:t-ok"]);
 });
 
-test("auktion uden bud: intet beløb og ikke rapporterbar", async () => {
+test("auktion uden bud er slet ikke et skifte og kommer ikke med", async () => {
+  const supabase = createSupabase({
+    auctions: [
+      { id: "a-nosale", status: "completed", current_price: 400000, actual_end: "2026-03-04T10:00:00Z",
+        seller_team_id: TEAM_A, current_bidder_id: null, is_guaranteed_sale: false,
+        rider: { id: "r1", firstname: "Ann", lastname: "Alpe" }, seller: teamRow(TEAM_A, "Alpha"), winner: null },
+      // Garanteret AI-salg: ingen current_bidder_id, men rytteren SKIFTEDE hold.
+      { id: "a-guaranteed", status: "completed", current_price: 90000, actual_end: "2026-03-03T10:00:00Z",
+        seller_team_id: TEAM_A, current_bidder_id: null, is_guaranteed_sale: true,
+        rider: { id: "r2", firstname: "Bo", lastname: "Berg" }, seller: teamRow(TEAM_A, "Alpha"), winner: null },
+    ],
+  });
+  const { events } = await buildGlobalTradeFeed(supabase, params());
+  assert.deepEqual(events.map((e) => e.id), ["auction:a-guaranteed"]);
+  assert.equal(events[0].is_guaranteed_sale, true);
+  // Uden current_bidder_id er der ingen modpart at rapportere imod — samme
+  // regel som backendens resolveTradeParties.
+  assert.equal(events[0].reportable, false);
+  assert.equal(events[0].to_team, null);
+});
+
+test("fri-agent-auktion: intet fra-hold, men stadig et skifte", async () => {
   const supabase = createSupabase({
     auctions: [{
-      id: "a-nosale", status: "completed", current_price: 400000, actual_end: "2026-03-03T10:00:00Z",
-      seller_team_id: TEAM_A, current_bidder_id: null, is_guaranteed_sale: false,
-      rider: { id: "r1", firstname: "Ann", lastname: "Alpe" }, seller: teamRow(TEAM_A, "Alpha"), winner: null,
+      id: "a-free", status: "completed", current_price: 2911, actual_end: "2026-03-03T10:00:00Z",
+      seller_team_id: null, current_bidder_id: TEAM_B,
+      rider: { id: "r1", firstname: "Ann", lastname: "Alpe" }, seller: null, winner: teamRow(TEAM_B, "Beta"),
     }],
   });
   const { events } = await buildGlobalTradeFeed(supabase, params());
-  assert.equal(events[0].amount, null);
-  assert.equal(events[0].no_sale, true);
-  assert.equal(events[0].reportable, false);
-  assert.equal(events[0].to_team, null);
+  assert.equal(events[0].from_team, null, "fri agent har intet sælgende hold");
+  assert.equal(events[0].to_team.name, "Beta");
+  assert.equal(events[0].amount, 2911);
+  assert.equal(events[0].reportable, true);
 });
 
 test("paginering: side 2 skæres korrekt ud og has_more er sandt når der er mere", async () => {

@@ -238,19 +238,28 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
       key: "from",
       header: t("tradeList.header.from"),
       fold: true,
-      foldValue: (ev) => ev.from_team?.name ?? "—",
-      render: (ev) => <TeamName team={ev.from_team} />,
+      // Fri-agent-auktion (rytteren kom fra puljen, ikke fra et hold) er den
+      // hyppigste auktionsform i prod. En tom streg dér læses som manglende
+      // data (#3708's lektie), så den får sit eget ord.
+      foldValue: (ev) => ev.from_team?.name ?? (ev.type === "auction" ? t("tradeList.freeAgent") : "—"),
+      render: (ev) => (
+        <TeamName
+          team={ev.from_team}
+          fallback={ev.type === "auction" ? t("tradeList.freeAgent") : "—"}
+        />
+      ),
     },
     {
       key: "to",
       header: t("tradeList.header.to"),
       mobileLabel: t("tradeList.header.to"),
       render: (ev) => (
+        // #3708: et garanteret AI-salg sætter ikke current_bidder_id, så der er
+        // intet modparts-hold at linke til. Det ER stadig et salg, så "—" ville
+        // ligne manglende data.
         <TeamName
           team={ev.to_team}
-          fallback={ev.no_sale
-            ? t("history.noBids")
-            : ev.is_guaranteed_sale ? t("history.aiTeamFallback") : "—"}
+          fallback={ev.is_guaranteed_sale ? t("history.aiTeamFallback") : "—"}
         />
       ),
     },

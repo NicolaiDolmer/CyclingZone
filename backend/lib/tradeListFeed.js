@@ -60,7 +60,15 @@ const SOURCES = {
       + ", rider:rider_id(id, firstname, lastname)"
       + ", seller:seller_team_id(id, name, is_ai, division)"
       + ", winner:current_bidder_id(id, name, is_ai, division)",
-    applyStatus: (q) => q.eq("status", "completed"),
+    // #2400 + prod-audit 18/9: en gennemført auktion UDEN vinder (og uden
+    // garanteret AI-salg) er ikke et rytterskifte — rytteren blev på holdet.
+    // De er tilmed hyppige: de fire nyeste auktioner i prod 18/9 var alle
+    // no_sale. Holdhistorikken skjuler dem bag en toggle; en liste der
+    // udtrykkeligt handler om SKIFTER tager dem slet ikke med. Filtreret i
+    // queryen, ikke efter slicing, så paginerings-vinduet forbliver korrekt.
+    applyStatus: (q) => q
+      .eq("status", "completed")
+      .or("current_bidder_id.not.is.null,is_guaranteed_sale.is.true"),
   },
   transfer: {
     table: "transfer_offers",
@@ -195,10 +203,9 @@ function teamRef(team) {
 
 function mapAuction(row, resolveSeason) {
   const date = row.actual_end || row.created_at;
-  // #785: gennemført auktion uden vinder (og uden garanteret AI-salg) = intet
-  // salg. current_price er den umødte startpris og må hverken vises som beløb
-  // eller tælle som et skifte.
-  const noSale = !row.current_bidder_id && !row.is_guaranteed_sale;
+  // from_team er null på en FRI-AGENT-auktion (rytteren kom fra puljen, ikke
+  // fra et hold) — den hyppigste auktionsform i prod. Frontend viser "Free
+  // agent", ikke en tom streg: en tom streg læses som manglende data (#3708).
   return {
     id: `auction:${row.id}`,
     type: "auction",
@@ -208,8 +215,7 @@ function mapAuction(row, resolveSeason) {
     rider_swapped: null,
     from_team: teamRef(row.seller),
     to_team: teamRef(row.winner),
-    amount: noSale ? null : (row.current_price ?? null),
-    no_sale: noSale,
+    amount: row.current_price ?? null,
     is_guaranteed_sale: Boolean(row.is_guaranteed_sale),
     // Rapporterbar = præcis det backendens resolveTradeParties accepterer
     // (feedbackInbox.js): en auktion uden current_bidder_id har ingen modpart,
