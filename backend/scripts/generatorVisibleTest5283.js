@@ -32,7 +32,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   generateFictionalRiders,
@@ -676,6 +676,9 @@ export function main(argv = process.argv.slice(2)) {
   return md;
 }
 
-if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || process.argv[1]?.endsWith("generatorVisibleTest5283.js")) {
+// Kør KUN når filen er entry point. Testen importerer den samme modul-graf, og
+// et bredere tjek (fx `argv[1].endsWith(...)`) ville få rapporten til at køre
+// midt i en testkørsel.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }
