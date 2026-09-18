@@ -48,6 +48,11 @@ import {
   deriveBirthAbilities,
   physiologySeedInputFromAbilities,
 } from "../lib/riderBirthPriors.js";
+import {
+  drawYouthBirthAbilities,
+  makeBirthRng,
+  YOUTH_BIRTH_BAND,
+} from "../lib/riderBirthPriors.js";
 import { REGISTRY_ABILITY_KEYS, abilityMeta } from "../lib/abilityRegistry.js";
 import {
   buildCapsForRider,
@@ -172,6 +177,12 @@ export function deriveOne(record, index, seed, referenceYear) {
     tier: record._meta?.tier ?? null,
     drawPrimary: draw?.primary ?? null,
     drawSecondary: draw?.secondary ?? null,
+    // Klassifikatorens UAFHÆNGIGE gæt på anlægget, ud fra evnerne alene.
+    // `resolveRiderTypes` lader anlægget vinde, så den ENDELIGE type er pr.
+    // konstruktion lig anlægget — den kan derfor ikke måle om anlægget er
+    // genkendeligt formet. Bootstrap-gættet kan: afviger det, har generatoren
+    // født en rytter hvis evner ikke peger på hans egen arketype.
+    bootstrapPrimary: bootstrap.primary.key,
     primaryType: primary.key,
     secondaryType: secondary.key,
     nationality_code: record.nationality_code,
@@ -229,6 +240,37 @@ export function buildYouthCohort({
       _meta: { age, tier: "youth", archetypeDraw: c.archetypeDraw, birthAbilities: c.birthAbilities },
     };
     return deriveOne(record, i, seed, referenceYear);
+  });
+}
+
+// ── U23-sweep: hvad giver ungdomsbåndet ved 19-22 år? ────────────────────────
+/**
+ * D-054 §10.4 siger at hvert AI-hold skal have en U23-trup på 6-9 ryttere,
+ * 19-22 år, født på spillets egne priors. Den eneste ungdoms-prior der findes i
+ * dag er `YOUTH_BIRTH_BAND`, kalibreret til AKADEMIET (16-21).
+ *
+ * Denne sweep er gaten FØR den generering: den viser hvad båndet faktisk giver
+ * ved hver af de fire U23-aldre, så det kan ses med øjnene om alderen stadig
+ * flytter noget i den ende af intervallet.
+ */
+export function youthAgeSweep({ seed = DEFAULT_SEED, perAge = 200, potentiale = 3 } = {}) {
+  const ages = [19, 20, 21, 22];
+  return ages.map((age) => {
+    const values = [];
+    for (let i = 0; i < perAge; i++) {
+      const abilities = drawYouthBirthAbilities({
+        rng: makeBirthRng((seed + age * 1000 + i) >>> 0),
+        age,
+        potentiale,
+        archetype: "rouleur",
+        secondaryArchetype: null,
+        classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+      });
+      for (const key of REGISTRY_ABILITY_KEYS) values.push(abilities[key]);
+    }
+    const s = describe(values);
+    const atCeil = values.filter((v) => v >= Math.round(YOUTH_BIRTH_BAND.ceil)).length;
+    return { age, ...s, atCeilPct: pct(atCeil, values.length) };
   });
 }
 
@@ -325,6 +367,61 @@ function ceilingTable(rows) {
   );
 }
 
+/**
+ * Hvor ofte genfinder klassifikatoren rytterens eget anlæg ud fra evnerne
+ * alene? Det er det ENESTE tal i rapporten der måler om generatoren FORMER en
+ * arketype — alt andet måler kun hvad den skrev ned.
+ */
+export function recognitionRate(rows) {
+  const hit = rows.filter((r) => r.bootstrapPrimary === r.drawPrimary).length;
+  return { hit, n: rows.length, pct: pct(hit, rows.length) };
+}
+
+function recognitionTable(rows) {
+  const archetypes = [...new Set(rows.map((r) => r.drawPrimary))].sort();
+  return table(
+    ["Anlæg", "n", "Genfundet", "Andel %", "Hyppigste forveksling"],
+    archetypes.map((a) => {
+      const sub = rows.filter((r) => r.drawPrimary === a);
+      const hit = sub.filter((r) => r.bootstrapPrimary === a).length;
+      const wrong = [...countBy(sub.filter((r) => r.bootstrapPrimary !== a), (r) => r.bootstrapPrimary).entries()]
+        .sort((x, y) => y[1] - x[1])[0];
+      return [
+        a,
+        String(sub.length),
+        String(hit),
+        fmt1(pct(hit, sub.length)),
+        wrong ? `${wrong[0]} (${wrong[1]})` : "–",
+      ];
+    }),
+  );
+}
+
+/**
+ * Hvor stor en andel af alle evne-værdier lander på gulvet (1) eller loftet (99)?
+ * En høj gulv-andel betyder at fordelingen er klippet, ikke formet: to ryttere
+ * med vidt forskellige priors ender med det samme tal, og forskellen mellem dem
+ * forsvinder ud af spillet.
+ */
+export function clampReport(rows) {
+  let floor = 0;
+  let ceil = 0;
+  let total = 0;
+  const floorByAbility = new Map();
+  for (const r of rows) {
+    for (const key of REGISTRY_ABILITY_KEYS) {
+      const v = r.abilities[key];
+      total++;
+      if (v <= 1) {
+        floor++;
+        floorByAbility.set(key, (floorByAbility.get(key) ?? 0) + 1);
+      }
+      if (v >= 99) ceil++;
+    }
+  }
+  return { floor, ceil, total, floorByAbility };
+}
+
 function archetypeAbilityMatrix(rows, keys) {
   const archetypes = [...new Set(rows.map((r) => r.drawPrimary))].sort();
   return table(
@@ -385,8 +482,35 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
   const pots = describe(rows.map((r) => r.potentiale));
   const values = describe(rows.map((r) => r.base_value));
   const signature = ["climbing", "sprint", "time_trial", "flat", "punch", "cobblestone", "tempo", "aggression"];
+  const recog = recognitionRate(rows);
+  const clamped = clampReport(rows);
+  const sweep = youthAgeSweep({ seed });
 
   const findings = [];
+  // U23-gaten, det vigtigste fund i rapporten: båndet er kalibreret til
+  // AKADEMIET (16-21), og D-054 §10.4 vil bruge det ved 19-22.
+  const saturated = sweep.filter((s) => s.atCeilPct >= 50);
+  if (saturated.length) {
+    findings.push(
+      `**U23 (D-054 §10.4):** ungdomsbåndets loft på ${Math.round(YOUTH_BIRTH_BAND.ceil)} evne-point er mættet ved ` +
+      `${saturated.map((s) => `alder ${s.age} (${fmt1(s.atCeilPct)} % af evne-værdierne på loftet)`).join(", ")}. ` +
+      "Båndet er kalibreret til AKADEMIET (16-21), hvor mætningen er en tilsigtet invariant (G5, #3561/#2064 §2a: " +
+      "en ungdomsrytters NUVÆRENDE evne må ikke løfte `ability_caps` over hans potentiale-loft). Bruges det SOM DET ER " +
+      "til U23-trupperne, fødes 19-22-årige praktisk talt ens, og alderen holder op med at betyde noget i netop den ende " +
+      "af intervallet U23-kalenderen kører i. **Dokumenteret, ikke rettet** — et nyt eller udvidet bånd er en " +
+      "balance-beslutning der hører til U23-generings-sporet, ikke til denne test.",
+    );
+  }
+  if (clamped.floor / clamped.total > 0.05) {
+    const worst = [...clamped.floorByAbility.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+    findings.push(
+      `${fmt1(pct(clamped.floor, clamped.total))} % af alle evne-værdier lander på GULVET (1). ` +
+      `Værst: ${worst.map(([k, n]) => `\`${k}\` ${fmt1(pct(n, rows.length))} % af rytterne`).join(", ")}. ` +
+      "Det er ikke nyt med #5269: `domestique`-tieren fødes omkring evne 9 med spredning 9,8 (spejling af PCM-stien, RIDER_GENERATION.md §8b), " +
+      "så en dæmpet evne rammer gulvet med det samme. Konsekvensen er at to domestiques med forskellige priors kan få samme tal, og forskellen forsvinder ud af spillet. " +
+      "Dokumenteret her, IKKE rettet: en ændring af gulvet flytter hele populationen og er en ejer-beslutning.",
+    );
+  }
   for (const [f, n] of c.missing) findings.push(`\`${f}\` mangler på ${n} af ${rows.length} ryttere.`);
   if (c.missingAbility) findings.push(`${c.missingAbility} evne-værdier er ikke heltal.`);
   if (c.statLeak) findings.push(`${c.statLeak} PCM-stat-felter er sat på own-priors-stien (skal være helt udeladt, D-053).`);
@@ -430,13 +554,15 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
     "",
     "## 2. Fordeling pr. arketype",
     "",
-    "**Anlæg** (`archetype_draw.primary`) er det generatoren TRAK; **type** er det klassifikatoren når frem til efter caps. De to må afvige — anlægget vinder i `resolveRiderTypes`, så afvigelsen er et mål for hvor genkendeligt anlægget er formet.",
+    "**Anlæg** (`archetype_draw.primary`) er det generatoren TRAK. Den ENDELIGE type er pr. konstruktion den samme: `resolveRiderTypes` lader anlægget vinde over klassifikatoren (#3588). Derfor står klassifikatorens UAFHÆNGIGE gæt nedenfor i stedet — det er det eneste tal der måler om anlægget faktisk er FORMET i evnerne.",
     "",
     shareTable(rows, (r) => r.drawPrimary, "Anlæg"),
     "",
-    shareTable(rows, (r) => r.primaryType, "Endelig type"),
-    "",
     shareTable(rows, (r) => r.tier, "Tier"),
+    "",
+    `Klassifikatoren genfinder anlægget hos **${recog.hit} af ${recog.n}** ryttere (${fmt1(recog.pct)} %) ud fra evnerne alene.`,
+    "",
+    recognitionTable(rows),
     "",
     "## 3. Fordeling pr. evne",
     "",
@@ -477,6 +603,8 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
         ["PCM-stat-felter sat (skal være 0)", String(c.statLeak)],
         ["Ryttere uden gyldig fødsels-markør", String(c.missingBirthMarker)],
         ["Evner pr. rytter", `${REGISTRY_ABILITY_KEYS.length} (hele registret)`],
+        ["Evne-værdier på gulvet (1)", `${clamped.floor} af ${clamped.total} (${fmt1(pct(clamped.floor, clamped.total))} %)`],
+        ["Evne-værdier på loftet (99)", `${clamped.ceil} af ${clamped.total} (${fmt1(pct(clamped.ceil, clamped.total))} %)`],
       ],
     ),
     "",
@@ -494,6 +622,15 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
     ),
     "",
     abilityTable(youth),
+    "",
+    "### 8b. Båndet ved U23-aldrene (19-22)",
+    "",
+    `\`YOUTH_BIRTH_BAND\` har et hårdt loft på ${Math.round(YOUTH_BIRTH_BAND.ceil)} evne-point (spejling af akademiets \`statCeil\` 54). Alders-rampen giver ${fmt1(YOUTH_BIRTH_BAND.perYearOver16)} point pr. år over 16 oven på et grundniveau på ${fmt1(YOUTH_BIRTH_BAND.baseAt16)}. Tabellen nedenfor er 200 træk pr. alder (rouleur, potentiale 3) og viser hvor stor en andel af evne-værdierne der rammer loftet:`,
+    "",
+    table(
+      ["Alder", "Min", "Median", "p90", "Max", "På loftet %"],
+      sweep.map((s) => [String(s.age), String(s.min), String(s.median), String(s.p90), String(s.max), fmt1(s.atCeilPct)]),
+    ),
     "",
     "## 9. Fund",
     "",
