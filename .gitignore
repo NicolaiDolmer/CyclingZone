@@ -134,3 +134,10 @@ scripts/discord/.feedback-dump-*.md
 
 # Bolge-screenshots der ikke skal i repoet (30/8-koeen)
 pr-screens/queue/
+
+# Hard rule 17 (#3436): praecise balance-tal hoerer til i en PRIVAT fil, ikke i
+# det offentligt laesbare repo. `balance-internals/` er den mappe reglen navngiver.
+# Genererede fordelings-rapporter (fx `npm run riders:generator-report --prefix
+# backend`, #5283) skrives hertil - de er deterministiske og regenereres med een
+# kommando, saa der er intet handoff der gaar tabt ved ikke at committe dem.
+balance-internals/
