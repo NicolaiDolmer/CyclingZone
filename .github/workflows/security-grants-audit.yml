@@ -31,6 +31,15 @@ name: Security grants audit
 #                                policy (31/5, 29/6, 5/8) og er tavs, fordi den kun
 #                                rammer roller ingen tester i hånden. Sidste bid
 #                                stod uopdaget i ~3 uger.
+#   security-rls-role-smoketest.sql
+#                              — #2671 punkt 2: samme fejlklasse, men bevist ved
+#                                RUNTIME i stedet for tekstanalyse. Kører faktiske
+#                                `SET LOCAL ROLE anon/authenticated; SELECT ...`
+#                                mod hver tabel en funktions-kaldende RLS-policy
+#                                rammer, i en transaktion der altid ROLLBACK'es —
+#                                ingen prod-mutation. Fanger den ægte 42501 selv
+#                                hvis det statiske regex-udtræk ovenfor skulle gå
+#                                i stykker på en uventet policy-formulering.
 #   proposals-reconcile.mjs    — ligger der forslag i database/proposals/ som ER
 #                                anvendt i prod uden at være flyttet til top-niveau?
 #                                Måling 14/8: 6 af 10. En anvendt fil der stadig
@@ -47,6 +56,7 @@ on:
       - 'scripts/proposals-reconcile.mjs'
       - 'scripts/security-grants.sql'
       - 'scripts/security-rls-policy-fn-grants.sql'
+      - 'scripts/security-rls-role-smoketest.sql'
       - '.github/workflows/security-grants-audit.yml'
   schedule:
     - cron: '15 */6 * * *'
@@ -79,6 +89,7 @@ jobs:
           node --test scripts/check-secdef-revoke-lint.test.mjs
           node --test scripts/proposals-reconcile.test.mjs
           node --test scripts/security-rls-policy-fn-grants.test.mjs
+          node --test scripts/security-rls-role-smoketest.test.mjs
           node --test scripts/lint-sql-policy-grants.test.mjs
 
       - name: Lint ændrede SQL-filer
@@ -192,6 +203,30 @@ jobs:
               echo "findings<<POLICYFN_EOF"
               printf '%s\n' "$FINDINGS"
               echo "POLICYFN_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      # Runtime-bekræftelse af RLS-policy-funktions-tjekket ovenfor (#2671
+      # punkt 2): ingen tekstanalyse, faktiske SET LOCAL ROLE anon/authenticated
+      # + SELECT mod hver ramt tabel, i en transaktion der altid ROLLBACK'es.
+      - name: Kør RLS-role-smoketest
+        id: smoketest
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/security-rls-role-smoketest.sql | sed '/^$/d')
+          if [ -z "$FINDINGS" ]; then
+            echo "✅ SET LOCAL role-smoketest: ingen tabel fejler i praksis for anon/authenticated ud over kendte, whitelistede tilstande."
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "⚠️ Fund:"
+            printf '%s\n' "$FINDINGS"
+            echo "has_findings=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "findings<<SMOKETEST_EOF"
+              printf '%s\n' "$FINDINGS"
+              echo "SMOKETEST_EOF"
             } >> "$GITHUB_OUTPUT"
           fi
 
@@ -329,14 +364,54 @@ jobs:
             gh issue create --title "$TITLE" --body-file policy-fn-grants-body.md --label "claude:todo" --label "security"
           fi
 
+      - name: Opret eller opdatér smoketest-issue ved fund
+        if: steps.smoketest.outputs.has_findings == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.smoketest.outputs.findings }}
+        run: |
+          set -euo pipefail
+          TITLE="[policy-fn-grants] RLS-role-smoketest fejler LIVE for anon/authenticated"
+          {
+            echo "\`scripts/security-rls-role-smoketest.sql\` kørte faktiske \`SET LOCAL ROLE anon/authenticated; SELECT ...\` mod hver tabel en funktions-kaldende RLS-policy rammer (i en transaktion der blev ROLLBACK'et, ingen prod-mutation) og fandt mindst ét reelt \`42501 permission denied for function\`."
+            echo ""
+            echo "Dette er runtime-bekræftelsen af den samme fejlklasse som \`scripts/security-rls-policy-fn-grants.sql\` (#2671 punkt 1) dækker statisk. Et fund her uden et tilsvarende fund fra det statiske tjek betyder at regex-udtrækket i punkt 1 overså policyen — begge bør undersøges."
+            echo ""
+            echo '```'
+            printf '%s\n' "$FINDINGS"
+            echo '```'
+            echo ""
+            echo "Format: severity | check | detail"
+            echo ""
+            echo "**CRITICAL / \`rls_smoketest_fn_denied\` + authenticated** = indloggede spillere får FAKTISK 42501 på hele tabellen lige nu. Behandl som nedbrud."
+            echo ""
+            echo "**WARN / \`rls_smoketest_fn_denied\` + anon** = anon fail-closer FAKTISK lige nu, og er ikke en kendt whitelistet tilstand. Enten GRANT EXECUTE, eller whitelist i \`scripts/security-rls-role-smoketest.sql\` MED learning-reference (og hold den i sync med whitelisten i \`security-rls-policy-fn-grants.sql\`)."
+            echo ""
+            echo "**WARN / \`rls_smoketest_whitelist_stale\`** = en whitelistet (tabel, rolle)-kombination fejler ikke længere i praksis. Fjern posten."
+            echo ""
+            echo "Baggrund: #2671 (klassen). Læringer: \`.claude/learnings/2026-05-31-rls-policy-calling-function-needs-role-grant.md\`, \`.claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md\`"
+            echo "Workflow: .github/workflows/security-grants-audit.yml"
+          } > smoketest-body.md
+          EXISTING=$(gh issue list --state open --search "policy-fn-grants in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "${EXISTING:-}" ] && [ "$EXISTING" != "null" ]; then
+            echo "↳ Åbent issue #$EXISTING findes — tilføjer kommentar."
+            gh issue comment "$EXISTING" --body-file smoketest-body.md
+          else
+            echo "↳ Opretter nyt issue."
+            gh issue create --title "$TITLE" --body-file smoketest-body.md --label "claude:todo" --label "security"
+          fi
+
       - name: Fejl ved fund
-        if: steps.check.outputs.has_findings == 'true' || steps.policyfn.outputs.has_findings == 'true' || steps.proposals.outputs.has_findings == 'true'
+        if: steps.check.outputs.has_findings == 'true' || steps.policyfn.outputs.has_findings == 'true' || steps.smoketest.outputs.has_findings == 'true' || steps.proposals.outputs.has_findings == 'true'
         run: |
           if [ "${{ steps.check.outputs.has_findings }}" = "true" ]; then
             echo "::error::Grant-tjekket fandt klient-eksekverbare SECURITY DEFINER-funktioner. Se issue."
           fi
           if [ "${{ steps.policyfn.outputs.has_findings }}" = "true" ]; then
             echo "::error::En RLS-policy kalder en funktion som rollen ikke kan eksekvere. Se issue."
+          fi
+          if [ "${{ steps.smoketest.outputs.has_findings }}" = "true" ]; then
+            echo "::error::RLS-role-smoketest fejlede LIVE for anon/authenticated. Se issue."
           fi
           if [ "${{ steps.proposals.outputs.has_findings }}" = "true" ]; then
             echo "::error::Forslag i database/proposals/ er anvendt i prod uden at være forfremmet. Se issue."
