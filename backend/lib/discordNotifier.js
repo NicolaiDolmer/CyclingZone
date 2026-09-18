@@ -24,6 +24,7 @@ import { computeResultWebhookUrls } from "./resultWebhookRouting.js";
 import { recordDmAttempt } from "./discordDmRateGuard.js";
 import { attemptWebhookDelivery } from "./discordWebhookDelivery.js";
 import { enqueueWebhook, processWebhookOutboxDrain } from "./discordWebhookOutbox.js";
+import { enqueueRaceNotify, processRaceNotifyOutboxDrain } from "./raceNotifyOutbox.js"; // #3624
 import { serializeByUrl } from "./discordWebhookQueue.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -562,6 +563,67 @@ export async function drainDiscordWebhookOutbox({ now = new Date() } = {}) {
       serializeByUrl(webhookUrl, () => attemptWebhookDelivery({ webhookUrl, payload })),
     // Dead-alarm → ops-kanal m. @mention (#2077). enqueueOnFailure:false, ellers
     // kan en fejlende alarm om outbox'en havne i outbox'en.
+    sendWebhookFn: (url, payload) => sendOpsWebhook(url, payload, { enqueueOnFailure: false }),
+    getAlarmWebhookFn: getOpsWebhook,
+    captureExceptionFn: sentryCapture,
+    now,
+  });
+}
+
+/**
+ * Aflever ét loebs-resultat-embed i den udgaaende notify-koe (#3624).
+ *
+ * Kaldes fra afviklingens notify-trin i stedet for sendWebhook, naar
+ * race_notify_outbox_enabled er on. Returnerer `enqueued:false` naar koen ikke
+ * tog imod — kalderen falder saa tilbage til synkron afsendelse, saa flaget ON
+ * aldrig er daarligere end flaget OFF.
+ *
+ * Live-guarden gaelder her som ved sendWebhook: en ikke-prod-backend skal
+ * hverken sende ELLER parkere prod-payloads. Den falder igennem til
+ * sendWebhook, som selv no-op'er — dvs. praecis dagens adfaerd i staging.
+ */
+export async function enqueueRaceResultNotify({ raceId, messageType, webhookUrl, payload, now = new Date() }) {
+  if (!webhookUrl) return { enqueued: false, duplicate: false, missingTable: false };
+  if (liveDiscordBlocked("race-notify-enqueue")) {
+    return { enqueued: false, duplicate: false, missingTable: false };
+  }
+  let safeWebhookUrl;
+  try {
+    safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
+  } catch {
+    // Samme haandtering som sendWebhook: en ugyldig URL er ikke noget koen skal
+    // baere videre. Kalderens fallback rammer sendWebhook, som afviser den igen
+    // og logger det ÉT sted.
+    return { enqueued: false, duplicate: false, missingTable: false };
+  }
+  return enqueueRaceNotify({
+    supabase,
+    raceId,
+    messageType,
+    webhookUrl: safeWebhookUrl,
+    payload,
+    captureExceptionFn: sentryCapture,
+    now,
+  });
+}
+
+/**
+ * Afsender-tikket for notify-koen (#3624) — soester til drainDiscordWebhookOutbox.
+ *
+ * Samme to valg som dér, af samme grunde: deliverFn gaar direkte til
+ * attemptWebhookDelivery (sendWebhook ville laegge en fejlet levering i #3545's
+ * retry-koe OGSAA, og saa ville to koer proeve at levere samme besked), og
+ * serializeByUrl bevares, saa drain-POSTs og live-POSTs mod SAMME webhook aldrig
+ * rammer Discord som en samtidig byge (#2882).
+ */
+export async function drainRaceNotifyOutbox({ now = new Date() } = {}) {
+  if (liveDiscordBlocked("race-notify-outbox-drain")) {
+    return { processed: 0, sent: 0, rescheduled: 0, failed: 0, skipped: 0, purged: 0 };
+  }
+  return processRaceNotifyOutboxDrain({
+    supabase,
+    deliverFn: ({ webhookUrl, payload }) =>
+      serializeByUrl(webhookUrl, () => attemptWebhookDelivery({ webhookUrl, payload })),
     sendWebhookFn: (url, payload) => sendOpsWebhook(url, payload, { enqueueOnFailure: false }),
     getAlarmWebhookFn: getOpsWebhook,
     captureExceptionFn: sentryCapture,

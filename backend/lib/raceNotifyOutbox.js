@@ -320,7 +320,22 @@ export async function processRaceNotifyOutboxDrain({
       continue;
     }
 
-    const result = await deliverFn({ webhookUrl: row.webhook_url, payload: row.payload });
+    // Punkt 4: en Discord-fejl maa aldrig vaelte noget. Efter #3624 kan den ikke
+    // naa afviklingen overhovedet — og den maa heller ikke afbryde RESTEN af
+    // batchen her. Et kast (socket hang up, DNS, en defekt deliverFn) behandles
+    // som en retryable fejl som enhver anden, saa de oevrige loebs beskeder
+    // stadig kommer ud i dette tick.
+    let result;
+    try {
+      result = await deliverFn({ webhookUrl: row.webhook_url, payload: row.payload });
+    } catch (err) {
+      result = {
+        ok: false,
+        status: null,
+        failure: { kind: "retryable", reason: "threw" },
+        error: String(err?.message ?? err),
+      };
+    }
 
     if (result.ok) {
       const { error: sentError } = await supabase

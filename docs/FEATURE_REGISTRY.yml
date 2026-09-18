@@ -81,6 +81,16 @@ features:
     verified: 2026-09-07
     note: Off i prod (#4951).
 
+  - id: race-notify-outbox
+    area: race-engine
+    title_en: Async delivery of race result posts
+    title_da: Asynkron udsendelse af løbsresultat-poster
+    state: dormant
+    ssot: docs/audits/2026-09-18-3624-loebsforsinkelser.md
+    epic: 3624
+    verified: 2026-09-18
+    note: Off i prod (#3624). Nøgle race_notify_outbox_enabled; ejer-only flip sætter flag + state.
+
   - id: form-and-fatigue
     area: race-engine
     title_en: Form and fatigue in scoring

@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-69 poster: live 46 · beta 3 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+70 poster: live 46 · beta 3 · dormant 6 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -18,6 +18,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | v3 scoring components (`race-engine-v3-scoring`) | live | `race_engine_v3_scoring` | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #2353 | 2026-09-06 | 4 score-faktorer i raceSimulator. |
 | Team selection, captain and breakaway (`team-selection-and-roles`) | live | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #1307 | 2026-09-06 | - |
 | Race engine v4 (`race-engine-v4`) | dormant | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #3855 | 2026-09-07 | Off i prod (#4951). |
+| Async delivery of race result posts (`race-notify-outbox`) | dormant | - | [2026-09-18-3624-loebsforsinkelser.md](audits/2026-09-18-3624-loebsforsinkelser.md) | #3624 | 2026-09-18 | Off i prod (#3624). Nøgle race_notify_outbox_enabled; ejer-only flip sætter flag + state. |
 | Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #4632 | 2026-09-07 | UI live; effekt venter v4-flip. |
 
 ## race-day

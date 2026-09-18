@@ -3152,6 +3152,14 @@ export async function simulateStageByIndex({
   // #4147: ENGANGS-trin. Discord-embed + in-app-notifikation SENDER UDAD; en
   // gentagelse er synlig for spillerne. Markeres efter forsøget.
   //
+  // #3624 (LOAD-BEARING — flyt ikke markeringen ind i `fn`): med
+  // race_notify_outbox_enabled på afleverer notifyDiscord beskeden i en udgående
+  // kø i stedet for at sende den. Fordi runFinalizeStep markerer engangs-trin i
+  // sit `finally` — altså EFTER `fn` er løbet færdigt — er kø-rækken committet
+  // før finalize_state siger "notify kørt". Et nedbrud mellem de to skridt
+  // efterlader derfor en umarkeret række, ikke en tavst tabt besked. Det er
+  // punkt 1 i kontrakten i docs/audits/2026-09-18-3624-loebsforsinkelser.md §5.
+  //
   // Sidegevinst ved markeringen: den gamle finalizationPending-recovery sprang
   // notifikationen HELT over (den kunne ikke vide om den var sendt), så et løb der
   // crashede før notify aldrig fortalte nogen at det var kørt. Med markeringen ved vi
