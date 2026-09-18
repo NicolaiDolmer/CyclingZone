@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer 18/9, ét kort ad gangen):** 1) **post** `drafts/discord-patch-notes-2026-09-17.md` (v7.276-7.283 + v7.286 = svaret på rating-tråden) + S4-opslaget → 2) træningsdesign kort 1-4 (`audits/2026-09-17-traeningsdesign-session-brief.html`) → 3) win-back v2 sammen → dry-run → send-go → 4) icebox-batch 2 (ejeren vil BYGGE nogle) → 5) 31 needs-decision + **#5351** (rating-opskrift m. teamwork/leadership ruller ud i SAMME deploy som #5268). **Næste bølge:** bølge 3-5 i `drafts/next-session-prompt-2026-09-17-aften-boelge.md` (bølge 4-5 = go-kort). **Aften 17/9:** 11 PR'er merget, 19 done, `audits/night-wave-2026-09-17.md`. **Åbne PR'er:** #5281 #5264 #5169 #3512 (rør ikke).
+> **🎯 Next action (ejer 18/9):** kør **aftenbølgen 18/9**: `drafts/next-session-prompt-2026-09-18-aften.md` (designet m. ejeren: 2 laner spilleroplevelse = løbsforsinkelser #3624 målt til bunds + mobil-træning designet og bygget i én omgang; 2 laner U23-kæden = U23-filter + #5376 båndforslag; runde 2 = #5383 #5384 #5389 #5391). Ejer-kort undervejs: **træningsdesign kort 1-4** (`audits/2026-09-17-traeningsdesign-session-brief.html`, frigiver #5264+#5281) → mobil-mockup → løbsforsinkelser → U23-bånd. **Hos ejeren:** post `drafts/discord-patch-notes-2026-09-17.md` + `-09-18.md` · fair-play-session 19/9 (#5203 #5282) · klik "Alle handler" + sæt ét flag til beta · PostHog-tjek efter SDK-skift (#5055) · win-back v2 (#2760/#4592) · 31 needs-decision + **#5351**. **Dag 18/9:** 20 PR'er merget, `audits/night-wave-2026-09-18.md`; nye issues #5376 #5382-#5391. **Åbne PR'er:** #5281 #5264 #5169 #3512 (rør ikke).
 
-> **🔴 Rating-hændelsen 17/9 (lukket, regel står):** teamwork/leadership fik vægt i display-opskriften 15/9, og NULL talte som 0 → Mit hold/Scouting 2-4 point lavere end profilen. PR #5352: vægte rullet tilbage, NULL springes over, golden-guard `ratingGolden.5321.json` (opdateres KUN m. ejer-go). **Ejer-regel:** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; nye evner tæller først når de har værdier, i samme deploy som data. Postmortem `.claude/learnings/2026-09-17-rating-null-taeller-som-0.md`.
+> **🔴 Rating-reglen (hændelse 17/9, lukket):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; nye evner tæller først når de har værdier, i samme deploy som data. Golden-guard `ratingGolden.5321.json` opdateres KUN m. ejer-go. Postmortem `.claude/learnings/2026-09-17-rating-null-taeller-som-0.md`.
 
 > **🟡 Loft-designet (ejer 16/9, byg intet før samtalen):** `abilityRoleClass` binær på fortegn → `aggression` (vægt 3) kostede 8,4 point, `teamwork`/`leadership` 1,5-1,8. Langsigtet løsning (vægtet rolleklasse eller gulv). **#5268-point-flyt afventer samtalen, koblet til #5351.**
 
@@ -22,8 +22,8 @@
 - **Trupper (15/9):** `riders.squad` + `backend/lib/squads.js` live; backfill ejer-gated. Alt live 28/9; spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md`.
 - **Forside `/`:** anonym = marketing-sitet; ændring → `node scripts/check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms, ejerens tal ekskl. (#5215).
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
-- **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); commit-guarden skriver markør, pre-commit afviser commit uden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`.
+- **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); commit-guarden skriver markør, pre-commit afviser commit uden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder tages med vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx.
 
-> **▶️ Dagbølge 18/9 genoptaget 14:45 (wave.js, 5 spor):** #5370 #5372 #5373 #5374 + #4582; merget siden: #5366 #5371; patch note #5377. **🤖 Working agent:** Claude Code (Fable, orkestrator) på DOLMERPC, startet 18/9 14:30. Rør ikke bølgens worktrees.
+> **🤖 Working agent:** Ingen aktiv session. (NOW.md-vagten #5093 er live: en PR der rører denne fil skal hedde `docs(now)…`/`docs(close-out)…`.)
 
 _Historik i git-log, issue-tråde + docs/audits/._
