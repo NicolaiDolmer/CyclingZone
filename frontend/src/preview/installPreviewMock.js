@@ -58,8 +58,10 @@ function proxyOutbidRow(id, auctionId, createdAt, { bidderName, riderName, amoun
     id,
     user_id: TEST_USER.id,
     type: "auction_proxy_outbid",
-    title: "Dit autobud blev presset op",
-    message: `${bidderName} forsøgte at overbyde dig på ${riderName}. Dit autobud steg til ${amount} CZ$ for at beholde føringen`,
+    // EN-fallback (player-facing copy er EN-først). Den viste tekst kommer fra
+    // metadata-koderne nedenfor; fallbacken ses kun hvis en kode mangler.
+    title: "Your auto-bid held the lead",
+    message: `${bidderName} tried to outbid you on ${riderName}. Your auto-bid rose to ${amount.toLocaleString("en-US")} CZ$ to stay ahead.`,
     related_id: auctionId,
     is_read: false,
     created_at: createdAt,
@@ -72,16 +74,25 @@ function proxyOutbidRow(id, auctionId, createdAt, { bidderName, riderName, amoun
   };
 }
 
-function outbidRow(id, auctionId, createdAt, { bidderName, riderName }) {
+// Samme form som backend/lib/transferNotifications.js'
+// buildAuctionOutbidNotification: EN-fallback + {titleCode,messageCode}, saa den
+// udfoldede liste er lokaliseret ligesom i prod og ikke viser dansk i et EN-UI.
+function outbidRow(id, auctionId, createdAt, { bidderName, riderName, amount }) {
   return {
     id,
     user_id: TEST_USER.id,
     type: "auction_outbid",
-    title: "Du er blevet overbudt!",
-    message: `${bidderName}'s autobud overbød dig på ${riderName}`,
+    title: "You've been outbid!",
+    message: `${bidderName} bid ${amount.toLocaleString("en-US")} CZ$ on ${riderName}`,
     related_id: auctionId,
     is_read: false,
     created_at: createdAt,
+    metadata: {
+      titleCode: "notif.transfer.auctionOutbid.title",
+      titleParams: {},
+      messageCode: "notif.transfer.bidReceived.message",
+      messageParams: { bidderName, amount, riderName },
+    },
   };
 }
 
@@ -91,8 +102,8 @@ const PREVIEW_AUTOBID_NOTIFICATIONS = [
   proxyOutbidRow("prev-proxy-1-2", "auc-proxy-1", "2026-08-05T10:18:00.000Z", { bidderName: "Solera Continental", riderName: "Théo Journal", amount: 361000 }),
   proxyOutbidRow("prev-proxy-1-1", "auc-proxy-1", "2026-08-05T10:04:00.000Z", { bidderName: "Solera Continental", riderName: "Théo Journal", amount: 340000 }),
   proxyOutbidRow("prev-proxy-2-3", "auc-proxy-2", "2026-08-05T09:55:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven", amount: 214000 }),
-  outbidRow("prev-proxy-2-2", "auc-proxy-2", "2026-08-05T09:40:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven" }),
-  outbidRow("prev-proxy-2-1", "auc-proxy-2", "2026-08-05T09:22:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven" }),
+  outbidRow("prev-proxy-2-2", "auc-proxy-2", "2026-08-05T09:40:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven", amount: 198000 }),
+  outbidRow("prev-proxy-2-1", "auc-proxy-2", "2026-08-05T09:22:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven", amount: 176000 }),
 ];
 
 function jsonResponse(data, status = 200, extraHeaders = {}) {
