@@ -101,11 +101,18 @@ export function isBetaRequestsMissing(error) {
 
 /** Laes spillerens egen tilstand: bool fra users + status fra beta_requests. */
 export async function readBetaAccess(supabase, userId) {
-  const [{ data: user }, { data: request }] = await Promise.all([
+  const [{ data: user }, { data: requestRows }] = await Promise.all([
     supabase.from("users").select("is_beta_tester").eq("id", userId).maybeSingle(),
-    supabase.from("beta_requests").select("status, created_at").eq("user_id", userId).maybeSingle(),
+    // `.limit(1)` og ikke `.maybeSingle()`: user_id er UNIQUE (se
+    // database/2026-09-18-5259-beta-requests.sql), saa de to former svarer det
+    // samme — men maybeSingle-guarden (#4496) kan ikke placere en tabel der
+    // ikke staar i database/schema-snapshot.json endnu, og snapshottet spejler
+    // PROD, hvor migrationen foerst applies efter merge (#2642). At skrive
+    // tabellen ind i snapshottet i forvejen ville vaere at lyve om prod.
+    supabase.from("beta_requests").select("status, created_at").eq("user_id", userId).limit(1),
   ]);
   const isBetaTester = user?.is_beta_tester === true;
+  const request = requestRows?.[0] ?? null;
   const requestStatus = request?.status ?? null;
   return {
     is_beta_tester: isBetaTester,
@@ -202,6 +209,10 @@ export async function decideBetaRequest(supabase, { userId, approved, adminUserI
     const result = await notifyUser({ supabase, userId, ...payload, now });
     notified = result?.delivered === true;
   } catch {
+    // best-effort: beslutningen ER truffet (kontakten er sat, raekken er
+    // markeret). At rulle den tilbage fordi en indbakke-besked fejlede, ville
+    // vaere vaerre end den manglende besked — og admin faar det at vide gennem
+    // `notified: false`, som ruten viser i sin kvittering.
     notified = false;
   }
   return { ok: true, notified, access: await readBetaAccess(supabase, userId) };

@@ -14487,7 +14487,14 @@ router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async
       });
     }
 
-    const previousRaw = await readFlagStage(supabase, key);
+    // Een laesning, to formaal: det forrige stadie til admin_log, og om raekken
+    // overhovedet FINDES. Det sidste afgoer om vi maa skrive `description` —
+    // se upserten nedenfor.
+    const { data: existingRow, error: readError } = await supabase
+      .from("app_config").select("value").eq("key", key).maybeSingle();
+    if (readError) throw readError;
+    const previousRaw = existingRow ? existingRow.value : null;
+
     if (typeof previousRaw === "boolean" && stage === "beta") {
       // Boolean-flag (gammelt skema) har aldrig haft et beta-stadie. At skrive
       // "beta" ville virke — men fladen viser dem read-only som on/off, og en
@@ -14502,12 +14509,19 @@ router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async
       {
         key,
         value: stage,
-        description: `#5259: stadie-flag (off|beta|on) styret fra Admin > System. Område: ${flag.area}.`,
         updated_at: new Date().toISOString(),
         // Kolonnen har stået ubrugt siden 2026-05-16: et flag-skift er den ene
         // app_config-skrivning der har en navngiven ansvarlig, og admin_log
         // alene kan ikke svare "hvem satte den værdi der står der NU".
         updated_by: req.user.id,
+        // `description` skrives KUN når rækken oprettes. De fleste flag-rækker
+        // har en håndskrevet beskrivelse fra deres egen migration ("Flippes til
+        // daily tidligst S3-cutover…"), og en upsert der altid sendte feltet
+        // med, ville overskrive den dokumentation hver eneste gang ejeren
+        // flyttede flaget. PostgREST sætter kun de kolonner der er i payloaden.
+        ...(existingRow ? {} : {
+          description: `#5259: stadie-flag (off|beta|on) styret fra Admin > System. Område: ${flag.area}.`,
+        }),
       },
       { onConflict: "key" },
     );

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { applyNameSearch } from "../../lib/riderNameSearch";
 import { formatCz, getRiderMarketValue } from "../../lib/marketValues";
@@ -148,7 +148,12 @@ export default function AdminUsersTab() {
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
 
-  async function loadData() {
+  // #5259: useCallback frem for en bar funktion. loadData læser nu getAuth, og
+  // dermed begyndte react-hooks/exhaustive-deps at flage mount-effekten. Den
+  // rigtige rettelse er at give effekten en STABIL reference (getAuth er selv
+  // useCallback'et i useAdminAuth), ikke at slå advarslen fra: repoet har en
+  // ratchet på både advarsler OG eslint-disable-direktiver.
+  const loadData = useCallback(async () => {
     // #5259: beta-ansøgningerne læses gennem backenden (service-role), ikke
     // direkte fra tabellen — beta_requests har INGEN admin-skrive-grants til
     // authenticated, og listen skal sammenstilles med users.is_beta_tester.
@@ -170,10 +175,9 @@ export default function AdminUsersTab() {
     setUsers(u.data || []);
     setTeams(t.data || []);
     setBetaPending(b.pending || []);
-  }
+  }, [getAuth]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData er en lokal funktion (ny ref hver render); bevidst engangs-mount-fetch. Blev foerst en advarsel med #5259, hvor loadData begyndte at laese getAuth.
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const { rows: sortedUsers, sort: usersSort, sortDir: usersSortDir, handleSort: handleUsersSort } =
     useTableSort(users, USERS_SORT_ACCESSORS, { initialDir: "asc" });
