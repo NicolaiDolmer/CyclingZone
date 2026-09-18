@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRightIcon } from "../ui/icons/index.jsx";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -69,8 +70,8 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
       setLoading(true);
       try {
         const headers = await getAuth();
-        const res = await fetch(`${API}/api/admin/race-point-model`, { headers });
-        const data = await res.json();
+        const res = await apiFetch(`${API}/api/admin/race-point-model`, { headers });
+        const data = res.data || {}; // #5242: null ved limited/unauthorized/networkError
         if (!res.ok) throw new Error(data.error || "load failed");
         if (cancelled) return;
         setMasters(data.masters || []);
@@ -182,22 +183,22 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
       const headers = await getAuth();
 
       for (const [rt, anchor] of Object.entries(anchorEdits)) {
-        const res = await fetch(`${API}/api/admin/race-point-model/master/${encodeURIComponent(rt)}`, {
+        const res = await apiFetch(`${API}/api/admin/race-point-model/master/${encodeURIComponent(rt)}`, {
           method: "PUT", headers, body: JSON.stringify({ anchor }),
         });
-        if (!res.ok) throw new Error((await res.json()).error || "master PUT failed");
+        if (!res.ok) throw new Error((res.data || {}).error || "master PUT failed");
       }
       for (const [key, factor] of Object.entries(factorEdits)) {
         const [raceClass, rt] = key.split("|");
-        const res = await fetch(
+        const res = await apiFetch(
           `${API}/api/admin/race-point-model/factor/${encodeURIComponent(raceClass)}/${encodeURIComponent(rt)}`,
           { method: "PUT", headers, body: JSON.stringify({ factor }) },
         );
-        if (!res.ok) throw new Error((await res.json()).error || "factor PUT failed");
+        if (!res.ok) throw new Error((res.data || {}).error || "factor PUT failed");
       }
 
-      const genRes = await fetch(`${API}/api/admin/race-point-model/generate`, { method: "POST", headers });
-      const genData = await genRes.json();
+      const genRes = await apiFetch(`${API}/api/admin/race-point-model/generate`, { method: "POST", headers });
+      const genData = genRes.data || {};
       if (!genRes.ok) throw new Error(genData.error || "generate failed");
 
       // Commit edits into local model state + clear dirty.
