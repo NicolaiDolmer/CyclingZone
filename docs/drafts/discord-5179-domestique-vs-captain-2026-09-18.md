@@ -3,11 +3,12 @@
 > **Kanal:** Discord #dansk-snak, tråden fra 12/9 09:23-09:27 UTC. Postes som svar i den eksisterende
 > tråd, ikke et nyt opslag. EN først, DA under, jf. sprogprioritet.
 >
-> **Tal brugt herunder er hentet direkte fra motorens tuning-konstanter**
-> (`backend/lib/engine/v4/tuning.ts`, `TEAM_PLAY_EXTRA_TUNING`, kalibreret 7/9 til v3-paritet, #4914),
-> ikke opfundet. De er de faktiske lofter og priser motoren regner med i dag. Ingen sekunder-/watt-tal
-> er inkluderet, fordi den omregning afhænger af etape og rytterens egen CP, og er ikke målt i denne
-> audit.
+> **Beskrivelserne herunder er kvalitative, ikke eksakte tal fra motorens tuning-konstanter**
+> (hard rule 17 — balance-tal skal ikke stå på GitHub, repoet er offentligt læsbart). De afspejler
+> retningen af det motoren faktisk gør i dag (hvem betaler, hvem får gavn, at der findes et loft),
+> men ikke de præcise lofter/priser/rater — ejeren indsætter selv konkrete tal uden for repoet, hvis
+> han vil give dem til spilleren. Ingen sekunder-/watt-tal er inkluderet, fordi den omregning afhænger
+> af etape og rytterens egen CP, og er ikke målt i denne audit.
 >
 > **Ikke dækket i dette udkast:** en præcis oversættelse af "5-7 point i den primære evne" til en
 > procentdel af CP. Det kræver et opslag i evne-udregningen (`abilityDerivation.js`) som denne audit
@@ -19,14 +20,14 @@
 Good question, and it's a fair one to ask before you build your squad.
 
 Here's what actually happens today. A helper working for you on a mountain stage pays a real price:
-40.5% of his own physical capacity over the whole stage, at normal effort (a bit less on a flat
-stage, for leadout work). That price buys your captain protection, but only part of it gets
-through: 60% of what your helpers spend converts into your captain's benefit. On top of that
-there's a hard ceiling: your captain can never gain more than 21.6% of his own capacity from
-teamwork in a single stage. One working helper already gets you about a quarter of that ceiling.
-Two working helpers reach the full 21.6% ceiling on their own on a mountain stage, so a third or
-fourth domestique in the same group doesn't add anything more to the captain's number, even though
-each of them still pays their own price for being there.
+a substantial share of his own physical capacity over the whole stage, at normal effort (a bit less
+on a flat stage, for leadout work). That price buys your captain protection, but only part of it
+gets through: a helper's effort converts to captain benefit at well under a one-to-one rate. On top
+of that there's a hard ceiling on how much of his own capacity the captain can gain from teamwork in
+a single stage. One working helper already gets you a meaningful chunk of that ceiling. Two working
+helpers reach the full ceiling on their own on a mountain stage, so a third or fourth domestique in
+the same group doesn't add anything more to the captain's number, even though each of them still
+pays their own price for being there.
 
 So your scenario: Team A's captain is strong but isolated after climb 1, Team B's captain is
 slightly weaker but has support until climb 2. The protection only exists while a working teammate
@@ -48,14 +49,14 @@ actually paid for.
 Godt spørgsmål, og et fair et at stille før du bygger din trup.
 
 Her er hvad der faktisk sker i dag. En hjælperytter der arbejder for dig på en bjergetape betaler en
-reel pris: 40,5% af sin egen fysiske kapacitet over hele etapen, ved normal indsats (lidt mindre på
-en flad etape, for leadout-arbejde). Den pris køber din kaptajn beskyttelse, men kun en del af den
-når frem: 60% af det dine hjælpere bruger, bliver til fordel for din kaptajn. Ovenpå det er der et
-hårdt loft: din kaptajn kan aldrig få mere end 21,6% af sin egen kapacitet fra holdarbejde på én
-etape. Én arbejdende hjælper giver dig allerede omkring en fjerdedel af det loft. To arbejdende
-hjælpere når det fulde loft på 21,6% helt af sig selv på en bjergetape, så en tredje eller fjerde
-hjælperytter i samme gruppe lægger ikke mere til kaptajnens tal, selvom hver af dem stadig betaler
-deres egen pris for at være der.
+reel pris: en stor del af sin egen fysiske kapacitet over hele etapen, ved normal indsats (lidt mindre
+på en flad etape, for leadout-arbejde). Den pris køber din kaptajn beskyttelse, men kun en del af den
+når frem: en hjælpers indsats omsættes til kaptajn-fordel med en rate der er langt under én-til-én.
+Ovenpå det er der et hårdt loft på hvor meget af sin egen kapacitet kaptajnen kan få fra holdarbejde
+på én etape. Én arbejdende hjælper giver dig allerede en mærkbar del af det loft. To arbejdende
+hjælpere når det fulde loft helt af sig selv på en bjergetape, så en tredje eller fjerde hjælperytter
+i samme gruppe lægger ikke mere til kaptajnens tal, selvom hver af dem stadig betaler deres egen pris
+for at være der.
 
 Så dit scenarie: hold A's kaptajn er stærk men isoleret efter stigning 1, hold B's kaptajn er lidt
 svagere men har støtte til stigning 2. Beskyttelsen findes kun så længe en arbejdende holdkammerat
