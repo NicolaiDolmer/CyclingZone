@@ -44,7 +44,17 @@ const AI_ASSISTANT_HOSTS = [
 // klik i VORES egne mails, ikke en tredjepartskanal (#3796-kommentar 27/8).
 const OWN_EMAIL_HOSTS = ["com.google.android.gm", "mail.google.com", "outlook.live.com", "outlook.office.com"];
 const REDDIT_HOSTS = ["reddit.com", "com.reddit.frontpage", "redd.it"];
-const SEARCH_HOSTS = ["google.", "bing.com", "duckduckgo.com", "ecosia.org", "yahoo.com", "search.brave.com"];
+const DISCORD_HOSTS = ["discord.com", "discordapp.com"];
+// Google har eet soegedomaene pr. land/marked (~190 ccTLD-varianter, fx
+// google.co.id, google.com.ar) - en opremset liste risikerer altid at mangle
+// en (CodeRabbit-fund paa foerste udgave af denne guard). Domaene-forankret
+// via et moenster i stedet: "google." skal staa lige efter start ELLER en
+// "."-forankret label (subdomaener som sub.google.com er stadig Google), og
+// SLUTTE strengen som enten en 2-3-bogstavs-TLD eller "<2-3 bogstaver>.<2
+// bogstaver>" (google.co.uk-formen) - "$" for enden forhindrer at
+// "google.com.evil.com" eller "google.evil.com" matcher.
+const GOOGLE_SEARCH_PATTERN = /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/;
+const SEARCH_HOSTS = ["bing.com", "duckduckgo.com", "ecosia.org", "yahoo.com", "search.brave.com"];
 
 function parseArgs(argv) {
   const args = {};
@@ -127,6 +137,14 @@ function hostOf(referrer) {
   return host ? host.replace(/^www\d*\./, "") : null;
 }
 
+// Domaene-forankret match: praecis "suffix" eller et subdomaene af det
+// (fx "chat.openai.com" matcher "openai.com"), ALDRIG en substring midt i et
+// andet domaene (fx "evil-discord.example.com" matcher IKKE "discord.com").
+// Samme moenster som Hattrick/self-referral-fixet i #5072 (#5091).
+function hostMatches(probe, suffix) {
+  return probe === suffix || probe.endsWith(`.${suffix}`);
+}
+
 // Kanal-gruppering. Rangorden: eksplicit utm_source foerst (det er VORES egen
 // maerkning), derefter referrer-vaertsnavn. Definitionerne staar i GROWTH_STACK §2.
 export function classifyChannel(row) {
@@ -134,13 +152,13 @@ export function classifyChannel(row) {
   const host = hostOf(row.referrer);
   const probe = source || host || "";
   if (!probe) return "(direct / ukendt)";
-  if (AI_ASSISTANT_HOSTS.some((h) => probe.includes(h))) return "AI assistant";
-  if (OWN_EMAIL_HOSTS.some((h) => probe.includes(h)) || source === "email") return "email (vores egne mails)";
-  if (REDDIT_HOSTS.some((h) => probe.includes(h)) || source === "reddit") return "reddit";
-  if (probe === "hattrick.org" || probe.endsWith(".hattrick.org") || source === "hattrick") return "hattrick";
-  if (probe.includes("discord")) return "discord";
-  if (SEARCH_HOSTS.some((h) => probe.includes(h))) return "soegning (organisk)";
-  if (probe === "cyclingzone.org" || probe.endsWith(".cyclingzone.org") || probe === "cycling-zone.vercel.app" || probe.endsWith(".cycling-zone.vercel.app")) return "self-referral";
+  if (AI_ASSISTANT_HOSTS.some((h) => hostMatches(probe, h))) return "AI assistant";
+  if (OWN_EMAIL_HOSTS.some((h) => hostMatches(probe, h)) || source === "email") return "email (vores egne mails)";
+  if (REDDIT_HOSTS.some((h) => hostMatches(probe, h)) || source === "reddit") return "reddit";
+  if (hostMatches(probe, "hattrick.org") || source === "hattrick") return "hattrick";
+  if (DISCORD_HOSTS.some((h) => hostMatches(probe, h)) || source === "discord") return "discord";
+  if (SEARCH_HOSTS.some((h) => hostMatches(probe, h)) || GOOGLE_SEARCH_PATTERN.test(probe)) return "soegning (organisk)";
+  if (hostMatches(probe, "cyclingzone.org") || hostMatches(probe, "cycling-zone.vercel.app")) return "self-referral";
   return probe;
 }
 

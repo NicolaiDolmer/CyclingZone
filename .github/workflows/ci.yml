@@ -654,6 +654,53 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/ops/retirement-notice-freeze-5073.test.mjs
 
+      # --- guard-inventory-cell escaping (#5092) ---
+      # scripts/guard-inventory-cell.test.mjs fandtes, men koerte ingen steder i
+      # CI-kaeden (ingen test:*-entry, ingen workflow-step) - "usynlig" for hele
+      # verify-kaeden. Ren streng-escaping (backslash foer pipe-delimiter for
+      # generate-guard-inventory.mjs's Markdown-tabel), nul npm-afhaengigheder,
+      # saa den hoerer hjemme her ligesom de oevrige npm-ci-frie guards.
+      - name: Test guard-inventory-cell escaping
+        if: ${{ !cancelled() }}
+        run: node --test scripts/guard-inventory-cell.test.mjs
+
+  ops-script-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #5092: scripts/monday-numbers.test.mjs fandtes, men koerte ingen steder i
+    # CI-kaeden (ingen test:*-entry, ingen workflow-step) - "usynlig" for hele
+    # verify-kaeden. Eget job og ikke en del af static-guards: monday-numbers.mjs
+    # importerer @supabase/supabase-js paa modul-niveau (classifyChannel selv er
+    # ren, men importet koerer alligevel ved load), saa testen kraever root
+    # `npm ci` - static-guards er bevidst UDEN npm ci (se #5073-kommentaren
+    # ovenfor: samme fejlklasse ville give ERR_MODULE_NOT_FOUND der).
+    steps:
+      # Pinnet til fuld commit-SHA (samme v7 som marketing-lint-build/playwright-
+      # smoke.yml bruger) - .coderabbit.yaml kraever pinning af actions for
+      # .github/workflows/**. persist-credentials: false, fordi jobbet koerer
+      # `npm ci` (PR-styrede install-scripts) og ikke har noget senere Git-trin
+      # der behoever tokenet.
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      # #5091: kanal-klassificeringen skal vaere domaene-forankret (samme
+      # moenster som Hattrick/self-referral-fixet i #5072), ellers klassificerer
+      # et lookalike-domaene (fx evil-discord.example.com) sig som en aegte kanal.
+      - name: Test monday-numbers channel classification
+        run: node --test scripts/monday-numbers.test.mjs
+
   migration-idempotency:
     runs-on: ubuntu-latest
     permissions:
