@@ -478,6 +478,15 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // Udløb: genvurdér ved næste telemetri-gennemgang, og fjern entryen så snart
   // eventet får impressions — forward-guarden nedenfor flager den selv dér.
   "feature_board_consequences_panel_viewed",
+  // academy_intake_pull (#5369): kom med i KNOWN_EVENTS 18/9 sammen med de 15
+  // andre canary-blinde events. De 15 flyder (8 til 3.502 impressions i
+  // 30-dages-vinduet, målt mod prod 18/9); denne står på 0 fordi featuren er
+  // dormant: POST /academy/intake/pull er gated af flaget
+  // academy_intake_pull_enabled (FEATURE_REGISTRY.yml, state: dormant), så
+  // knappen findes ikke for spillerne og eventet KAN ikke fyre.
+  // Udløb: fjern entryen når flaget flippes — forward-guarden flager den selv
+  // ved første impression.
+  "academy_intake_pull",
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
@@ -940,17 +949,20 @@ async function detectorD() {
 // Detector E — zero-impression-features
 // ---------------------------------------------------------------------------
 
-async function listKnownEvents() {
-  // Parse KNOWN_EVENTS-arrayet ud af logEvent.js — undgår at duplikere listen.
-  // Mønster: export const KNOWN_EVENTS = Object.freeze([ ... ]) — eller bare
-  // [ ... ] hvis Object.freeze fjernes senere.
-  let text;
-  try {
-    text = await readFile(LOG_EVENT_FILE, "utf8");
-  } catch {
-    return [];
-  }
-  const match = text.match(/KNOWN_EVENTS\s*=\s*Object\.freeze\s*\(\s*\[([\s\S]*?)\]\s*\)|KNOWN_EVENTS\s*=\s*\[([\s\S]*?)\]/);
+// Ren parser for KNOWN_EVENTS-arrayet i logEvent.js — undgår at duplikere listen.
+// Mønster: export const KNOWN_EVENTS = Object.freeze([ ... ]) — eller bare
+// [ ... ] hvis Object.freeze fjernes senere.
+//
+// Kommentarer strippes FØR navnene læses (#5369). Blokken er tæt kommenteret, og
+// kommentaren ved app_version_reload citerer sine outcome-værdier: `outcome`,
+// "arrived", "no_effect" og "deferred" blev læst som events, og den ugentlige
+// cron stod rød fra 14/9 på fire fund der alle var ord fra en kommentar.
+// Event-navne er [a-z0-9_], så en `//` kan aldrig stå inde i et navn.
+// scripts/check-event-catalog.mjs læser samme blok og stripper på samme måde;
+// ændres formen her, skal den ændres der.
+export function parseKnownEvents(text) {
+  const code = text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const match = code.match(/KNOWN_EVENTS\s*=\s*Object\.freeze\s*\(\s*\[([\s\S]*?)\]\s*\)|KNOWN_EVENTS\s*=\s*\[([\s\S]*?)\]/);
   if (!match) return [];
   const body = match[1] || match[2] || "";
   const events = [];
@@ -958,6 +970,16 @@ async function listKnownEvents() {
   let m;
   while ((m = re.exec(body)) !== null) events.push(m[1]);
   return events;
+}
+
+async function listKnownEvents() {
+  let text;
+  try {
+    text = await readFile(LOG_EVENT_FILE, "utf8");
+  } catch {
+    return [];
+  }
+  return parseKnownEvents(text);
 }
 
 async function fetchEventCounts() {

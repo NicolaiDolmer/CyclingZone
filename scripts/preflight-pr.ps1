@@ -167,6 +167,16 @@ try {
   node scripts/check-required-ci-jobs.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "required-ci-jobs-guard" }
 
+  # #5369: guarden fandtes fra #5048, men blev ikke koert noget sted og stod roed
+  # paa en ren main uden at nogen saa det. CI koerer den i frontend-build
+  # (required); her fanges et nyt logEvent("...") uden raekke i
+  # ANALYTICS_STACK.md §3 eller uden navn i KNOWN_EVENTS foer push.
+  Write-Host "== event-catalog-guard (player_events-navne i KNOWN_EVENTS + ANALYTICS_STACK §3, #5369) ==" -ForegroundColor Cyan
+  node --test scripts/check-event-catalog.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "event-catalog-guard (selvtest)" }
+  node scripts/check-event-catalog.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "event-catalog-guard" }
+
   Write-Host "== frontend eslint ==" -ForegroundColor Cyan
   Push-Location (Join-Path $root "frontend")
   npm run lint

@@ -28,6 +28,8 @@
     "check:i18n-terrain": "node scripts/i18n-check-terrain-coverage.mjs",
     "check:i18n-error-codes": "node scripts/i18n-check-error-codes.mjs",
     "check:frontend-env": "node scripts/check-frontend-env-keys.mjs",
+    "check:event-catalog": "node scripts/check-event-catalog.mjs",
+    "test:event-catalog": "node --test scripts/check-event-catalog.test.mjs",
     "test:i18n-leaks": "node --test scripts/i18n-check-leaks.test.mjs",
     "test:i18n-terrain": "node --test scripts/i18n-check-terrain-coverage.test.mjs",
     "test:i18n-error-codes": "node --test scripts/i18n-check-error-codes.test.mjs",

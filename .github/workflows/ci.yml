@@ -82,6 +82,22 @@ jobs:
         working-directory: .
         run: node scripts/check-patch-notes-version.js
 
+      # #5369: event-katalog-guarden (#5048) laa i repoet uden at blive koert
+      # noget sted, og stod roed paa en ren main i ugevis uden at nogen saa det:
+      # tre events manglede i ANALYTICS_STACK.md §3, og parseren laeste citerede
+      # ord i kommentarer som events. Den bor HER og ikke i et advisory job, fordi
+      # frontend-build ER et required check - samme begrundelse som
+      # required-ci-jobs-guarden i migration-idempotency (#4330): et ikke-required
+      # job gaar roedt OG merger alligevel. Ren fil-laesning, ingen dependencies,
+      # saa den koerer foer `npm ci` og fejler hurtigt.
+      - name: Test event-catalog guard
+        working-directory: .
+        run: node --test scripts/check-event-catalog.test.mjs
+
+      - name: Run event-catalog guard
+        working-directory: .
+        run: node scripts/check-event-catalog.mjs
+
       - name: Install frontend dependencies
         run: npm ci
 
