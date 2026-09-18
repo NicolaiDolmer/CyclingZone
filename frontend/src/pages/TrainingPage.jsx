@@ -307,7 +307,9 @@ function RosterMobileSortControl({ sort, sortDir, onSort, t }) {
         disabled={!sort}
         aria-label={dirAria}
         title={dirAria}
-        className="flex-shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border
+        // #3643: min-h-11 — knappen stod i 32px og var det eneste tryk-mål på
+        // mobil-fladen under #1602's 44px-krav.
+        className="flex-shrink-0 flex min-h-11 items-center justify-center px-3 rounded-cz border border-cz-border
           bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors disabled:opacity-40"
       >
         {sortDir === "desc"
@@ -1484,22 +1486,6 @@ export default function TrainingPage() {
             onEditProgram={() => setTab("weekplan")}
             onOpenDay={(riderId) => setFocusPanelRiderId(riderId)}
             dayBusyFor={(riderId) => savingId === riderId || bulkApplying}
-            primarySlot={
-              // Sidens ENE gold primary. På telefonen står den i fuld bredde
-              // over fanerne i stedet for i sidehovedets actions-slot (som er
-              // for smalt til et 44px tryk-mål) — samme handler, samme gates.
-              <span data-tour="training-run-today" className="block">
-                <Button
-                  type="button"
-                  variant={assistantPanelOpen ? "secondary" : "primary"}
-                  onClick={handleRunToday}
-                  disabled={!enabled || !!todayRun || running}
-                  className="w-full"
-                >
-                  {running ? t("loading") : t("trainToday")}
-                </Button>
-              </span>
-            }
             yesterdaySlot={
               yesterday ? (
                 <CollapsibleSection
@@ -1642,6 +1628,27 @@ export default function TrainingPage() {
           )
         }
       />
+
+      {/* #3643 (mockup 2): på telefonen står sidens ENE gold primary i fuld
+          bredde MELLEM sidehovedet og fanerne — samme plads som mockuppen, og
+          samme knap på alle fire faner (præcis som desktop, hvor den bor i
+          sidehovedets actions-slot der er for smalt til et 44px tryk-mål). */}
+      {isMobile && (
+        <span data-tour="training-run-today" className="mb-3 block">
+          <Button
+            type="button"
+            variant={assistantPanelOpen ? "secondary" : "primary"}
+            onClick={handleRunToday}
+            disabled={!enabled || !!todayRun || running}
+            // min-h-11 = #1602's 44px tryk-mål. Button's egen sm/md-højde er
+            // 42px, og sidens ENE primary må ikke være den der underskrider
+            // kravet på den skærm der har mindst plads.
+            className="w-full min-h-11"
+          >
+            {running ? t("loading") : t("trainToday")}
+          </Button>
+        </span>
+      )}
 
       {/* #3721: 3 faner (Train today / Development / History), ?tab=-
           synkroniseret. Én gold primary-knap pr. view (#trainToday i headeren)

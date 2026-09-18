@@ -60,7 +60,6 @@ export default function TrainingMobileToday({
   onEditProgram,
   onOpenDay,
   dayBusyFor,
-  primarySlot,
   yesterdaySlot,
   assistantSlot,
   sortSlot,
@@ -84,9 +83,6 @@ export default function TrainingMobileToday({
   onEditProgram: () => void;
   onOpenDay: (riderId: string) => void;
   dayBusyFor: (riderId: string) => boolean;
-  // Sidens ENE gold primary ("Koer dagens traening"), sendt ind saa knappen
-  // bliver ved med at vaere den samme handler som paa desktop.
-  primarySlot?: React.ReactNode;
   yesterdaySlot?: React.ReactNode;
   assistantSlot?: React.ReactNode;
   sortSlot?: React.ReactNode;
@@ -143,9 +139,7 @@ export default function TrainingMobileToday({
   const selected = riders.find((rider) => rider.id === selectedRiderId) ?? null;
 
   return (
-    <div className="space-y-3">
-      {primarySlot}
-
+    <div className="space-y-3" data-testid="training-mobile-today">
       <TrainingRaceDayStrip columns={columns} splitFor={splitFor} />
 
       <TrainingProgramGrid weekdays={weekdays} rows={programRows} onEdit={onEditProgram} />

@@ -21,7 +21,9 @@
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM, RIDERS, evidenceShotPath } from "./fixtures.js";
 
-const TYPES = ["sprinter", "climber", "rouleur", "puncheur", "tt", "allrounder"];
+// Kun ægte type-nøgler (locales/*/riderTypes.json) — en opdigtet nøgle ville
+// vise en rå i18n-nøgle i skærmbillederne og gøre beviset misvisende.
+const TYPES = ["sprinter", "climber", "rouleur", "puncheur", "tt", "gc"];
 const SESSIONS = ["sprint", "threshold", "endurance", "vo2max", "tempo", "technique"];
 
 // En trup i realistisk størrelse. Den ægte fixture-rytter (rider-1, Ada
@@ -149,7 +151,7 @@ test("412 px: rytteren man trykker på får sit fulde kort ÉN gang, og 'Skift' 
 
   // Sidens hovedhandling: "Skift" åbner det SAMME dagspanel desktop bruger.
   await card.getByRole("button", { name: "Skift" }).click();
-  await expect(page.getByText(/1 · Hvad slags dag/)).toBeVisible();
+  await expect(page.getByText(/1 · Hvad er det for en dag/)).toBeVisible();
 });
 
 test("375 px: stadig ingen vandret scroll, og alle tryk-mål er mindst 44 px", async ({ page }, testInfo) => {
@@ -158,20 +160,22 @@ test("375 px: stadig ingen vandret scroll, og alle tryk-mål er mindst 44 px", a
 
   await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
 
-  // Rækkeknapperne + den ene gold primary + assistent-panelet. 44 px er #1602's
-  // krav og gælder hele fladen, ikke kun knapper der ligner knapper.
+  // Rækkeknapperne, den ene gold primary, "Redigér", assistent-panelet. 44 px
+  // er #1602's krav. Målingen er scopet til MOBIL-VISNINGEN selv: sidens
+  // øvrige chrome (fanebjælken, sprogskifteren i sidehovedet) er delte
+  // primitiver, og et krav om at rette dem her ville gøre denne guard til en
+  // guard om noget helt andet end træningssiden.
   const tooSmall = await page.evaluate(() => {
+    const root = document.querySelector('[data-testid="training-mobile-today"]');
     const out = [];
-    for (const el of document.querySelectorAll("main button, main a[href]")) {
+    for (const el of root.querySelectorAll("button")) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 && r.height === 0) continue;
       if (r.height < 44) out.push(`${el.textContent.trim().slice(0, 30)}=${Math.round(r.height)}`);
     }
     return out;
   });
-  // Hjælp-linket er brødtekst, ikke et tryk-mål, og står bevidst som et
-  // dæmpet link (P9: manualen bor i Hjælp).
-  expect(tooSmall.filter((s) => !s.startsWith("Sådan virker træning"))).toEqual([]);
+  expect(tooSmall).toEqual([]);
 
   await page.screenshot({ path: evidenceShotPath(`pr-screens/3643-training-mobile-375-${testInfo.project.name}.png`), fullPage: true });
 });

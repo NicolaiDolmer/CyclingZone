@@ -69,6 +69,16 @@ test("countsForRole er tom uden rolle eller uden opskrift", () => {
   assert.deepEqual(countsForRole([{ key: "sprinter", weights: { sprint: 4 } }], "climber", {}, []), []);
 });
 
+test("en evne paa loftet kommer altid med, ogsaa uden for limit", () => {
+  const recipes = [{ key: "sprinter", weights: { sprint: 4, acceleration: 3, positioning: 2, flat: 2, durability: 1 } }];
+  const rows = countsForRole(recipes, "sprinter", { sprint: 71, durability: 44 }, ["durability"], 3);
+  assert.deepEqual(rows.map((r) => r.ability), ["sprint", "acceleration", "positioning", "durability"]);
+  assert.equal(rows[rows.length - 1].atCap, true);
+  // Ingen dubletter naar den laaste evne allerede laa inden for limit.
+  const inside = countsForRole(recipes, "sprinter", {}, ["sprint"], 3);
+  assert.deepEqual(inside.map((r) => r.ability), ["sprint", "acceleration", "positioning"]);
+});
+
 test("countsForRole giver null-vaerdi naar evnen mangler paa raekken", () => {
   const rows = countsForRole([{ key: "tt", weights: { time_trial: 5 } }], "tt", {}, []);
   assert.equal(rows[0].value, null);

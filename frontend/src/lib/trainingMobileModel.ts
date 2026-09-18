@@ -121,17 +121,27 @@ export function countsForRole(
   const recipe = (recipes ?? []).find((r) => r?.key === roleKey);
   if (!recipe?.weights) return [];
   const lockedSet = new Set(Array.isArray(capped) ? capped : []);
-  return Object.entries(recipe.weights)
+  const ordered = Object.entries(recipe.weights)
     .sort((a, b) => Number(b[1]) - Number(a[1]))
-    .slice(0, Math.max(0, limit))
-    .map(([ability]) => {
-      const raw = Number(abilities?.[ability]);
-      return {
-        ability,
-        value: Number.isFinite(raw) ? raw : null,
-        atCap: lockedSet.has(ability),
-      };
-    });
+    .map(([ability]) => ability);
+
+  // Loftet er BINDENDE indhold (#3643, ejer 13/8: "loft-tilstand som chip i
+  // evnelisten"). En evne paa loftet er praecis den der IKKE rykker sig, saa den
+  // maa aldrig falde ud af listen bare fordi den vejer lidt i rollens opskrift —
+  // det var forvekslingen i #3649. Den tages med ud over `limit`.
+  const shown = ordered.slice(0, Math.max(0, limit));
+  for (const ability of ordered) {
+    if (lockedSet.has(ability) && !shown.includes(ability)) shown.push(ability);
+  }
+
+  return shown.map((ability) => {
+    const raw = Number(abilities?.[ability]);
+    return {
+      ability,
+      value: Number.isFinite(raw) ? raw : null,
+      atCap: lockedSet.has(ability),
+    };
+  });
 }
 
 // ── Tempo som HASTIGHED, aldrig som ankomsttid ──────────────────────────────
