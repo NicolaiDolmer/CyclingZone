@@ -402,7 +402,11 @@ export function formatPromiseCheckSection(items, masterplanText, hasSupabaseEnv)
   } else {
     lines.push(`${missing.length} loefte(r) uden fundet plan-henvisning:`);
     for (const { item } of missing) {
-      lines.push(`- \`#${item.id}\` ${item.title_en || item.title_da || '(uden titel)'}`);
+      // BEVIDST ikke `#N` her: item.id er roadmap_items' egen PK, ikke et
+      // GitHub-issuenummer - `#N`-notation ville GitHub-auto-linke forkert
+      // hvis teksten nogensinde limes ind i en kommentar (samme klasse fejl
+      // som priority-hygiene.mjs's sanitizeTitle-GOTCHA laengere oppe).
+      lines.push(`- roadmap_items.id=${item.id}: ${item.title_en || item.title_da || '(uden titel)'}`);
     }
   }
   return lines.join('\n');
