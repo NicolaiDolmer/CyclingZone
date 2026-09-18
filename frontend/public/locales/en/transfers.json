@@ -10,12 +10,49 @@
     "received": "Received offers",
     "sent": "Sent offers",
     "archive": "History ({count})",
-    "market": "Market ({count})"
+    "market": "Market ({count})",
+    "trades": "All trades"
   },
   "modes": {
     "handle": "To handle",
     "negotiations": "Negotiations",
-    "market": "Market"
+    "market": "Market",
+    "trades": "All trades"
+  },
+  "tradeList": {
+    "tableLabel": "Every rider move in the game, newest first",
+    "loadingAria": "Loading trades",
+    "loadError": "I could not load the trade list.",
+    "errorTitle": "The trade list did not load",
+    "errorBody": "Nothing is lost. Try again in a moment.",
+    "retry": "Try again",
+    "count": "{count, plural, one {# trade shown} other {# trades shown}}",
+    "loadMore": "Show more",
+    "loadingMore": "Loading",
+    "depthCapNote": "This is as far back as the list goes. Use the filters to find older moves.",
+    "emptyTitle": "Sign your first rider",
+    "emptyBody": "No rider has changed hands yet. The market is where the first ones will.",
+    "emptyAction": "Browse the market",
+    "emptyFilteredTitle": "Widen the search",
+    "emptyFilteredBody": "No moves match these filters.",
+    "reportAria": "Report this trade for review",
+    "header": {
+      "rider": "Rider",
+      "type": "Type",
+      "date": "Date",
+      "move": "From, to",
+      "amount": "Fee",
+      "report": "Review"
+    },
+    "filter": {
+      "typeLabel": "Filter by type",
+      "typeAll": "All types",
+      "divisionLabel": "Filter by division",
+      "divisionAll": "All divisions",
+      "divisionOption": "Division {n}",
+      "mineOnly": "My team only",
+      "reset": "Clear filters"
+    }
   },
   "status": {
     "pending": "Awaiting response",

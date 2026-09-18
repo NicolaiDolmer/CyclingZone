@@ -25,6 +25,7 @@ import { previewBulkPriceAdjust } from "../lib/bulkPriceAdjust.js";
 import { parseAmountInput, parseAdjustmentValue } from "../lib/amountInput.js";
 import { cycleSortState } from "../lib/riderSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
+import TradeListPage from "./TradeListPage.jsx"; // #5257: "Alle handler"-fanens krop
 import {
   AmountInput, EmptyState, ExchangeIcon, InboxIcon, PageLoader,
   PageHeader, Section, Button, Select, Tabs, TabList, Tab, BlockedNote,
@@ -93,7 +94,10 @@ const API = import.meta.env.VITE_API_URL;
 // (SwapOfferButton, RiderStatsPage.jsx). Eksisterende åbne swap-tilbud er stadig
 // synlige/besvarlige, blot flyttet ind i "received"/"sent" (se render nedenfor).
 // #1994: loans-fanen fjernet — udlåns-featuren er afviklet.
-const VALID_TABS = ["received", "sent", "archive", "market"];
+// #5257: "trades" er den globale handelsliste (alle rytterskifter i spillet,
+// nyeste øverst). Den er en REN læse-fane — den deler intet dataflow med de
+// fire handels-faner, som alle handler om MINE egne tilbud.
+const VALID_TABS = ["received", "sent", "archive", "market", "trades"];
 const DEFAULT_TAB = "received";
 
 // #58: de 6 sideordnede faner er grupperet i 3 handlingsorienterede modes, så en
@@ -105,6 +109,9 @@ const TAB_MODES = [
   { key: "handle",       tabs: ["received"] },
   { key: "negotiations", tabs: ["sent", "archive"] },
   { key: "market",       tabs: ["market"] },
+  // #5257 — "Alle handler": overblikket over hele spillets handelsaktivitet.
+  // Ligger sidst, fordi den er til at ORIENTERE sig i, ikke til at handle i.
+  { key: "trades",       tabs: ["trades"] },
 ];
 
 // #4628 — mobil-sortering for markeds-tabellen. Paa mobil er de fleste sorterbare
@@ -1540,6 +1547,9 @@ export default function TransfersPage() {
     sent:     { label: t("tabs.sent"),     badge: pendingSent },
     archive:  { label: t("tabs.archive",  { count: archivedCount }) },
     market:   { label: t("tabs.market",   { count: listings.length }) },
+    // #5257: ingen tæller — antallet af handler i hele spillet er ikke et tal
+    // manageren skal handle på, og det ville kræve en ekstra count-query.
+    trades:   { label: t("tabs.trades") },
   };
   // #58: aktivt mode udledes af den aktive fane (som stadig lever i ?tab=). Klik på
   // et mode åbner modets FØRSTE fane; er man allerede i modet bevares underfanen.
@@ -1736,6 +1746,13 @@ export default function TransfersPage() {
         <PageLoader />
       ) : (
         <div>
+          {/* #5257 — Alle handler: hele spillets handelsaktivitet, nyeste øverst.
+              Egen fil (TradeListPage.jsx) med eget dataflow; den får kun sit eget
+              hold-id (til "kun mit hold"-filtret) og en vej tilbage til markedet
+              fra sin tomme tilstand. */}
+          {tab === "trades" && (
+            <TradeListPage myTeamId={myTeamId} onBrowseMarket={() => selectMode("market")} />
+          )}
           {tab === "received" && (
             // #2849 bølge 2: kort-baserede faner beholder en læsbar kolonne (T1-
             // bredde) INDE i den konstante T2-container — bredden er nu FAST

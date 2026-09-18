@@ -10,12 +10,49 @@
     "received": "Modtagne tilbud",
     "sent": "Sendte tilbud",
     "archive": "Historik ({count})",
-    "market": "Marked ({count})"
+    "market": "Marked ({count})",
+    "trades": "Alle handler"
   },
   "modes": {
     "handle": "Skal handles",
     "negotiations": "Forhandlinger",
-    "market": "Marked"
+    "market": "Marked",
+    "trades": "Alle handler"
+  },
+  "tradeList": {
+    "tableLabel": "Alle rytterskifter i spillet, nyeste øverst",
+    "loadingAria": "Indlæser handler",
+    "loadError": "Jeg kunne ikke hente handelslisten.",
+    "errorTitle": "Handelslisten blev ikke hentet",
+    "errorBody": "Intet er gået tabt. Prøv igen om lidt.",
+    "retry": "Prøv igen",
+    "count": "{count, plural, one {# handel vist} other {# handler vist}}",
+    "loadMore": "Vis flere",
+    "loadingMore": "Henter",
+    "depthCapNote": "Listen går ikke længere tilbage. Brug filtrene til at finde ældre skifter.",
+    "emptyTitle": "Skriv din første rytter under",
+    "emptyBody": "Ingen rytter har skiftet hold endnu. Det starter på markedet.",
+    "emptyAction": "Se markedet",
+    "emptyFilteredTitle": "Udvid søgningen",
+    "emptyFilteredBody": "Ingen skifter matcher de filtre.",
+    "reportAria": "Rapportér denne handel til gennemsyn",
+    "header": {
+      "rider": "Rytter",
+      "type": "Type",
+      "date": "Dato",
+      "move": "Fra, til",
+      "amount": "Beløb",
+      "report": "Gennemsyn"
+    },
+    "filter": {
+      "typeLabel": "Filtrér på type",
+      "typeAll": "Alle typer",
+      "divisionLabel": "Filtrér på division",
+      "divisionAll": "Alle divisioner",
+      "divisionOption": "Division {n}",
+      "mineOnly": "Kun mit hold",
+      "reset": "Ryd filtre"
+    }
   },
   "status": {
     "pending": "Afventer svar",
