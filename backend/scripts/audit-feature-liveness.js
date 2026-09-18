@@ -95,6 +95,17 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // beta_requests (#5259, migration 2026-09-18-5259-beta-requests.sql): tabellen
+  // fyldes af spillernes egne ansøgninger fra profilen. Den er tom i det sekund
+  // migrationen kører, og uden denne entry ville Detector A gøre `audit` rød på
+  // ALLE PR'er indtil den første spiller ansøger — præcis den fejlklasse
+  // .claude/learnings/2026-09-15-liveness-audit-flag-gated-tabel-roed-paa-alle-prs.md
+  // beskriver. Den er BEVIDST ikke i FLAG_GATED_EMPTY_TABLES: ansøgningsfladen
+  // er ikke flag-gated, den er live for alle så snart PR'en er ude, så der er
+  // ingen app_config-nøgle der kan bære "tom er forventet".
+  // Fjern entryen når tabellen har sin første række (skrive-stien er dækket af
+  // backend/lib/betaAccess.test.js indtil da).
+  "beta_requests",
   // race_stage_timelines-suppressionen fjernet 18/8 ~11:10: første etape efter
   // flag-ON skrev sin tidslinje (1 row, 9 events, timeline_version 1 — #2410 S1
   // bevist end-to-end). Detector A dækker tabellen normalt igen.

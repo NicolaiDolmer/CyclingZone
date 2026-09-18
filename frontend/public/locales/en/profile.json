@@ -165,5 +165,22 @@
     "toggleHintGeneric": "On: Planning is marked when a race starts soon without a full squad, and turns red if your team would not start. Off: nothing is marked, and the deadline still applies.",
     "on": "Deadline reminders are on.",
     "off": "Deadline reminders are off."
+  },
+  "beta": {
+    "title": "Beta group",
+    "badge": "Beta tester",
+    "subtitle": "See features while I am still building them.",
+    "memberBody": "You are in. Features still in testing show up for you first, and some of them will break. Tell me when they do.",
+    "noneBody": "I open new features to a small group first, so I can read every reply. Ask to join and I will answer it myself.",
+    "pendingBody": "Your request is with me. I answer them by hand, so give it a day or two.",
+    "rejectedBody": "Not this round. I keep the group small, and you are welcome to ask again.",
+    "whereToReport": "Report what feels wrong in Discord, or through the feedback form.",
+    "requestButton": "Ask to join",
+    "cancelButton": "Withdraw request",
+    "leaveButton": "Leave the beta group",
+    "requested": "Request sent.",
+    "cancelled": "Request withdrawn.",
+    "left": "You have left the beta group.",
+    "unavailable": "Beta sign-up is not available right now. Try again shortly."
   }
 }

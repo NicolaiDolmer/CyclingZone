@@ -46,6 +46,11 @@ const MIGRATION_ADMIN_ACTION_TYPES = new Set([
   "team_unfrozen",
   "race_point_model_edited",
   "race_points_regenerated",
+  // #5259 (2026-09-18): beta-adgangens to admin-handlinger. Spejler
+  // database/2026-09-18-5259-admin-log-beta-actions.sql, som udvider
+  // admin_log_action_type_check med praecis disse to vaerdier.
+  "beta_tester_changed",
+  "feature_flag_changed",
 ]);
 
 const MIGRATION_ACTOR_TYPES = new Set(["cron", "api", "admin", "system", "migration"]);

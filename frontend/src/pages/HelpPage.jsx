@@ -612,6 +612,7 @@ const FAQ_KEYS = [
   "forumPollsFaq",
   "forumReportFaq",
   "forumUnreadFaq", // #4118/#3451
+  "betaGroupFaq", // #5259
 ];
 
 function buildSections(t, vars) {

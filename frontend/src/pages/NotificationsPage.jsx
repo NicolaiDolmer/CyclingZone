@@ -125,6 +125,12 @@ const TYPE_CONFIG = {
   // isExternalNotificationLink-gren i klik-handleren nedenfor.
   discord_welcome:           { Icon: UserIcon,         color: "text-cz-discord", bg: "bg-cz-discord/10 border-cz-discord/20", link: DISCORD_INVITE_URL },
 
+  // #5259: svaret paa en beta-ansoegning. Linket gaar til profilen — det er
+  // DER beta-kortet staar, og der spilleren kan traede ud igen eller spoerge
+  // en gang til efter et afslag. Uden entry'en ville beskeden falde til
+  // DEFAULT_TYPE_CONFIG og give et doedt klik (#4501).
+  beta_access_decided:       { Icon: UserIcon,         color: "text-cz-info",    bg: "bg-cz-info/10 border-cz-info/20",         link: "/profile" },
+
   // #4501: de 19 typer nedenfor fandtes i backendens NOTIFICATION_TYPES, men
   // manglede en TYPE_CONFIG-entry og faldt derfor til DEFAULT_TYPE_CONFIG:
   // generisk klokke, neutral baggrund og INTET link. Kortet beholdt sin

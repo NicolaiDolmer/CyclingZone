@@ -1792,6 +1792,10 @@
     "forumUnreadFaq": {
       "q": "What does the dot next to a forum thread mean?",
       "a": "A thread is marked unread until you open it, based on its most recent post or reply, not when it was created. The same gold dot shows up next to \"Forum\" in the menu whenever any thread has unread activity. If someone replies to a thread you started, you also get a notification in your inbox; replying to your own thread never notifies you."
+    },
+    "betaGroupFaq": {
+      "q": "What is the beta group, and how do I join?",
+      "a": "I open most new features to a small group first, so I can read every reply before everyone gets them. A beta tester sees those features early, and some of them will change or break along the way. Ask to join under Profile, Beta group: I answer each request by hand and you get a message in your inbox either way. Tell me what feels wrong in Discord or through the feedback form. You can leave the group again from the same place, and you keep everything that has already gone live for everyone."
     }
   },
   "knownIssues": {
