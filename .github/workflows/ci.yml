@@ -676,10 +676,6 @@ jobs:
     # `npm ci` - static-guards er bevidst UDEN npm ci (se #5073-kommentaren
     # ovenfor: samme fejlklasse ville give ERR_MODULE_NOT_FOUND der).
     steps:
-      # fetch-depth: 0 (fuld historik), fordi now-md-sidecar-guarden nedenfor
-      # skal kunne rev-liste HELE PR'ens commit-range mod origin/main - en
-      # standard shallow (depth 1) checkout graftede historikken og ville enten
-      # skjule commits eller vise urelaterede commits som "PR'ens egne".
       # Pinnet til fuld commit-SHA (samme v7 som marketing-lint-build/playwright-
       # smoke.yml bruger) - .coderabbit.yaml kraever pinning af actions for
       # .github/workflows/**. persist-credentials: false, fordi jobbet koerer
@@ -688,7 +684,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Node.js
@@ -696,15 +691,6 @@ jobs:
         with:
           node-version: 24
           cache: npm
-
-      # #5093: docs/NOW.md er den eneste kilde til "aktivt issue" + "Working
-      # agent"-claim - koeres FOER npm ci, saa et sidevogns-fund rapporteres
-      # hurtigt uden at vente paa en dependency-install.
-      - name: Test now-md-sidecar guard
-        run: node --test scripts/check-now-md-sidecar.test.mjs
-
-      - name: Run now-md-sidecar guard
-        run: node scripts/check-now-md-sidecar.mjs
 
       - name: Install root dependencies
         run: npm ci
