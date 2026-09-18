@@ -6,6 +6,7 @@ import {
   deliverRaceResultNotify,
   enqueueRaceNotify,
   isMissingTableError,
+  leaseStillHeld,
   nextAttemptDelayMs,
   processRaceNotifyOutboxDrain,
   LEASE_MS,
@@ -150,6 +151,16 @@ test("channelKeyForWebhookUrl — stabil hash, og URL'ens token indgaar ikke i n
   assert.notEqual(key, channelKeyForWebhookUrl(URL_B));
   assert.match(key, /^[0-9a-f]{64}$/);
   assert.ok(!key.includes("gruppe"));
+});
+
+test("leaseStillHeld — tid, ikke tekst; manglende/uparselig vaerdi = udloebet", () => {
+  // Postgres' format vs. JS'. En streng-sammenligning ville sige "+00:00" < "…Z"
+  // og dermed erklaere en aktiv lease udloebet.
+  assert.equal(leaseStillHeld("2026-09-18T12:04:00+00:00", NOW), true);
+  assert.equal(leaseStillHeld("2026-09-18T11:58:00+00:00", NOW), false);
+  assert.equal(leaseStillHeld("2026-09-18T12:04:00.000Z", NOW), true);
+  assert.equal(leaseStillHeld(null, NOW), false);
+  assert.equal(leaseStillHeld("ikke en dato", NOW), false);
 });
 
 test("isMissingTableError — 42P01/PGRST205 og tekst-varianten", () => {
@@ -357,11 +368,14 @@ test("drain — en raekke der haenger i sending tages igen naar leasen er udloeb
   assert.equal(state.rows[0].attempts, 2);
 });
 
-test("drain — en lease der stadig loeber roeres ikke", async () => {
+// Tidsstemplet kommer fra PostgREST i Postgres' eget format (+00:00, ingen
+// millisekunder). En streng-sammenligning mod nowIso ("…T12:00:00.000Z") ville
+// laese en AKTIV lease som udloebet — og saa var leasen ingen mutex.
+test("drain — en lease der stadig loeber roeres ikke (Postgres-tidsformat)", async () => {
   const leased = pendingRow({
     status: "sending",
     attempts: 1,
-    lease_expires_at: "2026-09-18T12:04:00.000Z", // i fremtiden
+    lease_expires_at: "2026-09-18T12:04:00+00:00", // i fremtiden
   });
   const { supabase, state } = makeStore({ rows: [leased] });
 

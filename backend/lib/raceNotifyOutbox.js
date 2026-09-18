@@ -85,6 +85,19 @@ const DRAIN_BATCH_SIZE = 25;
  */
 export const SENT_RETENTION_DAYS = 30;
 
+/**
+ * Loeber leasen paa denne raekke stadig? Bevidst tolerant: en uparselig eller
+ * manglende vaerdi regnes som UDLOEBET, saa en raekke aldrig kan blive haengende
+ * i `sending` for evigt paa et daarligt tidsstempel. Den betingede claim er
+ * alligevel den ultimative mutex — dette filter sparer blot et rundtur.
+ */
+export function leaseStillHeld(leaseExpiresAt, now = new Date()) {
+  if (!leaseExpiresAt) return false;
+  const expires = new Date(leaseExpiresAt).getTime();
+  if (!Number.isFinite(expires)) return false;
+  return expires > now.getTime();
+}
+
 export function nextAttemptDelayMs(attempts) {
   const index = Math.min(Math.max(attempts - 1, 0), RETRY_SCHEDULE_MS.length - 1);
   return RETRY_SCHEDULE_MS[index];
@@ -280,7 +293,12 @@ export async function processRaceNotifyOutboxDrain({
     // En raekke i `sending` hoerer stadig til det tick der tog den, indtil leasen
     // er passeret. Filtreret her frem for i select'en, saa claim-queryen bliver
     // ved med at vaere ét simpelt indeks-opslag.
-    if (row.status === "sending" && row.lease_expires_at && row.lease_expires_at > nowIso) {
+    //
+    // Sammenlign som TID, ikke som tekst: PostgREST leverer timestamptz som
+    // "2026-09-18T12:04:00+00:00", mens nowIso er "…T12:00:00.000Z". En
+    // streng-sammenligning af de to formater er meningsloes ("+" < "." < "Z"),
+    // og en aktiv lease ville se udloebet ud.
+    if (row.status === "sending" && leaseStillHeld(row.lease_expires_at, now)) {
       skipped++;
       continue;
     }
