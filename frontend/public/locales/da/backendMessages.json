@@ -499,6 +499,16 @@
       "title": "Hep! Kom med på Discord",
       "message": "Cycling Zone er mere end hjemmesiden. Det er et fællesskab, og meget af det sker på Discord: det er der, jeg hænger ud, der jeg spørger dig hvad jeg skal bygge næste gang, og der de andre managere snakker cykling hele dagen. Vær ærlig over for mig derinde, det er langt mere brugbart end ros. Kom som du er, du behøver ingen resultater for at høre til. Vi ses derinde :)"
     },
+    "betaAccess": {
+      "approved": {
+        "title": "Du er med i beta-gruppen",
+        "message": "Du ser nu funktioner mens jeg stadig tester dem. De kan ændre sig, gå i stykker eller forsvinde igen, og det er hele pointen: sig til når noget føles forkert, på Discord eller gennem feedback-formularen. Du kan forlade gruppen når du vil, fra din profil."
+      },
+      "rejected": {
+        "title": "Ikke denne gang",
+        "message": "Jeg holder beta-gruppen lille, så jeg rent faktisk kan læse hvert eneste svar. Du står stadig på listen, og du er velkommen til at spørge igen senere fra din profil."
+      }
+    },
     "scoutChanged": {
       "title": "Ny spejder, rapporter genberegnet",
       "message": "{scoutName} vurderer nu dine ryttere. Eksisterende scoutingrapporter genberegnes efter hans/hendes præcision, men dine rytteres faktiske evner er uændrede."

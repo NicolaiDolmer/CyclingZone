@@ -81,6 +81,11 @@ export const NOTIFICATION_TYPES = [
   // teams.discord_welcome_sent_at), når holdet har rundet løbs-klar-tærsklen
   // eller senest 24t efter oprettelse. Se discordWelcomeNotification.js.
   "discord_welcome",
+  // #5259 (ejer 15/9): svaret paa en beta-ansoegning — ja eller nej. Sendt
+  // praecis én gang pr. beslutning fra betaAccess.js (decideBetaRequest).
+  // Ejeren saetter kontakten direkte i Brugere-fanen UDEN besked; det er kun
+  // svaret paa noget spilleren selv spurgte om der lander i indbakken.
+  "beta_access_decided",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

@@ -220,6 +220,13 @@ import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/tr
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
+import {
+  STAGE_FLAGS, findStageFlag, isValidFlagStage, isUnknownStageValue, normalizeStageValue,
+} from "../lib/stageFlagCatalog.js";
+import {
+  BETA_REQUEST_STATUS, decideBetaRequest, readBetaAccess, requestBetaAccess, setBetaTester,
+  withdrawBetaAccess,
+} from "../lib/betaAccess.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
@@ -9619,6 +9626,91 @@ router.patch("/me/selection-reminder-settings", requireAuth, marketWriteLimiter,
   }
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true, selection_reminder_enabled: enabled });
+});
+
+// ── #5259 · Beta-adgang, spillerens side ────────────────────────────────────
+//
+// Tre ruter, ingen ny gate-mekanik. Flaget i stadie `beta` evalueres stadig
+// KUN server-side i isViewerBetaTester + evaluateFlagStage; her saettes
+// udelukkende `users.is_beta_tester` og ansoegnings-raekken. Klienten kan
+// derfor ikke give sig selv adgang ved at lyve om sin tilstand — den kan kun
+// bede om den.
+//
+// betaMigrationPending: tabellen kommer med
+// database/2026-09-18-5259-beta-requests.sql, som auto-migrate (#2642) applier
+// ca. 180 sekunder EFTER deployet. I det vindue er kaldet ikke fejlet, det er
+// for tidligt — samme 503 + Retry-After-recipe som selection-reminder ovenfor.
+function isBetaMigrationPending(error) {
+  const msg = String(error?.message || "");
+  return msg.includes("beta_requests") && (
+    msg.includes("does not exist") || msg.includes("schema cache") || error?.code === "42P01"
+  );
+}
+
+router.get("/me/beta-access", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    res.json(await readBetaAccess(supabase, req.user.id));
+  } catch (e) {
+    if (isBetaMigrationPending(e)) {
+      // Tabellen mangler endnu: kontakten findes ikke for spilleren, men
+      // is_beta_tester er en aegte kolonne og skal stadig kunne laeses.
+      const { data: u } = await supabase
+        .from("users").select("is_beta_tester").eq("id", req.user.id).maybeSingle();
+      const isBetaTester = u?.is_beta_tester === true;
+      return res.json({
+        is_beta_tester: isBetaTester,
+        request_status: null,
+        requested_at: null,
+        state: isBetaTester ? "member" : "none",
+      });
+    }
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/me/beta-access/request", requireAuth, marketWriteLimiter, async (req, res) => {
+  try {
+    const result = await requestBetaAccess(supabase, req.user.id);
+    if (!result.ok) {
+      return res.status(409).json({
+        error: result.reason === "member"
+          ? "You are already in the beta group"
+          : "You already have a beta request waiting",
+        errorCode: result.reason === "member" ? "beta_already_member" : "beta_request_pending",
+        ...result.access,
+      });
+    }
+    res.json({ ok: true, ...result.access });
+  } catch (e) {
+    if (isBetaMigrationPending(e)) {
+      res.set("Retry-After", "60");
+      return res.status(503).json({ error: "Beta sign-up is not available yet. Try again shortly" });
+    }
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Spillerens egen udmeldelse — BAADE "fortryd ansoegningen" og "forlad
+// gruppen". Ejeren skal ikke godkende at nogen traeder ud.
+router.post("/me/beta-access/withdraw", requireAuth, marketWriteLimiter, async (req, res) => {
+  try {
+    const result = await withdrawBetaAccess(supabase, req.user.id);
+    if (!result.ok) {
+      return res.status(409).json({
+        error: "You are not in the beta group", errorCode: "beta_not_member", ...result.access,
+      });
+    }
+    res.json({ ok: true, ...result.access });
+  } catch (e) {
+    if (isBetaMigrationPending(e)) {
+      res.set("Retry-After", "60");
+      return res.status(503).json({ error: "Beta sign-up is not available yet. Try again shortly" });
+    }
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // #4983 · GET /api/me/selection-reminder — den synlige del af D-034.
