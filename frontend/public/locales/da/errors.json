@@ -17,6 +17,12 @@
     "unknown": "Uventet fejl. Prøv igen"
   },
   "api": {
+    "trade_feed_invalid_limit": "Den sidestørrelse er ikke gyldig",
+    "trade_feed_invalid_offset": "Den side er ikke gyldig",
+    "trade_feed_offset_too_deep": "Handelslisten går ikke så langt tilbage. Brug filtrene til at indsnævre den",
+    "trade_feed_invalid_type": "Den handelstype er ikke gyldig",
+    "trade_feed_invalid_division": "Den division er ikke gyldig",
+    "trade_feed_invalid_team": "Det hold er ikke gyldigt",
     "flash_deadline_day_only": "Flash Auktioner er kun tilgængelige under Deadline Day",
     "rider_not_found": "Rytteren blev ikke fundet",
     "rider_unavailable": "Rytteren er ikke tilgængelig",
