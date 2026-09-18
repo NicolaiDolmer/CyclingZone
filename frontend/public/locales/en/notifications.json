@@ -48,6 +48,7 @@
   "aggregate": {
     "countSuffix": "(×{count})",
     "firstLatest": "First {first} · Latest {latest}",
+    "lostLeadShare": "Includes {count} where you lost the lead",
     "expand": "Expand",
     "collapse": "Collapse"
   },

@@ -166,6 +166,18 @@ const TYPE_CONFIG = {
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
 
+// #4981: auction_outbid (du MISTEDE føringen) og auction_proxy_outbid (dit
+// autobud beholdt den) samles nu i én bøtte pr. auktion. Gruppens titel er den
+// nyeste besked, så en BLANDET bøtte skal sige hvor mange af de øvrige der var
+// reelle føringstab. Er bøtten ren, siger titlen allerede sandheden om dem
+// alle, og linjen ville kun være støj — derfor 0.
+function lostLeadCount(entry) {
+  const counts = entry.type_counts ?? {};
+  const lost = counts.auction_outbid ?? 0;
+  const held = counts.auction_proxy_outbid ?? 0;
+  return lost > 0 && held > 0 ? lost : 0;
+}
+
 const MINE_FILTER_TYPES = {
   all:       null,
   unread:    null,
@@ -782,6 +794,14 @@ export default function NotificationsPage() {
                         <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{renderNotificationMessage({ metadata: entry.sample_metadata, message: entry.sample_message }, tBackend)}</p>
                         <p className="text-cz-3 text-xs mt-1.5">
                           {t("aggregate.firstLatest", { first: timeAgo(entry.earliest_at), latest: timeAgo(entry.latest_at) })}
+                          {/* #4981: bøtten "auction_bidding" blander auction_outbid (du
+                              MISTEDE føringen) og auction_proxy_outbid (dit autobud
+                              beholdt den). Titlen følger den nyeste besked, så en blandet
+                              bøtte må sige hvor mange af de andre der var reelle tab —
+                              ellers kunne "Dit autobud beholdt føringen (×4)" skjule dem. */}
+                          {lostLeadCount(entry) > 0 && (
+                            <> · {t("aggregate.lostLeadShare", { count: lostLeadCount(entry) })}</>
+                          )}
                         </p>
                       </div>
                       <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
