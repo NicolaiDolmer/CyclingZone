@@ -51,6 +51,9 @@ import {
   ACADEMY_TOP_AGE,
   U23_ENTRY_AGE,
   u23VariantSweep,
+  positiveIntArg,
+  DEFAULT_U23_PER_AGE,
+  MAX_U23_PER_AGE,
 } from "../scripts/generatorVisibleTest5283.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { MENTAL_ABILITY_TAG_CEILING } from "./riderProgression.js";
@@ -426,6 +429,23 @@ test("#5376 hver variant føder gyldige heltals-evner ved hver U23-alder", () =>
 // Determinisme er forudsætningen for at designkortet overhovedet kan bruges:
 // ejeren skal kunne se den samme tabel igen, og to varianter skal kunne
 // sammenlignes på de samme træk i stedet for på to stikprøver.
+// Designkortet er det ejeren BESLUTTER ud fra. En tom stikprøve ville vise "–"
+// i hver celle som om båndet ikke kunne måles, og et ubundet tal ville få
+// kørslen til at hænge — begge dele er værre end en fejlbesked.
+test("#5376 sweepet afviser en ugyldig stikprøvestørrelse i stedet for at måle forkert", () => {
+  for (const bad of [0, -1, 1.5, NaN, Infinity, MAX_U23_PER_AGE + 1]) {
+    assert.throws(
+      () => u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: bad }),
+      /perAge/,
+      `perAge=${bad} skulle være afvist`,
+    );
+  }
+  for (const bad of ["", "abc", "0", "-5", "1e400"]) {
+    assert.throws(() => positiveIntArg(bad, "u23"), /u23/, `--u23=${bad} skulle være afvist`);
+  }
+  assert.equal(positiveIntArg(String(DEFAULT_U23_PER_AGE), "u23"), DEFAULT_U23_PER_AGE);
+});
+
 test("#5376 variant-sweepet er deterministisk for samme seed", () => {
   const a = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });
   const b = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });

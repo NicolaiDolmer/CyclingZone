@@ -94,6 +94,10 @@ export const DEFAULT_COUNT = 1000;
 export const DEFAULT_YOUTH_COUNT = 300;
 /** Træk pr. alder pr. bånd-variant i §8c (#5376). */
 export const DEFAULT_U23_PER_AGE = 200;
+// Loft, ikke en balance-grænse: sweepet er 4 varianter × 4 aldre × hele
+// evne-registret pr. træk, så et fejlindtastet stort tal er en kørsel der
+// aldrig bliver færdig. Rigeligt til enhver stikprøve rapporten har brug for.
+export const MAX_U23_PER_AGE = 100_000;
 
 // ── Statistik-hjælpere ───────────────────────────────────────────────────────
 // Nearest-rank-percentil (ingen interpolation): p10 er den værdi 10 % af
@@ -408,9 +412,19 @@ export const U23_BAND_VARIANTS = Object.freeze([
  */
 export function u23VariantSweep({
   seed = DEFAULT_SEED,
-  perAge = 200,
+  perAge = DEFAULT_U23_PER_AGE,
   variants = U23_BAND_VARIANTS,
 } = {}) {
+  // `perAge` er loop-grænsen. Et NaN eller et 0 giver en tom stikprøve, og
+  // rapporten ville så vise "–" i hver celle som om båndet ikke kunne måles;
+  // et Infinity ville få kørslen til at hænge i stedet for at sige fra. Begge
+  // dele er værre end en fejl, fordi designkortet er det ejeren beslutter ud
+  // fra — så den forkerte værdi stoppes her, ikke i tabellen.
+  if (!Number.isInteger(perAge) || perAge < 1 || perAge > MAX_U23_PER_AGE) {
+    throw new Error(
+      `u23VariantSweep: perAge skal være et helt tal i [1,${MAX_U23_PER_AGE}] — fik ${perAge}`,
+    );
+  }
   return variants.map((variant) => ({
     key: variant.key,
     label: variant.label,
@@ -888,6 +902,15 @@ export function renderReport({ seed, count, referenceYear, adult, youth, u23PerA
 }
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
+/** Streng heltals-parser: `Number()` slipper NaN, 0, brøker og Infinity igennem. */
+export function positiveIntArg(raw, name, max = MAX_U23_PER_AGE) {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > max) {
+    throw new Error(`--${name} skal være et helt tal i [1,${max}] — fik "${raw}"`);
+  }
+  return n;
+}
+
 function parseArgs(argv) {
   const get = (name, fallback) => {
     const hit = argv.find((a) => a.startsWith(`--${name}=`));
@@ -898,7 +921,10 @@ function parseArgs(argv) {
     count: Number(get("count", DEFAULT_COUNT)),
     youthCount: Number(get("youth", DEFAULT_YOUTH_COUNT)),
     referenceYear: Number(get("year", LAUNCH_REFERENCE_YEAR)),
-    u23PerAge: Number(get("u23", DEFAULT_U23_PER_AGE)),
+    // `--u23` er den ENE CLI-værdi der styrer en loop-grænse. Den parses
+    // strengt her, så en tastefejl bliver en fejlbesked med det samme i
+    // stedet for en tom eller uendelig kørsel.
+    u23PerAge: positiveIntArg(get("u23", String(DEFAULT_U23_PER_AGE)), "u23"),
     out: get("out", null),
   };
 }
