@@ -380,6 +380,59 @@ test("groupNotifications — stage_result (mellem-etape) og career_milestone sam
   assert.equal(result[0].count, 2);
 });
 
+// Reviewer-fund (#5384-followup): stage_result deler related_id = race.id på
+// tværs af ALLE etaper i et flerdages-løb (notificationService.js linje 727),
+// så uden en dags-dimension i nøglen ville et 21-etapers grand tour kollapse
+// til ÉN "race_completed"-linje for hele løbets varighed. #2523's formål (én
+// notifikation PR. ETAPE, for at undgå flerdages-stilhed) skal stå ved magt.
+
+test("groupNotifications — stage_result på FORSKELLIGE dage for SAMME løb forbliver separate linjer", () => {
+  const input = [
+    notif({ id: "s1", type: "stage_result", related_id: "gt-1", created_at: "2026-09-01T14:00:00Z", title: "Stage 1" }),
+    notif({ id: "s2", type: "stage_result", related_id: "gt-1", created_at: "2026-09-02T14:00:00Z", title: "Stage 2" }),
+    notif({ id: "s3", type: "stage_result", related_id: "gt-1", created_at: "2026-09-03T14:00:00Z", title: "Stage 3" }),
+  ];
+  const result = groupNotifications(input);
+  // Tre forskellige dage → tre separate linjer, ikke ét aggregat med count=3.
+  assert.equal(result.length, 3);
+  assert.ok(result.every((r) => r.kind === "single"), "hver etape-dag skal stå for sig selv, ikke gemme sig bag en tæller");
+  assert.deepEqual(
+    result.map((r) => r.notification.id),
+    ["s3", "s2", "s1"],
+    "sortering DESC efter created_at — den nyeste etape øverst",
+  );
+});
+
+test("groupNotifications — sidste etapes race_result + career_milestone SAMME dag samles stadig, uden at sluge tidligere etaper", () => {
+  const input = [
+    notif({ id: "s1", type: "stage_result", related_id: "gt-1", created_at: "2026-09-01T14:00:00Z", title: "Stage 1" }),
+    notif({ id: "s2", type: "stage_result", related_id: "gt-1", created_at: "2026-09-02T14:00:00Z", title: "Stage 2" }),
+    notif({ id: "rr", type: "race_result", related_id: "gt-1", created_at: "2026-09-03T14:00:00Z", title: "Race result is in" }),
+    notif({ id: "cm", type: "career_milestone", related_id: "gt-1", created_at: "2026-09-03T14:00:05Z", title: "Maiden win" }),
+  ];
+  const result = groupNotifications(input);
+  assert.equal(result.length, 3, "2 separate etape-dage + 1 samlet slutdags-aggregat");
+  const finalDay = result.find((r) => r.kind === "aggregate");
+  assert.equal(finalDay.count, 2);
+  assert.equal(finalDay.type, "career_milestone");
+  const singles = result.filter((r) => r.kind === "single");
+  assert.equal(singles.length, 2);
+  assert.deepEqual(singles.map((r) => r.notification.id).sort(), ["s1", "s2"]);
+});
+
+test("groupNotifications — race_completed-aggregatets `key` inkluderer dagen, så to dage af samme løb ikke deler React-nøgle", () => {
+  const input = [
+    notif({ id: "s1a", type: "stage_result", related_id: "gt-1", created_at: "2026-09-01T14:00:00Z" }),
+    notif({ id: "cm1", type: "career_milestone", related_id: "gt-1", created_at: "2026-09-01T14:00:05Z" }),
+    notif({ id: "s2a", type: "stage_result", related_id: "gt-1", created_at: "2026-09-02T14:00:00Z" }),
+    notif({ id: "cm2", type: "career_milestone", related_id: "gt-1", created_at: "2026-09-02T14:00:05Z" }),
+  ];
+  const result = groupNotifications(input);
+  assert.equal(result.length, 2);
+  const keys = result.map((r) => r.key);
+  assert.equal(new Set(keys).size, 2, "de to dages aggregater skal have HVER SIN unikke key");
+});
+
 test("groupNotifications — bid_received blandes ikke ind i bud-bøtten", () => {
   const input = [
     notif({ id: "s1", type: "bid_received", related_id: "auc-A", created_at: "2026-05-15T10:00:00Z" }),

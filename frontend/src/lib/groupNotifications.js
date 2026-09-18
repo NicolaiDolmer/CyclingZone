@@ -29,6 +29,27 @@ const AGGREGATE_GROUPS = {
   career_milestone: "race_completed",
 };
 
+// Reviewer-fund (#5384-followup): notificationService.js sætter relatedId:
+// race.id for HVER etape i emitStageResultNotifications, så et 21-etapers
+// grand tour deler related_id på tværs af alle sine mellem-etaper OG den
+// afsluttende race_result. Uden en dags-dimension i nøglen ville hele løbets
+// levetid kollapse til ÉN "race_completed"-linje — kun seneste etapes tekst
+// vises, resten gemmer sig bag et tæller-tal, og #2523's formål (én
+// notifikation PR. ETAPE, netop for at undgå flerdages-stilhed i indbakken)
+// er tabt. Dags-nøglen (UTC-dato af created_at) holder hver etapes dag som
+// sin egen bøtte, mens race_result + career_milestone på SAMME dag (den
+// faktiske afslutningsdag) stadig samles — det er selve #5384-scenariet.
+// Kun "race_completed" får denne ekstra dimension: auction_bidding/
+// bid_received skal fortsat aggregere på tværs af dage indtil terminator.
+const DAY_SCOPED_GROUPS = new Set(["race_completed"]);
+
+function dayOf(createdAt) {
+  if (!createdAt) return null;
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
 // #3549: sælgerens "afsluttet"-besked skiftede type fra "auction_won" til
 // "auction_sold" (sælgeren er selv ikke KØBER, så "won" var forkert delt type
 // med køberens besked — se auctionFinalization.js). bid_received er
@@ -40,8 +61,8 @@ const TERMINATING_TYPES = {
   bid_received: new Set(["auction_won", "auction_lost", "auction_sold"]),
 };
 
-export function aggregateKey(type, relatedId) {
-  return `${type}|${relatedId}`;
+export function aggregateKey(type, relatedId, day) {
+  return day != null ? `${type}|${relatedId}|${day}` : `${type}|${relatedId}`;
 }
 
 // Bøtten en type aggregeres under, eller null hvis typen aldrig aggregeres.
@@ -71,9 +92,14 @@ export function groupNotifications(notifications) {
     const group = aggregateGroup(n.type);
     if (group && n.related_id) {
       if (terminated.get(group)?.has(n.related_id)) continue;
-      const key = aggregateKey(group, n.related_id);
+      const day = DAY_SCOPED_GROUPS.has(group) ? dayOf(n.created_at) : null;
+      const key = aggregateKey(group, n.related_id, day);
       if (!aggregates.has(key)) {
-        aggregates.set(key, { group, related_id: n.related_id, items: [] });
+        // `day` gemmes så resultatets `key`-felt (linje ~127) matcher PRÆCIS
+        // den nøgle der faktisk bruges til bucketing — ellers ville to
+        // forskellige dage af samme løb dele samme udadvendte `key` og give
+        // React et duplikeret listenøgle.
+        aggregates.set(key, { group, related_id: n.related_id, day, items: [] });
       }
       aggregates.get(key).items.push(n);
     } else {
@@ -102,7 +128,7 @@ export function groupNotifications(notifications) {
       }
       result.push({
         kind: "aggregate",
-        key: aggregateKey(agg.group, agg.related_id),
+        key: aggregateKey(agg.group, agg.related_id, agg.day),
         group: agg.group,
         type: latest.type,
         type_counts: typeCounts,
