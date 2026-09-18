@@ -97,7 +97,7 @@ Mail-sweeps gater alle typer på `users.email_prefs` (opt-out, fravær = tilmeld
 
 `player_events(id, team_id, user_id, event_name, event_data, created_at)`. To skrive-veje: klienten via `logEvent()`/`logFirstEvent()` (samtykke-gatet), og to server-side inserts med service-role (ikke gatet).
 
-> **Regel:** et nyt event kræver **en række her OG et navn i `KNOWN_EVENTS`** (`frontend/src/lib/logEvent.js`). `KNOWN_EVENTS` driver Detector E's "deployet feature med 0 brugere"-alarm; denne tabel er den menneskelæsbare definition. Guarden `node scripts/check-event-catalog.mjs` fejler hvis et navn mangler begge steder, og advarer hvis det kun mangler i `KNOWN_EVENTS`.
+> **Regel:** et nyt event kræver **en række her OG et navn i `KNOWN_EVENTS`** (`frontend/src/lib/logEvent.js`). `KNOWN_EVENTS` driver Detector E's "deployet feature med 0 brugere"-alarm; denne tabel er den menneskelæsbare definition. Guarden `node scripts/check-event-catalog.mjs` fejler hvis et navn mangler ét af stederne. Den kører i CI (`frontend-build`, required), i `scripts/preflight-pr.ps1` og som `npm run check:event-catalog` ([#5369](https://github.com/NicolaiDolmer/CyclingZone/issues/5369)).
 
 Kolonnen "Kendt" = står i `KNOWN_EVENTS` (og er dermed canary-overvåget). Volumen er ✅ målt mod prod 8/9.
 
@@ -112,8 +112,9 @@ Kolonnen "Kendt" = står i `KNOWN_EVENTS` (og er dermed canary-overvåget). Volu
 | `first_transfer` | ja | `RiderStatsPage.jsx:220` | Brugerens allerførste transfertilbud |
 | `first_race_result_shown` | ja | `MyLatestResultCard.jsx:106` | Dashboardet EKSPONEREDE første gang et uset løbsresultat |
 | `first_race_result_viewed` | ja | `TeamResultsTab.jsx:102` | Brugeren ÅBNEDE selv sit holds resultat første gang. Adskilt fra ovenstående med vilje |
-| `onboarding_first_bid_recommendation_shown` | nej | `AuctionsPage.jsx:1278` | Bud-anbefalingen blev vist til en ny manager |
-| `onboarding_first_bid_recommendation_clicked` | nej | `AuctionsPage.jsx:1302` | Anbefalingen blev brugt. Forholdet til `_shown` er selve målingen |
+| `onboarding_step2_one_click` | ja | `OnboardingProgressCard.jsx:114` | "Kør ugens træning" på kom-i-gang-kortet: sætter assistentens anbefalede fokus for truppen og kører dagen i ét klik. Bærer `{ridersTrained}`. Måler om trin 2 stadig er det faldende onboarding-trin ([#5241](https://github.com/NicolaiDolmer/CyclingZone/issues/5241)) |
+| `onboarding_first_bid_recommendation_shown` | ja | `AuctionsPage.jsx:1278` | Bud-anbefalingen blev vist til en ny manager |
+| `onboarding_first_bid_recommendation_clicked` | ja | `AuctionsPage.jsx:1302` | Anbefalingen blev brugt. Forholdet til `_shown` er selve målingen |
 
 ### Kerne-loop
 
@@ -128,8 +129,8 @@ Kolonnen "Kendt" = står i `KNOWN_EVENTS` (og er dermed canary-overvåget). Volu
 | `training_focus_set` | ja | `useTraining.js:87` | Træningsfokus sat for én dag |
 | `training_focus_set_bulk` | ja | `useTraining.js:151` | Fokus sat på flere ryttere ad gangen |
 | `training_run_today` | ja | `useTraining.js:260` | Dagens træning kørt |
-| `training_week_plan_set` | nej | `useTraining.js:176` | Ugeplan gemt for holdet |
-| `training_rider_week_plan_set` | nej | `useTraining.js:217` | Ugeplan gemt for én rytter |
+| `training_week_plan_set` | ja | `useTraining.js:176` | Ugeplan gemt for holdet |
+| `training_rider_week_plan_set` | ja | `useTraining.js:217` | Ugeplan gemt for én rytter |
 | `action_rejected` | ja | `actionTelemetry.js:86` | En spillerhandling blev afvist af en regel (for lavt bud, kontraktloft). Bærer `{action, reason, status}`, aldrig PII. Flyttet hertil fra Sentry ([#3767](https://github.com/NicolaiDolmer/CyclingZone/issues/3767)) |
 
 ### Akademi, faciliteter og stab
@@ -139,13 +140,13 @@ Kolonnen "Kendt" = står i `KNOWN_EVENTS` (og er dermed canary-overvåget). Volu
 | `academy_sign` | ja | `useAcademy.js:102` | Akademirytter skrevet under |
 | `academy_reject` | ja | `useAcademy.js:122` | Akademirytter afvist |
 | `academy_graduate` | ja | `useAcademy.js:142` | Rytter dimitteret fra akademiet |
-| `academy_promote` | nej | `useAcademy.js:162` | Rytter rykket op |
-| `academy_intake_pull` | nej | `useAcademy.js:180` | Nyt akademi-hold trukket. **0 events i prod** |
-| `academy_demote` | nej | `useAcademy.js:200` | Rytter rykket ned |
-| `academy_release` | nej | `useAcademy.js:239` | Rytter frigivet |
-| `facility_upgrade` | nej | `useFacilities.js:45` | Facilitet opgraderet, bærer `{track, tier}` |
-| `staff_hire` | nej | `useFacilities.js:69` | Stab ansat |
-| `staff_fire` | nej | `useFacilities.js:84` | Stab fyret |
+| `academy_promote` | ja | `useAcademy.js:162` | Rytter rykket op |
+| `academy_intake_pull` | ja | `useAcademy.js:180` | Nyt akademi-hold trukket. **0 events i prod**: featuren er dormant bag flaget `academy_intake_pull_enabled`, så eventet står i `WHITELIST_ZERO_IMPRESSION_EVENTS` |
+| `academy_demote` | ja | `useAcademy.js:200` | Rytter rykket ned |
+| `academy_release` | ja | `useAcademy.js:239` | Rytter frigivet |
+| `facility_upgrade` | ja | `useFacilities.js:45` | Facilitet opgraderet, bærer `{track, tier}` |
+| `staff_hire` | ja | `useFacilities.js:69` | Stab ansat |
+| `staff_fire` | ja | `useFacilities.js:84` | Stab fyret |
 
 ### Feature-canaries
 
@@ -154,11 +155,11 @@ Navne med præfikset `feature_` grupperes af `get_sprint_metrics` som "top featu
 | Event | Kendt | Fyrer fra | Betydning |
 |---|---|---|---|
 | `feature_rider_development_tab_opened` | ja | `RiderStatsPage.jsx:1975` | Udviklings-fanen på en rytter |
-| `feature_rider_scouting_tab_opened` | nej | `RiderStatsPage.jsx:1976` | Spejder-fanen |
-| `feature_rider_history_tab_opened` | nej | `RiderStatsPage.jsx:1977` | Historik-fanen |
-| `feature_rider_results_tab_opened` | nej | `RiderStatsPage.jsx:1978` | Resultat-fanen |
-| `feature_rider_palmares_tab_opened` | nej | `RiderStatsPage.jsx:1979` | Palmares-fanen |
-| `feature_rider_interest_tab_opened` | nej | `RiderStatsPage.jsx:1980` | Interesse-fanen |
+| `feature_rider_scouting_tab_opened` | ja | `RiderStatsPage.jsx:1976` | Spejder-fanen |
+| `feature_rider_history_tab_opened` | ja | `RiderStatsPage.jsx:1977` | Historik-fanen |
+| `feature_rider_results_tab_opened` | ja | `RiderStatsPage.jsx:1978` | Resultat-fanen |
+| `feature_rider_palmares_tab_opened` | ja | `RiderStatsPage.jsx:1979` | Palmares-fanen |
+| `feature_rider_interest_tab_opened` | ja | `RiderStatsPage.jsx:1980` | Interesse-fanen |
 | `feature_board_consequences_panel_viewed` | ja | `BoardPage.jsx:1382` | Bestyrelsens konsekvens-panel set |
 | `feature_finance_forecast_card_viewed` | ja | `FinancePage.jsx:145` | Økonomi-prognosekortet set |
 | `feature_dayform_line_viewed` | ja | `RaceDetailPage.jsx:1609` | Etaperesultat set med mindst én egen dagsform-replik synlig |
@@ -166,6 +167,13 @@ Navne med præfikset `feature_` grupperes af `get_sprint_metrics` som "top featu
 | `feature_board_meeting_opened` | ja | `AnnualMeetingPage.jsx:63` | Årsmødet åbnet med et mandat |
 | `board_meeting_signed` | ja | `AnnualMeetingPage.jsx:119` | Mandatet underskrevet. Funnel-modstykket til ovenstående |
 | `board_receipt_opened` | ja | `MandateCard.jsx:142` | Målkvittering foldet ud i Boardroom |
+
+### Release-koordinering og community
+
+| Event | Kendt | Fyrer fra | Betydning |
+|---|---|---|---|
+| `app_version_reload` | ja | `useReleaseWatch.js:73` og `:115` | Release-koordineringen ([#5033](https://github.com/NicolaiDolmer/CyclingZone/issues/5033)/[#5159](https://github.com/NicolaiDolmer/CyclingZone/issues/5159)). Bærer `{from, to, fromSha, sha, trigger, outcome}`. `outcome` er selve målingen: `arrived` (landede på den nye frontend), `no_effect` (reloadet ændrede ingenting) eller `deferred` (ny frontend fundet, men spilleren havde ugemt arbejde, så banneret blev vist i stedet). Et event alene er IKKE bevis for en undgået ChunkLoadError |
+| `discord_invite_clicked` | ja | `DiscordJoinLink.jsx:28`, `NotificationsPage.jsx:708` | Klik på Discord-invitationen. Bærer `{source}`: `notification` (velkomstbeskeden i indbakken) eller `discord_join_link_<variant>` (footer/knap). Måler konvertering fra velkomstbeskeden ([#5130](https://github.com/NicolaiDolmer/CyclingZone/issues/5130)) |
 
 ### NPS
 
@@ -289,14 +297,14 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 | 8 | **`users.browser_language` er næsten tom** | ✅ målt 8/9: 4 af 263 rækker udfyldt. Kolonnen kom 3/9 og skrives KUN af `handle_new_user()` ved nye signups | 📄 [#4811](https://github.com/NicolaiDolmer/CyclingZone/issues/4811). Konsistent med kolonnens alder, ikke nødvendigvis en fejl. Sprogfordeling for eksisterende brugere skal tages fra `users.language`, ikke herfra |
 | 9 | **Sprint-metrics-snapshottet kører ikke** | `.github/workflows/sprint-metrics-snapshot.yml.disabled`. Der findes ingen automatisk historik på DAU/WAU/MAU ud over `growth_metric_snapshots` | 📄 bevidst deaktiveret. `backend/scripts/snapshot-sprint-metrics.mjs` findes og kan køres manuelt |
 | 10 | **PostHog-projektet er tomt** | 0 events nogensinde. Ethvert PostHog-tal er indtil videre ikke-eksisterende, ikke lavt | ❓ SDK'et wires i søster-PR ([#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)) |
-| 11 | **16 events er canary-blinde** | De fyrer i prod, men står ikke i `KNOWN_EVENTS`, så Detector E ville ikke opdage at de tørrede ud (se "Kendt: nej" i §3) | 📄 `node scripts/check-event-catalog.mjs` advarer om dem. At tilføje dem til `KNOWN_EVENTS` er en kode-ændring uden for denne SSOT's ramme |
+| 11 | ~~16 events er canary-blinde~~ **lukket 18/9** | De fyrede i prod, men stod ikke i `KNOWN_EVENTS`, så Detector E ville ikke opdage at de tørrede ud | ✅ Alle 16 tilføjet i [#5369](https://github.com/NicolaiDolmer/CyclingZone/issues/5369). 15 flyder (8 til 3.502 pr. 30 dage, målt mod prod 18/9); `academy_intake_pull` er dormant bag flag og whitelistet i Detector E. Guarden FEJLER nu på et nyt canary-blindt event |
 
 ## 7. Adgang og scripts
 
 | Script | Hvad | Kør |
 |---|---|---|
 | `scripts/gsc-report.mjs` | Search Console: top 25 queries, top 10 sider, totaler mod forrige periode | `infisical run --env=dev -- node scripts/gsc-report.mjs --days=28 [--site=<url>] [--json]` |
-| `scripts/check-event-catalog.mjs` | Forward-guard: hvert `player_events`-navn skal stå i §3 og helst i `KNOWN_EVENTS` | `node scripts/check-event-catalog.mjs` |
+| `scripts/check-event-catalog.mjs` | Forward-guard: hvert `player_events`-navn skal stå i §3 OG i `KNOWN_EVENTS`. Kører i CI (`frontend-build`) + preflight | `node scripts/check-event-catalog.mjs` |
 | `scripts/sentry-issues.mjs` | Uresolvede prod-fejl uden MCP | `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=24h` |
 | `scripts/monday-numbers.mjs` | Ugens tal (`docs/GROWTH_STACK.md`) | ❓ skrives i søster-PR i samme bølge |
 | `backend/scripts/snapshot-sprint-metrics.mjs` | Manuelt snapshot af sprint-metrics | Workflowen er `.disabled`, se §6 punkt 9 |
@@ -324,7 +332,6 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 | [#1407](https://github.com/NicolaiDolmer/CyclingZone/issues/1407) | GA4 Enhanced Measurement bekræftes af ejeren | Alle GA4-pageview-tal |
 | [#1369](https://github.com/NicolaiDolmer/CyclingZone/issues/1369) | CRO-loop: måling til beslutning til ændring til måling | Systematisk forbedring |
 | Uden issue | Vercel Web Analytics 404 | Sidevisninger uden GA4 |
-| Uden issue | `check-event-catalog.mjs` er ikke hooket ind i CI eller preflight | Guarden bider ikke endnu |
 
 ## 9. Faldgruber, kort liste
 
@@ -345,7 +352,7 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 node scripts/check-event-catalog.mjs
 ```
 
-Fejler hvis et event fyrer i koden uden at stå i §3-tabellen, eller hvis `KNOWN_EVENTS` har et navn der ikke er dokumenteret her. Advarer om events der fyrer og er dokumenteret, men mangler i `KNOWN_EVENTS` (canary-blinde). ❓ Ikke hooket ind i CI eller `scripts/preflight-pr.ps1` endnu, se §8.
+Fejler hvis et event fyrer i koden uden at stå i §3-tabellen, eller hvis `KNOWN_EVENTS` har et navn der ikke er dokumenteret her. Fejler også på events der fyrer og er dokumenteret, men mangler i `KNOWN_EVENTS` (canary-blinde). ✅ Hooket ind i CI (`frontend-build`) og `scripts/preflight-pr.ps1` fra 18/9 ([#5369](https://github.com/NicolaiDolmer/CyclingZone/issues/5369)).
 
 ```bash
 infisical run --env=dev -- node scripts/gsc-report.mjs --days=28

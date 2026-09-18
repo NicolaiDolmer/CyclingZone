@@ -7,6 +7,7 @@ import {
   evaluateDetectorCApplied,
   evaluateDetectorEEvent,
   isFlagOff,
+  parseKnownEvents,
 } from "./audit-feature-liveness.js";
 
 // #2985: Detector A ("write-but-no-data") skal skelne mellem "featuren er død"
@@ -306,4 +307,32 @@ test("#3069 Detector E: et uwhitelistet event med 0 impressions flages stadig", 
   assert.equal(finding.detector, "E");
   assert.equal(finding.severity, "warning");
   assert.match(finding.reason, /0 impressions/);
+});
+
+// #5369: den ugentlige cron var roed fra 14/9 paa fire fund der alle var ord fra
+// kommentaren ved app_version_reload (`outcome`, "arrived", "no_effect",
+// "deferred"). Parseren laeste hele KNOWN_EVENTS-blokken inkl. kommentarer.
+test("#5369 Detector E: citerede ord i KNOWN_EVENTS-kommentarer er ikke events", () => {
+  const src = [
+    "export const KNOWN_EVENTS = Object.freeze([",
+    "  // app_version_reload baerer {outcome}. `outcome` er hele pointen:",
+    '  // "arrived" (vi landede), "no_effect" eller "deferred".',
+    '  "app_version_reload", // trailing: "heller_ikke"',
+    '  /* blok: "blok_kommentar" */',
+    "  'discord_invite_clicked',",
+    "]);",
+    'const OTHER = ["ikke_med"];',
+  ].join("\n");
+  assert.deepEqual(parseKnownEvents(src), ["app_version_reload", "discord_invite_clicked"]);
+});
+
+test("#5369 Detector E: parseKnownEvents giver tom liste naar blokken ikke findes", () => {
+  assert.deepEqual(parseKnownEvents("export const EVENTS = [];"), []);
+});
+
+test("#5369 Detector E: academy_intake_pull (dormant bag flag) er intet fund ved 0, men stale naar det flyder", () => {
+  assert.equal(evaluateDetectorEEvent("academy_intake_pull", undefined), null);
+  const stale = evaluateDetectorEEvent("academy_intake_pull", { event_name: "academy_intake_pull", event_count: 3 });
+  assert.ok(stale, "entryen skal selv-rydde den dag flaget flippes og eventet flyder");
+  assert.match(stale.reason, /Stale whitelist-entry/);
 });
