@@ -46,10 +46,16 @@ import {
   percentile,
   describe as describeStats,
   REQUIRED_RECORD_FIELDS,
+  U23_BAND_VARIANTS,
+  U23_BIRTH_AGES,
+  ACADEMY_TOP_AGE,
+  U23_ENTRY_AGE,
+  u23VariantSweep,
 } from "../scripts/generatorVisibleTest5283.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { MENTAL_ABILITY_TAG_CEILING } from "./riderProgression.js";
-import { ABILITY_FLOOR, ABILITY_CEIL } from "./riderBirthPriors.js";
+import { ABILITY_FLOOR, ABILITY_CEIL, YOUTH_BIRTH_BAND } from "./riderBirthPriors.js";
+import { isU23ForReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import { STAT_KEYS, BIRTH_MODE_OWN_PRIORS } from "./fictionalRiderGenerator.js";
 
 const SEED = 20260918;
@@ -326,4 +332,102 @@ test("#5283 hver nyfødt prissættes af V4-kæden", () => {
   assert.ok(byTier("superstar").median > byTier("star").median);
   assert.ok(byTier("star").median > byTier("solid").median);
   assert.ok(byTier("solid").median > byTier("domestique").median);
+});
+
+// ── 15. U23-bånd-varianterne (#5376) ─────────────────────────────────────────
+// Ejer-beslutning 18/9: U23-generering er blokeret indtil et designkort med
+// 2-3 bånd-forslag er vist og valgt. Rapportens §8c ER det kort. Testene her
+// låser forslagenes STRUKTUR — ikke deres tal: hvilke tal båndet skal have er
+// præcis den beslutning kortet skal give ejeren, og en test der låste dem ville
+// foregribe den. Balance-tallene lever i `balance-internals/` (hard rule 17).
+
+const VARIANT_SWEEP_SEED = 20260918;
+// Lille n: testene her måler struktur og invarianter, ikke fordelingsform, og
+// sweepet kører fire aldre × fire varianter × hele evne-registret.
+const VARIANT_PER_AGE = 12;
+
+test("#5376 U23-fødselsaldrene følger riderSeasonAge, ikke en lokal kopi", () => {
+  const birthdateForAge = (age) => `${LAUNCH_REFERENCE_YEAR - age}-06-01`;
+  for (const age of U23_BIRTH_AGES) {
+    assert.ok(
+      isU23ForReferenceYear(birthdateForAge(age), LAUNCH_REFERENCE_YEAR),
+      `alder ${age} skal være U23 efter riderSeasonAge.isU23ForReferenceYear`,
+    );
+  }
+  // Graduation Day ved 23: årgangen over intervallet må IKKE være U23, ellers
+  // ville fødslen lave ryttere der straks er for gamle til deres egen trup.
+  const graduationAge = U23_BIRTH_AGES[U23_BIRTH_AGES.length - 1] + 1;
+  assert.equal(isU23ForReferenceYear(birthdateForAge(graduationAge), LAUNCH_REFERENCE_YEAR), false);
+  // Akademiet dækker til og med ACADEMY_TOP_AGE, så indgangsalderen ligger
+  // inde i akademiets interval — det er DET overlap varianterne forholder sig til.
+  assert.ok(U23_ENTRY_AGE <= ACADEMY_TOP_AGE);
+});
+
+test("#5376 designkortet har dagens bånd plus mindst to forslag, med unikke nøgler", () => {
+  const keys = U23_BAND_VARIANTS.map((v) => v.key);
+  assert.equal(new Set(keys).size, keys.length, `dublet-nøgle blandt ${keys.join(", ")}`);
+  assert.ok(keys.includes("baseline"), "referencerækken (dagens bånd) mangler");
+  assert.ok(keys.length - 1 >= 2, `kun ${keys.length - 1} forslag — ejeren skal have 2-3`);
+  for (const v of U23_BAND_VARIANTS) {
+    // Et forslag uden begrundelse og pris er ikke et beslutningsgrundlag.
+    assert.ok(v.label && v.summary && v.tradeoff, `${v.key}: mangler label/summary/tradeoff`);
+    assert.equal(typeof v.bandFor, "function");
+  }
+});
+
+// Den vigtigste test i blokken. Akademiets bånd og dets mætnings-invariant (G5,
+// #3561/#2064 §2a) må IKKE flytte sig som sideeffekt af et U23-forslag — hele
+// akademiet hænger på at en ungdomsrytters nuværende evne ikke løfter
+// `ability_caps` over hans potentiale-loft.
+test("#5376 ingen variant muterer akademiets bånd", () => {
+  const before = JSON.stringify(YOUTH_BIRTH_BAND);
+  for (const variant of U23_BAND_VARIANTS) {
+    for (const age of U23_BIRTH_AGES) {
+      const band = variant.bandFor(age);
+      assert.ok(Object.isFrozen(band), `${variant.key}@${age}: båndet er ikke frosset`);
+    }
+  }
+  u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });
+  assert.equal(JSON.stringify(YOUTH_BIRTH_BAND), before, "YOUTH_BIRTH_BAND blev ændret");
+});
+
+// Kontinuitets-invarianten for den skånsomme variant: ved de aldre der
+// overlapper akademiet skal den køre på PRÆCIS akademiets bånd — samme objekt,
+// ikke bare samme tal. Ellers er "akademiets fordeling er bevaret" en påstand.
+test("#5376 den alders-rampede variant er identisk med akademiets bånd i overlappet", () => {
+  const variant = U23_BAND_VARIANTS.find((v) => v.key === "c-alders-rampet-loft");
+  assert.ok(variant, "variant c mangler");
+  for (const age of U23_BIRTH_AGES) {
+    const band = variant.bandFor(age);
+    if (age <= ACADEMY_TOP_AGE) {
+      assert.equal(band, YOUTH_BIRTH_BAND, `alder ${age} skal bruge akademiets bånd uændret`);
+    } else {
+      assert.ok(band.ceil > YOUTH_BIRTH_BAND.ceil, `alder ${age} skal have luft over akademiets loft`);
+    }
+  }
+});
+
+test("#5376 hver variant føder gyldige heltals-evner ved hver U23-alder", () => {
+  const sweep = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });
+  assert.equal(sweep.length, U23_BAND_VARIANTS.length);
+  for (const variant of sweep) {
+    assert.deepEqual(variant.ages.map((a) => a.age), [...U23_BIRTH_AGES]);
+    for (const a of variant.ages) {
+      assert.ok(Number.isInteger(a.min) && Number.isInteger(a.max), `${variant.key}@${a.age}: ikke-heltal`);
+      assert.ok(
+        a.min >= ABILITY_FLOOR && a.max <= ABILITY_CEIL,
+        `${variant.key}@${a.age}: ${a.min}-${a.max} uden for [${ABILITY_FLOOR},${ABILITY_CEIL}]`,
+      );
+      assert.ok(a.atCeilPct >= 0 && a.atCeilPct <= 100);
+    }
+  }
+});
+
+// Determinisme er forudsætningen for at designkortet overhovedet kan bruges:
+// ejeren skal kunne se den samme tabel igen, og to varianter skal kunne
+// sammenlignes på de samme træk i stedet for på to stikprøver.
+test("#5376 variant-sweepet er deterministisk for samme seed", () => {
+  const a = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });
+  const b = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });
+  assert.deepEqual(b, a);
 });
