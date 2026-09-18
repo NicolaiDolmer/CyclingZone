@@ -1,7 +1,9 @@
 # close-out-cleanup.ps1
 #
 # Finder og (valgfrit) draeber efterladte baggrundsprocesser fra en boelge/session,
-# og rydder rene worktrees for mergede branches (#4920).
+# rydder rene worktrees for mergede branches (#4920), og melder forældreløse
+# mapper i worktree-roden (#5391 - se scripts/report-orphan-worktree-dirs.mjs,
+# ALTID read-only, uanset -Execute, jf. #4924's ejer-gated sletteflow).
 #
 # Baggrund: ved session-luk 6/9 stod der efterladte processer: en
 # "gh pr checks --watch" 2 t 45 min efter PR'en var merget, en preview-server
@@ -184,6 +186,39 @@ if ($SkipWorktreePrune) {
   } else {
     Write-Host "  [warn] scripts/prune-merged-worktrees.ps1 ikke fundet - sprunget over" -ForegroundColor Yellow
   }
+}
+
+# --- 3. Orphan worktree-mapper (ALTID read-only - #5391) -------------------
+# Melder mapper i worktree-roden der ikke staar i 'git worktree list' (#4924's
+# 855-mappe-fund). KOERER I BEGGE TILSTANDE ens - denne sektion sletter
+# ALDRIG noget, heller ikke med -Execute: sletning af de identificerede
+# mapper er et separat, ejer-gated skridt (#4924 punkt 2), ikke denne
+# rutines opgave. Se scripts/report-orphan-worktree-dirs.mjs for logikken +
+# tests.
+Write-Host "`n--- Orphan worktree-mapper (read-only rapport, se scripts/report-orphan-worktree-dirs.mjs) ---" -ForegroundColor Cyan
+# Udled worktree-roden fra den PRIMÆRE checkout (git worktree list's FØRSTE
+# blok) - ikke fra $RepoRoot direkte, som kan VÆRE et worktree selv (fx
+# scriptet kørt fra C:\Dev\CyclingZone-worktrees\<slug>). Root = primær
+# checkouts parent-mappe + "<reponavn>-worktrees" (samme konvention som
+# C:\Dev\CyclingZone -> C:\Dev\CyclingZone-worktrees i hele repoets docs).
+$worktreeRootForOrphanScan = $null
+try {
+  $primaryLine = (& git -C $RepoRoot worktree list --porcelain 2>$null) | Select-Object -First 1
+  if ($primaryLine -and $primaryLine.StartsWith('worktree ')) {
+    $primaryPath = $primaryLine.Substring(9).Replace('/', '\').TrimEnd('\')
+    $primaryParent = Split-Path -Parent $primaryPath
+    $primaryName = Split-Path -Leaf $primaryPath
+    if ($primaryParent -and $primaryName) {
+      $worktreeRootForOrphanScan = Join-Path $primaryParent "$primaryName-worktrees"
+    }
+  }
+} catch {
+  Write-Host "  [warn] kunne ikke udlede worktree-roden: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+if ($worktreeRootForOrphanScan -and (Test-Path $worktreeRootForOrphanScan)) {
+  & node (Join-Path $PSScriptRoot "report-orphan-worktree-dirs.mjs") --worktree-root $worktreeRootForOrphanScan --cwd $RepoRoot | ForEach-Object { Write-Host $_ }
+} else {
+  Write-Host "  [skip] worktree-rod ikke fundet (forsøgt: $worktreeRootForOrphanScan) - sprunget over" -ForegroundColor DarkGray
 }
 
 Write-Host ""
