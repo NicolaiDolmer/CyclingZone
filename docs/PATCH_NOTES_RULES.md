@@ -19,8 +19,8 @@
   eksplicit ejer-beslutning: *"Flaggeren bør foreslå, ikke blokere"*): den flager sandsynlige manglende
   entries på frontend-ændringer, exitcode 0 altid.
 - `scripts/patchnotes-audit.sh` er efterkontrol-værktøjet: sammenligner merged PR'er mod entries i
-  `patchNotes.js`. Brugt til 7-dages-auditten 2/9 ([#4605](https://github.com/NicolaiDolmer/CyclingZone/pull/4605))
-  og 7/9-sweepet (ejer-direktiv, 14-dages-vindue, se §5).
+  `patchNotes.js`. Brugt til 7-dages-auditten 2/9 ([#4605](https://github.com/NicolaiDolmer/CyclingZone/pull/4605));
+  se §5.
 
 ## 2. Format på sitet: allerede låst
 
@@ -75,12 +75,14 @@ Skal afklares med ejeren næste gang emnet kommer op; indtil da: ad hoc, udløst
 ## 5. Efterkontrol (audit): hvad rutinen dækker
 
 Efterkontrollen sammenligner tre ting for et givent vindue: merged PR'er (git-log), sitets entries
-(`patchNotes.js`) og hvad der faktisk er postet i Discord. Kørt to gange:
+(`patchNotes.js`) og hvad der faktisk er postet i Discord. Dokumenterede kørsler:
 
 - **2/9** (7 dage, 26/8-2/9): 120 merges matchet; 7 spillervendte ændringer manglede på sitet, tilføjet som
   v7.234 i PR #4605. Discord-catch-up for 7.148-7.231 postet samme dag.
-- **7/9** (ejer-direktiv, 14-dages-vindue efter direkte besked i Discord #feedback-from-dolmer): samme
-  metode, udvidet vindue.
+- **6-7/9:** ejeren bad 6/9 om et 14-dages-vindue (kommentar i
+  [#4521](https://github.com/NicolaiDolmer/CyclingZone/issues/4521)). Det eneste sporbare resultat er et
+  Discord-udsnit for v7.256-7.261 (commit `5f7548787`), ikke en fuld krydskontrol af vinduet. En fuld
+  14-dages-efterkontrol er altså ikke dokumenteret kørt.
 
 Denne rutine er ikke schemalagt automatisk; den køres når ejeren beder om det, eller når en session opdager
 at Discord er kommet bagud.
