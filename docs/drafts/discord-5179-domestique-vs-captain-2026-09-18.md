@@ -1,4 +1,4 @@
-# Udkast til svar til jonasnielsen_05591 om hjælperyttere vs. kaptajnens point (#5179) · skrevet 18/9, ejeren poster selv
+# Udkast til svar til spilleren bag #5179 om hjælperyttere vs. kaptajnens point · skrevet 18/9, ejeren poster selv
 
 > **Kanal:** Discord #dansk-snak, tråden fra 12/9 09:23-09:27 UTC. Postes som svar i den eksisterende
 > tråd, ikke et nyt opslag. EN først, DA under, jf. sprogprioritet.
