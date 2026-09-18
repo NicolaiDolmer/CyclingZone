@@ -5,6 +5,7 @@
 // #4348: bruger den KANONISKE authHeaders() (lib/supabase.ts) — enforced af
 // authHeadersCanonical.4348.test.js (ingen ny lokal kopi tilladt).
 import { authHeaders } from "../../lib/supabase";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -17,9 +18,9 @@ export async function fetchDnaSuggestions() {
   const headers = await authHeaders({ json: false });
   if (!headers) return null;
   try {
-    const res = await fetch(`${API}/api/board/dna-suggestions`, { headers });
-    if (!res.ok) return null;
-    return await res.json();
+    const res = await apiFetch(`${API}/api/board/dna-suggestions`, { headers });
+    if (!res.ok) return null; // dækker også limited/unauthorized/networkError
+    return res.data ?? null;
   } catch {
     return null;
   }
@@ -31,7 +32,7 @@ export async function postDnaChoice(dnaKey) {
   if (!headers || !dnaKey) return { ok: false, data: null };
   let res;
   try {
-    res = await fetch(`${API}/api/board/dna-choose`, {
+    res = await apiFetch(`${API}/api/board/dna-choose`, {
       method: "POST",
       headers,
       body: JSON.stringify({ dna_key: dnaKey }),
@@ -39,6 +40,6 @@ export async function postDnaChoice(dnaKey) {
   } catch {
     return { ok: false, data: null };
   }
-  const data = await res.json().catch(() => null);
-  return { ok: res.ok, data };
+  return { ok: res.ok, data: res.data ?? null }; // #5242, se bonusOfferApi.js
+
 }

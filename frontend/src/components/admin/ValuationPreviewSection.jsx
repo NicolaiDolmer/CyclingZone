@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { readAdminJson, adminErrorMessage } from "./shared/useAdminAuth";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { ChevronLeftIcon, ChevronRightIcon } from "../ui/icons/index.jsx";
 
 const API = import.meta.env.VITE_API_URL;
@@ -26,7 +27,7 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/admin/rider-valuation-preview`, { headers: await getAuth() });
+      const res = await apiFetch(`${API}/api/admin/rider-valuation-preview`, { headers: await getAuth() });
       const json = await readAdminJson(res);
       if (res.ok) setData(json);
       else onMsg?.(`❌ ${adminErrorMessage(json, res)}`, "error");

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertTriangleIcon, EmptyState, ErrorState } from "../../ui";
+import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { formatBand, formatValue, normalizeBalanceDrift } from "./balanceDriftShape.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -40,8 +41,8 @@ export default function BalanceDriftWatchSection({ getAuth }) {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API}/api/admin/balance-drift`, { headers: await getAuth() });
-        const json = await res.json();
+        const res = await apiFetch(`${API}/api/admin/balance-drift`, { headers: await getAuth() });
+        const json = res.data || {}; // #5242: null ved limited/unauthorized/networkError
         if (!res.ok) { setError(json.error || "Kunne ikke hente data"); return; }
         setData(json);
       } catch (e) {

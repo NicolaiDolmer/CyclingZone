@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../shared/useAdminAuth";
+import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import Card from "../../ui/Card";
 import Button from "../../ui/Button";
 import { Table, Tr, Th, Td } from "../../ui/Table";
@@ -53,8 +54,8 @@ export default function GrowthNpsTab() {
     try {
       const auth = await getAuth();
       const [npsRes, trendRes] = await Promise.all([
-        fetch(`${API}/api/admin/growth/nps?limit=200`, { headers: auth }),
-        fetch(`${API}/api/admin/growth/snapshots?days=90`, { headers: auth }),
+        apiFetch(`${API}/api/admin/growth/nps?limit=200`, { headers: auth }),
+        apiFetch(`${API}/api/admin/growth/snapshots?days=90`, { headers: auth }),
       ]);
       const npsJson = await readAdminJson(npsRes);
       if (npsRes.ok) setData(npsJson);

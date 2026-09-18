@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { authHeaders } from "../../../lib/supabase.js";
+import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { useSubscription } from "../../../lib/useSubscription.js";
 import { ABILITY_CATEGORIES, ABILITY_SHORT } from "../../../lib/abilities.js";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
@@ -93,9 +94,10 @@ export default function RiderAbilityHistoryPro({ riderId, myTeamId }) {
       try {
         const h = await authHeaders();
         if (!h) { if (!cancelled) setState({ status: "error", seasons: [], ceiling: 99 }); return; }
-        const res = await fetch(`${API}/api/pro/rider-history/${riderId}`, { headers: h });
+        const res = await apiFetch(`${API}/api/pro/rider-history/${riderId}`, { headers: h });
+        // dækker også limited/unauthorized/networkError
         if (!res.ok) { if (!cancelled) setState({ status: "error", seasons: [], ceiling: 99 }); return; }
-        const data = await res.json();
+        const data = res.data ?? {};
         if (!cancelled) setState({ status: "ready", seasons: data.seasons ?? [], ceiling: data.abilityCeiling ?? 99 });
       } catch {
         if (!cancelled) setState({ status: "error", seasons: [], ceiling: 99 });

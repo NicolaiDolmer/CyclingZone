@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import PotentialeStars from "../../PotentialeStars";
 import { SearchIcon, CheckIcon } from "../../ui";
 import { getSession } from "../../../lib/supabase";
+import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { formatCz } from "../../../lib/marketValues";
 import { statPlateStyle } from "../../../lib/statColor";
 import { useScoutCountdown, scoutReadyClock } from "../../../lib/scoutCountdown";
@@ -225,11 +226,12 @@ export default function RiderScoutingTab({ rider, scouting }) {
       const { data } = await getSession();
       const token = data?.session?.access_token;
       if (!token) { setFailed(true); return; }
-      const res = await fetch(`${API}/api/riders/${riderId}/scouting-report`, {
+      const res = await apiFetch(`${API}/api/riders/${riderId}/scouting-report`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      // dækker også limited/unauthorized/networkError — alle ender i setFailed(true)
       if (!res.ok) throw new Error("report_failed");
-      setReport(await res.json());
+      setReport(res.data ?? null);
       setFailed(false);
     } catch {
       setFailed(true);

@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -24,9 +25,9 @@ export function useStageRoles(raceId, { skip = false } = {}) {
     const headers = await authHeaders({ json: false });
     if (!headers) { setData(false); return; }
     try {
-      const res = await fetch(`${API}/api/races/${raceId}/stage-roles`, { headers });
-      if (!res.ok) { setData(false); return; }
-      setData(await res.json());
+      const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, { headers });
+      if (!res.ok) { setData(false); return; } // dækker også limited/unauthorized/networkError
+      setData(res.data);
     } catch {
       setData(false);
     }
