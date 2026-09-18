@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training mobile 412 · 3 Hybrid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5;
+  --navy:#111429;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --radius-sm:5px; --radius-pill:9999px;
+  --success:21 119 47; --danger:168 30 30; --warning:154 91 0;
+  --font-body:'DM Sans',system-ui,-apple-system,sans-serif;
+  --font-data:'Inter Tight',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg-body); color:var(--text-1); font-family:var(--font-body);
+  font-size:13px; line-height:1.45; -webkit-font-smoothing:antialiased; width:412px}
+
+.appbar{height:56px; background:var(--navy); display:flex; align-items:center;
+  justify-content:space-between; padding:0 16px; position:relative}
+.appbar .mark{font-family:var(--font-data); font-size:12px; font-weight:700;
+  letter-spacing:.16em; color:rgb(var(--accent))}
+.appbar svg{color:#c9cbdb}
+.stamp{position:absolute; top:12px; left:16px; font-family:var(--font-data);
+  font-size:9.5px; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
+  color:#c9cbdb; border:1px solid #33374d; border-radius:var(--radius-sm); padding:2px 7px}
+.bottomnav{height:58px; background:var(--navy); display:flex; align-items:center;
+  justify-content:space-around; padding:0 8px; margin-top:14px}
+.bottomnav a{display:flex; flex-direction:column; align-items:center; gap:3px;
+  font-family:var(--font-data); font-size:10px; font-weight:500; color:#c9cbdb; text-decoration:none}
+.bottomnav a.is-active{color:rgb(var(--accent))}
+
+.page{padding:16px 16px 8px}
+.pagehead h1{font-family:var(--font-data); font-size:20px; font-weight:700;
+  letter-spacing:-.01em; margin:0; line-height:1.15}
+.pagehead .sub{font-size:13px; color:var(--text-2); margin-top:2px}
+.btn-primary{display:flex; align-items:center; justify-content:center; gap:8px;
+  width:100%; min-height:44px; margin-top:12px; border:0; border-radius:var(--radius-sm);
+  background:rgb(var(--accent)); color:var(--on-accent);
+  font-family:var(--font-data); font-size:14px; font-weight:600}
+.btn-primary + .hint{font-family:var(--font-data); font-size:11px; color:var(--text-3);
+  text-align:center; margin-top:5px}
+.btn-sec{display:inline-flex; align-items:center; justify-content:center;
+  min-height:44px; min-width:88px; padding:0 14px; background:var(--bg-card);
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  font-family:var(--font-data); font-size:13px; font-weight:600; color:var(--text-1)}
+
+.tabs{display:flex; gap:20px; border-bottom:1px solid var(--border); margin:16px 0 12px;
+  overflow-x:hidden}
+.tab{font-size:14px; font-weight:500; color:var(--text-2); padding:0 0 8px;
+  margin-bottom:-1px; border-bottom:2px solid transparent; white-space:nowrap}
+.tab.is-active{color:var(--accent-t); font-weight:600; border-bottom-color:rgb(var(--accent))}
+
+.daystrip{display:flex; border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card); overflow:hidden}
+.daystrip > div{flex:1; padding:7px 6px 8px; border-left:1px solid var(--border); text-align:center}
+.daystrip > div:first-child{border-left:0}
+.daystrip .rd{font-family:var(--font-data); font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.09em; color:var(--text-3)}
+.daystrip .split{font-family:var(--font-data); font-size:14px; font-weight:650;
+  font-variant-numeric:tabular-nums; margin-top:2px; line-height:1.1}
+.daystrip .split .sep{color:var(--text-3); font-weight:500}
+.daystrip .split .t{color:var(--text-2)}
+.daystrip .st{font-family:var(--font-data); font-size:10px; font-weight:500;
+  text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-top:2px}
+.daystrip .is-now{background:var(--bg-subtle)}
+.daystrip .is-now .rd{color:var(--text-1)}
+.legend{font-family:var(--font-data); font-size:10px; font-weight:500;
+  text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin:6px 0 0}
+
+.wk{margin-top:12px; border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card); overflow:hidden}
+.wkhead{display:flex; align-items:center; justify-content:space-between;
+  padding:8px 12px; border-bottom:1px solid var(--border)}
+.wkhead .t{font-size:13px; font-weight:600}
+.wkhead .a{font-family:var(--font-data); font-size:12px; font-weight:500; color:var(--accent-t)}
+.wkgrid{display:grid; grid-template-columns:30px repeat(7,1fr)}
+.wkgrid > span{font-family:var(--font-data); font-size:10px; font-weight:500;
+  text-align:center; padding:4px 0; border-left:1px solid var(--border);
+  border-top:1px solid var(--border); color:var(--text-1);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.wkgrid > span.h{border-top:0; font-weight:600; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--text-3); background:var(--bg-subtle)}
+.wkgrid > span.lab{border-left:0; font-weight:600; color:var(--text-3);
+  letter-spacing:.05em; background:var(--bg-subtle)}
+.wkgrid > span.race{background:var(--navy); color:#fff; font-weight:600}
+.wkgrid > span.off{color:var(--text-3)}
+.wknote{font-family:var(--font-data); font-size:10px; font-weight:500;
+  text-transform:uppercase; letter-spacing:.07em; color:var(--text-3);
+  padding:6px 12px 7px; border-top:1px solid var(--border)}
+
+.receipt{display:flex; align-items:center; justify-content:space-between; gap:10px;
+  min-height:44px; margin-top:10px; padding:0 12px;
+  border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card)}
+.receipt .lab{font-family:var(--font-data); font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.09em; color:var(--text-3)}
+.receipt .val{font-family:var(--font-data); font-size:12.5px; font-weight:500;
+  font-variant-numeric:tabular-nums; margin-top:1px}
+.receipt svg{color:var(--text-3); flex-shrink:0}
+
+/* ── Two lists: the day split by what a rider actually does ─────────────── */
+.sec{margin-top:12px; border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card); overflow:hidden}
+.sechead{display:flex; align-items:baseline; justify-content:space-between;
+  padding:9px 12px; border-bottom:1px solid var(--border)}
+.sechead .t{font-size:15px; font-weight:600}
+.sechead .m{font-family:var(--font-data); font-size:11px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--text-3)}
+
+.row{display:flex; align-items:center; gap:10px; min-height:52px; padding:7px 12px;
+  border-top:1px solid var(--border)}
+.row:first-of-type{border-top:0}
+.row .who{flex:1; min-width:0}
+.row .rname{font-size:13.5px; font-weight:500; line-height:1.2;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.row .rsub{font-family:var(--font-data); font-size:10px; font-weight:500;
+  text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); margin-top:1px;
+  font-variant-numeric:tabular-nums}
+.row .what{flex-shrink:0; text-align:right}
+.row .what .w1{font-family:var(--font-data); font-size:12.5px; font-weight:600}
+.row .what .w2{font-family:var(--font-data); font-size:10px; font-weight:500;
+  text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); margin-top:1px;
+  font-variant-numeric:tabular-nums}
+.row .rdpill{flex-shrink:0; min-width:38px; text-align:center; padding:3px 0;
+  background:var(--navy); color:#fff; border-radius:var(--radius-sm);
+  font-family:var(--font-data); font-size:10.5px; font-weight:600; letter-spacing:.04em}
+.row svg{color:var(--text-3); flex-shrink:0}
+.minibar{width:64px; height:4px; border-radius:2px; background:var(--bg-subtle);
+  border:1px solid var(--border); overflow:hidden; margin-top:4px; margin-left:auto}
+.minibar > i{display:block; height:100%; background:var(--text-1)}
+
+/* the one rider opened in place: the whole choice, nothing hidden */
+.open{border-top:1px solid var(--border); background:var(--bg-subtle); padding:12px}
+.open .ohead{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+.open .rname{font-size:14.5px; font-weight:600}
+.open .rmeta{font-family:var(--font-data); font-size:10px; font-weight:500;
+  text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-top:2px}
+.cond{display:flex; gap:10px; text-align:right; flex-shrink:0}
+.cond .k{font-family:var(--font-data); font-size:9.5px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--text-3)}
+.cond .v{font-family:var(--font-data); font-size:14px; font-weight:650;
+  font-variant-numeric:tabular-nums; line-height:1.15}
+.rdrow{display:flex; margin-top:10px; border:1px solid var(--border);
+  border-radius:var(--radius-sm); overflow:hidden; background:var(--bg-card)}
+.rdrow > div{flex:1; min-width:0; border-left:1px solid var(--border); padding:5px 5px 6px; text-align:center}
+.rdrow > div:first-child{border-left:0}
+.rdrow .n{font-family:var(--font-data); font-size:9.5px; font-weight:600;
+  letter-spacing:.08em; color:var(--text-3)}
+.rdrow .what2{font-family:var(--font-data); font-size:11px; font-weight:600; margin-top:3px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.rdrow .race{background:var(--navy); color:#fff; border-radius:var(--radius-sm);
+  padding:2px 0; margin-top:2px; font-family:var(--font-data); font-size:10.5px; font-weight:600}
+.rdrow .rest{color:var(--text-3)}
+.prog{margin-top:11px}
+.prog .top{display:flex; align-items:baseline; justify-content:space-between; gap:8px}
+.prog .name{font-family:var(--font-data); font-size:12.5px; font-weight:600}
+.prog .name .to{color:var(--text-2); font-weight:500}
+.prog .eta{font-family:var(--font-data); font-size:11px; color:var(--text-2);
+  font-variant-numeric:tabular-nums}
+.bar{height:5px; margin-top:6px; border-radius:3px; background:var(--bg-card);
+  border:1px solid var(--border); overflow:hidden}
+.bar > i{display:block; height:100%; background:var(--text-1)}
+.counts{margin-top:11px; padding-top:10px; border-top:1px solid var(--border)}
+.counts .lab{font-family:var(--font-data); font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.09em; color:var(--text-3)}
+.chips{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px}
+.chip{display:inline-flex; align-items:baseline; gap:5px; padding:3px 9px;
+  border:1px solid var(--border); border-radius:var(--radius-pill);
+  font-family:var(--font-data); font-size:11px; font-weight:500; color:var(--text-2);
+  background:var(--bg-elevated); white-space:nowrap}
+.chip b{font-weight:650; color:var(--text-1); font-variant-numeric:tabular-nums}
+.chip.is-cap{border-color:rgba(154,91,0,.35); color:var(--warning)}
+.chip.is-cap em{font-style:normal; font-size:9.5px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.07em}
+.chip.is-focus{border-color:var(--text-1)}
+.foot{display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin-top:11px; padding-top:10px; border-top:1px solid var(--border)}
+.pace .k{font-family:var(--font-data); font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.09em; color:var(--text-3)}
+.pace .v{font-family:var(--font-data); font-size:12.5px; font-weight:500;
+  font-variant-numeric:tabular-nums; margin-top:1px}
+.week{font-family:var(--font-data); font-size:11px; color:var(--text-2);
+  font-variant-numeric:tabular-nums; margin-top:8px}
+.more{display:flex; align-items:center; justify-content:center; min-height:44px;
+  border-top:1px solid var(--border); font-family:var(--font-data);
+  font-size:12.5px; font-weight:600; color:var(--text-1)}
+
+.assist{display:flex; align-items:center; gap:10px; min-height:44px; margin-top:12px;
+  padding:0 12px; border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card)}
+.assist .t{font-size:13px; font-weight:600; flex:1}
+.assist .m{font-family:var(--font-data); font-size:11px; color:var(--text-3)}
+.assist svg{color:var(--text-3)}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <span class="stamp">Mockup 3 · hybrid</span>
+  <span></span>
+  <span class="mark">CYCLING ZONE</span>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+</div>
+
+<div class="page">
+
+  <div class="pagehead">
+    <h1>Training</h1>
+    <p class="sub">Race day 3 of 4 today. Results land at 20:00.</p>
+  </div>
+
+  <button class="btn-primary">Run today's training now</button>
+  <p class="hint">No bonus. It only runs the day earlier.</p>
+
+  <nav class="tabs">
+    <span class="tab is-active">Today</span>
+    <span class="tab">Program</span>
+    <span class="tab">Development</span>
+    <span class="tab">History</span>
+  </nav>
+
+  <div class="daystrip">
+    <div><div class="rd">RD 1</div><div class="split">5<span class="sep">/</span><span class="t">9</span></div><div class="st">Done</div></div>
+    <div><div class="rd">RD 2</div><div class="split">0<span class="sep">/</span><span class="t">14</span></div><div class="st">Done</div></div>
+    <div class="is-now"><div class="rd">RD 3</div><div class="split">6<span class="sep">/</span><span class="t">8</span></div><div class="st">Now</div></div>
+    <div><div class="rd">RD 4</div><div class="split">0<span class="sep">/</span><span class="t">14</span></div><div class="st">20:00</div></div>
+  </div>
+  <p class="legend">Racing / training · race days 62-65 of 140 this season</p>
+
+  <div class="receipt">
+    <div>
+      <div class="lab">Yesterday</div>
+      <div class="val">9 trained · 5 raced · 3 points landed</div>
+    </div>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+  </div>
+
+  <div class="sec">
+    <div class="sechead"><span class="t">Racing now</span><span class="m">Race day 3 · 6 riders</span></div>
+    <div class="row">
+      <span class="rdpill">GTX</span>
+      <div class="who"><div class="rname">T. Van Aerde</div><div class="rsub">Cli · 22 · F68 T64</div></div>
+      <div class="what"><div class="w1">Attack</div><div class="w2">Getxo · km 48</div></div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+    <div class="row">
+      <span class="rdpill">GTX</span>
+      <div class="who"><div class="rname">R. Duran</div><div class="rsub">Pun/Bar · 25 · F71 T37</div></div>
+      <div class="what"><div class="w1">Protected</div><div class="w2">Getxo · km 48</div></div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+    <div class="row">
+      <span class="rdpill">GTX</span>
+      <div class="who"><div class="rname">S. Mikkelsen</div><div class="rsub">Spr · 23 · F70 T29</div></div>
+      <div class="what"><div class="w1">Sprint</div><div class="w2">Getxo · km 48</div></div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+    <div class="more">Show 3 more</div>
+  </div>
+
+  <div class="sec">
+    <div class="sechead"><span class="t">Training now</span><span class="m">Race day 3 · 8 riders</span></div>
+
+    <div class="row">
+      <div class="who"><div class="rname">M. Sørensen</div><div class="rsub">Spr/Rou · 24 · F74 T31</div></div>
+      <div class="what">
+        <div class="w1">Sprint</div>
+        <div class="w2">Sprint 71 · +1 in 2</div>
+        <div class="minibar"><i style="width:64%"></i></div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+    </div>
+
+    <!-- opened in place: the whole choice, nothing behind a swipe -->
+    <div class="open">
+      <div class="ohead">
+        <div>
+          <div class="rname">M. Sørensen</div>
+          <div class="rmeta">Sprinter / Rouleur · 24</div>
+        </div>
+        <div class="cond">
+          <div><div class="k">Form</div><div class="v">74</div></div>
+          <div><div class="k">Fat</div><div class="v">31</div></div>
+        </div>
+      </div>
+
+      <div class="rdrow">
+        <div><div class="n">1</div><div class="race">LIM</div></div>
+        <div><div class="n">2</div><div class="what2">Sprint</div></div>
+        <div><div class="n">3</div><div class="what2">Sprint</div></div>
+        <div><div class="n">4</div><div class="what2 rest">Rest</div></div>
+      </div>
+
+      <div class="prog">
+        <div class="top">
+          <div class="name">Sprint 71 <span class="to">→ 72</span></div>
+          <div class="eta">Next point in 2 race days</div>
+        </div>
+        <div class="bar"><i style="width:64%"></i></div>
+      </div>
+
+      <div class="counts">
+        <div class="lab">Counts for sprinter</div>
+        <div class="chips">
+          <span class="chip is-focus">sprint <b>71</b></span>
+          <span class="chip">flat <b>66</b></span>
+          <span class="chip">acceleration <b>58</b></span>
+          <span class="chip is-cap">durability <b>44</b> <em>at cap</em></span>
+        </div>
+      </div>
+
+      <div class="foot">
+        <div class="pace">
+          <div class="k">Pace</div>
+          <div class="v">About 1 rating point a week</div>
+        </div>
+        <button class="btn-sec">Change</button>
+      </div>
+      <div class="week">This week: +2 sprint · +1 flat · +1 rating</div>
+    </div>
+
+    <div class="row">
+      <div class="who"><div class="rname">L. Colombo</div><div class="rsub">Rou/All · 27 · F81 T22</div></div>
+      <div class="what">
+        <div class="w1">Threshold</div>
+        <div class="w2">Flat 74 · +1 tonight</div>
+        <div class="minibar"><i style="width:93%"></i></div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+    <div class="row">
+      <div class="who"><div class="rname">V. Lindqvist</div><div class="rsub">TT/Rou · 29 · F63 T51</div></div>
+      <div class="what">
+        <div class="w1">Recovery</div>
+        <div class="w2">No point this week</div>
+        <div class="minibar"><i style="width:11%"></i></div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+    <div class="row">
+      <div class="who"><div class="rname">J. Halvorsen</div><div class="rsub">Cli/Pun · 20 · F59 T44</div></div>
+      <div class="what">
+        <div class="w1">Climbing</div>
+        <div class="w2">Climb 51 · +1 in 4</div>
+        <div class="minibar"><i style="width:38%"></i></div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+    <div class="more">Show 4 more</div>
+  </div>
+
+  <div class="wk">
+    <div class="wkhead"><span class="t">Program</span><span class="a">Edit</span></div>
+    <div class="wkgrid">
+      <span class="h lab"></span>
+      <span class="h">Mon</span><span class="h">Tue</span><span class="h">Wed</span><span class="h">Thu</span><span class="h">Fri</span><span class="h">Sat</span><span class="h">Sun</span>
+      <span class="lab">RD1</span>
+      <span>Thr</span><span>Spr</span><span class="race">Race</span><span>Thr</span><span>Spr</span><span class="race">Race</span><span class="off">Rest</span>
+      <span class="lab">RD2</span>
+      <span>Thr</span><span>Lng</span><span>Rec</span><span>Thr</span><span>Lng</span><span class="off">Rest</span><span class="off">Rest</span>
+      <span class="lab">RD3</span>
+      <span>Spr</span><span>Lng</span><span class="race">Race</span><span>Spr</span><span>Thr</span><span class="race">Race</span><span>Rec</span>
+      <span class="lab">RD4</span>
+      <span class="off">Rest</span><span>Rec</span><span class="off">Rest</span><span class="off">Rest</span><span>Rec</span><span class="off">Rest</span><span class="off">Rest</span>
+    </div>
+    <div class="wknote">7 weekdays × 4 race days · a race day is one race or one session</div>
+  </div>
+
+  <div class="assist">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/></svg>
+    <span class="t">Assistant</span>
+    <span class="m">3 suggestions</span>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+  </div>
+
+</div>
+
+<nav class="bottomnav">
+  <a href="#"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>Dashboard</a>
+  <a href="#"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="m4 8 8 5 8-5"/></svg>Inbox</a>
+  <a href="#"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16l-1 12H5z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Market</a>
+  <a href="#" class="is-active"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6"/><path d="M18 20a5 5 0 0 0-2-4"/></svg>Training</a>
+  <a href="#"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l2.3 5 5.2.5-3.9 3.5 1.1 5.1L12 15.4 7.3 18.1l1.1-5.1L4.5 9.5 9.7 9z"/></svg>My Team</a>
+</nav>
+
+</body>
+</html>
