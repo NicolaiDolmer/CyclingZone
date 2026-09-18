@@ -122,6 +122,11 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
       direction: "demote",
       newSalary: quote?.newSalary ?? null,
       currentSalary: quote?.currentSalary ?? rider.salary ?? null,
+      // #4582: backend afgør om kontrakten arves (hasCompleteContract på en frisk
+      // server-SELECT) — frontend gætter IKKE ved at sammenligne de to løn-tal.
+      // Falder quoten på gulvet (netværk), er false den sikre defaults: dialogen
+      // lover ikke en arv den ikke har fået bekræftet.
+      keepsContract: quote?.keepsContract ?? false,
       capLabel: `${used} / ${max}`,
       capAfterLabel: `${used + 1} / ${max}`,
       racesCleared: quote?.racesCleared ?? 0,
