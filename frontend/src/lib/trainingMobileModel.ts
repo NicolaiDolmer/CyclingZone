@@ -106,8 +106,12 @@ export function riderShortName(rider: { firstname?: string | null; lastname?: st
 //   capped   : evne-noegler paa livstidsloftet (#1162: kun noegler, aldrig tal)
 export type CountsForRow = { ability: string; value: number | null; atCap: boolean };
 
+// `weights` er `Partial`, fordi DISPLAY_RECIPES er en GENERERET fil: hver
+// opskrift naevner kun sine EGNE evner, saa TypeScript ser de oevrige noegler
+// som `undefined` i union-typen. Vi laeser kun noeglerne, saa sorteringen
+// haandterer et manglende tal som 0.
 export function countsForRole(
-  recipes: ReadonlyArray<{ key: string; weights: Record<string, number> }> | null | undefined,
+  recipes: ReadonlyArray<{ key: string; weights: Partial<Record<string, number>> }> | null | undefined,
   roleKey: string | null | undefined,
   abilities: Record<string, unknown> | null | undefined,
   capped: readonly string[] | null | undefined,
