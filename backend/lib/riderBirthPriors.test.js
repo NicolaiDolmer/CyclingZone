@@ -19,7 +19,12 @@ import {
   drawYouthBirthAbilities, birthHiddenPotential, makeBirthMarker, makeYouthBirthMarker,
   withBirthAbilityCap, isBornFromPriors, deriveBirthAbilities, birthAbilityKeys,
   birthPriorCoverage, physiologySeedInputFromAbilities, blendBirthProfiles,
+  U23_BIRTH_BAND, U23_BIRTH_AGE_MIN, U23_BIRTH_AGE_MAX, U23_BIRTH_TIER,
+  YOUTH_BIRTH_TIER, u23BandOverrides, birthBandForTier,
+  drawU23BirthAbilities, makeU23BirthMarker,
 } from "./riderBirthPriors.js";
+import { SQUAD_MAX_AGE } from "./squads.js";
+import { isU23ForReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import {
   ARCHETYPES, ARCHETYPE_BY_TYPE, makeRng, STAT_KEYS,
 } from "./fictionalRiderGenerator.js";
@@ -414,4 +419,183 @@ test("#5269 grep-bevis: board-stien tolererer NULL-stats uden at kaste eller giv
 
 test("ARCHETYPE_BY_TYPE og prior-tabellen daekker samme otte arketyper", () => {
   assert.deepEqual(Object.keys(ARCHETYPE_BY_TYPE).sort(), BIRTH_ARCHETYPE_KEYS.slice().sort());
+});
+
+// ── U23-foedselsbaandet (#5376, ejer-valg 18/9: variant A) ───────────────────
+// Kontrakten for det baand U23-truppene til AI-holdene foedes paa ved
+// S4-cutover (D-054 §10.4). Den vigtigste test i blokken er den FOERSTE:
+// akademiets baand og dets maetnings-invariant (G5, #3561/#2064 §2a) maa ikke
+// flytte sig som sideeffekt - hele akademiet haenger paa at en ungdomsrytters
+// nuvaerende evne ikke loefter `ability_caps` over hans potentiale-loft.
+
+const U23_AGES = Array.from(
+  { length: U23_BIRTH_AGE_MAX - U23_BIRTH_AGE_MIN + 1 },
+  (_, i) => U23_BIRTH_AGE_MIN + i,
+);
+
+const drawU23 = (age, seed = 4242, extra = {}) => drawU23BirthAbilities({
+  rng: makeBirthRng(seed),
+  age,
+  potentiale: 3,
+  archetype: "rouleur",
+  classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+  ...extra,
+});
+
+test("#5376 U23-baandet roerer ALDRIG akademiets baand (G5-invarianten)", () => {
+  const before = JSON.stringify(YOUTH_BIRTH_BAND);
+  // Selve foedslen paa U23-baandet maa heller ikke kunne mutere det undervejs.
+  for (const age of U23_AGES) drawU23(age);
+  assert.equal(JSON.stringify(YOUTH_BIRTH_BAND), before, "YOUTH_BIRTH_BAND blev aendret");
+  assert.ok(Object.isFrozen(YOUTH_BIRTH_BAND) && Object.isFrozen(U23_BIRTH_BAND));
+  // Akademiets eget loft er stadig spejlingen af `YOUTH_GEN_CONFIG.statCeil` -
+  // den spejling er hele grunden til at akademiets kalibrering kan stoles paa.
+  assert.ok(near(YOUTH_BIRTH_BAND.ceil, statLevelToAbility(YOUTH_GEN_CONFIG.statCeil)));
+  assert.ok(near(YOUTH_BIRTH_BAND.ceilBoosted, statLevelToAbility(YOUTH_GEN_CONFIG.statCeilBoosted)));
+  // Akademi-stien foeder fortsat paa akademiets baand, ikke paa U23-baandet.
+  assert.equal(birthBandForTier(YOUTH_BIRTH_TIER), YOUTH_BIRTH_BAND);
+});
+
+// Variant A er praecis EEN knap: loftet. Gaar der flere felter ind i diffen,
+// er baandet holdt op med at vaere "akademiets med et hoejere loft", og saa
+// gaelder ejerens begrundelse for valget ikke laengere.
+test("#5376 variant A aendrer KUN loftet - forankring, rampe og spredning arves", () => {
+  assert.deepEqual(
+    Object.keys(u23BandOverrides()).sort(),
+    ["ceil", "ceilBoosted"],
+    "U23-baandet maa kun afvige paa loftet",
+  );
+  for (const key of ["baseAt16", "perYearOver16", "potStartLift", "startLuckSd", "sd", "floor",
+    "signatureBoostPerWeight", "dampPerWeight", "secondarySignatureWeight",
+    "gcTimeTrialBoostRatio", "gcClimbingBoostRatio"]) {
+    assert.equal(U23_BIRTH_BAND[key], YOUTH_BIRTH_BAND[key], `${key} skal arves fra akademiet`);
+  }
+  // "Loeft loftet": et loft der ikke er hoejere ville goere hele valget til en no-op.
+  assert.ok(U23_BIRTH_BAND.ceil > YOUTH_BIRTH_BAND.ceil);
+  assert.equal(U23_BIRTH_BAND.ceil, U23_BIRTH_BAND.ceilBoosted, "signatur-loftet skal foelge loftet");
+});
+
+// Baandets ENE formaal: alderen skal blive ved med at flytte noget gennem hele
+// foedselsintervallet. Er medianen flad fra et aar til det naeste, er loftet
+// begyndt at klippe igen, og baandet loeser ikke det det blev bygget for.
+test("#5376 alderen flytter medianen ved hvert trin i U23-intervallet", () => {
+  const medianForAge = (age) => {
+    const values = [];
+    for (let i = 0; i < 120; i++) {
+      const abilities = drawU23(age, (20260918 + age * 1000 + i) >>> 0, {
+        potentiale: 2 + (i % 4),
+        archetype: BIRTH_ARCHETYPE_KEYS[i % BIRTH_ARCHETYPE_KEYS.length],
+      });
+      for (const key of REGISTRY_ABILITY_KEYS) values.push(abilities[key]);
+    }
+    values.sort((a, b) => a - b);
+    return values[Math.floor(values.length / 2)];
+  };
+  const medians = U23_AGES.map(medianForAge);
+  for (let i = 1; i < medians.length; i++) {
+    assert.ok(
+      medians[i] > medians[i - 1],
+      `alder ${U23_AGES[i - 1]} -> ${U23_AGES[i]}: medianen stod stille (${medians[i - 1]} -> ${medians[i]})`,
+    );
+  }
+});
+
+test("#5376 U23-foedslen giver gyldige heltals-evner inden for sit eget baand", () => {
+  for (const age of U23_AGES) {
+    const abilities = drawU23(age);
+    assert.deepEqual(Object.keys(abilities).sort(), REGISTRY_ABILITY_KEYS.slice().sort());
+    for (const [key, v] of Object.entries(abilities)) {
+      assert.ok(Number.isInteger(v), `${key}=${v} er ikke et heltal`);
+      assert.ok(v >= ABILITY_FLOOR && v <= Math.ceil(U23_BIRTH_BAND.ceil), `${key}=${v} uden for U23-baandet`);
+    }
+  }
+});
+
+// Foedselsaldrene er truppens egne graenser, ikke en liste skrevet i baandet.
+test("#5376 U23-foedselsintervallet foelger trup-graenserne og riderSeasonAge", () => {
+  assert.equal(U23_BIRTH_AGE_MIN, SQUAD_MAX_AGE.junior + 1);
+  assert.equal(U23_BIRTH_AGE_MAX, SQUAD_MAX_AGE.u23);
+  for (const age of U23_AGES) {
+    assert.ok(
+      isU23ForReferenceYear(`${LAUNCH_REFERENCE_YEAR - age}-06-01`, LAUNCH_REFERENCE_YEAR),
+      `alder ${age} skal vaere U23 efter riderSeasonAge`,
+    );
+  }
+  // Graduation Day ved 23: aargangen over intervallet er IKKE U23 laengere.
+  const forGammel = U23_BIRTH_AGE_MAX + 1;
+  assert.equal(
+    isU23ForReferenceYear(`${LAUNCH_REFERENCE_YEAR - forGammel}-06-01`, LAUNCH_REFERENCE_YEAR),
+    false,
+  );
+  // En alder uden for intervallet ville give et gyldigt-udseende evne-saet for
+  // en rytter der ikke kan staa i truppen - den stoppes ved kilden.
+  for (const bad of [U23_BIRTH_AGE_MIN - 1, forGammel, 20.5, NaN, null, "20"]) {
+    assert.throws(() => drawU23(bad), /U23-f.dselsalder/, `alder ${bad} skulle vaere afvist`);
+    assert.throws(() => makeU23BirthMarker({ seed: 1, age: bad }), /U23-f.dselsalder/);
+  }
+});
+
+// Reproduktionen. Uden en EGEN markoer-tier ville hver heal-sweep reproducere
+// engangs-kuldet mod AKADEMIETS baand og klippe rytterne ned - stille.
+test("#5376 markoeren reproducerer U23-foedslen mod U23-baandet, ikke akademiets", () => {
+  const marker = makeU23BirthMarker({ seed: 4242, age: 22 });
+  assert.equal(marker.tier, U23_BIRTH_TIER);
+  assert.notEqual(marker.tier, YOUTH_BIRTH_TIER);
+  assert.equal(marker.age, 22);
+  assert.equal(birthBandForTier(U23_BIRTH_TIER), U23_BIRTH_BAND);
+
+  const row = {
+    id: "u23-1",
+    potentiale: 3,
+    archetype_draw: { primary: "rouleur", secondary: null, birth: marker },
+  };
+  assert.ok(isBornFromPriors(row));
+  const reproduceret = deriveBirthAbilities(row, {
+    age: 22,
+    classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+  });
+  const forventet = drawU23(22);
+  for (const key of REGISTRY_ABILITY_KEYS) {
+    assert.equal(reproduceret[key], forventet[key], `${key} blev ikke reproduceret`);
+  }
+  // Samme traek mod akademiets baand ville give et ANDET (klippet) saet - det er
+  // praecis den forskel markoerens tier findes for at bevare.
+  const paaAkademiBaand = drawYouthBirthAbilities({
+    rng: makeBirthRng(4242),
+    age: 22,
+    potentiale: 3,
+    archetype: "rouleur",
+    classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+  });
+  assert.notDeepEqual(
+    REGISTRY_ABILITY_KEYS.map((k) => forventet[k]),
+    REGISTRY_ABILITY_KEYS.map((k) => paaAkademiBaand[k]),
+  );
+
+  // En senere re-derive (heal-sweep) laeser FOEDSELS-alderen fra markoeren, ikke
+  // rytterens nuvaerende: ellers ville evnerne vokse gratis for hver saeson.
+  const senere = deriveBirthAbilities(row, {
+    age: 25,
+    classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+  });
+  for (const key of REGISTRY_ABILITY_KEYS) assert.equal(senere[key], reproduceret[key]);
+});
+
+// Den rene funktion er hele U23-foedslens evne-side og skal kunne kaldes af den
+// kommende generator (spec A6) uden at traekke DB, ur eller Math.random med ind.
+test("#5376 U23-traekket er rent og deterministisk", () => {
+  const a = drawU23(21, 99);
+  const b = drawU23(21, 99);
+  assert.deepEqual(a, b, "samme seed skal give samme traek");
+  assert.notDeepEqual(a, drawU23(21, 100), "forskellig seed skal give forskelligt traek");
+  // Samme kodesti som akademiet - ikke en parallel kopi: et eksplicit
+  // U23-baand paa akademi-funktionen skal give bit-identisk resultat.
+  assert.deepEqual(a, drawYouthBirthAbilities({
+    rng: makeBirthRng(99),
+    age: 21,
+    potentiale: 3,
+    archetype: "rouleur",
+    classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+    band: U23_BIRTH_BAND,
+  }));
 });

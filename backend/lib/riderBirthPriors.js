@@ -581,15 +581,16 @@ export function drawU23BirthAbilities({
   // `baseAt16 + (alder − 16)·perYearOver16`: en alder uden for intervallet ville
   // give et gyldigt-udseende evne-sæt for en rytter der ikke kan stå i truppen —
   // enten straks for gammel (≥ 23, Graduation Day) eller en junior i U23-tøj.
-  const a = Number(age);
-  if (!Number.isInteger(a) || a < U23_BIRTH_AGE_MIN || a > U23_BIRTH_AGE_MAX) {
+  // Ingen coercion: en generator der sender "20" eller null har en fejl, og en
+  // stille omregning ville skjule den bag et gyldigt-udseende evne-saet.
+  if (!Number.isInteger(age) || age < U23_BIRTH_AGE_MIN || age > U23_BIRTH_AGE_MAX) {
     throw new Error(
       `riderBirthPriors: U23-fødselsalder skal være et helt tal i [${U23_BIRTH_AGE_MIN},${U23_BIRTH_AGE_MAX}] — fik ${JSON.stringify(age)}`,
     );
   }
   return drawYouthBirthAbilities({
     rng,
-    age: a,
+    age,
     potentiale,
     archetype,
     secondaryArchetype,
@@ -749,13 +750,14 @@ export function makeYouthBirthMarker({ seed, age = null }) {
  */
 export function makeU23BirthMarker({ seed, age }) {
   if (!Number.isInteger(seed)) throw new Error("riderBirthPriors: birth seed must be an integer");
-  const a = Number(age);
-  if (!Number.isInteger(a) || a < U23_BIRTH_AGE_MIN || a > U23_BIRTH_AGE_MAX) {
+  // Ingen coercion: en generator der sender "20" eller null har en fejl, og en
+  // stille omregning ville skjule den bag et gyldigt-udseende evne-saet.
+  if (!Number.isInteger(age) || age < U23_BIRTH_AGE_MIN || age > U23_BIRTH_AGE_MAX) {
     throw new Error(
       `riderBirthPriors: U23-fødselsalder skal være et helt tal i [${U23_BIRTH_AGE_MIN},${U23_BIRTH_AGE_MAX}] — fik ${JSON.stringify(age)}`,
     );
   }
-  return { v: BIRTH_MARKER_VERSION, tier: U23_BIRTH_TIER, seed: seed >>> 0, age: a };
+  return { v: BIRTH_MARKER_VERSION, tier: U23_BIRTH_TIER, seed: seed >>> 0, age };
 }
 
 /** Er denne rytter født af spillets egne priors (og altså UDEN PCM-stats)? */
