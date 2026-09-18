@@ -148,9 +148,12 @@ export default function RaceSelectionPanel({
     // læse det NYE tal som sit eget requestGeneration, og guarden matcher stadig —
     // race A's data overskriver race B's state. Se kommentaren ovenfor funktionen.
     const requestGeneration = generationRef.current;
-    const headers = await authHeaders();
-    if (!headers) return false;
+    // #5222 (CodeRabbit): authHeaders() er flyttet IND i try — en afvisning
+    // (getSession() kan reject'e) skal fanges, ikke undslippe og fastlåse
+    // retryReload() på "loading".
     try {
+      const headers = await authHeaders();
+      if (!headers) return false;
       const res = await apiFetch(`${API}/api/races/${raceId}/selection`, { headers });
       if (!res.ok) return false; // dækker også limited/unauthorized
       const body = res.data;

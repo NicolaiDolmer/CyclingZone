@@ -34,9 +34,11 @@ test("#3310 loadSelection snapshotter requestGeneration FØR authHeaders()-await
   // requestGeneration blev læst EFTER dette await, kunne et forældet kald (race A)
   // vågne efter raceId var skiftet til B og generationRef var steget, og læse det
   // NYE tal som sit eget — guarden ville så IKKE fange at kaldet var forældet.
+  // #5222: vinduet er udvidet 120 -> 260 tegn, fordi authHeaders() nu er flyttet
+  // IND i try (en kommentar forklarer hvorfor mellem de to anker-linjer).
   assert.match(
     source,
-    /const loadSelection = useCallback\(async \(\) => \{[\s\S]{0,700}?const requestGeneration = generationRef\.current;[\s\S]{0,120}?const headers = await authHeaders\(\);/,
+    /const loadSelection = useCallback\(async \(\) => \{[\s\S]{0,700}?const requestGeneration = generationRef\.current;[\s\S]{0,260}?const headers = await authHeaders\(\);/,
     "requestGeneration skal indfanges FØR det første await-punkt (authHeaders()) i loadSelection",
   );
 });
