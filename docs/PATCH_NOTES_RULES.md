@@ -4,7 +4,7 @@
 >
 > Skrevet som svar på [#4521](https://github.com/NicolaiDolmer/CyclingZone/issues/4521): en efterkontrol af
 > site + Discord var lavet 2/9 (site bragt i sync t.o.m. v7.234, PR #4605; Discord-opsamling postet af
-> ejeren 2/9), men selve SSOT-dokumentet manglede. Dette dokument opfinder ingen nye regler — det skriver
+> ejeren 2/9), men selve SSOT-dokumentet manglede. Dette dokument opfinder ingen nye regler: det skriver
 > allerede besluttet praksis ned, med kildehenvisning, så den ikke skal genopfindes hver gang.
 
 ---
@@ -31,7 +31,7 @@ duplikerer den ikke. Kort resumé:
 | Regel | Kilde |
 |---|---|
 | Faste felter (Titel / What changed / Why valgfri / What it means for you), ikke fri tekst | ToV §2.1 |
-| Højst ét tal, og kun ét der besvarer "rammer det mig?" — ikke stikprøve/metode | ToV §2.3 |
+| Højst ét tal, og kun ét der besvarer "rammer det mig?" (ikke stikprøve/metode) | ToV §2.3 |
 | EN først, DA under, ingen em-dash, intet opfundet indhold | ToV §2 "Uændret" |
 | `scripts/tone-check-em-dash.mjs` + `scripts/tone-check-terms.mjs` kører i CI (`i18n-check.yml`) | ToV §"Ord og termer" |
 
@@ -43,12 +43,14 @@ udkastet er et rent udsnit af `patchNotes.js`, kategoriseret efter samme overskr
 (Riders, Training, Academy, osv.), EN-blok først, DA-blok under.
 
 **Hvem poster:** Claude/AI skriver udkastet (EN + DA), lægger det i `docs/drafts/discord-patch-notes-<dato>.md`.
-**Ejeren poster selv i Discord** — Claude sender aldrig selv en spillerbesked. Bekræftet gentagne gange i
+**Ejeren poster selv i Discord.** Claude sender aldrig selv en spillerbesked. Bekræftet gentagne gange i
 issue-tråden ("Discord-opsamlingen... er POSTET af ejeren 2/9") og i memory-reglen
 `feedback_never_send_player_messages_on_owners_behalf.md` (ejer 6/8): udkast til copy-paste, ejeren poster.
 
-**Kanal:** `#patch-notes` (EN-post), DA i tråden under eller `#dansk-snak` — samme mønster som
-`COMMS_PLAYBOOK.md` §2.1's kanaltabel.
+**Kanal:** `#patch-notes` (EN-post), DA i tråden under eller `#dansk-snak`, samme mønster som
+`COMMS_PLAYBOOK.md` §2.1's kanaltabel. **Bemærk:** kanalnavnene er ikke verificeret mod den levende
+Discord-server (`COMMS_PLAYBOOK.md` §2.1, MCP nede 8/9, ❓-status). Er navnet ændret siden, skal ejeren
+selv finde den rigtige kanal, ikke stole blindt på navnet her.
 
 **Ingen patch note i en bølge-lane-PR:** bølge-worker-PR'er samler ikke patch notes undervejs; de lægges
 samlet ved close-out for at undgå merge-konflikter i `patchNotes.js` (`feedback_parallel_workers_e2e_slot.md`).
@@ -57,12 +59,12 @@ Discord-udkastet følger samme rytme: det skrives når entries er samlet, ikke p
 **Kadence (åbent, ikke låst):** Der er endnu ingen fast ejer-besluttet regel for *hvornår* en Discord-catch-up
 postes. Praksis indtil nu er ad hoc-opsamlinger der dækker perioden siden sidste post (2/9 dækkede 7.148-7.231,
 17/9 dækkede 7.276-7.286). Et forslag om en fast kadence ("hver merge-dag, samme kategorier") blev rejst i
-issue-kommentaren 6/9, men er **ikke** bekræftet af ejeren — det er derfor ikke skrevet ind som regel her.
+issue-kommentaren 6/9, men er **ikke** bekræftet af ejeren, og det er derfor ikke skrevet ind som regel her.
 Skal afklares med ejeren næste gang emnet kommer op; indtil da: ad hoc, udløst af akkumuleret backlog.
 
 ## 4. Stemme (gælder begge flader)
 
-- **Jeg, aldrig vi** (undtagen diegetisk karakter-dialog) — `TONE_OF_VOICE.md` "Brand voice".
+- **Jeg, aldrig vi** (undtagen diegetisk karakter-dialog), jf. `TONE_OF_VOICE.md` "Brand voice".
 - **Ingen em-dash** nogensteds, heller ikke i Discord-udkast.
 - **Intet opfundet indhold:** Discord-teksten er per definition ikke opfundet, fordi den er et ordret udsnit
   af en allerede godkendt sitetekst (§3). Skriv aldrig en sætning der ikke allerede står i `patchNotes.js`.
@@ -70,7 +72,7 @@ Skal afklares med ejeren næste gang emnet kommer op; indtil da: ad hoc, udløst
   (issue-kommentar 2/9); det er observeret praksis, ikke en talfæstet regel andetsteds, men et fornuftigt
   loft at sigte efter for en catch-up der dækker flere versioner.
 
-## 5. Efterkontrol (audit) — hvad rutinen dækker
+## 5. Efterkontrol (audit): hvad rutinen dækker
 
 Efterkontrollen sammenligner tre ting for et givent vindue: merged PR'er (git-log), sitets entries
 (`patchNotes.js`) og hvad der faktisk er postet i Discord. Kørt to gange:
