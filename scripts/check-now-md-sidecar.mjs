@@ -40,7 +40,10 @@
 // den endelige haandhaevelse sker i CI paa selve PR'en, hvor PR_TITLE altid
 // er sat af GitHub. Kan `<base>` ikke opløses lokalt (origin/main ikke
 // fetchet), springes tjekket over med samme advarsels-moenster som
-// secdef-revoke-lint i scripts/preflight-pr.ps1.
+// secdef-revoke-lint i scripts/preflight-pr.ps1. Opløser `<base>` sig
+// derimod, men selve `git diff` fejler (fx utilstraekkelig fetch-depth til en
+// merge-base), FEJLER guarden LUKKET (exit 1) i stedet for at antage "ingen
+// aendringer" - en tavs [] her ville give det required check et falsk groent.
 //
 // Brug:
 //   node scripts/check-now-md-sidecar.mjs                 (mod origin/main)
@@ -150,9 +153,20 @@ function resolveBase(base) {
   return tryRun("git", ["rev-parse", "--verify", base]) !== null ? base : null;
 }
 
+// BEVIDST run(), ikke tryRun(): `resolveBase` beviser kun at <baseRef> LØSER
+// SIG OP til en SHA, ikke at der findes en fælles historik med HEAD til at
+// beregne en merge-base for tre-punktummer-diffen. En shallow checkout
+// (actions/checkout@v7's default fetch-depth: 1, plus en depth-1-fetch af
+// origin/main) kan derfor lade selve `git diff` fejle, SELVOM baseRef
+// resolvede. Swallowede vi den fejl til `[]` (som en tidligere version af
+// denne funktion gjorde), ville guarden rapportere "docs/NOW.md ikke rørt" og
+// give et required check et falsk grønt - præcis den fejlklasse guarden
+// findes for at forhindre, blot flyttet til git-laget. Fejler diff'en, skal
+// guarden derfor fejle LUKKET (se main()'s try/catch), ikke antage "ingen
+// ændringer".
 export function changedFiles(baseRef) {
-  const diff = tryRun("git", ["diff", "--name-only", `${baseRef}...HEAD`]);
-  return diff ? diff.split(/\r?\n/).filter(Boolean) : [];
+  const diff = run("git", ["diff", "--name-only", `${baseRef}...HEAD`]);
+  return diff.split(/\r?\n/).filter(Boolean);
 }
 
 function main() {
@@ -169,7 +183,22 @@ function main() {
     process.exit(0);
   }
 
-  const changed = changedFiles(base);
+  let changed;
+  try {
+    changed = changedFiles(base);
+  } catch (err) {
+    console.error(
+      `\n❌ now-md-sidecar-guard: kunne ikke beregne \`git diff --name-only ${base}...HEAD\` ` +
+        `(${String(err.message ?? err).trim().split("\n")[0]}).\n\n` +
+        `Fejler LUKKET i stedet for at antage "ingen ændringer" - en tavs [] her ville give et ` +
+        `required check et falsk grønt. Sandsynlig årsag: for lav fetch-depth (ingen fælles ` +
+        `historik mellem HEAD og ${base} - checkout+fetch bruger typisk depth 1). Fix: fetch mere ` +
+        `historik (\`git fetch --deepen=50 origin main\` eller \`fetch-depth: 0\` på checkout-trinnet). ` +
+        `Refs #5093.`,
+    );
+    process.exit(1);
+  }
+
   const result = evaluateNowMdSidecar({ changedFiles: changed, prTitle, actor });
 
   if (result.verdict === "fail") {

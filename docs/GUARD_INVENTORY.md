@@ -112,8 +112,12 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | CI | [.github/workflows/calendar-scorecard-gate.yml](../.github/workflows/calendar-scorecard-gate.yml) | calendar-scorecard: calendar-scorecard | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | backend-tests: backend-tests | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | frontend-build: frontend-build | aldrig bevist |
+| CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | marketing-changes: marketing-changes | aldrig bevist |
+| CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | marketing-lint-build: marketing-lint-build | aldrig bevist |
+| CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | build-determinism-two-builds: build-determinism-two-builds | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | warning-budget: warning-budget | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | static-guards: static-guards | aldrig bevist |
+| CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | ops-script-tests: ops-script-tests | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | migration-idempotency: migration-idempotency | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | workflow-output-guard: workflow-output-guard | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | dependabot-exceptions-guard: dependabot-exceptions-guard | aldrig bevist |
@@ -159,9 +163,11 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | CI | [.github/workflows/patch-notes-coverage-check.yml](../.github/workflows/patch-notes-coverage-check.yml) | patch-notes-coverage: patch-notes-coverage (advisory) | aldrig bevist |
 | CI | [.github/workflows/perf-seo-review.yml](../.github/workflows/perf-seo-review.yml) | review: review | aldrig bevist |
 | CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | changes: changes | aldrig bevist |
-| CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | e2e-shard: e2e-shard | aldrig bevist |
+| CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | plan: plan | aldrig bevist |
+| CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | e2e-shard: e2e-shard (${{ matrix.key }}) | aldrig bevist |
 | CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | frontend-smoke: frontend-smoke | aldrig bevist |
 | CI | [.github/workflows/pr-verification-check.yml](../.github/workflows/pr-verification-check.yml) | check-verification: check-verification | aldrig bevist |
+| CI | [.github/workflows/priority-hygiene.yml](../.github/workflows/priority-hygiene.yml) | sweep: sweep | aldrig bevist |
 | CI | [.github/workflows/quality-inbox.yml](../.github/workflows/quality-inbox.yml) | doctor: doctor | aldrig bevist |
 | CI | [.github/workflows/railway-log-watch.yml](../.github/workflows/railway-log-watch.yml) | watch: watch | aldrig bevist |
 | CI | [.github/workflows/reset-fk-audit.yml](../.github/workflows/reset-fk-audit.yml) | audit: audit | aldrig bevist |
@@ -173,6 +179,10 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | CI | [.github/workflows/security-grants-audit.yml](../.github/workflows/security-grants-audit.yml) | live: Live grant-tjek mod prod | aldrig bevist |
 | CI | [.github/workflows/supabase-advisor-sweep.yml](../.github/workflows/supabase-advisor-sweep.yml) | sweep: sweep | aldrig bevist |
 | CI | [.github/workflows/supabase-log-watch.yml](../.github/workflows/supabase-log-watch.yml) | watch: watch | aldrig bevist |
+| CI | [.github/workflows/triage-age-guard.yml](../.github/workflows/triage-age-guard.yml) | guard: guard | aldrig bevist |
+| CI | [.github/workflows/ts-core-ratchet.yml](../.github/workflows/ts-core-ratchet.yml) | ts-core-ratchet: ts-core-ratchet | aldrig bevist |
+| CI | [.github/workflows/weekly-steering-report.yml](../.github/workflows/weekly-steering-report.yml) | report: report | aldrig bevist |
+| CI | [.github/workflows/weekly-steering-report.yml](../.github/workflows/weekly-steering-report.yml) | publish: publish | aldrig bevist |
 | CI | [.github/workflows/yaml-validate.yml](../.github/workflows/yaml-validate.yml) | actionlint: actionlint (workflow YAML) | aldrig bevist |
 | CI | [.github/workflows/yaml-validate.yml](../.github/workflows/yaml-validate.yml) | yamllint-issue-templates: yamllint (issue templates) | aldrig bevist |
 | eslint | [backend/eslint.config.js](../backend/eslint.config.js) | Samlet config inkl. importerede recommended-regelsæt; filglobs/overrides står i kilden | aldrig bevist |
@@ -201,6 +211,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | agent-hook | [scripts/hooks/clear-active-sessions.sh](../scripts/hooks/clear-active-sessions.sh) | Stop hook: recomputes the "🤖 Aktive sessioner" field in docs/NOW.md when | aldrig bevist |
 | agent-hook | [scripts/hooks/cycling-manager-cleanup.sh](../scripts/hooks/cycling-manager-cleanup.sh) | cycling-manager: SessionStart self-heal | aldrig bevist |
 | agent-hook | [scripts/hooks/ensure-scheduled-tasks.sh](../scripts/hooks/ensure-scheduled-tasks.sh) | SessionStart hook. For hver canonical task-konfiguration i | aldrig bevist |
+| agent-hook | [scripts/hooks/guard-agent-spawn.sh](../scripts/hooks/guard-agent-spawn.sh) | PreToolUse hook (matcher: Agent\|Workflow). Haandhaever orkestrator-standard v2 | aldrig bevist |
 | agent-hook | [scripts/hooks/lint-gh-issue.sh](../scripts/hooks/lint-gh-issue.sh) | PreToolUse hook (matcher: Bash). Scans `gh issue ...` invocations for | aldrig bevist |
 | agent-hook | [scripts/hooks/protect-claude-process.sh](../scripts/hooks/protect-claude-process.sh) | PreToolUse hook: block any Bash/PowerShell command that targets claude.exe | aldrig bevist |
 | agent-hook | [scripts/hooks/run-codex-hook.ps1](../scripts/hooks/run-codex-hook.ps1) | Transport only: resolve Git Bash, forward raw stdin/stdout/stderr and exit code. | aldrig bevist |
@@ -226,6 +237,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | script / CI eller manuel | [scripts/check-frontend-env-keys.mjs](../scripts/check-frontend-env-keys.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-maybesingle-unique-scope.mjs](../scripts/check-maybesingle-unique-scope.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-memory-refs.ps1](../scripts/check-memory-refs.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/check-now-md-sidecar.mjs](../scripts/check-now-md-sidecar.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-now-md.sh](../scripts/check-now-md.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-patch-notes-coverage.js](../scripts/check-patch-notes-coverage.js) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-patch-notes-version.js](../scripts/check-patch-notes-version.js) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
@@ -239,9 +251,12 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | script / CI eller manuel | [scripts/check-skew-protection.mjs](../scripts/check-skew-protection.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-staged-docs.mjs](../scripts/check-staged-docs.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-stale-branches.sh](../scripts/check-stale-branches.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/check-triage-age.mjs](../scripts/check-triage-age.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/check-ts-core-ratchet.mjs](../scripts/check-ts-core-ratchet.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/cross-pc-stop-check.sh](../scripts/cross-pc-stop-check.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/db-verify-restore.mjs](../scripts/db-verify-restore.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/generate-guard-inventory.mjs](../scripts/generate-guard-inventory.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/guard-commit-branch.ps1](../scripts/guard-commit-branch.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/guard-commit-branch.sh](../scripts/guard-commit-branch.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/guard-node-modules-junction.mjs](../scripts/guard-node-modules-junction.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/i18n-check-backend-player-strings.mjs](../scripts/i18n-check-backend-player-strings.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
@@ -284,6 +299,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | script / CI eller manuel | [scripts/preflight-season-cutover.ps1](../scripts/preflight-season-cutover.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/run-staged-checks.mjs](../scripts/run-staged-checks.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/setup-sentry-and-verify.ps1](../scripts/setup-sentry-and-verify.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/test-guard-agent-spawn.sh](../scripts/test-guard-agent-spawn.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/test-guard-commit-branch.sh](../scripts/test-guard-commit-branch.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/test-league-check.ps1](../scripts/test-league-check.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/tone-check-em-dash.mjs](../scripts/tone-check-em-dash.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
@@ -293,6 +309,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | script / CI eller manuel | [scripts/verify-infisical.ps1](../scripts/verify-infisical.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/verify-invariants.ps1](../scripts/verify-invariants.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/verify-local.ps1](../scripts/verify-local.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/verify-lock.ps1](../scripts/verify-lock.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | SessionStart:0:0; matcher=; bash scripts/session-prefetch-issue.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | SessionStart:0:1; matcher=; bash scripts/hooks/ensure-scheduled-tasks.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | SessionStart:0:2; matcher=; bash scripts/hooks/setup-worktree-if-needed.sh | aldrig bevist |
@@ -304,12 +321,13 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:1:3; matcher=Bash; bash scripts/hooks/check-ci-before-push.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:1:4; matcher=Bash; bash scripts/hooks/check-preflight-before-push.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:1:5; matcher=Bash; bash scripts/hooks/block-blocking-shell-commands.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:2:0; matcher=Edit; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:2:1; matcher=Edit; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:3:0; matcher=Write; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:3:1; matcher=Write; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:4:0; matcher=NotebookEdit; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:4:1; matcher=NotebookEdit; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:2:0; matcher=Agent\|Workflow; bash scripts/hooks/guard-agent-spawn.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:3:0; matcher=Edit; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:3:1; matcher=Edit; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:4:0; matcher=Write; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:4:1; matcher=Write; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:5:0; matcher=NotebookEdit; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:5:1; matcher=NotebookEdit; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PostToolUse:0:0; matcher=Bash; bash .claude/hooks/sanitize-secrets.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PostToolUse:1:0; matcher=PowerShell; bash .claude/hooks/sanitize-secrets.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PostToolUse:2:0; matcher=mcp__.*; bash .claude/hooks/sanitize-secrets.sh | aldrig bevist |
