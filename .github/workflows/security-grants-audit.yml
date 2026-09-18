@@ -21,7 +21,7 @@ name: Security grants audit
 #                                aldrig har været en fil i dette repo. Det var
 #                                præcis den sti #3765 kom ind ad.
 #
-# Live-jobbet kører tre uafhængige drift-tjek mod samme forbindelse:
+# Live-jobbet kører fire uafhængige drift-tjek mod samme forbindelse:
 #   security-grants.sql        — hvilke SECURITY DEFINER-funktioner kan klienten kalde?
 #   security-rls-policy-fn-grants.sql
 #                              — den MODSATTE retning (#2671): kalder en RLS-policy

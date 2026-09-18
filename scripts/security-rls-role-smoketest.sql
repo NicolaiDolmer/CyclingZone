@@ -79,7 +79,16 @@
 --     afgrænsning learningen fra 2026-05-31 selv brugte.
 --   * SELECT 1 ... LIMIT 1 — nok til at trigge policy-evalueringen uden at
 --     hente reelt data.
---   * Samme dækning som punkt 1: kun public-funktioner, kun anon +
+--   * SMALLERE dækning end punkt 1 med VILJE: kun `polqual` (USING), IKKE
+--     `polwithcheck` (WITH CHECK) — fanget af CodeRabbit-review 18/9. Et
+--     `SELECT` evaluerer aldrig `WITH CHECK`, kun `USING`. En INSERT/UPDATE-
+--     policy hvis `WITH CHECK` kalder en funktion uden EXECUTE ville denne
+--     smoketest rapportere "sund" på, selvom en rigtig INSERT/UPDATE ville
+--     fejle 42501 — en falsk tryghed der er værre end ingen dækning. Punkt 1
+--     dækker den kombinerede `polqual`+`polwithcheck` statisk uændret; dette
+--     script er en SNÆVRERE, men KORREKT, runtime-bekræftelse af den delmængde
+--     `SELECT` rent faktisk kan bevise noget om.
+--   * Samme dækning som punkt 1 i øvrigt: kun public-funktioner, kun anon +
 --     authenticated, kun policies der matcher regexen nedenfor.
 
 BEGIN;
@@ -113,8 +122,11 @@ BEGIN
                   ELSE ARRAY(SELECT r.rolname::text FROM pg_roles r
                              WHERE r.oid = ANY(pol.polroles)
                                AND r.rolname IN ('anon','authenticated')) END AS roles,
-             coalesce(pg_get_expr(pol.polqual, pol.polrelid), '') || ' ' ||
-             coalesce(pg_get_expr(pol.polwithcheck, pol.polrelid), '') AS expr
+             -- KUN polqual (USING) — se "Kendte grænser" i header: et SELECT
+             -- evaluerer aldrig polwithcheck (WITH CHECK), så det ville være
+             -- forkert at lade en WITH CHECK-only-funktion afgøre om DENNE
+             -- SELECT-baserede smoketest finder et tabel/rolle-par "ramt".
+             coalesce(pg_get_expr(pol.polqual, pol.polrelid), '') AS expr
       FROM pg_policy pol
       JOIN pg_class c ON c.oid = pol.polrelid
       JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -160,7 +172,23 @@ WITH allowed(tbl, polrole, why) AS (
 SELECT CASE WHEN f.polrole = 'authenticated' THEN 'CRITICAL' ELSE 'WARN' END AS severity,
        'rls_smoketest_fn_denied' AS check,
        f.tbl || ' som ' || f.polrole || ' fejler LIVE med: ' || f.detail
-         || '. Fix: GRANT EXECUTE ON FUNCTION public.' || f.proname || ' TO ' || f.polrole || ';' AS detail
+         || '. Fix: GRANT EXECUTE ON FUNCTION public.' || f.proname || '('
+         -- Funktionens identity-arguments slås op via pg_proc i stedet for at
+         -- antage 0 argumenter (CodeRabbit-review 18/9: bar `proname` uden
+         -- parenteser/argumenter er ugyldig GRANT-syntaks for enhver funktion
+         -- med argumenter, og tvetydig ved overloads). 0 overloads i public er
+         -- en målt kendsgerning (se scripts/security-rls-policy-fn-grants.sql),
+         -- men slår ALDRIG fejl stille: findes navnet ikke (uventet), står der
+         -- "?" i stedet for at foreslå en forkert kommando.
+         || coalesce(
+              (SELECT pg_get_function_identity_arguments(p2.oid)
+               FROM pg_proc p2
+               JOIN pg_namespace n2 ON n2.oid = p2.pronamespace
+               WHERE n2.nspname = 'public' AND p2.proname = f.proname
+               LIMIT 1),
+              '?'
+            )
+         || ') TO ' || f.polrole || ';' AS detail
 FROM _rls_smoketest_findings f
 LEFT JOIN allowed a ON a.tbl = f.tbl AND a.polrole = f.polrole
 WHERE a.tbl IS NULL
