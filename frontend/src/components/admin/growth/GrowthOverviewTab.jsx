@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../shared/useAdminAuth";
+import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import Card from "../../ui/Card";
 import Button from "../../ui/Button";
 import Select from "../../ui/Select";
@@ -78,7 +79,7 @@ export default function GrowthOverviewTab() {
     setError(null);
     try {
       const auth = await getAuth();
-      const res = await fetch(`${API}/api/admin/growth/snapshots?days=${days}`, { headers: auth });
+      const res = await apiFetch(`${API}/api/admin/growth/snapshots?days=${days}`, { headers: auth });
       const json = await readAdminJson(res);
       if (!res.ok) {
         setError(adminErrorMessage(json, res));
@@ -90,7 +91,7 @@ export default function GrowthOverviewTab() {
         // Ingen historik endnu — vis dagens ad hoc-tal via samme admin-endpoint
         // som Sprint-metrics-fanen (#4870). En fejl her må ikke vælte fanen:
         // hovedindholdet (den tomme historik) er allerede sat.
-        const fbRes = await fetch(`${API}/api/admin/growth/sprint-metrics?window=7d`, { headers: auth });
+        const fbRes = await apiFetch(`${API}/api/admin/growth/sprint-metrics?window=7d`, { headers: auth });
         if (fbRes.ok) {
           const fbJson = await readAdminJson(fbRes);
           setFallback(fbJson.metrics ?? null);
