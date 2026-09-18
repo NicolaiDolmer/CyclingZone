@@ -32,9 +32,13 @@ import {
   getBotToken,
   drainDiscordDmOutbox,
   drainDiscordWebhookOutbox,
+  enqueueRaceResultNotify, // #3624
+  drainRaceNotifyOutbox, // #3624
   getOpsWebhook,
   sendOpsWebhook,
 } from "./lib/discordNotifier.js";
+import { deliverRaceResultNotify, RACE_RESULT_MESSAGE_TYPE } from "./lib/raceNotifyOutbox.js"; // #3624
+import { isRaceNotifyOutboxEnabled } from "./lib/raceNotifyOutboxFlag.js"; // #3624
 import { flushDmRunGuard } from "./lib/discordDmRateGuard.js"; // #2571
 import { makeBoardDmNotifier } from "./lib/boardDmMirror.js"; // #2619
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
@@ -559,6 +563,22 @@ async function runDiscordWebhookOutboxDrain() {
   if (result.processed) {
     console.log(
       `📮 Discord webhook-outbox: ${result.processed} behandlet — ${result.sent} sendt, ${result.rescheduled} replanlagt, ${result.dead} opgivet`
+    );
+  }
+}
+
+// ─── Notify-outbox drain (#3624) ─────────────────────────────────────────────
+// Afsenderen af den udgående notify-kø. Dette tick er hele pointen med #3624:
+// afviklingen afleverer resultat-beskeden og går videre, og VENTETIDEN på
+// Discord flytter herhen, hvor ingen etape står i kø bagved. Tikker hvert
+// minut — beskeden må gerne komme efter siden, men ikke længe efter.
+// No-op så længe race_notify_outbox_enabled er off (køen er tom).
+
+async function runRaceNotifyOutboxDrain() {
+  const result = await drainRaceNotifyOutbox({ now: new Date() });
+  if (result.processed || result.failed) {
+    console.log(
+      `📨 Notify-outbox: ${result.processed} behandlet — ${result.sent} sendt, ${result.rescheduled} replanlagt, ${result.failed} opgivet, ${result.skipped} taget af andet tick`
     );
   }
 }
@@ -1176,13 +1196,30 @@ async function runStageSchedulerCron() {
       isRaceEngineV2Enabled,
       seenKeys: stageSchedulerSeenKeys,
       runStageFn: async ({ raceId, stageIndex, resume = false }) => {
+        // #3624 · Den EKSTERNE resultat-besked. Flag OFF: sendes synkront her,
+        // bit-identisk med før — og hele køen af forfaldne etaper venter imens
+        // (målt til 25-62 s pr. afslutning, docs/audits/2026-09-18-3624-*).
+        // Flag ON: beskeden afleveres i race_notify_outbox og sendes af sit eget
+        // tick; afviklingen rører ikke Discord. Embeddet bygges i BEGGE tilfælde
+        // her, mens vi har resultatrækkerne — kun afsendelsen flytter.
+        //
+        // Rækkefølge-kontrakten (#3624 punkt 1): dette kald sker inde i #4147's
+        // notify-trin, som først markerer trinnet udført i sit `finally`. Kø-
+        // rækken er derfor committet FØR races.finalize_state siger "notify kørt".
         const notifyDiscord = async ({ race, resultRows, incidents }) => {
           const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
           if (!urls.length) return;
           const embed = buildRaceSimEmbed({ race, resultRows, incidents, divisionLabel: label });
-          for (const url of urls) {
-            await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
-          }
+          const payload = { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] };
+          await deliverRaceResultNotify({
+            urls,
+            payload,
+            raceId: race.id,
+            messageType: RACE_RESULT_MESSAGE_TYPE,
+            queueEnabled: await isRaceNotifyOutboxEnabled(supabase),
+            enqueueFn: enqueueRaceResultNotify,
+            sendFn: sendWebhook,
+          });
         };
         // #1952 · In-app resultat-notifikation til deltagende menneske-managers.
         const notifyInApp = async ({ race }) => {
@@ -1876,6 +1913,13 @@ export function startCron() {
   setInterval(
     trackedTick("discord webhook-outbox drain", monitorCron("discord-webhook-outbox-drain", runDiscordWebhookOutboxDrain, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
+  );
+
+  // Every minute: notify-outbox drain (#3624 — afsendelsen af de eksterne
+  // resultat-beskeder, ude af den blokerende afviklingssti).
+  setInterval(
+    trackedTick("race notify-outbox drain", monitorCron("race-notify-outbox-drain", runRaceNotifyOutboxDrain, CRON_MONITOR_1MIN)),
+    60 * 1000
   );
 
   // Daglig træning: assistent-sweep efter kl. 22 dansk tid (#1305)
