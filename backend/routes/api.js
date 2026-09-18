@@ -252,7 +252,7 @@ import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
-import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary } from "../lib/academyTransfer.js";
+import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
@@ -1766,9 +1766,20 @@ router.get("/riders/:id/academy-demote-quote", requireAuth, async (req, res) => 
     countOngoingRaceEntries(supabase, rider.id),
   ]);
 
+  // #4582: dialogen skal SIGE at kontrakten følger med, ikke kun vise et tal der
+  // tilfældigvis er uændret. Uden dette flag måtte frontend gætte ved at
+  // sammenligne currentSalary og newSalary — og to ens tal kan lige så godt være
+  // et sammenfald som en arvet kontrakt (en kontraktløs rytter KAN lande på sin
+  // gamle løn). Flaget kommer fra hasCompleteContract(), SAMME prædikat som
+  // resolveDemoteSalary() og demote() selv grener på (academyTransfer.js), på den
+  // samme friske server-side SELECT — #3784-lektien udvidet fra tallet til
+  // begrundelsen bag tallet. loadOwnedSeniorRiderForAction henter både
+  // contract_length og contract_end_season, så prædikatet kan skelne "ingen
+  // kontrakt" fra "kolonnen blev ikke hentet" (#3620).
   res.json({
     currentSalary: rider.salary ?? null,
     newSalary: resolveDemoteSalary(rider),
+    keepsContract: hasCompleteContract(rider),
     racesCleared,
     racesOngoing,
   });
