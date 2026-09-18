@@ -74,10 +74,12 @@ test("startPosthog() starter ikke SDK'et når integrationen er slået fra", asyn
 test("capture/identify/reset er tavse no-ops før SDK'et er startet", async () => {
   // Spejlingen fra logEvent.js må aldrig kaste eller blokere — player_events
   // i Postgres er sandheden og skal skrives uanset PostHogs tilstand.
+  // Alle fire er synkrone efter #5055 (lite holder én klient-instans i
+  // modul-scope frem for en async SDK-reference), så de vagtes med doesNotThrow.
   assert.doesNotThrow(() => capturePosthogEvent("auction_bid_placed", { amount: 1 }));
-  await assert.doesNotReject(() => capturePosthogPageview());
-  await assert.doesNotReject(() => identifyPosthog("00000000-0000-0000-0000-000000000000"));
-  await assert.doesNotReject(() => resetPosthog());
+  assert.doesNotThrow(() => capturePosthogPageview());
+  assert.doesNotThrow(() => identifyPosthog("00000000-0000-0000-0000-000000000000"));
+  assert.doesNotThrow(() => resetPosthog());
   assert.equal(isPosthogStarted(), false);
 });
 
@@ -99,19 +101,45 @@ test("posthogIntegration.jsx starter kun PostHog bag analytics-samtykke", () => 
   );
 });
 
-test("init-konfigurationen holder de besluttede grænser (#4321)", () => {
-  assert.match(clientSource, /api_host: API_HOST/);
+test("init-konfigurationen holder de besluttede grænser (#4321, #5055)", () => {
+  assert.match(clientSource, /host: API_HOST/);
   assert.match(clientSource, /const API_HOST = "\/ingest"/, "reverse proxy, ikke eu.i.posthog.com direkte");
-  assert.match(clientSource, /const UI_HOST = "https:\/\/eu\.posthog\.com"/, "EU-hosting");
   assert.match(clientSource, /autocapture: false/, "vi spejler egne events, ikke DOM-klik");
-  assert.match(clientSource, /disable_session_recording: true/, "Clarity ejer replay indtil evalueringen");
-  assert.match(clientSource, /person_profiles: "identified_only"/);
-  assert.match(clientSource, /capture_pageview: false/, "SPA: $pageview fyres manuelt pr. route");
-  assert.match(clientSource, /import\("posthog-js"\)/, "SDK'et skal lazy-loades, ikke ligge i main bundle");
+  assert.match(clientSource, /personProfiles: "identified_only"/);
+  assert.match(
+    clientSource,
+    /captureHistoryEvents: false/,
+    "SPA: $pageview fyres manuelt pr. route, ikke via en history-patch",
+  );
+  assert.match(
+    clientSource,
+    /import\("posthog-js-lite"\)/,
+    "SDK'et skal lazy-loades, ikke ligge i main bundle",
+  );
+  // #5055: posthog-js' 88,7 KB bar autocapture, session replay, surveys,
+  // toolbar og exception-capture — alt sammen slået fra hos os. Vagten holder
+  // den tunge pakke ude, så et fremtidigt "bare lige" ikke trækker den ind igen.
+  assert.doesNotMatch(
+    clientSource,
+    /"posthog-js"|'posthog-js'/,
+    "posthog-js må ikke genindføres — lite dækker init/capture/identify/reset/opt-out",
+  );
+});
+
+test("lite-specifikke valg: ingen tabte events, ingen ekstra rundture (#5055)", () => {
+  // Lite har INGEN pagehide/sendBeacon-flush. Med default-batchen (20 events /
+  // 10 s) ville $pageview fra en besøgende der forlader siden hurtigt gå tabt —
+  // netop bounce-tilfældet. flushAt: 1 sender hvert event med det samme.
+  assert.match(clientSource, /flushAt: 1/, "hvert event skal sendes med det samme");
+  assert.match(clientSource, /preloadFeatureFlags: false/, "vi bruger ingen feature flags");
+  assert.match(clientSource, /disableSurveys: true/, "vi bruger ingen surveys");
+  // posthog-js hængte selv kampagne-parametre på hvert event; lite gør ikke.
+  assert.match(clientSource, /utm_source/, "kampagne-parametre skal stadig med på events");
+  assert.match(clientSource, /gclid/, "klik-id'er skal stadig med på events");
 });
 
 test("identify sender kun UUID'et videre, aldrig e-mail eller navn (#2041)", () => {
-  const identifyBlock = clientSource.slice(clientSource.indexOf("export async function identifyPosthog"));
+  const identifyBlock = clientSource.slice(clientSource.indexOf("export function identifyPosthog"));
   assert.doesNotMatch(
     identifyBlock.slice(0, identifyBlock.indexOf("}\n\n")),
     /email|name|username/i,
