@@ -36,12 +36,12 @@ const members = [
 let flags = [
   { key: "board_mandate_model_enabled", area: "board", label: "Bestyrelse — mandat-modellen", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "academy_enabled", area: "academy", label: "Akademi", stage: "on", raw_value: "on", boolean_only: false, configured: true, unknown_value: false },
-  { key: "academy_intake_pull_enabled", area: "academy", label: "Akademi — traek af nye talenter", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
-  { key: "daily_training_enabled", area: "training", label: "Daglig traening", stage: "on", raw_value: true, boolean_only: true, configured: true, unknown_value: false },
-  { key: "training_score_visible", area: "training", label: "Traeningsscore 1-99 (visning)", stage: "off", raw_value: "false", boolean_only: false, configured: true, unknown_value: true },
-  { key: "peak_planner_enabled", area: "training", label: "Form-planlaegger", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
-  { key: "race_engine_v4", area: "race-engine", label: "Loebsmotor v4", stage: "off", raw_value: null, boolean_only: false, configured: false, unknown_value: false },
-  { key: "stage_scheduler_enabled", area: "race-engine", label: "Etape-skemalaegger", stage: "on", raw_value: "on", boolean_only: false, configured: true, unknown_value: false },
+  { key: "academy_intake_pull_enabled", area: "academy", label: "Akademi — træk af nye talenter", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
+  { key: "daily_training_enabled", area: "training", label: "Daglig træning", stage: "on", raw_value: true, boolean_only: true, configured: true, unknown_value: false },
+  { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)", stage: "off", raw_value: "false", boolean_only: false, configured: true, unknown_value: true },
+  { key: "peak_planner_enabled", area: "training", label: "Form-planlægger", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "race_engine_v4", area: "race-engine", label: "Løbsmotor v4", stage: "off", raw_value: null, boolean_only: false, configured: false, unknown_value: false },
+  { key: "stage_scheduler_enabled", area: "race-engine", label: "Etape-skemalægger", stage: "on", raw_value: "on", boolean_only: false, configured: true, unknown_value: false },
 ];
 
 function readBody(init) {

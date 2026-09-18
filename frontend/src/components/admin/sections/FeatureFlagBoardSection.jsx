@@ -115,7 +115,7 @@ export default function FeatureFlagBoardSection({ getAuth, onMsg }) {
             <p className="text-cz-3 text-2xs uppercase tracking-wide mb-2">{AREA_LABELS[area] || area}</p>
             <div className="rounded-cz border border-cz-border divide-y divide-cz-border">
               {flags.filter(f => f.area === area).map(flag => (
-                <div key={flag.key} className="px-3 py-2.5 flex flex-wrap items-center justify-between gap-3">
+                <div key={flag.key} className="px-3 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-cz-1 text-sm">{flag.label}</p>
                     <p className="text-cz-3 text-xs font-mono truncate">{flag.key}</p>
@@ -131,7 +131,7 @@ export default function FeatureFlagBoardSection({ getAuth, onMsg }) {
                       <p className="text-cz-3 text-xs mt-0.5">Boolean-flag (gammelt skema) — intet beta-stadie</p>
                     )}
                   </div>
-                  <div className="flex gap-1 flex-shrink-0" role="group" aria-label={`Stadie for ${flag.label}`}>
+                  <div className="flex gap-1 flex-shrink-0 self-start sm:self-auto" role="group" aria-label={`Stadie for ${flag.label}`}>
                     {["off", "beta", "on"].map(stage => {
                       const active = flag.stage === stage;
                       const unavailable = stage === "beta" && flag.boolean_only;
