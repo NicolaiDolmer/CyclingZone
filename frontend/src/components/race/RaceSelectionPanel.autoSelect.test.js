@@ -42,9 +42,11 @@ test("#3310 loadSelection snapshotter requestGeneration FØR authHeaders()-await
 });
 
 test("#3310 loadSelection kasserer svaret hvis generationen er forældet EFTER fetch", () => {
+  // #5222: returnerer nu false i stedet for et bart `return;` — kaldere efter en
+  // mutation (autoSelect(), retryReload()) skal kunne se om genindlæsningen lykkedes.
   assert.match(
     source,
-    /if \(requestGeneration !== generationRef\.current\) return;/,
+    /if \(requestGeneration !== generationRef\.current\) return false;/,
     "staleness-guarden skal sammenligne det indfangede generationsnummer mod den aktuelle ref efter fetch'et",
   );
 });
@@ -57,14 +59,16 @@ test("#3310 Auto-select-knappen kalder autoSelect og låses af den delte busy-l�
   );
 });
 
-test("#3310 busy kombinerer saving OG autoStatus === \"loading\" (ikke kun saving)", () => {
+test("#3310 busy kombinerer saving, autoStatus === \"loading\" OG autoStatus === \"reloadFailed\" (ikke kun saving)", () => {
   // a523bd4a: uden dette kan en manuel toggle/klik ske MENS auto-select's POST+reload
   // stadig kører, og race mod loadSelection()'s efterfølgende setSel() (sidste skriv
   // vinder, ikke-deterministisk).
+  // #5222: reloadFailed låser ligesom loading — panelet må ikke åbne op med en GAMMEL
+  // trup fordi genindlæsningen efter et lykkedes auto-udtag fejlede.
   assert.match(
     source,
-    /const busy = saving \|\| autoStatus === "loading";/,
-    "busy skal låse UI'et under BÅDE et manuelt gem og et auto-select-kald",
+    /const busy = saving \|\| autoStatus === "loading" \|\| autoStatus === "reloadFailed";/,
+    "busy skal låse UI'et under et manuelt gem, et auto-select-kald OG en fejlet post-mutation-genindlæsning",
   );
 });
 
@@ -113,5 +117,57 @@ test("#3310 autoSelect() rydder status/errorKey/errorDetail ved start, så et fo
     source,
     /async function autoSelect\(\) \{[\s\S]{0,400}?if \(status !== "idle"\) setStatus\("idle"\);[\s\S]{0,120}?if \(errorKey\) setErrorKey\(null\);[\s\S]{0,120}?if \(errorDetail\) setErrorDetail\(null\);/,
     "autoSelect() skal nulstille status, errorKey OG errorDetail til deres idle/null-værdier ved start",
+  );
+});
+
+// =============================================================================
+// #5222 — CodeRabbit-opfølger fra #5206: loadSelection() efter et lykkedes
+// auto-udtag (eller Gem-lignende server-mutation) kunne fejle (auth/HTTP/parse/
+// netværk) UDEN at panelet nogensinde vidste det — dropDraft() havde allerede
+// glemt udkastet og åbnet reload-porten, så panelet lod op med den GAMLE trup,
+// som om den var gemt. Reelt DOM/mock-fetch-dækning af dette hører til
+// tests/e2e/race-selection.spec.js (Playwright, orkestrator-ejet slot); disse
+// er kildekode-struktur-guards i samme stil som resten af filen.
+// =============================================================================
+
+test("#5222 loadSelection() returnerer true ved en lykkedes genindlæsning", () => {
+  assert.match(
+    source,
+    /const loadSelection = useCallback\(async \(\) => \{[\s\S]*?return true;[\s\S]*?\}, \[raceId\]\);/,
+    "loadSelection() skal returnere true efter setData/setSel, så en kalder kan skelne succes fra fejl",
+  );
+});
+
+test("#5222 autoSelect() sætter reloadFailed (ikke idle) når post-mutation-genindlæsningen fejler", () => {
+  assert.match(
+    bodyOf("autoSelect"),
+    /const reloaded = await loadSelection\(\);\s*\n\s*if \(isStale\(gen\)\) return;\s*\n\s*setAutoStatus\(reloaded \? "idle" : "reloadFailed"\);/,
+    "autoSelect() må kun sætte idle ved en LYKKEDES genindlæsning, ellers reloadFailed så kontrollerne forbliver låste",
+  );
+});
+
+test("#5222 reloadFailed låser kontrollerne ligesom loading (busy + earlyBusy)", () => {
+  assert.match(
+    source,
+    /const earlyBusy = earlySaving \|\| autoStatus === "loading" \|\| autoStatus === "reloadFailed";/,
+    "earlyBusy skal også dække reloadFailed, ellers kan saveBlock/reload-gaten regne forkert i det vindue",
+  );
+  assert.match(
+    source,
+    /const busy = saving \|\| autoStatus === "loading" \|\| autoStatus === "reloadFailed";/,
+    "busy skal deaktivere checkbokse/rollevælgere/Gem/Auto-select under reloadFailed, ikke kun loading",
+  );
+});
+
+test("#5222 en \"Prøv igen\"-knap tilbyder et nyt loadSelection()-forsøg og lander på idle eller reloadFailed igen", () => {
+  assert.match(
+    source,
+    /async function retryReload\(\) \{[\s\S]{0,50}?setAutoStatus\("loading"\);[\s\S]{0,50}?const reloaded = await loadSelection\(\);[\s\S]{0,80}?setAutoStatus\(reloaded \? "idle" : "reloadFailed"\);/,
+    "retryReload() skal genbruge loadSelection() og selv kunne falde tilbage i reloadFailed hvis forsøget fejler igen",
+  );
+  assert.match(
+    source,
+    /autoStatus === "reloadFailed" && \([\s\S]{0,300}?onClick=\{retryReload\}/,
+    "reloadFailed-linjen skal vise en knap der kalder retryReload()",
   );
 });
