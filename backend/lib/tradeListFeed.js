@@ -97,9 +97,10 @@ const SOURCES = {
 
 /**
  * Validerer og klemmer query-parametrene. Alt der kommer fra URL'en passerer
- * her FØR det rører en PostgREST-filterstreng — `team` interpoleres i en
- * .or()-streng, og en ikke-UUID-valideret værdi dér er præcis det hul
- * orFilterParamGuard.test.js findes for (security-audit 2026-06-12).
+ * her FØR det rører et PostgREST-filter. `team` UUID-valideres, så en crafted
+ * værdi hverken kan udvide et filter eller nå databasen som andet end et id
+ * (samme klasse som orFilterParamGuard.test.js dækker for de øvrige ruter,
+ * security-audit 2026-06-12).
  *
  * @returns {{ ok: true, params: object } | { ok: false, error: string, errorCode: string }}
  */
@@ -166,15 +167,24 @@ export function parseTradeFeedQuery(query = {}) {
 // id-liste er det samme resultat med en form der allerede er i drift.
 function buildSourceQueries(supabase, sourceKey, { window, teamId, divisionTeamIds }) {
   const cfg = SOURCES[sourceKey];
-  const columns = divisionTeamIds ? cfg.teamColumns : [null];
-  return columns.map((teamColumn) => {
+  // "Hold X involveret" og "et hold i division D involveret" er begge
+  // ELLER-betingelser over de to hold-kolonner. De køres som én query pr.
+  // kombination af sider (1, 2 eller 4) med rene .eq()/.in()-filtre i stedet
+  // for at stable flere .or()-parametre oven på hinanden. To .or()'er i samme
+  // kald ville afhænge af PostgREST's kombinationsregel, og et hold-filter der
+  // STILLE holder op med at filtrere er værre end en query mere.
+  const teamSides = teamId != null ? cfg.teamColumns : [null];
+  const divisionSides = divisionTeamIds ? cfg.teamColumns : [null];
+  const variants = [];
+  for (const teamColumn of teamSides) {
+    for (const divisionColumn of divisionSides) variants.push([teamColumn, divisionColumn]);
+  }
+  return variants.map(([teamColumn, divisionColumn]) => {
     let q = supabase.from(cfg.table).select(cfg.select);
     q = cfg.applyStatus(q);
-    if (teamColumn) q = q.in(teamColumn, divisionTeamIds);
-    if (teamId != null) {
-      // teamId er UUID-valideret i parseTradeFeedQuery — se kommentaren dér.
-      q = q.or(cfg.teamColumns.map((col) => `${col}.eq.${teamId}`).join(","));
-    }
+    // teamId er UUID-valideret i parseTradeFeedQuery før det når hertil.
+    if (teamColumn) q = q.eq(teamColumn, teamId);
+    if (divisionColumn) q = q.in(divisionColumn, divisionTeamIds);
     // pagination-safe: vinduet er hårdt loftet (offset+limit+1 ≤ 951) og sat
     // med .limit() nedenfor, så PostgREST's 1.000-cap ikke kan nås.
     return q.order(cfg.dateColumn, { ascending: false, nullsFirst: false }).limit(window);

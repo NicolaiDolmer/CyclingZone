@@ -95,7 +95,7 @@ test("parseTradeFeedQuery: default, klemning og 'all' som ingen-filter", () => {
   assert.deepEqual(all.params, params());
 });
 
-test("parseTradeFeedQuery: afviser ikke-UUID team FØR .or()-interpolation", () => {
+test("parseTradeFeedQuery: afviser et crafted team-param før det når et filter", () => {
   const injected = parseTradeFeedQuery({ team: "x,id.gt.00000000-0000-0000-0000-000000000000" });
   assert.equal(injected.ok, false);
   assert.equal(injected.errorCode, "trade_feed_invalid_team");
@@ -259,6 +259,33 @@ test("division-filter: to queries pr. kilde, og en handel internt i divisionen k
   assert.equal(offerCalls.length, 2, "en query pr. hold-kolonne (sælger/køber)");
   const inColumns = offerCalls.map((c) => c.in.find((f) => f.column !== "status")?.column);
   assert.deepEqual(inColumns.sort(), ["buyer_team_id", "seller_team_id"]);
+});
+
+test("hold- og divisions-filter samtidigt: alle fire side-kombinationer dækkes", async () => {
+  const supabase = createSupabase({
+    transferOffers: [
+      // Mit hold sælger, køberen ligger i division 1: skal med.
+      { id: "t-hit", status: "accepted", offer_amount: 2, updated_at: "2026-03-04T10:00:00Z",
+        seller_team_id: TEAM_A, buyer_team_id: TEAM_B,
+        rider: { id: "r1", firstname: "Ann", lastname: "Alpe" },
+        seller: teamRow(TEAM_A, "Alpha", 4), buyer: teamRow(TEAM_B, "Beta", 1) },
+      // Mit hold er ikke part: skal IKKE med, selvom divisionen matcher.
+      { id: "t-miss", status: "accepted", offer_amount: 2, updated_at: "2026-03-03T10:00:00Z",
+        seller_team_id: TEAM_B, buyer_team_id: "44444444-4444-4444-8444-444444444444",
+        seller: teamRow(TEAM_B, "Beta", 1), buyer: teamRow("44444444-4444-4444-8444-444444444444", "Delta", 1) },
+    ],
+    teams: [{ id: TEAM_B, division: 1 }, { id: "44444444-4444-4444-8444-444444444444", division: 1 }],
+  });
+  const { events } = await buildGlobalTradeFeed(
+    supabase,
+    params({ type: "transfer", division: 1, teamId: TEAM_A }),
+  );
+  assert.deepEqual(events.map((e) => e.id), ["transfer:t-hit"]);
+  assert.equal(
+    supabase.__calls.filter((c) => c.table === "transfer_offers").length,
+    4,
+    "2 hold-sider x 2 divisions-sider",
+  );
 });
 
 test("division-filter udelukker handler uden for divisionen", async () => {

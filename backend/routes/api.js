@@ -7523,7 +7523,7 @@ router.post("/auctions/:id/finalize", requireAdmin, adminWriteLimiter, async (re
 // Kun offentlige felter: hold, rytter, dato, type og beløb — nøjagtig det
 // GET /api/teams/:id/transfer-history allerede viser for et vilkårligt hold.
 // Ingen user_id, ingen e-mail, ingen beskeder. Al validering af query-params
-// (inkl. UUID-guard på ?team= før .or()-interpolation) sker i
+// (inkl. UUID-guard på ?team= før det når et filter) sker i
 // parseTradeFeedQuery, se lib/tradeListFeed.js.
 // presencePulseLimiter (120/min): dette er en spiller-drevet LÆSNING (fanen
 // åbnes, "Vis flere" trykkes), ikke en skrivning. Et loft skal der være — ruten
