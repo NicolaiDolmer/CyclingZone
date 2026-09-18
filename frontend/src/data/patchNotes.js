@@ -1,5 +1,54 @@
 export const PATCHES = [
   {
+    "version": "7.287",
+    "date": "2026-09-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "You hear about it when your auto-bid has to raise",
+          "body": "What changed: When another manager tried to outbid you and your auto-bid raised your price to keep the lead, the game told you nothing. You now get a notification with the rider, the manager who bid against you and your new price."
+        },
+        "da": {
+          "title": "Du får besked når dit autobud må hæve prisen",
+          "body": "Hvad er ændret: Når en anden manager forsøgte at overbyde dig, og dit autobud hævede din pris for at beholde føringen, fik du ingenting at vide. Nu får du en notifikation med rytteren, manageren der bød imod dig, og din nye pris."
+        },
+        "refs": [4981]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The Scouting Network text now states the real rule",
+          "body": "What changed: The Scouting Network facility promised two scouting assignments at once at its top tier. That was wrong. The second assignment comes from your chief scout: one rated about 80 overall runs two at once, whatever tier the facility is. The text now says so, like the scouting page and Help already did."
+        },
+        "da": {
+          "title": "Teksten på Scouting-netværket siger nu den rigtige regel",
+          "body": "Hvad er ændret: Faciliteten Scouting-netværk lovede to spejder-opgaver ad gangen på topniveauet. Det var forkert. Den anden opgave kommer fra din chefscout: en chefscout med omkring 80 i overall kører to ad gangen, uanset facilitetens niveau. Teksten siger det nu, ligesom scouting-siden og Hjælp allerede gjorde."
+        },
+        "refs": [5201]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Squad selection stays locked if it cannot reload",
+          "body": "What changed: After Auto-select, the panel reloads your new squad. If that reload failed, the panel unlocked with your old squad and looked saved. It now stays locked, tells you the reload failed and gives you a Try again button, so you never edit a squad that is out of date."
+        },
+        "da": {
+          "title": "Holdudtagelsen forbliver låst hvis den ikke kan genindlæses",
+          "body": "Hvad er ændret: Efter Auto-udtag genindlæser panelet din nye trup. Hvis genindlæsningen fejlede, låste panelet op med din gamle trup og så gemt ud. Nu forbliver det låst, fortæller at genindlæsningen fejlede, og giver dig en Prøv igen-knap, så du aldrig retter i en forældet trup."
+        },
+        "refs": [5222]
+      }
+    ]
+  },
+  {
     "version": "7.286",
     "date": "2026-09-17",
     "label": "Beta",
