@@ -246,7 +246,6 @@ function mapTransfer(row, resolveSeason) {
     from_team: teamRef(row.seller),
     to_team: teamRef(row.buyer),
     amount,
-    no_sale: false,
     is_guaranteed_sale: false,
     reportable: Boolean(row.seller_team_id && row.buyer_team_id),
   };
@@ -268,7 +267,6 @@ function mapSwap(row, resolveSeason) {
     amount: cash === 0 ? null : Math.abs(cash),
     // Fortegnet er set fra den foreslående side: positivt = proposing betaler.
     cash_direction: cash === 0 ? null : (cash > 0 ? "proposing_pays" : "receiving_pays"),
-    no_sale: false,
     is_guaranteed_sale: false,
     reportable: Boolean(row.proposing_team_id && row.receiving_team_id),
   };
