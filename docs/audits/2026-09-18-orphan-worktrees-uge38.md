@@ -24,12 +24,16 @@
   allerede ryddet af en tidligere runde, eller de lå et andet sted end de to scannede rødder.
 
 **Konklusion for ejer-beslutningen:** modsat den oprindelige antagelse ("formentlig med node_modules,
-kan indeholde ucommitted state") er der reelt intet at miste i 853 af de 855 mapper, og de to
-resterende har kun løse ikke-git-filer uden værdi (backup-scripts, Vite-cache). Risikoen ved at slette
-hele bunken er markant lavere end #4924 lagde til grund. Sandsynlig forklaring: disse er rester af
-worktree-fjernelser der ikke nåede `git worktree remove` (kun selve `.git`-linket + git-registreringen
-blev væk, mens skeletmapperne fra `npm`/build-værktøjer blev tilbage), eller af scratch-directories
-oprettet af workflows der aldrig blev fulde git-checkouts.
+kan indeholde ucommitted state") er der reelt intet at miste i 853 af de 855 mapper (0 filer, intet
+`.git`). De to resterende har intet git-historik at miste, men det er IKKE det samme som at
+indholdet er værdiløst: `feat-rider-profile-redesign-2000`s to filer er ren, regenererbar
+Vite-cache og sikre at slette, mens `harness-3337-backup`s fire scripts kan være den eneste kopi af
+noget og kræver et ejer-blik først (se tabellen nedenfor). Risikoen ved at slette hele bunken er
+markant lavere end #4924 lagde til grund, men "intet at miste" gælder kun de 853 tomme mapper, ikke
+automatisk de 2 med indhold. Sandsynlig forklaring på de 853: rester af worktree-fjernelser der ikke
+nåede `git worktree remove` (kun selve `.git`-linket + git-registreringen blev væk, mens
+skeletmapperne fra `npm`/build-værktøjer blev tilbage), eller scratch-directories oprettet af
+workflows der aldrig blev fulde git-checkouts.
 
 ## De 2 mapper med indhold (særskilt gennemgang før evt. sletning)
 
@@ -914,12 +918,21 @@ de er også med i denne liste for fuldstændighedens skyld.)
 - Alle mapper direkte under de to rødder, minus de 20 registrerede, blev tjekket for `.git`
   (`test -e "$dir/.git"`) og filtal (`find "$dir" -type f | wc -l`). Ingen `git status`/`rev-list`
   var meningsfuldt at køre uden `.git`.
-- **Ikke målt:** faktisk diskforbrug. `node_modules`-undermapperne i flere af skeletterne KAN være
-  NTFS-junctions ind i den delte cache (jf. projektets `ownNodeModules`-model); et `du`-forsøg på hele
-  `CyclingZone-worktrees`-roden gav intet output inden for et minut, samme oplevelse #4924 selv
-  rapporterede for 12 dage siden. En sikker størrelsesmåling kræver enten `-xdev`/junction-bevidst
-  `du` eller et separat, længerevarende pas. Da mapperne er tomme for RIGTIGE filer, er den forventede
-  gevinst ved sletning primært antal-inoder/directory-entries, ikke nødvendigvis GB.
+- **Begrænsning i scan-metoden:** `find -type f` og `test -e` tæller almindelige filer/mapper og
+  følger normalt NTFS-junctions/reparse-points som var de almindelige mapper, men er IKKE
+  eksplicit testet mod symlinks eller junctions i dette pas. `node_modules`-undermapperne i flere af
+  skeletterne KAN være NTFS-junctions ind i den delte cache (jf. projektets `ownNodeModules`-model).
+  Hvis en sådan junction peger på et sted med reelt indhold, ville `find -type f` med stor
+  sandsynlighed alligevel have talt filerne (0 overalt i denne scanning tyder på at junctions enten
+  er brudte/tomme eller slet ikke oprettet i disse mapper) — men det er ikke eksplicit verificeret
+  med et junction-bevidst værktøj (`fsutil reparsepoint query` el.lign.), kun med `find`/`test`.
+  Konklusionen "853 er tomme" bør derfor læses som "0 almindelige filer fundet af `find`", ikke som
+  en garanti mod alle typer specialpunkter.
+- **Ikke målt:** faktisk diskforbrug. Et `du`-forsøg på hele `CyclingZone-worktrees`-roden gav intet
+  output inden for et minut, samme oplevelse #4924 selv rapporterede for 12 dage siden. En sikker
+  størrelsesmåling kræver enten `-xdev`/junction-bevidst `du` eller et separat, længerevarende pas.
+  Da mapperne er tomme for almindelige filer, er den forventede gevinst ved sletning primært
+  antal-inoder/directory-entries, ikke nødvendigvis GB.
 
 ## Forslag til ejer-go
 

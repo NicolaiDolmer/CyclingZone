@@ -18,48 +18,56 @@
 
 Good question, and it's a fair one to ask before you build your squad.
 
-Here's what actually happens today. A helper working for you pays a real price: up to 40.5% of his
-own physical capacity over the whole stage on a mountain day (a bit less on a flat stage, for
-leadout work). That price buys your captain protection, but only part of it gets through: 60% of
-what your helpers spend converts into your captain's benefit, and there's a hard ceiling on top of
-that: your captain can never gain more than 21.6% of his own capacity from teamwork in a single
-stage, no matter how many helpers you throw at it. One strong domestique already gets you most of
-that; four gets you close to the full amount, and a fifth doesn't add more.
+Here's what actually happens today. A helper working for you on a mountain stage pays a real price:
+40.5% of his own physical capacity over the whole stage, at normal effort (a bit less on a flat
+stage, for leadout work). That price buys your captain protection, but only part of it gets
+through: 60% of what your helpers spend converts into your captain's benefit. On top of that
+there's a hard ceiling: your captain can never gain more than 21.6% of his own capacity from
+teamwork in a single stage. One working helper already gets you about a quarter of that ceiling.
+Two working helpers reach the full 21.6% ceiling on their own on a mountain stage, so a third or
+fourth domestique in the same group doesn't add anything more to the captain's number, even though
+each of them still pays their own price for being there.
 
 So your scenario: Team A's captain is strong but isolated after climb 1, Team B's captain is
 slightly weaker but has support until climb 2. The protection only exists while a working teammate
-is still in the group with the captain. The moment your last helper gets dropped, the bonus stops
-building for the rest of the stage, and your captain rides on his own numbers from there. That's
-exactly what you're describing as "isolated already on climb 1": it's not a separate penalty, it's
-protection simply running out early because the helpers couldn't hold the pace.
+is still in the group with the captain, and it builds up gradually as the stage goes on. The moment
+your last helper gets dropped, the bonus stops growing for the rest of the stage, but your captain
+keeps what he already banked up to that point, he doesn't lose it. That's what you're describing as
+"isolated already on climb 1": it's not a separate penalty, it's protection that simply stops
+accumulating early because the helpers couldn't hold the pace, leaving less of the ceiling filled by
+the finish.
 
-Whether the 21.6% ceiling outweighs a 5-7 point gap in the captain's own ability depends on the route
-and how long the helpers can actually stay in the group, and I haven't measured that side by side
-yet. What I can tell you for certain is that helper quality matters through exactly this mechanism,
-it is capped so eight helpers can't buy an unlimited lead, and a captain never gets a free bonus
-beyond what his own team actually paid for.
+Whether that outweighs a 5-7 point gap in the captain's own ability depends on the route and how
+long the helpers can actually stay in the group, and I haven't measured that side by side yet. What
+I can tell you for certain is that helper quality matters through exactly this mechanism, that two
+good helpers already max it out, and that a captain never gets a bonus beyond what his own team
+actually paid for.
 
 ## DA
 
 Godt spørgsmål, og et fair et at stille før du bygger din trup.
 
-Her er hvad der faktisk sker i dag. En hjælperytter der arbejder for dig betaler en reel pris: op til
-40,5% af sin egen fysiske kapacitet over hele etapen på en bjergdag (lidt mindre på en flad etape, for
-leadout-arbejde). Den pris køber din kaptajn beskyttelse, men kun en del af den når frem: 60% af det
-dine hjælpere bruger, bliver til fordel for din kaptajn, og der er et hårdt loft ovenpå: din kaptajn
-kan aldrig få mere end 21,6% af sin egen kapacitet fra holdarbejde på én etape, uanset hvor mange
-hjælpere du sætter ind. Én stærk hjælperytter giver dig allerede det meste af det, fire giver dig tæt
-på det fulde beløb, og en femte lægger ikke mere til.
+Her er hvad der faktisk sker i dag. En hjælperytter der arbejder for dig på en bjergetape betaler en
+reel pris: 40,5% af sin egen fysiske kapacitet over hele etapen, ved normal indsats (lidt mindre på
+en flad etape, for leadout-arbejde). Den pris køber din kaptajn beskyttelse, men kun en del af den
+når frem: 60% af det dine hjælpere bruger, bliver til fordel for din kaptajn. Ovenpå det er der et
+hårdt loft: din kaptajn kan aldrig få mere end 21,6% af sin egen kapacitet fra holdarbejde på én
+etape. Én arbejdende hjælper giver dig allerede omkring en fjerdedel af det loft. To arbejdende
+hjælpere når det fulde loft på 21,6% helt af sig selv på en bjergetape, så en tredje eller fjerde
+hjælperytter i samme gruppe lægger ikke mere til kaptajnens tal, selvom hver af dem stadig betaler
+deres egen pris for at være der.
 
 Så dit scenarie: hold A's kaptajn er stærk men isoleret efter stigning 1, hold B's kaptajn er lidt
 svagere men har støtte til stigning 2. Beskyttelsen findes kun så længe en arbejdende holdkammerat
-stadig er i gruppen med kaptajnen. I det øjeblik din sidste hjælper bliver kørt af, stopper bonussen
-med at bygge sig op resten af etapen, og din kaptajn kører videre på sine egne tal derfra. Det er
-præcis det du beskriver som "isoleret allerede på stigning 1": det er ikke en separat straf, det er
-beskyttelse der simpelthen løber tør tidligt, fordi hjælperne ikke kunne holde tempoet.
+stadig er i gruppen med kaptajnen, og den bygges gradvist op i takt med at etapen skrider frem. I det
+øjeblik din sidste hjælper bliver kørt af, stopper bonussen med at vokse resten af etapen, men din
+kaptajn beholder det han allerede har optjent indtil da, han mister det ikke. Det er det du beskriver
+som "isoleret allerede på stigning 1": det er ikke en separat straf, det er beskyttelse der simpelthen
+stopper med at samle sig tidligt, fordi hjælperne ikke kunne holde tempoet, så mindre af loftet når at
+blive fyldt inden mål.
 
-Om loftet på 21,6% opvejer en forskel på 5-7 point i kaptajnens egen evne afhænger af ruten og hvor
-længe hjælperne rent faktisk kan blive i gruppen, og det har jeg ikke målt op mod hinanden endnu. Det
-jeg kan sige med sikkerhed er at hjælperkvalitet betyder noget gennem præcis denne mekanisme, at den
-er loftet så otte hjælpere ikke kan købe et ubegrænset forspring, og at en kaptajn aldrig får en gratis
-bonus ud over det hans eget hold faktisk har betalt for.
+Om det opvejer en forskel på 5-7 point i kaptajnens egen evne afhænger af ruten og hvor længe
+hjælperne rent faktisk kan blive i gruppen, og det har jeg ikke målt op mod hinanden endnu. Det jeg
+kan sige med sikkerhed er at hjælperkvalitet betyder noget gennem præcis denne mekanisme, at to gode
+hjælpere allerede fylder loftet, og at en kaptajn aldrig får en bonus ud over det hans eget hold
+faktisk har betalt for.

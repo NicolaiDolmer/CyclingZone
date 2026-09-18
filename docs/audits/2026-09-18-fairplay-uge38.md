@@ -5,7 +5,9 @@
 > **Dækker:** #5203 (triage af de 45 `new`-flag + whitelist-forslag) og #5282 (transfer-ring i Division 2).
 > **Holdnavne bruges som identifikator** (ikke anonymiseret) fordi #5203 og #5282 selv navngiver holdene
 > i klartekst i den offentligt læsbare repo — det er projektets etablerede praksis for holdidentitet.
-> Ingen e-mail, bruger-ID eller andet personhenførbart er slået op eller citeret her.
+> Ingen e-mail eller andet personhenførbart er slået op eller citeret her. `teams.user_id` er slået op
+> for de 6 hold i Del B udelukkende for at sammenligne dem parvis (samme/forskellig konto) — de rå
+> UUID-værdier er ikke gengivet nogen steder i dette dokument.
 
 ## Metode
 
@@ -118,7 +120,7 @@ Riders til Finnish Racing. Kombineret med at Finnish Racing ER en af budgiverne 
 
 | Par | Netto → | Beløb | Klasse |
 |---|---|---:|---|
-| Équipe Lorraine Acier → Metro-L3 (retning: Metro-L3 sendte værdi TIL Équipe) | Équipe Lorraine Acier | 6.106.247 (1 handel!) | **Ægte, høj prioritet** — suverænt største enkeltbeløb i hele listen. Metro-L3 er IKKE identisk med det kendte "24/7 ↔ Metro-L3"-husstandspar (det er en anden modpart). Bør undersøges før triage-sessionen, ikke rutinemæssigt afvises. |
+| Metro-L3 → Équipe Lorraine Acier | Équipe Lorraine Acier | 6.106.247 (1 handel!) | **Ægte, høj prioritet** — suverænt største enkeltbeløb i hele listen. Metro-L3 er IKKE identisk med det kendte "24/7 ↔ Metro-L3"-husstandspar (det er en anden modpart). Bør undersøges før triage-sessionen, ikke rutinemæssigt afvises. |
 | Équipe Lorraine Acier ↔ den usaltet smør | den usaltet smør | 488.720 / -478.722 (to flag, modsatrettede) | Uafklaret — se `counterparties` mangler (evidensfelt uden tal for disse to) |
 | Équipe Lorraine Acier ↔ Team CSC | Team CSC | 738.514 (1 handel) | **Ægte kandidat** — Team CSC har kun 2 modparter total, sad allerede på den højeste kassebeholdning i hele listen (1.312.109) inden handlen |
 | Équipe Lorraine Acier ↔ 24/7 Aspire-Light | 24/7 | 432.415 | Uafklaret |
@@ -168,28 +170,36 @@ koordination mellem separate personer.
 
 ### Den anden budgiver (#5282's åbne spørgsmål #2) — BESVARET
 
-18 auktioner fra Sleepy Riders endte hos B/C/D/E. 12 havde præcis 2 bydere. Bud-modparten for alle 12:
+**20 auktioner** fra Sleepy Riders blev vundet af B/C/D/E i alt (rettelse: #5282 selv angav 18, den
+faktiske optælling i dag er 20). Af dem havde **7 kun én byder** (ingen konkurrence at vurdere), **12
+havde præcis 2 bydere**, og **1 havde 3 bydere**. Hver af de 12 to-byder-auktioner, én række pr.
+auktion:
 
-| Vinder | Anden budgiver | Dato |
+| Dato (UTC) | Vinder | Anden budgiver |
 |---|---|---|
-| Helmers | Island Cycling Team | 17/8 |
-| Helmers | Koben Racing | 20/8, 26/8 (x2), 27/8 |
-| Rumler Roulers | Koben Racing | 22/8 |
-| Island Cycling Team | Rumler Roulers | 23/8 |
-| Rumler Roulers | Island Cycling Team | 23/8 |
-| Koben Racing | Island Cycling Team | 23/8, 26/8 |
-| Island Cycling Team | Helmers | 26/8 |
-| Island Cycling Team | **Finnish Racing** | 3/9 |
-| Rumler Roulers | **Finnish Racing** | 5/9 |
-| Koben Racing | Finnish Racing + **RaceGen Cycling Team** (3 bydere) | 16/9 |
+| 17/8 15:33 | Helmers | Island Cycling Team |
+| 20/8 21:30 | Helmers | Koben Racing |
+| 22/8 07:50 | Rumler Roulers | Koben Racing |
+| 23/8 07:28 | Island Cycling Team | Rumler Roulers |
+| 23/8 07:28 | Rumler Roulers | Island Cycling Team |
+| 23/8 20:20 | Koben Racing | Island Cycling Team |
+| 26/8 21:00 | Island Cycling Team | Helmers |
+| 26/8 21:00 | Koben Racing | Helmers |
+| 26/8 21:08 | Helmers | Koben Racing |
+| 27/8 06:00 | Koben Racing | Helmers |
+| 3/9 08:57 | Island Cycling Team | **Finnish Racing** |
+| 5/9 10:40 | Rumler Roulers | **Finnish Racing** |
 
-**Svar: i samtlige 12 sager er "den anden budgiver" et af de andre kendte ringmedlemmer (B/C/D/E),
-aldrig en uafhængig tredjepart** — undtagen to nye navne i september: Finnish Racing (2 gange, og som
+Herudover ét separat tilfælde med 3 bydere: **16/9 18:26**, Koben Racing vandt over Finnish Racing OG
+**RaceGen Cycling Team** (nyt navn, ikke set før i dette mønster).
+
+**Svar: i samtlige 12 to-byder-sager er "den anden budgiver" et af de andre kendte ringmedlemmer
+(B/C/D/E), aldrig en uafhængig tredjepart** — undtagen to nye navne i september: Finnish Racing (2 gange, og som
 vist i Del A også selv modtager af underprissalg direkte fra Sleepy Riders/A) og RaceGen Cycling Team
 (1 gang, 16/9, aldrig set før i dette mønster). Det betyder at "konkurrencen" i disse auktioner ikke
 er ekstern efterspørgsel, der driver prisen op naturligt: det er ringens egne medlemmer der byder mod
 hinanden på hinandens vegne. Det svarer #5282's eget spørgsmål "blev prisen drevet op kunstigt?"
-med: sandsynligvis ja for de 11 sager mellem B/C/D/E indbyrdes, mens Finnish Racing og RaceGen Cycling
+med: sandsynligvis ja for de 10 sager mellem B/C/D/E indbyrdes, mens Finnish Racing og RaceGen Cycling
 Team endnu ikke er verificeret som del af samme koordinering (kunne være reelle uafhængige bydere,
 eller et 6.-7. ringmedlem — se Finnish Racing-noten i Del A, som taler for det første).
 
