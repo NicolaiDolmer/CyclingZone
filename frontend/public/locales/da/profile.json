@@ -165,5 +165,22 @@
     "toggleHintGeneric": "Til: Planlægning markeres når et løb snart starter uden fuld trup, og bliver rød hvis holdet ikke ville stille op. Fra: intet markeres, og fristen gælder stadig.",
     "on": "Påmindelsen er slået til.",
     "off": "Påmindelsen er slået fra."
+  },
+  "beta": {
+    "title": "Beta-gruppen",
+    "badge": "Beta-tester",
+    "subtitle": "Se funktioner mens jeg stadig bygger på dem.",
+    "memberBody": "Du er med. Funktioner under test dukker op hos dig først, og nogle af dem går i stykker. Sig til når de gør.",
+    "noneBody": "Jeg åbner nye funktioner for en lille gruppe først, så jeg kan nå at læse hvert svar. Bed om at komme med, så svarer jeg selv.",
+    "pendingBody": "Din ansøgning ligger hos mig. Jeg svarer i hånden, så giv den en dag eller to.",
+    "rejectedBody": "Ikke denne gang — jeg holder gruppen lille. Du er velkommen til at spørge igen.",
+    "whereToReport": "Sig hvad der føles forkert på Discord eller gennem feedback-formularen.",
+    "requestButton": "Bed om at komme med",
+    "cancelButton": "Træk ansøgningen tilbage",
+    "leaveButton": "Forlad beta-gruppen",
+    "requested": "Ansøgningen er sendt.",
+    "cancelled": "Ansøgningen er trukket tilbage.",
+    "left": "Du har forladt beta-gruppen.",
+    "unavailable": "Beta-tilmelding er ikke tilgængelig lige nu. Prøv igen om lidt."
   }
 }
