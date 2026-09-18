@@ -1,0 +1,69 @@
+name: Triage age guard
+
+# Guard: `triage:new`-issues aeldre end 7 dage flages (#5329).
+#
+# HVORFOR (styringssession 17/9, docs/WEEKLY_STEERING.md "Intake-gate" +
+# docs/superpowers/specs/2026-09-17-weekly-steering-session-design.md): alle
+# cloud-rutiner og sweeps opretter nu fund som `triage:new`, ikke
+# `claude:todo` - et issue er foerst "i koeen" naar mandagens styringssession
+# (blok 3) har placeret det i en bane + `claude:todo`, eller sendt til
+# `icebox` med ejer-go. Uden en alders-guard kan et fund staa uendeligt i
+# limbo mellem "fundet" og "besluttet".
+#
+# Denne koersel er BEVIDST ADVISORY og koerer mandag morgen, foer
+# styringssessionen: den blokerer ingen PR (ingen `pull_request`-trigger,
+# ingen required-check) og AENDRER intet - `permissions` giver hverken
+# `issues: write` eller `contents: write`, saa selv et fejlagtigt
+# mutations-forsoeg i scriptet ville blive afvist af GitHub. En roed koersel
+# er selve signalet: tjek Actions-fanen eller job-summary for hvilke issues
+# der er overskredet.
+#
+# Samme afsnit (samme graense, samme sortering) vises ogsaa i soendagens
+# styringsrapport (scripts/weekly-steering-report.mjs, #5328) - begge bruger
+# den delte, testede logik i scripts/lib/triage-age.mjs.
+#
+# scripts/check-triage-age.mjs har ZERO eksterne dependencies (kun
+# node:child_process/url/path) - ingen npm ci noedvendig, samme moenster som
+# scripts/priority-hygiene.mjs' workflow.
+#
+# Refs #5329 #5328.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mandag 06:00 UTC (08:00 CEST/07:00 CET) - foer styringssessionen
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Alders-graense i dage (default 7)'
+        type: string
+        default: '7'
+
+concurrency:
+  group: triage-age-guard
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Koer triage-alders-guard
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/check-triage-age.mjs --days "${{ github.event.inputs.days || '7' }}" | tee triage-age-report.md
+
+      - name: Skriv job-summary
+        if: always()
+        run: cat triage-age-report.md >> "$GITHUB_STEP_SUMMARY"
