@@ -245,6 +245,23 @@ Spejlingen er `isBornFromPriors(row) ? deriveBirthAbilities(row, { age }) : deri
 
 En prior-født rytter seeder sin fysiologi fra sine EGNE evner (samme 0-99-skala som `seedPhysiologyFromLegacy` forventer) i stedet for filens 60-default, som ville gøre hver eneste nyfødt fysiologisk identisk. Profilen forbliver `version 1 / seeded_from_legacy` som resten af populationen. v2-arketype-seeding (`aero`) er Task D2 og hører ikke til her — den ville tænde fysiologi-stien i `abilityDerivation` for netop disse ryttere og give dem en anden evne-fordeling end resten af spillet.
 
+## 8c. Den synlige test af generatoren ([#5283](https://github.com/NicolaiDolmer/CyclingZone/issues/5283))
+
+**Ejer-krav 15/9, ordret** (ved merge-go på PR #5278): *"Vi skal have lavet test inden naeste gang der laves nye ryttere, for at se at rytter generatoren virker ordentligt."* Gaten ligger FØR U23-ryttere genereres til AI-holdene ved S4-cutover ([GDD D-054 §10.4](GAME_DESIGN_DOCUMENT.md)).
+
+Gaten har to halvdele, og de måler bevidst hver sin ting:
+
+| Halvdel | Fil | Svarer på |
+|---|---|---|
+| Øjne | `backend/scripts/generatorVisibleTest5283.js` | *Hvordan ser populationen ud?* Read-only rapport: fordeling pr. arketype og pr. evne (min/p10/median/p90/max), lofterne, alder/potentiale/værdi, kompletthed, ungdomsbåndet, stikprøve. Kan ikke fejle. |
+| Maskine | `backend/lib/riderBirthDistribution.test.js` | *Hvad må aldrig ændre sig?* 19 `node --test`-invarianter. Kan kun fejle. |
+
+Rapporten køres med `npm run riders:generator-report --prefix backend` (n = 1.000, seed 20260918). Den skrives til `balance-internals/`, som er gitignoreret: rapporten er præcise fordelings- og balance-tal, og hard rule 17 ([#3436](https://github.com/NicolaiDolmer/CyclingZone/issues/3436)) holder dem ude af det offentligt læsbare repo — issue #5283 pkt. 3 siger det udtrykkeligt om netop denne tabel. Determinismen (§1) gør rapporten diffbar mod en senere kørsel uden at den behøver ligge i git: samme seed giver den samme fil, byte for byte.
+
+Rapporten spejler `deriveForRiderIds`' kæde in-memory (§6/§8b's spejlings-krav) og rører hverken DB eller generatorens adfærd. Finder den en fejl, dokumenteres den i rapportens §9 og rettes i et eget spor — en test der retter det den måler, måler ikke længere noget.
+
+**Tre fund står åbne i rapporten pr. 18/9** (alle dokumenteret, ingen rettet her): ungdomsbåndets loft er mættet allerede ved U23-aldrene, så alderen holder op med at flytte noget i netop det interval D-054 §10.4 vil bruge; en betydelig del af alle evne-værdier lander på gulvet, drevet af `domestique`-tierens niveau; og en lille andel fødes med `tactics` over vækst-loftet i D-056.
+
 ## 9. Kendte faldgruber
 
 - **PostgREST-paginering:** `select()` uden `.range()` topper stille ved 1000 rækker. Brug `fetchAllRows` fra `supabasePagination.js` til alle loads der kan overstige det. Bed dette bidt under #4172 (rapporterede 1000 af 4.982 entries).
