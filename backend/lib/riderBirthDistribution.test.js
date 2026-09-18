@@ -55,6 +55,9 @@ import {
   ACADEMY_TOP_AGE,
   U23_ENTRY_AGE,
   u23VariantSweep,
+  u23ProductionBandGuard,
+  youthAgeSweep,
+  U23_GUARD_MAX_AT_CEIL_PCT,
   positiveIntArg,
   DEFAULT_U23_PER_AGE,
   MAX_U23_PER_AGE,
@@ -65,6 +68,7 @@ import {
   ABILITY_FLOOR,
   ABILITY_CEIL,
   YOUTH_BIRTH_BAND,
+  U23_BIRTH_BAND,
   PCM_TO_ABILITY_GAIN,
 } from "./riderBirthPriors.js";
 import { isU23ForReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
@@ -344,6 +348,59 @@ test("#5283 hver nyfødt prissættes af V4-kæden", () => {
   assert.ok(byTier("superstar").median > byTier("star").median);
   assert.ok(byTier("star").median > byTier("solid").median);
   assert.ok(byTier("solid").median > byTier("domestique").median);
+});
+
+// ── 14b. Forward-guard: U23-PRODUKTIONS-båndet (#5376) ───────────────────────
+// Ejeren valgte variant A 18/9, og båndet lever nu som `U23_BIRTH_BAND`.
+// Guarden her er den fremadrettede halvdel af sporet: den måler den ENE ting
+// båndet blev bygget for — at alderen bliver ved med at flytte noget gennem hele
+// fødselsintervallet — på det bånd produktionen faktisk føder på.
+//
+// Den er også en tripwire for akademi-siden: U23-båndet ARVER forankring, rampe
+// og spredning, så en ændring dér slår igennem her uden at nogen rørte U23-koden.
+
+const GUARD_PER_AGE = 60;
+
+test("#5376 forward-guard: U23-produktionsbåndet er hverken fladt eller mættet", () => {
+  const breaches = u23ProductionBandGuard({ seed: SEED, perAge: GUARD_PER_AGE });
+  assert.deepEqual(
+    breaches,
+    [],
+    `U23-båndet brudt: ${breaches.map((b) => `alder ${b.age} (${b.reason})`).join(", ")}`,
+  );
+});
+
+// Guarden skal kunne SIGE FRA. Fanger den ikke akademiets eget (tilsigtet
+// mættede) bånd ved U23-aldrene, måler den ingenting og ville stå grøn uanset
+// hvad nogen senere gjorde ved loftet.
+test("#5376 forward-guarden fanger et mættet bånd", () => {
+  const breaches = u23ProductionBandGuard({
+    seed: SEED,
+    perAge: GUARD_PER_AGE,
+    band: YOUTH_BIRTH_BAND,
+  });
+  assert.ok(breaches.length > 0, "guarden fandt intet på akademiets bånd ved U23-aldrene");
+  assert.ok(
+    breaches.some((b) => b.reason === "flad-median") || breaches.some((b) => b.reason === "maettet"),
+    "guarden gav ingen genkendelig årsag",
+  );
+  assert.ok(U23_GUARD_MAX_AT_CEIL_PCT > 0 && U23_GUARD_MAX_AT_CEIL_PCT < 100);
+});
+
+// Rapportens §8b og §8c skal kunne sammenlignes række for række: samme sweep,
+// samme seed-familie, samme kodesti — kun båndet er skiftet.
+test("#5376 §8-sweepet måler begge bånd ad samme kodesti", () => {
+  const akademi = youthAgeSweep({ seed: SEED, perAge: GUARD_PER_AGE });
+  const produktion = youthAgeSweep({ seed: SEED, perAge: GUARD_PER_AGE, band: U23_BIRTH_BAND });
+  assert.deepEqual(akademi.map((s) => s.age), [...U23_BIRTH_AGES]);
+  assert.deepEqual(produktion.map((s) => s.age), [...U23_BIRTH_AGES]);
+  assert.equal(akademi[0].ceil, Math.round(YOUTH_BIRTH_BAND.ceil));
+  assert.equal(produktion[0].ceil, Math.round(U23_BIRTH_BAND.ceil));
+  for (const s of produktion) {
+    assert.ok(s.min >= ABILITY_FLOOR && s.max <= Math.ceil(U23_BIRTH_BAND.ceil), `alder ${s.age}: ${s.min}-${s.max}`);
+  }
+  // Akademiets bånd må ikke have flyttet sig af at blive målt.
+  assert.equal(akademi[0].ceil, Math.round(YOUTH_BIRTH_BAND.ceil));
 });
 
 // ── 15. U23-bånd-varianterne (#5376) ─────────────────────────────────────────
