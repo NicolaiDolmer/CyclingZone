@@ -40,9 +40,9 @@
       "rider": "Rider",
       "type": "Type",
       "date": "Date",
-      "move": "From, to",
-      "amount": "Fee",
-      "report": "Review"
+      "from": "From",
+      "to": "To",
+      "amount": "Fee"
     },
     "filter": {
       "typeLabel": "Filter by type",

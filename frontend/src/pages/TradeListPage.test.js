@@ -33,16 +33,20 @@ test("tom tilstand har altid en vej videre (EmptyState action)", () => {
   assert.match(blocks[0], /\baction=\{/, "EmptyState uden action er et fund, ikke en variant");
 });
 
-test("D-047: tabellen har en sticky navnekolonne og tre navngivne mobil-kolonner", () => {
+test("D-047: sticky navnekolonne, og mobileDefaults peger kun på byttebare kolonner", () => {
   assert.match(src, /sticky:\s*true/, "navnekolonnen skal være markeret sticky (#5102)");
   const m = src.match(/mobileDefaults=\{\[([^\]]*)\]\}/);
   assert.ok(m, "mobileDefaults skal være sat eksplicit");
   const keys = [...m[1].matchAll(/"([a-z]+)"/g)].map((x) => x[1]);
-  assert.equal(keys.length, 3, "præcis tre datakolonner på mobil");
-  // Kolonnerne SKAL findes som rigtige kolonne-nøgler, ellers kasserer
-  // DataTable dem stille og viser tre tilfældige i stedet.
+  assert.ok(keys.length >= 1 && keys.length <= 3, `1-3 mobil-kolonner, fandt ${keys.length}`);
+  // En nøgle der peger på en fold-/sticky-kolonne (eller på en kolonne der er
+  // blevet omdøbt) kasserer DataTable STILLE — så tabellen viser tre andre
+  // kolonner end dem siden troede. Derfor tjekkes hver nøgle mod en rigtig
+  // kolonne der HVERKEN er sticky eller fold.
   for (const key of keys) {
-    assert.ok(new RegExp(`key:\\s*"${key}"`).test(src), `mobileDefaults peger på ukendt kolonne "${key}"`);
+    const block = src.match(new RegExp(`key:\\s*"${key}"[\\s\\S]*?\\n    \\},`));
+    assert.ok(block, `mobileDefaults peger på ukendt kolonne "${key}"`);
+    assert.doesNotMatch(block[0], /fold:\s*true|sticky:\s*true/, `"${key}" kan ikke være en mobil-standardkolonne`);
   }
 });
 

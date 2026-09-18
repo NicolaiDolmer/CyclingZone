@@ -28,7 +28,7 @@ import { parseTransferEventId } from "../lib/tradeReport.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers.js";
 import {
   Button, Card, DataTable, EmptyState, ErrorState, FilterBar, PageLoader,
-  ChevronRightIcon, ExchangeIcon, EyeIcon, InboxIcon,
+  ExchangeIcon, EyeIcon, InboxIcon,
 } from "../components/ui/index.js";
 
 const PAGE_SIZE = 25;
@@ -188,7 +188,9 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
         }
         return first;
       },
-      subline: (ev) => `${typeLabel(t, ev.type)} · ${ev.date ? formatDate(ev.date, "short") : "—"}`,
+      // Ingen egen `subline`: type og dato er `fold: true`-kolonner, og
+      // DataTable folder dem SELV ind i navnets underlinje på mobil. En
+      // håndrullet subline oveni ville vise dem to gange på desktop.
     },
     {
       key: "type",
@@ -205,41 +207,47 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
       render: (ev) => <span className="whitespace-nowrap text-cz-2">{ev.date ? formatDate(ev.date, "short") : "—"}</span>,
     },
     {
-      // Fra → til i ÉN kolonne, ikke to. På mobil er der kun tre datakolonner
-      // (D-047), og "hvem til hvem" er ét spørgsmål, ikke to — delt op ville
-      // den halve historie ligge bag "Fuld tabel".
-      key: "move",
-      header: t("tradeList.header.move"),
-      mobileLabel: t("tradeList.header.move"),
+      // Fra-holdet folder ind i navnets underlinje på mobil. Første forsøg
+      // havde "fra → til" i ÉN kolonne; to holdnavne i samme celle sprængte
+      // 375px-bredden (vandret scroll, D-047-brud, set på mobil-screenshot).
+      // Til-holdet er det vigtigste af de to i en liste over hvem der SKIFTEDE
+      // hold, så det er det der bliver stående på telefonen.
+      key: "from",
+      header: t("tradeList.header.from"),
+      fold: true,
+      foldValue: (ev) => ev.from_team?.name ?? "—",
+      render: (ev) => <TeamName team={ev.from_team} />,
+    },
+    {
+      key: "to",
+      header: t("tradeList.header.to"),
+      mobileLabel: t("tradeList.header.to"),
       render: (ev) => (
-        <span className="inline-flex flex-wrap items-center gap-1.5">
-          <TeamName team={ev.from_team} />
-          <ChevronRightIcon size={13} className="flex-shrink-0 text-cz-3" aria-hidden="true" />
-          <TeamName
-            team={ev.to_team}
-            fallback={ev.no_sale
-              ? t("history.noBids")
-              : ev.is_guaranteed_sale ? t("history.aiTeamFallback") : "—"}
-          />
-        </span>
+        <TeamName
+          team={ev.to_team}
+          fallback={ev.no_sale
+            ? t("history.noBids")
+            : ev.is_guaranteed_sale ? t("history.aiTeamFallback") : "—"}
+        />
       ),
     },
     {
       key: "amount",
       header: t("tradeList.header.amount"),
       numeric: true,
-      render: (ev) => {
-        if (ev.amount == null) {
-          return <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>;
-        }
-        return <span className="whitespace-nowrap text-cz-1">{formatNumber(ev.amount)} CZ$</span>;
-      },
-    },
-    {
-      key: "report",
-      header: t("tradeList.header.report"),
-      mobileLabel: t("tradeList.header.report"),
-      render: (ev) => <ReportCell event={ev} onReport={openReportDialog} />,
+      // #4346-mønstret fra holdhistorikken, af præcis samme grund: gennemsyns-
+      // knappen deler celle med beløbet i stedet for at få sin egen kolonne. En
+      // egen kolonne kostede ~89px og skubbede tabellen forbi 375px på mobil
+      // (målt til 372px i en 341px-ramme, D-047-brud). Ingen ny kolonne =
+      // uændret tabelbredde.
+      render: (ev) => (
+        <div className="flex items-center justify-end gap-1.5">
+          {ev.amount == null
+            ? <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>
+            : <span className="whitespace-nowrap text-cz-1">{formatNumber(ev.amount)} CZ$</span>}
+          <ReportCell event={ev} onReport={openReportDialog} />
+        </div>
+      ),
     },
   ];
 
@@ -304,10 +312,12 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
             columns={columns}
             rows={events}
             rowKey={(ev) => ev.id}
-            /* D-047 (#5102): de tre mobil-kolonner er "hvem til hvem", beløbet og
-               rækkens handling. Type og dato er foldet ind i navnets underlinje,
-               så ingen information forsvinder. */
-            mobileDefaults={["move", "amount", "report"]}
+            /* D-047 (#5102): mobil viser navnet + til-holdet + beløbet (med
+               gennemsyns-knappen i samme celle). Type, dato og fra-holdet er
+               `fold`-kolonner og lander i navnets underlinje, så ingen
+               information forsvinder. To byttebare kolonner er alt tabellen har
+               — derfor står der to nøgler her, ikke tre. */
+            mobileDefaults={["to", "amount"]}
             empty={
               <EmptyState
                 icon={<InboxIcon size={26} aria-hidden="true" />}

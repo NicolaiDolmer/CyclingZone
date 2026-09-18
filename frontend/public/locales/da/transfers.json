@@ -40,9 +40,9 @@
       "rider": "Rytter",
       "type": "Type",
       "date": "Dato",
-      "move": "Fra, til",
-      "amount": "Beløb",
-      "report": "Gennemsyn"
+      "from": "Fra",
+      "to": "Til",
+      "amount": "Beløb"
     },
     "filter": {
       "typeLabel": "Filtrér på type",
