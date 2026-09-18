@@ -702,3 +702,35 @@ test("#4619 demote: rytter uden fodselsdato springer trup-gaten over (aldrig et 
   assert.equal(rec.squadCounts.length, 0, "ingen taelling uden kendt maal-trup");
   assert.deepEqual(rec.riderUpdates, [], "og ingen squad-skrivning");
 });
+
+// #4582 — academy-demote-quote sender `keepsContract: hasCompleteContract(rider)`
+// til bekraeftelses-dialogen, som saa lover spilleren "samme loen, samme laengde".
+// Flaget SKAL derfor betyde praecis "loennen genberegnes ikke". Er de to ude af
+// trit, lover dialogen en arv der ikke sker, eller fortier en der goer.
+// (Flyttet hertil fra frontend/src/lib/academyDemoteContract.test.js: en
+// frontend-test kan ikke importere denne fil, fordi sentry.js kraever
+// @sentry/node, som frontend-build-jobbet i CI ikke installerer.)
+const KEEPS_CONTRACT_SHAPES = [
+  { label: "komplet kontrakt", rider: { salary: 17000, contract_length: 3, contract_end_season: 5, current_production_value: 63000 } },
+  { label: "loen sat, udloeb null", rider: { salary: 17000, contract_length: 3, contract_end_season: null, current_production_value: 63000 } },
+  { label: "loen sat, laengde null", rider: { salary: 17000, contract_length: null, contract_end_season: 5, current_production_value: 63000 } },
+  { label: "reelt kontraktloes", rider: { salary: null, contract_length: null, contract_end_season: null, current_production_value: 63000 } },
+  { label: "loen 0 (gratis-kontrakt)", rider: { salary: 0, contract_length: 3, contract_end_season: 5, current_production_value: 63000 } },
+];
+
+for (const { label, rider } of KEEPS_CONTRACT_SHAPES) {
+  test(`#4582 keepsContract betyder praecis "ingen genberegning": ${label}`, () => {
+    if (hasCompleteContract(rider)) {
+      assert.equal(resolveDemoteSalary(rider), rider.salary, `${label}: flaget siger arv, men loennen blev aendret`);
+    } else {
+      assert.equal(resolveDemoteSalary(rider), demoteSalary(rider), `${label}: flaget siger ny beregning, men loennen blev arvet`);
+    }
+  });
+}
+
+test("#4582 den rapporterede 17k->22k-sag: arven forhindrer stigningen", () => {
+  const rider = { salary: 17000, contract_length: 3, contract_end_season: 5, current_production_value: 63000 };
+  assert.ok(demoteSalary(rider) > rider.salary, "fixturen skal reproducere situationen hvor genberegning ville HAEVE loennen");
+  assert.equal(resolveDemoteSalary(rider), 17000);
+  assert.equal(hasCompleteContract(rider), true, "dialogen skal kunne sige at kontrakten foelger med");
+});
