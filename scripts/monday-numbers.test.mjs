@@ -45,8 +45,24 @@ test("soegemaskiner samles, og self-referral holdes ude af kanal-listen", () => 
   assert.equal(classifyChannel({ referrer: "https://cyclingzone.org/dashboard" }), "self-referral");
 });
 
-test("lookalike domains cannot impersonate Hattrick or self-referrals", () => {
-  for (const domain of ["hattrick.org", "cyclingzone.org", "cycling-zone.vercel.app"]) {
+// #5091: samme fejlklasse som Hattrick/self-referral (#5072), nu ogsaa dækket
+// for AI_ASSISTANT_HOSTS/OWN_EMAIL_HOSTS/REDDIT_HOSTS/discord/SEARCH_HOSTS.
+test("lookalike domains cannot impersonate any kanal-liste", () => {
+  for (const domain of [
+    "hattrick.org",
+    "cyclingzone.org",
+    "cycling-zone.vercel.app",
+    "discord.com",
+    "discordapp.com",
+    "chatgpt.com",
+    "reddit.com",
+    // NB: mail.google.com er bevidst udeladt her - "evil-mail.google.com" ER
+    // rent domaenemaessigt en gyldig subdomaene af google.com (searchlisten),
+    // saa den overlappende sti er ikke en lookalike-bypass. Dækket separat i
+    // "genuine hostnames"-testen nedenfor.
+    "bing.com",
+    "duckduckgo.com",
+  ]) {
     for (const impostor of [`${domain}.example.com`, `evil-${domain}`]) {
       assert.equal(classifyChannel({ referrer: `https://${impostor}/` }), impostor);
       assert.equal(classifyChannel({ utm_source: impostor }), impostor);
@@ -57,8 +73,27 @@ test("lookalike domains cannot impersonate Hattrick or self-referrals", () => {
 });
 
 test("genuine hostnames and their subdomains retain their channel", () => {
-  for (const [domain, expected] of [["hattrick.org", "hattrick"], ["cyclingzone.org", "self-referral"], ["cycling-zone.vercel.app", "self-referral"]]) {
+  for (const [domain, expected] of [
+    ["hattrick.org", "hattrick"],
+    ["cyclingzone.org", "self-referral"],
+    ["cycling-zone.vercel.app", "self-referral"],
+    ["discord.com", "discord"],
+    ["discordapp.com", "discord"],
+    ["chatgpt.com", "AI assistant"],
+    ["reddit.com", "reddit"],
+    ["mail.google.com", "email (vores egne mails)"],
+    ["bing.com", "soegning (organisk)"],
+    ["duckduckgo.com", "soegning (organisk)"],
+  ]) {
     assert.equal(classifyChannel({ referrer: `https://sub.${domain}/` }), expected);
     assert.equal(classifyChannel({ utm_source: domain }), expected);
   }
+});
+
+test("Google-soegedomaener er forankret til hele hostname, ikke en substring (#5091)", () => {
+  assert.equal(classifyChannel({ referrer: "https://www.google.co.uk/" }), "soegning (organisk)");
+  assert.equal(classifyChannel({ referrer: "https://www.google.com.au/" }), "soegning (organisk)");
+  assert.equal(classifyChannel({ referrer: "https://sub.google.com/" }), "soegning (organisk)");
+  assert.equal(classifyChannel({ referrer: "https://google.evil.com/" }), "google.evil.com");
+  assert.equal(classifyChannel({ referrer: "https://evil-google.com/" }), "evil-google.com");
 });

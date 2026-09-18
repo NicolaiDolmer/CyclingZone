@@ -167,6 +167,15 @@ try {
   node scripts/check-required-ci-jobs.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "required-ci-jobs-guard" }
 
+  # #5093: docs/NOW.md er den eneste kilde til "aktivt issue" + "Working
+  # agent"-claim - en feature-/bugfix-commit der roerer den som sidevogn kan
+  # overskrive close-out-staten fra en anden session (tre kollisioner 8-10/9).
+  Write-Host "== now-md-sidecar-guard (feature-commits maa ikke roere docs/NOW.md, #5093) ==" -ForegroundColor Cyan
+  node --test scripts/check-now-md-sidecar.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "now-md-sidecar-guard (selvtest)" }
+  node scripts/check-now-md-sidecar.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "now-md-sidecar-guard" }
+
   Write-Host "== frontend eslint ==" -ForegroundColor Cyan
   Push-Location (Join-Path $root "frontend")
   npm run lint

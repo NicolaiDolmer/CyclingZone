@@ -654,6 +654,61 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/ops/retirement-notice-freeze-5073.test.mjs
 
+      # --- guard-inventory-cell escaping (#5092) ---
+      # scripts/guard-inventory-cell.test.mjs fandtes, men koerte ingen steder i
+      # CI-kaeden (ingen test:*-entry, ingen workflow-step) - "usynlig" for hele
+      # verify-kaeden. Ren streng-escaping (backslash foer pipe-delimiter for
+      # generate-guard-inventory.mjs's Markdown-tabel), nul npm-afhaengigheder,
+      # saa den hoerer hjemme her ligesom de oevrige npm-ci-frie guards.
+      - name: Test guard-inventory-cell escaping
+        if: ${{ !cancelled() }}
+        run: node --test scripts/guard-inventory-cell.test.mjs
+
+  ops-script-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #5092: scripts/monday-numbers.test.mjs fandtes, men koerte ingen steder i
+    # CI-kaeden (ingen test:*-entry, ingen workflow-step) - "usynlig" for hele
+    # verify-kaeden. Eget job og ikke en del af static-guards: monday-numbers.mjs
+    # importerer @supabase/supabase-js paa modul-niveau (classifyChannel selv er
+    # ren, men importet koerer alligevel ved load), saa testen kraever root
+    # `npm ci` - static-guards er bevidst UDEN npm ci (se #5073-kommentaren
+    # ovenfor: samme fejlklasse ville give ERR_MODULE_NOT_FOUND der).
+    steps:
+      # fetch-depth: 0 (fuld historik), fordi now-md-sidecar-guarden nedenfor
+      # skal kunne rev-liste HELE PR'ens commit-range mod origin/main - en
+      # standard shallow (depth 1) checkout graftede historikken og ville enten
+      # skjule commits eller vise urelaterede commits som "PR'ens egne".
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # #5093: docs/NOW.md er den eneste kilde til "aktivt issue" + "Working
+      # agent"-claim - koeres FOER npm ci, saa et sidevogns-fund rapporteres
+      # hurtigt uden at vente paa en dependency-install.
+      - name: Test now-md-sidecar guard
+        run: node --test scripts/check-now-md-sidecar.test.mjs
+
+      - name: Run now-md-sidecar guard
+        run: node scripts/check-now-md-sidecar.mjs
+
+      - name: Install root dependencies
+        run: npm ci
+
+      # #5091: kanal-klassificeringen skal vaere domaene-forankret (samme
+      # moenster som Hattrick/self-referral-fixet i #5072), ellers klassificerer
+      # et lookalike-domaene (fx evil-discord.example.com) sig som en aegte kanal.
+      - name: Test monday-numbers channel classification
+        run: node --test scripts/monday-numbers.test.mjs
+
   migration-idempotency:
     runs-on: ubuntu-latest
     permissions:
