@@ -46,11 +46,14 @@ async function main() {
     .filter((e) => futureIds.has(e.race_id));
   console.log(`Entries i kommende løb: ${entries.length}`);
 
-  // 3. Ryttere for entry-id'erne (id, team_id, is_academy, is_retired) — chunked .in().
+  // 3. Ryttere for entry-id'erne (id, team_id, squad, is_academy, is_retired) — chunked .in().
   const riderIds = [...new Set(entries.map((e) => e.rider_id))];
   const ridersById = new Map();
   for (let i = 0; i < riderIds.length; i += 200) {
     const chunk = riderIds.slice(i, i + 200);
+    // #4619 · schema-columns-ok: riders.squad kom med
+    // database/2026-09-15-4619-riders-squad.sql (merged + applied i prod);
+    // database/schema-snapshot.json er 19 migrationer bagud.
     const { data, error } = await db.from("riders")
       .select("id, team_id, squad, is_academy, is_retired").in("id", chunk);
     if (error) throw new Error(`riders: ${error.message}`);

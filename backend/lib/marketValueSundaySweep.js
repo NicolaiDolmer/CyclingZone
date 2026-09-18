@@ -167,6 +167,10 @@ async function defaultFetchPopulation({ supabase }) {
   );
   // #4619: `squad` er med i projektionen fordi trup-prædikatet nedenfor er delt
   // (squads.isSeniorSquadRider) og læser begge kolonner i overgangsperioden.
+  // schema-columns-ok: riders.squad blev tilføjet af database/2026-09-15-4619-riders-squad.sql
+  // (merged + applied i prod, hvor kolonnen er målt). database/schema-snapshot.json er 19
+  // migrationer bagud (se preflight'ens schema-snapshot-staleness-WARN) — snapshot-refresh
+  // er sin egen chore, ikke denne PR's.
   const allRiders = await fetchAllRows(() => supabase
     .from("riders")
     .select("id, team_id, birthdate, popularity, potentiale, primary_type, is_retired, squad, is_academy, base_value")
