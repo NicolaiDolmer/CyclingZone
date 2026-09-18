@@ -392,7 +392,7 @@ jobs:
             echo "Baggrund: #2671 (klassen). Læringer: \`.claude/learnings/2026-05-31-rls-policy-calling-function-needs-role-grant.md\`, \`.claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md\`"
             echo "Workflow: .github/workflows/security-grants-audit.yml"
           } > smoketest-body.md
-          EXISTING=$(gh issue list --state open --search "policy-fn-grants in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          EXISTING=$(gh issue list --state open --search "RLS-role-smoketest in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
           if [ -n "${EXISTING:-}" ] && [ "$EXISTING" != "null" ]; then
             echo "↳ Åbent issue #$EXISTING findes — tilføjer kommentar."
             gh issue comment "$EXISTING" --body-file smoketest-body.md
