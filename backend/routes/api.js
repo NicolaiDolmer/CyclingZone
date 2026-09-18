@@ -9648,9 +9648,12 @@ router.get("/me/beta-access", requireAuth, presencePulseLimiter, async (req, res
     if (isBetaRequestsMissing(e)) {
       // Tabellen mangler endnu: kontakten findes ikke for spilleren, men
       // is_beta_tester er en aegte kolonne og skal stadig kunne laeses.
-      const { data: u } = await supabase
+      // best-effort: fejler ogsaa DENNE laesning, er vi i et vindue hvor intet
+      // svarer, og "ikke beta-tester" er den rigtige fail-safe — det er samme
+      // svar som evaluateFlagStage giver, saa fladen og gaten er enige.
+      const { data: u, error: userError } = await supabase
         .from("users").select("is_beta_tester").eq("id", req.user.id).maybeSingle();
-      const isBetaTester = u?.is_beta_tester === true;
+      const isBetaTester = !userError && u?.is_beta_tester === true;
       return res.json({
         is_beta_tester: isBetaTester,
         request_status: null,
@@ -14369,12 +14372,15 @@ router.patch("/admin/users/:userId/beta", requireAdmin, adminWriteLimiter, async
       userId, isBetaTester, adminUserId: req.user.id,
     });
 
-    await supabase.from("admin_log").insert({
+    // best-effort: revisionssporet maa ikke rulle selve handlingen tilbage —
+    // kontakten ER sat. En fejlet log bobler til Sentry, ikke til admin.
+    const { error: logError } = await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
       action_type: ADMIN_ACTION_TYPE.BETA_TESTER_CHANGED,
       description: `Beta-tester ${isBetaTester ? "sat" : "fjernet"} for ${result.username ?? userId}`,
       meta: { user_id: userId, is_beta_tester: isBetaTester, source: "admin_toggle" },
     });
+    if (logError) captureApiRouteError(logError, req);
 
     res.json({ success: true, is_beta_tester: isBetaTester, username: result.username });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
@@ -14396,7 +14402,9 @@ router.post("/admin/beta-requests/:userId/decide", requireAdmin, adminWriteLimit
       userId, approved, adminUserId: req.user.id,
     });
 
-    await supabase.from("admin_log").insert({
+    // best-effort, samme grund som ovenfor: beslutningen er truffet og beskeden
+    // sendt, og en fejlet log-raekke maa ikke lade admin tro det modsatte.
+    const { error: logError } = await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
       action_type: ADMIN_ACTION_TYPE.BETA_TESTER_CHANGED,
       description: `Beta-ansøgning ${approved ? "godkendt" : "afvist"} for bruger ${userId}`,
@@ -14408,6 +14416,7 @@ router.post("/admin/beta-requests/:userId/decide", requireAdmin, adminWriteLimit
         notified: result.notified,
       },
     });
+    if (logError) captureApiRouteError(logError, req);
 
     res.json({ success: true, notified: result.notified, access: result.access });
   } catch (e) {
@@ -14495,17 +14504,24 @@ router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async
         value: stage,
         description: `#5259: stadie-flag (off|beta|on) styret fra Admin > System. Område: ${flag.area}.`,
         updated_at: new Date().toISOString(),
+        // Kolonnen har stået ubrugt siden 2026-05-16: et flag-skift er den ene
+        // app_config-skrivning der har en navngiven ansvarlig, og admin_log
+        // alene kan ikke svare "hvem satte den værdi der står der NU".
+        updated_by: req.user.id,
       },
       { onConflict: "key" },
     );
     if (error) throw error;
 
-    await supabase.from("admin_log").insert({
+    // best-effort: flaget ER flyttet. En fejlet log-raekke maa ikke faa admin
+    // til at trykke igen paa noget der allerede er sket.
+    const { error: logError } = await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
       action_type: ADMIN_ACTION_TYPE.FEATURE_FLAG_CHANGED,
-      description: `Flag ${key} (${flag.label}) → ${stage}`,
+      description: `Flag ${key} (${flag.label}) sat til ${stage}`,
       meta: { key, stage, previous: normalizeStageValue(previousRaw), area: flag.area },
     });
+    if (logError) captureApiRouteError(logError, req);
 
     res.json({ success: true, key, stage });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }

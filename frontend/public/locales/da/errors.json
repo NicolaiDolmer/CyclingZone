@@ -256,6 +256,14 @@
     "dm_not_found": "Den samtale findes ikke længere.",
     "dm_invalid_block_target": "Vælg en manager først.",
     "dm_report_reason_required": "Fortæl mig hvad der er galt, i en sætning eller to.",
-    "dm_report_reason_too_long": "Begrundelsen er for lang."
+    "dm_report_reason_too_long": "Begrundelsen er for lang.",
+    "beta_already_member": "Du er allerede med i beta-gruppen.",
+    "beta_request_pending": "Din ansøgning ligger allerede hos mig.",
+    "beta_not_member": "Du er ikke med i beta-gruppen.",
+    "beta_migration_pending": "Beta-tilmelding er ikke klar endnu. Prøv igen om lidt.",
+    "beta_invalid_payload": "Den beta-indstilling kunne ikke læses.",
+    "flag_unknown": "Det funktionsflag findes ikke.",
+    "flag_invalid_stage": "En funktion kan kun være fra, beta eller til.",
+    "flag_boolean_only": "Dette flag er kun til/fra og har intet beta-stadie."
   }
 }

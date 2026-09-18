@@ -41,6 +41,11 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_tick_per_race_day", area: "training", label: "Traening pr. loebsdag" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlaegger" },
   { key: "facilities_enabled", area: "club", label: "Faciliteter" },
+  // Kill-switch for job-modellen (#2244). Semantisk binaer (on/off), men den
+  // GAAR gennem evaluateFlagStage, og saa hoerer den hjemme her: bliver den
+  // sat til `beta`, ser beta-testere job-modellen mens spillerne ser slots —
+  // hvilket er praecis den udrulning A4b-moenstret beskriver med admin-preview.
+  { key: "scout_system_enabled", area: "scouting", label: "Scouting — job-modellen" },
   { key: "season_signup_enabled", area: "season", label: "Tilmelding til naeste saeson" },
   { key: "race_day_intention_enabled", area: "race-day", label: "Loebsdags-intention" },
   { key: "race_stage_timeline", area: "race-day", label: "Etape-tidslinje" },

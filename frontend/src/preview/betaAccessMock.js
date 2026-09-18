@@ -70,6 +70,19 @@ export function betaAccessMockRoute(url, method, init) {
     return json({ table_ready: true, pending: pendingRequests, members });
   }
 
+  // Kontakten pr. bruger. Selve bruger-RÆKKEN kommer fra supabase-mocken i
+  // mockHandlers.js og spejler IKKE dette kald, så mærket i tabellen skifter
+  // ikke i preview. Ansøgnings-flowet nedenfor er det der kan klikkes igennem;
+  // toggle-knappen svarer bare korrekt i stedet for at falde i den generiske
+  // { ok: true } (CodeRabbit).
+  if (/\/api\/admin\/users\/[^/]+\/beta$/.test(url) && method === "PATCH") {
+    const wanted = readBody(init).is_beta_tester;
+    if (typeof wanted !== "boolean") {
+      return json({ error: "is_beta_tester must be true or false", errorCode: "beta_invalid_payload" }, 400);
+    }
+    return json({ success: true, is_beta_tester: wanted, username: "preview" });
+  }
+
   const decide = url.match(/\/api\/admin\/beta-requests\/([^/]+)\/decide$/);
   if (decide && method === "POST") {
     pendingRequests = pendingRequests.filter(r => r.user_id !== decide[1]);

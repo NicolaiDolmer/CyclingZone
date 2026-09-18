@@ -24,6 +24,7 @@ const AREA_LABELS = {
   board: "Bestyrelse",
   training: "Træning",
   club: "Klub",
+  scouting: "Scouting",
   season: "Sæson",
   "race-day": "Løbsdag",
   "race-engine": "Løbsmotor",

@@ -137,6 +137,18 @@ export default function ProfilePage() {
       );
       // 429 er allerede bremset af apiFetch (stille backoff) — ingen fejlkasse.
       if (res.limited) return;
+      // #5322: en transportfejl KASTER ikke gennem apiFetch, den kommer tilbage
+      // som { status: 0, networkError: true }. Uden denne gren ville den falde
+      // i !res.ok nedenfor og blive vist som en serverfejl — og telemetrien i
+      // catch'en, der netop skal kunne skelne "vi naaede aldrig serveren",
+      // ville aldrig loebe (CodeRabbit).
+      if (res.networkError) {
+        showMsg(t("errors:generic.networkError"), "error");
+        reportActionFailure("profile_beta_access", {
+          reason: "network", cause: res.error, context: { action },
+        });
+        return;
+      }
       const data = res.data ?? {};
       // 503 = migrationen er ikke applied endnu (auto-migrate venter ~180 s
       // efter deploy). Ikke spillerens fejl, og ikke en fejl der skal

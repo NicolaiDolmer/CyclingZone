@@ -172,6 +172,7 @@ export default function AdminUsersTab() {
     setBetaPending(b.pending || []);
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData er en lokal funktion (ny ref hver render); bevidst engangs-mount-fetch. Blev foerst en advarsel med #5259, hvor loadData begyndte at laese getAuth.
   useEffect(() => { loadData(); }, []);
 
   const { rows: sortedUsers, sort: usersSort, sortDir: usersSortDir, handleSort: handleUsersSort } =

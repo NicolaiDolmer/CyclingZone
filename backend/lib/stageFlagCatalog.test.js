@@ -36,6 +36,15 @@ function collectJsFiles(dir, out = []) {
 // identifier der er defineret som en strengliteral i SAMME fil (det moenster
 // alle *Flag.js-modulerne foelger).
 const CALL_RE = /evaluateFlagStage\(\s*await\s+readFlagStage\(\s*\w+\s*,\s*([^)]+?)\s*\)/g;
+// SPLIT-formen: `const stage = await readFlagStage(supabase, "noegle")` et sted
+// og `evaluateFlagStage(stage)` et andet. api.js bruger den (isScoutSystemEnabled,
+// resolveFacilitiesEnabled), og CALL_RE alene er blind for den — et nyt
+// stadie-flag kunne altsaa smutte forbi kataloget her (CodeRabbit).
+// Variablen skal BEVISLIGT flyde ind i evaluateFlagStage i samme fil, ellers
+// ville enhver readFlagStage-laesning taelle med: app_config rummer ogsaa tal
+// (market_value_weekly_cap) og andre tre-tilstande (email_loop_*), som netop
+// IKKE hoerer til i kataloget.
+const SPLIT_RE = /const\s+(\w+)\s*=\s*await\s+readFlagStage\(\s*\w+\s*,\s*([^)]+?)\s*\)/g;
 const CONST_RE = /(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*"([^"]+)"/g;
 // ACADEMY.FLAG_KEY-formen: et objekt-felt der er en strengliteral.
 const FIELD_RE = /\b([A-Z][A-Z0-9_]*)\s*:\s*"([^"]+)"/g;
@@ -57,6 +66,20 @@ function resolveKeysInFile(source) {
     if (dotted && fields.has(dotted[1])) { keys.push(fields.get(dotted[1])); continue; }
     // Uoploeselig — rapportér som sig selv, saa testen fejler synligt i stedet
     // for tavst at springe et rigtigt flag over.
+    keys.push(`UNRESOLVED:${expr}`);
+  }
+
+  // SPLIT-formen. Samme opslag, men kun naar variablen faktisk naevnes i et
+  // evaluateFlagStage-kald i filen.
+  for (const m of source.matchAll(SPLIT_RE)) {
+    const varName = m[1];
+    if (!new RegExp(`evaluateFlagStage\\(\\s*${varName}\\b`).test(source)) continue;
+    const expr = m[2].trim();
+    const quoted = expr.match(/^"([^"]+)"$/);
+    if (quoted) { keys.push(quoted[1]); continue; }
+    if (literals.has(expr)) { keys.push(literals.get(expr)); continue; }
+    const dotted = expr.match(/^[A-Za-z_$][\w$]*\.([A-Z][A-Z0-9_]*)$/);
+    if (dotted && fields.has(dotted[1])) { keys.push(fields.get(dotted[1])); continue; }
     keys.push(`UNRESOLVED:${expr}`);
   }
   return keys;
@@ -81,6 +104,22 @@ test("#5259: hver evaluateFlagStage-noegle i backend staar i STAGE_FLAGS", () =>
 test("#5259: scanneren finder faktisk noegler (guard mod en regex der er holdt op med at matche)", () => {
   const source = readFileSync(join(BACKEND_ROOT, "lib", "boardMandateFlag.js"), "utf8");
   assert.deepEqual(resolveKeysInFile(source), ["board_mandate_model_enabled"]);
+});
+
+test("#5259: SPLIT-formen fanges ogsaa, og kun naar variablen bruges", () => {
+  const split = [
+    'const stage = await readFlagStage(supabase, "scout_system_enabled");',
+    "if (evaluateFlagStage(stage)) return true;",
+  ].join("\n");
+  assert.deepEqual(resolveKeysInFile(split), ["scout_system_enabled"]);
+
+  // Samme fil, men vaerdien naar ALDRIG evaluateFlagStage: et tal i app_config
+  // er ikke et stadie-flag, og maa ikke traekkes ind i kataloget.
+  const unrelated = [
+    'const cap = await readFlagStage(supabase, "market_value_weekly_cap");',
+    "const on = evaluateFlagStage(somethingElse);",
+  ].join("\n");
+  assert.deepEqual(resolveKeysInFile(unrelated), []);
 });
 
 test("#5259: kataloget har unikke noegler og kendte omraader", () => {

@@ -254,7 +254,7 @@ export async function setBetaTester(supabase, { userId, isBetaTester, adminUserI
  * ansoegninger foer tabellen findes. Medlemmerne laeses stadig fra users.
  */
 export async function listBetaAccess(supabase, { limit = 200 } = {}) {
-  const [{ data: requests, error: reqError }, { data: members }] = await Promise.all([
+  const [{ data: requests, error: reqError }, { data: members, error: memberError }] = await Promise.all([
     supabase
       .from("beta_requests")
       .select("user_id, status, created_at, decided_at")
@@ -267,6 +267,12 @@ export async function listBetaAccess(supabase, { limit = 200 } = {}) {
       .order("username"),
   ]);
   if (reqError && !isBetaRequestsMissing(reqError)) throw reqError;
+  // Medlems-listen maa IKKE fejle stille: (members ?? []) ville give et TOMT
+  // medlems-saet, og saa ville en ansoegning fra en der ALLEREDE er med dukke
+  // op som "venter paa svar". Et afslag der ville vaere en no-op, slukker saa
+  // kontakten for et rigtigt medlem (decideBetaRequest saetter is_beta_tester
+  // = false). En tom liste er bedre end en misvisende komplet liste.
+  if (memberError) throw memberError;
 
   const rows = requests ?? [];
   const memberIds = new Set((members ?? []).map((m) => m.id));
@@ -276,8 +282,11 @@ export async function listBetaAccess(supabase, { limit = 200 } = {}) {
 
   let pendingUsers = [];
   if (pendingIds.length > 0) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("users").select("id, username, email").in("id", pendingIds);
+    // Samme grund som ovenfor: uden navn og mail er raekken ikke til at svare
+    // paa, og en liste med tomme navne er vaerre end en fejl der siger fra.
+    if (error) throw error;
     pendingUsers = data ?? [];
   }
   const userById = new Map(

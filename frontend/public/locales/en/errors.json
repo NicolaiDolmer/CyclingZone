@@ -256,6 +256,14 @@
     "dm_not_found": "That conversation is gone.",
     "dm_invalid_block_target": "Pick a manager first.",
     "dm_report_reason_required": "Tell me what is wrong, in a sentence or two.",
-    "dm_report_reason_too_long": "That reason is too long."
+    "dm_report_reason_too_long": "That reason is too long.",
+    "beta_already_member": "You are already in the beta group.",
+    "beta_request_pending": "Your request is already waiting for me.",
+    "beta_not_member": "You are not in the beta group.",
+    "beta_migration_pending": "Beta sign-up is not ready yet. Try again shortly.",
+    "beta_invalid_payload": "That beta setting could not be read.",
+    "flag_unknown": "That feature flag does not exist.",
+    "flag_invalid_stage": "A feature can only be off, beta or on.",
+    "flag_boolean_only": "This flag is on/off only and has no beta stage."
   }
 }
