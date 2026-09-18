@@ -28,6 +28,7 @@
 //   node backend/scripts/generatorVisibleTest5283.js --out=../balance-internals/x.md
 //   node backend/scripts/generatorVisibleTest5283.js --count=1000 --seed=20260918
 //   node backend/scripts/generatorVisibleTest5283.js --u23=400   (§8c-varianterne)
+//   node backend/scripts/generatorVisibleTest5283.js --tuning=../balance-internals/u23-band-tuning.json
 //
 // CI-siden af den samme gate er `backend/lib/riderBirthDistribution.test.js`:
 // rapporten her er til ØJNENE, testen er til maskinen. Ændrer generatoren sig,
@@ -325,19 +326,83 @@ export const U23_ENTRY_AGE = U23_BIRTH_AGES[0];
 /** Afledt bånd — ALTID et nyt frosset objekt, aldrig en mutation af akademiets. */
 const derivedBand = (overrides) => Object.freeze({ ...YOUTH_BIRTH_BAND, ...overrides });
 
-const A_CEIL = statLevelToAbility(60);
-const B_PER_YEAR = statPointsToAbility(2.2);
-const B_CEIL = statLevelToAbility(62);
-const C_CEIL_PER_YEAR_OVER_ACADEMY = statPointsToAbility(3);
+// ── Kalibrerings-tallene ligger UDEN FOR repoet (hard rule 17, #3436) ────────
+// HVOR højt et loft og HVOR stejl en rampe hvert forslag har, ER selve den
+// balance-beslutning ejeren skal træffe (#5376) — og repoet er offentligt
+// læsbart. Derfor står STRUKTUREN her (hvilken knap hver variant drejer på, og
+// hvordan den forankres), mens VÆRDIERNE læses fra en lokal, gitignoreret fil:
+//
+//   balance-internals/u23-band-tuning.json
+//
+// Enhederne er PCM-stat-enheder — samme sprog `YOUTH_BIRTH_BAND` selv er
+// skrevet i (`statLevelToAbility` / `statPointsToAbility`): et stat-NIVEAU er
+// et loft på PCM-skalaen, stat-POINT er et tillæg. Filen kan også udpeges med
+// `--tuning=<sti>` eller miljøvariablen `CZ_U23_BAND_TUNING`.
+//
+// Mangler filen, renderes §8c som det kvalitative kort UDEN måletabel. Det er
+// med vilje: et designkort med opdigtede tal er værre end et uden tal.
+export const U23_TUNING_FIELDS = Object.freeze({
+  aCeilStatLevel: "A: loftet, som stat-NIVEAU",
+  bPerYearStatPoints: "B: alders-rampe, stat-point pr. år over 16",
+  bCeilStatLevel: "B: loftet, som stat-NIVEAU",
+  bSpreadFactor: "B: faktor på akademiets spredning (`sd` + `startLuckSd`)",
+  cCeilStatPointsPerYearOverAcademy:
+    "C: stat-point loftet vokser pr. år over akademiets øverste alder",
+});
+
+/** Sti-etiketten der vises i rapporten — repo-relativ, så den er ens på alle maskiner. */
+export const U23_TUNING_LABEL = "balance-internals/u23-band-tuning.json";
+export const U23_TUNING_PATH = resolve(__dirname, "..", "..", U23_TUNING_LABEL);
+
+/**
+ * Læs kalibrerings-filen. Returnerer `null` hvis den ikke findes — det er en
+ * normal tilstand (enhver der ikke sidder med ejerens lokale mappe), ikke en
+ * fejl. Er filen der, valideres HVERT felt: et manglende eller ikke-numerisk
+ * felt ville ellers give `NaN` i et bånd, og sweepet ville vise "–" i hver
+ * celle som om båndet ikke kunne måles.
+ */
+export function loadU23Tuning({ path = process.env.CZ_U23_BAND_TUNING || U23_TUNING_PATH } = {}) {
+  let raw;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch (err) {
+    if (err?.code === "ENOENT") return null;
+    throw err;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`${path}: ugyldig JSON — ${err.message}`, { cause: err });
+  }
+  const tuning = {};
+  for (const [field, meaning] of Object.entries(U23_TUNING_FIELDS)) {
+    const value = parsed?.[field];
+    if (!Number.isFinite(value)) {
+      throw new Error(
+        `${path}: feltet \`${field}\` (${meaning}) skal være et tal — fik ${JSON.stringify(value)}`,
+      );
+    }
+    tuning[field] = value;
+  }
+  if (tuning.bSpreadFactor <= 0) {
+    throw new Error(`${path}: \`bSpreadFactor\` skal være > 0 — fik ${tuning.bSpreadFactor}`);
+  }
+  return Object.freeze(tuning);
+}
 
 /**
  * De tre forslag + dagens bånd som referencerække.
  *
- * `bandFor(age)` er en FUNKTION og ikke et fladt objekt, fordi C's loft
- * afhænger af alderen. Baseline og A/B returnerer det samme objekt for alle
- * aldre; kun C varierer.
+ * `bandFor(age, tuning)` er en FUNKTION og ikke et fladt objekt af to grunde:
+ * C's loft afhænger af alderen, og alle tal kommer udefra. Baseline og A/B
+ * returnerer det samme objekt for alle aldre; kun C varierer.
+ *
+ * Teksterne er KVALITATIVE med vilje ("højere loft", "stejlere rampe"): en
+ * kvalitativ beskrivelse af en mekanik må gerne stå i repoet, et præcist tal
+ * må ikke (hard rule 17).
  */
-export const U23_BAND_VARIANTS = Object.freeze([
+export const U23_BAND_VARIANT_SPECS = Object.freeze([
   Object.freeze({
     key: "baseline",
     label: "I dag — akademiets bånd brugt som det er",
@@ -345,6 +410,8 @@ export const U23_BAND_VARIANTS = Object.freeze([
       "U23-fødslen genbruger `YOUTH_BIRTH_BAND` uændret. Referencerækken, ikke et forslag.",
     tradeoff:
       "Ingen ny kode og ingen risiko for akademiet — men båndet er kalibreret til 16-21, og i den øvre ende af U23-intervallet er loftet mættet, så alderen holder op med at flytte noget.",
+    // Referencerækken er dagens bånd og har derfor ingen kalibrering at læse.
+    needsTuning: false,
     bandFor: () => YOUTH_BIRTH_BAND,
   }),
   Object.freeze({
@@ -354,7 +421,11 @@ export const U23_BAND_VARIANTS = Object.freeze([
       "Én knap: U23-stien får et højere loft, mens forankring, alders-rampe og spredning er akademiets. Alders-rampen findes allerede; det var kun klipningen mod loftet der fjernede dens virkning.",
     tradeoff:
       "Mindst mulig ny mekanik og mindst mulig overflade at vedligeholde. Til gengæld ændrer den fordelingen på HELE U23-intervallet, også i de tre år (19-21) der overlapper akademiet — en akademi-graduand og en nyfødt U23-rytter på samme alder trækkes derefter forskelligt.",
-    bandFor: () => derivedBand({ ceil: A_CEIL, ceilBoosted: A_CEIL }),
+    needsTuning: true,
+    bandFor: (age, tuning) => {
+      const ceil = statLevelToAbility(tuning.aCeilStatLevel);
+      return derivedBand({ ceil, ceilBoosted: ceil });
+    },
   }),
   Object.freeze({
     key: "b-eget-baand",
@@ -363,8 +434,11 @@ export const U23_BAND_VARIANTS = Object.freeze([
       "U23 får sit eget bånd, forankret så indgangsalderen (19) lander præcis hvor akademiets bånd gør i dag, og med en stejlere alders-rampe og bredere spredning derefter. Akademiets bånd er urørt og lever videre ved siden af.",
     tradeoff:
       "Mest kontrol: alder og potentiale kan gøres til at betyde præcis så meget som ejeren vil, uafhængigt af akademiet. Prisen er to bånd at holde i sync og en fordeling der fanner tydeligt ud over de fire år — den ældste U23-rytter bliver markant stærkere end den yngste.",
-    bandFor: () =>
-      derivedBand({
+    needsTuning: true,
+    bandFor: (age, tuning) => {
+      const perYearOver16 = statPointsToAbility(tuning.bPerYearStatPoints);
+      const ceil = statLevelToAbility(tuning.bCeilStatLevel);
+      return derivedBand({
         // Forankret i U23_ENTRY_AGE: den stejlere rampe trækkes ud af
         // grundniveauet, så alder 19 giver NØJAGTIG samme udgangspunkt som i
         // dag og kun 20-22 fanner ud. Uden denne modregning ville en stejlere
@@ -372,13 +446,14 @@ export const U23_BAND_VARIANTS = Object.freeze([
         // ting på én gang.
         baseAt16:
           YOUTH_BIRTH_BAND.baseAt16 -
-          (U23_ENTRY_AGE - 16) * (B_PER_YEAR - YOUTH_BIRTH_BAND.perYearOver16),
-        perYearOver16: B_PER_YEAR,
-        sd: YOUTH_BIRTH_BAND.sd * 1.6,
-        startLuckSd: YOUTH_BIRTH_BAND.startLuckSd * 1.6,
-        ceil: B_CEIL,
-        ceilBoosted: B_CEIL,
-      }),
+          (U23_ENTRY_AGE - 16) * (perYearOver16 - YOUTH_BIRTH_BAND.perYearOver16),
+        perYearOver16,
+        sd: YOUTH_BIRTH_BAND.sd * tuning.bSpreadFactor,
+        startLuckSd: YOUTH_BIRTH_BAND.startLuckSd * tuning.bSpreadFactor,
+        ceil,
+        ceilBoosted: ceil,
+      });
+    },
   }),
   Object.freeze({
     key: "c-alders-rampet-loft",
@@ -387,16 +462,39 @@ export const U23_BAND_VARIANTS = Object.freeze([
       "Båndet er akademiets, men loftet vokser med alderen OVER akademiets øverste alder. Ved 19-21 er fordelingen bit for bit den samme som i dag; kun den ældste årgang får luft.",
     tradeoff:
       "Den mest skånsomme: overlappet med akademiet er bevist uændret, så G5 og akademiets kalibrering ikke kan flytte sig som sideeffekt. Til gengæld løser den kun toppen af intervallet — er mætningen også et problem længere nede, gør C ikke noget ved det.",
-    bandFor: (age) => {
+    needsTuning: true,
+    bandFor: (age, tuning) => {
       const yearsOverAcademy = Math.max(0, Number(age) - ACADEMY_TOP_AGE);
       // Identitet, ikke en kopi: de aldre C ikke rører, SKAL køre på præcis det
       // samme objekt som baseline, så kontinuitets-testen kan bevise det.
       if (!yearsOverAcademy) return YOUTH_BIRTH_BAND;
-      const ceil = YOUTH_BIRTH_BAND.ceil + yearsOverAcademy * C_CEIL_PER_YEAR_OVER_ACADEMY;
+      const ceil =
+        YOUTH_BIRTH_BAND.ceil +
+        yearsOverAcademy * statPointsToAbility(tuning.cCeilStatPointsPerYearOverAcademy);
       return derivedBand({ ceil, ceilBoosted: ceil });
     },
   }),
 ]);
+
+/**
+ * Bind kalibreringen til specs'ene. Uden kalibrerings-fil returneres KUN
+ * referencerækken: et forslag hvis tal ingen har valgt, kan ikke måles, og en
+ * opdigtet stand-in ville gøre designkortet misvisende i præcis den ene ting
+ * det skal bruges til.
+ */
+export function buildU23BandVariants(tuning = loadU23Tuning()) {
+  return Object.freeze(
+    U23_BAND_VARIANT_SPECS.filter((spec) => !spec.needsTuning || tuning).map((spec) =>
+      Object.freeze({
+        key: spec.key,
+        label: spec.label,
+        summary: spec.summary,
+        tradeoff: spec.tradeoff,
+        bandFor: (age) => spec.bandFor(age, tuning),
+      }),
+    ),
+  );
+}
 
 /**
  * Kør hver variant gennem hver U23-alder og mål mætningen.
@@ -413,7 +511,7 @@ export const U23_BAND_VARIANTS = Object.freeze([
 export function u23VariantSweep({
   seed = DEFAULT_SEED,
   perAge = DEFAULT_U23_PER_AGE,
-  variants = U23_BAND_VARIANTS,
+  variants = buildU23BandVariants(),
 } = {}) {
   // `perAge` er loop-grænsen. Et NaN eller et 0 giver en tom stikprøve, og
   // rapporten ville så vise "–" i hver celle som om båndet ikke kunne måles;
@@ -695,14 +793,24 @@ function u23VariantTable(sweep) {
   );
 }
 
-function u23VariantSummaryTable(sweep) {
+// Den kvalitative halvdel af kortet. Den kan ALTID renderes: den indeholder
+// ingen tal, kun hvad hver variant gør og hvad den koster.
+function u23VariantSummaryTable(specs) {
   return table(
     ["Variant", "Hvad den gør", "Hvad den koster"],
-    sweep.map((v) => [v.label, v.summary, v.tradeoff]),
+    specs.map((v) => [v.label, v.summary, v.tradeoff]),
   );
 }
 
-export function renderReport({ seed, count, referenceYear, adult, youth, u23PerAge = 200 }) {
+export function renderReport({
+  seed,
+  count,
+  referenceYear,
+  adult,
+  youth,
+  u23PerAge = 200,
+  u23Tuning = loadU23Tuning(),
+}) {
   const rows = adult.rows;
   const c = completenessReport(rows);
   const ages = describe(rows.map((r) => r.age));
@@ -712,7 +820,11 @@ export function renderReport({ seed, count, referenceYear, adult, youth, u23PerA
   const recog = recognitionRate(rows);
   const clamped = clampReport(rows);
   const sweep = youthAgeSweep({ seed });
-  const variantSweep = u23VariantSweep({ seed, perAge: u23PerAge });
+  // Uden kalibrerings-fil er der kun referencerækken at måle — så springes
+  // måletabellen over, og §8c viser den kvalitative side af kortet alene.
+  const variantSweep = u23Tuning
+    ? u23VariantSweep({ seed, perAge: u23PerAge, variants: buildU23BandVariants(u23Tuning) })
+    : null;
 
   const findings = [];
   // U23-gaten, det vigtigste fund i rapporten: båndet er kalibreret til
@@ -731,7 +843,7 @@ export function renderReport({ seed, count, referenceYear, adult, youth, u23PerA
   }
   // §8c's ene konklusion, skrevet ud så den ikke skal læses ud af tabellen:
   // en variant duer kun hvis alderen stadig flytter medianen ved HVERT trin.
-  for (const variant of variantSweep) {
+  for (const variant of variantSweep ?? []) {
     if (variant.key === "baseline") continue;
     const flat = variant.ages.filter((a, i) => i > 0 && a.median - variant.ages[i - 1].median <= 0);
     if (flat.length) {
@@ -880,14 +992,28 @@ export function renderReport({ seed, count, referenceYear, adult, youth, u23PerA
     "",
     "**Akademiets bånd røres ikke.** Hver variant er et nyt, afledt bånd; `YOUTH_BIRTH_BAND` og dets mætnings-invariant (G5, #3561/#2064 §2a) står uændret, og ingen variant er vedtaget — de er forslag til ejeren, ikke konfiguration.",
     "",
-    u23VariantSummaryTable(variantSweep),
+    u23VariantSummaryTable(U23_BAND_VARIANT_SPECS),
     "",
-    `${u23PerAge} træk pr. alder pr. variant, fordelt over alle arketyper og fire potentiale-trin (en signatur-evne får et boost oven i grundniveauet og rammer loftet først — måltes kun én arketype, ville mætningen se mildere ud end i en rigtig trup). Samme seed-familie pr. (alder, træk) på tværs af varianter, så rækkerne sammenlignes på de samme træk.`,
-    "",
-    "Den afgørende kolonne er **Δ median vs. året før**, ikke \"På loftet %\": står Δ på 0, er alderen holdt op med at betyde noget, uanset hvor pænt resten af rækken ser ud. \"På loftet %\" måles mod variantens EGET loft.",
-    "",
-    u23VariantTable(variantSweep),
-    "",
+    ...(variantSweep
+      ? [
+          `${u23PerAge} træk pr. alder pr. variant, fordelt over alle arketyper og fire potentiale-trin (en signatur-evne får et boost oven i grundniveauet og rammer loftet først — måltes kun én arketype, ville mætningen se mildere ud end i en rigtig trup). Samme seed-familie pr. (alder, træk) på tværs af varianter, så rækkerne sammenlignes på de samme træk.`,
+          "",
+          "Den afgørende kolonne er **Δ median vs. året før**, ikke \"På loftet %\": står Δ på 0, er alderen holdt op med at betyde noget, uanset hvor pænt resten af rækken ser ud. \"På loftet %\" måles mod variantens EGET loft.",
+          "",
+          u23VariantTable(variantSweep),
+          "",
+        ]
+      : [
+          `**Måletabellen er ikke med.** Forslagenes præcise tal — loft, rampe, spredning — er balance-tal og ligger derfor i den gitignorerede \`${U23_TUNING_LABEL}\`, ikke i repoet (hard rule 17, #3436: repoet er offentligt læsbart). Filen blev ikke fundet, så kun kortets kvalitative side er renderet.`,
+          "",
+          `Opret den med felterne nedenfor — eller peg på en anden sti med \`--tuning=<sti>\` — og kør rapporten igen:`,
+          "",
+          table(
+            ["Felt", "Betydning"],
+            Object.entries(U23_TUNING_FIELDS).map(([field, meaning]) => [`\`${field}\``, meaning]),
+          ),
+          "",
+        ]),
     "## 9. Fund",
     "",
     findings.length
@@ -925,15 +1051,28 @@ function parseArgs(argv) {
     // strengt her, så en tastefejl bliver en fejlbesked med det samme i
     // stedet for en tom eller uendelig kørsel.
     u23PerAge: positiveIntArg(get("u23", String(DEFAULT_U23_PER_AGE)), "u23"),
+    // Sti til den gitignorerede kalibrerings-fil til §8c. Tallene må ikke ligge
+    // i repoet (hard rule 17, #3436), så de kommer udefra.
+    tuning: get("tuning", null),
     out: get("out", null),
   };
 }
 
 export function main(argv = process.argv.slice(2)) {
-  const { seed, count, youthCount, referenceYear, u23PerAge, out } = parseArgs(argv);
+  const { seed, count, youthCount, referenceYear, u23PerAge, tuning, out } = parseArgs(argv);
   const adult = buildAdultCohort({ seed, count, referenceYear });
   const youth = buildYouthCohort({ seed, count: youthCount, referenceYear });
-  const md = renderReport({ seed, count, referenceYear, adult, youth, u23PerAge });
+  // En UDPEGET sti der ikke findes er en tastefejl, ikke en normal tilstand:
+  // den skal sige fra, ikke stille og roligt rendere kortet uden måletabel.
+  let u23Tuning;
+  if (tuning) {
+    const path = resolve(process.cwd(), tuning);
+    u23Tuning = loadU23Tuning({ path });
+    if (!u23Tuning) throw new Error(`--tuning: filen findes ikke — ${path}`);
+  } else {
+    u23Tuning = loadU23Tuning();
+  }
+  const md = renderReport({ seed, count, referenceYear, adult, youth, u23PerAge, u23Tuning });
   if (out) {
     const target = resolve(process.cwd(), out);
     mkdirSync(dirname(target), { recursive: true });

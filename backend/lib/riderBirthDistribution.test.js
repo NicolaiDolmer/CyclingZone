@@ -36,6 +36,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   buildAdultCohort,
@@ -46,7 +47,10 @@ import {
   percentile,
   describe as describeStats,
   REQUIRED_RECORD_FIELDS,
-  U23_BAND_VARIANTS,
+  U23_BAND_VARIANT_SPECS,
+  buildU23BandVariants,
+  loadU23Tuning,
+  U23_TUNING_FIELDS,
   U23_BIRTH_AGES,
   ACADEMY_TOP_AGE,
   U23_ENTRY_AGE,
@@ -57,7 +61,12 @@ import {
 } from "../scripts/generatorVisibleTest5283.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { MENTAL_ABILITY_TAG_CEILING } from "./riderProgression.js";
-import { ABILITY_FLOOR, ABILITY_CEIL, YOUTH_BIRTH_BAND } from "./riderBirthPriors.js";
+import {
+  ABILITY_FLOOR,
+  ABILITY_CEIL,
+  YOUTH_BIRTH_BAND,
+  PCM_TO_ABILITY_GAIN,
+} from "./riderBirthPriors.js";
 import { isU23ForReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import { STAT_KEYS, BIRTH_MODE_OWN_PRIORS } from "./fictionalRiderGenerator.js";
 
@@ -349,6 +358,45 @@ const VARIANT_SWEEP_SEED = 20260918;
 // sweepet kører fire aldre × fire varianter × hele evne-registret.
 const VARIANT_PER_AGE = 12;
 
+// Forslagenes RIGTIGE kalibrering ligger i den gitignorerede
+// `balance-internals/u23-band-tuning.json` (hard rule 17, #3436 — repoet er
+// offentligt læsbart). Fixturen her er derfor bevidst IKKE noget forslag: den
+// er afledt af akademiets eget bånd med et symbolsk tillæg (ét og to stat-point
+// over loftet), netop stor nok til at strukturen kan måles, og den siger intet
+// om hvad ejeren skal vælge. Testene låser struktur, ikke tal.
+const statLevelOf = (ability) => (ability - 1) / PCM_TO_ABILITY_GAIN + 50;
+const statPointsOf = (ability) => ability / PCM_TO_ABILITY_GAIN;
+const ACADEMY_CEIL_STAT_LEVEL = statLevelOf(YOUTH_BIRTH_BAND.ceil);
+const FIXTURE_TUNING = Object.freeze({
+  aCeilStatLevel: ACADEMY_CEIL_STAT_LEVEL + 1,
+  bPerYearStatPoints: statPointsOf(YOUTH_BIRTH_BAND.perYearOver16) * 2,
+  bCeilStatLevel: ACADEMY_CEIL_STAT_LEVEL + 2,
+  bSpreadFactor: 1.5,
+  cCeilStatPointsPerYearOverAcademy: 1,
+});
+const FIXTURE_VARIANTS = buildU23BandVariants(FIXTURE_TUNING);
+
+// Selve pointen med finden: ingen af forslagenes tal må kunne læses ud af
+// repoet. Kalibreringen kommer udefra, og uden den fil findes kun dagens bånd.
+test("#5376 kalibrerings-tallene ligger uden for repoet", () => {
+  const src = readFileSync(new URL("../scripts/generatorVisibleTest5283.js", import.meta.url), "utf8");
+  const section = src.slice(src.indexOf("U23_BAND_VARIANT_SPECS"));
+  for (const call of section.match(/stat(?:Level|Points)ToAbility\(([^)]*)\)/g) ?? []) {
+    assert.ok(
+      /tuning\./.test(call),
+      `${call}: variant-afsnittet må ikke omregne et literalt balance-tal — værdien skal komme fra kalibrerings-filen`,
+    );
+  }
+  assert.deepEqual(
+    buildU23BandVariants(null).map((v) => v.key),
+    ["baseline"],
+    "uden kalibrerings-fil må kun dagens bånd kunne måles",
+  );
+  // Filen er ikke i repoet; findes den lokalt, er den gitignoreret (PR-tjek).
+  assert.ok(Object.keys(U23_TUNING_FIELDS).length >= 3);
+  assert.doesNotThrow(() => loadU23Tuning({ path: "ingen-saadan-fil-5376.json" }));
+});
+
 test("#5376 U23-fødselsaldrene følger riderSeasonAge, ikke en lokal kopi", () => {
   const birthdateForAge = (age) => `${LAUNCH_REFERENCE_YEAR - age}-06-01`;
   for (const age of U23_BIRTH_AGES) {
@@ -367,11 +415,11 @@ test("#5376 U23-fødselsaldrene følger riderSeasonAge, ikke en lokal kopi", () 
 });
 
 test("#5376 designkortet har dagens bånd plus mindst to forslag, med unikke nøgler", () => {
-  const keys = U23_BAND_VARIANTS.map((v) => v.key);
+  const keys = U23_BAND_VARIANT_SPECS.map((v) => v.key);
   assert.equal(new Set(keys).size, keys.length, `dublet-nøgle blandt ${keys.join(", ")}`);
   assert.ok(keys.includes("baseline"), "referencerækken (dagens bånd) mangler");
   assert.ok(keys.length - 1 >= 2, `kun ${keys.length - 1} forslag — ejeren skal have 2-3`);
-  for (const v of U23_BAND_VARIANTS) {
+  for (const v of U23_BAND_VARIANT_SPECS) {
     // Et forslag uden begrundelse og pris er ikke et beslutningsgrundlag.
     assert.ok(v.label && v.summary && v.tradeoff, `${v.key}: mangler label/summary/tradeoff`);
     assert.equal(typeof v.bandFor, "function");
@@ -384,13 +432,13 @@ test("#5376 designkortet har dagens bånd plus mindst to forslag, med unikke nø
 // `ability_caps` over hans potentiale-loft.
 test("#5376 ingen variant muterer akademiets bånd", () => {
   const before = JSON.stringify(YOUTH_BIRTH_BAND);
-  for (const variant of U23_BAND_VARIANTS) {
+  for (const variant of FIXTURE_VARIANTS) {
     for (const age of U23_BIRTH_AGES) {
       const band = variant.bandFor(age);
       assert.ok(Object.isFrozen(band), `${variant.key}@${age}: båndet er ikke frosset`);
     }
   }
-  u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });
+  u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE, variants: FIXTURE_VARIANTS });
   assert.equal(JSON.stringify(YOUTH_BIRTH_BAND), before, "YOUTH_BIRTH_BAND blev ændret");
 });
 
@@ -398,7 +446,7 @@ test("#5376 ingen variant muterer akademiets bånd", () => {
 // overlapper akademiet skal den køre på PRÆCIS akademiets bånd — samme objekt,
 // ikke bare samme tal. Ellers er "akademiets fordeling er bevaret" en påstand.
 test("#5376 den alders-rampede variant er identisk med akademiets bånd i overlappet", () => {
-  const variant = U23_BAND_VARIANTS.find((v) => v.key === "c-alders-rampet-loft");
+  const variant = FIXTURE_VARIANTS.find((v) => v.key === "c-alders-rampet-loft");
   assert.ok(variant, "variant c mangler");
   for (const age of U23_BIRTH_AGES) {
     const band = variant.bandFor(age);
@@ -411,8 +459,12 @@ test("#5376 den alders-rampede variant er identisk med akademiets bånd i overla
 });
 
 test("#5376 hver variant føder gyldige heltals-evner ved hver U23-alder", () => {
-  const sweep = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });
-  assert.equal(sweep.length, U23_BAND_VARIANTS.length);
+  const sweep = u23VariantSweep({
+    seed: VARIANT_SWEEP_SEED,
+    perAge: VARIANT_PER_AGE,
+    variants: FIXTURE_VARIANTS,
+  });
+  assert.equal(sweep.length, U23_BAND_VARIANT_SPECS.length);
   for (const variant of sweep) {
     assert.deepEqual(variant.ages.map((a) => a.age), [...U23_BIRTH_AGES]);
     for (const a of variant.ages) {
@@ -435,7 +487,7 @@ test("#5376 hver variant føder gyldige heltals-evner ved hver U23-alder", () =>
 test("#5376 sweepet afviser en ugyldig stikprøvestørrelse i stedet for at måle forkert", () => {
   for (const bad of [0, -1, 1.5, NaN, Infinity, MAX_U23_PER_AGE + 1]) {
     assert.throws(
-      () => u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: bad }),
+      () => u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: bad, variants: FIXTURE_VARIANTS }),
       /perAge/,
       `perAge=${bad} skulle være afvist`,
     );
@@ -447,7 +499,7 @@ test("#5376 sweepet afviser en ugyldig stikprøvestørrelse i stedet for at mål
 });
 
 test("#5376 variant-sweepet er deterministisk for samme seed", () => {
-  const a = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });
-  const b = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE });
+  const a = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE, variants: FIXTURE_VARIANTS });
+  const b = u23VariantSweep({ seed: VARIANT_SWEEP_SEED, perAge: VARIANT_PER_AGE, variants: FIXTURE_VARIANTS });
   assert.deepEqual(b, a);
 });
