@@ -43,6 +43,58 @@ function readAccept(input, init) {
   return "";
 }
 
+// #4981 · indbakkens bud-aggregat. Bevidst KUN her og ikke i mockHandlers.js
+// (samme lagdeling som NPS-bundbaren og onboarding-mocken nedenfor):
+// Playwright-fixtures deler mockHandlers, og notifikations-rækker her ville
+// flytte eksisterende snapshots. mockHandlers svarer [] for "notifications", så
+// indbakken stod tom på preview og grupperingen kunne hverken ses eller klikkes
+// igennem. To auktioner dækker begge tilstande:
+//   auc-proxy-1 — fire autobud-hævninger, ingen tabt føring (ren bøtte).
+//   auc-proxy-2 — nyeste er en hævning, men to ældre var reelle føringstab
+//                 (blandet bøtte, så indbakkens "heraf N"-linje kan ses).
+// Tal og navne er opdigtet preview-data, ikke prod-tal.
+function proxyOutbidRow(id, auctionId, createdAt, { bidderName, riderName, amount }) {
+  return {
+    id,
+    user_id: TEST_USER.id,
+    type: "auction_proxy_outbid",
+    title: "Dit autobud blev presset op",
+    message: `${bidderName} forsøgte at overbyde dig på ${riderName}. Dit autobud steg til ${amount} CZ$ for at beholde føringen`,
+    related_id: auctionId,
+    is_read: false,
+    created_at: createdAt,
+    metadata: {
+      titleCode: "notif.autoBidRaised.title",
+      titleParams: {},
+      messageCode: "notif.autoBidRaised.message",
+      messageParams: { riderName, bidderName, amount },
+    },
+  };
+}
+
+function outbidRow(id, auctionId, createdAt, { bidderName, riderName }) {
+  return {
+    id,
+    user_id: TEST_USER.id,
+    type: "auction_outbid",
+    title: "Du er blevet overbudt!",
+    message: `${bidderName}'s autobud overbød dig på ${riderName}`,
+    related_id: auctionId,
+    is_read: false,
+    created_at: createdAt,
+  };
+}
+
+const PREVIEW_AUTOBID_NOTIFICATIONS = [
+  proxyOutbidRow("prev-proxy-1-4", "auc-proxy-1", "2026-08-05T10:42:00.000Z", { bidderName: "Northwind Cycling", riderName: "Théo Journal", amount: 412000 }),
+  proxyOutbidRow("prev-proxy-1-3", "auc-proxy-1", "2026-08-05T10:31:00.000Z", { bidderName: "Northwind Cycling", riderName: "Théo Journal", amount: 388000 }),
+  proxyOutbidRow("prev-proxy-1-2", "auc-proxy-1", "2026-08-05T10:18:00.000Z", { bidderName: "Solera Continental", riderName: "Théo Journal", amount: 361000 }),
+  proxyOutbidRow("prev-proxy-1-1", "auc-proxy-1", "2026-08-05T10:04:00.000Z", { bidderName: "Solera Continental", riderName: "Théo Journal", amount: 340000 }),
+  proxyOutbidRow("prev-proxy-2-3", "auc-proxy-2", "2026-08-05T09:55:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven", amount: 214000 }),
+  outbidRow("prev-proxy-2-2", "auc-proxy-2", "2026-08-05T09:40:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven" }),
+  outbidRow("prev-proxy-2-1", "auc-proxy-2", "2026-08-05T09:22:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven" }),
+];
+
 function jsonResponse(data, status = 200, extraHeaders = {}) {
   const count = Array.isArray(data) ? data.length : data ? 1 : 0;
   return new Response(JSON.stringify(data), {
@@ -127,6 +179,14 @@ export function installPreviewMock() {
       }
       if (method === "GET" && /\/rest\/v1\/survey_completions/.test(url)) {
         return jsonResponse(wantsObject(accept) ? null : []);
+      }
+
+      // #4981 · indbakkens bud-aggregat, se PREVIEW_AUTOBID_NOTIFICATIONS ovenfor.
+      // Skal stå FØR den generiske REST-blok, som ellers svarer [] for tabellen.
+      if (method === "GET" && /\/rest\/v1\/notifications/.test(url)) {
+        return jsonResponse(
+          wantsObject(accept) ? PREVIEW_AUTOBID_NOTIFICATIONS[0] : PREVIEW_AUTOBID_NOTIFICATIONS,
+        );
       }
 
       // Supabase REST (PostgREST).
