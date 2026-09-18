@@ -56,6 +56,11 @@ export const RACE_HUB_SCHEMA_FILES = [
   "2026-06-13-academy-mvp.sql",
   "2026-06-25-team-race-strategy.sql",
   "2026-07-18-riders-pending-team-id-drift-closer.sql",
+  // #4619 · riders.squad. SKAL loades: senior-læsernes delte filter
+  // (squads.applySeniorSquadFilter) spørger på kolonnen, så uden migrationen
+  // ville contract-testenes endpoints fejle mod PGlite — præcis den drift-fælde
+  // listens egen header advarer om.
+  "2026-09-15-4619-riders-squad.sql",
 ];
 
 // Supabase-prærekvisitter som migrationerne antager findes i prod, men som PGlite
