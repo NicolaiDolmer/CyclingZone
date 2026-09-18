@@ -7,6 +7,7 @@
 // Returnerer altid { ok, data } så kald-stedet selv oversætter via resolveApiError
 // med sit eget i18n-namespace. Netværksfejl kastes (fetch rejecter) → wrap i try.
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -19,20 +20,22 @@ const SESSION_EXPIRED = { ok: false, data: { errorCode: "session_expired" } };
 export async function fetchRiderQuote(riderId, path) {
   const headers = await authHeaders();
   if (!headers) return SESSION_EXPIRED;
-  const res = await fetch(`${API}/api/riders/${riderId}/${path}`, { headers });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
+  const res = await apiFetch(`${API}/api/riders/${riderId}/${path}`, { headers });
+  // #5242: apiFetch har allerede parset kroppen og giver null ved limited/
+  // unauthorized/networkError samt ved et tomt/ikke-JSON svar — `|| {}` giver
+  // det samme tomme objekt som `.catch(() => ({}))` gjorde før.
+  return { ok: res.ok, data: res.data || {} };
 }
 
 // POST en body-løs kontrakt-handling. path ∈ "release" | "extend-contract". → { ok, data }.
 export async function postRiderContractAction(riderId, path) {
   const headers = await authHeaders();
   if (!headers) return SESSION_EXPIRED;
-  const res = await fetch(`${API}/api/riders/${riderId}/${path}`, {
+  const res = await apiFetch(`${API}/api/riders/${riderId}/${path}`, {
     method: "POST",
     headers,
     body: JSON.stringify({}),
   });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
+  return { ok: res.ok, data: res.data || {} }; // #5242, se getRiderContractAction()
+
 }

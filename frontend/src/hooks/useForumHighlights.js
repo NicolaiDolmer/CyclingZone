@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { selectForumHighlights } from "../lib/forumHighlights.js";
 
 // Forum-synlighed (#3199, variant B): data-hentning for dashboardets
@@ -32,9 +33,11 @@ export default function useForumHighlights() {
     try {
       const headers = await authHeaders({ json: false }); // ren GET, ingen body
       if (!headers || !API) throw new Error("no session");
-      const res = await fetch(`${API}/api/forum/posts?limit=${HIGHLIGHT_COUNT}`, { headers });
+      const res = await apiFetch(`${API}/api/forum/posts?limit=${HIGHLIGHT_COUNT}`, { headers });
+      // dækker også limited/unauthorized/networkError — alle ender i den stille
+      // console.warn + error-state nedenfor, som den kastede fetch-fejl gjorde.
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = res.data ?? {};
       const highlights = selectForumHighlights(data.pinned, data.items, HIGHLIGHT_COUNT);
       setState({ status: "ready", threads: highlights });
     } catch (e) {

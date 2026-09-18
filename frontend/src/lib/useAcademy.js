@@ -5,6 +5,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders, supabase } from "./supabase.js"; // #4348: kanonisk kopi
+// #5242: Retry-After-respekt paa 429 + centraliseret 401-vej. Alle ni kaldsteder
+// herunder læser kroppen som `res.data || {}` i stedet for
+// `await res.json().catch(() => ({}))`; apiFetch har allerede parset den og
+// giver null ved limited/unauthorized/networkError og ved et tomt svar.
+import { apiFetch } from "./apiFetch.ts";
 import { getAuthedUser } from "./getAuthedUser.js";
 import { logEvent } from "./logEvent.js";
 
@@ -51,23 +56,24 @@ export function useAcademy() {
     if (!headers) { setLoading(false); return; }
     refreshBalance();
     try {
-      const res = await fetch(`${API}/api/academy/me`, { headers });
-      if (res.status === 409) {
+      const res = await apiFetch(`${API}/api/academy/me`, { headers });
+      // #5242: res.data kan læses flere gange. Det rå Response kunne ikke — den
+      // anden json() på SAMME svar afviste altid med "body stream already read",
+      // så et 409 der IKKE var academy_disabled mistede sin fejlkode og endte på
+      // det generiske "failed". Nu vises backendens egen kode.
+      const body = res.data || {};
+      if (res.status === 409 && body.error === "academy_disabled") {
         // Flag disabled — graceful disabled state.
-        const body = await res.json().catch(() => ({}));
-        if (body.error === "academy_disabled") {
-          setEnabled(false);
-          setLoading(false);
-          return;
-        }
+        setEnabled(false);
+        setLoading(false);
+        return;
       }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
         setError(body.error || "failed");
         setLoading(false);
         return;
       }
-      const data = await res.json();
+      const data = body;
       setEnabled(data.enabled ?? false);
       setSlots(data.slots ?? { used: 0, max: 8 });
       setRoster(data.roster ?? []);
@@ -91,10 +97,10 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/sign`, {
+      const res = await apiFetch(`${API}/api/academy/sign`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) {
         const errKey = data.error || "failed";
         return { ok: false, error: errKey };
@@ -112,10 +118,10 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/reject`, {
+      const res = await apiFetch(`${API}/api/academy/reject`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -132,10 +138,10 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/graduate`, {
+      const res = await apiFetch(`${API}/api/academy/graduate`, {
         method: "POST", headers, body: JSON.stringify({ riderId, action }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -152,10 +158,10 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/promote`, {
+      const res = await apiFetch(`${API}/api/academy/promote`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -172,8 +178,8 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/intake/pull`, { method: "POST", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/academy/intake/pull`, { method: "POST", headers });
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -190,10 +196,10 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/demote`, {
+      const res = await apiFetch(`${API}/api/academy/demote`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -214,8 +220,8 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, data: {} };
     try {
-      const res = await fetch(`${API}/api/riders/${riderId}/academy-release-quote`, { headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/riders/${riderId}/academy-release-quote`, { headers });
+      const data = res.data || {};
       return { ok: res.ok, data };
     } catch {
       return { ok: false, data: {} };
@@ -229,10 +235,10 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/riders/${riderId}/academy-release`, {
+      const res = await apiFetch(`${API}/api/riders/${riderId}/academy-release`, {
         method: "POST", headers, body: JSON.stringify({}),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.errorCode || data.error || "failed" };
       }
