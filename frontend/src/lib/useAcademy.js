@@ -11,6 +11,13 @@ import { authHeaders, supabase } from "./supabase.js"; // #4348: kanonisk kopi
 // giver null ved limited/unauthorized/networkError og ved et tomt svar.
 import { apiFetch } from "./apiFetch.ts";
 import { getAuthedUser } from "./getAuthedUser.js";
+// #5242/#5322: apiFetch KASTER ikke ved et netværksudfald — den returnerer
+// `networkError: true` med status 0. Hver handling herunder skelnede FØR mellem
+// "backenden sagde nej" (fejlkode fra kroppen) og "vi naaede aldrig serveren"
+// (fetch'ens rejection → catch → error: "network"), og AcademyPage viser to
+// forskellige beskeder for de to. Den skelnen bevares med NETWORK_FAILURE i
+// stedet for at lade transportfejlen falde i `!res.ok` og blive til "failed".
+const NETWORK_FAILURE = { ok: false, error: "network" };
 import { logEvent } from "./logEvent.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -57,6 +64,10 @@ export function useAcademy() {
     refreshBalance();
     try {
       const res = await apiFetch(`${API}/api/academy/me`, { headers });
+      // Et netværksudfald må ikke sætte en fejl-tilstand på fladen: catch'en
+      // nedenfor beholdt FØR den forrige visning ved et fetch-rejection, og et
+      // kortvarigt udfald skal stadig bare lade akademiet stå som det var.
+      if (res.networkError) { setLoading(false); return; }
       // #5242: res.data kan læses flere gange. Det rå Response kunne ikke — den
       // anden json() på SAMME svar afviste altid med "body stream already read",
       // så et 409 der IKKE var academy_disabled mistede sin fejlkode og endte på
@@ -100,6 +111,7 @@ export function useAcademy() {
       const res = await apiFetch(`${API}/api/academy/sign`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
+      if (res.networkError) return NETWORK_FAILURE;
       const data = res.data || {};
       if (!res.ok) {
         const errKey = data.error || "failed";
@@ -121,6 +133,7 @@ export function useAcademy() {
       const res = await apiFetch(`${API}/api/academy/reject`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
+      if (res.networkError) return NETWORK_FAILURE;
       const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
@@ -141,6 +154,7 @@ export function useAcademy() {
       const res = await apiFetch(`${API}/api/academy/graduate`, {
         method: "POST", headers, body: JSON.stringify({ riderId, action }),
       });
+      if (res.networkError) return NETWORK_FAILURE;
       const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
@@ -161,6 +175,7 @@ export function useAcademy() {
       const res = await apiFetch(`${API}/api/academy/promote`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
+      if (res.networkError) return NETWORK_FAILURE;
       const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
@@ -179,6 +194,7 @@ export function useAcademy() {
     if (!headers) return { ok: false, error: "auth" };
     try {
       const res = await apiFetch(`${API}/api/academy/intake/pull`, { method: "POST", headers });
+      if (res.networkError) return NETWORK_FAILURE;
       const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
@@ -199,6 +215,7 @@ export function useAcademy() {
       const res = await apiFetch(`${API}/api/academy/demote`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
+      if (res.networkError) return NETWORK_FAILURE;
       const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
@@ -238,6 +255,7 @@ export function useAcademy() {
       const res = await apiFetch(`${API}/api/riders/${riderId}/academy-release`, {
         method: "POST", headers, body: JSON.stringify({}),
       });
+      if (res.networkError) return NETWORK_FAILURE;
       const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.errorCode || data.error || "failed" };

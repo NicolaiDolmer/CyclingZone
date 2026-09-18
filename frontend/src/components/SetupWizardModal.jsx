@@ -68,6 +68,15 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
       });
       const data = res.data || {};
 
+      // #5242/#5322: apiFetch KASTER ikke ved et netværksudfald — den returnerer
+      // networkError med status 0. Uden dette tjek ville CORS/backend-nede falde
+      // i `!res.ok` nedenfor og vise det generiske "ukendt fejl" i stedet for
+      // #792's "Kunne ikke nå serveren"-besked, som catch'en gav før.
+      if (res.networkError) {
+        setError(t("error.connectionFailed"));
+        return;
+      }
+
       if (!res.ok) {
         setError(data.error || t("error.unknown"));
       } else {
