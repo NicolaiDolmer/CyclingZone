@@ -51,6 +51,7 @@
     "proxy-cancel": 10,
     "proxy-notif": 10,
     "raceEntryCleanup": 10,
+    "race-notify:outbox": 10,
     "resend-webhook": 50,
     "email:health": 5,
     "email:welcome": 5,
