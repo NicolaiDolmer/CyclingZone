@@ -24,6 +24,6 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); commit-guarden skriver markør, pre-commit afviser commit uden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder tages med vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Ingen aktiv session. (NOW.md-vagten #5093 er live: en PR der rører denne fil skal hedde `docs(now)…`/`docs(close-out)…`.)
+> **🤖 Working agent:** Claude Code (DOLMERPC), aftenbølge 18/9, ejeren til stede. (NOW.md-vagten #5093 er live: en PR der rører denne fil skal hedde `docs(now)…`/`docs(close-out)…`.)
 
 _Historik i git-log, issue-tråde + docs/audits/._
