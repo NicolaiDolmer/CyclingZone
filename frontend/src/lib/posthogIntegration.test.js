@@ -138,6 +138,26 @@ test("lite-specifikke valg: ingen tabte events, ingen ekstra rundture (#5055)", 
   assert.match(clientSource, /gclid/, "klik-id'er skal stadig med på events");
 });
 
+test("genoptaget samtykke ophæver et persisteret opt-out (#5055)", () => {
+  // @posthog/core læser `getPersistedProperty(OptedOut) ?? !defaultOptIn`, så et
+  // opt-out i localStorage OVERSKRIVER defaultOptIn og overlever sessionen. Uden
+  // et modsvarende optIn() ville en besøgende der engang trak sit samtykke
+  // tilbage forblive tavs for evigt — uden en eneste log-linje.
+  const startBlock = clientSource.slice(clientSource.indexOf("export async function startPosthog"));
+  assert.match(
+    startBlock,
+    /optIn\(\);/,
+    "startPosthog() skal ophæve et persisteret opt-out, ellers er genoptaget samtykke en stille no-op",
+  );
+  // Begge veje: en helt ny klient OG en der allerede kører (samtykke trukket
+  // tilbage og givet igen i samme session, hvor startPosthog() returnerer tidligt).
+  assert.equal(
+    (startBlock.match(/optIn\(\);/g) || []).length,
+    2,
+    "både den tidlige retur for en kørende klient og den nye klient skal kalde optIn()",
+  );
+});
+
 test("identify sender kun UUID'et videre, aldrig e-mail eller navn (#2041)", () => {
   const identifyBlock = clientSource.slice(clientSource.indexOf("export function identifyPosthog"));
   assert.doesNotMatch(

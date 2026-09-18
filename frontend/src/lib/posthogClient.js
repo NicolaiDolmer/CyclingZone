@@ -104,6 +104,16 @@ function capture(name, properties) {
   client.capture(name, campaign ? { ...(properties || {}), ...campaign } : (properties || {}));
 }
 
+// optIn()/optOut() er async i core'en, men laver kun en synkron
+// localStorage-skrivning bag en wrap(). Vi venter ikke på dem; vi sluger bare
+// afvisningen, så samtykke-flowet aldrig kan give en unhandled rejection.
+function optIn() {
+  if (!client) return;
+  try {
+    Promise.resolve(client.optIn()).catch(() => {});
+  } catch { /* best-effort */ }
+}
+
 function shouldSkipForAutomation() {
   return typeof navigator !== "undefined" && isLikelyAutomation(navigator);
 }
@@ -111,7 +121,14 @@ function shouldSkipForAutomation() {
 // Starter PostHog. Kaldes KUN når analytics-samtykke er givet (se
 // posthogIntegration.jsx). Idempotent.
 export async function startPosthog() {
-  if (posthogStarted || !POSTHOG_ENABLED) return;
+  if (!POSTHOG_ENABLED) return;
+  if (posthogStarted) {
+    // Samtykke givet igen efter en tilbagekaldelse i SAMME session: klienten
+    // kører allerede, men står opted out. Uden dette ville den tavst blive
+    // ved med at kassere events. Se optIn-kommentaren længere nede.
+    optIn();
+    return;
+  }
   if (shouldSkipForAutomation()) return;
   if (typeof document !== "undefined" && isPrerendering(document)) {
     // Speculation-Rules-prerender bliver måske aldrig aktiveret — udskyd init
@@ -150,6 +167,14 @@ export async function startPosthog() {
       // nogle hundrede bytes mod en uverificeret proxy-antagelse.
       disableCompression: true,
     });
+    // Opt-out PERSISTERES i localStorage og slår defaultOptIn: core læser
+    // `getPersistedProperty(OptedOut) ?? !defaultOptIn`. En besøgende der
+    // engang trak sit samtykke tilbage ville derfor forblive tavs for evigt,
+    // også efter at have givet samtykke igen på et senere besøg — en STILLE
+    // fejl uden en eneste log-linje. (Samme fælde fandtes med posthog-js'
+    // opt_out_capturing(), som heller ikke blev modsvaret af et opt_in-kald;
+    // den er altså ikke ny med #5055, men rettes her.)
+    optIn();
     posthogStarted = true;
   } catch (err) {
     console.error("posthog init failed:", err);
@@ -198,8 +223,6 @@ export function resetPosthog() {
 export function optOutPosthog() {
   if (!posthogStarted || !client) return;
   try {
-    // optOut() er async i core'en; vi venter ikke, men sluger afvisningen så
-    // en tilbagekaldt samtykke aldrig kan give en unhandled rejection.
     Promise.resolve(client.optOut()).catch(() => {});
   } catch { /* best-effort */ }
 }
