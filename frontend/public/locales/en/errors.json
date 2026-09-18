@@ -17,6 +17,12 @@
     "unknown": "Unexpected error. Try again"
   },
   "api": {
+    "trade_feed_invalid_limit": "That page size isn't valid",
+    "trade_feed_invalid_offset": "That page isn't valid",
+    "trade_feed_offset_too_deep": "The trade list doesn't go back that far. Use the filters to narrow it down",
+    "trade_feed_invalid_type": "That trade type isn't valid",
+    "trade_feed_invalid_division": "That division isn't valid",
+    "trade_feed_invalid_team": "That team isn't valid",
     "flash_deadline_day_only": "Flash auctions are only available during Deadline Day",
     "rider_not_found": "Rider not found",
     "rider_unavailable": "This rider isn't available",

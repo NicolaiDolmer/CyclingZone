@@ -221,6 +221,10 @@
         "title": "Hvad er transfersystemet?",
         "text": "Transfersystemet lader dig forhandle direkte med andre managers om at købe eller sælge ryttere, ligesom i Football Manager. Du kan sende et tilbud på enhver rytter, uanset om den er sat til salg eller ej."
       },
+      "allTrades": {
+        "title": "Se alle handler i spillet",
+        "text": "Fanen 'Alle handler' på Transfers viser alle rytterskifter i spillet, nyeste øverst: auktionssalg, direkte transfers og bytter. Du kan filtrere på type, på division og helt ned til dit eget hold. Hver række har en stilfærdig gennemsyns-handling. Ser en handel forkert ud for dig, så send den til mig med en sætning om hvad du hæftede dig ved, så læser jeg den. En rapport er ikke en anklage, og den anden manager får aldrig at vide hvem der rapporterede."
+      },
       "sellOnTransferList": {
         "title": "Sælg via transferlisten",
         "text": "Du kan sætte dine egne ryttere til salg til en fast pris, enten fra Min trup eller direkte fra rytterens profilside. Mens en rytter er på listen, kan du til enhver tid redigere prisen eller fjerne listingen, både fra Transfers-siden og fra rytterens profil. Købere kan sortere OG filtrere markedet efter udbudspris, ud over at sortere efter nyeste."

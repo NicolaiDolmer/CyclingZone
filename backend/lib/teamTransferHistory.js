@@ -10,7 +10,11 @@ import { assertNoSupabaseError } from "./supabaseResultGuard.js";
 
 export { PUBLIC_OFFER_STATUSES };
 
-function buildSeasonResolver(seasons) {
+// #5257: den globale handelsliste (tradeListFeed.js) tagger sine events med
+// præcis samme sæson-logik. Eksporteret frem for kopieret — to resolvere der
+// driver fra hinanden ville give to forskellige sæson-numre på SAMME handel,
+// alt efter om man ser den på holdets historik eller i den samlede liste.
+export function buildSeasonResolver(seasons) {
   const sorted = [...(seasons || [])]
     .filter((s) => s.start_date)
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));

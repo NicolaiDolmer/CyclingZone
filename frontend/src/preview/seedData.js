@@ -996,6 +996,100 @@ export const SEED_TRANSFER_HISTORY = [
   },
 ];
 
+// GET /api/transfers/feed — #5257: den GLOBALE handelsliste ("Alle handler").
+// Samme event-shape som backendens buildGlobalTradeFeed (tradeListFeed.js):
+// fra/til-hold i stedet for en viewer-relativ modpart, og `reportable` afgjort
+// af serveren. Dækker med vilje alle fem tilstande fanen skal kunne vise:
+// auktion med vinder, auktion uden bud, direkte transfer, bytte med to ryttere
+// og en handel mellem to hold der ikke er mit eget.
+const FEED_AI_TEAM = { id: "team-ai-mock", name: "Nordic Continental", is_ai: true, division: 3 };
+const FEED_THIRD_TEAM = { id: "team-third-mock", name: "Bastogne Pro", is_ai: false, division: 1 };
+
+export const SEED_TRADE_FEED = [
+  {
+    id: "transfer:feed-1",
+    type: "transfer",
+    date: "2026-07-18T16:40:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-5", firstname: "Emil", lastname: "Kjær" },
+    rider_swapped: null,
+    from_team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: RIVAL_TEAM.division },
+    to_team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: TEST_TEAM.division },
+    amount: 415000,
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    id: "auction:feed-2",
+    type: "auction",
+    date: "2026-07-17T20:05:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-9", firstname: "Matteo", lastname: "Ferrari" },
+    rider_swapped: null,
+    from_team: FEED_THIRD_TEAM,
+    to_team: FEED_AI_TEAM,
+    amount: 1240000,
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    id: "swap:feed-3",
+    type: "swap",
+    date: "2026-07-16T09:12:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-7", firstname: "Lukas", lastname: "Meyer" },
+    rider_swapped: { id: "rider-8", firstname: "Tomas", lastname: "Novak" },
+    from_team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: TEST_TEAM.division },
+    to_team: FEED_THIRD_TEAM,
+    amount: 75000,
+    cash_direction: "proposing_pays",
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    // Fri-agent-auktion: rytteren kom fra puljen, ikke fra et hold. Prod-audit
+    // 18/9 viser at det er den hyppigste auktionsform, så den SKAL være med i
+    // mocken — ellers ser et screenshot ikke ud som virkeligheden.
+    id: "auction:feed-4",
+    type: "auction",
+    date: "2026-07-15T09:30:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-4", firstname: "Jonas", lastname: "Brandt" },
+    rider_swapped: null,
+    from_team: null,
+    to_team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: TEST_TEAM.division },
+    amount: 118000,
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    id: "auction:feed-5",
+    type: "auction",
+    date: "2026-07-09T14:02:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-3", firstname: "Sofie", lastname: "Lund" },
+    rider_swapped: null,
+    from_team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: TEST_TEAM.division },
+    to_team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: RIVAL_TEAM.division },
+    amount: 640000,
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    id: "transfer:feed-6",
+    type: "transfer",
+    date: "2026-07-02T13:25:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-10", firstname: "Pieter", lastname: "de Vries" },
+    rider_swapped: null,
+    from_team: FEED_AI_TEAM,
+    to_team: FEED_THIRD_TEAM,
+    amount: 285000,
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+];
+
 // GET /api/riders/:id/history — #3708: rytterens egen offentlige historik
 // (RiderHistoryTab). Samme event-shape som backendens buildRiderHistory
 // (backend/lib/riderHistory.js). Holder BÅDE en no_sale-auktion (skal

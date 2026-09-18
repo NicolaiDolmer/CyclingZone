@@ -221,6 +221,10 @@
         "title": "What is the transfer system?",
         "text": "The transfer system lets you negotiate directly with other managers to buy or sell riders, like in Football Manager. You can send an offer on any rider, whether listed for sale or not."
       },
+      "allTrades": {
+        "title": "See every trade in the game",
+        "text": "The 'All trades' tab on Transfers lists every rider move in the game, newest first: auction sales, direct transfers and swaps. You can filter by type, by division and down to your own team. Each row carries a quiet review action. If a trade looks off to you, send it my way with a sentence about what caught your eye, and I read it. Reporting is not an accusation, and the other manager is never told who reported it."
+      },
       "sellOnTransferList": {
         "title": "Sell via the transfer list",
         "text": "You can list your own riders for sale at a fixed asking price, either from My Squad or directly from the rider's profile page. While a rider is listed, you can edit the asking price or remove the listing at any time, both from the Transfers page and from the rider's profile. Buyers can sort or filter the market by asking price, in addition to sorting by newest listings."
