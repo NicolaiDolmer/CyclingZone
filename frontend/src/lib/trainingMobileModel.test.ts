@@ -84,6 +84,13 @@ test("countsForRole giver null-vaerdi naar evnen mangler paa raekken", () => {
   assert.equal(rows[0].value, null);
 });
 
+test("en NULL-kolonne er 'mangler', ikke et maalt nul", () => {
+  const recipes = [{ key: "tt", weights: { time_trial: 5, tempo: 2 } }];
+  const rows = countsForRole(recipes, "tt", { time_trial: null, tempo: 0 }, []);
+  assert.equal(rows[0].value, null, "null → —");
+  assert.equal(rows[1].value, 0, "et aegte 0 er stadig et tal");
+});
+
 test("pacePerWeek er en hastighed, ikke en ankomsttid", () => {
   assert.equal(pacePerWeek({ gainedPoints: 7, daysElapsed: 14 }), 3.5);
   assert.equal(pacePerWeek({ gainedPoints: 2, daysElapsed: 21 }), 0.7);

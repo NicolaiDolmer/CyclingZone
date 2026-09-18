@@ -653,10 +653,13 @@ udvalg af tal** (form, træthed, fokus, alder og fremgang ligger i kortet ét tr
 helt), og at **"Gruppér efter type" fjernes på mobil** og bliver stående på desktop.
 
 Formen er tegnet efter realisme-reglen: enheden er løbsdagen, rytteren kører ét løb **eller** træner.
-Fordi `training_tick_per_race_day` er OFF i prod og antallet af løbsdage pr. dato **ikke er låst**
-(§13.3 beslutning 2 er stadig et mål, ikke en kadence), er kolonne-modellen skrevet til at bære **1-5**
-løbsdage: flag OFF giver præcis én kolonne, "I dag" (løb eller dagens session), i nøjagtig samme tabelform,
-og fladen viser **aldrig** et hårdkodet sæson-tal. Modellen ligger i `frontend/src/lib/trainingMobileModel.ts`
+To ting er bevidst holdt adskilt her: **kalenderens tæthed** og **træningens tick-model**.
+Kalendertætheden ER ejer-låst pr. division (`backend/lib/calendarTierCaps.js`, `TIER_DENSITY` = 5/4/3/3 for
+division 1-4), så "fem løbsdage om dagen" gælder Division 1, ikke alle divisioner. **Træningens** tick pr.
+løbsdag (`training_tick_per_race_day`) er derimod OFF i prod, og hvor mange løbsdags-kolonner en spillers
+dag har, afhænger af hans division. Kolonne-modellen er derfor skrevet til at bære **1-5** løbsdage:
+flag OFF giver præcis én kolonne, "I dag" (løb eller dagens session), i nøjagtig samme tabelform, og
+fladen viser **aldrig** et hårdkodet sæson-tal. Modellen ligger i `frontend/src/lib/trainingMobileModel.ts`
 (unit-testet), visningen i `frontend/src/components/training/mobile/`. Designbeslutningen står også i
 `docs/design/PAGE_TEMPLATES.md` (T2's undtagelse) og `docs/design/TASTE.md` (P10).
 

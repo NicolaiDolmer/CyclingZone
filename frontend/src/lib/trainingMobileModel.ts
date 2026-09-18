@@ -135,7 +135,11 @@ export function countsForRole(
   }
 
   return shown.map((ability) => {
-    const raw = Number(abilities?.[ability]);
+    // `flattenAbilities` kopierer en NULL-kolonne videre som null, og
+    // `Number(null)` er 0 og finite — uden null-tjekket ville en evne der ikke
+    // er beregnet endnu staa som et maalt "0". "—" er sandt, 0 er en paastand.
+    const cell = abilities?.[ability];
+    const raw = cell == null ? Number.NaN : Number(cell);
     return {
       ability,
       value: Number.isFinite(raw) ? raw : null,

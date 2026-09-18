@@ -307,9 +307,11 @@ function RosterMobileSortControl({ sort, sortDir, onSort, t }) {
         disabled={!sort}
         aria-label={dirAria}
         title={dirAria}
-        // #3643: min-h-11 — knappen stod i 32px og var det eneste tryk-mål på
-        // mobil-fladen under #1602's 44px-krav.
-        className="flex-shrink-0 flex min-h-11 items-center justify-center px-3 rounded-cz border border-cz-border
+        // #3643: min-h-11/min-w-11 — knappen stod i 32px høj og ~40px bred og
+        // var det eneste tryk-mål på mobil-fladen under #1602's 44px-krav.
+        // Kravet gælder BEGGE led: et 44px højt, 40px bredt mål er stadig for
+        // lille til en tommel.
+        className="flex-shrink-0 flex min-h-11 min-w-11 items-center justify-center px-3 rounded-cz border border-cz-border
           bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors disabled:opacity-40"
       >
         {sortDir === "desc"
@@ -1450,7 +1452,15 @@ export default function TrainingPage() {
             raceNameFor={(riderId) => racingToday[riderId]?.race ?? null}
             sessionFor={(riderId, column) => {
               if (racingFor(riderId, column)) return null;
-              const plan = planFor(riderId);
+              // En AFREGNET løbsdag skal vise hvad rytteren FAKTISK kørte, ikke
+              // hvad planen står på nu: planen kan ændres efter dagens kørsel
+              // (den gælder så fra i morgen, jf. tickModelDone), og cellen ville
+              // ellers påstå at gårsdagens pas var noget andet end det var.
+              // Rapport-rækken bærer både focus og intensity, præcis det
+              // dayTypeForProgram/sessionForProgram læser.
+              const plan = column.state === "done"
+                ? todayRowByRider[riderId] ?? null
+                : planFor(riderId);
               if (!plan?.focus) return null;
               const dayType = dayTypeForProgram(plan);
               if (DAY_TYPES_WITHOUT_SESSION.includes(dayType)) return dayType;

@@ -171,7 +171,10 @@ test("375 px: stadig ingen vandret scroll, og alle tryk-mål er mindst 44 px", a
     for (const el of root.querySelectorAll("button")) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 && r.height === 0) continue;
-      if (r.height < 44) out.push(`${el.textContent.trim().slice(0, 30)}=${Math.round(r.height)}`);
+      // Begge led: et 44px højt men 30px bredt mål er stadig for lille.
+      if (r.height < 44 || r.width < 44) {
+        out.push(`${el.textContent.trim().slice(0, 30)}=${Math.round(r.width)}x${Math.round(r.height)}`);
+      }
     }
     return out;
   });

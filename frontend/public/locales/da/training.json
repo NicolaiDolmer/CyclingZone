@@ -303,7 +303,7 @@
     "raceDayState_done": "Kørt",
     "raceDayState_now": "Nu",
     "raceDayState_upcoming": "Senere",
-    "stripLegend": "Løb / træning i dag",
+    "stripLegend": "Ryttere med en dag valgt · et løb eller en session",
     "programTitle": "Program",
     "programEdit": "Redigér",
     "programNote": "7 ugedage × {n} løbsdage · en løbsdag er ét løb eller én session",

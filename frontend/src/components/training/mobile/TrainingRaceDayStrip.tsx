@@ -11,7 +11,9 @@
 import { useTranslation } from "react-i18next";
 import type { RaceDayColumn } from "../../../lib/trainingMobileModel.ts";
 
-export type RaceDaySplit = { racing: number; training: number };
+// `set` = ryttere der HAR en dag paa denne loebsdag (et loeb eller en session).
+// `total` = hele truppen. En rytter uden et valg taeller ikke som traenende.
+export type RaceDaySplit = { set: number; total: number };
 
 export default function TrainingRaceDayStrip({
   columns,
@@ -44,9 +46,9 @@ export default function TrainingRaceDayStrip({
                 {single ? t("mobile.today") : t("mobile.raceDayShort", { n: column.index })}
               </div>
               <div className="mt-0.5 font-data text-sm font-semibold leading-tight tabular-nums">
-                {split.racing}
+                {split.set}
                 <span className="font-medium text-cz-3">/</span>
-                <span className="text-cz-2">{split.racing + split.training}</span>
+                <span className="text-cz-2">{split.total}</span>
               </div>
               <div className="mt-0.5 font-data text-3xs font-medium uppercase tracking-[.07em] text-cz-3">
                 {t(`mobile.raceDayState_${column.state}`)}

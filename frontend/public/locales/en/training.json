@@ -303,7 +303,7 @@
     "raceDayState_done": "Done",
     "raceDayState_now": "Now",
     "raceDayState_upcoming": "Later",
-    "stripLegend": "Racing / training today",
+    "stripLegend": "Riders with a day set · a race or a session",
     "programTitle": "Program",
     "programEdit": "Edit",
     "programNote": "7 weekdays × {n} race days · a race day is one race or one session",

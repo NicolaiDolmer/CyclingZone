@@ -129,12 +129,16 @@ export default function TrainingMobileToday({
     return { label, tone: "session", title: label };
   };
 
-  // Striben: hvor mange koerer loeb, hvor mange traener — maalt paa truppen,
-  // aldrig et saeson-tal.
+  // Striben svarer paa "hvor mange af truppen har en dag at koere paa" — enten
+  // et loeb eller en session. En rytter UDEN et valg taeller ikke som traenende
+  // (cellen skriver "Ikke valgt" om ham), for saa ville striben paastaa en
+  // aktivitet der ikke findes. Naevneren er hele truppen, aldrig et saeson-tal.
   const splitFor = (column: RaceDayColumn) => {
-    let racing = 0;
-    for (const rider of riders) if (isRacing(rider.id, column)) racing += 1;
-    return { racing, training: riders.length - racing };
+    let set = 0;
+    for (const rider of riders) {
+      if (isRacing(rider.id, column) || sessionFor(rider.id, column)) set += 1;
+    }
+    return { set, total: riders.length };
   };
 
   const programRows = useMemo(
