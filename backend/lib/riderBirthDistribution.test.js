@@ -7,8 +7,8 @@
 //
 // Denne fil er MASKIN-halvdelen af den gate. ØJEN-halvdelen er
 // `backend/scripts/generatorVisibleTest5283.js`, som skriver den fulde
-// fordelings-rapport (docs/audits/2026-09-18-generator-1000.md). Arbejdsdelingen
-// er bevidst:
+// fordelings-rapport til `balance-internals/` — gitignoreret, fordi rapporten er
+// præcise balance-tal (hard rule 17, #3436). Arbejdsdelingen er bevidst:
 //
 //   rapporten  siger HVORDAN populationen ser ud — den kan ikke fejle
 //   testen her siger HVAD der aldrig må ændre sig — den kan kun fejle
@@ -175,17 +175,19 @@ test("#5283 alle 8 arketyper er repræsenteret og ingen dominerer", () => {
 // Den endelige type er pr. konstruktion lig anlægget (resolveRiderTypes lader
 // anlægget vinde, #3588), så den kan ikke måle noget. Klassifikatorens
 // uafhængige gæt kan: falder genkendelses-raten, er signaturen udvandet.
-// Gulvet 70 % ligger godt under det målte niveau (84,2 % ved n = 1.000) og
-// fanger et strukturelt tab, ikke en justering.
+// Gulvet 70 % ligger godt under det niveau rapporten måler, og fanger derfor et
+// strukturelt tab, ikke en justering. (Det målte niveau står i rapporten under
+// `balance-internals/`, ikke her — hard rule 17, #3436.)
 test("#5283 klassifikatoren genfinder anlægget hos mindst 70 % af rytterne", () => {
   const { pct } = recognitionRate(rows);
   assert.ok(pct >= 70, `genkendelses-rate ${pct.toFixed(1)} % (gulv 70 %)`);
 });
 
 // Diagonalen: en sprinter SKAL sprinte bedre end resten af feltet, en klatrer
-// klatre bedre, og så videre. Marginen er i dag 24-50 evne-point (målt over
-// alle syv signaturer, n = 400); gulvet 15 ligger under den laveste og fanger
-// derfor et TAB af signaturen, ikke en justering af den.
+// klatre bedre, og så videre. Gulvet 15 ligger under den laveste margin
+// rapporten måler over de syv signaturer, og fanger derfor et TAB af signaturen,
+// ikke en justering af den. (De målte marginer står i rapporten, ikke her —
+// hard rule 17, #3436.)
 const SIGNATURE_MARGIN = 15;
 
 test("#5283 hver arketypes signaturevne står klart over feltets median", () => {
@@ -258,9 +260,9 @@ function pearson(xs, ys) {
 test("#5283 lederskab stiger med alderen, taktik og aggression gør ikke (D-053/D-030)", () => {
   const ages = rows.map((r) => r.age);
   const corr = (key) => pearson(ages, rows.map((r) => r.abilities[key]));
-  // Målt: leadership 0,214 — tactics 0,057 — aggression 0,058 (n = 400, seed
-  // 20260918). Bånd 0,12 / 0,15 ligger imellem de to grupper, så testen skiller
-  // "har en alders-rampe" fra "har ingen" uden at låse rampens hældning.
+  // Båndene 0,12 / 0,15 ligger imellem de to grupper som de måles i dag, så
+  // testen skiller "har en alders-rampe" fra "har ingen" uden at låse rampens
+  // hældning. De målte korrelationer står i rapporten (hard rule 17, #3436).
   const lead = corr("leadership");
   assert.ok(lead > 0.12, `leadership/alder-korrelation ${lead.toFixed(3)} — alders-rampen (AGE_CURVED) mangler`);
   for (const key of ["tactics", "aggression"]) {
@@ -270,9 +272,9 @@ test("#5283 lederskab stiger med alderen, taktik og aggression gør ikke (D-053/
 });
 
 // ── 11. Fordelingen er spredt, ikke klippet ──────────────────────────────────
-// Gulv-andelen er i dag 13,8 % (n = 1.000) og er en ARVET egenskab fra
-// domestique-tierens niveau (evne 9, sd 9,8 — spejlingen af PCM-stien). Den er
-// dokumenteret som et fund i rapporten, ikke rettet her. Loftet 25 % fanger en
+// En del af evne-værdierne lander på gulvet, og det er en ARVET egenskab fra
+// domestique-tierens fødselsniveau (spejlingen af PCM-stien). Den er dokumenteret
+// som et fund i rapporten, ikke rettet her. Loftet 25 % fanger en
 // FORVÆRRING: falder hele populationen mod gulvet, er spredningen væk og to
 // forskellige ryttere bliver det samme tal.
 test("#5283 fordelingen kollapser ikke mod gulvet", () => {

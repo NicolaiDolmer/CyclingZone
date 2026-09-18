@@ -24,7 +24,7 @@
     "race:gate:roles": "node scripts/simulateSeasonDryRun.js --enforce-targets --enforce-liveness --no-html --seed=2026 --roles",
     "peak:gate": "node scripts/simulatePeakCouplingDryRun.js --population=scripts/baselines/population-snapshot-2026-07-11.json --seeds=2026,7,42 --enforce",
     "training:gate": "node scripts/previewDailyTraining.js --seasons=12 --count=400 --seed=2026 --enforce-targets",
-    "riders:generator-report": "node scripts/generatorVisibleTest5283.js --count=1000 --youth=300 --seed=20260918 --out=../docs/audits/2026-09-18-generator-1000.md",
+    "riders:generator-report": "node scripts/generatorVisibleTest5283.js --count=1000 --youth=300 --seed=20260918 --out=../balance-internals/generator-report-5283.md",
     "balance:check": "node scripts/balanceBaseline.js --check",
     "balance:baseline": "node scripts/balanceBaseline.js --write",
     "season:end:verify-repair": "node scripts/verifySeasonEndRepair.js",

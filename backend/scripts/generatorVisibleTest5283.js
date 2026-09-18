@@ -18,12 +18,14 @@
 //     fejl, dokumenteres den i §9 "Fund" — den rettes ikke herfra.
 //
 // Determinisme: samme `--seed` giver den samme rapport, byte for byte (§1 i
-// docs/RIDER_GENERATION.md). Derfor er rapporten en artefakt der kan
-// versionsstyres og diffes mod en senere kørsel.
+// docs/RIDER_GENERATION.md). Derfor kan to kørsler diffes mod hinanden uden at
+// rapporten ligger i git — og det SKAL den ikke: den er præcise balance-tal, og
+// hard rule 17 (#3436) holder dem ude af det offentligt læsbare repo. Skriv den
+// til `balance-internals/` (gitignoreret) eller lever den i chatten.
 //
 // Brug:
 //   node backend/scripts/generatorVisibleTest5283.js                      (stdout)
-//   node backend/scripts/generatorVisibleTest5283.js --out=docs/audits/x.md
+//   node backend/scripts/generatorVisibleTest5283.js --out=../balance-internals/x.md
 //   node backend/scripts/generatorVisibleTest5283.js --count=1000 --seed=20260918
 //
 // CI-siden af den samme gate er `backend/lib/riderBirthDistribution.test.js`:

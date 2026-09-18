@@ -256,7 +256,7 @@ Gaten har to halvdele, og de måler bevidst hver sin ting:
 | Øjne | `backend/scripts/generatorVisibleTest5283.js` | *Hvordan ser populationen ud?* Read-only rapport: fordeling pr. arketype og pr. evne (min/p10/median/p90/max), lofterne, alder/potentiale/værdi, kompletthed, ungdomsbåndet, stikprøve. Kan ikke fejle. |
 | Maskine | `backend/lib/riderBirthDistribution.test.js` | *Hvad må aldrig ændre sig?* 19 `node --test`-invarianter. Kan kun fejle. |
 
-Seneste kørsel: [`audits/2026-09-18-generator-1000.md`](audits/2026-09-18-generator-1000.md) (n = 1.000, seed 20260918). Genskabes med `npm run riders:generator-report --prefix backend` — determinismen (§1) gør rapporten diffbar mod en senere kørsel.
+Rapporten køres med `npm run riders:generator-report --prefix backend` (n = 1.000, seed 20260918). Den skrives til `balance-internals/`, som er gitignoreret: rapporten er præcise fordelings- og balance-tal, og hard rule 17 ([#3436](https://github.com/NicolaiDolmer/CyclingZone/issues/3436)) holder dem ude af det offentligt læsbare repo — issue #5283 pkt. 3 siger det udtrykkeligt om netop denne tabel. Determinismen (§1) gør rapporten diffbar mod en senere kørsel uden at den behøver ligge i git: samme seed giver den samme fil, byte for byte.
 
 Rapporten spejler `deriveForRiderIds`' kæde in-memory (§6/§8b's spejlings-krav) og rører hverken DB eller generatorens adfærd. Finder den en fejl, dokumenteres den i rapportens §9 og rettes i et eget spor — en test der retter det den måler, måler ikke længere noget.
 
