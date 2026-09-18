@@ -10,6 +10,7 @@ import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
+import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
   SEED_TEAM_ORDERS,
@@ -355,6 +356,15 @@ export function installPreviewMock() {
       if (/\/api\/admin\/surveys\/[^/]+\/results/.test(url)) {
         const parsed = new URL(url, window.location.origin);
         return jsonResponse(buildMockSurveyResults(parsed.searchParams.get("segment")));
+      }
+
+      // #5259 · Beta-adgang (spiller + admin + stadie-tavlen). Statefuld, og
+      // routet FØR den generiske /api-blok, som ellers ville svare {} på GET og
+      // { ok: true } på POST — og så ville tavlen stå tom og opt-in-kortet
+      // aldrig skifte tilstand ved et klik.
+      {
+        const betaResponse = betaAccessMockRoute(url, method, init);
+        if (betaResponse) return betaResponse;
       }
 
       // Express-API (/api/...).
