@@ -92,7 +92,7 @@ export default function RaceSelectionPanel({
   const [sort, setSort] = useState({ sort: null, dir: "desc" });
   // #2180/#3310: status for Auto-select-assistenten (separat fra save()'s status,
   // så et fejlet assistent-kald ikke fejlagtigt viser den manuelle gem-fejlbesked).
-  const [autoStatus, setAutoStatus] = useState("idle"); // idle | loading | error
+  const [autoStatus, setAutoStatus] = useState("idle"); // idle | loading | error | reloadFailed
   // #3520: rytteren hvis profil-popup er åben (klik på navn) — ren visning, rører
   // ALDRIG sel/udtagelsen. null = lukket. Checkboxen forbliver den ENESTE vælger.
   const [profileRider, setProfileRider] = useState(null);
@@ -103,7 +103,10 @@ export default function RaceSelectionPanel({
   // (data kan være null her), og den "rigtige" clientErrors genberegnes efter
   // returnsene nedenfor til selve visningen (touched-listen).
   const earlySaving = status === "saving";
-  const earlyBusy = earlySaving || autoStatus === "loading";
+  // #5222: reloadFailed laaser kontrollerne ligesom loading - panelet maa ikke
+  // aabne op med en GAMMEL trup fordi genindlaesningen efter et lykkedes
+  // auto-udtag fejlede (se autoSelect() og loadSelection() nedenfor).
+  const earlyBusy = earlySaving || autoStatus === "loading" || autoStatus === "reloadFailed";
   // #5159 (B1): de valgte ryttere og roller lever KUN lokalt indtil Gem. Et
   // release-drevet reload her ville hente serverens forrige udtagelse og kassere
   // managerens arbejde uden en lyd. Porten holder det tilbage indtil Gem eller
@@ -132,6 +135,12 @@ export default function RaceSelectionPanel({
   // EFTER: kun svaret for den seneste generation (effect-start ELLER unmount/skift)
   // får lov at skrive state. Dækker både effektens eget load og autoSelect()'s reload.
   const generationRef = useRef(0);
+  // #5222 (CodeRabbit-opfoelger fra #5206): returnerer nu true/false i stedet for
+  // altid undefined, saa en kalder der genindlaeser EFTER en mutation (autoSelect())
+  // kan se om genindlaesningen reelt lykkedes, i stedet for at antage det. Det
+  // oprindelige mount-kald (effekten nedenfor) ignorerer stadig returvaerdien
+  // bevidst: fejler den FOERSTE indlaesning, forbliver panelet skjult (uaendret
+  // adfaerd, se `!data?.enabled` early-return), der er intet at laase op.
   const loadSelection = useCallback(async () => {
     // #3310 quality-fix: snapshottet SKAL tages FØR det første await (authHeaders()
     // kan reelt gå på netværk ved Supabase-token-refresh). Ellers kan et forældet
@@ -139,13 +148,16 @@ export default function RaceSelectionPanel({
     // læse det NYE tal som sit eget requestGeneration, og guarden matcher stadig —
     // race A's data overskriver race B's state. Se kommentaren ovenfor funktionen.
     const requestGeneration = generationRef.current;
-    const headers = await authHeaders();
-    if (!headers) return;
+    // #5222 (CodeRabbit): authHeaders() er flyttet IND i try — en afvisning
+    // (getSession() kan reject'e) skal fanges, ikke undslippe og fastlåse
+    // retryReload() på "loading".
     try {
+      const headers = await authHeaders();
+      if (!headers) return false;
       const res = await apiFetch(`${API}/api/races/${raceId}/selection`, { headers });
-      if (!res.ok) return; // dækker også limited/unauthorized
+      if (!res.ok) return false; // dækker også limited/unauthorized
       const body = res.data;
-      if (requestGeneration !== generationRef.current) return;
+      if (requestGeneration !== generationRef.current) return false;
       setData(body);
       // #5098: et ugemt udkast vinder over serverens gemte udtagelse — det er
       // det nyeste manageren har lavet, og svaret her er netop den tilstand han
@@ -163,8 +175,11 @@ export default function RaceSelectionPanel({
           freeRoleIds: body.selection.free_role_ids ?? [],
         });
       }
+      return true;
     } catch {
-      /* netværk — panelet forbliver skjult */
+      /* netværk — panelet forbliver skjult ved det foerste kald; en kalder der
+         genindlaeser efter en mutation (autoSelect()) haandterer selv false */
+      return false;
     }
   }, [raceId]);
 
@@ -300,7 +315,8 @@ export default function RaceSelectionPanel({
   // efterfølgende setSel() (sidste skriv vinder, ikke-deterministisk). Alle kontroller
   // der kan ændre/gemme udtagelsen låses derfor også under auto-select-loading, ikke
   // kun under saving.
-  const busy = saving || autoStatus === "loading";
+  // #5222: se earlyBusy ovenfor for hvorfor reloadFailed laaser ligesom loading.
+  const busy = saving || autoStatus === "loading" || autoStatus === "reloadFailed";
   // #1747: skjul skadede ryttere. En allerede-udtaget (skadet) rytter forbliver
   // synlig så manageren ikke mister overblikket over en ugyldig udtagelse.
   const injuredCount = riders.filter((r) => r.injured).length;
@@ -468,13 +484,33 @@ export default function RaceSelectionPanel({
       if (isStale(gen)) return;
       if (!res.ok) { setAutoStatus("error"); return; } // dækker også limited/unauthorized
       dropDraft();
-      await loadSelection();
+      // #5222 (CodeRabbit-opfoelger fra #5206): loadSelection() kan fejle (auth,
+      // HTTP, parse, netvaerk) EFTER en lykkedes server-mutation. dropDraft()
+      // ovenfor har allerede glemt udkastet og aabnet reload-porten, saa uden
+      // dette tjek ville panelet laase op med den GAMLE `sel` (aldrig opdateret
+      // til det assistenten netop gemte) og fremstaa som idle/gemt — manageren
+      // kunne saa redigere/gemme en foraeldet trup oven i udtagelsen serveren
+      // allerede har. Kun "idle" ved en LYKKEDES genindlaesning; ellers forbliver
+      // kontrollerne laaste (se busy/earlyBusy) og en "Proev igen"-knap tilbyder
+      // et nyt loadSelection()-forsoeg (retryReload nedenfor).
+      const reloaded = await loadSelection();
       if (isStale(gen)) return;
-      setAutoStatus("idle");
+      setAutoStatus(reloaded ? "idle" : "reloadFailed");
     } catch {
       if (isStale(gen)) return;
       setAutoStatus("error");
     }
+  }
+
+  // #5222: "Prøv igen" efter en fejlet genindlæsning post-auto-udtag. Genbruger
+  // "loading" som mellemtilstand (samme laasning som resten af assistent-flowet)
+  // og lander enten på idle (lykkedes) eller reloadFailed igen (stadig galt).
+  async function retryReload() {
+    const gen = generationRef.current;
+    setAutoStatus("loading");
+    const reloaded = await loadSelection();
+    if (isStale(gen)) return;
+    setAutoStatus(reloaded ? "idle" : "reloadFailed");
   }
 
   return (
@@ -841,6 +877,18 @@ export default function RaceSelectionPanel({
           <div className="flex items-center gap-2 self-start sm:self-auto">
             {autoStatus === "error" && (
               <span className="text-xs text-cz-danger">{t("selection.autoFillError")}</span>
+            )}
+            {autoStatus === "reloadFailed" && (
+              <span className="text-xs text-cz-danger flex items-center gap-2">
+                {t("selection.autoFillReloadFailed")}
+                <button
+                  type="button"
+                  onClick={retryReload}
+                  className="underline hover:no-underline font-medium"
+                >
+                  {t("selection.retry")}
+                </button>
+              </span>
             )}
             {/* #2180/#3310: sekundær stil — guld nr. 2 er ikke tilladt, Gem forbliver
                 den primære handling. */}
