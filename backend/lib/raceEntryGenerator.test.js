@@ -193,6 +193,11 @@ function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false, b
       },
       then(resolve) {
         let rows = [...(state[table] || [])];
+        // #4619: riders.squad er NOT NULL DEFAULT 'senior'
+        // (database/2026-09-15-4619-riders-squad.sql), og udtagelses-filteret
+        // spoerger nu paa den. En fixture uden feltet ER en seniorrytter — uden
+        // dette default ville hver eneste rytter falde ud (undefined !== 'senior').
+        if (table === "riders") rows = rows.map((r) => (r.squad === undefined ? { ...r, squad: "senior" } : r));
         for (const [op, col, val] of q.filters) {
           if (op === "eq") rows = rows.filter((r) => r[col] === val);
           if (op === "neq") rows = rows.filter((r) => r[col] !== val);

@@ -24,6 +24,15 @@ function makeSupabase(state) {
     }
     return result;
   }
+  // #4619: riders.squad er NOT NULL DEFAULT 'senior' i prod
+  // (database/2026-09-15-4619-riders-squad.sql), og udtagelses-filteret spørger nu
+  // på den. En fixture-rytter uden feltet ER en seniorrytter; uden dette default
+  // ville hver eneste rytter falde ud (undefined !== 'senior').
+  function rowsFor(table) {
+    const rows = [...(state[table] || [])];
+    if (table !== "riders") return rows;
+    return rows.map((r) => (r.squad === undefined ? { ...r, squad: "senior" } : r));
+  }
   function builder(table) {
     const q = { table, filters: [] };
     const api = {
@@ -34,7 +43,7 @@ function makeSupabase(state) {
       // race_stage_schedule gav thisWindow=null og loaderen returnerede tidligt.
       neq(col, val) { q.filters.push(["neq", col, val]); return api; },
       maybeSingle() {
-        const rows = applyFilters([...(state[table] || [])], q.filters);
+        const rows = applyFilters(rowsFor(table), q.filters);
         return Promise.resolve({ data: rows[0] ?? null, error: null });
       },
       in(col, vals) { q.filters.push(["in", col, vals]); return api; },
@@ -45,12 +54,12 @@ function makeSupabase(state) {
       // #2962 · fillMissingTeamEntries' teams-select pagineres nu via fetchAllRows
       // (.order("id").range()) — anvender samme filtre som .then(), sliced til siden.
       range(from, to) {
-        const rows = applyFilters([...(state[table] || [])], q.filters);
+        const rows = applyFilters(rowsFor(table), q.filters);
         return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
       },
       insert(rows) { calls.push({ table, insert: rows }); state[table] = [...(state[table] || []), ...rows]; return Promise.resolve({ error: null }); },
       then(resolve) {
-        const rows = applyFilters([...(state[table] || [])], q.filters);
+        const rows = applyFilters(rowsFor(table), q.filters);
         resolve({ data: rows, error: null });
       },
     };

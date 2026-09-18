@@ -532,10 +532,14 @@ function rowsFor(db, table) {
   // #2748: samme klasse for is_retired (NOT NULL DEFAULT false — verificeret mod
   // prod 23/7: 0 NULL-rækker ud af 7.034). Squad-cap-queries filtrerer nu også
   // .eq("is_retired", false), så en pensioneret rytter ikke optager en cap-plads.
+  // #4619: samme klasse igen for riders.squad (NOT NULL DEFAULT 'senior',
+  // database/2026-09-15-4619-riders-squad.sql). Senior-cap-queries filtrerer nu
+  // også .eq("squad", "senior") via squads.applySeniorSquadFilter.
   if (table === "riders") {
     for (const r of db[table]) {
       if (r.is_academy === undefined) r.is_academy = false;
       if (r.is_retired === undefined) r.is_retired = false;
+      if (r.squad === undefined) r.squad = "senior";
     }
   }
   return db[table];

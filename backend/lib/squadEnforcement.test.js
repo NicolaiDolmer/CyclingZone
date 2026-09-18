@@ -16,6 +16,12 @@ import {
 // returnerer matchende data efter from()/select()/update()-pattern. Keeper sig
 // til de calls squadEnforcement faktisk laver.
 
+// Kolonne-DEFAULTS mock'en skal spejle, så en test-rytter der ikke nævner
+// feltet opfører sig som en rigtig række i prod:
+//   is_academy  NOT NULL DEFAULT false   (#1308)
+//   squad       NOT NULL DEFAULT 'senior' (#4619, database/2026-09-15-4619-riders-squad.sql)
+const COLUMN_DEFAULTS = { is_academy: false, squad: "senior" };
+
 function createMockSupabase(initialState) {
   const state = {
     teams: [...(initialState.teams || [])],
@@ -150,7 +156,10 @@ function createMockSupabase(initialState) {
                 if (!v.includes(r[col])) return false;
               } else {
                 // #1308: is_academy defaults to false når feltet ikke er sat på test-ryttere
-                const rVal = (k === "is_academy" && r[k] === undefined) ? false : r[k];
+                // #4619: squad defaults til 'senior' — kolonnen er NOT NULL DEFAULT
+                // 'senior' i prod (database/2026-09-15-4619-riders-squad.sql), så en
+                // test-rytter uden eksplicit trup ER en seniorrytter.
+                const rVal = r[k] === undefined ? COLUMN_DEFAULTS[k] : r[k];
                 if (rVal !== v) return false;
               }
             }

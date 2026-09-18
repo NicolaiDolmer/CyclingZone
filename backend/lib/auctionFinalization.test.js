@@ -215,16 +215,22 @@ function createFinalizeAuctionSupabase({
               return {
                 eq(column, teamId) {
                   assert.equal(column, "team_id");
-                  return {
-                    eq(col2, val2) {
-                      assert.equal(col2, "is_academy");
-                      assert.equal(val2, false);
+                  // #4619: trup-leddet er nu delt (squads.applySeniorSquadFilter) og
+                  // saetter TO filtre: squad='senior' OG is_academy=false. Builderen
+                  // er derfor kaedbar og bliver foerst til et resultat naar den
+                  // await'es — og den kraever at BEGGE led faktisk blev sat.
+                  const seen = [];
+                  const riskBuilder = {
+                    eq(col2, val2) { seen.push([col2, val2]); return riskBuilder; },
+                    then(resolve, reject) {
+                      assert.deepEqual(seen, [["squad", "senior"], ["is_academy", false]]);
                       return Promise.resolve({
                         data: atRiskRiderRowsByTeam[teamId] || [],
                         error: null,
-                      });
+                      }).then(resolve, reject);
                     },
                   };
+                  return riskBuilder;
                 },
               };
             }
