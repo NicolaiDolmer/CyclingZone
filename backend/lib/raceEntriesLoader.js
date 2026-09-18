@@ -23,7 +23,7 @@ export async function loadEligibleEntries({ supabase, baseQuery, paged = false }
 
   const riderIds = [...new Set(rows.map((e) => e.rider_id))];
   const { data: riders, error: ridersErr } = await selectInChunks({
-    supabase, table: "riders", columns: "id, team_id, is_academy, is_retired",
+    supabase, table: "riders", columns: "id, team_id, squad, is_academy, is_retired",
     inColumn: "id", ids: riderIds,
   });
   if (ridersErr) return { data: null, error: ridersErr };

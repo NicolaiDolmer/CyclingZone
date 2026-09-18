@@ -80,7 +80,7 @@ export async function findAllDoubleBookedPairs(supabase) {
   const riderIds = [...new Set(rawEntries.map((e) => e.rider_id))];
   const riderRows = riderIds.length
     ? await fetchAllRowsChunkedIn(riderIds, (chunk) =>
-        supabase.from("riders").select("id, team_id, is_academy, is_retired, firstname, lastname").in("id", chunk).order("id"))
+        supabase.from("riders").select("id, team_id, squad, is_academy, is_retired, firstname, lastname").in("id", chunk).order("id"))
     : [];
   const ridersById = new Map(riderRows.map((r) => [r.id, r]));
   const entries = filterEligibleEntries({ entries: rawEntries, ridersById });

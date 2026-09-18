@@ -62,6 +62,7 @@ import { meanAbilityScore, predictMarketPrice, computeSupport, blendTarget, appl
 import { isMarketValueSweepEnabled, readMarketValueGlobalWeight, readMarketValueWeeklyCap } from "./marketValueSweepConfig.js";
 import { RIDER_BASE_VALUE_FALLBACK } from "./marketUtils.js";
 import { captureException } from "./sentry.js";
+import { isSeniorSquadRider } from "./squads.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MODEL_PATH = join(__dirname, "marketValueModelV1.json");
@@ -164,12 +165,14 @@ async function defaultFetchPopulation({ supabase }) {
   const realTeamIds = new Set(
     allTeams.filter((t) => !t.is_test_account && !t.is_frozen && !t.is_bank).map((t) => t.id)
   );
+  // #4619: `squad` er med i projektionen fordi trup-prædikatet nedenfor er delt
+  // (squads.isSeniorSquadRider) og læser begge kolonner i overgangsperioden.
   const allRiders = await fetchAllRows(() => supabase
     .from("riders")
-    .select("id, team_id, birthdate, popularity, potentiale, primary_type, is_retired, is_academy, base_value")
+    .select("id, team_id, birthdate, popularity, potentiale, primary_type, is_retired, squad, is_academy, base_value")
     .order("id"));
   return allRiders.filter((r) =>
-    r.team_id != null && realTeamIds.has(r.team_id) && !r.is_retired && !r.is_academy
+    r.team_id != null && realTeamIds.has(r.team_id) && !r.is_retired && isSeniorSquadRider(r)
   );
 }
 

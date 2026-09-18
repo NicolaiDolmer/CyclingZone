@@ -242,6 +242,7 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
+import { applySeniorSquadFilter } from "../lib/squads.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
@@ -13923,7 +13924,8 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
       supabase.from("teams")
         .select("id, name, division").eq("is_bank", false).eq("is_ai", false).not("user_id", "is", null),
       // #1308: akademiryttere tæller ikke mod senior-cap i squad-violations-check
-      supabase.from("riders").select("team_id").not("team_id", "is", null).eq("is_academy", false),
+      // #4619: trup-leddet er delt (squads.applySeniorSquadFilter).
+      applySeniorSquadFilter(supabase.from("riders").select("team_id").not("team_id", "is", null)),
       supabase.from("seasons")
         .select("id, number, status").order("number", { ascending: false }).limit(2),
     ]);

@@ -1356,7 +1356,7 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   if (existingEntries.length) {
     const entryRiderIds = [...new Set(existingEntries.map((e) => e.rider_id))];
     const { data: entryRiders, error: erErr } = await selectInChunks({
-      supabase, table: "riders", columns: "id, team_id, is_academy, is_retired",
+      supabase, table: "riders", columns: "id, team_id, squad, is_academy, is_retired",
       inColumn: "id", ids: entryRiderIds,
     });
     if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);

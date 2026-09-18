@@ -52,7 +52,7 @@ async function main() {
   for (let i = 0; i < riderIds.length; i += 200) {
     const chunk = riderIds.slice(i, i + 200);
     const { data, error } = await db.from("riders")
-      .select("id, team_id, is_academy, is_retired").in("id", chunk);
+      .select("id, team_id, squad, is_academy, is_retired").in("id", chunk);
     if (error) throw new Error(`riders: ${error.message}`);
     for (const r of data || []) ridersById.set(r.id, r);
   }
