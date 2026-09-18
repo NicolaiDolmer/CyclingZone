@@ -207,6 +207,7 @@ import {
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildRiderInterest } from "../lib/riderInterest.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
+import { buildGlobalTradeFeed, parseTradeFeedQuery } from "../lib/tradeListFeed.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
@@ -7515,6 +7516,30 @@ router.post("/auctions/:id/finalize", requireAdmin, adminWriteLimiter, async (re
 // ── Transfer System V2 ────────────────────────────────────────────────────────
 // Supports: direct offers on any rider (no listing required), unlimited
 // negotiation rounds, private between buyer/seller only.
+
+// GET /api/transfers/feed — #5257: ÉN samlet, offentlig liste over alle
+// rytterskifter i spillet (auktioner, direkte handler, bytter), nyeste øverst.
+// Registreret FØR "/transfers" er ikke nødvendigt (Express matcher hele stien),
+// men den står her fordi den er det samme domæne læst på tværs af hold.
+//
+// Kun offentlige felter: hold, rytter, dato, type og beløb — nøjagtig det
+// GET /api/teams/:id/transfer-history allerede viser for et vilkårligt hold.
+// Ingen user_id, ingen e-mail, ingen beskeder. Al validering af query-params
+// (inkl. UUID-guard på ?team= før .or()-interpolation) sker i
+// parseTradeFeedQuery, se lib/tradeListFeed.js.
+router.get("/transfers/feed", requireAuth, async (req, res) => {
+  const parsed = parseTradeFeedQuery(req.query);
+  if (!parsed.ok) {
+    return res.status(400).json({ error: parsed.error, errorCode: parsed.errorCode });
+  }
+  try {
+    const payload = await buildGlobalTradeFeed(supabase, parsed.params);
+    res.json(payload);
+  } catch (err) {
+    captureException(err, { tags: { route: "GET /transfers/feed" } });
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/transfers — market listings + my offers
 router.get("/transfers", requireAuth, async (req, res) => {
