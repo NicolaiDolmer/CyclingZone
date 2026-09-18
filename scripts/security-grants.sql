@@ -33,6 +33,25 @@
 -- statiske lint (scripts/check-secdef-revoke-lint.mjs) kan pr. definition kun
 -- se filer, ikke hvad der faktisk står i databasen.
 --
+-- ── #2671 punkt 3 (opstramning verificeret 18/9) ──────────────────────────────
+--
+-- `is_beta_tester()` stod tidligere i undtagelseslisten nedenfor med en note
+-- om at fjernelse var "en oplagt opstramning, men skal verificeres for sig".
+-- Verificeret på ny, read-only mod prod, 18/9 2026:
+--   * `has_function_privilege('anon'/'authenticated', oid, 'EXECUTE')` = false
+--     for begge (authenticated-EXECUTE blev revoket i #5153, advisor-lint 0029).
+--   * Ingen RLS-policy i public kalder den (0 rækker i pg_policy-udtrækket
+--     scripts/security-rls-policy-fn-grants.sql bruger).
+--   * `git grep` over frontend/ og backend/ finder INGEN `.rpc("is_beta_tester")`
+--     eller `.rpc('is_beta_tester')`-kaldested. `users.is_beta_tester` (en
+--     kolonne) læses direkte af backend/routes/api.js, men det er IKKE denne
+--     funktion.
+-- Funktionen er fjernet fra undtagelseslisten nedenfor. Effekt i dag: ingen
+-- (den havde 0 grants og ville derfor aldrig have optrådt i resultatet under
+-- alle omstændigheder). Effekt fremover: et gen-opstået anon/authenticated-
+-- grant på is_beta_tester() bliver nu FANGET af dette tjek i stedet for at
+-- være tavst udelukket.
+--
 -- ── Allowlist ────────────────────────────────────────────────────────────────
 --
 -- Funktioner der BEVIDST er klient-eksekverbare. Hver enkelt er verificeret
@@ -51,16 +70,6 @@
 --                                     nævner. Fail-closed-tilstanden er
 --                                     whitelistet i
 --                                     scripts/security-rls-policy-fn-grants.sql.
---   is_beta_tester                    Ingen klient-rolle. authenticated-EXECUTE
---                                     revoket i #5153 (advisor-lint 0029): ingen
---                                     RLS-policy, intet view, ingen anden
---                                     funktionskrop og ingen frontend-RPC bruger
---                                     den (målt mod prod 11/9) — kun
---                                     service_role kalder den. Navnet står
---                                     fortsat i undtagelses-listen nedenfor, så
---                                     et gen-opstået klient-grant IKKE fanges;
---                                     at fjerne det derfra er en oplagt
---                                     opstramning, men skal verificeres for sig.
 --   is_offered_intake_rider           auth. Read-only, bærer riders-RLS-policyen
 --                                     "Public read riders" (#2581).
 --   get_cohort_retention              auth. Read-only admin-analytics, intern gate.
@@ -83,7 +92,6 @@ WITH secdef AS (
     AND p.prosecdef
     AND p.proname NOT IN (
       'is_admin',
-      'is_beta_tester',
       'is_offered_intake_rider',
       'get_cohort_retention',
       'get_sprint_metrics',
