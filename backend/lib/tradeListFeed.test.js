@@ -1,13 +1,14 @@
 // Tests for #5257: den globale handelsliste (GET /api/transfers/feed).
 // Verificerer:
-//   - query-parametre valideres/klemmes FØR de rører en PostgREST-filterstreng
+//   - query-parametre valideres/klemmes FØR de rører et PostgREST-filter
 //     (UUID-guard på ?team=, dybde-loft på ?offset=)
 //   - alle tre kilder flettes, nyeste øverst
 //   - private offer-statuser (pending/rejected/…) slipper ALDRIG ud
-//   - no_sale-auktion: intet beløb, ikke rapporterbar
+//   - auktion uden salg er slet ikke en række; garanteret AI-salg er
+//   - fri-agent-auktion har intet fra-hold, men er stadig et skifte
 //   - paginering skærer den rigtige side ud og sætter has_more korrekt
 //   - svaret indeholder ingen private felter (user_id/e-mail/besked)
-//   - division-filtret kører to queries pr. kilde og deduper
+//   - hold- og divisions-filtrene dækker begge hold-sider og deduper
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -36,7 +37,9 @@ function createSupabase({ auctions = [], transferOffers = [], swapOffers = [], s
   const calls = [];
 
   // Minimal or-parser: `col.eq.val`, `col.not.is.null` og `col.is.true`.
-  // Flere .or()-kald AND'es af PostgREST, så stubben holder dem i en liste.
+  // Listen af or-udtryk er en sikkerhedsnet: produktionskoden bruger med vilje
+  // højst ÉN .or() pr. query (se buildSourceQueries), men stubben ville ellers
+  // tabe et udtryk i stilhed hvis den regel blev brudt.
   function matchOr(expr, row) {
     return expr.split(",").some((p) => {
       let m = p.match(/^([a-z_]+)\.eq\.(.+)$/);
