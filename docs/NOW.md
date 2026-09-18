@@ -24,6 +24,6 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); commit-guarden skriver markør, pre-commit afviser commit uden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`.
 
-> **🤖 Working agent:** Dagbølge 18/9 (wave.js, ejer væk kl. 8-15): bølge 3 + "hvis tid" merges selv, bølge 4-5 som go-kort-PR'er.
+> **⏸️ Dagbølge 18/9 afbrudt 11:45, alt pushet:** 8 PR'er merget; åbne: #5366 (klar) + drafts #5370 #5372 #5373 #5374. **Genoptag: `drafts/next-session-prompt-2026-09-18-resume.md`.** **🤖 Working agent:** Ingen aktiv session.
 
 _Historik i git-log, issue-tråde + docs/audits/._

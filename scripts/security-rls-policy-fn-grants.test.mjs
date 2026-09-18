@@ -22,8 +22,13 @@ const repoRoot = join(here, "..");
 const sqlPath = join(here, "security-rls-policy-fn-grants.sql");
 const workflowPath = join(repoRoot, ".github/workflows/security-grants-audit.yml");
 
-const sql = readFileSync(sqlPath, "utf8");
-const workflow = readFileSync(workflowPath, "utf8");
+// core.autocrlf=true giver filerne CRLF i et Windows-checkout. Uden
+// normaliseringen matcher "\n)\n" aldrig, og testen fejler lokalt mens CI
+// (ubuntu, LF) er groen: en falsk alarm der ligner at man selv har oedelagt noget.
+const readLf = (file) => readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+
+const sql = readLf(sqlPath);
+const workflow = readLf(workflowPath);
 
 /**
  * Trækker whitelistens VALUES-rækker ud som rå tekst. Bevidst tekstuel: en

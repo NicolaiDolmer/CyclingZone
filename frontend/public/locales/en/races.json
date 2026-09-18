@@ -511,6 +511,8 @@
     "draftRestored": "I kept your unsaved picks. Save them before the flag drops.",
     "autoFill": "Auto-select",
     "autoFillError": "Could not auto-select. Try again.",
+    "autoFillReloadFailed": "Auto-select saved your squad, but reloading it here failed. Retry before you make more changes.",
+    "retry": "Try again",
     "save": "Save selection",
     "saving": "Saving…",
     "saved": "Selection saved.",

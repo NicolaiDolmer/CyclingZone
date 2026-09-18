@@ -337,6 +337,10 @@
       "title": "Autobud annulleret",
       "message": "Prisen på {riderName} har passeret dit autobud-loft på {maxAmount} CZ$. Autobuddet er annulleret og din reserverede saldo frigivet."
     },
+    "autoBidRaised": {
+      "title": "Dit autobud beholdt føringen",
+      "message": "{bidderName} forsøgte at overbyde dig på {riderName}. Dit autobud steg til {amount} CZ$ for at beholde føringen."
+    },
     "auctionLostToRival": {
       "title": "Du tabte budkrigen",
       "message": "{winnerName} snuppede {rider} for {price} CZ$, {overBid} CZ$ over dit højeste bud på {yourMax} CZ$."
