@@ -121,13 +121,21 @@ export function defaultExecGit(args, cwd) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
 }
 
-/** @param {string} root @returns {string[]} navne paa direkte undermapper, eller [] hvis roden ikke findes */
+/**
+ * @param {string} root
+ * @returns {string[]} navne paa direkte undermapper, eller [] hvis roden ikke findes (ENOENT/ENOTDIR)
+ * @throws videresender andre fejl (fx EACCES/EPERM permission-fejl, I/O-fejl) -
+ *   en fejlende scan maa ALDRIG stille rapporteres som "ingen orphans fundet"
+ *   (CodeRabbit-review, #5391): det ville skjule at rapporten reelt ikke naaede
+ *   at koere, ikke at der ikke er noget at melde.
+ */
 export function defaultListChildDirs(root) {
   let entries;
   try {
     entries = readdirSync(root, { withFileTypes: true });
-  } catch {
-    return [];
+  } catch (err) {
+    if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) return [];
+    throw err;
   }
   return entries.filter((e) => e.isDirectory()).map((e) => e.name);
 }
@@ -162,7 +170,16 @@ export function main(argv, deps = {}) {
   }
 
   const registered = getRegisteredWorktreeNames(porcelain, worktreeRoot);
-  const childDirs = listChildDirs(worktreeRoot);
+
+  let childDirs;
+  try {
+    childDirs = listChildDirs(worktreeRoot);
+  } catch (err) {
+    // Aldrig lad en reel fejl (permission/I-O) stille blive til "0 orphans
+    // fundet" - det ville skjule at scanningen fejlede, ikke at roden er ren.
+    log(`  [warn] kunne ikke liste ${worktreeRoot}: ${err.message} - orphan-mappe-scanningen naaede IKKE at koere`);
+    return 1;
+  }
   const orphans = findOrphanDirs(childDirs, registered);
 
   log(formatOrphanReport(orphans, worktreeRoot));

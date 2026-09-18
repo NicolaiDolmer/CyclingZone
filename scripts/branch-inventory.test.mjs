@@ -11,6 +11,7 @@ import {
   buildInventoryRow,
   splitSafeAndUnique,
   fetchRemoteBranches,
+  deriveMainBranchName,
   fetchAllPrsByHead,
   formatReport,
   parseArgs,
@@ -45,11 +46,28 @@ test('classifyBranchStatus: aaben PR vinder over alt andet', () => {
   assert.equal(status, 'aaben PR');
 });
 
-test('classifyBranchStatus: merget PR uden ancestor -> merget (squash-merge-tilfaeldet)', () => {
-  const prsByHead = new Map([['feat/x', [{ state: 'MERGED', number: 1, url: 'u', isDraft: false }]]]);
+test('classifyBranchStatus: merget PR uden ancestor, spidsen MATCHER headRefOid -> merget (squash-merge-tilfaeldet)', () => {
+  const prsByHead = new Map([['feat/x', [{ state: 'MERGED', number: 1, url: 'u', isDraft: false, headRefOid: 'abc' }]]]);
   const { status, isAncestor } = classifyBranchStatus({ name: 'feat/x', sha: 'abc' }, prsByHead, () => false);
   assert.equal(status, 'merget');
   assert.equal(isAncestor, false);
+});
+
+test('classifyBranchStatus: merget PR-record men spidsen IKKE matcher headRefOid (genbrugt branch-navn med nyt arbejde) -> foraeldreloes, IKKE merget (CodeRabbit-review, #5391)', () => {
+  // Branchen "feat/x" havde tidligere en merged PR (SHA "abc"), men er
+  // siden fået nye commits (eller er genskabt) - den nuværende spids "def"
+  // er ALDRIG blevet merget. Den historiske MERGED-record må ikke fejlagtigt
+  // markere det nye, unikke arbejde som "sikkert at slette".
+  const prsByHead = new Map([['feat/x', [{ state: 'MERGED', number: 1, url: 'u', isDraft: false, headRefOid: 'abc' }]]]);
+  const { status, isAncestor } = classifyBranchStatus({ name: 'feat/x', sha: 'def' }, prsByHead, () => false);
+  assert.equal(status, 'foraeldreloes');
+  assert.equal(isAncestor, false);
+});
+
+test('classifyBranchStatus: merget PR uden headRefOid i data (aeldre gh-version/manglende felt) falder tilbage til ancestor-tjek, IKKE blind tillid til status=MERGED', () => {
+  const prsByHead = new Map([['feat/x', [{ state: 'MERGED', number: 1, url: 'u', isDraft: false }]]]);
+  const { status } = classifyBranchStatus({ name: 'feat/x', sha: 'abc' }, prsByHead, () => false);
+  assert.equal(status, 'foraeldreloes'); // intet SHA-bevis + ikke ancestor -> IKKE antaget merget
 });
 
 test('classifyBranchStatus: ingen PR men ancestor af main -> merget (direkte push)', () => {
@@ -120,18 +138,44 @@ test('fetchRemoteBranches: parser for-each-ref-output, dropper HEAD og main', ()
   assert.equal(branches[0].subject, 'feat: noget med #42 i teksten');
 });
 
+test('fetchRemoteBranches: excludeBranch er KONFIGURERBAR - dropper "develop", ikke "main", naar det er den angivne default-branch (CodeRabbit-review, #5391)', () => {
+  const execGit = () => [
+    'origin/main\tsha1\t2026-09-15T00:00:00+00:00\tlatest',
+    'origin/develop\tsha2\t2026-09-10T00:00:00+00:00\tdev-latest',
+    '',
+  ].join('\n');
+  const branches = fetchRemoteBranches(execGit, '/repo', 'origin', 'develop');
+  assert.deepEqual(branches.map((b) => b.name), ['main']);
+});
+
+// ------------------------------------------------------------ deriveMainBranchName
+
+test('deriveMainBranchName: strip "origin/"-praefiks, falder tilbage til raa vaerdi uden praefiks', () => {
+  assert.equal(deriveMainBranchName('origin/main'), 'main');
+  assert.equal(deriveMainBranchName('origin/develop'), 'develop');
+  assert.equal(deriveMainBranchName('main'), 'main');
+  assert.equal(deriveMainBranchName('upstream/main', 'upstream'), 'main');
+});
+
 // --------------------------------------------------------- fetchAllPrsByHead
 
-test('fetchAllPrsByHead: grupperer flere PR-er pr. headRefName', () => {
-  const execGh = () => JSON.stringify([
-    { number: 1, headRefName: 'feat/x', state: 'CLOSED', url: 'u1', isDraft: false },
-    { number: 2, headRefName: 'feat/x', state: 'OPEN', url: 'u2', isDraft: false },
-    { number: 3, headRefName: 'feat/y', state: 'MERGED', url: 'u3', isDraft: false },
-  ]);
+test('fetchAllPrsByHead: grupperer flere PR-er pr. headRefName, beder om headRefOid (SHA-matching, #5391)', () => {
+  const calls = [];
+  const execGh = (args) => {
+    calls.push(args);
+    return JSON.stringify([
+      { number: 1, headRefName: 'feat/x', state: 'CLOSED', url: 'u1', isDraft: false },
+      { number: 2, headRefName: 'feat/x', state: 'OPEN', url: 'u2', isDraft: false },
+      { number: 3, headRefName: 'feat/y', state: 'MERGED', url: 'u3', isDraft: false, headRefOid: 'abc123' },
+    ]);
+  };
   const byHead = fetchAllPrsByHead(execGh, DEFAULT_REPO);
   assert.equal(byHead.get('feat/x').length, 2);
   assert.equal(byHead.get('feat/y')[0].state, 'MERGED');
+  assert.equal(byHead.get('feat/y')[0].headRefOid, 'abc123');
   assert.equal(byHead.has('feat/z'), false);
+  const jsonArgIdx = calls[0].indexOf('--json');
+  assert.ok(calls[0][jsonArgIdx + 1].includes('headRefOid'), '--json skal bede om headRefOid');
 });
 
 test('fetchAllPrsByHead: tom liste giver tomt map, ikke fejl', () => {
@@ -197,4 +241,24 @@ test('main: wire’er fetch+classify+format sammen med injicerede deps, exit 0',
   assert.equal(logged.length, 1);
   assert.match(logged[0], /feat\/x/);
   assert.match(logged[0], /Har unikt arbejde/);
+});
+
+test('main: --main-ref "origin/develop" udelukker "develop", ikke "main" (CodeRabbit-review, #5391)', () => {
+  const execGit = (args) => {
+    if (args[0] === 'for-each-ref') {
+      return [
+        'origin/main\taaa1111111\t2026-09-01T00:00:00+00:00\tmain-subject',
+        'origin/develop\tbbb2222222\t2026-09-01T00:00:00+00:00\tdev-subject',
+        '',
+      ].join('\n');
+    }
+    if (args[0] === 'merge-base') throw new Error('not ancestor');
+    if (args[0] === 'rev-list') return '1\n';
+    throw new Error(`uventet git-kald: ${args.join(' ')}`);
+  };
+  const execGh = () => '[]';
+  const logged = [];
+  main(['--main-ref', 'origin/develop', '--now', NOW.toISOString()], { execGit, execGh, log: (s) => logged.push(s) });
+  assert.match(logged[0], /`main`/); // "main" er nu en almindelig branch i rapporten
+  assert.doesNotMatch(logged[0], /`develop`/); // "develop" er ekskluderet som default-branchen
 });

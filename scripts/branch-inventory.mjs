@@ -78,8 +78,19 @@ export function sanitizeText(text) {
 
 /**
  * Klassificerer én branch ud fra dens PR-historik + ancestor-status.
+ *
+ * En MERGED PR-record alene gør IKKE branchen "merget": en branch kan faa
+ * nye commits (eller blive genskabt) EFTER en PR med samme navn blev
+ * merget, og den historiske record ville da fejlagtigt markere den
+ * NUVAERENDE spids som sikker at slette, selvom den baerer unikt arbejde
+ * (CodeRabbit-review, #5391). Derfor kraever en merget-status enten (a) at
+ * branch-spidsen ER den SHA der faktisk blev merget (mergedPr.headRefOid),
+ * eller (b) at spidsen uafhaengigt er en ancestor af main. En merget-PR-
+ * record hvis SHA IKKE matcher, og som heller ikke er en ancestor, betyder
+ * "genbrugt branch-navn med nyt, ikke-merget arbejde" -> foraeldreloes (ikke
+ * sikker at slette).
  * @param {{name: string, sha: string}} branch
- * @param {Map<string, Array<{number:number,state:string,url:string,isDraft:boolean}>>} prsByHead
+ * @param {Map<string, Array<{number:number,state:string,url:string,isDraft:boolean,headRefOid?:string}>>} prsByHead
  * @param {(sha: string) => boolean} isAncestorOfMain
  * @returns {{ status: 'aaben PR'|'merget'|'foraeldreloes', openPr: object|null, mergedPr: object|null, isAncestor: boolean }}
  */
@@ -88,10 +99,11 @@ export function classifyBranchStatus(branch, prsByHead, isAncestorOfMain) {
   const openPr = prs.find((p) => p.state === 'OPEN') || null;
   const mergedPr = prs.find((p) => p.state === 'MERGED') || null;
   const isAncestor = isAncestorOfMain(branch.sha);
+  const mergedPrMatchesTip = Boolean(mergedPr && mergedPr.headRefOid && mergedPr.headRefOid === branch.sha);
 
   let status;
   if (openPr) status = 'aaben PR';
-  else if (mergedPr || isAncestor) status = 'merget';
+  else if (mergedPrMatchesTip || isAncestor) status = 'merget';
   else status = 'foraeldreloes';
 
   return { status, openPr, mergedPr, isAncestor };
@@ -154,13 +166,19 @@ export function defaultExecGh(args) {
 }
 
 /**
- * Alle remote-branches undtagen HEAD og selve default-branchen (main).
- * Tab-separeret for-each-ref: navn, sha, committer-dato (ISO), subject.
+ * Alle remote-branches undtagen HEAD og selve default-branchen. Tab-separeret
+ * for-each-ref: navn, sha, committer-dato (ISO), subject.
+ *
+ * `excludeBranch` udledes af den KONFIGUREREDE main-ref (default "main" fra
+ * DEFAULT_MAIN_REF "origin/main") - IKKE hardkodet til "main" i sig selv
+ * (CodeRabbit-review, #5391): kaldes scriptet med fx `--main-ref
+ * origin/develop`, skal "develop" udelukkes, ikke "main".
  * @param {(args:string[], cwd?:string) => string} execGit
  * @param {string} cwd
  * @param {string} remote
+ * @param {string} excludeBranch branchnavnet der IKKE skal med i opgørelsen (default-branchen selv)
  */
-export function fetchRemoteBranches(execGit, cwd, remote = 'origin') {
+export function fetchRemoteBranches(execGit, cwd, remote = 'origin', excludeBranch = 'main') {
   const raw = execGit(
     ['for-each-ref', '--format=%(refname:short)%09%(objectname)%09%(committerdate:iso-strict)%09%(subject)', `refs/remotes/${remote}`],
     cwd,
@@ -173,7 +191,20 @@ export function fetchRemoteBranches(execGit, cwd, remote = 'origin') {
       const [refShort, sha, committerDate, ...subjectParts] = line.split('\t');
       return { name: refShort.slice(prefix.length), sha, committerDate, subject: subjectParts.join('\t') };
     })
-    .filter((b) => b.name && b.name !== 'HEAD' && b.name !== 'main');
+    .filter((b) => b.name && b.name !== 'HEAD' && b.name !== excludeBranch);
+}
+
+/**
+ * Udleder default-branchens NAVN (uden remote-praefiks) fra en main-ref som
+ * "origin/main" eller "origin/develop". Bruges til at give
+ * fetchRemoteBranches det rigtige `excludeBranch`, uanset hvilken remote
+ * mainRef peger paa.
+ * @param {string} mainRef
+ * @param {string} remote
+ */
+export function deriveMainBranchName(mainRef, remote = 'origin') {
+  const prefix = `${remote}/`;
+  return mainRef.startsWith(prefix) ? mainRef.slice(prefix.length) : mainRef;
 }
 
 /**
@@ -186,7 +217,7 @@ export function fetchAllPrsByHead(execGh, repo) {
     'pr', 'list',
     '--repo', repo,
     '--state', 'all',
-    '--json', 'number,headRefName,state,url,isDraft',
+    '--json', 'number,headRefName,state,url,isDraft,headRefOid',
     '--limit', '1000',
   ]);
   const prs = JSON.parse(raw || '[]');
@@ -254,9 +285,10 @@ export function formatReport({ rows, safe, unique, repo, mainRef, now, staleDays
     '- `delete_branch_on_merge` er allerede **slået til** på repoet (`gh api repos/NicolaiDolmer/CyclingZone`) - enhver merge, ' +
     'uanset vej (UI, `gh pr merge`, `scripts/merge-queue.ps1`), sletter automatisk branchen. Ingen ændring nødvendig.\n' +
     '- `scripts/merge-queue.ps1` merger allerede med `--delete-branch` som en ekstra, eksplicit garanti oveni repo-indstillingen. Ingen ændring nødvendig.\n' +
-    '- **Konsekvens for listen herunder:** fordi merge altid sletter branchen, er der ingen "merget, men stadig til stede"-branches i denne opgørelse - ' +
-    'alle 43 er enten en åben PR eller reelt forældreløs (aldrig merget/afvist/glemt). "Kan slettes sikkert" (0 stk. lige nu) vil derfor typisk kun ' +
-    'ramme forældreløse branches hvis spids allerede findes på main via en ANDEN branch (samme commits, ingen unik historik) - ikke selve merge-sporet.\n' +
+    `- **Konsekvens for listen herunder:** fordi merge altid sletter branchen, er der typisk ingen "merget, men stadig til stede"-branches i denne ` +
+    `opgørelse - ${rows.length - safe.length} af ${rows.length} er lige nu enten en åben PR eller reelt forældreløs (aldrig merget/afvist/glemt). ` +
+    `"Kan slettes sikkert" (${safe.length} stk. lige nu) vil derfor typisk kun ramme forældreløse branches hvis spids allerede findes på main via en ` +
+    'ANDEN branch (samme commits, ingen unik historik) - ikke selve merge-sporet.\n' +
     '- Ny ugentlig rutine (`.github/workflows/stale-branches-report.yml` + `scripts/stale-branches-report.mjs`): opretter/ajourfører ÉT issue med ' +
     'branches 14+ dage uden åben PR, se sektionen nedenfor. Kører read-only (kun `issues: write` for selve issue-oprettelsen/-redigeringen, ingen ' +
     'branch-mutation).',
@@ -341,7 +373,7 @@ export function main(argv, deps = {}) {
 
   const { repo, mainRef, staleDays, now, cwd } = parseArgs(argv);
 
-  const branches = fetchRemoteBranches(execGit, cwd);
+  const branches = fetchRemoteBranches(execGit, cwd, 'origin', deriveMainBranchName(mainRef));
   const prsByHead = fetchAllPrsByHead(execGh, repo);
   const isAncestorOfMain = makeAncestorChecker(execGit, cwd, mainRef);
   const commitsAheadOfMain = makeAheadCounter(execGit, cwd, mainRef);

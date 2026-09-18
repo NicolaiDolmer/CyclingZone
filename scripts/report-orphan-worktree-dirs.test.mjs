@@ -12,9 +12,13 @@ import {
   getRegisteredWorktreeNames,
   findOrphanDirs,
   formatOrphanReport,
+  defaultListChildDirs,
   parseArgs,
   main,
 } from './report-orphan-worktree-dirs.mjs';
+import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const PORCELAIN = [
   'worktree C:/Dev/CyclingZone',
@@ -90,7 +94,14 @@ test('formatOrphanReport: ikke-tom liste nævner antal, hver mappe, og henviser 
   assert.match(out, /RØRES IKKE/);
 });
 
-// --------------------------------------------------------------------- parseArgs
+// --------------------------------------------------------------- defaultListChildDirs
+
+test('defaultListChildDirs: manglende rod (ENOENT) giver [], kaster IKKE (CodeRabbit-review, #5391)', () => {
+  const missingRoot = join(tmpdir(), `report-orphan-worktree-dirs-test-${randomUUID()}`);
+  assert.deepEqual(defaultListChildDirs(missingRoot), []);
+});
+
+// ------------------------------------------------------------------------- parseArgs
 
 test('parseArgs: default worktree-root, override virker', () => {
   assert.equal(parseArgs([]).worktreeRoot, DEFAULT_WORKTREE_ROOT);
@@ -127,10 +138,20 @@ test('main: git-kald fejler -> loggger warn og exit 1, kaster ikke', () => {
   assert.match(logged[0], /\[warn\]/);
 });
 
-test('main: tom rod (fs-fejl haandteres af listChildDirs-injektionen) giver "(ingen ...)"-rapport', () => {
+test('main: tom, men EKSISTERENDE rod (listChildDirs returnerer []) giver ægte "(ingen ...)"-rapport, exit 0', () => {
   const execGit = () => PORCELAIN;
   const logged = [];
   const code = main([], { execGit, listChildDirs: () => [], log: (s) => logged.push(s) });
   assert.equal(code, 0);
   assert.match(logged[0], /ingen forældreløse mapper/);
+});
+
+test('main: listChildDirs kaster (permission/I-O-fejl) -> warn + exit 1, IKKE en stille "(ingen ...)"-rapport (CodeRabbit-review, #5391)', () => {
+  const execGit = () => PORCELAIN;
+  const listChildDirs = () => { throw Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }); };
+  const logged = [];
+  const code = main([], { execGit, listChildDirs, log: (s) => logged.push(s) });
+  assert.equal(code, 1);
+  assert.match(logged[0], /\[warn\]/);
+  assert.doesNotMatch(logged.join('\n'), /ingen forældreløse mapper/);
 });

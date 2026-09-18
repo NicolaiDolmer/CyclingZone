@@ -127,10 +127,18 @@ export function buildIssueBody(staleBranches, now, days, repo) {
 /**
  * Idempotent label-oprettelse (`--force` opdaterer i stedet for at fejle på
  * "already exists" - samme mønster som perf-seo-review.yml).
+ *
+ * KRÆVER `--repo`: uden den opretter `gh label create` labelen i det repo
+ * `gh` selv udleder af CWD (typisk main-checkoutet), IKKE nødvendigvis
+ * `repo`-parameteren scriptet i øvrigt bruger til issue-opslaget - et
+ * scenarie hvor `--repo` afviger fra CWD's repo ville da opdatere den
+ * forkerte repos labels og kunne fejle issue-oprettelsen (CodeRabbit-review,
+ * #5391).
  * @param {(args:string[]) => string} execGh
+ * @param {string} repo
  */
-export function ensureMarkerLabel(execGh) {
-  execGh(['label', 'create', MARKER_LABEL, '-c', LABEL_COLOR, '-d', LABEL_DESC, '--force']);
+export function ensureMarkerLabel(execGh, repo) {
+  execGh(['label', 'create', MARKER_LABEL, '--repo', repo, '-c', LABEL_COLOR, '-d', LABEL_DESC, '--force']);
 }
 
 /**
@@ -153,7 +161,7 @@ export function findExistingIssueNumber(execGh, repo) {
  * @returns {{number: number, created: boolean}}
  */
 export function upsertIssue(execGh, repo, body) {
-  ensureMarkerLabel(execGh);
+  ensureMarkerLabel(execGh, repo);
   const existing = findExistingIssueNumber(execGh, repo);
   if (existing) {
     execGh(['issue', 'edit', String(existing), '--repo', repo, '--title', ISSUE_TITLE, '--body', body]);

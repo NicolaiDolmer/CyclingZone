@@ -67,15 +67,18 @@ test('buildIssueBody: ikke-tom liste bygger tabel med alle raekker + sanitizer t
 
 // --------------------------------------------------------------- issue-upsert
 
-test('ensureMarkerLabel: kalder gh label create med --force (idempotent)', () => {
+test('ensureMarkerLabel: kalder gh label create med --repo + --force (idempotent)', () => {
   const calls = [];
   const execGh = (args) => { calls.push(args); return ''; };
-  ensureMarkerLabel(execGh);
+  ensureMarkerLabel(execGh, DEFAULT_REPO);
   assert.equal(calls.length, 1);
   assert.equal(calls[0][0], 'label');
   assert.equal(calls[0][1], 'create');
   assert.equal(calls[0][2], MARKER_LABEL);
   assert.ok(calls[0].includes('--force'));
+  const repoIdx = calls[0].indexOf('--repo');
+  assert.ok(repoIdx !== -1, 'forventede --repo blandt argumenterne');
+  assert.equal(calls[0][repoIdx + 1], DEFAULT_REPO);
 });
 
 test('findExistingIssueNumber: returnerer nummeret paa foerste fund, null hvis tom', () => {

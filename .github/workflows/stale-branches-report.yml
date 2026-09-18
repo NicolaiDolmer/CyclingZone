@@ -50,9 +50,16 @@ jobs:
       - name: Kør stale-branches-report.mjs (opretter/ajourfoerer issuet)
         env:
           GH_TOKEN: ${{ github.token }}
+          # Dispatch-inputtet gaar via env, ALDRIG direkte interpoleret i
+          # `run:`-scriptet (CodeRabbit-review, #5391): en `${{ ... }}`
+          # udvidet direkte ind i shell-kilden ekspanderer FOER bash
+          # parser linjen, saa en ondsindet dispatch-vaerdi kunne bryde ud
+          # af DAYS="..."-tildelingen og koere vilkaarlige kommandoer med
+          # jobbets GH_TOKEN. Env-variabler er ikke underlagt shell-parsing
+          # paa samme maade.
+          DAYS: ${{ github.event.inputs.days || '14' }}
         run: |
           set -euo pipefail
-          DAYS="${{ github.event.inputs.days || '14' }}"
           node scripts/stale-branches-report.mjs --repo "${{ github.repository }}" --days "$DAYS" | tee stale-branches-report-log.txt
 
       - name: Skriv job-summary
