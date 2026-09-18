@@ -21,9 +21,14 @@ board-trinnets sekventielle DB-kald.
 
 Antal etaper over 15 min forsinket: 65 af 357 (18 %) før → 7 af 197 (3,6 %) efter.
 
-**#5182-fixet virker.** Halen er skåret ned: p90 mere end halveret, værste tilfælde
-fra tre kvarter til et kvarter. **Men medianen er uændret på 4,2 minutter** — den er
-ikke en fejl, den er strukturel. Derfor er issuet ikke løst, kun halveret.
+Halen er skåret ned: p90 mere end halveret, værste tilfælde fra tre kvarter til et
+kvarter. Forbedringen falder sammen med #5182, og afsnit 3 viser uafhængigt at
+board-trinnet nu koster ca. 20 s som lovet — men før/efter-tallene er rå og ikke
+justeret for at klyngernes sammensætning også ændrede sig (se afsnit 4, kl. 18).
+Konklusionen om årsag hviler derfor på trin-målingen i afsnit 3, ikke på tabellen alene.
+
+**Medianen er uændret på 4,2 minutter** — den er ikke en fejl, den er strukturel.
+Derfor er issuet ikke løst, kun halveret.
 
 ## 2. Hvor de 4,2 minutter kommer fra
 
@@ -145,6 +150,22 @@ mangler at blive sendt") og afsendes af sit eget tick. Trin-markeringen i
 `races.finalize_state` findes allerede (#4147), så trinnet kan markeres udført uden
 at afsendelsen er sket endnu — den flytter blot fra det blokerende tick til
 udsenderens.
+
+Det ændrer notify fra "forsøg én gang, blokerende" til "aflever én gang, asynkront",
+og den kontrakt skal skrives eksplicit i implementeringen:
+
+- **Rækkefølge:** kø-rækken skal være committet FØR `finalize_state` markerer notify
+  udført. Ellers kan et nedbrud imellem de to skridt tabe beskeden lydløst.
+- **Unik nøgle:** én række pr. (løb, beskedtype, modtager-kanal), så en genkørsel af
+  afslutningen ikke lægger en dublet i køen.
+- **Leveringsstatus + lease:** `pending` / `sending` / `sent` / `failed` med et
+  tidsstemplet lease, så to udsender-tick ikke tager samme række, og en række der
+  hænger i `sending` kan tages igen efter timeout.
+- **Retry:** begrænset antal forsøg med backoff, derefter `failed` + Sentry — en
+  Discord-fejl må stadig aldrig kunne vælte afviklingen.
+
+Uden de fire punkter bytter man en forsinkelse for enten tabte eller dublerede
+beskeder, og en dubleret resultat-besked er synlig for spillerne.
 
 **Forventet effekt** (regnet på de målte tal, en 14-etape-klynge med 12 afslutninger):
 
