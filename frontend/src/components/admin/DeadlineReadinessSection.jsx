@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -14,12 +15,14 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
     setDryRunPlan(null);
     try {
       const headers = await getAuth();
-      const res = await fetch(`${API}/api/admin/season-transition`, {
+      const res = await apiFetch(`${API}/api/admin/season-transition`, {
         method: "POST",
         headers,
         body: JSON.stringify({ dryRun: true }),
       });
-      const json = await res.json();
+      // #5242: res.data er null ved limited/unauthorized/networkError og ved et
+      // tomt eller ikke-JSON svar — fallback-teksten dækker alle fire.
+      const json = res.data || {};
       if (!res.ok) throw new Error(json.error || "Dry-run fejlede");
       setDryRunPlan(json);
     } catch (e) {
@@ -33,8 +36,8 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
     setLoading(true);
     try {
       const headers = await getAuth();
-      const res = await fetch(`${API}/api/admin/deadline-readiness`, { headers });
-      const json = await res.json();
+      const res = await apiFetch(`${API}/api/admin/deadline-readiness`, { headers });
+      const json = res.data || {}; // #5242, se runDryRun()
       if (!res.ok) throw new Error(json.error || "Kunne ikke hente readiness");
       setData(json);
     } catch (e) {

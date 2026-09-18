@@ -6,6 +6,7 @@ import Field from "./ui/Field.jsx";
 import Textarea from "./ui/Textarea.jsx";
 import Button from "./ui/Button.jsx";
 import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { FEEDBACK_CATEGORIES, FEEDBACK_MESSAGE_MAX_LENGTH, validateFeedback, captureContext } from "../lib/feedbackForm.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -55,11 +56,16 @@ export default function FeedbackModal({ open, onClose }) {
         innerWidth: window.innerWidth,
         innerHeight: window.innerHeight,
       });
-      const res = await fetch(`${API}/api/feedback`, {
+      const res = await apiFetch(`${API}/api/feedback`, {
         method: "POST",
         headers,
         body: JSON.stringify({ category, message: message.trim(), ...context }),
       });
+      // #5242: apiFetch sætter status 429 BÅDE på serverens svar og på et kald der
+      // blev holdt tilbage af et endnu åbent Retry-After-vindue — begge er "du
+      // sender for hurtigt", så brugeren skal se den samme besked. Fejlkassen på
+      // 429 er bevidst bevaret her: det er en skrivehandling (ejer-beslutning,
+      // #5242 PR 1/2), ikke en baggrundsopdatering der bare må vente stille.
       if (res.status === 429) {
         setError(t("error.rateLimited"));
         return;
