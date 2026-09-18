@@ -18,12 +18,16 @@
 // ingen ny tabel, ingen ny dialog.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
-import { apiFetch } from "../lib/apiFetch.ts";
-import RiderLink from "../components/RiderLink";
-import TeamLink from "../components/TeamLink";
+// Alle relative imports bærer en endelse (.coderabbit.yaml-reglen for
+// frontend/**: extensionless imports består Vite, men fejler i Node's
+// ESM-loader som CI bruger, #803). .ts/.tsx-moduler importeres som .js
+// (TypeScripts egen konvention), .jsx-komponenter som .jsx.
+import { supabase } from "../lib/supabase.js";
+import { apiFetch } from "../lib/apiFetch.js";
+import RiderLink from "../components/RiderLink.jsx";
+import TeamLink from "../components/TeamLink.jsx";
 import ReportTradeDialog from "../components/ReportTradeDialog.js";
-import { formatNumber, formatDate } from "../lib/intl";
+import { formatNumber, formatDate } from "../lib/intl.js";
 import { parseTransferEventId } from "../lib/tradeReport.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers.js";
 import {
@@ -120,6 +124,13 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
     return res.data;
   }, [typeFilter, divisionFilter, mineOnly, myTeamId]);
 
+  // `fetchPage`s identitet ER filter-generationen (useCallback'en over
+  // filtrene). Et "Vis flere"-svar der lander EFTER et filterskifte hører til
+  // den gamle liste og må ikke hægtes på den nye. Uden denne vagt kunne en
+  // langsom side 2 fra "alle typer" lande oven på en frisk, filtreret side 1.
+  const fetchPageRef = useRef(fetchPage);
+  useEffect(() => { fetchPageRef.current = fetchPage; }, [fetchPage]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -136,14 +147,26 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
   }, [fetchPage, reloadToken]);
 
   async function loadMore() {
+    const requestFetch = fetchPage;
     setLoadingMore(true);
     try {
-      const payload = await fetchPage(events.length);
+      const payload = await requestFetch(events.length);
+      // Filtrene skiftede undervejs: svaret hører til den forrige liste.
+      if (fetchPageRef.current !== requestFetch) return;
       if (!payload) return;
-      setEvents((cur) => [...cur, ...(payload.events || [])]);
+      // Dedupe på id: en handel der lander MENS man bladrer skubber alting én
+      // plads ned, så næste side kan gentage den sidste række fra forrige side.
+      // Uden dette får React to rækker med samme key, og spilleren ser handlen
+      // to gange.
+      setEvents((cur) => {
+        const seen = new Set(cur.map((ev) => ev.id));
+        return [...cur, ...(payload.events || []).filter((ev) => !seen.has(ev.id))];
+      });
       setHasMore(Boolean(payload.has_more));
     } catch (e) {
-      setError(e.message);
+      // Samme vagt som ovenfor: en fejl fra det gamle filter må ikke overskrive
+      // den nye listes tilstand.
+      if (fetchPageRef.current === requestFetch) setError(e.message);
     } finally {
       setLoadingMore(false);
     }
