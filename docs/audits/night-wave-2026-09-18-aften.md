@@ -41,6 +41,8 @@ Status for #5399/#5401/#5398 i tabellen: se "Nat-merges" nederst (udfyldt ved cl
 - **Undersøgelsesspor efterlader rapporten utracket** (2 af 3 i aften) og ét nægtede at kommentere på issuet. `wave.js`' investigate-brief siger "intet commit" tre gange og vinder over scopeText. Bør rettes i briefen: rapportfil committes og pushes på sporets branch.
 - **`protect-claude-process.sh` gav falsk positiv to gange** i oprydningsfasen (Stop-Process + sti med `.claude`).
 
+- **FEATURE_STATUS.md ramte token-loftet** (fail > 3.000) da nattens nye flag kom til. Rettet strukturelt i generatoren (kortere linktekst), men marginen er 5 tokens: næste nye feature bider igen. Filen auto-loades ikke; overvej at hæve loftet eller droppe Verified-kolonnen.
+
 ## Ikke nået / åbent
 
 - #5383 (tekst ud over bokse): venter på ejerens skærmbilleder.
