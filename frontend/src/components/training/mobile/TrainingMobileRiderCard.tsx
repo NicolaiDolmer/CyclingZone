@@ -80,7 +80,9 @@ export default function TrainingMobileRiderCard({
 
       {/* Fremgangen pr. evne — det eneste paa fladen der flytter sig dagligt. */}
       {receiptRows?.length ? (
-        <div className="mt-3 border-t border-cz-border pt-2">
+        // #2819: tourens "naeste +1"-trin peger paa fremgangen pr. evne - det
+        // samme indhold som desktop-kolonnen baerer.
+        <div className="mt-3 border-t border-cz-border pt-2" data-tour="training-next-up">
           <div className="font-data text-3xs font-semibold uppercase tracking-[.09em] text-cz-3">
             {t("receipt.title")}
           </div>

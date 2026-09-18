@@ -319,7 +319,6 @@
     "pace": "Tempo · ca. {n} evne-point om ugen",
     "seasonPoints": "Denne sæson: +{n, plural, one {# point} other {# point}}",
     "change": "Skift",
-    "pickRiderHint": "Tryk på en rytter for at se form, træthed og hvad træningen bygger.",
     "assistantTitle": "Assistent",
     "assistantCount": "{n, plural, one {# forslag} other {# forslag}}",
     "sessionShort_rest": "Hvile",

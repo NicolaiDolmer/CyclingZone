@@ -74,7 +74,7 @@ export default function TrainingMobileRoster({
           </tr>
         </thead>
         <tbody>
-          {riders.map((rider) => {
+          {riders.map((rider, index) => {
             const isSelected = rider.id === selectedId;
             return (
               <tr key={rider.id} className={isSelected ? "bg-cz-subtle" : ""}>
@@ -84,6 +84,11 @@ export default function TrainingMobileRoster({
                     onClick={() => onSelect(rider.id)}
                     aria-expanded={isSelected}
                     aria-controls={detailId}
+                    // #2819: onboarding-tourens foerste anker paa /training.
+                    // Paa desktop sidder det paa Dag-knappen i raekken; her er
+                    // raekken SELV vejen til dagens valg, saa ankeret hoerer paa
+                    // den oeverste raekkes knap.
+                    data-tour={index === 0 ? "training-focus" : undefined}
                     className="flex min-h-11 w-full flex-col justify-center px-2.5 py-1.5 text-start"
                   >
                     <span className="text-[13px] font-medium leading-tight text-cz-1">{rider.name}</span>

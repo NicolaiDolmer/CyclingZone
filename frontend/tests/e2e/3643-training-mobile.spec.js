@@ -131,9 +131,16 @@ test("412 px: rytteren man trykker på får sit fulde kort ÉN gang, og 'Skift' 
   await login(page);
   await openTraining(page, 412, 915);
 
-  // Ingen rytter valgt → et hint, ikke et tomt kort.
-  await expect(page.getByText(/Tryk på en rytter/)).toBeVisible();
+  // Den øverste rytter er valgt fra start (mockup 2), så fladen aldrig står
+  // med en tom plads hvor kortet hører hjemme — og så onboarding-touren har
+  // noget konkret at pege på.
+  await expect(page.getByRole("button", { name: /A\. Pedersen/ })).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator('[data-tour="training-focus"]')).toHaveCount(1);
+  await expect(page.locator('[data-tour="training-next-up"]')).toHaveCount(1);
 
+  // Et tryk på en ANDEN rytter flytter kortet.
+  await page.getByRole("button", { name: /M\. Soerensen/ }).click();
+  await expect(page.getByRole("button", { name: /M\. Soerensen/ })).toHaveAttribute("aria-expanded", "true");
   await page.getByRole("button", { name: /A\. Pedersen/ }).click();
 
   // Kortet bærer præcis det beslutningen kræver: form + træthed som tal,

@@ -319,7 +319,6 @@
     "pace": "Pace · about {n} ability points a week",
     "seasonPoints": "This season: +{n, plural, one {# point} other {# points}}",
     "change": "Change",
-    "pickRiderHint": "Tap a rider to see form, fatigue and what the training is building.",
     "assistantTitle": "Assistant",
     "assistantCount": "{n, plural, one {# suggestion} other {# suggestions}}",
     "sessionShort_rest": "Rest",

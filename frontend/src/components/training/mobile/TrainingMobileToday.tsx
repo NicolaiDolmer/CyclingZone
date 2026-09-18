@@ -146,7 +146,13 @@ export default function TrainingMobileToday({
     [weekdays, columns, intensityForWeekday],
   );
 
-  const selected = riders.find((rider) => rider.id === selectedRiderId) ?? null;
+  // Den FOERSTE rytter er valgt som udgangspunkt, praecis som i mockup 2. Det
+  // er ogsaa det der goer fladen forklarbar: onboarding-touren (#2819) peger paa
+  // et konkret kort, ikke paa en tom plads, og spilleren ser med det samme HVAD
+  // et tryk paa en raekke giver ham.
+  const selected =
+    riders.find((rider) => rider.id === selectedRiderId) ?? riders[0] ?? null;
+  const selectedId = selected?.id ?? null;
 
   return (
     <div className="space-y-3" data-testid="training-mobile-today">
@@ -162,12 +168,12 @@ export default function TrainingMobileToday({
         riders={rosterRiders}
         columns={columns}
         cellFor={cellFor}
-        selectedId={selectedRiderId}
+        selectedId={selectedId}
         onSelect={onSelectRider}
         detailId={detailId}
       />
 
-      {selected ? (
+      {selected && (
         <TrainingMobileRiderCard
           id={detailId}
           name={`${selected.firstname ?? ""} ${selected.lastname ?? ""}`.trim()}
@@ -195,10 +201,6 @@ export default function TrainingMobileToday({
           onChangeDay={() => onOpenDay(selected.id)}
           changeDisabled={dayBusyFor(selected.id)}
         />
-      ) : (
-        <p id={detailId} className="px-1 text-2xs leading-snug text-cz-3">
-          {t("mobile.pickRiderHint")}
-        </p>
       )}
 
       {assistantSlot}
