@@ -495,6 +495,30 @@ export async function resolveProxyBids({
           auctionId,
           { riderId: auction.rider_id }
         ).catch(onProxyNotifFailed(auctionId));
+      } else if (autoBidder === currentWinner) {
+        // #4981: vinderens eget autobud maatte hæve sig for at holde føringen —
+        // "auto-bid raised" note (nedenfor rettet til ingen em-dash, se em-dash-guarden):
+        // spilleren blev reelt udfordret selvom han beholder føringen, men har hidtil
+        // ikke faaet nogen besked om det (koden her breakede tavst). Grenen er terminal:
+        // loopet breaker altid lige efter denne branch (se "autoBidder === currentWinner"
+        // breaket faa linjer nede), saa denne notifikation kan hoejst fyre ÉN gang pr.
+        // cascade-koersel, uanset hvor mange forudgaaende hops cascaden havde. Det er
+        // netop anti-spam-egenskaben den oprindelige kommentar her paastod, men som kun
+        // gjaldt Discord-DM'en, ikke denne in-app-notifikation.
+        await trackedNotify(
+          currentWinner,
+          "auction_proxy_outbid",
+          "Dit autobud blev presset op",
+          `${bidderName} forsøgte at overbyde dig på ${riderName}. Dit autobud steg til ${autoBidAmount} CZ$ for at beholde føringen`,
+          auctionId,
+          {
+            riderId: auction.rider_id,
+            titleCode: "notif.autoBidRaised.title",
+            titleParams: {},
+            messageCode: "notif.autoBidRaised.message",
+            messageParams: { riderName, bidderName, amount: autoBidAmount },
+          }
+        ).catch(onProxyNotifFailed(auctionId));
       }
 
       // Notify seller (only if real human selling own rider — mirrors manual bid flow)
@@ -521,7 +545,10 @@ export async function resolveProxyBids({
     }
 
     // Discord DM only when bidder is fully exhausted — mid-cascade DMs would spam
-    // managers whose proxy steps up but is still leading. In-app notif (above) still fires.
+    // managers whose proxy steps up but is still leading. #4981: the in-app notif
+    // (above, "auction_proxy_outbid" via the autoBidder === currentWinner branch)
+    // DOES fire for that case, terminal + at most once per cascade run, since that
+    // branch always ends the loop. Only the Discord DM stays exhausted-only.
     if (notifyOutbidDM && exhaustedTeam) {
       notifyOutbidDM({
         riderName,
