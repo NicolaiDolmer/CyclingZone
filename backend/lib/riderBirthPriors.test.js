@@ -581,6 +581,35 @@ test("#5376 markoeren reproducerer U23-foedslen mod U23-baandet, ikke akademiets
   for (const key of REGISTRY_ABILITY_KEYS) assert.equal(senere[key], reproduceret[key]);
 });
 
+// En U23-raekke UDEN en gyldig foedsels-alder er korrupt: `makeU23BirthMarker`
+// skriver altid en. Re-derivationen maa derfor ikke falde tilbage paa en opfundet
+// alder - saa ville raekken vaere "repareret" i tallene og stadig forkert.
+test("#5376 en korrupt U23-markoer fejler hoejlydt i stedet for at blive gaettet", () => {
+  const rowMed = (birth) => ({
+    id: "u23-korrupt",
+    potentiale: 3,
+    archetype_draw: { primary: "rouleur", secondary: null, birth },
+  });
+  for (const badAge of [undefined, null, 17, 23, 20.5, "21"]) {
+    const birth = { v: 1, tier: U23_BIRTH_TIER, seed: 4242 };
+    if (badAge !== undefined) birth.age = badAge;
+    assert.throws(
+      () => deriveBirthAbilities(rowMed(birth), {
+        age: 21,
+        classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+      }),
+      /U23-f.dselsalder/,
+      `alder ${JSON.stringify(badAge)} skulle vaere afvist ved re-derive`,
+    );
+  }
+  // Akademi-markoeren beholder sin egen (mildere) fallback - den sti er uaendret.
+  const akademi = rowMed(makeYouthBirthMarker({ seed: 4242 }));
+  assert.ok(deriveBirthAbilities(akademi, {
+    age: 18,
+    classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+  }));
+});
+
 // Den rene funktion er hele U23-foedslens evne-side og skal kunne kaldes af den
 // kommende generator (spec A6) uden at traekke DB, ur eller Math.random med ind.
 test("#5376 U23-traekket er rent og deterministisk", () => {

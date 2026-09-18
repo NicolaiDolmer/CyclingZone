@@ -801,11 +801,26 @@ export function deriveBirthAbilities(riderRow, { age = null, classifierWeightsBy
 
   // Båndet vælges af markørens tier. En U23-fødsel (D-054 §10.4) bærer sin egen
   // tier netop for at en heal-sweep ikke reproducerer den mod akademiets bånd.
+  //
+  // U23-stien går gennem `drawU23BirthAbilities` med den RÅ persisterede alder,
+  // ikke gennem en fallback: `makeU23BirthMarker` skriver altid en gyldig alder,
+  // så en U23-række UDEN en er korrupt. En fallback ville reproducere den mod en
+  // opfundet alder og give et gyldigt-udseende evne-sæt — så ville rækken være
+  // repareret i tallene og stadig forkert. Den skal fejle højlydt i stedet.
   const youthBand = birthBandForTier(tier);
-  const abilities = youthBand
+  const abilities = tier === U23_BIRTH_TIER
+    ? drawU23BirthAbilities({
+      rng,
+      age: draw.birth.age,
+      potentiale: riderRow.potentiale,
+      archetype: draw.primary,
+      secondaryArchetype: draw.secondary ?? null,
+      classifierWeightsByType,
+    })
+    : youthBand
     ? drawYouthBirthAbilities({
       rng,
-      age: birthAge ?? (tier === U23_BIRTH_TIER ? U23_BIRTH_AGE_MIN : 18),
+      age: birthAge ?? 18,
       potentiale: riderRow.potentiale,
       archetype: draw.primary,
       secondaryArchetype: draw.secondary ?? null,

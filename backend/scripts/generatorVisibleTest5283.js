@@ -272,7 +272,7 @@ export function buildYouthCohort({
  * dag er `YOUTH_BIRTH_BAND`, kalibreret til AKADEMIET (16-21).
  *
  * Denne sweep er gaten FØR den generering: den viser hvad båndet faktisk giver
- * ved hver af de fire U23-aldre, så det kan ses med øjnene om alderen stadig
+ * ved hver af U23-fødselsaldrene, så det kan ses med øjnene om alderen stadig
  * flytter noget i den ende af intervallet.
  *
  * `band` er en PARAMETER og ikke en konstant: siden #5376 findes der TO bånd —
@@ -1075,13 +1075,13 @@ export function renderReport({
       productionSweep.map((s) => [String(s.age), String(s.ceil), String(s.min), String(s.median), String(s.p90), String(s.max), fmt1(s.atCeilPct)]),
     ),
     "",
-    `**Forward-guard.** Den afgørende egenskab er at medianen stiger ved HVERT alderstrin og at loftet ikke klipper dominerende (tålegrænse ${U23_GUARD_MAX_AT_CEIL_PCT} % af evne-værdierne). \`u23ProductionBandGuard()\` måler begge dele, og et brud lander i §9 — også hvis årsagen er en ændring på akademi-siden, som U23-båndet arver fra. Status i denne kørsel: ${productionBreaches.length ? `**BRUDT** ved ${productionBreaches.map((b) => `alder ${b.age}`).join(", ")}` : "**holder** ved alle fire aldre"}.`,
+    `**Forward-guard.** Den afgørende egenskab er at medianen stiger ved HVERT alderstrin og at loftet ikke klipper dominerende (tålegrænse ${U23_GUARD_MAX_AT_CEIL_PCT} % af evne-værdierne). \`u23ProductionBandGuard()\` måler begge dele, og et brud lander i §9 — også hvis årsagen er en ændring på akademi-siden, som U23-båndet arver fra. Status i denne kørsel: ${productionBreaches.length ? `**BRUDT** ved ${productionBreaches.map((b) => `alder ${b.age}`).join(", ")}` : `**holder** ved alle ${U23_BIRTH_AGES.length} aldre`}.`,
     "",
     "### 8d. Mætning pr. alder pr. variant — designkortet der førte til valget (#5376)",
     "",
     "Historik, ikke en åben beslutning: kortet nedenfor er det ejeren valgte ud fra 18/9. Variant A er siden bygget som produktions-bånd (§8c); B og C er fravalgt og står her så begrundelsen kan læses igen.",
     "",
-    "Dagens akademi-bånd plus de tre forslag, kørt gennem PRÆCIS samme `drawYouthBirthAbilities` som produktionen bruger, ved hver af de fire U23-fødselsaldre. **Ejeren valgte A 18/9**; den lever nu som `U23_BIRTH_BAND` (§8c).",
+    `Dagens akademi-bånd plus de tre forslag, kørt gennem PRÆCIS samme \`drawYouthBirthAbilities\` som produktionen bruger, ved hver af de ${U23_BIRTH_AGES.length} U23-fødselsaldre. **Ejeren valgte A 18/9**; den lever nu som \`U23_BIRTH_BAND\` (§8c).`,
     "",
     `Aldrene kommer fra \`riderSeasonAge.js\` og er ikke frit valgte: U23 er sæson-alder < 23, så Graduation Day falder ved 23 og fødselsintervallet er ${U23_BIRTH_AGES[0]}-${U23_BIRTH_AGES[U23_BIRTH_AGES.length - 1]}. U25 (sæson-alder ≤ 25, UCI-reglen, ejer 2/9) rører ikke fødslen. Akademi-nedrykning gælder kun til og med ${ACADEMY_TOP_AGE} — derfor OVERLAPPER ${U23_BIRTH_AGES[0]}-${ACADEMY_TOP_AGE} akademiets eget interval, og det er dér en variant enten bevarer akademiets fordeling eller bevidst afviger fra den.`,
     "",
