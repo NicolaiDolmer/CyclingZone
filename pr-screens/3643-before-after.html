@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Traeningssiden paa mobil - i dag vs. #3643</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f2ec; --card:#fcfbf7; --border:#e5e0d5; --navy:#111429;
+  --t1:#0e0f15; --t2:#66637a; --t3:#9896b0; --accent:#e8c547; --danger:#a81e1e;
+  --font-body:'DM Sans',system-ui,sans-serif; --font-data:'Inter Tight',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg); color:var(--t1); font-family:var(--font-body);
+  width:1000px; -webkit-font-smoothing:antialiased}
+.sheet{padding:32px}
+h1{font-family:var(--font-data); font-size:25px; font-weight:700; letter-spacing:-.01em; margin:0}
+.sub{font-size:15px; color:var(--t2); margin:5px 0 0}
+.meta{font-family:var(--font-data); font-size:11.5px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--t3); margin:12px 0 20px}
+.cols{display:flex; gap:28px}
+.col{width:412px; flex-shrink:0}
+.chead{margin-bottom:9px}
+.chead .n{font-family:var(--font-data); font-size:16px; font-weight:700; line-height:1.2}
+.chead .n.is-now{color:var(--danger)}
+.chead .s{font-family:var(--font-data); font-size:11.5px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--t3); margin-top:3px}
+.frame{position:relative; width:412px; height:1340px; overflow:hidden;
+  border:1px solid var(--border); border-radius:5px; background:var(--bg)}
+.frame img{display:block; width:412px}
+.pin{position:absolute; width:26px; height:26px; border-radius:9999px;
+  background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-data); font-size:13.5px; font-weight:700; line-height:1;
+  border:2px solid #fff}
+.pin.is-now{background:var(--danger)}
+.key{margin-top:22px; display:flex; gap:28px}
+.key > div{width:412px}
+.key h2{font-family:var(--font-data); font-size:12px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--t3); margin:0 0 9px}
+.key ul{list-style:none; margin:0; padding:0}
+.key li{display:flex; gap:9px; margin-bottom:8px; align-items:flex-start}
+.key .b{flex-shrink:0; width:20px; height:20px; border-radius:9999px; background:var(--navy);
+  color:#fff; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-data); font-size:11px; font-weight:700; line-height:1; margin-top:1px}
+.key .b.is-now{background:var(--danger)}
+.key .txt{font-size:13px; line-height:1.45}
+.foot{margin-top:20px; font-family:var(--font-data); font-size:11.5px; font-weight:500;
+  color:var(--t3); line-height:1.6; border-top:1px solid var(--border); padding-top:12px}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>Traeningssiden paa 412 px - i dag vs. #3643</h1>
+  <p class="sub">Samme hold, samme skaerm, samme sprog. Venstre soejle er siden som den staar paa main lige nu.</p>
+  <p class="meta">Aegte skaermbilleder · Playwright · 412 x 915 · mobile-chromium · lys</p>
+
+  <div class="cols">
+    <div class="col">
+      <div class="chead"><div class="n is-now">I dag (main)</div><div class="s">D-047: navn + tre kolonner + Fuld tabel</div></div>
+      <div class="frame">
+        <img src="3643-training-mobile-412-before.png" alt="Traeningssiden i dag paa 412 px">
+        <span class="pin is-now" style="left:20px; top:558px">1</span>
+        <span class="pin is-now" style="left:366px; top:482px">2</span>
+        <span class="pin is-now" style="left:20px; top:1000px">3</span>
+        <span class="pin is-now" style="left:296px; top:138px">4</span>
+        <span class="pin is-now" style="left:20px; top:368px">5</span>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="chead"><div class="n">Anbefalet (#3643, mockup 2)</div><div class="s">Tabel: raekker = ryttere, kolonner = dagens loebsdage</div></div>
+      <div class="frame">
+        <img src="3643-training-mobile-412-mobile-chromium.png" alt="Traeningssiden efter #3643 paa 412 px">
+        <span class="pin" style="left:20px; top:558px">1</span>
+        <span class="pin" style="left:330px; top:528px">2</span>
+        <span class="pin" style="left:20px; top:1000px">3</span>
+        <span class="pin" style="left:330px; top:138px">4</span>
+        <span class="pin" style="left:330px; top:248px">5</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="key">
+    <div>
+      <h2>Hvad der er galt i dag</h2>
+      <ul>
+        <li><span class="b is-now">1</span><span class="txt"><b>Navnet fylder tre linjer</b> og skubber alt andet ud. Ryttertypen staar som en bred badge-linje (#5350).</span></li>
+        <li><span class="b is-now">2</span><span class="txt"><b>Kolonner ligger bag skaermkanten.</b> "Denne saeson" er klippet, og resten naas kun via chip-raekken eller "Fuld tabel".</span></li>
+        <li><span class="b is-now">3</span><span class="txt"><b>Fire ryttere pr. skaerm.</b> Man kan ikke se sin egen trup.</span></li>
+        <li><span class="b is-now">4</span><span class="txt"><b>To knapper i sidehovedet</b>, hvoraf den ene er gold - plus en gold sessions-chip i hver raekke.</span></li>
+        <li><span class="b is-now">5</span><span class="txt"><b>Hverken dagens rytme eller ugens program</b> er synligt. Ingen af de tal spilleren traeffer valget paa er samlet eet sted.</span></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Hvad forslaget goer</h2>
+      <ul>
+        <li><span class="b">1</span><span class="txt"><b>"A. Pedersen" + een daempet linje</b> med type, form og traethed - samme navneform som Mit Hold, som spillerne selv pegede paa.</span></li>
+        <li><span class="b">2</span><span class="txt"><b>Ingen kolonne bag kanten.</b> Maalt: <code>scrollWidth</code> = viewport paa baade 412 og 375 px. Ingen chips, ingen "Fuld tabel".</span></li>
+        <li><span class="b">3</span><span class="txt"><b>Ni-elleve ryttere pr. skaerm</b>, og den rytter man trykker paa faar sit fulde kort EEN gang under tabellen.</span></li>
+        <li><span class="b">4</span><span class="txt"><b>EEN gold primary</b> i fuld bredde over fanerne. Assistenten er et lukket panel med taelling nederst.</span></li>
+        <li><span class="b">5</span><span class="txt"><b>Dagens stribe + programgitteret</b> (7 ugedage x N loebsdage) staar oeverst. Med flaget OFF er striben een kolonne, "I dag".</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="foot">
+    Flaget <code>training_tick_per_race_day</code> er OFF i prod, saa tabellen viser praecis EEN loebsdags-kolonne.
+    Modellen baerer 1-5 kolonner uden at skifte form, og fladen viser aldrig et haardkodet saeson-tal.
+    Desktop-visningen er uaendret - bevis: <code>3643-training-desktop-1440-before.png</code> mod <code>3643-training-desktop-1280-desktop-chromium.png</code>.
+  </p>
+</div>
+</body>
+</html>

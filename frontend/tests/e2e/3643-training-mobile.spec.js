@@ -193,6 +193,20 @@ test("landskab 892 × 412 (#4982): tabellen fylder bredden ud uden boks-scroll",
   await page.screenshot({ path: evidenceShotPath(`pr-screens/3643-training-mobile-892x412-${testInfo.project.name}.png`), fullPage: false });
 });
 
+test("412 px i mørkt tema: samme form, ingen rå farver der falder ud", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "Tema-beviset er ét skud; formen er dækket i alle tre projekter ovenfor.");
+  await page.addInitScript(() => {
+    try { localStorage.setItem("cz-theme", "dark"); } catch { /* ingen storage */ }
+  });
+  await login(page);
+  await openTraining(page, 412, 915);
+  await page.getByRole("button", { name: /A\. Pedersen/ }).click();
+  await expect(page.getByText("Tæller for Sprinter")).toBeVisible();
+  await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
+
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-training-mobile-412-dark.png"), fullPage: true });
+});
+
 test("desktop 1280 px: uændret — alle kolonner som før, ingen mobil-tabel", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "Desktop-regressionstjek; mobil-formen dækkes af testene ovenfor.");
   await login(page);

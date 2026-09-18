@@ -642,7 +642,26 @@ Når et af issuerne merges, flyttes indholdet ind i det relevante afsnit, og ræ
 | Punkt | Ejerens ord / status |
 |---|---|
 | Programmets rytme når dagen er en løbsdag: 7-løbsdages-cyklus eller den rigtige uge med 3 slots | *"Det virker ikke som om noget af det der det rammer rigtigt for mig."* Ingen af de to varianter valgt |
-| Træningssidens layout | Afgøres af spillernes svar på side-om-side-mockupsene i `docs/design/mockups-training-2026-09-06/` |
+| Træningssidens layout | **Afgjort for MOBIL 18/9 — se nedenfor. Desktop-fladen er stadig åben.** |
+
+**Mobilstandarden for træning (ejer-valg 18/9, låst — genåbn ikke):** telefonen viser
+`docs/design/mockups-training-mobile-2026-09-18/m2-table.html` (mockup 2, tabel). Rækker er ryttere,
+**kolonner er dagens løbsdage** i kronologisk orden; den rytter man trykker på får sit fulde kort ÉN gang
+under tabellen. Programmet står som et gitter på 7 ugedage × N løbsdage, faner er I dag / Program /
+Udvikling / Historik, og der er én gold primary. Ejeren svarede samtidig ja til at **mobil har sit eget
+udvalg af tal** (form, træthed, fokus, alder og fremgang ligger i kortet ét tryk væk; intet tal forsvinder
+helt), og at **"Gruppér efter type" fjernes på mobil** og bliver stående på desktop.
+
+Formen er tegnet efter realisme-reglen: enheden er løbsdagen, rytteren kører ét løb **eller** træner.
+Fordi `training_tick_per_race_day` er OFF i prod og antallet af løbsdage pr. dato **ikke er låst**
+(§13.3 beslutning 2 er stadig et mål, ikke en kadence), er kolonne-modellen skrevet til at bære **1-5**
+løbsdage: flag OFF giver præcis én kolonne, "I dag" (løb eller dagens session), i nøjagtig samme tabelform,
+og fladen viser **aldrig** et hårdkodet sæson-tal. Modellen ligger i `frontend/src/lib/trainingMobileModel.ts`
+(unit-testet), visningen i `frontend/src/components/training/mobile/`. Designbeslutningen står også i
+`docs/design/PAGE_TEMPLATES.md` (T2's undtagelse) og `docs/design/TASTE.md` (P10).
+
+"På loftet"-chippen er **beholdt som i dag** og ligger i ét udtryk i rytterkortets evne-chips, så den kan
+fjernes i én rettelse når loft-modellen ændres efter S4 (#5351).
 
 ### 13.2 Åbne punkter (ikke stillet endnu, ét ad gangen)
 
