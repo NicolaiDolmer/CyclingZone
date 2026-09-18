@@ -16,7 +16,10 @@
 // et vilkårligt hold. Rapport-knappen genbruger #4346's flow uændret
 // (lib/tradeReport.ts + ReportTradeDialog + POST /api/transfers/:type/:id/report):
 // ingen ny tabel, ingen ny dialog.
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback, useEffect, useRef, useState,
+  type ChangeEvent, type ComponentType, type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 // Alle relative imports bærer en endelse (.coderabbit.yaml-reglen for
 // frontend/**: extensionless imports består Vite, men fejler i Node's
@@ -31,9 +34,120 @@ import { formatNumber, formatDate } from "../lib/intl.js";
 import { parseTransferEventId } from "../lib/tradeReport.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers.js";
 import {
-  Button, Card, DataTable, EmptyState, ErrorState, FilterBar, PageLoader,
+  Button, Card, DataTable as DataTableBase, EmptyState, ErrorState as ErrorStateBase,
+  FilterBar as FilterBarBase, PageLoader,
   ExchangeIcon, EyeIcon, InboxIcon,
 } from "../components/ui/index.js";
+
+// Hard rule 31: nye frontend-filer skrives i .ts/.tsx, så de får strict-dækning
+// fra dag ét. Formen herunder er backendens svar fra GET /api/transfers/feed
+// (backend/lib/tradeListFeed.js, mapAuction/mapTransfer/mapSwap) — kun de
+// offentlige felter, præcis som holdets transferhistorik allerede viser dem.
+type TFunc = ReturnType<typeof useTranslation>["t"];
+
+interface TeamRef {
+  id: string;
+  name: string | null;
+  is_ai: boolean;
+  division: number | null;
+}
+
+interface RiderRef {
+  id: string;
+  firstname: string | null;
+  lastname: string | null;
+}
+
+// `type` er bevidst en bred streng og ikke en union: backend kan tilføje en
+// kilde før frontend kender den, og `typeLabel` viser da den rå nøgle i stedet
+// for at falde igennem på en tom oversættelse.
+interface TradeEvent {
+  id: string;
+  type: string;
+  date: string | null;
+  season_number: number | null;
+  rider: RiderRef | null;
+  rider_swapped: RiderRef | null;
+  from_team: TeamRef | null;
+  to_team: TeamRef | null;
+  amount: number | null;
+  is_guaranteed_sale: boolean;
+  reportable: boolean;
+}
+
+interface TradeFeedPayload {
+  events: TradeEvent[];
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+// DataTable er (endnu) en .jsx-komponent uden egne typer. Kolonne-formen
+// skrives derfor eksplicit her, så en omdøbt nøgle eller en glemt `render`
+// fanges af compileren i stedet for af en tom kolonne i UI'et.
+interface TradeColumn {
+  key: string;
+  header: string;
+  sticky?: boolean;
+  fold?: boolean;
+  numeric?: boolean;
+  mobileLabel?: string;
+  foldValue?: (ev: TradeEvent) => string;
+  render: (ev: TradeEvent) => ReactNode;
+}
+
+// Primitiverne i components/ui er stadig .jsx (hard rule 31 gælder kun NYE
+// filer, så de konverteres ikke her). Uden typer udleder TS deres props af
+// default-VÆRDIERNE: `trailing = null` bliver til `null | undefined` og
+// `filters = []` til `never[]`, så helt lovlige kald afvises. De tre denne side
+// bruger får derfor deres faktiske kontrakt skrevet ned her, læst direkte af
+// FilterBar.jsx, DataTable.jsx og ErrorState.jsx.
+interface FilterBarSelect {
+  key: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
+  ariaLabel: string;
+  options: { value: string; label: string }[];
+}
+
+interface FilterBarProps {
+  className?: string;
+  filters?: FilterBarSelect[];
+  checkbox?: {
+    id: string;
+    checked: boolean;
+    onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+    label: string;
+  } | null;
+  trailing?: ReactNode;
+  meta?: ReactNode;
+}
+
+interface DataTableProps {
+  label: string;
+  columns: TradeColumn[];
+  rows: TradeEvent[];
+  rowKey: (ev: TradeEvent) => string;
+  mobileDefaults?: string[] | null;
+  empty?: ReactNode;
+}
+
+interface ErrorStateProps {
+  title?: string;
+  description?: string;
+  action?: ReactNode;
+}
+
+const FilterBar = FilterBarBase as unknown as ComponentType<FilterBarProps>;
+const DataTable = DataTableBase as unknown as ComponentType<DataTableProps>;
+const ErrorState = ErrorStateBase as unknown as ComponentType<ErrorStateProps>;
+
+// Fejl fra et afvist løfte er `unknown` under strict. Beskeden vi viser er
+// altid vores egen (tradeList.loadError), så en ukendt kastet værdi må ikke
+// kunne blive til "[object Object]" i en fejlkasse.
+function errorMessage(e: unknown, fallback: string): string {
+  return e instanceof Error && e.message ? e.message : fallback;
+}
 
 const PAGE_SIZE = 25;
 // Skal matche TRADE_FEED_MAX_OFFSET i backend/lib/tradeListFeed.js — serveren
@@ -47,11 +161,13 @@ const ALL_DIVISIONS = Array.from(
   (_, i) => RULES_NUMBERS.minDivision + i,
 );
 
-const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap" };
+const TYPE_LABEL_KEY: Record<string, string | undefined> = {
+  auction: "type.auction", transfer: "type.transfer", swap: "type.swap",
+};
 
 // Ukendt type (en fremtidig kilde backend'en tilføjer før frontend'en kender
 // den) vises som sin rå nøgle i stedet for at blive slugt af en tom oversættelse.
-function typeLabel(t, type) {
+function typeLabel(t: TFunc, type: string): string {
   const key = TYPE_LABEL_KEY[type];
   return key ? t(key) : type;
 }
@@ -59,7 +175,7 @@ function typeLabel(t, type) {
 // #4346-mønstret uændret: sekundær ikon-knap i rækken, aldrig en gold primary,
 // aldrig et rødt advarselsflag. Tone (#3139): det her er "til gennemsyn", ikke
 // en anklage — derfor et neutralt øje-ikon og en label der lever i aria/title.
-function ReportCell({ event, onReport }) {
+function ReportCell({ event, onReport }: { event: TradeEvent; onReport: (event: TradeEvent) => void }) {
   const { t } = useTranslation("transfers");
   if (!event.reportable) return <span className="text-cz-3">—</span>;
   return (
@@ -75,29 +191,37 @@ function ReportCell({ event, onReport }) {
   );
 }
 
-function TeamName({ team, fallback }) {
+function TeamName({ team, fallback }: { team: TeamRef | null; fallback?: string | null }) {
   const { t } = useTranslation("transfers");
   if (!team?.id) return <span className="text-cz-3">{fallback ?? "—"}</span>;
   return (
-    <TeamLink id={team.id} className="text-cz-1 hover:text-cz-accent-t">
+    // `tab={undefined}` er ikke pynt: TeamLink.jsx destrukturerer `tab` uden
+    // default, så TS ser den som påkrævet (samme greb som
+    // ReportTradeDialog.tsx bruger på Modal).
+    <TeamLink id={team.id} tab={undefined} className="text-cz-1 hover:text-cz-accent-t">
       {team.name}
       {team.is_ai && <span className="ms-1 text-cz-3 text-3xs">{t("history.aiTag")}</span>}
     </TeamLink>
   );
 }
 
-export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }) {
+interface TradeListPageProps {
+  myTeamId?: string | null;
+  onBrowseMarket?: (() => void) | null;
+}
+
+export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }: TradeListPageProps) {
   const { t } = useTranslation("transfers");
   const [typeFilter, setTypeFilter] = useState("all");
   const [divisionFilter, setDivisionFilter] = useState("all");
   const [mineOnly, setMineOnly] = useState(false);
 
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<TradeEvent[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState(null);
-  const [reportTarget, setReportTarget] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [reportTarget, setReportTarget] = useState<{ type: string; id: string } | null>(null);
   // "Try again" må ikke hænge på at et filter tilfældigvis ændrer sig — en
   // tæller er den eneste dependency der altid udløser en ny hentning.
   const [reloadToken, setReloadToken] = useState(0);
@@ -110,7 +234,7 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
   // apiFetch (#5089/#5242), ikke et bart fetch: den respekterer Retry-After og
   // har den centrale 401-vej. `limited` er IKKE en fejl — det er "intet nyt
   // endnu", så listen bliver stående i stedet for at blinke en fejlkasse.
-  const fetchPage = useCallback(async (offset) => {
+  const fetchPage = useCallback(async (offset: number): Promise<TradeFeedPayload | null> => {
     const { data: { session } } = await supabase.auth.getSession();
     const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
     if (typeFilter !== "all") params.set("type", typeFilter);
@@ -121,7 +245,9 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
     });
     if (res.limited) return null;
     if (!res.ok) throw new Error(tRef.current("tradeList.loadError"));
-    return res.data;
+    // apiFetch giver `unknown` — formen er backendens kontrakt, som
+    // tradeListFeed.test.js holder fast på serversiden.
+    return res.data as TradeFeedPayload;
   }, [typeFilter, divisionFilter, mineOnly, myTeamId]);
 
   // `fetchPage`s identitet ER filter-generationen (useCallback'en over
@@ -141,7 +267,7 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
         setEvents(payload.events || []);
         setHasMore(Boolean(payload.has_more));
       })
-      .catch((e) => { if (!cancelled) setError(e.message); })
+      .catch((e: unknown) => { if (!cancelled) setError(errorMessage(e, tRef.current("tradeList.loadError"))); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [fetchPage, reloadToken]);
@@ -166,13 +292,13 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
     } catch (e) {
       // Samme vagt som ovenfor: en fejl fra det gamle filter må ikke overskrive
       // den nye listes tilstand.
-      if (fetchPageRef.current === requestFetch) setError(e.message);
+      if (fetchPageRef.current === requestFetch) setError(errorMessage(e, t("tradeList.loadError")));
     } finally {
       setLoadingMore(false);
     }
   }
 
-  function openReportDialog(event) {
+  function openReportDialog(event: TradeEvent) {
     const parsed = parseTransferEventId(event.id);
     if (parsed) setReportTarget(parsed);
   }
@@ -184,7 +310,7 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
     setMineOnly(false);
   }
 
-  const columns = [
+  const columns: TradeColumn[] = [
     {
       key: "rider",
       header: t("tradeList.header.rider"),
@@ -192,7 +318,7 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
       render: (ev) => {
         if (!ev.rider) return <span className="text-cz-3">—</span>;
         const first = (
-          <RiderLink id={ev.rider.id} className="text-cz-1 hover:text-cz-accent-t">
+          <RiderLink id={ev.rider.id} tab={undefined} className="text-cz-1 hover:text-cz-accent-t">
             {ev.rider.firstname} {ev.rider.lastname}
           </RiderLink>
         );
@@ -203,7 +329,7 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
             <span className="inline-flex flex-wrap items-center gap-1">
               {first}
               <ExchangeIcon size={13} className="flex-shrink-0 text-cz-3" aria-hidden="true" />
-              <RiderLink id={ev.rider_swapped.id} className="text-cz-1 hover:text-cz-accent-t">
+              <RiderLink id={ev.rider_swapped.id} tab={undefined} className="text-cz-1 hover:text-cz-accent-t">
                 {ev.rider_swapped.firstname} {ev.rider_swapped.lastname}
               </RiderLink>
             </span>

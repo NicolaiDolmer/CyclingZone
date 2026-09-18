@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 // TransfersPage.modes.test.js).
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(join(__dirname, "TradeListPage.jsx"), "utf8");
+const src = readFileSync(join(__dirname, "TradeListPage.tsx"), "utf8");
 const transfersSrc = readFileSync(join(__dirname, "TransfersPage.jsx"), "utf8");
 const backendSrc = readFileSync(
   join(__dirname, "..", "..", "..", "backend", "lib", "tradeListFeed.js"),
@@ -64,5 +64,7 @@ test("dybde-loftet matcher backendens TRADE_FEED_MAX_OFFSET", () => {
 test("fanen er wired ind i Marked som et mode, ikke som en ny side", () => {
   assert.match(transfersSrc, /"trades"/, "trades skal findes som tab-værdi");
   assert.match(transfersSrc, /tab === "trades" && \(/, "fanen skal rendere TradeListPage");
-  assert.match(transfersSrc, /import TradeListPage from ".\/TradeListPage.jsx"/);
+  // .tsx-modulet importeres som .js (TypeScripts konvention, samme som
+  // ReportTradeDialog.js) — nye frontend-filer er .ts/.tsx, hard rule 31.
+  assert.match(transfersSrc, /import TradeListPage from "\.\/TradeListPage\.js"/);
 });

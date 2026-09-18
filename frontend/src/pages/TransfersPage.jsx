@@ -25,7 +25,9 @@ import { previewBulkPriceAdjust } from "../lib/bulkPriceAdjust.js";
 import { parseAmountInput, parseAdjustmentValue } from "../lib/amountInput.js";
 import { cycleSortState } from "../lib/riderSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
-import TradeListPage from "./TradeListPage.jsx"; // #5257: "Alle handler"-fanens krop
+// .tsx-modul importeret som .js (TypeScripts egen konvention — samme mønster som
+// ReportTradeDialog.js i TeamTransferHistoryTab.jsx).
+import TradeListPage from "./TradeListPage.js"; // #5257: "Alle handler"-fanens krop
 import {
   AmountInput, EmptyState, ExchangeIcon, InboxIcon, PageLoader,
   PageHeader, Section, Button, Select, Tabs, TabList, Tab, BlockedNote,
@@ -1747,7 +1749,7 @@ export default function TransfersPage() {
       ) : (
         <div>
           {/* #5257 — Alle handler: hele spillets handelsaktivitet, nyeste øverst.
-              Egen fil (TradeListPage.jsx) med eget dataflow; den får kun sit eget
+              Egen fil (TradeListPage.tsx) med eget dataflow; den får kun sit eget
               hold-id (til "kun mit hold"-filtret) og en vej tilbage til markedet
               fra sin tomme tilstand. */}
           {tab === "trades" && (
