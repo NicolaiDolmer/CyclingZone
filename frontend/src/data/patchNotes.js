@@ -1,5 +1,82 @@
 export const PATCHES = [
   {
+    "version": "7.288",
+    "date": "2026-09-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "All trades in one list",
+          "body": "What changed: Transfers has a new tab, All trades. It shows every rider move in the game, newest first: auctions, direct transfers and swaps, with rider, teams, date and amount. You can filter by type and division, or show only your own team. The eye icon on a row opens the same report dialog you already know from the market."
+        },
+        "da": {
+          "title": "Alle handler i én liste",
+          "body": "Hvad er ændret: Transfers har fået en ny fane, Alle handler. Den viser alle rytterskifter i spillet med nyeste øverst: auktioner, direkte handler og bytter, med rytter, hold, dato og beløb. Du kan filtrere på type og division eller kun vise dit eget hold. Øje-ikonet på en række åbner den samme anmeld-dialog, du allerede kender fra markedet."
+        },
+        "refs": [5257]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Ask to join the beta group",
+          "body": "What changed: Your profile has a new card, Beta group. I open new features to a small group first, so I can read every answer. Ask to join from the card and I answer you myself in your inbox. You can leave the group again at any time without asking anyone."
+        },
+        "da": {
+          "title": "Bed om at komme med i beta-gruppen",
+          "body": "Hvad er ændret: Din profil har fået et nyt kort, Beta-gruppen. Jeg åbner nye funktioner for en lille gruppe først, så jeg kan nå at læse hvert svar. Bed om at komme med fra kortet, så svarer jeg dig selv i din indbakke. Du kan forlade gruppen igen når som helst uden at spørge nogen."
+        },
+        "refs": [5259]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Moving a rider to the academy says that his contract follows",
+          "body": "What changed: When you move a senior rider down to your academy, he keeps his contract: same wage, same length. The confirmation dialog showed the unchanged wage under the label Youth salary, so it looked like a new wage. It now says Wage (unchanged) and tells you that the contract follows him down."
+        },
+        "da": {
+          "title": "Flyt til akademi siger nu, at kontrakten følger med",
+          "body": "Hvad er ændret: Når du flytter en senior-rytter ned i dit akademi, beholder han sin kontrakt: samme løn, samme længde. Bekræftelses-dialogen viste den uændrede løn under etiketten Ungdomsløn, så det lignede en ny løn. Nu står der Løn (uændret), og dialogen fortæller, at kontrakten følger med ned."
+        },
+        "refs": [4582]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "Auto-bid messages are collected per auction",
+          "body": "What changed: The new message you get when your auto-bid has to raise came once for every challenge. Your inbox now collects them into one line per auction with a counter, together with the outbid messages for the same auction. If you lost the lead along the way, the line says so."
+        },
+        "da": {
+          "title": "Autobud-beskeder samles pr. auktion",
+          "body": "Hvad er ændret: Den nye besked, du får når dit autobud må hæve prisen, kom én gang for hver udfordring. Din indbakke samler dem nu til én linje pr. auktion med en tæller, sammen med overbudt-beskederne for samme auktion. Hvis du mistede føringen undervejs, står det på linjen."
+        },
+        "refs": [4981]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Lighter pages",
+          "body": "What changed: The game loads less code on every page. The statistics script is about a quarter of its old size, and the country flags no longer sit inside the stylesheet. Nothing looks different; pages just have less to download."
+        },
+        "da": {
+          "title": "Lettere sider",
+          "body": "Hvad er ændret: Spillet henter mindre kode på hver side. Statistik-scriptet fylder cirka en fjerdedel af før, og landeflagene ligger ikke længere inde i stylesheetet. Intet ser anderledes ud; siderne har bare mindre at hente."
+        },
+        "refs": [5055, 5177]
+      }
+    ]
+  },
+  {
     "version": "7.287",
     "date": "2026-09-18",
     "label": "Beta",
