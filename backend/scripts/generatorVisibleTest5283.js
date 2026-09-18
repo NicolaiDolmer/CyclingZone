@@ -122,7 +122,13 @@ const countBy = (rows, keyFn) => {
 };
 
 const pct = (n, total) => (total ? (100 * n) / total : 0);
-const fmt1 = (n) => (n == null ? "–" : Number(n).toFixed(1));
+// Begge tal-formater SKAL være da-DK. Blandes `toFixed(1)` ind, betyder `.`
+// to ting i samme dokument — tusindtalsseparator i `1.212.874` og decimalkomma
+// i `13.8 %` — og en læser kan læse `13.8 %` som 138 %.
+const fmt1 = (n) =>
+  n == null
+    ? "–"
+    : Number(n).toLocaleString("da-DK", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const fmtInt = (n) => (n == null ? "–" : Math.round(n).toLocaleString("da-DK"));
 
 // ── Derive-kæden, spejlet ────────────────────────────────────────────────────
@@ -560,7 +566,7 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
     "",
     shareTable(rows, (r) => r.tier, "Tier"),
     "",
-    `Klassifikatoren genfinder anlægget hos **${recog.hit} af ${recog.n}** ryttere (${fmt1(recog.pct)} %) ud fra evnerne alene.`,
+    `Klassifikatoren genfinder anlægget hos **${fmtInt(recog.hit)} af ${fmtInt(recog.n)}** ryttere (${fmt1(recog.pct)} %) ud fra evnerne alene.`,
     "",
     recognitionTable(rows),
     "",
@@ -603,8 +609,8 @@ export function renderReport({ seed, count, referenceYear, adult, youth }) {
         ["PCM-stat-felter sat (skal være 0)", String(c.statLeak)],
         ["Ryttere uden gyldig fødsels-markør", String(c.missingBirthMarker)],
         ["Evner pr. rytter", `${REGISTRY_ABILITY_KEYS.length} (hele registret)`],
-        ["Evne-værdier på gulvet (1)", `${clamped.floor} af ${clamped.total} (${fmt1(pct(clamped.floor, clamped.total))} %)`],
-        ["Evne-værdier på loftet (99)", `${clamped.ceil} af ${clamped.total} (${fmt1(pct(clamped.ceil, clamped.total))} %)`],
+        ["Evne-værdier på gulvet (1)", `${fmtInt(clamped.floor)} af ${fmtInt(clamped.total)} (${fmt1(pct(clamped.floor, clamped.total))} %)`],
+        ["Evne-værdier på loftet (99)", `${fmtInt(clamped.ceil)} af ${fmtInt(clamped.total)} (${fmt1(pct(clamped.ceil, clamped.total))} %)`],
       ],
     ),
     "",

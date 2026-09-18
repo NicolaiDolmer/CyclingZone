@@ -146,9 +146,14 @@ test("#5283 samme seed giver samme population", () => {
   }
 });
 
+// `count` er selv et input til generatoren: tier- og nationalitets-sekvenserne
+// blandes i count-størrelse, så de første 50 af en 400-kohorte IKKE er de samme
+// 50 som en 50-kohorte. Baselinen bygges derfor med samme count, så seed'en er
+// den eneste ændrede variabel.
 test("#5283 en ANDEN seed giver en anden population", () => {
+  const baseline = buildAdultCohort({ seed: SEED, count: 50 }).rows;
   const other = buildAdultCohort({ seed: SEED + 1, count: 50 }).rows;
-  const same = other.filter((r, i) => r.name === rows[i].name).length;
+  const same = other.filter((r, i) => r.name === baseline[i].name).length;
   assert.ok(same < 5, `${same}/50 navne var ens på tværs af to seeds — understrømmene er sandsynligvis koblet`);
 });
 
