@@ -16,6 +16,7 @@ import {
   groupIceboxCandidates,
   formatIceboxSection,
   extractMasterplanRefs,
+  fetchClosedIssueNumbers,
   findClosedWithoutCheckmark,
   findHighPrioWithoutPlads,
   formatMasterplanSection,
@@ -173,8 +174,23 @@ test('extractMasterplanRefs: ingen referencer giver tomt map', () => {
 
 test('findClosedWithoutCheckmark: kun lukkede OG ikke-checkede numre', () => {
   const refs = new Map([[1, false], [2, true], [3, false]]);
-  const states = new Map([[1, 'CLOSED'], [2, 'CLOSED'], [3, 'OPEN']]);
-  assert.deepEqual(findClosedWithoutCheckmark(refs, states), [1]);
+  const closedIssueNumbers = new Set([1, 2]); // 3 er ikke i sættet -> aaben
+  assert.deepEqual(findClosedWithoutCheckmark(refs, closedIssueNumbers), [1]);
+});
+
+test('fetchClosedIssueNumbers: kalder gh med korrekt repo/state/limit, saetter hitLimit ved fuldt svar', () => {
+  let calledWith;
+  const execGh = (args) => { calledWith = args; return JSON.stringify([{ number: 1 }, { number: 2 }]); };
+  const { numbers, hitLimit } = fetchClosedIssueNumbers(execGh, 'owner/repo', 2);
+  assert.deepEqual(calledWith, ['issue', 'list', '--repo', 'owner/repo', '--state', 'closed', '--json', 'number', '--limit', '2']);
+  assert.deepEqual([...numbers].sort(), [1, 2]);
+  assert.equal(hitLimit, true); // 2 resultater == loftet 2 -> kan vaere afskaaret
+});
+
+test('fetchClosedIssueNumbers: hitLimit=false naar svaret er under loftet', () => {
+  const execGh = () => JSON.stringify([{ number: 1 }]);
+  const { hitLimit } = fetchClosedIssueNumbers(execGh, 'owner/repo', 10);
+  assert.equal(hitLimit, false);
 });
 
 test('findHighPrioWithoutPlads: filtrerer issues der IKKE er i MASTERPLAN-refs', () => {

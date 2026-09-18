@@ -268,30 +268,38 @@ export function extractMasterplanRefs(markdown) {
   return refs;
 }
 
-export function fetchIssueState(execGh, repo, number) {
-  try {
-    const raw = execGh(['issue', 'view', String(number), '--repo', repo, '--json', 'state']);
-    const data = JSON.parse(raw || '{}');
-    return data.state ? String(data.state).toUpperCase() : null;
-  } catch {
-    return null; // slettet/utilgaengelig/transient fejl - springes over, ikke fatalt
-  }
+// Maalt 18/9: 2223 lukkede issues i alt (gh api graphql issues(states:CLOSED)
+// totalCount) - default-loftet giver rigelig headroom uden at vokse ubegraenset.
+export const DEFAULT_CLOSED_ISSUES_FETCH_LIMIT = 3000;
+
+/**
+ * Henter ALLE lukkede issue-numre i ét bulk-kald i stedet for ét `gh issue
+ * view` pr. MASTERPLAN-reference (CodeRabbit-review, #5328: MASTERPLAN.md
+ * kan referere hundredvis af numre, og sekventielle enkelt-kald var langsomt
+ * og risikerede secondary rate limiting, som stille degraderede sektion 5 -
+ * fetchIssueState returnerede null paa enhver fejl).
+ * @param {(args: string[]) => string} execGh
+ * @param {string} repo
+ * @param {number} limit
+ * @returns {{numbers: Set<number>, hitLimit: boolean}}
+ */
+export function fetchClosedIssueNumbers(execGh, repo, limit = DEFAULT_CLOSED_ISSUES_FETCH_LIMIT) {
+  const raw = execGh([
+    'issue', 'list',
+    '--repo', repo,
+    '--state', 'closed',
+    '--json', 'number',
+    '--limit', String(limit),
+  ]);
+  const list = JSON.parse(raw || '[]');
+  return { numbers: new Set(list.map((i) => i.number)), hitLimit: list.length >= limit };
 }
 
-export function fetchIssueStates(execGh, repo, numbers) {
-  const states = new Map();
-  for (const num of numbers) {
-    const state = fetchIssueState(execGh, repo, num);
-    if (state) states.set(num, state);
-  }
-  return states;
-}
-
-export function findClosedWithoutCheckmark(masterplanRefs, issueStates) {
+export function findClosedWithoutCheckmark(masterplanRefs, closedIssueNumbers) {
   const result = [];
   for (const [number, checked] of masterplanRefs.entries()) {
     if (checked) continue;
-    if (issueStates.get(number) === 'CLOSED') result.push(number);
+    if (closedIssueNumbers.has(number)) result.push(number);
   }
   return result.sort((a, b) => a - b);
 }
@@ -558,8 +566,11 @@ export async function generateReport(opts, deps = {}) {
   let closedWithoutCheckmark = [];
   let highPrioWithoutPlads = [];
   try {
-    const issueStates = fetchIssueStates(execGh, repo, [...masterplanNumbers]);
-    closedWithoutCheckmark = findClosedWithoutCheckmark(masterplanRefs, issueStates);
+    const { numbers: closedIssueNumbers, hitLimit } = fetchClosedIssueNumbers(execGh, repo);
+    if (hitLimit) {
+      notes.push(`fetchClosedIssueNumbers ramte loftet (${DEFAULT_CLOSED_ISSUES_FETCH_LIMIT}) - sektion 5's "lukket uden checkmark" kan undertaelle.`);
+    }
+    closedWithoutCheckmark = findClosedWithoutCheckmark(masterplanRefs, closedIssueNumbers);
     const openHighPrio = fetchOpenHighPrioIssues(execGh, repo);
     highPrioWithoutPlads = findHighPrioWithoutPlads(openHighPrio, masterplanRefs);
   } catch (err) {

@@ -11,13 +11,21 @@ name: Weekly steering report
 #   4. Icebox-kandidater · 5. MASTERPLAN mod GitHub ·
 #   6. Loefte-tjek (roadmap_items) · 7. Budget (token-hygiejne).
 #
-# READ-ONLY over for issues/PR'er (bindende, jf. issuet): jobbet laeser kun
-# via `gh` - INGEN `issue comment`, `issue edit`, `pr comment` osv. Den
+# READ-ONLY over for issues/PR'er (bindende, jf. issuet): begge jobs laeser
+# kun via `gh` - INGEN `issue comment`, `issue edit`, `pr comment` osv. Den
 # ENESTE skrivning er den nye rapport-fil i docs/audits/, committet direkte
 # paa main (chore/docs-aendring, ingen PR - samme klasse som andre
 # dokumentations-commits, jf. AGENTS.md-reglen "chore/docs på main") + en
 # kort Discord-notifikation (samme moenster som supabase-advisor-sweep.yml).
-# `permissions` giver bevidst IKKE `issues: write`/`pull-requests: write`.
+#
+# MINDSTE PRIVILEGIE (CodeRabbit-review, .coderabbit.yaml's regel for
+# .github/workflows/**): rapport-generering (job `report`) koerer med KUN
+# `contents: read`/`issues: read`/`pull-requests: read` og
+# `persist-credentials: false` paa checkout - den koerer `npm ci` og
+# scriptets gh/Supabase-kald, som ALDRIG skal have et skrive-token
+# tilgaengeligt. Den producerede rapport sendes som et artifact til et
+# SEPARAT job (`publish`), som er det ENESTE sted `contents: write` findes,
+# og som ikke koerer nogen tredjeparts-afhaengighed (kun git + curl).
 #
 # Genbruger eksisterende secrets (INGEN nye): SUPABASE_URL/
 # SUPABASE_SERVICE_KEY (samme som drift-monitor.yml/db-health.yml) til
@@ -41,18 +49,24 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  issues: read
-  pull-requests: read
+  contents: read
 
 jobs:
   report:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      out: ${{ steps.report.outputs.out }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '24'
           cache: npm
@@ -79,15 +93,40 @@ jobs:
           set -euo pipefail
           DATE_CPH=$(TZ=Europe/Copenhagen date +%F)
           OUT="docs/audits/${DATE_CPH}-styringsrapport.md"
+          mkdir -p "$(dirname "$OUT")"
           node scripts/weekly-steering-report.mjs --out "$OUT"
           echo "out=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload rapport som artifact (til publish-jobbet)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: styringsrapport
+          path: ${{ steps.report.outputs.out }}
+          retention-days: 7
+
+  publish:
+    needs: report
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Download rapport-artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: styringsrapport
+          path: report-artifact
 
       - name: Commit rapport på main
         run: |
           set -euo pipefail
+          OUT="${{ needs.report.outputs.out }}"
+          mkdir -p "$(dirname "$OUT")"
+          mv "report-artifact/$(basename "$OUT")" "$OUT"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${{ steps.report.outputs.out }}"
+          git add "$OUT"
           if git diff --cached --quiet; then
             echo "Ingen aendringer at committe (uventet - filen er altid ny)."
             exit 0
@@ -103,7 +142,7 @@ jobs:
             echo "::warning::DISCORD_WEBHOOK er ikke konfigureret; sprang notifikation over."
             exit 0
           fi
-          URL="${{ github.server_url }}/${{ github.repository }}/blob/main/${{ steps.report.outputs.out }}"
+          URL="${{ github.server_url }}/${{ github.repository }}/blob/main/${{ needs.report.outputs.out }}"
           curl -X POST -H "Content-Type: application/json" \
             -d "{\"content\": \"🗓️ **Styringsrapport klar** til mandagens session (#5328)\n${URL}\"}" \
             "$DISCORD_WEBHOOK"
