@@ -47,45 +47,42 @@ export const TRADE_FEED_MAX_OFFSET = 900;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Kilde-konfiguration. `sides` er de to hold-aliasser i embeddet — de bruges
-// både til division-filtret (PostgREST kan kun filtrere på ét embed ad gangen,
-// se buildSourceQueries) og til at mappe rækken til from/to-hold.
+// Kilde-konfiguration. `teamColumns` er de to hold-kolonner (fra-siden først) —
+// de bruges både til hold-filtret, til division-filtret (se buildSourceQueries)
+// og til at mappe rækken til from/to-hold.
 const SOURCES = {
   auction: {
     table: "auctions",
     dateColumn: "actual_end",
-    sides: ["seller", "winner"],
     teamColumns: ["seller_team_id", "current_bidder_id"],
-    select: (innerSide) =>
+    select:
       "id, current_price, actual_end, created_at, is_guaranteed_sale, seller_team_id, current_bidder_id"
       + ", rider:rider_id(id, firstname, lastname)"
-      + `, seller:seller_team_id${innerSide === "seller" ? "!inner" : ""}(id, name, is_ai, division)`
-      + `, winner:current_bidder_id${innerSide === "winner" ? "!inner" : ""}(id, name, is_ai, division)`,
+      + ", seller:seller_team_id(id, name, is_ai, division)"
+      + ", winner:current_bidder_id(id, name, is_ai, division)",
     applyStatus: (q) => q.eq("status", "completed"),
   },
   transfer: {
     table: "transfer_offers",
     dateColumn: "updated_at",
-    sides: ["seller", "buyer"],
     teamColumns: ["seller_team_id", "buyer_team_id"],
-    select: (innerSide) =>
+    select:
       "id, offer_amount, counter_amount, status, updated_at, seller_team_id, buyer_team_id"
       + ", rider:rider_id(id, firstname, lastname)"
-      + `, seller:seller_team_id${innerSide === "seller" ? "!inner" : ""}(id, name, is_ai, division)`
-      + `, buyer:buyer_team_id${innerSide === "buyer" ? "!inner" : ""}(id, name, is_ai, division)`,
+      + ", seller:seller_team_id(id, name, is_ai, division)"
+      + ", buyer:buyer_team_id(id, name, is_ai, division)",
     applyStatus: (q) => q.in("status", PUBLIC_OFFER_STATUSES),
   },
   swap: {
     table: "swap_offers",
     dateColumn: "updated_at",
-    sides: ["proposing", "receiving"],
     teamColumns: ["proposing_team_id", "receiving_team_id"],
-    select: (innerSide) =>
+    select:
       "id, cash_adjustment, counter_cash, status, updated_at, proposing_team_id, receiving_team_id"
       + ", offered_rider:offered_rider_id(id, firstname, lastname)"
       + ", requested_rider:requested_rider_id(id, firstname, lastname)"
-      + `, proposing:proposing_team_id${innerSide === "proposing" ? "!inner" : ""}(id, name, is_ai, division)`
-      + `, receiving:receiving_team_id${innerSide === "receiving" ? "!inner" : ""}(id, name, is_ai, division)`,
+      + ", proposing:proposing_team_id(id, name, is_ai, division)"
+      + ", receiving:receiving_team_id(id, name, is_ai, division)",
     applyStatus: (q) => q.in("status", PUBLIC_OFFER_STATUSES),
   },
 };
@@ -149,18 +146,23 @@ export function parseTradeFeedQuery(query = {}) {
   return { ok: true, params: { limit, offset, type, division, teamId } };
 }
 
-// PostgREST kan ikke udtrykke "division = N på ENTEN sælger ELLER køber" i ét
-// kald: et embed-filter kræver !inner på præcis det embed. Derfor kører et
-// division-filter to queries pr. kilde (én pr. side) der dedupes på event-id
-// bagefter. Foreningen af de to vinduer indeholder stadig de N nyeste rækker
-// der matcher, så paginerings-kontrakten holder.
-function buildSourceQueries(supabase, sourceKey, { window, division, teamId }) {
+// "division = N på ENTEN fra- ELLER til-holdet" kan ikke udtrykkes i ét
+// PostgREST-kald på en hold-liste, så et division-filter kører to queries pr.
+// kilde (én pr. hold-kolonne, `.in(divisionens hold-id'er)`) der dedupes på
+// event-id bagefter. Foreningen af de to vinduer indeholder stadig de N nyeste
+// rækker der matcher, så paginerings-kontrakten holder.
+//
+// Bevidst IKKE et `!inner`-embed-filter: divisionen bor på det embeddede hold,
+// og en filtreret join-hint-syntaks ville være den ENESTE PostgREST-form i
+// dette lag som ingen anden query i repoet bruger. `.in()` på en eksplicit
+// id-liste er det samme resultat med en form der allerede er i drift.
+function buildSourceQueries(supabase, sourceKey, { window, teamId, divisionTeamIds }) {
   const cfg = SOURCES[sourceKey];
-  const sides = division == null ? [null] : cfg.sides;
-  return sides.map((innerSide) => {
-    let q = supabase.from(cfg.table).select(cfg.select(innerSide));
+  const columns = divisionTeamIds ? cfg.teamColumns : [null];
+  return columns.map((teamColumn) => {
+    let q = supabase.from(cfg.table).select(cfg.select);
     q = cfg.applyStatus(q);
-    if (division != null) q = q.eq(`${innerSide}.division`, division);
+    if (teamColumn) q = q.in(teamColumn, divisionTeamIds);
     if (teamId != null) {
       // teamId er UUID-valideret i parseTradeFeedQuery — se kommentaren dér.
       q = q.or(cfg.teamColumns.map((col) => `${col}.eq.${teamId}`).join(","));
@@ -169,6 +171,21 @@ function buildSourceQueries(supabase, sourceKey, { window, division, teamId }) {
     // med .limit() nedenfor, så PostgREST's 1.000-cap ikke kan nås.
     return q.order(cfg.dateColumn, { ascending: false, nullsFirst: false }).limit(window);
   });
+}
+
+// Hold-id'erne i én division. teams er struktureldt lille (385 rækker i prod
+// 18/9, ét hold pr. manager) — .limit() holder alligevel kaldet bevisligt
+// under PostgREST's cap i stedet for at stole på at tabellen bliver ved med
+// at være lille.
+async function loadDivisionTeamIds(supabase, division) {
+  // pagination-safe: eksplicit .limit() under 1.000-cappet, se ovenfor.
+  const { data, error } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("division", division)
+    .limit(900);
+  if (error) throw new Error(`buildGlobalTradeFeed: could not load division ${division}: ${error.message}`);
+  return (data || []).map((row) => row.id);
 }
 
 function teamRef(team) {
@@ -253,9 +270,19 @@ export async function buildGlobalTradeFeed(supabase, params) {
   const window = offset + limit + 1;
   const sourceKeys = type ? [type] : TRADE_FEED_TYPES;
 
+  let divisionTeamIds = null;
+  if (division != null) {
+    divisionTeamIds = await loadDivisionTeamIds(supabase, division);
+    // Tom division = tomt feed. Uden denne tidlige exit ville `.in(col, [])`
+    // ramme PostgREST med en tom liste, hvilket er en fejl-form, ikke "ingen".
+    if (divisionTeamIds.length === 0) {
+      return { events: [], limit, offset, has_more: false };
+    }
+  }
+
   const jobs = [];
   for (const key of sourceKeys) {
-    for (const q of buildSourceQueries(supabase, key, { window, division, teamId })) {
+    for (const q of buildSourceQueries(supabase, key, { window, teamId, divisionTeamIds })) {
       jobs.push({ key, promise: q });
     }
   }

@@ -7519,8 +7519,6 @@ router.post("/auctions/:id/finalize", requireAdmin, adminWriteLimiter, async (re
 
 // GET /api/transfers/feed — #5257: ÉN samlet, offentlig liste over alle
 // rytterskifter i spillet (auktioner, direkte handler, bytter), nyeste øverst.
-// Registreret FØR "/transfers" er ikke nødvendigt (Express matcher hele stien),
-// men den står her fordi den er det samme domæne læst på tværs af hold.
 //
 // Kun offentlige felter: hold, rytter, dato, type og beløb — nøjagtig det
 // GET /api/teams/:id/transfer-history allerede viser for et vilkårligt hold.
