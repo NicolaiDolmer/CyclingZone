@@ -91,9 +91,14 @@ test("genuine hostnames and their subdomains retain their channel", () => {
 });
 
 test("Google-soegedomaener er forankret til hele hostname, ikke en substring (#5091)", () => {
-  assert.equal(classifyChannel({ referrer: "https://www.google.co.uk/" }), "soegning (organisk)");
-  assert.equal(classifyChannel({ referrer: "https://www.google.com.au/" }), "soegning (organisk)");
-  assert.equal(classifyChannel({ referrer: "https://sub.google.com/" }), "soegning (organisk)");
+  // Repraesentativt udsnit paa tvaers af ccTLD-formerne, inkl. regionale
+  // domaener der ville vaere udeladt af en opremset liste (CodeRabbit-fund).
+  for (const domain of ["google.com", "google.co.uk", "google.com.au", "google.co.id", "google.com.ar", "google.at", "google.dk"]) {
+    assert.equal(classifyChannel({ referrer: `https://www.${domain}/` }), "soegning (organisk)");
+    assert.equal(classifyChannel({ referrer: `https://sub.${domain}/` }), "soegning (organisk)");
+    assert.equal(classifyChannel({ utm_source: domain }), "soegning (organisk)");
+  }
   assert.equal(classifyChannel({ referrer: "https://google.evil.com/" }), "google.evil.com");
   assert.equal(classifyChannel({ referrer: "https://evil-google.com/" }), "evil-google.com");
+  assert.equal(classifyChannel({ referrer: "https://google.com.evil.com/" }), "google.com.evil.com");
 });

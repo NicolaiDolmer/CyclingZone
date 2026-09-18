@@ -45,19 +45,16 @@ const AI_ASSISTANT_HOSTS = [
 const OWN_EMAIL_HOSTS = ["com.google.android.gm", "mail.google.com", "outlook.live.com", "outlook.office.com"];
 const REDDIT_HOSTS = ["reddit.com", "com.reddit.frontpage", "redd.it"];
 const DISCORD_HOSTS = ["discord.com", "discordapp.com"];
-// Google har eet soegedomaene pr. land/marked. Foer #5091 matchede scriptet
-// enhver host der indeholdt substringen "google." (fx ogsaa google.evil.com);
-// listen her holder de faktiske TLD'er domaene-forankret via hostMatches().
-const GOOGLE_SEARCH_HOSTS = [
-  "google.com", "google.co.uk", "google.de", "google.fr", "google.es", "google.it",
-  "google.nl", "google.se", "google.no", "google.dk", "google.fi", "google.pl",
-  "google.at", "google.ch", "google.be", "google.pt", "google.ie", "google.ca",
-  "google.com.au", "google.co.nz", "google.co.jp", "google.co.kr", "google.com.br",
-  "google.com.mx", "google.co.in", "google.co.za", "google.ru", "google.com.tr",
-  "google.gr", "google.cz", "google.hu", "google.ro", "google.com.tw", "google.com.hk",
-  "google.com.sg",
-];
-const SEARCH_HOSTS = ["bing.com", "duckduckgo.com", "ecosia.org", "yahoo.com", "search.brave.com", ...GOOGLE_SEARCH_HOSTS];
+// Google har eet soegedomaene pr. land/marked (~190 ccTLD-varianter, fx
+// google.co.id, google.com.ar) - en opremset liste risikerer altid at mangle
+// en (CodeRabbit-fund paa foerste udgave af denne guard). Domaene-forankret
+// via et moenster i stedet: "google." skal staa lige efter start ELLER en
+// "."-forankret label (subdomaener som sub.google.com er stadig Google), og
+// SLUTTE strengen som enten en 2-3-bogstavs-TLD eller "<2-3 bogstaver>.<2
+// bogstaver>" (google.co.uk-formen) - "$" for enden forhindrer at
+// "google.com.evil.com" eller "google.evil.com" matcher.
+const GOOGLE_SEARCH_PATTERN = /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/;
+const SEARCH_HOSTS = ["bing.com", "duckduckgo.com", "ecosia.org", "yahoo.com", "search.brave.com"];
 
 function parseArgs(argv) {
   const args = {};
@@ -160,7 +157,7 @@ export function classifyChannel(row) {
   if (REDDIT_HOSTS.some((h) => hostMatches(probe, h)) || source === "reddit") return "reddit";
   if (hostMatches(probe, "hattrick.org") || source === "hattrick") return "hattrick";
   if (DISCORD_HOSTS.some((h) => hostMatches(probe, h)) || source === "discord") return "discord";
-  if (SEARCH_HOSTS.some((h) => hostMatches(probe, h))) return "soegning (organisk)";
+  if (SEARCH_HOSTS.some((h) => hostMatches(probe, h)) || GOOGLE_SEARCH_PATTERN.test(probe)) return "soegning (organisk)";
   if (hostMatches(probe, "cyclingzone.org") || hostMatches(probe, "cycling-zone.vercel.app")) return "self-referral";
   return probe;
 }

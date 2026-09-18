@@ -680,13 +680,19 @@ jobs:
       # skal kunne rev-liste HELE PR'ens commit-range mod origin/main - en
       # standard shallow (depth 1) checkout graftede historikken og ville enten
       # skjule commits eller vise urelaterede commits som "PR'ens egne".
+      # Pinnet til fuld commit-SHA (samme v7 som marketing-lint-build/playwright-
+      # smoke.yml bruger) - .coderabbit.yaml kraever pinning af actions for
+      # .github/workflows/**. persist-credentials: false, fordi jobbet koerer
+      # `npm ci` (PR-styrede install-scripts) og ikke har noget senere Git-trin
+      # der behoever tokenet.
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: npm
