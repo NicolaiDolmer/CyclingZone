@@ -77,6 +77,22 @@ export function buildBetaDecisionNotification(approved) {
   };
 }
 
+/**
+ * Er fejlen "tabellen findes ikke endnu"? Migrationen
+ * (database/2026-09-18-5259-beta-requests.sql) applies af auto-migrate (#2642)
+ * ca. 180 sekunder EFTER deployet, og i det vindue er et kald ikke fejlet — det
+ * er for tidligt. Een definition, brugt baade af ruterne (503 + Retry-After) og
+ * af setBetaTester nedenfor, saa de to ikke kan komme til at kende hver sin
+ * version af "endnu ikke migreret".
+ */
+export function isBetaRequestsMissing(error) {
+  if (!error) return false;
+  if (error.code === "42P01" || error.code === "PGRST205") return true;
+  const msg = String(error.message || "");
+  return msg.includes("beta_requests")
+    && (msg.includes("does not exist") || msg.includes("schema cache"));
+}
+
 // ── DB-stier ────────────────────────────────────────────────────────────────
 // Alle tager en service-role-klient. Tabellen har INGEN skrive-grants til
 // authenticated (se database/2026-09-18-5259-beta-requests.sql), saa det er
@@ -196,6 +212,13 @@ export async function decideBetaRequest(supabase, { userId, approved, adminUserI
  * Raekken i beta_requests foelger med, saa fladen og spillerens egen side
  * viser det samme — men der sendes INGEN besked: ejeren har ikke svaret paa
  * noget spilleren spurgte om.
+ *
+ * `users.is_beta_tester` er sandheden; raekken er et SPEJL. Mangler tabellen
+ * endnu (deploy-vinduet foer auto-migrate), skal kontakten derfor stadig kunne
+ * saettes — spejlet springes over og rapporteres som `mirrored: false`. Det
+ * modsatte (at afvise at saette kontakten fordi et spejl ikke kan skrives)
+ * ville goere admin-fladen ubrugelig i praecis det vindue hvor ejeren ruller
+ * funktionen ud.
  */
 export async function setBetaTester(supabase, { userId, isBetaTester, adminUserId, now = new Date() }) {
   const { data, error } = await supabase
@@ -217,7 +240,62 @@ export async function setBetaTester(supabase, { userId, isBetaTester, adminUserI
       },
       { onConflict: "user_id" },
     );
-  if (reqError) throw reqError;
+  if (reqError && !isBetaRequestsMissing(reqError)) throw reqError;
 
-  return { ok: true, username: data?.username ?? null };
+  return { ok: true, username: data?.username ?? null, mirrored: !reqError };
+}
+
+/**
+ * Ejerens liste: hvem venter paa svar, og hvem er allerede med. EEN laesning
+ * pr. kilde — raekkerne og brugerne — og de sammenstilles her, saa admin-fladen
+ * ikke skal kende til at de to kilder findes.
+ *
+ * Mangler tabellen endnu, er listen tom (ikke en fejl): der KAN ikke vaere
+ * ansoegninger foer tabellen findes. Medlemmerne laeses stadig fra users.
+ */
+export async function listBetaAccess(supabase, { limit = 200 } = {}) {
+  const [{ data: requests, error: reqError }, { data: members }] = await Promise.all([
+    supabase
+      .from("beta_requests")
+      .select("user_id, status, created_at, decided_at")
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    supabase
+      .from("users")
+      .select("id, username, email")
+      .eq("is_beta_tester", true)
+      .order("username"),
+  ]);
+  if (reqError && !isBetaRequestsMissing(reqError)) throw reqError;
+
+  const rows = requests ?? [];
+  const memberIds = new Set((members ?? []).map((m) => m.id));
+  const pendingIds = rows
+    .filter((r) => r.status === BETA_REQUEST_STATUS.PENDING)
+    .map((r) => r.user_id);
+
+  let pendingUsers = [];
+  if (pendingIds.length > 0) {
+    const { data } = await supabase
+      .from("users").select("id, username, email").in("id", pendingIds);
+    pendingUsers = data ?? [];
+  }
+  const userById = new Map(
+    [...(members ?? []), ...pendingUsers].map((u) => [u.id, u]),
+  );
+
+  return {
+    table_ready: !reqError,
+    members: (members ?? []).map((m) => ({
+      user_id: m.id, username: m.username, email: m.email,
+    })),
+    pending: rows
+      .filter((r) => r.status === BETA_REQUEST_STATUS.PENDING && !memberIds.has(r.user_id))
+      .map((r) => ({
+        user_id: r.user_id,
+        username: userById.get(r.user_id)?.username ?? null,
+        email: userById.get(r.user_id)?.email ?? null,
+        requested_at: r.created_at,
+      })),
+  };
 }

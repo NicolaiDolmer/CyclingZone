@@ -224,8 +224,8 @@ import {
   STAGE_FLAGS, findStageFlag, isValidFlagStage, isUnknownStageValue, normalizeStageValue,
 } from "../lib/stageFlagCatalog.js";
 import {
-  BETA_REQUEST_STATUS, decideBetaRequest, readBetaAccess, requestBetaAccess, setBetaTester,
-  withdrawBetaAccess,
+  BETA_REQUEST_STATUS, decideBetaRequest, isBetaRequestsMissing, listBetaAccess, readBetaAccess,
+  requestBetaAccess, setBetaTester, withdrawBetaAccess,
 } from "../lib/betaAccess.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
@@ -9636,22 +9636,16 @@ router.patch("/me/selection-reminder-settings", requireAuth, marketWriteLimiter,
 // derfor ikke give sig selv adgang ved at lyve om sin tilstand — den kan kun
 // bede om den.
 //
-// betaMigrationPending: tabellen kommer med
+// isBetaRequestsMissing (lib/betaAccess.js): tabellen kommer med
 // database/2026-09-18-5259-beta-requests.sql, som auto-migrate (#2642) applier
 // ca. 180 sekunder EFTER deployet. I det vindue er kaldet ikke fejlet, det er
 // for tidligt — samme 503 + Retry-After-recipe som selection-reminder ovenfor.
-function isBetaMigrationPending(error) {
-  const msg = String(error?.message || "");
-  return msg.includes("beta_requests") && (
-    msg.includes("does not exist") || msg.includes("schema cache") || error?.code === "42P01"
-  );
-}
 
 router.get("/me/beta-access", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     res.json(await readBetaAccess(supabase, req.user.id));
   } catch (e) {
-    if (isBetaMigrationPending(e)) {
+    if (isBetaRequestsMissing(e)) {
       // Tabellen mangler endnu: kontakten findes ikke for spilleren, men
       // is_beta_tester er en aegte kolonne og skal stadig kunne laeses.
       const { data: u } = await supabase
@@ -9683,7 +9677,7 @@ router.post("/me/beta-access/request", requireAuth, marketWriteLimiter, async (r
     }
     res.json({ ok: true, ...result.access });
   } catch (e) {
-    if (isBetaMigrationPending(e)) {
+    if (isBetaRequestsMissing(e)) {
       res.set("Retry-After", "60");
       return res.status(503).json({ error: "Beta sign-up is not available yet. Try again shortly" });
     }
@@ -9704,7 +9698,7 @@ router.post("/me/beta-access/withdraw", requireAuth, marketWriteLimiter, async (
     }
     res.json({ ok: true, ...result.access });
   } catch (e) {
-    if (isBetaMigrationPending(e)) {
+    if (isBetaRequestsMissing(e)) {
       res.set("Retry-After", "60");
       return res.status(503).json({ error: "Beta sign-up is not available yet. Try again shortly" });
     }
@@ -14340,6 +14334,180 @@ router.patch("/admin/users/:userId/role", requireAdmin, adminWriteLimiter, async
     });
 
     res.json({ success: true });
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
+// ── #5259 · Beta-adgang, ejerens side ────────────────────────────────────────
+//
+// Fire ruter. INGEN af dem aendrer hvordan et flag i stadie `beta` evalueres —
+// gaten er stadig isViewerBetaTester + evaluateFlagStage, server-side. Her
+// saettes kun HVEM der er beta-tester og HVILKET stadie et flag staar i.
+
+// GET /api/admin/beta-access — hvem venter paa svar, og hvem er med
+router.get("/admin/beta-access", requireAdmin, async (req, res) => {
+  try {
+    res.json(await listBetaAccess(supabase));
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/users/:userId/beta — kontakten pr. bruger (uden om ansoegningen)
+router.patch("/admin/users/:userId/beta", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { is_beta_tester: isBetaTester } = req.body;
+    // Fejl-strengene i de fire #5259-admin-ruter er EN + errorCode (#1053), ikke
+    // dansk som de aeldre admin-ruter: i18n-ratchet'en (#1068) maa ikke vokse i
+    // api.js, som ogsaa betjener spillere. Admin-fladen oversaetter koderne
+    // lokalt (frontend/src/pages/admin er EXEMPT_DIRS og er dansk).
+    if (typeof isBetaTester !== "boolean") {
+      return res.status(400).json({
+        error: "is_beta_tester must be true or false", errorCode: "beta_invalid_payload",
+      });
+    }
+
+    const result = await setBetaTester(supabase, {
+      userId, isBetaTester, adminUserId: req.user.id,
+    });
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.BETA_TESTER_CHANGED,
+      description: `Beta-tester ${isBetaTester ? "sat" : "fjernet"} for ${result.username ?? userId}`,
+      meta: { user_id: userId, is_beta_tester: isBetaTester, source: "admin_toggle" },
+    });
+
+    res.json({ success: true, is_beta_tester: isBetaTester, username: result.username });
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/beta-requests/:userId/decide — svar paa en ansoegning
+// (saetter kontakten OG lægger een besked i spillerens indbakke)
+router.post("/admin/beta-requests/:userId/decide", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { approved } = req.body;
+    if (typeof approved !== "boolean") {
+      return res.status(400).json({
+        error: "approved must be true or false", errorCode: "beta_invalid_payload",
+      });
+    }
+
+    const result = await decideBetaRequest(supabase, {
+      userId, approved, adminUserId: req.user.id,
+    });
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.BETA_TESTER_CHANGED,
+      description: `Beta-ansøgning ${approved ? "godkendt" : "afvist"} for bruger ${userId}`,
+      meta: {
+        user_id: userId,
+        is_beta_tester: approved,
+        source: "beta_request",
+        status: approved ? BETA_REQUEST_STATUS.APPROVED : BETA_REQUEST_STATUS.REJECTED,
+        notified: result.notified,
+      },
+    });
+
+    res.json({ success: true, notified: result.notified, access: result.access });
+  } catch (e) {
+    if (isBetaRequestsMissing(e)) {
+      res.set("Retry-After", "60");
+      return res.status(503).json({
+        error: "The beta table is not migrated yet. Try again shortly",
+        errorCode: "beta_migration_pending",
+      });
+    }
+    captureApiRouteError(e, req); res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/feature-flags — stadie-tavlen (kun flag der gaar gennem
+// evaluateFlagStage; se lib/stageFlagCatalog.js for hvorfor det ikke er
+// "alt i app_config")
+router.get("/admin/feature-flags", requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("app_config")
+      .select("key, value, updated_at")
+      .in("key", STAGE_FLAGS.map((f) => f.key));
+    if (error) throw error;
+
+    const byKey = new Map((data ?? []).map((row) => [row.key, row]));
+    res.json({
+      flags: STAGE_FLAGS.map((flag) => {
+        const row = byKey.get(flag.key);
+        const raw = row ? row.value : null;
+        return {
+          ...flag,
+          // Raekken findes ikke = "off", praecis som evaluateFlagStage laeser
+          // den. Tavlen maa aldrig vise noget andet end det spilleren faar.
+          stage: normalizeStageValue(raw),
+          raw_value: raw,
+          // Boolean-flag er on/off i det gamle skema: tavlen viser dem, men
+          // uden "beta" som valg — accept-kriteriet i #5259.
+          boolean_only: typeof raw === "boolean",
+          configured: Boolean(row),
+          unknown_value: isUnknownStageValue(raw),
+          updated_at: row?.updated_at ?? null,
+        };
+      }),
+    });
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/feature-flags/:key — flyt eet flag mellem off/beta/on
+router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { stage } = req.body;
+
+    const flag = findStageFlag(key);
+    // Hvid liste, ikke sortliste: en fritekst-noegle her ville kunne skrive
+    // "beta" i fx email_loop_mode, hvis ordforraad er off|dry_run|on — og det
+    // moduls fail-safe ville laese det som "off". Tavlen skriver kun i de
+    // noegler der faktisk forstaar tre-stadie-modellen.
+    if (!flag) {
+      return res.status(400).json({
+        error: `Unknown stage flag: ${key}`, errorCode: "flag_unknown",
+      });
+    }
+    if (!isValidFlagStage(stage)) {
+      return res.status(400).json({
+        error: "stage must be off, beta or on", errorCode: "flag_invalid_stage",
+      });
+    }
+
+    const previousRaw = await readFlagStage(supabase, key);
+    if (typeof previousRaw === "boolean" && stage === "beta") {
+      // Boolean-flag (gammelt skema) har aldrig haft et beta-stadie. At skrive
+      // "beta" ville virke — men fladen viser dem read-only som on/off, og en
+      // skjult vej dertil ville goere tavlen og virkeligheden uenige.
+      return res.status(409).json({
+        error: "This flag is a boolean flag (on/off) and has no beta stage",
+        errorCode: "flag_boolean_only",
+      });
+    }
+
+    const { error } = await supabase.from("app_config").upsert(
+      {
+        key,
+        value: stage,
+        description: `#5259: stadie-flag (off|beta|on) styret fra Admin > System. Område: ${flag.area}.`,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" },
+    );
+    if (error) throw error;
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.FEATURE_FLAG_CHANGED,
+      description: `Flag ${key} (${flag.label}) → ${stage}`,
+      meta: { key, stage, previous: normalizeStageValue(previousRaw), area: flag.area },
+    });
+
+    res.json({ success: true, key, stage });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
