@@ -59,8 +59,21 @@ jobs:
       run:
         working-directory: frontend
     steps:
+      # fetch-depth: 0 (fuld historik) - PR #5381 review-fund paa #5093:
+      # standard checkout@v7-adfaerd (depth 1) tjekker KUN den ene HEAD-commit
+      # ud uden foraeldre-kaeden, saa now-md-sidecar-guardens tre-punktums-diff
+      # (git diff origin/main...HEAD, se scripts/check-now-md-sidecar.mjs) ikke
+      # kan finde en faelles merge-base med origin/main - selv efter denne fetches
+      # separat nedenfor. Guarden fejler derfor LUKKET (bevidst, jf. dens egne
+      # kommentarer) for ENHVER PR, uanset om docs/NOW.md er roert, fordi
+      # frontend-build er et required check. Samme shallow-graf gjorde
+      # PatchNotes-guardens egen tre-punktums-diff (check-patch-notes-version.js)
+      # utilstraekkelig i forvejen - den fejler bare AABENT (tom diff) i stedet
+      # for lukket, saa den har aldrig vist sig som en rod CI-fejl. Refs #5093.
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -69,10 +82,18 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Fetch main for PatchNotes guard
+      # Fælles for PatchNotes- og now-md-sidecar-guarden: begge regner en
+      # tre-punktums-diff (`origin/main...HEAD`), som kræver en reel
+      # merge-base, ikke bare at "origin/main" opløser sig til en SHA.
+      # `--depth=1` her gav "origin/main" en enkelt-commit-graf uden
+      # forældre-kæde, saa git ALDRIG kunne finde en fælles historik med den
+      # (nu fuldt hentede, jf. checkout-trinnets fetch-depth: 0) HEAD -
+      # bekræftet lokalt: samme `--depth=1`-fetch reproducerer PR #5381's
+      # eksakte "no merge base"-fejl, en fuld fetch her retter den. Refs #5093.
+      - name: Fetch main for merge-base guards (PatchNotes, now-md-sidecar)
         if: github.event_name == 'pull_request'
         working-directory: .
-        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+        run: git fetch --no-tags origin main:refs/remotes/origin/main
 
       - name: Test PatchNotes version guard
         working-directory: .
@@ -97,6 +118,28 @@ jobs:
       - name: Run event-catalog guard
         working-directory: .
         run: node scripts/check-event-catalog.mjs
+
+      # #5093 (ejer-valg 18/9: A): docs/NOW.md er den eneste kilde til "aktivt
+      # issue" + "Working agent"-claim (CLAUDE.md-Start-rutinen). En PR der
+      # roerer den skal fejle, medmindre PR-titlen er en close-out
+      # (docs(now)/docs(close-out)). Hoerer HER, ikke i et advisory-job, af
+      # samme grund som event-katalog-guarden ovenfor: frontend-build ER et
+      # required check (#4330-begrundelsen) - et ikke-required job gaar roedt
+      # og merger alligevel. PR_TITLE laeses fra selve GitHub-eventet, ikke fra
+      # commit-beskeder - afloeser en tidligere, commit-praefiks-baseret
+      # variant der blev reverteret i PR #5364, fordi ejer-valget dengang
+      # manglede. Guarden koerer kun paa pull_request (direkte close-out-
+      # commits paa main er upaavirkede).
+      - name: Test now-md-sidecar guard
+        working-directory: .
+        run: node --test scripts/check-now-md-sidecar.test.mjs
+
+      - name: Run now-md-sidecar guard
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/check-now-md-sidecar.mjs
 
       - name: Install frontend dependencies
         run: npm ci
