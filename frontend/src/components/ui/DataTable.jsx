@@ -664,13 +664,27 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
       </span>
       {(sub != null || folded.length > 0) && (
         <span
-          className={`mt-0.5 block font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${wrap ? "min-w-0 break-words [&_*]:whitespace-normal" : "whitespace-nowrap"} ${indent}`}
+          className={`mt-0.5 block font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${wrap ? "min-w-0" : "whitespace-nowrap"} ${indent}`}
         >
+          {/* #5383: den foldede meta-linje er den laengste tekst i cellen
+              ("BJERGRYTTER/ETAPELOEBSRYTTER" er EET ord paa 27 tegn) og stak
+              indtil 19/9 op til 84 px ud over sin egen <td> paa 412 px. Den maa
+              hverken braekkes midt i ordet (grimt, og praecis det TrainingPage
+              allerede har skrevet ned som forkert) eller saette kolonnens
+              min-bredde. Paa mobil faar den derfor sin EGEN linje med ellipsis
+              og hele teksten i `title` — D-047's "resten er et tryk vaek",
+              anvendt paa cellens egen underlinje. */}
           {folded.length > 0 && (
-            <span className="sm:hidden">
-              {folded.join(" · ")}
-              {sub != null && " · "}
-            </span>
+            wrap ? (
+              <span className="block truncate sm:hidden" title={folded.join(" · ")}>
+                {folded.join(" · ")}
+              </span>
+            ) : (
+              <span className="sm:hidden">
+                {folded.join(" · ")}
+                {sub != null && " · "}
+              </span>
+            )
           )}
           {sub}
         </span>
