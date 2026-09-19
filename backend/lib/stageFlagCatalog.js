@@ -57,6 +57,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_engine_v4", area: "race-engine", label: "Løbsmotor v4" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
+  { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
   { key: "stage_scheduler_enabled", area: "race-engine", label: "Etape-skemalægger" },
   { key: "auto_calendar_enabled", area: "season", label: "Auto-kalender" },
   { key: "auto_entry_generator_enabled", area: "season", label: "Auto-tilmelding af felter" },

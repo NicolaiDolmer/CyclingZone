@@ -272,6 +272,14 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
   // tabellen forbliver tom efter foerste loebsdags-tick, er det en aegte bug og
   // Detector A flager som normalt. Fundet 15/9: auditen var roed paa ALLE PR'er.
   ["rider_ability_race_day_history", { flagKey: "training_tick_per_race_day", offValues: ["false", "0"] }],
+  // Udgaaende notify-koe (#3624, migration 2026-09-18-3624-race-notify-outbox.sql):
+  // koen skrives KUN naar race_notify_outbox_enabled er on. Flaget seedes som
+  // "off" af migrationen, saa tom tabel er den forventede tilstand indtil ejeren
+  // flipper. Taendes flaget og tabellen forbliver tom efter foerste
+  // loebs-afslutning, er det en aegte bug (afviklingen afleverer ikke) og
+  // Detector A flager som normalt. Uden denne entry ville auditen vaere roed paa
+  // alle PR'er fra det oejeblik migrationen koerer — samme faelde som #4846.
+  ["race_notify_outbox", { flagKey: "race_notify_outbox_enabled" }],
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)

@@ -139,6 +139,11 @@ export const ALL_CRON_MONITORS = [
   ["discord-role-sync", CRON_MONITOR_24H],
   ["discord-dm-outbox-drain", CRON_MONITOR_5MIN],
   ["discord-webhook-outbox-drain", CRON_MONITOR_5MIN],
+  // #3624 — afsenderen af den udgående notify-kø. Tikker hvert minut: hele
+  // pointen er at resultat-beskeden kommer hurtigt EFTER siden i stedet for at
+  // holde etape-køen tilbage FØR den. Et dødt tick betyder tavse resultat-
+  // kanaler mens spillet i øvrigt ser sundt ud — derfor monitoreret.
+  ["race-notify-outbox-drain", CRON_MONITOR_1MIN],
   ["training-sweep", CRON_MONITOR_5MIN],
   ["ai-recovery-sweep", CRON_MONITOR_5MIN],
   ["graduation-sweep", CRON_MONITOR_5MIN],

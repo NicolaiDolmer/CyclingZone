@@ -1,0 +1,67 @@
+name: Stale branches report
+
+# Ugentlig forward-guard mod branch-kaos (#5391, ejer 18/9: "Der skal til at
+# vaere styr paa vores kaos med enorme maengder af worktrees og branches").
+# Opretter/ajourfoerer ÉT stabilt issue (label `stale-branches-report`, se
+# scripts/stale-branches-report.mjs) med remote branches der er 14+ dage
+# gamle UDEN en aaben PR. INGEN sletning - hverken af branches eller issues.
+#
+# Read-only over for git/branches: scriptet laeser kun `git for-each-ref` +
+# `gh pr list`. Den eneste skrivning er selve issue-oprettelsen/-redigeringen
+# (samme minimale-privilegie-moenster som weekly-steering-report.yml/
+# perf-seo-review.yml).
+#
+# Refs #5391, #4924.
+
+on:
+  schedule:
+    - cron: '0 8 * * 1' # Mandag 08:00 UTC (~10:00 CPH sommertid)
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Graense i dage for "foraeldreloes" (default 14)'
+        type: number
+        default: 14
+
+concurrency:
+  group: stale-branches-report
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # for-each-ref + merge-base/rev-list kraever fuld historik, ikke en shallow clone
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+
+      - name: Kør stale-branches-report.mjs (opretter/ajourfoerer issuet)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Dispatch-inputtet gaar via env, ALDRIG direkte interpoleret i
+          # `run:`-scriptet (CodeRabbit-review, #5391): en `${{ ... }}`
+          # udvidet direkte ind i shell-kilden ekspanderer FOER bash
+          # parser linjen, saa en ondsindet dispatch-vaerdi kunne bryde ud
+          # af DAYS="..."-tildelingen og koere vilkaarlige kommandoer med
+          # jobbets GH_TOKEN. Env-variabler er ikke underlagt shell-parsing
+          # paa samme maade.
+          DAYS: ${{ github.event.inputs.days || '14' }}
+        run: |
+          set -euo pipefail
+          node scripts/stale-branches-report.mjs --repo "${{ github.repository }}" --days "$DAYS" | tee stale-branches-report-log.txt
+
+      - name: Skriv job-summary
+        if: always()
+        run: cat stale-branches-report-log.txt >> "$GITHUB_STEP_SUMMARY"
