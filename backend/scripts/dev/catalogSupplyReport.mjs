@@ -6,10 +6,9 @@
 // hvad er det tilladte område, hvad kan divisionen bedst opnå, hvad er dommen, og hvilke
 // løbstyper mangler der.
 //
-// **100 % READ-ONLY.** Scriptet laver ét SELECT mod `race_pool` og `league_divisions` og
-// skriver ikke en byte nogen steder — ingen `--apply`, ingen migration, ingen mutation af
-// kataloget, ingen ændring af udvælgeren. Det kan køres uden prod-credentials mod den
-// committede fixture.
+// **100 % READ-ONLY.** Scriptet laver udelukkende SELECT mod `race_pool` og skriver ikke en
+// byte nogen steder — ingen `--apply`, ingen migration, ingen mutation af kataloget, ingen
+// ændring af udvælgeren. Det kan køres uden prod-credentials mod den committede fixture.
 //
 // BRUG
 //   # mod den committede fixture (ingen credentials, ingen netværk)
@@ -64,18 +63,36 @@ async function loadCatalog() {
     throw new Error("Mangler SUPABASE-secrets. Kør via: infisical run --env=prod -- node backend/scripts/dev/catalogSupplyReport.mjs --prod");
   }
   const { createClient } = await import("@supabase/supabase-js");
-  const { selectSeniorRacePool } = await import("../../lib/racePoolCatalog.js");
+  const { fetchAllRows } = await import("../../lib/supabasePagination.js");
+  const {
+    withSeniorSquadColumns, applySeniorSquadFilter, filterSeniorSquadRows, isMissingSquadColumnError,
+  } = await import("../../lib/racePoolCatalog.js");
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  // Samme forespørgsel-form som dumpRacePoolFixture.mjs. `selectSeniorRacePool` (#5330) er
-  // IKKE valgfri: uden den tælles U23-/junior-rækker med i forsyningen, og senior-
-  // kalenderen ville blive dømt på løb den aldrig kan vælge — præcis det fund CodeRabbit
-  // gjorde i PR #5412's harness.
-  const { data, error } = await selectSeniorRacePool(
-    (columns) => sb.from("race_pool").select(columns).is("retired_at", null).order("id", { ascending: true }),
-    { columns: "id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text" },
-  );
-  if (error) throw new Error(`race_pool: ${error.message}`);
-  return { catalog: data ?? [], source: `prod (read-only, ${data?.length ?? 0} senior-løb)` };
+
+  const COLUMNS = "id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text";
+  // PAGINERET. Et bart `.select()` returnerer maks 1.000 rækker UDEN en fejl (se
+  // lib/supabasePagination.js), og et afkortet katalog ville få kontrollen til at melde
+  // mangel der ikke findes — eller, værre, at melde grønt på en forsyning den ikke har set.
+  // Kataloget er under 1.000 løb i dag; det er præcis derfor guarden skal ligge her nu.
+  const fetchPages = (columns, withSeniorFilter) => fetchAllRows(() => {
+    const query = sb.from("race_pool").select(columns).is("retired_at", null).order("id", { ascending: true });
+    return withSeniorFilter ? applySeniorSquadFilter(query) : query;
+  });
+
+  // Senior-kontrakten (#5330) er IKKE valgfri: uden den tælles U23-/junior-rækker med i
+  // forsyningen, og seniorkalenderen ville blive dømt på løb den aldrig kan vælge — præcis
+  // det fund CodeRabbit gjorde i PR #5412's harness. Samme to-trins-form som
+  // `selectSeniorRacePool`: mangler `squad`-kolonnen helt, kan #5262's migration ikke være
+  // kørt, og så er hele kataloget per definition senior. Alt andet bobler op.
+  let rows;
+  try {
+    rows = await fetchPages(withSeniorSquadColumns(COLUMNS), true);
+  } catch (err) {
+    if (!isMissingSquadColumnError(err)) throw err;
+    rows = await fetchPages(COLUMNS, false);
+  }
+  const catalog = filterSeniorSquadRows(rows);
+  return { catalog, source: `prod (read-only, ${catalog.length} senior-løb)` };
 }
 
 const pad = (v, n) => String(v).padEnd(n);
@@ -104,8 +121,17 @@ function printSources(row) {
 }
 
 async function main() {
+  // Valideres FØR kataloget hentes: `valueOf` returnerer bare det næste argument, så
+  // `--race-days --json` eller en tastefejl ville give NaN. quotasForRaceDays mapper NaN til
+  // 0 løbsdage, og en rapport mod en kvote på nul er ikke bare forkert — den er misvisende,
+  // fordi den ligner en kørsel der har kontrolleret noget.
+  const rawRaceDays = valueOf("--race-days", String(SUPPLY_DEFAULT_RACE_DAYS));
+  const raceDays = Number(rawRaceDays);
+  if (!Number.isInteger(raceDays) || raceDays <= 0) {
+    throw new Error(`--race-days skal være et positivt heltal (fik "${rawRaceDays}")`);
+  }
+
   const { catalog, source } = await loadCatalog();
-  const raceDays = Number(valueOf("--race-days", SUPPLY_DEFAULT_RACE_DAYS));
   const result = checkCatalogSupply({ catalog, raceDays });
 
   if (has("--json")) {
