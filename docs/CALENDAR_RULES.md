@@ -169,6 +169,21 @@ Da målet var en søgebinding, var der også et loft for hvor mange tomme løbsd
 
 > **Åben ejer-beslutning:** D3's 23 datoer i træk uden en træningsdag er en spilfølelse, ikke en teknisk detalje. Årsagen er at etapeløbene ligger i en KÆDE (løb A's sidste etape og løb B's første deler løbsdag), så der er kun 5 positioner i hele D3's sæson hvor intet løb er i gang. Kæden kan brydes ved at synkronisere samtidige etapeløb — men det er **målt strukturelt umuligt** i D1, D3 og D4 og brækker mindste-overlap-gulvet. Se `docs/audits/2026-09-19-5267-proevepakning.md` §3.
 
+#### 1e-b. Måde B: 5 løbsdage på HVER kalenderdato (`trainingDayPlacement: "even"`) — BYGGET, IKKE VALGT
+
+**Status: afventer ejer-godkendelse af ordlyden nedenfor.** Koden findes bag en tilstand; `"holes"` (måde A, beskrevet ovenfor) er stadig default, og intet i produktionsstien sætter `"even"`. Måling + hele prøvekalenderen: [`docs/audits/2026-09-19-5267-proevepakning-jaevn.md`](audits/2026-09-19-5267-proevepakning-jaevn.md).
+
+**Hvad den gør:** efter den naturlige pakning fyldes HVER kalenderdato op til `mål / løbsdatoer` løbsdage (140/28 = 5). Målt 19/9: alle fire divisioner rammer 5–5 med **uændrede** løb, etaper pr. dato og overlap, og alle gates er lige så grønne som under måde A. Længste stime uden en træningsdag falder fra 16/11/23/11 til **1/0/0/0** datoer.
+
+**Prisen er to sætninger der får en ny betydning — kun under `"even"`:**
+
+| Regel | Ordlyd i dag (måde A, gælder uændret) | Ordlyd under måde B |
+|---|---|---|
+| Ejer-reglen 25/8, løbsdage i træk | *"Hvis et løb har fire etaper, skal løbsdagene ligge i træk … Løbsdag 4-5-6-7."* | Et løbs etaper ligger i træk blandt de løbsdage der **bærer et løb**. En tom løbsdag bryder ikke rækken — der kommer ingen anden løbsdag med løb imellem. |
+| Tom løbsdag og løbsforløb | En tom løbsdag må kun ligge dér hvor **intet løb er i gang**. | En tom løbsdag må ligge **inde i** et etapeløbs forløb. Den er ikke en hviledag i løbet; det er en dag hvor **de ryttere der kører løbet er bundet og hviler, mens alle andre træner**. |
+
+Bindingen bærer allerede den nye ordlyd: `race_entry_days_rebuild()` binder rytteren på HELE forløbet fra første til sidste etape (#4173 → #4217 → ejer-beslutning 3/9 i #4209), så en indsat tom løbsdag inde i forløbet får sin bindingsrække automatisk. **Træningens side er derimod ikke klar:** ticket er pr. hold uden et rytter-filter, og en løbsdag uden løb er usynlig for opslaget indtil fase B4. Under måde A er det uden betydning (0 træningsdage inde i et forløb); under måde B ligger 79–91 % af dem inde i et forløb. Se rapportens §5.
+
 ---
 
 ## 2. Sæsonens rammer
