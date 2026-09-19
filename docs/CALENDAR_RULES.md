@@ -199,7 +199,10 @@ node scripts/dev/calendarGoldenDiff.mjs
 # 1) tørkørsel - skriver ALDRIG, uanset flag
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
 
-# 2) samme, med §6b's pr.-division-tilt slået til (#4103)
+# 2) KUN til sammenligning: samme med §6b's pr.-division-tilt slået til (#4103).
+#    S4 bygges UDEN --uniform-tilt (ejer-beslutning 3/9, se §6b-noten længere nede):
+#    tilten gør S4-planen målt dårligere og giver et falsk blokerende fund i D2
+#    (bidt 19/9, #5405). Brug aldrig denne linje som grundlag for et ejer-kort.
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --uniform-tilt
 
 # 3) skrivning - kun efter ejer-go, og kun med en EKSPLICIT længde
