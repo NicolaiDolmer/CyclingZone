@@ -60,10 +60,14 @@ export const CONTRAST_MIN = 3;
  * Kernen. Koeres i browseren via `page.evaluate`, saa den maa vaere helt
  * selvstaendig: ingen imports, ingen closure over Node-scope.
  *
- * @param {{ contrastMin: number, rules: Record<string, string> }} options
+ * `root` afgraenser hvad der maales. Sidernes egen flade er `main`; app-skallen
+ * (sidebar, topbar, bundnavigation) maales for sig med `root: "body"` og
+ * `excludeRoot: "main"`, saa de samme skal-fund ikke gentages paa 16 sider.
+ *
+ * @param {{ contrastMin: number, rules: Record<string, string>, root: string, excludeRoot: string|null }} options
  * @returns {Array<{rule: string, selector: string, text: string, detail: string, px: number}>}
  */
-export function scanDocumentForTextDefects({ contrastMin, rules }) {
+export function scanDocumentForTextDefects({ contrastMin, rules, root, excludeRoot }) {
   const SKIP_TAGS = new Set([
     "SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "HEAD", "TITLE", "META", "LINK",
     "SVG", "PATH", "G", "CIRCLE", "RECT", "LINE", "POLYLINE", "POLYGON", "TEXT",
@@ -184,13 +188,71 @@ export function scanDocumentForTextDefects({ contrastMin, rules }) {
     return null;
   }
 
-  const isIntentionalTruncation = (el, style) => {
-    if (el.hasAttribute("data-allow-clip")) return true;
-    const hasLabel = Boolean(el.getAttribute("title") || el.getAttribute("aria-label"));
-    if (!hasLabel) return false;
+  /**
+   * `.sr-only` og slaegtninge: tekst der KUN er til skaermlaesere. Den er
+   * klippet til 1x1 px med vilje, og at doemme den ville vaere at doemme
+   * tilgaengelighed som en fejl.
+   */
+  function isScreenReaderOnly(el, style) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 2 && rect.height <= 2 && style.position === "absolute") return true;
+    if (style.clipPath && style.clipPath !== "none" && style.clipPath.includes("inset(50%)")) return true;
+    if (style.clip && style.clip !== "auto") return true;
+    return el.closest(".sr-only, [class*='screen-reader'], [class*='visually-hidden']") !== null;
+  }
+
+  /**
+   * Er afkortningen tilsigtet OG stadig laesbar et andet sted?
+   *
+   * Kravet er ikke bare "der er en title" — den skal indeholde den tekst der
+   * blev klippet. Kalender-chippen er mønstret: navnet truncates haardt i den
+   * smalle celle, men hele navnet staar i linkets `title`/`aria-label`, saa
+   * spilleren kan faa det. En `title` der siger noget ANDET end den klippede
+   * tekst hjaelper ingen og taeller ikke.
+   *
+   * Etiketten maa sidde paa elementet selv eller paa en naer forfader (typisk
+   * det <a>/<button> cellen ligger i) — derfor de fire niveauer.
+   */
+  function isIntentionalTruncation(el, style, text) {
+    if (el.closest("[data-allow-clip]")) return true;
     const clamped = style.webkitLineClamp && style.webkitLineClamp !== "none";
-    return style.textOverflow === "ellipsis" || Boolean(clamped);
-  };
+    if (style.textOverflow !== "ellipsis" && !clamped) return false;
+    const needle = text.toLowerCase();
+    let node = el;
+    for (let level = 0; node && level < 4; level += 1) {
+      const label = `${node.getAttribute?.("title") || ""} ${node.getAttribute?.("aria-label") || ""}`
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+      if (label && label.includes(needle)) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  /**
+   * Er elementet i praksis klippet HELT vaek af en forfader med skjult overflow?
+   *
+   * En lukket harmonika ("Flere filtre") holder sine felter i DOM'en med en
+   * hoejde paa 0 og `overflow: hidden`. De har stadig en kasse og en farve, saa
+   * uden dette ville hvert eneste skjult felt blive maalt — og hit-testen ville
+   * melde dem "daekket", fordi det der faktisk males dér er noget helt andet.
+   */
+  function isClippedAway(el, rect) {
+    let node = el.parentElement;
+    while (node && node !== document.documentElement) {
+      const style = getComputedStyle(node);
+      const clipsX = ["hidden", "clip", "auto", "scroll"].includes(style.overflowX);
+      const clipsY = ["hidden", "clip", "auto", "scroll"].includes(style.overflowY);
+      if (clipsX || clipsY) {
+        const box = node.getBoundingClientRect();
+        if (clipsY && (rect.bottom <= box.top + 1 || rect.top >= box.bottom - 1)) return true;
+        if (clipsX && (rect.right <= box.left + 1 || rect.left >= box.right - 1)) return true;
+      }
+      node = node.parentElement;
+    }
+    return false;
+  }
 
   // Raa i18n-noegler. Tre former, alle uden mellemrum:
   //   ns:key.path   ·   a.b.c (3+ led)   ·   a.camelCase (2 led, camelCase)
@@ -210,19 +272,24 @@ export function scanDocumentForTextDefects({ contrastMin, rules }) {
 
   // ── Pas 1: geometri, farve og noegler ────────────────────────────────────
   const textLeaves = [];
-  for (const el of document.querySelectorAll("body *")) {
+  const rootNode = document.querySelector(root);
+  if (!rootNode) return [{ rule: rules.UNREADABLE, selector: root, text: "", detail: `maaleren fandt ikke "${root}" paa siden`, px: 0 }];
+  for (const el of rootNode.querySelectorAll("*")) {
     if (SKIP_TAGS.has(el.tagName)) continue;
     if (el.closest("svg")) continue;
+    if (excludeRoot && el.closest(excludeRoot)) continue;
     const style = getComputedStyle(el);
     if (style.display === "none" || style.visibility === "hidden") continue;
     if (parseFloat(style.opacity) === 0) continue;
     if (isHiddenBranch(el)) continue;
+    if (isScreenReaderOnly(el, style)) continue;
 
     const text = ownText(el);
     if (!text) continue;
 
     const rect = el.getBoundingClientRect();
     if (rect.height === 0) continue;
+    if (isClippedAway(el, rect)) continue;
 
     textLeaves.push({ el, style, text, rect });
 
@@ -240,13 +307,17 @@ export function scanDocumentForTextDefects({ contrastMin, rules }) {
     const fg = parseColor(style.color);
     const bg = effectiveBackground(el);
     if (fg && bg) {
-      const ratio = contrast(over(fg, bg), bg);
+      const blended = over(fg, bg);
+      const ratio = contrast(blended, bg);
       if (ratio < contrastMin) {
+        const hex = ({ r, g, b }) =>
+          `#${[r, g, b].map((c) => Math.round(c).toString(16).padStart(2, "0")).join("")}`;
         add(
           rules.UNREADABLE,
           el,
           text,
-          `kontrast ${ratio.toFixed(2)}:1 mod egen baggrund (gulv ${contrastMin}:1)`,
+          `kontrast ${ratio.toFixed(2)}:1 mod egen baggrund (gulv ${contrastMin}:1) — ` +
+            `tekst ${hex(blended)} paa ${hex(bg)}, ${Math.round(parseFloat(style.fontSize))} px`,
           0,
         );
       }
@@ -255,7 +326,7 @@ export function scanDocumentForTextDefects({ contrastMin, rules }) {
     // (a) klippet tekst
     const clippedX = ["hidden", "clip"].includes(style.overflowX) && el.scrollWidth > el.clientWidth + 1;
     const clippedY = ["hidden", "clip"].includes(style.overflowY) && el.scrollHeight > el.clientHeight + 1;
-    if ((clippedX || clippedY) && !isIntentionalTruncation(el, style)) {
+    if ((clippedX || clippedY) && !isIntentionalTruncation(el, style, text)) {
       const px = clippedX ? el.scrollWidth - el.clientWidth : el.scrollHeight - el.clientHeight;
       add(
         rules.CLIPPED,
@@ -344,10 +415,16 @@ export function scanDocumentForTextDefects({ contrastMin, rules }) {
  * Koer maaleren paa den aabne side.
  *
  * @param {import("@playwright/test").Page} page
+ * @param {{ root?: string, excludeRoot?: string|null }} [scope]
  * @returns {Promise<Array<{rule: string, selector: string, text: string, detail: string, px: number}>>}
  */
-export async function scanPageForTextDefects(page) {
-  return page.evaluate(scanDocumentForTextDefects, { contrastMin: CONTRAST_MIN, rules: RULES });
+export async function scanPageForTextDefects(page, { root = "main", excludeRoot = null } = {}) {
+  return page.evaluate(scanDocumentForTextDefects, {
+    contrastMin: CONTRAST_MIN,
+    rules: RULES,
+    root,
+    excludeRoot,
+  });
 }
 
 /** Een linje pr. fund, laesbar uden at aabne browseren. */

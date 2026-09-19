@@ -648,7 +648,15 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
   // give plads — tabellen bliver bredere end telefonen. Med det kan
   // navnekolonnen altid krympe, og et navn brydes hellere end at tabellen
   // scroller (D-047's raekkefoelge af prioriteter).
-  const nowrap = wrap ? "min-w-0 break-words [&>*]:min-w-0" : "whitespace-nowrap";
+  // `[&_*]:whitespace-normal` (#5383): cellens indhold kommer fra SIDEN, og
+  // flere sider saetter `whitespace-nowrap` paa selve navne-linket, fordi det er
+  // rigtigt paa desktop. Paa mobil slaar det cellens `break-words` ihjel — maalt
+  // 19/9 stak rytternavne og den foldede meta-linje 3-84 px ud over deres egen
+  // <td> paa 412 px. D-047's "ingen vandret scroll" maa ikke afhaenge af at hver
+  // enkelt side husker at lade vaere: mobil-tilstanden overstyrer descendants.
+  const nowrap = wrap
+    ? "min-w-0 break-words [&>*]:min-w-0 [&_*]:whitespace-normal"
+    : "whitespace-nowrap";
   return (
     <>
       <span className={`flex items-center gap-2 text-[13.5px] font-medium text-cz-1 ${nowrap}`}>
@@ -656,7 +664,7 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
       </span>
       {(sub != null || folded.length > 0) && (
         <span
-          className={`mt-0.5 block font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${wrap ? "" : "whitespace-nowrap"} ${indent}`}
+          className={`mt-0.5 block font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${wrap ? "min-w-0 break-words [&_*]:whitespace-normal" : "whitespace-nowrap"} ${indent}`}
         >
           {folded.length > 0 && (
             <span className="sm:hidden">
