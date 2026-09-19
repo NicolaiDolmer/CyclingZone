@@ -30,7 +30,9 @@
 //
 // Felter i TEXT_OVERFLOW_ALLOWLIST:
 //   page       navnet fra PAGES i 5383-text-overflow-guard.spec.js
-//   rule       "clipped" | "outside-container" | "unreadable" | "raw-i18n-key"
+//   rule       "clipped" | "outside-container" | "unreadable" | "raw-i18n-key",
+//              eller en liste af dem naar EET layout-problem kan raabe paa mere
+//              end een regel afhaengigt af sprogets ordlaengde
 //   match      streng (delstreng) eller RegExp, proevet mod
 //              `${selector} | ${text} | ${detail}`
 //   langs      valgfri liste, fx ["da"]
@@ -41,36 +43,21 @@
 export const TEXT_OVERFLOW_ALLOWLIST = [
   {
     page: "traening",
-    rule: "outside-container",
-    match: "max-w-[184px]",
+    // To regler i EEN post med vilje: det er EET layout-problem, og hvilken af
+    // de to der raaber foerst afhaenger af ordlaengden i sproget. "Vaelg dag"
+    // bliver klippet; "Choose day" er saa langt at det ogsaa lander uden for
+    // knappen. To poster ville betyde at den ene altid stod som "matcher intet".
+    rule: ["clipped", "outside-container"],
+    match: /truncate\.text-\[13px\]|a\.text-cz-1\.font-medium\.hover:text-cz-accent/,
     viewports: ["mobil"],
     reason:
-      "Traeningssidens dag-vaelger staar i en 15vw-kolonne (~62 px paa 412 px). Cellens px-4 spiser 32 px, " +
-      "knappens egen padding 20 px og labelens min-bredde 40 px — summen kan ikke vaere der, saa teksten " +
-      "lander uden for knappen. Det er den GAMLE mobil-gren af traeningstabellen; ejeren valgte 18/9 " +
-      "(#3643) en helt ny mobil-traeningstabel bag stadie-flaget training_mobile_table, som erstatter " +
-      "netop denne kolonne. At omforme den doede gren nu ville vaere spildt arbejde. Refs #5383, #3643.",
-    until: "2026-12-31",
-  },
-  {
-    page: "traening",
-    rule: "clipped",
-    match: "truncate text-[13px]",
-    viewports: ["mobil"],
-    reason:
-      "Samme sted og samme aarsag som posten ovenfor: dag-vaelgerens label klippes fordi kolonnen er for " +
-      "smal til den. Afloeses af den flag-gatede nye mobil-traeningstabel (#3643). Refs #5383.",
-    until: "2026-12-31",
-  },
-  {
-    page: "traening",
-    rule: "outside-container",
-    match: /a\.text-cz-1\.font-medium\.hover:text-cz-accent/,
-    viewports: ["mobil"],
-    reason:
-      "Rytternavnet i traeningstabellens egen navnecelle stikker ~9 px ud over sin <td> paa 412 px. " +
-      "Tabellen er haandrullet (ikke DataTable), saa D-047-rettelsen i renderStickyCell naar den ikke, " +
-      "og den samme gren afloeses af #3643's nye mobil-traeningstabel. Refs #5383, #3643.",
+      "Traeningssidens dag-kolonne er 15vw (~62 px paa 412 px). Cellens px-4 spiser 32 px og knappens " +
+      "egen padding 20 px, saa der er under 10 px tilbage til labelen 'Vaelg dag' — den klippes (16 px DA, " +
+      "32 px EN) og stikker 23 px ud over knappen; rytternavnet i samme tabels navnecelle stikker 9-14 px " +
+      "ud over sin <td>. Tabellen er haandrullet (ikke DataTable), saa D-047-rettelsen i renderStickyCell " +
+      "naar den ikke. Det er den GAMLE mobil-gren: ejeren valgte 18/9 (#3643) en helt ny " +
+      "mobil-traeningstabel bag stadie-flaget training_mobile_table, som erstatter netop disse celler. " +
+      "At omforme den doede gren nu ville vaere spildt arbejde. Refs #5383, #3643.",
     until: "2026-12-31",
   },
 ];
@@ -226,7 +213,8 @@ export function matchesAllowlist(finding, context, entries = TEXT_OVERFLOW_ALLOW
   const haystack = `${finding.selector} | ${finding.text} | ${finding.detail}`;
   return entries.findIndex((entry) => {
     if (entry.page !== context.page) return false;
-    if (entry.rule !== finding.rule) return false;
+    const rules = Array.isArray(entry.rule) ? entry.rule : [entry.rule];
+    if (!rules.includes(finding.rule)) return false;
     if (entry.langs && !entry.langs.includes(context.lang)) return false;
     if (entry.viewports && !entry.viewports.includes(context.viewport)) return false;
     return entry.match instanceof RegExp ? entry.match.test(haystack) : haystack.includes(entry.match);

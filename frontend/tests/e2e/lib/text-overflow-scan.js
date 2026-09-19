@@ -278,6 +278,18 @@ export function scanDocumentForTextDefects({ contrastMin, rules, root, excludeRo
     if (SKIP_TAGS.has(el.tagName)) continue;
     if (el.closest("svg")) continue;
     if (excludeRoot && el.closest(excludeRoot)) continue;
+    // `checkVisibility` er browserens EGEN dom over om elementet males. Den
+    // daekker det haandrullede `display/visibility/opacity`-tjek OG de tilfaelde
+    // et haandrullet tjek ikke kan se: indholdet i en lukket <details> (som
+    // FilterBar's "More filters" bruger) springes over via `content-visibility`,
+    // men beholder baade computed styles og en kasse. Uden den blev hvert eneste
+    // skjulte filterfelt maalt — 30 falske "daekket af"-fund 19/9, nul aegte.
+    if (
+      typeof el.checkVisibility === "function" &&
+      !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true, contentVisibilityAuto: true })
+    ) {
+      continue;
+    }
     const style = getComputedStyle(el);
     if (style.display === "none" || style.visibility === "hidden") continue;
     if (parseFloat(style.opacity) === 0) continue;
@@ -374,6 +386,63 @@ export function scanDocumentForTextDefects({ contrastMin, rules, root, excludeRo
   // Hit-testen kraever at elementet er i viewporten, saa siden koeres igennem i
   // baand. Elementer taet paa kanten springes over: dér ligger de klaebende
   // top-/bundbjaelker, og de daekker indhold under scroll uden at det er en fejl.
+  //
+  // `elementFromPoint` er en POINTER-test. Et element der er sat uden for
+  // pointer-testen (`pointer-events: none` paa sig selv eller en forfader —
+  // dekorative lag, deaktiverede paneler) kan aldrig vinde den, og hit-testen
+  // ville melde HVER eneste af dem "daekket". Maalt 19/9 paa /transfers og
+  // /riders: 30 saadanne falske fund, nul aegte. De springes derfor over, og det
+  // staar i audit-dokumentet at reglen ikke daekker dem.
+  /**
+   * Elementets SYNLIGE kasse: dets egen, beskaaret af hver forfader der klipper.
+   *
+   * Hit-testen skal ramme et punkt der faktisk males. En kolonne der raekker ud
+   * over sin vandrette scroller er klippet ved scrollerens kant — spoerger man
+   * uden for den, svarer browseren med nabo-kortet, og reglen ville melde
+   * "daekket" om noget der bare er scrollet ud af syne.
+   */
+  function visibleRectOf(el) {
+    const r = el.getBoundingClientRect();
+    let box = { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    let node = el.parentElement;
+    while (node && node !== document.documentElement) {
+      const style = getComputedStyle(node);
+      const clipsX = ["hidden", "clip", "auto", "scroll"].includes(style.overflowX);
+      const clipsY = ["hidden", "clip", "auto", "scroll"].includes(style.overflowY);
+      if (clipsX || clipsY) {
+        const b = node.getBoundingClientRect();
+        if (clipsX) {
+          box.left = Math.max(box.left, b.left);
+          box.right = Math.min(box.right, b.right);
+        }
+        if (clipsY) {
+          box.top = Math.max(box.top, b.top);
+          box.bottom = Math.min(box.bottom, b.bottom);
+        }
+      }
+      node = node.parentElement;
+    }
+    return { ...box, width: box.right - box.left, height: box.bottom - box.top };
+  }
+
+  const hasStickyAncestor = (el) => {
+    let node = el;
+    while (node && node !== document.documentElement) {
+      if (["sticky", "fixed"].includes(getComputedStyle(node).position)) return true;
+      node = node.parentElement;
+    }
+    return false;
+  };
+
+  const participatesInHitTest = (el) => {
+    let node = el;
+    while (node && node !== document.documentElement) {
+      if (getComputedStyle(node).pointerEvents === "none") return false;
+      node = node.parentElement;
+    }
+    return true;
+  };
+
   const scrollBefore = window.scrollY;
   const SAFE_MARGIN = 96;
   const tested = new Set();
@@ -384,17 +453,23 @@ export function scanDocumentForTextDefects({ contrastMin, rules, root, excludeRo
     for (let index = 0; index < textLeaves.length; index += 1) {
       if (tested.has(index)) continue;
       const { el, text } = textLeaves[index];
-      const rect = el.getBoundingClientRect();
-      if (rect.width < 1 || rect.height < 1) continue;
+      const rect = visibleRectOf(el);
+      if (rect.width < 4 || rect.height < 4) continue;
       if (rect.top < SAFE_MARGIN || rect.bottom > window.innerHeight - SAFE_MARGIN) continue;
+      if (rect.left < 0 || rect.right > window.innerWidth) continue;
       tested.add(index);
+      if (!participatesInHitTest(el)) continue;
       const hit = document.elementFromPoint(
-        Math.min(rect.left + Math.min(rect.width / 2, 40), window.innerWidth - 1),
+        rect.left + Math.min(rect.width / 2, 20),
         rect.top + rect.height / 2,
       );
       if (!hit || hit === el || el.contains(hit) || hit.contains(el)) continue;
+      // Klaebende og fastgjorte lag daekker indhold med vilje: en sticky topbar
+      // under scroll, auktionstabellens sticky bud-kolonne over de kolonner man
+      // scroller forbi. Hele kaeden tjekkes, ikke kun elementet selv — det der
+      // rammes er typisk et felt INDE i det klaebende lag, ikke laget.
+      if (hasStickyAncestor(hit)) continue;
       const hitStyle = getComputedStyle(hit);
-      if (["sticky", "fixed"].includes(hitStyle.position)) continue;
       const hitBg = parseColor(hitStyle.backgroundColor);
       if (!hitBg || hitBg.a < 0.9) continue;
       add(
