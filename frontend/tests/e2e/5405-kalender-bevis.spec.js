@@ -166,7 +166,7 @@ function composeHtml(panels) {
     ol.legend li b { color:var(--gold); }
   </style></head><body>
     <h1>Sæson 4 på løbskalenderen: før og efter #5405</h1>
-    <p class="sub">Ægte skærmbilleder af løbskalenderen i 1:1 (dansk UI, desktop 1440 px og mobil 412 px). Venstre kolonne er sæson 4 som backend svarede FØR denne PR, højre kolonne er mobil-udgaven af de samme to tilstande. Programmet er det samme i alle fire paneler, kun markeringen er forskellig.</p>
+    <p class="sub">Ægte skærmbilleder af løbskalenderen i 1:1 (dansk UI). Venstre kolonne er desktop 1440 px før og efter ændringen, højre kolonne er de samme to tilstande på mobil 412 px. Sæson 4 rummer det samme program i alle fire paneler; det der ændrer sig er fanen, filteret, markeringen af egne løb og den nye forklarende linje.</p>
     <div class="row">
       <div class="col">
         ${card(panels.beforeDesktop, "before")}
