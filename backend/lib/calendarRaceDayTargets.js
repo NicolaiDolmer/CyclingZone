@@ -186,20 +186,72 @@ export function detectRaceDayEqualityViolations({ axisByTier = {}, target = null
   return violations;
 }
 
+// ── §1e/#5267: SPREDNINGEN MAALES PAA BLOKKE, IKKE PAA DATOER ────────────────────────
+//
+// FOER #5267 stod her `maxEmptyGameDaysPerDate` — et loft for hvor mange tomme loebsdage
+// en division maatte lae­gge PR. KALENDERDATO. Det loft er fjernet, og det er en
+// ejer-informeret aendring, ikke en oprydning: loftet var kun opfyldeligt fordi R12
+// re-soegte hele placeringen for at skaffe frie positioner nok, og netop den re-soegning
+// er det der slog mindste-overlap-gulvet (§1/#3329) ud i alle fire divisioner (maalt
+// 18/9). Naar loebene ikke maa flyttes, er antallet af frie positioner givet af kataloget,
+// og et loft pr. dato kan da hverken overholdes eller goere kalenderen bedre.
+//
+// Det kravet HANDLER om er noget andet: "der maa ikke gaa lang tid uden en traeningsdag".
+// Det maales som den laengste raekke af KALENDERDATOER i traek helt uden en traeningsdag.
+//
+// TALLET ER EN REGRESSIONSVAGT, IKKE ET KVALITETSMAAL — samme disciplin som
+// TIER_MULTI_RACE_DAY_MIN_SHARE (calendarTierCaps.js). MAALT 19/9 paa S4's proevepakning
+// (naturlig pakning + traeningsdage i hullerne): D1 16 · D2 11 · D3 23 · D4 11 datoer.
+// Loftet er sat lige over den vaerste af dem, saa en fremtidig aendring der goer rytmen
+// DAARLIGERE gaar roedt. Om 23 datoer uden traening er en acceptabel spilfoelelse er et
+// EJER-spoergsmaal, ikke et kode-spoergsmaal (docs/audits/2026-09-19-5267-proevepakning.md §4).
+export const MAX_DATES_WITHOUT_TRAINING_DAY = 24;
+
 /**
- * Hvor mange tomme loebsdage en division maa lae­gge pr. kalenderdag. Budgettet spredes
- * saa jae­vnt som muligt: ellers ville alle de tomme loebsdage klumpe paa de faa datoer
- * hvor intet loeb er i gang, og en spiller ville faa 6 traenings-ticks paa een dag og
- * ingen paa de naeste fem.
+ * §1e/#5267: laengste raekke af kalenderdatoer i traek HELT uden en traeningsdag.
+ * Stimer i begyndelsen og slutningen af saesonen taeller med.
  *
- * +1 er bevidst slack: helt uden den ville budgettet vae­re uopnaaeligt i praksis, fordi
- * en tom loebsdag kun kan ligge dér hvor intet loeb er i gang (se filens docstring).
- *
- * @param {{ budget:number, days:number }} args
+ * @param {{ days:number, trainingRealDays?:Array<number> }} args
  * @returns {number}
  */
-export function maxEmptyGameDaysPerDate({ budget = 0, days = 1 } = {}) {
-  const b = Math.max(0, Number(budget) || 0);
-  const d = Math.max(1, Number(days) || 1);
-  return b === 0 ? 0 : Math.ceil(b / d) + 1;
+export function longestDateStreakWithoutTraining({ days = 0, trainingRealDays = [] } = {}) {
+  const n = Math.max(0, Math.round(Number(days) || 0));
+  if (n === 0) return 0;
+  const harTraening = new Array(n).fill(false);
+  for (const d of trainingRealDays) {
+    const i = Number(d);
+    if (Number.isFinite(i) && i >= 0 && i < n) harTraening[i] = true;
+  }
+  let laengste = 0;
+  let nu = 0;
+  for (let d = 0; d < n; d++) {
+    if (harTraening[d]) { nu = 0; continue; }
+    nu += 1;
+    if (nu > laengste) laengste = nu;
+  }
+  return laengste;
+}
+
+/**
+ * §1e/#5267: fejl naar en division har en for lang stime uden traeningsdag.
+ *
+ * Doemmer KUN divisioner der faktisk HAR et loebsdags-maal (uden maal er der ingen
+ * traeningsdage at fordele, og en S3-kalender bygget foer reglen maa ikke blive ulovlig
+ * bagud — samme disciplin som §1d's "kun naar saesonen har et maal").
+ *
+ * @param {{ streakByTier?:object|Map, max?:number }} args
+ * @returns {string[]}
+ */
+export function detectTrainingDayStreakViolations({ streakByTier = {}, max = MAX_DATES_WITHOUT_TRAINING_DAY } = {}) {
+  const kilde = streakByTier instanceof Map ? Object.fromEntries(streakByTier) : { ...streakByTier };
+  const loft = Math.max(1, Number(max) || MAX_DATES_WITHOUT_TRAINING_DAY);
+  const violations = [];
+  for (const [tier, raa] of Object.entries(kilde)) {
+    const n = Number(raa);
+    if (!Number.isFinite(n) || n <= loft) continue;
+    violations.push(
+      `tier ${tier}: ${n} kalenderdatoer i traek uden en traeningsdag (loft ${loft}) — §1e/#5267`,
+    );
+  }
+  return violations;
 }

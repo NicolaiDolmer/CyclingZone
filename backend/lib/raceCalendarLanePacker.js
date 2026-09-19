@@ -32,6 +32,7 @@
 // stage_number (1..N uafbrudt). restDays udeladt/0 ⇒ ét segment ⇒ bit-identisk med #3469.
 
 import { grandTourRestDayPositions, GRAND_TOUR_REST_DAYS } from "./grandTourRestDays.js";
+import { longestDateStreakWithoutTraining } from "./calendarRaceDayTargets.js";
 import { MONUMENT_MIN_CALENDAR_GAP_DAYS, MONUMENT_MIN_CALENDAR_SPREAD_DAYS } from "./calendarTierCaps.js";
 
 // B2 (#4075, spec §3.4, ejer-låst 21/8): monumenter har en NORMAL game_day i deres eget
@@ -527,31 +528,6 @@ export function padAxisWithTrainingDays({ dateOfGameDay = [], spans = [], target
     dateOfGameDay: nyDato, mapG, trainingGameDays,
     freePositions: frie.length, padded: trainingGameDays.length,
   };
-}
-
-/**
- * §1e/#5267 — SPREDNINGEN MAALES PAA BLOKKE, IKKE PAA DATOER.
- *
- * Kravet er "ingen lang stime uden traening", ikke "traeningsdage jae­vnt fordelt pr.
- * kalenderdato". Tallet her er den laengste raekke af kalenderdatoer i traek HELT uden en
- * traeningsdag (stimer i begyndelsen og slutningen af saesonen taeller med).
- */
-export function longestDateStreakWithoutTraining({ days = 0, trainingRealDays = [] } = {}) {
-  const n = Math.max(0, Math.round(Number(days) || 0));
-  if (n === 0) return 0;
-  const harTraening = new Array(n).fill(false);
-  for (const d of trainingRealDays) {
-    const i = Number(d);
-    if (Number.isFinite(i) && i >= 0 && i < n) harTraening[i] = true;
-  }
-  let laengste = 0;
-  let nu = 0;
-  for (let d = 0; d < n; d++) {
-    if (harTraening[d]) { nu = 0; continue; }
-    nu += 1;
-    if (nu > laengste) laengste = nu;
-  }
-  return laengste;
 }
 
 // #4236 - AFSLAPPET kontiguitets-layout for de tilfaelde hvor kvoten IKKE gaar op.

@@ -56,7 +56,10 @@ import {
   detectMinOverlapViolations, detectQuotaViolations,
 } from "./calendarPlacementGates.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
-import { detectRaceDayEqualityViolations } from "./calendarRaceDayTargets.js";
+import {
+  detectRaceDayEqualityViolations, detectTrainingDayStreakViolations,
+  MAX_DATES_WITHOUT_TRAINING_DAY,
+} from "./calendarRaceDayTargets.js";
 
 const pct = (n) => `${(n * 100).toFixed(1)} %`;
 const ok = (b) => (b ? "OK " : "FEJL");
@@ -153,6 +156,9 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
     træningsdage: plan.trainingGameDayCount ?? 0,
     gtHviledage: plan.restDayGameDayCount ?? 0,
     raceDayPaddingHeld: plan.raceDayPaddingHeld ?? null,
+    // §1e/#5267: traeningsrytmen maalt paa BLOKKE — laengste raekke kalenderdatoer i traek
+    // uden en traeningsdag. Rapporteres pr. division; dommen staar i saeson-blokken.
+    stimeUdenTræning: plan.longestDateStreakWithoutTraining ?? null,
     kalenderdage: new Set(stageRows.map((s) => String(s.scheduled_at).slice(0, 10))).size,
     quota: plan.quota ?? null,
     totalGameDays: plan.totalGameDays ?? null,
@@ -233,6 +239,14 @@ export function scoreCalendarPlan({
   rapport.raceDayEqualityViol = detectRaceDayEqualityViolations({
     axisByTier, target: raceDayTarget, tiers: rapport.tiers.map((t) => t.tier),
   });
+  // §1e/#5267: traeningsrytmen. KUN naar saesonen har et maal — uden et maal er der ingen
+  // traeningsdage at fordele, og en kalender bygget foer reglen maa ikke blive ulovlig
+  // bagud (samme afgraensning som §1d ovenfor).
+  rapport.trainingStreakViol = raceDayTarget == null ? [] : detectTrainingDayStreakViolations({
+    streakByTier: Object.fromEntries(
+      rapport.tiers.filter((t) => t.stimeUdenTræning != null).map((t) => [t.tier, t.stimeUdenTræning]),
+    ),
+  });
 
   rapport.sæsonFinale = mergeFinaleStats(rapport.tiers.map((t) => t.finale));
   rapport.sæsonFinaleViol = detectFinaleViolations({ stats: rapport.sæsonFinale, label: "sæson", strict: true });
@@ -251,7 +265,9 @@ export function scoreCalendarPlan({
     n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
       + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0), 0)
     // §1d taeller kun med naar saesonen har et maal — se scorecardGateGroups' begrundelse.
-    + (raceDayTarget != null ? (rapport.raceDayEqualityViol?.length ?? 0) : 0);
+    + (raceDayTarget != null ? (rapport.raceDayEqualityViol?.length ?? 0) : 0)
+    // §1e/#5267: samme afgraensning som §1d — den taeller kun naar saesonen har et maal.
+    + (rapport.trainingStreakViol?.length ?? 0);
   rapport.ok = rapport.regelbrud === 0 && dækning.ok && kollisioner.length === 0
     && unassessed.length === 0;
   return rapport;
@@ -329,6 +345,9 @@ export function scorecardGateGroups(rapport) {
   if (rapport.raceDayTarget != null) {
     for (const v of rapport.raceDayEqualityViol ?? []) applyBlocking.push(`løbsdage pr. division (§1d/#4845) — ${v}`);
   }
+  // §1e/#5267: træningsrytmen. Samme klasse som §1d: kalenderen bygges kun én gang pr.
+  // sæson, så en rytme der først opdages bagefter kan ikke rettes.
+  for (const v of rapport.trainingStreakViol ?? []) applyBlocking.push(`træningsrytme (§1e/#5267) — ${v}`);
 
   return { blocking, applyBlocking, finaleDrift, uniformDrift };
 }
@@ -376,6 +395,14 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
           `${t.naturalRaceDays != null && t.naturalRaceDays !== t.raceDayAxis ? ` · uden reglen ${t.naturalRaceDays}` : ""}` +
           `${t.raceDayPaddingHeld === false ? "  ⚠ MÅLET BLEV IKKE NÅET" : ""}`,
         );
+        // §1e/#5267: træningsrytmen målt på BLOKKE. Tallet er det ejeren skal se — en lang
+        // stime betyder uger i træk hvor ingen rytter i divisionen kan træne.
+        if (t.stimeUdenTræning != null && t.raceDayTarget != null) {
+          out.push(
+            `  ${ok(t.stimeUdenTræning <= MAX_DATES_WITHOUT_TRAINING_DAY)} Træningsrytme (§1e/#5267):` +
+            ` længste stime uden træningsdag = ${t.stimeUdenTræning} kalenderdatoer (loft ${MAX_DATES_WITHOUT_TRAINING_DAY})`,
+          );
+        }
       }
       for (const v of t.quotaViol ?? []) out.push(`     ! ${v}`);
     }

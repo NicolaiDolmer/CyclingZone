@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import {
   SEASON_RACE_DAY_TARGET, EQUAL_RACE_DAY_TIERS,
   summarizeRaceDayAxis, resolveCommonRaceDayTarget, detectRaceDayEqualityViolations,
-  maxEmptyGameDaysPerDate,
+  longestDateStreakWithoutTraining, detectTrainingDayStreakViolations,
+  MAX_DATES_WITHOUT_TRAINING_DAY,
 } from "./calendarRaceDayTargets.js";
 
 const rows = (...gameDays) => gameDays.map((g) => ({ game_day: g }));
@@ -92,9 +93,34 @@ test("EQUAL_RACE_DAY_TIERS daekker de fire spilbare divisioner", () => {
   assert.deepEqual([...EQUAL_RACE_DAY_TIERS], [1, 2, 3, 4]);
 });
 
-test("maxEmptyGameDaysPerDate: budgettet spredes over datoerne, aldrig alt paa een", () => {
-  assert.equal(maxEmptyGameDaysPerDate({ budget: 0, days: 28 }), 0, "intet budget = intet loft at bruge");
-  assert.equal(maxEmptyGameDaysPerDate({ budget: 24, days: 28 }), 2);
-  assert.equal(maxEmptyGameDaysPerDate({ budget: 56, days: 28 }), 3);
-  assert.ok(maxEmptyGameDaysPerDate({ budget: 24, days: 28 }) * 28 >= 24, "loftet skal kunne rumme budgettet");
+// ── §1e/#5267: traeningsrytmen maales paa BLOKKE ────────────────────────────────────────
+
+test("longestDateStreakWithoutTraining: stimen maales paa kalenderdatoer, ikke paa loebsdage", () => {
+  // 10 datoer, traening paa dato 0 og 9 → stimen er de otte imellem.
+  assert.equal(longestDateStreakWithoutTraining({ days: 10, trainingRealDays: [0, 9] }), 8);
+  // Flere traeningsdage paa SAMME dato taeller som een dato — det er dét blok-maalet
+  // handler om (et loft pr. dato ville have vae­ret groent her og skjult stimen).
+  assert.equal(longestDateStreakWithoutTraining({ days: 10, trainingRealDays: [0, 0, 0, 9] }), 8);
+});
+
+test("longestDateStreakWithoutTraining: stimer i begge ender taeller med", () => {
+  assert.equal(longestDateStreakWithoutTraining({ days: 10, trainingRealDays: [5] }), 5, "dato 6-9 = 4, dato 0-4 = 5");
+  assert.equal(longestDateStreakWithoutTraining({ days: 10, trainingRealDays: [] }), 10, "ingen traening = hele saesonen");
+  assert.equal(longestDateStreakWithoutTraining({ days: 0, trainingRealDays: [] }), 0, "tom saeson giver 0, ikke NaN");
+});
+
+test("longestDateStreakWithoutTraining: datoer uden for saesonen taelles ikke med", () => {
+  assert.equal(longestDateStreakWithoutTraining({ days: 5, trainingRealDays: [9, -1] }), 5);
+});
+
+test("detectTrainingDayStreakViolations: en division over loftet rapporteres, en under er groen", () => {
+  assert.deepEqual(detectTrainingDayStreakViolations({ streakByTier: { 1: 16, 2: 11, 3: 23, 4: 11 } }), []);
+  const v = detectTrainingDayStreakViolations({ streakByTier: { 3: MAX_DATES_WITHOUT_TRAINING_DAY + 1 } });
+  assert.equal(v.length, 1);
+  assert.match(v[0], /tier 3/);
+});
+
+test("detectTrainingDayStreakViolations: loftet kan saettes eksplicit (ejer-kort kan stramme det)", () => {
+  assert.equal(detectTrainingDayStreakViolations({ streakByTier: { 3: 23 }, max: 12 }).length, 1);
+  assert.equal(detectTrainingDayStreakViolations({ streakByTier: { 3: 12 }, max: 12 }).length, 0);
 });

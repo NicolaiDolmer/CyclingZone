@@ -17,7 +17,7 @@ import { dirname, join } from "node:path";
 
 import { buildTierMaterializationPlan } from "./tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "./calendarStartDate.js";
-import { summarizeRaceDayAxis, maxEmptyGameDaysPerDate } from "./calendarRaceDayTargets.js";
+import { summarizeRaceDayAxis, longestDateStreakWithoutTraining } from "./calendarRaceDayTargets.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(__dirname, "__fixtures__", "racePoolCatalog.prod.json");
@@ -139,20 +139,115 @@ test("#4845: kvoten er uroert — maalet flytter loebsdage, ikke etaper (§1b)",
   }
 });
 
-test("#4845: traeningsdagene klumper ikke paa faa kalenderdatoer", () => {
+// ── #5267: maalet flytter IKKE et eneste loeb ───────────────────────────────────────────
+
+test("#5267: den NATURLIGE pakning er BIT-IDENTISK med og uden loebsdags-maal", () => {
+  // Det er hele fixet. Foer #5267 re-soegte R12 placeringen saa snart der var sat et maal,
+  // og MAALT 18/9 faldt mindste-overlap-gulvet (§1/#3329) i alle fire divisioner af netop
+  // den grund. Naar maalet kun tilfoejer tomme loebsdage, kan det pr. konstruktion ikke
+  // flytte et loeb - og denne test er dét krav skrevet som en assertion.
   const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur));
+  const maal = Math.max(...naturligeAkser(natur)) + 24;
   const { tierPlans } = plan(maal);
+  for (let i = 0; i < tierPlans.length; i++) {
+    const t = tierPlans[i];
+    const n = natur[i];
+    assert.equal(t.naturalRaceDays, n.raceDayAxisLength, `tier ${t.tier}: det naturlige antal loebsdage aendrede sig`);
+    // Loebenes REKKEFOELGE og indbyrdes afstand paa aksen skal vae­re uae­ndret. Aksen er
+    // forskudt af de indsatte traeningsdage, saa vi sammenligner formen, ikke tallene.
+    const form = (plan_) => {
+      const per = new Map();
+      for (const s of plan_.pools[0].stageRows) {
+        if (!per.has(s.pool_race_id)) per.set(s.pool_race_id, []);
+        per.get(s.pool_race_id).push(s.game_day);
+      }
+      const lister = [...per.entries()].map(([id, gs]) => {
+        const sorteret = [...gs].sort((a, b) => a - b);
+        return { id, start: sorteret[0], relativ: sorteret.map((g) => g - sorteret[0]).join(",") };
+      }).sort((a, b) => a.start - b.start || String(a.id).localeCompare(String(b.id)));
+      return lister.map((l) => `${l.id}:${l.relativ}`).join("|");
+    };
+    assert.equal(form(t), form(n), `tier ${t.tier}: loebenes indbyrdes placering aendrede sig med maalet`);
+  }
+});
+
+test("#5267: antallet af ETAPER pr. kalenderdato er uroert af maalet (D4's 3 pr. dag, #4270)", () => {
+  const { tierPlans: natur } = plan(null);
+  const maal = Math.max(...naturligeAkser(natur)) + 24;
+  const { tierPlans } = plan(maal);
+  for (let i = 0; i < tierPlans.length; i++) {
+    const tael = (p) => {
+      const m = new Map();
+      for (const s of p.pools[0].stageRows) {
+        const d = String(s.scheduled_at).slice(0, 10);
+        m.set(d, (m.get(d) ?? 0) + 1);
+      }
+      return [...m.entries()].sort().map(([d, n]) => `${d}:${n}`).join(" ");
+    };
+    assert.equal(tael(tierPlans[i]), tael(natur[i]), `tier ${tierPlans[i].tier}: etaper pr. kalenderdato aendrede sig`);
+  }
+});
+
+test("#5267: overlappet pr. loebsdag er uroert af maalet (§1/#3329's gulv maales paa den naturlige pakning)", () => {
+  const { tierPlans: natur } = plan(null);
+  const maal = Math.max(...naturligeAkser(natur)) + 24;
+  const { tierPlans } = plan(maal);
+  const andel = (p) => {
+    const per = new Map();
+    for (const s of p.pools[0].stageRows) {
+      if (!per.has(s.game_day)) per.set(s.game_day, new Set());
+      per.get(s.game_day).add(s.pool_race_id);
+    }
+    const alle = [...per.values()];
+    return alle.length ? alle.filter((s) => s.size >= 2).length / alle.length : 0;
+  };
+  for (let i = 0; i < tierPlans.length; i++) {
+    assert.equal(andel(tierPlans[i]), andel(natur[i]), `tier ${tierPlans[i].tier}: overlap-andelen aendrede sig med maalet`);
+  }
+});
+
+test("#5267: traeningsdagene fordeles over saa mange kalenderdatoer som muligt", () => {
+  const { tierPlans: natur } = plan(null);
+  const maal = Math.max(...naturligeAkser(natur)) + 24;
+  const { tierPlans } = plan(maal);
+  const { tierPlans: hoejerePlans } = plan(maal + REAL_DAYS);
   for (const t of tierPlans) {
     if (!t.raceDayDeficit || !eksaktKvote(t)) continue;
-    const loft = maxEmptyGameDaysPerDate({ budget: t.raceDayDeficit, days: REAL_DAYS });
     // Datoen kommer fra pakkeren selv (trainingGameDayRealDays). En tom loebsdag har ingen
     // raekke i stageRows, saa den maa ALDRIG udledes af naboernes datoer (§0's akse-faelde).
-    const prDato = new Map();
-    for (const d of t.trainingGameDayRealDays ?? []) prDato.set(d, (prDato.get(d) ?? 0) + 1);
-    assert.equal(prDato.size > 0, true, `tier ${t.tier}: ingen traeningsdage rapporteret trods budget ${t.raceDayDeficit}`);
-    for (const [d, n] of prDato) {
-      assert.ok(n <= loft, `tier ${t.tier}: ${n} traeningsdage paa kalenderdag ${d} (loft ${loft})`);
+    const datoer = t.trainingGameDayRealDays ?? [];
+    assert.ok(datoer.length > 0, `tier ${t.tier}: ingen traeningsdage rapporteret trods budget ${t.raceDayDeficit}`);
+    const distinkte = new Set(datoer).size;
+    // Round-robin over de frie positioner: hver fri position skal have faaet mindst een
+    // traeningsdag foer nogen faar sin anden. Naar budgettet er stoerre end antallet af
+    // frie positioner, er ALLE positioner derfor i brug - og antallet af beroerte datoer
+    // er det hoejeste kataloget tillader. Stabler nogen en dag alt paa een position, gaar
+    // denne test roedt i stedet for at det opdages i en live saeson.
+    if (t.raceDayDeficit >= t.freeAxisPositions && t.freeAxisPositions >= 2) {
+      assert.ok(distinkte >= 2, `tier ${t.tier}: ${t.freeAxisPositions} frie positioner, men traeningsdagene ramte kun ${distinkte} dato(er)`);
+    }
+    // Et HOEJERE maal maa aldrig give FAERRE beroerte datoer (round-robin, ikke stabling).
+    const hoejere = hoejerePlans.find((x) => x.tier === t.tier);
+    assert.ok(
+      new Set(hoejere.trainingGameDayRealDays ?? []).size >= distinkte,
+      `tier ${t.tier}: et hoejere maal gav faerre traeningsdatoer`,
+    );
+    // §1e-tallet skal vae­re det samme som en uafhae­ngig maaling paa datoerne.
+    assert.equal(
+      t.longestDateStreakWithoutTraining,
+      longestDateStreakWithoutTraining({ days: REAL_DAYS, trainingRealDays: datoer }),
+      `tier ${t.tier}: pakkerens §1e-tal stemmer ikke med en uafhae­ngig maaling`,
+    );
+  }
+});
+
+test("#5267: en traeningsdag ligger aldrig paa en kalenderdato uden for saesonen", () => {
+  const { tierPlans: natur } = plan(null);
+  const maal = Math.max(...naturligeAkser(natur)) + 24;
+  const { tierPlans } = plan(maal);
+  for (const t of tierPlans) {
+    for (const d of t.trainingGameDayRealDays ?? []) {
+      assert.ok(d >= 0 && d < REAL_DAYS, `tier ${t.tier}: traeningsdag paa kalenderdato ${d} (saesonen har ${REAL_DAYS})`);
     }
   }
 });
