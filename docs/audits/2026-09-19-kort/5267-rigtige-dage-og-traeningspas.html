@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<title>En ren træningsdag er ikke en dag uden løb</title>
+<style>
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-wght-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-ext-wght-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+
+  :root {
+    --bg: #F4F2ED;
+    --text: #14161F;
+    --muted: #6B6F7B;
+    --border: #DDD9CF;
+    --gold: #E8C547;
+    --blue: #DCE6F2;
+    --green: #DCF2E4;
+    --radius: 5px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  body {
+    padding: 32px 30px 34px 30px;
+  }
+  .container {
+    max-width: 1140px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+  }
+  .subtitle {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin: 0 0 22px 0;
+    line-height: 1.5;
+    max-width: 900px;
+  }
+
+  .mode-heading {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+  }
+  .mode-heading.second {
+    margin-top: 26px;
+  }
+
+  /* ---- three day columns ---- */
+  .cols {
+    display: flex;
+    gap: 18px;
+    align-items: stretch;
+  }
+  .col {
+    flex: 1 1 0;
+    min-width: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 15px 16px 15px;
+    display: flex;
+    flex-direction: column;
+  }
+  .col-header {
+    font-size: 14.5px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section {
+    margin-bottom: 14px;
+  }
+  .section:last-child {
+    margin-bottom: 0;
+  }
+  .section-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0 0 8px 0;
+  }
+
+  .race-group {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 9px;
+    margin-bottom: 7px;
+  }
+  .race-group:last-child {
+    margin-bottom: 0;
+  }
+  .race-group.gold {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+  .race-group-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .race-group-sub {
+    font-size: 10.5px;
+    color: var(--text);
+    opacity: 0.72;
+    line-height: 1.4;
+    margin-top: 6px;
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .chip {
+    display: inline-block;
+    font-size: 10.5px;
+    line-height: 1.3;
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .chip.L { background: var(--blue); }
+  .chip.N { background: var(--green); }
+  .chip.O { background: #fff; }
+
+  .section-body {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .rider-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+  }
+  .rider-row:first-child {
+    border-top: none;
+    padding-top: 2px;
+  }
+  .rider-left {
+    min-width: 0;
+  }
+  .rider-name {
+    font-size: 11.5px;
+    font-weight: 700;
+    margin: 0 0 2px 0;
+  }
+  .rider-note {
+    font-size: 10.5px;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+  .rider-number {
+    font-size: 24px;
+    font-weight: 700;
+    flex: 0 0 auto;
+  }
+
+  /* ---- pins ---- */
+  .pin {
+    position: absolute;
+    top: -9px;
+    right: -9px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--text);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  /* ---- legend ---- */
+  .legend {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    max-width: 980px;
+  }
+  .legend-pin {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+
+  /* ---- compare row ---- */
+  .compare-row {
+    display: flex;
+    gap: 18px;
+    margin-top: 22px;
+  }
+  .compare-card {
+    flex: 1 1 0;
+    min-width: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 11px 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+  .compare-card b {
+    font-weight: 700;
+  }
+
+  .bottomline {
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 22px;
+    line-height: 1.5;
+    max-width: 1000px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>En ren træningsdag er IKKE en rigtig dag uden løb</h1>
+  <p class="subtitle">Tre rigtige dage i Division 4 fra prøvekalenderen for sæson 4. Der køres løb hver eneste rigtige dag.</p>
+
+  <div class="mode-heading">Måde A: ekstra træningsdage kun, hvor intet etapeløb er i gang</div>
+
+  <div class="cols">
+
+    <div class="col">
+      <div class="col-header">Fredag 9/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens løb (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 25</div>
+          <div class="chip-row">
+            <span class="chip L">Etapeløb L, etape 3</span>
+            <span class="chip O">Endagsløb</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="pin">2</div>
+          <div class="race-group-label">Løbsdag 26</div>
+          <div class="chip-row">
+            <span class="chip L">Etapeløb L, etape 4 (sidste etape)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: træningen gøres op</div>
+        <div class="section-body">2 løbsdage = 2 træningspas til de ryttere, der ikke kørte løb.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A kører etapeløb N</div>
+            <div class="rider-note">kører ikke løb i dag</div>
+          </div>
+          <div class="rider-number">2</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B kører ingen løb</div>
+          </div>
+          <div class="rider-number">2</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">Lørdag 10/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens løb (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group gold">
+          <div class="pin">1</div>
+          <div class="race-group-label">9 ekstra træningsdage</div>
+          <div class="race-group-sub">Ingen løb. Hele truppen træner. Har ikke noget klokkeslæt.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 30</div>
+          <div class="chip-row">
+            <span class="chip N">Etapeløb N, etape 1</span>
+            <span class="chip O">Endagsløb</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 31</div>
+          <div class="chip-row">
+            <span class="chip N">Etapeløb N, etape 2</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: træningen gøres op</div>
+        <div class="section-body">2 løbsdage + 9 ekstra træningsdage = op til 11 træningspas.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A kører etapeløb N</div>
+            <div class="rider-note">kører N begge løbsdage, men får de 9 ekstra</div>
+          </div>
+          <div class="rider-number">9</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B kører ingen løb</div>
+          </div>
+          <div class="rider-number">11</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">Søndag 11/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens løb (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 32</div>
+          <div class="chip-row">
+            <span class="chip N">Etapeløb N, etape 3</span>
+            <span class="chip O">Endagsløb</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 33</div>
+          <div class="chip-row">
+            <span class="chip N">Etapeløb N, etape 4 (sidste etape)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: træningen gøres op</div>
+        <div class="section-body">2 løbsdage = 2 træningspas til de ryttere, der ikke kørte løb.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A kører etapeløb N</div>
+            <div class="rider-note">kører N begge løbsdage</div>
+          </div>
+          <div class="rider-number">0</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B kører ingen løb</div>
+          </div>
+          <div class="rider-number">2</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-pin">1</div>
+      <div>De ekstra træningsdage ligger på en rigtig dag, der også har løb. De er bare flere træningspas samme aften.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-pin">2</div>
+      <div>De kan kun ligge her, fordi etapeløb L er slut, og etapeløb N ikke er begyndt. Midt i et etapeløb må der ikke ligge træning.</div>
+    </div>
+  </div>
+
+  <div class="mode-heading second">Måde B: 5 løbsdage hver eneste rigtige dag (jævnt)</div>
+
+  <div class="cols">
+
+    <div class="col">
+      <div class="col-header">Fredag 9/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens løb (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group gold">
+          <div class="race-group-label">3 ekstra træningsdage</div>
+          <div class="race-group-sub">Ingen løb. Hele truppen træner. Har ikke noget klokkeslæt.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 25</div>
+          <div class="chip-row">
+            <span class="chip L">Etapeløb L, etape 3</span>
+            <span class="chip O">Endagsløb</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 26</div>
+          <div class="chip-row">
+            <span class="chip L">Etapeløb L, etape 4 (sidste etape)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: træningen gøres op</div>
+        <div class="section-body">2 løbsdage + 3 ekstra træningsdage = op til 5 træningspas.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A kører etapeløb N</div>
+            <div class="rider-note">kører ikke løb i dag</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B kører ingen løb</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">Lørdag 10/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens løb (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group gold">
+          <div class="pin">3</div>
+          <div class="race-group-label">3 ekstra træningsdage</div>
+          <div class="race-group-sub">Ingen løb. Hele truppen træner. Har ikke noget klokkeslæt.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 30</div>
+          <div class="chip-row">
+            <span class="chip N">Etapeløb N, etape 1</span>
+            <span class="chip O">Endagsløb</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 31</div>
+          <div class="chip-row">
+            <span class="chip N">Etapeløb N, etape 2</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: træningen gøres op</div>
+        <div class="section-body">2 løbsdage + 3 ekstra træningsdage = op til 5 træningspas.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A kører etapeløb N</div>
+            <div class="rider-note">bundet i etapeløb N: kører eller hviler, træner ikke</div>
+          </div>
+          <div class="rider-number">0</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B kører ingen løb</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">Søndag 11/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens løb (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group gold">
+          <div class="race-group-label">3 ekstra træningsdage</div>
+          <div class="race-group-sub">Ingen løb. Hele truppen træner. Har ikke noget klokkeslæt.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 32</div>
+          <div class="chip-row">
+            <span class="chip N">Etapeløb N, etape 3</span>
+            <span class="chip O">Endagsløb</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Løbsdag 33</div>
+          <div class="chip-row">
+            <span class="chip N">Etapeløb N, etape 4 (sidste etape)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: træningen gøres op</div>
+        <div class="section-body">2 løbsdage + 3 ekstra træningsdage = op til 5 træningspas.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A kører etapeløb N</div>
+            <div class="rider-note">bundet i etapeløb N: kører eller hviler, træner ikke</div>
+          </div>
+          <div class="rider-number">0</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B kører ingen løb</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-pin">3</div>
+      <div>Her ligger de ekstra dage også midt i et etapeløb. Ryttere i det løb hviler de dage. Alle andre træner.</div>
+    </div>
+  </div>
+
+  <div class="compare-row">
+    <div class="compare-card"><b>Måde A:</b> flest pas på én aften i sæsonen: 33 (Division 3). Passer ikke til ugeprogrammet med 5 felter pr. dag.</div>
+    <div class="compare-card"><b>Måde B:</b> altid 5 løbsdage pr. rigtig dag. Passer til ugeprogrammet med 7 x 5 felter. Ikke prøvepakket endnu.</div>
+  </div>
+
+  <div class="bottomline">
+    Alle divisioner har 140 løbsdage pr. sæson (din beslutning 15/9). Løb og klokkeslæt er de samme i begge måder. Forskellen er kun, hvor de ekstra træningsdage ligger.
+  </div>
+
+</div>
+</body>
+</html>
