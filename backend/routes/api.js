@@ -231,6 +231,7 @@ import {
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
+import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
@@ -2727,6 +2728,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
+      mobileTableStage,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -2735,6 +2737,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // #4851: gater KUN visningen. Motoren skriver rider_training_scores
       // uanset flaget, saa der er historik den dag det taendes.
       readFlagStage(supabase, TRAINING_SCORE_VISIBLE_FLAG_KEY),
+      // #3643 (ejer 19/9): gater KUN telefonens visning. Stadie `beta` ⇒ beta-
+      // testere ser den nye tabel, alle andre den gamle. Desktop er uberoert.
+      readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
     ]);
     const enabled = evaluateFlagStage(stage, { isBetaTester });
     // #3459 V3 / #4375: racingToday-feltet (trænings-UI'ets løbsdags-badge) leveres
@@ -2746,6 +2751,11 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // ud af sync igen. Flag off = feltet udelades helt, ikke bare tomt.
     const raceDayDevelopmentOn = evaluateFlagStage(raceDayDevelopmentStage, { isBetaTester });
     const trainingScoreOn = evaluateFlagStage(trainingScoreStage, { isBetaTester });
+    // #3643: en BAR boolean (ikke et udeladt felt som racingToday/trainingScore).
+    // Feltet vælger mellem TO visninger der begge findes, så klienten skal kunne
+    // se forskel på "gammel visning" og "svar uden flag-felt" — begge er false,
+    // og det er med vilje: fail-safe er den visning der står i prod i dag.
+    const mobileTable = evaluateFlagStage(mobileTableStage, { isBetaTester });
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
@@ -2879,6 +2889,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
     res.json({
       ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped,
       trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans,
+      // #3643: true ⇒ telefonen tegner den nye løbsdags-tabel; false ⇒ den
+      // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
+      mobileTable,
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer
       // kan skelne "flag off" fra "ingen data" på et felt der ikke findes.

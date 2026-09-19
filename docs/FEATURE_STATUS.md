@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-69 poster: live 46 · beta 3 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+70 poster: live 46 · beta 4 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -61,6 +61,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Peak planner (`peak-planner`) | live | `peak_planner_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | #2224 | 2026-09-06 | - |
 | Season fatigue and form reset (`season-fatigue-reset`) | live | `season_fatigue_reset_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
 | Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) | live | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4874 | 2026-09-15 | PR #5265; TRAINING_RULES §3.2. |
+| Training page on mobile (`training-mobile-table`) | beta | - | [PAGE_TEMPLATES.md](design/PAGE_TEMPLATES.md) | #3643 | 2026-09-19 | Noegle training_mobile_table, stadie beta (ejer 19/9); raekken oprettes af migrationen ved merge, derfor endnu intet flag-felt. |
 | Training score 1-99 (`training-score`) | beta | `training_score_visible` | [TRAINING_RULES.md](TRAINING_RULES.md) | #4851 | 2026-09-15 | PR #5261, flag beta. |
 | Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4846 | 2026-09-15 | Merget 15/9, flag off (§13.3). |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |

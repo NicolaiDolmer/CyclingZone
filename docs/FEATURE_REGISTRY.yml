@@ -328,6 +328,16 @@ features:
     verified: 2026-09-15
     note: PR #5261, flag beta.
 
+  - id: training-mobile-table
+    area: training
+    title_en: Training page on mobile
+    title_da: Træningssiden på mobil
+    state: beta
+    ssot: docs/design/PAGE_TEMPLATES.md
+    epic: 3643
+    verified: 2026-09-19
+    note: 'training_mobile_table beta (ejer 19/9); flag-felt naar raekken er applied.'
+
   - id: training-hard-sessions-cobbles-echelon-attack
     area: training
     title_en: Hard sessions for cobbles, echelons and attacks

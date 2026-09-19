@@ -69,6 +69,11 @@ const TRAINING_ME = {
   todayRun: null,
   weekPlan: null,
   riderWeekPlans: {},
+  // #3643 (ejer 19/9): den nye mobil-visning er beta-only bag
+  // `training_mobile_table`. Serveren sender resultatet som en bar boolean;
+  // her er den TÆNDT, fordi mobil-testen nedenfor måler netop den nye flade
+  // (rytterens kort). Desktop-testene er uberørte af feltet.
+  mobileTable: true,
 };
 
 // Rutene registreres EFTER installNetworkMocks, så de vinder over den generiske

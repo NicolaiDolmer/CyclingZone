@@ -56,6 +56,12 @@ for (const [i, rider] of SQUAD.entries()) {
 const TRAINING_ME = {
   enabled: true,
   betaTester: true,
+  // #3643 (ejer 19/9): den nye visning er beta-only. Serveren evaluerer
+  // `training_mobile_table` (stadie beta) mod viewerens beta-status og sender
+  // resultatet som en bar boolean — her er den TÆNDT, så denne spec måler den
+  // nye flade. Flag-off-stien (alle andre spillere) er dækket af
+  // 5124-training-mobile.spec.js, hvis mock bevidst udelader feltet.
+  mobileTable: true,
   teamId: TEST_TEAM.id,
   slots: { total: null, used: SQUAD.length, remaining: null },
   focuses: SESSIONS,
@@ -215,6 +221,30 @@ test("412 px i mørkt tema: samme form, ingen rå farver der falder ud", async (
   await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
 
   await page.screenshot({ path: evidenceShotPath("pr-screens/3643-training-mobile-412-dark.png"), fullPage: true });
+});
+
+// #3643 (ejer 19/9): "Jeg vil have det kun live for beta testere i starten".
+// Gaten er serverens — klienten får en bar boolean — så guarden her er: med
+// `mobileTable: false` findes den nye tabel SLET IKKE på telefonen, og det er
+// den gamle mobil-visning (#5124's D-047-gren, med "Fuld tabel") der tegnes.
+// Uden denne test ville en gate der altid var sand se grøn ud i hele suiten.
+test("412 px med flaget OFF: ingen ny mobil-tabel — den gamle visning står uændret", async ({ page }) => {
+  await page.route("**/api/training/me**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, { ...TRAINING_ME, mobileTable: false });
+  });
+  await login(page);
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto("/training");
+  await page.locator("table[data-sortable]").first().waitFor();
+
+  await expect(roster(page)).toHaveCount(0);
+  await expect(page.locator('[data-testid="training-mobile-today"]')).toHaveCount(0);
+  // Den gamle gren ER tegnet: chip-rækkens "Fuld tabel" hører KUN til den.
+  await expect(page.getByRole("button", { name: "Fuld tabel" })).toBeVisible();
+  // Og det fulde navn står i tabellen (den nye visning forkorter til "A. Pedersen").
+  await expect(page.getByText("Ada Pedersen")).toBeVisible();
 });
 
 test("desktop 1280 px: uændret — alle kolonner som før, ingen mobil-tabel", async ({ page }, testInfo) => {

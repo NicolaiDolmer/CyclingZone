@@ -666,6 +666,14 @@ fladen viser **aldrig** et hårdkodet sæson-tal. Modellen ligger i `frontend/sr
 "På loftet"-chippen er **beholdt som i dag** og ligger i ét udtryk i rytterkortets evne-chips, så den kan
 fjernes i én rettelse når loft-modellen ændres efter S4 (#5351).
 
+**Udrulning (ejer 19/9):** mobil-tabellen ligger bag stadie-flaget `training_mobile_table`, oprettet i stadie
+**beta** af `database/2026-09-19-3643-training-mobile-table-flag.sql`. Ejerens ord: *"Jeg vil have det kun live
+for beta testere i starten, sådan at vi kan snakke om det og tilpasse, hvor vi derefter gør den bedre og bedre
+løbende"*. Beta-testere ser den nye flade; alle andre ser den mobil-visning der står i prod i dag (#5124's
+D-047-gren, bevaret i `TrainingPage.jsx`), og desktop er uberørt i begge stadier. Flaget evalueres server-side
+i `GET /api/training/me` (`backend/lib/trainingMobileTableFlag.js`) og sendes som en bar boolean. Den gamle
+gren slettes først den dag flaget går til `on`.
+
 ### 13.2 Åbne punkter (ikke stillet endnu, ét ad gangen)
 
 Løbsdagens rytme i rigtig tid (antal pr. kalenderdag, klokkeslæt, hvornår tick'et lukker) · hvad der kan nå sæson 4 · om en løbsdag med løb også får en score på samme skala · off-season-hullet mellem to sæsoner · økonomi pr. kalenderdag mod udvikling pr. løbsdag · sweep-kapacitet (ca. 3x writes pr. døgn) · ops-vagter kalibreret pr. kalenderdag · skadesvarighed i løbsdage eller kalenderdage · historikkens akse · rytter solgt mellem divisioner midt i sæsonen · Grand Tour-hviledage · hvad der sker med eksisterende `training_day_runs` uden `game_day`.
