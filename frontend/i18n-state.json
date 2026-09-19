@@ -18845,6 +18845,10 @@
           "srcHash": "2611222ae79f6e7a",
           "status": "reviewed"
         },
+        "actions.viewDetails": {
+          "srcHash": "d1bf045bb524dae5",
+          "status": "reviewed"
+        },
         "tabs.mine": {
           "srcHash": "f57afb7d275a26df",
           "status": "reviewed"
@@ -18939,6 +18943,10 @@
         },
         "aggregate.countSuffix": {
           "srcHash": "a2eb310c9fd83b59",
+          "status": "reviewed"
+        },
+        "aggregate.raceResultTitle": {
+          "srcHash": "0c9d8bb691ddf04a",
           "status": "reviewed"
         },
         "aggregate.firstLatest": {

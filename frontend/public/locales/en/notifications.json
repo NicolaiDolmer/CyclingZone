@@ -13,7 +13,8 @@
     "deleteRead": "Delete read",
     "deleteAria": "Delete",
     "deleteAllAria": "Delete all",
-    "viewAuction": "View auction"
+    "viewAuction": "View auction",
+    "viewDetails": "View details"
   },
   "tabs": {
     "mine": "Mine",
@@ -47,6 +48,7 @@
   },
   "aggregate": {
     "countSuffix": "(×{count})",
+    "raceResultTitle": "{race}: result is in",
     "firstLatest": "First {first} · Latest {latest}",
     "lostLeadShare": "Includes {count} where you lost the lead",
     "expand": "Expand",

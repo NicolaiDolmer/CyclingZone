@@ -13,7 +13,8 @@
     "deleteRead": "Slet læste",
     "deleteAria": "Slet",
     "deleteAllAria": "Slet alle",
-    "viewAuction": "Vis auktion"
+    "viewAuction": "Vis auktion",
+    "viewDetails": "Vis detaljer"
   },
   "tabs": {
     "mine": "Mine",
@@ -47,6 +48,7 @@
   },
   "aggregate": {
     "countSuffix": "(×{count})",
+    "raceResultTitle": "{race}: resultatet er klar",
     "firstLatest": "Først {first} · Senest {latest}",
     "lostLeadShare": "Heraf {count} hvor du mistede føringen",
     "expand": "Udvid",
