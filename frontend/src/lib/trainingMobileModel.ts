@@ -83,16 +83,11 @@ export function isSingleRaceDay(columns: RaceDayColumn[]): boolean {
 
 // ── Rytter-navnet i en 124 px kolonne ───────────────────────────────────────
 
-// "Mathias Sørensen" → "M. Sørensen". #5350: fulde fornavne aad bredden i
-// traeningens rytterkolonne, mens de samme ryttere fylder markant mindre paa
-// Mit Hold. Efternavnet er identiteten; fornavnet er et initial.
-export function riderShortName(rider: { firstname?: string | null; lastname?: string | null } | null | undefined): string {
-  const first = (rider?.firstname ?? "").trim();
-  const last = (rider?.lastname ?? "").trim();
-  if (!last) return first;
-  if (!first) return last;
-  return `${first.slice(0, 1).toUpperCase()}. ${last}`;
-}
+// Selve reglen bor i `lib/riderName.ts` siden 19/9 (#5383): DataTable's
+// navnecelle bruger den samme korte form paa mobil, og een kopi af "M.
+// Sørensen"-reglen er een kopi. Re-eksporteres her, saa traeningens egne
+// import-steder er uaendrede.
+export { riderShortName } from "./riderName.ts";
 
 // ── "Taeller for <rolle>" ───────────────────────────────────────────────────
 

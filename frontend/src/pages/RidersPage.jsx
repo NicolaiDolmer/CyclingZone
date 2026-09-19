@@ -15,6 +15,7 @@ import { riderOverallRating } from "../lib/riderRating";
 import { useNavigate, Link, useSearchParams, useLocation, useNavigationType } from "react-router";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
+import { riderShortName } from "../lib/riderName.ts";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
@@ -455,6 +456,17 @@ export default function RidersPage() {
           className="text-cz-1 hover:text-cz-accent-t transition-colors"
         />
       ),
+      // #5383: paa mobil er navnekolonnen smal nok til at "Ada Pedersen" brod
+      // til to linjer. Den korte form (#5350, ejer-valgt 18/9) staar paa een —
+      // samme navneform som Mit Hold og traeningssiden.
+      renderShort: (r) => (
+        <RiderNameCell
+          id={r.id}
+          name={riderShortName(r)}
+          stopPropagation
+          className="text-cz-1 hover:text-cz-accent-t transition-colors"
+        />
+      ),
     },
     {
       key: "compare",
@@ -563,11 +575,17 @@ export default function RidersPage() {
       header: t("table.type"),
       sortKey: "primary_type",
       fold: true,
+      // #5383: KORT type-etiket i mobilens meta-linje. Det fulde navn
+      // ("Bjergrytter/Etapeløbsrytter" = 27 tegn i eet ord) var linjens
+      // laengste tekst og loeb ud over kolonnen. `riderTypes.short.*` findes
+      // allerede i repoet (rytterprofilens type-radar bruger dem), saa dette er
+      // ikke ny copy. Desktop-badget nedenfor er uaendret — det fulde navn
+      // staar stadig i sin egen kolonne dér.
       foldValue: (r) => {
         if (!r.primary_type) return "";
-        const primary = tTypes(`types.${r.primary_type}`);
+        const primary = tTypes(`short.${r.primary_type}`);
         const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
-        return hasSecondary ? `${primary}/${tTypes(`types.${r.secondary_type}`)}` : primary;
+        return hasSecondary ? `${primary}/${tTypes(`short.${r.secondary_type}`)}` : primary;
       },
       render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
     },

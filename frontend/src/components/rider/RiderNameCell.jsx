@@ -8,10 +8,16 @@ import RiderLink from "../RiderLink";
 // bryde ved ordgrænser i stedet for at tvinge nowrap-bredden — D-047's
 // mobil-standardtilstand (ingen vandret scroll) kræver det, ligesom
 // DataTable's renderStickyCell(wrap) og TrainingPage.jsx's roster.
+//
+// #5383: `name` (valgfri) saetter den viste tekst direkte, saa en kalder kan
+// vise den korte form ("A. Pedersen", lib/riderName.ts) uden at cellen skal
+// gaette hvordan et navn deles. Udelades den, vises fornavn + efternavn som
+// hidtil.
 export default function RiderNameCell({
   id,
   firstname,
   lastname,
+  name,
   stopPropagation = false,
   className = "text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors",
   wrap = false,
@@ -31,7 +37,7 @@ export default function RiderNameCell({
         stopPropagation={stopPropagation}
         className={`${className} ${wrap ? "min-w-0" : "whitespace-nowrap"}`}
       >
-        {firstname} {lastname}
+        {name ?? `${firstname ?? ""} ${lastname ?? ""}`.trim()}
       </RiderLink>
       {children}
     </span>

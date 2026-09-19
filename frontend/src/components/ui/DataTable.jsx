@@ -627,6 +627,22 @@ function MobileFullTable({
   );
 }
 
+// Den foldede meta-linje er EN streng, men "Klatrer/GC" er EET ord for
+// browseren. Uden en brydningsmulighed ved "/" falder linjen tilbage paa
+// `break-words` og braekker midt i ordet ("SPURT/ROULEU" / "R", maalt 19/9 paa
+// 412 px). `<wbr>` er praecis dét HTML-element: en frivillig brydning der
+// hverken tegner noget eller aendrer `textContent` — teksten er den samme for
+// skaermlaesere, tests og tekst-vagten. Refs #5383.
+function withBreakHints(value) {
+  const parts = String(value).split("/");
+  if (parts.length === 1) return value;
+  // Brydningen ligger EFTER skraastregen, saa "SPURT/" bliver staaende paa den
+  // foerste linje — ikke "/ROULEUR" paa den naeste.
+  return parts.flatMap((part, index) =>
+    index === parts.length - 1 ? [part] : [`${part}/`, <wbr key={`wbr-${index}`} />],
+  );
+}
+
 // Sticky-celle: navnelinje 13.5/500 + text-3xs uppercase underlinje. På mobil
 // foldes `fold`-kolonnernes værdier ind forrest i underlinjen (" · "-adskilt).
 //
@@ -637,7 +653,14 @@ function MobileFullTable({
 // snige sig tilbage ad bagvejen. `min-w-0` er nødvendig, fordi flex-børn ellers
 // har `min-width: auto` og nægter at krympe under deres indhold.
 function renderStickyCell(col, row, i, foldCols, wrap = false) {
-  const primary = col.render ? col.render(row, i) : row[col.key];
+  // `renderShort` (#5383): mobilens KORTE navneform. Ejeren valgte den 18/9
+  // (#5350, bygget i #5397 som `riderShortName`) — "A. Pedersen" paa EEN linje
+  // frem for "Ada / Pedersen" paa to. Den er opt-in pr. kolonne og ikke
+  // udledt af den faerdige streng: kun siden kender fornavn og efternavn, og
+  // et gaet paa hvor et navn deles ("van der Poel") ville vaere forkert. Sider
+  // uden `renderShort` faar det fulde navn, som hellere maa bryde til to
+  // linjer end blive klippet — navne forkortes ikke paa maa og faa.
+  const primary = wrap && col.renderShort ? col.renderShort(row, i) : col.render ? col.render(row, i) : row[col.key];
   const sub = col.subline ? col.subline(row, i) : null;
   const folded = foldCols
     .map((c) => (c.foldValue ? c.foldValue(row) : row[c.key]))
@@ -662,29 +685,28 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
       <span className={`flex items-center gap-2 text-[13.5px] font-medium text-cz-1 ${nowrap}`}>
         {primary}
       </span>
+      {/* #5383: den foldede meta-linje er den laengste tekst i cellen og stak
+          indtil 19/9 op til 84 px ud over sin egen <td> paa 412 px. Den maa
+          IKKE loeses med ellipsis: ryttertypen er linjens vigtigste oplysning,
+          `title` kan ikke naas paa en touch-skaerm, og ejeren (og de fleste
+          spillere) er paa Android. Den bliver derfor i sin egen celle og bryder
+          i stedet: `min-w-0` + normal whitespace lader den ombryde ved " · ",
+          og `break-words` er sidste vaern mod et enkelt ord der er bredere end
+          kolonnen. At den kan NOEJES med to linjer er copy'ens ansvar —
+          RidersPage og AcademyPage folder ryttertypen ind med repoets korte
+          type-etiketter (riderTypes.short.*). */}
       {(sub != null || folded.length > 0) && (
         <span
-          className={`mt-0.5 block font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${wrap ? "min-w-0" : "whitespace-nowrap"} ${indent}`}
+          className={`mt-0.5 block font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${wrap ? "min-w-0 break-words [&_*]:whitespace-normal" : "whitespace-nowrap"} ${indent}`}
         >
-          {/* #5383: den foldede meta-linje er den laengste tekst i cellen
-              ("BJERGRYTTER/ETAPELOEBSRYTTER" er EET ord paa 27 tegn) og stak
-              indtil 19/9 op til 84 px ud over sin egen <td> paa 412 px. Den maa
-              hverken braekkes midt i ordet (grimt, og praecis det TrainingPage
-              allerede har skrevet ned som forkert) eller saette kolonnens
-              min-bredde. Paa mobil faar den derfor sin EGEN linje med ellipsis
-              og hele teksten i `title` — D-047's "resten er et tryk vaek",
-              anvendt paa cellens egen underlinje. */}
           {folded.length > 0 && (
-            wrap ? (
-              <span className="block truncate sm:hidden" title={folded.join(" · ")}>
-                {folded.join(" · ")}
-              </span>
-            ) : (
-              <span className="sm:hidden">
-                {folded.join(" · ")}
-                {sub != null && " · "}
-              </span>
-            )
+            <span className="sm:hidden">
+              {folded.flatMap((value, index) => [
+                index > 0 ? " · " : null,
+                ...[].concat(withBreakHints(value)),
+              ])}
+              {sub != null && " · "}
+            </span>
           )}
           {sub}
         </span>
