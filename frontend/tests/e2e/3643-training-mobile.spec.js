@@ -35,8 +35,8 @@ const SQUAD = [
   ...Array.from({ length: 10 }, (_, i) => ({
     ...base,
     id: `rider-3643-${i}`,
-    firstname: ["Mathias", "Tom", "Luca", "Rafael", "Viktor", "Antoine", "Soeren", "Jonas", "Emil", "Nikolaj"][i],
-    lastname: ["Soerensen", "Van Aerde", "Colombo", "Duran", "Lindqvist", "Fabre", "Mikkelsen", "Halvorsen", "Bakker", "Riis"][i],
+    firstname: ["Mathias", "Tom", "Luca", "Rafael", "Viktor", "Antoine", "Søren", "Jonas", "Emil", "Nikolaj"][i],
+    lastname: ["Sørensen", "Van Aerde", "Colombo", "Duran", "Lindqvist", "Fabre", "Mikkelsen", "Halvorsen", "Bakker", "Riis"][i],
     team_id: TEST_TEAM.id,
     primary_type: TYPES[i % TYPES.length],
     secondary_type: TYPES[(i + 2) % TYPES.length],
@@ -139,8 +139,8 @@ test("412 px: rytteren man trykker på får sit fulde kort ÉN gang, og 'Skift' 
   await expect(page.locator('[data-tour="training-next-up"]')).toHaveCount(1);
 
   // Et tryk på en ANDEN rytter flytter kortet.
-  await page.getByRole("button", { name: /M\. Soerensen/ }).click();
-  await expect(page.getByRole("button", { name: /M\. Soerensen/ })).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: /M\. Sørensen/ }).click();
+  await expect(page.getByRole("button", { name: /M\. Sørensen/ })).toHaveAttribute("aria-expanded", "true");
   await page.getByRole("button", { name: /A\. Pedersen/ }).click();
 
   // Kortet bærer præcis det beslutningen kræver: form + træthed som tal,

@@ -7,7 +7,7 @@
 // men uden chip-byttere: der er ikke laengere fem kolonner at vaelge imellem.
 //
 // #5350 (spillerfund 6/9): fornavne i fuld laengde aad bredden, og ryttertypen
-// fyldte en hel badge. Navnet er nu "M. Soerensen" + een dæmpet underlinje med
+// fyldte en hel badge. Navnet er nu "M. Sørensen" + een dæmpet underlinje med
 // type, form og traethed — samme form som Mit Hold, som spillerne selv pegede paa.
 //
 // Rytteren man trykker paa faar sit fulde kort EEN gang UNDER tabellen, ikke i

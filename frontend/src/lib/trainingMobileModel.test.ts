@@ -49,7 +49,7 @@ test("vraevl fra serveren falder tilbage til een kolonne, aldrig nul", () => {
 });
 
 test("riderShortName forkorter fornavnet, ikke efternavnet", () => {
-  assert.equal(riderShortName({ firstname: "Mathias", lastname: "Soerensen" }), "M. Soerensen");
+  assert.equal(riderShortName({ firstname: "Mathias", lastname: "Sørensen" }), "M. Sørensen");
   assert.equal(riderShortName({ firstname: "", lastname: "Bakker" }), "Bakker");
   assert.equal(riderShortName({ firstname: "Ada", lastname: "" }), "Ada");
   assert.equal(riderShortName(null), "");

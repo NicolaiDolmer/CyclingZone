@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
 <meta charset="utf-8">
-<title>Traeningssiden paa mobil - i dag vs. #3643</title>
+<title>Træningssiden på mobil - i dag vs. #3643</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -53,15 +53,15 @@ h1{font-family:var(--font-data); font-size:25px; font-weight:700; letter-spacing
 </head>
 <body>
 <div class="sheet">
-  <h1>Traeningssiden paa 412 px - i dag vs. #3643</h1>
-  <p class="sub">Samme hold, samme skaerm, samme sprog. Venstre soejle er siden som den staar paa main lige nu.</p>
-  <p class="meta">Aegte skaermbilleder · Playwright · 412 x 915 · mobile-chromium · lys</p>
+  <h1>Træningssiden på 412 px - i dag vs. #3643</h1>
+  <p class="sub">Samme hold, samme skærm, samme sprog. Venstre søjle er siden som den står på main lige nu.</p>
+  <p class="meta">Ægte skærmbilleder · Playwright · 412 x 915 · mobile-chromium · lys</p>
 
   <div class="cols">
     <div class="col">
       <div class="chead"><div class="n is-now">I dag (main)</div><div class="s">D-047: navn + tre kolonner + Fuld tabel</div></div>
       <div class="frame">
-        <img src="3643-training-mobile-412-before.png" alt="Traeningssiden i dag paa 412 px">
+        <img src="3643-training-mobile-412-before.png" alt="Træningssiden i dag på 412 px">
         <span class="pin is-now" style="left:20px; top:558px">1</span>
         <span class="pin is-now" style="left:366px; top:482px">2</span>
         <span class="pin is-now" style="left:20px; top:1000px">3</span>
@@ -71,9 +71,9 @@ h1{font-family:var(--font-data); font-size:25px; font-weight:700; letter-spacing
     </div>
 
     <div class="col">
-      <div class="chead"><div class="n">Anbefalet (#3643, mockup 2)</div><div class="s">Tabel: raekker = ryttere, kolonner = dagens loebsdage</div></div>
+      <div class="chead"><div class="n">Anbefalet (#3643, mockup 2)</div><div class="s">Tabel: rækker = ryttere, kolonner = dagens løbsdage</div></div>
       <div class="frame">
-        <img src="3643-training-mobile-412-mobile-chromium.png" alt="Traeningssiden efter #3643 paa 412 px">
+        <img src="3643-training-mobile-412-mobile-chromium.png" alt="Træningssiden efter #3643 på 412 px">
         <span class="pin" style="left:20px; top:558px">1</span>
         <span class="pin" style="left:330px; top:528px">2</span>
         <span class="pin" style="left:20px; top:1000px">3</span>
@@ -87,29 +87,29 @@ h1{font-family:var(--font-data); font-size:25px; font-weight:700; letter-spacing
     <div>
       <h2>Hvad der er galt i dag</h2>
       <ul>
-        <li><span class="b is-now">1</span><span class="txt"><b>Navnet fylder tre linjer</b> og skubber alt andet ud. Ryttertypen staar som en bred badge-linje (#5350).</span></li>
-        <li><span class="b is-now">2</span><span class="txt"><b>Kolonner ligger bag skaermkanten.</b> "Denne saeson" er klippet, og resten naas kun via chip-raekken eller "Fuld tabel".</span></li>
-        <li><span class="b is-now">3</span><span class="txt"><b>Fire ryttere pr. skaerm.</b> Man kan ikke se sin egen trup.</span></li>
-        <li><span class="b is-now">4</span><span class="txt"><b>To knapper i sidehovedet</b>, hvoraf den ene er gold - plus en gold sessions-chip i hver raekke.</span></li>
-        <li><span class="b is-now">5</span><span class="txt"><b>Hverken dagens rytme eller ugens program</b> er synligt. Ingen af de tal spilleren traeffer valget paa er samlet eet sted.</span></li>
+        <li><span class="b is-now">1</span><span class="txt"><b>Navnet fylder tre linjer</b> og skubber alt andet ud. Ryttertypen står som en bred badge-linje (#5350).</span></li>
+        <li><span class="b is-now">2</span><span class="txt"><b>Kolonner ligger bag skærmkanten.</b> "Denne sæson" er klippet, og resten nås kun via chip-rækken eller "Fuld tabel".</span></li>
+        <li><span class="b is-now">3</span><span class="txt"><b>Fire ryttere pr. skærm.</b> Man kan ikke se sin egen trup.</span></li>
+        <li><span class="b is-now">4</span><span class="txt"><b>To knapper i sidehovedet</b>, hvoraf den ene er gold - plus en gold sessions-chip i hver række.</span></li>
+        <li><span class="b is-now">5</span><span class="txt"><b>Hverken dagens rytme eller ugens program</b> er synligt. Ingen af de tal spilleren træffer valget på er samlet ét sted.</span></li>
       </ul>
     </div>
     <div>
-      <h2>Hvad forslaget goer</h2>
+      <h2>Hvad forslaget gør</h2>
       <ul>
-        <li><span class="b">1</span><span class="txt"><b>"A. Pedersen" + een daempet linje</b> med type, form og traethed - samme navneform som Mit Hold, som spillerne selv pegede paa.</span></li>
-        <li><span class="b">2</span><span class="txt"><b>Ingen kolonne bag kanten.</b> Maalt: <code>scrollWidth</code> = viewport paa baade 412 og 375 px. Ingen chips, ingen "Fuld tabel".</span></li>
-        <li><span class="b">3</span><span class="txt"><b>Ni-elleve ryttere pr. skaerm</b>, og den rytter man trykker paa faar sit fulde kort EEN gang under tabellen.</span></li>
-        <li><span class="b">4</span><span class="txt"><b>EEN gold primary</b> i fuld bredde over fanerne. Assistenten er et lukket panel med taelling nederst.</span></li>
-        <li><span class="b">5</span><span class="txt"><b>Dagens stribe + programgitteret</b> (7 ugedage x N loebsdage) staar oeverst. Med flaget OFF er striben een kolonne, "I dag".</span></li>
+        <li><span class="b">1</span><span class="txt"><b>"A. Pedersen" + én dæmpet linje</b> med type, form og træthed - samme navneform som Mit Hold, som spillerne selv pegede på.</span></li>
+        <li><span class="b">2</span><span class="txt"><b>Ingen kolonne bag kanten.</b> Målt: <code>scrollWidth</code> = viewport på både 412 og 375 px. Ingen chips, ingen "Fuld tabel".</span></li>
+        <li><span class="b">3</span><span class="txt"><b>Ni-elleve ryttere pr. skærm</b>, og den rytter man trykker på får sit fulde kort ÉN gang under tabellen.</span></li>
+        <li><span class="b">4</span><span class="txt"><b>ÉN gold primary</b> i fuld bredde over fanerne. Assistenten er et lukket panel med tælling nederst.</span></li>
+        <li><span class="b">5</span><span class="txt"><b>Dagens stribe + programgitteret</b> (7 ugedage x N løbsdage) står øverst. Med flaget OFF er striben én kolonne, "I dag".</span></li>
       </ul>
     </div>
   </div>
 
   <p class="foot">
-    Flaget <code>training_tick_per_race_day</code> er OFF i prod, saa tabellen viser praecis EEN loebsdags-kolonne.
-    Modellen baerer 1-5 kolonner uden at skifte form, og fladen viser aldrig et haardkodet saeson-tal.
-    Desktop-visningen er uaendret - bevis: <code>3643-training-desktop-1440-before.png</code> mod <code>3643-training-desktop-1280-desktop-chromium.png</code>.
+    Flaget <code>training_tick_per_race_day</code> er OFF i prod, så tabellen viser præcis ÉN løbsdags-kolonne.
+    Modellen bærer 1-5 kolonner uden at skifte form, og fladen viser aldrig et hårdkodet sæson-tal.
+    Desktop-visningen er uændret - bevis: <code>3643-training-desktop-1440-before.png</code> mod <code>3643-training-desktop-1280-desktop-chromium.png</code>.
   </p>
 </div>
 </body>

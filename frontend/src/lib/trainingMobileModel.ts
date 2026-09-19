@@ -83,7 +83,7 @@ export function isSingleRaceDay(columns: RaceDayColumn[]): boolean {
 
 // ── Rytter-navnet i en 124 px kolonne ───────────────────────────────────────
 
-// "Mathias Soerensen" → "M. Soerensen". #5350: fulde fornavne aad bredden i
+// "Mathias Sørensen" → "M. Sørensen". #5350: fulde fornavne aad bredden i
 // traeningens rytterkolonne, mens de samme ryttere fylder markant mindre paa
 // Mit Hold. Efternavnet er identiteten; fornavnet er et initial.
 export function riderShortName(rider: { firstname?: string | null; lastname?: string | null } | null | undefined): string {
