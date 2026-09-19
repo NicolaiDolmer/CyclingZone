@@ -533,6 +533,10 @@ export async function materializeTierCalendars({
   // adfaerd. buildSeasonCalendar sender saesonens maal (SEASON_RACE_DAY_TARGET) eller
   // --race-day-target; se calendarRaceDayTargets.js og docs/CALENDAR_RULES.md §1d.
   raceDayTarget = null,
+  // #5267: proevepakning af synkroniserede etapeloebs-blokke (R13). Default FRA — den er
+  // MAALT strukturelt umulig i D1/D3/D4 (docs/audits/2026-09-19-5267-proevepakning.md §3).
+  // Parameteren findes saa kontakten er naaelig fra produktionsstien og ikke kun fra tests.
+  syncStageBlocks = false,
   // #3327/#3328 pass-through til buildTierMaterializationPlan + dækningsverifikationen.
   // Defaults = de skarpe produktions-garantier. Tests af FØR-#3327-mekanik (GT-gate,
   // overlap-cap, kronologi, dedup) med små syntetiske katalog-fixtures kan sende tomme
@@ -639,6 +643,7 @@ export async function materializeTierCalendars({
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
     oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
+    syncStageBlocks,
   });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
