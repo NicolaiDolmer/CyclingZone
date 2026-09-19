@@ -66,6 +66,12 @@ const TRAINING_ME = {
 
 test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
+  // #3643: denne spec maaler DESKTOP-rosterets indhold. Telefonen har siden
+  // 18/9 sin egen visning (tabel med dagens loebsdage, mockup 2), og den er
+  // daekket af 3643-training-mobile.spec.js. Viewporten saettes derfor
+  // eksplicit, saa alle tre projekter bliver ved med at koere DENNE flade i
+  // deres egen motor i stedet for at teste en flade der ikke findes laengere.
+  await page.setViewportSize({ width: 1280, height: 900 });
   await installNetworkMocks(page);
   // Override OVEN PÅ installNetworkMocks (senest registrerede route vinder).
   await page.route("**/api/training/me**", (route) => {
@@ -112,13 +118,18 @@ test("training report shows day summary, progress and breakthrough jump", async 
 // scroll-strimmel (2 spillere, iOS Safari + Android Firefox, 31/7). Kontrakten:
 // den sticky region (checkbox + navn) må højst optage ~65 % af viewporten på
 // mobil, så de redigerbare kolonner har reel plads at scrolle i.
-test("#3194: portræt — sticky navnekolonne æder ikke skærmen", async ({ page }) => {
+//
+// #3643 (ejer 19/9): testen BLIVER — den måler flag-OFF-stien, altså den
+// mobil-visning alle der ikke er beta-testere får. Mock-svaret sætter bevidst
+// ikke `mobileTable`, og viewporten sættes eksplicit her, fordi beforeEach
+// ovenfor kører resten af specen på desktop-bredde.
+test("#3194: portræt — sticky navnekolonne æder ikke skærmen (flag off)", async ({ page }) => {
   await login(page);
+  await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/training");
   await expect(page.getByRole("columnheader", { name: "Næste +1" }).first()).toBeVisible();
 
   const viewport = page.viewportSize();
-  test.skip(viewport.width >= 640, "portræt-kolonnekontrakten gælder kun under sm-breakpointet");
 
   // Rækkens navnecelle er den 2. sticky-celle ([0] = checkbox-cellen, w-10).
   const nameCell = page.locator("tbody td.sticky-name-cell").nth(1);
