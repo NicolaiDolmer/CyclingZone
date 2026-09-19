@@ -16,29 +16,39 @@
 // overhovedet?*
 //
 // ───────────────────────────────────────────────────────────────────────────────────────
-// HVAD TALLENE BETYDER (læs dette før du bruger output'et til noget)
+// TRE TAL PR. DIVISION OG MÅL — og præcis hvad hvert af dem betyder
 //
-// `bestAchievable` er et OPTIMISTISK LOFT, ikke en forudsigelse. Den er beregnet som et
-// EKSAKT knapsack-maksimum (DP over den præcise etape-kvote, §1b) hvor hvert løb bidrager
-// med sit STØRST MULIGE udfald for det pågældende mål. Loftet ser altså bort fra:
+// 1. `bestAchievable` — OPTIMISTISK LOFT. Et EKSAKT knapsack-maksimum (DP over den præcise
+//    etape-kvote, §1b) hvor hvert løb bidrager med sit STØRST MULIGE udfald. Loftet ser
+//    bort fra den grådige prestige-rækkefølge, endagsløb/etapeløb-budgettet (§4),
+//    arketype-reservationerne (§5), og det antager at HVERT filler-træk i HVERT løb falder
+//    ud til fordel for målet. Konsekvensen er præcis én, og den er den nyttige:
+//    **et mål over loftet kan ikke nås — et mål under loftet er ikke dermed nået.**
 //
-//   · den grådige prestige-rækkefølge (selectTierRaceSet tager de STØRSTE løb først)
-//   · endagsløb/etapeløb-budgettet (§4, TIER_ONE_DAY_SHARE_TARGET)
-//   · arketype-reservationerne (§5, TIER_ARCHETYPE_RESERVATIONS)
-//   · at etape-profilerne trækkes med RNG — loftet antager at hvert filler-træk falder ud
-//     til fordel for målet, hver gang, i hvert løb
-//   · at de øvrige mål i samme division skal opfyldes samtidigt af det SAMME udvalg
+// 2. `bestGuaranteed` — samme eksakte knapsack, men hvert løb bidrager kun med det det
+//    leverer DETERMINISTISK (arketypens garantier, jf. ARCHETYPE_PROFILES). Ligger kravet
+//    over dette tal, kan målet kun nås hvis den tilfældige filler spiller med — divisionen
+//    har ingen garanteret forsyning at falde tilbage på, og en regenerering kan tabe
+//    dækningen uden at noget er ændret. Det er præcis dét der skete for D4's rullende
+//    terræn i sæson 3 (0 af 62 etaper, §5).
 //
-// Konsekvensen er præcis én, og den er den nyttige: **et mål der ligger over loftet kan
-// ikke nås. Et mål der ligger under loftet er ikke dermed nået.** Kontrollen er en vagt mod
-// det umulige, ikke en kvalitetsmåling. `worstAchievable` er det tilsvarende eksakte
-// minimum og bruges til loft-mål (fx §5's rolling-loft).
+// 3. `worstAchievable` — det eksakte minimum. Bruges til LOFT-mål (§5's rolling-loft): et
+//    loft kan kun være uopnåeligt hvis selv det mindste udfald ligger over det.
 //
-// Den krydsdivisionelle dom (`contested`) er derimod en ÆGTE nødvendig betingelse — se
+// Den krydsdivisionelle dom (`contested`) er en ÆGTE nødvendig betingelse — se
 // `evaluateSharedSupply` nedenfor: et løb kan kun ligge i én division (cross-tier dedup,
 // #2276), så for enhver gruppe af divisioner skal den samlede forsyning i foreningen af
 // deres klasse-vinduer kunne dække gruppens samlede krav. Er den betingelse brudt, er det
 // bevist at ikke alle divisioner i gruppen kan nå målet — uanset hvem der vælger først.
+//
+// MÅLT MOD DET COMMITTEDE KATALOG (19/9): ingen af de fire divisioners terræn-mål ligger
+// over sit loft, og ingen gruppe af divisioner er bestridt. Det er et fund i sig selv, og
+// det er det samme som undersøgelsen i `docs/audits/2026-09-19-5405-bjergdage-bytte.md`
+// nåede frem til ad en helt anden vej (dens F1: det bjergrige løb Division 3 manglede,
+// "lå ubrugt i kataloget"). **Den bindende grænse for dagens kalender er altså IKKE at
+// løbene mangler — den er at kvoten er fast, så de mål der konkurrerer om den samme kvote
+// ikke kan mættes samtidigt.** Denne kontrol kan bevise mangel; den kan ikke afgøre en
+// prioritering mellem to mål, og den foregiver ikke at kunne det.
 //
 // REN FUNKTION. Ingen DB, ingen Date, ingen RNG, ingen skrivning. Input er kataloget som
 // ren data (samme form som `race_pool`-rækkerne i
@@ -53,6 +63,7 @@ import {
   TERRAIN_FAMILIES,
   TERRAIN_FAMILY_BY_PROFILE_TYPE,
   CLASS_STAGE_LENGTH_BAND,
+  TIER_ARCHETYPE_RESERVATIONS,
 } from "./tierCalendarGuarantees.js";
 import {
   TIER_CLASS_WHITELIST,
@@ -386,13 +397,14 @@ export function checkCatalogSupply({
       const maxRows = window.map((r) => ({ stages: effectiveStages(r), value: boundsById.get(r.id).max }));
       const minRows = window.map((r) => ({ stages: effectiveStages(r), value: boundsById.get(r.id).min }));
       const best = exactQuotaExtreme(maxRows, quota, "max");
+      const bestGuaranteed = exactQuotaExtreme(minRows, quota, "max");
       const worst = exactQuotaExtreme(minRows, quota, "min");
       perTier.set(tier, {
         tier, goalId: goal.id, rule: goal.rule, kind: goal.kind, label: goal.label,
         quota, requirement, toleranceCeiling: toleranceCeilingForGoal(goal, quota),
-        bestAchievable: best, worstAchievable: worst,
+        bestAchievable: best, bestGuaranteed, worstAchievable: worst,
         supplyInWindow: window.reduce((s, r) => s + boundsById.get(r.id).max, 0),
-        missingSources: missingSourcesFor(window, boundsById, catalog, goal),
+        missingSources: missingSourcesFor(window, boundsById, catalog),
       });
     }
 
@@ -404,8 +416,69 @@ export function checkCatalogSupply({
     }
   }
 
-  const findings = rows.filter((r) => r.verdict !== "reachable");
-  return { quotas: effectiveQuotas, raceDays, rows, findings, quotaReachable };
+  const reservations = checkReservationSupply({ tiers, windows });
+  const findings = [
+    ...rows.filter((r) => r.verdict !== "reachable"),
+    ...reservations.filter((r) => r.verdict !== "reachable"),
+  ];
+  return { quotas: effectiveQuotas, raceDays, rows, reservations, findings, quotaReachable };
+}
+
+/**
+ * §5's arketype-reservationer er den ENESTE del af udvælgelsen der er deterministisk: hver
+ * division tager et fast antal løb af bestemte arketyper FØR prestige-walket. Reservationen
+ * er også den knap der har svigtet tre gange, altid af samme grund — en højere division
+ * støvsugede den forsyning en lavere division skulle bruge (#4075: D1's cobbled_tour;
+ * #3469: D2 sultede D4's cobbled_tour og D1/D2 tømte D3's cobbled_classic). Den kontrol
+ * hører hjemme her, fordi den kan afgøres på kataloget alene.
+ *
+ * To domme pr. arketype:
+ *   · pr. division — findes der overhovedet nok løb af arketypen i divisionens klasse-vindue?
+ *   · pr. gruppe af divisioner — kan foreningen af deres vinduer bære gruppens samlede
+ *     reservation? Et løb kan kun ligge i én division (#2276), så er den sum for lille, er
+ *     det bevist at mindst én divisions reservation ikke kan opfyldes.
+ */
+export function checkReservationSupply({
+  tiers = SUPPLY_TIERS,
+  windows,
+  reservations = TIER_ARCHETYPE_RESERVATIONS,
+} = {}) {
+  const archetypes = [...new Set(Object.values(reservations ?? {}).flatMap((cfg) => Object.keys(cfg ?? {})))].sort();
+  const out = [];
+  for (const archetype of archetypes) {
+    const demandOf = (tier) => Math.max(0, Number(reservations?.[tier]?.[archetype]) || 0);
+    const inWindow = new Map(tiers.map((t) => [t, windows.get(t).filter((r) => r.terrain_archetype === archetype)]));
+
+    const contested = new Map();
+    const candidates = tiers.filter((t) => demandOf(t) > 0);
+    for (let mask = 1; mask < (1 << candidates.length); mask++) {
+      const group = candidates.filter((_, i) => mask & (1 << i));
+      if (group.length < 2) continue;
+      const union = new Set();
+      for (const tier of group) for (const race of inWindow.get(tier)) union.add(race.id);
+      const demand = group.reduce((s, t) => s + demandOf(t), 0);
+      if (union.size >= demand) continue;
+      for (const tier of group) {
+        const prev = contested.get(tier);
+        if (prev && prev.group.length >= group.length) continue;
+        contested.set(tier, { group, supply: union.size, demand, shortfall: demand - union.size });
+      }
+    }
+
+    for (const tier of tiers) {
+      const demand = demandOf(tier);
+      if (demand <= 0) continue;
+      const supply = inWindow.get(tier).length;
+      const share = contested.get(tier) ?? null;
+      out.push({
+        tier, goalId: `reservation:${archetype}`, rule: "§5", kind: "reservation",
+        label: `arketype-reservation "${archetype}"`,
+        requirement: demand, supplyInWindow: supply, contestedWith: share,
+        verdict: supply < demand ? "impossible" : (share ? "contested" : "reachable"),
+      });
+    }
+  }
+  return out;
 }
 
 /**
@@ -455,6 +528,10 @@ function verdictFor(row, contested) {
   if (row.bestAchievable == null) return "impossible"; // kvoten kan ikke engang rammes
   if (row.requirement != null && row.bestAchievable < row.requirement) return "impossible";
   if (contested) return "contested";
+  // Loftet rækker, men kataloget garanterer det ikke: målet afhænger af at den tilfældige
+  // filler falder ud til dets fordel. Ikke et brud — en skrøbelighed, og den slags der
+  // først opdages når en regenerering taber dækningen (§5, D4's rullende terræn i S3).
+  if (row.requirement != null && row.bestGuaranteed != null && row.bestGuaranteed < row.requirement) return "luck-dependent";
   return "reachable";
 }
 
@@ -465,7 +542,7 @@ function verdictFor(row, contested) {
  * slet ikke findes i divisionens klasse-vindue, og dem der findes, med hvor meget de
  * højst kan levere.
  */
-function missingSourcesFor(window, boundsById, catalog, goal) {
+function missingSourcesFor(window, boundsById, catalog) {
   const inWindow = new Map();
   for (const race of window) {
     const y = boundsById.get(race.id).max;
@@ -500,16 +577,22 @@ function missingSourcesFor(window, boundsById, catalog, goal) {
 // (CALENDAR_RULES.md §5b) — ikke ved at hæve `maxShortfall` og ikke ved at slække målet.
 export const KNOWN_SUPPLY_DEVIATIONS = Object.freeze([
   Object.freeze({
-    id: "5405-mountain-d2-d3",
+    id: "5405-rolling-har-ingen-garanteret-kilde",
     issue: 5405,
-    goalId: "family:mountain",
-    tiers: Object.freeze([2, 3]),
-    verdict: "contested",
-    // Højeste underskud (i etaper) fundet 19/9. Vokser det, er forsyningen blevet værre og
-    // testen går rødt.
-    maxShortfall: null, // sættes af testen mod den committede fixture — se dens kommentar
+    goalId: "family:rolling",
+    tiers: Object.freeze([1, 2, 3, 4]),
+    verdict: "luck-dependent",
+    // Underskuddet er hele gulvet minus den garanterede forsyning. Vokser det, er
+    // forsyningen blevet værre og testen går rødt. Tallet låses af testen mod den
+    // committede fixture, så en katalog-ændring der forværrer det ikke kan slippe igennem.
     reviewBy: "2026-12-01",
-    note: "D2 og D3 deler ProSeries-båndet, og den fælles bjergforsyning kan ikke mætte begge divisioners bjerg-gulv samtidigt. Fundet 19/9, otte dage før sæsonskiftet. Lukkes ved at tilføje bjerg-løb i det delte klasse-bånd (§5b), ikke ved at slække et gulv.",
+    note: "INGEN arketype garanterer en rullende etape — `rolling` kommer udelukkende fra "
+      + "filler-vægte (ARCHETYPE_PROFILES). Gulvet i §5 kan derfor kun nås hvis det "
+      + "tilfældige filler-træk spiller med, i alle fire divisioner. Det er ikke en "
+      + "hypotese: målt i sæson 3 leverede Division 4 NUL rullende etaper, og ingen gate "
+      + "sagde fra (§5). Lukkes af en arketype med en rullende garanti eller af §6b's "
+      + "genkalibrering af filler-vægtene pr. division (S5-opgaven i §6b) — ikke ved at "
+      + "sænke gulvet.",
   }),
 ]);
 
@@ -547,21 +630,37 @@ export function classifySupplyFindings(findings, {
   return { unexpected, expected, expired, worsened };
 }
 
+/**
+ * Hvor meget mangler der? Altid i ETAPER (eller i LØB for en reservation), aldrig i
+ * procentpoint — et heltal er nemmere at låse i en test og at følge over tid.
+ */
 export function shortfallOf(finding) {
   if (finding.verdict === "contested") return finding.contestedWith?.shortfall ?? null;
-  if (finding.verdict === "impossible" && finding.kind !== "cap") {
-    if (finding.bestAchievable == null || finding.requirement == null) return null;
-    return finding.requirement - finding.bestAchievable;
+  if (finding.verdict === "luck-dependent") {
+    if (finding.bestGuaranteed == null || finding.requirement == null) return null;
+    return finding.requirement - finding.bestGuaranteed;
   }
-  if (finding.verdict === "impossible" && finding.kind === "cap") {
+  if (finding.verdict !== "impossible") return null;
+  if (finding.kind === "reservation") {
+    if (finding.supplyInWindow == null || finding.requirement == null) return null;
+    return finding.requirement - finding.supplyInWindow;
+  }
+  if (finding.kind === "cap") {
     if (finding.worstAchievable == null || finding.requirement == null) return null;
     return finding.worstAchievable - finding.requirement;
   }
-  return null;
+  if (finding.bestAchievable == null || finding.requirement == null) return null;
+  return finding.requirement - finding.bestAchievable;
 }
 
 export const VERDICT_LABELS = Object.freeze({
   reachable: "kan nås",
+  "luck-dependent": "kan kun nås hvis det tilfældige filler-træk spiller med",
   contested: "kan kun nås på bekostning af en anden division",
   impossible: "kan ikke nås",
 });
+
+// Domme der ALTID skal fælde en test, uanset om nogen har skrevet en afvigelse for dem.
+// En ny umulighed eller en ny bestridt gruppe er ikke noget nogen må registrere sig ud af —
+// den skal lukkes ved at tilføje løb til kataloget (§5b).
+export const BLOCKING_VERDICTS = Object.freeze(["impossible", "contested"]);
