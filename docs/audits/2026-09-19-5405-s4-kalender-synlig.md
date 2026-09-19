@@ -140,11 +140,8 @@ flag på en egen flade (eller som en ekstra "S4 (forhåndsvisning)"-post i sæso
 enten (a) have en ny endpoint der serverer plan-JSON i **præcis** `toCalendarWireEntry`-form,
 eller (b) skrive planen til rigtige tabeller — hvorved den holder op med at være vej A.
 
-Og et hul der er værre end arbejdet: **"Mit holds løb" kan ikke virke.** Kalenderens
-egen-hold-markering bygger på `race_entries` + holdets division. For S4 er holdets division
-pr. definition ikke afgjort (`resolveTeamDivisionForSeason` → `pending: true` for alt der ikke
-er `active`/`completed`). En manager ville se 4 divisioners løb uden at kunne se hvilke der
-er hans. Det er dårligt beslutningsgrundlag for præcis den feedback ejeren beder om.
+Begge veje deler i øvrigt problemet i §3f: markeringen "mit holds løb" kan kun bygges på
+holdets **nuværende** division, som ikke nødvendigvis er holdets S4-division.
 
 ### Vej B — den rigtige S4-kalender genereret tidligt, status `upcoming`
 
@@ -182,6 +179,7 @@ sikkerheden kommer fra ét mønster — baggrundsarbejde slår sæsonen op som `
 | Træningens sweep | `backend/lib/trainingSweep.js` | **Nej** | ✅ Ingen |
 | Planlægger-læsning (peaks) | `api.js` `resolveTeamDivisionForSeason` | Ja, men **`pending: true`** | ✅ Skrivning giver 409 `division_not_settled` |
 | Kalender-læsning | `api.js` `/races/calendar` | **Ja — med vilje** | ✅ Det er hele pointen |
+| **"Mit holds løb"-markering** | `backend/lib/raceCalendar.js` | **Ja** | 🟡 **Markerer mod NUVÆRENDE division — se §3f** |
 | **Udtagelses-skrivning** | `backend/lib/raceSelection.js` | **Ja** | 🔴 **Se nedenfor** |
 
 ### 3a. Det ene rigtige hul — udtagelse kan skrives ind i en kommende sæsons løb
@@ -232,6 +230,29 @@ bagefter. Det er den dyreste konsekvens af at bruge §2c's ene skud tidligt.
 Begge er **forudsætninger, ikke risici**, og begge er grønne i dag (§1e). `calendarGoldenDiff`
 er 100 % offline og kan køres igen lige før en eventuel `--apply` uden nogen risiko.
 
+### 3f. "Mit holds løb" markeres mod holdets NUVÆRENDE division — ikke dets S4-division
+
+Kalender-ruten bruger **ikke** `resolveTeamDivisionForSeason`. Den sender holdets nuværende
+pulje-id direkte videre:
+
+- `api.js` `/races/calendar`: `teamDivisionId: req.team?.league_division_id ?? null`
+- `backend/lib/raceCalendar.js` ~207:
+  `const isMine = teamDivisionId != null && race.league_division_id === teamDivisionId;`
+
+Konsekvensen for vej B: S4-løb **bliver** markeret som "mine" — men ud fra holdets S3-division.
+Da de fleste hold skifter pulje ved komprimeringen, vil markeringen for en stor del af
+managerne pege på løb de **ikke** skal køre. Det er ikke en tom flade; det er en flade der
+siger noget konkret og sandsynligvis forkert.
+
+Det er den samme grundårsag som §3a: begge steder sammenlignes mod den nuværende division,
+fordi sæsonens division endnu ikke er afgjort. Planlægger-stien har allerede den rigtige
+diskriminator (`teamDivisionKnownForSeason` → `pending`); kalender-stien har den ikke.
+
+**Mindste ærlige rettelse:** når den viste sæson ikke er `active`, undlad at markere
+"mit holds løb" og skriv i stedet på fladen at divisionen først afgøres ved sæsonskiftet.
+Det er en visnings-ændring i `CalendarPage.jsx` + et felt i svaret (fx `divisionPending`,
+som planlægger-endpointet allerede sender). Omfang: **lille**.
+
 ### 3e. Værd at vide, men ikke en blokering
 
 - **Sæsontilmelding** (`season_signup_enabled`, #452/#4592) er bygget, men dormant frem til
@@ -272,8 +293,9 @@ den ikke (§3).
 regenerering bliver brugt — medmindre ejeren eksplicit udvider reglen.
 
 **Alternativ (vej A).** Ingen §2c-omkostning og fri regenerering, men den koster en ny
-endpoint plus en visnings-flade, og den kan **ikke vise "mit holds løb"** (§2). Til formålet
-"managers skal reagere på deres egen kalender" er det den svagere flade for flere penge.
+endpoint plus en visnings-flade (§2), og den løser ikke division-problemet i §3f — det følger
+med begge veje. Til formålet "managers skal reagere på deres egen kalender" er det den
+svagere flade for flere penge.
 
 ### Trinene
 
@@ -287,11 +309,20 @@ Omfang: **lille** — 2-3 filer, ~30-50 linjer inkl. tests. Backend-only, ingen 
 
 **Trin 2 — gør §2c håndhævbar, før den ene chance bruges.**
 CALENDAR_RULES §2c beder selv om det: `seasons` får et tællefelt (fx
-`calendar_generation_count`), og genererings-stien inkrementerer det og nægter at køre når det
-er ≥ 1. Uden det er "vi må gerne rette til indtil skiftet" en aftale ingen kode kender, og
-ingen kan bagefter se hvor mange gange der blev genereret.
+`calendar_generation_count`), og genererings-stien nægter at køre når det er ≥ 1. Uden det er
+"vi må gerne rette til indtil skiftet" en aftale ingen kode kender, og ingen kan bagefter se
+hvor mange gange der blev genereret.
+
+To detaljer der skal med, ellers gør tælleren mere skade end gavn:
+
+1. **Tjek og optælling skal være én atomisk operation**, ikke et læs efterfulgt af en
+   skrivning. To samtidige `--apply` kan ellers begge læse 0 og begge generere.
+2. **Tæl først når genereringen er lykkedes.** Tælles der op før materialiseringen, kan en
+   halvvejs fejlet kørsel blokere det eneste gyldige gen-forsøg — så er guarden blevet
+   problemet. Tørkørsler må aldrig røre tælleren.
+
 Filer: `database/<dato>-5405-calendar-generation-count.sql`,
-`backend/scripts/buildSeasonCalendar.js` (gate + inkrement),
+`backend/scripts/buildSeasonCalendar.js` (gate + optælling efter post-verify),
 `backend/lib/seasonCalendarGate.js`. Omfang: **lille-mellem**.
 
 **Trin 3 — generér S4 med `--apply`, kun efter eksplicit ejer-go.**
@@ -302,12 +333,15 @@ ejeren accepterer den bevidst med `--allow-tier-composition-drift`. Det er et ej
 et agent-valg.
 Omfang: **ingen kode** — en kørsel plus post-verify.
 
-**Trin 4 — intet frontend-arbejde.**
-Sæson-vælgeren dukker op af sig selv når den fjerde `seasons`-række findes (§1a/§1b).
-Det eneste der bør tjekkes efter trin 3 er, om tom-tilstanden `notGenerated` og
-"mit holds løb"-markeringen ser rigtige ud for en sæson hvor divisionen ikke er afgjort —
-kalenderen kan ikke vide hvilken pulje manageren havner i før skiftet. Det er formentlig
-en tekst-tilføjelse, ikke en ombygning.
+**Trin 4 — én lille frontend-ændring, ikke nul.**
+Sæson-vælgeren dukker op af sig selv når den fjerde `seasons`-række findes (§1a/§1b), så
+selve visningen kræver intet. Men §3f skal lukkes: for en sæson der ikke er `active` skal
+"mit holds løb"-markeringen slås fra og erstattes af en linje om at divisionen først afgøres
+ved sæsonskiftet. Ellers viser kalenderen en egen-hold-markering der for de fleste managere
+er forkert.
+Filer: `backend/routes/api.js` (`divisionPending` i kalender-svaret, samme felt som
+planlægger-endpointet allerede sender), `frontend/src/pages/CalendarPage.jsx`.
+Omfang: **lille**.
 
 ---
 
