@@ -130,6 +130,13 @@ ikke står der, fejler. Et nyt for lyst tekst-token kan altså ikke snige sig in
   Uden de tre afgrænsninger gav reglen 30 falske fund og nul ægte.
 - **Ikke alle sider.** 16 af appens sider er med — dem mock-seedet fylder med rigtigt indhold. Resten
   er udækkede.
+- **`title` regnes som en gyldig udvej, og det er en beslutning du kan omgøre.** Når en afkortet tekst
+  står fuldt ud i en nær forfaders `title`/`aria-label`, er den ikke et fund. Indvendingen (rejst af
+  CodeRabbit 19/9) er god: et tooltip kræver hover, og et `aria-label` ser en seende bruger aldrig —
+  på en telefon er ingen af delene en rigtig udvej. Barren er alligevel sat der, fordi alternativet —
+  at kræve synlig ombrydning eller en udfoldning før en afkortning er lovlig — ville gøre hver eneste
+  afkortede etikette i appen til et fund, og fordi D-047 udtrykkeligt bygger på at resten er "ét tryk
+  væk": rækken linker selv derhen hvor hele teksten står. Skal barren hæves, er det dit valg.
 
 ## 5. Ordet der ikke var dansk
 

@@ -152,11 +152,13 @@ export function scanDocumentForTextDefects({ contrastMin, rules, root, excludeRo
     return text.replace(/\s+/g, " ").trim();
   }
 
-  function hasScrollableAncestor(el, stopAt) {
+  // Undtagelsen foelger AKSEN (CodeRabbit 19/9). En beholder der scroller
+  // lodret siger intet om tekst der stikker ud til hoejre, og omvendt.
+  function hasScrollableAncestor(el, stopAt, axis) {
+    const prop = axis === "x" ? "overflowX" : "overflowY";
     let node = el.parentElement;
     while (node && node !== stopAt && node !== document.documentElement) {
-      const style = getComputedStyle(node);
-      if (["auto", "scroll"].includes(style.overflowX) || ["auto", "scroll"].includes(style.overflowY)) return true;
+      if (["auto", "scroll"].includes(getComputedStyle(node)[prop])) return true;
       node = node.parentElement;
     }
     return false;
@@ -212,6 +214,16 @@ export function scanDocumentForTextDefects({ contrastMin, rules, root, excludeRo
    *
    * Etiketten maa sidde paa elementet selv eller paa en naer forfader (typisk
    * det <a>/<button> cellen ligger i) — derfor de fire niveauer.
+   *
+   * GRAENSEN, sagt hoejt (CodeRabbit-fund 19/9, bevidst afvist her): en `title`
+   * er et tooltip man skal hovere for at se, og et `aria-label` ser en seende
+   * bruger aldrig. Paa en telefon er hverken det ene eller det andet en rigtig
+   * udvej. Vagten accepterer dem alligevel, fordi alternativet — at kraeve
+   * synlig ombrydning eller en udfoldning FOER en afkortning er lovlig — ville
+   * goere hver eneste afkortede etikette i appen til et fund, og fordi D-047
+   * (ejer 10/9) udtrykkeligt bygger paa at resten er "et tryk vaek": raekken
+   * linker selv derhen hvor hele teksten staar. Skal barren haeves, er det et
+   * ejer-valg, og det staar i docs/audits/2026-09-19-5383-tekst-overflow-fund.md.
    */
   function isIntentionalTruncation(el, style, text) {
     if (el.closest("[data-allow-clip]")) return true;
@@ -355,9 +367,14 @@ export function scanDocumentForTextDefects({ contrastMin, rules, root, excludeRo
     if (["absolute", "fixed"].includes(style.position)) continue;
     const box = nearestBox(el);
     if (!box) continue;
-    if (["hidden", "clip", "auto", "scroll"].includes(box.style.overflowX)) continue;
-    if (["hidden", "clip", "auto", "scroll"].includes(box.style.overflowY)) continue;
-    if (hasScrollableAncestor(el, box.node)) continue;
+    // Hver akse doemmes for sig (CodeRabbit 19/9): en beholder der klipper eller
+    // scroller LODRET fortaeller intet om tekst der stikker ud til hoejre. Slog
+    // man begge akser fra under eet, kunne et vandret overloeb slippe forbi paa
+    // et kort der bare har en lodret scroller.
+    const boxClips = (prop) => ["hidden", "clip", "auto", "scroll"].includes(box.style[prop]);
+    const checkX = !boxClips("overflowX") && !hasScrollableAncestor(el, box.node, "x");
+    const checkY = !boxClips("overflowY") && !hasScrollableAncestor(el, box.node, "y");
+    if (!checkX && !checkY) continue;
     const boxRect = box.node.getBoundingClientRect();
     const inner = {
       left: boxRect.left + parseFloat(box.style.borderLeftWidth),
@@ -366,10 +383,8 @@ export function scanDocumentForTextDefects({ contrastMin, rules, root, excludeRo
       bottom: boxRect.bottom - parseFloat(box.style.borderBottomWidth),
     };
     const out = Math.max(
-      inner.left - rect.left,
-      rect.right - inner.right,
-      inner.top - rect.top,
-      rect.bottom - inner.bottom,
+      ...(checkX ? [inner.left - rect.left, rect.right - inner.right] : []),
+      ...(checkY ? [inner.top - rect.top, rect.bottom - inner.bottom] : []),
     );
     if (out > 2) {
       add(
