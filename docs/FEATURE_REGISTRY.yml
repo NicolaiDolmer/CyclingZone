@@ -81,6 +81,16 @@ features:
     verified: 2026-09-07
     note: Off i prod (#4951).
 
+  - id: race-notify-outbox
+    area: race-engine
+    title_en: Async delivery of race result posts
+    title_da: Asynkron udsendelse af løbsresultat-poster
+    state: dormant
+    ssot: docs/audits/2026-09-18-3624-loebsforsinkelser.md
+    epic: 3624
+    verified: 2026-09-18
+    note: Off i prod; flip er ejer-only.
+
   - id: form-and-fatigue
     area: race-engine
     title_en: Form and fatigue in scoring
@@ -333,10 +343,10 @@ features:
     title_en: Training page on mobile
     title_da: Træningssiden på mobil
     state: beta
-    ssot: docs/design/PAGE_TEMPLATES.md
+    ssot: docs/TRAINING_RULES.md
     epic: 3643
     verified: 2026-09-19
-    note: 'training_mobile_table beta (ejer 19/9); flag-felt naar raekken er applied.'
+    note: 'Flag training_mobile_table; sat naar raekken er i prod.'
 
   - id: training-hard-sessions-cobbles-echelon-attack
     area: training

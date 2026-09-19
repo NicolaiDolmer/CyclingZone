@@ -174,7 +174,10 @@ function ssotCell(ssot) {
   if (!ssot) return "-";
   // FEATURE_STATUS.md ligger selv i docs/, saa docs/X.md linkes som X.md.
   const rel = ssot.startsWith("docs/") ? ssot.slice("docs/".length) : `../${ssot}`;
-  const name = ssot.split("/").pop();
+  // Linkteksten er filnavnet uden dato-praefiks og ".md": stien staar allerede i
+  // href'en, og 70 raekker a "X.md" + lange spec-navne skubbede filen over
+  // token-budgettet hver gang en ny feature kom til (bidt 19/9, #5398).
+  const name = ssot.split("/").pop().replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
   return `[${name}](${rel})`;
 }
 

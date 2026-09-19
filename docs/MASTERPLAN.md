@@ -12,9 +12,9 @@
 ## Bane 1 · S4-cutover 27-28/9 (bølge-rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
 
 1. ✅ **Bølge 1:** #4851 score (flag beta) · #3668 → #5268.
-2. 🟠 **Bølge 2:** ✅ #5236/#5237 · ✅ #5211 · 🔵 **træningsdesign-session** (#5267 tick-akse, B3 #5281 + B4 #5264 merges sammen bagefter, #5169) · ✅ sponsor #5336 (17/9; #4860/#4376 done) · ✅ #5235 mobil (#5124).
+2. 🟠 **Bølge 2:** ✅ #5236/#5237 · ✅ #5211 · 🔵 **træningsdesign** (18/9: realisme-regel låst; K2-prøvepakning → #5169 om → B4 #5264 rettes → B3 #5281 på flip-dagen) · ✅ sponsor #5336 (17/9; #4860/#4376 done) · ✅ #5235 mobil (#5124).
 3. 🟠 **Bølge 3, rytter-fundament:** ✅ #5278 fødsel uden PCM · ✅ #5283 · ✅ #5279 `riders.squad` (backfill ejer-gated) · ✅ #5280 evner som data (point-flyt #5268 ejer-gated) · #5269 · #5273.
-4. ⚪ **Bølge 4, kalender m. trupper (FØR S4-generering):** **U23-filter i seniorlæserne** (unblocker #5262 katalog, draft grøn) · ✅ #5272 · pakker pr. trup · **#5376 U23-bånd (blokerer)** → AI U23/junior-ryttere · #5327 arketype (#3512) m. #5269 · C1 · dry-run → go → #4270 apply (ejer). Spec `2026-09-15-u23-*.md`.
+4. ⚪ **Bølge 4, kalender m. trupper (FØR S4-generering):** ✅ U23-filter i seniorlæserne (#5396) · ✅ #5272 · pakker pr. trup · ✅ #5376 U23-bånd (variant A, #5401) → generator A6 → AI U23/junior-ryttere · #5327 arketype (#3512) m. #5269 · C1 · dry-run → go → #4270 apply (ejer). Spec `2026-09-15-u23-*.md`.
 5. ⚪ **Bølge 5, træning færdig (28/9):** skader i løbsdage · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849) · #4852-#4854 · #4848.
 6. ⚪ **Bølge 6, trup-flader:** Graduation Day (#2491, senest 20/9) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
 7. 🔵 **Bølge 7, cutover:** #4592 → #452 → #4759 · Mandatet-flip #4857 (ejer-go) → #4859 → #4858 · v4 (M12 · #4948) → **flip ejer-only** → #4916.
