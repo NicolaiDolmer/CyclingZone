@@ -15,7 +15,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ABILITY_REGISTRY, REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
-import { DISPLAY_RECIPES } from "./weights/displayRecipes.js";
+import { DISPLAY_RECIPES, PENDING_DISPLAY_ABILITIES } from "./weights/displayRecipes.js";
 import { GENERATED_FILES, normalizeEol } from "../../scripts/generate-ability-registry.mjs";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -23,15 +23,33 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const recipeAbilities = (r) => new Set(Object.keys(r.weights));
 
 // ── Vagt 1 (R4) ──────────────────────────────────────────────────────────────
-test("#3665 vagt 1: hver evne i registret optræder i mindst én visnings-opskrift", () => {
+// #5321: vagten sammenligner nu mod PENDING_DISPLAY_ABILITIES i stedet for mod
+// en tom liste. Baggrunden er at det MODSATTE af vagten også er en fejl: #5268
+// gav to helt nye evner en vægt for at tilfredsstille vagt 1, selvom ingen
+// eksisterende rytter havde en værdi i kolonnerne. Resultatet var at hele
+// bestandens synlige rating faldt uden at en eneste rytter var blevet dårligere.
+// Sammenligningen er PRÆCIS (ikke "orphans ⊆ pending"), så en evne der falder
+// ud af opskrifterne ved et uheld stadig fælder bygningen, og en key der bliver
+// stående på pending-listen efter at evnen er kommet ind i en opskrift også gør.
+test("#3665 vagt 1: hver evne i registret optræder i mindst én visnings-opskrift (undtagen de bevidst udskudte)", () => {
   const used = new Set(DISPLAY_RECIPES.flatMap((r) => Object.keys(r.weights)));
   const orphans = REGISTRY_ABILITY_KEYS.filter((k) => !used.has(k));
   assert.deepEqual(
-    orphans, [],
-    `Evner uden plads i nogen visnings-opskrift: ${orphans.join(", ")}. `
+    [...orphans].sort(), [...PENDING_DISPLAY_ABILITIES].sort(),
+    `Evner uden plads i nogen visnings-opskrift: ${orphans.join(", ") || "(ingen)"}. `
     + "En evne spilleren kan træne uden at se effekt i noget tal er en usynlig evne. "
-    + "Giv den en vægt i backend/lib/weights/displayRecipes.js, eller fjern den fra registret."
+    + "Giv den en vægt i backend/lib/weights/displayRecipes.js, eller fjern den fra registret. "
+    + "Er evnen bevidst udskudt fordi den endnu ikke har værdier på alle ryttere, "
+    + "skal den stå i PENDING_DISPLAY_ABILITIES med et ejer-go (#5321)."
   );
+});
+
+// #5321: pending-listen må kun nævne evner der findes i registret — ellers
+// kunne en stavefejl der stod her have slugt en ægte orphan.
+test("#5321 vagt 1b: PENDING_DISPLAY_ABILITIES nævner kun evner der findes i registret", () => {
+  const known = new Set(REGISTRY_ABILITY_KEYS);
+  const unknown = PENDING_DISPLAY_ABILITIES.filter((k) => !known.has(k));
+  assert.deepEqual(unknown, [], `Ukendte keys i PENDING_DISPLAY_ABILITIES: ${unknown.join(", ")}.`);
 });
 
 // ── Vagt 2 ───────────────────────────────────────────────────────────────────
@@ -98,16 +116,23 @@ test("#3665 vagt 4: frontendens evne-filer er genereret fra backend-kilden, ikke
 });
 
 // ── Registrets egen integritet ───────────────────────────────────────────────
+// Antallet er PINNET, ikke afledt: en evne der forsvinder ved et uheld (en dårlig
+// merge, en fjernet linje) skal fælde bygningen, ikke bare give et mindre tal.
+// Ændres tallet, skal migrationen (DB-kolonnen) og docs følge med i samme PR —
+// se docs/HOWTO_ADD_ABILITY.md. 15 → 17 ved #5268 (teamwork + leadership).
+const EXPECTED_ABILITY_COUNT = 17;
+
 test("#3665: registret har unikke keys og sammenhængende ordener", () => {
   const keys = ABILITY_REGISTRY.map((a) => a.key);
   assert.equal(new Set(keys).size, keys.length, "dublet-key i registret");
-  assert.equal(keys.length, 15, "de 15 synlige evner skal alle stå i registret");
+  assert.equal(keys.length, EXPECTED_ABILITY_COUNT,
+    `de ${EXPECTED_ABILITY_COUNT} synlige evner skal alle stå i registret`);
 
   for (const field of ["storageOrder", "displayOrder"]) {
     const orders = ABILITY_REGISTRY.map((a) => a[field]).sort((x, y) => x - y);
     assert.deepEqual(
-      orders, Array.from({ length: 15 }, (_, i) => i + 1),
-      `${field} skal være 1..15 uden huller eller dubletter`
+      orders, Array.from({ length: EXPECTED_ABILITY_COUNT }, (_, i) => i + 1),
+      `${field} skal være 1..${EXPECTED_ABILITY_COUNT} uden huller eller dubletter`
     );
   }
 

@@ -1088,6 +1088,9 @@ export function TeamPage() {
       rider,
       newSalary: quote?.newSalary ?? null,
       currentSalary: quote?.currentSalary ?? rider.salary ?? null,
+      // #4582: samme kilde som rytterprofilens openDemote — backendens
+      // keepsContract, ikke en frontend-sammenligning af de to løn-tal.
+      keepsContract: quote?.keepsContract ?? false,
       racesCleared: quote?.racesCleared ?? 0,
       racesOngoing: quote?.racesOngoing ?? 0,
       academyCount,
@@ -1365,6 +1368,7 @@ export function TeamPage() {
         capAfterLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount + 1} / 8` : null}
         racesCleared={demoteConfirm?.racesCleared ?? 0}
         racesOngoing={demoteConfirm?.racesOngoing ?? 0}
+        keepsContract={!!demoteConfirm?.keepsContract}
         busy={demoteBusy}
         onCancel={() => { if (!demoteBusy) { setDemoteConfirm(null); setDemoteError(null); } }}
         onConfirm={confirmDemote}

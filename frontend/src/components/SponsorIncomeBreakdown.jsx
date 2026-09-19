@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { formatNumber } from "../lib/intl";
 import { buildSponsorIncomeBreakdown } from "../lib/sponsorIncomeBreakdown";
 import Button from "./ui/Button.jsx";
@@ -84,11 +85,13 @@ export default function SponsorIncomeBreakdown() {
       setError(false);
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${API}/api/sponsor/contract`, {
+        const res = await apiFetch(`${API}/api/sponsor/contract`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
+        // #5242: dækker også limited/unauthorized/networkError — alle ender i
+        // den eksisterende ErrorState, som den kastede fetch-fejl gjorde før.
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const body = await res.json();
+        const body = res.data ?? {};
         if (alive) {
           setContract(body.contract ?? null);
           setSeason(body.season ?? null);

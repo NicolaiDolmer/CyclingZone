@@ -14,16 +14,32 @@ const SERVER_RE = /event_name:\s*["']([a-z0-9_]+)["']/g;
 test("extractKnownEvents: laeser navnene ud af den frosne array-literal og ignorerer kommentarer", () => {
   const src = [
     'export const KNOWN_EVENTS = Object.freeze([',
-    '  // "kommentar_event" er kun en kommentar, men matcher moenstret bevidst',
+    '  // "kommentar_event" er kun en kommentar og maa ikke blive til et event',
     '  "signup",',
     "  'first_bid',",
     ']);',
     'const OTHER = ["ikke_med"];',
   ].join("\n");
   const got = extractKnownEvents(src);
-  assert.ok(got.has("signup"));
-  assert.ok(got.has("first_bid"));
+  assert.deepEqual([...got].sort(), ["first_bid", "signup"]);
   assert.ok(!got.has("ikke_med"), "navne uden for blokken maa ikke slippe med");
+});
+
+// #5369: kommentaren ved app_version_reload naevner sine outcome-vaerdier i
+// anfoerselstegn. Foer fixet blev "arrived", "no_effect" og "deferred" laest som
+// events og meldt som udokumenterede - guarden var roed paa en ren main.
+test("extractKnownEvents: citerede ord i kommentarer er ikke events (#5369)", () => {
+  const src = [
+    'export const KNOWN_EVENTS = Object.freeze([',
+    '  // app_version_reload baerer {outcome}: "arrived" (vi landede paa maalet),',
+    '  // "no_effect" eller "deferred". Se `outcome` i event_data.',
+    '  "app_version_reload", // trailing: "heller_ikke"',
+    '  /* blok: "blok_kommentar"',
+    '     over to linjer: "stadig_kommentar" */',
+    '  "discord_invite_clicked",',
+    ']);',
+  ].join("\n");
+  assert.deepEqual([...extractKnownEvents(src)].sort(), ["app_version_reload", "discord_invite_clicked"]);
 });
 
 test("extractKnownEvents: returnerer null hvis blokken er omdoebt (guarden skal fejle hoejlydt)", () => {

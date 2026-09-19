@@ -33,14 +33,28 @@ function makeSupabase(initial = {}) {
     if (!state[table]) state[table] = [];
     const rows = () => state[table];
     const filters = [];
+    // #5330: .or("squad.is.null,squad.eq.senior") — PostgREST-or'ens mini-grammatik
+    // (kolonne.operator.værdi, komma-separeret). Kun is/eq bruges af race_pool-
+    // senior-filteret, og mocken skal fælde ENHVER anden operator hellere end at
+    // matche alt tavst.
+    const matchOrCond = (row, cond) => {
+      const [col, op, ...rest] = String(cond).split(".");
+      const raw = rest.join(".");
+      if (op === "is") return (row[col] ?? null) === (raw === "null" ? null : raw);
+      if (op === "eq") return row[col] === raw;
+      throw new Error(`mock-supabase: uunderstøttet .or()-operator "${op}" i "${cond}"`);
+    };
     const matches = (row) => filters.every((f) =>
-      f.t === "eq" ? row[f.c] === f.v : f.t === "in" ? f.v.includes(row[f.c]) : f.t === "is" ? (row[f.c] ?? null) === f.v : true);
+      f.t === "eq" ? row[f.c] === f.v : f.t === "in" ? f.v.includes(row[f.c])
+        : f.t === "is" ? (row[f.c] ?? null) === f.v
+          : f.t === "or" ? f.conds.some((cond) => matchOrCond(row, cond)) : true);
     let selectOpts = null;
     const builder = {
       select(_cols, opts) { selectOpts = opts || null; return builder; },
       eq(c, v) { filters.push({ t: "eq", c, v }); return builder; },
       in(c, v) { filters.push({ t: "in", c, v }); return builder; },
       is(c, v) { filters.push({ t: "is", c, v }); return builder; },
+      or(expr) { filters.push({ t: "or", conds: String(expr).split(",") }); return builder; },
       order() { return builder; },
       limit() { return builder; },
       // #2962 · materializeTierCalendars' teams-select pagineres nu via fetchAllRows
@@ -1003,4 +1017,165 @@ test("#4075 materialize: pensionerede katalog-rækker (retired_at) er usynlige f
   const seen = new Set(catalogSeen.map((c) => c.id));
   assert.ok(!seen.has("gt-1-old"), "pensioneret række er filtreret fra katalog-læsningen");
   assert.ok(seen.has("gt-1"), "den aktive Giro er stadig i kataloget");
+});
+
+
+// ── #5330: seniorlæseren filtrerer på squad ────────────────────────────────────
+// race_pool rummer efter #4620/#5262 også U23- og juniorløb. Seniorkalenderen skal
+// være BIT-IDENTISK før og efter de rækker findes — derfor køres den samme
+// materialisering to gange: én gang mod et rent seniorkatalog, én gang mod det samme
+// katalog plus ungdomsrækker, og de to resultater sammenlignes række for række.
+// Ungdomsrækker der ER attraktive for Div 3's selektion (ProSeries/Class1), så en
+// manglende filtrering beviseligt ville ændre kalenderen — se kontrol-assertionen.
+const YOUTH_ROWS = [
+  { id: "u23-ps-od-0", name: "U23 PS OD 0", race_class: "ProSeries", race_type: "single", stages: 1, squad: "u23" },
+  { id: "u23-ps-sr-0", name: "U23 PS 0", race_class: "ProSeries", race_type: "stage_race", stages: 5, squad: "u23" },
+  { id: "u23-c1-od-0", name: "U23 C1 OD 0", race_class: "Class1", race_type: "single", stages: 1, squad: "u23" },
+  { id: "jr-ps-od-0", name: "Junior PS OD 0", race_class: "ProSeries", race_type: "single", stages: 1, squad: "junior" },
+  { id: "jr-c1-sr-0", name: "Junior C1 0", race_class: "Class1", race_type: "stage_race", stages: 4, squad: "junior" },
+];
+
+const seniorRaceFingerprint = (sb) => sb.state.races
+  .map((r) => `${r.league_division_id}|${r.pool_race_id}|${r.name}|${r.race_type}|${r.stages}`)
+  .sort();
+
+// Div 3 alene: fullCatalog()'s tre 21-etapers GT'er har ingen date_text og ville
+// overlappe i Div 1 (samme fallback-sti som #3470-testene). Tier 3 har ingen GT'er,
+// så apply-gaten er ren — og det er netop ProSeries/Class1-udvalget ungdomsrækkerne
+// konkurrerer om.
+async function materializeDiv3WithCatalog(catalog) {
+  const league_divisions = [
+    { id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" },
+    { id: 5, tier: 3, pool_index: 1, label: "Division 3 — B" },
+  ];
+  const teams = [mgrTeam("a1", 4), mgrTeam("a2", 4), mgrTeam("b1", 5), mgrTeam("b2", 5)];
+  const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
+  await materializeTierCalendars({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, tiers: [3], dryRun: false, ...LEGACY_MIX,
+  });
+  return sb;
+}
+
+test("#5330 materialize: U23-/juniorrækker i race_pool er usynlige for seniorselektionen", async () => {
+  const seniorOnly = fullCatalog().map((c) => ({ ...c, squad: "senior" }));
+  const withYouth = [...seniorOnly, ...YOUTH_ROWS.map((r) => ({ ...r }))];
+  // Kontrol: de SAMME ekstra løb mærket 'senior' SKAL ændre kalenderen. Uden den
+  // assertion kunne testen bestå fordi rækkerne var uinteressante, ikke fordi de blev
+  // filtreret fra.
+  const asSenior = [...seniorOnly, ...YOUTH_ROWS.map((r) => ({ ...r, squad: "senior" }))];
+
+  const before = await materializeDiv3WithCatalog(seniorOnly);
+  const after = await materializeDiv3WithCatalog(withYouth);
+  const control = await materializeDiv3WithCatalog(asSenior);
+
+  assert.ok(before.state.races.length > 0, "fixturen skal faktisk materialisere løb");
+  const youthIds = new Set(YOUTH_ROWS.map((r) => r.id));
+  assert.equal(
+    after.state.races.filter((r) => youthIds.has(r.pool_race_id)).length, 0,
+    "ingen U23-/juniorløb må materialiseres i seniorkalenderen",
+  );
+  assert.deepEqual(
+    seniorRaceFingerprint(after), seniorRaceFingerprint(before),
+    "seniorkalenderen skal være identisk før og efter ungdomsrækkerne findes i race_pool",
+  );
+  assert.notDeepEqual(
+    seniorRaceFingerprint(control), seniorRaceFingerprint(before),
+    "kontrol: som seniorrækker ville de samme løb ændre kalenderen — testen har tænder",
+  );
+});
+
+test("#5330 materialize: NULL squad (og en race_pool uden squad-kolonne) tæller som senior", async () => {
+  // Rækker helt UDEN feltet = skemaet før #5262's migration. Kataloget skal være
+  // uændret synligt — det er hele bagudkompatibiliteten.
+  const noColumn = await materializeDiv3WithCatalog(fullCatalog());
+  const explicitNull = await materializeDiv3WithCatalog(fullCatalog().map((c) => ({ ...c, squad: null })));
+  assert.ok(noColumn.state.races.length > 0, "katalog uden squad-kolonne skal stadig give en kalender");
+  assert.deepEqual(
+    seniorRaceFingerprint(explicitNull), seniorRaceFingerprint(noColumn),
+    "squad=NULL skal behandles præcis som en række uden feltet",
+  );
+});
+
+// ── #5272 · reconcile giver materializeren et LØBSDAGS-mål ────────────────────────────
+// Kalenderdagene har altid været afkortet til sæson-slut (#2149 ovenfor), men
+// løbsdags-aksen (`game_day`) har været et rent søgeresultat. En pulje der vågner på dag
+// 18 af 28 fik derfor en anden udviklingstakt end alle andre i divisionen. Målet er
+// sæsonens antal løbsdage MINUS de allerede afviklede — se calendarActivationRaceDays.js.
+//
+// Testene her måler hvad reconcile SENDER VIDERE (materialize er injectable). At
+// `raceDayTarget` også ÆNDRER den pakkede kalender kræver #4845/#5169's packer-støtte;
+// indtil PR #5169 er merget, destruktureres nøglen ikke af materializeTierCalendars.
+
+/** D1-kalender i den aktive sæson: etaper på (game_day, dato)-par. */
+function medDiv1Kalender(state, par) {
+  state.league_divisions.push({ id: 1, tier: 1, pool_index: 0, label: "Division 1" });
+  state.teams.push(mgrTeam("d1-m1", 1));
+  state.races = [{ id: "race-d1", season_id: "s1", league_division_id: 1, pool_race_id: "eksisterende-d1" }];
+  state.race_stage_schedule = par.map(([game_day, dato], i) => ({
+    race_id: "race-d1", stage_number: i + 1, scheduled_at: `${dato}T16:00:00Z`, game_day,
+  }));
+  return state;
+}
+
+test("#5272 reconcile: en pulje aktiveret MIDT i sæsonen får sæsonens mål minus de afviklede løbsdage", async () => {
+  // D1's akse er 0-79 (80 løbsdage). game_day 0-39 er afviklet før from (29/6), så der er
+  // 40 tilbage. Uden #5272 fik pulje 8 i stedet den akse pakkeren tilfældigvis fandt.
+  const state = medDiv1Kalender(tier4ActivationState(), [
+    [0, "2026-06-15"], [39, "2026-06-28"], [40, "2026-06-29"], [79, "2026-07-09"],
+  ]);
+  const sb = makeSupabase(state);
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, materialize: recording });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].raceDayTarget, 40, "remaining-horizon: 80 − 40 afviklede");
+  assert.equal(summary.raceDayTarget, 40, "målet skal også kunne efterprøves fra returværdien");
+  assert.equal(summary.raceDayPlan.seasonRaceDayTarget, 80);
+  assert.equal(summary.raceDayPlan.elapsedRaceDays, 40);
+  assert.equal(summary.raceDayPlan.sourceDivisionId, "1");
+  // Kalenderdags-horisonten er uændret af #5272 — de to akser er stadig adskilte (§0).
+  assert.equal(summary.realDays, 10, "29/6 → 9/7 = 10 rest-dage");
+});
+
+test("#5272 reconcile: en pulje aktiveret ved SÆSONSTART får hele målet (uændret adfærd)", async () => {
+  const state = medDiv1Kalender(tier4ActivationState(), [[0, "2026-06-29"], [79, "2026-07-09"]]);
+  const sb = makeSupabase(state);
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, materialize: recording });
+
+  assert.equal(calls[0].raceDayTarget, 80, "intet er afviklet, så målet er ikke afkortet");
+  assert.equal(summary.raceDayPlan.elapsedRaceDays, 0);
+});
+
+test("#5272 reconcile: helt frisk sæson uden andre kalendere sender INTET mål videre", async () => {
+  // Der er intet at måle mod, og et gæt ville være værre end ingenting. Adfærden skal
+  // være bit-identisk med før #5272.
+  const sb = makeSupabase(tier4ActivationState());
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, materialize: recording });
+
+  assert.ok(!("raceDayTarget" in calls[0]), "nøglen må slet ikke sendes, ikke sendes som null");
+  assert.equal(summary.raceDayTarget, null);
+  assert.equal(summary.raceDayPlan, null);
+});
+
+test("#5272 reconcile: et eksplicit sæson-mål slår det målte (indgangen for #4845/#5169)", async () => {
+  const state = medDiv1Kalender(tier4ActivationState(), [
+    [0, "2026-06-15"], [39, "2026-06-28"], [40, "2026-06-29"], [79, "2026-07-09"],
+  ]);
+  const sb = makeSupabase(state);
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+
+  await reconcilePoolCalendarOnActivation({
+    supabase: sb, poolId: 8, now: FROM, materialize: recording, seasonRaceDayTarget: 140,
+  });
+
+  assert.equal(calls[0].raceDayTarget, 100, "140 (#4845's S4-mål) − 40 afviklede");
 });

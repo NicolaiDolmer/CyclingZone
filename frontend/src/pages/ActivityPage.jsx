@@ -324,7 +324,7 @@ export default function ActivityPage() {
           <SkeletonLines lines={5} />
         </Section>
       ) : loadError ? (
-        <Section role="alert">
+        <Section>
           <ErrorState
             description={t("loadError.message")}
             action={<Button size="sm" variant="secondary" onClick={() => loadAll()}>{t("loadError.retry")}</Button>}

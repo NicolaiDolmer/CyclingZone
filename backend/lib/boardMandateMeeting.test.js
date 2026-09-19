@@ -138,7 +138,15 @@ function makeMeetingSupabase({
         };
         return {
           select: () => chain,
-          insert: async (payload) => { state.events.push(payload); return { error: null }; },
+          // #5359 · Spejler prod-skemaets `season_id uuid NOT NULL` — uden det
+          // gik en kvittering uden season_id grønt igennem her og 500'ede i prod.
+          insert: async (payload) => {
+            if (payload.season_id == null) {
+              return { error: { message: 'null value in column "season_id" of relation "board_satisfaction_events" violates not-null constraint' } };
+            }
+            state.events.push(payload);
+            return { error: null };
+          },
         };
       }
       if (table === "board_profiles") {

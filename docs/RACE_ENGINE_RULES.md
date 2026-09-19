@@ -102,6 +102,13 @@ De tre midterste er de oprindelige S3-værdier med **uændret navn og semantik**
 
 ## 2. Mekanik-kataloget (ejer-godkendt 20/8)
 
+**Taktikfanens datomarkering (#5290).** "I dag" ved en etape betyder, at dens
+`scheduled_at` falder på den aktuelle kalenderdato i Europe/Copenhagen, jf.
+[`CALENDAR_RULES.md` §0](CALENDAR_RULES.md). Næste uafviklede etape og `game_day`
+er ikke datobevis. Uden en brugbar tidsplan vises kun etapenummeret.
+Markeringen opdateres også, når fanen står åben over midnat. Lås og udtagelse
+følger fortsat deres eksisterende regler.
+
 Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 
 | # | Mekanik | Fase |
@@ -534,6 +541,8 @@ Naboområder: [`CALENDAR_RULES.md`](CALENDAR_RULES.md) (hvornår løbene køres)
 > Grundlag: [`audits/race-engine-v4-audit-2026-09-05.md`](audits/race-engine-v4-audit-2026-09-05.md). Rationale og byggekø: [`superpowers/specs/2026-09-06-race-engine-v4-flip-and-tactics-design.md`](superpowers/specs/2026-09-06-race-engine-v4-flip-and-tactics-design.md). Afsnit 2c (uheld), 5 (faser) og 7 (modsigelser) er delvist forældede mod disse beslutninger; de rettes i doc-reparations-PR'en (byggekø rk. 9).
 
 **Én motor.** Der findes præcis én v4: `backend/lib/engine/v4`. Ny motor-logik uden for den mappe er forbudt. Mekanik-kataloget skal altid vise **bygget** og **koblet ind** som to kolonner; "bygget" alene betyder at motoren ikke kalder det.
+
+**Prod-status (#4951):** `app_config`-rækken `race_engine_v4` er `"off"`. Flip planlagt til 28/9, ejer-only (jf. mål-vs-garanti i regel 1 nedenfor).
 
 | # | Regel | Ejer |
 |---|---|---|

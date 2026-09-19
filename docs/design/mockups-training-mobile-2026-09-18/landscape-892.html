@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Training mobile · landscape sketches 892x412</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5; --navy:#111429;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --radius-sm:5px; --radius-pill:9999px; --warning:154 91 0;
+  --font-body:'DM Sans',system-ui,sans-serif; --font-data:'Inter Tight',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg-body); color:var(--text-1); font-family:var(--font-body);
+  font-size:12px; line-height:1.4; width:892px; -webkit-font-smoothing:antialiased}
+
+.sheet{padding:20px 0 24px}
+.cap{font-family:var(--font-data); font-size:13px; font-weight:600; padding:0 20px;
+  margin:22px 0 8px}
+.cap span{font-weight:500; color:var(--text-2)}
+.cap:first-child{margin-top:0}
+.frame{width:892px; height:412px; overflow:hidden; background:var(--bg-body);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border); position:relative}
+
+.bar{height:44px; background:var(--navy); display:flex; align-items:center;
+  justify-content:space-between; padding:0 16px}
+.bar .mark{font-family:var(--font-data); font-size:11px; font-weight:700;
+  letter-spacing:.16em; color:rgb(var(--accent))}
+.bar .h1{font-family:var(--font-data); font-size:15px; font-weight:700; color:#fff}
+.bar .sub{font-family:var(--font-data); font-size:11px; color:#c9cbdb; margin-left:10px; font-weight:500}
+.bar .btn{min-height:30px; display:inline-flex; align-items:center; padding:0 14px;
+  border-radius:var(--radius-sm); background:rgb(var(--accent)); color:var(--on-accent);
+  font-family:var(--font-data); font-size:12px; font-weight:600}
+
+.body{display:flex; gap:12px; padding:12px 16px}
+.col{min-width:0}
+
+.card{border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card); overflow:hidden}
+.ch{display:flex; align-items:baseline; justify-content:space-between; padding:7px 10px;
+  border-bottom:1px solid var(--border)}
+.ch .t{font-size:13px; font-weight:600}
+.ch .m{font-family:var(--font-data); font-size:10px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--text-3)}
+
+.daystrip{display:flex}
+.daystrip > div{flex:1; padding:6px 4px 7px; border-left:1px solid var(--border); text-align:center}
+.daystrip > div:first-child{border-left:0}
+.daystrip .rd{font-family:var(--font-data); font-size:9.5px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--text-3)}
+.daystrip .v{font-family:var(--font-data); font-size:13px; font-weight:650;
+  font-variant-numeric:tabular-nums; margin-top:1px}
+.daystrip .v .t{color:var(--text-2)} .daystrip .v .sep{color:var(--text-3); font-weight:500}
+.daystrip .st{font-family:var(--font-data); font-size:9.5px; font-weight:500;
+  text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); margin-top:1px}
+.daystrip .is-now{background:var(--bg-subtle)}
+
+.wkgrid{display:grid; grid-template-columns:28px repeat(7,1fr)}
+.wkgrid > span{font-family:var(--font-data); font-size:9.5px; font-weight:500; text-align:center;
+  padding:3px 0; border-left:1px solid var(--border); border-top:1px solid var(--border)}
+.wkgrid > span.h{border-top:0; font-weight:600; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--text-3); background:var(--bg-subtle)}
+.wkgrid > span.lab{border-left:0; font-weight:600; color:var(--text-3); background:var(--bg-subtle)}
+.wkgrid > span.race{background:var(--navy); color:#fff; font-weight:600}
+.wkgrid > span.off{color:var(--text-3)}
+
+table{border-collapse:separate; border-spacing:0; width:100%; table-layout:fixed}
+th,td{padding:5px 4px; text-align:center; vertical-align:middle}
+th{font-family:var(--font-data); font-size:10px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--text-3); border-bottom:1px solid var(--border)}
+td{border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:0}
+th.c-r,td.c-r{text-align:left; padding-left:10px; border-right:1px solid var(--border)}
+.rname{font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.rsub{font-family:var(--font-data); font-size:9.5px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.04em; color:var(--text-3); font-variant-numeric:tabular-nums}
+.cell{font-family:var(--font-data); font-size:10.5px; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cell.race{background:var(--navy); color:#fff; border-radius:var(--radius-sm); padding:2px 0}
+.cell.off{color:var(--text-3); font-weight:500}
+.n{font-family:var(--font-data); font-size:11.5px; font-weight:650; font-variant-numeric:tabular-nums}
+
+.row{display:flex; align-items:center; gap:8px; min-height:44px; padding:5px 10px;
+  border-top:1px solid var(--border)}
+.row:first-of-type{border-top:0}
+.row .who{flex:1; min-width:0}
+.row .what{text-align:right; flex-shrink:0}
+.row .w1{font-family:var(--font-data); font-size:11.5px; font-weight:600}
+.row .w2{font-family:var(--font-data); font-size:9.5px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--text-3); font-variant-numeric:tabular-nums}
+.rdpill{min-width:34px; text-align:center; padding:2px 0; background:var(--navy); color:#fff;
+  border-radius:var(--radius-sm); font-family:var(--font-data); font-size:10px; font-weight:600}
+.pbar{height:4px; border-radius:2px; background:var(--bg-subtle); border:1px solid var(--border);
+  overflow:hidden; width:72px; margin-top:3px; margin-left:auto}
+.pbar > i{display:block; height:100%; background:var(--text-1)}
+
+.mcard{border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card);
+  padding:9px; margin-bottom:8px}
+.mc-h{display:flex; align-items:flex-start; justify-content:space-between; gap:8px}
+.mc-h .nm{font-size:13px; font-weight:600}
+.mc-h .mt{font-family:var(--font-data); font-size:9.5px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--text-3); margin-top:1px}
+.cond{display:flex; gap:8px; text-align:right}
+.cond .k{font-family:var(--font-data); font-size:9px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--text-3)}
+.cond .v{font-family:var(--font-data); font-size:12.5px; font-weight:650; font-variant-numeric:tabular-nums}
+.rdrow{display:flex; margin-top:7px; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden}
+.rdrow > div{flex:1; min-width:0; border-left:1px solid var(--border); padding:3px 3px 4px; text-align:center}
+.rdrow > div:first-child{border-left:0}
+.rdrow .n2{font-family:var(--font-data); font-size:9px; font-weight:600; color:var(--text-3)}
+.rdrow .w{font-family:var(--font-data); font-size:10px; font-weight:600; margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.rdrow .race2{background:var(--navy); color:#fff; border-radius:var(--radius-sm); padding:1px 0;
+  margin-top:1px; font-family:var(--font-data); font-size:9.5px; font-weight:600}
+.rdrow .off{color:var(--text-3)}
+.prg{margin-top:7px; display:flex; align-items:baseline; justify-content:space-between; gap:6px}
+.prg .a{font-family:var(--font-data); font-size:11.5px; font-weight:600}
+.prg .b{font-family:var(--font-data); font-size:10px; color:var(--text-2); font-variant-numeric:tabular-nums}
+.bar2{height:4px; margin-top:4px; border-radius:2px; background:var(--bg-subtle);
+  border:1px solid var(--border); overflow:hidden}
+.bar2 > i{display:block; height:100%; background:var(--text-1)}
+.chips{display:flex; flex-wrap:wrap; align-items:center; align-content:flex-start; gap:4px; margin-top:7px}
+.chip{display:inline-flex; align-items:baseline; gap:4px; padding:2px 7px; border:1px solid var(--border);
+  border-radius:var(--radius-pill); font-family:var(--font-data); font-size:10px; font-weight:500;
+  color:var(--text-2); background:var(--bg-elevated); white-space:nowrap}
+.chip b{font-weight:650; color:var(--text-1); font-variant-numeric:tabular-nums}
+.chip.cap{border-color:rgba(154,91,0,.35); color:var(--warning)}
+.chip.foc{border-color:var(--text-1)}
+.note{font-family:var(--font-data); font-size:9.5px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--text-3); padding:5px 10px; border-top:1px solid var(--border)}
+.btn-sec{display:inline-flex; align-items:center; justify-content:center; min-height:30px;
+  padding:0 12px; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-sm); font-family:var(--font-data); font-size:11.5px; font-weight:600}
+.assist{display:flex; align-items:center; gap:8px; min-height:38px; padding:0 10px;
+  border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card); margin-top:8px}
+.assist .t{font-size:12px; font-weight:600; flex:1}
+.assist .m{font-family:var(--font-data); font-size:10px; color:var(--text-3)}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<!-- ══ 1 · CARDS in landscape: the extra width becomes a second column ═══ -->
+<p class="cap">1 · Cards, landscape 892 × 412 <span>— the extra width becomes a second column of riders, never a sideways scroll.</span></p>
+<div class="frame">
+  <div class="bar">
+    <span><span class="h1">Training</span><span class="sub">Race day 3 of 4 · results 20:00</span></span>
+    <span class="btn">Run today's training now</span>
+  </div>
+  <div class="body">
+    <div class="col" style="width:260px; flex-shrink:0">
+      <div class="card">
+        <div class="daystrip">
+          <div><div class="rd">RD 1</div><div class="v">5<span class="sep">/</span><span class="t">9</span></div><div class="st">Done</div></div>
+          <div><div class="rd">RD 2</div><div class="v">0<span class="sep">/</span><span class="t">14</span></div><div class="st">Done</div></div>
+          <div class="is-now"><div class="rd">RD 3</div><div class="v">6<span class="sep">/</span><span class="t">8</span></div><div class="st">Now</div></div>
+          <div><div class="rd">RD 4</div><div class="v">0<span class="sep">/</span><span class="t">14</span></div><div class="st">20:00</div></div>
+        </div>
+        <div class="note">Racing / training · days 62-65 of 140</div>
+      </div>
+      <div class="card" style="margin-top:8px">
+        <div class="ch"><span class="t">Program</span><span class="m">Edit</span></div>
+        <div class="wkgrid">
+          <span class="h lab"></span><span class="h">M</span><span class="h">T</span><span class="h">W</span><span class="h">T</span><span class="h">F</span><span class="h">S</span><span class="h">S</span>
+          <span class="lab">1</span><span>Thr</span><span>Spr</span><span class="race">R</span><span>Thr</span><span>Spr</span><span class="race">R</span><span class="off">–</span>
+          <span class="lab">2</span><span>Thr</span><span>Lng</span><span>Rec</span><span>Thr</span><span>Lng</span><span class="off">–</span><span class="off">–</span>
+          <span class="lab">3</span><span>Spr</span><span>Lng</span><span class="race">R</span><span>Spr</span><span>Thr</span><span class="race">R</span><span>Rec</span>
+          <span class="lab">4</span><span class="off">–</span><span>Rec</span><span class="off">–</span><span class="off">–</span><span>Rec</span><span class="off">–</span><span class="off">–</span>
+        </div>
+        <div class="note">7 weekdays × 4 race days</div>
+      </div>
+      <div class="assist">
+        <span class="t">Assistant</span><span class="m">3 suggestions</span>
+      </div>
+    </div>
+
+    <div class="col" style="flex:1; display:flex; gap:10px">
+      <div style="flex:1; min-width:0">
+        <div class="mcard">
+          <div class="mc-h">
+            <div><div class="nm">M. Sørensen</div><div class="mt">Sprinter / Rouleur · 24</div></div>
+            <div class="cond"><div><div class="k">Form</div><div class="v">74</div></div><div><div class="k">Fat</div><div class="v">31</div></div></div>
+          </div>
+          <div class="rdrow">
+            <div><div class="n2">1</div><div class="race2">LIM</div></div>
+            <div><div class="n2">2</div><div class="w">Sprint</div></div>
+            <div><div class="n2">3</div><div class="w">Sprint</div></div>
+            <div><div class="n2">4</div><div class="w off">Rest</div></div>
+          </div>
+          <div class="prg"><span class="a">Sprint 71 → 72</span><span class="b">+1 in 2 race days</span></div>
+          <div class="bar2"><i style="width:64%"></i></div>
+          <div class="chips">
+            <span class="chip foc">sprint <b>71</b></span><span class="chip">flat <b>66</b></span>
+            <span class="chip">accel <b>58</b></span><span class="chip cap">durability <b>44</b></span>
+          </div>
+        </div>
+        <div class="mcard">
+          <div class="mc-h">
+            <div><div class="nm">L. Colombo</div><div class="mt">Rouleur / Allrounder · 27</div></div>
+            <div class="cond"><div><div class="k">Form</div><div class="v">81</div></div><div><div class="k">Fat</div><div class="v">22</div></div></div>
+          </div>
+          <div class="rdrow">
+            <div><div class="n2">1</div><div class="w">Thresh</div></div>
+            <div><div class="n2">2</div><div class="w">Thresh</div></div>
+            <div><div class="n2">3</div><div class="w">Thresh</div></div>
+            <div><div class="n2">4</div><div class="w">Easy</div></div>
+          </div>
+          <div class="prg"><span class="a">Flat 74 → 75</span><span class="b">+1 tonight</span></div>
+          <div class="bar2"><i style="width:93%"></i></div>
+          <div class="chips">
+            <span class="chip foc">flat <b>74</b></span><span class="chip">endurance <b>72</b></span>
+            <span class="chip">positioning <b>61</b></span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1; min-width:0">
+        <div class="mcard">
+          <div class="mc-h">
+            <div><div class="nm">T. Van Aerde</div><div class="mt">Climber · 22 · racing</div></div>
+            <div class="cond"><div><div class="k">Form</div><div class="v">68</div></div><div><div class="k">Fat</div><div class="v">64</div></div></div>
+          </div>
+          <div class="rdrow">
+            <div><div class="n2">1</div><div class="race2">LIM</div></div>
+            <div><div class="n2">2</div><div class="w">Long</div></div>
+            <div><div class="n2">3</div><div class="race2">GTX</div></div>
+            <div><div class="n2">4</div><div class="w off">Rest</div></div>
+          </div>
+          <div class="prg"><span class="a">Climbing 63 → 64</span><span class="b">+1 in 5 race days</span></div>
+          <div class="bar2"><i style="width:22%"></i></div>
+          <div class="chips">
+            <span class="chip foc">climbing <b>63</b></span><span class="chip">endurance <b>70</b></span>
+            <span class="chip">punch <b>55</b></span>
+          </div>
+        </div>
+        <div class="mcard">
+          <div class="mc-h">
+            <div><div class="nm">V. Lindqvist</div><div class="mt">Timetrialist / Rouleur · 29</div></div>
+            <div class="cond"><div><div class="k">Form</div><div class="v">63</div></div><div><div class="k">Fat</div><div class="v">51</div></div></div>
+          </div>
+          <div class="rdrow">
+            <div><div class="n2">1</div><div class="w">VO2</div></div>
+            <div><div class="n2">2</div><div class="w">Recov</div></div>
+            <div><div class="n2">3</div><div class="race2">GTX</div></div>
+            <div><div class="n2">4</div><div class="w off">Rest</div></div>
+          </div>
+          <div class="prg"><span class="a">Time trial 66 → 67</span><span class="b">no point this week</span></div>
+          <div class="bar2"><i style="width:11%"></i></div>
+          <div class="chips">
+            <span class="chip foc">time trial <b>66</b></span><span class="chip">flat <b>64</b></span>
+            <span class="chip cap">aero <b>58</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 2 · TABLE in landscape: extra width = more columns, not scroll ════ -->
+<p class="cap">2 · Table, landscape 892 × 412 <span>— the extra width buys three ability columns on top of the four race days, with nine of the fourteen riders in the frame and nothing behind the edge.</span></p>
+<div class="frame">
+  <div class="bar">
+    <span><span class="h1">Training</span><span class="sub">Race day 3 of 4 · results 20:00</span></span>
+    <span class="btn">Run today's training now</span>
+  </div>
+  <div class="body" style="padding-top:10px">
+    <div class="col" style="width:228px; flex-shrink:0">
+      <div class="card">
+        <div class="daystrip">
+          <div><div class="rd">RD 1</div><div class="v">5<span class="sep">/</span><span class="t">9</span></div><div class="st">Done</div></div>
+          <div><div class="rd">RD 2</div><div class="v">0<span class="sep">/</span><span class="t">14</span></div><div class="st">Done</div></div>
+          <div class="is-now"><div class="rd">RD 3</div><div class="v">6<span class="sep">/</span><span class="t">8</span></div><div class="st">Now</div></div>
+          <div><div class="rd">RD 4</div><div class="v">0<span class="sep">/</span><span class="t">14</span></div><div class="st">20:00</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:8px; padding:9px">
+        <div class="mc-h">
+          <div><div class="nm">M. Sørensen</div><div class="mt">Sprinter / Rouleur · 24</div></div>
+        </div>
+        <div class="prg"><span class="a">Sprint 71 → 72</span><span class="b">+1 in 2</span></div>
+        <div class="bar2"><i style="width:64%"></i></div>
+        <div class="chips">
+          <span class="chip foc">sprint <b>71</b></span><span class="chip">flat <b>66</b></span>
+          <span class="chip">accel <b>58</b></span><span class="chip cap">durability <b>44</b></span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px">
+          <span class="rsub">Pace · about 1 rating point a week</span>
+          <span class="btn-sec">Change</span>
+        </div>
+      </div>
+      <div class="assist"><span class="t">Assistant</span><span class="m">3 suggestions</span></div>
+    </div>
+
+    <div class="col" style="flex:1; min-width:0">
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th class="c-r" style="width:150px">Rider</th>
+            <th style="width:58px">RD 1</th><th style="width:58px">RD 2</th><th style="width:58px">RD 3</th><th style="width:58px">RD 4</th>
+            <th style="width:42px">Form</th><th style="width:42px">Fat</th><th>Focus now</th><th style="width:62px">Next +1</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="c-r"><div class="rname">M. Sørensen</div><div class="rsub">Spr/Rou · 24</div></td>
+              <td><div class="cell race">LIM</div></td><td><div class="cell">Sprint</div></td><td><div class="cell">Sprint</div></td><td><div class="cell off">Rest</div></td>
+              <td><span class="n">74</span></td><td><span class="n">31</span></td><td><div class="cell">Sprint 71</div></td><td><span class="n">2 days</span></td></tr>
+            <tr><td class="c-r"><div class="rname">T. Van Aerde</div><div class="rsub">Cli · 22</div></td>
+              <td><div class="cell race">LIM</div></td><td><div class="cell">Long</div></td><td><div class="cell race">GTX</div></td><td><div class="cell off">Rest</div></td>
+              <td><span class="n">68</span></td><td><span class="n">64</span></td><td><div class="cell">Climbing 63</div></td><td><span class="n">5 days</span></td></tr>
+            <tr><td class="c-r"><div class="rname">L. Colombo</div><div class="rsub">Rou/All · 27</div></td>
+              <td><div class="cell">Thresh</div></td><td><div class="cell">Thresh</div></td><td><div class="cell">Thresh</div></td><td><div class="cell">Easy</div></td>
+              <td><span class="n">81</span></td><td><span class="n">22</span></td><td><div class="cell">Flat 74</div></td><td><span class="n">tonight</span></td></tr>
+            <tr><td class="c-r"><div class="rname">R. Duran</div><div class="rsub">Pun/Bar · 25</div></td>
+              <td><div class="cell race">LIM</div></td><td><div class="cell">Long</div></td><td><div class="cell race">GTX</div></td><td><div class="cell off">Rest</div></td>
+              <td><span class="n">71</span></td><td><span class="n">37</span></td><td><div class="cell">Punch 59</div></td><td><span class="n">3 days</span></td></tr>
+            <tr><td class="c-r"><div class="rname">V. Lindqvist</div><div class="rsub">TT/Rou · 29</div></td>
+              <td><div class="cell">VO2</div></td><td><div class="cell">Recov</div></td><td><div class="cell race">GTX</div></td><td><div class="cell off">Rest</div></td>
+              <td><span class="n">63</span></td><td><span class="n">51</span></td><td><div class="cell">Time trial 66</div></td><td><span class="n">—</span></td></tr>
+            <tr><td class="c-r"><div class="rname">A. Fabre</div><div class="rsub">All · 21</div></td>
+              <td><div class="cell">Thresh</div></td><td><div class="cell">Long</div></td><td><div class="cell race">GTX</div></td><td><div class="cell">Recov</div></td>
+              <td><span class="n">77</span></td><td><span class="n">18</span></td><td><div class="cell">Endurance 68</div></td><td><span class="n">1 day</span></td></tr>
+            <tr><td class="c-r"><div class="rname">S. Mikkelsen</div><div class="rsub">Spr · 23</div></td>
+              <td><div class="cell race">LIM</div></td><td><div class="cell">Sprint</div></td><td><div class="cell race">GTX</div></td><td><div class="cell off">Rest</div></td>
+              <td><span class="n">70</span></td><td><span class="n">29</span></td><td><div class="cell">Sprint 64</div></td><td><span class="n">4 days</span></td></tr>
+            <tr><td class="c-r"><div class="rname">J. Halvorsen</div><div class="rsub">Cli/Pun · 20</div></td>
+              <td><div class="cell">Climb</div></td><td><div class="cell">Long</div></td><td><div class="cell">Climb</div></td><td><div class="cell off">Rest</div></td>
+              <td><span class="n">59</span></td><td><span class="n">44</span></td><td><div class="cell">Climbing 51</div></td><td><span class="n">4 days</span></td></tr>
+            <tr><td class="c-r"><div class="rname">E. Bakker</div><div class="rsub">Rou · 26</div></td>
+              <td><div class="cell">Thresh</div></td><td><div class="cell">Thresh</div></td><td><div class="cell race">GTX</div></td><td><div class="cell">Recov</div></td>
+              <td><span class="n">66</span></td><td><span class="n">35</span></td><td><div class="cell">Flat 70</div></td><td><span class="n">2 days</span></td></tr>
+          </tbody>
+        </table>
+        <div class="note">Showing 9 of 14 riders</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 3 · HYBRID in landscape: racing and training side by side ═════════ -->
+<p class="cap">3 · Hybrid, landscape 892 × 412 <span>— racing and training stand side by side, so both halves of the day are on one screen. The lists are cut at four rows here; the rest are one tap away.</span></p>
+<div class="frame">
+  <div class="bar">
+    <span><span class="h1">Training</span><span class="sub">Race day 3 of 4 · results 20:00</span></span>
+    <span class="btn">Run today's training now</span>
+  </div>
+  <div class="body" style="padding-top:10px">
+    <div class="col" style="width:196px; flex-shrink:0">
+      <div class="card">
+        <div class="daystrip">
+          <div><div class="rd">1</div><div class="v">5<span class="sep">/</span><span class="t">9</span></div></div>
+          <div><div class="rd">2</div><div class="v">0<span class="sep">/</span><span class="t">14</span></div></div>
+          <div class="is-now"><div class="rd">3</div><div class="v">6<span class="sep">/</span><span class="t">8</span></div></div>
+          <div><div class="rd">4</div><div class="v">0<span class="sep">/</span><span class="t">14</span></div></div>
+        </div>
+        <div class="note">Racing / training today</div>
+      </div>
+      <div class="card" style="margin-top:8px">
+        <div class="ch"><span class="t">Program</span><span class="m">Edit</span></div>
+        <div class="wkgrid">
+          <span class="h lab"></span><span class="h">M</span><span class="h">T</span><span class="h">W</span><span class="h">T</span><span class="h">F</span><span class="h">S</span><span class="h">S</span>
+          <span class="lab">1</span><span>Thr</span><span>Spr</span><span class="race">R</span><span>Thr</span><span>Spr</span><span class="race">R</span><span class="off">–</span>
+          <span class="lab">2</span><span>Thr</span><span>Lng</span><span>Rec</span><span>Thr</span><span>Lng</span><span class="off">–</span><span class="off">–</span>
+          <span class="lab">3</span><span>Spr</span><span>Lng</span><span class="race">R</span><span>Spr</span><span>Thr</span><span class="race">R</span><span>Rec</span>
+          <span class="lab">4</span><span class="off">–</span><span>Rec</span><span class="off">–</span><span class="off">–</span><span>Rec</span><span class="off">–</span><span class="off">–</span>
+        </div>
+      </div>
+      <div class="card" style="margin-top:8px; padding:8px 10px">
+        <div class="rsub">Yesterday</div>
+        <div style="font-family:var(--font-data); font-size:11.5px; font-weight:500; margin-top:2px">9 trained · 5 raced · 3 points landed</div>
+      </div>
+      <div class="assist"><span class="t">Assistant</span><span class="m">3 suggestions</span></div>
+    </div>
+
+    <div class="col" style="flex:1; min-width:0">
+      <div class="card">
+        <div class="ch"><span class="t">Racing now</span><span class="m">Race day 3 · 6 riders</span></div>
+        <div class="row"><span class="rdpill">GTX</span><div class="who"><div class="rname">T. Van Aerde</div><div class="rsub">Cli · 22 · F68 T64</div></div><div class="what"><div class="w1">Attack</div><div class="w2">Getxo · km 48</div></div></div>
+        <div class="row"><span class="rdpill">GTX</span><div class="who"><div class="rname">R. Duran</div><div class="rsub">Pun/Bar · 25 · F71 T37</div></div><div class="what"><div class="w1">Protected</div><div class="w2">Getxo · km 48</div></div></div>
+        <div class="row"><span class="rdpill">GTX</span><div class="who"><div class="rname">S. Mikkelsen</div><div class="rsub">Spr · 23 · F70 T29</div></div><div class="what"><div class="w1">Sprint</div><div class="w2">Getxo · km 48</div></div></div>
+        <div class="row"><span class="rdpill">GTX</span><div class="who"><div class="rname">A. Fabre</div><div class="rsub">All · 21 · F77 T18</div></div><div class="what"><div class="w1">Domestique</div><div class="w2">Getxo · km 48</div></div></div>
+        <div class="note">Show 2 more</div>
+      </div>
+    </div>
+
+    <div class="col" style="flex:1; min-width:0">
+      <div class="card">
+        <div class="ch"><span class="t">Training now</span><span class="m">Race day 3 · 8 riders</span></div>
+        <div class="row"><div class="who"><div class="rname">M. Sørensen</div><div class="rsub">Spr/Rou · 24 · F74 T31</div></div><div class="what"><div class="w1">Sprint</div><div class="w2">Sprint 71 · +1 in 2</div><div class="pbar"><i style="width:64%"></i></div></div></div>
+        <div class="row"><div class="who"><div class="rname">L. Colombo</div><div class="rsub">Rou/All · 27 · F81 T22</div></div><div class="what"><div class="w1">Threshold</div><div class="w2">Flat 74 · +1 tonight</div><div class="pbar"><i style="width:93%"></i></div></div></div>
+        <div class="row"><div class="who"><div class="rname">V. Lindqvist</div><div class="rsub">TT/Rou · 29 · F63 T51</div></div><div class="what"><div class="w1">Recovery</div><div class="w2">No point this week</div><div class="pbar"><i style="width:11%"></i></div></div></div>
+        <div class="row"><div class="who"><div class="rname">J. Halvorsen</div><div class="rsub">Cli/Pun · 20 · F59 T44</div></div><div class="what"><div class="w1">Climbing</div><div class="w2">Climb 51 · +1 in 4</div><div class="pbar"><i style="width:38%"></i></div></div></div>
+        <div class="note">Show 4 more</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

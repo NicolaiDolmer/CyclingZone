@@ -1,5 +1,6 @@
 import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
+import { applySeniorSquadFilter } from "./squads.js";
 
 // #838: ét fælles roster-loft for alle divisioner. Max er ensrettet til 30.
 // Roster-FLOOR fjernet 2026-06-05: ingen division kræver længere et minimum
@@ -214,32 +215,33 @@ export async function getTeamMarketState(supabase, teamId) {
     // (retirementRelease.js), og må ikke optage en cap-plads i vinduet imellem
     // (eller hvis de er pensioneret ad en anden vej, fx admin-endpointet).
     expectCount(
-      supabase
-        .from("riders")
-        .select("id", { count: "exact", head: true })
-        .eq("team_id", teamId)
-        .eq("is_academy", false)
-        .eq("is_retired", false)
+      applySeniorSquadFilter(
+        supabase
+          .from("riders")
+          .select("id", { count: "exact", head: true })
+          .eq("team_id", teamId)
+      ).eq("is_retired", false)
     ),
     // #1308: akademiryttere tæller ikke mod senior-cap
     expectCount(
-      supabase
-        .from("riders")
-        .select("id", { count: "exact", head: true })
-        .eq("pending_team_id", teamId)
-        .eq("is_academy", false)
-        .eq("is_retired", false)
+      applySeniorSquadFilter(
+        supabase
+          .from("riders")
+          .select("id", { count: "exact", head: true })
+          .eq("pending_team_id", teamId)
+      ).eq("is_retired", false)
     ),
     // #268: ryttere på vej VÆK fra holdet — ejet (team_id = mit) men med
     // pending_team_id sat til et andet hold (eller bank/AI). Disse skal
     // trækkes fra current-count for at få "fremtidens hold-størrelse".
     // #1308: akademiryttere tæller ikke mod senior-cap
     expectCount(
-      supabase
-        .from("riders")
-        .select("id", { count: "exact", head: true })
-        .eq("team_id", teamId)
-        .eq("is_academy", false)
+      applySeniorSquadFilter(
+        supabase
+          .from("riders")
+          .select("id", { count: "exact", head: true })
+          .eq("team_id", teamId)
+      )
         .eq("is_retired", false)
         .not("pending_team_id", "is", null)
         .neq("pending_team_id", teamId)

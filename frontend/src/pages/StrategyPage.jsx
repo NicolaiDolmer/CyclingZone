@@ -102,7 +102,7 @@ export default function StrategyPage() {
   // #4165: fejlet hentning FØR flag-grenen, ellers ser en fejl ud som "ikke aktiv".
   if (loadError) {
     return (
-      <div role="alert" className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <ErrorState
           title={t("strategy.error.loadTitle")}
           description={loadError.kind === "auth" ? t("strategy.error.session") : t("strategy.error.loadBody")}
@@ -181,7 +181,7 @@ export default function StrategyPage() {
       <p className="mb-4 text-xs text-cz-2">{t("strategy.subtitle")}</p>
 
       {error && (
-        <div role="alert" className="mb-4">
+        <div className="mb-4">
           <ErrorState
             title={t("strategy.error.title")}
             description={t([`selection.errors.${error.code}`, "selection.errors.generic"])}

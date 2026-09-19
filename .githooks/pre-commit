@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
 # Pre-commit gate:
+#   0. Branch-guard-markør (hard rule 18) — #5094
 #   1. Secret-leak scan (gitleaks primary, python fallback) — #634 AC5
 #   2. lint-staged (frontend/backend lint på staged changes)
 # Aktiveres via scripts/install-git-hooks.ps1 (core.hooksPath=.githooks).
 set -e
+
+# --- (0) Branch-guard-markør (#5094) ---
+# Source'es, ikke exec'es: den skal kunne afslutte DENNE hook med exit 1, og
+# sourcing kræver ingen interpreter-opslag på PATH — hele pointen er at laget
+# også virker når `bash` ikke kan resolves i den kaldende proces.
+#
+# DEFER: markøren forbruges FØRST når hele hooken er bestået (nederst i filen).
+# Blokerer et senere trin (gitleaks, lint-staged), skal næste commit-forsøg
+# kunne bruge samme guard-godkendelse i stedet for at blive mødt med en årsag
+# der ikke passer.
+CZ_GUARD_DEFER_MARKER=1
+. "$(dirname "$0")/check-commit-guard-marker.sh"
 
 # Agent-independent archive/NOW policy, including merge/rebase commits.
 node scripts/check-staged-docs.mjs
@@ -146,3 +159,10 @@ fi
 
 # --- (2) lint-staged ---
 node scripts/run-staged-checks.mjs
+
+# Alle trin bestået: forbrug branch-guard-markøren nu (#5094). Blokerede et af
+# trinene ovenfor, nåede vi aldrig hertil, og markøren dækker næste forsøg.
+if [ -n "${CZ_GUARD_MARKER:-}" ]; then
+  rm -f "$CZ_GUARD_MARKER" 2>/dev/null || true
+fi
+exit 0

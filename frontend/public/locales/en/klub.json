@@ -29,7 +29,7 @@
     "training": "Your riders train {value} faster every day",
     "trainingBuild": "Build it to start training your riders faster",
     "trainingNext": "Next: Level {tier} → your riders would train {value} faster every day",
-    "scouting": "Unlocks hiring a chief scout: sharper rider evaluations, and two scouting assignments at once at the top tier",
+    "scouting": "Unlocks hiring a chief scout: sharper rider evaluations. A chief scout rated about 80 overall runs two scouting assignments at once",
     "scoutingBuild": "Build it to unlock hiring a chief scout",
     "scoutingNext": "Next: Level {tier} unlocks a higher-tier chief scout"
   },

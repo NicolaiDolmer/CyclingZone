@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { getAttribution } from "../lib/attribution";
 import { ChevronRightIcon } from "./ui/icons";
 // #5159 (B1): onboarding er foerste indtryk — et deploy midt i den maa ikke
@@ -49,7 +50,7 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
         setError(t("error.sessionExpired"));
         return;
       }
-      const res = await fetch(`${API}/api/teams/my`, {
+      const res = await apiFetch(`${API}/api/teams/my`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -65,7 +66,16 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
           attribution: getAttribution() || session.user?.user_metadata?.attribution || null,
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = res.data || {};
+
+      // #5242/#5322: apiFetch KASTER ikke ved et netværksudfald — den returnerer
+      // networkError med status 0. Uden dette tjek ville CORS/backend-nede falde
+      // i `!res.ok` nedenfor og vise det generiske "ukendt fejl" i stedet for
+      // #792's "Kunne ikke nå serveren"-besked, som catch'en gav før.
+      if (res.networkError) {
+        setError(t("error.connectionFailed"));
+        return;
+      }
 
       if (!res.ok) {
         setError(data.error || t("error.unknown"));

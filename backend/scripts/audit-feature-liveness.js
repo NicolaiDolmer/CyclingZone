@@ -95,6 +95,9 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // beta_requests-suppressionen fjernet 18/9 aften: de første spillere har
+  // ansøgt (3 rows, #5259 bevist end-to-end). Detector A dækker tabellen
+  // normalt igen.
   // race_stage_timelines-suppressionen fjernet 18/8 ~11:10: første etape efter
   // flag-ON skrev sin tidslinje (1 row, 9 events, timeline_version 1 — #2410 S1
   // bevist end-to-end). Detector A dækker tabellen normalt igen.
@@ -262,6 +265,21 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
   // flages automatisk som ægte fund.
   ["market_value_level_correction_apply_log", { flagKey: "market_value_level_correction_youth_auction_start_rate" }],
   ["market_value_level_correction_rider_receipts", { flagKey: "market_value_level_correction_youth_auction_start_rate" }],
+  // Traening pr. loebsdag (#4846, PR #5205 merged 15/9 bag flag): historik-tabellen
+  // skrives KUN af dailyTrainingEngine.js naar training_tick_per_race_day er
+  // taendt (ejer-plan: live senest S4 28/9). Flaget er seedet som "false" i
+  // app_config (migration 2026-09-14-4846), derfor offValues. Taendes flaget og
+  // tabellen forbliver tom efter foerste loebsdags-tick, er det en aegte bug og
+  // Detector A flager som normalt. Fundet 15/9: auditen var roed paa ALLE PR'er.
+  ["rider_ability_race_day_history", { flagKey: "training_tick_per_race_day", offValues: ["false", "0"] }],
+  // Udgaaende notify-koe (#3624, migration 2026-09-18-3624-race-notify-outbox.sql):
+  // koen skrives KUN naar race_notify_outbox_enabled er on. Flaget seedes som
+  // "off" af migrationen, saa tom tabel er den forventede tilstand indtil ejeren
+  // flipper. Taendes flaget og tabellen forbliver tom efter foerste
+  // loebs-afslutning, er det en aegte bug (afviklingen afleverer ikke) og
+  // Detector A flager som normalt. Uden denne entry ville auditen vaere roed paa
+  // alle PR'er fra det oejeblik migrationen koerer — samme faelde som #4846.
+  ["race_notify_outbox", { flagKey: "race_notify_outbox_enabled" }],
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
@@ -471,6 +489,15 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // Udløb: genvurdér ved næste telemetri-gennemgang, og fjern entryen så snart
   // eventet får impressions — forward-guarden nedenfor flager den selv dér.
   "feature_board_consequences_panel_viewed",
+  // academy_intake_pull (#5369): kom med i KNOWN_EVENTS 18/9 sammen med de 15
+  // andre canary-blinde events. De 15 flyder (8 til 3.502 impressions i
+  // 30-dages-vinduet, målt mod prod 18/9); denne står på 0 fordi featuren er
+  // dormant: POST /academy/intake/pull er gated af flaget
+  // academy_intake_pull_enabled (FEATURE_REGISTRY.yml, state: dormant), så
+  // knappen findes ikke for spillerne og eventet KAN ikke fyre.
+  // Udløb: fjern entryen når flaget flippes — forward-guarden flager den selv
+  // ved første impression.
+  "academy_intake_pull",
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
@@ -933,17 +960,20 @@ async function detectorD() {
 // Detector E — zero-impression-features
 // ---------------------------------------------------------------------------
 
-async function listKnownEvents() {
-  // Parse KNOWN_EVENTS-arrayet ud af logEvent.js — undgår at duplikere listen.
-  // Mønster: export const KNOWN_EVENTS = Object.freeze([ ... ]) — eller bare
-  // [ ... ] hvis Object.freeze fjernes senere.
-  let text;
-  try {
-    text = await readFile(LOG_EVENT_FILE, "utf8");
-  } catch {
-    return [];
-  }
-  const match = text.match(/KNOWN_EVENTS\s*=\s*Object\.freeze\s*\(\s*\[([\s\S]*?)\]\s*\)|KNOWN_EVENTS\s*=\s*\[([\s\S]*?)\]/);
+// Ren parser for KNOWN_EVENTS-arrayet i logEvent.js — undgår at duplikere listen.
+// Mønster: export const KNOWN_EVENTS = Object.freeze([ ... ]) — eller bare
+// [ ... ] hvis Object.freeze fjernes senere.
+//
+// Kommentarer strippes FØR navnene læses (#5369). Blokken er tæt kommenteret, og
+// kommentaren ved app_version_reload citerer sine outcome-værdier: `outcome`,
+// "arrived", "no_effect" og "deferred" blev læst som events, og den ugentlige
+// cron stod rød fra 14/9 på fire fund der alle var ord fra en kommentar.
+// Event-navne er [a-z0-9_], så en `//` kan aldrig stå inde i et navn.
+// scripts/check-event-catalog.mjs læser samme blok og stripper på samme måde;
+// ændres formen her, skal den ændres der.
+export function parseKnownEvents(text) {
+  const code = text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const match = code.match(/KNOWN_EVENTS\s*=\s*Object\.freeze\s*\(\s*\[([\s\S]*?)\]\s*\)|KNOWN_EVENTS\s*=\s*\[([\s\S]*?)\]/);
   if (!match) return [];
   const body = match[1] || match[2] || "";
   const events = [];
@@ -951,6 +981,16 @@ async function listKnownEvents() {
   let m;
   while ((m = re.exec(body)) !== null) events.push(m[1]);
   return events;
+}
+
+async function listKnownEvents() {
+  let text;
+  try {
+    text = await readFile(LOG_EVENT_FILE, "utf8");
+  } catch {
+    return [];
+  }
+  return parseKnownEvents(text);
 }
 
 async function fetchEventCounts() {

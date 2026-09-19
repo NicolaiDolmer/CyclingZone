@@ -56,6 +56,7 @@ import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { profileLabelKey } from "../../lib/stageProfileConfig.js";
 import { formatLocalTime } from "../../lib/intl.js";
+import { relativeDayKey } from "../../lib/stageScheduleConfig.js";
 import { LockIcon, CheckIcon, Button, Section, SectionHeader, SkeletonLines } from "../ui/index.js";
 import SortableTh from "../ui/SortableTh.jsx";
 import FitBar from "../racehub/FitBar.jsx";
@@ -244,6 +245,12 @@ function TogglePill({ label, ariaLabel, active, disabled, onClick }) {
 
 export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders = true }) {
   const { t } = useTranslation("races");
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    // Keep an open tab's calendar labels current across Copenhagen midnight.
+    const timer = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
   // null = henter, false = hentningen fejlede. At skelne dem er hele pointen:
   // en fejlet fetch maa ikke vises som "ingen taktik sat" (#2849).
   const [roles, setRoles] = useState(null);
@@ -742,7 +749,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             stageList.map((s) => {
               const sn = s.stage_number;
               const on = sn === activeStage;
-              const isToday = stagesCompleted > 0 && sn === stagesCompleted + 1;
+              // Next unfinished stage is not necessarily on today's calendar date (#5290).
+              const isToday = Boolean(s.scheduled_at) && relativeDayKey(s.scheduled_at, new Date(nowMs)) === "today";
               return (
                 <button
                   key={sn}

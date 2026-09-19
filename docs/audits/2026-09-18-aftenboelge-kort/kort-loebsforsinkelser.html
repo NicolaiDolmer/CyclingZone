@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kort: løbsforsinkelser (#3624)</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--soft:#efece4;--line:#ddd8cc;--text:#1d1d1d;--muted:#5f5e5a}
+*{box-sizing:border-box}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);margin:0 auto;padding:20px 16px 32px;max-width:860px;font-variant-numeric:tabular-nums;line-height:1.45}
+h1{font-size:21px;margin:0 0 4px}h2{font-size:16px;margin:0 0 8px}.sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+.section{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:14px 16px;margin-bottom:14px}
+.row{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;margin:5px 0;font-size:13px}
+.track{background:var(--soft);height:16px;border-radius:2px}.bar{height:16px;border-radius:2px}
+.b0{background:#b4b2a9}.b1{background:#0c447c}.b2{background:#3b6d11}
+.grp{font-size:13px;font-weight:600;margin:12px 0 2px}
+.leg{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin-top:10px;flex-wrap:wrap}.sw{display:inline-block;width:14px;height:10px;vertical-align:middle;margin-right:6px;border-radius:2px}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;font-size:12.5px}
+.step{border:1px solid var(--line);border-radius:5px;padding:8px}.step b{display:block;font-size:13px}.step.hot{border-color:#a32d2d;background:#fcebeb}
+@media(max-width:700px){.flow{grid-template-columns:1fr 1fr}.row{grid-template-columns:110px 1fr 60px}}
+ul{margin:6px 0 0 18px;padding:0}li{margin:4px 0;font-size:14px}
+</style>
+</head>
+<body>
+<h1>Løbsforsinkelser: hvor tiden går, og ét forslag</h1>
+<p class="sub">Målt i prod 18/9 på 554 etaper fra de seneste 14 dage. Forsinkelse = fra det tidspunkt siden lover, til resultatet faktisk findes. Kilde: docs/audits/2026-09-18-3624-loebsforsinkelser.md (PR #5393).</p>
+
+<div class="section">
+<h2>Forsinkelse i minutter</h2>
+<p class="grp">Typisk etape (median)</p>
+<div class="row"><span>Før 14/9</span><div class="track"><div class="bar b0" style="width:8.8%"></div></div><span>4,2 min</span></div>
+<div class="row"><span>I dag</span><div class="track"><div class="bar b1" style="width:8.8%"></div></div><span>4,2 min</span></div>
+<div class="row"><span>Med forslaget</span><div class="track"><div class="bar b2" style="width:7.3%"></div></div><span>ca. 3,5 min</span></div>
+<p class="grp">De 10 % langsomste</p>
+<div class="row"><span>Før 14/9</span><div class="track"><div class="bar b0" style="width:48.2%"></div></div><span>23,0 min</span></div>
+<div class="row"><span>I dag</span><div class="track"><div class="bar b1" style="width:21.6%"></div></div><span>10,3 min</span></div>
+<div class="row"><span>Med forslaget</span><div class="track"><div class="bar b2" style="width:11.5%"></div></div><span>ca. 5-6 min</span></div>
+<p class="grp">Værste etape</p>
+<div class="row"><span>Før 14/9</span><div class="track"><div class="bar b0" style="width:100%"></div></div><span>47,7 min</span></div>
+<div class="row"><span>I dag</span><div class="track"><div class="bar b1" style="width:36.5%"></div></div><span>17,4 min</span></div>
+<div class="row"><span>Med forslaget</span><div class="track"><div class="bar b2" style="width:16%"></div></div><span>ca. 7-8 min</span></div>
+<div class="leg"><span><span class="sw b0"></span>Før rettelsen 14/9</span><span><span class="sw b1"></span>I dag</span><span><span class="sw b2"></span>Forventet med forslaget</span></div>
+</div>
+
+<div class="section">
+<h2>Hvad sker der, når et løb slutter (sidste etape)</h2>
+<div class="flow">
+<div class="step"><b>Resultat skrives</b>ca. 8 sek.</div>
+<div class="step"><b>Bestyrelsen reagerer</b>ca. 20 sek. (var 3-8 min før 14/9)</div>
+<div class="step hot"><b>Discord-besked sendes</b>25-60 sek. Hele køen venter imens</div>
+<div class="step"><b>Næste etape starter</b></div>
+</div>
+<ul>
+<li>Etaperne køres én ad gangen. Kl. 12 og 18 står op til 14 etaper i kø.</li>
+<li>En almindelig etape koster 8 sekunder. En sidste etape koster 54, og det meste er ventetid på Discord.</li>
+<li>De lave divisioner står bagest i køen, og det er dér de nye managere er.</li>
+<li>De 4 minutter i midten er et gulv: spillet kigger kun efter forfaldne etaper hvert 5. minut.</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>Forslaget</h2>
+<ul>
+<li><b>Discord-beskeden sendes ved siden af køen</b> i stedet for midt i den. Resultatet står på siden først, beskeden kommer op til et minut senere.</li>
+<li>Motoren, simuleringen og resultaterne røres ikke.</li>
+<li>Bag en kontakt, der er slukket fra start. Slukket = præcis som i dag. Kun du tænder den.</li>
+<li>Pris: én ny tabel, ét nyt lille job, og sikring mod tabte eller dobbelte beskeder.</li>
+<li>Fravalgt for nu: at kigge hvert minut i stedet for hvert 5. Det flytter kun det typiske tal og koster fem gange så mange databaseopslag døgnet rundt. Den tages bagefter, hvis du vil.</li>
+</ul>
+</div>
+</body>
+</html>

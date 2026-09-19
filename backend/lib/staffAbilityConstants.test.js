@@ -18,9 +18,10 @@ test("LEVEL_BANDS = u23/senior (#2529 youth+junior kollapset)", () => {
   assert.deepEqual(LEVEL_BANDS, ["u23", "senior"]);
 });
 
-test("DIMENSION_TO_ABILITIES grupperer physical(10)/mental(2)/technical(3)", () => {
+test("DIMENSION_TO_ABILITIES grupperer physical(10)/mental(4)/technical(3)", () => {
   assert.equal(DIMENSION_TO_ABILITIES.physical.length, 10);
-  assert.equal(DIMENSION_TO_ABILITIES.mental.length, 2);
+  // #5268: mental gik fra 2 til 4 (teamwork + leadership).
+  assert.equal(DIMENSION_TO_ABILITIES.mental.length, 4);
   assert.equal(DIMENSION_TO_ABILITIES.technical.length, 3);
 });
 

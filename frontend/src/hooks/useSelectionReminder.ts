@@ -7,6 +7,7 @@
 // Et roligt interval dækker begge dele, og endpointet er read-only + cache-let.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
 import {
   normalizeSelectionReminder,
@@ -81,11 +82,15 @@ export function useSelectionReminder(): {
         async () => {
           // catch-ok: loaderens rejection bobler ud gennem sharedRequestCache.get()
           // og fanges af catch'en nedenfor (fail-safe = ingen markering).
-          const res = await fetch(`${API}/api/me/selection-reminder`, { // catch-ok
+          const res = await apiFetch(`${API}/api/me/selection-reminder`, { // catch-ok
             headers: { Authorization: `Bearer ${session.access_token}` },
           });
+          // #5242: kastet fejl er bevidst bevaret — sharedRequestCache må ikke
+          // cache et limited/unauthorized/networkError-svar som et gyldigt
+          // resultat i hele TTL'en. Kastet holder cachen tom, så næste
+          // navigation prøver igen, præcis som før.
           if (!res.ok) throw new Error("selection_reminder_failed");
-          return res.json();
+          return res.data;
         },
         SHARED_TTL_MS.selectionReminder,
       );

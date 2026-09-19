@@ -35,6 +35,9 @@ import { predictBaseValue } from "./riderValuation.js";
 import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "./contractSeed.js";
 import { applyTypeDampening } from "./riderValuationTypeDampening.js";
 import { birthYearFrom, seasonReferenceYear } from "./riderSeasonAge.js";
+import {
+  statLevelToAbility, withBirthAbilityCap, isBornFromPriors, deriveBirthAbilities,
+} from "./riderBirthPriors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
@@ -46,6 +49,20 @@ const YOUTH_TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTyp
 // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
 // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
 const VALUATION_MODEL = applyTypeDampening(JSON.parse(readFileSync(join(__dirname, "./riderValuationModelV4.json"), "utf8")));
+
+// #5269: spejler backfillCores.deriveForRiderIds' fødsels-forgrening for en
+// IKKE-persisteret kandidat (generator-record eller payload-formet række).
+// Enhver gate der prissætter en kandidat FØR insert skal se præcis de evner
+// deriveForRiderIds bagefter persisterer — ellers vurderer gaten en anden rytter
+// end den der lander i DB'en (#2065-klassen).
+function abilitiesForCandidate(candidate, referenceYear) {
+  const draw = candidate?._meta?.archetypeDraw ?? candidate?.archetype_draw ?? null;
+  const row = { ...candidate, archetype_draw: draw };
+  if (isBornFromPriors(row)) {
+    return deriveBirthAbilities(row, { age: computeAge(candidate.birthdate, referenceYear) });
+  }
+  return deriveAbilities(seedPhysiologyFromLegacy(candidate), candidate);
+}
 
 export const STARTER_SQUAD = Object.freeze({
   CORE_SIZE: MIN_RIDERS_FOR_RACE,         // 8 — den løbsklare kerne (= løbs-minimum)
@@ -197,8 +214,15 @@ export function generateAiRiderBatchWithCap({
     attemptSeed = (attemptSeed + 104729) >>> 0; // næste rundes seed (primtal-spring)
     for (const candidate of riders) {
       if (accepted.length >= count) break;
-      const physiology = seedPhysiologyFromLegacy(candidate);
-      const abilities = deriveAbilities(physiology, candidate);
+      // #5269: FEMTE spejling — fødsels-stien. En kandidat født af spillets egne
+      // priors har ingen stat_*, så `deriveAbilities` ville give ham evne 1 hele
+      // vejen rundt, en base_value nær bunden, og dermed lade HVER eneste
+      // kandidat passere værdiloftet — mens deriveForRiderIds bagefter
+      // persisterer hans faktiske (langt højere) evner. Det er nøjagtig
+      // #2065-klassen: gaten vurderer en anden rytter end den der lander i DB'en.
+      // Målt uden denne linje: en tier-1-rytter med base_value 856.501 mod
+      // AI_TIER_VALUE_CAP 200.000.
+      const abilities = abilitiesForCandidate(candidate, referenceYear);
       // #3325: TYPES_BASELINE er nu caps-fittet (type = potentiale) — spejler
       // deriveForRiderIds' to-trins kæde (bootstrap-type fra live abilities mod
       // NEUTRAL_BASELINE → ability_caps → ENDELIG type mod TYPES_BASELINE), ellers
@@ -411,15 +435,30 @@ export function buildWeakStarterPool({
   generate = generateFictionalRiders,
 }) {
   const { riders } = generate({ seed, count, referenceYear, existingFoldedNames });
+  // #5269: stat-vinduet oversat til et EVNE-loft. Den gamle sti klemte
+  // stat-felterne FØR derivationen; på own-priors-stien findes de felter ikke,
+  // så loftet skal ligge dér hvor evnerne fødes — og det skal PERSISTERES
+  // (archetype_draw.birth.cap), ellers ville en re-derive (riderDeriveHealSweep
+  // #1673) genoplive en uklemt profil. Oversættelsen er den samme lineære
+  // afbildning PCM-stats altid har haft: evne = (stat − 50) · 98/35 + 1.
+  const windowAbilityCap = Math.round(statLevelToAbility(window.hi));
   const clamped = riders.map((r) => {
+    const ownPriors = Boolean(r._meta?.archetypeDraw?.birth);
     const stats = {};
-    for (const k of STAT_KEYS) stats[k] = Math.max(window.lo, Math.min(window.hi, r[k]));
+    if (!ownPriors) {
+      for (const k of STAT_KEYS) stats[k] = Math.max(window.lo, Math.min(window.hi, r[k]));
+    }
     // #4311 (ejer-beslutning 27/8): klem ogsaa potentiale — hidden_potential afledes
     // af potentiale, ikke stats, og ville ellers laekke uden om stat-klemmen ovenfor.
     const potentiale = Number.isFinite(r.potentiale)
       ? Math.min(FILL_TAIL_MAX_POTENTIALE, r.potentiale)
       : r.potentiale;
-    return { ...r, ...stats, potentiale };
+    if (!ownPriors) return { ...r, ...stats, potentiale };
+    return {
+      ...r,
+      potentiale,
+      _meta: { ...r._meta, archetypeDraw: withBirthAbilityCap(r._meta.archetypeDraw, windowAbilityCap) },
+    };
   });
   const payload = toInsertPayload(clamped);
   // #4311: generation_tag markoerer fyld-ryttere saa deriveAbilities (abilityDerivation.js)

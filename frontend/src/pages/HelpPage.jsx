@@ -141,6 +141,10 @@ const SECTION_DEFS = [
     Icon: ExchangeIcon,
     blocks: [
       { id: "whatTransfers", kind: "text" },
+      // #5257: den globale handelsliste. Wired ind SAMTIDIG med copy'en —
+      // #4066 viste hvad der sker ellers (oversat hjælpetekst der aldrig kunne
+      // nås fra siden).
+      { id: "allTrades", kind: "text" },
       { id: "sellOnTransferList", kind: "text" },
       // #4066: wired in — the copy already lived in help.json (translated,
       // en+da) but was never listed here, so the Market tab's bulk price
@@ -378,6 +382,9 @@ const SECTION_DEFS = [
       { id: "formFatigue", kind: "text" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
+      // #4851: the training score is the other half of "how much did today move" —
+      // the bars show what the rider got, the score shows how good the session was.
+      { id: "trainingScore", kind: "text" },
       { id: "longTermGrowth", kind: "text" },
       // #4066: wired in — the type-gating percentages and the "why did my
       // ability stop rising" FAQ both elaborate on longTermGrowth directly
@@ -605,6 +612,7 @@ const FAQ_KEYS = [
   "forumPollsFaq",
   "forumReportFaq",
   "forumUnreadFaq", // #4118/#3451
+  "betaGroupFaq", // #5259
 ];
 
 function buildSections(t, vars) {

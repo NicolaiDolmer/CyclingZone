@@ -532,10 +532,14 @@ function rowsFor(db, table) {
   // #2748: samme klasse for is_retired (NOT NULL DEFAULT false — verificeret mod
   // prod 23/7: 0 NULL-rækker ud af 7.034). Squad-cap-queries filtrerer nu også
   // .eq("is_retired", false), så en pensioneret rytter ikke optager en cap-plads.
+  // #4619: samme klasse igen for riders.squad (NOT NULL DEFAULT 'senior',
+  // database/2026-09-15-4619-riders-squad.sql). Senior-cap-queries filtrerer nu
+  // også .eq("squad", "senior") via squads.applySeniorSquadFilter.
   if (table === "riders") {
     for (const r of db[table]) {
       if (r.is_academy === undefined) r.is_academy = false;
       if (r.is_retired === undefined) r.is_retired = false;
+      if (r.squad === undefined) r.squad = "senior";
     }
   }
   return db[table];
@@ -1434,4 +1438,70 @@ test("#2797: confirmSwapOffer graduerer akademi-rytteren ved PARKERING, ikke fø
   assert.equal(offered.team_id, "seller", "endnu ikke flyttet — parkeret");
   assert.equal(offered.pending_team_id, "buyer");
   assert.equal(offered.is_academy, false, "graduerer allerede ved parkering, ikke først ved race-flush");
+});
+
+// ── #4619: `squad` skrives SAMMEN med `is_academy` på de ikke-graduerings-stier
+//
+// Efter backfill'en bærer `riders.squad` sandheden ('u23'/'junior' på
+// ungdomsryttere). Stierne herunder (direkte transfersalg, byttehandel) er
+// UAFHÆNGIGE af Graduation Day og flippede tidligere kun `is_academy`. Resultatet
+// ville være en rytter med is_academy=false OG squad='u23': `effectiveSquad()`
+// (squads.js) læser `squad` FØRST og kalder ham fortsat U23, og
+// `countSquadMembers` tæller direkte på kolonnen — så han optager en U23-plads på
+// KØBERENS loft uden at være akademirytter nogen steder.
+
+test("#4619: confirmTransferOffer sætter squad='senior' sammen med is_academy=false ved salg af en U23-akademirytter", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.riders.push({
+    id: "u23-rider-1", firstname: "Theo", lastname: "Talent",
+    team_id: "seller", pending_team_id: null, is_academy: true, squad: "u23",
+    salary: 5_000, base_value: 50_000, prize_earnings_bonus: 0,
+    current_production_value: 20_000, contract_length: 2, contract_end_season: 3,
+  });
+  db.transfer_offers.push({
+    id: "offer-u23-1", rider_id: "u23-rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 300, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+
+  const result = await confirmTransferOffer({
+    supabase: makeSupabase(db), offerId: "offer-u23-1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, true);
+  const rider = db.riders.find((r) => r.id === "u23-rider-1");
+  assert.equal(rider.team_id, "buyer");
+  assert.equal(rider.is_academy, false);
+  assert.equal(rider.squad, "senior", "squad følger med — ellers optager han en U23-plads på køberens loft");
+});
+
+test("#4619: confirmSwapOffer sætter squad='senior' på BEGGE byttede ungdomsryttere (junior + u23)", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  const offered = db.riders.find((r) => r.id === "rider-1");
+  offered.is_academy = true;
+  offered.squad = "junior";
+  db.riders.push({
+    id: "req-u23-rider", firstname: "Req", lastname: "Talent",
+    team_id: "buyer", pending_team_id: null, is_academy: true, squad: "u23",
+  });
+  db.swap_offers.push({
+    id: "swap-squad-1", offered_rider_id: "rider-1", requested_rider_id: "req-u23-rider",
+    proposing_team_id: "seller", receiving_team_id: "buyer",
+    cash_adjustment: 0, counter_cash: null, status: "awaiting_confirmation",
+    proposing_confirmed: true, receiving_confirmed: false,
+  });
+
+  const result = await confirmSwapOffer({
+    supabase: makeSupabase(db), swapId: "swap-squad-1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.action, "accepted");
+  const movedOffered = db.riders.find((r) => r.id === "rider-1");
+  const movedRequested = db.riders.find((r) => r.id === "req-u23-rider");
+  assert.equal(movedOffered.is_academy, false);
+  assert.equal(movedOffered.squad, "senior", "junior-rytteren lander som senior hos modtageren");
+  assert.equal(movedRequested.is_academy, false);
+  assert.equal(movedRequested.squad, "senior", "U23-rytteren lander som senior hos den oprindelige ejer");
 });

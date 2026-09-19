@@ -25,11 +25,17 @@
 //   FEJL   et navn i KNOWN_EVENTS uden en raekke i §3. Tabellen skal vaere komplet.
 //   FEJL   et server-event uden en raekke i §3 (de gaar aldrig gennem logEvent.js,
 //          og hoerer derfor ikke hjemme i KNOWN_EVENTS).
-//   ADVARSEL  et event der fyrer og er dokumenteret i §3, men mangler i
+//   FEJL   et event der fyrer og er dokumenteret i §3, men mangler i
 //          KNOWN_EVENTS. Det er canary-blindt: Detector E ville ikke opdage at
-//          stroemmen toerrede ud. 16 saadanne findes i dag (ANALYTICS_STACK §6
-//          punkt 11); at rette dem er en kode-aendring, ikke en docs-aendring,
-//          saa guarden advarer i stedet for at spaerre.
+//          stroemmen toerrede ud. Var en ADVARSEL saa laenge 16 saadanne stod
+//          som gaeld; de kom alle ind i KNOWN_EVENTS i #5369, saa reglen fra
+//          ANALYTICS_STACK §3 ("en raekke her OG et navn i KNOWN_EVENTS") nu
+//          kan haandhaeves. Et event der bevidst staar paa 0 hoerer hjemme i
+//          WHITELIST_ZERO_IMPRESSION_EVENTS (audit-feature-liveness.js), ikke
+//          uden for KNOWN_EVENTS.
+//
+// KOERES AF: ci.yml (jobbet frontend-build, et required check),
+// scripts/preflight-pr.ps1 og `npm run check:event-catalog`.
 //
 // BRUG:
 //   node scripts/check-event-catalog.mjs
@@ -58,12 +64,23 @@ const SERVER_RE = /event_name:\s*["']([a-z0-9_]+)["']/g;
 // KNOWN_EVENTS laeses som tekst i stedet for via import: logEvent.js importerer
 // ./supabase, som kraever Vite-env. Blokken er en frosset array-literal, saa en
 // simpel udtraekning er baade tilstraekkelig og robust.
+//
+// Kommentarer strippes FOER navnene laeses (#5369): blokken er taet kommenteret,
+// og en kommentar der citerer et ord ("arrived", "no_effect", "deferred" ved
+// app_version_reload) blev ellers laest som et event. Event-navne er [a-z0-9_],
+// saa en `//` kan aldrig staa inde i et navn - strippet er tabsfrit.
+// backend/scripts/audit-feature-liveness.js (Detector E) laeser samme blok og
+// stripper paa samme maade; aendres formen her, skal den aendres der.
 export function extractKnownEvents(source) {
   const start = source.indexOf("KNOWN_EVENTS = Object.freeze([");
   if (start === -1) return null;
-  const end = source.indexOf("]);", start);
+  const code = source
+    .slice(start)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+  const end = code.indexOf("]);");
   if (end === -1) return null;
-  const block = source.slice(start, end);
+  const block = code.slice(0, end);
   return new Set([...block.matchAll(/["']([a-z0-9_]+)["']/g)].map((m) => m[1]));
 }
 
@@ -136,14 +153,13 @@ function main() {
       if (!frontendEvents.has(name)) frontendEvents.set(name, path.relative(ROOT, file).replace(/\\/g, "/"));
     }
   }
-  const canaryBlind = [];
   for (const [name, file] of frontendEvents) {
     if (!known.has(name) && !documented.has(name)) {
       problems.push(`${name} (${file}) staar hverken i KNOWN_EVENTS eller i docs/ANALYTICS_STACK.md §3`);
     } else if (!documented.has(name)) {
       problems.push(`${name} (${file}) mangler en raekke i docs/ANALYTICS_STACK.md §3`);
     } else if (!known.has(name)) {
-      canaryBlind.push(`${name} (${file})`);
+      problems.push(`${name} (${file}) mangler i KNOWN_EVENTS i frontend/src/lib/logEvent.js (canary-blindt: Detector E opdager ikke hvis det toerrer ud)`);
     }
   }
 
@@ -161,12 +177,6 @@ function main() {
   // 3. KNOWN_EVENTS uden dokumentation.
   for (const name of known) {
     if (!documented.has(name)) problems.push(`${name} staar i KNOWN_EVENTS, men mangler en raekke i docs/ANALYTICS_STACK.md §3`);
-  }
-
-  if (canaryBlind.length > 0) {
-    console.warn(`ADVARSEL: ${canaryBlind.length} event(s) fyrer og er dokumenteret, men mangler i KNOWN_EVENTS (canary-blinde):`);
-    for (const c of canaryBlind.sort()) console.warn(`  - ${c}`);
-    console.warn("  Detector E ville ikke opdage at deres stroem toerrede ud. Se ANALYTICS_STACK.md §6 punkt 11.\n");
   }
 
   if (problems.length > 0) {

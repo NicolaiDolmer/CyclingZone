@@ -221,6 +221,10 @@
         "title": "Hvad er transfersystemet?",
         "text": "Transfersystemet lader dig forhandle direkte med andre managers om at købe eller sælge ryttere, ligesom i Football Manager. Du kan sende et tilbud på enhver rytter, uanset om den er sat til salg eller ej."
       },
+      "allTrades": {
+        "title": "Se alle handler i spillet",
+        "text": "Fanen 'Alle handler' på Transfers viser alle rytterskifter i spillet, nyeste øverst: auktionssalg, direkte transfers og bytter. Du kan filtrere på type, på division og helt ned til dit eget hold. Hver række har en stilfærdig gennemsyns-handling. Ser en handel forkert ud for dig, så send den til mig med en sætning om hvad du hæftede dig ved, så læser jeg den. En rapport er ikke en anklage, og den anden manager får aldrig at vide hvem der rapporterede."
+      },
       "sellOnTransferList": {
         "title": "Sælg via transferlisten",
         "text": "Du kan sætte dine egne ryttere til salg til en fast pris, enten fra Min trup eller direkte fra rytterens profilside. Mens en rytter er på listen, kan du til enhver tid redigere prisen eller fjerne listingen, både fra Transfers-siden og fra rytterens profil. Købere kan sortere OG filtrere markedet efter udbudspris, ud over at sortere efter nyeste."
@@ -833,7 +837,7 @@
         "text": "Hver rytters årsløn fastsættes ved signering ud fra hvad rytteren forventes at producere i indeværende sæson, og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Værdi og løn svarer på to forskellige spørgsmål: værdien er prisen på rytterens fremtid, lønnen er omkostningen ved det han leverer lige nu. Unge talenter er derfor billige at have på lønningslisten, mens etablerede stjerner får løn der matcher deres niveau. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
       },
       "abilitiesExplained": {
-        "title": "De 15 evner, og hvor de betyder noget",
+        "title": "De 17 evner, og hvor de betyder noget",
         "rows": [
           [
             "Evne",
@@ -906,7 +910,7 @@
             "Hektiske etaper, enkeltstarter"
           ],
           [
-            "Aggression",
+            "Angrebslyst",
             "Lysten til at angribe",
             "Udbrud"
           ],
@@ -914,6 +918,16 @@
             "Taktik",
             "Race-forståelse og at læse et løb",
             "Holdtidskørsler, taktiske løb"
+          ],
+          [
+            "Holdarbejde",
+            "Hvor meget en hjælper er værd for sin kaptajn",
+            "Enhver dag du kører for en anden"
+          ],
+          [
+            "Lederskab",
+            "Om truppen kører bag ham",
+            "Kaptajndage, og at give det videre til en ung rytter"
           ]
         ]
       },
@@ -958,7 +972,7 @@
           [
             "Baroudeur",
             "Angrebslyst, med i udbrud hele dagen.",
-            "Løbslære (Aggression)"
+            "Løbslære (Angrebslyst)"
           ],
           [
             "Rouleur",
@@ -1004,7 +1018,7 @@
         "steps": [
           "Gå til Daglig træning i menuen.",
           "Find en rytter og vælg hvad det er for en dag: Hvile, Aktiv restitution, en Færdighedsdag eller Træning.",
-          "På en træningsdag vælger du sessionen: Lang tur (let), Tempo (mellem), eller Blandede intervaller, Klatreintervaller, Punch-intervaller, Tærskel eller Sprint (hård). På en færdighedsdag: Teknik, Aero eller Løbslære.",
+          "På en træningsdag vælger du sessionen: Lang tur (let), Tempo (mellem), eller Blandede intervaller, Klatreintervaller, Punch-intervaller, Tærskel, Sprint, Brostenssektorer, Vifteøvelser eller Angrebsintervaller (hård). På en færdighedsdag: Teknik, Aero eller Løbslære.",
           "Gem. Dagen kører hver dag, indtil du ændrer den.",
           "Der er ingen grænse for hvor mange ryttere der kan have et program: du kan sætte et for hele truppen."
         ]
@@ -1015,7 +1029,7 @@
       },
       "focusAbilities": {
         "title": "Hvad hver session træner",
-        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Blandede intervaller træner Bjerg, Punch og Tempo med lige stor andel. Klatreintervaller træner Bjerg og Tempo, og Bjerg får mere end i den blandede session, men Punch trænes slet ikke. Punch-intervaller er spejlbilledet: Punch og Tempo, hvor Punch får mere, og Bjerg er ude. De tre dækker den samme mængde arbejde, så et andet valg flytter dit udbytte, det lægger ikke noget til. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Aggression. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel og sprint er hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
+        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Blandede intervaller træner Bjerg, Punch og Tempo med lige stor andel. Klatreintervaller træner Bjerg og Tempo, og Bjerg får mere end i den blandede session, men Punch trænes slet ikke. Punch-intervaller er spejlbilledet: Punch og Tempo, hvor Punch får mere, og Bjerg er ude. De tre dækker den samme mængde arbejde, så et andet valg flytter dit udbytte, det lægger ikke noget til. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Brostenssektorer træner Brosten, Robusthed og Positionering, hvor Brosten får mest. Vifteøvelser træner Fladt, Positionering og Robusthed, hvor Fladt får mest. Angrebsintervaller træner Angrebslyst, Punch og Acceleration, hvor Angrebslyst får mest. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Angrebslyst. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel, sprint, Brostenssektorer, Vifteøvelser og Angrebsintervaller er alle hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
       },
       "typeGating": {
         "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
@@ -1051,7 +1065,11 @@
       },
       "progressBars": {
         "title": "Fremskridtslinjer og evnepoint",
-        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne, og linjen starter forfra mod NÆSTE point, så en lav eller næsten tom linje lige efter en fremgang er et godt tegn, ikke et tab. Trænings-siden viser også et \"+N i dag\"-mærkat på ryttere der har vundet hele point i dagens session. Hver evne har et skjult livstidsloft bestemt af rytterens potentiale og alder; en evne der har nået det, står som \"færdig\" på sin egen linje i stedet for en bar. Rytterprofilens Træning-fane viser alle 15 evner med hvad hver enkelt står på nu, hvor mange hele point rytteren har fået i denne sæson, og hvor langt der er til næste point. Skift fokus hvis et andet område stadig har plads, eller nyd rytteren i fuld styrke. Ældre ryttere forbi karriere-toppen har naturligt lidt eller ingen plads tilbage. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen. Tællingen for \"denne sæson\" dækker kun dage inde i den aktive sæson. Mellem to sæsoner viser den startdatoen i stedet for et tal, mens evneværdierne og linjerne stadig tæller hvert pas med. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
+        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne, og linjen starter forfra mod NÆSTE point, så en lav eller næsten tom linje lige efter en fremgang er et godt tegn, ikke et tab. Trænings-siden viser også et \"+N i dag\"-mærkat på ryttere der har vundet hele point i dagens session. Hver evne har et skjult livstidsloft bestemt af rytterens potentiale og alder; en evne der har nået det, står som \"færdig\" på sin egen linje i stedet for en bar. Rytterprofilens Træning-fane viser alle 17 evner med hvad hver enkelt står på nu, hvor mange hele point rytteren har fået i denne sæson, og hvor langt der er til næste point. Skift fokus hvis et andet område stadig har plads, eller nyd rytteren i fuld styrke. Ældre ryttere forbi karriere-toppen har naturligt lidt eller ingen plads tilbage. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen. Tællingen for \"denne sæson\" dækker kun dage inde i den aktive sæson. Mellem to sæsoner viser den startdatoen i stedet for et tal, mens evneværdierne og linjerne stadig tæller hvert pas med. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
+      },
+      "trainingScore": {
+        "title": "Træningsscoren",
+        "text": "Hvert pas en rytter gennemfører får en træningsscore fra 1 til 99. Den måler KVALITETEN af passet, ikke hvad rytteren fik ud af det: hvor krævende passet var, hvor godt det ramte rytterens styrker, rytterens form og træthed den dag, træneren og faciliteterne bag, rytterens talent og alder, og dagen selv. Scoren er det, der driver udviklingen: et bedre pas rykker evnerne mere. Den afhænger ikke af, hvor tæt en evne er på sit loft, så en rytter der næsten er færdig i sine fokus-evner, får stadig en ærlig aflæsning af, hvor godt passet var. Hviledage får ingen score, for der var intet pas at måle. På en dag hvor et løb træder i stedet for passet, står der 'Løb' i kolonnen i stedet for et tal, og kurven har et hul. Kun du kan se scorerne for dine egne ryttere."
       },
       "longTermGrowth": {
         "title": "Udvikling på lang sigt",
@@ -1173,8 +1191,8 @@
         "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med {academySlots} ryttere har en mærkbar løbende omkostning hver sæson."
       },
       "graduation": {
-        "title": "At forlade akademiet ved 22",
-        "text": "Når en akademirytter fylder 22, forlader de Akademiet, og du træffer et valg for hver enkelt: ryk dem op i din senior-trup (kræver en ledig senior-plads og giver dem en senior-kontrakt), sælg dem på transfermarkedet, eller slip dem som free agent. Du får et vindue til at beslutte; handler du ikke i tide, vælger klubben et fornuftigt standardvalg for dig (ryk op når der er plads, ellers sælg). Sådan får hjemmeavlet talent en klar vej til din senior-trup."
+        "title": "At forlade akademiet ved 23",
+        "text": "Når en akademirytter fylder 23, forlader de Akademiet, og du træffer et valg for hver enkelt: ryk dem op i din senior-trup (kræver en ledig senior-plads og giver dem en senior-kontrakt), sælg dem på transfermarkedet, eller slip dem som free agent. Du får et vindue til at beslutte; handler du ikke i tide, vælger klubben et fornuftigt standardvalg for dig (ryk op når der er plads, ellers sælg). Sådan får hjemmeavlet talent en klar vej til din senior-trup."
       },
       "promoteDemote": {
         "title": "Ryk op og flyt ryttere ned",
@@ -1472,8 +1490,8 @@
       "a": "Det koster ingen evneudvikling i sæson 3 at køre løb: dit talent får stadig præcis det pas du planlagde den dag, uanset om han kører løb eller ej. Den reelle pris er træthed: et løb lægger sin egen belastning oven i træningen, og et talent der ofte kører løb, har brug for lettere pas og rigtige hviledage for at holde sig under skadetærsklen, ligesom enhver senior-rytter. Der er ingen akademi-specifik straf for at køre løb, så afvejningen handler om at styre trætheden, ikke om tabt udvikling."
     },
     "flatCobblesHardTrainingFaq": {
-      "q": "Hvorfor kan jeg ikke træne Fladt eller Brosten med Hård intensitet?",
-      "a": "Det er en bevidst del af designet, at ingen Hård-session rammer de to evner i dag. De Hårde sessioner er Blandede intervaller (Bjerg, Punch, Tempo), Klatreintervaller (Bjerg, Tempo), Punch-intervaller (Punch, Tempo), Tærskel (Enkeltstart, Tempo) og Sprint (Sprint, Acceleration). Fladt trænes af Tempo (Normal) og Aero (Let); Brosten kun af Teknik (Let). Der findes i dag ingen måde at presse nogen af de to på Hård."
+      "q": "Kan jeg træne Fladt eller Brosten med Hård intensitet?",
+      "a": "Ja, med Brostenssektorer og Vifteøvelser. Brostenssektorer træner Brosten hårdest, og modstandskraft og positionering følger med i prisen. Vifteøvelser træner Fladt hårdest, med positionering og modstandskraft på samme måde. De ældre Hårde sessioner rammer stadig ikke nogen af de to: Blandede intervaller (Bjerg, Punch, Tempo), Klatreintervaller (Bjerg, Tempo), Punch-intervaller (Punch, Tempo), Tærskel (Enkeltstart, Tempo) og Sprint (Sprint, Acceleration). Tempo (Normal), Aero og Teknik (begge Let) virker stadig også, bare på en lavere intensitet."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Forbedrer et bedre scouting-netværk også hvor godt jeg ser mine egne ryttere?",
@@ -1513,11 +1531,11 @@
     },
     "sponsorPayoutTiming": {
       "q": "Hvornår udbetales sponsorpenge?",
-      "a": "Sponsorpenge udbetales ved sæsonstart. Én undtagelse helt i begyndelsen: hvis du starter din første sæson med din fulde startkapital, får du ikke også en sæson-1-sponsorudbetaling oveni (det ville være dobbelt-indkomst ved opstart). Fra sæson 2 og frem udbetales sponsor altid. Det du modtager kommer fra den aftale du har skrevet under: en garanteret base udbetalt ved sæsonstart, plus en rate pr. etape du tjener undervejs i sæsonen. Aftalens størrelse fastsættes når du skriver under, ud fra din divisions base (D1 600.000 · D2 400.000 · D3 340.000 · D4 315.000 CZ$) ganget med dit klubomdømme, som kan løfte den med op til 40 procent. Kører du senere i en division over den aftalen er prissat til, udbetales et separat divisions-tillæg oveni, hver sæson forskellen findes: det løfter dig først til basen for divisionen lige under din nuværende, og lægger derefter halvdelen af resten op til din nuværende divisions base oveni. Den garanterede base og divisions-tillægget ganges derefter med bestyrelsens budget-modifier og eventuel sponsor-pullout; din indtægt pr. etape gør ikke."
+      "a": "Sponsorpenge udbetales ved sæsonstart. Én undtagelse helt i begyndelsen: hvis du starter din første sæson med din fulde startkapital, får du ikke også en sæson-1-sponsorudbetaling oveni (det ville være dobbelt-indkomst ved opstart). Fra sæson 2 og frem udbetales sponsor altid. Det du modtager kommer fra den aftale du har skrevet under: en garanteret base udbetalt ved sæsonstart, plus en rate pr. etape du tjener undervejs i sæsonen. Aftalens størrelse fastsættes den dag du skriver under, ud fra den division du er i og de resultater du har på det tidspunkt: din divisions base (D1 600.000 · D2 400.000 · D3 340.000 · D4 315.000 CZ$) ganget med dit klubomdømme, som kan løfte den med op til 40 procent. Den garanterede base bliver derefter stående præcis som underskrevet hele aftalen igennem. Den prissættes ikke om, hvis du senere rykker op eller ned. Kører du senere i en division over den aftalen er prissat til, udbetales til gengæld et separat divisions-tillæg oveni, hver sæson forskellen findes: det løfter dig først til basen for divisionen lige under din nuværende, og lægger derefter halvdelen af resten op til din nuværende divisions base oveni. Den garanterede base og divisions-tillægget ganges derefter med bestyrelsens budget-modifier og eventuel sponsor-pullout; din indtægt pr. etape gør ikke."
     },
     "sponsorNegotiation": {
       "q": "Hvordan forhandler jeg min sponsor, og hvad betyder tilbuddene?",
-      "a": "Du vælger din sponsor på Sponsorer-siden før hver ny sæson, hvor fem sponsorer sidder ved bordet, hver med sin egen måde at betale dig på. Tilbuddene formes af din klubs omdømme: din division plus dine resultater over de seneste sæsoner, så en stærk, etableret klub tilbydes større aftaler end en ny klub eller en klub med lav anseelse. Hver aftale har en garanteret base, der udbetales ved sæsonstart og justeres af bestyrelsens tilfredshed med op til plus/minus 20 procent, og en sats pr. etape: du tjener den for hver etape dit hold stiller til start i, og satsen sættes ud fra antallet af etaper i din divisions kalender, krediteret efterhånden som løbene finaliseres. Oven i det kan aftaler bære bonusklausuler: en underskriftsbonus der udbetales med det samme, en bonus pr. etapesejr eller podieplads (under et fælles loft, der nulstilles ved hvert sæsonskifte), eller et sæsonmål der udbetales ved sæsonafslutning hvis du slutter i top-40 % af din division. Kontrakter løber 1 til 3 sæsoner afhængigt af aftalen. Dit valg låses når den nye sæson starter, og vælger du ikke, underskriver klubben den sikre 1-sæsons aftale for dig. Den aktive kontrakt, dens klausuler og hvad den indtil videre har indbragt dig, vises på Sponsorer-siden; du forhandler igen når den udløber. En ting mere at veje før du skriver under: aftalen er prissat til den division du er i lige nu. Rykker du op, løftes du først til basen for divisionen lige under din nye, og får derefter halvdelen af resten op til din nye divisions base oveni hver sæson, så en oprykning ikke længere efterlader dig med en aftale der er blevet hængende. Tilbudsskærmen viser dig beløbet for hver division, før du vælger."
+      "a": "Du vælger din sponsor på Sponsorer-siden før hver ny sæson, hvor fem sponsorer sidder ved bordet, hver med sin egen måde at betale dig på. Tilbuddene formes af din klubs omdømme: din division plus din seneste sæson med en stilling, så en stærk, etableret klub tilbydes større aftaler end en ny klub eller en klub med lav anseelse. Har den igangværende sæson endnu ingen stilling, bruges sæsonen før, så en etableret klub aldrig får en begynder-aftale, bare fordi den kiggede tidligt. Hver aftale har en garanteret base, der udbetales ved sæsonstart og justeres af bestyrelsens tilfredshed med op til plus/minus 20 procent, og en sats pr. etape: du tjener den for hver etape dit hold stiller til start i, og satsen sættes ud fra antallet af etaper i din divisions kalender, krediteret efterhånden som løbene finaliseres. Oven i det kan aftaler bære bonusklausuler: en underskriftsbonus der udbetales med det samme, en bonus pr. etapesejr eller podieplads (under et fælles loft, der nulstilles ved hvert sæsonskifte), eller et sæsonmål der udbetales ved sæsonafslutning hvis du slutter i top-40 % af din division. Kontrakter løber 1 til 3 sæsoner afhængigt af aftalen. Beløbet låses i det øjeblik du skriver under, ud fra den division og de resultater du har den dag, og det flytter sig aldrig igen i aftalens løbetid; selve aftalen starter når den nye sæson starter. Vælger du slet ikke, underskriver klubben den sikre 1-sæsons aftale for dig til den pris tilbuddene åbnede på, så det at tie aldrig betaler mere end at vælge samme aftale. Den aktive kontrakt, dens klausuler og hvad den indtil videre har indbragt dig, vises på Sponsorer-siden; du forhandler igen når den udløber. En ting mere at veje før du skriver under: aftalen er prissat til den division du er i lige nu, og en oprykning prissætter den ikke om. Din garanterede base bliver stående som du skrev under på. Det en oprykning giver dig, er et separat divisions-tillæg oveni hver sæson du kører over den division aftalen er prissat til: det løfter dig til basen for divisionen lige under din nuværende og lægger derefter halvdelen af resten oveni. Tilbudsskærmen viser dig beløbet for hver division, før du vælger."
     },
     "sponsorMidSeasonOnboarding": {
       "q": "Jeg oprettede mit hold midt i sæsonen, får jeg en sponsor med det samme?",
@@ -1684,8 +1702,8 @@
       "a": "Resultaterne afgøres af hvor godt dine rytteres evner passer til terrænet. Hvert løb deles op i etaper, og hver etape har en terræntype (fladt, kuperet, bjerge, enkeltstart, brosten osv.) der efterspørger bestemte evner. En flad etape belønner Sprint mest af alt; en bjergetape belønner Klatring; en enkeltstart belønner Enkeltstart; en brosten-etape belønner Brosten; en kuperet etape belønner Punch. For hver rytter lægger motoren de matchende evner sammen, vægtet efter hvad etapen kræver, til en etape-score. Oven på den score ligger nogle få mindre effekter: god form giver en lille favour og høj træthed en lille straf (hver begrænset til ca. ±3%, så en frisk rytter slår en træt af samme niveau, men en favorit vinder stadig på klasse), en kaptajn beskyttet af stærke, friske hjælpere får et boost, udbrud holder af og til hjem på det rette terræn, og en lille tilfældig faktor betyder at den stærkeste rytter vinder det meste af tiden, men ikke altid. Over et etapeløb lægges tidsgabene fra hver etape sammen til det samlede klassement: bjerge og enkeltstarter åbner de største gab og afgør typisk GC, mens flade etaper slutter i en samlet spurt. Placeringer bliver til point, og point bliver til både din rangliste-score og dine præmiepenge. Det praktiske: match hver rytter til de etaper der passer ham, hold dine stjerner friske til de dage der tæller, og sæt den rigtige kaptajn i Holdudtagelse. Hvert løb har også et holdklassement, der vindes af det hold hvis tre bedste ryttere har den laveste samlede tid."
     },
     "riderAbilities": {
-      "q": "Hvad betyder de 15 rytter-evner?",
-      "a": "Hver rytter vurderes 0-99 på 15 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (2): Aggression (lysten til at angribe og komme med i udbrud) og Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb). Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
+      "q": "Hvad betyder de 17 rytter-evner?",
+      "a": "Hver rytter vurderes 0-99 på 17 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (4): Angrebslyst (lysten til at angribe og komme med i udbrud), Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb), Holdarbejde (hvor meget en hjælper er værd for den kaptajn han kører for) og Lederskab (om truppen kører bag ham, og hvad han giver videre til en ung rytter). Holdarbejde og Lederskab er nye: du kan se og træne dem nu, og de begynder at ændre løb i en senere opdatering. Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
     },
     "riderRating": {
       "q": "Hvad betyder en rytters samlede rating?",
@@ -1774,6 +1792,10 @@
     "forumUnreadFaq": {
       "q": "Hvad betyder prikken ved en forum-tråd?",
       "a": "En tråd er markeret ulæst indtil du åbner den, ud fra dens seneste opslag eller svar, ikke hvornår den blev oprettet. Den samme gule prik vises ved \"Forum\" i menuen, når mindst én tråd har ulæst aktivitet. Svarer nogen på en tråd du selv har startet, får du også en notifikation i din indbakke; dit eget svar på egen tråd giver aldrig en notifikation."
+    },
+    "betaGroupFaq": {
+      "q": "Hvad er beta-gruppen, og hvordan kommer jeg med?",
+      "a": "Jeg åbner de fleste nye funktioner for en lille gruppe først, så jeg kan nå at læse hvert svar inden alle får dem. En beta-tester ser de funktioner tidligt, og nogle af dem bliver lavet om eller går i stykker undervejs. Bed om at komme med under Profil, Beta-gruppen: jeg svarer i hånden, og du får en besked i indbakken uanset hvad. Sig hvad der føles forkert på Discord eller gennem feedback-formularen. Du kan forlade gruppen igen samme sted, og du beholder alt det der allerede er live for alle."
     }
   },
   "knownIssues": {

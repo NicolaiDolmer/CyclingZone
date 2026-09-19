@@ -16,18 +16,30 @@
 # udtryk for "det træ jeg committer i". Deraf det valgfrie <dir>-argument: giv
 # guarden PRÆCIS den mappe din `git -C <dir> commit` bruger.
 #
+# Bid 7 (9/9, #5094) var en fejlklasse guarden ikke selv kunne fange: kæden er
+# `bash scripts/guard-commit-branch.sh <branch> <dir> && git -C <dir> commit ...`,
+# og når `bash` IKKE kan resolves på PATH i den kaldende proces, er fejlen en
+# command-resolution-fejl. I PowerShell opdaterer den ikke nødvendigvis
+# $LASTEXITCODE, så kæden kan fortsætte forbi guarden uden at den kørte.
+# Guarden kan ikke beskytte mod ikke at blive startet — derfor skriver den nu en
+# markør, og `.githooks/pre-commit` afviser et commit uden den. To lag:
+#   1. scripts/guard-commit-branch.ps1 — fejler hårdt hvis bash ikke findes.
+#   2. markør + pre-commit — et `git commit` der aldrig så guarden, blokeres.
+#
 # Brug:
 #   bash scripts/guard-commit-branch.sh main && git commit -F msg.txt
 #   bash scripts/guard-commit-branch.sh <branch> <dir> && git -C <dir> commit -F msg.txt
+#   pwsh -File scripts/guard-commit-branch.ps1 <branch> <dir>   (PowerShell-kaldere)
 #
 # Exit-koder:
-#   0  match (tavs)
+#   0  match (tavs) — markør skrevet i det tjekkede træs egen git-dir
 #   1  BLOKERET: forkert branch eller detached HEAD i det tjekkede træ
 #   2  kald-fejl: manglende argument, <dir> er ikke et git-arbejdstræ, eller to træer
 #      i spil uden <dir> (scriptet ligger i ét repo-træ, shell-cwd i et andet)
 #
 # Læring: .claude/learnings/2026-08-06-shared-checkout-cross-session-commit.md
 #         .claude/learnings/2026-09-02-guard-commit-branch-tjekker-cwd-ikke-worktree.md
+#         .claude/learnings/2026-09-09-codex-hooks-measured-cause-chain.md (#5094)
 # Test:   bash scripts/test-guard-commit-branch.sh
 
 set -euo pipefail
@@ -119,6 +131,22 @@ Er der fremmed ucommitteret arbejde, saa skift ALDRIG branch. Brug et worktree:
   cd - && git worktree remove /tmp/cz-$slug
 EOF
   exit 1
+fi
+
+# Markør: bevis for at guarden FAKTISK kørte for netop dette træ og denne branch.
+# `.githooks/pre-commit` læser den, sletter den og afviser commit'et hvis den
+# mangler, er for gammel eller peger på et andet træ/branch (#5094).
+#
+# Den ligger i det tjekkede træs EGEN git-dir. For et linked worktree er det
+# .git/worktrees/<navn>/, ikke det delte .git/ — så en markør fra lane A kan
+# ikke bruges af lane B. `tree=` verificeres derudover eksplicit.
+# Markøren skrives bevidst som det SIDSTE: kun en bestået kontrol må efterlade et
+# bevis, og en fejl her må ikke gøre en godkendt branch til en blokering.
+marker_dir="$(git -C "$target" rev-parse --absolute-git-dir 2>/dev/null || true)"
+if [ -n "$marker_dir" ] && [ -d "$marker_dir" ]; then
+  printf 'v1\nbranch=%s\nepoch=%s\ntree=%s\npid=%s\n' \
+    "$actual" "$(date +%s)" "$where" "$$" \
+    > "$marker_dir/cz-commit-guard-ok" 2>/dev/null || true
 fi
 
 exit 0

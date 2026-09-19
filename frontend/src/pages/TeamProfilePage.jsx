@@ -3,7 +3,8 @@ import { getGlobalRank } from "../lib/rankingsApi.ts";
 import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #4873: Retry-After-respekt + centraliseret 401-vej
 import { statStyle } from "../lib/statColor";
 import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { CONDITION_SELECT, flattenCondition, isRiderInjured } from "../lib/training.js";
@@ -59,6 +60,10 @@ import { TEAM_PROFILE_TABS as TABS, resolveTeamProfileTab } from "../lib/teamPro
 // #2849 bølge 5 gav siden en lokal HeroStatBlock-kopi. #4628: opskriften bor nu
 // i kittet (components/ui/HeroStats) og stabler i to kolonner på mobil — den
 // lokale kopi klippede holdets sidste stat-blokke væk på 375px.
+
+// #4873: manager-status hentes via backend (service-role) i stedet for en rå
+// frontend-Supabase-join på users — se loadAll's manager-status-fetch nedenfor.
+const API = import.meta.env.VITE_API_URL;
 
 export default function TeamProfilePage() {
   const { id } = useParams();
@@ -134,8 +139,19 @@ export default function TeamProfilePage() {
     const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
     if (myTeam) setMyTeamId(myTeam.id);
 
-    const [teamRes, ridersRes, pendingRes, standingRes, globalRankRes] = await Promise.all([
-      supabase.from("teams").select("*, manager:user_id(last_seen)").eq("id", id).maybeSingle(),
+    const [teamRes, ridersRes, pendingRes, standingRes, globalRankRes, managerStatusRes] = await Promise.all([
+      // #4873: den tidligere manager-embed (user_id-join mod users.last_seen)
+      // er FJERNET herfra — det var en rå frontend-join mod users, som
+      // database/2026-05-22-rls-permissive-
+      // policy-lockdown.sql:65-69 med rette RLS-blokerede for alle andre
+      // brugeres rækker (P1 PII-leak-fix: fjernede "Public read basic user
+      // info"). Joinet blev derfor tavst null for ethvert hold der ikke var
+      // ens eget, og OnlineBadge (korrekt implementeret) falder til "Never"
+      // når lastSeen er falsy — deraf "Online now" → "Never"-spranget for
+      // andre spilleres profiler. last_seen hentes nu i stedet via backend
+      // (managerStatusRes nedenfor), samme service-role-vej som
+      // ManagerProfilePage allerede bruger for /managers/:teamId.
+      supabase.from("teams").select("*").eq("id", id).maybeSingle(),
       supabase.from("riders")
         // #1529: evnerne hentes via join (ABILITY_SELECT) + flades op på rytter-objektet
         // med flattenAbilities, så rider.climbing osv. virker i render/sort.
@@ -156,6 +172,22 @@ export default function TeamProfilePage() {
         .order("updated_at", { ascending: false }).limit(1).single(),
       // #2453: Global Rank-placering (null hvis inaktiv/ikke rankeret — skjules i UI).
       getGlobalRank(id),
+      // #4873: last_seen/is_online for holdets manager, via backend (service-
+      // role) — se den udførlige kommentar på teams-selecten ovenfor. Fejler
+      // kaldet (netværk/401/ikke fundet) degraderer vi stille til "Never"
+      // (samme sluttilstand som før dette var muligt at hente), i stedet for
+      // at kaste hele siden i loadError for et rent kosmetisk statusfelt.
+      (async () => {
+        try {
+          const h = await authHeaders();
+          if (!h) return null;
+          const res = await apiFetch(`${API}/api/teams/${id}/manager-status`, { headers: h });
+          return res.ok ? res.data : null;
+        } catch {
+          // best-effort — statusfeltet falder tilbage til "Never", resten af siden må ikke fejle for dette
+          return null;
+        }
+      })(),
     ]);
 
     // #2849 bølge 5: en ægte query-/netværksfejl (error != null) er noget andet end
@@ -170,9 +202,10 @@ export default function TeamProfilePage() {
 
     setGlobalRank(globalRankRes?.data?.global_rank != null ? globalRankRes.data : null);
     setTeam(teamRes.data);
-    const lastSeen = teamRes.data?.manager?.last_seen || null;
-    const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000 : false;
-    setManagerStatus({ isOnline, lastSeen });
+    setManagerStatus({
+      isOnline: managerStatusRes?.is_online || false,
+      lastSeen: managerStatusRes?.last_seen || null,
+    });
     // #1531: flattenCondition løfter rider_condition.injured_until op til skade-badget.
     const current = (ridersRes.data || []).map(r => ({
       ...flattenCondition(flattenAbilities(r)), _isOutgoing: r.pending_team_id && r.pending_team_id !== id,

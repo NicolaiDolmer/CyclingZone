@@ -76,6 +76,16 @@ export const NOTIFICATION_TYPES = [
   // #5011 (ejer-direktiv 3/9, #4751): du blev @-tagget i et forum-indlæg.
   // Højst ÉN pr. (bruger, indlæg), aldrig ved selv-tag. Se notifyForumMention.
   "forum_mention",
+  // #5130 (ejer-direktiv 10/9): Discord-velkomstbesked i indbakken. Sendt
+  // præcis én gang pr. hold af discordWelcomeSweep.js (dedupe på
+  // teams.discord_welcome_sent_at), når holdet har rundet løbs-klar-tærsklen
+  // eller senest 24t efter oprettelse. Se discordWelcomeNotification.js.
+  "discord_welcome",
+  // #5259 (ejer 15/9): svaret paa en beta-ansoegning — ja eller nej. Sendt
+  // praecis én gang pr. beslutning fra betaAccess.js (decideBetaRequest).
+  // Ejeren saetter kontakten direkte i Brugere-fanen UDEN besked; det er kun
+  // svaret paa noget spilleren selv spurgte om der lander i indbakken.
+  "beta_access_decided",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

@@ -21,7 +21,7 @@
  *   - klage-rate   > 0,1 % (samme minimum; det er den graense
  *                           mailbox-udbyderne selv straffer paa)
  *   - doede retries > 0     (en mail er REELT tabt)
- *   - en type der havde kandidater men sendte 0 TO DOEGN i traek
+ *   - en aktiv type med ikke-skippede kandidater men 0 sendt TO DOEGN i traek
  *
  * EN-GANG-PR.-DAG: cron tikker hver time (samme moenster som race-digesten:
  * et praecist times-vindue kan springes over af en deploy-klynge). Gaten er
@@ -126,18 +126,23 @@ export function summarizeEmailLogWindow(rows, { fromIso, toIso = null }) {
 }
 
 /**
- * REN: kandidater vs. faktisk sendt pr. type i ét vindue.
- * @param {Array<{email_type: string, candidates: number, sent: number, created_at: string}>} runRows
+ * REN: observationer og udfald for stage=on pr. type i ét vindue.
+ * candidates er FOER dedupe/prefs, ikke unikke modtagere der mangler mail.
+ * dry_run's sent betyder simuleret, saa de koersler indgaar ikke her.
+ * @param {Array<{email_type: string, stage: string, candidates: number, sent: number, skipped: number, failed: number, created_at: string}>} runRows
  */
 export function summarizeSweepRunsWindow(runRows, { fromIso, toIso = null }) {
   const byType = {};
-  for (const type of EMAIL_LOOP_TYPES) byType[type] = { candidates: 0, sent: 0, runs: 0 };
+  for (const type of EMAIL_LOOP_TYPES) byType[type] = { candidates: 0, sent: 0, skipped: 0, failed: 0, runs: 0 };
   for (const row of runRows) {
+    if (row.stage !== "on") continue;
     if (row.created_at < fromIso) continue;
     if (toIso && row.created_at >= toIso) continue;
-    if (!byType[row.email_type]) byType[row.email_type] = { candidates: 0, sent: 0, runs: 0 };
+    if (!byType[row.email_type]) byType[row.email_type] = { candidates: 0, sent: 0, skipped: 0, failed: 0, runs: 0 };
     byType[row.email_type].candidates += row.candidates ?? 0;
     byType[row.email_type].sent += row.sent ?? 0;
+    byType[row.email_type].skipped += row.skipped ?? 0;
+    byType[row.email_type].failed += row.failed ?? 0;
     byType[row.email_type].runs += 1;
   }
   return byType;
@@ -151,8 +156,8 @@ export function summarizeSweepRunsWindow(runRows, { fromIso, toIso = null }) {
  * @param {object} args
  * @param {ReturnType<typeof summarizeEmailLogWindow>} args.window24h
  * @param {number} args.retryQueue
- * @param {Record<string, {candidates: number, sent: number}>} args.types24h
- * @param {Record<string, {candidates: number, sent: number}>} args.types48h dagen FOER (24-48 t)
+ * @param {ReturnType<typeof summarizeSweepRunsWindow>} args.types24h
+ * @param {ReturnType<typeof summarizeSweepRunsWindow>} args.types48h dagen FOER (24-48 t)
  */
 export function evaluateEmailHealthThresholds({ window24h, retryQueue = 0, types24h = {}, types48h = {} }) {
   const breaches = [];
@@ -179,10 +184,14 @@ export function evaluateEmailHealthThresholds({ window24h, retryQueue = 0, types
   for (const type of Object.keys(types24h)) {
     const today = types24h[type];
     const yesterday = types48h[type];
-    const silentToday = (today?.candidates ?? 0) > 0 && (today?.sent ?? 0) === 0;
-    const silentYesterday = (yesterday?.candidates ?? 0) > 0 && (yesterday?.sent ?? 0) === 0;
+    // #5296: welcome genser allerede haandterede hold i 48 t. Kun de
+    // observationer der IKKE blev skippet kan forventes at give en afsendelse.
+    // Exceptions (failed) forbliver i candidates - skipped; ogsaa et hul i
+    // udfaldstaellingen skal stadig kunne alarmere, ikke blot eksplicit failed.
+    const silentToday = (today?.candidates ?? 0) > (today?.skipped ?? 0) && (today?.sent ?? 0) === 0;
+    const silentYesterday = (yesterday?.candidates ?? 0) > (yesterday?.skipped ?? 0) && (yesterday?.sent ?? 0) === 0;
     if (silentToday && silentYesterday) {
-      breaches.push(`\`${type}\`: kandidater fundet men 0 sendt to doegn i traek`);
+      breaches.push(`\`${type}\`: ikke-skippede kandidater men 0 sendt to doegn i traek (rullende 24 t-vinduer)`);
     }
   }
 
@@ -197,7 +206,7 @@ export function evaluateEmailHealthThresholds({ window24h, retryQueue = 0, types
 export function buildHealthReportEmbed({ window24h, window7d, types24h, retryQueue, breaches, now = new Date() }) {
   const rate = (part, whole) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)} %` : "-");
   const typeLines = Object.entries(types24h)
-    .map(([type, s]) => `\`${type}\`: ${s.candidates} kandidat(er) -> ${s.sent} sendt`)
+    .map(([type, s]) => `\`${type}\`: ${s.candidates} observation(er) -> ${s.sent} sendt, ${s.skipped ?? 0} skippet, ${s.failed ?? 0} fejlet`)
     .join("\n");
 
   return {
@@ -227,7 +236,7 @@ export function buildHealthReportEmbed({ window24h, window7d, types24h, retryQue
               `Fejlet: ${window7d.failedPermanent} permanent, ${window7d.deadRetries} opgivet`,
             inline: false,
           },
-          { name: "Pr. type (24 t)", value: typeLines || "(ingen koersler med kandidater)", inline: false },
+          { name: "Pr. type (on, 24 t)", value: typeLines || "(ingen aktive koersler med kandidater)", inline: false },
           { name: "Retry-koe", value: String(retryQueue), inline: true },
         ],
         timestamp: now.toISOString(),
@@ -275,7 +284,7 @@ export async function runEmailHealthReport({
     runRows = await fetchAllRows(() =>
       supabase
         .from(EMAIL_SWEEP_RUNS_TABLE)
-        .select("email_type, stage, candidates, sent, created_at")
+        .select("email_type, stage, candidates, sent, skipped, failed, created_at")
         .gte("created_at", weekAgoIso)
         .order("created_at")
     );

@@ -74,3 +74,29 @@ test("TeamProfilePage har 'club' i TABS og rendrer TeamClubTab med teamId (#2601
   // ui/Tabs) i stedet for et inline {key,label}-array — samme label-nøgle, ny form.
   assert.match(source, /club: t\("profile\.tabClub"\)/);
 });
+
+// #4873 — manager-status "Online now" → "Never" for ANDRE spilleres holdside.
+// Rodårsag: `manager:user_id(last_seen)` var en rå frontend-Supabase-join mod
+// users, RLS-blokeret af database/2026-05-22-rls-permissive-policy-lockdown.sql:65-69
+// for alle andre brugeres rækker (P1 PII-leak-fix — fjernede "Public read basic
+// user info"). Fix: hent last_seen/is_online via backend (service-role, GET
+// /api/teams/:id/manager-status) i stedet, samme vej ManagerProfilePage
+// allerede bruger for /managers/:teamId.
+test("TeamProfilePage joiner IKKE længere manager:user_id(last_seen) direkte mod Supabase (#4873)", () => {
+  assert.doesNotMatch(
+    source,
+    /manager:user_id\(last_seen\)/,
+    "det rå, RLS-blokerede embed må ikke genindføres — se database/2026-05-22-rls-permissive-policy-lockdown.sql:65-69",
+  );
+});
+
+test("TeamProfilePage henter manager-status via backend-endpointet (#4873)", () => {
+  assert.match(source, /apiFetch\(`\$\{API\}\/api\/teams\/\$\{id\}\/manager-status`/);
+});
+
+test("managerStatus sættes fra backend-svarets is_online/last_seen, ikke en lokal frontend-udregning (#4873)", () => {
+  assert.match(
+    source,
+    /setManagerStatus\(\{\s*isOnline: managerStatusRes\?\.is_online \|\| false,\s*lastSeen: managerStatusRes\?\.last_seen \|\| null,\s*\}\);/,
+  );
+});

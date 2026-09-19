@@ -5,7 +5,19 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders, supabase } from "./supabase.js"; // #4348: kanonisk kopi
+// #5242: Retry-After-respekt paa 429 + centraliseret 401-vej. Alle ni kaldsteder
+// herunder læser kroppen som `res.data || {}` i stedet for
+// `await res.json().catch(() => ({}))`; apiFetch har allerede parset den og
+// giver null ved limited/unauthorized/networkError og ved et tomt svar.
+import { apiFetch } from "./apiFetch.ts";
 import { getAuthedUser } from "./getAuthedUser.js";
+// #5242/#5322: apiFetch KASTER ikke ved et netværksudfald — den returnerer
+// `networkError: true` med status 0. Hver handling herunder skelnede FØR mellem
+// "backenden sagde nej" (fejlkode fra kroppen) og "vi naaede aldrig serveren"
+// (fetch'ens rejection → catch → error: "network"), og AcademyPage viser to
+// forskellige beskeder for de to. Den skelnen bevares med NETWORK_FAILURE i
+// stedet for at lade transportfejlen falde i `!res.ok` og blive til "failed".
+const NETWORK_FAILURE = { ok: false, error: "network" };
 import { logEvent } from "./logEvent.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -51,23 +63,28 @@ export function useAcademy() {
     if (!headers) { setLoading(false); return; }
     refreshBalance();
     try {
-      const res = await fetch(`${API}/api/academy/me`, { headers });
-      if (res.status === 409) {
+      const res = await apiFetch(`${API}/api/academy/me`, { headers });
+      // Et netværksudfald må ikke sætte en fejl-tilstand på fladen: catch'en
+      // nedenfor beholdt FØR den forrige visning ved et fetch-rejection, og et
+      // kortvarigt udfald skal stadig bare lade akademiet stå som det var.
+      if (res.networkError) { setLoading(false); return; }
+      // #5242: res.data kan læses flere gange. Det rå Response kunne ikke — den
+      // anden json() på SAMME svar afviste altid med "body stream already read",
+      // så et 409 der IKKE var academy_disabled mistede sin fejlkode og endte på
+      // det generiske "failed". Nu vises backendens egen kode.
+      const body = res.data || {};
+      if (res.status === 409 && body.error === "academy_disabled") {
         // Flag disabled — graceful disabled state.
-        const body = await res.json().catch(() => ({}));
-        if (body.error === "academy_disabled") {
-          setEnabled(false);
-          setLoading(false);
-          return;
-        }
+        setEnabled(false);
+        setLoading(false);
+        return;
       }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
         setError(body.error || "failed");
         setLoading(false);
         return;
       }
-      const data = await res.json();
+      const data = body;
       setEnabled(data.enabled ?? false);
       setSlots(data.slots ?? { used: 0, max: 8 });
       setRoster(data.roster ?? []);
@@ -91,10 +108,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/sign`, {
+      const res = await apiFetch(`${API}/api/academy/sign`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         const errKey = data.error || "failed";
         return { ok: false, error: errKey };
@@ -112,10 +130,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/reject`, {
+      const res = await apiFetch(`${API}/api/academy/reject`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -132,10 +151,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/graduate`, {
+      const res = await apiFetch(`${API}/api/academy/graduate`, {
         method: "POST", headers, body: JSON.stringify({ riderId, action }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -152,10 +172,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/promote`, {
+      const res = await apiFetch(`${API}/api/academy/promote`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -172,8 +193,9 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/intake/pull`, { method: "POST", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/academy/intake/pull`, { method: "POST", headers });
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -190,10 +212,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/demote`, {
+      const res = await apiFetch(`${API}/api/academy/demote`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -214,8 +237,8 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, data: {} };
     try {
-      const res = await fetch(`${API}/api/riders/${riderId}/academy-release-quote`, { headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/riders/${riderId}/academy-release-quote`, { headers });
+      const data = res.data || {};
       return { ok: res.ok, data };
     } catch {
       return { ok: false, data: {} };
@@ -229,10 +252,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/riders/${riderId}/academy-release`, {
+      const res = await apiFetch(`${API}/api/riders/${riderId}/academy-release`, {
         method: "POST", headers, body: JSON.stringify({}),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.errorCode || data.error || "failed" };
       }

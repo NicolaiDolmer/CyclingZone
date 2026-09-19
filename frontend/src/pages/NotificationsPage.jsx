@@ -13,6 +13,7 @@ import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
 import { formatNavBadgeCount } from "../lib/navBadges.js";
 import { resolveNotificationLink } from "../lib/notificationLink";
+import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
 import { useActionSummary } from "../hooks/useActionSummary";
@@ -23,8 +24,15 @@ import {
   LightningIcon, TrophyIcon, UndoIcon, AlertTriangleIcon, StarIcon,
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
   ClipboardIcon, PodiumIcon, BellIcon, SearchIcon, InboxIcon,
-  ChevronRightIcon, ChevronDownIcon, InfoIcon, MessageIcon,
+  ChevronRightIcon, ChevronDownIcon, InfoIcon, MessageIcon, UserIcon,
 } from "../components/ui";
+
+// #5130: et link uden for appen (Discord-invite) — klik åbner en ny fane i
+// stedet for at gå gennem react-router's navigate(), som ikke kan håndtere en
+// fuld https://-URL. Ren funktion så adfærden er testbar uden DOM.
+function isExternalNotificationLink(link) {
+  return typeof link === "string" && /^https?:\/\//.test(link);
+}
 
 // Role key for PENDING_ROLE — mapped to i18n via pending.role.<key>
 const PENDING_ROLE_KEYS = {
@@ -112,6 +120,16 @@ const TYPE_CONFIG = {
   // related_id (trådens id) + metadata.replyId overstyrer med det konkrete
   // indlæg via den dedikerede regel i notificationLink.js.
   forum_mention:             { Icon: InboxIcon,        color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/forum" },
+  // #5130: én gang pr. hold — inviterer til Discord-communityet. Eksternt
+  // link (ikke en intern rute), åbnes i ny fane af den generiske
+  // isExternalNotificationLink-gren i klik-handleren nedenfor.
+  discord_welcome:           { Icon: UserIcon,         color: "text-cz-discord", bg: "bg-cz-discord/10 border-cz-discord/20", link: DISCORD_INVITE_URL },
+
+  // #5259: svaret paa en beta-ansoegning. Linket gaar til profilen — det er
+  // DER beta-kortet staar, og der spilleren kan traede ud igen eller spoerge
+  // en gang til efter et afslag. Uden entry'en ville beskeden falde til
+  // DEFAULT_TYPE_CONFIG og give et doedt klik (#4501).
+  beta_access_decided:       { Icon: UserIcon,         color: "text-cz-info",    bg: "bg-cz-info/10 border-cz-info/20",         link: "/profile" },
 
   // #4501: de 19 typer nedenfor fandtes i backendens NOTIFICATION_TYPES, men
   // manglede en TYPE_CONFIG-entry og faldt derfor til DEFAULT_TYPE_CONFIG:
@@ -147,6 +165,18 @@ const TYPE_CONFIG = {
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
+
+// #4981: auction_outbid (du MISTEDE føringen) og auction_proxy_outbid (dit
+// autobud beholdt den) samles nu i én bøtte pr. auktion. Gruppens titel er den
+// nyeste besked, så en BLANDET bøtte skal sige hvor mange af de øvrige der var
+// reelle føringstab. Er bøtten ren, siger titlen allerede sandheden om dem
+// alle, og linjen ville kun være støj — derfor 0.
+function lostLeadCount(entry) {
+  const counts = entry.type_counts ?? {};
+  const lost = counts.auction_outbid ?? 0;
+  const held = counts.auction_proxy_outbid ?? 0;
+  return lost > 0 && held > 0 ? lost : 0;
+}
 
 const MINE_FILTER_TYPES = {
   all:       null,
@@ -642,7 +672,7 @@ export default function NotificationsPage() {
           {notifLoading ? (
             <Section><SkeletonLines lines={5} /></Section>
           ) : notifLoadError ? (
-            <Section role="alert">
+            <Section>
               <ErrorState
                 description={t("error.notifications")}
                 action={<Button size="sm" variant="secondary" onClick={loadNotifications}>{t("error.retry")}</Button>}
@@ -689,7 +719,15 @@ export default function NotificationsPage() {
                           : config.bg}`}
                       onClick={isActionable ? () => {
                         if (!n.is_read) markRead(n.id);
-                        if (link) navigate(link);
+                        if (!link) return;
+                        // #5130: discord_welcome's link er en ekstern URL —
+                        // navigate() forstår kun interne ruter.
+                        if (isExternalNotificationLink(link)) {
+                          logEvent("discord_invite_clicked", { source: "notification" });
+                          window.open(link, "_blank", "noopener,noreferrer");
+                        } else {
+                          navigate(link);
+                        }
                       } : undefined}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
                         flex-shrink-0 mt-0.5 ${config.color}`}>
@@ -756,6 +794,14 @@ export default function NotificationsPage() {
                         <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{renderNotificationMessage({ metadata: entry.sample_metadata, message: entry.sample_message }, tBackend)}</p>
                         <p className="text-cz-3 text-xs mt-1.5">
                           {t("aggregate.firstLatest", { first: timeAgo(entry.earliest_at), latest: timeAgo(entry.latest_at) })}
+                          {/* #4981: bøtten "auction_bidding" blander auction_outbid (du
+                              MISTEDE føringen) og auction_proxy_outbid (dit autobud
+                              beholdt den). Titlen følger den nyeste besked, så en blandet
+                              bøtte må sige hvor mange af de andre der var reelle tab —
+                              ellers kunne "Dit autobud beholdt føringen (×4)" skjule dem. */}
+                          {lostLeadCount(entry) > 0 && (
+                            <> · {t("aggregate.lostLeadShare", { count: lostLeadCount(entry) })}</>
+                          )}
                         </p>
                       </div>
                       <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
@@ -881,7 +927,7 @@ export default function NotificationsPage() {
           {feedLoading ? (
             <Section><SkeletonLines lines={5} /></Section>
           ) : feedLoadError ? (
-            <Section role="alert">
+            <Section>
               <ErrorState
                 description={t("error.feed")}
                 action={<Button size="sm" variant="secondary" onClick={loadFeed}>{t("error.retry")}</Button>}

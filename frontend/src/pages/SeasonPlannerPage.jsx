@@ -203,7 +203,7 @@ export default function SeasonPlannerPage() {
   // fejlet hentning igen som "feature ikke live endnu".
   if (error) {
     return (
-      <div role="alert" className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-6xl">
         <ErrorState
           title={t("error.title")}
           description={error === "auth" ? t("error.session") : t("error.description")}

@@ -14,6 +14,14 @@ import { fillMissingTeamEntries } from "./raceRunner.js";
 // or/gte/is/order er no-ops (or bruges kun på teams-testkonto-filteret; gte på
 // rider_condition, som er tom her).
 function makeFilterAwareSupabase(canned = {}) {
+  // #4619: riders.squad er NOT NULL DEFAULT 'senior' i prod
+  // (database/2026-09-15-4619-riders-squad.sql), og udtagelses-filteret spørger nu
+  // på den. En fixture-rytter uden feltet ER en seniorrytter.
+  function rowsFor(table) {
+    const rows = canned[table] || [];
+    if (table !== "riders") return rows;
+    return rows.map((r) => (r.squad === undefined ? { ...r, squad: "senior" } : r));
+  }
   function from(table) {
     const preds = [];
     const b = {
@@ -27,15 +35,15 @@ function makeFilterAwareSupabase(canned = {}) {
       in(col, vals) { preds.push((r) => vals.includes(r[col])); return b; },
       insert() { return Promise.resolve({ error: null }); },
       maybeSingle() {
-        const rows = (canned[table] || []).filter((r) => preds.every((p) => p(r)));
+        const rows = rowsFor(table).filter((r) => preds.every((p) => p(r)));
         return Promise.resolve({ data: rows[0] ?? null, error: null });
       },
       range(a, z) {
-        const rows = (canned[table] || []).filter((r) => preds.every((p) => p(r)));
+        const rows = rowsFor(table).filter((r) => preds.every((p) => p(r)));
         return Promise.resolve({ data: rows.slice(a, z + 1), error: null });
       },
       then(resolve, reject) {
-        const rows = (canned[table] || []).filter((r) => preds.every((p) => p(r)));
+        const rows = rowsFor(table).filter((r) => preds.every((p) => p(r)));
         return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
       },
     };

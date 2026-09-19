@@ -47,6 +47,7 @@ import {
   SEED_SCOUTING_REPORT,
   SEED_MANAGER_TRANSFERS,
   SEED_TRANSFER_HISTORY,
+  SEED_TRADE_FEED,
   SEED_RIDER_HISTORY,
   seedManagerAchievements,
   SEED_SEASON_HONOURS,
@@ -857,6 +858,13 @@ const SEASON_MATRIX_SEED = {
     { raceId: "smx-tsa", riderId: "smx-r6", raceRole: "helper" },
     { raceId: "smx-ocean", riderId: "smx-r4", raceRole: "free_role" },
   ],
+  // #5301: ét afmeldt loeb i seeden, formet som prod-sagen (Discord 16/9,
+  // egomadsen): et fler-dages loeb holdet har trukket sig fra, hvis BEVAREDE
+  // opstilling (#4306) stadig ligger i `entries` ovenfor. Uden feltet her ville
+  // preview vise praecis den bug fixet fjerner — r2/r6 laast ude af de
+  // overlappende endagsloeb (smx-open dag 1, smx-ocean dag 3) af et loeb de
+  // ikke stiller op i.
+  withdrawnRaceIds: ["smx-tsa"],
   dayDates: [
     { gameDay: 1, date: "2026-08-28" }, { gameDay: 2, date: "2026-08-28" },
     { gameDay: 3, date: "2026-08-29" }, { gameDay: 4, date: "2026-08-29" },
@@ -1296,6 +1304,29 @@ export function apiResponse(pathname, search = "") {
   // FØR de generiske /api/transfers*-grene nedenfor (disjunkt sti, men holder
   // rækkefølgen eksplicit robust hvis stien ændrer sig).
   if (pathname.match(/\/api\/teams\/[^/]+\/transfer-history$/)) return SEED_TRANSFER_HISTORY;
+  // #5257: den globale handelsliste ("Alle handler"-fanen). Filtrene håndteres
+  // her, ikke bare ignoreret — ellers ville et screenshot af et sat filter vise
+  // den ufiltrerede liste og se ud som om filtret ikke virker.
+  if (pathname.endsWith("/api/transfers/feed")) {
+    const params = new URLSearchParams(search);
+    const type = params.get("type");
+    const division = params.get("division");
+    const team = params.get("team");
+    const limit = Number.parseInt(params.get("limit") ?? "25", 10) || 25;
+    const offset = Number.parseInt(params.get("offset") ?? "0", 10) || 0;
+    const matches = SEED_TRADE_FEED.filter((ev) => {
+      if (type && ev.type !== type) return false;
+      if (division && ![ev.from_team?.division, ev.to_team?.division].includes(Number(division))) return false;
+      if (team && ![ev.from_team?.id, ev.to_team?.id].includes(team)) return false;
+      return true;
+    });
+    return {
+      events: matches.slice(offset, offset + limit),
+      limit,
+      offset,
+      has_more: matches.length > offset + limit,
+    };
+  }
   if (pathname.endsWith("/api/online-count")) return { count: 1 };
   if (pathname.endsWith("/api/notifications")) return [];
   // #2884: skal ligge FØR /api/auctions — endsWith("/api/auctions") ville ellers

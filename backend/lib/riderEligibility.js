@@ -1,6 +1,7 @@
 // backend/lib/riderEligibility.js
 // #1800/#1742/#1823 Rod B: ÉN definition af "valgbar/løbs-berettiget rytter".
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { applySeniorSquadFilter, isSeniorSquadRider } from "./squads.js";
 //
 // En rytter er løbs-berettiget for et hold når han: er på holdet (team_id matcher),
 // IKKE er akademirytter (is_academy), og IKKE er pensioneret (is_retired). Tidligere
@@ -13,7 +14,9 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 // Påfør eligibility-filteret (akademi + pensioneret + ikke-under-handel) på en
 // supabase-query. Team-afgrænsningen (.eq/.in på team_id) sættes af kalderen, da den
 // varierer (ét hold vs. mange). Idempotent at kæde oven på en eksisterende query.
-//   - is_academy: kun rene seniorryttere (akademiryttere er ikke løbs-berettigede, #1307/#1308).
+//   - trup: kun seniortruppen (ungdomsryttere er ikke løbs-berettigede, #1307/#1308).
+//     Siden #4619 kommer det led fra squads.applySeniorSquadFilter, ikke fra en
+//     lokal `.eq("is_academy", false)`.
 //   - is_retired: null ELLER false (pensionerede udelades; null = aldrig sat = aktiv).
 //   - pending_team_id: null (#2579 — en rytter der er SOLGT, men hvis fysiske
 //     holdskifte er PARKERET pga. et aktivt etapeløb hos sælger (#1995), må ikke
@@ -38,8 +41,13 @@ export function applyRiderEligibilityFilter(query) {
 // Regel: brug DETTE filter naar du VISER en trup. Brug applyRiderEligibilityFilter
 // naar du afgoer hvem der maa UDTAGES/auto-udfyldes. De to spoergsmaal er ikke det
 // samme, og de blev blandet sammen.
+//
+// #4619: trup-leddet kommer fra squads.js' `applySeniorSquadFilter` — ÉN definition
+// af "seniortruppen", delt med markedet, vagterne og kontrakt-stierne. Se headeren
+// dér for hvorfor prædikatet kræver BEGGE kolonner i overgangsperioden. Filteret her
+// er uændret i adfærd indtil backfill'en af `riders.squad` er kørt.
 export function applyRosterVisibilityFilter(query) {
-  return query.eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+  return applySeniorSquadFilter(query).or("is_retired.is.null,is_retired.eq.false");
 }
 
 // Rent predikat: må `rider` køre for `teamId`? Bruges til at krydse committede
@@ -47,9 +55,12 @@ export function applyRosterVisibilityFilter(query) {
 // ghost (solgt/fyret/akademi/pensioneret EFTER udtagelse) falder ud uanset hvordan
 // han forsvandt fra holdet. teamId udeladt → spring team-tjekket over (kun status).
 // (#1994: loanedOutRiderIds-parametret fjernet — udlåns-featuren er afviklet.)
+// #4619: akademi-leddet er nu trup-leddet (squads.isSeniorSquadRider). Rækker SKAL
+// projicere `squad` OG `is_academy` (squads.SENIOR_SQUAD_COLUMNS) — mangler `squad`,
+// svarer prædikatet stadig som i dag, men bliver ikke korrekt efter backfill'en.
 export function isEligibleRider(rider, { teamId = null } = {}) {
   if (!rider) return false;
-  if (rider.is_academy === true) return false;
+  if (!isSeniorSquadRider(rider)) return false;
   if (rider.is_retired === true) return false;
   if (teamId != null && rider.team_id !== teamId) return false;
   return true;
@@ -57,7 +68,7 @@ export function isEligibleRider(rider, { teamId = null } = {}) {
 
 // Frafiltrér ghost-entries: behold kun entries hvis rytter (a) findes i ridersById og
 // (b) er berettiget for entry'ens eget team_id. ridersById = Map<rider_id, riderRow>
-// med mindst { id, team_id, is_academy, is_retired }. En entry uden rytter-row
+// med mindst { id, team_id, squad, is_academy, is_retired }. En entry uden rytter-row
 // droppes (slettet rytter). Pure + deterministisk; bevarer rækkefølgen.
 // #4418: opdel "forsvundne" start-felt-ryttere efter aarsag. En rytter der er
 // forsvundet fra et igangvaerende etapeloeb FORDI han er skadet, er taget ud helt

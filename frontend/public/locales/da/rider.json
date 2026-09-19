@@ -108,7 +108,10 @@
         "aero": "Aero",
         "tempo": "Tempo",
         "restitution": "Aktiv restitution",
-        "loebslaere": "Løbslære"
+        "loebslaere": "Løbslære",
+        "cobbled_sectors": "Brostenssektorer",
+        "echelon_drills": "Vifteøvelser",
+        "attack_repeats": "Angrebsintervaller"
       },
       "active": "Aktiv: {focus} · {intensity} · træner {abilities}",
       "activeRest": "Hviler ({focus}-fokus på pause)",
@@ -135,7 +138,7 @@
         "trained": "Gennemførte pas",
         "breakthroughs": "Gennembrud",
         "sharp": "Skarpe dage",
-        "note": "En sammenlignelig træningsscore er på vej."
+        "note": "Talt op over de seneste 30 dages træningskørsler."
       },
       "form": {
         "title": "Form & restitution",
@@ -152,7 +155,18 @@
         "body": "Pensionerede ryttere trænes ikke, så der er intet aktivt program, form eller træthed at vise."
       },
       "changeFocus": "Skift",
-      "chooseFocus": "Vælg"
+      "chooseFocus": "Vælg",
+      "score": {
+        "title": "Træningsscore",
+        "todayLabel": "Dagens pas",
+        "race": "Løb",
+        "raceNote": "Løbsdag: løbet erstatter træningen",
+        "sparkAria": "Træningsscore, seneste 7 dage",
+        "avg": "Gennemsnit, {days} dage",
+        "best": "Bedste, 30 dage",
+        "driverUp": "{driver} +{points}",
+        "driverDown": "{driver} −{points}"
+      }
     },
     "tabs": {
       "overview": "Overblik",
@@ -575,7 +589,9 @@
       "cobblestone": "Brosten",
       "positioning": "Positionering",
       "aggression": "Angrebslyst",
-      "tactics": "Taktik"
+      "tactics": "Taktik",
+      "teamwork": "Holdarbejde",
+      "leadership": "Lederskab"
     }
   },
   "skills": {
@@ -905,6 +921,9 @@
     "focus_aero": "Aero",
     "focus_loebslaere": "Løbslære",
     "focus_restitution": "Aktiv restitution",
+    "focus_cobbled_sectors": "Brostenssektorer",
+    "focus_echelon_drills": "Vifteøvelser",
+    "focus_attack_repeats": "Angrebsintervaller",
     "intensity_rest": "Hvile",
     "intensity_easy": "Let",
     "intensity_normal": "Normal",

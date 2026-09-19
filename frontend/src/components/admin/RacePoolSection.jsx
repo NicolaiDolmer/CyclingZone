@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
+// #5242: Retry-After-respekt paa 429 + centraliseret 401-vej. Alle fem kaldsteder
+// herunder læser kroppen som `res.data || {}` i stedet for `await res.json()`;
+// apiFetch har allerede parset den og giver null ved limited/unauthorized/
+// networkError, hvor det rå fetch kastede.
+import { apiFetch } from "../../lib/apiFetch.ts";
 import { RACE_CLASSES, getRaceClassLabel } from "../../lib/uciRaceClasses";
 
 const API = import.meta.env.VITE_API_URL;
@@ -54,8 +59,8 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     setLoading(true);
     try {
       const headers = await getAuth();
-      const res = await fetch(`${API}/api/admin/race-pool`, { headers });
-      const data = await res.json();
+      const res = await apiFetch(`${API}/api/admin/race-pool`, { headers });
+      const data = res.data || {};
       if (!res.ok) throw new Error(data.error || "Kunne ikke hente pool");
       setPool(data.pool || []);
       setSummary(data.summary || {});
@@ -120,11 +125,11 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     (async () => {
       try {
         const headers = await getAuth();
-        const res = await fetch(
+        const res = await apiFetch(
           `${API}/api/admin/seasons/${selectedSeasonId}/race-priority`,
           { headers },
         );
-        const data = await res.json();
+        const data = res.data || {};
         if (cancelled) return;
         if (res.ok) {
           setStagePriorityIds(data.stage_race_priority || []);
@@ -215,7 +220,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     setSavingWhitelist(true);
     try {
       const headers = await getAuth();
-      const res = await fetch(
+      const res = await apiFetch(
         `${API}/api/admin/seasons/${selectedSeasonId}/race-priority`,
         {
           method: "PUT",
@@ -226,7 +231,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           }),
         },
       );
-      const data = await res.json();
+      const data = res.data || {};
       if (!res.ok) throw new Error(data.error || "Gem fejlede");
       setWhitelistDirty(false);
       onMsg(
@@ -265,7 +270,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           single_race_boost: singleBoostIds,
         }),
       };
-      const res = await fetch(
+      const res = await apiFetch(
         `${API}/api/admin/seasons/${selectedSeasonId}/race-selection/preview`,
         {
           method: "POST",
@@ -273,7 +278,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           body: JSON.stringify(body),
         },
       );
-      const data = await res.json();
+      const data = res.data || {};
       if (!res.ok) throw new Error(data.error || "Forslag fejlede");
       setPreview(data);
     } catch (e) {
@@ -357,7 +362,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     setSaving(true);
     try {
       const headers = await getAuth();
-      const res = await fetch(
+      const res = await apiFetch(
         `${API}/api/admin/seasons/${selectedSeasonId}/race-selection`,
         {
           method: "POST",
@@ -368,7 +373,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           }),
         },
       );
-      const data = await res.json();
+      const data = res.data || {};
       if (!res.ok) throw new Error(data.error || "Gem fejlede");
       const replacedMsg = data.replaced ? `, erstattede ${data.replaced} eksisterende` : "";
       onMsg(

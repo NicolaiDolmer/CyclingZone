@@ -7,6 +7,8 @@
       "seasonStartVariablePullout": "Sponsor income · Season start (base {base} + variable {variable} ×{modifier} · sponsor pullout active)",
       "seasonStartFallback": "Sponsor income · Season start (fallback {amount} ×{modifier})",
       "seasonStartFallbackPullout": "Sponsor income · Season start (fallback {amount} ×{modifier} · sponsor pullout active)",
+      "seasonStartContract": "Sponsor income · Season start ({sponsor} contract, base {base} ×{modifier})",
+      "seasonStartContractPullout": "Sponsor income · Season start ({sponsor} contract, base {base} ×{modifier} · sponsor pullout active)",
       "midSeasonProRata": "Sponsor income · Joined mid-season ({sponsorName} · {percent} % of the season left)",
       "signingBonus": "Sponsor · Signing bonus ({sponsorName})",
       "resultBonus": "Sponsor · Result bonus ({wins} wins, {podiums} podiums)",
@@ -335,6 +337,10 @@
       "title": "Auto-bid cancelled",
       "message": "The price on {riderName} has passed your auto-bid cap of {maxAmount} CZ$. The auto-bid has been cancelled and your reserved balance released."
     },
+    "autoBidRaised": {
+      "title": "Your auto-bid held the lead",
+      "message": "{bidderName} tried to outbid you on {riderName}. Your auto-bid rose to {amount} CZ$ to stay ahead."
+    },
     "auctionLostToRival": {
       "title": "You lost the bidding war",
       "message": "{winnerName} snatched {rider} for {price} CZ$, {overBid} CZ$ over your top bid of {yourMax} CZ$."
@@ -488,6 +494,20 @@
     "welcome": {
       "title": "Welcome to Cycling Zone",
       "message": "Your team is ready. Place a bid in the auction house to sign your first rider."
+    },
+    "discordWelcome": {
+      "title": "Hep! Come join us on Discord",
+      "message": "Cycling Zone is more than the website. It is a community, and a lot of it happens on Discord: that is where I hang out, where I ask you what to build next, and where the other managers talk cycling all day. Be blunt with me in there, it is way more useful than praise. Come as you are, you do not need results to belong. See you in there :)"
+    },
+    "betaAccess": {
+      "approved": {
+        "title": "You are in the beta group",
+        "message": "You now see features while I am still testing them. They can change, break or disappear again, and that is the point: tell me what feels wrong, in Discord or through the feedback form. You can leave the group whenever you like, from your profile."
+      },
+      "rejected": {
+        "title": "Not this round",
+        "message": "I keep the beta group small so I can actually read every reply. You are still on the list, and you are welcome to ask again later from your profile."
+      }
     },
     "scoutChanged": {
       "title": "New scout, reports recalculated",

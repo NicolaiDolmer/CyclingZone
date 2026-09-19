@@ -9,10 +9,10 @@
 //
 // ÆGTE data — intet opfundet. Slot-tælleren skjules når slots.total === null
 // (daglig træning = ubegrænsede programmer, TRAINING_CONFIG.unlimitedSlots).
-// "Træningsscore 0-100" er BEVIDST udskudt (ejer-beslutning #2000): den rå
-// daglige score er en lille float som UI'et allerede skjuler, og et 0-100-
-// sammenligningstal er balance-følsomt (kræver harness + ejer-review, som
-// Scouting). Midlertidigt viser højre kolonne en ærlig 30-dages trænings-trend.
+// #4851: træningsscoren 1-99 er nu bygget (ejer-beslutning 4-6, 6/9). Kortet
+// `RiderTrainingScoreCard` ERSTATTER den midlertidige 30-dages-trend (TrendCard)
+// når `training_score_visible` er on. Er flaget off, står TrendCard uændret —
+// fladen må aldrig blive tom fordi et flag er slukket.
 //
 // Token-only (ingen rå hex); dark mode via tokens; interaktive kontroller har
 // 44px hit-target + aria-pressed. i18n under profile.training.* i rider.json.
@@ -33,6 +33,7 @@ import FocusPanel from "../../training/FocusPanel.jsx";
 import { dayTypeForProgram, sessionForProgram } from "../../../lib/trainingDayTypes.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
+import RiderTrainingScoreCard from "./RiderTrainingScoreCard.tsx";
 
 const LOG_DAYS = 7;
 
@@ -514,6 +515,14 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   }
 
   const runs = trainingHistory?.runs ?? [];
+  // #4851: FEATURE-tilstanden er gaten, ikke rytterens egen raekke. `null` =
+  // flaget er off (feltet udelades helt af /api/training/me). Er flaget on men
+  // rytteren endnu ikke har en maalt dag, skal kortet stadig staa — med sin
+  // tomme tilstand — ellers ville fladen falde tilbage til den boks kortet
+  // netop ERSTATTER, og to ryttere paa samme hold ville vise to forskellige
+  // kort-typer.
+  const scoreVisible = training.trainingScore != null;
+  const riderScore = training.trainingScore?.[rider.id] ?? {};
   const condition = training.condition?.[rider.id] ?? null;
   const plan = training.planFor(rider.id);
 
@@ -541,7 +550,12 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
           <DailyLogCard riderId={rider.id} runs={runs} t={t} />
         </div>
         <div className="flex flex-col gap-[13px] min-w-0">
-          <TrendCard riderId={rider.id} runs={runs} t={t} />
+          {/* #4851: kortet erstatter 30-dages-boksen naar flaget er on. */}
+          {scoreVisible ? (
+            <RiderTrainingScoreCard score={riderScore} t={t} />
+          ) : (
+            <TrendCard riderId={rider.id} runs={runs} t={t} />
+          )}
           <FormCard condition={condition} t={t} />
         </div>
       </div>

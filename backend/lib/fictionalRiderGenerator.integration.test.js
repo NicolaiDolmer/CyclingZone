@@ -13,7 +13,7 @@ import test, { before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
 
-import { generateFictionalRiders, toInsertPayload, STAT_KEYS } from "./fictionalRiderGenerator.js";
+import { generateFictionalRiders, toInsertPayload, STAT_KEYS, BIRTH_MODE_PCM } from "./fictionalRiderGenerator.js";
 
 const REF_YEAR = 2026;
 
@@ -177,8 +177,33 @@ test("payload indeholder ingen ukendte kolonner (alle keys findes i schemaet)", 
   for (const gen of ["market_value", "salary", "base_value"]) {
     assert.ok(!(gen in sample), `payload må ikke sætte '${gen}'`);
   }
-  // Sanity: alle 14 stats med.
-  for (const s of STAT_KEYS) assert.ok(s in sample, `mangler ${s}`);
+  // #5269: default-stien (own-priors) sætter INGEN stats — kolonnerne skal stå
+  // NULL i DB. Den gamle PCM-sti bærer stadig alle 14.
+  for (const s of STAT_KEYS) assert.ok(!(s in sample), `${s} findes stadig i own-priors-payloaden`);
+  const [pcmSample] = toInsertPayload(
+    generateFictionalRiders({ seed: 3, count: 5, referenceYear: REF_YEAR, mode: BIRTH_MODE_PCM }).riders,
+  );
+  for (const s of STAT_KEYS) assert.ok(s in pcmSample, `pcm-stien mangler ${s}`);
+});
+
+// #5269: den afgørende DB-kontrakt. `stat_*` skal være NULLABLE og faktisk stå
+// NULL for en nyfødt — ikke 0, som ville læse som en ægte (meget lav) værdi i
+// enhver kaldsted der summerer dem (fx boardIdentity.calculateTeamProfile).
+test("#5269 nyfoedte ryttere lander med stat_* = NULL i riders", async () => {
+  const { riders } = generateFictionalRiders({ seed: 5269, count: 12, referenceYear: REF_YEAR });
+  await insertRiders(db, toInsertPayload(riders));
+
+  const cols = STAT_KEYS.join(", ");
+  const { rows } = await db.query(
+    `SELECT ${cols}, archetype_draw FROM riders WHERE archetype_draw -> 'birth' IS NOT NULL`,
+  );
+  assert.ok(rows.length >= 12, `forventede mindst 12 prior-foedte raekker, fik ${rows.length}`);
+  for (const row of rows) {
+    for (const s of STAT_KEYS) assert.equal(row[s], null, `${s} er ikke NULL (${row[s]})`);
+    assert.equal(row.archetype_draw.birth.v, 1);
+    assert.ok(Number.isInteger(row.archetype_draw.birth.seed), "birth.seed overlevede ikke jsonb-rundturen");
+    assert.ok(row.archetype_draw.primary && row.archetype_draw.secondary);
+  }
 });
 
 // #3606: anlægget skal overleve HELE vejen — ikke bare stå i payloaden, men

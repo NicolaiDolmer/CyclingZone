@@ -112,6 +112,131 @@ test("notifyPlayerFeedback — poster embed til DISCORD_FEEDBACK_WEBHOOK_URL nå
   }
 });
 
+// #5284: fairplay-rapporter var usynlige i Discord-mirroret — samme rå
+// kategorinavn-fallback som en ukendt kategori, og hverken rytter, hold eller
+// pris fulgte med. Disse tests dækker label + trade-felterne; en anden
+// kategori må ikke få trade-felter selvom nogen sender trade ved en fejl.
+
+function sampleTrade() {
+  return {
+    type: "auction",
+    team_a: { id: "t1", name: "Team Alpha" },
+    team_b: { id: "t2", name: "Team Bravo" },
+    rider: { id: "r1", firstname: "Jonas", lastname: "Iversen", market_value: 4_000_000 },
+    riders: null,
+    price: 5_000_000,
+    market_value_ratio: 1.25,
+    trade_date: "2026-09-01T12:00:00Z",
+    reporting_team: { id: "t9", name: "Team Reporter" },
+  };
+}
+
+test("notifyPlayerFeedback — fairplay-rapport med trade-data får label + rytter/A→B/pris/ratio-felter", async () => {
+  const original = process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+  process.env.DISCORD_FEEDBACK_WEBHOOK_URL = "https://discord.com/api/webhooks/test/feedback";
+  try {
+    const calls = [];
+    await notifyPlayerFeedback({
+      category: "fairplay",
+      message: "This trade looked suspicious.",
+      teamName: "Team Reporter",
+      trade: sampleTrade(),
+      sendWebhookFn: async (...args) => calls.push(args),
+    });
+    assert.equal(calls.length, 1);
+    const embed = calls[0][1].embeds[0];
+    assert.match(embed.title, /Fair play report/);
+    assert.deepEqual(embed.fields, [
+      { name: "Team", value: "Team Reporter" },
+      { name: "Rider", value: "Jonas Iversen" },
+      { name: "Teams", value: "Team Alpha → Team Bravo" },
+      { name: "Price", value: "5,000,000" },
+      { name: "Ratio vs. market value", value: "125%" },
+    ]);
+  } finally {
+    if (original === undefined) delete process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+    else process.env.DISCORD_FEEDBACK_WEBHOOK_URL = original;
+  }
+});
+
+test("notifyPlayerFeedback — swap-trade viser begge ryttere og 'Cash adjustment' i stedet for 'Price'", async () => {
+  const original = process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+  process.env.DISCORD_FEEDBACK_WEBHOOK_URL = "https://discord.com/api/webhooks/test/feedback";
+  try {
+    const calls = [];
+    await notifyPlayerFeedback({
+      category: "fairplay",
+      message: "This swap looked suspicious.",
+      trade: {
+        type: "swap",
+        team_a: { id: "t2", name: "Team Bravo" },
+        team_b: { id: "t3", name: "Team Charlie" },
+        rider: null,
+        riders: {
+          offered: { id: "r3", firstname: "Peter", lastname: "Holm", market_value: 2_000_000 },
+          requested: { id: "r4", firstname: "Anders", lastname: "Vang", market_value: 2_200_000 },
+        },
+        price: 0,
+        market_value_ratio: null,
+        trade_date: "2026-09-03T12:00:00Z",
+        reporting_team: null,
+      },
+      sendWebhookFn: async (...args) => calls.push(args),
+    });
+    const embed = calls[0][1].embeds[0];
+    assert.deepEqual(embed.fields, [
+      { name: "Rider", value: "Peter Holm ↔ Anders Vang" },
+      { name: "Teams", value: "Team Bravo → Team Charlie" },
+      { name: "Cash adjustment", value: "0" },
+    ]);
+  } finally {
+    if (original === undefined) delete process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+    else process.env.DISCORD_FEEDBACK_WEBHOOK_URL = original;
+  }
+});
+
+test("notifyPlayerFeedback — fairplay-rapport UDEN trade (manglende handel/ingen metadata) er ren fritekst, som før #5284", async () => {
+  const original = process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+  process.env.DISCORD_FEEDBACK_WEBHOOK_URL = "https://discord.com/api/webhooks/test/feedback";
+  try {
+    const calls = [];
+    await notifyPlayerFeedback({
+      category: "fairplay",
+      message: "Reporting something I saw on Discord.",
+      teamName: "Team Reporter",
+      trade: null,
+      sendWebhookFn: async (...args) => calls.push(args),
+    });
+    const embed = calls[0][1].embeds[0];
+    assert.match(embed.title, /Fair play report/);
+    assert.deepEqual(embed.fields, [{ name: "Team", value: "Team Reporter" }]);
+  } finally {
+    if (original === undefined) delete process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+    else process.env.DISCORD_FEEDBACK_WEBHOOK_URL = original;
+  }
+});
+
+test("notifyPlayerFeedback — andre kategorier ignorerer trade helt, selv hvis den er sat", async () => {
+  const original = process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+  process.env.DISCORD_FEEDBACK_WEBHOOK_URL = "https://discord.com/api/webhooks/test/feedback";
+  try {
+    const calls = [];
+    await notifyPlayerFeedback({
+      category: "bug",
+      message: "Unrelated bug.",
+      teamName: "Team CSC",
+      trade: sampleTrade(),
+      sendWebhookFn: async (...args) => calls.push(args),
+    });
+    const embed = calls[0][1].embeds[0];
+    assert.match(embed.title, /Bug report/);
+    assert.deepEqual(embed.fields, [{ name: "Team", value: "Team CSC" }], "trade-felter hører kun til fairplay");
+  } finally {
+    if (original === undefined) delete process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+    else process.env.DISCORD_FEEDBACK_WEBHOOK_URL = original;
+  }
+});
+
 // #2569: board-cronsene kalder notifyBoardUpdateDM({ userId }). Tog signaturen
 // kun teamId, blev userId droppet tavst og HVER bestyrelses-DM døde i
 // [discord-dm:no-recipient] — uden Sentry-capture. Guarden asserter at begge

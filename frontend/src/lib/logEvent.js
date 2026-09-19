@@ -79,6 +79,10 @@ export const KNOWN_EVENTS = Object.freeze([
   // via teams.my_result_seen_race_id (rå kolonne, ikke et queryable event) —
   // funnel-fund #3243.
   "first_race_result_shown",
+  // Bud-anbefalingen til nye managers (AuctionsPage.jsx). Forholdet mellem
+  // _clicked og _shown er selve målingen. Canary-blinde indtil #5369.
+  "onboarding_first_bid_recommendation_shown",
+  "onboarding_first_bid_recommendation_clicked",
   // Game-events — engagement / retention-signal
   "session_started",
   "auction_view",
@@ -97,6 +101,13 @@ export const KNOWN_EVENTS = Object.freeze([
   // Den nye admin-økonomi-fane (AdminEconomyTab.jsx) re-instrumenteres ikke —
   // admin-only impressions er ikke et meningsfuldt canary-signal.
   "feature_rider_development_tab_opened",
+  // De øvrige rytter-faner (RiderStatsPage.jsx) fyrede hele tiden, men kun
+  // udviklings-fanen stod her. Canary-blinde indtil #5369.
+  "feature_rider_scouting_tab_opened",
+  "feature_rider_history_tab_opened",
+  "feature_rider_results_tab_opened",
+  "feature_rider_palmares_tab_opened",
+  "feature_rider_interest_tab_opened",
   "feature_board_consequences_panel_viewed",
   "feature_finance_forecast_card_viewed",
   // feature_dayform_line_viewed (#4598, ejer-design 2/9): fyrer fra
@@ -114,11 +125,26 @@ export const KNOWN_EVENTS = Object.freeze([
   "academy_sign",
   "academy_reject",
   "academy_graduate",
+  // Resten af akademi-handlingerne fra useAcademy.js. Canary-blinde indtil #5369.
+  // academy_intake_pull er 0 i prod: featuren er dormant bag flaget
+  // academy_intake_pull_enabled (FEATURE_REGISTRY.yml), og står derfor i
+  // WHITELIST_ZERO_IMPRESSION_EVENTS i audit-feature-liveness.js.
+  "academy_promote",
+  "academy_demote",
+  "academy_release",
+  "academy_intake_pull",
+  // Faciliteter og stab (useFacilities.js). Canary-blinde indtil #5369.
+  "facility_upgrade",
+  "staff_hire",
+  "staff_fire",
   // Training (#1305) — fyrer fra useTraining.js ved bulk-fokus + daglig træning.
   // Tilføjet til KNOWN_EVENTS i #1669 (var instrumenteret men canary-blinde).
   // Naturligt 0 indtil træningsmotoren er aktiv for spillere.
   "training_focus_set_bulk",
   "training_run_today",
+  // Ugeplaner for holdet og for én rytter (useTraining.js). Canary-blinde indtil #5369.
+  "training_week_plan_set",
+  "training_rider_week_plan_set",
   // onboarding_step2_one_click (#5241) — fyrer fra OnboardingProgressCard.jsx
   // når "Run this week's training"/"Kør ugens træning" sætter assistentens
   // anbefalede fokus for truppen og kører dagen i ét klik. Måler #4964-fundet:
@@ -158,6 +184,12 @@ export const KNOWN_EVENTS = Object.freeze([
   // havde ugemt arbejde, saa vi viste banneret i stedet). Et event alene er
   // IKKE bevis for en undgaaet ChunkLoadError.
   "app_version_reload",
+  // discord_invite_clicked (#5130, ejer-direktiv 10/9) — fyrer fra
+  // NotificationsPage.jsx (discord_welcome-kortet) og fra Layout.jsx's
+  // footer-Discord-link (DiscordJoinLink onClick), begge steder brugeren kan
+  // klikke sig ind på Discord-invitationen. Måler konvertering fra
+  // velkomstbeskeden i indbakken.
+  "discord_invite_clicked",
 ]);
 
 // #4321: spejl eventet til PostHog. Postgres-skrivningen nedenfor er og bliver

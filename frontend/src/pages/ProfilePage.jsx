@@ -9,6 +9,9 @@ import { useTheme } from "../lib/theme.jsx";
 import { useConsent } from "../lib/consent.jsx";
 import { parseDiscordHandle } from "../lib/discordHandle.js";
 import { refreshSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
+// #5259: nye kaldsteder bruger apiFetch (Retry-After-respekt, central 401-vej).
+// De eksisterende bare fetch()-kald i filen er #5372's migrering, ikke min.
+import { apiFetch } from "../lib/apiFetch.ts";
 // #5013: abonnement pr. forum-kategori — delt med ForumPage, så de to flader
 // aldrig kan vise hver sin sandhed.
 import {
@@ -47,6 +50,11 @@ export default function ProfilePage() {
   const [assistant, setAssistant] = useState(null);
   const [savingAssistant, setSavingAssistant] = useState(false);
   const [savingSelectionReminder, setSavingSelectionReminder] = useState(false); // #4983
+  // #5259: spillerens forhold til beta-gruppen. `null` = ikke hentet endnu —
+  // kortet viser da ingen knap, saa spilleren ikke kan naa at trykke paa et
+  // valg der bygger paa en tilstand ingen har laest.
+  const [betaAccess, setBetaAccess] = useState(null);
+  const [savingBeta, setSavingBeta] = useState(false);
   // #5013: én række pr. forum-kategori med "følger jeg den?".
   const [forumCategories, setForumCategories] = useState(() => normalizeCategoryMutes(null));
   const [savingForumCategory, setSavingForumCategory] = useState(null);
@@ -91,8 +99,77 @@ export default function ProfilePage() {
     setTeam(teamData);
     setTeamName(teamData?.name || "");
     setManagerName(teamData?.manager_name || "");
-    await Promise.all([refreshDmStatus(), refreshAssistantSettings(), refreshForumCategories()]);
+    await Promise.all([
+      refreshDmStatus(), refreshAssistantSettings(), refreshForumCategories(), refreshBetaAccess(),
+    ]);
     setLoading(false);
+  }
+
+  // #5259: een laesning af BAADE kontakten (users.is_beta_tester) og
+  // ansoegningens status, udledt server-side til een `state`. Fejler kaldet,
+  // bliver kortet staaende uden knap frem for at gaette — det modsatte ville
+  // vise "bed om at komme med" til en der allerede ER med.
+  async function refreshBetaAccess() {
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      const res = await apiFetch(`${API}/api/me/beta-access`, { headers }, { source: "beta-access" });
+      if (res.ok) setBetaAccess(res.data);
+    } catch {
+      // best-effort — kortet staar uden knap indtil naeste indlaesning
+    }
+  }
+
+  // Een handler til begge veje: ansoeg, og traek sig (som daekker BAADE en
+  // ubesvaret ansoegning og at forlade gruppen igen). Serveren afgoer hvad der
+  // er lovligt ud fra tilstanden — klienten beder kun om det.
+  async function submitBetaAction(action) {
+    if (savingBeta) return;
+    // Svaret paa en tilbagetraekning er det samme uanset hvad der blev trukket
+    // ("none"), saa hvilken kvittering spilleren skal se, afgoeres FOER kaldet.
+    const wasMember = betaAccess?.state === "member";
+    setSavingBeta(true);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) { showMsg(t("discord.noSession"), "error"); return; }
+      const res = await apiFetch(
+        `${API}/api/me/beta-access/${action}`, { method: "POST", headers }, { source: "beta-access-action" },
+      );
+      // 429 er allerede bremset af apiFetch (stille backoff) — ingen fejlkasse.
+      if (res.limited) return;
+      // #5322: en transportfejl KASTER ikke gennem apiFetch, den kommer tilbage
+      // som { status: 0, networkError: true }. Uden denne gren ville den falde
+      // i !res.ok nedenfor og blive vist som en serverfejl — og telemetrien i
+      // catch'en, der netop skal kunne skelne "vi naaede aldrig serveren",
+      // ville aldrig loebe (CodeRabbit).
+      if (res.networkError) {
+        showMsg(t("errors:generic.networkError"), "error");
+        reportActionFailure("profile_beta_access", {
+          reason: "network", cause: res.error, context: { action },
+        });
+        return;
+      }
+      const data = res.data ?? {};
+      // 503 = migrationen er ikke applied endnu (auto-migrate venter ~180 s
+      // efter deploy). Ikke spillerens fejl, og ikke en fejl der skal
+      // rapporteres — valget er bare ikke muligt endnu.
+      if (res.status === 503) { showMsg(t("beta.unavailable"), "error"); return; }
+      if (!res.ok) {
+        // 409 baerer den FRISKE tilstand med: fladen var uenig med serveren,
+        // og serverens svar er den der vinder.
+        if (data?.state) setBetaAccess(data);
+        showMsg(data.error || t("errors:generic.serverError"), "error");
+        return;
+      }
+      setBetaAccess(data);
+      if (action === "request") showMsg(t("beta.requested"));
+      else showMsg(wasMember ? t("beta.left") : t("beta.cancelled"));
+    } catch (cause) {
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_beta_access", { reason: "network", cause, context: { action } });
+    } finally {
+      setSavingBeta(false);
+    }
   }
 
   // #5013: abonnement pr. forum-kategori. Samme normalisering som forumsiden
@@ -664,9 +741,16 @@ export default function ProfilePage() {
 
           {renderMessageBanner()}
 
-          {user?.role === "admin" && (
-            <div>
-              <span className="text-xs bg-cz-danger-bg text-cz-danger border border-cz-danger/30 px-2 py-0.5 rounded-cz-pill">{t("account.adminBadge")}</span>
+          {(user?.role === "admin" || betaAccess?.is_beta_tester) && (
+            <div className="flex flex-wrap gap-2">
+              {user?.role === "admin" && (
+                <span className="text-xs bg-cz-danger-bg text-cz-danger border border-cz-danger/30 px-2 py-0.5 rounded-cz-pill">{t("account.adminBadge")}</span>
+              )}
+              {/* #5259: maerket er den ENESTE synlige forskel paa en beta-tester
+                  uden for de funktioner der staar i stadie `beta`. */}
+              {betaAccess?.is_beta_tester && (
+                <span className="text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-cz-pill">{t("beta.badge")}</span>
+              )}
             </div>
           )}
         </div>
@@ -731,6 +815,44 @@ export default function ProfilePage() {
               })
             : t("selectionReminder.toggleHintGeneric")}
         </p>
+      </Card>
+
+      {/* Beta-gruppen (#5259) — vises ALTID: "bed om at komme med" er selve
+          vejen ind, og den maa ikke vaere skjult for dem der ikke er med endnu.
+          Knappen dukker foerst op naar tilstanden ER hentet (betaAccess !== null),
+          saa ingen kan naa at trykke paa et valg der bygger paa et gaet. */}
+      <Card className="p-5 mb-4">
+        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("beta.title")}</h2>
+        <p className="text-cz-3 text-xs mb-4">{t("beta.subtitle")}</p>
+        {betaAccess && (
+          <>
+            <p className="text-cz-2 text-sm leading-relaxed">
+              {t(`beta.${betaAccess.state === "member" ? "member"
+                : betaAccess.state === "pending" ? "pending"
+                : betaAccess.state === "rejected" ? "rejected" : "none"}Body`)}
+            </p>
+            {betaAccess.state === "member" && (
+              <p className="text-cz-3 text-xs leading-relaxed mt-2">{t("beta.whereToReport")}</p>
+            )}
+            <div className="mt-4">
+              {betaAccess.state === "member" && (
+                <Button variant="secondary" loading={savingBeta} onClick={() => submitBetaAction("withdraw")}>
+                  {t("beta.leaveButton")}
+                </Button>
+              )}
+              {betaAccess.state === "pending" && (
+                <Button variant="secondary" loading={savingBeta} onClick={() => submitBetaAction("withdraw")}>
+                  {t("beta.cancelButton")}
+                </Button>
+              )}
+              {(betaAccess.state === "none" || betaAccess.state === "rejected") && (
+                <Button variant="secondary" loading={savingBeta} onClick={() => submitBetaAction("request")}>
+                  {t("beta.requestButton")}
+                </Button>
+              )}
+            </div>
+          </>
+        )}
       </Card>
 
       {/* Assistent (#4201) — kun naar tilstanden er "opt_in"; ellers er der intet valg */}

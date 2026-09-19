@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { adminErrorMessage, readAdminJson } from "../shared/useAdminAuth";
+import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -16,8 +17,8 @@ export default function BoardTestModeSection({ getAuth, onMsg }) {
 
   async function loadStatus() {
     try {
-      const res = await fetch(`${API}/api/admin/board/test-status`, { headers: await getAuth() });
-      const data = await res.json();
+      const res = await apiFetch(`${API}/api/admin/board/test-status`, { headers: await getAuth() });
+      const data = res.data || {}; // #5242: null ved limited/unauthorized/networkError
       if (res.ok) setBoardTestMode(data.board_test_mode === true);
     } catch { /* status er best-effort */ }
   }
@@ -29,7 +30,7 @@ export default function BoardTestModeSection({ getAuth, onMsg }) {
     setLoad(action, true);
     setResult(null);
     try {
-      const res = await fetch(`${API}/api/admin/board/${action}`, {
+      const res = await apiFetch(`${API}/api/admin/board/${action}`, {
         method: "POST", headers: await getAuth(), body: JSON.stringify({}),
       });
       const data = await readAdminJson(res);

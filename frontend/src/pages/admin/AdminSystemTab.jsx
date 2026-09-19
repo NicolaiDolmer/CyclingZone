@@ -6,6 +6,7 @@ import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components
 import BetaToolsSection from "../../components/admin/sections/BetaToolsSection";
 import BoardTestModeSection from "../../components/admin/sections/BoardTestModeSection";
 import BalanceDriftWatchSection from "../../components/admin/sections/BalanceDriftWatchSection";
+import FeatureFlagBoardSection from "../../components/admin/sections/FeatureFlagBoardSection";
 import { ChevronDownIcon } from "../../components/ui/icons/index.jsx";
 
 const API = import.meta.env.VITE_API_URL;
@@ -205,6 +206,12 @@ export default function AdminSystemTab() {
   return (
     <>
       <AdminMessageBanner msg={msg} />
+
+      {/* #5259: stadie-tavlen står ØVERST i System — det er den flade der
+          afgør hvad spillerne kan se, og den bruges oftere end alt andet her. */}
+      <AdminSection title="Funktioner — stadie (fra / beta / til)">
+        <FeatureFlagBoardSection getAuth={getAuth} onMsg={showMsg} />
+      </AdminSection>
 
       <AdminSection title="Marked-pause">
         <p className="text-cz-3 text-xs mb-3">

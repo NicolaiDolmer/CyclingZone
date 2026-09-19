@@ -2,7 +2,6 @@
 // desktop; på mobil bliver hver lane et kort man tapper for at åbne skuffen. En
 // vandret løb-strip øverst giver adgang til race-fokus. Alt tap-mål ≥24px (a11y).
 import { useTranslation } from "react-i18next";
-import { riderOverallRating } from "../../lib/riderRating";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
@@ -58,7 +57,9 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
 
       <div className="flex flex-col gap-2">
         {(riders || []).map((rd) => {
-          const ovr = riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType });
+          // #5321: samme server-beregnede rating som resten af appen — se
+          // MasterCanvas for hvorfor den aldrig regnes lokalt af `rd.abilities`.
+          const ovr = rd.rating;
           const peaks = rd.peaks || [];
           // #4212 (retning B): et forslag er ikke en kontrakt manageren har
           // indgået — samme regel som desktop master-canvasset og squadSlots.
@@ -85,7 +86,7 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
                   kombination blev til en næsten-hvid bund med gult tal (ulæselig) i
                   dark mode. */}
               <span className="w-9 h-9 rounded-cz flex items-center justify-center shrink-0 font-mono text-[13px] font-medium" style={statStyle(ovr, { scale: "rating" })}>
-                {ovr}
+                {ovr ?? "—"}
               </span>
               <span className="flex-1 min-w-0">
                 <span className="block text-[13px] text-cz-1 font-medium truncate">{riderShortName(rd)}</span>
