@@ -1,5 +1,54 @@
 export const PATCHES = [
   {
+    "version": "7.289",
+    "date": "2026-09-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "A new training page on your phone, in beta",
+          "body": "What changed: I rebuilt Daily training for phones. Your whole squad fits on one screen, names are short, nothing scrolls sideways, and the rider you tap gets his full card below the table. It opens for the beta group first, so I can adjust it with the people using it before everyone gets it. Ask to join from the Beta group card on your profile."
+        },
+        "da": {
+          "title": "Ny træningsside på telefonen, i beta",
+          "body": "Hvad er ændret: Jeg har bygget Daglig træning om til telefonen. Hele truppen er på én skærm, navnene er korte, intet scroller sidelæns, og den rytter du trykker på får sit fulde kort under tabellen. Den åbner først for beta-gruppen, så jeg kan rette den til sammen med dem, der bruger den, før alle får den. Bed om at komme med fra kortet Beta-gruppen på din profil."
+        },
+        "refs": [3643, 5350, 4982]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Inbox",
+        "en": {
+          "title": "One inbox line per race",
+          "body": "What changed: When a race is over, the result and a rider's first win no longer arrive as two separate messages. They are one line with the race as the headline and the milestone right below it. Stage races still give you one message per stage day."
+        },
+        "da": {
+          "title": "Én linje pr. løb i indbakken",
+          "body": "Hvad er ændret: Når et løb er kørt, kommer resultatet og en rytters første sejr ikke længere som to beskeder. De er én linje med løbet som overskrift og milepælen lige under. Etapeløb giver dig stadig én besked pr. etapedag."
+        },
+        "refs": [5384]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The dashboard no longer jumps while it loads",
+          "body": "What changed: Today's stages used to appear a moment after the rest of the dashboard and push everything down while you were reading. The space is now reserved from the start, so the page stays still."
+        },
+        "da": {
+          "title": "Dashboardet hopper ikke længere, mens det indlæses",
+          "body": "Hvad er ændret: Dagens etaper dukkede før op et øjeblik efter resten af dashboardet og skubbede alt ned, mens du læste. Pladsen er nu reserveret fra start, så siden står stille."
+        },
+        "refs": [5389]
+      }
+    ]
+  },
+  {
     "version": "7.288",
     "date": "2026-09-18",
     "label": "Beta",
