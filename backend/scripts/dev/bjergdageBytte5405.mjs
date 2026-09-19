@@ -23,6 +23,7 @@ import { TIER_ARCHETYPE_RESERVATIONS } from "../../lib/tierCalendarGuarantees.js
 import { resolveCalendarFrom, resolveSeasonWindow, SEASON_RACE_DAYS_DEFAULT } from "../../lib/calendarStartDate.js";
 import { quotasForRaceDays, seasonUuid } from "../buildSeasonCalendar.js";
 import { scoreCalendarPlan, alleBrud, scorecardGateGroups } from "../../lib/calendarScorecardReport.js";
+import { selectSeniorRacePool } from "../../lib/racePoolCatalog.js";
 
 const argv = process.argv.slice(2);
 const argOf = (flag, fallback = null) => {
@@ -141,7 +142,8 @@ async function runScenario(scen) {
   return {
     id: scen.id, label: scen.label, overrides: scen.overrides,
     tiers, races,
-    saeson: rapport.saeson ?? rapport.season ?? null,
+    saesonFinale: rapport.sæsonFinale ?? null,
+    saesonFinaleViol: rapport.sæsonFinaleViol ?? [],
     gates: {
       blocking: gates.blocking ?? [], applyBlocking: gates.applyBlocking ?? [],
       finaleDrift: gates.finaleDrift ?? [], uniformDrift: gates.uniformDrift ?? [],
@@ -153,13 +155,19 @@ async function runScenario(scen) {
 
 // Katalog-forsyning: hvilke bjergrige etapeloeb findes overhovedet, pr. klasse?
 // Forklarer hvorfor en reservation kan vaere virkningsloes (§5b katalog-loft).
-const { data: katalog } = await supabase
-  .from("race_pool")
-  .select("name, race_class, terrain_archetype, stages")
-  .is("retired_at", null)
-  .in("terrain_archetype", ["summit_tour", "mountain_tour", "mountain_classic", "balanced_week"]);
+//
+// #5330: SAMME senior-kontrakt som materializeTierCalendars bruger (selectSeniorRacePool +
+// retired_at IS NULL). Uden den ville listen taelle U23-/junior-loeb med, som ingen af
+// scenarierne kan vaelge — og forsyningstallet ville se stoerre ud end det er.
+const { data: katalogRaw, error: katalogErr } = await selectSeniorRacePool(
+  (columns) => supabase.from("race_pool").select(columns).is("retired_at", null),
+  { columns: "name, race_class, terrain_archetype, stages" },
+);
+if (katalogErr) throw new Error(`race_pool (forsyning): ${katalogErr.message}`);
+const BJERGRIGE = new Set(["summit_tour", "mountain_tour", "mountain_classic", "balanced_week"]);
 const forsyning = {};
-for (const r of katalog ?? []) {
+for (const r of katalogRaw ?? []) {
+  if (!BJERGRIGE.has(r.terrain_archetype)) continue;
   const k = `${r.race_class}/${r.terrain_archetype}`;
   (forsyning[k] ??= []).push({ name: r.name, stages: r.stages });
 }
