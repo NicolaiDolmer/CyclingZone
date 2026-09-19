@@ -141,7 +141,7 @@
      "loeb": "C",
      "etape": 1,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -160,7 +160,7 @@
      "loeb": "C",
      "etape": 2,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -179,7 +179,7 @@
      "loeb": "C",
      "etape": 3,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "D",
@@ -204,7 +204,7 @@
      "loeb": "C",
      "etape": 4,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -223,7 +223,7 @@
      "loeb": "C",
      "etape": 5,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "E",
@@ -248,7 +248,7 @@
      "loeb": "C",
      "etape": 6,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -261,7 +261,7 @@
      "loeb": "C",
      "etape": 7,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -274,7 +274,7 @@
      "loeb": "C",
      "etape": 8,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -287,7 +287,7 @@
      "loeb": "C",
      "etape": 9,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -313,7 +313,7 @@
      "loeb": "C",
      "etape": 10,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -326,7 +326,7 @@
      "loeb": "C",
      "etape": 11,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "G",
@@ -345,7 +345,7 @@
      "loeb": "C",
      "etape": 12,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -358,7 +358,7 @@
      "loeb": "C",
      "etape": 13,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -371,7 +371,7 @@
      "loeb": "C",
      "etape": 14,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -384,7 +384,7 @@
      "loeb": "C",
      "etape": 15,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -410,7 +410,7 @@
      "loeb": "C",
      "etape": 16,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -423,7 +423,7 @@
      "loeb": "C",
      "etape": 17,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -436,7 +436,7 @@
      "loeb": "C",
      "etape": 18,
      "af": 18,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -811,7 +811,7 @@
      "loeb": "P",
      "etape": 1,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "Q",
@@ -836,7 +836,7 @@
      "loeb": "P",
      "etape": 2,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -855,7 +855,7 @@
      "loeb": "P",
      "etape": 3,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "R",
@@ -880,7 +880,7 @@
      "loeb": "P",
      "etape": 4,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -899,7 +899,7 @@
      "loeb": "P",
      "etape": 5,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -918,7 +918,7 @@
      "loeb": "P",
      "etape": 6,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -931,7 +931,7 @@
      "loeb": "P",
      "etape": 7,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -944,7 +944,7 @@
      "loeb": "P",
      "etape": 8,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -957,7 +957,7 @@
      "loeb": "P",
      "etape": 9,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -983,7 +983,7 @@
      "loeb": "P",
      "etape": 10,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -996,7 +996,7 @@
      "loeb": "P",
      "etape": 11,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1009,7 +1009,7 @@
      "loeb": "P",
      "etape": 12,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "T",
@@ -1028,7 +1028,7 @@
      "loeb": "P",
      "etape": 13,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1041,7 +1041,7 @@
      "loeb": "P",
      "etape": 14,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1054,7 +1054,7 @@
      "loeb": "P",
      "etape": 15,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1080,7 +1080,7 @@
      "loeb": "P",
      "etape": 16,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "U",
@@ -1099,7 +1099,7 @@
      "loeb": "P",
      "etape": 17,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "U",
@@ -1338,7 +1338,7 @@
      "loeb": "AC",
      "etape": 1,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "Y",
@@ -1363,7 +1363,7 @@
      "loeb": "AC",
      "etape": 2,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "AA",
@@ -1382,7 +1382,7 @@
      "loeb": "AC",
      "etape": 3,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "AA",
@@ -1401,7 +1401,7 @@
      "loeb": "AC",
      "etape": 4,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1414,7 +1414,7 @@
      "loeb": "AC",
      "etape": 5,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1427,7 +1427,7 @@
      "loeb": "AC",
      "etape": 6,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1440,7 +1440,7 @@
      "loeb": "AC",
      "etape": 7,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1453,7 +1453,7 @@
      "loeb": "AC",
      "etape": 8,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "AD",
@@ -1472,7 +1472,7 @@
      "loeb": "AC",
      "etape": 9,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "AD",
@@ -1504,7 +1504,7 @@
      "loeb": "AC",
      "etape": 10,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "AD",
@@ -1523,7 +1523,7 @@
      "loeb": "AC",
      "etape": 11,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "AD",
@@ -1542,7 +1542,7 @@
      "loeb": "AC",
      "etape": 12,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "AD",
@@ -1561,7 +1561,7 @@
      "loeb": "AC",
      "etape": 13,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1574,7 +1574,7 @@
      "loeb": "AC",
      "etape": 14,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1587,7 +1587,7 @@
      "loeb": "AC",
      "etape": 15,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     }
    ]
   },
@@ -1613,7 +1613,7 @@
      "loeb": "AC",
      "etape": 16,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "AE",
@@ -1632,7 +1632,7 @@
      "loeb": "AC",
      "etape": 17,
      "af": 17,
-     "type": "etapeloeb"
+     "type": "grand_tour"
     },
     {
      "loeb": "AE",
