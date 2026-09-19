@@ -4525,9 +4525,11 @@ router.get("/races/calendar", requireAuth, cached({
     const seasonNumber = Number(seasonNumberRaw);
     const wantsExplicitSeason =
       Number.isFinite(seasonNumber) && seasonNumberRaw !== undefined && seasonNumberRaw !== "";
+    // #5405: `status` hentes med, så handleren kan afgøre om holdets division
+    // overhovedet ER afgjort for den viste sæson (teamDivisionKnownForSeason).
     const seasonQuery = supabase
       .from("seasons")
-      .select("id, number, start_date, race_days_total, race_days_completed");
+      .select("id, number, status, start_date, race_days_total, race_days_completed");
 
     // Bølge 1 — sæson-opslaget, sæson-listen og divisions-træet afhænger hverken af
     // hinanden eller af noget andet. De kørte før sekventielt (3 round-trips i serie).
@@ -4548,9 +4550,24 @@ router.get("/races/calendar", requireAuth, cached({
     if (divisionsRes.error) throw new Error(`league_divisions (calendar): ${divisionsRes.error.message}`);
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) {
-      return res.json({ season: null, availableSeasons, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null });
+      return res.json({ season: null, availableSeasons, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null, divisionPending: false });
     }
     const divisions = divisionsRes.data;
+
+    // #5405 (rapport §3f): holdets NUVÆRENDE pulje beskriver den AKTIVE sæson.
+    // For en sæson med status 'upcoming' er op-/nedrykningen ikke afgjort endnu
+    // (den sker ved sæsonskiftet), så en "mit holds løb"-markering bygget på den
+    // nuværende pulje peger for langt de fleste managers på løb holdet ikke skal
+    // køre. Vi gætter ikke: ingen isMine, ingen egen-pulje, og et eksplicit
+    // divisionPending-flag så fladen kan sige det rent ud. Samme feltnavn og
+    // samme diskriminator som planlægger-endpointet allerede bruger
+    // (teamDivisionKnownForSeason, plannerBoard.js / #3018).
+    //
+    // Gaten ophæver sig selv ved cutoveren uden ny deploy: compressPyramid.js
+    // skriver de nye league_division_id FØR transitionen promoverer sæsonen til
+    // 'active'. En AKTIV (eller afsluttet) sæsons svar er derfor uændret.
+    const divisionPending = !teamDivisionKnownForSeason(season.status);
+    const ownPoolId = divisionPending ? null : (req.team?.league_division_id ?? null);
 
     // Bølge 2 — løbene og holdets entries afhænger begge KUN af season.id. Entry-loadet
     // ventede før på raceIds (og sendte dem som id-liste); joinet gør det unødvendigt.
@@ -4585,7 +4602,8 @@ router.get("/races/calendar", requireAuth, cached({
       scheduleRows,
       profileRows,
       divisions: divisions || [],
-      teamDivisionId: req.team?.league_division_id ?? null,
+      // #5405: null → buildCalendarModel sætter isMine=false på HVERT løb.
+      teamDivisionId: ownPoolId,
       teamEntryRaceIds,
       teamLeaderRaceIds,
     });
@@ -4598,7 +4616,8 @@ router.get("/races/calendar", requireAuth, cached({
         raceDaysCompleted: season.race_days_completed ?? null,
       },
       availableSeasons,
-      ownPoolId: req.team?.league_division_id ?? null,
+      ownPoolId,
+      divisionPending,
       days: model.days,
       divisions: model.divisions,
       entries: model.entries.map(toCalendarWireEntry),
