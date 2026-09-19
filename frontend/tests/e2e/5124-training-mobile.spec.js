@@ -15,7 +15,14 @@
 //      træningstype — er synlig og klikbar UDEN at åbne "Fuld tabel" først.
 //   3) Chip-rækken kan bytte en fjerde kolonne (Ugeplan) ind, og "Fuld tabel"
 //      viser alle fem.
-// Desktop (1280px) er uændret — samme markup, kun `isMobile`-gates er no-op.
+// Desktop (1280px) er uændret — samme markup, kun mobil-gates er no-op.
+//
+// #3643 (ejer 19/9): DETTE ER FLAG-OFF-STIEN. Den nye mobil-visning ligger bag
+// `training_mobile_table` (stadie beta), og mock-svaret herunder sætter
+// bevidst IKKE `mobileTable` — altså præcis det svar en spiller der ikke er
+// beta-tester får. Specen er derfor guarden for at den gamle visning stadig
+// virker uændret for alle andre. Den nye visning dækkes af
+// 3643-training-mobile.spec.js, som sætter `mobileTable: true` i sin mock.
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM, evidenceShotPath } from "./fixtures.js";
 

@@ -43,6 +43,12 @@ async function mockTrainingMe(page, overrides = {}) {
 
 test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
+  // #3643: denne spec maaler DESKTOP-rosterets indhold. Telefonen har siden
+  // 18/9 sin egen visning (tabel med dagens loebsdage, mockup 2), og den er
+  // daekket af 3643-training-mobile.spec.js. Viewporten saettes derfor
+  // eksplicit, saa alle tre projekter bliver ved med at koere DENNE flade i
+  // deres egen motor i stedet for at teste en flade der ikke findes laengere.
+  await page.setViewportSize({ width: 1280, height: 900 });
   await installNetworkMocks(page);
 });
 

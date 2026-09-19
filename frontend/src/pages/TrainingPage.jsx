@@ -53,6 +53,11 @@ import {
 import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 import { useIsMobileViewport } from "../hooks/useMediaQuery.ts";
 import { useMobileTableColumns, MobileColumnChips } from "../components/ui/MobileTableChips.jsx";
+// #3643: telefonens egen visning af I dag-fanen (ejer-valg 18/9, mockup 2).
+// BAG FLAG (training_mobile_table, stadie beta — ejer 19/9): kun beta-testere
+// ser den; alle andre ser #5124's D-047-gren, som derfor er bevaret nedenfor.
+import TrainingMobileToday from "../components/training/mobile/TrainingMobileToday.tsx";
+import { buildRaceDayColumns } from "../lib/trainingMobileModel.ts";
 
 // #3721: siden fik faner (Train today / Development / History), ?tab=-
 // synkroniseret efter samme mønster som FinancePage/RiderStatsPage. Ukendt
@@ -307,7 +312,14 @@ function RosterMobileSortControl({ sort, sortDir, onSort, t }) {
         disabled={!sort}
         aria-label={dirAria}
         title={dirAria}
-        className="flex-shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border
+        // #3643: min-h-11/min-w-11 — knappen stod i 32px høj og ~40px bred og
+        // var det eneste tryk-mål på mobil-fladen under #1602's 44px-krav.
+        // Kravet gælder BEGGE led: et 44px højt, 40px bredt mål er stadig for
+        // lille til en tommel. Kontrollen deles af BEGGE mobil-visninger (den
+        // nye tabel og #5124's D-047-gren), så rettelsen gælder også når
+        // training_mobile_table er off — et for lille tryk-mål er en fejl i
+        // begge flader, ikke en egenskab ved den ene.
+        className="flex-shrink-0 flex min-h-11 min-w-11 items-center justify-center px-3 rounded-cz border border-cz-border
           bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors disabled:opacity-40"
       >
         {sortDir === "desc"
@@ -407,6 +419,12 @@ export default function TrainingPage() {
     riderWeekPlans, savingRiderWeekPlanId, setRiderWeekPlan, clearRiderWeekPlan,
     // #4851: null naar training_score_visible er off ⇒ kolonnen findes ikke.
     trainingScore,
+    // #3643 (ejer 19/9): true = telefonen tegner den nye løbsdags-tabel (kun
+    // beta-testere, stadie `beta`); false = den mobil-visning der står i prod
+    // i dag. Serveren afgør det — se trainingMobileTableFlag.js.
+    // Står FØR racingToday med vilje: #3459's guard i TrainingPage.raceDay.test.js
+    // pinner at racingToday er det sidste felt før `} = training;`.
+    mobileTable,
     racingToday,
   } = training;
   const scoreVisible = trainingScore != null;
@@ -501,6 +519,10 @@ export default function TrainingPage() {
   // ÉT ad gangen; panelet ejer intet state der overlever lukning.
   const [focusPanelRiderId, setFocusPanelRiderId] = useState(null);
   const focusPanelRider = focusPanelRiderId ? riders.find((r) => r.id === focusPanelRiderId) ?? null : null;
+
+  // #3643: den rytter der har sit fulde kort åbent UNDER mobil-tabellen. Kun
+  // mobil-visningen læser den; desktop-fladen kender den ikke.
+  const [mobileRiderId, setMobileRiderId] = useState(null);
 
   async function handleFocusPanelSave(dayType, session) {
     if (await handlePlanChange(focusPanelRiderId, dayType, session)) setFocusPanelRiderId(null);
@@ -772,7 +794,21 @@ export default function TrainingPage() {
   // træning" i #5124) og står derfor i standard-tre sammen med Kvittering og
   // Status; "Dag" (åbner fokus-panelet) og Ugeplan er ét chip-tryk / "Fuld
   // tabel" væk.
+  //
+  // ⚠ #3643 (ejer 19/9): DETTE ER DEN GAMLE MOBIL-VISNING, og den er BEVARET
+  //   med vilje. Den vises når `training_mobile_table` er off for brugeren,
+  //   dvs. for alle der ikke er beta-testere. Hele blokken (rosterMobile*,
+  //   showRosterCol, rosterScrollerClass, rosterMobileWrapAlign, den dynamiske
+  //   colSpan og chip-rækken længere nede) er DØD KODE DEN DAG FLAGET GÅR TIL
+  //   `on` — slet den da, i én rettelse, og fjern samtidig `mobileTable` fra
+  //   gaten i TabPanel value="today". Se #3643.
   const isMobile = useIsMobileViewport();
+  // #3643: gaten mellem de to mobil-visninger. Serveren har allerede evalueret
+  // training_mobile_table mod viewerens beta-status (GET /api/training/me), så
+  // klienten vælger kun MELLEM to flader — den åbner aldrig selv en.
+  const mobileTableView = isMobile && mobileTable;
+  // Den gamle D-047-tilstand gælder KUN når den nye tabel ikke er valgt.
+  const mobileRosterView = isMobile && !mobileTable;
   // #5124-rettelse (fanget af eksisterende specs, ikke af mig selv): fire
   // eksisterende specs kræver hver sin kolonne synlig UDEN "Fuld tabel" på
   // mobil (3762-day-panel + onboarding-touren → "focus"/FocusOpenButton;
@@ -792,10 +828,10 @@ export default function TrainingPage() {
   );
   const ROSTER_MOBILE_DEFAULTS = useMemo(() => ["day", "receipt", "status"], []);
   const rosterMobile = useMobileTableColumns(rosterMobileColumns, ROSTER_MOBILE_DEFAULTS);
-  // Desktop er uændret: `!isMobile` gør showRosterCol altid true dér, uanset
-  // chip-valg. Kun ≤640px filtrerer efter det aktive kolonnesæt.
-  const showRosterCol = (key) => !isMobile || rosterMobile.visibleKeys.includes(key);
-  const showRosterChips = isMobile && rosterMobile.hasChips;
+  // Desktop er uændret: `!mobileRosterView` gør showRosterCol altid true dér,
+  // uanset chip-valg. Kun ≤640px MED flaget off filtrerer efter kolonnesættet.
+  const showRosterCol = (key) => !mobileRosterView || rosterMobile.visibleKeys.includes(key);
+  const showRosterChips = mobileRosterView && rosterMobile.hasChips;
   // "Fuld tabel" på mobil genbruger den kontaminerede (egen scroller, ikke
   // sidescroll) sticky-navnekolonne-mekanik denne tabel allerede bruger på
   // desktop (.sticky-name-cell) — IKKE DataTable's to-lags-teknik. Rækkens
@@ -808,7 +844,7 @@ export default function TrainingPage() {
   // netop denne tabel på desktop. Dokumenteret afvigelse fra D-047's "aldrig
   // CSS sticky i Fuld tabel", parallel til den skriftlige undtagelse #5124
   // giver sæsonmatricen.
-  const rosterScrollerClass = isMobile && !rosterMobile.fullTable ? MOBILE_SCROLLER : SCROLLER;
+  const rosterScrollerClass = mobileRosterView && !rosterMobile.fullTable ? MOBILE_SCROLLER : SCROLLER;
   // #5124 ejer-fund 15/9: `<td>`'s browser-default er `vertical-align: middle`.
   // Navnecellen kan nu blive markant højere end de andre celler i rækken (2-linjers
   // navn + op til 4-linjers type/alder/form/træthed-underlinje, alt sammen wrappet
@@ -820,13 +856,13 @@ export default function TrainingPage() {
   // fysisk uden for deres egen kolonne) — align-top løser det uden at ændre
   // kolonnebredder. Kun nødvendigt når navnet rent faktisk kan wrappe (mobil-
   // standardtilstanden); "Fuld tabel" og desktop beholder browser-default.
-  const rosterMobileWrapAlign = isMobile && !rosterMobile.fullTable ? "align-top" : "";
+  const rosterMobileWrapAlign = mobileRosterView && !rosterMobile.fullTable ? "align-top" : "";
   // "day" er ÉN chip-nøgle men TO fysiske kolonner (Dag + Skift dag, samme
   // <th>-gate, se showRosterCol("day") ovenfor) — colSpan tæller derfor fysiske
   // kolonner pr. nøgle, ikke antal nøgler, ellers driver gruppe-header- og
   // ugeplan-underrækkens colSpan fra det faktisk renderede antal <td>.
   const ROSTER_SWAPPABLE_WEIGHTS = { day: 2, receipt: 1, status: 1, weekplan: 1 };
-  const rosterHiddenPhysicalCols = isMobile
+  const rosterHiddenPhysicalCols = mobileRosterView
     ? Object.entries(ROSTER_SWAPPABLE_WEIGHTS).reduce(
         (sum, [key, weight]) => sum + (rosterMobile.visibleKeys.includes(key) ? 0 : weight),
         0
@@ -986,7 +1022,7 @@ export default function TrainingPage() {
             border-r ER den kanoniske sticky-first-column-recipe (T2). */}
         <td
           className={`border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-sticky border-r border-cz-border ${rosterMobileWrapAlign} ${
-            isMobile && !rosterMobile.fullTable ? "w-full max-w-0" : ""
+            mobileRosterView && !rosterMobile.fullTable ? "w-full max-w-0" : ""
           }`}
         >
           {/* whitespace-nowrap: navnet er kolonnens naturlige bredde (DataTable-opskriften)
@@ -1004,7 +1040,7 @@ export default function TrainingPage() {
               // derfor æder navnekolonnens plads i auto-table-layout'et. De to
               // datakolonner får derfor deres egen `max-w` nedenfor, så navnet
               // beholder en rimelig andel.
-              isMobile && !rosterMobile.fullTable ? "min-w-0" : "whitespace-nowrap"
+              mobileRosterView && !rosterMobile.fullTable ? "min-w-0" : "whitespace-nowrap"
             }`}
           >
             <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
@@ -1102,7 +1138,7 @@ export default function TrainingPage() {
             #3747 beskriver, hvor håndværk (tag 0,95) og anden rolle (0,70)
             lander sammen. Panelet viser kun de påstande der kan efterprøves. */}
         {showRosterCol("day") && (
-        <td className={`${tdClass({})} ${rosterMobileWrapAlign} ${isMobile && !rosterMobile.fullTable ? "max-w-[15vw]" : ""}`}>
+        <td className={`${tdClass({})} ${rosterMobileWrapAlign} ${mobileRosterView && !rosterMobile.fullTable ? "max-w-[15vw]" : ""}`}>
           {/* #3721: DELT FocusOpenButton — samme komponent/mutation som
               Development-fanens rækker bruger (ingen forgrenet fokus-logik). */}
           <FocusOpenButton
@@ -1119,12 +1155,14 @@ export default function TrainingPage() {
         )}
 
         {/* Intensitet — #5124: sidens hovedhandling ("skift dagens træning"),
-            derfor en af de tre mobil-standardkolonner (rosterMobile). */}
+            derfor en af de tre mobil-standardkolonner (rosterMobile). #3643:
+            den nye mobil-tabel har sin egen vej til den samme mutation
+            (rytterens kort under tabellen), men den vises kun bag flaget. */}
         {showRosterCol("day") && (
         // #5124: `max-w` på mobil-standardtilstanden — uden den æder de to
         // tekst-tunge datakolonner (denne + "Denne sæson") navnekolonnens
         // plads i auto-table-layout'et (se navnecellens kommentar ovenfor).
-        <td className={`${tdClass({})} ${rosterMobileWrapAlign} ${isMobile && !rosterMobile.fullTable ? "max-w-[19vw]" : ""}`}>
+        <td className={`${tdClass({})} ${rosterMobileWrapAlign} ${mobileRosterView && !rosterMobile.fullTable ? "max-w-[19vw]" : ""}`}>
           {plan?.focus ? (
             <div
               role="group"
@@ -1134,9 +1172,9 @@ export default function TrainingPage() {
               // #5124: på mobil (ingen vandret scroll) bryder knap-gruppen til to
               // linjer i stedet for at tvinge cellen bredere end skærmen —
               // `overflow-hidden` droppes samtidig, ellers klippes anden linje væk.
-              // Desktop uændret (isMobile er altid false dér).
+              // Desktop uændret (mobileRosterView er altid false dér).
               className={`inline-flex rounded-cz border border-cz-border ${
-                isMobile ? "flex-wrap" : "overflow-hidden"
+                mobileRosterView ? "flex-wrap" : "overflow-hidden"
               } ${raceToday ? "opacity-[0.55]" : ""}`}
             >
               {/* #3762: intensiteten er ikke længere et frit valg — den er en
@@ -1211,14 +1249,14 @@ export default function TrainingPage() {
             evne aldrig steg igen — et løfte den nye model gør usandt (#3649). */}
         {showRosterCol("receipt") && (
         <td
-          className={`${tdClass({})} ${rosterMobileWrapAlign} ${isMobile && !rosterMobile.fullTable ? "max-w-[30vw]" : ""}`}
+          className={`${tdClass({})} ${rosterMobileWrapAlign} ${mobileRosterView && !rosterMobile.fullTable ? "max-w-[30vw]" : ""}`}
           data-tour={isFirst ? "training-next-up" : undefined}
         >
           {/* #5124: min-w droppes på mobil-standardtilstanden (ingen vandret
               scroll) — 176px er for bredt sammen med navn + "Skift dag" på
               390px. Desktop/Fuld tabel uændret. */}
           {focusReceipt ? (
-            <div className={isMobile && !rosterMobile.fullTable ? "" : "min-w-[176px]"}>
+            <div className={mobileRosterView && !rosterMobile.fullTable ? "" : "min-w-[176px]"}>
               {focusReceipt.map((row) => (
                 <AbilityReceiptRow key={row.ability} row={row} />
               ))}
@@ -1255,7 +1293,7 @@ export default function TrainingPage() {
             badges-kolonne foldes heller ikke væk i portræt (#3194), den scroller
             vandret som resten af tabellen. */}
         {showRosterCol("status") && (
-        <td className={`${tdClass({})} ${rosterMobileWrapAlign} ${isMobile && !rosterMobile.fullTable ? "max-w-[13vw]" : ""}`}>
+        <td className={`${tdClass({})} ${rosterMobileWrapAlign} ${mobileRosterView && !rosterMobile.fullTable ? "max-w-[13vw]" : ""}`}>
           <div className="flex flex-wrap gap-1">
             {/* #3761: Status-cellen viste ÉN af de badges rytteren kan bære.
                 De to der mangler er præcis dem der afgør om træningen
@@ -1490,6 +1528,178 @@ export default function TrainingPage() {
     applyAssistantSuggestions([...assistantAcceptableIds]);
   }
 
+  // ── #3643: I dag-fanen på telefonen ────────────────────────────────────────
+  //
+  // Ejer-valg 18/9 (låst): mockup 2, tabel. Rækker er ryttere, kolonner er
+  // dagens løbsdage, og den rytter man trykker på får sit fulde kort ÉN gang
+  // under tabellen. Alt herunder er PRÆSENTATION: hver callback peger på den
+  // samme state og de samme mutationer som desktop-fladen bruger.
+  //
+  // Løbsdags-modellen kører ikke i prod endnu (`training_tick_per_race_day` er
+  // OFF, se docs/TRAINING_RULES.md §13.3), og API'et leverer derfor ikke et
+  // antal løbsdage pr. dato. `buildRaceDayColumns` uden tal giver PRÆCIS én
+  // kolonne ("I dag"), og den samme tabel bærer 1-5 kolonner den dag tallet
+  // kommer. Der står aldrig et hårdkodet sæson-tal på fladen.
+  function renderMobileToday() {
+    const columns = buildRaceDayColumns({ settled: !!todayRun });
+    const rows = sortRoster(riders);
+    const seasonDays = history.seasonState === SEASON_RECEIPT_RUNNING ? (history.seasonRuns?.length ?? null) : null;
+    const riderById = new Map(riders.map((r) => [r.id, r]));
+
+    // Løb slår træning: på en løbsdag kører rytteren ét løb ELLER træner
+    // (realisme-reglen, ejer 18/9). `racingToday` findes kun bag
+    // race_day_development_enabled; uden feltet racer ingen, og cellen viser
+    // dagens session.
+    const racingFor = (riderId, column) =>
+      racingToday[riderId] != null && (columns.length === 1 || column.state === "now");
+
+    return (
+      <div className="space-y-3">
+        {runError && <p className="text-sm text-cz-danger">{runError}</p>}
+        {ridersLoading ? (
+          <div className={WRAP}>
+            <div className="p-5"><SkeletonLines lines={12} /></div>
+          </div>
+        ) : riders.length === 0 ? (
+          <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
+        ) : (
+          <TrainingMobileToday
+            riders={rows}
+            columns={columns}
+            selectedRiderId={mobileRiderId}
+            onSelectRider={(riderId) => setMobileRiderId((prev) => (prev === riderId ? null : riderId))}
+            conditionFor={(riderId) => condition[riderId] ?? null}
+            ageFor={(riderId) => ageForSeason(riderById.get(riderId)?.birthdate, seasonYear)}
+            isRacing={racingFor}
+            raceNameFor={(riderId) => racingToday[riderId]?.race ?? null}
+            sessionFor={(riderId, column) => {
+              if (racingFor(riderId, column)) return null;
+              // En AFREGNET løbsdag skal vise hvad rytteren FAKTISK kørte, ikke
+              // hvad planen står på nu: planen kan ændres efter dagens kørsel
+              // (den gælder så fra i morgen, jf. tickModelDone), og cellen ville
+              // ellers påstå at gårsdagens pas var noget andet end det var.
+              // Rapport-rækken bærer både focus og intensity, præcis det
+              // dayTypeForProgram/sessionForProgram læser.
+              const plan = column.state === "done"
+                ? todayRowByRider[riderId] ?? null
+                : planFor(riderId);
+              if (!plan?.focus) return null;
+              const dayType = dayTypeForProgram(plan);
+              if (DAY_TYPES_WITHOUT_SESSION.includes(dayType)) return dayType;
+              return sessionForProgram(plan);
+            }}
+            dayLabelFor={(riderId) => {
+              const plan = planFor(riderId);
+              return plan?.focus ? dayLabel(plan, t) : t("dayPanel.chooseDay");
+            }}
+            receiptFor={(riderId) => {
+              const rider = riderById.get(riderId);
+              if (!rider) return null;
+              return focusAbilityReceipt(planFor(riderId)?.focus, {
+                abilities: rider.abilities,
+                progress: progress[riderId],
+                capped: capped[riderId],
+                seasonGains: seasonGainsByRider[riderId] ?? null,
+                progressBefore: todayRowByRider[riderId]?.progress_before ?? null,
+                gainsToday: todayRowByRider[riderId]?.gains ?? null,
+              });
+            }}
+            // Rytteren er allerede fladet op (flattenAbilities i hentningen), så
+            // opskriftens evne-nøgler kan slås direkte op på rytter-objektet.
+            abilitiesFor={(riderId) => riderById.get(riderId) ?? null}
+            cappedFor={(riderId) => capped[riderId] ?? []}
+            seasonPointsFor={(riderId) => {
+              const gains = seasonGainsByRider[riderId];
+              if (!gains) return null;
+              return Object.values(gains).reduce((sum, n) => sum + (Number(n) > 0 ? Number(n) : 0), 0);
+            }}
+            seasonDays={seasonDays}
+            weekdays={WEEKDAY_KEYS}
+            intensityForWeekday={(weekday) => (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal"}
+            onEditProgram={() => setTab("weekplan")}
+            onOpenDay={(riderId) => setFocusPanelRiderId(riderId)}
+            dayBusyFor={(riderId) => savingId === riderId || bulkApplying}
+            yesterdaySlot={
+              yesterday ? (
+                <CollapsibleSection
+                  title={[
+                    t("yesterdayTrainedLine", { n: yesterday.trainedFocus }),
+                    t("yesterdayRestedLine", { n: yesterday.rested }),
+                    t("yesterdayPointsLanded", { n: yesterday.pointsLanded }),
+                  ].join(" · ")}
+                >
+                  <ul className="flex flex-col gap-2">
+                    {yesterdayStories.map((story) => (
+                      <li key={story.riderId} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                        <RiderLink id={story.riderId} className="font-medium text-cz-1 hover:text-cz-accent transition-colors">
+                          {story.riderName}
+                        </RiderLink>
+                        <span className="text-cz-3">{yesterdayLineText(story, t, tRider)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleSection>
+              ) : null
+            }
+            sortSlot={
+              <RosterMobileSortControl
+                sort={rosterSort.sort}
+                sortDir={rosterSort.sortDir}
+                onSort={rosterSort.handleSort}
+                t={t}
+              />
+            }
+            assistantSlot={
+              // Assistenten er et LUKKET panel med tælling (mockup 2), ikke et
+              // åbent kort. Trykket åbner det samme AssistantSuggestionsPanel
+              // desktop bruger — her under tabellen, hvor det blev kaldt frem.
+              <>
+                <button
+                  type="button"
+                  onClick={handleOpenAssistantPanel}
+                  className="flex min-h-11 w-full items-center gap-2.5 rounded-cz border border-cz-border bg-cz-card px-3 text-start"
+                >
+                  <StarIcon size={16} className="flex-none text-cz-3" aria-hidden="true" />
+                  <span className="flex-1 text-[13px] font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
+                  <span className="font-data text-2xs text-cz-3">
+                    {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
+                  </span>
+                </button>
+                {assistantPanelOpen && (
+                  <div ref={assistantPanelRef} className="mt-3">
+                    <AssistantSuggestionsPanel
+                      rows={assistantSuggestionRows}
+                      visibleRows={assistantVisibleRows}
+                      noPlanCount={assistantNoPlanCount}
+                      onlyWithoutPlan={assistantOnlyNoPlan}
+                      onToggleOnlyWithoutPlan={handleToggleAssistantOnlyNoPlan}
+                      selected={assistantSelected}
+                      onToggleSelect={toggleAssistantSelect}
+                      onAcceptSelected={handleAcceptAssistantSelected}
+                      onAcceptAll={handleAcceptAssistantAll}
+                      onDismiss={handleDismissAssistantPanel}
+                      busy={bulkApplying}
+                      message={assistantMsg}
+                      acceptableCount={assistantAcceptableIds.size}
+                    />
+                  </div>
+                )}
+              </>
+            }
+          />
+        )}
+        <div className="pt-1">
+          <Link
+            to="/help?section=dailytraining"
+            className="text-2xs text-cz-3 underline decoration-dotted hover:text-cz-accent"
+          >
+            {t("howTrainingWorksLink")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // Sidehoved-status (T2 PageHeader subtitle) — samme 3 tilstande som før, nu i
   // ÉT sted i stedet for inline i JSX'en. Ren tekst/farve-mapping, ingen ny logik.
   const headerStatus = todayRun
@@ -1514,6 +1724,13 @@ export default function TrainingPage() {
         title={t("title")}
         subtitle={headerStatus}
         actions={
+          // #3643: i den NYE mobil-visning bor sidens ENE gold primary ("Kør
+          // dagens træning") i fuld bredde over fanerne, og assistenten er et
+          // lukket panel i indholdet — begge inde i mobil-visningen.
+          // Sidehovedets actions-slot står derfor tomt dér, så der aldrig er to
+          // golde knapper. Er flaget off, er sidehovedet uændret fra main, også
+          // på telefonen.
+          mobileTableView ? null : (
           <div className="flex flex-wrap items-center gap-2">
             {/* #4522: "Get suggestions from the assistant" — sekundær, stroke-ikon
                 (aldrig gold). Åbner gennemsyns-panelet; intet anvendes før accept. */}
@@ -1543,8 +1760,32 @@ export default function TrainingPage() {
               </Button>
             </span>
           </div>
+          )
         }
       />
+
+      {/* #3643 (mockup 2): på telefonen står sidens ENE gold primary i fuld
+          bredde MELLEM sidehovedet og fanerne — samme plads som mockuppen, og
+          samme knap på alle fire faner (præcis som desktop, hvor den bor i
+          sidehovedets actions-slot der er for smalt til et 44px tryk-mål).
+          KUN i den nye visning (training_mobile_table) — ellers ville der stå
+          to "Kør dagens træning"-knapper på telefonen. */}
+      {mobileTableView && (
+        <span data-tour="training-run-today" className="mb-3 block">
+          <Button
+            type="button"
+            variant={assistantPanelOpen ? "secondary" : "primary"}
+            onClick={handleRunToday}
+            disabled={!enabled || !!todayRun || running}
+            // min-h-11 = #1602's 44px tryk-mål. Button's egen sm/md-højde er
+            // 42px, og sidens ENE primary må ikke være den der underskrider
+            // kravet på den skærm der har mindst plads.
+            className="w-full min-h-11"
+          >
+            {running ? t("loading") : t("trainToday")}
+          </Button>
+        </span>
+      )}
 
       {/* #3721: 3 faner (Train today / Development / History), ?tab=-
           synkroniseret. Én gold primary-knap pr. view (#trainToday i headeren)
@@ -1558,6 +1799,21 @@ export default function TrainingPage() {
         </TabList>
 
       <TabPanel value="today">
+      {/* #3643 (ejer-valg 18/9, låst): telefonen får sin EGEN visning — tabel
+          med dagens løbsdage som kolonner, mockup 2. Alt under gaten er ren
+          præsentation: fetches, mutationer og state-maskiner er de samme, og
+          desktop-fladen nedenfor er uændret.
+
+          BAG BETA-FLAG (ejer 19/9): "Jeg vil have det kun live for beta testere
+          i starten, sådan at vi kan snakke om det og tilpasse, hvor vi derefter
+          gør den bedre og bedre løbende". `mobileTable` kommer fra serveren
+          (training_mobile_table i stadie `beta`, evalueret mod viewerens
+          beta-status) — klienten beder aldrig selv om den nye flade. Er den
+          false, tegnes tabellen nedenfor med #5124's D-047-gren, præcis som i
+          dag. ⚠ NÅR FLAGET GÅR TIL `on`: slet D-047-grenen (rosterMobile*,
+          showRosterCol, rosterScrollerClass, rosterMobileWrapAlign, chip-rækken
+          og den dynamiske colSpan) og denne gate i én rettelse — se #3643. */}
+      {mobileTableView ? renderMobileToday() : (
       <div className="space-y-6">
         {/* #4522 (ejer-direktiv 31/8): assistent-forslagspanelet — øverst i
             indholdet, som mockuppen kræver. Card med accent-hairline-border
@@ -1773,7 +2029,9 @@ export default function TrainingPage() {
             )}
             {/* #5124 — D-047's chip-række (genbrugt fra MobileTableChips.jsx/
                 DataTable.jsx, se noten ved rosterMobile ovenfor). Kun ≤640px
-                og kun når der reelt er flere end tre kolonner at vælge imellem. */}
+                og kun når der reelt er flere end tre kolonner at vælge imellem.
+                #3643: og kun når training_mobile_table er off for brugeren —
+                den nye mobil-tabel har hverken chips eller "Fuld tabel". */}
             {showRosterChips && (
               <MobileColumnChips
                 columns={rosterMobile.chipColumns}
@@ -2033,6 +2291,7 @@ export default function TrainingPage() {
             placeringen + accordion→åben-sektion ændrede sig. weekRhythmTodayShort
             -hintet på roster-rækken (linje ~841) er UBERØRT — det bliver hvor det er. */}
       </div>
+      )}
       </TabPanel>
 
       {/* #3746 trin 7: "Week plan"-fanen — den ugentlige rytme-editor som en

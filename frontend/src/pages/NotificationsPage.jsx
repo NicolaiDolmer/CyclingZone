@@ -12,7 +12,7 @@ import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
 import { formatNavBadgeCount } from "../lib/navBadges.js";
-import { resolveNotificationLink } from "../lib/notificationLink";
+import { resolveNotificationLink, aggregateCtaKey } from "../lib/notificationLink";
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -768,6 +768,12 @@ export default function NotificationsPage() {
                 const isExpanded = expandedAggregates.has(entry.key);
                 const allRead = !entry.any_unread;
                 const ids = entry.items.map(i => i.id);
+                // #5384-followup (ejer 19/9): en samlet løbs-linje er ÉN
+                // hændelse — løbet — ikke en stak gentagelser. Derfor ingen
+                // tæller-badge, intet "(×N)" og ÉN tidsangivelse. Auktions-
+                // bøtterne er uændrede: dér ER N'et selve pointen (hvor mange
+                // gange blev du overbudt).
+                const isRaceCompleted = entry.group === "race_completed";
                 return (
                   <div key={entry.key}
                     className={`rounded-cz border transition-colors
@@ -782,18 +788,48 @@ export default function NotificationsPage() {
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
                         flex-shrink-0 mt-0.5 relative ${config.color}`}>
                         {AggIcon ? <AggIcon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
-                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-cz-pill
-                          bg-cz-accent text-cz-on-accent text-3xs font-bold flex items-center justify-center leading-none">
-                          {entry.count > 99 ? "99+" : entry.count}
-                        </span>
+                        {!isRaceCompleted && (
+                          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-cz-pill
+                            bg-cz-accent text-cz-on-accent text-3xs font-bold flex items-center justify-center leading-none">
+                            {entry.count > 99 ? "99+" : entry.count}
+                          </span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${allRead ? "text-cz-2" : "text-cz-1"}`}>
-                          {renderNotificationTitle({ metadata: entry.sample_metadata, title: entry.sample_title }, tBackend)} <span className="text-cz-3 font-normal">{t("aggregate.countSuffix", { count: entry.count })}</span>
+                          {/* #5384-followup: linjens ansigt er LØBET når navnet
+                              findes som struktureret data (groupNotifications'
+                              race_name). Ellers resultat-beskedens egen titel —
+                              vi parser aldrig løbsnavnet ud af fritekst. */}
+                          {entry.race_name
+                            ? t("aggregate.raceResultTitle", { race: entry.race_name })
+                            : renderNotificationTitle({ metadata: entry.sample_metadata, title: entry.sample_title }, tBackend)}
+                          {!isRaceCompleted && (
+                            <> <span className="text-cz-3 font-normal">{t("aggregate.countSuffix", { count: entry.count })}</span></>
+                          )}
                         </p>
                         <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{renderNotificationMessage({ metadata: entry.sample_metadata, message: entry.sample_message }, tBackend)}</p>
+                        {/* #5384-followup: hver career-milepæl i bøtten får sin
+                            egen dæmpede linje, synlig UDEN at folde ud — det er
+                            netop den sætning ("X won for the first time in Y")
+                            der før forsvandt bag et tæller-tal. Ren tekst, ingen
+                            RiderLink: hele kortet er klik-fladen (markér læst +
+                            fold ud), og et link midt i den ville stjæle klikket.
+                            Rytterprofilen er stadig ét klik væk i den udfoldede
+                            liste nedenfor. */}
+                        {entry.extra_items?.length > 0 && (
+                          <div className="mt-1 flex flex-col gap-0.5">
+                            {entry.extra_items.map(item => (
+                              <p key={item.id} className="text-cz-3 text-xs leading-relaxed">
+                                {renderNotificationMessage(item, tBackend)}
+                              </p>
+                            ))}
+                          </div>
+                        )}
                         <p className="text-cz-3 text-xs mt-1.5">
-                          {t("aggregate.firstLatest", { first: timeAgo(entry.earliest_at), latest: timeAgo(entry.latest_at) })}
+                          {isRaceCompleted
+                            ? timeAgo(entry.latest_at)
+                            : t("aggregate.firstLatest", { first: timeAgo(entry.earliest_at), latest: timeAgo(entry.latest_at) })}
                           {/* #4981: bøtten "auction_bidding" blander auction_outbid (du
                               MISTEDE føringen) og auction_proxy_outbid (dit autobud
                               beholdt den). Titlen følger den nyeste besked, så en blandet
@@ -838,7 +874,12 @@ export default function NotificationsPage() {
                         {config.link && (
                           <Button variant="secondary" size="sm" className="self-end inline-flex items-center gap-1"
                             onClick={e => { e.stopPropagation(); navigate(config.link); }}>
-                            {t("actions.viewAuction")} <ChevronRightIcon size={14} aria-hidden="true" />
+                            {/* #5384: bøtten dækker nu også race_completed (race_result/
+                                stage_result/career_milestone), ikke kun auktioner.
+                                Teksten afgøres af DESTINATIONEN, ikke bøtte-navnet —
+                                se aggregateCtaKey (bid_received linker også til
+                                /auctions og skal blive ved med at hedde "Vis auktion"). */}
+                            {t(aggregateCtaKey(config.link))} <ChevronRightIcon size={14} aria-hidden="true" />
                           </Button>
                         )}
                       </div>

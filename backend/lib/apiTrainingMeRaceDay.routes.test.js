@@ -29,7 +29,10 @@ const apiSource = readFileSync(resolve(__dirname, "../routes/api.js"), "utf8");
 // /training/me-handleren. Hævet fra 7200 da traeningsscoren lagde et flag-opslag,
 // en query og et betinget responsfelt ind i samme route; res.json faldt ellers
 // uden for vinduet og guarderne holdt op med at maale noget.
-function routeBlock(marker, len = 9200) {
+// #3643: hævet igen (9200 → 10400) da mobil-flaget (training_mobile_table) lagde
+// endnu et flag-opslag + responsfelt ind i samme handler. Samme fejlklasse:
+// racingToday-spreadet faldt uden for vinduet og guarden matchede ikke laengere.
+function routeBlock(marker, len = 10400) {
   const start = apiSource.indexOf(marker);
   assert.ok(start !== -1, `${marker} skal findes i api.js`);
   return apiSource.slice(start, start + len);

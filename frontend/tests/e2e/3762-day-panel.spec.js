@@ -64,6 +64,11 @@ async function setup(page) {
   await page.getByPlaceholder("••••••••").fill("playwright-password");
   await page.getByRole("button", { name: /log in/i }).click();
   await page.waitForURL(/\/dashboard$/);
+  // #3643: denne spec måler DESKTOP-rosterets dagskolonne. Telefonen har siden
+  // 18/9 sin egen visning (tabel med dagens løbsdage, mockup 2), dækket af
+  // 3643-training-mobile.spec.js. Viewporten sættes derfor eksplicit, så alle
+  // tre projekter bliver ved med at køre DENNE flade i deres egen motor.
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/training");
   await page.locator("table[data-sortable]").waitFor();
 }
