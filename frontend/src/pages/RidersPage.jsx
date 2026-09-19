@@ -462,6 +462,8 @@ export default function RidersPage() {
       renderShort: (r) => (
         <RiderNameCell
           id={r.id}
+          firstname={r.firstname}
+          lastname={r.lastname}
           name={riderShortName(r)}
           stopPropagation
           className="text-cz-1 hover:text-cz-accent-t transition-colors"

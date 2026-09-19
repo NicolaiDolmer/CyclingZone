@@ -12,7 +12,9 @@ import RiderLink from "../RiderLink";
 // #5383: `name` (valgfri) saetter den viste tekst direkte, saa en kalder kan
 // vise den korte form ("A. Pedersen", lib/riderName.ts) uden at cellen skal
 // gaette hvordan et navn deles. Udelades den, vises fornavn + efternavn som
-// hidtil.
+// hidtil. Linkets TILGAENGELIGE navn er altid det fulde navn: en forkortelse er
+// et pladsvalg paa skaermen, ikke en omdoebning — en skaermlaeser skal stadig
+// sige "Ada Pedersen".
 export default function RiderNameCell({
   id,
   firstname,
@@ -23,6 +25,8 @@ export default function RiderNameCell({
   wrap = false,
   children,
 }) {
+  const fullName = `${firstname ?? ""} ${lastname ?? ""}`.trim();
+  const shown = name ?? fullName;
   return (
     <span className={`inline-flex items-center gap-1.5 flex-wrap ${wrap ? "min-w-0" : ""}`}>
       {/* #5124: KUN `min-w-0` (bryd ved ordgrænser), ikke `break-words` — sidstnævnte
@@ -36,8 +40,10 @@ export default function RiderNameCell({
         id={id}
         stopPropagation={stopPropagation}
         className={`${className} ${wrap ? "min-w-0" : "whitespace-nowrap"}`}
+        aria-label={fullName && shown !== fullName ? fullName : undefined}
+        title={fullName && shown !== fullName ? fullName : undefined}
       >
-        {name ?? `${firstname ?? ""} ${lastname ?? ""}`.trim()}
+        {shown}
       </RiderLink>
       {children}
     </span>

@@ -143,17 +143,28 @@ export default function AcademyPage() {
   //
   // Navnecellen tegnes af EEN funktion, saa desktop-formen og mobilens korte
   // form (#5383) ikke kan drive fra hinanden i alt ANDET end selve navnet.
-  const renderRosterName = (r, displayName) => (
-    <>
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <RiderLink id={r.id} className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-          {displayName}
-        </RiderLink>
-        <RiderBadges badges={["academy"]} />
-      </div>
-      {actionErrors[r.id] && <p className="text-xs text-cz-danger mt-1 whitespace-normal">{actionErrors[r.id]}</p>}
-    </>
-  );
+  const renderRosterName = (r, displayName) => {
+    // Forkortelsen er et PLADSVALG paa skaermen, ikke en omdoebning: linkets
+    // tilgaengelige navn er altid det fulde navn (#5383).
+    const fullName = `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim();
+    const abbreviated = Boolean(fullName) && displayName !== fullName;
+    return (
+      <>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <RiderLink
+            id={r.id}
+            className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors"
+            aria-label={abbreviated ? fullName : undefined}
+            title={abbreviated ? fullName : undefined}
+          >
+            {displayName}
+          </RiderLink>
+          <RiderBadges badges={["academy"]} />
+        </div>
+        {actionErrors[r.id] && <p className="text-xs text-cz-danger mt-1 whitespace-normal">{actionErrors[r.id]}</p>}
+      </>
+    );
+  };
 
   const rosterColumns = [
     {
