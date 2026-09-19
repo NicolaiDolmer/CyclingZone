@@ -13,8 +13,13 @@
 //
 // Scriptet SKRIVER ALDRIG. Kandidaterne laegges i en KOPI af kataloget i hukommelsen via
 // materializeTierCalendars({ extraCatalogRows }) — #3295's eksisterende dry-run-sti, som
-// selv afviser at blive brugt uden dryRun. Reservations-tabellen er PRODUKTIONENS
-// uaendrede vaerdier i alle scenarier: det eneste der varierer, er kataloget.
+// selv afviser at blive brugt uden dryRun.
+//
+// To ting varieres: hvilke kandidat-loeb der ligger i katalog-kopien, og
+// `archetypeReservations`. Runde 1 (N*) varierer KUN kataloget, med produktionens
+// uaendrede reservations-tabel - og viser at kataloget alene ikke flytter noget.
+// Runde 2 og 3 (R*/S*) varierer begge dele. Den frosne produktions-tabel muteres
+// aldrig; den klones (reservationsWith).
 //
 // Brug:
 //   infisical run --env=prod -- node scripts/dev/nyeBjergloeb5405.mjs --season 4 --first-day 2026-09-28
@@ -28,7 +33,13 @@ import { resolveCalendarFrom, resolveSeasonWindow, SEASON_RACE_DAYS_DEFAULT } fr
 import { quotasForRaceDays, seasonUuid } from "../buildSeasonCalendar.js";
 import { scoreCalendarPlan, alleBrud, scorecardGateGroups } from "../../lib/calendarScorecardReport.js";
 import { TIER_ARCHETYPE_RESERVATIONS } from "../../lib/tierCalendarGuarantees.js";
-import { externalIdFor } from "../proposeCatalogExpansion.js";
+// #5405: external_id SKAL udledes praecis som den rigtige seed-import goer
+// (racePoolImport.buildExternalId = sha256(normaliseret navn|date_text), 16 tegn).
+// external_id er parcours-seedens identitet (seedIdentityFor), saa en anden udledning
+// ville give kandidaterne ET ANDET PARCOURS i toerkoerslen end de faar naar de rent
+// faktisk importeres - og hele maalingen ville vaere uden daekning. Fanget af
+// CodeRabbit 19/9.
+import { buildExternalId } from "../../lib/racePoolImport.js";
 
 // Dyb klon + override af reservations-tabellen. Ingen mutation af den frosne original.
 function reservationsWith(overrides = {}) {
@@ -149,7 +160,7 @@ const byKey = new Map(KANDIDATER.map((k) => [k.key, k]));
 
 /** race_pool-raekke-form. id = deterministisk pseudo-uuid, KUN gyldig i dry-run. */
 function toCatalogRow(c) {
-  const ext = externalIdFor(c.name + "|" + c.race_class);
+  const ext = buildExternalId(c.name, c.date_text);
   return {
     id: `ffffffff-0000-4000-8000-${ext.slice(0, 12)}`,
     external_id: ext,
@@ -202,7 +213,11 @@ const SCENARIER = [
   { id: "S3", label: "S3: tre ProSeries + D2 summit 5 + D3 summit 5/balanced 1", keys: ["galega_pro", "tauern_pro", "portuguesa_pro"], overrides: { 2: { summit_tour: 5 }, 3: { summit_tour: 5, balanced_week: 1 } } },
   { id: "S4", label: "S4: tre ProSeries + D2 summit 6 + D3 summit 5/balanced 1", keys: ["galega_pro", "tauern_pro", "portuguesa_pro"], overrides: { 2: { summit_tour: 6 }, 3: { summit_tour: 5, balanced_week: 1 } } },
   { id: "S5", label: "S5: fire ProSeries + D2 summit 6 + D3 summit 5/balanced 1", keys: ["galega_pro", "tauern_pro", "portuguesa_pro", "andes_pro"], overrides: { 2: { summit_tour: 6 }, 3: { summit_tour: 5, balanced_week: 1 } } },
-  { id: "S6", label: "S6: tre ProSeries + to Class1 + D2 summit 5 + D3 summit 5/balanced 1", keys: ["galega_pro", "tauern_pro", "portuguesa_pro", "andes", "tauern"], overrides: { 2: { summit_tour: 5 }, 3: { summit_tour: 5, balanced_week: 1 } } },
+  // S6 havde foerst baade `tauern_pro` og `tauern` med. De deler NAVN, og
+  // materializeTierCalendars dedupperer paa navn paa tvaers af divisioner, saa de to
+  // raekker kunne aldrig blive to selvstaendige tilfoejelser. Rettet: kun entydigt
+  // navngivne loeb i samme scenarie. Fanget af CodeRabbit 19/9.
+  { id: "S6", label: "S6: tre ProSeries + et Class1 + D2 summit 5 + D3 summit 5/balanced 1", keys: ["galega_pro", "tauern_pro", "portuguesa_pro", "andes"], overrides: { 2: { summit_tour: 5 }, 3: { summit_tour: 5, balanced_week: 1 } } },
 ];
 
 function raceBreakdown(tierPlan, profiles, archetypeByPoolRace, nyeNavne) {

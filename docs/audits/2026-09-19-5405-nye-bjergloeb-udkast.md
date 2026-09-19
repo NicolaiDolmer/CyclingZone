@@ -68,23 +68,25 @@ Det har en konsekvens ejeren skal kende: Division 2's vindue består udelukkende
 klasser der allerede er fulde. Nye løb i den klasse Division 3 og 4 deler, kan altså
 ikke nå Division 2 — og målingen viste at de i praksis alle sammen lander i Division 4.
 
-## Fund 2: kataloget alene flytter ingenting
+## Fund 2: kataloget alene rækker ikke
 
-Uanset om der lægges ét, to, tre eller fire nye bjergløb i den klasse Division 3 og 4
-deler, står Division 2 og 3 **præcis uændret**. Ikke én etape flytter.
+Nye løb i den klasse Division 3 og 4 deler, lader Division 2 og 3 stå **præcis
+uændret** — ikke én etape flytter — og gør samtidig Division 4 for bjergrig.
 
-Grunden er mekanisk: etape-kvoten pr. division er eksakt. En division tager det antal
-bjergløb dens reservation siger, og fylder resten op efter prestige. Flere bjergløb i
-kataloget betyder bare at den bytter ét lige så bjergrigt løb ud med et andet.
+Nye løb i den klasse Division 2 og 3 deler, rykker Division 3 et stykke, men ikke i
+mål, og gør intet for Division 2.
 
-**Det nuancerer forgængerens diagnose.** Forsyningen er for lille, men det er ikke den
-der binder lige nu — **reservationen er**. Katalog-udvidelse alene er virkningsløs.
-Reservations-ændring alene virker, men koster Division 3 dens enkeltstarter. **De to
-sammen er det der løser det.**
+Grunden er mekanisk: etape-kvoten pr. division er eksakt. En division tager i store
+træk det antal bjergløb dens reservation siger, og fylder resten op efter prestige.
+
+**Det nuancerer forgængerens diagnose.** Forsyningen er for lille, men den er ikke
+alene det der binder — **reservationen binder også**. Katalog-udvidelse alene rækker
+ikke. Reservations-ændring alene virker, men koster Division 3 dens enkeltstarter.
+**De to sammen er det der løser det.**
 
 ## Fund 3: kombinationen bringer alle fire divisioner i mål
 
-Det mindste sæt der virker er **to nye bjergrige etapeløb i den klasse Division 2 og 3
+Det mindste sæt der virker er **tre nye bjergrige etapeløb i den klasse Division 2 og 3
 deler**, kombineret med at Division 2 og Division 3 hver især reserverer ét bjergløb
 mere, og at Division 3 samtidig reserverer ét løb af den type der garanterer en
 enkeltstart.
@@ -94,16 +96,19 @@ Gate-status med den kombination:
 - Alle fire divisioner er inden for **både** bjerg-målet og enkeltstarts-målet. Det er
   første gang i hele dette spor at det sker.
 - Antallet af afvigelser på de uniforme mål går fra to til **nul**.
-- Sæsons-finale-afvigelserne går fra seks til fem.
+- Sæsons-finale-afvigelserne er uændrede.
 - Blokerende og apply-blokerende fund: **nul, før og efter.**
 - Etape-kvoterne rammes præcist, som før.
-- Prisen er to nye **gule** tolerance-markeringer (Division 2 og 3 går fra nul til én).
-  Ingen rød markering flytter fra grøn.
+- Ingen rød markering flytter fra grøn nogen steder.
 
-Et tredje nyt løb giver **identisk** resultat og er overflødigt for gaten. At reservere
-endnu et bjergløb til Division 2 får den til at skyde over målet i den anden retning.
-Nye løb i Division 3/4's fælles klasse skubber Division 4 ud af sit bånd uden at hjælpe
-Division 2 eller 3.
+**Hvorfor tre løb og ikke to.** Med kun to nye løb kommer alle fire divisioner i mål på
+bjerg, men Division 3 falder til gengæld ud af enkeltstarts-båndet — nøjagtig samme pris
+som i forgængerens løsning. Det tredje løb betaler ikke for en bjergdag; det betaler for
+enkeltstarten.
+
+At reservere endnu et bjergløb til Division 2 får den til at skyde over målet i den
+anden retning. Nye løb i Division 3/4's fælles klasse skubber Division 4 ud af sit bånd
+uden at hjælpe Division 2 eller 3.
 
 ## Forslagene
 
@@ -113,16 +118,16 @@ Alle fire har et virkeligt forbillede på 2.1-niveau med rigtige bjergfinaler.
 |--:|---|---|---|---|--:|--:|---|
 | 1 | O Gran Camiño (2.1, april) | **Volta Galega** | Spanien, Galicien | `summit_tour` | 5 | 2 | Ja |
 | 2 | Österreich-Rundfahrt (2.1, juli) | **Rundfahrt der Hohen Tauern** | Østrig | `summit_tour` | 5 | 2 | Nej |
-| 3 | Volta a Portugal (2.1, august) | **Volta Portuguesa** | Portugal | `summit_tour` | 6 | 2 | Ja |
+| 3 | Volta a Portugal (2.1, august) | **Volta Portuguesa** | Portugal | `summit_tour` | 5 | 2 | Ja |
 | 4 | Tour Colombia (2.1, februar) | **Vuelta a los Andes** | Colombia | `summit_tour` | 5 | 2 | Ja |
 
-Løb 1 og 2 er dem der virker. Løb 3 og 4 hjælper kun Division 4 og er taget med som
-kontrol.
+Løb 1, 2 og 3 er dem der virker. Løb 4 er kun målt i den lave klasse, hvor det kun
+hjælper Division 4, og er taget med som kontrol.
 
 Punkt 1-3 er slået op på nettet 19/9. **Punkt 4 (Tour Colombia) er husket, ikke slået
 op** — behandl detaljerne som omtrentlige.
 
-**Den ærlige note om klassen:** løb 1 og 2 skal ligge i den klasse Division 2 og 3
+**Den ærlige note om klassen:** løb 1, 2 og 3 skal ligge i den klasse Division 2 og 3
 deler for at virke, men er en klasse lavere i virkeligheden. Det er en oprykning over
 deres virkelige UCI-klasse. Den er til at forsvare — O Gran Camiño har vokset sig stort
 med WorldTour-hold i feltet, og Østrig Rundt lå historisk højere — men det er en
@@ -134,7 +139,7 @@ tørkørsel.
 
 ## Kan det nås før sæsonskiftet 27-28/9?
 
-**Ja, hvis det startes mandag 21/9.** Skridtene er: to rækker i seed-CSV'en plus en
+**Ja, hvis det startes mandag 21/9.** Skridtene er: tre rækker i seed-CSV'en plus en
 idempotent migration · ændring af reservations-tabellen plus de tests der låser den ·
 opdateret golden-snapshot i samme PR · fuld lokal verifikation · migration applies efter
 merge og post-verificeres · ny tørkørsel umiddelbart før generering, med ejer-go.
@@ -159,14 +164,19 @@ og så hører det til som første opgave i det næste sæson-vindue.
   problemet ved roden og gøre alle fremtidige bjergløb bedre. Det er en
   produktionskode-ændring med egne tests og hører ikke til i en undersøgelse — men det
   er efter min vurdering den rigtige langsigtede investering, større end de to løb.
-- **De resterende sæsons-finale-afvigelser.** Uændrede; det er måleartefakter på meget
-  små stikprøver.
+- **De seks sæsons-finale-afvigelser.** Uændrede; det er måleartefakter på meget små
+  stikprøver.
+- **Et CodeRabbit-fund der ændrede tallene.** Første kørsel udledte kandidaternes
+  parcours-nøgle anderledes end den rigtige import gør, så kandidaterne fik et andet
+  parcours end de ville få i virkeligheden. Det er rettet og hele kørslen gentaget, og
+  konklusionen gik fra to løb til tre. Det er samtidig det bedste bevis på at navnene
+  skal være låst før den endelige måling.
 - **Dag-for-dag-programmet.** Scorecardet måler fordelinger, ikke placeringen af det
   enkelte løb.
 
 ## Dom
 
 **Bekræftet.** Problemet er reproduceret, rod-årsagen er skarpere end før (reservationen
-binder, ikke forsyningen alene), og der findes en konkret kombination af to nye løb og
+binder, ikke forsyningen alene), og der findes en konkret kombination af tre nye løb og
 en reservations-ændring der bringer alle fire divisioner i mål uden at nogen mister sin
 enkeltstart og uden at nogen anden regel går fra grøn til rød.
