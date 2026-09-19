@@ -132,6 +132,38 @@ test("PUT /races/selection/bulk er registreret FØR /races/:raceId/selection/aut
   assert.ok(bulkIdx < autoIdx, "bulk-ruten skal registreres FØR /races/:raceId/selection/auto");
 });
 
+// ── #5405: sæson-gaten ligger i den DELTE funktion, ikke i ruterne ────────────────────
+//
+// Adfærden (aktiv sæson uændret, 'upcoming'/ukendt sæson afvist med
+// selection_season_not_active, fail-closed) er bevist med kørende tests i
+// raceSelection.test.js. Her låses kun det der KAN ses i rute-kilden: at ingen af de to
+// endpoints har sin egen sæson-kopi der kan divergere, og at bulk-vejen navngiver det
+// afviste løb — ellers ville et løb i en kommende sæson vælte hele "Gem plan" uden at
+// spilleren kunne se hvilken celle der var problemet.
+function singleHandlerBlock() {
+  const idx = apiSource.indexOf('router.put("/races/:raceId/selection"');
+  assert.ok(idx !== -1, "PUT /races/:raceId/selection skal findes");
+  const next = apiSource.indexOf("\nrouter.", idx + 1);
+  return apiSource.slice(idx, next === -1 ? idx + 8000 : next);
+}
+
+test("ingen af udtagelses-endpointene slår sæsonen op selv — gaten arves fra prepareSelectionChange (#5405)", () => {
+  for (const [name, block] of [["single", singleHandlerBlock()], ["bulk", handlerBlock()]]) {
+    assert.match(block, /prepareSelectionChange\(\{/, `${name}: skal kalde den delte validering`);
+    assert.doesNotMatch(
+      block,
+      /from\("seasons"\)/,
+      `${name}: må ikke have sin egen sæson-opslag — så kan de to veje divergere (#5405)`
+    );
+  }
+});
+
+test("PUT /races/selection/bulk navngiver et afvist løb med race_id og bruger prepareSelectionChange's egen status (#5405)", () => {
+  const block = handlerBlock();
+  assert.match(block, /res\.status\(result\.status\)/, "status skal komme fra den delte validering, ikke en hardkodet kode");
+  assert.match(block, /race_id:\s*change\.raceId/, "det afviste løb skal navngives i svaret");
+});
+
 test("raceSelection.js eksporterer prepareSelectionChange + saveSelectionBulk + classifyBulkSelectionConflicts + roleFor", () => {
   assert.match(
     apiSource,

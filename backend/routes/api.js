@@ -5248,6 +5248,11 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // #1146: pulje-binding, body-shape, frys (#1825, begge retninger siden #4534) og
     // validateSelection er udtrukket til prepareSelectionChange (raceSelection.js), delt
     // med bulk-endpointet (PUT /races/selection/bulk) længere nede, samme regler begge veje.
+    // #5405: samme funktion bærer nu også sæson-gaten (409 selection_season_not_active) —
+    // race.season_id slås op og skal være en AKTIV sæson. Uden den kunne en manager gemme
+    // en trup i næste sæsons løb, så snart de er materialiseret (de har status 'scheduled'
+    // og 0 kørte etaper og slipper derfor gennem alle de øvrige gates). Gaten ligger i
+    // den DELTE funktion, ikke her, så bulk-vejen ikke kan divergere fra den.
     // #2376: free_role_ids accepteres UANSET race_engine_v3_scoring-flagets tilstand —
     // gemmes blot (harmløst; motor-ADFÆRD er v3-gated i raceSimulator.buildTeamContext,
     // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
@@ -5426,9 +5431,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       return res.status(409).json({ error: "selection_withdrawn", race_id: withdrawnRows[0].race_id });
     }
 
-    // Pas 1: pr.-løb-validering (samme prepareSelectionChange som single-endpointet) +
-    // indlæs hvert løbs binding-vindue/andre-løb. INGEN DB-SKRIVNING her — fejler ÉN
-    // ændring, afvises HELE kaldet uden at røre race_entries (alt-eller-intet er dermed
+    // Pas 1: pr.-løb-validering (samme prepareSelectionChange som single-endpointet, incl.
+    // #5405's sæson-gate: et løb i en KOMMENDE sæson afvises med 409
+    // selection_season_not_active og navngives med sit race_id, præcis som enhver anden
+    // pr.-løb-afvisning i dette pas) + indlæs hvert løbs binding-vindue/andre-løb. INGEN
+    // DB-SKRIVNING her — fejler ÉN ændring, afvises HELE kaldet uden at røre race_entries
+    // (samme alt-eller-intet-kontrakt som for alle andre afviste løb; dermed
     // allerede garanteret af selve rute-laget; RPC'ens deferred constraint-tjek
     // nedenfor er kun et backstop mod en SAMTIDIG skriver fra en anden session).
     const batchRaceIds = new Set(raceIds);
