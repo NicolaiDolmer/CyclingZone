@@ -2908,7 +2908,10 @@ router.get("/training/me", requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/training/run-today — dagens ét-kliks-træning (#1305). Manager = +25 % bonus.
+// POST /api/training/run-today — dagens ét-kliks-træning (#1305).
+// #4847 B3 (ejer-go 6/9): manager-klik gav TIDLIGERE +25 % bonus — fjernet.
+// Alle hold trænes nu ens, uanset om manageren selv klikker eller assistenten
+// kører sweepen; klikket her betyder blot "kør nu i stedet for i aften".
 // Idempotent: samme dag → 409 already_trained_today. Flag OFF → 409 daily_training_disabled.
 // NB (#1479): SKAL stå FØR POST /training/:riderId — ellers matcher Express den
 // statiske "run-today"-sti som et :riderId, kalder isValidFocus(undefined) og
