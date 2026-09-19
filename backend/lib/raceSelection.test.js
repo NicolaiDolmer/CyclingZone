@@ -1,7 +1,7 @@
 // backend/lib/raceSelection.test.js
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSelection, buildRiderRows, getSelectionContext, saveSelection, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts } from "./raceSelection.js";
+import { validateSelection, buildRiderRows, getSelectionContext, saveSelection, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, seasonAllowsSelectionWrites, loadRaceSeasonStatus } from "./raceSelection.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 
 // Ejer 28/6 (afløser #1906): delvis trup tilladt — kun OVER feltstørrelsen afvises.
@@ -149,6 +149,13 @@ test("saveSelection: et igangværende løb afvises med race_lineup_frozen", asyn
   );
 });
 
+// #5405: sæson-gaten er fail-closed — hvert prepareSelectionChange-kald der når HELE vejen
+// igennem skal derfor pege på en sæson-række med status 'active'. De to konstanter gør det
+// eksplicit i hver test, i stedet for at stubben tavst antager en aktiv sæson (så ville
+// gaten ikke være dækket af netop de tests der beviser at aktive sæsoner er UÆNDREDE).
+const ACTIVE_SEASON_ID = "season-active";
+const ACTIVE_SEASONS = [{ id: ACTIVE_SEASON_ID, status: "active" }];
+
 // #1146 — prepareSelectionChange: fælles pr.-løb-validering udtrukket af PUT /:raceId/
 // selection, genbrugt af BÅDE single- og bulk-endpointet (PUT /races/selection/bulk).
 // Genbruger makeSelectionSupabase (funktionserklæring, hoisted i modulet — defineret
@@ -159,8 +166,9 @@ test("prepareSelectionChange: gyldig ændring passerer og returnerer riderIds/ct
   const state = {
     riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
     race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: ACTIVE_SEASONS,
   };
-  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
   const result = await prepareSelectionChange({
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" },
@@ -204,8 +212,9 @@ test("prepareSelectionChange: for stor trup afvises med 400 selection_wrong_size
   const state = {
     riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
     race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: ACTIVE_SEASONS,
   };
-  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
   const result = await prepareSelectionChange({
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" },
@@ -222,8 +231,9 @@ test("prepareSelectionChange: rolle-reference uden for truppen afvises med 400 s
   const state = {
     riders: [...ids, "r9"].map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
     race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: ACTIVE_SEASONS,
   };
-  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
   const result = await prepareSelectionChange({
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1", sprint_captain_id: "r9" },
@@ -267,6 +277,153 @@ test("prepareSelectionChange: frosset løb afviser BÅDE tilføjelse/uændret tr
     body: { rider_ids: [], captain_id: null }, // tøm hele truppen — den groveste fjernelse
   });
   assert.deepEqual(blockedClear, { ok: false, status: 409, error: "selection_race_started" });
+});
+
+// ── #5405: udtagelse må kun skrives i den AKTIVE sæsons løb ──────────────────────────
+//
+// Hullet: en pre-oprettet kommende sæsons løb materialiseres med status 'scheduled' og
+// stages_completed = 0, dvs. præcis de værdier de øvrige gates accepterer. Var holdets
+// nuværende pulje-id tilfældigvis det samme som løbets, kunne en manager gemme en trup i
+// næste sæsons løb, så snart de fandtes. Testene nedenfor dækker begge retninger: en aktiv
+// sæson opfører sig UÆNDRET, alt andet (inkl. "sæsonen findes ikke") afvises.
+test("seasonAllowsSelectionWrites: KUN 'active' tillader skrivning (fail-closed, #5405)", () => {
+  assert.equal(seasonAllowsSelectionWrites("active"), true);
+  assert.equal(seasonAllowsSelectionWrites("upcoming"), false);
+  assert.equal(seasonAllowsSelectionWrites("completed"), false);
+  // Fail-closed er hele forskellen fra plannerBoard's teamDivisionKnownForSeason, som er
+  // en LÆSE-diskriminator og bevidst fail-open (`status !== "upcoming"` → null/undefined
+  // tæller som afgjort). En SKRIVE-gate må aldrig arve den antagelse.
+  assert.equal(seasonAllowsSelectionWrites(null), false);
+  assert.equal(seasonAllowsSelectionWrites(undefined), false);
+  assert.equal(seasonAllowsSelectionWrites(""), false);
+});
+
+test("loadRaceSeasonStatus: manglende season_id slår slet ikke op (null → kalderen afviser)", async () => {
+  let queried = false;
+  const supabase = { from: () => { queried = true; throw new Error("må ikke slå op uden season_id"); } };
+  assert.equal(await loadRaceSeasonStatus({ supabase, seasonId: null }), null);
+  assert.equal(queried, false);
+});
+
+test("loadRaceSeasonStatus: en DB-fejl kaster (degraderer ALDRIG til 'så skriver vi bare')", async () => {
+  const supabase = {
+    from: () => ({
+      select() { return this; },
+      eq() { return this; },
+      maybeSingle: () => Promise.resolve({ data: null, error: { message: "connection reset" } }),
+    }),
+  };
+  await assert.rejects(
+    () => loadRaceSeasonStatus({ supabase, seasonId: "s1" }),
+    (err) => /connection reset/.test(err.message)
+  );
+});
+
+// Aktiv sæson = ingen adfærdsændring. Samme input som "gyldig ændring passerer" ovenfor,
+// men her er pointen eksplicit sæsonen: gaten må ikke koste noget i dagens drift.
+test("prepareSelectionChange: AKTIV sæson → uændret, udtagelsen passerer som før (#5405)", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: [{ id: "s3", status: "active" }, { id: "s4", status: "upcoming" }],
+  };
+  const race = { id: "race-s3", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s3" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.riderIds, ids);
+});
+
+// Selve hullet: SAMME hold, SAMME pulje, et løb der er 'scheduled' med 0 kørte etaper —
+// kun sæsonen er en anden. Før #5405 blev denne udtagelse gemt.
+test("prepareSelectionChange: løb i en KOMMENDE sæson afvises med 409 selection_season_not_active (#5405)", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: [{ id: "s3", status: "active" }, { id: "s4", status: "upcoming" }],
+  };
+  const race = { id: "race-s4", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s4" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" },
+  });
+  assert.deepEqual(result, { ok: false, status: 409, error: "selection_season_not_active" });
+});
+
+test("prepareSelectionChange: sæson-rækken findes ikke → afvist (fail-closed, #5405)", async () => {
+  const state = {
+    riders: [], race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: [{ id: "s3", status: "active" }],
+  };
+  const race = { id: "race-x", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s-ukendt" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId: "t1", teamDivisionId: "d1", body: { rider_ids: [], captain_id: null },
+  });
+  assert.deepEqual(result, { ok: false, status: 409, error: "selection_season_not_active" });
+});
+
+test("prepareSelectionChange: løb uden season_id → afvist (fail-closed, #5405)", async () => {
+  const state = {
+    riders: [], race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: [{ id: "s3", status: "active" }],
+  };
+  const race = { id: "race-x", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId: "t1", teamDivisionId: "d1", body: { rider_ids: [], captain_id: null },
+  });
+  assert.deepEqual(result, { ok: false, status: 409, error: "selection_season_not_active" });
+});
+
+// Afvisningen skal være BILLIG: den ligger efter de rene tjek, men FØR roster-opslagene,
+// så et løb i en kommende sæson aldrig koster getSelectionContext's fem forespørgsler.
+test("prepareSelectionChange: en kommende sæson afvises UDEN at hente roster/entries (#5405)", async () => {
+  const state = {
+    riders: [], race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: [{ id: "s4", status: "upcoming" }],
+  };
+  const inner = makeSelectionSupabase(state);
+  const tables = [];
+  const supabase = { from: (t) => { tables.push(t); return inner.from(t); } };
+  const race = { id: "race-s4", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s4" };
+  const result = await prepareSelectionChange({
+    supabase, race, teamId: "t1", teamDivisionId: "d1", body: { rider_ids: [], captain_id: null },
+  });
+  assert.equal(result.error, "selection_season_not_active");
+  assert.deepEqual(tables, ["seasons"], "kun sæson-opslaget må være kørt");
+});
+
+// Bulk-vejen (PUT /races/selection/bulk) genbruger PRÆCIS denne funktion pr. løb, ét ad
+// gangen. Denne test kører løkken som ruten gør: løbet i den aktive sæson er lovligt, det
+// i den kommende sæson afvises med sin egen kode og kan navngives med sit race_id —
+// samme form som enhver anden pr.-løb-afvisning i bulk-passet.
+test("prepareSelectionChange: blandet bulk-input — aktivt løb OK, kommende sæsons løb afvist pr. løb (#5405)", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: [{ id: "s3", status: "active" }, { id: "s4", status: "upcoming" }],
+  };
+  const supabase = makeSelectionSupabase(state);
+  const races = [
+    { id: "race-s3", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s3" },
+    { id: "race-s4", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s4" },
+  ];
+  const results = [];
+  for (const race of races) {
+    const r = await prepareSelectionChange({
+      supabase, race, teamId, teamDivisionId: "d1", body: { rider_ids: ids, captain_id: "r1" },
+    });
+    results.push({ raceId: race.id, ok: r.ok, error: r.error ?? null, status: r.status ?? null });
+  }
+  assert.deepEqual(results[0], { raceId: "race-s3", ok: true, error: null, status: null });
+  assert.deepEqual(results[1], { raceId: "race-s4", ok: false, error: "selection_season_not_active", status: 409 });
 });
 
 // #1146 — saveSelectionBulk: atomisk RPC-kald for HELE batchen. Den ægte alt-eller-intet-
@@ -451,9 +608,17 @@ function makeSelectionSupabase(state) {
       or() { f.orRetired = true; return b; },
       is(col, val) { f.is[col] = val; return b; },
       order() { return b; },
+      // #5405: sæson-opslaget (loadRaceSeasonStatus) er det eneste .maybeSingle() i
+      // raceSelection.js. Stubben spejler PostgREST: ingen række → { data: null }, ikke
+      // en fejl — så testen for "sæsonen findes ikke" rammer den ægte fail-closed-sti.
+      maybeSingle() {
+        return b.then((res) => ({ data: res.data?.[0] ?? null, error: res.error }));
+      },
       then(resolve, reject) {
         let rows = state[table] || [];
-        if (table === "riders") {
+        if (table === "seasons") {
+          rows = rows.filter((s) => f.eqs.id === undefined || s.id === f.eqs.id);
+        } else if (table === "riders") {
           rows = rows.filter((r) =>
             (f.eqs.team_id === undefined || r.team_id === f.eqs.team_id) &&
             (f.eqs.is_academy === undefined || r.is_academy === f.eqs.is_academy) &&
@@ -545,9 +710,10 @@ test("prepareSelectionChange: en udgående rytter kan ikke udtages til et nyt l�
     race_entries: [],
     rider_derived_abilities: ["r1", "r2", "r3", "r4", "r5"].map((id) => ({ rider_id: id, climbing: 50, sprint: 50, aggression: 40 })),
     rider_condition: [],
+    seasons: ACTIVE_SEASONS,
   };
   const supabase = makeSelectionSupabase(state);
-  const race = { id: "race2", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const race = { id: "race2", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
   const out = await prepareSelectionChange({
     supabase, race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ["r1", "sold-pending"], captain_id: "r1" },
