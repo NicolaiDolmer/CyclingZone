@@ -542,6 +542,7 @@
       "selection_duplicate_rider": "Each rider can only be selected once.",
       "selection_race_not_open": "Selection is closed for this race.",
       "selection_race_started": "This race has started, so the lineup is locked.",
+      "selection_season_not_active": "This race belongs to a season that has not started yet.",
       "selection_rider_bound": "This rider is already racing in an overlapping race.",
       "selection_rider_bound_named": "{rider} is already racing {race}, which overlaps. Remove them there, or pick someone else.",
       "selection_flag_disabled": "Team selection isn't active yet.",
