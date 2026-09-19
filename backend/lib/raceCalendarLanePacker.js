@@ -754,7 +754,15 @@ function layoutContiguous({
   const dateOfGameDay = padding.dateOfGameDay;
   const G = dateOfGameDay.length;
   const mapG = padding.mapG;
-  const placeringer = loest.placeringer.map((pl) => ({ ...pl, g0: mapG[pl.g0] }));
+  // HVERT fodaftryks-trin mappes for sig, ikke kun starten. Under maade A ligger de
+  // indsatte dage uden for alle spaend, saa `mapG[g0 + k] === mapG[g0] + k` og de to veje er
+  // identiske. Under maade B kan en traeningsdag ligge INDE i spaendet, og saa er `g0 + k`
+  // forkert: etaperne ville blive skubbet ud paa de forkerte loebsdage (og dermed de
+  // forkerte kalenderdatoer). MAALT foer fixet: D1's loebsdage MED loeb gik fra 80 til 98,
+  // etaper pr. dato fra 5-5 til 1-11, og D2 fik to kalenderdatoer helt uden loeb (§2).
+  const placeringer = loest.placeringer.map((pl) => ({
+    ...pl, g0: mapG[pl.g0], gDays: pl.fp.map((_, k) => mapG[pl.g0 + k]),
+  }));
   const raceDayTargetHeld = maal > 0 && G === maal;
 
   // Identiteterne paasaettes i fase-raekkefoelge inden for hver fodaftryks-klasse, saa et
@@ -776,24 +784,26 @@ function layoutContiguous({
 
   const placementsById = new Map();
   for (const gruppe of grupper.values()) {
-    const slots = gruppe.map((pl) => pl.g0).sort((a, b) => a - b);
+    // Slottet er hele placeringen (start OG hvert fodaftryks-trin), ikke kun startdagen.
+    const slots = [...gruppe].sort((a, b) => a.g0 - b.g0);
     const iOrden = orderByPhase(gruppe.map((pl) => pl.race)) ?? gruppe.map((pl) => pl.race).sort(byBigThenId);
     iOrden.forEach((race, idx) => {
-      const g0 = slots[idx];
-      const fp = gruppe[0].fp;
+      const slot = slots[idx];
+      const fp = slot.fp;
       const p = {
         id: race.id,
         type: lenOf(race) > 1 ? "stage_race" : "single",
         race_class: race.race_class ?? null,
         stages: lenOf(race),
-        startRealDay: dateOfGameDay[g0],
+        startRealDay: dateOfGameDay[slot.gDays[0]],
         stagesPlaced: [],
       };
       let etape = 0;
       fp.forEach((erEtape, k) => {
         if (!erEtape) return; // hviledag: loebsdagen er optaget, men der koeres ikke
         etape += 1;
-        p.stagesPlaced.push({ stage_number: etape, real_day: dateOfGameDay[g0 + k], game_day: g0 + k, lane: 0 });
+        const g = slot.gDays[k];
+        p.stagesPlaced.push({ stage_number: etape, real_day: dateOfGameDay[g], game_day: g, lane: 0 });
       });
       placementsById.set(race.id, p);
     });
