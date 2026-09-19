@@ -45,6 +45,20 @@ export const PATCHES = [
           "body": "Hvad er ændret: Dagens etaper dukkede før op et øjeblik efter resten af dashboardet og skubbede alt ned, mens du læste. Pladsen er nu reserveret fra start, så siden står stille."
         },
         "refs": [5389]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Text stays inside its box on a phone",
+          "body": "What changed: On a phone, the line under a rider's name in the rider database and the academy ran out of its column and in under the numbers next to it. It now stays in its own column and wraps to a new line, and the name is shown in short form, like on the training page. Long forum titles can be read in full without opening the thread. A Danish word on the board card is fixed. From now on an automatic check looks for text that spills out of its box before I ship."
+        },
+        "da": {
+          "title": "Teksten bliver i sin boks på telefonen",
+          "body": "Hvad er ændret: På en telefon løb linjen under rytterens navn i rytterdatabasen og akademiet ud over sin kolonne og ind under tallene ved siden af. Nu bliver den i sin egen kolonne og bryder til en ny linje, og navnet står i kort form, som på træningssiden. Lange forumtitler kan læses helt uden at åbne tråden. Et dansk ord på bestyrelseskortet er rettet: \"Overget\" hedder nu \"Overgået\". Fremover leder en automatisk kontrol efter tekst, der stikker ud af sin boks, før jeg sender noget ud."
+        },
+        "refs": [5383]
       }
     ]
   },
