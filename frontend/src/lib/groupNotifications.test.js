@@ -2,8 +2,15 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { groupNotifications, aggregateKey, aggregateGroup } from "./groupNotifications.js";
 
-function notif({ id, type, related_id = null, is_read = false, created_at, message = "msg", title = "t" }) {
-  return { id, type, related_id, is_read, created_at, message, title };
+function notif({ id, type, related_id = null, is_read = false, created_at, message = "msg", title = "t", metadata = null }) {
+  return { id, type, related_id, is_read, created_at, message, title, metadata };
+}
+
+// #5384-followup: præcis den metadata-form backenden faktisk skriver —
+// notificationService.js (race_result/stage_result) og careerFirsts.js
+// (career_milestone) lægger begge løbsnavnet i messageParams.race.
+function withRace(race, extra = {}) {
+  return { raceId: "race-1", messageParams: { race, ...extra } };
 }
 
 test("groupNotifications — tom liste giver tom liste", () => {
@@ -342,8 +349,12 @@ test("groupNotifications — race_result og career_milestone for SAMME løb saml
   assert.equal(result[0].kind, "aggregate");
   assert.equal(result[0].group, "race_completed");
   assert.equal(result[0].count, 2);
-  // career_milestone er nyeste (14:00:05) og bestemmer gruppens vist tekst.
-  assert.equal(result[0].type, "career_milestone");
+  // #5384-followup (ejer 19/9): career_milestone er nyeste (14:00:05), men
+  // ansigtet er RESULTATET — linjen handler om løbet, ikke om at en milepæl
+  // tilfældigvis blev skrevet fem sekunder senere.
+  assert.equal(result[0].type, "race_result");
+  assert.equal(result[0].sample_title, "Race result is in");
+  assert.deepEqual(result[0].extra_items.map((i) => i.id), ["cm1"]);
   assert.deepEqual(result[0].type_counts, { career_milestone: 1, race_result: 1 });
 });
 
@@ -414,7 +425,9 @@ test("groupNotifications — sidste etapes race_result + career_milestone SAMME 
   assert.equal(result.length, 3, "2 separate etape-dage + 1 samlet slutdags-aggregat");
   const finalDay = result.find((r) => r.kind === "aggregate");
   assert.equal(finalDay.count, 2);
-  assert.equal(finalDay.type, "career_milestone");
+  // #5384-followup (ejer 19/9): ansigtet er RESULTATET, ikke den nyeste
+  // besked — derfor race_result her, selvom milepælen kom 5 sekunder senere.
+  assert.equal(finalDay.type, "race_result");
   const singles = result.filter((r) => r.kind === "single");
   assert.equal(singles.length, 2);
   assert.deepEqual(singles.map((r) => r.notification.id).sort(), ["s1", "s2"]);
@@ -444,4 +457,118 @@ test("groupNotifications — bid_received blandes ikke ind i bud-bøtten", () =>
   assert.equal(result.length, 2);
   assert.equal(result.find((r) => r.group === "bid_received").count, 2);
   assert.equal(result.find((r) => r.group === "auction_bidding").count, 2);
+});
+
+// ── #5384-followup (ejer 19/9, "ret titlen først") ───────────────────────────
+// Bøtten race_completed brugte den NYESTE besked som ansigt. Fordi milepælen
+// skrives få sekunder efter resultatet, hed linjen "Maiden win (×2)" med
+// teksten om ÉN rytters første sejr — læsbart som to første sejre, og løbet
+// (det der faktisk skete) var helt væk. Ansigtet skal være løbet.
+
+test("groupNotifications — race_completed: resultatet er ansigtet, selvom milepælen er nyest", () => {
+  const input = [
+    notif({
+      id: "rr", type: "race_result", related_id: "race-1",
+      created_at: "2026-09-19T14:00:00Z",
+      title: "Race result is in", message: "Amstel Classic has been run. View the result.",
+      metadata: withRace("Amstel Classic"),
+    }),
+    notif({
+      id: "cm", type: "career_milestone", related_id: "race-1",
+      created_at: "2026-09-19T14:00:05Z",
+      title: "Maiden win", message: "Lars Vermeulen won for the first time in Amstel Classic.",
+      metadata: withRace("Amstel Classic", { rider: "Lars Vermeulen" }),
+    }),
+  ];
+  const [entry] = groupNotifications(input);
+  assert.equal(entry.kind, "aggregate");
+  assert.equal(entry.type, "race_result", "ikon/farve følger resultatet, ikke milepælen");
+  assert.equal(entry.sample_title, "Race result is in");
+  assert.equal(entry.sample_message, "Amstel Classic has been run. View the result.");
+  assert.equal(entry.sample_metadata.messageParams.race, "Amstel Classic");
+  assert.equal(entry.race_name, "Amstel Classic", "titlen bygges på struktureret data, ikke på fritekst");
+});
+
+test("groupNotifications — race_completed: hver milepæl bliver sin egen ekstra linje", () => {
+  const input = [
+    notif({
+      id: "rr", type: "race_result", related_id: "race-1", created_at: "2026-09-19T14:00:00Z",
+      message: "Amstel Classic has been run.", metadata: withRace("Amstel Classic"),
+    }),
+    notif({
+      id: "cm1", type: "career_milestone", related_id: "race-1", created_at: "2026-09-19T14:00:05Z",
+      message: "Lars Vermeulen won for the first time in Amstel Classic.",
+      metadata: withRace("Amstel Classic"),
+    }),
+    notif({
+      id: "cm2", type: "career_milestone", related_id: "race-1", created_at: "2026-09-19T14:00:07Z",
+      message: "Ada Pedersen reached their first career podium: Amstel Classic.",
+      metadata: withRace("Amstel Classic"),
+    }),
+  ];
+  const [entry] = groupNotifications(input);
+  assert.equal(entry.type, "race_result");
+  assert.deepEqual(
+    entry.extra_items.map((i) => i.id),
+    ["cm2", "cm1"],
+    "begge milepæle vises som egne linjer, nyeste først — ingen (×N) der skjuler den ene",
+  );
+  assert.equal(entry.count, 3, "count bevares i datalaget; det er SIDEN der ikke viser tælleren");
+});
+
+test("groupNotifications — race_completed uden struktureret løbsnavn (narrativ besked) falder tilbage til resultatets egen titel", () => {
+  const input = [
+    notif({
+      id: "rr", type: "race_result", related_id: "race-1", created_at: "2026-09-19T14:00:00Z",
+      title: "Krogh takes the sprint", message: "Amstel Classic has been run. You placed 2nd.",
+      // #3399-narrativ-grenen: metadata bærer INTET messageParams.race.
+      metadata: { raceId: "race-1", narrative: true },
+    }),
+    notif({
+      id: "cm", type: "career_milestone", related_id: "race-1", created_at: "2026-09-19T14:00:05Z",
+      title: "Maiden win", message: "Lars Vermeulen won for the first time.",
+      metadata: { raceId: "race-1", riderId: "r-1", messageParams: { rider: "Lars Vermeulen", count: 50 } },
+    }),
+  ];
+  const [entry] = groupNotifications(input);
+  assert.equal(entry.race_name, null, "aldrig et navn parset ud af fritekst-beskeden");
+  assert.equal(entry.type, "race_result");
+  assert.equal(entry.sample_title, "Krogh takes the sprint", "resultatets egen titel bliver ansigtet");
+  assert.deepEqual(entry.extra_items.map((i) => i.id), ["cm"]);
+});
+
+test("groupNotifications — race_completed med KUN milepæle bruger nyeste milepæl som ansigt og resten som ekstra linjer", () => {
+  const input = [
+    notif({
+      id: "cm1", type: "career_milestone", related_id: "race-1", created_at: "2026-09-19T14:00:00Z",
+      title: "First podium", message: "Ada Pedersen reached their first career podium: Amstel Classic.",
+      metadata: withRace("Amstel Classic"),
+    }),
+    notif({
+      id: "cm2", type: "career_milestone", related_id: "race-1", created_at: "2026-09-19T14:00:05Z",
+      title: "Maiden win", message: "Lars Vermeulen won for the first time in Amstel Classic.",
+      metadata: withRace("Amstel Classic"),
+    }),
+  ];
+  const [entry] = groupNotifications(input);
+  assert.equal(entry.type, "career_milestone");
+  assert.equal(entry.sample_title, "Maiden win", "nyeste milepæl er ansigtet når intet resultat findes");
+  assert.equal(
+    entry.race_name, null,
+    '"<løb>: resultatet er klar" må ikke stå over en linje hvor intet resultat er kommet ind',
+  );
+  assert.deepEqual(entry.extra_items.map((i) => i.id), ["cm1"]);
+});
+
+test("groupNotifications — auktions-bøtter er uændrede: nyeste besked som ansigt, ingen ekstra linjer", () => {
+  const input = [
+    notif({ id: "o1", type: "auction_outbid", related_id: "auc-A", created_at: "2026-09-19T10:00:00Z", title: "Outbid" }),
+    notif({ id: "p1", type: "auction_proxy_outbid", related_id: "auc-A", created_at: "2026-09-19T11:00:00Z", title: "Autobid held" }),
+  ];
+  const [entry] = groupNotifications(input);
+  assert.equal(entry.group, "auction_bidding");
+  assert.equal(entry.type, "auction_proxy_outbid", "#4981: den nyeste beskeds type styrer stadig auktions-linjen");
+  assert.equal(entry.sample_title, "Autobid held");
+  assert.equal(entry.race_name, null);
+  assert.deepEqual(entry.extra_items, []);
 });

@@ -48,6 +48,7 @@
   },
   "aggregate": {
     "countSuffix": "(×{count})",
+    "raceResultTitle": "{race}: resultatet er klar",
     "firstLatest": "Først {first} · Senest {latest}",
     "lostLeadShare": "Heraf {count} hvor du mistede føringen",
     "expand": "Udvid",

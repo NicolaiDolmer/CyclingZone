@@ -43,6 +43,28 @@ const AGGREGATE_GROUPS = {
 // bid_received skal fortsat aggregere på tværs af dage indtil terminator.
 const DAY_SCOPED_GROUPS = new Set(["race_completed"]);
 
+// #5384-followup (ejer 19/9, "ret titlen først"): en race_completed-bøtte må
+// IKKE bruge den nyeste besked som ansigt. Gjorde den det, hed linjen "Maiden
+// win (×2)" med teksten om ÉN rytters første sejr — læsbart som to første
+// sejre, og løbet (det der faktisk skete) forsvandt helt. Ansigtet er derfor
+// RESULTATET når bøtten har et; milepælene vises som ekstra linjer under.
+const RESULT_TYPES = new Set(["race_result", "stage_result"]);
+
+/**
+ * Løbets navn som STRUKTURERET data, aldrig parset ud af fritekst.
+ *
+ * Alle tre typer skriver det samme sted: notificationService.js sætter
+ * metadata.messageParams.race for race_result/stage_result, og careerFirsts.js
+ * gør det samme for career_milestone (buildNotificationCopy). To kendte
+ * undtagelser hvor feltet mangler helt og vi ærligt degraderer til resultat-
+ * beskedens egen titel: #3399-narrativ-grenen (metadata = { raceId, narrative:
+ * true }) og klub-milepælen (messageParams = { rider, count }).
+ */
+function structuredRaceName(notification) {
+  const race = notification?.metadata?.messageParams?.race;
+  return typeof race === "string" && race.trim() !== "" ? race.trim() : null;
+}
+
 function dayOf(createdAt) {
   if (!createdAt) return null;
   const d = new Date(createdAt);
@@ -122,6 +144,31 @@ export function groupNotifications(notifications) {
       // farve, titel og tekst altid beskriver den aktuelle tilstand — et reelt
       // tab af føringen må aldrig gemme sig bag en "du fører stadig"-tekst.
       // `type_counts` lader kalderen sige sandheden om resten af bøtten.
+      //
+      // #5384-followup: race_completed er undtagelsen. Dér er rækkefølgen i
+      // tid ligegyldig for hvad linjen HANDLER om — løbet er hændelsen, og
+      // milepælen er en konsekvens af det. Ansigtet er derfor det nyeste
+      // RESULTAT (race_result/stage_result) hvis bøtten har et; ellers (kun
+      // milepæle, fx en gen-finalisering hvor resultatbeskeden er slettet)
+      // falder vi tilbage til den nyeste milepæl, så linjen aldrig bliver tom.
+      const resultItem = agg.group === "race_completed"
+        ? sorted.find((i) => RESULT_TYPES.has(i.type))
+        : null;
+      const face = resultItem ?? latest;
+      // Milepælene ud over ansigtet — kalderen viser dem som dæmpede linjer
+      // UDEN at man skal folde ud, så "hvem gjorde hvad" ikke gemmer sig bag
+      // en pil. Identitets-sammenligning (ikke id), så helpers i test ikke
+      // behøver unikke id'er for at opføre sig som produktionsrækker.
+      const extraItems = agg.group === "race_completed"
+        ? sorted.filter((i) => i.type === "career_milestone" && i !== face)
+        : [];
+      // Sat KUN når bøtten har et resultat: "<løb>: resultatet er klar" må
+      // ikke stå over en linje hvor intet resultat er kommet ind endnu.
+      // Navnet tages fra resultatet selv, ellers fra en vilkårlig anden
+      // besked i bøtten (milepælen bærer samme race-param).
+      const raceName = resultItem
+        ? (structuredRaceName(resultItem) ?? sorted.map(structuredRaceName).find(Boolean) ?? null)
+        : null;
       const typeCounts = {};
       for (const item of sorted) {
         typeCounts[item.type] = (typeCounts[item.type] ?? 0) + 1;
@@ -130,7 +177,7 @@ export function groupNotifications(notifications) {
         kind: "aggregate",
         key: aggregateKey(agg.group, agg.related_id, agg.day),
         group: agg.group,
-        type: latest.type,
+        type: face.type,
         type_counts: typeCounts,
         related_id: agg.related_id,
         items: sorted,
@@ -138,11 +185,17 @@ export function groupNotifications(notifications) {
         latest_at: latest.created_at,
         earliest_at: earliest.created_at,
         any_unread: sorted.some((i) => !i.is_read),
-        sample_title: latest.title,
-        sample_message: latest.message,
+        sample_title: face.title,
+        sample_message: face.message,
         // #666: carry metadata so aggregate-rendering can use i18n via
         // renderBackendMessage. Falls back to title/message if absent.
-        sample_metadata: latest.metadata ?? null,
+        sample_metadata: face.metadata ?? null,
+        // #5384-followup: løbsnavnet (struktureret) når linjens overskrift skal
+        // være LØBET, og de milepæls-beskeder der vises som ekstra linjer.
+        // Begge er tomme/null for alle andre bøtter, så kalderen kan rendere
+        // ensartet uden at kende bøtte-tabellen.
+        race_name: raceName,
+        extra_items: extraItems,
       });
     }
   }
