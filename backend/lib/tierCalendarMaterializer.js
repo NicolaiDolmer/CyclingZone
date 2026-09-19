@@ -249,6 +249,18 @@ export function buildTierMaterializationPlan({
   slots = TIER_STAGE_SLOTS,
   baseSeed = 1,
   forceTiers = [],
+  // #4845 (ejer 6/9): faelles antal loebsdage pr. saeson i ALLE divisioner. null = uaendret
+  // adfaerd (antallet er et soegeresultat pr. division, som foer #4845).
+  // #5267: maalet naas som EFTERBEHANDLING — den naturlige pakning beholdes, og de
+  // manglende loebsdage lae­gges som rene traeningsdage paa de positioner hvor intet loeb
+  // er i gang. Maalet flytter derfor ikke laengere et eneste loeb.
+  raceDayTarget = null,
+  // #5267: proevepakning af synkroniserede etapeloebs-blokke. Default FRA — se
+  // packLaneCalendar's docstring for den maalte grund (k skal gaa op i density).
+  syncStageBlocks = false,
+  // #5267 (ejer-kort 19/9): "holes" = maade A (default, uae­ndret) · "even" = maade B,
+  // hvor hver kalenderdato faar praecis maalet/datoer loebsdage. Se packLaneCalendar.
+  trainingDayPlacement = "holes",
   classWhitelist = TIER_CLASS_WHITELIST,
   // #3327/#3328 (2026-08-04): data-drevne dækningsmål — se tierCalendarGuarantees.js.
   // Sendes videre til selectTierRaceSet, som selv falder tilbage til FØR-#3327-adfærd
@@ -398,10 +410,22 @@ export function buildTierMaterializationPlan({
     const isCobbledClassic = (r) => catalogById.get(r.id)?.terrain_archetype === "cobbled_classic"
       && r.race_class !== "Monuments";
     const enrichedOneDayRaces = reshapeCobblesFractionToTwoWindows(withSeasonFraction(sel.oneDayRaces), isCobbledClassic);
-    const packed = packLaneCalendar({
+    const packArgs = {
       stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
       density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES,
+    };
+    // #5267: EEN pakning. Foer #5267 pakkede vi to gange - foerst naturligt for at MAALE
+    // aksen, saa igen med maalet som binding - fordi maalet aendrede selve soegningen.
+    // Det goer det ikke laengere: soegningen finder den naturlige pakning, og
+    // traeningsdagene lae­gges ovenpaa uden at flytte et loeb. Det naturlige antal
+    // loebsdage kommer nu fra pakkeren selv (`naturalRaceDays`).
+    const packed = packLaneCalendar({
+      ...packArgs, raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : 0,
+      syncStageBlocks: Boolean(syncStageBlocks),
+      trainingDayPlacement,
     });
+    const naturalRaceDays = packed.naturalRaceDays ?? packed.timelineLength ?? 0;
+    const raceDayDeficit = raceDayTarget != null ? Math.max(0, Number(raceDayTarget) - naturalRaceDays) : 0;
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
@@ -455,6 +479,32 @@ export function buildTierMaterializationPlan({
       load: packed.load, emptyDays: packed.emptyDays, underfilledDays: packed.underfilledDays,
       overlapDays: packed.overlapDays, maxOverlap: packed.maxOverlap,
       overlapHistogram: packed.overlapHistogram, timelineLength: packed.timelineLength,
+      // #4845: loebsdags-aksen pr. division — maalet, det naturlige antal, og hvad de
+      // tomme loebsdage er. `raceDayTarget` er null naar reglen ikke er slaaet til.
+      raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : null,
+      raceDayAxisLength: packed.timelineLength ?? 0,
+      naturalRaceDays,
+      raceDayDeficit,
+      trainingGameDays: packed.trainingGameDays ?? [],
+      // Kalenderdagen (real_day-indeks) hver traeningsdag hoerer til — en tom loebsdag har
+      // ingen raekke i stageRows, saa dens dato kan IKKE udledes af naboerne (§0's akse-
+      // faelde: den ville lande paa nabo-datoens baand).
+      trainingGameDayRealDays: packed.dateOfTrainingGameDay ?? [],
+      trainingGameDayCount: (packed.trainingGameDays ?? []).length,
+      restDayGameDayCount: (packed.restDayGameDays ?? []).length,
+      raceDayPaddingHeld: raceDayDeficit === 0 ? true : Boolean(packed.raceDayTargetHeld),
+      // #5267: synkroniserede etapeloebs-blokke + spredningen maalt paa BLOKKE.
+      syncStageBlocksHeld: Boolean(packed.syncStageBlocksHeld),
+      stageRaceBlocks: packed.stageRaceBlocks ?? 0,
+      syncedStageRaceBlocks: packed.syncedStageRaceBlocks ?? 0,
+      freeAxisPositions: packed.freeAxisPositions ?? 0,
+      longestDateStreakWithoutTraining: packed.longestDateStreakWithoutTraining ?? null,
+      // #5267 maade B: tilstanden, loebsdage pr. kalenderdato, og prisen (traeningsdage
+      // inde i et etapeloebs spaend). Rent rapporterings-data — dommen ligger i gates.
+      trainingDayPlacement: packed.trainingDayPlacement ?? "holes",
+      raceDaysPerDate: packed.raceDaysPerDate ?? [],
+      trainingDaysInsideStageRaceSpans: packed.trainingDaysInsideStageRaceSpans ?? 0,
+      raceDayPerDateDeviations: packed.raceDayPerDateDeviations ?? [],
       straddleGameDays: packed.straddleGameDays,
       gtRealDaySeparationViolations: packed.gtRealDaySeparationViolations ?? [], // #3472 v3
       // #3546 C: dage uden afgørelse: forward fra packLaneCalendar's diagnostik, samme
@@ -489,6 +539,17 @@ export async function materializeTierCalendars({
   // forkortet vindue) — se repair2276Div4Cascade.js. density overstyrer KUN når eksplicit
   // angivet; default TIER_DENSITY bruges ellers uændret (design-tæthederne må ikke røres).
   realDays = 28, quotas = TIER_GAME_DAY_QUOTA, density = TIER_DENSITY,
+  // #4845 (ejer 6/9): faelles antal loebsdage i alle fire divisioner. null = uae­ndret
+  // adfaerd. buildSeasonCalendar sender saesonens maal (SEASON_RACE_DAY_TARGET) eller
+  // --race-day-target; se calendarRaceDayTargets.js og docs/CALENDAR_RULES.md §1d.
+  raceDayTarget = null,
+  // #5267: proevepakning af synkroniserede etapeloebs-blokke (R13). Default FRA — den er
+  // MAALT strukturelt umulig i D1/D3/D4 (docs/audits/2026-09-19-5267-proevepakning.md §3).
+  // Parameteren findes saa kontakten er naaelig fra produktionsstien og ikke kun fra tests.
+  syncStageBlocks = false,
+  // #5267 maade B: "holes" (default, uae­ndret) eller "even". Samme begrundelse som
+  // ovenfor — kontakten skal vaere naaelig fra produktionsstien, ikke kun fra tests.
+  trainingDayPlacement = "holes",
   // #3327/#3328 pass-through til buildTierMaterializationPlan + dækningsverifikationen.
   // Defaults = de skarpe produktions-garantier. Tests af FØR-#3327-mekanik (GT-gate,
   // overlap-cap, kronologi, dedup) med små syntetiske katalog-fixtures kan sende tomme
@@ -594,7 +655,8 @@ export async function materializeTierCalendars({
   const plannedPools = tiers && tiers.length ? pools.filter((p) => targetTiers.has(p.tier)) : pools;
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
-    oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations,
+    oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
+    syncStageBlocks, trainingDayPlacement,
   });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 

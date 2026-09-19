@@ -68,6 +68,9 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { materializeTierCalendars, TIER_DENSITY } from "../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom, resolveSeasonWindow, SEASON_RACE_DAYS_DEFAULT } from "../lib/calendarStartDate.js";
+import {
+  SEASON_RACE_DAY_TARGET, resolveCommonRaceDayTarget, detectRaceDayEqualityViolations,
+} from "../lib/calendarRaceDayTargets.js";
 import { gatePlan } from "../lib/seasonCalendarGate.js";
 import { scoreCalendarPlan, formatScorecard, scorecardGateGroups } from "../lib/calendarScorecardReport.js";
 import { findNextSeason } from "../lib/seasonLookup.js";
@@ -85,6 +88,44 @@ export function seasonUuid(n) {
 // samme gate FØR den materialiserer med writes. Re-eksporteret uændret her, så CLI'en
 // nedenfor og eksisterende kaldere/tests af `./buildSeasonCalendar.js` er upåvirkede.
 export { gatePlan };
+
+/**
+ * #4845 §1d: hvor mange LØBSDAGE hver KALENDERDAG bærer — min/maks/snit.
+ *
+ * Aksens samlede længde siger intet om FORDELINGEN, og fordelingen er hele pointen når
+ * løbsdagen bliver trænings-ticket (#4846): 140 løbsdage jævnt fordelt er 5 ticks hver
+ * dag, mens 140 med 9 på nogle dage og 2 på andre er en helt anden spilfølelse. Tallet
+ * er også dét der viser hvor loftet sidder: en kalenderdato helt inde i et Grand Tours
+ * spænd kan kun bære MAX_GT_STAGES_PER_DAY løbsdage, fordi hver løbsdag i spændet bærer
+ * præcis én GT-etape.
+ *
+ * Måles på pulje 0 — alle puljer i en division har samme signatur (detectPoolSignature-
+ * Mismatch gater det) — plus de tomme løbsdages egne kalenderdage, som IKKE har en række
+ * i stageRows og derfor ikke kan udledes af naboerne (§0's akse-fælde).
+ */
+export function spreadLabel(tierPlan, days) {
+  const perDate = new Map();
+  const gameDaysByDate = new Map();
+  for (const s of tierPlan?.pools?.[0]?.stageRows ?? []) {
+    const dato = String(s.scheduled_at ?? "").slice(0, 10);
+    if (!dato) continue;
+    if (!gameDaysByDate.has(dato)) gameDaysByDate.set(dato, new Set());
+    gameDaysByDate.get(dato).add(s.game_day);
+  }
+  const datoer = [...gameDaysByDate.keys()].sort();
+  for (const [i, dato] of datoer.entries()) perDate.set(i, gameDaysByDate.get(dato).size);
+  for (const rd of tierPlan?.trainingGameDayRealDays ?? []) {
+    perDate.set(rd, (perDate.get(rd) ?? 0) + 1);
+  }
+  const antalDage = Math.max(1, Number(days) || datoer.length || 1);
+  // Slot-tiderne kunne i princippet krydse UTC-midnat og give flere dato-strenge end der
+  // er kalenderdage. Så er grupperingen forskudt, og et tal der ser rigtigt ud ville være
+  // forkert — sig det i stedet for at rapportere det.
+  if (datoer.length !== antalDage) return `løbsdage pr. kalenderdag: ikke målt (${datoer.length} datoer mod ${antalDage} kalenderdage)`;
+  const tal = Array.from({ length: antalDage }, (_, i) => perDate.get(i) ?? 0);
+  const sum = tal.reduce((a, b) => a + b, 0);
+  return `løbsdage pr. kalenderdag: ${Math.min(...tal)}–${Math.max(...tal)} (snit ${(sum / antalDage).toFixed(1)})`;
+}
 
 /** Kvoten pr. tier: density × løbsdatoer (CALENDAR_RULES.md §1b — den gyldige af de tre). */
 export function quotasForRaceDays(raceDays, density = TIER_DENSITY) {
@@ -123,6 +164,10 @@ if (isMain) {
   const lastDayArg = argOf("--last-day");
   const apply = process.argv.includes("--apply");
   const uniformTilt = process.argv.includes("--uniform-tilt");
+  // #4845: faelles antal loebsdage i alle fire divisioner. Uden flaget bruges saesonens
+  // eget maal (SEASON_RACE_DAY_TARGET); `--race-day-target 0` slaar reglen HELT fra, saa
+  // et dry-run kan vise foer-tilstanden side om side med efter-tilstanden.
+  const raceDayTargetArg = argOf("--race-day-target");
   const allowDrift = process.argv.includes("--allow-composition-drift");
   const allowTierDrift = process.argv.includes("--allow-tier-composition-drift");
   const allowFinaleDrift = process.argv.includes("--allow-finale-drift");
@@ -199,16 +244,86 @@ if (isMain) {
     const nextSeason = await findNextSeason({ supabase, currentNumber: seasonNumber - 1 });
     console.log(`  årsmødets næste-sæson-opslag (#4557): sæson ${nextSeason.number} ${nextSeason.found ? `findes (status=${nextSeason.season.status}) — mandater kan skrives` : "MANGLER — årsmødet springer alle hold over indtil rækken findes"}`);
 
+    // #4845 (ejer 6/9): maalet for antal loebsdage pr. division. Praecedens: eksplicit flag
+    // > saesonens eget maal. 0/"off" = reglen er slaaet fra (foer-tilstanden).
+    // En TASTEFEJL maa aldrig slaa gaten fra i tavshed: `Number("14O")` er NaN, og NaN
+    // faldt foer igennem til `null` = "reglen er slaaet fra". Et --apply kunne da skrive
+    // en skae­v kalender selv om gaten var taenkt som et haardt krav uden override.
+    // Derfor: kun et ikke-negativt HELTAL (eller "off") accepteres, alt andet stopper.
+    let raceDayTargetExplicit = null;
+    if (raceDayTargetArg != null) {
+      const raa = String(raceDayTargetArg).trim();
+      if (raa.toLowerCase() === "off") raceDayTargetExplicit = 0;
+      else if (/^\d+$/.test(raa)) raceDayTargetExplicit = Number(raa);
+      else throw new Error(`--race-day-target: "${raceDayTargetArg}" er hverken et ikke-negativt heltal eller "off". Kalenderen er IKKE bygget.`);
+    }
+    const raceDayTarget = raceDayTargetExplicit != null
+      ? (raceDayTargetExplicit > 0 ? raceDayTargetExplicit : null)
+      : (SEASON_RACE_DAY_TARGET[seasonNumber] ?? null);
+    console.log(`  §1d faelles loebsdage pr. division (#4845): ${raceDayTarget != null
+      ? `${raceDayTarget}${raceDayTargetExplicit != null ? " (--race-day-target)" : ` (saeson ${seasonNumber}'s maal)`}`
+      : "FRA — aksen er et soegeresultat pr. division, som foer #4845"}`);
+
     // 1) Planlæg (altid dry-run først — også når vi skal apply'e).
     const plan = await materializeTierCalendars({
       supabase, seasonId, seasonStartDate: firstRaceDay, from, dryRun: true, log: () => {},
-      realDays, quotas, useUniformTierTilt: uniformTilt,
+      realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget,
     });
     const { blocking, compositionDrift, tierCompositionDrift, report } = gatePlan(plan, { allowTierCompositionDrift: allowTierDrift });
 
     console.log(`\n── Plan ──`);
     for (const t of plan.tiers) {
       console.log(`  tier ${t.tier}: ${t.totalGameDays}/${t.quota} game-days · ${t.pools.length} pulje(r) · ${t.pools.reduce((s, p) => s + p.selected, 0)} løb i alt${t.realismDraw?.attempt ? ` · realisme-gen-træk ${t.realismDraw.attempt}` : ""}`);
+    }
+
+    // #4845 §1d: loebsdags-aksen pr. division — ER antallet ens, og hvad koster det?
+    // Ulighed er et HAARDT krav uden override naar maalet er sat (som §1b's kvote): en
+    // skae­v akse betyder forskellig udviklingstakt pr. division (#4846), og den kan ikke
+    // rettes bagefter — kalenderen genereres kun EEN gang pr. saeson (§2c).
+    const applyBlockingRaceDays = [];
+    const axisByTier = Object.fromEntries(
+      (plan.planTiers ?? []).map((t) => [t.tier, t.raceDayAxisLength ?? t.timelineLength ?? 0]),
+    );
+    const raceDayEquality = detectRaceDayEqualityViolations({ axisByTier, target: raceDayTarget });
+    console.log(`\n── §1d løbsdage pr. division (#4845) ──`);
+    for (const t of plan.planTiers ?? []) {
+      const akse = t.raceDayAxisLength ?? t.timelineLength ?? 0;
+      const medLoeb = akse - (t.trainingGameDayCount ?? 0) - (t.restDayGameDayCount ?? 0);
+      console.log(
+        `  D${t.tier}: ${String(akse).padStart(3)} løbsdage` +
+        ` (${medLoeb} med løb · ${t.trainingGameDayCount ?? 0} rene træningsdage · ${t.restDayGameDayCount ?? 0} GT-hviledage)` +
+        `${t.naturalRaceDays != null ? ` · uden reglen: ${t.naturalRaceDays}` : ""}` +
+        ` · ${spreadLabel(t, realDays)}` +
+        `${t.raceDayPaddingHeld === false ? "  ⚠ MÅLET BLEV IKKE NÅET" : ""}`,
+      );
+    }
+    if (raceDayTarget == null) {
+      // Uden et maal: sig hvad maalet SKULLE vaere for denne saeson, saa tallet ikke skal
+      // gaettes naar reglen slaas til. Det er den hoejeste divisions egne loebsdage —
+      // laveret kan ikke naas ved at tilfoeje tomme loebsdage (§1d).
+      //
+      // UDEN `season`: her staar vi kun naar maalet er FRA - enten fordi saesonen ingen
+      // har, eller fordi `--race-day-target 0` slog det fra. I det sidste tilfaelde ville
+      // saeson-opslaget give saesonens eget tal tilbage (S4: 140) og paastaa at alle fire
+      // divisioner VILLE have det - et tal vi netop ikke har maalt her. Forslaget skal
+      // komme fra det MAALTE, ikke fra den konstant brugeren lige bad os se bort fra.
+      const forslag = resolveCommonRaceDayTarget({ axisByTier });
+      if (forslag.target != null) {
+        console.log(`  forslag: --race-day-target ${forslag.target} (${forslag.source}) — så ville alle fire divisioner have ${forslag.target} løbsdage`);
+      }
+    }
+    if (raceDayEquality.length && raceDayTarget != null) {
+      console.error(`  ❌ §1d (#4845):`);
+      for (const v of raceDayEquality) console.error(`     · ${v}`);
+      applyBlockingRaceDays.push(...raceDayEquality);
+    } else if (raceDayEquality.length) {
+      // Maalet er ikke sat for denne saeson: uligheden RAPPORTERES (den er hele grunden
+      // til #4845), men den doemmes ikke — praecis som scorecardets "--" for §1d. Et roedt
+      // kryds for en regel der ikke er slaaet til ville laese som en regression.
+      console.log(`  -- §1d (#4845) er ikke slået til for sæson ${seasonNumber} — målt ulighed:`);
+      for (const v of raceDayEquality) console.log(`     · ${v}`);
+    } else if (raceDayTarget != null) {
+      console.log(`  ✅ alle divisioner har ${raceDayTarget} løbsdage — #4846's tick tæller ens i hele spillet.`);
     }
     console.log(`\n── Komposition mod K-B ──`);
     for (const r of report.rows) {
@@ -240,7 +355,7 @@ if (isMain) {
     // #3329 mindste-overlap) er HAARDE krav uden override — men de stopper kun --apply.
     // Dry-runnet skal kunne koeres til ende, fordi det er det ENESTE sted man kan maale hvor
     // langt der er igen: nogle af dem lukkes af kataloget, ikke af en regel (§5b).
-    const applyBlocking = scorecardGates.applyBlocking ?? [];
+    const applyBlocking = [...(scorecardGates.applyBlocking ?? []), ...applyBlockingRaceDays];
     if (applyBlocking.length) {
       console.error(`\n❌ PLACERINGS-GATES (${applyBlocking.length}) — hårde krav, ingen override:`);
       for (const b of applyBlocking) console.error(`   · ${b}`);
@@ -332,9 +447,13 @@ if (isMain) {
       }
 
       console.log(`\n── APPLY ──`);
+      // #4845: SAMME maal som dry-runnet. Uden det defaulter materializeren til `null` og
+      // skriver den NATURLIGE, skae­ve akse - altsaa en anden kalender end den gaten netop
+      // godkendte. Kalenderen genereres kun EEN gang pr. saeson (§2c), saa den fejl kunne
+      // ikke rettes bagefter.
       const applied = await materializeTierCalendars({
         supabase, seasonId, seasonStartDate: firstDay, from, dryRun: false, log: (m) => console.log(m),
-        realDays, quotas, useUniformTierTilt: uniformTilt,
+        realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget,
       });
       console.log(`\n  ${applied.racesInserted} løb · ${applied.stageProfiles} etape-profiler · ${applied.stageSchedules} etape-tider indsat.`);
 
