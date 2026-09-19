@@ -258,6 +258,9 @@ export function buildTierMaterializationPlan({
   // #5267: proevepakning af synkroniserede etapeloebs-blokke. Default FRA — se
   // packLaneCalendar's docstring for den maalte grund (k skal gaa op i density).
   syncStageBlocks = false,
+  // #5267 (ejer-kort 19/9): "holes" = maade A (default, uae­ndret) · "even" = maade B,
+  // hvor hver kalenderdato faar praecis maalet/datoer loebsdage. Se packLaneCalendar.
+  trainingDayPlacement = "holes",
   classWhitelist = TIER_CLASS_WHITELIST,
   // #3327/#3328 (2026-08-04): data-drevne dækningsmål — se tierCalendarGuarantees.js.
   // Sendes videre til selectTierRaceSet, som selv falder tilbage til FØR-#3327-adfærd
@@ -419,6 +422,7 @@ export function buildTierMaterializationPlan({
     const packed = packLaneCalendar({
       ...packArgs, raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : 0,
       syncStageBlocks: Boolean(syncStageBlocks),
+      trainingDayPlacement,
     });
     const naturalRaceDays = packed.naturalRaceDays ?? packed.timelineLength ?? 0;
     const raceDayDeficit = raceDayTarget != null ? Math.max(0, Number(raceDayTarget) - naturalRaceDays) : 0;
@@ -495,6 +499,12 @@ export function buildTierMaterializationPlan({
       syncedStageRaceBlocks: packed.syncedStageRaceBlocks ?? 0,
       freeAxisPositions: packed.freeAxisPositions ?? 0,
       longestDateStreakWithoutTraining: packed.longestDateStreakWithoutTraining ?? null,
+      // #5267 maade B: tilstanden, loebsdage pr. kalenderdato, og prisen (traeningsdage
+      // inde i et etapeloebs spaend). Rent rapporterings-data — dommen ligger i gates.
+      trainingDayPlacement: packed.trainingDayPlacement ?? "holes",
+      raceDaysPerDate: packed.raceDaysPerDate ?? [],
+      trainingDaysInsideStageRaceSpans: packed.trainingDaysInsideStageRaceSpans ?? 0,
+      raceDayPerDateDeviations: packed.raceDayPerDateDeviations ?? [],
       straddleGameDays: packed.straddleGameDays,
       gtRealDaySeparationViolations: packed.gtRealDaySeparationViolations ?? [], // #3472 v3
       // #3546 C: dage uden afgørelse: forward fra packLaneCalendar's diagnostik, samme
@@ -537,6 +547,9 @@ export async function materializeTierCalendars({
   // MAALT strukturelt umulig i D1/D3/D4 (docs/audits/2026-09-19-5267-proevepakning.md §3).
   // Parameteren findes saa kontakten er naaelig fra produktionsstien og ikke kun fra tests.
   syncStageBlocks = false,
+  // #5267 maade B: "holes" (default, uae­ndret) eller "even". Samme begrundelse som
+  // ovenfor — kontakten skal vaere naaelig fra produktionsstien, ikke kun fra tests.
+  trainingDayPlacement = "holes",
   // #3327/#3328 pass-through til buildTierMaterializationPlan + dækningsverifikationen.
   // Defaults = de skarpe produktions-garantier. Tests af FØR-#3327-mekanik (GT-gate,
   // overlap-cap, kronologi, dedup) med små syntetiske katalog-fixtures kan sende tomme
@@ -643,7 +656,7 @@ export async function materializeTierCalendars({
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
     oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
-    syncStageBlocks,
+    syncStageBlocks, trainingDayPlacement,
   });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 

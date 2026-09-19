@@ -487,27 +487,46 @@ function solveContiguousStarts({
  * traeningsdag maksimeres, foer nogen position faar sin anden. Det er dét der holder
  * "laengste stime af kalenderdatoer uden en traeningsdag" nede (§1e-gaten).
  *
+ * ── MAADE B, `placement: "even"` (#5267, ejer-kort 19/9) ────────────────────────────────
+ *
+ * Maade A ovenfor holder ejer-reglen 25/8 bogstaveligt, og PRISEN er maalt: traeningsdagene
+ * klumper (15-33 paa EEN kalenderdato), fordi der kun er 4-10 frie positioner i hele
+ * saesonen. Det passer ikke til ugeprogrammet paa 7 ugedage x 5 loebsdage (TRAINING_RULES
+ * §13.3 beslutning 8), som forudsaetter at HVER kalenderdato baerer 5 loebsdage.
+ *
+ * Under `"even"` fordeles de ekstra loebsdage derfor JAEVNT: hver kalenderdato fyldes op til
+ * sin egen kvote (maalet / antal datoer = 140/28 = 5). Det kraever at en tom loebsdag ogsaa
+ * maa ligge INDE i et etapeloebs spaend, fordi en dato med faa frie positioner ellers ikke
+ * kan naa 5. Regel-aendringen er EKSPLICIT og staar i CALENDAR_RULES §1d/§1e - se ogsaa
+ * `trainingDayPlacement` i packLaneCalendar.
+ *
+ * INDEN FOR EN DATO er raekkefoelgen: foerst de positioner hvor INTET loeb spaender henover,
+ * derefter positionerne inde i et spaend - og i begge grupper round-robin, saa dagens ekstra
+ * dage fordeles mellem datoens loebsdage i stedet for at ligge som een klump.
+ *
+ * EN DATO KAN IKKE FYLDES NED. Har en dato allerede FLERE naturlige loebsdage end kvoten,
+ * kan padding ikke fjerne nogen — den afvigelse rapporteres i `perDateDeviations` i stedet
+ * for at blive gemt. (Den kan ikke ske i praksis: hver loebsdag baerer mindst een etape, og
+ * en dato har praecis `density` etaper, saa antallet af loebsdage pr. dato er hoejst
+ * `density` — og kvoten 5 er D1's density, den hoejeste af de fire.)
+ *
  * @returns {{ dateOfGameDay:number[], mapG:number[], trainingGameDays:number[],
- *   freePositions:number, padded:number }} `mapG[g]` er den naturlige loebsdag g's nye
+ *   freePositions:number, padded:number, perDateDeviations:Array<{date:number,
+ *   natural:number, quota:number}> }} `mapG[g]` er den naturlige loebsdag g's nye
  *   indeks paa den forlae­ngede akse.
  */
-export function padAxisWithTrainingDays({ dateOfGameDay = [], spans = [], target = 0, days = 1 } = {}) {
+export function padAxisWithTrainingDays({
+  dateOfGameDay = [], spans = [], target = 0, days = 1, placement = "holes",
+} = {}) {
   const G = dateOfGameDay.length;
-  const mangler = Math.max(0, Math.round(Number(target) || 0) - G);
+  const erFri = (p) => !spans.some(([lo, hi]) => lo < p && p <= hi);
 
   const frie = [];
-  for (let p = 0; p <= G; p++) {
-    if (spans.some(([lo, hi]) => lo < p && p <= hi)) continue;
-    frie.push({ p, dato: p < G ? dateOfGameDay[p] : Math.max(0, days - 1) });
-  }
+  for (let p = 0; p <= G; p++) if (erFri(p)) frie.push(p);
 
-  const antalPrPosition = new Map();
-  if (mangler > 0 && frie.length > 0) {
-    for (let n = 0; n < mangler; n++) {
-      const { p } = frie[n % frie.length];
-      antalPrPosition.set(p, (antalPrPosition.get(p) ?? 0) + 1);
-    }
-  }
+  const { antalPrPosition, perDateDeviations } = placement === "even"
+    ? fordelJaevntPrDato({ dateOfGameDay, G, target, days, erFri })
+    : fordelIHullerne({ frie, G, target });
 
   const nyDato = [];
   const mapG = new Array(G);
@@ -526,8 +545,59 @@ export function padAxisWithTrainingDays({ dateOfGameDay = [], spans = [], target
 
   return {
     dateOfGameDay: nyDato, mapG, trainingGameDays,
-    freePositions: frie.length, padded: trainingGameDays.length,
+    freePositions: frie.length, padded: trainingGameDays.length, perDateDeviations,
   };
+}
+
+// MAADE A: round-robin over de frie positioner paa HELE aksen, i dato-raekkefoelge.
+function fordelIHullerne({ frie, G, target }) {
+  const mangler = Math.max(0, Math.round(Number(target) || 0) - G);
+  const antalPrPosition = new Map();
+  if (mangler > 0 && frie.length > 0) {
+    for (let n = 0; n < mangler; n++) {
+      const p = frie[n % frie.length];
+      antalPrPosition.set(p, (antalPrPosition.get(p) ?? 0) + 1);
+    }
+  }
+  return { antalPrPosition, perDateDeviations: [] };
+}
+
+// MAADE B: hver kalenderdato fyldes op til sin egen kvote.
+function fordelJaevntPrDato({ dateOfGameDay, G, target, days, erFri }) {
+  const n = Math.max(1, Math.round(Number(days) || 1));
+  const maal = Math.max(0, Math.round(Number(target) || 0));
+  // Largest-remainder, saa kvoterne summer PRAECIS til maalet ogsaa naar maalet ikke gaar
+  // op i antallet af datoer. For S4 gaar 140/28 op i 5, saa alle datoer faar det samme.
+  const base = Math.floor(maal / n);
+  const rest = maal - base * n;
+  const kvote = Array.from({ length: n }, (_, d) => base + (d < rest ? 1 : 0));
+
+  const positionerPrDato = Array.from({ length: n }, () => []);
+  for (let p = 0; p < G; p++) {
+    const d = dateOfGameDay[p];
+    if (d >= 0 && d < n) positionerPrDato[d].push(p);
+  }
+  // Positionen EFTER aksens sidste loebsdag arver den sidste dato (samme regel som maade A),
+  // saa den sidste dato ogsaa kan fyldes op naar den ikke har en loebsdag at lae­gge foran.
+  positionerPrDato[n - 1].push(G);
+
+  const antalPrPosition = new Map();
+  const perDateDeviations = [];
+  for (let d = 0; d < n; d++) {
+    const pos = positionerPrDato[d];
+    const naturlige = d === n - 1 ? pos.length - 1 : pos.length;
+    const behov = kvote[d] - naturlige;
+    if (behov < 0) { perDateDeviations.push({ date: d, natural: naturlige, quota: kvote[d] }); continue; }
+    if (behov === 0 || pos.length === 0) continue;
+    // Frie positioner foerst, saa positionerne inde i et spaend — og round-robin inden for
+    // den raekkefoelge, saa dagens ekstra dage ikke ender som een klump.
+    const raekkefoelge = [...pos.filter(erFri), ...pos.filter((p) => !erFri(p))];
+    for (let i = 0; i < behov; i++) {
+      const p = raekkefoelge[i % raekkefoelge.length];
+      antalPrPosition.set(p, (antalPrPosition.get(p) ?? 0) + 1);
+    }
+  }
+  return { antalPrPosition, perDateDeviations };
 }
 
 // #4236 - AFSLAPPET kontiguitets-layout for de tilfaelde hvor kvoten IKKE gaar op.
@@ -607,7 +677,7 @@ function layoutContiguousRelaxed({ races, D, days, cap, spineMinStages }) {
 
 function layoutContiguous({
   stageRaces, classics, monuments, density: D, days, cap, spineMinStages,
-  targetG = 0, syncStageBlocks = false,
+  targetG = 0, syncStageBlocks = false, trainingDayPlacement = "holes",
 }) {
   if (D < 1 || days < 1 || cap < 1) return null;
 
@@ -679,6 +749,7 @@ function layoutContiguous({
   const naturligeSpaend = loest.placeringer.map((pl) => [pl.g0, pl.g0 + pl.fp.length - 1]);
   const padding = padAxisWithTrainingDays({
     dateOfGameDay: loest.dateOfGameDay, spans: naturligeSpaend, target: maal, days,
+    placement: trainingDayPlacement,
   });
   const dateOfGameDay = padding.dateOfGameDay;
   const G = dateOfGameDay.length;
@@ -752,10 +823,19 @@ function layoutContiguous({
     for (const g of gs) brugteLoebsdage.add(g);
     spaend.push([Math.min(...gs), Math.max(...gs)]);
   }
+  //
+  // #5267 maade B: UNDER `"even"` ligger en del af de indsatte traeningsdage INDE i et
+  // spaend, og saa kan span-medlemskab ikke laengere afgoere hvad en tom loebsdag ER.
+  // Padding'en ved det praecist — den lagde dem selv — saa de indsatte dage er
+  // autoritative traeningsdage, og KUN de oevrige tomme loebsdage doemmes paa spaendet
+  // (det er GT-hviledagene, #3470). Under `"holes"` ligger de indsatte dage pr.
+  // konstruktion uden for alle spaend, saa de to veje giver samme svar - bit-identisk.
+  const indsatteTraeningsdage = new Set(padding.trainingGameDays);
   const trainingGameDays = [];
   const restDayGameDays = [];
   for (let g = 0; g < G; g++) {
     if (brugteLoebsdage.has(g)) continue;
+    if (indsatteTraeningsdage.has(g)) { trainingGameDays.push(g); continue; }
     (spaend.some(([a, b]) => g >= a && g <= b) ? restDayGameDays : trainingGameDays).push(g);
   }
 
@@ -777,11 +857,24 @@ function layoutContiguous({
   }
   const dateOfTrainingGameDay = trainingGameDays.map((g) => dateOfGameDay[g]);
 
+  // #5267 maade B-maalinger. `raceDaysPerDate` er selve kravet ("5 loebsdage paa HVER
+  // kalenderdato"), og `trainingDaysInsideStageRaceSpans` er PRISEN: hvor mange af de
+  // indsatte traeningsdage der ligger inde i et etapeloebs spaend, altsaa hvor mange der
+  // rammer den nye ordlyd af ejer-reglen 25/8 (CALENDAR_RULES §1d).
+  const raceDaysPerDate = new Array(days).fill(0);
+  for (const d of dateOfGameDay) if (d >= 0 && d < days) raceDaysPerDate[d] += 1;
+  const trainingDaysInsideStageRaceSpans = trainingGameDays
+    .filter((g) => etapeSpaend.some(([a, b]) => g > a && g < b)).length;
+
   return {
     placements: [...placementsById.values()], timelineLength: G, monumentRulesHeld, solveAttempts: forsoeg,
     raceDayTargetRequested: maal, raceDayTargetHeld, trainingGameDays, restDayGameDays,
     dateOfTrainingGameDay,
     naturalRaceDays,
+    trainingDayPlacement,
+    raceDaysPerDate,
+    trainingDaysInsideStageRaceSpans,
+    perDateDeviations: padding.perDateDeviations ?? [],
     // #5267-diagnostik: blev synkroniseringen (R13) holdt, hvor mange blokke blev det til,
     // og hvor mange af dem baerer mere end eet etapeloeb.
     syncStageBlocksHeld,
@@ -1023,6 +1116,26 @@ export function packLaneCalendar({
   // flere traeningsdage paa samme position - og det staar maalt i
   // `longestDateStreakWithoutTraining`, saa klumpningen er synlig i stedet for at gemme sig.
   raceDayTarget = 0,
+  // #5267 (ejer-kort 19/9): HVOR de ekstra loebsdage lae­gges. To tilstande, og valget er
+  // ejerens - de har hver sin pris:
+  //
+  //   "holes" (DEFAULT, maade A, uae­ndret adfaerd): kun dér hvor INTET loeb spaender
+  //     henover. Holder ejer-reglen 25/8 bogstaveligt ("loebsdag 4-5-6-7"), men
+  //     traeningsdagene klumper - MAALT 19/9: 15-33 paa EEN kalenderdato, og D3 har 23
+  //     kalenderdatoer i traek uden en eneste traeningsdag.
+  //
+  //   "even" (maade B): hver kalenderdato faar PRAECIS maalet/datoer loebsdage (140/28 = 5),
+  //     saa loebsdagens rytme i rigtig tid bliver 5 pr. kalenderdag - forudsaetningen for
+  //     ugeprogrammet paa 7 ugedage x 5 loebsdage (TRAINING_RULES §13.3 beslutning 8).
+  //     Prisen er at en tom loebsdag ogsaa maa ligge INDE i et etapeloebs spaend. Den nye
+  //     ordlyd af ejer-reglen 25/8 staar i CALENDAR_RULES §1d: etaperne ligger stadig i
+  //     traek blandt loebsdage MED loeb, og en tom loebsdag inde i spaendet er en dag hvor
+  //     de ryttere der er bundet i etapeloebet HVILER (race_entry_days binder allerede hele
+  //     spaendet, #4217/#4209) mens alle andre traener.
+  //
+  // Begge tilstande deler den samme garanti: loebenes indbyrdes placering, datoer og
+  // etaper pr. dato er uae­ndrede - padding tilfoejer KUN tomme loebsdage.
+  trainingDayPlacement = "holes",
 } = {}) {
   const D = Math.max(1, density);
   const cap = Math.max(1, overlapCap);
@@ -1057,6 +1170,7 @@ export function packLaneCalendar({
     : layoutContiguous({
       stageRaces, classics, monuments, density: D, days, cap, spineMinStages,
       targetG: maal, syncStageBlocks: Boolean(syncStageBlocks),
+      trainingDayPlacement: trainingDayPlacement === "even" ? "even" : "holes",
     });
   if (!res) {
     throw new Error(
@@ -1099,5 +1213,13 @@ export function packLaneCalendar({
     syncedStageRaceBlocks: res.syncedStageRaceBlocks ?? 0,
     freeAxisPositions: res.freeAxisPositions ?? 0,
     longestDateStreakWithoutTraining: res.longestDateStreakWithoutTraining ?? days,
+    // #5267 maade B: hvilken tilstand der blev brugt, loebsdage pr. kalenderdato (kravet),
+    // hvor mange af traeningsdagene der ligger inde i et etapeloebs spaend (prisen), og
+    // datoer hvor den naturlige pakning allerede har FLERE loebsdage end kvoten (kan ikke
+    // fyldes ned — rapporteres i stedet for at blive gemt).
+    trainingDayPlacement: res.trainingDayPlacement ?? "holes",
+    raceDaysPerDate: res.raceDaysPerDate ?? [],
+    trainingDaysInsideStageRaceSpans: res.trainingDaysInsideStageRaceSpans ?? 0,
+    raceDayPerDateDeviations: res.perDateDeviations ?? [],
   };
 }
