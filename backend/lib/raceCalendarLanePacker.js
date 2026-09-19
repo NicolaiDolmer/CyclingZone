@@ -32,7 +32,6 @@
 // stage_number (1..N uafbrudt). restDays udeladt/0 ⇒ ét segment ⇒ bit-identisk med #3469.
 
 import { grandTourRestDayPositions, GRAND_TOUR_REST_DAYS } from "./grandTourRestDays.js";
-import { maxEmptyGameDaysPerDate } from "./calendarRaceDayTargets.js";
 import { MONUMENT_MIN_CALENDAR_GAP_DAYS, MONUMENT_MIN_CALENDAR_SPREAD_DAYS } from "./calendarTierCaps.js";
 
 // B2 (#4075, spec §3.4, ejer-låst 21/8): monumenter har en NORMAL game_day i deres eget
@@ -212,28 +211,26 @@ function raceFootprint(race, spineMinStages) {
 //   R9  et monument ligger ALDRIG inde i et Grand Tours loebsdags-spaend (#4203)
 //   R10 mindst MIN_GAP kalenderdage mellem to nabo-monumenter (§4)
 //   R11 mindst MIN_SPREAD kalenderdage fra foerste til sidste monument (§4)
-//   R12 loebsdags-aksen er PRAECIS `targetG` loebsdage lang; en TOM loebsdag maa kun ligge
-//       dér hvor INTET loeb er i gang, og hoejst `maxEmptyPerDate` pr. kalenderdato (#4845)
+//   R13 samtidige etapeloeb SYNKRONISERES i blokke: et etapeloeb maa kun starte paa en
+//       loebsdag hvor INTET andet etapeloeb allerede er i gang (#5267)
 //
-// R12 er #4845's leverance og er AKTIV naar `targetG > 0`. Den LOESNER R5 ("ingen tom
-// loebsdag") til et MAAL for aksens LAENGDE: kalenderen skal have praecis det antal
-// loebsdage, og de loebsdage der ikke baerer et loeb er rene traeningsdage (#4846's
-// tick-enhed). Det er dét der lader en lavere division have lige saa mange loebsdage som
-// D1 uden at koere lige saa mange loeb (ejer-beslutning 6/9).
+// R12 ER FJERNET IGEN (#5267, ejer-kort 19/9). Den bandt loebsdags-aksens LAENGDE inde i
+// selve soegningen, og det var roden til at PR #5169's maalte kalender faldt: saa snart et
+// maal var sat, re-soegte soegningen HELE placeringen for at skaffe punkter hvor intet loeb
+// er i gang. MAALT 18/9 mod prod-kataloget: D1's 32 loeb / 140 etaper blev spredt fra 80 til
+// 106 loebsdage MED loeb, og mindste-overlap-gulvet (§1/#3329) faldt fra 56,3 % til 26,4 % -
+// i alle fire divisioner. Maalet naas nu i stedet som en EFTERBEHANDLING
+// (`padAxisWithTrainingDays` nedenfor), der IKKE flytter et eneste loeb: den naturlige
+// pakning beholdes som den er, og de tomme loebsdage lae­gges kun paa de positioner hvor
+// intet loeb spaender henover. Den naturlige pakning holder MAALT alle fire overlap-gulve
+// (D1 56,3 % · D2 78,6 % · D3 50,0 % · D4 50,0 % mod 45/55/40/40).
 //
-// HVORFOR AKSENS LAENGDE OG IKKE ET ANTAL TOMME DAGE. Foerste forsoeg bandt "praecis E
-// tomme loebsdage". MAALT mod prod-kataloget (11/9, S4, E=24) holdt budgettet, men
-// soegningen betalte for det et andet sted: den spredte loebene tynd (D2 fra 56 til 82
-// loebsdage MED loeb) for at skaffe de 24 punkter hvor intet loeb er i gang, og aksen
-// endte paa 106 i stedet for maalets 80. Aksens LAENGDE er det tal reglen handler om
-// (samme antal ticks pr. saeson i alle divisioner), saa det er den der skal bindes - saa
-// betaler soegningen kun den taethed den er NOEDT til.
-//
-// HVORFOR DEN SKAL VAERE EN BINDING OG IKKE EN EFTERBEHANDLING. En tom loebsdag maa aldrig
-// ligge inde i et loebs spaend - saa ville et 4-etapers etapeloeb faa en hviledag det ikke
-// har i virkeligheden (ejer-reglen 25/8, R1). I den pakning soegningen finder UDEN R12 er
-// der MAALT kun 4-10 punkter pr. division hvor intet loeb er i gang (probe af S4-planen
-// 11/9), saa de tomme loebsdage kunne kun klumpe i faa store bunker.
+// R13 er #5267's leverance. Uden den lae­gger pakkeren etapeloebene i en KAEDE - loeb A's
+// sidste etape og loeb B's foerste deler loebsdag - og en kae­de har ingen huller, saa der
+// er ingen lovlige positioner til traeningsdage (MAALT 18/9: kun 4-8 frie positioner pr.
+// division, med op til 24 kalenderdatoer imellem). Naar samtidige etapeloeb i stedet skal
+// starte samlet, opstaar der et hul efter hver blok, OG hver loebsdag i blokken baerer to
+// loeb at vaelge imellem - saa overlappet stiger af samme aendring.
 //
 // R9-R11 er #4203's leverance og er AKTIVE naar `monumentRules` er sat. Foer dem var
 // monumenternes placering et biprodukt: de er 1-etapes loeb som alle andre endagsloeb,
@@ -259,7 +256,7 @@ function raceFootprint(race, spineMinStages) {
 // (D1 paa 709 skridt / 3 ms). R8 er den stramme: den afskar 609 forsoeg i D1.
 function solveContiguousStarts({
   races, D, days, cap, spineMinStages, monumentRules = null, maxSteps = 20000000,
-  targetG = 0, maxEmptyPerDate = 0,
+  syncStageBlocks = false, stats = null,
 }) {
   const items = races
     .map((race, i) => ({
@@ -308,38 +305,10 @@ function solveContiguousStarts({
   const startAf = new Array(items.length).fill(-1);
   const bandSizes = [];
   let steps = 0;
-  // Luft i spredningsbaandet (R12). Mindst een hel dagsbredde: en dato kan ikke lae­gge en
-  // halv loebsdag, og en dato hvor intet loeb slutter kan slet ikke lae­gge en tom.
-  const spredningsSlack = Math.max(2, Math.ceil(D / cap) + maxEmptyPerDate);
 
   const dfs = (g, iBaand, dato, brugtIDato, gtIDato, aktive, restStages, gtStartDato, sidsteGtSlut,
-    monFoerste, monSidste, monRest, emptyIDato) => {
+    monFoerste, monSidste, monRest) => {
     if (++steps > maxSteps) return false;
-
-    // R12 (#4845) som FREMADRETTET snit paa AKSENS LAENGDE. Uden det ville soegningen bygge
-    // hele kalenderen faerdig og foerst dér opdage at aksen blev for kort eller for lang -
-    // og saa gaa hele vejen tilbage. `mangler` er de loebsdage der er tilbage at lae­gge;
-    // gulvet er hvad etaperne SKAL bruge (cap'en er loftet pr. loebsdag), loftet er hvad
-    // datoerne kan baere (een loebsdag pr. etape + loftet af tomme pr. dato).
-    if (targetG > 0 && dato < days) {
-      // SPREDNINGS-BAANDET. Uden det leverer soegningen maalet, men samlet i saesonens
-      // slutning: "taettest foerst" fylder de tidlige datoer helt op, og aksen kan foerst
-      // naa sit maal ved at lae­gge ALLE de tomme loebsdage bagest (MAALT 11/9: alle
-      // traeningsdage laa i loebsdag 42-78 af 80). En spiller i D4 ville have en halv
-      // saeson uden traening og derefter fem uger med. Baandet kraever at aksen er cirka
-      // proportionalt fremme paa hver kalenderdato, saa de tomme loebsdage fordeles hen
-      // over saesonen. `spredningsSlack` er luften der goer det opfyldeligt paa en dato
-      // hvor intet loeb slutter.
-      const ideal = Math.round((dato * targetG) / days);
-      if (g < ideal - spredningsSlack || g > ideal + spredningsSlack) return false;
-
-      const mangler = targetG - g;
-      const stagesIDatoRest = D - brugtIDato;
-      const minRest = Math.ceil(stagesIDatoRest / cap) + (days - dato - 1) * Math.ceil(D / cap);
-      const maxRest = stagesIDatoRest + Math.max(0, maxEmptyPerDate - emptyIDato)
-        + (days - dato - 1) * (D + maxEmptyPerDate);
-      if (mangler < minRest || mangler > maxRest) return false;
-    }
 
     // R10/R11 som FREMADRETTEDE snit, ikke som en dom til sidst. Uden dem ville soegningen
     // bygge en hel kalender faerdig og foerst dér opdage at det sidste monument ikke kan
@@ -357,7 +326,7 @@ function solveContiguousStarts({
     }
 
     if (dato === days) {
-      return aktive.length === 0 && brugt.every(Boolean) && (targetG <= 0 || g === targetG);
+      return aktive.length === 0 && brugt.every(Boolean);
     }
     if (restStages !== (days - dato) * D - brugtIDato) return false;
 
@@ -371,28 +340,10 @@ function solveContiguousStarts({
     if (lo > hi) return false;
 
     const gtAktiv = aktive.some((a) => items[a.i].gt);
-
-    // R12 (#4845): en TOM loebsdag — en ren traeningsdag. Kun naar INTET loeb er i gang
-    // (`aktive` tom), saa den hverken splitter et loebs loebsdage (R1) eller forlaenger en
-    // Grand Tours hviledag.
-    //
-    // RAEKKEFOELGEN ER MAALT, IKKE SMAG. Den proeves efter den TAETTESTE loebsdag er
-    // afvist, men FOER de tyndere: aksen kan naa sit maal paa to maader, og de er ikke lige
-    // gode. Med tommen sidst (foerste forsoeg 11/9) naaede D2 sine 80 loebsdage ved at
-    // sprede loebene tynd - 76 loebsdage MED loeb i stedet for 56 - saa overlappet
-    // (§1/#3329, "noget at vae­lge imellem") blev betalingen, og spilleren fik faerre
-    // traeningsdage, ikke flere. Med tommen her beholder hver loebsdag med loeb sin
-    // taethed, og kun dér hvor ingen tom loebsdag kan ligge, tynder soegningen ud.
-    let tomProevet = false;
-    const proevTom = () => {
-      if (tomProevet) return false;
-      tomProevet = true;
-      if (targetG <= 0 || aktive.length !== 0 || emptyIDato >= maxEmptyPerDate || g >= targetG) return false;
-      // Ingen bandSizes-bogfoering: datoen er ikke faerdig, og den tomme loebsdag taelles i
-      // `iBaand` — altsaa i baandets stoerrelse naar datoen lukkes nedenfor.
-      return dfs(g + 1, iBaand + 1, dato, brugtIDato, gtIDato, aktive, restStages, gtStartDato, sidsteGtSlut,
-        monFoerste, monSidste, monRest, emptyIDato + 1);
-    };
+    // R13 (#5267): er et ETAPELOEB allerede i gang paa denne loebsdag? `aktive` er praecis
+    // de loeb der er startet TIDLIGERE og fortsaetter hertil, saa et loeb der koerer sin
+    // sidste etape her taeller med - og det er netop kae­de-tilfae­ldet vi vil bryde.
+    const etapeloebAktiv = syncStageBlocks && aktive.some((a) => items[a.i].fp.length > 1);
 
     // TAETTEST FOERST. Soegningen tager den foerste loesning den finder, saa retningen her
     // afgoer kalenderens karakter: nedad fylder hver loebsdag til cap'en og holder
@@ -413,6 +364,20 @@ function solveContiguousStarts({
           // klasse allerede er i spil i dette scan (se klasseAf/forrigeAfKlasse ovenfor).
           const forrige = forrigeAfKlasse[k];
           if (forrige >= fra && !brugt[forrige]) continue;
+          // R13 (#5267): et etapeloeb maa kun starte naar INTET andet etapeloeb er i gang,
+          // og etapeloeb der starter SAMMEN skal have samme fodaftryks-laengde, saa de
+          // ogsaa SLUTTER samme loebsdag. Begge halvdele er noedvendige:
+          //   · uden startdelen kae­der loebene sig (A's sidste etape = B's foerste), og
+          //     kae­den har ingen huller til traeningsdage.
+          //   · uden slutdelen faar blokken en HALE hvor kun det laengste loeb koerer
+          //     videre alene. MAALT 19/9 paa prod-kataloget: med start-delen alene voksede
+          //     D3's akse fra 66 til 66 loebsdage og overlappet FALDT fra 50,0 % til 27,3 %
+          //     (D4 62/35,5 %), fordi halerne er loebsdage med eet loeb som ingen ny start
+          //     maa fylde op.
+          if (syncStageBlocks && items[k].fp.length > 1) {
+            if (etapeloebAktiv) continue;                                      // R13a
+            if (acc.some((x) => items[x].fp.length > 1 && items[x].fp.length !== items[k].fp.length)) continue; // R13b
+          }
           if (items[k].gt) {
             if (gtAktiv || acc.some((x) => items[x].gt)) continue;                  // R6
             if (sidsteGtSlut != null && dato < sidsteGtSlut + 2) continue;          // R6
@@ -467,26 +432,25 @@ function solveContiguousStarts({
         if (datoFaerdig) {
           bandSizes.push(iBaand + 1);
           ok = dfs(g + 1, 0, dato + 1, 0, 0, efter, restStages - load, naesteGtStart, naesteGtSlut,
-            nyMonFoerste, nyMonSidste, nyMonRest, 0);
+            nyMonFoerste, nyMonSidste, nyMonRest);
           if (!ok) bandSizes.pop();
         } else {
           ok = dfs(g + 1, iBaand + 1, dato, nyBrugt, gtNu, efter, restStages - load, naesteGtStart, naesteGtSlut,
-            nyMonFoerste, nyMonSidste, nyMonRest, emptyIDato);
+            nyMonFoerste, nyMonSidste, nyMonRest);
         }
         if (ok) return true;
         for (const k of kombi) { brugt[k] = false; startAf[k] = -1; }
       }
-      // Den taetteste loebsdag er nu afvist i alle kombinationer: proev en TOM loebsdag
-      // FOER de tyndere loads (se proevTom's docstring for maalingen bag raekkefoelgen).
-      if (load === hi && proevTom()) return true;
     }
-    // hi < lo: loop'en koerte ikke. Tommen er stadig den eneste mulige udvej.
-    if (proevTom()) return true;
     return false;
   };
 
-  if (!dfs(0, 0, 0, 0, 0, [], D * days, null, null, null, null, monAntal, 0)) return null;
-  if (targetG > 0 && bandSizes.reduce((n, b) => n + b, 0) !== targetG) return null;
+  const fundet = dfs(0, 0, 0, 0, 0, [], D * days, null, null, null, null, monAntal);
+  // Skridtforbruget rapporteres ogsaa naar forsoeget MISLYKKEDES: forskellen paa "loeb toer
+  // for skridt" og "der findes ingen lovlig pakning" er hele forskellen paa et budget der
+  // skal haeves og en regel der ikke kan holde (#5267).
+  if (stats) { stats.steps = steps; stats.exhausted = steps > maxSteps; }
+  if (!fundet) return null;
 
   const dateOfGameDay = [];
   bandSizes.forEach((b, d) => { for (let i = 0; i < b; i++) dateOfGameDay.push(d); });
@@ -496,6 +460,98 @@ function solveContiguousStarts({
     placeringer: items.map((it, k) => ({ race: it.race, fp: it.fp, mon: it.mon, g0: startAf[k] })),
     steps,
   };
+}
+
+/**
+ * #5267 — MAALET FOR AKSENS LAENGDE, NAAET UDEN AT FLYTTE ET ENESTE LOEB.
+ *
+ * Fix-planens punkt 1 (audit 18/9 §4): soegningen finder FOERST den naturlige pakning, og
+ * derefter tilfoejes KUN tomme loebsdage (rene traeningsdage). Foer #5267 var maalet en
+ * binding INDE i soegningen (R12), og den betalte for de tomme loebsdage ved at sprede
+ * loebene tynd - hvilket slog mindste-overlap-gulvet (§1/#3329) ud i alle fire divisioner.
+ *
+ * HVOR EN TRAENINGSDAG MAA LIGGE (ejer-regel 3, 18/9): kun dér hvor INTET loeb er i gang.
+ * Et etapeloeb binder rytteren fra foerste til sidste etape, saa en tom loebsdag inde i et
+ * spaend ville vaere en hviledag loebet ikke har. En indsaetnings-position p (foran den
+ * naturlige loebsdag p) er derfor FRI naar intet loeb har `lo < p <= hi`. p = 0 og p = G er
+ * altid frie.
+ *
+ * DATOEN FOELGER POSITIONEN, IKKE OMVENDT (#4236/§0): den indsatte loebsdag arver datoen
+ * fra den loebsdag den lae­gges foran (den sidste dato for p = G). Dermed hoerer den stadig
+ * til PRAECIS een kalenderdato, og datoens antal ETAPER er uae­ndret - D4's tre etaper pr.
+ * rigtig dag (#4270) kan ikke braekke af en traeningsdag.
+ *
+ * FORDELINGEN er round-robin over de frie positioner i dato-raekkefoelge: foerste omgang
+ * giver EEN traeningsdag til hver fri position, saa antallet af kalenderdatoer MED en
+ * traeningsdag maksimeres, foer nogen position faar sin anden. Det er dét der holder
+ * "laengste stime af kalenderdatoer uden en traeningsdag" nede (§1e-gaten).
+ *
+ * @returns {{ dateOfGameDay:number[], mapG:number[], trainingGameDays:number[],
+ *   freePositions:number, padded:number }} `mapG[g]` er den naturlige loebsdag g's nye
+ *   indeks paa den forlae­ngede akse.
+ */
+export function padAxisWithTrainingDays({ dateOfGameDay = [], spans = [], target = 0, days = 1 } = {}) {
+  const G = dateOfGameDay.length;
+  const mangler = Math.max(0, Math.round(Number(target) || 0) - G);
+
+  const frie = [];
+  for (let p = 0; p <= G; p++) {
+    if (spans.some(([lo, hi]) => lo < p && p <= hi)) continue;
+    frie.push({ p, dato: p < G ? dateOfGameDay[p] : Math.max(0, days - 1) });
+  }
+
+  const antalPrPosition = new Map();
+  if (mangler > 0 && frie.length > 0) {
+    for (let n = 0; n < mangler; n++) {
+      const { p } = frie[n % frie.length];
+      antalPrPosition.set(p, (antalPrPosition.get(p) ?? 0) + 1);
+    }
+  }
+
+  const nyDato = [];
+  const mapG = new Array(G);
+  const trainingGameDays = [];
+  const laeg = (p) => {
+    const n = antalPrPosition.get(p) ?? 0;
+    const dato = p < G ? dateOfGameDay[p] : Math.max(0, days - 1);
+    for (let i = 0; i < n; i++) { trainingGameDays.push(nyDato.length); nyDato.push(dato); }
+  };
+  for (let p = 0; p < G; p++) {
+    laeg(p);
+    mapG[p] = nyDato.length;
+    nyDato.push(dateOfGameDay[p]);
+  }
+  laeg(G);
+
+  return {
+    dateOfGameDay: nyDato, mapG, trainingGameDays,
+    freePositions: frie.length, padded: trainingGameDays.length,
+  };
+}
+
+/**
+ * §1e/#5267 — SPREDNINGEN MAALES PAA BLOKKE, IKKE PAA DATOER.
+ *
+ * Kravet er "ingen lang stime uden traening", ikke "traeningsdage jae­vnt fordelt pr.
+ * kalenderdato". Tallet her er den laengste raekke af kalenderdatoer i traek HELT uden en
+ * traeningsdag (stimer i begyndelsen og slutningen af saesonen taeller med).
+ */
+export function longestDateStreakWithoutTraining({ days = 0, trainingRealDays = [] } = {}) {
+  const n = Math.max(0, Math.round(Number(days) || 0));
+  if (n === 0) return 0;
+  const harTraening = new Array(n).fill(false);
+  for (const d of trainingRealDays) {
+    const i = Number(d);
+    if (Number.isFinite(i) && i >= 0 && i < n) harTraening[i] = true;
+  }
+  let laengste = 0;
+  let nu = 0;
+  for (let d = 0; d < n; d++) {
+    if (harTraening[d]) { nu = 0; continue; }
+    nu += 1;
+    if (nu > laengste) laengste = nu;
+  }
+  return laengste;
 }
 
 // #4236 - AFSLAPPET kontiguitets-layout for de tilfaelde hvor kvoten IKKE gaar op.
@@ -575,7 +631,7 @@ function layoutContiguousRelaxed({ races, D, days, cap, spineMinStages }) {
 
 function layoutContiguous({
   stageRaces, classics, monuments, density: D, days, cap, spineMinStages,
-  targetG = 0, maxEmptyPerDate = 0,
+  targetG = 0, syncStageBlocks = false,
 }) {
   if (D < 1 || days < 1 || cap < 1) return null;
 
@@ -608,34 +664,51 @@ function layoutContiguous({
     ? { minGapDays: MONUMENT_MIN_CALENDAR_GAP_DAYS, minSpreadDays: MONUMENT_MIN_CALENDAR_SPREAD_DAYS }
     : null;
   //
-  // #4845: BUDGETTET af tomme loebsdage (R12) er et EGET trin i forsoegs-stigen, ikke en
-  // ny gren. Raekkefoelgen er bevidst: monument-reglerne (#4203, haard gate uden override)
-  // vinder over padding, og den EKSAKTE kvote (§1b) vinder over dem begge - derfor ligger
-  // det afslappede layout stadig sidst. Hvert forsoeg staar i `solveAttempts`, saa et
-  // droppet budget er synligt i dry-runnet i stedet for at forsvinde i en fallback.
-  const maal = Math.max(0, Number(targetG) || 0);
-  const perDatoLoft = maal > 0 ? Math.max(1, Number(maxEmptyPerDate) || 0) : 0;
+  // #5267: SYNKRONISERINGEN (R13) er et EGET trin i forsoegs-stigen, ikke en ny gren.
+  // Raekkefoelgen er bevidst: monument-reglerne (#4203, haard gate uden override) vinder
+  // over synkroniseringen, og den EKSAKTE kvote (§1b) vinder over dem begge - derfor
+  // ligger det afslappede layout stadig sidst. Loebsdags-MAALET er ikke laengere et trin:
+  // det naas som efterbehandling (padAxisWithTrainingDays) og kan derfor aldrig koste en
+  // placeringsregel. Hvert forsoeg staar i `solveAttempts`, saa en tabt synkronisering er
+  // synlig i dry-runnet i stedet for at forsvinde i en fallback.
   const forsoeg = [];
   let loest = null;
-  let raceDayTargetHeld = false;
   let monumentRulesHeld = false;
+  let syncStageBlocksHeld = false;
   const stige = [];
-  if (monumentRules && maal > 0) stige.push({ rules: true, maal, maxSteps: RACE_DAY_TARGET_SOLVE_MAX_STEPS });
-  if (monumentRules) stige.push({ rules: true, maal: 0, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
-  if (maal > 0) stige.push({ rules: false, maal, maxSteps: RACE_DAY_TARGET_SOLVE_MAX_STEPS });
-  stige.push({ rules: false, maal: 0, maxSteps: undefined });
+  if (monumentRules && syncStageBlocks) stige.push({ rules: true, sync: true, maxSteps: SYNC_BLOCK_SOLVE_MAX_STEPS });
+  if (monumentRules) stige.push({ rules: true, sync: false, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
+  if (syncStageBlocks) stige.push({ rules: false, sync: true, maxSteps: SYNC_BLOCK_SOLVE_MAX_STEPS });
+  stige.push({ rules: false, sync: false, maxSteps: undefined });
   for (const trin of stige) {
+    const stats = {};
     loest = solveContiguousStarts({
       races: alle, D, days, cap, spineMinStages,
       monumentRules: trin.rules ? monumentRules : null,
-      targetG: trin.maal, maxEmptyPerDate: trin.maal > 0 ? perDatoLoft : 0,
+      syncStageBlocks: trin.sync, stats,
       ...(trin.maxSteps != null ? { maxSteps: trin.maxSteps } : {}),
     });
-    forsoeg.push({ rules: trin.rules, raceDayTarget: trin.maal, ok: Boolean(loest), steps: loest?.steps ?? null });
-    if (loest) { monumentRulesHeld = trin.rules; raceDayTargetHeld = trin.maal > 0; break; }
+    forsoeg.push({
+      rules: trin.rules, sync: trin.sync, ok: Boolean(loest),
+      steps: stats.steps ?? loest?.steps ?? null, exhausted: Boolean(stats.exhausted),
+    });
+    if (loest) { monumentRulesHeld = trin.rules; syncStageBlocksHeld = trin.sync; break; }
   }
   if (!loest) return layoutContiguousRelaxed({ races: alle, D, days, cap, spineMinStages });
-  const { dateOfGameDay, G, placeringer } = loest;
+  const naturalRaceDays = loest.G;
+
+  // #5267: FOERST den naturlige pakning (ovenfor), DEREFTER kun tomme loebsdage. Spaendene
+  // maales paa den NATURLIGE akse, for det er dér indsaetnings-positionerne findes.
+  const maal = Math.max(0, Number(targetG) || 0);
+  const naturligeSpaend = loest.placeringer.map((pl) => [pl.g0, pl.g0 + pl.fp.length - 1]);
+  const padding = padAxisWithTrainingDays({
+    dateOfGameDay: loest.dateOfGameDay, spans: naturligeSpaend, target: maal, days,
+  });
+  const dateOfGameDay = padding.dateOfGameDay;
+  const G = dateOfGameDay.length;
+  const mapG = padding.mapG;
+  const placeringer = loest.placeringer.map((pl) => ({ ...pl, g0: mapG[pl.g0] }));
+  const raceDayTargetHeld = maal > 0 && G === maal;
 
   // Identiteterne paasaettes i fase-raekkefoelge inden for hver fodaftryks-klasse, saa et
   // loeb lander samme sted i saesonen som i virkeligheden (#3469). Uden seasonFraction
@@ -710,10 +783,36 @@ function layoutContiguous({
     (spaend.some(([a, b]) => g >= a && g <= b) ? restDayGameDays : trainingGameDays).push(g);
   }
 
+  // #5267: de synkrone blokke. En blok er en maksimal raekke af loebsdage hvor mindst eet
+  // ETAPELOEB er i gang; blokken er SYNKRON naar mindst to etapeloeb starter paa dens
+  // foerste loebsdag. Rent rapporterings-tal (dry-run + tests), som overlap-histogrammet.
+  const etapeSpaend = [...placementsById.values()]
+    .filter((p) => (p.stages ?? 1) > 1)
+    .map((p) => {
+      const gs = p.stagesPlaced.map((s) => s.game_day);
+      return [Math.min(...gs), Math.max(...gs)];
+    })
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const blokke = [];
+  for (const [lo, hi] of etapeSpaend) {
+    const sidste = blokke[blokke.length - 1];
+    if (sidste && lo <= sidste.hi) { sidste.hi = Math.max(sidste.hi, hi); sidste.starter += lo === sidste.lo ? 1 : 0; continue; }
+    blokke.push({ lo, hi, starter: 1 });
+  }
+  const dateOfTrainingGameDay = trainingGameDays.map((g) => dateOfGameDay[g]);
+
   return {
     placements: [...placementsById.values()], timelineLength: G, monumentRulesHeld, solveAttempts: forsoeg,
     raceDayTargetRequested: maal, raceDayTargetHeld, trainingGameDays, restDayGameDays,
-    dateOfTrainingGameDay: trainingGameDays.map((g) => dateOfGameDay[g]),
+    dateOfTrainingGameDay,
+    naturalRaceDays,
+    // #5267-diagnostik: blev synkroniseringen (R13) holdt, hvor mange blokke blev det til,
+    // og hvor mange af dem baerer mere end eet etapeloeb.
+    syncStageBlocksHeld,
+    stageRaceBlocks: blokke.length,
+    syncedStageRaceBlocks: blokke.filter((b) => b.starter >= 2).length,
+    freeAxisPositions: padding.freePositions,
+    longestDateStreakWithoutTraining: longestDateStreakWithoutTraining({ days, trainingRealDays: dateOfTrainingGameDay }),
   };
 }
 
@@ -781,13 +880,13 @@ export const MAX_GT_SPAN_DAYS = 6;
 // --apply - loftet kan da haeves med en maaling i haanden i stedet for paa fornemmelse.
 export const MONUMENT_SOLVE_MAX_STEPS = 2000000;
 
-// Skridt-loft for de LOEBSDAGS-MAAL-BUNDNE soegeforsoeg (#4845, R12). Samme begrundelse som
-// MONUMENT_SOLVE_MAX_STEPS ovenfor: et maal kan vaere uopfyldeligt for et givet katalog
-// (alle loeb kan ligge i kae­der der aldrig bryder, saa der findes ingen tom loebsdag at
-// placere), og et uopfyldeligt forsoeg maa ikke brae­nde 20 mio. skridt foer stigen naar
-// det forsoeg der faktisk leverer kalenderen. Rammer et fremtidigt katalog loftet, staar
-// det i `solveAttempts` i dry-runnet.
-export const RACE_DAY_TARGET_SOLVE_MAX_STEPS = 2000000;
+// Skridt-loft for de SYNKRONISERINGS-BUNDNE soegeforsoeg (#5267, R13). Samme begrundelse
+// som MONUMENT_SOLVE_MAX_STEPS ovenfor: synkroniseringen kan vaere uopfyldelig for et givet
+// katalog (etapeloebenes laengder skal kunne stables i blokke der rammer hver datos
+// etapetal praecist), og et uopfyldeligt forsoeg maa ikke brae­nde 20 mio. skridt foer
+// stigen naar det forsoeg der faktisk leverer kalenderen. Rammer et fremtidigt katalog
+// loftet, staar det i `solveAttempts` i dry-runnet.
+export const SYNC_BLOCK_SOLVE_MAX_STEPS = 2000000;
 
 
 // Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
@@ -930,11 +1029,24 @@ export function packLaneCalendar({
   overlapCap = 2, spineMinStages = 15,
   // #4845 (ejer 6/9): MAALET for loebsdags-aksens laengde — antallet af loebsdage denne
   // division skal have i alt, saa alle fire divisioner har det samme. Loebsdage uden loeb
-  // er rene traeningsdage. 0 = uae­ndret adfaerd, bit-identisk med foer #4845 (aksen er da
-  // et soegeresultat). Loftet pr. kalenderdato spreder de tomme loebsdage; udelades det,
-  // beregnes det af maxEmptyGameDaysPerDate (calendarRaceDayTargets.js) ud fra hvor mange
-  // loebsdage maalet ligger over det pakkeren kan naa med loeb alene.
-  raceDayTarget = 0, naturalRaceDays = null, maxEmptyGameDaysPerDate: maxEmptyPerDate = null,
+  // #5267 (ejer-kort 19/9): PROEVEPAKNING af synkroniserede etapeloebs-blokke (R13).
+  // SLAAET FRA som default, og det er et MAALT valg, ikke forsigtighed: den er
+  // STRUKTURELT uopfyldelig i tre af fire divisioner. Et synkront blok-loeb med k
+  // samtidige etapeloeb lae­gger k etaper paa HVER af blokkens loebsdage, og de loebsdage
+  // ligger i traek, saa enhver kalenderdato der ligger HELT inde i blokken skal kunne
+  // deles i hele blok-loebsdage: k skal gaa op i divisionens density. D2 (density 4,
+  // cap 3) kan k = 2. D1 (5/3) og D3/D4 (3/2) kan kun k = 1 - altsaa slet ingen blok.
+  // MAALT 19/9: med R13 tvunget igennem faldt D3 til 27,3 % og D4 til 35,5 % samtidige
+  // loebsdage mod gulvet paa 40 % (§1/#3329), og D1 fandt slet ingen lovlig pakning.
+  // Se docs/audits/2026-09-19-5267-proevepakning.md §3.
+  syncStageBlocks = false,
+  // er rene traeningsdage. 0 = aksen er et rent soegeresultat.
+  // #5267: maalet flytter IKKE et eneste loeb laengere. Pakningen findes foerst naturligt,
+  // og traeningsdagene lae­gges derefter paa de positioner hvor intet loeb er i gang
+  // (padAxisWithTrainingDays). Er der faerre frie positioner end der skal bruges, stables
+  // flere traeningsdage paa samme position - og det staar maalt i
+  // `longestDateStreakWithoutTraining`, saa klumpningen er synlig i stedet for at gemme sig.
+  raceDayTarget = 0,
 } = {}) {
   const D = Math.max(1, density);
   const cap = Math.max(1, overlapCap);
@@ -964,19 +1076,11 @@ export function packLaneCalendar({
   // Tomt input er ikke en fejl: ingen loeb -> ingen placeringer. Uden dette ville den
   // hoejlydte fejl nedenfor ramme den trivielle sti (fx en pulje uden katalog endnu).
   const maal = Math.max(0, Number(raceDayTarget) || 0);
-  const manglende = Number.isFinite(Number(naturalRaceDays)) && Number(naturalRaceDays) > 0
-    ? Math.max(0, maal - Number(naturalRaceDays))
-    : maal;
-  const perDatoLoft = maal > 0
-    ? (Number.isFinite(Number(maxEmptyPerDate)) && Number(maxEmptyPerDate) > 0
-      ? Number(maxEmptyPerDate)
-      : maxEmptyGameDaysPerDate({ budget: manglende, days }))
-    : 0;
   const res = (stageRaces.length + oneDayRaces.length) === 0
     ? { placements: [], timelineLength: 0 }
     : layoutContiguous({
       stageRaces, classics, monuments, density: D, days, cap, spineMinStages,
-      targetG: maal, maxEmptyPerDate: perDatoLoft,
+      targetG: maal, syncStageBlocks: Boolean(syncStageBlocks),
     });
   if (!res) {
     throw new Error(
@@ -1011,5 +1115,13 @@ export function packLaneCalendar({
     trainingGameDays: res.trainingGameDays ?? [],
     restDayGameDays: res.restDayGameDays ?? [],
     dateOfTrainingGameDay: res.dateOfTrainingGameDay ?? [],
+    // #5267: aksen FOER traeningsdagene blev lagt paa — det er den der skal maales mod
+    // overlap-gulvene, og forskellen til `timelineLength` er budgettet af traeningsdage.
+    naturalRaceDays: res.naturalRaceDays ?? res.timelineLength ?? 0,
+    syncStageBlocksHeld: Boolean(res.syncStageBlocksHeld),
+    stageRaceBlocks: res.stageRaceBlocks ?? 0,
+    syncedStageRaceBlocks: res.syncedStageRaceBlocks ?? 0,
+    freeAxisPositions: res.freeAxisPositions ?? 0,
+    longestDateStreakWithoutTraining: res.longestDateStreakWithoutTraining ?? days,
   };
 }

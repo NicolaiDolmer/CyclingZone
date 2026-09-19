@@ -250,11 +250,14 @@ export function buildTierMaterializationPlan({
   baseSeed = 1,
   forceTiers = [],
   // #4845 (ejer 6/9): faelles antal loebsdage pr. saeson i ALLE divisioner. null = uaendret
-  // adfaerd (antallet er et soegeresultat pr. division, som foer #4845). Er maalet sat,
-  // pakkes tieren FOERST uden budget for at MAALE sit naturlige antal, og dernaest igen med
-  // praecis det manglende antal tomme loebsdage som budget (R12 i raceCalendarLanePacker).
-  // Rae­kkefoelgen er vigtig: budgettet kan ikke udledes foer pakningen er maalt.
+  // adfaerd (antallet er et soegeresultat pr. division, som foer #4845).
+  // #5267: maalet naas som EFTERBEHANDLING — den naturlige pakning beholdes, og de
+  // manglende loebsdage lae­gges som rene traeningsdage paa de positioner hvor intet loeb
+  // er i gang. Maalet flytter derfor ikke laengere et eneste loeb.
   raceDayTarget = null,
+  // #5267: proevepakning af synkroniserede etapeloebs-blokke. Default FRA — se
+  // packLaneCalendar's docstring for den maalte grund (k skal gaa op i density).
+  syncStageBlocks = false,
   classWhitelist = TIER_CLASS_WHITELIST,
   // #3327/#3328 (2026-08-04): data-drevne dækningsmål — se tierCalendarGuarantees.js.
   // Sendes videre til selectTierRaceSet, som selv falder tilbage til FØR-#3327-adfærd
@@ -408,16 +411,17 @@ export function buildTierMaterializationPlan({
       stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
       density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES,
     };
-    // #4845: foerste pakning MAALER divisionens naturlige loebsdags-akse. Mangler der
-    // loebsdage op til det faelles maal, pakkes der een gang mere med netop det antal tomme
-    // loebsdage som budget. Er maalet naaet (eller ikke sat), pakkes der kun EEN gang -
-    // D1 er maalets kilde og betaler derfor aldrig for den ekstra soegning.
-    const naturalPack = packLaneCalendar(packArgs);
-    const naturalRaceDays = naturalPack.timelineLength ?? 0;
+    // #5267: EEN pakning. Foer #5267 pakkede vi to gange - foerst naturligt for at MAALE
+    // aksen, saa igen med maalet som binding - fordi maalet aendrede selve soegningen.
+    // Det goer det ikke laengere: soegningen finder den naturlige pakning, og
+    // traeningsdagene lae­gges ovenpaa uden at flytte et loeb. Det naturlige antal
+    // loebsdage kommer nu fra pakkeren selv (`naturalRaceDays`).
+    const packed = packLaneCalendar({
+      ...packArgs, raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : 0,
+      syncStageBlocks: Boolean(syncStageBlocks),
+    });
+    const naturalRaceDays = packed.naturalRaceDays ?? packed.timelineLength ?? 0;
     const raceDayDeficit = raceDayTarget != null ? Math.max(0, Number(raceDayTarget) - naturalRaceDays) : 0;
-    const packed = raceDayDeficit > 0
-      ? packLaneCalendar({ ...packArgs, raceDayTarget: Number(raceDayTarget), naturalRaceDays })
-      : naturalPack;
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
@@ -485,6 +489,12 @@ export function buildTierMaterializationPlan({
       trainingGameDayCount: (packed.trainingGameDays ?? []).length,
       restDayGameDayCount: (packed.restDayGameDays ?? []).length,
       raceDayPaddingHeld: raceDayDeficit === 0 ? true : Boolean(packed.raceDayTargetHeld),
+      // #5267: synkroniserede etapeloebs-blokke + spredningen maalt paa BLOKKE.
+      syncStageBlocksHeld: Boolean(packed.syncStageBlocksHeld),
+      stageRaceBlocks: packed.stageRaceBlocks ?? 0,
+      syncedStageRaceBlocks: packed.syncedStageRaceBlocks ?? 0,
+      freeAxisPositions: packed.freeAxisPositions ?? 0,
+      longestDateStreakWithoutTraining: packed.longestDateStreakWithoutTraining ?? null,
       straddleGameDays: packed.straddleGameDays,
       gtRealDaySeparationViolations: packed.gtRealDaySeparationViolations ?? [], // #3472 v3
       // #3546 C: dage uden afgørelse: forward fra packLaneCalendar's diagnostik, samme
