@@ -80,7 +80,12 @@ function PostRow({ post, t, language }) {
               <span className="sr-only">{t("list.unread")}</span>
             </span>
           )}
-          <span className={`min-w-0 truncate text-[13.5px] text-cz-1 ${post.is_unread ? "font-semibold" : "font-medium"}`}>
+          {/* #5383: samme klipning som dashboardets forum-kort — `title` holder
+              hele overskriften tilgaengelig naar cellen er for smal. */}
+          <span
+            title={post.title}
+            className={`min-w-0 truncate text-[13.5px] text-cz-1 ${post.is_unread ? "font-semibold" : "font-medium"}`}
+          >
             {post.title}
           </span>
         </span>
