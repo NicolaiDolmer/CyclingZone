@@ -61,6 +61,12 @@ const SCENARIER = [
   { id: "K4", label: "K4: kun D2 loeftes, D3 og D4 roeres ikke", overrides: { 2: { summit_tour: 3 } } },
   { id: "K5", label: "K5: D3 +1 uden at D4 giver reservation fra sig", overrides: { 3: { summit_tour: 4 } } },
   { id: "K6", label: "K6: mountain_tour som ekstra kilde i D3", overrides: { 3: { summit_tour: 4, mountain_tour: 1 }, 4: { summit_tour: 1 } } },
+  { id: "K7", label: "K7: byttet i D3 + en fritstaaende enkeltstart som erstatning", overrides: { 3: { summit_tour: 4, itt_classic: 2 } } },
+  { id: "K8", label: "K8: byttet i D3 + balanced_week reserveret saa enkeltstarten bevares", overrides: { 3: { summit_tour: 4, balanced_week: 1 } } },
+  { id: "K9", label: "K9: K7 + forsoeg paa at loefte D2 via mountain_tour", overrides: { 2: { mountain_tour: 2 }, 3: { summit_tour: 4, itt_classic: 2 } } },
+  { id: "K10", label: "K10: kun D2, mountain_tour reserveret", overrides: { 2: { mountain_tour: 3 } } },
+  { id: "K11", label: "K11: D2 tvinges ned i ProSeries-bjergforsyningen", overrides: { 2: { summit_tour: 6 } } },
+  { id: "K12", label: "K12: K8 for D3 + K11 for D2", overrides: { 2: { summit_tour: 6 }, 3: { summit_tour: 4, balanced_week: 1 } } },
 ];
 
 // Tael hoej-bjerg-etaper pr. loeb ud fra de genererede profiler.
@@ -145,6 +151,19 @@ async function runScenario(scen) {
   };
 }
 
+// Katalog-forsyning: hvilke bjergrige etapeloeb findes overhovedet, pr. klasse?
+// Forklarer hvorfor en reservation kan vaere virkningsloes (§5b katalog-loft).
+const { data: katalog } = await supabase
+  .from("race_pool")
+  .select("name, race_class, terrain_archetype, stages")
+  .is("retired_at", null)
+  .in("terrain_archetype", ["summit_tour", "mountain_tour", "mountain_classic", "balanced_week"]);
+const forsyning = {};
+for (const r of katalog ?? []) {
+  const k = `${r.race_class}/${r.terrain_archetype}`;
+  (forsyning[k] ??= []).push({ name: r.name, stages: r.stages });
+}
+
 const resultater = [];
 for (const scen of SCENARIER) {
   process.stderr.write(`[${scen.id}] ${scen.label} ...\n`);
@@ -162,4 +181,4 @@ for (const scen of SCENARIER) {
   }
 }
 
-console.log(JSON.stringify({ seasonNumber, firstRaceDay, realDays, quotas, resultater }, null, 2));
+console.log(JSON.stringify({ seasonNumber, firstRaceDay, realDays, quotas, forsyning, resultater }, null, 2));
