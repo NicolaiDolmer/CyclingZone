@@ -7,7 +7,7 @@ Reglerne lå før spredt over seks filer med hver sin dato og issue-reference. D
 
 > **Alle tal er verificeret mod koden og mod prod 30/8 2026.** Hver konstant er læst i den fil tabellen peger på; hvert live-tal er målt med read-only SELECT mod prod. Metoden står i §13. Hvor et tal i denne fil er blevet målt forkert tidligere, står den gamle værdi og hvorfor den var forkert — ellers gentager fejlen sig næste gang nogen læser dokumentet skråt.
 >
-> **Tre ting skal læses før du bygger en kalender:** §11 (hvad der IKKE er fastlagt — gæt aldrig et af dem på plads), §5b (katalog-lofter — mål der ikke kan nås uanset kalibrering) og §2c (én regenerering pr. sæson).
+> **Tre ting skal læses før du bygger en kalender:** §11 (hvad der IKKE er fastlagt — gæt aldrig et af dem på plads), §5b (katalog-lofter — mål der ikke kan nås uanset kalibrering) og §2c (fri regenerering indtil sæsonen er aktiv, derefter låst — ejer 19/9, erstatter den gamle "én regenerering pr. sæson").
 
 ---
 
@@ -147,23 +147,48 @@ Det er en regel om KALENDERDAGE, ikke løbsdage, og den gælder pr. division. En
 
 ---
 
-## 2c. Én regenerering pr. sæsonkalender. Punktum.
+## 2c. Fri regenerering indtil sæsonen er aktiv. Derefter låst.
 
-**Ejer-beslutning 30/8: "To regenereringer er forbudt."**
+**Ejer-beslutning 19/9 2026 ([#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405)), ordret:**
+> *"Ja den må gerne laves inden og den må gerne laves om, hvis den ikke er korrekt. Vi skal lave en ordentlig kalender, ikke blot en kalender."*
 
-En sæsons kalender må regenereres **højst én gang**, og kun mens sæsonen har status `upcoming`. Er den regenereret én gang, er formen låst for den sæson. Findes der bagefter et problem med kompositionen, en katalog-mangel eller en skæv fordeling, så **står det til næste sæson**. Det rettes ikke med en ny regenerering.
+En sæsons kalender må bygges tidligt og **regenereres frit, så længe sæsonen har status `upcoming`**. Fra det øjeblik sæsonen bliver `active`, er kalenderen **låst** — præcis som før. En `completed` sæsons kalender er historik og må aldrig omskrives.
 
-**Hvorfor reglen findes.** En regenerering trækker et nyt løbssæt fra kataloget, og alt hvad spillerne har bygget oven på det gamle sæt bliver forkert: udtagelser, planer i Planning Center, formkurver, bestyrelsesmål der peger på bestemte løb. Første regenerering er prisen for at rette en kalender der er decideret i stykker. Den anden er en pris uden en fejl at betale den for.
+**Reglen er en TILSTANDS-regel, ikke en tæller.** Det er dét der gør den håndhævbar uden et nyt felt: sandheden står allerede i `seasons.status`. #5405 tilføjer derfor hverken `calendar_generation_count` eller en migration — en tæller kunne komme i utakt med statussen, og så ville den være en ny fejlkilde frem for en guard.
 
-**Hvad der stadig er tilladt:** punkt-reparationer der ikke rører løbssættet (fx `calendarGameDayRepair`), og #2276's rest-af-sæson-rekonciliering når en ny pulje aktiveres. Det er ikke regenereringer.
+### Den gamle regel, og hvad der erstattede den
 
-> ⚠ **Reglen kan i dag brydes, men ikke fanges.** `regenSeason3Calendar.mjs:128` afviser at køre mod en `active` sæson. Der findes **ingen** guard mod den ANDEN kørsel mod en `upcoming` sæson, og ingen kolonne, tabel eller log der siger hvor mange gange en sæsons kalender er blevet regenereret. Den mindste ændring der gør reglen håndhævbar: `seasons` får et tællefelt (fx `calendar_generation_count`), regenereringsscriptet inkrementerer det og nægter at køre hvis det allerede er ≥ 1. Så bliver reglen en guard i selve indgrebet i stedet for noget en agent skal huske. Se §12.
+| | Gammel (ejer 30/8) | Ny (ejer 19/9, #5405) |
+|---|---|---|
+| Antal regenereringer af en `upcoming` sæson | **højst 1** | **ubegrænset** |
+| Efter aktivering | låst | **låst (uændret)** |
+| Håndhævet i kode | **nej** — §2c's egen advarsel sagde det ligeud | **ja** — `buildSeasonCalendar.js` + `lib/seasonCalendarGate.js` |
+
+Ejer-ordlyden 30/8 var *"To regenereringer er forbudt"*. Den er **erstattet for sæsoner der endnu ikke er aktive**. Begrundelsen bag den holder stadig — en regenerering trækker et nyt løbssæt fra kataloget, og alt hvad spillerne har bygget oven på det gamle sæt bliver forkert — men den skade kan kun ske når der ER noget bygget ovenpå. Det er præcis dét den nye erstatnings-gate måler i stedet for at gætte.
+
+### Sådan er den håndhævet (#5405)
+
+To gates, i rækkefølge. Begge er rene funktioner i `backend/lib/seasonCalendarGate.js`; I/O'et bor i `backend/scripts/buildSeasonCalendar.js`.
+
+**1. Skrive-gaten** (`evaluateSeasonCalendarWriteGate`). Kun `upcoming` slipper igennem. `active`, `completed`, en ukendt eller tom status **og en sæson der slet ikke findes** nægtes alle — **fail-closed**. Findes rækken ikke, opretter `--apply` den som `upcoming` og kører gaten **igen mod den række der faktisk står i databasen**; gaten stoler aldrig på sit eget input.
+
+**2. Erstatnings-gaten** (`evaluateCalendarReplacementGate`). En regenerering er en **ren erstatning**, ikke en tilføjelse. Den nægtes hvis nogen rækker peger på sæsonens løb — udtagelser (`race_entries`), resultater, præmier (`finance_transactions`), notifikationer (`race_notify_outbox`), bestyrelses- og karriere-hændelser, peak-planer, og resten af porten i `RACE_DEPENDENCY_TABLES`. **En tælling der ikke kunne måles er ikke nul**: den nægter også.
+
+> ⚠ **Hvad `--apply` gjorde FØR #5405, og hvorfor det var værre end dubletter.** `materializeTierCalendars` dedup'er på `(pulje, pool_race)`, så en anden kørsel indsatte intet og sagde ingenting — en **tavs no-op**. Havde kataloget eller koden flyttet sig imellem de to kørsler, indsatte den kun differencen, og resultatet blev en **blanding** af den gamle og den nye kalender. Ingen af delene er en regenerering. Nu slettes sæsonens løb og kalender-form først, i børn-først-rækkefølge, efter et JSON-snapshot til `docs/snapshots/5405/`, med post-verify på 0 tilbage.
+
+**Sletningen skal vælges eksplicit.** `--apply` alene stopper og fortæller hvad der ville blive slettet; `--apply --replace-existing` er det der rydder. Postgres-transaktioner findes ikke gennem supabase-js, så kæden er repoets egen (samme som #3546's wipe): snapshot → nul `teams.my_result_seen_race_id` → slet børn → slet `races` **scopet på `season_id`** → post-verify. Fejler et led, stopper kørslen før materialiseringen og snapshottet ligger på disken.
+
+**Tørkørsler rører intet.** Uden `--apply` måles og rapporteres begge gates, og der skrives ikke en byte — heller ikke en tæller, et flag eller en lås. En nægtet gate gør tørkørslens exit-kode rød, så forskellen på "intet brud" og "brud vi valgte at måle videre på" er synlig.
+
+**Hvad der stadig er tilladt uden at være en regenerering:** punkt-reparationer der ikke rører løbssættet (fx `calendarGameDayRepair`), og #2276's rest-af-sæson-rekonciliering når en ny pulje aktiveres (§2e).
+
+> **Kvalitetskravet er ejerens, ikke scriptets.** "En ordentlig kalender" betyder at de røde punkter i tørkørslen skal frem som et ejer-kort med prod-tal **før** en generering — ikke at gaten skal lempes. Der køres ingen `--apply` uden et eksplicit ejer-go pr. kørsel (#5405).
 
 ---
 
 ## 2d. Sådan bygges sæson 4 (og enhver sæson efter den)
 
-**Ét script, én kommando, én regenerering.** `backend/scripts/buildSeasonCalendar.js` er
+**Ét script, én kommando.** `backend/scripts/buildSeasonCalendar.js` er
 vejen. `regenSeason3Calendar.mjs` var S3-specifik og skal ikke kopieres - dens hardkodede
 `REAL_DAYS = 31` og `OWNER_FIRST_RACE_DAY` gælder kun S3.
 
@@ -179,13 +204,23 @@ node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --uniform-
 
 # 3) skrivning - kun efter ejer-go, og kun med en EKSPLICIT længde
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --apply
+
+# 4) REGENERERING af en sæson der allerede HAR en kalender (§2c, ejer 19/9).
+#    Uden --replace-existing stopper trin 3 og printer hvad der ville blive slettet.
+node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --apply --replace-existing
 ```
+
+Trin 4 findes kun fordi §2c blev ændret 19/9. Det er en **sletning** af sæsonens nuværende
+løb og kalender-form, og den kræver sit eget ejer-go — ikke det samme go som trin 3. Kør
+altid trin 1 igen umiddelbart før: erstatnings-gatens tal er en måling, ikke en hukommelse.
 
 ### Trin 0: den gyldne kalender-diff (obligatorisk, [#4123](https://github.com/NicolaiDolmer/CyclingZone/issues/4123))
 
-**Kør den FØR tørkørslen.** §2c giver én regenerering pr. sæson, så spørgsmålet
-"hvad har koden ændret siden sidste gang nogen kiggede?" skal besvares **inden** den ene
-chance bruges — ikke bagefter, i en scorecard-rapport ingen sammenligner med noget.
+**Kør den FØR tørkørslen.** Spørgsmålet "hvad har koden ændret siden sidste gang nogen
+kiggede?" skal besvares **inden** en generering, ikke bagefter i en scorecard-rapport ingen
+sammenligner med noget. §2c's nye regel gør en regenerering billigere, ikke gratis: hver
+omgang er stadig en sletning af det spillerne kan se, og en kode-ændring ingen har
+opdaget er præcis dét diff'en findes for at fange.
 
 `backend/scripts/dev/calendarGoldenDiff.mjs` genererer kalenderen **100 % offline** fra
 `backend/lib/__fixtures__/racePoolCatalog.prod.json` ([#4121](https://github.com/NicolaiDolmer/CyclingZone/issues/4121))
@@ -230,7 +265,8 @@ slutdatoen skal være en **søndag**, og løbsdatoer = slutdato − startdato + 
 ikke en konstant** - det er dét reglerne gav for en fredags-start. En mandags-start kan
 kun have længder der er hele uger. Uden `--race-days`/`--last-day` FORESLÅR scriptet den
 lovlige længde tættest på 31 og markerer den som udledt; `--apply` nægter at køre på et
-forslag, netop fordi §2c kun giver én chance.
+forslag. Længden er ejerens valg, ikke scriptets — et gæt der først opdages når kalenderen
+står live koster en hel regenerering at rette.
 
 Kvoten er **density × løbsdatoer** (§1b's gyldige af de tre kvote-tal) og beregnes af
 scriptet. `TIER_GAME_DAY_QUOTA`s 140/112/84/56 bruges ikke af denne vej.
@@ -282,8 +318,8 @@ frem til S4-cutoveren 27.-28/9 — samme cutover-vindue som sæson-rækken ovenf
 ## 2e. En pulje der aktiveres MIDT i sæsonen ([#5272](https://github.com/NicolaiDolmer/CyclingZone/issues/5272))
 
 `reconcilePoolCalendarOnActivation` (`backend/lib/tierCalendarMaterializer.js`) bygger
-kalenderen for en pulje der vågner efter sæsonen er gået i gang — §2c's ene undtagelse.
-Den er ikke en regenerering, men den skal ramme **begge** akser i §0:
+kalenderen for en pulje der vågner efter sæsonen er gået i gang — §2c's ene undtagelse fra
+låsen ved aktivering. Den er ikke en regenerering, men den skal ramme **begge** akser i §0:
 
 | Akse | Hvordan den afkortes | Siden |
 |---|---|---|
@@ -948,7 +984,7 @@ Vær ærlig om dem. Et grønt scorecard der ikke dækker dem, lyver om hvad det 
 | **"Reglerne skal være optimale"** (#4176's eget punkt 4) | Der findes ikke et maskinlæsbart kriterium for om `TIER_OVERLAP_CAP = 3` er et godt tal. Det kan kun MÅLES mod noget andet, fx trupstørrelser ([#4174](https://github.com/NicolaiDolmer/CyclingZone/issues/4174)), og så er det stadig ejeren der afgør hvad der skal give efter |
 | **Dage uden afgørelse** | `daysWithoutDecisionCount` MÅLES af pakkeren, men der findes intet loft. Ved `cobbled_classic` = 7 gik D3 fra 7 til 11 sådanne dage, og det blev fundet ved at diffe før og efter, ikke af en gate. Et loft kræver en ejer-beslutning om hvor mange kedelige dage en division må have |
 | **Katalog-loft vs. generator-fejl** | En rød komposition betyder enten at generatoren er skæv, eller at kataloget ikke rummer de løb der skal til (§5b). En test kan ikke skelne. Den kan derimod rapportere begge tal, og det bør den: *"D1 brosten 3,9 %, katalogets loft ved nuværende reservationer er X %"* |
-| **"To regenereringer er forbudt"** (§2c) | En test kan tælle regenereringer, men kun hvis de bliver skrevet ned. Det gør de ikke i dag — se §12 |
+| ~~**"To regenereringer er forbudt"** (§2c)~~ | **Ikke længere ufuldstændig.** Ejeren erstattede reglen 19/9 (#5405) med en tilstands-regel, og den ER maskinlæsbar: `seasons.status` afgør den, og `seasonCalendarGate.test.js` dækker hver gren |
 | **Om et parcours er godt spil** | Finale-båndene (§7b) og etaperækkefølgen (§7) er gatede på fordelinger. At en konkret bjergetape er kedelig, kan ikke måles |
 | **Stikprøve-støj mod ægte skævhed** | §7b's to-lags-model (rå bånd på sæsonen, bånd + 2 standardfejl pr. division ved n ≥ 12) er den rigtige form. Den kan ikke skærpes uden at blive rød på en korrekt generator, og det er ikke en mangel |
 
@@ -1020,7 +1056,7 @@ Hver linje er en guard der kan bygges i dag, uden en ejer-beslutning først. De 
 | Guard | Hvor | Hvad den forhindrer |
 |---|---|---|
 | `set -o pipefail` + tom-JSON-check i nat-vagten | `.github/workflows/calendar-invariant-audit.yml` | At en vagt kan gå grøn på sit eget fejlsvar (§9b) |
-| `calendar_generation_count` på `seasons` + guard i regen-scriptet | `seasons` + `regenSeason3Calendar.mjs` | At §2c's regel kan brydes uden at nogen kan se det |
+| ~~`calendar_generation_count` på `seasons` + guard i regen-scriptet~~ | — | **Bygget 19/9 (#5405), men uden tællefeltet.** Den nye §2c er en tilstands-regel: `evaluateSeasonCalendarWriteGate` gater på `seasons.status`, så en tæller er overflødig og ville kunne komme i utakt med statussen |
 | Prod-invariant: `count(distinct dato) = race_days_total` pr. pulje | `verify-invariants.js` | Løbsfrie dage i en division (§2) |
 | Prod-invariant: GT-spænd = `etaper + GRAND_TOUR_REST_DAYS` | `verify-invariants.js` | At hviledags-reglen driver i data (§3) |
 | Doc-test: hver konstant nævnt i denne fil findes med den værdi i den fil der står i tabellen | ny test i `backend/lib/` | At dette dokument igen kan blive forældet uden at nogen opdager det |

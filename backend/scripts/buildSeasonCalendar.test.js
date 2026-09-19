@@ -6,8 +6,16 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gatePlan } from "./buildSeasonCalendar.js";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  gatePlan, countRaceDependencies, describeSeasonCalendarWriteGate, replaceSeasonCalendarRows,
+} from "./buildSeasonCalendar.js";
 import { computeCompositionStats } from "../lib/calendarCompositionTargets.js";
+import {
+  evaluateSeasonCalendarWriteGate, RACE_DEPENDENCY_TABLES, dependencyKey,
+} from "../lib/seasonCalendarGate.js";
 
 // Minimal, gyldig tier-plan-fixture. `seedRaces` udelades bevidst (null) i de fleste
 // tests — det udløser gatePlan's "ingen tier leverede et løbssæt at score realisme på"
@@ -117,4 +125,181 @@ test("gatePlan: en SYNTETISK +8pp-afvigelse på en tier fejler stadig (gaten er 
   const summary = { tiers: [tierPlan({ tier: 2, stages })] };
   const { blocking } = gatePlan(summary);
   assert.ok(blocking.some((b) => b.includes("tier 2") && b.includes("pr.-tier komposition") && b.includes("flad")), blocking.join(" · "));
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// #5405 — den nye §2c: fri regenerering indtil sæsonen er aktiv, derefter låst
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Selve afgørelserne er rene og testes i lib/seasonCalendarGate.test.js. Her testes
+// CLI-lagets to ting: at hver gate-kode HAR en dansk forklaring, og at I/O-stien tæller
+// og sletter det den siger — mod en fake Supabase, så ingen test rører en database.
+
+test("#5405: hver skrive-gate-kode har en forklaring — ingen gren printer 'undefined'", () => {
+  const cases = [
+    { seasonRow: { status: "upcoming" } }, { seasonRow: { status: "active" } },
+    { seasonRow: { status: "completed" } }, { seasonRow: { status: "hvad-som-helst" } },
+    { seasonRow: null },
+  ];
+  const seen = new Set();
+  for (const c of cases) {
+    const gate = evaluateSeasonCalendarWriteGate(c);
+    const text = describeSeasonCalendarWriteGate(gate, 4);
+    assert.ok(text.length > 20, `for kort forklaring for ${gate.code}: ${text}`);
+    assert.doesNotMatch(text, /undefined|\[object/, `${gate.code} lækker en intern værdi: ${text}`);
+    assert.match(text, /sæson 4/, `${gate.code} nævner ikke sæsonen: ${text}`);
+    seen.add(gate.code);
+  }
+  assert.equal(seen.size, 5, "forventede alle fem gate-koder dækket");
+});
+
+test("#5405: en UKENDT gate-kode beskrives som et NEJ, ikke som tomhed", () => {
+  // En fremtidig gren nogen glemte at beskrive må ikke ligne et blankt felt.
+  const text = describeSeasonCalendarWriteGate({ code: "noget_nyt" }, 4);
+  assert.match(text, /NEJ/);
+  assert.doesNotMatch(text, /undefined/);
+});
+
+// ── Fake Supabase ────────────────────────────────────────────────────────────
+// Kun de kald buildSeasonCalendar faktisk laver. Hver skrivning logges, så en test kan
+// bevise at en tørkørsel IKKE skrev noget — ikke bare at den ikke kastede.
+function fakeSupabase({ rowsByTable = {}, countOverrides = {}, failCountFor = null } = {}) {
+  const writes = [];
+  const rows = (t) => rowsByTable[t] ?? [];
+
+  function builder(table) {
+    const state = { table, count: false, filterCol: null, filterVals: null };
+    const q = {
+      select(_cols, opts) { state.count = Boolean(opts?.count); return q; },
+      update(patch) { state.op = { kind: "update", patch }; return q; },
+      delete() { state.op = { kind: "delete" }; return q; },
+      insert(payload) { writes.push({ table, kind: "insert", payload }); return Promise.resolve({ error: null }); },
+      order() { return q; },
+      range(from, to) { return Promise.resolve({ data: rows(table).slice(from, to + 1), error: null }); },
+      in(col, vals) {
+        state.filterCol = col; state.filterVals = vals;
+        if (state.op) { writes.push({ table, kind: state.op.kind, column: col, ids: vals }); return Promise.resolve({ error: null }); }
+        if (state.count) {
+          const key = `${table}.${col}`;
+          if (failCountFor === key) return Promise.resolve({ count: null, error: { message: "boom" } });
+          return Promise.resolve({ count: countOverrides[key] ?? 0, error: null });
+        }
+        return q; // videre til .order().range() via fetchAllRowsChunkedIn
+      },
+      eq(col, val) {
+        if (state.op) { writes.push({ table, kind: state.op.kind, column: col, value: val }); return Promise.resolve({ error: null }); }
+        if (state.count) return Promise.resolve({ count: countOverrides[`${table}.${col}`] ?? 0, error: null });
+        return q;
+      },
+      maybeSingle() { return Promise.resolve({ data: rows(table)[0] ?? null, error: null }); },
+    };
+    return q;
+  }
+  return { from: builder, writes };
+}
+
+const raceIds = ["r1", "r2", "r3"];
+
+test("#5405 countRaceDependencies: tæller HVER FK-tabel i katalogen, også dem på 0", () => {
+  const supabase = fakeSupabase({ countOverrides: { "race_entries.race_id": 4, "race_results.race_id": 2 } });
+  return countRaceDependencies({ supabase, raceIds }).then((counts) => {
+    for (const dep of RACE_DEPENDENCY_TABLES) {
+      assert.ok(dependencyKey(dep) in counts, `${dependencyKey(dep)} blev ikke talt`);
+    }
+    assert.equal(counts["race_entries.race_id"], 4);
+    assert.equal(counts["race_results.race_id"], 2);
+    assert.equal(counts["race_incidents.race_id"], 0);
+    assert.equal(supabase.writes.length, 0, "tælling må ALDRIG skrive");
+  });
+});
+
+test("#5405 countRaceDependencies: uden løb er alt 0 og der laves ingen forespørgsler", () => {
+  const supabase = fakeSupabase();
+  return countRaceDependencies({ supabase, raceIds: [] }).then((counts) => {
+    assert.equal(Object.values(counts).every((c) => c === 0), true);
+    assert.equal(supabase.writes.length, 0);
+  });
+});
+
+test("#5405 countRaceDependencies: en FEJLET tælling bliver NaN, ikke 0", () => {
+  // Det er dén værdi erstatnings-gaten nægter fail-closed på. Blev den 0, ville en
+  // afvist læsning ligne "ingen data at miste" — den dyreste form for stilhed.
+  const supabase = fakeSupabase({ failCountFor: "race_entries.race_id" });
+  return countRaceDependencies({ supabase, raceIds }).then((counts) => {
+    assert.ok(Number.isNaN(counts["race_entries.race_id"]));
+    assert.equal(counts["race_results.race_id"], 0);
+  });
+});
+
+test("#5405 replaceSeasonCalendarRows: snapshot FØR sletning, børn før races, post-verify 0", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-5405-"));
+  try {
+    const races = raceIds.map((id) => ({ id, name: `løb ${id}`, league_division_id: 1, status: "scheduled" }));
+    const supabase = fakeSupabase({
+      rowsByTable: {
+        race_stage_profiles: [{ race_id: "r1", stage_number: 1 }],
+        race_stage_schedule: [{ race_id: "r1", stage_number: 1 }],
+        teams: [{ id: "t1", my_result_seen_race_id: "r1" }],
+      },
+      countOverrides: { "races.season_id": 0 }, // post-verify: 0 tilbage
+    });
+
+    const res = await replaceSeasonCalendarRows({
+      supabase, seasonId: "season-4", seasonNumber: 4, races, snapshotDir: dir,
+    });
+
+    // 1) Snapshottet findes og indeholder dét der blev slettet — ellers er der ingen rollback.
+    const files = readdirSync(dir);
+    assert.equal(files.length, 1, `forventede ét snapshot, fandt ${files.join(", ")}`);
+    const snap = JSON.parse(readFileSync(join(dir, files[0]), "utf8"));
+    assert.deepEqual(snap.raceIds, raceIds);
+    assert.equal(snap.races.length, 3);
+    assert.equal(snap.race_stage_profiles.length, 1);
+    assert.equal(snap.teams_my_result_seen_race_id_before.length, 1);
+    assert.equal(res.deletedRaces, 3);
+
+    // 2) Rækkefølgen: UI-state nulles, børn slettes, races slettes SIDST og scopet på season_id.
+    const kinds = supabase.writes.map((w) => `${w.kind}:${w.table}`);
+    assert.deepEqual(kinds, [
+      "update:teams",
+      "delete:race_stage_schedule",
+      "delete:race_stage_profiles",
+      "delete:races",
+    ], kinds.join(" → "));
+    const racesDelete = supabase.writes.at(-1);
+    assert.equal(racesDelete.column, "season_id");
+    assert.equal(racesDelete.value, "season-4");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("#5405 replaceSeasonCalendarRows: post-verify med løb tilbage KASTER (ingen materialisering ovenpå)", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-5405-"));
+  try {
+    const supabase = fakeSupabase({ countOverrides: { "races.season_id": 2 } });
+    await assert.rejects(
+      replaceSeasonCalendarRows({
+        supabase, seasonId: "season-4", seasonNumber: 4,
+        races: raceIds.map((id) => ({ id })), snapshotDir: dir,
+      }),
+      /efterlod 2 løb/,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("#5405 replaceSeasonCalendarRows: 0 løb er en no-op — intet snapshot, ingen skrivning", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-5405-"));
+  try {
+    const supabase = fakeSupabase();
+    const res = await replaceSeasonCalendarRows({ supabase, seasonId: "s", seasonNumber: 4, races: [], snapshotDir: dir });
+    assert.equal(res.deletedRaces, 0);
+    assert.equal(res.snapshotPath, null);
+    assert.equal(supabase.writes.length, 0);
+    assert.deepEqual(readdirSync(dir), []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
