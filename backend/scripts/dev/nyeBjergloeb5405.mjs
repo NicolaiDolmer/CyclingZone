@@ -27,7 +27,16 @@ import { materializeTierCalendars } from "../../lib/tierCalendarMaterializer.js"
 import { resolveCalendarFrom, resolveSeasonWindow, SEASON_RACE_DAYS_DEFAULT } from "../../lib/calendarStartDate.js";
 import { quotasForRaceDays, seasonUuid } from "../buildSeasonCalendar.js";
 import { scoreCalendarPlan, alleBrud, scorecardGateGroups } from "../../lib/calendarScorecardReport.js";
+import { TIER_ARCHETYPE_RESERVATIONS } from "../../lib/tierCalendarGuarantees.js";
 import { externalIdFor } from "../proposeCatalogExpansion.js";
+
+// Dyb klon + override af reservations-tabellen. Ingen mutation af den frosne original.
+function reservationsWith(overrides = {}) {
+  const out = {};
+  for (const [tier, cfg] of Object.entries(TIER_ARCHETYPE_RESERVATIONS)) out[tier] = { ...cfg };
+  for (const [tier, cfg] of Object.entries(overrides)) out[tier] = { ...(out[tier] ?? {}), ...cfg };
+  return out;
+}
 
 const argv = process.argv.slice(2);
 const argOf = (flag, fallback = null) => {
@@ -118,6 +127,22 @@ export const KANDIDATER = Object.freeze([
     terrain_archetype: "summit_tour", date_text: "9/7 - 13/7",
     hvorfor: "Kontrol, samme spoergsmaal som ovenfor.",
   },
+  {
+    key: "portuguesa_pro",
+    name: "Volta Portuguesa",
+    forbillede: "Volta a Portugal — OPRYKKET til ProSeries (virkelig klasse er 2.1)",
+    country: "Portugal", race_class: "ProSeries", race_type: "stage_race", stages: 5,
+    terrain_archetype: "summit_tour", date_text: "6/8 - 10/8",
+    hvorfor: "Tredje ProSeries-bjergloeb: foerst naar D2 og D3 ikke laengere skal dele de samme faa loeb, kan begge naa maalet.",
+  },
+  {
+    key: "andes_pro",
+    name: "Vuelta a los Andes",
+    forbillede: "Tour Colombia — OPRYKKET til ProSeries (virkelig klasse er 2.1)",
+    country: "Colombia", race_class: "ProSeries", race_type: "stage_race", stages: 5,
+    terrain_archetype: "summit_tour", date_text: "4/2 - 8/2",
+    hvorfor: "Fjerde ProSeries-bjergloeb, tidligt paa aaret.",
+  },
 ]);
 
 const byKey = new Map(KANDIDATER.map((k) => [k.key, k]));
@@ -138,16 +163,46 @@ function toCatalogRow(c) {
 }
 
 // ── Kombinationerne ──────────────────────────────────────────────────────────
+//
+// RUNDE 1 (N1-N8) viste at kataloget ALENE ikke flytter D2 og D3 een eneste etape:
+// nye Class1-loeb lander i D4, og et nyt ProSeries-loeb i D3 bytter bare plads med et
+// lige saa bjergrigt loeb D3 allerede havde. Kvoten er eksakt, saa antallet af
+// bjergloeb en division tager, er sat af RESERVATIONEN — ikke af hvor mange der findes.
+//
+// RUNDE 2 (R*) tester derfor den kombination der faktisk er paa spil: reservationen
+// haeves (som i bjergdage-bytte-undersoegelsens K8/K11) OG kataloget udvides, saa
+// divisionerne ikke laengere skal slaas om de samme faa loeb.
+const R_K8 = { 3: { summit_tour: 4, balanced_week: 1 } };
+const R_K11 = { 2: { summit_tour: 6 } };
+const R_K12 = { 2: { summit_tour: 6 }, 3: { summit_tour: 4, balanced_week: 1 } };
+
 const SCENARIER = [
-  { id: "baseline", label: "Udgangspunkt: kataloget som det er i dag", keys: [] },
-  { id: "N1", label: "N1: ET nyt Class1-bjergloeb (Volta Galega)", keys: ["galega"] },
-  { id: "N2", label: "N2: TO nye Class1-bjergloeb (Galega + Portuguesa)", keys: ["galega", "portuguesa"] },
-  { id: "N3", label: "N3: TRE nye Class1-bjergloeb (Galega + Portuguesa + Tauern)", keys: ["galega", "portuguesa", "tauern"] },
-  { id: "N4", label: "N4: FIRE nye Class1-bjergloeb (alle fire)", keys: ["galega", "portuguesa", "tauern", "andes"] },
-  { id: "N5", label: "N5: to Class1 + et OPRYKKET ProSeries (til D2)", keys: ["galega", "portuguesa", "tauern_pro"] },
-  { id: "N6", label: "N6: to Class1 + to OPRYKKEDE ProSeries", keys: ["galega", "portuguesa", "tauern_pro", "galega_pro"] },
-  { id: "N7", label: "N7: kun OPRYKKEDE ProSeries (kontrol: hjaelper det D3?)", keys: ["galega_pro", "tauern_pro"] },
-  { id: "N8", label: "N8: tre Class1 + et OPRYKKET ProSeries", keys: ["galega", "portuguesa", "andes", "tauern_pro"] },
+  { id: "baseline", label: "Udgangspunkt: kataloget som det er i dag", keys: [], overrides: {} },
+  { id: "N1", label: "N1: ET nyt Class1-bjergloeb (Volta Galega)", keys: ["galega"], overrides: {} },
+  { id: "N2", label: "N2: TO nye Class1-bjergloeb (Galega + Portuguesa)", keys: ["galega", "portuguesa"], overrides: {} },
+  { id: "N3", label: "N3: TRE nye Class1-bjergloeb", keys: ["galega", "portuguesa", "tauern"], overrides: {} },
+  { id: "N4", label: "N4: FIRE nye Class1-bjergloeb", keys: ["galega", "portuguesa", "tauern", "andes"], overrides: {} },
+  { id: "N7", label: "N7: kun OPRYKKEDE ProSeries", keys: ["galega_pro", "tauern_pro"], overrides: {} },
+
+  { id: "R1", label: "R1: K8-reservation alene (kendt resultat, kontrol)", keys: [], overrides: R_K8 },
+  { id: "R2", label: "R2: K8 + to nye Class1-bjergloeb", keys: ["galega", "portuguesa"], overrides: R_K8 },
+  { id: "R3", label: "R3: K8 + to OPRYKKEDE ProSeries", keys: ["galega_pro", "tauern_pro"], overrides: R_K8 },
+  { id: "R4", label: "R4: K12 (D2+D3) alene (kendt resultat, kontrol)", keys: [], overrides: R_K12 },
+  { id: "R5", label: "R5: K12 + to OPRYKKEDE ProSeries", keys: ["galega_pro", "tauern_pro"], overrides: R_K12 },
+  { id: "R6", label: "R6: K12 + to OPRYKKEDE ProSeries + to Class1", keys: ["galega_pro", "tauern_pro", "portuguesa", "andes"], overrides: R_K12 },
+  { id: "R7", label: "R7: K11 (kun D2) + to OPRYKKEDE ProSeries", keys: ["galega_pro", "tauern_pro"], overrides: R_K11 },
+  { id: "R8", label: "R8: D3 summit_tour 5 + balanced_week 1 + to OPRYKKEDE ProSeries", keys: ["galega_pro", "tauern_pro"], overrides: { 3: { summit_tour: 5, balanced_week: 1 } } },
+  { id: "R9", label: "R9: D2 summit 6 + D3 summit 5/balanced 1 + to OPRYKKEDE ProSeries", keys: ["galega_pro", "tauern_pro"], overrides: { 2: { summit_tour: 6 }, 3: { summit_tour: 5, balanced_week: 1 } } },
+
+  // RUNDE 3: R8 bragte D3 i maal uden at koste en enkeltstart, men D2 stod stille.
+  // Her testes om et TREDJE og FJERDE ProSeries-bjergloeb giver D2 sit eget stof at
+  // tage, saa de to divisioner ikke laengere konkurrerer om de samme faa loeb.
+  { id: "S1", label: "S1: R8 + D2 summit 5", keys: ["galega_pro", "tauern_pro"], overrides: { 2: { summit_tour: 5 }, 3: { summit_tour: 5, balanced_week: 1 } } },
+  { id: "S2", label: "S2: R8 + tredje ProSeries-bjergloeb, D2 uaendret", keys: ["galega_pro", "tauern_pro", "portuguesa_pro"], overrides: { 3: { summit_tour: 5, balanced_week: 1 } } },
+  { id: "S3", label: "S3: tre ProSeries + D2 summit 5 + D3 summit 5/balanced 1", keys: ["galega_pro", "tauern_pro", "portuguesa_pro"], overrides: { 2: { summit_tour: 5 }, 3: { summit_tour: 5, balanced_week: 1 } } },
+  { id: "S4", label: "S4: tre ProSeries + D2 summit 6 + D3 summit 5/balanced 1", keys: ["galega_pro", "tauern_pro", "portuguesa_pro"], overrides: { 2: { summit_tour: 6 }, 3: { summit_tour: 5, balanced_week: 1 } } },
+  { id: "S5", label: "S5: fire ProSeries + D2 summit 6 + D3 summit 5/balanced 1", keys: ["galega_pro", "tauern_pro", "portuguesa_pro", "andes_pro"], overrides: { 2: { summit_tour: 6 }, 3: { summit_tour: 5, balanced_week: 1 } } },
+  { id: "S6", label: "S6: tre ProSeries + to Class1 + D2 summit 5 + D3 summit 5/balanced 1", keys: ["galega_pro", "tauern_pro", "portuguesa_pro", "andes", "tauern"], overrides: { 2: { summit_tour: 5 }, 3: { summit_tour: 5, balanced_week: 1 } } },
 ];
 
 function raceBreakdown(tierPlan, profiles, archetypeByPoolRace, nyeNavne) {
@@ -181,6 +236,7 @@ async function runScenario(scen) {
     supabase, seasonId: seasonUuid(seasonNumber), seasonStartDate: firstRaceDay, from,
     dryRun: true, log: () => {}, realDays, quotas,
     useUniformTierTilt: false,
+    archetypeReservations: reservationsWith(scen.overrides ?? {}),
     extraCatalogRows: extra,
   });
   const planTiers = plan.planTiers ?? [];
