@@ -29,7 +29,14 @@ const alphaToken = (cssVar) => ({ opacityValue }) =>
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./index.html", "./src/**/*.{js,jsx}"],
+  // #5449 — `ts`/`tsx` MÅ stå her. Hard rule 31 siger at alle nye frontend-filer
+  // skrives i TypeScript, men globben scannede kun `js`/`jsx`. En klasse der KUN
+  // fandtes i en `.tsx`-fil blev derfor aldrig genereret, og elementet faldt
+  // tilbage til browserens standard (træningsscorens sparkline blev en sort klat,
+  // fordi `fill-cz-subtle` + `stroke-cz-1` manglede og SVG-default-fill er sort).
+  // Forward-guard: `frontend/tests/tailwindContentGlob.test.js` fejler hvis en
+  // filendelse under `src/` indeholder `className`/`class=` uden at være dækket her.
+  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
   darkMode: ['class', '[data-theme="dark"]'],
   theme: {
     extend: {
