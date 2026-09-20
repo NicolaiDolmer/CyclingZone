@@ -35,6 +35,7 @@ import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import {
   TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
+  loadBoundRiderIdsForRaceDay,
 } from "./trainingRaceDayTick.js";
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
@@ -283,6 +284,7 @@ export async function runTeamTrainingDay({
     { data: conditionRows, error: conditionError },
     { data: weekPlanRow, error: weekPlanError },
     raceDayResult,
+    boundRidersResult,
   ] = await Promise.all([
     supabase.from("rider_derived_abilities").select("*").in("rider_id", riderIds),
     supabase.from("training_plans")
@@ -303,12 +305,33 @@ export async function runTeamTrainingDay({
     raceDayDevelopmentOn
       ? loadRacedRiderIdsToday(supabase, riderIds, now, tickDate)
       : Promise.resolve({ data: [], error: null }),
+    // #4847 (ejer-regel 2+3, 18/9): hvem er BUNDET paa denne loebsdag? Kun paa
+    // loebsdags-aksen — den gamle kalenderdags-sti har ingen loebsdag at binde paa
+    // og er bit-identisk med i dag (ingen ekstra DB-kald naar flaget er off).
+    useRaceDayKey
+      ? loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId, gameDay: raceDay })
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   if (abilityError) throw new Error(`abilities load: ${abilityError.message}`);
   if (planError) throw new Error(`plans load: ${planError.message}`);
   if (conditionError) throw new Error(`condition load: ${conditionError.message}`);
   if (weekPlanError) throw new Error(`week plan load: ${weekPlanError.message}`);
+
+  // ── #4847: loebsdags-BINDINGEN (ejer-regel 2+3, 18/9) ───────────────────────
+  // KASTER bevidst, i modsaetning til loebsdags-BERIGELSEN nedenfor. Bindingen
+  // afgoer om rytteren overhovedet maa traene i dag; et gaet er enten traening oven
+  // i et loeb (regel 2 brudt) eller en taget dag for hele truppen. Tick'et er
+  // idempotent og sweepens dags-claim saettes kun ved `failed === 0`, saa den
+  // rigtige adfaerd er at fejle holdet og lade naeste 5-min-tick proeve igen.
+  // ASCII-only besked (#i18n-leak-guard): intern ops-fejl, ikke spiller-synlig.
+  if (useRaceDayKey && boundRidersResult.error) {
+    throw new Error(
+      `race-day binding load (team ${teamId}, game day ${raceDay}): ${boundRidersResult.error.message ?? boundRidersResult.error} - refusing to tick, retry on next sweep`,
+    );
+  }
+  // Tom mængde paa den gamle sti — ingen loebsdag, ingen binding.
+  const boundRiderIds = boundRidersResult.data ?? new Set();
 
   // #3459 D1 fail-safe: query-fejl → tom mængde (INGEN løbsdag antaget), log warning.
   // Kaster ALDRIG — en fejlet best-effort-berigelse må ikke vælte hele holdets
@@ -440,7 +463,27 @@ export async function runTeamTrainingDay({
     // er `racedRiderIds` altid tom (lookuppet kørte ikke), så gaten er teknisk
     // redundant — den bliver stående fordi den gør intentionen læsbar dér hvor
     // grenen vælges, i stedet for at hvile på en tom mængde langt oppe i filen.
-    const racedToday = !injuredToday && raceDayDevelopmentOn && racedRiderIds.has(rider.id);
+    //
+    // #4847 (ejer-regel 2, 18/9): paa loebsdags-aksen SKAERES `racedRiderIds` med
+    // bindingen. `racedRiderIds` er noeglet paa KALENDERDAGEN (race_results.
+    // imported_at), og en kalenderdag baerer flere loebsdage — uden skaeringen ville
+    // en rytter der koerte paa loebsdag N ogsaa taelle som "racede" paa loebsdag N+1
+    // (samme dato) og faa en udviklings-dag han ikke har koert for. Bindingen er
+    // loebsdags-noeglet og er derfor den praecise mængde.
+    const boundToday = useRaceDayKey && boundRiderIds.has(rider.id);
+    const racedToday = !injuredToday && raceDayDevelopmentOn && racedRiderIds.has(rider.id)
+      && (!useRaceDayKey || boundToday);
+
+    // #4847 (ejer-regel 2+3, 18/9): BUNDET, men ikke paa en udviklings-loebsdag.
+    // To tilfaelde ender her, og begge skal vaere HVILE, ikke traening:
+    //   · GT-hviledagen — rytteren er inde i et etapeloeb og koerer ikke i dag
+    //     (regel 3: "saa skal han jo bare sove om natten og koere loeb igen").
+    //   · Rytteren KOERTE i dag, men `race_day_development_enabled` er slukket.
+    //     Foer denne aendring gav praecis den tilstand traening oven i loebet —
+    //     regel 2 brudt, og den bug ejeren fandt 18/9 i denne PR.
+    // Resultatet er det samme som en skadet rytters: intet tick, ingen score-raekke,
+    // ingen historik — kun condition/restitution. "Loeb ELLER traening, aldrig begge."
+    const boundRestToday = !injuredToday && !racedToday && boundToday;
 
     // Pre-tick træthed til skaderisiko-beregning (brug den aktuelle, ikke den næste).
     const preFatigue = Number(cond.fatigue ?? 0);
@@ -456,15 +499,26 @@ export async function runTeamTrainingDay({
     // rest-intensitetens -14). Samme "??0"-mekanisme injuryRisk() læner sig på
     // nedenfor (intensity !== "hard" → 0 risiko — ingen trænings-skaderisiko på
     // løbsdage, se "Åbne designbeslutninger" i PR-body).
-    const effectiveIntensity = injuredToday ? "rest" : racedToday ? "race" : program.intensity;
+    // #4847: `boundRestToday` faar "rest" — den rigtige restitutions-semantik for en
+    // hviledag inde i et etapeloeb (og for en loebsdag hvor udviklingen er slukket).
+    const effectiveIntensity = injuredToday
+      ? "rest"
+      : racedToday
+        ? "race"
+        : boundRestToday
+          ? "rest"
+          : program.intensity;
 
     // Daglig tick: raske ryttere får ENTEN en normal træningsdag ELLER (racede i
     // dag) en race-udviklings-dag — GENSIDIGT UDELUKKENDE grene i samme if/else,
     // så dobbelt-kredit er umulig by construction (#3459 D2). Skadede ryttere får
     // ingen af delene (no gains, program.intensity/training_plans RØRES ALDRIG —
     // G5-invarianten).
+    // #4847: `boundRestToday` er den TREDJE gren — samme udfald som skadet (intet
+    // tick), men en anden grund. Den staar i betingelsen og ikke som en tom
+    // tick-type, saa "loeb ELLER traening" er umuligt at bryde by construction.
     let tickResult = null;
-    if (!injuredToday && age != null) {
+    if (!injuredToday && !boundRestToday && age != null) {
       const condMult = conditionMultiplier({ form: Number(cond.form ?? 50), fatigue: preFatigue });
       // Fælles parametre for begge tick-typer — samme program/condition/staff/
       // facility/academy-kæde uanset kilde (design-krav: skrivestien er blind
@@ -715,6 +769,10 @@ export async function runTeamTrainingDay({
       // dagens træning erstattes af løbet"). false når flag off (bit-identisk
       // datamodel, ingen eksisterende consumer læser feltet endnu).
       race_day: racedToday,
+      // #4847 (ejer-regel 3): rytteren er BUNDET til et loeb paa denne loebsdag —
+      // enten fordi han koerer, eller fordi han er inde i et etapeloebs spaend
+      // (GT-hviledag). Additivt rapport-felt, altid false paa den gamle sti.
+      bound_race_day: boundToday,
       // #4846: hvilken loebsdag ticket hoerer til. null paa den gamle sti.
       game_day: useRaceDayKey ? raceDay : null,
     });

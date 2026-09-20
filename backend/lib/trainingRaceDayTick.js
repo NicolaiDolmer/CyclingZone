@@ -198,3 +198,59 @@ export async function resolveTeamRaceDay({ supabase, teamId, seasonId, now = new
     return { gameDay: null, reason: "exception" };
   }
 }
+
+/**
+ * Hvilke af holdets ryttere er BUNDET paa denne loebsdag? (#4847, ejer-regel 2+3, 18/9)
+ *
+ * EJERENS REGEL (18/9, #5267-kommentaren, laast som princip):
+ *   2. Paa en loebsdag koerer rytteren ét loeb ELLER traener. Aldrig begge.
+ *   3. Et etapeloeb binder rytteren fra foerste til sidste etape — ogsaa paa
+ *      hviledagene imellem. "Hviledag i et etapeloeb = hvile, ikke traening."
+ *
+ * KILDEN ER `race_entry_days`, IKKE dagens etaperesultater. Det er hele pointen:
+ * `race_results` fortaeller hvem der KOERTE en etape i dag, og dermed intet om en
+ * GT-hviledag, hvor rytteren er bundet uden at koere. `race_entry_days` baerer siden
+ * #4217 HELE spaendet min(game_day)..max(game_day) pr. udtagelse (bevist mod en aegte
+ * Postgres-motor i testdb/raceEntryDaysGtRestDay.integration.test.js: 19 dag-raekker
+ * for et 17-etapers loeb med 2 hviledage), og #4191's rebuild-porte holder afmeldte
+ * loeb (race_withdrawals) UDE af mængden. Det er praecis regel 3's mængde.
+ *
+ * INGEN FLAG-AFHAENGIGHED (regel 2's fix). Den gamle detektion hang paa
+ * `race_day_development_enabled`; med kun `training_tick_per_race_day` taendt var
+ * mængden derfor altid tom, og en rytter der koerte loeb fik traening ovenpaa. Dette
+ * opslag kender ingen flag — det koeres naar tick'et er paa loebsdags-aksen, punktum.
+ *
+ * FEJL-KONTRAKTEN ER DEN MODSATTE AF loadRacedRiderIdsToday's. Det lookup er en
+ * BERIGELSE (hvilken profil-type gav loebet?), og "ved det ikke" er dér et lovligt
+ * svar. Dette er en REGEL-GATE: gaetter vi forkert, uddeler vi enten traening oven i
+ * et loeb (bryder regel 2) eller naegter hele truppen en dag. Derfor returneres
+ * fejlen, og kald-stedet KASTER i stedet for at gaette. Tick'et er idempotent og
+ * dags-claimen saettes kun ved `failed === 0`, saa naeste cron-tick (5 min) proever igen.
+ *
+ * @param {{supabase: object, riderIds: string[], seasonId: string, gameDay: number}} args
+ * @returns {Promise<{data: Set<string>|null, error: unknown}>}
+ */
+export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId, gameDay }) {
+  if (!supabase?.from) return { data: null, error: new Error("supabase client required") };
+  if (!seasonId) return { data: null, error: new Error("seasonId required") };
+  if (!Number.isFinite(Number(gameDay))) {
+    return { data: null, error: new Error("finite gameDay required") };
+  }
+  if (!riderIds?.length) return { data: new Set(), error: null };
+  try {
+    const { data, error } = await supabase
+      .from("race_entry_days")
+      .select("rider_id")
+      // pagination-safe: afgraenset til ÉT holds egen trup (typisk < 30) paa ÉN
+      // loebsdag i ÉN saeson — hoejst én raekke pr. rytter, fordi
+      // no_rider_double_booking_day er UNIQUE (rider_id, season_id, game_day).
+      // Langt under PostgREST's 1000-raekkers-loft.
+      .in("rider_id", riderIds)
+      .eq("season_id", seasonId)
+      .eq("game_day", Number(gameDay));
+    if (error) return { data: null, error };
+    return { data: new Set((data ?? []).map((r) => r.rider_id)), error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+}
