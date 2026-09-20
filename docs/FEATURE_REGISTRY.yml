@@ -325,7 +325,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 4846
     verified: 2026-09-15
-    note: Merget 15/9, flag off (§13.3).
+    note: A2 merget 15/9, flag off (§13.3). B4-udløser (samlet sweep ved dagens lukning) bygget bag samme flag; mangler ejer-flip.
 
   - id: training-score
     area: training

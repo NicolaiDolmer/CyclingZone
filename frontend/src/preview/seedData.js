@@ -1993,6 +1993,12 @@ export const SEED_TRAINING = {
   smartDefaultFocus: { "rider-1": "sprint", "rider-2": "vo2max" },
   weekPlan: null,
   riderWeekPlans: {},
+  // #4847: knappens aabne-tilstand naar `training_tick_per_race_day` er on.
+  // ADDITIV for preview: `todayRun` ovenfor er sat, saa headeren og knappen staar
+  // i "trained today"-tilstanden praecis som foer — feltet aendrer altsaa ingen
+  // eksisterende skaermbilleder. Det findes for at fladen kan renderes i den nye
+  // tilstand ved at nulstille `todayRun` lokalt under en capture.
+  dayClose: { open: false, reason: "awaiting_finalization", gameDays: [40, 41, 42], opensAtHour: 20 },
 };
 
 // ── #2863 · Sæsonens bedste ryttere (get_season_honours-RPC) ───────────────────────

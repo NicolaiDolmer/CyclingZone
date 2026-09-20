@@ -1043,6 +1043,10 @@
         "title": "Træn i dag og +25%-boostet",
         "text": "Klik 'Træn i dag' én gang om dagen for at køre alle aktive programmer med +25% træningsboost. Springer du knappen over, kører assistenten træningen automatisk efter kl. 22. Du mister aldrig en træningsdag. Kun boostet går tabt, når du ikke klikker."
       },
+      "runDayNow": {
+        "title": "Kør dagens træning nu",
+        "text": "Fra sæson 4 kører dagens træning af sig selv, samlet, når dagens sidste løb er kørt og tidligst kl. 20. Alle dagens løbsdage trænes i samme kørsel, så du mister intet ved ikke at være online. 'Kør dagens træning nu' er der kun, hvis du ikke vil vente: den kører præcis den samme træning, uden bonus og uden fordel, og den åbner på samme tidspunkt som den automatiske kørsel ville. Når dagen først er trænet, kan den ikke køres igen."
+      },
       "raceDays": {
         "title": "Løbsdage og træning",
         "text": "En løbsdag ændrer ikke dagens træning. Rytteren gennemfører stadig det pas du har planlagt, og løbet lægger sin egen træthed oven i træningsbelastningen. Selve løbet hæver ikke evner: udviklingen kommer fra træningen, uanset om rytteren kører løb den dag eller ej. Det løb koster, er friskhed, og hver etape lægger sin egen belastning på, mens restitutionen kun kommer én gang i døgnet, så en rytter i et tungt etapeløb bliver hurtigt træt. Hold øje med træthed på de ryttere du stiller op ofte, og giv dem lettere pas eller hvile inden formen falder fra."

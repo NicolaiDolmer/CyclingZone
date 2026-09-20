@@ -64,7 +64,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) | live | - | [TRAINING_RULES](TRAINING_RULES.md) | #4874 | 2026-09-15 | PR #5265; TRAINING_RULES §3.2. |
 | Training page on mobile (`training-mobile-table`) | beta | - | [TRAINING_RULES](TRAINING_RULES.md) | #3643 | 2026-09-19 | Flag training_mobile_table; sat naar raekken er i prod. |
 | Training score 1-99 (`training-score`) | beta | `training_score_visible` | [TRAINING_RULES](TRAINING_RULES.md) | #4851 | 2026-09-15 | PR #5261, flag beta. |
-| Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4846 | 2026-09-15 | Merget 15/9, flag off (§13.3). |
+| Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4846 | 2026-09-15 | A2 merget 15/9, flag off (§13.3). B4-udløser (samlet sweep ved dagens lukning) bygget bag samme flag; mangler ejer-flip. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
 ## academy
