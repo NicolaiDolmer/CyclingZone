@@ -543,6 +543,8 @@ ${moverDetail(topRises)}
 
 ${moverTable(named)}
 
+${moverDetail(named.filter((x) => x.team !== "IKKE FUNDET"))}
+
 ---
 
 ## 10. Er \`tt\` også et problem for ÆGTE enkeltstartsryttere?
