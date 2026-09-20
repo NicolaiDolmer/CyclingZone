@@ -170,9 +170,12 @@ D1 er den eneste division hvor nogen kalenderdato allerede har 5 løbsdage af si
 
 - **3 datoer har allerede 5 løbsdage** og får ingen ekstra. Det er derfor D1's længste stime
   uden en træningsdag er **1** og ikke 0 — og de tre datoer ligger ikke ved siden af hinanden.
-- **Ingen dato har MERE end 5.** Det kan den heller ikke: hver løbsdag bærer mindst én etape,
-  og en kalenderdato har præcis sine 5 etaper, så en dato kan højst have 5 løbsdage. 5-5 kan
-  altså altid holde, og der er ingen afvigelse at foreslå.
+- **Ingen dato har MERE end 5 — og det er derfor 5-5 altid kan holde.** Argumentet gælder den
+  NATURLIGE pakning (før padding): dér bærer hver løbsdag mindst én etape, og en kalenderdato
+  har præcis sine 5 etaper, så en dato kan højst have 5 naturlige løbsdage. Padding fylder
+  derefter hver dato op til sin kvote på 140/28 = 5 og kan aldrig overskride den. Havde en
+  dato haft flere naturlige løbsdage end kvoten, kunne padding ikke fjerne nogen — det ville
+  stå i `raceDayPerDateDeviations` og fælde §1d's gate. Det sker ikke her.
 - D2, D3 og D4 har **præcis 2 naturlige løbsdage på hver eneste dato**, så de får 3 ekstra
   hver eneste dag. Deres stime uden træningsdag bliver 0.
 

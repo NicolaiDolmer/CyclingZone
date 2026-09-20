@@ -136,8 +136,9 @@ Det kan ikke løses med et større søgebudget, et andet katalog eller en anden 
 kan kun løses ved at ændre et af de to låste tal (etaper pr. dag eller maks samtidige løb),
 og begge er ejer-beslutninger: #4270 (3/9, bekræftet 19/9) og overlap-cap'en (28/6).
 
-**Derfor er synkroniseringen slået FRA.** Koden er der, den kan slås til med ét flag, og den
-rapporterer selv om den holdt — men prøvepakningen leverer nedfaldsplanen.
+**Derfor blev synkroniseringen slået FRA** (19/9), og **fjernet helt 20/9** da ejeren valgte
+den jævne fordeling: koden findes ikke længere, heller ikke bag et flag. Det der står her, er
+målingen der begrundede valget.
 
 ## 4. Det du skal tage stilling til: træningsrytmen
 

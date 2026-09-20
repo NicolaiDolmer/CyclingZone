@@ -695,7 +695,10 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 
 Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet lukning ≥ kl. 20), sweep-kapacitet (én sweep/dag), skadesvarighed (løbsdage). PR #5205 (fundamentet, flag off) merget 15/9.
 
-**Beslutning 8's forudsætning er indfriet i kalenderen (#5267, ejer-valg 20/9).** De 35 celler kræver at HVER kalenderdato faktisk bærer 5 løbsdage. Det gør den nu i alle fire divisioner: pakkeren fordeler de tomme løbsdage jævnt i stedet for at lægge dem i de få huller hvor intet løb kører. Reglen og prisen står i [`docs/CALENDAR_RULES.md` §1d/§1e-b](CALENDAR_RULES.md). **Det B4 stadig skal bygge:** 79-91 % af træningsdagene ligger inde i et etapeløbs forløb, så trænings-ticket SKAL have et rytter-filter — en rytter der er bundet i et etapeløb hviler den dag, mens holdets øvrige ryttere træner. Uden filteret træner de bundne ryttere også.
+**Beslutning 8's forudsætning er indfriet i kalenderen (#5267, ejer-valg 20/9).** De 35 celler kræver at HVER kalenderdato faktisk bærer 5 løbsdage. Det gør den nu i alle fire divisioner: pakkeren fordeler de tomme løbsdage jævnt i stedet for at lægge dem i de få huller hvor intet løb kører. Reglen og prisen står i [`docs/CALENDAR_RULES.md` §1d/§1e-b](CALENDAR_RULES.md). **Det B4 stadig skal bygge, og de to dele skal lande SAMMEN** (verificeret i koden 20/9):
+
+1. **Sweepen skal drives af løbsdags-aksen.** `resolveTeamRaceDay` (`trainingRaceDayTick.js`) udleder i dag holdets løbsdag af `race_stage_schedule`, som kun har rækker for løbsdage MED løb — så en indsat træningsdag udløser ingen træning overhovedet.
+2. **Sweepen skal have et rytter-filter.** `dailyTrainingEngine.js` afgør "kørte rytteren i dag" på `race_results`, ikke på `race_entry_days`. 79-91 % af træningsdagene ligger inde i et etapeløbs forløb, så i det øjeblik punkt 1 er på plads uden punkt 2, træner de ryttere der er bundet i et etapeløb også.
 
 **Deadline (ejer 6/9, ordret): "skiftet til det nye træningssystem senest sker til sæson 4 starten"**, dvs. live 28/9 2026; kalender-delen skal før S4-genereringen.
 

@@ -134,7 +134,7 @@ Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om 
 
 Fra 11/9 til 18/9 var §1d bygget som **R12: en binding inde i selve søgningen**. Den kostede, og prisen var målt: så snart der var sat et mål, re-søgte pakkeren HELE divisionens placering for at skaffe punkter hvor intet løb er i gang. D1's 32 løb / 140 etaper blev spredt fra 80 til 106 løbsdage MED løb, og mindste-overlap-gulvet (§1/[#3329](https://github.com/NicolaiDolmer/CyclingZone/issues/3329)) faldt i alle fire divisioner (D1 26,4 % · D2 20,9 % · D3 13,5 % · D4 13,5 % mod gulvene 45/55/40/40). Samtidig kunne D1 slet ikke nå 140 med `MAX_GT_STAGES_PER_DAY = 4`.
 
-**Fixet ([#5267](https://github.com/NicolaiDolmer/CyclingZone/issues/5267), ejer-kort 19/9): målet er en EFTERBEHANDLING, ikke en binding.** Søgningen finder først den naturlige pakning — den der har kørt siden #4236 — og bagefter lægges der kun tomme løbsdage på de positioner hvor intet løb spænder henover (`padAxisWithTrainingDays`). Det flytter pr. konstruktion ikke et eneste løb, så alle placeringsregler er de samme som uden målet.
+**Fixet ([#5267](https://github.com/NicolaiDolmer/CyclingZone/issues/5267), ejer-kort 19/9): målet er en EFTERBEHANDLING, ikke en binding.** Søgningen finder først den naturlige pakning — den der har kørt siden #4236 — og bagefter lægges der kun tomme løbsdage på (`padAxisWithTrainingDays`). Det flytter pr. konstruktion ikke et eneste løb, så alle placeringsregler er de samme som uden målet. *(HVOR de tomme løbsdage lægges blev afgjort 20/9: jævnt pr. kalenderdato, se §1e-b. Frem til da lå de kun dér hvor intet løb spændte henover.)*
 
 Målt 19/9 (dry-run, S4, prod-kataloget, mål 140) — hele tabellen står i [`docs/audits/2026-09-19-5267-proevepakning.md`](audits/2026-09-19-5267-proevepakning.md):
 
@@ -186,7 +186,11 @@ Da målet var en søgebinding, var der også et loft for hvor mange tomme løbsd
 
 Bindingen bærer allerede den nye ordlyd: `race_entry_days_rebuild()` binder rytteren på HELE forløbet fra første til sidste etape (#4173 → #4217 → ejer-beslutning 3/9 i #4209), så en indsat tom løbsdag inde i forløbet får sin bindingsrække automatisk.
 
-> **ÅBENT, OG DET SKAL LUKKES FØR TRÆNINGEN TÆNDES (#4846 fase B4):** træningens side bærer den ikke endnu. Ticket er pr. hold uden et rytter-filter, og en løbsdag uden løb er usynlig for opslaget. 79–91 % af træningsdagene ligger inde i et forløb, så uden filteret ville en rytter der er bundet i et etapeløb også blive trænet. Kalenderen er korrekt; det er forbruget af den der mangler. Se [`docs/audits/2026-09-19-5267-proevepakning-jaevn.md`](audits/2026-09-19-5267-proevepakning-jaevn.md) §5.
+> **ÅBENT, OG DET SKAL LUKKES SAMMEN MED #4846 FASE B4 — ikke bagefter.** Verificeret i koden 20/9:
+> - `trainingRaceDayTick.js`'s `resolveTeamRaceDay` udleder holdets løbsdag af **`race_stage_schedule`**, som kun har rækker for løbsdage MED løb. En indsat træningsdag har ingen række, så i dag udløser den **slet ingen** træning — hverken for bundne eller frie ryttere. Det er dét B4 skal rette ved at drive sweepen af løbsdags-aksen (140 dage).
+> - `dailyTrainingEngine.js` afgør "kørte rytteren i dag" på **`race_results`**, ikke på `race_entry_days`. På en tom løbsdag inde i et etapeløbs forløb har den bundne rytter ingen resultat-række, så han ville få et normalt træningstick i stedet for at hvile.
+>
+> De to ting hænger sammen: i det øjeblik B4 lader aksen drive sweepen, SKAL rytter-filteret (`race_entry_days` for (rytter, sæson, løbsdag)) være med i samme ændring. 79–91 % af træningsdagene ligger inde i et forløb, så det er ikke et særtilfælde — det afgør næsten hver eneste træningsdag. Kalenderen er korrekt; det er forbruget af den der mangler. Se [`docs/audits/2026-09-19-5267-proevepakning-jaevn.md`](audits/2026-09-19-5267-proevepakning-jaevn.md) §5.
 
 **Synkroniserede etapeløbs-blokke (R13) er afvist med tal og fjernet fra koden.** Antallet af samtidige etapeløb skal gå op i divisionens etaper pr. dato; kun D2 kan det. Målt 19/9: D1 fandt ingen lovlig pakning, D3 faldt til 27,3 % og D4 til 35,5 % mod overlap-gulvet på 40 %. Med den jævne fordeling er etapeløbs-kæden ikke længere et problem der skal løses i søgningen. Detaljer: [`2026-09-19-5267-proevepakning.md`](audits/2026-09-19-5267-proevepakning.md) §3.
 
