@@ -17,7 +17,7 @@ import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { predictBaseValue, VALUATION_ABILITY_COLUMNS } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
-import { loadValuationModel } from "./riderValuationModelSelect.js";
+import { loadValuationModel, loadProductionValueModel } from "./riderValuationModelSelect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
@@ -40,7 +40,13 @@ const WRITE_CONCURRENCY = 25;
 // Når den sendes med, vælges den for ryttere med riderRow.age < 22 (se
 // riderTypesBaselineSelect.js). age skal være sæson-alder (ageForSeason) —
 // samme konvention som resten af værdi-kæden.
-export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities, youthBaseline } = {}) {
+// #5443 (ejer-beslutning 2, 20/9 aften): `productionModel` er modellen
+// LØNGRUNDLAGET (current_production_value) regnes med. Udeladt/null ⇒ samme
+// model som prisen, PRÆCIS som før denne parameter fandtes — så enhver
+// eksisterende caller (tests, harnesses, tørkørsler) er bit-identisk.
+// Sendes den med, vælger prisen og løngrundlaget model hver for sig, og en
+// v5-pris kan gå live mens lønnen bliver stående på v4.
+export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities, youthBaseline, productionModel } = {}) {
   const typeSource = (typeAbilities && Object.keys(typeAbilities).length > 0) ? typeAbilities : abilities;
   const typeModel = selectTypesBaseline(riderRow?.age, baseline, youthBaseline);
   // #3570 (ejer-beslutning 10/8): bærer rytteren et PERSISTERET anlæg
@@ -59,7 +65,7 @@ export function recomputeRiderValue(riderRow, abilities, baseline, model, { type
   // withType.primary_type (den friske type ovenfor) — uændret adfærd.
   const withType = { ...riderRow, primary_type: primary.key, secondary_type: secondary.key };
   const raw = predictBaseValue(withType, abilities, model);
-  const cpv = currentProductionValue(withType, abilities, model);
+  const cpv = currentProductionValue(withType, abilities, productionModel || model);
   return {
     primary_type: primary.key,
     secondary_type: secondary.key,
@@ -71,12 +77,12 @@ export function recomputeRiderValue(riderRow, abilities, baseline, model, { type
 // Ren diff: returnér KUN ryttere hvor base_value, current_production_value eller
 // type ændrede sig. capsByRider er valgfri (bagudkompatibel) — udeladt/tom Map ⇒
 // recomputeRiderValue falder tilbage til abilities for typen (se ovenfor).
-export function selectChangedValueUpdates(riders, abilityByRider, baseline, model, capsByRider = new Map(), youthBaseline) {
+export function selectChangedValueUpdates(riders, abilityByRider, baseline, model, capsByRider = new Map(), youthBaseline, productionModel) {
   const updates = [];
   for (const r of riders) {
     const ab = abilityByRider.get(r.id);
     if (!ab) continue; // ingen abilities → spring over (kan ikke værdisættes)
-    const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id), youthBaseline });
+    const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id), youthBaseline, productionModel });
     if (next.base_value == null) continue;
     const changed =
       next.base_value !== r.base_value ||
@@ -115,7 +121,7 @@ async function writeUpdates(supabase, updates) {
 // Genberegn type+base_value+current_production_value for (evt. ét holds) ryttere;
 // skriv kun de ændrede. baseline/model defaulter fra de committede JSON-filer
 // (som runBaseValueBackfill).
-export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, log = noop, teamId, seasonNumber: seasonNumberOverride } = {}) {
+export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, productionModel, log = noop, teamId, seasonNumber: seasonNumberOverride } = {}) {
   const bl = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
   // #3570: OPT-IN via param, samme mønster som backfillCores.js — produktionens
   // CLI/sweep-callere sender ikke youthBaseline eksplicit og får derfor den
@@ -128,6 +134,11 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   // (riderValuationModelSelect.js) — defaulten er v4, så en merge ændrer intet.
   // Læsefejl → v4. Dæmpnings-behandlingen sker inde i loaderen, som før.
   const m = model || await loadValuationModel(supabase);
+  // #5443 ejer-beslutning 2 (20/9 aften): løngrundlaget har sin EGEN nøgle
+  // (rider_production_value_model, seedet 'v4'). Prisen kan altså flippes til
+  // v5 uden at fremtidige lønkrav flytter sig. Begge læses ÉN gang pr. kørsel,
+  // så hele populationen regnes med det samme par modeller.
+  const pm = productionModel || await loadProductionValueModel(supabase);
 
   // v4-alder forankres i den aktive sæson (samme ageForSeason som progression).
   // Cutover-fix 23/8: mellem "Afslut sæson" og transitionen er der INGEN aktiv
@@ -173,7 +184,7 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   const abilityByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a]));
   const capsByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a.ability_caps]));
 
-  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider, youthBl);
+  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider, youthBl, pm);
   log(`value-refresh${teamId ? ` (team ${teamId})` : ""}: ${riders.length} scannet · ${updates.length} ændret`);
   const written = await writeUpdates(supabase, updates);
   return { scanned: riders.length, changed: updates.length, written };

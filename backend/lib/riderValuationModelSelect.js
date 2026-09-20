@@ -19,6 +19,32 @@
 //
 // KADENCE: modellen læses ved hver kørsel, ikke ved boot. Flipper ejeren nøglen
 // mellem to søndage, gælder den fra næste kørsel — ingen genstart.
+//
+// ── TO NØGLER, IKKE ÉN (#5443, ejer-beslutning 20/9 aften) ───────────────────
+// `base_value` (prisen) og `current_production_value` (løngrundlaget, 35 % jf.
+// ECONOMY_RULES §2) regnes af den SAMME funktionskæde, men de er to forskellige
+// spilregler og må kunne skifte model hver for sig:
+//
+//   rider_valuation_model         → base_value (prisen spilleren køber/sælger til)
+//   rider_production_value_model  → current_production_value (løngrundlaget)
+//
+// Ejerens ord: "Løn skal ikke følge værdi". Løngrundlaget bliver derfor på v4
+// indtil forlængelserne ved sæsonskiftet er overstået, også når prisen er
+// flippet til v5. Begge nøgler seedes 'v4' og har samme fail-safe: ukendt
+// værdi, manglende række eller læsefejl ⇒ v4.
+//
+// ── CACHE: pr. KØRSEL for batch, kort TTL for request-stien ──────────────────
+// Batch-kørslerne (søndags-refresh, sæson-transition, backfill) læser nøglen ÉN
+// gang pr. kørsel via loadValuationModel/loadProductionValueModel — en kørsel
+// skal regne hele populationen med den samme model, også hvis ejeren flipper
+// nøglen midt i den.
+//
+// Request-stierne (api.js's rytterkort, værdi-trend, admin-preview) må derimod
+// ikke lave et app_config-opslag pr. request. De bruger
+// loadValuationModelCached(), som holder MODEL-ID'et i ca. et minut og
+// af-dublerer samtidige opslag. Konsekvensen af TTL'en er kendt og acceptabel:
+// efter et flip kan en preview-flade vise det gamle tal i op til et minut. Den
+// eneste sti der SKRIVER, er batch-stien, og den cacher ikke.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -30,7 +56,15 @@ import { applyTypeDampening } from "./riderValuationTypeDampening.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export const RIDER_VALUATION_MODEL_KEY = "rider_valuation_model";
+// #5443 ejer-beslutning 2 (20/9 aften): løngrundlaget har sin EGEN nøgle, så
+// prisen kan flyttes til v5 uden at fremtidige lønkrav flytter sig med.
+export const RIDER_PRODUCTION_VALUE_MODEL_KEY = "rider_production_value_model";
 export const DEFAULT_VALUATION_MODEL_ID = "v4";
+
+// Hvor længe et model-id må genbruges på request-stien uden et nyt
+// app_config-opslag. Kort nok til at et flip slår igennem af sig selv, langt
+// nok til at et rytterkort ikke koster et ekstra DB-kald pr. visning.
+export const MODEL_ID_CACHE_TTL_MS = 60_000;
 
 const MODEL_PATHS = Object.freeze({
   v4: join(__dirname, "./riderValuationModelV4.json"),
@@ -69,8 +103,9 @@ export function loadValuationModelById(id) {
 }
 
 /**
- * Den model produktionen skal regne med LIGE NU. Kaldes af hver værdi-skrivende
- * kørsel (søndags-refresh, sæson-transition), ikke ved modul-load.
+ * Den model produktionen skal regne PRISEN med LIGE NU. Kaldes af hver
+ * værdi-skrivende kørsel (søndags-refresh, sæson-transition), ikke ved
+ * modul-load.
  * @param {object} supabase
  * @returns {Promise<object>} model-objektet (aldrig null)
  */
@@ -82,4 +117,65 @@ export async function loadValuationModel(supabase) {
 /** Model-id'et alene, uden at indlæse filen (til logning/tørkørsel). */
 export async function readValuationModelId(supabase) {
   return resolveValuationModelId(await readFlagStage(supabase, RIDER_VALUATION_MODEL_KEY));
+}
+
+/**
+ * Den model LØNGRUNDLAGET (current_production_value) skal regnes med LIGE NU.
+ * Egen nøgle, egen fail-safe — se topkommentaren.
+ * @param {object} supabase
+ * @returns {Promise<object>} model-objektet (aldrig null)
+ */
+export async function loadProductionValueModel(supabase) {
+  return loadValuationModelById(await readProductionValueModelId(supabase));
+}
+
+/** Løngrundlagets model-id alene (til logning/tørkørsel). */
+export async function readProductionValueModelId(supabase) {
+  return resolveValuationModelId(await readFlagStage(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY));
+}
+
+// ── Request-stien: kort TTL + af-duplikering af samtidige opslag ─────────────
+// Værdien vi cacher er MODEL-ID'et (en streng), ikke model-objektet: selve
+// JSON'en ligger allerede i `cache` ovenfor og læses kun én gang pr. proces.
+const idCache = new Map(); // key -> { id, expiresAt }
+const inFlight = new Map(); // key -> Promise<string>
+
+/** Nulstil begge caches. Kun til tests — produktionen har ingen grund til det. */
+export function resetValuationModelCache() {
+  idCache.clear();
+  inFlight.clear();
+}
+
+async function readModelIdCached(supabase, key, { ttlMs = MODEL_ID_CACHE_TTL_MS, now = Date.now } = {}) {
+  const t = now();
+  const hit = idCache.get(key);
+  if (hit && hit.expiresAt > t) return hit.id;
+  // Af-duplikering: 50 samtidige rytterkort efter et cache-udløb må give ÉT
+  // app_config-opslag, ikke 50.
+  let pending = inFlight.get(key);
+  if (!pending) {
+    pending = (async () => {
+      // readFlagStage sluger selv fejl og returnerer null ⇒ resolve giver v4.
+      // Vi cacher derfor også et fail-safe-svar: alternativet er at hamre på en
+      // DB der lige nu er nede, én gang pr. request.
+      const id = resolveValuationModelId(await readFlagStage(supabase, key));
+      idCache.set(key, { id, expiresAt: now() + ttlMs });
+      return id;
+    })().finally(() => inFlight.delete(key));
+    inFlight.set(key, pending);
+  }
+  return pending;
+}
+
+/**
+ * Prisens model til LÆSE-flader (api.js). Kort cache, aldrig til skrivninger.
+ * @returns {Promise<object>} model-objektet (aldrig null)
+ */
+export async function loadValuationModelCached(supabase, opts) {
+  return loadValuationModelById(await readModelIdCached(supabase, RIDER_VALUATION_MODEL_KEY, opts));
+}
+
+/** Løngrundlagets model til LÆSE-flader. Samme cache-kontrakt som ovenfor. */
+export async function loadProductionValueModelCached(supabase, opts) {
+  return loadValuationModelById(await readModelIdCached(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY, opts));
 }

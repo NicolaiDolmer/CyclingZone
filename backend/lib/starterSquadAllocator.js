@@ -33,7 +33,7 @@ import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "./contractSeed.js";
-import { applyTypeDampening } from "./riderValuationTypeDampening.js";
+import { loadValuationModelById, DEFAULT_VALUATION_MODEL_ID } from "./riderValuationModelSelect.js";
 import { birthYearFrom, seasonReferenceYear } from "./riderSeasonAge.js";
 import {
   statLevelToAbility, withBirthAbilityCap, isBornFromPriors, deriveBirthAbilities,
@@ -44,11 +44,17 @@ const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBase
 // #3570: unge (< 22 år) AI-kandidater klassificeres mod DENNE — se riderTypesBaselineSelect.js.
 const YOUTH_TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaselineYouth.json"), "utf8"));
 // #2594 cutover: cap-gaten SKAL bruge samme model som deriveForRiderIds persisterer
-// med (v4) — ellers kan en kandidat passere en v3-beregnet gate og lande over
-// tier-loftet når v4-værdien skrives (#2065-klassen, fanget af aiTeamGenerator-testen).
-// #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
-// bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
-const VALUATION_MODEL = applyTypeDampening(JSON.parse(readFileSync(join(__dirname, "./riderValuationModelV4.json"), "utf8")));
+// med — ellers kan en kandidat passere en gate regnet på én model og lande over
+// tier-loftet når den ANDEN models værdi skrives (#2065-klassen, fanget af
+// aiTeamGenerator-testen).
+// #5443 (hul fundet 20/9 aften): filen indlæste v4's JSON direkte og kendte
+// derfor ikke model-kontakten. Nu er modellen et ARGUMENT: kaldere med en
+// supabase-klient sender den valgte model (aiTeamGenerator.js), og defaulten
+// hentes gennem riderValuationModelSelect.js — samme dæmpnings-behandling og
+// samme fail-safe (v4) som resten af værdi-stien, uden en ny JSON-læsning her.
+function defaultValuationModel() {
+  return loadValuationModelById(DEFAULT_VALUATION_MODEL_ID);
+}
 
 // #5269: spejler backfillCores.deriveForRiderIds' fødsels-forgrening for en
 // IKKE-persisteret kandidat (generator-record eller payload-formet række).
@@ -193,11 +199,15 @@ export function aiValueCapForTier(tier) {
 // fix af klassifikatoren selv (det er #1378's scope), men et lokalt loft der
 // giver reel variation i AI-holdenes trup uden at røre den delte model.
 // Returnerer ren INSERT-payload (samme form som buildWeakStarterPool).
+// #5443: `valuationModel` er den model cap-gaten prissætter kandidater med.
+// Udeladt ⇒ defaulten (v4) — bit-identisk med adfærden før parameteren fandtes.
+// Produktionsstien (aiTeamGenerator.js) sender app_config-valget med.
 export function generateAiRiderBatchWithCap({
   count, tierFractions, valueCap, seed, referenceYear,
   existingFoldedNames = new Set(), generate = generateFictionalRiders,
-  typeShareCap = 0.4, maxRounds = 60,
+  typeShareCap = 0.4, maxRounds = 60, valuationModel = null,
 }) {
+  const model = valuationModel || defaultValuationModel();
   const accepted = [];
   const typeCounts = new Map();
   const maxPerType = Math.max(1, Math.ceil(count * typeShareCap));
@@ -282,7 +292,7 @@ export function generateAiRiderBatchWithCap({
       const value = predictBaseValue(
         { ...candidate, primary_type: primary.key, age },
         abilities,
-        VALUATION_MODEL
+        model
       );
       const withinValueCap = value == null || valueCap == null || value <= valueCap;
       const withinTypeCap = (typeCounts.get(primary.key) || 0) < maxPerType;

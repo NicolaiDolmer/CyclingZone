@@ -36,6 +36,7 @@ import {
 } from "./starterSquadAllocator.js";
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
+import { loadValuationModel } from "./riderValuationModelSelect.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName } from "./aiTeamNames.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { teamInflightRaceIds } from "./aiTeamRaceObligations.js";
@@ -529,6 +530,10 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
     poolPayload = generateAiRiderBatchWithCap({
       count: AI_SQUAD.TOTAL_SIZE, tierFractions, valueCap: aiValueCapForTier(pool.tier),
       seed, referenceYear, existingFoldedNames,
+      // #5443: gaten skal prissætte med SAMME model som deriveForRiderIds
+      // bagefter persisterer med (app_config-valget, fail-safe v4). Ellers kan
+      // en kandidat passere en v4-gate og få skrevet en v5-værdi over loftet.
+      valuationModel: await loadValuationModel(supabase),
     }).map((r) => ({ ...r, team_id: teamId }));
   } else {
     const { core: coreWindow, tail: tailWindow } = aiStatWindowsForTier(pool.tier);

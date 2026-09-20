@@ -38,7 +38,7 @@ import { notifyTeamOwner } from "./notificationService.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isAcademyEnabled } from "./academyFlag.js";
 import { detectGraduates } from "./academyGraduation.js";
-import { loadValuationModel } from "./riderValuationModelSelect.js";
+import { loadValuationModel, loadProductionValueModel } from "./riderValuationModelSelect.js";
 
 // Sæson 1 = launch-året (2026). Alder er SÆSON-drevet (ikke real-world-tid), så
 // ryttere ældes troværdigt over sæsoner. ageForSeason(birthdate, N) = år N − fødselsår.
@@ -116,6 +116,11 @@ async function runBatched(items, concurrency, fn) {
  *                  flipper nøglen. Sæson-cutoveren SKAL regne med samme model
  *                  som søndagskørslen — ellers revalueres hele populationen
  *                  forkert timer efter en model-begivenhed.
+ * @param {object}  [args.productionModel] — model for current_production_value
+ *                  (løngrundlaget). Udeladt ⇒ app_config-nøglen
+ *                  `rider_production_value_model` (#5443 ejer-beslutning 2,
+ *                  20/9 aften), som seedes 'v4'. Prisen og løngrundlaget vælger
+ *                  model hver for sig, så en v5-pris ikke flytter lønkrav.
  * @param {boolean} [args.notify=true]  — send retirement-notifikationer
  * @param {Date}    [args.now]          — til notifikations-dedup (default new Date())
  * @param {boolean} [args.dailyTrainingEnabled] — injiceret flag (test/orchestrator); udefineret →
@@ -125,7 +130,8 @@ async function runBatched(items, concurrency, fn) {
  */
 export async function developRidersForSeason({
   supabase, seasonId, seasonNumber, trainingSeasonId = null,
-  model: modelArg = null, notify = true, now = new Date(),
+  model: modelArg = null, productionModel: productionModelArg = null,
+  notify = true, now = new Date(),
   notifyTeamOwnerFn = notifyTeamOwner,
   dailyTrainingEnabled: dailyTrainingEnabledArg,
   detectGraduatesFn = detectGraduates,
@@ -135,6 +141,10 @@ export async function developRidersForSeason({
 
   // #5443: samme model-valg som søndagskørslen (app_config, default v4).
   const model = modelArg || await loadValuationModel(supabase);
+  // #5443 ejer-beslutning 2: løngrundlaget har sin egen nøgle. Læses ÉN gang
+  // pr. transition, præcis som prisens model — hele populationen skal regnes
+  // med det samme par.
+  const productionModel = productionModelArg || await loadProductionValueModel(supabase);
 
   // ── Idempotens: hvilke ryttere er allerede udviklet for denne sæson? ──────────
   const alreadyRows = await fetchAllRows(() =>
@@ -275,7 +285,8 @@ export async function developRidersForSeason({
       age,
     };
     const newBaseValue = predictBaseValue(valueRider, next, model);
-    const newCpv = currentProductionValue(valueRider, next, model);
+    // #5443: løngrundlaget regnes med SIN egen model (default v4), ikke prisens.
+    const newCpv = currentProductionValue(valueRider, next, productionModel);
 
     const abilityPatch = { ...next };
     if (capsChanged) abilityPatch.ability_caps = caps;
