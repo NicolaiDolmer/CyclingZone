@@ -29,7 +29,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { fitProductionModel, rescaleToMedian } from "../lib/riderValuationFitV4.js";
+import { fitProductionModel, fitOffsetsForFixedCurve, rescaleToMedian } from "../lib/riderValuationFitV4.js";
 import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 import { applyTypeDampening, TYPE_DAMPENING_ENABLED } from "../lib/riderValuationTypeDampening.js";
 import { riderOverall } from "../lib/riderValuation.js";
@@ -89,6 +89,12 @@ if (!["raw", "shipping"].includes(CALIBRATE)) {
 // markedsmåling der ganges på den færdige base_value. Fit-scriptet har aldrig
 // skrevet den; flaget findes så en kandidat kan produceres ship-klar i ét hug i
 // stedet for at blive håndredigeret. Udeladt ⇒ feltet skrives ikke (faktor 1).
+// #3353: hold kurven (alpha, a, b, c) fast fra en eksisterende model og fit KUN
+// type-offsets. Issue #3353 beder eksplicit om at re-fitte OFFSET-TABELLEN mod
+// den nye klassifikation; et fuldt re-fit ændrer samtidig kurvens stejlhed, som
+// er en helt anden beslutning (den flytter hele værdifordelingen og dermed
+// pengemængden). Med dette flag isoleres ændringen til det #3353 handler om.
+const FIX_CURVE_FROM = arg("fix-curve-from", null);
 const LEVEL_CORRECTION_ARG = arg("level-correction", null);
 const LEVEL_CORRECTION = LEVEL_CORRECTION_ARG == null ? null : Number(LEVEL_CORRECTION_ARG);
 if (LEVEL_CORRECTION != null && (!Number.isFinite(LEVEL_CORRECTION) || LEVEL_CORRECTION <= 0)) {
@@ -158,7 +164,28 @@ async function main() {
     `v3_scoring=${artefact.v3_scoring} · ${samples.length} samples · population=${JSON.stringify(artefact.population ?? {})}`);
 
   // --- Fit ---
-  const fit = fitProductionModel(samples);
+  let fit;
+  let fixedCurveRef = null;
+  if (FIX_CURVE_FROM) {
+    const curvePath = join(__dirname, "..", String(FIX_CURVE_FROM));
+    let curveModel;
+    try {
+      curveModel = JSON.parse(readFileSync(curvePath, "utf8"));
+    } catch (e) {
+      console.error(`❌ Kunne ikke læse kurve-modellen ${curvePath}: ${e.message}`);
+      process.exit(1);
+    }
+    const src = curveModel?.fit;
+    if (!src || !Number.isFinite(Number(src.a)) || !Number.isFinite(Number(src.b))) {
+      console.error(`❌ ${curvePath} har ingen brugbar fit-kurve (mangler fit.a/fit.b).`);
+      process.exit(1);
+    }
+    fit = fitOffsetsForFixedCurve(samples, { alpha: src.alpha ?? 1, a: src.a, b: src.b, c: src.c ?? 0 });
+    fixedCurveRef = { from: FIX_CURVE_FROM, fitted_at: curveModel.fitted_at ?? null, sim_run_id: curveModel.sim_run_id ?? null };
+    console.log(`\nKurve HOLDT FAST fra ${FIX_CURVE_FROM} (alpha=${fit.alpha}, a=${fit.a}, b=${fit.b}, c=${fit.c}) — kun type-offsets fittes.`);
+  } else {
+    fit = fitProductionModel(samples);
+  }
 
   // --- Rapport: koefficienter, valgt alpha, r2, per-type offsets, n_samples ---
   console.log(
@@ -368,6 +395,7 @@ async function main() {
       n_samples: fit.n_samples,
     },
     type_stats: typeStats,
+    ...(fixedCurveRef ? { fixed_curve_ref: fixedCurveRef } : {}),
     scale: Number(scale.toPrecision(8)),
     ...(LEVEL_CORRECTION != null ? { level_correction: LEVEL_CORRECTION } : {}),
     scale_ref: {

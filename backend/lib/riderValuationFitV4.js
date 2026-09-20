@@ -66,6 +66,66 @@ function fitForAlpha(samples, alpha) {
   return { a, b, c, offset, r2_log };
 }
 
+// #3353: fit KUN type-offsets, med kurven (alpha, a, b, c) holdt fast.
+//
+// Hvorfor denne findes ved siden af fitProductionModel: issue #3353 beder om at
+// "re-fitte offset-tabellen mod den NYE klassifikation". Et fuldt re-fit ændrer
+// samtidig kurven — og kurven er det der bestemmer hvor stejlt værdien vokser med
+// rytterens niveau, dvs. hele værdifordelingen og den samlede pengemængde. De to
+// er forskellige beslutninger med forskellige konsekvenser, og de skal kunne
+// træffes hver for sig. Offsets alene flytter kun den RELATIVE pris mellem typer,
+// som er præcis det problem frysningen (#3345) efterlod.
+//
+// Samme to-trins-matematik som fitForAlpha, blot uden OLS-trinnet: residualerne
+// måles mod den FASTE kurve, og offset[type] = snittet af dem. r2_log beregnes
+// mod samme kurve, så tallet er sammenligneligt med et fuldt fit.
+export function fitOffsetsForFixedCurve(samples, { alpha, a, b, c = 0 } = {}) {
+  if (!Array.isArray(samples) || samples.length < 3) {
+    throw new Error(`fitOffsetsForFixedCurve: too few samples (${samples?.length ?? 0}, min 3)`);
+  }
+  for (const [name, v] of [["alpha", alpha], ["a", a], ["b", b], ["c", c]]) {
+    if (!Number.isFinite(Number(v))) throw new Error(`fitOffsetsForFixedCurve: ${name} must be a finite number (got ${v})`);
+  }
+  const A = Number(a);
+  const B = Number(b);
+  const C = Number(c);
+  const lin = (O) => A + B * O + C * O * O;
+
+  const outputs = [];
+  const y = [];
+  for (const s of samples) {
+    outputs.push(blendedOutput(s.abilities, s.primary_type, alpha));
+    y.push(Math.log(Math.max(Number(s.e_prize) || 0, FLOOR)));
+  }
+
+  const residualsByType = {};
+  samples.forEach((s, i) => {
+    (residualsByType[s.primary_type] ??= []).push(y[i] - lin(outputs[i]));
+  });
+  const offset = {};
+  for (const [t, arr] of Object.entries(residualsByType)) {
+    offset[t] = arr.reduce((sum, v) => sum + v, 0) / arr.length;
+  }
+
+  let ssRes = 0;
+  let ssTot = 0;
+  const mY = y.reduce((sum, v) => sum + v, 0) / y.length;
+  y.forEach((yi, i) => {
+    ssRes += (yi - (lin(outputs[i]) + (offset[samples[i].primary_type] ?? 0))) ** 2;
+    ssTot += (yi - mY) ** 2;
+  });
+
+  return {
+    alpha: Number(alpha),
+    a: A,
+    b: B,
+    c: C,
+    offset,
+    r2_log: ssTot > 0 ? 1 - ssRes / ssTot : 0,
+    n_samples: samples.length,
+  };
+}
+
 // Fit v4-produktionsmodellen: vælg den alpha i alphaGrid der maksimerer log-R²,
 // og returnér dens fulde fit. samples: [{ primary_type, abilities, e_prize }].
 export function fitProductionModel(samples, { alphaGrid = [0, 0.25, 0.5, 0.75, 1] } = {}) {
