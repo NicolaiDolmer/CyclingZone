@@ -307,3 +307,51 @@ test("alle mål har et krav og en dom i alle fire divisioner", () => {
       `${row.goalId} D${row.tier}: loftet kan aldrig ligge under den garanterede forsyning`);
   }
 });
+
+// ── #5405: forsyningen bag de hævede bjerg-reservationer ───────────────────────────────
+//
+// Reservations-ændringen (D2/D3 summit_tour op, D3 får balanced_week) og de tre nye
+// ProSeries-summit_tour-løb er ÉT indgreb. Testene her er det led der binder dem sammen:
+// forsvinder løbene fra kataloget igen, kan reservationerne ikke mættes, og det skal en
+// test sige — ikke en tørkørsel ingen har kørt.
+
+const NYE_BJERGLOEB_5405 = Object.freeze([
+  "Volta Galega", "Rundfahrt der Hohen Tauern", "Volta Portuguesa",
+]);
+
+test("#5405 prod-kataloget rummer de tre nye ProSeries-bjergløb", () => {
+  for (const navn of NYE_BJERGLOEB_5405) {
+    const race = PROD_CATALOG.find((r) => r.name === navn);
+    assert.ok(race, `${navn} mangler i fixturen. Den er forsyningen bag D2's og D3's hævede `
+      + "summit_tour-reservationer — se database/2026-09-20-5405-tre-nye-bjergloeb.sql.");
+    assert.equal(race.race_class, "ProSeries",
+      `${navn} skal ligge i ProSeries — den ENESTE klasse D2 og D3 deler. Flyttes den til `
+      + "Class1, kan den pr. konstruktion aldrig nå D2, og hele ændringen mister sin virkning.");
+    assert.equal(race.terrain_archetype, "summit_tour");
+    assert.equal(race.race_type, "stage_race");
+  }
+});
+
+test("#5405 D2's og D3's summit_tour-reservationer kan mættes af kataloget", () => {
+  const res = checkCatalogSupply({ catalog: PROD_CATALOG });
+  for (const tier of [2, 3]) {
+    const row = res.reservations.find((r) => r.goalId === "reservation:summit_tour" && r.tier === tier);
+    assert.ok(row, `ingen dom over D${tier}'s summit_tour-reservation`);
+    assert.equal(
+      row.verdict, "reachable",
+      `D${tier}'s summit_tour-reservation er ikke længere dækket (${VERDICT_LABELS[row.verdict]}). `
+      + "Enten er reservationen hævet uden at kataloget fulgte med, eller også er der fjernet "
+      + "bjergløb fra ProSeries. Lukkes ved at TILFØJE løb (CALENDAR_RULES §5b), ikke ved at "
+      + "sænke reservationen tilbage.",
+    );
+  }
+});
+
+test("#5405 D3's balanced_week-reservation har en kilde i D3's eget klasse-vindue", () => {
+  const res = checkCatalogSupply({ catalog: PROD_CATALOG });
+  const row = res.reservations.find((r) => r.goalId === "reservation:balanced_week" && r.tier === 3);
+  assert.ok(row, "D3 har ingen balanced_week-reservation længere — det er den der betaler "
+    + "D3's enkeltstart tilbage, når bjergdagene stiger (#5405).");
+  assert.ok(row.supplyInWindow >= row.requirement,
+    `D3 kan ikke mætte sin balanced_week-reservation (${row.supplyInWindow} < ${row.requirement}).`);
+});
