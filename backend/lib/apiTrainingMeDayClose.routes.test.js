@@ -35,7 +35,7 @@ test("api.js importerer lukke-tilstanden fra SAMME modul som cron-sweepen", () =
   // sweepen"). En kopi af betingelsen i api.js ville kunne drive fra sweepens.
   assert.match(
     apiSource,
-    /import \{ resolveDayCloseStatus, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR \} from "\.\.\/lib\/trainingDayCloseTrigger\.js"/,
+    /import \{ resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR \} from "\.\.\/lib\/trainingDayCloseTrigger\.js"/,
   );
   assert.match(
     apiSource,
@@ -66,22 +66,40 @@ test("POST /training/run-today: loebsdags-stien gates paa BAADE vinduet og lukni
 // Spejler route'ns udtryk med de AEGTE helpers (samme moenster som
 // apiTrainingMeRaceDay.routes.test.js's trainingMeRaceDayGate).
 
-function fakeSupabase({ flagValue, races = [], stages = [] }) {
+function fakeSupabase({ flagValue, races = [], stages = [], priorStages = [] }) {
   return {
     from(table) {
+      // #4847 regel 4: resolveDayCloseStatus laver TO race_stage_schedule-opslag —
+      // dagens etaper (.gte(dayStart).lt(dayEnd)) og "sidste loebsdag FOER i dag"
+      // (.lt(dayStart) + order desc + limit 1). Uden order/limit i kaeden kastede
+      // prior-opslaget en TypeError, som loadPriorMaxGameDayByDivision's
+      // best-effort-catch slugte til null — saa denne fake kunne ALDRIG se
+      // spaend-adfaerden, uanset fixture.
+      const ctx = { gte: false, order: null, limit: null };
       const chain = {
         select() { return this; },
         in() { return this; },
-        gte() { return this; },
+        gte() { ctx.gte = true; return this; },
         lt() { return this; },
         eq() { return this; },
+        order(col, o = {}) { ctx.order = { col, ascending: o.ascending !== false }; return this; },
+        limit(n) { ctx.limit = n; return this; },
         async maybeSingle() { return this.__resolve(); },
         __resolve() {
           if (table === "app_config") {
             return { data: flagValue === undefined ? null : { value: flagValue }, error: null };
           }
           if (table === "races") return { data: races, error: null };
-          if (table === "race_stage_schedule") return { data: stages, error: null };
+          if (table === "race_stage_schedule") {
+            if (ctx.gte) return { data: stages, error: null };
+            let rows = [...priorStages];
+            if (ctx.order) {
+              rows.sort((a, b) => (ctx.order.ascending
+                ? Number(a[ctx.order.col]) - Number(b[ctx.order.col])
+                : Number(b[ctx.order.col]) - Number(a[ctx.order.col])));
+            }
+            return { data: Number.isFinite(ctx.limit) ? rows.slice(0, ctx.limit) : rows, error: null };
+          }
           return { data: [], error: null };
         },
         then(resolve, reject) { return Promise.resolve(this.__resolve()).then(resolve, reject); },
@@ -155,6 +173,19 @@ test("ready (dagen er lukket): open=true, reason=closed, dagens loebsdage med", 
   const out = await dayCloseField(fakeSupabase({ flagValue: true, ...CLOSED_DAY }), { now: IN_WINDOW });
   assert.deepEqual(out.dayClose, {
     open: true, reason: "closed", gameDays: [40], opensAtHour: SWEEP_FROM_HOUR,
+  });
+});
+
+test("#4847 regel 4: knappen lover de RENE TRAENINGSDAGE med, ikke kun dagens loeb", async () => {
+  // Divisionen koerte sidst loebsdag 38; i dag koeres 40. Loebsdag 39 har ingen
+  // etape og er en ren traeningsdag — sweepen tikker den, saa fladen SKAL vise
+  // den. Een sandhed, to forbrugere (ejer 15/9, beslutning 3).
+  const out = await dayCloseField(
+    fakeSupabase({ flagValue: true, ...CLOSED_DAY, priorStages: [{ race_id: "r1", game_day: 38 }] }),
+    { now: IN_WINDOW },
+  );
+  assert.deepEqual(out.dayClose, {
+    open: true, reason: "closed", gameDays: [39, 40], opensAtHour: SWEEP_FROM_HOUR,
   });
 });
 

@@ -111,14 +111,21 @@ function makeSupabase({ races, stages, teams }) {
   };
   return {
     from(table) {
-      const ctx = { key: null, legacy: false };
+      const ctx = { key: null, legacy: false, gte: false, order: null, limit: null };
       const chain = {
         select() { return this; },
         in() { return this; },
-        gte() { return this; },
+        // #4847 regel 4: sweepen laver TO race_stage_schedule-opslag pr. koersel.
+        // Dagens etaper filtreres med .gte(dayStart).lt(dayEnd); "sidste loebsdag
+        // FOER i dag" med .lt(dayStart) + order desc + limit 1. Uden at skelne dem
+        // ville prior-opslaget faa dagens egne raekker tilbage, spaendet blive
+        // forkert, og hele G6-maalingen (tick-antal, skrevne raekker, varighed)
+        // maale noget andet end den aegte sweep.
+        gte() { ctx.gte = true; return this; },
         lt() { return this; },
-        order() { return this; },
-        limit() { return this; },
+        order(col, o = {}) { ctx.order = { col, ascending: o.ascending !== false }; return this; },
+        limit(n) { ctx.limit = n; return this; },
+        range() { return this; },
         is() { ctx.legacy = true; return this; },
         eq(col, val) { if (col === "key") ctx.key = val; return this; },
         async maybeSingle() { return this.__resolve(); },
@@ -128,7 +135,20 @@ function makeSupabase({ races, stages, teams }) {
           if (table === "app_config") return { data: { value: flags[ctx.key] ?? false }, error: null };
           if (table === "seasons") return { data: SEASON, error: null };
           if (table === "races") return { data: races, error: null };
-          if (table === "race_stage_schedule") return { data: stages, error: null };
+          if (table === "race_stage_schedule") {
+            if (ctx.gte) return { data: stages, error: null };
+            // Prior-opslaget. Harnessens fixture lader alle etaper ligge INDE i
+            // dagens doegn, saa der findes ingen tidligere loebsdag — spaendet er
+            // dagens egne loebsdage, praecis som foer regel 4. Sorteringen/limit
+            // spejles alligevel, saa mock'en ikke lyver om formen.
+            let rows = [];
+            if (ctx.order) {
+              rows = [...rows].sort((a, b) => (ctx.order.ascending
+                ? Number(a[ctx.order.col]) - Number(b[ctx.order.col])
+                : Number(b[ctx.order.col]) - Number(a[ctx.order.col])));
+            }
+            return { data: Number.isFinite(ctx.limit) ? rows.slice(0, ctx.limit) : rows, error: null };
+          }
           if (table === "teams") return { data: teams, error: null };
           if (table === "training_day_runs") return { data: [], error: null };
           return { data: [], error: null };
@@ -147,14 +167,24 @@ async function fakeRunTeamTrainingDay() {
 
   // Fase 1 — loads: flag (1) + riders (1) + 2 flag-opslag + 4 parallelle loads +
   // staff-context (1). Ni kald pr. hold pr. loebsdag i den aegte motor.
-  const loadCalls = 9;
+  // #4847: 9 -> 11. Bindings-opslaget (race_entry_days) er nyt, og
+  // race_results-lookuppet koeres nu ogsaa naar UDVIKLINGEN er slukket, saa
+  // "koerte" kan skelnes fra "hviledag" paa loebsdags-aksen.
+  const loadCalls = 11;
   for (let i = 0; i < loadCalls; i += 1) bump("engine_load");
   await sleep(LATENCY_MS); // loadsene er i al vaesentlighed parallelle (Promise.all)
 
   // Fase 2 — writes.
   // a) ability-updates: ÉT update-kald pr. rytter, batched 25 ad gangen.
   const abilityBatches = Math.ceil(riders / BATCH.abilityUpdateConcurrency);
-  bump("rider_derived_abilities", riders, true);
+  // #4847: ÉT bump PR. RYTTER, ikke ét for hele batchen. runBatched koerer 25
+  // SAMTIDIGE update-kald — de er parallelle i tid (derfor abilityBatches i
+  // sleep'en nedenfor), men de er 18 fysiske kald mod databasen. Taellingen sagde
+  // tidligere 1, saa "DB-kald i alt" undervurderede den faktiske belastning med
+  // 17 kald pr. tick. Varigheden er uaendret; det er maalepunktet der var forkert.
+  for (let i = 0; i < riders; i += 1) {
+    bump("rider_derived_abilities", i === 0 ? riders : 0, true);
+  }
   await sleep(LATENCY_MS * abilityBatches);
 
   // b) + c) to historik-upserts (kalenderdag + loebsdag), 500 raekker pr. kald.

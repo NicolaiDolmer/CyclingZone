@@ -52,6 +52,7 @@ import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 /** Tidligste danske klokketime sweepen maa koere (ejer 15/9, beslutning 4). */
 export const SWEEP_FROM_HOUR = 20;
@@ -418,6 +419,27 @@ export async function resolveDayCloseStatus({ supabase, seasonId, now = new Date
 }
 
 /**
+ * PUR: hvilke loebsdage gaelder for ÉT hold?
+ *
+ * `resolveDayCloseStatus` kaldes med `divisionId: team.league_division_id ?? null`,
+ * og et NULL divisionId betyder dér "hele bestanden" — ikke "ingen loebsdage". Et
+ * hold UDEN division ville derfor faa ALLE divisioners loebsdage tilbage.
+ *
+ * Det korrekte svar for et division-loest hold er det SAMME som sweepen giver
+ * (`buildSweepPlan`): praecis ÉT tick paa den gamle kalenderdags-noegle, altsaa
+ * `[null]`. Denne helper er den ene sandhed for de tre forbrugere — knappens
+ * POST /api/training/run-today og de to GET-svar der viser knappens tilstand — saa
+ * fladen ikke kan love andre loebsdage end POST'en faktisk koerer.
+ *
+ * @param {{teamDivisionId: string|null|undefined, gameDays: number[]|null|undefined}} args
+ * @returns {Array<number|null>}
+ */
+export function teamGameDaysFromDayClose({ teamDivisionId, gameDays }) {
+  if (!teamDivisionId) return [null];
+  return gameDays ?? [];
+}
+
+/**
  * Koer den samlede daglige sweep.
  *
  * @param {object} args
@@ -565,16 +587,30 @@ export async function runTrainingDayCloseSweep({
     // kalenderdags-noegle for de division-loese AI-hold.
     const [raceDayRunsRes, legacyRunsRes] = await Promise.all([
       todaysGameDays.length
+        // PAGINERET (#3331-klassen): dette er det ENESTE bestands-brede opslag i
+        // sweepen. 362 hold x 2-5 loebsdage er 724-1.810 raekker, og PostgREST's
+        // 1.000-raekkers-cap ville TAVST kappe resten — hvorefter buildSweepPlan
+        // ville planlaegge ticks der allerede er koert. Mutexen fanger dem (23505
+        // ⇒ alreadyRan foer noget rytter-arbejde), saa skaden er spildte
+        // reservations-kald, ikke dobbelt-traening — men op til 790 spildte kald
+        // pr. sweep er ikke noget vi skal leve med. Regel 4 goer det kun vaerre:
+        // spaendet kan nu indeholde flere loebsdage end dagens etaper alene.
+        // `.order("team_id")` + `.order("game_day")`: fetchAllRows kraever en
+        // stabil, unik sortering, ellers kan raekker falde mellem to sider.
+        //
         // schema-columns-ok: `game_day`/`season_id` tilfoejes af database/
         // 2026-09-14-4846-training-tick-game-day.sql og `squad` af database/
         // 2026-09-15-4847-training-day-close-trigger.sql i denne PR. Snapshottet er
         // fra 10/9 og kender dem derfor ikke endnu (refresh kraever prod-adgang og
         // koeres post-merge af ejer/orkestrator).
-        ? supabase
+        ? fetchAllRows(() => supabase
           .from("training_day_runs")
           .select("team_id, game_day, squad")
           .eq("season_id", season.id)
           .in("game_day", todaysGameDays)
+          .order("team_id", { ascending: true })
+          .order("game_day", { ascending: true }))
+          .then((data) => ({ data, error: null }), (error) => ({ data: null, error }))
         : Promise.resolve({ data: [], error: null }),
       supabase
         .from("training_day_runs")

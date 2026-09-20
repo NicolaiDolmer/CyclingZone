@@ -715,7 +715,7 @@ Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fu
 
 **Rest (dokumenteret, ikke bygget):** en kalenderdato hvor en division slet ingen løb har, giver intet tick — spændets ende kan ikke læses uden en løbsdag med en etape. Hvor mange løbsdage aksen skal rykke frem på en helt løbsløs dato står først i kalenderen når [#5169](https://github.com/NicolaiDolmer/CyclingZone/pull/5169) lander. Indtil da er `MAX_GAME_DAY_CATCH_UP` ops-loftet der forhindrer en stillestående division i at skrive et helt efterslæb på én aften.
 
-### 13.4 Status pr. 15/9 (hvad der er bygget bag flaget, og hvad der mangler)
+### 13.4 Status pr. 20/9 (15/9 som baseline; hvad der er bygget bag flaget, og hvad der mangler)
 
 Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off er bit-identisk med kalenderdags-ticket.
 
@@ -734,7 +734,9 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off e
 | Program pr. løbsdag, 7 × 5 celler (beslutning 8) | **mangler** | `training_week_plans` |
 | Ops-vagter + peak-plannerens konsistens-signal rekalibreret (B5) | **mangler** | `trainingSlotHealth.js`, `racePeakPlans.js` |
 
-**Gate G6 (målt 15/9, harness `backend/scripts/dev/trainingDayCloseCapacity4847.mjs`):** 362 hold × 5 løbsdage × 18 ryttere = 1.810 ticks, ca. 27.200 DB-kald, ca. 134.000 skrevne rækker. Sekventielt ved 12 ms latens pr. kald: ca. 152 s mod cron-intervallets 300 s (49 % margin). Ved 25 ms latens: ca. 317 s — over intervallet; knappen er `TEAM_CONCURRENCY` i `trainingDayCloseTrigger.js` (4 parallelt giver ca. 79 s). Overlap-guarden gør en langsom dag sikker: den forsinker, den fordobler aldrig.
+**Gate G6 (målt om 20/9, harness `backend/scripts/dev/trainingDayCloseCapacity4847.mjs`):** 362 hold × 5 løbsdage × 18 ryttere = 1.810 ticks, ca. 61.600 DB-kald, ca. 134.000 skrevne rækker. Sekventielt ved 12 ms latens pr. kald: ca. 152 s mod cron-intervallets 300 s (49 % margin) — **grøn**. Ved 25 ms latens er sweepen over intervallet; knappen er `TEAM_CONCURRENCY` i `trainingDayCloseTrigger.js`. Overlap-guarden gør en langsom dag sikker: den forsinker, den fordobler aldrig.
+
+Kald-tallet er hævet fra 15/9's 27.200 af to grunde, og **varigheden er uændret**: (1) hvert ability-update tælles nu som ét fysisk kald i stedet for ét pr. batch — de 25 samtidige er parallelle i tid, men de er 18 kald mod databasen, så det gamle tal undervurderede belastningen; (2) løbsdags-stien har fået to loads mere pr. tick (bindingen + `race_results`, se §13.3b). Begge ligger i motorens parallelle load-fase, derfor slår de ikke igennem på uret.
 
 **Deadline (ejer 6/9, ordret): "skiftet til det nye træningssystem senest sker til sæson 4 starten"**, dvs. live 28/9 2026; kalender-delen skal før S4-genereringen.
 

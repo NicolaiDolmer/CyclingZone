@@ -170,6 +170,10 @@ function makeSupabase({
         is() { return this; },
         order(col, o = {}) { ctx.order = { col, ascending: o.ascending !== false }; return this; },
         limit(n) { ctx.limit = n; return this; },
+        // fetchAllRows paginerer det bestands-brede training_day_runs-opslag.
+        // Fixturen er altid under én side, saa foerste .range() leverer alt og
+        // loekken stopper; vi markerer blot at kaeden kender kaldet.
+        range() { ctx.ranged = true; return this; },
         eq(col, val) { if (col === "key") ctx.key = val; return this; },
         maybeSingle() { return Promise.resolve(this.__resolve()); },
         __resolve() {

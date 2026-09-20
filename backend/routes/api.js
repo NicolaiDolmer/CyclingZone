@@ -231,7 +231,7 @@ import {
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 // #4847: den frivillige knap "Koer dagens traening nu" haenger paa PRAECIS samme
 // lukke-betingelse som cron-sweepen (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3).
-import { resolveDayCloseStatus, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
+import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
 import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
@@ -2912,7 +2912,13 @@ router.get("/training/me", requireAuth, async (req, res) => {
       dayClose = {
         open: close.closed,
         reason: close.reason,
-        gameDays: close.gameDays ?? [],
+        // SAMME transformation som POST /training/run-today: et hold uden
+        // division faar [null] (ÉT kalenderdags-tick), ikke hele bestandens
+        // loebsdage. Fladen maa ikke love noget andet end knappen koerer.
+        gameDays: teamGameDaysFromDayClose({
+          teamDivisionId: req.team.league_division_id ?? null,
+          gameDays: close.gameDays,
+        }),
         opensAtHour: TRAINING_SWEEP_FROM_HOUR,
       };
     }
@@ -2985,7 +2991,10 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
       // Holdet uden division har ingen loebsdags-akse — samme definerede svar som
       // sweepen giver: ÉT tick paa den gamle kalenderdags-noegle (gameDay udeladt
       // ⇒ motorens fail-safe-kaskade).
-      const gameDays = req.team.league_division_id ? close.gameDays : [null];
+      const gameDays = teamGameDaysFromDayClose({
+        teamDivisionId: req.team.league_division_id ?? null,
+        gameDays: close.gameDays,
+      });
       if (!gameDays.length) {
         return res.status(409).json({ error: "day_not_closed", reason: "no_race_day_today", opensAtHour: TRAINING_SWEEP_FROM_HOUR });
       }
@@ -10303,7 +10312,12 @@ router.get("/training/today-status", requireAuth, async (req, res) => {
       race_day_tick: true,
       day_closed: close.closed,
       day_close_reason: close.reason,
-      game_days: close.gameDays ?? [],
+      // Samme transformation som de to andre forbrugere (se
+      // teamGameDaysFromDayClose): division-loest hold ⇒ [null].
+      game_days: teamGameDaysFromDayClose({
+        teamDivisionId: req.team.league_division_id ?? null,
+        gameDays: close.gameDays,
+      }),
       opens_at_hour: TRAINING_SWEEP_FROM_HOUR,
     });
   } catch (err) {
