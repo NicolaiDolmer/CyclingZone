@@ -432,11 +432,25 @@ export const KENDTE_FIXTURE_BRUD = Object.freeze([
     hvorfor: "DAEKKER TRE LINJER (opad/fladt/udbrud) fra EEN stikproeve paa n=2. Grus fik sit eget finale-baand 3/9 (#4272), men kataloget har kun to grus-etaper, saa hver enkelt etape flytter andelen 50 pp. Baandet kan ikke rammes foer forsyningen er stoerre.",
     lukkesAf: "flere grus-loeb i kataloget (#4105/#3864), ikke en regel- eller pakker-aendring",
   },
+  // #5405 (20/9): BYTTET UD med saeson-samlet-udbrud, som er lukket af denne PR.
+  // Antallet af kendte brud er uaendret (6 linjer), men IKKE de samme seks.
+  //
+  // HVAD DER SKETE. De tre nye ProSeries-summit_tour-loeb + de haevede summit_tour-
+  // reservationer giver flere bjerg-etaper. Det trak saeson-totalens udbruds-andel NED
+  // under sit baand igen (saeson-samlet-udbrud lukket), men skubbede til gengaeld
+  // `mountain`-etapernes nedad-andel lige over sit baand: `mountain`-arketypen slutter pr.
+  // design nedad i en fast andel af tilfaeldene (§7b), saa flere af dem flytter aggregatet.
+  //
+  // HVORFOR DEN IKKE LUKKES HER. Den er samme klasse som de tre andre: en filler-vaegt-
+  // kalibrering paa §7b's finale-baand, ikke en placerings-regel og ikke et katalog-hul.
+  // Den taeller hverken som blokerende eller apply-blokerende fund, og den kan ikke lukkes
+  // ved at flytte et loeb. Maalt mod PRODS katalog samme dag er antallet af
+  // finale-afvigelser uaendret foer og efter aendringen (scripts/dev/gateStatus5405.mjs).
   {
-    id: "saeson-samlet-udbrud",
-    moenster: /sæson: SAMLET udbrud/,
-    hvorfor: "Summen af de tre ovenfor: naar hilly og cobbles ligger over deres udbruds-baand, gaar saeson-totalen med over. Lukkes af samme kalibrering, ikke af en selvstaendig aendring.",
-    lukkesAf: "§6b/§7b's genkalibrering (S5)",
+    id: "saeson-mountain-nedad",
+    moenster: /sæson: mountain slutter nedad/,
+    hvorfor: "§7b's finale-baand paa saeson-aggregatet: mellembjergs-etaper slutter nedad lidt oftere end baandet tillader. Samme filler-vaegt-kalibrering som de oevrige poster her - ikke en placerings- eller katalog-fejl. Kom til 20/9 da bjerg-forsyningen blev stoerre (#5405).",
+    lukkesAf: "§6b/§7b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
   },
 ]);
 
