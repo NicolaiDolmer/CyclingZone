@@ -343,9 +343,11 @@ import {
 } from "../lib/riderValuation.js";
 // #2428 værdimodel v4 slice 1 (shadow) — separat fra v3 ovenfor. predictBaseValueV4
 // bygges parallelt i riderCareerNpv.js (Kontrakt 3); route degraderer til 503 hvis
-// modellen (riderValuationModelV4.json) endnu ikke er fittet — se VALUATION_MODEL_V4.
+// modellen endnu ikke er fittet — se getValuationModel().
 import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
-import { applyTypeDampening } from "../lib/riderValuationTypeDampening.js";
+// #5443: model-kontakten. Læse-fladerne herunder skal vise den model
+// produktionen faktisk regner med, ikke en JSON de selv har indlæst ved boot.
+import { loadValuationModelCached } from "../lib/riderValuationModelSelect.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ageForSeason } from "../lib/riderProgressionEngine.js";
 import {
@@ -666,19 +668,37 @@ try {
   VALUATION_MODEL = null;
 }
 
-// #2428 værdimodel v4 slice 1 (SHADOW, separat fil fra v3 ovenfor). Fittes af
-// backend/scripts/fitRiderValuationV4.js (Kontrakt 2) — findes typisk ikke endnu
-// før første fit er kørt, så manglende fil degraderer pænt til null (503 i
-// GET /admin/rider-valuation-preview-v4, samme mønster som VALUATION_MODEL).
-let VALUATION_MODEL_V4 = null;
-try {
-  // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
-  // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
-  VALUATION_MODEL_V4 = applyTypeDampening(JSON.parse(
-    readFileSync(join(__dirname, "../lib/riderValuationModelV4.json"), "utf8")
-  ));
-} catch {
-  VALUATION_MODEL_V4 = null;
+// #2428 værdimodel v4 slice 1: modellen bag de v4-baserede LÆSE-flader
+// (rytterkortets base_value_preview, værdi-trenden, scouting-gappet og
+// admin-previewet).
+//
+// #5443 (hul fundet ved diff-gennemgang 20/9 aften): denne konstant indlæste
+// `riderValuationModelV4.json` direkte ved modul-load og kendte derfor IKKE
+// model-kontakten. Uskadeligt så længe app_config står på v4 — men i det
+// øjeblik ejeren tænder v5 ville rytterkortet vise en v4-pris ved siden af en
+// v5-pris i databasen. Fladerne henter nu modellen gennem
+// riderValuationModelSelect.js, med samme valg som søndagskørslen.
+//
+// HVORFOR CACHET, IKKE PR. REQUEST: det er læse-flader, og et app_config-opslag
+// pr. rytterkort-visning er en unødig DB-tur. `loadValuationModelCached` holder
+// model-ID'et i ca. et minut og af-duplikerer samtidige opslag. Skrivestierne
+// (søndags-refresh, sæson-transition, backfill) cacher IKKE — de læser nøglen
+// én gang pr. kørsel.
+//
+// FAIL-SAFE, uændret kontrakt: kan modellen ikke indlæses (fil mangler før
+// første fit), returneres null, og fladerne degraderer præcis som før — null
+// base_value_preview, 503 fra GET /admin/rider-valuation-preview-v4.
+async function getValuationModel() {
+  try {
+    return await loadValuationModelCached(supabase);
+  } catch (err) {
+    // readFlagStage sluger selv app_config-fejl (de giver v4), så det der
+    // lander her er en ÆGTE indlæsningsfejl: model-filen mangler, er ugyldig
+    // JSON, eller dæmpnings-behandlingen kastede. Det degraderer fire
+    // spiller-/admin-flader på én gang og må ikke være tavst.
+    captureException(err);
+    return null;
+  }
 }
 
 let RIDER_TYPES_BASELINE = null;
@@ -1290,7 +1310,8 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
 
   // #1101/#2594: vedhæft den live-beregnede v4 base_value som PREVIEW (beta-chip).
   // null hvis model mangler eller rytter ingen abilities/alder har.
-  if (VALUATION_MODEL_V4) {
+  const valuationModel = await getValuationModel();
+  if (valuationModel) {
     const { data: ab } = await supabase
       .from("rider_derived_abilities")
       .select("*")
@@ -1301,8 +1322,8 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
       data.base_value_preview = predictBaseValue(
         { ...data, potentiale: riderPotentiale, age: ageForSeason(data.birthdate, seasonNumber) },
         ab,
-        VALUATION_MODEL_V4,
-        { asOf: VALUATION_MODEL_V4.fitted_at }
+        valuationModel,
+        { asOf: valuationModel.fitted_at }
       );
     } catch (err) {
       captureException(err);
@@ -1481,7 +1502,10 @@ router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
       rider: { potentiale: riderRow.potentiale, age: ageForSeason(riderRow.birthdate, seasonNumber), caps: abilityRow?.ability_caps, valuation_type: riderRow.valuation_type },
       snapshotsAsc: history || [],
       baseline: RIDER_TYPES_BASELINE,
-      model: VALUATION_MODEL_V4,
+      // #5443: trenden skal genberegne med DEN model der står i app_config —
+      // ellers sammenligner den en v4-genberegning med en v5-værdi i databasen
+      // og viser et spring der ikke findes.
+      model: await getValuationModel(),
       youthBaseline: RIDER_TYPES_BASELINE_YOUTH,
     });
     res.json({ windows });
@@ -2567,12 +2591,13 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       // #2594: v4 kræver alder (sæson-forankret); potentiale strippes EKSPLICIT så
       // det maskerede "expected"-tal ikke lækker skjult potentiale via NPV'en.
       let expected = null;
-      if (VALUATION_MODEL_V4) {
+      const scoutValuationModel = await getValuationModel();
+      if (scoutValuationModel) {
         try {
           expected = predictBaseValue(
             { ...rider, potentiale: undefined, age },
             ab,
-            VALUATION_MODEL_V4
+            scoutValuationModel
           );
         } catch (err) {
           captureException(err);
@@ -10985,9 +11010,11 @@ router.get("/admin/rider-valuation-preview", requireAdmin, async (req, res) => {
 // nuværende v3 (predictBaseValue) med den nye karriere-NPV-model v4
 // (predictBaseValueV4, Kontrakt 3) for hele populationen. READ-ONLY, ingen
 // DB-skrivning, ingen migration. Rører intet i økonomien. Degraderer til 503
-// hvis riderValuationModelV4.json endnu ikke er fittet (VALUATION_MODEL_V4=null).
+// hvis modellen endnu ikke er fittet (getValuationModel() = null).
+// #5443: modellen er app_config-valget, ikke en JSON indlæst ved boot.
 router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) => {
-  if (!VALUATION_MODEL_V4) {
+  const valuationModel = await getValuationModel();
+  if (!valuationModel) {
     return res.status(503).json({ error: "v4-model ikke fittet endnu" });
   }
 
@@ -11039,7 +11066,7 @@ router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) =
       let v4Value = null;
       if (age != null) {
         try {
-          v4Value = predictBaseValueV4({ ...r, potentiale: potentialeByRider.get(r.id), age }, ab, VALUATION_MODEL_V4);
+          v4Value = predictBaseValueV4({ ...r, potentiale: potentialeByRider.get(r.id), age }, ab, valuationModel);
         } catch (err) {
           // Én dårlig rytterrække (fx manglende potentiale) må ikke vælte hele
           // shadow-preview'et — degradér til null for den ene rytter og log.
@@ -11094,8 +11121,8 @@ router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) =
       return {
         type,
         v3_offset: VALUATION_MODEL?.offset?.[type] ?? null,
-        sim_median_prize: VALUATION_MODEL_V4.type_stats?.[type]?.median_prize ?? null,
-        sim_p90_prize: VALUATION_MODEL_V4.type_stats?.[type]?.p90_prize ?? null,
+        sim_median_prize: valuationModel.type_stats?.[type]?.median_prize ?? null,
+        sim_p90_prize: valuationModel.type_stats?.[type]?.p90_prize ?? null,
         n: bucket.n,
         v4_median_value: pctile(bucket.v4, 0.5),
         v4_p90_value: pctile(bucket.v4, 0.9),
@@ -11111,16 +11138,21 @@ router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) =
         convexity_exponent: VALUATION_MODEL?.convexity_exponent ?? null,
       },
       v4_model: {
-        version: 4,
-        fitted_at: VALUATION_MODEL_V4.fitted_at ?? null,
-        method: VALUATION_MODEL_V4.method ?? null,
-        sim_run_id: VALUATION_MODEL_V4.sim_run_id ?? null,
-        K: VALUATION_MODEL_V4.K ?? null,
-        season_id: VALUATION_MODEL_V4.season_id ?? null,
-        discount: VALUATION_MODEL_V4.discount ?? null,
-        horizon_model: VALUATION_MODEL_V4.horizon_model ?? null,
-        fit: VALUATION_MODEL_V4.fit ?? null,
-        scale: VALUATION_MODEL_V4.scale ?? null,
+        // #5443: modellen kommer nu fra app_config-valget, så versionen skal
+        // læses af den — ikke stå hardkodet. Ejeren bruger netop denne flade
+        // til at se HVILKEN model der er i spil, og et fast "4" ville lyve om
+        // det i samme objekt som resten af felterne fortæller sandheden.
+        version: Number(valuationModel.version) || 4,
+        model_id: valuationModel.model_id ?? null,
+        fitted_at: valuationModel.fitted_at ?? null,
+        method: valuationModel.method ?? null,
+        sim_run_id: valuationModel.sim_run_id ?? null,
+        K: valuationModel.K ?? null,
+        season_id: valuationModel.season_id ?? null,
+        discount: valuationModel.discount ?? null,
+        horizon_model: valuationModel.horizon_model ?? null,
+        fit: valuationModel.fit ?? null,
+        scale: valuationModel.scale ?? null,
       },
       type_economy: typeEconomy,
       distribution,

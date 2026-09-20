@@ -132,12 +132,18 @@ export function abilityValue(raw) {
 }
 
 /**
- * Rating for ét sæt evner som én rolle. Vægtet snit, afrundet, klampet [0,99].
+ * Rollens UAFRUNDEDE vægtede snit — selve regnestykket bag rating-tallet.
  * Evner der mangler på rækken — eller står NULL — tæller ikke med i hverken
  * tæller eller nævner, så en delvist udfyldt række ikke trækkes kunstigt mod 0.
- * Ukendt rolle eller ingen brugbare evner → null (kalderen bestemmer visningen).
+ * Ukendt rolle eller ingen brugbare evner → null.
+ *
+ * #5443: værdimodellen kalder DENNE funktion, ikke en kopi af den. Det er hele
+ * pointen i "værdien regnes på de samme evner som ratingen": der findes ét
+ * regnestykke og én vægttabel, så de to tal ikke kan skride fra hinanden ved en
+ * fremtidig rettelse. `ratingForRole` er den afrundede, klampede visnings-form
+ * af præcis det samme tal. Forward-guard: `valuationRatingParity.test.js`.
  */
-export function ratingForRole(abilities, roleKey) {
+export function roleOutputRaw(abilities, roleKey) {
   const recipe = DISPLAY_RECIPES.find((r) => r.key === roleKey);
   if (!recipe) return null;
   let sum = 0;
@@ -149,5 +155,22 @@ export function ratingForRole(abilities, roleKey) {
     wsum += weight;
   }
   if (wsum <= 0) return null;
-  return Math.max(0, Math.min(99, Math.round(sum / wsum)));
+  return sum / wsum;
 }
+
+/**
+ * Rating for ét sæt evner som én rolle. Vægtet snit, afrundet, klampet [0,99].
+ * Ukendt rolle eller ingen brugbare evner → null (kalderen bestemmer visningen).
+ */
+export function ratingForRole(abilities, roleKey) {
+  const raw = roleOutputRaw(abilities, roleKey);
+  if (raw === null) return null;
+  return Math.max(0, Math.min(99, Math.round(raw)));
+}
+
+/** Alle evner der indgår i mindst én visnings-opskrift (= alle evner ratingen
+ *  — og dermed #5443-værdimodellen — læser). Sorteret, så den kan bruges direkte
+ *  i en SQL-kolonneliste uden at rækkefølgen flakker mellem kørsler. */
+export const DISPLAY_RECIPE_ABILITIES = Object.freeze(
+  [...new Set(DISPLAY_RECIPES.flatMap((r) => Object.keys(r.weights)))].sort()
+);

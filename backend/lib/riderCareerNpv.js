@@ -21,7 +21,7 @@
 // Model-input: Kontrakt 2-formen (backend/lib/riderValuationModelV4.json), se
 // docs/superpowers/specs/2026-07-13-rider-valuation-v4-production-value-design.md.
 
-import { ABILITY_KEYS, blendedOutput, riderOverall } from "./riderValuation.js";
+import { ABILITY_KEYS, riderOverall, valuationOutput, valuationTypeFor } from "./riderValuation.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import {
   PROGRESSION_CONFIG,
@@ -101,7 +101,10 @@ function simulateCareer(rider, abilities, model) {
   // riderValuation.js — se dens #3345-kommentar for baggrund + fjernelsesplan.
   // predictBaseValueV4 er den LIVE model (#2594-cutover), så DENNE linje er den
   // reelle produktions-kaldsvej der skal fryses, ikke v3'ens.
-  const type = rider?.valuation_type ?? rider?.primary_type ?? null;
+  // #5443: kæden er model-styret (valuationTypeFor) — en model med
+  // type_source: "primary" læser den faktiske primær-type og ser aldrig
+  // valuation_type. Modeller uden feltet rammer præcis samme kæde som før.
+  const type = valuationTypeFor(rider, model);
   const potentiale = rider?.potentiale;
   const age0 = Number(rider?.age);
   // #2594: uden gyldig alder kan hverken NPV'en eller sæson-0-leddet forankres i
@@ -110,6 +113,7 @@ function simulateCareer(rider, abilities, model) {
   if (!Number.isFinite(age0)) return null;
 
   const alpha = Number.isFinite(Number(fit.alpha)) ? Number(fit.alpha) : 1;
+  const weightsSource = model.weights_source ?? null;
   const c = Number.isFinite(Number(fit.c)) ? Number(fit.c) : 0;
   const offsets = fit.offset
     ? Object.values(fit.offset).map(Number).filter(Number.isFinite)
@@ -152,7 +156,9 @@ function simulateCareer(rider, abilities, model) {
     // rytter kan ikke længere værdisættes til "ingenting" alene på sin alder.
     if (s > 25 || (s > 0 && age_s > 40) || !(S >= 1e-4)) break;
 
-    const O_s = blendedOutput(ab, type, alpha);
+    // #5443: samme vægtkilde som v3-stien — modellen bestemmer om outputtet
+    // regnes på værdi-vægttabellen (som hidtil) eller på rollens rating-opskrift.
+    const O_s = valuationOutput(ab, type, { alpha, weightsSource });
     const prod_s = Math.exp(fit.a + fit.b * O_s + c * O_s * O_s + offset);
     const discounted = discount ** s * S * prod_s;
     npv += discounted;
