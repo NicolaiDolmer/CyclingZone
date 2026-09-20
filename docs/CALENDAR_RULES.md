@@ -636,12 +636,12 @@ Gulvene *måler* efter selection. Reservationerne *sikrer* før: antal løb af h
 |---|--:|--:|--:|--:|---|
 | `itt_classic` | 1 | 1 | 1 | **2** | fritstående enkeltstart |
 | `cobbled_classic` | **6** | 5 | 4 | 0 | brostens-endagsløb |
-| `cobbled_tour` | 0 | 1 | 1 | 1 | brosten i etapeløb |
+| `cobbled_tour` | 1 | 1 | 1 | 1 | brosten i etapeløb |
 | `summit_tour` | 0 | **5** | **5** | 2 | summit-finaler, holder nedkørsels-andelen nede |
 | `hilly_tour` | 0 | 2 | 1 | 2 | etapeløb uden bjergetape |
 | `balanced_week` | 0 | 0 | **1** | **2** | eneste arketype med ITT i sine garantier |
 
-D1's `cobbled_tour` står bevidst på 0 (#4075): kataloget har kun 2, og D1's reservation støvsugede det ene D2 og D3 kunne nå.
+D1's `cobbled_tour` stod på 0 fra 21/8 ([#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075)), fordi kataloget kun havde 2 og D1's reservation støvsugede det ene D2 og D3 kunne nå. **Den er 1 igen siden 3/9** (ejer-beslutning, [#4270](https://github.com/NicolaiDolmer/CyclingZone/issues/4270) valg A): katalog-udvidelsen hævede forsyningen, så D1 kan få sit eget brosten-etapeløb uden at tage D2's eller D3's. Tabellen ovenfor stod med 0 indtil 20/9 — den var ikke fulgt med.
 
 **Ændret 26/8 ([#4272](https://github.com/NicolaiDolmer/CyclingZone/issues/4272)), begge ejer-asks:**
 
