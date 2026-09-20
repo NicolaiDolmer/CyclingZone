@@ -331,7 +331,7 @@ export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   // summit/M-Down-bånd opgraderbare (raceRouteRealismMetrics.js) — men KUN hvis begge
   // rent faktisk vælges hver sæson, ikke kun det ene prestige-walket alligevel ville have
   // taget. Reservationen garanterer det, samme princip som resten af tabellen.
-  // #5405 (EJER-GO 20/9): D2 summit_tour 2 -> 6, D3 summit_tour 3 -> 5 og D3 faar sin
+  // #5405 (EJER-GO 20/9): D2 summit_tour 2 -> 5, D3 summit_tour 3 -> 5 og D3 faar sin
   // foerste balanced_week-reservation (0 -> 1).
   //
   // HVORFOR. Afgoerende bjergdage laa under maalet i BAADE D2 og D3, og undersoegelsen
@@ -357,9 +357,13 @@ export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   // 2026-09-19-s4-kalender-kvalitet/nye-bjergloeb.md (gitignoreret, hard rule 17).
   // Metode og dom: docs/audits/2026-09-19-5405-nye-bjergloeb-udkast.md.
   //
+  // D2's tal er 5 og IKKE 6, og det er maalt, ikke valgt: med 6 skyder D2 over
+  // bjerg-maalet i den anden retning, og en af de to uniforme afvigelser bliver staaende
+  // (bare med modsat fortegn). Prøv det ikke igen uden en ny maaling.
+  //
   // Tabellen er laast af tierCalendarGuarantees.test.js ("#5405 reservations-tabellen"):
   // aendres et af tallene uden en ny maaling, fejler den test med vilje.
-  2: Object.freeze({ summit_tour: 6, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
+  2: Object.freeze({ summit_tour: 5, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
   3: Object.freeze({ summit_tour: 5, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4, balanced_week: 1 }),
   4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 2, hilly_tour: 2, balanced_week: 2 }),
 });

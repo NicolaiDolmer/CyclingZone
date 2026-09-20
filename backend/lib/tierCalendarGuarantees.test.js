@@ -177,7 +177,7 @@ test("#5405 reservations-tabellen: tallene er låst og må kun flyttes med en ny
     JSON.parse(JSON.stringify(TIER_ARCHETYPE_RESERVATIONS)),
     {
       1: { itt_classic: 1, cobbled_classic: 6, cobbled_tour: 1 },
-      2: { summit_tour: 6, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 },
+      2: { summit_tour: 5, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 },
       3: { summit_tour: 5, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4, balanced_week: 1 },
       4: { summit_tour: 2, cobbled_tour: 1, itt_classic: 2, hilly_tour: 2, balanced_week: 2 },
     },
