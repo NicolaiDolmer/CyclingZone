@@ -135,6 +135,41 @@ export function isTransientSupabaseError(error) {
   return TRANSIENT_NETWORK_RE.test(message);
 }
 
+// #5452: retry-klassificering for "matview genopfriskes" (ranglisten — se
+// database/2026-07-27-3013-refresh-matviews-concurrently.sql, som bevidst kører
+// en PLAIN, eksklusiv REFRESH). Snævrere end isTransientSupabaseError ovenfor:
+// KUN lock-timeout/statement-cancel (55P03/57014) — IKKE netværks-/gateway-hikke.
+// rankings.ts's enkeltkalds-ruter (ikke de paginerede, som allerede går gennem
+// withSupabaseRetry via fetchAllRows) skal retry'e PRÆCIS denne klasse, aldrig
+// andre transiente fejl.
+//
+// CodeRabbit (PR #5454): en tidligere version lod ETHVERT status-500-svar uden
+// code/message klassificere som lock-timeout, hvilket også ville retry'e et
+// ægte, uforklaret 500 fra fx /global?team_id eller /riders?top=5 — begge
+// almindelige GET-kald der SKAL kunne bære en rigtig fejlbesked. Den heuristik
+// er derfor flyttet til isRaceCountLockTimeoutError() nedenfor og bruges KUN af
+// race-count-ruten, som er det ene sted den er sand (HEAD-svar har ingen body).
+export function isLockTimeoutError(error) {
+  const code = error && typeof error === "object" ? error.code : null;
+  if (code != null && TRANSIENT_DB_TIMEOUT_CODES.has(String(code))) return true;
+  const message = extractMessage(error);
+  return TRANSIENT_DB_TIMEOUT_RE.test(message);
+}
+
+// #5452/#5224: race-count er et HEAD-request ({ head: true }) og har derfor
+// INGEN body ved fejl, per HTTP-spec — PostgREST/postgrest-js kan kun give os
+// et kode- og beskedløst fejlobjekt der. Den faktiske HTTP-status ER stadig
+// tilgængelig og er dermed den eneste diagnose der findes for NETOP den
+// ruteform — call-sites vedhæfter selv `.status` på fejlen. Brug UDELUKKENDE
+// for race-count, aldrig for en almindelig GET (se CodeRabbit-noten ovenfor).
+export function isRaceCountLockTimeoutError(error) {
+  if (isLockTimeoutError(error)) return true;
+  const code = error && typeof error === "object" ? error.code : null;
+  const message = extractMessage(error);
+  const status = error && typeof error === "object" ? error.status : null;
+  return status === 500 && !code && !message;
+}
+
 function copyDbFields(error, err) {
   if (error && typeof error === "object") {
     if (error.code != null) err.code = error.code;
