@@ -15,6 +15,13 @@
 // Ren gate-matematik: ../lib/valuationV4Scorecard.js (node --test, ingen DB-afhængighed).
 //
 //   node scripts/valuationV4Scorecard.js [--sample=<sti>] [--model-v4=<sti>] [--out=<sti>]
+//                                        [--baseline=v3|stored] [--apply-dampening]
+//
+// #3353 (re-fit mod ny typeinddeling): kør med
+//   --baseline=stored --apply-dampening
+// for at måle en KANDIDAT-model mod det spillerne ser i dag, gennem præcis den
+// kæde produktionen bruger. Uden flagene er adfærden identisk med den
+// oprindelige cutover-kørsel (v3 som baseline, rå fit-offsets).
 //
 // Exit 1 hvis en HÅRD gate fejler. Rapport-/bløde gates fejler aldrig kørslen.
 //
@@ -36,7 +43,9 @@ import { predictBaseValue, riderOverall } from "../lib/riderValuation.js";
 //   careerTrajectory(rider, abilities, model) → [{ s, age, O, prod, survival, discounted }]
 import { careerTrajectory, currentProductionValue, predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 import { checkAnchorOrdering } from "../lib/riderValuationFit.js";
-import { riderAge } from "../lib/valuationScorecard.js";
+import { applyTypeDampening, TYPE_DAMPENING_ENABLED } from "../lib/riderValuationTypeDampening.js";
+// #3353: SÆSON-alder, ikke wall-clock. Se loadRealPopulation for hvorfor.
+import { ageForSeason } from "../lib/riderSeasonAge.js";
 import {
   allHardGatesPass,
   anchorSanityRow,
@@ -62,6 +71,23 @@ const argVal = (flag) => {
 const SAMPLE_PATH = argVal("sample") || join(__dirname, "../lib/riderProductionSample.json");
 const MODEL_V4_PATH = argVal("model-v4") || join(__dirname, "../lib/riderValuationModelV4.json");
 const OUT_PATH = argVal("out");
+// #3353 RE-FIT-TILSTAND (begge defaulter til den oprindelige cutover-adfærd):
+//
+//   --baseline=stored    Gate 2 måler mod de værdier der står i prod NU
+//                        (riders.base_value), ikke mod v3. Ved et re-fit af v4 er
+//                        v3 et dødt shadow-artefakt fra før #2594-cutoveren, og
+//                        "ingen økonomi-chok" betyder afstand til DEN værdi
+//                        spillerne ser i dag.
+//   --apply-dampening    Kør modellen gennem applyTypeDampening() — dvs. præcis den
+//                        kæde produktionen bruger (riderValueRefresh.js). Uden
+//                        flaget scores de RÅ fit-offsets, som ingen kaldevej i
+//                        prod bruger.
+const BASELINE = (argVal("baseline") || "v3").toLowerCase();
+if (!["v3", "stored"].includes(BASELINE)) {
+  console.error(`❌ --baseline skal være "v3" eller "stored" (fik "${BASELINE}").`);
+  process.exit(1);
+}
+const APPLY_DAMPENING = process.argv.includes("--apply-dampening");
 // Udvikl-og-sælg-vinduet (sæsoner en akademi-prospect holdes før "salg") — samme
 // horisont som #1364's eget scorecard (valueDevelopSellScorecard.js default 4).
 const DEVELOP_SELL_SEASONS = 4;
@@ -88,7 +114,8 @@ function readJson(path, label) {
 
 const v3Model = readJson(join(__dirname, "../lib/riderValuationModel.json"), "v3-model");
 const sample = readJson(SAMPLE_PATH, "sim-artefakt (Kontrakt 1)");
-const v4Model = readJson(MODEL_V4_PATH, "v4-model (Kontrakt 2)");
+const v4ModelRaw = readJson(MODEL_V4_PATH, "v4-model (Kontrakt 2)");
+const v4Model = APPLY_DAMPENING ? applyTypeDampening(v4ModelRaw) : v4ModelRaw;
 
 const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Copenhagen" }).format(new Date());
 const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").trim();
@@ -96,7 +123,27 @@ const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/\p{Diacrit
 // Ægte population-prædikat (kontrakt-note, #2428): teams eksklud.
 // is_test_account/is_frozen/is_bank; AI-hold (is_ai=true) MED (de kører løb).
 // riders: is_academy=false AND is_retired=false AND team_id not null.
+//
+// #3353 ALDERS-RETTELSE: scorecardet brugte `riderAge(birthdate)` — WALL-CLOCK.
+// Hele værdi-kæden i produktionen (riderValueRefresh.js, riderProgressionEngine.js,
+// fitRiderValuationV4.js) bruger SÆSON-alder (ageForSeason), og riderSeasonAge.js's
+// egen topkommentar dokumenterer to tidligere bugs (#3071, #3081) af præcis denne
+// klasse. Forskellen var 0 i sæson 1 (hvor scorecardet blev skrevet) og vokser med
+// ét år pr. sæson: i sæson 3 værdisatte scorecardet hele populationen som TO ÅR
+// YNGRE end produktionen gør — længere restkarriere, højere NPV — så gate 2's
+// median-drift blev målt mod tal ingen spiller kan se. Rettet her; ingen anden
+// adfærd ændret.
 async function loadRealPopulation() {
+  const { data: activeSeason, error: seasonErr } = await supabase
+    .from("seasons").select("number").eq("status", "active").maybeSingle();
+  if (seasonErr) throw new Error(`seasons: ${seasonErr.message}`);
+  let seasonNumber = activeSeason?.number ?? null;
+  if (!seasonNumber) {
+    const { data: lastDone } = await supabase
+      .from("seasons").select("number").eq("status", "completed")
+      .order("number", { ascending: false }).limit(1).maybeSingle();
+    seasonNumber = lastDone?.number ?? 1;
+  }
   const [allTeams, allRiders, abilities] = await Promise.all([
     fetchAllRows(() => supabase.from("teams").select("id, is_ai, is_bank, is_test_account, is_frozen").order("id")),
     fetchAllRows(() => supabase
@@ -115,11 +162,18 @@ async function loadRealPopulation() {
   const riders = allRiders.filter(
     (r) => r.is_academy === false && r.is_retired === false && (r.team_id == null || teamIds.has(r.team_id))
   );
-  return riders.map((r) => ({ ...r, age: riderAge(r.birthdate), abilities: abilityByRider.get(r.id) || null }));
+  return {
+    seasonNumber,
+    population: riders.map((r) => ({
+      ...r,
+      age: ageForSeason(r.birthdate, seasonNumber),
+      abilities: abilityByRider.get(r.id) || null,
+    })),
+  };
 }
 
 async function main() {
-  const population = await loadRealPopulation();
+  const { population, seasonNumber } = await loadRealPopulation();
   const valued = population.filter((r) => r.abilities != null);
 
   // --- v3 vs v4 pr. rytter ---
@@ -139,7 +193,15 @@ async function main() {
   const typeRows = typeEconomyRows(sample.samples || [], v3Model.offset || {});
 
   // --- Gate 2: skala-kontinuitet ---
-  const gScale = scaleContinuityGate(v3Values, v4Values);
+  // #3353: ved --baseline=stored måles mod de gemte base_value'er (hvad spillerne
+  // ser i dag). Kun ryttere MED en gemt værdi tæller med — en null-værdi er
+  // "aldrig værdisat", ikke "værd 0".
+  const baselineValues = BASELINE === "stored"
+    ? rows.map((r) => r.base_value).filter((v) => v != null)
+    : v3Values;
+  const gScale = scaleContinuityGate(baselineValues, v4Values, {
+    baselineLabel: BASELINE === "stored" ? "gemt base_value" : "v3",
+  });
 
   // --- Gate 5: elite ukøbelig ---
   const gEliteUnbuyable = eliteUnbuyableGate(rows, {
@@ -240,8 +302,9 @@ async function main() {
   L.push("# Værdimodel v4 — shadow-scorecard (slice 1, #2428)");
   L.push("");
   L.push(`> Genereret ${today} af \`node backend/scripts/valuationV4Scorecard.js\` (READ-ONLY mod prod) · simulér-før-ship, ejer-gate FØR cutover (slice 2)`);
-  L.push(`> v4-model: fittet ${v4Model.fitted_at ?? "?"} · sim_run_id ${v4Model.sim_run_id ?? "?"} · K=${v4Model.K ?? "?"} · discount=${v4Model.discount ?? "?"}`);
-  L.push(`> Population: ${population.length} ægte ryttere (ekskl. akademi/pensioneret/uden hold/test-/frost-/bank-hold) · ${rows.length} med v3+v4-værdi`);
+  L.push(`> v4-model: ${MODEL_V4_PATH} · fittet ${v4Model.fitted_at ?? "?"} · sim_run_id ${v4Model.sim_run_id ?? "?"} · K=${v4Model.K ?? "?"} · discount=${v4Model.discount ?? "?"}`);
+  L.push(`> Baseline for gate 2: ${BASELINE === "stored" ? "gemt `riders.base_value` (hvad spillerne ser i dag)" : "v3-modellen"} · type-dæmpning i scoringen: ${APPLY_DAMPENING ? `PÅ (TYPE_DAMPENING_ENABLED=${TYPE_DAMPENING_ENABLED})` : "FRA (rå fit-offsets)"}`);
+  L.push(`> Population: ${population.length} ægte ryttere (ekskl. akademi/pensioneret/uden hold/test-/frost-/bank-hold) · ${rows.length} med v3+v4-værdi · sæson-alder forankret i sæson ${seasonNumber}`);
   L.push("");
 
   L.push("## Gates");

@@ -29,8 +29,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { fitProductionModel } from "../lib/riderValuationFitV4.js";
+import { fitProductionModel, rescaleToMedian } from "../lib/riderValuationFitV4.js";
 import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
+import { applyTypeDampening, TYPE_DAMPENING_ENABLED } from "../lib/riderValuationTypeDampening.js";
 import { riderOverall } from "../lib/riderValuation.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ageForSeason } from "../lib/riderSeasonAge.js";
@@ -63,6 +64,37 @@ const SAVE_HEADROOM = Number(arg("save-headroom", 3));
 // (mindst FLOOR_MULT × råd-loftet), uanset produktion.
 const ELITE_FLOOR_OVERALL = Number(arg("elite-floor-overall", 58));
 const FLOOR_MULT = Number(arg("elite-floor-mult", 2));
+// #3353 SKALA-KALIBRERING, to tilstande (default = uændret adfærd):
+//
+//   --calibrate=raw       (default) Som hidtil: scale = median(gemt base_value over
+//                         ALLE rytter-rækker) / median(RÅ NPV over de værdisatte).
+//   --calibrate=shipping  Kalibrér mod den kæde produktionen FAKTISK bruger:
+//                         applyTypeDampening() + level_correction, og mod SAMME
+//                         population i tæller og nævner.
+//
+// Hvorfor tilstand 2 findes: `scale` har ét erklæret formål — at holde det samlede
+// værdi-niveau stabilt ved en model-udskiftning (spec §3.3, scorecard gate 2).
+// `raw` måler ikke det, fordi to multiplikative lag ligger EFTER den i produktionen
+// (type-dæmpningens normalisering og niveau-korrektionen), og fordi tælleren løb
+// over en anden population end nævneren. Ved den oprindelige fit var forskellen
+// lille; ved et re-fit mod en ny typeinddeling er den ikke. Medianrytteren ligger
+// langt under elite-tærsklen, så elite-præmien påvirker ikke medianen — justeringen
+// er derfor ét eksakt skridt, og elite-præmien løses bagefter mod den endelige scale.
+const CALIBRATE = String(arg("calibrate", "raw")).toLowerCase();
+if (!["raw", "shipping"].includes(CALIBRATE)) {
+  console.error(`❌ --calibrate skal være "raw" eller "shipping" (fik "${CALIBRATE}").`);
+  process.exit(1);
+}
+// Niveau-korrektionen (#3449) er IKKE en fit-størrelse — den er en ejer-gated
+// markedsmåling der ganges på den færdige base_value. Fit-scriptet har aldrig
+// skrevet den; flaget findes så en kandidat kan produceres ship-klar i ét hug i
+// stedet for at blive håndredigeret. Udeladt ⇒ feltet skrives ikke (faktor 1).
+const LEVEL_CORRECTION_ARG = arg("level-correction", null);
+const LEVEL_CORRECTION = LEVEL_CORRECTION_ARG == null ? null : Number(LEVEL_CORRECTION_ARG);
+if (LEVEL_CORRECTION != null && (!Number.isFinite(LEVEL_CORRECTION) || LEVEL_CORRECTION <= 0)) {
+  console.error(`❌ --level-correction skal være et positivt tal (fik "${LEVEL_CORRECTION_ARG}").`);
+  process.exit(1);
+}
 
 const fmtM = (n) => (n / 1e6).toFixed(2) + "M";
 
@@ -218,6 +250,8 @@ async function main() {
   };
   const rawNpvs = [];
   const rawByRider = []; // { overall, raw } — til elite-præmie-kalibrering
+  // #3353: samme ryttere i tæller og nævner (kun --calibrate=shipping bruger den).
+  const calibrationRows = []; // { rider, abilities, age, stored }
   for (const r of riders) {
     if (r.is_retired || r.is_academy) continue;
     const ab = abilityByRider.get(r.id);
@@ -225,15 +259,60 @@ async function main() {
     const age = ageForSeason(r.birthdate, seasonNumber);
     if (age == null) continue;
     const raw = predictBaseValueV4({ primary_type: r.primary_type, potentiale: r.potentiale, age }, ab, modelForNpv);
-    if (Number.isFinite(raw) && raw > 0) { rawNpvs.push(raw); rawByRider.push({ overall: riderOverall(ab), raw }); }
+    if (Number.isFinite(raw) && raw > 0) {
+      rawNpvs.push(raw);
+      rawByRider.push({ overall: riderOverall(ab), raw });
+      const stored = Number(r.base_value);
+      if (Number.isFinite(stored) && stored > 0) {
+        calibrationRows.push({ rider: { primary_type: r.primary_type, potentiale: r.potentiale, age }, abilities: ab, stored });
+      }
+    }
   }
   const medianV4RawNpv = median(rawNpvs);
-  const scale = medianV4RawNpv > 0 ? medianCurrentBaseValue / medianV4RawNpv : 1;
+  let scale = medianV4RawNpv > 0 ? medianCurrentBaseValue / medianV4RawNpv : 1;
 
   console.log(
-    `\nSkala-kalibrering: median(ægte base_value, n=${currentBaseValues.length})=${fmtM(medianCurrentBaseValue)} · ` +
+    `\nSkala-kalibrering (rå): median(ægte base_value, n=${currentBaseValues.length})=${fmtM(medianCurrentBaseValue)} · ` +
     `median(v4 rå NPV, scale=1, n=${rawNpvs.length})=${fmtM(medianV4RawNpv)} · scale=${scale.toExponential(4)}`
   );
+
+  let shippingCalibration = null;
+  if (CALIBRATE === "shipping") {
+    // Mål medianen gennem PRÆCIS den kæde produktionen bruger: type-dæmpning
+    // (riderValueRefresh.js router hver model-indlæsning igennem den) + niveau-
+    // korrektion. Elite-præmien udelades bevidst — den rammer kun overall over
+    // tærsklen og kan pr. konstruktion ikke flytte medianen; den løses bagefter
+    // mod den FÆRDIGE scale, så elite-målet stadig holder.
+    const shippingModel = applyTypeDampening({
+      fit: { alpha: fit.alpha, a: fit.a, b: fit.b, c: fit.c, offset: fullOffset },
+      type_stats: typeStats,
+      discount: DISCOUNT,
+      scale,
+      ...(LEVEL_CORRECTION != null ? { level_correction: LEVEL_CORRECTION } : {}),
+    });
+    const shippingValues = [];
+    const storedValues = [];
+    for (const row of calibrationRows) {
+      const v = predictBaseValueV4(row.rider, row.abilities, shippingModel);
+      if (Number.isFinite(v) && v > 0) { shippingValues.push(v); storedValues.push(row.stored); }
+    }
+    const medianShipping = median(shippingValues);
+    const medianStoredSamePop = median(storedValues);
+    const before = scale;
+    scale = rescaleToMedian({ scale, medianTarget: medianStoredSamePop, medianActual: medianShipping });
+    shippingCalibration = {
+      n: shippingValues.length,
+      median_stored_same_population: Math.round(medianStoredSamePop),
+      median_shipping_before: Math.round(medianShipping),
+      scale_before: Number(before.toPrecision(8)),
+      type_dampening_enabled: TYPE_DAMPENING_ENABLED,
+      level_correction_applied: LEVEL_CORRECTION,
+    };
+    console.log(
+      `Skala-kalibrering (shipping): n=${shippingValues.length} · median(gemt, samme population)=${fmtM(medianStoredSamePop)} · ` +
+      `median(kæde før justering)=${fmtM(medianShipping)} · scale ${before.toExponential(4)} → ${scale.toExponential(4)}`
+    );
+  }
 
   // Elite-præmie: kalibrér mod den ægte hold-økonomi så de enormt gode ryttere er
   // ukøbelige i UNBUYABLE_SEASONS sæsoner (ejer-retning 14/7). READ-ONLY.
@@ -290,10 +369,13 @@ async function main() {
     },
     type_stats: typeStats,
     scale: Number(scale.toPrecision(8)),
+    ...(LEVEL_CORRECTION != null ? { level_correction: LEVEL_CORRECTION } : {}),
     scale_ref: {
+      calibrate: CALIBRATE,
       median_current_base_value: Math.round(medianCurrentBaseValue),
       median_v4_raw_npv: Math.round(medianV4RawNpv),
       n_calibration: rawNpvs.length,
+      ...(shippingCalibration ? { shipping: shippingCalibration } : {}),
     },
     elite_premium: elitePremium,
     notes:

@@ -84,6 +84,22 @@ export function fitProductionModel(samples, { alphaGrid = [0, 0.25, 0.5, 0.75, 1
   return { ...best, n_samples: samples.length };
 }
 
+// #3353: ét eksakt skalerings-skridt. `scale` ganges lineært ind i hver rytters
+// værdi (base_value = level · elitePremium(scale · npv)), og medianrytteren ligger
+// langt under elite-tærsklen, så medianen er proportional med scale. Den scale der
+// rammer medianTarget er derfor scale · medianTarget / medianActual — ingen
+// iteration nødvendig. Ugyldigt/ikke-positivt input ⇒ scale uændret (kalderen har
+// intet gyldigt mål at kalibrere mod, og må ikke få en NaN-model ud).
+export function rescaleToMedian({ scale, medianTarget, medianActual } = {}) {
+  const s = Number(scale);
+  const t = Number(medianTarget);
+  const a = Number(medianActual);
+  if (!Number.isFinite(s) || s <= 0) return scale;
+  if (!Number.isFinite(t) || t <= 0) return s;
+  if (!Number.isFinite(a) || a <= 0) return s;
+  return s * (t / a);
+}
+
 // Ren prediktion af ln(e_prize_per_season) for én rytter mod et fittet objekt
 // (fitProductionModel-output, eller Kontrakt 2's `fit`-underobjekt uændret).
 // rider: { abilities, primary_type }. Typer UDEN samples i fittet (offset mangler)

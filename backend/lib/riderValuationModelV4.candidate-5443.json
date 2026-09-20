@@ -1,7 +1,7 @@
 {
   "version": 4,
   "method": "sim-production-npv",
-  "fitted_at": "2026-09-20T11:23:59.555Z",
+  "fitted_at": "2026-09-20T11:31:35.857Z",
   "sim_run_id": "e4144252",
   "K": 30,
   "season_id": "00000000-0000-0000-0000-000000000003",
@@ -69,15 +69,24 @@
       "p90_prize": 17943
     }
   },
-  "scale": 9.0631769,
+  "scale": 7.9764416,
   "scale_ref": {
+    "calibrate": "shipping",
     "median_current_base_value": 5021,
     "median_v4_raw_npv": 554,
-    "n_calibration": 8083
+    "n_calibration": 8083,
+    "shipping": {
+      "n": 8083,
+      "median_stored_same_population": 4903,
+      "median_shipping_before": 5571,
+      "scale_before": 9.0631769,
+      "type_dampening_enabled": true,
+      "level_correction_applied": null
+    }
   },
   "elite_premium": {
     "overall_threshold": 45,
-    "k": 0.116987,
+    "k": 0.121548,
     "floor_overall": 58,
     "floor": 9880436,
     "affordability_ceiling": 4940218,

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { fitProductionModel, predictProductionLn, FLOOR } from "./riderValuationFitV4.js";
+import { fitProductionModel, predictProductionLn, rescaleToMedian, FLOOR } from "./riderValuationFitV4.js";
 import { blendedOutput } from "./riderValuation.js";
 
 // ── Syntetisk fixture ────────────────────────────────────────────────────────
@@ -129,4 +129,30 @@ test("fitProductionModel kaster ved for få samples", () => {
 test("fitProductionModel kaster ved tom alphaGrid", () => {
   const samples = buildSyntheticSamples(TRUTH);
   assert.throws(() => fitProductionModel(samples, { alphaGrid: [] }));
+});
+
+// ── rescaleToMedian (#3353) ──────────────────────────────────────────────────
+// Ét eksakt skalerings-skridt: scale ganges lineært ind i hver rytters værdi, så
+// den scale der rammer medianTarget er scale · medianTarget / medianActual.
+
+test("rescaleToMedian: rammer målet i ét skridt", () => {
+  assert.equal(rescaleToMedian({ scale: 2, medianTarget: 100, medianActual: 200 }), 1);
+  assert.equal(rescaleToMedian({ scale: 3, medianTarget: 150, medianActual: 100 }), 4.5);
+});
+
+test("rescaleToMedian: er en identitet når medianen allerede rammer", () => {
+  assert.equal(rescaleToMedian({ scale: 7.5, medianTarget: 42, medianActual: 42 }), 7.5);
+});
+
+test("rescaleToMedian: ugyldig/ikke-positiv median lader scale stå uændret", () => {
+  assert.equal(rescaleToMedian({ scale: 5, medianTarget: 0, medianActual: 100 }), 5);
+  assert.equal(rescaleToMedian({ scale: 5, medianTarget: 100, medianActual: 0 }), 5);
+  assert.equal(rescaleToMedian({ scale: 5, medianTarget: NaN, medianActual: 100 }), 5);
+  assert.equal(rescaleToMedian({ scale: 5, medianTarget: 100, medianActual: null }), 5);
+  assert.equal(rescaleToMedian({}), undefined);
+});
+
+test("rescaleToMedian: ugyldig scale returneres uændret (ingen NaN-model)", () => {
+  assert.equal(rescaleToMedian({ scale: 0, medianTarget: 100, medianActual: 50 }), 0);
+  assert.equal(rescaleToMedian({ scale: -1, medianTarget: 100, medianActual: 50 }), -1);
 });
