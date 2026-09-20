@@ -127,6 +127,13 @@ export function buildDampenedOffsetTable(offsetTable, typeStats, k, normalizatio
 }
 
 export function applyTypeDampening(model) {
+  // #3353: en model kan SELV erklaere at den ikke skal daempes. Daempningen blev
+  // indfoert fordi en type havde 19 observationer og dermed en absurd
+  // multiplikator (#4000). Efter et re-fit hvor alle otte typer har hundreder af
+  // observationer, retter den ingenting - den flytter bare offsets et sted hen
+  // ingen har maalt. En permanent model skal kunne staa uden den, og feltet er
+  // stedet hvor det siges eksplicit i stedet for tavst.
+  if (model?.type_dampening === "off") return model;
   if (!TYPE_DAMPENING_ENABLED) return model;
   if (!model?.fit?.offset || !model?.type_stats) return model;
   return {

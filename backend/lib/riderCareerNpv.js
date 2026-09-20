@@ -31,6 +31,7 @@ import {
   signatureFactor,
   stepAbility,
   youthRateForPotential,
+  YOUTH_PROGRESSION_CONFIG,
 } from "./riderProgression.js";
 
 // Retirement-hazard som funktion af ALDER (ikke rider/season-seeded — v4 bruger
@@ -68,14 +69,27 @@ export function hazard(age, cfg = PROGRESSION_CONFIG) {
 // mod, så trin 7 flytter præcis 0 i markedsværdi. Det planlagte refit
 // (#3750 + #3449, i kø efter typebeslutningen) indarbejder den nye motor
 // samlet — fjern denne frysning DÉR, aldrig separat.
-const FROZEN_NPV_RATE_BY_POTENTIAL = Object.freeze({ 1: 0.6, 2: 0.78, 3: 0.92, 4: 1.06, 5: 1.2, 6: 1.35 });
-function frozenNpvRate(potentiale) {
-  return youthRateForPotential(potentiale, { rateByPotential: FROZEN_NPV_RATE_BY_POTENTIAL });
+export const FROZEN_NPV_RATE_BY_POTENTIAL = Object.freeze({ 1: 0.6, 2: 0.78, 3: 0.92, 4: 1.06, 5: 1.2, 6: 1.35 });
+
+// #3353: en model kan erklaere at den bruger den LIVE motors vaekstrater i
+// stedet for den frosne tabel (`npv_rates: "live"`). Frysningen blev indfoert
+// 16/8 for at trin 7's rate-aendring ikke skulle flytte hele populationens
+// formue uden ejer-godkendelse - den var altid taenkt som midlertidig og
+// nedlaegges sammen med resten ved dette refit. Mangler feltet, bruges den
+// frosne tabel praecis som foer.
+export function npvRateTable(model) {
+  return model?.npv_rates === "live"
+    ? (YOUTH_PROGRESSION_CONFIG.rateByPotential ?? FROZEN_NPV_RATE_BY_POTENTIAL)
+    : FROZEN_NPV_RATE_BY_POTENTIAL;
 }
 
-export function expectedNextAbilities(abilities, caps, { primary_type, potentiale, age }) {
+function npvRate(potentiale, rateByPotential) {
+  return youthRateForPotential(potentiale, { rateByPotential });
+}
+
+export function expectedNextAbilities(abilities, caps, { primary_type, potentiale, age, rateByPotential }) {
   const peakAge = peakAgeForType(primary_type);
-  const growthMult = frozenNpvRate(potentiale);
+  const growthMult = npvRate(potentiale, rateByPotential ?? FROZEN_NPV_RATE_BY_POTENTIAL);
   const next = {};
   for (const ability of VISIBLE_ABILITIES) {
     const cur = abilities?.[ability];
@@ -121,6 +135,7 @@ function simulateCareer(rider, abilities, model) {
   const discount = Number.isFinite(Number(model.discount)) ? Number(model.discount) : 0.8;
 
   const caps = buildCaps(abilities, type, potentiale);
+  const rates = npvRateTable(model);
 
   let ab = { ...abilities };
   let S = 1;
@@ -163,7 +178,7 @@ function simulateCareer(rider, abilities, model) {
 
     // Fremskriv abilities til næste sæson (FORVENTNING, age=age_s — vækst/fald-fasen
     // for DETTE overgangs-skridt bestemmes af den alder rytteren HAR i sæson s).
-    ab = expectedNextAbilities(ab, caps, { primary_type: type, potentiale, age: age_s });
+    ab = expectedNextAbilities(ab, caps, { primary_type: type, potentiale, age: age_s, rateByPotential: rates });
     // Overlevelse ind i næste sæson (age_s + 1).
     S *= 1 - hazard(age_s + 1);
   }

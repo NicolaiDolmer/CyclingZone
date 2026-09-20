@@ -143,6 +143,12 @@ if (ALPHA_OVERRIDE != null && (!Number.isFinite(ALPHA_OVERRIDE) || ALPHA_OVERRID
 // blanding). Bruges KUN af fordelings-forankringen, som ellers ville maale
 // spaendet paa den forkerte opskrift.
 const VALUE_ROLE_MAP_PATH = arg("value-role-map", null);
+// #3353: to midlertidige frysninger der nedlaegges med den permanente model.
+//   --no-dampening     modellen erklaerer type_dampening: "off"
+//   --live-npv-rates   modellen erklaerer npv_rates: "live" (den frosne
+//                      vaekstrate-tabel fra 16/8 bruges ikke laengere)
+const NO_DAMPENING = process.argv.includes("--no-dampening");
+const LIVE_NPV_RATES = process.argv.includes("--live-npv-rates");
 const MATCH_SPREAD_FROM = arg("match-spread-from", null);
 const LEVEL_CORRECTION_ARG = arg("level-correction", null);
 const LEVEL_CORRECTION = LEVEL_CORRECTION_ARG == null ? null : Number(LEVEL_CORRECTION_ARG);
@@ -401,6 +407,8 @@ async function main() {
 
   // Rå NPV (scale=1) for hele populationen via den ægte v4-model.
   const modelForNpv = {
+    ...(NO_DAMPENING ? { type_dampening: "off" } : {}),
+    ...(LIVE_NPV_RATES ? { npv_rates: "live" } : {}),
     fit: { alpha: fit.alpha, a: fit.a, b: fit.b, c: fit.c, offset: fullOffset },
     ...(candidateWeights ? { weights: candidateWeights } : {}),
     discount: DISCOUNT,
@@ -442,6 +450,8 @@ async function main() {
     // tærsklen og kan pr. konstruktion ikke flytte medianen; den løses bagefter
     // mod den FÆRDIGE scale, så elite-målet stadig holder.
     const shippingModel = applyTypeDampening({
+      ...(NO_DAMPENING ? { type_dampening: "off" } : {}),
+      ...(LIVE_NPV_RATES ? { npv_rates: "live" } : {}),
       fit: { alpha: fit.alpha, a: fit.a, b: fit.b, c: fit.c, offset: fullOffset },
       type_stats: typeStats,
       ...(candidateWeights ? { weights: candidateWeights } : {}),
@@ -527,6 +537,8 @@ async function main() {
       n_samples: fit.n_samples,
     },
     type_stats: typeStats,
+    ...(NO_DAMPENING ? { type_dampening: "off" } : {}),
+    ...(LIVE_NPV_RATES ? { npv_rates: "live" } : {}),
     ...(candidateWeights ? { weights: candidateWeights, weights_ref: WEIGHTS_PATH } : {}),
     ...(fixedCurveRef ? { fixed_curve_ref: fixedCurveRef } : {}),
     ...(spreadRef ? { spread_match_ref: spreadRef } : {}),
