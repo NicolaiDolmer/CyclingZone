@@ -233,7 +233,9 @@ export async function resolveTeamRaceDay({ supabase, teamId, seasonId, now = new
 export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId, gameDay }) {
   if (!supabase?.from) return { data: null, error: new Error("supabase client required") };
   if (!seasonId) return { data: null, error: new Error("seasonId required") };
-  if (!Number.isFinite(Number(gameDay))) {
+  // `Number(null)` er 0, ikke NaN — en manglende loebsdag ville ellers slippe
+  // igennem som loebsdag 0 og slaa den forkerte binding op.
+  if (gameDay === null || gameDay === undefined || !Number.isFinite(Number(gameDay))) {
     return { data: null, error: new Error("finite gameDay required") };
   }
   if (!riderIds?.length) return { data: new Set(), error: null };

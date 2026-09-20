@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 
 import {
   TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
-  resolveRaceDaysPerSeason, resolveRaceDayBudgetDivisor,
+  resolveRaceDaysPerSeason, resolveRaceDayBudgetDivisor, loadBoundRiderIdsForRaceDay,
 } from "./trainingRaceDayTick.js";
 import { dailyAbilityDelta, DAILY_TRAINING_CONFIG, growthFractionForAge } from "./dailyTraining.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
@@ -225,4 +225,73 @@ test("flaget: on gælder alle, beta kun motor-skrivninger", async () => {
   const beta = mockSupabase({ app_config: [{ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "beta" }] });
   assert.equal(await isTrainingTickPerRaceDayEnabled(beta), false, "ingen viewer, ingen motor-flag → lukket");
   assert.equal(await isTrainingTickPerRaceDayEnabled(beta, { engineWrite: true }), true);
+});
+
+// ── #4847: loebsdags-bindingen (ejer-regel 2 + 3, 18/9) ──────────────────────
+// Kilden er race_entry_days, som siden #4217 baerer HELE spaendet pr. udtagelse —
+// GT-hviledagene inklusive. Det er praecis mængden "bundet, maa ikke traene".
+
+const BIND_SEASON = "season-b";
+
+function bindingTables(rows) {
+  return { race_entry_days: rows };
+}
+
+test("#4847: bindingen laeser race_entry_days paa (saeson, loebsdag) — GT-hviledagen er MED", async () => {
+  // Et 3-etapers loeb med en hviledag paa loebsdag 21: rebuild-funktionen skriver
+  // hele spaendet 20..23, saa rytteren er bundet ogsaa paa den dag han ikke koerer.
+  const supabase = mockSupabase(bindingTables([
+    { rider_id: "a", season_id: BIND_SEASON, game_day: 20, race_id: "gt", team_id: "t1" },
+    { rider_id: "a", season_id: BIND_SEASON, game_day: 21, race_id: "gt", team_id: "t1" },
+    { rider_id: "a", season_id: BIND_SEASON, game_day: 22, race_id: "gt", team_id: "t1" },
+    { rider_id: "b", season_id: BIND_SEASON, game_day: 20, race_id: "gt", team_id: "t1" },
+  ]));
+
+  const restDay = await loadBoundRiderIdsForRaceDay({
+    supabase, riderIds: ["a", "b"], seasonId: BIND_SEASON, gameDay: 21,
+  });
+  assert.equal(restDay.error, null);
+  assert.deepEqual([...restDay.data], ["a"], "a er bundet paa hviledagen, b er fri");
+});
+
+test("#4847: en anden SAESONS binding paa samme loebsdag taeller ikke (game_day nulstilles hver saeson)", async () => {
+  const supabase = mockSupabase(bindingTables([
+    { rider_id: "a", season_id: "en-anden-saeson", game_day: 21, race_id: "gt", team_id: "t1" },
+  ]));
+  const out = await loadBoundRiderIdsForRaceDay({
+    supabase, riderIds: ["a"], seasonId: BIND_SEASON, gameDay: 21,
+  });
+  assert.deepEqual([...out.data], [], "samme fejlklasse som #3070 — saesonen SKAL med i noeglen");
+});
+
+test("#4847: en query-fejl RETURNERES (kald-stedet kaster) — bindingen gaettes aldrig", async () => {
+  const supabase = mockSupabase(bindingTables([]), { errorOn: "race_entry_days" });
+  const out = await loadBoundRiderIdsForRaceDay({
+    supabase, riderIds: ["a"], seasonId: BIND_SEASON, gameDay: 21,
+  });
+  assert.equal(out.data, null, "null = 'ved det ikke', ikke 'ingen er bundet'");
+  assert.ok(out.error, "fejlen skjules ikke bag en tom maengde");
+});
+
+test("#4847: daarlige argumenter giver en fejl, ikke en tavs tom maengde", async () => {
+  const supabase = mockSupabase(bindingTables([]));
+  for (const args of [
+    { supabase, riderIds: ["a"], seasonId: null, gameDay: 3 },
+    { supabase, riderIds: ["a"], seasonId: BIND_SEASON, gameDay: null },
+    { supabase: {}, riderIds: ["a"], seasonId: BIND_SEASON, gameDay: 3 },
+  ]) {
+    const out = await loadBoundRiderIdsForRaceDay(args);
+    assert.equal(out.data, null);
+    assert.ok(out.error);
+  }
+});
+
+test("#4847: en tom trup koster ingen DB-tur", async () => {
+  let calls = 0;
+  const supabase = { from() { calls += 1; return {}; } };
+  const out = await loadBoundRiderIdsForRaceDay({
+    supabase, riderIds: [], seasonId: BIND_SEASON, gameDay: 3,
+  });
+  assert.equal(calls, 0);
+  assert.deepEqual([...out.data], []);
 });

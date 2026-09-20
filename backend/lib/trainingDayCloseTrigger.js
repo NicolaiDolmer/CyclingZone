@@ -244,7 +244,11 @@ export function gameDaySpansByDivision(
   for (const [divisionId, todaysDays] of todaysByDivision) {
     if (!todaysDays.length) continue;
     const end = todaysDays[todaysDays.length - 1];
-    const prior = Number(priorMaxGameDayByDivision?.get(divisionId));
+    // `Number(null)` er 0, ikke NaN — en division UDEN tidligere loebsdag ville
+    // derfor blive laest som "sidste loebsdag var 0" og traekke hele spaendet fra
+    // loebsdag 1 med. null/undefined skal vaere NaN her.
+    const priorRaw = priorMaxGameDayByDivision?.get(divisionId);
+    const prior = priorRaw === null || priorRaw === undefined ? NaN : Number(priorRaw);
     // Hullet aabner ved prior+1. `Math.min` mod dagens foerste loebsdag holder
     // spaendet korrekt ogsaa hvis prior af en eller anden grund ligger EFTER dagens
     // egne loebsdage (kalender-rebuild, omlagt schedule): saa falder vi tilbage til

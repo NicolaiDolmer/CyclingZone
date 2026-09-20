@@ -7,7 +7,9 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   SWEEP_FROM_HOUR, MAX_WAIT_HOUR, DEFAULT_SQUAD,
+  MAX_GAME_DAY_CATCH_UP,
   shouldSweepNow, waitedLongEnough, pendingStagesFor, gameDaysByDivision, buildSweepPlan,
+  gameDaySpansByDivision, groupRaceIdsByDivision,
   runTrainingDayCloseSweep, resolveDayCloseStatus, isTrainingDayCloseSweepRunning,
   __resetTrainingDayCloseStateForTests,
 } from "./trainingDayCloseTrigger.js";
@@ -149,28 +151,44 @@ function makeSupabase({
   season = { id: "s1", number: 4 },
   races = [],
   stages = [],
+  // #4847 regel 4: etaper FOER dagens doegn. loadPriorMaxGameDayByDivision
+  // spoerger med .lt("scheduled_at") UDEN .gte(), saa vi kan skelne de to
+  // race_stage_schedule-opslag paa netop det.
+  priorStages = null,
   teams = [],
   raceDayRuns = [],
   legacyRuns = [],
 } = {}) {
   return {
     from(table) {
-      const ctx = { table, key: null };
+      const ctx = { table, key: null, gte: false, order: null, limit: null };
       const chain = {
         select() { return this; },
         in() { return this; },
-        gte() { return this; },
+        gte() { ctx.gte = true; return this; },
         lt() { return this; },
         is() { return this; },
-        order() { return this; },
-        limit() { return this; },
+        order(col, o = {}) { ctx.order = { col, ascending: o.ascending !== false }; return this; },
+        limit(n) { ctx.limit = n; return this; },
         eq(col, val) { if (col === "key") ctx.key = val; return this; },
         maybeSingle() { return Promise.resolve(this.__resolve()); },
         __resolve() {
           if (table === "app_config") return { data: { value: flags[ctx.key] ?? false }, error: null };
           if (table === "seasons") return { data: season, error: null };
           if (table === "races") return { data: races, error: null };
-          if (table === "race_stage_schedule") return { data: stages, error: null };
+          if (table === "race_stage_schedule") {
+            // Dagens etaper filtreres med .gte(dayStart).lt(dayEnd); "sidste
+            // loebsdag foer i dag" med .lt(dayStart) + order desc + limit 1.
+            if (ctx.gte) return { data: stages, error: null };
+            let rows = priorStages ?? stages;
+            if (ctx.order) {
+              rows = [...rows].sort((a, b) => (ctx.order.ascending
+                ? Number(a[ctx.order.col]) - Number(b[ctx.order.col])
+                : Number(b[ctx.order.col]) - Number(a[ctx.order.col])));
+            }
+            if (Number.isFinite(ctx.limit)) rows = rows.slice(0, ctx.limit);
+            return { data: rows, error: null };
+          }
           if (table === "teams") return { data: teams, error: null };
           if (table === "training_day_runs") {
             // Sweepen laver to opslag: loebsdags-noeglen (.in("game_day", ...)) og den
@@ -388,5 +406,129 @@ describe("resolveDayCloseStatus (samme betingelse som knappen bruger)", () => {
     const out = await resolveDayCloseStatus({ supabase: null, seasonId: "s1" });
     assert.equal(out.closed, false);
     assert.equal(out.reason, "bad_args");
+  });
+});
+
+// ── #4847: ejerens realisme-regel 4 (18/9) ───────────────────────────────────
+//
+// "Alle divisioner faar lige mange loebsdage; loebsdage uden loeb er rene
+// traeningsdage." `gameDaysByDivision` ser kun de loebsdage der HAR en etape i dag,
+// saa en ren traeningsdag fik intet tick. Det var ejerens tredje fund i denne PR.
+//
+// Loesningen er aksens monotoni: hele spaendet fra divisionens sidste loebsdag FOER
+// i dag til dagens hoejeste er lukket i aften, og de af dem uden etape ER de rene
+// traeningsdage. Ingen loebsdag udledes af scheduled_at (akse-faelden).
+
+describe("gameDaySpansByDivision (#4847 regel 4: rene traeningsdage faar ogsaa et tick)", () => {
+  const div = new Map([["r1", "d1"], ["r2", "d2"]]);
+
+  it("hullet mellem gaarsdagens sidste loebsdag og dagens er RENE TRAENINGSDAGE", () => {
+    // Divisionen koerte sidst loebsdag 40 i gaar; i dag har den loeb paa 43.
+    // 41 og 42 har ingen etape — det er dem regel 4 handler om.
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 43 }], div, new Map([["d1", 40]]),
+    );
+    assert.deepEqual(out.get("d1").gameDays, [41, 42, 43]);
+    assert.deepEqual(out.get("d1").skippedGameDays, []);
+  });
+
+  it("uden en tidligere loebsdag (saesonens foerste loebsdato) tickes KUN dagens egne", () => {
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 3 }, { race_id: "r1", game_day: 4 }], div, new Map([["d1", null]]),
+    );
+    assert.deepEqual(out.get("d1").gameDays, [3, 4], "vi opfinder ikke traeningsdage foer saesonen begyndte");
+  });
+
+  it("er gaarsdagens sidste loebsdag naboen, er der intet hul", () => {
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 41 }], div, new Map([["d1", 40]]),
+    );
+    assert.deepEqual(out.get("d1").gameDays, [41]);
+  });
+
+  it("en division UDEN loeb i dag faar intet spaend (den dokumenterede rest indtil #5169)", () => {
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 43 }], div, new Map([["d1", 40], ["d2", 12]]),
+    );
+    assert.equal(out.has("d2"), false, "uden dagens hoejeste loebsdag kan spaendets ende ikke laeses");
+  });
+
+  it("ops-loftet koerer de NYESTE loebsdage og RAPPORTERER resten (aldrig tavst)", () => {
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 60 }], div, new Map([["d1", 40]]),
+      { maxCatchUp: 3 },
+    );
+    assert.deepEqual(out.get("d1").gameDays, [58, 59, 60]);
+    assert.equal(out.get("d1").skippedGameDays[0], 41);
+    assert.equal(out.get("d1").skippedGameDays.at(-1), 57);
+  });
+
+  it("MAX_GAME_DAY_CATCH_UP er default-loftet", () => {
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 100 }], div, new Map([["d1", 1]]),
+    );
+    assert.equal(out.get("d1").gameDays.length, MAX_GAME_DAY_CATCH_UP);
+    assert.equal(out.get("d1").gameDays.at(-1), 100);
+  });
+
+  it("et prior der ligger EFTER dagens egne loebsdage falder tilbage til dagens (omlagt schedule)", () => {
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 20 }], div, new Map([["d1", 99]]),
+    );
+    assert.deepEqual(out.get("d1").gameDays, [20], "aldrig et tomt eller bagvendt spaend");
+  });
+});
+
+describe("groupRaceIdsByDivision", () => {
+  it("grupperer loeb pr. division og springer de division-loese over", () => {
+    const out = groupRaceIdsByDivision([
+      { id: "r1", league_division_id: "d1" },
+      { id: "r2", league_division_id: "d1" },
+      { id: "r3", league_division_id: null },
+    ]);
+    assert.deepEqual(out.get("d1"), ["r1", "r2"]);
+    assert.equal(out.size, 1);
+  });
+});
+
+describe("runTrainingDayCloseSweep + regel 4 (rene traeningsdage i sweepen)", () => {
+  beforeEach(() => __resetTrainingDayCloseStateForTests());
+  const inWindow = new Date("2026-09-15T18:30:00Z"); // 20:30 CEST
+
+  it("en loebsdag UDEN loeb faar sit eget tick", async () => {
+    // Divisionen koerte sidst loebsdag 40 (i gaar). I dag koeres kun loebsdag 42.
+    // Loebsdag 41 har ingen etape — den er en ren traeningsdag og SKAL tickes.
+    const supabase = makeSupabase({
+      flags: ALL_ON,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 9, finalize_state: null }],
+      stages: [{ race_id: "r1", stage_number: 9, game_day: 42, scheduled_at: "2026-09-15T17:00:00Z" }],
+      priorStages: [{ race_id: "r1", game_day: 40 }],
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    const ran = [];
+    const result = await runTrainingDayCloseSweep({
+      supabase, now: inWindow,
+      runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
+    });
+    assert.equal(result.ran, true);
+    assert.deepEqual(ran, [41, 42], "loebsdag 41 er en ren traeningsdag og maa ikke springes over");
+    assert.deepEqual(result.gameDays, [41, 42]);
+  });
+
+  it("uden en tidligere loebsdag koeres kun dagens egne (uaendret adfaerd)", async () => {
+    const supabase = makeSupabase({
+      flags: ALL_ON,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 1, finalize_state: null }],
+      stages: [{ race_id: "r1", stage_number: 1, game_day: 5, scheduled_at: "2026-09-15T17:00:00Z" }],
+      priorStages: [],
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    const ran = [];
+    const result = await runTrainingDayCloseSweep({
+      supabase, now: inWindow,
+      runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
+    });
+    assert.deepEqual(ran, [5]);
+    assert.deepEqual(result.skippedGameDays, []);
   });
 });
