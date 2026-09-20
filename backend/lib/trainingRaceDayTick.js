@@ -253,6 +253,11 @@ export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId
     if (error) return { data: null, error };
     return { data: new Set((data ?? []).map((r) => r.rider_id)), error: null };
   } catch (err) {
+    // best-effort HER, men ikke hos kalderen: fejlen sluges ikke, den RETURNERES
+    // (`data: null` = "ved det ikke", ikke "ingen er bundet"), og
+    // dailyTrainingEngine.js KASTER paa den. Grunden til at synkrone/netvaerks-
+    // fejl fanges her frem for at boble er at kontrakten skal vaere ÉN form —
+    // { data, error } — saa kald-stedet har ét sted at traeffe sin beslutning.
     return { data: null, error: err };
   }
 }

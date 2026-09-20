@@ -294,6 +294,11 @@ export async function loadPriorMaxGameDayByDivision({ supabase, raceIdsByDivisio
       const gd = error ? null : Number(data?.[0]?.game_day);
       out.set(divisionId, Number.isFinite(gd) ? gd : null);
     } catch {
+      // best-effort: "sidste loebsdag foer i dag" er en BERIGELSE, ikke en
+      // regel-gate. Kan den ikke besvares, tickes divisionens EGNE loebsdage som
+      // hidtil — vi taber i vaerste fald en ren traeningsdag, og vi opfinder
+      // aldrig en loebsdag paa et gaet. En fejl her maa derfor ikke vaelte
+      // aftenens sweep for hele bestanden.
       out.set(divisionId, null);
     }
   }
