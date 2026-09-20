@@ -7,7 +7,7 @@
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
 
 **#5323 Quad9 låser spillere HELT ude** (#5312): SERVFAIL på `up.railway.app`; de ramte forsvinder stille. ✅ #5324 måling (17/9) → aflæs Sentry → DNS-test (`nslookup api.cyclingzone.org 9.9.9.9`) FØR flytning (ejer).
-**Rest:** #4595 → epic #5162 (CYCLINGZONE-56 flad) · #5242 apiFetch PR 2 = 214 kaldsteder · ✅ #5322 · #5296 welcome-mail 0 (verify, formentlig vagten) · #5301 afmelding usynlig · #5288 baroudeur-loft · #5222 · #5256 TTT-vægt · #5325.
+**Rest:** **#5443 værdisystemet færdigt** (trin 1-3 før 27/9) · #4595 → epic #5162 (CYCLINGZONE-56 flad) · #5242 apiFetch PR 2 = 214 kaldsteder · #5296 welcome-mail 0 · #5301 afmelding usynlig · #5288 · #5256 TTT-vægt · #5325.
 
 ## Bane 1 · S4-cutover 27-28/9 (bølge-rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
 
