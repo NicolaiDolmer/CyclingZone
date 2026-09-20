@@ -135,6 +135,28 @@ export function isTransientSupabaseError(error) {
   return TRANSIENT_NETWORK_RE.test(message);
 }
 
+// #5452: retry-klassificering for "matview genopfriskes" (ranglisten — se
+// database/2026-07-27-3013-refresh-matviews-concurrently.sql, som bevidst kører
+// en PLAIN, eksklusiv REFRESH). Snævrere end isTransientSupabaseError ovenfor:
+// KUN lock-timeout/statement-cancel (55P03/57014) — IKKE netværks-/gateway-hikke.
+// rankings.ts's enkeltkalds-ruter (ikke de paginerede, som allerede går gennem
+// withSupabaseRetry via fetchAllRows) skal retry'e PRÆCIS denne klasse, aldrig
+// andre transiente fejl.
+//
+// HEAD-requests (fx race-count, #5224) har INGEN body ved fejl — PostgREST kan
+// derfor kun give os et kode- og beskedløst fejlobjekt. Call-sites vedhæfter
+// selv `.status` på fejlen (HTTP-statussen ER tilgængelig uafhængigt af
+// body'en); et sådant status-500-objekt uden kode/besked behandles som samme
+// klasse, fordi det er den eneste diagnose der findes for netop den ruteform.
+export function isLockTimeoutError(error) {
+  const code = error && typeof error === "object" ? error.code : null;
+  if (code != null && TRANSIENT_DB_TIMEOUT_CODES.has(String(code))) return true;
+  const message = extractMessage(error);
+  if (TRANSIENT_DB_TIMEOUT_RE.test(message)) return true;
+  const status = error && typeof error === "object" ? error.status : null;
+  return status === 500 && !code && !message;
+}
+
 function copyDbFields(error, err) {
   if (error && typeof error === "object") {
     if (error.code != null) err.code = error.code;

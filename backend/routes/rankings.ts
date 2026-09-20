@@ -3,8 +3,38 @@ import type { Request, RequestHandler } from "express";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { toSupabaseError } from "../lib/supabaseErrorNormalize.js";
+import { toSupabaseError, isLockTimeoutError } from "../lib/supabaseErrorNormalize.js";
 import { readHonours } from "./rankingHonours.ts";
+
+// #5452: matviews genopfriskes via en PLAIN (eksklusiv) REFRESH (database/2026-07-27
+// -3013-refresh-matviews-concurrently.sql) — en læser der ankommer i det vindue
+// afbrydes af lock_timeout/statement_timeout (8s, service_role-rollen). Fejlen er
+// altid en fuldt rullet-tilbage READ, så ÉN retry efter en kort pause er sikkert
+// og dækker vinduet (typisk << 1s). De paginerede ruter (global/riders-lister,
+// standings, race-points, honours) går allerede gennem fetchAllRows→withSupabaseRetry
+// og er derfor allerede dækket — denne wrapper dækker de tre enkeltkald der IKKE
+// paginerer (global?team_id, riders?top=5, race-count) og som derfor stod uden
+// retry (Sentry CYCLINGZONE-65, første forekomst af klassen udenfor #3013/#4866).
+// Retry KUN lock-timeout-klassen (isLockTimeoutError) — alt andet (fx 42501
+// permission denied) gives videre uændret efter første forsøg.
+const LOCK_TIMEOUT_RETRY_DELAY_MS = 250;
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function attachStatus(error: unknown, status: number | undefined) {
+  if (error && typeof error === "object") Object.assign(error, { status });
+  return error;
+}
+
+async function withLockTimeoutRetry<T extends { error: unknown; status?: number }>(
+  run: () => PromiseLike<T>,
+): Promise<T> {
+  const result = await run();
+  if (result.error && isLockTimeoutError(attachStatus(result.error, result.status))) {
+    await sleep(LOCK_TIMEOUT_RETRY_DELAY_MS);
+    return await run();
+  }
+  return result;
+}
 
 const uuid = z.uuid();
 // seasons.id er ikke RFC-UUID (00000000-0000-0000-0000-00000000000N, version-nibble 0), saa z.uuid() afviser
@@ -50,7 +80,8 @@ export function createRankingsRouter({ supabase, requireAuth, reportError, viewe
 
   get("/global", globalQuery, async ({ team_id }) => {
     if (team_id) {
-      const { data, error } = await supabase.from("global_rank_mv").select(GLOBAL_COLUMNS).eq("team_id", team_id).maybeSingle();
+      const { data, error } = await withLockTimeoutRetry(() =>
+        supabase.from("global_rank_mv").select(GLOBAL_COLUMNS).eq("team_id", team_id).maybeSingle());
       if (error) throw error;
       return { data: data ? [data] : [] };
     }
@@ -61,9 +92,10 @@ export function createRankingsRouter({ supabase, requireAuth, reportError, viewe
 
   get("/riders", riderQuery, async ({ season_id, rider_ids, top }) => {
     if (top) {
-      const { data, error } = await supabase.from("rider_rankings_mv")
-        .select("rider_id,points,stage_wins,gc_wins").eq("season_id", season_id)
-        .order("points", { ascending: false }).order("rider_id").limit(5);
+      const { data, error } = await withLockTimeoutRetry(() =>
+        supabase.from("rider_rankings_mv")
+          .select("rider_id,points,stage_wins,gc_wins").eq("season_id", season_id)
+          .order("points", { ascending: false }).order("rider_id").limit(5));
       if (error) throw error;
       return { data: data || [] };
     }
@@ -102,8 +134,9 @@ export function createRankingsRouter({ supabase, requireAuth, reportError, viewe
     // brugbare diagnose-signal her — wrap fejlen med rute + status som kontekst
     // (toSupabaseError bevarer code/details/hint når PostgREST rent faktisk
     // sendte dem, fx for et 4xx-svar med body).
-    const { count, error, status } = await supabase.from("team_race_points_mv")
-      .select("race_id", { count: "exact", head: true }).eq("team_id", team_id);
+    const { count, error, status } = await withLockTimeoutRetry(() =>
+      supabase.from("team_race_points_mv")
+        .select("race_id", { count: "exact", head: true }).eq("team_id", team_id));
     if (error) {
       // toSupabaseError falder tilbage til "Supabase error" når body'en (og
       // dermed message/code/details/hint) var tom — HTTP-statussen er dét vi
