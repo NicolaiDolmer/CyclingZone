@@ -199,11 +199,12 @@ node scripts/dev/calendarGoldenDiff.mjs
 # 1) tørkørsel - skriver ALDRIG, uanset flag
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
 
-# 2) KUN til sammenligning: samme med §6b's pr.-division-tilt slået til (#4103).
-#    S4 bygges UDEN --uniform-tilt (ejer-beslutning 3/9, se §6b-noten længere nede):
-#    tilten gør S4-planen målt dårligere og giver et falsk blokerende fund i D2
-#    (bidt 19/9, #5405). Brug aldrig denne linje som grundlag for et ejer-kort.
-node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --uniform-tilt
+# 2) §6b's pr.-division-tilt (#4103) er SLÅET FRA og har ingen kommando her.
+#    Ejer-beslutning 3/9: S4 bygges UDEN den. Tilten gør S4-planen målt dårligere og
+#    giver et FALSKT blokerende fund i D2. Eksemplet stod her indtil 20/9 og blev
+#    kopieret i god tro - det kostede en formiddags fejlsøgning (#5405). Skal den
+#    alligevel måles en dag, tilføjes flaget bevidst - aldrig fra et eksempel her,
+#    og aldrig som grundlag for et ejer-kort.
 
 # 3) skrivning - kun efter ejer-go, og kun med en EKSPLICIT længde
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --apply
@@ -629,16 +630,16 @@ Evnevægtene selv (`raceStageProfileGenerator.js:107`) hører hverken til flad e
 
 ### Arketype-reservationer
 
-Gulvene *måler* efter selection. Reservationerne *sikrer* før: antal løb af hver arketype der tages FØR prestige-walket. `TIER_ARCHETYPE_RESERVATIONS` i `tierCalendarGuarantees.js:192-220`, #3295.
+Gulvene *måler* efter selection. Reservationerne *sikrer* før: antal løb af hver arketype der tages FØR prestige-walket. `TIER_ARCHETYPE_RESERVATIONS` i `tierCalendarGuarantees.js`, #3295.
 
 | Arketype | D1 | D2 | D3 | D4 | Hvad den er eneste kilde til |
 |---|--:|--:|--:|--:|---|
 | `itt_classic` | 1 | 1 | 1 | **2** | fritstående enkeltstart |
 | `cobbled_classic` | **6** | 5 | 4 | 0 | brostens-endagsløb |
 | `cobbled_tour` | 0 | 1 | 1 | 1 | brosten i etapeløb |
-| `summit_tour` | 0 | 2 | 3 | 2 | summit-finaler, holder nedkørsels-andelen nede |
+| `summit_tour` | 0 | **6** | **5** | 2 | summit-finaler, holder nedkørsels-andelen nede |
 | `hilly_tour` | 0 | 2 | 1 | 2 | etapeløb uden bjergetape |
-| `balanced_week` | 0 | 0 | 0 | **2** | eneste arketype med ITT i sine garantier |
+| `balanced_week` | 0 | 0 | **1** | **2** | eneste arketype med ITT i sine garantier |
 
 D1's `cobbled_tour` står bevidst på 0 (#4075): kataloget har kun 2, og D1's reservation støvsugede det ene D2 og D3 kunne nå.
 
@@ -657,6 +658,19 @@ D1's `cobbled_tour` står bevidst på 0 (#4075): kataloget har kun 2, og D1's re
 
   > **Bemærk:** `daysWithoutDecisionCount` MÅLES af pakkeren, men er ikke gated. Denne afvejning ville derfor ikke være fanget af et grønt scorecard — den blev fundet ved at diffe før/efter.
 - **D4 `balanced_week` 0 → 2, `itt_classic` 1 → 2.** D4 lå på 5 % enkeltstart mod målet 10 %. Årsagen var målt: D4's klasse-vindue (Class1/Class2) rummer kun 3 fritstående ITT-løb, og dets etapeløbs-arketyper (`summit_tour`, `hilly_tour`) er så korte at garantierne opbruger alle etape-pladser — `balanced_week` er den eneste arketype i vinduet der **garanterer** en ITT. Resultat: 3 → 5 ITT-etaper (4,8 % → 8,1 % på det daværende plan; **målt live 30/8 er den 9,7 %**).
+
+**Ændret 20/9 ([#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405)), ejer-go — D2 `summit_tour` 2 → 6, D3 `summit_tour` 3 → 5, D3 `balanced_week` 0 → 1:**
+
+Afgørende bjergdage lå under målet i både D2 og D3. Undersøgelsen 19/9 (`docs/audits/2026-09-19-5405-bjergdage-bytte.md` + `docs/audits/2026-09-19-5405-nye-bjergloeb-udkast.md`) viste at hverken halvdel virker alene:
+
+- **Kun nye bjergløb i kataloget:** D2 og D3 står *præcis* uændrede — ikke én etape flytter. Etape-kvoten pr. division er eksakt, så en division tager i store træk det antal bjergløb dens reservation siger og fylder resten op efter prestige. Nye Class1-løb lander desuden alle i D4 og gør den for bjergrig.
+- **Kun højere reservation:** D3 når bjerg-målet, men falder ud af enkeltstarts-båndet. Ingen af D3's bjerg-arketyper garanterer en ITT, så hver ekstra bjergdag blev betalt med en enkeltstart.
+
+**De to sammen er fixet.** Forsyningen er tre nye ProSeries-`summit_tour`-løb (`database/2026-09-20-5405-tre-nye-bjergloeb.sql` — ProSeries er den eneste klasse D2 og D3 deler), og D3's `balanced_week` er det der betaler enkeltstarten tilbage. Målt i tørkørsel **uden** `--uniform-tilt`: alle fire divisioner inden for både bjerg- og enkeltstarts-målet for første gang, afvigelserne på de uniforme mål fra to til nul, nul blokerende og nul apply-blokerende fund før som efter, sæsons-finale-afvigelserne uændrede. Tallene ligger i `balance-internals/2026-09-19-s4-kalender-kvalitet/` (gitignoreret).
+
+**Den ærlige note om klassen:** alle tre forbilleder er i virkeligheden UCI 2.1 (= Class1). De ligger én klasse højere, fordi de ellers aldrig kan nå D2 — katalogets ProSeries- og WorldTour-bånd er allerede fyldt 1:1 mod virkeligheden. Ejeren har taget stilling til afvigelsen 20/9.
+
+Tabellen er låst af `tierCalendarGuarantees.test.js` og forsyningen af `catalogSupplyCheck.test.js`. Flyt ikke et tal uden en ny måling og et ejer-go.
 
 > ⚠ **En reservation under walkets eget resultat har NUL effekt** (undersøgelse 19/9, [#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405), fund F5 i `docs/audits/2026-09-19-5405-bjergdage-bytte.md`). Reservations-fasen tager et fast antal løb af en arketype FØR prestige-walket — men walket tager også selv løb af den arketype. Sætter man reservationen til et tal divisionens almindelige walk alligevel leverer, ændrer tabellen ingenting, og en tørkørsel ser ud som om knappen ikke virker. **En reservation er kun en knap når den ligger OVER hvad walket selv leverer.** Det skal efterprøves før en reservations-ændring foreslås som fix: mål hvad divisionen får UDEN reservationen, og sæt først tallet derefter.
 

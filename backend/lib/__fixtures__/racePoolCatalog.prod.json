@@ -1,5 +1,5 @@
 {
-  "_note": "Snapshot af prod-kataloget, hentet read-only. Gør kalender-generatoren koerbar lokalt og i CI UDEN prod-credentials (#4103/#4121). Kilde: race_pool WHERE retired_at IS NULL + league_divisions. Opdateres naar kataloget aendres (scripts/dev/dumpRacePoolFixture.mjs).",
+  "_note": "Snapshot af prod-kataloget, hentet read-only. Gør kalender-generatoren koerbar lokalt og i CI UDEN prod-credentials (#4103/#4121). Kilde: race_pool WHERE retired_at IS NULL + league_divisions. Opdateres naar kataloget aendres (scripts/dev/dumpRacePoolFixture.mjs). #5405 (20/9): de tre nye ProSeries-summit_tour-loeb er tilfoejet i HAANDEN i samme PR som migrationen database/2026-09-20-5405-tre-nye-bjergloeb.sql, saa CI ser samme forsyning som de haevede summit_tour-reservationer forudsaetter. Deres id er en deterministisk pladsholder (ffffffff-...), ikke prods rigtige uuid - prod faar sin ved insert. id indgaar KUN som tiebreaker i udvaelgelsens raekkefoelge (tierRaceSelection.seededKey), ikke i parcours-seeden (den er external_id). Naeste dumpRacePoolFixture.mjs-koersel mod prod erstatter pladsholderen.",
   "hentet": "2026-09-03",
   "pools": [
     {
@@ -2233,6 +2233,36 @@
       "race_type": "stage_race",
       "stages": 3,
       "date_text": "28/4 - 30/4"
+    },
+    {
+      "id": "ffffffff-0000-4000-8000-3823e08096f7",
+      "external_id": "3823e08096f72db9",
+      "terrain_archetype": "summit_tour",
+      "name": "Rundfahrt der Hohen Tauern",
+      "race_class": "ProSeries",
+      "race_type": "stage_race",
+      "stages": 5,
+      "date_text": "9/7 - 13/7"
+    },
+    {
+      "id": "ffffffff-0000-4000-8000-4adca5fb36d7",
+      "external_id": "4adca5fb36d7264d",
+      "terrain_archetype": "summit_tour",
+      "name": "Volta Galega",
+      "race_class": "ProSeries",
+      "race_type": "stage_race",
+      "stages": 5,
+      "date_text": "14/4 - 18/4"
+    },
+    {
+      "id": "ffffffff-0000-4000-8000-cc776090c82e",
+      "external_id": "cc776090c82ec546",
+      "terrain_archetype": "summit_tour",
+      "name": "Volta Portuguesa",
+      "race_class": "ProSeries",
+      "race_type": "stage_race",
+      "stages": 5,
+      "date_text": "6/8 - 10/8"
     }
   ]
 }

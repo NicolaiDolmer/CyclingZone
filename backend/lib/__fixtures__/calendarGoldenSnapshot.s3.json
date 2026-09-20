@@ -1311,22 +1311,22 @@
           "dato": "2026-09-15",
           "etaper": [
             {
-              "løb": "Tour du Danube",
-              "etapenummer": 1,
-              "game_day": 36
-            },
-            {
               "løb": "Tour of South China",
               "etapenummer": 1,
               "game_day": 36
             },
             {
-              "løb": "Tour du Danube",
+              "løb": "Vuelta a Somiedo",
+              "etapenummer": 1,
+              "game_day": 36
+            },
+            {
+              "løb": "Tour of South China",
               "etapenummer": 2,
               "game_day": 37
             },
             {
-              "løb": "Tour of South China",
+              "løb": "Vuelta a Somiedo",
               "etapenummer": 2,
               "game_day": 37
             }
@@ -1336,22 +1336,22 @@
           "dato": "2026-09-16",
           "etaper": [
             {
-              "løb": "Tour du Danube",
-              "etapenummer": 3,
-              "game_day": 38
-            },
-            {
               "løb": "Tour of South China",
               "etapenummer": 3,
               "game_day": 38
             },
             {
-              "løb": "Tour du Danube",
+              "løb": "Vuelta a Somiedo",
+              "etapenummer": 3,
+              "game_day": 38
+            },
+            {
+              "løb": "Tour of South China",
               "etapenummer": 4,
               "game_day": 39
             },
             {
-              "løb": "Tour of South China",
+              "løb": "Vuelta a Somiedo",
               "etapenummer": 4,
               "game_day": 39
             }
@@ -1361,23 +1361,23 @@
           "dato": "2026-09-17",
           "etaper": [
             {
-              "løb": "Tour du Danube",
+              "løb": "Tour of South China",
               "etapenummer": 5,
               "game_day": 40
             },
             {
-              "løb": "Tour of South China",
+              "løb": "Vuelta a Somiedo",
               "etapenummer": 5,
               "game_day": 40
+            },
+            {
+              "løb": "Giro dell'Irpinia",
+              "etapenummer": 1,
+              "game_day": 41
             },
             {
               "løb": "Tour of South China",
               "etapenummer": 6,
-              "game_day": 41
-            },
-            {
-              "løb": "Vuelta a Somiedo",
-              "etapenummer": 1,
               "game_day": 41
             }
           ]
@@ -1387,22 +1387,22 @@
           "etaper": [
             {
               "løb": "Giro dell'Irpinia",
+              "etapenummer": 2,
+              "game_day": 42
+            },
+            {
+              "løb": "Tour Wallon",
               "etapenummer": 1,
               "game_day": 42
             },
             {
-              "løb": "Vuelta a Somiedo",
-              "etapenummer": 2,
-              "game_day": 42
-            },
-            {
               "løb": "Giro dell'Irpinia",
-              "etapenummer": 2,
+              "etapenummer": 3,
               "game_day": 43
             },
             {
-              "løb": "Vuelta a Somiedo",
-              "etapenummer": 3,
+              "løb": "Tour Wallon",
+              "etapenummer": 2,
               "game_day": 43
             }
           ]
@@ -1412,22 +1412,22 @@
           "etaper": [
             {
               "løb": "Giro dell'Irpinia",
+              "etapenummer": 4,
+              "game_day": 44
+            },
+            {
+              "løb": "Tour Wallon",
               "etapenummer": 3,
               "game_day": 44
             },
             {
-              "løb": "Vuelta a Somiedo",
-              "etapenummer": 4,
-              "game_day": 44
-            },
-            {
               "løb": "Giro dell'Irpinia",
-              "etapenummer": 4,
+              "etapenummer": 5,
               "game_day": 45
             },
             {
-              "løb": "Vuelta a Somiedo",
-              "etapenummer": 5,
+              "løb": "Tour Wallon",
+              "etapenummer": 4,
               "game_day": 45
             }
           ]
@@ -1436,22 +1436,22 @@
           "dato": "2026-09-20",
           "etaper": [
             {
-              "løb": "Giro dell'Irpinia",
+              "løb": "Tour des Alpes Juliennes",
+              "etapenummer": 1,
+              "game_day": 46
+            },
+            {
+              "løb": "Tour Wallon",
               "etapenummer": 5,
               "game_day": 46
             },
             {
-              "løb": "Tour Wallon",
-              "etapenummer": 1,
-              "game_day": 46
-            },
-            {
-              "løb": "Danmark Rundt",
+              "løb": "Rundfahrt der Hohen Tauern",
               "etapenummer": 1,
               "game_day": 47
             },
             {
-              "løb": "Tour Wallon",
+              "løb": "Tour des Alpes Juliennes",
               "etapenummer": 2,
               "game_day": 47
             }
@@ -1461,22 +1461,22 @@
           "dato": "2026-09-21",
           "etaper": [
             {
-              "løb": "Danmark Rundt",
+              "løb": "Rundfahrt der Hohen Tauern",
               "etapenummer": 2,
               "game_day": 48
             },
             {
-              "løb": "Tour Wallon",
+              "løb": "Tour des Alpes Juliennes",
               "etapenummer": 3,
               "game_day": 48
             },
             {
-              "løb": "Danmark Rundt",
+              "løb": "Rundfahrt der Hohen Tauern",
               "etapenummer": 3,
               "game_day": 49
             },
             {
-              "løb": "Tour Wallon",
+              "løb": "Tour des Alpes Juliennes",
               "etapenummer": 4,
               "game_day": 49
             }
@@ -1486,23 +1486,23 @@
           "dato": "2026-09-22",
           "etaper": [
             {
-              "løb": "Danmark Rundt",
+              "løb": "Rundfahrt der Hohen Tauern",
               "etapenummer": 4,
               "game_day": 50
             },
             {
-              "løb": "Tour Wallon",
+              "løb": "Tour des Alpes Juliennes",
               "etapenummer": 5,
               "game_day": 50
             },
             {
               "løb": "Danmark Rundt",
-              "etapenummer": 5,
+              "etapenummer": 1,
               "game_day": 51
             },
             {
-              "løb": "Tour de l'Yonne",
-              "etapenummer": 1,
+              "løb": "Rundfahrt der Hohen Tauern",
+              "etapenummer": 5,
               "game_day": 51
             }
           ]
@@ -1511,7 +1511,7 @@
           "dato": "2026-09-23",
           "etaper": [
             {
-              "løb": "Tour de l'Yonne",
+              "løb": "Danmark Rundt",
               "etapenummer": 2,
               "game_day": 52
             },
@@ -1521,7 +1521,7 @@
               "game_day": 52
             },
             {
-              "løb": "Tour de l'Yonne",
+              "løb": "Danmark Rundt",
               "etapenummer": 3,
               "game_day": 53
             },
@@ -1536,7 +1536,7 @@
           "dato": "2026-09-24",
           "etaper": [
             {
-              "løb": "Tour de l'Yonne",
+              "løb": "Danmark Rundt",
               "etapenummer": 4,
               "game_day": 54
             },
@@ -1546,7 +1546,7 @@
               "game_day": 54
             },
             {
-              "løb": "Tour de l'Yonne",
+              "løb": "Danmark Rundt",
               "etapenummer": 5,
               "game_day": 55
             },
@@ -1573,12 +1573,12 @@
               "game_day": 0
             },
             {
-              "løb": "Vuelta Valenciana",
+              "løb": "Volta Galega",
               "etapenummer": 1,
               "game_day": 0
             },
             {
-              "løb": "Vuelta Valenciana",
+              "løb": "Volta Galega",
               "etapenummer": 2,
               "game_day": 1
             }
@@ -1593,12 +1593,12 @@
               "game_day": 2
             },
             {
-              "løb": "Vuelta Valenciana",
+              "løb": "Volta Galega",
               "etapenummer": 3,
               "game_day": 2
             },
             {
-              "løb": "Vuelta Valenciana",
+              "løb": "Volta Galega",
               "etapenummer": 4,
               "game_day": 3
             }
@@ -1608,17 +1608,17 @@
           "dato": "2026-08-30",
           "etaper": [
             {
-              "løb": "Tour d'Anatolie",
+              "løb": "Tour du Danube",
               "etapenummer": 1,
               "game_day": 4
             },
             {
-              "løb": "Vuelta Valenciana",
+              "løb": "Volta Galega",
               "etapenummer": 5,
               "game_day": 4
             },
             {
-              "løb": "Tour d'Anatolie",
+              "løb": "Tour du Danube",
               "etapenummer": 2,
               "game_day": 5
             }
@@ -1633,12 +1633,12 @@
               "game_day": 6
             },
             {
-              "løb": "Tour d'Anatolie",
+              "løb": "Tour du Danube",
               "etapenummer": 3,
               "game_day": 6
             },
             {
-              "løb": "Tour d'Anatolie",
+              "løb": "Tour du Danube",
               "etapenummer": 4,
               "game_day": 7
             }
@@ -1653,7 +1653,7 @@
               "game_day": 8
             },
             {
-              "løb": "Tour d'Anatolie",
+              "løb": "Tour du Danube",
               "etapenummer": 5,
               "game_day": 8
             },
@@ -1693,12 +1693,12 @@
               "game_day": 12
             },
             {
-              "løb": "Tour Belge",
+              "løb": "Tour du Larzac",
               "etapenummer": 1,
               "game_day": 12
             },
             {
-              "løb": "Tour Belge",
+              "løb": "Tour du Larzac",
               "etapenummer": 2,
               "game_day": 13
             }
@@ -1713,12 +1713,12 @@
               "game_day": 14
             },
             {
-              "løb": "Tour Belge",
+              "løb": "Tour du Larzac",
               "etapenummer": 3,
               "game_day": 14
             },
             {
-              "løb": "Tour Belge",
+              "løb": "Tour du Larzac",
               "etapenummer": 4,
               "game_day": 15
             }
@@ -1728,17 +1728,17 @@
           "dato": "2026-09-05",
           "etaper": [
             {
-              "løb": "Tour Belge",
-              "etapenummer": 5,
-              "game_day": 16
-            },
-            {
-              "løb": "Tour du Larzac",
+              "løb": "Tour des Hauts Plateaux",
               "etapenummer": 1,
               "game_day": 16
             },
             {
               "løb": "Tour du Larzac",
+              "etapenummer": 5,
+              "game_day": 16
+            },
+            {
+              "løb": "Tour des Hauts Plateaux",
               "etapenummer": 2,
               "game_day": 17
             }
@@ -1753,12 +1753,12 @@
               "game_day": 18
             },
             {
-              "løb": "Tour du Larzac",
+              "løb": "Tour des Hauts Plateaux",
               "etapenummer": 3,
               "game_day": 18
             },
             {
-              "løb": "Tour du Larzac",
+              "løb": "Tour des Hauts Plateaux",
               "etapenummer": 4,
               "game_day": 19
             }
@@ -1769,16 +1769,16 @@
           "etaper": [
             {
               "løb": "Tour des Hauts Plateaux",
-              "etapenummer": 1,
-              "game_day": 20
-            },
-            {
-              "løb": "Tour du Larzac",
               "etapenummer": 5,
               "game_day": 20
             },
             {
-              "løb": "Tour des Hauts Plateaux",
+              "løb": "Vuelta Burgalesa",
+              "etapenummer": 1,
+              "game_day": 20
+            },
+            {
+              "løb": "Vuelta Burgalesa",
               "etapenummer": 2,
               "game_day": 21
             }
@@ -1793,12 +1793,12 @@
               "game_day": 22
             },
             {
-              "løb": "Tour des Hauts Plateaux",
+              "løb": "Vuelta Burgalesa",
               "etapenummer": 3,
               "game_day": 22
             },
             {
-              "løb": "Tour des Hauts Plateaux",
+              "løb": "Vuelta Burgalesa",
               "etapenummer": 4,
               "game_day": 23
             }
@@ -1808,17 +1808,17 @@
           "dato": "2026-09-09",
           "etaper": [
             {
-              "løb": "Tour des Hauts Plateaux",
-              "etapenummer": 5,
-              "game_day": 24
-            },
-            {
-              "løb": "Vuelta Burgalesa",
+              "løb": "Turul Carpaților",
               "etapenummer": 1,
               "game_day": 24
             },
             {
               "løb": "Vuelta Burgalesa",
+              "etapenummer": 5,
+              "game_day": 24
+            },
+            {
+              "løb": "Turul Carpaților",
               "etapenummer": 2,
               "game_day": 25
             }
@@ -1833,12 +1833,12 @@
               "game_day": 26
             },
             {
-              "løb": "Vuelta Burgalesa",
+              "løb": "Turul Carpaților",
               "etapenummer": 3,
               "game_day": 26
             },
             {
-              "løb": "Vuelta Burgalesa",
+              "løb": "Turul Carpaților",
               "etapenummer": 4,
               "game_day": 27
             }
@@ -1849,16 +1849,16 @@
           "etaper": [
             {
               "løb": "Turul Carpaților",
-              "etapenummer": 1,
-              "game_day": 28
-            },
-            {
-              "løb": "Vuelta Burgalesa",
               "etapenummer": 5,
               "game_day": 28
             },
             {
-              "løb": "Turul Carpaților",
+              "løb": "Volta Portuguesa",
+              "etapenummer": 1,
+              "game_day": 28
+            },
+            {
+              "løb": "Volta Portuguesa",
               "etapenummer": 2,
               "game_day": 29
             }
@@ -1873,12 +1873,12 @@
               "game_day": 30
             },
             {
-              "løb": "Turul Carpaților",
+              "løb": "Volta Portuguesa",
               "etapenummer": 3,
               "game_day": 30
             },
             {
-              "løb": "Turul Carpaților",
+              "løb": "Volta Portuguesa",
               "etapenummer": 4,
               "game_day": 31
             }
@@ -1888,17 +1888,17 @@
           "dato": "2026-09-13",
           "etaper": [
             {
-              "løb": "Turul Carpaților",
-              "etapenummer": 5,
-              "game_day": 32
-            },
-            {
-              "løb": "Vuelta a Gredos",
+              "løb": "Tour de l'Yonne",
               "etapenummer": 1,
               "game_day": 32
             },
             {
-              "løb": "Vuelta a Gredos",
+              "løb": "Volta Portuguesa",
+              "etapenummer": 5,
+              "game_day": 32
+            },
+            {
+              "løb": "Tour de l'Yonne",
               "etapenummer": 2,
               "game_day": 33
             }
@@ -1913,12 +1913,12 @@
               "game_day": 34
             },
             {
-              "løb": "Vuelta a Gredos",
+              "løb": "Tour de l'Yonne",
               "etapenummer": 3,
               "game_day": 34
             },
             {
-              "løb": "Vuelta a Gredos",
+              "løb": "Tour de l'Yonne",
               "etapenummer": 4,
               "game_day": 35
             }
@@ -1928,17 +1928,17 @@
           "dato": "2026-09-15",
           "etaper": [
             {
-              "løb": "Tour Adriatique",
+              "løb": "Tour de l'Yonne",
+              "etapenummer": 5,
+              "game_day": 36
+            },
+            {
+              "løb": "Vuelta a Gredos",
               "etapenummer": 1,
               "game_day": 36
             },
             {
               "løb": "Vuelta a Gredos",
-              "etapenummer": 5,
-              "game_day": 36
-            },
-            {
-              "løb": "Tour Adriatique",
               "etapenummer": 2,
               "game_day": 37
             }
@@ -1953,12 +1953,12 @@
               "game_day": 38
             },
             {
-              "løb": "Tour Adriatique",
+              "løb": "Vuelta a Gredos",
               "etapenummer": 3,
               "game_day": 38
             },
             {
-              "løb": "Tour Adriatique",
+              "løb": "Vuelta a Gredos",
               "etapenummer": 4,
               "game_day": 39
             }
@@ -1969,16 +1969,16 @@
           "etaper": [
             {
               "løb": "Tour Adriatique",
-              "etapenummer": 5,
-              "game_day": 40
-            },
-            {
-              "løb": "Tour de Malaisie",
               "etapenummer": 1,
               "game_day": 40
             },
             {
-              "løb": "Tour de Malaisie",
+              "løb": "Vuelta a Gredos",
+              "etapenummer": 5,
+              "game_day": 40
+            },
+            {
+              "løb": "Tour Adriatique",
               "etapenummer": 2,
               "game_day": 41
             }
@@ -1993,12 +1993,12 @@
               "game_day": 42
             },
             {
-              "løb": "Tour de Malaisie",
+              "løb": "Tour Adriatique",
               "etapenummer": 3,
               "game_day": 42
             },
             {
-              "løb": "Tour de Malaisie",
+              "løb": "Tour Adriatique",
               "etapenummer": 4,
               "game_day": 43
             }
@@ -2008,7 +2008,7 @@
           "dato": "2026-09-19",
           "etaper": [
             {
-              "løb": "Tour de Malaisie",
+              "løb": "Tour Adriatique",
               "etapenummer": 5,
               "game_day": 44
             },
