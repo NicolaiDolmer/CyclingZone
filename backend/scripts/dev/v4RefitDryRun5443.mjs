@@ -55,9 +55,8 @@ const OUT_DIR = resolve(arg("out", join(__dirname, "../../../balance-internals/2
 
 // Ryttere ejeren og spillerne allerede har set tal for (#5416-tørkørslen + Discord).
 const NAMED = [
-  { id: "34727ffe-1492-43c2-ad65-6f4f10acf06a", label: "knud_r_flink's rytter" },
+  { id: "34727ffe-1492-43c2-ad65-6f4f10acf06a", label: "Wessel K. Mertens (knud_r_flink)" },
   { name: "ryan cooper" },
-  { name: "wessel k. mertens" },
   { name: "jasper verhoeven" },
   { name: "daniel carmona" },
   { name: "jihoon bae" },
@@ -418,6 +417,21 @@ function phaseInTable(p) {
   return `${head}\n${body}`;
 }
 
+// Koncentrations-tabel: hvor stor en andel af typens samlede POSITIVE vægt ligger
+// på den tungeste evne. Ren aflæsning af valuationWeights.js — ingen fortolkning.
+function weightConcentrationTable() {
+  const lines = ["| Værditype | antal evner der tæller | andel på den tungeste | vægte |", "|---|--:|--:|---|"];
+  const rows = Object.entries(POSITIVE_WEIGHTS).map(([k, w]) => {
+    const total = Object.values(w).reduce((a, b) => a + b, 0);
+    const max = Math.max(...Object.values(w));
+    return { k, n: Object.keys(w).length, share: max / total, w };
+  }).sort((a, b) => b.share - a.share);
+  for (const r of rows) {
+    lines.push(`| ${r.k} | ${r.n} | ${(r.share * 100).toFixed(0)} % | ${Object.entries(r.w).sort((a, b) => b[1] - a[1]).map(([a, x]) => `${a}:${x}`).join(" ")} |`);
+  }
+  return lines.join("\n");
+}
+
 function buildReport(ctx, data) {
   const { meta, sanity, all, human, byTypeHuman, byAgeHuman, byTeam, topFalls, topRises, named, phase, tt, typeOffsets } = data;
   return `# #5443 trin 1 · Tørkørsel af den OMREGNEDE værdiformel (#3353)
@@ -455,6 +469,23 @@ Afvigelserne er daglig træning efter værdikørslen — værdier opdateres kun 
 Offset er en log-skala faktor på rytterens forventede produktion. \`n\` er antallet af observationer typen havde i den simulering formlen er fittet på.
 
 ${typeOffsets}
+
+### 2b. Hvilke evner tæller overhovedet for hver værditype?
+
+Rytterens output-score — det tal formlen egentlig priser — er et vægtet snit af de
+POSITIVT vægtede evner for hans værditype (\`backend/lib/weights/valuationWeights.js\`;
+negative vægte springes over af \`outputScore\`, så de er uden effekt). Jo mere vægten
+er samlet på én evne, jo mere af rytteren er formlen blind for.
+
+${data.weightConcentration}
+
+### 2c. Hvor kommer bevægelsen fra: typeskiftet eller omregningen?
+
+| Kilde | Δ på menneskehold |
+|---|--:|
+| Typeskiftet alene (frossen type → faktisk type, live-model) | ${fmt(data.decomposition.delta_type)} CZ$ |
+| Omregningen af formlen oveni | ${fmt(data.decomposition.delta_refit)} CZ$ |
+| **Samlet** | **${fmt(data.decomposition.delta_total)} CZ$** |
 
 ---
 
@@ -546,6 +577,20 @@ ${phaseInTable(phase.human)}
 Hele populationen:
 
 ${phaseInTable(phase.all)}
+
+---
+
+## 12. Skitse af udrulningen (IKKE kørt)
+
+Rækkefølgen nedenfor er en skitse til ejeren, ikke en plan der er sat i gang. Intet af det er udført.
+
+1. **Backup FØRST.** En tabel med \`rider_id, valuation_type, base_value, current_production_value\` for hele den aktive population, så hvert skridt kan rulles 1:1 tilbage.
+2. **Model-skiftet.** Kandidat-filen kopieres over \`backend/lib/riderValuationModelV4.json\` i en PR. Det er en kode-ændring, ikke en migration — den slår igennem ved næste deploy, men flytter ingen gemte værdier af sig selv.
+3. **Migration: fjern frysningen.** \`valuation_type\`-kæden fjernes i \`backend/lib/riderValuation.js\` (\`predictBaseValue\`) og \`backend/lib/riderCareerNpv.js\` (\`simulateCareer\`) — begge har en \`#3345\`-markeret linje. Kolonnen \`riders.valuation_type\` droppes i en separat migration EFTER at værdierne er skrevet og verificeret, så rollback stadig er muligt.
+4. **Hvornår bliver det synligt.** \`riders.market_value\` er en GENERATED-kolonne (\`COALESCE(base_value, 1000)\`, verificeret i prod-schemaet), så alt der viser "Værdi" flytter sig i samme øjeblik \`base_value\` skrives. Der er to muligheder: vente på søndagskørslen (søn 27/9 kl. 06 — samme weekend som sæsonskiftet), eller køre \`scripts/dev/valueRefreshOnce4000.mjs --apply\` som en engangs-kørsel med ejerens go.
+5. **Verify-queries efter kørslen:** (a) 0 ryttere hvor \`valuation_type\` afviger fra \`primary_type\`; (b) Σ \`base_value\` for menneskehold inden for det bånd tørkørslen forudsagde; (c) antal ryttere med fald ≥50 % matcher tørkørslen; (d) ingen \`base_value\` er null eller ≤ 0.
+6. **Flader der reagerer med det samme** (verificeret i #5416-tørkørslen): auktions-startpris, bestyrelsens tvangssalg, squad-håndhævelsens auto-køb/-salg, achievements, fair-play-signalet. Lønnen røres IKKE — den er frosset i \`riders.salary\` ved signering og bygger på \`current_production_value\`, ikke \`base_value\`. Men CPV flytter sig i samme kald, så NÆSTE kontrakt/forlængelse/graduering får den nye løn.
+7. **Spillerbesked FØR kørslen**, ikke efter. Ca. hver tredje rytter på et menneskehold flytter sig mærkbart.
 
 ---
 
@@ -678,10 +723,25 @@ async function main() {
     sunday_run: ctx.sundayLog ? `${ctx.sundayLog.run_date} (${ctx.sundayLog.started_at})` : "ukendt",
   };
 
+  // Hvor meget af bevægelsen skyldes typeskiftet, og hvor meget omregningen?
+  let deltaType = 0;
+  let deltaRefit = 0;
+  for (const x of humanRows) {
+    if (x.type_only == null) continue;
+    deltaType += x.type_only - x.stored;
+    deltaRefit += x.candidate - x.type_only;
+  }
+  const decomposition = { delta_type: deltaType, delta_refit: deltaRefit, delta_total: deltaType + deltaRefit };
+  console.log(`Kilde til bevægelsen (menneskehold): typeskift ${fmt(deltaType)} · omregning ${fmt(deltaRefit)}`);
+
   mkdirSync(OUT_DIR, { recursive: true });
-  const json = { meta, sanity, all, human, byTypeHuman, byAgeHuman, byTeam, topFalls, topRises, named, phase, tt, rows };
+  const json = { meta, sanity, all, human, byTypeHuman, byAgeHuman, byTeam, topFalls, topRises, named, phase, tt, decomposition, rows };
   writeFileSync(join(OUT_DIR, "dryrun-5443.json"), JSON.stringify(json, null, 2), "utf8");
-  writeFileSync(join(OUT_DIR, "RAPPORT.md"), buildReport(ctx, { ...json, typeOffsets: offLines.join("\n") }), "utf8");
+  writeFileSync(join(OUT_DIR, "RAPPORT.md"), buildReport(ctx, {
+    ...json,
+    typeOffsets: offLines.join("\n"),
+    weightConcentration: weightConcentrationTable(),
+  }), "utf8");
 
   console.log(`\nHele populationen: Σ ${fmt(all.sum_before)} → ${fmt(all.sum_after)} (${pct(all.sum_pct)}) · op ${all.up} / ned ${all.down} / flad ${all.flat} · median ${pct(all.median_pct)}`);
   console.log(`Menneskehold:      Σ ${fmt(human.sum_before)} → ${fmt(human.sum_after)} (${pct(human.sum_pct)}) · op ${human.up} / ned ${human.down} / flad ${human.flat} · median ${pct(human.median_pct)}`);
