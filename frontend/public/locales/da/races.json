@@ -542,6 +542,7 @@
       "selection_duplicate_rider": "Hver rytter kan kun udtages én gang.",
       "selection_race_not_open": "Udtagelsen er lukket for dette løb.",
       "selection_race_started": "Løbet er gået i gang, så truppen er låst.",
+      "selection_season_not_active": "Løbet hører til en sæson, der ikke er startet endnu.",
       "selection_rider_bound": "Rytteren kører allerede et overlappende løb.",
       "selection_rider_bound_named": "{rider} kører allerede {race}, som overlapper. Fjern ham der, eller vælg en anden rytter.",
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",

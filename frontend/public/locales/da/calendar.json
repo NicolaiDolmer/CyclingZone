@@ -15,6 +15,7 @@
     "title": "Sæson {number}s kalender er ikke klar endnu",
     "desc": "Løbsprogrammet for denne sæson er ikke genereret endnu. Kig forbi igen tættere på sæsonstart."
   },
+  "divisionPending": "Sæson {number} er ikke startet endnu. Din division afgøres ved sæsonskiftet, så dine egne løb er ikke markeret.",
   "empty": {
     "title": "Ingen løb denne måned",
     "desc": "Brug måneds-pilene til at finde planlagte løb."

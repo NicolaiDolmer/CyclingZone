@@ -43,6 +43,7 @@ import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js
 import { keepsExistingContractOnPromote } from "../lib/academyPromoteContract.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
+import { riderShortName } from "../lib/riderName.ts";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useTableSort } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
@@ -139,6 +140,32 @@ export default function AcademyPage() {
   // Rating som kvalitetssignalet — men forbliver en almindelig (ikke-foldet)
   // kolonne, fordi ScoutablePotentiale er et scoutet stjerne-bånd uden en kort,
   // meningsfuld tekst-repræsentation til underlinjen (se PR-beskrivelsen).
+  //
+  // Navnecellen tegnes af EEN funktion, saa desktop-formen og mobilens korte
+  // form (#5383) ikke kan drive fra hinanden i alt ANDET end selve navnet.
+  const renderRosterName = (r, displayName) => {
+    // Forkortelsen er et PLADSVALG paa skaermen, ikke en omdoebning: linkets
+    // tilgaengelige navn er altid det fulde navn (#5383).
+    const fullName = `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim();
+    const abbreviated = Boolean(fullName) && displayName !== fullName;
+    return (
+      <>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <RiderLink
+            id={r.id}
+            className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors"
+            aria-label={abbreviated ? fullName : undefined}
+            title={abbreviated ? fullName : undefined}
+          >
+            {displayName}
+          </RiderLink>
+          <RiderBadges badges={["academy"]} />
+        </div>
+        {actionErrors[r.id] && <p className="text-xs text-cz-danger mt-1 whitespace-normal">{actionErrors[r.id]}</p>}
+      </>
+    );
+  };
+
   const rosterColumns = [
     {
       key: "nation",
@@ -151,28 +178,24 @@ export default function AcademyPage() {
       header: t("colRider"),
       sticky: true,
       sortKey: "name",
-      render: (r) => (
-        <>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <RiderLink id={r.id} className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-              {r.firstname} {r.lastname}
-            </RiderLink>
-            <RiderBadges badges={["academy"]} />
-          </div>
-          {actionErrors[r.id] && <p className="text-xs text-cz-danger mt-1 whitespace-normal">{actionErrors[r.id]}</p>}
-        </>
-      ),
+      render: (r) => renderRosterName(r, `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim()),
+      // #5383: paa mobil staar navnet i den korte form (#5350, ejer-valgt
+      // 18/9) saa det bliver paa EEN linje i den smalle navnekolonne.
+      renderShort: (r) => renderRosterName(r, riderShortName(r)),
     },
     {
       key: "type",
       header: t("colType"),
       sortKey: "primary_type",
       fold: true,
+      // #5383: KORT type-etiket i mobilens meta-linje — se samme kommentar i
+      // RidersPage.jsx. `riderTypes.short.*` er eksisterende copy; desktopens
+      // type-badge nedenfor er uaendret.
       foldValue: (r) => {
         if (!r.primary_type) return "";
-        const primary = tTypes(`types.${r.primary_type}`);
+        const primary = tTypes(`short.${r.primary_type}`);
         const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
-        return hasSecondary ? `${primary}/${tTypes(`types.${r.secondary_type}`)}` : primary;
+        return hasSecondary ? `${primary}/${tTypes(`short.${r.secondary_type}`)}` : primary;
       },
       render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
     },

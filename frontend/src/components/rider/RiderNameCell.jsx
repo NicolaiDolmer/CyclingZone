@@ -8,15 +8,25 @@ import RiderLink from "../RiderLink";
 // bryde ved ordgrænser i stedet for at tvinge nowrap-bredden — D-047's
 // mobil-standardtilstand (ingen vandret scroll) kræver det, ligesom
 // DataTable's renderStickyCell(wrap) og TrainingPage.jsx's roster.
+//
+// #5383: `name` (valgfri) saetter den viste tekst direkte, saa en kalder kan
+// vise den korte form ("A. Pedersen", lib/riderName.ts) uden at cellen skal
+// gaette hvordan et navn deles. Udelades den, vises fornavn + efternavn som
+// hidtil. Linkets TILGAENGELIGE navn er altid det fulde navn: en forkortelse er
+// et pladsvalg paa skaermen, ikke en omdoebning — en skaermlaeser skal stadig
+// sige "Ada Pedersen".
 export default function RiderNameCell({
   id,
   firstname,
   lastname,
+  name,
   stopPropagation = false,
   className = "text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors",
   wrap = false,
   children,
 }) {
+  const fullName = `${firstname ?? ""} ${lastname ?? ""}`.trim();
+  const shown = name ?? fullName;
   return (
     <span className={`inline-flex items-center gap-1.5 flex-wrap ${wrap ? "min-w-0" : ""}`}>
       {/* #5124: KUN `min-w-0` (bryd ved ordgrænser), ikke `break-words` — sidstnævnte
@@ -30,8 +40,10 @@ export default function RiderNameCell({
         id={id}
         stopPropagation={stopPropagation}
         className={`${className} ${wrap ? "min-w-0" : "whitespace-nowrap"}`}
+        aria-label={fullName && shown !== fullName ? fullName : undefined}
+        title={fullName && shown !== fullName ? fullName : undefined}
       >
-        {firstname} {lastname}
+        {shown}
       </RiderLink>
       {children}
     </span>

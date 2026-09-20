@@ -6,6 +6,14 @@
 > #3631, #3592, #4181. Eksempelsider vist ejeren: Nicolò Caruso og Mario S. Iglesias
 > (claude.ai-artifacts, private).
 
+> **Status 20/9:** beslutningerne står (GDD D-049/D-050), intet er bygget. Leverance 1
+> = #5435, spillersvaret = #5436 (upostet). Ejeren har endnu ikke godkendt spec'en eller
+> wireframes. To nyere regler skal afstemmes før byg: **rating-reglen 17/9** (én rating
+> overalt, `ratingGolden.5321.json` opdateres kun med ejer-go; bedste-rolle-nu kan kun
+> hæve tallet) og **loft-retningen 18/9** ("lofterne ud, potentialet styrer farten",
+> #5351): loft-tallene i §2 (hero og scouting-fane) og hele §3's punch-loft-mekanik
+> (D-050, #5030) venter på det loft-design, før de bygges.
+
 ## 1. Beslutninger (låst 11/9)
 
 | # | Spørgsmål | Beslutning |

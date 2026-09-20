@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<title>Kalenderen: en uge i dag og med forslaget</title>
+<style>
+  :root {
+    --bg: #F4F2ED;
+    --text: #14161F;
+    --muted: #6B6F7B;
+    --border: #DDD9CF;
+    --gold: #E8C547;
+    --p: #DCE6F2;
+    --q: #E6DCF2;
+    --r: #DCF2E4;
+    --s: #F2E4DC;
+    --radius: 5px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "DM Sans", system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  body {
+    padding: 32px 30px 40px 30px;
+  }
+  .container {
+    max-width: 1040px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    line-height: 1.25;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 32px 0;
+    line-height: 1.5;
+  }
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+  }
+  h2.small {
+    font-size: 15px;
+  }
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+  }
+  section {
+    margin-bottom: 36px;
+  }
+  .cols {
+    display: flex;
+    gap: 24px;
+  }
+  .col {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    table-layout: fixed;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 8px 8px 10px;
+    vertical-align: top;
+    text-align: left;
+  }
+  th {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: #F9F8F5;
+  }
+  th.col-date { width: 62px; }
+  td.col-date {
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  td.pin-cell {
+    position: relative;
+    padding-left: 30px;
+  }
+  .pin {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .chipstack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .chip {
+    display: inline-block;
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 3px 7px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+  }
+  .chip-p { background: var(--p); }
+  .chip-q { background: var(--q); }
+  .chip-r { background: var(--r); }
+  .chip-s { background: var(--s); }
+  .chip-endag { background: #fff; border-color: var(--border); }
+  td.training {
+    background: var(--gold);
+    text-align: center;
+    vertical-align: middle;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  tr.muted-row td {
+    color: var(--muted);
+    font-style: italic;
+    font-size: 12px;
+    text-align: center;
+    padding: 8px;
+  }
+  .legend {
+    margin-top: 14px;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .legend-title {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .legend-item .pin {
+    position: static;
+    margin-top: 1px;
+  }
+  .pin-static {
+    position: static;
+    display: inline-flex;
+    vertical-align: -4px;
+    margin-right: 6px;
+  }
+  .legend-item span.txt {
+    flex: 1;
+  }
+
+  /* Section 2 */
+  .stripe-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .stripe-table td {
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    font-size: 13px;
+    vertical-align: top;
+  }
+  .stripe-table td.date {
+    width: 80px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .stripe-table tr.gold-row td {
+    background: var(--gold);
+    font-weight: 700;
+  }
+  .below-note {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 14px;
+    line-height: 1.5;
+    max-width: 900px;
+  }
+
+  .bottomline {
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Kalenderen: en uge i dag og med forslaget</h1>
+  <p class="subtitle">Skitse. Forslaget er regnet igennem som loft, men den rigtige kalender er ikke pakket endnu.</p>
+
+  <section>
+    <h2>Division 4, de første dage af sæson 4</h2>
+    <div class="cols">
+
+      <!-- LEFT: TODAY -->
+      <div class="col">
+        <h3>I dag: etapeløbene ligger i kæde</h3>
+        <table>
+          <colgroup>
+            <col class="col-date">
+            <col>
+            <col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="col-date">Dato</th>
+              <th>1. løbsdag</th>
+              <th>2. løbsdag</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-date">28/9</td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 1</span>
+                  <span class="chip chip-endag">Endagsløb</span>
+                </div>
+              </td>
+              <td class="pin-cell">
+                <span class="pin">2</span>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 2</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="col-date">29/9</td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 3</span>
+                  <span class="chip chip-endag">Endagsløb</span>
+                </div>
+              </td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 4</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="col-date">30/9</td>
+              <td class="pin-cell">
+                <span class="pin">1</span>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 5</span>
+                  <span class="chip chip-q">Q etape 1</span>
+                </div>
+              </td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-q">Q etape 2</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="col-date">1/10</td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-q">Q etape 3</span>
+                  <span class="chip chip-endag">Endagsløb</span>
+                </div>
+              </td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-q">Q etape 4</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="col-date">2/10</td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-q">Q etape 5</span>
+                  <span class="chip chip-r">R etape 1</span>
+                </div>
+              </td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-r">R etape 2</span>
+                </div>
+              </td>
+            </tr>
+            <tr class="muted-row">
+              <td colspan="3"><span class="pin pin-static">3</span>... sådan fortsætter kæden, uden huller</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="legend">
+          <div class="legend-title">Sådan er det i dag</div>
+          <div class="legend-item"><span class="pin">1</span><span class="txt">P slutter og Q starter på samme løbsdag. Kæden har ingen huller.</span></div>
+          <div class="legend-item"><span class="pin">2</span><span class="txt">Mange løbsdage har kun ét løb at vælge.</span></div>
+          <div class="legend-item"><span class="pin">3</span><span class="txt">Ingen løbsdag er fri, så en ren træningsdag kan kun ligge midt i et etapeløb. Det må den ikke.</span></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: PROPOSAL -->
+      <div class="col">
+        <h3>Forslaget: etapeløb kører samtidig, træningsdag i hullet</h3>
+        <table>
+          <colgroup>
+            <col class="col-date">
+            <col>
+            <col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="col-date">Dato</th>
+              <th>1. løbsdag</th>
+              <th>2. løbsdag</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-date">28/9</td>
+              <td class="pin-cell">
+                <span class="pin">1</span>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 1</span>
+                  <span class="chip chip-q">Q etape 1</span>
+                  <span class="chip chip-endag">Endagsløb</span>
+                </div>
+              </td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 2</span>
+                  <span class="chip chip-q">Q etape 2</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="col-date">29/9</td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 3</span>
+                  <span class="chip chip-q">Q etape 3</span>
+                  <span class="chip chip-endag">Endagsløb</span>
+                </div>
+              </td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 4</span>
+                  <span class="chip chip-q">Q etape 4</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="col-date">30/9</td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-p">P etape 5</span>
+                  <span class="chip chip-q">Q etape 5</span>
+                </div>
+              </td>
+              <td class="training pin-cell">
+                <span class="pin">2</span>
+                Træningsdag, ingen løb
+              </td>
+            </tr>
+            <tr>
+              <td class="col-date">1/10</td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-r">R etape 1</span>
+                  <span class="chip chip-s">S etape 1</span>
+                  <span class="chip chip-endag">Endagsløb</span>
+                </div>
+              </td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-r">R etape 2</span>
+                  <span class="chip chip-s">S etape 2</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="col-date">2/10</td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-r">R etape 3</span>
+                  <span class="chip chip-s">S etape 3</span>
+                </div>
+              </td>
+              <td>
+                <div class="chipstack">
+                  <span class="chip chip-r">R etape 4</span>
+                  <span class="chip chip-s">S etape 4</span>
+                </div>
+              </td>
+            </tr>
+            <tr class="muted-row">
+              <td colspan="3"><span class="pin pin-static">3</span>... næste hul kommer når R og S er slut</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="legend">
+          <div class="legend-title">Det gør forslaget</div>
+          <div class="legend-item"><span class="pin">1</span><span class="txt">P og Q starter og slutter samme løbsdage. To etapeløb at vælge imellem hver løbsdag.</span></div>
+          <div class="legend-item"><span class="pin">2</span><span class="txt">Når begge er slut, er der et ægte hul. Dér ligger træningsdagen, og ingen rytter er bundet i et løb.</span></div>
+          <div class="legend-item"><span class="pin">3</span><span class="txt">Samme løb og samme etaper som i dag. Kun placeringen er ny.</span></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2 class="small">Division 1, samme uge</h2>
+    <table class="stripe-table">
+      <tbody>
+        <tr>
+          <td class="date">28/9</td>
+          <td>Grand Tour A etape 1-2 + etapeløb B etape 1-2 + endagsløb</td>
+        </tr>
+        <tr>
+          <td class="date">29/9</td>
+          <td>Grand Tour A etape 3-4 + etapeløb B etape 3-4 + endagsløb</td>
+        </tr>
+        <tr>
+          <td class="date">30/9</td>
+          <td>Grand Tour A etape 5-6 + etapeløb B etape 5-6 + endagsløb</td>
+        </tr>
+        <tr>
+          <td class="date">1/10</td>
+          <td>Grand Tour A etape 7-11 (endagsløb på Grand Tourens hviledag)</td>
+        </tr>
+        <tr>
+          <td class="date">2/10</td>
+          <td>Grand Tour A etape 12-15 + endagsløb</td>
+        </tr>
+        <tr>
+          <td class="date">3/10</td>
+          <td>Grand Tour A etape 16-20</td>
+        </tr>
+        <tr class="gold-row">
+          <td class="date">4/10</td>
+          <td>Grand Tour A er slut. Her ligger træningsdagene, før næste blok starter.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="below-note">I Division 1 kører Grand Tour A og etapeløb B allerede samtidig. Her ændrer forslaget mest, hvor træningsdagene lægges: efter Grand Touren, ikke inde i den.</p>
+  </section>
+
+  <div class="bottomline">
+    Alle fire divisioner ender på lige mange løbsdage. Divisioner med færre løb får flere træningsdage. Tallene bag: docs/audits/2026-09-18-5267-kalenderform-begge-dele.md
+  </div>
+
+</div>
+</body>
+</html>

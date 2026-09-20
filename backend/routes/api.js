@@ -4525,9 +4525,11 @@ router.get("/races/calendar", requireAuth, cached({
     const seasonNumber = Number(seasonNumberRaw);
     const wantsExplicitSeason =
       Number.isFinite(seasonNumber) && seasonNumberRaw !== undefined && seasonNumberRaw !== "";
+    // #5405: `status` hentes med, så handleren kan afgøre om holdets division
+    // overhovedet ER afgjort for den viste sæson (teamDivisionKnownForSeason).
     const seasonQuery = supabase
       .from("seasons")
-      .select("id, number, start_date, race_days_total, race_days_completed");
+      .select("id, number, status, start_date, race_days_total, race_days_completed");
 
     // Bølge 1 — sæson-opslaget, sæson-listen og divisions-træet afhænger hverken af
     // hinanden eller af noget andet. De kørte før sekventielt (3 round-trips i serie).
@@ -4548,9 +4550,24 @@ router.get("/races/calendar", requireAuth, cached({
     if (divisionsRes.error) throw new Error(`league_divisions (calendar): ${divisionsRes.error.message}`);
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) {
-      return res.json({ season: null, availableSeasons, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null });
+      return res.json({ season: null, availableSeasons, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null, divisionPending: false });
     }
     const divisions = divisionsRes.data;
+
+    // #5405 (rapport §3f): holdets NUVÆRENDE pulje beskriver den AKTIVE sæson.
+    // For en sæson med status 'upcoming' er op-/nedrykningen ikke afgjort endnu
+    // (den sker ved sæsonskiftet), så en "mit holds løb"-markering bygget på den
+    // nuværende pulje peger for langt de fleste managers på løb holdet ikke skal
+    // køre. Vi gætter ikke: ingen isMine, ingen egen-pulje, og et eksplicit
+    // divisionPending-flag så fladen kan sige det rent ud. Samme feltnavn og
+    // samme diskriminator som planlægger-endpointet allerede bruger
+    // (teamDivisionKnownForSeason, plannerBoard.js / #3018).
+    //
+    // Gaten ophæver sig selv ved cutoveren uden ny deploy: compressPyramid.js
+    // skriver de nye league_division_id FØR transitionen promoverer sæsonen til
+    // 'active'. En AKTIV (eller afsluttet) sæsons svar er derfor uændret.
+    const divisionPending = !teamDivisionKnownForSeason(season.status);
+    const ownPoolId = divisionPending ? null : (req.team?.league_division_id ?? null);
 
     // Bølge 2 — løbene og holdets entries afhænger begge KUN af season.id. Entry-loadet
     // ventede før på raceIds (og sendte dem som id-liste); joinet gør det unødvendigt.
@@ -4585,7 +4602,8 @@ router.get("/races/calendar", requireAuth, cached({
       scheduleRows,
       profileRows,
       divisions: divisions || [],
-      teamDivisionId: req.team?.league_division_id ?? null,
+      // #5405: null → buildCalendarModel sætter isMine=false på HVERT løb.
+      teamDivisionId: ownPoolId,
       teamEntryRaceIds,
       teamLeaderRaceIds,
     });
@@ -4598,7 +4616,8 @@ router.get("/races/calendar", requireAuth, cached({
         raceDaysCompleted: season.race_days_completed ?? null,
       },
       availableSeasons,
-      ownPoolId: req.team?.league_division_id ?? null,
+      ownPoolId,
+      divisionPending,
       days: model.days,
       divisions: model.divisions,
       entries: model.entries.map(toCalendarWireEntry),
@@ -5229,6 +5248,11 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // #1146: pulje-binding, body-shape, frys (#1825, begge retninger siden #4534) og
     // validateSelection er udtrukket til prepareSelectionChange (raceSelection.js), delt
     // med bulk-endpointet (PUT /races/selection/bulk) længere nede, samme regler begge veje.
+    // #5405: samme funktion bærer nu også sæson-gaten (409 selection_season_not_active) —
+    // race.season_id slås op og skal være en AKTIV sæson. Uden den kunne en manager gemme
+    // en trup i næste sæsons løb, så snart de er materialiseret (de har status 'scheduled'
+    // og 0 kørte etaper og slipper derfor gennem alle de øvrige gates). Gaten ligger i
+    // den DELTE funktion, ikke her, så bulk-vejen ikke kan divergere fra den.
     // #2376: free_role_ids accepteres UANSET race_engine_v3_scoring-flagets tilstand —
     // gemmes blot (harmløst; motor-ADFÆRD er v3-gated i raceSimulator.buildTeamContext,
     // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
@@ -5407,9 +5431,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       return res.status(409).json({ error: "selection_withdrawn", race_id: withdrawnRows[0].race_id });
     }
 
-    // Pas 1: pr.-løb-validering (samme prepareSelectionChange som single-endpointet) +
-    // indlæs hvert løbs binding-vindue/andre-løb. INGEN DB-SKRIVNING her — fejler ÉN
-    // ændring, afvises HELE kaldet uden at røre race_entries (alt-eller-intet er dermed
+    // Pas 1: pr.-løb-validering (samme prepareSelectionChange som single-endpointet, incl.
+    // #5405's sæson-gate: et løb i en KOMMENDE sæson afvises med 409
+    // selection_season_not_active og navngives med sit race_id, præcis som enhver anden
+    // pr.-løb-afvisning i dette pas) + indlæs hvert løbs binding-vindue/andre-løb. INGEN
+    // DB-SKRIVNING her — fejler ÉN ændring, afvises HELE kaldet uden at røre race_entries
+    // (samme alt-eller-intet-kontrakt som for alle andre afviste løb; dermed
     // allerede garanteret af selve rute-laget; RPC'ens deferred constraint-tjek
     // nedenfor er kun et backstop mod en SAMTIDIG skriver fra en anden session).
     const batchRaceIds = new Set(raceIds);

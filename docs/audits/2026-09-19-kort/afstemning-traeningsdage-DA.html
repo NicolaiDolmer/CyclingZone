@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<title>Traening i saeson 4 - afstemning (DA)</title>
+<style>
+  @font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/bebas-neue-latin-400-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/bebas-neue-latin-ext-400-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-wght-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-ext-wght-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+
+  :root {
+    --navy: #1A1F38;
+    --gold: #E8C547;
+    --bg: #F4F2ED;
+    --text: #14161F;
+    --muted: #6B6F7B;
+    --border: #DDD9CF;
+    --radius: 5px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  .topbar {
+    background: var(--navy);
+    padding: 18px 0;
+    text-align: center;
+  }
+
+  .wordmark {
+    font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+    color: var(--gold);
+    font-size: 26px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .page {
+    width: 1080px;
+    padding: 36px 48px 44px;
+  }
+
+  h1 {
+    font-size: 34px;
+    line-height: 1.2;
+    font-weight: 700;
+    margin: 0 0 14px;
+    letter-spacing: -0.005em;
+  }
+
+  .intro {
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--text);
+    margin: 0 0 14px;
+  }
+
+  .example-label {
+    font-size: 18px;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+
+  .key {
+    display: flex;
+    gap: 28px;
+    margin: 0 0 28px;
+  }
+
+  .key-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    color: var(--text);
+  }
+
+  .key-item .sq {
+    width: 18px;
+    height: 18px;
+    border-radius: 2px;
+    flex: none;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 32px 26px;
+    margin-bottom: 24px;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  .mark {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    background: var(--text);
+    color: #fff;
+    font-weight: 700;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+  }
+
+  .card h2 {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .card-desc {
+    font-size: 22px;
+    line-height: 1.42;
+    color: var(--text);
+    margin: 0 0 22px;
+  }
+
+  .days {
+    display: flex;
+    gap: 24px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    margin-bottom: 18px;
+  }
+
+  .day {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .day-label {
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .squares {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 16px;
+    min-height: 14px;
+  }
+
+  .sq {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+  }
+
+  .sq.gold { background: var(--gold); }
+  .sq.dark { background: var(--text); }
+
+  .stat {
+    margin-bottom: 12px;
+  }
+
+  .stat:last-child { margin-bottom: 0; }
+
+  .stat-label {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+
+  .stat-value {
+    font-size: 44px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .card-foot {
+    font-size: 18px;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .cta {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 6px 0 8px;
+  }
+
+  .note {
+    font-size: 17px;
+    color: var(--muted);
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+  <div class="topbar"><span class="wordmark">CYCLING ZONE</span></div>
+  <div class="page">
+    <h1>Tr&aelig;ning i s&aelig;son 4: hvor skal de ekstra tr&aelig;ningsdage ligge?</h1>
+    <p class="intro">Fra s&aelig;son 4 k&oslash;rer en rytter enten l&oslash;b eller tr&aelig;ner p&aring; en l&oslash;bsdag. Alle divisioner f&aring;r lige mange l&oslash;bsdage pr. s&aelig;son, s&aring; divisioner med f&aelig;rre l&oslash;b f&aring;r ekstra tr&aelig;ningsdage. S&aelig;sonens samlede tr&aelig;ning er den samme i begge tilf&aelig;lde. Sp&oslash;rgsm&aring;let er, hvor dagene lander.</p>
+    <p class="example-label">Eksempel: tre rigtige dage i Division 4. L&oslash;b og starttider er ens i A og B.</p>
+    <div class="key">
+      <div class="key-item"><span class="sq dark"></span>L&oslash;bsdag med l&oslash;b</div>
+      <div class="key-item"><span class="sq gold"></span>Ekstra tr&aelig;ningsdag (ingen l&oslash;b)</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="mark">A</span>
+        <h2>Mellem etapel&oslash;bene</h2>
+      </div>
+      <p class="card-desc">De ekstra tr&aelig;ningsdage ligger kun, hvor intet etapel&oslash;b er i gang. Du f&aring;r f&aring;, store tr&aelig;ningsaftener.</p>
+      <div class="days">
+        <div class="day">
+          <div class="day-label">Fre</div>
+          <div class="squares">
+            <span class="sq dark"></span><span class="sq dark"></span>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter uden l&oslash;b</div>
+            <div class="stat-value">2</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter i etapel&oslash;b l&oslash;r&#8211;s&oslash;n</div>
+            <div class="stat-value">2</div>
+          </div>
+        </div>
+        <div class="day">
+          <div class="day-label">L&oslash;r</div>
+          <div class="squares">
+            <span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq dark"></span><span class="sq dark"></span>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter uden l&oslash;b</div>
+            <div class="stat-value">11</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter i etapel&oslash;b l&oslash;r&#8211;s&oslash;n</div>
+            <div class="stat-value">9</div>
+          </div>
+        </div>
+        <div class="day">
+          <div class="day-label">S&oslash;n</div>
+          <div class="squares">
+            <span class="sq dark"></span><span class="sq dark"></span>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter uden l&oslash;b</div>
+            <div class="stat-value">2</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter i etapel&oslash;b l&oslash;r&#8211;s&oslash;n</div>
+            <div class="stat-value">0</div>
+          </div>
+        </div>
+      </div>
+      <p class="card-foot">En rytter tr&aelig;ner aldrig midt i et etapel&oslash;b.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="mark">B</span>
+        <h2>Lidt hver dag</h2>
+      </div>
+      <p class="card-desc">De ekstra tr&aelig;ningsdage fordeles j&aelig;vnt, lige mange hver dag. Ryttere i et etapel&oslash;b hviler de dage. Alle andre tr&aelig;ner.</p>
+      <div class="days">
+        <div class="day">
+          <div class="day-label">Fre</div>
+          <div class="squares">
+            <span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq dark"></span><span class="sq dark"></span>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter uden l&oslash;b</div>
+            <div class="stat-value">5</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter i etapel&oslash;b l&oslash;r&#8211;s&oslash;n</div>
+            <div class="stat-value">5</div>
+          </div>
+        </div>
+        <div class="day">
+          <div class="day-label">L&oslash;r</div>
+          <div class="squares">
+            <span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq dark"></span><span class="sq dark"></span>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter uden l&oslash;b</div>
+            <div class="stat-value">5</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter i etapel&oslash;b l&oslash;r&#8211;s&oslash;n</div>
+            <div class="stat-value">0</div>
+          </div>
+        </div>
+        <div class="day">
+          <div class="day-label">S&oslash;n</div>
+          <div class="squares">
+            <span class="sq gold"></span><span class="sq gold"></span><span class="sq gold"></span><span class="sq dark"></span><span class="sq dark"></span>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter uden l&oslash;b</div>
+            <div class="stat-value">5</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rytter i etapel&oslash;b l&oslash;r&#8211;s&oslash;n</div>
+            <div class="stat-value">0</div>
+          </div>
+        </div>
+      </div>
+      <p class="card-foot">En rytter i et etapel&oslash;b f&aring;r hviledage mellem etaperne i stedet for tr&aelig;ning.</p>
+    </div>
+
+    <p class="cta">Stem A eller B. Skriv gerne hvorfor i tr&aring;den.</p>
+    <p class="note">Tallene er tr&aelig;ningspas den aften. &Eacute;t pas pr. l&oslash;bsdag.</p>
+  </div>
+</body>
+</html>
