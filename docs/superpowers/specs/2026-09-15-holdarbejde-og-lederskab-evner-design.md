@@ -35,6 +35,8 @@ To nye evner i det almindelige evnesystem (`backend/lib/abilityRegistry.js`, kat
 ### 3.1 Registry og data
 
 - To registry-poster (`HOWTO_ADD_ABILITY.md` trin 1-4): `teamwork` og `leadership`, `category: "mental"`, `derivation: {source: "skill"}`, `inContrast` efter #3668's beslutning (de skal fødes på den skala #3668 vælger for de mentale evner), `inClassifier: false`, `storageOrder`/`displayOrder` 16-17. Mindst én display-opskrift pr. evne (guard 1): `teamwork` ind i hjælper-/leadout-opskrifter, `leadership` i kaptajn-/veteran-opskrift. `classifierWeights` og `capsShapingWeights` røres ikke uden ejer-go.
+
+> **AFLØST 17/9 (ejer-regel, #5321 → PR #5352, #5351):** sætningen ovenfor om "mindst én display-opskrift pr. evne" gælder IKKE som del af data-leverancen. `teamwork` og `leadership` fik display-vægt 15/9, mens alle ryttere stod på NULL, og NULL talte som 0: synlige ratings faldt 2-4 point for hele populationen. Vægtene er rullet tilbage. De to evner kommer først ind i rating-opskriften, når de har værdier på alle ryttere, i SAMME deploy som #5268-point-flytningen, efter ejerens beslutning (#5351), og efter at #5423 (profilens hero henter kolonnerne) er merget. Reglen står i `docs/HOWTO_ADD_ABILITY.md`; vagten er `ratingGolden.5321.json`. Beslutningerne H1-H4/L1-L3 i dette dokument er uændrede.
 - To `smallint`-kolonner på `rider_derived_abilities` (idempotent migration, grants; `riders-column-grant-guard`).
 - `rider_pair_chemistry` (H5): PK `(rider_a, rider_b)` med `rider_a < rider_b`, RLS som `rider_derived_abilities` (kun de to rytteres managere, ellers service-role).
 - `rider_mentor_pairs (mentor_rider_id, mentee_rider_id, team_id, started_game_day, buildup, ended_at)`; maks 2 aktive elever pr. mentor (constraint + test), samme `team_id`.

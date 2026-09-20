@@ -44,3 +44,19 @@
 - **Læring til postmortem:** en ny evne i display-opskriften med NULL-værdier var en usynlig rating-ændring for alle spillere. Guard (golden fixture) + HOWTO-regel lukker klassen.
 
 Refs #605 #627 #5142.
+
+## Efterkontrol 20/9 (close-out-gennemgang af løse ender)
+
+Reviewernes 20 ikke-blokerende fund og orkestratorens egne noter blev gennemgået tre dage efter bølgen. Syv blev til issues:
+
+| Issue | Hvad |
+|---|---|
+| #5423 | Rytterprofilens hero henter ikke teamwork/leadership (håndskrevet 15-kolonne-select): rating-hændelsen vender tilbage når #5351 lukker evnerne ind. SKAL merges før #5351. |
+| #5424 | `marketing-lint-build` springes tavst over på push/merge queue; deploy-verify tåler ikke ikke-array-JSON. |
+| #5425 | #5223-opfølgning: signalet er stadig error (level videresendes ikke), RACE_ENGINE_RULES §7 ikke opdateret, telemetri undertæller. |
+| #5426 | Secret-vagtens redaction rammer kun 25+ tegn; sourced hook lækker variabler; PostgREST details/hint sidder på Error-objektet. |
+| #5427 | Ejer-trin: `calendar-invariant-ci-gate` required i branch protection nu; `marketing-lint-build` efter 24/9. |
+| #5428 | Hard rule 31 håndhæves tilfældigt på testfiler (4 af 11 PR'er flaget, én blokeret). |
+| #5429 | **Rating-svaret v7.286 blev aldrig postet i Discord** (#patch-notes springer 7.283 → 7.287). Ejeren poster selv. |
+
+Kommentarer lagt på #4925 (webkit-flaken: 4 af 12 PR'er, altid `seo-public-routes`), #5242 (to apiFetch-noter til PR 2/2) og #5351 (forudsætning #5423). Spec `2026-09-15-holdarbejde-og-lederskab-evner-design.md` fik en AFLØST-note; runbooken fik afsnittet "Læringer 17/9". **Læring:** reviewer-fund skal samles op samme aften, ikke tre dage senere.

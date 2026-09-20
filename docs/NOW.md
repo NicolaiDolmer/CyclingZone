@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer 19/9: "mere indover de næste 10 ting"):** start med `drafts/next-session-prompt-2026-09-20.md`. Første kort = `audits/2026-09-19-kort/saesonskifte-overblik-v2.png` som FIL; **ejeren vælger og rangerer de næste 10; INTET spor startes uden for hans liste, højst 2-3 ad gangen.** Klar til beslutning (detaljer i prompten): U23 i S4 eller S5 · nye bjergløb #5414 · #5413 venter "merge" · S4-række + `--apply` m. go pr. kørsel, UDEN `--uniform-tilt`, **synlig senest man 21/9 (#5405)** · afstemning A/B (ejeren poster) · **1-99-skalaen senest 21/9** · kontrast. **Merget 19/9:** #5397 (flag `training_mobile_table` = beta) #5400, #5406-#5411; 25 branches → tags `archive/2026-09-19/*`. **Åbne PR'er:** #5412-#5414 #5281 #5264 #5169 #3512 · Dependabot #5379, #5356 (rød).
+> **🎯 Next action (ejer 19/9: "mere indover de næste 10 ting"):** **UPOSTET: rating-svar v7.286 (#5429).** Start med `drafts/next-session-prompt-2026-09-20.md`. Første kort = `audits/2026-09-19-kort/saesonskifte-overblik-v2.png` som FIL; **ejeren vælger og rangerer de næste 10; INTET spor startes uden for hans liste, højst 2-3 ad gangen.** Klar til beslutning (detaljer i prompten): U23 i S4 eller S5 · nye bjergløb #5414 · #5413 venter "merge" · S4-række + `--apply` m. go pr. kørsel, UDEN `--uniform-tilt`, **synlig senest man 21/9 (#5405)** · afstemning A/B (ejeren poster) · **1-99-skalaen senest 21/9** · kontrast. **Merget 19/9:** #5397 (flag `training_mobile_table` = beta) #5400, #5406-#5411; 25 branches → tags `archive/2026-09-19/*`. **Åbne PR'er:** #5412-#5414 #5281 #5264 #5169 #3512 · Dependabot #5379, #5356 (rød).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt, overlap forbliver det almindelige. **Tallet er LÅST: 140 (ejer 15/9, TRAINING_RULES §13.3); spørg aldrig igen.** Synkrone blokke er umulige i D1/D3/D4 (målt 19/9). **Åbent (afstemning):** A i hullerne eller B jævnt 5 pr. dato; begge grønne på #5169. **B4 #5264 rettes FØR merge; #5169 merges ikke som den er.** **§2c (ejer 19/9):** S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only.
 
@@ -12,7 +12,7 @@
 
 > **🟡 Lofter + potentiale (ejer 18/9, byg intet):** lofterne ud, potentialet styrer farten (#5351); 6 huller efter 28/9. **#5268-point-flyt afventer.**
 
-> **🔴 Åbne fund:** Webkit-flaken #4925: rerun, ikke fix. **#5323 Quad9:** aflæs målingen (live fra 17/9) før DNS-kort. Advisors: 3 kendte WARN. **📊 Triage:** `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
+> **🔴 Åbne fund:** Webkit-flaken #4925: rerun, ikke fix. **#5323 Quad9:** aflæs målingen (live fra 17/9) før DNS-kort. **📊 Triage:** `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
 
 ## Standing context (forever-relaunch)
 
@@ -26,5 +26,5 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Ingen aktiv session. (PR der rører filen skal hedde `docs(now)…`/`docs(close-out)…`, #5093.) Historik: git-log + issues + docs/audits/.
+> **🤖 Working agent:** Ingen aktiv session. (PR der rører filen skal hedde `docs(now)…`/`docs(close-out)…`, #5093.) Historik: git-log + issues.
 
