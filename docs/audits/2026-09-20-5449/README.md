@@ -14,9 +14,11 @@ billederne ER en klasse der manglede i CSS'en.
 Billederne tages af `frontend/tests/e2e/5449-tailwind-content.shots.mjs`
 (ad-hoc capture-script, ikke i CI-suiten):
 
+Begge kommandoer køres fra repo-roden:
+
 ```
 npm --prefix frontend run build
-node tests/e2e/5449-tailwind-content.shots.mjs <outDir>
+node frontend/tests/e2e/5449-tailwind-content.shots.mjs <outDir>
 ```
 
 Fire kombinationer pr. flade: desktop 1440×900 og mobil 390×844, lyst og mørkt.

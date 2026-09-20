@@ -34,7 +34,7 @@ export default {
   // fandtes i en `.tsx`-fil blev derfor aldrig genereret, og elementet faldt
   // tilbage til browserens standard (træningsscorens sparkline blev en sort klat,
   // fordi `fill-cz-subtle` + `stroke-cz-1` manglede og SVG-default-fill er sort).
-  // Forward-guard: `frontend/tests/tailwindContentGlob.test.js` fejler hvis en
+  // Forward-guard: `frontend/tailwind.config.test.mjs` fejler hvis en
   // filendelse under `src/` indeholder `className`/`class=` uden at være dækket her.
   content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
   darkMode: ['class', '[data-theme="dark"]'],

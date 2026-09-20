@@ -308,10 +308,15 @@ const server = spawn(
   { cwd: FRONTEND, stdio: "inherit" },
 );
 
+// Browseren skal lukkes selv om et screenshot kaster: en efterladt
+// chromium-proces holder kommandoen i live, og en boelge-lane maa ikke
+// efterlade processer.
+let browser;
+
 try {
   await waitForServer(`${BASE}/app.html`);
 
-  const browser = await chromium.launch();
+  browser = await chromium.launch();
   const VIEWPORTS = [
     { name: "desktop", width: 1440, height: 900 },
     { name: "mobile", width: 390, height: 844 },
@@ -408,8 +413,11 @@ try {
     }
   }
 
-  await browser.close();
   console.log(`[5449] Screenshots → ${OUT}`);
 } finally {
-  server.kill();
+  try {
+    await browser?.close();
+  } finally {
+    server.kill();
+  }
 }
