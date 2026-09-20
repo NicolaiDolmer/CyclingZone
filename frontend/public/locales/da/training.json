@@ -289,7 +289,7 @@
     "raceDay": "Løb",
     "sparkAria": "Træningsscore, seneste 7 dage: {name}",
     "columnHint": "Hvor godt dagens pas var, 1-99. Løbsdage viser \"Løb\".",
-    "columnHelpAria": "Hvad træningsscoren betyder — læs det i Hjælp",
+    "columnHelpAria": "Hvad træningsscoren betyder: læs det i Hjælp",
     "mobileAria": "Træningsscore i dag: {name}",
     "factor_intensity": "Passet",
     "factor_focusMatch": "Fokus-match",
