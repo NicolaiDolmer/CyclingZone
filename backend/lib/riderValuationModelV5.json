@@ -1,0 +1,117 @@
+{
+  "version": 4,
+  "model_id": "v5",
+  "method": "sim-production-npv",
+  "weights_source": "display_recipes",
+  "type_source": "primary",
+  "fitted_at": "2026-09-20T13:31:06.871Z",
+  "sim_run_id": "e4144252",
+  "K": 30,
+  "season_id": "00000000-0000-0000-0000-000000000003",
+  "prize_per_point": 75,
+  "beta_pt": 0,
+  "discount": 0.8,
+  "horizon_model": "survival-weighted",
+  "fit": {
+    "alpha": 1,
+    "a": 4.407784,
+    "b": 0.11181737,
+    "c": -0.0001469324,
+    "offset": {
+      "sprinter": -1.195813,
+      "tt": -1.041428,
+      "climber": -0.733431,
+      "puncheur": -1.133882,
+      "brostensrytter": -1.258566,
+      "baroudeur": -1.401166,
+      "rouleur": -0.947901,
+      "gc": -0.678357
+    },
+    "r2_log": 0.365,
+    "n_samples": 7660
+  },
+  "type_stats": {
+    "sprinter": {
+      "n": 1245,
+      "median_prize": 195,
+      "p90_prize": 7403
+    },
+    "tt": {
+      "n": 749,
+      "median_prize": 210,
+      "p90_prize": 10550
+    },
+    "climber": {
+      "n": 1125,
+      "median_prize": 225,
+      "p90_prize": 21428
+    },
+    "puncheur": {
+      "n": 845,
+      "median_prize": 133,
+      "p90_prize": 8740
+    },
+    "brostensrytter": {
+      "n": 657,
+      "median_prize": 118,
+      "p90_prize": 9323
+    },
+    "baroudeur": {
+      "n": 913,
+      "median_prize": 160,
+      "p90_prize": 6105
+    },
+    "rouleur": {
+      "n": 1348,
+      "median_prize": 146,
+      "p90_prize": 5753
+    },
+    "gc": {
+      "n": 778,
+      "median_prize": 445,
+      "p90_prize": 19005
+    }
+  },
+  "type_dampening": "off",
+  "fixed_curve_ref": {
+    "from": "lib/riderValuationModelV4.json",
+    "fitted_at": "2026-07-18T19:04:14.692Z",
+    "sim_run_id": "75507b50"
+  },
+  "spread_match_ref": {
+    "from": "lib/riderValuationModelV4.json",
+    "n": 8081,
+    "target_sd": 1.2700489842386753,
+    "sd_before": 1.1555234577598272,
+    "sd_after": 1.2700489842386753,
+    "k": 1.1074223561659324,
+    "b_before": 0.10097084,
+    "c_before": -0.0001198094
+  },
+  "scale": 9.7802336,
+  "level_correction": 0.810849161784679,
+  "scale_ref": {
+    "calibrate": "shipping",
+    "median_current_base_value": 5021,
+    "median_v4_raw_npv": 618,
+    "n_calibration": 8081,
+    "shipping": {
+      "n": 8081,
+      "median_stored_same_population": 4903,
+      "median_shipping_before": 4073,
+      "scale_before": 8.1245955,
+      "type_dampening_enabled": true,
+      "level_correction_applied": 0.810849161784679
+    }
+  },
+  "elite_premium": {
+    "overall_threshold": 45,
+    "k": 0.0801337,
+    "floor_overall": 58,
+    "floor": 9880436,
+    "affordability_ceiling": 4940218,
+    "unbuyable_seasons": 4,
+    "target_top": 98804360
+  },
+  "notes": "Vaerdimodel v5 (#5443, ejer-godkendt 20/9) - IKKE AKTIV VED MERGE. Aktiveres af ejeren med app_config-noeglen rider_valuation_model = \"v5\" (se lib/riderValuationModelSelect.js). Forskellene mod v4: (1) weights_source: rollens evner laeses med rating-tallets egen opskrift (lib/weights/displayRecipes.js) i stedet for den separate vaerdi-vaegttabel, saa vaerdi og rating regner paa de samme evner; (2) type_source: den frosne riders.valuation_type (#3345) indgaar ikke i beregningen - rytterens faktiske primaer-type bruges; (3) type_dampening off (#4000-daempningen rettede en skaev stikproeve der ikke findes efter re-fittet); (4) koefficienter + skala genfittet mod simuleret saeson-produktion paa den NYE typefordeling, spredning matchet mod v4. FROZEN_NPV_RATE_BY_POTENTIAL i riderCareerNpv.js er UAENDRET og bevidst bevaret: at fjerne den alene er maalt som en modelfejl der undervurderer unge ryttere (rapport i balance-internals). Den afloeses foerst naar traeningsscoren kan baere karriere-fremskrivningen (#4851/#2798)."
+}

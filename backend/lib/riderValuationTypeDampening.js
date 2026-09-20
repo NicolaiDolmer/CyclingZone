@@ -127,6 +127,21 @@ export function buildDampenedOffsetTable(offsetTable, typeStats, k, normalizatio
 }
 
 export function applyTypeDampening(model) {
+  // #5443: en model kan SELV erklære at den ikke skal dæmpes. Dæmpningen blev
+  // indført (#4000) fordi én type havde 19 fit-observationer og derfor en absurd
+  // offset-multiplikator. Efter re-fittet 20/9 har alle otte typer hundreder af
+  // observationer, og dæmpningen + sum-neutraliseringen retter derfor ingenting
+  // — den flytter bare offsets et sted hen ingen har målt. Målt på hele
+  // populationen er forskellen mellem "med" og "uden" mindre end en halv
+  // procent af menneskeholdenes samlede værdi (rapport i balance-internals).
+  //
+  // Feltet er stedet hvor det siges eksplicit. TYPE_DAMPENING_ENABLED og
+  // normaliserings-konstanten BLIVER STÅENDE indtil v5 er live og verificeret:
+  // de styrer stadig v4, som er den aktive model indtil ejeren flipper
+  // app_config-nøglen. At slette dem nu ville flytte værdier ved merge — præcis
+  // det denne PR er bygget for ikke at gøre. Sletningen hører i samme
+  // opfølgnings-PR som droppet af riders.valuation_type.
+  if (model?.type_dampening === "off") return model;
   if (!TYPE_DAMPENING_ENABLED) return model;
   if (!model?.fit?.offset || !model?.type_stats) return model;
   return {
