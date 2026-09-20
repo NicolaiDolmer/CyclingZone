@@ -160,6 +160,62 @@ export function rescaleToMedian({ scale, medianTarget, medianActual } = {}) {
   return s * (t / a);
 }
 
+// #3353 — FORDELINGS-FORANKRING af kurven efter et skift af vægt-tabel.
+//
+// Problemet: `O` er et vægtet snit af de evner der tæller for rytterens type.
+// Gør man opskriften bredere, trækkes snittet mod rytterens gennemsnit, og
+// SPREDNINGEN i O falder. Værdien er eksponentiel i O (exp(a + b·O + c·O²)), så
+// den samme kurve på et smallere O-spænd klemmer hele værdifordelingen sammen:
+// medianen kan holdes af skalafaktoren, men toppen kollapser. Målt på hele
+// populationen 20/9: de stærkeste ryttere mistede over halvdelen af deres værdi
+// alene af den grund — stik imod doktrinen "styrke straffes aldrig".
+//
+// Løsningen: skalér kurven med én faktor k (b→k·b, c→k²·c), valgt så spredningen
+// af kurveleddet over den ÆGTE population matcher den nuværende models.
+// Værdi-FORDELINGEN bliver dermed den samme som i dag — kun rækkefølgen ændrer
+// sig, og det er præcis det en ny vægt-tabel skal gøre. k løses ved bisektion:
+// spredningen er monotont voksende i k, fordi b og c skaleres sammen så kurvens
+// form bevares.
+//
+// Returnerer { b, c, k, sdBefore, sdAfter, sdTarget }.
+export function matchCurveSpread({ b, c = 0, outputs, targetSd, maxK = 50, iterations = 60 } = {}) {
+  const B = Number(b);
+  const C = Number(c) || 0;
+  const O = (outputs || []).map(Number).filter(Number.isFinite);
+  const target = Number(targetSd);
+  const sdOf = (k) => {
+    const vals = O.map((o) => k * B * o + k * k * C * o * o);
+    const m = vals.reduce((s, v) => s + v, 0) / vals.length;
+    return Math.sqrt(vals.reduce((s, v) => s + (v - m) ** 2, 0) / vals.length);
+  };
+  if (!O.length || !Number.isFinite(target) || target <= 0 || !Number.isFinite(B)) {
+    return { b: B, c: C, k: 1, sdBefore: null, sdAfter: null, sdTarget: Number.isFinite(target) ? target : null };
+  }
+  const sdBefore = sdOf(1);
+  if (!(sdBefore > 0)) return { b: B, c: C, k: 1, sdBefore, sdAfter: sdBefore, sdTarget: target };
+  let lo = 0;
+  let hi = maxK;
+  for (let i = 0; i < iterations; i++) {
+    const mid = (lo + hi) / 2;
+    if (sdOf(mid) < target) lo = mid; else hi = mid;
+  }
+  const k = (lo + hi) / 2;
+  return { b: k * B, c: k * k * C, k, sdBefore, sdAfter: sdOf(k), sdTarget: target };
+}
+
+// Spredning af kurveleddet b·O + c·O² over et sæt outputs. Eksporteret så
+// kalderen kan måle MÅLET (den nuværende models spredning) med præcis samme
+// regnestykke som matchCurveSpread bruger.
+export function curveTermSd({ b, c = 0, outputs } = {}) {
+  const B = Number(b);
+  const C = Number(c) || 0;
+  const O = (outputs || []).map(Number).filter(Number.isFinite);
+  if (!O.length || !Number.isFinite(B)) return null;
+  const vals = O.map((o) => B * o + C * o * o);
+  const m = vals.reduce((s, v) => s + v, 0) / vals.length;
+  return Math.sqrt(vals.reduce((s, v) => s + (v - m) ** 2, 0) / vals.length);
+}
+
 // Ren prediktion af ln(e_prize_per_season) for én rytter mod et fittet objekt
 // (fitProductionModel-output, eller Kontrakt 2's `fit`-underobjekt uændret).
 // rider: { abilities, primary_type }. Typer UDEN samples i fittet (offset mangler)

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { fitProductionModel, fitOffsetsForFixedCurve, predictProductionLn, rescaleToMedian, FLOOR } from "./riderValuationFitV4.js";
+import { curveTermSd, fitProductionModel, fitOffsetsForFixedCurve, matchCurveSpread, predictProductionLn, rescaleToMedian, FLOOR } from "./riderValuationFitV4.js";
 import { blendedOutput } from "./riderValuation.js";
 
 // ── Syntetisk fixture ────────────────────────────────────────────────────────
@@ -206,4 +206,50 @@ test("fitOffsetsForFixedCurve: kaster ved for få samples og ved ugyldig kurve",
   assert.throws(() => fitOffsetsForFixedCurve([samples[0]], { alpha: 1, a: 1, b: 1 }));
   assert.throws(() => fitOffsetsForFixedCurve(samples, { alpha: 1, a: NaN, b: 1 }));
   assert.throws(() => fitOffsetsForFixedCurve(samples, { alpha: 1, a: 1, b: undefined }));
+});
+
+// ── matchCurveSpread / curveTermSd (#3353) ───────────────────────────────────
+
+test("curveTermSd måler spredningen af kurveleddet", () => {
+  const outputs = [10, 20, 30, 40];
+  const sd = curveTermSd({ b: 1, c: 0, outputs });
+  // b=1, c=0 ⇒ kurveleddet ER outputs; sd(10,20,30,40) = 11.1803...
+  assert.ok(Math.abs(sd - Math.sqrt(125)) < 1e-9, `sd=${sd}`);
+  assert.equal(curveTermSd({ b: 1, outputs: [] }), null);
+  assert.equal(curveTermSd({ b: NaN, outputs }), null);
+});
+
+test("matchCurveSpread finder k så spredningen rammer målet", () => {
+  const outputs = [10, 20, 30, 40];
+  const target = curveTermSd({ b: 0.3, c: 0, outputs });
+  const out = matchCurveSpread({ b: 0.1, c: 0, outputs, targetSd: target });
+  assert.ok(Math.abs(out.k - 3) < 1e-6, `k=${out.k}`);
+  assert.ok(Math.abs(out.b - 0.3) < 1e-6, `b=${out.b}`);
+  assert.ok(Math.abs(out.sdAfter - target) < 1e-6);
+});
+
+test("matchCurveSpread skalerer c med k² så kurvens form bevares", () => {
+  const outputs = [5, 15, 25, 35, 45];
+  const out = matchCurveSpread({ b: 0.1, c: -0.001, outputs, targetSd: curveTermSd({ b: 0.2, c: -0.004, outputs }) });
+  assert.ok(Math.abs(out.k - 2) < 1e-4, `k=${out.k}`);
+  assert.ok(Math.abs(out.c - out.k * out.k * -0.001) < 1e-12);
+});
+
+test("matchCurveSpread er en identitet når spredningen allerede passer", () => {
+  const outputs = [10, 20, 30];
+  const sd = curveTermSd({ b: 0.15, c: 0, outputs });
+  const out = matchCurveSpread({ b: 0.15, c: 0, outputs, targetSd: sd });
+  assert.ok(Math.abs(out.k - 1) < 1e-6, `k=${out.k}`);
+});
+
+test("matchCurveSpread lader kurven stå ved ugyldigt input i stedet for at give NaN", () => {
+  const outputs = [1, 2, 3];
+  assert.deepEqual(
+    matchCurveSpread({ b: 0.1, c: 0, outputs: [], targetSd: 5 }),
+    { b: 0.1, c: 0, k: 1, sdBefore: null, sdAfter: null, sdTarget: 5 }
+  );
+  assert.equal(matchCurveSpread({ b: 0.1, c: 0, outputs, targetSd: 0 }).k, 1);
+  assert.equal(matchCurveSpread({ b: 0.1, c: 0, outputs, targetSd: NaN }).k, 1);
+  // Konstant output ⇒ ingen spredning at matche; kurven skal stå uændret.
+  assert.equal(matchCurveSpread({ b: 0.1, c: 0, outputs: [7, 7, 7], targetSd: 3 }).k, 1);
 });

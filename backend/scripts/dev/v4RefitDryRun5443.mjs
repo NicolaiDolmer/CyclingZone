@@ -36,6 +36,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { fetchAllRows } from "../../lib/supabasePagination.js";
 import { ABILITY_KEYS } from "../../lib/riderTypes.js";
+import { ABILITY_KEYS as RACE_ABILITY_KEYS } from "../../lib/raceSimulator.js";
 import { ageForSeason } from "../../lib/riderSeasonAge.js";
 import { applyTypeDampening, TYPE_DAMPENING_ENABLED } from "../../lib/riderValuationTypeDampening.js";
 import { recomputeRiderValue } from "../../lib/riderValueRefresh.js";
@@ -141,8 +142,12 @@ async function load() {
   const teamById = new Map(teams.map((t) => [t.id, t]));
 
   const ids = new Set(riders.map((r) => r.id));
+  // #3353: race-motorens 15 noegler, ikke kun vaerdimodellens 13. En kandidat-
+  // vaegttabel kan bruge `positioning`/`tactics`, og en evne der ikke er hentet
+  // ville tavst falde ud af beregningen i stedet for at taelle.
+  const abilityCols = [...new Set([...ABILITY_KEYS, ...RACE_ABILITY_KEYS])];
   const abilities = await fetchAllRows(() => sb.from("rider_derived_abilities")
-    .select(`rider_id, ability_caps, ${ABILITY_KEYS.join(", ")}`).order("rider_id"));
+    .select(`rider_id, ability_caps, ${abilityCols.join(", ")}`).order("rider_id"));
   const abilityByRider = new Map(abilities.filter((a) => ids.has(a.rider_id)).map((a) => [a.rider_id, a]));
   const capsByRider = new Map(abilities.filter((a) => ids.has(a.rider_id)).map((a) => [a.rider_id, a.ability_caps]));
 

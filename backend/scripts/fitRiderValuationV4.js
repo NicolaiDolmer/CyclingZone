@@ -29,7 +29,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { fitProductionModel, fitOffsetsForFixedCurve, rescaleToMedian } from "../lib/riderValuationFitV4.js";
+import { curveTermSd, fitProductionModel, fitOffsetsForFixedCurve, matchCurveSpread, rescaleToMedian } from "../lib/riderValuationFitV4.js";
+import { blendedOutput } from "../lib/riderValuation.js";
 import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 import { applyTypeDampening, TYPE_DAMPENING_ENABLED } from "../lib/riderValuationTypeDampening.js";
 import { riderOverall } from "../lib/riderValuation.js";
@@ -103,6 +104,29 @@ const FIX_CURVE_FROM = arg("fix-curve-from", null);
 // Tabellen skrives MED i model-JSON'en som `weights`, saa scorecard og
 // toerkoersel automatisk bruger praecis den tabel modellen er fittet paa.
 const WEIGHTS_PATH = arg("weights", null);
+// #3353: begraens alpha-grid'et. Skifter vaegttabellen, skifter OUTPUT-SKALAEN
+// ogsaa - en bredere opskrift giver et snit taettere paa gennemsnittet, dvs. et
+// mindre spaend i O. Kurven (a, b, c) er kalibreret mod den GAMLE skala og kan
+// ikke genbruges raat; den skal forankres i den nye. Med --alpha-grid=1 fittes
+// kurven om PAA SAMME alsidigheds-blanding som den live model (alpha=1), saa det
+// eneste der aendrer sig er forankringen - ikke modellens form.
+const ALPHA_GRID = String(arg("alpha-grid", "")).trim();
+const ALPHA_GRID_VALUES = ALPHA_GRID
+  ? ALPHA_GRID.split(",").map((v) => Number(v.trim())).filter((v) => Number.isFinite(v))
+  : null;
+if (ALPHA_GRID && (!ALPHA_GRID_VALUES || !ALPHA_GRID_VALUES.length)) {
+  console.error(`❌ --alpha-grid skal vaere en kommasepareret liste af tal (fik "${ALPHA_GRID}").`);
+  process.exit(1);
+}
+// #3353: FORDELINGS-FORANKRING. Naar vaegttabellen aendres, aendres ogsaa
+// spaendet i output-scoren O - en bredere opskrift traekker snittet mod
+// rytterens gennemsnit. Vaerdien er eksponentiel i O, saa den samme kurve paa et
+// smallere spaend klemmer toppen sammen: medianen kan holdes af skalafaktoren,
+// men de staerkeste ryttere kollapser. Med --match-spread-from=<model> skaleres
+// kurven saa spredningen af kurveleddet over den AEGTE population matcher den
+// models. Vaerdi-FORDELINGEN bliver dermed som i dag; kun raekkefoelgen aendrer
+// sig, og det er praecis hvad en ny vaegttabel skal goere.
+const MATCH_SPREAD_FROM = arg("match-spread-from", null);
 const LEVEL_CORRECTION_ARG = arg("level-correction", null);
 const LEVEL_CORRECTION = LEVEL_CORRECTION_ARG == null ? null : Number(LEVEL_CORRECTION_ARG);
 if (LEVEL_CORRECTION != null && (!Number.isFinite(LEVEL_CORRECTION) || LEVEL_CORRECTION <= 0)) {
@@ -216,7 +240,10 @@ async function main() {
     fixedCurveRef = { from: FIX_CURVE_FROM, fitted_at: curveModel.fitted_at ?? null, sim_run_id: curveModel.sim_run_id ?? null };
     console.log(`\nKurve HOLDT FAST fra ${FIX_CURVE_FROM} (alpha=${fit.alpha}, a=${fit.a}, b=${fit.b}, c=${fit.c}) — kun type-offsets fittes.`);
   } else {
-    fit = fitProductionModel(samples, { weights: candidateWeights });
+    fit = fitProductionModel(samples, {
+      weights: candidateWeights,
+      ...(ALPHA_GRID_VALUES ? { alphaGrid: ALPHA_GRID_VALUES } : {}),
+    });
   }
 
   // --- Rapport: koefficienter, valgt alpha, r2, per-type offsets, n_samples ---
@@ -295,6 +322,48 @@ async function main() {
       .from("rider_derived_abilities").select("*").order("rider_id")),
   ]);
   const abilityByRider = new Map(abilityRows.map((a) => [a.rider_id, a]));
+
+  // --- #3353 fordelings-forankring (valgfri, se MATCH_SPREAD_FROM) ---
+  let spreadRef = null;
+  if (MATCH_SPREAD_FROM) {
+    const refPath = join(__dirname, "..", String(MATCH_SPREAD_FROM));
+    let refModel;
+    try {
+      refModel = JSON.parse(readFileSync(refPath, "utf8"));
+    } catch (e) {
+      console.error(`❌ Kunne ikke læse referencemodellen ${refPath}: ${e.message}`);
+      process.exit(1);
+    }
+    const refFit = refModel?.fit;
+    if (!refFit || !Number.isFinite(Number(refFit.b))) {
+      console.error(`❌ ${refPath} har ingen brugbar kurve (mangler fit.b).`);
+      process.exit(1);
+    }
+    // Samme population som skala-kalibreringen: aktive, ikke-akademi, med evner.
+    const pop = riders.filter((r) => !r.is_retired && !r.is_academy && abilityByRider.has(r.id));
+    const refOutputs = pop.map((r) =>
+      blendedOutput(abilityByRider.get(r.id), r.primary_type, refFit.alpha ?? 1, refModel.weights ?? null));
+    const candOutputs = pop.map((r) =>
+      blendedOutput(abilityByRider.get(r.id), r.primary_type, fit.alpha, candidateWeights));
+    const targetSd = curveTermSd({ b: refFit.b, c: refFit.c ?? 0, outputs: refOutputs });
+    const matched = matchCurveSpread({ b: fit.b, c: fit.c, outputs: candOutputs, targetSd });
+    spreadRef = {
+      from: MATCH_SPREAD_FROM,
+      n: pop.length,
+      target_sd: targetSd,
+      sd_before: matched.sdBefore,
+      sd_after: matched.sdAfter,
+      k: matched.k,
+      b_before: fit.b,
+      c_before: fit.c,
+    };
+    console.log(
+      `\nFordelings-forankring mod ${MATCH_SPREAD_FROM} (n=${pop.length}): ` +
+      `sd(kurveled) ${matched.sdBefore?.toFixed(3)} → ${matched.sdAfter?.toFixed(3)} (mål ${targetSd?.toFixed(3)}) · ` +
+      `k=${matched.k.toFixed(4)} · b ${fit.b.toExponential(4)} → ${matched.b.toExponential(4)}`
+    );
+    fit = { ...fit, b: matched.b, c: matched.c };
+  }
 
   const currentBaseValues = riders
     .map((r) => Number(r.base_value))
@@ -431,6 +500,7 @@ async function main() {
     type_stats: typeStats,
     ...(candidateWeights ? { weights: candidateWeights, weights_ref: WEIGHTS_PATH } : {}),
     ...(fixedCurveRef ? { fixed_curve_ref: fixedCurveRef } : {}),
+    ...(spreadRef ? { spread_match_ref: spreadRef } : {}),
     scale: Number(scale.toPrecision(8)),
     ...(LEVEL_CORRECTION != null ? { level_correction: LEVEL_CORRECTION } : {}),
     scale_ref: {
