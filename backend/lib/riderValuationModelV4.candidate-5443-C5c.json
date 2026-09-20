@@ -1,0 +1,828 @@
+{
+  "version": 4,
+  "method": "sim-production-npv",
+  "fitted_at": "2026-09-20T12:53:51.747Z",
+  "sim_run_id": "e4144252",
+  "K": 30,
+  "season_id": "00000000-0000-0000-0000-000000000003",
+  "prize_per_point": 75,
+  "beta_pt": 0,
+  "discount": 0.8,
+  "horizon_model": "survival-weighted",
+  "fit": {
+    "alpha": 1,
+    "a": 4.407784,
+    "b": 0.11682019,
+    "c": -0.0001603743,
+    "offset": {
+      "sprinter": -1.042902,
+      "tt": -0.947084,
+      "climber": -0.698597,
+      "puncheur": -1.075273,
+      "brostensrytter": -1.228226,
+      "baroudeur": -1.238001,
+      "rouleur": -0.978764,
+      "gc": -0.656888
+    },
+    "r2_log": 0.3582,
+    "n_samples": 7660
+  },
+  "type_stats": {
+    "sprinter": {
+      "n": 1245,
+      "median_prize": 195,
+      "p90_prize": 7403
+    },
+    "tt": {
+      "n": 749,
+      "median_prize": 210,
+      "p90_prize": 10550
+    },
+    "climber": {
+      "n": 1125,
+      "median_prize": 225,
+      "p90_prize": 21428
+    },
+    "puncheur": {
+      "n": 845,
+      "median_prize": 133,
+      "p90_prize": 8740
+    },
+    "brostensrytter": {
+      "n": 657,
+      "median_prize": 118,
+      "p90_prize": 9323
+    },
+    "baroudeur": {
+      "n": 913,
+      "median_prize": 160,
+      "p90_prize": 6105
+    },
+    "rouleur": {
+      "n": 1348,
+      "median_prize": 146,
+      "p90_prize": 5753
+    },
+    "gc": {
+      "n": 778,
+      "median_prize": 445,
+      "p90_prize": 19005
+    }
+  },
+  "weights": {
+    "sprinter": {
+      "sprint": 4,
+      "acceleration": 3,
+      "positioning": 2,
+      "flat": 2,
+      "durability": 1
+    },
+    "tt": {
+      "time_trial": 5,
+      "tempo": 2,
+      "endurance": 1,
+      "durability": 1,
+      "positioning": 1
+    },
+    "climber": {
+      "climbing": 5,
+      "tempo": 2,
+      "endurance": 2,
+      "recovery": 1,
+      "durability": 1,
+      "descending": 1,
+      "punch": 1
+    },
+    "puncheur": {
+      "punch": 5,
+      "tempo": 2,
+      "acceleration": 1,
+      "climbing": 1,
+      "positioning": 1,
+      "endurance": 1
+    },
+    "brostensrytter": {
+      "cobblestone": 5,
+      "flat": 2,
+      "durability": 2,
+      "positioning": 1,
+      "punch": 1,
+      "endurance": 1
+    },
+    "rouleur": {
+      "flat": 4,
+      "endurance": 2,
+      "tempo": 2,
+      "durability": 1,
+      "positioning": 1,
+      "recovery": 1,
+      "sprint": 1
+    },
+    "baroudeur": {
+      "aggression": 4,
+      "endurance": 2,
+      "descending": 1,
+      "recovery": 1,
+      "punch": 1,
+      "flat": 1,
+      "tactics": 1
+    },
+    "gc": {
+      "climbing": 3,
+      "time_trial": 3,
+      "recovery": 2,
+      "endurance": 2,
+      "tempo": 2,
+      "durability": 1,
+      "descending": 1
+    },
+    "tt|brostensrytter": {
+      "time_trial": 0.35,
+      "tempo": 0.14,
+      "endurance": 0.095,
+      "durability": 0.12,
+      "positioning": 0.095,
+      "cobblestone": 0.125,
+      "flat": 0.05,
+      "punch": 0.025
+    },
+    "rouleur|baroudeur": {
+      "flat": 0.260606,
+      "endurance": 0.171212,
+      "tempo": 0.116667,
+      "durability": 0.058333,
+      "positioning": 0.058333,
+      "recovery": 0.085606,
+      "sprint": 0.058333,
+      "aggression": 0.109091,
+      "descending": 0.027273,
+      "punch": 0.027273,
+      "tactics": 0.027273
+    },
+    "climber|puncheur": {
+      "climbing": 0.296503,
+      "tempo": 0.162238,
+      "endurance": 0.134965,
+      "recovery": 0.053846,
+      "durability": 0.053846,
+      "descending": 0.053846,
+      "punch": 0.19021,
+      "acceleration": 0.027273,
+      "positioning": 0.027273
+    },
+    "sprinter|tt": {
+      "sprint": 0.233333,
+      "acceleration": 0.175,
+      "positioning": 0.146667,
+      "flat": 0.116667,
+      "durability": 0.088333,
+      "time_trial": 0.15,
+      "tempo": 0.06,
+      "endurance": 0.03
+    },
+    "gc|tt": {
+      "climbing": 0.15,
+      "time_trial": 0.3,
+      "recovery": 0.1,
+      "endurance": 0.13,
+      "tempo": 0.16,
+      "durability": 0.08,
+      "descending": 0.05,
+      "positioning": 0.03
+    },
+    "rouleur|sprinter": {
+      "flat": 0.283333,
+      "endurance": 0.116667,
+      "tempo": 0.116667,
+      "durability": 0.083333,
+      "positioning": 0.108333,
+      "recovery": 0.058333,
+      "sprint": 0.158333,
+      "acceleration": 0.075
+    },
+    "climber|baroudeur": {
+      "climbing": 0.269231,
+      "tempo": 0.107692,
+      "endurance": 0.162238,
+      "recovery": 0.081119,
+      "durability": 0.053846,
+      "descending": 0.081119,
+      "punch": 0.081119,
+      "aggression": 0.109091,
+      "flat": 0.027273,
+      "tactics": 0.027273
+    },
+    "baroudeur|rouleur": {
+      "aggression": 0.254545,
+      "endurance": 0.177273,
+      "descending": 0.063636,
+      "recovery": 0.088636,
+      "punch": 0.063636,
+      "flat": 0.163636,
+      "tactics": 0.063636,
+      "tempo": 0.05,
+      "durability": 0.025,
+      "positioning": 0.025,
+      "sprint": 0.025
+    },
+    "tt|rouleur": {
+      "time_trial": 0.35,
+      "tempo": 0.19,
+      "endurance": 0.12,
+      "durability": 0.095,
+      "positioning": 0.095,
+      "flat": 0.1,
+      "recovery": 0.025,
+      "sprint": 0.025
+    },
+    "sprinter|rouleur": {
+      "sprint": 0.258333,
+      "acceleration": 0.175,
+      "positioning": 0.141667,
+      "flat": 0.216667,
+      "durability": 0.083333,
+      "endurance": 0.05,
+      "tempo": 0.05,
+      "recovery": 0.025
+    },
+    "brostensrytter|puncheur": {
+      "cobblestone": 0.291667,
+      "flat": 0.116667,
+      "durability": 0.116667,
+      "positioning": 0.085606,
+      "punch": 0.194697,
+      "endurance": 0.085606,
+      "tempo": 0.054545,
+      "acceleration": 0.027273,
+      "climbing": 0.027273
+    },
+    "brostensrytter|baroudeur": {
+      "cobblestone": 0.291667,
+      "flat": 0.143939,
+      "durability": 0.116667,
+      "positioning": 0.058333,
+      "punch": 0.085606,
+      "endurance": 0.112879,
+      "aggression": 0.109091,
+      "descending": 0.027273,
+      "recovery": 0.027273,
+      "tactics": 0.027273
+    },
+    "puncheur|climber": {
+      "punch": 0.341259,
+      "tempo": 0.173427,
+      "acceleration": 0.063636,
+      "climbing": 0.179021,
+      "positioning": 0.063636,
+      "endurance": 0.10979,
+      "recovery": 0.023077,
+      "durability": 0.023077,
+      "descending": 0.023077
+    },
+    "gc|puncheur": {
+      "climbing": 0.177273,
+      "time_trial": 0.15,
+      "recovery": 0.1,
+      "endurance": 0.127273,
+      "tempo": 0.154545,
+      "durability": 0.05,
+      "descending": 0.05,
+      "punch": 0.136364,
+      "acceleration": 0.027273,
+      "positioning": 0.027273
+    },
+    "brostensrytter|climber": {
+      "cobblestone": 0.291667,
+      "flat": 0.116667,
+      "durability": 0.139744,
+      "positioning": 0.058333,
+      "punch": 0.08141,
+      "endurance": 0.104487,
+      "climbing": 0.115385,
+      "tempo": 0.046154,
+      "recovery": 0.023077,
+      "descending": 0.023077
+    },
+    "climber|sprinter": {
+      "climbing": 0.269231,
+      "tempo": 0.107692,
+      "endurance": 0.107692,
+      "recovery": 0.053846,
+      "durability": 0.078846,
+      "descending": 0.053846,
+      "punch": 0.053846,
+      "sprint": 0.1,
+      "acceleration": 0.075,
+      "positioning": 0.05,
+      "flat": 0.05
+    },
+    "sprinter|puncheur": {
+      "sprint": 0.233333,
+      "acceleration": 0.202273,
+      "positioning": 0.143939,
+      "flat": 0.116667,
+      "durability": 0.058333,
+      "punch": 0.136364,
+      "tempo": 0.054545,
+      "climbing": 0.027273,
+      "endurance": 0.027273
+    },
+    "puncheur|rouleur": {
+      "punch": 0.318182,
+      "tempo": 0.177273,
+      "acceleration": 0.063636,
+      "climbing": 0.063636,
+      "positioning": 0.088636,
+      "endurance": 0.113636,
+      "flat": 0.1,
+      "durability": 0.025,
+      "recovery": 0.025,
+      "sprint": 0.025
+    },
+    "baroudeur|sprinter": {
+      "aggression": 0.254545,
+      "endurance": 0.127273,
+      "descending": 0.063636,
+      "recovery": 0.063636,
+      "punch": 0.063636,
+      "flat": 0.113636,
+      "tactics": 0.063636,
+      "sprint": 0.1,
+      "acceleration": 0.075,
+      "positioning": 0.05,
+      "durability": 0.025
+    },
+    "puncheur|tt": {
+      "punch": 0.318182,
+      "tempo": 0.187273,
+      "acceleration": 0.063636,
+      "climbing": 0.063636,
+      "positioning": 0.093636,
+      "endurance": 0.093636,
+      "time_trial": 0.15,
+      "durability": 0.03
+    },
+    "tt|climber": {
+      "time_trial": 0.35,
+      "tempo": 0.186154,
+      "endurance": 0.116154,
+      "durability": 0.093077,
+      "positioning": 0.07,
+      "climbing": 0.115385,
+      "recovery": 0.023077,
+      "descending": 0.023077,
+      "punch": 0.023077
+    },
+    "climber|rouleur": {
+      "climbing": 0.269231,
+      "tempo": 0.157692,
+      "endurance": 0.157692,
+      "recovery": 0.078846,
+      "durability": 0.078846,
+      "descending": 0.053846,
+      "punch": 0.053846,
+      "flat": 0.1,
+      "positioning": 0.025,
+      "sprint": 0.025
+    },
+    "brostensrytter|sprinter": {
+      "cobblestone": 0.291667,
+      "flat": 0.166667,
+      "durability": 0.141667,
+      "positioning": 0.108333,
+      "punch": 0.058333,
+      "endurance": 0.058333,
+      "sprint": 0.1,
+      "acceleration": 0.075
+    },
+    "baroudeur|brostensrytter": {
+      "aggression": 0.254545,
+      "endurance": 0.152273,
+      "descending": 0.063636,
+      "recovery": 0.063636,
+      "punch": 0.088636,
+      "flat": 0.113636,
+      "tactics": 0.063636,
+      "cobblestone": 0.125,
+      "durability": 0.05,
+      "positioning": 0.025
+    },
+    "tt|puncheur": {
+      "time_trial": 0.35,
+      "tempo": 0.194545,
+      "endurance": 0.097273,
+      "durability": 0.07,
+      "positioning": 0.097273,
+      "punch": 0.136364,
+      "acceleration": 0.027273,
+      "climbing": 0.027273
+    },
+    "puncheur|gc": {
+      "punch": 0.318182,
+      "tempo": 0.17013,
+      "acceleration": 0.063636,
+      "climbing": 0.127922,
+      "positioning": 0.063636,
+      "endurance": 0.106494,
+      "time_trial": 0.064286,
+      "recovery": 0.042857,
+      "durability": 0.021429,
+      "descending": 0.021429
+    },
+    "rouleur|puncheur": {
+      "flat": 0.233333,
+      "endurance": 0.143939,
+      "tempo": 0.171212,
+      "durability": 0.058333,
+      "positioning": 0.085606,
+      "recovery": 0.058333,
+      "sprint": 0.058333,
+      "punch": 0.136364,
+      "acceleration": 0.027273,
+      "climbing": 0.027273
+    },
+    "tt|baroudeur": {
+      "time_trial": 0.35,
+      "tempo": 0.14,
+      "endurance": 0.124545,
+      "durability": 0.07,
+      "positioning": 0.07,
+      "aggression": 0.109091,
+      "descending": 0.027273,
+      "recovery": 0.027273,
+      "punch": 0.027273,
+      "flat": 0.027273,
+      "tactics": 0.027273
+    },
+    "sprinter|climber": {
+      "sprint": 0.233333,
+      "acceleration": 0.175,
+      "positioning": 0.116667,
+      "flat": 0.116667,
+      "durability": 0.08141,
+      "climbing": 0.115385,
+      "tempo": 0.046154,
+      "endurance": 0.046154,
+      "recovery": 0.023077,
+      "descending": 0.023077,
+      "punch": 0.023077
+    },
+    "rouleur|brostensrytter": {
+      "flat": 0.283333,
+      "endurance": 0.141667,
+      "tempo": 0.116667,
+      "durability": 0.108333,
+      "positioning": 0.083333,
+      "recovery": 0.058333,
+      "sprint": 0.058333,
+      "cobblestone": 0.125,
+      "punch": 0.025
+    },
+    "brostensrytter|tt": {
+      "cobblestone": 0.291667,
+      "flat": 0.116667,
+      "durability": 0.146667,
+      "positioning": 0.088333,
+      "punch": 0.058333,
+      "endurance": 0.088333,
+      "time_trial": 0.15,
+      "tempo": 0.06
+    },
+    "sprinter|brostensrytter": {
+      "sprint": 0.233333,
+      "acceleration": 0.175,
+      "positioning": 0.141667,
+      "flat": 0.166667,
+      "durability": 0.108333,
+      "cobblestone": 0.125,
+      "punch": 0.025,
+      "endurance": 0.025
+    },
+    "tt|gc": {
+      "time_trial": 0.414286,
+      "tempo": 0.182857,
+      "endurance": 0.112857,
+      "durability": 0.091429,
+      "positioning": 0.07,
+      "climbing": 0.064286,
+      "recovery": 0.042857,
+      "descending": 0.021429
+    },
+    "rouleur|tt": {
+      "flat": 0.233333,
+      "endurance": 0.146667,
+      "tempo": 0.176667,
+      "durability": 0.088333,
+      "positioning": 0.088333,
+      "recovery": 0.058333,
+      "sprint": 0.058333,
+      "time_trial": 0.15
+    },
+    "gc|sprinter": {
+      "climbing": 0.15,
+      "time_trial": 0.15,
+      "recovery": 0.1,
+      "endurance": 0.1,
+      "tempo": 0.1,
+      "durability": 0.075,
+      "descending": 0.05,
+      "sprint": 0.1,
+      "acceleration": 0.075,
+      "positioning": 0.05,
+      "flat": 0.05
+    },
+    "rouleur|climber": {
+      "flat": 0.233333,
+      "endurance": 0.162821,
+      "tempo": 0.162821,
+      "durability": 0.08141,
+      "positioning": 0.058333,
+      "recovery": 0.08141,
+      "sprint": 0.058333,
+      "climbing": 0.115385,
+      "descending": 0.023077,
+      "punch": 0.023077
+    },
+    "puncheur|sprinter": {
+      "punch": 0.318182,
+      "tempo": 0.127273,
+      "acceleration": 0.138636,
+      "climbing": 0.063636,
+      "positioning": 0.113636,
+      "endurance": 0.063636,
+      "sprint": 0.1,
+      "flat": 0.05,
+      "durability": 0.025
+    },
+    "brostensrytter|gc": {
+      "cobblestone": 0.291667,
+      "flat": 0.116667,
+      "durability": 0.138095,
+      "positioning": 0.058333,
+      "punch": 0.058333,
+      "endurance": 0.10119,
+      "climbing": 0.064286,
+      "time_trial": 0.064286,
+      "recovery": 0.042857,
+      "tempo": 0.042857,
+      "descending": 0.021429
+    },
+    "gc|baroudeur": {
+      "climbing": 0.15,
+      "time_trial": 0.15,
+      "recovery": 0.127273,
+      "endurance": 0.154545,
+      "tempo": 0.1,
+      "durability": 0.05,
+      "descending": 0.077273,
+      "aggression": 0.109091,
+      "punch": 0.027273,
+      "flat": 0.027273,
+      "tactics": 0.027273
+    },
+    "baroudeur|tt": {
+      "aggression": 0.254545,
+      "endurance": 0.157273,
+      "descending": 0.063636,
+      "recovery": 0.063636,
+      "punch": 0.063636,
+      "flat": 0.063636,
+      "tactics": 0.063636,
+      "time_trial": 0.15,
+      "tempo": 0.06,
+      "durability": 0.03,
+      "positioning": 0.03
+    },
+    "tt|sprinter": {
+      "time_trial": 0.35,
+      "tempo": 0.14,
+      "endurance": 0.07,
+      "durability": 0.095,
+      "positioning": 0.12,
+      "sprint": 0.1,
+      "acceleration": 0.075,
+      "flat": 0.05
+    },
+    "sprinter|baroudeur": {
+      "sprint": 0.233333,
+      "acceleration": 0.175,
+      "positioning": 0.116667,
+      "flat": 0.143939,
+      "durability": 0.058333,
+      "aggression": 0.109091,
+      "endurance": 0.054545,
+      "descending": 0.027273,
+      "recovery": 0.027273,
+      "punch": 0.027273,
+      "tactics": 0.027273
+    },
+    "puncheur|baroudeur": {
+      "punch": 0.345455,
+      "tempo": 0.127273,
+      "acceleration": 0.063636,
+      "climbing": 0.063636,
+      "positioning": 0.063636,
+      "endurance": 0.118182,
+      "aggression": 0.109091,
+      "descending": 0.027273,
+      "recovery": 0.027273,
+      "flat": 0.027273,
+      "tactics": 0.027273
+    },
+    "climber|gc": {
+      "climbing": 0.333516,
+      "tempo": 0.150549,
+      "endurance": 0.150549,
+      "recovery": 0.096703,
+      "durability": 0.075275,
+      "descending": 0.075275,
+      "punch": 0.053846,
+      "time_trial": 0.064286
+    },
+    "climber|brostensrytter": {
+      "climbing": 0.269231,
+      "tempo": 0.107692,
+      "endurance": 0.132692,
+      "recovery": 0.053846,
+      "durability": 0.103846,
+      "descending": 0.053846,
+      "punch": 0.078846,
+      "cobblestone": 0.125,
+      "flat": 0.05,
+      "positioning": 0.025
+    },
+    "baroudeur|puncheur": {
+      "aggression": 0.254545,
+      "endurance": 0.154545,
+      "descending": 0.063636,
+      "recovery": 0.063636,
+      "punch": 0.2,
+      "flat": 0.063636,
+      "tactics": 0.063636,
+      "tempo": 0.054545,
+      "acceleration": 0.027273,
+      "climbing": 0.027273,
+      "positioning": 0.027273
+    },
+    "rouleur|gc": {
+      "flat": 0.233333,
+      "endurance": 0.159524,
+      "tempo": 0.159524,
+      "durability": 0.079762,
+      "positioning": 0.058333,
+      "recovery": 0.10119,
+      "sprint": 0.058333,
+      "climbing": 0.064286,
+      "time_trial": 0.064286,
+      "descending": 0.021429
+    },
+    "climber|tt": {
+      "climbing": 0.269231,
+      "tempo": 0.167692,
+      "endurance": 0.137692,
+      "recovery": 0.053846,
+      "durability": 0.083846,
+      "descending": 0.053846,
+      "punch": 0.053846,
+      "time_trial": 0.15,
+      "positioning": 0.03
+    },
+    "brostensrytter|rouleur": {
+      "cobblestone": 0.291667,
+      "flat": 0.216667,
+      "durability": 0.141667,
+      "positioning": 0.083333,
+      "punch": 0.058333,
+      "endurance": 0.108333,
+      "tempo": 0.05,
+      "recovery": 0.025,
+      "sprint": 0.025
+    },
+    "baroudeur|climber": {
+      "aggression": 0.254545,
+      "endurance": 0.173427,
+      "descending": 0.086713,
+      "recovery": 0.086713,
+      "punch": 0.086713,
+      "flat": 0.063636,
+      "tactics": 0.063636,
+      "climbing": 0.115385,
+      "tempo": 0.046154,
+      "durability": 0.023077
+    },
+    "puncheur|brostensrytter": {
+      "punch": 0.343182,
+      "tempo": 0.127273,
+      "acceleration": 0.063636,
+      "climbing": 0.063636,
+      "positioning": 0.088636,
+      "endurance": 0.088636,
+      "cobblestone": 0.125,
+      "flat": 0.05,
+      "durability": 0.05
+    },
+    "sprinter|gc": {
+      "sprint": 0.233333,
+      "acceleration": 0.175,
+      "positioning": 0.116667,
+      "flat": 0.116667,
+      "durability": 0.079762,
+      "climbing": 0.064286,
+      "time_trial": 0.064286,
+      "recovery": 0.042857,
+      "endurance": 0.042857,
+      "tempo": 0.042857,
+      "descending": 0.021429
+    },
+    "gc|brostensrytter": {
+      "climbing": 0.15,
+      "time_trial": 0.15,
+      "recovery": 0.1,
+      "endurance": 0.125,
+      "tempo": 0.1,
+      "durability": 0.1,
+      "descending": 0.05,
+      "cobblestone": 0.125,
+      "flat": 0.05,
+      "positioning": 0.025,
+      "punch": 0.025
+    },
+    "gc|rouleur": {
+      "climbing": 0.15,
+      "time_trial": 0.15,
+      "recovery": 0.125,
+      "endurance": 0.15,
+      "tempo": 0.15,
+      "durability": 0.075,
+      "descending": 0.05,
+      "flat": 0.1,
+      "positioning": 0.025,
+      "sprint": 0.025
+    },
+    "gc|climber": {
+      "climbing": 0.265385,
+      "time_trial": 0.15,
+      "recovery": 0.123077,
+      "endurance": 0.146154,
+      "tempo": 0.146154,
+      "durability": 0.073077,
+      "descending": 0.073077,
+      "punch": 0.023077
+    },
+    "baroudeur|gc": {
+      "aggression": 0.254545,
+      "endurance": 0.17013,
+      "descending": 0.085065,
+      "recovery": 0.106494,
+      "punch": 0.063636,
+      "flat": 0.063636,
+      "tactics": 0.063636,
+      "climbing": 0.064286,
+      "time_trial": 0.064286,
+      "tempo": 0.042857,
+      "durability": 0.021429
+    }
+  },
+  "weights_ref": "lib/refit5443/weights-C5c.json",
+  "fixed_curve_ref": {
+    "from": "lib/riderValuationModelV4.json",
+    "fitted_at": "2026-07-18T19:04:14.692Z",
+    "sim_run_id": "75507b50"
+  },
+  "spread_match_ref": {
+    "from": "lib/riderValuationModelV4.json",
+    "n": 8082,
+    "target_sd": 1.2700413049569026,
+    "sd_before": 1.1092775556969419,
+    "sd_after": 1.2700413049569022,
+    "k": 1.156969529550791,
+    "b_before": 0.10097084,
+    "c_before": -0.0001198094
+  },
+  "scale": 7.0259751,
+  "level_correction": 0.810849161784679,
+  "scale_ref": {
+    "calibrate": "shipping",
+    "median_current_base_value": 5021,
+    "median_v4_raw_npv": 710,
+    "n_calibration": 8082,
+    "shipping": {
+      "n": 8082,
+      "median_stored_same_population": 4903,
+      "median_shipping_before": 4935,
+      "scale_before": 7.071831,
+      "type_dampening_enabled": true,
+      "level_correction_applied": 0.810849161784679
+    }
+  },
+  "elite_premium": {
+    "overall_threshold": 45,
+    "k": 0.0792622,
+    "floor_overall": 58,
+    "floor": 9880436,
+    "affordability_ceiling": 4940218,
+    "unbuyable_seasons": 4,
+    "target_top": 98804360
+  },
+  "notes": "Værdimodel v4 (#2428, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global faktor så median(v4) matcher median(nuværende base_value). elite_premium = stejl konveks præmie over overall-tærskel så de enormt gode ryttere er ukøbelige i unbuyable_seasons sæsoner (kalibreret mod rigeste holds råd-loft); ejer-tunbart. Styrer INGEN økonomi (shadow, ingen migration)."
+}

@@ -70,6 +70,7 @@ const NAMED = [
   { id: "34727ffe-1492-43c2-ad65-6f4f10acf06a", label: "Wessel K. Mertens (knud_r_flink)" },
   "ryan cooper", "jasper verhoeven", "daniel carmona", "jihoon bae", "yuto suzuki",
   "mason marsh", "tijl coppens", "toby murphy", "romain dumas",
+  "nicolo caruso", "ryan newton", "long chen",
 ];
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
