@@ -126,6 +126,18 @@ if (ALPHA_GRID && (!ALPHA_GRID_VALUES || !ALPHA_GRID_VALUES.length)) {
 // kurven saa spredningen af kurveleddet over den AEGTE population matcher den
 // models. Vaerdi-FORDELINGEN bliver dermed som i dag; kun raekkefoelgen aendrer
 // sig, og det er praecis hvad en ny vaegttabel skal goere.
+// #3353: overskriv alsidigheds-blandingen alpha naar kurven holdes fast.
+// alpha=1 betyder at KUN de evner der taeller for rytterens type overhovedet
+// indgaar i vaerdien - faar han den forkerte type-label, er formlen blind for
+// resten af ham. alpha<1 lader en andel af vaerdien komme fra rytterens samlede
+// evne-niveau, uafhaengigt af typen. Det er en ejer-beslutning; flaget findes
+// for at kunne maale den.
+const ALPHA_OVERRIDE_ARG = arg("alpha", null);
+const ALPHA_OVERRIDE = ALPHA_OVERRIDE_ARG == null ? null : Number(ALPHA_OVERRIDE_ARG);
+if (ALPHA_OVERRIDE != null && (!Number.isFinite(ALPHA_OVERRIDE) || ALPHA_OVERRIDE < 0 || ALPHA_OVERRIDE > 1)) {
+  console.error(`❌ --alpha skal vaere et tal i [0,1] (fik "${ALPHA_OVERRIDE_ARG}").`);
+  process.exit(1);
+}
 const MATCH_SPREAD_FROM = arg("match-spread-from", null);
 const LEVEL_CORRECTION_ARG = arg("level-correction", null);
 const LEVEL_CORRECTION = LEVEL_CORRECTION_ARG == null ? null : Number(LEVEL_CORRECTION_ARG);
@@ -236,7 +248,10 @@ async function main() {
       console.error(`❌ ${curvePath} har ingen brugbar fit-kurve (mangler fit.a/fit.b).`);
       process.exit(1);
     }
-    fit = fitOffsetsForFixedCurve(samples, { alpha: src.alpha ?? 1, a: src.a, b: src.b, c: src.c ?? 0, weights: candidateWeights });
+    fit = fitOffsetsForFixedCurve(samples, {
+      alpha: ALPHA_OVERRIDE ?? src.alpha ?? 1,
+      a: src.a, b: src.b, c: src.c ?? 0, weights: candidateWeights,
+    });
     fixedCurveRef = { from: FIX_CURVE_FROM, fitted_at: curveModel.fitted_at ?? null, sim_run_id: curveModel.sim_run_id ?? null };
     console.log(`\nKurve HOLDT FAST fra ${FIX_CURVE_FROM} (alpha=${fit.alpha}, a=${fit.a}, b=${fit.b}, c=${fit.c}) — kun type-offsets fittes.`);
   } else {

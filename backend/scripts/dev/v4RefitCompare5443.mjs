@@ -439,7 +439,7 @@ function weightRow(name, table) {
 
 function buildReport(ctx, { meta, results, standstill, c3Young, named, modelNames, ratingCorrToday, ratingCorrTodayByType }) {
   const cols = results.map((r) => r.name);
-  const head = (label) => `| Prøve | ${cols.join(" | ")} |\n|---|${cols.map(() => "--:").join("|")}|`;
+  const head = () => `| Prøve | ${cols.join(" | ")} |\n|---|${cols.map(() => "--:").join("|")}|`;
 
   const test1 = [
     head(),
