@@ -29,15 +29,38 @@ Spillere og kode taler om "rytterens værdi" som ét tal. Det er mindst **tre**,
 
 | Regel | Kilde/kode | Låst | Status |
 |---|---|---|---|
-| `market_value = COALESCE(base_value,1000) + prize_earnings_bonus`, DB GENERATED | `database/2026-06-10-value-cutover-base-value.sql` | #1101, 10/6 | Live |
-| `base_value` skrives af backfill/model v4 (`riderCareerNpv.js`) | `docs/GAME_INVARIANTS.md` | — | Live |
-| `prize_earnings_bonus` = 3-sæsons-vindue af præmieindtjening, ÉN fast divisor (3) uanset hvor mange sæsoner der findes | `economyEngine.updateRiderValues` | ejer 8/6 (#1155) | Live ved præmie-udbetaling |
+| `market_value = COALESCE(base_value,1000)`, DB GENERATED | `database/schema.sql` (`riders.market_value`) | #1101, 10/6 · ændret ved #2594-cutover | Live. **Rettet 20/9 (#5443):** dokumentet sagde tidligere `+ prize_earnings_bonus`; det er ikke længere sandt i prod. Bonussen røg ud af den genererede kolonne ved v4-cutoveren (#2594), fordi v4 prissætter forventede præmier selv og bonussen dermed dobbelt-talte |
+| `base_value` skrives af backfill/value-sweep/progression fra den valgte værdimodel (`riderCareerNpv.js`) | `docs/GAME_INVARIANTS.md` | — | Live |
+| `prize_earnings_bonus` = 3-sæsons-vindue af præmieindtjening, ÉN fast divisor (3) uanset hvor mange sæsoner der findes | `economyEngine.updateRiderValues` | ejer 8/6 (#1155) | Kolonnen **vedligeholdes** ved præmie-udbetaling, men indgår **ikke** i `market_value` (se rækken ovenfor). Den er i dag et rent regnskabstal |
 | — genberegnes ved **præmie-udbetaling** (`paySeasonPrizesToDate`) | `backend/lib/prizePayoutEngine.js` | R3 #895 | **Live, ubetinget** |
 | — genberegnes ved **sæson-slut** | `economyEngine.processTeamSeasonEnd` | flag `SEASON_VALUE_RECALC_ENABLED` | **PT `false`** (#1155, 8/6) — se §10.1 |
-| `valuation_type` frosset snapshot af `primary_type` | `riderValuation.js`, `riderCareerNpv.js` | #3345, ejer 4/8 | Live, undgår −24,5 % populations-shock |
+| Hvilken værdimodel der regnes med | app_config-nøgle `rider_valuation_model` (`riderValuationModelSelect.js`) | #5443, ejer 20/9 | `v4` = modellen der har kørt siden cutover. `v5` = den nye (se §1.1). Læses ved hver værdi-kørsel; fail-safe til `v4` |
+| `valuation_type` frosset snapshot af `primary_type` | `riderValuation.js`, `riderCareerNpv.js` | #3345, ejer 4/8 | Live **under v4**. Indgår ikke i v5's beregning (se §1.1). Kolonnen droppes først i en senere, ejer-gatet migration |
 | NPV-vækstrater frosset (trin 7) | `riderCareerNpv.js` (`FROZEN_NPV_RATE_BY_POTENTIAL`) | ejer 16/8 | Live, undgår median −12 % shock |
 | Søndags-marked-sweep (blander model + observerede handler) | `marketValueSundaySweep.js` + `marketValueModelV1.json` | app_config-flag `market_value_sweep_enabled` | **SLUKKET.** Verificeret i prod 30/8: `market_value_sweep_enabled = 'off'`, `market_value_global_weight = 0`, og `market_value_sunday_sweep_log` er tom. Den har aldrig kørt. Se §9 |
 | Kadence: værdier genberegnes KUN søndag, fra kl. 06 dansk tid | `sundayValueSweep.js` | ejer 30/8 (#4419); søndags-kadencen selv: ejer 6/8 (#3448) | Live. Se §9 for hele billedet |
+
+### 1.1 Værdimodel v5 — værdien regnes på de samme evner som ratingen (#5443, ejer 20/9)
+
+**Problemet den løser.** Værdimodellen havde sin egen vægttabel, adskilt fra den opskrift rytterens rating er bygget af. For flere roller betød det at prisen kun bevægede sig når én bestemt evne bevægede sig, mens rating-tallet spilleren så var bygget af flere. Oveni lå to midlertidige frysninger fra august: en frossen `valuation_type` (#3345) og en type-dæmpning (#4000). Nettoresultatet var ryttere hvis værdi kunne stå stille mens rytteren udviklede sig i sin egen rolle — meldt af spillerne i #5416.
+
+**Hvad v5 ændrer, kvalitativt** (tal og fordelinger ligger i `balance-internals/`, ikke her):
+
+| # | Ændring | Kode |
+|---|---|---|
+| 1 | Værdien læser rollens evner med **rating-tallets egen opskrift** — ét regnestykke, én tabel, så de to tal ikke kan skride fra hinanden | `weights/displayRecipes.js` (`roleOutputRaw`), model-felt `weights_source` |
+| 2 | Den frosne `valuation_type` indgår **ikke**; rytterens faktiske primær-type bruges | model-felt `type_source` |
+| 3 | Type-dæmpningen (#4000) er **ude** — den rettede en skæv stikprøve der ikke findes efter re-fittet | model-felt `type_dampening` |
+| 4 | Koefficienter og skala er **genfittet** mod den nuværende typefordeling | `riderValuationModelV5.json` |
+| 5 | `FROZEN_NPV_RATE_BY_POTENTIAL` **bliver stående** (uændret) | `riderCareerNpv.js` |
+
+**Punkt 5 er en bevidst beslutning, ikke en forglemmelse.** Karriere-fremskrivningens hældning styres i dag af det skjulte potentiale gennem en frossen rate-tabel. Målt 20/9 er det en **modelfejl at fjerne den alene**: den undervurderer unge ryttere markant. Tabellen afløses først når træningsscoren kan bære fremskrivningen (#4851, #2798) — planlagt midt i S4, og den kræver score-historik for hele bestanden.
+
+**Aktivering er ejerens ene skridt.** Modellen ligger klar i repoet, men app_config-nøglen `rider_valuation_model` seedes `v4`, og koden falder fail-safe tilbage til `v4` ved enhver læsefejl. En merge flytter derfor ingen værdi. Tørkørsel mod hele populationen: `backend/scripts/dev/valuationV5DryRun5443.mjs` (read-only, skriver kun lokalt).
+
+**Rækkefølge ved tænding** (hard regel, jf. §9.1): flip nøglen **før** søndagskørslen kl. 06, så begivenheden ER søndagskørslen, og en efterfølgende sæson-cutover regner på det samme grundlag. Søndags-pipelinen kører stadig v4/v5-refresh FØRST og markedsblend SIDST.
+
+---
 
 **Startpris-loft på auktion** (`backend/lib/auctionRules.js`, `getAuctionStartPriceIssue`): egen rytter må udbydes for **maks 1× `market_value`**; bank/AI-ryttere skal udbydes for **mindst 1× `market_value`**. Ingen ejer-lås-dato fundet i koden for netop denne grænse. Kritiseret hårdt i kilde-dokumentet §3.1 (spærrer markedet fra at sige "denne rytter er mere værd") — forslaget om 5×-loft + 2-budgiver-krav + bank-reserve på 25 % er **ikke implementeret**, kun anbefalet.
 
@@ -205,7 +228,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 
 **Bygget** (#3448/#3449, merged 23/8): blend-sweep med support-guard pr. rytter og ugentligt ændringsloft, kill-switch, dato-dedup. `marketValueModelV1.json` er den fittede markedsmodel.
 
-**Ikke tændt endnu. Ejer-go 30/8: tændes søndag 6/9 med 15 % global markedsvægt**, uændret ugeloft ±25 %, derefter i skridt med scorecard + ejer-go pr. skridt. Eksekvering: [#4449](https://github.com/NicolaiDolmer/CyclingZone/issues/4449). Tilstand verificeret i prod 30/8, altså før flippet:
+**Stadig ikke tændt. Ejer-go 30/8 lød på søndag 6/9 med 15 % global markedsvægt** (uændret ugeloft ±25 %, derefter i skridt med scorecard + ejer-go pr. skridt). **Rettet 20/9 (#5443): det flip skete aldrig.** Verificeret read-only mod prod 20/9 — `market_value_sweep_ran = false` for både 6/9, 13/9 og 20/9, og blokkeren fra #4449 (runtime læser V1-artefaktet, ikke den nyere fittede markedsmodel) står stadig. Dokumentet lovede en tilstand der ikke findes; markedet har aldrig flyttet en eneste rytterværdi. Eksekvering: [#4449](https://github.com/NicolaiDolmer/CyclingZone/issues/4449). Næste skridt efter v5 (§1.1) er en gen-fittet markedsmodel mod den nye typefordeling — de gamle koefficienter er fittet på en typefordeling der ikke eksisterer længere. Tilstand verificeret i prod 30/8, uændret siden:
 
 | Nøgle | Værdi |
 |---|---|
