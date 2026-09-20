@@ -152,7 +152,10 @@ function simulateCareer(rider, abilities, model) {
     // rytter kan ikke længere værdisættes til "ingenting" alene på sin alder.
     if (s > 25 || (s > 0 && age_s > 40) || !(S >= 1e-4)) break;
 
-    const O_s = blendedOutput(ab, type, alpha);
+    // #3353: model.weights er en KANDIDAT-vægttabel, kun sat af måle-værktøj.
+    // Mangler den — og det gør den i enhver produktionsmodel — bruges den
+    // committede tabel, bit-identisk med før.
+    const O_s = blendedOutput(ab, type, alpha, model.weights ?? null);
     const prod_s = Math.exp(fit.a + fit.b * O_s + c * O_s * O_s + offset);
     const discounted = discount ** s * S * prod_s;
     npv += discounted;

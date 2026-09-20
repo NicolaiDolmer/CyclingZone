@@ -30,12 +30,12 @@ export const FLOOR = 1;
 
 // Fit modellen for ÉN fast alpha. samples: [{primary_type, abilities, e_prize}].
 // Returnerer { a, b, c, offset, r2_log } — offset kun for typer MED ≥1 sample.
-function fitForAlpha(samples, alpha) {
+function fitForAlpha(samples, alpha, weights = null) {
   const X = [];
   const y = [];
   const outputs = [];
   for (const s of samples) {
-    const O = blendedOutput(s.abilities, s.primary_type, alpha);
+    const O = blendedOutput(s.abilities, s.primary_type, alpha, weights);
     outputs.push(O);
     X.push([1, O, O * O]);
     y.push(Math.log(Math.max(Number(s.e_prize) || 0, FLOOR)));
@@ -79,7 +79,7 @@ function fitForAlpha(samples, alpha) {
 // Samme to-trins-matematik som fitForAlpha, blot uden OLS-trinnet: residualerne
 // måles mod den FASTE kurve, og offset[type] = snittet af dem. r2_log beregnes
 // mod samme kurve, så tallet er sammenligneligt med et fuldt fit.
-export function fitOffsetsForFixedCurve(samples, { alpha, a, b, c = 0 } = {}) {
+export function fitOffsetsForFixedCurve(samples, { alpha, a, b, c = 0, weights = null } = {}) {
   if (!Array.isArray(samples) || samples.length < 3) {
     throw new Error(`fitOffsetsForFixedCurve: too few samples (${samples?.length ?? 0}, min 3)`);
   }
@@ -94,7 +94,7 @@ export function fitOffsetsForFixedCurve(samples, { alpha, a, b, c = 0 } = {}) {
   const outputs = [];
   const y = [];
   for (const s of samples) {
-    outputs.push(blendedOutput(s.abilities, s.primary_type, alpha));
+    outputs.push(blendedOutput(s.abilities, s.primary_type, alpha, weights));
     y.push(Math.log(Math.max(Number(s.e_prize) || 0, FLOOR)));
   }
 
@@ -128,7 +128,7 @@ export function fitOffsetsForFixedCurve(samples, { alpha, a, b, c = 0 } = {}) {
 
 // Fit v4-produktionsmodellen: vælg den alpha i alphaGrid der maksimerer log-R²,
 // og returnér dens fulde fit. samples: [{ primary_type, abilities, e_prize }].
-export function fitProductionModel(samples, { alphaGrid = [0, 0.25, 0.5, 0.75, 1] } = {}) {
+export function fitProductionModel(samples, { alphaGrid = [0, 0.25, 0.5, 0.75, 1], weights = null } = {}) {
   if (!Array.isArray(samples) || samples.length < 3) {
     throw new Error(`fitProductionModel: too few samples (${samples?.length ?? 0}, min 3)`);
   }
@@ -138,7 +138,7 @@ export function fitProductionModel(samples, { alphaGrid = [0, 0.25, 0.5, 0.75, 1
 
   let best = null;
   for (const alpha of alphaGrid) {
-    const fit = fitForAlpha(samples, alpha);
+    const fit = fitForAlpha(samples, alpha, weights);
     if (!best || fit.r2_log > best.r2_log) best = { alpha, ...fit };
   }
   return { ...best, n_samples: samples.length };
@@ -166,8 +166,8 @@ export function rescaleToMedian({ scale, medianTarget, medianActual } = {}) {
 // falder tilbage til det laveste fittede offset — samme fallback-mønster som v3
 // #1231 (predictBaseValue i riderValuation.js): 0 ville ellers kunne gøre en
 // anchor-løs/sample-løs type kunstigt dyrere end de fittede typer.
-export function predictProductionLn({ abilities, primary_type }, fit) {
-  const O = blendedOutput(abilities, primary_type, fit.alpha);
+export function predictProductionLn({ abilities, primary_type }, fit, weights = null) {
+  const O = blendedOutput(abilities, primary_type, fit.alpha, weights);
   const offsets = fit.offset
     ? Object.values(fit.offset).map(Number).filter(Number.isFinite)
     : [];

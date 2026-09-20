@@ -37,14 +37,22 @@ export { ABILITY_KEYS };
 // weightTableSplit.test.js — men en fremtidig vægt-rettelse i ét af de fire
 // formål kan nu ikke længere flytte markedsværdier ved et uheld. Det var
 // rod-årsagen bag gentagne "små rettelser" der blev til releases med fejl.
-const WEIGHTS_BY_TYPE = Object.freeze(
+export const WEIGHTS_BY_TYPE = Object.freeze(
   Object.fromEntries(VALUATION_WEIGHTS.map((t) => [t.key, t.weights]))
 );
 
+// #3353: vægt-tabellen kan OVERSKRIVES pr. kald, så en kandidat-tabel kan måles
+// mod hele populationen uden at den live tabel bliver rørt. Udeladt/null ⇒
+// præcis den committede tabel, bit-identisk med før. Produktionen sender aldrig
+// noget med; kun fit-, scorecard- og tørkørsels-værktøjet gør, via model.weights.
+// Vægt-tabellen er en EJER-BESLUTNING (se filhovedet i weights/valuationWeights.js
+// og #3353) — denne parameter gør det muligt at MÅLE et alternativ, ikke at
+// indføre det.
+
 // Type-output (0-99): vægtet snit af de POSITIVE vægte for rytterens primær-type.
 // Manglende type/abilities → snit af alle tilgængelige abilities (neutral fallback).
-export function outputScore(abilities = {}, primaryType = null) {
-  const weights = WEIGHTS_BY_TYPE[primaryType];
+export function outputScore(abilities = {}, primaryType = null, weightsByType = null) {
+  const weights = (weightsByType || WEIGHTS_BY_TYPE)[primaryType];
   if (weights) {
     let sum = 0, wsum = 0;
     for (const [k, w] of Object.entries(weights)) {
@@ -70,9 +78,9 @@ export function meanAbilityScore(abilities = {}) {
 
 // v3-output: alsidigheds-blend mellem speciale-score og snit af alle evner.
 // alpha=1 → ren speciale-score (v2-adfærd). Kalibreret alpha ligger i model-JSON.
-export function blendedOutput(abilities = {}, primaryType = null, alpha = 1) {
+export function blendedOutput(abilities = {}, primaryType = null, alpha = 1, weightsByType = null) {
   const a = Number.isFinite(Number(alpha)) ? Math.min(1, Math.max(0, Number(alpha))) : 1;
-  const spec = outputScore(abilities, primaryType);
+  const spec = outputScore(abilities, primaryType, weightsByType);
   if (a >= 1) return spec;
   return a * spec + (1 - a) * meanAbilityScore(abilities);
 }
@@ -115,7 +123,10 @@ export function predictBaseValue(rider, abilities, model /*, opts */) {
   // fjern denne fallback-kæde, læs primary_type direkte igen, og drop
   // riders.valuation_type-kolonnen.
   const type = rider?.valuation_type ?? rider?.primary_type ?? null;
-  let O = blendedOutput(abilities, type, model.alpha ?? 1);
+  // #3353: model.weights er en KANDIDAT-vægttabel (kun sat af måle-værktøj).
+  // Mangler den — og det gør den i alle produktionsmodeller — bruges den
+  // committede tabel, præcis som før.
+  let O = blendedOutput(abilities, type, model.alpha ?? 1, model.weights ?? null);
   // Ekstrapolations-guard: kurven er kun kalibreret op til den højeste anchor
   // (output_max i model-JSON). Output derover klampes — ellers eksploderer den
   // konvekse top for urealistiske profiler (Harry Ward 1,13 mia., 10/6). KUN opad:

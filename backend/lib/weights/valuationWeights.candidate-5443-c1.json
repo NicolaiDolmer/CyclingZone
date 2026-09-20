@@ -1,0 +1,68 @@
+{
+  "sprinter": {
+    "sprint": 4,
+    "acceleration": 3,
+    "positioning": 2,
+    "flat": 2,
+    "durability": 1
+  },
+  "tt": {
+    "time_trial": 5,
+    "tempo": 2,
+    "endurance": 1,
+    "durability": 1,
+    "positioning": 1
+  },
+  "climber": {
+    "climbing": 5,
+    "tempo": 2,
+    "endurance": 2,
+    "recovery": 1,
+    "durability": 1,
+    "descending": 1,
+    "punch": 1
+  },
+  "puncheur": {
+    "punch": 5,
+    "tempo": 2,
+    "acceleration": 1,
+    "climbing": 1,
+    "positioning": 1,
+    "endurance": 1
+  },
+  "brostensrytter": {
+    "cobblestone": 5,
+    "flat": 2,
+    "durability": 2,
+    "positioning": 1,
+    "punch": 1,
+    "endurance": 1
+  },
+  "rouleur": {
+    "flat": 4,
+    "endurance": 2,
+    "tempo": 2,
+    "durability": 1,
+    "positioning": 1,
+    "recovery": 1,
+    "sprint": 1
+  },
+  "baroudeur": {
+    "aggression": 4,
+    "endurance": 2,
+    "descending": 1,
+    "recovery": 1,
+    "punch": 1,
+    "flat": 1,
+    "tactics": 1
+  },
+  "gc": {
+    "climbing": 3,
+    "time_trial": 3,
+    "recovery": 2,
+    "endurance": 2,
+    "tempo": 2,
+    "durability": 1,
+    "descending": 1
+  }
+}

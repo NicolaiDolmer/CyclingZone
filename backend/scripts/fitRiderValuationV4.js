@@ -95,6 +95,14 @@ if (!["raw", "shipping"].includes(CALIBRATE)) {
 // er en helt anden beslutning (den flytter hele værdifordelingen og dermed
 // pengemængden). Med dette flag isoleres ændringen til det #3353 handler om.
 const FIX_CURVE_FROM = arg("fix-curve-from", null);
+// #3353: KANDIDAT-vaegttabel (JSON: { <type>: { <evne>: vaegt, ... } }). Tabellen
+// bestemmer hvilke evner der overhovedet taeller for en type - dvs. hvor meget af
+// rytteren formlen kan se. Den er en EJER-BESLUTNING; flaget findes for at kunne
+// MAALE et alternativ mod hele populationen, ikke for at indfoere det. Udeladt =>
+// den committede tabel (weights/valuationWeights.js), bit-identisk med foer.
+// Tabellen skrives MED i model-JSON'en som `weights`, saa scorecard og
+// toerkoersel automatisk bruger praecis den tabel modellen er fittet paa.
+const WEIGHTS_PATH = arg("weights", null);
 const LEVEL_CORRECTION_ARG = arg("level-correction", null);
 const LEVEL_CORRECTION = LEVEL_CORRECTION_ARG == null ? null : Number(LEVEL_CORRECTION_ARG);
 if (LEVEL_CORRECTION != null && (!Number.isFinite(LEVEL_CORRECTION) || LEVEL_CORRECTION <= 0)) {
@@ -163,6 +171,30 @@ async function main() {
   console.log(`\nSim-artefakt: season_id=${artefact.season_id} K=${artefact.K} base_seed=${artefact.base_seed} ` +
     `v3_scoring=${artefact.v3_scoring} · ${samples.length} samples · population=${JSON.stringify(artefact.population ?? {})}`);
 
+  // --- Kandidat-vaegttabel (valgfri) ---
+  let candidateWeights = null;
+  if (WEIGHTS_PATH) {
+    const wp = join(__dirname, "..", String(WEIGHTS_PATH));
+    try {
+      candidateWeights = JSON.parse(readFileSync(wp, "utf8"));
+    } catch (e) {
+      console.error(`❌ Kunne ikke læse vægttabellen ${wp}: ${e.message}`);
+      process.exit(1);
+    }
+    const missing = RIDER_TYPE_KEYS.filter((t) => !candidateWeights[t] || Object.keys(candidateWeights[t]).length === 0);
+    if (missing.length) {
+      console.error(`❌ Vægttabellen mangler vægte for: ${missing.join(", ")}`);
+      process.exit(1);
+    }
+    console.log(`\nKANDIDAT-VÆGTTABEL: ${WEIGHTS_PATH}`);
+    for (const t of RIDER_TYPE_KEYS) {
+      const w = candidateWeights[t];
+      const tot = Object.values(w).reduce((a, b) => a + Number(b), 0);
+      const mx = Math.max(...Object.values(w).map(Number));
+      console.log(`  ${t.padEnd(16)} ${Object.keys(w).length} evner · tungeste ${((mx / tot) * 100).toFixed(0)} %`);
+    }
+  }
+
   // --- Fit ---
   let fit;
   let fixedCurveRef = null;
@@ -180,11 +212,11 @@ async function main() {
       console.error(`❌ ${curvePath} har ingen brugbar fit-kurve (mangler fit.a/fit.b).`);
       process.exit(1);
     }
-    fit = fitOffsetsForFixedCurve(samples, { alpha: src.alpha ?? 1, a: src.a, b: src.b, c: src.c ?? 0 });
+    fit = fitOffsetsForFixedCurve(samples, { alpha: src.alpha ?? 1, a: src.a, b: src.b, c: src.c ?? 0, weights: candidateWeights });
     fixedCurveRef = { from: FIX_CURVE_FROM, fitted_at: curveModel.fitted_at ?? null, sim_run_id: curveModel.sim_run_id ?? null };
     console.log(`\nKurve HOLDT FAST fra ${FIX_CURVE_FROM} (alpha=${fit.alpha}, a=${fit.a}, b=${fit.b}, c=${fit.c}) — kun type-offsets fittes.`);
   } else {
-    fit = fitProductionModel(samples);
+    fit = fitProductionModel(samples, { weights: candidateWeights });
   }
 
   // --- Rapport: koefficienter, valgt alpha, r2, per-type offsets, n_samples ---
@@ -272,6 +304,7 @@ async function main() {
   // Rå NPV (scale=1) for hele populationen via den ægte v4-model.
   const modelForNpv = {
     fit: { alpha: fit.alpha, a: fit.a, b: fit.b, c: fit.c, offset: fullOffset },
+    ...(candidateWeights ? { weights: candidateWeights } : {}),
     discount: DISCOUNT,
     scale: 1,
   };
@@ -313,6 +346,7 @@ async function main() {
     const shippingModel = applyTypeDampening({
       fit: { alpha: fit.alpha, a: fit.a, b: fit.b, c: fit.c, offset: fullOffset },
       type_stats: typeStats,
+      ...(candidateWeights ? { weights: candidateWeights } : {}),
       discount: DISCOUNT,
       scale,
       ...(LEVEL_CORRECTION != null ? { level_correction: LEVEL_CORRECTION } : {}),
@@ -395,6 +429,7 @@ async function main() {
       n_samples: fit.n_samples,
     },
     type_stats: typeStats,
+    ...(candidateWeights ? { weights: candidateWeights, weights_ref: WEIGHTS_PATH } : {}),
     ...(fixedCurveRef ? { fixed_curve_ref: fixedCurveRef } : {}),
     scale: Number(scale.toPrecision(8)),
     ...(LEVEL_CORRECTION != null ? { level_correction: LEVEL_CORRECTION } : {}),
