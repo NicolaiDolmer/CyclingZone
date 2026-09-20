@@ -302,7 +302,11 @@ export async function runTeamTrainingDay({
     // no-op-promise (bit-identisk med før #3459, ingen ekstra DB-kald). Bevidst
     // `raceDayDevelopmentOn`, ikke `raceDayEngineOn`: uden D2 har lookuppet ingen
     // aftager, og så er det ren spildt query pr. hold pr. dag.
-    raceDayDevelopmentOn
+    // #4847: ogsaa paa loebsdags-aksen, ikke kun naar UDVIKLINGEN er taendt.
+    // Bindingen (nedenfor) siger hvem der er OPTAGET; dette siger hvem der
+    // faktisk KOERTE. Forskellen er GT-hviledagen, og den skal vaere synlig paa
+    // traeningsscoren ("loeb" vs. ingen raekke) uanset udviklings-flaget.
+    (raceDayDevelopmentOn || useRaceDayKey)
       ? loadRacedRiderIdsToday(supabase, riderIds, now, tickDate)
       : Promise.resolve({ data: [], error: null }),
     // #4847 (ejer-regel 2+3, 18/9): hvem er BUNDET paa denne loebsdag? Kun paa
@@ -342,7 +346,7 @@ export async function runTeamTrainingDay({
   // — sat eksplicit nedenfor, IKKE først inde i applyRaceDevelopmentTick, så en
   // manglende race_stage_profiles-række aldrig kan give en udefineret evneliste.
   const racedRiderProfileByRider = new Map();
-  if (raceDayDevelopmentOn) {
+  if (raceDayDevelopmentOn || useRaceDayKey) {
     if (raceDayResult.error) {
       // ASCII-only besked (#i18n-leak-guard, BACKEND_CONTEXT matcher error/message-linjer med
       // æ/ø/å) — dette er intern ops-logging, ikke en spiller-synlig API-fejl.
@@ -353,7 +357,13 @@ export async function runTeamTrainingDay({
 
       // #3459 D2: hent profil-typen for de racede etaper — kun de race_id'er der
       // rent faktisk optræder i dagens racede rækker (typisk 0-1 pr. hold pr. dag).
-      const raceIds = [...new Set(racedRows.map((r) => r.race_id).filter(Boolean))];
+      // #4847: KUN naar udviklingen er taendt. Profil-typen har én aftager,
+      // applyRaceDevelopmentTick; er udviklingen slukket, bruger vi mængden
+      // udelukkende til at skelne "koerte" fra "hviledag", og saa er opslaget
+      // spildt arbejde pr. hold pr. tick.
+      const raceIds = raceDayDevelopmentOn
+        ? [...new Set(racedRows.map((r) => r.race_id).filter(Boolean))]
+        : [];
       const stageProfilesResult = raceIds.length
         ? await loadRaceStageProfiles(supabase, raceIds)
         : { data: [], error: null };
@@ -471,8 +481,9 @@ export async function runTeamTrainingDay({
     // (samme dato) og faa en udviklings-dag han ikke har koert for. Bindingen er
     // loebsdags-noeglet og er derfor den praecise mængde.
     const boundToday = useRaceDayKey && boundRiderIds.has(rider.id);
-    const racedToday = !injuredToday && raceDayDevelopmentOn && racedRiderIds.has(rider.id)
-      && (!useRaceDayKey || boundToday);
+    // KOERTE han en etape i dag? (uafhaengigt af om udviklingen er taendt)
+    const rodeToday = racedRiderIds.has(rider.id) && (!useRaceDayKey || boundToday);
+    const racedToday = !injuredToday && raceDayDevelopmentOn && rodeToday;
 
     // #4847 (ejer-regel 2+3, 18/9): BUNDET, men ikke paa en udviklings-loebsdag.
     // To tilfaelde ender her, og begge skal vaere HVILE, ikke traening:
@@ -722,6 +733,27 @@ export async function runTeamTrainingDay({
         was_race_day: racedToday,
         intention: null,
         contributions: racedToday ? null : scoreDetail.contributions,
+      });
+    } else if (boundRestToday && rodeToday) {
+      // #4847: rytteren KOERTE en etape, men fik intet tick fordi udviklingen er
+      // slukket. Uden denne raekke ville traeningsfladen vise et HUL netop paa de
+      // dage hvor der skete mest — spec par. 4.4's tre tilstande kraever "loebsdag
+      // ⇒ raekke med score NULL + was_race_day". `session`/`day_type` er NULL:
+      // han koerte ikke et pas, og kolonnerne er nullable netop til det.
+      // En GT-HVILEDAG (boundRestToday uden rodeToday) faar bevidst INGEN raekke —
+      // det er "hviledag" i de tre tilstande, ikke "loebsdag".
+      scoreRows.push({
+        rider_id: rider.id,
+        team_id: teamId,
+        season_id: seasonId,
+        tick_date: tickDate,
+        game_day: raceDay,
+        score: null,
+        session: null,
+        day_type: null,
+        was_race_day: true,
+        intention: null,
+        contributions: null,
       });
     }
 

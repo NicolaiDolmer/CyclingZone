@@ -695,6 +695,26 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 
 Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet lukning ≥ kl. 20), sweep-kapacitet (én sweep/dag), skadesvarighed (løbsdage). PR #5205 (fundamentet, flag off) merget 15/9.
 
+### 13.3b Ejerens realisme-regel 18/9 (låst princip; genåbn ikke)
+
+Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fuld tekst: [#5267, kommentar 18/9](https://github.com/NicolaiDolmer/CyclingZone/issues/5267). Kort:
+
+1. **En løbsdag er én dato i cykelåret.** Den sker kun én gang.
+2. **På en løbsdag kører rytteren ét løb ELLER træner. Aldrig begge.** Misser han et samtidigt løb, kan han ikke træne "i det slot i stedet".
+3. **Et etapeløb binder rytteren fra første til sidste etape** — også på hviledagene imellem. Hviledag i et etapeløb = hvile, ikke træning.
+4. **Alle divisioner får lige mange løbsdage**; løbsdage uden løb er rene træningsdage.
+
+**Hvordan reglen er håndhævet i motoren (#4847, rettet 20/9 efter ejerens read-only gennemgang af PR #5264):**
+
+| Regel | Mekanisme | Hvor |
+|---|---|---|
+| 2 + 3 | "Optaget i dag" læses fra `race_entry_days`, som siden #4217 bærer **hele** etapeløbets spænd inkl. GT-hviledage — ikke fra dagens etaperesultater. En bundet rytter uden udviklings-tick får hvile: intet tick, ingen score-række, kun restitution | `trainingRaceDayTick.js` (`loadBoundRiderIdsForRaceDay`), `dailyTrainingEngine.js` (`boundRestToday`) |
+| 2 | Opslaget hænger **ikke** på `race_day_development_enabled`. Med kun `training_tick_per_race_day` tændt gav den gamle gate træning oven i løbet | `dailyTrainingEngine.js` |
+| 2 | `racedRiderIds` (kalenderdags-nøglet via `race_results.imported_at`) skæres med bindingen (løbsdags-nøglet), så en rytter der kørte på løbsdag N ikke også tæller som racende på N+1 samme dato | `dailyTrainingEngine.js` |
+| 4 | Sweepen tikker hele spændet fra divisionens sidste løbsdag **før** i dag til dagens højeste. Løbsdagene i spændet uden etape ER de rene træningsdage | `trainingDayCloseTrigger.js` (`gameDaySpansByDivision`) |
+
+**Rest (dokumenteret, ikke bygget):** en kalenderdato hvor en division slet ingen løb har, giver intet tick — spændets ende kan ikke læses uden en løbsdag med en etape. Hvor mange løbsdage aksen skal rykke frem på en helt løbsløs dato står først i kalenderen når [#5169](https://github.com/NicolaiDolmer/CyclingZone/pull/5169) lander. Indtil da er `MAX_GAME_DAY_CATCH_UP` ops-loftet der forhindrer en stillestående division i at skrive et helt efterslæb på én aften.
+
 ### 13.4 Status pr. 15/9 (hvad der er bygget bag flaget, og hvad der mangler)
 
 Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off er bit-identisk med kalenderdags-ticket.
@@ -703,6 +723,7 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off e
 |---|---|---|
 | Nøgle, seeds, historik-snapshot, +1-loft pr. løbsdag (B2) | **bygget** (#4846, PR #5205) | `trainingRaceDayTick.js`, `dailyTrainingEngine.js` |
 | Udløser: én samlet sweep pr. kalenderdag, tidligst kl. 20 **og** først når dagens sidste finalization er færdig (B4) | **bygget** (#4847) | `trainingDayCloseTrigger.js`, cron-slug `training-day-close` |
+| Løb-ELLER-træning + etapeløbets binding + tick på rene træningsdage (ejerens realisme-regel 18/9) | **bygget** (#4847, rettet 20/9) — se §13.3b | `trainingRaceDayTick.js`, `dailyTrainingEngine.js`, `trainingDayCloseTrigger.js` |
 | Overlap-guard + dags-claim på sweepen (G6) | **bygget**, kode-invariant + test | `trainingDayCloseTrigger.js` |
 | Maks-ventetid på hængende finalization (kl. 23) + Sentry-alarm | **bygget** | `trainingDayCloseTrigger.js`, `cron.js` |
 | Frivillig knap "Run today's training now" / "Kør dagens træning nu", uden bonus, samme åbne-betingelse som sweepen | **bygget** | `POST /api/training/run-today`, `TrainingPage.jsx` |

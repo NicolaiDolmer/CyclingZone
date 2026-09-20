@@ -1616,7 +1616,13 @@ test("#4847 regel 2: en rytter der KOERTE loeb faar INGEN traening — ogsaa naa
   assert.equal(rr.bound_race_day, true);
   assert.equal(rr.race_day, false, "udviklingen er slukket — han faar ingen race-udviklings-dag");
   assert.deepEqual(rr.gains, {}, "og han faar HELLER INGEN traening: loeb ELLER traening, aldrig begge");
-  assert.equal((state.rider_training_scores ?? []).length, 0);
+  // ... men fladen skal stadig kunne vise "loeb" paa den dag. Uden raekken blev
+  // der et hul praecis paa de dage hvor der skete mest (spec par. 4.4).
+  const scores = state.rider_training_scores ?? [];
+  assert.equal(scores.length, 1);
+  assert.equal(scores[0].was_race_day, true);
+  assert.equal(scores[0].score, null, "et loeb har ingen traeningsscore");
+  assert.equal(scores[0].game_day, 12);
 });
 
 test("#4847 regel 2: en FRI rytter paa samme loebsdag traener helt normalt", async () => {
