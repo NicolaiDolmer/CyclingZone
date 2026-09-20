@@ -331,8 +331,36 @@ export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   // summit/M-Down-bånd opgraderbare (raceRouteRealismMetrics.js) — men KUN hvis begge
   // rent faktisk vælges hver sæson, ikke kun det ene prestige-walket alligevel ville have
   // taget. Reservationen garanterer det, samme princip som resten af tabellen.
-  2: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
-  3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4 }),
+  // #5405 (EJER-GO 20/9): D2 summit_tour 2 -> 6, D3 summit_tour 3 -> 5 og D3 faar sin
+  // foerste balanced_week-reservation (0 -> 1).
+  //
+  // HVORFOR. Afgoerende bjergdage laa under maalet i BAADE D2 og D3, og undersoegelsen
+  // 19/9 viste at det ikke er en ren forsyningsfejl: etape-kvoten pr. division er eksakt,
+  // saa en division tager i store traek det antal bjergloeb dens reservation siger og
+  // fylder resten op efter prestige. Reservationen binder altsaa OGSAA. To halve fix er
+  // afproevet og forkastet:
+  //   · kun nye bjergloeb i kataloget -> D2 og D3 staar helt uaendrede (walket tager dem
+  //     ikke af sig selv; jf. §5-noten om at en reservation under walkets eget resultat
+  //     har nul effekt)
+  //   · kun hoejere reservation -> D3 naar bjerg-maalet, men falder ud af enkeltstarts-
+  //     baandet, fordi ingen af dens bjerg-arketyper garanterer en enkeltstart
+  // Derfor er de to aendringer ET indgreb: de tre nye ProSeries-summit_tour-loeb i samme
+  // PR (database/2026-09-20-5405-tre-nye-bjergloeb.sql) er den forsyning de haevede
+  // reservationer skal daekkes af, og D3's balanced_week er det ENESTE der betaler
+  // enkeltstarten tilbage (balanced_week er den eneste arketype i D3's klasse-vindue der
+  // GARANTERER en ITT, samme mekanik som D4 fik 26/8 i #4272).
+  //
+  // Maalt i toerkoersel UDEN --uniform-tilt (ejer-beslutning 3/9): alle fire divisioner
+  // inden for baade bjerg- og enkeltstarts-maalet for foerste gang, afvigelser paa de
+  // uniforme maal fra to til nul, nul blokerende og nul apply-blokerende fund foer som
+  // efter, sæsons-finale-afvigelserne uaendrede. Tallene: balance-internals/
+  // 2026-09-19-s4-kalender-kvalitet/nye-bjergloeb.md (gitignoreret, hard rule 17).
+  // Metode og dom: docs/audits/2026-09-19-5405-nye-bjergloeb-udkast.md.
+  //
+  // Tabellen er laast af tierCalendarGuarantees.test.js ("#5405 reservations-tabellen"):
+  // aendres et af tallene uden en ny maaling, fejler den test med vilje.
+  2: Object.freeze({ summit_tour: 6, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
+  3: Object.freeze({ summit_tour: 5, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4, balanced_week: 1 }),
   4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 2, hilly_tour: 2, balanced_week: 2 }),
 });
 
