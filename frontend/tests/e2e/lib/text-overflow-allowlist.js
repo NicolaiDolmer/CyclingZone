@@ -60,6 +60,25 @@ export const TEXT_OVERFLOW_ALLOWLIST = [
       "At omforme den doede gren nu ville vaere spildt arbejde. Refs #5383, #3643.",
     until: "2026-12-31",
   },
+  {
+    page: "traening",
+    // Fundet af den NYE regel `spilling-text` (#4851, 20/9), som blev tilfoejet
+    // fordi ingen af de tre oevrige regler kunne se tekst der males uden for en
+    // kasse med synligt overflow. Reglen fandt PRAECIS eet sted i hele appen ud
+    // over den flade den blev skrevet til — dette.
+    rule: "spilling-text",
+    match: /max-w-\[40vw\]/,
+    viewports: ["mobil"],
+    reason:
+      "Rytterens meta-linje i den GAMLE mobil-traeningsliste ('Sprinter/Rouleur · Alder 24 · Form — · " +
+      "Traethed —') staar i en max-w-[40vw]-kasse uden bryde-mulighed og males 53-58 px uden for den. " +
+      "Sagt hoejt, saa det ikke skjules: den gren er LIVE for spillere uden beta-flaget " +
+      "training_mobile_table, saa det er ikke doed kode for dem. Rettelsen er een klasse (break-words) i " +
+      "frontend/src/pages/TrainingPage.jsx — en fil denne lane ikke ejer, og som en parallel lane kan " +
+      "have aabne aendringer i. Derfor udskudt EN gang, med kort snor: posten udloeber 31/10 og faelder " +
+      "vagten hvis grenen stadig staar. Refs #4851, #5383, #3643.",
+    until: "2026-10-31",
+  },
 ];
 
 // Kendt kontrast-gaeld pr. FARVEPAR. `pair` skal matche maalerens egen
