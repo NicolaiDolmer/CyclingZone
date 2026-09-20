@@ -203,12 +203,17 @@ export function detectRaceDayEqualityViolations({ axisByTier = {}, target = null
 // Det maales som den laengste raekke af KALENDERDATOER i traek helt uden en traeningsdag.
 //
 // TALLET ER EN REGRESSIONSVAGT, IKKE ET KVALITETSMAAL — samme disciplin som
-// TIER_MULTI_RACE_DAY_MIN_SHARE (calendarTierCaps.js). MAALT 19/9 paa S4's proevepakning
-// (naturlig pakning + traeningsdage i hullerne): D1 16 · D2 11 · D3 23 · D4 11 datoer.
-// Loftet er sat lige over den vaerste af dem, saa en fremtidig aendring der goer rytmen
-// DAARLIGERE gaar roedt. Om 23 datoer uden traening er en acceptabel spilfoelelse er et
-// EJER-spoergsmaal, ikke et kode-spoergsmaal (docs/audits/2026-09-19-5267-proevepakning.md §4).
-export const MAX_DATES_WITHOUT_TRAINING_DAY = 24;
+// TIER_MULTI_RACE_DAY_MIN_SHARE (calendarTierCaps.js). Loftet er sat lige over den vaerste
+// MAALTE division, saa en fremtidig aendring der goer rytmen DAARLIGERE gaar roedt.
+//
+// MAALT 20/9 paa S4's proevepakning med den jaevne fordeling (ejer-valget, §1d): D1 1 ·
+// D2 0 · D3 0 · D4 0 kalenderdatoer. Loftet er derfor 2.
+//
+// FOER 20/9 stod her 24, maalt paa den afviste vej hvor traeningsdagene kun maatte ligge
+// dér hvor intet loeb var i gang (D1 16 · D2 11 · D3 23 · D4 11). Det var netop den
+// klumpning ejeren afviste, saa loftet foelger med ned: et loft paa 24 ville i dag lade en
+// regression paa 23 datoer passere tavst.
+export const MAX_DATES_WITHOUT_TRAINING_DAY = 2;
 
 /**
  * §1e/#5267: laengste raekke af kalenderdatoer i traek HELT uden en traeningsdag.

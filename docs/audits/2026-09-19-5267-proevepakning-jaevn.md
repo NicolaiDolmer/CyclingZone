@@ -8,8 +8,13 @@
 > (`d1.json` … `d4.json`), og scriptet der laver den er
 > [`backend/scripts/dev/proevepakning5267.mjs`](../../backend/scripts/dev/proevepakning5267.mjs).
 >
-> Dette er et **alternativ** til [måde A](2026-09-19-5267-proevepakning.md), ikke en
-> erstatning. Måde A er stadig det pakkeren gør som standard. Valget er dit.
+> **VALGT 20/9.** Da rapporten blev skrevet 19/9 var dette et alternativ til
+> [måde A](2026-09-19-5267-proevepakning.md). Ejeren valgte den 20/9, og den er nu pakkerens
+> ENESTE vej: måde A og R13's synkroniserede blokke er fjernet fra koden. Tallene nedenfor er
+> **genkørt 20/9** efter fjernelsen og efter at `main` var merget ind — de er uændrede.
+> Ordlyden i §3 er godkendt og står nu i `docs/CALENDAR_RULES.md` §1d/§1e-b. Loftet
+> `MAX_DATES_WITHOUT_TRAINING_DAY` er samtidig strammet fra 24 til 2, så en regression
+> tilbage til måde A's klumpning går rødt.
 
 ## 0. Kort svar
 
@@ -117,8 +122,7 @@ Det svarer til virkeligheden set fra rytteren: han kører etape 1, 2, 3, 4 i tr�
 andre ryttere i divisionen fik en træningsdag imellem. Fra rytterens stol er der ingen
 hviledag. Fra holdets stol er der en dag hvor de rene træningsryttere udviklede sig.
 
-Under måde A er ordlyden uændret — de to tilstande er begge i koden, og måde A er stadig
-standard.
+*(20/9: ordlyden er godkendt og er nu den eneste — måde A findes ikke længere i koden.)*
 
 ### 3b. "En tom løbsdag må aldrig ligge inde i et løbs forløb"
 
@@ -138,16 +142,15 @@ automatisk sin bindingsrække, uden at nogen skal ændre noget.
 
 ### 3c. Gates og tests der bygger på den gamle ordlyd
 
-De er fundet, navngivet og efterladt **urørte**, fordi måde A stadig er standard. Under måde
-B ville de hver især være røde, og det er derfor de står her:
+De blev fundet og navngivet 19/9, og **lukket 20/9** da ordlyden blev valgt:
 
-| Hvor | Hvad den antager | Status |
+| Hvor | Hvad den antog | Status 20/9 |
 |---|---|---|
-| `raceCalendarLanePackerRaceDayTarget.test.js` → *"en tom løbsdag ligger ALDRIG inde i et løbs spænd"* | måde A's ordlyd, ordret | Urørt. Kører kun måde A. Måde B har sin egen test med den nye ordlyd. |
-| `raceCalendarLanePackerRaceDayTarget.test.js` → *"etapeløbenes løbsdage ligger stadig i TRÆK"* | huller måles på de rå løbsdags-numre | Urørt. Måde B's test måler samme krav på **rangen blandt løbsdage med løb**. |
-| `raceCalendarLanePackerInvariants.test.js` → *"en hviledag optager løbsdagen, men fylder ikke en plads"* | en løbsdag inde i en Grand Tours forløb er aldrig tom | Urørt. Kører kun måde A. |
-| `solveContiguousStarts` R5 (`aktive.length === 0` ved dato-slut) | søgningen må ikke efterlade en tom løbsdag | **Urørt og skal forblive urørt.** Det er den NATURLIGE pakning. Padding lægger dagene bagefter, uden for søgningen. |
-| `padAxisWithTrainingDays`' frie-positioner-regel | en tom løbsdag kun uden for alle forløb | Gælder stadig under `"holes"`. `"even"` har sin egen fordeling. |
+| `raceCalendarLanePackerRaceDayTarget.test.js` → *"en tom løbsdag ligger ALDRIG inde i et løbs spænd"* | den gamle ordlyd, ordret | **Erstattet** af en test på at hver tom løbsdag er enten en indsat træningsdag eller en GT-hviledag. |
+| `raceCalendarLanePackerRaceDayTarget.test.js` → *"etapeløbenes løbsdage ligger stadig i TRÆK"* | huller måles på de rå løbsdags-numre | **Flyttet** til `…EvenTrainingDays.test.js`, hvor samme krav måles på **rangen blandt løbsdage med løb**. |
+| `raceCalendarLanePackerInvariants.test.js` → *"en hviledag optager løbsdagen, men fylder ikke en plads"* | en løbsdag inde i en Grand Tours forløb er aldrig tom | Urørt og stadig grøn: den måler den NATURLIGE pakning, uden mål. |
+| `solveContiguousStarts` R5 (`aktive.length === 0` ved dato-slut) | søgningen må ikke efterlade en tom løbsdag | **Urørt og skal forblive urørt.** Det er den naturlige pakning. Padding lægger dagene bagefter, uden for søgningen. |
+| `padAxisWithTrainingDays`' frie-positioner-regel | en tom løbsdag kun uden for alle forløb | **Fjernet.** Frie positioner bruges stadig FØRST inden for en dato, men de er ikke et krav længere. |
 
 Der er **ingen** produktions-gate (ikke i `calendarPlacementGates.js`, ikke i scorecardet,
 ikke i `verify-invariants`) der måler kontiguitet på de rå løbsdags-numre. Kravet levede kun
@@ -220,12 +223,13 @@ træningsdag.
 - Overlap måles som andelen af løbsdage MED løb der bærer mindst to forskellige løb, altså på
   den naturlige pakning. Tomme løbsdage indgår ikke og kan derfor ikke pynte tallet.
 - "Inde i et forløb" = løbsdagen ligger strengt mellem et etapeløbs første og sidste etape.
-- Kørslen kan gentages: `node backend/scripts/dev/proevepakning5267.mjs --placement=even`
-  (tilføj `--placement=holes` for måde A). Den læser ingen database og skriver ingenting.
+- Kørslen kan gentages: `node backend/scripts/dev/proevepakning5267.mjs`. Den læser ingen
+  database og skriver kun JSON-filerne under `docs/audits/` når `--write=<mappe>` gives.
+  (Frem til 20/9 tog scriptet et `--placement`-valg; det er væk sammen med måde A.)
 - Ingen `--apply`, ingen skrivning, ingen migration. PR #5169 er ikke merget.
 
 ## 7. Dom
 
 **bekræftet: 5 løbsdage på hver kalenderdato holder i alle fire divisioner, uden at en
-eneste gate falder · åbent: ordlyden i §3 skal godkendes af dig · ikke bygget: træningens
-rytter-gate (§5)**
+eneste gate falder · lukket 20/9: ordlyden i §3 er godkendt og står nu i CALENDAR_RULES
+§1d/§1e-b · ikke bygget: træningens rytter-gate (§5)**

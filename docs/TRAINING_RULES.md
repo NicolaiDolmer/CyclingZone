@@ -695,6 +695,8 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 
 Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet lukning ≥ kl. 20), sweep-kapacitet (én sweep/dag), skadesvarighed (løbsdage). PR #5205 (fundamentet, flag off) merget 15/9.
 
+**Beslutning 8's forudsætning er indfriet i kalenderen (#5267, ejer-valg 20/9).** De 35 celler kræver at HVER kalenderdato faktisk bærer 5 løbsdage. Det gør den nu i alle fire divisioner: pakkeren fordeler de tomme løbsdage jævnt i stedet for at lægge dem i de få huller hvor intet løb kører. Reglen og prisen står i [`docs/CALENDAR_RULES.md` §1d/§1e-b](CALENDAR_RULES.md). **Det B4 stadig skal bygge:** 79-91 % af træningsdagene ligger inde i et etapeløbs forløb, så trænings-ticket SKAL have et rytter-filter — en rytter der er bundet i et etapeløb hviler den dag, mens holdets øvrige ryttere træner. Uden filteret træner de bundne ryttere også.
+
 **Deadline (ejer 6/9, ordret): "skiftet til det nye træningssystem senest sker til sæson 4 starten"**, dvs. live 28/9 2026; kalender-delen skal før S4-genereringen.
 
 **Fuldt design, faseplan og de konkrete brud pr. fil:linje:** [`docs/superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md`](superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md). Kortlægningen bag den er session-workflow 6/9 (fire lanes: tick, kalender, score, flader + kritiker), verificeret mod `main` og prod.

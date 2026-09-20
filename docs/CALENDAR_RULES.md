@@ -126,7 +126,9 @@ Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om 
 
 **Målet kan ikke sættes under den højeste divisions naturlige antal.** D1's 80 løbsdage er ikke et valg: en Grand Tour skal have sine 21 etaper inden for `MAX_GT_SPAN_DAYS` kalenderdage, og det kræver netop de mange løbsdage pr. kalenderdag. De tre andre divisioner fyldes derfor OP — aldrig omvendt.
 
-**En tom løbsdag må kun ligge dér hvor intet løb er i gang.** Ellers ville den blive en hviledag midt i et etapeløb, og ejer-reglen 25/8 siger at et løbs løbsdage ligger i træk ("Løbsdag 4-5-6-7"). Kun Grand Tours har hviledage.
+**Og målet kan ikke sættes under `løbsdatoer × den tætteste dags naturlige antal løbsdage`** (#5267, 20/9). Træningsdagene fordeles jævnt, så hver kalenderdato har kvoten `mål / løbsdatoer`, og padding kan kun TILFØJE løbsdage. Har en dato allerede flere end sin kvote, kan den ikke fyldes ned — så bliver aksen længere end målet, og det rapporteres (`raceDayPerDateDeviations`, `raceDayPaddingHeld: false`) og fælder §1d's gate i stedet for at blive rundet væk. For S4 er 140 = 28 × 5, og 5 er D1's density, altså loftet for hvor mange løbsdage én dato kan bære.
+
+**Træningsdagene fordeles jævnt: 5 løbsdage på HVER kalenderdato (ejer-valg 20/9).** Prisen er at en tom løbsdag også må ligge inde i et etapeløbs forløb — se §1e-b nedenfor for begge sætningers nye ordlyd.
 
 #### 1d-vægen er væk (#5267, 19/9) — men kun fordi målet holdt op med at være en søgebinding
 
@@ -165,24 +167,28 @@ Da målet var en søgebinding, var der også et loft for hvor mange tomme løbsd
 | Gate | `detectTrainingDayStreakViolations` — stopper `--apply`, kun når sæsonen HAR et mål |
 | Rapportering | Scorecardets §1e-linje pr. division (dry-run + CI) |
 
-**Målt 19/9 (S4, mål 140):** D1 **16** · D2 **11** · D3 **23** · D4 **11** kalenderdatoer. Loftet er sat lige over den værste, så en fremtidig ændring der gør rytmen dårligere går rødt. Tallet er en regressionsvagt, ikke et kvalitetsmål — samme disciplin som `TIER_MULTI_RACE_DAY_MIN_SHARE`.
+**Målt 20/9 (S4, mål 140, den jævne fordeling):** D1 **1** · D2 **0** · D3 **0** · D4 **0** kalenderdatoer. Loftet er sat lige over den værste, så en fremtidig ændring der gør rytmen dårligere går rødt. Tallet er en regressionsvagt, ikke et kvalitetsmål — samme disciplin som `TIER_MULTI_RACE_DAY_MIN_SHARE`.
 
-> **Åben ejer-beslutning:** D3's 23 datoer i træk uden en træningsdag er en spilfølelse, ikke en teknisk detalje. Årsagen er at etapeløbene ligger i en KÆDE (løb A's sidste etape og løb B's første deler løbsdag), så der er kun 5 positioner i hele D3's sæson hvor intet løb er i gang. Kæden kan brydes ved at synkronisere samtidige etapeløb — men det er **målt strukturelt umuligt** i D1, D3 og D4 og brækker mindste-overlap-gulvet. Se `docs/audits/2026-09-19-5267-proevepakning.md` §3.
+> **Loftet var 24 indtil 20/9**, målt på den afviste vej hvor træningsdagene kun måtte ligge dér hvor intet løb var i gang (D1 16 · D2 11 · D3 23 · D4 11). Netop den klumpning er dét ejeren fravalgte, så loftet fulgte med ned: et loft på 24 ville i dag lade en regression på 23 datoer passere tavst.
 
-#### 1e-b. Måde B: 5 løbsdage på HVER kalenderdato (`trainingDayPlacement: "even"`) — BYGGET, IKKE VALGT
+#### 1e-b. 5 løbsdage på HVER kalenderdato — den ene vej (ejer-valg 20/9)
 
-**Status: afventer ejer-godkendelse af ordlyden nedenfor.** Koden findes bag en tilstand; `"holes"` (måde A, beskrevet ovenfor) er stadig default, og intet i produktionsstien sætter `"even"`. Måling + hele prøvekalenderen: [`docs/audits/2026-09-19-5267-proevepakning-jaevn.md`](audits/2026-09-19-5267-proevepakning-jaevn.md).
+**Status: valgt og bygget.** Der er ikke to varianter bag en kontakt: den afviste vej ("måde A", træningsdage kun i hullerne) er FJERNET fra koden, sammen med R13's synkroniserede etapeløbs-blokke. Målingerne af begge bliver stående i audits — [`2026-09-19-5267-proevepakning.md`](audits/2026-09-19-5267-proevepakning.md) (A + R13) og [`2026-09-19-5267-proevepakning-jaevn.md`](audits/2026-09-19-5267-proevepakning-jaevn.md) (den valgte).
 
-**Hvad den gør:** efter den naturlige pakning fyldes HVER kalenderdato op til `mål / løbsdatoer` løbsdage (140/28 = 5). Målt 19/9: alle fire divisioner rammer 5–5 med **uændrede** løb, etaper pr. dato og overlap, og alle gates er lige så grønne som under måde A. Længste stime uden en træningsdag falder fra 16/11/23/11 til **1/0/0/0** datoer.
+**Hvad den gør:** efter den naturlige pakning fyldes HVER kalenderdato op til `mål / løbsdatoer` løbsdage (140/28 = 5). Inden for en dato bruges først de positioner hvor intet løb spænder henover, derefter positionerne inde i et spænd. Målt: alle fire divisioner rammer 5–5 med **uændrede** løb, etaper pr. dato og overlap. Længste stime uden en træningsdag falder fra 16/11/23/11 til **1/0/0/0** datoer.
 
-**Prisen er to sætninger der får en ny betydning — kun under `"even"`:**
+**Prisen er to sætninger der har fået en ny ordlyd:**
 
-| Regel | Ordlyd i dag (måde A, gælder uændret) | Ordlyd under måde B |
+| Regel | Ordlyd før 20/9 | Ordlyd i dag |
 |---|---|---|
 | Ejer-reglen 25/8, løbsdage i træk | *"Hvis et løb har fire etaper, skal løbsdagene ligge i træk … Løbsdag 4-5-6-7."* | Et løbs etaper ligger i træk blandt de løbsdage der **bærer et løb**. En tom løbsdag bryder ikke rækken — der kommer ingen anden løbsdag med løb imellem. |
 | Tom løbsdag og løbsforløb | En tom løbsdag må kun ligge dér hvor **intet løb er i gang**. | En tom løbsdag må ligge **inde i** et etapeløbs forløb. Den er ikke en hviledag i løbet; det er en dag hvor **de ryttere der kører løbet er bundet og hviler, mens alle andre træner**. |
 
-Bindingen bærer allerede den nye ordlyd: `race_entry_days_rebuild()` binder rytteren på HELE forløbet fra første til sidste etape (#4173 → #4217 → ejer-beslutning 3/9 i #4209), så en indsat tom løbsdag inde i forløbet får sin bindingsrække automatisk. **Træningens side er derimod ikke klar:** ticket er pr. hold uden et rytter-filter, og en løbsdag uden løb er usynlig for opslaget indtil fase B4. Under måde A er det uden betydning (0 træningsdage inde i et forløb); under måde B ligger 79–91 % af dem inde i et forløb. Se rapportens §5.
+Bindingen bærer allerede den nye ordlyd: `race_entry_days_rebuild()` binder rytteren på HELE forløbet fra første til sidste etape (#4173 → #4217 → ejer-beslutning 3/9 i #4209), så en indsat tom løbsdag inde i forløbet får sin bindingsrække automatisk.
+
+> **ÅBENT, OG DET SKAL LUKKES FØR TRÆNINGEN TÆNDES (#4846 fase B4):** træningens side bærer den ikke endnu. Ticket er pr. hold uden et rytter-filter, og en løbsdag uden løb er usynlig for opslaget. 79–91 % af træningsdagene ligger inde i et forløb, så uden filteret ville en rytter der er bundet i et etapeløb også blive trænet. Kalenderen er korrekt; det er forbruget af den der mangler. Se [`docs/audits/2026-09-19-5267-proevepakning-jaevn.md`](audits/2026-09-19-5267-proevepakning-jaevn.md) §5.
+
+**Synkroniserede etapeløbs-blokke (R13) er afvist med tal og fjernet fra koden.** Antallet af samtidige etapeløb skal gå op i divisionens etaper pr. dato; kun D2 kan det. Målt 19/9: D1 fandt ingen lovlig pakning, D3 faldt til 27,3 % og D4 til 35,5 % mod overlap-gulvet på 40 %. Med den jævne fordeling er etapeløbs-kæden ikke længere et problem der skal løses i søgningen. Detaljer: [`2026-09-19-5267-proevepakning.md`](audits/2026-09-19-5267-proevepakning.md) §3.
 
 ---
 

@@ -1,10 +1,18 @@
 # #5267 prøvepakning: kan alle fire divisioner få lige mange løbsdage uden at ødelægge noget?
 
-> Read-only dry-run (`materializeTierCalendars({ dryRun: true })`) mod prod-kataloget for
+> Read-only dry-run (`buildTierMaterializationPlan`) mod prod-kataloget for
 > sæson 4: 28 løbsdatoer, første løbsdag 28/9. Intet er skrevet til prod, intet `--apply`.
 > Løbsnavne er udeladt — repoet er offentligt — så løbene hedder A, B, C … i den rækkefølge
 > de optræder, præcis som i 18/9-rapporten. Hele prøvekalenderen ligger maskinlæsbart i
 > [`2026-09-19-5267-proevepakning/`](2026-09-19-5267-proevepakning/) (`d1.json` … `d4.json`).
+>
+> **HISTORIK, IKKE GÆLDENDE (opdateret 20/9).** Denne rapport måler "måde A" (træningsdage
+> kun i hullerne) og forsøget med synkroniserede etapeløbs-blokke (R13). Ejeren valgte 20/9
+> den jævne fordeling i stedet, og **begge veje er fjernet fra koden** — tallene her kan
+> derfor ikke genskabes med den nuværende `proevepakning5267.mjs`, og JSON-filerne i
+> `2026-09-19-5267-proevepakning/` er skrevet af en tidligere udgave af værktøjet (deres
+> nøgler matcher ikke det scriptet skriver i dag). De bliver stående som det målte grundlag
+> for valget. Den gældende kalender: [`-jaevn.md`](2026-09-19-5267-proevepakning-jaevn.md).
 
 ## 0. Kort svar
 

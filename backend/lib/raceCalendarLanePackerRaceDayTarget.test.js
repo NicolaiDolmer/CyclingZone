@@ -2,12 +2,16 @@
 //
 // Ejeren ordret: "Det skal vaere samme antal dage ind i spillet. Men divisionerne behoeves
 // ikke noedvendigvis at koere lige mange loeb." Loebsdage uden loeb er rene traeningsdage
-// (#4846's tick-enhed). Reglen er R12 i raceCalendarLanePacker.js.
+// (#4846's tick-enhed). Maalet naas som EFTERBEHANDLING (padAxisWithTrainingDays), ikke som
+// en binding i soegningen — den gamle R12 er fjernet (#5267, se pakkerens doc-blok).
 //
 // Testen koerer mod den committede PROD-katalog-fixture og ikke mod et syntetisk katalog:
-// hele vanskeligheden ved reglen er at en tom loebsdag kun maa ligge dér hvor INTET loeb er
-// i gang (ejer-reglen 25/8 om loebsdage i traek), og hvor ofte det sker afhaenger af
-// katalogets etapeloebs-laengder. Et syntetisk katalog ville goere reglen kunstigt let.
+// hele vanskeligheden ved reglen er hvor mange positioner katalogets etapeloebs-laengder
+// efterlader. Et syntetisk katalog ville goere reglen kunstigt let.
+//
+// DENNE FIL maaler MAALET (aksens laengde, kvoten, klassifikationen af tomme loebsdage).
+// Selve FORDELINGEN af traeningsdagene — 5 loebsdage pr. kalenderdato, ejer-valget 20/9 —
+// og den nye ordlyd af ejer-reglen 25/8 maales i raceCalendarLanePackerEvenTrainingDays.test.js.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -54,60 +58,61 @@ test("#4845: uden maal er pakningen UROERT — aksen er stadig et soegeresultat 
   assert.ok(new Set(a).size > 1, "fixturen skal have SKAEVE akser — ellers maaler testen ingenting");
 });
 
+// S4's maal (SEASON_RACE_DAY_TARGET): 28 kalenderdatoer x D1's 5 slots. Det er ikke et
+// vilkaarligt tal her: naar traeningsdagene fordeles JAEVNT, er hver datos kvote
+// maal / datoer, og padding kan kun TILFOEJE loebsdage. Et maal skal derfor vaere hoejt nok
+// til at kvoten daekker den TAETTESTE kalenderdatos naturlige antal loebsdage — ellers kan
+// den dato ikke naa sin kvote, og aksen bliver laengere end maalet. 5 er D1's density og
+// dermed loftet for hvor mange loebsdage en dato kan baere.
+const MAAL = REAL_DAYS * 5;
+
 test("#4845: med maal har ALLE divisioner praecis lige mange loebsdage", () => {
-  const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur));
-  const { tierPlans } = plan(maal);
+  const { tierPlans } = plan(MAAL);
   const maalte = tierPlans.filter(eksaktKvote);
   assert.ok(maalte.length >= 3, "fixturen skal have mindst tre divisioner med eksakt kvote");
   for (const t of maalte) {
-    assert.equal(aksen(t), maal, `tier ${t.tier} ramte ikke maalet (${aksen(t)} mod ${maal})`);
-    assert.equal(t.raceDayPaddingHeld, true, `tier ${t.tier}: maalet blev ikke naaet af soegningen`);
+    assert.equal(aksen(t), MAAL, `tier ${t.tier} ramte ikke maalet (${aksen(t)} mod ${MAAL})`);
+    assert.equal(t.raceDayPaddingHeld, true, `tier ${t.tier}: maalet blev ikke naaet`);
   }
 });
 
-test("#4845: en tom loebsdag ligger ALDRIG inde i et loebs spaend (ejer-reglen 25/8)", () => {
+test("#5267: et maal der er for LAVT til den taetteste kalenderdato rapporteres, ikke pyntet", () => {
+  // Grunden staar ved MAAL ovenfor. Med maalet sat til D1's naturlige antal loebsdage bliver
+  // kvoten pr. dato 2-3, og D1 har datoer med 4-5 naturlige loebsdage. Padding kan ikke
+  // FJERNE en loebsdag, saa aksen bliver laengere end maalet — og det skal staa i
+  // afvigelses-listen og faelde §1d's gate, ikke forsvinde i en afrunding.
   const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur));
-  const { tierPlans } = plan(maal);
-  for (const t of tierPlans) {
-    const spaendPrLoeb = new Map();
-    for (const s of t.pools[0].stageRows) {
-      const nu = spaendPrLoeb.get(s.pool_race_id) ?? [Infinity, -Infinity];
-      spaendPrLoeb.set(s.pool_race_id, [Math.min(nu[0], s.game_day), Math.max(nu[1], s.game_day)]);
-    }
-    const spaend = [...spaendPrLoeb.values()];
-    for (const g of t.trainingGameDays ?? []) {
-      const inde = spaend.find(([a, b]) => g >= a && g <= b);
-      assert.equal(inde, undefined,
-        `tier ${t.tier}: traeningsdag ${g} ligger inde i et loebs spaend ${JSON.stringify(inde)} — det ville vaere en hviledag midt i et etapeloeb`);
-    }
-  }
+  const lavtMaal = Math.max(...naturligeAkser(natur));
+  const { tierPlans } = plan(lavtMaal);
+  const taettest = tierPlans.find((t) => (t.raceDayPerDateDeviations ?? []).length > 0);
+  assert.ok(taettest, "fixturen skal have mindst een division hvor et lavt maal ikke kan naas");
+  assert.ok(aksen(taettest) > lavtMaal, `tier ${taettest.tier}: aksen skulle vaere laengere end det for lave maal`);
+  assert.equal(taettest.raceDayPaddingHeld, false, `tier ${taettest.tier}: et umuligt maal skal rapporteres som IKKE naaet`);
 });
 
-test("#4845: etapeloebenes loebsdage ligger stadig i TRAEK (R1 uae­ndret)", () => {
-  const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur));
+test("#5267: hver TOM loebsdag er enten en indsat traeningsdag eller en GT-hviledag", () => {
+  // Klassifikationen er det der afgoer om #4846's tick maa taelle dagen. Den kan IKKE laenge
+  // afgoeres af span-medlemskab alene: en indsat traeningsdag maa ligge inde i et
+  // etapeloebs spaend (ejer-valget 20/9), mens en GT-hviledag ogsaa ligger der og netop
+  // IKKE er en traeningsdag. Padding'en ved hvilke dage den selv lagde, og det er kilden.
+  const maal = MAAL;
   const { tierPlans } = plan(maal);
   for (const t of tierPlans) {
-    const perLoeb = new Map();
-    for (const s of t.pools[0].stageRows) {
-      if (!perLoeb.has(s.pool_race_id)) perLoeb.set(s.pool_race_id, []);
-      perLoeb.get(s.pool_race_id).push(s.game_day);
-    }
-    for (const [id, gs] of perLoeb) {
-      const sorteret = [...gs].sort((a, b) => a - b);
-      const huller = sorteret[sorteret.length - 1] - sorteret[0] + 1 - sorteret.length;
-      // Kun Grand Tours maa have huller (hviledage, GRAND_TOUR_REST_DAYS = 2).
-      assert.ok(huller === 0 || (t.tier === 1 && huller <= 2),
-        `tier ${t.tier} loeb ${id}: ${huller} hul(ler) i loebsdagene ${sorteret.join(",")}`);
+    const medLoeb = new Set(t.pools[0].stageRows.map((s) => s.game_day));
+    const traening = t.trainingGameDays ?? [];
+    const tomme = aksen(t) - medLoeb.size;
+    assert.equal(
+      traening.length + (t.restDayGameDayCount ?? 0), tomme,
+      `tier ${t.tier}: ${tomme} tomme loebsdage, men ${traening.length} traeningsdage + ${t.restDayGameDayCount ?? 0} GT-hviledage`,
+    );
+    for (const g of traening) {
+      assert.ok(!medLoeb.has(g), `tier ${t.tier}: loebsdag ${g} er baade traeningsdag og baerer et loeb`);
     }
   }
 });
 
 test("#4845: en loebsdag hoerer stadig til PRAECIS een kalenderdato (#4236 uae­ndret)", () => {
-  const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur));
+  const maal = MAAL;
   const { tierPlans } = plan(maal);
   for (const t of tierPlans) {
     const datoer = new Map();
@@ -121,7 +126,7 @@ test("#4845: en loebsdag hoerer stadig til PRAECIS een kalenderdato (#4236 uae­
 
 test("#4845: kvoten er uroert — maalet flytter loebsdage, ikke etaper (§1b)", () => {
   const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur));
+  const maal = MAAL;
   const { tierPlans } = plan(maal);
   for (let i = 0; i < tierPlans.length; i++) {
     assert.equal(
@@ -147,19 +152,23 @@ test("#5267: den NATURLIGE pakning er BIT-IDENTISK med og uden loebsdags-maal", 
   // den grund. Naar maalet kun tilfoejer tomme loebsdage, kan det pr. konstruktion ikke
   // flytte et loeb - og denne test er dét krav skrevet som en assertion.
   const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur)) + 24;
+  const maal = MAAL;
   const { tierPlans } = plan(maal);
   for (let i = 0; i < tierPlans.length; i++) {
     const t = tierPlans[i];
     const n = natur[i];
     assert.equal(t.naturalRaceDays, n.raceDayAxisLength, `tier ${t.tier}: det naturlige antal loebsdage aendrede sig`);
     // Loebenes REKKEFOELGE og indbyrdes afstand paa aksen skal vae­re uae­ndret. Aksen er
-    // forskudt af de indsatte traeningsdage, saa vi sammenligner formen, ikke tallene.
+    // forskudt af de indsatte traeningsdage — ogsaa INDE i et loebs spaend — saa formen
+    // maales paa RANGEN blandt loebsdage MED LOEB, ikke paa de raa game_day-tal. Maengden
+    // af loebsdage med loeb er praecis den samme, saa rangen ER den naturlige akse.
     const form = (plan_) => {
+      const medLoeb = [...new Set(plan_.pools[0].stageRows.map((s) => s.game_day))].sort((a, b) => a - b);
+      const rang = new Map(medLoeb.map((g, i) => [g, i]));
       const per = new Map();
       for (const s of plan_.pools[0].stageRows) {
         if (!per.has(s.pool_race_id)) per.set(s.pool_race_id, []);
-        per.get(s.pool_race_id).push(s.game_day);
+        per.get(s.pool_race_id).push(rang.get(s.game_day));
       }
       const lister = [...per.entries()].map(([id, gs]) => {
         const sorteret = [...gs].sort((a, b) => a - b);
@@ -173,7 +182,7 @@ test("#5267: den NATURLIGE pakning er BIT-IDENTISK med og uden loebsdags-maal", 
 
 test("#5267: antallet af ETAPER pr. kalenderdato er uroert af maalet (D4's 3 pr. dag, #4270)", () => {
   const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur)) + 24;
+  const maal = MAAL;
   const { tierPlans } = plan(maal);
   for (let i = 0; i < tierPlans.length; i++) {
     const tael = (p) => {
@@ -190,7 +199,7 @@ test("#5267: antallet af ETAPER pr. kalenderdato er uroert af maalet (D4's 3 pr.
 
 test("#5267: overlappet pr. loebsdag er uroert af maalet (§1/#3329's gulv maales paa den naturlige pakning)", () => {
   const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur)) + 24;
+  const maal = MAAL;
   const { tierPlans } = plan(maal);
   const andel = (p) => {
     const per = new Map();
@@ -207,8 +216,7 @@ test("#5267: overlappet pr. loebsdag er uroert af maalet (§1/#3329's gulv maale
 });
 
 test("#5267: traeningsdagene fordeles over saa mange kalenderdatoer som muligt", () => {
-  const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur)) + 24;
+  const maal = MAAL;
   const { tierPlans } = plan(maal);
   const { tierPlans: hoejerePlans } = plan(maal + REAL_DAYS);
   for (const t of tierPlans) {
@@ -242,8 +250,7 @@ test("#5267: traeningsdagene fordeles over saa mange kalenderdatoer som muligt",
 });
 
 test("#5267: en traeningsdag ligger aldrig paa en kalenderdato uden for saesonen", () => {
-  const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur)) + 24;
+  const maal = MAAL;
   const { tierPlans } = plan(maal);
   for (const t of tierPlans) {
     for (const d of t.trainingGameDayRealDays ?? []) {
@@ -253,8 +260,7 @@ test("#5267: en traeningsdag ligger aldrig paa en kalenderdato uden for saesonen
 });
 
 test("#4845: summarizeRaceDayAxis mod planen giver samme akse som pakkeren rapporterer", () => {
-  const { tierPlans: natur } = plan(null);
-  const maal = Math.max(...naturligeAkser(natur));
+  const maal = MAAL;
   const { tierPlans } = plan(maal);
   for (const t of tierPlans) {
     const s = summarizeRaceDayAxis({ stageRows: t.pools[0].stageRows, timelineLength: t.timelineLength });

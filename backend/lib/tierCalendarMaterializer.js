@@ -485,7 +485,11 @@ export function buildTierMaterializationPlan({
       trainingGameDayRealDays: packed.dateOfTrainingGameDay ?? [],
       trainingGameDayCount: (packed.trainingGameDays ?? []).length,
       restDayGameDayCount: (packed.restDayGameDays ?? []).length,
-      raceDayPaddingHeld: raceDayDeficit === 0 ? true : Boolean(packed.raceDayTargetHeld),
+      // Doemmer paa AKSEN, ikke paa det nominelle underskud: naar traeningsdagene fordeles
+      // jaevnt, kan en kalenderdato der allerede har FLERE naturlige loebsdage end sin kvote
+      // ikke fyldes ned, og aksen bliver da laengere end maalet selv om `raceDayDeficit` er
+      // 0. Den slags maa ikke rapporteres som "maalet holdt" — §1d's gate skal se det.
+      raceDayPaddingHeld: raceDayTarget == null ? true : Boolean(packed.raceDayTargetHeld),
       freeAxisPositions: packed.freeAxisPositions ?? 0,
       longestDateStreakWithoutTraining: packed.longestDateStreakWithoutTraining ?? null,
       // #5267: loebsdage pr. kalenderdato, og prisen (traeningsdage inde i et etapeloebs

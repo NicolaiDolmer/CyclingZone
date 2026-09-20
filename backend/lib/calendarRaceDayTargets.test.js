@@ -114,10 +114,18 @@ test("longestDateStreakWithoutTraining: datoer uden for saesonen taelles ikke me
 });
 
 test("detectTrainingDayStreakViolations: en division over loftet rapporteres, en under er groen", () => {
-  assert.deepEqual(detectTrainingDayStreakViolations({ streakByTier: { 1: 16, 2: 11, 3: 23, 4: 11 } }), []);
+  // S4's MAALTE tal med den jaevne fordeling (ejer-valget 20/9): D1 1 · D2-D4 0.
+  assert.deepEqual(detectTrainingDayStreakViolations({ streakByTier: { 1: 1, 2: 0, 3: 0, 4: 0 } }), []);
   const v = detectTrainingDayStreakViolations({ streakByTier: { 3: MAX_DATES_WITHOUT_TRAINING_DAY + 1 } });
   assert.equal(v.length, 1);
   assert.match(v[0], /tier 3/);
+});
+
+test("detectTrainingDayStreakViolations: den AFVISTE klumpede fordeling ville gaa roedt i dag", () => {
+  // Maade A's maalte tal 19/9 (16/11/23/11). De var groenne under det gamle loft paa 24 og
+  // skal vaere roede nu — ellers ville en regression tilbage til klumpningen slippe forbi.
+  const v = detectTrainingDayStreakViolations({ streakByTier: { 1: 16, 2: 11, 3: 23, 4: 11 } });
+  assert.equal(v.length, 4);
 });
 
 test("detectTrainingDayStreakViolations: loftet kan saettes eksplicit (ejer-kort kan stramme det)", () => {
