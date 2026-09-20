@@ -10,11 +10,38 @@ import assert from "node:assert/strict";
 
 import {
   DEFAULT_VALUATION_MODEL_ID,
+  RIDER_PRODUCTION_VALUE_MODEL_KEY,
   RIDER_VALUATION_MODEL_KEY,
+  loadProductionValueModel,
   loadValuationModel,
   loadValuationModelById,
+  loadValuationModelCached,
+  resetValuationModelCache,
   resolveValuationModelId,
 } from "./riderValuationModelSelect.js";
+
+// Ét sted at bygge en app_config-stub, så testene herunder kan koncentrere sig
+// om hvilket SVAR nøglen giver, ikke om PostgREST's kæde af metoder.
+function stubConfig(valueByKey, { onRead } = {}) {
+  const asked = [];
+  return {
+    asked,
+    supabase: {
+      from: (table) => {
+        assert.equal(table, "app_config");
+        return {
+          select: () => ({
+            eq: (_col, key) => {
+              asked.push(key);
+              onRead?.(key);
+              return { maybeSingle: async () => ({ data: { value: valueByKey[key] ?? null } }) };
+            },
+          }),
+        };
+      },
+    },
+  };
+}
 
 test("defaulten er den model der allerede kører", () => {
   assert.equal(DEFAULT_VALUATION_MODEL_ID, "v4");
@@ -55,18 +82,90 @@ test("en DB-fejl vælger v4, ikke v5", async () => {
 });
 
 test("nøglen der læses er den nøgle migrationen seeder", async () => {
-  let asked = null;
-  const supabase = {
-    from: (table) => {
-      assert.equal(table, "app_config");
-      return {
-        select: () => ({
-          eq: (_col, key) => { asked = key; return { maybeSingle: async () => ({ data: { value: "v5" } }) }; },
-        }),
-      };
-    },
-  };
+  const { supabase, asked } = stubConfig({ [RIDER_VALUATION_MODEL_KEY]: "v5" });
   const model = await loadValuationModel(supabase);
-  assert.equal(asked, RIDER_VALUATION_MODEL_KEY);
+  assert.deepEqual(asked, [RIDER_VALUATION_MODEL_KEY]);
   assert.equal(model.model_id, "v5");
+});
+
+// ── #5443 ejer-beslutning 2 (20/9 aften): to nøgler, ikke én ─────────────────
+// "Løn skal ikke følge værdi." Prisen (base_value) og løngrundlaget
+// (current_production_value) skal kunne stå på HVER SIN model, så v5 kan gå
+// live uden at flytte fremtidige lønkrav.
+
+test("løngrundlaget har sin egen nøgle og sin egen default", async () => {
+  assert.equal(RIDER_PRODUCTION_VALUE_MODEL_KEY, "rider_production_value_model");
+  assert.notEqual(RIDER_PRODUCTION_VALUE_MODEL_KEY, RIDER_VALUATION_MODEL_KEY);
+
+  // Prisen flippet til v5, løngrundlaget urørt ⇒ løngrundlaget bliver på v4.
+  const { supabase, asked } = stubConfig({ [RIDER_VALUATION_MODEL_KEY]: "v5" });
+  const price = await loadValuationModel(supabase);
+  const wage = await loadProductionValueModel(supabase);
+  assert.equal(price.model_id, "v5");
+  assert.equal(wage.model_id, undefined, "løngrundlaget må ikke følge med prisens flip");
+  assert.deepEqual(asked, [RIDER_VALUATION_MODEL_KEY, RIDER_PRODUCTION_VALUE_MODEL_KEY]);
+});
+
+test("løngrundlaget kan flippes for sig — uden at røre prisen", async () => {
+  const { supabase } = stubConfig({ [RIDER_PRODUCTION_VALUE_MODEL_KEY]: "v5" });
+  assert.equal((await loadProductionValueModel(supabase)).model_id, "v5");
+  assert.equal((await loadValuationModel(supabase)).model_id, undefined);
+});
+
+test("løngrundlagets nøgle har samme fail-safe som prisens", async () => {
+  const throwing = { from: () => { throw new Error("DB nede"); } };
+  assert.equal((await loadProductionValueModel(throwing)).model_id, undefined);
+  for (const raw of [null, "", "v6", true, 7, {}]) {
+    const { supabase } = stubConfig({ [RIDER_PRODUCTION_VALUE_MODEL_KEY]: raw });
+    assert.equal(
+      (await loadProductionValueModel(supabase)).model_id,
+      undefined,
+      `${JSON.stringify(raw)} må ikke kunne flytte løngrundlaget`
+    );
+  }
+});
+
+// ── Request-stiens cache (api.js's læse-flader) ─────────────────────────────
+
+test("den cachede læsning slår kun app_config op én gang inden for TTL'en", async () => {
+  resetValuationModelCache();
+  let reads = 0;
+  const { supabase } = stubConfig({ [RIDER_VALUATION_MODEL_KEY]: "v5" }, { onRead: () => { reads++; } });
+  const a = await loadValuationModelCached(supabase);
+  const b = await loadValuationModelCached(supabase);
+  assert.equal(a.model_id, "v5");
+  assert.equal(b.model_id, "v5");
+  assert.equal(reads, 1, "to visninger må ikke koste to DB-opslag");
+  resetValuationModelCache();
+});
+
+test("samtidige læsninger af-dublerer til ét opslag", async () => {
+  resetValuationModelCache();
+  let reads = 0;
+  const { supabase } = stubConfig({ [RIDER_VALUATION_MODEL_KEY]: "v5" }, { onRead: () => { reads++; } });
+  const models = await Promise.all(Array.from({ length: 25 }, () => loadValuationModelCached(supabase)));
+  assert.equal(reads, 1, "25 samtidige rytterkort må ikke give 25 opslag");
+  for (const m of models) assert.equal(m.model_id, "v5");
+  resetValuationModelCache();
+});
+
+test("cachen udløber, så et flip slår igennem af sig selv", async () => {
+  resetValuationModelCache();
+  let clock = 0;
+  const value = { [RIDER_VALUATION_MODEL_KEY]: "v4" };
+  const { supabase } = stubConfig(value);
+  const opts = { ttlMs: 1000, now: () => clock };
+  assert.equal((await loadValuationModelCached(supabase, opts)).model_id, undefined);
+  value[RIDER_VALUATION_MODEL_KEY] = "v5";
+  assert.equal((await loadValuationModelCached(supabase, opts)).model_id, undefined, "stadig inden for TTL");
+  clock += 1001;
+  assert.equal((await loadValuationModelCached(supabase, opts)).model_id, "v5", "efter TTL skal flippet ses");
+  resetValuationModelCache();
+});
+
+test("cachen kan ikke tænde v5 på en fejl", async () => {
+  resetValuationModelCache();
+  const throwing = { from: () => { throw new Error("DB nede"); } };
+  assert.equal((await loadValuationModelCached(throwing)).model_id, undefined);
+  resetValuationModelCache();
 });
