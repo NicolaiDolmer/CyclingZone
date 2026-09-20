@@ -247,10 +247,58 @@ async function waitForServer(url, timeoutMs = 30_000) {
   throw new Error(`static server kom aldrig op paa ${url}`);
 }
 
-async function shoot(page, name, locator) {
-  const target = locator ? page.locator(locator).first() : page;
+/** Hele viewporten — konteksten omkring fladen. */
+async function shoot(page, name) {
+  await page.screenshot({ path: resolve(OUT, `${name}.png`) });
+}
+
+/** Ét element, rullet i syne først. Tomt/ikke fundet → springes over med en note. */
+async function shootElement(page, name, locator) {
+  const target = typeof locator === "string" ? page.locator(locator).first() : locator.first();
+  if (await target.count() === 0) {
+    console.warn(`[5449] ${name}: intet element matchede — springer over`);
+    return;
+  }
+  await target.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(250);
   await target.screenshot({ path: resolve(OUT, `${name}.png`) });
 }
+
+/**
+ * Naerbillede: elementet rulles i syne, og der klippes et FAST vindue omkring
+ * dets midte. En sparkline er 64x18 px — et bart element-billede ville vaere
+ * ulaeseligt, og et fast vindue goer foer/efter direkte sammenlignelige.
+ */
+async function shootZoom(page, name, locator, { w = 420, h = 200 } = {}) {
+  const target = typeof locator === "string" ? page.locator(locator).first() : locator.first();
+  if (await target.count() === 0) {
+    console.warn(`[5449] ${name}: intet element matchede — springer over`);
+    return;
+  }
+  await target.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(250);
+  const box = await target.boundingBox();
+  if (!box) {
+    console.warn(`[5449] ${name}: elementet har ingen boundingBox — springer over`);
+    return;
+  }
+  const vp = page.viewportSize();
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  const width = Math.min(w, vp.width);
+  const height = Math.min(h, vp.height);
+  const clip = {
+    x: Math.max(0, Math.min(cx - width / 2, vp.width - width)),
+    y: Math.max(0, Math.min(cy - height / 2, vp.height - height)),
+    width,
+    height,
+  };
+  await page.screenshot({ path: resolve(OUT, `${name}.png`), clip });
+}
+
+// Sparklinen er det eneste element med denne rolle+navn paa begge flader.
+const SPARKLINE_LIST = /^Training score, last 7 days: /;
+const SPARKLINE_CARD = "Training score, last 7 days";
 
 mkdirSync(OUT, { recursive: true });
 
@@ -316,7 +364,8 @@ try {
 
       // (1) Daglig traening. Desktop: den gamle tabel med Score-kolonnen
       //     (sparkline pr. rytter). Mobil: den nye tabel bag
-      //     `training_mobile_table`.
+      //     `training_mobile_table` (TrainingRaceDayStrip + TrainingProgramGrid
+      //     + TrainingMobileRoster + TrainingMobileRiderCard).
       await page.goto("/training");
       if (vp.name === "mobile") {
         await page.locator('[data-testid="training-mobile-roster"]').waitFor();
@@ -326,17 +375,28 @@ try {
       await page.waitForTimeout(700);
       await shoot(page, `5449-training-${tag}`);
 
+      if (vp.name === "mobile") {
+        // Hele mobil-blokken: loebsdags-strimlen, program-gitteret og rosteret.
+        await shootElement(page, `5449-training-mobile-block-${tag}`, '[data-testid="training-mobile-today"]');
+        await shootElement(page, `5449-training-mobile-roster-${tag}`, '[data-testid="training-mobile-roster"]');
+      } else {
+        // Score-kolonnens sparkline i naerbillede — den flade issuet handler om.
+        await shootZoom(page, `5449-sparkline-list-${tag}`, page.getByRole("img", { name: SPARKLINE_LIST }), { w: 360, h: 180 });
+      }
+
       // (2) Rytterprofilens Traening-fane — RiderTrainingScoreCard med samme
-      //     sparkline i stort format.
+      //     sparkline i stort format (116x34).
       await page.goto(`/riders/${base.id}?tab=training`);
       await page.waitForTimeout(1100);
+      const card = page.getByRole("img", { name: SPARKLINE_CARD });
+      await shootZoom(page, `5449-sparkline-card-${tag}`, card, { w: 460, h: 220 });
       await shoot(page, `5449-rider-training-${tag}`);
 
-      // (3) Planlaegning — SelectionDeadlineReminder-boksen.
+      // (3) Planlaegning — SelectionDeadlineReminder-boksen (`space-y-px`).
       await page.goto("/planning");
       await page.getByRole("status").first().waitFor();
       await page.waitForTimeout(400);
-      await shoot(page, `5449-planning-reminder-${tag}`);
+      await shootElement(page, `5449-planning-reminder-${tag}`, page.getByRole("status"));
 
       // (4) KONTROL: "Alle handler"-fanen. Ogsaa .tsx, men uden nye klasser —
       //     billedet skal vaere identisk foer/efter.
