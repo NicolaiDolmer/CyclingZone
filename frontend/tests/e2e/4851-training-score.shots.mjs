@@ -195,10 +195,15 @@ const server = spawn(
   { cwd: FRONTEND, stdio: "inherit" },
 );
 
+// Samme grund som i 4851-mobile-columns.shots.mjs (CodeRabbit 20/9): fejler en
+// capture, springer vi til finally, og en Chromium der aldrig blev lukket
+// holder kommandoen i live. Hard rule #4920: ingen efterladte processer.
+let browser;
+
 try {
   await waitForServer(`${BASE}/app.html`);
 
-  const browser = await chromium.launch();
+  browser = await chromium.launch();
   const VIEWPORTS = [
     { name: "desktop", width: 1440, height: 900 },
     { name: "mobile", width: 390, height: 844 },
@@ -264,8 +269,11 @@ try {
     await context.close();
   }
 
-  await browser.close();
   console.log(`Screenshots → ${OUT}`);
 } finally {
-  server.kill();
+  try {
+    await browser?.close();
+  } finally {
+    server.kill();
+  }
 }

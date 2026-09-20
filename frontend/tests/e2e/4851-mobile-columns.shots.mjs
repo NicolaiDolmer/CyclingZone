@@ -159,9 +159,15 @@ const server = spawn(
   { cwd: FRONTEND, stdio: "inherit" },
 );
 
+// `browser` staar UDEN for try'et med vilje (CodeRabbit 20/9): fejler en
+// capture undervejs, springer vi til finally, og en Chromium der aldrig blev
+// lukket holder kommandoen i live. Hard rule #4920 er netop "ingen efterladte
+// processer".
+let browser;
+
 try {
   await waitForServer(`${BASE}/app.html`);
-  const browser = await chromium.launch();
+  browser = await chromium.launch();
 
   for (const width of [360, 390]) {
     for (const lang of ["en", "da"]) {
@@ -213,8 +219,11 @@ try {
     }
   }
 
-  await browser.close();
   console.log(`Screenshots → ${OUT}`);
 } finally {
-  server.kill();
+  try {
+    await browser?.close();
+  } finally {
+    server.kill();
+  }
 }
