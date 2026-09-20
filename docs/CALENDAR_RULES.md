@@ -658,6 +658,8 @@ D1's `cobbled_tour` står bevidst på 0 (#4075): kataloget har kun 2, og D1's re
   > **Bemærk:** `daysWithoutDecisionCount` MÅLES af pakkeren, men er ikke gated. Denne afvejning ville derfor ikke være fanget af et grønt scorecard — den blev fundet ved at diffe før/efter.
 - **D4 `balanced_week` 0 → 2, `itt_classic` 1 → 2.** D4 lå på 5 % enkeltstart mod målet 10 %. Årsagen var målt: D4's klasse-vindue (Class1/Class2) rummer kun 3 fritstående ITT-løb, og dets etapeløbs-arketyper (`summit_tour`, `hilly_tour`) er så korte at garantierne opbruger alle etape-pladser — `balanced_week` er den eneste arketype i vinduet der **garanterer** en ITT. Resultat: 3 → 5 ITT-etaper (4,8 % → 8,1 % på det daværende plan; **målt live 30/8 er den 9,7 %**).
 
+> ⚠ **En reservation under walkets eget resultat har NUL effekt** (undersøgelse 19/9, [#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405), fund F5 i `docs/audits/2026-09-19-5405-bjergdage-bytte.md`). Reservations-fasen tager et fast antal løb af en arketype FØR prestige-walket — men walket tager også selv løb af den arketype. Sætter man reservationen til et tal divisionens almindelige walk alligevel leverer, ændrer tabellen ingenting, og en tørkørsel ser ud som om knappen ikke virker. **En reservation er kun en knap når den ligger OVER hvad walket selv leverer.** Det skal efterprøves før en reservations-ændring foreslås som fix: mål hvad divisionen får UDEN reservationen, og sæt først tallet derefter.
+
 ---
 
 ## 5b. Katalog-lofterne — en forsyningsgrænse, ikke en generator-fejl
@@ -680,6 +682,46 @@ Tre mål kan i dag **ikke nås uanset hvordan generatoren kalibreres**, fordi ka
 > NOW.md noterede desuden **41,9 % opad-finaler i D4** som følge af summit_tour-overskuddet. Det tal stammer fra #4272-arbejdet 26/8 og er **ikke genmålt 30/8** — behandl det som en indikation, ikke som en måling.
 
 **Reglen:** et katalog-loft må aldrig lukkes ved at slække et mål eller ved at regenerere (§2c). Det lukkes ved at tilføje løb til `race_pool` før næste sæson bygges, eller ved at ejeren beslutter at målet ikke gælder for den division.
+
+---
+
+## 5b1. Forsynings-kontrollen — spørg FØR sæsonen bygges, ikke otte dage før
+
+Alle tre lofter i §5b blev fundet **efter** at nogen havde bygget en kalender og undret sig over et rødt tal. Det samme skete 19/9: Division 2 og 3 manglede afgørende bjergdage, og spørgsmålet "kan kataloget overhovedet levere det?" blev først stillet otte dage før et sæsonskifte. Det er ikke en generator-fejl og skal ikke fejlsøges som en — men det er heller ikke et vilkår. Spørgsmålet kan besvares på kataloget alene, uden at bygge noget.
+
+**Kontrollen:** `backend/lib/catalogSupplyCheck.js` (ren funktion, ingen DB, ingen skrivning) + rapporten `backend/scripts/dev/catalogSupplyReport.mjs`.
+
+```
+# mod den committede fixture — ingen credentials, ingen netværk
+node backend/scripts/dev/catalogSupplyReport.mjs --all
+
+# mod prod-kataloget, read-only
+infisical run --env=prod -- node backend/scripts/dev/catalogSupplyReport.mjs --prod
+```
+
+For hver division og hvert terræn-mål (§5's familie-gulve og rolling-loftet, §6b's tre uniforme mål, §6's K-B-profil) svarer den på fire ting: **kravet**, det **tilladte område**, det **bedst opnåelige**, og **hvilke løbstyper der kan bidrage** — plus de arketyper der findes i kataloget men ligger uden for divisionens klasse-vindue. §5's arketype-reservationer dømmes for sig.
+
+### De tre tal, og hvad de hver især kan bevise
+
+| Tal | Hvordan | Hvad det beviser |
+|---|---|---|
+| **loft** | eksakt knapsack mod §1b's præcise etape-kvote, hvor hvert løb bidrager med sit **størst mulige** udfald | et mål **over** loftet kan ikke nås — et mål **under** loftet er ikke dermed nået |
+| **garanteret** | samme knapsack, men kun arketypernes **garantier** (ARCHETYPE_PROFILES), uden filler | ligger kravet over dette tal, kan målet kun nås hvis det tilfældige filler-træk spiller med |
+| **bestridt** | et løb kan kun ligge i ÉN division (#2276), så foreningen af en gruppe divisioners klasse-vinduer skal kunne bære gruppens samlede krav | er summen for lille, kan **ikke alle** divisioner i gruppen nå målet — uanset hvem der vælger først |
+
+Loftet er **bevidst optimistisk**: det ser bort fra den grådige prestige-rækkefølge, endagsløb/etapeløb-budgettet, reservationerne og at de øvrige mål skal opfyldes af det **samme** udvalg. Det er nok til at fange "umuligt", og det står i kodens egen docstring at det er et loft. Kontrollen kan bevise mangel; den kan ikke afgøre en prioritering mellem to mål, og den foregiver ikke at kunne det.
+
+> **Målt 19/9 mod det committede katalog: intet mål ligger over sit loft, og ingen gruppe af divisioner er bestridt.** Den bindende grænse for S4's kalender er altså **ikke** at løbene mangler — den er at kvoten er fast, så mål der konkurrerer om den samme kvote ikke kan mættes samtidigt. Undersøgelsen i `docs/audits/2026-09-19-5405-bjergdage-bytte.md` nåede frem til det samme ad en helt anden vej (dens F1: det bjergrige løb Division 3 manglede, lå ubrugt i kataloget).
+>
+> Det ENE kendte fund er at **`rolling` ikke har nogen garanteret kilde i nogen division** — ingen arketype garanterer en rullende etape, så §5's rullende-gulv hviler udelukkende på filler-trækket. Det er ikke en hypotese: målt i S3 leverede D4 **nul** rullende etaper. Fundet er låst i `KNOWN_SUPPLY_DEVIATIONS` som en navngiven afvigelse med udløbsdato, så CI er grøn i dag og går rød hvis forsyningen forværres. Det lukkes af §6b's genkalibrering af filler-vægtene pr. division (S5-opgaven) eller af en arketype med en rullende garanti — ikke ved at sænke gulvet.
+
+### Hvornår den skal køres (binding)
+
+1. **Ved enhver katalog-ændring.** Tilføjes, pensioneres eller omklassificeres løb i `race_pool`, køres rapporten i samme PR, og dens sammendrag skrives i PR-body'en.
+2. **Senest EN MÅNED før et sæsonskifte** — ikke otte dage før. Et katalog-loft lukkes ved at tilføje løb (§5b), og det tager tid at finde, beskrive og seede dem.
+3. **Før en ændring af `TIER_ARCHETYPE_RESERVATIONS` eller `TIER_CLASS_WHITELIST` foreslås som fix.** Begge flytter hvilke løb en division kan nå, og kontrollen siger med det samme om forsyningen overhovedet er der.
+
+`backend/lib/catalogSupplyCheck.test.js` kører kontrollen mod den committede fixture i CI. Et **nyt** umuligt eller bestridt mål fælder testen og kan ikke registreres væk — det lukkes ved at tilføje løb.
 
 ---
 
