@@ -2,6 +2,7 @@ import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM, RIDERS,
 } from "./fixtures.js";
+import { scanPageForTextDefects, formatFinding } from "./lib/text-overflow-scan.js";
 
 // #4851 — traeningsscoren 1-99. UI-daekning, der manglede helt.
 //
@@ -344,4 +345,234 @@ test("#4851 mobil, flag off: hverken kolonne eller score-blok", async ({ page })
   await roster.waitFor();
   await expect(roster.getByRole("columnheader", { name: /^Score$/ })).toHaveCount(0);
   await expect(page.locator('[data-testid="training-mobile-score"]')).toHaveCount(0);
+});
+
+// ── 5. Kolonnebredderne: ingen tekst uden for sin celle ─────────────────────
+//
+// Ejer-review 20/9 afviste tabellen som den var: navnekolonnen stod paa faste
+// 124 px mens `table-fixed` delte HELE resten ligeligt mellem TODAY og SCORE.
+// Paa 390 px fik "VO2" ca. 115 px, mens "TIME-TRIALIST/COBBLES SPECIALIST · F78
+// · T59" blev presset ned i 3-4 linjer og stak ud over kolonnestregen. Det er
+// samme fejlklasse som #5383/#5410 (tekst ud over sin boks), og den blev foerst
+// synlig da #5449 fik `table-fixed` til at virke.
+//
+// Vagten her er MAALT, ikke set: for hvert element i tabellen kraeves
+//
+//   scrollWidth <= clientWidth      teksten er ikke bredere end sin egen kasse
+//   kassen ligger inde i sin <td>   den krydser ikke kolonnestregen
+//   meta-linjen fylder <= 2 linjer  og intet er klippet vaek af line-clamp
+//
+// `scrollWidth` er det led der faktisk fanger den gamle fejl: et for langt ord
+// i en boks med `overflow: visible` flytter ikke elementets rect — det males
+// bare uden for den — men det TAELLER i scrollWidth. En ren rect-sammenligning
+// ville have vaeret groen paa praecis den fejl vi retter.
+//
+// Oven i det koeres den generelle tekst-vagt fra #5383 mod selve tabellen.
+// Vagtens egen spec (5383-text-overflow-guard.spec.js) naar den ikke: den
+// maaler /training med standard-mocken, som IKKE saetter `mobileTable`, saa
+// mobil-tabellen findes slet ikke i den koersel. Det er her fladen bliver
+// daekket.
+
+// De LAENGSTE rigtige typenavne i begge sprog — ikke opdigtede strenge:
+//   tt + brostensrytter  "Time-trialist/Cobbles specialist"  (laengst paa EN)
+//   gc + brostensrytter  "Etapeløbsrytter/Brostensrytter"    (laengst paa DA)
+//   puncheur + baroudeur "Puncheur/Baroudeur"                (ingen bindestreg
+//                        og intet mellemrum at bryde paa — det var netop det
+//                        ord der loeb ud over kolonnestregen)
+const WIDE_SQUAD = [
+  { id: "rider-4851-w1", firstname: "Mathias", lastname: "Sørensen", primary_type: "tt", secondary_type: "brostensrytter" },
+  { id: "rider-4851-w2", firstname: "Kristoffer", lastname: "Ødegaard", primary_type: "gc", secondary_type: "brostensrytter" },
+  { id: "rider-4851-w3", firstname: "Sebastian", lastname: "Mikkelsen", primary_type: "puncheur", secondary_type: "baroudeur" },
+  { id: "rider-4851-w4", firstname: "Aleksander", lastname: "Kristiansen", primary_type: "brostensrytter", secondary_type: "gc" },
+].map((rider) => ({ ...RIDERS[0], ...rider, team_id: TEST_TEAM.id, is_academy: false }));
+
+// De laengste celle-etiketter kolonnen kan faa, een pr. rytter:
+//   loebslaere     "Løbslære" (DA) / "Craft"   — laengste DA-session
+//   echelon_drills "Vifte" (DA) / "Echelon"    — laengste EN-session
+//   threshold      "Tærskel" (DA) / "Thresh"
+//   ingen plan     "Ikke valgt" (DA) / "Not set" — den laengste af dem alle
+const WIDE_PLANS = {
+  "rider-4851-w1": { focus: "loebslaere", intensity: "easy" },
+  "rider-4851-w2": { focus: "echelon_drills", intensity: "hard" },
+  "rider-4851-w3": { focus: "threshold", intensity: "hard" },
+};
+
+const WIDE_CONDITION = Object.fromEntries(
+  WIDE_SQUAD.map((rider, i) => [
+    rider.id,
+    // To cifre i baade form og traethed: "· F78 · T59" er den laengste hale
+    // meta-linjen kan faa, og den er det der presser typenavnene.
+    { form: 78 - i, fatigue: 59 + i, injured_until: null, risk: 0 },
+  ]),
+);
+
+const WIDE_SCORE = Object.fromEntries(
+  WIDE_SQUAD.map((rider, i) => [
+    rider.id,
+    i === 1
+      ? { today: null, todayIsRaceDay: true, spark: SPARK, avg: 51, best: 66, days: 19, contributions: [] }
+      : { today: 70 + i, todayIsRaceDay: false, todaySession: "vo2max", spark: SPARK, avg: 57, best: 72, days: 23, contributions: [] },
+  ]),
+);
+
+async function mockWideTraining(page) {
+  await page.route("**/rest/v1/riders**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    const url = request.url();
+    if (request.method() === "GET" && !/[?&]id=eq\./.test(url)) return json(route, WIDE_SQUAD);
+    return route.fallback();
+  });
+  await page.route("**/api/training/me**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    return json(route, {
+      ...trainingMe({ withScore: true, mobileTable: true, score: WIDE_SCORE }),
+      slots: { total: null, used: WIDE_SQUAD.length, remaining: null },
+      plans: WIDE_PLANS,
+      condition: WIDE_CONDITION,
+    });
+  });
+}
+
+async function setLanguage(page, lang) {
+  await page.evaluate(async (next) => {
+    window.localStorage.setItem("cz_lang", next);
+    if (window.__i18n) await window.__i18n.changeLanguage(next);
+  }, lang);
+  await expect.poll(() => page.evaluate(() => window.__i18n?.language)).toBe(lang);
+}
+
+/**
+ * Maal hver celle i mobil-tabellen. Returnerer een linje pr. problem, saa en
+ * fejl peger paa et element og et pixel-tal frem for paa "noget flyder over".
+ */
+async function measureRoster(page) {
+  return page.evaluate(() => {
+    const roster = document.querySelector('[data-testid="training-mobile-roster"]');
+    if (!roster) return { problems: ["tabellen findes ikke i DOM'en"], widths: null };
+
+    const describe = (el) => {
+      const cls = (el.getAttribute("class") || "").split(/\s+/).filter(Boolean).slice(0, 3).map((c) => `.${c}`).join("");
+      const text = (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 48);
+      return `${el.tagName.toLowerCase()}${cls} — "${text}"`;
+    };
+
+    const problems = [];
+    for (const cell of roster.querySelectorAll("th, td")) {
+      const cellRect = cell.getBoundingClientRect();
+      for (const el of [cell, ...cell.querySelectorAll("*")]) {
+        // (a) teksten er bredere end sin egen kasse. Det er leddet der fanger
+        //     et ubrydeligt ord: rect'en flytter sig ikke, men scrollWidth gør.
+        if (el.scrollWidth > el.clientWidth + 1) {
+          problems.push(
+            `${describe(el)} er ${el.scrollWidth - el.clientWidth} px bredere end sin kasse ` +
+              `(scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth})`,
+          );
+        }
+        // (b) kassen selv stikker ud over cellen — kolonnestregen krydses.
+        const rect = el.getBoundingClientRect();
+        const out = Math.max(cellRect.left - rect.left, rect.right - cellRect.right);
+        if (out > 1) problems.push(`${describe(el)} stikker ${Math.round(out)} px ud over sin celle`);
+      }
+    }
+
+    // (c) meta-linjen: hoejst to linjer, og intet klippet vaek af line-clamp.
+    for (const meta of roster.querySelectorAll("tbody .line-clamp-2")) {
+      const range = document.createRange();
+      range.selectNodeContents(meta);
+      const lines = range.getClientRects().length;
+      if (lines > 2) problems.push(`${describe(meta)} fylder ${lines} linjer (loftet er 2)`);
+      if (meta.scrollHeight > meta.clientHeight + 1) {
+        problems.push(`${describe(meta)} er klippet af line-clamp — ${meta.scrollHeight - meta.clientHeight} px skjult`);
+      }
+    }
+
+    // Bredde-kontrakten: navnet skal have den STOERSTE kolonne, tal-kolonnerne
+    // de smalle faste. Det var praecis omvendt foer #4851-rettelsen.
+    const headers = [...roster.querySelectorAll("thead th")].map((th) => Math.round(th.getBoundingClientRect().width));
+    return { problems, widths: { rider: headers[0], data: headers.slice(1) } };
+  });
+}
+
+test.describe("#4851 · mobil-tabellen: ingen tekst uden for sin celle", () => {
+  // Specen saetter selv sine bredder (360 og 390) og skifter sprog undervejs.
+  // Koerte den ogsaa i mobile-chromium og mobile-webkit, ville den maale de
+  // samme to bredder tre gange — samme afvejning som 5383-vagten, se dens
+  // filhoved. Prisen, sagt hoejt: webkits egen ordbrydning maales ikke her.
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "Specen saetter selv sine viewports — se blokkens hoved for hvorfor kun eet projekt koerer den.",
+    );
+    await mockWideTraining(page);
+    await login(page);
+  });
+
+  for (const width of [360, 390]) {
+    for (const lang of ["da", "en"]) {
+      test(`${width} px · ${lang}`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto("/training");
+        await setLanguage(page, lang);
+
+        const roster = page.locator('[data-testid="training-mobile-roster"]');
+        await roster.waitFor();
+        await page.evaluate(async () => {
+          // Uden ventetid paa fonten maales Inter Tights metric-fallback, og
+          // et overloeb paa 2-3 px ville komme og gaa mellem koersler.
+          if (document.fonts?.ready) await document.fonts.ready;
+        });
+        // Tabellen skal baere de laengste typenavne, ellers maaler vi ingenting.
+        await expect(roster).toContainText(lang === "da" ? /Brostensrytter/ : /Cobbles specialist/i);
+
+        const { problems, widths } = await measureRoster(page);
+        expect(
+          problems.join("\n"),
+          `Tekst uden for sin celle i mobil-traeningstabellen (${width} px, ${lang}). ` +
+            `Ret bredderne i TrainingMobileRoster.tsx — wrap, min-w-0, break-words — ` +
+            `frem for at skjule teksten:\n`,
+        ).toBe("");
+
+        // Navnekolonnen tager resten; tal-kolonnerne er de smalle faste.
+        expect(widths.data.length).toBeGreaterThan(0);
+        for (const dataWidth of widths.data) {
+          expect(
+            widths.rider,
+            `navnekolonnen (${widths.rider} px) skal vaere bredere end tal-kolonnerne (${widths.data.join(", ")} px)`,
+          ).toBeGreaterThan(dataWidth);
+        }
+      });
+    }
+  }
+
+  // Den generelle tekst-vagt (#5383/#5410) mod selve tabellen — den naar ikke
+  // hertil i sin egen spec, fordi standard-mocken ikke taender mobil-tabellen.
+  for (const lang of ["da", "en"]) {
+    test(`tekst-vagten (#5383) paa tabellen · ${lang}`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto("/training");
+      await setLanguage(page, lang);
+      await page.locator('[data-testid="training-mobile-roster"]').waitFor();
+      await page.evaluate(async () => {
+        if (document.fonts?.ready) await document.fonts.ready;
+      });
+
+      const findings = (await scanPageForTextDefects(page, { root: '[data-testid="training-mobile-roster"]' }))
+        // Kontrast doemmes pr. FARVEPAR i vagtens egen allowlist, ikke pr.
+        // flade: `--text-3` paa kortbaggrunden er det samme fund paa 11 sider
+        // og rettelsen er EEN token-vaerdi (se text-overflow-allowlist.js).
+        // Den gaeld hoerer ikke til i en tabel-geometri-test.
+        .filter((finding) => !finding.detail.includes("kontrast"));
+
+      expect(
+        findings.map((f) => formatFinding({ ...f, where: `${lang} · 390 px` })).join("\n"),
+        `Tekst-vagten fandt ${findings.length} problemer i mobil-traeningstabellen (${lang}, 390 px).\n`,
+      ).toBe("");
+    });
+  }
 });
