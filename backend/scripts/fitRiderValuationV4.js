@@ -138,6 +138,11 @@ if (ALPHA_OVERRIDE != null && (!Number.isFinite(ALPHA_OVERRIDE) || ALPHA_OVERRID
   console.error(`❌ --alpha skal vaere et tal i [0,1] (fik "${ALPHA_OVERRIDE_ARG}").`);
   process.exit(1);
 }
+// #3353: kort fra rider_id til den ROLLE vaerdien maales i, naar den ikke er
+// rytterens egen type (D-049's bedste-rolle-nu, eller en primaer/sekundaer-
+// blanding). Bruges KUN af fordelings-forankringen, som ellers ville maale
+// spaendet paa den forkerte opskrift.
+const VALUE_ROLE_MAP_PATH = arg("value-role-map", null);
 const MATCH_SPREAD_FROM = arg("match-spread-from", null);
 const LEVEL_CORRECTION_ARG = arg("level-correction", null);
 const LEVEL_CORRECTION = LEVEL_CORRECTION_ARG == null ? null : Number(LEVEL_CORRECTION_ARG);
@@ -358,8 +363,17 @@ async function main() {
     const pop = riders.filter((r) => !r.is_retired && !r.is_academy && abilityByRider.has(r.id));
     const refOutputs = pop.map((r) =>
       blendedOutput(abilityByRider.get(r.id), r.primary_type, refFit.alpha ?? 1, refModel.weights ?? null));
+    let valueRoleMap = null;
+    if (VALUE_ROLE_MAP_PATH) {
+      try {
+        valueRoleMap = JSON.parse(readFileSync(join(__dirname, "..", String(VALUE_ROLE_MAP_PATH)), "utf8"));
+      } catch (e) {
+        console.error(`❌ Kunne ikke laese rolle-kortet ${VALUE_ROLE_MAP_PATH}: ${e.message}`);
+        process.exit(1);
+      }
+    }
     const candOutputs = pop.map((r) =>
-      blendedOutput(abilityByRider.get(r.id), r.primary_type, fit.alpha, candidateWeights));
+      blendedOutput(abilityByRider.get(r.id), valueRoleMap?.[r.id] ?? r.primary_type, fit.alpha, candidateWeights));
     const targetSd = curveTermSd({ b: refFit.b, c: refFit.c ?? 0, outputs: refOutputs });
     const matched = matchCurveSpread({ b: fit.b, c: fit.c, outputs: candOutputs, targetSd });
     spreadRef = {

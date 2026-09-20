@@ -253,3 +253,28 @@ test("matchCurveSpread lader kurven stå ved ugyldigt input i stedet for at give
   // Konstant output ⇒ ingen spredning at matche; kurven skal stå uændret.
   assert.equal(matchCurveSpread({ b: 0.1, c: 0, outputs: [7, 7, 7], targetSd: 3 }).k, 1);
 });
+
+// ── value_role (#3353 / D-049) ───────────────────────────────────────────────
+// "Hvilken opskrift maales rytteren med" skal kunne adskilles fra "hvilken type
+// faar offsettet" — det er hele mekanikken bag bedste-rolle-nu.
+
+test("fitOffsetsForFixedCurve: value_role styrer opskriften, primary_type styrer offsettet", () => {
+  const samples = buildSyntheticSamples(TRUTH);
+  const curve = { alpha: 1, a: TRUTH.a0, b: TRUTH.b0, c: TRUTH.c0 };
+
+  // Uden value_role: opskrift og offset følger begge primary_type.
+  const plain = fitOffsetsForFixedCurve(samples, curve);
+
+  // Med value_role sat til den SAMME type: identisk resultat (ren no-op).
+  const same = fitOffsetsForFixedCurve(
+    samples.map((s) => ({ ...s, value_role: s.primary_type })), curve);
+  assert.deepEqual(same.offset, plain.offset);
+
+  // Med value_role byttet om (men primary_type urørt): offsets grupperes stadig
+  // pr. primary_type, men maales med den ANDEN rolles opskrift — og det skal
+  // give et andet resultat, ellers har feltet ingen effekt.
+  const swapped = fitOffsetsForFixedCurve(
+    samples.map((s) => ({ ...s, value_role: s.primary_type === "sprinter" ? "climber" : "sprinter" })), curve);
+  assert.deepEqual(Object.keys(swapped.offset).sort(), ["climber", "sprinter"]);
+  assert.notDeepEqual(swapped.offset, plain.offset);
+});

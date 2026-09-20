@@ -1,0 +1,182 @@
+{
+  "version": 4,
+  "method": "sim-production-npv",
+  "fitted_at": "2026-09-20T12:29:39.848Z",
+  "sim_run_id": "e4144252",
+  "K": 30,
+  "season_id": "00000000-0000-0000-0000-000000000003",
+  "prize_per_point": 75,
+  "beta_pt": 0,
+  "discount": 0.8,
+  "horizon_model": "survival-weighted",
+  "fit": {
+    "alpha": 1,
+    "a": 4.407784,
+    "b": 0.11181039,
+    "c": -0.000146914,
+    "offset": {
+      "sprinter": -1.097859,
+      "tt": -0.92123,
+      "climber": -0.693359,
+      "puncheur": -0.969732,
+      "brostensrytter": -1.409999,
+      "baroudeur": -1.557635,
+      "rouleur": -1.409972,
+      "gc": -0.715972
+    },
+    "r2_log": 0.3769,
+    "n_samples": 7660
+  },
+  "type_stats": {
+    "sprinter": {
+      "n": 1775,
+      "median_prize": 210,
+      "p90_prize": 5028
+    },
+    "tt": {
+      "n": 739,
+      "median_prize": 258,
+      "p90_prize": 12365
+    },
+    "climber": {
+      "n": 1048,
+      "median_prize": 273,
+      "p90_prize": 25218
+    },
+    "puncheur": {
+      "n": 761,
+      "median_prize": 165,
+      "p90_prize": 25010
+    },
+    "brostensrytter": {
+      "n": 521,
+      "median_prize": 95,
+      "p90_prize": 10760
+    },
+    "baroudeur": {
+      "n": 1257,
+      "median_prize": 125,
+      "p90_prize": 4205
+    },
+    "rouleur": {
+      "n": 817,
+      "median_prize": 80,
+      "p90_prize": 3763
+    },
+    "gc": {
+      "n": 742,
+      "median_prize": 531,
+      "p90_prize": 19070
+    }
+  },
+  "weights": {
+    "sprinter": {
+      "sprint": 4,
+      "acceleration": 3,
+      "positioning": 2,
+      "flat": 2,
+      "durability": 1
+    },
+    "tt": {
+      "time_trial": 5,
+      "tempo": 2,
+      "endurance": 1,
+      "durability": 1,
+      "positioning": 1
+    },
+    "climber": {
+      "climbing": 5,
+      "tempo": 2,
+      "endurance": 2,
+      "recovery": 1,
+      "durability": 1,
+      "descending": 1,
+      "punch": 1
+    },
+    "puncheur": {
+      "punch": 5,
+      "tempo": 2,
+      "acceleration": 1,
+      "climbing": 1,
+      "positioning": 1,
+      "endurance": 1
+    },
+    "brostensrytter": {
+      "cobblestone": 5,
+      "flat": 2,
+      "durability": 2,
+      "positioning": 1,
+      "punch": 1,
+      "endurance": 1
+    },
+    "rouleur": {
+      "flat": 4,
+      "endurance": 2,
+      "tempo": 2,
+      "durability": 1,
+      "positioning": 1,
+      "recovery": 1,
+      "sprint": 1
+    },
+    "baroudeur": {
+      "aggression": 4,
+      "endurance": 2,
+      "descending": 1,
+      "recovery": 1,
+      "punch": 1,
+      "flat": 1,
+      "tactics": 1
+    },
+    "gc": {
+      "climbing": 3,
+      "time_trial": 3,
+      "recovery": 2,
+      "endurance": 2,
+      "tempo": 2,
+      "durability": 1,
+      "descending": 1
+    }
+  },
+  "weights_ref": "lib/weights/valuationWeights.candidate-5443-c1.json",
+  "fixed_curve_ref": {
+    "from": "lib/riderValuationModelV4.json",
+    "fitted_at": "2026-07-18T19:04:14.692Z",
+    "sim_run_id": "75507b50"
+  },
+  "spread_match_ref": {
+    "from": "lib/riderValuationModelV4.json",
+    "n": 8083,
+    "target_sd": 1.2700671259739404,
+    "sd_before": 1.155681116632672,
+    "sd_after": 1.270067125973941,
+    "k": 1.1073533205424417,
+    "b_before": 0.10097084,
+    "c_before": -0.0001198094
+  },
+  "scale": 8.3726509,
+  "level_correction": 0.810849161784679,
+  "scale_ref": {
+    "calibrate": "shipping",
+    "median_current_base_value": 5021,
+    "median_v4_raw_npv": 587,
+    "n_calibration": 8083,
+    "shipping": {
+      "n": 8083,
+      "median_stored_same_population": 4903,
+      "median_shipping_before": 5009,
+      "scale_before": 8.5536627,
+      "type_dampening_enabled": true,
+      "level_correction_applied": 0.810849161784679
+    }
+  },
+  "elite_premium": {
+    "overall_threshold": 45,
+    "k": 0.0870436,
+    "floor_overall": 58,
+    "floor": 9880436,
+    "affordability_ceiling": 4940218,
+    "unbuyable_seasons": 4,
+    "target_top": 98804360
+  },
+  "notes": "Værdimodel v4 (#2428, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global faktor så median(v4) matcher median(nuværende base_value). elite_premium = stejl konveks præmie over overall-tærskel så de enormt gode ryttere er ukøbelige i unbuyable_seasons sæsoner (kalibreret mod rigeste holds råd-loft); ejer-tunbart. Styrer INGEN økonomi (shadow, ingen migration)."
+}

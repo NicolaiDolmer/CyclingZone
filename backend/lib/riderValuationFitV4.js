@@ -94,7 +94,12 @@ export function fitOffsetsForFixedCurve(samples, { alpha, a, b, c = 0, weights =
   const outputs = [];
   const y = [];
   for (const s of samples) {
-    outputs.push(blendedOutput(s.abilities, s.primary_type, alpha, weights));
+    // #3353: `value_role` adskiller "hvilken opskrift bruges til at maale
+    // rytteren" fra "hvilken type faar offsettet". D-049's bedste-rolle-nu og en
+    // primaer/sekundaer-blanding har brug for netop den adskillelse: opskriften
+    // skal foelge rollen rytteren maales i, mens offsettet stadig hoerer til
+    // hans type. Udeladt => primary_type til begge dele, som foer.
+    outputs.push(blendedOutput(s.abilities, s.value_role ?? s.primary_type, alpha, weights));
     y.push(Math.log(Math.max(Number(s.e_prize) || 0, FLOOR)));
   }
 

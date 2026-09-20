@@ -38,6 +38,7 @@ import { ageForSeason } from "../../lib/riderSeasonAge.js";
 import { applyTypeDampening, TYPE_DAMPENING_ENABLED } from "../../lib/riderValuationTypeDampening.js";
 import { recomputeRiderValue } from "../../lib/riderValueRefresh.js";
 import { ratingFromAbilities } from "../../lib/scoutingReport.js";
+import { RIDER_TYPE_KEYS } from "../../lib/riderTypes.js";
 import { weightConcentration } from "../../lib/valuationWeightDerivation.js";
 import { VALUATION_WEIGHTS } from "../../lib/weights/valuationWeights.js";
 
@@ -50,6 +51,18 @@ const arg = (name, def) => {
   return hit ? hit.slice(`--${name}=`.length) : def;
 };
 const MODELS_ARG = arg("models", "B=lib/riderValuationModelV4.candidate-5443-B.json");
+// #3353 / D-049: for de rolle-baserede kandidater er vaerdi-rollen ikke rytterens
+// egen type. Kortet giver rolle pr. rider_id. En noegle med "|" er et
+// (primaer|sekundaer)-par: opskriften er parrets blanding, mens OFFSET og
+// evne-lofter stadig hoerer til den naturlige primaertype - derfor saettes
+// valuation_type til primaeren og kun vaegttabellen byttes.
+const ROLE_MAPS_ARG = arg("role-maps", "");
+// Hvilken REGEL vaelger vaerdi-rollen? Noedvendig for proeve 5 og 6, som skal
+// gen-anvende reglen paa aendrede evner - ikke bare slaa op i et fast kort.
+//   best8 = max over alle otte rollers visnings-opskrift (D-049)
+//   best2 = den bedste af rytterens to naturlige roller
+//   pair  = fast blanding af de to naturlige roller (rollen skifter aldrig)
+const ROLE_RULES_ARG = arg("role-rules", "");
 const OUT_DIR = resolve(arg("out", join(BACKEND, "../balance-internals/2026-09-20-5443-v4-refit/sammenligning")));
 const HISTORY_DAYS = Number(arg("history-days", 14));
 
@@ -88,11 +101,26 @@ async function load() {
   const youthBaseline = JSON.parse(readFileSync(join(LIB, "riderTypesBaselineYouth.json"), "utf8"));
   const live = applyTypeDampening(JSON.parse(readFileSync(join(LIB, "riderValuationModelV4.json"), "utf8")));
 
+  const roleRules = {};
+  if (ROLE_RULES_ARG) {
+    for (const spec of ROLE_RULES_ARG.split(",")) {
+      const [name, rule] = spec.split("=");
+      roleRules[name] = rule;
+    }
+  }
+  const roleMaps = {};
+  if (ROLE_MAPS_ARG) {
+    for (const spec of ROLE_MAPS_ARG.split(",")) {
+      const [name, path] = spec.split("=");
+      roleMaps[name] = JSON.parse(readFileSync(resolve(join(BACKEND, path)), "utf8"));
+    }
+  }
+
   const models = [];
   for (const spec of MODELS_ARG.split(",")) {
     const [name, path] = spec.split("=");
     const raw = JSON.parse(readFileSync(resolve(join(BACKEND, path)), "utf8"));
-    models.push({ name, path, raw, model: applyTypeDampening(raw) });
+    models.push({ name, path, raw, model: applyTypeDampening(raw), roleMap: roleMaps[name] ?? null, roleRule: roleRules[name] ?? null, pairCache: new Map() });
   }
 
   const { data: season, error: seasonErr } = await sb.from("seasons").select("number").eq("status", "active").maybeSingle();
@@ -125,6 +153,39 @@ async function load() {
   return { riders, teamById, abilityByRider, capsByRider, baseline, youthBaseline, live, models, seasonNumber };
 }
 
+// Loeser hvilken model + vaerdi-type en kandidat bruger for EN rytter.
+// Uden rolle-kort: rytterens egen primaertype, som hidtil.
+// Med rolle-kort: den kortlagte rolle. Er den et par ("a|b"), byttes KUN
+// opskriften for primaertypen ud med parrets blanding - offset og evne-lofter
+// foelger stadig primaeren.
+// Anvend kandidatens rolle-regel paa et evne-saet. Returnerer null naar rollen
+// ikke afhaenger af evnerne (pair, eller ingen regel) - saa bevares den faste rolle.
+function roleForAbilities(m, rider, abilities) {
+  if (m.roleRule === "best8") return bestRoleNow(abilities);
+  if (m.roleRule === "best2") {
+    const a = ratingFromAbilities(abilities, rider.primary_type);
+    const b = rider.secondary_type && rider.secondary_type !== rider.primary_type
+      ? ratingFromAbilities(abilities, rider.secondary_type) : null;
+    if (b != null && (a == null || b > a)) return rider.secondary_type;
+    return rider.primary_type;
+  }
+  return null;
+}
+
+function resolveFor(m, rider) {
+  const mapped = m.roleMap?.[rider.id];
+  if (!mapped) return { model: m.model, valuationType: rider.primary_type };
+  if (!mapped.includes("|")) return { model: m.model, valuationType: mapped };
+  const primary = mapped.split("|")[0];
+  if (!m.pairCache.has(mapped)) {
+    const pairTable = m.model.weights?.[mapped];
+    m.pairCache.set(mapped, pairTable
+      ? { ...m.model, weights: { ...m.model.weights, [primary]: pairTable } }
+      : m.model);
+  }
+  return { model: m.pairCache.get(mapped), valuationType: primary };
+}
+
 function recompute(ctx, r, model, valuationType, abilitiesOverride) {
   const ab = abilitiesOverride || ctx.abilityByRider.get(r.id);
   if (!ab) return null;
@@ -143,6 +204,19 @@ const teamLabel = (ctx, r) => {
   const t = r.team_id ? ctx.teamById.get(r.team_id) : null;
   return t ? (t.name || t.id) : (r.team_id ? `ukendt hold ${r.team_id}` : "fri rytter");
 };
+
+// D-049's regel: bedste rolle nu = max over de otte rollers visnings-opskrift,
+// beregnet med spillets egen ratingForRole (via ratingFromAbilities).
+function bestRoleNow(abilities) {
+  let best = null;
+  let bestScore = -Infinity;
+  for (const key of RIDER_TYPE_KEYS) {
+    const v = ratingFromAbilities(abilities, key);
+    if (v == null) continue;
+    if (v > bestScore || (v === bestScore && best != null && key < best)) { bestScore = v; best = key; }
+  }
+  return best;
+}
 
 // ── Prøve 3+4: pengemængde og fordeling ──────────────────────────────────────
 function distribution(rows, key) {
@@ -272,8 +346,10 @@ async function main() {
       stored,
     };
     for (const m of ctx.models) {
-      const res = recompute(ctx, r, m.model, r.primary_type);
+      const { model, valuationType } = resolveFor(m, r);
+      const res = recompute(ctx, r, model, valuationType);
       row[m.name] = res?.base_value ?? null;
+      row[`${m.name}_role`] = valuationType;
     }
     // C3: værditypen er den type rytterens NUVÆRENDE evner peger på (samme
     // klassifikator, samme baseline-valg — kun kilden er skiftet fra caps til
@@ -343,7 +419,8 @@ async function main() {
     standstill.byType[t].improved++;
 
     // "i dag" = live-modellen med den FROSNE type (præcis som prod regner nu).
-    const pairs = [["i dag", ctx.live, r.valuation_type], ...ctx.models.map((m) => [m.name, m.model, r.primary_type])];
+    const pairs = [["i dag", ctx.live, r.valuation_type],
+      ...ctx.models.map((m) => { const q = resolveFor(m, r); return [m.name, q.model, q.valuationType]; })];
     for (const [name, model, vt] of pairs) {
       const before = recompute(ctx, r, model, vt, beforeAb)?.base_value ?? null;
       const after = recompute(ctx, r, model, vt)?.base_value ?? null;
@@ -356,6 +433,100 @@ async function main() {
   for (const name of modelNames) {
     const s = standstill.byModel[name];
     console.log(`    ${name.padEnd(6)} værdien flyttede sig for ${s.moved}/${s.moved + s.still} (${((s.moved / Math.max(1, s.moved + s.still)) * 100).toFixed(1)} %)`);
+  }
+
+  // -- Prove 5: skifter vaerdi-rollen fra uge til uge? --
+  // Et rolle-skift maa ikke give et vaerdihop. Maalt paa evne-historikken: hvor
+  // ofte ville bedste-rolle-nu skifte, og hvor stort et spring ville et skift
+  // give, hvis alt andet stod stille?
+  console.log("-> prove 5: rolle-stabilitet...");
+  const stability = {};
+  const roleModels = ctx.models.filter((m) => m.roleRule === "best8" || m.roleRule === "best2");
+  for (const m of roleModels) {
+    stability[m.name] = { rule: m.roleRule, riders_checked: 0, role_changes: 0, riders_with_change: 0, max_jump_pct: 0, jumps: [], examples: [] };
+  }
+  for (const [riderId, list] of histByRider) {
+    const r = riderById.get(riderId);
+    if (!r) continue;
+    const ab = ctx.abilityByRider.get(riderId);
+    if (!ab) continue;
+    const sorted = list.sort((a, b) => String(a.snapshot_date).localeCompare(String(b.snapshot_date)));
+    if (sorted.length < 2) continue;
+    const snaps = [...sorted.map((x) => x.abilities || {}), ab];
+    for (const m of roleModels) {
+      const st = stability[m.name];
+      st.riders_checked++;
+      let prevRole = null;
+      let changed = false;
+      for (const snap of snaps) {
+        const filled = { ...ab };
+        for (const k of Object.keys(snap)) if (k in filled) filled[k] = snap[k];
+        const role = roleForAbilities(m, r, filled);
+        if (prevRole && role && role !== prevRole) {
+          st.role_changes++;
+          changed = true;
+          // Hvad ville skiftet give, hvis evnerne ellers stod helt stille?
+          const before = recompute(ctx, r, m.model, prevRole, filled)?.base_value ?? null;
+          const after = recompute(ctx, r, m.model, role, filled)?.base_value ?? null;
+          if (before > 0 && after > 0) {
+            const jumpPct = Math.abs((after / before - 1) * 100);
+            st.jumps.push(jumpPct);
+            if (jumpPct > st.max_jump_pct) st.max_jump_pct = jumpPct;
+            if (st.examples.length < 8) {
+              st.examples.push({ name: `${r.firstname} ${r.lastname}`.trim(), from: prevRole, to: role, before, after, jump_pct: jumpPct });
+            }
+          }
+        }
+        if (role) prevRole = role;
+      }
+      if (changed) st.riders_with_change++;
+    }
+  }
+  for (const m of roleModels) {
+    const st = stability[m.name];
+    st.jumps.sort((a, b) => a - b);
+    st.median_jump_pct = quantile(st.jumps, 0.5);
+    st.p90_jump_pct = quantile(st.jumps, 0.9);
+    console.log(`  ${m.name} (${st.rule}): ${st.riders_with_change}/${st.riders_checked} ryttere ville skifte rolle - ${st.role_changes} skift - median hop ${st.median_jump_pct?.toFixed(1) ?? "-"} % - max ${st.max_jump_pct.toFixed(1)} %`);
+  }
+
+  // Rolle-spaend pr. kandidat: hvor meget dyrere er den dyreste rolle end den
+  // billigste? Det er loftet over hvad et rolle-skift overhovedet kan flytte.
+  for (const m of ctx.models) {
+    const offs = Object.entries(m.model.fit.offset).filter(([k]) => !k.includes("|")).map(([, v]) => Number(v));
+    m.typeSpread = Math.exp(Math.max(...offs) - Math.min(...offs));
+  }
+
+  // -- Prove 6: kan vaerdien pumpes med en smal evne? --
+  // For hver rolle: hvor meget stiger vaerdien af ET traenings-point, og hvilken
+  // evne giver mest? Maalt paa medianrytteren i rollen.
+  console.log("-> prove 6: misbrugs-proven...");
+  const abuse = {};
+  const allAbilityKeys = [...new Set([...ABILITY_KEYS, ...RACE_ABILITY_KEYS])];
+  for (const m of ctx.models) {
+    abuse[m.name] = {};
+    for (const role of RIDER_TYPE_KEYS) {
+      const cohort = active.filter((r) => r.primary_type === role && ctx.abilityByRider.has(r.id));
+      if (!cohort.length) continue;
+      const mid = cohort[Math.floor(cohort.length / 2)];
+      const ab = ctx.abilityByRider.get(mid.id);
+      const q = resolveFor(m, mid);
+      const base = recompute(ctx, mid, q.model, q.valuationType)?.base_value ?? null;
+      if (!base) continue;
+      let bestKey = null;
+      let bestGain = 0;
+      for (const k of allAbilityKeys) {
+        if (!Number.isFinite(Number(ab[k]))) continue;
+        const bumped = { ...ab, [k]: Number(ab[k]) + 1 };
+        // Under en bedste-rolle-model kan +1 ogsaa SKIFTE rollen; det skal med.
+        const vt = roleForAbilities(m, mid, bumped) ?? q.valuationType;
+        const v = recompute(ctx, mid, q.model, vt, bumped)?.base_value ?? null;
+        if (v == null) continue;
+        const gain = (v / base - 1) * 100;
+        if (gain > bestGain) { bestGain = gain; bestKey = k; }
+      }
+      abuse[m.name][role] = { ability: bestKey, gain_pct: bestGain };
+    }
   }
 
   // ── Saml resultater pr. kandidat ──────────────────────────────────────────
@@ -424,9 +595,10 @@ Rang-korrelation rating <-> vaerdi (menneskehold) i dag: ${ratingCorrToday?.toFi
   };
 
   mkdirSync(OUT_DIR, { recursive: true });
-  const json = { meta, results, standstill, c3Young, named, ratingCorrToday, ratingCorrTodayByType, rows };
+  const typeSpreads = Object.fromEntries(ctx.models.map((m) => [m.name, m.typeSpread]));
+  const json = { meta, results, standstill, c3Young, named, ratingCorrToday, ratingCorrTodayByType, stability, abuse, typeSpreads, rows };
   writeFileSync(join(OUT_DIR, "sammenligning.json"), JSON.stringify(json, null, 2), "utf8");
-  writeFileSync(join(OUT_DIR, "RAPPORT.md"), buildReport(ctx, { meta, results, standstill, c3Young, named, modelNames, ratingCorrToday, ratingCorrTodayByType }), "utf8");
+  writeFileSync(join(OUT_DIR, "RAPPORT.md"), buildReport(ctx, { meta, results, standstill, c3Young, named, modelNames, ratingCorrToday, ratingCorrTodayByType, stability, abuse, typeSpreads }), "utf8");
   console.log(`\n✅ Skrevet: ${join(OUT_DIR, "RAPPORT.md")}`);
   console.log("\nINTET er skrevet til databasen.");
 }
@@ -437,7 +609,7 @@ function weightRow(name, table) {
     `| ${t} | ${Object.entries(w).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(" ")} | ${((weightConcentration(w) ?? 0) * 100).toFixed(0)} % |`).join("\n");
 }
 
-function buildReport(ctx, { meta, results, standstill, c3Young, named, modelNames, ratingCorrToday, ratingCorrTodayByType }) {
+function buildReport(ctx, { meta, results, standstill, c3Young, named, modelNames, ratingCorrToday, ratingCorrTodayByType, stability, abuse, typeSpreads }) {
   const cols = results.map((r) => r.name);
   const head = () => `| Prøve | ${cols.join(" | ")} |\n|---|${cols.map(() => "--:").join("|")}|`;
 
@@ -565,6 +737,34 @@ ${test3}
 ## Prøve 4 — fordelingen (menneskehold)
 
 ${test4}
+
+---
+
+## Prove 5 - skifter vaerdi-rollen fra uge til uge?
+
+Maalt paa evne-historikken, med hver kandidats EGEN rolle-regel anvendt paa de aendrede evner. Et rolle-skift maa ikke i sig selv give et vaerdihop.
+
+| Kandidat | regel | ryttere der ville skifte | skift i alt | median hop | p90 | maks |
+|---|---|--:|--:|--:|--:|--:|
+${Object.entries(stability).map(([n, st]) => `| ${n} | ${st.rule} | ${st.riders_with_change}/${st.riders_checked} | ${st.role_changes} | ${st.median_jump_pct?.toFixed(1) ?? "\u2014"} % | ${st.p90_jump_pct?.toFixed(1) ?? "\u2014"} % | **${st.max_jump_pct.toFixed(1)} %** |`).join("\n")}
+
+Kandidater uden en evne-afhaengig rolle (fast naturlig rolle eller fast blanding) kan pr. konstruktion ikke skifte rolle og staar derfor ikke i tabellen.
+
+Spaend fra billigste til dyreste rolle - loftet over hvad et rolle-skift kan flytte:
+
+| Kandidat | ${Object.keys(typeSpreads).join(" | ")} |
+|---|${Object.keys(typeSpreads).map(() => "--:").join("|")}|
+| Rolle-spaend | ${Object.values(typeSpreads).map((v) => `×${v?.toFixed(2) ?? "—"}`).join(" | ")} |
+
+${Object.entries(stability).filter(([, st]) => st.examples.length).map(([n, st]) => `**${n}:**\n\n| Rytter | fra | til | foer | efter | hop |\n|---|---|---|--:|--:|--:|\n${st.examples.map((e) => `| ${e.name} | ${e.from} | ${e.to} | ${fmt(e.before)} | ${fmt(e.after)} | ${e.jump_pct.toFixed(1)} % |`).join("\n")}`).join("\n\n") || "_Ingen skift._"}
+
+## Prove 6 - kan vaerdien pumpes med en smal evne?
+
+Stoerste vaerdistigning af ET traenings-point, maalt paa medianrytteren i hver rolle:
+
+| Rolle | ${Object.keys(abuse).join(" | ")} |
+|---|${Object.keys(abuse).map(() => "---").join("|")}|
+${[...new Set(Object.values(abuse).flatMap((a) => Object.keys(a)))].sort().map((role) => `| ${role} | ${Object.keys(abuse).map((n) => abuse[n][role] ? `${abuse[n][role].ability} ${abuse[n][role].gain_pct.toFixed(2)} %` : "—").join(" | ")} |`).join("\n")}
 
 ---
 
