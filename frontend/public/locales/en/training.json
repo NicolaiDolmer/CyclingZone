@@ -290,7 +290,6 @@
     "sparkAria": "Training score, last 7 days: {name}",
     "columnHint": "How good today's session was, 1-99. Race days read 'Race'.",
     "columnHelpAria": "What the training score means: read it in Help",
-    "mobileAria": "Training score today: {name}",
     "factor_intensity": "Session",
     "factor_focusMatch": "Focus match",
     "factor_condition": "Form and fatigue",
