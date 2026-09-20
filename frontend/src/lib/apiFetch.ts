@@ -26,10 +26,18 @@
 //   som "intet nyt endnu", ikke som en fejlmeddelelse.
 // · Et 401 afleveres ÉN gang til networkErrorGuards' session-rejected-kæde
 //   (#4350) og returneres som `{ unauthorized: true }` — aldrig retry'et her.
+// · En TRANSPORTFEJL (#5322) — DNS, TLS, ingen rute, blokeret af et filter —
+//   returneres som `{ ok: false, status: 0, networkError: true }` i stedet for
+//   at kaste. `status: 0` er den etablerede konvention for "intet HTTP-svar"
+//   og kolliderer ikke med nogen HTTP-status. Kaldstedet kan dermed SKELNE
+//   "vi nåede aldrig serveren" fra "serveren svarede en fejl" uden at fange
+//   exceptions, og et kaldsted der IKKE skelner rammer stadig sin egen
+//   `!res.ok`-gren, præcis som da fejlen blev kastet ind i dets catch (#5312).
 // · Alt andet (2xx, 4xx≠401/429, 5xx) sendes uændret videre; modulet opfinder
 //   ingen ny fejlhåndtering for dem.
 
 import { reportUnauthorizedResponse, type AuthClientLike } from "./networkErrorGuards.ts";
+import { apiUrl } from "./apiBase.ts";
 
 /**
  * Det underliggende svar apiFetch selv har brug for — løst nok til at både
@@ -64,6 +72,10 @@ export interface ApiFetchResult {
   limited?: boolean;
   unauthorized?: boolean;
   retryAt?: number | null;
+  /** #5322: true når kaldet aldrig nåede serveren (intet HTTP-svar overhovedet). */
+  networkError?: boolean;
+  /** #5322: den oprindelige exception fra `fetch()`, så logning/Sentry beholder den. */
+  error?: unknown;
 }
 
 /** url -> epoch ms hvor vinduet slutter */
@@ -111,14 +123,35 @@ export async function apiFetch(
 ): Promise<ApiFetchResult> {
   const { now = () => Date.now(), fetchImpl = fetch as ApiFetchImpl, source = url, authClient } = ctx;
 
-  const blockedUntil = retryNotBefore.get(url);
+  // #5322: en relativ sti ("/api/x") får backendens base sat foran; en færdig
+  // url passerer uændret igennem. Retry-vinduet nøgles på den OPLØSTE url, så
+  // "/api/x" og "<base>/api/x" er samme ressource og deler ét vindue.
+  const resolvedUrl = apiUrl(url);
+
+  const blockedUntil = retryNotBefore.get(resolvedUrl);
   if (blockedUntil != null && blockedUntil > now()) {
     // Stille backoff (#5089 punkt 2): ingen netværkskald, ingen fejlkasse —
     // kaldstedet skal behandle dette som "intet nyt endnu", ikke som en fejl.
     return { ok: false, status: 429, limited: true, retryAt: blockedUntil, data: null };
   }
 
-  const res = await fetchImpl(url, options);
+  let res: ApiFetchResponseLike;
+  try {
+    res = await fetchImpl(resolvedUrl, options);
+  } catch (error) {
+    // #5322 — kaldet nåede ALDRIG serveren. `fetch()` afviser med en TypeError
+    // ved DNS-, TLS-, rute- og filter-fejl, og hver browser har sin egen
+    // ordlyd (se backendReachability.js). Den boble røg før urørt op til
+    // kaldstedet, som ikke kunne skelne den fra en hvilken som helst anden
+    // exception og derfor viste sin generiske fejlkasse — præcis det der
+    // gjorde #5312 dyr.
+    //
+    // En AFBRYDELSE er ikke en transportfejl: den er kaldstedets egen
+    // annullering (AbortController), og den skal blive ved med at kaste, så
+    // en unmount'et komponent ikke render en "kan ikke nå serveren"-fejl.
+    if ((error as { name?: string } | null)?.name === "AbortError") throw error;
+    return { ok: false, status: 0, networkError: true, error, data: null };
+  }
 
   if (res.status === 401) {
     await reportUnauthorizedResponse(
@@ -142,8 +175,8 @@ export async function apiFetch(
       // Ikke-JSON eller tomt 429-svar — vinduet sættes stadig hvis headeren findes.
     }
     const seconds = parseRetryAfterSeconds(res, body, now);
-    if (seconds != null) retryNotBefore.set(url, now() + seconds * 1000);
-    return { ok: false, status: 429, limited: true, retryAt: retryNotBefore.get(url) ?? null, data: body };
+    if (seconds != null) retryNotBefore.set(resolvedUrl, now() + seconds * 1000);
+    return { ok: false, status: 429, limited: true, retryAt: retryNotBefore.get(resolvedUrl) ?? null, data: body };
   }
 
   let data: unknown = null;

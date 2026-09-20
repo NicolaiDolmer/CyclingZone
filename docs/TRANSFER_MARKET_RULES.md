@@ -445,6 +445,12 @@ talt med (`getSquadRiskViolation`, `marketUtils.js:325-335`). Tjekkes både ved 
 **anden** kanal (akademi-graduering) efter manageren allerede fører en auktion, kan finalize
 stadig afvise. Finalize har sin hard-gate som defense-in-depth.
 
+**Kontrakt-livscyklus ved sæsonskifte (#1150/#2744/#1720):** tre stier. `extend-contract`
+(manuel, spilleren trykker "forlæng" i UI). `contractExpiryRelease.js` frigiver en rytter
+uden kreditering når kontrakten udløber uden forlængelse (§8, `ECONOMY_RULES.md:117`).
+`aiContractAutoRenewal.js` gør det samme for AI-hold, som ingen manager har til at trykke
+"forlæng" — samme prissætning som extend-contract, ingen pengeomkostning.
+
 ---
 
 ## 10. Udskudte holdskifter under etapeløb

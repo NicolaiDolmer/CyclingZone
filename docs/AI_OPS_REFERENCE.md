@@ -113,6 +113,37 @@ Efter et `git pull` der rører ved en `*package-lock.json`: kør `npm run sync-d
 
 ---
 
+## SQL migrations mandat detaljer
+
+_Flyttet hertil fra `AGENTS.md` regel 9 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen er uændret — AGENTS.md holder kun perioden og peger herhen._
+
+**SQL/migrations-mandat (ejer 18/7, [#2642](https://github.com/NicolaiDolmer/CyclingZone/issues/2642)) — afløser "ejer applier"-reglen:** Claude kører selv SQL/migrationer mod prod (`apply_migration`/`execute_sql`) under disse rammer:
+
+- **Rækkefølge:** migration committes i PR → PR merges → apply. Aldrig apply af u-merget SQL (eneste undtagelse: additiv/idempotent fil hvor featuren ellers er brudt live — dokumentér i issue/PR).
+- **Idempotens:** alle filer følger `IF NOT EXISTS`/`DROP POLICY IF EXISTS`-mønstret (håndhævet af migration-idempotency-CI).
+- **Post-apply-verifikation:** read-only-tjek (`information_schema`/`pg_*`) + notér resultatet i issue- eller PR-kommentar. ⚠️ Skaber migrationen en NY tabel/kolonne der tilgås via supabase-js/PostgREST: kør OGSÅ `NOTIFY pgrst, 'reload schema';` — API'ets schema-cache genindlæser IKKE selv efter MCP-apply (bidt 19/7: drip-boot fandt ikke `academy_intake_ticks` trods verificeret CREATE; auto-migrate/psql-stien har samme hul).
+- **Destruktive klasser er FORTSAT ejer-gated pr. tilfælde:** `DROP TABLE`/kolonne, masse-DELETE/UPDATE af spillerdata, RLS-lempelser — jf. "ejer ser live-tilstand før atombomber".
+- **Mekanik:** filer i `database/2026-*.sql` (top-niveau) auto-applies desuden af `auto-migrate.yml` ved push til main (~3 min delay). MCP-apply bruges til at fremrykke/verificere en merged migration samt til one-off data-SQL under rammerne ovenfor — begge veje er idempotente via `schema_migrations`-tracking hhv. filkonventionen. ⚠️ **"Forberedt-men-ikke-kørt" SQL må derfor ALDRIG committes som `database/2026-*.sql`** — den KØRER ved merge uanset kommentarer i filen (bidt 18/7: backfill-2623 auto-applied trods "IKKE KØRT"-header). Udkast/forslag til ejer-review → `database/proposals/` (uden for auto-migrate-globben). **Anvender du en fil derfra i hånden, SKAL den flyttes til top-niveau bagefter** — ellers er den ikke længere til at skelne fra et uanvendt udkast (kostede #3765). Håndhæves hver 6. time af `scripts/proposals-reconcile.mjs`.
+- **Backup-forudsætning:** Supabase-org er på Pro-plan (daglige automatiske backups) — verificeret 2026-07-18. PITR-add-on-status kan ikke aflæses via MCP; ejer bekræfter i dashboard.
+
+---
+
+## Masterplan artifact sync
+
+_Flyttet hertil fra `AGENTS.md` regel 34 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen er uændret — AGENTS.md holder kun perioden og peger herhen._
+
+**Masterplan-ændring → artifacten opdateres i samme omgang.** Ændres `docs/MASTERPLAN.md` (rækkefølge, status, nye spor), republiceres artifacten *"Cycling Zone — Masterplan"* (find den med `Artifact action=list`; samme URL, aldrig en ny) FØR sessionen lukker, og commit-beskeden nævner det. Artifacten er ejerens læseflade; en plan der kun er rettet i markdown er en parallel plan (samme princip som hard rule 30). Ejeren 25/8: *"hver gang masterplanen opdateres, så opdateres artifacten også."*
+
+---
+
+## Guard commit branch dir parameter
+
+_Flyttet hertil fra `AGENTS.md` regel 18 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen selv er uændret — dette er kun hændelses-historikken bag `<dir>`-parameteren._
+
+Uden `<dir>` tjekker `guard-commit-branch.sh` shell-cwd'en, som agent-shells nulstiller mellem kald — det gav en **falsk blokering 2/9** ([#4658](https://github.com/NicolaiDolmer/CyclingZone/issues/4658)): en worktree-worker committede korrekt via `git -C <dir>`, men guarden så main-checkoutets cwd og blokerede et gyldigt commit. Fixet ved at guarden nu tager samme `<dir>` som `git -C` og tjekker DEN mappes branch i stedet for shell-cwd.
+
+---
+
 ## Rolle-fordeling mellem AI-assistenter — RETIRED (2026-06-25)
 
 > **Solo Claude-operation siden 2026-06-12.** Ingen Codex, ingen Manus. Claude ejer alle

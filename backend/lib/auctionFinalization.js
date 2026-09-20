@@ -19,7 +19,7 @@ import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { buildContractExpiringNotification, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
 import { resolvePendingGraduationOnSale, resolveUnsoldGraduate } from "./academyGraduation.js";
-import { seniorSquadPatch } from "./squads.js";
+import { applySeniorSquadFilter, seniorSquadPatch } from "./squads.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import {
   FINANCE_ACTOR_TYPE,
@@ -313,14 +313,18 @@ async function deleteUnsoldYouthRider({ supabase, rider }) {
     return false;
   }
 
-  const { data: deleted, error: delErr } = await supabase
-    .from("riders")
-    .delete()
-    .eq("id", rider.id)
-    .is("team_id", null)
-    .is("pending_team_id", null)
-    .eq("is_academy", false)
-    .select("id");
+  // #4619: trup-leddet er delt (squads.applySeniorSquadFilter). Det er en
+  // SIKKERHEDS-gate på en sletning — den må kun ramme en rytter der reelt er
+  // gradueret ud i seniortruppen, og et strengere prædikat kan derfor kun gøre
+  // sletningen mere forsigtig, aldrig bredere.
+  const { data: deleted, error: delErr } = await applySeniorSquadFilter(
+    supabase
+      .from("riders")
+      .delete()
+      .eq("id", rider.id)
+      .is("team_id", null)
+      .is("pending_team_id", null)
+  ).select("id");
   ensureNoError(delErr);
   const wasDeleted = (deleted ?? []).length > 0;
   // #2524: rider_watchlist har ingen FK-cascade — uden dette hook forsvinder

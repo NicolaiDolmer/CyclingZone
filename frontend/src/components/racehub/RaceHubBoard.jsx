@@ -19,6 +19,7 @@ import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
+import { isJsonContentType, responseContentType } from "../../lib/raceHubResponseGuard.ts";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 
@@ -89,6 +90,17 @@ export default function RaceHubBoard() {
       setLoading(false);
       return;
     }
+    // #5291: en tom API-base betyder at fetch rammer et RELATIVT path — altså
+    // frontend'ens egen vært, som svarer HTML 200 (SPA-fallback) i stedet for et
+    // 404/netværksfejl. Den fejl var usynlig for manageren (parset som JSON,
+    // kastede en rå SyntaxError) og for triagen (ingen tydelig årsag i Sentry).
+    // Fejl derfor EKSPLICIT her, før noget kaldes.
+    if (!API) {
+      setLoadError({ kind: "config" });
+      reportLoadFailure("racehub_board", { kind: "config" });
+      setLoading(false);
+      return;
+    }
     // Path som egen literal (query konkateneres separat) — holder /api/races/distribution
     // matchbar for feature-liveness-auditens frontend-scan (ellers læses qs som path-segment).
     const url = `${API}/api/races/distribution`;
@@ -102,6 +114,16 @@ export default function RaceHubBoard() {
         reportLoadFailure("racehub_board", { kind: "http", status: res.status, reason: body?.error });
         return;
       }
+      // #5291: en 200 er ikke nødvendigvis JSON — en SPA-fallback (tom API-base,
+      // forkert proxy-rute) svarer også 200. Tjek Content-Type FØR res.json(),
+      // så den kendte fejlklasse rammer parse-grenen direkte i stedet for at
+      // først skulle kaste en SyntaxError fra selve parsningen.
+      const contentType = responseContentType(res);
+      if (!isJsonContentType(res)) {
+        setLoadError({ kind: "parse", status: res.status });
+        reportLoadFailure("racehub_board", { kind: "parse", status: res.status, context: { contentType } });
+        return;
+      }
       // #4165: parsningen har sin EGEN gren. Lå den i den ydre try, blev en
       // malformet 200-krop tagget "network" i Sentry - altså en server- eller
       // proxy-fejl fejlmeldt som spillerens forbindelse, og dermed en løgn i
@@ -111,7 +133,7 @@ export default function RaceHubBoard() {
         json = await res.json();
       } catch (cause) {
         setLoadError({ kind: "parse", status: res.status });
-        reportLoadFailure("racehub_board", { kind: "parse", status: res.status, cause });
+        reportLoadFailure("racehub_board", { kind: "parse", status: res.status, cause, context: { contentType } });
         return;
       }
       setData(json);
@@ -198,10 +220,14 @@ export default function RaceHubBoard() {
           onScopeChange={setScope}
           onDayChange={setDay}
         />
-        <div role="alert" className="mx-auto max-w-xl py-6">
+        <div className="mx-auto max-w-xl py-6">
           <ErrorState
             title={t("racehub.error.title")}
-            description={loadError.kind === "auth" ? t("racehub.error.session") : t("racehub.error.body")}
+            description={
+              loadError.kind === "auth" ? t("racehub.error.session")
+                : loadError.kind === "parse" ? t("racehub.error.parse")
+                  : t("racehub.error.body")
+            }
             action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("racehub.error.retry")}</Button>}
           />
         </div>

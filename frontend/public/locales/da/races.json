@@ -94,6 +94,7 @@
     "error": {
       "title": "Holdudtagelsen kunne ikke hentes",
       "body": "Intet gik tabt. Dine opstillinger er sikre.",
+      "parse": "Løbstavlen kunne ikke hentes. Genindlæs siden.",
       "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
       "retry": "Prøv igen"
     },
@@ -510,6 +511,8 @@
     "draftRestored": "Jeg holdt fast i dine ugemte valg. Husk at gemme dem inden starten.",
     "autoFill": "Auto-udtag",
     "autoFillError": "Auto-udtag mislykkedes. Prøv igen.",
+    "autoFillReloadFailed": "Auto-udtag gemte din trup, men genindlæsning her fejlede. Prøv igen før du laver flere ændringer.",
+    "retry": "Prøv igen",
     "save": "Gem udtagelse",
     "saving": "Gemmer…",
     "saved": "Udtagelsen er gemt.",
@@ -539,6 +542,7 @@
       "selection_duplicate_rider": "Hver rytter kan kun udtages én gang.",
       "selection_race_not_open": "Udtagelsen er lukket for dette løb.",
       "selection_race_started": "Løbet er gået i gang, så truppen er låst.",
+      "selection_season_not_active": "Løbet hører til en sæson, der ikke er startet endnu.",
       "selection_rider_bound": "Rytteren kører allerede et overlappende løb.",
       "selection_rider_bound_named": "{rider} kører allerede {race}, som overlapper. Fjern ham der, eller vælg en anden rytter.",
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",

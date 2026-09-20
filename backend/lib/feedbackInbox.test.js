@@ -14,6 +14,7 @@ import {
   setFeedbackStatus,
   replyToFeedback,
   submitTradeReport,
+  resolveTradeForReport,
   TRADE_REPORT_CATEGORY,
   TRADE_REPORT_TYPES,
   TRADE_REPORT_MESSAGE_MAX_LENGTH,
@@ -506,4 +507,208 @@ test("submitTradeReport dedupe skelner på transferId, ikke bare kategori+hold",
     supabase, teamId: "t9", userId: "u1", transferType: "transfer", transferId: "o1", message: "Different trade.",
   });
   assert.equal(second.body.alreadyReported, false, "en anden handel er ikke en dublet, selvom samme hold rapporterede før");
+});
+
+// ── Handel-opløsning i admin-indbakken (#5284) ──────────────────────────────
+// Ejer 15/9: "jeg kan ikke engang se hvilken handel der er rapporteret" —
+// feedbackInbox.js selekterede metadata, men shapeItem() sendte den aldrig
+// videre, og der var intet opslag på tværs af auctions/transfer_offers/
+// swap_offers/riders/teams.
+
+function seedInboxTradeState() {
+  return {
+    player_feedback: [
+      {
+        id: "fp-auction", seq: 10, created_at: "2026-09-10T10:00:00Z", user_id: "u1", team_id: "t9",
+        category: "fairplay", status: "new",
+        message: "This auction price looks off to me.",
+        metadata: { transfer_type: "auction", transfer_id: "a1", reporting_team_id: "t9", team_a_id: "t1", team_b_id: "t2" },
+        page_path: null, viewport: null, reply_message: null, replied_at: null,
+      },
+      {
+        id: "fp-transfer", seq: 9, created_at: "2026-09-10T09:00:00Z", user_id: "u1", team_id: "t9",
+        category: "fairplay", status: "new",
+        message: "This transfer offer looks off to me.",
+        metadata: { transfer_type: "transfer", transfer_id: "o1", reporting_team_id: "t9", team_a_id: "t1", team_b_id: "t3" },
+        page_path: null, viewport: null, reply_message: null, replied_at: null,
+      },
+      {
+        id: "fp-swap", seq: 8, created_at: "2026-09-10T08:00:00Z", user_id: "u1", team_id: "t9",
+        category: "fairplay", status: "new",
+        message: "This swap looks off to me.",
+        metadata: { transfer_type: "swap", transfer_id: "s1", reporting_team_id: "t9", team_a_id: "t2", team_b_id: "t3" },
+        page_path: null, viewport: null, reply_message: null, replied_at: null,
+      },
+      {
+        id: "fp-missing", seq: 7, created_at: "2026-09-10T07:00:00Z", user_id: "u1", team_id: "t9",
+        category: "fairplay", status: "new",
+        message: "Reported this but the trade seems to be gone now.",
+        metadata: { transfer_type: "auction", transfer_id: "does-not-exist", reporting_team_id: "t9", team_a_id: "t1", team_b_id: "t2" },
+        page_path: null, viewport: null, reply_message: null, replied_at: null,
+      },
+      {
+        id: "fp-no-metadata", seq: 6, created_at: "2026-09-10T06:00:00Z", user_id: "u1", team_id: "t9",
+        category: "fairplay", status: "new",
+        message: "Free-text fairplay report from the contact form, no structured trade.",
+        metadata: null,
+        page_path: null, viewport: null, reply_message: null, replied_at: null,
+      },
+      {
+        id: "fp-bug", seq: 5, created_at: "2026-09-10T05:00:00Z", user_id: "u1", team_id: "t9",
+        category: "bug", status: "new", message: "Unrelated bug report.", metadata: null,
+        page_path: null, viewport: null, reply_message: null, replied_at: null,
+      },
+    ],
+    users: [{ id: "u1", username: "alice", email: "alice@example.com" }],
+    teams: [
+      { id: "t1", name: "Team Alpha" },
+      { id: "t2", name: "Team Bravo" },
+      { id: "t3", name: "Team Charlie" },
+      { id: "t9", name: "Team Reporter" },
+    ],
+    auctions: [
+      { id: "a1", rider_id: "r1", status: "completed", seller_team_id: "t1", current_bidder_id: "t2", current_price: 5_000_000, actual_end: "2026-09-01T12:00:00Z", created_at: "2026-08-30T12:00:00Z" },
+    ],
+    transfer_offers: [
+      { id: "o1", rider_id: "r2", status: "accepted", seller_team_id: "t1", buyer_team_id: "t3", offer_amount: 3_000_000, counter_amount: 3_500_000, updated_at: "2026-09-02T12:00:00Z" },
+    ],
+    swap_offers: [
+      { id: "s1", status: "window_pending", proposing_team_id: "t2", receiving_team_id: "t3", offered_rider_id: "r3", requested_rider_id: "r4", cash_adjustment: 0, counter_cash: null, updated_at: "2026-09-03T12:00:00Z" },
+    ],
+    riders: [
+      { id: "r1", firstname: "Jonas", lastname: "Iversen", market_value: 4_000_000 },
+      { id: "r2", firstname: "Mads", lastname: "Kruse", market_value: 3_500_000 },
+      { id: "r3", firstname: "Peter", lastname: "Holm", market_value: 2_000_000 },
+      { id: "r4", firstname: "Anders", lastname: "Vang", market_value: 2_200_000 },
+    ],
+  };
+}
+
+test("listFeedbackInbox opløser en auktions-fairplay-rapport til et fuldt trade-objekt", async () => {
+  const supabase = createFakeSupabase(seedInboxTradeState());
+  const page = await listFeedbackInbox({ supabase, category: "fairplay", limit: 10 });
+
+  const item = page.items.find((i) => i.id === "fp-auction");
+  assert.equal(item.trade_missing, false);
+  assert.deepEqual(item.trade, {
+    type: "auction",
+    team_a: { id: "t1", name: "Team Alpha" },
+    team_b: { id: "t2", name: "Team Bravo" },
+    rider: { id: "r1", firstname: "Jonas", lastname: "Iversen", market_value: 4_000_000 },
+    riders: null,
+    price: 5_000_000,
+    market_value_ratio: 1.25,
+    trade_date: "2026-09-01T12:00:00Z",
+    reporting_team: { id: "t9", name: "Team Reporter" },
+  });
+});
+
+test("listFeedbackInbox opløser en transfer-fairplay-rapport (counter_amount vinder over offer_amount)", async () => {
+  const supabase = createFakeSupabase(seedInboxTradeState());
+  const page = await listFeedbackInbox({ supabase, category: "fairplay", limit: 10 });
+
+  const item = page.items.find((i) => i.id === "fp-transfer");
+  assert.equal(item.trade_missing, false);
+  assert.equal(item.trade.type, "transfer");
+  assert.equal(item.trade.team_a.name, "Team Alpha");
+  assert.equal(item.trade.team_b.name, "Team Charlie");
+  assert.equal(item.trade.rider.id, "r2");
+  assert.equal(item.trade.price, 3_500_000, "counter_amount slår offer_amount, samme konvention som teamTransferHistory.js");
+  assert.equal(item.trade.market_value_ratio, 1, "3.5m mod 3.5m markedsværdi = 100%");
+});
+
+test("listFeedbackInbox opløser en swap-fairplay-rapport med BEGGE ryttere og uden ratio", async () => {
+  const supabase = createFakeSupabase(seedInboxTradeState());
+  const page = await listFeedbackInbox({ supabase, category: "fairplay", limit: 10 });
+
+  const item = page.items.find((i) => i.id === "fp-swap");
+  assert.equal(item.trade_missing, false);
+  assert.equal(item.trade.type, "swap");
+  assert.equal(item.trade.rider, null, "swap har ingen entydig 'rytter' — se riders");
+  assert.equal(item.trade.riders.offered.id, "r3");
+  assert.equal(item.trade.riders.requested.id, "r4");
+  assert.equal(item.trade.price, 0, "ren bytte uden kontantjustering");
+  assert.equal(item.trade.market_value_ratio, null, "ratio giver ikke mening på tværs af to ryttere");
+  assert.equal(item.trade.team_a.name, "Team Bravo");
+  assert.equal(item.trade.team_b.name, "Team Charlie");
+});
+
+test("listFeedbackInbox giver trade:null + trade_missing:true for en handel der ikke længere findes (aldrig 500)", async () => {
+  const supabase = createFakeSupabase(seedInboxTradeState());
+  const page = await listFeedbackInbox({ supabase, category: "fairplay", limit: 10 });
+
+  const item = page.items.find((i) => i.id === "fp-missing");
+  assert.equal(item.trade, null);
+  assert.equal(item.trade_missing, true);
+});
+
+test("listFeedbackInbox: fairplay-rapport UDEN metadata (kontaktformular) vises stadig korrekt", async () => {
+  const supabase = createFakeSupabase(seedInboxTradeState());
+  const page = await listFeedbackInbox({ supabase, category: "fairplay", limit: 10 });
+
+  const item = page.items.find((i) => i.id === "fp-no-metadata");
+  assert.equal(item.trade, null);
+  assert.equal(item.trade_missing, false, "ingen metadata er ikke det samme som en slettet handel");
+  assert.equal(item.message, "Free-text fairplay report from the contact form, no structured trade.");
+});
+
+test("listFeedbackInbox: andre kategorier får slet intet trade-felt (uændret kontrakt)", async () => {
+  const supabase = createFakeSupabase(seedInboxTradeState());
+  const page = await listFeedbackInbox({ supabase, limit: 10 });
+
+  const item = page.items.find((i) => i.id === "fp-bug");
+  assert.equal("trade" in item, false);
+  assert.equal("trade_missing" in item, false);
+});
+
+test("listFeedbackInbox batcher trade-opslag pr. side — ét .in()-kald pr. tabel, aldrig ét pr. række", async () => {
+  const state = seedInboxTradeState();
+  const supabase = createFakeSupabase(state);
+  const selectCalls = [];
+  const originalFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const builder = originalFrom(table);
+    const originalSelect = builder.select.bind(builder);
+    builder.select = (...args) => { selectCalls.push(table); return originalSelect(...args); };
+    return builder;
+  };
+
+  await listFeedbackInbox({ supabase, category: "fairplay", limit: 10 });
+
+  const countFor = (table) => selectCalls.filter((t) => t === table).length;
+  assert.equal(countFor("auctions"), 1, "ét batch-opslag for alle auktions-rapporter på siden");
+  assert.equal(countFor("transfer_offers"), 1);
+  assert.equal(countFor("swap_offers"), 1);
+  assert.equal(countFor("riders"), 1, "ét batch-opslag for alle ryttere på tværs af alle handelstyper");
+});
+
+test("resolveTradeForReport opløser en enkelt netop-indsendt auktions-rapport", async () => {
+  const supabase = createFakeSupabase(seedInboxTradeState());
+  const { trade, trade_missing } = await resolveTradeForReport({
+    supabase, transferType: "auction", transferId: "a1", reportingTeamId: "t9",
+  });
+  assert.equal(trade_missing, false);
+  assert.equal(trade.rider.id, "r1");
+  assert.equal(trade.price, 5_000_000);
+  assert.equal(trade.reporting_team.name, "Team Reporter");
+});
+
+test("resolveTradeForReport giver trade:null + trade_missing:true på en handel der ikke findes", async () => {
+  const supabase = createFakeSupabase(seedInboxTradeState());
+  const result = await resolveTradeForReport({
+    supabase, transferType: "auction", transferId: "does-not-exist", reportingTeamId: "t9",
+  });
+  assert.deepEqual(result, { trade: null, trade_missing: true });
+});
+
+test("resolveTradeForReport giver trade:null uden fejl for en ugyldig type/manglende id", async () => {
+  const supabase = createFakeSupabase(seedInboxTradeState());
+  assert.deepEqual(
+    await resolveTradeForReport({ supabase, transferType: "academy", transferId: "a1", reportingTeamId: "t9" }),
+    { trade: null, trade_missing: false }
+  );
+  assert.deepEqual(
+    await resolveTradeForReport({ supabase, transferType: "auction", transferId: null, reportingTeamId: "t9" }),
+    { trade: null, trade_missing: false }
+  );
 });

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useId } from "react";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { useRealtimeRefetch } from "./useRealtimeRefetch";
 
 const API = import.meta.env.VITE_API_URL;
@@ -45,10 +46,13 @@ export function useActionSummary() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setPending(EMPTY); return; }
-      const res = await fetch(`${API}/api/inbox/pending`, {
+      const res = await apiFetch(`${API}/api/inbox/pending`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      if (res.ok) setPending(await res.json());
+      // #5242: kun et ægte 2xx opdaterer state — et limited (429-vindue),
+      // unauthorized eller networkError lader den forrige liste stå, præcis som
+      // den kastede fetch-fejl gjorde før.
+      if (res.ok) setPending(res.data);
     } catch { /* silent — UI viser tom-state */ }
     finally { setLoading(false); setLoaded(true); }
   }, []);

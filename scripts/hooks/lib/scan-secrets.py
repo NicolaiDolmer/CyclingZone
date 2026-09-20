@@ -1,0 +1,345 @@
+#!/usr/bin/env python3
+"""Secret-pattern scanner for .claude/hooks/sanitize-secrets.sh (#634 AC2).
+
+Laeser HELE PostToolUse-payloaden paa **stdin** (binaert, decodet som UTF-8 med
+errors="replace") og skriver ét JSON-objekt paa stdout.
+
+Hvorfor stdin og ikke en env-var (#5326): indtil 17/9 blev payloaden sendt via
+`_SECRET_SCAN_INPUT`. En env-var har en platform-afhaengig stoerrelses- og
+encoding-graense (Windows: ~32 KB pr. variabel gennem visse API'er), og naar
+den graense rammes fejler Python FOER scanningen. Hooken saa kun en non-zero
+exit-kode og meldte 'output scan failed' uden aarsag. stdin har ingen
+stoerrelsesgraense og ingen encoding-konvertering undervejs.
+
+Exit-koder:
+  0  scanning gennemfoert (resultatet staar paa stdout som JSON)
+  1  uventet fejl (traceback paa stderr; hooken viser en afkortet, redacted
+     udgave i blokeringsbeskeden)
+
+Scanneren traeffer ALDRIG selv en blokerings-beslutning. Den rapporterer fund;
+`sanitize-secrets.sh` beslutter. Dette er samme regelsaet som foer udtraekket —
+kun input-kanalen er aendret.
+"""
+
+import json
+import re
+import sys
+
+
+def read_input():
+    """Raw stdin -> str. errors='replace' saa en afskaaret multibyte-sekvens
+    (hooken truncater ved 2 MB) ikke vaelter scanneren."""
+    data = sys.stdin.buffer.read()
+    return data.decode("utf-8", "replace")
+
+
+text = read_input()
+if not text:
+    print(json.dumps({
+        "leak_detected": False,
+        "count": 0,
+        "types": [],
+        "findings": [],
+        "image_mode": False,
+        "image_mode_reason": "",
+        "high_entropy_skipped": 0,
+        "path_like_skipped": 0,
+        "iso_timestamp_skipped": 0,
+        "var_assign_skipped": 0,
+        "bot_metadata_skipped": 0,
+        "tool_name": "",
+        "input_chars": 0,
+    }))
+    sys.exit(0)
+
+# Best-effort JSON parse of the PostToolUse payload to extract tool_name.
+# Falls back to text-only scanning if stdin isn't valid JSON (e.g. legacy
+# hook callers or tests that pipe raw text).
+tool_name = ""
+try:
+    payload = json.loads(text)
+    if isinstance(payload, dict):
+        tool_name = str(payload.get("tool_name", "") or "")
+except Exception:
+    pass
+
+# --- Image-mode detection ------------------------------------------------
+# Why: high-entropy fallback regex matches any 40+-char base64-like string
+# with mixed case + digits. JPEG/PNG bytes encoded as base64 trip it for
+# HUNDREDS of fragments per screenshot (count=241 on 2026-05-25, count=587
+# on 2026-05-26 — both Chrome MCP browser_batch with screenshot action).
+# Suppressing the entire tool_response breaks downstream verify flows.
+#
+# Fix: detect image-output context and skip the high-entropy fallback.
+# Named patterns (sb_secret_, eyJ, ghp_, AKIA, ...) still run because they
+# have distinct prefixes that random image bytes won't accidentally match.
+#
+# Two detection paths (either is enough):
+#   1. tool_name matches a known image-producing MCP tool.
+#   2. The payload contains an image magic-byte marker (JPEG SOI / PNG
+#      signature / data URI / MCP image content type).
+IMAGE_TOOL_RE = re.compile(
+    r"^mcp__Claude_in_Chrome__(?:browser_batch|computer|gif_creator|upload_image|read_page)$"
+    r"|^mcp__Claude_Preview__preview_screenshot$"
+    r"|screenshot",
+    re.IGNORECASE,
+)
+is_image_tool = bool(IMAGE_TOOL_RE.search(tool_name)) if tool_name else False
+
+# Magic-byte / MIME / data-URI markers. Highly distinctive — vanishingly
+# unlikely to appear in real secret-bearing output.
+IMAGE_MARKERS = (
+    "data:image/",
+    '"type":"image"',
+    "'type': 'image'",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "/9j/4AA",            # base64-encoded JPEG SOI + JFIF header
+    "iVBORw0KG",          # base64-encoded PNG signature
+    "R0lGODlh",           # base64-encoded GIF87a/89a header
+    "UklGR",              # base64-encoded WebP RIFF header
+    "Successfully captured screenshot",  # Chrome MCP success line
+)
+has_image_marker = any(marker in text for marker in IMAGE_MARKERS)
+
+image_mode = is_image_tool or has_image_marker
+
+# Pattern definitions. Order matters: mere-specifikke FØRST så vi får
+# præcise typer (sb_secret_ scannes før generic-high-entropy).
+PATTERNS = [
+    # Supabase secret keys (post-2026-04 format) — ALDRIG må leake
+    ("supabase-secret",     re.compile(r"sb_secret_[A-Za-z0-9_-]{30,}")),
+    # Supabase publishable keys — public per Supabase model, men issue #634
+    # spec'er at vi redact'er begge. Mindre kritisk men konsistent.
+    ("supabase-publishable", re.compile(r"sb_publishable_[A-Za-z0-9_-]{30,}")),
+    # Supabase legacy JWT (eyJh = JWT header "alg":"HS256"). Roden af #296.
+    # JWT-format: header.payload.signature, alle base64url.
+    ("jwt-supabase-legacy", re.compile(r"eyJh[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}")),
+    # Generic JWT (alle 3-segment base64url). Bredere fang.
+    ("jwt",                 re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")),
+    # Sentry DSN — eksponeret i #620
+    ("sentry-dsn",          re.compile(r"https://[a-f0-9]{32}@[a-z0-9.\-]+\.ingest(?:\.[a-z]{2})?\.sentry\.io/[0-9]+")),
+    # Discord bot token — eksponeret i #620. Format: <userId-base64>.<6-7char>.<27-38char>
+    ("discord-bot-token",   re.compile(r"\b[MN][A-Za-z0-9_-]{23,28}\.[A-Za-z0-9_-]{6,7}\.[A-Za-z0-9_-]{27,38}\b")),
+    # GitHub PAT (ghp_, gho_, ghu_, ghs_, ghr_)
+    ("github-pat",          re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\b")),
+    # AWS access keys
+    ("aws-access-key",      re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    # Slack tokens
+    ("slack-token",         re.compile(r"\bxox[abprs]-[0-9]{10,}-[0-9]{10,}-[A-Za-z0-9]{24,}\b")),
+    # OpenAI/Anthropic-style API keys
+    ("openai-key",          re.compile(r"\bsk-[A-Za-z0-9]{20,}T3BlbkFJ[A-Za-z0-9]{20,}\b")),
+    ("anthropic-key",       re.compile(r"\bsk-ant-[A-Za-z0-9_-]{90,}\b")),
+    # Stripe keys
+    ("stripe-key",          re.compile(r"\b(?:sk|pk|rk)_(?:test|live)_[A-Za-z0-9]{24,}\b")),
+]
+
+# High-entropy fallback: URL-safe base64-like ≥40 chars med blandet case + digits.
+# CRITICAL: char-class udelukker `/` fordi URLs (fx GitHub-issue-links) ellers
+# matcher (false positive opdaget 2026-05-25 da NOW.md med #-issue-links blev
+# scanned). Modern API tokens bruger oftest URL-safe base64 uden `/`; legacy
+# tokens med `/` slipper igennem high-entropy men fanges af named patterns
+# (JWT, Sentry DSN, Supabase keys) OR af gitleaks ved commit.
+HIGH_ENTROPY = re.compile(r"\b(?=(?:[A-Za-z0-9_+=-]*[A-Z]){2,})(?=(?:[A-Za-z0-9_+=-]*[a-z]){2,})(?=(?:[A-Za-z0-9_+=-]*[0-9]){2,})[A-Za-z0-9_+=-]{40,}\b")
+
+# Allow-list: kendte ikke-secret base64-like strings vi IKKE vil flagge.
+# Tilføj her hvis du opdager en konkret false-positive klage.
+ALLOW = [
+    # Git SHAs (40 hex)
+    re.compile(r"^[a-f0-9]{40}$"),
+    # GitHub node IDs (decoded MDQ6, LA_, etc.)
+    re.compile(r"^(?:LA_|MDQ6|MDc6|IC_|I_|PR_)[A-Za-z0-9_=]+$"),
+    # Vite asset hashes (8 chars suffix)
+    re.compile(r"-[A-Za-z0-9]{8}\.(?:js|css|woff2?|map)$"),
+    # Fixture markers (sync med .gitleaks.toml allowlist)
+    re.compile(r"(?:FIXTURE_DO_NOT_USE|TEST_SECRET_NOT_REAL)"),
+    # Google Drive/Sheets fileId (44-char moderne format, starter med "1",
+    # kun [A-Za-z0-9_-]). IDENTIFIKATORER, ikke secrets — adgang styres af
+    # deling, ikke hemmeligholdelse. memory/reference_uci_sheet*.md refererer
+    # UCI-sheet fileId'er; uden denne allow tripper de high-entropy hver gang
+    # filens indhold passerer et tool-output og blokerer Read af WARM-index.
+    # Named secret-patterns (sb_secret_/eyJ/ghp_/AKIA/...) koeres FOER denne
+    # fallback, saa aegte prefix-baerende secrets fanges stadig. (#743, 2026-05-29)
+    re.compile(r"^1[A-Za-z0-9_-]{43}$"),
+    # GitHub GraphQL paginerings-cursors. mcp__github__list_issues returnerer
+    # pageInfo.endCursor paa formen Y3Vyc29yOnYyOpK0... (base64 for
+    # "cursor:v2:..."). Det er opaque pagination-tokens — afsloerer intet og
+    # roterer ikke; aldrig secrets. De starter ALTID med "Y3Vyc29y" (base64 for
+    # "cursor"). Uden denne allow tripper >100-issue-pages high-entropy og hele
+    # tool-outputtet tabes (housekeeping fik kun 100/264 issues 2026-05-31).
+    # Samme moenster som Google Drive fileId-allow ovenfor; named patterns koeres
+    # FOER denne fallback. (2026-05-31)
+    re.compile(r"^Y3Vyc29y[A-Za-z0-9_+=-]+$"),
+    # Claude Code worktree session-IDs — PostToolUse JSON payload indeholder
+    # session_id paa formen <project-slug>-<adjektiv>-<substantiv>-<6-8hexchars>,
+    # fx C--Dev-CyclingZone-youthful-dijkstra-577ad9 (44 tegn, trigger HIGH_ENTROPY).
+    # Navngivning styres af Claude Code internt; kan ikke aendres fra repo-siden.
+    # Named secrets (eyJ/sk-ant-/ghp_/AKIA/...) fanges af PATTERNS FOER fallback.
+    re.compile(r"^[A-Za-z0-9_+=-]+-[a-z]+-[a-z]+-[0-9a-f]{6,8}$"),
+]
+
+# Path/identifier detector (#752). Claude Code flader fil-stier og worktree-/
+# session-navne til separator-strenge (C:\Dev\... -> C--Dev-CyclingZone-...,
+# worktrees-agent-<hex>, arkiv-filnavne NOW_HIST...). De tripper high-entropy
+# (40+ tegn, blandet case + digits) men er IKKE secrets. Den eksisterende
+# ALLOW-liste fanger kun specifikke former (session-id, drive fileId); denne
+# detektor er den generelle regel. To signaler — enten er nok:
+#   1. Windows drev-flad-form: starter med <bogstav>-- (fra "C:\").
+#   2. Ord-sammensat: >=3 rene alfabetiske segmenter (>=3 tegn) naar splittet
+#      paa [-_+=]. Tilfaeldige base64-secrets har ikke rigtige ord-graenser;
+#      paths/identifiers goer ("Dev", "CyclingZone", "worktrees", "agent", ...).
+# SIKKERHED: kaldes KUN i high-entropy-fallback'en, EFTER named patterns
+# (sb_secret_/eyJ/ghp_/AKIA/Sentry/Discord/Stripe/...) allerede har koert og
+# fuld-blokeret. En aegte KENDT secret kan derfor ikke slippe igennem her.
+_WORD_SEG = re.compile(r"[A-Za-z]{3,}")
+_DRIVE_FLAT = re.compile(r"^[A-Za-z]--")
+
+
+def looks_like_path_or_identifier(value):
+    if _DRIVE_FLAT.match(value):
+        return True
+    word_segments = [s for s in re.split(r"[-_+=]", value) if _WORD_SEG.fullmatch(s)]
+    return len(word_segments) >= 3
+
+
+# ISO-timestamp backup-filename suffix detector (#3317). Repair-scripts (fx
+# backend/scripts/repair2276Div4Cascade.js, repair2251Tier4GrandTours.js)
+# navngiver JSON-backups `<slug>-${now.toISOString().replace(/[:.]/g, "-")}.json`,
+# dvs. filnavnet ender paa 'YYYY-MM-DDTHH-mm-ss-sssZ' (fx
+# "repair-2276-div4-cascade-2026-07-10T14-23-45-678Z"). Literal T/Z (2
+# uppercase) + mange cifre + '-'-tegn + laengde >=40 trigger'er high-entropy
+# paa hele filnavnet. Ramte 3x under sponsor-audit 4/8 (grep/Read/Write),
+# ingen reelle secrets involveret (#3317).
+# SIKKERHED: snaevert moenster — FASTE cifer-laengder (4-2-2-2-2-2-3) med
+# literal 'T' og 'Z' paa praecise positioner. En aegte secret rammer denne
+# 24-tegns struktur kun ved et ekstremt usandsynligt sammentraef, og named
+# patterns (sb_secret_/eyJh.../ghp_/AKIA/...) koeres FOER denne fallback
+# alligevel, saa et kendt-praefikset secret indlejret i en filsti fanges stadig.
+ISO_TIMESTAMP_SUFFIX_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z")
+
+
+def looks_like_iso_timestamp_filename(value):
+    return bool(ISO_TIMESTAMP_SUFFIX_RE.search(value))
+
+
+# Uppercase-var-assignment detector (#4493). `STORT_NAVN=<hex-of-lignende>`
+# er en helt almindelig shell-idiom (COMMIT=<sha>, SHA=<sha>, COMMIT_SHA=<sha>,
+# container-digests, checksums, migrations-/build-id'er). HIGH_ENTROPY's
+# char-class inkluderer '=', saa variabelnavnets STORE bogstaver bindes sammen
+# med vaerdiens smaa bogstaver+cifre til ét token, og reglen (2 store, 2
+# smaa, 2 cifre, >=40 tegn) er opfyldt af KOMBINATIONEN alene — hverken navnet
+# eller vaerdien opfylder den hver for sig.
+#
+# Fix: split kandidat-tokenet paa '=' og kraev at MINDST ét segment
+# uafhaengigt opfylder entropi-kravet, foer vi flager. En aegte secret
+# overlever: `KEY=<aegte-secret>` -> vaerdi-segmentet alene har stadig
+# blandet case + cifre + laengde >=40. Base64-padding ('==') ligger til
+# sidst, saa splittet trimmer kun de (tomme) padding-segmenter, ikke selve
+# secret-kroppen. Navngivne patterns (sb_secret_/eyJ/ghp_/AKIA/Sentry/...)
+# koeres FOER denne fallback, saa et kendt-praefikset secret ved siden af et
+# stort variabelnavn fanges alligevel der (verificeret: COMMIT=<JWT>,
+# SUPABASE_KEY=<sb_secret_...> i scripts/test-sanitize-secrets.sh).
+_UPPER_RE = re.compile(r"[A-Z]")
+_LOWER_RE = re.compile(r"[a-z]")
+_DIGIT_RE = re.compile(r"[0-9]")
+
+
+def _segment_is_high_entropy(segment):
+    return (
+        len(segment) >= 40
+        and len(_UPPER_RE.findall(segment)) >= 2
+        and len(_LOWER_RE.findall(segment)) >= 2
+        and len(_DIGIT_RE.findall(segment)) >= 2
+    )
+
+
+def looks_like_uppercase_var_assignment(value):
+    if "=" not in value:
+        return False
+    segments = [s for s in value.split("=") if s]
+    return not any(_segment_is_high_entropy(s) for s in segments)
+
+
+findings = []
+redacted = text
+
+for type_name, pattern in PATTERNS:
+    for m in pattern.finditer(text):
+        value = m.group(0)
+        findings.append({"type": type_name, "preview": value[:8] + "..." + value[-4:] if len(value) > 16 else value[:4] + "..."})
+        redacted = redacted.replace(value, "[REDACTED:{}]".format(type_name))
+
+# CI-bot PR-kommentar-metadata (#3128). `gh pr view N --json comments` paa en
+# PR med Vercel-preview indeholder bottens skjulte metadata-header
+# "[vc]: #<hash>:<base64-JSON>" (projectId/inspectorUrl/previewUrl/...).
+# Base64-blob'en starter typisk med "eyJ" (base64 for '{"'), saa den ligner
+# en JWT/high-entropy-token for entropi-detektoren, men er Vercels egen
+# offentlige deployment-metadata — ingen hemmelighed. Samme klasse for
+# Supabase-bottens "[supa]:"-header (samme kommentar-stroem, endnu ikke set
+# trigge men praeventivt daekket). Verificeret mod AEGTE PR-kommentar-data
+# (PR #3125, 2026-08-04) — matcher literal praefiks + sammenhaengende
+# base64-alfabet (inkl. '/' og '=', som ikke er en del af HIGH_ENTROPY's
+# char-class, saa blob'en ellers fragmenterer i mange smaa high-entropy-fund).
+# SIKKERHED: snaevert — kraever det EKSAKTE bot-header-literal foran
+# base64-blob'en; en secret indsat andetsteds i en PR-kommentar blokeres
+# stadig, og named patterns (sb_secret_/ghp_/AKIA/...) koeres FOER dette
+# strip alligevel, saa et kendt-praefikset secret indlejret i headeren
+# stadig fanges.
+BOT_METADATA_RE = re.compile(r"\[(?:vc|supa)\]: #[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+")
+redacted, bot_metadata_skipped = BOT_METADATA_RE.subn("[BOT-METADATA]", redacted)
+
+# High-entropy scan AFTER named patterns (så vi ikke double-flag).
+# Skipped entirely in image-mode to avoid the JPEG/PNG base64 false-positive
+# storm. We still count would-be matches for the forward-guard stats log.
+high_entropy_skipped = 0
+path_like_skipped = 0
+iso_timestamp_skipped = 0
+var_assign_skipped = 0
+if image_mode:
+    high_entropy_skipped = sum(1 for _ in HIGH_ENTROPY.finditer(redacted))
+else:
+    for m in HIGH_ENTROPY.finditer(redacted):  # Scan redacted (named patterns already replaced)
+        value = m.group(0)
+        # Skip allow-listed
+        if any(a.match(value) for a in ALLOW):
+            continue
+        # Skip STORT_NAVN=<vaerdi>-idiomer hvor kun kombinationen (ikke
+        # navnet eller vaerdien hver for sig) opfylder entropi-kravet (#4493).
+        if looks_like_uppercase_var_assignment(value):
+            var_assign_skipped += 1
+            continue
+        # Skip path/identifier-like strings (#752) — flade file-paths,
+        # worktree-/session-navne. Safe: named patterns har allerede koert.
+        if looks_like_path_or_identifier(value):
+            path_like_skipped += 1
+            continue
+        # Skip ISO-timestamp-suffiksede backup-filnavne (#3317).
+        if looks_like_iso_timestamp_filename(value):
+            iso_timestamp_skipped += 1
+            continue
+        # Skip hvis allerede del af en REDACTED- eller BOT-METADATA-marker
+        if "[REDACTED:" in value or "[BOT-METADATA]" in value:
+            continue
+        findings.append({"type": "high-entropy", "preview": value[:8] + "..." + value[-4:]})
+        redacted = redacted.replace(value, "[REDACTED:high-entropy]")
+
+result = {
+    "leak_detected": bool(findings),
+    "count": len(findings),
+    "types": sorted(set(f["type"] for f in findings)),
+    "findings": findings[:10],  # Cap til 10 for at undgå log-bloat
+    "image_mode": image_mode,
+    "image_mode_reason": "tool_name" if is_image_tool else ("marker" if has_image_marker else ""),
+    "high_entropy_skipped": high_entropy_skipped,
+    "path_like_skipped": path_like_skipped,
+    "iso_timestamp_skipped": iso_timestamp_skipped,
+    "var_assign_skipped": var_assign_skipped,
+    "bot_metadata_skipped": bot_metadata_skipped,
+    "tool_name": tool_name,
+    # Diagnostik (#5326): stoerrelsen scanneren FAKTISK saa. Afviger den fra
+    # hookens INPUT_LEN, er input blevet afkortet undervejs.
+    "input_chars": len(text),
+}
+print(json.dumps(result))

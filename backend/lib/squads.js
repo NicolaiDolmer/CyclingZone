@@ -186,6 +186,76 @@ export function effectiveSquad(rider, seasonAge) {
   return rider?.is_academy === false ? DEFAULT_SQUAD : null;
 }
 
+// ── Seniortruppens ÉNE prædikat (#4619, spec §5.1) ───────────────────────────
+//
+// Før denne slice spurgte hver eneste senior-læser selv: `.eq("is_academy", false)`
+// i SQL, eller `rider.is_academy === true → ud` i JS. 12+ kaldsteder, hver med sin
+// egen kopi: seniortrup-tællingen, senior-løbenes udtagelse, markedets cap-tal,
+// kontrakt-udløb, de tre vagter, sæson-varslet og Discord-sweepet. Præcis den slags
+// spredning der i #1307/#1308 lod 264 akademiryttere blive auto-udtaget til
+// seniorløb, fordi ét af stederne manglede filteret. Herfra findes prædikatet ÉT
+// sted, i to former (SQL + JS), og `seniorSquadFilterGuard.test.js` fælder enhver
+// ny håndskrevet kopi.
+//
+// HVORFOR BEGGE KOLONNER, IKKE BARE `squad = 'senior'` [kritisk]
+// Migrationen (database/2026-09-15-4619-riders-squad.sql) gav ALLE ryttere
+// `squad = 'senior'` via kolonnens DEFAULT, og backfill'en er ejer-gated og IKKE
+// kørt. I det vindue er `is_academy` fortsat den kolonne der bærer sandheden: en
+// stor del af bestanden står som akademiryttere MED `squad = 'senior'`. Et naivt
+// skifte til `.eq("squad", "senior")` alene ville derfor lukke hele den gruppe ind
+// i seniortruppen, seniorløbene og markedet — en live-regression i samme klasse som
+// #1307/#1308, bare den anden vej.
+//
+// Kravet til prædikatet er derfor DOBBELT:
+//   1. I DAG (før backfill): bit-identisk med `is_academy = false`. Opfyldt fordi
+//      `squad`-leddet er sandt for hver eneste række indtil backfill'en kører.
+//   2. EFTER backfill: korrekt. En ungdomsrytter har da `squad <> 'senior'` OG
+//      `is_academy = true`, og fanges af begge led.
+// Spec §3.2 holder bevidst `is_academy` som afledt kolonne (`squad <> 'senior'`)
+// netop for at gøre den dobbelte betingelse gyldig i hele overgangsperioden. Når
+// backfill'en er kørt og verificeret, kan `is_academy`-leddet fjernes HER — ét sted.
+
+/**
+ * Kolonner en query SKAL projicere for at `isSeniorSquadRider` kan svare rigtigt.
+ * Glemmer en kalder `squad`, falder prædikatet tavst tilbage på `is_academy`
+ * alene — hvilket er korrekt i dag, men forkert efter backfill. Brug listen.
+ * @type {readonly string[]}
+ */
+export const SENIOR_SQUAD_COLUMNS = Object.freeze(["squad", "is_academy"]);
+
+/**
+ * JS-siden: hører rækken til SENIORTRUPPEN?
+ *
+ * Bevidst formuleret som "ikke ungdom" og ikke som `squad === 'senior'`: rækker
+ * hentet af ældre kaldsteder kan mangle `squad` i projektionen, og en manglende
+ * kolonne må aldrig kunne gøre en helt almindelig seniorrytter usynlig (det ville
+ * tømme startfelter). Mangler `squad`, bærer `is_academy` afgørelsen alene —
+ * nøjagtig dagens adfærd. Er `squad` med, kan den kun gøre prædikatet STRENGERE.
+ *
+ * @param {{squad?:string, is_academy?:boolean}|null|undefined} rider
+ * @returns {boolean}
+ */
+export function isSeniorSquadRider(rider) {
+  if (!rider) return false;
+  if (isYouthSquad(rider.squad)) return false;
+  return rider.is_academy !== true;
+}
+
+/**
+ * SQL-siden: begræns en supabase-query til seniortruppens rækker.
+ *
+ * Kæd den ind i stedet for `.eq("is_academy", false)`. Idempotent at kæde oven på
+ * en eksisterende query; kalderen sætter selv team-afgrænsning, pensionerings-
+ * filter og øvrige led.
+ *
+ * @template T
+ * @param {T} query  supabase/PostgREST query-builder
+ * @returns {T}
+ */
+export function applySeniorSquadFilter(query) {
+  return query.eq("squad", DEFAULT_SQUAD).eq("is_academy", false);
+}
+
 /**
  * Pladsloftet for en trup, eller `null` hvis truppen ikke har et eget loft
  * (senior styres af divisionens `squad_limits.max`).

@@ -27,13 +27,16 @@ const apiSource = readFileSync(resolve(__dirname, "../routes/api.js"), "utf8");
 
 // VINDUET ER EN HEURISTIK, ikke en kontrakt — det skal bare daekke hele
 // /training/me-handleren. Hævet 7200 → 9200 af #4851 (traeningsscoren lagde et
-// flag-opslag, en query og et betinget responsfelt ind i route'n) og 9200 → 11200
-// af #4847 (dayClose-blokken, knappens aabne-tilstand). Faldt res.json uden for
-// vinduet, holdt guarderne herunder op med at maale noget UDEN at blive roede.
-// Maalt 15/9: 11.628 tegn fra markoeren til naeste router.*-kald, og racingToday-
-// spreadet ligger paa offset 10.044 — 11200 rammer altsaa inden for route'n, saa
-// doesNotMatch-guarderne ikke kan komme til at laese en fremmed route.
-function routeBlock(marker, len = 11200) {
+// flag-opslag, en query og et betinget responsfelt ind i route'n), 9200 → 10400 af
+// #3643 (mobil-flaget training_mobile_table lagde endnu et flag-opslag +
+// responsfelt ind i samme handler) og 10400 → 13000 af #4847 (dayClose-blokken,
+// knappens aabne-tilstand). Faldt res.json uden for vinduet, holdt guarderne
+// herunder op med at maale noget UDEN at blive roede. Samme fejlklasse hver gang:
+// racingToday-spreadet faldt uden for vinduet og guarden matchede ikke laengere.
+// Testen "routeBlock-vinduet daekker hele /training/me-handleren" nedenfor er
+// forward-guarden: den maaler den FAKTISKE afstand til naeste router.*-kald, saa
+// vinduet ikke kan blive for lille igen uden at noget bliver roedt.
+function routeBlock(marker, len = 13000) {
   const start = apiSource.indexOf(marker);
   assert.ok(start !== -1, `${marker} skal findes i api.js`);
   return apiSource.slice(start, start + len);
@@ -65,6 +68,32 @@ async function trainingMeRaceDayGate(supabase, { isBetaTester = false } = {}, lo
   const racingToday = raceDayDevelopmentOn ? await loader() : {};
   return { ...(raceDayDevelopmentOn ? { racingToday } : {}) };
 }
+
+// FORWARD-GUARD paa selve vinduet (#4847). `routeBlock`s `len` er vokset fire gange
+// (7200 → 9200 → 10400 → 13000), og hver gang paa samme maade: en ny feature lagde et
+// flag-opslag og et responsfelt ind i /training/me, res.json gled ud af vinduet, og
+// doesNotMatch-guarderne herunder holdt stille op med at maale noget. Denne test maaler
+// den FAKTISKE afstand fra markoeren til route'ns afslutning, saa det bliver ROEDT i
+// stedet for tavst naeste gang handleren vokser.
+test("#4847 forward-guard: routeBlock-vinduet daekker hele /training/me-handleren", () => {
+  const marker = 'router.get("/training/me"';
+  const start = apiSource.indexOf(marker);
+  assert.ok(start !== -1, `${marker} skal findes i api.js`);
+  // Naeste route-registrering efter handleren = handlerens ende.
+  const next = apiSource.indexOf("\nrouter.", start + marker.length);
+  assert.ok(next !== -1, "der skal findes en route efter /training/me");
+  const handlerLength = next - start;
+  const block = routeBlock(marker);
+  assert.ok(
+    block.length >= handlerLength,
+    `routeBlock-vinduet (${block.length}) er mindre end /training/me-handleren (${handlerLength}) — haev len i routeBlock, ellers maaler guarderne herunder kun en del af route'n`,
+  );
+  // Og ikke saa stort at vi laeser ind i den NAESTE route (falsk positiv den anden vej).
+  assert.ok(
+    block.length <= handlerLength + 1500,
+    `routeBlock-vinduet (${block.length}) raekker mere end 1500 tegn ind i naeste route (handler: ${handlerLength}) — saenk len`,
+  );
+});
 
 test("api.js importerer racingToday-lookuppet + gater på race_day_development_enabled (#4375)", () => {
   assert.match(

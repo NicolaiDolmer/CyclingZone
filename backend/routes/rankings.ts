@@ -3,6 +3,7 @@ import type { Request, RequestHandler } from "express";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { fetchAllRows } from "../lib/supabasePagination.js";
+import { toSupabaseError } from "../lib/supabaseErrorNormalize.js";
 import { readHonours } from "./rankingHonours.ts";
 
 const uuid = z.uuid();
@@ -94,10 +95,24 @@ export function createRankingsRouter({ supabase, requireAuth, reportError, viewe
   }));
 
   get("/race-count", countQuery, async ({ team_id }) => {
-    const { count, error } = await supabase.from("team_race_points_mv")
+    // #5224: et HEAD-svar ({ head: true }) har INGEN body per HTTP-spec, heller
+    // ikke ved fejl — PostgREST/postgrest-js kan derfor kun give os `{ message:
+    // "" }` uden code/details/hint (CYCLINGZONE-5X, tom Sentry-titel). Den
+    // faktiske HTTP-status ER stadig tilgængelig og er dermed det eneste
+    // brugbare diagnose-signal her — wrap fejlen med rute + status som kontekst
+    // (toSupabaseError bevarer code/details/hint når PostgREST rent faktisk
+    // sendte dem, fx for et 4xx-svar med body).
+    const { count, error, status } = await supabase.from("team_race_points_mv")
       .select("race_id", { count: "exact", head: true }).eq("team_id", team_id);
-    if (error) throw error;
-    if (count == null) throw new Error("Missing ranking count");
+    if (error) {
+      // toSupabaseError falder tilbage til "Supabase error" når body'en (og
+      // dermed message/code/details/hint) var tom — HTTP-statussen er dét vi
+      // rent faktisk har at diagnosticere på i det tilfælde.
+      const wrapped = toSupabaseError(error);
+      wrapped.message = `race-count (HTTP ${status}): ${wrapped.message}`;
+      throw wrapped;
+    }
+    if (count == null) throw new Error(`race-count (HTTP ${status}): missing ranking count`);
     return { count };
   });
   return router;

@@ -122,3 +122,23 @@ export function resolveNotificationLink(notification, fallbackLink) {
 
   return fallbackLink ?? null;
 }
+
+/**
+ * i18n-nøglen til knappen i bunden af en UDFOLDET aggregat-linje i indbakken.
+ *
+ * #5384 gjorde bøtte-listen bredere end auktioner (race_completed), og den
+ * første ret valgte tekst på `entry.group === "auction_bidding"`. Det ramte
+ * bøtten `bid_received` som utilsigtet kollateral: den linker også til
+ * /auctions og havde altid heddet "Vis auktion", men fik nu "Vis detaljer".
+ * Destinationen — ikke bøtte-navnet — afgør derfor teksten: peger knappen på
+ * auktionshuset, hedder den "Vis auktion"; ellers den generiske "Vis detaljer".
+ * Så kan en ny bøtte tilføjes uden at røre denne funktion.
+ *
+ * @param {string|null|undefined} link — TYPE_CONFIG[entry.type]?.link
+ * @returns {"actions.viewAuction"|"actions.viewDetails"}
+ */
+export function aggregateCtaKey(link) {
+  return typeof link === "string" && link.startsWith("/auctions")
+    ? "actions.viewAuction"
+    : "actions.viewDetails";
+}

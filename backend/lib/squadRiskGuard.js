@@ -33,6 +33,7 @@
 
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { ageForSeason } from "./riderSeasonAge.js";
+import { applySeniorSquadFilter } from "./squads.js";
 
 export { ageForSeason };
 
@@ -102,11 +103,13 @@ export function countAtRiskRiders(riders, activeSeasonNumber, cfg = PROGRESSION_
 // bruger dem) så fetchAtRiskRiders nedenfor kan levere navnene til
 // squad-risk-fejlbeskederne uden en ekstra DB-runde-tur.
 export async function fetchTeamRiskRows(supabase, teamId) {
-  const { data, error } = await supabase
-    .from("riders")
-    .select("id, firstname, lastname, birthdate, contract_end_season, is_retired, pending_team_id")
-    .eq("team_id", teamId)
-    .eq("is_academy", false);
+  // #4619: trup-leddet er delt (squads.applySeniorSquadFilter).
+  const { data, error } = await applySeniorSquadFilter(
+    supabase
+      .from("riders")
+      .select("id, firstname, lastname, birthdate, contract_end_season, is_retired, pending_team_id")
+      .eq("team_id", teamId)
+  );
   if (error) throw new Error(`fetchTeamRiskRows(${teamId}): ${error.message}`);
   return (data || [])
     .filter((r) => r.is_retired !== true)

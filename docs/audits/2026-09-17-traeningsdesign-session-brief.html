@@ -1,0 +1,67 @@
+<!doctype html><html lang="da"><head><meta charset="utf-8"><title>Træningsdesign 17/9: fire beslutninger</title><style>
+body{font-family:"Segoe UI",system-ui,sans-serif;background:#f6f4ef;color:#1d1d1d;margin:0;padding:20px 24px;font-variant-numeric:tabular-nums;max-width:1100px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}.sub{color:#555;font-size:13px;margin-bottom:16px}
+.section{background:#fff;border:1px solid #ddd8cc;border-radius:5px;padding:14px 16px;margin-bottom:16px}
+.section h2{font-size:16px;margin:0 0 8px;display:flex;gap:10px;align-items:center}
+.tag{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:3px;background:#eee;color:#444}
+.tag.rec{background:#1e7a3c;color:#fff}.tag.no{background:#b03030;color:#fff}.tag.q{background:#b8860b;color:#fff}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}th,td{border-bottom:1px solid #e3ded2;padding:6px 8px;text-align:left;vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:#555}
+td.good{color:#1e7a3c;font-weight:600}td.bad{color:#b03030;font-weight:600}td.mid{color:#8a6d00;font-weight:600}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:6px 0 10px}
+.kpi div{background:#f6f4ef;border:1px solid #e3ded2;border-radius:5px;padding:8px 10px}.kpi small{display:block;color:#666;font-size:11px}
+.big{font-size:26px;font-weight:700}.note{font-size:12.5px;color:#444;margin-top:8px}
+ol{margin:6px 0 0 18px;padding:0}li{margin:3px 0}
+</style></head><body>
+<h1>Træningsdesign-session 17/9: fire beslutninger, én ad gangen</h1>
+<div class="sub">Alt her er målt i prod eller taget fra låste beslutninger. Kilder: <code>docs/audits/2026-09-15-5267-loebsdage-s3-undersoegelse.md</code> (+ de to visuelle kort i <code>2026-09-15-5267-visuals/</code>), <code>docs/TRAINING_RULES.md</code> §13.3, <code>docs/NOW.md</code>. Skæring: træning live senest 28/9 (S4-start).</div>
+
+<div class="section"><h2><span class="tag q">Beslutning 1</span> Hvad tæller træningen på: løbsdage eller kalenderdato × slots?</h2>
+<div class="kpi">
+ <div><span class="big">86</span><small>løbsdage D1 i S3 (31 dage). "140" var antal etaper, ikke løbsdage.</small></div>
+ <div><span class="big">2,77</span><small>løbsdage pr. kalenderdato i D1 (min 2, maks 5). Flere etaper deler samme løbsdag med vilje: det giver valget.</small></div>
+ <div><span class="big">57 %</span><small>af D1's løbsdage har 2+ løb (gulv 45 %). Forlænges aksen, tyndes dette ud.</small></div>
+ <div><span class="big">140</span><small>ticks pr. sæson for ALLE divisioner med model C (28 datoer × 5 slots), uden at røre kalenderen.</small></div>
+</div>
+<table><tr><th>Model</th><th>Hvad ændres</th><th>Løbskalender</th><th>Ticks ens i alle divisioner</th><th>Pris</th><th></th></tr>
+<tr><td><b>C</b> Egen træningsakse: dato × 5 slots</td><td>Tick nøgles på (dato, slot) i stedet for game_day; program 7 × 5 celler (din beslutning 8, 15/9)</td><td class="good">Urørt</td><td class="good">Ja, 140</td><td>Arbejde i træningssporet (#4846 + B4-nøgle), nul i kalenderen. Åbent: tæller en rytter i et etapeløb alle 5 slots den dag?</td><td><span class="tag rec">Anbefalet</span></td></tr>
+<tr><td><b>A</b> 112 løbsdage i alle divisioner</td><td>Ét tal i #5169 + deleren i tick'et</td><td class="mid">Flere tomme dage; gulve for samtidige løb skal sænkes for D2-D4 (ren aritmetik på kvoten)</td><td class="good">Ja, 112</td><td>112 er også et etape-tal; det passer tilfældigvis</td><td>Næstbedst</td></tr>
+<tr><td><b>B</b> 140 løbsdage, tillad 5 GT-etaper pr. dag</td><td>Ét tal</td><td class="bad">Bryder aftalen fra 22/8; D1's dage med valg falder fra 57 % til ca. 19 %</td><td class="good">Ja, 140</td><td>To låste regler brydes</td><td><span class="tag no">Frarådes</span></td></tr>
+</table>
+<div class="note">Uanset valg skal tre dokumenter rettes: TRAINING_RULES §13.3 beslutning 2 (formlen "28 datoer × 5 slots" er etaper), CALENDAR_RULES §1 (kvoten hedder GAME_DAY men tæller etaper), <code>calendarRaceDayTargets.js</code>-docstring.</div>
+</div>
+
+<div class="section"><h2><span class="tag q">Beslutning 2</span> B3 (#5281) + B4 (#5264): merge nu, og hvornår flippes flaget?</h2>
+<table><tr><th>PR</th><th>Gør</th><th>Bag flag?</th><th>Konsekvens ved merge i dag</th><th>Status</th></tr>
+<tr><td>B3 #5281</td><td>Fjerner +25 %-bonussen ved eget klik på "Træn i dag"; knappen bliver</td><td class="bad">Nej</td><td>62 af 371 hold mister bonussen med det samme (de der klikker selv)</td><td>Grøn</td></tr>
+<tr><td>B4 #5264</td><td>Dagens træning kører samlet én gang efter dagens sidste løb, tidligst kl. 20; frivillig knap uden bonus; overlap-guard</td><td class="good">Ja, <code>training_tick_per_race_day</code> = off</td><td>Ingen for spillerne før flip</td><td>Grøn, mergebar (main flettet ind 17/9)</td></tr>
+</table>
+<div class="note"><b>Anbefaling:</b> merge begge i dag når beslutning 1 er taget (B4's sweep pr. kalenderdato passer med C og med A). Flag-flip som eget ejer-go efter en nats sweep-log, senest 26/9, så der er to dage til at rulle tilbage før 28/9. Alternativ: B3 venter til flip-dagen, så bonussen forsvinder samme dag som det nye system tændes (mindre støj, én patch note).</div>
+</div>
+
+<div class="section"><h2><span class="tag q">Beslutning 3</span> PR #5169 (samme antal løbsdage i alle divisioner): færdiggør, skrump eller luk?</h2>
+<ol>
+<li><b>Ved C:</b> R12, tomme-dags-budget og ulighedsgaten udgår; PR'en skrumper til rapportering (løbsdage pr. division i dry-run). <span class="tag rec">Anbefalet: skrump, merge som rapport</span></li>
+<li><b>Ved A:</b> ét tal ændres (140 → 112) + gulve sænkes med dit go; PR'en færdiggøres.</li>
+<li><b>Ved B:</b> PR'en som den er + MAX_GT_STAGES_PER_DAY 4 → 5.</li>
+</ol>
+<div class="note">#5267 (undersøgelsen) lukkes med henvisning til beslutning 1 uanset valg.</div>
+</div>
+
+<div class="section"><h2><span class="tag q">Beslutning 4</span> Loft-designet: rolleklassen er binær på fortegn</h2>
+<div class="kpi">
+ <div><span class="big">8,4</span><small>ratingpoint kostede loftet på aggression (vægt 3) for baroudeuren, før #5297 tog aggression ud.</small></div>
+ <div><span class="big">1,5-1,8</span><small>ratingpoint koster teamwork/leadership (vægt 1). Samme klasse "signatur" (tag 93) for vægt 1 og vægt 3.</small></div>
+ <div><span class="big">93/80/70/55/45</small><small>tagene pr. klasse i dag (signatur, sekundær, håndværk, anden rolle, svaghed). Klassen udledes ét sted: <code>abilityRoleClass</code>.</small></div>
+ <div><span class="big">80</span><small><code>GC_PUNCH_FLOOR</code>: præcedens for et gulv på ét (type, evne)-tag (4/9, variant C2).</small></div>
+</div>
+<table><tr><th>Vej</th><th>Hvad</th><th>Fordel</th><th>Pris</th></tr>
+<tr><td><b>Gulv</b> à la GC_PUNCH_FLOOR</td><td>Pr. (type, evne)-tag hvor vægten er ≥ 2: gulv på fx 85, så signaturevner med høj vægt ikke skæres til 93-asymptoten via lav rate</td><td>Præcedens findes, ingen ny mekanik, ingen rate-ændring, kan måles pr. tag i dry-run</td><td>Endnu en undtagelsestabel; hver ny evne kræver et tal</td></tr>
+<tr><td><b>Vægtet rolleklasse</b></td><td>Klassen udledes af vægten (3 → signatur+, 2 → signatur, 1 → sekundær) i stedet for fortegnet</td><td>Én regel, ingen undtagelser, skalerer til nye evner</td><td>Ny mekanik i tag OG rate; alle ryttere får nye lofter (persisteret <code>ability_caps</code> selvheler ved nattick, men rytterværdier kan flytte sig); kræver simulér-før-ship</td></tr>
+</table>
+<div class="note"><b>Antagelse, ikke måling:</b> jeg har ikke kørt en dry-run af nogen af vejene. Anbefaling til i dag er kun at vælge RETNING; tallet sættes efter en dry-run (backend/scripts/dry-run-5268-mental-abilities.js kan udvides). #5268 point-flytningen afventer denne beslutning.</div>
+</div>
+
+<div class="section"><h2>Efter sessionen (jeg gør)</h2>
+<ol><li>Beslutningerne skrives som D-numre i GDD + TRAINING_RULES §13.3 (rettelse af beslutning 2).</li><li>Merge B3/B4 per beslutning 2; #5169 per beslutning 3; #5267 lukkes.</li><li>Issue for beslutning 1's implementering (tick på dato+slot) og for loft-dry-run.</li></ol></div>
+</body></html>

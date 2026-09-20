@@ -501,6 +501,11 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     fromSeasonId: fromSeason.id,
     toSeasonNumber,
   });
+  // #4860 D: stillingen fra da tilbudsvinduet åbnede — default-'safe' prissættes mod den.
+  const sponsorWindowOpenContext = await loadSponsorWindowOpenStandings({
+    supabase,
+    toSeasonNumber,
+  });
   const contractsByTeamId = await loadSponsorContractStock({ supabase });
   const pulloutFactorByTeamId = await loadSponsorPulloutFactors({ supabase });
   const boardTestMode = await isBoardTestModeActive(supabase);
@@ -523,7 +528,8 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
       {
         pulloutFactor: pulloutFactorByTeamId.get(team.id) ?? 1.0,
         boardTestMode,
-      }
+      },
+      sponsorWindowOpenContext
     ),
   }));
 
@@ -618,6 +624,39 @@ async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNum
   return buildSponsorStandingsContext(data || []);
 }
 
+// #4860 D: default-'safe'-aftalen prissættes ved skiftet til den pris tilbuddet blev
+// VIST til da vinduet åbnede — sæsonen FØR den der lige sluttede (toSeasonNumber − 2).
+// Previewet skal læse samme kilde som expireAndRenewContracts, ellers viser det en
+// anden base end den fornyelsen skriver. Findes sæsonen ikke (tidlig i spillets
+// levetid), er konteksten tom og previewet falder tilbage til slutstillingen — samme
+// resultat som fornyelsen selv giver dér.
+async function loadSponsorWindowOpenStandings({ supabase, toSeasonNumber }) {
+  const windowOpenSeasonNumber = toSeasonNumber - 2;
+  // Ingen afsluttet sæson før vinduet (sæson 1 → 2) → ingen vist pris at fryse til;
+  // null betyder "brug slutstillingen som hidtil", samme guard som fornyelsen har.
+  if (toSeasonNumber < FIRST_VARIABLE_SPONSOR_SEASON || windowOpenSeasonNumber < 1) {
+    return null;
+  }
+  const { data: season, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id, number")
+    .eq("number", windowOpenSeasonNumber)
+    .maybeSingle();
+  if (seasonError) {
+    throw new Error(`Could not load sponsor window-open season: ${seasonError.message}`);
+  }
+  if (!season?.id) return null;
+
+  const { data, error } = await supabase
+    .from("season_standings")
+    .select("team_id, division, rank_in_division, total_points")
+    .eq("season_id", season.id);
+  if (error) {
+    throw new Error(`Could not load sponsor window-open standings: ${error.message}`);
+  }
+  return buildSponsorStandingsContext(data || []);
+}
+
 /**
  * #2926 · Previewet modellerede tidligere en KONTRAKTFRI tilstand (division-base
  * + variabel pulje) — men udbetalingen sker EFTER fase 5b (expireAndRenewContracts),
@@ -631,7 +670,8 @@ function buildSponsorPreviewRow(
   toSeasonNumber,
   sponsorStandingsContext,
   contracts = {},
-  modifierContext = {}
+  modifierContext = {},
+  windowOpenStandingsContext = null
 ) {
   const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
   const divisionStandings = lastSeasonStanding
@@ -651,12 +691,37 @@ function buildSponsorPreviewRow(
     lastSeasonStanding,
     divisionStandings,
   });
+  // #4860 D: den pris default-'safe' ville blive tildelt til — vindues-prisen
+  // (stillingen fra toSeasonNumber − 2), begrænset opad af slutstillingen, præcis
+  // som loadDefaultRenewTargetValue gør i fornyelsen. Kender previewet ingen
+  // vindues-stilling for holdet, står den på null og default-grenen bruger
+  // slutstillingen som hidtil.
+  // Ét kendt, bevidst hul: har holdet ingen stilling i toSeasonNumber − 2, men én i
+  // toSeasonNumber − 3, går fornyelsen ét trin længere tilbage (§1-fallbacken), mens
+  // previewet stopper ved 1,00. Previewet er da konservativt (for lavt), aldrig for højt.
+  const windowOpenStanding =
+    windowOpenStandingsContext?.standingByTeamId?.get(team.id) || null;
+  const windowOpenTarget = windowOpenStandingsContext
+    ? renownTarget({
+        division: priceDivision,
+        lastSeasonStanding: windowOpenStanding,
+        divisionStandings: windowOpenStanding
+          ? windowOpenStandingsContext.divisionStandingsByDivision.get(
+              windowOpenStanding.division
+            ) || []
+          : [],
+      })
+    : null;
+  const defaultRenownTargetValue =
+    windowOpenTarget === null ? null : Math.min(windowOpenTarget, renownTargetValue);
+
   const { source, contract } = resolveContractForNewSeason({
     teamId: team.id,
     newSeasonNumber: toSeasonNumber,
     activeContract: contracts.activeContract ?? null,
     pendingContract: contracts.pendingContract ?? null,
     renownTargetValue,
+    defaultRenownTargetValue,
     // #4376: previewets default-aftale skal baere samme signed_division som
     // fornyelsen skriver, ellers viser previewet et divisions-tillaeg der ikke opstaar.
     teamDivision: priceDivision,

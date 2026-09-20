@@ -36,7 +36,15 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
         {inFocus && <span className="block h-[5px] w-[5px] rounded-full bg-cz-accent" />}
       </span>
       <span
-        className={`flex-1 min-w-0 truncate text-2xs ${inFocus ? "text-cz-1 font-semibold" : "text-cz-2"}`}
+        // #5124: min-w-[44px]-gulv — uden det kan `min-w-0` (nødvendig for at
+        // truncate overhovedet virker) skrumpe navnet til 0px i en meget smal
+        // container (TrainingPage.jsx's roster på mobil), hvor evne-linjens
+        // øvrige faste kolonner (nu/point/bar, ~130px) alene overstiger den
+        // tildelte plads. Et navn på mindst 44px er stadig læsbart ("Klatring"
+        // trunkeres først herfra); resten af linjen kan i stedet klippes af den
+        // omsluttende container. Ingen effekt i bredere kontekster (desktop/
+        // rytterprofil), hvor flex-1 alligevel får rigelig plads.
+        className={`flex-1 min-w-[44px] truncate text-2xs ${inFocus ? "text-cz-1 font-semibold" : "text-cz-2"}`}
         title={inFocus ? t("receipt.inFocusTitle") : undefined}
       >
         {label}

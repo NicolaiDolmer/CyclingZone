@@ -9,7 +9,6 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { riderSuitability } from "../../lib/suitability";
-import { riderOverallRating } from "../../lib/riderRating";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
@@ -219,7 +218,9 @@ function AbilityBars({ abilities }) {
 
 function RiderDrawer({ rider, races, maxPerRider, months, today, paybackDays, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy }) {
   const { t } = useTranslation("planner");
-  const ovr = riderOverallRating({ ...rider.abilities, primary_type: rider.primaryType });
+  // #5321: samme server-beregnede rating som resten af appen — se MasterCanvas
+  // for hvorfor den aldrig regnes lokalt af `rider.abilities`.
+  const ovr = rider.rating;
   // #2455: kun ÆGTE peaks tæller mod maks — uaccepterede forslag fylder ikke
   // "pick a target race"-dropdownen op (den ville ellers ALDRIG vises for en
   // rytter assistenten allerede har foreslået to peaks til).
@@ -243,7 +244,7 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, paybackDays, on
         {/* #2447: OVR-badge farvet efter statStyle (samme SSOT som auktioner/rytter-
             profil) i stedet for plain cz-1-tekst uden nogen farve-signal. */}
         <div className="text-right flex flex-col items-end gap-1">
-          <span className="inline-flex items-center justify-center min-w-[34px] font-mono font-bold text-[16px] px-1.5 py-0.5 rounded-cz" style={statStyle(ovr, { scale: "rating" })}>{ovr}</span>
+          <span className="inline-flex items-center justify-center min-w-[34px] font-mono font-bold text-[16px] px-1.5 py-0.5 rounded-cz" style={statStyle(ovr, { scale: "rating" })}>{ovr ?? "—"}</span>
           <div className="text-3xs text-cz-3 font-mono">{t("ovr.label")}</div>
         </div>
       </div>

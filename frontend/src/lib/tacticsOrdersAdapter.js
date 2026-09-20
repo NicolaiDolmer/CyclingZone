@@ -15,6 +15,7 @@
 //   · Ukendte felter afvises også. Send præcis rider_id/effort/try_break/leadout.
 
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { defaultTeamOrder, mergeOrderWithRoster } from "./tacticsPlan.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -42,12 +43,15 @@ function toContractRider(rider) {
 export async function fetchTeamOrders({ raceId }) {
   const headers = await authHeaders({ json: false }); // ren GET, ingen body
   if (!headers) return null;
-  const res = await fetch(`${API}/api/races/${raceId}/team-orders`, { headers }); // catch-ok: kaldstedets load()
+  const res = await apiFetch(`${API}/api/races/${raceId}/team-orders`, { headers }); // catch-ok: kaldstedets load()
+  // #5242: dækker også limited (429-vindue, status 429), unauthorized (401) og
+  // networkError (status 0) — alle tre giver den samme kastede fejl kaldstedets
+  // load() allerede fanger, nu blot med en entydig status i fallback-koden.
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = res.data || {};
     throw new Error(body.error || `team_orders_fetch_failed_${res.status}`);
   }
-  const body = await res.json();
+  const body = res.data ?? {};
   return {
     stages: body.stages ?? [],
     stageCount: body.stage_count ?? (body.stages?.length ?? 0),
@@ -81,7 +85,7 @@ export async function saveTacticsCard({ raceId, stage, order }) {
   if (!headers) throw new Error("not_authenticated");
   // TacticsCard.handleSave() fanger, rydder loading-tilstanden og viser
   // gem-fejlen ved knappen.
-  const res = await fetch(`${API}/api/races/${raceId}/team-orders/${stage}`, { // catch-ok: TacticsCard.handleSave()
+  const res = await apiFetch(`${API}/api/races/${raceId}/team-orders/${stage}`, { // catch-ok: TacticsCard.handleSave()
     method: "PUT",
     headers,
     body: JSON.stringify({
@@ -89,8 +93,8 @@ export async function saveTacticsCard({ raceId, stage, order }) {
       riders: (order.riders ?? []).map(toContractRider),
     }),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+  if (!res.ok) { // #5242, se fetchTeamOrders()
+    const body = res.data || {};
     throw new Error(body.error || `team_orders_save_failed_${res.status}`);
   }
   return { ok: true };

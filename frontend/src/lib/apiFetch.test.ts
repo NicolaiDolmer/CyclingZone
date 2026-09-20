@@ -162,3 +162,99 @@ test("en 404/500 sendes uændret videre — modulet opfinder ingen ny fejlhåndt
   assert.equal(result.limited, undefined);
   assert.equal(result.unauthorized, undefined);
 });
+
+// ── #5322: "nåede aldrig serveren" ≠ "serveren svarede en fejl" ─────────────
+
+test("#5322 en transportfejl KASTER ikke — den bliver til { ok:false, status:0, networkError:true }", async () => {
+  const transportFailure = new TypeError("Failed to fetch");
+  const fetchImpl: ApiFetchImpl = async () => {
+    throw transportFailure;
+  };
+  const result = await apiFetch("https://api.test/x", {}, { now: () => 0, fetchImpl });
+  assert.equal(result.networkError, true);
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 0, "status 0 er konventionen for 'intet HTTP-svar'");
+  assert.equal(result.data, null);
+  assert.equal(result.error, transportFailure, "den oprindelige exception skal bevares til logning/Sentry");
+});
+
+test("#5322 en HTTP-fejl er IKKE en netværksfejl — de to grene skal kunne skelnes", async () => {
+  const fetchImpl: ApiFetchImpl = async () => jsonResponse(500, { error: "boom" });
+  const result = await apiFetch("https://api.test/x", {}, { now: () => 0, fetchImpl });
+  assert.notEqual(result.networkError, true, "et 500 ER et svar fra serveren");
+  assert.equal(result.status, 500);
+});
+
+test("#5322 alle browseres transport-ordlyd giver samme entydige resultat", async () => {
+  // Chrome/Edge, Firefox, Safari, iOS WebKit — fire ordlyde, én tilstand.
+  for (const message of [
+    "Failed to fetch",
+    "NetworkError when attempting to fetch resource.",
+    "Load failed",
+    "The Internet connection appears to be offline.",
+  ]) {
+    const fetchImpl: ApiFetchImpl = async () => {
+      throw new TypeError(message);
+    };
+    const result = await apiFetch(`https://api.test/${encodeURIComponent(message)}`, {}, { now: () => 0, fetchImpl });
+    assert.equal(result.networkError, true, `ordlyden "${message}" skal klassificeres som netværksfejl`);
+    assert.equal(result.status, 0);
+  }
+});
+
+test("#5322 en AFBRYDELSE (AbortController) kastes stadig — den er kaldstedets egen annullering", async () => {
+  const abort = Object.assign(new Error("The operation was aborted."), { name: "AbortError" });
+  const fetchImpl: ApiFetchImpl = async () => {
+    throw abort;
+  };
+  await assert.rejects(
+    () => apiFetch("https://api.test/x", {}, { now: () => 0, fetchImpl }),
+    (err: unknown) => err === abort,
+    "en unmount'et komponents afbrudte kald må aldrig vises som 'kan ikke nå serveren'",
+  );
+});
+
+test("#5322 401-kæden er uændret af transport-grenen (ét dispatch, ingen retry, intet networkError-flag)", async () => {
+  let fetchCalls = 0;
+  const fetchImpl: ApiFetchImpl = async () => {
+    fetchCalls += 1;
+    return jsonResponse(401, { error: "invalid_token" });
+  };
+  const result = await apiFetch(
+    "https://api.test/x",
+    { headers: { Authorization: "Bearer tok-1" } },
+    { now: () => 0, fetchImpl, authClient: fakeAuthClient() },
+  );
+  assert.equal(result.unauthorized, true);
+  assert.equal(result.status, 401);
+  assert.equal(result.networkError, undefined, "et 401 er et SVAR fra serveren, ikke en transportfejl");
+  assert.equal(fetchCalls, 1);
+});
+
+test("#5322 en transportfejl sætter INGEN retry-vindue — næste forsøg må ramme netværket med det samme", async () => {
+  let calls = 0;
+  const fetchImpl: ApiFetchImpl = async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError("Failed to fetch");
+    return jsonResponse(200, { ok: true });
+  };
+  const url = "https://api.test/x";
+  const first = await apiFetch(url, {}, { now: () => 0, fetchImpl });
+  assert.equal(first.networkError, true);
+  const second = await apiFetch(url, {}, { now: () => 0, fetchImpl });
+  assert.equal(calls, 2, "429-vinduet er kun for 429'ere — en transportfejl må gerne prøves igen straks");
+  assert.deepEqual(second.data, { ok: true });
+});
+
+test("#5322 en relativ sti opløses gennem apiUrl, og en færdig url passerer uændret", async () => {
+  const seen: string[] = [];
+  const fetchImpl: ApiFetchImpl = async (requestUrl) => {
+    seen.push(requestUrl);
+    return jsonResponse(200, { ok: true });
+  };
+  // Under node --test findes import.meta.env ikke, så basen er tom streng:
+  // "/api/x" forbliver "/api/x". Pointen her er at kaldet IKKE forvanskes.
+  await apiFetch("/api/x", {}, { now: () => 0, fetchImpl });
+  await apiFetch("https://api.test/api/y", {}, { now: () => 0, fetchImpl });
+  assert.deepEqual(seen, ["/api/x", "https://api.test/api/y"]);
+});

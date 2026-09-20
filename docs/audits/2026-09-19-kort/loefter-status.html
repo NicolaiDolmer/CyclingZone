@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<title>De 29 l&oslash;fter - status 19/9</title>
+<style>
+  @font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/bebas-neue-latin-400-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/bebas-neue-latin-ext-400-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-wght-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-ext-wght-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+
+  :root {
+    --navy: #1A1F38;
+    --bg: #F4F2ED;
+    --text: #14161F;
+    --muted: #6B6F7B;
+    --border: #DDD9CF;
+    --gold: #E8C547;
+    --green: #1E6B3A;
+    --amber: #8A6D1B;
+    --grey: #767B87;
+    --red: #9B1C1C;
+    --radius: 5px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .topbar { background: var(--navy); padding: 16px 0; text-align: center; }
+  .wordmark {
+    font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+    color: var(--gold);
+    font-size: 26px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .page { padding: 28px 28px 32px 28px; }
+  .container { max-width: 1144px; margin: 0 auto; }
+
+  h1 { font-size: 25px; font-weight: 700; margin: 0 0 7px 0; line-height: 1.25; }
+  .subtitle { font-size: 13.5px; color: var(--muted); margin: 0 0 16px 0; line-height: 1.55; max-width: 980px; }
+  .subtitle strong { color: var(--text); font-weight: 600; }
+
+  .toplegend { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; margin: 0 0 18px 0; }
+  .toplegend-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); }
+  .count { color: var(--muted); }
+
+  .pill {
+    display: inline-block;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.25;
+    padding: 4px 9px;
+    border-radius: 3px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .p-green { background: var(--green); }
+  .p-amber { background: var(--amber); }
+  .p-grey  { background: var(--grey); }
+  .p-red   { background: var(--red); }
+
+  .group { margin-bottom: 18px; }
+  .group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 8px 0;
+  }
+  .group-title { font-size: 15.5px; font-weight: 700; }
+  .group-when { font-size: 12.5px; color: var(--muted); }
+
+  .list { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .row:last-child { border-bottom: none; }
+  .row.alt { background: #FBFAF7; }
+
+  .r-num { width: 24px; flex: 0 0 24px; text-align: right; color: var(--muted); font-weight: 700; font-size: 13px; padding-top: 1px; }
+  .r-txt { flex: 1 1 auto; min-width: 0; }
+  .r-title { font-size: 13.3px; font-weight: 700; line-height: 1.35; }
+  .r-why { font-size: 12.3px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+  .r-pill { width: 178px; flex: 0 0 178px; text-align: right; padding-top: 1px; }
+
+  .maybe-note { font-size: 12.3px; color: var(--muted); margin: 7px 0 0 0; line-height: 1.5; }
+
+  .bottomline {
+    margin-top: 16px;
+    font-size: 12.8px;
+    color: var(--muted);
+    line-height: 1.6;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  .bottomline strong { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="topbar"><span class="wordmark">Cycling Zone</span></div>
+
+<div class="page">
+<div class="container">
+
+  <h1>De 29 punkter du har skrevet til spillerne - hvor de st&aring;r i dag</h1>
+  <p class="subtitle">
+    Verificeret mod GitHub, koden p&aring; main og patch notes 19/9. <strong>Der er 8 dage til skiftet.</strong>
+    "Under s&aelig;son 3" betyder inden 27/9, "inden s&aelig;son 4 starter" betyder inden 28/9.
+    De to <strong>M&aring;ske</strong>-grupper er ikke l&oslash;fter og bed&oslash;mmes ikke p&aring; tid.
+  </p>
+
+  <div class="toplegend">
+    <div class="toplegend-item"><span class="pill p-green">Holdt</span> <span class="count">3</span></div>
+    <div class="toplegend-item"><span class="pill p-amber">I beta eller bygget</span> <span class="count">13</span></div>
+    <div class="toplegend-item"><span class="pill p-grey">Ikke startet</span> <span class="count">3</span></div>
+    <div class="toplegend-item"><span class="pill p-red">Holdes ikke til tiden</span> <span class="count">10</span></div>
+  </div>
+
+  <div class="group">
+    <div class="group-head">
+      <span class="group-title">Under s&aelig;son 3 (nu)</span>
+      <span class="group-when">skal v&aelig;re holdt inden 27/9 &middot; 1 holdt, 4 kan n&aring;s, 4 kan ikke</span>
+    </div>
+    <div class="list">
+
+      <div class="row">
+        <div class="r-num">1</div>
+        <div class="r-txt"><div class="r-title">Forklaring p&aring; ryttere der st&aring;r stille i v&aelig;rdi, plus de meldte fejl</div>
+        <div class="r-why">Begge fejl er lukket, og Hj&aelig;lp siger nu hvorn&aring;r v&aelig;rdien falder - men rytterfladen forklarer det stadig ikke.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">2</div>
+        <div class="r-txt"><div class="r-title">Afklaring af hvordan en rytters sekund&aelig;re type virker</div>
+        <div class="r-why">Intet er sket siden l&oslash;ftet; hj&aelig;lpeteksten er fra 14/8, og de fire &aring;bne sager om typen st&aring;r ur&oslash;rt.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">3</div>
+        <div class="r-txt"><div class="r-title">Et kort formpas dagen f&oslash;r l&oslash;b, for alle ryttere</div>
+        <div class="r-why">Designet er besluttet 14/9, men der er ikke skrevet en linje kode, og den deler k&oslash; med hele tr&aelig;ningssiden.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">4</div>
+        <div class="r-txt"><div class="r-title">De mentale evner f&aring;r mere plads, og du fort&aelig;ller historien f&oslash;rst</div>
+        <div class="r-why">Evnerne landede 15/9 uden beskeden, og ryttere tabte synligt rating og potentiale i to-tre dage.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">5</div>
+        <div class="r-txt"><div class="r-title">Bedre mobilvisning: tr&aelig;ning, transfers, auktioner og s&aelig;sonmatricen</div>
+        <div class="r-why">Transfers og auktioner er ude til alle, tr&aelig;ningen er i beta efter dit eget valg, og matricen er ikke r&oslash;rt.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">6</div>
+        <div class="r-txt"><div class="r-title">L&oslash;bskalenderen for s&aelig;son 4, inklusive U23 og junior</div>
+        <div class="r-why">Senior-kalenderen mangler kun din k&oslash;rsel; U23- og junior-kalenderen er slet ikke begyndt.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">7</div>
+        <div class="r-txt"><div class="r-title">Alle divisioner f&aring;r samme antal l&oslash;bsdage fra s&aelig;son 4</div>
+        <div class="r-why">Tallet 140 er l&aring;st og koden er skrevet, men den er ikke merget - den venter p&aring; din afstemning.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">8</div>
+        <div class="r-txt"><div class="r-title">Beta-programmet &aring;bner for alvor</div>
+        <div class="r-why">Kortet p&aring; profilen kom 18/9: spillerne kan melde sig til og fra selv, og du svarer i indbakken.</div></div>
+        <div class="r-pill"><span class="pill p-green">Holdt</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">9</div>
+        <div class="r-txt"><div class="r-title">Tr&aelig;ningsscoren for alle</div>
+        <div class="r-why">Den er bygget og virker, men ligger stadig i beta - der mangler kun et flip og din udmelding om skalaen.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-head">
+      <span class="group-title">M&aring;ske, hvis der er plads</span>
+      <span class="group-when">ikke l&oslash;fter &middot; ingen frist &middot; punkt 29 st&aring;r for sig selv i din tekst</span>
+    </div>
+    <div class="list">
+
+      <div class="row">
+        <div class="r-num">10</div>
+        <div class="r-txt"><div class="r-title">&Aring;bning af flere faciliteter</div>
+        <div class="r-why">Kun tr&aelig;ning og scouting er &aring;bnet; resten af faciliteterne findes ikke endnu.</div></div>
+        <div class="r-pill"><span class="pill p-grey">Ikke startet</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">11</div>
+        <div class="r-txt"><div class="r-title">Mobiloptimering ud over tr&aelig;ning og transfers</div>
+        <div class="r-why">Den nye mobilstandard ramte ogs&aring; &oslash;nskelisten og de store tabeller undervejs.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">12</div>
+        <div class="r-txt"><div class="r-title">Hastighed: spillet skal loade hurtigere p&aring; alle sider</div>
+        <div class="r-why">Leveret l&oslash;bende og meldt ud - senest "lettere sider" 18/9, hvor statistik-scriptet blev en fjerdedel.</div></div>
+        <div class="r-pill"><span class="pill p-green">Holdt</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">13</div>
+        <div class="r-txt"><div class="r-title">Flere funktioner til financial fair play</div>
+        <div class="r-why">Admin-v&aelig;rkt&oslash;jet kom 17/9; selve regels&aelig;ttet og sanktionstrappen er stadig &aring;bne.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">14</div>
+        <div class="r-txt"><div class="r-title">Rettelser og tilf&oslash;jelser til Pro-funktionerne</div>
+        <div class="r-why">Pro v1.1 er ude med Founder-m&aelig;rke, historik og gemte filtre; en vagt mod ubetalte fakturaer mangler.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">29</div>
+        <div class="r-txt"><div class="r-title">Upkeep-rework</div>
+        <div class="r-why">Ikke begyndt. Dit direktiv fra 29/8 st&aring;r &aring;bent, og kalibreringen bag kurven bygger p&aring; et forkert tal.</div></div>
+        <div class="r-pill"><span class="pill p-grey">Ikke startet</span></div>
+      </div>
+
+    </div>
+    <p class="maybe-note">Punkt 29 st&aring;r under sin egen overskrift "M&aring;ske" i din tekst. Den er samlet her, fordi den heller ikke er et l&oslash;fte.</p>
+  </div>
+
+  <div class="group">
+    <div class="group-head">
+      <span class="group-title">Inden s&aelig;son 4 starter</span>
+      <span class="group-when">skal v&aelig;re holdt inden 28/9 &middot; 1 holdt, 7 kan n&aring;s, 6 kan ikke</span>
+    </div>
+    <div class="list">
+
+      <div class="row">
+        <div class="r-num">15</div>
+        <div class="r-txt"><div class="r-title">Race engine v4 f&aelig;rdig og t&aelig;ndt</div>
+        <div class="r-why">Kalibreringen er ikke f&aelig;rdig - men l&oslash;ftet siger selv at den kommer n&aring;r den er bedre, ikke p&aring; en dato.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">16</div>
+        <div class="r-txt"><div class="r-title">Bestyrelses-reworket f&aelig;rdigt: mandater og et rigtigt m&oslash;de</div>
+        <div class="r-why">B&aring;de mandatet, Boardroom og &aring;rsm&oslash;det er bygget, men kun beta-testere ser dem.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">17</div>
+        <div class="r-txt"><div class="r-title">U23-hold og juniorhold bliver rigtige trupper</div>
+        <div class="r-why">Datamodellen er p&aring; plads, men generatoren og selve trupperne er ikke bygget.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">18</div>
+        <div class="r-txt"><div class="r-title">U23-l&oslash;b og junior-l&oslash;b, p&aring; egne kalendere og i egne ligaer</div>
+        <div class="r-why">Ikke begyndt. Specens eget sk&oslash;n er over 80 timer, og der er otte dage tilbage.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">19</div>
+        <div class="r-txt"><div class="r-title">Graduation Day erstatter gradueringslisten, ugen f&oslash;r skiftet</div>
+        <div class="r-why">Ikke begyndt, og "ugen f&oslash;r" starter i morgen. Den er desuden tom uden U23-truppen.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">20</div>
+        <div class="r-txt"><div class="r-title">Tr&aelig;ning fra l&oslash;b kommer tilbage; man tr&aelig;ner eller k&oslash;rer l&oslash;b</div>
+        <div class="r-why">Begge dele er bygget bag hver sin slukkede kontakt; den der udvikler evner fra l&oslash;b har v&aelig;ret slukket siden august.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">21</div>
+        <div class="r-txt"><div class="r-title">Ugeplanen s&aelig;tter ogs&aring; sessionen for hver l&oslash;bsdag</div>
+        <div class="r-why">Ikke begyndt, og den har ikke engang en opgave i systemet. Den kr&aelig;ver ogs&aring; en flytning af 27 holds planer.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">22</div>
+        <div class="r-txt"><div class="r-title">Tr&aelig;ningen k&oslash;rer &eacute;n gang om aftenen, og bonus-knappen forsvinder</div>
+        <div class="r-why">Bygget og testet. Knappen med de 25 procent st&aring;r der dog indtil selve flip-dagen, ikke f&oslash;r.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">23</div>
+        <div class="r-txt"><div class="r-title">Skader t&aelig;lles i l&oslash;bsdage</div>
+        <div class="r-why">Besluttet 15/9 og h&oslash;rer til den rettelse der er i gang - men den st&aring;r ikke i det arbejde der er lavet endnu.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">24</div>
+        <div class="r-txt"><div class="r-title">Tr&aelig;ningssiden bygget f&aelig;rdig &eacute;n gang, med score, program og sessioner</div>
+        <div class="r-why">Mobilen er afgjort og i beta; desktop-fladen er ikke begyndt. Og den er allerede bygget om to gange.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">25</div>
+        <div class="r-txt"><div class="r-title">Fejlrettelser ang&aring;ende sponsor</div>
+        <div class="r-why">Leveret 17/9 og meldt ud: tidligt sponsorvalg koster ikke l&aelig;ngere, og finanslinjen hedder det rigtige.</div></div>
+        <div class="r-pill"><span class="pill p-green">Holdt</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">26</div>
+        <div class="r-txt"><div class="r-title">&Eacute;n rytter-opdatering med en besked fra dig</div>
+        <div class="r-why">Opdateringen er allerede kommet ad tre omgange uden beskeden, og trupperne er ikke med.</div></div>
+        <div class="r-pill"><span class="pill p-red">Holdes ikke til tiden</span></div>
+      </div>
+
+      <div class="row">
+        <div class="r-num">27</div>
+        <div class="r-txt"><div class="r-title">Inaktive managere parkeres ved skiftet, og en tydelig tilmelding</div>
+        <div class="r-why">Tilmeldingsknappen er bygget og usynlig; selve parkeringen venter p&aring; at du godkender listen.</div></div>
+        <div class="r-pill"><span class="pill p-amber">I beta eller bygget</span></div>
+      </div>
+
+      <div class="row alt">
+        <div class="r-num">28</div>
+        <div class="r-txt"><div class="r-title">Assistenten fort&aelig;ller dig n&aring;r den har udtaget dit hold</div>
+        <div class="r-why">Ikke begyndt, ingen aktivitet siden 4/9. Den er lille, og den ligger sammen med et valg du alligevel skal tage.</div></div>
+        <div class="r-pill"><span class="pill p-grey">Ikke startet</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="bottomline">
+    <strong>To af de 24 rigtige l&oslash;fter er i m&aring;l og fortalt til spillerne:</strong> beta-gruppen og sponsor-rettelserne.
+    &nbsp;&middot;&nbsp; <strong>Ti holdes ikke til tiden</strong>, og seks af dem h&aelig;nger sammen: trupperne, deres l&oslash;b og Graduation Day.
+    &nbsp;&middot;&nbsp; Punkt 15 t&aelig;ller ikke som forsinket - l&oslash;ftet siger selv "ikke p&aring; en dato".
+    &nbsp;&middot;&nbsp; Kilde: GitHub, koden p&aring; main og patch notes t.o.m. 7.288, l&aelig;st 19/9.
+  </div>
+
+</div>
+</div>
+</body>
+</html>

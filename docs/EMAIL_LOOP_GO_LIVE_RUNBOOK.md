@@ -6,6 +6,10 @@ Del D af #2853. Kode er merged og dormant. Denne runbook er ejerens tjekliste
 for at tænde loopet — Claude flipper `app_config` og læser `email_log`,
 ejeren lægger secrets og godkender copy.
 
+**Status 15/9:** welcome + day1 er `"on"`, `race_digest` er `"off"`. Win-back (#2760)
+er bygget, men er IKKE en fjerde loop-type — se §2b for dens eget flag og kommando.
+Målsat send-vindue: 21.-24/9, efter ejer-go.
+
 ## 1. Secrets (Infisical → Railway)
 
 | Nøgle | Krav | Bruges i |
@@ -63,6 +67,25 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 UPDATE public.app_config SET value = '"on"'::jsonb, updated_at = NOW()
 WHERE key = 'email_loop_welcome'; -- eller email_loop_day1 / email_loop_race_digest
 ```
+
+## 2b. Win-back (#2760) — separat one-off flag, ikke en fjerde loop-type
+
+Win-back har ingen cron-stage og deler IKKE `EMAIL_LOOP_TYPE_KEYS`-mønstret ovenfor.
+Det er en plain boolean-gate for et enkeltstående ops-script, ikke en sweep:
+
+- **Nøgle:** `winback_send_enabled` (`app_config`, boolean, ikke `off`/`dry_run`/`on`).
+  Migration: `database/2026-09-14-2760-winback-app-config.sql`. Default `false`.
+- **Gater:** `scripts/winback-send.mjs --execute`. Med flaget `false` afviser
+  `--execute` med exit 1. `--dry-run` sender aldrig og er altid tilgængeligt
+  uanset flaget — der er ikke brug for en gate på selve tørkørslen.
+- **Segment/samtykke/dedupe-logik:** `backend/lib/winbackSegment.js`.
+  Copy: `backend/lib/emailTemplates.js` (`buildWinbackEmail`) — skal
+  ejer-godkendes FØR flippet, ikke bare før sendingen.
+- **Flip til on:**
+  ```sql
+  UPDATE public.app_config SET value = 'true'::jsonb, updated_at = NOW()
+  WHERE key = 'winback_send_enabled';
+  ```
 
 ## 3. Verifikations-SQL (email_log)
 

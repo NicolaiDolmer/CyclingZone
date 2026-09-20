@@ -1,5 +1,320 @@
 export const PATCHES = [
   {
+    "version": "7.289",
+    "date": "2026-09-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "A new training page on your phone, in beta",
+          "body": "What changed: I rebuilt Daily training for phones. Your whole squad fits on one screen, names are short, nothing scrolls sideways, and the rider you tap gets his full card below the table. It opens for the beta group first, so I can adjust it with the people using it before everyone gets it. Ask to join from the Beta group card on your profile."
+        },
+        "da": {
+          "title": "Ny træningsside på telefonen, i beta",
+          "body": "Hvad er ændret: Jeg har bygget Daglig træning om til telefonen. Hele truppen er på én skærm, navnene er korte, intet scroller sidelæns, og den rytter du trykker på får sit fulde kort under tabellen. Den åbner først for beta-gruppen, så jeg kan rette den til sammen med dem, der bruger den, før alle får den. Bed om at komme med fra kortet Beta-gruppen på din profil."
+        },
+        "refs": [3643, 5350, 4982]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Inbox",
+        "en": {
+          "title": "One inbox line per race",
+          "body": "What changed: When a race is over, the result and a rider's first win no longer arrive as two separate messages. They are one line with the race as the headline and the milestone right below it. Stage races still give you one message per stage day."
+        },
+        "da": {
+          "title": "Én linje pr. løb i indbakken",
+          "body": "Hvad er ændret: Når et løb er kørt, kommer resultatet og en rytters første sejr ikke længere som to beskeder. De er én linje med løbet som overskrift og milepælen lige under. Etapeløb giver dig stadig én besked pr. etapedag."
+        },
+        "refs": [5384]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The dashboard no longer jumps while it loads",
+          "body": "What changed: Today's stages used to appear a moment after the rest of the dashboard and push everything down while you were reading. The space is now reserved from the start, so the page stays still."
+        },
+        "da": {
+          "title": "Dashboardet hopper ikke længere, mens det indlæses",
+          "body": "Hvad er ændret: Dagens etaper dukkede før op et øjeblik efter resten af dashboardet og skubbede alt ned, mens du læste. Pladsen er nu reserveret fra start, så siden står stille."
+        },
+        "refs": [5389]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Text stays inside its box on a phone",
+          "body": "What changed: On a phone, the line under a rider's name in the rider database and the academy ran out of its column and in under the numbers next to it. It now stays in its own column and wraps to a new line, and the name is shown in short form, like on the training page. Long forum titles can be read in full without opening the thread. A Danish word on the board card is fixed. From now on an automatic check looks for text that spills out of its box before I ship."
+        },
+        "da": {
+          "title": "Teksten bliver i sin boks på telefonen",
+          "body": "Hvad er ændret: På en telefon løb linjen under rytterens navn i rytterdatabasen og akademiet ud over sin kolonne og ind under tallene ved siden af. Nu bliver den i sin egen kolonne og bryder til en ny linje, og navnet står i kort form, som på træningssiden. Lange forumtitler kan læses helt uden at åbne tråden. Et dansk ord på bestyrelseskortet er rettet: \"Overget\" hedder nu \"Overgået\". Fremover leder en automatisk kontrol efter tekst, der stikker ud af sin boks, før jeg sender noget ud."
+        },
+        "refs": [5383]
+      }
+    ]
+  },
+  {
+    "version": "7.288",
+    "date": "2026-09-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "All trades in one list",
+          "body": "What changed: Transfers has a new tab, All trades. It shows every rider move in the game, newest first: auctions, direct transfers and swaps, with rider, teams, date and amount. You can filter by type and division, or show only your own team. The eye icon on a row opens the same report dialog you already know from the market."
+        },
+        "da": {
+          "title": "Alle handler i én liste",
+          "body": "Hvad er ændret: Transfers har fået en ny fane, Alle handler. Den viser alle rytterskifter i spillet med nyeste øverst: auktioner, direkte handler og bytter, med rytter, hold, dato og beløb. Du kan filtrere på type og division eller kun vise dit eget hold. Øje-ikonet på en række åbner den samme anmeld-dialog, du allerede kender fra markedet."
+        },
+        "refs": [5257]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Ask to join the beta group",
+          "body": "What changed: Your profile has a new card, Beta group. I open new features to a small group first, so I can read every answer. Ask to join from the card and I answer you myself in your inbox. You can leave the group again at any time without asking anyone."
+        },
+        "da": {
+          "title": "Bed om at komme med i beta-gruppen",
+          "body": "Hvad er ændret: Din profil har fået et nyt kort, Beta-gruppen. Jeg åbner nye funktioner for en lille gruppe først, så jeg kan nå at læse hvert svar. Bed om at komme med fra kortet, så svarer jeg dig selv i din indbakke. Du kan forlade gruppen igen når som helst uden at spørge nogen."
+        },
+        "refs": [5259]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Moving a rider to the academy says that his contract follows",
+          "body": "What changed: When you move a senior rider down to your academy, he keeps his contract: same wage, same length. The confirmation dialog showed the unchanged wage under the label Youth salary, so it looked like a new wage. It now says Wage (unchanged) and tells you that the contract follows him down."
+        },
+        "da": {
+          "title": "Flyt til akademi siger nu, at kontrakten følger med",
+          "body": "Hvad er ændret: Når du flytter en senior-rytter ned i dit akademi, beholder han sin kontrakt: samme løn, samme længde. Bekræftelses-dialogen viste den uændrede løn under etiketten Ungdomsløn, så det lignede en ny løn. Nu står der Løn (uændret), og dialogen fortæller, at kontrakten følger med ned."
+        },
+        "refs": [4582]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "Auto-bid messages are collected per auction",
+          "body": "What changed: The new message you get when your auto-bid has to raise came once for every challenge. Your inbox now collects them into one line per auction with a counter, together with the outbid messages for the same auction. If you lost the lead along the way, the line says so."
+        },
+        "da": {
+          "title": "Autobud-beskeder samles pr. auktion",
+          "body": "Hvad er ændret: Den nye besked, du får når dit autobud må hæve prisen, kom én gang for hver udfordring. Din indbakke samler dem nu til én linje pr. auktion med en tæller, sammen med overbudt-beskederne for samme auktion. Hvis du mistede føringen undervejs, står det på linjen."
+        },
+        "refs": [4981]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Lighter pages",
+          "body": "What changed: The game loads less code on every page. The statistics script is about a quarter of its old size, and the country flags no longer sit inside the stylesheet. Nothing looks different; pages just have less to download."
+        },
+        "da": {
+          "title": "Lettere sider",
+          "body": "Hvad er ændret: Spillet henter mindre kode på hver side. Statistik-scriptet fylder cirka en fjerdedel af før, og landeflagene ligger ikke længere inde i stylesheetet. Intet ser anderledes ud; siderne har bare mindre at hente."
+        },
+        "refs": [5055, 5177]
+      }
+    ]
+  },
+  {
+    "version": "7.287",
+    "date": "2026-09-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "You hear about it when your auto-bid has to raise",
+          "body": "What changed: When another manager tried to outbid you and your auto-bid raised your price to keep the lead, the game told you nothing. You now get a notification with the rider, the manager who bid against you and your new price."
+        },
+        "da": {
+          "title": "Du får besked når dit autobud må hæve prisen",
+          "body": "Hvad er ændret: Når en anden manager forsøgte at overbyde dig, og dit autobud hævede din pris for at beholde føringen, fik du ingenting at vide. Nu får du en notifikation med rytteren, manageren der bød imod dig, og din nye pris."
+        },
+        "refs": [4981]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The Scouting Network text now states the real rule",
+          "body": "What changed: The Scouting Network facility promised two scouting assignments at once at its top tier. That was wrong. The second assignment comes from your chief scout: one rated about 80 overall runs two at once, whatever tier the facility is. The text now says so, like the scouting page and Help already did."
+        },
+        "da": {
+          "title": "Teksten på Scouting-netværket siger nu den rigtige regel",
+          "body": "Hvad er ændret: Faciliteten Scouting-netværk lovede to spejder-opgaver ad gangen på topniveauet. Det var forkert. Den anden opgave kommer fra din chefscout: en chefscout med omkring 80 i overall kører to ad gangen, uanset facilitetens niveau. Teksten siger det nu, ligesom scouting-siden og Hjælp allerede gjorde."
+        },
+        "refs": [5201]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Squad selection stays locked if it cannot reload",
+          "body": "What changed: After Auto-select, the panel reloads your new squad. If that reload failed, the panel unlocked with your old squad and looked saved. It now stays locked, tells you the reload failed and gives you a Try again button, so you never edit a squad that is out of date."
+        },
+        "da": {
+          "title": "Holdudtagelsen forbliver låst hvis den ikke kan genindlæses",
+          "body": "Hvad er ændret: Efter Auto-udtag genindlæser panelet din nye trup. Hvis genindlæsningen fejlede, låste panelet op med din gamle trup og så gemt ud. Nu forbliver det låst, fortæller at genindlæsningen fejlede, og giver dig en Prøv igen-knap, så du aldrig retter i en forældet trup."
+        },
+        "refs": [5222]
+      }
+    ]
+  },
+  {
+    "version": "7.286",
+    "date": "2026-09-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Ratings",
+        "en": {
+          "title": "One rating per rider, everywhere",
+          "body": "What changed: Your squad list, the rider profile and the scouting tab showed different ratings for the same rider since Tuesday. The two new abilities, Teamwork and Leadership, were counted as zero on some pages before any rider actually has them. I have taken them out of the rating again until they are really in the game, and a missing value can never count as zero. Ratings are back to the numbers you knew. No rider got better or worse. The season planner and the daily training page now use the same rating as everything else."
+        },
+        "da": {
+          "title": "Én rating pr. rytter, overalt",
+          "body": "Hvad er ændret: Din trup, rytterprofilen og scouting-fanen viste forskellige ratings for samme rytter siden tirsdag. De to nye evner, Holdarbejde og Lederskab, blev talt som nul på nogle sider, før nogen rytter reelt har dem. Jeg har taget dem ud af ratingen igen, indtil de rigtigt er i spillet, og en manglende værdi kan aldrig tælle som nul. Ratings er tilbage på de tal du kendte. Ingen rytter er blevet bedre eller dårligere. Sæsonplanlæggeren og den daglige træning bruger nu samme rating som resten."
+        },
+        "refs": [5321]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Manager status shows minutes, hours and days again",
+          "body": "What changed: On another team's page, the manager's status jumped from Online now straight to Never. The page could no longer read when the manager was last seen. It now gets that one detail through a dedicated route, so you see the real time since they were last online."
+        },
+        "da": {
+          "title": "Manager-status viser igen minutter, timer og dage",
+          "body": "Hvad er ændret: På et andet holds side sprang managerens status fra Online nu direkte til Aldrig. Siden kunne ikke længere læse, hvornår manageren sidst var set. Den henter nu netop den oplysning via en egen rute, så du ser den rigtige tid siden vedkommende sidst var online."
+        },
+        "refs": [4873]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finances",
+        "en": {
+          "title": "The season start sponsor line names your contract",
+          "body": "What changed: In the finance log, the season start payment from your sponsor was labelled as an intro payment for every team with a contract. It now says it is your contract payment and names the sponsor."
+        },
+        "da": {
+          "title": "Sæsonstart-linjen fra sponsoren hedder nu din kontrakt",
+          "body": "Hvad er ændret: I finansloggen stod sæsonstart-udbetalingen fra din sponsor som en intro-udbetaling for alle hold med kontrakt. Nu står der, at det er din kontraktudbetaling, og sponsoren nævnes ved navn."
+        },
+        "refs": [4861]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Stability",
+        "en": {
+          "title": "Clearer messages when the server cannot be reached",
+          "body": "What changed: When the game cannot reach the server at all, you now get a message that says so, instead of a generic error. The race board on the planning page also tells you plainly if it could not load, rather than failing silently. And the stage card says Tomorrow correctly around the change to winter time."
+        },
+        "da": {
+          "title": "Klarere beskeder når serveren ikke kan nås",
+          "body": "Hvad er ændret: Når spillet slet ikke kan nå serveren, får du nu en besked der siger det, i stedet for en generisk fejl. Løbstavlen på planlægningssiden siger også tydeligt, hvis den ikke kunne hentes, i stedet for at fejle tavst. Og etapekortet siger I morgen korrekt omkring skiftet til vintertid."
+        },
+        "refs": [5322, 5291, 5302]
+      }
+    ]
+  },
+  {
+    "version": "7.285",
+    "date": "2026-09-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Mobile",
+        "en": {
+          "title": "Daily training and the transfer list work on a phone",
+          "body": "What changed: On a phone, the training roster shows the rider name plus three columns, with a chip row to swap a column in and Full table to see everything. The transfer list no longer forces the page wider than the screen: the fifteen ability columns are hidden until you tap Full table, and value, asking price and the action stay in view.\n\nWhat it means for you: You can set training and browse the market on your phone without sideways scrolling. Auctions already used cards on small screens, and the season matrix keeps its sticky name column by design."
+        },
+        "da": {
+          "title": "Daglig træning og transferlisten virker på telefonen",
+          "body": "Hvad er ændret: På telefonen viser træningstabellen rytternavnet plus tre kolonner, med en chip-række til at bytte en kolonne ind og Fuld tabel til at se alt. Transferlisten tvinger ikke længere siden bredere end skærmen: de femten evnekolonner er skjult, indtil du trykker Fuld tabel, og værdi, udbudspris og handling bliver stående.\n\nHvad betyder det for dig: Du kan sætte træning og kigge på markedet på telefonen uden at scrolle til siden. Auktioner brugte allerede kort på små skærme, og sæsonmatrixen beholder sin låste navnekolonne med vilje."
+        },
+        "refs": [5124, 5235]
+      }
+    ]
+  },
+  {
+    "version": "7.284",
+    "date": "2026-09-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Picking your sponsor early no longer costs you",
+          "body": "What changed: An offer is priced from your latest ranked season. Until the running season has a standing of its own, I now use the season before it, instead of treating an established club as one with no record. If you never pick, the safe deal signed for you is priced at what the offers opened at, never above what picking it yourself that day would have given.\n\nWhat it means for you: Day one and the last day are no longer two prices for the same deal, and saying nothing cannot pay more than choosing. The help text now says what the rule is: the amount locks when you sign, and a promotion does not re-price your base, it pays a separate division adjustment on top."
+        },
+        "da": {
+          "title": "Det koster ikke længere at vælge sponsor tidligt",
+          "body": "Hvad er ændret: Et tilbud prissættes ud fra din seneste sæson med en stilling. Indtil den igangværende sæson har sin egen stilling, bruger jeg nu sæsonen før, i stedet for at behandle en etableret klub som en uden resultater. Vælger du slet ikke, prissættes den sikre aftale, klubben skriver under for dig, til den pris tilbuddene åbnede på, aldrig over hvad det samme valg den dag ville have givet.\n\nHvad betyder det for dig: Dag et og sidste dag er ikke længere to priser på samme aftale, og det at tie kan ikke betale mere end at vælge. Hjælpeteksten siger nu, hvad reglen er: beløbet låses når du skriver under, og en oprykning prissætter ikke din base om, den udløser et separat divisions-tillæg oveni."
+        },
+        "refs": [4860, 4376]
+      }
+    ]
+  },
+  {
+    "version": "7.283",
+    "date": "2026-09-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scout from the rider database",
+          "body": "What changed: You can scout directly from the rider list, including on your phone. Going back now restores the filters from that page. Clicking Riders in the menu while you are already there still starts you with a clean list.\n\nWhat it means for you: Compare riders without opening every profile or setting your filters again. On mobile, salary is one column tap away."
+        },
+        "da": {
+          "title": "Scout direkte fra rytterdatabasen",
+          "body": "Hvad er ændret: Du kan scoute direkte fra rytterlisten, også på din telefon. Tilbage-navigation gendanner nu filtrene fra den side. Klikker du på Ryttere i menuen, mens du allerede er der, starter du stadig med en ren liste.\n\nHvad betyder det for dig: Sammenlign ryttere uden at åbne hver profil eller sætte dine filtre igen. På mobil er løn ét kolonnevalg væk."
+        },
+        "refs": [5292]
+      }
+    ]
+  },
+  {
     "version": "7.282",
     "date": "2026-09-17",
     "label": "Beta",

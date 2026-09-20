@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import RacePointModelSection from "./RacePointModelSection";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -42,11 +43,13 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
       try {
         const headers = await getAuth();
         const [rowsRes, baselineRes] = await Promise.all([
-          fetch(`${API}/api/admin/race-points`, { headers }),
-          fetch(`${API}/api/admin/race-points/baseline`, { headers }),
+          apiFetch(`${API}/api/admin/race-points`, { headers }),
+          apiFetch(`${API}/api/admin/race-points/baseline`, { headers }),
         ]);
-        const rowsData = await rowsRes.json();
-        const baselineData = await baselineRes.json();
+        // #5242: null ved limited/unauthorized/networkError — `|| {}` holder de to
+        // `!ok`-kast nedenfor på deres egen fallback-tekst i stedet for en TypeError.
+        const rowsData = rowsRes.data || {};
+        const baselineData = baselineRes.data || {};
         if (!rowsRes.ok) throw new Error(rowsData.error || "load failed");
         if (!baselineRes.ok) throw new Error(baselineData.error || "baseline failed");
         if (cancelled) return;
@@ -140,12 +143,12 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
       const headers = await getAuth();
       for (const [id, points] of dirty) {
         try {
-          const res = await fetch(`${API}/api/admin/race-points/${id}`, {
+          const res = await apiFetch(`${API}/api/admin/race-points/${id}`, {
             method: "PUT",
             headers,
             body: JSON.stringify({ points }),
           });
-          const data = await res.json().catch(() => ({}));
+          const data = res.data || {};
           if (!res.ok) { lastErr = data.error || `HTTP ${res.status}`; continue; }
           // Update local row
           setRows((prev) => prev.map((r) => (r.id === id ? data.row : r)));

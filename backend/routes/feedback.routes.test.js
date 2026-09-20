@@ -141,10 +141,21 @@ test("POST /api/transfers/:type/:id/report delegerer til submitTradeReport (ikke
 
 test("POST /api/transfers/:type/:id/report mirrorer til Discord kun når rapporten faktisk er NY (ikke ved dedupe)", () => {
   const idx = apiSource.indexOf('router.post("/transfers/:type/:id/report"');
-  const block = apiSource.slice(idx, idx + 1600);
+  const block = apiSource.slice(idx, idx + 2600);
   assert.match(block, /notifyPlayerFeedback\(/, "skal kalde notifyPlayerFeedback-mirroret");
   assert.match(block, /!body\.alreadyReported/, "må ikke re-mirrore en dedupe-hit");
-  assert.match(block, /notifyPlayerFeedback\(\{[\s\S]*?\}\)\.catch\(/, "Discord-mirror skal være .catch'et — må aldrig kaste ind i request-handleren");
+  // #5284: mirroret er nu en promise-KÆDE (resolveTradeForReport → notifyPlayerFeedback),
+  // så .catch'en sidder på kædens ende i stedet for direkte på notifyPlayerFeedback-kaldet.
+  // Kravet er uændret — intet led må kaste ind i request-handleren — så vi asserter på
+  // "der ligger en .catch mellem mirroret og svaret", ikke på ét bestemt kaldsformat.
+  const mirrorStart = block.indexOf("notifyPlayerFeedback(");
+  const responseStart = block.indexOf("res.status(status).json(body)");
+  assert.ok(responseStart > mirrorStart, "svaret skal stadig ligge efter mirroret i samme handler");
+  assert.match(
+    block.slice(mirrorStart, responseStart),
+    /\.catch\(/,
+    "Discord-mirror-kæden skal være .catch'et — må aldrig kaste ind i request-handleren",
+  );
 });
 
 test("contract: api.js importerer submitTradeReport + TRADE_REPORT_TYPES fra feedbackInbox.js", () => {

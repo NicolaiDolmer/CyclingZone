@@ -195,12 +195,17 @@ export async function runAluntaOverdueWatch({
 
   if (lines.length > 0) {
     const worst = overdue[0]?.daysOverdue ?? null;
-    const err = new Error(
-      `billing-watch: ${overdue.length} ubetalt(e) faktura(er), ${stale.length} entitlement-afvigelse(r)` +
-        (worst !== null ? ` — værste ${worst} dage over forfald` : "")
-    );
+    // #5017 (triage 12/9): dagstallet (og antallet) stod tidligere INDE i selve
+    // fejlbeskeden — Sentry grupperer på besked uden en fast fingerprint, så
+    // beskeden ændrede sig hver dag den samme ubetalte faktura stod åben, og
+    // ÉN fortsat sag blev til flere issues (CYCLINGZONE-54 + -5R, "værste 33
+    // dage" vs. "værste 31 dage" for samme faktura). Beskeden er nu FAST;
+    // dagstal/antal ligger udelukkende i `extra` (samme mønster som
+    // ownershipInvariantWatch.js's `fingerprint: ["stuck-academy-graduate"]`).
+    const err = new Error("billing-watch: ubetalte fakturaer og/eller entitlement-afvigelser fundet");
     captureExceptionFn(err, {
       tags: { flow: "billing", stage: "overdue-watch" },
+      fingerprint: ["billing-watch-overdue"],
       extra: { overdueCount: overdue.length, staleCount: stale.length, worstDaysOverdue: worst },
     });
   }

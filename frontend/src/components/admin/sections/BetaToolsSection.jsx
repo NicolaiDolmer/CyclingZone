@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { adminErrorMessage, readAdminJson } from "../shared/useAdminAuth";
+import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -15,7 +16,7 @@ export default function BetaToolsSection({ getAuth, onMsg }) {
     setLoad(`beta_${endpoint}`, true);
     setBetaResult(null);
     try {
-      const res = await fetch(`${API}/api/admin/beta/${endpoint}`, {
+      const res = await apiFetch(`${API}/api/admin/beta/${endpoint}`, {
         method: "POST", headers: await getAuth(), body: JSON.stringify(body),
       });
       const data = await readAdminJson(res);

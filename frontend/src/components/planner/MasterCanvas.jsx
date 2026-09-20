@@ -9,7 +9,6 @@
 // tilgængelig via skuffens knapper (a11y: drag er en mus/touch-forbedring).
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { riderOverallRating } from "../../lib/riderRating";
 import { sampleFormCurves } from "../../lib/plannerCurve";
 import { statColor, statTextColor } from "../../lib/statColor";
 import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
@@ -265,7 +264,11 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
         // rigtige peak-pladser. Kurven, used-tælleren og token-prikkerne
         // afspejler kun kontrakter manageren selv har indgået.
         const realPeaks = peaks.filter((p) => !p.isSuggestion);
-        const ovr = riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType });
+        // #5321: ratingen kommer FRA serveren (GET /peak-plans/board), som regner
+        // den med den samme opskrift som alle andre flader. Regn den aldrig her:
+        // `rd.abilities` er løbsmotorens udsnit af evnerne, og en rating regnet
+        // på et udsnit giver et andet tal end Mit hold og rytterprofilen.
+        const ovr = rd.rating;
         // #2447: ryttertype-label kommer nu fra samme riderTypes-i18n-namespace som
         // RiderTypeBadge (kanonisk kilde) i stedet for plannerens egen (dengang
         // afvigende) type.*-tekster — se backwards-check i PR-beskrivelsen.
@@ -326,7 +329,7 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                 der blev ulæselig i dark mode (--text-1 er næsten hvid der → gult tal på
                 hvid bund). */}
             <rect x={RAIL - 44} y={y0 + 15} width="36" height="22" rx="2" fill={statColor(ovr, { scale: "rating" })} />
-            <text x={RAIL - 26} y={y0 + 30} textAnchor="middle" fontSize="14" fill={statTextColor(ovr, { scale: "rating" })} style={{ fontFamily: "Inter Tight, monospace", fontWeight: 500 }}>{ovr}</text>
+            <text x={RAIL - 26} y={y0 + 30} textAnchor="middle" fontSize="14" fill={statTextColor(ovr, { scale: "rating" })} style={{ fontFamily: "Inter Tight, monospace", fontWeight: 500 }}>{ovr ?? "—"}</text>
             <text x={RAIL - 26} y={y0 + 45} textAnchor="middle" fontSize="10" fill={CZ.t3} style={{ fontFamily: "Inter Tight, monospace" }}>{t("ovr.label")}</text>
 
             {/* Baseline */}

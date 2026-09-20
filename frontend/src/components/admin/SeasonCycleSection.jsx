@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatCz } from "../../lib/marketValues";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { summarizeTransitionReadiness } from "../../lib/seasonTransitionGate";
 
 const API = import.meta.env.VITE_API_URL;
@@ -28,8 +29,8 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
     setLoading(true);
     try {
       const headers = await getAuth();
-      const res = await fetch(`${API}/api/admin/season-transition/preview`, { headers });
-      const data = await res.json();
+      const res = await apiFetch(`${API}/api/admin/season-transition/preview`, { headers });
+      const data = res.data || {}; // #5242: null ved limited/unauthorized/networkError
       if (!res.ok) throw new Error(data.error || "Kunne ikke hente forhåndsvisning");
       setPreview(data.plan);
       setReadiness(data.readiness ?? null);
@@ -83,12 +84,12 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
     setExecuting(true);
     try {
       const headers = await getAuth();
-      const res = await fetch(`${API}/api/admin/season-transition`, {
+      const res = await apiFetch(`${API}/api/admin/season-transition`, {
         method: "POST",
         headers,
         body: JSON.stringify({ force: forcing }),
       });
-      const data = await res.json();
+      const data = res.data || {}; // #5242, se fetchPreview()
       if (!res.ok) {
         // #1346: 409 = readiness-gaten afviste server-side. Opdatér checklisten
         // så admin ser de aktuelle årsager (preview kan være stale).

@@ -119,7 +119,11 @@ test("applyRiderEligibilityFilter: kæder akademi- + pensioneret- + ikke-under-h
   };
   const out = applyRiderEligibilityFilter(q);
   assert.equal(out, q, "returnerer query'en (kædebar)");
+  // #4619: trup-leddet kommer nu fra squads.applySeniorSquadFilter og spørger på
+  // BEGGE kolonner i overgangsperioden (squad='senior' OG is_academy=false) — se
+  // seniorSquadFilter.test.js for hvorfor is_academy-leddet ikke må fjernes endnu.
   assert.deepEqual(calls, [
+    ["eq", "squad", "senior"],
     ["eq", "is_academy", false],
     ["or", "is_retired.is.null,is_retired.eq.false"],
     ["is", "pending_team_id", null],
@@ -137,6 +141,7 @@ test("applyRosterVisibilityFilter: akademi + pensioneret, men IKKE pending_team_
   const out = applyRosterVisibilityFilter(q);
   assert.equal(out, q, "returnerer query'en (kædebar)");
   assert.deepEqual(calls, [
+    ["eq", "squad", "senior"],
     ["eq", "is_academy", false],
     ["or", "is_retired.is.null,is_retired.eq.false"],
   ], "en solgt rytter med parkeret holdskifte skal stadig VISES i truppen (#4119)");

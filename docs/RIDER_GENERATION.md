@@ -231,6 +231,7 @@ Markøren ligger i `riders.archetype_draw` (jsonb, persisteres allerede) som et 
 | AI-fyld tier 1/2 | `generateAiRiderBatchWithCap` | own-priors (default) |
 | AI-fyld tier 3/4 + start-trupper | `buildWeakStarterPool` | own-priors + persisteret evne-loft |
 | Akademi-intake | `generateAcademyCandidates` → `academyIntake` | own-priors (ungdomsbåndet) |
+| U23-trupper til AI-holdene | ENGANGS ved S4-cutover — generatoren findes endnu ikke | own-priors (U23-båndet, se §8b2). Båndet og evne-trækket er klar; selve genereringen er ejer-gated |
 | Pool-import | `lib/racePoolImport.js` | **føder ingen ryttere** — modulet importerer LØB (`race_pool`) fra CSV. Ingen ændring. |
 
 `mode: "pcm"` bevarer den gamle sti og er ikke fjernet: de golden-population-harnesses der kalibrerer balancen (`previewFictionalPopulation.js`, `simSecondaryArchetype3634.js`, `raceGate.js`) måler mod netop den fordeling og skal kunne sammenlignes med historikken indtil ejeren fjerner stien.
@@ -244,6 +245,37 @@ Spejlingen er `isBornFromPriors(row) ? deriveBirthAbilities(row, { age }) : deri
 ### Fysiologi
 
 En prior-født rytter seeder sin fysiologi fra sine EGNE evner (samme 0-99-skala som `seedPhysiologyFromLegacy` forventer) i stedet for filens 60-default, som ville gøre hver eneste nyfødt fysiologisk identisk. Profilen forbliver `version 1 / seeded_from_legacy` som resten af populationen. v2-arketype-seeding (`aero`) er Task D2 og hører ikke til her — den ville tænde fysiologi-stien i `abilityDerivation` for netop disse ryttere og give dem en anden evne-fordeling end resten af spillet.
+
+## 8b2. U23-fødselsbåndet ([#5376](https://github.com/NicolaiDolmer/CyclingZone/issues/5376))
+
+**Ryttere fødes stadig som 16-årige i akademiet.** Det her ændrer ikke hvor spillet får sine ryttere fra. Båndet gælder ÉN ting: engangs-genereringen af en U23-trup (6-9 ryttere, 19-22 år) til hvert AI-hold ved S4-cutover, så U23-kalenderens løb har køreklare felter fra dag ét ([GDD D-054 §10.4](GAME_DESIGN_DOCUMENT.md), [U23-spec](superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md) §4.4 + §10.4). Efter cutover fyldes U23-truppen af akademiet, der graduerer opad — der er ingen løbende U23-fødsel.
+
+**Hvorfor et eget bånd.** Akademiets bånd (`YOUTH_BIRTH_BAND`) er kalibreret til 16-21 år, hvor det er en TILSIGTET invariant at evnerne mætter mod loftet: G5 ([#3561](https://github.com/NicolaiDolmer/CyclingZone/issues/3561)/[#2064](https://github.com/NicolaiDolmer/CyclingZone/issues/2064) §2a) kræver at en ungdomsrytters NUVÆRENDE evne ikke løfter `ability_caps` over det loft hans potentiale tillader. Netop dét loft slår igennem i den øvre ende af U23-intervallet, og generator-rapportens §8b måler det: lånte U23-fødslen akademiets bånd, ville en 19-årig og en 22-årig fødes praktisk talt ens, og alderen holde op med at betyde noget i netop det interval U23-kalenderen kører i.
+
+**Ejer-valg 18/9 — variant A, "løft loftet, behold rampen".** `U23_BIRTH_BAND` er AFLEDT af akademiets: forankring, alders-rampe og spredning arves uændret, og loftet er det eneste felt der afviger. Fravalgt blev et helt eget bånd med egen rampe og spredning (to bånd at holde i sync) og et alders-rampet loft der kun gav den ældste årgang luft. Prisen ejeren købte med: de tre år (19-21) der overlapper akademiets interval trækkes nu forskelligt alt efter hvor rytteren kommer fra. Det er tilsigtet og gælder kun engangs-kuldet.
+
+**Akademiet er urørt.** `YOUTH_BIRTH_BAND` og G5-invarianten står som før; `riderBirthPriors.test.js` beviser både at akademiets bånd ikke muteres, og at loftet er den eneste forskel mellem de to bånd.
+
+**Markøren har sin egen tier.** En U23-fødsel skriver `archetype_draw.birth.tier = "u23"`, ikke `"youth"`. Det er ikke kosmetik: `deriveBirthAbilities` vælger BÅND ud fra markørens tier, og enhver re-derive (heal-sweep, backfill) går igennem den. Bar markøren `"youth"`, ville hver sweep reproducere engangs-kuldet mod akademiets bånd og klippe rytterne ned — stille, og først synligt når nogen undrede sig over at U23-felterne var blevet svagere.
+
+**Hvad der mangler.** `drawU23BirthAbilities()` + `makeU23BirthMarker()` er hele evne-siden og er rene funktioner uden DB, ur eller `Math.random`. Selve generatoren (spec A6: hvilke AI-hold, hvor mange ryttere, arketype-/tier-mix, navne, nationalitet, kontrakter, `squad = 'u23'`, insert + `deriveForRiderIds`) findes IKKE endnu, og intet produktions-kaldsted kalder funktionerne i dag. Det er med vilje: genereringen er en ejer-gated engangs-handling ved cutover og må ikke kunne udløses som sideeffekt af at båndet blev bygget.
+
+## 8c. Den synlige test af generatoren ([#5283](https://github.com/NicolaiDolmer/CyclingZone/issues/5283))
+
+**Ejer-krav 15/9, ordret** (ved merge-go på PR #5278): *"Vi skal have lavet test inden naeste gang der laves nye ryttere, for at se at rytter generatoren virker ordentligt."* Gaten ligger FØR U23-ryttere genereres til AI-holdene ved S4-cutover ([GDD D-054 §10.4](GAME_DESIGN_DOCUMENT.md)).
+
+Gaten har to halvdele, og de måler bevidst hver sin ting:
+
+| Halvdel | Fil | Svarer på |
+|---|---|---|
+| Øjne | `backend/scripts/generatorVisibleTest5283.js` | *Hvordan ser populationen ud?* Read-only rapport: fordeling pr. arketype og pr. evne (min/p10/median/p90/max), lofterne, alder/potentiale/værdi, kompletthed, ungdomsbåndet, stikprøve. Kan ikke fejle. |
+| Maskine | `backend/lib/riderBirthDistribution.test.js` | *Hvad må aldrig ændre sig?* 19 `node --test`-invarianter. Kan kun fejle. |
+
+Rapporten køres med `npm run riders:generator-report --prefix backend` (n = 1.000, seed 20260918). Den skrives til `balance-internals/`, som er gitignoreret: rapporten er præcise fordelings- og balance-tal, og hard rule 17 ([#3436](https://github.com/NicolaiDolmer/CyclingZone/issues/3436)) holder dem ude af det offentligt læsbare repo — issue #5283 pkt. 3 siger det udtrykkeligt om netop denne tabel. Determinismen (§1) gør rapporten diffbar mod en senere kørsel uden at den behøver ligge i git: samme seed giver den samme fil, byte for byte.
+
+Rapporten spejler `deriveForRiderIds`' kæde in-memory (§6/§8b's spejlings-krav) og rører hverken DB eller generatorens adfærd. Finder den en fejl, dokumenteres den i rapportens §9 og rettes i et eget spor — en test der retter det den måler, måler ikke længere noget.
+
+**To fund står åbne i rapporten pr. 18/9** (begge dokumenteret, ingen rettet her): en betydelig del af alle evne-værdier lander på gulvet, drevet af `domestique`-tierens niveau; og en lille andel fødes med `tactics` over vækst-loftet i D-056. Det tredje fund — at akademiets bånd er mættet ved U23-aldrene — er LUKKET af [#5376](https://github.com/NicolaiDolmer/CyclingZone/issues/5376): U23-fødslen fik sit eget bånd (§8b2), og rapportens §8b står tilbage som referencen der forklarer hvorfor. Rapportens §8c måler produktions-båndet, og en **forward-guard** (`u23ProductionBandGuard()`) siger fra i §9 hvis alderen holder op med at flytte medianen eller loftet begynder at klippe dominerende igen — også når årsagen er en ændring på akademi-siden, som U23-båndet arver fra.
 
 ## 9. Kendte faldgruber
 

@@ -39,7 +39,7 @@ Begge ordener skal forblive `1..n` uden huller — en test håndhæver det.
 
 `smallint` på `rider_derived_abilities`, i en idempotent migration. Husk kolonne-grant'en (`riders-column-grant-guard` i CI fanger den hvis du glemmer).
 
-Verificeret 15/9 på `database/2026-09-15-5268-mental-abilities.sql` — den er skabelonen: `ADD COLUMN IF NOT EXISTS`, `GRANT SELECT (kolonne) ON public.rider_derived_abilities TO anon, authenticated`, `COMMENT ON COLUMN`, og `NOTIFY pgrst, 'reload schema'` til sidst. **Kolonnen skal være nullable og uden DEFAULT:** `deriveAbilities` begynder at skrive evnen i samme deploy, så kolonnen skal eksistere før backenden ruller, og en DEFAULT på 0 ville lyve om de eksisterende ryttere (0 er ikke "endnu ikke beregnet"). En NULL evne tæller hverken i `ratingForRole()` eller i træningen, så mellemtilstanden er sikker.
+Verificeret 15/9 på `database/2026-09-15-5268-mental-abilities.sql` — den er skabelonen: `ADD COLUMN IF NOT EXISTS`, `GRANT SELECT (kolonne) ON public.rider_derived_abilities TO anon, authenticated`, `COMMENT ON COLUMN`, og `NOTIFY pgrst, 'reload schema'` til sidst. **Kolonnen skal være nullable og uden DEFAULT:** `deriveAbilities` begynder at skrive evnen i samme deploy, så kolonnen skal eksistere før backenden ruller, og en DEFAULT på 0 ville lyve om de eksisterende ryttere (0 er ikke "endnu ikke beregnet"). En NULL evne tæller ikke i `ratingForRole()` — **men det gjorde den indtil [#5321](https://github.com/NicolaiDolmer/CyclingZone/issues/5321)**, fordi `Number(null)` er 0. Den sætning stod her som et løfte koden ikke holdt, og det kostede hele bestandens synlige rating 15-17/9. Nu holder `abilityValue()` den, og to vagter beviser det. Mellemtilstanden er kun sikker så længe evnen også står uden for display-opskrifterne — se trin 4.
 
 **Skal eksisterende ryttere have en værdi, er det ikke SQL-arbejde.** Læg data-migrationen i et Node-script med `--dry-run` som default (mønster: `backend/scripts/dry-run-5268-mental-abilities.js`). To grunde: `auto-migrate.yml` kører SQL'en automatisk ved merge, og en mutation af hele bestanden må ikke kunne ske som bivirkning af en merge; og en SQL-kopi af derivations-formlen ville være en anden kilde til sandhed der driver fra JS'en ved første kalibrering.
 
@@ -52,11 +52,33 @@ For en MENTAL evne: giv den sin egen prior (profil + deterministisk, centreret s
 
 **Undtagelsen er dokumenteret og snæver:** `leadership` BRUGER alder, fordi lederskab pr. design er lavt hos unge og topper sent (GDD D-030, spec L1). Vægten er bevidst lille — et tungt alders-led er netop den fejl taktik havde, og gaten (fødsels-median/p90 i samme spænd som `descending`/`positioning`) fælder det. Vil din nye evne også bruge alder, skal begrundelsen stå i en ejer-besluttet spec, ikke i en kommentar, og tallet skal måles mod gaten før merge. Se `docs/PROGRESSION_RULES.md` §1.1.
 
-## 4. Plads i mindst én visnings-opskrift
+## 4. Plads i mindst én visnings-opskrift — men først når evnen har værdier på ALLE ryttere
 
 `backend/lib/weights/displayRecipes.js`. **Dette er ikke valgfrit** — vagt 1 fejler bygningen hvis en registry-evne ikke tæller nogen steder.
 
 Vagten findes fordi `positioning` og `tactics` indgik i **nul** af de 8 gamle opskrifter, selvom begge påvirker løbene (positionering dæmper uheldssandsynlighed og indgår i den tekniske finale; taktik indgår i udbruds-villighedens fallback). En spiller kunne træne dem uden at se effekt i noget tal, og intet fejlede.
+
+> ### ⛔ Reglen der kom af [#5321](https://github.com/NicolaiDolmer/CyclingZone/issues/5321) (ejer-go 17/9-2026)
+>
+> **En ny evne må ikke ind i display-opskrifterne før den har værdier på alle ryttere.**
+>
+> `displayRecipes` er RATING-tallet spilleren ser.
+>
+> **Sådan gik det galt 15/9** ([#5268](https://github.com/NicolaiDolmer/CyclingZone/issues/5268)): `teamwork` og `leadership` fik en vægt i fire opskrifter mens kolonnerne var NULL for alle 8.731 eksisterende ryttere. `Number(null)` er 0, så evnen talte som et ægte nul i både tæller og nævner, og hele bestandens synlige rating faldt uden at en eneste rytter havde flyttet sig. Nogle flader viste oven i købet et andet tal end andre, fordi ikke alle flader hentede de to kolonner. Spillerne meldte det i #general dagen efter.
+>
+> **Den defekt findes ikke længere** — `abilityValue()` (#5321) holder NULL ude af både tæller og nævner, så en vægt på en kolonne der er NULL for hele bestanden ændrer i dag ingen ratings.
+>
+> **Risikoen der er tilbage er den delvise backfill.** I det vindue hvor nogle ryttere har fået en værdi og andre ikke har, regnes de to grupper på hver sin opskrift-bredde: de udfyldte ryttere flytter sig, de tomme står stille, og to ryttere på samme skærm er ikke sammenlignelige. Det er stadig et synligt tal der ændrer sig uden ejerens go — bare for en delmængde i stedet for for alle.
+>
+> **Ejerens tre regler (17/9):** (a) én rating overalt, (b) spillernes synlige ratings må aldrig falde uden ejerens vidende, (c) nye evner tæller først med i ratingen når de reelt er i spillet.
+>
+> **Sådan gør du i praksis:**
+>
+> 1. Sæt evnens key i `PENDING_DISPLAY_ABILITIES` (`backend/lib/weights/displayRecipes.js`) i stedet for at give den en vægt. Vagt 1 sammenligner PRÆCIST mod den liste, så en evne der falder ud af opskrifterne ved et uheld stadig fælder bygningen.
+> 2. Kør data-migrationen (Node-script, trin 2) så alle ryttere har en værdi.
+> 3. Først DEREFTER: giv evnen en vægt, fjern den fra `PENDING_DISPLAY_ABILITIES`, og opdatér `frontend/src/lib/__fixtures__/ratingGolden.5321.json` i **samme PR** med et link til ejer-go'et. Golden-testen er rød indtil da — det er meningen.
+>
+> Golden-fixturen er frosset med vilje. En rød golden-test er ikke støj der skal opdateres væk; den er beskeden om at nogen er ved at flytte et tal på spillerens skærm.
 
 Efter du har rettet opskrifterne:
 
@@ -72,12 +94,14 @@ Vagt 3 (ingen opskrifts evne-sæt må være delmængde af en andens) kan fælde 
 
 ## Vagterne der holder dig ærlig
 
-Alle fire kører i `backend-tests` (required check) — `backend/lib/abilityRegistryGuards.test.js`:
+Alle kører i `backend-tests` (required check) — `backend/lib/abilityRegistryGuards.test.js`:
 
-1. **Hver registry-evne optræder i ≥1 visnings-opskrift.** Ellers er evnen usynlig for spilleren.
+1. **Hver registry-evne optræder i ≥1 visnings-opskrift** — undtagen dem der står i `PENDING_DISPLAY_ABILITIES`, og sammenligningen er præcis. Ellers er evnen usynlig for spilleren.
+1b. **`PENDING_DISPLAY_ABILITIES` nævner kun keys der findes i registret.** En stavefejl dér ville ellers kunne sluge en ægte orphan.
 2. **Hver opskrift-evne har en registry-post.** En stavefejl ville ellers tælle som en manglende evne og trække ratingen skævt.
 3. **Ingen opskrifts evne-sæt er delmængde af en andens.** [#3592](https://github.com/NicolaiDolmer/CyclingZone/issues/3592) målte at fire typepar var uadskillelige af netop den grund. Vagten fandt et femte (`climber ⊆ gc`) på sin allerførste kørsel.
 4. **Frontend-filerne er genereret, ikke håndholdte.** Byte-sammenligning mod generator-output.
+5. **Ratingen pr. rolle er frosset på et fixture-sæt** (#5321) — `frontend/src/lib/ratingNullIsNotZero.5321.test.js` + `backend/lib/ratingFromAbilities.5321.test.js`. De to vagter deler én fixture (`frontend/src/lib/__fixtures__/ratingGolden.5321.json`) og kører både i frontendens og backendens suite. De holder også server og klient på præcis samme tal og på at en NULL-kolonne aldrig tæller som 0.
 
 ## Det du IKKE skal røre
 

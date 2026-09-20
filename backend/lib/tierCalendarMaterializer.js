@@ -17,7 +17,8 @@ import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, toStageProfileRow } from "./raceStageProfileGenerator.js";
 import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { filterSeniorSquadRows, selectSeniorRacePool } from "./racePoolCatalog.js";
 import {
   TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, CLASS_STAGE_LENGTH_BAND,
   SCARCE_TERRAIN_ARCHETYPES, TIER_TERRAIN_FAMILY_MIN, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
@@ -31,6 +32,8 @@ import { grandTourRestDayCount } from "./grandTourRestDays.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { captureException } from "./sentry.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
+// #5272: remaining-horizon-målet for en pulje der aktiveres midt i sæsonen.
+import { resolveActivationRaceDayTarget } from "./calendarActivationRaceDays.js";
 
 export { TIER_CLASS_WHITELIST };
 
@@ -536,7 +539,13 @@ export async function materializeTierCalendars({
   // #4075: pensionerede katalog-rækker (retired_at sat af seedRacePool --prune, når en
   // række er ude af CSV'en men stadig FK-refereret af historiske sæsoners races) må
   // ALDRIG kunne vælges til nye kalendere — det var rod-årsagen til dublet-GT'erne i S3.
-  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text").is("retired_at", null);
+  // #5330: SENIOR-læser. race_pool rummer efter #4620/#5262 også U23-/juniorløb; uden
+  // squad-filteret ville de kunne vælges til seniorkalenderen. NULL/manglende kolonne =
+  // senior (se racePoolCatalog.js).
+  const { data: dbCatalog, error: cErr } = await selectSeniorRacePool(
+    (columns) => supabase.from("race_pool").select(columns).is("retired_at", null),
+    { columns: "id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text" },
+  );
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
   // #3295: HYPOTETISKE katalog-rækker til "hvad nu hvis vi tilføjede disse løb?"-analyse
   // (scripts/proposeCatalogExpansion.js). De findes ikke i race_pool, så de kan aldrig
@@ -545,7 +554,10 @@ export async function materializeTierCalendars({
   if (extraCatalogRows.length && !dryRun) {
     throw new Error("extraCatalogRows er KUN til dry-run-analyse — de findes ikke i race_pool og kan ikke materialiseres");
   }
-  const catalog = extraCatalogRows.length ? [...(dbCatalog || []), ...extraCatalogRows] : dbCatalog;
+  // #5330: extraCatalogRows er hypotetiske senior-rækker (uden squad → senior), men
+  // filteret køres på det samlede katalog så en fremtidig kalder ikke kan smugle en
+  // u23-/junior-række ind ad den vej.
+  const catalog = extraCatalogRows.length ? filterSeniorSquadRows([...(dbCatalog || []), ...extraCatalogRows]) : dbCatalog;
   // Seed-nøgle pr. katalog-løb: external_id binder parcours til løbets VIRKELIGE
   // identitet (identisk parcours i en divisions puljer); terrain_archetype driver
   // terrænfordelingen (jf. raceStageProfileGenerator.js).
@@ -771,12 +783,29 @@ export async function materializeTierCalendars({
  *   så en midt-sæson-aktiveret pulje slutter sin kalender SAMME dag som alle andre divisioner
  *   (ejer-krav 4/7: div 4 — A endte 2/8 mens div 1-3 endte 26/7). Uden eksisterende løb i
  *   sæsonen (helt frisk sæson) bruges materializerens fulde default-horisont.
+ * - #5272: LØBSDAGS-aksen får sit eget mål. Kalenderdagene afkortes af punktet ovenfor,
+ *   men `game_day`-aksens længde har været et rent søgeresultat — så en pulje der vågner
+ *   midt i sæsonen fik en anden udviklingstakt end alle andre i divisionen. Målet er
+ *   sæsonens antal løbsdage MINUS de allerede afviklede (remaining horizon), udledt af
+ *   calendarActivationRaceDays.js. Er der ingen anden kalender at måle mod (helt frisk
+ *   sæson), sendes intet mål — adfærden er da bit-identisk med før #5272.
+ *
+ *   ⚠ VIRKNINGEN AFHÆNGER AF #4845/#5169. `raceDayTarget` forbruges først af
+ *   `buildTierMaterializationPlan`/`packLaneCalendar` når PR #5169 er merget; indtil da
+ *   destruktureres nøglen ikke af materializeren og har derfor ingen effekt på den
+ *   skrevne kalender. Målet BEREGNES og RAPPORTERES (returværdiens `raceDayPlan`) fra nu,
+ *   så beslutningen er truffet ét sted og #5169 kun skal landes. Se PR-body for #4123/#5272.
  */
 export async function reconcilePoolCalendarOnActivation({
   supabase, poolId, now = new Date(), materialize = materializeTierCalendars, log = () => {},
   // #3327/#3328 pass-through til materialize() — se materializeTierCalendars for defaults
   // + opt-out-konvention (tests af FØR-#3327-mekanik sender tomme objekter).
   coverageOverrides = {},
+  // #5272: sæsonens mål for antal LØBSDAGE pr. division, hvis det er kendt. null =
+  // udled det ved at MÅLE de divisioner der allerede har en kalender (se
+  // calendarActivationRaceDays.js). Det er her #4845/#5169's SEASON_RACE_DAY_TARGET
+  // hægtes på i én linje den dag PR #5169 lander.
+  seasonRaceDayTarget = null,
   // #2743: injectable til tests, mirrorer stageScheduler.js/raceEntryGeneratorSweep.js.
   captureExceptionFn,
 } = {}) {
@@ -807,13 +836,61 @@ export async function reconcilePoolCalendarOnActivation({
   // Findes den, afkortes horisonten (realDays + kvote = density × dage), så puljens
   // kalender slutter samme dag som de øvrige divisioner. Etaper lægges på from+1..from+realDays.
   const horizon = {};
-  const { data: seasonRaces, error: allErr } = await supabase.from("races").select("id").eq("season_id", season.id);
-  if (allErr) throw new Error(`races (season horizon): ${allErr.message}`);
+  let raceDayPlan = null; // #5272 — rapporteres i returværdien, også når intet mål kunne afgøres
+  // #2951/#2962-klassen: begge læsninger herunder er UFILTREREDE op mod PostgREST's
+  // 1000-rækkers loft. Målt på S3: ~530 races og ~1.240 race_stage_schedule-rækker pr.
+  // sæson — stage-læsningen er altså allerede OVER loftet i dag. En afkortet side ville
+  // give en for tidlig sæson-slut OG (efter #5272) en for kort løbsdags-akse, begge
+  // tavst. Fanget af CodeRabbit 17/9.
+  let seasonRaces;
+  try {
+    seasonRaces = await fetchAllRows(() => (
+      supabase.from("races").select("id, league_division_id")
+        .eq("season_id", season.id)
+        .order("id", { ascending: true })
+    ));
+  } catch (allErr) {
+    throw new Error(`races (season horizon): ${allErr.message}`, { cause: allErr });
+  }
   const seasonRaceIds = (seasonRaces || []).map((r) => r.id);
   if (seasonRaceIds.length) {
-    const { data: sched, error: schErr } = await supabase
-      .from("race_stage_schedule").select("scheduled_at").in("race_id", seasonRaceIds);
-    if (schErr) throw new Error(`race_stage_schedule (season horizon): ${schErr.message}`);
+    // #5272: game_day + race_id kom til her. scheduled_at alene kan afgøre HORISONTEN
+    // (hvornår sæsonen slutter), men ikke LØBSDAGS-AKSEN — §0's grundregel er at game_day
+    // ALDRIG kan udledes af scheduled_at, så aksen skal læses, ikke regnes ud.
+    let sched;
+    try {
+      sched = await fetchAllRowsChunkedIn(seasonRaceIds, (chunk) => (
+        supabase.from("race_stage_schedule").select("race_id, scheduled_at, game_day")
+          .in("race_id", chunk)
+          .order("race_id", { ascending: true })
+          .order("stage_number", { ascending: true })
+      ));
+    } catch (schErr) {
+      throw new Error(`race_stage_schedule (season horizon): ${schErr.message}`, { cause: schErr });
+    }
+
+    // #5272: mål de eksisterende divisioners løbsdags-akser og udled hvor meget der er
+    // TILBAGE af sæsonens mål. Uden det får en pulje der vågner midt i sæsonen sin egen
+    // naturlige (skæve) akse — altså en anden udviklingstakt end alle andre i spillet.
+    const divisionByRaceId = new Map((seasonRaces || []).map((r) => [r.id, r.league_division_id]));
+    raceDayPlan = resolveActivationRaceDayTarget({
+      stageRows: (sched || []).map((s) => ({
+        league_division_id: divisionByRaceId.get(s.race_id) ?? null,
+        game_day: s.game_day,
+        scheduled_at: s.scheduled_at,
+      })),
+      from,
+      seasonTarget: seasonRaceDayTarget,
+      excludeDivisionId: poolId,
+    });
+    if (raceDayPlan.raceDayTarget != null) {
+      horizon.raceDayTarget = raceDayPlan.raceDayTarget;
+      log(`  #5272: løbsdags-mål ${raceDayPlan.raceDayTarget} (sæsonens ${raceDayPlan.seasonRaceDayTarget} − ${raceDayPlan.elapsedRaceDays} afviklede, kilde: ${raceDayPlan.source})`);
+      if (raceDayPlan.axisSpread > 0) {
+        log(`  ⚠ #5272/#4845: de eksisterende divisioners akser er IKKE ens (spredning ${raceDayPlan.axisSpread} løbsdage) — målet er taget fra den længste`);
+      }
+    }
+
     let maxAt = null;
     for (const s of sched || []) {
       const t = Date.parse(s.scheduled_at);
@@ -838,5 +915,14 @@ export async function reconcilePoolCalendarOnActivation({
     supabase, seasonId: season.id, seasonStartDate: season.start_date ?? null,
     from, tiers: [division.tier], dryRun: false, log, ...horizon, ...coverageOverrides,
   });
-  return { skipped: null, poolId, tier: division.tier, from: from.toISOString(), realDays: horizon.realDays ?? null, ...summary };
+  return {
+    skipped: null, poolId, tier: division.tier, from: from.toISOString(),
+    realDays: horizon.realDays ?? null,
+    // #5272: målet OG hvordan det blev udledt — så en aktivering kan efterprøves bagefter
+    // uden at skulle regne aksen ud igen. null betyder "intet mål kunne afgøres", ikke
+    // "målet var 0".
+    raceDayTarget: horizon.raceDayTarget ?? null,
+    raceDayPlan,
+    ...summary,
+  };
 }

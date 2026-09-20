@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kort 1: løbsdagens realisme (ejer 18/9)</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--soft:#efece4;--line:#ddd8cc;--text:#1d1d1d;--muted:#5f5e5a;--race-bg:#e6f1fb;--race:#0c447c;--train-bg:#eaf3de;--train:#27500a;--rest-bg:#f1efe8;--rest:#444441;--bad:#a32d2d;--ok:#27500a}
+*{box-sizing:border-box}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);margin:0 auto;padding:20px 16px 40px;max-width:1000px;font-variant-numeric:tabular-nums;line-height:1.45}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+.section{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:14px 16px;margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media(max-width:700px){.grid2,.grid3{grid-template-columns:1fr}}
+.ld{border:1px solid var(--line);border-radius:5px;padding:8px 10px;margin-bottom:6px;background:var(--card)}
+.ld.tr{background:var(--soft);border-style:dashed}
+.n{font-size:12px;color:var(--muted);margin:0}.t{font-size:14px;font-weight:600;margin:0}.s{font-size:12.5px;color:var(--muted);margin:0}
+.pill{display:inline-block;font-size:12px;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.race{background:var(--race-bg);color:var(--race)}.train{background:var(--train-bg);color:var(--train)}.rest{background:var(--rest-bg);color:var(--rest)}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 6px;text-align:left;border-bottom:1px solid var(--line)}th{font-size:12px;color:var(--muted);font-weight:600}
+.opt{border:1px solid var(--line);border-radius:5px;padding:12px;background:var(--card)}
+.opt.out{opacity:.75}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:3px;background:var(--soft);color:var(--muted)}
+.tag.no{background:#fcebeb;color:var(--bad)}.tag.yes{background:var(--train-bg);color:var(--ok)}
+ol{margin:6px 0 0 18px;padding:0}li{margin:4px 0}
+.kpi{background:var(--soft);border-radius:5px;padding:8px 10px}.kpi small{display:block;color:var(--muted);font-size:12px}.kpi b{font-size:22px}
+</style>
+</head>
+<body>
+<h1>Kort 1: løbsdagens realisme</h1>
+<p class="sub">Besluttet med ejeren 18/9 aften. Kilder: docs/audits/2026-09-15-5267-loebsdage-s3-undersoegelse.md, PR #5169, #5267-kommentaren 18/9. Eksemplerne er den rigtige uge 7/9 i sæson 3.</p>
+
+<div class="section">
+<h2>Reglen (låst)</h2>
+<ol>
+<li><b>En løbsdag er én dato i cykelåret.</b> Den sker kun én gang.</li>
+<li><b>På en løbsdag kører rytteren ét løb ELLER træner.</b> Aldrig begge. Misser han et samtidigt løb, kan han ikke træne "i stedet".</li>
+<li><b>Et etapeløb binder rytteren fra første til sidste etape.</b> Etaperne ligger på løbsdage i træk. Han træner ikke imellem, heller ikke på en hviledag. Når løbet er slut, kan han træne igen.</li>
+<li><b>Alle divisioner får lige mange løbsdage.</b> Løbsdage uden løb er rene træningsdage. Løb og etaper er de samme som i dag.</li>
+</ol>
+</div>
+
+<div class="section">
+<h2>En mandag med reglen: samme løb som i dag, plus rene træningsdage</h2>
+<p class="sub">Skitse af princippet. Præcis hvor træningsdagene lander, og om det bliver 4 løbsdage pr. dag overalt, måles i aften (spor #5267).</p>
+<div class="grid2">
+<div>
+<p class="t" style="margin-bottom:6px">Division 1, mandag 7/9</p>
+<div class="ld"><p class="n">Løbsdag 1</p><p class="t">3 løb, vælg ét pr. rytter</p><p class="s">Hexagone etape 1 · Volta Catalana etape 1 · Københavns Klassiker</p></div>
+<div class="ld"><p class="n">Løbsdag 2</p><p class="t">2 løb, vælg ét pr. rytter</p><p class="s">Hexagone etape 2 · Volta Catalana etape 2</p></div>
+<div class="ld tr"><p class="n">Løbsdag 3</p><p class="t">Træningsdag</p><p class="s">Ingen nye løb. Ryttere der ikke er bundet i et etapeløb, træner</p></div>
+<div class="ld tr"><p class="n">Løbsdag 4</p><p class="t">Træningsdag</p><p class="s">Som løbsdag 3</p></div>
+</div>
+<div>
+<p class="t" style="margin-bottom:6px">Division 3, mandag 7/9</p>
+<div class="ld"><p class="n">Løbsdag 1</p><p class="t">2 løb, vælg ét pr. rytter</p><p class="s">Tour of Hainan etape 5 · Vuelta Rioja Nueva etape 4</p></div>
+<div class="ld"><p class="n">Løbsdag 2</p><p class="t">1 løb</p><p class="s">Ronde van Zeeland etape 1</p></div>
+<div class="ld tr"><p class="n">Løbsdag 3</p><p class="t">Træningsdag</p><p class="s">Ingen løb i divisionen</p></div>
+<div class="ld tr"><p class="n">Løbsdag 4</p><p class="t">Træningsdag</p><p class="s">Ingen løb i divisionen</p></div>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Tre ryttere på samme D1-hold, samme mandag</h2>
+<table>
+<tr><th></th><th>Løbsdag 1</th><th>Løbsdag 2</th><th>Løbsdag 3</th><th>Løbsdag 4</th></tr>
+<tr><td>GT-kaptajnen (Hexagone, 17 etaper)</td><td><span class="pill race">Hexagone e1</span></td><td><span class="pill race">Hexagone e2</span></td><td><span class="pill race">Hexagone e3</span></td><td><span class="pill race">Hexagone e4</span></td></tr>
+<tr><td>Klassikerrytteren</td><td><span class="pill race">København</span></td><td><span class="pill train">Træner</span></td><td><span class="pill train">Træner</span></td><td><span class="pill train">Træner</span></td></tr>
+<tr><td>Talentet uden løb</td><td><span class="pill train">Træner</span></td><td><span class="pill train">Træner</span></td><td><span class="pill train">Træner</span></td><td><span class="pill train">Træner</span></td></tr>
+</table>
+<p class="s" style="margin-top:8px">GT-kaptajnen kører løb på hver løbsdag, til Hexagone er slut (hviledag = <span class="pill rest">hvile</span>, ikke træning). Løb + træning er altid lig antallet af løbsdage, aldrig mere.</p>
+</div>
+
+<div class="section">
+<h2>De tre modeller fra kortet</h2>
+<div class="grid3">
+<div class="opt out"><span class="tag no">Afvist 18/9</span><p class="t" style="margin-top:8px">C: dato × 5 klokkeslæt</p><p class="s">140 træninger til alle, kalenderen urørt. Men flere klokkeslæt deler samme løbsdag, så en rytter der kører kl. 11 kunne træne kl. 13 samme løbsdag. Bryder regel 2.</p></div>
+<div class="opt"><span class="tag yes">Retningen</span><p class="t" style="margin-top:8px">A: lige mange løbsdage til alle</p><p class="s">112 er det eneste tal alle fire divisioner kan nå i dag (målt i #5169). Ekstra løbsdage er rene træningsdage. Tallet afgøres, når målingen er kørt.</p></div>
+<div class="opt out"><span class="tag no">Frarådes</span><p class="t" style="margin-top:8px">B: 140 løbsdage</p><p class="s">Kræver 5 GT-etaper samme dag. Bryder aftalen fra 22/8, og D1-dage med et reelt valg falder fra 57 % til ca. 19 %.</p></div>
+</div>
+<div class="grid3" style="margin-top:12px">
+<div class="kpi"><small>Træninger pr. sæson i dag, D1</small><b>ca. 80</b></div>
+<div class="kpi"><small>Træninger pr. sæson i dag, D4</small><b>ca. 30</b></div>
+<div class="kpi"><small>Løbsdage i D1, sæson 3</small><b>86, ikke 140</b></div>
+</div>
+</div>
+</body>
+</html>

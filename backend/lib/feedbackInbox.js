@@ -81,8 +81,20 @@ function resolveTradeParties(transferType, row) {
 // user_agent udelades bevidst fra listen: den er ren diagnostik, den er den
 // mest fingerprint-agtige kolonne i tabellen, og den fylder listen uden at
 // hjælpe triagen. Den kan hentes på detalje-niveau hvis en bug kræver det.
+// `metadata` er med af #5284 — det er den eneste vej til at opløse en
+// fairplay-rapports handel (transfer_type/transfer_id/team_a_id/team_b_id,
+// se submitTradeReport). null for alle andre kategorier.
 const INBOX_COLUMNS =
-  "id, seq, created_at, user_id, team_id, category, status, message, page_path, viewport, reply_message, replied_at";
+  "id, seq, created_at, user_id, team_id, category, status, message, metadata, page_path, viewport, reply_message, replied_at";
+
+// Kolonner pr. handelstabel — netop de felter resolveTradeParties()/
+// buildTradeObject() bruger, ikke `select("*")`, så et batch-opslag på en
+// hel side rapporter aldrig trækker mere over wire end nødvendigt.
+const TRADE_TABLE_SELECT_COLUMNS = {
+  auction: "id, rider_id, seller_team_id, current_bidder_id, current_price, status, actual_end, created_at",
+  transfer: "id, rider_id, seller_team_id, buyer_team_id, offer_amount, counter_amount, status, updated_at",
+  swap: "id, offered_rider_id, requested_rider_id, proposing_team_id, receiving_team_id, cash_adjustment, counter_cash, status, updated_at",
+};
 
 /**
  * Klem limit ind i [1, MAX]. Ugyldigt/manglende → default.
@@ -111,10 +123,10 @@ export function isValidFeedbackStatus(status) {
   return FEEDBACK_STATUSES.includes(status);
 }
 
-function shapeItem(row, usersById, teamsById) {
+function shapeItem(row, usersById, teamsById, tradeByRowId = null) {
   const user = usersById.get(row.user_id) || null;
   const team = row.team_id ? teamsById.get(row.team_id) || null : null;
-  return {
+  const item = {
     id: row.id,
     seq: row.seq,
     created_at: row.created_at,
@@ -127,6 +139,227 @@ function shapeItem(row, usersById, teamsById) {
     replied_at: row.replied_at,
     user: user ? { id: user.id, username: user.username, email: user.email } : { id: row.user_id, username: null, email: null },
     team: team ? { id: team.id, name: team.name } : null,
+  };
+  // #5284: kun fairplay-rapporter bærer et trade-felt — andre kategorier har
+  // ingen metadata-semantik og skal forblive helt uændrede (bagudkompat med
+  // eksisterende klienter der aldrig forventer feltet).
+  if (row.category === TRADE_REPORT_CATEGORY) {
+    const info = tradeByRowId?.get(row.id);
+    item.trade = info ? info.trade : null;
+    item.trade_missing = info ? info.trade_missing : false;
+  }
+  return item;
+}
+
+function buildTradeRider(rider) {
+  if (!rider) return null;
+  return {
+    id: rider.id,
+    firstname: rider.firstname ?? null,
+    lastname: rider.lastname ?? null,
+    market_value: typeof rider.market_value === "number" ? rider.market_value : null,
+  };
+}
+
+function buildTradeTeam(team) {
+  return team ? { id: team.id, name: team.name } : null;
+}
+
+// Ratio = pris / rytterens nuværende markedsværdi (fx 1.35 = solgt for 135%
+// af markedsværdien). null når enten prisen eller markedsværdien mangler —
+// giver aldrig en misvisende 0 eller Infinity.
+function computeMarketValueRatio(price, marketValue) {
+  if (typeof price !== "number" || !Number.isFinite(price)) return null;
+  if (typeof marketValue !== "number" || !(marketValue > 0)) return null;
+  return Math.round((price / marketValue) * 100) / 100;
+}
+
+/**
+ * Bygger ét opløst trade-objekt ud fra en allerede-fundet handel-række +
+ * dens verificerede parter (resolveTradeParties). Delt mellem den pagineret
+ * batch-opløsning (listFeedbackInbox) og enkelt-opslaget der fodrer
+ * Discord-mirroret (resolveTradeForReport) — samme felt-kontrakt begge steder.
+ */
+function buildTradeObject({ transferType, tradeRow, parties, ridersById, teamsById, reportingTeam }) {
+  let rider = null;
+  let riders = null;
+  let price = null;
+  let tradeDate = null;
+
+  if (transferType === "auction") {
+    rider = buildTradeRider(ridersById.get(tradeRow.rider_id));
+    price = typeof tradeRow.current_price === "number" ? tradeRow.current_price : null;
+    tradeDate = tradeRow.actual_end || tradeRow.created_at || null;
+  } else if (transferType === "transfer") {
+    rider = buildTradeRider(ridersById.get(tradeRow.rider_id));
+    price = tradeRow.counter_amount ?? tradeRow.offer_amount ?? null;
+    tradeDate = tradeRow.updated_at || null;
+  } else if (transferType === "swap") {
+    // Swap har to ryttere og ingen entydig "pris" — kontantjusteringen kan
+    // være 0 (ren bytte). Ratio giver ikke mening på tværs af to ryttere med
+    // forskellig markedsværdi, så den udelades bevidst for swap.
+    riders = {
+      offered: buildTradeRider(ridersById.get(tradeRow.offered_rider_id)),
+      requested: buildTradeRider(ridersById.get(tradeRow.requested_rider_id)),
+    };
+    price = tradeRow.counter_cash ?? tradeRow.cash_adjustment ?? 0;
+    tradeDate = tradeRow.updated_at || null;
+  }
+
+  return {
+    type: transferType,
+    team_a: buildTradeTeam(teamsById.get(parties.teamA)),
+    team_b: buildTradeTeam(teamsById.get(parties.teamB)),
+    rider,
+    riders,
+    price,
+    market_value_ratio: rider ? computeMarketValueRatio(price, rider.market_value) : null,
+    trade_date: tradeDate,
+    reporting_team: buildTradeTeam(reportingTeam),
+  };
+}
+
+/**
+ * Batch-opløser trade-objekter for EN sides fairplay-rapporter med metadata.
+ * Maks 5 ekstra opslag pr. side uanset hvor mange rapporter siden indeholder
+ * (ét .in() pr. handelstype + ét for ryttere + ét for evt. manglende hold) —
+ * aldrig ét opslag pr. række. `teamsById` udvides in-place med hold der ikke
+ * allerede var hentet af listFeedbackInbox's egen afsender/hold-opslag.
+ *
+ * En rapport hvor metadata peger på en handel der ikke længere findes/ikke
+ * længere er en gyldig to-holds-handel (slettet/annulleret) giver
+ * trade:null + trade_missing:true — aldrig en kastet fejl.
+ */
+async function resolveTradeInfoForPage(supabase, pageRows, teamsById) {
+  const tradeByRowId = new Map();
+  const fairplayRows = pageRows.filter(
+    (row) =>
+      row.category === TRADE_REPORT_CATEGORY &&
+      row.metadata &&
+      TRADE_REPORT_TYPES.includes(row.metadata.transfer_type) &&
+      row.metadata.transfer_id
+  );
+  if (!fairplayRows.length) return tradeByRowId;
+
+  const idsByType = { auction: [], transfer: [], swap: [] };
+  for (const row of fairplayRows) idsByType[row.metadata.transfer_type].push(row.metadata.transfer_id);
+  for (const type of Object.keys(idsByType)) idsByType[type] = [...new Set(idsByType[type])];
+
+  const types = Object.keys(idsByType).filter((type) => idsByType[type].length);
+  const tradeResults = await Promise.all(
+    types.map((type) =>
+      supabase
+        .from(TRADE_REPORT_TABLE_BY_TYPE[type])
+        .select(TRADE_TABLE_SELECT_COLUMNS[type])
+        .in("id", idsByType[type])
+        .limit(idsByType[type].length)
+    )
+  );
+  const rowsByType = {};
+  types.forEach((type, i) => {
+    const { data, error } = tradeResults[i];
+    if (error) throw new Error(`feedbackInbox: could not resolve ${type} trades: ${error.message}`);
+    rowsByType[type] = new Map((data || []).map((r) => [r.id, r]));
+  });
+
+  const riderIds = new Set();
+  const teamIds = new Set();
+  const resolvedByRowId = new Map();
+  for (const row of fairplayRows) {
+    const transferType = row.metadata.transfer_type;
+    const tradeRow = rowsByType[transferType]?.get(row.metadata.transfer_id) || null;
+    const parties = tradeRow ? resolveTradeParties(transferType, tradeRow) : null;
+    resolvedByRowId.set(row.id, { transferType, tradeRow, parties });
+    if (!tradeRow || !parties) continue;
+    teamIds.add(parties.teamA);
+    teamIds.add(parties.teamB);
+    if (transferType === "swap") {
+      if (tradeRow.offered_rider_id) riderIds.add(tradeRow.offered_rider_id);
+      if (tradeRow.requested_rider_id) riderIds.add(tradeRow.requested_rider_id);
+    } else if (tradeRow.rider_id) {
+      riderIds.add(tradeRow.rider_id);
+    }
+  }
+
+  const missingTeamIds = [...teamIds].filter((id) => !teamsById.has(id));
+  const [ridersResult, extraTeamsResult] = await Promise.all([
+    riderIds.size
+      ? supabase.from("riders").select("id, firstname, lastname, market_value").in("id", [...riderIds]).limit(riderIds.size)
+      : Promise.resolve({ data: [], error: null }),
+    missingTeamIds.length
+      ? supabase.from("teams").select("id, name").in("id", missingTeamIds).limit(missingTeamIds.length)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (ridersResult.error) throw new Error(`feedbackInbox: could not resolve trade riders: ${ridersResult.error.message}`);
+  if (extraTeamsResult.error) throw new Error(`feedbackInbox: could not resolve trade teams: ${extraTeamsResult.error.message}`);
+
+  const ridersById = new Map((ridersResult.data || []).map((r) => [r.id, r]));
+  for (const t of extraTeamsResult.data || []) teamsById.set(t.id, t);
+
+  for (const row of fairplayRows) {
+    const { transferType, tradeRow, parties } = resolvedByRowId.get(row.id);
+    if (!tradeRow || !parties) {
+      tradeByRowId.set(row.id, { trade: null, trade_missing: true });
+      continue;
+    }
+    const reportingTeam = row.team_id ? teamsById.get(row.team_id) : null;
+    tradeByRowId.set(row.id, {
+      trade: buildTradeObject({ transferType, tradeRow, parties, ridersById, teamsById, reportingTeam }),
+      trade_missing: false,
+    });
+  }
+
+  return tradeByRowId;
+}
+
+/**
+ * Opløser ÉT trade-objekt for en netop-indsendt rapport — bruges af
+ * POST /transfers/:type/:id/report til at fodre Discord-mirroret (#5284) med
+ * de samme opløste felter som admin-indbakken viser, i stedet for kun
+ * fritekst. Aldrig en 500 hvis handlen ikke kan slås op igen mellem
+ * submitTradeReport's eget opslag og dette (dobbelt-opslag er acceptabelt her
+ * — ét kald pr. rapport, ikke pr. side).
+ */
+export async function resolveTradeForReport({ supabase, transferType, transferId, reportingTeamId }) {
+  if (!TRADE_REPORT_TYPES.includes(transferType) || !transferId) {
+    return { trade: null, trade_missing: false };
+  }
+
+  const table = TRADE_REPORT_TABLE_BY_TYPE[transferType];
+  const { data: tradeRow, error } = await supabase
+    .from(table)
+    .select(TRADE_TABLE_SELECT_COLUMNS[transferType])
+    .eq("id", transferId)
+    .maybeSingle();
+  if (error) throw new Error(`feedbackInbox: could not resolve ${transferType} ${transferId} for report: ${error.message}`);
+
+  const parties = resolveTradeParties(transferType, tradeRow);
+  if (!tradeRow || !parties) return { trade: null, trade_missing: true };
+
+  const riderIds =
+    transferType === "swap"
+      ? [tradeRow.offered_rider_id, tradeRow.requested_rider_id].filter(Boolean)
+      : [tradeRow.rider_id].filter(Boolean);
+  const teamIds = [...new Set([parties.teamA, parties.teamB, reportingTeamId].filter(Boolean))];
+
+  const [ridersResult, teamsResult] = await Promise.all([
+    riderIds.length
+      ? supabase.from("riders").select("id, firstname, lastname, market_value").in("id", riderIds).limit(riderIds.length)
+      : Promise.resolve({ data: [], error: null }),
+    teamIds.length
+      ? supabase.from("teams").select("id, name").in("id", teamIds).limit(teamIds.length)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (ridersResult.error) throw new Error(`feedbackInbox: could not resolve report riders: ${ridersResult.error.message}`);
+  if (teamsResult.error) throw new Error(`feedbackInbox: could not resolve report teams: ${teamsResult.error.message}`);
+
+  const ridersById = new Map((ridersResult.data || []).map((r) => [r.id, r]));
+  const teamsById = new Map((teamsResult.data || []).map((t) => [t.id, t]));
+  const reportingTeam = reportingTeamId ? teamsById.get(reportingTeamId) : null;
+
+  return {
+    trade: buildTradeObject({ transferType, tradeRow, parties, ridersById, teamsById, reportingTeam }),
+    trade_missing: false,
   };
 }
 
@@ -176,8 +409,13 @@ export async function listFeedbackInbox({ supabase, status = null, category = nu
   const usersById = new Map((usersResult.data || []).map((u) => [u.id, u]));
   const teamsById = new Map((teamsResult.data || []).map((t) => [t.id, t]));
 
+  // #5284: opløser trade-metadata for fairplay-rapporter PÅ DENNE SIDE — teamsById
+  // udvides in-place med evt. hold der ikke allerede indgik i afsender/hold-opslaget
+  // ovenfor (fx en modpart der ikke selv er rapportøren).
+  const tradeByRowId = await resolveTradeInfoForPage(supabase, pageRows, teamsById);
+
   return {
-    items: pageRows.map((row) => shapeItem(row, usersById, teamsById)),
+    items: pageRows.map((row) => shapeItem(row, usersById, teamsById, tradeByRowId)),
     next_cursor: hasMore ? pageRows[pageRows.length - 1].seq : null,
     limit: pageSize,
   };

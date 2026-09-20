@@ -7,6 +7,8 @@
       "seasonStartVariablePullout": "Sponsorindtægt · Sæson start (base {base} + variabel {variable} ×{modifier} · sponsor-pullout aktiv)",
       "seasonStartFallback": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier})",
       "seasonStartFallbackPullout": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)",
+      "seasonStartContract": "Sponsorindtægt · Sæson start ({sponsor}-kontrakt, base {base} ×{modifier})",
+      "seasonStartContractPullout": "Sponsorindtægt · Sæson start ({sponsor}-kontrakt, base {base} ×{modifier} · sponsor-pullout aktiv)",
       "midSeasonProRata": "Sponsorindtægt · Tilmeldt midt i sæsonen ({sponsorName} · {percent} % af sæsonen tilbage)",
       "signingBonus": "Sponsor · Signing-bonus ({sponsorName})",
       "resultBonus": "Sponsor · Resultatbonus ({wins} sejre, {podiums} podier)",
@@ -335,6 +337,10 @@
       "title": "Autobud annulleret",
       "message": "Prisen på {riderName} har passeret dit autobud-loft på {maxAmount} CZ$. Autobuddet er annulleret og din reserverede saldo frigivet."
     },
+    "autoBidRaised": {
+      "title": "Dit autobud beholdt føringen",
+      "message": "{bidderName} forsøgte at overbyde dig på {riderName}. Dit autobud steg til {amount} CZ$ for at beholde føringen."
+    },
     "auctionLostToRival": {
       "title": "Du tabte budkrigen",
       "message": "{winnerName} snuppede {rider} for {price} CZ$, {overBid} CZ$ over dit højeste bud på {yourMax} CZ$."
@@ -492,6 +498,16 @@
     "discordWelcome": {
       "title": "Hep! Kom med på Discord",
       "message": "Cycling Zone er mere end hjemmesiden. Det er et fællesskab, og meget af det sker på Discord: det er der, jeg hænger ud, der jeg spørger dig hvad jeg skal bygge næste gang, og der de andre managere snakker cykling hele dagen. Vær ærlig over for mig derinde, det er langt mere brugbart end ros. Kom som du er, du behøver ingen resultater for at høre til. Vi ses derinde :)"
+    },
+    "betaAccess": {
+      "approved": {
+        "title": "Du er med i beta-gruppen",
+        "message": "Du ser nu funktioner mens jeg stadig tester dem. De kan ændre sig, gå i stykker eller forsvinde igen, og det er hele pointen: sig til når noget føles forkert, på Discord eller gennem feedback-formularen. Du kan forlade gruppen når du vil, fra din profil."
+      },
+      "rejected": {
+        "title": "Ikke denne gang",
+        "message": "Jeg holder beta-gruppen lille, så jeg rent faktisk kan læse hvert eneste svar. Du står stadig på listen, og du er velkommen til at spørge igen senere fra din profil."
+      }
     },
     "scoutChanged": {
       "title": "Ny spejder, rapporter genberegnet",

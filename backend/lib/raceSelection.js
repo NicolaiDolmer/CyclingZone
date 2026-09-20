@@ -153,6 +153,17 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     return { ok: false, status: 409, error: "selection_race_started" };
   }
 
+  // #5405: loebets saeson SKAL vaere den aktive. Se seasonAllowsSelectionWrites for hvorfor
+  // (en pre-oprettet 'upcoming'-saesons loeb har status 'scheduled' + 0 koerte etaper og
+  // slipper derfor gennem alle gates ovenfor). Tjekket ligger her — EFTER alle de rene,
+  // gratis afvisninger, men FOER getSelectionContext — saa det koster praecis EET opslag,
+  // og kun for de kald der ellers ville have skrevet. Fail-closed: intet season_id, ingen
+  // saeson-raekke eller en anden status end 'active' → afvisning, aldrig et gem.
+  const seasonStatus = await loadRaceSeasonStatus({ supabase, seasonId: race.season_id });
+  if (!seasonAllowsSelectionWrites(seasonStatus)) {
+    return { ok: false, status: 409, error: "selection_season_not_active" };
+  }
+
   const ctx = await getSelectionContext({ supabase, race, teamId });
 
   const result = validateSelection({
@@ -167,6 +178,39 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   if (!result.ok) return { ok: false, status: 400, error: result.errors[0], errors: result.errors };
 
   return { ok: true, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, ctx };
+}
+
+// #5405: maa der SKRIVES udtagelse i et loeb der hoerer til en saeson med DENNE status?
+//
+// HVORFOR. Kalender-LAESNINGEN er med vilje status-blind (seasonLookup.js slaar op paa
+// `number` uden status-filter), saa en pre-oprettet saeson med status 'upcoming' kan vises
+// i saeson-vaelgeren FOER den starter. Materializeren opretter samtidig den kommende
+// saesons loeb med status 'scheduled' og stages_completed = 0 — praecis de to vaerdier
+// prepareSelectionChange's oevrige gates accepterer. Uden denne gate kunne en manager
+// altsaa gemme en trup i naeste saesons loeb i samme oejeblik de findes.
+//
+// Skaden er ikke kosmetisk: langt de fleste hold skifter pulje ved saesonskiftets
+// komprimering, saa en udtagelse gemt foer skiftet peger typisk paa loeb holdet slet
+// ikke skal koere — og skal ryddes op bagefter.
+//
+// HVORFOR IKKE teamDivisionKnownForSeason (plannerBoard.js). Den er planlaeggerens
+// LAESE-diskriminator og er bevidst fail-OPEN: `status !== "upcoming"`, hvilket goer
+// baade en ukendt/manglende status og en 'completed' saeson til "afgjort". En SKRIVE-gate
+// skal vaere fail-CLOSED: kender vi ikke saesonen, skriver vi ikke. Derfor er dette
+// praedikat en aegte delmaengde af den — strikt 'active', intet andet.
+export function seasonAllowsSelectionWrites(seasonStatus) {
+  return seasonStatus === "active";
+}
+
+// #5405: loebets saeson-status, eller null hvis loebet ingen season_id har / raekken ikke
+// findes (begge dele fail-closed hos kalderen). Kaster paa en DB-fejl, samme kontrakt som
+// getSelectionContext — en ulaeselig saeson maa aldrig degradere til "saa skriver vi bare".
+export async function loadRaceSeasonStatus({ supabase, seasonId }) {
+  if (!seasonId) return null;
+  const { data, error } = await supabase
+    .from("seasons").select("id, status").eq("id", seasonId).maybeSingle();
+  if (error) throw new Error(`seasons (selection season gate): ${error.message}`);
+  return data?.status ?? null;
 }
 
 // #1146/#4310-refutation: binding-konflikt-klassifikationen for EN HEL bulk-batch — ren

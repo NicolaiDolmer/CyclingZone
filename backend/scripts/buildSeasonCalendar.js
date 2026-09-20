@@ -4,6 +4,7 @@
 //
 //   node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --uniform-tilt          # DRY-RUN
 //   node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --uniform-tilt --apply  # skriver
+//   ... --apply --replace-existing   # REGENERERING: sletter sæsonens nuværende kalender først
 //
 // HVORFOR SCRIPTET FINDES (ejer-valg 6/8, SEASON_CUTOVER_RUNBOOK.md punkt 1):
 // S3-kalenderen fandtes ikke, og der var to veje: (A) byg den manuelt i god tid, eller
@@ -31,8 +32,36 @@
 //     race-scheduleren til at afvikle en hel sæson på minutter.
 //   · Sidste løbsdag SKAL være en søndag (§2, ejer-låst 23/8, #4131) — resolveSeasonWindow
 //     kaster ellers og printer de lovlige længder.
-//   · Idempotent: materializeTierCalendars dedup'er mod eksisterende (season, pulje,
-//     pool_race). En gentaget kørsel tilføjer intet.
+//   · En sæson der IKKE er `upcoming` afvises (#5405, se nedenfor). Fail-closed.
+//   · Findes der allerede løb for sæsonen, STOPPER --apply medmindre --replace-existing
+//     er sat, og erstatningen nægtes hvis nogen spillerdata peger på de løb (#5405).
+//
+// #5405 — EJER-BESLUTNING 19/9, DEN NYE §2c:
+//   Ordret: "Ja den må gerne laves inden og den må gerne laves om, hvis den ikke er
+//   korrekt. Vi skal lave en ordentlig kalender, ikke blot en kalender."
+//
+//   Den gamle §2c (ejer 30/8) gav ÉN regenerering pr. sæson og var ikke håndhævet nogen
+//   steder. Den nye regel er en TILSTANDS-regel: skriv og omskriv frit mens sæsonen er
+//   `upcoming`, låst fra aktivering. Derfor er der hverken et `calendar_generation_count`-
+//   felt eller en migration i #5405 — sandheden står allerede i `seasons.status`, og en
+//   tæller ville kunne komme i utakt med den.
+//
+//   TO GATES, i denne rækkefølge:
+//     1. SKRIVE-GATEN (evaluateSeasonCalendarWriteGate). Kun `upcoming` slipper igennem.
+//        `active`, `completed`, en ukendt/tom status og en sæson der ikke findes nægtes
+//        alle. Findes rækken ikke, oprettes den som `upcoming` FØRST, og gaten køres igen
+//        mod den oprettede række — gaten gætter aldrig.
+//     2. ERSTATNINGS-GATEN (evaluateCalendarReplacementGate). En regenerering er en REN
+//        ERSTATNING, ikke en tilføjelse: FØR #5405 var en gentaget --apply en TAVS no-op
+//        (materializeTierCalendars dedup'er på (pulje, pool_race)), og hvis kataloget eller
+//        koden havde flyttet sig imellem de to kørsler blev resultatet en BLANDING af den
+//        gamle og den nye kalender. Nu slettes sæsonens løb og kalender-form først, i
+//        børn-først-rækkefølge, efter et JSON-snapshot — men KUN hvis ingen spillerdata
+//        peger på løbene (udtagelser, resultater, præmier, notifikationer, …). Ét fund
+//        stopper hele kørslen; se RACE_DEPENDENCY_TABLES for hele porten.
+//
+//   TØRKØRSLER RØRER INTET. Uden --apply måles og rapporteres begge gates, og der skrives
+//   ikke en byte — heller ikke en tæller, et flag eller en lås.
 //
 // #4270 — HVAD DER KOM TIL MED S4:
 //   1. `--race-days` / `--last-day`: sæsonlængden UDLEDES af §2 i stedet for at arve
@@ -64,11 +93,17 @@
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { materializeTierCalendars, TIER_DENSITY } from "../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom, resolveSeasonWindow, SEASON_RACE_DAYS_DEFAULT } from "../lib/calendarStartDate.js";
-import { gatePlan } from "../lib/seasonCalendarGate.js";
+import {
+  gatePlan, evaluateSeasonCalendarWriteGate, evaluateCalendarReplacementGate,
+  RACE_DEPENDENCY_TABLES, dependencyKey, CALENDAR_WRITABLE_SEASON_STATUS,
+} from "../lib/seasonCalendarGate.js";
+import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
+import { withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { scoreCalendarPlan, formatScorecard, scorecardGateGroups } from "../lib/calendarScorecardReport.js";
 import { findNextSeason } from "../lib/seasonLookup.js";
 import { ensureSeasonTransitionPlannedAt } from "../lib/seasonTransitionBoundary.js";
@@ -85,6 +120,119 @@ export function seasonUuid(n) {
 // samme gate FØR den materialiserer med writes. Re-eksporteret uændret her, så CLI'en
 // nedenfor og eksisterende kaldere/tests af `./buildSeasonCalendar.js` er upåvirkede.
 export { gatePlan };
+
+// ── #5405: operatør-teksten til skrive-gatens koder ─────────────────────────────
+// Selve gaten (lib/seasonCalendarGate.js) returnerer KUN en kode. Prosaen bor her, fordi
+// `backend/lib/**` er dækket af i18n-ratchet'en (#1068) og fordi en kode er dét kalderen
+// skal forgrene på — en sætning er ikke en kontrakt.
+const WRITE_GATE_TEXT = Object.freeze({
+  upcoming: (n) => `sæson ${n} er '${CALENDAR_WRITABLE_SEASON_STATUS}' — kalenderen må bygges og omskrives frit indtil sæsonen bliver aktiv (§2c, ejer 19/9).`,
+  season_active: (n) => `sæson ${n} er ACTIVE. Kalenderen er låst fra aktivering (§2c, ejer 19/9), og at materialisere ind i en igangværende sæson er præcis 27/6-blitzens fejlklasse.`,
+  season_completed: (n) => `sæson ${n} er COMPLETED. En afsluttet sæsons kalender er historik og må aldrig omskrives.`,
+  status_unknown: (n, s) => `sæson ${n} har status ${s == null ? "(tom/ikke en tekst)" : `'${s}'`} — hverken '${CALENDAR_WRITABLE_SEASON_STATUS}' eller en kendt låst status. Gaten nægter fail-closed frem for at gætte.`,
+  season_missing: (n) => `sæson ${n} findes ikke i seasons — gaten kan ikke bekræfte at kalenderen må skrives (fail-closed). Ved --apply oprettes rækken med status '${CALENDAR_WRITABLE_SEASON_STATUS}' FØRST, og gaten køres igen mod den oprettede række.`,
+});
+
+/** Menneske-læsbar forklaring på en skrive-gate-afgørelse (#5405). */
+export function describeSeasonCalendarWriteGate(gate, seasonNumber) {
+  const fn = WRITE_GATE_TEXT[gate?.code];
+  // Ukendt kode = en fremtidig gren nogen glemte at beskrive. Sig dét i stedet for at
+  // printe "undefined" — en tavs gate er den dyreste slags.
+  if (!fn) return `ukendt gate-kode '${gate?.code}' — ingen forklaring findes. Behandl som et NEJ.`;
+  return fn(seasonNumber, gate.status);
+}
+
+/**
+ * #5405: tæl HVER FK-afhængighed af sæsonens løb. Kun SELECT — kaldes også i tørkørslen.
+ *
+ * Tælles med `head: true` + `count: "exact"` pr. chunk af race-id'er (#3030's gateway-
+ * grænse, SUPABASE_IN_CHUNK_SIZE). En tælling der FEJLER sættes til NaN, ikke 0:
+ * erstatnings-gaten nægter fail-closed på et umåleligt tal, og det er hele pointen —
+ * en afvist læsning må aldrig ligne "ingen data at miste".
+ */
+export async function countRaceDependencies({ supabase, raceIds }) {
+  const counts = {};
+  for (const dep of RACE_DEPENDENCY_TABLES) {
+    const key = dependencyKey(dep);
+    if (!raceIds.length) { counts[key] = 0; continue; }
+    let total = 0, failed = false;
+    for (let i = 0; i < raceIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+      const chunk = raceIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+      const { count, error } = await supabase
+        .from(dep.table).select(dep.column, { count: "exact", head: true }).in(dep.column, chunk);
+      if (error || !Number.isFinite(count)) { failed = true; break; }
+      total += count;
+    }
+    counts[key] = failed ? NaN : total;
+  }
+  return counts;
+}
+
+/**
+ * #5405: REN ERSTATNING af en `upcoming` sæsons kalender. Kaldes KUN efter at begge gates
+ * har sagt ja, og KUN med --apply.
+ *
+ * Postgres-transaktioner er ikke tilgængelige gennem supabase-js, så "atomisk" er her det
+ * repoets mønstre tillader (samme kæde som scripts/dev/wipeSeason3Calendar.mjs, #3546):
+ * snapshot FØR nogen skrivning → nul benign UI-state → slet børn → slet forældre scopet på
+ * `season_id` → post-verify 0 tilbage. Fejler et led, findes snapshottet på disken og
+ * kalderen stopper før materialiseringen — der efterlades aldrig en HALV kalender uden at
+ * det kan ses og rulles tilbage.
+ */
+export async function replaceSeasonCalendarRows({ supabase, seasonId, seasonNumber, races, snapshotDir, log = () => {} }) {
+  const raceIds = races.map((r) => r.id);
+  if (!raceIds.length) return { snapshotPath: null, deletedRaces: 0 };
+
+  const profiles = await fetchAllRowsChunkedIn(raceIds, (chunk) =>
+    supabase.from("race_stage_profiles").select("*").in("race_id", chunk).order("race_id"));
+  const schedules = await fetchAllRowsChunkedIn(raceIds, (chunk) =>
+    supabase.from("race_stage_schedule").select("*").in("race_id", chunk).order("race_id"));
+  const seenTeams = await fetchAllRowsChunkedIn(raceIds, (chunk) =>
+    supabase.from("teams").select("id, my_result_seen_race_id").in("my_result_seen_race_id", chunk).order("id"));
+
+  if (!existsSync(snapshotDir)) mkdirSync(snapshotDir, { recursive: true });
+  const takenAt = new Date().toISOString();
+  const snapshotPath = join(snapshotDir, `replace-snapshot-season${seasonNumber}-${takenAt.slice(0, 10)}-${takenAt.slice(11, 19).replaceAll(":", "")}.json`);
+  writeFileSync(snapshotPath, JSON.stringify({
+    takenAt, seasonId, seasonNumber, raceIds, races,
+    race_stage_profiles: profiles, race_stage_schedule: schedules,
+    teams_my_result_seen_race_id_before: seenTeams,
+  }, null, 1), "utf8");
+  log(`  ✓ snapshot FØR sletning → ${snapshotPath}`);
+  log(`    races=${races.length} · race_stage_profiles=${profiles.length} · race_stage_schedule=${schedules.length} · teams=${seenTeams.length}`);
+
+  // Benign UI-seen-state nulles først (harmløst, men ryddeligt før FK'en forsvinder).
+  for (let i = 0; i < seenTeams.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const chunk = seenTeams.slice(i, i + SUPABASE_IN_CHUNK_SIZE).map((t) => t.id);
+    const { error } = await withSupabaseRetry(async () => supabase.from("teams").update({ my_result_seen_race_id: null }).in("id", chunk));
+    if (error) throw new Error(`teams.my_result_seen_race_id nulstilling: ${error.message}`);
+  }
+
+  // Kalender-form (børn) før races (forælder).
+  for (const dep of RACE_DEPENDENCY_TABLES.filter((d) => d.group === "calendar")) {
+    for (let i = 0; i < raceIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+      const chunk = raceIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+      const { error } = await withSupabaseRetry(async () => supabase.from(dep.table).delete().in(dep.column, chunk));
+      if (error) throw new Error(`${dep.table}.delete(${dep.column}): ${error.message}`);
+    }
+    log(`  ✓ slettet fra ${dep.table}`);
+  }
+
+  // Races slettes scopet på season_id — ikke på en id-liste. Så kan en id fra en anden
+  // sæson ikke snige sig med, uanset hvad der ellers står i listen ovenfor.
+  {
+    const { error } = await withSupabaseRetry(async () => supabase.from("races").delete().eq("season_id", seasonId));
+    if (error) throw new Error(`races.delete(season_id=${seasonId}): ${error.message}`);
+  }
+  log(`  ✓ slettet ${races.length} løb (season_id=${seasonId})`);
+
+  // Post-verify: 0 tilbage. Uden den er "slettet" bare noget scriptet påstår.
+  const { count: left, error: vErr } = await supabase.from("races").select("id", { count: "exact", head: true }).eq("season_id", seasonId);
+  if (vErr) throw new Error(`post-verify races: ${vErr.message}`);
+  if (left !== 0) throw new Error(`erstatningen efterlod ${left} løb for season_id=${seasonId} — STOP før materialisering. Rollback fra ${snapshotPath}`);
+
+  return { snapshotPath, deletedRaces: races.length };
+}
 
 /** Kvoten pr. tier: density × løbsdatoer (CALENDAR_RULES.md §1b — den gyldige af de tre). */
 export function quotasForRaceDays(raceDays, density = TIER_DENSITY) {
@@ -127,6 +275,10 @@ if (isMain) {
   const allowTierDrift = process.argv.includes("--allow-tier-composition-drift");
   const allowFinaleDrift = process.argv.includes("--allow-finale-drift");
   const allowUniformDrift = process.argv.includes("--allow-uniform-target-drift");
+  // #5405: regenerering er en SLETNING af spillervendte rækker. Den skal vælges eksplicit,
+  // aldrig ske som bivirkning af at nogen kørte --apply én gang til.
+  const replaceExisting = process.argv.includes("--replace-existing");
+  const snapshotDir = resolve(argOf("--snapshot-dir") || join(__dirname, "../../docs/snapshots/5405"));
 
   if (!Number.isInteger(seasonNumber) || seasonNumber < 1) {
     console.error("--season <N> kræves (heltal ≥ 1)"); process.exit(2);
@@ -187,10 +339,49 @@ if (isMain) {
       }
     } else {
       console.log(`\n  sæson-række findes: status=${seasonRow.status} · start_date=${seasonRow.start_date}`);
-      if (seasonRow.status === "active") {
-        console.error(`\n❌ STOP: sæson ${seasonNumber} er allerede ACTIVE. At materialisere en kalender ind i en igangværende sæson er præcis 27/6-blitzens fejlklasse. Afbryder.`);
+    }
+
+    // #5405 SKRIVE-GATEN (§2c, ejer 19/9). Rapporteres ALTID; stopper altid ved --apply.
+    // I tørkørslen stopper KUN `active`: det er 27/6-blitz-guarden fra før #5405 og den
+    // bevares uændret. En tørkørsel mod en `completed` eller ukendt sæson skriver intet og
+    // må gerne køre til ende — det er netop dét tørkørslen er til for, at kunne MÅLE.
+    const writeGate = evaluateSeasonCalendarWriteGate({ seasonRow });
+    console.log(`\n── §2c skrive-gate (#5405, ejer 19/9) ──`);
+    console.log(`  ${writeGate.allowed ? "✅ TILLADT" : "❌ NÆGTET"} (${writeGate.code}): ${describeSeasonCalendarWriteGate(writeGate, seasonNumber)}`);
+    if (!writeGate.allowed && (apply || writeGate.code === "season_active")) {
+      // `season_missing` + --apply håndteres længere nede: rækken oprettes som 'upcoming'
+      // og gaten køres igen mod den. Alt andet stopper her.
+      if (!(apply && writeGate.code === "season_missing")) {
+        console.error(`\n❌ STOP: kalenderen må ikke skrives til sæson ${seasonNumber}. Afbryder.`);
         process.exit(1);
       }
+    }
+
+    // #5405 ERSTATNINGS-GATEN: findes der allerede løb for sæsonen? Kun SELECT — også i
+    // tørkørslen, hvor den er ren rapportering.
+    const existingRaces = await fetchAllRows(() =>
+      supabase.from("races").select("id, name, league_division_id, status").eq("season_id", seasonId).order("id"));
+    const dependentCounts = await countRaceDependencies({ supabase, raceIds: existingRaces.map((r) => r.id) });
+    const replacement = evaluateCalendarReplacementGate({ existingRaceCount: existingRaces.length, dependentCounts });
+
+    console.log(`\n── §2c erstatnings-gate (#5405) ──`);
+    console.log(`  eksisterende løb for sæson ${seasonNumber}: ${existingRaces.length}`);
+    if (replacement.mode !== "fresh") {
+      for (const r of replacement.rows) {
+        if (r.group === "gameplay" && r.count === 0) continue; // 0 er det forventede — støj at liste 19 nuller
+        console.log(`    ${r.group.padEnd(8)} ${dependencyKey(r).padEnd(40)} ${r.count}`);
+      }
+    }
+    if (replacement.mode === "fresh") {
+      console.log(`  ✅ FRISK: der er intet at erstatte — kalenderen materialiseres direkte.`);
+    } else if (replacement.mode === "replace") {
+      console.log(`  ✅ REN ERSTATNING MULIG: 0 rækker i alle ${RACE_DEPENDENCY_TABLES.filter((d) => d.group === "gameplay").length} gameplay-tabeller.`);
+      console.log(`     Ved --apply --replace-existing slettes de ${existingRaces.length} løb + deres kalender-form efter et snapshot, og kalenderen bygges forfra.`);
+    } else {
+      console.error(`  ❌ ERSTATNING NÆGTET (${replacement.blocking.length}) — rækker der ville gå tabt eller blive forældreløse:`);
+      for (const b of replacement.blocking) console.error(`     · ${b}`);
+      console.error(`     En 'upcoming' sæson bør have 0 i alle gameplay-tabeller (motorerne slår sæsonen op som status='active').`);
+      console.error(`     Ser du rækker her, er en antagelse brudt — undersøg FØR noget slettes.`);
     }
 
     // #4557: årsmødet (proposeNextMandate) slår næste sæson op på `number` og springer
@@ -298,15 +489,21 @@ if (isMain) {
     }
 
     if (!apply) {
-      console.log(`\nDRY-RUN slut — intet skrevet. Gentag med --apply for at bygge kalenderen.\n`);
+      console.log(`\nDRY-RUN slut — intet skrevet. Gentag med --apply for at bygge kalenderen.`);
+      console.log(`Tørkørslen har hverken skrevet, slettet eller låst noget — heller ikke en tæller eller et flag (#5405).\n`);
       // Et dry-run med aabne placerings-gates maa ikke afslutte groent: forskellen paa
       // "intet brud" og "brud vi valgte at maale videre paa" skal vaere synlig i exit-koden.
-      process.exitCode = applyBlocking.length ? 1 : 0;
+      // #5405: en NÆGTET skrive- eller erstatnings-gate er samme slags fund — den ville
+      // stoppe --apply, og et groent toerkoersels-exit ville skjule det.
+      const dryRunFindings = applyBlocking.length
+        || !writeGate.allowed
+        || replacement.mode === "denied";
+      process.exitCode = dryRunFindings ? 1 : 0;
     } else {
       if (!firstDay) { console.error("\n❌ --first-day YYYY-MM-DD kræves ved --apply (gæt aldrig sæsonens startdato)."); process.exit(2); }
       if (window.derived) {
         console.error("\n❌ Sæsonlængden er UDLEDT, ikke valgt. Ved --apply skal --race-days N eller --last-day YYYY-MM-DD sættes eksplicit");
-        console.error("   (CALENDAR_RULES.md §2c: én regenerering pr. sæson — længden kan ikke rettes bagefter).");
+        console.error("   (CALENDAR_RULES.md §2d: længden er ejerens valg, ikke scriptets — den arves aldrig).");
         process.exit(2);
       }
 
@@ -314,6 +511,42 @@ if (isMain) {
         const { error } = await supabase.from("seasons").insert({ id: seasonId, number: seasonNumber, status: "upcoming", start_date: firstDay, end_date: null });
         if (error) throw new Error(`kunne ikke oprette sæson-rækken: ${error.message}`);
         console.log(`\n  ✓ sæson ${seasonNumber} oprettet med status='upcoming' (transitionen promoverer den til 'active').`);
+
+        // #5405: gaten gætter ALDRIG. Rækken er lige oprettet — læs den TILBAGE og gate på
+        // det der faktisk står i DB. En default, en trigger eller en RLS-regel kan have
+        // gjort noget andet end insert'et bad om, og en gate der stoler på sit eget input
+        // er ikke en gate.
+        const { data: createdRow } = await supabase.from("seasons").select("id, number, status, start_date").eq("id", seasonId).maybeSingle();
+        const createdGate = evaluateSeasonCalendarWriteGate({ seasonRow: createdRow });
+        console.log(`  §2c skrive-gate mod den oprettede række: ${createdGate.allowed ? "✅ TILLADT" : "❌ NÆGTET"} (${createdGate.code})`);
+        if (!createdGate.allowed) {
+          console.error(`\n❌ STOP: ${describeSeasonCalendarWriteGate(createdGate, seasonNumber)}`);
+          console.error(`   Sæson-rækken er oprettet, men INGEN kalender er skrevet. Undersøg rækkens status før du kører igen.`);
+          process.exit(1);
+        }
+      }
+
+      // #5405: REGENERERING. Findes der allerede løb, er --apply alene ikke nok — en
+      // regenerering sletter spillervendte rækker og skal vælges eksplicit. FØR #5405 var
+      // denne situation en TAVS no-op (dedup'en filtrerede alt fra), eller værre: en
+      // BLANDING af gammel og ny kalender hvis kataloget havde flyttet sig imellem.
+      if (existingRaces.length > 0) {
+        if (replacement.mode === "denied") {
+          console.error(`\n❌ STOP: sæson ${seasonNumber} har ${existingRaces.length} løb, og erstatnings-gaten nægter (se ovenfor). Intet slettet, intet skrevet.`);
+          process.exit(1);
+        }
+        if (!replaceExisting) {
+          console.error(`\n❌ STOP: sæson ${seasonNumber} har allerede ${existingRaces.length} løb.`);
+          console.error(`   En regenerering ERSTATTER dem — den tilføjer ikke. Gentag med --replace-existing hvis det er dét du vil;`);
+          console.error(`   de ${existingRaces.length} løb + deres kalender-form slettes da efter et snapshot til ${snapshotDir}.`);
+          console.error(`   (§2c, ejer 19/9: frit at gøre om mens sæsonen er '${CALENDAR_WRITABLE_SEASON_STATUS}' — men aldrig ved et uheld.)`);
+          process.exit(1);
+        }
+        console.log(`\n── ERSTATNING (--replace-existing) ──`);
+        const replaced = await replaceSeasonCalendarRows({
+          supabase, seasonId, seasonNumber, races: existingRaces, snapshotDir, log: (m) => console.log(m),
+        });
+        console.log(`  ✓ sæsonens kalender er ryddet (${replaced.deletedRaces} løb). Rollback-snapshot: ${replaced.snapshotPath}`);
       }
 
       // #4129: sæt/opdatér season_transition_planned_at eksplicit HER — samtidig

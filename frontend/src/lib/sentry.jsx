@@ -290,10 +290,9 @@ function AppErrorFallback({ error, eventId, resetError }) {
   // copy bevaret (#1170); eventId vises kun naar ENABLED (deterministisk +
   // meningsfuldt — vi viser kun et id vi faktisk har rapporteret).
   return (
-    // role="alert" -> skaermlaesere annoncerer fejlen assertivt naar fallback'en
-    // mountes (ErrorState's titel er en <p>, ikke en heading — alert-regionen
-    // bevarer a11y for en fuld-skaerms crash). #671 Plan 3.
-    <main role="alert" className="flex min-h-screen items-center justify-center bg-cz-body px-4 py-10 text-cz-1">
+    // #5325: role="alert" sidder på selve ErrorState (kanonisk komponent) -
+    // en ydre wrapper her ville give to alert-noder i DOM'en for samme fejl.
+    <main className="flex min-h-screen items-center justify-center bg-cz-body px-4 py-10 text-cz-1">
       <ErrorState
         className="w-full max-w-lg"
         title={copy.title}

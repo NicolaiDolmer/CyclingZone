@@ -61,6 +61,9 @@ import {
   FILL_TAIL_ABILITY_CAP,
   FILL_TAIL_GENERATION_TAG,
 } from "./abilityDerivation.js";
+// Truppernes aldersgrænser — U23-fødslens interval udledes af dem, aldrig af en
+// lokal kopi. `squads.js` importerer kun `riderSeasonAge.js`, så der er ingen cyklus.
+import { SQUAD_MAX_AGE } from "./squads.js";
 
 // ── Skala-konstanter (evne-rummet) ───────────────────────────────────────────
 export const ABILITY_FLOOR = 1;
@@ -315,6 +318,80 @@ export const YOUTH_BIRTH_BAND = Object.freeze({
   gcClimbingBoostRatio: 0.85,
 });
 
+// ── U23-fødselsbåndet (engangs-truppen til AI-holdene) ───────────────────────
+//
+// HVAD DET IKKE ER: det her flytter IKKE hvor ryttere fødes i spillet. Ryttere
+// fødes fortsat som 16-årige i AKADEMIET, på `YOUTH_BIRTH_BAND`, og den sti er
+// bit for bit uændret. Båndet nedenfor bruges ét sted og til ét formål:
+// ENGANGS-genereringen af en U23-trup (6-9 ryttere, 19-22 år) til hvert AI-hold
+// ved S4-cutover, så U23-kalenderens løb har køreklare felter fra dag ét
+// (GDD D-054 §10.4, spec `docs/superpowers/specs/2026-09-15-u23-kalender-og-
+// trup-datamodel-design.md` §4.4 + §10.4). Efter cutover er der ingen løbende
+// U23-fødsel: U23-truppen fyldes af akademiet, der graduerer opad.
+//
+// HVORFOR ET EGET BÅND: akademiets bånd er kalibreret til 16-21 år, hvor det er
+// en TILSIGTET invariant at evnerne mætter mod loftet (G5, #3561/#2064 §2a: en
+// ungdomsrytters NUVÆRENDE evne må ikke løfte `ability_caps` over det loft hans
+// potentiale tillader). Netop dét loft rammer igennem i den øvre ende af
+// U23-intervallet, hvor alderen så holder op med at flytte noget — målt i
+// generator-rapportens §8 (#5283/#5376). Brugtes akademiets bånd som det er,
+// ville en 19-årig og en 22-årig U23-rytter fødes praktisk talt ens.
+//
+// EJER-VALG 18/9 2026 (#5376), variant A — "løft loftet, behold rampen":
+// U23-stien får ét højere loft, mens FORANKRING (`baseAt16`), ALDERS-RAMPE
+// (`perYearOver16`) og SPREDNING (`sd`, `startLuckSd`) er akademiets uændret.
+// Alders-rampen fandtes allerede; det var kun klipningen mod loftet der fjernede
+// dens virkning. Fravalgt: et helt eget bånd med egen rampe og spredning (B,
+// to bånd at holde i sync) og et alders-rampet loft der kun gav den ældste
+// årgang luft (C, løste ikke mætningen længere nede).
+//
+// Prisen ejeren købte med: de tre år (19-21) der OVERLAPPER akademiets interval
+// trækkes nu forskelligt alt efter hvor rytteren kommer fra — en akademi-
+// graduand og en U23-fødsel på samme alder er ikke længere samme fordeling.
+// Det er tilsigtet og gælder kun engangs-kuldet; akademiet selv er urørt.
+//
+// Båndet er AFLEDT af akademiets, ikke en kopi: alt andet end loftet arves med
+// spread, så en fremtidig ændring af akademiets forankring/rampe/spredning
+// følger med af sig selv i stedet for at drive i stilhed. `u23BandOverrides()`
+// + testen i `riderBirthPriors.test.js` beviser at loftet er den ENESTE forskel.
+/** Loftet som stat-NIVEAU — samme sprog som akademiets `statCeil` er skrevet i. */
+export const U23_BIRTH_CEIL_STAT_LEVEL = 60;
+const U23_BIRTH_CEIL = statLevelToAbility(U23_BIRTH_CEIL_STAT_LEVEL);
+
+export const U23_BIRTH_BAND = Object.freeze({
+  ...YOUTH_BIRTH_BAND,
+  ceil: U23_BIRTH_CEIL,
+  ceilBoosted: U23_BIRTH_CEIL,
+});
+
+/** Præcis de felter U23-båndet afviger fra akademiets på — test-kontrakt for variant A. */
+export function u23BandOverrides() {
+  const diff = {};
+  for (const key of new Set([...Object.keys(YOUTH_BIRTH_BAND), ...Object.keys(U23_BIRTH_BAND)])) {
+    if (!Object.is(YOUTH_BIRTH_BAND[key], U23_BIRTH_BAND[key])) diff[key] = U23_BIRTH_BAND[key];
+  }
+  return diff;
+}
+
+// Fødselsaldrene er IKKE frit valgte og kopieres ikke: de er truppens egne
+// aldersgrænser (`squads.js` → `riderSeasonAge.js`). U23 er sæson-alder ≤ 22, og
+// en rytter der er vokset ud af junior er 19. Flytter ejeren en grænse, flytter
+// fødsels-intervallet med i stedet for at stå tilbage som en lokal kopi.
+export const U23_BIRTH_AGE_MIN = SQUAD_MAX_AGE.junior + 1;
+export const U23_BIRTH_AGE_MAX = SQUAD_MAX_AGE.u23;
+
+/** Markørens tier for en U23-fødsel — den nøgle re-derivationen vælger bånd på. */
+export const U23_BIRTH_TIER = "u23";
+/** Markørens tier for en akademi-fødsel (akademiets bånd). */
+export const YOUTH_BIRTH_TIER = "youth";
+
+/** Båndet en fødsels-markørs tier hører til, eller `null` for en voksen-tier. */
+export function birthBandForTier(tier) {
+  if (tier === YOUTH_BIRTH_TIER) return YOUTH_BIRTH_BAND;
+  if (tier === U23_BIRTH_TIER) return U23_BIRTH_BAND;
+  return null;
+}
+
 // ── Evne-listen (fra registret — ALDRIG hardcodet) ───────────────────────────
 /** Alle evner en nyfødt skal have en prior for, i lagrings-orden. */
 export function birthAbilityKeys() {
@@ -472,6 +549,57 @@ export function drawYouthBirthAbilities({
   return out;
 }
 
+// ── U23-trækket (engangs-truppen til AI-holdene, D-054 §10.4) ────────────────
+/**
+ * Træk evner for ÉN nyfødt U23-rytter (19-22) i U23-båndet.
+ *
+ * REN funktion: ingen DB, ingen `Math.random`, ingen `stat_*`, ingen I/O. Den
+ * er hele U23-fødslens evne-side og er skrevet til at blive kaldt af den
+ * kommende engangs-generator (spec A6) — den generator findes IKKE endnu, og
+ * INTET produktions-kaldsted kalder denne funktion i dag. Det er med vilje:
+ * selve genereringen er en ejer-gated engangs-handling ved S4-cutover, og den
+ * må ikke kunne udløses som sideeffekt af at båndet blev bygget.
+ *
+ * Trækket er PRÆCIS akademiets (`drawYouthBirthAbilities`) — samme kodesti, ikke
+ * en parallel kopi — blot med `U23_BIRTH_BAND` som bånd. Måles et bånd ad en
+ * anden kodesti end den der fødes på, måler man en anden rytter (#2065).
+ *
+ * @param {object} args  som `drawYouthBirthAbilities`, men `age` SKAL ligge i
+ *                       U23-fødselsintervallet.
+ * @returns {Object<string, number>} evne → 1-99
+ */
+export function drawU23BirthAbilities({
+  rng,
+  age,
+  potentiale,
+  archetype,
+  secondaryArchetype = null,
+  classifierWeightsByType,
+  abilityKeys = REGISTRY_ABILITY_KEYS,
+}) {
+  // Alderen valideres HER og ikke i generatoren. Båndets niveau er
+  // `baseAt16 + (alder − 16)·perYearOver16`: en alder uden for intervallet ville
+  // give et gyldigt-udseende evne-sæt for en rytter der ikke kan stå i truppen —
+  // enten straks for gammel (≥ 23, Graduation Day) eller en junior i U23-tøj.
+  // Ingen coercion: en generator der sender "20" eller null har en fejl, og en
+  // stille omregning ville skjule den bag et gyldigt-udseende evne-saet.
+  if (!Number.isInteger(age) || age < U23_BIRTH_AGE_MIN || age > U23_BIRTH_AGE_MAX) {
+    throw new Error(
+      `riderBirthPriors: U23-fødselsalder skal være et helt tal i [${U23_BIRTH_AGE_MIN},${U23_BIRTH_AGE_MAX}] — fik ${JSON.stringify(age)}`,
+    );
+  }
+  return drawYouthBirthAbilities({
+    rng,
+    age,
+    potentiale,
+    archetype,
+    secondaryArchetype,
+    classifierWeightsByType,
+    abilityKeys,
+    band: U23_BIRTH_BAND,
+  });
+}
+
 // Signatur-profil i EVNE-rummet, proportional med klassifikatorens egne vægte
 // (#3458 fase 2). Modsat academyGenerator.js' `signatureProfile` er der ingen
 // ability→stat-oversættelse undervejs: vægtene ER allerede evne-nøglede.
@@ -607,6 +735,31 @@ export function makeYouthBirthMarker({ seed, age = null }) {
   return marker;
 }
 
+/**
+ * Fødsels-markør for en U23-fødsel. EGEN tier, ikke `"youth"`.
+ *
+ * Det er ikke kosmetik: `deriveBirthAbilities` vælger BÅND ud fra markørens
+ * tier, og enhver re-derive (heal-sweep, backfill) kører igennem den. Bar
+ * markøren `"youth"`, ville hver eneste sweep reproducere engangs-kuldet mod
+ * AKADEMIETS bånd og klippe rytterne ned til akademiets loft — stille, og først
+ * synligt når nogen undrede sig over at U23-felterne var blevet svagere.
+ *
+ * Alderen er FØDSELS-alderen af samme grund som på ungdoms-markøren: niveauet
+ * er alders-rampet, så en re-derive mod den nuværende alder ville løfte
+ * start-evnerne gratis hver sæson. Udvikling ejes af `riderProgression.js`.
+ */
+export function makeU23BirthMarker({ seed, age }) {
+  if (!Number.isInteger(seed)) throw new Error("riderBirthPriors: birth seed must be an integer");
+  // Ingen coercion: en generator der sender "20" eller null har en fejl, og en
+  // stille omregning ville skjule den bag et gyldigt-udseende evne-saet.
+  if (!Number.isInteger(age) || age < U23_BIRTH_AGE_MIN || age > U23_BIRTH_AGE_MAX) {
+    throw new Error(
+      `riderBirthPriors: U23-fødselsalder skal være et helt tal i [${U23_BIRTH_AGE_MIN},${U23_BIRTH_AGE_MAX}] — fik ${JSON.stringify(age)}`,
+    );
+  }
+  return { v: BIRTH_MARKER_VERSION, tier: U23_BIRTH_TIER, seed: seed >>> 0, age };
+}
+
 /** Er denne rytter født af spillets egne priors (og altså UDEN PCM-stats)? */
 export function isBornFromPriors(riderRow) {
   const draw = riderRow?.archetype_draw;
@@ -646,7 +799,25 @@ export function deriveBirthAbilities(riderRow, { age = null, classifierWeightsBy
     ? Number(draw.birth.age)
     : age;
 
-  const abilities = tier === "youth"
+  // Båndet vælges af markørens tier. En U23-fødsel (D-054 §10.4) bærer sin egen
+  // tier netop for at en heal-sweep ikke reproducerer den mod akademiets bånd.
+  //
+  // U23-stien går gennem `drawU23BirthAbilities` med den RÅ persisterede alder,
+  // ikke gennem en fallback: `makeU23BirthMarker` skriver altid en gyldig alder,
+  // så en U23-række UDEN en er korrupt. En fallback ville reproducere den mod en
+  // opfundet alder og give et gyldigt-udseende evne-sæt — så ville rækken være
+  // repareret i tallene og stadig forkert. Den skal fejle højlydt i stedet.
+  const youthBand = birthBandForTier(tier);
+  const abilities = tier === U23_BIRTH_TIER
+    ? drawU23BirthAbilities({
+      rng,
+      age: draw.birth.age,
+      potentiale: riderRow.potentiale,
+      archetype: draw.primary,
+      secondaryArchetype: draw.secondary ?? null,
+      classifierWeightsByType,
+    })
+    : youthBand
     ? drawYouthBirthAbilities({
       rng,
       age: birthAge ?? 18,
@@ -654,6 +825,7 @@ export function deriveBirthAbilities(riderRow, { age = null, classifierWeightsBy
       archetype: draw.primary,
       secondaryArchetype: draw.secondary ?? null,
       classifierWeightsByType,
+      band: youthBand,
     })
     : drawBirthAbilities({
       rng,

@@ -721,6 +721,55 @@ test("resolver: challenger-overtages med winnerProxy clamper bud til winnerProxy
   assert.equal(supabase.state.auction.current_price, 100001);
 });
 
+test("#4981: A's proxy slaar B's udfordring og A beholder foeringen -> A faar EN overbudt-notif", async () => {
+  // A leder cp=5000 med egen proxy 10.000. B's proxy 8.000 udfordrer.
+  // A's proxy slaar B (10.000 >= 8.001), saa A beholder foeringen, men A's
+  // effektive loft blev presset fra 5000 til 8001 undervejs. Foer #4981 fik A
+  // INGEN besked om det (koden breakede tavst). A skal have PRAECIS én
+  // "auction_proxy_outbid"-notif, ikke en pr. hop.
+  const auction = {
+    id: "auc-4981",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 5000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-a", max_amount: 10000 },
+    { team_id: "team-b", max_amount: 8000 },
+  ];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  const ownerCalls = [];
+  const result = await resolveProxyBids({
+    supabase,
+    auctionId: "auc-4981",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+  });
+
+  // A beholder foeringen ved 8.001 (B.max + 1), ikke B der overtager.
+  assert.equal(supabase.state.bids.length, 1, "skal kun place ÉT counter-bid (A's egen proxy)");
+  assert.equal(supabase.state.bids[0].team_id, "team-a");
+  assert.equal(supabase.state.bids[0].amount, 8001);
+  assert.equal(supabase.state.auction.current_bidder_id, "team-a");
+  assert.equal(supabase.state.auction.current_price, 8001);
+  assert.equal(result.finalLeaderId, "team-a");
+
+  // A faar en overbudt-notif om at loftet blev presset, selvom han beholdt foeringen.
+  const raisedNotifs = ownerCalls.filter(
+    (c) => c[0] === "team-a" && c[1] === "auction_proxy_outbid",
+  );
+  assert.equal(raisedNotifs.length, 1, "A skal faa PRAECIS én notif, ikke spam pr. hop");
+  assert.equal(raisedNotifs[0][5]?.messageCode, "notif.autoBidRaised.message");
+  assert.equal(raisedNotifs[0][5]?.messageParams?.amount, 8001);
+  assert.ok(result.outbidNotified.has("team-a"), "A skal indgaa i outbidNotified saa kalderen ikke sender en ekstra falsk besked");
+});
+
 // =============================================================================
 // #1091 — tie-break: ved identisk bud beholder den hidtidige fører med autobud føringen
 // =============================================================================

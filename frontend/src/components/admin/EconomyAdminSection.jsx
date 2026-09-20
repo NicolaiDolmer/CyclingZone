@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+// #5242: Retry-After-respekt paa 429 + centraliseret 401-vej. Alle otte kaldsteder
+// herunder følger samme form: `res.data || {}` i stedet for `await res.json()` —
+// et limited/unauthorized/networkError-svar giver data: null, og den eksisterende
+// `body.error || "<fallback>"`-linje viser så fallback-teksten i stedet for at
+// kaste en parse-fejl videre til catch'en, som et tomt svar gjorde før.
+import { apiFetch } from "../../lib/apiFetch.ts";
 import { formatCz } from "../../lib/marketValues";
 import { useTableSort } from "../../lib/useTableSort.js";
 import SortableTh from "../ui/SortableTh.jsx";
@@ -179,8 +185,8 @@ function HealthView({ getAuth, onMsg }) {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/admin/economy-health`, { headers: await getAuth() });
-      const body = await res.json();
+      const res = await apiFetch(`${API}/api/admin/economy-health`, { headers: await getAuth() });
+      const body = res.data || {};
       if (!res.ok) throw new Error(body.error || "Kunne ikke hente health-data");
       setData(body);
     } catch (e) {
@@ -281,8 +287,8 @@ function OverviewView({ getAuth, onMsg }) {
       if (filters.q) params.set("q", filters.q);
       if (filters.include_ai) params.set("include_ai", "true");
       if (filters.include_frozen) params.set("include_frozen", "true");
-      const res = await fetch(`${API}/api/admin/economy-overview?${params}`, { headers: await getAuth() });
-      const body = await res.json();
+      const res = await apiFetch(`${API}/api/admin/economy-overview?${params}`, { headers: await getAuth() });
+      const body = res.data || {};
       if (!res.ok) throw new Error(body.error || "Kunne ikke hente overblik");
       setRows(body.teams || []);
     } catch (e) {
@@ -306,12 +312,12 @@ function OverviewView({ getAuth, onMsg }) {
     setPendingTeam(team.id);
     try {
       const headers = { ...(await getAuth()), "Content-Type": "application/json" };
-      const res = await fetch(`${API}/api/admin/teams/${team.id}/${action}`, {
+      const res = await apiFetch(`${API}/api/admin/teams/${team.id}/${action}`, {
         method: "POST",
         headers,
         body: JSON.stringify({ reason: reason || null }),
       });
-      const body = await res.json();
+      const body = res.data || {};
       if (!res.ok) throw new Error(body.error || `Kunne ikke ${verb}`);
       onMsg(`✅ ${team.name} ${team.is_frozen ? "optøet" : "frosset"}`, "success");
       await refresh();
@@ -545,8 +551,8 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
       params.set("limit", String(limit));
       params.set("offset", String(nextOffset));
       for (const [k, v] of Object.entries(effective)) if (v) params.set(k, v);
-      const res = await fetch(`${API}/api/admin/finance-transactions?${params}`, { headers: await getAuth() });
-      const body = await res.json();
+      const res = await apiFetch(`${API}/api/admin/finance-transactions?${params}`, { headers: await getAuth() });
+      const body = res.data || {};
       if (!res.ok) throw new Error(body.error || "Kunne ikke hente transaktioner");
       setRows(body.transactions || []);
       setTotal(body.total || 0);
@@ -788,8 +794,8 @@ function AdminLogView({ getAuth, onMsg }) {
       params.set("limit", String(limit));
       params.set("offset", String(nextOffset));
       for (const [k, v] of Object.entries(filters)) if (v) params.set(k, v);
-      const res = await fetch(`${API}/api/admin/admin-log?${params}`, { headers: await getAuth() });
-      const body = await res.json();
+      const res = await apiFetch(`${API}/api/admin/admin-log?${params}`, { headers: await getAuth() });
+      const body = res.data || {};
       if (!res.ok) throw new Error(body.error || "Kunne ikke hente admin-log");
       setEntries(body.entries || []);
       setTotal(body.total || 0);
@@ -943,8 +949,8 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
       const params = new URLSearchParams();
       params.set("window_seconds", String(windowSeconds));
       for (const [k, v] of Object.entries(filters)) if (v) params.set(k, v);
-      const res = await fetch(`${API}/api/admin/cron-runs?${params}`, { headers: await getAuth() });
-      const body = await res.json();
+      const res = await apiFetch(`${API}/api/admin/cron-runs?${params}`, { headers: await getAuth() });
+      const body = res.data || {};
       if (!res.ok) throw new Error(body.error || "Kunne ikke hente cron-runs");
       setRuns(body.runs || []);
       setTotalTx(body.total_tx || 0);
@@ -1090,8 +1096,8 @@ function LevelCorrectionView({ getAuth, onMsg }) {
   async function refreshGate() {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/admin/market-value-level-correction/gate`, { headers: await getAuth() });
-      const body = await res.json();
+      const res = await apiFetch(`${API}/api/admin/market-value-level-correction/gate`, { headers: await getAuth() });
+      const body = res.data || {};
       if (!res.ok) throw new Error(body.error || "Kunne ikke hente gate-status");
       setGate(body.gate || null);
       setGateMsg(body.message || null);
@@ -1108,8 +1114,8 @@ function LevelCorrectionView({ getAuth, onMsg }) {
   async function runDryRun() {
     setDryRunLoading(true);
     try {
-      const res = await fetch(`${API}/api/admin/market-value-level-correction/dry-run`, { headers: await getAuth() });
-      const body = await res.json();
+      const res = await apiFetch(`${API}/api/admin/market-value-level-correction/dry-run`, { headers: await getAuth() });
+      const body = res.data || {};
       if (!res.ok) throw new Error(body.error || "Kunne ikke køre dry-run");
       setReport(body.report);
     } catch (e) {

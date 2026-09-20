@@ -1295,8 +1295,15 @@ async function loadSponsorStandingsContextForSeason(supabaseClient, seasonNumber
 // #666: build metadata for season-start sponsor transaction. Each (mode, pullout)
 // combination maps to a distinct i18n key — keeps the keys readable instead of
 // nesting ICU select inside select.
-function buildSponsorMetadata(breakdown, modifier, pulloutActive) {
+// Eksporteret for direkte unit-test (#4861) — undgår en tung fake-supabase-
+// integrationstest bare for at ramme metadata-forgreningen pr. sponsor-mode.
+export function buildSponsorMetadata(breakdown, modifier, pulloutActive) {
   const mode = breakdown.mode || "intro";
+  // #5158 ts-core-ratchet: uden denne annotation infererer tsc params' type fra
+  // FØRSTE tildeling ({ modifier }) og flager hver senere gren-specifikke
+  // property (base/variable/amount/sponsor) som "does not exist". Alle felter
+  // er optional, fordi kun ÉN gren udfylder hver af dem.
+  /** @type {{ modifier: number, base?: number, variable?: number, amount?: number, sponsor?: string }} */
   const params = { modifier };
   let codeKey;
   if (mode === "variable") {
@@ -1306,6 +1313,19 @@ function buildSponsorMetadata(breakdown, modifier, pulloutActive) {
   } else if (mode === "fallback") {
     codeKey = pulloutActive ? "tx.sponsor.seasonStartFallbackPullout" : "tx.sponsor.seasonStartFallback";
     params.amount = breakdown.gross_sponsor;
+  } else if (mode === "contract") {
+    // #4861: en forhandlet sponsorkontrakt (#1663, computeSponsorForSeason)
+    // faldt før igennem til else-grenen nedenfor og fik finanslogget til at
+    // vise sæsonstart-linjen som "intro" — forvirrende for et hold med en
+    // aktiv, navngivet kontraktsponsor. SPONSOR_RULES.md §5: budget-modifier
+    // og sponsor-pullout gælder for den garanterede base UANSET mode, så
+    // modifier/pulloutActive behandles præcis som variable/fallback-grenene
+    // ovenfor — kun teksten/params er kontrakt-specifikke (sponsornavn).
+    codeKey = pulloutActive ? "tx.sponsor.seasonStartContractPullout" : "tx.sponsor.seasonStartContract";
+    params.base = breakdown.base;
+    // Samme fallback som sponsorContractsService.js/sponsorRaceDayIncome.js
+    // bruger når en kontrakt (usædvanligt) mangler sponsor_name.
+    params.sponsor = breakdown.sponsor_name || "Your sponsor";
   } else {
     codeKey = pulloutActive ? "tx.sponsor.seasonStartIntroPullout" : "tx.sponsor.seasonStartIntro";
     params.amount = breakdown.gross_sponsor;

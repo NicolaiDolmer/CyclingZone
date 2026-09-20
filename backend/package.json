@@ -24,6 +24,7 @@
     "race:gate:roles": "node scripts/simulateSeasonDryRun.js --enforce-targets --enforce-liveness --no-html --seed=2026 --roles",
     "peak:gate": "node scripts/simulatePeakCouplingDryRun.js --population=scripts/baselines/population-snapshot-2026-07-11.json --seeds=2026,7,42 --enforce",
     "training:gate": "node scripts/previewDailyTraining.js --seasons=12 --count=400 --seed=2026 --enforce-targets",
+    "riders:generator-report": "node scripts/generatorVisibleTest5283.js --count=1000 --youth=300 --seed=20260918 --out=../balance-internals/generator-report-5283.md",
     "balance:check": "node scripts/balanceBaseline.js --check",
     "balance:baseline": "node scripts/balanceBaseline.js --write",
     "season:end:verify-repair": "node scripts/verifySeasonEndRepair.js",
@@ -38,8 +39,8 @@
     "format:check": "prettier --check --ignore-unknown ."
   },
   "dependencies": {
-    "@sentry/node": "^10.73.0",
-    "@supabase/supabase-js": "^2.115.0",
+    "@sentry/node": "^10.74.0",
+    "@supabase/supabase-js": "^2.116.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -48,7 +49,7 @@
     "helmet": "^8.3.0",
     "multer": "^2.3.0",
     "node-fetch": "^3.3.2",
-    "resend": "^6.26.0",
+    "resend": "^6.27.0",
     "ws": "^8.21.3",
     "zod": "4.6.2"
   },
@@ -56,8 +57,8 @@
     "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^10.0.1",
     "@types/express": "5.0.6",
-    "@types/node": "^26.4.1",
-    "eslint": "^10.9.1",
+    "@types/node": "^26.5.1",
+    "eslint": "^10.10.0",
     "fast-check": "^4.9.0",
     "globals": "^17.12.0",
     "prettier": "^3.9.6",

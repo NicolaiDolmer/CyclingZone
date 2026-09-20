@@ -93,6 +93,7 @@ Intake (tilbud)  →  Junior team 16-18  →  U23 team 19-22  →  Senior team 2
 | Senior team | Ingen aldersgrænse, 30-cap uændret | `GAME_INVARIANTS.md` |
 | En rytter tilhører præcis én trup ad gangen | Truppen afgør hvilken kalender han kører (§2.3). **BYGGET (#4619, slice 1):** `riders.squad` (`senior`/`u23`/`junior`) bærer den. Aldersgrænser + `squadForSeasonAge()` bor i `backend/lib/squads.js`, som selv kalder `riderSeasonAge.js` — aldersformlen findes ét sted og beregnes ALDRIG i SQL. `riders.is_academy` bliver stående i en overgangsperiode og vedligeholdes som `squad <> 'senior'` (35+ kaldsteder + RLS-funktionen `is_offered_intake_rider()`); de to felter skrives altid sammen | addendum 16/7 §1.1 · #4619 |
 | AI-hold har også Junior team og U23 team | Tynde felter fyldes med AI. Samme maskine som verdens-influx (#2064) | addendum 16/7 §1.1, ejer-låst |
+| AI-holdenes U23-trupper fødes ÉN gang | **Ryttere fødes stadig som 16-årige i akademiet.** Ved S4-cutover genereres derudover én U23-trup pr. AI-hold, så U23-kalenderens løb har køreklare felter fra dag ét (D-054 §10.4). Efter cutover fyldes truppen af akademiet, der graduerer opad — der er ingen løbende U23-fødsel. Fødslen bruger sit EGET bånd (`U23_BIRTH_BAND`), ikke akademiets: akademiets bånd er kalibreret til 16-21, hvor mætningen mod loftet er en tilsigtet invariant (G5), og lånt til U23-aldrene ville alderen holde op med at betyde noget. **Ejer-valg 18/9 (#5376), variant A:** U23-båndet arver akademiets forankring, alders-rampe og spredning og afviger KUN på loftet; akademiets bånd og G5 er urørte. Selve genereringen er en ejer-gated engangs-handling og køres aldrig som sideeffekt. Detaljer: [`RIDER_GENERATION.md` §8b2](RIDER_GENERATION.md) | ejer 18/9, #5376 |
 
 ### 2.2 Flyt mellem trupper (ejer 2/9, svar 2)
 
@@ -185,6 +186,7 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 |---|---|---|
 | Aldersvindue for akademiet | `backend/lib/academyFlag.js` `ACADEMY.MIN_AGE`/`MAX_AGE` | 16-21 |
 | Søndags-intake | `backend/lib/sundayIntakeTick.js` | 2 kandidater pr. menneske-hold hver søndag (#2064 S0) |
+| Intake pull (#3550, dormant bag `academy_intake_pull_enabled`) | — | Bygget; erstatter søndagsdrippet ovenfor når flaget flippes ved cutover — ikke to parallelle intake-veje |
 | Tilbudsfrist | `backend/lib/academyIntakeExpirySweep.js` `INTAKE_OFFER_EXPIRY_DAYS` | 7 dage, derefter ungdomsauktion |
 | Intake-status-livscyklus (#1756, ejer-SSOT for engangsoprydninger som #4576) | `backend/lib/academyIntakeReconcile.js` | `academy_intake.status`: `offered` → `signed` (RPC finaliserer erhvervelsen), `rejected` (holdet afviste/hentede ikke, ELLER en stale `offered`-raekke opdager at rytteren blev vundet af et ANDET hold, typisk via ungdomsauktionen). En `offered`-raekke med rytter allerede ejet er stale: maal-status afgoeres af HVEM der ejer rytteren nu — ejet af det TILBUDTE hold → `signed` (sign-flippet fuldfoerte aldrig); ejet af et ANDET hold → `rejected`. `team_id IS NULL` (fri rytter) er IKKE stale — legitimt aabent tilbud, roeres aldrig |
 | Signing fee | `academyIntake.js:483`, `ACADEMY.SIGNING_FEE_RATE` | andel af markedsværdi (udgår, §2.4) |
@@ -232,6 +234,7 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 | 5 | Frist på Graduation Day (`DEADLINE_DAYS`, i dag 7, "SIM-STARTPUNKT") | stadig ikke ejer-godkendt siden 18/6. #4619 lod tallet stå UÆNDRET på 7 — slice 1 byggede de to overgange, ikke fristen. Afventer ejer-go |
 | 6 | Tidlig oprykning "wonderkid" (addendum §7.1: fra 21) | bortfalder: opad er altid tilladt (§2.2) |
 | 7 | Præmiepenge i ungdomsløb | efter slice 2-økonomidata, egen ejer-beslutning |
+| 8 | U23-fødselsbåndet — **LUKKET 18/9 (#5376), variant A** | ejer-valgt; båndet lever i `backend/lib/riderBirthPriors.js`. Stadig åbent: selve engangs-generatoren (spec A6 — hvor mange ryttere pr. hold, arketype-/tier-mix, insert-stien) |
 
 ---
 

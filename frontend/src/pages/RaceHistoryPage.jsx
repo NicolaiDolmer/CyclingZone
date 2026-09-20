@@ -149,7 +149,7 @@ export default function RaceHistoryPage() {
       {loading ? (
         <Section><SkeletonLines lines={6} /></Section>
       ) : loadError ? (
-        <Section role="alert">
+        <Section>
           <ErrorState
             description={t("history.loadError.message")}
             action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("history.loadError.retry")}</Button>}

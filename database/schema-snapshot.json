@@ -2235,7 +2235,8 @@
         "replied_at",
         "replied_by",
         "status_changed_at",
-        "seq"
+        "seq",
+        "metadata"
       ]
     },
     "prize_tables": {

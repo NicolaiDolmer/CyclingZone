@@ -243,6 +243,7 @@ Hvis en tekst krydser grænsen til player-eyes og du er usikker på om tonen pas
 > **Formål:** en genbrugelig STRUKTUR/skelet til founder-stemme-opslag (marketing, roadmap-intros, Discord-announcements, patch-note-intros). AI leverer skelettet; **selve prosaen skriver ejeren**, jf. `feedback_founder_voice_owner_writes` (Claude-forfattet founder-stemme rammer ikke Nicolais tone, roadmap-intro 10/6).
 >
 > **Udestående ejer-leverance (fra #1283):** 2-3 godkendte eksempeltekster AI kan kalibrere imod. Indtil de findes, må AI **ikke** generere færdig founder-prosa. AI udfylder strukturen med fakta-bullets + markerer prosa-slots `[FOUNDER-PROSA]`.
+> **Ejer 17/9 (overstyrer ovenstående for mails og opslag):** *"Det er dig der skal skrive de her mails, ikke mig."* AI skriver HELE teksten i founder-stemmen og ejeren godkender/retter; skeletter med tomme slots må ikke sendes til ejeren. Kalibrering: læs mindst den sidste måneds beskeder fra ejeren i Discord (#the-roadbook, #general, #dansk-snak) FØR der skrives. Ejerens dom over det første forsøg 17/9: "lyder som en AI der skriver". Ejeren poster/sender fortsat selv.
 > **Delvist dækket 2026-06-21:** sektionen *Voice DNA* ovenfor giver nu signatur-markører + ejerens egne calibration-citater fra Discord. Det kalibrerer ejerens personlighed/rytme; en endelig EN-first akkvisitions-prøvetekst mangler stadig fra ejeren.
 
 ### Sådan bruges skelettet

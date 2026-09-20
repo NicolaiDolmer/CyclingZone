@@ -35,6 +35,7 @@ import { applyHumanTeamFilter } from "./humanTeamFilter.js";
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
 import { captureException } from "./sentry.js";
+import { applySeniorSquadFilter } from "./squads.js";
 
 export const SQUAD_BELOW_MINIMUM_TYPE = "squad_below_minimum";
 
@@ -75,11 +76,12 @@ async function defaultFetchHumanTeams({ supabase }) {
 async function defaultFetchActiveRiderCounts({ supabase, teamIds }) {
   if (!teamIds.length) return new Map();
   const rows = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
-    supabase
-      .from("riders")
-      .select("id, team_id")
-      .in("team_id", chunk)
-      .eq("is_academy", false)
+    applySeniorSquadFilter(
+      supabase
+        .from("riders")
+        .select("id, team_id")
+        .in("team_id", chunk)
+    )
       .eq("is_retired", false)
       .order("id")
   );

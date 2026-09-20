@@ -209,6 +209,24 @@ export default defineConfig({
     // måde som prod. Prod har token ⇒ uændret true; almindelige lokale builds
     // har hverken token eller CZ_SENTRY_TRANSFORM ⇒ uændret false.
     sourcemap: enableSentryPlugin,
+    // #5177: flag-icons' SVG'er må ALDRIG inlines som data-URI'er.
+    //
+    // `flag-icons/css/flag-icons.min.css` er kun 28 KB råt og peger på 542
+    // separate filer (271 nationaliteter × 4x3 + 1x1) med
+    // `url(../flags/4x3/xx.svg)`. Hver SVG er ~760 bytes, altså under Vites
+    // default-grænse på 4096, så byggeriet inlinede dem alle sammen og gjorde
+    // stylesheetet til 411,2 KB råt / 81,5 KB gzip — det næststørste aktiv i
+    // hele buildet, hvoraf en spiller typisk bruger under ti flag.
+    //
+    // Som separate filer henter browseren KUN de nationaliteter der faktisk
+    // står på siden, hver med hashet filnavn og dermed immutable caching
+    // (scripts/check-cdn-cache-headers.mjs). Stylesheetet selv falder til et
+    // par KB. Ingen visuel forskel: samme SVG'er, samme `.fi`-geometri.
+    //
+    // Returnér `undefined` for alt andet, så resten af repoet beholder Vites
+    // default-opførsel uændret.
+    assetsInlineLimit: (filePath) =>
+      /[\\/]flag-icons[\\/]flags[\\/]/.test(filePath) ? false : undefined,
     rolldownOptions: {
       output: {
         // #5177 spor 3 — entry-chunken skæres op i deploy-STABILE grupper.

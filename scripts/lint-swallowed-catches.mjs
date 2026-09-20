@@ -140,7 +140,18 @@ const BASELINE = {
   // (den delte kerne for /board/request og /board/request/preview) flyttede den
   // eksisterende loadGoalContextForBoard-catch fra /board/request uændret; den
   // tæller ikke ekstra her.
-  "backend/routes/api.js": 182,
+  // #4873 (17/9): +1 for GET /teams/:id/manager-status — samme captureApiRouteError-
+  // mønster som resten af filen. Fejlen rethrow'es fra begge Supabase-kald (teamError/
+  // userError) FØR catch'en, så selve fejlhåndteringen er reelt korrekt — kun denne
+  // guards regex genkender ikke wrapperen, samme kendte gab.
+  // #5259 (18/9): +7 for beta-adgangens syv nye ruter (GET/POST /me/beta-access*,
+  // GET /admin/beta-access, PATCH /admin/users/:id/beta, POST /admin/beta-requests/
+  // :id/decide, GET+PATCH /admin/feature-flags). Alle capturer via
+  // captureApiRouteError på den ydre catch, samme kendte regex-gab som resten af
+  // filens baseline allerede bærer. De to migrations-grene (isBetaRequestsMissing)
+  // svarer 503 FØR captureApiRouteError, med vilje: et kald i deploy-vinduet er
+  // ikke fejlet, det er for tidligt, og det skal ikke fylde i Sentry.
+  "backend/routes/api.js": 190,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,

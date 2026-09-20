@@ -8,6 +8,7 @@ import { Flag } from "./Flag";
 import { formatNumber } from "../lib/intl";
 import { buildRaceRecap } from "../lib/raceRecap.js";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { logFirstEvent } from "../lib/logEvent";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { ConfettiModal } from "./ConfettiModal";
@@ -112,7 +113,7 @@ function useSeenBadge(race) {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
         if (!token) return;
-        await fetch(`${API}/api/dashboard/my-latest-result/seen`, {
+        await apiFetch(`${API}/api/dashboard/my-latest-result/seen`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({ race_id: raceId }),

@@ -47,6 +47,7 @@ import {
   SEED_SCOUTING_REPORT,
   SEED_MANAGER_TRANSFERS,
   SEED_TRANSFER_HISTORY,
+  SEED_TRADE_FEED,
   SEED_RIDER_HISTORY,
   seedManagerAchievements,
   SEED_SEASON_HONOURS,
@@ -1303,6 +1304,29 @@ export function apiResponse(pathname, search = "") {
   // FØR de generiske /api/transfers*-grene nedenfor (disjunkt sti, men holder
   // rækkefølgen eksplicit robust hvis stien ændrer sig).
   if (pathname.match(/\/api\/teams\/[^/]+\/transfer-history$/)) return SEED_TRANSFER_HISTORY;
+  // #5257: den globale handelsliste ("Alle handler"-fanen). Filtrene håndteres
+  // her, ikke bare ignoreret — ellers ville et screenshot af et sat filter vise
+  // den ufiltrerede liste og se ud som om filtret ikke virker.
+  if (pathname.endsWith("/api/transfers/feed")) {
+    const params = new URLSearchParams(search);
+    const type = params.get("type");
+    const division = params.get("division");
+    const team = params.get("team");
+    const limit = Number.parseInt(params.get("limit") ?? "25", 10) || 25;
+    const offset = Number.parseInt(params.get("offset") ?? "0", 10) || 0;
+    const matches = SEED_TRADE_FEED.filter((ev) => {
+      if (type && ev.type !== type) return false;
+      if (division && ![ev.from_team?.division, ev.to_team?.division].includes(Number(division))) return false;
+      if (team && ![ev.from_team?.id, ev.to_team?.id].includes(team)) return false;
+      return true;
+    });
+    return {
+      events: matches.slice(offset, offset + limit),
+      limit,
+      offset,
+      has_more: matches.length > offset + limit,
+    };
+  }
   if (pathname.endsWith("/api/online-count")) return { count: 1 };
   if (pathname.endsWith("/api/notifications")) return [];
   // #2884: skal ligge FØR /api/auctions — endsWith("/api/auctions") ville ellers

@@ -7,6 +7,8 @@
 // indeholdt (seed + state + routing i én fil) — planner-seed genbruges intet andet
 // sted. Serverer board'et i SAMME form som GET /api/peak-plans/board.
 
+import { ratingForRole } from "../lib/generated/displayRecipes.js";
+
 const DAY_MS = 86_400_000;
 // #3094: LOCK_LEAD spejler backend/lib/riderPeakPlans.js's PEAK_LOCK_LEAD_DAYS —
 // var 3 (lås 3 dage FØR vinduets start), er nu 0 (lås når vinduet ER begyndt,
@@ -41,6 +43,16 @@ const FOCUS_FOR = { sprint: "sprint", hilly: "vo2max", mountain: "vo2max", itt: 
 function ability(over = {}) {
   const base = { climbing: 38, time_trial: 38, sprint: 38, punch: 40, endurance: 46, cobblestone: 36, acceleration: 40, recovery: 44, tactics: 42, positioning: 46, flat: 40, tempo: 42, durability: 44, aggression: 38, descending: 42 };
   return { ...base, ...over };
+}
+
+// #5321: `abilities` i board-payloaden er løbsmotorens udsnit af evnerne — det
+// er dét udsnit `ability()` ovenfor spejler. Ratingen regnes derimod på HELE
+// evne-rækken og sendes færdig med fra serveren, så samme rytter viser samme tal
+// på planlæggeren, Mit hold, rytterprofilen, auktionerne og ønskelisten. Mocken
+// gør det samme: mentale evner lægges på KUN i rating-regnestykket.
+const MENTAL_ABILITIES = { teamwork: 40, leadership: 40 };
+function withRating(row) {
+  return { ...row, rating: ratingForRole({ ...row.abilities, ...MENTAL_ABILITIES }, row.primaryType) };
 }
 
 function mountainStages(n, summits) {
@@ -139,7 +151,7 @@ const RIDERS = [
   { id: "rd-soren", firstname: "Mikkel", lastname: "Sørensen", nationality: "dk", age: 31, primaryType: "puncheur", secondaryType: "climber", isAcademy: false, form: 50, fatigue: 26, injuredUntil: null, abilities: ability({ punch: 66, tempo: 60, climbing: 50, endurance: 54 }) },
   { id: "rd-novak", firstname: "Tomaz", lastname: "Novak", nationality: "si", age: 24, primaryType: "gc", secondaryType: "tt", isAcademy: true, form: 57, fatigue: 24, injuredUntil: null, abilities: ability({ climbing: 72, time_trial: 66, tempo: 62, recovery: 58, endurance: 58 }) },
   { id: "rd-bianchi", firstname: "Giulio", lastname: "Bianchi", nationality: "it", age: 33, primaryType: "rouleur", secondaryType: null, isAcademy: false, form: 48, fatigue: 20, injuredUntil: null, abilities: ability({ flat: 62, endurance: 60, tempo: 54 }) },
-];
+].map(withRating);
 
 let counter = 0;
 function nextId() { return `pk-${++counter}`; }
