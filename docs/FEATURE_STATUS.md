@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-71 poster: live 46 · beta 4 · dormant 6 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+72 poster: live 46 · beta 4 · dormant 7 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -41,6 +41,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Direct transfers and offers (`direct-transfers`) | live | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | - |
 | Rider swaps (`rider-swaps`) | live | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | Knap på profilen, ikke egen fane. |
 | Market value blend sweep (`market-value-blend`) | dormant | `market_value_sweep_enabled` | [ECONOMY_RULES](ECONOMY_RULES.md) | #3448 | 2026-09-07 | Afventer ejer-go (#4449). |
+| Rider value on the same abilities as the rating (`rider-valuation-v5`) | dormant | `rider_valuation_model` | [ECONOMY_RULES](ECONOMY_RULES.md) | #5443 | 2026-09-21 | PR #5446, nøglen står på v4. Ejer flipper til v5 + ekstraordinær kørsel (runbook 5443); lønnen har egen nøgle rider_production_value_model. |
 | Auction entry gate (`auction-entry-gate`) | building | `auction_entry_gate_enabled` | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | - |
 | AI and unsolicited bids (`ai-unsolicited-bids`) | idea | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | Findes ikke i kode. |
 | Rider loans (`rider-loans`) | retired | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #1994 | 2026-09-06 | Afviklet; kun lån findes. |
@@ -63,7 +64,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Season fatigue and form reset (`season-fatigue-reset`) | live | `season_fatigue_reset_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | - | 2026-09-06 | - |
 | Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) | live | - | [TRAINING_RULES](TRAINING_RULES.md) | #4874 | 2026-09-15 | PR #5265; TRAINING_RULES §3.2. |
 | Training page on mobile (`training-mobile-table`) | beta | - | [TRAINING_RULES](TRAINING_RULES.md) | #3643 | 2026-09-19 | Flag training_mobile_table; sat naar raekken er i prod. |
-| Training score 1-99 (`training-score`) | beta | `training_score_visible` | [TRAINING_RULES](TRAINING_RULES.md) | #4851 | 2026-09-15 | PR #5261, flag beta. |
+| Training score 1-99 (`training-score`) | beta | `training_score_visible` | [TRAINING_RULES](TRAINING_RULES.md) | #4851 | 2026-09-21 | Flag beta. Graf, mobilside, tooltip og UI-test rettet 21/9 (#5451, #5453); mangler ejer-flip til alle. |
 | Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4846 | 2026-09-15 | A2 merget 15/9, flag off (§13.3). B4-udløser (samlet sweep ved dagens lukning) bygget bag samme flag; mangler ejer-flip. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
