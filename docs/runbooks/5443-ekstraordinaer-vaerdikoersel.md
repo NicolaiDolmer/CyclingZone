@@ -96,7 +96,10 @@ pwsh -File scripts/run-value-event-5443.ps1 -Apply
 
 Wrapperen beder om bekræftelses-sætningen. Scriptet gør så, i rækkefølge:
 
-1. tjekker at `rider_valuation_model` står på `'v5'` — ellers nægter den
+1. tjekker **alle** låse, før det læser en eneste rytter: bekræftelses-sætning,
+   miljø-ack, `rider_valuation_model = 'v5'`, `rider_production_value_model =
+   'v4'` (ejer-beslutning 2 — lønnen venter), og at det **ikke er søndag**
+   (den dag ejer den ordinære kørsel og det samme dato-claim)
 2. skriver **backuppen** af `(base_value, current_production_value,
    primary_type, secondary_type)` for hele populationen og verificerer antallet
 3. **claimer dagen** i `rider_value_sunday_log` — er dagen allerede claimet,
@@ -105,7 +108,9 @@ Wrapperen beder om bekræftelses-sætningen. Scriptet gør så, i rækkefølge:
    formel
 5. fylder log-rækken ud og kører post-verify
 
-Fejler noget før punkt 4, er der ikke skrevet en eneste rytterværdi.
+Fejler noget før punkt 4, er der ikke skrevet en eneste rytterværdi. Låsene
+ligger med vilje **før** backuppen: backuppen kan kun tages én gang, så en
+afvisning efter den ville spærre næste forsøg.
 
 ### 8. Post-verify
 

@@ -60,7 +60,7 @@ import {
   readProductionValueModelId,
   readValuationModelId,
 } from "../lib/riderValuationModelSelect.js";
-import { copenhagenDateString } from "../lib/copenhagenTime.js";
+import { copenhagenDateString, copenhagenWeekdayKey } from "../lib/copenhagenTime.js";
 import { RIDER_VALUE_SUNDAY_LOG_TABLE } from "../lib/sundayValueSweep.js";
 
 export const BACKUP_TABLE = "backup_5443_value_event_20260920";
@@ -68,6 +68,9 @@ export const APPLY_CONFIRM_PHRASE = "KOER VAERDISKIFTET 5443";
 export const ROLLBACK_CONFIRM_PHRASE = "RUL VAERDISKIFTET 5443 TILBAGE";
 export const OWNER_ACK_ENV = "VALUE_EVENT_5443_OWNER_ACK";
 export const REQUIRED_MODEL_ID = "v5";
+// Ejer-beslutning 2 (20/9 aften): loengrundlaget bliver paa v4 under netop
+// denne begivenhed. Staar noeglen anderledes, er forudsaetningen brudt.
+export const DEFAULT_WAGE_MODEL_ID = "v4";
 
 // De fire kolonner kørslen kan skrive — og dermed præcis dem backuppen skal
 // bære. Holdes i ÉN konstant, så backup og rollback ikke kan komme i utakt.
@@ -84,9 +87,10 @@ const UPSERT_BATCH = 500;
  * Hvad blokerer en rigtig kørsel? Returnerer en liste af menneskelæselige
  * grunde; tom liste = klar. Ren funktion, så låsene kan testes uden en DB —
  * det er dem hele sikkerheden hviler på.
- * @param {{apply:boolean, confirm:string|null, ownerAck:boolean, modelId:string}} state
+ * @param {{apply:boolean, confirm:string|null, ownerAck:boolean, modelId:string,
+ *          wageModelId:string, weekday:string}} state
  */
-export function applyBlockers({ apply, confirm, ownerAck, modelId }) {
+export function applyBlockers({ apply, confirm, ownerAck, modelId, wageModelId, weekday }) {
   const blockers = [];
   if (!apply) return blockers; // tørkørsel har ingen låse
   if (confirm !== APPLY_CONFIRM_PHRASE) {
@@ -99,6 +103,25 @@ export function applyBlockers({ apply, confirm, ownerAck, modelId }) {
     blockers.push(
       `app_config.rider_valuation_model staar paa '${modelId}', ikke '${REQUIRED_MODEL_ID}'`
       + " - flip noeglen foerst, ellers ville koerslen skrive den gamle models tal uden for soendagen"
+    );
+  }
+  // Ejer-beslutning 2: loennen venter. Staar loen-noeglen paa noget andet end
+  // v4, ville netop denne koersel ogsaa flytte fremtidige loenkrav - det
+  // modsatte af beslutningen. En advarsel er ikke nok, for koerslen er
+  // engangs og backuppen er allerede brugt naar man opdager det.
+  if (wageModelId !== DEFAULT_WAGE_MODEL_ID) {
+    blockers.push(
+      `app_config.rider_production_value_model staar paa '${wageModelId}', ikke '${DEFAULT_WAGE_MODEL_ID}'`
+      + " - ejer-beslutning 2 (20/9) var at loengrundlaget bliver paa v4 indtil forlaengelserne er overstaaet"
+    );
+  }
+  // Soendagen har sin EGEN koersel og sit eget claim. Deler de to dato, kan
+  // denne koersel enten blive blokeret af soendagens claim (efter at have
+  // brugt sin engangs-backup) eller selv spaerre for soendagen.
+  if (weekday === "sun") {
+    blockers.push(
+      "i dag er soendag - den ordinaere soendagskoersel ejer dagen."
+      + " Den ekstraordinaere koersel er en undtagelse FRA soendagen, ikke en ekstra soendag."
     );
   }
   return blockers;
@@ -243,12 +266,14 @@ async function writeRiderPatches(supabase, updates, log) {
 export async function runExtraordinaryValueEvent(supabase, { apply, confirm, ownerAck, now = new Date(), log = console.log } = {}) {
   const modelId = await readValuationModelId(supabase);
   const wageModelId = await readProductionValueModelId(supabase);
-  log(`model: pris=${modelId} · loengrundlag=${wageModelId}`);
-  if (wageModelId !== "v4") {
-    log(`BEMAERK: loengrundlaget staar paa '${wageModelId}'. Ejer-beslutning 2 (20/9) var at det bliver paa v4 indtil forlaengelserne er overstaaet.`);
-  }
+  const runDate = copenhagenDateString(now);
+  const weekday = copenhagenWeekdayKey(runDate);
+  log(`model: pris=${modelId} · loengrundlag=${wageModelId} · dato ${runDate} (${weekday}, dansk tid)`);
 
-  const blockers = applyBlockers({ apply, confirm, ownerAck, modelId });
+  // ALLE laase tjekkes FOER foerste laesning af populationen og laenge foer
+  // backuppen skrives. Backuppen er engangs: en afvisning der kommer EFTER den
+  // ville efterlade en fyldt backup-tabel og blokere naeste forsoeg.
+  const blockers = applyBlockers({ apply, confirm, ownerAck, modelId, wageModelId, weekday });
   if (blockers.length > 0) {
     for (const b of blockers) log(`BLOKERET: ${b}`);
     return { ran: false, blockers };
@@ -275,8 +300,7 @@ export async function runExtraordinaryValueEvent(supabase, { apply, confirm, own
   }
 
   // ── RIGTIG KØRSEL ─────────────────────────────────────────────────────────
-  const runDate = copenhagenDateString(now);
-  log(`ekstraordinaer vaerdikoersel · dato ${runDate} (dansk tid)`);
+  log("ekstraordinaer vaerdikoersel - alle laase er aabne");
 
   const riders = await readAllRiderSnapshots(supabase);
   log(`foer-billede: ${riders.length} ryttere`);

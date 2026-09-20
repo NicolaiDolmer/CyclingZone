@@ -17,7 +17,7 @@ import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { predictBaseValue, VALUATION_ABILITY_COLUMNS } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
-import { loadValuationModel, loadProductionValueModel } from "./riderValuationModelSelect.js";
+import { loadValuationModelStrict, loadProductionValueModelStrict } from "./riderValuationModelSelect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
@@ -139,12 +139,17 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   // #5443: modellen VÆLGES pr. kørsel af app_config-nøglen rider_valuation_model
   // (riderValuationModelSelect.js) — defaulten er v4, så en merge ændrer intet.
   // Læsefejl → v4. Dæmpnings-behandlingen sker inde i loaderen, som før.
-  const m = model || await loadValuationModel(supabase);
+  // STRIKS: denne kørsel skriver hele populationen. Kan nøglen ikke læses,
+  // stopper vi hellere end at revaluere alle med en gættet model — søndags-
+  // pipelinen frigiver dagens claim og prøver igen næste time.
+  const m = model || await loadValuationModelStrict(supabase);
   // #5443 ejer-beslutning 2 (20/9 aften): løngrundlaget har sin EGEN nøgle
   // (rider_production_value_model, seedet 'v4'). Prisen kan altså flippes til
   // v5 uden at fremtidige lønkrav flytter sig. Begge læses ÉN gang pr. kørsel,
   // så hele populationen regnes med det samme par modeller.
-  const pm = productionModel || await loadProductionValueModel(supabase);
+  // Har kalderen PINNET prismodellen, følger løngrundlaget den — som før de
+  // to nøgler fandtes. Kun en kørsel der selv vælger model, slår begge op.
+  const pm = productionModel || model || await loadProductionValueModelStrict(supabase);
 
   // v4-alder forankres i den aktive sæson (samme ageForSeason som progression).
   // Cutover-fix 23/8: mellem "Afslut sæson" og transitionen er der INGEN aktiv

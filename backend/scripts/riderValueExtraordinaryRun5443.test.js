@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import {
   APPLY_CONFIRM_PHRASE,
   BACKED_UP_COLUMNS,
+  DEFAULT_WAGE_MODEL_ID,
   OWNER_ACK_ENV,
   REQUIRED_MODEL_ID,
   ROLLBACK_CONFIRM_PHRASE,
@@ -20,13 +21,23 @@ import {
   summariseUpdates,
 } from "./riderValueExtraordinaryRun5443.js";
 
-const OK = { apply: true, confirm: APPLY_CONFIRM_PHRASE, ownerAck: true, modelId: REQUIRED_MODEL_ID };
+const OK = {
+  apply: true,
+  confirm: APPLY_CONFIRM_PHRASE,
+  ownerAck: true,
+  modelId: REQUIRED_MODEL_ID,
+  wageModelId: DEFAULT_WAGE_MODEL_ID,
+  weekday: "wed",
+};
 
 test("toerkoersel er default og har ingen laase", () => {
-  assert.deepEqual(applyBlockers({ apply: false, confirm: null, ownerAck: false, modelId: "v4" }), []);
+  assert.deepEqual(
+    applyBlockers({ apply: false, confirm: null, ownerAck: false, modelId: "v4", wageModelId: "v5", weekday: "sun" }),
+    []
+  );
 });
 
-test("alle tre laase skal vaere aabne foer der skrives", () => {
+test("alle laase skal vaere aabne foer der skrives", () => {
   assert.deepEqual(applyBlockers(OK), [], "den korrekte kombination maa ikke blokeres");
 
   for (const [navn, broken] of [
@@ -34,18 +45,34 @@ test("alle tre laase skal vaere aabne foer der skrives", () => {
     ["ingen bekraeftelse", { ...OK, confirm: null }],
     ["naesten rigtig bekraeftelse", { ...OK, confirm: `${APPLY_CONFIRM_PHRASE} ` }],
     ["ingen ejer-ack", { ...OK, ownerAck: false }],
-    ["modellen staar paa v4", { ...OK, modelId: "v4" }],
+    ["prismodellen staar paa v4", { ...OK, modelId: "v4" }],
+    ["loenmodellen er flippet med", { ...OK, wageModelId: "v5" }],
+    ["det er soendag", { ...OK, weekday: "sun" }],
   ]) {
     assert.ok(applyBlockers(broken).length > 0, `${navn} skulle have blokeret koerslen`);
   }
 });
 
-test("mangler ALT, naevnes alt - ejeren skal ikke gaette sig frem i tre forsoeg", () => {
-  const blockers = applyBlockers({ apply: true, confirm: null, ownerAck: false, modelId: "v4" });
-  assert.equal(blockers.length, 3);
+test("soendag er blokeret - den dag ejer den ordinaere koersel", () => {
+  const blockers = applyBlockers({ ...OK, weekday: "sun" });
+  assert.equal(blockers.length, 1);
+  assert.ok(blockers[0].includes("soendag"));
+  // Alle andre ugedage er fri.
+  for (const d of ["mon", "tue", "wed", "thu", "fri", "sat"]) {
+    assert.deepEqual(applyBlockers({ ...OK, weekday: d }), [], `${d} maa ikke vaere blokeret`);
+  }
+});
+
+test("mangler ALT, naevnes alt - ejeren skal ikke gaette sig frem i fem forsoeg", () => {
+  const blockers = applyBlockers({
+    apply: true, confirm: null, ownerAck: false, modelId: "v4", wageModelId: "v5", weekday: "sun",
+  });
+  assert.equal(blockers.length, 5);
   assert.ok(blockers.some((b) => b.includes(APPLY_CONFIRM_PHRASE)));
   assert.ok(blockers.some((b) => b.includes(OWNER_ACK_ENV)));
   assert.ok(blockers.some((b) => b.includes("rider_valuation_model")));
+  assert.ok(blockers.some((b) => b.includes("rider_production_value_model")));
+  assert.ok(blockers.some((b) => b.includes("soendag")));
 });
 
 test("rollback har sin EGEN saetning - de to kan ikke forveksles", () => {

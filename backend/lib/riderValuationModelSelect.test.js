@@ -13,9 +13,11 @@ import {
   RIDER_PRODUCTION_VALUE_MODEL_KEY,
   RIDER_VALUATION_MODEL_KEY,
   loadProductionValueModel,
+  loadProductionValueModelStrict,
   loadValuationModel,
   loadValuationModelById,
   loadValuationModelCached,
+  loadValuationModelStrict,
   resetValuationModelCache,
   resolveValuationModelId,
 } from "./riderValuationModelSelect.js";
@@ -168,4 +170,46 @@ test("cachen kan ikke tænde v5 på en fejl", async () => {
   const throwing = { from: () => { throw new Error("DB nede"); } };
   assert.equal((await loadValuationModelCached(throwing)).model_id, undefined);
   resetValuationModelCache();
+});
+
+// ── Striks læsning: en kørsel der skriver HELE populationen ─────────────────
+// Den lempelige fail-safe (fejl ⇒ v4) beskytter mod at v5 tænder sig selv. Den
+// beskytter IKKE mod det modsatte: at et sekunds DB-hikke revaluerer hele
+// markedet tilbage til v4 efter at v5 er gået live. For de to kørsler der
+// skriver alle ryttere er "stop og prøv igen" det rigtige svar.
+
+function stubError(message) {
+  return {
+    from: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message } }) }) }),
+    }),
+  };
+}
+
+test("striks læsning STOPPER kørslen ved en ægte DB-fejl", async () => {
+  await assert.rejects(
+    () => loadValuationModelStrict(stubError("statement timeout")),
+    /app_config\.rider_valuation_model/,
+    "en søndagskørsel må ikke revaluere hele populationen på en gættet model"
+  );
+  await assert.rejects(
+    () => loadProductionValueModelStrict(stubError("statement timeout")),
+    /app_config\.rider_production_value_model/
+  );
+  await assert.rejects(() => loadValuationModelStrict(null), /ingen supabase-klient/);
+});
+
+test("striks læsning behandler en MANGLENDE række som v4, ikke som en fejl", async () => {
+  // Før migrationen er kørt findes nøglen ikke. Det er ikke en fejl — det er
+  // præcis den tilstand defaulten findes for.
+  const { supabase } = stubConfig({});
+  assert.equal((await loadValuationModelStrict(supabase)).model_id, undefined);
+  assert.equal((await loadProductionValueModelStrict(supabase)).model_id, undefined);
+});
+
+test("striks læsning giver v4 på en ukendt værdi, og v5 på et eksplicit 'v5'", async () => {
+  const skrald = stubConfig({ [RIDER_VALUATION_MODEL_KEY]: "v9" });
+  assert.equal((await loadValuationModelStrict(skrald.supabase)).model_id, undefined);
+  const flippet = stubConfig({ [RIDER_VALUATION_MODEL_KEY]: "v5" });
+  assert.equal((await loadValuationModelStrict(flippet.supabase)).model_id, "v5");
 });

@@ -134,6 +134,51 @@ export async function readProductionValueModelId(supabase) {
   return resolveValuationModelId(await readFlagStage(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY));
 }
 
+// ── STRIKS læsning til de kørsler der skriver HELE populationen ─────────────
+//
+// `readFlagStage` gør enhver læsefejl til null, og null giver v4. Det er den
+// rigtige fail-safe for en enkelt rytter og for en læse-flade: hellere den
+// model der allerede er live end et gæt.
+//
+// For en kørsel der skriver HVER ENESTE rytter er regnestykket et andet. Står
+// nøglen på v5, og svarer app_config ikke i netop det sekund, ville den
+// lempelige læsning revaluere hele markedet TILBAGE til v4 — tavst, og uden at
+// nogen har flippet noget. Det er den samme klasse skade som en utilsigtet
+// tænding, bare i den anden retning.
+//
+// Derfor: for søndagskørslen og sæson-transitionen er "kunne ikke læse nøglen"
+// en grund til IKKE at køre. Søndags-pipelinen frigiver selv dagens claim og
+// prøver igen næste time (sundayValueSweep.js), så prisen for at stoppe er en
+// times forsinkelse — mod en fejlagtig revaluering af hele populationen.
+//
+// En manglende række eller en ukendt værdi er IKKE en fejl: den giver v4 som
+// altid. Det er kun en ægte DB-/netværksfejl der stopper kørslen.
+async function readModelIdStrict(supabase, key) {
+  if (!supabase?.from) {
+    throw new Error(`valuation-model: ingen supabase-klient til opslag af '${key}'`);
+  }
+  const { data, error } = await supabase
+    .from("app_config").select("value").eq("key", key).maybeSingle();
+  if (error) {
+    throw new Error(
+      `valuation-model: kunne ikke laese app_config.${key} (${error.message}). `
+      + "Koerslen stoppes: at skrive hele populationen med en gaettet model er "
+      + "farligere end at vente til naeste forsoeg."
+    );
+  }
+  return resolveValuationModelId(data?.value ?? null);
+}
+
+/** Prisens model til en kørsel der skriver hele populationen. Kaster ved læsefejl. */
+export async function loadValuationModelStrict(supabase) {
+  return loadValuationModelById(await readModelIdStrict(supabase, RIDER_VALUATION_MODEL_KEY));
+}
+
+/** Løngrundlagets model til samme kørsler. Kaster ved læsefejl. */
+export async function loadProductionValueModelStrict(supabase) {
+  return loadValuationModelById(await readModelIdStrict(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY));
+}
+
 // ── Request-stien: kort TTL + af-duplikering af samtidige opslag ─────────────
 // Værdien vi cacher er MODEL-ID'et (en streng), ikke model-objektet: selve
 // JSON'en ligger allerede i `cache` ovenfor og læses kun én gang pr. proces.

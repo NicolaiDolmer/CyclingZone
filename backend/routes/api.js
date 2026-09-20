@@ -687,7 +687,12 @@ try {
 async function getValuationModel() {
   try {
     return await loadValuationModelCached(supabase);
-  } catch {
+  } catch (err) {
+    // readFlagStage sluger selv app_config-fejl (de giver v4), så det der
+    // lander her er en ÆGTE indlæsningsfejl: model-filen mangler, er ugyldig
+    // JSON, eller dæmpnings-behandlingen kastede. Det degraderer fire
+    // spiller-/admin-flader på én gang og må ikke være tavst.
+    captureException(err);
     return null;
   }
 }
@@ -10988,7 +10993,12 @@ router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) =
         convexity_exponent: VALUATION_MODEL?.convexity_exponent ?? null,
       },
       v4_model: {
-        version: 4,
+        // #5443: modellen kommer nu fra app_config-valget, så versionen skal
+        // læses af den — ikke stå hardkodet. Ejeren bruger netop denne flade
+        // til at se HVILKEN model der er i spil, og et fast "4" ville lyve om
+        // det i samme objekt som resten af felterne fortæller sandheden.
+        version: Number(valuationModel.version) || 4,
+        model_id: valuationModel.model_id ?? null,
         fitted_at: valuationModel.fitted_at ?? null,
         method: valuationModel.method ?? null,
         sim_run_id: valuationModel.sim_run_id ?? null,

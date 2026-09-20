@@ -38,7 +38,7 @@ import { notifyTeamOwner } from "./notificationService.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isAcademyEnabled } from "./academyFlag.js";
 import { detectGraduates } from "./academyGraduation.js";
-import { loadValuationModel, loadProductionValueModel } from "./riderValuationModelSelect.js";
+import { loadValuationModelStrict, loadProductionValueModelStrict } from "./riderValuationModelSelect.js";
 
 // Sæson 1 = launch-året (2026). Alder er SÆSON-drevet (ikke real-world-tid), så
 // ryttere ældes troværdigt over sæsoner. ageForSeason(birthdate, N) = år N − fødselsår.
@@ -140,11 +140,20 @@ export async function developRidersForSeason({
   if (!seasonId) throw new Error("seasonId required");
 
   // #5443: samme model-valg som søndagskørslen (app_config, default v4).
-  const model = modelArg || await loadValuationModel(supabase);
+  // STRIKS af samme grund: sæson-transitionen skriver hele populationen, så en
+  // ulæselig nøgle skal stoppe kørslen, ikke gætte en model.
+  const model = modelArg || await loadValuationModelStrict(supabase);
   // #5443 ejer-beslutning 2: løngrundlaget har sin egen nøgle. Læses ÉN gang
   // pr. transition, præcis som prisens model — hele populationen skal regnes
   // med det samme par.
-  const productionModel = productionModelArg || await loadProductionValueModel(supabase);
+  //
+  // Har kalderen PINNET prismodellen (tests, harnesses, cutover-værktøjet),
+  // følger løngrundlaget den model — præcis som før de to nøgler fandtes. Et
+  // halvt app_config-opslag i en pinned kørsel ville gøre resultatet
+  // afhængigt af prod-tilstand, hvilket er det modsatte af at pinne.
+  const productionModel = productionModelArg
+    || modelArg
+    || await loadProductionValueModelStrict(supabase);
 
   // ── Idempotens: hvilke ryttere er allerede udviklet for denne sæson? ──────────
   const alreadyRows = await fetchAllRows(() =>
