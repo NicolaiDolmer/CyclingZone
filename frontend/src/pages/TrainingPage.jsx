@@ -47,7 +47,7 @@ import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Button, Select, Checkbox,
   PageLoader, EmptyState, SkeletonLines, ChevronDownIcon, TeamIcon,
-  ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon,
+  ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon, InfoIcon,
   Tabs, TabList, Tab, TabPanel, CollapsibleSection,
 } from "../components/ui";
 import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
@@ -1570,6 +1570,10 @@ export default function TrainingPage() {
             columns={columns}
             selectedRiderId={mobileRiderId}
             onSelectRider={(riderId) => setMobileRiderId((prev) => (prev === riderId ? null : riderId))}
+            // #4851: samme kilde som desktop-kolonnen. `null` naar
+            // training_score_visible er off ⇒ hverken kolonnen eller blokken i
+            // kortet findes paa telefonen, praecis som paa desktop.
+            scoreFor={scoreVisible ? (riderId) => trainingScore?.[riderId] ?? null : null}
             conditionFor={(riderId) => condition[riderId] ?? null}
             ageFor={(riderId) => ageForSeason(riderById.get(riderId)?.birthdate, seasonYear)}
             isRacing={racingFor}
@@ -2102,9 +2106,26 @@ export default function TrainingPage() {
                           spilleren traeffer dagens valg paa, saa det skal kunne
                           ses i portraet (D-047's princip; rosteret er ikke en
                           <DataTable>, saa chip-mekanikken gaelder ikke her). */}
+                      {/* "Score" siger ikke af sig selv HVAD der maales. Samme
+                          forklarings-moenster som resten af siden: en `title`-
+                          tooltip paa headeren (#1592's kolonne-moenster) plus et
+                          stille link til Hjaelpens Daglig traening-afsnit, hvor
+                          "The training score" staar i fuld prosa (help.json,
+                          en+da). Kort tekst paa fladen, prosa i Hjaelp (#4025). */}
                       {scoreVisible && (
                         <SortTh sortKey="score" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                          className={thClass({ numeric: true, compact: true })}>
+                          title={t("score.columnHint")}
+                          className={thClass({ numeric: true, compact: true })}
+                          help={(
+                            <Link
+                              to="/help?section=dailytraining"
+                              aria-label={t("score.columnHelpAria")}
+                              title={t("score.columnHelpAria")}
+                              className="inline-flex items-center text-cz-3 hover:text-cz-accent"
+                            >
+                              <InfoIcon size={12} aria-hidden="true" />
+                            </Link>
+                          )}>
                           {t("score.column")}
                         </SortTh>
                       )}

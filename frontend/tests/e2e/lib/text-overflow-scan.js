@@ -19,6 +19,10 @@
 //                      Tilsigtet afkortning (ellipsis eller line-clamp MED
 //                      `title`/`aria-label`, eller `data-allow-clip`) er ikke et
 //                      fund: dér kan spilleren stadig faa hele teksten.
+//   spilling-text      Samme maaling, men hvor kassen IKKE klipper: teksten
+//                      males uden for sin egen boks, hen over naboen.
+//                      Tilfoejet 20/9 efter #4851, som slap forbi alle tre
+//                      oevrige regler — se kommentaren ved selve reglen.
 //   outside-container  Tekstens synlige kasse stikker ud over den naermeste
 //                      kort-/knap-/badge-beholder (den naermeste forfader med
 //                      egen ramme eller baggrund), og beholderen klipper ikke.
@@ -45,6 +49,7 @@
 
 export const RULES = {
   CLIPPED: "clipped",
+  SPILLING: "spilling-text",
   OUTSIDE_CONTAINER: "outside-container",
   UNREADABLE: "unreadable",
   RAW_KEY: "raw-i18n-key",
@@ -359,6 +364,46 @@ export function scanDocumentForTextDefects({ contrastMin, rules, root, excludeRo
         clippedX
           ? `teksten er ${px} px bredere end sin kasse og overflow er skjult uden title/aria-label`
           : `teksten er ${px} px hoejere end sin kasse og overflow er skjult uden title/aria-label`,
+        px,
+      );
+    }
+
+    // (a2) teksten er bredere end sin egen kasse, og kassen klipper IKKE.
+    //
+    // #4851 (20/9) er hvorfor reglen findes. Mobil-traeningstabellens
+    // meta-linje "PUNCHEUR/BAROUDEUR" har hverken mellemrum eller bindestreg
+    // at bryde paa, saa den blev MALET 93 px uden for sin celle, hen over
+    // nabokolonnen. Ingen af de tre andre regler saa den:
+    //
+    //   clipped            kraever skjult overflow — her var det `visible`
+    //   outside-container  sammenligner RECTS, og et blocks rect vokser ikke
+    //                      af tekst der flyder over; kun malingen gjorde
+    //   unreadable         teksten var baade synlig og laesbar, bare det
+    //                      forkerte sted
+    //
+    // `scrollWidth` er det eneste led der maaler det, fordi det taeller
+    // indholdets udstraekning ogsaa naar overflow er synligt.
+    //
+    // Kun den VANDRETTE akse: en boks der vokser i hoejden af mere tekst er
+    // normal ombrydning, ikke et overloeb. `clientWidth > 0` sorterer inline-
+    // bokse fra (de rapporterer 0 paa begge maal, saa maalingen ville vaere
+    // tom), og en vandret scroller over elementet er den samme T2-undtagelse
+    // som resten af filen bruger: dér maa indholdet vaere bredere.
+    const boxClipsX = ["hidden", "clip", "auto", "scroll"].includes(style.overflowX);
+    if (
+      !boxClipsX &&
+      el.clientWidth > 0 &&
+      el.scrollWidth > el.clientWidth + 1 &&
+      !hasScrollableAncestor(el, rootNode, "x")
+    ) {
+      const px = el.scrollWidth - el.clientWidth;
+      add(
+        rules.SPILLING,
+        el,
+        text,
+        `teksten er ${px} px bredere end sin egen kasse og males uden for den ` +
+          `(scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}) — ` +
+          `den mangler en bryde-mulighed: brug break-words/hyphens eller giv kassen plads`,
         px,
       );
     }

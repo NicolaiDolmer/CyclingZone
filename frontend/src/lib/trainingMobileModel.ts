@@ -176,6 +176,57 @@ export function pacePerWeek({
   return Math.round(perWeek * 10) / 10;
 }
 
+// ── Traeningsscoren paa telefonen (#4851) ───────────────────────────────────
+
+// Rytterens score-udsnit, som `/api/training/me` leverer det
+// (backend/lib/trainingScore.js, buildTrainingScoreView). Feltet UDELADES helt
+// naar `training_score_visible` er off — derfor er hele viewet nullable, ikke
+// bare tallet.
+export type MobileScoreView = {
+  today?: number | null;
+  todayIsRaceDay?: boolean;
+  spark?: ReadonlyArray<{ date: string; score: number | null; raceDay?: boolean }> | null;
+};
+
+// De TRE tilstande fladen skal kunne vise — praecis de samme som desktop-
+// kolonnen (TrainingPage.jsx):
+//   "score"   dagens tal (tabular figures)
+//   "race"    loebsdag uden tal ⇒ "Race"/"Loeb"
+//   "none"    ingen maaling ⇒ streg
+export type MobileScoreCell =
+  | { state: "score"; value: number }
+  | { state: "race" }
+  | { state: "none" };
+
+// Raekkefoelgen er bindende: en loebsdag MED et tal er stadig en maalt dag, saa
+// tallet vinder. Kun en loebsdag UDEN tal skriver "loeb" — ellers ville en
+// loebsdag hvor motoren faktisk maalte passet forsvinde bag et ord.
+export function mobileScoreCell(view: MobileScoreView | null | undefined): MobileScoreCell {
+  const raw = view?.today;
+  // `Number(null)` er 0 og finite: uden det eksplicitte null-tjek ville "ingen
+  // maaling" blive til et maalt 0 — samme fald som countsForRole ovenfor.
+  if (raw != null && Number.isFinite(Number(raw))) return { state: "score", value: Number(raw) };
+  if (view?.todayIsRaceDay) return { state: "race" };
+  return { state: "none" };
+}
+
+// Kan score-kolonnen vaere i tabellen uden at fortraenge noget?
+//
+// Formen er laast (ejer 18/9): navnekolonne + datakolonner, INGEN sidelaens
+// scroll paa 375 px. Navnecellen er 124 px, og resten deles ligeligt af
+// `table-fixed`. Budgettet er derfor "navn + hoejst 3 datakolonner": under det
+// bliver en celle smallere end de korteste session-labels ("Norm.", "Hvile")
+// og begynder at truncate. Med loebsdags-flaget OFF er der PRAECIS een
+// loebsdags-kolonne, saa scoren staar i tabellen i dag. Taendes flaget og der
+// kommer 3-5 loebsdage, falder scoren ud af TABELLEN — men ikke af fladen:
+// den staar fortsat med tal + kurve i rytterens kort eet tryk vaek, samme
+// kontrakt som alder/form/traethed (ejer 18/9: "intet tal forsvinder helt").
+export const MOBILE_DATA_COLUMN_BUDGET = 3;
+
+export function canShowScoreColumn(columns: readonly RaceDayColumn[] | null | undefined): boolean {
+  return (columns?.length ?? 0) + 1 <= MOBILE_DATA_COLUMN_BUDGET;
+}
+
 // ── Program-gitteret: 7 ugedage x N loebsdage ───────────────────────────────
 
 // Een celle i programgitteret. `intensity` er holdets (eller rytterens) rytme

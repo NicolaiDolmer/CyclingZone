@@ -21,10 +21,13 @@ import { useId, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { DISPLAY_RECIPES } from "../../../lib/generated/displayRecipes.js";
 import {
+  canShowScoreColumn,
   countsForRole,
+  mobileScoreCell,
   pacePerWeek,
   programGrid,
   riderShortName,
+  type MobileScoreView,
   type RaceDayColumn,
 } from "../../../lib/trainingMobileModel.ts";
 import TrainingRaceDayStrip from "./TrainingRaceDayStrip.tsx";
@@ -64,6 +67,7 @@ export default function TrainingMobileToday({
   yesterdaySlot,
   assistantSlot,
   sortSlot,
+  scoreFor = null,
 }: {
   riders: MobileRider[];
   columns: RaceDayColumn[];
@@ -92,6 +96,10 @@ export default function TrainingMobileToday({
   yesterdaySlot?: React.ReactNode;
   assistantSlot?: React.ReactNode;
   sortSlot?: React.ReactNode;
+  // #4851: rytterens score-udsnit fra /api/training/me. `null` = flaget
+  // `training_score_visible` er off, og saa findes hverken kolonnen eller
+  // blokken i kortet — praecis som paa desktop.
+  scoreFor?: ((riderId: string) => MobileScoreView | null) | null;
 }) {
   const { t } = useTranslation("training");
   const tTypes = useTranslation("riderTypes").t;
@@ -154,6 +162,16 @@ export default function TrainingMobileToday({
     riders.find((rider) => rider.id === selectedRiderId) ?? riders[0] ?? null;
   const selectedId = selected?.id ?? null;
 
+  // #4851: kolonnen findes kun naar BEGGE gaelder — flaget er on (scoreFor er
+  // sat) OG loebsdags-kolonnerne ikke allerede bruger tabellens budget. Falder
+  // den ud af tabellen, staar scoren fortsat i kortet eet tryk vaek, saa tallet
+  // aldrig forsvinder helt fra telefonen (ejer 18/9).
+  const scoreColumn =
+    scoreFor && canShowScoreColumn(columns)
+      ? (riderId: string) => mobileScoreCell(scoreFor(riderId))
+      : null;
+  const selectedScore = selected && scoreFor ? scoreFor(selected.id) : null;
+
   return (
     <div className="space-y-3" data-testid="training-mobile-today">
       <TrainingRaceDayStrip columns={columns} splitFor={splitFor} />
@@ -171,6 +189,7 @@ export default function TrainingMobileToday({
         selectedId={selectedId}
         onSelect={onSelectRider}
         detailId={detailId}
+        scoreFor={scoreColumn}
       />
 
       {selected && (
@@ -200,6 +219,11 @@ export default function TrainingMobileToday({
           seasonPoints={seasonPointsFor(selected.id)}
           onChangeDay={() => onOpenDay(selected.id)}
           changeDisabled={dayBusyFor(selected.id)}
+          score={scoreFor ? mobileScoreCell(selectedScore) : null}
+          scoreSpark={selectedScore?.spark ? [...selectedScore.spark] : null}
+          scoreAria={t("score.sparkAria", {
+            name: `${selected.firstname ?? ""} ${selected.lastname ?? ""}`.trim(),
+          })}
         />
       )}
 
