@@ -1,17 +1,18 @@
 #!/usr/bin/env node
-// #5267 — PROEVEPAKNING af loebsdags-maalet, maade A og maade B, side om side.
+// #5267 — PROEVEPAKNING af loebsdags-maalet.
 //
-// Engangs-vaerktoejet bag docs/audits/2026-09-19-5267-proevepakning.md (maade A) og
-// docs/audits/2026-09-19-5267-proevepakning-jaevn.md (maade B). Maade A's udgave blev
-// aldrig committet; den er genskabt her, saa BEGGE rapporter kan efterproeves.
+// Vaerktoejet bag docs/audits/2026-09-19-5267-proevepakning-jaevn.md. Ejeren valgte 20/9
+// "maade B" (traeningsdagene fordelt jaevnt, 5 loebsdage pr. kalenderdato), og den er nu
+// pakkerens ENESTE vej — saa scriptet har ikke laengere et tilstands-valg. Den afviste
+// maade A's tal staar i docs/audits/2026-09-19-5267-proevepakning.md og kan ikke genskabes
+// med denne udgave af koden; det er bevidst (ingen to varianter bag en skjult kontakt).
 //
 // 100 % READ-ONLY og offline: den koerer den rene buildTierMaterializationPlan mod den
 // committede prod-katalog-fixture. Ingen database, intet --apply, ingen skrivning til
 // prod. Den eneste ting den skriver er JSON-filerne under docs/audits/.
 //
 //   node backend/scripts/dev/proevepakning5267.mjs                     # kun tabellen
-//   node backend/scripts/dev/proevepakning5267.mjs --placement=even
-//   node backend/scripts/dev/proevepakning5267.mjs --placement=even --write=docs/audits/2026-09-19-5267-proevepakning-jaevn
+//   node backend/scripts/dev/proevepakning5267.mjs --write=docs/audits/2026-09-19-5267-proevepakning-jaevn
 //
 // LOEBSNAVNE SKRIVES ALDRIG. Repoet er offentligt (hard rule 17), saa loebene hedder
 // A, B, C ... i den raekkefoelge de optraeder paa loebsdags-aksen — praecis som i
@@ -48,7 +49,6 @@ const arg = (navn, fald = null) => {
   const t = argv.find((a) => a.startsWith(`--${navn}=`));
   return t ? t.split("=").slice(1).join("=") : fald;
 };
-const placement = arg("placement", "holes") === "even" ? "even" : "holes";
 const target = Number(arg("target", SEASON_RACE_DAY_TARGET[SEASON] ?? 140));
 const writeDir = arg("write", null);
 
@@ -56,10 +56,9 @@ const { pools, catalog } = JSON.parse(readFileSync(FIXTURE, "utf8"));
 const from = resolveCalendarFrom({ firstRaceDate: FIRST_RACE_DAY, now: NOW });
 const quotas = Object.fromEntries(Object.entries(TIER_DENSITY).map(([t, d]) => [t, d * REAL_DAYS]));
 
-function byg(trainingDayPlacement, raceDayTarget) {
+function byg(raceDayTarget) {
   return buildTierMaterializationPlan({
-    pools, catalog, from, realDays: REAL_DAYS, quotas, baseSeed: 1,
-    raceDayTarget, trainingDayPlacement,
+    pools, catalog, from, realDays: REAL_DAYS, quotas, baseSeed: 1, raceDayTarget,
   }).tierPlans;
 }
 
@@ -215,11 +214,11 @@ function maal(plan, rapportTier, raekker) {
 const dagIndeksAf = (iso) => Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${FIRST_RACE_DAY}T00:00:00Z`)) / 86_400_000);
 
 // ── Koerslen ────────────────────────────────────────────────────────────────────────
-const planer = byg(placement, target);
+const planer = byg(target);
 const rapport = score(planer);
 
 const ud = [];
-ud.push(`#5267 proevepakning — tilstand "${placement}", maal ${target} loebsdage, S4 (${REAL_DAYS} datoer fra ${FIRST_RACE_DAY})`);
+ud.push(`#5267 proevepakning — maal ${target} loebsdage, S4 (${REAL_DAYS} datoer fra ${FIRST_RACE_DAY})`);
 ud.push("READ-ONLY dry-run mod den committede prod-katalog-fixture. Intet er skrevet til prod.");
 ud.push("");
 ud.push("Div | loebsdage | m. loeb | traening | heraf i spaend | loebsdage/dato | etaper/dato | overlap | gulv | stime");
@@ -274,7 +273,6 @@ if (writeDir) {
     const fil = join(maalMappe, `d${plan.tier}.json`);
     writeFileSync(fil, `${JSON.stringify({
       _om: "S4-proevepakning, #5267. READ-ONLY dry-run. Loebsnavne er anonymiseret til bogstaver (repoet er offentligt).",
-      _tilstand: placement,
       noegletal: {
         saeson: SEASON, foersteLoebsdato: FIRST_RACE_DAY, kalenderdatoer: REAL_DAYS,
         maal: target, naturligeLoebsdage: plan.naturalRaceDays ?? null,

@@ -445,7 +445,7 @@ if (isMain) {
     if (raceDayTargetArg != null) {
       const raa = String(raceDayTargetArg).trim();
       if (raa.toLowerCase() === "off") raceDayTargetExplicit = 0;
-      else if (/^\d+$/.test(raa)) raceDayTargetExplicit = Number(raa);
+      else if (/^\d+$/.test(raa) && Number.isSafeInteger(Number(raa))) raceDayTargetExplicit = Number(raa);
       else throw new Error(`--race-day-target: "${raceDayTargetArg}" er hverken et ikke-negativt heltal eller "off". Kalenderen er IKKE bygget.`);
     }
     const raceDayTarget = raceDayTargetExplicit != null
@@ -471,7 +471,11 @@ if (isMain) {
     // Ulighed er et HAARDT krav uden override naar maalet er sat (som §1b's kvote): en
     // skae­v akse betyder forskellig udviklingstakt pr. division (#4846), og den kan ikke
     // rettes bagefter — kalenderen genereres kun EEN gang pr. saeson (§2c).
-    const applyBlockingRaceDays = [];
+    //
+    // SELVE GATEN er scorecardets (`scorecardGateGroups(...).applyBlocking`), ikke denne
+    // blok. Her MAALES og PRINTES den kun, saa dry-runnet kan laeses. Foer 20/9 pushede
+    // begge kilder de samme brud ind i `applyBlocking`, saa hvert brud stod to gange.
+    // Fanget af CodeRabbit 19/9.
     const axisByTier = Object.fromEntries(
       (plan.planTiers ?? []).map((t) => [t.tier, t.raceDayAxisLength ?? t.timelineLength ?? 0]),
     );
@@ -506,7 +510,6 @@ if (isMain) {
     if (raceDayEquality.length && raceDayTarget != null) {
       console.error(`  ❌ §1d (#4845):`);
       for (const v of raceDayEquality) console.error(`     · ${v}`);
-      applyBlockingRaceDays.push(...raceDayEquality);
     } else if (raceDayEquality.length) {
       // Maalet er ikke sat for denne saeson: uligheden RAPPORTERES (den er hele grunden
       // til #4845), men den doemmes ikke — praecis som scorecardets "--" for §1d. Et roedt
@@ -546,7 +549,7 @@ if (isMain) {
     // #3329 mindste-overlap) er HAARDE krav uden override — men de stopper kun --apply.
     // Dry-runnet skal kunne koeres til ende, fordi det er det ENESTE sted man kan maale hvor
     // langt der er igen: nogle af dem lukkes af kataloget, ikke af en regel (§5b).
-    const applyBlocking = [...(scorecardGates.applyBlocking ?? []), ...applyBlockingRaceDays];
+    const applyBlocking = [...(scorecardGates.applyBlocking ?? [])];
     if (applyBlocking.length) {
       console.error(`\n❌ PLACERINGS-GATES (${applyBlocking.length}) — hårde krav, ingen override:`);
       for (const b of applyBlocking) console.error(`   · ${b}`);

@@ -23,15 +23,17 @@
 // selv roeres ikke: samme antal, samme typefordeling, samme overlap-struktur. Ejeren
 // bekraeftede det ordret 15/9: "jeg vil ikke have at dette laver om i loebskalenderen".
 //
-// HVOR EN TOM LOEBSDAG MAA LIGGE (den bindende begraensning). Ejer-reglen 25/8 siger at et
-// loebs loebsdage ligger I TRAEK ("Loebsdag 4-5-6-7"), og kun Grand Tours har hviledage
-// (GRAND_TOUR_REST_DAYS). En tom loebsdag maa derfor ALDRIG lande inde i et loebs spaend -
-// saa ville en 4-etapers etapeloeb faa en hviledag den ikke har i virkeligheden. Den maa
-// kun ligge dér hvor INTET loeb er i gang. MAALT paa S4-planen 11/9 (probe af pakkerens
-// output): der er kun 4-10 saadanne punkter pr. division i den pakning pakkeren finder i
-// dag, saa reglen kan IKKE gennemfoeres som en efterbehandling af et faerdigt output -
-// den skal vaere en BINDING i selve soegningen (raceCalendarLanePacker.js's
-// `emptyGameDayBudget`), saa soegningen vaelger en pakning der HAR plads til dem.
+// HVOR EN TOM LOEBSDAG LIGGER (ejer-valg 20/9, "maade B"). De tomme loebsdage fordeles
+// JAEVNT: hver kalenderdato fyldes op til maalet/antal datoer (140/28 = 5). Ejer-reglen
+// 25/8 om loebsdage i traek gaelder uae­ndret, men laeses paa de loebsdage der BAERER et
+// loeb: en tom loebsdag bryder ikke raekken, og ligger den inde i et etapeloebs spaend, er
+// den en dag hvor de bundne ryttere HVILER mens alle andre traener (CALENDAR_RULES §1d).
+//
+// DEN AFVISTE VEJ ("maade A"): kun dér hvor INTET loeb er i gang. MAALT paa S4-planen
+// (11/9 + 19/9): der er kun 4-10 saadanne positioner pr. division, saa traeningsdagene
+// klumpede (15-33 paa EEN kalenderdato; D3 havde 23 kalenderdatoer i traek uden en eneste).
+// Ejeren valgte B 20/9. Begge maalinger staar i
+// docs/audits/2026-09-19-5267-proevepakning{,-jaevn}.md.
 //
 // HVAD DENNE FIL ER: maalet som DATA + de rene funktioner der maaler og doemmer. Selve
 // placeringen af de tomme loebsdage ligger i pakkeren; materializeren beder om budgettet.
@@ -53,20 +55,14 @@
  * antal, for en division kan ikke presses sammen paa loebsdags-aksen uden at bryde andre
  * laaste regler). 140 er loftet: hver af de 28 loebsdatoer baerer D1's 5 slots.
  *
- * MAALT VAEG (dry-run 15/9, S4, samme katalog som PR #5169's groenne 80-koersel):
- * D2/D3/D4 naar 140 uden problemer, men D1 naar det IKKE - den falder tilbage til sine
- * naturlige 80. Aarsagen er MAX_GT_STAGES_PER_DAY = 4 (#4103) i raceCalendarLanePacker.js:
- * en kalenderdato der ligger HELT inde i et Grand Tours spaend kan kun baere 4 loebsdage,
- * fordi hver loebsdag i spaendet baerer praecis een GT-etape og datoen hoejst maa have 4
- * GT-etaper. D1 har tre GT'er a 21 etaper, som hver fylder praecis 6 kalenderdatoer
- * (ceil(21/4) = 6 = MAX_GT_SPAN_DAYS), altsaa 18 af saesonens 28 datoer. Maalt bekraeftelse:
- * 28 x 4 = 112 loebsdage loeser i ALLE fire divisioner; 140 loeser ikke for D1 - hverken
- * med 20x skridtbudget (40 mio.) eller med et tomme-loebsdags-budget paa 10 pr. kalenderdag.
- * Budgettet og skridtloftet er altsaa IKKE bindingen; MAX_GT_STAGES_PER_DAY er.
- *
- * Det tal staar her uae­ndret som ejerens beslutning. Skal D1 naa 140, er valget ejerens:
- * enten haeves MAX_GT_STAGES_PER_DAY til 5 (en laast GT-regel, #4103), eller maalet
- * saenkes til 112. Se CALENDAR_RULES.md §1d.
+ * DEN MAALTE VAEG FRA 15/9 ER VAEK (#5267, 19/9). Den gang naaede D1 ikke 140, og
+ * MAX_GT_STAGES_PER_DAY = 4 (#4103) fik skylden. Det var en FOELGE, ikke aarsagen: maalet
+ * var en binding INDE i soegningen (R12), saa de tomme loebsdage skulle presses ind i
+ * kalenderdatoernes egen etape-kvote. Da maalet blev en efterbehandling, naaede alle fire
+ * divisioner 140 med GT-loftet uroert paa 4 - og overlap-gulvene holdt. Tre ting der
+ * derfor IKKE laengere er sande: MAX_GT_STAGES_PER_DAY er ikke vaegen ·
+ * TIER_MULTI_RACE_DAY_MIN_SHARE skal ikke saenkes · 112 er ikke noedvendigt som kompromis.
+ * Se CALENDAR_RULES.md §1d.
  *
  * Saetter du en ny saeson ind her, skal tallet efterregnes mod et dry-run af netop den
  * saesons D1-pakning (CALENDAR_RULES.md §1d) - ikke arves fra S4.
@@ -126,7 +122,10 @@ export function resolveCommonRaceDayTarget({ axisByTier = {}, season = null, ove
     .filter(([, n]) => Number.isFinite(n) && n > 0);
 
   const seasonTarget = season == null ? null : (SEASON_RACE_DAY_TARGET[Number(season)] ?? null);
-  const eksplicit = Number.isFinite(Number(override)) && Number(override) > 0 ? Number(override) : null;
+  // Kun et POSITIVT HELTAL. En brok kan pr. konstruktion ikke rammes af en akse der taelles
+  // i hele loebsdage, og Infinity/NaN ville slippe igennem et bart `> 0` og tavst faa
+  // pakkeren til at bygge noget andet end det der blev bedt om. Fanget af CodeRabbit 15/9.
+  const eksplicit = Number.isSafeInteger(Number(override)) && Number(override) > 0 ? Number(override) : null;
 
   let target = null;
   let source = "ingen";
@@ -163,17 +162,21 @@ export function detectRaceDayEqualityViolations({ axisByTier = {}, target = null
   const kendte = tiers
     .map((t) => [Number(t), Number(axis[t] ?? axis[String(t)])])
     .filter(([, n]) => Number.isFinite(n) && n > 0);
-  if (kendte.length < 2) return [];
-
+  // Med FAERRE END TO maalte divisioner springes kun LIGHEDS-tjekket over — det kraever to
+  // tal at sammenligne. Afstanden til maalet doemmes stadig: en enkelt division der er
+  // materialiseret alene (fx en aktiveret pulje) skal ikke kunne slippe forbi
+  // --apply-gaten bare fordi naboerne ikke er bygget endnu. Fanget af CodeRabbit 15/9.
   const violations = [];
-  const vaerdier = kendte.map(([, n]) => n);
-  const lav = Math.min(...vaerdier);
-  const hoej = Math.max(...vaerdier);
-  if (lav !== hoej) {
-    violations.push(
-      `loebsdage pr. saeson er IKKE ens: ${kendte.map(([t, n]) => `D${t} ${n}`).join(" · ")} ` +
-      `(spredning ${hoej - lav} loebsdage) — §1d/#4845 kraever samme antal i alle divisioner`,
-    );
+  if (kendte.length >= 2) {
+    const vaerdier = kendte.map(([, n]) => n);
+    const lav = Math.min(...vaerdier);
+    const hoej = Math.max(...vaerdier);
+    if (lav !== hoej) {
+      violations.push(
+        `loebsdage pr. saeson er IKKE ens: ${kendte.map(([t, n]) => `D${t} ${n}`).join(" · ")} ` +
+        `(spredning ${hoej - lav} loebsdage) — §1d/#4845 kraever samme antal i alle divisioner`,
+      );
+    }
   }
   if (target != null) {
     for (const [tier, n] of kendte) {

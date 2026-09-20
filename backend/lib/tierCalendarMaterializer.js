@@ -34,6 +34,7 @@ import { captureException } from "./sentry.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 // #5272: remaining-horizon-målet for en pulje der aktiveres midt i sæsonen.
 import { resolveActivationRaceDayTarget } from "./calendarActivationRaceDays.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 
 export { TIER_CLASS_WHITELIST };
 
@@ -255,12 +256,6 @@ export function buildTierMaterializationPlan({
   // manglende loebsdage lae­gges som rene traeningsdage paa de positioner hvor intet loeb
   // er i gang. Maalet flytter derfor ikke laengere et eneste loeb.
   raceDayTarget = null,
-  // #5267: proevepakning af synkroniserede etapeloebs-blokke. Default FRA — se
-  // packLaneCalendar's docstring for den maalte grund (k skal gaa op i density).
-  syncStageBlocks = false,
-  // #5267 (ejer-kort 19/9): "holes" = maade A (default, uae­ndret) · "even" = maade B,
-  // hvor hver kalenderdato faar praecis maalet/datoer loebsdage. Se packLaneCalendar.
-  trainingDayPlacement = "holes",
   classWhitelist = TIER_CLASS_WHITELIST,
   // #3327/#3328 (2026-08-04): data-drevne dækningsmål — se tierCalendarGuarantees.js.
   // Sendes videre til selectTierRaceSet, som selv falder tilbage til FØR-#3327-adfærd
@@ -421,8 +416,6 @@ export function buildTierMaterializationPlan({
     // loebsdage kommer nu fra pakkeren selv (`naturalRaceDays`).
     const packed = packLaneCalendar({
       ...packArgs, raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : 0,
-      syncStageBlocks: Boolean(syncStageBlocks),
-      trainingDayPlacement,
     });
     const naturalRaceDays = packed.naturalRaceDays ?? packed.timelineLength ?? 0;
     const raceDayDeficit = raceDayTarget != null ? Math.max(0, Number(raceDayTarget) - naturalRaceDays) : 0;
@@ -493,15 +486,10 @@ export function buildTierMaterializationPlan({
       trainingGameDayCount: (packed.trainingGameDays ?? []).length,
       restDayGameDayCount: (packed.restDayGameDays ?? []).length,
       raceDayPaddingHeld: raceDayDeficit === 0 ? true : Boolean(packed.raceDayTargetHeld),
-      // #5267: synkroniserede etapeloebs-blokke + spredningen maalt paa BLOKKE.
-      syncStageBlocksHeld: Boolean(packed.syncStageBlocksHeld),
-      stageRaceBlocks: packed.stageRaceBlocks ?? 0,
-      syncedStageRaceBlocks: packed.syncedStageRaceBlocks ?? 0,
       freeAxisPositions: packed.freeAxisPositions ?? 0,
       longestDateStreakWithoutTraining: packed.longestDateStreakWithoutTraining ?? null,
-      // #5267 maade B: tilstanden, loebsdage pr. kalenderdato, og prisen (traeningsdage
-      // inde i et etapeloebs spaend). Rent rapporterings-data — dommen ligger i gates.
-      trainingDayPlacement: packed.trainingDayPlacement ?? "holes",
+      // #5267: loebsdage pr. kalenderdato, og prisen (traeningsdage inde i et etapeloebs
+      // spaend). Rent rapporterings-data — dommen ligger i gates.
       raceDaysPerDate: packed.raceDaysPerDate ?? [],
       trainingDaysInsideStageRaceSpans: packed.trainingDaysInsideStageRaceSpans ?? 0,
       raceDayPerDateDeviations: packed.raceDayPerDateDeviations ?? [],
@@ -543,13 +531,6 @@ export async function materializeTierCalendars({
   // adfaerd. buildSeasonCalendar sender saesonens maal (SEASON_RACE_DAY_TARGET) eller
   // --race-day-target; se calendarRaceDayTargets.js og docs/CALENDAR_RULES.md §1d.
   raceDayTarget = null,
-  // #5267: proevepakning af synkroniserede etapeloebs-blokke (R13). Default FRA — den er
-  // MAALT strukturelt umulig i D1/D3/D4 (docs/audits/2026-09-19-5267-proevepakning.md §3).
-  // Parameteren findes saa kontakten er naaelig fra produktionsstien og ikke kun fra tests.
-  syncStageBlocks = false,
-  // #5267 maade B: "holes" (default, uae­ndret) eller "even". Samme begrundelse som
-  // ovenfor — kontakten skal vaere naaelig fra produktionsstien, ikke kun fra tests.
-  trainingDayPlacement = "holes",
   // #3327/#3328 pass-through til buildTierMaterializationPlan + dækningsverifikationen.
   // Defaults = de skarpe produktions-garantier. Tests af FØR-#3327-mekanik (GT-gate,
   // overlap-cap, kronologi, dedup) med små syntetiske katalog-fixtures kan sende tomme
@@ -656,7 +637,6 @@ export async function materializeTierCalendars({
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
     oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
-    syncStageBlocks, trainingDayPlacement,
   });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
@@ -852,21 +832,20 @@ export async function materializeTierCalendars({
  *   calendarActivationRaceDays.js. Er der ingen anden kalender at måle mod (helt frisk
  *   sæson), sendes intet mål — adfærden er da bit-identisk med før #5272.
  *
- *   ⚠ VIRKNINGEN AFHÆNGER AF #4845/#5169. `raceDayTarget` forbruges først af
- *   `buildTierMaterializationPlan`/`packLaneCalendar` når PR #5169 er merget; indtil da
- *   destruktureres nøglen ikke af materializeren og har derfor ingen effekt på den
- *   skrevne kalender. Målet BEREGNES og RAPPORTERES (returværdiens `raceDayPlan`) fra nu,
- *   så beslutningen er truffet ét sted og #5169 kun skal landes. Se PR-body for #4123/#5272.
+ *   `raceDayTarget` forbruges af `buildTierMaterializationPlan`/`packLaneCalendar` (#5169),
+ *   så målet påvirker den skrevne kalender. Sæsonens eget mål (`SEASON_RACE_DAY_TARGET`)
+ *   bruges som `seasonRaceDayTarget` når kalderen ikke sender et — ellers ville en pulje
+ *   der vågner midt i en sæson med et mål få den naturlige (skæve) akse, altså præcis den
+ *   ulighed §1d lukker.
  */
 export async function reconcilePoolCalendarOnActivation({
   supabase, poolId, now = new Date(), materialize = materializeTierCalendars, log = () => {},
   // #3327/#3328 pass-through til materialize() — se materializeTierCalendars for defaults
   // + opt-out-konvention (tests af FØR-#3327-mekanik sender tomme objekter).
   coverageOverrides = {},
-  // #5272: sæsonens mål for antal LØBSDAGE pr. division, hvis det er kendt. null =
-  // udled det ved at MÅLE de divisioner der allerede har en kalender (se
-  // calendarActivationRaceDays.js). Det er her #4845/#5169's SEASON_RACE_DAY_TARGET
-  // hægtes på i én linje den dag PR #5169 lander.
+  // #5272: sæsonens mål for antal LØBSDAGE pr. division. null = brug sæsonens eget mål
+  // (#4845's SEASON_RACE_DAY_TARGET) hvis sæsonen har et, og ellers udled det ved at MÅLE
+  // de divisioner der allerede har en kalender (se calendarActivationRaceDays.js).
   seasonRaceDayTarget = null,
   // #2743: injectable til tests, mirrorer stageScheduler.js/raceEntryGeneratorSweep.js.
   captureExceptionFn,
@@ -942,7 +921,9 @@ export async function reconcilePoolCalendarOnActivation({
         scheduled_at: s.scheduled_at,
       })),
       from,
-      seasonTarget: seasonRaceDayTarget,
+      // #4845: sæsonens EGET mål vinder over en måling af naboerne. Måler vi i stedet, arver
+      // den nye pulje en skæv akse hvis en af de eksisterende blev bygget uden målet.
+      seasonTarget: seasonRaceDayTarget ?? (SEASON_RACE_DAY_TARGET[Number(season.number)] ?? null),
       excludeDivisionId: poolId,
     });
     if (raceDayPlan.raceDayTarget != null) {
