@@ -2,7 +2,7 @@
 
 > **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml`. **Intentionen** ejes af `docs/GAME_DESIGN_DOCUMENT.md` (D-001+); MASTERPLAN ejer kun rækkefølgen.
 
-**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9: "der skal ikke længere komme fejl ofte"** → 🔴 brand går foran alle baner. 637 åbne (17/9); rytme: [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md); udestående ejer-kort i NOW.
+**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9: "der skal ikke længere komme fejl ofte"** → 🔴 brand går foran alle baner. 655 åbne 20/9; rytme: [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md); udestående ejer-kort i NOW.
 
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
 
@@ -16,7 +16,7 @@
 3. 🟠 **Bølge 3, rytter-fundament:** ✅ #5278 fødsel uden PCM · ✅ #5283 · ✅ #5279 `riders.squad` (backfill ejer-gated) · ✅ #5280 evner som data (point-flyt #5268 ejer-gated) · #5269 · #5273.
 4. ⚪ **Bølge 4, kalender m. trupper (FØR S4-generering):** ✅ U23-filter i seniorlæserne (#5396) · ✅ #5272 · 🟠 **S4-kalender synlig senest 21/9** (#5405, go pr. kørsel) · pakker pr. trup · ✅ #5376 U23-bånd (variant A, #5401) → generator A6 → AI U23/junior-ryttere · #5327 arketype (#3512) m. #5269 · C1 · dry-run → go → #4270 apply (ejer). Spec `2026-09-15-u23-*.md`.
 5. ⚪ **Bølge 5, træning færdig (28/9):** skader i løbsdage · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849) · #4852-#4854 · #4848.
-6. ⚪ **Bølge 6, trup-flader:** Graduation Day (#2491, senest 20/9) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
+6. ⚪ **Bølge 6, trup-flader:** Graduation Day (#2491, frist røget) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
 7. 🔵 **Bølge 7, cutover:** #4592 → #452 → #4759 · Mandatet-flip #4857 (ejer-go) → #4859 → #4858 · v4 (M12 · #4948) → **flip ejer-only** → #4916.
 8. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag) · #3458/#3512.
 
