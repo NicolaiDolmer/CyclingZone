@@ -15,15 +15,25 @@
 // Kør fra backend/:
 //   infisical run --env=prod --silent -- node scripts/dev/valuationV5DryRun5443.mjs
 //
+// TO MODELLER, IKKE ÉN (#5443 ejer-beslutning 2, 20/9 aften). Prisen
+// (base_value) og løngrundlaget (current_production_value, 35 %-lønsatsens
+// basis) vælger model hver for sig via to app_config-nøgler. Tørkørslen viser
+// derfor BEGGE tal og bekræfter eksplicit at løngrundlaget står stille, når kun
+// prisens nøgle flyttes. Det er hele pointen i beslutningen: "Løn skal ikke
+// følge værdi" — og et tal ejeren skal kunne se, ikke tage på ordet.
+//
 // Valgfrit:
-//   --from=v4        sammenlignings-grundlag (default: app_config-valget)
-//   --to=v5          målmodel (default: v5)
+//   --from=v4        sammenlignings-grundlag for prisen (default: app_config-valget)
+//   --to=v5          målmodel for prisen (default: v5)
+//   --wage=v4        løngrundlagets model efter skiftet (default: app_config-valget
+//                    for rider_production_value_model, altså v4)
 //   --out=<mappe>    output-mappe (default: balance-internals/<dato>-5443-v5-dryrun)
 //
 // Output (kun lokalt):
-//   ryttere.csv      én linje pr. rytter: id, type, alder, før, efter, ændring
+//   ryttere.csv      én linje pr. rytter: id, type, alder, pris før/efter, løngrundlag før/efter
 //   hold.csv         én linje pr. hold: navn, antal ryttere, Σ før, Σ efter, ændring
-//   opsummering.md   totaler, fordeling af fald/stigninger, de største udsving
+//   opsummering.md   totaler, fordeling af fald/stigninger, de største udsving,
+//                    og en LØN-KONTROL: hvor mange løngrundlag der flyttede sig
 //
 // Filerne indeholder holdnavne og rytter-id'er og må derfor ALDRIG committes
 // eller citeres i repoet/PR-body (hard rule 17). Referér dem ved filnavn.
@@ -40,6 +50,7 @@ import { VALUATION_ABILITY_COLUMNS } from "../../lib/riderValuation.js";
 import { recomputeRiderValue } from "../../lib/riderValueRefresh.js";
 import {
   loadValuationModelById,
+  readProductionValueModelId,
   readValuationModelId,
 } from "../../lib/riderValuationModelSelect.js";
 import { readFileSync } from "node:fs";
@@ -77,12 +88,21 @@ function median(xs) {
 
 async function main() {
   const liveId = await readValuationModelId(sb);
+  const liveWageId = await readProductionValueModelId(sb);
   const fromId = arg("from", liveId);
   const toId = arg("to", "v5");
+  // Løngrundlaget EFTER skiftet. Default er app_config-valget, altså v4 så
+  // længe ejeren ikke har flippet den separate nøgle (ejer-beslutning 2).
+  const wageId = arg("wage", liveWageId);
   const from = loadValuationModelById(fromId);
   const to = loadValuationModelById(toId);
-  console.log(`tørkørsel: ${fromId} -> ${toId} (app_config peger i dag på '${liveId}')`);
-  if (fromId === toId) console.log("ADVARSEL: samme model i begge ender — diffen bliver tom.");
+  // FØR-billedet skal være prod som den er LIGE NU: pris fra `fromId`,
+  // løngrundlag fra den nøgle der faktisk gælder i dag.
+  const wageBefore = loadValuationModelById(liveWageId);
+  const wageAfter = loadValuationModelById(wageId);
+  console.log(`tørkørsel pris:        ${fromId} -> ${toId} (app_config i dag: '${liveId}')`);
+  console.log(`tørkørsel løngrundlag: ${liveWageId} -> ${wageId} (app_config i dag: '${liveWageId}')`);
+  if (fromId === toId) console.log("ADVARSEL: samme prismodel i begge ender — diffen bliver tom.");
 
   // ── Samme sæson-anker som refreshChangedRiderValues ────────────────────────
   const { data: active } = await sb.from("seasons").select("number").eq("status", "active").maybeSingle();
@@ -119,9 +139,13 @@ async function main() {
     if (r.is_retired) continue;
     const ab = abilityByRider.get(r.id);
     if (!ab) continue;
-    const opts = { typeAbilities: capsByRider.get(r.id), youthBaseline };
-    const a = recomputeRiderValue(r, ab, baseline, from, opts);
-    const b = recomputeRiderValue(r, ab, baseline, to, opts);
+    const caps = capsByRider.get(r.id);
+    const a = recomputeRiderValue(r, ab, baseline, from, {
+      typeAbilities: caps, youthBaseline, productionModel: wageBefore,
+    });
+    const b = recomputeRiderValue(r, ab, baseline, to, {
+      typeAbilities: caps, youthBaseline, productionModel: wageAfter,
+    });
     if (a.base_value == null || b.base_value == null) continue;
     perRider.push({
       id: r.id,
@@ -183,11 +207,28 @@ async function main() {
   const biggestRises = [...human].filter((p) => p.delta_pct != null)
     .sort((a, b) => b.delta_pct - a.delta_pct).slice(0, 20);
 
+  // ── LØN-KONTROL (#5443 ejer-beslutning 2) ────────────────────────────────
+  // Flyttes kun prisens nøgle, SKAL hvert eneste løngrundlag stå bit-stille.
+  // Tallet herunder er ejerens bevis for at lønnen venter — ikke et løfte.
+  const cpvMoved = perRider.filter((p) => p.cpv_before !== p.cpv_after);
+  const cpvHuman = perRider.filter((p) => p.cpv_before !== p.cpv_after && p.team_id != null);
+  const wageHeld = wageId === liveWageId;
+
   const lines = [
-    `# #5443 tørkørsel ${fromId} -> ${toId}`,
+    `# #5443 tørkørsel — pris ${fromId} -> ${toId}, løngrundlag ${liveWageId} -> ${wageId}`,
     "",
     `Kørt ${new Date().toISOString()} · read-only mod prod · intet skrevet.`,
     `Sæson-anker ${seasonNumber}. Beregnet gennem recomputeRiderValue (samme sti som søndagskørslen).`,
+    "",
+    "## Løn-kontrol (ejer-beslutning 2: lønnen venter)",
+    "",
+    `- løngrundlagets model: **${liveWageId} -> ${wageId}**`,
+    `- ryttere hvis løngrundlag flytter sig: **${cpvMoved.length}** (heraf med hold: ${cpvHuman.length})`,
+    wageHeld
+      ? (cpvMoved.length === 0
+        ? "- ✅ BEKRÆFTET: intet løngrundlag flytter sig. Fremtidige lønkrav er uændrede."
+        : `- ⛔ UVENTET: ${cpvMoved.length} løngrundlag flytter sig, selvom løn-nøglen ikke er skiftet. STOP og undersøg før tænding.`)
+      : "- ⚠️ løn-nøglen er skiftet med i denne kørsel — løngrundlag SKAL flytte sig her.",
     "",
     "## Totaler",
     "",
@@ -220,6 +261,11 @@ async function main() {
 
   console.log(`skrevet: ${outDir}`);
   console.log(`  ryttere.csv (${perRider.length}) · hold.csv (${teamRows.length}) · opsummering.md`);
+  console.log(
+    wageHeld
+      ? `løn-kontrol: ${cpvMoved.length} løngrundlag flytter sig (forventet 0)`
+      : `løn-kontrol: løn-nøglen skiftes med — ${cpvMoved.length} løngrundlag flytter sig`
+  );
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });

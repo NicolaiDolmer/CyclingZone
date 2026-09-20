@@ -121,7 +121,13 @@ async function writeUpdates(supabase, updates) {
 // Genberegn type+base_value+current_production_value for (evt. ét holds) ryttere;
 // skriv kun de ændrede. baseline/model defaulter fra de committede JSON-filer
 // (som runBaseValueBackfill).
-export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, productionModel, log = noop, teamId, seasonNumber: seasonNumberOverride } = {}) {
+// #5443: `dryRun` beregner ALT og skriver INTET. Den findes for at den
+// ekstraordinære kørsel (backend/scripts/riderValueExtraordinaryRun5443.js) kan
+// vise ejeren præcis det den bagefter vil skrive — gennem den SAMME funktion.
+// Et separat tørkørsels-regnestykke ville før eller siden divergere fra det der
+// faktisk køres, og så er tørkørslen værre end ingenting. Defaulten er false,
+// så søndagskørslen er uændret.
+export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, productionModel, log = noop, teamId, seasonNumber: seasonNumberOverride, dryRun = false } = {}) {
   const bl = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
   // #3570: OPT-IN via param, samme mønster som backfillCores.js — produktionens
   // CLI/sweep-callere sender ikke youthBaseline eksplicit og får derfor den
@@ -185,7 +191,12 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   const capsByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a.ability_caps]));
 
   const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider, youthBl, pm);
-  log(`value-refresh${teamId ? ` (team ${teamId})` : ""}: ${riders.length} scannet · ${updates.length} ændret`);
+  log(`value-refresh${teamId ? ` (team ${teamId})` : ""}: ${riders.length} scannet · ${updates.length} ændret${dryRun ? " · TØRKØRSEL, intet skrevet" : ""}`);
+  if (dryRun) {
+    // `updates` returneres KUN i tørkørsel — den rigtige kørsel skal ikke bære
+    // hele populationen tilbage til kalderen ved hver søndag.
+    return { scanned: riders.length, changed: updates.length, written: 0, dryRun: true, updates, before: riders };
+  }
   const written = await writeUpdates(supabase, updates);
   return { scanned: riders.length, changed: updates.length, written };
 }
