@@ -24,7 +24,7 @@
 
 import { ABILITY_KEYS } from "./riderTypes.js";
 import { VALUATION_WEIGHTS } from "./weights/valuationWeights.js";
-import { roleOutputRaw } from "./weights/displayRecipes.js";
+import { roleOutputRaw, DISPLAY_RECIPE_ABILITIES } from "./weights/displayRecipes.js";
 // #2594 cutover: v4-modellen (karriere-NPV) lever i riderCareerNpv.js. Cirkulær
 // import (riderCareerNpv importerer blendedOutput m.fl. herfra) er sikker i ESM:
 // begge moduler eksporterer kun hoistede function declarations og kører ingen af
@@ -32,6 +32,22 @@ import { roleOutputRaw } from "./weights/displayRecipes.js";
 import { predictBaseValueV4 } from "./riderCareerNpv.js";
 
 export { ABILITY_KEYS };
+
+// #5443: de evne-KOLONNER en værdi-kørsel skal hente, uanset hvilken model der
+// er valgt. Unionen af klassifikator-evnerne (v4's vægttabel + meanAbilityScore)
+// og alle evner der indgår i en rating-opskrift (v5's vægtkilde).
+//
+// Hullet det lukker: `positioning` og `tactics` indgår i fem hhv. én
+// rating-opskrift, men står IKKE i ABILITY_KEYS. Hentede søndagskørslen kun
+// ABILITY_KEYS, ville de to evner være `undefined` på rækken og blive sprunget
+// over i det vægtede snit — og v5 ville regne på et andet evne-sæt end det
+// rating-tal spilleren ser. Forward-guard: valuationRatingParity.test.js.
+//
+// VÆRDI-NEUTRAL for v4: de to ekstra kolonner indgår hverken i v4's vægttabel
+// eller i meanAbilityScore, så de er rent inerte indtil v5 tændes.
+export const VALUATION_ABILITY_COLUMNS = Object.freeze(
+  [...new Set([...ABILITY_KEYS, ...DISPLAY_RECIPE_ABILITIES])]
+);
 
 // #3665: værdimodellen læser sin EGEN vægt-tabel (weights/valuationWeights.js),
 // ikke klassifikatorens. De to er bit-identiske ved ikrafttræden — bevist af

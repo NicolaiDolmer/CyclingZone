@@ -12,18 +12,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "./supabasePagination.js";
-import { resolveRiderTypes, ABILITY_KEYS } from "./riderTypes.js";
+import { resolveRiderTypes } from "./riderTypes.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
-import { predictBaseValue } from "./riderValuation.js";
+import { predictBaseValue, VALUATION_ABILITY_COLUMNS } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
-import { applyTypeDampening } from "./riderValuationTypeDampening.js";
+import { loadValuationModel } from "./riderValuationModelSelect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
 // #3570: unge (< 22 år) klassificeres mod DENNE baseline — se riderTypesBaselineSelect.js.
 const TYPES_BASELINE_YOUTH_PATH = join(__dirname, "./riderTypesBaselineYouth.json");
-const VALUATION_MODEL_PATH = join(__dirname, "./riderValuationModelV4.json");
 const noop = () => {};
 const WRITE_CONCURRENCY = 25;
 
@@ -125,9 +124,10 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   const youthBl = youthBaseline !== undefined
     ? youthBaseline
     : JSON.parse(readFileSync(TYPES_BASELINE_YOUTH_PATH, "utf8"));
-  // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
-  // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
-  const m = model || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
+  // #5443: modellen VÆLGES pr. kørsel af app_config-nøglen rider_valuation_model
+  // (riderValuationModelSelect.js) — defaulten er v4, så en merge ændrer intet.
+  // Læsefejl → v4. Dæmpnings-behandlingen sker inde i loaderen, som før.
+  const m = model || await loadValuationModel(supabase);
 
   // v4-alder forankres i den aktive sæson (samme ageForSeason som progression).
   // Cutover-fix 23/8: mellem "Afslut sæson" og transitionen er der INGEN aktiv
@@ -167,7 +167,9 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   // #3325: ability_caps hentes med — typen klassificeres mod POTENTIALET, ikke
   // dagens form, så træning/progression ikke længere flytter type-labelen.
   const abilities = await fetchAllRows(() =>
-    supabase.from("rider_derived_abilities").select(`rider_id, ability_caps, ${ABILITY_KEYS.join(", ")}`).order("rider_id"));
+    // #5443: VALUATION_ABILITY_COLUMNS, ikke ABILITY_KEYS — positioning/tactics
+    // skal med, ellers regner v5 på et andet evne-sæt end rating-tallet.
+    supabase.from("rider_derived_abilities").select(`rider_id, ability_caps, ${VALUATION_ABILITY_COLUMNS.join(", ")}`).order("rider_id"));
   const abilityByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a]));
   const capsByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a.ability_caps]));
 
