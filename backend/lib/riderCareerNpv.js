@@ -87,9 +87,38 @@ function npvRate(potentiale, rateByPotential) {
   return youthRateForPotential(potentiale, { rateByPotential });
 }
 
-export function expectedNextAbilities(abilities, caps, { primary_type, potentiale, age, rateByPotential }) {
+// #5443 runde 6 (ejer-direktiv 20/9): "Potentiale paa sigt skal ud af modellen
+// og traeningscore skal ind i modellen i stedet for potentiale."
+//
+// Traeningsscoren (1-99, `rider_training_scores`) maaler passets KVALITET og er
+// selv bygget af potentiale, alder, session/intensitet, form/traethed,
+// fokus-match, traener og faciliteter. Den er derfor et bredere og mere aktuelt
+// maal for hvor hurtigt rytteren faktisk udvikler sig end potentiale alene - og
+// den er det motoren allerede kobler udviklingen til (TRAINING_SCORE_CONFIG
+// .deltaCoupling). Karriere-fremskrivningen bruger her samme form:
+//
+//   vaekst-multiplikator = base * (S / midpoint)^gamma
+//
+// base og gamma kalibreres mod den faktisk maalte evne-fremgang pr. score i
+// prod (se scripts/dev/trainingScoreValue5443.mjs), ikke gaettet. Mangler
+// rytteren en score, falder kaeden tilbage paa den rate-kilde modellen ellers
+// bruger - en rytter uden traeningshistorik maa ikke vaerdisaettes til nul vaekst.
+export function scoreGrowthMultiplier(score, cfg) {
+  const s = Number(score);
+  const base = Number(cfg?.base);
+  const gamma = Number(cfg?.gamma);
+  const midpoint = Number(cfg?.midpoint) || 50;
+  if (!Number.isFinite(s) || s <= 0) return null;
+  if (!Number.isFinite(base) || !Number.isFinite(gamma)) return null;
+  const mult = base * Math.pow(s / midpoint, gamma);
+  return Number.isFinite(mult) && mult > 0 ? mult : null;
+}
+
+export function expectedNextAbilities(abilities, caps, { primary_type, potentiale, age, rateByPotential, growthMultOverride }) {
   const peakAge = peakAgeForType(primary_type);
-  const growthMult = npvRate(potentiale, rateByPotential ?? FROZEN_NPV_RATE_BY_POTENTIAL);
+  const growthMult = Number.isFinite(growthMultOverride) && growthMultOverride > 0
+    ? growthMultOverride
+    : npvRate(potentiale, rateByPotential ?? FROZEN_NPV_RATE_BY_POTENTIAL);
   const next = {};
   for (const ability of VISIBLE_ABILITIES) {
     const cur = abilities?.[ability];
@@ -136,6 +165,11 @@ function simulateCareer(rider, abilities, model) {
 
   const caps = buildCaps(abilities, type, potentiale);
   const rates = npvRateTable(model);
+  // Traeningsscore-styret vaekst (ejer-direktiv 20/9). Mangler scoren, er
+  // `scoreMult` null og kaeden falder tilbage paa rate-tabellen ovenfor.
+  const scoreMult = model?.npv_rates === "score"
+    ? scoreGrowthMultiplier(rider?.training_score, model.score_rate)
+    : null;
 
   let ab = { ...abilities };
   let S = 1;
@@ -178,7 +212,10 @@ function simulateCareer(rider, abilities, model) {
 
     // Fremskriv abilities til næste sæson (FORVENTNING, age=age_s — vækst/fald-fasen
     // for DETTE overgangs-skridt bestemmes af den alder rytteren HAR i sæson s).
-    ab = expectedNextAbilities(ab, caps, { primary_type: type, potentiale, age: age_s, rateByPotential: rates });
+    ab = expectedNextAbilities(ab, caps, {
+      primary_type: type, potentiale, age: age_s, rateByPotential: rates,
+      ...(scoreMult != null ? { growthMultOverride: scoreMult } : {}),
+    });
     // Overlevelse ind i næste sæson (age_s + 1).
     S *= 1 - hazard(age_s + 1);
   }
