@@ -32,7 +32,10 @@ const PORT = resolveRuntimePort(FRONTEND);
 const HOST = "127.0.0.1";
 const BASE = `http://${HOST}:${PORT}`;
 
-const TYPES = ["sprinter", "climber", "rouleur", "puncheur", "timetrialist", "allrounder", "baroudeur"];
+// Kun de 8 typer der findes i locales/*/riderTypes.json. "timetrialist" og
+// "allrounder" stod her foer og fandtes ikke: i18n faldt tilbage til den raa
+// noegle, saa billedet viste "types.allrounder" i stedet for en ryttertype.
+const TYPES = ["sprinter", "climber", "rouleur", "puncheur", "tt", "gc", "baroudeur", "brostensrytter"];
 const FOCUSES = ["vo2max", "threshold", "sprint", "endurance", "technique", "aero"];
 const base = RIDERS.find((r) => r.team_id === TEST_TEAM.id) || RIDERS[0];
 

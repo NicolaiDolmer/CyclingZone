@@ -15,7 +15,7 @@
 // de oevrige celler er museklik-genveje til den samme handling.
 
 import { useTranslation } from "react-i18next";
-import type { RaceDayColumn } from "../../../lib/trainingMobileModel.ts";
+import type { MobileScoreCell, RaceDayColumn } from "../../../lib/trainingMobileModel.ts";
 
 export type RosterCell = {
   label: string;
@@ -36,6 +36,7 @@ export default function TrainingMobileRoster({
   selectedId,
   onSelect,
   detailId,
+  scoreFor = null,
 }: {
   riders: RosterRider[];
   columns: RaceDayColumn[];
@@ -44,6 +45,11 @@ export default function TrainingMobileRoster({
   onSelect: (riderId: string) => void;
   // id'et paa kortet under tabellen, saa raekkens knap kan pege paa det.
   detailId: string;
+  // #4851: dagens traeningsscore som en ekstra, sidste kolonne. `null` =
+  // kolonnen findes IKKE i DOM'en — enten fordi `training_score_visible` er off,
+  // eller fordi loebsdags-kolonnerne allerede bruger tabellens budget
+  // (canShowScoreColumn). Kaldes kun naar kolonnen er der.
+  scoreFor?: ((riderId: string) => MobileScoreCell) | null;
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
@@ -71,6 +77,13 @@ export default function TrainingMobileRoster({
                 {single ? t("mobile.today") : column.index}
               </th>
             ))}
+            {/* #4851: scoren er den sidste kolonne — laesningen gaar "hvem,
+                hvad koerer han, hvor godt gik det". */}
+            {scoreFor && (
+              <th className="border-b border-cz-border px-1 py-1.5 text-center font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
+                {t("score.column")}
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -120,6 +133,28 @@ export default function TrainingMobileRoster({
                     </td>
                   );
                 })}
+                {scoreFor && (() => {
+                  const score = scoreFor(rider.id);
+                  return (
+                    <td
+                      onClick={() => onSelect(rider.id)}
+                      // `tabular-nums` (TASTE, bindende paa al numerik): cifrene
+                      // flugter lodret ned gennem truppen, saa kolonnen kan
+                      // skannes uden at laese hvert tal.
+                      className="border-b border-cz-border px-1 py-1.5 text-center align-middle font-data tabular-nums"
+                    >
+                      {score.state === "score" ? (
+                        <span className="text-2xs font-bold leading-tight text-cz-1">{score.value}</span>
+                      ) : score.state === "race" ? (
+                        <span className="text-3xs font-medium uppercase tracking-[.06em] text-cz-3">
+                          {t("score.raceDay")}
+                        </span>
+                      ) : (
+                        <span className="text-2xs text-cz-3">—</span>
+                      )}
+                    </td>
+                  );
+                })()}
               </tr>
             );
           })}
