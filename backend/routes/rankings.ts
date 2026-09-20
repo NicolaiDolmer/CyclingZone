@@ -3,7 +3,7 @@ import type { Request, RequestHandler } from "express";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { toSupabaseError, isLockTimeoutError } from "../lib/supabaseErrorNormalize.js";
+import { toSupabaseError, isLockTimeoutError, isRaceCountLockTimeoutError } from "../lib/supabaseErrorNormalize.js";
 import { readHonours } from "./rankingHonours.ts";
 
 // #5452: matviews genopfriskes via en PLAIN (eksklusiv) REFRESH (database/2026-07-27
@@ -15,8 +15,13 @@ import { readHonours } from "./rankingHonours.ts";
 // og er derfor allerede dækket — denne wrapper dækker de tre enkeltkald der IKKE
 // paginerer (global?team_id, riders?top=5, race-count) og som derfor stod uden
 // retry (Sentry CYCLINGZONE-65, første forekomst af klassen udenfor #3013/#4866).
-// Retry KUN lock-timeout-klassen (isLockTimeoutError) — alt andet (fx 42501
-// permission denied) gives videre uændret efter første forsøg.
+// Retry KUN lock-timeout-klassen — alt andet (fx 42501 permission denied)
+// gives videre uændret efter første forsøg. Default-klassificeringen
+// (isLockTimeoutError) dækker de almindelige GET-kald (global?team_id,
+// riders?top=5); race-count bruger en STRENGERE opt-in klassificering
+// (isRaceCountLockTimeoutError) fordi den, alene blandt disse ruter, er et
+// HEAD-request uden body ved fejl — se CodeRabbit-noten i
+// supabaseErrorNormalize.js for hvorfor de to IKKE må deles.
 const LOCK_TIMEOUT_RETRY_DELAY_MS = 250;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -27,9 +32,10 @@ function attachStatus(error: unknown, status: number | undefined) {
 
 async function withLockTimeoutRetry<T extends { error: unknown; status?: number }>(
   run: () => PromiseLike<T>,
+  isRetryable: (error: unknown) => boolean = isLockTimeoutError,
 ): Promise<T> {
   const result = await run();
-  if (result.error && isLockTimeoutError(attachStatus(result.error, result.status))) {
+  if (result.error && isRetryable(attachStatus(result.error, result.status))) {
     await sleep(LOCK_TIMEOUT_RETRY_DELAY_MS);
     return await run();
   }
@@ -136,7 +142,8 @@ export function createRankingsRouter({ supabase, requireAuth, reportError, viewe
     // sendte dem, fx for et 4xx-svar med body).
     const { count, error, status } = await withLockTimeoutRetry(() =>
       supabase.from("team_race_points_mv")
-        .select("race_id", { count: "exact", head: true }).eq("team_id", team_id));
+        .select("race_id", { count: "exact", head: true }).eq("team_id", team_id),
+      isRaceCountLockTimeoutError);
     if (error) {
       // toSupabaseError falder tilbage til "Supabase error" når body'en (og
       // dermed message/code/details/hint) var tom — HTTP-statussen er dét vi

@@ -77,6 +77,17 @@ test("global?team_id: retries ALDRIG på permission denied (42501)", async t => 
   assert.equal(f.callCount(), 1, "ingen retry på ikke-transiente fejl");
 });
 
+// CodeRabbit (PR #5454): denne rute er et almindeligt GET (ikke et HEAD som
+// race-count) og SKAL derfor kunne bære en ægte fejlbesked - et kode-/
+// beskedløst 500 er en anden, uforklaret fejl og må IKKE retries "for en
+// sikkerheds skyld". Kun race-count har opt-in til den heuristik.
+test("global?team_id: retries ALDRIG på et kodeløst/beskedløst 500 (kun race-counts HEAD har den heuristik)", async t => {
+  const f = await fixtureWithResponses(t, [{ status: 500 }]);
+  const response = await f.call(`/global?team_id=${TEAM}`);
+  assert.equal(response.status, 500);
+  assert.equal(f.callCount(), 1, "almindelige GET-kald deler ikke race-counts HEAD-uden-body-heuristik");
+});
+
 // ── riders?top=5 ──────────────────────────────────────────────────────────────
 
 test("riders?top=5: retry lykkes på forsøg 2 efter statement-cancel (57014)", async t => {
@@ -95,6 +106,13 @@ test("riders?top=5: retries ALDRIG på permission denied (42501)", async t => {
   const response = await f.call(`/riders?season_id=${SEASON}&top=5`);
   assert.equal(response.status, 500);
   assert.equal(f.callCount(), 1, "ingen retry på ikke-transiente fejl");
+});
+
+test("riders?top=5: retries ALDRIG på et kodeløst/beskedløst 500 (kun race-counts HEAD har den heuristik)", async t => {
+  const f = await fixtureWithResponses(t, [{ status: 500 }]);
+  const response = await f.call(`/riders?season_id=${SEASON}&top=5`);
+  assert.equal(response.status, 500);
+  assert.equal(f.callCount(), 1, "almindelige GET-kald deler ikke race-counts HEAD-uden-body-heuristik");
 });
 
 // ── race-count (HEAD, #5224's kodeløse tomme-fejl) ───────────────────────────

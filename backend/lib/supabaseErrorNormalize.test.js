@@ -5,6 +5,7 @@ import {
   normalizeSupabaseErrorMessage,
   isTransientSupabaseError,
   isLockTimeoutError,
+  isRaceCountLockTimeoutError,
   toSupabaseError,
   withSupabaseRetry,
 } from "./supabaseErrorNormalize.js";
@@ -194,8 +195,8 @@ test("statement-timeout-klassificeringen rammer ikke andre Postgres-fejl", () =>
 
 // ── isLockTimeoutError (#5452) ───────────────────────────────────────────────
 // Snævrere end isTransientSupabaseError: KUN lock-timeout/statement-cancel
-// (55P03/57014), plus race-count's kodeløse HEAD-500 (#5224) - IKKE netværks-/
-// gateway-hikke. Bruges af rankings.ts's ikke-paginerede enkeltkald.
+// (55P03/57014) - IKKE netværks-/gateway-hikke. Bruges af rankings.ts's
+// ikke-paginerede GET-enkeltkald (global?team_id, riders?top=5).
 
 test("55P03/57014 er lock-timeout, uanset besked", () => {
   assert.equal(isLockTimeoutError({ code: "55P03", message: "lock ikke ledig" }), true);
@@ -207,25 +208,46 @@ test("besked-mønstret genkendes uden kode", () => {
   assert.equal(isLockTimeoutError({ message: "canceling statement due to statement timeout" }), true);
 });
 
-test("status 500 uden code/message (HEAD-svar, #5224) er lock-timeout-klassen", () => {
-  assert.equal(isLockTimeoutError({ message: "", status: 500 }), true);
-});
-
-test("status 500 med en ægte kode er IKKE lock-timeout-klassen", () => {
-  assert.equal(isLockTimeoutError({ message: "", code: "42501", status: 500 }), false);
-});
-
-test("status forskellig fra 500 udløser ikke heuristikken, selv uden body", () => {
-  assert.equal(isLockTimeoutError({ message: "", status: 403 }), false);
-});
-
-test("permission denied (42501) er IKKE lock-timeout, heller ikke ved status 500", () => {
-  assert.equal(isLockTimeoutError({ message: 'permission denied for table "riders"', code: "42501", status: 500 }), false);
+test("permission denied (42501) er IKKE lock-timeout", () => {
+  assert.equal(isLockTimeoutError({ message: 'permission denied for table "riders"', code: "42501" }), false);
 });
 
 test("gateway-/netværks-hikke der ER transient er IKKE lock-timeout (snævrere klasse)", () => {
   assert.equal(isLockTimeoutError({ message: "Internal server error." }), false);
   assert.equal(isLockTimeoutError(new Error("fetch failed")), false);
+});
+
+// CodeRabbit (PR #5454): et status-500-uden-body-signal er KUN pålideligt for
+// HEAD-requests (race-count) - en almindelig GET SKAL kunne bære en ægte
+// fejlbesked, så et kode-/beskedløst 500 der alligevel opstår er en anden,
+// uforklaret fejl og må IKKE stilfærdigt behandles som lock-timeout.
+test("et kodeløst/beskedløst status-500-objekt er IKKE lock-timeout for almindelige GET-kald", () => {
+  assert.equal(isLockTimeoutError({ message: "", status: 500 }), false);
+});
+
+// ── isRaceCountLockTimeoutError (#5452/#5224) ────────────────────────────────
+// KUN for race-count-ruten: den er et HEAD-request og har derfor INGEN body
+// ved fejl, per HTTP-spec - et kode-/beskedløst status-500-objekt ER dermed
+// den eneste diagnose der findes for netop den ruteform.
+
+test("arver isLockTimeoutError-klassen (55P03/57014)", () => {
+  assert.equal(isRaceCountLockTimeoutError({ code: "55P03", message: "lock ikke ledig" }), true);
+});
+
+test("status 500 uden code/message (HEAD-svar, #5224) er lock-timeout-klassen", () => {
+  assert.equal(isRaceCountLockTimeoutError({ message: "", status: 500 }), true);
+});
+
+test("status 500 med en ægte kode er IKKE lock-timeout-klassen", () => {
+  assert.equal(isRaceCountLockTimeoutError({ message: "", code: "42501", status: 500 }), false);
+});
+
+test("status forskellig fra 500 udløser ikke heuristikken, selv uden body", () => {
+  assert.equal(isRaceCountLockTimeoutError({ message: "", status: 403 }), false);
+});
+
+test("permission denied (42501) er IKKE lock-timeout, heller ikke ved status 500", () => {
+  assert.equal(isRaceCountLockTimeoutError({ message: 'permission denied for table "riders"', code: "42501", status: 500 }), false);
 });
 
 // ── toSupabaseError ──────────────────────────────────────────────────────────
