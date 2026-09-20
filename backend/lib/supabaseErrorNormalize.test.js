@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   normalizeSupabaseErrorMessage,
   isTransientSupabaseError,
+  isLockTimeoutError,
   toSupabaseError,
   withSupabaseRetry,
 } from "./supabaseErrorNormalize.js";
@@ -189,6 +190,42 @@ test("statement-timeout-klassificeringen rammer ikke andre Postgres-fejl", () =>
     isTransientSupabaseError({ message: 'column "timeout" does not exist' }),
     false
   );
+});
+
+// ── isLockTimeoutError (#5452) ───────────────────────────────────────────────
+// Snævrere end isTransientSupabaseError: KUN lock-timeout/statement-cancel
+// (55P03/57014), plus race-count's kodeløse HEAD-500 (#5224) - IKKE netværks-/
+// gateway-hikke. Bruges af rankings.ts's ikke-paginerede enkeltkald.
+
+test("55P03/57014 er lock-timeout, uanset besked", () => {
+  assert.equal(isLockTimeoutError({ code: "55P03", message: "lock ikke ledig" }), true);
+  assert.equal(isLockTimeoutError({ code: "57014", message: "afbrudt" }), true);
+});
+
+test("besked-mønstret genkendes uden kode", () => {
+  assert.equal(isLockTimeoutError({ message: "canceling statement due to lock timeout" }), true);
+  assert.equal(isLockTimeoutError({ message: "canceling statement due to statement timeout" }), true);
+});
+
+test("status 500 uden code/message (HEAD-svar, #5224) er lock-timeout-klassen", () => {
+  assert.equal(isLockTimeoutError({ message: "", status: 500 }), true);
+});
+
+test("status 500 med en ægte kode er IKKE lock-timeout-klassen", () => {
+  assert.equal(isLockTimeoutError({ message: "", code: "42501", status: 500 }), false);
+});
+
+test("status forskellig fra 500 udløser ikke heuristikken, selv uden body", () => {
+  assert.equal(isLockTimeoutError({ message: "", status: 403 }), false);
+});
+
+test("permission denied (42501) er IKKE lock-timeout, heller ikke ved status 500", () => {
+  assert.equal(isLockTimeoutError({ message: 'permission denied for table "riders"', code: "42501", status: 500 }), false);
+});
+
+test("gateway-/netværks-hikke der ER transient er IKKE lock-timeout (snævrere klasse)", () => {
+  assert.equal(isLockTimeoutError({ message: "Internal server error." }), false);
+  assert.equal(isLockTimeoutError(new Error("fetch failed")), false);
 });
 
 // ── toSupabaseError ──────────────────────────────────────────────────────────
