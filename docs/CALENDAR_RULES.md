@@ -870,7 +870,7 @@ Fed = uden for ±2 pp. **7 brud pr. division** (D1 1 · D2 2 · D3 2 · D4 2), o
 
 `ARCHETYPE_PROFILES`' filler-vægte er **re-kalibreret 21/9**, efter 6/8 og 7/8. Udløseren var katalog-udvidelsen i [#5450](https://github.com/NicolaiDolmer/CyclingZone/issues/5450): tre nye bjergrige etapeløb plus hævede summit-reservationer i D2 og D3. Den løste §6b's afgørende bjergdage, men skubbede sæsonens K-B-komposition den anden vej — bjerg over det øvre bånd og kuperet ned på den nedre grænse i S4-tørkørslen. Det er den vekselvirkning §5b beskriver: **kataloget bestemmer hvad der kan fordeles, vægtene fordeler det.**
 
-Metoden er uændret fra 7/8 — eksisterende vægte gange en tilt fundet med koordinat-descent, afrundet til heltal:
+Metoden er uændret fra 7/8 — eksisterende vægte gange en tilt, afrundet til heltal:
 
 ```
 cd backend   # begge scripts ligger under backend/scripts/ og køres derfra, som i §2d
@@ -880,18 +880,19 @@ infisical run --env=prod --silent -- node scripts/calibrateCalendarComposition.j
 infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
 ```
 
-**Tilt'ens retning:** flad og kuperet op, bjerg ned; ITT, brosten og TTT urørt. De konkrete faktorer og de målte fordelinger står i kalibrerings-blokken i `backend/lib/raceStageProfileGenerator.js` og — med fulde tal — i den gitignorerede `balance-internals/2026-09-21-s4-komposition-kalibrering/`.
+**ÉT FÆLLES TILT, TO DATASÆT.** Første forsøg søgte mod S4-planen alene. Det ramte S4 pænt og gjorde regressionsvagten i `backend/lib/calendarCompositionCalibration.test.js` rød: det frosne kalender-snapshot i `__fixtures__` blev drevet uden for ±2 pp på kuperet. Vagten findes præcis for at fange at en velment justering af én sæsons balance skubber en anden skæv. Den gældende tilt er derfor fundet mod **begge** datasæt på én gang — som 7/8-kalibreringen gjorde med S2+S3 — og kun et tilt der holder begge inden for ±2 pp uden realisme-brud kom i betragtning. **Kalibrerer du disse vægte igen: kør altid begge datasæt, ellers rammer du det samme hul.**
 
-**Forskel fra 7/8's metode:** dér blev der søgt over S2 **og** S3 samtidig, fordi begge sæsoner stadig var i spil. I dag er S2 og S3 begge materialiserede og låste — en vægt-ændring rører dem ikke, den påvirker kun fremtidige genereringer. Den sæson der bygges er S4 alene, og filens egen regel gælder da uændret: *kalibrér mod den sæson du bygger.*
+**Tilt'ens retning:** kuperet og bjerg let ned, flad urørt; ITT, brosten og TTT urørt. De konkrete faktorer og de målte fordelinger står i kalibrerings-blokken i `backend/lib/raceStageProfileGenerator.js` og — med fulde tal — i den gitignorerede `balance-internals/2026-09-21-s4-komposition-kalibrering/`.
+
+**Forskel fra 7/8's metode:** dér var begge sæsoner fremtidige. I dag er S2 og S3 begge materialiserede og låste — en vægt-ændring rører dem ikke. Snapshottet er derfor ikke en sæson vi bygger, men den frosne prøve vagten måler på; S4-planen er den sæson der faktisk bygges. Begge skal holde, af hver sin grund.
 
 **Hvad kalibreringen gjorde bedre (målt på tørkørslen mod prod, uden `--uniform-tilt`):**
 
 - K-B-kompositionen: to kategorier uden for ±2 pp → **nul**. Alle seks akser i mål.
-- §6's strenge ±2 pp pr. division: syv afvigelser fordelt på alle fire divisioner → **to**, begge i D4.
-- §6b's uniforme mål holder i **alle fire** divisioner, før og efter. Højbjerg var stop-betingelsen — tilt'ens bjerg-faktor rammer `high_mountain` og `mountain` ens, fordi de deler kompositions-kategori — men arketypernes high_mountain-**garantier** er urørte, og kun D2 flytter sig nævneværdigt og bliver i båndet.
+- §6's strenge ±2 pp pr. division: syv afvigelser fordelt på alle fire divisioner → **tre**. D1 og D2 rene, D3 én, D4 to.
+- §6b's uniforme mål holder i **alle fire** divisioner, før og efter. Højbjerg var stop-betingelsen — tilt'ens bjerg-faktor rammer `high_mountain` og `mountain` ens, fordi de deler kompositions-kategori — og en kraftigere bjerg-dæmpning end den valgte skubbede faktisk D1 under målet i målingen.
+- §7b's finale-bånd: **seks kendte linjer → fem**, og ingen af dem på divisions-niveau. Se §7b nedenfor.
 - Kvote (§1b) 100 % i alle fire · 140 løbsdage i alle fire (§1d) · 0 placeringsbrud · terræn-gulvene (§5) holder · realisme-båndene GO.
-
-**Hvad den gjorde dårligere, og som er ejerens afvejning:** §7b's finale-bånd. Antallet af kendte linjer uden for båndet gik fra seks til otte — ét gammelt brud lukkede (kuperede etaper), tre nye kom til (to spejlvendte rullende-andele på sæson-aggregatet, én bjerg-andel i D4 hvor stikprøven er mindst). Retningen er forventet: færre bjerg-**fyld**-etaper og flere rullende betyder at de GARANTEREDE summit-finaler fylder mere af en mindre nævner. Finale-båndene har krævet `--allow-finale-drift` siden 3/9 ([#4272](https://github.com/NicolaiDolmer/CyclingZone/issues/4272)) og er ikke grønne i forvejen — ingen af de nye linjer er en ny klasse af brud, og ingen af dem stopper `--apply`. De står navngivet i `KENDTE_FIXTURE_BRUD`.
 
 ---
 
@@ -969,6 +970,16 @@ Før #4272 målte kalenderen kun "slutter det for tit nedad?" — den håndhæve
 `gravel` kom til 3/9 (ejer-beslutning, #4105). Båndet er **ikke** brostens: grus afgøres oftere i udbrud og har en opad-andel brosten ikke har. Det er afledt af generatorens egne grus-vægte, ikke af en analogi.
 
 En "—" er **ikke** "uspecificeret": klassen har vægt 0 i generatoren og gates mod 0. En bunch-sprint i højbjerget er et brud, ikke en tolereret sjældenhed. `classic` (monument-arketypen) står bevidst uden for tabellen — den rapporteres, men bånd-gates ikke.
+
+### Vægtene sigter mod båndets MIDTE, ikke mod kanten
+
+`FINALE_WEIGHTS_BY_PROFILE` skal ramme **midten** af hver celle ovenfor. Grunden er stikprøven: med n = 60-80 etaper af en terræntype på sæson-aggregatet er standardfejlen 5-6 pp, så en vægt der står på kanten ligger uden for båndet cirka **halvdelen** af trækkene — uden at generatoren er forkert.
+
+Reglen stod i generatoren fra #4272, men `mountain`'s nedad-vægt fulgte den ikke: den lå på båndets øverste kant. Konsekvensen var at "mountain slutter nedad" var rød i §7b både før og efter kompositions-kalibreringerne, og den blev fejlagtigt bogført som en *pris* for dem. Vægtene blev flyttet til midten 21/9 ([#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405)) og linjen er lukket.
+
+**Nedre grænse for hvor langt en nedad-vægt må sænkes:** nedkørsels-finalen er også et *gulv* (`descent_finale_min`, se nedenfor). En vægt-sænkning og et gulv trækker mod hinanden, og #4272 har allerede betalt én gang for et gulv båndet ikke kunne levere. Sænk aldrig `descent`-vægten uden at re-derivere gulvene i samme ombæring.
+
+**Hvor reglen ikke kan opfyldes:** `cobbles` har to bånd (fladt 30-50 %, udbrud 40-60 %) hvis midtpunkter summer til 90, ikke 100. Der findes derfor ingen vægt der rammer begge midter, og `cobbles slutter udbrud` står som kendt afvigelse i `KENDTE_FIXTURE_BRUD` indtil båndene selv bliver justeret.
 
 ### Samlet bånd på tværs af alle etaper
 

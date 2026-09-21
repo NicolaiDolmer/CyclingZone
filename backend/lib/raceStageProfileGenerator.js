@@ -398,23 +398,34 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 // grænse i S4-tørkørslen på main. Det er præcis den vekselvirkning der er beskrevet to
 // gange ovenfor — kataloget bestemmer HVAD der kan fordeles, vægtene fordeler det.
 //
-// NY tilt (oven på 7/8-vægtene, samme metode og samme maskineri som begge
-// kalibreringer ovenfor — koordinat-descent via searchTilt, ingen frie vægte):
+// NY tilt (oven på 7/8-vægtene, samme maskineri som begge kalibreringer ovenfor —
+// applyCompositionTilt over kompositions-kategorierne, ingen frie vægte):
 //
-//     flad ×1,15   ·   kuperet (rolling+hilly+classic) ×1,15   ·   bjerg ×0,805
-//     (ITT, brosten og TTT står på 1,0 — søgningen fandt ingen gevinst dér)
+//     flad ×1,0   ·   kuperet (rolling+hilly+classic) ×0,95   ·   bjerg ×0,9
+//     (ITT, brosten og TTT står på 1,0)
 //
-// Fundet med (read-only, kun SELECT, 71 evalueringer, realisme-verdict GO):
-//     infisical run --env=prod --silent -- node scripts/calibrateCalendarComposition.js --plan 4
-// Verificeret med den fulde tørkørsel (skriver aldrig uden --apply):
-//     infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
+// ÉT FÆLLES TILT, TO DATASÆT — og hvorfor det er hele pointen. Den FØRSTE runde af denne
+// kalibrering søgte mod S4-planen ALENE. Den ramte S4 pænt og gjorde regressionsvagten i
+// calendarCompositionCalibration.test.js RØD: det frosne kalender-snapshot i
+// __fixtures__ blev drevet uden for ±2 pp på kuperet. Vagten er ikke en formalitet — den
+// findes præcis for at fange at en velment justering af én sæsons balance skubber en
+// anden skæv (se dens egen docstring). Runde 2 søger derfor mod BEGGE på én gang, som
+// 7/8-kalibreringen gjorde med S2+S3: kandidat-tilt'en evalueres gennem den fulde
+// pipeline (resolveSeasonDraw + scoreSeason + computeCompositionStats, dvs.
+// evaluateTilt's egne led) på både snapshottet og S4-planen, og kun et tilt der holder
+// BEGGE inden for ±2 pp uden realisme-brud kommer i betragtning. Tallene i
+// balance-internals-noten nedenfor er målt sådan.
 //
-// FORSKEL fra 7/8-metoden: dér blev der søgt over S2 OG S3 samtidig, fordi begge sæsoner
-// stadig var i spil (S2 materialiseret med fast løbsudvalg, S3 planlagt under nye
-// targets). I dag er S2 og S3 begge materialiserede og LÅSTE — en vægt-ændring rører dem
-// ikke, den påvirker kun fremtidige genereringer. Den sæson der bygges er S4 alene, og
-// filens egen regel gælder da uændret: kalibrér mod den sæson du bygger
-// (loadPlannedSeedRacesByTier's docstring i scripts/calibrateCalendarComposition.js).
+// Fundet og verificeret med (begge read-only; buildSeasonCalendar skriver aldrig uden
+// --apply):
+//     infisical run --env=prod --silent -- node backend/scripts/calibrateCalendarComposition.js --plan 4
+//     infisical run --env=prod --silent -- node backend/scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
+//
+// FORSKEL fra 7/8-metoden: dér var begge sæsoner FREMTIDIGE (S2 materialiseret med fast
+// løbsudvalg, S3 planlagt under nye targets). I dag er S2 og S3 begge materialiserede og
+// LÅSTE — en vægt-ændring rører dem ikke. Snapshottet er derfor ikke en sæson vi bygger,
+// men den FROSNE prøve vagten måler på; S4-planen er den sæson der faktisk bygges. Begge
+// skal holde, af hver sin grund.
 //
 // MÅLT FØR/EFTER på S4-tørkørslen (kvalitativt her, jf. anonymiserings-reglen for et
 // offentligt repo — de fulde tal ligger i den gitignorerede
@@ -422,31 +433,41 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 //   · K-B-kompositionen: TO kategorier uden for ±2 pp (bjerg for højt, kuperet på den
 //     nedre grænse) → NUL. Alle seks akser inden for båndet.
 //   · §6's strenge ±2 pp pr. division: syv afvigelser fordelt på alle fire divisioner →
-//     to, begge i D4 (flad for højt, kuperet for lavt). D1, D2 og D3 er rene.
+//     tre. D1 og D2 er rene, D3 har én, D4 to.
 //   · §6b's uniforme mål (enkeltstart, brosten, højbjerg) holder i ALLE fire divisioner
 //     både før og efter. Højbjerg er dét tallet der kunne have knækket — tilt'ens
 //     bjerg-faktor rammer `high_mountain` og `mountain` ens, fordi de deler
-//     kompositions-kategori (PROFILE_TO_CATEGORY i calendarCompositionTargets.js) — men
-//     arketypernes high_mountain-GARANTIER er urørte, og målingen viser at kun D2 flytter
-//     sig nævneværdigt og stadig ligger inden for båndet. Det var stop-betingelsen for
-//     denne kalibrering, og den er ikke udløst.
+//     kompositions-kategori (PROFILE_TO_CATEGORY i calendarCompositionTargets.js), og en
+//     kraftigere bjerg-dæmpning end den valgte skubbede faktisk D1 under målet i målingen.
+//     Det var stop-betingelsen for hvor langt bjerg-faktoren måtte gå.
 //   · Kvote (§1b) 100 % i alle fire · 140 løbsdage i alle fire (§1d) · 0 placeringsbrud ·
 //     terræn-gulvene (§5) holder · realisme-båndene GO.
 //
-// HVAD DENNE RE-KALIBRERING GJORDE DÅRLIGERE (rapporteret, ikke skjult — samme princip
-// som de to blokke ovenfor): §7b's FINALE-BÅND på sæson-aggregatet. Antallet af linjer
-// uden for båndet steg med to, og bjerg-etapernes "slutter nedad"-andel blev højere.
-// Retningen er forventet: færre bjerg-fyld-etaper betyder færre af de bjergetaper der
-// slutter opad, mens arketypernes GARANTEREDE summit-finaler ligger fast — så andelen
-// nedad stiger uden at antallet af rigtige bjergankomster falder. Finale-båndene har
-// krævet `--allow-finale-drift` siden 3/9 (#4272) og er IKKE grønne i forvejen; ingen af
-// de nye linjer er en ny KLASSE af brud. Det er en afvejning ejeren skal se, ikke en
-// vægt-søgning må afgøre — derfor står den her og i PR-body'en i stedet for at blive
-// handlet væk med en dårligere komposition.
+// §7b's FINALE-BÅND — rettet FØR der genereres, ikke rapporteret som en pris. Ejerens
+// regel 20/9 er at en rettelse ikke må gøre en anden regel værre. Runde 1 gjorde netop
+// det (antallet af linjer uden for båndet steg), og det er lukket her:
+//   · `mountain slutter nedad` var rød både FØR og EFTER kompositions-kalibreringen,
+//     fordi descent-vægten i FINALE_WEIGHTS_BY_PROFILE stod på båndets ØVERSTE KANT i
+//     stedet for dets midte. Den er flyttet til midten (se kommentaren ved tabellen).
+//     Det er ikke en ny beslutning om hvordan bjergetaper skal slutte — det er den regel
+//     tabellen selv skriver, anvendt konsekvent.
+//   · De rullende linjer og D4's bjerg-udbrud fra runde 1 var stikprøve-udfald af DEN
+//     tilt og er væk med den fælles tilt.
+// Tilbage står FEM linjer mod de seks der stod på main: `hilly slutter udbrud` (under
+// 1 pp over båndet på en stikprøve hvor standardfejlen er 5 pp), `cobbles slutter udbrud`
+// (kan ikke lukkes af vægte — brostens-båndenes to midtpunkter summer ikke til 100 %) og
+// TRE grus-linjer fra ÉN stikprøve på n=2, som er en KATALOG-grænse: ingen vægt kan
+// lukke dem, kun flere grusløb. Ingen af de fem er på divisions-niveau. Finale-båndene
+// har krævet `--allow-finale-drift` siden 3/9 (#4272); de er stadig ikke grønne, men de
+// er tættere på end før dette spor begyndte.
 //
-// calendarGoldenSnapshot.s3.json er REGENERERET i samme PR (samme præcedens som
-// pass1-golden.json ovenfor): vægtene ændrer parcours-trækket, og en bevidst ændring
-// skal følges af sin snapshot-opdatering, ellers er den gyldne diff (#4123) blind.
+// pass1-golden.json-fixturen er REGENERERET (vægtene ændrer pass-1-output for de
+// berørte arketyper — samme "bevidst ændring, fixture regenereret"-præcedens som
+// #3326-korrektionen ovenfor). calendarGoldenSnapshot.s3.json er derimod UÆNDRET:
+// `node backend/scripts/dev/calendarGoldenDiff.mjs` er grøn (exit 0), fordi den gyldne
+// diff måler PLACERINGEN af løb (hvilke løb på hvilke dage i hvilken division), og den
+// afgøres af selection+packing — ikke af filler-vægtene, der kun bestemmer hvilket
+// TERRÆN et allerede-placeret løbs etaper får.
 
 
 // Opslag: terrain_archetype → config (eller null ved ukendt/manglende → generisk).
