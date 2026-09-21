@@ -7,7 +7,7 @@
 ## 🎯 Gør det lovede færdigt (ejer-godkendt 21/9; foran alt andet end brand)
 
 Intet nyt startes før A+B er live.
-**A · ejerens hånd:** 1 post catch-up #5429 · 2 ✅ #5169 merget 21/9 · 3 flip `training_score_visible` + udmelding (#4851) · 4 Android-test → flip `training_mobile_table` → slet gammel gren (#3643) · 5 win-back #2760 inden 24/9.
+**A · ejerens hånd:** 1 post v7.290-7.292 i Discord (catch-up ✅ 20/9) · 2 ✅ #5169 merget 21/9 · 3 flip `training_score_visible` + udmelding (#4851) · 4 Android-test → flip `training_mobile_table` → slet gammel gren (#3643) · 5 win-back #2760 inden 24/9.
 **B · Claude, i rækkefølge:** 6 værdiskiftet #5443 · 7 S4-kalender synlig #5405 · 8 træning pr. løbsdag live 28/9 (flip-dag, #5281) · 9 /roadmap = roadbooken #5387.
 **Derefter:** roadbook-løfterne (Discord 15/9) først; så det vigtigste ELLER det hurtigst brugbare. Bølge 5-7 nås ikke samlet til 27-28/9: ejer-kort udestår. **Codex-lane:** forum-links #3517.
 
