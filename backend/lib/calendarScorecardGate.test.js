@@ -51,14 +51,20 @@ function kør(args = []) {
 // som en S5-opgave, CALENDAR_RULES §6b/§7b), og tre af dem er samme n=2-stikprøve på grus.
 // Ingen af dem er en placerings-regel, og ingen af dem kan lukkes ved at flytte et løb.
 //
-// #5405 (21/9): tallet gik 6 → 8 med K-B-kalibreringen af filler-vægtene. Det er en
-// AFVEJNING, ikke en regression der er sneget sig ind: kalibreringen bringer §6's
-// komposition i mål på alle seks akser og lukker de strenge ±2 pp-afvigelser i D1, D2 og
-// D3, og den lukkede samtidig ét af de gamle seks brud (hilly-udbrud). Prisen er tre nye
-// linjer — to spejlvendte rolling-andele på sæson-aggregatet og én bjerg-andel i D4, hvor
-// stikprøven er mindst. Hver af dem står navngivet i KENDTE_FIXTURE_BRUD med sin
-// begrundelse. De samme otte findes i tørkørslen mod prods katalog samme dag.
-const KENDTE_BALANCEBRUD = 8;
+// #5405 (21/9, runde 2): tallet er 6 → 5. Runde 1's kalibrering hævede det midlertidigt til
+// 8, men den tilt blev fundet mod S4-planen ALENE og drev samtidig regressionsvagten i
+// calendarCompositionCalibration.test.js uden for ±2 pp. Runde 2 finder ÉT FÆLLES tilt der
+// holder både det frosne snapshot og S4-planen inden for båndet, og lukker oven i købet
+// `mountain slutter nedad` ved at flytte bjerg-etapernes finale-vægte til båndenes midte
+// (raceStageProfileGenerator.js) — vægten stod på båndets øverste kant, modsat filens egen
+// regel, og var rød både før og efter kompositions-kalibreringen.
+//
+// Tilbage står fem linjer: hilly-udbrud (under 1 pp over båndet på en stikprøve hvor
+// standardfejlen er 5 pp), cobbles-udbrud (kan ikke lukkes af vægte — båndenes midtpunkter
+// summer ikke til 100 %) og tre grus-linjer fra én stikprøve på n=2 (katalog-grænse, ikke
+// en vægt-grænse). Hver af dem står navngivet i KENDTE_FIXTURE_BRUD med sin begrundelse.
+// De samme fem findes i tørkørslen mod prods katalog samme dag.
+const KENDTE_BALANCEBRUD = 5;
 
 test("#4215: den planlagte S4-kalender har kun de KENDTE balance-afvigelser", () => {
   const { stdout } = kør();
