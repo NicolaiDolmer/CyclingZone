@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.291",
+    "date": "2026-09-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "A text overflow on the mobile training page",
+          "body": "What changed: On phones, the rider's info line (type, age, form, fatigue) under the name could run outside its own box. It now wraps inside it like it should."
+        },
+        "da": {
+          "title": "Tekst der løb ud over kanten på træningssiden",
+          "body": "Hvad er ændret: På telefonen kunne rytterens infolinje (type, alder, form, træthed) under navnet løbe uden for sin egen boks. Den bryder nu pænt inde i den, som den skal."
+        },
+        "refs": [4851, 5383]
+      }
+    ]
+  },
+  {
     "version": "7.290",
     "date": "2026-09-21",
     "label": "Beta",
