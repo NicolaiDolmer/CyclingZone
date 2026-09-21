@@ -866,6 +866,34 @@ Fed = uden for ±2 pp. **7 brud pr. division** (D1 1 · D2 2 · D3 2 · D4 2), o
 
 > Dokumentet skrev indtil 30/8 *"sæsonen grøn på alle seks akser, men 11 brud fordelt på alle fire divisioner"*. **Ingen af de to led er sande længere** — det er 7 brud, og sæsonen er ikke grøn. Tallet 11 stammede fra en plan-måling, ikke fra live data.
 
+### Kalibrering 21/9 ([#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405)) — tredje gang vægtene er sat
+
+`ARCHETYPE_PROFILES`' filler-vægte er **re-kalibreret 21/9**, efter 6/8 og 7/8. Udløseren var katalog-udvidelsen i [#5450](https://github.com/NicolaiDolmer/CyclingZone/issues/5450): tre nye bjergrige etapeløb plus hævede summit-reservationer i D2 og D3. Den løste §6b's afgørende bjergdage, men skubbede sæsonens K-B-komposition den anden vej — bjerg over det øvre bånd og kuperet ned på den nedre grænse i S4-tørkørslen. Det er den vekselvirkning §5b beskriver: **kataloget bestemmer hvad der kan fordeles, vægtene fordeler det.**
+
+Metoden er uændret fra 7/8 — eksisterende vægte gange en tilt fundet med koordinat-descent, afrundet til heltal:
+
+```
+# 1) find tilt'en (read-only, kun SELECT, ingen DB-skrivning)
+infisical run --env=prod --silent -- node scripts/calibrateCalendarComposition.js --plan 4
+# 2) verificér mod den fulde tørkørsel (skriver aldrig uden --apply)
+infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
+```
+
+**Tilt'ens retning:** flad og kuperet op, bjerg ned; ITT, brosten og TTT urørt. De konkrete faktorer og de målte fordelinger står i kalibrerings-blokken i `backend/lib/raceStageProfileGenerator.js` og — med fulde tal — i den gitignorerede `balance-internals/2026-09-21-s4-komposition-kalibrering/`.
+
+**Forskel fra 7/8's metode:** dér blev der søgt over S2 **og** S3 samtidig, fordi begge sæsoner stadig var i spil. I dag er S2 og S3 begge materialiserede og låste — en vægt-ændring rører dem ikke, den påvirker kun fremtidige genereringer. Den sæson der bygges er S4 alene, og filens egen regel gælder da uændret: *kalibrér mod den sæson du bygger.*
+
+**Hvad kalibreringen gjorde bedre (målt på tørkørslen mod prod, uden `--uniform-tilt`):**
+
+- K-B-kompositionen: to kategorier uden for ±2 pp → **nul**. Alle seks akser i mål.
+- §6's strenge ±2 pp pr. division: syv afvigelser fordelt på alle fire divisioner → **to**, begge i D4.
+- §6b's uniforme mål holder i **alle fire** divisioner, før og efter. Højbjerg var stop-betingelsen — tilt'ens bjerg-faktor rammer `high_mountain` og `mountain` ens, fordi de deler kompositions-kategori — men arketypernes high_mountain-**garantier** er urørte, og kun D2 flytter sig nævneværdigt og bliver i båndet.
+- Kvote (§1b) 100 % i alle fire · 140 løbsdage i alle fire (§1d) · 0 placeringsbrud · terræn-gulvene (§5) holder · realisme-båndene GO.
+
+**Hvad den gjorde dårligere, og som er ejerens afvejning:** §7b's finale-bånd. Antallet af kendte linjer uden for båndet gik fra seks til otte — ét gammelt brud lukkede (kuperede etaper), tre nye kom til (to spejlvendte rullende-andele på sæson-aggregatet, én bjerg-andel i D4 hvor stikprøven er mindst). Retningen er forventet: færre bjerg-**fyld**-etaper og flere rullende betyder at de GARANTEREDE summit-finaler fylder mere af en mindre nævner. Finale-båndene har krævet `--allow-finale-drift` siden 3/9 ([#4272](https://github.com/NicolaiDolmer/CyclingZone/issues/4272)) og er ikke grønne i forvejen — ingen af de nye linjer er en ny klasse af brud, og ingen af dem stopper `--apply`. De står navngivet i `KENDTE_FIXTURE_BRUD`.
+
+---
+
 `ARCHETYPE_PROFILES`' filler-vægte er i dag kalibreret mod **sæson-aggregatet** — én global vægttabel for alle fire divisioner. Kalibrering **pr. division** er forudsætningen for at de stramme tal kan nås; se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176). **Undtagelsen er §6b's tre kategorier** (itt/brosten/high_mountain), som fik en pr.-tier-kalibrering 31/8 — se §6b nedenfor. De resterende tre K-B-kategorier (flad/kuperet/almindelig bjerg) er stadig KUN globalt kalibreret; det er #4176's åbne rest.
 
 ---
