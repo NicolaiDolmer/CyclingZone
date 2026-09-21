@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.291",
+    "date": "2026-09-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Rider info line on the mobile training page",
+          "body": "What changed: On phones, the rider's info line under the name (type, age, form, fatigue) ran into the next column. It now breaks after the slash in the rider type and between the items."
+        },
+        "da": {
+          "title": "Rytterens infolinje på træningssiden på mobil",
+          "body": "Hvad er ændret: På telefonen løb rytterens infolinje under navnet (type, alder, form, træthed) ind i næste kolonne. Den bryder nu efter skråstregen i ryttertypen og mellem punkterne."
+        },
+        "refs": [4851, 5383]
+      }
+    ]
+  },
+  {
     "version": "7.290",
     "date": "2026-09-21",
     "label": "Beta",

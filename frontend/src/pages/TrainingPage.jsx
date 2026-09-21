@@ -107,6 +107,24 @@ const STATUS_INJURED_WEIGHT = 1;
 // ikke en dagstype: hvilken dag den fører til afhænger af rytterens session.
 const QUICK_DAY_TYPES = Object.freeze(["rest", "recovery", "session"]);
 
+// #4851: praecis samme funktion som DataTable.jsx's egen `withBreakHints`
+// (D-047/#5124) — kopieret lokalt i stedet for importeret, saa denne fil
+// (den GAMLE, haandrullede mobil-gren, ikke DataTable) ikke traekker en
+// deling ind i en delt UI-komponent for en enkelt intern hjaelpefunktion.
+// "Klatrer/GC" er EET ord for browseren uden en brydningsmulighed ved "/",
+// saa linjen falder ellers tilbage paa break-words og braekker midt i ordet
+// ("SPRINTE/R/ROULE/UR", maalt 21/9 paa 412px). `<wbr>` er en frivillig
+// brydning der hverken tegner noget eller aendrer `textContent`.
+function withBreakHints(value) {
+  const parts = String(value).split("/");
+  if (parts.length === 1) return value;
+  // Brydningen ligger EFTER skraastregen, saa "SPRINTER/" bliver staaende paa
+  // den foerste linje — ikke "/ROULEUR" paa den naeste.
+  return parts.flatMap((part, index) =>
+    index === parts.length - 1 ? [part] : [`${part}/`, <wbr key={`wbr-${index}`} />],
+  );
+}
+
 // Dagstypen rytterens gemte session hører til (skill eller training), eller
 // null hvis planen ikke bærer en session (fx en restitutionsdag).
 function sessionDayType(plan) {
@@ -1061,6 +1079,12 @@ export default function TrainingPage() {
               intensitet til en ubrugelig scroll-strimmel (2 spillere, iOS+Android).
               max-w + ombrydning i stedet for nowrap: infoen står på 2 korte linjer. */}
           <div className="mt-0.5 sm:hidden max-w-[40vw] font-data text-3xs uppercase tracking-[.05em] text-cz-3">
+            {/* #4851: ingen break-words her — den brød ord midt i bogstaverne
+                ("SPRINTE/R/ROULE/UR", maalt 21/9 med det laengste ryttertype-
+                par paa 412px). Samme opskrift som DataTable's renderStickyCell
+                (D-047/#5124, withBreakHints): kun "/" i selve typeparret faar
+                en <wbr/>-brydningsmulighed, resten bryder alene ved de naturlige
+                mellemrum omkring " · ". */}
             {[
               rider.primary_type
                 ? (rider.secondary_type && rider.secondary_type !== rider.primary_type
@@ -1079,7 +1103,10 @@ export default function TrainingPage() {
               scoreVisible && Number.isFinite(riderScore?.today)
                 ? `${t("score.column")} ${riderScore.today}`
                 : null,
-            ].filter(Boolean).join(" · ")}
+            ].filter(Boolean).flatMap((value, index) => [
+              index > 0 ? " · " : null,
+              ...[].concat(withBreakHints(value)),
+            ])}
           </div>
         </td>
 
