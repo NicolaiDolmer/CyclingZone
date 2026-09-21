@@ -1653,7 +1653,10 @@ export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDay = n
     (inc) => (inc.outcome === "abandon" && inc.kind === "crash")
       || (inc.kind !== "injury" && Number.isFinite(inc.injury_days) && inc.injury_days > 0),
   );
-  const raceDayContext = seasonId != null && Number.isInteger(Number(gameDay)) && Number(gameDay) >= 0;
+  // `Number(null)` er 0, ikke NaN — uden `gameDay != null` ville en manglende
+  // loebsdag tavst blive til loebsdag 0 og skrive en skade paa den forkerte akse.
+  const raceDayContext = seasonId != null && gameDay != null
+    && Number.isInteger(Number(gameDay)) && Number(gameDay) >= 0;
   return injuring.map((inc) => {
     const days = Number.isFinite(inc.injury_days) ? inc.injury_days : 1;
     const endGameDay = raceDayContext ? injuryEndGameDay({ gameDay: Number(gameDay), days }) : null;

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
-import { conditionMultiplier, nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
+import { conditionMultiplier, nextFatigue, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { RACE_DAY_ENGINE_FLAG_KEY } from "./raceDayEngineFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "./raceDayDevelopmentFlag.js";
 import { TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.js";
@@ -1710,4 +1710,130 @@ test("#4847 (flag off): bindingen slaas ALDRIG op — den gamle sti er bit-ident
   assert.equal(rr.bound_race_day, false, "ingen binding uden en loebsdag at binde paa");
   assert.equal(rr.intensity, "hard", "rytteren traener praecis som i dag");
   assert.equal((state.rider_training_scores ?? []).length, 1);
+});
+
+// ── #5462: skadesvarighed i LOEBSDAGE (ejer-laast 15/9, §13.3 pkt. 7) ────────
+//
+// Skriver 1 af 2 (traeningsskaden). Skriver 2 (styrt i loeb) og udtagelses-gaten
+// maales i injuryRaceDaysWriters.test.js; den rene akse-matematik i
+// injuryRaceDays.test.js.
+
+// S4-formen: flere loebsdage pr. KALENDERDATO (CALENDAR_RULES §1e-b). Det er
+// praecis dét der goer forskellen paa de to akser maalbar — loebsdag 13 og 14
+// ligger paa SAMME dato som loebsdag 12.
+const INJURY_DATE_BY_GAME_DAY = {
+  13: "2026-06-12", 14: "2026-06-12",
+  15: "2026-06-13", 16: "2026-06-13",
+  17: "2026-06-14", 18: "2026-06-14",
+};
+
+function seedInjuryCalendar(state) {
+  state.race_stage_schedule = [
+    // Kun denne er STARTET kl. 08:00Z (NOW) → holdets loebsdag er 12.
+    { race_id: "race-1", stage_number: 1, game_day: 12, scheduled_at: "2026-06-12T06:00:00Z" },
+    { race_id: "race-1", stage_number: 2, game_day: 13, scheduled_at: "2026-06-12T09:00:00Z" },
+    { race_id: "race-1", stage_number: 3, game_day: 14, scheduled_at: "2026-06-12T13:00:00Z" },
+    { race_id: "race-1", stage_number: 4, game_day: 15, scheduled_at: "2026-06-13T09:00:00Z" },
+    { race_id: "race-1", stage_number: 5, game_day: 16, scheduled_at: "2026-06-13T13:00:00Z" },
+    { race_id: "race-1", stage_number: 6, game_day: 17, scheduled_at: "2026-06-14T09:00:00Z" },
+    { race_id: "race-1", stage_number: 7, game_day: 18, scheduled_at: "2026-06-14T13:00:00Z" },
+  ];
+}
+
+// Find et rytter-id der FAKTISK ruller en skade paa det givne seed-scope.
+// Bevidst SOEGT frem for hardkodet: skade-rullet er en hash af (rytter, scope),
+// og et hardkodet id ville vaere en tavs no-op-test den dag scopet aendres.
+function findInjuringRider(seedScope, fatigue = 95) {
+  const risk = injuryRisk({ intensity: "hard", fatigue });
+  assert.ok(risk > 0, "testen forudsaetter en reel skaderisiko ved hard + hoej traethed");
+  for (let i = 1; i <= 500; i++) {
+    const id = `inj-${i}`;
+    const roll = rollInjury({ riderId: id, dateStr: seedScope, risk });
+    if (roll.injured) return { id, days: roll.days };
+  }
+  throw new Error("fandt intet rytter-id der ruller en skade — juster soegningen");
+}
+
+function seedInjuryRider(id, extraCondition = {}) {
+  return seedState({
+    riders: [makeRider({ id })],
+    abilities: [makeAbilityRow(id)],
+    conditions: [makeCondition(id, { fatigue: 95, form: 50, ...extraCondition })],
+    plans: [{ rider_id: id, team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+}
+
+test("#5462 (flag on): en ny traeningsskade varer N LOEBSDAGE, og injured_until er slut-loebsdagens dato", async () => {
+  const { id, days } = findInjuringRider(raceDaySeedKey({ seasonId: SEASON_ID, gameDay: 12 }));
+  const state = seedInjuryRider(id);
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedInjuryCalendar(state);
+
+  const result = await runDay(state);
+
+  assert.equal(result.report.riders[0].injury_days, days, "rapporten baerer stadig varigheden");
+  const cond = state.rider_condition.find((c) => c.rider_id === id);
+  assert.equal(cond.injury_end_game_day, 12 + days, "slut-loebsdag = loebsdag + N, samme formel som kalenderstien");
+  assert.equal(cond.injury_season_id, SEASON_ID, "aksen er saeson-relativ og kan ikke baere betydningen alene");
+  assert.equal(cond.injury_race_days_left, days + 1, "resten taelles INKLUSIV den indevaerende loebsdag");
+  assert.equal(cond.injury_cause, "training_overload");
+  assert.equal(
+    cond.injured_until, INJURY_DATE_BY_GAME_DAY[12 + days],
+    "injured_until er UDLEDT af slut-loebsdagen — gaten og alle flader laeser derfor det samme felt",
+  );
+});
+
+test("#5462 (flag off): BIT-IDENTISK — kalenderdato, og ingen af de tre loebsdags-kolonner skrives", async () => {
+  // Kalenderstiens seed er tick-DATOEN, ikke loebsdagen.
+  const { id, days } = findInjuringRider("2026-06-12");
+  const state = seedInjuryRider(id);
+  seedRaceDayTick(state, { gameDay: 12, value: "off" });
+  seedInjuryCalendar(state);
+
+  await runDay(state);
+
+  const cond = state.rider_condition.find((c) => c.rider_id === id);
+  const forventet = new Date(Date.UTC(2026, 5, 12 + days)).toISOString().slice(0, 10);
+  assert.equal(cond.injured_until, forventet, "tickDate + N KALENDERDAGE, praecis som foer #5462");
+  for (const kolonne of ["injury_end_game_day", "injury_season_id", "injury_race_days_left"]) {
+    assert.ok(!(kolonne in cond), `${kolonne} maa ikke findes i payloaden naar flaget er off`);
+  }
+});
+
+test("#5462 (flag on): raskmeldingen foelger LOEBSDAGEN, ikke datoen", async () => {
+  // Slut-loebsdagen er passeret (11 < 12), men datoen ligger langt ude i fremtiden.
+  // Paa dato-aksen ville rytteren stadig vaere skadet; paa loebsdags-aksen er han rask.
+  const state = seedInjuryRider("r-healed", {
+    fatigue: 20,
+    injured_until: "2026-06-30",
+    injury_end_game_day: 11,
+    injury_season_id: SEASON_ID,
+    injury_race_days_left: 1,
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedInjuryCalendar(state);
+
+  const result = await runDay(state);
+
+  assert.equal(result.report.riders[0].injured, false, "\"tilbage om N loebsdage\" betyder praecis dét");
+  const cond = state.rider_condition.find((c) => c.rider_id === "r-healed");
+  assert.equal(cond.injured_until, null);
+  assert.equal(cond.injury_end_game_day, null);
+  assert.equal(cond.injury_season_id, null);
+  assert.equal(cond.injury_race_days_left, null);
+});
+
+test("#5462 overgangen: en skade fra FOER flippet loeber faerdig paa KALENDERDAGE", async () => {
+  // Ingen af de tre loebsdags-kolonner er sat (migrationen skriver dem ikke).
+  // Skaden maa ikke skifte betydning tavst, saa datoen bliver ved med at gaelde.
+  const state = seedInjuryRider("r-legacy", { fatigue: 20, injured_until: "2026-06-15" });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedInjuryCalendar(state);
+
+  const result = await runDay(state);
+
+  assert.equal(result.report.riders[0].injured, true, "stadig skadet — datoen ligger i fremtiden");
+  const cond = state.rider_condition.find((c) => c.rider_id === "r-legacy");
+  assert.equal(cond.injured_until, "2026-06-15", "datoen roeres ikke af flippet");
+  assert.equal(cond.injury_end_game_day, null, "en gammel skade faar ikke en opfundet loebsdag");
 });

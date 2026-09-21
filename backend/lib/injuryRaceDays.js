@@ -64,6 +64,9 @@ import { copenhagenDateString } from "./copenhagenTime.js";
  * @returns {number|null} null naar aksen ikke kendes (kald-stedet falder tilbage).
  */
 export function injuryEndGameDay({ gameDay, days } = {}) {
+  // `Number(null)` er 0, ikke NaN — samme faelde som i calendarActivationRaceDays.js.
+  // Uden dette led ville en manglende akse tavst blive til loebsdag 0.
+  if (gameDay == null || days == null) return null;
   const gd = Number(gameDay);
   const n = Number(days);
   if (!Number.isFinite(gd) || !Number.isInteger(gd) || gd < 0) return null;
@@ -80,6 +83,9 @@ export function injuryEndGameDay({ gameDay, days } = {}) {
  * @returns {number} 0 = rask.
  */
 export function injuryRaceDaysLeft({ endGameDay, currentGameDay } = {}) {
+  // `Number(null)` er 0, ikke NaN — uden dette led ville en manglende loebsdag
+  // slippe igennem som loebsdag 0 og give et opfundet antal dage tilbage.
+  if (endGameDay == null || currentGameDay == null) return 0;
   const end = Number(endGameDay);
   const now = Number(currentGameDay);
   if (!Number.isFinite(end) || !Number.isFinite(now)) return 0;

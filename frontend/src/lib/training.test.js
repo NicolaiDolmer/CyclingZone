@@ -4,6 +4,7 @@ import {
   TRAINING_FOCUS_ABILITIES, TRAINING_FOCUS_KEYS, TRAINING_INTENSITIES,
   isValidFocus, isValidIntensity, injuryDaysLeft,
   isRiderInjured, flattenCondition, CONDITION_SELECT,
+  injuryTimeLeft, injuryBadgeMessage,
 } from "./training.js";
 
 test("fokus-nøgler matcher abilities-mappens nøgler", () => {
@@ -135,4 +136,47 @@ test("flattenCondition tåler manglende/null embed (ingen skade-rad)", () => {
 // paa andres hold maa ikke traekke hele condition-raekken med sig.
 test("CONDITION_SELECT embedder kun skade-felterne (ikke form/fatigue)", () => {
   assert.equal(CONDITION_SELECT, "rider_condition(injured_until, injury_race_days_left)");
+});
+
+// ── #5462: skadesvarighed i loebsdage (ejer-laast 15/9, §13.3 pkt. 7) ────────
+
+test("#5462 injuryTimeLeft: med loebsdags-tallet svares der i LOEBSDAGE + en ca.-dato", () => {
+  const injury = injuryTimeLeft({ injured_until: "2026-06-13", injury_race_days_left: 3 });
+  assert.equal(injury.unit, "race_day");
+  assert.equal(injury.count, 3);
+  assert.equal(injury.approxDate, "2026-06-13", "datoen er altid et skoen — derfor 'ca.' i teksten");
+});
+
+test("#5462 injuryTimeLeft: UDEN loebsdags-tallet er svaret uaendret kalenderdage (flag off + overgang)", () => {
+  const today = new Date("2026-06-22T08:00:00+02:00");
+  const injury = injuryTimeLeft({ injured_until: "2026-06-25" }, today);
+  assert.equal(injury.unit, "calendar_day");
+  assert.equal(injury.count, injuryDaysLeft("2026-06-25", today), "samme tal som den kanoniske kalenderfunktion");
+});
+
+test("#5462 injuryTimeLeft: rask rytter og manglende condition giver 0", () => {
+  assert.equal(injuryTimeLeft(null).count, 0);
+  assert.equal(injuryTimeLeft({}).count, 0);
+  assert.equal(injuryTimeLeft({ injured_until: null, injury_race_days_left: 0 }).count, 0);
+});
+
+test("#5462 injuryTimeLeft: et loebsdags-tal paa 0 er 'rask', ikke en loebsdags-skade", () => {
+  const injury = injuryTimeLeft({ injured_until: "2026-06-13", injury_race_days_left: 0 },
+    new Date("2026-06-20T08:00:00+02:00"));
+  assert.equal(injury.count, 0);
+  assert.equal(injury.unit, "calendar_day");
+});
+
+test("#5462 injuryBadgeMessage: noeglen foelger enheden, og ca.-dato-noeglen kraever en dato", () => {
+  assert.deepEqual(
+    injuryBadgeMessage({ unit: "race_day", count: 3, approxDate: "2026-06-13" }),
+    { key: "injuredRaceDays", days: 3, date: "2026-06-13" },
+  );
+  assert.deepEqual(
+    injuryBadgeMessage({ unit: "race_day", count: 3, approxDate: null }),
+    { key: "injuredRaceDaysPlain", days: 3, date: null },
+    "uden en dato maa teksten ikke love en '(ca. )'",
+  );
+  assert.equal(injuryBadgeMessage({ unit: "calendar_day", count: 1 }).key, "injured");
+  assert.equal(injuryBadgeMessage({ unit: "calendar_day", count: 4 }).key, "injured_plural");
 });

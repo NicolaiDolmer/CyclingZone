@@ -1065,7 +1065,7 @@
       },
       "injuryRisk": {
         "title": "Skaderisiko",
-        "text": "At køre Hård intensitetstræning på en rytter der allerede har høj Træthed udløser en skaderisiko. Et risikomærke vises på rytteren inden træning kører. Hvis resultatet er uheldigt, pådrager rytteren sig en mild skade og er ude i 1-5 dage. At sænke intensiteten til Normal eller Hvile fjerner risikoen."
+        "text": "At køre Hård intensitetstræning på en rytter der allerede har høj Træthed udløser en skaderisiko. Et risikomærke vises på rytteren inden træning kører. Hvis resultatet er uheldigt, pådrager rytteren sig en mild skade og er ude i 1-5 dage. Fra sæson 4 er det løbsdage, ikke kalenderdage, og hans kort viser hvor mange der er tilbage plus den omtrentlige dato han er tilbage. At sænke intensiteten til Normal eller Hvile fjerner risikoen."
       },
       "progressBars": {
         "title": "Fremskridtslinjer og evnepoint",
@@ -1289,7 +1289,7 @@
       },
       "suitability": {
         "title": "Sådan læser du udtagelses-tabellen",
-        "text": "Hver rytter viser sin type (fx Spurter eller Klatrer), et egnethedstal fra 0 til 100 der angiver hvor godt rytteren passer til løbets terræn, samt aktuel Form og Træthed. Højere egnethed betyder et bedre match til parcouren. En rytter der stadig er skadet på selve løbets startdato kan ikke udtages til det; brug Skjul skadede for at fjerne dem fra listen mens du vælger. En rytter hvis skade er ovre inden løbet starter, står ikke som skadet her, selv hvis han er skadet lige nu, så du kan planlægge et løb uger frem uden at vente på at han bliver rask først."
+        "text": "Hver rytter viser sin type (fx Spurter eller Klatrer), et egnethedstal fra 0 til 100 der angiver hvor godt rytteren passer til løbets terræn, samt aktuel Form og Træthed. Højere egnethed betyder et bedre match til parcouren. En rytter der stadig er skadet på selve løbets startdato kan ikke udtages til det; brug Skjul skadede for at fjerne dem fra listen mens du vælger. En rytter hvis skade er ovre inden løbet starter, står ikke som skadet her, selv hvis han er skadet lige nu, så du kan planlægge et løb uger frem uden at vente på at han bliver rask først. Fra sæson 4 tælles hans resterende tid i løbsdage, og datoen der vises er omtrentlig."
       },
       "roles": {
         "title": "Kaptajn, spurt-kaptajn, udbruds-jæger og fri rolle",
@@ -1328,7 +1328,7 @@
       },
       "crashesAndIncidents": {
         "title": "Styrt og uheld",
-        "text": "Et styrt på vejen er ikke længere alt eller intet. Et let styrt koster lidt tid, og rytteren kører videre uskadt. Et hårdt styrt koster meget mere tid og efterlader ham mærket med skadedage, men han kommer stadig i mål. Et alvorligt styrt slutter hans løb og giver også skadedage, og det er sjældent. Et mekanisk uheld, en punktering, en afsprunget kæde, et hjul, koster altid kun tid: det kan aldrig tvinge en rytter til at udgå, og det kan aldrig skade ham, og en holdkammerat tæt på får ham hurtigere op på cyklen igen. Kun et rigtigt styrt kan skade en rytter."
+        "text": "Et styrt på vejen er ikke længere alt eller intet. Et let styrt koster lidt tid, og rytteren kører videre uskadt. Et hårdt styrt koster meget mere tid og efterlader ham mærket med skadedage, men han kommer stadig i mål. Et alvorligt styrt slutter hans løb og giver også skadedage, og det er sjældent. Et mekanisk uheld, en punktering, en afsprunget kæde, et hjul, koster altid kun tid: det kan aldrig tvinge en rytter til at udgå, og det kan aldrig skade ham, og en holdkammerat tæt på får ham hurtigere op på cyklen igen. Kun et rigtigt styrt kan skade en rytter. Skadedage fra et styrt tælles på samme måde som træningsskader: kalenderdage i dag, løbsdage fra sæson 4."
       },
       "timeLimitAndGrupetto": {
         "title": "Tidsgrænsen og grupettoen",
