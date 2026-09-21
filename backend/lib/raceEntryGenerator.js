@@ -1141,12 +1141,49 @@ export async function runRaceEntryGenerator({
     }
   }
 
+  // #4759 (CodeRabbit-fund): applyUnitDiff's upsert bruger ignoreDuplicates
+  // (ON CONFLICT (race_id, rider_id) DO NOTHING) — en GHOST-residual under et
+  // ANDET hold (samme rytter, samme løb, se computeUnitDiff/applyUnitDiff-
+  // kommentarerne ovenfor) kan derfor stille springe ét eller flere af de
+  // ønskede picks over. Både batch-RPC'en og applyUnitWithRecovery tæller kun
+  // "forsøgt" som "skrevet" — uden dette genlæs kunne "assistenten udtog dit
+  // hold" fyres for en enhed der reelt endte tom eller ufuldstændig. Genlæs
+  // derfor de BERØRTE enheders FAKTISKE race_entries lige før vi notificerer —
+  // billigt (kun de få enheder der rent faktisk blev skrevet i denne kørsel).
+  const verifiedNotifyUnitKeys = new Set();
+  if (writtenNotifyUnitKeys.size) {
+    const candidateRaceIds = [...new Set(
+      [...writtenNotifyUnitKeys].map((k) => assistantNotifyCandidates.get(k)?.raceId).filter(Boolean)
+    )];
+    const { data: verifyRows, error: verifyErr } = await selectInChunks({
+      supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
+      inColumn: "race_id", ids: candidateRaceIds, orderBy: ["race_id", "rider_id"],
+    });
+    if (verifyErr) {
+      // Defensivt: kan vi ikke verificere, sender vi ALDRIG en muligvis forkert
+      // "din trup er fyldt"-besked. Fejlen logges/captures, sweepet fortsætter.
+      console.error(`  ⚠️  assistant-filled-squad verify fejlede (#4759, ikke-fatal): ${verifyErr.message}`);
+      captureException(new Error(`assistant-filled-squad verify: ${verifyErr.message}`), {
+        tags: { flow: "notifications", stage: "assistant-filled-squad-verify" },
+      });
+    } else {
+      const actualCountByUnit = new Map();
+      for (const row of verifyRows || []) {
+        const key = `${row.race_id}|${row.team_id}`;
+        actualCountByUnit.set(key, (actualCountByUnit.get(key) || 0) + 1);
+      }
+      for (const unitKey of writtenNotifyUnitKeys) {
+        if ((actualCountByUnit.get(unitKey) || 0) > 0) verifiedNotifyUnitKeys.add(unitKey);
+      }
+    }
+  }
+
   // #4759: notificér de menneske-hold hvis enhed rent faktisk blev fyldt fra
   // helt tom denne kørsel (late_fill eller opt_in — proactive når aldrig
   // hertil, trin 5's eligibleTeams-filter udelukker dem allerede). Best-effort:
   // en notifikationsfejl må ALDRIG vælte selve sweepet (samme A2-mønster som
   // resten af notifikations-kaldene i notificationService.js).
-  for (const unitKey of writtenNotifyUnitKeys) {
+  for (const unitKey of verifiedNotifyUnitKeys) {
     const candidate = assistantNotifyCandidates.get(unitKey);
     if (!candidate) continue;
     const race = raceById.get(candidate.raceId);

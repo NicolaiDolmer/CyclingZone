@@ -2098,3 +2098,27 @@ test("#4759: notifyAssistantFilledSquad (default) skriver en rigtig assistant_fi
   assert.match(rows[0].message, /Testløbet Rundt om Fjeldet/);
   assert.match(rows[0].message, /no selection in/i);
 });
+
+// CodeRabbit-fund (denne PR): applyUnitDiff's upsert bruger ignoreDuplicates
+// (ON CONFLICT (race_id, rider_id) DO NOTHING) — en GHOST-residual under et
+// ANDET hold kan stille springe et pick over. Uden et verificeret genlæs FØR
+// notifikationen kunne "assistenten udtog dit hold" fyres for en enhed der
+// reelt endte tom.
+test("#4759 CodeRabbit-fund: ghost-residual under et ANDET hold optager PK'en for HVER ønsket rytter -> enheden ender reelt tom -> INGEN notifikation", async () => {
+  const { state, seasonId } = seedModeScenario();
+  // Alle 8 af mgr's egne kandidat-ryttere har allerede en race_entries-række i
+  // NEAR under et fremmed hold ("ghost") — uanset hvilke 6 autopick vælger,
+  // rammer upsertens PK-kollision (race_id, rider_id) dem alle.
+  state.race_entries = Array.from({ length: 8 }, (_, i) => ({
+    race_id: "NEAR", rider_id: `mgr-r${i}`, team_id: "ghost-team", race_role: "helper", is_auto_filled: true,
+  }));
+  const calls = [];
+  const notify = async (args) => { calls.push(args); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  });
+  const mgrRows = state.race_entries.filter((e) => e.race_id === "NEAR" && e.team_id === "mgr");
+  assert.equal(mgrRows.length, 0, "sanity: mgr's enhed endte rent faktisk tom (alle picks ghost-kolliderede)");
+  assert.deepEqual(calls, [], "ingen besked om en trup der i virkeligheden aldrig blev fyldt");
+});
