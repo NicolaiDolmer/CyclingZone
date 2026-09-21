@@ -3,7 +3,8 @@
 // Ejer-valg 18/9 (laast): mobilformen er "mockup 2, tabel" —
 // docs/design/mockups-training-mobile-2026-09-18/m2-table.html. Raekker er
 // ryttere, KOLONNER er dagens loebsdage, og den rytter man trykker paa faar sit
-// fulde kort EEN gang under tabellen.
+// fulde kort EEN gang — foldet ud lige under sin egen raekke (ejer-beslutning
+// 21/9, variant A; se expandScrollAdjustment nederst).
 //
 // REALISME-REGLEN (ejer 18/9): enheden er loebsdagen = een dato i cykelaaret.
 // Rytteren koerer ET loeb ELLER traener paa en loebsdag, aldrig begge.

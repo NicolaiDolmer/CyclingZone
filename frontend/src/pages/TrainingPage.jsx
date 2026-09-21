@@ -1195,7 +1195,8 @@ export default function TrainingPage() {
         {/* Intensitet — #5124: sidens hovedhandling ("skift dagens træning"),
             derfor en af de tre mobil-standardkolonner (rosterMobile). #3643:
             den nye mobil-tabel har sin egen vej til den samme mutation
-            (rytterens kort under tabellen), men den vises kun bag flaget. */}
+            (rytterens kort, foldet ud under hans egen række), men den vises
+            kun bag flaget. */}
         {showRosterCol("day") && (
         // #5124: `max-w` på mobil-standardtilstanden — uden den æder de to
         // tekst-tunge datakolonner (denne + "Denne sæson") navnekolonnens
