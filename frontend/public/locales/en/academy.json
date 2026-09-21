@@ -155,6 +155,7 @@
     "someFailed": "Some riders could not be moved. See the reason on each row, then try again.",
     "contractUntil": "Until season {season}",
     "contractNone": "No contract",
+    "colRider": "Rider",
     "colRating": "Rating",
     "colPotential": "Potential",
     "colContract": "Contract",

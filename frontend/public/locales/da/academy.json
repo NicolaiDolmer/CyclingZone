@@ -155,6 +155,7 @@
     "someFailed": "Nogle ryttere kunne ikke flyttes. Se årsagen på rækken, og prøv igen.",
     "contractUntil": "Til sæson {season}",
     "contractNone": "Ingen kontrakt",
+    "colRider": "Rytter",
     "colRating": "Rating",
     "colPotential": "Potentiale",
     "colContract": "Kontrakt",

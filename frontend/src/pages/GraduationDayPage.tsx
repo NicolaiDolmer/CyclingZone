@@ -209,6 +209,21 @@ export default function GraduationDayPage() {
               })}
               meta={t("graduationDay.riderCount", { count: group.riders.length })}
             />
+            {/* Kolonne-etiketter, kun fra lg. Paa mobil baerer hver celle sin
+                egen etikette i stedet (se Cell), saa tallene aldrig staar
+                uforklarede paa nogen af de to bredder. Samme type-trin som en
+                tabel-header (text-2xs uppercase, --text-3). */}
+            <div
+              aria-hidden="true"
+              className="hidden lg:grid lg:grid-cols-[minmax(0,1.15fr)_auto_auto_auto_minmax(0,1.25fr)_auto] lg:items-end lg:gap-x-4 pb-1.5"
+            >
+              <span className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("graduationDay.colRider")}</span>
+              <span className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("graduationDay.colRating")}</span>
+              <span className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("graduationDay.colPotential")}</span>
+              <span className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("graduationDay.colContract")}</span>
+              <span className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("graduationDay.colCoach")}</span>
+              <span className="font-data text-2xs uppercase tracking-[.06em] text-cz-3 justify-self-end">{t("graduationDay.colChoice")}</span>
+            </div>
             <ul className="divide-y divide-cz-border border-t border-cz-border">
               {group.riders.map((g) => (
                 <GraduateRow
@@ -317,6 +332,11 @@ function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting,
         </div>
       </div>
 
+      {/* Paa mobil staar rating, potentiale og kontrakt side om side i tre
+          smalle kolonner (raekken bliver ellers 470 px hoej pr. rytter, og tre
+          ryttere en scroll uden ende). `lg:contents` oploeser wrapperen fra lg,
+          saa de tre celler bliver direkte boern af 6-kolonne-gitteret igen. */}
+      <div className="grid grid-cols-3 gap-x-3 lg:contents">
       {/* 2 · Rating-plade (samme statColor-skala som rytterprofilens hero) */}
       <Cell label={t("graduationDay.colRating")}>
         {Number.isFinite(rating) ? (
@@ -338,9 +358,10 @@ function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting,
              beholder sin eksisterende kontrakt (contractOnAcquirePatch roerer
              kun en reelt kontraktloes rytter). */}
       <Cell label={t("graduationDay.colContract")}>
-        <span className="block whitespace-nowrap font-data text-[13px] tabular-nums text-cz-1">{contract}</span>
-        <span className="block whitespace-nowrap font-data text-3xs tabular-nums text-cz-3">{formatMoney(g.salary)} CZ$</span>
+        <span className="block font-data text-[13px] leading-tight tabular-nums text-cz-1 lg:whitespace-nowrap">{contract}</span>
+        <span className="block font-data text-3xs tabular-nums text-cz-3 lg:whitespace-nowrap">{formatMoney(g.salary)} CZ$</span>
       </Cell>
+      </div>
 
       {/* 5 · Traenerens vurdering, fog-gatet (lib/graduationDay.ts) */}
       <Cell label={t("graduationDay.colCoach")} className="lg:min-w-0">
