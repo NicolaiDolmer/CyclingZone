@@ -1,5 +1,54 @@
 export const PATCHES = [
   {
+    "version": "7.290",
+    "date": "2026-09-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rider values",
+        "en": {
+          "title": "396 riders were stuck at the wrong value",
+          "body": "What changed: Since August, some riders were valued as the rider type they had before the type update, so their value only moved when one specific ability improved. On Sunday I corrected the type for the 396 riders on manager teams whose value goes up from the fix. Nobody went down. The rest of the value model follows in a later update, and I will tell you before it happens."
+        },
+        "da": {
+          "title": "396 ryttere sad fast på en forkert værdi",
+          "body": "Hvad er ændret: Siden august er nogle ryttere blevet værdisat som den ryttertype, de havde før type-opdateringen, så deres værdi kun flyttede sig, når én bestemt evne blev bedre. Søndag rettede jeg typen for de 396 ryttere på managerhold, hvis værdi stiger af rettelsen. Ingen gik ned. Resten af værdimodellen følger i en senere opdatering, og jeg siger til, før det sker."
+        },
+        "refs": [5443, 5416]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "A rare error on the rankings pages",
+          "body": "What changed: If you opened a rankings page in the few seconds where the tables behind it were being refreshed, you could get an error instead of the list. The game now quietly tries once more, so you get the rankings."
+        },
+        "da": {
+          "title": "En sjælden fejl på ranglisterne",
+          "body": "Hvad er ændret: Åbnede du en rangliste i de få sekunder, hvor tabellerne bag den blev genopfrisket, kunne du få en fejl i stedet for listen. Spillet prøver nu stille én gang til, så du får ranglisten."
+        },
+        "refs": [5452]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training score in the beta group: a proper graph, and now on your phone",
+          "body": "What changed: For the beta group, the small graph next to the training score was drawn as a black blob instead of a thin line. That is fixed. The score is also on the new phone training page now, in the squad table and on the rider card, and the Score column has a small info icon that takes you to the explanation in Help."
+        },
+        "da": {
+          "title": "Træningsscoren i beta-gruppen: en rigtig graf, og nu også på telefonen",
+          "body": "Hvad er ændret: For beta-gruppen blev den lille graf ved træningsscoren tegnet som en sort klat i stedet for en tynd streg. Det er rettet. Scoren står nu også på den nye træningsside til telefonen, i trup-tabellen og på rytterkortet, og Score-kolonnen har fået et lille info-ikon, der fører dig til forklaringen i Hjælp."
+        },
+        "refs": [4851, 5449]
+      }
+    ]
+  },
+  {
     "version": "7.289",
     "date": "2026-09-19",
     "label": "Beta",
