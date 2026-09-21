@@ -175,7 +175,7 @@
           {
             "type": "command",
             "command": "bash scripts/hooks/guard-agent-spawn.sh",
-            "timeout": 10
+            "timeout": 60
           }
         ]
       },

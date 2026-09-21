@@ -22,3 +22,11 @@ Mechanical gates: atomic wave admission, shared five-PR count/reservation, plan 
 The independent reviewer found four defects during development: the canonical Claude entry could block itself; broad ownership could include reserved paths; rebases polluted the initial-base diff; failed process termination could wait indefinitely. All four were corrected and re-reviewed. Session claim removal was also moved from turn-level Stop to SessionEnd, following [official hook semantics](https://learn.chatgpt.com/docs/hooks).
 
 No throughput improvement is claimed. Time to merged PR is unmeasured because nothing was merged; owner-active minutes were not measured. The fixture is capability evidence, not the owner-selected production pilot in #5467.
+
+## Follow-up to Claude review on #5468, 21 September
+
+Owner decision: PR_LIMIT is now 8, including every parked draft. Hook timeout is 60 seconds. Marker replacement is atomic, legacy markers fail explicitly, and a single `wave-policy.mjs recover` command checks ownership and liveness. Same-boot historical descendant absence cannot be proved from a process snapshot, so recovery after dispatch requires an observed Windows reboot. Before dispatch, an observed dead owner is sufficient. The recovery lock is boot-qualified, and old watch PIDs are never killed after reboot.
+
+The actual Claude client test remains a post-merge gate: no active wave at merge, explicit owner merge instruction, then one harmless docs track and checks of session_id and own WAVE-prefixed agents. Rollback instructions are in the PR body and orchestration SSOT. This is not reported as already tested in Claude.
+
+Follow-up verification: concurrent marker writers preserve all 40 updates; a post-spawn process-record failure was injected into two real CLI children, both observed stopped before release. CodeRabbit reported three issues: marker serialization and Git-derived merge checks were fixed; deferring dispatchStarted until AI-worker start was rejected because setup already launches worktree/install subprocesses. There was one authorized CodeRabbit CLI round.

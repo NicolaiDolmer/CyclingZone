@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, existsSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook } from './wave-policy.mjs';
 
 const now = 1790000000000;
@@ -36,10 +38,10 @@ test('foreign, malformed and expired markers remain untouched', async (t) => {
 });
 
 test('capacity includes drafts and reserves all planned new PRs', () => {
-  const prs = [1, 2, 3, 4].map(n => ({ number: n, headRefName: `other/${n}`, isDraft: true }));
-  assert.equal(checkCapacity(prs, [track(10)]).projected, 5);
+  const prs = [1, 2, 3, 4, 5, 6, 7].map(n => ({ number: n, headRefName: `other/${n}`, isDraft: true }));
+  assert.equal(checkCapacity(prs, [track(10)]).projected, 8);
   assert.throws(() => checkCapacity(prs, [track(10), track(11)]), /PR/);
-  assert.throws(() => checkCapacity([...prs, { number: 5 }], [track(10)]), /PR/);
+  assert.throws(() => checkCapacity([...prs, { number: 8 }], [track(10)]), /PR/);
   assert.throws(() => checkCapacity(null, [track(10)]), /PR/);
 });
 
@@ -75,7 +77,7 @@ test('Claude Workflow admission uses the same code and cap; dry-run never reserv
   const payload = { session_id: 'claude-fixture', tool_name: 'Workflow', tool_input: {
     scriptPath: 'C:/Dev/CyclingZone/.claude/workflows/wave.js', args: { tracks: [track(1)] },
   } };
-  const full = async () => [1, 2, 3, 4, 5].map(number => ({ number }));
+  const full = async () => [1, 2, 3, 4, 5, 6, 7, 8].map(number => ({ number }));
   await assert.rejects(handleHook(payload, dir, full, now), /PR/);
   payload.tool_input.args.dryRun = true;
   await handleHook(payload, dir, full, now);
@@ -96,4 +98,34 @@ test('Claude lane override cannot exceed the machine budget', async (t) => {
   const dir = fixture(t);
   await assert.rejects(handleHook({ session_id: 'fixture', tool_name: 'Workflow', tool_input: { name: 'wave', args: { lanes: 5, tracks: [track(1)] } } }, dir, async () => [], now), /lanes/);
   assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+});
+
+test('concurrent marker writers preserve every read-modify-write update', async t => {
+  const dir = fixture(t);
+  const wave = await acquireWave(dir, request(), async () => []);
+  const moduleUrl = new URL('./wave-policy.mjs', import.meta.url).href;
+  const worker = `import { updateWave } from ${JSON.stringify(moduleUrl)};
+    for (let i=0;i<10;i++) updateWave(${JSON.stringify(dir)}, ${JSON.stringify(wave.waveId)}, wave => {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,8);
+      return {...wave, writes:(wave.writes || 0)+1};
+    });`;
+  const results = await Promise.allSettled(Array.from({ length: 4 }, () => new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['--input-type=module', '-e', worker], { windowsHide: true });
+    let error = '';
+    child.stderr.on('data', chunk => { error += chunk; });
+    child.once('error', reject);
+    child.once('close', code => code === 0 ? resolve() : reject(Error(error)));
+  })));
+  for (const result of results) assert.equal(result.status, 'fulfilled', result.reason?.message);
+  assert.equal(JSON.parse(readFileSync(path.join(dir, 'wave-active.json'))).writes, 40);
+});
+
+test('pre-merge idle check refuses even expired or legacy markers', t => {
+  const dir = fixture(t);
+  const call = () => spawnSync(process.execPath, [fileURLToPath(new URL('./wave-policy.mjs', import.meta.url)), 'assert-idle', '--run-dir', dir], { encoding: 'utf8' });
+  assert.equal(call().status, 0);
+  writeFileSync(path.join(dir, 'wave-active.json'), '{"expiresAt":"2000-01-01"}');
+  const blocked = call();
+  assert.equal(blocked.status, 2);
+  assert.match(blocked.stderr, /merge blocked/);
 });

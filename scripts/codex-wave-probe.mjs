@@ -7,7 +7,8 @@ import { execFileSync } from 'node:child_process';
 import { runWave, runAgent } from './codex-wave.mjs';
 
 const interrupt = process.argv[2] === '--interrupt';
-if (process.argv[2] !== '--live' && !interrupt) {
+const recordFailure = process.argv[2] === '--record-failure';
+if (process.argv[2] !== '--live' && !interrupt && !recordFailure) {
   console.log('Use --live for two read-only arithmetic workers and independent reviewers; --interrupt tests owned process-tree interruption. Temporary fixture repositories only.');
 } else {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cz-codex-live-probe-'));
@@ -17,6 +18,7 @@ if (process.argv[2] !== '--live' && !interrupt) {
     prepare: async (track) => {
       const worktree = path.join(root, `fixture-${track.issue}`), scratch = path.join(root, `scratch-${track.issue}`);
       fs.mkdirSync(worktree); fs.mkdirSync(scratch);
+      if (recordFailure) fs.mkdirSync(path.join(scratch, 'worker-0-process.json'));
       execFileSync('git', ['init', '--quiet', worktree]);
       fs.writeFileSync(path.join(worktree, 'fixture.json'), JSON.stringify({ left: 19, right: 23 }));
       return { ...track, worktree, scratch, brief: 'Harmless fixture, no repository work.' };
@@ -35,6 +37,6 @@ if (process.argv[2] !== '--live' && !interrupt) {
     },
   });
   console.log(JSON.stringify({ fixtureRoot: root, ...result }, null, 2));
-  if (result.results.length !== 2 || result.results.some(r => r.state !== (interrupt ? 'blocked' : 'ready'))) process.exitCode = 1;
+  if (result.results.length !== 2 || result.results.some(r => r.state !== (interrupt || recordFailure ? 'blocked' : 'ready'))) process.exitCode = 1;
   if (fs.existsSync(path.join(root, 'coordination/wave-active.json'))) process.exitCode = 1;
 }

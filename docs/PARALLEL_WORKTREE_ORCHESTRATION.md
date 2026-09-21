@@ -3,7 +3,7 @@
 
 ## Godkendte runtime-indgange (#5142, #5467)
 
-Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer, og fem-PR-loftet er kode. Resten af det historiske playbook laeses med disse aendringer: ingen automatisk merge, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
+Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer, og otte-PR-loftet er kode. Resten af det historiske playbook laeses med disse aendringer: ingen automatisk merge, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
 
 ## Codex-boelger (#5467)
 
@@ -23,7 +23,7 @@ Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hov
 | Egenskab | Haandhaevelse og graense |
 |---|---|
 | Gensidig boelgelaas | Atomisk filoprettelse i faelles run-mappe; eksisterende/malformed markoer blokerer |
-| Fem aabne PR'er | Live GitHub-tal inkl. drafts plus planlagte nye PR'er; Claude-hook og Codex-runner deler koden |
+| Otte aabne PR'er | Live GitHub-tal inkl. drafts plus planlagte nye PR'er; Claude-hook og Codex-runner deler koden |
 | Filansvar | Plan-overlap afvises; Codex kontrollerer committed diff foer review. Ikke en fil-ACL |
 | Worker-isolation | Eget worktree + CLI cwd/sandbox. Rettigheder skal probes i den konkrete installation |
 | Reviewer | Frisk read-only CLI-proces; workerens egen godkendelse accepteres ikke |
@@ -35,6 +35,32 @@ Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hov
 Rapporten ligger lokalt under `.claude/run/waves/<waveId>/report.json`; hver lane har privat scratch med brief, processtatus og output. Publicer en anonymiseret status og testbevis paa issue/PR inden close-out. Lokale logs er ikke varigt handoff. Maaling: tid til merget PR, ejerens aktive minutter (ejer-oplyst) og reviewrettelser. Ingen hastighedsgevinst paastaas ud fra fixture-tests.
 
 Recovery: kontroller markoer, processtatus, branch, dirty filer, pushes og eksisterende PR. Bekraeft at gammel writer er stoppet foer nyt skrivearbejde i samme worktree. En ukendt terminaltilstand beholder markoeren. En ny normal `--run` afviser eksisterende worktree/PR; recovery maa ikke stiltiende bygge samme spor igen.
+
+### Recovery-kommando (Windows, #5468)
+
+Laes foerst `node scripts/wave-policy.mjs inspect` og brug markoerens PRAECISE `waveId` og `owner`. Frigiv en doed boelge med een kommando:
+
+```powershell
+node scripts/wave-policy.mjs recover --wave-id "<waveId>" --owner "<owner>"
+```
+
+Kommandoen kontrollerer ejerskab og Windows-boot-identitet. Naar arbejde har vaeret startet, kraever automatisk recovery en KONSTATERET GENSTART AF WINDOWS: et aktuelt procestrae kan ikke bevise, at gamle efterkommere er vaek, naar mellemprocesserne er afsluttet. Genstart Windows og koer samme kommando igen. Ingen filer skal slettes i haanden.
+
+Foer nogen dispatch kan samme-boot recovery frigive efter et frisk procesoverblik, hvis ejeren og kendte efterkommere er doede. Ukendt boot/PID, ufuldstaendig spawn, fejlet maaling eller aendret markoer bevarer laasen. Efter genstart roeres ingen gammel watch-PID, som kan vaere genbrugt af en anden proces. Recovery-laasen er boot-kvalificeret, saa et crash under recovery ikke blokerer naeste boot. Bevis gemmes under `waves/<waveId>/recovery.json`. Worktrees og dirty/ikke-pushet arbejde roeres ikke.
+
+Alle markoer-skrivere serialiserer read/modify/replace med samme boot-kvalificerede state-laas; temp + rename beskytter laesere mod halve JSON-filer. En state-laas efter et hard-crash overtages ikke paa tid eller PID-gaet. Naeste boot bruger en ny laas, og recovery kan frigive den gamle boelge med ovenstaaende kommando.
+
+Claude-ejerens PID hentes fra harness-registret ved admission. Begge indgange registrerer boot-identitet og om dispatch er begyndt. Codex registrerer child-spawn foer start og PID/terminaltilstand bagefter. Manglende procesidentitet kan ikke bruges som bevis paa ophoer; en ny boot er det konservative bevis ved et hard-crash. Processer startet uden om indgangen er ikke registreret her.
+
+Legacy-markoerer uden `waveId`, `runtime` eller `owner` afvises tydeligt af inspect/release/recover. Der findes ingen force- eller TTL-genvej. Lad den oprindelige Claude-boelge afslutte dem; skriv aldrig det nye format oven paa en koerende gammel boelge.
+
+### Foerste Claude-proeve efter merge (#5468)
+
+Merge kraever BADE ejerens ordrette `merge` OG at hovedrepoets `.claude/run/wave-active.json` er vaek. Koer `node scripts/wave-policy.mjs assert-idle` fra det bekraeftede repo/worktree umiddelbart foer merge. Den udleder faelles run-mappe fra Git's common directory. Enhver eksisterende markoer stopper handlingen, uanset format eller alder.
+
+Hook-timeout er 60 sekunder, over GitHub-kaldets deadline paa 30 plus boot-maalingens 15. Foerste rigtige Claude-boelge efter merge er praecis eet ejer-valgt, ufarligt docs-spor i eget worktree, ingen produktkode/prod. Kontroller i den rigtige session: Workflow med `scriptPath` leverer `session_id`, markoeren har korrekt runtime/owner/PID/bootId, egne `WAVE-LANE:` og `WAVE-REVIEW:` passerer, og markerfrigivelse sker efter observeret stop. Fixture-tests erstatter ikke denne klientproeve.
+
+Fejler proeven: stop og observer alle egne agenter, behold ukendte claims, og brug ovenstaaende recovery naar kriterierne er opfyldt. Rollback sker i en ny isoleret branch med `git revert --no-commit <merge-SHA-for-5468>`, guard-commit, push og en ejer-godkendt revert-PR. Det konkrete merge-SHA og hele rollback-kommandoen skal staa i PR-body ved merge. Main eller hoved-checkoutet resettes aldrig.
 
 ### Claude-indgangen
 

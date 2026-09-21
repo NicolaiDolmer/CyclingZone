@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { acquireWave, releaseWave, validateTracks, getOpenPrs, sharedRunDir, REPO } from './wave-policy.mjs';
+import { acquireWave, releaseWave, readWave, updateWave, hostBootId, validateTracks, getOpenPrs, sharedRunDir, REPO, PR_LIMIT } from './wave-policy.mjs';
 import { generateBrief } from './make-wave-brief.mjs';
 import { classifyStall, commitAgeMinutes, resolveTrackTimeoutMinutes, WAVE_FREEZE } from './wave-freeze.mjs';
 
@@ -34,8 +34,8 @@ function resultSchema(role) {
 export async function runWave(options, supplied = {}) {
   const { root, runDir, owner } = options;
   const tracks = validateTracks(options.tracks);
-  const deps = { now: () => Date.now(), readPrs: getOpenPrs, ...supplied };
-  const wave = await acquireWave(runDir, { runtime: 'codex', owner, pid: process.pid, cwd: root, now: deps.now(), tracks }, deps.readPrs);
+  const deps = { now: () => Date.now(), bootId: hostBootId, readPrs: getOpenPrs, ...supplied };
+  const wave = await acquireWave(runDir, { runtime: 'codex', owner, pid: process.pid, bootId: deps.bootId(), dispatchStarted: false, processTracking: 'registered', children: [], cwd: root, now: deps.now(), tracks }, deps.readPrs);
   const evidence = path.join(runDir, 'waves', wave.waveId);
   fs.mkdirSync(evidence, { recursive: true });
   const report = path.join(evidence, 'report.json');
@@ -44,10 +44,11 @@ export async function runWave(options, supplied = {}) {
   const controller = new AbortController();
   const onSignal = () => { stopWave = true; controller.abort(); };
   process.on('SIGINT', onSignal); process.on('SIGTERM', onSignal);
-  const checkpoint = cleanup => save(report, { waveId: wave.waveId, runtime: 'codex', results, cleanup,
+  const checkpoint = cleanup => save(report, { waveId: wave.waveId, runtime: 'codex', results, cleanup, children: readWave(runDir).children || [],
     unstarted: tracks.filter(t => !results.some(r => r.issue === t.issue)).map(t => t.issue) });
-  const context = { root, evidence, wave, signal: controller.signal, now: deps.now };
+  const context = { root, runDir, evidence, wave, signal: controller.signal, now: deps.now };
   try {
+    updateWave(runDir, wave.waveId, current => ({ ...current, dispatchStarted: true }));
     // Setup is serial: Git metadata and dependency setup must not race.
     for (const t of tracks) {
       if (controller.signal.aborted) throw Error('Wave interrupted during setup');
@@ -65,7 +66,7 @@ export async function runWave(options, supplied = {}) {
           await deps.prefilter(track, context);
           const currentPrs = await deps.readPrs();
           const missing = tracks.filter(t => t.kind !== 'investigate' && !currentPrs.some(p => p.headRefName === t.branch)).length;
-          if (currentPrs.length + missing > 5) throw Error('PR capacity changed since reservation');
+          if (currentPrs.length + missing > PR_LIMIT) throw Error('PR capacity changed since reservation');
           row.worker = await deps.runAgent('worker', track, context);
           if (row.worker?.status !== 'ready') throw Error('Worker reported blocked or invalid result');
           row.evidence = await deps.validateResult(track, context);
@@ -122,25 +123,25 @@ export async function runAgent(role, track, context) {
   const prompt = context.fixturePrompt || (role === 'reviewer'
     ? `READ-ONLY independent review. Read the brief below, inspect git diff ${track.reviewBase || track.base}...HEAD and tests. Do not trust the worker's summary. Check scope, ownership, requirements, SSOT, test evidence, privacy and regressions. No writes or agents. Approve only if there are no blocking findings.\n${track.brief}`
     : `${role === 'fixer' ? `Fix only these independently found issues: ${JSON.stringify(context.review)}\n` : ''}${track.brief}\nCodex runtime: work ONLY in ${track.worktree}. No other agents, merge, prod writes, flag flips or changes to main. Keep the PR draft for owner review. Never edit shared coordination files. Use the selected worktree in every shell call. Return blocked if a required command fails. Refs #${track.issue}, never Closes. Before every push run scripts/preflight-pr.ps1. Do not claim success from shell exit alone: inspect each command.\n`);
+  const childKey = `${track.issue}-${label}`;
+  const recordChild = (state, pid) => updateWave(context.runDir, context.wave.waveId, current => ({ ...current,
+    children: [...(current.children || []).filter(c => c.key !== childKey), { key: childKey, state, pid }] }));
+  recordChild('starting', null);
   const child = spawn(command.file, [...command.prefix, ...childArgs(role, track, schema, output)], {
     cwd: track.worktree, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
     env: { ...process.env, CZ_WAVE_ID: context.wave.waveId },
   });
   const processRecord = path.join(track.scratch, `${label}-process.json`);
-  save(processRecord, { pid: child.pid || null, role, waveId: context.wave.waveId, worktree: track.worktree, state: 'running' });
   let completed = false, stopped = false, timedError = null;
   const started = context.now();
   // Raw agent/tool logs may contain private values. Keep local, outside git.
-  const log = fs.createWriteStream(path.join(track.scratch, `${label}.jsonl`), { flags: 'wx' });
-  child.stdout.pipe(log, { end: false }); child.stderr.pipe(log, { end: false });
-  child.stdin.on('error', e => { if (e.code !== 'EPIPE') timedError = e; });
-  child.stdin.end(prompt);
+  let log;
   let rejectTermination;
   let stopTimer;
   const unconfirmed = new Promise((_, reject) => { rejectTermination = reject; });
   const closed = new Promise((resolve, reject) => {
-    child.once('error', e => { if (!child.pid) completed = true; log.end(); reject(e); });
-    child.once('close', code => { completed = true; log.end(); resolve(code); });
+    child.once('error', e => { if (!child.pid) completed = true; log?.end(); reject(e); });
+    child.once('close', code => { completed = true; log?.end(); resolve(code); });
   });
   async function stop(reason) {
     if (completed || stopped) return;
@@ -172,13 +173,25 @@ export async function runAgent(role, track, context) {
     else { const e = Error(`Track stopped: ${probe.reason}`); e.stopsWave = probe.stopsWave; void stop(e); }
   }, 5000);
   try {
+    recordChild('running', child.pid);
+    save(processRecord, { pid: child.pid || null, role, waveId: context.wave.waveId, worktree: track.worktree, state: 'running' });
+    log = fs.createWriteStream(path.join(track.scratch, `${label}.jsonl`), { flags: 'wx' });
+    log.on('error', e => { void stop(e); });
+    child.stdout.pipe(log, { end: false }); child.stderr.pipe(log, { end: false });
+    child.stdin.on('error', e => { if (e.code !== 'EPIPE') void stop(e); });
+    child.stdin.end(prompt);
     if (context.signal.aborted) onAbort();
     const code = await Promise.race([closed, unconfirmed]);
     save(processRecord, { pid: child.pid, role, waveId: context.wave.waveId, state: 'stopped', exitCode: code });
+    recordChild('stopped', child.pid);
     if (timedError) throw timedError;
     if (code !== 0) throw Error(`${role} exited ${code}; inspect private log ${track.scratch}`);
     const result = json(output);
     return result;
+  } catch (e) {
+    if (!completed) { await stop(e); await Promise.race([closed, unconfirmed]); }
+    if (child.pid) recordChild('stopped', child.pid);
+    throw e;
   } finally {
     clearInterval(timer); clearTimeout(stopTimer); context.signal.removeEventListener('abort', onAbort);
     if (!completed) { const e = Error('Child termination not observed; wave marker retained'); e.terminationUnconfirmed = true; throw e; }

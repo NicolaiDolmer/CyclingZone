@@ -13,11 +13,18 @@ function fixture(t) {
 }
 const tracks = [1, 2].map(issue => ({ issue, branch: `codex/${issue}-fixture`, title: 'Fixture', ownership: [`fixtures/${issue}`], tier: 'TARGETED', verifyCommands: ['node --test fixture.test.mjs'] }));
 function deps(overrides = {}) {
-  return { now: () => now, readPrs: async () => [], prefilter: async () => {},
+  return { now: () => now, bootId: () => 'fixture-boot', readPrs: async () => [], prefilter: async () => {},
     prepare: async t => ({ ...t, worktree: `/fixture/${t.issue}` }),
     runAgent: async (role, t) => role === 'reviewer' ? { verdict: 'approved', findings: [] } : { status: 'ready', summary: 'fixture', tests: ['pass'] },
     validateResult: async () => {}, ...overrides };
 }
+
+test('dispatch uses the shared eight-PR budget, including parked drafts', async (t) => {
+  const root = fixture(t);
+  const prs = Array.from({ length: 6 }, (_, i) => ({ number: i + 10, headRefName: `parked/${i}`, isDraft: true }));
+  const result = await runWave({ root, runDir: root, tracks, owner: 'fixture' }, deps({ readPrs: async () => prs }));
+  assert.ok(result.results.every(r => r.state === 'ready'));
+});
 
 test('two independent workers are followed by fresh reviewers; owned marker is released', async (t) => {
   const root = fixture(t), events = [];
@@ -63,6 +70,16 @@ test('setup failure preserves report, does not dispatch, and cleans only owned m
   })), /setup failed/);
   assert.equal(called, false);
   assert.equal(existsSync(path.join(root, 'wave-active.json')), false);
+});
+
+test('setup is marked before it can launch worktree or dependency subprocesses', async t => {
+  const root = fixture(t);
+  await runWave({ root, runDir: root, tracks, owner: 'fixture' }, deps({
+    prepare: async track => {
+      assert.equal(JSON.parse(readFileSync(path.join(root, 'wave-active.json'))).dispatchStarted, true);
+      return { ...track, worktree: `/fixture/${track.issue}` };
+    },
+  }));
 });
 
 test('unobserved child termination retains marker and prevents unsafe cleanup', async (t) => {

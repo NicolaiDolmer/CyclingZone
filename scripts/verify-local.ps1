@@ -72,7 +72,7 @@ if (-not (Test-Path $rootNodeModules)) {
       exit $LASTEXITCODE
     }
 
-    & $nodePath --test scripts/wave-policy.test.mjs scripts/codex-wave.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs
+    & $nodePath --test scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/codex-wave.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   } finally {
     Pop-Location

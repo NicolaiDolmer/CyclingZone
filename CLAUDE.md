@@ -8,7 +8,7 @@ Gælder også Claude Code (AGENTS.md auto-loades ikke her): verificér repo-root
 
 ## Orkestrator-standard (ejer 11/9, #5142)
 
-Claude: `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })` (LF kraevet, `.gitattributes` sikrer det). Codex: `node scripts/codex-wave.mjs plan.json --run` (#5467). Faelles admission, PR-loft og boelgelaas. Ingen håndskrevne Agent-spawns; `scripts/hooks/guard-agent-spawn.sh` blokerer dem (fritaget: egne `WAVE-*:`-præfikser, `READ-ONLY:`, `Explore`/`Plan`). Loft: **4 laner**, verifikations-semafor 2 (`scripts/verify-lock.ps1 -Max 2 -- <kommando>`), maks 5 åbne PR'er, livstegn (draft-PR 30 min, push 15 min, timeout 120 min, frys = branch-tavshed (#5178), recovery i samme worktree). Bekræftet frys stopper bølgen. Se [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md).
+Claude: `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })` (LF kraevet, `.gitattributes` sikrer det). Codex: `node scripts/codex-wave.mjs plan.json --run` (#5467). Faelles admission, PR-loft og boelgelaas. Ingen håndskrevne Agent-spawns; `scripts/hooks/guard-agent-spawn.sh` blokerer dem (fritaget: egne `WAVE-*:`-præfikser, `READ-ONLY:`, `Explore`/`Plan`). Loft: **4 laner**, verifikations-semafor 2 (`scripts/verify-lock.ps1 -Max 2 -- <kommando>`), maks 8 åbne PR'er, livstegn (draft-PR 30 min, push 15 min, timeout 120 min, frys = branch-tavshed (#5178), recovery i samme worktree). Bekræftet frys stopper bølgen. Se [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md).
 
 ## Page templates (binding — ejer-godkendt 23/7, #2849)
 
