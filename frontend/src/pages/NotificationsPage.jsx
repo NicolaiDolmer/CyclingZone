@@ -101,6 +101,10 @@ const TYPE_CONFIG = {
   // #2180/#3310: 36t-varsel uden manuel udtagelse — deep-link til løbets
   // selection-panel; kalender-boardet som fallback uden raceId.
   selection_warning:         { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/planning?tab=calendar" },
+  // #4759: assistenten udtog en HELT tom trup for holdet (sen redning eller
+  // late_fill/opt_in-sweepen) — informativ, ikke en advarsel (truppen ER
+  // udtaget), samme raceId-metadata-mønster som selection_warning ovenfor.
+  assistant_filled_squad:    { Icon: InfoIcon,          color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/planning?tab=calendar" },
   // #3334: chefscout-skift-forklaring — ingen enkelt rytter at linke til
   // (rammer HELE holdets rapporter), så CTA'en er Scouting-centralen.
   scout_changed:             { Icon: SearchIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/scouting" },

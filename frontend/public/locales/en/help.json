@@ -1313,7 +1313,7 @@
       },
       "assistantFill": {
         "title": "When the assistant fills a line-up",
-        "text": "The assistant never overwrites a line-up you set yourself, and it never touches a race day you cleared on purpose. What it does on its own depends on the setting I run: it can leave every line-up to you, it can fill a race you left completely empty shortly before it starts, or you can switch it on for your team and let it pick. Whatever the setting, a team that is empty or below six riders when the race starts is still filled up to six so you take the start."
+        "text": "The assistant never overwrites a line-up you set yourself, and it never touches a race day you cleared on purpose. What it does on its own depends on the setting I run: it can leave every line-up to you, it can fill a race you left completely empty shortly before it starts, or you can switch it on for your team and let it pick. Whatever the setting, a team that is empty or below six riders when the race starts is still filled up to six so you take the start. When the assistant fills a race for you like this, you get a message in your inbox so you can check the picks and change them if you want."
       },
       "scouting": {
         "title": "Scouting other divisions",

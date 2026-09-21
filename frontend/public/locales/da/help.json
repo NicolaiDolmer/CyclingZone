@@ -1313,7 +1313,7 @@
       },
       "assistantFill": {
         "title": "Hvornår assistenten udfylder et hold",
-        "text": "Assistenten overskriver aldrig et hold du selv har sat, og den rører aldrig en løbsdag du bevidst har ryddet. Hvad den gør af sig selv afhænger af den indstilling jeg kører: den kan overlade alle udtagelser til dig, den kan udfylde et løb du har efterladt helt tomt kort før start, eller du kan slå den til for dit hold og lade den udtage. Uanset indstillingen bliver et hold der er tomt eller under seks ryttere ved løbsstart stadig fyldt op til seks, så du kommer til start."
+        "text": "Assistenten overskriver aldrig et hold du selv har sat, og den rører aldrig en løbsdag du bevidst har ryddet. Hvad den gør af sig selv afhænger af den indstilling jeg kører: den kan overlade alle udtagelser til dig, den kan udfylde et løb du har efterladt helt tomt kort før start, eller du kan slå den til for dit hold og lade den udtage. Uanset indstillingen bliver et hold der er tomt eller under seks ryttere ved løbsstart stadig fyldt op til seks, så du kommer til start. Udfylder assistenten et løb for dig på den måde, får du en besked i din indbakke, så du kan kigge udtagelsen igennem og rette den hvis du vil."
       },
       "scouting": {
         "title": "Scout andre divisioner",

@@ -113,6 +113,7 @@ import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 import { flushDeferredAcademySigningsForRace } from "./academySigningDefer.js";
 import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
+import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
 // #2072: klassements-kernen (ranking, tie-breaks, gap-parsing, akkumulering) er
 // udtrukket til raceClassifications.js så helt-løb-stien og stage-by-stage-
 // akkumuleringsstien deler PRÆCIS samme semantik.
@@ -1048,7 +1049,12 @@ async function dropRetiredRiderRows({ supabase, rows }) {
 //      end 24 hold egnede, beholdes de 24 STÆRKESTE målt på aggregeret roster-
 //      base_value (markedsværdi-proxy). Det forener race-feltets størrelse med
 //      pulje-kapaciteten (#1608: pulje-target = race-feltcap = 24).
-export async function fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist = true }) {
+export async function fillMissingTeamEntries({
+  supabase, race, stages, existingEntries, persist = true,
+  // #4759: injicérbar for test (samme mønster som notificationService.js's
+  // `notify`-parametre) — default rammer den rigtige notifikationsfunktion i drift.
+  notify = notifyAssistantFilledSquad,
+}) {
   // #2962: ufiltreret teams-select (kun test-konto-filtreret, ellers ALLE hold) —
   // 155 rækker 25/7, samme #2951-klasse (vokser med hver signup). Pagineret via
   // fetchAllRows; stabilt .order("id") som tiebreak.
@@ -1057,13 +1063,18 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
     teams = await fetchAllRows(() => (
       supabase
         .from("teams")
-        .select("id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id")
+        // #4759: user_id med, så vi kan skelne menneske- fra AI-hold til
+        // "assistenten udtog dit hold"-notifikationen nedenfor.
+        .select("id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, user_id")
         .or("is_test_account.is.null,is_test_account.eq.false")
         .order("id", { ascending: true })
     ));
   } catch (teamErr) {
     throw new Error(`teams: ${teamErr.message}`, { cause: teamErr });
   }
+  // #4759: menneske-hold — bruges KUN til at afgøre om den fulde (ikke-redning)
+  // gren nedenfor skal notificere ejeren, aldrig til at ændre selve udvælgelsen.
+  const ownerTeamIds = new Set((teams || []).filter((t) => t.user_id).map((t) => t.id));
   // #4295 (ejer-godkendt 27/8): redningen fylder op til GULVET, ikke kun fra nul.
   // Før talte ethvert hold med mindst én entry som "har valgt" og blev sprunget over.
   // Med et fladt gulv på 6 gjorde det den forkerte handling billigst: gemte du nul,
@@ -1188,6 +1199,11 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
 
   const sizeRule = selectionSizeForRace(race);
   const rows = [];
+  // #4759: hold der fik udtaget en HEL trup fra nul (ikke en delvis redning —
+  // se §10 i docs/ASSISTANT_RULES.md, "manageren vinder" naar han selv havde
+  // en udtagelse inde). Kun disse, skæret mod ownerTeamIds, udløser "assistenten
+  // udtog dit hold"-notifikationen efter en bekræftet skrivning nedenfor.
+  const fullyFilledTeamIds = new Set();
   const byTeam = new Map();
   for (const r of candidates) {
     const abRow = abilityByRider.get(r.id);
@@ -1222,11 +1238,33 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
     // stiller det ikke op alligevel — og så skal der ikke skrives auto-entries der
     // binder rytterne på løbsdagen for et startfelt de aldrig kommer i.
     if (existingCount + picks.length < MIN_RACE_ENTRIES) continue;
+    // #4759: kun den FULDE udtagelse (existingCount===0) er "assistenten udtog
+    // dit hold, du havde intet inde" — en redning der topper en delvis trup op
+    // (isRescue) fandt netop en udtagelse manageren allerede havde lavet.
+    if (!isRescue) fullyFilledTeamIds.add(teamId);
     for (const pick of picks) {
       rows.push({
         race_id: race.id, rider_id: pick.rider_id, team_id: teamId,
         race_role: isRescue ? "helper" : pick.race_role, is_auto_filled: true,
       });
+    }
+  }
+
+  // #4759: send "assistenten udtog dit hold"-notifikationen til menneske-hold
+  // hvis (og kun hvis) deres enhed rent faktisk blev skrevet i denne kørsel.
+  // Best-effort — en notifikationsfejl må ALDRIG vælte selve løbsstarten
+  // (samme A2-isolerings-mønster som #1995/#4423-flushene ovenfor i filen).
+  async function notifyOwnersOfFullFill(finalRows) {
+    if (!persist || !fullyFilledTeamIds.size) return;
+    const writtenTeamIds = new Set(finalRows.map((r) => r.team_id));
+    for (const teamId of fullyFilledTeamIds) {
+      if (!ownerTeamIds.has(teamId) || !writtenTeamIds.has(teamId)) continue;
+      try {
+        await notify({ supabase, teamId, raceId: race.id, raceName: race?.name ?? null });
+      } catch (err) {
+        console.error(`  ⚠️  assistant-filled-squad-notifikation fejlede (race ${race.id}, team ${teamId}, #4759, ikke-fatal):`, err?.message || err);
+        captureException(err, { tags: { flow: "notifications", stage: "assistant-filled-squad" }, raceId: race.id, teamId });
+      }
     }
   }
 
@@ -1270,11 +1308,13 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
           const { error: retryErr } = await supabase.from("race_entries").insert(rows);
           if (retryErr) throw new Error(`race_entries insert (efter drain-filter): ${retryErr.message}`);
         }
+        await notifyOwnersOfFullFill(rows);
         return rows.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id, race_role: r.race_role }));
       }
       throw new Error(`race_entries insert: ${insErr.message}`);
     }
   }
+  await notifyOwnersOfFullFill(rows);
   return rows.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id, race_role: r.race_role }));
 }
 

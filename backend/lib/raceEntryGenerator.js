@@ -19,6 +19,8 @@ import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
 import { applyRiderEligibilityFilter, applyInjuredFilter } from "./riderEligibility.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
+import { captureException } from "./sentry.js";
 
 /**
  * @param {{ riders: Array<{rider_id, abilities, fatigue?}>,
@@ -153,13 +155,17 @@ export async function runRaceEntryGenerator({
   mode: rawMode = DEFAULT_ASSISTANT_MODE,
   lateFillHours: rawLateFillHours = DEFAULT_LATE_FILL_HOURS,
   now = Date.now(),
+  // #4759: injicérbar for test (samme mønster som notificationService.js's
+  // `notify`-parametre) — default rammer den rigtige notifikationsfunktion i drift.
+  notify = notifyAssistantFilledSquad,
 }) {
   let mode = normalizeAssistantMode(rawMode);
   const lateFillHours = normalizeLateFillHours(rawLateFillHours);
   const nowMs = now instanceof Date ? now.getTime() : Number(now);
-  // 1. Sæsonens løb.
+  // 1. Sæsonens løb. `name` med (#4759): kun brugt til notifikationsteksten
+  // "assistenten udtog dit hold til {race}" — påvirker intet i selve tildelingen.
   const { data: races, error: raceErr } = await supabase
-    .from("races").select("id, race_class, league_division_id, stages_completed").eq("season_id", seasonId);
+    .from("races").select("id, name, race_class, league_division_id, stages_completed").eq("season_id", seasonId);
   if (raceErr) throw new Error(`races: ${raceErr.message}`);
   if (!races || !races.length) return { dryRun, races: 0, teams: 0, generated: 0, skipped: 0, mode };
   const raceIds = races.map((r) => r.id);
@@ -493,6 +499,13 @@ export async function runRaceEntryGenerator({
   // 9. Pr. pulje, pr. hold: byg holdets løb-liste (vindue + ikke-afmeldt + ikke-manuel),
   // kald kernen, og stage de idempotente skrivninger.
   const staged = []; // { race_id, team_id, picks }
+  // #4759: (race,team)-enheder der er kandidater til "assistenten udtog dit
+  // hold"-notifikationen — kun menneske-hold, og kun når enheden var HELT tom
+  // (hverken manuel eller tidligere auto-række) FØR denne kørsel. Populeres i
+  // trin 10a (nedenfor); proactive når aldrig hertil for et menneske-hold
+  // (eligibleTeams-filtret i trin 5 udelukker dem allerede der).
+  const assistantNotifyCandidates = new Map(); // "race|team" → { raceId, teamId }
+  const writtenNotifyUnitKeys = new Set(); // "race|team" der rent faktisk blev skrevet
   // Top-up-løb (delvis manuel trup): den manuelle trup ejer ALLEREDE special-rollerne
   // (validering kræver en kaptajn ved ≥1 rytter). Auto-fyldet må derfor IKKE udpege en
   // anden kaptajn/sprint-kaptajn → ellers dobbelt special-rolle pr. (race,team). De
@@ -920,12 +933,16 @@ export async function runRaceEntryGenerator({
 
   // Per-enheds skrivning med recovery-grene (#2436/#3482) — før #3934 den ENESTE
   // skrivevej, nu FALLBACK når holdets batch-RPC afvises. Muterer tællerne/errors.
+  // #4759: returnerer true/false (enhedens skrivning lykkedes eller ej) — kalderen
+  // bruger det til at afgøre om assistantNotifyCandidates for denne enhed rent
+  // faktisk blev skrevet (draining-skip og en fejlet retry er IKKE en skrivning).
   async function applyUnitWithRecovery({ race_id, team_id, desired, existing }) {
     try {
       const result = await applyUnitDiff({ raceId: race_id, teamId: team_id, desired, existing });
       inserted += result.inserted;
       removed += result.removed;
       roleUpdated += result.roleUpdated;
+      return true;
     } catch (err) {
       // best-effort: fejl her aggregeres i failedUnits/errors og captures samlet
       // opstrøms i cron.js (én Sentry-capture pr. tick, #2375-hotfix) — ikke tavst.
@@ -939,7 +956,7 @@ export async function runRaceEntryGenerator({
         console.warn(
           `⚠️  Entry-generator ${race_id}/${team_id}: holdet blev markeret til nedlæggelse under kørslen — enheden springes over (#4959)`
         );
-        return;
+        return false;
       }
       // #2436: manual-scannet (trin 6) blev forældet af en manager-gem der landede
       // i vinduet inden denne skrivning — genlæs enhedens manuelle rækker friskt og
@@ -951,13 +968,13 @@ export async function runRaceEntryGenerator({
           inserted += retryResult.inserted;
           removed += retryResult.removed;
           roleUpdated += retryResult.roleUpdated;
-          return;
+          return true;
         } catch (retryErr) {
           // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
           // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
           failedUnits += 1;
           if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
-          return;
+          return false;
         }
       }
       // #3482: en samtidig rytter-sletning ramte insert-batchen. Filtrér de forsvundne
@@ -976,17 +993,18 @@ export async function runRaceEntryGenerator({
           console.warn(
             `⚠️  Entry-generator ${race_id}/${team_id}: rytter(e) slettet under kørslen — enheden kørt om uden dem`
           );
-          return;
+          return true;
         } catch (retryErr) {
           // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
           // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
           failedUnits += 1;
           if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
-          return;
+          return false;
         }
       }
       failedUnits += 1;
       if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${err.message}`);
+      return false;
     }
   }
 
@@ -1014,6 +1032,17 @@ export async function runRaceEntryGenerator({
 
     const unitKey = `${race_id}|${team_id}`;
     const existing = existingByUnit.get(unitKey) || new Map();
+
+    // #4759: kandidat til "assistenten udtog dit hold"-notifikationen hvis
+    // holdet har en bruger, enheden var HELT tom (hverken manuel ELLER en
+    // tidligere auto-række) FØR denne kørsel, og der rent faktisk kommer
+    // picks ind. "Aldrig når manageren selv havde en udtagelse" (issue #4759
+    // punkt 2): manualByRaceTeam.has(unitKey) dækker den halvdel;
+    // existing.size===0 dækker "ingen tidligere auto-fyldning heller" (fx en
+    // enhed en tidligere opt_in-/late_fill-kørsel allerede har fyldt).
+    if (ownerTeamIds.has(team_id) && desired.size > 0 && existing.size === 0 && !manualByRaceTeam.has(unitKey)) {
+      assistantNotifyCandidates.set(unitKey, { raceId: race_id, teamId: team_id });
+    }
 
     // Rolle-bevidst supplement (#2375 hotfix 2, CYCLINGZONE-2D): har MANAGEREN allerede
     // sat en special-rolle blandt sine (bevarede, manuelle) entries, må ingen auto-række
@@ -1077,6 +1106,12 @@ export async function runRaceEntryGenerator({
       inserted += batchResult?.inserted ?? 0;
       removed += batchResult?.removed ?? 0;
       roleUpdated += (batchResult?.role_updated ?? 0) + batchVacateNetHelper;
+      // #4759: batchen er ÉN transaktion — lykkedes den, blev ALLE dens enheder
+      // skrevet, inkl. eventuelle assistantNotifyCandidates iblandt dem.
+      for (const { unit } of changed) {
+        const unitKey = `${unit.race_id}|${unit.team_id}`;
+        if (assistantNotifyCandidates.has(unitKey)) writtenNotifyUnitKeys.add(unitKey);
+      }
       continue;
     }
     if (isConstraintNotDeferrable(batchErr) && !constraintNotDeferrable) {
@@ -1098,7 +1133,35 @@ export async function runRaceEntryGenerator({
       );
     }
     for (const { unit } of changed) {
-      await applyUnitWithRecovery(unit);
+      const ok = await applyUnitWithRecovery(unit);
+      if (ok) {
+        const unitKey = `${unit.race_id}|${unit.team_id}`;
+        if (assistantNotifyCandidates.has(unitKey)) writtenNotifyUnitKeys.add(unitKey);
+      }
+    }
+  }
+
+  // #4759: notificér de menneske-hold hvis enhed rent faktisk blev fyldt fra
+  // helt tom denne kørsel (late_fill eller opt_in — proactive når aldrig
+  // hertil, trin 5's eligibleTeams-filter udelukker dem allerede). Best-effort:
+  // en notifikationsfejl må ALDRIG vælte selve sweepet (samme A2-mønster som
+  // resten af notifikations-kaldene i notificationService.js).
+  for (const unitKey of writtenNotifyUnitKeys) {
+    const candidate = assistantNotifyCandidates.get(unitKey);
+    if (!candidate) continue;
+    const race = raceById.get(candidate.raceId);
+    try {
+      await notify({ supabase, teamId: candidate.teamId, raceId: candidate.raceId, raceName: race?.name ?? null });
+    } catch (err) {
+      console.error(
+        `  ⚠️  assistant-filled-squad-notifikation fejlede (race ${candidate.raceId}, team ${candidate.teamId}, #4759, ikke-fatal):`,
+        err?.message || err,
+      );
+      captureException(err, {
+        tags: { flow: "notifications", stage: "assistant-filled-squad" },
+        raceId: candidate.raceId,
+        teamId: candidate.teamId,
+      });
     }
   }
 
