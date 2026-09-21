@@ -151,12 +151,13 @@ def fmt_duration(started_at_ms: int, now_ms: int) -> str:
     return f"{h}t{m}m"
 
 
-def collect_sessions(repo_root: str, exclude_session_id: str) -> tuple[list[dict], list[dict]]:
+def collect_sessions(repo_root: str, exclude_session_id: str, now_ms: int | None = None) -> tuple[list[dict], list[dict]]:
     """Returns (all_alive_repo_sessions, others_excluding_self)."""
     sessions_dir = os.path.join(home_dir(), ".claude", "sessions")
     repo_root_norm = norm_path(repo_root)
     worktrees_root_norm = repo_root_norm + "-worktrees"
-    now_ms = int(datetime.now().timestamp() * 1000)
+    if now_ms is None:
+        now_ms = int(datetime.now().timestamp() * 1000)
 
     alive = []
     for s in read_registry(sessions_dir):
@@ -173,6 +174,33 @@ def collect_sessions(repo_root: str, exclude_session_id: str) -> tuple[list[dict
         entry["ageLabel"] = fmt_duration(entry["startedAt"], now_ms)
         alive.append(entry)
 
+    # #4016/#5467: harness-independent Codex claims and the exclusive wave
+    # marker. No TTL or PID disappearance silently removes ownership. A stale
+    # claim needs inspection; it must remain visible to the other runtime.
+    run_dir = os.path.join(repo_root, ".claude", "run")
+    paths = glob.glob(os.path.join(run_dir, "agent-sessions", "*.json"))
+    paths.append(os.path.join(run_dir, "wave-active.json"))
+    seen = {e["sessionId"] for e in alive}
+    for claim_path in paths:
+        try:
+            with open(claim_path, encoding="utf-8-sig") as fh:
+                claim = json.load(fh)
+            if claim.get("runtime") != "codex":
+                continue
+            sid = claim.get("sessionId") or claim.get("owner")
+            if not sid or sid in seen:
+                continue
+            started = claim.get("startedAt") or claim.get("now") or now_ms
+            if not isinstance(started, (int, float)):
+                started = claim.get("now") or now_ms
+            entry = {"pid": claim.get("pid", "unknown"), "sessionId": sid,
+                     "name": "Codex " + ("wave" if claim.get("waveId") else "session") + " (claim)",
+                     "startedAt": started, "ageLabel": fmt_duration(started, now_ms), "claimed": True}
+            alive.append(entry)
+            seen.add(sid)
+        except (OSError, ValueError, TypeError):
+            continue
+
     alive.sort(key=lambda e: e["startedAt"])
 
     if exclude_session_id:
@@ -182,8 +210,9 @@ def collect_sessions(repo_root: str, exclude_session_id: str) -> tuple[list[dict
         # self-exclusion: the most-recently-started matching session is
         # overwhelmingly likely to be the one that just invoked this hook.
         others = list(alive)
-        if others:
-            newest = max(others, key=lambda e: e["startedAt"])
+        harness_entries = [e for e in others if not e.get("claimed")]
+        if harness_entries:
+            newest = max(harness_entries, key=lambda e: e["startedAt"])
             others = [e for e in others if e is not newest]
 
     return alive, others
@@ -250,7 +279,7 @@ def update_now_md(now_md_path: str, new_value: str) -> str:
 
 def build_warning(others: list[dict]) -> str:
     lines = [
-        f"MULTI-AI GATE (#559): {len(others)} anden(e) Claude Code-session(er) ser ud til at koere allerede mod dette repo (samme maskine):",
+        f"MULTI-AI GATE (#559/#4016): {len(others)} anden(e) agent-session(er) eller claims findes mod dette repo (samme maskine):",
     ]
     for e in others:
         lines.append(f"- {e['name']} (pid {e['pid']}, koert i {e['ageLabel']})")

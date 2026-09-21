@@ -17,7 +17,7 @@
 //   - Livstegn: draft-PR inden 30 min, push hvert 15. min, spor-vindue 120 min
 //     (haardt loft 180) maalt paa BRANCH-aktivitet, recovery i SAMME worktree
 //     (aldrig reset). Se punkt 1 herunder.
-//   - Maks 5 aabne PR'er (natboelge-regel 12) - orkestratoren tjekker FOER kald.
+//   - Maks 5 aabne PR'er, tjekket og reserveret af wave-policy.mjs i hooken.
 //   - Sidste fase rydder op og fjerner .claude/run/wave-active.json.
 //
 // args:
@@ -87,10 +87,9 @@
 //    results (koert), skipped (ikke klar efter fase 0) eller unstarted (naaede
 //    aldrig en lane). Ingen spor kan forsvinde tavst ud af koen.
 //
-// 5. cleanup ER DRY-RUN SOM DEFAULT. close-out-cleanup.ps1 -Execute draeber ALLE
-//    vite-processer paa maskinen, ogsaa ejerens egen preview-server. En boelge
-//    der slutter mens ejeren kigger paa en flade maa ikke lukke fladen. Send
-//    cleanup: "execute" naar ingen ser paa noget.
+// 5. Cleanup er altid scoped til eget waveId og registrerede lane-watch.
+//    cleanup-argumentet beholdes til kompatibilitet; global proces-/worktree-
+//    oprydning koeres aldrig fra boelgen (#5467).
 //
 // RESUME: lane-poolens raekkefoelge er IKKE deterministisk (hvilken lane der
 // tager hvilket spor afhaenger af timing), saa Workflow({ resumeFromRunId })
@@ -165,6 +164,7 @@ const SETUP_SCHEMA = {
     ok: { type: 'boolean' },
     watchPid: { type: 'string', description: 'PID paa wave-lane-watch.ps1, eller "none"' },
     activeFile: { type: 'string' },
+    waveId: { type: 'string' },
     lanes: {
       type: 'array',
       items: {
@@ -620,15 +620,10 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
     `Arbejd i hoved-checkoutet ${MAIN_CHECKOUT}. Alt i FORGRUNDEN, ingen baggrundsjob, ingen under-agenter.`,
     'Du bygger INTET og roerer ingen kildekode - du saetter kun boelgen op.',
     '',
-    '## 1. Registerfil',
-    `Opret mappen ${MAIN_CHECKOUT}\\.claude\\run og skriv ${MAIN_CHECKOUT}\\.claude\\run\\wave-active.json med:`,
-    '```json',
-    '{ "startedAt": "<nu i ISO-8601>", "expiresAt": "<nu + ' + expiresInMinutes + ' minutter i ISO-8601>",',
-    `  "lanes": ${lanes}, "verifyMax": 2, "issue": 5142,`,
-    '  "tracks": [ { "issue": N, "branch": "...", "slug": "..." } ], "watchPid": null }',
-    '```',
-    'Hent tidspunktet fra maskinen (fx `pwsh -NoProfile -Command "(Get-Date).ToString(\'o\')"`), gaet det ikke.',
-    'Filen er det signal scripts/hooks/guard-agent-spawn.sh laeser - uden den er boelgen uden vagt.',
+    '## 1. Faelles admission (#5467)',
+    `Koer node ${MAIN_CHECKOUT}/scripts/wave-policy.mjs inspect. Hooken skal allerede have reserveret boelgen atomisk.`,
+    'Kraev runtime=claude, state=running og et waveId. Mangler det, returner ok=false og STOP foer setup.',
+    'Returner waveId fra markoeren. Skriv eller overskriv ALDRIG wave-active.json selv. En udloebet markoer er ikke et ledigt slot.',
     '',
     '## 2. Worktree pr. spor',
     'For hvert spor herunder: findes worktreet allerede, saa lad det staa (recovery skal kunne genbruge det).',
@@ -647,28 +642,28 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
     '',
     '## 4. Lane-watch i baggrunden',
     'Start vagten som en SELVSTAENDIG proces (den skal overleve dig - det er den ene undtagelse fra baggrundsforbuddet, og den er orkestratorens, ikke en lanes):',
-    `\`pwsh -NoProfile -Command "Start-Process pwsh -ArgumentList '-NoProfile','-File','${MAIN_CHECKOUT}\\scripts\\wave-lane-watch.ps1','-IntervalMinutes','15','-StallMinutes','45' -WindowStyle Minimized -PassThru | Select-Object -ExpandProperty Id"\``,
-    'Skriv PID\'en ind i wave-active.json som "watchPid". Lykkes det ikke, saa rapportér "none" og fortsaet - boelgen maa ikke stoppe af en manglende vagt.',
+    `\`pwsh -NoProfile -Command "Start-Process pwsh -ArgumentList '-NoProfile','-File','${MAIN_CHECKOUT}\\scripts\\wave-lane-watch.ps1','-IntervalMinutes','15','-StallMinutes','45' -WindowStyle Hidden -PassThru | Select-Object -ExpandProperty Id"\``,
+    `Registrer PID med node ${MAIN_CHECKOUT}/scripts/wave-policy.mjs watch --wave-id <waveId> --pid <PID>. Rediger aldrig markoeren direkte.`,
     '',
     '## 5. Spor',
     '```json',
     JSON.stringify(rows, null, 2),
     '```',
     '',
-    'Returnér struktureret: ok, watchPid, activeFile, lanes (branch, worktree, briefPath, ready, openPr, note), problems.',
+    'Returnér struktureret: ok, waveId, watchPid, activeFile, lanes (branch, worktree, briefPath, ready, openPr, note), problems.',
     'ready=false for ethvert spor hvor worktree eller brief mangler - saa springer boelgen sporet over i stedet for at starte en lane i blinde.',
   ].join('\n')
 }
 
-function cleanupPrompt(tracks, cleanupMode, watchPid) {
+function cleanupPrompt(tracks, cleanupMode, watchPid, waveId) {
   return [
     'WAVE-CLEANUP: sidste fase af en boelge (#5142)',
     '',
     `Arbejd i hoved-checkoutet ${MAIN_CHECKOUT}. Alt i FORGRUNDEN, ingen under-agenter.`,
     '',
-    `1. Stop lane-vagten. PID fra fase 0: ${watchPid}. Er den et tal: \`pwsh -NoProfile -Command "Stop-Process -Id ${watchPid} -Force -ErrorAction SilentlyContinue"\`. Er den "none", saa spring over.`,
-    `2. Slet ${MAIN_CHECKOUT}\\.claude\\run\\wave-active.json. Det er det der laeser boelgen som slut for scripts/hooks/guard-agent-spawn.sh - glemmes den, spaerrer hooken den naeste session (den udloeber dog selv paa expiresAt).`,
-    `3. Oprydning: \`pwsh -File ${MAIN_CHECKOUT}\\scripts\\close-out-cleanup.ps1${cleanupMode === 'execute' ? ' -Execute' : ''}\`. Den fjerner efterladte gh --watch/vite/playwright-processer og kalder scripts/prune-merged-worktrees.ps1 for mergede worktrees og branches. Den roerer ALDRIG keep-awake.ps1 eller Claude Codes egne processer.`,
+    `1. Kontroller ejerskab: node ${MAIN_CHECKOUT}/scripts/wave-policy.mjs inspect. waveId SKAL vaere ${waveId}. Ellers STOP.`,
+    '2. Bekraeft at ALLE boelgens agenter er stoppet. Timeout alene er ikke terminal tilstand. Kan det ikke bevises, behold markoeren og rapporter det.',
+    `3. Koer node ${MAIN_CHECKOUT}/scripts/wave-policy.mjs release --wave-id ${waveId} --children-stopped. Scriptet stopper kun markoerens registrerede lane-watch. Ingen generel process- eller worktree-oprydning.`,
     `4. Rapportér status pr. branch: \`gh pr list --repo ${REPO} --state all --json number,url,state,isDraft,headRefName --limit 50\` og filtrér paa boelgens branches: ${tracks.map((t) => t.branch).join(', ')}.`,
     '',
     'Slet ALDRIG en worktree med ucommitted arbejde eller en branch der ikke er merged - rapportér den i stedet under notes.',
@@ -693,8 +688,7 @@ if (rawTracks.length > MAX_TRACKS) {
 const tracks = sortMixedQueue(rawTracks.map(normalizeTrack))
 const lanes = Math.max(1, Math.min(Number(input.lanes) || DEFAULT_LANES, tracks.length))
 const dryRun = input.dryRun === true
-// Dry-run som default: -Execute draeber ALLE vite-processer paa maskinen, ogsaa
-// ejerens egen preview-server. Det maa kun ske paa eksplicit anmodning.
+// Compatibility metadata only; cleanup is always scoped to the owned wave.
 const cleanupMode = input.cleanup === 'execute' ? 'execute' : 'dry-run'
 const allowExistingPr = input.allowExistingPr === true
 const expiresInMinutes = Number(input.expiresInMinutes) || 240
@@ -745,7 +739,7 @@ const setup = await agent(setupPrompt(tracks, lanes, expiresInMinutes), {
   schema: SETUP_SCHEMA,
 })
 
-if (!setup) throw new Error('wave: fase 0 fejlede (ingen svar fra opsaetnings-agenten). Ingen laner startet.')
+if (!setup || setup.ok !== true || !setup.waveId) throw new Error('wave: fase 0 fejlede (ingen gyldig admission). Ingen laner startet.')
 
 const readyByBranch = new Map()
 for (const lane of setup.lanes || []) readyByBranch.set(lane.branch, lane)
@@ -1109,7 +1103,7 @@ for (const u of unstarted) log(`IKKE STARTET #${u.issue} ${u.branch}: ${u.reason
 
 // --- Oprydning --------------------------------------------------------------
 phase('Oprydning')
-const cleanup = await agent(cleanupPrompt(tracks, cleanupMode, setup.watchPid || 'none'), {
+const cleanup = await agent(cleanupPrompt(tracks, cleanupMode, setup.watchPid || 'none', setup.waveId), {
   label: 'oprydning + statusrapport',
   phase: 'Oprydning',
   schema: CLEANUP_SCHEMA,

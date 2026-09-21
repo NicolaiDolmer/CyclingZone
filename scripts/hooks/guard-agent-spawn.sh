@@ -81,6 +81,15 @@ fi
 MAX_SPAWNS=${CZ_AGENT_GUARD_MAX:-4}
 WINDOW_MIN=${CZ_AGENT_GUARD_WINDOW_MIN:-45}
 
+# #5467: both runtimes share atomic admission and the five-PR budget.
+# Run BEFORE legacy exemptions (including Workflow itself). This gate fails
+# closed; an unavailable GitHub count must not silently admit a new wave.
+POLICY="$(dirname "$0")/../wave-policy.mjs"
+if ! printf '%s' "$INPUT" | node "$POLICY" hook --run-dir "$RUN_DIR"; then
+  echo "BLOCKED: shared wave admission failed; no agent started." >&2
+  exit 2
+fi
+
 VERDICT=$(printf '%s' "$INPUT" | \
   CZ_RUN_DIR="$RUN_DIR" CZ_MAX="$MAX_SPAWNS" CZ_WINDOW="$WINDOW_MIN" \
   node -e '
@@ -104,7 +113,7 @@ process.stdin.on("end", () => {
   // Selve wave-workflowet er INDGANGEN og maa aldrig blokeres af sin egen vagt:
   // ellers kan hverken en dryRun-plan eller en recovery-boelge efter en doed
   // session startes, saa laenge wave-active.json ligger der.
-  if (tool === "Workflow" && workflowName === "wave") process.exit(0);
+  if (tool === "Workflow" && (workflowName === "wave" || /(?:^|[\\/])wave\.js$/.test(String(input.scriptPath || "")))) process.exit(0);
 
   // Kanonisk praefiks-liste - samme liste som i hookens header og i CLAUDE.md.
   const EXEMPT_PREFIXES = ["WAVE-LANE:", "WAVE-REVIEW:", "WAVE-FOLLOWUP:", "WAVE-SETUP:", "WAVE-CLEANUP:", "READ-ONLY:"];

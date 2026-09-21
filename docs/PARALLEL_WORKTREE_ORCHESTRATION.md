@@ -1,7 +1,42 @@
 
 # Parallel Worktree Orchestration — Playbook
 
-## ⚠️ Eneste indgang siden 2026-09-11: `.claude/workflows/wave.js` ([#5142](https://github.com/NicolaiDolmer/CyclingZone/issues/5142))
+## Godkendte runtime-indgange (#5142, #5467)
+
+Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer, og fem-PR-loftet er kode. Resten af det historiske playbook laeses med disse aendringer: ingen automatisk merge, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
+
+## Codex-boelger (#5467)
+
+SSOT for roller og claims: [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md#runtime-synlighed-og-boelger-4016-5467). Ejerens valg af issues, design-go og filansvar skal vaere afklaret foer en plan koeres.
+
+```powershell
+node scripts/codex-wave.mjs plan.json --dry-run
+node scripts/codex-wave.mjs plan.json --run
+```
+
+Planen indeholder `lanes` (default 2, maks 4) og `tracks`: `issue`, `branch`, `title`, `scopeText`, `ownership`, `tier`, `verifyCommands`, eventuelt `model`, `effort`, `ownNodeModules` og `checkedMergedPrs`. Ingen model tilsidesaettes automatisk. `checkedMergedPrs` er de merged soegeresultater arkitekten har laest og afgraenset fra scopet. Uafklarede hits stopper sporet. Dry-run skriver intet og starter ingen agent; den er ikke et live kapacitetsbevis.
+
+Runneren reserverer alle planens nye PR-pladser, opretter worktrees sekventielt via `new-worktree.ps1`, genererer briefs via `make-wave-brief.mjs` og starter en CLI-proces pr. worker med eget cwd. Reviewer er en ny proces i read-only sandbox. Et blokerende fund giver en afgraenset rettelsesrunde i samme worktree og endnu et friskt review. Uafklarede fund efter den runde afleveres som `changes_requested`.
+
+Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hovedrepoet via git-common-dir. Frys beregnes med `wave-freeze.mjs` ud fra observeret branch-aktivitet. Afbrudte eller fejlede spor bliver aldrig meldt klar. Dirty worktrees, upushet arbejde og private proceslogs bevares til recovery; runneren resetter, stasher eller sletter dem ikke.
+
+| Egenskab | Haandhaevelse og graense |
+|---|---|
+| Gensidig boelgelaas | Atomisk filoprettelse i faelles run-mappe; eksisterende/malformed markoer blokerer |
+| Fem aabne PR'er | Live GitHub-tal inkl. drafts plus planlagte nye PR'er; Claude-hook og Codex-runner deler koden |
+| Filansvar | Plan-overlap afvises; Codex kontrollerer committed diff foer review. Ikke en fil-ACL |
+| Worker-isolation | Eget worktree + CLI cwd/sandbox. Rettigheder skal probes i den konkrete installation |
+| Reviewer | Frisk read-only CLI-proces; workerens egen godkendelse accepteres ikke |
+| Semafor | Maks 2 for kommandoer gennem wrapperen. Wrapping er fortsat brief-/reviewdisciplin |
+| Oprydning | Kun eget waveId og registreret watch-identitet; ingen global proces- eller worktree-pruning |
+| Claudes setup/cleanup | Hookens admission er kode; setup-agentens rapport og terminal-observation er stadig agentdisciplin |
+| Merge | Kun efter ejerens ordrette `merge`, separat via `scripts/merge-queue.ps1 -Pr "N"`; runneren merger aldrig |
+
+Rapporten ligger lokalt under `.claude/run/waves/<waveId>/report.json`; hver lane har privat scratch med brief, processtatus og output. Publicer en anonymiseret status og testbevis paa issue/PR inden close-out. Lokale logs er ikke varigt handoff. Maaling: tid til merget PR, ejerens aktive minutter (ejer-oplyst) og reviewrettelser. Ingen hastighedsgevinst paastaas ud fra fixture-tests.
+
+Recovery: kontroller markoer, processtatus, branch, dirty filer, pushes og eksisterende PR. Bekraeft at gammel writer er stoppet foer nyt skrivearbejde i samme worktree. En ukendt terminaltilstand beholder markoeren. En ny normal `--run` afviser eksisterende worktree/PR; recovery maa ikke stiltiende bygge samme spor igen.
+
+### Claude-indgangen
 
 Parallelt byggearbejde startes med `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })`, aldrig med håndskrevne Agent-spawns. Resten af dette dokument beskriver **hvorfor** protokollen ser ud som den gør; workflowet er **hvordan** den udføres, og det håndhæver den selv.
 
