@@ -51,4 +51,8 @@ If a rider looks wrong to you afterwards, tell me. That is how we found this one
 
 ## 4. Hjælpetekst (help.json, en+da), til samme PR som patch note 3
 
-Skal forklare i to-tre sætninger: værdien bygger på de samme evner som ratingen for rytterens type, plus hans alder og forventede karriere; lønkrav bygger på hvad rytteren forventes at køre ind på én sæson og er ikke det samme tal; værdier opdateres om søndagen. Skrives når patch note 3 lægges ind, så tekst og kode følges ad.
+Indsat som én ny sætning lige efter første sætning i `riders.valueAndPrice.text` (en+da), i PR #5461.
+
+**EN:** *"It is built from the same abilities as the rating on his card, weighted for the rider type he is today, so when his rating moves, his value follows."*
+
+**DA:** *"Den bygger på de samme evner som ratingen på hans kort, vægtet efter den ryttertype han er i dag, så når ratingen flytter sig, følger værdien med."*

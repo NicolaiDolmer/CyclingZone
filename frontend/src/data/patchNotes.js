@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.293",
+    "date": "2026-09-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rider values",
+        "en": {
+          "title": "Rider values now follow the rider",
+          "body": "A rider's value is calculated from the same abilities as his rating, and every rider is priced as the type he is today. All riders were corrected at once, up and down. More riders rose than fell. The biggest falls are specialists whose price rested on one strong ability. Wage demands did not change with this update, and signed contracts are never touched. From here, values update on Sundays only again."
+        },
+        "da": {
+          "title": "Rytterværdier følger nu rytteren",
+          "body": "En rytters værdi regnes ud fra de samme evner som hans rating, og hver rytter prissættes som den type, han er i dag. Alle ryttere blev rettet på én gang, op og ned. Flere ryttere steg end faldt. De største fald er specialister, hvis pris hvilede på én stærk evne. Lønkrav ændrede sig ikke med denne opdatering, og underskrevne kontrakter røres aldrig. Herfra opdateres værdier igen kun om søndagen."
+        },
+        "refs": [5443]
+      }
+    ]
+  },
+  {
     "version": "7.292",
     "date": "2026-09-21",
     "label": "Beta",
