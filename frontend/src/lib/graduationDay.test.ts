@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  coachVerdictKey, defaultChoice, groupGraduations, moveUpBlock,
+  coachVerdictKey, defaultChoice, effectiveChoice, groupGraduations, moveUpBlock,
   type Graduate,
 } from "./graduationDay.ts";
 
@@ -74,6 +74,27 @@ test("et ukendt loft blokerer ikke (vi gaetter aldrig en cap vi ikke fik)", () =
 test("defaulten er Move up, og Sell naar oprykningen er blokeret (mockup 3g)", () => {
   assert.equal(defaultChoice(graduate({ targetSquadCount: 3, targetSquadMax: 12 })), "promote");
   assert.equal(defaultChoice(graduate({ targetSquadCount: 12, targetSquadMax: 12 })), "sell");
+});
+
+test("et gemt valg bevares", () => {
+  const open = graduate({ targetSquadCount: 3, targetSquadMax: 12 });
+  assert.equal(effectiveChoice(open, "release"), "release");
+  assert.equal(effectiveChoice(open, "promote"), "promote");
+});
+
+test("en trup der bliver fuld MENS listen staar aaben omskriver et gemt 'promote' til 'sell'", () => {
+  // CodeRabbit-fund 21/9: raekken viste `Sell`, men det gemte valg var stadig
+  // `promote`, saa naeste Confirm all sendte `promote` og fik
+  // squad_cap_violation for en raekke der paa skaermen sagde noget andet.
+  const nowFull = graduate({ targetSquadCount: 12, targetSquadMax: 12 });
+  assert.equal(effectiveChoice(nowFull, "promote"), "sell");
+  // Et aktivt valg der IKKE er oprykning roeres ikke af blokeringen.
+  assert.equal(effectiveChoice(nowFull, "release"), "release");
+});
+
+test("uden et gemt valg falder effectiveChoice tilbage paa defaulten", () => {
+  assert.equal(effectiveChoice(graduate({ targetSquadCount: 3, targetSquadMax: 12 }), null), "promote");
+  assert.equal(effectiveChoice(graduate({ targetSquadCount: 12, targetSquadMax: 12 }), undefined), "sell");
 });
 
 test("fog-gate: uden baand siger traeneren intet om afstanden", () => {

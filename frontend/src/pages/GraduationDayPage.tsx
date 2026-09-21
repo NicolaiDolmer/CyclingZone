@@ -41,7 +41,7 @@ import { flattenAbilities } from "../lib/abilities.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
 import {
-  coachVerdictKey, defaultChoice, groupGraduations, moveUpBlock,
+  coachVerdictKey, defaultChoice, effectiveChoice, groupGraduations, moveUpBlock,
   type GraduationChoice, type Graduate,
 } from "../lib/graduationDay.js";
 
@@ -134,7 +134,10 @@ export default function GraduationDayPage() {
     setFormError(null);
     const errors: Record<string, string> = {};
     for (const g of rows) {
-      const action = choices[g.riderId] ?? defaultChoice(g);
+      // effectiveChoice, IKKE det raa `choices`-opslag: truppen kan vaere
+      // blevet fuld mens listen stod aaben, og vi maa aldrig sende `promote`
+      // for en raekke der paa skaermen siger `Sell` (se graduationDay.ts).
+      const action = effectiveChoice(g, choices[g.riderId]);
       const res = await resolveGraduate(g.riderId, action, { refresh: false });
       if (!res.ok) errors[g.riderId] = String(res.error ?? "failed");
     }
@@ -229,7 +232,7 @@ export default function GraduationDayPage() {
                 <GraduateRow
                   key={g.riderId}
                   graduate={g}
-                  choice={choices[g.riderId] ?? defaultChoice(g)}
+                  choice={effectiveChoice(g, choices[g.riderId])}
                   onChoice={setChoice}
                   disabled={confirming}
                   rowError={rowErrors[g.riderId] || null}
@@ -372,7 +375,7 @@ function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting,
       <Cell label={t("graduationDay.colChoice")} className="lg:justify-self-end">
         <SegmentedControl
           label={t("graduationDay.choiceLabel", { name: g.name })}
-          value={block && choice === "promote" ? "sell" : choice}
+          value={choice}
           onChange={(next: string) => onChoice(g.riderId, next as GraduationChoice)}
           options={options}
         />

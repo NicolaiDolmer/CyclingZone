@@ -112,7 +112,10 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const TrainingPage = lazy(() => import("./pages/TrainingPage"));
 const AcademyPage = lazy(() => import("./pages/AcademyPage"));
 // #2491: Graduation Day er sin egen T1-side, ikke en blok paa Academy.
-const GraduationDayPage = lazy(() => import("./pages/GraduationDayPage"));
+// `.js`-endelsen er TypeScripts egen konvention for et .tsx-modul og det
+// moenster TransfersPage allerede bruger paa TradeListPage.tsx — naboerne
+// herover er .jsx-filer og staar derfor uden endelse.
+const GraduationDayPage = lazy(() => import("./pages/GraduationDayPage.js"));
 const KlubPage = lazy(() => import("./pages/KlubPage"));
 const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
 const PlanningHubPage = lazy(() => import("./pages/PlanningHubPage"));

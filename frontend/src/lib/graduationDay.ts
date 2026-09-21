@@ -110,6 +110,28 @@ export function defaultChoice(graduate: Pick<Graduate, "targetSquadCount" | "tar
   return moveUpBlock(graduate) ? "sell" : "promote";
 }
 
+/**
+ * Det valg der FAKTISK gaelder for rytteren lige nu — ÉN funktion, som baade
+ * segmentet og "Confirm all" gaar igennem.
+ *
+ * CodeRabbit-fund (21/9): truppen kan blive fuld MENS listen staar aaben.
+ * Rytter A og B er begge sat til `Move up` mod en trup med én ledig plads; A
+ * tager pladsen, listen henter sig selv, og B er nu blokeret. Segmentet viste
+ * allerede `Sell` (render-siden faldt tilbage naar `block` var sat), men det
+ * GEMTE valg stod stadig paa `promote` — saa naeste "Confirm all" sendte
+ * `promote` og fik `squad_cap_violation` igen, for en raekke der paa skaermen
+ * sagde `Sell`. Det fandtes fordi visning og indsendelse hver havde sin egen
+ * lille regel. Nu har de den samme.
+ */
+export function effectiveChoice(
+  graduate: Pick<Graduate, "targetSquadCount" | "targetSquadMax">,
+  stored: GraduationChoice | null | undefined,
+): GraduationChoice {
+  if (stored == null) return defaultChoice(graduate);
+  if (stored === "promote" && moveUpBlock(graduate)) return "sell";
+  return stored;
+}
+
 export type CoachVerdictKey = "unknown" | "unproven" | "climbing" | "arriving" | "settled";
 
 export interface CoachVerdictInput {

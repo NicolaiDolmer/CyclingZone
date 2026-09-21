@@ -101,7 +101,10 @@ test("Inbox-notifikationen peger paa den nye side, ikke paa Academy (HANDOFF pkt
 
 test("ruten findes og er lazy, som resten af app-siderne", () => {
   assert.match(appSource, /path="academy\/graduation"/, "ruten /academy/graduation mangler i App.jsx");
-  assert.match(appSource, /lazy\(\(\) => import\("\.\/pages\/GraduationDayPage"\)\)/, "siden skal lazy-loades");
+  // `.js`-endelsen: TypeScripts konvention for et .tsx-modul, samme moenster som
+  // TransfersPage's import af TradeListPage.tsx. Uden den er importen
+  // extensionless, hvilket bestaar Vite men fejler i Node's ESM-loader (#803).
+  assert.match(appSource, /lazy\(\(\) => import\("\.\/pages\/GraduationDayPage\.js"\)\)/, "siden skal lazy-loades med .js-endelsen");
 });
 
 test("backend sender de felter raekken renderer (#2491)", () => {
