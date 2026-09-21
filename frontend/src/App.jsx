@@ -111,6 +111,8 @@ const SeasonFinanceReport = lazy(() => import("./pages/SeasonFinanceReport"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const TrainingPage = lazy(() => import("./pages/TrainingPage"));
 const AcademyPage = lazy(() => import("./pages/AcademyPage"));
+// #2491: Graduation Day er sin egen T1-side, ikke en blok paa Academy.
+const GraduationDayPage = lazy(() => import("./pages/GraduationDayPage"));
 const KlubPage = lazy(() => import("./pages/KlubPage"));
 const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
 const PlanningHubPage = lazy(() => import("./pages/PlanningHubPage"));
@@ -439,6 +441,7 @@ export default function App() {
             <Route path="training" element={<TrainingPage />} />
             <Route path="planner" element={<PlannerLegacyRedirect />} />
             <Route path="academy" element={<AcademyPage />} />
+            <Route path="academy/graduation" element={<GraduationDayPage />} />
             <Route path="klub" element={<KlubPage />} />
             <Route path="scouting" element={<I18nReadyGate ns="scouting"><ScoutingCentralPage /></I18nReadyGate>} />
             {/* #4943: in-app spoergeskema. Login-gated med vilje (svarene

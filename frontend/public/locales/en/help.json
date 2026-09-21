@@ -1195,8 +1195,17 @@
         "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of {academySlots} riders carries a noticeable running cost each season."
       },
       "graduation": {
-        "title": "Graduating at 23",
-        "text": "When an academy rider turns 23 they age out of the Academy and you make a choice for each one: promote them into your senior squad (needs a free senior place and gives them a senior contract), sell them on the transfer market, or release them as a free agent. You get a window to decide; if you do not act in time, the club picks a sensible default for you (promote when there is room, otherwise sell). This gives home-grown talent a clear path to your senior team."
+        "title": "Graduation Day",
+        "text": "Riders who have outgrown their squad move on at the season turn. A junior who turns 19 moves to your U23 team, and a U23 rider who turns 23 moves to your senior team. The list opens the week before the season turns, and the deadline is the turn itself. Until you move a rider, he trains and races in his old squad. For each rider you choose Move up (needs a free place in the squad he is moving to, and he keeps his contract exactly as it is), Sell on the transfer market, or Release as a free agent. If you do nothing, the club picks for you at the turn: move up when there is room, otherwise sell. Your coach gives a short read on each rider, and it is only ever a read, never a promise."
+      },
+      "graduationDayPage": {
+        "title": "Where to make the choice",
+        "steps": [
+          "A banner appears on the Academy page, and you get a message in your inbox, when riders are waiting.",
+          "Open Graduation Day from either one.",
+          "Each transition gets its own card, with one row per rider: rating, potential, contract and your coach's read.",
+          "Set Move up, Sell or Release per rider, then press Confirm all."
+        ]
       },
       "promoteDemote": {
         "title": "Promoting up and moving riders down",
