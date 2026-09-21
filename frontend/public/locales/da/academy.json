@@ -134,5 +134,66 @@
     "colPrice": "Salgspris",
     "colPremium": "Præmie",
     "unknownRider": "Tidligere akademirytter"
+  },
+  "graduationBanner": {
+    "title": "{count, plural, one {1 rytter er vokset ud af sin trup} other {# ryttere er vokset ud af deres trup}}",
+    "body": "Vælg inden sæsonen skifter, ellers vælger klubben for dig.",
+    "action": "Åbn Graduation Day"
+  },
+  "graduationDay": {
+    "title": "Graduation Day",
+    "subtitleDays": "{count, plural, one {1 rytter er vokset ud af sin trup} other {# ryttere er vokset ud af deres trup}}. {days, plural, one {1 dag} other {# dage}} til at vælge.",
+    "subtitleDue": "{count, plural, one {1 rytter er vokset ud af sin trup} other {# ryttere er vokset ud af deres trup}}. Fristen er overskredet.",
+    "subtitlePlain": "{count, plural, one {1 rytter er vokset ud af sin trup} other {# ryttere er vokset ud af deres trup}}.",
+    "confirmAll": "Bekræft alle",
+    "riderCount": "{count, plural, one {1 rytter} other {# ryttere}}",
+    "backToAcademy": "Tilbage til Akademiet",
+    "emptySubtitle": "Ingen skifter trup lige nu.",
+    "emptyTitle": "Ingen ryttere skifter trup",
+    "emptyBody": "Næste Graduation Day åbner ugen før sæsonen skifter.",
+    "defaultNote": "Gør du ingenting, rykker rytterne op hvis der er plads, ellers bliver de sat til salg.",
+    "someFailed": "Nogle ryttere kunne ikke flyttes. Se årsagen på rækken, og prøv igen.",
+    "contractUntil": "Til sæson {season}",
+    "contractNone": "Ingen kontrakt",
+    "colRider": "Rytter",
+    "colRating": "Rating",
+    "colPotential": "Potentiale",
+    "colContract": "Kontrakt",
+    "colCoach": "Træner",
+    "colChoice": "Valg",
+    "choiceLabel": "Valg for {name}",
+    "squad": {
+      "junior": "Juniorholdet",
+      "u23": "U23-holdet",
+      "senior": "Seniorholdet",
+      "unknown": "Akademiet"
+    },
+    "transition": {
+      "junior_u23": "Fra juniorholdet til U23-holdet",
+      "u23_senior": "Fra U23-holdet til seniorholdet",
+      "unknown_senior": "Til seniorholdet",
+      "fallback": "Fra {from} til {to}"
+    },
+    "choice": {
+      "promote": "Ryk op",
+      "sell": "Sælg",
+      "release": "Fyr"
+    },
+    "blocked": {
+      "squadFull": "Truppen er fuld ({count}/{max})"
+    },
+    "coach": {
+      "unknown": "Jeg har ikke set nok til ham til at sige hvor han ender.",
+      "unproven": "Jeg har en fornemmelse af ham, men ikke en sikker en endnu.",
+      "climbing": "Der er stadig et godt stykke vej foran ham.",
+      "arriving": "Han er tæt på den rytter jeg forventer han bliver.",
+      "settled": "Han er vokset til den rytter jeg troede han ville blive."
+    },
+    "rowError": {
+      "not_pending": "Hans vindue er allerede lukket. Genindlæs siden.",
+      "squad_cap_violation": "Der er ikke plads i den trup han skulle flyttes til.",
+      "rider_not_found": "Rytteren er ikke længere i dit akademi.",
+      "failed": "Det gik ikke igennem. Prøv igen."
+    }
   }
 }

@@ -247,7 +247,7 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
-import { applySeniorSquadFilter } from "../lib/squads.js";
+import { applySeniorSquadFilter, SQUAD_CAPS } from "../lib/squads.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
@@ -265,7 +265,7 @@ import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
-import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
+import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
@@ -18155,25 +18155,74 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // viser), så de tre knapper ikke længere er konsekvensblinde. Potentiale
     // udelades bevidst: en graduate er 21+ og dermed færdig med ungdomskurven —
     // markedsværdien er det beslutningsrelevante tal her.
+    //
+    // #2491 (Graduation Day-siden, ejer-godkendt mockup 3g): rækken bærer nu
+    // HVILKEN overgang det er (`from_squad`/`to_squad`, #4619) plus de felter
+    // siden viser pr. rytter — evne-rækken (så rating-pladen kan regnes med
+    // frontendens ratingForRole-SSOT, samme mønster som alle andre rytter-
+    // flader), kontrakt-længde/-slutsæson og produktionsværdien. Potentiale-
+    // båndet hentes IKKE her: siden bruger ScoutablePotentiale, der går
+    // gennem det maskerede POST /api/scouting/estimates som alle andre flader
+    // — råt potentiale forlader stadig aldrig serveren (#1162).
     const { data: gradRows } = await supabase
       .from("academy_graduation")
-      .select("rider_id, deadline, status, riders(firstname, lastname, birthdate, nationality_code, salary, base_value, market_value, prize_earnings_bonus, primary_type, secondary_type)")
+      .select(`rider_id, deadline, status, from_squad, to_squad, riders(firstname, lastname, birthdate, nationality_code, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus, current_production_value, primary_type, secondary_type, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")}))`)
       .eq("team_id", teamId)
       .eq("status", "pending")
       .order("deadline", { ascending: true });
+
+    // #2491: hvor mange pladser er der i MÅL-truppen? Graduation Day skal kunne
+    // vise "Move up" som blokeret MED årsag, og blokeringen skal være den
+    // SAMME gate som resolveGraduation's promote-gren bruger
+    // (academyGraduation.hasRoomInTargetSquad): ungdomstrupper mod SQUAD_CAPS,
+    // senior mod divisionens cap. Tælles kun når der faktisk er en pending
+    // graduering — ellers er det en gratis forespørgsel pr. sidevisning.
+    //
+    // Tælles med countSquadMembers — SAMME funktion `hasRoomInTargetSquad`
+    // bruger på skrive-siden, så fladen og motoren ikke kan blive uenige om
+    // hvor mange der er i truppen. Den er en `head: true`-optælling, så der
+    // hentes ingen rækker (ingen pagination-overflade) og ingen ukendt kolonne
+    // læses ud.
+    const youthSquadCounts = { junior: 0, u23: 0 };
+    if ((gradRows ?? []).length > 0) {
+      const [juniorCount, u23Count] = await Promise.all([
+        countSquadMembers(supabase, { teamId, squad: "junior" }),
+        countSquadMembers(supabase, { teamId, squad: "u23" }),
+      ]);
+      youthSquadCounts.junior = juniorCount;
+      youthSquadCounts.u23 = u23Count;
+    }
+
     const graduations = (gradRows ?? []).map((g) => {
       const r = g.riders ?? {};
       const age = r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null;
+      // Nullable på rækker fra før #4619: fallback er 'senior', præcis samme
+      // adfærd som graduationSquadPatch — en graduering uden trup-information
+      // ER den gamle akademi → senior-overgang. Vi gætter aldrig `from`.
+      const toSquad = g.to_squad ?? "senior";
+      const targetCount = toSquad === "senior" ? seniorCount : youthSquadCounts[toSquad] ?? 0;
+      const targetMax = toSquad === "senior" ? seniorMax : (SQUAD_CAPS[toSquad] ?? null);
+      const ab = Array.isArray(r.rider_derived_abilities) ? r.rider_derived_abilities[0] : r.rider_derived_abilities;
       return {
         riderId: g.rider_id,
         name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(),
+        firstname: r.firstname ?? null,
+        lastname: r.lastname ?? null,
         age,
         deadline: g.deadline,
         nationality_code: r.nationality_code ?? null,
         primary_type: r.primary_type ?? null,
         secondary_type: r.secondary_type ?? null,
         salary: r.salary ?? null,
+        contract_length: r.contract_length ?? null,
+        contract_end_season: r.contract_end_season ?? null,
+        current_production_value: r.current_production_value ?? null,
         market_value: calculateRiderMarketValue(r),
+        fromSquad: g.from_squad ?? null,
+        toSquad,
+        targetSquadCount: targetCount,
+        targetSquadMax: targetMax,
+        rider_derived_abilities: ab ?? null,
       };
     });
 

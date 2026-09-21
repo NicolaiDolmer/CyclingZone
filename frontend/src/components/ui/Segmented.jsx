@@ -23,7 +23,14 @@
 //   label     — aria-label paa gruppen; segmenterne har ingen anden faelles etikette
 //   value     — det aktive segments value
 //   onChange  — (next) => void
-//   options   — [{ value, label, title? }]
+//   options   — [{ value, label, title?, disabled? }]
+//
+// #2491: `disabled` pr. option. Graduation Day skal vise "Move up" som
+// TILSTEDE men uvaelgeligt naar maal-truppen er fuld (ejer-godkendt mockup 3g:
+// "blokeret = disabled + aarsag i danger"). At fjerne segmentet i stedet ville
+// skjule at valget findes, og spilleren ville ikke kunne se hvorfor det
+// mangler. Samme daempning som resten af appens disabled-kontroller
+// (opacity-40 + not-allowed), ingen ny farve og ingen ny radius.
 export function Segmented({ label, value, onChange, options, className = "" }) {
   return (
     <div
@@ -33,17 +40,21 @@ export function Segmented({ label, value, onChange, options, className = "" }) {
     >
       {options.map((option) => {
         const active = option.value === value;
+        const blocked = option.disabled === true;
         return (
           <button
             key={option.value}
             type="button"
             aria-pressed={active}
             title={option.title}
+            disabled={blocked}
             onClick={active ? undefined : () => onChange(option.value)}
             className={`px-3 py-1.5 text-xs font-medium transition-colors duration-150 ${
-              active
-                ? "cursor-default bg-cz-accent/10 text-cz-accent-t"
-                : "bg-cz-card text-cz-2 hover:text-cz-1"
+              blocked
+                ? "cursor-not-allowed bg-cz-card text-cz-3 opacity-40"
+                : active
+                  ? "cursor-default bg-cz-accent/10 text-cz-accent-t"
+                  : "bg-cz-card text-cz-2 hover:text-cz-1"
             }`}
           >
             {option.label}

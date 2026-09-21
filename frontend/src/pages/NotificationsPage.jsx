@@ -147,7 +147,8 @@ const TYPE_CONFIG = {
   academy_drip:              { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy" },
   academy_signed:            { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/academy" },
   academy_rejected:          { Icon: XIcon,            color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/academy" },
-  academy_graduation_ready:  { Icon: RocketIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy" },
+  // #2491: valget bor paa Graduation Day-siden, ikke laengere paa Academy.
+  academy_graduation_ready:  { Icon: RocketIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy/graduation" },
   academy_graduated:         { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/academy" },
   // Forfremmelse/degradering flytter rytteren mellem akademi og seniortrup —
   // truppen er stedet hvor spilleren ser resultatet.

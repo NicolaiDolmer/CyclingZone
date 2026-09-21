@@ -92,7 +92,7 @@ export default function AcademyPage() {
   const seasonYear = useActiveSeasonYear();
   const {
     enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance,
-    intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider,
+    intakePull, loading, error, signCandidate, rejectCandidate, promoteRider,
     fetchReleaseQuote, releaseRider,
     pullIntake,
   } = useAcademy();
@@ -331,16 +331,6 @@ export default function AcademyPage() {
     setPullBusy(false);
   }
 
-  async function handleGraduate(riderId, action) {
-    setActionState(prev => ({ ...prev, [riderId]: action }));
-    setActionErrors(prev => ({ ...prev, [riderId]: null }));
-    const result = await resolveGraduate(riderId, action);
-    if (!result.ok) {
-      setActionErrors(prev => ({ ...prev, [riderId]: mapActionError(result.error) }));
-    }
-    setActionState(prev => ({ ...prev, [riderId]: null }));
-  }
-
   // Åbn promote-bekræftelse (#932 S7) — selve op-rykningen sker i confirmPromote.
   function handlePromote(rider) {
     setActionErrors(prev => ({ ...prev, [rider.id]: null }));
@@ -482,84 +472,33 @@ export default function AcademyPage() {
       />
 
       <div className="space-y-6">
-      {/* GRADUERINGS-sektion (#932) — akademiryttere der har passeret 21 og skal
-          promoveres/sælges/slippes inden override-vinduets udløb. Vises kun når der
-          er pending graduates (call-to-action, ikke permanent tom-tilstand). */}
+      {/* GRADUATION DAY-BANNER (#2491) — selve valget bor nu paa sin egen T1-side
+          (/academy/graduation, ejer-godkendt mockup 3g). Her staar kun banneret,
+          og KUN naar der er nogen at traeffe valg om.
+
+          Den gamle blok — ét kort pr. rytter med tre knapper — er slettet, ikke
+          gemt bag et flag: to flader med samme irreversible valg er praecis den
+          dobbelt-flade HANDOFF pkt. 8 forbyder ("banner on Academy only, plus
+          the Inbox notification"). Kortene kunne desuden hverken vise
+          rating-plade, potentiale-baand eller traenerens vurdering, og havde
+          ingen faelles bekraeftelse. */}
       {graduations.length > 0 && (
         <section>
-          {/* #4628: eyebrow-idiomet (11px uppercase meta) var sidens fjerde
-              overskrifts-stil og fik Youth squads-kortets kanoniske 15/600-titel
-              til at skille sig ud fra sine naboer (audit 2026-09, /academy).
-              Alle fire blokke bruger nu SectionHeader-recipen. */}
           <SectionHeader title={t("graduationHeading")} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {graduations.map((g) => {
-              const busy = actionState[g.riderId] != null;
-              const err = actionErrors[g.riderId];
-              const days = daysUntil(g.deadline);
-              const overdue = days != null && days <= 0;
-              return (
-                <Card key={g.riderId} className="p-4 flex flex-col gap-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm leading-snug truncate">
-                        <RiderLink id={g.riderId} className="text-cz-1 hover:text-cz-accent-t transition-colors">{g.name}</RiderLink>
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        {g.nationality_code && <NationCell code={g.nationality_code} />}
-                        {g.age != null && (
-                          <span className="text-xs text-cz-3">{t("ageLabel", { age: g.age })}</span>
-                        )}
-                      </div>
-                    </div>
-                    {days != null && (
-                      <span
-                        className={`flex-shrink-0 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill ${overdue ? "bg-cz-danger-bg text-cz-danger" : "bg-cz-accent/15 text-cz-accent-t"}`}
-                      >
-                        {overdue ? t("graduationOverdue") : t("graduationDeadline", { days })}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* #2796: valget var konsekvensblindt — type, værdi og løn er nu på kortet.
-                      self-start: kortet er en flex-kolonne, så badgen ville ellers
-                      strække sig i fuld bredde og læses som en bjælke, ikke en badge. */}
-                  <RiderTypeBadge primaryType={g.primary_type} secondaryType={g.secondary_type} className="self-start" />
-                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                    <dt className="text-cz-3">{t("colValue")}</dt>
-                    <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(g.market_value)} CZ$</dd>
-                    <dt className="text-cz-3">{t("colSalary")}</dt>
-                    <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(g.salary)} CZ$</dd>
-                  </dl>
-
-                  {err && <p className="text-xs text-cz-danger">{err}</p>}
-
-                  {/* #4628: kortene gentages (ét pr. graduerende rytter), saa en
-                      guld-primary pr. kort giver N guld-knapper paa ét view.
-                      Guld er rationeret til ÉN primaer handling pr. view
-                      (TASTE P3 / fork 3) — kort-handlingerne er secondary,
-                      og den destruktive er en ghost i --danger. */}
-                  <div className="flex gap-2 mt-auto pt-1">
-                    <Button size="sm" variant="secondary" className="flex-1"
-                      onClick={() => handleGraduate(g.riderId, "promote")}
-                      disabled={busy} loading={actionState[g.riderId] === "promote"}>
-                      {t("promoteBtn")}
-                    </Button>
-                    <Button size="sm" variant="secondary" className="flex-1"
-                      onClick={() => handleGraduate(g.riderId, "sell")}
-                      disabled={busy} loading={actionState[g.riderId] === "sell"}>
-                      {t("sellBtn")}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="flex-1 text-cz-danger hover:text-cz-danger"
-                      onClick={() => handleGraduate(g.riderId, "release")}
-                      disabled={busy} loading={actionState[g.riderId] === "release"}>
-                      {t("releaseBtn")}
-                    </Button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          <Card className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-medium text-cz-1">
+                {t("graduationBanner.title", { count: graduations.length })}
+              </p>
+              <p className="mt-1 text-xs text-cz-2">{t("graduationBanner.body")}</p>
+            </div>
+            <Link
+              to="/academy/graduation"
+              className={`${buttonClass({ variant: "secondary", size: "sm" })} shrink-0`}
+            >
+              {t("graduationBanner.action")}
+            </Link>
+          </Card>
         </section>
       )}
 

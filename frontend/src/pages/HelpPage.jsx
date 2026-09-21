@@ -436,6 +436,9 @@ const SECTION_DEFS = [
       { id: "youthAuctions", kind: "text" },
       { id: "upkeepCost", kind: "text" },
       { id: "graduation", kind: "text" },
+      // #2491: hvor selve valget traeffes (Graduation Day-siden). Prosaen bor
+      // her, ikke paa fladen (ejer 20/8: kort tekst paa UI, manualer i Hjaelp).
+      { id: "graduationDayPage", kind: "steps" },
       // #4066: wired in — promoting/demoting between academy and senior
       // squad outside graduation already had translated copy but no
       // reachable docs.

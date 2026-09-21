@@ -134,5 +134,66 @@
     "colPrice": "Sale price",
     "colPremium": "Premium",
     "unknownRider": "Former academy rider"
+  },
+  "graduationBanner": {
+    "title": "{count, plural, one {1 rider has outgrown his squad} other {# riders have outgrown their squad}}",
+    "body": "Decide before the season turns, or the club picks for you.",
+    "action": "Open Graduation Day"
+  },
+  "graduationDay": {
+    "title": "Graduation Day",
+    "subtitleDays": "{count, plural, one {1 rider has outgrown his squad} other {# riders have outgrown their squad}}. {days, plural, one {1 day} other {# days}} to decide.",
+    "subtitleDue": "{count, plural, one {1 rider has outgrown his squad} other {# riders have outgrown their squad}}. The deadline has passed.",
+    "subtitlePlain": "{count, plural, one {1 rider has outgrown his squad} other {# riders have outgrown their squad}}.",
+    "confirmAll": "Confirm all",
+    "riderCount": "{count, plural, one {1 rider} other {# riders}}",
+    "backToAcademy": "Back to Academy",
+    "emptySubtitle": "Nobody is moving between squads right now.",
+    "emptyTitle": "No riders are graduating",
+    "emptyBody": "The next Graduation Day opens the week before the season turns.",
+    "defaultNote": "If you do nothing, riders move up when there is room, otherwise they are listed for sale.",
+    "someFailed": "Some riders could not be moved. See the reason on each row, then try again.",
+    "contractUntil": "Until season {season}",
+    "contractNone": "No contract",
+    "colRider": "Rider",
+    "colRating": "Rating",
+    "colPotential": "Potential",
+    "colContract": "Contract",
+    "colCoach": "Coach",
+    "colChoice": "Choice",
+    "choiceLabel": "Choice for {name}",
+    "squad": {
+      "junior": "Junior team",
+      "u23": "U23 team",
+      "senior": "Senior team",
+      "unknown": "Academy"
+    },
+    "transition": {
+      "junior_u23": "From Junior team to U23 team",
+      "u23_senior": "From U23 team to Senior team",
+      "unknown_senior": "To Senior team",
+      "fallback": "From {from} to {to}"
+    },
+    "choice": {
+      "promote": "Move up",
+      "sell": "Sell",
+      "release": "Release"
+    },
+    "blocked": {
+      "squadFull": "Squad is full ({count}/{max})"
+    },
+    "coach": {
+      "unknown": "I have not seen enough of him to say where he lands.",
+      "unproven": "I have a feel for him, but not a firm one yet.",
+      "climbing": "There is still a good stretch of road ahead of him.",
+      "arriving": "He is close to the rider I expect him to be.",
+      "settled": "He has grown into the rider I thought he would be."
+    },
+    "rowError": {
+      "not_pending": "His window has already closed. Reload the page.",
+      "squad_cap_violation": "No room in the squad he was moving to.",
+      "rider_not_found": "This rider is no longer in your academy.",
+      "failed": "That did not go through. Try again."
+    }
   }
 }

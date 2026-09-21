@@ -147,7 +147,13 @@ export function useAcademy() {
   }, [refresh]);
 
   // Resolvér en graduate (#932). action ∈ promote|sell|release. Returnerer { ok, error? }.
-  const resolveGraduate = useCallback(async (riderId, action) => {
+  //
+  // #2491: `options.refresh = false` springer den efterfølgende hentning over.
+  // Graduation Day's "Confirm all" kører N valg i træk, og en refetch efter
+  // HVERT kald ville sende N-1 overflødige requests og lade listen hoppe under
+  // kæden. Siden henter selv ÉN gang til sidst. Default er uændret true, så de
+  // eksisterende kaldsteder (AcademyPage) opfører sig præcis som før.
+  const resolveGraduate = useCallback(async (riderId, action, { refresh: doRefresh = true } = {}) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
@@ -160,7 +166,7 @@ export function useAcademy() {
         return { ok: false, error: data.error || "failed" };
       }
       logEvent("academy_graduate", { riderId, action });
-      await refresh();
+      if (doRefresh) await refresh();
       return { ok: true };
     } catch {
       return { ok: false, error: "network" };
