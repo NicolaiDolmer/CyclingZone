@@ -7,8 +7,8 @@
 ## 🎯 Gør det lovede færdigt (ejer-godkendt 21/9; foran alt andet end brand)
 
 Intet nyt startes før A+B er live.
-**A · ejerens hånd:** 1 post catch-up #5429 · 2 "merge" #5169 · 3 flip `training_score_visible` + udmelding (#4851) · 4 Android-test → flip `training_mobile_table` → slet gammel gren (#3643) · 5 win-back #2760 inden 24/9.
-**B · Claude, i rækkefølge:** 6 værdiskiftet #5443 · 7 S4-kalender synlig #5405 (efter #5169) · 8 træning pr. løbsdag live 28/9 (flip-dag, #5281) · 9 /roadmap = roadbooken #5387.
+**A · ejerens hånd:** 1 post catch-up #5429 · 2 ✅ #5169 merget 21/9 · 3 flip `training_score_visible` + udmelding (#4851) · 4 Android-test → flip `training_mobile_table` → slet gammel gren (#3643) · 5 win-back #2760 inden 24/9.
+**B · Claude, i rækkefølge:** 6 værdiskiftet #5443 · 7 S4-kalender synlig #5405 · 8 træning pr. løbsdag live 28/9 (flip-dag, #5281) · 9 /roadmap = roadbooken #5387.
 **Derefter:** roadbook-løfterne (Discord 15/9) først; så det vigtigste ELLER det hurtigst brugbare. Bølge 5-7 nås ikke samlet til 27-28/9: ejer-kort udestår. **Codex-lane:** forum-links #3517.
 
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
@@ -19,7 +19,7 @@ Intet nyt startes før A+B er live.
 ## Bane 1 · S4-cutover 27-28/9 (rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
 
 1. ✅ **Bølge 1** (score #4851 bag flag) · #3668 → #5268.
-2. 🟠 **Bølge 2:** 🔵 **træningsdesign** (140 låst; måde B valgt 20/9 → #5169 venter "merge" → B4 #5264 ✅ bag flag → B3 #5281 flip-dagen) · ✅ mobil-træning #5397 + #5458 (beta).
+2. 🟠 **Bølge 2:** 🔵 **træningsdesign** (140 låst; måde B → ✅ #5169 → B4 #5264 ✅ bag flag → B3 #5281 flip-dagen) · ✅ mobil-træning #5397 + #5458 (beta).
 3. 🟠 **Bølge 3, rytter-fundament:** ✅ fødsel uden PCM, `riders.squad`, evner som data (backfill + point-flyt #5268 ejer-gated) · #5269 · #5273.
 4. ⚪ **Bølge 4, kalender m. trupper (FØR S4-generering):** 🟠 **S4-kalender synlig** (#5405, go pr. kørsel; frist 21/9 røget) · pakker pr. trup · generator A6 (U23-bånd variant A) → AI U23/junior-ryttere · #5327 arketype (#3512) m. #5269 · C1 · dry-run → go → #4270 apply (ejer).
 5. ⚪ **Bølge 5, træning færdig (28/9):** skader i løbsdage · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849) · #4852-#4854 · #4848.
