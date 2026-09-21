@@ -17,6 +17,7 @@ FASTE REGLER (bider hver gang)
 
 KOLLISIONER: Claude har 4 åbne bølge-spor. RØR IKKE disse filer før deres PR'er er merget:
 backend/lib/raceStageProfileGenerator.js · backend/lib/dailyTrainingEngine.js · backend/lib/raceRunner.js · backend/lib/riderEligibility.js · backend/lib/raceSelection.js · backend/lib/selectionAutoFill.js · backend/lib/notificationTypes.js · frontend/src/pages/AcademyPage.jsx · frontend/src/hooks/useAcademy.js · frontend/src/lib/training.js · frontend/src/components/ConditionChips.jsx · frontend/public/locales/*/help.json · frontend/public/locales/*/notifications.json · frontend/public/locales/*/academy.json.
+Claudes bølge KØRER mens du starter: filen .claude/run/wave-active.json tilhører den. Du må hverken slette, overskrive eller "rydde op" i den, i .claude/run/verify-slots eller i worktrees under C:\Dev\CyclingZone-worktrees som du ikke selv har oprettet.
 PR'er: #5460 (S4-kalibrering) · #5461 (værdiskifte patch note, DRAFT til kørselsdagen; bruger v7.293) · Graduation Day #2491 · skader i løbsdage #5462 · assistent-besked #4759. Tjek `gh pr list` først.
 
 OPGAVER, i denne rækkefølge (stop og vis mig resultatet efter hver):
