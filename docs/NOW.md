@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (21/9 nat):** **UPOSTET (Discord, kun EN): catch-up v7.284-7.289 (#5429)** + værdi-udmelding (`drafts/2026-09-20-vaerdiskifte-udmelding-og-patch-note.md`). **🔴 Værdier (#5443): kode merget (#5446), begge kontakter på v4, intet tændt.** Ejer 20/9: alt på én gang · løn venter til efter skiftet (`rider_production_value_model`) · ÉN ekstraordinær kørsel på ejerens "kør" (runbook i `docs/runbooks/`). Mangler: patch notes + help.json. **Kalender (ejer 20/9: fejl FØR generering):** bjergløb merget (#5450) · **#5169 (måde B) venter "merge" 21/9** · så tørkørsel UDEN `--uniform-tilt` → `--apply` m. go pr. kørsel (#5405). **Træningsscore:** #5451 + #5453 merget 21/9; mangler ejer-flip `training_score_visible` + udmelding; gammel mobil-liste løber over (rettes 21/9). `race_day_development_enabled` tændes ved skiftet. **Åbne PR'er:** patch note v7.290 · #5169 #5281 (flip-dagen) #5444 #3512.
+> **🎯 Next action (21/9 nat):** **UPOSTET (Discord, kun EN): catch-up v7.284-7.289 (#5429)** + værdi-udmelding (`drafts/2026-09-20-vaerdiskifte-udmelding-og-patch-note.md`). **🔴 Værdier (#5443): kode merget (#5446), begge kontakter på v4, intet tændt.** Ejer 20/9: alt på én gang · løn venter til efter skiftet (`rider_production_value_model`) · ÉN ekstraordinær kørsel på ejerens "kør" (runbook i `docs/runbooks/`). Mangler: patch notes + help.json. **Kalender (ejer 20/9: fejl FØR generering):** bjergløb merget (#5450) · **#5169 (måde B) venter "merge" 21/9** · så tørkørsel UDEN `--uniform-tilt` → `--apply` m. go pr. kørsel (#5405). **Træningsscore:** merget 21/9; mangler ejer-flip `training_score_visible` + udmelding; gammel mobil-liste løber over (rettes 21/9). `race_day_development_enabled` tændes ved skiftet. **Åbne PR'er:** #5169 (konflikt m. main) · #5281 (flip-dagen) #5444 #3512.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt, overlap forbliver det almindelige. **Tallet er LÅST: 140 (ejer 15/9, TRAINING_RULES §13.3); spørg aldrig igen.** **Ejer 20/9: måde B (jævnt, 5 pr. dato); A + synkrone blokke fjernet i #5169. B4 #5264 merget 20/9 bag flag.** **§2c (ejer 19/9):** S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only.
 
@@ -12,7 +12,7 @@
 
 > **🟡 Lofter + potentiale (ejer 18/9, byg intet):** lofterne ud, potentialet styrer farten (#5351); 6 huller efter 28/9. **#5268-point-flyt afventer.** **D-049-visning:** #5435, svar upostet #5436.
 
-> **🔴 Åbne fund:** Webkit-flaken #4925: rerun, ikke fix. **#5323 Quad9:** aflæs målingen (live fra 17/9) før DNS-kort. **📊 Triage:** `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
+> **🔴 Åbne fund:** Webkit-flake #4925: rerun. **#5323 Quad9:** aflæs målingen (live fra 17/9) før DNS-kort. **📊 Triage:** `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
 
 ## Standing context (forever-relaunch)
 
@@ -26,5 +26,5 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Ingen aktiv session. (PR der rører filen skal hedde `docs(now)…`/`docs(close-out)…`, #5093.)
+> **🤖 Working agent:** Claude Code, 21/9: gammel mobil-liste (#4851). (PR der rører filen skal hedde `docs(now)…`/`docs(close-out)…`, #5093.)
 
