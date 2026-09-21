@@ -75,6 +75,20 @@ test("#3541/#5462 ConditionChips (rytterprofilen) bruger fortsat den kanoniske k
   );
 });
 
+// #5462: `injuryTimeLeft` sætter approxDate i BEGGE grene (også calendar_day, hvor
+// injured_until er en PRÆCIS slutdato). "ca."-teksten må derfor kun vises når
+// aksen faktisk er løbsdage — ellers får enhver skadet rytter i dagens flag-off-
+// tilstand en ny, ugated og faktuelt forkert tooltip ved merge. De tre trænings-
+// flader gater allerede på `unit === "race_day"`; denne vagt holder den fjerde
+// (rytterprofilens chip) på samme regel.
+test("#5462 ConditionChips' ca.-dato-tooltip er gated på løbsdags-aksen, ikke på approxDate alene", () => {
+  assert.match(
+    conditionChipsSource,
+    /title=\{injury\.unit === "race_day" && injury\.approxDate/,
+    'title\'en skal kræve unit === "race_day"; approxDate alene er sat også i calendar_day-grenen',
+  );
+});
+
 // Låser selve off-by-one/0-dages-grænsen (#1672-mønstret) som alle tre flader nu
 // deler via injuryDaysLeft — hvis denne regel nogensinde ændres, skal den ændres
 // ÉT sted (frontend/src/lib/training.js), og alle tre flader følger automatisk med.
