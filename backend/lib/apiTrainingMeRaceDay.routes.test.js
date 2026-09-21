@@ -29,14 +29,15 @@ const apiSource = readFileSync(resolve(__dirname, "../routes/api.js"), "utf8");
 // /training/me-handleren. Hævet 7200 → 9200 af #4851 (traeningsscoren lagde et
 // flag-opslag, en query og et betinget responsfelt ind i route'n), 9200 → 10400 af
 // #3643 (mobil-flaget training_mobile_table lagde endnu et flag-opslag +
-// responsfelt ind i samme handler) og 10400 → 13000 af #4847 (dayClose-blokken,
-// knappens aabne-tilstand). Faldt res.json uden for vinduet, holdt guarderne
+// responsfelt ind i samme handler), 10400 → 13000 af #4847 (dayClose-blokken,
+// knappens aabne-tilstand) og 13000 → 14000 af #5462 (skadens loebsdags-felt i
+// condition-projektionen + condition-mappen). Faldt res.json uden for vinduet, holdt guarderne
 // herunder op med at maale noget UDEN at blive roede. Samme fejlklasse hver gang:
 // racingToday-spreadet faldt uden for vinduet og guarden matchede ikke laengere.
 // Testen "routeBlock-vinduet daekker hele /training/me-handleren" nedenfor er
 // forward-guarden: den maaler den FAKTISKE afstand til naeste router.*-kald, saa
 // vinduet ikke kan blive for lille igen uden at noget bliver roedt.
-function routeBlock(marker, len = 13000) {
+function routeBlock(marker, len = 14000) {
   const start = apiSource.indexOf(marker);
   assert.ok(start !== -1, `${marker} skal findes i api.js`);
   return apiSource.slice(start, start + len);
