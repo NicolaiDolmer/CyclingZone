@@ -6,8 +6,13 @@
 //   2) Rækker er ryttere, kolonner er dagens løbsdage. Med
 //      `training_tick_per_race_day` OFF er der PRÆCIS én kolonne ("I dag"),
 //      og tabellen skifter ikke form når tallet en dag bliver 4.
-//   3) Den rytter man trykker på får sit fulde kort ÉN gang under tabellen —
-//      form, træthed og "tæller for <rolle>" er dér, ikke bag vandret scroll.
+//   3) Den rytter man trykker på får sit fulde kort ÉN gang — foldet ud LIGE
+//      UNDER sin egen række, inde i listen (ejer-beslutning 21/9, variant A,
+//      efter beta-feedback 19/9: "Der bliver meget scrolleri når rytteren
+//      folder sig ud under tabellen"). Målt før: 201 px fra række til kort ved
+//      rytter nr. 6 af 10. Guarden her måler nu 0 px og kræver at kortet er
+//      DOM-naboen. Form, træthed og "tæller for <rolle>" er dér, ikke bag
+//      vandret scroll. Ingen rytter er foldet ud ved indlæsning.
 //   4) "Skift" i kortet åbner det SAMME dagspanel som desktop bruger, så
 //      sidens hovedhandling er to tryk væk uden nogen "Fuld tabel".
 //   5) Alle tryk-mål ≥ 44 px.
@@ -20,6 +25,8 @@
 // drive i én motor uden at de to andre ser det.
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM, RIDERS, evidenceShotPath } from "./fixtures.js";
+import { scanPageForTextDefects, formatFinding } from "./lib/text-overflow-scan.js";
+import { isKnownContrastDebt } from "./lib/text-overflow-allowlist.js";
 
 // Kun ægte type-nøgler (locales/*/riderTypes.json) — en opdigtet nøgle ville
 // vise en rå i18n-nøgle i skærmbillederne og gøre beviset misvisende.
@@ -94,6 +101,20 @@ test.beforeEach(async ({ page }) => {
 });
 
 const roster = (page) => page.locator('[data-testid="training-mobile-roster"]');
+// Rytter-rækkerne, uden den udfoldede kort-række: kun rytter-rækker bærer en
+// knap med aria-expanded. Uden filtret ville nth(n) pege på en anden rytter så
+// snart ét kort er åbent.
+const riderRows = (page) => roster(page).locator("tbody tr").filter({ has: page.locator("button[aria-expanded]") });
+const detailRow = (page) => page.locator('[data-testid="training-mobile-rider-detail"]');
+
+// Den faste bundnavigation (MobileQuickNav) ligger OVEN PÅ indholdet, så et
+// element der slutter under denne linje er gemt bag den — ikke bare "langt nede".
+async function visibleBottom(page) {
+  return page.evaluate(() => {
+    const nav = document.querySelector("[data-mobile-quick-nav]");
+    return window.innerHeight - (nav ? nav.getBoundingClientRect().height : 0);
+  });
+}
 
 // Vandret side-scroll måles på dokumentet selv: en tabel der stikker ud af sin
 // ramme flytter netop dette tal, uanset hvilken container den ligger i.
@@ -137,12 +158,11 @@ test("412 px: rytteren man trykker på får sit fulde kort ÉN gang, og 'Skift' 
   await login(page);
   await openTraining(page, 412, 915);
 
-  // Den øverste rytter er valgt fra start (mockup 2), så fladen aldrig står
-  // med en tom plads hvor kortet hører hjemme — og så onboarding-touren har
-  // noget konkret at pege på.
-  await expect(page.getByRole("button", { name: /A\. Pedersen/ })).toHaveAttribute("aria-expanded", "true");
+  // Ejer 21/9: INGEN rytter er foldet ud ved indlæsning. Et åbent kort øverst
+  // ville skubbe hele truppen ned og tage netop det overblik fladen er til for.
+  await expect(page.getByRole("button", { name: /A\. Pedersen/ })).toHaveAttribute("aria-expanded", "false");
+  await expect(detailRow(page)).toHaveCount(0);
   await expect(page.locator('[data-tour="training-focus"]')).toHaveCount(1);
-  await expect(page.locator('[data-tour="training-next-up"]')).toHaveCount(1);
 
   // Et tryk på en ANDEN rytter flytter kortet.
   await page.getByRole("button", { name: /M\. Sørensen/ }).click();
@@ -156,16 +176,160 @@ test("412 px: rytteren man trykker på får sit fulde kort ÉN gang, og 'Skift' 
   await expect(card.getByText("Tæller for Sprinter")).toBeVisible();
   await expect(card.getByText("på loftet")).toBeVisible();
 
-  // ÉN gang: kortet står under tabellen, ikke i hver række.
+  // ÉN gang: præcis ét åbent kort, ikke ét pr. række.
   await expect(page.getByText("Tæller for Sprinter")).toHaveCount(1);
+  await expect(detailRow(page)).toHaveCount(1);
+  await expect(page.locator('[data-tour="training-next-up"]')).toHaveCount(1);
   await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
 
   await page.screenshot({ path: evidenceShotPath(`pr-screens/3643-training-mobile-412-card-${testInfo.project.name}.png`), fullPage: true });
 
   // Sidens hovedhandling: "Skift" åbner det SAMME dagspanel desktop bruger.
+  // Knappen sidder nu INDE i tabellen; et tryk på den må ikke lukke kortet
+  // ved at boble ud som et rækkeklik.
   await card.getByRole("button", { name: "Skift" }).click();
   await expect(page.getByText(/1 · Hvad er det for en dag/)).toBeVisible();
+  await expect(detailRow(page)).toHaveCount(1);
 });
+
+// ── Ejer-beslutning 21/9: kortet folder ud LIGE UNDER rytteren ──────────────
+//
+// Beta-tester @egomadsen 19/9: "Der bliver meget scrolleri når rytteren folder
+// sig ud under tabellen. Den burde måske bare folde sig ud lige under den
+// pågældende rytter." Målt 21/9 på den gamle form: 201 px fra rækkens bund til
+// kortets top ved rytter nr. 6 af 10 — og en rigtig trup er 25-30 ryttere.
+//
+// Rytteren i MIDTEN er hele pointen: for den øverste række var afstanden altid
+// lille, og en guard der kun måler ham ville have været grøn før rettelsen.
+
+test("412 px: kortet er DOM-naboen lige efter rækken — 0 px, ikke 201", async ({ page }) => {
+  await login(page);
+  await openTraining(page, 412, 915);
+
+  const rows = riderRows(page);
+  const rowCount = await rows.count();
+  expect(rowCount, "guarden skal måle en trup i realistisk størrelse").toBeGreaterThanOrEqual(10);
+  const mid = Math.floor(rowCount / 2);
+
+  await rows.nth(mid).locator("button[aria-expanded]").click();
+  await expect(detailRow(page)).toHaveCount(1);
+
+  const geometry = await page.evaluate((index) => {
+    const roster = document.querySelector('[data-testid="training-mobile-roster"]');
+    const riderRows = [...roster.querySelectorAll("tbody tr")].filter((tr) => tr.querySelector("button[aria-expanded]"));
+    const row = riderRows[index];
+    const next = row.nextElementSibling;
+    return {
+      nextIsCard: next?.getAttribute("data-testid") === "training-mobile-rider-detail",
+      // Absolutte dokument-koordinater: den reelle afstand spilleren skal
+      // scrolle for at komme fra rækken til kortet.
+      gap: next ? Math.round(next.getBoundingClientRect().top - row.getBoundingClientRect().bottom) : null,
+      expanded: row.querySelector("button[aria-expanded]").getAttribute("aria-expanded"),
+      controls: row.querySelector("button[aria-expanded]").getAttribute("aria-controls"),
+      cardId: next?.querySelector("section")?.id ?? null,
+    };
+  }, mid);
+
+  expect(geometry.nextIsCard, "kortet skal være rækkens umiddelbare DOM-nabo").toBe(true);
+  expect(geometry.gap).toBeLessThanOrEqual(1);
+  expect(geometry.expanded).toBe("true");
+  // aria-controls skal pege på PRÆCIS det kort der foldede ud — ikke på et id
+  // der lever et andet sted på fladen.
+  expect(geometry.controls).toBe(geometry.cardId);
+  expect(geometry.controls).toBeTruthy();
+});
+
+test("412 px: tryk igen lukker, og et skift holder den trykkede række i synsfeltet", async ({ page }) => {
+  await login(page);
+  await openTraining(page, 412, 915);
+
+  const rows = riderRows(page);
+  const rowCount = await rows.count();
+  const mid = Math.floor(rowCount / 2);
+  const midButton = rows.nth(mid).locator("button[aria-expanded]");
+
+  // Tryk igen på den SAMME rytter lukker kortet.
+  await midButton.click();
+  await expect(detailRow(page)).toHaveCount(1);
+  await midButton.click();
+  await expect(detailRow(page)).toHaveCount(0);
+  await expect(midButton).toHaveAttribute("aria-expanded", "false");
+
+  // Et kort OVER den række man trykker på er det farlige tilfælde: når det
+  // lukker, forsvinder dets højde fra flowet og rækken under fingeren hopper
+  // op. Den må ikke ryge ud af syne — og slet ikke ind bag bundnavigationen.
+  await rows.nth(1).locator("button[aria-expanded]").click();
+  await expect(detailRow(page)).toHaveCount(1);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await midButton.click();
+  await expect(detailRow(page)).toHaveCount(1);
+
+  const bottom = await visibleBottom(page);
+  const rect = await rows.nth(mid).evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom };
+  });
+  expect(rect.top, "den trykkede række må ikke være rullet op over skærmkanten").toBeGreaterThanOrEqual(-1);
+  expect(rect.bottom, "den trykkede række må ikke gemme sig bag bundnavigationen").toBeLessThanOrEqual(bottom + 1);
+
+  // Og kortets første linje skal være at se, ellers er "det foldede ud" en
+  // påstand spilleren ikke kan efterprøve.
+  const cardTop = await detailRow(page).evaluate((el) => el.getBoundingClientRect().top);
+  expect(cardTop).toBeLessThan(bottom);
+});
+
+for (const width of [412, 390, 375]) {
+  test(`${width} px: ingen vandret scroll med kortet ÅBENT`, async ({ page }) => {
+    await login(page);
+    await openTraining(page, width, 915);
+
+    const rows = riderRows(page);
+    const mid = Math.floor((await rows.count()) / 2);
+    await rows.nth(mid).locator("button[aria-expanded]").click();
+    await expect(detailRow(page)).toHaveCount(1);
+
+    // colSpan-cellen spænder hele tabellen; den må ikke gøre tabellen bredere
+    // end sin egen ramme. Måles på dokumentet, ikke på kortet.
+    await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
+  });
+}
+
+// Tekst-vagten (#5383) mod HELE mobil-visningen med kortet åbent. 4851-specen
+// måler kun selve tabellen, og vagtens egen spec måler /training med en mock
+// der ikke tænder den nye visning — kortets indhold i en colSpan-celle er
+// derfor kun dækket her.
+for (const lang of ["da", "en"]) {
+  test(`tekst-vagten (#5383) på hele visningen med kortet åbent · ${lang}`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chromium", "Tekst-målingen er ét skud pr. sprog; formen er dækket i alle tre projekter ovenfor.");
+    await login(page);
+    await openTraining(page, 412, 915);
+    await page.evaluate(async (next) => {
+      window.localStorage.setItem("cz_lang", next);
+      if (window.__i18n) await window.__i18n.changeLanguage(next);
+    }, lang);
+    await expect.poll(() => page.evaluate(() => window.__i18n?.language)).toBe(lang);
+
+    const rows = riderRows(page);
+    const mid = Math.floor((await rows.count()) / 2);
+    await rows.nth(mid).locator("button[aria-expanded]").click();
+    await expect(detailRow(page)).toHaveCount(1);
+    await page.evaluate(async () => {
+      // Uden ventetid på fonten måles Inter Tights metric-fallback, og et
+      // overløb på 2-3 px ville komme og gå mellem kørsler.
+      if (document.fonts?.ready) await document.fonts.ready;
+    });
+
+    // Kendt kontrast-gæld dømmes pr. FARVEPAR i vagtens egen allowlist (én
+    // token-værdi på 11 sider) — den hører ikke til i denne geometri-guard.
+    const findings = (await scanPageForTextDefects(page, { root: '[data-testid="training-mobile-today"]' }))
+      .filter((finding) => !isKnownContrastDebt(finding));
+
+    expect(
+      findings.map((f) => formatFinding({ ...f, where: `${lang} · 412 px` })).join("\n"),
+      `Tekst-vagten fandt ${findings.length} problemer i mobil-træningsvisningen med kortet åbent (${lang}, 412 px).\n`,
+    ).toBe("");
+  });
+}
 
 test("375 px: stadig ingen vandret scroll, og alle tryk-mål er mindst 44 px", async ({ page }, testInfo) => {
   await login(page);

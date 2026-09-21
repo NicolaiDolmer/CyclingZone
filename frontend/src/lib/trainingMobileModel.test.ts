@@ -4,7 +4,9 @@ import {
   buildRaceDayColumns,
   canShowScoreColumn,
   countsForRole,
+  expandScrollAdjustment,
   isSingleRaceDay,
+  MOBILE_CARD_PEEK,
   mobileScoreCell,
   pacePerWeek,
   programGrid,
@@ -159,4 +161,74 @@ test("score-kolonnen holder budgettet 'navn + hoejst 3 datakolonner'", () => {
   assert.equal(canShowScoreColumn(buildRaceDayColumns({ raceDayCount: 5 })), false);
   assert.equal(canShowScoreColumn([]), true);
   assert.equal(canShowScoreColumn(null), true);
+});
+
+// ── Kortet folder ud lige under rytteren (#3643, ejer 21/9) ─────────────────
+//
+// Maalene nedenfor er en telefon paa 412x915 med den faste bundnavigation
+// (MobileQuickNav, 56 px) — altsaa `safeBottom = 915 - 56 = 859`.
+
+const SAFE_BOTTOM = 915 - 56;
+
+test("intet at rette: raekken og kortets foerste linje staar allerede synlige", () => {
+  assert.equal(
+    expandScrollAdjustment({ rowTop: 300, rowBottom: 356, cardBottom: 700, safeBottom: SAFE_BOTTOM }),
+    0,
+  );
+});
+
+test("raekken er hoppet op over kanten (et kort OVER den lukkede) — rul op til den", () => {
+  // Det er hele grunden til at funktionen findes: den raekke fingeren lige ramte
+  // maa ikke forsvinde ud af syne fordi hoejden over den forsvandt.
+  assert.equal(
+    expandScrollAdjustment({ rowTop: -120, rowBottom: -64, cardBottom: 400, safeBottom: SAFE_BOTTOM }),
+    -120,
+  );
+});
+
+test("kortets top er gemt bag bundnavigationen — rul praecis saa langt ned", () => {
+  // rowBottom 850 + 44 px udsyn = 894, som er 35 px under den synlige kant.
+  assert.equal(
+    expandScrollAdjustment({ rowTop: 800, rowBottom: 850, cardBottom: 1400, safeBottom: SAFE_BOTTOM }),
+    35,
+  );
+});
+
+test("et kort lavere end udsynet kraever kun at kortet selv er synligt", () => {
+  // Kortet slutter 860 — 1 px bag bundnav'en. Der rulles 1 px, ikke 44.
+  assert.equal(
+    expandScrollAdjustment({ rowTop: 790, rowBottom: 840, cardBottom: 860, safeBottom: SAFE_BOTTOM }),
+    1,
+  );
+});
+
+test("raekken vejer tungere end kortets udsyn: der rulles aldrig saa langt at raekken ryger ud over toppen", () => {
+  // Uden loftet ville der blive rullet 40 px ned og raekkens top (20) havne paa
+  // -20. Svaret er derfor 20: raekkens top lander praecis paa kanten.
+  assert.equal(
+    expandScrollAdjustment({ rowTop: 20, rowBottom: 855, cardBottom: 1500, safeBottom: SAFE_BOTTOM }),
+    20,
+  );
+});
+
+test("et sidehoved der ligger oven paa indholdet kan flytte den oeverste kant", () => {
+  assert.equal(
+    expandScrollAdjustment({ rowTop: 30, rowBottom: 86, cardBottom: 400, safeTop: 64, safeBottom: SAFE_BOTTOM }),
+    -34,
+  );
+});
+
+test("maalinger der ikke er tal giver 0 i stedet for et NaN-scroll", () => {
+  assert.equal(
+    expandScrollAdjustment({ rowTop: Number.NaN, rowBottom: 10, cardBottom: 20, safeBottom: SAFE_BOTTOM }),
+    0,
+  );
+  assert.equal(
+    expandScrollAdjustment({ rowTop: 10, rowBottom: 20, cardBottom: 30, safeBottom: Number.POSITIVE_INFINITY }),
+    0,
+  );
+});
+
+test("udsynet er det samme 44 px tryk-maal fladen bruger i forvejen (#1602)", () => {
+  assert.equal(MOBILE_CARD_PEEK, 44);
 });

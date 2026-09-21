@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.292",
+    "date": "2026-09-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "The rider card opens right under the rider",
+          "body": "What changed: On the new phone training page (beta group), a rider's card now opens right under his row instead of below the whole list. Tap him again to close it."
+        },
+        "da": {
+          "title": "Rytterkortet åbner lige under rytteren",
+          "body": "Hvad er ændret: På den nye træningsside til telefonen (beta-gruppen) åbner rytterens kort nu lige under hans række i stedet for under hele listen. Tryk på ham igen for at lukke det."
+        },
+        "refs": [3643]
+      }
+    ]
+  },
+  {
     "version": "7.291",
     "date": "2026-09-21",
     "label": "Beta",

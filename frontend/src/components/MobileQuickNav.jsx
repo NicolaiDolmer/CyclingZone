@@ -75,6 +75,10 @@ export default function MobileQuickNav({ unread }) {
 
   return (
     <nav
+      // #3643: en målekrog, ikke en stilart. Baren ligger OVEN PÅ indholdet, så
+      // en flade der ruller noget i synsfeltet skal kunne trække dens højde fra
+      // — og måle den frem for at gentage 56 som et tal endnu et sted.
+      data-mobile-quick-nav=""
       className="fixed left-0 right-0 bottom-0 z-nav md:hidden bg-cz-sidebar border-t border-cz-sidebar-border transition-all duration-200"
       style={{ height: "56px" }}
     >

@@ -41,6 +41,7 @@ import AssistantSuggestionsPanel from "../components/training/AssistantSuggestio
 import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistantSuggestions, acceptableSuggestionIds, acceptableSelectionIds } from "../lib/assistantTrainingSuggestions.js";
 import DevelopmentGlyph from "../components/development/DevelopmentGlyph.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
+import { readTour } from "../lib/onboardingTour.js";
 import SortTh from "../components/rider/RiderSortTh.jsx";
 import TrainingScoreSparkline from "../components/training/TrainingScoreSparkline.tsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
@@ -540,9 +541,17 @@ export default function TrainingPage() {
   const [focusPanelRiderId, setFocusPanelRiderId] = useState(null);
   const focusPanelRider = focusPanelRiderId ? riders.find((r) => r.id === focusPanelRiderId) ?? null : null;
 
-  // #3643: den rytter der har sit fulde kort åbent UNDER mobil-tabellen. Kun
-  // mobil-visningen læser den; desktop-fladen kender den ikke.
+  // #3643: den rytter der har sit fulde kort foldet ud i mobil-tabellen. Kun
+  // mobil-visningen læser den; desktop-fladen kender den ikke. `null` fra start
+  // (ejer 21/9): ingen rytter er foldet ud ved indlæsning.
   const [mobileRiderId, setMobileRiderId] = useState(null);
+
+  // #2819: kørte onboarding-touren da siden blev mountet? Tourens tredje trin
+  // peger på fremgangen pr. evne, som på telefonen kun findes i rytterens kort,
+  // så mobil-visningen folder den øverste rytter ud ÉN gang når det er tilfældet
+  // — ellers ville trinnet pege på en flade der ikke er der. Læses én gang ved
+  // mount, præcis som OnboardingTour selv gør det.
+  const [tourActiveAtMount] = useState(() => readTour()?.page === "training");
 
   async function handleFocusPanelSave(dayType, session) {
     if (await handlePlanChange(focusPanelRiderId, dayType, session)) setFocusPanelRiderId(null);
@@ -1186,7 +1195,8 @@ export default function TrainingPage() {
         {/* Intensitet — #5124: sidens hovedhandling ("skift dagens træning"),
             derfor en af de tre mobil-standardkolonner (rosterMobile). #3643:
             den nye mobil-tabel har sin egen vej til den samme mutation
-            (rytterens kort under tabellen), men den vises kun bag flaget. */}
+            (rytterens kort, foldet ud under hans egen række), men den vises
+            kun bag flaget. */}
         {showRosterCol("day") && (
         // #5124: `max-w` på mobil-standardtilstanden — uden den æder de to
         // tekst-tunge datakolonner (denne + "Denne sæson") navnekolonnens
@@ -1560,9 +1570,11 @@ export default function TrainingPage() {
   // ── #3643: I dag-fanen på telefonen ────────────────────────────────────────
   //
   // Ejer-valg 18/9 (låst): mockup 2, tabel. Rækker er ryttere, kolonner er
-  // dagens løbsdage, og den rytter man trykker på får sit fulde kort ÉN gang
-  // under tabellen. Alt herunder er PRÆSENTATION: hver callback peger på den
-  // samme state og de samme mutationer som desktop-fladen bruger.
+  // dagens løbsdage. Ejer-beslutning 21/9 (variant A): den rytter man trykker
+  // på får sit fulde kort foldet ud LIGE UNDER sig selv, inde i listen — ikke
+  // under hele tabellen (beta-feedback 19/9, 201 px scroll ved rytter nr. 6).
+  // Alt herunder er PRÆSENTATION: hver callback peger på den samme state og de
+  // samme mutationer som desktop-fladen bruger.
   //
   // Løbsdags-modellen kører ikke i prod endnu (`training_tick_per_race_day` er
   // OFF, se docs/TRAINING_RULES.md §13.3), og API'et leverer derfor ikke et
@@ -1596,7 +1608,10 @@ export default function TrainingPage() {
             riders={rows}
             columns={columns}
             selectedRiderId={mobileRiderId}
+            // Tryk på den samme rytter igen LUKKER kortet; tryk på en anden
+            // flytter det. Der er højst ét åbent kort ad gangen.
             onSelectRider={(riderId) => setMobileRiderId((prev) => (prev === riderId ? null : riderId))}
+            openFirstForTour={tourActiveAtMount}
             // #4851: samme kilde som desktop-kolonnen. `null` naar
             // training_score_visible er off ⇒ hverken kolonnen eller blokken i
             // kortet findes paa telefonen, praecis som paa desktop.
