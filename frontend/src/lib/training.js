@@ -160,9 +160,13 @@ export function isRiderInjured(injured_until, today = new Date()) {
 // @returns {{count: number, unit: "race_day"|"calendar_day", approxDate: string|null}}
 export function injuryTimeLeft(condition, today = new Date()) {
   const injuredUntil = condition?.injured_until ?? null;
-  const raceDaysLeft = Number(condition?.injury_race_days_left);
-  if (Number.isFinite(raceDaysLeft) && raceDaysLeft > 0) {
-    return { count: Math.trunc(raceDaysLeft), unit: "race_day", approxDate: injuredUntil };
+  const rawRaceDaysLeft = condition?.injury_race_days_left;
+  const raceDaysLeft = Number(rawRaceDaysLeft);
+  // Tallet er SAT (ogsaa naar det er 0) ⇒ loebsdags-aksen ejer svaret. Faldt vi
+  // tilbage til datoen ved 0, ville en rytter der netop er raskmeldt paa aksen
+  // stadig staa som "skadet 1 dag" resten af kalenderdatoen (CodeRabbit 21/9).
+  if (rawRaceDaysLeft != null && Number.isFinite(raceDaysLeft)) {
+    return { count: Math.max(0, Math.trunc(raceDaysLeft)), unit: "race_day", approxDate: injuredUntil };
   }
   return {
     count: injuryDaysLeft(injuredUntil, today),

@@ -55,6 +55,15 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 /**
  * Sidste skadede LOEBSDAG, med praecis samme aritmetik som kalenderstien.
  *
+ * SAESONGRAENSEN (kendt, dokumenteret, CodeRabbit 21/9). Ligger slut-loebsdagen
+ * efter saesonens sidste planlagte loebsdag, kan datoen ikke slaas op, og
+ * `injured_until` beholder kalenderdags-fallbacken (tickDate + N KALENDERDAGE).
+ * Den er i wall-clock ALTID mindst lige saa lang som N loebsdage — fra S4 er der
+ * fem loebsdage pr. kalenderdato — saa rytteren kommer aldrig for TIDLIGT tilbage.
+ * At baere resten videre paa naeste saesons akse kraever en cross-season-koordinat
+ * og er bevidst ude af scope her; varigheden er 1-5 loebsdage, saa vinduet hvor
+ * det overhovedet kan ske er saesonens sidste dage.
+ *
  * I dag: `injured_until = tickDate + N`, og gaten er `injured_until >= dagen`.
  * Rytteren er altsaa skadet paa selve tick-dagen og N dage mere. Loebsdags-udgaven
  * er den SAMME formel paa en anden akse — det er hele indholdet af "samme antal
@@ -154,7 +163,13 @@ export async function resolveInjuryEndDates({ supabase, seasonId, divisionId, en
       .gte("game_day", lowest)
       .order("game_day", { ascending: true })
       .order("scheduled_at", { ascending: true });
-    if (stagesError) return out;
+    if (stagesError) {
+      // Fejlen sluges IKKE tavst: fallbacken er bevidst, men en stille degradering
+      // til kalenderdage kan ellers kun maales paa skadernes laengde.
+      // ASCII-only: intern ops-logging, ikke en spiller-synlig API-fejl.
+      console.warn(`  ⚠️ injury race-day calendar lookup failed (#5462, season ${seasonId}): ${stagesError.message} - injured_until falls back to calendar days`);
+      return out;
+    }
 
     // Foerste (laveste scheduled_at) raekke pr. loebsdag. Raekkefoelgen ovenfor goer
     // den foerste forekomst til den rigtige.
@@ -179,8 +194,9 @@ export async function resolveInjuryEndDates({ supabase, seasonId, divisionId, en
       out.set(target, hit === undefined ? null : firstByGameDay.get(hit));
     }
     return out;
-  } catch {
+  } catch (err) {
     // best-effort: en netvaerks-/synkron fejl maa aldrig forhindre at skaden skrives.
+    console.warn(`  ⚠️ injury race-day calendar lookup threw (#5462, season ${seasonId}): ${err.message} - injured_until falls back to calendar days`);
     return out;
   }
 }

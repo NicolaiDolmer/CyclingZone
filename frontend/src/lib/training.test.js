@@ -160,11 +160,13 @@ test("#5462 injuryTimeLeft: rask rytter og manglende condition giver 0", () => {
   assert.equal(injuryTimeLeft({ injured_until: null, injury_race_days_left: 0 }).count, 0);
 });
 
-test("#5462 injuryTimeLeft: et loebsdags-tal paa 0 er 'rask', ikke en loebsdags-skade", () => {
-  const injury = injuryTimeLeft({ injured_until: "2026-06-13", injury_race_days_left: 0 },
+test("#5462 injuryTimeLeft: et loebsdags-tal paa 0 er RASK, ogsaa hvis datoen er i dag", () => {
+  // Aksen ejer svaret naar tallet er sat. Faldt vi tilbage til datoen her, ville
+  // en netop raskmeldt rytter staa som "skadet 1 dag" resten af kalenderdatoen.
+  const injury = injuryTimeLeft({ injured_until: "2026-06-20", injury_race_days_left: 0 },
     new Date("2026-06-20T08:00:00+02:00"));
   assert.equal(injury.count, 0);
-  assert.equal(injury.unit, "calendar_day");
+  assert.equal(injury.unit, "race_day");
 });
 
 test("#5462 injuryBadgeMessage: noeglen foelger enheden, og ca.-dato-noeglen kraever en dato", () => {

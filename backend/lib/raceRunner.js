@@ -1644,22 +1644,26 @@ function addDaysToDate(dateStr, days) {
  * slut-loebsdagen; sker det ikke (tom kalender, DB-fejl), staar fallbacken, og
  * skaden bliver skrevet uanset hvad.
  *
- * @param {{incidents: Array, todayStr: string, gameDay?: number|null,
+ * LOEBSDAGEN SLAAS OP PR. ETAPE, ikke pr. koersel. Whole-race-stien afvikler ALLE
+ * etaper i ét kald og sender uheldene samlet hertil; brugte vi koerslens hoejeste
+ * loebsdag for dem alle, ville et styrt paa etape 1 faa etape 21's loebsdag som
+ * udgangspunkt og dermed en skade der slutter for sent (CodeRabbit 21/9).
+ *
+ * @param {{incidents: Array, todayStr: string, gameDayByStage?: Map<number, number>|null,
  *   seasonId?: string|null}} args
  * @returns {Array<{rider_id, injured_until, injury_cause}>}
  */
-export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDay = null, seasonId = null }) {
+export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDayByStage = null, seasonId = null }) {
   const injuring = incidents.filter(
     (inc) => (inc.outcome === "abandon" && inc.kind === "crash")
       || (inc.kind !== "injury" && Number.isFinite(inc.injury_days) && inc.injury_days > 0),
   );
-  // `Number(null)` er 0, ikke NaN — uden `gameDay != null` ville en manglende
-  // loebsdag tavst blive til loebsdag 0 og skrive en skade paa den forkerte akse.
-  const raceDayContext = seasonId != null && gameDay != null
-    && Number.isInteger(Number(gameDay)) && Number(gameDay) >= 0;
   return injuring.map((inc) => {
     const days = Number.isFinite(inc.injury_days) ? inc.injury_days : 1;
-    const endGameDay = raceDayContext ? injuryEndGameDay({ gameDay: Number(gameDay), days }) : null;
+    // `Number(null)` er 0, ikke NaN — derfor det eksplicitte null-led, ellers ville
+    // en manglende loebsdag tavst blive til loebsdag 0 (den forkerte akse).
+    const rawGameDay = seasonId == null ? null : (gameDayByStage?.get(Number(inc.stage_number)) ?? null);
+    const endGameDay = rawGameDay == null ? null : injuryEndGameDay({ gameDay: Number(rawGameDay), days });
     return {
       rider_id: inc.rider_id,
       injured_until: addDaysToDate(todayStr, days),
@@ -1669,45 +1673,18 @@ export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDay = n
         : {
           injury_end_game_day: endGameDay,
           injury_season_id: seasonId,
-          injury_race_days_left: injuryRaceDaysLeft({ endGameDay, currentGameDay: Number(gameDay) }),
+          injury_race_days_left: injuryRaceDaysLeft({ endGameDay, currentGameDay: Number(rawGameDay) }),
         }),
     };
   });
 }
 
-/**
- * Loebsdagen for de etaper denne koersel afvikler (#5462).
- *
- * AKSE-FAELDEN (CALENDAR_RULES §0): `game_day` LAESES fra race_stage_schedule —
- * den udledes aldrig af `scheduled_at`. Flere etaper i samme koersel kan ligge paa
- * forskellige loebsdage; den HOEJESTE er "nu" for skaden, saa en skade fra dagens
- * sidste etape aldrig regnes fra en tidligere loebsdag (for kort skade).
- *
- * Fail-safe: null ved enhver fejl → kald-stedet skriver kalenderdags-skaden.
- */
-async function loadStageGameDay({ supabase, raceId, stageNumbers = [] }) {
-  if (!supabase?.from || !raceId || !stageNumbers.length) return null;
-  try {
-    const { data, error } = await supabase
-      .from("race_stage_schedule")
-      .select("game_day")
-      // pagination-safe: afgraenset til ÉT loebs etaper i DENNE koersel — hoejst
-      // én raekke pr. (race_id, stage_number), og et loeb har hoejst 21 etaper.
-      // Langt under PostgREST's 1000-raekkers-loft.
-      .eq("race_id", raceId)
-      .in("stage_number", [...new Set(stageNumbers)]);
-    if (error) return null;
-    const days = (data ?? [])
-      .map((r) => (r?.game_day == null || r.game_day === "" ? NaN : Number(r.game_day)))
-      .filter((n) => Number.isInteger(n) && n >= 0);
-    return days.length ? Math.max(...days) : null;
-  } catch {
-    // best-effort: opslaget bestemmer kun HVILKEN akse skaden regnes paa. Fejler
-    // det, skrives skaden i kalenderdage som foer #5462 — det maa aldrig vaelte
-    // en etape-finalization at en loebsdag ikke kunne slaas op.
-    return null;
-  }
-}
+// #5462: loebsdagen pr. etape genbruger #3470's `loadStageGameDays(supabase, raceId)`
+// ovenfor — samme tabel, samme Map, samme akse-kontrakt (CALENDAR_RULES §0:
+// `game_day` LAESES, udledes aldrig af `scheduled_at`). Den KASTER ved DB-fejl, og
+// det er med vilje: persistIncidents kaster paa hver eneste anden skrivefejl, saa en
+// tavs degradering til kalenderdage ville vaere det ene sted i funktionen hvor en
+// fejl ikke kunne ses (CodeRabbit 21/9). Finalization er idempotent og proever igen.
 
 // S4 (#1176): persistér race_incidents (idempotent delete-then-insert pr.
 // (race_id, stageNumbers i DENNE kørsel) — spejrer persistRuns' mønster) +
@@ -1759,14 +1736,18 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers }) {
   // naar der FAKTISK er uheld at skrive (kald-stedet garanterer `incidents.length`),
   // og loebsdagen slaas kun op naar flaget er on — flag off koster praecis nul
   // ekstra kald og skriver praecis de samme tre kolonner som foer.
-  const raceDayInjuries = await isTrainingTickPerRaceDayEnabled(supabase);
-  const stageGameDay = raceDayInjuries
-    ? await loadStageGameDay({ supabase, raceId: race.id, stageNumbers })
+  // `engineWrite: true` — SAMME option som dailyTrainingEngine.js og
+  // trainingDayCloseTrigger.js. Uden den svarer `beta`-stadiet false her og true
+  // dér, saa traeningsskader ville taelle loebsdage mens styrt taalte kalenderdage
+  // paa samme tidspunkt (CodeRabbit 21/9).
+  const raceDayInjuries = await isTrainingTickPerRaceDayEnabled(supabase, { engineWrite: true });
+  const gameDayByStage = raceDayInjuries
+    ? await loadStageGameDays(supabase, race.id)
     : null;
   const injuryRows = incidentInjuryUpsertRows({
     incidents,
     todayStr: copenhagenDateString(),
-    gameDay: stageGameDay,
+    gameDayByStage,
     seasonId: raceDayInjuries ? (race.season_id ?? null) : null,
   });
   if (!injuryRows.length) return;

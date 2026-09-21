@@ -15,8 +15,9 @@ import { injuryEndGameDay, injuryRaceDaysLeft } from "./injuryRaceDays.js";
 
 // ── Skriver 2: styrt i loeb (raceRunner.incidentInjuryUpsertRows) ────────────
 
-const CRASH = { rider_id: "r-crash", kind: "crash", outcome: "abandon", injury_days: 3 };
+const CRASH = { rider_id: "r-crash", kind: "crash", outcome: "abandon", injury_days: 3, stage_number: 1 };
 const TODAY = "2026-06-12";
+const STAGE_DAYS = new Map([[1, 40], [2, 41], [21, 60]]);
 
 test("#5462 styrt, flag OFF: payloaden er BIT-IDENTISK med foer — tre noegler, kalenderdato", () => {
   const rows = incidentInjuryUpsertRows({ incidents: [CRASH], todayStr: TODAY });
@@ -28,7 +29,7 @@ test("#5462 styrt, flag OFF: payloaden er BIT-IDENTISK med foer — tre noegler,
 
 test("#5462 styrt, flag ON: slut-loebsdagen er loebsdag + N, og resten taelles inklusivt", () => {
   const rows = incidentInjuryUpsertRows({
-    incidents: [CRASH], todayStr: TODAY, gameDay: 40, seasonId: "season-1",
+    incidents: [CRASH], todayStr: TODAY, gameDayByStage: STAGE_DAYS, seasonId: "season-1",
   });
   assert.equal(rows[0].injury_end_game_day, 43, "samme formel som kalenderstien, bare paa loebsdagen");
   assert.equal(rows[0].injury_season_id, "season-1");
@@ -41,21 +42,36 @@ test("#5462 styrt, flag ON: slut-loebsdagen er loebsdag + N, og resten taelles i
 
 test("#5462 styrt: loebsdag 0 er en RIGTIG loebsdag (DB er 0-baseret, CALENDAR_RULES §0b)", () => {
   const rows = incidentInjuryUpsertRows({
-    incidents: [CRASH], todayStr: TODAY, gameDay: 0, seasonId: "season-1",
+    incidents: [CRASH], todayStr: TODAY, gameDayByStage: new Map([[1, 0]]), seasonId: "season-1",
   });
   assert.equal(rows[0].injury_end_game_day, 3, "0 maa ikke falde ud som 'ingen akse'");
 });
 
-test("#5462 styrt: uden saeson eller uden loebsdag skrives INGEN loebsdags-kolonner", () => {
+test("#5462 styrt: HVER etape faar sin EGEN loebsdag (whole-race-stien sender alle etaper samlet)", () => {
+  // Foer rettelsen brugte alle uheld koerslens HOEJESTE loebsdag, saa et styrt paa
+  // etape 1 fik etape 21's udgangspunkt og en skade der sluttede alt for sent.
+  const rows = incidentInjuryUpsertRows({
+    incidents: [
+      { ...CRASH, rider_id: "tidlig", stage_number: 1 },
+      { ...CRASH, rider_id: "sen", stage_number: 21 },
+    ],
+    todayStr: TODAY, gameDayByStage: STAGE_DAYS, seasonId: "season-1",
+  });
+  assert.equal(rows.find((r) => r.rider_id === "tidlig").injury_end_game_day, 43, "etape 1 ⇒ loebsdag 40 + 3");
+  assert.equal(rows.find((r) => r.rider_id === "sen").injury_end_game_day, 63, "etape 21 ⇒ loebsdag 60 + 3");
+});
+
+test("#5462 styrt: uden saeson, uden akse eller for en UKENDT etape skrives INGEN loebsdags-kolonner", () => {
   for (const args of [
-    { gameDay: 40, seasonId: null },
-    { gameDay: null, seasonId: "season-1" },
-    { gameDay: -1, seasonId: "season-1" },
+    { gameDayByStage: STAGE_DAYS, seasonId: null },
+    { gameDayByStage: null, seasonId: "season-1" },
+    { gameDayByStage: new Map(), seasonId: "season-1" },
+    { gameDayByStage: new Map([[7, 40]]), seasonId: "season-1" },
   ]) {
     const rows = incidentInjuryUpsertRows({ incidents: [CRASH], todayStr: TODAY, ...args });
     assert.deepEqual(
       Object.keys(rows[0]).sort(), ["injured_until", "injury_cause", "rider_id"],
-      `manglende akse (${JSON.stringify(args)}) maa give kalenderdags-raekken, ikke en halv loebsdags-raekke`,
+      "manglende akse maa give kalenderdags-raekken, ikke en halv loebsdags-raekke",
     );
   }
 });
@@ -63,11 +79,11 @@ test("#5462 styrt: uden saeson eller uden loebsdag skrives INGEN loebsdags-kolon
 test("#5462 styrt: reglen om HVEM der skades er uroert (#4520/#4879) — kun styrt, aldrig kind='injury'", () => {
   const rows = incidentInjuryUpsertRows({
     incidents: [
-      { rider_id: "mech", kind: "mechanical", outcome: "abandon", injury_days: 0 },
-      { rider_id: "outside", kind: "injury", outcome: "dns", injury_days: 4 },
-      { rider_id: "hard", kind: "time_limit", outcome: "finished", injury_days: 2 },
+      { rider_id: "mech", kind: "mechanical", outcome: "abandon", injury_days: 0, stage_number: 1 },
+      { rider_id: "outside", kind: "injury", outcome: "dns", injury_days: 4, stage_number: 1 },
+      { rider_id: "hard", kind: "time_limit", outcome: "finished", injury_days: 2, stage_number: 1 },
     ],
-    todayStr: TODAY, gameDay: 40, seasonId: "season-1",
+    todayStr: TODAY, gameDayByStage: STAGE_DAYS, seasonId: "season-1",
   });
   assert.deepEqual(rows.map((r) => r.rider_id), ["hard"], "mekanisk skader ikke; kind='injury' ejes af rider_condition");
   assert.equal(rows[0].injury_end_game_day, 42);
