@@ -17,7 +17,8 @@
 // desktop 1280x900), fordi et fund skal kunne navngive PRAECIS den bredde det
 // opstod paa. Kørte den ogsaa i mobile-chromium og mobile-webkit, ville den
 // maale de samme to bredder tre gange og tredoble en i forvejen tung matrice
-// (16 sider x 2 sprog x 2 bredder). Den koerer derfor i desktop-chromium-sharden.
+// (16 sider x 2 sprog x 2 bredder, plus een mobil-only side). Den koerer derfor
+// i desktop-chromium-sharden.
 //
 // Prisen, sagt hoejt: Safari-specifikke tekstbrud (fx hvordan webkit bryder
 // lange ord) fanges ikke her. Det er stadig `core-smoke`s og de tre projekters
@@ -34,7 +35,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage, waitForStableSnapshotTarget } from "./fixtures.js";
+import { corsHeaders, installNetworkMocks, json, login, stabilizePage, waitForStableSnapshotTarget } from "./fixtures.js";
 import { RULES, scanPageForTextDefects, formatFinding } from "./lib/text-overflow-scan.js";
 import {
   TEXT_OVERFLOW_ALLOWLIST,
@@ -59,8 +60,41 @@ const REPORT_DIR = path.resolve(
   "../../test-results/5383-tekst-overflow",
 );
 
+// Den NYE mobil-traeningsvisning (#3643) ligger bag stadie-flaget
+// `training_mobile_table`, og standard-mocken saetter ikke `mobileTable` — uden
+// denne rute ville vagten kun se den gamle, doende D-047-gren paa /training.
+// Serveren sender flaget som en bar boolean, saa det er alt ruten behoever:
+// resten af svaret falder tilbage til standard-mocken (apiResponse), praecis
+// som naar vagten maaler den gamle gren.
+async function enableMobileTrainingTable(page) {
+  await page.route("**/api/training/me**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, { mobileTable: true });
+  });
+}
+
+// Fold den oeverste rytters kort ud. Kortet er lukket ved indlaesning (ejer
+// 21/9), og dets indhold bor i en `colSpan`-celle inde i tabellen — maales det
+// ikke aabent, er halvdelen af fladen usynlig for vagten.
+// En vagt der tavst maaler ingenting er vaerre end ingen vagt: derfor VENTES
+// der paa tabellen og paa kortet, saa en mock der holder op med at taende den
+// nye gren fejler hoejlydt i stedet for at se groen ud.
+async function expandFirstRider(page) {
+  const button = page.locator('[data-testid="training-mobile-roster"] tbody button[aria-expanded]').first();
+  await button.waitFor();
+  if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  await page.locator('[data-testid="training-mobile-rider-detail"]').waitFor();
+}
+
 // Siderne. `name` er noeglen undtagelser slaas op paa, saa den maa ikke aendres
 // uden at allowlisten foelger med.
+//
+// `viewports` afgraenser en side til bestemte bredder: mobil-traeningsvisningen
+// findes KUN under 640 px, saa en desktop-maaling af den ville bare vaere en
+// dublet af "traening" ovenfor.
+// `setup` koerer EEN gang foer maalingerne, `prepare` foer hver enkelt maaling
+// (efter hver goto, saa en tilstand der kraever et tryk kan genskabes).
 const PAGES = [
   { name: "dashboard", path: "/dashboard" },
   { name: "indbakke", path: "/notifications" },
@@ -78,6 +112,16 @@ const PAGES = [
   { name: "rytterprofil", path: "/riders/rider-1" },
   { name: "indstillinger", path: "/profile" },
   { name: "hjaelp", path: "/help" },
+  // #3643: den nye mobil-traeningsside, bag beta-flaget, med et rytterkort
+  // foldet ud. Egen post (ikke en tilstand paa "traening"), saa et fund peger
+  // paa den NYE gren og ikke forveksles med den gamle grens kendte gaeld.
+  {
+    name: "traening-mobil-beta",
+    path: "/training",
+    viewports: ["mobil"],
+    setup: enableMobileTrainingTable,
+    prepare: expandFirstRider,
+  },
 ];
 
 async function setLanguage(page, lang) {
@@ -129,11 +173,16 @@ test.describe("#5383 · tekst holder sig inde i sin boks og kan laeses", () => {
     const usedAllowlistEntries = new Set();
 
     for (const viewport of VIEWPORTS) {
+      if (target.viewports && !target.viewports.includes(viewport.name)) continue;
       await page.setViewportSize(viewport.size);
       for (const lang of LANGS) {
         await page.goto(target.path);
         await setLanguage(page, lang);
         await settle(page);
+        if (target.prepare) {
+          await target.prepare(page);
+          await settle(page);
+        }
 
         const context = { page: target.name, lang, viewport: viewport.name };
         const where = `${lang} · ${viewport.name} ${viewport.size.width}x${viewport.size.height}`;
@@ -210,6 +259,7 @@ test.describe("#5383 · tekst holder sig inde i sin boks og kan laeses", () => {
 
   for (const target of PAGES) {
     test(`${target.name} (${target.path})`, async ({ page }, testInfo) => {
+      if (target.setup) await target.setup(page);
       await guardSurface(page, testInfo, target, { root: "main" });
     });
   }

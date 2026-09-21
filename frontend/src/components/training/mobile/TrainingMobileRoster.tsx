@@ -282,7 +282,7 @@ export default function TrainingMobileRoster({
                   uden padding — kortet baerer sin egen (`p-3`), praecis som da
                   det stod under tabellen. */}
               {isSelected && detail && (
-                <tr ref={detailRowRef}>
+                <tr ref={detailRowRef} data-testid="training-mobile-rider-detail">
                   <td colSpan={detailColSpan} className="border-b border-cz-border p-0 align-top">
                     {detail}
                   </td>

@@ -16,7 +16,9 @@ import { scanPageForTextDefects, formatFinding } from "./lib/text-overflow-scan.
 //      feltet naar `training_score_visible` er off, og det er den kontrakt der
 //      testes — ikke et tomt objekt.
 //   4. Mobilvisningen (flag `training_mobile_table`): tallet i tabellen og
-//      tal + kurve i det udfoldede rytterkort.
+//      tal + kurve i det udfoldede rytterkort. Kortet folder ud LIGE UNDER
+//      rytterens egen raekke (ejer 21/9, #3643) og er lukket ved indlaesning,
+//      saa maalingerne her aabner det selv.
 //
 // Sproget er DANSK: stabilizePage laaser cz_lang til "da", saa labels her er
 // de danske ("Løb", "Score").
@@ -327,7 +329,10 @@ test("#4851 mobil: dagens tal staar i tabellen, tal + kurve i rytterens kort", a
   // Loebsdag: ordet, ikke et tal — samme tilstand som desktop.
   await expect(roster.locator("tr", { hasText: /Iversen/ }).first().getByText(/^Løb$/)).toBeVisible();
 
-  // Kortet under tabellen: tal + kurve.
+  // Rytterens kort, foldet ud lige under hans egen række (ejer 21/9, #3643):
+  // tal + kurve. Ingen rytter er foldet ud ved indlæsning, så trykket er
+  // også det der åbner kortet.
+  await expect(page.locator('[data-testid="training-mobile-score"]')).toHaveCount(0);
   await scoredRow.getByRole("button", { name: /Holm/ }).click();
   const scoreBlock = page.locator('[data-testid="training-mobile-score"]');
   await expect(scoreBlock).toBeVisible();
@@ -344,6 +349,11 @@ test("#4851 mobil, flag off: hverken kolonne eller score-blok", async ({ page })
   const roster = page.locator('[data-testid="training-mobile-roster"]');
   await roster.waitFor();
   await expect(roster.getByRole("columnheader", { name: /^Score$/ })).toHaveCount(0);
+  // Kortet er lukket ved indlaesning (#3643, ejer 21/9), saa en bar taelling
+  // paa nul ville vaere groen uanset flaget. Rytteren foldes ud FOERST, saa
+  // maalingen siger noget om flaget og ikke om udgangstilstanden.
+  await roster.locator("tr", { hasText: /Holm/ }).first().getByRole("button", { name: /Holm/ }).click();
+  await expect(page.locator('[data-testid="training-mobile-rider-detail"]')).toHaveCount(1);
   await expect(page.locator('[data-testid="training-mobile-score"]')).toHaveCount(0);
 });
 
