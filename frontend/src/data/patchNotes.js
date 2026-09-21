@@ -9,12 +9,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Training",
         "en": {
-          "title": "A text overflow on the mobile training page",
-          "body": "What changed: On phones, the rider's info line (type, age, form, fatigue) under the name could run outside its own box. It now wraps inside it like it should."
+          "title": "Rider info line on the mobile training page",
+          "body": "What changed: On phones, the rider's info line under the name (type, age, form, fatigue) ran into the next column. It now breaks after the slash in the rider type and between the items."
         },
         "da": {
-          "title": "Tekst der løb ud over kanten på træningssiden",
-          "body": "Hvad er ændret: På telefonen kunne rytterens infolinje (type, alder, form, træthed) under navnet løbe uden for sin egen boks. Den bryder nu pænt inde i den, som den skal."
+          "title": "Rytterens infolinje på træningssiden på mobil",
+          "body": "Hvad er ændret: På telefonen løb rytterens infolinje under navnet (type, alder, form, træthed) ind i næste kolonne. Den bryder nu efter skråstregen i ryttertypen og mellem punkterne."
         },
         "refs": [4851, 5383]
       }
