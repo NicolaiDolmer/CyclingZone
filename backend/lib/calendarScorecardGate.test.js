@@ -43,28 +43,9 @@ function kør(args = []) {
 //   · monument-i-GT-spænd    → lukket af DENNE PR's pakker-ændring (#4203)
 //   · D2 bjerg under målet   → lukket af katalog-migrationen (#4708), nu i fixturen
 //   · D4 rolling under gulvet→ samme migration
-// Tilbage står afvigelser på §7b's finale-bånd. De er ENUMERERET i KENDTE_FIXTURE_BRUD,
-// ikke tolereret i en klump: testen fejler stadig hvis der kommer ét brud mere, eller hvis
-// et af dem forsvinder uden at listen følger med.
-//
-// HVORFOR DE IKKE KAN LUKKES I DENNE PR: de er filler-vægt-kalibrering (ejer-besluttet 3/9
-// som en S5-opgave, CALENDAR_RULES §6b/§7b), og tre af dem er samme n=2-stikprøve på grus.
-// Ingen af dem er en placerings-regel, og ingen af dem kan lukkes ved at flytte et løb.
-//
-// #5405 (21/9, runde 2): tallet er 6 → 5. Runde 1's kalibrering hævede det midlertidigt til
-// 8, men den tilt blev fundet mod S4-planen ALENE og drev samtidig regressionsvagten i
-// calendarCompositionCalibration.test.js uden for ±2 pp. Runde 2 finder ÉT FÆLLES tilt der
-// holder både det frosne snapshot og S4-planen inden for båndet, og lukker oven i købet
-// `mountain slutter nedad` ved at flytte bjerg-etapernes finale-vægte til båndenes midte
-// (raceStageProfileGenerator.js) — vægten stod på båndets øverste kant, modsat filens egen
-// regel, og var rød både før og efter kompositions-kalibreringen.
-//
-// Tilbage står fem linjer: hilly-udbrud (under 1 pp over båndet på en stikprøve hvor
-// standardfejlen er 5 pp), cobbles-udbrud (kan ikke lukkes af vægte — båndenes midtpunkter
-// summer ikke til 100 %) og tre grus-linjer fra én stikprøve på n=2 (katalog-grænse, ikke
-// en vægt-grænse). Hver af dem står navngivet i KENDTE_FIXTURE_BRUD med sin begrundelse.
-// De samme fem findes i tørkørslen mod prods katalog samme dag.
-const KENDTE_BALANCEBRUD = 5;
+// #5405: the shared bounded resolver closes all historical finale exceptions.
+// The fixture now requires zero rule breaches; every recurrence is a failure.
+const KENDTE_BALANCEBRUD = 0;
 
 test("#4215: den planlagte S4-kalender har kun de KENDTE balance-afvigelser", () => {
   const { stdout } = kør();
@@ -130,7 +111,7 @@ test("#4270: kendt-tilstand-gaten fælder et NYT brud og et FORSVUNDET kendt bru
 });
 
 test("#4270: hver kendt post har en begrundelse og et spor der lukker den", () => {
-  assert.ok(KENDTE_FIXTURE_BRUD.length > 0, "en tom liste ville gøre gaten til en nul-brud-gate igen");
+  assert.equal(KENDTE_FIXTURE_BRUD.length, 0, "#5405 closes the historical exceptions; any recurrence is a new failure");
   for (const post of KENDTE_FIXTURE_BRUD) {
     assert.ok(post.id && post.moenster instanceof RegExp, `${post.id}: mønster mangler`);
     assert.ok((post.hvorfor ?? "").length > 20, `${post.id}: en kendt post uden begrundelse er bare en undtagelse`);
@@ -142,9 +123,9 @@ test("#4270: hver kendt post har en begrundelse og et spor der lukker den", () =
 // "kalenderen er i orden" og "der er ikke kommet noget nyt" er hele pointen (§9b).
 test("#4270: den grønne gate lyver ikke i tabellen", () => {
   const { stdout } = kør();
-  assert.match(stdout, /Se linjerne markeret FEJL/, "tabellens dom skal stadig vise at der ER brud");
-  assert.match(stdout, /Kun kendte brud/, "gatens egen dom skal stå adskilt fra tabellens");
-  assert.doesNotMatch(stdout, /Kalenderen overholder alle gates/);
+  assert.match(stdout, /SAMLET: 0 regelbrud/);
+  assert.match(stdout, /Kalenderen overholder alle gates/);
+  assert.doesNotMatch(stdout, /FEJL SÆSON-AGGREGAT/);
 });
 
 // #4203 (3/9): TALLET FLYTTEDE SIG, IKKE KONTRAKTEN. Foer fixture-refreshen kunne 35 dage

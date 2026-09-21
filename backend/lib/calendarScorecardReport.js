@@ -509,6 +509,10 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
   );
   for (const v of rapport.raceDayEqualityViol ?? []) out.push(`     ! ${v}`);
   out.push(`${ok(rapport.sæsonFinaleViol.length === 0)} SÆSON-AGGREGAT, finale-bånd uden stikprøve-tillæg (${rapport.sæsonFinale.total} etaper)`);
+  for (const profile of Object.keys(TERRAIN_FINALE_BANDS)) {
+    const slot = rapport.sæsonFinale.byProfile?.[profile];
+    if (slot?.total > 0 && slot.total < MIN_SAMPLE) out.push(`     -- ${profile}: n=${slot.total} (n<${MIN_SAMPLE}, kun rapport)`);
+  }
   for (const v of rapport.sæsonFinaleViol) out.push(`     ! ${v}`);
   out.push(`SAMLET: ${rapport.regelbrud} regelbrud`
     + ` · ${rapport.placeringsbrud ?? 0} placeringsbrud (#4270, stopper --apply)`

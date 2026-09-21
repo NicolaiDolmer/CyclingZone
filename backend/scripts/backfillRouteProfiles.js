@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { attachRoute } from "../lib/raceRouteGenerator.js";
 import { resolveVariantByRaceId } from "../lib/raceRouteRealismDraw.js";
+import { PERSISTED_PROFILE_SELECT } from "../lib/profileVariantProvenance.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -37,7 +38,7 @@ async function main() {
   const metaByPool = new Map(catalog.map((c) => [c.id, { external_id: c.external_id, name: c.name, terrain_archetype: c.terrain_archetype ?? null }]));
 
   const races = await fetchAllRows(() => {
-    let q = supabase.from("races").select("id, name, race_type, stages, pool_race_id, season_id, league_division_id").order("id");
+    let q = supabase.from("races").select("id, name, race_type, race_class, stages, pool_race_id, season_id, league_division_id").order("id");
     if (seasonId) q = q.eq("season_id", seasonId);
     return q;
   });
@@ -48,14 +49,13 @@ async function main() {
   // variant — ellers ville den overskrive ruterne med det kanoniske træks ruter og
   // efterlade en hybrid (variant-n terræn + variant-0 ruter) som GT-båndene ville måle forkert.
   const divisions = await fetchAllRows(() => supabase.from("league_divisions").select("id, tier").order("id"));
+  const profiles = await fetchAllRows(() =>
+    supabase.from("race_stage_profiles").select(PERSISTED_PROFILE_SELECT).order("race_id").order("stage_number"));
   const variantByRaceId = resolveVariantByRaceId({
-    races, catalogMeta: metaByPool,
+    races, catalogMeta: metaByPool, persistedProfiles: profiles,
     tierByDivision: new Map((divisions || []).map((d) => [d.id, d.tier])),
     onDraw: ({ seasonId: sid, tier, draw }) => console.log(`  ↻ sæson ${sid} tier ${tier}: gen-træk ${draw.attempt}${draw.exhausted ? " (UDTØMT — kanonisk træk)" : ""} (#3347)`),
   });
-
-  const profiles = await fetchAllRows(() =>
-    supabase.from("race_stage_profiles").select("race_id, stage_number, profile_type, finale_type, is_manual").order("race_id"));
 
   const manualRaceIds = new Set(profiles.filter((p) => p.is_manual).map((p) => p.race_id));
   let updated = 0, skippedManual = 0;

@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION, PROFILE_TYPES, toStageProfileRow } from "../lib/raceStageProfileGenerator.js";
 import { resolveVariantByRaceId } from "../lib/raceRouteRealismDraw.js";
+import { PERSISTED_PROFILE_SELECT } from "../lib/profileVariantProvenance.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -47,7 +48,7 @@ async function loadRaces() {
     seasonId = data.id;
   }
   return fetchAllRows(() => {
-    let q = supabase.from("races").select("id, name, race_type, stages, season_id, pool_race_id, league_division_id").order("id");
+    let q = supabase.from("races").select("id, name, race_type, race_class, stages, season_id, pool_race_id, league_division_id").order("id");
     if (seasonId) q = q.eq("season_id", seasonId);
     return q;
   });
@@ -59,8 +60,9 @@ async function loadRaces() {
 // raceRouteRealismDraw.js, så scorecardet, materializeren og backfill'ene deler den.
 async function loadVariantByRaceId(races, catalogMeta) {
   const divisions = await fetchAllRows(() => supabase.from("league_divisions").select("id, tier").order("id"));
+  const persistedProfiles = await fetchAllRows(() => supabase.from("race_stage_profiles").select(PERSISTED_PROFILE_SELECT).order("race_id").order("stage_number"));
   return resolveVariantByRaceId({
-    races, catalogMeta,
+    races, catalogMeta, persistedProfiles,
     tierByDivision: new Map((divisions || []).map((d) => [d.id, d.tier])),
     onDraw: ({ seasonId, tier, draw }) => {
       if (draw.attempt > 0) console.log(`  ↻ sæson ${seasonId} tier ${tier}: kanonisk træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → gen-træk ${draw.attempt} (#3347)`);

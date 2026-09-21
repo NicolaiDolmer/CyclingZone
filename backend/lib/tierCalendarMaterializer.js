@@ -15,6 +15,7 @@ import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLA
 import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, toStageProfileRow } from "./raceStageProfileGenerator.js";
+import { resolveCalendarFinaleDraw } from "./calendarFinaleDraw.js";
 import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
@@ -644,6 +645,18 @@ export async function materializeTierCalendars({
   });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
+  // Full-season planning shares the existing bounded route variants across
+  // tiers. Partial pool activation retains its original per-tier resolver.
+  const completeSeason = !tiers && classStageLengthBand !== null && tierPlans.length === Object.keys(TIER_CLASS_WHITELIST).length;
+  const seasonDraw = completeSeason ? resolveCalendarFinaleDraw({
+    tierPlans,
+    seedRacesByTier: new Map(tierPlans.map(t => [t.tier, (t.pools[0]?.raceRows || []).map(r => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId }))])),
+    archetypeByPoolRace,
+    archetypeProfilesByTier: new Map(tierPlans.map(t => [t.tier, useUniformTierTilt ? applyUniformTierTilt({ tier: t.tier }) : undefined])),
+  }) : null;
+  if (seasonDraw) summary.finaleDraw = { exhausted: seasonDraw.exhausted, variants: Object.fromEntries([...seasonDraw.byTier].map(([tier, draw]) => [tier, draw.attempt])) };
+  if (!dryRun && seasonDraw?.exhausted) throw new Error('calendar finale draw exhausted (apply refused before writes)');
+
   for (const tierPlan of tierPlans) {
     if (tiers && !tiers.includes(tierPlan.tier)) continue;
 
@@ -662,10 +675,10 @@ export async function materializeTierCalendars({
     let seasonVariant = 0;
     if (repPool) {
       const seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId }));
-      const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces });
+      const draw = seasonDraw?.byTier.get(tierPlan.tier) || resolveTierDraw({ tier: tierPlan.tier, seedRaces });
       seasonVariant = draw.attempt;
-      tierPlan.realismDraw = { attempt: draw.attempt, exhausted: draw.exhausted, firstDrawFailures: draw.firstDrawFailures };
-      if (draw.attempt > 0) log(`  tier ${tierPlan.tier}: kanonisk parcours-træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → deterministisk gen-træk ${draw.attempt} (#3347)`);
+      tierPlan.realismDraw = { attempt: draw.attempt, exhausted: draw.exhausted, firstDrawFailures: draw.firstDrawFailures, entry: draw.entry };
+      if (draw.attempt > 0) log(`  tier ${tierPlan.tier}: kalenderkontrollen valgte deterministisk gen-traek ${draw.attempt} (#3347/#5405)`);
       if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
 
       const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier });

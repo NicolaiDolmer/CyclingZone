@@ -79,9 +79,38 @@ test("under MIN_SAMPLE rapporteres terrænet, men gates ikke pr. division", () =
     [],
     "et terræn med n < MIN_SAMPLE må ikke fælde divisions-gaten på stikprøvestøj"
   );
-  // Men sæson-aggregatet (strict) ser det stadig.
-  assert.ok(detectFinaleViolations({ stats: lille, label: "sæson", strict: true })
-    .some((x) => x.includes("mountain")));
+  // Saeson-aggregatet bruger samme minimum; lille n er rapport, ikke en dom.
+  assert.deepEqual(detectFinaleViolations({ stats: lille, label: "sæson", strict: true })
+    .filter((x) => x.includes("mountain")), []);
+});
+
+test("#5405 strict terrain gates begin at MIN_SAMPLE, not one stage earlier", () => {
+  const small = computeFinaleStats(races("gravel", { reduced_sprint: MIN_SAMPLE - 1 }));
+  assert.deepEqual(detectFinaleViolations({ stats: small, strict: true }).filter(v => v.includes("gravel")), []);
+  const assessable = computeFinaleStats(races("gravel", { reduced_sprint: MIN_SAMPLE }));
+  assert.ok(detectFinaleViolations({ stats: assessable, strict: true }).some(v => v.includes("gravel")));
+});
+
+test("#5405 owner-approved cobbles band permits its upper flat boundary but rejects crossing it", () => {
+  const atBoundary = computeFinaleStats(races("cobbles", { reduced_sprint: 55, breakaway: 45 }));
+  assert.deepEqual(detectFinaleViolations({ stats: atBoundary, strict: true }).filter(v => v.includes("cobbles")), []);
+  const overBoundary = computeFinaleStats(races("cobbles", { reduced_sprint: 56, breakaway: 44 }));
+  assert.ok(detectFinaleViolations({ stats: overBoundary, strict: true }).some(v => v.includes("cobbles")));
+});
+
+test("#5405 hilly probabilities follow normalized band midpoints", () => {
+  const bands = TERRAIN_FINALE_BANDS.hilly;
+  const middle = Object.fromEntries(Object.entries(bands).map(([name, [lo, hi]]) => [name, (lo + hi) / 2]));
+  const total = Object.values(middle).reduce((a, b) => a + b, 0);
+  const counts = {};
+  const samples = 4000;
+  for (let i = 0; i < samples; i++) {
+    const cls = finaleClass(finaleFor(() => (i + 0.5) / samples, "hilly"));
+    counts[cls] = (counts[cls] || 0) + 1;
+  }
+  for (const [cls, weight] of Object.entries(middle)) {
+    assert.ok(Math.abs((counts[cls] || 0) / samples - weight / total) < 1 / samples, cls);
+  }
 });
 
 test("stikprøve-tillægget bærer et lille afvig, men ikke et stort", () => {

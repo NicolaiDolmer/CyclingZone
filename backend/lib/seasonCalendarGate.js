@@ -43,6 +43,7 @@ import { resolveSeasonDraw } from "./raceRouteRealismDraw.js";
  */
 export function gatePlan(summary, { allowTierCompositionDrift = false } = {}) {
   const blocking = [];
+  if (summary.finaleDraw?.exhausted) blocking.push('calendar finale draw exhausted; original failing plan retained for diagnostics');
   const compositionDrift = [];
   const tierCompositionDrift = [];
 
@@ -94,8 +95,11 @@ export function gatePlan(summary, { allowTierCompositionDrift = false } = {}) {
   // brud ser dem alle som værdiløse. Afstanden (summit 5 → 6 → 7 → 8) viser fremgangen.
   let severity = 0;
   if (tierEntries.length) {
-    const draws = resolveSeasonDraw({ tierSeedRaces: tierEntries });
+    const selectedEntries = new Map(summary.tiers.filter(t => t.realismDraw?.entry).map(t => [t.tier, t.realismDraw.entry]));
+    const fallbackDraws = resolveSeasonDraw({ tierSeedRaces: tierEntries.filter(t => !selectedEntries.has(t.tier)) });
+    const draws = [...fallbackDraws, ...[...selectedEntries.values()].map(entry => ({ entry }))];
     const realism = scoreSeason(draws.map((d) => d.entry));
+    for (const missing of realism.unassessed) blocking.push(`realisme kunne ikke vurderes: ${missing}`);
     for (const f of realism.failures) blocking.push(`realisme-bånd — ${f}`);
     for (const t of realism.tiers) {
       const s = t.score, tgt = TIER_TARGETS[t.tier] ?? {};
