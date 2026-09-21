@@ -2844,6 +2844,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
             // "tilbage om N loebsdage" uden selv at kende divisions-aksen. NULL
             // indtil `training_tick_per_race_day` er on — saa falder fladen tilbage
             // til kalenderdage praecis som i dag.
+            // schema-columns-ok: injury_race_days_left tilfoejes af
+            // database/2026-09-21-5462-injury-race-days.sql, applied post-merge.
             .select("rider_id, form, fatigue, injured_until, injury_race_days_left")
             .in("rider_id", riderIds)
         : Promise.resolve({ data: [] }),

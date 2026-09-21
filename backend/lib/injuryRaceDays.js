@@ -200,6 +200,10 @@ export async function loadTeamDivisionId({ supabase, teamId } = {}) {
     if (error) return null;
     return data?.league_division_id ?? null;
   } catch {
+    // best-effort: division-opslaget er KUN til at finde skadens ca.-dato. En
+    // netvaerks-/synkron fejl her maa aldrig forhindre at skaden bliver skrevet —
+    // kald-stedet beholder kalenderdags-fallbacken paa injured_until, og
+    // loebsdags-felterne baerer stadig den praecise sandhed.
     return null;
   }
 }

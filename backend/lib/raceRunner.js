@@ -1691,6 +1691,9 @@ async function loadStageGameDay({ supabase, raceId, stageNumbers = [] }) {
     const { data, error } = await supabase
       .from("race_stage_schedule")
       .select("game_day")
+      // pagination-safe: afgraenset til ÉT loebs etaper i DENNE koersel — hoejst
+      // én raekke pr. (race_id, stage_number), og et loeb har hoejst 21 etaper.
+      // Langt under PostgREST's 1000-raekkers-loft.
       .eq("race_id", raceId)
       .in("stage_number", [...new Set(stageNumbers)]);
     if (error) return null;
@@ -1699,6 +1702,9 @@ async function loadStageGameDay({ supabase, raceId, stageNumbers = [] }) {
       .filter((n) => Number.isInteger(n) && n >= 0);
     return days.length ? Math.max(...days) : null;
   } catch {
+    // best-effort: opslaget bestemmer kun HVILKEN akse skaden regnes paa. Fejler
+    // det, skrives skaden i kalenderdage som foer #5462 — det maa aldrig vaelte
+    // en etape-finalization at en loebsdag ikke kunne slaas op.
     return null;
   }
 }
