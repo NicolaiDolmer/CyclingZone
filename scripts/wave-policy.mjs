@@ -72,7 +72,7 @@ export function hostBootId() {
   return cachedBootId;
 }
 
-function withWaveStateLock(dir, action) {
+export function withWaveStateLock(dir, action) {
   const bootId = hostBootId();
   if (!bootId) throw Error('Cannot identify host boot for wave state lock');
   const key = createHash('sha256').update(bootId).digest('hex').slice(0, 16);
@@ -198,6 +198,11 @@ async function cli() {
     if (fs.existsSync(path.join(dir, 'wave-active.json'))) throw Error('Wave marker exists; merge blocked regardless of age or format');
     console.log(JSON.stringify({ idle: true, runDir: dir }));
   } else if (command === 'recover') {
+    if (args.includes('--owner-override')) {
+      const { ownerOverride } = await import('./wave-owner-override.mjs');
+      console.log(JSON.stringify(await ownerOverride(dir)));
+      return;
+    }
     const { recoverWave } = await import('./wave-recovery.mjs');
     console.log(JSON.stringify(recoverWave(dir, { waveId: value('--wave-id'), owner: value('--owner'), now: Date.now() })));
   } else if (command === 'release') {

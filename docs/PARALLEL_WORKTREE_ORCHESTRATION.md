@@ -52,7 +52,21 @@ Alle markoer-skrivere serialiserer read/modify/replace med samme boot-kvalificer
 
 Claude-ejerens PID hentes fra harness-registret ved admission. Begge indgange registrerer boot-identitet og om dispatch er begyndt. Codex registrerer child-spawn foer start og PID/terminaltilstand bagefter. Manglende procesidentitet kan ikke bruges som bevis paa ophoer; en ny boot er det konservative bevis ved et hard-crash. Processer startet uden om indgangen er ikke registreret her.
 
-Legacy-markoerer uden `waveId`, `runtime` eller `owner` afvises tydeligt af inspect/release/recover. Der findes ingen force- eller TTL-genvej. Lad den oprindelige Claude-boelge afslutte dem; skriv aldrig det nye format oven paa en koerende gammel boelge.
+Legacy-markoerer uden `waveId`, `runtime` eller `owner` afvises tydeligt af inspect/release/recover. Der findes ingen automatisk force- eller TTL-genvej. Lad den oprindelige Claude-boelge afslutte dem; skriv aldrig det nye format oven paa en koerende gammel boelge.
+
+### Ejerens interaktive genvej (21/9, #5468)
+
+Ejeren kan i sin egen interaktive terminal koere:
+
+```powershell
+node scripts/wave-policy.mjs recover --owner-override
+```
+
+Kommandoen afviser redirected/non-TTY stdin eller stdout. Den viser waveId/owner og et frisk procesoverblik med registrerede PID'er, worktree-match, lane-watch og kendte efterkommere. Fuld command line udskrives eller logges ikke, da den kan indeholde credentials. Ejeren kontrollerer selv, at skrivende arbejde er stoppet, og indtaster praecis `FRIGIV BOELGE <waveId>`. Forkert svar, nye matchende processer eller en aendret markoer afbryder. Der findes ingen `--yes`, bekraeftelse via miljovariabel eller pipet genvej.
+
+Kun markoeren frigives; genvejen draeber ingen processer og sletter ingen worktrees. OS-brugernavn, vaertsnavn, tidspunkt og procesoverblik gemmes foer frigivelsen i `waves/<waveId>/owner-override-<id>.json`. En optaget state-laas overtages ikke; automatisk recovery efter genstart bevares.
+
+Agenter maa ALDRIG allokere en PTY eller indtaste saetningen for ejeren. TTY-kontrollen blokerer ikke-interaktive kald, men er ikke et identitetsbevis: et program med PTY-adgang kan teknisk emulere en terminal. Den eksplicitte ejerbetjening er derfor fortsat en del af kontrakten.
 
 ### Foerste Claude-proeve efter merge (#5468)
 

@@ -762,7 +762,7 @@ jobs:
 
       - name: Test shared wave admission and Codex lifecycle fixtures
         run: |
-          node --test scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/codex-wave.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs scripts/wave-freeze.test.mjs scripts/make-wave-brief.test.mjs
+          node --test scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/wave-owner-override.test.mjs scripts/codex-wave.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs scripts/wave-freeze.test.mjs scripts/make-wave-brief.test.mjs
           python3 scripts/hooks/lib/test_codex_sessions.py
           bash scripts/test-guard-agent-spawn.sh
 
