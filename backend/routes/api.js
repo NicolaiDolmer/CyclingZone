@@ -265,7 +265,7 @@ import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
-import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
+import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
@@ -18177,17 +18177,20 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // (academyGraduation.hasRoomInTargetSquad): ungdomstrupper mod SQUAD_CAPS,
     // senior mod divisionens cap. Tælles kun når der faktisk er en pending
     // graduering — ellers er det en gratis forespørgsel pr. sidevisning.
+    //
+    // Tælles med countSquadMembers — SAMME funktion `hasRoomInTargetSquad`
+    // bruger på skrive-siden, så fladen og motoren ikke kan blive uenige om
+    // hvor mange der er i truppen. Den er en `head: true`-optælling, så der
+    // hentes ingen rækker (ingen pagination-overflade) og ingen ukendt kolonne
+    // læses ud.
     const youthSquadCounts = { junior: 0, u23: 0 };
     if ((gradRows ?? []).length > 0) {
-      const { data: squadRows, error: squadErr } = await supabase
-        .from("riders")
-        .select("squad")
-        .eq("team_id", teamId)
-        .in("squad", ["junior", "u23"]);
-      if (squadErr) throw new Error(squadErr.message);
-      for (const row of squadRows ?? []) {
-        if (row.squad === "junior" || row.squad === "u23") youthSquadCounts[row.squad] += 1;
-      }
+      const [juniorCount, u23Count] = await Promise.all([
+        countSquadMembers(supabase, { teamId, squad: "junior" }),
+        countSquadMembers(supabase, { teamId, squad: "u23" }),
+      ]);
+      youthSquadCounts.junior = juniorCount;
+      youthSquadCounts.u23 = u23Count;
     }
 
     const graduations = (gradRows ?? []).map((g) => {
