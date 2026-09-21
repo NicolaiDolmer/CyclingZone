@@ -33,6 +33,30 @@ test('launcher propagates raw stdin, stdout, stderr and nonzero exit unchanged',
     assert.equal(result.status, 7); assert.equal(result.stdout, 'æøå\n{"tool_name":"X"}\n'); assert.equal(result.stderr, 'stderr-fixture');
   } finally { assert.ok(fixture.startsWith(join(root,'.codex.local'))); rmSync(fixture,{recursive:true,force:true}); }
 });
+// 21/9: Codex blev blokeret med "CODEX HOOK STARTUP FAILED: ... Pipen er blevet
+// afsluttet" paa en stor apply_patch. Et hook der er FAERDIGT foer det har laest
+// hele stdin lukker sin ende af roeret; det er ikke en startfejl, og launcheren
+// maa ikke lave hookets exit 0 om til en blokering. Payloaden skal vaere stoerre
+// end roerets buffer (64 KiB), ellers naar skrivningen igennem foer hooket doer.
+test('a hook that exits before draining a large stdin keeps its own exit code', () => {
+  const fixture = mkdtempSync(join(root, '.codex.local/launcher-test-'));
+  try {
+    const big = JSON.stringify({tool_name:'apply_patch', tool_input:{command:'x'.repeat(4 * 1024 * 1024)}});
+    const allow = join(fixture, 'early-allow.sh');
+    writeFileSync(allow, '#!/bin/bash\nexit 0\n');
+    const allowed = run(allow, big);
+    assert.equal(allowed.status, 0, allowed.stderr);
+    assert.doesNotMatch(allowed.stderr, /CODEX HOOK STARTUP FAILED/);
+    // Den modsatte vej skal ogsaa holde: et hook der BLOKERER tidligt maa ikke
+    // miste sin egen besked til en launcher-fejl med samme exit-kode.
+    const block = join(fixture, 'early-block.sh');
+    writeFileSync(block, '#!/bin/bash\nprintf "BLOCKED: fixture" >&2\nexit 2\n');
+    const blocked = run(block, big);
+    assert.equal(blocked.status, 2);
+    assert.match(blocked.stderr, /BLOCKED: fixture/);
+    assert.doesNotMatch(blocked.stderr, /CODEX HOOK STARTUP FAILED/);
+  } finally { assert.ok(fixture.startsWith(join(root,'.codex.local'))); rmSync(fixture,{recursive:true,force:true}); }
+});
 test('missing Git runtime is a loud failure, never silent success', () => {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => key.toLowerCase() !== 'path'));
   env.PATH = '';
