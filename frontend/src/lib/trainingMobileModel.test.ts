@@ -2,8 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildRaceDayColumns,
+  canShowScoreColumn,
   countsForRole,
   isSingleRaceDay,
+  mobileScoreCell,
   pacePerWeek,
   programGrid,
   riderShortName,
@@ -115,4 +117,46 @@ test("programGrid falder tilbage til een raekke uden kolonner", () => {
   const grid = programGrid(["mon"], [], () => "easy");
   assert.equal(grid.length, 1);
   assert.equal(grid[0][0].intensity, "easy");
+});
+
+// #4851 — traeningsscoren paa telefonen. De tre tilstande skal vaere PRAECIS de
+// samme som desktop-kolonnen viser, ellers siger to flader forskelligt om den
+// samme dag.
+
+test("mobileScoreCell: dagens tal vinder", () => {
+  assert.deepEqual(mobileScoreCell({ today: 63 }), { state: "score", value: 63 });
+  // En loebsdag hvor motoren FAKTISK maalte passet skal vise tallet, ikke ordet.
+  assert.deepEqual(mobileScoreCell({ today: 71, todayIsRaceDay: true }), { state: "score", value: 71 });
+  // 1 og 99 er gyldige tal og maa ikke falde igennem som "falsy"/ude af skala.
+  assert.deepEqual(mobileScoreCell({ today: 1 }), { state: "score", value: 1 });
+  assert.deepEqual(mobileScoreCell({ today: 99 }), { state: "score", value: 99 });
+});
+
+test("mobileScoreCell: loebsdag uden tal skriver 'loeb'", () => {
+  assert.deepEqual(mobileScoreCell({ today: null, todayIsRaceDay: true }), { state: "race" });
+});
+
+test("mobileScoreCell: ingen maaling er en streg, aldrig et maalt nul", () => {
+  assert.deepEqual(mobileScoreCell(null), { state: "none" });
+  assert.deepEqual(mobileScoreCell(undefined), { state: "none" });
+  assert.deepEqual(mobileScoreCell({}), { state: "none" });
+  // `Number(null)` er 0 og finite — uden det eksplicitte null-tjek ville en
+  // hviledag staa som et maalt 0 i stedet for en streg.
+  assert.deepEqual(mobileScoreCell({ today: null }), { state: "none" });
+  assert.deepEqual(mobileScoreCell({ today: Number.NaN }), { state: "none" });
+  // Et maalt 0 findes ikke i modellen (skalaen er 1-99), men hvis det kom, er
+  // det et TAL og skal vises som et - ikke skjules bag en streg.
+  assert.deepEqual(mobileScoreCell({ today: 0 }), { state: "score", value: 0 });
+});
+
+test("score-kolonnen holder budgettet 'navn + hoejst 3 datakolonner'", () => {
+  // Flaget OFF ⇒ een loebsdags-kolonne ⇒ der er plads (1 + score = 2).
+  assert.equal(canShowScoreColumn(buildRaceDayColumns()), true);
+  assert.equal(canShowScoreColumn(buildRaceDayColumns({ raceDayCount: 2 })), true);
+  // 3+ loebsdage ⇒ scoren ville vaere den 4. datakolonne og presse tabellen
+  // ud over 375 px. Den falder ud af TABELLEN og staar i kortet i stedet.
+  assert.equal(canShowScoreColumn(buildRaceDayColumns({ raceDayCount: 3 })), false);
+  assert.equal(canShowScoreColumn(buildRaceDayColumns({ raceDayCount: 5 })), false);
+  assert.equal(canShowScoreColumn([]), true);
+  assert.equal(canShowScoreColumn(null), true);
 });

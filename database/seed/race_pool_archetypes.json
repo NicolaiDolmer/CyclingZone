@@ -838,5 +838,23 @@
   "name": "Tour des Grandes Alpes",
   "country": "France",
   "terrain_archetype": "summit_tour"
+ },
+ {
+  "external_id": "4adca5fb36d7264d",
+  "name": "Volta Galega",
+  "country": "Spain",
+  "terrain_archetype": "summit_tour"
+ },
+ {
+  "external_id": "3823e08096f72db9",
+  "name": "Rundfahrt der Hohen Tauern",
+  "country": "Austria",
+  "terrain_archetype": "summit_tour"
+ },
+ {
+  "external_id": "cc776090c82ec546",
+  "name": "Volta Portuguesa",
+  "country": "Portugal",
+  "terrain_archetype": "summit_tour"
  }
 ]

@@ -252,6 +252,17 @@ features:
     verified: 2026-09-07
     note: Afventer ejer-go (#4449).
 
+  - id: rider-valuation-v5
+    area: market
+    title_en: Rider value on the same abilities as the rating
+    title_da: Rytterværdi på samme evner som ratingen
+    state: dormant
+    flag: rider_valuation_model
+    ssot: docs/ECONOMY_RULES.md
+    epic: 5443
+    verified: 2026-09-21
+    note: PR #5446, nøglen står på v4. Ejer flipper til v5 + ekstraordinær kørsel (runbook 5443); lønnen har egen nøgle rider_production_value_model.
+
   # --- squad ---------------------------------------------------------------
   - id: contracts
     area: squad
@@ -325,7 +336,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 4846
     verified: 2026-09-15
-    note: Merget 15/9, flag off (§13.3).
+    note: A2 merget 15/9, flag off (§13.3). B4-udløser (samlet sweep ved dagens lukning) bygget bag samme flag; mangler ejer-flip.
 
   - id: training-score
     area: training
@@ -335,8 +346,8 @@ features:
     flag: training_score_visible
     ssot: docs/TRAINING_RULES.md
     epic: 4851
-    verified: 2026-09-15
-    note: PR #5261, flag beta.
+    verified: 2026-09-21
+    note: Flag beta. Graf, mobilside, tooltip og UI-test rettet 21/9 (#5451, #5453); mangler ejer-flip til alle.
 
   - id: training-mobile-table
     area: training

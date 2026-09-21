@@ -16,7 +16,8 @@
 
 import { useTranslation } from "react-i18next";
 import AbilityReceiptRow from "../AbilityReceiptRow.jsx";
-import type { CountsForRow } from "../../../lib/trainingMobileModel.ts";
+import TrainingScoreSparkline, { type TrainingScorePoint } from "../TrainingScoreSparkline.tsx";
+import type { CountsForRow, MobileScoreCell } from "../../../lib/trainingMobileModel.ts";
 
 export type ReceiptRow = {
   ability: string;
@@ -41,6 +42,9 @@ export default function TrainingMobileRiderCard({
   seasonPoints,
   onChangeDay,
   changeDisabled = false,
+  score = null,
+  scoreSpark = null,
+  scoreAria,
 }: {
   id: string;
   name: string;
@@ -55,6 +59,14 @@ export default function TrainingMobileRiderCard({
   seasonPoints: number | null;
   onChangeDay: () => void;
   changeDisabled?: boolean;
+  // #4851: dagens score. `null` = flaget er off ⇒ blokken findes ikke. De tre
+  // tilstande er de samme som desktop-kolonnen og tabellen ovenfor: tal,
+  // "loeb" uden tal, eller streg.
+  score?: MobileScoreCell | null;
+  // De sidste 7 loebsdage. Loebsdage har ingen score og efterlader et HUL i
+  // kurven — TrainingScoreSparkline tegner segmenter, ikke een polyline.
+  scoreSpark?: TrainingScorePoint[] | null;
+  scoreAria?: string;
 }) {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
@@ -77,6 +89,33 @@ export default function TrainingMobileRiderCard({
           </div>
         </div>
       </div>
+
+      {/* #4851: dagens score, stort, med de sidste 7 loebsdage ved siden af.
+          Samme form som rytterprofilens kort (RiderTrainingScoreCard) — to
+          flader maa ikke sige det samme paa to maader. Kurvens opskrift er
+          laast i docs/design/TASTE.md:40 og bor i TrainingScoreSparkline. */}
+      {score && (
+        <div
+          className="mt-3 flex items-end justify-between gap-3 border-t border-cz-border pt-2.5"
+          data-testid="training-mobile-score"
+        >
+          <div className="min-w-0">
+            <div className="font-data text-3xs font-semibold uppercase tracking-[.09em] text-cz-3">
+              {t("score.column")}
+            </div>
+            <div className="mt-0.5 font-data text-2xl font-bold leading-none tabular-nums text-cz-1">
+              {score.state === "score"
+                ? score.value
+                : score.state === "race"
+                  ? <span className="text-sm font-semibold uppercase tracking-[.06em] text-cz-3">{t("score.raceDay")}</span>
+                  : <span className="text-cz-3">—</span>}
+            </div>
+          </div>
+          {(scoreSpark?.length ?? 0) > 1 && (
+            <TrainingScoreSparkline points={scoreSpark} label={scoreAria} width={104} height={30} />
+          )}
+        </div>
+      )}
 
       {/* Fremgangen pr. evne — det eneste paa fladen der flytter sig dagligt. */}
       {receiptRows?.length ? (

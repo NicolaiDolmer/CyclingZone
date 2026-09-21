@@ -65,6 +65,24 @@ import {
 // GET /board/room. Braekker ALDRIG denne kommentar op fra raceDayEnabled.
 const FLAG_GATED_SECTIONS = ["mandate", "raceDay"];
 
+// #4847 · BLOK-niveau-gating. `dailytraining` er en synlig sektion, men ÉN af dens
+// blokke beskriver en model der endnu ikke er taendt: "runDayNow" (dagens samlede
+// traening + den frivillige knap) gaelder foerst naar `training_tick_per_race_day`
+// er on, mens "trainToday" (+25 %-bonussen) gaelder indtil da. De to modsiger
+// hinanden, saa de maa ALDRIG staa side om side paa fladen.
+//
+// Hardkodet false efter samme moenster som `raceDayEnabled` nedenfor, og af samme
+// grund: der findes intet letvaegts, globalt flag-endpoint Hjaelpesiden kan spoerge.
+// Ved cutover flippes DENNE linje, og "trainToday" flyttes samtidig til den anden
+// side af kontakten (den beskriver da fortiden).
+const TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED = false;
+const FLAG_GATED_BLOCKS = {
+  dailytraining: {
+    runDayNow: () => TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED,
+    trainToday: () => !TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED,
+  },
+};
+
 const SECTION_DEFS = [
   {
     key: "start",
@@ -369,6 +387,10 @@ const SECTION_DEFS = [
       { id: "dayTypes", kind: "text" },
       { id: "focusAbilities", kind: "text" },
       { id: "trainToday", kind: "text" },
+      // #4847: den samlede daglige kørsel når dagens sidste løb er lukket, og den
+      // frivillige knap uden bonus. Står EFTER trainToday, fordi den erstatter den
+      // ved sæson 4-skiftet — rækkefølgen læses som "sådan er det nu, sådan bliver det".
+      { id: "runDayNow", kind: "text" },
       // #4164: a race replaces the day's session rather than adding to it, and
       // it settles once per day no matter how many stages were ridden. Asked in
       // #dansk-snak 24/8 and unanswerable from the page as it stood.
@@ -622,7 +644,12 @@ function buildSections(t, vars) {
       key: def.key,
       Icon: def.Icon,
       label: t(`${base}.label`, vars),
-      content: def.blocks.map((block) => {
+      // #4847: blokke hvis indhold haenger paa et flag filtreres FOER de oversaettes.
+      // En blok uden en linje i FLAG_GATED_BLOCKS er altid synlig (uaendret adfaerd).
+      content: def.blocks.filter((block) => {
+        const gate = FLAG_GATED_BLOCKS[def.key]?.[block.id];
+        return typeof gate === "function" ? gate() : true;
+      }).map((block) => {
         const blockBase = `${base}.${block.id}`;
         const title = t(`${blockBase}.title`, vars);
         if (block.kind === "steps") {

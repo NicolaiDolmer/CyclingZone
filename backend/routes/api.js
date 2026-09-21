@@ -229,6 +229,10 @@ import {
   requestBetaAccess, setBetaTester, withdrawBetaAccess,
 } from "../lib/betaAccess.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
+// #4847: den frivillige knap "Koer dagens traening nu" haenger paa PRAECIS samme
+// lukke-betingelse som cron-sweepen (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3).
+import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
+import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
@@ -339,9 +343,11 @@ import {
 } from "../lib/riderValuation.js";
 // #2428 værdimodel v4 slice 1 (shadow) — separat fra v3 ovenfor. predictBaseValueV4
 // bygges parallelt i riderCareerNpv.js (Kontrakt 3); route degraderer til 503 hvis
-// modellen (riderValuationModelV4.json) endnu ikke er fittet — se VALUATION_MODEL_V4.
+// modellen endnu ikke er fittet — se getValuationModel().
 import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
-import { applyTypeDampening } from "../lib/riderValuationTypeDampening.js";
+// #5443: model-kontakten. Læse-fladerne herunder skal vise den model
+// produktionen faktisk regner med, ikke en JSON de selv har indlæst ved boot.
+import { loadValuationModelCached } from "../lib/riderValuationModelSelect.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ageForSeason } from "../lib/riderProgressionEngine.js";
 import {
@@ -663,19 +669,37 @@ try {
   VALUATION_MODEL = null;
 }
 
-// #2428 værdimodel v4 slice 1 (SHADOW, separat fil fra v3 ovenfor). Fittes af
-// backend/scripts/fitRiderValuationV4.js (Kontrakt 2) — findes typisk ikke endnu
-// før første fit er kørt, så manglende fil degraderer pænt til null (503 i
-// GET /admin/rider-valuation-preview-v4, samme mønster som VALUATION_MODEL).
-let VALUATION_MODEL_V4 = null;
-try {
-  // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
-  // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
-  VALUATION_MODEL_V4 = applyTypeDampening(JSON.parse(
-    readFileSync(join(__dirname, "../lib/riderValuationModelV4.json"), "utf8")
-  ));
-} catch {
-  VALUATION_MODEL_V4 = null;
+// #2428 værdimodel v4 slice 1: modellen bag de v4-baserede LÆSE-flader
+// (rytterkortets base_value_preview, værdi-trenden, scouting-gappet og
+// admin-previewet).
+//
+// #5443 (hul fundet ved diff-gennemgang 20/9 aften): denne konstant indlæste
+// `riderValuationModelV4.json` direkte ved modul-load og kendte derfor IKKE
+// model-kontakten. Uskadeligt så længe app_config står på v4 — men i det
+// øjeblik ejeren tænder v5 ville rytterkortet vise en v4-pris ved siden af en
+// v5-pris i databasen. Fladerne henter nu modellen gennem
+// riderValuationModelSelect.js, med samme valg som søndagskørslen.
+//
+// HVORFOR CACHET, IKKE PR. REQUEST: det er læse-flader, og et app_config-opslag
+// pr. rytterkort-visning er en unødig DB-tur. `loadValuationModelCached` holder
+// model-ID'et i ca. et minut og af-duplikerer samtidige opslag. Skrivestierne
+// (søndags-refresh, sæson-transition, backfill) cacher IKKE — de læser nøglen
+// én gang pr. kørsel.
+//
+// FAIL-SAFE, uændret kontrakt: kan modellen ikke indlæses (fil mangler før
+// første fit), returneres null, og fladerne degraderer præcis som før — null
+// base_value_preview, 503 fra GET /admin/rider-valuation-preview-v4.
+async function getValuationModel() {
+  try {
+    return await loadValuationModelCached(supabase);
+  } catch (err) {
+    // readFlagStage sluger selv app_config-fejl (de giver v4), så det der
+    // lander her er en ÆGTE indlæsningsfejl: model-filen mangler, er ugyldig
+    // JSON, eller dæmpnings-behandlingen kastede. Det degraderer fire
+    // spiller-/admin-flader på én gang og må ikke være tavst.
+    captureException(err);
+    return null;
+  }
 }
 
 let RIDER_TYPES_BASELINE = null;
@@ -1287,7 +1311,8 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
 
   // #1101/#2594: vedhæft den live-beregnede v4 base_value som PREVIEW (beta-chip).
   // null hvis model mangler eller rytter ingen abilities/alder har.
-  if (VALUATION_MODEL_V4) {
+  const valuationModel = await getValuationModel();
+  if (valuationModel) {
     const { data: ab } = await supabase
       .from("rider_derived_abilities")
       .select("*")
@@ -1298,8 +1323,8 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
       data.base_value_preview = predictBaseValue(
         { ...data, potentiale: riderPotentiale, age: ageForSeason(data.birthdate, seasonNumber) },
         ab,
-        VALUATION_MODEL_V4,
-        { asOf: VALUATION_MODEL_V4.fitted_at }
+        valuationModel,
+        { asOf: valuationModel.fitted_at }
       );
     } catch (err) {
       captureException(err);
@@ -1478,7 +1503,10 @@ router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
       rider: { potentiale: riderRow.potentiale, age: ageForSeason(riderRow.birthdate, seasonNumber), caps: abilityRow?.ability_caps, valuation_type: riderRow.valuation_type },
       snapshotsAsc: history || [],
       baseline: RIDER_TYPES_BASELINE,
-      model: VALUATION_MODEL_V4,
+      // #5443: trenden skal genberegne med DEN model der står i app_config —
+      // ellers sammenligner den en v4-genberegning med en v5-værdi i databasen
+      // og viser et spring der ikke findes.
+      model: await getValuationModel(),
       youthBaseline: RIDER_TYPES_BASELINE_YOUTH,
     });
     res.json({ windows });
@@ -2564,12 +2592,13 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       // #2594: v4 kræver alder (sæson-forankret); potentiale strippes EKSPLICIT så
       // det maskerede "expected"-tal ikke lækker skjult potentiale via NPV'en.
       let expected = null;
-      if (VALUATION_MODEL_V4) {
+      const scoutValuationModel = await getValuationModel();
+      if (scoutValuationModel) {
         try {
           expected = predictBaseValue(
             { ...rider, potentiale: undefined, age },
             ab,
-            VALUATION_MODEL_V4
+            scoutValuationModel
           );
         } catch (err) {
           captureException(err);
@@ -2797,10 +2826,16 @@ router.get("/training/me", requireAuth, async (req, res) => {
       activeSeasonId
         ? supabase
             .from("training_day_runs")
+            // #4847: limit(1) frem for maybeSingle() — paa loebsdags-noeglen kan
+            // holdet have flere raekker pr. kalenderdato (én pr. loebsdag), og
+            // maybeSingle() ville svare 406 praecis naar flaget flippes.
+            // created_at DESC = dagens SENESTE pas, som er det fladen viser.
             .select("executed_by, bonus_applied, report, tick_date, created_at")
             .eq("team_id", teamId)
             .eq("tick_date", todayDate)
-            .maybeSingle()
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .then(({ data, error }) => ({ data: data?.[0] ?? null, error }))
         : Promise.resolve({ data: null }),
       riderIds.length
         ? supabase
@@ -2887,9 +2922,37 @@ router.get("/training/me", requireAuth, async (req, res) => {
       if (cappedForRider.length) capped[row.rider_id] = cappedForRider;
     }
 
+    // #4847: knappens aabne-tilstand ("Koer dagens traening nu"). Feltet udelades
+    // HELT naar `training_tick_per_race_day` er off — samme kontrakt som racingToday
+    // nedenfor, saa ingen consumer kan forveksle "flag off" med "dagen er ikke lukket".
+    const raceDayTickOn = await isTrainingTickPerRaceDayEnabled(supabase, { isBetaTester });
+    let dayClose = null;
+    if (raceDayTickOn) {
+      const windowOpen = trainingWindowOpen(new Date());
+      const close = windowOpen && activeSeasonId
+        ? await resolveDayCloseStatus({
+          supabase, seasonId: activeSeasonId, now: new Date(),
+          divisionId: req.team.league_division_id ?? null,
+        })
+        : { closed: false, reason: windowOpen ? "no_active_season" : "before_window", gameDays: [] };
+      dayClose = {
+        open: close.closed,
+        reason: close.reason,
+        // SAMME transformation som POST /training/run-today: et hold uden
+        // division faar [null] (ÉT kalenderdags-tick), ikke hele bestandens
+        // loebsdage. Fladen maa ikke love noget andet end knappen koerer.
+        gameDays: teamGameDaysFromDayClose({
+          teamDivisionId: req.team.league_division_id ?? null,
+          gameDays: close.gameDays,
+        }),
+        opensAtHour: TRAINING_SWEEP_FROM_HOUR,
+      };
+    }
+
     res.json({
       ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped,
       trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans,
+      ...(dayClose ? { dayClose } : {}),
       // #3643: true ⇒ telefonen tegner den nye løbsdags-tabel; false ⇒ den
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
@@ -2909,11 +2972,24 @@ router.get("/training/me", requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/training/run-today — dagens ét-kliks-træning (#1305). Manager = +25 % bonus.
+// POST /api/training/run-today — den frivillige knap.
+//
+// TO STIER, afgjort af `training_tick_per_race_day`:
+//
+//   flag OFF (i dag) — uaendret #1305-adfaerd: dagens ét-kliks-traening med manager-
+//     bonus. Bit-identisk med foer #4847.
+//
+//   flag ON (#4847, ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3) — "Koer dagens
+//     traening nu": INGEN BONUS (motoren saetter bonus=false paa loebsdags-stien), og
+//     knappen AABNER foerst naar dagens sidste loeb er lukket — PRAECIS samme
+//     betingelse som cron-sweepen (kl. 20 dansk tid + ingen aaben finalization).
+//     Den koerer holdets EGNE loebsdage for i dag, i stigende raekkefoelge, og er
+//     idempotent via mutexen: anden gang giver 409 already_trained_today.
+//
 // Idempotent: samme dag → 409 already_trained_today. Flag OFF → 409 daily_training_disabled.
 // NB (#1479): SKAL stå FØR POST /training/:riderId — ellers matcher Express den
 // statiske "run-today"-sti som et :riderId, kalder isValidFocus(undefined) og
-// returnerer "invalid_focus", hvilket blokerer "Træn i dag"-knappen helt.
+// returnerer "invalid_focus", hvilket blokerer knappen helt.
 router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -2923,6 +2999,63 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
 
     const { activeSeasonId, activeSeasonNumber } = await loadTrainingState(req.team.id);
     if (!activeSeasonId) return res.status(409).json({ error: "no_active_season" });
+
+    const raceDayTickOn = await isTrainingTickPerRaceDayEnabled(supabase, { isBetaTester });
+
+    if (raceDayTickOn) {
+      // ── Loebsdags-stien ────────────────────────────────────────────────────
+      if (!trainingWindowOpen(new Date())) {
+        return res.status(409).json({ error: "day_not_closed", reason: "before_window", opensAtHour: TRAINING_SWEEP_FROM_HOUR });
+      }
+      const close = await resolveDayCloseStatus({
+        supabase, seasonId: activeSeasonId, now: new Date(),
+        divisionId: req.team.league_division_id ?? null,
+      });
+      if (!close.closed) {
+        return res.status(409).json({ error: "day_not_closed", reason: close.reason, opensAtHour: TRAINING_SWEEP_FROM_HOUR });
+      }
+      // Holdet uden division har ingen loebsdags-akse — samme definerede svar som
+      // sweepen giver: ÉT tick paa den gamle kalenderdags-noegle (gameDay udeladt
+      // ⇒ motorens fail-safe-kaskade).
+      const gameDays = teamGameDaysFromDayClose({
+        teamDivisionId: req.team.league_division_id ?? null,
+        gameDays: close.gameDays,
+      });
+      if (!gameDays.length) {
+        return res.status(409).json({ error: "day_not_closed", reason: "no_race_day_today", opensAtHour: TRAINING_SWEEP_FROM_HOUR });
+      }
+
+      const reports = [];
+      let ranAny = false;
+      let lastTickDate = null;
+      for (const gameDay of gameDays) {
+        const r = await runTeamTrainingDay({
+          supabase,
+          teamId: req.team.id,
+          seasonId: activeSeasonId,
+          seasonNumber: activeSeasonNumber,
+          executedBy: "manager",
+          gameDay,
+        });
+        lastTickDate = r.tickDate;
+        if (!r.alreadyRan) {
+          ranAny = true;
+          if (r.report) reports.push({ gameDay: r.gameDay, report: r.report });
+        }
+      }
+      if (!ranAny) {
+        return res.status(409).json({ error: "already_trained_today", tickDate: lastTickDate });
+      }
+      // Sidste loebsdags rapport er den frontend viser som "dagens"; hele listen
+      // foelger med saa fladen kan vise alle dagens pas naar den bliver bygget (B6).
+      return res.json({
+        ok: true,
+        tickDate: lastTickDate,
+        gameDays,
+        report: reports[reports.length - 1]?.report ?? null,
+        reports,
+      });
+    }
 
     const result = await runTeamTrainingDay({
       supabase,
@@ -10168,14 +10301,51 @@ router.get("/training/today-status", requireAuth, async (req, res) => {
     if (!enabled) return res.json({ enabled: false, ran_today: false });
 
     const todayDate = copenhagenDateString(new Date());
+    // #4847: limit(1) frem for maybeSingle() — med loebsdags-noeglen kan holdet have
+    // FLERE raekker paa samme tick_date (én pr. loebsdag), og maybeSingle() ville
+    // svare 406 i praecis den tilstand flaget skal kunne flippes i.
     const { data, error } = await supabase
       .from("training_day_runs")
       .select("team_id")
       .eq("team_id", req.team.id)
       .eq("tick_date", todayDate)
-      .maybeSingle();
+      .limit(1);
     if (error) return res.status(500).json({ error: error.message });
-    res.json({ enabled: true, ran_today: Boolean(data) });
+    const ranToday = Array.isArray(data) && data.length > 0;
+
+    // #4847: knappens aabne-tilstand. Flag off ⇒ feltet udelades helt (uaendret
+    // kontrakt for Dashboardets "Naeste traek"). Flag on ⇒ frontend kan vise
+    // PRAECIS hvorfor knappen er lukket i stedet for en tavs disabled knap.
+    const raceDayTickOn = await isTrainingTickPerRaceDayEnabled(supabase, { isBetaTester });
+    if (!raceDayTickOn) return res.json({ enabled: true, ran_today: ranToday });
+
+    const windowOpen = trainingWindowOpen(new Date());
+    let close = { closed: false, reason: "before_window", gameDays: [] };
+    if (windowOpen) {
+      const { data: season, error: seasonError } = await supabase
+        .from("seasons").select("id").eq("status", "active").maybeSingle();
+      if (seasonError) return res.status(500).json({ error: seasonError.message });
+      close = season?.id
+        ? await resolveDayCloseStatus({
+          supabase, seasonId: season.id, now: new Date(),
+          divisionId: req.team.league_division_id ?? null,
+        })
+        : { closed: false, reason: "no_active_season", gameDays: [] };
+    }
+    res.json({
+      enabled: true,
+      ran_today: ranToday,
+      race_day_tick: true,
+      day_closed: close.closed,
+      day_close_reason: close.reason,
+      // Samme transformation som de to andre forbrugere (se
+      // teamGameDaysFromDayClose): division-loest hold ⇒ [null].
+      game_days: teamGameDaysFromDayClose({
+        teamDivisionId: req.team.league_division_id ?? null,
+        gameDays: close.gameDays,
+      }),
+      opens_at_hour: TRAINING_SWEEP_FROM_HOUR,
+    });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -10841,9 +11011,11 @@ router.get("/admin/rider-valuation-preview", requireAdmin, async (req, res) => {
 // nuværende v3 (predictBaseValue) med den nye karriere-NPV-model v4
 // (predictBaseValueV4, Kontrakt 3) for hele populationen. READ-ONLY, ingen
 // DB-skrivning, ingen migration. Rører intet i økonomien. Degraderer til 503
-// hvis riderValuationModelV4.json endnu ikke er fittet (VALUATION_MODEL_V4=null).
+// hvis modellen endnu ikke er fittet (getValuationModel() = null).
+// #5443: modellen er app_config-valget, ikke en JSON indlæst ved boot.
 router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) => {
-  if (!VALUATION_MODEL_V4) {
+  const valuationModel = await getValuationModel();
+  if (!valuationModel) {
     return res.status(503).json({ error: "v4-model ikke fittet endnu" });
   }
 
@@ -10895,7 +11067,7 @@ router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) =
       let v4Value = null;
       if (age != null) {
         try {
-          v4Value = predictBaseValueV4({ ...r, potentiale: potentialeByRider.get(r.id), age }, ab, VALUATION_MODEL_V4);
+          v4Value = predictBaseValueV4({ ...r, potentiale: potentialeByRider.get(r.id), age }, ab, valuationModel);
         } catch (err) {
           // Én dårlig rytterrække (fx manglende potentiale) må ikke vælte hele
           // shadow-preview'et — degradér til null for den ene rytter og log.
@@ -10950,8 +11122,8 @@ router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) =
       return {
         type,
         v3_offset: VALUATION_MODEL?.offset?.[type] ?? null,
-        sim_median_prize: VALUATION_MODEL_V4.type_stats?.[type]?.median_prize ?? null,
-        sim_p90_prize: VALUATION_MODEL_V4.type_stats?.[type]?.p90_prize ?? null,
+        sim_median_prize: valuationModel.type_stats?.[type]?.median_prize ?? null,
+        sim_p90_prize: valuationModel.type_stats?.[type]?.p90_prize ?? null,
         n: bucket.n,
         v4_median_value: pctile(bucket.v4, 0.5),
         v4_p90_value: pctile(bucket.v4, 0.9),
@@ -10967,16 +11139,21 @@ router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) =
         convexity_exponent: VALUATION_MODEL?.convexity_exponent ?? null,
       },
       v4_model: {
-        version: 4,
-        fitted_at: VALUATION_MODEL_V4.fitted_at ?? null,
-        method: VALUATION_MODEL_V4.method ?? null,
-        sim_run_id: VALUATION_MODEL_V4.sim_run_id ?? null,
-        K: VALUATION_MODEL_V4.K ?? null,
-        season_id: VALUATION_MODEL_V4.season_id ?? null,
-        discount: VALUATION_MODEL_V4.discount ?? null,
-        horizon_model: VALUATION_MODEL_V4.horizon_model ?? null,
-        fit: VALUATION_MODEL_V4.fit ?? null,
-        scale: VALUATION_MODEL_V4.scale ?? null,
+        // #5443: modellen kommer nu fra app_config-valget, så versionen skal
+        // læses af den — ikke stå hardkodet. Ejeren bruger netop denne flade
+        // til at se HVILKEN model der er i spil, og et fast "4" ville lyve om
+        // det i samme objekt som resten af felterne fortæller sandheden.
+        version: Number(valuationModel.version) || 4,
+        model_id: valuationModel.model_id ?? null,
+        fitted_at: valuationModel.fitted_at ?? null,
+        method: valuationModel.method ?? null,
+        sim_run_id: valuationModel.sim_run_id ?? null,
+        K: valuationModel.K ?? null,
+        season_id: valuationModel.season_id ?? null,
+        discount: valuationModel.discount ?? null,
+        horizon_model: valuationModel.horizon_model ?? null,
+        fit: valuationModel.fit ?? null,
+        scale: valuationModel.scale ?? null,
       },
       type_economy: typeEconomy,
       distribution,

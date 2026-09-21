@@ -60,6 +60,35 @@ export const TEXT_OVERFLOW_ALLOWLIST = [
       "At omforme den doede gren nu ville vaere spildt arbejde. Refs #5383, #3643.",
     until: "2026-12-31",
   },
+  {
+    page: "traening",
+    // Fundet af reglen `spilling-text` (#4851, 20/9). 21/9-rettelsen fjernede
+    // mid-word-bruddet (break-words -> withBreakHints/<wbr/> efter "/", samme
+    // opskrift som DataTable's renderStickyCell, D-047/#5124) og reducerede
+    // overloebet fra 53-58 px til 6 px (DA) / 11 px (EN) — MEN naaede ikke 0 px:
+    // navnekolonnens reelle indholds-bredde er kun 41-46 px paa 412/390px,
+    // smallere end selv ET enkelt ord i linjen ("TRÆTHED" ~50 px, "Rouleur"
+    // ~49 px, uden kort-form). At lukke den sidste rest kraever enten at
+    // bryde MIDT i et ord (forbudt, det var netop fejlen der blev rettet) eller
+    // at give navnekolonnen mere plads — hvilket (maalt 21/9) presser
+    // "Dag/Skift dag"+"Denne saeson"+"Status"-kolonnerne saa tabellens
+    // naturlige bredde (543-554 px) overstiger rosterens egen overflow-x-hidden
+    // scroller (356-378 px) og klipper DEM i stedet. Den rettelse hoerer uden
+    // for navnecelle+meta-linje, saa den er UDSKUDT — se ogsaa posten ovenfor
+    // (samme gamle, doende mobil-gren, samme #3643-erstatning).
+    rule: "spilling-text",
+    match: /max-w-\[40vw\]/,
+    viewports: ["mobil"],
+    reason:
+      "Rytterens meta-linje i den GAMLE mobil-traeningsliste ('Sprinter/Rouleur · Alder 24 · Form — · " +
+      "Traethed —') maales 6 px (DA) / 11 px (EN) bredere end sin kasse (scrollWidth 52 > clientWidth " +
+      "46/41 paa 412px) efter 21/9-rettelsen — ned fra 53-58 px, ingen mid-word-brud tilbage. Resten " +
+      "kraever at udvide navnekolonnen paa bekostning af Dag/Denne saeson/Status-kolonnerne (maalt: " +
+      "presser tabellen fra ~477px til ~547px mod en 356-378px scroller), ude af scope for " +
+      "navnecelle+meta-linje. Den gren er LIVE for spillere uden beta-flaget training_mobile_table. " +
+      "Udloeber 31/10 med kort snor. Refs #4851, #5383, #3643.",
+    until: "2026-10-31",
+  },
 ];
 
 // Kendt kontrast-gaeld pr. FARVEPAR. `pair` skal matche maalerens egen

@@ -36,6 +36,7 @@ import {
 } from "./starterSquadAllocator.js";
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
+import { loadValuationModel, loadProductionValueModel } from "./riderValuationModelSelect.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName } from "./aiTeamNames.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { teamInflightRaceIds } from "./aiTeamRaceObligations.js";
@@ -523,12 +524,20 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
   const existingFoldedNames = await fetchExistingFoldedNamesForAi(supabase);
   const tierFractions = aiTierFractionsForTier(pool.tier);
 
+  // #5443: modellen læses ÉN gang for HELE denne allokering og sendes til
+  // begge trin. Cap-gaten nedenfor og deriveForRiderIds til sidst skriver til
+  // samme loft-kontrakt (#2065-klassen): læste de hver sin gang, kunne et flip
+  // af app_config midt imellem lade en kandidat passere gaten på én model og
+  // få persisteret en værdi fra en anden — over tier-loftet.
+  const valuationModel = await loadValuationModel(supabase);
+  const productionValuationModel = await loadProductionValueModel(supabase);
+
   let poolPayload;
   if (tierFractions) {
     const seed = deriveTeamSeed((baseSeed + 1688) >>> 0, `${pool.id}:${ordinal}`);
     poolPayload = generateAiRiderBatchWithCap({
       count: AI_SQUAD.TOTAL_SIZE, tierFractions, valueCap: aiValueCapForTier(pool.tier),
-      seed, referenceYear, existingFoldedNames,
+      seed, referenceYear, existingFoldedNames, valuationModel,
     }).map((r) => ({ ...r, team_id: teamId }));
   } else {
     const { core: coreWindow, tail: tailWindow } = aiStatWindowsForTier(pool.tier);
@@ -556,8 +565,10 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
     if (error) throw new Error(`AI starter-squad insert ${teamId}: ${error.message}`);
     insertedIds.push(...(data || []).map((r) => r.id));
   }
-  // Data-hale-garanti.
-  await deriveForRiderIds(supabase, insertedIds, { dryRun: false });
+  // Data-hale-garanti. #5443: SAMME model som cap-gaten ovenfor brugte.
+  await deriveForRiderIds(supabase, insertedIds, {
+    dryRun: false, valuationModel, productionValuationModel,
+  });
   return insertedIds;
 }
 

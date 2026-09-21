@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {
   computeTierCoverageStats, detectCoverageViolations, CLASS_STAGE_LENGTH_BAND,
   TIER_TERRAIN_FAMILY_MIN, TIER_ONE_DAY_SHARE_MIN, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
+  TIER_ARCHETYPE_RESERVATIONS,
 } from "./tierCalendarGuarantees.js";
+import { ARCHETYPE_PROFILES } from "./raceStageProfileGenerator.js";
 
 // Byg et minimalt raceRow + profil-par til testene. profileTypes = liste af profile_type
 // pr. etape (længden afgør stages for stage_race).
@@ -159,4 +161,55 @@ test("detectCoverageViolations: tomme override-maps (LEGACY_MIX-mønster) slår 
     tier: 2, stats, oneDayShareMin: {}, terrainFamilyMin: {}, mountainFreeMin: {},
   });
   assert.deepEqual(violations, []);
+});
+
+// ── #5405: arketype-reservations-tabellen er låst ──────────────────────────────────────
+//
+// Tabellen er ikke en konstant nogen må justere i forbifarten. Tallene er MÅLT (tørkørsel
+// 19-20/9 uden --uniform-tilt, ejer-go 20/9), og de hænger sammen med en katalog-udvidelse
+// i samme PR: uden de tre nye ProSeries-summit_tour-løb kan de hævede summit_tour-tal for
+// D2 og D3 ikke mættes, og uden D3's balanced_week betaler D3 hver ny bjergdag med sin
+// enkeltstart. Testene her fælder sig selv, hvis nogen flytter et tal uden en ny måling.
+// Måle-tallene ligger i balance-internals/ (gitignoreret) — repoet er offentligt.
+
+test("#5405 reservations-tabellen: tallene er låst og må kun flyttes med en ny måling", () => {
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(TIER_ARCHETYPE_RESERVATIONS)),
+    {
+      1: { itt_classic: 1, cobbled_classic: 6, cobbled_tour: 1 },
+      2: { summit_tour: 5, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 },
+      3: { summit_tour: 5, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4, balanced_week: 1 },
+      4: { summit_tour: 2, cobbled_tour: 1, itt_classic: 2, hilly_tour: 2, balanced_week: 2 },
+    },
+    "Reservations-tabellen er ændret. Den er ikke en tuning-knap: hvert tal er målt i en "
+    + "tørkørsel og hænger sammen med katalogets forsyning. Ændr den kun sammen med en ny "
+    + "måling og et ejer-go — og opdatér tabellen i docs/CALENDAR_RULES.md §5 i samme PR.",
+  );
+});
+
+test("#5405 D3 beholder den ENE arketype i sit vindue der garanterer en enkeltstart", () => {
+  // Mekanikken bag hele #5405: D3's bjerg-arketyper garanterer ingen ITT, så hver ekstra
+  // bjergdag kostede D3 en enkeltstart. balanced_week er den eneste arketype i D3's
+  // klasse-vindue med `itt` blandt sine GARANTIER (ikke bare som filler-vægt).
+  assert.equal(TIER_ARCHETYPE_RESERVATIONS[3].balanced_week, 1);
+  assert.ok(
+    ARCHETYPE_PROFILES.balanced_week.guarantees.includes("itt"),
+    "balanced_week har mistet sin itt-garanti — så holder D3's enkeltstart ikke længere, "
+    + "og reservationen her er blevet virkningsløs.",
+  );
+  for (const archetype of ["summit_tour", "hilly_tour", "cobbled_tour"]) {
+    assert.ok(
+      !(ARCHETYPE_PROFILES[archetype].guarantees ?? []).includes("itt"),
+      `${archetype} garanterer nu en itt. Får en bjerg-arketype sin egen enkeltstart, er `
+      + "D3's balanced_week-reservation måske ikke længere nødvendig — mål efter, fjern den ikke blindt.",
+    );
+  }
+});
+
+test("#5405 D2 og D3 reserverer mere summit_tour end D1 og D4 tilsammen", () => {
+  // Retningen er hele pointen med ændringen: afgørende bjergdage skulle op i netop D2 og
+  // D3. Vendes det om igen uden en måling, er #5405 rullet tilbage ved et uheld.
+  const summit = (tier) => TIER_ARCHETYPE_RESERVATIONS[tier].summit_tour ?? 0;
+  assert.ok(summit(2) + summit(3) > summit(1) + summit(4), "D2+D3 skal bære bjerg-reservationen");
+  assert.ok(summit(2) > summit(4) && summit(3) > summit(4), "D4 må ikke reservere mest bjerg");
 });

@@ -75,7 +75,12 @@ test("#3643 wiring: /api/training/me laeser flaget med readFlagStage + evaluateF
   );
   const start = apiSource.indexOf('router.get("/training/me"');
   assert.ok(start !== -1, '/training/me skal findes i api.js');
-  const block = apiSource.slice(start, start + 9600);
+  // #4847: haevet 9600 → 13000. dayClose-blokken lagde et flag-opslag og et
+  // betinget responsfelt ind i samme handler, saa res.json faldt uden for vinduet
+  // og `mobileTable,`-matchet gik roedt. Samme fejlklasse som i
+  // apiTrainingMeRaceDay.routes.test.js — se forward-guarden dér, som maaler den
+  // FAKTISKE handler-laengde, saa den her ikke skal gaettes to steder.
+  const block = apiSource.slice(start, start + 13000);
   assert.match(block, /readFlagStage\(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY\)/);
   assert.match(block, /const mobileTable = evaluateFlagStage\(mobileTableStage, \{ isBetaTester \}\)/);
   // Feltet skal med i svaret som en BAR boolean — ikke som et betinget spread

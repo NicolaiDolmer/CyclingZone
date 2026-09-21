@@ -53,7 +53,7 @@ export default function RiderTrainingScoreCard({ score, t }: {
   const driverLabel = (c: TrainingScoreContribution) => tTraining(`score.factor_${c.key}`, { defaultValue: c.key });
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
+    <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]" data-testid="rider-training-score-card">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
         {t("profile.training.score.title")}
       </span>

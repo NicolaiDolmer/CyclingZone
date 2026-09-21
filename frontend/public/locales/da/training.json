@@ -1,6 +1,11 @@
 {
   "title": "Daglig træning",
   "trainToday": "Træn i dag (+25% konsistens-bonus)",
+  "runDayNow": "Kør dagens træning nu",
+  "dayClose": {
+    "waiting": "Dagens træning kører af sig selv, når det sidste løb er kørt, fra kl. {hour}.",
+    "ready": "Dagens træning er klar. Kør den nu, eller lad den køre af sig selv."
+  },
   "trainedToday_you": "Trænet i dag (af dig)",
   "trainedToday_assistant": "Trænet i dag (af assistenten)",
   "trainedTodayAt_you": "Trænet i dag kl. {time} (af dig)",
@@ -288,6 +293,8 @@
     "column": "Score",
     "raceDay": "Løb",
     "sparkAria": "Træningsscore, seneste 7 dage: {name}",
+    "columnHint": "Hvor godt dagens pas var, 1-99. Løbsdage viser \"Løb\".",
+    "columnHelpAria": "Hvad træningsscoren betyder: læs det i Hjælp",
     "factor_intensity": "Passet",
     "factor_focusMatch": "Fokus-match",
     "factor_condition": "Form og træthed",

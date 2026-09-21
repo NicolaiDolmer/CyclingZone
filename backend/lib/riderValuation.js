@@ -24,6 +24,7 @@
 
 import { ABILITY_KEYS } from "./riderTypes.js";
 import { VALUATION_WEIGHTS } from "./weights/valuationWeights.js";
+import { roleOutputRaw, DISPLAY_RECIPE_ABILITIES } from "./weights/displayRecipes.js";
 // #2594 cutover: v4-modellen (karriere-NPV) lever i riderCareerNpv.js. Cirkulær
 // import (riderCareerNpv importerer blendedOutput m.fl. herfra) er sikker i ESM:
 // begge moduler eksporterer kun hoistede function declarations og kører ingen af
@@ -31,6 +32,22 @@ import { VALUATION_WEIGHTS } from "./weights/valuationWeights.js";
 import { predictBaseValueV4 } from "./riderCareerNpv.js";
 
 export { ABILITY_KEYS };
+
+// #5443: de evne-KOLONNER en værdi-kørsel skal hente, uanset hvilken model der
+// er valgt. Unionen af klassifikator-evnerne (v4's vægttabel + meanAbilityScore)
+// og alle evner der indgår i en rating-opskrift (v5's vægtkilde).
+//
+// Hullet det lukker: `positioning` og `tactics` indgår i fem hhv. én
+// rating-opskrift, men står IKKE i ABILITY_KEYS. Hentede søndagskørslen kun
+// ABILITY_KEYS, ville de to evner være `undefined` på rækken og blive sprunget
+// over i det vægtede snit — og v5 ville regne på et andet evne-sæt end det
+// rating-tal spilleren ser. Forward-guard: valuationRatingParity.test.js.
+//
+// VÆRDI-NEUTRAL for v4: de to ekstra kolonner indgår hverken i v4's vægttabel
+// eller i meanAbilityScore, så de er rent inerte indtil v5 tændes.
+export const VALUATION_ABILITY_COLUMNS = Object.freeze(
+  [...new Set([...ABILITY_KEYS, ...DISPLAY_RECIPE_ABILITIES])]
+);
 
 // #3665: værdimodellen læser sin EGEN vægt-tabel (weights/valuationWeights.js),
 // ikke klassifikatorens. De to er bit-identiske ved ikrafttræden — bevist af
@@ -77,6 +94,48 @@ export function blendedOutput(abilities = {}, primaryType = null, alpha = 1) {
   return a * spec + (1 - a) * meanAbilityScore(abilities);
 }
 
+// ── #5443: hvilke evner værdien regner på ────────────────────────────────────
+//
+// Modellen SIGER SELV hvilken vægtkilde den bruger, så en model-udskiftning er
+// ét felt i én JSON-fil og ikke et kodeskift spredt over værdi-stien:
+//
+//   weights_source: "display_recipes"  → rollens evner PRÆCIS som rating-tallet
+//                                        (weights/displayRecipes.js, ÉN tabel,
+//                                        ÉT regnestykke — roleOutputRaw).
+//   (feltet mangler)                   → den historiske værdi-vægttabel
+//                                        (weights/valuationWeights.js), bit for
+//                                        bit som før denne PR.
+//
+// Den historiske sti er bevidst URØRT: så længe app_config peger på v4-modellen
+// regner produktionen nøjagtig som i dag, og skiftet sker først når ejeren
+// flipper nøglen (riderValuationModelSelect.js).
+//
+// Fallback når rollen er ukendt (ny/manglende type): snit af alle evner —
+// samme neutrale fallback som outputScore har haft siden v3.
+export function valuationOutput(abilities = {}, type = null, { alpha = 1, weightsSource = null } = {}) {
+  const a = Number.isFinite(Number(alpha)) ? Math.min(1, Math.max(0, Number(alpha))) : 1;
+  const spec = weightsSource === "display_recipes"
+    ? (roleOutputRaw(abilities, type) ?? meanAbilityScore(abilities))
+    : outputScore(abilities, type);
+  if (a >= 1) return spec;
+  return a * spec + (1 - a) * meanAbilityScore(abilities);
+}
+
+// #5443: hvilken TYPE værdien regnes på.
+//
+//   type_source: "primary"  → rytterens faktiske primær-type. Den frosne
+//                             valuation_type ignoreres helt (#3345-frysningen
+//                             er dermed ude af beregningen for denne model).
+//   (feltet mangler)        → #3345-kæden: valuation_type FØR primary_type.
+//
+// riders.valuation_type-KOLONNEN droppes IKKE her — det er en destruktiv,
+// ejer-gated migration der først må køre når v5 har været live og verificeret
+// (#5443, ejer-godkendt rækkefølge 20/9).
+export function valuationTypeFor(rider, model) {
+  if (model?.type_source === "primary") return rider?.primary_type ?? null;
+  return rider?.valuation_type ?? rider?.primary_type ?? null;
+}
+
 // Forudsig base_value (CZ$, heltal) for en rytter ud fra en fittet model.
 // model: { a, b, offset: { type: number } }
 // rider: riders-række (kræver primary_type). abilities: rider_derived_abilities-række.
@@ -114,8 +173,14 @@ export function predictBaseValue(rider, abilities, model /*, opts */) {
   // NÅR V4 ER RE-FITTET mod den nye klassifikation (opfølgnings-issue #3353):
   // fjern denne fallback-kæde, læs primary_type direkte igen, og drop
   // riders.valuation_type-kolonnen.
-  const type = rider?.valuation_type ?? rider?.primary_type ?? null;
-  let O = blendedOutput(abilities, type, model.alpha ?? 1);
+  // #5443: kæden er nu MODEL-STYRET (valuationTypeFor) — en model med
+  // type_source: "primary" springer frysningen over. v3-modellerne sætter ikke
+  // feltet og rammer derfor præcis den samme kæde som før.
+  const type = valuationTypeFor(rider, model);
+  let O = valuationOutput(abilities, type, {
+    alpha: model.alpha ?? 1,
+    weightsSource: model.weights_source ?? null,
+  });
   // Ekstrapolations-guard: kurven er kun kalibreret op til den højeste anchor
   // (output_max i model-JSON). Output derover klampes — ellers eksploderer den
   // konvekse top for urealistiske profiler (Harry Ward 1,13 mia., 10/6). KUN opad:

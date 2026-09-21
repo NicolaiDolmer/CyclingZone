@@ -19,11 +19,13 @@
 // Rule 17 (AGENTS.md §17): formler, eksponenter og maalte drift-tal hoerer ikke
 // hjemme i det offentlige repo — de er delt med ejeren i chat.
 export const TRAINING_RACE_DAY_CONFIG = Object.freeze({
-  // #4845 / PR #5169: ens antal loebsdage i ALLE fire divisioner (gate G2). Tallet er
-  // pakkerens maal for S4. PR #5169 er endnu ikke merged; naar den lander, er
-  // calendarRaceDayTargets.js' SEASON_RACE_DAY_TARGET sandheden og denne konstant
-  // skal pege paa den i stedet for at duplikere den.
-  raceDaysPerSeason: 80,
+  // #4847 (ejer-beslutning 15/9, TRAINING_RULES.md §13.3 beslutning 2): 140 loebsdage
+  // pr. saeson i ALLE fire divisioner (= 28 loebsdatoer x D1's 5 slots). Tallet er
+  // IKKE laengere frit her: `resolveRaceDaysPerSeason()` nedenfor LAESER det fra
+  // calendarRaceDayTargets.js' SEASON_RACE_DAY_TARGET naar den fil findes, saa
+  // kalenderpakkeren og traeningsdeleren ALDRIG kan divergere. Vaerdien her er
+  // udelukkende fallback for den tilstand hvor PR #5169 endnu ikke er merget.
+  raceDaysPerSeason: 140,
   // Maalt antal kalenderdags-ticks pr. sæson i dag (S3), spec §3.2.
   calendarTicksPerSeasonToday: 31,
   // DAILY_TRAINING_CONFIG.daysPerSeason — gentaget her som reference for deleren.
@@ -42,6 +44,75 @@ export const TRAINING_RACE_DAY_CONFIG = Object.freeze({
  */
 export function raceDayBudgetDivisor(cfg = TRAINING_RACE_DAY_CONFIG) {
   return (cfg.raceDaysPerSeason * cfg.legacyDaysPerSeason) / cfg.calendarTicksPerSeasonToday;
+}
+
+// ── Loebsdags-maalet laeses fra kalenderen, ikke duplikeret ───────────────────
+//
+// #4847 punkt 5 (kommentar paa #4845 15/9): deleren SKAL kalibreres mod det tal
+// kalenderpakkeren rent faktisk pakker efter. To kopier af "140" — een i pakkeren og
+// een her — er praecis den divergens der giver systematisk under- eller overtraening
+// naar ejeren senere aendrer maalet ét af stederne.
+//
+// DEFENSIV IMPORT, med vilje. `calendarRaceDayTargets.js` lander med PR #5169
+// (branch feat/4845-calendar-packs-equal-race-days) og findes IKKE paa main mens
+// dette spor bygges. Et statisk `import` ville derfor vaelte HELE backenden ved boot.
+// Derfor: cachet dynamisk import i en try/catch, med `TRAINING_RACE_DAY_CONFIG
+// .raceDaysPerSeason` som fallback. Naar #5169 er merget, er filen sandheden — uden
+// at denne kode skal roeres.
+let raceDayTargetModuleCache; // undefined = ikke forsoegt endnu, null = findes ikke
+async function loadRaceDayTargetModule() {
+  if (raceDayTargetModuleCache !== undefined) return raceDayTargetModuleCache;
+  try {
+    raceDayTargetModuleCache = await import("./calendarRaceDayTargets.js");
+  } catch {
+    // best-effort: ERR_MODULE_NOT_FOUND (#5169 ikke merget endnu) — eller enhver
+    // anden indlaesningsfejl. Begge betyder det samme her: brug fallbacken. En
+    // capture ville fyre ved HVERT boot saa laenge #5169 ikke er merget, altsaa
+    // stoej om en tilstand vi allerede kender og har et defineret svar paa.
+    raceDayTargetModuleCache = null;
+  }
+  return raceDayTargetModuleCache;
+}
+
+/** Kun til test: glem den cachede import saa naeste kald slaar op igen. */
+export function __resetRaceDayTargetCacheForTests() {
+  raceDayTargetModuleCache = undefined;
+}
+
+/**
+ * Antal loebsdage pr. saeson for EN given saeson.
+ *
+ * Praecedens: SEASON_RACE_DAY_TARGET[seasonNumber] > det hoejeste maal i tabellen >
+ * TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason. Den mellemste tager hoejde for at
+ * tabellen i dag kun har `{ 4: 140 }`: en saeson 5 uden eget tal skal arve S4's maal
+ * frem for at falde tilbage paa en konstant der kan vaere aeldre end kalenderen.
+ *
+ * @param {{seasonNumber?: number|null, cfg?: object}} [args]
+ * @returns {Promise<number>}
+ */
+export async function resolveRaceDaysPerSeason({ seasonNumber = null, cfg = TRAINING_RACE_DAY_CONFIG } = {}) {
+  const mod = await loadRaceDayTargetModule();
+  const table = mod?.SEASON_RACE_DAY_TARGET;
+  if (table && typeof table === "object") {
+    const exact = Number(table[seasonNumber]);
+    if (Number.isFinite(exact) && exact > 0) return exact;
+    const known = Object.values(table).map(Number).filter((n) => Number.isFinite(n) && n > 0);
+    if (known.length) return Math.max(...known);
+  }
+  return cfg.raceDaysPerSeason;
+}
+
+/**
+ * Budget-deleren for en KONKRET saeson, med maalet laest fra kalenderen.
+ * Asynkron fordi kilden er en defensiv dynamisk import (se ovenfor); kald-stedet
+ * i dailyTrainingEngine.js awaiter den én gang pr. hold pr. tick.
+ *
+ * @param {{seasonNumber?: number|null, cfg?: object}} [args]
+ * @returns {Promise<number>}
+ */
+export async function resolveRaceDayBudgetDivisor({ seasonNumber = null, cfg = TRAINING_RACE_DAY_CONFIG } = {}) {
+  const raceDaysPerSeason = await resolveRaceDaysPerSeason({ seasonNumber, cfg });
+  return (raceDaysPerSeason * cfg.legacyDaysPerSeason) / cfg.calendarTicksPerSeasonToday;
 }
 
 /**
@@ -125,5 +196,68 @@ export async function resolveTeamRaceDay({ supabase, teamId, seasonId, now = new
   } catch {
     // Best-effort: en netvaerks-/synkron fejl maa aldrig vaelte holdets traeningsdag.
     return { gameDay: null, reason: "exception" };
+  }
+}
+
+/**
+ * Hvilke af holdets ryttere er BUNDET paa denne loebsdag? (#4847, ejer-regel 2+3, 18/9)
+ *
+ * EJERENS REGEL (18/9, #5267-kommentaren, laast som princip):
+ *   2. Paa en loebsdag koerer rytteren ét loeb ELLER traener. Aldrig begge.
+ *   3. Et etapeloeb binder rytteren fra foerste til sidste etape — ogsaa paa
+ *      hviledagene imellem. "Hviledag i et etapeloeb = hvile, ikke traening."
+ *
+ * KILDEN ER `race_entry_days`, IKKE dagens etaperesultater. Det er hele pointen:
+ * `race_results` fortaeller hvem der KOERTE en etape i dag, og dermed intet om en
+ * GT-hviledag, hvor rytteren er bundet uden at koere. `race_entry_days` baerer siden
+ * #4217 HELE spaendet min(game_day)..max(game_day) pr. udtagelse (bevist mod en aegte
+ * Postgres-motor i testdb/raceEntryDaysGtRestDay.integration.test.js: 19 dag-raekker
+ * for et 17-etapers loeb med 2 hviledage), og #4191's rebuild-porte holder afmeldte
+ * loeb (race_withdrawals) UDE af mængden. Det er praecis regel 3's mængde.
+ *
+ * INGEN FLAG-AFHAENGIGHED (regel 2's fix). Den gamle detektion hang paa
+ * `race_day_development_enabled`; med kun `training_tick_per_race_day` taendt var
+ * mængden derfor altid tom, og en rytter der koerte loeb fik traening ovenpaa. Dette
+ * opslag kender ingen flag — det koeres naar tick'et er paa loebsdags-aksen, punktum.
+ *
+ * FEJL-KONTRAKTEN ER DEN MODSATTE AF loadRacedRiderIdsToday's. Det lookup er en
+ * BERIGELSE (hvilken profil-type gav loebet?), og "ved det ikke" er dér et lovligt
+ * svar. Dette er en REGEL-GATE: gaetter vi forkert, uddeler vi enten traening oven i
+ * et loeb (bryder regel 2) eller naegter hele truppen en dag. Derfor returneres
+ * fejlen, og kald-stedet KASTER i stedet for at gaette. Tick'et er idempotent og
+ * dags-claimen saettes kun ved `failed === 0`, saa naeste cron-tick (5 min) proever igen.
+ *
+ * @param {{supabase: object, riderIds: string[], seasonId: string, gameDay: number}} args
+ * @returns {Promise<{data: Set<string>|null, error: unknown}>}
+ */
+export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId, gameDay }) {
+  if (!supabase?.from) return { data: null, error: new Error("supabase client required") };
+  if (!seasonId) return { data: null, error: new Error("seasonId required") };
+  // `Number(null)` er 0, ikke NaN — en manglende loebsdag ville ellers slippe
+  // igennem som loebsdag 0 og slaa den forkerte binding op.
+  if (gameDay === null || gameDay === undefined || !Number.isFinite(Number(gameDay))) {
+    return { data: null, error: new Error("finite gameDay required") };
+  }
+  if (!riderIds?.length) return { data: new Set(), error: null };
+  try {
+    const { data, error } = await supabase
+      .from("race_entry_days")
+      .select("rider_id")
+      // pagination-safe: afgraenset til ÉT holds egen trup (typisk < 30) paa ÉN
+      // loebsdag i ÉN saeson — hoejst én raekke pr. rytter, fordi
+      // no_rider_double_booking_day er UNIQUE (rider_id, season_id, game_day).
+      // Langt under PostgREST's 1000-raekkers-loft.
+      .in("rider_id", riderIds)
+      .eq("season_id", seasonId)
+      .eq("game_day", Number(gameDay));
+    if (error) return { data: null, error };
+    return { data: new Set((data ?? []).map((r) => r.rider_id)), error: null };
+  } catch (err) {
+    // best-effort HER, men ikke hos kalderen: fejlen sluges ikke, den RETURNERES
+    // (`data: null` = "ved det ikke", ikke "ingen er bundet"), og
+    // dailyTrainingEngine.js KASTER paa den. Grunden til at synkrone/netvaerks-
+    // fejl fanges her frem for at boble er at kontrakten skal vaere ÉN form —
+    // { data, error } — saa kald-stedet har ét sted at traeffe sin beslutning.
+    return { data: null, error: err };
   }
 }

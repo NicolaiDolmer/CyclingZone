@@ -55,6 +55,7 @@ import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { checkSeasonTransitionKeyDrift } from "./lib/seasonTransitionKeyGuard.js"; // #4129
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
+import { runTrainingDayCloseSweep } from "./lib/trainingDayCloseTrigger.js"; // #4847
 import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
 import { runScoutSweep } from "./lib/scoutSweep.js";
 import { runWageDeductionSweep } from "./lib/wageDeductionSweep.js";
@@ -673,6 +674,39 @@ async function runTrainingSweepCron() {
     sentryCapture(new Error(`training sweep: ${result.failed} hold fejlede`), {
       tags: { cron: "training sweep" },
       extra: { swept: result.swept, failed: result.failed },
+    });
+  }
+}
+
+// ─── Samlet daglig traening naar dagens loebsdage lukker (#4847, fase B4) ─────
+// Ejer-beslutning 15/9 (TRAINING_RULES.md §13.3 beslutning 3+4): EEN sweep pr.
+// kalenderdag, tidligst kl. 20 dansk tid OG foerst naar dagens sidste finalization
+// er faerdig. Gated bag `training_tick_per_race_day` (off i dag) — flag off er et
+// rent no-op-tick, saa den kan sameksistere med runTrainingSweepCron ovenfor indtil
+// cutover. Overlap-guarden bor i modulet (kode-invariant, testet), ikke her.
+async function runTrainingDayCloseCron() {
+  const result = await runTrainingDayCloseSweep({
+    supabase,
+    now: new Date(),
+    // Maks-ventetids-alarmen (etaper der stadig var aabne efter kl. 23) gaar til
+    // Sentry med praecis hvilke etaper det var — ellers ville en haengende
+    // finalization koste en loebsdags udvikling uden spor.
+    onAlarm: (err, ctx) => {
+      sentryCapture(err, {
+        tags: { cron: "training-day-close" },
+        extra: { tickDate: ctx?.tickDate, pending: ctx?.pending?.slice(0, 20) },
+      });
+    },
+  });
+  if (result.ran) {
+    console.log(`🚴 Traenings-lukning: ${result.swept} tick(s) koert paa loebsdag(e) ${result.gameDays.join(", ")} (${result.divisions} division(er), ${result.alreadyRan} allerede koert, ${result.failed} fejl, ${Math.round(result.durationMs / 1000)} s)`);
+  }
+  if (result.failed) {
+    // #2389 A2-moenstret: én aggregeret capture pr. tick. Daglig traening er
+    // kerne-gameplay; systemiske fejl maa ikke vaere usynlige i Sentry.
+    sentryCapture(new Error(`training day-close sweep: ${result.failed} tick(s) fejlede`), {
+      tags: { cron: "training-day-close" },
+      extra: { swept: result.swept, failed: result.failed, failures: result.failures?.slice(0, 20) },
     });
   }
 }
@@ -1925,6 +1959,15 @@ export function startCron() {
   // Daglig træning: assistent-sweep efter kl. 22 dansk tid (#1305)
   setInterval(
     trackedTick("training sweep", monitorCron("training-sweep", runTrainingSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Samlet daglig træning når dagens løbsdage lukker (#4847, fase B4).
+  // 5-min-kadence fordi betingelsen "dagens sidste finalization er færdig" først kan
+  // besvares når den er det — sweepen selv er gated (kl. 20 + finalization + flag)
+  // og har både overlap-guard og dags-claim, så en tæt polling er gratis.
+  setInterval(
+    trackedTick("training day-close", monitorCron("training-day-close", runTrainingDayCloseCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 

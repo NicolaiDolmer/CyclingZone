@@ -47,7 +47,7 @@ import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Button, Select, Checkbox,
   PageLoader, EmptyState, SkeletonLines, ChevronDownIcon, TeamIcon,
-  ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon,
+  ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon, InfoIcon,
   Tabs, TabList, Tab, TabPanel, CollapsibleSection,
 } from "../components/ui";
 import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
@@ -106,6 +106,24 @@ const STATUS_INJURED_WEIGHT = 1;
 // Hvile · Aktiv restitution · rytterens egen session. Den sidste er en sentinel,
 // ikke en dagstype: hvilken dag den fører til afhænger af rytterens session.
 const QUICK_DAY_TYPES = Object.freeze(["rest", "recovery", "session"]);
+
+// #4851: praecis samme funktion som DataTable.jsx's egen `withBreakHints`
+// (D-047/#5124) — kopieret lokalt i stedet for importeret, saa denne fil
+// (den GAMLE, haandrullede mobil-gren, ikke DataTable) ikke traekker en
+// deling ind i en delt UI-komponent for en enkelt intern hjaelpefunktion.
+// "Klatrer/GC" er EET ord for browseren uden en brydningsmulighed ved "/",
+// saa linjen falder ellers tilbage paa break-words og braekker midt i ordet
+// ("SPRINTE/R/ROULE/UR", maalt 21/9 paa 412px). `<wbr>` er en frivillig
+// brydning der hverken tegner noget eller aendrer `textContent`.
+function withBreakHints(value) {
+  const parts = String(value).split("/");
+  if (parts.length === 1) return value;
+  // Brydningen ligger EFTER skraastregen, saa "SPRINTER/" bliver staaende paa
+  // den foerste linje — ikke "/ROULEUR" paa den naeste.
+  return parts.flatMap((part, index) =>
+    index === parts.length - 1 ? [part] : [`${part}/`, <wbr key={`wbr-${index}`} />],
+  );
+}
 
 // Dagstypen rytterens gemte session hører til (skill eller training), eller
 // null hvis planen ikke bærer en session (fx en restitutionsdag).
@@ -426,6 +444,8 @@ export default function TrainingPage() {
     // pinner at racingToday er det sidste felt før `} = training;`.
     mobileTable,
     racingToday,
+    // #4847: knappens aabne-tilstand (null = flaget training_tick_per_race_day er off).
+    dayClose,
   } = training;
   const scoreVisible = trainingScore != null;
 
@@ -1059,6 +1079,12 @@ export default function TrainingPage() {
               intensitet til en ubrugelig scroll-strimmel (2 spillere, iOS+Android).
               max-w + ombrydning i stedet for nowrap: infoen står på 2 korte linjer. */}
           <div className="mt-0.5 sm:hidden max-w-[40vw] font-data text-3xs uppercase tracking-[.05em] text-cz-3">
+            {/* #4851: ingen break-words her — den brød ord midt i bogstaverne
+                ("SPRINTE/R/ROULE/UR", maalt 21/9 med det laengste ryttertype-
+                par paa 412px). Samme opskrift som DataTable's renderStickyCell
+                (D-047/#5124, withBreakHints): kun "/" i selve typeparret faar
+                en <wbr/>-brydningsmulighed, resten bryder alene ved de naturlige
+                mellemrum omkring " · ". */}
             {[
               rider.primary_type
                 ? (rider.secondary_type && rider.secondary_type !== rider.primary_type
@@ -1077,7 +1103,10 @@ export default function TrainingPage() {
               scoreVisible && Number.isFinite(riderScore?.today)
                 ? `${t("score.column")} ${riderScore.today}`
                 : null,
-            ].filter(Boolean).join(" · ")}
+            ].filter(Boolean).flatMap((value, index) => [
+              index > 0 ? " · " : null,
+              ...[].concat(withBreakHints(value)),
+            ])}
           </div>
         </td>
 
@@ -1568,6 +1597,10 @@ export default function TrainingPage() {
             columns={columns}
             selectedRiderId={mobileRiderId}
             onSelectRider={(riderId) => setMobileRiderId((prev) => (prev === riderId ? null : riderId))}
+            // #4851: samme kilde som desktop-kolonnen. `null` naar
+            // training_score_visible er off ⇒ hverken kolonnen eller blokken i
+            // kortet findes paa telefonen, praecis som paa desktop.
+            scoreFor={scoreVisible ? (riderId) => trainingScore?.[riderId] ?? null : null}
             conditionFor={(riderId) => condition[riderId] ?? null}
             ageFor={(riderId) => ageForSeason(riderById.get(riderId)?.birthdate, seasonYear)}
             isRacing={racingFor}
@@ -1706,7 +1739,14 @@ export default function TrainingPage() {
     ? <span className="text-cz-success font-medium">{trainedTodayLabel()}</span>
     : !enabled
       ? <span className="italic">{t("disabledNote")}</span>
-      : t("notTrainedYetToday");
+      // #4847: naar loebsdags-ticket er on, koerer programmet af sig selv naar dagens
+      // sidste loeb er lukket. Én KORT linje paa fladen; prosaen bor i help.json
+      // (feedback "kort paa fladen, manualer i Hjaelp", ejer 20/8).
+      : dayClose && !dayClose.open
+        ? t("dayClose.waiting", { hour: dayClose.opensAtHour ?? 20 })
+        : dayClose
+          ? t("dayClose.ready")
+          : t("notTrainedYetToday");
 
   if (isLoading) {
     return (
@@ -1754,9 +1794,11 @@ export default function TrainingPage() {
                 variant={assistantPanelOpen ? "secondary" : "primary"}
                 size="sm"
                 onClick={handleRunToday}
-                disabled={!enabled || !!todayRun || running}
+                // #4847: paa loebsdags-stien aabner knappen foerst naar dagens
+                // sidste loeb er lukket (samme betingelse som cron-sweepen).
+                disabled={!enabled || !!todayRun || running || !!(dayClose && !dayClose.open)}
               >
-                {running ? t("loading") : t("trainToday")}
+                {running ? t("loading") : (dayClose ? t("runDayNow") : t("trainToday"))}
               </Button>
             </span>
           </div>
@@ -2091,9 +2133,26 @@ export default function TrainingPage() {
                           spilleren traeffer dagens valg paa, saa det skal kunne
                           ses i portraet (D-047's princip; rosteret er ikke en
                           <DataTable>, saa chip-mekanikken gaelder ikke her). */}
+                      {/* "Score" siger ikke af sig selv HVAD der maales. Samme
+                          forklarings-moenster som resten af siden: en `title`-
+                          tooltip paa headeren (#1592's kolonne-moenster) plus et
+                          stille link til Hjaelpens Daglig traening-afsnit, hvor
+                          "The training score" staar i fuld prosa (help.json,
+                          en+da). Kort tekst paa fladen, prosa i Hjaelp (#4025). */}
                       {scoreVisible && (
                         <SortTh sortKey="score" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                          className={thClass({ numeric: true, compact: true })}>
+                          title={t("score.columnHint")}
+                          className={thClass({ numeric: true, compact: true })}
+                          help={(
+                            <Link
+                              to="/help?section=dailytraining"
+                              aria-label={t("score.columnHelpAria")}
+                              title={t("score.columnHelpAria")}
+                              className="inline-flex items-center text-cz-3 hover:text-cz-accent"
+                            >
+                              <InfoIcon size={12} aria-hidden="true" />
+                            </Link>
+                          )}>
                           {t("score.column")}
                         </SortTh>
                       )}
