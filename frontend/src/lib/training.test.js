@@ -180,3 +180,11 @@ test("#5462 injuryBadgeMessage: noeglen foelger enheden, og ca.-dato-noeglen kra
   assert.equal(injuryBadgeMessage({ unit: "calendar_day", count: 1 }).key, "injured");
   assert.equal(injuryBadgeMessage({ unit: "calendar_day", count: 4 }).key, "injured_plural");
 });
+
+test("#5462 injuryBadgeMessage(compact): smalle celler faar KORT tekst, datoen bor i title'en", () => {
+  assert.deepEqual(
+    injuryBadgeMessage({ unit: "race_day", count: 3, approxDate: "2026-06-13" }, { compact: true }),
+    { key: "injuredRaceDaysPlain", days: 3, date: null },
+    "roster-tabellens Status-celle deler plads med fire andre badges — hele saetningen ombrydes til fem linjer",
+  );
+});

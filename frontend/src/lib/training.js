@@ -175,9 +175,13 @@ export function injuryTimeLeft(condition, today = new Date()) {
 // funktion, saa alle traenings-flader (roster-raekken, rapport-raekken, mobil-kortet)
 // vaelger ens — og saa valget kan faeldes af en test uden at rendere React.
 // `date` er raa ISO; kald-stedet formaterer den med lib/intl.js' formatDate.
-export function injuryBadgeMessage(injury) {
+// `compact` = fladen har kun plads til ÉN kort linje (roster-tabellens smalle
+// Status-celle). Da staar loebsdagene i badget og ca.-datoen i title'en — samme
+// arbejdsdeling som ConditionChips paa rytterprofilen. Uden `compact` staar hele
+// saetningen inkl. "(ca. <dato>)", som issuet beder om.
+export function injuryBadgeMessage(injury, { compact = false } = {}) {
   if (injury?.unit === "race_day") {
-    return injury.approxDate
+    return injury.approxDate && !compact
       ? { key: "injuredRaceDays", days: injury.count, date: injury.approxDate }
       : { key: "injuredRaceDaysPlain", days: injury.count, date: null };
   }

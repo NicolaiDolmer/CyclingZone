@@ -1350,10 +1350,17 @@ export default function TrainingPage() {
               !rider.is_academy && contractExpiringBadgeKey(rider, activeSeasonNumber),
             ]} />
             {injured && (() => {
-              const msg = injuryBadgeMessage(injury);
+              // Status-cellen er smal (den deler plads med akademi-, pensions- og
+              // kontrakt-badges), saa badget er KORT og ca.-datoen staar i title'en.
+              const msg = injuryBadgeMessage(injury, { compact: true });
               return (
-                <span className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
-                  {t(msg.key, { days: msg.days, ...(msg.date ? { date: formatDate(msg.date, "short") } : {}) })}
+                <span
+                  className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger border border-cz-danger/30"
+                  title={injury.unit === "race_day" && injury.approxDate
+                    ? t("injuredApprox", { date: formatDate(injury.approxDate, "medium") })
+                    : undefined}
+                >
+                  {t(msg.key, { days: msg.days })}
                 </span>
               );
             })()}
@@ -2293,7 +2300,7 @@ export default function TrainingPage() {
                     const reportInjury = injuryTimeLeft(condition[row.rider_id], today);
                     const reportDaysLeft = reportInjury.count;
                     const reportInjured = reportDaysLeft > 0;
-                    const reportInjuryMsg = injuryBadgeMessage(reportInjury);
+                    const reportInjuryMsg = injuryBadgeMessage(reportInjury, { compact: true });
                     return (
                       <tr
                         key={row.rider_id}
@@ -2304,11 +2311,13 @@ export default function TrainingPage() {
                             {row.name}
                           </RiderLink>
                           {reportInjured && (
-                            <span className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
-                              {t(reportInjuryMsg.key, {
-                                days: reportInjuryMsg.days,
-                                ...(reportInjuryMsg.date ? { date: formatDate(reportInjuryMsg.date, "short") } : {}),
-                              })}
+                            <span
+                              className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger"
+                              title={reportInjury.unit === "race_day" && reportInjury.approxDate
+                                ? t("injuredApprox", { date: formatDate(reportInjury.approxDate, "medium") })
+                                : undefined}
+                            >
+                              {t(reportInjuryMsg.key, { days: reportInjuryMsg.days })}
                             </span>
                           )}
                         </td>

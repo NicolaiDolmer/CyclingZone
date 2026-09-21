@@ -40,6 +40,7 @@
   "injured_plural": "Skadet: {days} dage tilbage",
   "injuredRaceDays": "Skadet: {days, plural, one {1 løbsdag} other {# løbsdage}} tilbage (ca. {date})",
   "injuredRaceDaysPlain": "Skadet: {days, plural, one {1 løbsdag} other {# løbsdage}} tilbage",
+  "injuredApprox": "Tilbage ca. {date}",
   "noRiders": "Ingen ryttere på holdet endnu.",
   "report": "Dagens træningsrapport",
   "bonusApplied": "Konsistens-bonus aktiveret: +25% fremgang",
