@@ -873,6 +873,7 @@ Fed = uden for ±2 pp. **7 brud pr. division** (D1 1 · D2 2 · D3 2 · D4 2), o
 Metoden er uændret fra 7/8 — eksisterende vægte gange en tilt fundet med koordinat-descent, afrundet til heltal:
 
 ```
+cd backend   # begge scripts ligger under backend/scripts/ og køres derfra, som i §2d
 # 1) find tilt'en (read-only, kun SELECT, ingen DB-skrivning)
 infisical run --env=prod --silent -- node scripts/calibrateCalendarComposition.js --plan 4
 # 2) verificér mod den fulde tørkørsel (skriver aldrig uden --apply)
