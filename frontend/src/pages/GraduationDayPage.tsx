@@ -59,8 +59,14 @@ interface SegmentedProps {
   className?: string;
 }
 interface ErrorStateProps { title?: string; description?: string; action?: ReactNode; className?: string }
+interface PageHeaderProps { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; className?: string }
+interface SectionHeaderProps { title: ReactNode; action?: ReactNode; meta?: ReactNode; className?: string }
+interface RiderLinkProps { id: string; className?: string; children: ReactNode; "aria-label"?: string; title?: string }
 const SegmentedControl = Segmented as unknown as (props: SegmentedProps) => ReactNode;
 const ErrorStateBox = ErrorState as unknown as (props: ErrorStateProps) => ReactNode;
+const PageHead = PageHeader as unknown as (props: PageHeaderProps) => ReactNode;
+const CardHeader = SectionHeader as unknown as (props: SectionHeaderProps) => ReactNode;
+const RiderName = RiderLink as unknown as (props: RiderLinkProps) => ReactNode;
 
 function formatMoney(n: number | null | undefined): string {
   if (n == null) return "–";
@@ -143,7 +149,7 @@ export default function GraduationDayPage() {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto">
-        <PageHeader title={t("graduationDay.title")} />
+        <PageHead title={t("graduationDay.title")} />
         <ErrorStateBox title={t("error.loadTitle")} description={t("error.loadBody")} />
       </div>
     );
@@ -161,7 +167,7 @@ export default function GraduationDayPage() {
   if (!enabled || rows.length === 0) {
     return (
       <div className="max-w-4xl mx-auto">
-        <PageHeader title={t("graduationDay.title")} subtitle={t("graduationDay.emptySubtitle")} />
+        <PageHead title={t("graduationDay.title")} subtitle={t("graduationDay.emptySubtitle")} />
         <EmptyState
           icon={<InboxIcon size={26} aria-hidden="true" />}
           title={t("graduationDay.emptyTitle")}
@@ -180,7 +186,7 @@ export default function GraduationDayPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <PageHeader
+      <PageHead
         title={t("graduationDay.title")}
         subtitle={subtitle}
         actions={
@@ -193,7 +199,7 @@ export default function GraduationDayPage() {
       <SectionStack>
         {groups.map((group) => (
           <Section key={group.key}>
-            <SectionHeader
+            <CardHeader
               title={t([
                 `graduationDay.transition.${group.fromSquad ?? "unknown"}_${group.toSquad}`,
                 "graduationDay.transition.fallback",
@@ -302,7 +308,7 @@ function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting,
       {/* 1 · Identitet */}
       <div className="min-w-0">
         <p className="truncate text-[13.5px] font-medium">
-          <RiderLink id={g.riderId} className="text-cz-1 transition-colors hover:text-cz-accent-t">{g.name}</RiderLink>
+          <RiderName id={g.riderId} className="text-cz-1 transition-colors hover:text-cz-accent-t">{g.name}</RiderName>
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {g.nationality_code && <NationCell code={g.nationality_code} />}
