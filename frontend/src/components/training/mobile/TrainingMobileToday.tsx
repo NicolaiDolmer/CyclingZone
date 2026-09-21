@@ -5,7 +5,14 @@
 // er "overblik foerst, detaljer eet tryk vaek":
 //
 //   dagens loebsdage (stribe)  ->  programmet (gitter)  ->  i gaar (kvittering)
-//   ->  hele truppens dag (tabel)  ->  den valgte rytters kort  ->  assistenten
+//   ->  hele truppens dag (tabel, med den valgte rytters kort udfoldet INDE i
+//       listen)  ->  assistenten
+//
+// EJER-BESLUTNING 21/9 (variant A): kortet folder ud LIGE UNDER den rytter man
+// trykker paa, ikke under hele tabellen. Beta-tester @egomadsen 19/9: *"Der
+// bliver meget scrolleri naar rytteren folder sig ud under tabellen."* Maalt
+// 21/9: 201 px fra raekke til kort ved rytter nr. 6 af 10. Alt andet i mockup 2
+// staar fast. Selve raekken bygges i TrainingMobileRoster.
 //
 // Mobil har sit EGET udvalg af tal (ejer 18/9, spoergsmaal 1): tabellen viser
 // dagens loebsdage pr. rytter, mens form, traethed, fokus og fremgang ligger i
@@ -17,7 +24,7 @@
 // paa `useIsMobileViewport()`, og alle fetches, mutationer og state-maskiner
 // bliver liggende dér.
 
-import { useId, useMemo } from "react";
+import { useEffect, useId, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { DISPLAY_RECIPES } from "../../../lib/generated/displayRecipes.js";
 import {
@@ -68,6 +75,7 @@ export default function TrainingMobileToday({
   assistantSlot,
   sortSlot,
   scoreFor = null,
+  openFirstForTour = false,
 }: {
   riders: MobileRider[];
   columns: RaceDayColumn[];
@@ -100,6 +108,9 @@ export default function TrainingMobileToday({
   // `training_score_visible` er off, og saa findes hverken kolonnen eller
   // blokken i kortet — praecis som paa desktop.
   scoreFor?: ((riderId: string) => MobileScoreView | null) | null;
+  // #2819: sandt naar onboarding-touren koerer paa denne side. Se effekten
+  // nedenfor — det er den ENESTE grund til at et kort aabner af sig selv.
+  openFirstForTour?: boolean;
 }) {
   const { t } = useTranslation("training");
   const tTypes = useTranslation("riderTypes").t;
@@ -154,13 +165,26 @@ export default function TrainingMobileToday({
     [weekdays, columns, intensityForWeekday],
   );
 
-  // Den FOERSTE rytter er valgt som udgangspunkt, praecis som i mockup 2. Det
-  // er ogsaa det der goer fladen forklarbar: onboarding-touren (#2819) peger paa
-  // et konkret kort, ikke paa en tom plads, og spilleren ser med det samme HVAD
-  // et tryk paa en raekke giver ham.
-  const selected =
-    riders.find((rider) => rider.id === selectedRiderId) ?? riders[0] ?? null;
+  // INGEN rytter er foldet ud ved indlaesning (ejer 21/9). Foer blev den
+  // oeverste valgt automatisk; nu hvor kortet bor inde i listen, ville det
+  // skubbe hele truppen ned og tage netop det overblik fladen er bygget til at
+  // give ("overblik foerst"). Et lukket kort er ogsaa den aerlige udgangs-
+  // tilstand: spilleren har ikke valgt nogen endnu.
+  const selected = riders.find((rider) => rider.id === selectedRiderId) ?? null;
   const selectedId = selected?.id ?? null;
+
+  // #2819: onboarding-tourens tredje trin peger paa fremgangen pr. evne, som
+  // paa telefonen kun findes i rytterens kort. Uden auto-valget ville ankeret
+  // mangle praecis naar touren koerer, saa touren — og KUN touren — folder den
+  // oeverste rytter ud, een gang. `didOpenForTour` goer det uigenkaldeligt:
+  // lukker spilleren kortet, bliver det lukket.
+  const didOpenForTour = useRef(false);
+  useEffect(() => {
+    if (!openFirstForTour || didOpenForTour.current) return;
+    if (selectedRiderId || riders.length === 0) return;
+    didOpenForTour.current = true;
+    onSelectRider(riders[0].id);
+  }, [openFirstForTour, selectedRiderId, riders, onSelectRider]);
 
   // #4851: kolonnen findes kun naar BEGGE gaelder — flaget er on (scoreFor er
   // sat) OG loebsdags-kolonnerne ikke allerede bruger tabellens budget. Falder
@@ -190,9 +214,7 @@ export default function TrainingMobileToday({
         onSelect={onSelectRider}
         detailId={detailId}
         scoreFor={scoreColumn}
-      />
-
-      {selected && (
+        detail={selected && (
         <TrainingMobileRiderCard
           id={detailId}
           name={`${selected.firstname ?? ""} ${selected.lastname ?? ""}`.trim()}
@@ -225,7 +247,8 @@ export default function TrainingMobileToday({
             name: `${selected.firstname ?? ""} ${selected.lastname ?? ""}`.trim(),
           })}
         />
-      )}
+        )}
+      />
 
       {assistantSlot}
     </div>

@@ -1,7 +1,16 @@
 // TrainingMobileRiderCard — den valgte rytters fulde kort (#3643, mockup 2).
 //
-// Tabellen giver overblikket; kortet giver dybden — EEN gang, under tabellen,
-// i stedet for i hver raekke. Indholdet er bundet af #3643-kommentaren 13/8:
+// Tabellen giver overblikket; kortet giver dybden — for EEN rytter ad gangen,
+// i en udfoldet raekke LIGE UNDER ham (ejer-beslutning 21/9, variant A; foer
+// stod det een gang under hele tabellen, og beta-tester @egomadsen 19/9 maalte
+// prisen i scroll: 201 px fra raekke til kort ved rytter nr. 6 af 10).
+//
+// Kortet tegner derfor ikke laengere sin egen ramme: det ligger inde i tabellens
+// kort, og en ramme mere ville vaere en kasse i en kasse (TASTE P3). Den
+// tinte(de) raekke ovenover er kortets hoved, og cellens hairline lukker det
+// nedadtil. Indhold, typografi, farver og spacing er uaendrede.
+//
+// Indholdet er bundet af #3643-kommentaren 13/8:
 //
 //   1. fremgang pr. evne for det aktive fokus (AbilityReceiptRow, den samme
 //      kvittering rytterprofilen viser — to flader kan ikke sige forskelligt)
@@ -72,7 +81,10 @@ export default function TrainingMobileRiderCard({
   const tRider = useTranslation("rider").t;
 
   return (
-    <section id={id} className="rounded-cz border border-cz-border bg-cz-card p-3">
+    // `aria-label` er rytterens navn: naar raekkens knap peger herhen med
+    // `aria-controls`, skal maalet kunne navngives — ellers er "udfoldet" en
+    // paastand uden en flade at pege paa.
+    <section id={id} aria-label={name} className="bg-cz-card p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-[15px] font-semibold text-cz-1">{name}</h3>

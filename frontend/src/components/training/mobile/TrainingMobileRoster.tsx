@@ -18,12 +18,27 @@
 // virke). Nu er det omvendt: tal-kolonnerne er SMALLE og faste, maalt efter
 // deres eget laengste indhold, og navnet faar resten.
 //
-// Rytteren man trykker paa faar sit fulde kort EEN gang UNDER tabellen, ikke i
-// hver raekke. Tastaturvejen er knappen i navnecellen (aria-expanded/-controls);
+// #3643 (ejer-beslutning 21/9, variant A): kortet folder ud LIGE UNDER den
+// rytter man trykker paa — inde i listen, som en ekstra `<tr>` med een
+// `<td colSpan>` i samme `<tbody>`. Foer stod det EEN gang under HELE tabellen,
+// og beta-tester @egomadsen 19/9 ramte prisen: *"Der bliver meget scrolleri naar
+// rytteren folder sig ud under tabellen. Den burde maaske bare folde sig ud lige
+// under den paagaeldende rytter."* Maalt 21/9 paa rytter nr. 6 af 10: 201 px fra
+// raekkens bund til kortets top — og en rigtig trup er 25-30 ryttere, ikke 10.
+// Nu er afstanden 0 px.
+//
+// Hvorfor en raekke i SAMME tabel og ikke et element under den: kolonnebudgettet
+// ovenfor bygger paa `table-fixed` + colgroup, og en `colSpan`-celle deltager
+// ikke i den fordeling. Kortet kan altsaa fylde hele bredden uden at roere en
+// eneste kolonnebredde. Raekken baerer INGEN onClick: et tryk inde i kortet (fx
+// "Skift") maa ikke lukke det igen.
+//
+// Tastaturvejen er uaendret: knappen i navnecellen (aria-expanded/-controls);
 // de oevrige celler er museklik-genveje til den samme handling.
 
+import { Fragment, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { MobileScoreCell, RaceDayColumn } from "../../../lib/trainingMobileModel.ts";
+import { expandScrollAdjustment, type MobileScoreCell, type RaceDayColumn } from "../../../lib/trainingMobileModel.ts";
 
 export type RosterCell = {
   label: string;
@@ -60,6 +75,7 @@ export default function TrainingMobileRoster({
   selectedId,
   onSelect,
   detailId,
+  detail = null,
   scoreFor = null,
 }: {
   riders: RosterRider[];
@@ -67,8 +83,12 @@ export default function TrainingMobileRoster({
   cellFor: (riderId: string, column: RaceDayColumn) => RosterCell;
   selectedId: string | null;
   onSelect: (riderId: string) => void;
-  // id'et paa kortet under tabellen, saa raekkens knap kan pege paa det.
+  // id'et paa det aabne kort, saa den valgte raekkes knap kan pege paa det.
+  // Der er altid hoejst EET aabent kort, saa eet id er nok.
   detailId: string;
+  // Den valgte rytters kort. Bygges af TrainingMobileToday (som ejer alle
+  // kortets data) og indsaettes her, i raekken lige under rytteren.
+  detail?: React.ReactNode;
   // #4851: dagens traeningsscore som en ekstra, sidste kolonne. `null` =
   // kolonnen findes IKKE i DOM'en — enten fordi `training_score_visible` er off,
   // eller fordi loebsdags-kolonnerne allerede bruger tabellens budget
@@ -77,6 +97,42 @@ export default function TrainingMobileRoster({
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
+  // Navn + een pr. loebsdag + evt. score. Kortets celle skal spaende dem alle,
+  // ellers ville `table-fixed` klemme den ned i navnekolonnens bredde.
+  const detailColSpan = 1 + columns.length + (scoreFor ? 1 : 0);
+
+  const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
+  const detailRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  // Naar et kort der stod OVER den trykkede raekke lukker, forsvinder dets
+  // hoejde fra flowet og raekken under fingeren hopper op — i vaerste fald ud
+  // af syne. Efter layout (useLayoutEffect koerer FOER browseren maler) rettes
+  // rullepositionen saa raekken og kortets foerste 44 px staar synlige, og
+  // kortet ikke gemmer sig bag den faste bundnavigation.
+  //
+  // Rullet er MOMENTANT, ikke "smooth": det er en layout-korrektion der skal
+  // vaere sket inden fingeren loefter, ikke en effekt. Dermed er der heller
+  // ingen ny animation at slaa fra for `prefers-reduced-motion` — fladen faar
+  // ikke bevaegelse den ikke havde i forvejen.
+  useLayoutEffect(() => {
+    if (!selectedId) return;
+    const row = rowRefs.current.get(selectedId);
+    if (!row || typeof window === "undefined") return;
+    const rowRect = row.getBoundingClientRect();
+    const cardRect = detailRowRef.current?.getBoundingClientRect() ?? null;
+    // Bundnavigationen (MobileQuickNav) ligger OVEN PAA indholdet, saa dens
+    // hoejde maales i stedet for at blive gentaget som et tal her. Findes den
+    // ikke (desktop-bredder), er hele viewporten synlig.
+    const navHeight =
+      document.querySelector("[data-mobile-quick-nav]")?.getBoundingClientRect().height ?? 0;
+    const delta = expandScrollAdjustment({
+      rowTop: rowRect.top,
+      rowBottom: rowRect.bottom,
+      cardBottom: cardRect?.bottom ?? rowRect.bottom,
+      safeBottom: window.innerHeight - navHeight,
+    });
+    if (delta) window.scrollBy(0, delta);
+  }, [selectedId]);
 
   return (
     <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card">
@@ -124,13 +180,24 @@ export default function TrainingMobileRoster({
           {riders.map((rider, index) => {
             const isSelected = rider.id === selectedId;
             return (
-              <tr key={rider.id} className={isSelected ? "bg-cz-subtle" : ""}>
+              <Fragment key={rider.id}>
+              <tr
+                ref={(el) => {
+                  if (el) rowRefs.current.set(rider.id, el);
+                  else rowRefs.current.delete(rider.id);
+                }}
+                className={isSelected ? "bg-cz-subtle" : ""}
+              >
                 <td className="border-b border-e border-cz-border align-middle last:border-b-0">
                   <button
                     type="button"
                     onClick={() => onSelect(rider.id)}
                     aria-expanded={isSelected}
-                    aria-controls={detailId}
+                    // Kortet findes kun mens raekken er foldet ud, saa
+                    // `aria-controls` saettes kun dér: et id der peger paa et
+                    // element der ikke er i DOM'en er et loefte skaermlaeseren
+                    // ikke kan indfri.
+                    aria-controls={isSelected ? detailId : undefined}
                     // #2819: onboarding-tourens foerste anker paa /training.
                     // Paa desktop sidder det paa Dag-knappen i raekken; her er
                     // raekken SELV vejen til dagens valg, saa ankeret hoerer paa
@@ -210,6 +277,18 @@ export default function TrainingMobileRoster({
                   );
                 })()}
               </tr>
+              {/* Kortet, lige under rytteren. Raekken har INGEN onClick: et tryk
+                  inde i kortet (fx "Skift") maa ikke lukke det igen. Cellen er
+                  uden padding — kortet baerer sin egen (`p-3`), praecis som da
+                  det stod under tabellen. */}
+              {isSelected && detail && (
+                <tr ref={detailRowRef}>
+                  <td colSpan={detailColSpan} className="border-b border-cz-border p-0 align-top">
+                    {detail}
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             );
           })}
         </tbody>

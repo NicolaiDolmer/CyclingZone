@@ -227,6 +227,61 @@ export function canShowScoreColumn(columns: readonly RaceDayColumn[] | null | un
   return (columns?.length ?? 0) + 1 <= MOBILE_DATA_COLUMN_BUDGET;
 }
 
+// ── Kortet folder ud LIGE UNDER rytteren (#3643, ejer 21/9) ─────────────────
+//
+// Beta-tester @egomadsen 19/9: *"Der bliver meget scrolleri naar rytteren
+// folder sig ud under tabellen. Den burde maaske bare folde sig ud lige under
+// den paagaeldende rytter."* Maalt 21/9 paa rytter nr. 6 af 10: 201 px mellem
+// raekkens bund og kortets top. En rigtig trup er 25-30 ryttere.
+//
+// Naar kortet nu bor INDE i listen, opstaar et nyt problem: lukker et kort der
+// stod OVER den raekke man trykker paa, forsvinder dets hoejde fra flowet, og
+// den raekke fingeren lige ramte hopper op — i vaerste fald ud af syne. Derfor
+// denne rene funktion: den siger hvor mange px siden skal rulle EFTER layout,
+// saa raekken og toppen af kortet staar synlige.
+//
+// Alt er i viewport-koordinater (getBoundingClientRect), og svaret er et delta
+// til window.scrollBy: positivt = rul ned, negativt = rul op, 0 = lad vaere.
+
+// Hvor meget af kortet der skal vaere synligt under raekken. 44 px er IKKE et
+// nyt tal: det er det samme tryk-maal (#1602, `min-h-11`) raekkerne og kortets
+// egne knapper allerede bruger — een raekke-hoejde af kortet er nok til at man
+// SER at noget foldede ud, uden at kraeve at hele kortet presses ind i skaermen.
+export const MOBILE_CARD_PEEK = 44;
+
+export function expandScrollAdjustment({
+  rowTop,
+  rowBottom,
+  cardBottom,
+  safeTop = 0,
+  safeBottom,
+  peek = MOBILE_CARD_PEEK,
+}: {
+  rowTop: number;
+  rowBottom: number;
+  cardBottom: number;
+  // Oeverste synlige kant (0 = skaermens top).
+  safeTop?: number;
+  // Nederste synlige kant. Den faste bundnavigation (MobileQuickNav, 56 px)
+  // ligger OVEN PAA indholdet, saa et kort der slutter under denne linje er
+  // gemt bag den — ikke bare "langt nede".
+  safeBottom: number;
+  peek?: number;
+}): number {
+  if (![rowTop, rowBottom, cardBottom, safeTop, safeBottom].every((n) => Number.isFinite(n))) return 0;
+
+  // Raekken foerst: er den rullet op over kanten (typisk fordi et kort OVER den
+  // lige lukkede), er det den eneste rettelse der betyder noget.
+  if (rowTop < safeTop) return Math.round(rowTop - safeTop);
+
+  // Ellers: er raekkens bund eller kortets foerste 44 px gemt bag bundnav'en,
+  // saa rul praecis saa langt ned — men ALDRIG saa langt at raekken selv ryger
+  // ud over toppen. Raekken under fingeren vejer tungere end kortets udsyn.
+  const wantBottom = Math.min(cardBottom, rowBottom + peek);
+  if (wantBottom <= safeBottom) return 0;
+  return Math.round(Math.min(wantBottom - safeBottom, rowTop - safeTop));
+}
+
 // ── Program-gitteret: 7 ugedage x N loebsdage ───────────────────────────────
 
 // Een celle i programgitteret. `intensity` er holdets (eller rytterens) rytme
