@@ -162,7 +162,22 @@ const FINALE_WEIGHTS_BY_PROFILE = Object.freeze({
   // opad 40-60 % → 50 · fladt 15-30 % → 25 · udbrud 15-30 % → 25.
   hilly:         Object.freeze([{ value: "punch", weight: 50 }, { value: "reduced_sprint", weight: 25 }, { value: "breakaway", weight: 25 }]),
   // opad 45-65 % · nedad 20-35 % · udbrud 10-25 %. Var 60 % descent — kernen i #4272.
-  mountain:      Object.freeze([{ value: "long_climb", weight: 41 }, { value: "punch", weight: 8 }, { value: "descent", weight: 34 }, { value: "breakaway", weight: 17 }]),
+  //
+  // #5405 (21/9): descent-vægten stod på 34 — båndets ØVERSTE kant (20-35), ikke dets
+  // midte, modsat filens egen regel tre afsnit oppe ("VÆGTENE SIGTER MOD BÅNDENES MIDTE,
+  // ikke mod kanten"). Med n = 60-80 bjergetaper på sæson-aggregatet er standardfejlen
+  // 5-6 pp, så en vægt på kanten ligger uden for båndet cirka halvdelen af trækkene — og
+  // gjorde det målbart: "mountain slutter nedad" var rødt i §7b både før og efter
+  // kompositions-kalibreringen. Vægtene er derfor flyttet til båndenes midte
+  // (opad 55 · nedad 27 · udbrud 18), hvilket er den regel de skulle have fulgt hele
+  // tiden — ikke en ny beslutning om hvordan bjergetaper skal slutte.
+  //
+  // ØVRE GRÆNSE FOR HVOR LANGT NED: nedkørsels-finalen er også et GULV
+  // (descent_finale_min, raceRouteRealismMetrics.js — D1 8 · D2 5 · D3 4 · D4 3), og
+  // #4272 har allerede betalt én gang for et gulv båndet ikke kunne levere ("en deadlock
+  // med 5 % fejlrate"). 27 % er målt til at holde begge veje på S4-planen og på det
+  // frosne snapshot; gå ikke lavere uden at re-derivere gulvene i samme ombæring.
+  mountain:      Object.freeze([{ value: "long_climb", weight: 47 }, { value: "punch", weight: 8 }, { value: "descent", weight: 27 }, { value: "breakaway", weight: 18 }]),
   // opad 80-100 % · nedad maks 15 %.
   high_mountain: Object.freeze([{ value: "long_climb", weight: 84 }, { value: "punch", weight: 9 }, { value: "descent", weight: 7 }]),
   itt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
@@ -241,9 +256,9 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // 41-løbs-researchen viste 0/9 rigtige grand tours (2024-2026) sluttede på bjerg —
   // flad (77,8%) eller enkeltstart (22,2%) dominerer, og hårdeste etape lå næstsidst i
   // 88,9% af tilfældene. Se orderAndBuildGrandTour/toGrandTourFinale nedenfor.
-  grand_tour:     { kind: "stage", grandTourOrder: true, openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 15 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 25 }, { value: "mountain", weight: 19 }, { value: "high_mountain", weight: 13 }, { value: "itt", weight: 19 }] },
-  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 25 }, { value: "hilly", weight: 25 }, { value: "mountain", weight: 31 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 9 }] },
-  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 40 }, { value: "hilly", weight: 62 }, { value: "mountain", weight: 13 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 12 }] },
+  grand_tour:     { kind: "stage", grandTourOrder: true, openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 15 }, { value: "rolling", weight: 21 }, { value: "hilly", weight: 24 }, { value: "mountain", weight: 17 }, { value: "high_mountain", weight: 12 }, { value: "itt", weight: 19 }] },
+  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 24 }, { value: "hilly", weight: 24 }, { value: "mountain", weight: 28 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 9 }] },
+  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 38 }, { value: "hilly", weight: 59 }, { value: "mountain", weight: 12 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 12 }] },
   // #3295/#3327/#3371: bjerg-garantien erstattet af en KUPERET garanti. En "sprinter-uge"
   // der pr. definition indeholder en bjergetape modsiger sit eget navn — Danmark Rundt,
   // Tour of Guangxi og Tour Down Under afgøres af sprintere og puncheurs, ikke klatrere,
@@ -256,7 +271,7 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // skabelon. Konkret konsekvens: TIER_MOUNTAIN_FREE_STAGE_RACE_MIN (#3327) kan
   // opfyldes af tier 2/3, hvor hilly_tour hidtil var den ENESTE mulige kilde og
   // løbsudvalget ofte slet ikke fik en.
-  sprinters_week: { kind: "stage", guarantees: ["flat", "hilly"], filler: [{ value: "flat", weight: 30 }, { value: "rolling", weight: 40 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 9 }] },
+  sprinters_week: { kind: "stage", guarantees: ["flat", "hilly"], filler: [{ value: "flat", weight: 30 }, { value: "rolling", weight: 38 }, { value: "hilly", weight: 21 }, { value: "mountain", weight: 9 }, { value: "itt", weight: 9 }] },
   // #3295: itt tilføjet som GARANTI (var kun filler-vægt 10). balanced_week er
   // kalenderens største arketype (19 katalog-løb / 88 løbsdage i S2's udvalg), og den
   // manglende enkeltstart dér er hovedårsagen til at ITT lå på 6,6 % mod K-B's mål.
@@ -267,10 +282,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // Realisme: Paris-Nice, Tirreno-Adriatico, Tour de Romandie og Critérium du Dauphiné
   // har alle en enkeltstart i normalår — det er kendetegnende for formatet, ikke en
   // undtagelse. Loftet (max(garanterede, 2)) er uændret, så et løb kan stadig højst få 2.
-  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain", "itt"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 37 }, { value: "hilly", weight: 33 }, { value: "mountain", weight: 17 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 16 }] },
+  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain", "itt"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 35 }, { value: "hilly", weight: 31 }, { value: "mountain", weight: 15 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 16 }] },
   // Ørken/sprinter-tur med faste bjergankomster: garanteret 1 TT + 2 bjerg, resten
   // flad/rullende (fx UAE Tour). Filler kun flad/rullende → "resten er flade".
-  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 45 }, { value: "rolling", weight: 40 }] },
+  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 45 }, { value: "rolling", weight: 38 }] },
 
   // #2769 (Sub-1): fritstående enkeltstart-endagsløb (#2177 — 0 fritstående ITT i dag).
   itt_classic: { kind: "single", weights: [{ value: "itt", weight: 1 }] },
@@ -279,10 +294,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // sænker M-Down-andelen — mountain_tour garanterer kun mellembjerg/descent). high_mountain
   // sidst via STAGE_ORDER_HINT (7) → dronningeetape/top-finish. En itt-garanti giver samtidig
   // en enkeltstart i løbet.
-  summit_tour: { kind: "stage", guarantees: ["flat", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 8 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 19 }, { value: "high_mountain", weight: 24 }, { value: "itt", weight: 12 }] },
+  summit_tour: { kind: "stage", guarantees: ["flat", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 8 }, { value: "rolling", weight: 21 }, { value: "hilly", weight: 21 }, { value: "mountain", weight: 17 }, { value: "high_mountain", weight: 22 }, { value: "itt", weight: 12 }] },
 
   // #2769: etapeløb med GARANTERET brosten-etape (#2527/#2755 — 0 brosten i etapeløb i dag).
-  cobbled_tour: { kind: "stage", guarantees: ["flat", "cobbles", "mountain"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 37 }, { value: "cobbles", weight: 8 }, { value: "hilly", weight: 30 }, { value: "mountain", weight: 12 }, { value: "itt", weight: 9 }] },
+  cobbled_tour: { kind: "stage", guarantees: ["flat", "cobbles", "mountain"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 35 }, { value: "cobbles", weight: 8 }, { value: "hilly", weight: 29 }, { value: "mountain", weight: 11 }, { value: "itt", weight: 9 }] },
 });
 
 // #3295 KALIBRERING (2026-08-06) — hvordan filler-vægtene ovenfor blev fundet.
@@ -375,6 +390,84 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 // pass1-golden.json-fixturen er REGENERERET (r2 = balanced_week ændrede pass-1-output,
 // da dens filler-vægte ændrede sig — samme "bevidst ændring, fixture regenereret"-
 // præcedens som #3326-korrektionen ovenfor).
+
+// #5405 RE-KALIBRERING (2026-09-21) — udløst af katalog-udvidelsen i #5450: tre nye
+// bjergrige etapeløb (arketype summit_tour) plus hævede summit-reservationer i D2 og D3.
+// Katalog-ændringen løste §6b's afgørende bjergdage i D2/D3, men skubbede sæsonens
+// K-B-komposition den anden vej: bjerg over det øvre bånd og kuperet ned på den nedre
+// grænse i S4-tørkørslen på main. Det er præcis den vekselvirkning der er beskrevet to
+// gange ovenfor — kataloget bestemmer HVAD der kan fordeles, vægtene fordeler det.
+//
+// NY tilt (oven på 7/8-vægtene, samme maskineri som begge kalibreringer ovenfor —
+// applyCompositionTilt over kompositions-kategorierne, ingen frie vægte):
+//
+//     flad ×1,0   ·   kuperet (rolling+hilly+classic) ×0,95   ·   bjerg ×0,9
+//     (ITT, brosten og TTT står på 1,0)
+//
+// ÉT FÆLLES TILT, TO DATASÆT — og hvorfor det er hele pointen. Den FØRSTE runde af denne
+// kalibrering søgte mod S4-planen ALENE. Den ramte S4 pænt og gjorde regressionsvagten i
+// calendarCompositionCalibration.test.js RØD: det frosne kalender-snapshot i
+// __fixtures__ blev drevet uden for ±2 pp på kuperet. Vagten er ikke en formalitet — den
+// findes præcis for at fange at en velment justering af én sæsons balance skubber en
+// anden skæv (se dens egen docstring). Runde 2 søger derfor mod BEGGE på én gang, som
+// 7/8-kalibreringen gjorde med S2+S3: kandidat-tilt'en evalueres gennem den fulde
+// pipeline (resolveSeasonDraw + scoreSeason + computeCompositionStats, dvs.
+// evaluateTilt's egne led) på både snapshottet og S4-planen, og kun et tilt der holder
+// BEGGE inden for ±2 pp uden realisme-brud kommer i betragtning. Tallene i
+// balance-internals-noten nedenfor er målt sådan.
+//
+// Fundet og verificeret med (begge read-only; buildSeasonCalendar skriver aldrig uden
+// --apply):
+//     infisical run --env=prod --silent -- node backend/scripts/calibrateCalendarComposition.js --plan 4
+//     infisical run --env=prod --silent -- node backend/scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
+//
+// FORSKEL fra 7/8-metoden: dér var begge sæsoner FREMTIDIGE (S2 materialiseret med fast
+// løbsudvalg, S3 planlagt under nye targets). I dag er S2 og S3 begge materialiserede og
+// LÅSTE — en vægt-ændring rører dem ikke. Snapshottet er derfor ikke en sæson vi bygger,
+// men den FROSNE prøve vagten måler på; S4-planen er den sæson der faktisk bygges. Begge
+// skal holde, af hver sin grund.
+//
+// MÅLT FØR/EFTER på S4-tørkørslen (kvalitativt her, jf. anonymiserings-reglen for et
+// offentligt repo — de fulde tal ligger i den gitignorerede
+// balance-internals/2026-09-21-s4-komposition-kalibrering/):
+//   · K-B-kompositionen: TO kategorier uden for ±2 pp (bjerg for højt, kuperet på den
+//     nedre grænse) → NUL. Alle seks akser inden for båndet.
+//   · §6's strenge ±2 pp pr. division: syv afvigelser fordelt på alle fire divisioner →
+//     tre. D1 og D2 er rene, D3 har én, D4 to.
+//   · §6b's uniforme mål (enkeltstart, brosten, højbjerg) holder i ALLE fire divisioner
+//     både før og efter. Højbjerg er dét tallet der kunne have knækket — tilt'ens
+//     bjerg-faktor rammer `high_mountain` og `mountain` ens, fordi de deler
+//     kompositions-kategori (PROFILE_TO_CATEGORY i calendarCompositionTargets.js), og en
+//     kraftigere bjerg-dæmpning end den valgte skubbede faktisk D1 under målet i målingen.
+//     Det var stop-betingelsen for hvor langt bjerg-faktoren måtte gå.
+//   · Kvote (§1b) 100 % i alle fire · 140 løbsdage i alle fire (§1d) · 0 placeringsbrud ·
+//     terræn-gulvene (§5) holder · realisme-båndene GO.
+//
+// §7b's FINALE-BÅND — rettet FØR der genereres, ikke rapporteret som en pris. Ejerens
+// regel 20/9 er at en rettelse ikke må gøre en anden regel værre. Runde 1 gjorde netop
+// det (antallet af linjer uden for båndet steg), og det er lukket her:
+//   · `mountain slutter nedad` var rød både FØR og EFTER kompositions-kalibreringen,
+//     fordi descent-vægten i FINALE_WEIGHTS_BY_PROFILE stod på båndets ØVERSTE KANT i
+//     stedet for dets midte. Den er flyttet til midten (se kommentaren ved tabellen).
+//     Det er ikke en ny beslutning om hvordan bjergetaper skal slutte — det er den regel
+//     tabellen selv skriver, anvendt konsekvent.
+//   · De rullende linjer og D4's bjerg-udbrud fra runde 1 var stikprøve-udfald af DEN
+//     tilt og er væk med den fælles tilt.
+// Tilbage står FEM linjer mod de seks der stod på main: `hilly slutter udbrud` (under
+// 1 pp over båndet på en stikprøve hvor standardfejlen er 5 pp), `cobbles slutter udbrud`
+// (kan ikke lukkes af vægte — brostens-båndenes to midtpunkter summer ikke til 100 %) og
+// TRE grus-linjer fra ÉN stikprøve på n=2, som er en KATALOG-grænse: ingen vægt kan
+// lukke dem, kun flere grusløb. Ingen af de fem er på divisions-niveau. Finale-båndene
+// har krævet `--allow-finale-drift` siden 3/9 (#4272); de er stadig ikke grønne, men de
+// er tættere på end før dette spor begyndte.
+//
+// pass1-golden.json-fixturen er REGENERERET (vægtene ændrer pass-1-output for de
+// berørte arketyper — samme "bevidst ændring, fixture regenereret"-præcedens som
+// #3326-korrektionen ovenfor). calendarGoldenSnapshot.s3.json er derimod UÆNDRET:
+// `node backend/scripts/dev/calendarGoldenDiff.mjs` er grøn (exit 0), fordi den gyldne
+// diff måler PLACERINGEN af løb (hvilke løb på hvilke dage i hvilken division), og den
+// afgøres af selection+packing — ikke af filler-vægtene, der kun bestemmer hvilket
+// TERRÆN et allerede-placeret løbs etaper får.
 
 
 // Opslag: terrain_archetype → config (eller null ved ukendt/manglende → generisk).

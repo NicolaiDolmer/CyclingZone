@@ -43,16 +43,28 @@ function kør(args = []) {
 //   · monument-i-GT-spænd    → lukket af DENNE PR's pakker-ændring (#4203)
 //   · D2 bjerg under målet   → lukket af katalog-migrationen (#4708), nu i fixturen
 //   · D4 rolling under gulvet→ samme migration
-// Tilbage står SEKS afvigelser, alle på §7b's finale-bånd på sæson-aggregatet. De er
-// ENUMERERET i KENDTE_FIXTURE_BRUD, ikke tolereret i en klump: testen fejler stadig hvis
-// der kommer ét brud mere, eller hvis et af dem forsvinder uden at listen følger med.
+// Tilbage står afvigelser på §7b's finale-bånd. De er ENUMERERET i KENDTE_FIXTURE_BRUD,
+// ikke tolereret i en klump: testen fejler stadig hvis der kommer ét brud mere, eller hvis
+// et af dem forsvinder uden at listen følger med.
 //
-// HVORFOR DE IKKE KAN LUKKES I DENNE PR: fem af dem er filler-vægt-kalibrering (ejer-
-// besluttet 3/9 som en S5-opgave, CALENDAR_RULES §6b/§7b) og tre af de fem er samme
-// n=2-stikprøve på grus. Ingen af dem er en placerings-regel, og ingen af dem kan lukkes
-// ved at flytte et løb. De SAMME seks findes i dry-runnet mod prods katalog samme dag — se
-// docs/audits/season4-calendar-dryrun-2026-09-03.md, afsnittet "Dry-run efter #4203-pakker".
-const KENDTE_BALANCEBRUD = 6;
+// HVORFOR DE IKKE KAN LUKKES I DENNE PR: de er filler-vægt-kalibrering (ejer-besluttet 3/9
+// som en S5-opgave, CALENDAR_RULES §6b/§7b), og tre af dem er samme n=2-stikprøve på grus.
+// Ingen af dem er en placerings-regel, og ingen af dem kan lukkes ved at flytte et løb.
+//
+// #5405 (21/9, runde 2): tallet er 6 → 5. Runde 1's kalibrering hævede det midlertidigt til
+// 8, men den tilt blev fundet mod S4-planen ALENE og drev samtidig regressionsvagten i
+// calendarCompositionCalibration.test.js uden for ±2 pp. Runde 2 finder ÉT FÆLLES tilt der
+// holder både det frosne snapshot og S4-planen inden for båndet, og lukker oven i købet
+// `mountain slutter nedad` ved at flytte bjerg-etapernes finale-vægte til båndenes midte
+// (raceStageProfileGenerator.js) — vægten stod på båndets øverste kant, modsat filens egen
+// regel, og var rød både før og efter kompositions-kalibreringen.
+//
+// Tilbage står fem linjer: hilly-udbrud (under 1 pp over båndet på en stikprøve hvor
+// standardfejlen er 5 pp), cobbles-udbrud (kan ikke lukkes af vægte — båndenes midtpunkter
+// summer ikke til 100 %) og tre grus-linjer fra én stikprøve på n=2 (katalog-grænse, ikke
+// en vægt-grænse). Hver af dem står navngivet i KENDTE_FIXTURE_BRUD med sin begrundelse.
+// De samme fem findes i tørkørslen mod prods katalog samme dag.
+const KENDTE_BALANCEBRUD = 5;
 
 test("#4215: den planlagte S4-kalender har kun de KENDTE balance-afvigelser", () => {
   const { stdout } = kør();
