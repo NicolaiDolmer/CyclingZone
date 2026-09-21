@@ -43,16 +43,22 @@ function kør(args = []) {
 //   · monument-i-GT-spænd    → lukket af DENNE PR's pakker-ændring (#4203)
 //   · D2 bjerg under målet   → lukket af katalog-migrationen (#4708), nu i fixturen
 //   · D4 rolling under gulvet→ samme migration
-// Tilbage står SEKS afvigelser, alle på §7b's finale-bånd på sæson-aggregatet. De er
-// ENUMERERET i KENDTE_FIXTURE_BRUD, ikke tolereret i en klump: testen fejler stadig hvis
-// der kommer ét brud mere, eller hvis et af dem forsvinder uden at listen følger med.
+// Tilbage står afvigelser på §7b's finale-bånd. De er ENUMERERET i KENDTE_FIXTURE_BRUD,
+// ikke tolereret i en klump: testen fejler stadig hvis der kommer ét brud mere, eller hvis
+// et af dem forsvinder uden at listen følger med.
 //
-// HVORFOR DE IKKE KAN LUKKES I DENNE PR: fem af dem er filler-vægt-kalibrering (ejer-
-// besluttet 3/9 som en S5-opgave, CALENDAR_RULES §6b/§7b) og tre af de fem er samme
-// n=2-stikprøve på grus. Ingen af dem er en placerings-regel, og ingen af dem kan lukkes
-// ved at flytte et løb. De SAMME seks findes i dry-runnet mod prods katalog samme dag — se
-// docs/audits/season4-calendar-dryrun-2026-09-03.md, afsnittet "Dry-run efter #4203-pakker".
-const KENDTE_BALANCEBRUD = 6;
+// HVORFOR DE IKKE KAN LUKKES I DENNE PR: de er filler-vægt-kalibrering (ejer-besluttet 3/9
+// som en S5-opgave, CALENDAR_RULES §6b/§7b), og tre af dem er samme n=2-stikprøve på grus.
+// Ingen af dem er en placerings-regel, og ingen af dem kan lukkes ved at flytte et løb.
+//
+// #5405 (21/9): tallet gik 6 → 8 med K-B-kalibreringen af filler-vægtene. Det er en
+// AFVEJNING, ikke en regression der er sneget sig ind: kalibreringen bringer §6's
+// komposition i mål på alle seks akser og lukker de strenge ±2 pp-afvigelser i D1, D2 og
+// D3, og den lukkede samtidig ét af de gamle seks brud (hilly-udbrud). Prisen er tre nye
+// linjer — to spejlvendte rolling-andele på sæson-aggregatet og én bjerg-andel i D4, hvor
+// stikprøven er mindst. Hver af dem står navngivet i KENDTE_FIXTURE_BRUD med sin
+// begrundelse. De samme otte findes i tørkørslen mod prods katalog samme dag.
+const KENDTE_BALANCEBRUD = 8;
 
 test("#4215: den planlagte S4-kalender har kun de KENDTE balance-afvigelser", () => {
   const { stdout } = kør();

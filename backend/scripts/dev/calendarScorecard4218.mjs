@@ -414,12 +414,11 @@ export function formatKendtTilstand(k) {
 // DETTE ER KUN FIXTURE-GATEN. `buildSeasonCalendar.js --apply` er UAENDRET haard uden
 // override: en kalender med et af disse brud kan ikke skrives til prod.
 export const KENDTE_FIXTURE_BRUD = Object.freeze([
-  {
-    id: "saeson-hilly-udbrud",
-    moenster: /sæson: hilly slutter udbrud/,
-    hvorfor: "§7b's finale-baand paa saeson-aggregatet: kuperede etaper afgoeres lidt oftere i udbrud end baandet tillader. Filler-vaegt-kalibrering, ikke en placerings- eller katalog-fejl.",
-    lukkesAf: "§6b/§7b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
-  },
+  // #5405 (21/9): `saeson-hilly-udbrud` er FJERNET herfra - K-B-kalibreringen af
+  // filler-vaegtene lukkede den. Kuperede etaper afgoeres nu inden for baandet, fordi
+  // kuperet-vaegten blev haevet og bjerg-vaegten saenket. Den staar ikke tilbage som en
+  // stale post: listens egen regel er at et kendt brud der forsvinder skal fjernes i
+  // samme PR, ellers lyver listen om hvad vi ved.
   {
     id: "saeson-cobbles-udbrud",
     moenster: /sæson: cobbles slutter udbrud/,
@@ -449,8 +448,32 @@ export const KENDTE_FIXTURE_BRUD = Object.freeze([
   {
     id: "saeson-mountain-nedad",
     moenster: /sæson: mountain slutter nedad/,
-    hvorfor: "§7b's finale-baand paa saeson-aggregatet: mellembjergs-etaper slutter nedad lidt oftere end baandet tillader. Samme filler-vaegt-kalibrering som de oevrige poster her - ikke en placerings- eller katalog-fejl. Kom til 20/9 da bjerg-forsyningen blev stoerre (#5405).",
+    hvorfor: "§7b's finale-baand paa saeson-aggregatet: mellembjergs-etaper slutter nedad lidt oftere end baandet tillader. Samme filler-vaegt-kalibrering som de oevrige poster her - ikke en placerings- eller katalog-fejl. Kom til 20/9 da bjerg-forsyningen blev stoerre (#5405), og blev tydeligere 21/9 da K-B-kalibreringen saenkede antallet af bjerg-FYLD-etaper: arketypernes garanterede summit-finaler ligger fast, saa naevneren falder uden at taelleren goer det.",
     lukkesAf: "§6b/§7b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
+  },
+  // #5405 (21/9): TRE NYE poster, alle foedt af K-B-kalibreringen i samme PR. De staar
+  // her NAVNGIVET og ikke tolereret i en klump, og de er ejerens afvejning at doemme:
+  // kalibreringen bringer K-B-kompositionen i maal i alle seks kategorier og lukker
+  // §6's strenge afvigelser i D1-D3, men koster to linjer netto paa §7b's finale-baand.
+  // Ingen af dem er en NY KLASSE af brud - finale-baandene har krævet override siden 3/9
+  // (#4272) og er ikke groenne i forvejen. Ingen af dem stopper --apply (0 placeringsbrud).
+  {
+    id: "saeson-rolling-fladt",
+    moenster: /sæson: rolling slutter fladt/,
+    hvorfor: "§7b's finale-baand paa saeson-aggregatet: rullende etaper afgoeres oftere i en samlet spurt end baandet tillader. Direkte foelge af at kuperet-vaegten (rolling+hilly+classic) blev haevet - der er flere rullende etaper end foer, og deres finale-fordeling er uaendret. Filler-vaegt-kalibrering, ikke en placerings- eller katalog-fejl.",
+    lukkesAf: "§6b/§7b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
+  },
+  {
+    id: "saeson-rolling-udbrud",
+    moenster: /sæson: rolling slutter udbrud/,
+    hvorfor: "Spejlbilledet af saeson-rolling-fladt paa samme stikproeve - de to andele summer til 100 %, saa den ene kan ikke rettes uden den anden. Taelles som to linjer fordi baandene er to.",
+    lukkesAf: "§6b/§7b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
+  },
+  {
+    id: "tier4-mountain-udbrud",
+    moenster: /tier 4: mountain slutter udbrud/,
+    hvorfor: "Eneste post paa TIER-niveau. D4 har faerrest etaper, saa dens bjerg-stikproeve er lille nok til at ingen af etaperne afgoeres i udbrud - andelen bliver 0 % mod et baand der starter over nul. Det er stikproevestoerrelse, ikke en skaev generator: samme maaling i de tre stoerre divisioner ligger i baandet.",
+    lukkesAf: "stoerre bjerg-forsyning i D4's katalog, eller §6b/§7b's genkalibrering (S5)",
   },
 ]);
 

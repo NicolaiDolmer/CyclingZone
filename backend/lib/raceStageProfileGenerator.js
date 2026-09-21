@@ -376,6 +376,63 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 // da dens filler-vægte ændrede sig — samme "bevidst ændring, fixture regenereret"-
 // præcedens som #3326-korrektionen ovenfor).
 
+// #5405 RE-KALIBRERING (2026-09-21) — udløst af katalog-udvidelsen i #5450: tre nye
+// bjergrige etapeløb (arketype summit_tour) plus hævede summit-reservationer i D2 og D3.
+// Katalog-ændringen løste §6b's afgørende bjergdage i D2/D3, men skubbede sæsonens
+// K-B-komposition den anden vej: bjerg over det øvre bånd og kuperet ned på den nedre
+// grænse i S4-tørkørslen på main. Det er præcis den vekselvirkning der er beskrevet to
+// gange ovenfor — kataloget bestemmer HVAD der kan fordeles, vægtene fordeler det.
+//
+// NY tilt (oven på 7/8-vægtene, samme metode og samme maskineri som begge
+// kalibreringer ovenfor — koordinat-descent via searchTilt, ingen frie vægte):
+//
+//     flad ×1,15   ·   kuperet (rolling+hilly+classic) ×1,15   ·   bjerg ×0,805
+//     (ITT, brosten og TTT står på 1,0 — søgningen fandt ingen gevinst dér)
+//
+// Fundet med (read-only, kun SELECT, 71 evalueringer, realisme-verdict GO):
+//     infisical run --env=prod --silent -- node scripts/calibrateCalendarComposition.js --plan 4
+// Verificeret med den fulde tørkørsel (skriver aldrig uden --apply):
+//     infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
+//
+// FORSKEL fra 7/8-metoden: dér blev der søgt over S2 OG S3 samtidig, fordi begge sæsoner
+// stadig var i spil (S2 materialiseret med fast løbsudvalg, S3 planlagt under nye
+// targets). I dag er S2 og S3 begge materialiserede og LÅSTE — en vægt-ændring rører dem
+// ikke, den påvirker kun fremtidige genereringer. Den sæson der bygges er S4 alene, og
+// filens egen regel gælder da uændret: kalibrér mod den sæson du bygger
+// (loadPlannedSeedRacesByTier's docstring i scripts/calibrateCalendarComposition.js).
+//
+// MÅLT FØR/EFTER på S4-tørkørslen (kvalitativt her, jf. anonymiserings-reglen for et
+// offentligt repo — de fulde tal ligger i den gitignorerede
+// balance-internals/2026-09-21-s4-komposition-kalibrering/):
+//   · K-B-kompositionen: TO kategorier uden for ±2 pp (bjerg for højt, kuperet på den
+//     nedre grænse) → NUL. Alle seks akser inden for båndet.
+//   · §6's strenge ±2 pp pr. division: syv afvigelser fordelt på alle fire divisioner →
+//     to, begge i D4 (flad for højt, kuperet for lavt). D1, D2 og D3 er rene.
+//   · §6b's uniforme mål (enkeltstart, brosten, højbjerg) holder i ALLE fire divisioner
+//     både før og efter. Højbjerg er dét tallet der kunne have knækket — tilt'ens
+//     bjerg-faktor rammer `high_mountain` og `mountain` ens, fordi de deler
+//     kompositions-kategori (PROFILE_TO_CATEGORY i calendarCompositionTargets.js) — men
+//     arketypernes high_mountain-GARANTIER er urørte, og målingen viser at kun D2 flytter
+//     sig nævneværdigt og stadig ligger inden for båndet. Det var stop-betingelsen for
+//     denne kalibrering, og den er ikke udløst.
+//   · Kvote (§1b) 100 % i alle fire · 140 løbsdage i alle fire (§1d) · 0 placeringsbrud ·
+//     terræn-gulvene (§5) holder · realisme-båndene GO.
+//
+// HVAD DENNE RE-KALIBRERING GJORDE DÅRLIGERE (rapporteret, ikke skjult — samme princip
+// som de to blokke ovenfor): §7b's FINALE-BÅND på sæson-aggregatet. Antallet af linjer
+// uden for båndet steg med to, og bjerg-etapernes "slutter nedad"-andel blev højere.
+// Retningen er forventet: færre bjerg-fyld-etaper betyder færre af de bjergetaper der
+// slutter opad, mens arketypernes GARANTEREDE summit-finaler ligger fast — så andelen
+// nedad stiger uden at antallet af rigtige bjergankomster falder. Finale-båndene har
+// krævet `--allow-finale-drift` siden 3/9 (#4272) og er IKKE grønne i forvejen; ingen af
+// de nye linjer er en ny KLASSE af brud. Det er en afvejning ejeren skal se, ikke en
+// vægt-søgning må afgøre — derfor står den her og i PR-body'en i stedet for at blive
+// handlet væk med en dårligere komposition.
+//
+// calendarGoldenSnapshot.s3.json er REGENERERET i samme PR (samme præcedens som
+// pass1-golden.json ovenfor): vægtene ændrer parcours-trækket, og en bevidst ændring
+// skal følges af sin snapshot-opdatering, ellers er den gyldne diff (#4123) blind.
+
 
 // Opslag: terrain_archetype → config (eller null ved ukendt/manglende → generisk).
 // `profiles` gør tabellen injicerbar (default = produktionens ARCHETYPE_PROFILES), så en
