@@ -1653,7 +1653,7 @@ function addDaysToDate(dateStr, days) {
  *   seasonId?: string|null}} args
  * @returns {Array<{rider_id, injured_until, injury_cause}>}
  */
-export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDayByStage = null, seasonId = null }) {
+export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDayByStage = null, seasonId = null, seasonNumber = null, raceDayInjuries = false }) {
   const injuring = incidents.filter(
     (inc) => (inc.outcome === "abandon" && inc.kind === "crash")
       || (inc.kind !== "injury" && Number.isFinite(inc.injury_days) && inc.injury_days > 0),
@@ -1663,13 +1663,13 @@ export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDayBySt
     // `Number(null)` er 0, ikke NaN — derfor det eksplicitte null-led, ellers ville
     // en manglende loebsdag tavst blive til loebsdag 0 (den forkerte akse).
     const rawGameDay = seasonId == null ? null : (gameDayByStage?.get(Number(inc.stage_number)) ?? null);
-    const endGameDay = rawGameDay == null ? null : injuryEndGameDay({ gameDay: Number(rawGameDay), days });
+    const endGameDay = rawGameDay == null ? null : injuryEndGameDay({ gameDay: Number(rawGameDay), days, seasonNumber });
     return {
       rider_id: inc.rider_id,
       injured_until: addDaysToDate(todayStr, days),
       injury_cause: "race_crash",
       ...(endGameDay == null
-        ? {}
+        ? (raceDayInjuries ? { injury_end_game_day: null, injury_season_id: null, injury_race_days_left: null } : {})
         : {
           injury_end_game_day: endGameDay,
           injury_season_id: seasonId,
@@ -1693,7 +1693,7 @@ export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDayBySt
 // når v3=true OG incidents ikke er tom (kald-stedets ansvar). Upsert-semantikken
 // (supabase-js: UPDATE-stien rører KUN de angivne kolonner) betyder form/fatigue
 // ALDRIG røres her — spejler raceFatigue.applyRaceFatigue's samme garanti.
-async function persistIncidents({ supabase, race, incidents, stageNumbers }) {
+async function persistIncidents({ supabase, race, incidents, stageNumbers, seasonNumber }) {
   if (!incidents?.length) return;
   const rows = incidents.map((inc) => ({
     race_id: race.id,
@@ -1749,6 +1749,8 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers }) {
     todayStr: copenhagenDateString(),
     gameDayByStage,
     seasonId: raceDayInjuries ? (race.season_id ?? null) : null,
+    seasonNumber,
+    raceDayInjuries,
   });
   if (!injuryRows.length) return;
 
@@ -2074,7 +2076,7 @@ export async function simulateRace({
   // Uden v4-grenen ville motorens uheldstrappe og tidsgrænse forsvinde i
   // persisteringen, og loadAbandonedRiderIds ville ikke have noget at læse.
   if ((v3 || v4Engine) && incidents.length) {
-    await persistIncidents({ supabase, race, incidents, stageNumbers: stages.map((s) => s.stage_number || 1) });
+    await persistIncidents({ supabase, race, incidents, stageNumbers: stages.map((s) => s.stage_number || 1), seasonNumber: seasonBefore?.number });
   }
   // S6 (#2355): why-rapport-momenter — samme gate som incidents.
   if ((v3 || v4Engine) && moments.length) {
@@ -3074,7 +3076,7 @@ export async function simulateStageByIndex({
     // then-insert til [stageNumber] alene, andre etapers race_incidents-rækker
     // røres ikke (samme idempotens-mønster som persistRuns/apply_stage_result).
     if ((v3 || v4Engine) && incidents.length) {
-      await persistIncidents({ supabase, race, incidents, stageNumbers: [stageNumber] });
+      await persistIncidents({ supabase, race, incidents, stageNumbers: [stageNumber], seasonNumber: seasonBefore?.number });
     }
     // #4418: EFTER persistIncidents — den scoper sit delete-then-insert til hele
     // etapen, saa raekkerne her ville blive slettet igen hvis de blev skrevet foer.

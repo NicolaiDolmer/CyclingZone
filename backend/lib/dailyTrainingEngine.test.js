@@ -1721,23 +1721,15 @@ test("#4847 (flag off): bindingen slaas ALDRIG op — den gamle sti er bit-ident
 // S4-formen: flere loebsdage pr. KALENDERDATO (CALENDAR_RULES §1e-b). Det er
 // praecis dét der goer forskellen paa de to akser maalbar — loebsdag 13 og 14
 // ligger paa SAMME dato som loebsdag 12.
-const INJURY_DATE_BY_GAME_DAY = {
-  13: "2026-06-12", 14: "2026-06-12",
-  15: "2026-06-13", 16: "2026-06-13",
-  17: "2026-06-14", 18: "2026-06-14",
-};
+const INJURY_DATE_BY_GAME_DAY = Object.fromEntries(Array.from({ length: 35 }, (_, i) => [
+  12 + i, new Date(Date.UTC(2026, 5, 12 + Math.floor(i / 5))).toISOString().slice(0, 10),
+]));
 
 function seedInjuryCalendar(state) {
-  state.race_stage_schedule = [
-    // Kun denne er STARTET kl. 08:00Z (NOW) → holdets loebsdag er 12.
-    { race_id: "race-1", stage_number: 1, game_day: 12, scheduled_at: "2026-06-12T06:00:00Z" },
-    { race_id: "race-1", stage_number: 2, game_day: 13, scheduled_at: "2026-06-12T09:00:00Z" },
-    { race_id: "race-1", stage_number: 3, game_day: 14, scheduled_at: "2026-06-12T13:00:00Z" },
-    { race_id: "race-1", stage_number: 4, game_day: 15, scheduled_at: "2026-06-13T09:00:00Z" },
-    { race_id: "race-1", stage_number: 5, game_day: 16, scheduled_at: "2026-06-13T13:00:00Z" },
-    { race_id: "race-1", stage_number: 6, game_day: 17, scheduled_at: "2026-06-14T09:00:00Z" },
-    { race_id: "race-1", stage_number: 7, game_day: 18, scheduled_at: "2026-06-14T13:00:00Z" },
-  ];
+  state.race_stage_schedule = Object.entries(INJURY_DATE_BY_GAME_DAY).map(([gd, date]) => ({
+    race_id: "race-1", stage_number: Number(gd) - 11, game_day: Number(gd),
+    scheduled_at: `${date}T${Number(gd) === 12 ? '06' : '09'}:00:00Z`,
+  }));
 }
 
 // Find et rytter-id der FAKTISK ruller en skade paa det givne seed-scope.
@@ -1763,22 +1755,22 @@ function seedInjuryRider(id, extraCondition = {}) {
   });
 }
 
-test("#5462 (flag on): en ny traeningsskade varer N LOEBSDAGE, og injured_until er slut-loebsdagens dato", async () => {
+test("#5462 (flag on): en ny traeningsskade varer akse-skalerede LOEBSDAGE, og injured_until er slut-loebsdagens dato", async () => {
   const { id, days } = findInjuringRider(raceDaySeedKey({ seasonId: SEASON_ID, gameDay: 12 }));
   const state = seedInjuryRider(id);
   seedRaceDayTick(state, { gameDay: 12 });
   seedInjuryCalendar(state);
 
-  const result = await runDay(state);
+  const result = await runDay(state, { seasonNumber: 4 });
 
   assert.equal(result.report.riders[0].injury_days, days, "rapporten baerer stadig varigheden");
   const cond = state.rider_condition.find((c) => c.rider_id === id);
-  assert.equal(cond.injury_end_game_day, 12 + days, "slut-loebsdag = loebsdag + N, samme formel som kalenderstien");
+  assert.equal(cond.injury_end_game_day, 12 + days * 5 - 1, "slut-loebsdag = start + skaleret varighed - 1");
   assert.equal(cond.injury_season_id, SEASON_ID, "aksen er saeson-relativ og kan ikke baere betydningen alene");
-  assert.equal(cond.injury_race_days_left, days + 1, "resten taelles INKLUSIV den indevaerende loebsdag");
+  assert.equal(cond.injury_race_days_left, days * 5, "resten taelles INKLUSIV den indevaerende loebsdag");
   assert.equal(cond.injury_cause, "training_overload");
   assert.equal(
-    cond.injured_until, INJURY_DATE_BY_GAME_DAY[12 + days],
+    cond.injured_until, INJURY_DATE_BY_GAME_DAY[12 + days * 5 - 1],
     "injured_until er UDLEDT af slut-loebsdagen — gaten og alle flader laeser derfor det samme felt",
   );
 });
@@ -1821,6 +1813,20 @@ test("#5462 (flag on): raskmeldingen foelger LOEBSDAGEN, ikke datoen", async () 
   assert.equal(cond.injury_end_game_day, null);
   assert.equal(cond.injury_season_id, null);
   assert.equal(cond.injury_race_days_left, null);
+});
+
+test('#5462 rollover keeps the date fallback and clears the previous season axis', async () => {
+  const state = seedInjuryRider('fixture-rollover', { fatigue: 20, injured_until: '2026-06-15',
+    injury_end_game_day: 145, injury_season_id: 'previous-season', injury_race_days_left: 20 });
+  seedRaceDayTick(state, { gameDay: 0 });
+  state.race_stage_schedule.push({ race_id: 'race-1', stage_number: 2, game_day: 145, scheduled_at: '2026-07-10T09:00:00Z' });
+  const result = await runDay(state, { seasonNumber: 5, gameDay: 0 });
+  assert.equal(result.report.riders[0].injured, true);
+  const condition = state.rider_condition.find(c => c.rider_id === 'fixture-rollover');
+  assert.equal(condition.injured_until, '2026-06-15');
+  assert.equal(condition.injury_end_game_day, null);
+  assert.equal(condition.injury_season_id, null);
+  assert.equal(condition.injury_race_days_left, null);
 });
 
 test("#5462 overgangen: en skade fra FOER flippet loeber faerdig paa KALENDERDAGE", async () => {

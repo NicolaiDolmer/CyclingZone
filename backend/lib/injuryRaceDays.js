@@ -1,7 +1,8 @@
 // Skadesvarighed paa LOEBSDAGS-aksen (#5462).
 //
-// EJER-LAAST 15/9 (docs/TRAINING_RULES.md §13.3 pkt. 7, genaabnes ikke):
-// "Skadesvarighed i loebsdage — samme antal ticks som i dag, UI viser 'ca. <dato>'."
+// EJERENS ORD 15/9: "Loebsdage" (docs/TRAINING_RULES.md §13.3 pkt. 7).
+// Ejer-valg 21/9: varigheden skaleres med saesonens loebsdage pr. kalenderdato.
+// "Samme antal ticks" var en konsekvens-tekst, ikke ejerens citat, og er afloest.
 // Roadbook-loeftet 15/9: "Injuries counted in race days, so 'back in three race days'
 // means what it says."
 //
@@ -51,9 +52,11 @@
 // (aldrig for kort) og praecis derfor UI'et siger "ca.".
 
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
+import { SEASON_RACE_DAYS_DEFAULT } from "./calendarStartDate.js";
 
 /**
- * Sidste skadede LOEBSDAG, med praecis samme aritmetik som kalenderstien.
+ * Sidste skadede LOEBSDAG. Varighed = kalenderdags-rullet gange aksens taethed.
  *
  * SAESONGRAENSEN (kendt, dokumenteret, CodeRabbit 21/9). Ligger slut-loebsdagen
  * efter saesonens sidste planlagte loebsdag, kan datoen ikke slaas op, og
@@ -61,26 +64,31 @@ import { copenhagenDateString } from "./copenhagenTime.js";
  * Den er i wall-clock ALTID mindst lige saa lang som N loebsdage — fra S4 er der
  * fem loebsdage pr. kalenderdato — saa rytteren kommer aldrig for TIDLIGT tilbage.
  * At baere resten videre paa naeste saesons akse kraever en cross-season-koordinat
- * og er bevidst ude af scope her; varigheden er 1-5 loebsdage, saa vinduet hvor
- * det overhovedet kan ske er saesonens sidste dage.
+ * og er bevidst ude af scope her; fallbacken bevarer det oprindelige antal
+ * kalenderdage, og rest-varigheden maa ikke genbruges paa en anden saesons akse.
  *
- * I dag: `injured_until = tickDate + N`, og gaten er `injured_until >= dagen`.
- * Rytteren er altsaa skadet paa selve tick-dagen og N dage mere. Loebsdags-udgaven
- * er den SAMME formel paa en anden akse — det er hele indholdet af "samme antal
- * ticks som i dag".
+ * Slutdagen er inklusiv: N loebsdage starter paa gameDay og slutter paa
+ * gameDay + N - 1. Dermed viser en ny skade den faktiske varighed, uden ekstra tick.
+ * Kalenderstiens hidtidige aritmetik er uberoert.
  *
- * @param {{gameDay: number, days: number}} args
+ * @param {{gameDay: number, days: number, seasonNumber?:number,
+ *   raceDays?:number, calendarDates?:number}} args
  * @returns {number|null} null naar aksen ikke kendes (kald-stedet falder tilbage).
  */
-export function injuryEndGameDay({ gameDay, days } = {}) {
+export function injuryEndGameDay({ gameDay, days, seasonNumber,
+  raceDays = SEASON_RACE_DAY_TARGET[seasonNumber],
+  calendarDates = SEASON_RACE_DAYS_DEFAULT[seasonNumber] } = {}) {
   // `Number(null)` er 0, ikke NaN — samme faelde som i calendarActivationRaceDays.js.
   // Uden dette led ville en manglende akse tavst blive til loebsdag 0.
   if (gameDay == null || days == null) return null;
   const gd = Number(gameDay);
   const n = Number(days);
   if (!Number.isFinite(gd) || !Number.isInteger(gd) || gd < 0) return null;
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return gd + Math.trunc(n);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  if (raceDays == null || calendarDates == null) return null;
+  const density = Number(raceDays) / Number(calendarDates);
+  if (!Number.isFinite(density) || density < 1 || !Number.isInteger(density)) return null;
+  return gd + n * density - 1;
 }
 
 /**

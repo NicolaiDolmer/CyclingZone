@@ -8,7 +8,7 @@
 // HVORFOR MOCKET. `injury_race_days_left` skrives kun naar
 // `training_tick_per_race_day` er on, og flaget er off i prod. Feltet mockes derfor
 // her i de to tilstande ejeren skal kunne se side om side:
-//   1. race-days — flaget on: "Injured: 3 race days left (approx. <dato>)"
+//   1. race-days — flaget on: "Injured: 15 race days left (approx. <dato>)"
 //   2. calendar  — flaget off: PRAECIS dagens tekst, "Injured: 4 days left"
 //
 // Bygger du ikke frontend foerst, serverer serveren en gammel dist. Koer:
@@ -112,7 +112,7 @@ function trainingMe(condition) {
 const STATES = [
   {
     name: "race-days",
-    condition: { form: 62, fatigue: 74, injured_until: INJURED_UNTIL, injury_race_days_left: 3, risk: 0 },
+    condition: { form: 62, fatigue: 74, injured_until: INJURED_UNTIL, injury_race_days_left: 15, risk: 0 },
   },
   {
     name: "calendar",

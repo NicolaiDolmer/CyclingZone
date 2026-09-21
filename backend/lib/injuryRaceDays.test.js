@@ -11,9 +11,13 @@ const SEASON_ID = "season-1";
 
 // ── injuryEndGameDay ─────────────────────────────────────────────────────────
 
-test("injuryEndGameDay: samme aritmetik som kalenderstien — loebsdag + N", () => {
-  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3 }), 15);
-  assert.equal(injuryEndGameDay({ gameDay: 0, days: 1 }), 1);
+test("injuryEndGameDay: duration follows the season axis and counts inclusive race days", () => {
+  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, seasonNumber: 4 }), 26);
+  assert.equal(injuryEndGameDay({ gameDay: 0, days: 1, seasonNumber: 4 }), 4);
+  assert.equal(injuryEndGameDay({ gameDay: 0, days: 5, seasonNumber: 4 }), 24);
+  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, raceDays: 84, calendarDates: 28 }), 20, 'a different axis must not use a hardcoded multiplier');
+  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, raceDays: 140, calendarDates: 35 }), 23);
+  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, seasonNumber: 99 }), null, 'unknown axis must not invent race days');
 });
 
 test("injuryEndGameDay: uden en brugbar akse eller varighed → null (kald-stedet falder tilbage)", () => {
@@ -27,12 +31,11 @@ test("injuryEndGameDay: uden en brugbar akse eller varighed → null (kald-stede
 // ── injuryRaceDaysLeft ───────────────────────────────────────────────────────
 
 test("injuryRaceDaysLeft: tæller INKLUSIV den indevaerende loebsdag (#1672-semantikken)", () => {
-  // Skadet paa loebsdag 12 i 3 loebsdage ⇒ slut = 15.
-  const endGameDay = injuryEndGameDay({ gameDay: 12, days: 3 });
-  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 12 }), 4);
-  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 13 }), 3);
-  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 15 }), 1, "sidste skadede loebsdag = 1, ikke 0");
-  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 16 }), 0, "rask loebsdagen efter");
+  const endGameDay = injuryEndGameDay({ gameDay: 12, days: 3, seasonNumber: 4 });
+  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 12 }), 15);
+  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 13 }), 14);
+  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 26 }), 1, "sidste skadede loebsdag = 1, ikke 0");
+  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 27 }), 0, "rask loebsdagen efter");
 });
 
 test("injuryRaceDaysLeft: manglende tal giver 0, aldrig NaN", () => {

@@ -1065,7 +1065,7 @@
       },
       "injuryRisk": {
         "title": "Injury risk",
-        "text": "Running Hard intensity training on a rider who already has high Fatigue triggers an injury risk. A risk badge appears on the rider before training runs. If the roll is unlucky, the rider picks up a mild injury and is out for 1-5 days. From season 4 those days are race days, not calendar days, and his card shows how many are left plus the approximate date he is back. Dropping intensity to Normal or Rest removes the risk."
+        "text": "Running Hard intensity training on a rider who already has high Fatigue triggers an injury risk. A risk badge appears on the rider before training runs. An unlucky roll causes a mild injury. With race-day training enabled, its length follows the season calendar: 5-25 race days in season 4. Otherwise, it remains 1-5 calendar days. Your rider's card shows the remaining time and, for race-day injuries, an approximate return date. Dropping intensity to Normal or Rest removes the risk."
       },
       "progressBars": {
         "title": "Progress bars and ability points",

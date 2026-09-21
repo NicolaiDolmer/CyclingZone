@@ -642,6 +642,12 @@ export async function runTeamTrainingDay({
     // forlader ingen af de tre vaerdier denne blok (ingen kolonner skrives).
     let newInjuryEndGameDay = cond.injury_end_game_day ?? null;
     let newInjurySeasonId = cond.injury_season_id ?? null;
+    // A previous season's coordinate cannot be looked up on the new axis.
+    // Keep injured_until as the conservative calendar fallback.
+    if (useRaceDayKey && newInjurySeasonId !== seasonId) {
+      newInjuryEndGameDay = null;
+      newInjurySeasonId = null;
+    }
 
     if (!injuredToday) {
       const risk = injuryRisk({ intensity: effectiveIntensity, fatigue: preFatigue });
@@ -651,9 +657,9 @@ export async function runTeamTrainingDay({
         // skade-udfald; rollInjury bruger `dateStr` udelukkende som seed-hale,
         // saa scopet kan skiftes her uden at roere riderCondition.js.
         // #5462 (ejer-laast 15/9, §13.3 pkt. 7): VARIGHEDEN er nu i LOEBSDAGE paa
-        // loebsdags-aksen — samme tal, samme antal ticks, anden akse. Slut-loebsdagen
-        // er `raceDay + N`, praecis den formel kalenderstien bruger paa datoen, saa
-        // "tilbage om tre loebsdage" betyder tre ticks. `injured_until` udledes af den
+        // loebsdags-aksen, skaleret med saesonens loebsdage pr. kalenderdato
+        // (ejer-valg 21/9). Den inklusive slutdag undgaar et ekstra tick.
+        // `injured_until` udledes af den
         // efter loekken (ÉT batch-opslag for hele holdets nye skader); indtil da staar
         // kalenderdagen som fallback, saa en skade ALTID bliver skrevet, ogsaa hvis
         // kalenderopslaget ikke kan svare.
@@ -665,7 +671,7 @@ export async function runTeamTrainingDay({
           newInjuredUntil = addDaysToDate(tickDate, roll.days);
           newInjuryCause = "training_overload";
           if (useRaceDayKey) {
-            newInjuryEndGameDay = injuryEndGameDay({ gameDay: raceDay, days: roll.days });
+            newInjuryEndGameDay = injuryEndGameDay({ gameDay: raceDay, days: roll.days, seasonNumber });
             newInjurySeasonId = newInjuryEndGameDay == null ? null : seasonId;
           }
         }
