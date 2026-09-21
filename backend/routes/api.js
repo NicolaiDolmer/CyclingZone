@@ -2840,7 +2840,11 @@ router.get("/training/me", requireAuth, async (req, res) => {
       riderIds.length
         ? supabase
             .from("rider_condition")
-            .select("rider_id, form, fatigue, injured_until")
+            // #5462: `injury_race_days_left` med, saa traeningsfladen kan skrive
+            // "tilbage om N loebsdage" uden selv at kende divisions-aksen. NULL
+            // indtil `training_tick_per_race_day` er on — saa falder fladen tilbage
+            // til kalenderdage praecis som i dag.
+            .select("rider_id, form, fatigue, injured_until, injury_race_days_left")
             .in("rider_id", riderIds)
         : Promise.resolve({ data: [] }),
       riderIds.length
@@ -2905,6 +2909,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
         form: row.form,
         fatigue: row.fatigue,
         injured_until: row.injured_until ?? null,
+        // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
+        // kalenderdagen (flag off, eller skrevet foer flippet).
+        injury_race_days_left: row.injury_race_days_left ?? null,
         risk,
       };
     }

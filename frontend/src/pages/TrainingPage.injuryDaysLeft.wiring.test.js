@@ -30,6 +30,11 @@ import { injuryDaysLeft } from "../lib/training.js";
 //
 // Repoet kører `node --test` uden DOM-renderer, så JSX-wiringen verificeres
 // kildekode-strukturelt (samme mønster som DashboardPage.availableBalance.test.js).
+//
+// #5462: den delte kerne hedder nu `injuryTimeLeft(condition, today)`. Den er bygget
+// OVENPÅ `injuryDaysLeft` (kalenderdags-grenen er uændret) og lægger løbsdags-grenen
+// ved siden af. Vagten er derfor den SAMME regel, målt på det nye navn: alle tre
+// flader skal læse det ene sted, med den samme condition-kilde.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const trainingPageSource = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
@@ -46,26 +51,26 @@ test("#3541 TrainingPage's dagsrapport-tabel bruger IKKE længere backend-snapsh
   );
 });
 
-test("#3541 TrainingPage's dagsrapport-tabel beregner skadedage via den kanoniske injuryDaysLeft på condition-state", () => {
+test("#3541/#5462 TrainingPage's dagsrapport-tabel beregner skadedage via den kanoniske kerne på condition-state", () => {
   assert.match(
     trainingPageSource,
-    /injuryDaysLeft\(condition\[row\.rider_id\]\?\.injured_until, today\)/,
-    "rapport-rækken skal kalde injuryDaysLeft med SAMME condition-kilde + today som roster-rækken",
+    /injuryTimeLeft\(condition\[row\.rider_id\], today\)/,
+    "rapport-rækken skal kalde injuryTimeLeft med SAMME condition-kilde + today som roster-rækken",
   );
 });
 
-test("#3541 TrainingPage's roster-række (Daily training) bruger fortsat den kanoniske injuryDaysLeft (regressionsvagt)", () => {
+test("#3541/#5462 TrainingPage's roster-række (Daily training) bruger fortsat den kanoniske kerne (regressionsvagt)", () => {
   assert.match(
     trainingPageSource,
-    /injuryDaysLeft\(cond\.injured_until, today\)/,
+    /injuryTimeLeft\(cond, today\)/,
     "roster-rækken må ikke stille om til et andet/nyt felt uden at rapport-rækken følger med",
   );
 });
 
-test("#3541 ConditionChips (rytterprofilen) bruger fortsat den kanoniske injuryDaysLeft (regressionsvagt)", () => {
+test("#3541/#5462 ConditionChips (rytterprofilen) bruger fortsat den kanoniske kerne (regressionsvagt)", () => {
   assert.match(
     conditionChipsSource,
-    /injuryDaysLeft\(injuredUntil\)/,
+    /injuryTimeLeft\(condition\)/,
     "rytterprofilens skade-badge må ikke stille om til et andet/nyt felt uden de to andre flader følger med",
   );
 });

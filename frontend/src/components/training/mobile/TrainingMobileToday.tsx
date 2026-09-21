@@ -37,6 +37,8 @@ import {
   type MobileScoreView,
   type RaceDayColumn,
 } from "../../../lib/trainingMobileModel.ts";
+import { injuryTimeLeft, injuryBadgeMessage } from "../../../lib/training.js";
+import { formatDate } from "../../../lib/intl.js";
 import TrainingRaceDayStrip from "./TrainingRaceDayStrip.tsx";
 import TrainingProgramGrid from "./TrainingProgramGrid.tsx";
 import TrainingMobileRoster, { type RosterCell } from "./TrainingMobileRoster.tsx";
@@ -81,7 +83,14 @@ export default function TrainingMobileToday({
   columns: RaceDayColumn[];
   selectedRiderId: string | null;
   onSelectRider: (riderId: string) => void;
-  conditionFor: (riderId: string) => { form?: number | null; fatigue?: number | null } | null;
+  // #5462: `injured_until` + `injury_race_days_left` er med, saa skaden kan staa paa
+  // mobil-kortet i LOEBSDAGE naar flaget er on og i kalenderdage naar det er off.
+  conditionFor: (riderId: string) => {
+    form?: number | null;
+    fatigue?: number | null;
+    injured_until?: string | null;
+    injury_race_days_left?: number | null;
+  } | null;
   // #3815: saeson-alderen. Den er den vigtigste enkeltvariabel naar man vaelger
   // hvem der skal traenes haardt, saa den maa ikke forsvinde paa telefonen —
   // den staar i rytterens kort, eet tryk vaek (ejer 18/9: "intet tal
@@ -233,6 +242,16 @@ export default function TrainingMobileToday({
             .join(" · ")}
           form={conditionFor(selected.id)?.form ?? null}
           fatigue={conditionFor(selected.id)?.fatigue ?? null}
+          injuryLabel={(() => {
+            // #5462: samme kerne og samme noegler som desktop-fladerne.
+            const injury = injuryTimeLeft(conditionFor(selected.id));
+            if (injury.count <= 0) return null;
+            const msg = injuryBadgeMessage(injury);
+            return t(msg.key, {
+              days: msg.days,
+              ...(msg.date ? { date: formatDate(msg.date, "short") } : {}),
+            });
+          })()}
           dayLabel={dayLabelFor(selected.id)}
           receiptRows={receiptFor(selected.id)}
           countsFor={countsForRole(DISPLAY_RECIPES, selected.primary_type, abilitiesFor(selected.id), cappedFor(selected.id))}

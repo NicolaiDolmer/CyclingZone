@@ -5,7 +5,8 @@
 // Manglende condition-rad = neutral defaults (form 50, fatigue 0, ingen skade-badge).
 
 import { useTranslation } from "react-i18next";
-import { injuryDaysLeft } from "../../lib/training.js";
+import { injuryTimeLeft } from "../../lib/training.js";
+import { formatDate } from "../../lib/intl.js";
 
 // Farve-semantik: form høj = grøn, lav = rød. Træthed høj = rød, lav = grøn.
 function formColor(form) {
@@ -24,8 +25,10 @@ export default function ConditionChips({ condition }) {
 
   const form         = condition?.form         ?? 50;
   const fatigue      = condition?.fatigue      ?? 0;
-  const injuredUntil = condition?.injured_until ?? null;
-  const days         = injuryDaysLeft(injuredUntil);
+  // #5462: loebsdage naar backenden har skrevet dem, ellers kalenderdage som foer.
+  // Chippen er lille, saa datoen bor i title'en — "ca." staar dér, ikke i badget.
+  const injury       = injuryTimeLeft(condition);
+  const days         = injury.count;
 
   return (
     <div className="flex items-center gap-2 flex-wrap mt-2">
@@ -43,8 +46,15 @@ export default function ConditionChips({ condition }) {
 
       {/* Skade-badge — vises kun hvis skadet */}
       {days > 0 && (
-        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-cz-danger-bg border border-cz-danger/30 text-cz-danger">
-          {t("condition.injured", { days })}
+        <span
+          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-cz-danger-bg border border-cz-danger/30 text-cz-danger"
+          title={injury.approxDate
+            ? t("condition.injuredApprox", { date: formatDate(injury.approxDate, "medium") })
+            : undefined}
+        >
+          {injury.unit === "race_day"
+            ? t("condition.injuredRaceDays", { days })
+            : t("condition.injured", { days })}
         </span>
       )}
     </div>

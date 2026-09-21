@@ -143,10 +143,54 @@ export function isRiderInjured(injured_until, today = new Date()) {
   return injuryDaysLeft(injured_until, today) > 0;
 }
 
-// #1531: PostgREST select-fragment til at embedde skade-status (kun injured_until)
-// på en riders-query eller en nested rider:rider_id(...)-join. rider_condition har
+// #5462 (ejer-laast 15/9, TRAINING_RULES §13.3 pkt. 7): skadesvarigheden udtrykkes i
+// LOEBSDAGE naar `training_tick_per_race_day` er on. Backenden skriver da
+// `rider_condition.injury_race_days_left` (resterende loebsdage INKLUSIV den
+// indevaerende, samme semantik som injuryDaysLeft) og udleder `injured_until` af
+// slut-loebsdagen. Fladen skal IKKE kende holdets divisions-akse — den laeser tallet.
+//
+// EN FUNKTION, TO FLAG-TILSTANDE. Uden loebsdags-tallet (flag off, eller en skade
+// skrevet FOER flippet) svares der praecis som i dag: kalenderdage. Det er ogsaa
+// overgangs-reglen — en igangvaerende skade skifter ikke betydning tavst.
+//
+// `approxDate` er ALTID et skoen: en kalenderdato baerer fra S4 fem loebsdage, og en
+// tom loebsdag har ingen etape at slaa en dato op paa (CALENDAR_RULES §1e-b). Derfor
+// "ca. <dato>" i teksten, aldrig en bar dato.
+//
+// @returns {{count: number, unit: "race_day"|"calendar_day", approxDate: string|null}}
+export function injuryTimeLeft(condition, today = new Date()) {
+  const injuredUntil = condition?.injured_until ?? null;
+  const raceDaysLeft = Number(condition?.injury_race_days_left);
+  if (Number.isFinite(raceDaysLeft) && raceDaysLeft > 0) {
+    return { count: Math.trunc(raceDaysLeft), unit: "race_day", approxDate: injuredUntil };
+  }
+  return {
+    count: injuryDaysLeft(injuredUntil, today),
+    unit: "calendar_day",
+    approxDate: injuredUntil,
+  };
+}
+
+// #5462: hvilken NØGLE i `training`-namespacet skal skade-badget bruge? Ren
+// funktion, saa alle traenings-flader (roster-raekken, rapport-raekken, mobil-kortet)
+// vaelger ens — og saa valget kan faeldes af en test uden at rendere React.
+// `date` er raa ISO; kald-stedet formaterer den med lib/intl.js' formatDate.
+export function injuryBadgeMessage(injury) {
+  if (injury?.unit === "race_day") {
+    return injury.approxDate
+      ? { key: "injuredRaceDays", days: injury.count, date: injury.approxDate }
+      : { key: "injuredRaceDaysPlain", days: injury.count, date: null };
+  }
+  const count = injury?.count ?? 0;
+  return { key: count === 1 ? "injured" : "injured_plural", days: count, date: null };
+}
+
+// #1531: PostgREST select-fragment til at embedde skade-status på en riders-query
+// eller en nested rider:rider_id(...)-join. rider_condition har
 // RLS SELECT TO authenticated USING(true), så det virker også på andres hold.
-export const CONDITION_SELECT = "rider_condition(injured_until)";
+// #5462: `injury_race_days_left` er med, saa skade-badget paa ANDRES hold kan sige
+// loebsdage praecis som paa eget hold. Kolonnen er NULL indtil flaget flippes.
+export const CONDITION_SELECT = "rider_condition(injured_until, injury_race_days_left)";
 
 // Løft det joinede rider_condition.injured_until op på selve rytter-objektet (samme
 // mønster som flattenAbilities). Supabase-embed kan komme som array (to-many) eller
@@ -157,7 +201,12 @@ export function flattenCondition(rider) {
   const rc = rider.rider_condition;
   const cond = Array.isArray(rc) ? rc[0] : rc;
   const out = { ...rider };
-  if (cond) out.injured_until = cond.injured_until;
+  if (cond) {
+    out.injured_until = cond.injured_until;
+    // #5462: loebsdags-tallet foelger med op, saa isRiderInjured/injuryTimeLeft kan
+    // kaldes paa selve rytter-objektet. undefined naar flaget er off.
+    out.injury_race_days_left = cond.injury_race_days_left;
+  }
   delete out.rider_condition;
   return out;
 }

@@ -901,7 +901,9 @@
   "condition": {
     "form": "Form",
     "fatigue": "Træthed",
-    "injured": "Skadet: {days}d tilbage"
+    "injured": "Skadet: {days}d tilbage",
+    "injuredRaceDays": "Skadet: {days, plural, one {1 løbsdag} other {# løbsdage}} tilbage",
+    "injuredApprox": "Tilbage ca. {date}"
   },
   "training": {
     "title": "Træningsfokus",

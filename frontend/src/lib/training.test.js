@@ -131,6 +131,8 @@ test("flattenCondition tåler manglende/null embed (ingen skade-rad)", () => {
   assert.equal(flattenCondition(null), null);
 });
 
-test("CONDITION_SELECT embedder kun injured_until (ikke form/fatigue)", () => {
-  assert.equal(CONDITION_SELECT, "rider_condition(injured_until)");
+// #5462: loebsdags-tallet er med, form/fatigue er det stadig IKKE — skade-badget
+// paa andres hold maa ikke traekke hele condition-raekken med sig.
+test("CONDITION_SELECT embedder kun skade-felterne (ikke form/fatigue)", () => {
+  assert.equal(CONDITION_SELECT, "rider_condition(injured_until, injury_race_days_left)");
 });

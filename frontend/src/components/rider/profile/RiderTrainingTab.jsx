@@ -19,7 +19,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TRAINING_FOCUS_ABILITIES, injuryDaysLeft } from "../../../lib/training.js";
+import { TRAINING_FOCUS_ABILITIES, injuryDaysLeft, injuryTimeLeft } from "../../../lib/training.js";
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,
@@ -416,7 +416,9 @@ function FormCard({ condition, t }) {
   }
   const form = condition.form ?? 0;
   const fatigue = condition.fatigue ?? 0;
-  const days = injuryDaysLeft(condition.injured_until ?? null);
+  // #5462: loebsdage naar backenden har skrevet dem, ellers kalenderdage som foer.
+  const injury = injuryTimeLeft(condition);
+  const days = injury.count;
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-[9px]">
@@ -443,9 +445,18 @@ function FormCard({ condition, t }) {
         </div>
         <div className="flex items-center gap-2 pt-0.5">
           {days > 0 ? (
-            <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-danger-bg border border-cz-danger/25 text-cz-danger">
-              {t("condition.injured", { days })}
-            </span>
+            <>
+              <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-danger-bg border border-cz-danger/25 text-cz-danger">
+                {injury.unit === "race_day"
+                  ? t("condition.injuredRaceDays", { days })
+                  : t("condition.injured", { days })}
+              </span>
+              {injury.unit === "race_day" && injury.approxDate && (
+                <span className="text-2xs text-cz-3">
+                  {t("condition.injuredApprox", { date: formatDate(injury.approxDate, "medium") })}
+                </span>
+              )}
+            </>
           ) : (
             <>
               <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-success-bg border border-cz-success/25 text-cz-success">
