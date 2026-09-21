@@ -162,7 +162,22 @@ const FINALE_WEIGHTS_BY_PROFILE = Object.freeze({
   // opad 40-60 % → 50 · fladt 15-30 % → 25 · udbrud 15-30 % → 25.
   hilly:         Object.freeze([{ value: "punch", weight: 50 }, { value: "reduced_sprint", weight: 25 }, { value: "breakaway", weight: 25 }]),
   // opad 45-65 % · nedad 20-35 % · udbrud 10-25 %. Var 60 % descent — kernen i #4272.
-  mountain:      Object.freeze([{ value: "long_climb", weight: 41 }, { value: "punch", weight: 8 }, { value: "descent", weight: 34 }, { value: "breakaway", weight: 17 }]),
+  //
+  // #5405 (21/9): descent-vægten stod på 34 — båndets ØVERSTE kant (20-35), ikke dets
+  // midte, modsat filens egen regel tre afsnit oppe ("VÆGTENE SIGTER MOD BÅNDENES MIDTE,
+  // ikke mod kanten"). Med n = 60-80 bjergetaper på sæson-aggregatet er standardfejlen
+  // 5-6 pp, så en vægt på kanten ligger uden for båndet cirka halvdelen af trækkene — og
+  // gjorde det målbart: "mountain slutter nedad" var rødt i §7b både før og efter
+  // kompositions-kalibreringen. Vægtene er derfor flyttet til båndenes midte
+  // (opad 55 · nedad 27 · udbrud 18), hvilket er den regel de skulle have fulgt hele
+  // tiden — ikke en ny beslutning om hvordan bjergetaper skal slutte.
+  //
+  // ØVRE GRÆNSE FOR HVOR LANGT NED: nedkørsels-finalen er også et GULV
+  // (descent_finale_min, raceRouteRealismMetrics.js — D1 8 · D2 5 · D3 4 · D4 3), og
+  // #4272 har allerede betalt én gang for et gulv båndet ikke kunne levere ("en deadlock
+  // med 5 % fejlrate"). 27 % er målt til at holde begge veje på S4-planen og på det
+  // frosne snapshot; gå ikke lavere uden at re-derivere gulvene i samme ombæring.
+  mountain:      Object.freeze([{ value: "long_climb", weight: 47 }, { value: "punch", weight: 8 }, { value: "descent", weight: 27 }, { value: "breakaway", weight: 18 }]),
   // opad 80-100 % · nedad maks 15 %.
   high_mountain: Object.freeze([{ value: "long_climb", weight: 84 }, { value: "punch", weight: 9 }, { value: "descent", weight: 7 }]),
   itt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
