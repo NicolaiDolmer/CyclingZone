@@ -695,6 +695,8 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 
 Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet lukning ≥ kl. 20), sweep-kapacitet (én sweep/dag), skadesvarighed (løbsdage). PR #5205 (fundamentet, flag off) merget 15/9.
 
+**Beslutning 8's forudsætning er indfriet i kalenderen (#5267, ejer-valg 20/9).** De 35 celler kræver at HVER kalenderdato faktisk bærer 5 løbsdage. Det gør den nu i alle fire divisioner: pakkeren fordeler de tomme løbsdage jævnt i stedet for at lægge dem i de få huller hvor intet løb kører. Reglen og prisen står i [`docs/CALENDAR_RULES.md` §1d/§1e-b](CALENDAR_RULES.md). De to ting sweepen skulle kunne for at udnytte det (drives af løbsdags-aksen, og et rytter-filter på `race_entry_days` i stedet for `race_results`) er bygget i B4 (#4847, rettet 20/9), se §13.3b. Resten der står åben dér, en helt løbsløs kalenderdato der ikke giver noget tick, kan først lukkes nu hvor kalenderen bærer løbsdagene.
+
 ### 13.3b Ejerens realisme-regel 18/9 (låst princip; genåbn ikke)
 
 Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fuld tekst: [#5267, kommentar 18/9](https://github.com/NicolaiDolmer/CyclingZone/issues/5267). Kort:

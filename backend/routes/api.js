@@ -522,6 +522,7 @@ import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory, buildPrizeBreakdown, buildSponsorPayoutLine } from "../lib/myTeamLatestResult.js";
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
+import { SEASON_RACE_DAY_TARGET } from "../lib/calendarRaceDayTargets.js";
 import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
@@ -11798,7 +11799,12 @@ router.get("/admin/seasons/:id/generate-calendar/preview", requireAdmin, async (
     if (catErr) return res.status(500).json({ error: catErr.message });
 
     const { from, realDays, baseSeed, firstRaceDay } = resolveCalendarAnchor(season, req.query);
-    const { tierPlans } = buildTierMaterializationPlan({ pools: poolsWithCounts, catalog: catalog || [], from, realDays, baseSeed });
+    // #4845/#5267: previewet skal bruge SAMME løbsdags-mål som "Generér" — ellers viser det
+    // den naturlige akse og skjuler netop de træningsdage målet tilføjer.
+    const { tierPlans } = buildTierMaterializationPlan({
+      pools: poolsWithCounts, catalog: catalog || [], from, realDays, baseSeed,
+      raceDayTarget: SEASON_RACE_DAY_TARGET[Number(season.number)] ?? null,
+    });
 
     // Flad tier-planen ud til den pulje-orienterede form admin-UI'et renderer.
     const outPools = [];
@@ -11854,6 +11860,9 @@ router.post("/admin/seasons/:id/generate-calendar", requireAdmin, adminWriteLimi
     const { from, realDays, baseSeed, firstRaceDay } = resolveCalendarAnchor(season, req.query);
     const summary = await materializeTierCalendars({
       supabase, seasonId: season.id, seasonStartDate: season.start_date, from, realDays, baseSeed, dryRun,
+      // #4845/#5267: sæsonens fælles løbsdags-mål. Uden det skriver ejer-knappen den
+      // naturlige (skæve) akse, altså en anden kalender end buildSeasonCalendar.js bygger.
+      raceDayTarget: SEASON_RACE_DAY_TARGET[Number(season.number)] ?? null,
     });
 
     if (!dryRun) {

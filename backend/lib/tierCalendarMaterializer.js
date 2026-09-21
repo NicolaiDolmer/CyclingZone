@@ -34,6 +34,7 @@ import { captureException } from "./sentry.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 // #5272: remaining-horizon-målet for en pulje der aktiveres midt i sæsonen.
 import { resolveActivationRaceDayTarget } from "./calendarActivationRaceDays.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 
 export { TIER_CLASS_WHITELIST };
 
@@ -249,6 +250,12 @@ export function buildTierMaterializationPlan({
   slots = TIER_STAGE_SLOTS,
   baseSeed = 1,
   forceTiers = [],
+  // #4845 (ejer 6/9): faelles antal loebsdage pr. saeson i ALLE divisioner. null = uaendret
+  // adfaerd (antallet er et soegeresultat pr. division, som foer #4845).
+  // #5267: maalet naas som EFTERBEHANDLING — den naturlige pakning beholdes, og de
+  // manglende loebsdage lae­gges som rene traeningsdage paa de positioner hvor intet loeb
+  // er i gang. Maalet flytter derfor ikke laengere et eneste loeb.
+  raceDayTarget = null,
   classWhitelist = TIER_CLASS_WHITELIST,
   // #3327/#3328 (2026-08-04): data-drevne dækningsmål — se tierCalendarGuarantees.js.
   // Sendes videre til selectTierRaceSet, som selv falder tilbage til FØR-#3327-adfærd
@@ -398,10 +405,20 @@ export function buildTierMaterializationPlan({
     const isCobbledClassic = (r) => catalogById.get(r.id)?.terrain_archetype === "cobbled_classic"
       && r.race_class !== "Monuments";
     const enrichedOneDayRaces = reshapeCobblesFractionToTwoWindows(withSeasonFraction(sel.oneDayRaces), isCobbledClassic);
-    const packed = packLaneCalendar({
+    const packArgs = {
       stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
       density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES,
+    };
+    // #5267: EEN pakning. Foer #5267 pakkede vi to gange - foerst naturligt for at MAALE
+    // aksen, saa igen med maalet som binding - fordi maalet aendrede selve soegningen.
+    // Det goer det ikke laengere: soegningen finder den naturlige pakning, og
+    // traeningsdagene lae­gges ovenpaa uden at flytte et loeb. Det naturlige antal
+    // loebsdage kommer nu fra pakkeren selv (`naturalRaceDays`).
+    const packed = packLaneCalendar({
+      ...packArgs, raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : 0,
     });
+    const naturalRaceDays = packed.naturalRaceDays ?? packed.timelineLength ?? 0;
+    const raceDayDeficit = raceDayTarget != null ? Math.max(0, Number(raceDayTarget) - naturalRaceDays) : 0;
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
@@ -455,6 +472,31 @@ export function buildTierMaterializationPlan({
       load: packed.load, emptyDays: packed.emptyDays, underfilledDays: packed.underfilledDays,
       overlapDays: packed.overlapDays, maxOverlap: packed.maxOverlap,
       overlapHistogram: packed.overlapHistogram, timelineLength: packed.timelineLength,
+      // #4845: loebsdags-aksen pr. division — maalet, det naturlige antal, og hvad de
+      // tomme loebsdage er. `raceDayTarget` er null naar reglen ikke er slaaet til.
+      raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : null,
+      raceDayAxisLength: packed.timelineLength ?? 0,
+      naturalRaceDays,
+      raceDayDeficit,
+      trainingGameDays: packed.trainingGameDays ?? [],
+      // Kalenderdagen (real_day-indeks) hver traeningsdag hoerer til — en tom loebsdag har
+      // ingen raekke i stageRows, saa dens dato kan IKKE udledes af naboerne (§0's akse-
+      // faelde: den ville lande paa nabo-datoens baand).
+      trainingGameDayRealDays: packed.dateOfTrainingGameDay ?? [],
+      trainingGameDayCount: (packed.trainingGameDays ?? []).length,
+      restDayGameDayCount: (packed.restDayGameDays ?? []).length,
+      // Doemmer paa AKSEN, ikke paa det nominelle underskud: naar traeningsdagene fordeles
+      // jaevnt, kan en kalenderdato der allerede har FLERE naturlige loebsdage end sin kvote
+      // ikke fyldes ned, og aksen bliver da laengere end maalet selv om `raceDayDeficit` er
+      // 0. Den slags maa ikke rapporteres som "maalet holdt" — §1d's gate skal se det.
+      raceDayPaddingHeld: raceDayTarget == null ? true : Boolean(packed.raceDayTargetHeld),
+      freeAxisPositions: packed.freeAxisPositions ?? 0,
+      longestDateStreakWithoutTraining: packed.longestDateStreakWithoutTraining ?? null,
+      // #5267: loebsdage pr. kalenderdato, og prisen (traeningsdage inde i et etapeloebs
+      // spaend). Rent rapporterings-data — dommen ligger i gates.
+      raceDaysPerDate: packed.raceDaysPerDate ?? [],
+      trainingDaysInsideStageRaceSpans: packed.trainingDaysInsideStageRaceSpans ?? 0,
+      raceDayPerDateDeviations: packed.raceDayPerDateDeviations ?? [],
       straddleGameDays: packed.straddleGameDays,
       gtRealDaySeparationViolations: packed.gtRealDaySeparationViolations ?? [], // #3472 v3
       // #3546 C: dage uden afgørelse: forward fra packLaneCalendar's diagnostik, samme
@@ -489,6 +531,10 @@ export async function materializeTierCalendars({
   // forkortet vindue) — se repair2276Div4Cascade.js. density overstyrer KUN når eksplicit
   // angivet; default TIER_DENSITY bruges ellers uændret (design-tæthederne må ikke røres).
   realDays = 28, quotas = TIER_GAME_DAY_QUOTA, density = TIER_DENSITY,
+  // #4845 (ejer 6/9): faelles antal loebsdage i alle fire divisioner. null = uae­ndret
+  // adfaerd. buildSeasonCalendar sender saesonens maal (SEASON_RACE_DAY_TARGET) eller
+  // --race-day-target; se calendarRaceDayTargets.js og docs/CALENDAR_RULES.md §1d.
+  raceDayTarget = null,
   // #3327/#3328 pass-through til buildTierMaterializationPlan + dækningsverifikationen.
   // Defaults = de skarpe produktions-garantier. Tests af FØR-#3327-mekanik (GT-gate,
   // overlap-cap, kronologi, dedup) med små syntetiske katalog-fixtures kan sende tomme
@@ -594,7 +640,7 @@ export async function materializeTierCalendars({
   const plannedPools = tiers && tiers.length ? pools.filter((p) => targetTiers.has(p.tier)) : pools;
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
-    oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations,
+    oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
   });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
@@ -790,21 +836,20 @@ export async function materializeTierCalendars({
  *   calendarActivationRaceDays.js. Er der ingen anden kalender at måle mod (helt frisk
  *   sæson), sendes intet mål — adfærden er da bit-identisk med før #5272.
  *
- *   ⚠ VIRKNINGEN AFHÆNGER AF #4845/#5169. `raceDayTarget` forbruges først af
- *   `buildTierMaterializationPlan`/`packLaneCalendar` når PR #5169 er merget; indtil da
- *   destruktureres nøglen ikke af materializeren og har derfor ingen effekt på den
- *   skrevne kalender. Målet BEREGNES og RAPPORTERES (returværdiens `raceDayPlan`) fra nu,
- *   så beslutningen er truffet ét sted og #5169 kun skal landes. Se PR-body for #4123/#5272.
+ *   `raceDayTarget` forbruges af `buildTierMaterializationPlan`/`packLaneCalendar` (#5169),
+ *   så målet påvirker den skrevne kalender. Sæsonens eget mål (`SEASON_RACE_DAY_TARGET`)
+ *   bruges som `seasonRaceDayTarget` når kalderen ikke sender et — ellers ville en pulje
+ *   der vågner midt i en sæson med et mål få den naturlige (skæve) akse, altså præcis den
+ *   ulighed §1d lukker.
  */
 export async function reconcilePoolCalendarOnActivation({
   supabase, poolId, now = new Date(), materialize = materializeTierCalendars, log = () => {},
   // #3327/#3328 pass-through til materialize() — se materializeTierCalendars for defaults
   // + opt-out-konvention (tests af FØR-#3327-mekanik sender tomme objekter).
   coverageOverrides = {},
-  // #5272: sæsonens mål for antal LØBSDAGE pr. division, hvis det er kendt. null =
-  // udled det ved at MÅLE de divisioner der allerede har en kalender (se
-  // calendarActivationRaceDays.js). Det er her #4845/#5169's SEASON_RACE_DAY_TARGET
-  // hægtes på i én linje den dag PR #5169 lander.
+  // #5272: sæsonens mål for antal LØBSDAGE pr. division. null = brug sæsonens eget mål
+  // (#4845's SEASON_RACE_DAY_TARGET) hvis sæsonen har et, og ellers udled det ved at MÅLE
+  // de divisioner der allerede har en kalender (se calendarActivationRaceDays.js).
   seasonRaceDayTarget = null,
   // #2743: injectable til tests, mirrorer stageScheduler.js/raceEntryGeneratorSweep.js.
   captureExceptionFn,
@@ -880,7 +925,9 @@ export async function reconcilePoolCalendarOnActivation({
         scheduled_at: s.scheduled_at,
       })),
       from,
-      seasonTarget: seasonRaceDayTarget,
+      // #4845: sæsonens EGET mål vinder over en måling af naboerne. Måler vi i stedet, arver
+      // den nye pulje en skæv akse hvis en af de eksisterende blev bygget uden målet.
+      seasonTarget: seasonRaceDayTarget ?? (SEASON_RACE_DAY_TARGET[Number(season.number)] ?? null),
       excludeDivisionId: poolId,
     });
     if (raceDayPlan.raceDayTarget != null) {

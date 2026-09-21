@@ -61,6 +61,7 @@ import { renewExpiringAiContracts as defaultRenewExpiringAiContracts } from "./a
 import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retirementRelease.js";
 import { detectAndNotifySquadsBelowMinimum as defaultDetectAndNotifySquadsBelowMinimum } from "./squadBelowMinimumCheck.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 import { captureException } from "./sentry.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
@@ -1428,6 +1429,11 @@ export async function transitionToNextSeason({
     const materializeFn = deps.materializeTierCalendars ?? (await getMaterializeTierCalendars());
     const gatePlanFn = deps.gatePlan ?? (await getGatePlan());
     let calendarApplied = false;
+    // #4845/#5267: sæsonens fælles løbsdags-mål SKAL med her. Uden det bygger forever-stien
+    // den NATURLIGE (skæve) akse — og så gater den en anden kalender end den den skriver,
+    // eller skriver en kalender hvor D1 har ~40 % flere trænings-ticks end D4. Fanget af
+    // CodeRabbit 19/9 på PR #5169. null = sæsonen har intet mål (adfærd som før #4845).
+    const seasonRaceDayTarget = SEASON_RACE_DAY_TARGET[Number(plan.to_season.number)] ?? null;
     try {
       const dryPlan = await materializeFn({
         supabase,
@@ -1435,6 +1441,7 @@ export async function transitionToNextSeason({
         seasonStartDate: transitionAtIso,
         from: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
         dryRun: true,
+        raceDayTarget: seasonRaceDayTarget,
       });
       const { blocking, compositionDrift, tierCompositionDrift } = gatePlanFn(dryPlan);
 
@@ -1454,6 +1461,7 @@ export async function transitionToNextSeason({
           seasonStartDate: transitionAtIso,
           from: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
           dryRun: false,
+          raceDayTarget: seasonRaceDayTarget,
         });
         log.push({ phase: "season_calendar", ...applied, compositionDrift, tierCompositionDrift });
         calendarApplied = true;
