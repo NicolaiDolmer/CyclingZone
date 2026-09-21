@@ -95,6 +95,13 @@ export function resolveNotificationLink(notification, fallbackLink) {
     return `/races/${meta.raceId || n.related_id}#selection`;
   }
 
+  // #4759: assistenten udtog dit hold — samme deep-link som selection_warning,
+  // så spilleren lander direkte på det udtagne løbs selection-panel og kan
+  // rette det med det samme.
+  if (n.type === "assistant_filled_squad" && (meta.raceId || n.related_id)) {
+    return `/races/${meta.raceId || n.related_id}#selection`;
+  }
+
   // #2832-review (ejer-merge-krav): season_ended bærer den AFSLUTTEDE sæsons
   // id i related_id (emitSeasonEndedNotifications). Uden dette pegede
   // beskeden på det generiske /seasons, som defaulter til den AKTIVE (nye,

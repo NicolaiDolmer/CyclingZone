@@ -263,6 +263,10 @@
       "title": "Holdudtagelse mangler",
       "message": "{race} starter om under 36 timer, og du har endnu ikke sat dit hold. Vælg dine ryttere, eller lad assistenten auto-udtage for dig."
     },
+    "assistantFilledSquad": {
+      "title": "Assistenten udtog dit hold",
+      "message": "Din assistent udtog dit hold til {race}. Du havde ingen udtagelse inde. Kig den igennem, og ret den hvis du vil."
+    },
     "riderRetired": {
       "title": "{name} har indstillet karrieren",
       "message": "{name} har indstillet sin karriere som professionel cykelrytter som {age}-årig. Hans plads i truppen er nu fri."

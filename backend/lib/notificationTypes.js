@@ -86,6 +86,15 @@ export const NOTIFICATION_TYPES = [
   // Ejeren saetter kontakten direkte i Brugere-fanen UDEN besked; det er kun
   // svaret paa noget spilleren selv spurgte om der lander i indbakken.
   "beta_access_decided",
+  // #4759 (roadbook-loefte, opfoelger til #4201): assistenten udtog en HELT
+  // tom trup for et menneske-hold, fordi manageren ikke naaede det selv.
+  // Sendt fra backend/lib/assistantFilledSquadNotification.js, kaldt fra BEGGE
+  // de stier der kan naa dette (sen redning i raceRunner.fillMissingTeamEntries
+  // og late_fill/opt_in-tilstanden i raceEntryGenerator.runRaceEntryGenerator).
+  // Aldrig naar manageren selv havde en udtagelse (manuel ELLER en tidligere
+  // auto-raekke) i den beroerte (loeb, hold)-enhed — det haandhaeves af
+  // kaldestederne, ikke af selve notifikationstypen.
+  "assistant_filled_squad",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

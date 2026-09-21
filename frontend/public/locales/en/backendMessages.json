@@ -263,6 +263,10 @@
       "title": "Squad selection needed",
       "message": "{race} starts within 36 hours and you haven't picked your squad yet. Select your riders, or let the assistant auto-select for you."
     },
+    "assistantFilledSquad": {
+      "title": "Assistant filled your squad",
+      "message": "Your assistant picked your squad for {race}. You had no selection in. Take a look and change it if you want."
+    },
     "riderRetired": {
       "title": "{name} has retired",
       "message": "{name} has retired from professional cycling at age {age}. His place in your squad is now free."

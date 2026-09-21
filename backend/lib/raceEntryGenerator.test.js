@@ -136,9 +136,15 @@ function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false, b
       order() { return api; },
       limit() { return api; },
       maybeSingle() { return api.then(r => ({...r,data:r.data?.[0] ?? null})); },
+      // #4759: notifyTeamOwner (notificationService.js) slår hold-ejerens user_id
+      // op via .single() — mocken manglede den (kun .maybeSingle() fandtes).
+      single() { return api.then(r => ({...r,data:r.data?.[0] ?? null})); },
       delete() { q.op = "delete"; return api; },
       update(values) { q.op = "update"; q.values = values; return api; },
-      insert(rows) {
+      insert(rowsArg) {
+        // #4759: notifyUser (notificationService.js) insertér ÉT objekt, ikke et
+        // array — normalisér, samme mønster som Postgrest selv accepterer begge.
+        const rows = Array.isArray(rowsArg) ? rowsArg : [rowsArg];
         // PK-håndhævelse som Postgres: dublet (race_id, rider_id) → duplicate key-fejl.
         if (table === "race_entries") {
           const seen = new Set((state[table] || []).map(entryKey));
@@ -1949,4 +1955,170 @@ test("#4201: ukendt tilstand falder fail-safe tilbage til proactive", async () =
   });
   assert.equal(res.mode, "proactive");
   assert.equal(entriesFor(state, "NEAR", "mgr").length, 0);
+});
+
+// ── #4759: "assistenten udtog dit hold"-notifikationen ──────────────────────
+// Dækker begge stier runRaceEntryGenerator selv kan nå (late_fill + opt_in).
+// Sen redningens sti (raceRunner.fillMissingTeamEntries) har sine egne tests
+// i raceRunnerAutofill.test.js.
+function notifyCalls(calls) {
+  return calls.filter((c) => c.raceId && c.teamId);
+}
+
+test("#4759 late_fill: notificerer mgr for NEAR (fyldt fra tomt), ikke for FAR (uden for horisont)", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const calls = [];
+  const notify = async ({ teamId, raceId }) => { calls.push({ teamId, raceId }); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  });
+  assert.deepEqual(notifyCalls(calls), [{ teamId: "mgr", raceId: "NEAR" }], "kun NEAR, kun mgr");
+});
+
+test("#4759 late_fill: ingen notifikation til AI-hold, selvom det ogsaa fyldes", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const calls = [];
+  const notify = async ({ teamId, raceId }) => { calls.push({ teamId, raceId }); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  });
+  assert.ok(entriesFor(state, "NEAR", "ai1").length > 0, "AI-holdet blev rent faktisk ogsaa fyldt");
+  assert.ok(!calls.some((c) => c.teamId === "ai1"), "AI-hold faar aldrig denne notifikation");
+});
+
+test("#4759 late_fill: en enhed manageren allerede havde en udtagelse i (manuel) notificerer ALDRIG", async () => {
+  const { state, seasonId } = seedModeScenario();
+  state.race_entries = [
+    { race_id: "NEAR", rider_id: "mgr-r0", team_id: "mgr", race_role: "captain", is_auto_filled: false },
+    { race_id: "NEAR", rider_id: "mgr-r1", team_id: "mgr", race_role: "helper", is_auto_filled: false },
+  ];
+  const calls = [];
+  const notify = async ({ teamId, raceId }) => { calls.push({ teamId, raceId }); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  });
+  assert.deepEqual(calls, [], "manageren havde selv 2 raekker inde — assistenten roerer ikke, og der er intet at notificere om");
+});
+
+test("#4759 opt_in: notificerer mgr for BÅDE NEAR og FAR (én besked pr. loeb)", async () => {
+  const { state, seasonId } = seedModeScenario({ managerOptIn: true });
+  const calls = [];
+  const notify = async ({ teamId, raceId }) => { calls.push({ teamId, raceId }); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "opt_in",
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  });
+  const mgrCalls = notifyCalls(calls).filter((c) => c.teamId === "mgr").map((c) => c.raceId).sort();
+  assert.deepEqual(mgrCalls, ["FAR", "NEAR"], "to loeb, to separate beskeder — ikke én pr. hold");
+});
+
+test("#4759 opt_in: hold med en DELVIS manuel udtagelse (top-up) notificerer IKKE for det loeb — kun det uroerte", async () => {
+  // #4759 punkt 2: "aldrig naar manageren selv havde en udtagelse" gaelder ogsaa
+  // top-up-grenen (kun opt_in kan naa den for et menneske-hold — late_fill
+  // blokerer hele enheden saa snart der findes NOGEN raekker, se lateFillBlocked).
+  const { state, seasonId } = seedModeScenario({ managerOptIn: true });
+  state.race_entries = [
+    { race_id: "NEAR", rider_id: "mgr-r0", team_id: "mgr", race_role: "captain", is_auto_filled: false },
+    { race_id: "NEAR", rider_id: "mgr-r1", team_id: "mgr", race_role: "helper", is_auto_filled: false },
+  ];
+  const calls = [];
+  const notify = async ({ teamId, raceId }) => { calls.push({ teamId, raceId }); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "opt_in",
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  });
+  assert.ok(entriesFor(state, "NEAR", "mgr").length > 2, "toppet op — assistenten rørte enheden");
+  const mgrCalls = notifyCalls(calls).filter((c) => c.teamId === "mgr").map((c) => c.raceId);
+  assert.deepEqual(mgrCalls, ["FAR"], "NEAR havde en manuel udtagelse (top-up) — kun FAR (helt uroert) notificerer");
+});
+
+test("#4759 opt_in: fravalgt hold (assistant_autopick_enabled=false) faar ingen notifikation", async () => {
+  const { state, seasonId } = seedModeScenario({ managerOptIn: false });
+  const calls = [];
+  const notify = async (args) => { calls.push(args); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "opt_in",
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  });
+  assert.deepEqual(calls, [], "holdet er ikke tilvalgt — roeres slet ikke, saa ingen besked");
+});
+
+test("#4759: proactive (default) notificerer aldrig et manager-hold (naar aldrig hertil)", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const calls = [];
+  const notify = async (args) => { calls.push(args); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, notify,
+    now: Date.parse("2026-07-10T08:00:00Z"),
+  });
+  assert.deepEqual(calls, [], "#4217: proaktiv sweep roerer aldrig et menneske-hold");
+});
+
+test("#4759: dry-run sender aldrig en notifikation", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const calls = [];
+  const notify = async (args) => { calls.push(args); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: true, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  });
+  assert.deepEqual(calls, [], "dry-run skriver intet, saa der er intet at notificere om");
+});
+
+test("#4759: idempotent ved genkoersel — anden koersel for samme (loeb,hold) notificerer IKKE igen", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const calls = [];
+  const notify = async ({ teamId, raceId }) => { calls.push({ teamId, raceId }); return { delivered: true }; };
+  const args = {
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  };
+  await runRaceEntryGenerator(args);
+  await runRaceEntryGenerator(args); // samme kørsel igen — enheden har nu 6 rækker, ikke længere "helt tom"
+  assert.equal(notifyCalls(calls).length, 1, "kun ÉN besked pr. (loeb,hold) på tværs af to kørsler");
+});
+
+// Verificerer den FAKTISKE notifikations-payload (ikke en injiceret stub) mod
+// den regenererede backendMessages-bundle, inkl. et rigtigt insert i "notifications".
+test("#4759: notifyAssistantFilledSquad (default) skriver en rigtig assistant_filled_squad-raekke", async () => {
+  const { state, seasonId } = seedModeScenario();
+  state.races[0].name = "Testløbet Rundt om Fjeldet";
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"),
+  });
+  const rows = state.notifications || [];
+  assert.equal(rows.length, 1, "netop én notifikation blev skrevet");
+  assert.equal(rows[0].type, "assistant_filled_squad");
+  assert.equal(rows[0].user_id, "u1", "mgr's ejer (user_id) modtager beskeden, ikke team_id");
+  assert.equal(rows[0].related_id, "NEAR");
+  assert.match(rows[0].message, /Testløbet Rundt om Fjeldet/);
+  assert.match(rows[0].message, /no selection in/i);
+});
+
+// CodeRabbit-fund (denne PR): applyUnitDiff's upsert bruger ignoreDuplicates
+// (ON CONFLICT (race_id, rider_id) DO NOTHING) — en GHOST-residual under et
+// ANDET hold kan stille springe et pick over. Uden et verificeret genlæs FØR
+// notifikationen kunne "assistenten udtog dit hold" fyres for en enhed der
+// reelt endte tom.
+test("#4759 CodeRabbit-fund: ghost-residual under et ANDET hold optager PK'en for HVER ønsket rytter -> enheden ender reelt tom -> INGEN notifikation", async () => {
+  const { state, seasonId } = seedModeScenario();
+  // Alle 8 af mgr's egne kandidat-ryttere har allerede en race_entries-række i
+  // NEAR under et fremmed hold ("ghost") — uanset hvilke 6 autopick vælger,
+  // rammer upsertens PK-kollision (race_id, rider_id) dem alle.
+  state.race_entries = Array.from({ length: 8 }, (_, i) => ({
+    race_id: "NEAR", rider_id: `mgr-r${i}`, team_id: "ghost-team", race_role: "helper", is_auto_filled: true,
+  }));
+  const calls = [];
+  const notify = async (args) => { calls.push(args); return { delivered: true }; };
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify,
+  });
+  const mgrRows = state.race_entries.filter((e) => e.race_id === "NEAR" && e.team_id === "mgr");
+  assert.equal(mgrRows.length, 0, "sanity: mgr's enhed endte rent faktisk tom (alle picks ghost-kolliderede)");
+  assert.deepEqual(calls, [], "ingen besked om en trup der i virkeligheden aldrig blev fyldt");
 });
