@@ -241,9 +241,9 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // 41-løbs-researchen viste 0/9 rigtige grand tours (2024-2026) sluttede på bjerg —
   // flad (77,8%) eller enkeltstart (22,2%) dominerer, og hårdeste etape lå næstsidst i
   // 88,9% af tilfældene. Se orderAndBuildGrandTour/toGrandTourFinale nedenfor.
-  grand_tour:     { kind: "stage", grandTourOrder: true, openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 15 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 25 }, { value: "mountain", weight: 19 }, { value: "high_mountain", weight: 13 }, { value: "itt", weight: 19 }] },
-  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 25 }, { value: "hilly", weight: 25 }, { value: "mountain", weight: 31 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 9 }] },
-  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 40 }, { value: "hilly", weight: 62 }, { value: "mountain", weight: 13 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 12 }] },
+  grand_tour:     { kind: "stage", grandTourOrder: true, openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 17 }, { value: "rolling", weight: 25 }, { value: "hilly", weight: 29 }, { value: "mountain", weight: 15 }, { value: "high_mountain", weight: 10 }, { value: "itt", weight: 19 }] },
+  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 12 }, { value: "rolling", weight: 29 }, { value: "hilly", weight: 29 }, { value: "mountain", weight: 25 }, { value: "high_mountain", weight: 13 }, { value: "itt", weight: 9 }] },
+  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 12 }, { value: "rolling", weight: 46 }, { value: "hilly", weight: 71 }, { value: "mountain", weight: 10 }, { value: "high_mountain", weight: 3 }, { value: "itt", weight: 12 }] },
   // #3295/#3327/#3371: bjerg-garantien erstattet af en KUPERET garanti. En "sprinter-uge"
   // der pr. definition indeholder en bjergetape modsiger sit eget navn — Danmark Rundt,
   // Tour of Guangxi og Tour Down Under afgøres af sprintere og puncheurs, ikke klatrere,
@@ -256,7 +256,7 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // skabelon. Konkret konsekvens: TIER_MOUNTAIN_FREE_STAGE_RACE_MIN (#3327) kan
   // opfyldes af tier 2/3, hvor hilly_tour hidtil var den ENESTE mulige kilde og
   // løbsudvalget ofte slet ikke fik en.
-  sprinters_week: { kind: "stage", guarantees: ["flat", "hilly"], filler: [{ value: "flat", weight: 30 }, { value: "rolling", weight: 40 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 9 }] },
+  sprinters_week: { kind: "stage", guarantees: ["flat", "hilly"], filler: [{ value: "flat", weight: 35 }, { value: "rolling", weight: 46 }, { value: "hilly", weight: 25 }, { value: "mountain", weight: 8 }, { value: "itt", weight: 9 }] },
   // #3295: itt tilføjet som GARANTI (var kun filler-vægt 10). balanced_week er
   // kalenderens største arketype (19 katalog-løb / 88 løbsdage i S2's udvalg), og den
   // manglende enkeltstart dér er hovedårsagen til at ITT lå på 6,6 % mod K-B's mål.
@@ -267,10 +267,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // Realisme: Paris-Nice, Tirreno-Adriatico, Tour de Romandie og Critérium du Dauphiné
   // har alle en enkeltstart i normalår — det er kendetegnende for formatet, ikke en
   // undtagelse. Loftet (max(garanterede, 2)) er uændret, så et løb kan stadig højst få 2.
-  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain", "itt"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 37 }, { value: "hilly", weight: 33 }, { value: "mountain", weight: 17 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 16 }] },
+  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain", "itt"], filler: [{ value: "flat", weight: 21 }, { value: "rolling", weight: 43 }, { value: "hilly", weight: 38 }, { value: "mountain", weight: 14 }, { value: "high_mountain", weight: 3 }, { value: "itt", weight: 16 }] },
   // Ørken/sprinter-tur med faste bjergankomster: garanteret 1 TT + 2 bjerg, resten
   // flad/rullende (fx UAE Tour). Filler kun flad/rullende → "resten er flade".
-  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 45 }, { value: "rolling", weight: 40 }] },
+  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 52 }, { value: "rolling", weight: 46 }] },
 
   // #2769 (Sub-1): fritstående enkeltstart-endagsløb (#2177 — 0 fritstående ITT i dag).
   itt_classic: { kind: "single", weights: [{ value: "itt", weight: 1 }] },
@@ -279,10 +279,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // sænker M-Down-andelen — mountain_tour garanterer kun mellembjerg/descent). high_mountain
   // sidst via STAGE_ORDER_HINT (7) → dronningeetape/top-finish. En itt-garanti giver samtidig
   // en enkeltstart i løbet.
-  summit_tour: { kind: "stage", guarantees: ["flat", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 8 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 19 }, { value: "high_mountain", weight: 24 }, { value: "itt", weight: 12 }] },
+  summit_tour: { kind: "stage", guarantees: ["flat", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 9 }, { value: "rolling", weight: 25 }, { value: "hilly", weight: 25 }, { value: "mountain", weight: 15 }, { value: "high_mountain", weight: 19 }, { value: "itt", weight: 12 }] },
 
   // #2769: etapeløb med GARANTERET brosten-etape (#2527/#2755 — 0 brosten i etapeløb i dag).
-  cobbled_tour: { kind: "stage", guarantees: ["flat", "cobbles", "mountain"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 37 }, { value: "cobbles", weight: 8 }, { value: "hilly", weight: 30 }, { value: "mountain", weight: 12 }, { value: "itt", weight: 9 }] },
+  cobbled_tour: { kind: "stage", guarantees: ["flat", "cobbles", "mountain"], filler: [{ value: "flat", weight: 21 }, { value: "rolling", weight: 43 }, { value: "cobbles", weight: 8 }, { value: "hilly", weight: 35 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 9 }] },
 });
 
 // #3295 KALIBRERING (2026-08-06) — hvordan filler-vægtene ovenfor blev fundet.
