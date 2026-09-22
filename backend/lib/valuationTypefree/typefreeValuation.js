@@ -104,6 +104,22 @@ export function predictBaseValueTypefree(rider, abilities, model, { premium = tr
   return Number.isFinite(out) ? Math.max(1, out) : null;
 }
 
+// Grundværdi på hvert trin af præmie-udfasningen i ÉN karriere-simulering.
+// Identisk med predictBaseValueTypefree(…, { ...model, elite_premium:
+// phasedElitePremium(model.elite_premium, i, steps) }) for hvert trin i.
+export function predictBaseValueTypefreeByStep(rider, abilities, model, steps = ELITE_PREMIUM_PHASE_STEPS) {
+  const r = simulateCareerTypefree(rider, abilities, model);
+  if (!r || !Number.isFinite(r.npv) || r.npv <= 0) return steps.map(() => null);
+  const scale = Number.isFinite(Number(model.scale)) ? Number(model.scale) : 1;
+  const level = Number(model.level_correction) > 0 ? Number(model.level_correction) : 1;
+  const raw = scale * r.npv;
+  const overall = riderOverall(abilities);
+  return steps.map((_, i) => {
+    const out = Math.round(level * convexPremiumOnly(raw, overall, phasedElitePremium(model.elite_premium, i, steps)));
+    return Number.isFinite(out) ? Math.max(1, out) : null;
+  });
+}
+
 // Løn-grundlag (sæson-0-produktion, skaleret, uden præmie) — samme kontrakt som
 // v4's currentProductionValue. Måles separat (rider_production_value_model).
 export function currentProductionValueTypefree(rider, abilities, model) {

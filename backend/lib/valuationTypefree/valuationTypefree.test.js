@@ -30,6 +30,7 @@ import {
   elitePremiumPhaseFactor,
   phasedElitePremium,
   predictBaseValueTypefree,
+  predictBaseValueTypefreeByStep,
   simulateCareerTypefree,
 } from "./typefreeValuation.js";
 
@@ -223,6 +224,7 @@ test("elitepræmie-trin: værdien falder monotont trin for trin og ender på pr�
     predictBaseValueTypefree(rider, ab, { ...TEST_MODEL, elite_premium: phasedElitePremium(TEST_MODEL.elite_premium, n) }));
   for (let i = 1; i < values.length; i++) assert.ok(values[i] < values[i - 1], `trin ${i}`);
   assert.equal(values[4], predictBaseValueTypefree(rider, ab, TEST_MODEL, { premium: false }));
+  assert.deepEqual(predictBaseValueTypefreeByStep(rider, ab, TEST_MODEL), values, "én simulering giver samme trin-værdier");
   // Under tærsklen gør trinnene ingenting.
   const low = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 40]));
   const lows = new Set([0, 4].map((n) =>
