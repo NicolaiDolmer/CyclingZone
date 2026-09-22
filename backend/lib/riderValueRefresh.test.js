@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { recomputeRiderValue, selectChangedValueUpdates } from "./riderValueRefresh.js";
+import { bestRoleForAbilities, recomputeRiderValue, selectChangedValueUpdates } from "./riderValueRefresh.js";
 import { predictBaseValue } from "./riderValuation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -47,7 +47,7 @@ test("#3345: recomputeRiderValue bruger riderRow.valuation_type (frossen) til ba
 test("selectChangedValueUpdates: skriver KUN ryttere hvor værdi/type ændrede sig", () => {
   const fresh = recomputeRiderValue({ id: "r1" }, ABIL, baseline, model);
   const riders = [
-    { id: "r1", primary_type: fresh.primary_type, secondary_type: fresh.secondary_type, base_value: fresh.base_value },
+    { id: "r1", ...bestRoleForAbilities(ABIL), primary_type: fresh.primary_type, secondary_type: fresh.secondary_type, base_value: fresh.base_value },
     { id: "r2", primary_type: fresh.primary_type, secondary_type: fresh.secondary_type, base_value: fresh.base_value + 50_000 },
     { id: "r3", primary_type: "gc", secondary_type: "rouleur", base_value: 100 },
   ];
@@ -60,7 +60,7 @@ test("selectChangedValueUpdates: skriver KUN ryttere hvor værdi/type ændrede s
   const u2 = updates.find((u) => u.id === "r2");
   // #2594: recomputeRiderValue returnerer nu også current_production_value
   // (løn-basen); selectChangedValueUpdates diff'er + skriver den med.
-  assert.deepEqual(Object.keys(u2).sort(), ["base_value", "current_production_value", "id", "primary_type", "secondary_type"]);
+  assert.deepEqual(Object.keys(u2).sort(), ["base_value", "best_role", "best_role_rating", "current_production_value", "id", "primary_type", "secondary_type"]);
 });
 
 // ── #3550 punkt 5: intake-pull-kandidater med provisorisk værdi ───────────────
@@ -161,7 +161,9 @@ test("#4872: en rytter frosset til 'tt' der kun udvikler sprint/acceleration få
   const frozen = recomputeRiderValue(riderRow, RYAN_COOPER_BEFORE, baseline, modelV4, { youthBaseline: youthBaselineV4 });
   const rider = { ...riderRow, primary_type: frozen.primary_type, secondary_type: frozen.secondary_type, base_value: frozen.base_value, current_production_value: frozen.current_production_value };
   const updates = selectChangedValueUpdates([rider], new Map([["stuck-1", RYAN_COOPER_AFTER]]), baseline, modelV4, new Map(), youthBaselineV4);
-  assert.equal(updates.length, 0, "base_value er reelt uændret (time_trial rørte sig ikke) — ikke en tabt skrivning");
+  assert.equal(updates.length, 1, "best-role cache follows developed abilities");
+  assert.equal(updates[0].base_value, undefined, "unchanged value is not written");
+  assert.equal(updates[0].current_production_value, undefined, "unchanged wage basis is not written");
 });
 
 test("#4872 kontrol: en rytter frosset til 'climber' der udvikler climbing FÅR sin værdi opdateret", () => {

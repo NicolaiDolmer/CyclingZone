@@ -18,6 +18,22 @@ import { predictBaseValue, VALUATION_ABILITY_COLUMNS } from "./riderValuation.js
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { loadValuationModelStrict, loadProductionValueModelStrict } from "./riderValuationModelSelect.js";
+import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
+
+// Data-only preparation for #5435/#5443. Ties use the stable recipe order.
+// Neither natural identity nor the active valuation model reads these fields yet.
+export function bestRoleForAbilities(abilities) {
+  let best_role = null;
+  let best_role_rating = null;
+  for (const role of DISPLAY_RECIPE_KEYS) {
+    const rating = ratingForRole(abilities, role);
+    if (rating !== null && (best_role_rating === null || rating > best_role_rating)) {
+      best_role = role;
+      best_role_rating = rating;
+    }
+  }
+  return { best_role, best_role_rating };
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
@@ -83,20 +99,30 @@ export function selectChangedValueUpdates(riders, abilityByRider, baseline, mode
     const ab = abilityByRider.get(r.id);
     if (!ab) continue; // ingen abilities → spring over (kan ikke værdisættes)
     const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id), youthBaseline, productionModel });
-    if (next.base_value == null) continue;
-    const changed =
+    const best = bestRoleForAbilities(ab);
+    const bestChanged = best.best_role !== (r.best_role ?? null)
+      || best.best_role_rating !== (r.best_role_rating ?? null);
+    if (next.base_value == null) {
+      // A missing age/potential must not prevent caching an available rating.
+      if (bestChanged) updates.push({ id: r.id, ...best });
+      continue;
+    }
+    const valueChanged =
       next.base_value !== r.base_value ||
       next.current_production_value !== (r.current_production_value ?? null) ||
       next.primary_type !== r.primary_type ||
       next.secondary_type !== r.secondary_type;
-    if (changed) {
+    if (valueChanged) {
       updates.push({
         id: r.id,
+        ...best,
         primary_type: next.primary_type,
         secondary_type: next.secondary_type,
         base_value: next.base_value,
         current_production_value: next.current_production_value,
       });
+    } else if (bestChanged) {
+      updates.push({ id: r.id, ...best });
     }
   }
   return updates;
@@ -178,7 +204,8 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
     // #3570: archetype_draw med i selectet — rytterens persisterede anlæg er hans
     // identitet, og uden den i rækken ville sweepen gætte typen forfra hver nat.
     let q = supabase.from("riders")
-      .select("id, primary_type, secondary_type, valuation_type, base_value, current_production_value, birthdate, potentiale, archetype_draw")
+      // schema-columns-ok: best_role fields added by 2026-09-22-5443-best-role-data.sql; apply before refresh.
+      .select("id, primary_type, secondary_type, valuation_type, base_value, current_production_value, birthdate, potentiale, archetype_draw, best_role, best_role_rating")
       .order("id");
     if (teamId) q = q.eq("team_id", teamId);
     return q;

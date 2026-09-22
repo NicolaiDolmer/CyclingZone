@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 
 import { fetchAllRows } from "../../lib/supabasePagination.js";
-import { ABILITY_KEYS } from "../../lib/riderTypes.js";
+import { VALUATION_ABILITY_COLUMNS } from "../../lib/riderValuation.js";
 import { ageForSeason } from "../../lib/riderSeasonAge.js";
 import { applyTypeDampening, TYPE_DAMPENING_ENABLED } from "../../lib/riderValuationTypeDampening.js";
 import { levelCorrectionFactor } from "../../lib/riderCareerNpv.js";
@@ -71,12 +71,13 @@ async function loadAndPlan() {
   }
 
   const riders = await fetchAllRows(() => sb.from("riders")
-    .select("id, firstname, lastname, team_id, is_retired, primary_type, secondary_type, valuation_type, base_value, current_production_value, birthdate, potentiale, archetype_draw")
+    // schema-columns-ok: cache columns added by 2026-09-22-5443-best-role-data.sql.
+    .select("id, firstname, lastname, team_id, is_retired, primary_type, secondary_type, valuation_type, base_value, current_production_value, birthdate, potentiale, archetype_draw, best_role, best_role_rating")
     .order("id"));
   for (const r of riders) r.age = ageForSeason(r.birthdate, seasonNumber);
   const ids = new Set(riders.map((r) => r.id));
   const abilities = await fetchAllRows(() => sb.from("rider_derived_abilities")
-    .select(`rider_id, ability_caps, ${ABILITY_KEYS.join(", ")}`).order("rider_id"));
+    .select(`rider_id, ability_caps, ${VALUATION_ABILITY_COLUMNS.join(", ")}`).order("rider_id"));
   const abilityByRider = new Map(abilities.filter((a) => ids.has(a.rider_id)).map((a) => [a.rider_id, a]));
   const capsByRider = new Map(abilities.filter((a) => ids.has(a.rider_id)).map((a) => [a.rider_id, a.ability_caps]));
 
@@ -93,8 +94,9 @@ function report({ riders, updates, seasonNumber, model }) {
   let bvBefore = 0, bvAfter = 0, cpvBefore = 0, cpvAfter = 0, typeChanges = 0;
   const byType = new Map();
   const drops = [];
-  for (const u of updates) {
-    const r = byId.get(u.id);
+  for (const patch of updates) {
+    const r = byId.get(patch.id);
+    const u = { ...r, ...patch }; // Role-only patches preserve all financial fields.
     bvBefore += Number(r.base_value) || 0;
     bvAfter += Number(u.base_value) || 0;
     cpvBefore += Number(r.current_production_value) || 0;

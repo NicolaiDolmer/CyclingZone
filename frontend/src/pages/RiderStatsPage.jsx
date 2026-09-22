@@ -1366,11 +1366,8 @@ export default function RiderStatsPage() {
       // #1162: eksplicit kolonneliste — hidden_potential er server-skjult (eksakt
       // invertérbar til potentiale: ungdom + seeded støj kan begge beregnes i
       // klienten), og select=* afvises efter column-privilege-migrationen.
-      // Kun de 15 synlige evner (ABILITY_CATEGORIES) + metadata bruges i UI'et.
-      safe(supabase.from("rider_derived_abilities").select(`rider_id, formula_version,
-        climbing, time_trial, flat, tempo, sprint, acceleration, punch,
-        endurance, recovery, durability, descending, cobblestone, positioning,
-        aggression, tactics`).eq("rider_id", id).maybeSingle()),
+      // #5423: registry keys keep the profile aligned with every other surface.
+      safe(supabase.from("rider_derived_abilities").select(`rider_id, formula_version, ${ABILITY_KEYS.join(", ")}`).eq("rider_id", id).maybeSingle()),
       // #2000: ability_progress (0..1 pr. evne mod næste +1) i ET SEPARAT,
       // fejl-tolerant kald — så et eventuelt manglende kolonne-SELECT-grant i
       // deploy-vinduet (før 2026-06-29-ability-progress-client-select-grant.sql
