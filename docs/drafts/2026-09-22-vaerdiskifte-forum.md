@@ -16,7 +16,11 @@
 >
 > If a rider looks wrong afterwards, reply here. That is how we found this one.
 
-## Plan (ejer-krav 22/9: forhåndsvisning i admin FØR kørslen; gamle admin-flader væk)
+## Plan v2 (ejer-beslutning 22/9 kl. 15: værdien regnes på den rating spilleren SER; ét samlet skift med #5435)
+
+**Post IKKE teksterne endnu.** Rækkefølge: (1) bedste rolle nu som data på rytteren · (2) re-fit af v5 med bedste rolle som type, kalibreret på samlet holdværdi, målt for hop/pengemængde/misbrug · (3) admin-forhåndsvisning med gammel/ny rating OG gammel/ny værdi pr. rytter · (4) én udmelding, én kørsel, visningen tændes i samme deploy, patch note v7.294. Teksterne ovenfor rettes så de nævner at ratingen på kortet nu er rytterens bedste rolle. Detaljer: #5443 + #5435 (kommentarer 22/9) og Codex-prompt opgave 1.
+
+## Plan v1 (overhalet samme dag; bevaret som historik)
 
 1. Ejeren poster roadbook-teksten i #the-roadbook + forum-opslaget nu.
 2. Codex bygger (én PR, Refs #5443): tabel `value_transition_preview_5443` (rider_id, hold, type, gammel/ny værdi, diff, computed_at) · `valuationV5DryRun5443.mjs` upserter til tabellen · `GET /api/admin/value-transition-5443` (requireOwner) · T2-side `admin/value-transition-5443` med sortering/filter pr. hold og type, samlet før/efter pr. hold · fjerner den gamle `AdminValueTransitionPage.jsx` (+ shape, test), endpoints `/admin/market-value-level-correction/gate` og `/dry-run` (v3→v4-dæmpningen blev flippet 23/8, ingen fremtidig brug). Skærmbilleder 1440 + 390 i PR'en. Ejeren siger "merge".
