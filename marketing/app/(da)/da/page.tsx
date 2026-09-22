@@ -7,8 +7,22 @@ export const metadata: Metadata = {
     canonical: "/da",
     languages: { en: "/", da: "/da", "x-default": "/" },
   },
+  // openGraph er ikke deep-merged på tværs af segmenter i Next (kendt
+  // gotcha): url skal derfor sættes sammen med de felter der ellers ville
+  // gå tabt fra layout.tsx's openGraph (verificeret med next build + curl).
   openGraph: {
+    type: "website",
+    siteName: "Cycling Zone",
+    locale: "da_DK",
     url: "/da",
+    images: [
+      {
+        url: "https://cyclingzone.org/og-cycling-zone.png",
+        width: 1200,
+        height: 630,
+        alt: "Cycling Zone. Byg dit hold. Kør om kap med hele verden. Et fair cycling manager-MMO.",
+      },
+    ],
   },
 };
 
