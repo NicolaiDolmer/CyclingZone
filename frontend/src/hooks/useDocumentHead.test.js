@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyDocumentHead, applyJsonLd } from "./useDocumentHead.js";
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
+import useDocumentHead, {
+  applyDocumentHead,
+  applyJsonLd,
+  beginSsrHeadCapture,
+  endSsrHeadCapture,
+} from "./useDocumentHead.js";
 
 // Repoet har bevidst ingen jsdom — men kerne-logikken i applyDocumentHead er en
 // ren funktion der kun rører doc/win via et lille interface. Vi bygger en
@@ -223,4 +230,62 @@ test("applyJsonLd injicerer ét script og er idempotent ved gentaget kald", () =
   scripts = doc._elements.filter((e) => e.tagName === "SCRIPT");
   assert.equal(scripts.length, 0, "cleanup fjerner scriptet");
   cleanup1();
+});
+
+// #5494 — SSR-opsamlingen. Under `renderToString` findes der intet `document`,
+// så hookets useEffect kører aldrig; i stedet noterer det sine opts til
+// build-prerenderen. Node har heller ikke noget `document`, så denne test
+// rammer præcis den sti prerenderen bruger.
+function HeadOnlyPage({ head }) {
+  useDocumentHead(head);
+  return createElement("h1", null, "page");
+}
+
+test("useDocumentHead opsamler per-rute head under SSR (#5494)", () => {
+  beginSsrHeadCapture();
+  renderToString(
+    createElement(HeadOnlyPage, {
+      head: {
+        title: "Help · Cycling Zone",
+        description: "Guides and FAQ.",
+        canonical: "https://cyclingzone.org/help",
+        lang: "en",
+      },
+    }),
+  );
+  const head = endSsrHeadCapture();
+
+  assert.deepEqual(head, {
+    title: "Help · Cycling Zone",
+    description: "Guides and FAQ.",
+    canonical: "https://cyclingzone.org/help",
+    lang: "en",
+  });
+});
+
+test("SSR-opsamlingen er last-writer-wins og udelader undefined (#5494)", () => {
+  beginSsrHeadCapture();
+  renderToString(
+    createElement(
+      "div",
+      null,
+      createElement(HeadOnlyPage, { head: { title: "Først", lang: "en" } }),
+      createElement(HeadOnlyPage, { head: { title: "Sidst", description: undefined } }),
+    ),
+  );
+  const head = endSsrHeadCapture();
+
+  assert.equal(head.title, "Sidst", "sidste kald vinder, som klient-side");
+  assert.equal(head.lang, "en", "en værdi ingen efterfølgende satte, bevares");
+  assert.ok(!("description" in head), "undefined skrives ikke ind i sinken");
+});
+
+test("uden en åben opsamling er SSR-noteringen en no-op (#5494)", () => {
+  // Ingen beginSsrHeadCapture() her — render må ikke kaste, og en efterfølgende
+  // opsamling må ikke arve noget fra den.
+  renderToString(createElement(HeadOnlyPage, { head: { title: "Uden sink" } }));
+
+  beginSsrHeadCapture();
+  const head = endSsrHeadCapture();
+  assert.deepEqual(head, {});
 });

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   loadPatches, flattenChanges, filterChanges, groupByDay, pickLang, computeNewDays, CATEGORY_META,
 } from "../lib/patchNotes.js";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import {
   PageHeader, Card, Input, Button, EmptyState, ErrorState, PageLoader,
   SearchIcon, ChevronDownIcon, ChevronRightIcon,
@@ -29,6 +30,13 @@ export default function PatchNotesPage() {
   // paint. Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs.
   const { t, i18n, ready } = useTranslation("patchnotes");
   const lang = i18n.language?.startsWith("da") ? "da" : "en";
+  // Per-route head (#5494) — se HelpPage for hvorfor titlen venter på `ready`.
+  useDocumentHead({
+    title: ready ? t("meta.title") : undefined,
+    description: ready ? t("meta.description") : undefined,
+    canonical: "https://cyclingzone.org/patch-notes",
+    lang,
+  });
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -100,7 +108,17 @@ export default function PatchNotesPage() {
     });
 
   if (!ready || (!loadError && patches === null)) {
-    return <PageLoader label={ready ? t("loading.label") : "Loading"} />;
+    // #5494: sidehovedet bliver stående mens listen hentes. Det holder H1'en i
+    // den prerendrede server-HTML (patches hentes i en useEffect, som
+    // renderToString aldrig kører, så load-tilstanden ER det crawlere ser) —
+    // og er samtidig den rigtige T1-loading-tilstand: titlen skal ikke
+    // forsvinde og poppe ind igen.
+    return (
+      <div className="max-w-4xl mx-auto">
+        <PageHeader title={t("title", { defaultValue: "Patch notes" })} />
+        <PageLoader label={ready ? t("loading.label") : "Loading"} />
+      </div>
+    );
   }
 
   if (loadError) {

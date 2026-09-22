@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import { fetchRecentOpsNotices, pickNoticeCopy, SEVERITY_META } from "../lib/opsNotices.js";
 import { fetchBoardRoom } from "./annualMeeting/meetingApi.js";
@@ -717,6 +718,18 @@ export default function HelpPage() {
   // gater render bag PageLoader så raw keys aldrig rammer first paint.
   // Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs.
   const { t, i18n, ready } = useTranslation("help");
+  // Per-route head (#5494). Titel/description først når namespacet er klar —
+  // ellers ville <title> kortvarigt vise den rå i18n-nøgle. Canonical sættes
+  // uanset, så en langsom namespace-fetch ikke efterlader ruten uden den.
+  // Build-prerenderen læser præcis disse værdier (frontend/scripts/
+  // prerender.mjs via useDocumentHead's SSR-opsamling), så server-HTML og
+  // klient siger det samme.
+  useDocumentHead({
+    title: ready ? t("meta.title") : undefined,
+    description: ready ? t("meta.description") : undefined,
+    canonical: "https://cyclingzone.org/help",
+    lang: i18n.language?.startsWith("da") ? "da" : "en",
+  });
   const [searchParams] = useSearchParams();
   // Deep-link support (#2467): ?faq=<id> opens the FAQ tab with that question
   // expanded; ?section=<key> opens a specific section. Unknown/missing values

@@ -24,6 +24,43 @@ import { useEffect } from "react";
 
 const ORIGIN_FALLBACK = "https://cyclingzone.org";
 
+// ---------------------------------------------------------------------------
+// SSR-opsamling (#5494)
+//
+// Build-time-prerenderen (frontend/scripts/prerender.mjs) skal skrive den
+// SAMME title/description/canonical/lang i server-HTML'en som hooket sætter i
+// browseren — ellers er metadataen kun synlig for crawlere der kører JS.
+// Kilden til sandhed skal blive liggende i selve sidekomponenten (her kaldes
+// hooket), så prerenderen ikke får sin egen kopi der kan drive fra siden.
+//
+// Mekanikken: under `renderToString` findes der intet `document`, så hooket
+// kan ikke bruge sin useEffect. I stedet noterer det sine opts i en
+// modul-lokal sink som entry-server.jsx åbner før render og lukker efter.
+// Det er render-fase-sideeffekt (samme mønster som react-helmet's server-API)
+// og derfor bevidst indsnævret: kun når `document` er undefined, dvs. ALDRIG
+// i browseren, og sinken er null når ingen har åbnet en opsamling.
+// Last-writer-wins, præcis som hookets klient-side adfærd mellem ruter.
+let ssrHeadSink = null;
+
+/** Start opsamling af head-metadata for ét SSR-render-pass. */
+export function beginSsrHeadCapture() {
+  ssrHeadSink = {};
+}
+
+/** Afslut opsamlingen og returnér det sidst registrerede head (eller {}). */
+export function endSsrHeadCapture() {
+  const captured = ssrHeadSink || {};
+  ssrHeadSink = null;
+  return captured;
+}
+
+function recordSsrHead(opts) {
+  if (!ssrHeadSink) return;
+  for (const [key, value] of Object.entries(opts)) {
+    if (value !== undefined) ssrHeadSink[key] = value;
+  }
+}
+
 function ensureMeta(doc, name) {
   let el = doc.querySelector(`meta[name="${name}"]`);
   let created = false;
@@ -188,6 +225,13 @@ export function applyJsonLd(doc, id, data) {
  * Re-kører når en af de primitive opts ændrer sig (fx sprogskift).
  */
 export function useDocumentHead({ title, description, canonical, lang, noindex } = {}) {
+  // SSR (#5494): ingen `document` ⇒ ingen effekt. Notér i stedet metadataen til
+  // prerenderen. Se beginSsrHeadCapture ovenfor for hvorfor det sker i
+  // render-fasen og hvorfor det er no-op i browseren.
+  if (typeof document === "undefined") {
+    recordSsrHead({ title, description, canonical, lang, noindex });
+  }
+
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
     return applyDocumentHead(document, window, {
