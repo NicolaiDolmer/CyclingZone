@@ -16,7 +16,11 @@ Fakta: #4592 (30 dages login-grænse, parkering ved S4-skiftet, #452 tilmeld-kna
 
 Fakta: #5169 merget 21/9 (140 løbsdage, måde B, 5 pr. dato), #5405 (S4-kalender, kalibrering #5469).
 
-**3. "Themed teams" (off_topic):** ren spillersnak, intet svar nødvendigt.
+**3. "Themed teams" (off_topic):** spillersnak, men de gætter på reglen for national kerne ("35 %" vs. "14 ryttere"). Kort faktasvar:
+
+> Love this thread. The actual rule for a national core: at least 4 riders AND at least 35 percent of your squad from the same nation. So 14 of 38 counts, 13 of 38 does not. What happens when two nations both clear the bar I will check and write into Help together with the rule, so nobody has to guess.
+
+Fakta: `backend/lib/boardIdentity.js` linje 307-308; hjælpetekst-issue #5483.
 
 ## Discord
 
@@ -62,11 +66,28 @@ Fakta: v3-motoren (raceRunner/raceSimulator): hjælpere er score-neutrale, udbru
 
 **Kræver ejer-viden:** hvilket beløb og hvilket hold. Nærmeste issues: #4860 (lukket), #4385 (upkeep pr. løbsdag, åben).
 
-**11. #questions-and-answers (22/9) — skal der være en "English talk"-kanal?**
+**11. #questions-and-answers (22/9) — "English talk"-kanal:** besvaret af dig 22/9 kl. 08:37 (MCP-tjek). Intet at gøre. Samme for løn-spørgsmålet kl. 11:20.
 
-> Every channel except #dansk-snak is already English, so #general is the English talk. If you want a dedicated off-topic channel, say so here and I will open it.
+**13. #dansk-snak (22/9 kl. 11:31) — "angreb hentes næsten altid midt på etapen; mere realistisk mod slutningen / på sidste bjerg". thelamba: enig.**
 
-Ejer-valg.
+> Good catch, and you are right. The engine that runs season 3 decides the catch from position, not from where on the course you are, so the break rarely survives to the final climb. The new engine I am building runs the race in segments, so a break can hang on until the last climb and get caught there, or not. It goes live when it beats the current engine in the tests I run, not on a date. I will post the comparison when I have it.
+
+Fakta: v3 = `deriveBreakawayStatus()` på placering; v4 (`backend/lib/engine/v4`, flag off) er segment-baseret. Ikke lovet på dato (roadbook 15/9). Discord kun EN, også i #dansk-snak (din regel 20/9).
+
+## Patch note til #patch-notes (mangler: v7.293; v7.291-7.292 var med i din v7.290-post 21/9)
+
+> v7.293 (21 Sep)
+>
+> Forum
+> Links in forum posts and replies are clickable and open in a new tab.
+>
+> Assistant
+> You get a message when your assistant fills a race squad you left completely empty.
+>
+> Academy
+> Graduation Day has its own page. Choose who moves up, is sold or is released.
+>
+> Full detail as always at cyclingzone.org/patch-notes.
 
 **12. #feedback-and-ideas "Planning → Team" (19/9) — skift etape i udtagelsen.**
 
