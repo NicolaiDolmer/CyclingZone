@@ -19,11 +19,32 @@ function deps(overrides = {}) {
     validateResult: async () => {}, ...overrides };
 }
 
-test('dispatch uses the shared eight-PR budget, including parked drafts', async (t) => {
+test('dispatch counts open PRs, including parked drafts, but never rejects on count', async (t) => {
   const root = fixture(t);
   const prs = Array.from({ length: 6 }, (_, i) => ({ number: i + 10, headRefName: `parked/${i}`, isDraft: true }));
   const result = await runWave({ root, runDir: root, tracks, owner: 'fixture' }, deps({ readPrs: async () => prs }));
   assert.ok(result.results.every(r => r.state === 'ready'));
+});
+
+// Ejer-beslutning 22/9 (variant B, #5510): loftet paa 8 aabne PR'er er
+// fjernet. En boelge maa ikke afvises fordi der allerede er 8+ aabne PR'er -
+// lanerne (4) og verifikations-semaforen (2) er fortsat bremsen.
+test('a wave is not rejected when 8 or more PRs are already open', async (t) => {
+  const root = fixture(t);
+  const prs = Array.from({ length: 10 }, (_, i) => ({ number: i + 20, headRefName: `parked/${i}`, isDraft: true }));
+  const result = await runWave({ root, runDir: root, tracks, owner: 'fixture' }, deps({ readPrs: async () => prs }));
+  assert.ok(result.results.every(r => r.state === 'ready'));
+});
+
+test('an unfetchable PR list still fails closed and dispatches nothing', async (t) => {
+  const root = fixture(t);
+  let called = false;
+  await assert.rejects(runWave({ root, runDir: root, tracks, owner: 'fixture' }, deps({
+    readPrs: async () => { throw Error('PR count unavailable'); },
+    runAgent: async () => { called = true; },
+  })), /PR count unavailable/);
+  assert.equal(called, false);
+  assert.equal(existsSync(path.join(root, 'wave-active.json')), false);
 });
 
 test('two independent workers are followed by fresh reviewers; owned marker is released', async (t) => {

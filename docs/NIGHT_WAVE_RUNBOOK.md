@@ -66,7 +66,7 @@ Kanonisk formulering: [`AGENTS.md` §Orkestrering af parallelle agenter](../AGEN
 
 - **Luk hvert spor eksplicit.** Redder du et spors arbejde manuelt, slutter redningen med `TaskStop` — ikke med at PR'en er oprettet. _4 agenter kørte 10-12 timer efter deres arbejde var reddet; >1 mio. tokens._
 - **Tjek agent-tilstand med agent-værktøjet.** `TaskList` er todo-listen, ikke baggrundsopgaverne. Skriv hvilket værktøj konklusionen bygger på. _"Ingen agenter kører" var forkert i timevis, målt med det forkerte værktøj._
-- **Maks 8 åbne PR'er ad gangen.** Fuld kø → merge før nyt startes. _Køen nåede 23; `patchNotes.js`-konflikterne voksede hurtigere end de blev lukket._
+- **PR-loftet er fjernet (ejer-beslutning 22/9, variant B, #5510).** Lanerne (4) og verifikations-semaforen (2) er fortsat bremsen. _Loftet kom fra en bølge hvor køen nåede 23 PR'er og `patchNotes.js`-konflikterne voksede hurtigere end de blev lukket; årsagen er fjernet — bølge-PR'er må ikke røre PatchNotesPage/patchNotes, patch notes samles ved close-out._
 - **Merge-koe-guard (#4919): een merge ad gangen, vent paa deploy foer naeste.** `scripts/merge-queue.ps1 -Pr "N,M,..."` merger sekventielt, venter paa groen CI (main) + "Deploy verify" (Railway+smoke) for backend-PR'er (ellers mindst 3 min), og merger aldrig i etape-tick-vinduet HH:57-HH:03. `-DryRun` viser hvor koeen ville standse foer en rigtig koersel. _6/9 kl. 15:46: fem backend-PR'er merget paa eet minut fik Railway til at deploye fem gange i traek, og "Deploy verify" blinkede roed i afloesnings-oejeblikkene._
 - **Genmål før du dispatcher.** Issue-tal >1 uge gamle er kilder, ikke facts. _247→225.947 · 807→1.399 · "grøn"→90× drift._
 - **Dispatch-forfilter pr. kandidat-issue:** `gh issue view N --json state` + findes der en merged PR med `Refs #N`? _4 spor i nat var allerede løst; ét kald pr. kandidat havde fanget alle fire._
@@ -189,9 +189,9 @@ _Refs #605. Se også: [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md) (parallel
 
 - _Samme nat: `TaskList` blev brugt til at konkludere at ingen agenter kørte. TaskList er todo-listen, ikke baggrundsopgaverne — forkert værktøj gav en forkert konklusion der holdt i timevis._
 
-**Regel 12 - Loft paa igangvaerende arbejde: maks 8 aabne PR'er**
+**Regel 12 - PR-loftet er fjernet (ejer-beslutning 22/9, variant B, #5510)**
 
-- _Køen nåede 23. Konflikterne i `patchNotes.js` voksede hurtigere end de blev lukket, fordi hver ny PR konfliktede med alle de foregående._
+- _Loftet blev indført efter en bølge hvor køen nåede 23 PR'er og konflikterne i `patchNotes.js` voksede hurtigere end de blev lukket, fordi hver ny PR konfliktede med alle de foregående. Årsagen er fjernet: bølge-PR'er må ikke røre PatchNotesPage/patchNotes, patch notes samles ved close-out. Lanerne (4) og verifikations-semaforen (2) er fortsat bremsen._
 
 **Regel 13 - Ingen paastand uden en maaling**
 

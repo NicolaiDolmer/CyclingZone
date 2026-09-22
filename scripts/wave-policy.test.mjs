@@ -38,12 +38,23 @@ test('foreign, malformed and expired markers remain untouched', async (t) => {
   }
 });
 
-test('capacity includes drafts and reserves all planned new PRs', () => {
+test('capacity includes drafts and reserves all planned new PRs as info, never rejects on count', () => {
   const prs = [1, 2, 3, 4, 5, 6, 7].map(n => ({ number: n, headRefName: `other/${n}`, isDraft: true }));
-  assert.equal(checkCapacity(prs, [track(10)]).projected, 8);
-  assert.throws(() => checkCapacity(prs, [track(10), track(11)]), /PR/);
-  assert.throws(() => checkCapacity([...prs, { number: 8 }], [track(10)]), /PR/);
+  assert.deepEqual(checkCapacity(prs, [track(10)]), { open: 7, additional: 1, projected: 8 });
+  assert.deepEqual(checkCapacity(prs, [track(10), track(11)]), { open: 7, additional: 2, projected: 9 });
+});
+
+// Ejer-beslutning 22/9 (variant B, #5510): loftet paa 8 er fjernet. En boelge
+// maa ikke afvises fordi der allerede er 8+ aabne PR'er - lanerne (4) og
+// verifikations-semaforen (2) er fortsat bremsen.
+test('a wave is not rejected at 8 or more open PRs', () => {
+  const manyPrs = Array.from({ length: 12 }, (_, i) => ({ number: i, headRefName: `other/${i}`, isDraft: true }));
+  assert.deepEqual(checkCapacity(manyPrs, [track(10), track(11), track(12)]), { open: 12, additional: 3, projected: 15 });
+});
+
+test('an unfetchable PR list still fails closed', () => {
   assert.throws(() => checkCapacity(null, [track(10)]), /PR/);
+  assert.throws(() => checkCapacity(undefined, [track(10)]), /PR/);
 });
 
 test('network failure releases only our admission and no claim remains', async (t) => {
