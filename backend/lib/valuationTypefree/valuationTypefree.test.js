@@ -25,7 +25,13 @@ import {
 import { buildCapsTypefree, profileSignature, stepTypefree } from "./careerTypefree.js";
 import { fitTypefreeProduction } from "./fitProduction.js";
 import { fitCommon, fitLocal, marketAdjustedValue, qualifyMarketEvidence } from "./marketComponent.js";
-import { predictBaseValueTypefree, simulateCareerTypefree } from "./typefreeValuation.js";
+import {
+  ELITE_PREMIUM_PHASE_STEPS,
+  elitePremiumPhaseFactor,
+  phasedElitePremium,
+  predictBaseValueTypefree,
+  simulateCareerTypefree,
+} from "./typefreeValuation.js";
 
 const TEST_PROD = {
   shares: { sprinter: 1, tt: 1, climber: 1, puncheur: 1, brostensrytter: 1, rouleur: 1, baroudeur: 1, gc: 1 },
@@ -157,6 +163,33 @@ test("elitegulvet er væk: kun den konvekse præmie virker", () => {
   const ab = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 75]));
   const v = predictBaseValueTypefree({ age: 27, potentiale: 3 }, ab, TEST_MODEL);
   assert.ok(v < TEST_MODEL.elite_premium.floor, "gulvet må ikke løfte værdien");
+});
+
+test("elitepræmien udfases i fire lige trin, ét pr. søndagskørsel, og bliver på nul", () => {
+  assert.deepEqual([...ELITE_PREMIUM_PHASE_STEPS], [1, 0.75, 0.5, 0.25, 0]);
+  const seen = [0, 1, 2, 3, 4, 5, 12].map((n) => elitePremiumPhaseFactor(n));
+  assert.deepEqual(seen, [1, 0.75, 0.5, 0.25, 0, 0, 0]);
+  for (const bad of [-3, Number.NaN, null, undefined, "x"]) assert.equal(elitePremiumPhaseFactor(bad), 1, `input ${bad}`);
+  assert.equal(elitePremiumPhaseFactor(1.9), 0.75, "delvise uger runder ned");
+  assert.throws(() => elitePremiumPhaseFactor(1, [1, 2]), RangeError);
+  const prem = { overall_threshold: 60, k: 0.1, floor: 1e9 };
+  assert.equal(phasedElitePremium(prem, 2).k, 0.05);
+  assert.equal(phasedElitePremium(prem, 2).overall_threshold, 60, "tærsklen røres ikke");
+  assert.equal(prem.k, 0.1, "input muteres ikke");
+});
+
+test("elitepræmie-trin: værdien falder monotont trin for trin og ender på præstationsværdien", () => {
+  const ab = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 75]));
+  const rider = { age: 27, potentiale: 3 };
+  const values = [0, 1, 2, 3, 4].map((n) =>
+    predictBaseValueTypefree(rider, ab, { ...TEST_MODEL, elite_premium: phasedElitePremium(TEST_MODEL.elite_premium, n) }));
+  for (let i = 1; i < values.length; i++) assert.ok(values[i] < values[i - 1], `trin ${i}`);
+  assert.equal(values[4], predictBaseValueTypefree(rider, ab, TEST_MODEL, { premium: false }));
+  // Under tærsklen gør trinnene ingenting.
+  const low = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 40]));
+  const lows = new Set([0, 4].map((n) =>
+    predictBaseValueTypefree(rider, low, { ...TEST_MODEL, elite_premium: phasedElitePremium(TEST_MODEL.elite_premium, n) })));
+  assert.equal(lows.size, 1);
 });
 
 test("fit er deterministisk og genfinder en kendt typefri sammenhæng", () => {

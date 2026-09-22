@@ -25,6 +25,31 @@ import { buildCapsTypefree, profileSignature, stepTypefree } from "./careerTypef
 
 export const TYPEFREE_MODEL_ID_PROPOSAL = "v6-typefree";
 
+// Ejer-valg 22/9 (valg 3 + 4): elitepræmien udfases i fire lige store trin, ét
+// trin pr. søndagskørsel, så eliten efter fire uger er prissat på præstation
+// alene. Kun præmien glider; resten af værdiskiftet sker på kørselsdagen.
+// Trinnene er ejerens offentlige formulering i #5497 (fuld → tre fjerdedele →
+// halv → en fjerdedel → ingen).
+export const ELITE_PREMIUM_PHASE_STEPS = Object.freeze([1, 0.75, 0.5, 0.25, 0]);
+
+// Faktor på præmiens k efter `runsSinceSwitch` søndagskørsler (0 = kørselsdagen).
+// Ren funktion: ugyldigt/negativt input → første trin; efter sidste trin står
+// den på sidste trin (ny normal).
+export function elitePremiumPhaseFactor(runsSinceSwitch, steps = ELITE_PREMIUM_PHASE_STEPS) {
+  const list = Array.isArray(steps) && steps.length ? steps.map(Number) : ELITE_PREMIUM_PHASE_STEPS;
+  if (!list.every((s) => Number.isFinite(s) && s >= 0 && s <= 1)) throw new RangeError("elitePremiumPhaseFactor: trin skal ligge i [0, 1]");
+  const n = Math.floor(Number(runsSinceSwitch));
+  if (!Number.isFinite(n) || n <= 0) return list[0];
+  return list[Math.min(n, list.length - 1)];
+}
+
+// Præmie-objekt med k skaleret til trinnet. Tærsklen røres ikke.
+export function phasedElitePremium(premium, runsSinceSwitch, steps = ELITE_PREMIUM_PHASE_STEPS) {
+  if (!premium) return premium;
+  const k = Number(premium.k);
+  return { ...premium, k: (Number.isFinite(k) ? k : 0) * elitePremiumPhaseFactor(runsSinceSwitch, steps) };
+}
+
 // Konveks elitepræmie UDEN gulv (floor/floor_overall ignoreres bevidst).
 export function convexPremiumOnly(value, overall, premium) {
   if (!premium) return value;
