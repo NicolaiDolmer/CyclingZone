@@ -658,7 +658,7 @@ export async function runTeamTrainingDay({
         // saa scopet kan skiftes her uden at roere riderCondition.js.
         // #5462 (ejer-laast 15/9, §13.3 pkt. 7): VARIGHEDEN er nu i LOEBSDAGE paa
         // loebsdags-aksen, skaleret med saesonens loebsdage pr. kalenderdato
-        // (ejer-valg 21/9). Den inklusive slutdag undgaar et ekstra tick.
+        // (ejer-valg 22/9). De efterfoelgende skalerede ticks mistes.
         // `injured_until` udledes af den
         // efter loekken (ÉT batch-opslag for hele holdets nye skader); indtil da staar
         // kalenderdagen som fallback, saa en skade ALTID bliver skrevet, ogsaa hvis

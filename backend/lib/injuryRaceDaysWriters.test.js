@@ -41,9 +41,9 @@ test("#5462 styrt, flag ON: varigheden skaleres fra saesonens akse, og resten ta
   const rows = incidentInjuryUpsertRows({
     incidents: [CRASH], todayStr: TODAY, gameDayByStage: STAGE_DAYS, seasonId: "season-1", seasonNumber: 4,
   });
-  assert.equal(rows[0].injury_end_game_day, 54, "akse-skaleret varighed med inklusiv slutdag");
+  assert.equal(rows[0].injury_end_game_day, 55, "akse-skaleret varighed med inklusiv slutdag");
   assert.equal(rows[0].injury_season_id, "season-1");
-  assert.equal(rows[0].injury_race_days_left, 15, "loebsdag 40-54 inkl. i dag");
+  assert.equal(rows[0].injury_race_days_left, 16, "inklusive skade-dagen; de naeste 15 ticks mistes");
   assert.equal(
     rows[0].injured_until, "2026-06-15",
     "raekkebyggeren saetter kalenderdags-FALLBACKEN; persistIncidents overskriver den med slut-loebsdagens dato",
@@ -54,7 +54,7 @@ test("#5462 styrt: loebsdag 0 er en RIGTIG loebsdag (DB er 0-baseret, CALENDAR_R
   const rows = incidentInjuryUpsertRows({
     incidents: [CRASH], todayStr: TODAY, gameDayByStage: new Map([[1, 0]]), seasonId: "season-1", seasonNumber: 4,
   });
-  assert.equal(rows[0].injury_end_game_day, 14, "0 maa ikke falde ud som 'ingen akse'");
+  assert.equal(rows[0].injury_end_game_day, 15, "0 maa ikke falde ud som 'ingen akse'");
 });
 
 test("#5462 styrt: HVER etape faar sin EGEN loebsdag (whole-race-stien sender alle etaper samlet)", () => {
@@ -67,8 +67,8 @@ test("#5462 styrt: HVER etape faar sin EGEN loebsdag (whole-race-stien sender al
     ],
     todayStr: TODAY, gameDayByStage: STAGE_DAYS, seasonId: "season-1", seasonNumber: 4,
   });
-  assert.equal(rows.find((r) => r.rider_id === "tidlig").injury_end_game_day, 54, "etape 1 ⇒ loebsdag 40 + varighed - 1");
-  assert.equal(rows.find((r) => r.rider_id === "sen").injury_end_game_day, 74, "etape 21 ⇒ loebsdag 60 + varighed - 1");
+  assert.equal(rows.find((r) => r.rider_id === "tidlig").injury_end_game_day, 55, "etape 1 ⇒ loebsdag 40 + varighed");
+  assert.equal(rows.find((r) => r.rider_id === "sen").injury_end_game_day, 75, "etape 21 ⇒ loebsdag 60 + varighed");
 });
 
 test("#5462 styrt: uden saeson, uden akse eller for en UKENDT etape skrives INGEN loebsdags-kolonner", () => {
@@ -96,7 +96,7 @@ test("#5462 styrt: reglen om HVEM der skades er uroert (#4520/#4879) — kun sty
     todayStr: TODAY, gameDayByStage: STAGE_DAYS, seasonId: "season-1", seasonNumber: 4,
   });
   assert.deepEqual(rows.map((r) => r.rider_id), ["hard"], "mekanisk skader ikke; kind='injury' ejes af rider_condition");
-  assert.equal(rows[0].injury_end_game_day, 49);
+  assert.equal(rows[0].injury_end_game_day, 50);
 });
 
 // ── Udtagelses-gaten laeser det SAMME felt i begge tilstande ─────────────────
@@ -116,10 +116,10 @@ test("#5462 gaten er uaendret: den spoerger stadig paa injured_until, som nu ER 
 
 test("#5462 gate + akse haenger sammen: samme skade, to udtryk, samme rytter", () => {
   const end = injuryEndGameDay({ gameDay: 40, days: 3, seasonNumber: 4 });
-  assert.equal(end, 54);
+  assert.equal(end, 55);
   // Motoren regner paa loebsdagen ...
-  assert.equal(injuryRaceDaysLeft({ endGameDay: end, currentGameDay: 54 }), 1);
-  assert.equal(injuryRaceDaysLeft({ endGameDay: end, currentGameDay: 55 }), 0);
+  assert.equal(injuryRaceDaysLeft({ endGameDay: end, currentGameDay: 55 }), 1);
+  assert.equal(injuryRaceDaysLeft({ endGameDay: end, currentGameDay: 56 }), 0);
   // ... og gaten paa den dato loebsdag 43 ligger paa.
   assert.equal(isRiderInjured("2026-06-13", "2026-06-13"), true);
 });

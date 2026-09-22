@@ -1065,7 +1065,7 @@
       },
       "injuryRisk": {
         "title": "Injury risk",
-        "text": "Running Hard intensity training on a rider who already has high Fatigue triggers an injury risk. A risk badge appears on the rider before training runs. An unlucky roll causes a mild injury. With race-day training enabled, its length follows the season calendar: 5-25 race days in season 4. Otherwise, it remains 1-5 calendar days. Your rider's card shows the remaining time and, for race-day injuries, an approximate return date. Dropping intensity to Normal or Rest removes the risk."
+        "text": "Hard training at high Fatigue carries an injury risk. Check the risk badge before training. A mild injury normally costs 1-5 calendar days. When your rider's card counts race days, the duration follows the season calendar and the return date is approximate. In season 4 that means 5-25 missed training days. Normal or Rest removes the risk."
       },
       "progressBars": {
         "title": "Progress bars and ability points",
@@ -1289,7 +1289,7 @@
       },
       "suitability": {
         "title": "Reading the selection table",
-        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. A rider still injured on the race's own start date can't be picked for it; use Hide injured to remove them from the list while you choose. A rider whose injury ends before the race starts is not marked injured here, even if he's injured right now, so you can plan a race weeks ahead without waiting for him to heal first. From season 4 his remaining time is counted in race days, and the date shown is approximate."
+        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. A rider still injured on the race's own start date can't be picked for it; use Hide injured to remove them from the list while you choose. A rider whose injury ends before the race starts is not marked injured here, even if he's injured right now, so you can plan a race weeks ahead without waiting for him to heal first. If his card shows race days, the date shown is approximate."
       },
       "roles": {
         "title": "Captain, sprint captain, breakaway hunter and free role",
@@ -1328,7 +1328,7 @@
       },
       "crashesAndIncidents": {
         "title": "Crashes and incidents",
-        "text": "A crash on the road is no longer all or nothing. A light crash costs a small amount of time, and the rider rides on unhurt. A hard crash costs a lot more time and leaves him marked with injury days, but he still finishes the stage. A serious crash ends his race and comes with injury days too, and it is rare. A mechanical problem, a puncture, a dropped chain, a wheel, always costs only time: it can never force a rider out and it can never injure him, and a teammate riding nearby gets him back on his bike faster. Only an actual crash can hurt a rider. Injury days from a crash are counted the same way as training injuries: calendar days today, race days from season 4."
+        "text": "A crash on the road is no longer all or nothing. A light crash costs a small amount of time, and the rider rides on unhurt. A hard crash costs a lot more time and leaves him marked with injury days, but he still finishes the stage. A serious crash ends his race and comes with injury days too, and it is rare. A mechanical problem, a puncture, a dropped chain, a wheel, always costs only time: it can never force a rider out and it can never injure him, and a teammate riding nearby gets him back on his bike faster. Only an actual crash can hurt a rider. Crash injuries use the same time scale as training injuries. Your rider's card shows whether the remaining time is counted in calendar days or race days."
       },
       "timeLimitAndGrupetto": {
         "title": "The time limit and the grupetto",

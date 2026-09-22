@@ -19,7 +19,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TRAINING_FOCUS_ABILITIES, injuryDaysLeft, injuryTimeLeft } from "../../../lib/training.js";
+import { TRAINING_FOCUS_ABILITIES, injuryTimeLeft } from "../../../lib/training.js";
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,
@@ -579,7 +579,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
         open={panelOpen}
         onClose={() => setPanelOpen(false)}
         rider={rider}
-        badges={[rider.is_academy && "academy", injuryDaysLeft(condition?.injured_until ?? null) > 0 && "injured"]}
+        badges={[rider.is_academy && "academy", injuryTimeLeft(condition).count > 0 && "injured"]}
         focus={plan?.focus ?? null}
         intensity={plan?.intensity ?? "normal"}
         trainability={training.trainability?.[rider.id] ?? null}

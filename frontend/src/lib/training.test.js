@@ -132,10 +132,9 @@ test("flattenCondition tåler manglende/null embed (ingen skade-rad)", () => {
   assert.equal(flattenCondition(null), null);
 });
 
-// #5462: loebsdags-tallet er med, form/fatigue er det stadig IKKE — skade-badget
-// paa andres hold maa ikke traekke hele condition-raekken med sig.
+// #5462: TeamPage and TeamProfilePage must work before the additive migration.
 test("CONDITION_SELECT embedder kun skade-felterne (ikke form/fatigue)", () => {
-  assert.equal(CONDITION_SELECT, "rider_condition(injured_until, injury_race_days_left)");
+  assert.equal(CONDITION_SELECT, "rider_condition(injured_until)");
 });
 
 // ── #5462: skadesvarighed i loebsdage (ejer-laast 15/9, §13.3 pkt. 7) ────────
@@ -158,6 +157,13 @@ test("#5462 injuryTimeLeft: rask rytter og manglende condition giver 0", () => {
   assert.equal(injuryTimeLeft(null).count, 0);
   assert.equal(injuryTimeLeft({}).count, 0);
   assert.equal(injuryTimeLeft({ injured_until: null, injury_race_days_left: 0 }).count, 0);
+});
+
+test('#5462 rollback: stale race days cannot resurrect a cleared injury', () => {
+  const today = new Date('2026-09-22T08:00:00Z');
+  for (const injured_until of [null, undefined, '']) {
+    assert.equal(injuryTimeLeft({ injured_until, injury_race_days_left: 15 }, today).count, 0);
+  }
 });
 
 test("#5462 injuryTimeLeft: et loebsdags-tal paa 0 er RASK, ogsaa hvis datoen er i dag", () => {

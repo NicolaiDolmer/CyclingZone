@@ -19,7 +19,7 @@ import { useScouting } from "../lib/useScouting.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { ageForSeason, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { riderOverallRating } from "../lib/riderRating.js";
-import { TRAINING_INTENSITIES, injuryDaysLeft, injuryTimeLeft, injuryBadgeMessage, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
+import { TRAINING_INTENSITIES, injuryTimeLeft, injuryBadgeMessage, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import {
   SESSION_INTENSITY,
@@ -916,10 +916,10 @@ export default function TrainingPage() {
     form: (r) => condition[r.id]?.form ?? null,
     fatigue: (r) => condition[r.id]?.fatigue ?? null,
     // #3706: samme to badges som Status-cellen viser, som ét sorterbart tal.
-    // injuryDaysLeft er den samme kilde cellen selv bruger, så rækkefølgen kan
+    // injuryTimeLeft er den samme kilde cellen selv bruger, så rækkefølgen kan
     // ikke drive fra det man ser.
     status: (r) => (r.is_academy ? STATUS_ACADEMY_WEIGHT : 0)
-      + (injuryDaysLeft(condition[r.id]?.injured_until, today) > 0 ? STATUS_INJURED_WEIGHT : 0),
+      + (injuryTimeLeft(condition[r.id], today).count > 0 ? STATUS_INJURED_WEIGHT : 0),
     // #4851: dagens tal. Ryttere uden et tal (hvile, loebsdag, ingen koersel
     // endnu) giver null, og sortRows laegger null'er sidst uanset retning — de
     // kan derfor ikke forurene toppen af en "hvem traente bedst"-sortering.
@@ -2602,7 +2602,7 @@ export default function TrainingPage() {
           focusPanelRider
             ? [
                 focusPanelRider.is_academy && "academy",
-                injuryDaysLeft(condition[focusPanelRider.id]?.injured_until, today) > 0 && "injured",
+                injuryTimeLeft(condition[focusPanelRider.id], today).count > 0 && "injured",
               ]
             : []
         }

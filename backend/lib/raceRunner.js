@@ -54,7 +54,7 @@ import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_K
 import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled } from "./raceEngineFlag.js";
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
-import { injuryEndGameDay, injuryRaceDaysLeft, resolveInjuryEndDates } from "./injuryRaceDays.js";
+import { injuryEndGameDay, injuryRaceDaysLeft, resolveInjuryEndDates, resolveIncidentInjuryEndDate } from "./injuryRaceDays.js";
 // Løbsmotor v4 (#3855/#4707) — flip-infrastruktur. Broen indlæser v4-kernen
 // DYNAMISK (se raceEngineV4Bridge.js designvalg 2), så flag-off ikke loader ét
 // eneste v4-modul og "flag off ⇒ ingen v4-import" er en hård, testbar garanti.
@@ -1767,7 +1767,7 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers, seaso
     for (const row of injuryRows) {
       if (row.injury_end_game_day == null) continue;
       const dateStr = dateByGameDay.get(row.injury_end_game_day) ?? null;
-      if (dateStr) row.injured_until = dateStr;
+      Object.assign(row, resolveIncidentInjuryEndDate(row, dateStr));
     }
   }
   const { error: injErr } = await supabase.from("rider_condition").upsert(injuryRows, { onConflict: "rider_id" });

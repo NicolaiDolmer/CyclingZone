@@ -165,7 +165,7 @@ export function injuryTimeLeft(condition, today = new Date()) {
   // Tallet er SAT (ogsaa naar det er 0) ⇒ loebsdags-aksen ejer svaret. Faldt vi
   // tilbage til datoen ved 0, ville en rytter der netop er raskmeldt paa aksen
   // stadig staa som "skadet 1 dag" resten af kalenderdatoen (CodeRabbit 21/9).
-  if (rawRaceDaysLeft != null && Number.isFinite(raceDaysLeft)) {
+  if (injuredUntil && rawRaceDaysLeft != null && Number.isFinite(raceDaysLeft)) {
     return { count: Math.max(0, Math.trunc(raceDaysLeft)), unit: "race_day", approxDate: injuredUntil };
   }
   return {
@@ -196,9 +196,9 @@ export function injuryBadgeMessage(injury, { compact = false } = {}) {
 // #1531: PostgREST select-fragment til at embedde skade-status på en riders-query
 // eller en nested rider:rider_id(...)-join. rider_condition har
 // RLS SELECT TO authenticated USING(true), så det virker også på andres hold.
-// #5462: `injury_race_days_left` er med, saa skade-badget paa ANDRES hold kan sige
-// loebsdage praecis som paa eget hold. Kolonnen er NULL indtil flaget flippes.
-export const CONDITION_SELECT = "rider_condition(injured_until, injury_race_days_left)";
+// Team pages only consume the date. Keep this join compatible with the live
+// schema during the deploy-before-migration window (#5462).
+export const CONDITION_SELECT = "rider_condition(injured_until)";
 
 // Løft det joinede rider_condition.injured_until op på selve rytter-objektet (samme
 // mønster som flattenAbilities). Supabase-embed kan komme som array (to-many) eller

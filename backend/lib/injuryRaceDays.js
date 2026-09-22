@@ -67,8 +67,8 @@ import { SEASON_RACE_DAYS_DEFAULT } from "./calendarStartDate.js";
  * og er bevidst ude af scope her; fallbacken bevarer det oprindelige antal
  * kalenderdage, og rest-varigheden maa ikke genbruges paa en anden saesons akse.
  *
- * Slutdagen er inklusiv: N loebsdage starter paa gameDay og slutter paa
- * gameDay + N - 1. Dermed viser en ny skade den faktiske varighed, uden ekstra tick.
+ * Ejer-valg 22/9: dagens session er afsluttet naar skaden opstaar. De naeste
+ * N gange aksens taethed ticks mistes, inklusive slutdagen gameDay + varigheden.
  * Kalenderstiens hidtidige aritmetik er uberoert.
  *
  * @param {{gameDay: number, days: number, seasonNumber?:number,
@@ -88,7 +88,20 @@ export function injuryEndGameDay({ gameDay, days, seasonNumber,
   if (raceDays == null || calendarDates == null) return null;
   const density = Number(raceDays) / Number(calendarDates);
   if (!Number.isFinite(density) || density < 1 || !Number.isInteger(density)) return null;
-  return gd + n * density - 1;
+  return gd + n * density;
+}
+
+// Delayed finalization cannot move a fresh crash injury's date backwards.
+export function conservativeInjuryEndDate(fallbackDate, raceDayDate) {
+  return raceDayDate && (!fallbackDate || raceDayDate > fallbackDate) ? raceDayDate : fallbackDate;
+}
+
+export function resolveIncidentInjuryEndDate(row, raceDayDate) {
+  const fallbackWins = !raceDayDate || (row.injured_until && raceDayDate < row.injured_until);
+  return { ...row, injured_until: conservativeInjuryEndDate(row.injured_until, raceDayDate),
+    // Otherwise the next training tick would prefer the earlier coordinate and
+    // undo this protection. The later date must own this particular injury.
+    ...(fallbackWins ? { injury_end_game_day: null, injury_season_id: null, injury_race_days_left: null } : {}) };
 }
 
 /**

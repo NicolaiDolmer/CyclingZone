@@ -4,20 +4,46 @@ import assert from "node:assert/strict";
 
 import {
   injuryEndGameDay, injuryRaceDaysLeft, isInjuredOnRaceDay, resolveInjuryEndDates,
-  loadTeamDivisionId,
+  loadTeamDivisionId, conservativeInjuryEndDate, resolveIncidentInjuryEndDate,
 } from "./injuryRaceDays.js";
 
 const SEASON_ID = "season-1";
 
 // ── injuryEndGameDay ─────────────────────────────────────────────────────────
 
-test("injuryEndGameDay: duration follows the season axis and counts inclusive race days", () => {
-  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, seasonNumber: 4 }), 26);
-  assert.equal(injuryEndGameDay({ gameDay: 0, days: 1, seasonNumber: 4 }), 4);
-  assert.equal(injuryEndGameDay({ gameDay: 0, days: 5, seasonNumber: 4 }), 24);
-  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, raceDays: 84, calendarDates: 28 }), 20, 'a different axis must not use a hardcoded multiplier');
-  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, raceDays: 140, calendarDates: 35 }), 23);
+test("injuryEndGameDay: duration is the number of subsequent lost training ticks", () => {
+  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, seasonNumber: 4 }), 27);
+  assert.equal(injuryEndGameDay({ gameDay: 0, days: 1, seasonNumber: 4 }), 5);
+  assert.equal(injuryEndGameDay({ gameDay: 0, days: 5, seasonNumber: 4 }), 25);
+  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, raceDays: 84, calendarDates: 28 }), 21, 'a different axis must not use a hardcoded multiplier');
+  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, raceDays: 140, calendarDates: 35 }), 24);
   assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, seasonNumber: 99 }), null, 'unknown axis must not invent race days');
+});
+
+test('delayed finalization never shortens the calendar fallback', () => {
+  assert.equal(conservativeInjuryEndDate('2026-10-05', '2026-10-02'), '2026-10-05');
+  assert.equal(conservativeInjuryEndDate('2026-10-02', '2026-10-05'), '2026-10-05');
+  assert.equal(conservativeInjuryEndDate('2026-10-05', null), '2026-10-05');
+});
+
+test('missing crash-date lookup also leaves the date fallback authoritative', () => {
+  const row = resolveIncidentInjuryEndDate({ injured_until: '2026-10-05',
+    injury_end_game_day: 9, injury_season_id: SEASON_ID, injury_race_days_left: 5 }, null);
+  assert.equal(row.injured_until, '2026-10-05');
+  assert.equal(row.injury_end_game_day, null);
+  assert.equal(row.injury_race_days_left, null);
+});
+
+test('a completed injury-day session is followed by exactly the scaled number of lost ticks', () => {
+  for (const days of [1, 3, 5]) {
+    const endGameDay = injuryEndGameDay({ gameDay: 12, days, seasonNumber: 4 });
+    const condition = { injury_end_game_day: endGameDay, injury_season_id: SEASON_ID, injured_until: '2026-10-30' };
+    let missed = 0;
+    for (let gameDay = 13; gameDay <= endGameDay + 1; gameDay++) {
+      if (isInjuredOnRaceDay({ condition, seasonId: SEASON_ID, gameDay, tickDate: '2026-10-01' })) missed++;
+    }
+    assert.equal(missed, days * 5);
+  }
 });
 
 test("injuryEndGameDay: uden en brugbar akse eller varighed → null (kald-stedet falder tilbage)", () => {
@@ -32,10 +58,10 @@ test("injuryEndGameDay: uden en brugbar akse eller varighed → null (kald-stede
 
 test("injuryRaceDaysLeft: tæller INKLUSIV den indevaerende loebsdag (#1672-semantikken)", () => {
   const endGameDay = injuryEndGameDay({ gameDay: 12, days: 3, seasonNumber: 4 });
-  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 12 }), 15);
-  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 13 }), 14);
-  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 26 }), 1, "sidste skadede loebsdag = 1, ikke 0");
-  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 27 }), 0, "rask loebsdagen efter");
+  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 12 }), 16);
+  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 13 }), 15);
+  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 27 }), 1, "sidste skadede loebsdag = 1, ikke 0");
+  assert.equal(injuryRaceDaysLeft({ endGameDay, currentGameDay: 28 }), 0, "rask loebsdagen efter");
 });
 
 test("injuryRaceDaysLeft: manglende tal giver 0, aldrig NaN", () => {

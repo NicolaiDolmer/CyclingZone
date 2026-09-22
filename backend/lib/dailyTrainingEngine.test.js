@@ -10,6 +10,8 @@ import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "./raceDayDevelopmentFlag.js";
 import { TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.js";
 import { raceDaySeedKey } from "./trainingRaceDayTick.js";
 import { buildCapsForRider } from "./riderProgression.js";
+import { incidentInjuryUpsertRows } from './raceRunner.js';
+import { resolveIncidentInjuryEndDate } from './injuryRaceDays.js';
 
 // ── In-memory Supabase-mock ───────────────────────────────────────────────────
 // Understøtter: select/eq/in/update/insert/upsert/delete — de operationer engine'n bruger.
@@ -1765,12 +1767,12 @@ test("#5462 (flag on): en ny traeningsskade varer akse-skalerede LOEBSDAGE, og i
 
   assert.equal(result.report.riders[0].injury_days, days, "rapporten baerer stadig varigheden");
   const cond = state.rider_condition.find((c) => c.rider_id === id);
-  assert.equal(cond.injury_end_game_day, 12 + days * 5 - 1, "slut-loebsdag = start + skaleret varighed - 1");
+  assert.equal(cond.injury_end_game_day, 12 + days * 5, "slut-loebsdag = start + skaleret varighed");
   assert.equal(cond.injury_season_id, SEASON_ID, "aksen er saeson-relativ og kan ikke baere betydningen alene");
-  assert.equal(cond.injury_race_days_left, days * 5, "resten taelles INKLUSIV den indevaerende loebsdag");
+  assert.equal(cond.injury_race_days_left, days * 5 + 1, "resten taelles INKLUSIV den indevaerende loebsdag");
   assert.equal(cond.injury_cause, "training_overload");
   assert.equal(
-    cond.injured_until, INJURY_DATE_BY_GAME_DAY[12 + days * 5 - 1],
+    cond.injured_until, INJURY_DATE_BY_GAME_DAY[12 + days * 5],
     "injured_until er UDLEDT af slut-loebsdagen — gaten og alle flader laeser derfor det samme felt",
   );
 });
@@ -1813,6 +1815,22 @@ test("#5462 (flag on): raskmeldingen foelger LOEBSDAGEN, ikke datoen", async () 
   assert.equal(cond.injury_end_game_day, null);
   assert.equal(cond.injury_season_id, null);
   assert.equal(cond.injury_race_days_left, null);
+});
+
+test('#5462 delayed crash date survives the next training tick beyond the old axis endpoint', async () => {
+  const [crash] = incidentInjuryUpsertRows({ incidents: [{ rider_id: 'fixture-delayed', kind: 'crash',
+    outcome: 'abandon', injury_days: 1, stage_number: 1 }], todayStr: '2026-06-12',
+    gameDayByStage: new Map([[1, 0]]), seasonId: SEASON_ID, seasonNumber: 4, raceDayInjuries: true });
+  const protectedCondition = resolveIncidentInjuryEndDate(crash, '2026-06-10');
+  const state = seedInjuryRider('fixture-delayed', { fatigue: 20, ...protectedCondition });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedInjuryCalendar(state);
+  const result = await runDay(state, { seasonNumber: 4, gameDay: 12 });
+  const condition = state.rider_condition.find(c => c.rider_id === 'fixture-delayed');
+  assert.equal(result.report.riders[0].injured, true);
+  assert.equal(condition.injured_until, '2026-06-13');
+  assert.equal(condition.injury_end_game_day, null);
+  assert.equal(condition.injury_race_days_left, null);
 });
 
 test('#5462 rollover keeps the date fallback and clears the previous season axis', async () => {
