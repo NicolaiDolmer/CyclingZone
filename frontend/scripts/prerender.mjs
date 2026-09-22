@@ -83,7 +83,10 @@ function replaceMetaContent(html, attr, name, content) {
   if (!pattern.test(html)) {
     throw new Error(`Kunne ikke finde <meta ${attr}="${name}"> i index.html-templaten.`);
   }
-  return html.replace(pattern, `<meta ${attr}="${name}" content="${escapeHtml(content)}" />`);
+  // Funktions-replacement: en `$&`/`$1` i teksten må ikke fortolkes som
+  // replacement-pattern af String.replace.
+  const replacement = `<meta ${attr}="${name}" content="${escapeHtml(content)}" />`;
+  return html.replace(pattern, () => replacement);
 }
 
 /**
@@ -101,13 +104,13 @@ function buildDocument({ route, head, appHtml }) {
 
   // <html lang> — templaten er EN-first; DA-ruterne skal melde dansk allerede
   // i server-HTML'en (LanguageProvider sætter den igen runtime).
-  html = html.replace(/(<html\s+lang=")[^"]*(")/, `$1${escapeHtml(lang)}$2`);
+  html = html.replace(/<html\s+lang="[^"]*"/, () => `<html lang="${escapeHtml(lang)}"`);
 
   // <title>
   if (!/<title>[^<]*<\/title>/.test(html)) {
     throw new Error("Kunne ikke finde <title> i index.html-templaten.");
   }
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`);
+  html = html.replace(/<title>[^<]*<\/title>/, () => `<title>${escapeHtml(title)}</title>`);
 
   if (description) {
     html = replaceMetaContent(html, "name", "description", description);
@@ -144,9 +147,10 @@ function buildDocument({ route, head, appHtml }) {
   if (!descriptionTag) {
     throw new Error('Kunne ikke finde <meta name="description"> til canonical-indsættelse.');
   }
-  html = html.replace(descriptionTag[0], `${descriptionTag[0]}\n${links.join("\n")}`);
+  const withLinks = `${descriptionTag[0]}\n${links.join("\n")}`;
+  html = html.replace(descriptionTag[0], () => withLinks);
 
-  return html.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`);
+  return html.replace('<div id="root"></div>', () => `<div id="root">${appHtml}</div>`);
 }
 
 // Bevar den tomme shell FØRST (ikke-prerendrede ruter rewrites hertil).
