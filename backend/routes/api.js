@@ -1239,7 +1239,7 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
 // mod viewerens beta-status; klienten læser aldrig app_config selv.
 //   rider_best_role_display (#5435): rating = bedste rolle nu + "Natural role"-badge.
 // Fail-safe false (featureStage.js) = dagens visning.
-router.get("/display-flags", requireAuth, async (req, res) => {
+router.get("/display-flags", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const riderBestRoleDisplay = await isRiderBestRoleDisplayEnabled(supabase, { isBetaTester });
