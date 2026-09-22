@@ -22,7 +22,7 @@ Intet nyt startes før A+B er live.
 2. 🟠 **Bølge 2:** 🔵 **træningsdesign** (140 låst; måde B → ✅ #5169 → B4 #5264 ✅ bag flag → B3 #5281 flip-dagen) · ✅ mobil-træning #5397 + #5458 (beta).
 3. 🟠 **Bølge 3, rytter-fundament:** ✅ fødsel uden PCM, `riders.squad`, evner som data (backfill + point-flyt #5268 ejer-gated) · #5269 · #5273.
 4. ⚪ **Bølge 4, kalender m. trupper (FØR S4-generering):** 🟠 **S4-kalender synlig** (#5405: ✅ #5469, 3 afvigelser tilbage, go pr. kørsel) · pakker pr. trup · generator A6 (U23-bånd variant A) → AI U23/junior-ryttere · #5327 arketype (#3512) m. #5269 · C1 · dry-run → go → #4270 apply (ejer).
-5. 🟠 **Bølge 5, træning færdig (28/9):** ✅ skader i løbsdage (#5465) · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849, #5485, #5486) · #4852-#4854 · #4848.
+5. 🟠 **Bølge 5, træning færdig (28/9):** ✅ skader i løbsdage (#5465) · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849 #5485 #5486) · #4852-#4854 · #4848.
 6. 🟠 **Bølge 6, trup-flader:** ✅ Graduation Day-siden (#2491) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
 7. 🔵 **Bølge 7, cutover:** #4592 → #452 → #4759 · Mandatet-flip #4857 (ejer-go) → #4859 → #4858 · v4 (M12 · #4948) → **flip ejer-only** → #4916.
 8. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag) · #3458/#3512.
@@ -32,7 +32,7 @@ Intet nyt startes før A+B er live.
 Mål 2/10: ≥ 450 kr / ≥ 10 ✅ (Alunta 14/9: 659 kr / 18) · checkout ≥ 60 % ✅ · D7 ≥ 45 % (30 %) · aktive/7d ≥ 100 (90). **Tilgang + fastholdelse er flaskehalsen, ikke penge.**
 8. Ejeren poster forum-opslag + fog of war-afstemning (#4943 ✅).
 9. 🟠 **Fastholdelse:** #5241 måles 28/9 (#4964) · #5282 transfer-ring · #5320 · #4751 · ✅ #3517 forum-links · #5107 fog of war · late_fill (#5246).
-10. 🟠 **Vækst-fundament:** **måling først** #5304 #5310 #5305 #5306 · **SEO** #5249 statisk + #5250 session-cookie · rest #4067 #3796 #4811 #4321 · **hastighed** #5177 #5055 CWV-gate · **mobil** #1602 #4982 #5131. Uge-blok: 2 handlinger + 1 måling.
+10. 🟠 **Vækst-fundament:** **måling først** #5304 #5310 #5305 #5306 · **SEO** #5249 statisk + #5250 session-cookie · rest #4067 #3796 #4811 #4321 · **hastighed** #5177 #5055 CWV-gate · **mobil** #1602 #4982 #5131. Uge-blok: 2 handlinger + 1 måling
 11. 🔵 **Mail:** #2760 win-back bygget bag flag; tekst v2 rettes m. ejeren → dry-run → send-go inden 24/9 · #5045 → testmail → #5038 → flip pr. type. **Nøgleblok #4616** → #4608 → #4646. Billing-vagter #4514 · #4512.
 12. 🔴 **Spiller-kommunikation #428/#4820:** ejeren poster selv. #5033 (efter #4595).
 
