@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useId } from "react";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { useRealtimeRefetch } from "./useRealtimeRefetch";
+import { normalizeActionSummary } from "../lib/actionSummaryShape.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -52,7 +53,12 @@ export function useActionSummary() {
       // #5242: kun et ægte 2xx opdaterer state — et limited (429-vindue),
       // unauthorized eller networkError lader den forrige liste stå, præcis som
       // den kastede fetch-fejl gjorde før.
-      if (res.ok) setPending(res.data);
+      // CYCLINGZONE-66/67: et 2xx uden gyldig JSON-krop giver res.data === null;
+      // formvagten afviser det, så forrige liste bliver stående (som før #5372).
+      if (res.ok) {
+        const next = normalizeActionSummary(res.data);
+        if (next) setPending(next);
+      }
     } catch { /* silent — UI viser tom-state */ }
     finally { setLoading(false); setLoaded(true); }
   }, []);
