@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 
 import {
   breakawayHook,
+  chaseAbilityScale,
   computeJoinScore,
   computeNetChaseAdvantage,
   joinProbability,
@@ -357,4 +358,176 @@ test("staerkt udbrud + let_go-stance: udbruddet overlever til maal (breakaway_su
   }
   assert.equal(eventsOfType(lastEvents, "breakaway_survived").length, 1);
   assert.ok(state.groups.some((g) => g.kind === "breakaway"), "udbrudsgruppen skal stadig eksistere ved maal");
+});
+
+// ── Skala-invarianter (#4707, RULES §7 raekke 14) ─────────────────────────────
+// Samme formuleringsprincip som fieldIntegrity.test.ts og #4604-load-guarden:
+// udsagnene er SKALA-uafhaengige, ikke forventede tal, og koeres over hele
+// evne-spektret 5/11/30/60/99. Fejlen de vogter mod: to strukturelle led i
+// jagt-modellen (sen-etape-uro og udbruddets stoerrelse) stod som absolutte
+// konstanter mod evne-led der skalerede med populationen, saa det SAMME
+// relative scenarie gav en anden jagt ved median-evne 11 end ved 60.
+//
+// Felterne bygges med profil-faktorer <= 1 ganget paa niveauet, saa ingen evne
+// klampes ved 99: et felt paa niveau 60 er PRAECIS 60/11 gange feltet paa
+// niveau 11, og en skala-invariant model skal derfor give praecis samme svar.
+
+const CHASE_ABILITY_LEVELS = [5, 11, 30, 60, 99];
+
+type ScaledChaseScenario = {
+  entrants: Record<string, Entrant>;
+  chaseIds: string[];
+  breakawayIds: string[];
+  fieldIds: string[];
+};
+
+/** Jagt-gruppe + udbrud med fast RELATIV sammensaetning, skaleret til `level`. */
+function scaledChaseScenario(
+  level: number,
+  opts: { breakawayFactor: number; breakawaySize: number; chaseSize?: number },
+): ScaledChaseScenario {
+  const entrants: Record<string, Entrant> = {};
+  const chaseIds: string[] = [];
+  const breakawayIds: string[] = [];
+  const chaseSize = opts.chaseSize ?? 20;
+  for (let i = 0; i < chaseSize; i++) {
+    const id = `c${String(i).padStart(2, "0")}`;
+    chaseIds.push(id);
+    const f = 0.6 + (0.4 * (i % 5)) / 4;
+    const sprintF = 0.5 + (0.5 * ((i * 3) % 7)) / 6;
+    const ab = abilities();
+    for (const key of Object.keys(ab) as AbilityKey[]) ab[key] = level * f;
+    ab.sprint = level * sprintF;
+    entrants[id] = { ...makeEntrant(id), abilities: ab };
+  }
+  for (let i = 0; i < opts.breakawaySize; i++) {
+    const id = `b${i}`;
+    breakawayIds.push(id);
+    const ab = abilities();
+    for (const key of Object.keys(ab) as AbilityKey[]) ab[key] = level * opts.breakawayFactor;
+    entrants[id] = { ...makeEntrant(id), abilities: ab };
+  }
+  return { entrants, chaseIds, breakawayIds, fieldIds: [...chaseIds, ...breakawayIds] };
+}
+
+function netAtLevel(
+  level: number,
+  opts: { breakawayFactor: number; breakawaySize: number; remainingKmFraction: number; finaleType: RouteV2["finale_type"]; stance: number },
+): number {
+  const s = scaledChaseScenario(level, opts);
+  return computeNetChaseAdvantage({
+    chaseGroupRiderIds: s.chaseIds,
+    breakawayRiderIds: s.breakawayIds,
+    entrants: s.entrants,
+    finaleType: opts.finaleType,
+    remainingKmFraction: opts.remainingKmFraction,
+    stance: opts.stance,
+    fieldRiderIds: s.fieldIds,
+  });
+}
+
+function assertClose(actual: number, expected: number, message: string): void {
+  const tolerance = 1e-9 * Math.max(1, Math.abs(expected));
+  assert.ok(Math.abs(actual - expected) <= tolerance, `${message}: ${actual} != ${expected}`);
+}
+
+test("#4707 skala-invariant: samme relative jagt-scenarie giver samme netto jagt-fordel paa alle evne-niveauer", () => {
+  const scenarios = [
+    { breakawayFactor: 1.0, breakawaySize: 2, remainingKmFraction: 0.2, finaleType: "bunch_sprint" as const, stance: 0 },
+    { breakawayFactor: 0.8, breakawaySize: 4, remainingKmFraction: 0.6, finaleType: "bunch_sprint" as const, stance: 1 },
+    { breakawayFactor: 0.6, breakawaySize: 6, remainingKmFraction: 0.95, finaleType: "long_climb" as const, stance: -1 },
+    { breakawayFactor: 0.9, breakawaySize: 8, remainingKmFraction: 0.5, finaleType: "descent" as const, stance: 0 },
+    { breakawayFactor: 0.7, breakawaySize: 3, remainingKmFraction: 0.8, finaleType: null, stance: 0 },
+  ];
+  for (const scenario of scenarios) {
+    const reference = netAtLevel(11, scenario);
+    for (const level of CHASE_ABILITY_LEVELS) {
+      assertClose(
+        netAtLevel(level, scenario),
+        reference,
+        `evne-niveau ${level} (${scenario.finaleType ?? "null"}, ${scenario.breakawaySize} i udbruddet, ${scenario.remainingKmFraction} af etapen)`,
+      );
+    }
+  }
+});
+
+test("#4707 skala-invariant: jagtens retninger holder paa alle evne-niveauer", () => {
+  const base = { breakawayFactor: 0.8, breakawaySize: 4, remainingKmFraction: 0.5, finaleType: "bunch_sprint" as const, stance: 0 };
+  for (const level of CHASE_ABILITY_LEVELS) {
+    const net = netAtLevel(level, base);
+    // Sen-etape-uroen: jo taettere paa maal, jo mere jagter feltet.
+    assert.ok(
+      netAtLevel(level, { ...base, remainingKmFraction: 0.9 }) > net,
+      `evne-niveau ${level}: senere i etapen skal give HOEJERE jagt-fordel`,
+    );
+    // Udbruddets stoerrelse: flere ryttere ruller bedre.
+    assert.ok(
+      netAtLevel(level, { ...base, breakawaySize: 6 }) < net,
+      `evne-niveau ${level}: et stoerre udbrud skal modstaa jagten mere`,
+    );
+    // Udbruddets RELATIVE styrke: et udbrud af feltets staerkeste modstaar mere
+    // end et af feltets svageste — paa ALLE niveauer, ikke kun midt-skala.
+    assert.ok(
+      netAtLevel(level, { ...base, breakawayFactor: 1.0 }) < netAtLevel(level, { ...base, breakawayFactor: 0.6 }),
+      `evne-niveau ${level}: et relativt staerkere udbrud skal give LAVERE jagt-fordel`,
+    );
+  }
+});
+
+test("#4707 chaseAbilityScale: halveres naar feltet fordobles, og et evne-loest felt skalerer ikke", () => {
+  const at11 = scaledChaseScenario(11, { breakawayFactor: 0.8, breakawaySize: 4 });
+  const at22 = scaledChaseScenario(22, { breakawayFactor: 0.8, breakawaySize: 4 });
+  assertClose(chaseAbilityScale(at22.fieldIds, at22.entrants) * 2, chaseAbilityScale(at11.fieldIds, at11.entrants), "dobbelt evne => halv skala");
+
+  const zeroEntrants: Record<string, Entrant> = {};
+  for (const id of ["z0", "z1", "z2"]) {
+    const ab = abilities();
+    for (const key of Object.keys(ab) as AbilityKey[]) ab[key] = 0;
+    zeroEntrants[id] = { ...makeEntrant(id), abilities: ab };
+  }
+  assert.equal(chaseAbilityScale(["z0", "z1", "z2"], zeroEntrants), 1, "et felt uden maalbar evne har intet at skalere");
+});
+
+/** Hook-niveau: pelotonen jager et udbrud der allerede er etableret med et fast forspring. */
+function chaseStateAtLevel(level: number, route: RouteV2, segmentIndex: number): { state: EngineState; ctx: BreakawayHookContext } {
+  const s = scaledChaseScenario(level, { breakawayFactor: 0.8, breakawaySize: 5, chaseSize: 40 });
+  const riders: Record<string, RiderState> = {};
+  for (const id of s.chaseIds) riders[id] = makeRiderState(id, "peloton-0");
+  for (const id of s.breakawayIds) riders[id] = makeRiderState(id, "breakaway-0");
+  const groups: RaceGroup[] = [
+    { id: "peloton-0", kind: "peloton", rider_ids: s.chaseIds, gap_seconds: 0, cohesion: 1 },
+    { id: "breakaway-0", kind: "breakaway", rider_ids: s.breakawayIds, gap_seconds: -180, cohesion: 1 },
+  ];
+  const state: EngineState = { km: route.segments[segmentIndex].from_km, groups, riders, virtual_gc: {} };
+  const ctx = makeHookCtx({
+    segment: route.segments[segmentIndex],
+    segmentIndex,
+    route,
+    entrants: s.entrants,
+    tuning: RACE_V4_TUNING,
+    seed: "4707-scale",
+  });
+  return { state, ctx };
+}
+
+test("#4707 skala-invariant: jagten lukker praecis lige meget af forspringet paa alle evne-niveauer", () => {
+  const route = routeWithSegments(6);
+  for (const segmentIndex of [1, 3, 5]) {
+    const outcomes = CHASE_ABILITY_LEVELS.map((level) => {
+      const { state, ctx } = chaseStateAtLevel(level, route, segmentIndex);
+      const result = breakawayHook(state, ctx);
+      const peloton = result.state.groups.find((g) => g.id === "peloton-0")!;
+      const breakaway = result.state.groups.find((g) => g.id === "breakaway-0")!;
+      return {
+        level,
+        separation: peloton.gap_seconds - breakaway.gap_seconds,
+        events: result.events.map((e) => e.type).join(","),
+      };
+    });
+    const reference = outcomes.find((o) => o.level === 11)!;
+    for (const outcome of outcomes) {
+      assertClose(outcome.separation, reference.separation, `evne-niveau ${outcome.level}, segment ${segmentIndex}: forspringet efter jagten`);
+      assert.equal(outcome.events, reference.events, `evne-niveau ${outcome.level}, segment ${segmentIndex}: jagtens udfald (fanget/overlevet)`);
+    }
+  }
 });

@@ -624,6 +624,16 @@ const breakawayExtra = {
   enginePowerResistanceWeight: 0.45, // vaegt paa udbruddets kollektive endurance/tempo i moddstanden (#2416: "udbruddets samlede motorstyrke")
   countResistanceWeight: 0.2, // vaegt paa udbruds-stoerrelsen (flere ryttere ruller bedre, #2416) i modstanden
   breakawayReferenceCount: 4, // rytterantal der giver countFactor=1 (skalerer lineaert, clamp [0, 1.5] i computeNetChaseAdvantage)
+  // EVNE-REFERENCEN (#4707, RULES §7 raekke 14): jagt-modellens evne-afledte
+  // led maales relativt til feltets egen kollektive evne (breakaway.ts
+  // `chaseAbilityScale`), saa netto-fordelen er den samme uanset om aargangen
+  // er staerk eller svag. Referencen er det evne-niveau (normaliseret 0-1) hvor
+  // leddene har PRAECIS den vaegt der staar ovenfor. Kalibreret mod den PINNEDE
+  // population (baselines/population-snapshot-2026-09-07.json): sat ved dens
+  // kollektive niveau, saa et typisk felt ligger paa skala ~1 og bjerg-ankeret
+  // (overskuds-grenen i strengthSpeedExtra) ikke flyttes af omlaegningen. Foer/
+  // efter-maaling: PR'en for #4707 (tal i balance-internals/, hard rule 17).
+  abilityReferenceLevel: 0.13,
   closingSecondsPerKmPerUnit: 25, // sekunder/km lukket pr. enheds netto jagt-fordel (samme formmoenster som finaleExtra.chaseClosingSecondsPerKmPerUnit)
   stanceEffectWeight: 0.3, // T3 breakaway_stance-signalets vaegt paa netto-fordelen (bounded, se stanceMultiplierBounds)
   stanceMultiplierBounds: [0.7, 1.3] as readonly [number, number], // clamp paa stance-multiplikatoren — forhindrer at EN holdordre kan vaelte jagtens fortegn (mor-spec §5)

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-07T15:19:06.419Z",
-  "main_sha": "0daee3c219b5ccc6b8cd25f237a6f20ffadcf592",
+  "generated_at": "2026-09-22T18:59:00.800Z",
+  "main_sha": "7e63a6d06f6bef976ddc38170292f286d2156c4f",
   "population_file": "backend/scripts/baselines/population-snapshot-2026-09-07.json",
   "population_file_sha256_16": "d59b8cf3d03b2d71",
   "population_riders": 5955,
@@ -61,13 +61,13 @@
         }
       },
       "v4": {
-        "value": 0.43681295616115284,
+        "value": 0.43753879613801305,
         "sampleCount": 42,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.29675516160832993,
-          "max": 0.5851369215330575,
+          "min": 0.29612059467796853,
+          "max": 0.5816966345033545,
           "seeds": 3
         }
       }
@@ -86,7 +86,7 @@
       },
       "v4": {
         "value": 20,
-        "sampleCount": 1515,
+        "sampleCount": 1518,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
@@ -113,13 +113,13 @@
         }
       },
       "v4": {
-        "value": 0.8316267300412933,
+        "value": 0.8316511848435825,
         "sampleCount": 51,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.827808164238697,
-          "max": 0.8359575523656201,
+          "min": 0.8280433227216469,
+          "max": 0.835964238872951,
           "seeds": 3
         }
       }
@@ -141,13 +141,13 @@
         }
       },
       "v4": {
-        "value": 0.09275008242444864,
+        "value": 0.09216031153358462,
         "sampleCount": 9,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.03814532662610559,
-          "max": 0.14278460183584007,
+          "min": 0.038030945713318776,
+          "max": 0.1426979830916434,
           "seeds": 3
         }
       }
@@ -169,13 +169,13 @@
         }
       },
       "v4": {
-        "value": 0.6264775413711584,
+        "value": 0.6217494089834515,
         "sampleCount": 423,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
           "min": 0.5886524822695035,
-          "max": 0.6595744680851063,
+          "max": 0.6453900709219859,
           "seeds": 3
         }
       }
@@ -333,13 +333,13 @@
         }
       },
       "v4": {
-        "value": 205.95714285714288,
+        "value": 207.36746031746057,
         "sampleCount": 63,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 197.40190476190452,
-          "max": 221.71476190476253,
+          "min": 200.26761904761884,
+          "max": 220.4314285714295,
           "seeds": 3
         }
       }
