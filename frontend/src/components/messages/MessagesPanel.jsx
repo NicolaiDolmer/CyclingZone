@@ -212,9 +212,12 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
     }
     setSending(true);
     setSendError(null);
-    stickToBottomRef.current = true; // min egen besked skal altid vaere synlig med det samme
     try {
       await sendMessage({ conversationId, body });
+      // Foerst NAAR sendingen reelt lykkes: en fejlet afsendelse maa ikke
+      // tvinge traaden ned til bunden ved naeste poll, mens brugeren stadig
+      // laeser historik og forsoeget slog fejl (CodeRabbit 22/9, #5313).
+      stickToBottomRef.current = true; // min egen besked skal altid vaere synlig med det samme
       setDraft("");
       await loadThread(conversationId, { silent: true });
       await loadList();
