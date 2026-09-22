@@ -50,6 +50,10 @@
         "title": "Your board is open from day one",
         "text": "The board of directors is unlocked from the start of your first season, so you can pick your Club DNA and negotiate your plans right away rather than waiting a season. Your sponsor modifier stays at 1.0× until you sign your first plan, so the season-1 sponsor is neutral while you set up. During this baseline season the board already watches your race results and club finances weekend by weekend, and its satisfaction moves within a 30-75 range accordingly, even though there are no hard consequences yet. The board also reads your team (national core, U25 share, specialisation and star profile) and saves a permanent identity snapshot that feeds your 5-year plan suggestions."
       },
+      "nationalCoreRule": {
+        "title": "How your national core is decided",
+        "text": "Your national core is set by whichever nationality has the most riders in your squad, never by a combined score across several. It becomes an established core once that nationality has at least 4 riders and makes up at least 35% of your full squad; below that threshold, the board reads your team as a mixed squad, whatever the runner-up nationality looks like. From 35% your board card shows a label like 'France core', naming your largest nationality, and that upgrades to 'Clear France core' once that nationality passes 55% of your squad. Only the single largest nationality is ever checked against these numbers: if two nationalities are both close to qualifying, the smaller one gets no core of its own, even when it trails by just one rider. When two nationalities are exactly tied on rider count, the tie goes to whichever country code sorts first alphabetically."
+      },
       "season2Onboarding": {
         "title": "Sequential board onboarding",
         "steps": [
