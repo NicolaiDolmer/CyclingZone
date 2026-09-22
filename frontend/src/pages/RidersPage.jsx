@@ -12,6 +12,8 @@ import {
 import { supabase } from "../lib/supabase";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
+import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { useNavigate, Link, useSearchParams, useLocation, useNavigationType } from "react-router";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
@@ -190,6 +192,7 @@ export default function RidersPage() {
   const { t: tCommon } = useTranslation("common");
   const { t: tRider } = useTranslation("rider"); // #1592: fulde evne-navne til tooltips + legende
   const { t: tTypes } = useTranslation("riderTypes"); // #2849 bølge 2: mobil-fold-tekst for ryttertype
+  const typeColumnLabel = useTypeColumnLabel(t("table.type")); // #5435
   const navigate = useNavigate();
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
@@ -509,11 +512,14 @@ export default function RidersPage() {
       compact: true,
       render: (r) => {
         const ovr = riderOverallRating(r);
+        // #5435: bedste rolle nu ved tallet når kontakten er tændt.
         return Number.isFinite(ovr) ? (
-          <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
-            style={statPlateStyle(ovr)}>
-            {ovr}
-          </span>
+          <WithBestRole rider={r}>
+            <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+              style={statPlateStyle(ovr)}>
+              {ovr}
+            </span>
+          </WithBestRole>
         ) : <span className="text-cz-3">—</span>;
       },
     },
@@ -574,7 +580,8 @@ export default function RidersPage() {
     },
     {
       key: "type",
-      header: t("table.type"),
+      // #5435: badget er anlægget ("Natural role") når rating-kontakten er tændt.
+      header: typeColumnLabel,
       sortKey: "primary_type",
       fold: true,
       // #5383: KORT type-etiket i mobilens meta-linje. Det fulde navn

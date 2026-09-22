@@ -43,6 +43,7 @@ import {
   HeroStats,
 } from "../components/ui";
 import { TEAM_PROFILE_TABS as TABS, resolveTeamProfileTab } from "../lib/teamProfileTabs.js";
+import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
 
 // Gyldige tab-nøgler — ?tab= i URL'en (fx ranglistens holdnavn-link → results, #824).
 // #1997 holdside-slice: "palmares" tilføjet efter "results" (spejler rytterprofilens
@@ -74,6 +75,7 @@ export default function TeamProfilePage() {
   // #4628: ryttertypen foldes ind i navnecellens underlinje på mobil og skal
   // dér være TEKST — samme kilde som Akademiets fold bruger.
   const { t: tTypes } = useTranslation("riderTypes");
+  const typeColumnLabel = useTypeColumnLabel(t("profile.thType")); // #5435
   // #3071: sæson-referenceår til alders-visning/badges (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
   const [team, setTeam] = useState(null);
@@ -330,7 +332,8 @@ export default function TeamProfilePage() {
     },
     {
       key: "type",
-      header: t("profile.thType"),
+      // #5435: badget er anlægget ("Natural role") når rating-kontakten er tændt.
+      header: typeColumnLabel,
       sortKey: "primary_type",
       compact: true,
       fold: true,

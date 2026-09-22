@@ -7,6 +7,18 @@
     "ariaLabel": "Ryttertype: {primary} / {secondary}",
     "ariaLabelSingle": "Ryttertype: {primary}"
   },
+  "natural": {
+    "label": "Naturlig",
+    "roleLabel": "Naturlig rolle",
+    "filterAll": "Naturlig rolle: alle",
+    "ariaLabel": "Naturlig rolle: {primary} / {secondary}",
+    "ariaLabelSingle": "Naturlig rolle: {primary}"
+  },
+  "bestRole": {
+    "label": "Bedste rolle nu",
+    "filterAll": "Bedste rolle nu: alle",
+    "title": "{role} er den rolle han har højest rating i lige nu. Tallet er hans rating som {role}."
+  },
   "types": {
     "sprinter": "Sprinter",
     "tt": "Tidskører",

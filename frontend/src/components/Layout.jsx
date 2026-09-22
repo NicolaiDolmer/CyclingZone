@@ -39,6 +39,7 @@ import { useActionSummary } from "../hooks/useActionSummary";
 import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.js"; // #4983
 import { useUserProfile } from "../lib/userProfile.jsx"; // #3034
+import RiderRatingModeGate from "./rider/RiderRatingModeGate.jsx"; // #5435
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -900,7 +901,10 @@ export default function Layout() {
         <div className={isFullBleedRoute(location.pathname)
           ? ""
           : `pt-4 px-4 pb-24 md:pt-7 md:px-8 md:pb-16 mx-auto ${isWideContent ? "max-w-full" : "max-w-6xl"}`}>
-          <Outlet />
+          {/* #5435: rating-kontakten — alle sider skifter model samtidig. */}
+          <RiderRatingModeGate>
+            <Outlet />
+          </RiderRatingModeGate>
         </div>
       </main>
 

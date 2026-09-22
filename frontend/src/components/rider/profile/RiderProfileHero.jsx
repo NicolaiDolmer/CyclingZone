@@ -26,11 +26,13 @@ import { Flag } from "../../Flag";
 import TeamLink from "../../TeamLink";
 import { statPlateStyle } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
+import BestRoleTag from "../BestRoleTag.jsx";
 import ScoutablePotentiale from "../ScoutablePotentiale";
 import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
 import RiderBadges from "../RiderBadges";
 import ValueDeltaBadge from "../ValueDeltaBadge.jsx";
 import { retirementRiskBadgeKey } from "../../../lib/riderAge";
+import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
 import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
@@ -118,6 +120,7 @@ export default function RiderProfileHero({
   viewer = "own",                 // "own" | "scouting"
   showTeam = true,                // false når switcher-baren allerede viser holdnavnet (ejer-runde 3: aldrig dobbelt)
   overallRating,
+  bestRoleKey = null,             // #5435: rollen bag overallRating når kontakten er tændt
   age,
   seasonYear = null,        // #3071: sæson-referenceår (useActiveSeasonYear) — retirementRiskBadgeKey
   typeLabel,
@@ -136,6 +139,7 @@ export default function RiderProfileHero({
   actions = null,                 // action-række (ReactNode) — injiceres af parent
 }) {
   const { t } = useTranslation("rider");
+  const bestRoleOn = useBestRoleDisplay();
 
   const teamName = rider.team?.name ?? t("header.freeAgent");
   const potentialEyebrow = viewer === "scouting"
@@ -143,6 +147,14 @@ export default function RiderProfileHero({
     : t("profile.hero.potentialOwn");
   const isU23 = rider.is_u25 != null && age != null && age < 23;
   const hasRating = Number.isFinite(overallRating);
+  const ratingPlate = hasRating ? (
+    <span
+      className="inline-flex items-center justify-center min-w-[38px] h-[30px] px-2 rounded-cz"
+      style={statPlateStyle(overallRating)}
+    >
+      {overallRating}
+    </span>
+  ) : null;
   // Overgangs-designet (ejer 18/8): rollens loft står som under-linje på
   // prognose-statten, så det gamle loft-tal er bevaret lige dér spilleren
   // plejede at kigge. Kommer fra estimates-payloaden (roleCeilRating — rolle+
@@ -267,19 +279,24 @@ export default function RiderProfileHero({
           jf. statColor.js's fire-skala-advarsel). */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-4 mt-5 pt-4 border-t border-cz-border">
         <HeroStat
-          label={t("profile.hero.ratingEyebrow")}
+          label={bestRoleOn ? t("profile.hero.bestRoleEyebrow") : t("profile.hero.ratingEyebrow")}
           value={hasRating ? (
             /* Farveplade (ejer-feedback): samme statColor-skala som ability-tallene
                — genindfører det gamle designs instant-signal i systemets sprog.
                #2888/#2906: selve style-udtrykket er nu den delte statPlateStyle,
                så heroen, personale-heroen og trup-tabellen ikke kan drifte fra
-               hinanden (samme 16%-alpha-plade var kopieret tre steder). */
-            <span
-              className="inline-flex items-center justify-center min-w-[38px] h-[30px] px-2 rounded-cz"
-              style={statPlateStyle(overallRating)}
-            >
-              {overallRating}
-            </span>
+               hinanden (samme 16%-alpha-plade var kopieret tre steder).
+               #5435 (D-049): med kontakten tændt står rollenavnet ved tallet
+               ("54 Climber") — tallet er hans rating i DEN rolle.
+               #5435 opfølgning 2 (ejer 22/9): rollenavnet er samme neutrale
+               chip-badge som i tabellerne (BestRoleTag, variant "full") —
+               ikke sin egen løse span, så anatomien er ens overalt. */
+            bestRoleOn && bestRoleKey ? (
+              <span className="inline-flex items-center gap-2 min-w-0 max-w-full">
+                {ratingPlate}
+                <BestRoleTag role={bestRoleKey} variant="full" className="truncate" testId="rider-hero-best-role" />
+              </span>
+            ) : ratingPlate
           ) : "—"}
         />
         <HeroStat
@@ -288,7 +305,9 @@ export default function RiderProfileHero({
             ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel />
             : "—"}
           valueClassName="text-[15px] font-semibold"
-          sub={potLoft != null && (
+          /* #5435 (ejer 21/9): loft-tallet er ude af den nye visning — taget er
+             ens for alle med samme anlæg, og badget viser allerede anlægget. */
+          sub={!bestRoleOn && potLoft != null && (
             <p
               className="font-data text-2xs text-cz-3 tabular-nums mt-1"
               title={potPastPeak

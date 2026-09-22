@@ -16,7 +16,8 @@
 // identiske med design-tokens). Dark mode flipper automatisk.
 
 import { useTranslation } from "react-i18next";
-import { riderTypeRating } from "../../../lib/riderRating.js";
+import { riderBestRole, riderTypeRating } from "../../../lib/riderRating.js";
+import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
 import { ChevronRightIcon } from "../../ui/icons";
 
 // Spektrum-orden (flade spurtere → klatrere) så beslægtede typer ligger ved siden af
@@ -85,6 +86,7 @@ const radiusFor = (v) => R * Math.sqrt(Math.max(0, Math.min(AXIS_DOMAIN, Number(
 export default function RiderTypeRadar({ rider, onGoScouting }) {
   const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
+  const bestRoleOn = useBestRoleDisplay(); // #5435
 
   const abilities = rider?.abilities;
   if (!abilities) return null;
@@ -131,9 +133,14 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
   const rated = ratings
     .map((v, i) => ({ key: RADAR_ORDER[i], v }))
     .filter((x) => Number.isFinite(x.v));
-  const highestKey = rated.length
-    ? rated.reduce((best, x) => (x.v > best.v ? x : best)).key
-    : null;
+  // #5435: med rating-kontakten tændt ER "højest nu" bedste rolle nu — samme
+  // funktion (og samme tie-regel) som tallet i heroen, så de to aldrig peger
+  // på hver sin rolle ved lighed.
+  const highestKey = bestRoleOn
+    ? riderBestRole(abilities).role
+    : rated.length
+      ? rated.reduce((best, x) => (x.v > best.v ? x : best)).key
+      : null;
   const goldKey = ownKey ?? highestKey;
   const showHighest = ownKey && highestKey && highestKey !== ownKey;
 
@@ -219,7 +226,8 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           Overall-potentialet står i hero'en. */}
       <div className="mt-3 pt-3 border-t border-cz-border flex items-center gap-2.5 flex-wrap">
         <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3">
-          {t("profile.overview.radar.role")}
+          {/* #5435: guld-aksen er anlægget — "Natural role" med kontakten tændt. */}
+          {bestRoleOn ? tTypes("natural.roleLabel") : t("profile.overview.radar.role")}
         </span>
         <span className="font-bold text-[13.5px] text-cz-1">{tTypes(`types.${goldKey}`)}</span>
         {/* Linket skjules mens Scouting-fanen er udskudt (egen slice) — en knap
@@ -243,7 +251,9 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           Linjen skjules når de to er den samme — så er der intet at fortælle. */}
       {showHighest && (
         <div className="mt-2 flex items-baseline gap-2 flex-wrap">
-          <span className="text-2xs text-cz-3">{t("profile.overview.radar.readsHighest")}</span>
+          <span className="text-2xs text-cz-3">
+            {bestRoleOn ? tTypes("bestRole.label") : t("profile.overview.radar.readsHighest")}
+          </span>
           <span className="text-2xs font-bold text-cz-2">{tTypes(`types.${highestKey}`)}</span>
           <span className="text-3xs text-cz-3 basis-full">
             {t("profile.overview.radar.notARanking")}
