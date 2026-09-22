@@ -15,6 +15,10 @@ import {
   BIRTH_MODE_PCM,
   BIRTH_MODE_OWN_PRIORS,
   DEFAULT_BIRTH_MODE,
+  PRIMARY_TYPE_MODE_TIER,
+  PRIMARY_TYPE_MODE_DISTRIBUTION,
+  DEFAULT_PRIMARY_TYPE_MODE,
+  PRIMARY_TYPE_FROM_DISTRIBUTION_FLAG_KEY,
 } from "./fictionalRiderGenerator.js";
 import {
   isBornFromPriors, deriveBirthAbilities, BIRTH_TIER_KEYS, birthAbilityKeys,
@@ -815,4 +819,87 @@ test("#5269: pcm-stien er uaendret ved siden af (samme seed -> samme stats som f
 
 test("#5269: ukendt mode afvises hårdt", () => {
   assert.throws(() => gen({ mode: "pcm-ish" }), /unknown mode/);
+});
+
+// ── #5327: primær type fra DEFAULT_DISTRIBUTION bag kontakt ─────────────────
+// Ejer-omskrivning 22/9: PRIMÆR type skal (bag kontakt, OFF som default) kunne
+// trækkes fra archetypeDistribution.js' DEFAULT_DISTRIBUTION i stedet for den
+// tier-aware TIER_TYPE_WEIGHTS. Kontakten er rent additiv: default-grenen
+// ("tier") skal forblive byte-identisk med koden før #5327.
+
+test("#5327: default primaryTypeMode er 'tier' (uændret adfærd, OFF som default)", () => {
+  assert.equal(DEFAULT_PRIMARY_TYPE_MODE, PRIMARY_TYPE_MODE_TIER);
+});
+
+test("#5327: app_config-flagnøglen er eksporteret (kaldestedet slår den op, ikke denne fil)", () => {
+  assert.equal(typeof PRIMARY_TYPE_FROM_DISTRIBUTION_FLAG_KEY, "string");
+  assert.ok(PRIMARY_TYPE_FROM_DISTRIBUTION_FLAG_KEY.length > 0);
+});
+
+test("#5327: eksplicit primaryTypeMode 'tier' === ingen override (byte-identisk determinisme)", () => {
+  const plain = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
+  const explicitTier = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_TIER,
+  });
+  assert.deepEqual(explicitTier.riders, plain.riders);
+});
+
+test("#5327: 'distribution'-mode ændrer den realiserede fordeling (tier-pyramiden forsvinder)", () => {
+  const tierMode = generateFictionalRiders({
+    seed: 2026, count: 2000, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_TIER,
+  }).riders;
+  const distMode = generateFictionalRiders({
+    seed: 2026, count: 2000, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  }).riders;
+  assert.notDeepEqual(distMode, tierMode, "distribution-mode skal give et andet træk end tier-mode");
+  // rng-forbrugets SEKVENS er uændret (kun værdien af type-trækket ændrer sig):
+  // navne/nationaliteter/tier-kvote/count skal derfor stadig matche 1:1.
+  assert.deepEqual(distMode.map((r) => r.firstname + " " + r.lastname), tierMode.map((r) => r.firstname + " " + r.lastname));
+  assert.deepEqual(distMode.map((r) => r._meta.tier), tierMode.map((r) => r._meta.tier));
+});
+
+test("#5327: 'distribution'-mode konvergerer mod DEFAULT_DISTRIBUTION (tier-uafhængigt, ikke leder/hjælper-pyramiden)", () => {
+  const { riders } = generateFictionalRiders({
+    seed: 4, count: 20000, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  });
+  const counts = Object.fromEntries(ARCHETYPE_TYPES.map((t) => [t, 0]));
+  for (const r of riders) counts[r._meta.archetype]++;
+  for (const t of ARCHETYPE_TYPES) {
+    const pct = (counts[t] / riders.length) * 100;
+    assert.ok(Math.abs(pct - DEFAULT_DISTRIBUTION[t]) <= 2.5,
+      `${t}: målt ${pct.toFixed(2)}% vs mål ${DEFAULT_DISTRIBUTION[t]}% (distribution-mode)`);
+  }
+});
+
+test("#5327: 'distribution'-mode respekterer stadig ENSURE_MIN_TYPES-gulvet (gc/sprinter) ved launch-skala", () => {
+  const { riders } = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  });
+  const counts = Object.fromEntries(ARCHETYPE_TYPES.map((t) => [t, 0]));
+  for (const r of riders) counts[r._meta.archetype]++;
+  assert.ok(counts.gc >= 30, `gc=${counts.gc} under launch-gulvet 30`);
+  assert.ok(counts.sprinter >= 40, `sprinter=${counts.sprinter} under launch-gulvet 40`);
+});
+
+test("#5327: 'distribution'-mode + secondary — sekundæren er stadig altid forskellig fra primær", () => {
+  const { riders } = generateFictionalRiders({
+    seed: 9, count: 3000, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  });
+  for (const r of riders) {
+    assert.notEqual(r._meta.archetypeDraw.secondary, r._meta.archetypeDraw.primary);
+  }
+});
+
+test("#5327: primaryDistribution-override lader 'distribution'-mode trække fra en anden fordeling end DEFAULT_DISTRIBUTION", () => {
+  const skewed = Object.fromEntries(ARCHETYPE_TYPES.map((t) => [t, t === "sprinter" ? 60 : 40 / (ARCHETYPE_TYPES.length - 1)]));
+  const { riders } = generateFictionalRiders({
+    seed: 3, count: 3000, referenceYear: REF_YEAR,
+    primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION, primaryDistribution: skewed,
+  });
+  const sprinterPct = (riders.filter((r) => r._meta.archetype === "sprinter").length / riders.length) * 100;
+  assert.ok(sprinterPct > 50, `sprinter=${sprinterPct.toFixed(1)}% — override respekteres ikke`);
+});
+
+test("#5327: ukendt primaryTypeMode afvises hårdt", () => {
+  assert.throws(() => gen({ primaryTypeMode: "random-ish" }), /unknown primaryTypeMode/);
 });

@@ -14,7 +14,7 @@
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { NAME_CLUSTERS, clusterForNationality } from "./fictionalRiderNames.js";
 import { seedArchetypePhysiology } from "./archetypePhysiology.js";
-import { drawSecondaryArchetype } from "./archetypeDistribution.js";
+import { drawSecondaryArchetype, drawArchetype, DEFAULT_DISTRIBUTION } from "./archetypeDistribution.js";
 import { isU25ForReferenceYear } from "./riderSeasonAge.js";
 import {
   drawBirthAbilities, makeBirthRng, makeBirthMarker,
@@ -199,6 +199,37 @@ const TIER_TYPE_WEIGHTS = {
 
 // #1420: alias-eksport til mix-presets (resolveMix bygger skews oven på disse).
 export const DEFAULT_TIER_TYPE_WEIGHTS = TIER_TYPE_WEIGHTS;
+
+// ── #5327: PRIMÆR type-kilde bag kontakt (ejer-omskrivning 22/9) ─────────────
+// Ejer-krav: PRIMÆR type skal (bag en kontakt, OFF som default) trækkes fra
+// archetypeDistribution.js' DEFAULT_DISTRIBUTION (kalender-efterspørgsel +
+// FLOOR_PCT 8,5) i stedet for den tier-aware TIER_TYPE_WEIGHTS ovenfor.
+// Kilden til kravet: spillerklage 30/7 (for få sprinter-/brostens-/rouleur-
+// talenter) — TIER_TYPE_WEIGHTS er en håndkurateret "leder i toppen, hjælper i
+// bunden"-pyramide, DEFAULT_DISTRIBUTION er den samme formel akademi-stien
+// allerede trækker BEGGE anlæg fra (academyGenerator.js → drawArchetypePair).
+//
+// "tier" = uændret adfærd (default). "distribution" = primæren trækkes
+// tier-uafhængigt fra `distribution` (default DEFAULT_DISTRIBUTION) med ét
+// `drawArchetype()`-kald pr. rytter — samme ét-rng-kald-kontrakt som "tier"-
+// grenen (weightedPick forbruger også præcis 1 kald), så rng-forbruget (og
+// dermed alt EFTER type-trækket: navne, stats, fysiologi) er uændret i
+// SEKVENS uanset hvilken gren der vælges — kun VÆRDIEN af typen ændrer sig.
+//
+// Ingen signatur-boost, intet AI_SIGNATURE_CFG (ejer-afgrænsning 22/9): kun
+// KILDEN til primær-trækket ændres, ARCHETYPES' boost/damp-tabel og hele
+// stats/fysiologi-formningen er uændret uanset gren.
+//
+// app_config-kontakten (`isPrimaryTypeFromDistributionEnabled`-mønsteret i
+// featureStage.js, jf. autoCalendarFlag.js/academyFlag.js) læses ved
+// KALDESTEDET (aiTeamGenerator.js/fictionalLaunchPopulation.js/
+// starterSquadAllocator.js — uden for denne lanes fil-ejerskab, #5327) og
+// videregives som `primaryTypeMode` her. Denne fil rører ingen DB (se
+// modul-kommentaren øverst) og kan derfor ikke selv slå flaget op.
+export const PRIMARY_TYPE_FROM_DISTRIBUTION_FLAG_KEY = "rider_primary_type_from_distribution";
+export const PRIMARY_TYPE_MODE_TIER = "tier";
+export const PRIMARY_TYPE_MODE_DISTRIBUTION = "distribution";
+export const DEFAULT_PRIMARY_TYPE_MODE = PRIMARY_TYPE_MODE_TIER;
 
 // Globalt gulv på sjældne typer (ejer-spec: etape-variation kræver dybde i alle
 // discipliner). Håndhæves ved at promovere de billigste over-repræsenterede typer.
@@ -479,6 +510,15 @@ export function makeUniqueName(rng, cluster, usedFolded) {
  * @param {"own-priors"|"pcm"} [opts.mode]  #5269: fødsels-tilstand. Default "own-priors"
  *        (evner fra spillets egne priors, INGEN stat_*). "pcm" er den gamle sti og er
  *        bit-identisk med koden før #5269 — se BIRTH_MODE_* ovenfor.
+ * @param {"tier"|"distribution"} [opts.primaryTypeMode]  #5327: kilde for PRIMÆR type.
+ *        Default "tier" (uændret adfærd: tier-aware `tierTypeWeights`).
+ *        "distribution" trækker i stedet primæren tier-uafhængigt fra
+ *        `primaryDistribution` — se PRIMARY_TYPE_MODE_* ovenfor. Bag kontakt, OFF som
+ *        default (ejer-krav 22/9); kaldestedet slår app_config-flaget op og sender
+ *        resultatet ind her, denne funktion rører ingen DB.
+ * @param {Object<string,number>} [opts.primaryDistribution]  #5327: override af
+ *        mål-fordelingen "distribution"-grenen trækker fra. null/udeladt = archetype-
+ *        Distribution.js' DEFAULT_DISTRIBUTION. Ignoreres i "tier"-mode.
  * @returns {{ riders: object[], coverage: object, seed: number, mode: string }}
  */
 export function generateFictionalRiders({
@@ -491,6 +531,8 @@ export function generateFictionalRiders({
   tierTypeWeights = null,
   secondarySignatureWeight = SECONDARY_SIGNATURE_WEIGHT,
   mode = DEFAULT_BIRTH_MODE,
+  primaryTypeMode = DEFAULT_PRIMARY_TYPE_MODE,
+  primaryDistribution = DEFAULT_DISTRIBUTION,
 }) {
   if (!Number.isInteger(seed)) throw new Error("seed skal være et heltal");
   if (!Number.isInteger(count) || count < 1) throw new Error("count skal være et positivt heltal");
@@ -498,7 +540,11 @@ export function generateFictionalRiders({
   if (mode !== BIRTH_MODE_OWN_PRIORS && mode !== BIRTH_MODE_PCM) {
     throw new Error(`generateFictionalRiders: unknown mode ${mode}`);
   }
+  if (primaryTypeMode !== PRIMARY_TYPE_MODE_TIER && primaryTypeMode !== PRIMARY_TYPE_MODE_DISTRIBUTION) {
+    throw new Error(`generateFictionalRiders: unknown primaryTypeMode ${primaryTypeMode}`);
+  }
   const ownPriors = mode === BIRTH_MODE_OWN_PRIORS;
+  const primaryFromDistribution = primaryTypeMode === PRIMARY_TYPE_MODE_DISTRIBUTION;
 
   const rng = makeRng(seed);
   // #4180: navnene traekkes fra en EGEN rng-understroem, ikke fra hovedstroemmen.
@@ -549,17 +595,26 @@ export function generateFictionalRiders({
     [tierSeq[i], tierSeq[j]] = [tierSeq[j], tierSeq[i]];
   }
 
-  // ── Type-sekvens: tier-aware vægtet pick + gulv på sjældne typer ─────────────
+  // ── Type-sekvens: primær-kilde afhænger af primaryTypeMode (#5327) ──────────
+  // "tier" (default, uændret): tier-aware vægtet pick fra typeWeights[tier].
+  // "distribution": tier-uafhængigt træk fra primaryDistribution (samme formel
+  // akademi-stien allerede bruger til BEGGE anlæg). Begge grene forbruger
+  // præcis ét rng()-kald pr. rytter (weightedPick hhv. drawArchetype), så
+  // rng-forbruget i sekvensen er identisk uanset gren — kun værdien ændrer sig.
   const typeSeq = tierSeq.map((t) => {
+    if (primaryFromDistribution) return drawArchetype(rng, primaryDistribution);
     const weights = typeWeights[t.value];
     return weightedPick(rng, Object.entries(weights).map(([value, weight]) => ({ value, weight })));
   });
   // Gulvene skaleres til dette kalds count (#3570/S2) — se ENSURE_MIN_TYPES.
+  // "distribution"-grenen er tier-uafhængig af natur (typeWeights[tier] siger
+  // intet om hvad DEN gren tillader), så tier-permission-tjekket herunder
+  // gælder kun "tier"-grenen.
   const minTypes = scaleMinTypes(count);
   for (const [type, min] of Object.entries(minTypes)) {
     let have = typeSeq.filter((x) => x === type).length;
     for (let i = 0; i < typeSeq.length && have < min; i++) {
-      if (typeWeights[tierSeq[i].value][type] == null) continue; // tier tillader ikke typen
+      if (!primaryFromDistribution && typeWeights[tierSeq[i].value][type] == null) continue; // tier tillader ikke typen
       if (typeSeq[i] === type || minTypes[typeSeq[i]]) continue; // stjæl ikke fra andet gulv
       typeSeq[i] = type;
       have++;
