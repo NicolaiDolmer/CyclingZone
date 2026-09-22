@@ -37,6 +37,13 @@ import {
   TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
   loadBoundRiderIdsForRaceDay,
 } from "./trainingRaceDayTick.js";
+// #5462 (ejer-laast 15/9, TRAINING_RULES §13.3 pkt. 7): skadens VARIGHED regnes i
+// LOEBSDAGE naar loebsdagen er tick-enheden. Datamodellen og dens trade-off staar i
+// headeren paa injuryRaceDays.js.
+import {
+  injuryEndGameDay, injuryRaceDaysLeft, isInjuredOnRaceDay, resolveInjuryEndDates,
+  loadTeamDivisionId,
+} from "./injuryRaceDays.js";
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
@@ -463,7 +470,14 @@ export async function runTeamTrainingDay({
     const tickCaps = caps;
 
     // Er rytteren skadet i dag?
-    const injuredToday = !!(cond.injured_until && cond.injured_until >= tickDate);
+    // #5462: paa loebsdags-aksen spoerges der paa LOEBSDAGEN, ikke paa datoen — en
+    // kalenderdato baerer fra S4 fem loebsdage, saa en dato-sammenligning ville holde
+    // rytteren ude resten af dagen efter at hans sidste skadede loebsdag var gaaet.
+    // Uden loebsdags-felterne (skade skrevet foer flippet, eller flag off) falder
+    // `isInjuredOnRaceDay` tilbage til praecis det gamle udtryk.
+    const injuredToday = useRaceDayKey
+      ? isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: raceDay, tickDate })
+      : !!(cond.injured_until && cond.injured_until >= tickDate);
 
     // #3459 D1 / #4277: racede rytteren i dag (udviklings-flag on)? injuredToday
     // har forrang (kan i praksis ikke ske samtidig — en skadet rytter stilles ikke
@@ -624,6 +638,16 @@ export async function runTeamTrainingDay({
     let newInjuryCause = cond.injury_cause ?? null;
     let injuryDays = 0;
     let newlyInjured = false;
+    // #5462: loebsdags-sandheden. Kun relevant paa loebsdags-aksen; paa den gamle sti
+    // forlader ingen af de tre vaerdier denne blok (ingen kolonner skrives).
+    let newInjuryEndGameDay = cond.injury_end_game_day ?? null;
+    let newInjurySeasonId = cond.injury_season_id ?? null;
+    // A previous season's coordinate cannot be looked up on the new axis.
+    // Keep injured_until as the conservative calendar fallback.
+    if (useRaceDayKey && newInjurySeasonId !== seasonId) {
+      newInjuryEndGameDay = null;
+      newInjurySeasonId = null;
+    }
 
     if (!injuredToday) {
       const risk = injuryRisk({ intensity: effectiveIntensity, fatigue: preFatigue });
@@ -632,11 +656,13 @@ export async function runTeamTrainingDay({
         // Med dato-seed ville to loebsdage samme kalenderdag give identisk
         // skade-udfald; rollInjury bruger `dateStr` udelukkende som seed-hale,
         // saa scopet kan skiftes her uden at roere riderCondition.js.
-        // BEMAERK: skadens VARIGHED er fortsat i hele KALENDERDAGE (injured_until
-        // = tickDate + N nedenfor). Spec §5 lader valget staa aabent; B2 beholder
-        // kalenderdage, fordi spilleren laeser skaden som en dato i UI'et. Med
-        // flere loebsdage pr. kalenderdag daekker N kalenderdage dermed flere
-        // ticks end i dag — en balance-aendring der hoerer til ejerens bord.
+        // #5462 (ejer-laast 15/9, §13.3 pkt. 7): VARIGHEDEN er nu i LOEBSDAGE paa
+        // loebsdags-aksen, skaleret med saesonens loebsdage pr. kalenderdato
+        // (ejer-valg 22/9). De efterfoelgende skalerede ticks mistes.
+        // `injured_until` udledes af den
+        // efter loekken (ÉT batch-opslag for hele holdets nye skader); indtil da staar
+        // kalenderdagen som fallback, saa en skade ALTID bliver skrevet, ogsaa hvis
+        // kalenderopslaget ikke kan svare.
         const roll = rollInjury({ riderId: rider.id, dateStr: seedScope, risk });
         if (roll.injured) {
           injuryDays = roll.days;
@@ -644,12 +670,34 @@ export async function runTeamTrainingDay({
           // Skaden starter EFTER dagens session (inkl. i morgen og frem).
           newInjuredUntil = addDaysToDate(tickDate, roll.days);
           newInjuryCause = "training_overload";
+          if (useRaceDayKey) {
+            newInjuryEndGameDay = injuryEndGameDay({ gameDay: raceDay, days: roll.days, seasonNumber });
+            newInjurySeasonId = newInjuryEndGameDay == null ? null : seasonId;
+          }
         }
       }
     }
 
-    // Ryd skade når injured_until er passeret.
-    if (cond.injured_until && cond.injured_until < tickDate) {
+    // Ryd skade når den er passeret.
+    if (useRaceDayKey) {
+      // #5462: paa loebsdags-aksen afgoeres raskmeldingen af LOEBSDAGEN naar den
+      // findes — ellers af datoen, praecis som foer. En skade fra FOER flippet har
+      // ingen loebsdag og loeber derfor faerdig paa kalenderdage (overgangs-reglen:
+      // ingen igangvaerende skade skifter betydning tavst).
+      //
+      // `!newlyInjured` er med HER og bevidst IKKE paa den gamle sti nedenfor: en
+      // rytter hvis skade udloeb i gaar, og som bliver skadet igen i dag, faar paa
+      // den gamle sti sin friske skade nulstillet af dette led (fejl der er aeldre
+      // end #5462 — se slutrapportens out-of-scope-fund). Flag off skal vaere
+      // bit-identisk, saa den bliver staaende som den er.
+      if (!newlyInjured && cond.injured_until
+        && !isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: raceDay, tickDate })) {
+        newInjuredUntil = null;
+        newInjuryCause = null;
+        newInjuryEndGameDay = null;
+        newInjurySeasonId = null;
+      }
+    } else if (cond.injured_until && cond.injured_until < tickDate) {
       newInjuredUntil = null;
       newInjuryCause = null;
     }
@@ -769,6 +817,9 @@ export async function runTeamTrainingDay({
     }
 
     // Condition upsert (altid — fatigue/form ændrer sig selv på hviledage).
+    // #5462: de tre loebsdags-kolonner sendes KUN paa loebsdags-aksen. Flag off er
+    // dermed bit-identisk helt ned i payloaden — upsert-stien roerer kun de kolonner
+    // den faar med, saa en eksisterende raekkes loebsdags-felter er ogsaa urørte.
     conditionUpserts.push({
       rider_id: rider.id,
       form: newForm,
@@ -776,6 +827,18 @@ export async function runTeamTrainingDay({
       injured_until: newInjuredUntil,
       injury_cause: newInjuryCause,
       updated_at: now.toISOString(),
+      ...(useRaceDayKey
+        ? {
+          injury_end_game_day: newInjuryEndGameDay,
+          injury_season_id: newInjurySeasonId,
+          // Denormaliseret rest, opfrisket ved HVERT tick fra den absolutte
+          // sandhed (slut-loebsdagen). Et misset tick selvheler derfor paa det
+          // naeste; feltet er aldrig en nedtaelling der kan drive.
+          injury_race_days_left: newInjuryEndGameDay == null
+            ? null
+            : injuryRaceDaysLeft({ endGameDay: newInjuryEndGameDay, currentGameDay: raceDay }),
+        }
+        : {}),
     });
 
     // Rapport-linje pr. rytter.
@@ -808,6 +871,33 @@ export async function runTeamTrainingDay({
       // #4846: hvilken loebsdag ticket hoerer til. null paa den gamle sti.
       game_day: useRaceDayKey ? raceDay : null,
     });
+  }
+
+  // ── #5462: udled `injured_until` af slut-LOEBSDAGEN ──────────────────────────
+  // ÉT batch-opslag for hele holdets tick, efter loekken — ikke ét pr. skadet rytter.
+  // Datoen er den foerste loebsdag >= slut-loebsdagen der rent faktisk har en etape
+  // i divisionens kalender (en tom loebsdag har ingen raekke, CALENDAR_RULES §1e-b),
+  // og derfor siger UI'et "ca. <dato>".
+  //
+  // FAIL-SAFE: svarer opslaget ikke (ingen division, tom kalender, DB-fejl), BLIVER
+  // kalenderdagens fallback staaende paa `injured_until`. Skaden bliver altid skrevet;
+  // loebsdags-felterne baerer stadig den praecise sandhed, og motorens egen
+  // raskmelding laeser dem — kun gatens dato er saa et skoen.
+  if (useRaceDayKey) {
+    const needDates = conditionUpserts.filter((row) => row.injury_end_game_day != null);
+    if (needDates.length) {
+      const divisionId = await loadTeamDivisionId({ supabase, teamId });
+      const dateByGameDay = await resolveInjuryEndDates({
+        supabase,
+        seasonId,
+        divisionId,
+        endGameDays: needDates.map((row) => row.injury_end_game_day),
+      });
+      for (const row of needDates) {
+        const dateStr = dateByGameDay.get(row.injury_end_game_day) ?? null;
+        if (dateStr) row.injured_until = dateStr;
+      }
+    }
   }
 
   } catch (phase1Err) {

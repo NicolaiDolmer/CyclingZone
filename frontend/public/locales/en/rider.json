@@ -901,7 +901,9 @@
   "condition": {
     "form": "Form",
     "fatigue": "Fatigue",
-    "injured": "Injured: {days}d left"
+    "injured": "Injured: {days}d left",
+    "injuredRaceDays": "Injured: {days, plural, one {1 race day} other {# race days}} left",
+    "injuredApprox": "Back approx. {date}"
   },
   "training": {
     "title": "Training focus",

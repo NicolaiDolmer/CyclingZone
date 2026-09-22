@@ -19,7 +19,7 @@ import { useScouting } from "../lib/useScouting.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { ageForSeason, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { riderOverallRating } from "../lib/riderRating.js";
-import { TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
+import { TRAINING_INTENSITIES, injuryTimeLeft, injuryBadgeMessage, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import {
   SESSION_INTENSITY,
@@ -916,10 +916,10 @@ export default function TrainingPage() {
     form: (r) => condition[r.id]?.form ?? null,
     fatigue: (r) => condition[r.id]?.fatigue ?? null,
     // #3706: samme to badges som Status-cellen viser, som ét sorterbart tal.
-    // injuryDaysLeft er den samme kilde cellen selv bruger, så rækkefølgen kan
+    // injuryTimeLeft er den samme kilde cellen selv bruger, så rækkefølgen kan
     // ikke drive fra det man ser.
     status: (r) => (r.is_academy ? STATUS_ACADEMY_WEIGHT : 0)
-      + (injuryDaysLeft(condition[r.id]?.injured_until, today) > 0 ? STATUS_INJURED_WEIGHT : 0),
+      + (injuryTimeLeft(condition[r.id], today).count > 0 ? STATUS_INJURED_WEIGHT : 0),
     // #4851: dagens tal. Ryttere uden et tal (hvile, loebsdag, ingen koersel
     // endnu) giver null, og sortRows laegger null'er sidst uanset retning — de
     // kan derfor ikke forurene toppen af en "hvem traente bedst"-sortering.
@@ -965,7 +965,9 @@ export default function TrainingPage() {
   function renderRosterRow(rider, isFirst = false) {
     const plan = planFor(rider.id);
     const cond = condition[rider.id] ?? {};
-    const daysLeft = injuryDaysLeft(cond.injured_until, today);
+    // #5462: loebsdage naar backenden har skrevet dem, ellers kalenderdage som foer.
+    const injury = injuryTimeLeft(cond, today);
+    const daysLeft = injury.count;
     const injured = daysLeft > 0;
     const highRisk = !injured && (cond.risk ?? 0) >= 0.05;
     const busy = savingId === rider.id || bulkApplying;
@@ -1347,13 +1349,21 @@ export default function TrainingPage() {
               !rider.is_academy && retirementRiskBadgeKey(rider, seasonYear),
               !rider.is_academy && contractExpiringBadgeKey(rider, activeSeasonNumber),
             ]} />
-            {injured && (
-              <span className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
-                {daysLeft === 1
-                  ? t("injured", { days: daysLeft })
-                  : t("injured_plural", { days: daysLeft })}
-              </span>
-            )}
+            {injured && (() => {
+              // Status-cellen er smal (den deler plads med akademi-, pensions- og
+              // kontrakt-badges), saa badget er KORT og ca.-datoen staar i title'en.
+              const msg = injuryBadgeMessage(injury, { compact: true });
+              return (
+                <span
+                  className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger border border-cz-danger/30"
+                  title={injury.unit === "race_day" && injury.approxDate
+                    ? t("injuredApprox", { date: formatDate(injury.approxDate, "medium") })
+                    : undefined}
+                >
+                  {t(msg.key, { days: msg.days })}
+                </span>
+              );
+            })()}
             {highRisk && (
               <span className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-warning/10 text-cz-warning border border-cz-warning/20">
                 {t("injuryRisk")}
@@ -2285,8 +2295,12 @@ export default function TrainingPage() {
                     // nyligt-skadet-gren). injuryDaysLeft på den samme condition-state
                     // som roster-rækken (linje ~548) og ConditionChips på rytterprofilen
                     // er ÉN kanonisk kilde, så de tre visninger ikke kan divergere.
-                    const reportDaysLeft = injuryDaysLeft(condition[row.rider_id]?.injured_until, today);
+                    // #5462: samme kilde som roster-raekken — de to flader kan ikke
+                    // sige forskelligt om den samme skade (#1672-mønsteret).
+                    const reportInjury = injuryTimeLeft(condition[row.rider_id], today);
+                    const reportDaysLeft = reportInjury.count;
                     const reportInjured = reportDaysLeft > 0;
+                    const reportInjuryMsg = injuryBadgeMessage(reportInjury, { compact: true });
                     return (
                       <tr
                         key={row.rider_id}
@@ -2297,10 +2311,13 @@ export default function TrainingPage() {
                             {row.name}
                           </RiderLink>
                           {reportInjured && (
-                            <span className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
-                              {reportDaysLeft === 1
-                                ? t("injured", { days: reportDaysLeft })
-                                : t("injured_plural", { days: reportDaysLeft })}
+                            <span
+                              className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger"
+                              title={reportInjury.unit === "race_day" && reportInjury.approxDate
+                                ? t("injuredApprox", { date: formatDate(reportInjury.approxDate, "medium") })
+                                : undefined}
+                            >
+                              {t(reportInjuryMsg.key, { days: reportInjuryMsg.days })}
                             </span>
                           )}
                         </td>
@@ -2585,7 +2602,7 @@ export default function TrainingPage() {
           focusPanelRider
             ? [
                 focusPanelRider.is_academy && "academy",
-                injuryDaysLeft(condition[focusPanelRider.id]?.injured_until, today) > 0 && "injured",
+                injuryTimeLeft(condition[focusPanelRider.id], today).count > 0 && "injured",
               ]
             : []
         }

@@ -2838,10 +2838,26 @@ router.get("/training/me", requireAuth, async (req, res) => {
             .then(({ data, error }) => ({ data: data?.[0] ?? null, error }))
         : Promise.resolve({ data: null }),
       riderIds.length
-        ? supabase
-            .from("rider_condition")
-            .select("rider_id, form, fatigue, injured_until")
-            .in("rider_id", riderIds)
+        ? (async () => {
+            // #5462: `injury_race_days_left` med, saa traeningsfladen kan skrive
+            // "tilbage om N loebsdage" uden selv at kende divisions-aksen. NULL
+            // indtil `training_tick_per_race_day` er on — saa falder fladen tilbage
+            // til kalenderdage praecis som i dag.
+            // schema-columns-ok: injury_race_days_left tilfoejes af
+            // database/2026-09-21-5462-injury-race-days.sql, applied post-merge.
+            const withRaceDays = await supabase
+              .from("rider_condition")
+              .select("rider_id, form, fatigue, injured_until, injury_race_days_left")
+              .in("rider_id", riderIds);
+            // 42703 (ukendt kolonne) i deploy-vinduet foer auto-migrate.yml har koert
+            // (#2642, ~3 min): fald tilbage til selecten uden kolonnen, saa
+            // form/traethed/skade ikke staar tomt for alle spillere imens.
+            if (withRaceDays.error?.code !== "42703") return withRaceDays;
+            return supabase
+              .from("rider_condition")
+              .select("rider_id, form, fatigue, injured_until")
+              .in("rider_id", riderIds);
+          })()
         : Promise.resolve({ data: [] }),
       riderIds.length
         ? supabase
@@ -2905,6 +2921,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
         form: row.form,
         fatigue: row.fatigue,
         injured_until: row.injured_until ?? null,
+        // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
+        // kalenderdagen (flag off, eller skrevet foer flippet).
+        injury_race_days_left: row.injury_race_days_left ?? null,
         risk,
       };
     }

@@ -690,7 +690,7 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 | 4 | **Tidligst kl. 20 dansk tid** (målt: aktive spillerdage/time kl. 16 = 218, 17-20 ≈ 185-199, 21 = 127) | Træningsrapport i indbakken kl. 20 = dagens øjeblik |
 | 5 | **U23-kalenderen (#4620) bygges MED i S4-cutover**; én løbsdags-akse pr. trup (senior/U23/junior), samme 140-mål | #4620 ind i Bane 1. Risiko flagget (13 dage, nul buffer) |
 | 6 | Formtræning = (b), besluttet 14/9 i #4633 | Åbnere #5238 først |
-| 7 | **Skadesvarighed i løbsdage** | UI viser "ca. <dato>". PR #5205's kalenderdags-valg ændres i B4 |
+| 7 | **Skadesvarighed i løbsdage. Præciseret af ejeren 21/9: 5-25 løbsdage i S4** | Det eksisterende skadesrul N skaleres med sæsonens løbsdagsakse divideret med antal løbsdatoer, læst fra `SEASON_RACE_DAY_TARGET` og `SEASON_RACE_DAYS_DEFAULT`. Ingen hardkodet faktor. Ejer-valg 22/9: dagens træning er allerede gennemført ved skaden; de næste N gange aksens tæthed træningsticks mistes. Slutdagen er start + varighed (inklusiv), ikke start + varighed - 1. UI tæller også den aktuelle skadedag med og viser "ca. <dato>". Flag off beholder kalenderdage bit-identisk. Ejerens ord 15/9 var "Løbsdage"; "samme antal ticks" var konsekvenstekst og er afløst. |
 | 8 | **Program pr. løbsdag**: 7 ugedage × 5 løbsdage = 35 celler (ejeren afviste "én session pr. ugedag gælder alle løbsdage" efter at have set billedet) | Arkitekt-valg (må udfordres): ugedagens session udfylder alle 5 slots som default, spilleren overstyrer enkelte; migration af `training_week_plans` (27 hold har data) |
 
 Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet lukning ≥ kl. 20), sweep-kapacitet (én sweep/dag), skadesvarighed (løbsdage). PR #5205 (fundamentet, flag off) merget 15/9.
@@ -732,7 +732,7 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off e
 | Deleren kalibreret til 140 løbsdage, **læst** fra `calendarRaceDayTargets.js` (#4845) | **bygget**, defensiv import med fallback indtil PR #5169 er merget | `trainingRaceDayTick.js` |
 | Trup-akse i nøglen (`squad`, default `senior`) til #4620's tre akser pr. hold | **bygget** | `database/2026-09-15-4847-training-day-close-trigger.sql` |
 | Manager-bonussen (`bonusMult` 1,25) + `bonus_applied` **slettet** fra kode og skema (B3) | **mangler** — neutraliseret på løbsdags-stien, men lever uændret på den gamle sti, så flag off er bit-identisk. Ryddes ved cutover | `dailyTraining.js:16`, `dailyTrainingEngine.js` |
-| Skadesvarighed i løbsdage (beslutning 7) | **mangler** — stadig kalenderdage | `dailyTrainingEngine.js` |
+| Skadesvarighed i løbsdage (beslutning 7) | **bygget bag flag**, PR #5465 afventer ejerens merge. Begge skrivere bruger sæsonaksen; ukendt akse beholder kalenderfallback. En skade hen over sæsonslut bruger den konservative datofallback og genbruger aldrig en gammel akse | `injuryRaceDays.js`, `dailyTrainingEngine.js`, `raceRunner.js` |
 | Program pr. løbsdag, 7 × 5 celler (beslutning 8) | **mangler** | `training_week_plans` |
 | Ops-vagter + peak-plannerens konsistens-signal rekalibreret (B5) | **mangler** | `trainingSlotHealth.js`, `racePeakPlans.js` |
 

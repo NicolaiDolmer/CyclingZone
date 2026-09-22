@@ -43,6 +43,7 @@ export default function TrainingMobileRiderCard({
   meta,
   form,
   fatigue,
+  injuryLabel = null,
   dayLabel,
   receiptRows,
   countsFor,
@@ -60,6 +61,8 @@ export default function TrainingMobileRiderCard({
   meta: string;
   form: number | null;
   fatigue: number | null;
+  /** #5462: faerdig skade-tekst ("Skadet: 3 loebsdage tilbage (ca. 4. okt.)") eller null. */
+  injuryLabel?: string | null;
   dayLabel: string;
   receiptRows: ReceiptRow[] | null;
   countsFor: CountsForRow[];
@@ -101,6 +104,12 @@ export default function TrainingMobileRiderCard({
           </div>
         </div>
       </div>
+
+      {/* #5462: skaden staar hvor form og traethed staar — EEN kort linje, samme
+          tekst som roster-raekken og rytterprofilen. Ingen ekstra ramme (TASTE P3). */}
+      {injuryLabel && (
+        <p className="mt-2 text-[12px] font-medium text-cz-danger">{injuryLabel}</p>
+      )}
 
       {/* #4851: dagens score, stort, med de sidste 7 loebsdage ved siden af.
           Samme form som rytterprofilens kort (RiderTrainingScoreCard) — to
