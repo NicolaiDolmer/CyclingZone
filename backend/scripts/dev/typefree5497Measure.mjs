@@ -540,7 +540,10 @@ for (let i = 0; i < STEPS.length; i++) {
   gates[stepName(i)] = {
     scale_continuity: { ...gScale, owner_status: !gScale.ok && LEVEL === "A" ? "rød, ejer-accepteret 22/9 (valg A)" : null },
     elite_unbuyable_old_formulation_tf: eliteUnbuyableGate(valid.map((r) => ({ overall: r.overall, v4Value: at(r, i, "tf") })), { ceiling: v4Model.elite_premium.affordability_ceiling }),
-    elite_rank_proposed: { name: "Elite-rangorden: ingen overall≥55 under medianen af overall 45-54", hard: true, ok: eliteRows.length > 0 && cheaper === 0, n_elite: eliteRows.length, n_cheaper: cheaper },
+    elite_rank_proposed: {
+      name: "Elite-rangorden: ingen overall≥55 under medianen af overall 45-54", hard: true, ok: eliteRows.length > 0 && cheaper === 0, n_elite: eliteRows.length, n_cheaper: cheaper,
+      cheaper_riders: eliteRows.filter((r) => at(r, i, "tf") < medBelow).map((r) => ({ name: r.name, age: r.age, overall: r.overall, potentiale: r.potentiale, value: at(r, i, "tf"), median_45_54: medBelow })),
+    },
   };
 }
 report.gates.by_step = gates;
@@ -569,12 +572,14 @@ const devTf = (model) => {
     const cpv = currentProductionValueTypefree(rider, r.abilities, model);
     return { r, start, horizon, cpv, overallStart: r.overall, overallHorizon: riderOverall(abH) };
   });
+  // v4's egen fremskrivning af samme rytter (til sammenligning af overall-stigningen).
+  const v4OverallAtHorizon = (r) => riderOverall(projectAbilitiesForward(r.abilities, { primaryType: valuationTypeFor(r, v4Model), potentiale: r.potentiale, startAge: r.age }, 4).abilities);
   const out = {};
   for (let i = 0; i < STEPS.length; i++) {
     const gs = rows.map((x) => ({ x, g: developAndSellGate({ bvStart: x.start[i], cpvStart: x.cpv, bvAtHorizon: x.horizon[i], seasons: 4 }) }));
     const best = gs.reduce((b, y) => (y.x.start[i] > (b?.x.start[i] ?? -Infinity) ? y : b), null);
     out[stepName(i)] = {
-      gate_most_valuable_prospect: { ...best.g, rider: best.x.r.name, age: best.x.r.age, potentiale: best.x.r.potentiale, overall_start: best.x.overallStart, overall_horizon: best.x.overallHorizon },
+      gate_most_valuable_prospect: { ...best.g, rider: best.x.r.name, age: best.x.r.age, potentiale: best.x.r.potentiale, overall_start: best.x.overallStart, overall_horizon: best.x.overallHorizon, overall_horizon_v4_same_rider: v4OverallAtHorizon(best.x.r) },
       prospects: gs.length,
       median_roi: median(gs.map((y) => y.g.roi)),
       p90_roi: quantile(gs.map((y) => y.g.roi), 0.9),
@@ -626,16 +631,20 @@ const smoothSample = valid.filter((r) => hashUnit(`sm:${r.id}`) < 0.12);
 const js = (xs) => ({ n: xs.length, p50: quantile(xs.map(Math.abs), 0.5), p99: quantile(xs.map(Math.abs), 0.99), max: Math.max(...xs.map(Math.abs)), negative: xs.filter((x) => x < -1e-9).length, negative_over_1pct: xs.filter((x) => x < -0.01).length });
 const jumps = { base0: [], baseLast: [], v1: [], v4: [], mkt0: [], mktLast: [] };
 let worst = null;
+let negLastTop3 = 0;
 for (const r of smoothSample) {
   const rider = { primary_type: r.primary_type, valuation_type: r.valuation_type, potentiale: r.potentiale, age: r.age };
+  const top3 = new Set([...KEYS].sort((a, b) => r.abilities[b] - r.abilities[a]).slice(0, 3));
   for (const k of KEYS) {
     if (r.abilities[k] >= 99) continue;
     const up = { ...r.abilities, [k]: r.abilities[k] + 1 };
     const st = predictBaseValueTypefreeByStep(rider, up, tfModel, STEPS);
     const mf = marketAdjustedValue(1, { abilities: up, age: r.age, O: effectiveOutput(up, P) }, marketOpts);
     const d0 = st[0] / r.tf_steps[0] - 1;
+    const dLast = st[last] / r.tf_steps[last] - 1;
+    if (dLast < -1e-9 && top3.has(k)) negLastTop3++;
     jumps.base0.push(d0);
-    jumps.baseLast.push(st[last] / r.tf_steps[last] - 1);
+    jumps.baseLast.push(dLast);
     jumps.mkt0.push((st[0] * mf) / (r.tf_steps[0] * r.mkt_factor) - 1);
     jumps.mktLast.push((st[last] * mf) / (r.tf_steps[last] * r.mkt_factor) - 1);
     jumps.v1.push(predictBaseValueTypefree(rider, up, tfV1) / r.tf_v1 - 1);
@@ -657,6 +666,7 @@ report.smoothness = {
   what_counts: "n = antal (rytter, evne)-par; negative = par hvor +1 evnepoint giver lavere tal end før; negative_over_1pct = heraf fald over 1 %.",
   base_v2_switch_day: js(jumps.base0),
   base_v2_new_normal: js(jumps.baseLast),
+  base_v2_new_normal_negatives_on_riders_top3_ability: negLastTop3,
   base_v1_22_9: js(jumps.v1),
   v4_fixed_type: js(jumps.v4),
   with_market_switch_day: js(jumps.mkt0),
