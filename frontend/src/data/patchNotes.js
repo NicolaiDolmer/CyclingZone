@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Forum",
         "en": {
           "title": "Clickable forum links",
-          "body": "Links in forum posts and replies now open in a new tab."
+          "body": "What changed: Links in forum posts and replies now open in a new tab."
         },
         "da": {
           "title": "Klikbare links i forummet",
-          "body": "Links i forumindlæg og svar åbner nu i en ny fane."
+          "body": "Hvad er ændret: Links i forumindlæg og svar åbner nu i en ny fane."
         },
         "refs": [3517, 5463]
       },
@@ -24,11 +24,11 @@ export const PATCHES = [
         "topic": "Assistant",
         "en": {
           "title": "Your assistant lets you know",
-          "body": "You get a message when your assistant fills a race squad you left completely empty."
+          "body": "What changed: You get a message when your assistant fills a race squad you left completely empty."
         },
         "da": {
           "title": "Din assistent giver besked",
-          "body": "Du får besked, når assistenten fylder en helt tom løbsudtagelse for dig."
+          "body": "Hvad er ændret: Du får besked, når assistenten fylder en helt tom løbsudtagelse for dig."
         },
         "refs": [4759, 5466]
       },
@@ -38,11 +38,11 @@ export const PATCHES = [
         "topic": "Academy",
         "en": {
           "title": "Graduation Day has its own page",
-          "body": "Choose who moves up, is sold or is released on the new Graduation Day page."
+          "body": "What changed: Choose who moves up, is sold or is released on the new Graduation Day page."
         },
         "da": {
           "title": "Graduation Day har fået sin egen side",
-          "body": "Vælg, hvem der skal rykke op, sælges eller frigives på den nye Graduation Day-side."
+          "body": "Hvad er ændret: Vælg, hvem der skal rykke op, sælges eller frigives på den nye Graduation Day-side."
         },
         "refs": [2491, 5464]
       }
