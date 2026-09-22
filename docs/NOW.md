@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (22/9 kl. 13):** **Merget 22/9:** #5477 #5478 #5465 #5469 #5475 #5468; audit 22/9: 8 lukket. **Ejerens hånd:** post spillersvar fra `drafts/2026-09-22-player-replies.md` · #5443 = ét skift m. #5435 (værdi følger vist rating, ejer 22/9); udmelding først efter preview · Android-test (#3643) · `training_score_visible` + udmelding · win-back #2760: tekst ok, kode hos Codex, så send-go · #4857-backfill-go efter dry-run. **Codex:** `drafts/codex-session-2026-09-22-v3.md` (ny session; 1a = #5487, så 1b-1d, v4, win-back, brand, træningsside). **PR-valg 22/9:** #5281 flip-dagen · #3512 lukket · #5461 kørselsdagen. **Status:** #5473. #5476 afventer dig. **v4 live 28/9 (ejer).** **Derefter:** flip-dag 28/9 (#5281, #4849) · /roadmap #5387.
+> **🎯 Next action (22/9):** **Claude Code reviewer #5443/#5435; Codex afsluttet.** Branch `codex/5443-best-role-refit`; handoff `docs/sessions/2026-09-22-codex-5443-claude-handoff.md` på branchen. Målinger er diagnostik, ikke en færdig model; ingen build/merge/aktivering. Det nye krone-anker-spørgsmål er trukket tilbage; eksisterende økonomiplan videreføres med ejerens typefrie ændringer. **Øvrig prioritet uændret:** spillersvar, Android-test, training_score_visible, win-back #2760, #4857-backfill-go. #5281 flip-dagen, #5461 kørselsdagen; v4 live 28/9 (ejer), #5476 afventer. Kø: MASTERPLAN + drafts/codex-session-2026-09-22-v3.md, læst sammen med nyere #5443-beslutninger.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt, overlap forbliver det almindelige. **Tallet er LÅST: 140 (ejer 15/9, TRAINING_RULES §13.3); spørg aldrig igen.** **Ejer 20/9: måde B (jævnt, 5 pr. dato); A + synkrone blokke fjernet i #5169. B4 #5264 merget 20/9 bag flag.** **§2c (ejer 19/9):** S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only.
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
 - **Mekanik:** byg KUN via wave.js (Codex: samme indgang, #5468); merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); PR-loft 8; commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx. Base-PR merget → PR lukkes; retarget først (#5478).
 
-> **🤖 Working agent:** Ingen aktiv session. (PR der rører filen skal hedde `docs(now)…`/`docs(close-out)…`, #5093.)
+> **🤖 Working agent:** Ingen aktiv session. Codex afsluttet; næste trin er Claude Code-review. (NOW-sidecar, #5093.)
