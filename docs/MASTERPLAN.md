@@ -9,7 +9,7 @@
 Intet nyt startes før A+B er live.
 **A · ejerens hånd:** 1-2 ✅ (Discord, #5169) · 3 flip `training_score_visible` + udmelding (#4851) · 4 Android-test → flip `training_mobile_table` → slet gammel gren (#3643) · 5 win-back #2760 inden 24/9.
 **B · Claude, i rækkefølge:** 6 værdiskiftet #5443 · 7 S4-kalender synlig #5405 · 8 træning pr. løbsdag live 28/9 (flip-dag, #5281) · 9 /roadmap = roadbooken #5387.
-**Derefter:** roadbook-løfterne (Discord 15/9) først; så det vigtigste ELLER det hurtigst brugbare. Bølge 5-7 nås ikke samlet til 27-28/9: ejer-kort udestår. **Codex-lane:** ✅ #3517 · næste: `drafts/codex-prompt-2026-09-22.md`.
+**Derefter:** roadbook-løfterne (Discord 15/9) først; så det vigtigste ELLER det hurtigst brugbare. Bølge 5-7 nås ikke samlet til 27-28/9: ejer-kort udestår. **Codex-lane:** `drafts/codex-prompt-2026-09-22.md` (værdiskift-preview først).
 
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
 
