@@ -33,7 +33,7 @@ export function WithBestRole({ children, rider = null, role = null, variant = "s
 // alle piller på fladen skal have samme form), men i en NEUTRAL farve så det
 // aldrig kan forveksles med det guld-farvede naturlig-rolle-badge. Guld er
 // rationeret til RiderTypeBadge alene.
-export default function BestRoleTag({ rider = null, role = null, variant = "short", className = "" }) {
+export default function BestRoleTag({ rider = null, role = null, variant = "short", className = "", testId = null }) {
   const { t } = useTranslation("riderTypes");
   const on = useBestRoleDisplay();
   if (!on) return null;
@@ -47,6 +47,7 @@ export default function BestRoleTag({ rider = null, role = null, variant = "shor
       className={`inline-flex items-center rounded font-medium leading-none whitespace-nowrap bg-cz-2/10 text-cz-2 ${text} ${pad} ${className}`}
       title={t("bestRole.title", { role: full })}
       data-best-role={key}
+      {...(testId ? { "data-testid": testId } : {})}
     >
       {variant === "short" ? t(`short.${key}`) : full}
     </span>

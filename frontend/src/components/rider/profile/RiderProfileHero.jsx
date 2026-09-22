@@ -26,6 +26,7 @@ import { Flag } from "../../Flag";
 import TeamLink from "../../TeamLink";
 import { statPlateStyle } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
+import BestRoleTag from "../BestRoleTag.jsx";
 import ScoutablePotentiale from "../ScoutablePotentiale";
 import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
 import RiderBadges from "../RiderBadges";
@@ -286,17 +287,14 @@ export default function RiderProfileHero({
                så heroen, personale-heroen og trup-tabellen ikke kan drifte fra
                hinanden (samme 16%-alpha-plade var kopieret tre steder).
                #5435 (D-049): med kontakten tændt står rollenavnet ved tallet
-               ("54 Climber") — tallet er hans rating i DEN rolle. */
+               ("54 Climber") — tallet er hans rating i DEN rolle.
+               #5435 opfølgning 2 (ejer 22/9): rollenavnet er samme neutrale
+               chip-badge som i tabellerne (BestRoleTag, variant "full") —
+               ikke sin egen løse span, så anatomien er ens overalt. */
             bestRoleOn && bestRoleKey ? (
               <span className="inline-flex items-center gap-2 min-w-0 max-w-full">
                 {ratingPlate}
-                <span
-                  className="font-sans text-[13px] font-semibold text-cz-2 truncate"
-                  title={t("riderTypes:bestRole.title", { role: t(`riderTypes:types.${bestRoleKey}`) })}
-                  data-testid="rider-hero-best-role"
-                >
-                  {t(`riderTypes:types.${bestRoleKey}`)}
-                </span>
+                <BestRoleTag role={bestRoleKey} variant="full" className="truncate" testId="rider-hero-best-role" />
               </span>
             ) : ratingPlate
           ) : "—"}
