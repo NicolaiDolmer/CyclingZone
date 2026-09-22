@@ -12,5 +12,7 @@ TILLÆG til prompten fra i dag. Samme faste regler. Indsæt disse to opgaver FØ
    d) #4948: hjælpe-sektionen på raceDay er hardkodet skjult; vis den bag flaget.
    Derefter: sammenligning v3 mod v4 på de 5 seeds som én rapport (docs/audits/2026-09-2x-v4-scorecard.md) så jeg kan sige "flip". Flippet er mit, på cutover-dagen.
 
+6-FORUDSÆTNING (ejer-direktiv 22/9, gælder mobil-træning #3643 og træningssiden generelt): ingen lange scroll-sider under træning; faner/modals; det mest brugte øverst; 'programmet' i toppen skal have en mere forståelig løsning; landscape må ikke falde tilbage til desktop-layout. FØR byg: Clarity-analyse + mockup til ejer-valg. Se #5485 (design-issuet) og #5486 (træningsscore-grafen uden huller på løbsdage). Bygges som del af opgave 6, ikke som ekstra scroll.
+
 2B. WIN-BACK-MAIL, GODKENDT TEKST (#2760). Ret backend/lib/emailTemplates.js buildWinbackEmail (EN + DA) til teksten i docs/drafts/2026-09-22-winback-mail.md ordret (emne, statuslinje, seks punkter, afslutning, knap "Go to your team"/"Gå til dit hold"). Opdatér emailTemplates-testene + snapshot. Ingen afsendelse, ingen flag. PR med rendret HTML-skærmbillede (EN + DA). Når merget siger Claude/ejeren tørkørsel + send.
 ```

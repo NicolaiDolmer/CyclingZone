@@ -12,8 +12,8 @@ Hi,
 
 A lot has happened since you were last here, and more lands with season 4:
 
-- **Training has been rebuilt.** Three new hard sessions, a training score from 1 to 99 on every rider, and from season 4 your riders train per race day instead of per calendar day, so a busy week and a quiet week finally feel different.
-- **A real board.** Your board now hands you mandates and holds proper meetings. Ignore them at your own risk.
+- **Training has been rebuilt for season 4.** Three new hard sessions, a training score from 1 to 99 on every rider, and your riders train per race day instead of per calendar day, so a busy week and a quiet week finally feel different.
+- **A real board arrives with season 4.** Your board hands you mandates and holds proper meetings. Ignore them at your own risk.
 - **The academy got Graduation Day.** Your talents turn 23 and you decide who moves up, who is sold and who is released. U23 and junior squads are next.
 - **Rider values get fixed properly.** Value follows the rating you see on the card, so training you can see becomes value you can see.
 - **Same chances to develop, whatever your division.** In season 4 every division has the same number of training days, so your riders develop as fast in division 4 as in division 1.
@@ -33,8 +33,8 @@ Hej,
 
 Der er sket meget siden sidst, og mere lander med sæson 4:
 
-- **Træningen er bygget om.** Tre nye hårde pas, en træningsscore fra 1 til 99 på hver rytter, og fra sæson 4 træner dine ryttere pr. løbsdag i stedet for pr. kalenderdag, så en travl uge og en stille uge endelig føles forskelligt.
-- **En rigtig bestyrelse.** Din bestyrelse giver dig nu mandater og holder rigtige møder. Ignorér dem på eget ansvar.
+- **Træningen er bygget om til sæson 4.** Tre nye hårde pas, en træningsscore fra 1 til 99 på hver rytter, og dine ryttere træner pr. løbsdag i stedet for pr. kalenderdag, så en travl uge og en stille uge endelig føles forskelligt.
+- **En rigtig bestyrelse kommer med sæson 4.** Din bestyrelse giver dig mandater og holder rigtige møder. Ignorér dem på eget ansvar.
 - **Akademiet har fået Graduation Day.** Dine talenter fylder 23, og du bestemmer hvem der rykker op, sælges eller frigives. U23- og juniortrupper er det næste.
 - **Rytterværdierne bliver rettet ordentligt.** Værdien følger den rating du ser på kortet, så træning du kan se bliver værdi du kan se.
 - **Samme muligheder for udvikling, uanset division.** I sæson 4 har alle divisioner lige mange træningsdage, så dine ryttere udvikler sig lige så hurtigt i division 4 som i division 1.
@@ -46,5 +46,5 @@ Sæson 4 starter 28. september. Hold der bliver væk parkeres uden for divisione
 
 ## Forudsætninger før afsendelse
 
-- "A real board" og "training score on every rider" er sande for alle først når `board_mandate_model_enabled` og `training_score_visible` er flippet fra beta til on (ejerens flip). Ellers blødes de to linjer op til "arrives with season 4".
+- Ejer 22/9: bestyrelse + træning er formuleret som "med sæson 4", så mailen er sand uanset flag-status. Ejeren er klar til at sende: send-go gives så snart Codex-PR 2B er merget og tørkørslen er vist.
 - Tørkørsel: frisk segment (30 dage uden login + mailsamtykke + suppression), antal EN/DA, 3 eksempler. Send-go er ejerens. Flag `winback_send_enabled` tændes kun under selve kørslen.

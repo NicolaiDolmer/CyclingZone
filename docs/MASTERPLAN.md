@@ -22,7 +22,7 @@ Intet nyt startes før A+B er live.
 2. 🟠 **Bølge 2:** 🔵 **træningsdesign** (140 låst; måde B → ✅ #5169 → B4 #5264 ✅ bag flag → B3 #5281 flip-dagen) · ✅ mobil-træning #5397 + #5458 (beta).
 3. 🟠 **Bølge 3, rytter-fundament:** ✅ fødsel uden PCM, `riders.squad`, evner som data (backfill + point-flyt #5268 ejer-gated) · #5269 · #5273.
 4. ⚪ **Bølge 4, kalender m. trupper (FØR S4-generering):** 🟠 **S4-kalender synlig** (#5405: ✅ #5469, 3 afvigelser tilbage, go pr. kørsel) · pakker pr. trup · generator A6 (U23-bånd variant A) → AI U23/junior-ryttere · #5327 arketype (#3512) m. #5269 · C1 · dry-run → go → #4270 apply (ejer).
-5. 🟠 **Bølge 5, træning færdig (28/9):** ✅ skader i løbsdage (#5465) · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849) · #4852-#4854 · #4848.
+5. 🟠 **Bølge 5, træning færdig (28/9):** ✅ skader i løbsdage (#5465) · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849, #5485, #5486) · #4852-#4854 · #4848.
 6. 🟠 **Bølge 6, trup-flader:** ✅ Graduation Day-siden (#2491) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
 7. 🔵 **Bølge 7, cutover:** #4592 → #452 → #4759 · Mandatet-flip #4857 (ejer-go) → #4859 → #4858 · v4 (M12 · #4948) → **flip ejer-only** → #4916.
 8. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag) · #3458/#3512.
