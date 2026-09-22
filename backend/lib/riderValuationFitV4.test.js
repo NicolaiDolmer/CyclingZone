@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { fitProductionModel, predictProductionLn, FLOOR } from "./riderValuationFitV4.js";
+import { curveTermSd, fitProductionModel, fitOffsetsForFixedCurve, matchCurveSpread, predictProductionLn, rescaleToMedian, FLOOR } from "./riderValuationFitV4.js";
 import { blendedOutput } from "./riderValuation.js";
 
 // ── Syntetisk fixture ────────────────────────────────────────────────────────
@@ -129,4 +129,152 @@ test("fitProductionModel kaster ved for få samples", () => {
 test("fitProductionModel kaster ved tom alphaGrid", () => {
   const samples = buildSyntheticSamples(TRUTH);
   assert.throws(() => fitProductionModel(samples, { alphaGrid: [] }));
+});
+
+// ── rescaleToMedian (#3353) ──────────────────────────────────────────────────
+// Ét eksakt skalerings-skridt: scale ganges lineært ind i hver rytters værdi, så
+// den scale der rammer medianTarget er scale · medianTarget / medianActual.
+
+test("rescaleToMedian: rammer målet i ét skridt", () => {
+  assert.equal(rescaleToMedian({ scale: 2, medianTarget: 100, medianActual: 200 }), 1);
+  assert.equal(rescaleToMedian({ scale: 3, medianTarget: 150, medianActual: 100 }), 4.5);
+});
+
+test("rescaleToMedian: er en identitet når medianen allerede rammer", () => {
+  assert.equal(rescaleToMedian({ scale: 7.5, medianTarget: 42, medianActual: 42 }), 7.5);
+});
+
+test("rescaleToMedian: ugyldig/ikke-positiv median lader scale stå uændret", () => {
+  assert.equal(rescaleToMedian({ scale: 5, medianTarget: 0, medianActual: 100 }), 5);
+  assert.equal(rescaleToMedian({ scale: 5, medianTarget: 100, medianActual: 0 }), 5);
+  assert.equal(rescaleToMedian({ scale: 5, medianTarget: NaN, medianActual: 100 }), 5);
+  assert.equal(rescaleToMedian({ scale: 5, medianTarget: 100, medianActual: null }), 5);
+  assert.equal(rescaleToMedian({}), undefined);
+});
+
+test("rescaleToMedian: ugyldig scale returneres uændret (ingen NaN-model)", () => {
+  assert.equal(rescaleToMedian({ scale: 0, medianTarget: 100, medianActual: 50 }), 0);
+  assert.equal(rescaleToMedian({ scale: -1, medianTarget: 100, medianActual: 50 }), -1);
+});
+
+// ── fitOffsetsForFixedCurve (#3353) ──────────────────────────────────────────
+// Kurven holdes fast; kun type-offsets fittes. Det isolerer "hvad koster en type
+// i forhold til en anden" fra "hvor stejlt vokser værdien med niveau".
+
+test("fitOffsetsForFixedCurve: med den SANDE kurve genfindes de sande offsets eksakt", () => {
+  const samples = buildSyntheticSamples(TRUTH);
+  const fit = fitOffsetsForFixedCurve(samples, {
+    alpha: TRUTH.trueAlpha, a: TRUTH.a0, b: TRUTH.b0, c: TRUTH.c0,
+  });
+  assert.ok(Math.abs(fit.offset.sprinter - TRUTH.offset0.sprinter) < TOL, `sprinter=${fit.offset.sprinter}`);
+  assert.ok(Math.abs(fit.offset.climber - TRUTH.offset0.climber) < TOL, `climber=${fit.offset.climber}`);
+  assert.ok(fit.r2_log > 0.999, `r2_log ~1 (${fit.r2_log})`);
+  assert.equal(fit.n_samples, samples.length);
+});
+
+test("fitOffsetsForFixedCurve: kurven returneres UÆNDRET (det er hele pointen)", () => {
+  const samples = buildSyntheticSamples(TRUTH);
+  const curve = { alpha: 1, a: 4.4, b: 0.1, c: -0.0001 };
+  const fit = fitOffsetsForFixedCurve(samples, curve);
+  assert.equal(fit.alpha, curve.alpha);
+  assert.equal(fit.a, curve.a);
+  assert.equal(fit.b, curve.b);
+  assert.equal(fit.c, curve.c);
+});
+
+test("fitOffsetsForFixedCurve: en forkert kurve absorberes i offsets, ikke i kurven", () => {
+  // Samme data, men kurven forskudt med +1 i konstantleddet: offsets skal falde
+  // med præcis 1, og forklaringskraften være uændret (fixed effect pr. type).
+  const samples = buildSyntheticSamples(TRUTH);
+  const exact = fitOffsetsForFixedCurve(samples, { alpha: TRUTH.trueAlpha, a: TRUTH.a0, b: TRUTH.b0, c: TRUTH.c0 });
+  const shifted = fitOffsetsForFixedCurve(samples, { alpha: TRUTH.trueAlpha, a: TRUTH.a0 + 1, b: TRUTH.b0, c: TRUTH.c0 });
+  assert.ok(Math.abs((exact.offset.sprinter - 1) - shifted.offset.sprinter) < TOL);
+  assert.ok(Math.abs((exact.offset.climber - 1) - shifted.offset.climber) < TOL);
+  assert.ok(Math.abs(exact.r2_log - shifted.r2_log) < TOL);
+});
+
+test("fitOffsetsForFixedCurve: c defaulter til 0 (bagudkompatibel med v2-agtige kurver)", () => {
+  const samples = buildSyntheticSamples(TRUTH);
+  const withZero = fitOffsetsForFixedCurve(samples, { alpha: 1, a: 5, b: 0.1, c: 0 });
+  const omitted = fitOffsetsForFixedCurve(samples, { alpha: 1, a: 5, b: 0.1 });
+  assert.deepEqual(omitted.offset, withZero.offset);
+  assert.equal(omitted.c, 0);
+});
+
+test("fitOffsetsForFixedCurve: kaster ved for få samples og ved ugyldig kurve", () => {
+  const samples = buildSyntheticSamples(TRUTH);
+  assert.throws(() => fitOffsetsForFixedCurve([samples[0]], { alpha: 1, a: 1, b: 1 }));
+  assert.throws(() => fitOffsetsForFixedCurve(samples, { alpha: 1, a: NaN, b: 1 }));
+  assert.throws(() => fitOffsetsForFixedCurve(samples, { alpha: 1, a: 1, b: undefined }));
+});
+
+// ── matchCurveSpread / curveTermSd (#3353) ───────────────────────────────────
+
+test("curveTermSd måler spredningen af kurveleddet", () => {
+  const outputs = [10, 20, 30, 40];
+  const sd = curveTermSd({ b: 1, c: 0, outputs });
+  // b=1, c=0 ⇒ kurveleddet ER outputs; sd(10,20,30,40) = 11.1803...
+  assert.ok(Math.abs(sd - Math.sqrt(125)) < 1e-9, `sd=${sd}`);
+  assert.equal(curveTermSd({ b: 1, outputs: [] }), null);
+  assert.equal(curveTermSd({ b: NaN, outputs }), null);
+});
+
+test("matchCurveSpread finder k så spredningen rammer målet", () => {
+  const outputs = [10, 20, 30, 40];
+  const target = curveTermSd({ b: 0.3, c: 0, outputs });
+  const out = matchCurveSpread({ b: 0.1, c: 0, outputs, targetSd: target });
+  assert.ok(Math.abs(out.k - 3) < 1e-6, `k=${out.k}`);
+  assert.ok(Math.abs(out.b - 0.3) < 1e-6, `b=${out.b}`);
+  assert.ok(Math.abs(out.sdAfter - target) < 1e-6);
+});
+
+test("matchCurveSpread skalerer c med k² så kurvens form bevares", () => {
+  const outputs = [5, 15, 25, 35, 45];
+  const out = matchCurveSpread({ b: 0.1, c: -0.001, outputs, targetSd: curveTermSd({ b: 0.2, c: -0.004, outputs }) });
+  assert.ok(Math.abs(out.k - 2) < 1e-4, `k=${out.k}`);
+  assert.ok(Math.abs(out.c - out.k * out.k * -0.001) < 1e-12);
+});
+
+test("matchCurveSpread er en identitet når spredningen allerede passer", () => {
+  const outputs = [10, 20, 30];
+  const sd = curveTermSd({ b: 0.15, c: 0, outputs });
+  const out = matchCurveSpread({ b: 0.15, c: 0, outputs, targetSd: sd });
+  assert.ok(Math.abs(out.k - 1) < 1e-6, `k=${out.k}`);
+});
+
+test("matchCurveSpread lader kurven stå ved ugyldigt input i stedet for at give NaN", () => {
+  const outputs = [1, 2, 3];
+  assert.deepEqual(
+    matchCurveSpread({ b: 0.1, c: 0, outputs: [], targetSd: 5 }),
+    { b: 0.1, c: 0, k: 1, sdBefore: null, sdAfter: null, sdTarget: 5 }
+  );
+  assert.equal(matchCurveSpread({ b: 0.1, c: 0, outputs, targetSd: 0 }).k, 1);
+  assert.equal(matchCurveSpread({ b: 0.1, c: 0, outputs, targetSd: NaN }).k, 1);
+  // Konstant output ⇒ ingen spredning at matche; kurven skal stå uændret.
+  assert.equal(matchCurveSpread({ b: 0.1, c: 0, outputs: [7, 7, 7], targetSd: 3 }).k, 1);
+});
+
+// ── value_role (#3353 / D-049) ───────────────────────────────────────────────
+// "Hvilken opskrift maales rytteren med" skal kunne adskilles fra "hvilken type
+// faar offsettet" — det er hele mekanikken bag bedste-rolle-nu.
+
+test("fitOffsetsForFixedCurve: value_role styrer opskriften, primary_type styrer offsettet", () => {
+  const samples = buildSyntheticSamples(TRUTH);
+  const curve = { alpha: 1, a: TRUTH.a0, b: TRUTH.b0, c: TRUTH.c0 };
+
+  // Uden value_role: opskrift og offset følger begge primary_type.
+  const plain = fitOffsetsForFixedCurve(samples, curve);
+
+  // Med value_role sat til den SAMME type: identisk resultat (ren no-op).
+  const same = fitOffsetsForFixedCurve(
+    samples.map((s) => ({ ...s, value_role: s.primary_type })), curve);
+  assert.deepEqual(same.offset, plain.offset);
+
+  // Med value_role byttet om (men primary_type urørt): offsets grupperes stadig
+  // pr. primary_type, men maales med den ANDEN rolles opskrift — og det skal
+  // give et andet resultat, ellers har feltet ingen effekt.
+  const swapped = fitOffsetsForFixedCurve(
+    samples.map((s) => ({ ...s, value_role: s.primary_type === "sprinter" ? "climber" : "sprinter" })), curve);
+  assert.deepEqual(Object.keys(swapped.offset).sort(), ["climber", "sprinter"]);
+  assert.notDeepEqual(swapped.offset, plain.offset);
 });

@@ -103,20 +103,26 @@ export function formatTypeEconomyTable(rows = []) {
 // Gate 2 — Skala-kontinuitet (HÅRD)
 // ---------------------------------------------------------------------------
 
-export function scaleContinuityGate(v3Values, v4Values, { maxDriftPct = 0.15 } = {}) {
-  const v3 = populationStats(v3Values);
+// baselineLabel (#3353): ved den OPRINDELIGE cutover var baseline v3-modellen —
+// den var det spillerne så. Ved et RE-FIT af v4 mod en ny typeinddeling er v3 et
+// dødt shadow-artefakt, og den eneste meningsfulde baseline er de værdier der står
+// i prod lige nu (riders.base_value). Gaten er den samme matematik; kun etiketten
+// og datakilden skifter, så rapporten ikke påstår at have målt mod v3.
+export function scaleContinuityGate(baselineValues, v4Values, { maxDriftPct = 0.15, baselineLabel = "v3" } = {}) {
+  const base = populationStats(baselineValues);
   const v4 = populationStats(v4Values);
-  const haveData = v3.n > 0 && v4.n > 0 && finite(v3.median) && v3.median !== 0;
-  const driftPct = haveData ? (v4.median - v3.median) / v3.median : null;
+  const haveData = base.n > 0 && v4.n > 0 && finite(base.median) && base.median !== 0;
+  const driftPct = haveData ? (v4.median - base.median) / base.median : null;
   const ok = haveData && Math.abs(driftPct) <= maxDriftPct;
   return {
-    name: "Skala-kontinuitet: median-drift v3→v4",
+    name: `Skala-kontinuitet: median-drift ${baselineLabel}→v4`,
     hard: true,
     ok,
     detail: haveData
-      ? `p10/median/p90 v3=${fmtCZ(v3.p10)}/${fmtCZ(v3.median)}/${fmtCZ(v3.p90)} · v4=${fmtCZ(v4.p10)}/${fmtCZ(v4.median)}/${fmtCZ(v4.p90)} · drift=${(driftPct * 100).toFixed(1)}% (grænse ±${(maxDriftPct * 100).toFixed(0)}%)`
-      : `utilstrækkelig data (v3 n=${v3.n}, v4 n=${v4.n})`,
-    stats: { v3, v4, driftPct, maxDriftPct },
+      ? `p10/median/p90 ${baselineLabel}=${fmtCZ(base.p10)}/${fmtCZ(base.median)}/${fmtCZ(base.p90)} · v4=${fmtCZ(v4.p10)}/${fmtCZ(v4.median)}/${fmtCZ(v4.p90)} · drift=${(driftPct * 100).toFixed(1)}% (grænse ±${(maxDriftPct * 100).toFixed(0)}%)`
+      : `utilstrækkelig data (${baselineLabel} n=${base.n}, v4 n=${v4.n})`,
+    // v3-nøglen bevares for bagudkompatibilitet med eksisterende læsere af stats.
+    stats: { v3: base, baseline: base, baselineLabel, v4, driftPct, maxDriftPct },
   };
 }
 

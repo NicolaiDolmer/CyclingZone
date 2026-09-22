@@ -367,8 +367,16 @@ async function main() {
   for (const [riderId, agg] of aggregates) {
     const rec = riderRecordById.get(riderId);
     if (!rec) continue; // defensivt — kan ikke ske (racesEnteredByRider stammer fra ridersByTeam)
+    // #3353: artefaktet bærer UNIONEN af værdi-nøglerne og race-motorens nøgler.
+    // Værdi-nøglerne stod her alene, fordi værdimodellens vægt-tabel kun bruger
+    // dem — men et kandidat-fit skal kunne prøve en BREDERE vægt-tabel (fx den
+    // ejer-godkendte visnings-opskrift, som også bruger `positioning` og
+    // `tactics`), og en evne der ikke ligger i samplet kan ikke fittes.
+    // Superset: alle eksisterende forbrugere finder de 13 uændret.
     const valueAbilities = {};
-    for (const key of VALUE_ABILITY_KEYS) valueAbilities[key] = rec.abilities[key] ?? null;
+    for (const key of new Set([...VALUE_ABILITY_KEYS, ...RACE_ABILITY_KEYS])) {
+      valueAbilities[key] = rec.abilities[key] ?? null;
+    }
     samples.push({
       rider_id: riderId,
       primary_type: rec.primary_type,

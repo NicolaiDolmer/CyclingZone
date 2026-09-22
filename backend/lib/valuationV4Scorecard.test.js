@@ -132,6 +132,35 @@ test("scaleContinuityGate: tom population fejler i stedet for at kaste", () => {
   assert.match(gate.detail, /utilstrækkelig data/);
 });
 
+// #3353: ved et re-fit af v4 er baseline de GEMTE værdier, ikke v3-modellen.
+test("scaleContinuityGate: baselineLabel skifter navn+detalje uden at ændre matematikken", () => {
+  const baseline = Array(10).fill(100);
+  const v4 = Array(10).fill(112);
+  const def = scaleContinuityGate(baseline, v4);
+  const stored = scaleContinuityGate(baseline, v4, { baselineLabel: "gemt base_value" });
+
+  // Samme tal, samme udfald.
+  assert.equal(stored.ok, def.ok);
+  assert.equal(stored.stats.driftPct, def.stats.driftPct);
+  // Ny etiket slår igennem i både navn og detalje.
+  assert.match(def.name, /v3→v4/);
+  assert.match(stored.name, /gemt base_value→v4/);
+  assert.match(stored.detail, /gemt base_value=/);
+  assert.equal(stored.stats.baselineLabel, "gemt base_value");
+});
+
+test("scaleContinuityGate: stats.v3 bevares som alias for baseline (bagudkompatibilitet)", () => {
+  const gate = scaleContinuityGate([100, 100, 100], [110, 110, 110], { baselineLabel: "gemt base_value" });
+  assert.deepEqual(gate.stats.v3, gate.stats.baseline);
+  assert.equal(gate.stats.v3.median, 100);
+});
+
+test("scaleContinuityGate: utilstrækkelig-data-teksten bruger baselineLabel", () => {
+  const gate = scaleContinuityGate([], [1, 2, 3], { baselineLabel: "gemt base_value" });
+  assert.equal(gate.ok, false);
+  assert.match(gate.detail, /gemt base_value n=0/);
+});
+
 // ---------------------------------------------------------------------------
 // eliteUnbuyableGate — Gate 5 (hård) — afløser runaway
 // ---------------------------------------------------------------------------

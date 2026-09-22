@@ -301,3 +301,9 @@ Læsningen 30/8: den forhandlede kanal ligger nu meget tæt på 1,0 mod de korri
 - `docs/superpowers/specs/2026-08-23-kontraktudloeb-tvangsauktion-design.md` — gyldig plan, ikke bygget endnu. Brug som implementerings-spec når arbejdet starter, ikke som status.
 - `docs/superpowers/specs/2026-08-07-board-mandate-rework-design.md` — de økonomiske dele er dækket i §6 her; resten af dokumentet (UI, tillids-model) er uden for denne fils scope.
 - `docs/GAME_INVARIANTS.md` — fortsat SSOT for konstanterne selv; denne fil peger på den og lister kun de punkter hvor kode har flyttet sig siden.
+
+### 1b development measurement (22 September)
+
+The development-only `backend/scripts/dev/bestRoleRefitReport5443.mjs` fits role offsets from a season simulation using the same rounded best-role selection as 1a. It evaluates the candidate through the existing career-NPV engine with an explicit development adapter; production valuation dispatch and the committed v5 model are unchanged. Candidate files and per-rider reports remain under ignored `balance-internals/`.
+
+The report distinguishes team cash balances from the sum of rider valuations. It records coverage, unsampled roles, losses and synthetic one-point role transitions. A one-point sensitivity probe is not a measured training strategy: time, training costs and ability caps are not simulated by that probe. The current run is uncalibrated and is not approval for activation. A calibration target and the response to role-switch discontinuities remain owner decisions.
