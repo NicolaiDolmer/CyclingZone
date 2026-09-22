@@ -27,7 +27,7 @@
 // Refs #5327
 
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -85,6 +85,15 @@ function main() {
 
   const outDir = resolve(arg("out", join(REPO, "balance-internals",
     `${new Date().toISOString().slice(0, 10)}-5327-type-distribution`)));
+  // CodeRabbit-fund (#5327, rettet uden ny CLI-runde): --out var uindskraenket
+  // og kunne (fx --out=.) skrive den maalte fordeling til en SPORET sti —
+  // repoet er offentligt (hard rule 17), saa outputtet skal blive i den
+  // gitignorerede balance-internals/.
+  const privateRoot = resolve(REPO, "balance-internals");
+  const relativeOut = relative(privateRoot, outDir);
+  if (relativeOut === ".." || relativeOut.startsWith(`..${sep}`) || isAbsolute(relativeOut)) {
+    throw new Error(`--out skal ligge inde i balance-internals/ (fik: ${outDir})`);
+  }
   mkdirSync(outDir, { recursive: true });
 
   const lines = [

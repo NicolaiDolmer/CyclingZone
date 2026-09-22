@@ -545,6 +545,10 @@ export function generateFictionalRiders({
   }
   const ownPriors = mode === BIRTH_MODE_OWN_PRIORS;
   const primaryFromDistribution = primaryTypeMode === PRIMARY_TYPE_MODE_DISTRIBUTION;
+  // CodeRabbit (#5327): destructuring-defaultet ovenfor rammer kun `undefined`
+  // — et EKSPLICIT `primaryDistribution: null` (dokumenteret som "= DEFAULT_
+  // DISTRIBUTION") ville ellers nå drawArchetype() og kaste på distribution[t].
+  const resolvedPrimaryDistribution = primaryDistribution ?? DEFAULT_DISTRIBUTION;
 
   const rng = makeRng(seed);
   // #4180: navnene traekkes fra en EGEN rng-understroem, ikke fra hovedstroemmen.
@@ -602,7 +606,7 @@ export function generateFictionalRiders({
   // præcis ét rng()-kald pr. rytter (weightedPick hhv. drawArchetype), så
   // rng-forbruget i sekvensen er identisk uanset gren — kun værdien ændrer sig.
   const typeSeq = tierSeq.map((t) => {
-    if (primaryFromDistribution) return drawArchetype(rng, primaryDistribution);
+    if (primaryFromDistribution) return drawArchetype(rng, resolvedPrimaryDistribution);
     const weights = typeWeights[t.value];
     return weightedPick(rng, Object.entries(weights).map(([value, weight]) => ({ value, weight })));
   });

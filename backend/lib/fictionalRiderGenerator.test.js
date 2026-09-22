@@ -903,3 +903,23 @@ test("#5327: primaryDistribution-override lader 'distribution'-mode trække fra 
 test("#5327: ukendt primaryTypeMode afvises hårdt", () => {
   assert.throws(() => gen({ primaryTypeMode: "random-ish" }), /unknown primaryTypeMode/);
 });
+
+// CodeRabbit-fund (#5327, rettet uden ny CLI-runde): et EKSPLICIT
+// `primaryDistribution: null` er dokumenteret som "= DEFAULT_DISTRIBUTION",
+// men destructuring-defaultet rammer kun `undefined` — null skulle før denne
+// rettelse nå drawArchetype() og kaste på distribution[t].
+test("#5327: eksplicit primaryDistribution: null falder tilbage til DEFAULT_DISTRIBUTION (kaster ikke)", () => {
+  assert.doesNotThrow(() => generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR,
+    primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION, primaryDistribution: null,
+  }));
+  const withNull = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR,
+    primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION, primaryDistribution: null,
+  }).riders;
+  const withDefault = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR,
+    primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  }).riders;
+  assert.deepEqual(withNull, withDefault);
+});
