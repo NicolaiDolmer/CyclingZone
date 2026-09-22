@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (22/9 kl. 13):** **Merget 22/9:** #5477 #5478 #5465 #5469 #5475 #5468; audit 22/9: 8 lukket. **Ejerens hånd:** post spillersvar fra `drafts/2026-09-22-player-replies.md` · #5443 = ét skift m. #5435 (værdi følger vist rating, ejer 22/9); udmelding først efter preview · Android-test (#3643) · `training_score_visible` + udmelding · win-back #2760 inden 24/9 · #4857-backfill-go efter dry-run. **Codex (v2):** `drafts/codex-prompt-2026-09-22.md`: #5443+#5435 samlet → #5327 → brand-fund → bestyrelse. Første bølge = #5482. **PR-valg 22/9:** #5281 flip-dagen · #3512 lukket · #5461 kørselsdagen. **Status U23/v4/bestyrelse:** #5473. #5476 afventer dig. **Derefter:** flip-dag 28/9 (#5281, #4849) · /roadmap #5387.
+> **🎯 Next action (22/9 kl. 13):** **Merget 22/9:** #5477 #5478 #5465 #5469 #5475 #5468; audit 22/9: 8 lukket. **Ejerens hånd:** post spillersvar fra `drafts/2026-09-22-player-replies.md` · #5443 = ét skift m. #5435 (værdi følger vist rating, ejer 22/9); udmelding først efter preview · Android-test (#3643) · `training_score_visible` + udmelding · win-back #2760: tekst ok, kode Codex 2B, så send-go · #4857-backfill-go efter dry-run. **Codex (v2):** `drafts/codex-prompt-2026-09-22.md`: #5443+#5435 samlet → #5327 → brand-fund → bestyrelse. Første bølge = #5482. **PR-valg 22/9:** #5281 flip-dagen · #3512 lukket · #5461 kørselsdagen. **Status:** #5473. #5476 afventer dig. **v4 live 28/9 (ejer):** Codex 2A. **Derefter:** flip-dag 28/9 (#5281, #4849) · /roadmap #5387.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt, overlap forbliver det almindelige. **Tallet er LÅST: 140 (ejer 15/9, TRAINING_RULES §13.3); spørg aldrig igen.** **Ejer 20/9: måde B (jævnt, 5 pr. dato); A + synkrone blokke fjernet i #5169. B4 #5264 merget 20/9 bag flag.** **§2c (ejer 19/9):** S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only.
 
@@ -12,7 +12,7 @@
 
 > **🟡 Lofter + potentiale (ejer 18/9, byg intet):** lofterne ud, potentialet styrer farten (#5351); 6 huller efter 28/9. **#5268-point-flyt afventer.** **D-049-visning:** #5435, svar upostet #5436.
 
-> **🔴 Åbne fund:** Webkit-flake #4925: rerun. **#5323 Quad9:** aflæs målingen (live fra 17/9) før DNS-kort. Grants-audit rød på main (#5375). **📊 Triage:** `scripts/sentry-issues.mjs --period=7d` (via infisical dev). **S3:** 529 løb, 28/8 → 27/9.
+> **🔴 Åbne fund:** Webkit-flake #4925: rerun. **#5323 Quad9:** aflæs målingen (live fra 17/9) før DNS-kort. **📊 Triage:** `scripts/sentry-issues.mjs --period=7d` (via infisical dev). **S3:** 529 løb, 28/8 → 27/9.
 
 ## Standing context (forever-relaunch)
 
