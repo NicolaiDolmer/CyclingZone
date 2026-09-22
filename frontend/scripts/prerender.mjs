@@ -172,6 +172,15 @@ for (const route of PRERENDER_ROUTES) {
       `Prerender af ${route.path} mangler ${!head.title ? "title" : "description"} fra useDocumentHead — tilføj den på siden.`,
     );
   }
+  // Forward-guard: sidens egen lang skal være den vi prerenderer på. En
+  // uenighed betyder at i18n's aktive sprog i Node ikke er det vi bad om
+  // (racen beskrevet i entry-server.jsx) — og ville sende <html lang="da">
+  // ud på engelsk indhold.
+  if (head.lang && head.lang !== route.lang) {
+    throw new Error(
+      `Prerender af ${route.path}: siden meldte lang="${head.lang}", men ruten prerendres på "${route.lang}".`,
+    );
+  }
 
   const outFile = outputFileFor(route.path);
   const outPath = path.join(distDir, outFile);

@@ -80,23 +80,43 @@ const MAX_WARMUP_PASSES = 16;
 let ssrI18nReady = false;
 
 async function prepareI18n() {
-  if (!ssrI18nReady) {
-    const backend = i18n.services?.backendConnector?.backend;
-    if (backend) {
-      // Deterministisk, netværksfri read. Ukendte kombinationer giver et tomt
-      // bundle (i18next shallow-merger det ind og taber derfor intet inline).
-      backend.read = (language, namespace, callback) => {
-        const base = typeof language === "string" ? language.split("-")[0] : "";
-        callback(null, SSR_BUNDLES[base]?.[namespace] ?? {});
-      };
-    }
-    for (const [lng, namespaces] of Object.entries(SSR_BUNDLES)) {
-      for (const [ns, data] of Object.entries(namespaces)) {
-        i18n.addResourceBundle(lng, ns, data, true, false);
-      }
-    }
-    ssrI18nReady = true;
+  if (ssrI18nReady) return;
+
+  // KRITISK (#5494, samme race som #5177): i18n.init() kalder SELV
+  // changeLanguage(detekteret sprog) og skriver resultatet når dets async
+  // resource-load lander. Kalder vi changeLanguage("en") FØR init er færdig,
+  // vinder init'ens sene callback og sætter sproget tilbage. I Node betyder
+  // "detekteret sprog" maskinens locale — `globalThis.navigator.language` er
+  // "da-DK" på en dansk Windows-maskine — så prerenderen fik i18n.language
+  // "da" mens teksten (tom da-bundle → fallbackLng) blev engelsk. Resultatet
+  // var <html lang="da"> på en engelsk forside. Vent på `initialized` først,
+  // præcis som main.jsx gør før mount.
+  if (!i18n.isInitialized) {
+    await new Promise((resolve) => i18n.on("initialized", resolve));
   }
+
+  const backend = i18n.services?.backendConnector?.backend;
+  if (backend) {
+    // Deterministisk, netværksfri read for de namespaces vi har importeret.
+    // Alt andet får LocaleBundleBackends egen read (den danske
+    // first-paint-bundle er en dynamisk import og virker fint i Node).
+    const originalRead = backend.read.bind(backend);
+    backend.read = (language, namespace, callback) => {
+      const base = typeof language === "string" ? language.split("-")[0] : "";
+      const bundle = SSR_BUNDLES[base]?.[namespace];
+      if (bundle) {
+        callback(null, bundle);
+        return;
+      }
+      originalRead(language, namespace, callback);
+    };
+  }
+  for (const [lng, namespaces] of Object.entries(SSR_BUNDLES)) {
+    for (const [ns, data] of Object.entries(namespaces)) {
+      i18n.addResourceBundle(lng, ns, data, true, false);
+    }
+  }
+  ssrI18nReady = true;
 }
 
 /**
