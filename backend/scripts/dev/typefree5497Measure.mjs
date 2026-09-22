@@ -84,8 +84,13 @@ report.inputs.simulation = { sha: sha("simulation.json"), season: sim.season_num
 const inFit = sim.samples.filter((s) => hashUnit(`fit:${s.rider_id}`) < 0.5);
 const inHold = sim.samples.filter((s) => hashUnit(`fit:${s.rider_id}`) >= 0.5);
 const t0 = Date.now();
-const fitHalf = fitTypefreeProduction(inFit, { maxIter: 3000 });
-const fitAll = fitTypefreeProduction(sim.samples, { maxIter: 3000 });
+// Anbefalet indtil R1: lige programvægt pr. terræn (fast), kun beta/alpha/a/b/c fittes.
+// Fri fit af andelene rapporteres som advarsel (degenererer mod det terræn
+// v3-simuleringen betaler mest for).
+const EQUAL = Object.fromEntries(DISPLAY_RECIPE_KEYS.map((k) => [k, 1]));
+const fitFree = fitTypefreeProduction(sim.samples, { maxIter: 3000 });
+const fitHalf = fitTypefreeProduction(inFit, { maxIter: 3000, fixedShares: EQUAL });
+const fitAll = fitTypefreeProduction(sim.samples, { maxIter: 3000, fixedShares: EQUAL });
 const r2On = (rows, predictLn) => {
   const r = rows.filter((s) => Number(s.e_prize) > 0);
   const y = r.map((s) => Math.log(s.e_prize));
@@ -110,6 +115,8 @@ const v4Ln = (s) => {
 };
 report.r2 = {
   typefree_fit_all_in_sample: fitAll.r2_log,
+  typefree_free_shares_in_sample: fitFree.r2_log,
+  free_shares_params: fitFree.params,
   typefree_fit_half_holdout: r2On(inHold, tfLn(fitHalf.params)),
   v4_live_function_on_this_sim_all: r2On(sim.samples, v4Ln),
   v4_live_function_on_this_sim_holdout_half: r2On(inHold, v4Ln),

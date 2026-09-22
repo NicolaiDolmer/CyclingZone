@@ -143,6 +143,16 @@ test("profil-signatur er glat: +1 flytter sig for evnen med under 0,2", () => {
   assert.ok(PROGRESSION_CONFIG.offTypeHeadroomFactor > 0);
 });
 
+test("typefri fremskrivning giver endelige evner i hele karrieren (regressionsvagt)", () => {
+  const ab = abilitiesFrom(11);
+  const sig = profileSignature(ab);
+  const caps = buildCapsTypefree(ab, sig, 4);
+  for (const v of Object.values(caps)) assert.ok(Number.isFinite(v), "loft skal være endeligt");
+  const r = simulateCareerTypefree({ age: 18, potentiale: 4 }, ab, TEST_MODEL);
+  for (const row of r.trajectory) assert.ok(Number.isFinite(row.O) && row.O > 0, `O i sæson ${row.s}`);
+  assert.ok(r.trajectory[4].O > r.trajectory[0].O, "en ung rytter med potentiale skal udvikle sig");
+});
+
 test("elitegulvet er væk: kun den konvekse præmie virker", () => {
   const ab = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 75]));
   const v = predictBaseValueTypefree({ age: 27, potentiale: 3 }, ab, TEST_MODEL);

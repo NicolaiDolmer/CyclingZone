@@ -8,7 +8,7 @@
 // [1, O, O²]. Den ydre søgning er Nelder-Mead — deterministisk (fast start,
 // ingen tilfældighed), så samme input giver samme fit.
 
-import { TERRAIN_KEYS, effectiveOutput, terrainRatings, softBest } from "./abilityProduction.js";
+import { TERRAIN_KEYS, effectiveOutput, normalizeShares, terrainRatings, softBest } from "./abilityProduction.js";
 import { meanAbilityScore } from "../riderValuation.js";
 
 function ols3(xs, ys) {
@@ -77,6 +77,10 @@ export function nelderMead(f, x0, { step = 0.5, maxIter = 4000, tol = 1e-9 } = {
   return { x: simplex[0], fx: vals[0], iterations: iter };
 }
 
+function unpackFixed(theta, shares) {
+  return { shares, beta: Math.exp(theta[0]), alpha: 1 / (1 + Math.exp(-theta[1])) };
+}
+
 function unpack(theta) {
   const k = TERRAIN_KEYS.length;
   const logits = [0, ...theta.slice(0, k - 1)];
@@ -90,7 +94,11 @@ function unpack(theta) {
 }
 
 // samples: [{ abilities, e_prize }]. Returnerer produktions-parametre + fit-mål.
-export function fitTypefreeProduction(samples, { maxIter = 4000 } = {}) {
+// fixedShares: programandele låst (R1: programmets faktiske terrænfordeling;
+// indtil da lige vægt). Så fittes kun beta, alpha, a, b, c. Fri fit af andelene
+// kan degenerere til det terræn simuleringen tilfældigvis betaler mest for.
+export function fitTypefreeProduction(samples, { maxIter = 4000, fixedShares = null } = {}) {
+  const fixed = fixedShares ? normalizeShares(fixedShares) : null;
   const rows = samples.filter((s) => Number(s.e_prize) > 0 && s.abilities);
   const R = rows.map((s) => terrainRatings(s.abilities));
   const M = rows.map((s) => meanAbilityScore(s.abilities));
@@ -99,7 +107,7 @@ export function fitTypefreeProduction(samples, { maxIter = 4000 } = {}) {
   const sst = y.reduce((s, v) => s + (v - yMean) ** 2, 0);
 
   const evalTheta = (theta) => {
-    const { shares, beta, alpha } = unpack(theta);
+    const { shares, beta, alpha } = fixed ? unpackFixed(theta, fixed) : unpack(theta);
     const O = R.map((r, i) => alpha * softBest(r, shares, beta) + (1 - alpha) * M[i]);
     const coef = ols3(O, y);
     if (!coef) return { sse: Infinity };
@@ -112,7 +120,7 @@ export function fitTypefreeProduction(samples, { maxIter = 4000 } = {}) {
   };
 
   const k = TERRAIN_KEYS.length;
-  const theta0 = [...Array(k - 1).fill(0), Math.log(0.2), 2];
+  const theta0 = fixed ? [Math.log(0.2), 2] : [...Array(k - 1).fill(0), Math.log(0.2), 2];
   const res = nelderMead((t) => evalTheta(t).sse, theta0, { maxIter });
   const best = evalTheta(res.x);
   const oMax = Math.max(...best.O);

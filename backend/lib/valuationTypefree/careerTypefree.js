@@ -25,7 +25,7 @@
 // derfor identisk prognose, uanset label. Og fordi sig er glat i evnerne, kan
 // ét evnepoint ikke vippe en evne fra "svaghed" til "speciale" i ét hop.
 //
-// Paritet med v4 (bevist i careerTypefree.test.js): sendes en signaturfunktion
+// Paritet med v4 (bevist i valuationTypefree.test.js): sendes en signaturfunktion
 // ind der returnerer netop v4's type-faktor, regner stepTypefree bit-identisk
 // med expectedNextAbilities. Dvs. det ENESTE der er ændret er kilden til
 // speciale-graden — vækstkurve, fald, potentiale-rate og afrunding er de samme.
@@ -83,7 +83,7 @@ export function capFactorFromSig(sig, cfg = PROGRESSION_CONFIG) {
 
 // Loft pr. evne. Samme formel som riderProgression.abilityCap, men med
 // profil-faktoren i stedet for type-faktoren.
-export function buildCapsTypefree(baseline, sigByAbility, potentiale, { factorFn = capFactorFromSig, cfg = PROGRESSION_CONFIG } = {}) {
+export function buildCapsTypefree(baseline, sigByAbility, potentiale, { factorFn = (sig) => capFactorFromSig(sig), cfg = PROGRESSION_CONFIG } = {}) {
   const headroom = headroomForPotential(potentiale, cfg);
   const caps = {};
   for (const a of VISIBLE_ABILITIES) {
