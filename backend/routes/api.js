@@ -1265,6 +1265,7 @@ router.get("/riders", requireAuth, cached({ namespace: "riders", ttlMs: CACHE_TT
     page = 1, limit = 50,
   } = req.query;
 
+  // schema-columns-ok: best_role/best_role_rating tilføjet af database/2026-09-22-5443-best-role-data.sql (#5487, applied); snapshottet er ældre (#4142)
   let query = supabase
     .from("riders")
     .select(`
@@ -6683,6 +6684,7 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
 router.get("/auctions", requireAuth, async (req, res) => {
   const { status = "active" } = req.query;
 
+  // schema-columns-ok: riders.best_role/best_role_rating tilføjet af database/2026-09-22-5443-best-role-data.sql (#5487, applied); snapshottet er ældre (#4142)
   const { data, error } = await supabase
     .from("auctions")
     .select(`
