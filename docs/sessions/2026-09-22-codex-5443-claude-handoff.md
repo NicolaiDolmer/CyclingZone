@@ -1,0 +1,15 @@
+# Session context — 22/9 2026, Codex til Claude Code
+Aktiv slice: #5443 + #5435, typefri rytterværdi med marked fra første aktivering.
+Status: in_progress; Codex-session afsluttet på ejerens anmodning. Claude skal reviewe først. Ingen ny produktionsfunktion er implementeret eller aktiveret.
+Review: `codex/5443-best-role-refit`, worktree `C:/Dev/CyclingZone-worktrees/codex-5443-best-role-refit`; denne sessions offentlige diff er `07c72c1e1..HEAD`, ældre dev-værktøjer ligger før dette interval.
+Kilder: [ECONOMY_RULES](../ECONOMY_RULES.md), [samlet forslag og kildeafstemning](../superpowers/specs/2026-09-22-ability-market-valuation-proposal.md), seneste #5443/#5435-kommentarer; læs den daterede beslutningskæde, ikke kun august-spec'en.
+Godkendte retninger: typefri værdi; egne resultater + hjælperbidrag; fælles program efter planlagt udbud, v4 hvor muligt; marked fra start med stigende betydning og fælles/lokale estimater; intet fast elitegulv.
+Prognose: ejerens A gælder fremtidige EVNER inde i værdiberegningen, ikke faktisk træning. Potentiale bevares indtil senere valideret træningsscore-overgang. Ingen konkrete modelvægte, krone-totaler eller build-go.
+Videreføres: simulationsforankret krone-niveau i starten (#3448 beslutning 30/8, #4449); CPV/løn separat; søndags-pipeline; ejer-gatet engangsovergang, kommunikation, backup og rollback. Historiske totalsummer er ikke mål.
+Tilbagetrukket: Codex' sidste A/B-kort om fuldt markedsbestemt krone-niveau fra start. Det genåbnede en eksisterende beslutning og blev ikke godkendt.
+Leveret: dokumentrettelser, privat betalings-/historikudtræk, markedsdiagnostik og v4-/prognoseprøver. Ingen samlet kalibreret model, før/efter-populationsrapport eller ny klar PR. #5444 forbliver åben.
+Begrænsninger: markedsprøver mangler hele det arvede misbrugsfilter; senere valideringsdata er allerede set; kalenderprøvens uniform-tilt afviger fra seneste plan. Prøver er ikke release-beviser.
+Privat materiale: worktreets `balance-internals/2026-09-22-best-role-refit/CLAUDE_REVIEW_README.md` + `HANDOFF_MANIFEST.json`; komplet hashverificeret kopi i OneDrive-context/private-handoffs/2026-09-22-5443-codex-closeout/evidence. Cloud-synkstatus er ikke verificeret.
+NOW: separat branch/worktree `codex/5443-now-handoff`; ikke merget. WIP har stadig den ældre NOW-commit fra forrige session, som skal skilles ud før en kode-PR. Hoved-checkoutets fremmede utrackede fil er urørt.
+Verifikation: afsluttende preflight grønt (backend/frontend lint uden fejl/advarsler); friske doc-diffchecks; token-hygiejne har kendt FEATURE_STATUS-fejl. Ingen ny fuld backend/e2e; #5488 er ikke rettet. Ingen patch note/registry-ændring nødvendig for denne docs/diagnostik-session.
+Næste handling: Claude reviewer beslutningsafstemning, dokumentdiffs og private scripts; samler kun det reelt manglende beregnings-/verifikationsarbejde i den eksisterende plan. Ingen build, merge, apply, model-flip eller ratingGolden-ændring er autoriseret.

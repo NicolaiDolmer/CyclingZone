@@ -1,6 +1,6 @@
 # Ability-led rider value with market input
 
-Status: owner directions confirmed; calculation and numeric calibration still proposed. **Not approved to build, merge or activate.**
+Status: Codex session closed at owner request; Claude Code review required before continuing. Owner directions confirmed; calculation and numeric calibration still proposed. **Not approved to build, merge or activate.** See [handoff](../../sessions/2026-09-22-codex-5443-claude-handoff.md).
 
 Sources of truth: [ECONOMY_RULES.md](../../ECONOMY_RULES.md), [RACE_ENGINE_RULES.md](../../RACE_ENGINE_RULES.md), [PROGRESSION_RULES.md](../../PROGRESSION_RULES.md), [TRAINING_RULES.md](../../TRAINING_RULES.md), [CALENDAR_RULES.md](../../CALENDAR_RULES.md), and [TRANSFER_MARKET_RULES.md](../../TRANSFER_MARKET_RULES.md). Owner discussion: #5443 and #5435. This proposal does not silently replace their live contracts.
 
@@ -170,7 +170,7 @@ All paths below are under `balance-internals/2026-09-22-best-role-refit/`; they 
 | `probeV4AbilityContributionExpanded.mjs`, `ability-v4-expanded-pilot.json` | Reference-team/seed expansion, engine input hash and limitations |
 | `ability-market-history-coverage.json` | Initial SQL coverage readout, before correcting offer timestamps to payment times |
 
-Run local analysis scripts through `scripts/verify-lock.ps1 -Max 2`. Only the exporter needs credentials and network; all subsequent scripts read the frozen local artifacts. Exact raw snapshots are not a substitute for public decision state: confirmed directions, methods, limitations and next steps are recorded here and on #5443/#5435. Never upload the private artifacts to the public repository.
+Run local analysis scripts through `scripts/verify-lock.ps1 -Max 2`. The raw exporter and reference-capture scripts need credentials/network; analytical scripts read the frozen local artifacts. Exact raw snapshots are not a substitute for public decision state: confirmed directions, methods, limitations and next steps are recorded here and on #5443/#5435. Never upload the private artifacts to the public repository.
 
 ## Confirmed economic choice: no fixed elite floor
 
@@ -186,3 +186,5 @@ The owner chose A: remove the separate fixed elite floor in the new calculation.
 - Specify the later training-score transition and collect a single reviewable calculation/test plan before requesting **godkendt til build**.
 
 No replacement PR is ready. #5444 stays open. Existing NOW changes on this WIP branch must be separated into a `docs(now)` sidecar before a code PR. Patch notes and feature registry are unchanged because this checkpoint changes no player behavior, model, flag or feature status. Full backend verification was not rerun for this documentation-only checkpoint; the earlier unrelated #5488 failure is not fixed here. Token hygiene still reports the pre-existing FEATURE_STATUS budget failure.
+
+Private preservation at close-out: the complete task evidence directory, including the exploratory scripts and original owner request, was copied to the existing OneDrive context private-handoff directory. Every artifact and the manifest were hash-checked after copying. The local OneDrive copy is verified; remote synchronization is not. Claude should start with the private CLAUDE_REVIEW_README.md, which labels invalid/superseded inputs and lists the unfinished checks. No new calculation is authorized merely by this handoff.
