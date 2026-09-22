@@ -22,7 +22,7 @@ import {
   softBest,
   terrainRatings,
 } from "./abilityProduction.js";
-import { buildCapsTypefree, profileSignature, stepTypefree } from "./careerTypefree.js";
+import { buildCapsTypefree, capFactorFromSig, headroomBudget, profileSignature, stepTypefree } from "./careerTypefree.js";
 import { fitTypefreeProduction } from "./fitProduction.js";
 import { fitCommon, fitLocal, marketAdjustedValue, qualifyMarketEvidence } from "./marketComponent.js";
 import {
@@ -147,6 +147,44 @@ test("profil-signatur er glat: +1 flytter sig for evnen med under 0,2", () => {
     assert.ok(Math.abs(s1[k] - s0[k]) < 0.2, k);
   }
   assert.ok(PROGRESSION_CONFIG.offTypeHeadroomFactor > 0);
+});
+
+test("v2 reference uden evnen selv: +1 flytter ikke evnens egen reference og hæver altid dens speciale-grad", () => {
+  const prof = { ref_sd: 0.3, width_sd: 1.5, width_floor: 3 };
+  for (let seed = 1; seed <= 30; seed++) {
+    const ab = abilitiesFrom(seed);
+    const s0 = profileSignature(ab, prof);
+    for (const k of VISIBLE_ABILITIES) {
+      const s1 = profileSignature({ ...ab, [k]: ab[k] + 1 }, prof);
+      assert.ok(s1[k] > s0[k], `${k}: egen speciale-grad skal stige`);
+      // Referencen for k er uændret, så z stiger med præcis 1/bredde.
+      const z = (p) => Math.log(p / (1 - p));
+      const others = VISIBLE_ABILITIES.filter((b) => b !== k).map((b) => ab[b]);
+      const m = others.reduce((a, b) => a + b, 0) / others.length;
+      const sd = Math.sqrt(others.reduce((a, b) => a + (b - m) ** 2, 0) / others.length);
+      assert.ok(Math.abs(z(s1[k]) - z(s0[k]) - 1 / Math.max(sd * prof.width_sd, prof.width_floor)) < 1e-9, k);
+    }
+  }
+  const ab = abilitiesFrom(5);
+  assert.notDeepEqual(profileSignature(ab, { ...prof, reference: "including_self" }), profileSignature(ab, prof));
+  assert.throws(() => profileSignature(ab, { reference: "type" }), RangeError);
+});
+
+test("v2 loft kun for styrker: en tydelig svaghed får næsten intet loft, v1 gav den mellemniveauet", () => {
+  const ab = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 50]));
+  ab.climbing = 80; ab.tempo = 75; ab.sprint = 15;
+  const prof = { ref_sd: 0.3, width_sd: 1.5, width_floor: 3 };
+  const sig = profileSignature(ab, prof);
+  const v2 = buildCapsTypefree(ab, sig, 6);
+  const v1 = buildCapsTypefree(ab, sig, 6, { headroom: "off_floor" });
+  assert.ok(v2.sprint - ab.sprint <= Math.ceil(0.15 * 38), `svaghed: ${v2.sprint - ab.sprint}`);
+  assert.ok(v2.sprint - ab.sprint < v1.sprint - ab.sprint, "v2 giver svagheden mindre loft end v1");
+  assert.ok(v1.sprint - ab.sprint >= Math.floor(38 * PROGRESSION_CONFIG.offTypeHeadroomFactor), "v1: mindst mellemniveau");
+  assert.ok(v2.climbing - ab.climbing > v2.flat - ab.flat, "styrken får mest loft");
+  assert.throws(() => capFactorFromSig(0.5, PROGRESSION_CONFIG, "alle"), RangeError);
+  const b2 = headroomBudget(ab, prof);
+  const b1 = headroomBudget(ab, { ...prof, headroom: "off_floor" });
+  assert.ok(b2 > 0 && b2 < b1 && b1 <= 1, `budget v2 ${b2} < v1 ${b1}`);
 });
 
 test("typefri fremskrivning giver endelige evner i hele karrieren (regressionsvagt)", () => {

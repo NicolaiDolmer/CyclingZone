@@ -12,18 +12,36 @@
 //
 // Typefri afløser: "speciale" udledes af rytterens EGEN evneprofil, glat:
 //
-//   z_i   = (evne_i − profil-reference) / profil-bredde
+//   z_i   = (evne_i − profil-reference_i) / profil-bredde_i
 //   sig_i = logistisk(z_i) ∈ (0, 1)
-//   loft-faktor_i  = off + (1 − off) · sig_i        (off = mellemniveauet fra
-//                                                      PROGRESSION_CONFIG)
+//   loft-faktor_i  = sig_i                           (v2: kun styrker får loft)
 //   fald_i         = sig_i · fald(speciale) + (1 − sig_i) · fald(ikke-speciale)
 //
-//   profil-reference = snit + k·spredning af rytterens egne evner
-//   profil-bredde    = max(spredning · s, gulv)
+//   profil-reference_i = snit + k·spredning af rytterens ØVRIGE evner (uden i)
+//   profil-bredde_i    = max(spredning af de øvrige · s, gulv)
 //
 // Kun evne-tal indgår. To ryttere med samme evner, alder og potentiale får
 // derfor identisk prognose, uanset label. Og fordi sig er glat i evnerne, kan
 // ét evnepoint ikke vippe en evne fra "svaghed" til "speciale" i ét hop.
+//
+// v2 (#5497, 23/9) — to rettelser efter målingen 22/9:
+//   1. Udvikl-og-sælg: v1 gav ALLE evner mindst mellemniveauets loft
+//      (off + (1 − off)·sig ≥ off). v4 har tre klasser: speciale (fuldt loft),
+//      neutral (mellemniveau) og svaghed (intet loft). Uden svagheds-klassen
+//      delte v1 mere loft ud end v4 i alt, og mest til svage evner, som løfter
+//      overall og dermed den konvekse elitepræmie ved horisonten. Rettelse:
+//      loft-faktoren er speciale-graden selv (svaghed → 0, styrke → 1), og
+//      profil-parametrene vælges så det samlede loft-budget i populationen
+//      svarer til v4's (målescriptet viser valget). Kun FORDELINGEN mellem
+//      evner kommer nu fra rytterens egne tal; mængden er v4's.
+//   2. Glathed: v1 regnede referencen MED evnen selv, så +1 på en evne også
+//      hævede dens egen reference. Nu regnes reference og bredde for evne i
+//      uden evne i. Et evnepoint hæver derfor altid evnens egen speciale-grad.
+//      (En relativ profil kan stadig ikke være helt monoton: +1 på én evne gør
+//      de ØVRIGE styrker en anelse mindre fremtrædende. Målt i rapporten.)
+//
+// v1-opførslen kan vælges eksplicit (profile.reference = "including_self",
+// profile.headroom = "off_floor") — kun til før/efter-målingen.
 //
 // Paritet med v4 (bevist i valuationTypefree.test.js): sendes en signaturfunktion
 // ind der returnerer netop v4's type-faktor, regner stepTypefree bit-identisk
@@ -49,41 +67,77 @@ export function frozenNpvRateTypefree(potentiale) {
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const logistic = (z) => 1 / (1 + Math.exp(-z));
 
-// Profil-signatur: speciale-grad pr. evne ud fra rytterens egne evner.
-// Returnerer { [evne]: sig ∈ (0,1) }. Beregnes ÉN gang fra start-evnerne (som
-// v4's caps), så prognosen er deterministisk.
-export function profileSignature(abilities = {}, profile = {}) {
-  const k = Number.isFinite(Number(profile.ref_sd)) ? Number(profile.ref_sd) : 0.5;
-  const s = Number.isFinite(Number(profile.width_sd)) ? Number(profile.width_sd) : 0.5;
-  const floor = Number.isFinite(Number(profile.width_floor)) ? Number(profile.width_floor) : 2;
-  const vals = [];
-  for (const a of VISIBLE_ABILITIES) {
-    const v = Number(abilities?.[a]);
-    if (Number.isFinite(v)) vals.push(v);
-  }
-  const sig = {};
-  if (!vals.length) return sig;
+export const PROFILE_REFERENCE_MODES = Object.freeze(["leave_one_out", "including_self"]);
+export const PROFILE_HEADROOM_MODES = Object.freeze(["strengths_only", "off_floor"]);
+
+const num = (v, fallback) => (Number.isFinite(Number(v)) && v !== null && v !== "" ? Number(v) : fallback);
+const meanSd = (vals) => {
   const mean = vals.reduce((x, y) => x + y, 0) / vals.length;
   const sd = Math.sqrt(vals.reduce((x, y) => x + (y - mean) ** 2, 0) / vals.length);
-  const ref = mean + k * sd;
-  const width = Math.max(sd * s, floor);
+  return { mean, sd };
+};
+
+// Profil-signatur: speciale-grad pr. evne ud fra rytterens egne evner.
+// Returnerer { [evne]: sig ∈ (0,1) }. Beregnes ÉN gang fra start-evnerne (som
+// v4's caps), så prognosen er deterministisk. Standard: referencen for evne i
+// regnes uden evne i (leave-one-out).
+export function profileSignature(abilities = {}, profile = {}) {
+  const k = num(profile.ref_sd, 0.5);
+  const s = num(profile.width_sd, 0.5);
+  const floor = num(profile.width_floor, 2);
+  const mode = profile.reference ?? "leave_one_out";
+  if (!PROFILE_REFERENCE_MODES.includes(mode)) throw new RangeError(`profileSignature: ukendt reference "${mode}"`);
+  const present = [];
   for (const a of VISIBLE_ABILITIES) {
     const v = Number(abilities?.[a]);
-    if (!Number.isFinite(v)) continue;
+    if (abilities?.[a] != null && Number.isFinite(v)) present.push([a, v]);
+  }
+  const sig = {};
+  if (!present.length) return sig;
+  const all = meanSd(present.map(([, v]) => v));
+  for (const [a, v] of present) {
+    let ref, width;
+    if (mode === "including_self" || present.length < 2) {
+      ref = all.mean + k * all.sd;
+      width = Math.max(all.sd * s, floor);
+    } else {
+      const others = meanSd(present.filter(([b]) => b !== a).map(([, x]) => x));
+      ref = others.mean + k * others.sd;
+      width = Math.max(others.sd * s, floor);
+    }
     sig[a] = logistic((v - ref) / width);
   }
   return sig;
 }
 
-// Loft-faktor fra speciale-grad (samme skala som v4's signatureFactor).
-export function capFactorFromSig(sig, cfg = PROGRESSION_CONFIG) {
+// Loft-faktor fra speciale-grad (samme skala som v4's signatureFactor:
+// 0 = svaghed, 1 = speciale). v2-standard: faktoren ER speciale-graden.
+// "off_floor" (v1) giver alle evner mindst mellemniveauet.
+export function capFactorFromSig(sig, cfg = PROGRESSION_CONFIG, mode = "strengths_only") {
+  if (!PROFILE_HEADROOM_MODES.includes(mode)) throw new RangeError(`capFactorFromSig: ukendt headroom "${mode}"`);
+  const s = clamp(Number(sig) || 0, 0, 1);
+  if (mode === "strengths_only") return s;
   const off = cfg.offTypeHeadroomFactor;
-  return off + (1 - off) * clamp(Number(sig) || 0, 0, 1);
+  return off + (1 - off) * s;
+}
+
+// Loft-budget: gennemsnitlig loft-faktor over rytterens evner (1 = alle evner
+// får fuldt potentiale-loft). Målescriptet sammenligner populationens snit med
+// v4's (typens faktorer), så det typefri forslag ikke deler mere loft ud i alt.
+export function headroomBudget(abilities = {}, profile = {}, cfg = PROGRESSION_CONFIG) {
+  const sig = profileSignature(abilities, profile);
+  const vals = Object.values(sig).map((x) => capFactorFromSig(x, cfg, profile.headroom ?? "strengths_only"));
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 }
 
 // Loft pr. evne. Samme formel som riderProgression.abilityCap, men med
 // profil-faktoren i stedet for type-faktoren.
-export function buildCapsTypefree(baseline, sigByAbility, potentiale, { factorFn = (sig) => capFactorFromSig(sig), cfg = PROGRESSION_CONFIG } = {}) {
+export function buildCapsTypefree(
+  baseline,
+  sigByAbility,
+  potentiale,
+  { headroom: headroomMode = "strengths_only", cfg = PROGRESSION_CONFIG, factorFn = (sig) => capFactorFromSig(sig, cfg, headroomMode) } = {},
+) {
   const headroom = headroomForPotential(potentiale, cfg);
   const caps = {};
   for (const a of VISIBLE_ABILITIES) {

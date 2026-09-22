@@ -70,7 +70,7 @@ export function simulateCareerTypefree(rider, abilities, model) {
   const discount = Number.isFinite(Number(model.discount)) ? Number(model.discount) : 0.8;
 
   const sig = profileSignature(abilities, model.profile);
-  const caps = buildCapsTypefree(abilities, sig, potentiale);
+  const caps = buildCapsTypefree(abilities, sig, potentiale, { headroom: model.profile?.headroom ?? "strengths_only" });
 
   let ab = { ...abilities };
   let S = 1;
