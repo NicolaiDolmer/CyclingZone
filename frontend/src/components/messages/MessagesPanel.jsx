@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import {
@@ -28,6 +28,10 @@ import {
 const BODY_MAX_LENGTH = 2000;
 const THREAD_POLL_MS = 20_000;
 const REPORT_REASON_MIN = 10;
+// #5313: hvor tæt på bunden brugeren skal være for at nye beskeder stadig
+// ruller traaden med ned. Rullet laengere op end dette = "laeser historik",
+// og saa maa en ny besked ikke rykke visningen.
+const SCROLL_STICK_THRESHOLD_PX = 80;
 
 function ConversationRow({ conversation, active, onOpen, t }) {
   const name = conversation.otherManagerName || conversation.otherTeamName || "";
@@ -91,7 +95,21 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
   const [reportError, setReportError] = useState(null);
   const [reporting, setReporting] = useState(false);
 
-  const bottomRef = useRef(null);
+  // Traadens eget scroll-container (overflow-y-auto). Bruges baade til at
+  // rulle til bunden og til at maale afstanden til bunden (#5313).
+  const scrollRef = useRef(null);
+  // Om traaden skal foelge med til bunden ved naeste besked. Sand ved
+  // mount/traadskift og saa laenge brugeren selv er taet paa bunden; falsk
+  // saa snart brugeren har rullet op for at laese aeldre beskeder. "Load
+  // more" aendrer ikke `latestMessageId` (se dens noegle nedenfor), saa den
+  // flytter aldrig scrollen alene.
+  const stickToBottomRef = useRef(true);
+  const handleThreadScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom <= SCROLL_STICK_THRESHOLD_PX;
+  }, []);
   // Monotont voksende id pr. traad-hentning. Et svar for samtale A kan naa
   // frem EFTER at brugeren har valgt samtale B; uden guarden ville A's
   // beskeder erstatte B, og menuens Bloker/Anmeld ville ramme A mens URL'en
@@ -153,6 +171,7 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
     setDraft("");
     setSendError(null);
     setThread(null);
+    stickToBottomRef.current = true; // en (gen)aabnet traad aabner altid ved bunden (#5313)
     loadThread(conversationId);
     markThreadRead(conversationId)
       .then(() => loadList())
@@ -172,8 +191,15 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
   // bad om (CodeRabbit 8/9).
   const messages = thread?.messages;
   const latestMessageId = messages?.length ? messages[messages.length - 1].id : null;
-  useEffect(() => {
-    if (latestMessageId) bottomRef.current?.scrollIntoView({ block: "end" });
+  // useLayoutEffect, ikke useEffect (#5313): scrollen skal sidde FØR browseren
+  // maler frame'et. Med en almindelig (passiv) effect ville traaden kortvarigt
+  // males ved toppen og først derefter hoppe til bunden — det var netop det
+  // brugeren oplevede som "traaden aabner i toppen".
+  useLayoutEffect(() => {
+    if (!latestMessageId) return;
+    if (!stickToBottomRef.current) return; // brugeren har selv rullet op - bevar positionen
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [latestMessageId]);
 
   async function handleSend(event) {
@@ -186,6 +212,7 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
     }
     setSending(true);
     setSendError(null);
+    stickToBottomRef.current = true; // min egen besked skal altid vaere synlig med det samme
     try {
       await sendMessage({ conversationId, body });
       setDraft("");
@@ -381,7 +408,11 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
               )}
 
               {/* Beskeder */}
-              <div className="max-h-[52vh] min-h-[180px] overflow-y-auto px-3 py-3">
+              <div
+                ref={scrollRef}
+                onScroll={handleThreadScroll}
+                className="max-h-[52vh] min-h-[180px] overflow-y-auto px-3 py-3"
+              >
                 {thread.hasMore && (
                   <div className="mb-3 text-center">
                     <Button
@@ -422,7 +453,6 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
                     ))}
                   </ul>
                 )}
-                <div ref={bottomRef} />
               </div>
 
               {/* Skrivefelt */}
