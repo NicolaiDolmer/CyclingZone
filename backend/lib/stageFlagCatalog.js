@@ -41,6 +41,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
+  // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
+  { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
   { key: "facilities_enabled", area: "club", label: "Faciliteter" },
   // Kill-switch for job-modellen (#2244). Semantisk binaer (on/off), men den
   // GAAR gennem evaluateFlagStage, og saa hoerer den hjemme her: bliver den

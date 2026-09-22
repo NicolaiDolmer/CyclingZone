@@ -236,6 +236,7 @@ import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
+import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
@@ -1233,6 +1234,23 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/display-flags — visnings-kontakter klienten skal kende på ALLE sider
+// (hentes én gang af Layout, ikke pr. side). Bare booleans, evalueret server-side
+// mod viewerens beta-status; klienten læser aldrig app_config selv.
+//   rider_best_role_display (#5435): rating = bedste rolle nu + "Natural role"-badge.
+// Fail-safe false (featureStage.js) = dagens visning.
+router.get("/display-flags", requireAuth, async (req, res) => {
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const riderBestRoleDisplay = await isRiderBestRoleDisplayEnabled(supabase, { isBetaTester });
+    res.json({ rider_best_role_display: riderBestRoleDisplay });
+  } catch (err) {
+    captureException(err);
+    // Visnings-kontakt: en fejl må aldrig vælte siden — svar med fail-safe.
+    res.json({ rider_best_role_display: false });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // RIDERS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1255,6 +1273,7 @@ router.get("/riders", requireAuth, cached({ namespace: "riders", ttlMs: CACHE_TT
       stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
       stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
       stat_res, stat_ftr,
+      best_role, best_role_rating,
       team:team_id(id, name)
     `, { count: "exact" })
     .eq("is_retired", false);
@@ -1271,8 +1290,9 @@ router.get("/riders", requireAuth, cached({ namespace: "riders", ttlMs: CACHE_TT
   if (min_uci) query = query.gte("market_value", parseInt(min_uci));
   if (max_uci) query = query.lte("market_value", parseInt(max_uci));
 
+  // #5435: best_role_rating = den cachede "bedste rolle nu" (riderValueRefresh.js).
   const allowedSort = ["market_value", "stat_bj", "stat_sp", "stat_tt",
-                       "stat_fl", "lastname", "birthdate"];
+                       "stat_fl", "lastname", "birthdate", "best_role_rating"];
   const requestedSort = sort === "uci_points" ? "market_value" : sort;
   const safeSort = allowedSort.includes(requestedSort) ? requestedSort : "market_value";
   query = query
@@ -6669,6 +6689,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
       id, starting_price, current_price, calculated_end, actual_end,
       status, extension_count, created_at, is_guaranteed_sale,
       rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, is_u25,
+        best_role, best_role_rating,
         rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
       seller:seller_team_id(id, name),
       current_bidder:current_bidder_id(id, name)
