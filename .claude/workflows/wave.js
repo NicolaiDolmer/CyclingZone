@@ -38,7 +38,7 @@
 //     dryRun: false,                  // true = print planen, spawn intet
 //     cleanup: "dry-run",             // 'dry-run' (default) | 'execute'
 //     allowExistingPr: false,         // true = koer spor der allerede har en aaben PR
-//     expiresInMinutes: 240,          // levetid paa wave-active.json
+//     expiresInMinutes: 240,          // kun metadata i planen; markoeren har ingen TTL, ejerskab + liveness afgoer (wave-policy.mjs)
 //     lanes: 4,                       // override af lane-loftet (brug sjaeldent)
 //     trackTimeoutMinutes: 120        // foerste spor-vindue (klemmes til 10-180)
 //   }

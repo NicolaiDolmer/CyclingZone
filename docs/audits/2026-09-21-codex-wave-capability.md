@@ -17,7 +17,7 @@ SSOT: [agent architecture](../AGENT_ARCHITECTURE.md), [parallel orchestration](.
 
 Implementation choice: the main Codex task remains architect. `scripts/codex-wave.mjs` controls CLI child processes with explicit cwd, sandbox and structured results. It reuses `new-worktree.ps1`, `make-wave-brief.mjs`, `verify-lock.ps1` through generated briefs, and `wave-freeze.mjs`. Merges remain a separate owner-authorized call to `merge-queue.ps1`.
 
-Mechanical gates: atomic wave admission, shared five-PR count/reservation, plan overlap rejection, bounded lane count, separate reviewer process, recorded child closure and owned marker cleanup. Verify-lock mechanically limits wrapped commands only. File-ownership validation is after-the-fact, not a filesystem ACL. Claude setup reporting, correct test wrapping, no prod/merge commands inside a worker, and durable sanitized handoff still require brief/review discipline.
+Mechanical gates: atomic wave admission, shared PR_LIMIT (8) count/reservation, plan overlap rejection, bounded lane count, separate reviewer process, recorded child closure and owned marker cleanup. Verify-lock mechanically limits wrapped commands only. File-ownership validation is after-the-fact, not a filesystem ACL. Claude setup reporting, correct test wrapping, no prod/merge commands inside a worker, and durable sanitized handoff still require brief/review discipline.
 
 The independent reviewer found four defects during development: the canonical Claude entry could block itself; broad ownership could include reserved paths; rebases polluted the initial-base diff; failed process termination could wait indefinitely. All four were corrected and re-reviewed. Session claim removal was also moved from turn-level Stop to SessionEnd, following [official hook semantics](https://learn.chatgpt.com/docs/hooks).
 
@@ -25,7 +25,7 @@ No throughput improvement is claimed. Time to merged PR is unmeasured because no
 
 ## Follow-up to Claude review on #5468, 21 September
 
-Owner decision: PR_LIMIT is now 8, including every parked draft. Hook timeout is 60 seconds. Marker replacement is atomic, legacy markers fail explicitly, and a single `wave-policy.mjs recover` command checks ownership and liveness. Same-boot historical descendant absence cannot be proved from a process snapshot, so recovery after dispatch requires an observed Windows reboot. Before dispatch, an observed dead owner is sufficient. The recovery lock is boot-qualified, and old watch PIDs are never killed after reboot.
+Owner decision: PR_LIMIT is now 8, including every parked draft. Hook timeout is 45 seconds (`.claude/settings.json`). Marker replacement is atomic, legacy markers fail explicitly, and a single `wave-policy.mjs recover` command checks ownership and liveness. Same-boot historical descendant absence cannot be proved from a process snapshot, so recovery after dispatch requires an observed Windows reboot. Before dispatch, an observed dead owner is sufficient. The recovery lock is boot-qualified, and old watch PIDs are never killed after reboot.
 
 The actual Claude client test remains a post-merge gate: no active wave at merge, explicit owner merge instruction, then one harmless docs track and checks of session_id and own WAVE-prefixed agents. Rollback instructions are in the PR body and orchestration SSOT. This is not reported as already tested in Claude.
 
