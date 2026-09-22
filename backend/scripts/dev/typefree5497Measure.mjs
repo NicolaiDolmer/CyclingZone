@@ -26,6 +26,7 @@ import { riderOverall, valuationOutput, valuationTypeFor } from "../../lib/rider
 import { predictBaseValueV4, currentProductionValue } from "../../lib/riderCareerNpv.js";
 import { projectAbilitiesForward, developAndSellGate, eliteUnbuyableGate, scaleContinuityGate } from "../../lib/valuationV4Scorecard.js";
 import { DISPLAY_RECIPE_KEYS } from "../../lib/weights/displayRecipes.js";
+import { FAIRPLAY_DEFAULTS } from "../../lib/fairplayScoring.js";
 import { effectiveOutput, terrainUse } from "../../lib/valuationTypefree/abilityProduction.js";
 import { fitTypefreeProduction } from "../../lib/valuationTypefree/fitProduction.js";
 import { buildCapsTypefree, profileSignature, stepTypefree } from "../../lib/valuationTypefree/careerTypefree.js";
@@ -130,6 +131,7 @@ const tfModel = {
   source: { simulation_sha: report.inputs.simulation.sha, season: sim.season_number, K: sim.K },
 };
 const tfUniform = { ...tfModel, profile: { ref_sd: 0, width_sd: 0, width_floor: 1e9 } };
+report.level = {};
 report.model = tfModel;
 
 // ── R5: hele populationen ───────────────────────────────────────────────────
@@ -138,6 +140,38 @@ report.inputs.snapshot = { sha: sha("snapshot.json"), read_at: snap.read_at, sea
 const abById = new Map(snap.abilities.map((a) => [a.rider_id, a]));
 const teamById = new Map(snap.teams.map((t) => [t.id, t]));
 const isHumanTeam = (t) => t && t.is_ai === false && !t.is_bank && !t.is_test_account && !t.is_frozen;
+// Krone-niveau. Variant A = v4's omregning (scale × niveau-korrektion) lagt
+// direkte på den nye simulerings NPV. Variant B = samme METODE som v4's scale
+// blev fundet med (fitRiderValuationV4.js: median-match mod gældende værdi) —
+// dvs. medianen holdes, relative priser flytter. Begge rapporteres; B bruges
+// til den relative før/efter-analyse. Ingen sum kalibreres.
+{
+  const v4s = [], tfA = [];
+  for (const r of snap.riders) {
+    if (r.is_retired) continue;
+    const ab = abById.get(r.id);
+    const age = ageForSeason(r.birthdate, snap.season_number);
+    if (!ab || !Number.isFinite(age)) continue;
+    const abilities = Object.fromEntries(KEYS.map((k) => [k, ab[k]]));
+    const rider = { primary_type: r.primary_type, valuation_type: r.valuation_type, potentiale: r.potentiale, age };
+    const a = predictBaseValueV4(rider, abilities, v4Model);
+    const b = predictBaseValueTypefree(rider, abilities, tfModel);
+    if (a > 0 && b > 0) { v4s.push(a); tfA.push(b); }
+  }
+  const kB = median(v4s) / median(tfA);
+  report.level = {
+    variant_A_median_delta_vs_v4: median(tfA) / median(v4s) - 1,
+    variant_A_total_ratio_vs_v4: sum(tfA) / sum(v4s),
+    variant_B_scale_multiplier: kB,
+    v4_function_mean_ln_residual_on_S3_sim: (() => {
+      const r = sim.samples.filter((s) => s.e_prize > 0);
+      return r.reduce((s, x) => s + (Math.log(x.e_prize) - v4Ln(x)), 0) / r.length;
+    })(),
+  };
+  tfModel.scale = v4Model.scale * kB;
+  tfModel.scale_method = "B: v4-metoden (median-match), ikke en sum";
+  tfUniform.scale = tfModel.scale;
+}
 const pop = [];
 for (const r of snap.riders) {
   if (r.is_retired) continue;
@@ -393,6 +427,16 @@ for (const [k, f] of Object.entries(variants)) {
   const rows = k === "v4_base" ? testV4 : test;
   holdout[k] = { n: rows.length, median_ape: mape(rows, f), mean_abs_log_error: mael(rows, f) };
 }
+// Robusthed: holdout på ALLE handler efter fit-datoen der består de øvrige
+// filtre, også dem prisafvigelses-filteret ellers smider ud (ellers måles kun
+// handler der i forvejen ligger tæt på modellen).
+const noBand = qualifyMarketEvidence(withBase, { humanTeams: human, config: { ...FAIRPLAY_DEFAULTS, priceBandFloorPct: 0, priceBandCapMultiple: Infinity } });
+const testWide = noBand.qualified.filter((o) => o.at >= fitDate);
+const holdoutWide = {};
+for (const [k, f] of Object.entries(variants)) {
+  const rows = k === "v4_base" ? testWide.filter((o) => o.base_v4 > 0) : testWide;
+  holdoutWide[k] = { n: rows.length, median_ape: mape(rows, f), mean_abs_log_error: mael(rows, f) };
+}
 const weightGrid = [];
 for (const w of [0.25, 0.5, 1]) for (const capName of ["1.25", "1.5", "2", "inf"]) {
   const cap = capName === "inf" ? Infinity : Math.log(Number(capName));
@@ -443,6 +487,7 @@ report.market = {
   common_gamma0_ln_reported_not_applied: common.gamma0,
   common_gamma: common.gamma,
   holdout,
+  holdout_including_price_outliers: holdoutWide,
   weight_grid: weightGrid,
   influence_by_age: influenceOut,
   influence_by_output: Object.fromEntries(Object.entries(influenceO).sort().map(([k, g]) => [k, {
@@ -464,5 +509,14 @@ console.log(JSON.stringify({
   type_swap: report.type_swap,
   smoothness: report.smoothness,
   human_losers_over_half: losers.length,
-  market: { funnel, n_train: train.length, n_test: test.length, holdout, sel },
+  level: report.level,
+  market: { funnel, n_train: train.length, n_test: test.length, holdout, holdoutWide, sel, weightGrid },
+  by_type: Object.fromEntries(Object.entries(report.population.by_primary_type).map(([k, v]) => [k, pct(v.median_delta)])),
+  by_age: Object.fromEntries(Object.entries(report.population.by_age).map(([k, v]) => [k, pct(v.median_delta)])),
+  by_owner: Object.fromEntries(Object.entries(report.population.by_owner).map(([k, v]) => [k, [pct(v.median_delta), v.total_after / v.total_before]])),
+  uniform: [pct(report.population.variant_uniform_career.alle.median_delta), Object.fromEntries(Object.entries(report.population.variant_uniform_by_age).map(([k, v]) => [k, pct(v.median_delta)]))],
+  no_premium: pct(report.population.variant_no_premium.alle.median_delta),
+  teams: { ...report.population.human_teams, worst10: undefined, best10: undefined },
+  dev: gDev, devV4: report.gates.develop_and_sell_v4_reference, eliteOld: gEliteOld.detail, eliteV4: gEliteV4.detail, eliteRank,
+  r2total: report.population.overall,
 }, null, 2));
