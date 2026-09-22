@@ -16,11 +16,17 @@ import { expect, test } from "./e2e-base.js";
 const frontendRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SITEMAP_PATH = join(frontendRoot, "public", "sitemap.xml");
 
+// To DA-ruter ligger IKKE under /da/-prefixet (privacy/terms har egne
+// top-level DA-stier, jf. App.jsx's /privatlivspolitik + /handelsbetingelser
+// routes) — de skal udelukkes eksplicit, "starts with /da" fanger dem ikke.
+const DA_TOP_LEVEL_PATHS = new Set(["/privatlivspolitik", "/handelsbetingelser"]);
+
 function enSitemapPaths() {
   const xml = readFileSync(SITEMAP_PATH, "utf8");
   const locs = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
-  // EN-ruter = ikke under /da, og ikke forsiden selv (se kommentar ovenfor).
-  return locs.filter((path) => !path.startsWith("/da") && path !== "/");
+  // EN-ruter = ikke under /da, ikke en DA top-level-sti, og ikke forsiden
+  // selv (se kommentar ovenfor).
+  return locs.filter((path) => !path.startsWith("/da") && !DA_TOP_LEVEL_PATHS.has(path) && path !== "/");
 }
 
 test("prerendered '/' has a footer/header href to every public EN sitemap route", async ({
