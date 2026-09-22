@@ -12,6 +12,7 @@ Sources of truth: [ECONOMY_RULES.md](../../ECONOMY_RULES.md), [RACE_ENGINE_RULES
 - **Choice A:** evaluate a common representative season programme, using riders where their abilities contribute best. Do not count only their best profiles or use their actual club, division or selection.
 - **Choice A:** the programme follows the planned in-game race supply and stays fixed during the season. Use the new v4 race engine where supported. Disclose gaps instead of silently substituting v3 evidence.
 - **Choice A:** a common market level plus local differences. Qualified market observations inform the common level; close comparisons influence individual riders more where evidence supports them. Thinly traded riders must still receive actual market influence through the common component.
+- **Choice A:** no separate fixed elite floor in the new calculation. Exceptional sporting ability may still produce a high value, but no elite minimum is guaranteed. This does not approve a particular premium, coefficient or before/after price.
 - Training score must eventually replace potential in the valuation model. Timing, history requirements and replacement calculation are not approved. The existing potential-rate decision remains in force until that transition.
 - Displayed rating remains best role now; badge remains natural identity. Coordinate the eventual value and display switch. Equal displayed ratings do not imply identical ability profiles or prices.
 - Cash and aggregate rider valuations are different quantities and are reported separately. Neither current aggregate valuation nor the historical total is an approved calibration target.
@@ -86,6 +87,21 @@ A narrow feasibility probe was followed by an expanded pilot with synthetic iden
 
 Own-result changes are measurable. Stronger helpers do not consistently improve captain finishing rank in these setups. This is not evidence that helpers have no value: protection can saturate, position is an incomplete measure, and explicit leadout orders are not yet included. The pilot uses pinned proxy routes, not a finished S4 reference programme, and omits accumulated stage-race fatigue/GC and career development. Report unfinished outcomes separately when extending it. Do not map these rank deltas directly into currency.
 
+## Career and training-score dependency audit
+
+The existing pure career functions were exercised with identical current abilities, age and potential, varying only type. Projected abilities diverged for young riders and in later decline. Peak age itself stayed identical, as expected from the shared configuration. The private diagnostic is `probeCareerTypeDependence.mjs` / `ability-career-type-dependence.json`. This is a forecast-code diagnostic, not a completed training strategy or a proposed new development curve.
+
+The type-free price direction cannot be achieved by reusing this forecast unchanged. There is also a real modelling distinction: equal-input valuation under common future opportunities is not an exact reproduction of the existing type-dependent training rules. The proposed valuation forecast must say which it represents.
+
+`trainingScore.js:trainingScoreFactors` includes type-based focus match as well as potential, age, condition, coach, facility, intensity and noise. An otherwise identical synthetic session changes score when only type changes. Replacing potential with a raw score mean would import type and training environment into value through a different input.
+
+The score-writing path stores score/session and a short contribution summary, not the full factor vector; the inspected daily report does not restore all missing factors. The live score schema was checked read-only because the checked-in schema snapshot does not yet include that table. Coverage was measured as of the same frozen evidence cutoff: history is short and incomplete, especially for unattached riders. No sufficiency threshold is approved; a week in the coverage report is descriptive only. Do not silently create a collection migration or alter visible scoring in this task.
+
+Private coverage readout: `ability-training-score-coverage.json`. The later replacement needs a comparable measure of growth capacity under common conditions, with explicit historical reconstruction limits and cold-start handling. Preserve potential until that replacement is actually validated.
+
+### Pending modelling choice
+
+Recommended direction, not yet approved: a separate type-free standard career forecast for valuation, retaining the approved potential-rate treatment while using equal future opportunities. This accepts an explicit approximation relative to the current type-dependent training system and keeps training changes outside this task. The alternative is to defer final career valuation until the underlying future training/development rules are settled. Neither choice authorizes changing those rules or implementing the value model yet.
 ## Verification plan before build approval
 
 1. **Input/equality:** identical approved inputs remain identical across type labels, actual club/division, IDs, selection history and best-role ties. Missing data gets an explicit diagnostic status, not an invented zero ability.
@@ -112,11 +128,11 @@ All paths below are under `balance-internals/2026-09-22-best-role-refit/`; they 
 
 Run local analysis scripts through `scripts/verify-lock.ps1 -Max 2`. Only the exporter needs credentials and network; all subsequent scripts read the frozen local artifacts. Exact raw snapshots are not a substitute for public decision state: confirmed directions, methods, limitations and next steps are recorded here and on #5443/#5435. Never upload the private artifacts to the public repository.
 
-## Pending economic choice: elite floor
+## Confirmed economic choice: no fixed elite floor
 
 Both current valuation model files configure an elite premium and an explicit elite floor (`riderCareerNpv.js:applyElitePremium`). Some active riders in the private population snapshot are above that floor's ability threshold, while none of the payment-reconciled observations with historical abilities reach it. This establishes an evidence gap; it does not establish how many current prices are actually raised by the floor, or justify extrapolating ordinary-rider sale prices to elite riders.
 
-Owner card, not answered: should the new model replace the special fixed floor with a smooth ability/performance valuation and growing market influence, or retain a minimum elite value even when qualified market evidence would imply less? Removing or retaining it as a final combined-price floor is a separate economic decision. Existing behavior is unchanged. No elite amount or proposed before/after price is approved.
+The owner chose A: remove the separate fixed elite floor in the new calculation. Exceptional value must come from the approved ability/performance and market calculation, not a guaranteed elite minimum. Existing production behavior is unchanged until an approved implementation and activation. No elite amount or proposed before/after price is approved.
 
 ## Remaining design work and release boundary
 
