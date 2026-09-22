@@ -63,8 +63,11 @@ export function convexPremiumOnly(value, overall, premium) {
 export function simulateCareerTypefree(rider, abilities, model) {
   const prod = model?.production;
   if (!prod || !Number.isFinite(Number(prod.a)) || !Number.isFinite(Number(prod.b))) return null;
-  if (!ABILITY_KEYS.some((k) => Number.isFinite(Number(abilities?.[k])))) return null;
-  const age0 = Number(rider?.age);
+  // null tæller ikke som 0 (Number(null) === 0): en rytter uden en eneste
+  // brugbar evne, eller uden alder, får ingen værdi.
+  if (!ABILITY_KEYS.some((k) => abilities?.[k] != null && Number.isFinite(Number(abilities[k])))) return null;
+  if (rider?.age == null) return null;
+  const age0 = Number(rider.age);
   if (!Number.isFinite(age0)) return null;
   const potentiale = rider?.potentiale;
   const discount = Number.isFinite(Number(model.discount)) ? Number(model.discount) : 0.8;

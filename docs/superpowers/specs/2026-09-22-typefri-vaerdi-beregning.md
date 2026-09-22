@@ -34,11 +34,15 @@ V_grund     = niveau · præmie_t( skala · Σ_s diskonto^s · S_s · prod(O_tf(
 For hver evne *i*, ud fra rytterens start-evner:
 
 ```
-reference_i  = blød maksimum af rytterens ØVRIGE evner − forskydning
+reference_i  = én af to former, begge af rytterens ØVRIGE evner (uden i):
+                 soft_max_others: blød maksimum(øvrige; tau) − forskydning,   bredde fast
+                 leave_one_out  : snit(øvrige) + k · spredning(øvrige),       bredde = max(spredning · s, gulv)
 sig_i        = logistisk( (evne_i − reference_i) / bredde )
 loft_i       = afrund( evne_i + headroom(potentiale) · sig_i )
 fald_i       = sig_i · fald(speciale) + (1 − sig_i) · fald(øvrig)
 ```
+
+Den valgte form og dens tal står i `profile_selection.chosen` i den private rapport og i model-forslaget ved siden af. På S3-snapshottet vælger reglen den bløde maksimum.
 
 - **Kun styrker får vækst-plads** (sig nær 1). En tydelig svaghed får næsten ingen, som typens svagheder i dag. v1 gav alle evner mindst mellemniveauets plads.
 - **Referencen regnes uden evnen selv.** Et evnepoint hæver derfor altid evnens egen speciale-grad. Den bløde maksimum flyttes næsten ikke af en lav evne. Træning af en evne rytteren ikke bruger, ændrer derfor ikke hans styrker.

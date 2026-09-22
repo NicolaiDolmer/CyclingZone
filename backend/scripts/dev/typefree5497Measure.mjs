@@ -25,8 +25,9 @@
 // loft kun for styrker, profil valgt så loft-budgettet svarer til v4's),
 // udvikl-og-sælg før/efter på alle præmie-trin, glathed forklaret pr. felt.
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, realpathSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 
 import { ageForSeason } from "../../lib/riderSeasonAge.js";
@@ -70,8 +71,16 @@ if (!EVIDENCE || !OUT || !CHOICES) {
   console.error("Brug: --evidence=<privat mappe> --choices=<privat ejer-valg.json> --out=<.../balance-internals/...>");
   process.exit(2);
 }
-if (!resolve(OUT).replace(/\\/g, "/").includes("/balance-internals/")) {
-  console.error("Nægter: --out skal ligge under balance-internals/ (privat, gitignoreret).");
+// --out skal ligge INDE i repoets egen gitignorerede balance-internals/-mappe
+// (ikke bare have ordet i stien), også efter symlinks er fulgt.
+const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
+const PRIVATE_ROOT = resolve(REPO_ROOT, "balance-internals");
+const isInside = (p, root) => {
+  const rel = relative(root, p);
+  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+};
+if (!isInside(resolve(OUT), PRIVATE_ROOT)) {
+  console.error(`Nægter: --out skal ligge under ${PRIVATE_ROOT} (privat, gitignoreret).`);
   process.exit(2);
 }
 
@@ -91,7 +100,12 @@ if (JSON.stringify(STEPS) !== JSON.stringify([...ELITE_PREMIUM_PHASE_STEPS])) {
   console.error("Nægter: præmie-trinnene i --choices matcher ikke ELITE_PREMIUM_PHASE_STEPS.");
   process.exit(2);
 }
+mkdirSync(PRIVATE_ROOT, { recursive: true });
 mkdirSync(OUT, { recursive: true });
+if (!isInside(realpathSync(OUT), realpathSync(PRIVATE_ROOT))) {
+  console.error("Nægter: --out peger via et link ud af balance-internals/.");
+  process.exit(2);
+}
 
 const KEYS = ["climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch", "endurance",
   "recovery", "durability", "descending", "cobblestone", "aggression", "positioning", "tactics"];
@@ -346,14 +360,23 @@ for (const e of obs) {
 const withBase = obs.filter((e) => e.abilities);
 const { qualified, funnel, levelShift } = qualifyMarketEvidence(withBase, { humanTeams: human });
 qualified.sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
+const requireMarket = (ok, reason) => {
+  if (!ok) {
+    console.error(`Nægter: for få kvalificerede handler til markedsleddet (${reason}).`);
+    process.exit(2);
+  }
+};
+requireMarket(qualified.length >= 3, "tidsdelingen kræver mindst 3 handler");
 const fitDate = qualified[Math.floor(qualified.length * 0.8)].at;
 const train = qualified.filter((o) => o.at < fitDate);
 const test = qualified.filter((o) => o.at >= fitDate);
+requireMarket(train.length >= 2 && test.length >= 1, "mindst 2 trænings- og 1 holdout-handel");
 const toRow = (o) => ({ ...o, r: Math.log(o.price / o.base) });
 const trainRows = train.map(toRow);
 // Tuning af (bandwidth, k0, lambda) på en indre tidsdeling af træningsdata.
 const innerCut = trainRows[Math.floor(trainRows.length * 0.8)].at;
 const innerA = trainRows.filter((o) => o.at < innerCut), innerB = trainRows.filter((o) => o.at >= innerCut);
+requireMarket(innerA.length >= 1 && innerB.length >= 1, "den indre tidsdeling skal have handler på begge sider");
 const mael = (rows, pred) => rows.reduce((s, o) => s + Math.abs(Math.log(pred(o) / o.price)), 0) / rows.length;
 const mape = (rows, pred) => median(rows.map((o) => Math.abs(pred(o) - o.price) / o.price));
 const tuning = [];
@@ -556,6 +579,10 @@ report.gates.determinism = { name: "Determinisme", hard: true, ok: true, detail:
 // model ved start og horisont. Fordelingen over ALLE prospects rapporteres
 // ved siden af, så resultatet ikke hviler på én rytter.
 const prospects = valid.filter((r) => r.age <= 21 && Number(r.potentiale) >= 5);
+if (!prospects.length) {
+  console.error("Nægter: snapshottet har ingen prospects (alder ≤ 21, potentiale ≥ 5) til udvikl-og-sælg-grænsen.");
+  process.exit(2);
+}
 const projectTf = (r, model) => {
   const sig = profileSignature(r.abilities, model.profile);
   const caps = buildCapsTypefree(r.abilities, sig, r.potentiale, { headroom: model.profile.headroom });
