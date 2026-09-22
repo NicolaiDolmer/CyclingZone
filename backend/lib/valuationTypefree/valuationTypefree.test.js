@@ -171,6 +171,26 @@ test("v2 reference uden evnen selv: +1 flytter ikke evnens egen reference og hæ
   assert.throws(() => profileSignature(ab, { reference: "type" }), RangeError);
 });
 
+test("blød-maksimum-reference: en lav evne flytter ikke de øvrige styrker, egen speciale-grad stiger altid", () => {
+  const prof = { reference: "soft_max_others", tau: 1.5, width: 5, offset: 8 };
+  const ab = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 40]));
+  ab.climbing = 82; ab.tempo = 74; ab.endurance = 70; ab.sprint = 22;
+  const s0 = profileSignature(ab, prof);
+  const s1 = profileSignature({ ...ab, sprint: ab.sprint + 1 }, prof);
+  for (const k of VISIBLE_ABILITIES) {
+    if (k === "sprint") assert.ok(s1[k] > s0[k], "egen grad stiger");
+    else assert.ok(Math.abs(s1[k] - s0[k]) < 1e-12, `${k}: en lav evne må ikke flytte andres styrke`);
+  }
+  assert.ok(s0.climbing > s0.tempo && s0.tempo > s0.flat && s0.flat > s0.sprint, "rækkefølge følger evnerne");
+  for (let seed = 1; seed <= 20; seed++) {
+    const r = abilitiesFrom(seed);
+    const a0 = profileSignature(r, prof);
+    for (const k of VISIBLE_ABILITIES) assert.ok(profileSignature({ ...r, [k]: r[k] + 1 }, prof)[k] > a0[k], `${seed}/${k}`);
+  }
+  assert.throws(() => profileSignature(ab, { reference: "soft_max_others", tau: 0, width: 5, offset: 8 }), RangeError);
+  assert.throws(() => profileSignature(ab, { reference: "soft_max_others", tau: 1, width: 5 }), RangeError);
+});
+
 test("v2 loft kun for styrker: en tydelig svaghed får næsten intet loft, v1 gav den mellemniveauet", () => {
   const ab = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 50]));
   ab.climbing = 80; ab.tempo = 75; ab.sprint = 15;

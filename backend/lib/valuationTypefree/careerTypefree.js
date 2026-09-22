@@ -17,8 +17,10 @@
 //   loft-faktor_i  = sig_i                           (v2: kun styrker får loft)
 //   fald_i         = sig_i · fald(speciale) + (1 − sig_i) · fald(ikke-speciale)
 //
-//   profil-reference_i = snit + k·spredning af rytterens ØVRIGE evner (uden i)
-//   profil-bredde_i    = max(spredning af de øvrige · s, gulv)
+//   profil-reference_i regnes altid af rytterens ØVRIGE evner (uden i), i én
+//   af to former (se PROFILE_REFERENCE_MODES): snit + k·spredning, eller en
+//   blød maksimum minus en forskydning. Målescriptet vælger form og tal ved en
+//   fast regel og gemmer dem privat.
 //
 // Kun evne-tal indgår. To ryttere med samme evner, alder og potentiale får
 // derfor identisk prognose, uanset label. Og fordi sig er glat i evnerne, kan
@@ -35,10 +37,16 @@
 //      svarer til v4's (målescriptet viser valget). Kun FORDELINGEN mellem
 //      evner kommer nu fra rytterens egne tal; mængden er v4's.
 //   2. Glathed: v1 regnede referencen MED evnen selv, så +1 på en evne også
-//      hævede dens egen reference. Nu regnes reference og bredde for evne i
-//      uden evne i. Et evnepoint hæver derfor altid evnens egen speciale-grad.
-//      (En relativ profil kan stadig ikke være helt monoton: +1 på én evne gør
-//      de ØVRIGE styrker en anelse mindre fremtrædende. Målt i rapporten.)
+//      hævede dens egen reference. Nu regnes referencen for evne i uden evne
+//      i, så et evnepoint altid hæver evnens egen speciale-grad. Det alene
+//      fjerner ikke fejlen: med snit + spredning flytter +1 på ÉN evne
+//      referencen for alle de andre, så rytterens øvrige styrker fik lidt
+//      mindre loft (målt: omtrent lige så mange fald som v1). Den bløde
+//      maksimum af de øvrige evner flyttes næsten ikke af en lav evne, så
+//      træning af en evne rytteren ikke bruger ændrer ikke hans styrker.
+//      En relativ profil kan stadig ikke være helt monoton (+1 på en af de
+//      bedste evner gør de næstbedste en anelse mindre fremtrædende). Målt i
+//      rapporten pr. felt.
 //
 // v1-opførslen kan vælges eksplicit (profile.reference = "including_self",
 // profile.headroom = "off_floor") — kun til før/efter-målingen.
@@ -67,7 +75,13 @@ export function frozenNpvRateTypefree(potentiale) {
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const logistic = (z) => 1 / (1 + Math.exp(-z));
 
-export const PROFILE_REFERENCE_MODES = Object.freeze(["leave_one_out", "including_self"]);
+// Reference-former (alle læser kun evne-tal):
+//   leave_one_out   : snit + k·spredning af de ØVRIGE evner (bredde fra deres spredning)
+//   soft_max_others : blød maksimum af de ØVRIGE evner minus en forskydning, fast
+//                     bredde. En lav evne flytter næsten ikke en blød maksimum, så
+//                     +1 på en evne rytteren ikke bruger, ændrer ikke hans styrker.
+//   including_self  : v1 (22/9), kun til før/efter-målingen
+export const PROFILE_REFERENCE_MODES = Object.freeze(["leave_one_out", "soft_max_others", "including_self"]);
 export const PROFILE_HEADROOM_MODES = Object.freeze(["strengths_only", "off_floor"]);
 
 const num = (v, fallback) => (Number.isFinite(Number(v)) && v !== null && v !== "" ? Number(v) : fallback);
@@ -86,7 +100,7 @@ export function profileSignature(abilities = {}, profile = {}) {
   const s = num(profile.width_sd, 0.5);
   const floor = num(profile.width_floor, 2);
   const mode = profile.reference ?? "leave_one_out";
-  if (!PROFILE_REFERENCE_MODES.includes(mode)) throw new RangeError(`profileSignature: ukendt reference "${mode}"`);
+  if (!PROFILE_REFERENCE_MODES.includes(mode)) throw new RangeError(`profileSignature: unknown reference "${mode}"`);
   const present = [];
   for (const a of VISIBLE_ABILITIES) {
     const v = Number(abilities?.[a]);
@@ -94,6 +108,20 @@ export function profileSignature(abilities = {}, profile = {}) {
   }
   const sig = {};
   if (!present.length) return sig;
+  if (mode === "soft_max_others") {
+    const tau = Number(profile.tau);
+    const width = Number(profile.width);
+    const offset = Number(profile.offset);
+    if (!(tau > 0) || !(width > 0) || !Number.isFinite(offset)) throw new RangeError("profileSignature: soft_max_others requires tau > 0, width > 0 and a finite offset");
+    for (const [a, v] of present) {
+      const others = present.filter(([b]) => b !== a).map(([, x]) => x);
+      if (!others.length) { sig[a] = logistic(offset / width); continue; }
+      const m = Math.max(...others);
+      const ref = m + tau * Math.log(others.reduce((s, x) => s + Math.exp((x - m) / tau), 0) / others.length);
+      sig[a] = logistic((v - ref + offset) / width);
+    }
+    return sig;
+  }
   const all = meanSd(present.map(([, v]) => v));
   for (const [a, v] of present) {
     let ref, width;
@@ -114,7 +142,7 @@ export function profileSignature(abilities = {}, profile = {}) {
 // 0 = svaghed, 1 = speciale). v2-standard: faktoren ER speciale-graden.
 // "off_floor" (v1) giver alle evner mindst mellemniveauet.
 export function capFactorFromSig(sig, cfg = PROGRESSION_CONFIG, mode = "strengths_only") {
-  if (!PROFILE_HEADROOM_MODES.includes(mode)) throw new RangeError(`capFactorFromSig: ukendt headroom "${mode}"`);
+  if (!PROFILE_HEADROOM_MODES.includes(mode)) throw new RangeError(`capFactorFromSig: unknown headroom "${mode}"`);
   const s = clamp(Number(sig) || 0, 0, 1);
   if (mode === "strengths_only") return s;
   const off = cfg.offTypeHeadroomFactor;

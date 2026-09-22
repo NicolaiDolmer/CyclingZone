@@ -13,7 +13,7 @@
 // Uændret fra v4: diskonto, overlevelse/pensions-hazard, potentiale-raten,
 // alders-grænser, skala og niveau-korrektion (simulationsforankret krone-niveau,
 // ejer 30/8 #3448 + #4449). Elite-GULVET er fjernet (ejer-valg 6: intet fast
-// elitegulv); den konvekse præmie er et ejer-valg i PR'en.
+// elitegulv); den konvekse præmie udfases i trin (ejer-valg 22/9, se nedenfor).
 //
 // Modellen tager en rytter { age, potentiale } og evner — og intet andet.
 // primary_type / valuation_type / best_role læses ALDRIG.
@@ -37,7 +37,7 @@ export const ELITE_PREMIUM_PHASE_STEPS = Object.freeze([1, 0.75, 0.5, 0.25, 0]);
 // den på sidste trin (ny normal).
 export function elitePremiumPhaseFactor(runsSinceSwitch, steps = ELITE_PREMIUM_PHASE_STEPS) {
   const list = Array.isArray(steps) && steps.length ? steps.map(Number) : ELITE_PREMIUM_PHASE_STEPS;
-  if (!list.every((s) => Number.isFinite(s) && s >= 0 && s <= 1)) throw new RangeError("elitePremiumPhaseFactor: trin skal ligge i [0, 1]");
+  if (!list.every((s) => Number.isFinite(s) && s >= 0 && s <= 1)) throw new RangeError("elitePremiumPhaseFactor: steps must lie in [0, 1]");
   const n = Math.floor(Number(runsSinceSwitch));
   if (!Number.isFinite(n) || n <= 0) return list[0];
   return list[Math.min(n, list.length - 1)];

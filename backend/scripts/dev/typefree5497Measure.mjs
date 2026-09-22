@@ -206,8 +206,10 @@ const tfModel = {
 // uden evnen selv og loft kun for styrker vælges dem hvis loft-budget (snit
 // loft-faktor i populationen) ligger inden for BUDGET_TOL af v4's (typens
 // faktorer). Blandt dem vælges færrest "+1 evnepoint sænker grundværdien" på
-// glatheds-stikprøven (uden præmie, så kun prognosen måles). Uafgjort → nærmest
-// v4's budget. Ingen kandidat inden for tolerancen → nærmest budget.
+// glatheds-stikprøven (ny normal = uden præmie, så kun prognosen måles).
+// Uafgjort → nærmest v4's budget. Ingen kandidat inden for tolerancen →
+// nærmest budget. To familier: snit+spredning af de øvrige evner (fast gitter)
+// og blød maksimum af de øvrige (forskydningen løses så budgettet rammer v4's).
 const BUDGET_TOL = 0.01;
 const v4Budget = (() => {
   let s = 0, n = 0;
@@ -218,9 +220,9 @@ const v4Budget = (() => {
   return s / n;
 })();
 const tfBudget = (profile) => sum(base.map((p) => headroomBudget(p.abilities, profile))) / base.length;
-const gridSample = base.filter((p) => hashUnit(`sm:${p.r.id}`) < 0.03);
+const gridSample = base.filter((p) => hashUnit(`sm:${p.r.id}`) < 0.12);
 const negCount = (model) => {
-  let neg = 0, n = 0, worst = 0;
+  let neg = 0, over1 = 0, n = 0, worst = 0;
   for (const p of gridSample) {
     const b = predictBaseValueTypefree(p.rider, p.abilities, model, { premium: false });
     if (!(b > 0)) continue;
@@ -229,14 +231,26 @@ const negCount = (model) => {
       const d = predictBaseValueTypefree(p.rider, { ...p.abilities, [k]: p.abilities[k] + 1 }, model, { premium: false }) / b - 1;
       n++;
       if (d < -1e-9) neg++;
+      if (d < -0.01) over1++;
       worst = Math.min(worst, d);
     }
   }
-  return { n, negative: neg, worst };
+  return { n, negative: neg, negative_over_1pct: over1, worst };
 };
 const grid = [];
 for (const ref_sd of [0, 0.25, 0.5]) for (const width_sd of [0.5, 1, 2]) for (const width_floor of [2, 4]) {
   const profile = { reference: "leave_one_out", headroom: "strengths_only", ref_sd, width_sd, width_floor };
+  const budget = tfBudget(profile);
+  grid.push({ profile, budget, budget_diff_vs_v4: budget - v4Budget, smoothness_no_premium: negCount({ ...tfModel, profile }) });
+}
+for (const tau of [1, 2, 4]) for (const width of [4, 6, 8]) {
+  // Budgettet stiger monotont med forskydningen: halvering til 0,1 point.
+  let lo = -40, hi = 40;
+  for (let it = 0; it < 20; it++) {
+    const mid = (lo + hi) / 2;
+    if (tfBudget({ reference: "soft_max_others", headroom: "strengths_only", tau, width, offset: mid }) < v4Budget) lo = mid; else hi = mid;
+  }
+  const profile = { reference: "soft_max_others", headroom: "strengths_only", tau, width, offset: Math.round(((lo + hi) / 2) * 10) / 10 };
   const budget = tfBudget(profile);
   grid.push({ profile, budget, budget_diff_vs_v4: budget - v4Budget, smoothness_no_premium: negCount({ ...tfModel, profile }) });
 }
