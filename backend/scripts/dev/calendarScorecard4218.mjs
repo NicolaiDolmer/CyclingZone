@@ -56,7 +56,8 @@ import { dirname, join, resolve } from "node:path";
 import { buildTierMaterializationPlan, TIER_DENSITY } from "../../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
 import { arg as devArg } from "./lib/devCalendarArgs.mjs";
-import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
+import { resolveCalendarFinaleDraw } from "../../lib/calendarFinaleDraw.js";
+import { SEASON_RACE_DAY_TARGET } from "../../lib/calendarRaceDayTargets.js";
 import { scoreCalendarPlan, formatScorecard, alleBrud } from "../../lib/calendarScorecardReport.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -133,6 +134,7 @@ export function loadFixtureCalendar() {
   const quotas = Object.fromEntries(Object.entries(TIER_DENSITY).map(([t, d]) => [t, d * REAL_DAYS]));
   const { tierPlans } = buildTierMaterializationPlan({
     pools, catalog, from, realDays: REAL_DAYS, quotas, baseSeed: 1,
+    raceDayTarget: REAL_DAYS === 28 ? SEASON_RACE_DAY_TARGET[4] : null,
   });
 
   const externalIdByPoolRace = new Map(catalog.map((c) => [c.id, c.external_id ?? null]));
@@ -141,20 +143,23 @@ export function loadFixtureCalendar() {
   // Samme seed-vej som skrive-stien (#3347/#4104): race_class SKAL med, ellers
   // prissættes monumenterne på terrænbåndet i stedet for klassebåndet.
   const profilesByTier = new Map();
+  const seedRacesByTier = new Map();
   for (const plan of tierPlans) {
     const pool = (plan.pools ?? [])[0] ?? { raceRows: [] };
-    const byRace = new Map();
+    const seedRaces = [];
     for (const r of pool.raceRows ?? []) {
-      byRace.set(r.pool_race_id, generateRaceStageProfiles({
+      seedRaces.push({
         id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
         external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
         terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
         race_class: r.race_class ?? null,
         season_id: SEASON_UUID, season_variant: 0,
-      }));
+      });
     }
-    profilesByTier.set(plan.tier, byRace);
+    seedRacesByTier.set(plan.tier, seedRaces);
   }
+  const draws = resolveCalendarFinaleDraw({ tierPlans, seedRacesByTier, archetypeByPoolRace });
+  for (const [tier, draw] of draws.byTier) profilesByTier.set(tier, draw.profiles);
 
   return {
     tierPlans, profilesByTier, archetypeByPoolRace, kollisioner,
@@ -364,7 +369,7 @@ async function main() {
 
   const heading = mode === "db"
     ? `KALENDER-SCORECARD MOD DB — sæson ${loaded.seasonNumber} (races + race_stage_profiles, den skrevne kalender)`
-    : "S3-KALENDER SCORECARD";
+    : "S4-KALENDER SCORECARD";
   for (const line of formatScorecard(rapport, { heading, katalogLinje: loaded.katalogLinje ?? null })) {
     console.log(line);
   }
@@ -392,7 +397,7 @@ export function formatKendtTilstand(k) {
     for (const n of k.nye) ud.push(`   · ${n}`);
   }
   ud.push("", k.ok
-    ? "✅ Kun kendte brud. Gaten er grøn — men den er IKKE et bevis på at kalenderen er i orden."
+    ? (KENDTE_FIXTURE_BRUD.length ? "✅ Kun kendte brud. Gaten er grøn — men den er IKKE et bevis på at kalenderen er i orden." : "OK: Ingen kendte undtagelser; nye brud afvises.")
     : "Se linjerne ovenfor. Et nyt eller forsvundet brud kræver en beslutning, ikke en opdatering af tallet.");
   return ud;
 }
@@ -413,28 +418,7 @@ export function formatKendtTilstand(k) {
 //
 // DETTE ER KUN FIXTURE-GATEN. `buildSeasonCalendar.js --apply` er UAENDRET haard uden
 // override: en kalender med et af disse brud kan ikke skrives til prod.
-export const KENDTE_FIXTURE_BRUD = Object.freeze([
-  // Owner-approved scope 22/9: keep the measured residuals visible. This list
-  // only describes the fixture; applying a calendar still needs explicit go.
-  {
-    id: "saeson-hilly-udbrud",
-    moenster: /sæson: hilly slutter udbrud/,
-    hvorfor: "Den afgraensede kalibrering efterlader denne maalte finale-afvigelse i fixturen.",
-    lukkesAf: "Ejerens beslutning om resterende finale-afvigelser (#5405)",
-  },
-  {
-    id: "saeson-cobbles-fladt",
-    moenster: /sæson: cobbles slutter fladt/,
-    hvorfor: "Det ejer-godkendte brostensbaand efterlader denne maalte afvigelse. Den skjules ikke af et andet traek.",
-    lukkesAf: "Ejerens beslutning om resterende finale-afvigelser (#5405)",
-  },
-  {
-    id: "saeson-cobbles-udbrud",
-    moenster: /sæson: cobbles slutter udbrud/,
-    hvorfor: "Samme maalte brostensstikproeve efterlader ogsaa en afvigelse for udbrud.",
-    lukkesAf: "Ejerens beslutning om resterende finale-afvigelser (#5405)",
-  },
-]);
+export const KENDTE_FIXTURE_BRUD = Object.freeze([]);
 
 /** Del bruddene i kendte og nye, og find de kendte poster der ikke laengere rammer noget. */
 export function delEfterKendteBrud(brud, kendte = KENDTE_FIXTURE_BRUD) {

@@ -53,8 +53,8 @@ function stageRace(stages, id = `race-stage-${stages}`) {
   return { id, race_type: "stage_race", stages };
 }
 
-test("GENERATOR_VERSION er 5 (#3326: finale-drevne ordnings-arketyper)", () => {
-  assert.equal(GENERATOR_VERSION, 5);
+test("GENERATOR_VERSION er 6 (#5405: finale-draw provenance)", () => {
+  assert.equal(GENERATOR_VERSION, 6);
 });
 
 // ── v2 seed-identitet (#fix): samme rigtige løb → samme parcours i alle puljer ──

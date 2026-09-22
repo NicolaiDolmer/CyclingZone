@@ -981,6 +981,14 @@ Reglen stod i generatoren fra #4272, men `mountain`'s nedad-vægt fulgte den ikk
 
 **Ejer-valg 21/9 (#5405):** cobbles-baandene er rettet, saa midtpunkterne er komplementaere. Hilly bruger relative midtpunktvaegte; hvor midtpunkterne ikke summer til en hel fordeling, normaliserer generatoren dem samlet. De resterende finale-afvigelser skal rapporteres og kraever eksplicit --allow-finale-drift ved en senere ejer-godkendt apply.
 
+### Udskilt forslag: faelles variant-valg og proveniens (#5405)
+
+**Draft, afventer ejerbeslutning efter opdelingen 22/9.** Dette er ikke del af de tre godkendte finalejusteringer.
+
+En fuld saeson vurderer de eksisterende, begraensede parcours-varianter paa tvaers af divisioner med `calendarFinaleDraw.js`. Den oprindelige kombination bevares, hvis den bestaar; ellers vaelges den foerste gyldige kombination i stabil raekkefoelge. Ingen baand flyttes. Udtomt soegning bevarer den fejlede plan til rapporten og afviser apply foer skrivning. Delvis puljeaktivering beholder den lokale resolver. Rapport, gatePlan og materialisering bruger de samme profiler.
+
+Nye profiler stemples med generatorversion 6 i den eksisterende kolonne. Backfill og seed-divergens genskaber varianten ud fra de gemte profiler. Tvetydige, nyere eller ikke-reproducerbare data afviser omskrivning frem for at gaette. En tilt som standardgeneratoren ikke kan reproducere afvises ogsaa. Legacy-profiler beholder deres hidtidige resolver. Ingen migration eller prod-anvendelse er udfoert.
+
 ### Samlet bånd på tværs af alle etaper
 
 opad 25-32 % · fladt 32-40 % · nedad højst 10 % · udbrud 12-20 %.

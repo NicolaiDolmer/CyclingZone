@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { generateRaceStageProfiles } from "../lib/raceStageProfileGenerator.js";
 import { resolveVariantByRaceId } from "../lib/raceRouteRealismDraw.js";
+import { PERSISTED_PROFILE_SELECT } from "../lib/profileVariantProvenance.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -94,11 +95,11 @@ async function main() {
   const poolCountByTier = new Map();
   for (const d of divisions || []) poolCountByTier.set(d.tier, (poolCountByTier.get(d.tier) || 0) + 1);
 
-  const races = await fetchAllRows(() => supabase.from("races").select("id, name, pool_race_id, race_type, stages, league_division_id").eq("season_id", season.id).order("id"));
+  const races = await fetchAllRows(() => supabase.from("races").select("id, name, pool_race_id, race_type, race_class, stages, league_division_id").eq("season_id", season.id).order("id"));
   const catMeta = new Map((await fetchAllRows(() => supabase.from("race_pool").select("id, external_id, terrain_archetype").order("id"))).map((r) => [r.id, { external_id: r.external_id ?? null, terrain_archetype: r.terrain_archetype ?? null }]));
 
   // NUVÆRENDE DB-profiler.
-  const dbProfiles = await fetchAllRows(() => supabase.from("race_stage_profiles").select("race_id, stage_number, profile_type, finale_type, is_manual").order("race_id").order("stage_number"));
+  const dbProfiles = await fetchAllRows(() => supabase.from("race_stage_profiles").select(PERSISTED_PROFILE_SELECT).order("race_id").order("stage_number"));
   const currentByRaceId = new Map();
   for (const p of dbProfiles) {
     if (!currentByRaceId.has(p.race_id)) currentByRaceId.set(p.race_id, []);
@@ -121,7 +122,7 @@ async function main() {
   // Rapporten skal spejle det apply faktisk ville skrive, ellers ville et legitimt
   // gen-træk se ud som "parcours ændres" (falsk alarm).
   const variantByRaceId = resolveVariantByRaceId({
-    races: races.map((r) => ({ ...r, season_id: season.id })), catalogMeta: catMeta,
+    races: races.map((r) => ({ ...r, season_id: season.id })), catalogMeta: catMeta, persistedProfiles: dbProfiles,
     tierByDivision: new Map((divisions || []).map((d) => [d.id, d.tier])),
     onDraw: ({ tier, draw }) => console.log(`↻ Div ${tier}: kanonisk træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → gen-træk ${draw.attempt}${draw.exhausted ? " (UDTØMT)" : ""} (#3347)\n`),
   });
@@ -132,7 +133,7 @@ async function main() {
   for (const r of races) {
     if (manualRaceIds.has(r.id)) { freshByRaceId.set(r.id, currentByRaceId.get(r.id) || []); continue; }
     const m = catMeta.get(r.pool_race_id) || {};
-    const seedRace = { id: r.id, race_type: r.race_type, stages: r.stages, pool_race_id: r.pool_race_id, external_id: m.external_id, terrain_archetype: m.terrain_archetype, season_id: season.id, season_variant: variantByRaceId.get(r.id) ?? 0 };
+    const seedRace = { id: r.id, race_type: r.race_type, race_class: r.race_class, stages: r.stages, pool_race_id: r.pool_race_id, external_id: m.external_id, terrain_archetype: m.terrain_archetype, season_id: season.id, season_variant: variantByRaceId.get(r.id) ?? 0 };
     freshByRaceId.set(r.id, generateRaceStageProfiles(seedRace));
   }
 

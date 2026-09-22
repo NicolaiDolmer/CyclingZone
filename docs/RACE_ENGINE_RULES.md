@@ -153,6 +153,8 @@ og håndhævet af CHECK'en på `race_stage_profiles.profile_type`. Hver type har
 Hvornår hver type opstår, og hvilken terræn-familie den tælles i, står i
 [`CALENDAR_RULES.md`](CALENDAR_RULES.md) §5-§7b. Denne fil ejer hvad typen GØR ved løbet.
 
+Det udskilte draft-forslag om kalenderens variant-valg og genkoersels-proveniens staar i `CALENDAR_RULES.md` §7b (#5405). Det afventer ejerbeslutning.
+
 ### Grus (`gravel`) — ejer-direktiv 21/8, ramme 3/9 ([#4105](https://github.com/NicolaiDolmer/CyclingZone/issues/4105))
 
 Ordret 21/8: *"Terre di Toscana skal blive et grusvejs løb og ikke et brostensløb"*.
