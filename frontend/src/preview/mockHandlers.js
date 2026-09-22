@@ -123,16 +123,6 @@ export function mockProEnabled() {
   }
 }
 
-// #5435: "1" tænder rating-visningen "bedste rolle nu" i mocken (se /api/display-flags).
-export function mockBestRoleEnabled() {
-  try {
-    if (typeof localStorage === "undefined") return false;
-    return localStorage.getItem("cz_mock_best_role") === "1";
-  } catch {
-    return false;
-  }
-}
-
 export function restRows(table, requestUrl = "") {
   const url = new URL(requestUrl);
   switch (table) {
@@ -1338,11 +1328,12 @@ export function apiResponse(pathname, search = "") {
     };
   }
   if (pathname.endsWith("/api/online-count")) return { count: 1 };
-  // #5435: rating-kontakten. OFF som default her (Playwright deler denne fil —
-  // eksisterende snapshots skal vise dagens visning); en test tænder den med
-  // localStorage cz_mock_best_role = "1". Preview-deployet overstyrer i
+  // #5435: rating-kontakten. OFF her (Playwright deler denne fil, og den kører
+  // i Node — eksisterende snapshots skal vise dagens visning). En spec tænder
+  // den ved at registrere sin egen route på /api/display-flags (se
+  // rider-best-role-display.spec.js); preview-deployet overstyrer i
   // installPreviewMock.js, så ejeren ser den nye visning.
-  if (pathname.endsWith("/api/display-flags")) return { rider_best_role_display: mockBestRoleEnabled() };
+  if (pathname.endsWith("/api/display-flags")) return { rider_best_role_display: false };
   if (pathname.endsWith("/api/notifications")) return [];
   // #2884: skal ligge FØR /api/auctions — endsWith("/api/auctions") ville ellers
   // ikke fange den, men rækkefølgen holder de to adskilte hvis stien ændrer sig.

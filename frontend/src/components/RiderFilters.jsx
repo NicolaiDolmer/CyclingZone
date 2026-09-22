@@ -298,12 +298,13 @@ export default function RiderFilters({
     { value: "", label: t("fields.countryAll") },
     ...sortedNationalities.map(code => ({ value: code, label: getCountryName(code, countryLocale) })),
   ];
+  // #5435 (spec §2): med kontakten tændt er typefiltret anlægget ("Natural
+  // role"), og "Best role now" er sit eget felt ved siden af. Baren har ingen
+  // synlige labels, så "alle"-valget siger selv hvilket af de to felter det er.
   const typeOptions = [
-    { value: "", label: tTypes("filter.all") },
+    { value: "", label: bestRoleOn ? tTypes("natural.filterAll") : tTypes("filter.all") },
     ...RIDER_TYPE_KEYS.map(key => ({ value: key, label: tTypes(`types.${key}`) })),
   ];
-  // #5435 (spec §2): med kontakten tændt er typefiltret anlægget ("Natural
-  // role"), og "Best role now" er sit eget felt ved siden af.
   const typeFilterLabel = bestRoleOn ? tTypes("natural.roleLabel") : tTypes("filter.label");
   const bestRoleOptions = [
     { value: "", label: tTypes("bestRole.filterAll") },

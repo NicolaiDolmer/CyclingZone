@@ -3,7 +3,7 @@
 //
 // Kontakten kommer fra GET /api/display-flags. Playwright-mocken svarer OFF
 // (mockHandlers.js), så alle eksisterende specs og snapshots viser dagens
-// visning; her tændes den med localStorage cz_mock_best_role = "1".
+// visning; her tændes den med en egen route på /api/display-flags.
 //
 // Testen beviser tre ting:
 //   1. OFF er uændret: rating = egen rolle, kolonnen hedder "Type".
@@ -15,6 +15,10 @@ import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, collectBrowserErrors, evidenceShotPath } from "./fixtures.js";
 import { ratingForRole } from "../../src/lib/generated/displayRecipes.js";
 import { riderBestRole } from "../../src/lib/riderRating.js";
+
+// Login-fixturen er DA-låst, så siderne kan stå på dansk — begge sprog accepteres.
+const NATURAL_ROLE = /^(Natural role|Naturlig rolle)$/;
+const BEST_ROLE_NOW = /Best role now|Bedste rolle nu/;
 
 const CONSOLE_NOISE = [/WebSocket connection to .*supabase\.co.*failed/i, /ERR_NAME_NOT_RESOLVED/i];
 
@@ -67,15 +71,16 @@ async function mockRiders(page) {
   });
 }
 
+// Kontakten styres af serverens svar på GET /api/display-flags. Senest
+// registrerede route vinder over installNetworkMocks' generiske /api/**-mock.
 async function setup(page, { on }) {
   await stabilizePage(page);
   await installNetworkMocks(page);
-  await page.addInitScript((value) => {
-    try {
-      window.localStorage.setItem("cz_mock_best_role", value);
-      window.localStorage.setItem("cz_lang", "en");
-    } catch { /* ignore */ }
-  }, on ? "1" : "0");
+  await page.route("**/api/display-flags", route => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, { rider_best_role_display: on });
+  });
 }
 
 test.describe("Rytterdatabase: rating = bedste rolle nu bag kontakten (#5435)", () => {
@@ -91,7 +96,7 @@ test.describe("Rytterdatabase: rating = bedste rolle nu bag kontakten (#5435)", 
     await expect(row).toBeVisible();
     await expect(row.locator("td:nth-child(5)")).toHaveText(String(ratingForRole(CLIMBER_NOW, "sprinter")));
     await expect(page.locator("[data-best-role]")).toHaveCount(0);
-    await expect(page.getByRole("columnheader", { name: "Natural role" })).toHaveCount(0);
+    await expect(page.getByRole("columnheader", { name: NATURAL_ROLE })).toHaveCount(0);
   });
 
   test("kontakt ON: bedste rolle nu + rollenavn, Natural role-kolonne og filter", async ({ page }, testInfo) => {
@@ -111,12 +116,12 @@ test.describe("Rytterdatabase: rating = bedste rolle nu bag kontakten (#5435)", 
     const ratingCell = row.locator("td:nth-child(5)");
     await expect(ratingCell).toContainText(String(best.rating));
     await expect(ratingCell.locator("[data-best-role='climber']")).toBeVisible();
-    await expect(page.getByRole("columnheader", { name: "Natural role" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: NATURAL_ROLE })).toBeVisible();
 
     await page.screenshot({ path: evidenceShotPath("pr-screens/5435-riders-best-role-on-desktop.png"), fullPage: true });
 
     // Filter på bedste rolle nu: kun klatreren er tilbage.
-    const filter = page.getByLabel("Best role now").first();
+    const filter = page.getByLabel(BEST_ROLE_NOW).first();
     await filter.selectOption("climber");
     await expect(page.locator("table tbody tr", { hasText: "Climbnow" })).toBeVisible();
     await expect(page.locator("table tbody tr", { hasText: "Sprintnow" })).toHaveCount(0);
@@ -131,9 +136,9 @@ test.describe("Rytterprofil + Mit hold bag kontakten (#5435)", () => {
     await setup(page, { on: true });
     await login(page);
     await page.goto("/riders/rider-1");
-    await expect(page.getByText("Best role now").first()).toBeVisible();
+    await expect(page.getByText(BEST_ROLE_NOW).first()).toBeVisible();
     await expect(page.getByTestId("rider-hero-best-role")).toBeVisible();
-    await expect(page.getByTestId("rider-type-natural-label").first()).toHaveText(/Natural/i);
+    await expect(page.getByTestId("rider-type-natural-label").first()).toHaveText(/Natural|Naturlig/i);
     await expect(page.getByTestId("rider-hero-loft")).toHaveCount(0);
     await page.screenshot({ path: evidenceShotPath(`pr-screens/5435-profile-best-role-on-${testInfo.project.name}.png`), fullPage: true });
   });
@@ -142,7 +147,7 @@ test.describe("Rytterprofil + Mit hold bag kontakten (#5435)", () => {
     await setup(page, { on: false });
     await login(page);
     await page.goto("/riders/rider-1");
-    await expect(page.getByText("Rating", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/^Rating$/).first()).toBeVisible();
     await expect(page.getByTestId("rider-hero-best-role")).toHaveCount(0);
     await expect(page.getByTestId("rider-type-natural-label")).toHaveCount(0);
   });
@@ -152,7 +157,7 @@ test.describe("Rytterprofil + Mit hold bag kontakten (#5435)", () => {
     await setup(page, { on: true });
     await login(page);
     await page.goto("/team");
-    await expect(page.getByRole("columnheader", { name: "Natural role" }).first()).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: NATURAL_ROLE }).first()).toBeVisible();
     await expect(page.locator("table tbody [data-best-role]").first()).toBeVisible();
     await page.screenshot({ path: evidenceShotPath("pr-screens/5435-team-best-role-on-desktop.png"), fullPage: true });
   });
