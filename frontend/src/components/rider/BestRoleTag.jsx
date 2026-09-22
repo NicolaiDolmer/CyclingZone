@@ -15,12 +15,13 @@ import { useBestRoleDisplay } from "../../lib/useBestRoleDisplay.js";
 //   variant "short" (tabel-rækker, riderTypes.short.*) | "full" (kort, riderTypes.types.*)
 // Pakker en eksisterende rating-plade ind: kontakten slukket → pladen PRÆCIS
 // som før (ingen ekstra wrapper, så dagens snapshots står uændrede); tændt →
-// pladen + rollen på én linje.
+// pladen + rollen på én linje (på telefon under pladen, så den smalle tabel
+// ikke skubber navnekolonnen sammen).
 export function WithBestRole({ children, rider = null, role = null, variant = "short", className = "" }) {
   const on = useBestRoleDisplay();
   if (!on) return children;
   return (
-    <span className={`inline-flex items-center gap-1.5 ${className}`}>
+    <span className={`inline-flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 ${className}`}>
       {children}
       <BestRoleTag rider={rider} role={role} variant={variant} />
     </span>
