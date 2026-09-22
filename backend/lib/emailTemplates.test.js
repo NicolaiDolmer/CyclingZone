@@ -212,8 +212,8 @@ test("winback email: subject, opening line, rank/pool, bullets, CTA, dashboard l
   });
   assert.equal(t.subject, "We missed you. Season 4 starts 28 September.");
   assert.ok(t.html.includes("Team Velodrome is still yours, exactly as you left it."));
-  assert.ok(t.html.includes("and currently sits 4 in D3 Pool A."));
-  assert.ok(t.text.includes("and currently sits 4 in D3 Pool A."));
+  assert.ok(t.html.includes("and currently sits 4th in D3 Pool A."));
+  assert.ok(t.text.includes("and currently sits 4th in D3 Pool A."));
   assert.ok(t.html.includes("<strong>Training has been rebuilt for season 4.</strong>"));
   assert.ok(t.html.includes("<strong>A real board arrives with season 4.</strong>"));
   assert.ok(t.html.includes("<strong>A new race engine arrives with season 4.</strong>"));
@@ -277,7 +277,7 @@ test("winback email: language 'da' renders the Danish copy, no em-dash, no Engli
   assert.equal(t.subject, "Vi har savnet dig. Sæson 4 starter 28. september.");
   assert.ok(t.html.includes("Hej,"));
   assert.ok(t.html.includes("Team Velodrome er stadig dit, præcis som du forlod det."));
-  assert.ok(t.html.includes("og ligger lige nu som 4 i D3 Pool A."));
+  assert.ok(t.html.includes("og ligger lige nu som nr. 4 i D3 Pool A."));
   assert.ok(t.html.includes("<strong>En rigtig bestyrelse kommer med sæson 4.</strong>"));
   assert.ok(t.html.includes(">Gå til dit hold<"));
   assertNoEmDash(t, "winback da");
@@ -594,4 +594,12 @@ test("the shell changes did not touch the locked copy or the plain-text part", (
   const da = buildWelcomeEmail({ teamName: "Holdet", unsubscribeUrl: UNSUB_URL, language: "da" });
   assert.ok(da.html.includes("Velkommen til Cycling Zone, og tak fordi du oprettede Holdet."), "DA intro unchanged");
   assert.equal(da.html.includes('<html lang="da"'), true, "html lang follows the recipient language");
+});
+
+test("winback email renders the EN rank as an ordinal (1st, 2nd, 3rd, 11th, 22nd)", () => {
+  const cases = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 11: "11th", 12: "12th", 13: "13th", 21: "21st", 22: "22nd" };
+  for (const [rank, word] of Object.entries(cases)) {
+    const t = buildWinbackEmail({ teamName: "T", daysSinceLastSeen: 30, rankInDivision: Number(rank), poolLabel: "D3 Pool A", unsubscribeUrl: UNSUB_URL });
+    assert.ok(t.text.includes(`and currently sits ${word} in D3 Pool A.`), `rank ${rank}`);
+  }
 });

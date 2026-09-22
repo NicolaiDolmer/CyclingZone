@@ -521,6 +521,13 @@ export function buildRaceDigestEmail({ teamName, results, unsubscribeUrl, langua
 // templates use for the same URL -- welcome/day1/race_digest keep "Open your
 // dashboard" verbatim; only this template's button reads differently per the
 // owner-approved draft.
+// "4" -> "4th", "11" -> "11th", "22" -> "22nd" for the win-back rank clause.
+function englishOrdinal(n) {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  return `${n}${{ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th"}`;
+}
+
 const WINBACK_CTA = {
   en: "Go to your team",
   da: "Gå til dit hold",
@@ -618,7 +625,7 @@ export function buildWinbackEmail({ teamName, daysSinceLastSeen: _daysSinceLastS
         : `${teamWord} is still yours, exactly as you left it. It kept racing while you were away`;
     if (!hasRank) return `${base}.`;
     const pool = escaped ? escapeHtml(poolLabel) : poolLabel;
-    return lang === "da" ? `${base} og ligger lige nu som ${rankInDivision} i ${pool}.` : `${base} and currently sits ${rankInDivision} in ${pool}.`;
+    return lang === "da" ? `${base} og ligger lige nu som nr. ${rankInDivision} i ${pool}.` : `${base} and currently sits ${englishOrdinal(rankInDivision)} in ${pool}.`;
   }
   const openingLine = buildOpeningLine({ escaped: true });
   const openingLinePlain = buildOpeningLine({ escaped: false });
