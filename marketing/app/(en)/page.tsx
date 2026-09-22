@@ -8,6 +8,23 @@ export const metadata: Metadata = {
     canonical: "/",
     languages: { en: "/", da: "/da", "x-default": "/" },
   },
+  // openGraph er ikke deep-merged på tværs af segmenter i Next (kendt
+  // gotcha): url skal derfor sættes sammen med de felter der ellers ville
+  // gå tabt fra layout.tsx's openGraph (verificeret med next build + curl).
+  openGraph: {
+    type: "website",
+    siteName: "Cycling Zone",
+    locale: "en_US",
+    url: "/",
+    images: [
+      {
+        url: "https://cyclingzone.org/og-cycling-zone.png",
+        width: 1200,
+        height: 630,
+        alt: "Cycling Zone. Build your team. Race the world. A fair cycling manager MMO.",
+      },
+    ],
+  },
 };
 
 // Samme VideoGame-LD som frontendens useJsonLd("videogame") (#1405).
