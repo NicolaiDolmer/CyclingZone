@@ -285,18 +285,22 @@ test("misbrugsfilter: gentagne par, ensrettet par og prisafvigelse udelukkes", (
   for (let d = 1; d <= 4; d++) obs.push({ id: `ab${d}`, kind: "transfer", at: day(d), price: 100, base: 100, seller: "A", buyer: "B" });
   // Normale handler.
   obs.push({ id: "c1", kind: "transfer", at: day(5), price: 110, base: 100, seller: "C", buyer: "D" });
-  obs.push({ id: "e1", kind: "auction", at: day(6), price: 90, base: 100, seller: null, buyer: "E", distinctEligibleBidders: 3 });
+  obs.push({ id: "e1", kind: "auction", at: day(6), price: 90, startingPrice: 80, base: 100, seller: null, buyer: "E", distinctEligibleBidders: 3 });
   // Prisafvigelse (langt over båndet).
   obs.push({ id: "x1", kind: "transfer", at: day(7), price: 5000, base: 100, seller: "E", buyer: "F" });
   // Ingen konkurrence.
-  obs.push({ id: "n1", kind: "auction", at: day(8), price: 100, base: 100, seller: null, buyer: "F", distinctEligibleBidders: 1 });
+  obs.push({ id: "n1", kind: "auction", at: day(8), price: 100, startingPrice: 80, base: 100, seller: null, buyer: "F", distinctEligibleBidders: 1 });
+  // Flere budgivere, men prisen er ikke budt op over startprisen.
+  obs.push({ id: "s1", kind: "auction", at: day(10), price: 100, startingPrice: 100, base: 100, seller: null, buyer: "E", distinctEligibleBidders: 3 });
+  // Flere budgivere, men startprisen er ukendt: hævet pris kan ikke eftervises.
+  obs.push({ id: "s2", kind: "auction", at: day(11), price: 100, base: 100, seller: null, buyer: "E", distinctEligibleBidders: 3 });
   // AI-sælger i forhandlet handel.
   obs.push({ id: "ai", kind: "transfer", at: day(9), price: 100, base: 100, seller: "AI1", buyer: "F" });
   const { qualified, funnel } = qualifyMarketEvidence(obs, { humanTeams: H });
   assert.deepEqual(qualified.map((o) => o.id).sort(), ["c1", "e1"]);
   assert.equal(funnel.dropped_repeat_pair, 4);
   assert.equal(funnel.dropped_price_outlier, 1);
-  assert.equal(funnel.dropped_auction_no_competition, 1);
+  assert.equal(funnel.dropped_auction_no_competition, 3);
   assert.equal(funnel.dropped_transfer_not_human_to_human, 1);
 });
 
@@ -306,6 +310,41 @@ test("fælles komponent: niveauet (skæringen) anvendes ikke", () => {
   const common = fitCommon(rows, { lambda: 1 });
   assert.ok(Math.abs(common.gamma0 - 0.7) < 1e-6, "niveau-skel rapporteres");
   assert.ok(Math.abs(common.predict({ O: 50, age: 25 })) < 1e-6, "men flytter ikke priser");
+});
+
+test("fælles + lokal: et rent niveau-skel flytter ikke markedsværdien, heller ikke ved tæt evidens", () => {
+  const keys = ["a", "b"];
+  const rows = [];
+  for (let i = 0; i < 40; i++) {
+    rows.push({ abilities: { a: 50 + (i % 5), b: 50 + (i % 3) }, age: 24 + (i % 3), O: 40 + (i % 10), r: 0.7 });
+  }
+  const common = fitCommon(rows, { lambda: 1 });
+  const local = fitLocal(rows, { abilityKeys: keys, bandwidth: 0.5, k0: 3, common });
+  const x = { abilities: { a: 52, b: 51 }, age: 25, O: 45 };
+  assert.ok(local.evidence(x) > 0.6, "tæt evidens");
+  assert.ok(Math.abs(local.predict(x)) < 1e-6, "lokal suger ikke niveauet op");
+  assert.ok(Math.abs(marketAdjustedValue(1000, x, { common, local, weight: 1 }) - 1000) < 1e-3);
+
+  // Også under ridge-grænsen (n < 5) holdes niveauet ude af den lokale del.
+  const few = rows.slice(0, 3);
+  const commonFew = fitCommon(few, { lambda: 1 });
+  const localFew = fitLocal(few, { abilityKeys: keys, bandwidth: 0.5, k0: 3, common: commonFew });
+  assert.ok(Math.abs(commonFew.gamma0 - 0.7) < 1e-9, "niveau-skel rapporteres også ved få handler");
+  assert.ok(Math.abs(marketAdjustedValue(1000, few[0], { common: commonFew, local: localFew, weight: 1 }) - 1000) < 1e-3);
+});
+
+test("fælles + lokal: relative forskelle flyttes stadig oven på et niveau-skel", () => {
+  const keys = ["a", "b"];
+  const rows = [];
+  for (let i = 0; i < 40; i++) rows.push({ abilities: { a: 40 + (i % 5), b: 50 }, age: 25, O: 50, r: 0.7 });
+  for (let i = 0; i < 10; i++) rows.push({ abilities: { a: 90 + (i % 3), b: 90 }, age: 25, O: 50, r: 1.1 });
+  const common = fitCommon(rows, { lambda: 1 });
+  const local = fitLocal(rows, { abilityKeys: keys, bandwidth: 0.5, k0: 3, common });
+  const dear = local.predict({ abilities: { a: 91, b: 90 }, age: 25 });
+  const cheap = local.predict({ abilities: { a: 42, b: 50 }, age: 25 });
+  assert.ok(dear > 0.1, "dyr klynge løftes relativt");
+  assert.ok(cheap < 0, "resten sænkes relativt");
+  assert.ok(dear < 0.4 && cheap > -0.4, "niveauet (0,7) er ikke med i den lokale del");
 });
 
 test("lokal komponent krymper mod 0 uden evidens og er glat", () => {

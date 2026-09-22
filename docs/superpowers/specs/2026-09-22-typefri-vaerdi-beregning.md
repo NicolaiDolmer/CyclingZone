@@ -55,7 +55,7 @@ Pr. kvalificeret handel: `r = ln(betalt pris) − ln(V_grund ved handlen)` (evne
 
 ```
 fælles(x)  = γ1·(O − Ō) + γ2·(alder − ā) + γ3·(alder − ā)²        (ridge; skæringen γ0 rapporteres, anvendes ikke)
-lokal(x)   = Σ K(x,x_i)·(r_i − fælles(x_i)) / (Σ K(x,x_i) + k0)    (Gauss-kerne på evneprofil + alder)
+lokal(x)   = Σ K(x,x_i)·(r_i − γ0 − fælles(x_i)) / (Σ K(x,x_i) + k0)  (Gauss-kerne på evneprofil + alder; γ0 ud, så niveauet forbliver låst)
 evidens(x) = Σ K / (Σ K + k0)                                        (typefri afløser for computeSupport)
 V_marked   = V_grund · exp( clamp( w · (fælles + lokal), ±L ) )
 ```

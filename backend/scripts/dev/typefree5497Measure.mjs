@@ -336,7 +336,8 @@ for (const a of raw.auctions) {
   const p = exactPayment((a.is_youth ? "youth_auction_winner:" : "auction_winner:") + a.id, a.current_bidder_id);
   if (!p || p.amount >= 0 || -Number(p.amount) !== Number(a.current_price)) continue;
   obs.push({ id: a.id, kind: "auction", rider_id: a.rider_id, at: p.created_at, price: -Number(p.amount), season: seasons.get(p.season_id),
-    seller: a.seller_team_id, buyer: a.current_bidder_id, guaranteed: a.is_guaranteed_sale, distinctEligibleBidders: new Set(hb.map((b) => b.team_id)).size });
+    seller: a.seller_team_id, buyer: a.current_bidder_id, guaranteed: a.is_guaranteed_sale, startingPrice: a.starting_price,
+    distinctEligibleBidders: new Set(hb.map((b) => b.team_id)).size });
 }
 for (const o of raw.offers) {
   const b = exactPayment("transfer_buyer:" + o.id, o.buyer_team_id), s = exactPayment("transfer_seller:" + o.id, o.seller_team_id);

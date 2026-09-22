@@ -14,9 +14,11 @@
 //                 RAPPORTERES men anvendes ikke (krone-niveauet er låst til
 //                 simulationen; #3449-niveau-korrektionen er det eksisterende
 //                 værktøj til niveauet)
-//   lokal(x)  = Σ_i K(x, x_i)·(r_i − fælles(x_i)) / (Σ_i K(x, x_i) + k0)
+//   lokal(x)  = Σ_i K(x, x_i)·(r_i − γ0 − fælles(x_i)) / (Σ_i K(x, x_i) + k0)
 //               — Gauss-kerne på (evne-profil, alder); k0 krymper mod 0 hvor
 //                 der er få handler. Glat i x, så ét evnepoint giver ingen hop.
+//                 γ0 trækkes fra residualet, ellers suger kernen niveauet op
+//                 igen hvor evidensen er tæt (og niveauet er låst).
 //   evidens(x) = Σ_i K(x, x_i) / (Σ_i K(x, x_i) + k0)  ∈ [0,1)
 //               — typefri afløser for computeSupport (ingen same-type-match)
 //
@@ -50,6 +52,7 @@ const median = (xs) => {
 
 // obs: { id, kind: 'auction'|'transfer', at, price, seller|null, buyer,
 //        distinctEligibleBidders?, startingPrice?, guaranteed?, base (grundværdi) }
+//        En auktion kvalificerer kun med startingPrice sat og price > startingPrice.
 // humanTeams: Set af menneskehold-id'er.
 export function qualifyMarketEvidence(obs, { humanTeams, maxPairTrades = 3, config = FAIRPLAY_DEFAULTS } = {}) {
   const funnel = {
@@ -68,7 +71,10 @@ export function qualifyMarketEvidence(obs, { humanTeams, maxPairTrades = 3, conf
     if (!(Number(o.base) > 0) || !(Number(o.price) > 0)) { funnel.dropped_missing_base++; continue; }
     if (o.guaranteed) { funnel.dropped_guaranteed_sale++; continue; }
     if (o.kind === "auction") {
-      if (!(Number(o.distinctEligibleBidders) >= 2)) { funnel.dropped_auction_no_competition++; continue; }
+      // Hævet pris: ukendt startpris kan ikke eftervise konkurrence → udelukkes.
+      const start = o.startingPrice == null ? NaN : Number(o.startingPrice);
+      const raised = Number.isFinite(start) && Number(o.price) > start;
+      if (!(Number(o.distinctEligibleBidders) >= 2) || !raised) { funnel.dropped_auction_no_competition++; continue; }
     } else if (!isHuman(o.seller) || !isHuman(o.buyer)) {
       funnel.dropped_transfer_not_human_to_human++; continue;
     }
@@ -142,10 +148,14 @@ function solve(M) {
 }
 
 // rows: { O, age, r }. Returnerer { gamma0, gamma, center, predict(x) } hvor
-// predict udelader gamma0 (niveauet er låst).
+// predict udelader gamma0 (niveauet er låst). Under ridge-grænsen er gamma0
+// snittet af r, så fitLocal også dér kan holde niveauet ude.
 export function fitCommon(rows, { lambda = 1 } = {}) {
   const n = rows.length;
-  if (n < 5) return { gamma0: 0, gamma: [0, 0, 0], center: { O: 0, age: 0 }, predict: () => 0, n };
+  if (n < 5) {
+    const gamma0 = n ? rows.reduce((s, r) => s + r.r, 0) / n : 0;
+    return { gamma0, gamma: [0, 0, 0], center: { O: 0, age: 0 }, predict: () => 0, n };
+  }
   const oBar = rows.reduce((s, r) => s + r.O, 0) / n;
   const aBar = rows.reduce((s, r) => s + r.age, 0) / n;
   const feat = (x) => [1, (x.O - oBar) / 10, (x.age - aBar) / 5, ((x.age - aBar) / 5) ** 2];
@@ -187,7 +197,9 @@ export function makeKernelSpace(rows, abilityKeys) {
 
 export function fitLocal(rows, { abilityKeys, bandwidth = 0.5, k0 = 3, common } = {}) {
   const space = makeKernelSpace(rows, abilityKeys);
-  const pts = rows.map((r) => ({ e: space.embed(r), res: r.r - (common ? common.predict(r) : 0) }));
+  // Residual mod HELE det fælles fit (inkl. γ0); predict alene udelader γ0.
+  const level = common ? Number(common.gamma0) || 0 : 0;
+  const pts = rows.map((r) => ({ e: space.embed(r), res: r.r - level - (common ? common.predict(r) : 0) }));
   const h2 = 2 * bandwidth * bandwidth;
   const mass = (x) => {
     const e = space.embed(x);
