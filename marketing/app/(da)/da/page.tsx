@@ -7,6 +7,9 @@ export const metadata: Metadata = {
     canonical: "/da",
     languages: { en: "/", da: "/da", "x-default": "/" },
   },
+  openGraph: {
+    url: "/da",
+  },
 };
 
 const VIDEOGAME_LD = {

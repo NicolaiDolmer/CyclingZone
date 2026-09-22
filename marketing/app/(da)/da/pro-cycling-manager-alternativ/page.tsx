@@ -3,7 +3,7 @@ import PcmComparisonPage, { type PcmComparisonCopy } from "@/components/pcm-comp
 
 const TITLE = "Cycling Zone vs Pro Cycling Manager: Gratis alternativ";
 const DESCRIPTION =
-  "Sådan sammenlignes Cycling Zone med Pro Cycling Manager: gratis vs betalt, browser vs installation, live multiplayer-auktioner vs single-player karriere, vedvarende sæson vs 3D-etapesimulation.";
+  "Cycling Zone mod Pro Cycling Manager: gratis cycling manager i browseren. Ingen installation, live auktioner og en vedvarende sæson.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },

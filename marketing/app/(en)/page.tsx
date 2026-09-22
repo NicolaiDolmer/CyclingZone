@@ -8,6 +8,9 @@ export const metadata: Metadata = {
     canonical: "/",
     languages: { en: "/", da: "/da", "x-default": "/" },
   },
+  openGraph: {
+    url: "/",
+  },
 };
 
 // Samme VideoGame-LD som frontendens useJsonLd("videogame") (#1405).
