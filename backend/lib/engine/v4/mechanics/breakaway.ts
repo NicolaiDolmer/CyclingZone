@@ -251,6 +251,12 @@ function attemptFormation(
 
 const CHASE_ENGINE_KEYS: AbilityKey[] = ["endurance", "tempo"];
 const GC_THREAT_KEYS: AbilityKey[] = ["climbing", "tempo", "time_trial"];
+/**
+ * Feltets evne-reference (#4707) maales paa PRAECIS de evner jagt-modellens
+ * evne-afledte led selv laeser (sprint + GC-trussel + motor), saa referencen
+ * og leddene skalerer med samme faktor naar feltet bliver staerkere/svagere.
+ */
+const CHASE_REFERENCE_KEYS: AbilityKey[] = ["sprint", "climbing", "tempo", "time_trial", "endurance"];
 
 function collectiveAbility(riderIds: string[], entrants: Readonly<Record<string, Entrant>>, keys: AbilityKey[]): number {
   if (riderIds.length === 0 || keys.length === 0) return 0;
@@ -284,11 +290,38 @@ function finaleTypeChaseWeight(finaleType: FinaleType | null): number {
 }
 
 /**
+ * Evne-skalaen jagt-modellens evne-afledte led maales i (#4707): forholdet
+ * mellem kalibrerings-referencen (`abilityReferenceLevel`) og feltets EGEN
+ * kollektive evne paa `CHASE_REFERENCE_KEYS`. Et felt der er praecis saa
+ * staerkt som referencen faar skala 1; et felt der er dobbelt saa staerkt faar
+ * 0,5 — saa et evne-led der fordobles med feltet, forbliver uaendret.
+ * Et felt uden maalbar evne (alle 0) har ingen evne-led at skalere: 1.
+ */
+export function chaseAbilityScale(fieldRiderIds: string[], entrants: Readonly<Record<string, Entrant>>): number {
+  const fieldReference = collectiveAbility(fieldRiderIds, entrants, CHASE_REFERENCE_KEYS);
+  if (!(fieldReference > 0)) return 1;
+  return BREAKAWAY_EXTRA_TUNING.abilityReferenceLevel / fieldReference;
+}
+
+/**
  * Netto jagt-fordel for ÉT segment (eksporteret for direkte kontrakt-tests).
  * Positiv => jagt-gruppen lukker hullet; negativ => udbruddet trækker fra.
  * BOUNDED af stance-multiplikatoren (clamp forhindrer fortegns-omvending fra
  * en enkelt holdordre alene, jf. mor-spec §5's "spillerens valg aldrig kan
  * vaelte et loeb").
+ *
+ * SKALA-INVARIANT (#4707, RULES §7 raekke 14): de evne-afledte led
+ * (sprinter-interesse, GC-trussel, motorstyrke) maales RELATIVT til feltets
+ * egen evne-reference (`chaseAbilityScale`), mens sen-etape-uroen og udbruddets
+ * stoerrelse er strukturelle led (etape-fremdrift og rytterantal) uden en
+ * evne-akse. Foer stod de to strukturelle led som absolutte konstanter mod
+ * evne-led der skalerede med populationen: det samme scenarie gav en anden
+ * jagt ved median-evne 11 end ved 60, og enhver populationsaendring flyttede
+ * balancen mellem "hvem er i udbruddet" og "hvor langt er vi". Nu er netto-
+ * fordelen homogen af grad 0 i evne-niveauet: skaleres hele feltet (jagt,
+ * udbrud og reference) med samme faktor, er jagten identisk. Kalibrerings-
+ * referencen er valgt saa den aegte population ligger taet paa skala 1, saa
+ * bjerg-ankeret (overskuds-grenen i fart-modellen) ikke flyttes af omlaegningen.
  */
 export function computeNetChaseAdvantage(input: {
   chaseGroupRiderIds: string[];
@@ -297,13 +330,22 @@ export function computeNetChaseAdvantage(input: {
   finaleType: FinaleType | null;
   remainingKmFraction: number; // 0 (etapestart) .. 1 (maal)
   stance: number; // [-1, 1], se stanceSignal
+  /** Feltet evne-referencen maales paa (typisk alle ryttere i loebet). Default: jagt-gruppe + udbrud. */
+  fieldRiderIds?: string[];
 }): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
-  const sprinterInterest = collectiveAbility(input.chaseGroupRiderIds, input.entrants, ["sprint"]) * finaleTypeChaseWeight(input.finaleType);
-  const gcThreat = collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS);
+  const fieldRiderIds =
+    input.fieldRiderIds && input.fieldRiderIds.length > 0
+      ? input.fieldRiderIds
+      : [...input.chaseGroupRiderIds, ...input.breakawayRiderIds];
+  const abilityScale = chaseAbilityScale(fieldRiderIds, input.entrants);
+
+  const sprinterInterest =
+    collectiveAbility(input.chaseGroupRiderIds, input.entrants, ["sprint"]) * abilityScale * finaleTypeChaseWeight(input.finaleType);
+  const gcThreat = collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS) * abilityScale;
   const lateRaceUrgency = clamp(input.remainingKmFraction, 0, 1);
 
-  const enginePower = collectiveAbility(input.breakawayRiderIds, input.entrants, CHASE_ENGINE_KEYS);
+  const enginePower = collectiveAbility(input.breakawayRiderIds, input.entrants, CHASE_ENGINE_KEYS) * abilityScale;
   const countFactor = clamp(input.breakawayRiderIds.length / extra.breakawayReferenceCount, 0, 1.5);
 
   const chaseForce =
@@ -350,6 +392,10 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const remainingKmFraction = ctx.route.distance_km > 0 ? clamp(ctx.segment.to_km / ctx.route.distance_km, 0, 1) : 0;
   const stance = stanceSignal(parseBreakawayOrders(ctx.orders));
   const segmentLengthKm = Math.max(0, ctx.segment.to_km - ctx.segment.from_km);
+  // Evne-referencen (#4707) er hele det koerende felt — ikke kun de to grupper
+  // jagten staar imellem — saa en afhaegtet grupetto som "jagt-gruppe" ikke
+  // selv flytter skalaen den maales paa.
+  const fieldRiderIds = state.groups.flatMap((g) => g.rider_ids);
 
   let groups = state.groups;
   let changed = false;
@@ -369,6 +415,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       finaleType: ctx.route.finale_type,
       remainingKmFraction,
       stance,
+      fieldRiderIds,
     });
     // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
     // et. Farten (og dermed hvor meget et udbrud traekker fra) afgoeres af
