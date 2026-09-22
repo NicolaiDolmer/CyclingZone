@@ -52,7 +52,8 @@ export const TERRAIN_FINALE_BANDS = Object.freeze({
   high_mountain: Object.freeze({ up: [80, 100], down: [0, 15] }),
   mountain:      Object.freeze({ up: [45, 65], down: [20, 35], break: [10, 25] }),
   hilly:         Object.freeze({ up: [40, 60], flat: [15, 30], break: [15, 30] }),
-  cobbles:       Object.freeze({ flat: [30, 50], break: [40, 60] }),
+  // Ejer-godkendt 21/9 2026 (#5405), fastholdt ved scope-valg 22/9.
+  cobbles:       Object.freeze({ flat: [35, 55], break: [45, 65] }),
   // #4105/#4270 (EJER-BESLUTNING 3/9 kl. 10:00, valg A - lukker §11 punkt 9): grus faar
   // sit EGET baand, afledt af grusets egne finale-vaegte, i stedet for brostens.
   //
@@ -213,7 +214,7 @@ export function detectFinaleViolations({ stats, label = "sæson", strict = false
   for (const profile of BANDED_PROFILES) {
     const slot = stats.byProfile?.[profile];
     if (!slot || !slot.total) continue;
-    if (!strict && slot.total < MIN_SAMPLE) continue;
+    if (slot.total < MIN_SAMPLE) continue;
     const bands = TERRAIN_FINALE_BANDS[profile];
     for (const cls of FINALE_CLASSES) {
       check(slot.pct[cls], bands[cls] ?? [0, 0], slot.total, `${profile} slutter ${CLASS_LABELS[cls]}`);

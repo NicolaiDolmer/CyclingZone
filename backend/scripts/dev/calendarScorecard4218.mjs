@@ -414,39 +414,25 @@ export function formatKendtTilstand(k) {
 // DETTE ER KUN FIXTURE-GATEN. `buildSeasonCalendar.js --apply` er UAENDRET haard uden
 // override: en kalender med et af disse brud kan ikke skrives til prod.
 export const KENDTE_FIXTURE_BRUD = Object.freeze([
-  // #5405 (21/9, runde 2): listen er tilbage paa FEM linjer - faerre end de seks der stod
-  // her paa main foer sporet begyndte. Runde 1's fire ekstra poster (saeson-mountain-nedad,
-  // saeson-rolling-fladt, saeson-rolling-udbrud, tier4-mountain-udbrud) er FJERNET fordi de
-  // er lukket, ikke fordi de er tolereret:
-  //   · mountain-nedad blev lukket ved at flytte `mountain`-etapernes finale-vaegte til
-  //     baandenes MIDTE (raceStageProfileGenerator.js). descent-vaegten stod paa baandets
-  //     oeverste kant, modsat den regel filen selv skriver, og en vaegt paa kanten ligger
-  //     uden for baandet cirka halvdelen af traekkene naar stikproeven er 60-80 etaper.
-  //   · rolling-linjerne og D4's bjerg-udbrud var stikproeve-udfald af runde 1's tilt; de
-  //     forsvandt med den faelles tilt (som ogsaa holder regressionsvagten i
-  //     calendarCompositionCalibration.test.js groen) og staar ikke tilbage som stale poster.
-  // `saeson-hilly-udbrud` er til gengaeld TILBAGE: runde 1 lukkede den ved at haeve
-  // kuperet-vaegten kraftigt, men den vaegt drev snapshot-vagten uden for ±2 pp og kunne
-  // derfor ikke blive staaende. Andelen ligger under 1 pp over baandet paa en stikproeve
-  // hvor standardfejlen er 5 pp - det er stoej omkring en vaegt der allerede sigter mod
-  // midten, ikke en skaev generator.
+  // Owner-approved scope 22/9: keep the measured residuals visible. This list
+  // only describes the fixture; applying a calendar still needs explicit go.
   {
     id: "saeson-hilly-udbrud",
     moenster: /sæson: hilly slutter udbrud/,
-    hvorfor: "§7b's finale-baand paa saeson-aggregatet: kuperede etaper afgoeres lidt oftere i udbrud end baandet tillader. Andelen ligger under eet procentpoint over baandet paa en stikproeve hvor standardfejlen er fem gange saa stor, og `hilly`-vaegtene sigter allerede mod baandets midte. Filler-vaegt-kalibrering, ikke en placerings- eller katalog-fejl.",
-    lukkesAf: "§6b/§7b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
+    hvorfor: "Den afgraensede kalibrering efterlader denne maalte finale-afvigelse i fixturen.",
+    lukkesAf: "Ejerens beslutning om resterende finale-afvigelser (#5405)",
+  },
+  {
+    id: "saeson-cobbles-fladt",
+    moenster: /sæson: cobbles slutter fladt/,
+    hvorfor: "Det ejer-godkendte brostensbaand efterlader denne maalte afvigelse. Den skjules ikke af et andet traek.",
+    lukkesAf: "Ejerens beslutning om resterende finale-afvigelser (#5405)",
   },
   {
     id: "saeson-cobbles-udbrud",
     moenster: /sæson: cobbles slutter udbrud/,
-    hvorfor: "Samme kalibrering, maalt paa brostens-etaperne (n=23). Generatorens brostens-vaegte giver flere udbruds-afgoerelser end baandet. Kan IKKE lukkes ved at sigte mod midten som `mountain` blev det 21/9: brostens-baandenes to midtpunkter summer ikke til 100 %, saa en vaegt der rammer midten af det ene forlader kanten af det andet.",
-    lukkesAf: "§6b/§7b's genkalibrering (S5)",
-  },
-  {
-    id: "saeson-gravel-baand",
-    moenster: /sæson: gravel slutter/,
-    hvorfor: "DAEKKER TRE LINJER (opad/fladt/udbrud) fra EEN stikproeve paa n=2. Grus fik sit eget finale-baand 3/9 (#4272), men kataloget har kun to grus-etaper, saa hver enkelt etape flytter andelen 50 pp. Baandet kan ikke rammes foer forsyningen er stoerre - ingen vaegt kan lukke den.",
-    lukkesAf: "flere grus-loeb i kataloget (#4105/#3864), ikke en regel- eller pakker-aendring",
+    hvorfor: "Samme maalte brostensstikproeve efterlader ogsaa en afvigelse for udbrud.",
+    lukkesAf: "Ejerens beslutning om resterende finale-afvigelser (#5405)",
   },
 ]);
 

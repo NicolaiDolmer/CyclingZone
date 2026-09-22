@@ -961,7 +961,7 @@ Før #4272 målte kalenderen kun "slutter det for tit nedad?" — den håndhæve
 | `high_mountain` | 80-100 % | — | maks 15 % | — |
 | `mountain` | 45-65 % | — | 20-35 % | 10-25 % |
 | `hilly` | 40-60 % | 15-30 % | — | 15-30 % |
-| `cobbles` | — | 30-50 % | — | 40-60 % |
+| `cobbles` | — | 35-55 % | — | 45-65 % |
 | `gravel` | 15-35 % | 10-30 % | — | 45-65 % |
 | `rolling` | — | 25-45 % | — | 55-75 % |
 | `flat` | — | 90-100 % | — | — |
@@ -979,7 +979,7 @@ Reglen stod i generatoren fra #4272, men `mountain`'s nedad-vægt fulgte den ikk
 
 **Nedre grænse for hvor langt en nedad-vægt må sænkes:** nedkørsels-finalen er også et *gulv* (`descent_finale_min`, se nedenfor). En vægt-sænkning og et gulv trækker mod hinanden, og #4272 har allerede betalt én gang for et gulv båndet ikke kunne levere. Sænk aldrig `descent`-vægten uden at re-derivere gulvene i samme ombæring.
 
-**Hvor reglen ikke kan opfyldes:** `cobbles` har to bånd (fladt 30-50 %, udbrud 40-60 %) hvis midtpunkter summer til 90, ikke 100. Der findes derfor ingen vægt der rammer begge midter, og `cobbles slutter udbrud` står som kendt afvigelse i `KENDTE_FIXTURE_BRUD` indtil båndene selv bliver justeret.
+**Ejer-valg 21/9 (#5405):** cobbles-baandene er rettet, saa midtpunkterne er komplementaere. Hilly bruger relative midtpunktvaegte; hvor midtpunkterne ikke summer til en hel fordeling, normaliserer generatoren dem samlet. De resterende finale-afvigelser skal rapporteres og kraever eksplicit --allow-finale-drift ved en senere ejer-godkendt apply.
 
 ### Samlet bånd på tværs af alle etaper
 
@@ -991,10 +991,14 @@ Et løbs parcours er seedet på løbets **virkelige identitet** (`external_id`),
 
 | Lag | Mod hvad | Tolerance |
 |---|---|---|
-| **Sæson-aggregatet** (alle fire divisioner) | det rå bånd | ingen |
+| **Sæson-aggregatet** (alle fire divisioner) | det rå bånd, kun terræner med n ≥ 12 | ingen |
 | **Pr. division** | båndet + 2 standardfejl, kun ved n ≥ 12 | stikprøve-afhængig |
 
 Scorecardet markerer med `✗` når en andel ligger uden for det **rå** bånd, også når stikprøve-tillægget bærer den igennem — en strukturel skævhed er dermed synlig, ikke skjult bag et grønt flueben.
+
+Terræner under stikproeveminimum vises som `n<min, kun rapport` i begge lag. De er ikke kvalitetsgodkendt og producerer ikke terræn-båndbrud. Ukendte finale-typer og det samlede saeson-baand kontrolleres fortsat.
+
+**Konsekvens af ejer-valget 22/9:** i den aktuelle kalender gates `gravel` og `itt_hilly` ikke paa finale-baand nogen steder, hverken pr. division eller paa saeson-aggregatet, fordi begge stikproever er under minimum. De er kun rapport, ikke kvalitetsgodkendt. Ukendte finale-typer og det samlede saeson-baand kontrolleres fortsat. Faelles variant-valg, generatorversion og backfill-proveniens er udskilt til en separat draft; de er ikke del af dette valg.
 
 ### Afledt konsekvens: `descent_finale_min`
 

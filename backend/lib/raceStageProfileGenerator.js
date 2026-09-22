@@ -159,8 +159,8 @@ const FINALE_WEIGHTS_BY_PROFILE = Object.freeze({
   flat:          Object.freeze([{ value: "bunch_sprint", weight: 70 }, { value: "reduced_sprint", weight: 30 }]),
   // fladt 25-45 % → 35 · udbrud 55-75 % → 65.
   rolling:       Object.freeze([{ value: "breakaway", weight: 65 }, { value: "reduced_sprint", weight: 20 }, { value: "bunch_sprint", weight: 15 }]),
-  // opad 40-60 % → 50 · fladt 15-30 % → 25 · udbrud 15-30 % → 25.
-  hilly:         Object.freeze([{ value: "punch", weight: 50 }, { value: "reduced_sprint", weight: 25 }, { value: "breakaway", weight: 25 }]),
+  // Relative band midpoints; weightedPick normalizes their sum (#5405).
+  hilly:         Object.freeze([{ value: "punch", weight: 50 }, { value: "reduced_sprint", weight: 22.5 }, { value: "breakaway", weight: 22.5 }]),
   // opad 45-65 % · nedad 20-35 % · udbrud 10-25 %. Var 60 % descent — kernen i #4272.
   //
   // #5405 (21/9): descent-vægten stod på 34 — båndets ØVERSTE kant (20-35), ikke dets
@@ -183,7 +183,7 @@ const FINALE_WEIGHTS_BY_PROFILE = Object.freeze({
   itt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
   itt_hilly:     Object.freeze([{ value: "solo_tt", weight: 100 }]),
   ttt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
-  // fladt 30-50 % → 45 · udbrud 40-60 % → 55.
+  // Owner-approved complementary bands, 21/9 (#5405): midpoint targets unchanged.
   cobbles:       Object.freeze([{ value: "reduced_sprint", weight: 45 }, { value: "breakaway", weight: 55 }]),
   // gravel HAR sit eget baand siden ejer-beslutning 3/9 (#4105/#4270, valg A) — kun
   // `classic` mangler stadig et (RACE_ENGINE_RULES.md §"Grus", #4911/#4937). Baandet
