@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook } from './wave-policy.mjs';
+import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook, updateWave, withIdleWaveLock } from './wave-policy.mjs';
+import { assertWaveOwnership } from './wave-ownership.mjs';
 
 const now = 1790000000000;
 const track = (n) => ({ issue: n, branch: `codex/${n}-fixture`, ownership: [`fixtures/${n}.txt`], tier: 'TARGETED' });
@@ -78,12 +79,12 @@ test('Claude Workflow admission uses the same code and cap; dry-run never reserv
     scriptPath: 'C:/Dev/CyclingZone/.claude/workflows/wave.js', args: { tracks: [track(1)] },
   } };
   const full = async () => [1, 2, 3, 4, 5, 6, 7, 8].map(number => ({ number }));
-  await assert.rejects(handleHook(payload, dir, full, now), /PR/);
+  await assert.rejects(handleHook(payload, dir, full, now, () => undefined, () => process.pid), /PR/);
   payload.tool_input.args.dryRun = true;
   await handleHook(payload, dir, full, now);
   assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
   payload.tool_input.args.dryRun = false;
-  await handleHook(payload, dir, async () => [], now);
+  await handleHook(payload, dir, async () => [], now, () => undefined, () => process.pid);
   assert.equal(JSON.parse(readFileSync(path.join(dir, 'wave-active.json'))).runtime, 'claude');
 });
 
@@ -128,4 +129,105 @@ test('pre-merge idle check refuses even expired or legacy markers', t => {
   const blocked = call();
   assert.equal(blocked.status, 2);
   assert.match(blocked.stderr, /merge blocked/);
+});
+
+test('release CLI cannot remove another live session marker by knowing its waveId', t => {
+  const dir = fixture(t);
+  const marker = { waveId: 'foreign-live', runtime: 'codex', owner: 'another-session', pid: process.pid,
+    ownerProcess: { pid: process.pid, createdAt: 'not-the-admitted-process', bootId: 'unknown' } };
+  const file = path.join(dir, 'wave-active.json');
+  writeFileSync(file, JSON.stringify(marker));
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('./wave-policy.mjs', import.meta.url)),
+    'release', '--run-dir', dir, '--wave-id', marker.waveId, '--children-stopped'], { encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Another session owns this wave/);
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), marker);
+});
+
+test('same Claude session passes, another session is blocked, including resumeFromRunId', async t => {
+  const dir = fixture(t);
+  const wave = await acquireWave(dir, { ...request('claude'), workflowRunId: 'fixture-run' }, async () => []);
+  const input = { tool_name: 'Agent', tool_input: { prompt: 'WAVE-LANE: fixture' } };
+  await handleHook({ ...input, session_id: wave.owner }, dir);
+  await assert.rejects(handleHook({ ...input, session_id: 'foreign-session' }, dir), /Another session owns this wave/);
+  const resume = { tool_name: 'Workflow', tool_input: { resumeFromRunId: 'fixture-run' } };
+  await handleHook({ ...resume, session_id: wave.owner }, dir);
+  await assert.rejects(handleHook({ ...resume, session_id: wave.owner, tool_input: { resumeFromRunId: 'older-run' } }, dir), /does not match/);
+  await assert.rejects(handleHook({ ...resume, session_id: 'foreign-session' }, dir), /Another session owns this wave/);
+  assert.equal(JSON.parse(readFileSync(path.join(dir, 'wave-active.json'))).waveId, wave.waveId);
+});
+
+test('resume binding comes only from the admitted invocation response', async t => {
+  const dir = fixture(t);
+  const invocation = { session_id: 'fixture-owner', tool_use_id: 'fixture-invocation', tool_name: 'Workflow',
+    tool_input: { name: 'wave', args: { tracks: [track(1)] } } };
+  await handleHook(invocation, dir, async () => [], now, () => undefined, () => process.pid);
+  const response = { ...invocation, hook_event_name: 'PostToolUse', tool_response: { runId: 'current-run' } };
+  await handleHook({ ...response, tool_use_id: 'old-invocation' }, dir);
+  const resume = { session_id: invocation.session_id, tool_name: 'Workflow', tool_input: { resumeFromRunId: 'current-run' } };
+  await assert.rejects(handleHook(resume, dir), /does not match/);
+  await handleHook(response, dir);
+  await handleHook(resume, dir);
+  await assert.rejects(handleHook({ ...response, tool_response: { runId: 'another-run' } }, dir), /Cannot change admitted/);
+});
+
+test('idle merge lock excludes admission through the whole merge callback', async t => {
+  const dir = fixture(t);
+  let admission;
+  withIdleWaveLock(dir, () => { admission = acquireWave(dir, request(), async () => []); });
+  await assert.rejects(admission, /Wave state lock busy/);
+  assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+  const wave = await acquireWave(dir, request(), async () => []);
+  assert.throws(() => withIdleWaveLock(dir, () => assert.fail('must not execute a merge')), /merge blocked/);
+  releaseWave(dir, wave.waveId, true);
+  assert.equal(withIdleWaveLock(dir, () => 'fixture-merge-complete'), 'fixture-merge-complete');
+});
+
+test('resumeFromRunId without an admitted wave is rejected', async t => {
+  await assert.rejects(handleHook({ session_id: 'fixture-owner', tool_name: 'Workflow',
+    tool_input: { resumeFromRunId: 'fixture-run' } }, fixture(t)), /resume.*admission/i);
+});
+
+test('process proof accepts the admitted tree and rejects foreign trees, PID reuse and session mismatch', () => {
+  const wave = { owner: 'session-a', ownerProcess: { pid: 10, createdAt: '100', bootId: 'boot' } };
+  const observed = { bootId: 'boot', processes: [{ pid: 10, ppid: 1, createdAt: '100' },
+    { pid: 11, ppid: 10, createdAt: '110' }, { pid: 20, ppid: 1, createdAt: '120' }] };
+  assertWaveOwnership(wave, observed, 10, 'session-a');
+  assertWaveOwnership(wave, observed, 11, 'session-a');
+  assert.throws(() => assertWaveOwnership(wave, observed, 20, 'session-a'), /Another session owns/);
+  assert.throws(() => assertWaveOwnership(wave, observed, 11, 'session-b'), /Another session owns/);
+  assert.throws(() => assertWaveOwnership(wave, { ...observed, bootId: 'new-boot' }, 11), /Another session owns/);
+  assert.throws(() => assertWaveOwnership(wave, { ...observed, processes: observed.processes.map(p => p.pid === 10 ? {...p, createdAt: '105'} : p) }, 11), /Another session owns/);
+});
+
+test('process ownership and started dispatch cannot be rewritten into recoverable history', async t => {
+  const dir = fixture(t);
+  const wave = await acquireWave(dir, request(), async () => []);
+  assert.throws(() => updateWave(dir, wave.waveId, current => ({ ...current, pid: 999 })), /Cannot change wave ownership/);
+  assert.throws(() => updateWave(dir, wave.waveId, current => { current.ownerProcess.pid = 999; return current; }), /Cannot change wave ownership/);
+  updateWave(dir, wave.waveId, current => ({ ...current, dispatchStarted: true }));
+  assert.throws(() => updateWave(dir, wave.waveId, current => ({ ...current, dispatchStarted: false })), /Cannot erase/);
+});
+
+test('release CLI in the admitted process tree succeeds', async t => {
+  const dir = fixture(t);
+  const wave = await acquireWave(dir, request(), async () => []);
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('./wave-policy.mjs', import.meta.url)),
+    'release', '--run-dir', dir, '--wave-id', wave.waveId, '--children-stopped'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+});
+
+test('merge queue dry-run stops at an existing wave before GitHub checks', { skip: process.platform !== 'win32' }, t => {
+  const root = fixture(t);
+  const init = spawnSync('git', ['init', '--quiet', root], { encoding: 'utf8' });
+  assert.equal(init.status, 0, init.stderr);
+  const run = path.join(root, '.claude', 'run');
+  mkdirSync(run, { recursive: true });
+  writeFileSync(path.join(run, 'wave-active.json'), '{"fixture":true}');
+  const result = spawnSync('pwsh', ['-NoProfile', '-File', fileURLToPath(new URL('./merge-queue.ps1', import.meta.url)),
+    '-Pr', '1', '-DryRun'], { cwd: root, encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stdout + result.stderr, /Wave marker exists|Aktiv boelgemarkoer/);
+  assert.equal(existsSync(path.join(run, 'wave-active.json')), true);
 });

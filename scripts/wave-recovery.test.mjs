@@ -46,8 +46,8 @@ test('unknown process snapshot, missing owner PID, or incomplete spawn never rel
   assert.throws(() => recoverWave(dir, expected, () => { throw Error('unavailable'); }), /unavailable/);
   updateWave(dir, expected.waveId, wave => ({ ...wave, children: [{ key: 'worker', state: 'starting' }] }));
   assert.throws(() => recoverWave(dir, expected, sameBoot([])), /incomplete/);
-  updateWave(dir, expected.waveId, wave => ({ ...wave, children: [], pid: null }));
-  assert.throws(() => recoverWave(dir, expected, sameBoot([])), /owner PID/);
+  const missingOwner = fixture(t, { children: [], pid: null });
+  assert.throws(() => recoverWave(missingOwner.dir, expected, sameBoot([])), /owner PID/);
   assert.equal(fs.existsSync(path.join(dir, 'wave-active.json')), true);
 });
 
@@ -72,8 +72,8 @@ test('Windows recovery measures a real stopped owner and refuses the live test p
   assert.equal(child.status, 0);
   const { dir } = fixture(t, { pid: process.pid, bootId: processSnapshot().bootId, dispatchStarted: false, children: [] });
   assert.throws(() => recoverWave(dir, expected), /alive/);
-  updateWave(dir, expected.waveId, wave => ({ ...wave, pid: child.pid }));
-  assert.equal(recoverWave(dir, expected).released, true);
+  const stopped = fixture(t, { pid: child.pid, bootId: processSnapshot().bootId, dispatchStarted: false, children: [] });
+  assert.equal(recoverWave(stopped.dir, expected).released, true);
 });
 
 test('recovery after reboot does not kill an old watch PID reused by another process', t => {

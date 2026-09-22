@@ -28,13 +28,21 @@ Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hov
 | Worker-isolation | Eget worktree + CLI cwd/sandbox. Rettigheder skal probes i den konkrete installation |
 | Reviewer | Frisk read-only CLI-proces; workerens egen godkendelse accepteres ikke |
 | Semafor | Maks 2 for kommandoer gennem wrapperen. Wrapping er fortsat brief-/reviewdisciplin |
-| Oprydning | Kun eget waveId og registreret watch-identitet; ingen global proces- eller worktree-pruning |
+| Oprydning | Optaget ejerproces, dens levende procestrae og registreret watch-identitet; ingen global proces- eller worktree-pruning |
 | Claudes setup/cleanup | Hookens admission er kode; setup-agentens rapport og terminal-observation er stadig agentdisciplin |
 | Merge | Kun efter ejerens ordrette `merge`, separat via `scripts/merge-queue.ps1 -Pr "N"`; runneren merger aldrig |
 
 Rapporten ligger lokalt under `.claude/run/waves/<waveId>/report.json`; hver lane har privat scratch med brief, processtatus og output. Publicer en anonymiseret status og testbevis paa issue/PR inden close-out. Lokale logs er ikke varigt handoff. Maaling: tid til merget PR, ejerens aktive minutter (ejer-oplyst) og reviewrettelser. Ingen hastighedsgevinst paastaas ud fra fixture-tests.
 
 Recovery: kontroller markoer, processtatus, branch, dirty filer, pushes og eksisterende PR. Bekraeft at gammel writer er stoppet foer nyt skrivearbejde i samme worktree. En ukendt terminaltilstand beholder markoeren. En ny normal `--run` afviser eksisterende worktree/PR; recovery maa ikke stiltiende bygge samme spor igen.
+
+### Ejerskab ved release og resume (22/9, #5468)
+
+Normal `release --wave-id ... --children-stopped` kraever det procesbevis der blev optaget ved admission: samme boot, ejer-PID og startidentitet, og kalderen skal vaere ejeren eller dens levende efterkommer. Et kendt waveId eller en paastand om stoppede boern giver ikke adgang. Manglende bevis, PID-genbrug og et fremmed procestrae bevarer markoeren med `Another session owns this wave`. Identiteten kan ikke omskrives, og startet dispatch kan ikke nulstilles.
+
+Claude-admission kraever en entydig ejerproces i harness-registret. `Workflow({resumeFromRunId})` er ikke ny admission: den kraever en eksisterende Claude-markoer, samme session, samme procestrae og netop det run-ID der er bundet til admission. PostToolUse binder kun `tool_response.runId` fra det oprindelige `tool_use_id`; manglende eller ukendt harness-metadata holder resume lukket. Uden aktiv admission afvises resume; start i stedet en ny normal boelge efter lovlig recovery. Recovery efter genstart og ejerens interaktive genvej har deres egne beviskrav nedenfor. Dette er koordinationskontrol, ikke en fil-ACL mod vilkaarlig kode under samme OS-bruger.
+
+Merge-koeen kalder `assert-idle` efter ventepunktet og igen umiddelbart foer merge. Selve merge-kaldet og alle gh-retries koeres under samme state-laas som admission via `guarded-merge`; en boelge kan derfor ikke starte mellem sidste tjek og merge. En markoer blokerer ogsaa dry-run. Et hard-crash mens state-laasen holdes kraever samme genstartsvej som anden state-lock-recovery.
 
 ### Recovery-kommando (Windows, #5468)
 
@@ -72,7 +80,7 @@ Agenter maa ALDRIG allokere en PTY eller indtaste saetningen for ejeren. TTY-kon
 
 Merge kraever BADE ejerens ordrette `merge` OG at hovedrepoets `.claude/run/wave-active.json` er vaek. Koer `node scripts/wave-policy.mjs assert-idle` fra det bekraeftede repo/worktree umiddelbart foer merge. Den udleder faelles run-mappe fra Git's common directory. Enhver eksisterende markoer stopper handlingen, uanset format eller alder.
 
-Hook-timeout er 60 sekunder, over GitHub-kaldets deadline paa 30 plus boot-maalingens 15. Foerste rigtige Claude-boelge efter merge er praecis eet ejer-valgt, ufarligt docs-spor i eget worktree, ingen produktkode/prod. Kontroller i den rigtige session: Workflow med `scriptPath` leverer `session_id`, markoeren har korrekt runtime/owner/PID/bootId, egne `WAVE-LANE:` og `WAVE-REVIEW:` passerer, og markerfrigivelse sker efter observeret stop. Fixture-tests erstatter ikke denne klientproeve.
+Hook-timeout er 90 sekunder, med plads til GitHub-, boot- og procesidentitetsmaalingerne. Foerste rigtige Claude-boelge efter merge er praecis eet ejer-valgt, ufarligt docs-spor i eget worktree, ingen produktkode/prod. Sporet SKAL have en konkret, ejer-valgt fil i ownership, `ownership: ["docs/audits/5468-first-wave-smoke.md"]`; ingen tom ownership-liste eller generel docs-glob. Kontroller i den rigtige session: Workflow med `scriptPath` leverer `session_id`, markoeren har korrekt runtime/owner/PID/bootId, egne `WAVE-LANE:` og `WAVE-REVIEW:` passerer, og markerfrigivelse sker efter observeret stop. Fixture-tests erstatter ikke denne klientproeve.
 
 Fejler proeven: stop og observer alle egne agenter, behold ukendte claims, og brug ovenstaaende recovery naar kriterierne er opfyldt. Rollback sker i en ny isoleret branch med `git revert --no-commit <merge-SHA-for-5468>`, guard-commit, push og en ejer-godkendt revert-PR. Det konkrete merge-SHA og hele rollback-kommandoen skal staa i PR-body ved merge. Main eller hoved-checkoutet resettes aldrig.
 

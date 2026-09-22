@@ -5,7 +5,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { admissionOwnerProcess, assertWaveOwnership, ownershipSnapshot } from './wave-ownership.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
 export const PR_LIMIT = 8;
@@ -88,6 +89,14 @@ export function withWaveStateLock(dir, action) {
   finally { fs.rmdirSync(lock); } // Only this invocation's empty lock directory.
 }
 
+export function withIdleWaveLock(dir, action) {
+  fs.mkdirSync(dir, { recursive: true });
+  return withWaveStateLock(dir, () => {
+    if (fs.existsSync(path.join(dir, 'wave-active.json'))) throw Error('Wave marker exists; merge blocked');
+    return action();
+  });
+}
+
 export function requireModernWave(wave) {
   if (typeof wave?.waveId !== 'string' || !/^[A-Za-z0-9_-]{1,120}$/.test(wave.waveId) || !wave.owner || !['claude', 'codex'].includes(wave.runtime)) {
     throw Error('Legacy wave marker: missing waveId/runtime/owner. Let the original Claude wave finish; do not overwrite or automatically recover it.');
@@ -102,8 +111,13 @@ export function updateWave(dir, waveId, transform) {
 function updateWaveLocked(dir, waveId, transform) {
   const wave = requireModernWave(readWave(dir));
   if (wave.waveId !== waveId) throw Error('Wave owner mismatch');
+  const identity = JSON.stringify([wave.waveId, wave.owner, wave.runtime, wave.pid, wave.bootId, wave.ownerProcess, wave.admissionToolUseId]);
+  const dispatched = wave.dispatchStarted === true;
+  const boundRun = wave.workflowRunId;
   const next = transform(wave);
-  if (next.waveId !== wave.waveId || next.owner !== wave.owner || next.runtime !== wave.runtime) throw Error('Cannot change wave ownership');
+  if (JSON.stringify([next.waveId, next.owner, next.runtime, next.pid, next.bootId, next.ownerProcess, next.admissionToolUseId]) !== identity) throw Error('Cannot change wave ownership');
+  if (boundRun && next.workflowRunId !== boundRun) throw Error('Cannot change admitted workflow run');
+  if (dispatched && next.dispatchStarted !== true) throw Error('Cannot erase wave dispatch history');
   const target = path.join(dir, 'wave-active.json');
   const temporary = path.join(dir, `.wave-${waveId}-${randomUUID()}.tmp`);
   try {
@@ -132,7 +146,8 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   validateTracks(request.tracks);
   if (!['claude', 'codex'].includes(request.runtime) || !request.owner || !Number.isFinite(request.now)) throw Error('runtime, owner and now required');
   fs.mkdirSync(dir, { recursive: true });
-  const wave = { ...request, waveId: randomUUID(), startedAt: new Date(request.now).toISOString(), verifyMax: 2, state: 'admitting' };
+  const ownerProcess = admissionOwnerProcess(request.pid ?? process.pid);
+  const wave = { ...request, ownerProcess, waveId: randomUUID(), startedAt: new Date(request.now).toISOString(), verifyMax: 2, state: 'admitting' };
   const file = path.join(dir, 'wave-active.json');
   try { withWaveStateLock(dir, () => fs.writeFileSync(file, JSON.stringify(wave, null, 2), { flag: 'wx' })); }
   catch (e) { if (e.code === 'EEXIST') throw Error('wave-active.json exists; inspect owner, never expire or overwrite it'); throw e; }
@@ -147,14 +162,20 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   }
 }
 
-export function releaseWave(dir, waveId, childrenStopped, observedBootId) {
-  return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped, observedBootId));
+export function releaseWave(dir, waveId, childrenStopped) {
+  return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped));
 }
 
-function releaseWaveLocked(dir, waveId, childrenStopped, observedBootId) {
+function releaseWaveLocked(dir, waveId, childrenStopped) {
   if (!childrenStopped) throw Error('All children must be observed stopped before release');
   const wave = requireModernWave(readWave(dir));
   if (!waveId || wave.waveId !== waveId) throw Error('Wave owner mismatch; marker retained');
+  assertWaveOwnership(wave, ownershipSnapshot());
+  stopWaveWatch(wave);
+  fs.unlinkSync(path.join(dir, 'wave-active.json'));
+}
+
+export function stopWaveWatch(wave, observedBootId) {
   if (wave.watchPid && !(observedBootId && wave.bootId && observedBootId !== wave.bootId)) {
     // PID reuse must never turn cleanup into a kill of somebody else's process.
     const pid = wave.watchPid;
@@ -162,18 +183,39 @@ function releaseWaveLocked(dir, waveId, childrenStopped, observedBootId) {
     execFileSync('pwsh', ['-NoProfile', '-Command',
       '$p = Get-Process -Id ' + pid + ' -ErrorAction SilentlyContinue; if ($p) { if ($p.StartTime.ToUniversalTime().Ticks.ToString() -ne ' + "'" + wave.watchStarted + "'" + ') { throw "Watch identity changed" }; Stop-Process -InputObject $p -ErrorAction Stop; $p.WaitForExit() }'], { timeout: 15000 });
   }
-  fs.unlinkSync(path.join(dir, 'wave-active.json'));
 }
 
-export async function handleHook(payload, dir, readPrs = getOpenPrs, now = Date.now(), captureBoot = () => undefined) {
+export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captureBoot = () => undefined, resolveOwnerPid = claudeOwnerPid) {
   const input = payload.tool_input || {};
+  if (payload.hook_event_name === 'PostToolUse') {
+    if (payload.tool_name !== 'Workflow' || !fs.existsSync(path.join(dir, 'wave-active.json'))) return;
+    const wave = requireModernWave(readWave(dir));
+    const runId = payload.tool_response?.runId;
+    // Only bind a run from the exact admitted invocation's harness response.
+    // Missing metadata leaves resume disabled, never inferred from the caller.
+    if (!wave.admissionToolUseId || wave.admissionToolUseId !== payload.tool_use_id || typeof runId !== 'string' || !runId) return;
+    if (wave.runtime !== 'claude' || wave.owner !== payload.session_id) throw Error('Another session owns this wave');
+    assertWaveOwnership(wave, ownershipSnapshot(), process.pid, payload.session_id);
+    return updateWave(dir, wave.waveId, current => ({ ...current, workflowRunId: runId }));
+  }
+  if (payload.tool_name === 'Workflow' && input.resumeFromRunId) {
+    if (!fs.existsSync(path.join(dir, 'wave-active.json'))) throw Error('Workflow resume requires an existing wave admission');
+    const wave = requireModernWave(readWave(dir));
+    if (wave.runtime !== 'claude' || !payload.session_id || wave.owner !== payload.session_id) throw Error('Another session owns this wave');
+    if (!wave.workflowRunId || wave.workflowRunId !== input.resumeFromRunId) throw Error('Workflow resume does not match the admitted run');
+    assertWaveOwnership(wave, ownershipSnapshot(), process.pid, payload.session_id);
+    return wave;
+  }
   const isWave = payload.tool_name === 'Workflow' && (input.name === 'wave' || /(?:^|[\\/])wave\.js$/.test(input.scriptPath || ''));
   if (isWave) {
     const args = input.args || {};
     if (args.dryRun === true) return;
+    if (fs.existsSync(path.join(dir, 'wave-active.json'))) throw Error('wave-active.json exists; inspect owner, never overwrite it');
     if (args.lanes !== undefined && (!Number.isInteger(args.lanes) || args.lanes < 1 || args.lanes > 4)) throw Error('Wave lanes must be an integer from 1 to 4');
     if (!payload.session_id) throw Error('Wave admission requires session_id');
-    return acquireWave(dir, { runtime: 'claude', owner: payload.session_id, pid: claudeOwnerPid(payload.session_id), bootId: captureBoot(), dispatchStarted: false, processTracking: 'owner-tree', now, tracks: Array.isArray(args) ? args : args.tracks }, readPrs);
+    const pid = resolveOwnerPid(payload.session_id);
+    if (!Number.isSafeInteger(pid) || pid < 1) throw Error('Cannot verify admission owner process');
+    return acquireWave(dir, { runtime: 'claude', owner: payload.session_id, pid, bootId: captureBoot(), admissionToolUseId: payload.tool_use_id ?? null, dispatchStarted: false, processTracking: 'owner-tree', now, tracks: Array.isArray(args) ? args : args.tracks }, readPrs);
   }
   if (payload.tool_name !== 'Agent') return;
   const prompt = String(input.prompt || input.description || '').trimStart();
@@ -197,6 +239,12 @@ async function cli() {
   } else if (command === 'assert-idle') {
     if (fs.existsSync(path.join(dir, 'wave-active.json'))) throw Error('Wave marker exists; merge blocked regardless of age or format');
     console.log(JSON.stringify({ idle: true, runDir: dir }));
+  } else if (command === 'guarded-merge') {
+    const pr = value('--pr'), repo = value('--repo') || REPO;
+    if (!/^[1-9]\d*$/.test(pr || '') || !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Valid merge PR and repository required');
+    // fileURLToPath handles Windows drive paths; no shell-built command string.
+    const mergeScript = fileURLToPath(new URL('./lib/merge-pr-owned.ps1', import.meta.url));
+    withIdleWaveLock(dir, () => execFileSync('pwsh', ['-NoProfile', '-File', mergeScript, '-Pr', pr, '-Repo', repo], { stdio: 'inherit' }));
   } else if (command === 'recover') {
     if (args.includes('--owner-override')) {
       const { ownerOverride } = await import('./wave-owner-override.mjs');
@@ -210,6 +258,7 @@ async function cli() {
   } else if (command === 'watch') {
     const wave = requireModernWave(readWave(dir));
     if (wave.waveId !== value('--wave-id')) throw Error('Wave owner mismatch');
+    assertWaveOwnership(wave, ownershipSnapshot());
     const pid = Number(value('--pid'));
     if (!Number.isSafeInteger(pid) || pid < 1) throw Error('Invalid watch PID');
     const info = JSON.parse(execFileSync('pwsh', ['-NoProfile', '-Command',

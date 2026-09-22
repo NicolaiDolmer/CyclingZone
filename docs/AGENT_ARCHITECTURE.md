@@ -122,7 +122,7 @@ SessionStart-hook cleaner `.claude/worktrees/` automatisk efter ship (per [AGENT
 
 ## Runtime-synlighed og boelger (#4016, #5467)
 
-Samme maskine bruger hovedrepoets `.claude/run/wave-active.json`. `scripts/wave-policy.mjs` reserverer den atomisk og afviser en eksisterende markoer, ogsaa naar dens gamle udloebstid er passeret. `runtime`, `owner`, `waveId`, spor og starttid er faelles kontrakt. En manglende GitHub-maaling lukker admission. Alle aabne PR'er taeller, inklusive drafts; planlagte nye PR'er reserveres foer start.
+Samme maskine bruger hovedrepoets `.claude/run/wave-active.json`. `scripts/wave-policy.mjs` reserverer den atomisk og afviser en eksisterende markoer, ogsaa naar dens gamle udloebstid er passeret. `runtime`, `owner`, `waveId`, spor og starttid er faelles kontrakt. `ownerProcess` fastholder ejerens PID, startidentitet og boot. Normal release kraever samme levende procestrae; Claude-resume kraever ogsaa samme session. Recovery er en separat bevisfoert vej, aldrig en release-parameter. En manglende GitHub-maaling lukker admission. Alle aabne PR'er taeller, inklusive drafts; planlagte nye PR'er reserveres foer start.
 
 Codex-indgangen er `scripts/codex-wave.mjs`: hovedsessionen er arkitekt, CLI-processer koerer i hver sit worktree, og hver leverance faar en frisk reviewer. Native subagents i desktop-proben 21/9 arvede hovedsessionens cwd og havde ingen separat cwd-/sandbox-parameter. Derfor bruges CLI'ens eksplicitte cwd og sandbox til skrivende spor.
 

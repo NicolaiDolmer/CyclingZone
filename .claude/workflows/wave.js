@@ -1149,7 +1149,7 @@ if (unstarted.length > 0) {
   log(`RELANCER: ${unstarted.map((u) => '#' + u.issue).join(', ')} i en NY boelge - worktrees og PR'er staar urort.`)
 }
 if (cleanup && cleanup.activeFileRemoved !== true) {
-  log('ADVARSEL: wave-active.json blev IKKE fjernet. Slet den i haanden, ellers blokerer Agent-guarden naeste session (den udloeber dog selv paa expiresAt).')
+  log('ADVARSEL: wave-active.json blev IKKE fjernet. Bevar markoeren. Normal release kraever ejerskabsbevis; ved doed ejer bruges wave-policy.mjs recover. Ingen TTL eller manuel sletning.')
 }
 
 return {

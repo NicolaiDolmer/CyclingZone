@@ -175,7 +175,7 @@
           {
             "type": "command",
             "command": "bash scripts/hooks/guard-agent-spawn.sh",
-            "timeout": 60
+            "timeout": 90
           }
         ]
       },
@@ -220,6 +220,16 @@
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/wave-policy.mjs hook",
+            "timeout": 45
+          }
+        ]
+      },
       {
         "matcher": "Bash",
         "hooks": [

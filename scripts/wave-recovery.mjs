@@ -3,16 +3,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { readWave, requireModernWave, releaseWave } from './wave-policy.mjs';
+import { readWave, requireModernWave, withWaveStateLock, stopWaveWatch } from './wave-policy.mjs';
 
-export function processSnapshot() {
-  if (process.platform !== 'win32') throw Error('Automatic recovery requires the Windows process snapshot; unsupported platform retains the marker');
-  const observed = JSON.parse(execFileSync('pwsh', ['-NoProfile', '-Command',
-    '$ErrorActionPreference="Stop"; @{ bootId=(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToUniversalTime().Ticks.ToString(); processes=@(Get-CimInstance Win32_Process | Select-Object @{n="pid";e={[int]$_.ProcessId}}, @{n="ppid";e={[int]$_.ParentProcessId}}, @{n="name";e={$_.Name}}, @{n="commandLine";e={$_.CommandLine}}, @{n="createdAt";e={$_.CreationDate.ToUniversalTime().ToString("o")}}) } | ConvertTo-Json -Compress'], { encoding: 'utf8', timeout: 15000 }));
-  if (!Array.isArray(observed.processes) || !observed.processes.length || !observed.bootId) throw Error('Process snapshot unavailable');
-  return observed;
-}
+import { processSnapshot } from './wave-process-snapshot.mjs';
+export { processSnapshot } from './wave-process-snapshot.mjs';
 
 export function recoverWave(dir, expected, snapshot = processSnapshot) {
   const wave = requireModernWave(readWave(dir));
@@ -58,7 +52,11 @@ export function recoverWave(dir, expected, snapshot = processSnapshot) {
     fs.mkdirSync(evidenceDir, { recursive: true });
     const evidence = path.join(evidenceDir, 'recovery.json');
     fs.writeFileSync(evidence, JSON.stringify({ waveId: wave.waveId, owner: wave.owner, checkedAt: expected.now, checkedPids: [...roots], proof: rebooted ? 'host-restarted' : 'dead-owner-before-dispatch', observedBootId: observed.bootId }, null, 2));
-    releaseWave(dir, wave.waveId, true, observed.bootId);
+    withWaveStateLock(dir, () => {
+      if (JSON.stringify(readWave(dir)) !== JSON.stringify(wave)) throw Error('Wave changed during recovery; marker retained');
+      stopWaveWatch(wave, observed.bootId);
+      fs.unlinkSync(path.join(dir, 'wave-active.json'));
+    });
     return { released: true, waveId: wave.waveId, evidence };
   } finally {
     fs.closeSync(lock);
