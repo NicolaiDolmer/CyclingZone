@@ -18,12 +18,13 @@ For terræn *p* med rating-opskrift *R_p* (`weights/displayRecipes.js`) og progr
 
 ```
 O_tf(evner) = alpha · (1/beta) · ln( Σ_p share_p · exp(beta · R_p(evner)) ) + (1 − alpha) · snit(evner)
-prod(O)     = exp(a + b·O + c·O²)            (holdt på toppunktet hvis c < 0: monoton)
+prod(O)     = exp(a + b·Ō + c·Ō²),  Ō = min(O, toppunkt hvis c < 0, output_max)
+              (output_max = største O i fit-stikprøven; kurven er flad derover)
 V_grund     = niveau · præmie( skala · Σ_s diskonto^s · S_s · prod(O_tf(evner_s)) )
 ```
 
 - Ét fælles niveau-led; `offset[type]` findes ikke.
-- Den bløde maksimum er kontinuert i evnerne: ét evnepoint flytter *O_tf* højst med den største opskriftsvægt-andel. Der er ingen rolle-label, som kan skifte.
+- Den bløde maksimum er kontinuert i evnerne: ét evnepoint flytter *O_tf* højst med den største opskriftsvægt-andel. Der er ingen rolle-label, som kan skifte. Fittet på S3 vælger næsten ren "bedste terræn" (stor beta). Det er stadig kontinuert, fordi springene i 1b kom af at skifte vægt-sæt og type-tillæg, ikke af selve maksimum-funktionen.
 - `a, b, c, beta, alpha` fittes deterministisk på ln(forventet præmie) fra sæson-simuleringen (samme mål som v4-fittet). **Programandelene er låst** (lige vægt pr. terræn indtil R1). Hvis andelene fittes frit, ender de i de to terræner som v3-simuleringen betaler mest for. Det er et artefakt og ikke et program.
 - Diskonto, overlevelse, alders-grænser og niveau-korrektion (#3449) er uændrede fra v4. Elite-**gulvet** er fjernet (låst). Den konvekse præmie over overall-tærsklen er bevaret uændret (se ejer-valg).
 

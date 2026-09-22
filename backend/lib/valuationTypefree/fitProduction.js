@@ -123,6 +123,7 @@ export function fitTypefreeProduction(samples, { maxIter = 4000, fixedShares = n
   const theta0 = fixed ? [Math.log(0.2), 2] : [...Array(k - 1).fill(0), Math.log(0.2), 2];
   const res = nelderMead((t) => evalTheta(t).sse, theta0, { maxIter });
   const best = evalTheta(res.x);
+  if (!best.coef) throw new Error("fitTypefreeProduction: singular normal system (too few or degenerate output values)");
   const oMax = Math.max(...best.O);
   return {
     params: {

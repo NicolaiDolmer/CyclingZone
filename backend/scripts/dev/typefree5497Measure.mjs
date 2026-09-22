@@ -27,7 +27,7 @@ import { predictBaseValueV4, currentProductionValue } from "../../lib/riderCaree
 import { projectAbilitiesForward, developAndSellGate, eliteUnbuyableGate, scaleContinuityGate } from "../../lib/valuationV4Scorecard.js";
 import { DISPLAY_RECIPE_KEYS } from "../../lib/weights/displayRecipes.js";
 import { FAIRPLAY_DEFAULTS } from "../../lib/fairplayScoring.js";
-import { effectiveOutput, terrainUse } from "../../lib/valuationTypefree/abilityProduction.js";
+import { effectiveOutput, productionFromOutput, terrainUse } from "../../lib/valuationTypefree/abilityProduction.js";
 import { fitTypefreeProduction } from "../../lib/valuationTypefree/fitProduction.js";
 import { buildCapsTypefree, profileSignature, stepTypefree } from "../../lib/valuationTypefree/careerTypefree.js";
 import {
@@ -100,8 +100,8 @@ const r2On = (rows, predictLn) => {
   return 1 - sse / sst;
 };
 const tfLn = (P) => (s) => {
-  const O = Math.min(effectiveOutput(s.abilities, P), P.c < 0 ? -P.b / (2 * P.c) : Infinity);
-  return P.a + P.b * O + P.c * O * O;
+  const v = productionFromOutput(effectiveOutput(s.abilities, P), P);
+  return v == null ? NaN : Math.log(v);
 };
 // v4's live produktionsfunktion (type-keyet) på samme simulering, med den
 // frosne type-kæde som i produktionen: valuation_type findes ikke i sim'et,
