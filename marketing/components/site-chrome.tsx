@@ -7,8 +7,30 @@
 // oversatte side (ikke bare "/da"), saa hreflang og synligt link stemmer overens.
 
 import { buttonClass } from "./landing/button-styles";
+import enLanding from "../locales/en/landing.json";
+import daLanding from "../locales/da/landing.json";
 
 const APP = "https://cyclingzone.org";
+
+type Lang = "en" | "da";
+
+// #5495 — footer-linkliste delt af de 4 site-chrome-sider (how-it-works,
+// pro-cycling-manager-alternative, en+da). Samme sti-par + rækkefølge som
+// frontend/src/pages/LandingPage.jsx's EXPLORE_LINKS; app-ruter er absolutte
+// (${APP}), da disse sider ikke selv kender frontendens router.
+const EXPLORE_LINKS: Array<{ key: keyof typeof enLanding.footer.explore; en: string; da: string }> = [
+  { key: "howItWorks", en: "/how-it-works", da: "/da/saadan-fungerer-det" },
+  { key: "compare", en: "/pro-cycling-manager-alternative", da: "/da/pro-cycling-manager-alternativ" },
+  { key: "help", en: `${APP}/help`, da: `${APP}/help` },
+  { key: "rules", en: `${APP}/rules`, da: `${APP}/rules` },
+  { key: "roadmap", en: `${APP}/roadmap`, da: `${APP}/roadmap` },
+  { key: "patchNotes", en: `${APP}/patch-notes`, da: `${APP}/patch-notes` },
+  { key: "founderSupporter", en: `${APP}/founder-supporter`, da: `${APP}/founder-supporter` },
+  { key: "terms", en: `${APP}/terms`, da: `${APP}/handelsbetingelser` },
+  { key: "privacy", en: `${APP}/privacy-policy`, da: `${APP}/privatlivspolitik` },
+];
+
+const FOOTER_COPY: Record<Lang, typeof enLanding.footer> = { en: enLanding.footer, da: daLanding.footer };
 
 export function Wordmark({ className = "h-7 sm:h-8" }: { className?: string }) {
   return (
@@ -20,8 +42,6 @@ export function Wordmark({ className = "h-7 sm:h-8" }: { className?: string }) {
     />
   );
 }
-
-type Lang = "en" | "da";
 
 export function LanguageToggle({
   lang,
@@ -163,22 +183,37 @@ export function SiteFooter({
   homePaths: PathPair;
 }) {
   const privacyHref = `${APP}${lang === "en" ? "/privacy-policy" : "/privatlivspolitik"}`;
+  const footerCopy = FOOTER_COPY[lang];
   return (
     <footer className="border-t border-cz-border">
-      <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-5 py-8 sm:flex-row sm:items-center sm:px-8">
-        <div className="flex items-center gap-3">
-          <Wordmark className="h-4" />
-          <span className="text-xs text-cz-3">{tagline}</span>
+      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
+        <div className="flex flex-col gap-3 border-b border-cz-border pb-6 sm:flex-row sm:items-baseline sm:gap-8">
+          <span className="font-data text-2xs font-semibold uppercase tracking-wider text-cz-3">
+            {footerCopy.exploreHeading}
+          </span>
+          <nav aria-label={footerCopy.exploreHeading} className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            {EXPLORE_LINKS.map((link) => (
+              <a key={link.key} href={link[lang]} className="text-cz-2 hover:text-cz-1">
+                {footerCopy.explore[link.key]}
+              </a>
+            ))}
+          </nav>
         </div>
-        <nav className="flex flex-wrap items-center gap-4 text-sm sm:gap-5">
-          <LanguageToggle lang={lang} label={languageLabel} hrefEn={homePaths.en} hrefDa={homePaths.da} />
-          <a href={privacyHref} className="text-cz-2 hover:text-cz-1">
-            {privacyLabel}
-          </a>
-          <a href="https://discord.gg/ykysBrWUyC" target="_blank" rel="noopener noreferrer" className="text-cz-2 hover:text-cz-1">
-            {discordLabel}
-          </a>
-        </nav>
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
+            <Wordmark className="h-4" />
+            <span className="text-xs text-cz-3">{tagline}</span>
+          </div>
+          <nav className="flex flex-wrap items-center gap-4 text-sm sm:gap-5">
+            <LanguageToggle lang={lang} label={languageLabel} hrefEn={homePaths.en} hrefDa={homePaths.da} />
+            <a href={privacyHref} className="text-cz-2 hover:text-cz-1">
+              {privacyLabel}
+            </a>
+            <a href="https://discord.gg/ykysBrWUyC" target="_blank" rel="noopener noreferrer" className="text-cz-2 hover:text-cz-1">
+              {discordLabel}
+            </a>
+          </nav>
+        </div>
       </div>
     </footer>
   );

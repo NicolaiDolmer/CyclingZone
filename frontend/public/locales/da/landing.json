@@ -151,6 +151,18 @@
     "tagline": "Et managerspil i browseren.",
     "privacy": "Privatliv",
     "discord": "Discord",
-    "rights": "Cycling Zone"
+    "rights": "Cycling Zone",
+    "exploreHeading": "Udforsk",
+    "explore": {
+      "howItWorks": "Sådan fungerer det",
+      "compare": "Cycling Zone vs Pro Cycling Manager",
+      "help": "Hjælp",
+      "rules": "Regler",
+      "roadmap": "Roadmap",
+      "patchNotes": "Patch notes",
+      "founderSupporter": "Founder Supporter",
+      "terms": "Handelsbetingelser",
+      "privacy": "Privatlivspolitik"
+    }
   }
 }
