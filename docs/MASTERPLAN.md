@@ -2,14 +2,14 @@
 
 > **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml`. **Intentionen** ejes af GDD'en; MASTERPLAN ejer kun rækkefølgen.
 
-**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9:** færre fejl → 🔴 brand går foran alle baner. 655 åbne 22/9; rytme: [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
+**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9:** færre fejl → 🔴 brand går foran alle baner. Rytme: [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
 
 ## 🎯 Gør det lovede færdigt (ejer-godkendt 21/9; foran alt andet end brand)
 
 Intet nyt startes før A+B er live.
 **A · ejerens hånd:** 1-2 ✅ (Discord, #5169) · 3 flip `training_score_visible` + udmelding (#4851) · 4 Android-test → flip `training_mobile_table` → slet gammel gren (#3643) · 5 win-back #2760 inden 24/9.
 **B · Claude, i rækkefølge:** 6 værdiskiftet #5443 = #5327 → #5435 → #5497 (ejer 22/9) · 7 S4-kalender synlig #5405 · 8 træning pr. løbsdag live 28/9 (flip-dag, #5281) · 9 /roadmap = roadbooken #5387.
-**Derefter:** roadbook-løfterne (Discord 15/9) først; så det vigtigste ELLER det hurtigst brugbare. Bølge 5-7 nås ikke samlet til 27-28/9: ejer-kort udestår. **Codex-lane:** `drafts/codex-prompt-2026-09-22.md` (værdiskift-preview først).
+**Derefter:** roadbook-løfterne (Discord 15/9) først; så det vigtigste ELLER det hurtigst brugbare. Bølge 5-7 nås ikke samlet til 27-28/9: ejer-kort udestår. **Codex-lane:** `drafts/codex-session-2026-09-22-v3.md` 2A-9.
 
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
 
@@ -29,7 +29,7 @@ Intet nyt startes før A+B er live.
 
 ## Bane 2 · Forretning (viger aldrig; SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 
-Mål 2/10: ≥ 450 kr / ≥ 10 ✅ (Alunta 14/9: 659 kr / 18) · checkout ≥ 60 % ✅ · D7 ≥ 45 % (30 %) · aktive/7d ≥ 100 (90). **Tilgang + fastholdelse er flaskehalsen, ikke penge.**
+Mål 2/10: ≥ 450 kr / ≥ 10 ✅ (Alunta 14/9: 659 kr / 18) · checkout ≥ 60 % ✅ · D7 ≥ 45 % (30 %) · aktive/7d ≥ 100 (90). **Flaskehals: tilgang + fastholdelse.**
 8. Ejeren poster forum-opslag + fog of war-afstemning (#4943 ✅).
 9. 🟠 **Fastholdelse:** #5241 måles 28/9 (#4964) · #5282 transfer-ring · #5320 · #4751 · ✅ #3517 forum-links · #5107 fog of war · late_fill (#5246).
 10. 🟠 **Vækst-fundament:** **måling først** #5304 #5310 #5305 #5306 · **SEO** #5249 statisk + #5250 session-cookie · rest #4067 #3796 #4811 #4321 · **hastighed** #5177 #5055 CWV-gate · **mobil** #1602 #4982 #5131. Uge-blok: 2 handlinger + 1 måling

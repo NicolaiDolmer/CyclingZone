@@ -25,12 +25,12 @@ LÆS FØRST (i denne rækkefølge, intet andet)
 4. gh issue view 5497 (mine låste beslutninger om værdierne, R1-R6).
 
 STATUS 22/9 AFTEN
-- SEO-bølgen (#5494 prerender, #5495 footer, #5496 tekster) er kørt; PR-status står nederst i denne fil under "SEO-PR'er". #5493 (Ahrefs-script) venter på mine nøgler.
+- SEO-bølgen er kørt OG merget (#5498 prerender, #5499 footer, #5500 tekster; issues #5494-#5496 done). #5493 (Ahrefs-script) venter på mine nøgler.
 - Codex' arbejde på værdierne er reviewet og samlet i #5497. #3353 lukket. PR #5444 forbliver åben. Codex' docs ligger på main.
 - Min rækkefølge for værdisystemet: ryttertyper (#5327) -> ratings på kortet (#5435) -> værdier (#5497). De bygges parallelt, men merges og tændes i den rækkefølge.
 
 OPGAVER I RÆKKEFØLGE
-0. SEO-PR'er: dem der er grønne og reviewet, beder du mig om "merge" på, én ad gangen. Footer (#5499) er UI: vis mig skærmbillederne fra PR'en først. Når de er merget: flip issues til claude:done. #5493 bygges som lille solo-PR når jeg sender Ahrefs-nøglerne (data-key + IndexNow-nøgle).
+0. SEO er merget (22/9 kl. 19:31, alle tre). Post-verify live: curl -s https://cyclingzone.org/help | grep -E "<title>|canonical|<h1" skal vise rute-specifik title, canonical /help og et H1; samme for /rules og /patch-notes. Fejler det, er det Vercel-deploy-timing eller filsystem-match; undersøg, ret ikke i blinde. #5493 bygges som lille solo-PR når jeg sender Ahrefs-nøglerne (data-key + IndexNow-nøgle).
 1. Start bølge 2 fra docs/drafts/wave-2026-09-22-b2.json (5 spor: #5327 typer, #5435 ratings, #5497 værdier, #2760 win-back-mail, #4707 løbsmotor jagt-model). Tjek først at der er plads under PR-loftet på 8 (gh pr list). Mens den kører: svar på hver besked fra mig med det samme; du venter aldrig blokerende.
 2. Når spor lander som PR: læs diffen (ikke PR-teksten), verificér selv, vis mig resultatet i hverdagsord + skærmbilleder for UI, og bed om "merge". #5497's PR er et beslutningsgrundlag: den indeholder "Ejer-valg". Stil dem til mig ÉT ad gangen, én sætning hver, med anbefaling. Byg intet i prod før jeg siger "godkendt til build".
 3. Win-back (#2760): efter merge kører du tørkørsel (frisk segment, antal EN/DA, 3 eksempler til mig), og sender først når jeg siger "send".
@@ -49,10 +49,10 @@ FØRSTE SVAR
 Tre linjer: hvad du har verificeret, hvor mange PR-pladser der er ledige, og at bølge 2 er startet (eller hvad der blokerer den). Ingen plan, ingen spørgsmål ud over ét hvis noget blokerer.
 ```
 
-## SEO-PR'er (opdateres ved session-slut 22/9)
+## SEO-PR'er (session-slut 22/9)
 
 | PR | Issue | Status |
 |---|---|---|
-| #5498 | #5494 prerender | udfyldes |
-| #5499 | #5495 footer (UI, skærmbilleder i PR) | udfyldes |
-| #5500 | #5496 tekster | udfyldes |
+| #5498 | #5494 prerender | merget 19:31, reviewer BLOKERENDE→rettet (PatchNotesPage.jsx-berøring flagget i PR, 8 linjer) |
+| #5499 | #5495 footer | merget 19:31 efter ejer så skærmbilleder; reviewer BEMÆRKNINGER (shots-script dækker ikke alle billeder) |
+| #5500 | #5496 tekster | merget 19:31, reviewer GODKENDT |
