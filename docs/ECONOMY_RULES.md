@@ -43,7 +43,11 @@ Spillere og kode taler om "rytterens værdi" som ét tal. Det er mindst **tre**,
 
 ### 1.1 Værdimodel v5 — værdien regnes på de samme evner som ratingen (#5443, ejer 20/9)
 
-**Ejer-beslutning 22/9 (#5443 + #5435):** Det kommende samlede skift skal bruge bedste rolle nu, samme rating som spilleren skal se. Tabellen nedenfor beskriver den eksisterende v5-kandidat, ikke det godkendte slutdesign. Re-fit, admin-preview og visningsskift leveres separat; ingen modelkontakt flippes med datadelen.
+**Ejer-beslutninger 22/9 (#5443 + #5435), designretning, ikke godkendt til build:** Typen skal ikke sætte prisen. Grundværdien skal bygge på evner og forventet præstation, inklusive hjælperbidrag uden dobbelttælling, under fælles løbs- og udviklingsvilkår. Den nye v4-løbsmotor bruges hvor muligt; en typefri prognose for fremtidige evner hører kun til værdiberegningen og ændrer ikke faktisk træning. Potentiale bevares indtil den særskilt validerede overgang til træningsscore. Et særskilt fast elitegulv er fravalgt i den nye model. Ratingen på kortet viser fortsat bedste rolle nu, mens badget viser naturlig rolle; værdi og visning skiftes koordineret.
+
+**Markedet er med fra første aktivering og får større indflydelse over tid.** Fælles markedsestimat og lokale forskelle er valgt, men dette ophæver ikke i sig selv den eksisterende ramme i §9.2: simuleringen forankrer først krone-niveauet, markedet påvirker relativ prissætning. Hverken en historisk sum eller dagens samlede rytterværdi er godkendt kalibreringsmål. Nye vægte og den konkrete beregning kræver målinger og ejerens godkendelse. Samlet ændringsforslag og kilder: [ability-market-valuation-proposal](superpowers/specs/2026-09-22-ability-market-valuation-proposal.md).
+
+Tabellen nedenfor beskriver den eksisterende v5-beregning, ikke det valgte slutdesign. Det gamle best-role-re-fit er diagnostik og må ikke fortsættes som løsningen. Ingen modelkontakt eller produktion er ændret af designvalgene.
 
 **Datakontrakt (1a):** `riders.best_role` og `best_role_rating` caches af `riderValueRefresh.js` fra maksimum af de afrundede `displayRecipes`-ratings. Ved lighed vælges første rolle i opskrifternes faste rækkefølge; ingen brugbare evner giver NULL, mens nul er en gyldig rating. Naturlig identitet, priser og løngrundlag bruger fortsat deres eksisterende input. Cachen følger den eksisterende refresh-kadence i §9.1, ikke en ny natlig værdikørsel. Rolleændringer alene skriver kun de to cachefelter. Den ekstraordinære kørsels backup/rollback medtager dem også.
 
@@ -301,3 +305,9 @@ Læsningen 30/8: den forhandlede kanal ligger nu meget tæt på 1,0 mod de korri
 - `docs/superpowers/specs/2026-08-23-kontraktudloeb-tvangsauktion-design.md` — gyldig plan, ikke bygget endnu. Brug som implementerings-spec når arbejdet starter, ikke som status.
 - `docs/superpowers/specs/2026-08-07-board-mandate-rework-design.md` — de økonomiske dele er dækket i §6 her; resten af dokumentet (UI, tillids-model) er uden for denne fils scope.
 - `docs/GAME_INVARIANTS.md` — fortsat SSOT for konstanterne selv; denne fil peger på den og lister kun de punkter hvor kode har flyttet sig siden.
+
+### 1b development measurement (22 September)
+
+The development-only `backend/scripts/dev/bestRoleRefitReport5443.mjs` fits role offsets from a season simulation using the same rounded best-role selection as 1a. It evaluates the candidate through the existing career-NPV engine with an explicit development adapter; production valuation dispatch and the committed v5 model are unchanged. Candidate files and per-rider reports remain under ignored `balance-internals/`.
+
+The report distinguishes team cash balances from the sum of rider valuations. It records coverage, unsampled roles, losses and synthetic one-point role transitions. A one-point sensitivity probe is not a measured training strategy: time, training costs and ability caps are not simulated by that probe. The current run is uncalibrated and is not approval for activation. A calibration target and the response to role-switch discontinuities remain owner decisions.
