@@ -30,6 +30,15 @@ const OK = {
   weekday: "wed",
 };
 
+test("role-only changes neither move money nor escape rollback", () => {
+  const before = { id: "fixture-role", base_value: 100, current_production_value: 20, best_role: "tt", best_role_rating: 40 };
+  const patch = { id: before.id, best_role: "sprinter", best_role_rating: 41 };
+  assert.deepEqual(summariseUpdates([patch], new Map([[before.id, before]])), { up: 0, down: 0, cpvMoved: 0 });
+  const rollback = rollbackUpdates([{ ...before, rider_id: before.id }], new Map([[before.id, { ...before, ...patch }]]));
+  assert.equal(rollback[0].best_role, "tt");
+  assert.equal(rollback[0].best_role_rating, 40);
+});
+
 test("toerkoersel er default og har ingen laase", () => {
   assert.deepEqual(
     applyBlockers({ apply: false, confirm: null, ownerAck: false, modelId: "v4", wageModelId: "v5", weekday: "sun" }),
@@ -85,8 +94,8 @@ test("rollback har sin EGEN saetning - de to kan ikke forveksles", () => {
 test("backuppen daekker praecis de kolonner koerslen kan skrive", () => {
   assert.deepEqual(
     [...BACKED_UP_COLUMNS].sort(),
-    ["base_value", "current_production_value", "primary_type", "secondary_type"],
-    "de fire kolonner selectChangedValueUpdates skriver - hverken flere eller faerre"
+    ["base_value", "best_role", "best_role_rating", "current_production_value", "primary_type", "secondary_type"],
+    "all columns selectChangedValueUpdates can write"
   );
 });
 
@@ -107,6 +116,7 @@ test("rollback skriver kun det der faktisk afviger", () => {
   assert.deepEqual(updates.map((u) => u.id), ["b"]);
   assert.deepEqual(updates[0], {
     id: "b", base_value: 200, current_production_value: 20, primary_type: "climber", secondary_type: "gc",
+    best_role: null, best_role_rating: null,
   });
 });
 

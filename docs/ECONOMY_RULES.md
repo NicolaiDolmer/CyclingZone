@@ -43,6 +43,12 @@ Spillere og kode taler om "rytterens værdi" som ét tal. Det er mindst **tre**,
 
 ### 1.1 Værdimodel v5 — værdien regnes på de samme evner som ratingen (#5443, ejer 20/9)
 
+**Ejer-beslutning 22/9 (#5443 + #5435):** Det kommende samlede skift skal bruge bedste rolle nu, samme rating som spilleren skal se. Tabellen nedenfor beskriver den eksisterende v5-kandidat, ikke det godkendte slutdesign. Re-fit, admin-preview og visningsskift leveres separat; ingen modelkontakt flippes med datadelen.
+
+**Datakontrakt (1a):** `riders.best_role` og `best_role_rating` caches af `riderValueRefresh.js` fra maksimum af de afrundede `displayRecipes`-ratings. Ved lighed vælges første rolle i opskrifternes faste rækkefølge; ingen brugbare evner giver NULL, mens nul er en gyldig rating. Naturlig identitet, priser og løngrundlag bruger fortsat deres eksisterende input. Cachen følger den eksisterende refresh-kadence i §9.1, ikke en ny natlig værdikørsel. Rolleændringer alene skriver kun de to cachefelter. Den ekstraordinære kørsels backup/rollback medtager dem også.
+
+Migration: `database/2026-09-22-5443-best-role-data.sql`, nullable kolonner uden populationsskrivning. Den skal være anvendt før næste refresh. `backend/scripts/dev/bestRoleBackfill5443.mjs` beregner et read-only backfill-forslag, også før migrationen; `--compare-stored` sammenligner efter migrationen. `--out=<fil.json>` gemmer kun under gitignoreret `balance-internals/`. Scriptet har ingen apply-sti. Visning og `ratingGolden.5321.json` ændres først i det senere ejer-godkendte skift.
+
 **Problemet den løser.** Værdimodellen havde sin egen vægttabel, adskilt fra den opskrift rytterens rating er bygget af. For flere roller betød det at prisen kun bevægede sig når én bestemt evne bevægede sig, mens rating-tallet spilleren så var bygget af flere. Oveni lå to midlertidige frysninger fra august: en frossen `valuation_type` (#3345) og en type-dæmpning (#4000). Nettoresultatet var ryttere hvis værdi kunne stå stille mens rytteren udviklede sig i sin egen rolle — meldt af spillerne i #5416.
 
 **Hvad v5 ændrer, kvalitativt** (tal og fordelinger ligger i `balance-internals/`, ikke her):

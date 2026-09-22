@@ -72,10 +72,11 @@ export const REQUIRED_MODEL_ID = "v5";
 // denne begivenhed. Staar noeglen anderledes, er forudsaetningen brudt.
 export const DEFAULT_WAGE_MODEL_ID = "v4";
 
-// De fire kolonner kørslen kan skrive — og dermed præcis dem backuppen skal
+// De kolonner kørslen kan skrive, og dermed præcis dem backuppen skal
 // bære. Holdes i ÉN konstant, så backup og rollback ikke kan komme i utakt.
 export const BACKED_UP_COLUMNS = Object.freeze([
   "base_value", "current_production_value", "primary_type", "secondary_type",
+  "best_role", "best_role_rating",
 ]);
 
 const WRITE_CONCURRENCY = 25;
@@ -168,7 +169,8 @@ export function summariseUpdates(updates, beforeById) {
     if (!before) continue;
     if (u.base_value > (before.base_value ?? 0)) up += 1;
     else if (u.base_value < (before.base_value ?? 0)) down += 1;
-    if ((u.current_production_value ?? null) !== (before.current_production_value ?? null)) cpvMoved += 1;
+    if (Object.hasOwn(u, "current_production_value")
+      && (u.current_production_value ?? null) !== (before.current_production_value ?? null)) cpvMoved += 1;
   }
   return { up, down, cpvMoved };
 }
