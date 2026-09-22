@@ -17,20 +17,6 @@ import {
   evaluateSeasonCalendarWriteGate, RACE_DEPENDENCY_TABLES, dependencyKey,
 } from "../lib/seasonCalendarGate.js";
 
-test('exhausted joint finale draw is never overridable', () => {
-  const result = gatePlan({ tiers: [], finaleDraw: { exhausted: true } }, { allowTierCompositionDrift: true });
-  assert.ok(result.blocking.some(line => line.includes('finale draw exhausted')));
-});
-
-test("gatePlan scores the selected materialized entry instead of resolving another variant", () => {
-  const selectedError = "selected-entry-proof";
-  const plan = tierPlan({ tier: 2, stages: [{ profile_type: "flat" }], seedRaces: [{ id: null }] });
-  plan.realismDraw = { attempt: 3, entry: { tier: 2, races: [], errors: [selectedError] } };
-  const result = gatePlan({ tiers: [plan] });
-  assert.ok(result.blocking.some(line => line.includes(selectedError)), result.blocking.join("\n"));
-  assert.ok(!result.blocking.some(line => line.includes("profil-generering fejlede")));
-});
-
 // Minimal, gyldig tier-plan-fixture. `seedRaces` udelades bevidst (null) i de fleste
 // tests — det udløser gatePlan's "ingen tier leverede et løbssæt at score realisme på"
 // (en forventet, ikke-relateret blocking-post), så testene asserter med `.some()`/

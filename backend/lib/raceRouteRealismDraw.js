@@ -41,7 +41,6 @@
 // Nulrisiko for tiers der allerede bestod attempt 0 på begge fronter (uændret variant=0).
 
 import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
-import { persistedVariant } from "./profileVariantProvenance.js";
 import { scoreSeason } from "./raceRouteRealismMetrics.js";
 import { computeStageOrderStats, detectStageOrderViolations } from "./stageOrderMetrics.js";
 
@@ -157,7 +156,7 @@ export function resolveSeasonDrawVariants(args) {
  *          onDraw?:(d:{seasonId:any, tier:number, draw:object})=>void}} args
  * @returns {Map<any, number>} race.id → season_variant
  */
-export function resolveVariantByRaceId({ races = [], persistedProfiles = [], tierByDivision = new Map(), catalogMeta = new Map(), onDraw = () => {}, generateProfiles = generateRaceStageProfiles, maxAttempts = MAX_REALISM_DRAW_ATTEMPTS } = {}) {
+export function resolveVariantByRaceId({ races = [], tierByDivision = new Map(), catalogMeta = new Map(), onDraw = () => {}, generateProfiles = generateRaceStageProfiles, maxAttempts = MAX_REALISM_DRAW_ATTEMPTS } = {}) {
   const groupKey = (r) => {
     const tier = tierByDivision.get(r.league_division_id);
     return tier == null || !r.season_id ? null : `${r.season_id}|${tier}`;
@@ -184,9 +183,7 @@ export function resolveVariantByRaceId({ races = [], persistedProfiles = [], tie
   for (const [key, seedRaces] of seedRacesByGroup) {
     const [seasonId, tierStr] = key.split("|");
     const tier = Number(tierStr);
-    const stored = persistedVariant({ races: races.filter(r => groupKey(r) === key), persistedProfiles, catalogMeta, generateProfiles, maxAttempts });
-    const draw = stored == null ? resolveTierDraw({ tier, seedRaces, generateProfiles, maxAttempts })
-      : { ...drawTierAttempt({ tier, seedRaces, generateProfiles, attempt: stored }), attempt: stored, exhausted: false, firstDrawFailures: [] };
+    const draw = resolveTierDraw({ tier, seedRaces, generateProfiles, maxAttempts });
     variantByGroup.set(key, draw.attempt);
     if (draw.attempt > 0 || draw.exhausted) onDraw({ seasonId, tier, draw });
   }

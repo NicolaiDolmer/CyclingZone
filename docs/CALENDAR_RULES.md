@@ -979,11 +979,7 @@ Reglen stod i generatoren fra #4272, men `mountain`'s nedad-vægt fulgte den ikk
 
 **Nedre grænse for hvor langt en nedad-vægt må sænkes:** nedkørsels-finalen er også et *gulv* (`descent_finale_min`, se nedenfor). En vægt-sænkning og et gulv trækker mod hinanden, og #4272 har allerede betalt én gang for et gulv båndet ikke kunne levere. Sænk aldrig `descent`-vægten uden at re-derivere gulvene i samme ombæring.
 
-**Ejer-valg 21/9 (#5405):** cobbles-baandene er rettet, saa midtpunkterne er komplementaere. Hilly bruger relative midtpunktvaegte; hvor midtpunkterne ikke summer til en hel fordeling, normaliserer generatoren dem samlet. Der er ingen historisk finale-undtagelse tilbage i fixture-gaten.
-
-**Faelles gen-traek (#5405):** en fuld saeson vurderer de eksisterende, begraensede parcours-varianter paa tvaers af divisioner med `calendarFinaleDraw.js`. Den oprindelige kombination bevares, hvis den bestaar. Ellers vaelges den foerste gyldige kombination i stabil tier-/variant-raekkefoelge, hvor realisme, daekning, etapeorden, komposition, uniforme maal og finale-baand holder samtidig. Ingen baand flyttes af soegningen. Hvis ingen kombination bestaar, returnerer dry-run det oprindelige traek med synlig udtoemning og de faktiske brud; apply afvises foer foerste databaseskrivning, og gatePlan blokerer uden override. Delvis puljeaktivering beholder sin lokale resolver. Scorecard, gatePlan og skrive-sti bruger de samme valgte profiler.
-
-**Genkoersel:** nye profiler stemples med generatorversion 6 i den eksisterende kolonne (ingen migration). Backfill og seed-divergens genskaber varianten ud fra de gemte, ikke-haandredigerede profilers fulde output. Tvetydige, nyere eller ikke-reproducerbare profiler afviser omskrivning; de maa aldrig falde tilbage til den gamle lokale vinder. Dette gaelder ogsaa en eventuel tiltet generering, som standardgeneratoren ikke kan reproducere. Legacy-profiler beholder deres hidtidige resolver.
+**Ejer-valg 21/9 (#5405):** cobbles-baandene er rettet, saa midtpunkterne er komplementaere. Hilly bruger relative midtpunktvaegte; hvor midtpunkterne ikke summer til en hel fordeling, normaliserer generatoren dem samlet. De resterende finale-afvigelser skal rapporteres og kraever eksplicit --allow-finale-drift ved en senere ejer-godkendt apply.
 
 ### Samlet bånd på tværs af alle etaper
 
@@ -1001,6 +997,8 @@ Et løbs parcours er seedet på løbets **virkelige identitet** (`external_id`),
 Scorecardet markerer med `✗` når en andel ligger uden for det **rå** bånd, også når stikprøve-tillægget bærer den igennem — en strukturel skævhed er dermed synlig, ikke skjult bag et grønt flueben.
 
 Terræner under stikproeveminimum vises som `n<min, kun rapport` i begge lag. De er ikke kvalitetsgodkendt og producerer ikke terræn-båndbrud. Ukendte finale-typer og det samlede saeson-baand kontrolleres fortsat.
+
+**Konsekvens af ejer-valget 22/9:** i den aktuelle kalender gates `gravel` og `itt_hilly` ikke paa finale-baand nogen steder, hverken pr. division eller paa saeson-aggregatet, fordi begge stikproever er under minimum. De er kun rapport, ikke kvalitetsgodkendt. Ukendte finale-typer og det samlede saeson-baand kontrolleres fortsat. Faelles variant-valg, generatorversion og backfill-proveniens er udskilt til en separat draft; de er ikke del af dette valg.
 
 ### Afledt konsekvens: `descent_finale_min`
 

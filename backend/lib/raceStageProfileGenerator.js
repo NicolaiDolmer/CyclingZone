@@ -30,7 +30,7 @@ import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 // identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
 // terrænfordeling (ARCHETYPE_PROFILES) + sæson-akse i seed'en (variation pr. sæson).
 // Bump'et stempler regenererede rækker, så de kan skelnes fra ældre (intet
-// legacy-runtime-guard afhænger af tallet).
+// runtime-guard afhænger af tallet — kun et persisteret stempel).
 // v4 (2026-07-21, #2769): pass 2 (attachRoute) beriger hver etape med en rute
 // (distance/climbs/sprints/sektorer) via en dedikeret rng-strøm. Pass 1 bit-identisk.
 // v5 (2026-08-04, #3326, ejer-anmodet research): erstattede den globale
@@ -47,9 +47,7 @@ import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 // næstsidst, flad/enkeltstart sidst. Pass 1-output for ALLE etapeløb (inkl. GT) ÆNDRES
 // bevidst af denne korrektion — pass1-golden.json-fixturen er regenereret. Determinisme
 // bevaret: samme seed + samme types-multisæt → samme rækkefølge.
-// v6 (#5405): finale calibration and joint calendar draw. Rewrite tools must
-// reproduce stored profiles to recover their selected variant, or refuse.
-export const GENERATOR_VERSION = 6;
+export const GENERATOR_VERSION = 5;
 
 // #2812: delt row-shaper for de tre skrivesites (tierCalendarMaterializer.js,
 // backfillRaceStageProfiles.js, admin POST /api/admin/races), så de ikke driver

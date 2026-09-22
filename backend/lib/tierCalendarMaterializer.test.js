@@ -202,20 +202,6 @@ const fullPools = [
   { id: 4, tier: 3, realManagerCount: 5 },
 ];
 
-test('joint finale exhaustion refuses apply before any database mutation', async () => {
-  const league_divisions = [1, 2, 3, 4].map(tier => ({ id: tier, tier, pool_index: 0 }));
-  const teams = league_divisions.map(d => ({ id: `fixture-team-${d.id}`, league_division_id: d.id,
-    is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }));
-  const sb = makeSupabase({ league_divisions, teams, race_pool: fullCatalog() });
-  const before = JSON.stringify(sb.state);
-  const args = { supabase: sb, seasonId: 'fixture-season', seasonStartDate: '2026-06-22', from: FROM };
-  const summary = await materializeTierCalendars({ ...args, dryRun: true });
-  assert.equal(summary.tiers.length, 4);
-  assert.equal(summary.finaleDraw.exhausted, true);
-  await assert.rejects(materializeTierCalendars({ ...args, dryRun: false }), /finale draw exhausted/);
-  assert.equal(JSON.stringify(sb.state), before);
-});
-
 test("plan: cross-division dedup — intet løb deles mellem to divisioner", () => {
   const { tierPlans } = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM });
   const idSets = tierPlans.map((tp) => new Set(tp.pools[0].raceRows.map((r) => r.pool_race_id)));

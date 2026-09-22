@@ -1,14 +1,10 @@
-# Finale gates and reproducible calendar draws
+# Finale bands and small samples
 
-Refs #5405. The aggregate gate treated small samples as actionable while tier
-reports treated them as report-only. Align both layers and retain unknown-type
-and season-wide checks. Owner-approved bands are recorded in CALENDAR_RULES §7b.
+Refs #5405. The owner approved complementary cobbles bands, hilly midpoint
+weights, and report-only treatment of small terrain samples in both aggregate
+and tier reports. Unknown types and overall season checks remain gated.
 
-Independent tier winners do not guarantee a passing season aggregate. Search
-the existing bounded variants together; score exactly the profiles selected for
-writing. Exhaustion must refuse apply before mutations, including direct callers.
-
-Backfills must recover a jointly selected variant from persisted output rather
-than rerun the old tier-local resolver. Ambiguous evidence must fail closed.
-Regression coverage includes pool copies, incomplete evidence, and zero writes
-when the joint draw is exhausted. No production calendar was changed.
+Keep calibration and generator architecture separate. The owner's scope decision
+on 22 September moves joint variant selection and provenance to another draft.
+Remaining measured violations must stay visible and require an explicit override
+for any separately authorized application. No production calendar was changed.

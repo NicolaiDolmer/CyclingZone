@@ -285,18 +285,6 @@ test("resolveVariantByRaceId: alle puljer i en tier får SAMME variant (laveste 
   assert.equal(seen.length, 1, "variantet løses ÉN gang pr. (sæson, tier), ikke pr. pulje");
 });
 
-test('stored joint variant survives backfill resolution across pool copies', () => {
-  const races = [11, 12].map(division => ({ id: `fixture-${division}`, name: 'Fixture tour',
-    race_type: 'stage_race', race_class: 'Class1', stages: 5, pool_race_id: 'fixture-pool',
-    season_id: 'fixture-season', league_division_id: division }));
-  const catalogMeta = new Map([['fixture-pool', { external_id: 'fixture-tour', terrain_archetype: 'mountain_tour' }]]);
-  const seed = { ...races[0], ...catalogMeta.get('fixture-pool'), season_variant: 3 };
-  const persistedProfiles = generateRaceStageProfiles(seed).map(p => ({ ...p,
-    race_id: races[0].id, generator_version: 6, is_manual: false }));
-  const result = resolveVariantByRaceId({ races, persistedProfiles, catalogMeta, tierByDivision: new Map([[11, 3], [12, 3]]) });
-  assert.deepEqual([...result.values()], [3, 3]);
-});
-
 test("resolveVariantByRaceId: løb uden season_id eller uden kendt division → variant 0", () => {
   const races = [
     { id: "a", race_type: "single", stages: 1, pool_race_id: "p", league_division_id: 11 }, // ingen season_id

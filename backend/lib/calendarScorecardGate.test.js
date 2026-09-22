@@ -36,16 +36,9 @@ function kør(args = []) {
   }
 }
 
-// #4270 (3/9): scorecardet måler nu S4's vindue (28/9 → 25/10, 28 dage) og S4's regler.
-// #4203 (3/9): fixturen er genopfrisket fra prod (214 løb), så gaten måler S4's regler mod
-// S4's KATALOG. Det flyttede den kendte tilstand markant, og hver af de tre klasser af brud
-// fra før er lukket af sit eget spor:
-//   · monument-i-GT-spænd    → lukket af DENNE PR's pakker-ændring (#4203)
-//   · D2 bjerg under målet   → lukket af katalog-migrationen (#4708), nu i fixturen
-//   · D4 rolling under gulvet→ samme migration
-// #5405: the shared bounded resolver closes all historical finale exceptions.
-// The fixture now requires zero rule breaches; every recurrence is a failure.
-const KENDTE_BALANCEBRUD = 0;
+// Owner-approved scope 22/9 (#5405): three measured finale lines remain.
+// Small samples are report-only; no joint variant search or relaxed raw band.
+const KENDTE_BALANCEBRUD = 3;
 
 test("#4215: den planlagte S4-kalender har kun de KENDTE balance-afvigelser", () => {
   const { stdout } = kør();
@@ -111,7 +104,7 @@ test("#4270: kendt-tilstand-gaten fælder et NYT brud og et FORSVUNDET kendt bru
 });
 
 test("#4270: hver kendt post har en begrundelse og et spor der lukker den", () => {
-  assert.equal(KENDTE_FIXTURE_BRUD.length, 0, "#5405 closes the historical exceptions; any recurrence is a new failure");
+  assert.ok(KENDTE_FIXTURE_BRUD.length > 0, "en tom liste ville gøre gaten til en nul-brud-gate igen");
   for (const post of KENDTE_FIXTURE_BRUD) {
     assert.ok(post.id && post.moenster instanceof RegExp, `${post.id}: mønster mangler`);
     assert.ok((post.hvorfor ?? "").length > 20, `${post.id}: en kendt post uden begrundelse er bare en undtagelse`);
@@ -123,9 +116,9 @@ test("#4270: hver kendt post har en begrundelse og et spor der lukker den", () =
 // "kalenderen er i orden" og "der er ikke kommet noget nyt" er hele pointen (§9b).
 test("#4270: den grønne gate lyver ikke i tabellen", () => {
   const { stdout } = kør();
-  assert.match(stdout, /SAMLET: 0 regelbrud/);
-  assert.match(stdout, /Kalenderen overholder alle gates/);
-  assert.doesNotMatch(stdout, /FEJL SÆSON-AGGREGAT/);
+  assert.match(stdout, /Se linjerne markeret FEJL/, "tabellens dom skal stadig vise at der ER brud");
+  assert.match(stdout, /Kun kendte brud/, "gatens egen dom skal stå adskilt fra tabellens");
+  assert.doesNotMatch(stdout, /Kalenderen overholder alle gates/);
 });
 
 // #4203 (3/9): TALLET FLYTTEDE SIG, IKKE KONTRAKTEN. Foer fixture-refreshen kunne 35 dage
