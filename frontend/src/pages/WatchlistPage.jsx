@@ -15,6 +15,8 @@ import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useIsMobileViewport } from "../hooks/useMediaQuery";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
+import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
 import { cycleSortState } from "../lib/riderSort";
@@ -45,6 +47,7 @@ export default function WatchlistPage() {
   const { t } = useTranslation("watchlist");
   // #3045: mobil-fold-tekst for ryttertype (samme namespace som /riders' #2849 bølge 2).
   const { t: tTypes } = useTranslation("riderTypes");
+  const typeColumnLabel = useTypeColumnLabel(t("thType")); // #5435
   // #4036: mobil-fold-tekst for markeds-status (RiderBadges' korte labels — se nedenfor).
   const { t: tRider } = useTranslation("rider");
   const scouting = useScouting();
@@ -302,11 +305,14 @@ export default function WatchlistPage() {
       numeric: true,
       render: (entry) => {
         const ovr = riderOverallRating(entry.rider);
+        // #5435: bedste rolle nu ved tallet når kontakten er tændt.
         return Number.isFinite(ovr) ? (
-          <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
-            style={statPlateStyle(ovr)}>
-            {ovr}
-          </span>
+          <WithBestRole rider={entry.rider}>
+            <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+              style={statPlateStyle(ovr)}>
+              {ovr}
+            </span>
+          </WithBestRole>
         ) : <span className="text-cz-3">—</span>;
       },
     },
@@ -346,7 +352,8 @@ export default function WatchlistPage() {
       render: (entry) => getRiderAge(entry.rider.birthdate, seasonYear) ?? "—",
     },
     {
-      key: "type", header: t("thType"), fold: true, sortKey: "primary_type",
+      // #5435: badget er anlægget ("Natural role") når rating-kontakten er tændt.
+      key: "type", header: typeColumnLabel, fold: true, sortKey: "primary_type",
       foldValue: (entry) => {
         const r = entry.rider;
         if (!r.primary_type) return "";

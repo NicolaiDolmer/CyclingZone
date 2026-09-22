@@ -146,6 +146,14 @@ export default function RiderProfileHero({
     : t("profile.hero.potentialOwn");
   const isU23 = rider.is_u25 != null && age != null && age < 23;
   const hasRating = Number.isFinite(overallRating);
+  const ratingPlate = hasRating ? (
+    <span
+      className="inline-flex items-center justify-center min-w-[38px] h-[30px] px-2 rounded-cz"
+      style={statPlateStyle(overallRating)}
+    >
+      {overallRating}
+    </span>
+  ) : null;
   // Overgangs-designet (ejer 18/8): rollens loft står som under-linje på
   // prognose-statten, så det gamle loft-tal er bevaret lige dér spilleren
   // plejede at kigge. Kommer fra estimates-payloaden (roleCeilRating — rolle+
@@ -279,14 +287,9 @@ export default function RiderProfileHero({
                hinanden (samme 16%-alpha-plade var kopieret tre steder).
                #5435 (D-049): med kontakten tændt står rollenavnet ved tallet
                ("54 Climber") — tallet er hans rating i DEN rolle. */
-            <span className="inline-flex items-center gap-2 min-w-0" data-testid="rider-hero-rating">
-              <span
-                className="inline-flex items-center justify-center min-w-[38px] h-[30px] px-2 rounded-cz"
-                style={statPlateStyle(overallRating)}
-              >
-                {overallRating}
-              </span>
-              {bestRoleOn && bestRoleKey && (
+            bestRoleOn && bestRoleKey ? (
+              <span className="inline-flex items-center gap-2 min-w-0 max-w-full">
+                {ratingPlate}
                 <span
                   className="font-sans text-[13px] font-semibold text-cz-2 truncate"
                   title={t("riderTypes:bestRole.title", { role: t(`riderTypes:types.${bestRoleKey}`) })}
@@ -294,8 +297,8 @@ export default function RiderProfileHero({
                 >
                   {t(`riderTypes:types.${bestRoleKey}`)}
                 </span>
-              )}
-            </span>
+              </span>
+            ) : ratingPlate
           ) : "—"}
         />
         <HeroStat

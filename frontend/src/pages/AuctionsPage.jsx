@@ -55,6 +55,8 @@ import { resolveApiError } from "../lib/apiError";
 import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { parseAmountInput } from "../lib/amountInput.js";
 import { riderOverallRating } from "../lib/riderRating";
+import { useBestRoleDisplay, useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import BestRoleTag, { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { ageBadgeKey, retirementRiskBadgeKey, ageForSeason } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import SortTh from "../components/rider/RiderSortTh";
@@ -387,13 +389,16 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
       {/* OVR — spillets samlede 1-99-rating (type-vægtet, #2000/#2464) */}
       <td className="px-2 py-1.5 text-center">
-        <span
-          className="inline-block min-w-[28px] text-center text-xs font-mono font-bold px-1 py-0.5 rounded-cz"
-          style={statStyle(ovr, { scale: "rating" })}
-          title={t("auctions:table.ovrTitle")}
-        >
-          {ovr || "—"}
-        </span>
+        {/* #5435: bedste rolle nu ved tallet når kontakten er tændt. */}
+        <WithBestRole rider={r}>
+          <span
+            className="inline-block min-w-[28px] text-center text-xs font-mono font-bold px-1 py-0.5 rounded-cz"
+            style={statStyle(ovr, { scale: "rating" })}
+            title={t("auctions:table.ovrTitle")}
+          >
+            {ovr || "—"}
+          </span>
+        </WithBestRole>
       </td>
 
       {/* Potentiale */}
@@ -556,6 +561,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
 function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, onHide = null }) {
   const { t } = useTranslation(["auctions", "common", "riderTypes"]);
+  const bestRoleOn = useBestRoleDisplay(); // #5435
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
@@ -626,7 +632,19 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                   {ovr}
                 </span>
               )}
-              {r?.primary_type && (
+              {/* #5435 (D-049): kontakten tændt → "54 Climber" = bedste rolle nu,
+                  og anlægget står bagefter med sin egen etiket, så de to roller
+                  aldrig kan forveksles. Slukket: uændret. */}
+              {bestRoleOn ? (
+                <>
+                  {Number.isFinite(ovr) && <BestRoleTag rider={r} variant="full" />}
+                  {r?.primary_type && (
+                    <span className="text-cz-3 text-xs" data-testid="auction-card-natural-role">
+                      {t("riderTypes:natural.label")}: {t(`riderTypes:types.${r.primary_type}`)}
+                    </span>
+                  )}
+                </>
+              ) : r?.primary_type && (
                 <span className="text-cz-3 text-xs">{t(`riderTypes:types.${r.primary_type}`)}</span>
               )}
               {isRecommended && !imWinning && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill font-bold">{t("auctions:badge.firstBidPick")}</span>}
@@ -1888,6 +1906,7 @@ const TH_BASE = "font-data text-2xs font-semibold uppercase tracking-[.06em]";
 
 function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
   const { t } = useTranslation("auctions");
+  const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   return (
     // Thead's shadow-sm er fjernet — hairline-rulen på tr'en herunder (border-b)
@@ -1908,7 +1927,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         {/* #228 v2: Ryttertype — samme komponent/mønster som ryttersiden, lige efter Status. */}
         <SortTh sortKey="primary_type" sort={activeSort("primary_type") ? "primary_type" : riderFiltersSort}
           sortDir={activeSortDir("primary_type")} onSort={handleSort}
-          className={`px-3 py-3 text-left ${TH_BASE}`}>{t("table.type")}</SortTh>
+          className={`px-3 py-3 text-left ${TH_BASE}`}>{typeLabel}</SortTh>
         {/* #228: kolonneprioritet — navn, alder, løn, højeste bud, tid tilbage
             forrest (altid synlige, ikke gemt bag et breakpoint). */}
         <SortTh sortKey="birthdate" sort={activeSort("birthdate") ? "birthdate" : riderFiltersSort}
@@ -1981,6 +2000,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
 // efter navn, jf. issue-rapportens konkrete ønske ("sort for time").
 function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
   const { t } = useTranslation("auctions");
+  const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   const options = [
     { key: "firstname", label: t("table.rider") },
@@ -1988,7 +2008,7 @@ function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, rid
     { key: "current_price", label: t("table.highestBid") },
     { key: "nationality_code", label: t("table.nation") },
     { key: "is_u25", label: t("table.status") },
-    { key: "primary_type", label: t("table.type") },
+    { key: "primary_type", label: typeLabel },
     { key: "birthdate", label: t("table.age") },
     { key: "salary", label: t("table.salary") },
     { key: "value", label: t("table.value") },

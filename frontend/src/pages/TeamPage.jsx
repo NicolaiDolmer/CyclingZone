@@ -20,6 +20,8 @@ import { useAuctionEndTimeSelector } from "../lib/useAuctionEndTimeSelector.js";
 import { StartPriceTypoGuardModal } from "../components/StartPriceTypoGuardModal";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { riderOverallRating } from "../lib/riderRating";
+import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal";
@@ -585,6 +587,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
+  const typeColumnLabel = useTypeColumnLabel(t("squad.headers.type")); // #5435
   // #1796: hele rytter-rækken navigerer til rytter-profilen (flest dead clicks på
   // /team var klik på værdi-/potentiale-cellen). Samme row-as-link-mønster som
   // /riders (RiderRow). Navn-linket + Handling-knappen stopper propagation.
@@ -692,11 +695,15 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     numeric: true,
     compact: true,
     mobileLabel: t("squad.headers.rating"),
+    // #5435: med kontakten tændt står bedste rolle nu ved tallet (BestRoleTag
+    // renderer intet når den er slukket).
     render: (r) => (Number.isFinite(r._ovr) ? (
-      <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
-        style={statPlateStyle(r._ovr)}>
-        {r._ovr}
-      </span>
+      <WithBestRole rider={r}>
+        <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+          style={statPlateStyle(r._ovr)}>
+          {r._ovr}
+        </span>
+      </WithBestRole>
     ) : <span className="text-cz-3">—</span>),
   };
 
@@ -707,7 +714,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // tilstande i stedet for at evne-tilstanden opfinder sin egen placering.
   const typeColumn = {
     key: "type",
-    header: t("squad.headers.type"),
+    // #5435: badget er anlægget ("Natural role") når rating-kontakten er tændt.
+    header: typeColumnLabel,
     sortKey: "primary_type",
     compact: true,
     render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} stacked />,
