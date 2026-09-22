@@ -119,6 +119,21 @@ function jsonResponse(data, status = 200, extraHeaders = {}) {
   });
 }
 
+// #5435: rating-visningen "bedste rolle nu" er ON på preview-deployet (ejeren
+// skal kunne se den før flaget flippes), men kan slås fra med ?bestRole=off for
+// et før/efter-par — også på en telefon uden devtools. Valget huskes i
+// localStorage (cz_mock_best_role), så det overlever navigation.
+function previewBestRoleEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("bestRole");
+    if (param === "on") localStorage.setItem("cz_mock_best_role", "1");
+    if (param === "off") localStorage.setItem("cz_mock_best_role", "0");
+    return localStorage.getItem("cz_mock_best_role") !== "0";
+  } catch {
+    return true;
+  }
+}
+
 export function installPreviewMock() {
   const realFetch = window.fetch.bind(window);
 
@@ -330,6 +345,11 @@ export function installPreviewMock() {
       // fail-safe off-default (season_signup_enabled i app_config er 'off' i
       // prod), så ejeren kan se og gennemklikke kortet på preview FØR flaget
       // nogensinde flippes (docs' "ejeren skal kunne teste på preview"-regel).
+      // #5435: se previewBestRoleEnabled ovenfor. Kun her (ikke i
+      // mockHandlers.js), så Playwright-snapshots beholder dagens visning.
+      if (method === "GET" && /\/api\/display-flags$/.test(url)) {
+        return jsonResponse({ rider_best_role_display: previewBestRoleEnabled() });
+      }
       if (method === "GET" && /\/api\/season\/signup-status$/.test(url)) {
         return jsonResponse({
           enabled: true,
