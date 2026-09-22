@@ -89,7 +89,12 @@ for (const vp of VIEWPORTS) {
   await loginEnglish(page);
 
   await page.goto("/notifications?tab=messages&c=dm-conv-1");
-  await page.getByText("Message 30 in the negotiation thread.").waitFor();
+  // Samtalelistens sidste-besked-forhaandsvisning gengiver samme tekst
+  // ordret (se kommentaren i MessagesPanel.jsx) - lokatoren skal derfor
+  // vaere begraenset til selve traaden, ellers rammer den to elementer.
+  await page.getByTestId("dm-thread-messages")
+    .getByText("Message 30 in the negotiation thread.")
+    .waitFor();
   await page.waitForTimeout(400);
   await page.screenshot({ path: resolve(OUT, `thread-newest-visible-${vp.name}.png`), fullPage: false });
 
