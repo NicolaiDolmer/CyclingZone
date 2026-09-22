@@ -1,7 +1,90 @@
 
 # Parallel Worktree Orchestration — Playbook
 
-## ⚠️ Eneste indgang siden 2026-09-11: `.claude/workflows/wave.js` ([#5142](https://github.com/NicolaiDolmer/CyclingZone/issues/5142))
+## Godkendte runtime-indgange (#5142, #5467)
+
+Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer, og otte-PR-loftet er kode. Resten af det historiske playbook laeses med disse aendringer: ingen automatisk merge, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
+
+## Codex-boelger (#5467)
+
+SSOT for roller og claims: [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md#runtime-synlighed-og-boelger-4016-5467). Ejerens valg af issues, design-go og filansvar skal vaere afklaret foer en plan koeres.
+
+```powershell
+node scripts/codex-wave.mjs plan.json --dry-run
+node scripts/codex-wave.mjs plan.json --run
+```
+
+Planen indeholder `lanes` (default 2, maks 4) og `tracks`: `issue`, `branch`, `title`, `scopeText`, `ownership`, `tier`, `verifyCommands`, eventuelt `model`, `effort`, `ownNodeModules` og `checkedMergedPrs`. Ingen model tilsidesaettes automatisk. `checkedMergedPrs` er de merged soegeresultater arkitekten har laest og afgraenset fra scopet. Uafklarede hits stopper sporet. Dry-run skriver intet og starter ingen agent; den er ikke et live kapacitetsbevis.
+
+Runneren reserverer alle planens nye PR-pladser, opretter worktrees sekventielt via `new-worktree.ps1`, genererer briefs via `make-wave-brief.mjs` og starter en CLI-proces pr. worker med eget cwd. Reviewer er en ny proces i read-only sandbox. Et blokerende fund giver en afgraenset rettelsesrunde i samme worktree og endnu et friskt review. Uafklarede fund efter den runde afleveres som `changes_requested`.
+
+Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hovedrepoet via git-common-dir. Frys beregnes med `wave-freeze.mjs` ud fra observeret branch-aktivitet. Afbrudte eller fejlede spor bliver aldrig meldt klar. Dirty worktrees, upushet arbejde og private proceslogs bevares til recovery; runneren resetter, stasher eller sletter dem ikke.
+
+| Egenskab | Haandhaevelse og graense |
+|---|---|
+| Gensidig boelgelaas | Atomisk filoprettelse i faelles run-mappe; eksisterende/malformed markoer blokerer |
+| Otte aabne PR'er | Live GitHub-tal inkl. drafts plus planlagte nye PR'er; Claude-hook og Codex-runner deler koden |
+| Filansvar | Plan-overlap afvises; Codex kontrollerer committed diff foer review. Ikke en fil-ACL |
+| Worker-isolation | Eget worktree + CLI cwd/sandbox. Rettigheder skal probes i den konkrete installation |
+| Reviewer | Frisk read-only CLI-proces; workerens egen godkendelse accepteres ikke |
+| Semafor | Maks 2 for kommandoer gennem wrapperen. Wrapping er fortsat brief-/reviewdisciplin |
+| Oprydning | Optaget ejerproces, dens levende procestrae og registreret watch-identitet; ingen global proces- eller worktree-pruning |
+| Claudes setup/cleanup | Hookens admission er kode; setup-agentens rapport og terminal-observation er stadig agentdisciplin |
+| Merge | Kun efter ejerens ordrette `merge`, separat via `scripts/merge-queue.ps1 -Pr "N"`; runneren merger aldrig |
+
+Rapporten ligger lokalt under `.claude/run/waves/<waveId>/report.json`; hver lane har privat scratch med brief, processtatus og output. Publicer en anonymiseret status og testbevis paa issue/PR inden close-out. Lokale logs er ikke varigt handoff. Maaling: tid til merget PR, ejerens aktive minutter (ejer-oplyst) og reviewrettelser. Ingen hastighedsgevinst paastaas ud fra fixture-tests.
+
+Recovery: kontroller markoer, processtatus, branch, dirty filer, pushes og eksisterende PR. Bekraeft at gammel writer er stoppet foer nyt skrivearbejde i samme worktree. En ukendt terminaltilstand beholder markoeren. En ny normal `--run` afviser eksisterende worktree/PR; recovery maa ikke stiltiende bygge samme spor igen.
+
+### Ejerskab ved release og resume (22/9, #5468)
+
+Normal `release --wave-id ... --children-stopped` kraever det procesbevis der blev optaget ved admission: samme boot, ejer-PID og startidentitet, og kalderen skal vaere ejeren eller dens levende efterkommer. Et kendt waveId eller en paastand om stoppede boern giver ikke adgang. Manglende bevis, PID-genbrug og et fremmed procestrae bevarer markoeren med `Another session owns this wave`. Identiteten kan ikke omskrives, og startet dispatch kan ikke nulstilles.
+
+Claude-admission kraever en entydig ejerproces i harness-registret. `Workflow({resumeFromRunId})` er ikke ny admission: den kraever en eksisterende Claude-markoer, samme session, samme procestrae og netop det run-ID der er bundet til admission. PostToolUse binder kun `tool_response.runId` fra det oprindelige `tool_use_id`; manglende eller ukendt harness-metadata holder resume lukket. Uden aktiv admission afvises resume; start i stedet en ny normal boelge efter lovlig recovery. Recovery efter genstart og ejerens interaktive genvej har deres egne beviskrav nedenfor. Dette er koordinationskontrol, ikke en fil-ACL mod vilkaarlig kode under samme OS-bruger.
+
+Merge-koeen kalder `assert-idle` efter ventepunktet og igen umiddelbart foer merge. Selve merge-kaldet og alle gh-retries koeres under samme state-laas som admission via `guarded-merge`; en boelge kan derfor ikke starte mellem sidste tjek og merge. En markoer blokerer ogsaa dry-run. Et hard-crash mens state-laasen holdes kraever samme genstartsvej som anden state-lock-recovery.
+
+### Recovery-kommando (Windows, #5468)
+
+Laes foerst `node scripts/wave-policy.mjs inspect` og brug markoerens PRAECISE `waveId` og `owner`. Frigiv en doed boelge med een kommando:
+
+```powershell
+node scripts/wave-policy.mjs recover --wave-id "<waveId>" --owner "<owner>"
+```
+
+Kommandoen kontrollerer ejerskab og Windows-boot-identitet. Naar arbejde har vaeret startet, kraever automatisk recovery en KONSTATERET GENSTART AF WINDOWS: et aktuelt procestrae kan ikke bevise, at gamle efterkommere er vaek, naar mellemprocesserne er afsluttet. Genstart Windows og koer samme kommando igen. Ingen filer skal slettes i haanden.
+
+Foer nogen dispatch kan samme-boot recovery frigive efter et frisk procesoverblik, hvis ejeren og kendte efterkommere er doede. Ukendt boot/PID, ufuldstaendig spawn, fejlet maaling eller aendret markoer bevarer laasen. Efter genstart roeres ingen gammel watch-PID, som kan vaere genbrugt af en anden proces. Recovery-laasen er boot-kvalificeret, saa et crash under recovery ikke blokerer naeste boot. Bevis gemmes under `waves/<waveId>/recovery.json`. Worktrees og dirty/ikke-pushet arbejde roeres ikke.
+
+Alle markoer-skrivere serialiserer read/modify/replace med samme boot-kvalificerede state-laas; temp + rename beskytter laesere mod halve JSON-filer. En state-laas efter et hard-crash overtages ikke paa tid eller PID-gaet. Naeste boot bruger en ny laas, og recovery kan frigive den gamle boelge med ovenstaaende kommando.
+
+Claude-ejerens PID hentes fra harness-registret ved admission. Begge indgange registrerer boot-identitet og om dispatch er begyndt. Codex registrerer child-spawn foer start og PID/terminaltilstand bagefter. Manglende procesidentitet kan ikke bruges som bevis paa ophoer; en ny boot er det konservative bevis ved et hard-crash. Processer startet uden om indgangen er ikke registreret her.
+
+Legacy-markoerer uden `waveId`, `runtime` eller `owner` afvises tydeligt af inspect/release/recover. Der findes ingen automatisk force- eller TTL-genvej. Lad den oprindelige Claude-boelge afslutte dem; skriv aldrig det nye format oven paa en koerende gammel boelge.
+
+### Ejerens interaktive genvej (21/9, #5468)
+
+Ejeren kan i sin egen interaktive terminal koere:
+
+```powershell
+node scripts/wave-policy.mjs recover --owner-override
+```
+
+Kommandoen afviser redirected/non-TTY stdin eller stdout. Den viser waveId/owner og et frisk procesoverblik med registrerede PID'er, worktree-match, lane-watch og kendte efterkommere. Fuld command line udskrives eller logges ikke, da den kan indeholde credentials. Ejeren kontrollerer selv, at skrivende arbejde er stoppet, og indtaster praecis `FRIGIV BOELGE <waveId>`. Forkert svar, nye matchende processer eller en aendret markoer afbryder. Der findes ingen `--yes`, bekraeftelse via miljovariabel eller pipet genvej.
+
+Kun markoeren frigives; genvejen draeber ingen processer og sletter ingen worktrees. OS-brugernavn, vaertsnavn, tidspunkt og procesoverblik gemmes foer frigivelsen i `waves/<waveId>/owner-override-<id>.json`. En optaget state-laas overtages ikke; automatisk recovery efter genstart bevares.
+
+Agenter maa ALDRIG allokere en PTY eller indtaste saetningen for ejeren. TTY-kontrollen blokerer ikke-interaktive kald, men er ikke et identitetsbevis: et program med PTY-adgang kan teknisk emulere en terminal. Den eksplicitte ejerbetjening er derfor fortsat en del af kontrakten.
+
+### Foerste Claude-proeve efter merge (#5468)
+
+Merge kraever BADE ejerens ordrette `merge` OG at hovedrepoets `.claude/run/wave-active.json` er vaek. Koer `node scripts/wave-policy.mjs assert-idle` fra det bekraeftede repo/worktree umiddelbart foer merge. Den udleder faelles run-mappe fra Git's common directory. Enhver eksisterende markoer stopper handlingen, uanset format eller alder.
+
+Hook-timeout er 90 sekunder, med plads til GitHub-, boot- og procesidentitetsmaalingerne. Foerste rigtige Claude-boelge efter merge er praecis eet ejer-valgt, ufarligt docs-spor i eget worktree, ingen produktkode/prod. Sporet SKAL have en konkret, ejer-valgt fil i ownership, `ownership: ["docs/audits/5468-first-wave-smoke.md"]`; ingen tom ownership-liste eller generel docs-glob. Kontroller i den rigtige session: Workflow med `scriptPath` leverer `session_id`, markoeren har korrekt runtime/owner/PID/bootId, egne `WAVE-LANE:` og `WAVE-REVIEW:` passerer, og markerfrigivelse sker efter observeret stop. Fixture-tests erstatter ikke denne klientproeve.
+
+Fejler proeven: stop og observer alle egne agenter, behold ukendte claims, og brug ovenstaaende recovery naar kriterierne er opfyldt. Rollback sker i en ny isoleret branch med `git revert --no-commit <merge-SHA-for-5468>`, guard-commit, push og en ejer-godkendt revert-PR. Det konkrete merge-SHA og hele rollback-kommandoen skal staa i PR-body ved merge. Main eller hoved-checkoutet resettes aldrig.
+
+### Claude-indgangen
 
 Parallelt byggearbejde startes med `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })`, aldrig med håndskrevne Agent-spawns. Resten af dette dokument beskriver **hvorfor** protokollen ser ud som den gør; workflowet er **hvordan** den udføres, og det håndhæver den selv.
 

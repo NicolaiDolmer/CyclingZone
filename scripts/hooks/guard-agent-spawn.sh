@@ -81,6 +81,15 @@ fi
 MAX_SPAWNS=${CZ_AGENT_GUARD_MAX:-4}
 WINDOW_MIN=${CZ_AGENT_GUARD_WINDOW_MIN:-45}
 
+# #5467: both runtimes share atomic admission and the eight-PR budget.
+# Run BEFORE legacy exemptions (including Workflow itself). This gate fails
+# closed; an unavailable GitHub count must not silently admit a new wave.
+POLICY="$(dirname "$0")/../wave-policy.mjs"
+if ! printf '%s' "$INPUT" | node "$POLICY" hook --run-dir "$RUN_DIR"; then
+  echo "BLOCKED: shared wave admission failed; no agent started." >&2
+  exit 2
+fi
+
 VERDICT=$(printf '%s' "$INPUT" | \
   CZ_RUN_DIR="$RUN_DIR" CZ_MAX="$MAX_SPAWNS" CZ_WINDOW="$WINDOW_MIN" \
   node -e '
@@ -100,11 +109,13 @@ process.stdin.on("end", () => {
   // Agent bruger "prompt"; Workflow har ingen prompt - det har "name"/"args".
   const prompt = String(input.prompt ?? input.description ?? "").trimStart();
   const workflowName = String(input.name ?? "");
+  // The shared policy above has already verified the existing owner/tree.
+  if (tool === "Workflow" && input.resumeFromRunId) process.exit(0);
 
   // Selve wave-workflowet er INDGANGEN og maa aldrig blokeres af sin egen vagt:
   // ellers kan hverken en dryRun-plan eller en recovery-boelge efter en doed
   // session startes, saa laenge wave-active.json ligger der.
-  if (tool === "Workflow" && workflowName === "wave") process.exit(0);
+  if (tool === "Workflow" && (workflowName === "wave" || /(?:^|[\\/])wave\.js$/.test(String(input.scriptPath || "")))) process.exit(0);
 
   // Kanonisk praefiks-liste - samme liste som i hookens header og i CLAUDE.md.
   const EXEMPT_PREFIXES = ["WAVE-LANE:", "WAVE-REVIEW:", "WAVE-FOLLOWUP:", "WAVE-SETUP:", "WAVE-CLEANUP:", "READ-ONLY:"];
@@ -231,8 +242,9 @@ case "$VERDICT" in
       "  1. Tilfoej sporet til wave.js' args og koer boelgen derfra." \
       "  2. Er det EN opfoelgning i et EKSISTERENDE worktree: start prompten med" \
       "     'WAVE-FOLLOWUP:' - een ad gangen." \
-      "  3. Er boelgen faerdig (eller doed): slet registerfilen" \
-      "     ${FILE}" \
+      "  3. Er boelgen faerdig: ejeren bruger wave-policy.mjs release med ejerskabsbevis." \
+      "     Ved doed ejer: brug wave-policy.mjs recover; slet aldrig registerfilen." \
+      "     Markoer (bevar den): ${FILE}" \
       >&2
     exit 2
     ;;

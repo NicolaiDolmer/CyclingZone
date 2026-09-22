@@ -141,7 +141,7 @@
           },
           {
             "type": "command",
-            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/set-active-sessions.sh ; exit $LASTEXITCODE"
+            "command": "pwsh -NoProfile -File scripts/hooks/codex-session-claim.ps1 -Mode start ; exit $LASTEXITCODE"
           }
         ]
       }
@@ -152,10 +152,17 @@
           {
             "type": "command",
             "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/check-now-md.sh ; exit $LASTEXITCODE"
-          },
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/clear-active-sessions.sh ; exit $LASTEXITCODE"
+            "command": "pwsh -NoProfile -File scripts/hooks/codex-session-claim.ps1 -Mode stop ; exit $LASTEXITCODE",
+            "timeout": 3
           }
         ]
       }

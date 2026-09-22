@@ -6,7 +6,7 @@
 
 ## TL;DR
 
-- 3 agents: **Claude** (Lead Dev) · **Codex** (Speed) · **Manus** (Architect). Plus **Clarity** (UX-analytics, ikke AI).
+- 2 coding runtimes: **Claude Code** og **Codex**. Begge kan vaere arkitekt, orkestrator, worker og reviewer. Manus er udfaset. Clarity er UX-analytics, ikke en coding-agent.
 - 3 shared-state systemer: **GitHub** (issues + repo-docs, canonical) · **OneDrive-context** (memory hardlinks) · **Infisical** (secrets).
 - Lokale agent-filer (`.codex.local/`, auto-memory) er **caches**, ikke source of truth.
 - Parallel-sessions samme PC: brug `git worktree` + ét issue per session + skriv NOW.md kun ved close-out.
@@ -16,9 +16,8 @@
 ```mermaid
 flowchart LR
   subgraph Agents
-    M[Manus<br/>Architect]
-    C[Claude<br/>Lead Dev]
-    X[Codex<br/>Speed]
+    C[Claude Code<br/>Architect + workers + reviewer]
+    X[Codex<br/>Architect + workers + reviewer]
     Y[Clarity<br/>UX-analytics]
   end
 
@@ -33,9 +32,8 @@ flowchart LR
     AM["~/.claude/projects/.../<br/>auto-memory"]
   end
 
-  M -->|plan · ADR · roadmap| GH
   C -->|commits · slice-docs · PRs| GH
-  X -->|fixes · tests · lint| GH
+  X -->|plan · commits · tests · PRs| GH
   Y -->|heatmaps → slice-input| GH
 
   GH <-->|context-read| C
@@ -54,14 +52,10 @@ flowchart LR
 
 | Work type | Owner | Hvorfor |
 |---|---|---|
-| Multi-file refactor m. kontrakt-implikationer | Claude | Slice-docs + AskUserQuestion |
-| Single-file bugfix m. klar root cause | Codex | Speed |
-| Ny feature, uklar spec | Claude | Q&A-session |
-| Migration >2 tabeller | Claude | Kontrakt-sikkerhed |
-| Lint/format/typo | Codex | Speed |
-| Audit på tværs af repo | Claude (m. Explore-subagents) | Token-budget |
-| Strategi · roadmap · ADR | Manus | Cross-domain |
-| Loop-implementering | Claude (kompleks) / Codex (simpel) | Spec i [`AI_LOOPS.md`](./AI_LOOPS.md) |
+| Arkitektur, refactor, nye features, audit og loops | Claude Code eller Codex | Ejeren vaelger runtime; samme SSOT- og reviewkrav |
+| Afgrænset implementering | Worker i den valgte runtime | Eget worktree og eksplicit filansvar |
+| Uafhængigt review | Frisk agent, adskilt fra implementeringen | Krav, diff og faktisk testbevis |
+| Migrationer og merge | Ejerens mandat | En boelge giver ingen ny prod- eller merge-ret |
 | UX-data → slice | Clarity → Claude/Codex | [Loop I](./AI_LOOPS.md) |
 
 Fuldt regelsæt: [`AI_OPS_REFERENCE.md §Rolle-fordeling`](./AI_OPS_REFERENCE.md#rolle-fordeling-mellem-ai-assistenter-verdensklasse-ai-standard) (udfaset fra AGENTS.md 2026-05-29, [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).
@@ -118,14 +112,25 @@ SessionStart-hook cleaner `.claude/worktrees/` automatisk efter ship (per [AGENT
 
 | Fra → Til | Hvor | Format |
 |---|---|---|
-| Manus → Claude | GitHub issue + slice-doc | Issue-body m. spec; slice-doc m. kontrakt + verification-path |
-| Claude → Codex | Issue-kommentar m. commit-SHA + slice-doc | "Done: <list>". Codex tager test/lint follow-ups. (`claude:done` label er valgfri — bruger kan også lukke direkte fra todo/in-progress.) |
+| Claude Code ↔ Codex | GitHub issue + commit-SHA + slice-doc | Maal, laaste beslutninger, testbevis og resterende arbejde; begge kan overtage hele opgaven |
 | Codex → Claude | PR-kommentar + issue-comment | Test-resultater + edge-cases fundet |
 | Session A → Session B (samme agent, samme PC) | `docs/NOW.md` ved close-out + issue-comment | 15-linjers `Session context — [dato]` ([AGENTS.md §Delt handoff-format](../AGENTS.md#delt-handoff-format-alle-agents)) |
 | PC1 → PC2 (samme agent) | GitHub + OneDrive-context | Identisk m. session A→B. Lokale caches regenereres på modtagende PC |
 | Clarity → Claude/Codex | Ugentlig review-doc → ny slice | [Loop I](./AI_LOOPS.md) |
 
 **Natbølger (multiagent-fleet om natten):** protokol (preflight GO/NO-GO, launch-bevis, merge-rækkefølge) + recovery i [`NIGHT_WAVE_RUNBOOK.md`](./NIGHT_WAVE_RUNBOOK.md) — læs FØR enhver natbølge claims.
+
+## Runtime-synlighed og boelger (#4016, #5467)
+
+Samme maskine bruger hovedrepoets `.claude/run/wave-active.json`. `scripts/wave-policy.mjs` reserverer den atomisk og afviser en eksisterende markoer, ogsaa naar dens gamle udloebstid er passeret. `runtime`, `owner`, `waveId`, spor og starttid er faelles kontrakt. `ownerProcess` fastholder ejerens PID, startidentitet og boot. Normal release kraever samme levende procestrae; Claude-resume kraever ogsaa samme session. Recovery er en separat bevisfoert vej, aldrig en release-parameter. En manglende GitHub-maaling lukker admission. Alle aabne PR'er taeller, inklusive drafts; planlagte nye PR'er reserveres foer start.
+
+Codex-indgangen er `scripts/codex-wave.mjs`: hovedsessionen er arkitekt, CLI-processer koerer i hver sit worktree, og hver leverance faar en frisk reviewer. Native subagents i desktop-proben 21/9 arvede hovedsessionens cwd og havde ingen separat cwd-/sandbox-parameter. Derfor bruges CLI'ens eksplicitte cwd og sandbox til skrivende spor.
+
+`active_sessions_engine.py` laeser baade Claudes registry, Codex-sessionclaims i `.claude/run/agent-sessions/` og Codex-boelgemarkoeren. Codex-hooken `codex-session-claim.ps1` registrerer session-id uden at redigere NOW.md. Hook-konfiguration alene beviser ikke at en bestemt klient faktisk udfoerer hooken: tjek claim-filen ved opstart. Boelger registreres direkte af runneren og er derfor ikke afhaengige af SessionStart-hooken.
+
+Et claim er et synlighedssignal, ikke en OS-skrivegraense eller en cross-PC-laas. Stale claims ryddes kun efter observation af ejerens ophoer. Native spawn uden om indgangen, direkte GitHub-PR-oprettelse og kommandoer uden om verify-lock forbliver uden for disse gates. Se [boelgeprotokollen](PARALLEL_WORKTREE_ORCHESTRATION.md#codex-boelger-5467).
+
+Et claim lever fra `SessionStart` til `SessionEnd`. `Stop` afslutter en tur og maa ikke rydde det, ellers bliver naeste tur usynlig. Hook-livscyklus: [officiel Codex-dokumentation](https://learn.chatgpt.com/docs/hooks).
 
 ## Failure-mode katalog
 

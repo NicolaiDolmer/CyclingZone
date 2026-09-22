@@ -71,6 +71,9 @@ $ErrorActionPreference = "Stop"
 $PrNumbers = @($Pr -split '[,\s]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'."; exit 1 }
 
+& node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-idle
+if ($LASTEXITCODE -ne 0) { throw 'Aktiv boelgemarkoer: merge-koeen er blokeret.' }
+
 function Get-PrPlanEntry([int]$number) {
   # Read-only: PR-metadata + required-checks-status. Sikkert at koere i -DryRun.
   $checksExit = 0
@@ -258,6 +261,9 @@ foreach ($entry in $plan) {
 
   Wait-OutOfMergeTickWindow
 
+  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-idle
+  if ($LASTEXITCODE -ne 0) { throw 'Aktiv boelgemarkoer: merge-koeen er blokeret.' }
+
   $fresh = Get-PrPlanEntry $n
   if ($fresh.checksExit -ne 0) {
     Write-Host "STOP: PR #$n har ikke groenne paakraevede checks ($($fresh.checksSummary)). Ingen flere PR'er merges." -ForegroundColor Red
@@ -275,7 +281,10 @@ foreach ($entry in $plan) {
   }
 
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"
-  Invoke-GhWithRetry @('pr', 'merge', "$n", '--repo', $Repo, '--squash', '--delete-branch', '--admin') | Out-Null
+  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-idle
+  if ($LASTEXITCODE -ne 0) { throw 'En boelge er startet siden preflight: merge er blokeret.' }
+  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo
+  if ($LASTEXITCODE -ne 0) { throw 'Merge fejlede eller boelgelaasen blev afvist.' }
 
   # Merge-commit-SHA'en er ikke altid straks synlig via API'et - lille retry-loop.
   $sha = $null

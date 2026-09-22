@@ -244,10 +244,14 @@ if (Test-Path "CLAUDE.md") {
 # NIGHT_WAVE_RUNBOOK.md og lod reglerne selv blive. Denne vagt er det der goer det trim
 # sikkert: en fremtidig trim kan ikke koebe tokens ved at slette en regel.
 # Ankrene er KORTE noegleord - en omskrivning maa passere, en SLETNING skal fejle.
+$wavePolicySource = Get-Content (Join-Path $PSScriptRoot 'wave-policy.mjs') -Raw
+$waveLimitMatch = [regex]::Match($wavePolicySource, 'export\s+const\s+PR_LIMIT\s*=\s*(\d+)')
+if (-not $waveLimitMatch.Success) { throw 'Cannot read shared PR_LIMIT for rule 12' }
+$wavePrLimit = [int]$waveLimitMatch.Groups[1].Value
 $agentsMdAnchors = @(
   @{ Anchor = "TaskStop"; Rule = "10 terminal-tilstand du har SET" },
   @{ Anchor = "positiv observation"; Rule = "11 paastand om systemtilstand" },
-  @{ Anchor = "maks 5 aabne PR|maks 5 åbne PR"; Rule = "12 loft paa igangvaerende arbejde" },
+  @{ Anchor = "maks $wavePrLimit aabne PR|maks $wavePrLimit åbne PR"; Rule = "12 loft paa igangvaerende arbejde" },
   @{ Anchor = "GENMAALES|GENMÅLES"; Rule = "13 ingen paastand uden maaling" },
   @{ Anchor = "Isolation er infrastruktur"; Rule = "14 isolation foer skala" },
   @{ Anchor = "Mennesket beslutter"; Rule = "15 AI fremskaffer beviset" },
