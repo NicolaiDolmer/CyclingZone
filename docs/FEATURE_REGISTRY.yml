@@ -304,10 +304,11 @@ features:
     title_en: Rating shows best role now
     title_da: Rating viser bedste rolle nu
     state: building
+    flag: rider_best_role_display
     ssot: docs/superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md
     epic: 5435
     verified: 2026-09-22
-    note: 'Flag rider_best_role_display (off, saettes i flag naar raekken er i prod); flippes med vaerdiskiftet #5443.'
+    note: 'Merget 22/9 (#5501), app_config-raekken verificeret off i prod; flippes med vaerdiskiftet #5443/#5497 (ejer-gated).'
 
   # --- training ------------------------------------------------------------
   - id: daily-training
