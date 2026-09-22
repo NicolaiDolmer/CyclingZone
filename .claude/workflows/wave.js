@@ -36,7 +36,7 @@
 //       }
 //     ],
 //     dryRun: false,                  // true = print planen, spawn intet
-//     cleanup: "dry-run",             // 'dry-run' (default) | 'execute'
+//     cleanup: "dry-run",             // kompatibilitets-metadata; oprydning er ALTID afgraenset til egen boelge (#5467)
 //     allowExistingPr: false,         // true = koer spor der allerede har en aaben PR
 //     expiresInMinutes: 240,          // kun metadata i planen; markoeren har ingen TTL, ejerskab + liveness afgoer (wave-policy.mjs)
 //     lanes: 4,                       // override af lane-loftet (brug sjaeldent)
