@@ -7,12 +7,13 @@ Sources of truth: [ECONOMY_RULES.md](../../ECONOMY_RULES.md), [RACE_ENGINE_RULES
 ## Owner-confirmed directions, 22 September
 
 - Type does not set price. Equal abilities, age and other approved relevant inputs must give equal foundation regardless of `primary_type`, `valuation_type` or `best_role`.
-- Market evidence participates from the first activation and becomes more important over time. No starting/final weight, timetable or evidence threshold is approved.
+- Market evidence participates from the first activation and becomes more important over time. No starting/final weight, timetable or evidence threshold for this replacement calculation is approved; historical model decisions are not erased.
 - **Choice A:** include own results and contribution as a helper under equal conditions, without counting the same team result twice.
 - **Choice A:** evaluate a common representative season programme, using riders where their abilities contribute best. Do not count only their best profiles or use their actual club, division or selection.
 - **Choice A:** the programme follows the planned in-game race supply and stays fixed during the season. Use the new v4 race engine where supported. Disclose gaps instead of silently substituting v3 evidence.
 - **Choice A:** a common market level plus local differences. Qualified market observations inform the common level; close comparisons influence individual riders more where evidence supports them. Thinly traded riders must still receive actual market influence through the common component.
 - **Choice A:** no separate fixed elite floor in the new calculation. Exceptional sporting ability may still produce a high value, but no elite minimum is guaranteed. This does not approve a particular premium, coefficient or before/after price.
+- **Choice A, clarified as future abilities:** use a separate, common type-free career forecast inside valuation. It estimates future abilities for pricing only; it does not change actual training or rider development. Preserve potential pending the later training-score transition.
 - Training score must eventually replace potential in the valuation model. Timing, history requirements and replacement calculation are not approved. The existing potential-rate decision remains in force until that transition.
 - Displayed rating remains best role now; badge remains natural identity. Coordinate the eventual value and display switch. Equal displayed ratings do not imply identical ability profiles or prices.
 - Cash and aggregate rider valuations are different quantities and are reported separately. Neither current aggregate valuation nor the historical total is an approved calibration target.
@@ -99,9 +100,52 @@ The score-writing path stores score/session and a short contribution summary, no
 
 Private coverage readout: `ability-training-score-coverage.json`. The later replacement needs a comparable measure of growth capacity under common conditions, with explicit historical reconstruction limits and cold-start handling. Preserve potential until that replacement is actually validated.
 
-### Pending modelling choice
+### Confirmed modelling choice
 
-Recommended direction, not yet approved: a separate type-free standard career forecast for valuation, retaining the approved potential-rate treatment while using equal future opportunities. This accepts an explicit approximation relative to the current type-dependent training system and keeps training changes outside this task. The alternative is to defer final career valuation until the underlying future training/development rules are settled. Neither choice authorizes changing those rules or implementing the value model yet.
+The owner chose A after explicitly clarifying that the forecast concerns future abilities used to calculate value today. Use a separate type-free standard career forecast for valuation, retaining the approved potential-rate treatment and equal future opportunities. It is an explicit approximation relative to the current type-dependent training system. Actual training and ability development remain outside this task. The choice does not approve specific forecast rates, allocation assumptions or production implementation.
+## Common opportunity budget and reference programme
+
+The forecast must account for one activity per race day, stage-race commitment, recovery and training opportunity costs under the common season axis. Do not grant every ability a full season's focused training simultaneously. Preserve any legitimately modelled background development, but distinguish it from focused training. Actual manager selection, club facilities and division must not choose a different valuation forecast for otherwise identical approved inputs.
+
+Reference programme evidence is now available from a GET-only dry run of the actual planner with the same quota derivation as `buildSeasonCalendar.js`: race dates multiplied by the configured tier density. The initial direct-library draft used an older default quota for one tier and is explicitly superseded; it must not be used as the S4 baseline. The corrected capture is `ability-reference-programme-cli-parity.json`, produced by `captureReferenceProgrammeCliParity.mjs`. It inserted no races, preserves the common race-day axis, and includes planned route profiles and schedules. Pool copies are deduplicated. This is planning output, not a production S4 calendar, a completed calendar-quality audit or owner approval of final valuation programme weights.
+
+An expanded v4 probe now samples each profile present in that planning output, includes explicit leadout for sprint finales, and uses multiple fixed reference-team strengths and seeds. Its initial rank-based readout is `ability-v4-planned-programme-pilot.json` / `ability-v4-helper-pairs.json`. Relative places are not monetary contributions. Individual time-trial helper/free-role contrasts are not a valid helper-value interpretation and must be excluded; the follow-up normalizes all individual time-trial roles to solo/free-role use.
+
+The team-points follow-up uses the existing `race_points` scale for each sampled race class, gives unfinished riders no placing points, and counts every reference teammate once. It includes stronger reference leaders as well as the earlier ordinary-strength contexts. This remains stage/single-race evidence, not a full accumulated GC/jersey or career valuation. Official point tables are privately captured in `ability-reference-point-scales.json`; analysis recipe is `probeV4TeamPointContribution.mjs`.
+
+### Monetary-anchor question withdrawn after plan reconciliation
+
+The agent's new A/B card about making the currency scale fully market-led from first activation was unnecessary and has been withdrawn. The owner did not answer or approve it. The existing decision is explicit in [#3448, owner decision 30 August](https://github.com/NicolaiDolmer/CyclingZone/issues/3448#issuecomment-5470259695), [#4449](https://github.com/NicolaiDolmer/CyclingZone/issues/4449), and ECONOMY_RULES section 9.2: simulation anchors the currency level initially; market evidence shapes relative pricing and its authority grows through measured, owner-approved steps.
+
+The approved 22 September requirement moves market participation into the first combined activation. It does not, by itself, authorize handing the full currency level to the market immediately. Likewise, the choice of a common market estimate plus local differences is not blanket authorization to remove the existing level anchor. Preserve those directions within the inherited boundary; if the final mathematics exposes a real incompatibility, show the exact conflict and measured consequences rather than asking the owner to redesign the system from scratch.
+
+The anchor is not an instruction to preserve an old aggregate total. The current request explicitly rejects treating either a historical total or today's total as an approved calibration target. The new type-free foundation must be recalibrated and shown to the owner. Historical activation weights belong to their old model; do not silently activate them on this replacement or claim they were never previously decided.
+
+## Reconciled plan: inheritance versus the authorised delta
+
+This proposal is an amendment to the existing value plan, not a new independent master plan. Read the dated decision chain as a whole: the 14 August foundation was revised on 15 August, developed further on 17 August, and the market rollout was explicitly settled again on 30 August. Later salary and activation decisions override their older versions. The old #5443 issue body contains historical statements that newer comments and ECONOMY_RULES have superseded.
+
+| Area | Existing source/contract | Change authorised in this task |
+|---|---|---|
+| Currency level versus relative demand | ECONOMY_RULES 9.2; #3448 decision 30 August; #4449 | Keep the initial simulation anchor. Replace the type-based foundation with ability/performance valuation; include market from the first combined activation. No historical aggregate total becomes a target. |
+| Evidence strength and participant qualification | [15 August decision 3](../../audits/2026-08-15-oekonomi-beslutninger-1-3.md); #3750; #4449 | Replace type-based comparability. Preserve the existing qualification/manipulation requirements unless explicitly amended; evaluate common and local evidence effects. |
+| Market rollout | #4449: measured steps and owner approval | The old formula-first/market-later task ordering is superseded. New weights require new-model measurements and owner choice, not a fresh debate over whether the market belongs. |
+| Update cadence and pipeline | ECONOMY_RULES 9.1; #4419 | Keep Sunday pipeline ordering and persistent deduplication. No daily value loop. |
+| Extraordinary transition | [5443 runbook](../../runbooks/5443-ekstraordinaer-vaerdikoersel.md); owner decisions 20 September on #5443 | Keep the owner-selected one-time transition without a loss staircase/compensation, before/after review, communication, backup, rollback and explicit execution authorization. Distinguish that event from the ongoing weekly movement guard. Recheck script compatibility with the new model rather than reinventing the release machinery. |
+| Salary | ECONOMY_RULES 2; owner decision 20 September on #5443 | Salary/CPV remains separate. Do not revive the superseded market-value salary proposal from the August documents. |
+| Career and growth capacity | ECONOMY_RULES 1.1; PROGRESSION_RULES; TRAINING_RULES | Owner approved a type-free valuation-only forecast. Preserve potential-rate treatment until the validated training-score replacement. Actual training remains unchanged. |
+| Elite treatment | Existing premium/floor code; this session's explicit owner choice | Remove the separate fixed elite floor in the new model. No numerical replacement premium is approved. |
+| Display and delivery | #5435 and the newer #5443 coordination decision | Best role on the card, natural-role badge; coordinated value/display switch. No UI implementation in this session. |
+| Required evidence | #5443 and the current task brief | Keep whole-population/rider/team before-after, large losses/gains, effective market influence, non-circular later-transaction validation and realistic abuse probes. No ready PR/build claim from isolated diagnostics. |
+
+### Audit of this session's own evidence
+
+- The payment reconciliation, historical-ability export, continuity probes and type-invariance checks are useful diagnostics. They do not complete the inherited qualification or release gates.
+- In particular, the private market comparison has not applied the full inherited repeat-counterparty and price-outlier policy. Its payment-reconciled, participant-screened sample must not be called fully qualified independent market evidence. The aggregate errors are exploratory, not an activation scorecard. Historical-data limitations in applying existing filters must be documented rather than silently omitting them.
+- `captureReferenceProgrammeCliParity.mjs` matches the CLI quota derivation but sets `useUniformTierTilt: true`. The latest [22 September handoff](../../drafts/codex-session-2026-09-22-v3.md), calendar item 7, calls for a dry run without uniform tilt and keeps shared variants owner-gated. The captured routes remain experimental inputs, not the approved S4 programme or final calibration baseline. Reconcile that source before another programme-level calibration; do not silently change the calendar task's decisions.
+- Existing read-only helper runs completed before this audit. They remain diagnostic, including the support-saturation and team-point comparisons. No additional model-selection run is required to answer the owner's process concern.
+- Before any further design card, identify its exact unresolved dependency in this matrix. If a source already decides it, apply the decision; if sources conflict, state their dates and supersession evidence first. The next deliverable is the integrated amended design and remaining concrete calculations, not another series of foundational A/B questions.
+
 ## Verification plan before build approval
 
 1. **Input/equality:** identical approved inputs remain identical across type labels, actual club/division, IDs, selection history and best-role ties. Missing data gets an explicit diagnostic status, not an invented zero ability.
@@ -137,7 +181,7 @@ The owner chose A: remove the separate fixed elite floor in the new calculation.
 ## Remaining design work and release boundary
 
 - Evaluate a smooth market relationship with sensible ability-response constraints and additional validation, without tuning repeatedly against a claimed untouched holdout.
-- Complete helper measurement with explicit team orders and the common programme; specify sporting-to-money conversion and type-free career projection.
+- Complete helper measurement against the correctly sourced common programme and specify the type-free career projection within the inherited simulation-based currency anchor.
 - Compare the combined calculation's initial and increasing market influence, then present a concrete economic choice backed by effective influence and uncertainty. No weights, value totals or quality thresholds are approved yet.
 - Specify the later training-score transition and collect a single reviewable calculation/test plan before requesting **godkendt til build**.
 
