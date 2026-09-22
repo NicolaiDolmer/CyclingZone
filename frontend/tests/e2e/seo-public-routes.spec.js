@@ -37,8 +37,32 @@ test("each public route sets a unique, non-default <title>", async ({ page }) =>
   for (const route of PUBLIC_ROUTES) {
     await page.goto(route.path);
     await expect(page.locator("main, [id='root']").first()).toBeVisible();
-    // Hooket kører i en useEffect efter mount → poll til titlen har ændret sig
-    // væk fra den statiske index.html-baseline ("Cycling Zone").
+    // Vent til rutens EGEN useDocumentHead har kørt. Signalet er
+    // canonical/robots — de skrives i samme effect som titlen, så er de på
+    // plads, er titlen det også. #5494: vi kan ikke længere polle "væk fra
+    // 'Cycling Zone'" for alle ruter, fordi de prerendrede ruter allerede
+    // leverer deres rigtige titel i server-HTML.
+    if (route.canonicalEndsWith === null) {
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(() =>
+              document.querySelector('meta[name="robots"]')?.getAttribute("content"),
+            ),
+          { message: `robots-meta for ${route.path}` },
+        )
+        .toMatch(/noindex/);
+    } else {
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(
+              () => document.querySelector('link[rel="canonical"]')?.getAttribute("href") ?? "",
+            ),
+          { message: `canonical for ${route.path}` },
+        )
+        .toContain(route.canonicalEndsWith);
+    }
     await expect
       .poll(async () => page.title(), { message: `title for ${route.path}` })
       .not.toBe("Cycling Zone");
