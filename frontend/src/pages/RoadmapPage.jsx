@@ -16,6 +16,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import {
   SCALE,
   ROADMAP_ITEM_COLUMNS,
@@ -107,6 +108,15 @@ function NextItemSkeleton() {
 
 export default function RoadmapPage() {
   const { t, i18n } = useTranslation("roadmap");
+  // Per-route head (#5494). Ruten ligger bag <I18nReadyGate ns="roadmap">, så
+  // namespacet ER hentet når komponenten overhovedet mountes — ingen
+  // ready-betingelse nødvendig her.
+  useDocumentHead({
+    title: t("meta.title"),
+    description: t("meta.description"),
+    canonical: "https://cyclingzone.org/roadmap",
+    lang: i18n.language?.startsWith("da") ? "da" : "en",
+  });
   const [userId, setUserId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [items, setItems] = useState(null); // null = ikke hentet endnu → statisk fallback

@@ -54,13 +54,21 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" href="/favicon.ico" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="canonical" href="https://cyclingzone.org/" />
+    <!-- #5494: BEVIDST INGEN statisk canonical her. Denne fil er både templaten
+         for de prerendrede offentlige ruter (frontend/scripts/prerender.mjs
+         indsætter en rute-matchende canonical + hreflang pr. rute) OG kilden
+         til app.html, som alle øvrige ruter rewrites til. En hardkodet
+         canonical til "/" fortalte crawlere at hver eneste rute var en dublet
+         af forsiden — et af de fem Ahrefs-fund i #5494. App-ruterne bag login
+         er ikke i sitemap.xml og skal ingen canonical have; de offentlige får
+         deres af prerenderen. -->
 
-    <!-- OpenGraph / social-share. Tailored til Founder Supporter landing page (#361)
-         da det er den primære public-facing route. Internal app-sider deler samme defaults. -->
+    <!-- OpenGraph / social-share. Værdierne herunder er app-shell-defaults
+         (app.html); prerenderen overskriver og:url/og:title/og:description/
+         og:locale pr. offentlig rute, så og:url altid følger canonical. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Cycling Zone" />
-    <meta property="og:url" content="https://cyclingzone.org/founder-supporter" />
+    <meta property="og:url" content="https://cyclingzone.org/" />
     <meta property="og:title" content="Cycling Zone · Fair Cycling Manager" />
     <meta property="og:description" content="Build your cycling team. Race the world. Back a fair cycling manager. Premium will never buy stronger riders or competitive advantages." />
     <!-- og:image MUST be a raster (PNG/JPG): Facebook, LinkedIn and X/Twitter do

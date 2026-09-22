@@ -32,6 +32,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { PRERENDERED_HTML_FILES } from "../frontend/scripts/public-prerender-routes.mjs";
+
 /**
  * Filer der MÅ variere mellem to builds med forskelligt release-id.
  *
@@ -51,6 +53,13 @@ export const VARIABLE_PATH_RULES = [
     path: "app.html",
     why: "app-shell (kopi af index.html før prerender); samme release-meta",
   },
+  // #5494: de øvrige offentlige ruter prerenderes nu også (dist/<rute>/
+  // index.html). Samme argument som index.html: kort-cachet HTML med
+  // release-meta, aldrig et immutable runtime-asset.
+  ...PRERENDERED_HTML_FILES.filter((file) => file !== "index.html").map((file) => ({
+    path: file,
+    why: "prerendret offentlig rute (#5494); kort-cachet og bærer <meta name=\"cz-release\">",
+  })),
   {
     path: "version.json",
     why: "release-metadata til versionsdetektion; kort-cachet, aldrig immutable",
