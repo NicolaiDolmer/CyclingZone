@@ -77,6 +77,7 @@ The neighbour method has abrupt changes when the comparable set changes. The reg
 
 After owner choice A, a smooth common-relationship/local-residual diagnostic was evaluated on multiple forward time splits. It avoids the neighbour-boundary jumps in the measured perturbations, but errors remain material and downward ability responses remain. It does not yet satisfy a complete price-quality contract. Forward validation is exploratory; the latest period had already been observed in the preceding comparison and is not a fresh final holdout.
 
+A further smooth, nonnegative-coefficient ability-response diagnostic was evaluated on the same forward splits. It eliminated decreasing responses in the measured perturbations without a material deterioration in overall predictive error relative to the earlier regularized relationship. The constrained feature construction is monotone in abilities at fixed age. This is a market-only feasibility result, not the complete common-level/local-evidence calculation, a monetary calibration or a fresh untouched holdout. Private recipe/readout: `analyzeMonotoneMarket.mjs` and `ability-market-monotone.json`.
 These market-only comparisons do not remove potential from the career foundation, implement training-score replacement, or establish activation weights. The local correction share reported by the smooth diagnostic is not the eventual combined model's market influence.
 
 ### Actual v4 pilot
@@ -110,6 +111,12 @@ All paths below are under `balance-internals/2026-09-22-best-role-refit/`; they 
 | `ability-market-history-coverage.json` | Initial SQL coverage readout, before correcting offer timestamps to payment times |
 
 Run local analysis scripts through `scripts/verify-lock.ps1 -Max 2`. Only the exporter needs credentials and network; all subsequent scripts read the frozen local artifacts. Exact raw snapshots are not a substitute for public decision state: confirmed directions, methods, limitations and next steps are recorded here and on #5443/#5435. Never upload the private artifacts to the public repository.
+
+## Pending economic choice: elite floor
+
+Both current valuation model files configure an elite premium and an explicit elite floor (`riderCareerNpv.js:applyElitePremium`). Some active riders in the private population snapshot are above that floor's ability threshold, while none of the payment-reconciled observations with historical abilities reach it. This establishes an evidence gap; it does not establish how many current prices are actually raised by the floor, or justify extrapolating ordinary-rider sale prices to elite riders.
+
+Owner card, not answered: should the new model replace the special fixed floor with a smooth ability/performance valuation and growing market influence, or retain a minimum elite value even when qualified market evidence would imply less? Removing or retaining it as a final combined-price floor is a separate economic decision. Existing behavior is unchanged. No elite amount or proposed before/after price is approved.
 
 ## Remaining design work and release boundary
 
