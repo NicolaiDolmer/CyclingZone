@@ -28,6 +28,11 @@ export function WithBestRole({ children, rider = null, role = null, variant = "s
   );
 }
 
+// #5435 opfølgning (ejer 22/9, efter PR #5501): badget skal se ud som
+// RiderTypeBadge (samme chip-anatomi — TASTE §"Fire prioritetssignaler",
+// alle piller på fladen skal have samme form), men i en NEUTRAL farve så det
+// aldrig kan forveksles med det guld-farvede naturlig-rolle-badge. Guld er
+// rationeret til RiderTypeBadge alene.
 export default function BestRoleTag({ rider = null, role = null, variant = "short", className = "" }) {
   const { t } = useTranslation("riderTypes");
   const on = useBestRoleDisplay();
@@ -35,9 +40,11 @@ export default function BestRoleTag({ rider = null, role = null, variant = "shor
   const key = role ?? riderBestRole(rider ?? {}).role;
   if (!key) return null;
   const full = t(`types.${key}`);
+  const text = variant === "short" ? "text-3xs" : "text-xs";
+  const pad = variant === "short" ? "px-1.5 py-0.5" : "px-2 py-1";
   return (
     <span
-      className={`text-cz-3 whitespace-nowrap ${variant === "short" ? "text-3xs uppercase tracking-[.06em]" : "text-xs"} ${className}`}
+      className={`inline-flex items-center rounded font-medium leading-none whitespace-nowrap bg-cz-2/10 text-cz-2 ${text} ${pad} ${className}`}
       title={t("bestRole.title", { role: full })}
       data-best-role={key}
     >
