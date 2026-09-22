@@ -9,7 +9,7 @@
 // FOER #5486 tegnede kurven et HUL dér (sammenhaengende SEGMENTER med et brud
 // per loebsdag). Ejeren (22/9, #5486) aendrede det: loebsdage skal udelades
 // helt af SERIEN, saa kurven er ubrudt — ikke vise et hul, ikke vise 0. Derfor
-// filtreres `points` gennem `filterTrainingScoreSpark` (lib/trainingScoreView.js)
+// filtreres `points` gennem `filterTrainingScoreSpark` (lib/trainingScoreView.ts)
 // FOER x-aksen udregnes: en filtreret loebsdag optager intet slot, saa de
 // tilbagevaerende dage tegnes som ÉN sammenhaengende linje. Filteret virker
 // ens uanset `training_tick_per_race_day` (spec's flag), fordi det kun kigger
@@ -18,7 +18,7 @@
 // Hard rule 31: nye frontend-filer skrives i .ts/.tsx, saa filen faar fuld
 // strict-daekning fra `frontend/tsconfig.json` med det samme.
 
-import { filterTrainingScoreSpark } from "../../lib/trainingScoreView.js";
+import { filterTrainingScoreSpark } from "../../lib/trainingScoreView.ts";
 
 // Ét raat punkt fra API'et. `score` er NULLABLE, fordi en loebsdag faar en
 // raekke uden tal (backend/lib/trainingScore.js, buildTrainingScoreView) —

@@ -3,9 +3,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { filterTrainingScoreSpark } from "./trainingScoreView.js";
+import { filterTrainingScoreSpark, type TrainingScoreSparkPoint } from "./trainingScoreView.ts";
 
-function point(date, score, raceDay = false) {
+function point(date: string, score: number | null, raceDay = false): TrainingScoreSparkPoint {
   return { date, score, raceDay };
 }
 

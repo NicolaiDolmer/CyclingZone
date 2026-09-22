@@ -15,19 +15,23 @@
 //
 // Ren funktion, ingen DOM/React: testes isoleret med `node --test`.
 
-/**
- * @typedef {{ date: string, score: number|null, raceDay?: boolean }} TrainingScoreSparkPoint
- */
+export interface TrainingScoreSparkPoint {
+  date: string;
+  score: number | null;
+  raceDay?: boolean;
+}
 
 /**
  * Filtrerer en traeningsscore-spark-serie saa kun dage MED et tal er tilbage.
  * Loebsdage (og enhver anden raekke uden et gyldigt tal) udelades af
  * outputtet i stedet for at blive vist som et hul eller et nul.
- *
- * @param {ReadonlyArray<TrainingScoreSparkPoint>|null|undefined} points
- * @returns {Array<TrainingScoreSparkPoint & { score: number }>}
  */
-export function filterTrainingScoreSpark(points) {
+export function filterTrainingScoreSpark(
+  points: ReadonlyArray<TrainingScoreSparkPoint | null | undefined> | null | undefined,
+): Array<TrainingScoreSparkPoint & { score: number }> {
   if (!Array.isArray(points)) return [];
-  return points.filter((p) => p != null && typeof p.score === "number" && Number.isFinite(p.score));
+  return points.filter(
+    (p): p is TrainingScoreSparkPoint & { score: number } =>
+      p != null && typeof p.score === "number" && Number.isFinite(p.score),
+  );
 }
