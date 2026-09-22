@@ -48,10 +48,15 @@ function flat(level) {
 
 const CLIMBER_NOW = { ...flat(30), climbing: 72, recovery: 64, endurance: 62 };
 const SPRINTER_NOW = { ...flat(25), sprint: 70, acceleration: 66, positioning: 60, flat: 55 };
+// #5435 opfølgning 3: tredje rolle med en meget KORT chip-label ("ITT", 3 tegn)
+// mod klatrerens lange ("Klatrer", 7 tegn) — beviser at plade-x'et er ens
+// uanset chip-tekstens længde, ikke kun mellem to nogenlunde lige lange labels.
+const TT_NOW = { ...flat(25), time_trial: 75, tempo: 60, endurance: 55 };
 
 const RIDERS = [
   riderRow("best-climb", "Climbnow", CLIMBER_NOW),
   riderRow("best-sprint", "Sprintnow", SPRINTER_NOW),
+  riderRow("best-tt", "Ttnow", TT_NOW),
 ];
 
 async function mockRiders(page) {
@@ -117,6 +122,26 @@ test.describe("Rytterdatabase: rating = bedste rolle nu bag kontakten (#5435)", 
     await expect(ratingCell).toContainText(String(best.rating));
     await expect(ratingCell.locator("[data-best-role='climber']")).toBeVisible();
     await expect(page.getByRole("columnheader", { name: NATURAL_ROLE })).toBeVisible();
+
+    // #5435 opfølgning 3 (ejer 22/9): rating-pladen skal stå PRÆCIS lodret
+    // under hinanden i kolonnen, uanset hvor lang rolle-chippens tekst er
+    // ("Klatrer" mod "ITT" mod "Sprint"/"Spurt") — BestRoleTag's faste
+    // chip-bredde-plads er fixet netop for at gøre plade-venstre-x konstant.
+    // Pladen er DOM'ets første <span> i cellen (WithBestRole's ydre
+    // flex-wrapper er selve `td span`-match #0; pladen er #1 — se
+    // BestRoleTag.jsx's kommentar for boks-opbygningen).
+    async function ratingPlateLeftX(lastname) {
+      const cell = page.locator("table tbody tr", { hasText: lastname }).locator("td:nth-child(5)");
+      const plate = cell.locator("span").nth(1);
+      const box = await plate.boundingBox();
+      expect(box, `ingen boundingBox for ${lastname}s rating-plade`).not.toBeNull();
+      return box.x;
+    }
+    const climbX = await ratingPlateLeftX("Climbnow");
+    const sprintX = await ratingPlateLeftX("Sprintnow");
+    const ttX = await ratingPlateLeftX("Ttnow");
+    expect(Math.abs(climbX - sprintX)).toBeLessThanOrEqual(1);
+    expect(Math.abs(climbX - ttX)).toBeLessThanOrEqual(1);
 
     await page.screenshot({ path: evidenceShotPath("pr-screens/5435-riders-best-role-on-desktop.png"), fullPage: true });
 
