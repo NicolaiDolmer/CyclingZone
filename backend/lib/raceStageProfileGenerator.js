@@ -25,6 +25,9 @@ import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
 import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
+// #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
+// afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
+import { FINALE_CLASS_BY_TYPE, FINALE_CLASSES, OVERALL_FINALE_BAND, TERRAIN_FINALE_BANDS } from "./stageFinaleMetrics.js";
 
 // v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
 // identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
@@ -683,28 +686,130 @@ function toStage(rng, profileType, stageNumber, race, isStageRace) {
  * @returns {Array<Array<object>>} samme form og rækkefølge
  */
 export function balanceFinaleQuotas(stagesByRace = []) {
-  const groups = new Map();
+  const groupsByProfile = new Map();
+  const fixedClassCounts = Object.fromEntries(FINALE_CLASSES.map((c) => [c, 0]));
+  let totalStages = 0;
   stagesByRace.forEach((stages, raceIdx) => {
     (stages ?? []).forEach((stage, stageIdx) => {
-      const ctx = stage ? FINALE_CONTEXT.get(stage) : null;
-      const options = FINALE_WEIGHTS_BY_PROFILE[stage?.profile_type] || [];
-      if (!ctx || options.length < 2) return;
-      if (!groups.has(stage.profile_type)) groups.set(stage.profile_type, []);
-      groups.get(stage.profile_type).push({ raceIdx, stageIdx, stage, ctx });
+      if (!stage) return;
+      totalStages += 1;
+      const ctx = FINALE_CONTEXT.get(stage);
+      const options = FINALE_WEIGHTS_BY_PROFILE[stage.profile_type] || [];
+      if (!ctx || options.length < 2) {
+        const cls = FINALE_CLASS_BY_TYPE[stage.finale_type];
+        if (cls) fixedClassCounts[cls] += 1;
+        return;
+      }
+      if (!groupsByProfile.has(stage.profile_type)) groupsByProfile.set(stage.profile_type, []);
+      groupsByProfile.get(stage.profile_type).push({ raceIdx, stageIdx, stage, ctx });
     });
   });
 
+  const groups = [...groupsByProfile.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([profileType, members]) => {
+      members.sort((a, b) => (a.ctx.u - b.ctx.u) || (a.ctx.key < b.ctx.key ? -1 : a.ctx.key > b.ctx.key ? 1 : 0));
+      const options = FINALE_WEIGHTS_BY_PROFILE[profileType];
+      const n = members.length;
+      // Standard-kvoten: etapen på plads r får finalen for kvantilen (r + ½)/n.
+      const defaults = options.map(() => 0);
+      for (let r = 0; r < n; r++) {
+        const finale = pickByQuantile(options, (r + 0.5) / n);
+        defaults[options.findIndex((o) => o.value === finale)] += 1;
+      }
+      return { profileType, members, options, n, defaults, counts: defaults, roundings: quotaRoundings(options, n) };
+    });
+
+  chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages);
+
   const out = stagesByRace.map((stages) => (stages ? [...stages] : stages));
-  for (const [profileType, members] of groups) {
-    const options = FINALE_WEIGHTS_BY_PROFILE[profileType];
-    members.sort((a, b) => (a.ctx.u - b.ctx.u) || (a.ctx.key < b.ctx.key ? -1 : a.ctx.key > b.ctx.key ? 1 : 0));
-    const n = members.length;
-    members.forEach((m, rank) => {
-      const finale = pickByQuantile(options, (rank + 0.5) / n);
-      if (finale !== m.stage.finale_type) out[m.raceIdx][m.stageIdx] = m.ctx.rebuild(finale);
+  for (const g of groups) {
+    // Rangordenen bevares: de første counts[0] etaper får første finale i listen, osv.
+    let rank = 0;
+    g.counts.forEach((count, k) => {
+      for (let i = 0; i < count; i++, rank++) {
+        const m = g.members[rank];
+        const finale = g.options[k].value;
+        if (finale !== m.stage.finale_type) out[m.raceIdx][m.stageIdx] = m.ctx.rebuild(finale);
+      }
     });
   }
   return out;
+}
+
+// Alle lovlige afrundinger af kvoten n × vægtandel: hver finale får enten nedrundet eller
+// oprundet antal, og summen er n. Højst fire finaler pr. terræn → højst seks muligheder.
+function quotaRoundings(options, n) {
+  const total = options.reduce((s, o) => s + o.weight, 0);
+  const exact = options.map((o) => (n * o.weight) / total);
+  const floors = exact.map((e) => Math.floor(e + 1e-9));
+  const fractional = exact.map((e, k) => k).filter((k) => exact[k] - floors[k] > 1e-9);
+  const extra = n - floors.reduce((s, f) => s + f, 0);
+  const out = [];
+  const pick = (start, chosen) => {
+    if (chosen.length === extra) {
+      out.push(floors.map((f, k) => f + (chosen.includes(k) ? 1 : 0)));
+      return;
+    }
+    for (let i = start; i < fractional.length; i++) pick(i + 1, [...chosen, fractional[i]]);
+  };
+  pick(0, []);
+  return out.length ? out : [floors];
+}
+
+// #5405: kvoten skal rundes af — n × vægtandel er sjældent et helt tal. Standard er den
+// nærmeste afrunding ((r + ½)/n ovenfor). Men ejeren har ÉT bånd mere end terræn-båndene:
+// det samlede bånd på tværs af ALLE en divisions etaper (OVERALL_FINALE_BAND, "samme i alle
+// divisioner"). Med terræn-vægtene på båndenes midte kan summen af dem ligge på kanten af
+// det samlede bånd — så afgør afrundingen hvilken side af kanten divisionen lander på.
+//
+// Reglen: behold standard-afrundingen, medmindre en anden LOVLIG afrunding (hver finale
+// stadig højst én etape fra sin kvote) bringer divisionen tættere på at overholde både det
+// samlede bånd og terræn-båndene. Ingen vægt ændres, intet bånd ændres, og intet terræn
+// flyttes mere end afrundingen tillader. Koordinat-søgning over terrænerne i fast
+// rækkefølge; lige gode valg beholder det nuværende. Deterministisk.
+function chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages) {
+  const eps = 1e-9;
+  const outside = (count, [lo, hi], n) => Math.max(0, (lo * n) / 100 - count - eps) + Math.max(0, count - (hi * n) / 100 - eps);
+  const classCounts = (g, counts) => {
+    const byClass = Object.fromEntries(FINALE_CLASSES.map((c) => [c, 0]));
+    counts.forEach((count, k) => { byClass[FINALE_CLASS_BY_TYPE[g.options[k].value]] += count; });
+    return byClass;
+  };
+  const score = () => {
+    let violation = 0, moved = 0;
+    const overall = { ...fixedClassCounts };
+    for (const g of groups) {
+      const byClass = classCounts(g, g.counts);
+      for (const c of FINALE_CLASSES) overall[c] += byClass[c];
+      const bands = TERRAIN_FINALE_BANDS[g.profileType];
+      if (bands) for (const c of FINALE_CLASSES) violation += outside(byClass[c], bands[c] ?? [0, 0], g.n);
+      g.counts.forEach((count, k) => { moved += Math.abs(count - g.defaults[k]); });
+    }
+    for (const [c, band] of Object.entries(OVERALL_FINALE_BAND)) violation += outside(overall[c], band, totalStages);
+    return { violation, moved };
+  };
+  const better = (a, b) => a.violation < b.violation - eps || (Math.abs(a.violation - b.violation) <= eps && a.moved < b.moved);
+
+  // Bedste enkelt-ændring ad gangen (ikke første forbedring): så vælges det terræn hvor
+  // afrundingen koster mindst, i stedet for det der tilfældigvis står først i rækkefølgen.
+  let best = score();
+  for (let step = 0; step < 64 && best.violation > eps; step++) {
+    let move = null;
+    for (const g of groups) {
+      const current = g.counts;
+      for (const candidate of g.roundings) {
+        if (candidate.every((c, k) => c === current[k])) continue;
+        g.counts = candidate;
+        const s = score();
+        if (better(s, move?.score ?? best)) move = { g, candidate, score: s };
+      }
+      g.counts = current;
+    }
+    if (!move) break;
+    move.g.counts = move.candidate;
+    best = move.score;
+  }
 }
 
 // Endagsløb: ét terræn fra arketypens (eller den generiske) vægtede fordeling.
