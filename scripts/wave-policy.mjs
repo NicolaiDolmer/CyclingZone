@@ -7,6 +7,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { admissionOwnerProcess, assertWaveOwnership, ownershipSnapshot } from './wave-ownership.mjs';
+import { measureBootId, normalizeBootId, sameBoot } from './wave-boot-identity.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
 const reserved = ['docs/now.md', '.claude/run', '.claude/launch.json'];
@@ -68,16 +69,16 @@ export function readWave(dir) {
 }
 
 let cachedBootId;
+// Normalized (#5533): raw Windows ticks drift within one boot.
 export function hostBootId() {
   if (cachedBootId) return cachedBootId;
-  if (process.platform === 'linux') cachedBootId = fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim();
-  else if (process.platform === 'win32') cachedBootId = execFileSync('pwsh', ['-NoProfile', '-Command',
-    '$ErrorActionPreference="Stop"; (Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToUniversalTime().Ticks.ToString()'], { encoding: 'utf8', timeout: 15000 }).trim();
+  cachedBootId = measureBootId();
   return cachedBootId;
 }
 
 export function withWaveStateLock(dir, action) {
-  const bootId = hostBootId();
+  // Normalized again so a raw value can never select a different lock.
+  const bootId = normalizeBootId(hostBootId());
   if (!bootId) throw Error('Cannot identify host boot for wave state lock');
   const key = createHash('sha256').update(bootId).digest('hex').slice(0, 16);
   const lock = path.join(dir, `wave-state-${key}.lock`);
@@ -165,21 +166,22 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   }
 }
 
-export function releaseWave(dir, waveId, childrenStopped) {
-  return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped));
+export function releaseWave(dir, waveId, childrenStopped, snapshot = ownershipSnapshot) {
+  return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped, snapshot));
 }
 
-function releaseWaveLocked(dir, waveId, childrenStopped) {
+function releaseWaveLocked(dir, waveId, childrenStopped, snapshot) {
   if (!childrenStopped) throw Error('All children must be observed stopped before release');
   const wave = requireModernWave(readWave(dir));
   if (!waveId || wave.waveId !== waveId) throw Error('Wave owner mismatch; marker retained');
-  assertWaveOwnership(wave, ownershipSnapshot());
+  assertWaveOwnership(wave, snapshot());
   stopWaveWatch(wave);
   fs.unlinkSync(path.join(dir, 'wave-active.json'));
 }
 
 export function stopWaveWatch(wave, observedBootId) {
-  if (wave.watchPid && !(observedBootId && wave.bootId && observedBootId !== wave.bootId)) {
+  // Only a proven different boot skips the kill; sub-second drift is the same boot (#5533).
+  if (wave.watchPid && !(observedBootId && wave.bootId && !sameBoot(observedBootId, wave.bootId))) {
     // PID reuse must never turn cleanup into a kill of somebody else's process.
     const pid = wave.watchPid;
     if (!Number.isSafeInteger(pid) || pid < 1 || !/^\d+$/.test(wave.watchStarted || '')) throw Error('Unverified watch identity; marker retained');

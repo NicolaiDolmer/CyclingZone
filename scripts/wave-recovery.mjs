@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { readWave, requireModernWave, withWaveStateLock, stopWaveWatch } from './wave-policy.mjs';
+import { normalizeBootId, sameBoot } from './wave-boot-identity.mjs';
 
 import { processSnapshot } from './wave-process-snapshot.mjs';
 export { processSnapshot } from './wave-process-snapshot.mjs';
@@ -14,8 +15,11 @@ export function recoverWave(dir, expected, snapshot = processSnapshot) {
   if (!Number.isFinite(expected.now)) throw Error('Recovery now required');
   if (!['registered', 'owner-tree'].includes(wave.processTracking)) throw Error('Legacy process history; marker retained');
   const observed = snapshot();
-  if (!wave.bootId || typeof observed?.bootId !== 'string' || !observed.bootId) throw Error('Unknown host boot identity; marker retained');
-  const rebooted = wave.bootId !== observed.bootId;
+  const observedBootId = normalizeBootId(observed?.bootId);
+  if (!normalizeBootId(wave.bootId) || !observedBootId) throw Error('Unknown host boot identity; marker retained');
+  // Sub-second drift within one Windows boot is NOT a restart (#5533); only a
+  // proven different boot may skip the process check below.
+  const rebooted = !sameBoot(wave.bootId, observedBootId);
   if (!rebooted && (!Number.isSafeInteger(wave.pid) || wave.pid < 1)) throw Error('Unknown owner PID; marker retained');
   const children = wave.children || [];
   if (!rebooted && (!Array.isArray(children) || children.some(c => !Number.isSafeInteger(c.pid) || c.pid < 1 || !['running', 'stopped'].includes(c.state)))) {
@@ -42,7 +46,7 @@ export function recoverWave(dir, expected, snapshot = processSnapshot) {
   // original marker until owned release, including throughout the snapshot.
   // A recovery-process crash must not block the next boot's recovery. Old
   // boot-qualified lock files are inert evidence, never shared with a new boot.
-  const bootKey = createHash('sha256').update(observed.bootId).digest('hex').slice(0, 16);
+  const bootKey = createHash('sha256').update(observedBootId).digest('hex').slice(0, 16);
   const recoveryLock = path.join(dir, `wave-recovery-${wave.waveId}-${bootKey}.lock`);
   const lock = fs.openSync(recoveryLock, 'wx');
   try {
@@ -51,10 +55,10 @@ export function recoverWave(dir, expected, snapshot = processSnapshot) {
     const evidenceDir = path.join(dir, 'waves', wave.waveId);
     fs.mkdirSync(evidenceDir, { recursive: true });
     const evidence = path.join(evidenceDir, 'recovery.json');
-    fs.writeFileSync(evidence, JSON.stringify({ waveId: wave.waveId, owner: wave.owner, checkedAt: expected.now, checkedPids: [...roots], proof: rebooted ? 'host-restarted' : 'dead-owner-before-dispatch', observedBootId: observed.bootId }, null, 2));
+    fs.writeFileSync(evidence, JSON.stringify({ waveId: wave.waveId, owner: wave.owner, checkedAt: expected.now, checkedPids: [...roots], proof: rebooted ? 'host-restarted' : 'dead-owner-before-dispatch', observedBootId }, null, 2));
     withWaveStateLock(dir, () => {
       if (JSON.stringify(readWave(dir)) !== JSON.stringify(wave)) throw Error('Wave changed during recovery; marker retained');
-      stopWaveWatch(wave, observed.bootId);
+      stopWaveWatch(wave, observedBootId);
       fs.unlinkSync(path.join(dir, 'wave-active.json'));
     });
     return { released: true, waveId: wave.waveId, evidence };
