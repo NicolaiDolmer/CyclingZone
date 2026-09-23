@@ -137,21 +137,25 @@ test("'Vis detaljer' på en samlet løbslinje åbner løbets resultat med eget h
   await raceLine.click();
   const viewDetails = page.getByRole("button", { name: /^(Vis detaljer|View details)/ });
   await expect(viewDetails).toBeVisible();
+  if (project === "mobile-chromium") {
+    await page.screenshot({
+      path: evidenceShotPath("pr-screens/5417-inbox-race-view-details/inbox-expanded-mobile-390.png"),
+      fullPage: false,
+    });
+  }
   await viewDetails.click();
 
-  await page.waitForURL((url) => !url.pathname.startsWith("/notifications"));
+  // Selve løbet, ikke resultat-hubben (/resultater før rettelsen).
+  await expect(page).toHaveURL(new RegExp(`/races/${RACE_ID}$`));
+  await expect(page.getByRole("heading", { name: RACE_NAME })).toBeVisible();
 
   if (project === "mobile-chromium" || project === "desktop-chromium") {
     const suffix = project === "mobile-chromium" ? "mobile-390" : "desktop-1280";
     await page.screenshot({
-      path: evidenceShotPath(`pr-screens/5417-inbox-race-view-details/view-details-${suffix}.png`),
+      path: evidenceShotPath(`pr-screens/5417-inbox-race-view-details/after-view-details-${suffix}.png`),
       fullPage: false,
     });
   }
-
-  // Selve løbet, ikke resultat-hubben.
-  await expect(page).toHaveURL(new RegExp(`/races/${RACE_ID}$`));
-  await expect(page.getByRole("heading", { name: RACE_NAME })).toBeVisible();
 
   // Resultatet: "Sådan endte det" med spillerens egen rytter markeret som sin.
   await expect(page.getByRole("heading", { name: /^(Sådan endte det|How it ended)$/ })).toBeVisible();
@@ -159,11 +163,4 @@ test("'Vis detaljer' på en samlet løbslinje åbner løbets resultat med eget h
   await ownRow.scrollIntoViewIfNeeded();
   await expect(ownRow).toBeVisible();
   await expect(ownRow).toContainText(TEST_TEAM.name);
-
-  if (project === "mobile-chromium") {
-    await page.screenshot({
-      path: evidenceShotPath("pr-screens/5417-inbox-race-view-details/view-details-result-row-mobile-390.png"),
-      fullPage: false,
-    });
-  }
 });
