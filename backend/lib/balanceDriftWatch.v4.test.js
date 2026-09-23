@@ -403,6 +403,28 @@ test("v4-favoritten er SAMME definition som harnessets favorite_win_rate-anker",
   }
 });
 
+test("endagsløb med NULL stage_number på resultat og profil tælles som etape 1", async () => {
+  const tables = v4Tables();
+  const oneDay = {
+    race_simulation_runs: [
+      { id: "run-e1", race_id: "race-e", stage_number: 1, engine_version: 4, created_at: DAY_TS,
+        entrant_snapshot: ["d01", "d02", "d03"] },
+    ],
+    race_results: ["d01", "d02", "d03"].map((id, idx) => ({
+      id: `res-e-${idx}`, race_id: "race-e", stage_number: null, result_type: "stage",
+      rider_id: id, team_id: `team-${id}`, rank: idx + 1, in_breakaway: false, imported_at: DAY_TS,
+    })),
+    race_incidents: [],
+    race_stage_profiles: [{ id: "prof-e", race_id: "race-e", stage_number: null, profile_type: "flat", finale_type: null }],
+    rider_derived_abilities: tables.rider_derived_abilities,
+  };
+  const inputs = await fetchV4DayInputs(makeTableStub(oneDay), "2026-09-10");
+  assert.equal(inputs.stages, 1);
+  assert.equal(inputs.observations.length, 1, "etapen må ikke forsvinde fordi resultatet bærer NULL stage_number");
+  assert.equal(inputs.observations[0].favoriteId, "d01");
+  assert.equal(inputs.observations[0].favoriteWon, true);
+});
+
 // ── 4. Blandet dag ──────────────────────────────────────────────────────────
 
 test("blandet dag: v3-delen er identisk med en ren v3-dag, v4-delen med en ren v4-dag", async () => {

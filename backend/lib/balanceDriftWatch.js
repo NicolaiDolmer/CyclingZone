@@ -393,13 +393,15 @@ export async function fetchV4DayInputs(supabase, dateStr, { importModule = (href
 
   const modules = await loadV4SeriesModules(importModule);
 
+  // Ikke filtreret på stage_number i SQL: en endagsløbs-række med NULL
+  // stage_number skal nå frem til stageKeyOf's `|| 1` (samme regel som
+  // profilerne nedenfor). Etape-filtret sker i hukommelsen på runByStage.
   const dayResults = await fetchAllRows(() =>
     supabase
       .from("race_results")
       .select("id, race_id, stage_number, rider_id, team_id, rank")
       .eq("result_type", "stage")
       .in("race_id", raceIds)
-      .in("stage_number", stageNumbers)
       .order("id")
   );
   const incidents = await fetchAllRows(() =>
