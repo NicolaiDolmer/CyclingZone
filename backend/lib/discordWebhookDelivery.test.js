@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { classifyWebhookFailure, attemptWebhookDelivery } from "./discordWebhookDelivery.js";
+import { createServer } from "node:http";
+
+import { classifyWebhookFailure, attemptWebhookDelivery, WEBHOOK_REQUEST_TIMEOUT_MS } from "./discordWebhookDelivery.js";
 
 // ── classifyWebhookFailure ───────────────────────────────────────────────────
 
@@ -177,4 +179,118 @@ test("attemptWebhookDelivery — 5xx retries derefter succes", async () => {
   assert.equal(calls.length, 2);
   // Ingen retry_after på 5xx → default stigende backoff (500ms * attempt 1)
   assert.deepEqual(sleeps, [500]);
+});
+
+// ── #3624 · timeout pr. POST ────────────────────────────────────────────────
+
+// fetch der aldrig svarer, men respekterer signalet — som undici's fetch.
+function makeHangingFetch() {
+  const calls = [];
+  const fetchFn = (url, opts) => {
+    calls.push({ url, opts });
+    return new Promise((_, reject) => {
+      opts.signal.addEventListener("abort", () => reject(opts.signal.reason), { once: true });
+    });
+  };
+  return { fetchFn, calls };
+}
+
+test("attemptWebhookDelivery (#3624) — hvert POST baerer et timeout-signal (standard 10 s)", async () => {
+  assert.equal(WEBHOOK_REQUEST_TIMEOUT_MS, 10_000);
+  const { fetchFn, calls } = makeFetchSequence([{ status: 204 }]);
+  await attemptWebhookDelivery({
+    webhookUrl: "https://discord.com/api/webhooks/1/abc",
+    payload: {},
+    fetchFn,
+    sleepFn: noSleep,
+  });
+  assert.ok(calls[0].opts.signal instanceof AbortSignal, "signal sendes med til fetch");
+  assert.equal(calls[0].opts.signal.aborted, false);
+});
+
+test("attemptWebhookDelivery (#3624) — haengende Discord-kald afbrydes: retryable timeout, ingen inline-retry", async () => {
+  const { fetchFn, calls } = makeHangingFetch();
+  const sleeps = [];
+  const started = Date.now();
+  const result = await attemptWebhookDelivery({
+    webhookUrl: "https://discord.com/api/webhooks/1/abc",
+    payload: {},
+    fetchFn,
+    sleepFn: async (ms) => sleeps.push(ms),
+    timeoutMs: 30,
+  });
+  assert.ok(Date.now() - started < 2000, "leveringen slipper koeen kort efter loftet");
+  assert.equal(result.ok, false);
+  assert.equal(result.status, null);
+  assert.deepEqual(result.failure, { kind: "retryable", reason: "timeout", deferred: true });
+  assert.equal(result.attempts, 1);
+  assert.equal(calls.length, 1, "intet straks-retry mod et endpoint der ikke svarer");
+  assert.deepEqual(sleeps, []);
+  assert.match(result.error, /timeout/);
+});
+
+test("attemptWebhookDelivery (#3624) — timeout efter et 5xx stopper retry-loopet", async () => {
+  let n = 0;
+  const hanging = makeHangingFetch();
+  const fetchFn = (url, opts) => {
+    n++;
+    if (n === 1) {
+      return Promise.resolve({ ok: false, status: 503, text: async () => "", headers: { get: () => null } });
+    }
+    return hanging.fetchFn(url, opts);
+  };
+  const result = await attemptWebhookDelivery({
+    webhookUrl: "https://discord.com/api/webhooks/1/abc",
+    payload: {},
+    fetchFn,
+    sleepFn: noSleep,
+    timeoutMs: 30,
+  });
+  assert.equal(result.failure.reason, "timeout");
+  assert.equal(result.attempts, 2);
+  assert.equal(n, 2);
+});
+
+test("attemptWebhookDelivery (#3624) — ogsaa en haengende svar-body afbrydes af loftet", async () => {
+  const fetchFn = (_url, opts) => Promise.resolve({
+    ok: false,
+    status: 502,
+    headers: { get: () => null },
+    text: () => new Promise((_, reject) => {
+      opts.signal.addEventListener("abort", () => reject(opts.signal.reason), { once: true });
+    }),
+  });
+  const started = Date.now();
+  const result = await attemptWebhookDelivery({
+    webhookUrl: "https://discord.com/api/webhooks/1/abc",
+    payload: {},
+    fetchFn,
+    sleepFn: noSleep,
+    maxAttempts: 1,
+    timeoutMs: 30,
+  });
+  assert.ok(Date.now() - started < 2000);
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 502);
+  assert.equal(result.failure.reason, "discord-5xx");
+});
+
+test("attemptWebhookDelivery (#3624) — rigtig fetch mod en server der aldrig svarer", async () => {
+  const server = createServer(() => { /* svarer bevidst aldrig */ });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  try {
+    const result = await attemptWebhookDelivery({
+      webhookUrl: `http://127.0.0.1:${port}/api/webhooks/1/abc`,
+      payload: { content: "x" },
+      sleepFn: noSleep,
+      timeoutMs: 100,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.failure.reason, "timeout");
+    assert.equal(result.attempts, 1);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
