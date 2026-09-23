@@ -136,7 +136,14 @@ export function hostBootId() {
   return hostBootIdentity().bootId;
 }
 
-export function withWaveStateLock(dir, action) {
+// #5562: merges may now hold the state lock DURING a wave (the merge call and
+// its gh retries). Default callers still give up after ~5 s; the writers a
+// running wave depends on wait long enough to outlast one merge. The hook's
+// first-dispatch write stays inside the 90 s hook timeout.
+export const LONG_LOCK_ATTEMPTS = 2400; // ~120 s: intake, enqueue, release CLI
+const HOOK_LOCK_ATTEMPTS = 1200; // ~60 s
+
+export function withWaveStateLock(dir, action, attempts = 100) {
   // Keyed on a clock-independent boot identity (#5533), so every process in
   // one boot shares the lock even across a clock correction.
   const lockKey = hostBootIdentity().lockKey;
@@ -144,7 +151,7 @@ export function withWaveStateLock(dir, action) {
   const key = createHash('sha256').update(lockKey).digest('hex').slice(0, 16);
   const lock = path.join(dir, `wave-state-${key}.lock`);
   let acquired = false;
-  for (let attempt = 0; attempt < 100; attempt++) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
     try { fs.mkdirSync(lock); acquired = true; break; }
     catch (e) { if (e.code !== 'EEXIST') throw e; }
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
@@ -169,8 +176,8 @@ export function requireModernWave(wave) {
   return wave;
 }
 
-export function updateWave(dir, waveId, transform) {
-  return withWaveStateLock(dir, () => updateWaveLocked(dir, waveId, transform));
+export function updateWave(dir, waveId, transform, attempts) {
+  return withWaveStateLock(dir, () => updateWaveLocked(dir, waveId, transform), attempts);
 }
 
 function updateWaveLocked(dir, waveId, transform) {
@@ -227,8 +234,8 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   }
 }
 
-export function releaseWave(dir, waveId, childrenStopped, snapshot = ownershipSnapshot) {
-  return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped, snapshot));
+export function releaseWave(dir, waveId, childrenStopped, snapshot = ownershipSnapshot, attempts) {
+  return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped, snapshot), attempts);
 }
 
 const trackRef = t => ({ issue: t?.issue, branch: t?.branch });
@@ -273,7 +280,7 @@ export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot)
     if (pending.length + tracks.length > MAX_PENDING_TRACKS) throw Error(`At most ${MAX_PENDING_TRACKS} pending tracks`);
     assertCompatibleWithActive(activeTracks(wave), tracks);
     return { ...wave, pendingTracks: [...pending, ...tracks] };
-  });
+  }, LONG_LOCK_ATTEMPTS);
   return { enqueued: tracks.map(trackRef), pending: next.pendingTracks.map(trackRef) };
 }
 
@@ -290,7 +297,7 @@ export function intakeTracks(dir, waveId, finished = [], snapshot = ownershipSna
     for (const b of finished) if (known.has(b)) done.add(b);
     taken = Array.isArray(wave.pendingTracks) ? wave.pendingTracks : [];
     return { ...wave, tracks: [...wave.tracks, ...taken], pendingTracks: [], finishedBranches: [...done] };
-  });
+  }, LONG_LOCK_ATTEMPTS);
   return { taken, finishedBranches: next.finishedBranches, ignoredFinished };
 }
 
@@ -384,24 +391,40 @@ const defaultMergeIo = {
   merge: (pr, repo, headSha) => execFileSync('pwsh', ['-NoProfile', '-File', mergeScript(), '-Pr', String(pr), '-Repo', repo, ...(headSha ? ['-HeadSha', headSha] : [])], { stdio: 'inherit' }),
 };
 
-// Everything under the SAME state lock as admission and intake. Without a
-// marker this is exactly the old idle merge. With a marker: head, files,
-// overlap, head again, then merge pinned to that head (--match-head-commit),
-// so a push after the check cannot smuggle new files in.
+// Head, files, head again: the file list belongs to exactly that head.
+function readPinnedPrFiles(pr, repo, io) {
+  const head = io.readHead(pr, repo);
+  if (typeof head !== 'string' || !/^[0-9a-f]{40}$/i.test(head)) throw Error('PR head unavailable; merge blocked');
+  let files;
+  try { files = io.readFiles(pr, repo); }
+  catch (e) { throw Error(`PR file list unavailable; merge blocked (${e.message})`); }
+  if (io.readHead(pr, repo) !== head) throw Error('PR head changed during the overlap check; merge blocked');
+  return { head, files };
+}
+
+// Without a marker this is exactly the old idle merge. With a marker: read
+// head, files and head again, then - under the SAME state lock as admission
+// and intake - re-read the marker, check overlap and merge pinned to that head
+// (--match-head-commit), so a push after the check cannot smuggle new files
+// in. The GitHub reads happen BEFORE the lock (CodeRabbit, this PR): the pin
+// keeps them valid, and a lock held through network retries would starve
+// intake, enqueue and release in the running wave. Only the merge call and
+// its gh retries run under the lock, as before.
 export function guardedMerge(dir, pr, repo = REPO, io = defaultMergeIo) {
   fs.mkdirSync(dir, { recursive: true });
+  const marker = path.join(dir, 'wave-active.json');
+  let pinned = null;
+  if (fs.existsSync(marker)) {
+    modernMarkerOrBlock(dir); // a legacy/malformed marker blocks before any GitHub read
+    pinned = readPinnedPrFiles(pr, repo, io);
+  }
   return withWaveStateLock(dir, () => {
-    if (!fs.existsSync(path.join(dir, 'wave-active.json'))) return io.merge(pr, repo);
+    if (!fs.existsSync(marker)) return pinned ? io.merge(pr, repo, pinned.head) : io.merge(pr, repo);
     const wave = modernMarkerOrBlock(dir);
-    const head = io.readHead(pr, repo);
-    if (typeof head !== 'string' || !/^[0-9a-f]{40}$/i.test(head)) throw Error('PR head unavailable; merge blocked');
-    let files;
-    try { files = io.readFiles(pr, repo); }
-    catch (e) { throw Error(`PR file list unavailable; merge blocked (${e.message})`); }
-    const conflicts = findOwnershipConflicts(wave, files);
+    if (!pinned) throw Error('A wave started while the merge was being prepared; merge blocked, run the queue again');
+    const conflicts = findOwnershipConflicts(wave, pinned.files);
     if (conflicts.length) throw conflictError(pr, conflicts);
-    if (io.readHead(pr, repo) !== head) throw Error('PR head changed during the overlap check; merge blocked');
-    return io.merge(pr, repo, head);
+    return io.merge(pr, repo, pinned.head);
   });
 }
 
@@ -459,7 +482,7 @@ export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captur
   if (wave.owner && payload.session_id !== wave.owner) throw Error('Another session owns this wave');
   // Write once (#5562): merges may now hold the state lock during a wave, and a
   // lane spawn must not fail on a busy lock just to repeat a flag already set.
-  if (wave.waveId && /^WAVE-/.test(prompt) && wave.dispatchStarted !== true) updateWave(dir, wave.waveId, current => ({ ...current, dispatchStarted: true }));
+  if (wave.waveId && /^WAVE-/.test(prompt) && wave.dispatchStarted !== true) updateWave(dir, wave.waveId, current => ({ ...current, dispatchStarted: true }), HOOK_LOCK_ATTEMPTS);
 }
 
 async function cli() {
@@ -500,7 +523,7 @@ async function cli() {
     const { recoverWave } = await import('./wave-recovery.mjs');
     console.log(JSON.stringify(recoverWave(dir, { waveId: value('--wave-id'), owner: value('--owner'), now: Date.now() })));
   } else if (command === 'release') {
-    console.log(JSON.stringify(releaseWave(dir, value('--wave-id'), args.includes('--children-stopped'))));
+    console.log(JSON.stringify(releaseWave(dir, value('--wave-id'), args.includes('--children-stopped'), ownershipSnapshot, LONG_LOCK_ATTEMPTS)));
   } else if (command === 'watch') {
     const wave = requireModernWave(readWave(dir));
     if (wave.waveId !== value('--wave-id')) throw Error('Wave owner mismatch');

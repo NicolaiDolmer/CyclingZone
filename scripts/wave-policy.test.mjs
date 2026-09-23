@@ -510,7 +510,7 @@ test('#5562: legacy, malformed and ownership-less markers still block every merg
     writeFileSync(path.join(dir, 'wave-active.json'), body);
     assert.throws(() => assertMergeAllowed(dir, undefined, () => []), /merge blocked/, body);
     assert.throws(() => assertMergeAllowed(dir, '42', () => []), /merge blocked/, body);
-    const io = mergeIo();
+    const io = mergeIo({ readHead: () => assert.fail('a broken marker blocks before any GitHub read'), readFiles: () => assert.fail('no file read') });
     assert.throws(() => guardedMerge(dir, '42', 'owner/repo', io), /merge blocked/, body);
     assert.deepEqual(io.calls, []);
   }
@@ -545,15 +545,34 @@ test('#5562: a push between the overlap check and the merge blocks it', t => {
   assert.deepEqual(unknown.calls, []);
 });
 
-test('#5562: the merge runs under the same state lock as intake', t => {
+test('#5562: only the merge call holds the state lock; the GitHub reads happen before it', t => {
   const { dir } = runningWave(t);
+  const lockFree = () => withWaveStateLock(dir, () => 'free', 1);
   let during;
-  guardedMerge(dir, '42', 'owner/repo', mergeIo({ merge: () => {
-    try { enqueueTracks(dir, 'rolling-wave', [trackWith(2, ['docs/two.md'])], ownSnapshot); during = 'ran'; }
-    catch (e) { during = e.message; }
-  } }));
-  assert.match(during, /lock busy/);
-  assert.equal(markerOf(dir).pendingTracks, undefined);
+  const io = mergeIo({
+    readHead: () => { assert.equal(lockFree(), 'free', 'head read must not hold the lock'); return HEAD; },
+    readFiles: () => { assert.equal(lockFree(), 'free', 'file read must not hold the lock'); return prFiles('docs/other.md'); },
+    merge: () => { try { lockFree(); during = 'free'; } catch (e) { during = e.message; } },
+  });
+  guardedMerge(dir, '42', 'owner/repo', io);
+  assert.match(during, /lock busy/, 'the merge itself runs under the same lock as admission and intake');
+});
+
+test('#5562: intake waits out a merge that holds the state lock longer than the default wait', async t => {
+  const { dir } = runningWave(t);
+  enqueueTracks(dir, 'rolling-wave', [trackWith(2, ['docs/two.md'])], ownSnapshot);
+  const moduleUrl = new URL('./wave-policy.mjs', import.meta.url).href;
+  const ready = path.join(dir, 'holder-ready');
+  // A separate process holds the lock for ~7 s - longer than the ~5 s default.
+  const holder = spawn(process.execPath, ['--input-type=module', '-e', `import { writeFileSync } from 'node:fs';
+    import { withWaveStateLock } from ${JSON.stringify(moduleUrl)};
+    withWaveStateLock(${JSON.stringify(dir)}, () => { writeFileSync(${JSON.stringify(ready)}, 'x'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 7000); });`], { windowsHide: true });
+  const exited = new Promise(resolve => holder.once('close', resolve));
+  while (!existsSync(ready)) await new Promise(r => setTimeout(r, 25));
+  assert.throws(() => updateWave(dir, 'rolling-wave', w => w), /lock busy/, 'default callers still give up');
+  const taken = intakeTracks(dir, 'rolling-wave', [], ownSnapshot);
+  assert.deepEqual(taken.taken.map(x => x.issue), [2]);
+  assert.equal(await exited, 0);
 });
 
 test('#5562: assert-merge-allowed CLI passes without a marker and blocks a legacy one before GitHub', t => {

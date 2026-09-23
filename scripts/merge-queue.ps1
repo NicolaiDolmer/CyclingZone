@@ -80,7 +80,7 @@ if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'.";
 # filer overlapper boelgens aktive ownership (se assert-merge-allowed i
 # wave-policy.mjs). En legacy/ulaeselig markoer eller en uden ownership
 # blokerer stadig her, foer noget GitHub-kald.
-& node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed
+& node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --repo $Repo
 if ($LASTEXITCODE -ne 0) { throw 'Aktiv boelgemarkoer: merge-koeen er blokeret.' }
 
 function Get-PrPlanEntry([int]$number) {
@@ -270,7 +270,7 @@ foreach ($entry in $plan) {
 
   Wait-OutOfMergeTickWindow
 
-  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n"
+  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
   if ($LASTEXITCODE -ne 0) { throw "Aktiv boelgemarkoer: PR #$n overlapper boelgens ownership (eller markoeren/fil-listen kunne ikke laeses) - merge-koeen er blokeret." }
 
   $fresh = Get-PrPlanEntry $n
@@ -290,7 +290,7 @@ foreach ($entry in $plan) {
   }
 
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"
-  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n"
+  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
   if ($LASTEXITCODE -ne 0) { throw "Boelgen har aendret sig siden preflight (overlap med PR #$n): merge er blokeret." }
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo
   if ($LASTEXITCODE -ne 0) { throw 'Merge fejlede eller boelgelaasen blev afvist.' }
