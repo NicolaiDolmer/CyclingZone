@@ -1,0 +1,54 @@
+{
+  "page": {
+    "title": {
+      "u23": "{team} U23",
+      "junior": "{team} Juniors"
+    },
+    "fallbackTitle": {
+      "u23": "U23 team",
+      "junior": "Junior team"
+    },
+    "subtitle": {
+      "u23": "U23 team, ages 19 to 22",
+      "junior": "Junior team, ages 16 to 18"
+    },
+    "squadValue": "Squad value: {value} CZ$"
+  },
+  "tabs": {
+    "ariaLabel": "Squad sections",
+    "calendar": "Calendar",
+    "results": "Results",
+    "standings": "Standings"
+  },
+  "empty": {
+    "squad": {
+      "title": "Sign a talent in your academy",
+      "description": {
+        "u23": "Academy riders aged 19 to 22 are on your U23 team.",
+        "junior": "Academy riders aged 16 to 18 are on your junior team."
+      },
+      "action": "Go to academy"
+    },
+    "races": {
+      "title": "See when youth races start",
+      "action": "Roadmap",
+      "calendar": {
+        "u23": "Your U23 team has no races in the calendar yet.",
+        "junior": "Your junior team has no races in the calendar yet."
+      },
+      "results": {
+        "u23": "Your U23 team has not raced yet.",
+        "junior": "Your junior team has not raced yet."
+      },
+      "standings": {
+        "u23": "U23 standings start with the first U23 race.",
+        "junior": "Junior standings start with the first junior race."
+      }
+    }
+  },
+  "error": {
+    "title": "Could not load your squad",
+    "description": "Nothing was changed. Your riders are safe.",
+    "retry": "Try again"
+  }
+}

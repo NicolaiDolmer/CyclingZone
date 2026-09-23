@@ -238,6 +238,8 @@ import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js"
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
+import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js"; // #5519
+import { buildYouthSquadsPayload, YOUTH_SQUAD_ROSTER_COLUMNS } from "../lib/youthSquadRoster.js"; // #5519
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
@@ -1243,16 +1245,49 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
 // (hentes én gang af Layout, ikke pr. side). Bare booleans, evalueret server-side
 // mod viewerens beta-status; klienten læser aldrig app_config selv.
 //   rider_best_role_display (#5435): rating = bedste rolle nu + "Natural role"-badge.
+//   youth_squad_pages (#5519): U23 team- og Junior team-siderne + menupunkterne.
 // Fail-safe false (featureStage.js) = dagens visning.
 router.get("/display-flags", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const isBetaTester = await isViewerBetaTester(req);
-    const riderBestRoleDisplay = await isRiderBestRoleDisplayEnabled(supabase, { isBetaTester });
-    res.json({ rider_best_role_display: riderBestRoleDisplay });
+    const [riderBestRoleDisplay, youthSquadPages] = await Promise.all([
+      isRiderBestRoleDisplayEnabled(supabase, { isBetaTester }),
+      isYouthSquadPagesEnabled(supabase, { isBetaTester }),
+    ]);
+    res.json({ rider_best_role_display: riderBestRoleDisplay, youth_squad_pages: youthSquadPages });
   } catch (err) {
     captureException(err);
     // Visnings-kontakt: en fejl må aldrig vælte siden — svar med fail-safe.
-    res.json({ rider_best_role_display: false });
+    res.json({ rider_best_role_display: false, youth_squad_pages: false });
+  }
+});
+
+// GET /api/youth-squads (#5519) — hvem står på holdets U23 team og Junior team.
+// Truppen afgøres SERVER-side af effectiveSquad (youthSquadRoster.js), så
+// frontend'en aldrig regner en trup ud af en alder selv. Svaret er rytter-id'er
+// pr. trup; siden henter selv visnings-felterne (samme projektion som My Team).
+// Bag kontakten youth_squad_pages: slukket = 409, som /academy/me.
+router.get("/youth-squads", requireAuth, presencePulseLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    if (!(await isYouthSquadPagesEnabled(supabase, { isBetaTester }))) {
+      return res.status(409).json({ error: "youth_squad_pages_disabled" });
+    }
+    const [{ data: riders, error: ridersErr }, seasonNumber] = await Promise.all([
+      // pagination-safe: ét holds ryttere (senior-trup + akademi), langt under 1000
+      supabase
+        .from("riders")
+        .select(YOUTH_SQUAD_ROSTER_COLUMNS.join(", "))
+        .eq("team_id", req.team.id)
+        .eq("is_retired", false),
+      getActiveSeasonNumber(),
+    ]);
+    if (ridersErr) throw new Error(ridersErr.message);
+    res.json(buildYouthSquadsPayload(riders ?? [], seasonNumber));
+  } catch (err) {
+    captureApiRouteError(err, req);
+    res.status(500).json({ error: err.message });
   }
 });
 

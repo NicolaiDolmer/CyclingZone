@@ -310,6 +310,16 @@ features:
     verified: 2026-09-22
     note: 'Merget 22/9 (#5501), app_config-raekken verificeret off i prod; flippes med vaerdiskiftet #5443/#5497 (ejer-gated).'
 
+  - id: youth-squad-pages
+    area: squad
+    title_en: U23 team and Junior team pages
+    title_da: U23-hold- og juniorhold-sider
+    state: building
+    ssot: docs/design/youth-tiers/HANDOFF.md
+    epic: 2492
+    verified: 2026-09-23
+    note: 'Flag-noegle youth_squad_pages (#5519, default off); flyttes til flag-feltet naar app_config-raekken er applied efter merge. Ejer flipper efter visuelt go.'
+
   - id: rider-primary-type-from-distribution
     area: squad
     title_en: New riders' primary type from the target distribution
