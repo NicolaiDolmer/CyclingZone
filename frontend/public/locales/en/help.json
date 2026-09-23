@@ -50,6 +50,10 @@
         "title": "Your board is open from day one",
         "text": "The board of directors is unlocked from the start of your first season, so you can pick your Club DNA and negotiate your plans right away rather than waiting a season. Your sponsor modifier stays at 1.0× until you sign your first plan, so the season-1 sponsor is neutral while you set up. During this baseline season the board already watches your race results and club finances weekend by weekend, and its satisfaction moves within a 30-75 range accordingly, even though there are no hard consequences yet. The board also reads your team (national core, U25 share, specialisation and star profile) and saves a permanent identity snapshot that feeds your 5-year plan suggestions."
       },
+      "nationalCoreRule": {
+        "title": "How your national core is decided",
+        "text": "Your national core is set by whichever nationality has the most riders in your squad, never by a combined score across several. It becomes an established core once that nationality has at least 4 riders and makes up at least 35% of your full squad; below that threshold your board card shows 'Mixed' and 'No clear core yet', however close a runner-up nationality is. Once established, the card names that nationality with its rider count and share of your squad. Only the single largest nationality is ever checked against these numbers: if two nationalities are both close to qualifying, the smaller one gets no core of its own, even when it trails by just one rider. When two nationalities are exactly tied on rider count, the tie goes to whichever country code sorts first alphabetically."
+      },
       "season2Onboarding": {
         "title": "Sequential board onboarding",
         "steps": [
@@ -1077,7 +1081,7 @@
       },
       "trainingScore": {
         "title": "The training score",
-        "text": "Every session a rider completes gets a training score from 1 to 99. It measures the QUALITY of that session, not what the rider got out of it: how demanding the session was, how well it matched the rider's strengths, the rider's form and fatigue that day, the coach and the facilities behind it, the rider's talent and age, and the day itself. The score is what drives development: a better session moves the abilities more. It does not depend on how close an ability is to its ceiling, so a rider who is nearly finished in his focus abilities still gets an honest reading of how good the session was. Rest days get no score, because there was no session to measure. On a day where a race takes the place of the session, the column reads 'Race' instead of a number and the curve leaves a gap. Only you can see the scores for your own riders."
+        "text": "Every session a rider completes gets a training score from 1 to 99. It measures the QUALITY of that session, not what the rider got out of it: how demanding the session was, how well it matched the rider's strengths, the rider's form and fatigue that day, the coach and the facilities behind it, the rider's talent and age, and the day itself. The score is what drives development: a better session moves the abilities more. It does not depend on how close an ability is to its ceiling, so a rider who is nearly finished in his focus abilities still gets an honest reading of how good the session was. Rest days get no score, because there was no session to measure. On a day where a race takes the place of the session, the column reads 'Race' instead of a number. Today's number appears once today's session has run, and until then the column shows the latest one in grey. Only you can see the scores for your own riders."
       },
       "longTermGrowth": {
         "title": "Long-term growth",

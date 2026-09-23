@@ -57,6 +57,20 @@ export function SortIndicator({ active, dir }) {
 // aktiveringer paa samme klikflade. Uden `help` er markup'en bit-for-bit den
 // samme som foer (button beholder `block w-full`), saa ingen eksisterende
 // kolonne aendrer udseende.
+/**
+ * Prop-typerne for .ts/.tsx-kaldere (#5485's TrainingTodayTable). Uden dem
+ * udleder TypeScript `title` som paakraevet og `help` som `null`.
+ * @param {{
+ *   children: import("react").ReactNode,
+ *   sortKey: string,
+ *   sort: string | null | undefined,
+ *   sortDir: string,
+ *   onSort: (key: string) => void,
+ *   className?: string,
+ *   title?: string,
+ *   help?: import("react").ReactNode,
+ * }} props
+ */
 export default function SortableTh({ children, sortKey, sort, sortDir, onSort, className = "", title, help = null }) {
   const active = sort === sortKey;
   const button = (

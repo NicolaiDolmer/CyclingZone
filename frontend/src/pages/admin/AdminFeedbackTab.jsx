@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
 import TeamLink from "../../components/TeamLink";
 import RiderLink from "../../components/RiderLink";
 import {
@@ -141,7 +142,7 @@ export default function AdminFeedbackTab() {
       if (category) params.set("category", category);
       if (cursor != null) params.set("cursor", String(cursor));
 
-      const res = await fetch(`${API}/api/admin/feedback?${params}`, { headers: await getAuth() });
+      const res = await apiFetch(`${API}/api/admin/feedback?${params}`, { headers: await getAuth() });
       const data = await readAdminJson(res);
       if (!res.ok) {
         setLoadError(adminErrorMessage(data, res));
@@ -169,7 +170,7 @@ export default function AdminFeedbackTab() {
 
   async function changeStatus(item, nextStatus) {
     try {
-      const res = await fetch(`${API}/api/admin/feedback/${item.id}/status`, {
+      const res = await apiFetch(`${API}/api/admin/feedback/${item.id}/status`, {
         method: "PATCH",
         headers: await getAuth(),
         body: JSON.stringify({ status: nextStatus }),
@@ -442,7 +443,7 @@ function FeedbackDetailModal({ item, onClose, onStatusChange, onReplied, getAuth
     if (!reply.trim()) return;
     setSending(true);
     try {
-      const res = await fetch(`${API}/api/admin/feedback/${item.id}/reply`, {
+      const res = await apiFetch(`${API}/api/admin/feedback/${item.id}/reply`, {
         method: "POST",
         headers: await getAuth(),
         body: JSON.stringify({ reply: reply.trim() }),

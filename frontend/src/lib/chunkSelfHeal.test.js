@@ -47,6 +47,14 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
+import {
+  BOOT_GUARD_ACCOUNTED_KEY,
+  BOOT_GUARD_KEY,
+  RECOVERY_BUDGET_KEY,
+  RECOVERY_BUDGET_MAX,
+  RECOVERY_BUDGET_WINDOW_MS,
+  accountBootGuardReload,
+} from "./chunkErrors.js";
 
 const SCRIPT_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -444,4 +452,142 @@ test("sessionStorage.setItem kaster (fx QuotaExceededError): fail-closed, ingen 
   await flush();
   assert.equal(g.reloads.length, 0);
   assert.match(g.warnings.join("\n"), /reload sprunget over/);
+});
+
+// ── #5440 punkt 2: vagten bogfoerer selv i det faelles recovery-budget ─────
+//
+// Foer bogfoerte main.jsx vagtens reload FOERST naar appen bootede. En fane der
+// aldrig naaede at boote, var derfor kun begraenset af 60-sekunders-noeglen —
+// praecis loop-scenariet budgettet findes for.
+
+// Samme Map som vagtens sessionStorage, set gennem Storage-interfacet
+// chunkErrors.js forventer.
+function storageView(map) {
+  return {
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => map.set(key, String(value)),
+  };
+}
+
+test("#5440 drift-vagt: vagtens budget-konstanter matcher chunkErrors.js", () => {
+  const g = bootGuard();
+  const budget = g.win.__czChunkSelfHeal.budget;
+  assert.equal(budget.key, RECOVERY_BUDGET_KEY);
+  assert.equal(budget.max, RECOVERY_BUDGET_MAX);
+  assert.equal(budget.windowMs, RECOVERY_BUDGET_WINDOW_MS);
+  assert.equal(budget.accountedKey, BOOT_GUARD_ACCOUNTED_KEY);
+  assert.equal(budget.guardKey, BOOT_GUARD_KEY);
+});
+
+test("#5440 et heal-reload bogfoeres i budgettet FOER reloadet, og main.jsx taeller det ikke igen", async () => {
+  const storage = new Map();
+  const g = bootGuard({ storage });
+  g.fireResourceError(g.entry);
+  await flush();
+
+  assert.equal(g.reloads.length, 1);
+  const budget = JSON.parse(storage.get(RECOVERY_BUDGET_KEY));
+  assert.equal(budget.used, 1);
+  assert.equal(budget.last, "boot-guard");
+  assert.equal(
+    storage.get(BOOT_GUARD_ACCOUNTED_KEY),
+    storage.get(BOOT_GUARD_KEY),
+    "markoeren bærer samme tidsstempel som vagtens egen noegle",
+  );
+
+  // Appen booter efter reloadet: main.jsx' bogfoering maa ikke debitere igen.
+  assert.equal(accountBootGuardReload(storageView(storage)), false);
+  assert.equal(JSON.parse(storage.get(RECOVERY_BUDGET_KEY)).used, 1);
+});
+
+test("#5440 et budget brugt op af ANDRE lag stopper vagten: intet reload, fallback-UI i stedet", async () => {
+  const exhausted = JSON.stringify({ used: RECOVERY_BUDGET_MAX, windowStart: Date.now() - 1_000, last: "chunk-error" });
+  const storage = new Map([[RECOVERY_BUDGET_KEY, exhausted]]);
+  const g = bootGuard({ storage });
+  g.fireResourceError(g.entry);
+  await flush();
+
+  assert.equal(g.reloads.length, 0);
+  assert.equal(g.fetched.length, 1, "kun bekraeftelsen — ingen cache:'reload'-rens uden reload");
+  assert.equal(storage.get(RECOVERY_BUDGET_KEY), exhausted, "budgettet roeres ikke");
+  assert.equal(storage.has(BOOT_GUARD_KEY), false, "60-sekunders-noeglen braendes ikke af et afvist forsoeg");
+  assert.match(g.warnings.join("\n"), /recovery-budget brugt op/);
+  assert.match(g.rootEl.innerHTML, /The game did not start/);
+});
+
+test("#5440 et delvist brugt budget giver plads til vagtens reload og taeller op", async () => {
+  const start = Date.now() - 60_000;
+  const storage = new Map([
+    [RECOVERY_BUDGET_KEY, JSON.stringify({ used: RECOVERY_BUDGET_MAX - 1, windowStart: start, last: "release-watch" })],
+  ]);
+  const g = bootGuard({ storage });
+  g.fireResourceError(g.preload);
+  await flush();
+
+  assert.equal(g.reloads.length, 1);
+  const budget = JSON.parse(storage.get(RECOVERY_BUDGET_KEY));
+  assert.equal(budget.used, RECOVERY_BUDGET_MAX);
+  assert.equal(budget.windowStart, start, "det rullende vindue flyttes ikke af et reload inden for det");
+});
+
+test("#5440 et udloebet budget-vindue starter forfra", async () => {
+  const old = Date.now() - RECOVERY_BUDGET_WINDOW_MS - 5_000;
+  const storage = new Map([[RECOVERY_BUDGET_KEY, JSON.stringify({ used: RECOVERY_BUDGET_MAX, windowStart: old })]]);
+  const g = bootGuard({ storage });
+  g.fireResourceError(g.preload);
+  await flush();
+
+  assert.equal(g.reloads.length, 1);
+  const budget = JSON.parse(storage.get(RECOVERY_BUDGET_KEY));
+  assert.equal(budget.used, 1);
+  assert.ok(budget.windowStart > old);
+});
+
+test("#5440 en ulaeselig budget-post er FAIL-CLOSED (samme regel som chunkErrors.js)", async () => {
+  for (const broken of ["", "{ikke json", "null", '"tekst"', JSON.stringify({ used: "1", windowStart: 0 }), JSON.stringify({ used: -1, windowStart: 0 }), JSON.stringify({ used: 0, windowStart: Date.now() + 60_000 })]) {
+    const storage = new Map([[RECOVERY_BUDGET_KEY, broken]]);
+    const g = bootGuard({ storage });
+    g.fireResourceError(g.entry);
+    await flush();
+    assert.equal(g.reloads.length, 0, `posten ${broken} maa ikke give et reload`);
+    assert.equal(storage.get(RECOVERY_BUDGET_KEY), broken, "og posten overskrives ikke");
+  }
+});
+
+test("#5440 en budget-skrivning der kaster giver intet reload (et ubogfoert reload har intet loft)", async () => {
+  const storage = new Map();
+  const g = bootGuard({ storage });
+  g.win.sessionStorage = {
+    getItem: (key) => (storage.has(key) ? storage.get(key) : null),
+    setItem: (key, value) => {
+      if (key === RECOVERY_BUDGET_KEY) throw new Error("QuotaExceededError");
+      storage.set(key, value);
+    },
+  };
+  g.fireResourceError(g.entry);
+  await flush();
+  assert.equal(g.reloads.length, 0);
+  assert.equal(storage.has(BOOT_GUARD_KEY), false);
+});
+
+test("#5440 loop-scenariet: dokumentstarter der ALDRIG booter giver hoejst RECOVERY_BUDGET_MAX reloads", async () => {
+  // Én fane, ét sessionStorage. Hver dokumentstart er en ny vagt-instans (nyt
+  // dokument), entryen fejler hver gang, og appen naar aldrig at boote — saa
+  // main.jsx' bogfoering koerer aldrig. 60-sekunders-noeglen aeldes kunstigt
+  // mellem starterne: det er BUDGETTET der skal stoppe loopet, ikke den.
+  const storage = new Map();
+  let reloads = 0;
+  let fallbacks = 0;
+  const starts = RECOVERY_BUDGET_MAX + 3;
+  for (let start = 0; start < starts; start += 1) {
+    if (storage.has(BOOT_GUARD_KEY)) storage.set(BOOT_GUARD_KEY, String(Date.now() - 120_000));
+    const g = bootGuard({ storage });
+    g.fireResourceError(g.entry);
+    await flush();
+    reloads += g.reloads.length;
+    if (/The game did not start/.test(g.rootEl.innerHTML)) fallbacks += 1;
+  }
+  assert.equal(reloads, RECOVERY_BUDGET_MAX, "loftet holder uden at appen booter");
+  assert.equal(fallbacks, starts - RECOVERY_BUDGET_MAX, "hver afvist start viser fallback-UI'en med den manuelle udvej");
+  assert.equal(JSON.parse(storage.get(RECOVERY_BUDGET_KEY)).used, RECOVERY_BUDGET_MAX);
 });

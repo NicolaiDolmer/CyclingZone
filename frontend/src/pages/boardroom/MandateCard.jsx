@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon } from "../../components/ui";
-import { endSentence, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
+import { appendDate, formatGoalValue, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import MonogramAvatar from "../../components/MonogramAvatar";
 import { logEvent } from "../../lib/logEvent";
 import StatusPill from "./StatusPill.jsx";
@@ -27,7 +27,10 @@ function GoalReceipt({ receipt, t }) {
     lines.push(
       <span key="lastMovement">
         <span className="font-semibold text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
-        {t(receipt.lastMovementKey, receipt.lastMovementParams || {})}, {endSentence(formatWeekdayShortDate(receipt.lastMovementAt))}
+        {appendDate(
+          t(receipt.lastMovementKey, receipt.lastMovementParams || {}),
+          formatWeekdayShortDate(receipt.lastMovementAt),
+        )}
       </span>,
     );
   }
@@ -85,7 +88,10 @@ function GoalRow({ goal, t, expanded, onToggle }) {
               )}
             </p>
             <p className="font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">
-              {t("boardroom.mandate.achievedTarget", { achieved: goal.achievedDisplay, target: goal.targetDisplay })}
+              {t("boardroom.mandate.achievedTarget", {
+                achieved: formatGoalValue(goal.achievedDisplay, goal.type),
+                target: formatGoalValue(goal.targetDisplay, goal.type),
+              })}
             </p>
           </div>
         </div>

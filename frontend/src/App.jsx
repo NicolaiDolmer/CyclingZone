@@ -15,6 +15,7 @@ import ReleaseUpdateBanner from "./components/ReleaseUpdateBanner.jsx";
 // så komponenten SKAL være synkront tilgængelig ved klientens første render —
 // en lazy-suspense-fallback ville ellers give et hydration-mismatch.
 import LandingPage from "./pages/LandingPage.jsx";
+import { PrerenderHydrationMarker } from "./lib/prerenderHydration.ts";
 import { logSessionStart } from "./lib/logEvent";
 import { setSentryUser, clearSentryUser, AnalyticsBoundary } from "./lib/sentry.jsx";
 import { sharedRequestCache } from "./lib/sharedRequestCache.js";
@@ -116,6 +117,8 @@ const AcademyPage = lazy(() => import("./pages/AcademyPage"));
 // moenster TransfersPage allerede bruger paa TradeListPage.tsx — naboerne
 // herover er .jsx-filer og staar derfor uden endelse.
 const GraduationDayPage = lazy(() => import("./pages/GraduationDayPage.js"));
+// #5519: U23 team- og Junior team-siden (én side, trup i URL'en).
+const SquadPage = lazy(() => import("./pages/SquadPage.js"));
 const KlubPage = lazy(() => import("./pages/KlubPage"));
 const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
 const PlanningHubPage = lazy(() => import("./pages/PlanningHubPage"));
@@ -445,6 +448,9 @@ export default function App() {
             <Route path="planner" element={<PlannerLegacyRedirect />} />
             <Route path="academy" element={<AcademyPage />} />
             <Route path="academy/graduation" element={<GraduationDayPage />} />
+            {/* #5519: /squads/u23 og /squads/junior. Kontakten youth_squad_pages
+                gater siden server-side (409 → videre til /team). */}
+            <Route path="squads/:squad" element={<I18nReadyGate ns="squad"><SquadPage /></I18nReadyGate>} />
             <Route path="klub" element={<KlubPage />} />
             <Route path="scouting" element={<I18nReadyGate ns="scouting"><ScoutingCentralPage /></I18nReadyGate>} />
             {/* #4943: in-app spoergeskema. Login-gated med vilje (svarene
@@ -471,6 +477,11 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        {/* #4925: SIDSTE barn i rute-boundary'en. Renderer intet (ændrer ikke
+            prerender-HTML'en); dens effekt melder at boundary'en er hydreret,
+            og først da skifter LanguageProvider en dansk besøgende fra den
+            EN-prerendrede landing til dansk. Se lib/prerenderHydration.ts. */}
+        <PrerenderHydrationMarker />
       </Suspense>
       <CookieBanner />
       {/* #5159 (review-fund 5): de to stacking-gates — cookie-banneret og "anonym

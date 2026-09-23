@@ -608,9 +608,11 @@ export async function getForumPost({ supabase, id, userId }) {
     return { status: 404, body: { error: "Post not found", errorCode: "forum_post_not_found" } };
   }
 
+  // schema-columns-ok: quotes_post tilfoejes af
+  // database/2026-09-24-5386-forum-quote-op.sql i SAMME PR.
   const { data: replyRows, error: replyError } = await supabase
     .from("forum_replies")
-    .select("id, seq, created_at, post_id, user_id, team_id, body, images, quoted_reply_id")
+    .select("id, seq, created_at, post_id, user_id, team_id, body, images, quoted_reply_id, quotes_post")
     .eq("post_id", id)
     .is("deleted_at", null)
     .order("seq", { ascending: true })
@@ -695,16 +697,35 @@ export async function getForumPost({ supabase, id, userId }) {
   ]);
   const viewerLastReadAt = readsByPostId.get(id) ?? null;
 
-  function shapeQuoted(quotedReplyId) {
-    if (!quotedReplyId) return null;
-    const quoted = quotedById.get(quotedReplyId);
-    if (!quoted || quoted.deleted_at) return { id: quotedReplyId, removed: true };
-    return {
-      id: quoted.id,
-      removed: false,
-      excerpt: excerpt(quoted.body),
-      author: shapeAuthor(quoted, usersById, teamsById),
-    };
+  // #5386: en svar-raekke citerer ENTEN et andet svar (quoted_reply_id) ELLER
+  // traadens eget aabningsindlaeg (quotes_post) — aldrig begge (haandhaevet i
+  // createForumReply + DB-CHECK). `target` fortaeller klienten om et klik
+  // skal springe til svaret (`reply-<id>`) eller traadens top.
+  function shapeQuoted(reply) {
+    if (reply.quoted_reply_id) {
+      const quoted = quotedById.get(reply.quoted_reply_id);
+      if (!quoted || quoted.deleted_at) return { id: reply.quoted_reply_id, removed: true, target: "reply" };
+      return {
+        id: quoted.id,
+        removed: false,
+        target: "reply",
+        excerpt: excerpt(quoted.body),
+        author: shapeAuthor(quoted, usersById, teamsById),
+      };
+    }
+    if (reply.quotes_post) {
+      // `post` er allerede indlaest ovenfor og garanteret ikke slettet — er
+      // post.deleted_at sat, returnerede funktionen 404 for hele traaden
+      // foer vi naaede hertil, saa der findes ingen "removed"-gren her.
+      return {
+        id: post.id,
+        removed: false,
+        target: "post",
+        excerpt: excerpt(post.body),
+        author: shapeAuthor(post, usersById, teamsById),
+      };
+    }
+    return null;
   }
 
   return {
@@ -743,7 +764,7 @@ export async function getForumPost({ supabase, id, userId }) {
         is_mine: Boolean(userId && r.user_id === userId),
         support_count: replyReactions.counts.get(r.id) ?? 0,
         supported_by_me: replyReactions.mine.has(r.id),
-        quoted: shapeQuoted(r.quoted_reply_id),
+        quoted: shapeQuoted(r),
       })),
       poll,
       // #3451: null ved første besøg (ingen forum_thread_reads-række endnu).
@@ -1044,8 +1065,15 @@ async function recountReplies({ supabase, postId, now = null }) {
  * `quotedUserId` returneres til routen så den kan notificere den citerede
  * (samme forum_thread_reply-dedupe som trådejer-notifikationen, aldrig ved
  * citat af egen kommentar — se notifyForumThreadReply's own_reply-guard).
+ *
+ * #5386 · `quoteOp` (valgfri): svaret citerer traadens eget aabningsindlaeg i
+ * stedet for et andet svar — mutex med `quotedReplyId` (begge sat samtidig
+ * afvises med 400, samme "ikke et tavst-ignoreret felt"-princip som ovenfor).
+ * Ingen ekstra notifikation: traadejeren faar allerede forum_thread_reply
+ * via routens almindelige svar-notifikation, saa `quotedUserId` sættes
+ * bevidst IKKE for denne gren.
  */
-export async function createForumReply({ supabase, postId, userId, teamId = null, body, images = null, quotedReplyId = null, now = new Date() }) {
+export async function createForumReply({ supabase, postId, userId, teamId = null, body, images = null, quotedReplyId = null, quoteOp = false, now = new Date() }) {
   if (!postId) return { status: 400, body: { error: "Missing id", errorCode: "forum_missing_id" } };
   const trimmedBody = typeof body === "string" ? body.trim() : "";
   if (!trimmedBody) {
@@ -1053,6 +1081,9 @@ export async function createForumReply({ supabase, postId, userId, teamId = null
   }
   if (trimmedBody.length > FORUM_BODY_MAX_LENGTH) {
     return { status: 400, body: { error: "Body is too long", errorCode: "forum_body_too_long" } };
+  }
+  if (quoteOp && quotedReplyId) {
+    return { status: 400, body: { error: "Invalid quoted reply", errorCode: "forum_invalid_quote" } };
   }
 
   const normalizedImages = normalizeForumImages(images, userId);
@@ -1093,6 +1124,7 @@ export async function createForumReply({ supabase, postId, userId, teamId = null
       body: trimmedBody,
       images: normalizedImages.images,
       quoted_reply_id: quotedReplyId || null,
+      quotes_post: Boolean(quoteOp),
       created_at: now.toISOString(),
       deleted_at: null,
     })

@@ -174,7 +174,11 @@ function getEconomyRepairValues(team) {
 // Returnerer { division, leagueDivisionId }. Graceful fallback: hvis ingen entry-puljer
 // findes (pre-migration / minimal test-mock), placeres holdet stadig i entry-divisionen med
 // leagueDivisionId = null (samme NULL-tolerante adfærd som updateStandings, #1608).
-async function pickDivisionForNewTeam(supabase) {
+//
+// [epic #4592 del 2] Eksporteret, så en parkeret manager der har tilmeldt sig igen
+// (managerParking.unparkTeam) genindplaceres efter PRÆCIS samme regel som et nyt hold,
+// i stedet for en kopi der kan drive fra den.
+export async function pickDivisionForNewTeam(supabase) {
   const { data: pools, error: poolsError } = await supabase
     .from("league_divisions")
     .select("id, tier")
@@ -185,10 +189,7 @@ async function pickDivisionForNewTeam(supabase) {
   }
 
   const allPools = pools || [];
-  const entryPools = allPools.filter((pool) => pool.tier === MANAGER_ENTRY_DIVISION);
-  const overflowPools = allPools.filter((pool) => pool.tier === MAX_DIVISION);
-
-  if (entryPools.length === 0) {
+  if (!allPools.some((pool) => pool.tier === MANAGER_ENTRY_DIVISION)) {
     // Pre-migration / mock-edge: ingen puljer at sprede på. Hold kommer stadig ind i
     // entry-divisionen; pulje-referencen efter-allokeres når puljerne findes.
     return { division: MANAGER_ENTRY_DIVISION, leagueDivisionId: null };
@@ -196,10 +197,37 @@ async function pickDivisionForNewTeam(supabase) {
 
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
-    .select("league_division_id, is_ai, is_test_account, is_frozen, is_bank, pending_removal_at");
+    .select(NEW_TEAM_PLACEMENT_TEAM_COLUMNS);
 
   if (teamsError) {
     throw createHttpError(500, teamsError.message);
+  }
+
+  return choosePoolForNewTeam({ pools: allPools, teams: teams || [] });
+}
+
+// Kolonnerne choosePoolForNewTeam læser pr. hold. Samlet ét sted, så et read-only
+// dry-run (scripts/parkingDryRun.js) henter præcis det samme grundlag som den
+// rigtige placering.
+export const NEW_TEAM_PLACEMENT_TEAM_COLUMNS =
+  "league_division_id, is_ai, is_test_account, is_frozen, is_bank, pending_removal_at";
+
+/**
+ * Ren del af pickDivisionForNewTeam: givet puljerne (entry + overflow-tier) og ALLE
+ * holds placerings-felter, hvilken pulje lander et nyt hold i? Ingen DB — så et
+ * dry-run kan simulere flere placeringer i træk ved at lægge hvert placeret hold
+ * ind i `teams` før næste kald.
+ *
+ * @param {{ pools: Array<{id:any, tier:number}>, teams: object[] }} args
+ * @returns {{ division:number, leagueDivisionId:any }}
+ */
+export function choosePoolForNewTeam({ pools = [], teams = [] } = {}) {
+  const allPools = pools || [];
+  const entryPools = allPools.filter((pool) => pool.tier === MANAGER_ENTRY_DIVISION);
+  const overflowPools = allPools.filter((pool) => pool.tier === MAX_DIVISION);
+
+  if (entryPools.length === 0) {
+    return { division: MANAGER_ENTRY_DIVISION, leagueDivisionId: null };
   }
 
   // #4183: TO forskellige spoergsmaal kraever TO forskellige taellinger.

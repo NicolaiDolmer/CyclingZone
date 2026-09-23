@@ -189,11 +189,13 @@ export function simulateStageV4(input: StageInput): StageOutput {
   // haandbyggede testlister) koerer den almindelige vejetape-vej, bit-uaendret
   // — se teamRostersFromStartlist' null-kontrakt.
   //
-  // M15 (tidsgraensen) koeres BEVIDST IKKE her. En TTT-ankomstgruppe er et
-  // HELT hold, og grupetto-redningen er kalibreret mod et massestartsfelt
-  // (~20 % af feltet); anvendt uaendret ville et enkelt langsomt hold ryge ud
-  // af loebet samlet. Det er en ejer-beslutning om spillets konsekvenser, ikke
-  // en wiring-detalje — se PR-body'ens aabne punkt.
+  // M10, M15 og M9 bor i segment-loopet og blokken nedenfor, som TTT-grenen
+  // ikke gaar igennem. Holdtidskoerslen koerer dem SELV (#4915, se
+  // mechanics/teamTimeTrial.ts's filhoved): uheldet rammer ankomstgruppen
+  // (holdet), tidsgraensen er en HOLD-graense uden grupetto-redning (en
+  // TTT-ankomstgruppe er et helt hold, og redningen er kalibreret mod et
+  // massestartsfelt — anvendt uaendret ville den enten redde alle hold eller
+  // intet), og maalpassagen koeres paa den endelige placeringsraekkefoelge.
   if (input.route.profile_type === "ttt") {
     const rosters = teamRostersFromStartlist(input.startlist);
     if (rosters) return simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning);

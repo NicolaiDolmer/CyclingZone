@@ -29,6 +29,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 import { daysUntil } from "./scoutingCentralDisplay.js";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "./sharedRequestCache.js";
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt paa 429 + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 const BATCH_DELAY_MS = 25;
@@ -80,9 +81,9 @@ export function useScouting() {
         async () => {
           // catch-ok: loaderens rejection bobler ud gennem sharedRequestCache.get()
           // og fanges af refresh()s egen try/catch nedenfor (som ogsaa rydder loading).
-          const res = await fetch(`${API}/api/scouting/me`, { headers }); // catch-ok
-          if (!res.ok) throw new Error("scouting_me_failed");
-          return res.json();
+          const res = await apiFetch(`${API}/api/scouting/me`, { headers }); // catch-ok
+          if (!res.ok) throw new Error("scouting_me_failed"); // apiFetch: ok:false ogsaa ved networkError, saa uaendret
+          return res.data;
         },
         SHARED_TTL_MS.scoutingMe,
       );
@@ -124,13 +125,13 @@ export function useScouting() {
       const headers = await authHeaders();
       if (!headers) return;
       try {
-        const res = await fetch(`${API}/api/scouting/estimates`, {
+        const res = await apiFetch(`${API}/api/scouting/estimates`, {
           method: "POST",
           headers,
           body: JSON.stringify({ riderIds: batch }),
         });
-        if (!res.ok) throw new Error("estimates_failed");
-        const data = await res.json();
+        if (!res.ok) throw new Error("estimates_failed"); // apiFetch: ok:false ogsaa ved networkError, saa uaendret
+        const data = res.data;
         if (!mountedRef.current || !data?.estimates) return;
         setEstimates((prev) => ({ ...prev, ...data.estimates }));
         if (data.maxLevel) setMaxLevel(data.maxLevel);
@@ -168,10 +169,15 @@ export function useScouting() {
     if (!headers) return { ok: false, error: "auth" };
     setScoutingId(riderId);
     try {
-      const res = await fetch(`${API}/api/scouting/assignments`, {
+      const res = await apiFetch(`${API}/api/scouting/assignments`, {
         method: "POST", headers, body: JSON.stringify({ kind: "target", riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      // #5242: catch'en herunder returnerede foer {error:"network"} FOER
+      // sharedRequestCache blev invalideret (fetch() kastede aldrig saa langt);
+      // apiFetch kaster ikke laengere (#5322), saa grenen genindfoeres eksplicit
+      // FOER invalideringen for at holde raekkefoelgen/adfaerden uaendret.
+      if (res.networkError) return { ok: false, error: "network" };
+      const data = res.data || {};
       // #5089: holdets scout-tilstand har aendret sig — ryd den delte kopi, saa
       // naeste mount henter den nye kapacitet frem for en TTL-kopi.
       sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe);
@@ -200,8 +206,12 @@ export function useScouting() {
     if (!headers) return { ok: false, error: "auth" };
     setScoutingId(riderId);
     try {
-      const res = await fetch(`${API}/api/scouting/${riderId}`, { method: "POST", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/scouting/${riderId}`, { method: "POST", headers });
+      // #5242: samme netvaerksfejl-fix som startTargetJob() ovenfor — eksplicit
+      // FOER invalideringen, saa en transportfejl fortsat giver error:"network"
+      // uden at invalidere den delte cache.
+      if (res.networkError) return { ok: false, error: "network" };
+      const data = res.data || {};
       sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe); // #5089: slot brugt
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       if (data.slots) setSlots(data.slots);

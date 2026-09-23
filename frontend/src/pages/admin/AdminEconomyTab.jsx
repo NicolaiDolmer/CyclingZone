@@ -6,6 +6,7 @@ import ValuationV4PreviewSection from "../../components/admin/ValuationV4Preview
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -51,7 +52,7 @@ export default function AdminEconomyTab() {
     if (!confirm(`Juster balance for ${teamName} med ${amountNum > 0 ? "+" : ""}${amountNum.toLocaleString("da-DK")} CZ$?\n\nÅrsag: ${balReason || "(ingen angivet)"}\n\nHandlingen krediterer/debiterer holdets balance med det samme.`)) return;
     setLoad("balance", true);
     try {
-      const res = await fetch(`${API}/api/admin/adjust-balance`, {
+      const res = await apiFetch(`${API}/api/admin/adjust-balance`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({ team_id: balTeam, amount: parseInt(balAmount), reason: balReason }),
       });
@@ -67,7 +68,7 @@ export default function AdminEconomyTab() {
 
   async function saveLoanConfig(cfg) {
     try {
-      const res = await fetch(`${API}/api/admin/loan-config`, {
+      const res = await apiFetch(`${API}/api/admin/loan-config`, {
         method: "PATCH", headers: await getAuth(), body: JSON.stringify(cfg),
       });
       const data = await readAdminJson(res);
@@ -82,7 +83,7 @@ export default function AdminEconomyTab() {
     if (!editingAuctionConfig) return;
     setLoad("auctionCfg", true);
     try {
-      const res = await fetch(`${API}/api/admin/auction-config`, {
+      const res = await apiFetch(`${API}/api/admin/auction-config`, {
         method: "PUT", headers: await getAuth(), body: JSON.stringify(editingAuctionConfig),
       });
       const data = await readAdminJson(res);
@@ -101,7 +102,7 @@ export default function AdminEconomyTab() {
     setPrizePreview(null);
     setPrizePayResult(null);
     try {
-      const res = await fetch(`${API}/api/admin/prize-payout-preview?season_id=${prizePayoutSeason}`, {
+      const res = await apiFetch(`${API}/api/admin/prize-payout-preview?season_id=${prizePayoutSeason}`, {
         headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -122,7 +123,7 @@ export default function AdminEconomyTab() {
     if (!confirm(`Udbetal ${pendingTotal.toLocaleString("da-DK")} CZ$ i præmiepenge til hold på tværs af ${pendingRaces} løb?\n\nDette krediterer holdenes balance med det samme og kan ikke fortrydes.`)) return;
     setLoad("prize_pay", true);
     try {
-      const res = await fetch(`${API}/api/admin/pay-prizes-to-date`, {
+      const res = await apiFetch(`${API}/api/admin/pay-prizes-to-date`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({ season_id: prizePayoutSeason }),
       });

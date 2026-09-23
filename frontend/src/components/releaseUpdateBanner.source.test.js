@@ -50,7 +50,9 @@ test("banneret gater sig selv paa samtykke-banneret og paa anonym landing", () =
   assert.match(src, /consentBannerOpen/);
   assert.match(src, /anonymousOnLanding/);
   assert.match(src, /!hasSession && pathname === "\/"/);
-  assert.match(src, /const visible = Boolean\(show\) && !consentBannerOpen && !anonymousOnLanding/);
+  assert.match(src, /const wantsSlot = Boolean\(show\) && !consentBannerOpen && !anonymousOnLanding/);
+  // #5440: og derefter kun naar den delte bund-slot er givet til banneret.
+  assert.match(src, /const visible = wantsSlot && slotGranted/);
 });
 
 // App er rodkomponenten: et abonnement dér gen-renderer HELE traeet, inklusive

@@ -282,6 +282,64 @@ test("scoreDominance: returnerer to ankre (favorite_win_rate, same_team_top10_sh
   assert.equal(winRate.v4.value, 1);
 });
 
+// #4915: et hold der fylder top 10 — det en holdtidskoersel giver per konstruktion.
+function oneTeamTop10Row(profile_type, finale_type) {
+  const ids = Array.from({ length: 10 }, (_, i) => `r${i}`);
+  return makeRow({
+    profile_type, finale_type,
+    v3Entries: ids.map((id, i) => ({ rider_id: id, rank: i + 1, stageGap: 0, team_id: "t1" })),
+    v4Entries: ids.map((id, i) => ({ rider_id: id, rank: i + 1, time_seconds: 100 })),
+  });
+}
+
+function spreadTeamsRow(profile_type, finale_type) {
+  const ids = Array.from({ length: 10 }, (_, i) => `s${i}`);
+  return makeRow({
+    profile_type, finale_type,
+    v3Entries: ids.map((id, i) => ({ rider_id: id, rank: i + 1, stageGap: i, team_id: `team-${i}` })),
+    v4Entries: ids.map((id, i) => ({ rider_id: id, rank: i + 1, time_seconds: 100 + i })),
+  });
+}
+
+const DOMINANCE_TEAMS = new Map([
+  ...Array.from({ length: 10 }, (_, i) => [`r${i}`, "t1"]),
+  ...Array.from({ length: 10 }, (_, i) => [`s${i}`, `team-${i}`]),
+]);
+
+test("#4915 scoreDominance: samme-hold-top-10 udelader holdtidskoersler (strukturelt 100 %)", () => {
+  const rows = [oneTeamTop10Row("ttt", "solo_tt"), spreadTeamsRow("hilly", "punch")];
+  const [winRate, sameTeam] = scoreDominance(rows, { teamByRider: DOMINANCE_TEAMS, v4EntrantsById: {} });
+  for (const engine of [sameTeam.v3, sameTeam.v4]) {
+    assert.equal(engine.value, 0, "TTT'ens top 10 fra ét hold maa ikke taelle");
+    assert.equal(engine.sampleCount, 1, "kun massestarts-etapen er maalt");
+    assert.equal(engine.verdict, "PASS");
+  }
+  // Favorit-ankret maaler stadig ALLE etaper.
+  assert.equal(winRate.v3.sampleCount, 2);
+});
+
+test("#4915 scoreDominance: enkeltstarter (itt, itt_hilly) udelades ogsaa — tidskoersel er generatorens definition", () => {
+  const rows = [oneTeamTop10Row("itt", "solo_tt"), oneTeamTop10Row("itt_hilly", "solo_tt"), spreadTeamsRow("flat", "bunch_sprint")];
+  const [, sameTeam] = scoreDominance(rows, { teamByRider: DOMINANCE_TEAMS, v4EntrantsById: {} });
+  assert.equal(sameTeam.v3.value, 0);
+  assert.equal(sameTeam.v4.value, 0);
+  assert.equal(sameTeam.v4.sampleCount, 1);
+});
+
+test("#4915 scoreDominance: en massestarts-etape med 4+ fra ét hold taeller stadig (ankret er ikke slaaet fra)", () => {
+  const rows = [oneTeamTop10Row("flat", "bunch_sprint"), oneTeamTop10Row("ttt", "solo_tt")];
+  const [, sameTeam] = scoreDominance(rows, { teamByRider: DOMINANCE_TEAMS, v4EntrantsById: {} });
+  assert.equal(sameTeam.v3.value, 1);
+  assert.equal(sameTeam.v4.value, 1);
+  assert.equal(sameTeam.v4.verdict, "FAIL");
+});
+
+test("#4915 scoreDominance: kun tidskoersler i input => samme-hold-ankret er N/A, aldrig et gaettet 0", () => {
+  const [, sameTeam] = scoreDominance([oneTeamTop10Row("ttt", "solo_tt")], { teamByRider: DOMINANCE_TEAMS, v4EntrantsById: {} });
+  assert.equal(sameTeam.v3.verdict, "N/A");
+  assert.equal(sameTeam.v4.verdict, "N/A");
+});
+
 // ── scoreBreakawayRates ───────────────────────────────────────────────────
 
 test("scoreBreakawayRates: v3 maaler breakaway-vinderandel, v4 er altid N/A (M5 F3-scope)", () => {

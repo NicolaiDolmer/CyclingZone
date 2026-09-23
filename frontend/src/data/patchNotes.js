@@ -1,5 +1,363 @@
 export const PATCHES = [
   {
+    "version": "7.296",
+    "date": "2026-09-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Daily training: overview at the top and four tabs",
+          "body": "What changed: The top of Daily training now shows who needs a day, who is racing, who is training and who is tired, plus one button with your next step. The page has four tabs: Today, Week plan, Development and Report. Until today's session has run, each rider shows his latest training score in grey.\n\nWhat it means for you: Pick each rider's day in one list that saves straight away, and tap a rider's name to open his card right under the row."
+        },
+        "da": {
+          "title": "Daglig træning: overblik øverst og fire faner",
+          "body": "Hvad er ændret: Øverst på Daglig træning står nu, hvem der mangler en dag, hvem der kører løb, hvem der træner, og hvem der er træt, plus én knap med dit næste skridt. Siden har fire faner: I dag, Ugeplan, Udvikling og Rapport. Indtil dagens pas er kørt, viser hver rytter sin seneste træningsscore i gråt.\n\nHvad det betyder for dig: Vælg hver rytters dag i én liste, der gemmer med det samme, og tryk på en rytters navn for at åbne hans kort lige under rækken."
+        },
+        "refs": [
+          5485,
+          5564
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Time trial climbing follows the distance",
+          "body": "What changed: A time trial's metres of climbing now follow its length, so a short prologue is no longer as hilly as a 40 km time trial. This applies to new routes, starting with the season 4 calendar."
+        },
+        "da": {
+          "title": "Enkeltstarters højdemeter følger distancen",
+          "body": "Hvad er ændret: En enkeltstarts højdemeter følger nu dens længde, så en kort prolog ikke længere er lige så kuperet som en enkeltstart på 40 km. Det gælder nye ruter, begyndende med sæson 4-kalenderen."
+        },
+        "refs": [
+          2789,
+          5587
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Hide academy riders on the Stats tab too",
+          "body": "What changed: The Stats tab on My Team now has the same Seniors and Academy buttons as the Squad tab, and your choice follows you between the two tabs."
+        },
+        "da": {
+          "title": "Skjul akademiryttere på Statistik-fanen",
+          "body": "Hvad er ændret: Statistik-fanen under Mit Hold har nu de samme knapper for Seniorer og Akademi som Trup-fanen, og dit valg følger med mellem de to faner."
+        },
+        "refs": [
+          5075,
+          5556
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Keep your spot for season 4",
+          "body": "What changed: If you have not logged in for 30 days, your dashboard now shows a card where you can sign up for season 4. At the season change on 27 September, teams that are still away are parked, and an AI team takes the spot until the manager comes back.\n\nWhat it means for you: Log in before 27 September, or sign up on the card, and your team keeps its place in its league. Nothing is deleted while a team is parked."
+        },
+        "da": {
+          "title": "Behold din plads i sæson 4",
+          "body": "Hvad er ændret: Har du ikke været logget ind i 30 dage, viser dit dashboard nu et kort, hvor du kan tilmelde dig sæson 4. Ved sæsonskiftet 27. september bliver hold, der stadig er væk, parkeret, og et AI-hold tager pladsen, indtil manageren kommer tilbage.\n\nHvad det betyder for dig: Log ind før 27. september, eller tilmeld dig på kortet, så beholder dit hold sin plads i ligaen. Intet bliver slettet, mens et hold er parkeret."
+        },
+        "refs": [
+          452,
+          4592,
+          5553
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help only describes what is switched on",
+          "body": "What changed: Help now shows or hides its sections on race day, the board mandate and daily training based on what is live in the game right now."
+        },
+        "da": {
+          "title": "Hjælp beskriver kun det, der er tændt",
+          "body": "Hvad er ændret: Hjælp viser eller skjuler nu sine afsnit om løbsdagen, bestyrelsens mandat og den daglige træning ud fra, hvad der er live i spillet lige nu."
+        },
+        "refs": [
+          4948,
+          5563
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "One sprint captain per team, every time",
+          "body": "What changed: When one rider was sprint captain from your standing roles and another from the stage roles, the race kept one and ignored the other without a word. Now the race combines the roles in a fixed order, and the extra captain rides as a helper."
+        },
+        "da": {
+          "title": "Én spurtkaptajn pr. hold, hver gang",
+          "body": "Hvad er ændret: Når én rytter var spurtkaptajn fra holdets faste roller og en anden fra etapens roller, beholdt løbet den ene og ignorerede den anden uden varsel. Nu lægger løbet rollerne sammen i en fast rækkefølge, og den ekstra kaptajn kører som hjælper."
+        },
+        "refs": [
+          5223,
+          5345
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "The inbox no longer breaks the page",
+          "body": "What changed: The inbox and the badge in the menu no longer take down the whole page when the server replies without content."
+        },
+        "da": {
+          "title": "Indbakken vælter ikke længere siden",
+          "body": "Hvad er ændret: Indbakken og mærket i menuen vælter ikke længere hele siden, når serveren svarer uden indhold."
+        },
+        "refs": [
+          5475
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Next season's calendar waits for your division",
+          "body": "What changed: The calendar no longer marks your team in next season's races before your division for that season is settled."
+        },
+        "da": {
+          "title": "Næste sæsons kalender venter på din division",
+          "body": "Hvad er ændret: Kalenderen markerer ikke længere dit hold i næste sæsons løb, før din division for den sæson er afgjort."
+        },
+        "refs": [
+          5405,
+          5408
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "U23 team and Junior team pages, in the beta group",
+          "body": "What changed: Beta testers now have a U23 team page and a Junior team page under My Team, with the squad, development and, once youth racing starts, calendar, results and standings.\n\nWhat it means for you: If you are in the beta group, tell me what you miss before the pages go out to everyone."
+        },
+        "da": {
+          "title": "Sider for U23-hold og juniorhold, i beta-gruppen",
+          "body": "Hvad er ændret: Beta-testere har nu en side for U23-holdet og en for juniorholdet under Mit Hold, med truppen, udviklingen og, når ungdomsløbene starter, kalender, resultater og stilling.\n\nHvad det betyder for dig: Er du i beta-gruppen, så fortæl mig, hvad du savner, før siderne kommer ud til alle."
+        },
+        "refs": [
+          5519,
+          5549
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training score and the new phone page for everyone",
+          "body": "What changed: Every rider now shows a training score from 1 to 99 with a small graph, and on a phone the whole squad fits on one screen with the day in each row and an injury mark when a rider is hurt. The graph skips race days instead of showing a gap."
+        },
+        "da": {
+          "title": "Træningsscoren og den nye telefonside for alle",
+          "body": "Hvad er ændret: Hver rytter viser nu en træningsscore fra 1 til 99 med en lille graf, og på telefonen står hele truppen på én skærm med dagen i hver række og et skademærke, når en rytter er skadet. Grafen springer løbsdage over i stedet for at vise et hul."
+        },
+        "refs": [
+          3643,
+          5552,
+          5486,
+          5513
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.295",
+    "date": "2026-09-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stages start on time",
+          "body": "What changed: The server now checks for stages to run on the clock, so a stage starts at its scheduled time instead of up to five minutes late.\n\nWhat it means for you: Results show up sooner after the time in the calendar."
+        },
+        "da": {
+          "title": "Etaperne starter til tiden",
+          "body": "Hvad er ændret: Serveren tjekker nu efter etaper på klokkeslættet, så en etape starter på det planlagte tidspunkt i stedet for op til fem minutter for sent.\n\nHvad det betyder for dig: Resultaterne kommer hurtigere efter tidspunktet i kalenderen."
+        },
+        "refs": [
+          3624,
+          5542
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Tables on your phone show the team name",
+          "body": "What changed: League tables on phones always show the team name next to the Founder mark, and tables now scroll with the page instead of inside a small box, also in landscape."
+        },
+        "da": {
+          "title": "Tabeller på telefonen viser holdnavnet",
+          "body": "Hvad er ændret: Ranglisterne på telefonen viser altid holdnavnet ved siden af Founder-mærket, og tabeller scroller nu med siden i stedet for i en lille boks, også når telefonen holdes på tværs."
+        },
+        "refs": [
+          5471,
+          4982,
+          5526
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "View details opens the race",
+          "body": "What changed: View details on a race message in your inbox now opens that race instead of the results overview."
+        },
+        "da": {
+          "title": "Vis detaljer åbner løbet",
+          "body": "Hvad er ændret: Vis detaljer på en løbsbesked i indbakken åbner nu selve løbet i stedet for resultatoversigten."
+        },
+        "refs": [
+          5417,
+          5527
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "Message threads open at the newest message",
+          "body": "What changed: A message thread now opens at the newest message, also when you open it from a notification."
+        },
+        "da": {
+          "title": "Beskedtråde åbner ved den nyeste besked",
+          "body": "Hvad er ændret: En beskedtråd åbner nu ved den nyeste besked, også når du åbner den fra en notifikation."
+        },
+        "refs": [
+          5313,
+          5514
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The boardroom keeps its layout",
+          "body": "What changed: The boardroom page no longer breaks its layout in a narrow window or on a large screen."
+        },
+        "da": {
+          "title": "Bestyrelsessiden holder sit layout",
+          "body": "Hvad er ændret: Bestyrelsessiden bryder ikke længere layoutet i et smalt vindue eller på en stor skærm."
+        },
+        "refs": [
+          5472,
+          5528
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The survey reminder goes away when the survey closes",
+          "body": "What changed: The survey reminder on the dashboard no longer shows after the survey has closed."
+        },
+        "da": {
+          "title": "Påmindelsen om spørgeskemaet forsvinder, når skemaet lukker",
+          "body": "Hvad er ændret: Påmindelsen om spørgeskemaet på dashboardet vises ikke længere, når skemaet er lukket."
+        },
+        "refs": [
+          4943,
+          5545
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Quote the opening post",
+          "body": "What changed: You can now quote a thread's opening post, not just replies."
+        },
+        "da": {
+          "title": "Citér trådens første indlæg",
+          "body": "Hvad er ændret: Du kan nu citere trådens første indlæg, ikke kun svarene."
+        },
+        "refs": [
+          5386,
+          5546
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "One bar at the bottom at a time",
+          "body": "What changed: Only one bar shows at the bottom of the screen at a time: your cookie choice first, then a new version, then the feedback question. An answer you started is kept."
+        },
+        "da": {
+          "title": "Én bjælke i bunden ad gangen",
+          "body": "Hvad er ændret: Der vises kun én bjælke i bunden af skærmen ad gangen: først dit cookievalg, så en ny version, så feedback-spørgsmålet. Et svar, du er i gang med, bliver gemt."
+        },
+        "refs": [
+          5440,
+          5306,
+          5551
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "No new salary for riders who retire",
+          "body": "What changed: Riders who retire at the season change no longer cost a salary for the new season.\n\nWhat it means for you: Your salary bill at the start of a season only counts the riders who stay."
+        },
+        "da": {
+          "title": "Ingen ny løn til ryttere, der går på pension",
+          "body": "Hvad er ændret: Ryttere, der går på pension ved sæsonskiftet, koster ikke længere løn for den nye sæson.\n\nHvad det betyder for dig: Din lønudgift ved sæsonstart tæller kun de ryttere, der bliver."
+        },
+        "refs": [
+          4153,
+          5553
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "How your national core is decided",
+          "body": "What changed: Help now explains how your national core is decided and when it counts."
+        },
+        "da": {
+          "title": "Sådan afgøres din nationale kerne",
+          "body": "Hvad er ændret: Hjælp forklarer nu, hvordan din nationale kerne afgøres, og hvornår den tæller."
+        },
+        "refs": [
+          5483,
+          5512
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.293",
     "date": "2026-09-21",
     "label": "Beta",

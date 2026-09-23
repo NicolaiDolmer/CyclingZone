@@ -979,7 +979,23 @@ Reglen stod i generatoren fra #4272, men `mountain`'s nedad-vægt fulgte den ikk
 
 **Nedre grænse for hvor langt en nedad-vægt må sænkes:** nedkørsels-finalen er også et *gulv* (`descent_finale_min`, se nedenfor). En vægt-sænkning og et gulv trækker mod hinanden, og #4272 har allerede betalt én gang for et gulv båndet ikke kunne levere. Sænk aldrig `descent`-vægten uden at re-derivere gulvene i samme ombæring.
 
-**Ejer-valg 21/9 (#5405):** cobbles-baandene er rettet, saa midtpunkterne er komplementaere. Hilly bruger relative midtpunktvaegte; hvor midtpunkterne ikke summer til en hel fordeling, normaliserer generatoren dem samlet. De resterende finale-afvigelser skal rapporteres og kraever eksplicit --allow-finale-drift ved en senere ejer-godkendt apply.
+**Ejer-valg 21/9 (#5405):** cobbles-baandene er rettet, saa midtpunkterne er komplementaere. Hilly bruger relative midtpunktvaegte; hvor midtpunkterne ikke summer til en hel fordeling, normaliserer generatoren dem samlet.
+
+### Finalerne fordeles efter kvote pr. division, ikke trukket frit (23/9, [#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405))
+
+Vægtene stod allerede på båndenes midte, og alligevel var tre linjer røde på sæson-aggregatet (kuperet slutter i udbrud, brosten slutter fladt, brosten slutter i udbrud). Årsagen var ikke vægtene men **stikprøvestøj**: hver etape trak sin finale uafhængigt, så en divisions andel var en tilfældig stikprøve omkring vægten. På brosten, med få etaper pr. sæson, er båndet ikke bredere end én standardfejl — en korrekt generator lå uden for båndet i en stor del af sæsonerne, og ingen vægt kunne rette det. At flytte en vægt væk fra midten for at ramme ét bestemt træk ville bare have flyttet problemet til næste sæson.
+
+**Reglen nu** (`balanceFinaleQuotas` i `raceStageProfileGenerator.js`):
+
+1. Hver etape trækker stadig sin finale som før (pass 1 er bit-identisk, `pass1-golden.json` uændret).
+2. Derefter rangeres en divisions etaper af samme terræn efter det træk de fik, og etapen på plads *r* af *n* får den finale som samme vægtede afbildning giver kvantilen (*r* + ½)/*n*. Antallet af hver finale bliver dermed *n* × vægtandel, højst én etape fra. En etape der frit trak en tidlig finale i listen, får stadig en tidlig finale; kun etaper tæt på en grænse skifter, og deres rute genbygges med den nye finale.
+3. **Afrundingen** vælges inden for ejerens bånd: standard er den nærmeste, men en anden lovlig afrunding (stadig højst én etape fra kvoten) vælges, hvis den bringer divisionen inden for terræn-båndene og det samlede bånd nedenfor. Terræn-båndene går forud: en afrunding bytter aldrig et terræn-bånd væk for det samlede bånd. Ingen vægt og intet bånd ændres.
+
+**Hvor den gælder:** pr. division, over den repræsentative puljes løbssæt — samme sted og af samme grund som realisme-gen-trækket (#3347): divisioner deler ikke løb, alle puljer i en division kører samme løbssæt, og en division skal kunne bygges alene (§2e). Fordelingen sker i `drawTierAttempt`, så gen-træk-søgningen, `gatePlan`'s realisme-bånd, realisme-scorecardet, materializerens dæknings-verifikation, dry-run-scorecardet og **insert'et** måler og skriver de samme finaler. Materializeren indsætter nu tierens beregnede profiler i stedet for at generere hvert løb forfra, og `backfillRaceStageProfiles.js` genskaber samme fordeling pr. (sæson, pulje) — pr. pulje, så en pulje aktiveret midt i sæsonen med sit eget løbssæt får fordelingen over netop det sæt, som materializeren gav den.
+
+**Hvad den ikke dækker:** et løb der genereres alene uden for en sæsonkalender (admin-oprettet løb, diagnose-scripts som `checkStageProfileSeedDivergence.js`) får sit frie træk. Og en pulje der aktiveres midt i sæsonen (§2e) med et andet løbssæt end resten af divisionen, får fordelingen over sit eget sæt — samme afgrænsning som gen-trækkets variant allerede har.
+
+Målt på S4-planen (tørkørsel uden `--uniform-tilt`): de tre linjer er lukket, og §7b har nul regelbrud. Den fulde måling, også over mange simulerede sæsoner, ligger i `balance-internals/2026-09-23-5405-finale-afvigelser/`. Tilbage står én strukturel iagttagelse: med den nuværende terræn-sammensætning ligger andelen af etaper der slutter **opad** tæt på det samlede bånds loft, og i et mindretal af de simulerede sæsoner rækker afrundingens spillerum ikke. S4-planen er ikke blandt dem; spørgsmålet til ejeren står i PR'en.
 
 ### Samlet bånd på tværs af alle etaper
 
@@ -1092,6 +1108,8 @@ gør gættet til en regel næste læser tror er besluttet (§11).
 `calendar-scorecard-gate.yml` måler pakkerens output mod **et frosset prod-snapshot fra S3-æraen** (`racePoolCatalog.prod.json`). Når ejeren ændrer en regel, måler gaten den nye regel mod det gamle katalog — og resultatet er brud der er **korrekte at rapportere**, men som ikke kan lukkes af den PR der indførte reglen. Alternativet, at gøre gaten grøn ved at slække reglen, er præcis det §5b forbyder.
 
 Fixture-gaten dømmer derfor mod en **enumereret kendt tilstand** (`KENDTE_FIXTURE_BRUD` i `calendarScorecard4218.mjs`): hvert kendt brud står navngivet med sin begrundelse og det spor der lukker det. Gaten er rød både når der kommer **ét nyt** og når et **kendt forsvinder** uden at listen følger med — en stale post er en løgn om hvad vi ved.
+
+**Listen er tom fra 23/9 ([#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405)).** De tre sidste poster var finale-linjer, lukket af kvote-fordelingen i §7b. En tom liste er målet, ikke et hul: fixture-kalenderen har nul brud, tabellen siger det, og ét nyt brud fælder gaten.
 
 > **Det er kun fixture-gaten.** `buildSeasonCalendar.js --apply` er uændret hård uden override: en kalender med et af disse brud kan ikke skrives til prod. Og tabellen bliver ved med at sige at der ER brud — forskellen på "kalenderen er i orden" og "der er ikke kommet noget nyt" må aldrig skjules bag ét grønt flueben (§9b).
 

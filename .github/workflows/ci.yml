@@ -154,6 +154,16 @@ jobs:
       - name: Type-check frontend
         run: npm run typecheck
 
+      # #5534: hard rule 31 kraever nu .ts/.tsx for nye frontend-filer, ogsaa
+      # e2e-specs — men frontend/tsconfig.json's include daekker kun src/**, saa
+      # .ts-filer i tests/e2e/ (og krydsimports mellem dem, fx tests/e2e/lib)
+      # fik ingen typecheck. Egen frontend/tests/tsconfig.json (extends
+      # ovenstaaende) lukker det hul. Startede paa 0 fejl (kun 3 implicit-any i
+      # 4346-report-trade.spec.ts, rettet i samme PR), saa gaten er en hard
+      # fejl fra dag ét — ingen advarsels-periode noedvendig.
+      - name: Type-check e2e specs (#5534)
+        run: npx tsc --noEmit -p tests
+
       - name: Run frontend tests
         run: npm test -- --test-reporter=spec
 
@@ -765,6 +775,12 @@ jobs:
           node --test scripts/wave-boot-identity.test.mjs scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/wave-owner-override.test.mjs scripts/codex-wave.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs scripts/wave-freeze.test.mjs scripts/make-wave-brief.test.mjs
           python3 scripts/hooks/lib/test_codex_sessions.py
           bash scripts/test-guard-agent-spawn.sh
+
+      # #5489: deploy-verify.yml laeser Railway-status via scripts/railway-deploy-status.mjs
+      # (#5560). Klassifikationen (success/failed/pending, API-fejl = pending) skal
+      # koere i CI, ellers er den usynlig ligesom monday-numbers var (#5092).
+      - name: Test Railway deploy-status classifier (#5489)
+        run: node --test scripts/railway-deploy-status.test.mjs
 
   migration-idempotency:
     runs-on: ubuntu-latest

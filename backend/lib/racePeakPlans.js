@@ -69,16 +69,50 @@ export function scheduledAtToOrdinal(scheduledAt) {
  * optaktsvinduet) → { trainedDays, focusCounts }. Ren. "rest"-status tæller ikke
  * som en trænet dag (konsistens-signalet); trænede dages fokus tælles op til
  * fokus-match-signalet.
- * @param {Array<{status?:string, focus?:string}>} riderDayEntries
+ *
+ * #4848 (gate G8): TÆLLER DATOER, IKKE RÆKKER. Optaktsvinduet (PEAK_LEADUP_DAYS) er
+ * målt i kalenderdatoer, men med `training_tick_per_race_day` on får et hold ÉN
+ * training_day_runs-række pr. LØBSDAG — flere pr. dato. Talt pr. række ville fem
+ * løbsdage på én dato give fem "trænede dage", og konsistens-signalet ville mætte
+ * til 1 på en brøkdel af optakten (peak-bonussen gratis).
+ *
+ * Derfor grupperes entries på `ord` (datoens ordinal), og hver dato bidrager med
+ * ANDELEN af dens løbsdage rytteren trænede (0..1). En dato med ét run bidrager
+ * 0 eller 1 — præcis som før. Flag off har altid ét run pr. dato (den partielle
+ * UNIQUE(team_id, tick_date)), så resultatet er BIT-IDENTISK med den gamle optælling.
+ * Fokus vægtes med samme brøk, så en dato aldrig kan veje mere end 1 i fokus-match.
+ * Entries UDEN `ord` (ældre kaldere) tæller hver som sin egen dato — samme semantik
+ * som før #4848.
+ *
+ * @param {Array<{status?:string, focus?:string, ord?:number}>} riderDayEntries
  * @returns {{trainedDays:number, focusCounts:Record<string,number>}}
  */
 export function summarizeLeadupTraining(riderDayEntries) {
+  // Gruppér pr. dato. Nøgleløse entries får hver sin unikke nøgle (legacy-semantik).
+  const byDate = new Map();
+  let anon = 0;
+  for (const e of riderDayEntries || []) {
+    if (!e) continue;
+    const key = Number.isFinite(e.ord) ? `d${e.ord}` : `anon${anon++}`;
+    if (!byDate.has(key)) byDate.set(key, []);
+    byDate.get(key).push(e);
+  }
   let trainedDays = 0;
   const focusCounts = {};
-  for (const e of riderDayEntries || []) {
-    if (!e || e.status === "rest") continue;
-    trainedDays++;
-    if (e.focus) focusCounts[e.focus] = (focusCounts[e.focus] || 0) + 1;
+  for (const entries of byDate.values()) {
+    // Tæl FØRST, divider bagefter: n/n er præcis 1 i IEEE-754, mens fem gange 1/5
+    // lagt sammen ikke nødvendigvis er det. 1 run pr. dato ⇒ 0/1 eller 1/1 (bit-identisk).
+    const n = entries.length;
+    let trained = 0;
+    const perFocus = {};
+    for (const e of entries) {
+      if (e.status === "rest") continue;
+      trained++;
+      if (e.focus) perFocus[e.focus] = (perFocus[e.focus] || 0) + 1;
+    }
+    if (trained === 0) continue;
+    trainedDays += trained / n;
+    for (const [f, c] of Object.entries(perFocus)) focusCounts[f] = (focusCounts[f] || 0) + c / n;
   }
   return { trainedDays, focusCounts };
 }
@@ -267,11 +301,13 @@ export async function resolvePeakTrainingQualities({
       const leadupStart = w.start - leadup;
       const leadupEnd = w.start; // eksklusiv
       // Rytterens dag-entries for de optakts-dage hvor holdet kørte et tick.
+      // `ord` følger med, så summarizeLeadupTraining kan tælle DATOER og ikke
+      // løbsdags-rækker (#4848, G8).
       const dayEntries = [];
       for (const run of teamRuns) {
         if (run.ord < leadupStart || run.ord >= leadupEnd) continue;
         const entry = run.riderMap.get(riderId);
-        if (entry) dayEntries.push(entry);
+        if (entry) dayEntries.push({ ...entry, ord: run.ord });
       }
       const { trainedDays, focusCounts } = summarizeLeadupTraining(dayEntries);
       w.trainingQuality = trainingQualityForWindow({

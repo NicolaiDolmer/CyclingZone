@@ -6,7 +6,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyChannel } from "./monday-numbers.mjs";
+import { classifyChannel, LOST_IN_MARKETING } from "./monday-numbers.mjs";
 
 test("AI-assistenter samles i én gruppe (#4322)", () => {
   for (const host of ["https://chatgpt.com/", "https://www.perplexity.ai/x", "https://claude.ai/"]) {
@@ -39,10 +39,38 @@ test("tom attribution er 'direct / ukendt', aldrig en kanal", () => {
   assert.equal(classifyChannel({ utm_source: "  ", referrer: "" }), "(direct / ukendt)");
 });
 
-test("soegemaskiner samles, og self-referral holdes ude af kanal-listen", () => {
+test("soegemaskiner samles, og vores egen side holdes ude af kanal-listen", () => {
   assert.equal(classifyChannel({ referrer: "https://www.google.at/" }), "soegning (organisk)");
   assert.equal(classifyChannel({ referrer: "https://duckduckgo.com/" }), "soegning (organisk)");
-  assert.equal(classifyChannel({ referrer: "https://cyclingzone.org/dashboard" }), "self-referral");
+  // #5310: egen side som referrer uden UTM er tabt attribution, ikke en kanal.
+  assert.equal(classifyChannel({ referrer: "https://cyclingzone.org/dashboard" }), LOST_IN_MARKETING);
+  assert.equal(classifyChannel({ utm_source: "cyclingzone.org" }), "self-referral");
+});
+
+// #5310: laese-side-fallback for raekker fra efter 14/9, hvor marketing-forsiden
+// tabte UTM og ekstern referrer, og referreren blev vores egen side.
+test("same-origin-referrer med UTM i query klassificeres efter de UTM'er (#5310)", () => {
+  assert.equal(classifyChannel({ utm_source: null, referrer: "https://cyclingzone.org/?utm_source=reddit&utm_medium=paid" }), "reddit");
+  assert.equal(classifyChannel({ referrer: "https://www.cyclingzone.org/da?utm_source=Discord" }), "discord");
+  assert.equal(classifyChannel({ referrer: "https://cyclingzone.org/?utm_source=chatgpt.com" }), "AI assistant");
+});
+
+test("same-origin-referrer uden UTM er 'ukendt (tabt i marketing)' (#5310)", () => {
+  assert.equal(LOST_IN_MARKETING, "ukendt (tabt i marketing)");
+  for (const referrer of [
+    "https://cyclingzone.org/",
+    "https://cyclingzone.org/how-it-works",
+    "https://cycling-zone.vercel.app/",
+    "https://cycling-zone-marketing.vercel.app/",
+  ]) {
+    assert.equal(classifyChannel({ utm_source: null, referrer }), LOST_IN_MARKETING);
+  }
+});
+
+test("gemt utm_source vinder over UTM i en same-origin-referrer (#5310)", () => {
+  assert.equal(classifyChannel({ utm_source: "email", referrer: "https://cyclingzone.org/?utm_source=reddit" }), "email (vores egne mails)");
+  // En fremmed referrers query bruges aldrig til UTM.
+  assert.equal(classifyChannel({ referrer: "https://evil-cyclingzone.org/?utm_source=reddit" }), "evil-cyclingzone.org");
 });
 
 // #5091: samme fejlklasse som Hattrick/self-referral (#5072), nu ogsaa dækket
@@ -73,10 +101,14 @@ test("lookalike domains cannot impersonate any kanal-liste", () => {
 });
 
 test("genuine hostnames and their subdomains retain their channel", () => {
+  // Egne domaener: som utm_source er det self-referral, som referrer uden UTM
+  // er det tabt attribution (#5310).
+  for (const domain of ["cyclingzone.org", "cycling-zone.vercel.app", "cycling-zone-marketing.vercel.app"]) {
+    assert.equal(classifyChannel({ referrer: `https://sub.${domain}/` }), LOST_IN_MARKETING);
+    assert.equal(classifyChannel({ utm_source: domain }), "self-referral");
+  }
   for (const [domain, expected] of [
     ["hattrick.org", "hattrick"],
-    ["cyclingzone.org", "self-referral"],
-    ["cycling-zone.vercel.app", "self-referral"],
     ["discord.com", "discord"],
     ["discordapp.com", "discord"],
     ["chatgpt.com", "AI assistant"],

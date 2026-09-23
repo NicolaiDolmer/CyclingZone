@@ -2,7 +2,7 @@
 // backend/scripts/buildV4AnchorBaseline.mjs
 // #4911: refresh-kommando for den PINNEDE v4-ankertabel. Kører
 // headToHeadV4.js på de to committede baseline-filer (population + proxy-
-// etaper) over de tre laaste seeds, og skriver resultatet + provenance
+// etaper) over de fem laaste seeds (#4914), og skriver resultatet + provenance
 // (main_sha, fil-hashes) til backend/scripts/baselines/v4-anchor-baseline.json.
 // Efter denne: node backend/scripts/renderV4AnchorTable.mjs --write.
 //
@@ -33,7 +33,14 @@ const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
 // foer/efter mod den ægte prod-fordeling).
 const POPULATION_FILE = "backend/scripts/baselines/population-snapshot-2026-09-07.json";
 const STAGES_FILE = "backend/scripts/baselines/v4-proxy-stages-2026-09-06.json";
-const SEEDS = "s1,s2,s3";
+// #4914 (5-seed-gate): ankertabellen maales paa FEM seeds, ikke tre. Ejer-
+// beslutningen 2/9 (RACE_ENGINE_RULES §7 raekke 8) er "5-seed-middel med
+// spaend": ét seed svinger et anker ~12 procentpoint, og tre seeds skjulte at
+// bjerg-top-10's laveste enkelt-seed laa under gulvet (§7 raekke 16). s1-s3
+// er uaendrede, saa en 5-seed-tabel er en udvidelse, ikke et nyt udsnit.
+// NB: hale-gaten (v4TailSpread.js --gate) er EJER-LAAST paa 3 seeds (§9
+// raekke 13) og flyttes IKKE af denne linje.
+const SEEDS = "s1,s2,s3,s4,s5";
 const FIELD_SIZE = "180";
 
 function sha16(absPath) {

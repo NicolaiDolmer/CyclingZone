@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
 import BetaToolsSection from "../../components/admin/sections/BetaToolsSection";
 import BoardTestModeSection from "../../components/admin/sections/BoardTestModeSection";
 import BalanceDriftWatchSection from "../../components/admin/sections/BalanceDriftWatchSection";
@@ -42,9 +43,12 @@ export default function AdminSystemTab() {
     // frontend får kun maskerede URLs (webhook_url_masked), aldrig den rå secret.
     const webhooksPromise = (async () => {
       try {
-        const res = await fetch(`${API}/api/admin/discord-settings`, { headers: await getAuth() });
+        const res = await apiFetch(`${API}/api/admin/discord-settings`, { headers: await getAuth() });
         if (!res.ok) return { webhooks: [] };
-        return await res.json();
+        // #5242: et tomt/ikke-JSON 200-svar giver res.data === null (apiFetch.ts) —
+        // uden `??` kastede `w.webhooks` nedenfor på null og loadData() droppede
+        // BÅDE webhooks, admin-loggen og markeds-pause-status tavst (samme Promise.all).
+        return res.data ?? { webhooks: [] };
       } catch { return { webhooks: [] }; }
     })();
 
@@ -71,7 +75,7 @@ export default function AdminSystemTab() {
     if (reason === null) return;
     setLoad(`pause_${level}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/market/pause`, {
+      const res = await apiFetch(`${API}/api/admin/market/pause`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({ level, reason: reason || null }),
       });
@@ -94,7 +98,7 @@ export default function AdminSystemTab() {
     if (!confirm("Genoptag markedet?\n\nAuktioners slut-tid skubbes frem med pause-varigheden, så bydere får samme resterende tid som før.")) return;
     setLoad("market_resume", true);
     try {
-      const res = await fetch(`${API}/api/admin/market/resume`, {
+      const res = await apiFetch(`${API}/api/admin/market/resume`, {
         method: "POST", headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -116,7 +120,7 @@ export default function AdminSystemTab() {
     if (!newWebhook.webhook_name || !newWebhook.webhook_url) return;
     setLoad("webhook_add", true);
     try {
-      const res = await fetch(`${API}/api/admin/discord-settings`, {
+      const res = await apiFetch(`${API}/api/admin/discord-settings`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({
           webhook_name: newWebhook.webhook_name,
@@ -140,9 +144,21 @@ export default function AdminSystemTab() {
     setLoad(`test_${webhook.id}`, true);
     try {
       // Test via gemt URL server-side — klienten kender ikke længere den rå webhook_url.
-      const res = await fetch(`${API}/api/admin/discord-settings/${webhook.id}/test`, {
+      const res = await apiFetch(`${API}/api/admin/discord-settings/${webhook.id}/test`, {
         method: "POST", headers: await getAuth(),
       });
+      // #5242: apiFetch kaster ikke laengere ved en transportfejl (#5322), men
+      // catch'en herunder viste FOER baade en toast OG et inline netvaerksfejl-
+      // resultat (formatWebhookTest's status===0-gren) - den oprindelige
+      // exception ligger stadig i res.error, saa begge dele genskabes eksplicit.
+      if (res.networkError) {
+        setWebhookTestResults(prev => ({
+          ...prev,
+          [webhook.id]: { ok: false, status: 0, error: res.error?.message || "ukendt" },
+        }));
+        showMsg("Forbindelsen fejlede", "error");
+        return;
+      }
       const data = await readAdminJson(res);
       setWebhookTestResults(prev => ({
         ...prev,
@@ -175,7 +191,7 @@ export default function AdminSystemTab() {
   async function setDefaultWebhook(id) {
     setLoad(`default_${id}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/discord-settings/${id}/default`, {
+      const res = await apiFetch(`${API}/api/admin/discord-settings/${id}/default`, {
         method: "PATCH", headers: await getAuth(),
       });
       if (!res.ok) { const d = await readAdminJson(res); showMsg(`❌ ${adminErrorMessage(d, res)}`, "error"); return; }
@@ -191,7 +207,7 @@ export default function AdminSystemTab() {
   async function deleteWebhook(id) {
     setLoad(`del_webhook_${id}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/discord-settings/${id}`, {
+      const res = await apiFetch(`${API}/api/admin/discord-settings/${id}`, {
         method: "DELETE", headers: await getAuth(),
       });
       if (!res.ok) { const d = await readAdminJson(res); showMsg(`❌ ${adminErrorMessage(d, res)}`, "error"); return; }

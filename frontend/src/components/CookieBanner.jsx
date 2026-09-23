@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useConsent } from "../lib/consent.jsx";
+import { useBottomSlot } from "../lib/bottomSlot.ts";
 
 // Kategorierne er datadrevne; labels/beskrivelser resolves via i18n (#1170 —
 // banneret var 100 % hardcodet dansk og vises for alle nye brugere, også EN).
@@ -41,6 +42,11 @@ export default function CookieBanner() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // #5440: samtykke ejer bundkanten i den delte bund-slot (højeste prioritet),
+  // så release-banneret og NPS-baren viger mens banneret står. Returværdien
+  // bruges ikke: samtykke taber aldrig kanten.
+  useBottomSlot("consent", mounted && bannerOpen);
 
   if (!mounted || !bannerOpen) return null;
 

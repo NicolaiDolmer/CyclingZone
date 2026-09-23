@@ -84,7 +84,10 @@ import { splitGroup } from "../groups.ts";
 import { incidentEvent } from "../timeline.ts";
 import { INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
 
-type IncidentsTuning = typeof INCIDENTS_EXTRA_TUNING;
+// Eksporteret (#4915) saa holdtidskoerslen (mechanics/teamTimeTrial.ts), der
+// ruller den SAMME trappe uden for segment-loopet, kan tage en rigget tuning
+// ind i tests paa samme maade som createIncidentHook.
+export type IncidentsTuning = typeof INCIDENTS_EXTRA_TUNING;
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;

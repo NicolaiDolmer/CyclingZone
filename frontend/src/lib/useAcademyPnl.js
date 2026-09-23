@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt paa 429 + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -18,10 +19,14 @@ export function useAcademyPnl() {
     const headers = await authHeaders({ json: false }); // ren GET, ingen body
     if (!headers) { setLoading(false); return; }
     try {
-      const res = await fetch(`${API}/api/academy/pnl`, { headers });
+      const res = await apiFetch(`${API}/api/academy/pnl`, { headers });
+      // #5242: catch'en herunder satte foer "network" ved en transportfejl; apiFetch
+      // kaster ikke laengere (#5322), saa grenen genindfoeres eksplicit her for at
+      // holde adfaerden uaendret (ellers ville den falde i !res.ok's "failed").
+      if (res.networkError) { setError("network"); setLoading(false); return; }
+      const body = res.data || {};
       if (res.status === 409) {
         // Flag disabled — spejler useAcademy's graceful disabled-state.
-        const body = await res.json().catch(() => ({}));
         if (body.error === "academy_disabled") {
           setEnabled(false);
           setLoading(false);
@@ -29,12 +34,10 @@ export function useAcademyPnl() {
         }
       }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
         setError(body.error || "failed");
         setLoading(false);
         return;
       }
-      const body = await res.json();
       setData(body);
       setEnabled(true);
       setError(null);

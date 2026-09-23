@@ -34,8 +34,17 @@
 //
 // En startliste hvor ALLE er 'normal' (fixtures, harness-default) koerer
 // bit-uaendret: normal-multiplikatoren er praecis 1.0.
+//
+// #4914 (kalibreringspakken, punkt M12): all_out var GRATIS paa flade etaper.
+// Terraenets krav er en andel af gruppens tempo, og den andel er lav paa fladt
+// (feltet ruller i lae), saa én faelles all_out-multiplikator loeftede aldrig
+// kravet over CP dér — mens den samme multiplikator paa en bjergetape var en
+// stor arm. All_out-multiplikatoren er derfor ETAPEPROFIL-afhaengig
+// (`demandMultiplierAllOutByProfile`): profiler der ikke staar i tabellen
+// beholder den faelles vaerdi, saa bjerg-armen er uroert. De fire andre trin er
+// profil-uafhaengige som foer.
 
-import type { EffortLevel } from "../types.ts";
+import type { EffortLevel, ProfileType } from "../types.ts";
 import { EFFORT_COST_EXTRA_TUNING } from "../tuning.ts";
 
 /**
@@ -48,21 +57,44 @@ export type EffortCostTuning = {
   demandMultiplierProtect: number; // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)
   demandMultiplierNormal: number; // =1: baseline, ingen modulation
   demandMultiplierSave: number; // <1: koerer bevidst inden for sig selv (raceRoles FATIGUE_MULTIPLIER_SAVE-anker)
-  demandMultiplierAllOut: number; // >protect: alt ud (#4632, raceRoles FATIGUE_MULTIPLIER_ALL_OUT-anker)
+  demandMultiplierAllOut: number; // >protect: alt ud (#4632, raceRoles FATIGUE_MULTIPLIER_ALL_OUT-anker) — faelles vaerdi for profiler uden egen raekke nedenfor
+  // #4914: all_out pr. etapeprofil. Valgfri: en tuning uden tabellen (aeldre
+  // tests, harness-overrides) falder tilbage paa den faelles vaerdi ovenfor.
+  demandMultiplierAllOutByProfile?: Readonly<Partial<Record<ProfileType, number>>>;
 };
 
 export { EFFORT_COST_EXTRA_TUNING as EFFORT_COST_TUNING };
 
 /**
+ * all_out-multiplikatoren for en given etapeprofil (#4914). Profiler uden egen
+ * raekke (og et manglende/ukendt profilnavn) faar den faelles
+ * `demandMultiplierAllOut`. En profil-vaerdi der IKKE er et endeligt tal over
+ * protect-trinnet ignoreres forsvarsmaessigt: all_out maa aldrig blive billigere
+ * end protect (femtrins-ordenen, #4632), heller ikke ved en tastefejl i tabellen.
+ */
+export function allOutDemandMultiplier(
+  profileType: ProfileType | null | undefined,
+  tuning: EffortCostTuning = EFFORT_COST_EXTRA_TUNING,
+): number {
+  const byProfile = profileType ? tuning.demandMultiplierAllOutByProfile?.[profileType] : undefined;
+  if (typeof byProfile === "number" && Number.isFinite(byProfile) && byProfile > tuning.demandMultiplierProtect) {
+    return byProfile;
+  }
+  return tuning.demandMultiplierAllOut;
+}
+
+/**
  * effortFatigueMultiplier-moensteret (raceRoles.js), ren v4-genimplementering:
  * effort-niveauet lookes op til en effekt-krav-multiplikator. Ingen rng, ingen
- * afhaengighed af rytter-tilstand — REN funktion af effort alene, saa den er
- * triviel at property-teste (samme multiplikator for samme effort, uanset
- * kalde-kontekst) og trivielt determinismesikker.
+ * afhaengighed af rytter-tilstand — REN funktion af (effort, etapeprofil), saa
+ * den er triviel at property-teste (samme multiplikator for samme input, uanset
+ * kalde-kontekst) og trivielt determinismesikker. Etapeprofilen flytter KUN
+ * all_out-trinnet (#4914); uden profil er resultatet det samme som foer.
  */
 export function effortDemandMultiplier(
   effort: EffortLevel,
   tuning: EffortCostTuning = EFFORT_COST_EXTRA_TUNING,
+  profileType: ProfileType | null = null,
 ): number {
   // #4632: femtrins-skalaen. 'grupetto' og 'all_out' skal have deres EGEN
   // multiplikator — faldt de igennem til normal-grenen, ville et femtrins-valg
@@ -71,7 +103,7 @@ export function effortDemandMultiplier(
   if (effort === "protect") return tuning.demandMultiplierProtect;
   if (effort === "save") return tuning.demandMultiplierSave;
   if (effort === "grupetto") return tuning.demandMultiplierGrupetto;
-  if (effort === "all_out") return tuning.demandMultiplierAllOut;
+  if (effort === "all_out") return allOutDemandMultiplier(profileType, tuning);
   return tuning.demandMultiplierNormal;
 }
 
@@ -88,7 +120,8 @@ export function applyEffortToDemand(
   demand: number,
   effort: EffortLevel,
   tuning: EffortCostTuning = EFFORT_COST_EXTRA_TUNING,
+  profileType: ProfileType | null = null,
 ): number {
   const safeDemand = Math.max(0, demand);
-  return safeDemand * effortDemandMultiplier(effort, tuning);
+  return safeDemand * effortDemandMultiplier(effort, tuning, profileType);
 }

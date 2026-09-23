@@ -44,7 +44,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
     if (!selectedRider) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/admin/override-rider`, {
+      const res = await apiFetch(`${API}/api/admin/override-rider`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({ rider_id: selectedRider.id, team_id: selectedTeam || null }),
       });
@@ -62,7 +62,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
     if (!selectedRider) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/admin/riders/${selectedRider.id}/retirement`, {
+      const res = await apiFetch(`${API}/api/admin/riders/${selectedRider.id}/retirement`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({ is_retired: isRetired }),
       });
@@ -192,7 +192,7 @@ export default function AdminUsersTab() {
     }
     setLoad(`del_user_${userId}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/users/${userId}`, {
+      const res = await apiFetch(`${API}/api/admin/users/${userId}`, {
         method: "DELETE", headers: await getAuth(),
         body: JSON.stringify({ confirm_test_account: isTestAccount }),
       });
@@ -210,7 +210,7 @@ export default function AdminUsersTab() {
     if (!confirm(`Skift ${username} til ${newRole}?`)) return;
     setLoad(`role_${userId}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/users/${userId}/role`, {
+      const res = await apiFetch(`${API}/api/admin/users/${userId}/role`, {
         method: "PATCH", headers: await getAuth(),
         body: JSON.stringify({ role: newRole }),
       });
