@@ -608,6 +608,8 @@ export async function getForumPost({ supabase, id, userId }) {
     return { status: 404, body: { error: "Post not found", errorCode: "forum_post_not_found" } };
   }
 
+  // schema-columns-ok: quotes_post tilfoejes af
+  // database/2026-09-24-5386-forum-quote-op.sql i SAMME PR.
   const { data: replyRows, error: replyError } = await supabase
     .from("forum_replies")
     .select("id, seq, created_at, post_id, user_id, team_id, body, images, quoted_reply_id, quotes_post")
