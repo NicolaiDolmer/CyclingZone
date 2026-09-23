@@ -70,6 +70,17 @@ async function mockTrainingRuns(page, rows = TRAINING_DAY_RUNS) {
   });
 }
 
+// #5485 (A3): desktop-rækken bærer ikke længere kvitteringen; den står i
+// rytterens kort, som navnet folder ud lige under rækken. Samme
+// AbilityReceiptRow som før, så kravene nedenfor er de samme.
+async function openCard(page, name = "Ada Pedersen") {
+  await page.getByTestId("training-today-row").filter({ hasText: name })
+    .getByRole("button", { name: new RegExp(name) }).click();
+  const card = page.getByTestId("training-rider-detail");
+  await expect(card).toBeVisible();
+  return card;
+}
+
 test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
   // #3643: denne spec maaler DESKTOP-rosterets indhold. Telefonen har siden
@@ -81,14 +92,13 @@ test.beforeEach(async ({ page }) => {
   await installNetworkMocks(page);
 });
 
-test("#3709 roster-rækken viser hver af fokussets evner, ikke ét aggregeret tal", async ({ page }, testInfo) => {
+test("#3709 rytterens kort viser hver af fokussets evner, ikke ét aggregeret tal", async ({ page }, testInfo) => {
   await mockTrainingMe(page, { capped: { "rider-1": ["climbing"] } });
   await mockTrainingRuns(page);
   await login(page);
   await page.goto("/training");
 
-  const row = page.locator("tbody tr", { hasText: "Ada Pedersen" }).first();
-  const receipt = row.locator("td").filter({ hasText: /Klatring/ }).first();
+  const receipt = await openCard(page);
 
   // vo2max = climbing + punch + tempo. Alle tre står nu på hver sin linje.
   for (const label of ["Klatring", "Punch", "Tempo"]) {
@@ -106,7 +116,7 @@ test("#3709 roster-rækken viser hver af fokussets evner, ikke ét aggregeret ta
   await expect(receipt.getByText("74%")).toBeVisible();
 
   await testInfo.attach("3709-roster-kvittering", {
-    body: await row.screenshot(),
+    body: await receipt.screenshot(),
     contentType: "image/png",
   });
 });
@@ -117,8 +127,7 @@ test("#3709 sæsonens point tælles fra sæsonstart, ikke fra 30-dages-vinduet",
   await login(page);
   await page.goto("/training");
 
-  const row = page.locator("tbody tr", { hasText: "Ada Pedersen" }).first();
-  const receipt = row.locator("td").filter({ hasText: /Klatring/ }).first();
+  const receipt = await openCard(page);
 
   // Tempo fik 2 point i sæsonen (4/5) og 9 point dagen før sæsonstart (28/4).
   // Ville filteret mangle, stod der +11 her.
@@ -132,35 +141,40 @@ test("#3709 de tre loft-tekster er væk fra fladen", async ({ page }) => {
   await login(page);
   await page.goto("/training");
 
-  const row = page.locator("tbody tr", { hasText: "Ada Pedersen" }).first();
+  const row = page.getByTestId("training-today-row").filter({ hasText: "Ada Pedersen" });
+  const receipt = await openCard(page);
 
   // Teksterne lovede "stiger ikke igen, uanset hvordan rytteren træner".
-  await expect(row.getByText(/Færdigudviklet i dette fokus/i)).toHaveCount(0);
-  await expect(row.getByText(/på loftet/i)).toHaveCount(0);
-  await expect(row.locator("option", { hasText: /loft nået/i })).toHaveCount(0);
+  for (const surface of [row, receipt]) {
+    await expect(surface.getByText(/Færdigudviklet i dette fokus/i)).toHaveCount(0);
+    await expect(surface.getByText(/på loftet/i)).toHaveCount(0);
+    await expect(surface.locator("option", { hasText: /loft nået/i })).toHaveCount(0);
+  }
 
   // Alle tre evner er låste, så alle tre linjer siger "færdig". Ingen død bar.
-  const receipt = row.locator("td").filter({ hasText: /Klatring/ }).first();
   await expect(receipt.getByText("færdig", { exact: true })).toHaveCount(3);
 });
 
-test("#3706 Status-kolonnen sorterer akademi-rytterne sammen", async ({ page }) => {
+test("#3706 Status-sorteringen samler akademi-rytterne", async ({ page }) => {
   await mockTrainingMe(page, { capped: {} });
   await mockTrainingRuns(page);
   await login(page);
   await page.goto("/training");
 
   // Overskriften var et bart <th> uden aria-sort og uden comparator, så et klik
-  // gjorde ingenting (@cybersimon, Discord 13/8). Nu er den samme SortableTh som
-  // navn/type/form/træthed: aria-sort går fra "none" til en retning ved klik.
-  const header = page.getByRole("columnheader", { name: /Status/i }).first();
-  await expect(header).toBeVisible();
-  await expect(header).toHaveAttribute("aria-sort", "none");
-  await header.click();
+  // gjorde ingenting (@cybersimon, Discord 13/8). #5485: Status er ikke længere
+  // en kolonne (akademi, kontrakt og pension står i rytterens kort), men
+  // sort-nøglen findes stadig i tabellens "Sortér efter" — samme kontrol og
+  // samme comparator som telefonen.
+  const table = page.getByTestId("training-today-table");
+  const sortBy = table.getByRole("combobox", { name: "Sortér efter" });
+  await sortBy.selectOption("status");
+  await expect(sortBy).toHaveValue("status");
   // Desc-først, så akademi-rytterne lander øverst med ét klik.
-  await expect(header).toHaveAttribute("aria-sort", "descending");
-  await header.click();
-  await expect(header).toHaveAttribute("aria-sort", "ascending");
+  const dir = table.getByRole("button", { name: /Sorterer faldende/ });
+  await expect(dir).toBeVisible();
+  await dir.click();
+  await expect(table.getByRole("button", { name: /Sorterer stigende/ })).toBeVisible();
 });
 
 test("#3709 EN-bevis: kvitteringen på rytterprofilens Træning-fane", async ({ page }, testInfo) => {
@@ -213,16 +227,12 @@ test("#3709 EN-bevis: kvitteringen på rytterprofilens Træning-fane", async ({ 
     fullPage: false,
   });
 
-  // #3706-bevis: Status-kolonnen efter et klik på dens overskrift. Kolonnen
-  // ligger til højre for kvitteringen og er derfor uden for viewporten i den
-  // normale bredde, så beviset tages i en bredere viewport (kun til billedet,
-  // ingen assertion afhænger af bredden).
-  const statusHeader = page.getByRole("columnheader", { name: /Status/i }).first();
-  await statusHeader.click();
-  await expect(statusHeader).toHaveAttribute("aria-sort", "descending");
+  // #3706-bevis: sorteret på Status via tabellens "Sort by" (#5485: Status er
+  // ikke længere en kolonne; nøglen bor i sorteringen).
+  const sortBy = page.getByTestId("training-today-table").getByRole("combobox", { name: "Sort by" });
+  await sortBy.selectOption("status");
+  await expect(sortBy).toHaveValue("status");
   if (label === "desktop") {
-    await page.setViewportSize({ width: 1700, height: 700 });
-    await expect(statusHeader).toBeInViewport();
     await page.screenshot({
       path: evidenceShotPath("pr-screens/3709-training-status-sort-desktop-en.png"),
       fullPage: false,

@@ -206,8 +206,17 @@ test("frontend behandler et manglende dayClose som den GAMLE knap", () => {
   const pageSource = readFileSync(
     resolve(__dirname, "../../frontend/src/pages/TrainingPage.jsx"), "utf8",
   );
-  // Knappens tekst OG disabled-tilstand skal begge haenge paa feltets
-  // tilstedevaerelse — ellers ville flag off kunne laase den gamle knap.
+  // Knappens tekst OG gate skal begge haenge paa feltets tilstedevaerelse —
+  // ellers ville flag off kunne laase den gamle knap.
   assert.match(pageSource, /dayClose \? t\("runDayNow"\) : t\("trainToday"\)/);
-  assert.match(pageSource, /!!\(dayClose && !dayClose\.open\)/);
+  // #5485: gaten bor eet sted, i guld-knappens regel (primaryActionFor) og den
+  // sekundaere "Run now" (canRunToday). Siden skal sende feltet ind i begge.
+  assert.match(pageSource, /primaryActionFor\(\{[^}]*\bdayClose,?\s*\}\)/);
+  assert.match(pageSource, /canRunToday\(\{[^}]*\bdayClose\s*\}\)/);
+  const overviewSource = readFileSync(
+    resolve(__dirname, "../../frontend/src/components/training/trainingOverview.ts"), "utf8",
+  );
+  // null (flag off) aabner; kun et felt med open=false lukker.
+  assert.match(overviewSource, /if \(dayClose && !dayClose\.open\) return \{ kind: "none" \}/);
+  assert.match(overviewSource, /return !\(dayClose && !dayClose\.open\)/);
 });

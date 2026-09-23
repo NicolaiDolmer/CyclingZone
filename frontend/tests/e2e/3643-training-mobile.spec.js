@@ -18,7 +18,7 @@
 //   5) Alle tryk-mål ≥ 44 px.
 //   6) #5350: navnet er forkortet ("A. Pedersen"), og ryttertypen er en dæmpet
 //      underlinje i stedet for en badge der æder bredden.
-//   7) Desktop (1280 px) er UÆNDRET: samme kolonner som før, ingen mobil-tabel.
+//   7) Desktop (1280 px) har sin egen tabel (#5485), ingen mobil-tabel.
 //
 // Testene sætter selv viewport, så alle tre Playwright-projekter kører de samme
 // mobil-assertions (desktop-chromium inkluderet) — mobil-formen må ikke kunne
@@ -448,13 +448,19 @@ const DAY_CLOSE_READY = { open: true, reason: "closed", gameDays: [40, 41, 42], 
 
 // Sidens ENE primary. På telefonen står den i fuld bredde over fanerne, på
 // desktop i sidehovedet — der er aldrig to på samme skærm.
-const primary = (page) => page.locator('[data-tour="training-run-today"] button');
+const primary = (page) => page.getByTestId("training-primary");
+const overview = (page) => page.getByTestId("training-overview");
 
+// #5485 (A2, ejer-go 23/9): guld-knappen står aldrig grå. Kan dagen ikke køres
+// endnu (gaten er lukket), er der INGEN knap — kun statuslinjen i overblikket.
+// Gaten fra #3643/PR #5552 gælder stadig på begge flader: ingen vej til at køre
+// dagen før dagens sidste løb er lukket, heller ikke overblikkets "Kør nu".
+// `status` er sidehovedets statuslinje, som står på begge flader.
 const DAY_CLOSE_CASES = [
-  { name: "venter på dagens sidste løb", dayClose: DAY_CLOSE_WAITING, label: "Kør dagens træning nu", disabled: true },
-  { name: "klar", dayClose: DAY_CLOSE_READY, label: "Kør dagens træning nu", disabled: false },
+  { name: "venter på dagens sidste løb", dayClose: DAY_CLOSE_WAITING, label: null, status: "Dagens træning kører af sig selv, når det sidste løb er kørt, fra kl. 20." },
+  { name: "klar", dayClose: DAY_CLOSE_READY, label: "Kør dagens træning nu", status: "Dagens træning er klar. Kør den nu, eller lad den køre af sig selv." },
   // Flaget off: serveren sender slet ikke feltet, og knappen er den gamle.
-  { name: "flaget off", dayClose: undefined, label: "Træn i dag (+25% konsistens-bonus)", disabled: false },
+  { name: "flaget off", dayClose: undefined, label: "Træn i dag (+25% konsistens-bonus)", status: "Ikke trænet endnu i dag" },
 ];
 
 for (const c of DAY_CLOSE_CASES) {
@@ -465,10 +471,15 @@ for (const c of DAY_CLOSE_CASES) {
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/training");
-      await expect(primary(page)).toHaveCount(1);
-      await expect(primary(page)).toHaveText(c.label);
-      if (c.disabled) await expect(primary(page)).toBeDisabled();
-      else await expect(primary(page)).toBeEnabled();
+      await expect(page.getByText(c.status, { exact: true })).toBeVisible();
+      if (c.label) {
+        await expect(primary(page)).toHaveCount(1);
+        await expect(primary(page)).toHaveText(c.label);
+        await expect(primary(page)).toBeEnabled();
+      } else {
+        await expect(primary(page)).toHaveCount(0);
+        await expect(page.getByRole("button", { name: /Kør nu|Kør dagens træning|Træn i dag/ })).toHaveCount(0);
+      }
     }
   });
 }
@@ -503,26 +514,27 @@ test("390 px: uden synlig score findes Score-sorteringen ikke", async ({ page })
   await expect(select.locator('option[value="score"]')).toHaveCount(0);
 });
 
-test("390 px: ugeplan-fanens 'Gå til rosteret' er skjult i den nye visning, men står på desktop og i den gamle", async ({ page }) => {
+// #5485: fanen Week plan er bygget om. Den døde "Gå til rosteret" findes ikke
+// længere i NOGEN visning; rytterens egen plan åbnes på fanen selv via "Plan
+// for", og det virker på telefonen (ny og gammel visning) som på desktop.
+test("390 px + 1440 px: ugeplan-fanen har ingen død 'Gå til rosteret', og Plan for åbner rytterens egen plan", async ({ page }) => {
   await login(page);
+  const views = [
+    { width: 390, mobileTable: true },
+    { width: 1440, mobileTable: true },
+    { width: 390, mobileTable: false },
+  ];
+  for (const view of views) {
+    if (!view.mobileTable) await mockTrainingMe(page, { mobileTable: false });
+    await page.setViewportSize({ width: view.width, height: 900 });
+    await page.goto("/training?tab=weekplan");
+    await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Gå til rosteret" })).toHaveCount(0);
 
-  await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto("/training?tab=weekplan");
-  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Gå til rosteret" })).toHaveCount(0);
-
-  // Desktop har roster-tabellen, så knappen virker dér og bliver stående.
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/training?tab=weekplan");
-  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Gå til rosteret" })).toBeVisible();
-
-  // Den gamle mobil-visning (flaget off) har også roster-tabellen.
-  await mockTrainingMe(page, { mobileTable: false });
-  await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto("/training?tab=weekplan");
-  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Gå til rosteret" })).toBeVisible();
+    const plan = page.getByTestId("training-week-plan");
+    await plan.getByRole("combobox", { name: "Plan for" }).selectOption(SQUAD[1].id);
+    await expect(plan).toContainText(`${SQUAD[1].firstname} ${SQUAD[1].lastname}`);
+  }
 });
 
 // Bevis-billeder til PR'en: ét pr. skærmstørrelse og fane, taget på den motor
@@ -538,38 +550,42 @@ test("bevis 390 px: dayClose-gaten, Score-sortering og ugeplan-fanen", async ({ 
 
   await page.getByRole("tab", { name: "Ugeplan" }).click();
   await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
-  // Kortet ligger under folden på 390 px, og det er netop kortets bund (hvor
-  // knappen stod) billedet skal vise. Rullet til bunds frem for fullPage: den
-  // faste bundnavigation ville ellers ligge midt hen over kortet i billedet.
+  // Kortet ligger under folden på 390 px. Rullet til bunds frem for fullPage:
+  // den faste bundnavigation ville ellers ligge midt hen over kortet.
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-390-weekplan.png"), fullPage: false });
 });
 
-test("bevis 1440 px: desktop er uændret", async ({ page }) => {
+test("bevis 1440 px: dayClose-gaten og ugeplan-fanen på desktop", async ({ page }) => {
   test.skip(test.info().project.name !== "desktop-chromium", "Ét sæt billeder; formen er dækket i alle tre projekter ovenfor.");
   await mockTrainingMe(page, { dayClose: DAY_CLOSE_WAITING, trainingScore: SCORES });
   await login(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/training");
   await page.locator("table[data-sortable]").first().waitFor();
-  await expect(primary(page)).toHaveText("Kør dagens træning nu");
+  // #5485 (A2): gaten er lukket → ingen grå knap, kun statuslinjen.
+  await expect(primary(page)).toHaveCount(0);
+  await expect(overview(page)).toContainText("Kører af sig selv fra kl. 20:00");
   await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-1440-today.png"), fullPage: false });
 
   await page.getByRole("tab", { name: "Ugeplan" }).click();
-  await expect(page.getByRole("button", { name: "Gå til rosteret" })).toBeVisible();
+  await expect(page.getByTestId("training-week-plan").getByRole("combobox", { name: "Plan for" })).toBeVisible();
   await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-1440-weekplan.png"), fullPage: false });
 });
 
-test("desktop 1280 px: uændret — alle kolonner som før, ingen mobil-tabel", async ({ page }, testInfo) => {
+test("desktop 1280 px: desktop-tabellen, ingen mobil-tabel", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "Desktop-regressionstjek; mobil-formen dækkes af testene ovenfor.");
   await login(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/training");
   await page.locator("table[data-sortable]").first().waitFor();
 
-  await expect(page.getByRole("columnheader", { name: "Denne sæson" })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Ugeplan" })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Status" })).toBeVisible();
+  // #5485: desktop har sin egen tabel — Vælg, rytter, form, træthed, dagens
+  // dag, en celle pr. løbsdag og sæsonens point. Ingen mobil-tabel.
+  await expect(page.getByTestId("training-today-table")).toBeVisible();
+  for (const name of ["Vælg", "Rytter", "Form", "Træthed", "Dagens dag", "Sæsonpoint"]) {
+    await expect(page.getByRole("columnheader", { name: new RegExp(`^${name}`) })).toBeVisible();
+  }
   await expect(roster(page)).toHaveCount(0);
   // "Gruppér efter type" bliver stående på desktop (ejer 18/9), og fjernes kun
   // på mobil.
