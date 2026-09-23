@@ -431,9 +431,11 @@ export default function FinancePage() {
       } else {
         // #1012: strukturerede engine-fejl (error.debtCapReached m.fl.) renderes
         // lokaliseret via backendMessages; rå error-string er fallback.
+        // #5242: 401/429 (res.unauthorized/res.limited) har ingen data.error —
+        // uden denne fallback viste toasten "Fejl: undefined".
         const errText = result.errorCode
           ? renderBackendMessage({ code: result.errorCode, params: result.errorParams }, tBackend, result.error)
-          : result.error;
+          : result.error || t("errors:generic.unknown");
         showMsg(`${t("msg.errorPrefix")}${errText}`, "error");
         setShowLoanConfirm(false);
       }
@@ -489,9 +491,10 @@ export default function FinancePage() {
       } else {
         // #1012: samme lokaliserede fejl-rendering som handleTakeLoan
         // (fx error.repayInsufficient med { available }).
+        // #5242: samme 401/429-fallback som submitLoan() ovenfor.
         const errText = result.errorCode
           ? renderBackendMessage({ code: result.errorCode, params: result.errorParams }, tBackend, result.error)
-          : result.error;
+          : result.error || t("errors:generic.unknown");
         showMsg(`${t("msg.errorPrefix")}${errText}`, "error");
       }
     } catch {

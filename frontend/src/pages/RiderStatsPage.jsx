@@ -159,7 +159,9 @@ function SwapOfferButton({ rider, myTeamId }) {
       }
       const data = res.data || {};
       if (res.ok) { setResult({ ok: true, msg: t("swapOffer.toast.success") }); setShow(false); }
-      else        { setResult({ ok: false, msg: `${t("swapOffer.toast.errorPrefix")} ${resolveApiError(data, t)}` }); }
+      // #5242: 401/429 (res.unauthorized/res.limited) har ingen data.error —
+      // uden fallback viste toasten kun errorPrefix'et og ingen begrundelse.
+      else        { setResult({ ok: false, msg: `${t("swapOffer.toast.errorPrefix")} ${resolveApiError(data, t, t("errors:generic.unknown"))}` }); }
     } catch {
       setResult({ ok: false, msg: t("auth:error.connectionFailed") });
     } finally {
@@ -235,7 +237,8 @@ function DirectOfferButton({ rider, seasonYear }) {
         logFirstEvent("first_transfer", { rider_id: rider.id, amount });
         setResult({ ok: true, msg: t("directOffer.toast.success") }); setShow(false);
       }
-      else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${resolveApiError(data, t)}` }); }
+      // #5242: samme 401/429-fallback som SwapOfferButton.sendSwap() ovenfor.
+      else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${resolveApiError(data, t, t("errors:generic.unknown"))}` }); }
     } catch {
       setResult({ ok: false, msg: t("auth:error.connectionFailed") });
     } finally {
@@ -376,7 +379,8 @@ function TransferListButton({ rider, onChanged }) {
         // fuldt loadRider() (som TransferListButton ellers ikke selv trigger'er).
         onChanged?.();
       } else {
-        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
+        // #5242: samme 401/429-fallback som SwapOfferButton.sendSwap() ovenfor.
+        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t, t("errors:generic.unknown"))}`);
       }
     } catch {
       flashResult(false, t("auth:error.connectionFailed"));
@@ -407,7 +411,8 @@ function TransferListButton({ rider, onChanged }) {
         flashResult(true, t("sellRider.toast.removed"));
         onChanged?.(); // #3490: hero-banneret skal forsvinde med det samme
       } else {
-        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
+        // #5242: samme 401/429-fallback som SwapOfferButton.sendSwap() ovenfor.
+        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t, t("errors:generic.unknown"))}`);
       }
     } catch {
       flashResult(false, t("auth:error.connectionFailed"));
@@ -1598,6 +1603,11 @@ export default function RiderStatsPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(body),
     });
+    // #5242/#3619: apiFetch returnerer networkError i stedet for at kaste. Uden
+    // dette kast rammer et tabt netværk `!res.ok` her og viser den generiske
+    // resolveApiError-fallback i stedet for useAuctionBidding.handleBid's
+    // "errors:generic.networkError" + reportActionFailure(reason:"network").
+    if (res.networkError) throw res.error ?? new Error("Network request failed");
     if (res.status === 409) {
       const raceData = res.data || {};
       if (raceData.error === "price_changed") {
@@ -1638,6 +1648,7 @@ export default function RiderStatsPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ max_amount: maxAmount }),
     });
+    if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleAuctionBid
     if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctionPanel.proxyErrorFallback")) };
@@ -1650,6 +1661,7 @@ export default function RiderStatsPage() {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
+    if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleAuctionBid
     if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctionPanel.proxyRemoveErrorFallback")) };

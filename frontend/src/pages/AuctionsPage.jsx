@@ -1443,6 +1443,11 @@ export default function AuctionsPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(body),
     });
+    // #5242/#3619: apiFetch returnerer networkError i stedet for at kaste. Uden
+    // dette kast rammer et tabt netværk `!res.ok` her og viser den generiske
+    // resolveApiError-fallback i stedet for useAuctionBidding.handleBid's
+    // "errors:generic.networkError" + reportActionFailure(reason:"network").
+    if (res.networkError) throw res.error ?? new Error("Network request failed");
     if (res.status === 409) {
       const raceData = res.data || {};
       if (raceData.error === "price_changed") {
@@ -1484,6 +1489,7 @@ export default function AuctionsPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ max_amount: maxAmount }),
     });
+    if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleBid
     if (res.ok) { loadAll(); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyFailed")) };
@@ -1499,6 +1505,7 @@ export default function AuctionsPage() {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
+    if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleBid
     if (res.ok) { loadAll(); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyRemoveFailed")) };

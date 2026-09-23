@@ -45,7 +45,10 @@ export default function AdminSystemTab() {
       try {
         const res = await apiFetch(`${API}/api/admin/discord-settings`, { headers: await getAuth() });
         if (!res.ok) return { webhooks: [] };
-        return res.data;
+        // #5242: et tomt/ikke-JSON 200-svar giver res.data === null (apiFetch.ts) —
+        // uden `??` kastede `w.webhooks` nedenfor på null og loadData() droppede
+        // BÅDE webhooks, admin-loggen og markeds-pause-status tavst (samme Promise.all).
+        return res.data ?? { webhooks: [] };
       } catch { return { webhooks: [] }; }
     })();
 

@@ -121,7 +121,10 @@ export default function AdminDataTab() {
       const data = res.data || {};
       if (res.ok) { showMsg("Løb gemt"); setEditingRace(null); loadData(); }
       else if (res.status === 404) showMsg("Endpoint ikke deployet endnu — vent 1-2 min og prøv igen", "error");
-      else showMsg(data.error || `HTTP ${res.status}`, "error");
+      // #5242: `HTTP ${res.status}` viste "HTTP 0" ved en transportfejl (apiFetch
+      // sætter status:0, se apiFetch.ts) — adminErrorMessage() har allerede
+      // status-0-guarden (samme helper de andre handlere i filen bruger).
+      else showMsg(adminErrorMessage(data, res), "error");
     } catch (e) {
       showMsg(`Netværksfejl: ${e.message || "ukendt"}`, "error");
     } finally {
