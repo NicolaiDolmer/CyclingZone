@@ -67,7 +67,7 @@ export const TAIL_GATE_SEEDS = Object.freeze(["s1", "s2", "s3"]);
 const FIELD_SIZE = 180;
 
 /** Tvillingens niveau: percentil af feltet paa etapens egen styrke. */
-export const TWIN_LEVELS = Object.freeze({ mid: 0.5, strong: 0.9 });
+export const TWIN_LEVELS = Object.freeze({ mid: 0.5, strong: 0.9, top: 0.99 });
 export const TWIN_EFFORTS = Object.freeze(["all_out", "grupetto"]);
 
 /** Grupetto-scenariet: hvilke profiler, og hvor stor en andel af feltet. */
