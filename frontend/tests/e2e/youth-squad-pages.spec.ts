@@ -52,12 +52,6 @@ async function setup(page: Page, { on }: { on: boolean }) {
   });
 }
 
-async function openMenuIfMobile(page: Page) {
-  if ((page.viewportSize()?.width ?? 1280) < 768) {
-    await page.getByRole("button", { name: /Åbn menu|Open menu/ }).click();
-  }
-}
-
 const U23 = PREVIEW_YOUTH_RIDERS.filter((r) => r.squad === "u23");
 const JUNIORS = PREVIEW_YOUTH_RIDERS.filter((r) => r.squad === "junior");
 
@@ -84,12 +78,14 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     await setup(page, { on: true });
     await login(page);
 
-    const links = page.locator("aside a, nav a");
-    const labels = (await links.allInnerTexts()).map((s) => s.trim());
-    const teamIdx = labels.findIndex((l) => MY_TEAM_NAV.test(l));
+    await expect(page.getByRole("link", { name: U23_NAV })).toBeVisible();
+    await expect(page.getByRole("link", { name: JUNIOR_NAV })).toBeVisible();
+    const hrefs = await page.locator("aside nav a").evaluateAll(
+      (links) => links.map((a) => a.getAttribute("href")),
+    );
+    const teamIdx = hrefs.indexOf("/team");
     expect(teamIdx).toBeGreaterThanOrEqual(0);
-    expect(labels[teamIdx + 1]).toMatch(U23_NAV);
-    expect(labels[teamIdx + 2]).toMatch(JUNIOR_NAV);
+    expect(hrefs.slice(teamIdx, teamIdx + 3)).toEqual(["/team", "/squads/u23", "/squads/junior"]);
 
     await page.goto("/academy");
     await expect(page.getByRole("heading", { name: /Academy|Akademi/i }).first()).toBeVisible();
@@ -101,9 +97,8 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     await setup(page, { on: true });
     await login(page);
 
-    await openMenuIfMobile(page);
-    await page.getByRole("link", { name: U23_NAV }).filter({ visible: true }).first().click();
-    await expect(page).toHaveURL(/\/squads\/u23$/);
+    // Menu-vejen dækkes af "kontakt ON"-testen; her gælder det selve siden.
+    await page.goto("/squads/u23");
     await expect(page.getByRole("heading", { name: "E2E Racing U23" })).toBeVisible();
 
     const tabs = page.getByRole("tablist");
