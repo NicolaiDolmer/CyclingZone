@@ -12861,6 +12861,8 @@ router.get("/dashboard/recent-results", requireAuth, cached({
 
     // #5517: seniorløbene (squads.withSeniorSquadScope) — også når holdet endnu ikke
     // har en pulje og filteret nedenfor derfor ikke sættes.
+    // Fejlhåndteringen er uændret fra før #5517: en læsefejl giver et tomt kort, ikke en
+    // 500. Scopet flyttede kun .from( ind i højresiden, så lint:supabase-error nu ser den.
     const { data: races } = await withSeniorSquadScope((senior) => {
       let racesQuery = senior(supabase
         .from("races")
@@ -12871,7 +12873,7 @@ router.get("/dashboard/recent-results", requireAuth, cached({
         racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
       }
       return racesQuery;
-    });
+    }); // best-effort: dashboard-kortet falder tilbage til tomt (se ovenfor)
     if (!races?.length) return res.json({ races: [] });
 
     const raceIds = races.map(r => r.id);
