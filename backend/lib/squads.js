@@ -356,15 +356,20 @@ export const ACADEMY_SQUAD_WHEN_AGE_UNKNOWN = "junior";
  * Ungdomstruppen en rytter PLACERES i når han optages i akademiet uden at
  * manageren har valgt truppen (ungdomsauktion, intake-signering, nedrykning).
  *
- * Aldrig null: en optagelse skal altid kunne tælles mod ét loft. Ukendt alder →
- * ACADEMY_SQUAD_WHEN_AGE_UNKNOWN; en akademirytter på 23+ → u23 (han er vokset
- * ud og skal igennem Graduation Day, jf. academySquadForSeasonAge).
+ * Aldrig null: en optagelse skal altid kunne tælles mod ét loft. Ukendt
+ * FØDSELSDATO → ACADEMY_SQUAD_WHEN_AGE_UNKNOWN; en akademirytter på 23+ → u23
+ * (han er vokset ud og skal igennem Graduation Day, jf. academySquadForSeasonAge).
+ *
+ * Et ukendt SÆSONNUMMER er derimod en kaldefejl og kaster: så ville en rytter
+ * med en helt gyldig fødselsdato blive gættet ned i junior-truppen.
  *
  * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
- * @param {number|null|undefined} seasonNumber
+ * @param {number} seasonNumber
  * @returns {"junior"|"u23"}
+ * @throws {Error} 'season_required'
  */
 export function academyPlacementSquad(birthdate, seasonNumber) {
+  if (!Number.isFinite(seasonNumber)) throw new Error("season_required");
   return academySquadForSeasonAge(ageForSeason(birthdate, seasonNumber)) ?? ACADEMY_SQUAD_WHEN_AGE_UNKNOWN;
 }
 

@@ -106,7 +106,7 @@ test("flushPendingAcademySigning: mål-truppen fuld → forbliver pending, ingen
   const flushed = await flushPendingAcademySigning(
     supa,
     { id: "R1", firstname: "A", lastname: "B", team_id: "T1" },
-    { notifyTeamOwner: supa._notify }
+    { notifyTeamOwner: supa._notify, seasonNumber: 1 }
   );
   assert.equal(flushed, false);
   assert.equal(supa._spy.updates.length, 0);
@@ -127,7 +127,7 @@ test("#5432 flushPendingAcademySigning: en fyldt ANDEN trup låser ikke flippet 
 test("flushPendingAcademySigning: RPC-transportfejl kaster", async () => {
   const bad = makeSupabase({ rpcError: { message: "db down" } });
   await assert.rejects(
-    () => flushPendingAcademySigning(bad, { id: "R1", team_id: "T1" }, { notifyTeamOwner: bad._notify }),
+    () => flushPendingAcademySigning(bad, { id: "R1", team_id: "T1" }, { notifyTeamOwner: bad._notify, seasonNumber: 1 }),
     /db down/,
   );
 });
@@ -137,9 +137,23 @@ test("flushPendingAcademySigning: idempotent — allerede flushet (not_pending) 
   const flushed = await flushPendingAcademySigning(
     supa,
     { id: "R1", firstname: "A", lastname: "B", team_id: "T1" },
-    { notifyTeamOwner: supa._notify }
+    { notifyTeamOwner: supa._notify, seasonNumber: 1 }
   );
   assert.equal(flushed, false);
+  assert.equal(supa._spy.notifies.length, 0);
+});
+
+test("flushPendingAcademySigning: ukendt sæson → forbliver pending uden RPC-kald (aldrig et gæt ned i junior)", async () => {
+  const supa = makeSupabase({});
+  for (const seasonNumber of [null, undefined, NaN]) {
+    const flushed = await flushPendingAcademySigning(
+      supa,
+      { id: "R1", firstname: "A", lastname: "B", team_id: "T1", birthdate: `${LAUNCH_REFERENCE_YEAR - 21}-05-01` },
+      { notifyTeamOwner: supa._notify, seasonNumber }
+    );
+    assert.equal(flushed, false);
+  }
+  assert.equal(supa._spy.rpcCalls.length, 0);
   assert.equal(supa._spy.notifies.length, 0);
 });
 

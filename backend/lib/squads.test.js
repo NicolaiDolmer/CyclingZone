@@ -225,6 +225,13 @@ test("academyPlacementSquad: sæsonalder → ungdomstrup, aldrig null og aldrig 
   assert.equal(ACADEMY_SQUAD_WHEN_AGE_UNKNOWN, "junior");
 });
 
+test("academyPlacementSquad: ukendt SÆSON er en kaldefejl (kaster), ikke en ukendt alder", () => {
+  // Ellers ville en rytter med en gyldig fødselsdato blive gættet ned i junior.
+  for (const bad of [null, undefined, NaN, "2"]) {
+    assert.throws(() => academyPlacementSquad("2005-06-01", bad), /season_required/, `seasonNumber=${String(bad)}`);
+  }
+});
+
 test("academyPlacementSquad og #4619-backfill'en placerer en akademirytter ens (samme regel, også ved ukendt alder)", async () => {
   const { targetSquadFor } = await import("../scripts/backfill-4619-riders-squad.js");
   const seasonNumber = 3;

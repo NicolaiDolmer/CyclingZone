@@ -70,6 +70,9 @@ async function activeSeasonNumber(supabase) {
  * @returns {Promise<boolean>} true hvis rytteren rent faktisk blev flippet nu.
  */
 export async function flushPendingAcademySigning(supabase, rider, { notifyTeamOwner, seasonNumber = null } = {}) {
+  // Uden en aktiv sæson kan sæsonalderen ikke regnes ud. Rytteren bliver hellere
+  // stående som ventende end at blive gættet ned i junior-truppen (CodeRabbit).
+  if (!Number.isFinite(seasonNumber)) return false;
   const squad = academyPlacementSquad(rider.birthdate, seasonNumber);
   const { data, error } = await supabase.rpc("flush_pending_academy_signing", {
     p_team_id: rider.team_id,
