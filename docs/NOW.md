@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (23/9 kl. 08):** **Ny session:** `drafts/claude-session-2026-09-24.md` = 6-timers bølgekæde (b0 #5533 markør-fix → bA 12 spor inkl. U23-vagter #5535-#5537 + forsinkelser #3624 → bB 11 spor; args `drafts/wave-2026-09-24-*.json`). **Først:** markøren fra bølge 3 (#5533) frigives af ejeren (`recover --owner-override`). **Venter på ejer:** 16 grønne PR'er (#5502 #5512-#5514 #5521-#5532), valg i OneDrive `private-handoffs/2026-09-23-morgenrapport.md` (værdier #5497 først). S4-tørkørsel prod 0 regelbrud (#5522 → kalender-"kør"). Tændingsplan i `SEASON_CUTOVER_RUNBOOK.md` (#5506). U23-plan `superpowers/plans/2026-09-23-u23-junior-ranglister-plan.md`. **Ejerens hånd:** `AUTO_MERGE_PAT` (#5508) · Android-test (#3643) · `training_score_visible`. **v4 live 28/9 (ejer).**
+> **🎯 Next action (23/9 kl. 19):** **Ny session:** `drafts/claude-session-2026-09-23-c.md` = go-kort m. ægte-data-billeder (#5564 grøn, #5556 #5558 #5563 #5549 #5557 #5555 #5554) → bølge C0 (#5562 merges under bølger, args `drafts/wave-2026-09-23-bC0.json`) → bølge C (11 spor, `-bC.json`, U23-vagter #5535-#5537 nu låst op) → D (løfterne: #5238, ugeplan pr. løbsdag, U23 S4-S6, #5456, motor-spor) → E. **23/9 merget:** 31 PR'er inkl. #5542 (etaper på klokken), #5522 (→ kalender-"kør"), #5547 (trup-lofter, verificeret), v7.295 (#5569). **Motor-issues #5570-#5583** mangler plads i MASTERPLAN. #4619-backfill kørt. **Ejer:** motor-design (#4914/#4915) · #5497 · spillersvar (OneDrive `2026-09-23-spillersvar.md`) · Discord `drafts/discord-patch-notes-2026-09-23.md`. **Morgenblok 08:30.**
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt, overlap forbliver det almindelige. **Tallet er LÅST: 140 (ejer 15/9, TRAINING_RULES §13.3); spørg aldrig igen.** **Ejer 20/9: måde B (jævnt, 5 pr. dato); A + synkrone blokke fjernet i #5169. B4 #5264 merget 20/9 bag flag.** **§2c (ejer 19/9):** S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only.
 
@@ -12,7 +12,7 @@
 
 > **🟡 Lofter + potentiale (ejer 18/9, byg intet):** lofterne ud, potentialet styrer farten (#5351); 6 huller efter 28/9. **#5268-point-flyt afventer.** **D-049-visning:** #5435 (b2), svar upostet #5436.
 
-> **🔴 Åbne fund:** Webkit-flake #4925: fix i PR #5531. **#5323 Quad9:** målt 23/9, 0 låst ude (ejer-valg A/B). **📊 Triage:** `scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
+> **🔴 Åbne fund (bølge C):** #5568 · #5561 · #5566. **#5323 Quad9:** målt 23/9, 0 låst ude (ejer-valg A/B). **📊 Triage:** `scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
 
 ## Standing context (forever-relaunch)
 
@@ -21,9 +21,9 @@
 - **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` OFF; v3 kører S3 færdig. Kalender-gaten blokerende (#4123); `calendarGoldenDiff.mjs` FØR S4-generering.
 - **Træning (ejer 15/9, §13.3):** løbsdag som tick, sweep ≥ kl. 20 + knap uden bonus, program 7×5 løbsdage. #5205 + B4 #5264 + skader 5-25 (#5465) bag flag `training_tick_per_race_day` (off); live senest 28/9. **B3 #5281 er IKKE bag flag**, merges på flip-dagen.
 - **Evner (live):** taktik/aggression uden alder for nye ryttere; `teamwork`/`leadership` er data, **ikke i rating-opskriften** (17/9; motor: #5348 #5349 efter apply). Lofter `{tactics 55, teamwork 70, leadership 70}`, `aggression` UDE (#5297). Point-flyt (#5268) ejer-gated.
-- **Trupper (15/9):** `riders.squad` + `backend/lib/squads.js` live; senior-læserne bruger ÉT delt prædikat (#5396, kræver squad=senior OG is_academy=false til backfill er kørt; backfill ejer-gated). `U23_BIRTH_BAND` = variant A (#5401), generator A6 mangler; RPC'er har hård 8-cap (#5432). Alt live 28/9; spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md`.
+- **Trupper (15/9):** `riders.squad` + `backend/lib/squads.js` live; senior-læserne bruger ÉT delt prædikat (#5396); puljer og løb har `squad` (A2 #5525, alt senior). `U23_BIRTH_BAND` = variant A (#5401), generator A6 dry-run (#5548); squad-backfill kørt 23/9; RPC'erne tæller pr. trup U23 12/junior 10 (#5547). Alt live 28/9; spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md`.
 - **Forside `/`:** anonym = marketing-sitet; ændring → `node scripts/check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms, ejeren ekskl. (#5215).
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
 - **Mekanik:** byg KUN via wave.js (Codex: samme indgang, #5468); merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); intet PR-loft (#5510); commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx. Base-PR merget → PR lukkes; retarget først (#5478).
 
-> **🤖 Working agent:** Ingen aktiv session. (`docs(now)…`/`docs(close-out)…`, #5093.)
+> **🤖 Working agent:** 23/9-c (åbne PR'er + bølge C0 → C). 23/9-b lukket efter #5569.

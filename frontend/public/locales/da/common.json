@@ -11,6 +11,8 @@
     "item": {
       "dashboard": "Dashboard",
       "team": "Mit Hold",
+      "u23Team": "U23-hold",
+      "juniorTeam": "Juniorhold",
       "training": "Daglig træning",
       "planning": "Planlægning",
       "academy": "Akademi",

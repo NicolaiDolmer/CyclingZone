@@ -6,6 +6,7 @@
 // "ingenting opdigtet") - kun det der er sandt for enhver udgave af serien.
 
 import { buttonClass } from "./landing/button-styles";
+import { AppLink } from "./app-link";
 import { SiteHeader, SiteFooter, Kicker, type NavCopy, type PathPair } from "./site-chrome";
 
 const DISCORD_URL = "https://discord.gg/ykysBrWUyC";
@@ -116,9 +117,9 @@ export default function PcmComparisonPage({ lang, copy }: { lang: "en" | "da"; c
             </h2>
             <p className="mt-5 max-w-md text-base leading-relaxed text-cz-2">{copy.ctaBody}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <a href={`${APP}/login?mode=signup`} className={buttonClass({ variant: "primary", size: "lg" })}>
+              <AppLink href={`${APP}/login?mode=signup`} className={buttonClass({ variant: "primary", size: "lg" })}>
                 {copy.ctaPrimary}
-              </a>
+              </AppLink>
               <a
                 href={DISCORD_URL}
                 target="_blank"

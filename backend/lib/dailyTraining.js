@@ -205,10 +205,27 @@ export function computeAcademySeasonCeiling({ seasonStartAbilities, lifetimeCaps
   return ceiling;
 }
 
+// #4750 (ejer-beslutning 6/9): hvor meget af baren der gemmes efter bar-loopet.
+// Loopet stopper af tre grunde: baren er under 1, evnens loft (potentiale eller
+// 99) er naaet, eller dagsloftet (hardDailyCap, +1 pr. loebsdag) er brugt op.
+// KUN den sidste gemmer resten uklippet til naeste tick — ellers mistede en rytter
+// hvis fremdrift oversteg loftet point hver gang det bandt (fundet i #4801). Naar
+// evnens eget loft binder, klippes der som altid (#5275/#5351): der er intet
+// naeste point at bære fremdriften hen til. Uden hardDailyCap er dailyCeiling
+// Infinity, saa den foerste gren er uopnaaelig og adfaerden bit-identisk.
+function settleProgressBar({ bar, gained, current, cap, dailyCeiling }) {
+  const dailyCeilingBound = bar >= 1
+    && gained >= dailyCeiling
+    && current + gained < Math.min(99, cap ?? 99);
+  return dailyCeilingBound ? bar : Math.min(bar, 0.999);
+}
+
 // Ét dags-tick for én rytter. Muterer ikke input. Returnerer nye abilities/progress + rapportfelter.
 // caps er PÅKRÆVET: manglende evne-nøgle ⇒ nul vækst for den evne (konservativt, jf. L0's lazy-caps).
 // hardDailyCap (valgfri, #2082/#1938): maks antal hele point én evne må stige pr. dag —
 // sikkerhedsnet mod enkelt-dags-spikes. Udeladt/null = ingen ekstra grænse (uændret adfærd).
+// #4750: binder loftet, bæres resten af baren videre til næste tick (settleProgressBar),
+// så progress kan her overstige 1 — det er udskudt fremdrift, ikke en fejl.
 // #2216 A4 (Task 7): staff/facilityTier/riderLevel er VALGFRIE med sikre defaults, så
 // eksisterende callers (uden staff) får bit-identisk adfærd. Trænings-motoren
 // (dailyTrainingEngine.js) sender dem videre til dailyAbilityDelta pr. evne.
@@ -272,7 +289,9 @@ export function applyDailyTick({
       gains[ability] = (gains[ability] ?? 0) + 1;
     }
     if (gains[ability]) nextAbilities[ability] = current + gains[ability];
-    nextProgress[ability] = Math.min(bar, 0.999);
+    nextProgress[ability] = settleProgressBar({
+      bar, gained: gains[ability] ?? 0, current, cap: caps?.[ability], dailyCeiling,
+    });
   }
 
   return {
@@ -388,7 +407,9 @@ export function applyRaceDevelopmentTick({
       gains[ability] = (gains[ability] ?? 0) + 1;
     }
     if (gains[ability]) nextAbilities[ability] = current + gains[ability];
-    nextProgress[ability] = Math.min(bar, 0.999);
+    nextProgress[ability] = settleProgressBar({
+      bar, gained: gains[ability] ?? 0, current, cap, dailyCeiling,
+    });
   }
 
   return {

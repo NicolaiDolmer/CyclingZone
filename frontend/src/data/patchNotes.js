@@ -1,5 +1,184 @@
 export const PATCHES = [
   {
+    "version": "7.295",
+    "date": "2026-09-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stages start on time",
+          "body": "What changed: The server now checks for stages to run on the clock, so a stage starts at its scheduled time instead of up to five minutes late.\n\nWhat it means for you: Results show up sooner after the time in the calendar."
+        },
+        "da": {
+          "title": "Etaperne starter til tiden",
+          "body": "Hvad er ændret: Serveren tjekker nu efter etaper på klokkeslættet, så en etape starter på det planlagte tidspunkt i stedet for op til fem minutter for sent.\n\nHvad det betyder for dig: Resultaterne kommer hurtigere efter tidspunktet i kalenderen."
+        },
+        "refs": [
+          3624,
+          5542
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Tables on your phone show the team name",
+          "body": "What changed: League tables on phones always show the team name next to the Founder mark, and tables now scroll with the page instead of inside a small box, also in landscape."
+        },
+        "da": {
+          "title": "Tabeller på telefonen viser holdnavnet",
+          "body": "Hvad er ændret: Ranglisterne på telefonen viser altid holdnavnet ved siden af Founder-mærket, og tabeller scroller nu med siden i stedet for i en lille boks, også når telefonen holdes på tværs."
+        },
+        "refs": [
+          5471,
+          4982,
+          5526
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "View details opens the race",
+          "body": "What changed: View details on a race message in your inbox now opens that race instead of the results overview."
+        },
+        "da": {
+          "title": "Vis detaljer åbner løbet",
+          "body": "Hvad er ændret: Vis detaljer på en løbsbesked i indbakken åbner nu selve løbet i stedet for resultatoversigten."
+        },
+        "refs": [
+          5417,
+          5527
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "Message threads open at the newest message",
+          "body": "What changed: A message thread now opens at the newest message, also when you open it from a notification."
+        },
+        "da": {
+          "title": "Beskedtråde åbner ved den nyeste besked",
+          "body": "Hvad er ændret: En beskedtråd åbner nu ved den nyeste besked, også når du åbner den fra en notifikation."
+        },
+        "refs": [
+          5313,
+          5514
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The boardroom keeps its layout",
+          "body": "What changed: The boardroom page no longer breaks its layout in a narrow window or on a large screen."
+        },
+        "da": {
+          "title": "Bestyrelsessiden holder sit layout",
+          "body": "Hvad er ændret: Bestyrelsessiden bryder ikke længere layoutet i et smalt vindue eller på en stor skærm."
+        },
+        "refs": [
+          5472,
+          5528
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The survey reminder goes away when the survey closes",
+          "body": "What changed: The survey reminder on the dashboard no longer shows after the survey has closed."
+        },
+        "da": {
+          "title": "Påmindelsen om spørgeskemaet forsvinder, når skemaet lukker",
+          "body": "Hvad er ændret: Påmindelsen om spørgeskemaet på dashboardet vises ikke længere, når skemaet er lukket."
+        },
+        "refs": [
+          4943,
+          5545
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Quote the opening post",
+          "body": "What changed: You can now quote a thread's opening post, not just replies."
+        },
+        "da": {
+          "title": "Citér trådens første indlæg",
+          "body": "Hvad er ændret: Du kan nu citere trådens første indlæg, ikke kun svarene."
+        },
+        "refs": [
+          5386,
+          5546
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "One bar at the bottom at a time",
+          "body": "What changed: Only one bar shows at the bottom of the screen at a time: your cookie choice first, then a new version, then the feedback question. An answer you started is kept."
+        },
+        "da": {
+          "title": "Én bjælke i bunden ad gangen",
+          "body": "Hvad er ændret: Der vises kun én bjælke i bunden af skærmen ad gangen: først dit cookievalg, så en ny version, så feedback-spørgsmålet. Et svar, du er i gang med, bliver gemt."
+        },
+        "refs": [
+          5440,
+          5306,
+          5551
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "No new salary for riders who retire",
+          "body": "What changed: Riders who retire at the season change no longer cost a salary for the new season.\n\nWhat it means for you: Your salary bill at the start of a season only counts the riders who stay."
+        },
+        "da": {
+          "title": "Ingen ny løn til ryttere, der går på pension",
+          "body": "Hvad er ændret: Ryttere, der går på pension ved sæsonskiftet, koster ikke længere løn for den nye sæson.\n\nHvad det betyder for dig: Din lønudgift ved sæsonstart tæller kun de ryttere, der bliver."
+        },
+        "refs": [
+          4153,
+          5553
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "How your national core is decided",
+          "body": "What changed: Help now explains how your national core is decided and when it counts."
+        },
+        "da": {
+          "title": "Sådan afgøres din nationale kerne",
+          "body": "Hvad er ændret: Hjælp forklarer nu, hvordan din nationale kerne afgøres, og hvornår den tæller."
+        },
+        "refs": [
+          5483,
+          5512
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.293",
     "date": "2026-09-21",
     "label": "Beta",

@@ -1,0 +1,12 @@
+{
+  // Brohoved-typecheck for e2e-specs (#5534). Spejler frontend/tsconfig.json's
+  // strategi ét niveau ned: strict paa .ts, JS i e2e-mappen passerer uroert
+  // (arvet allowJs + checkJs:false). Krydsimports mellem .ts-filer i
+  // frontend/tests/e2e/ (og .ts-hjaelpere i frontend/tests/e2e/lib/) faar nu
+  // typecheck, hvor den foraeldre-tsconfig kun daekkede frontend/src/**.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "@playwright/test"]
+  },
+  "include": ["e2e/**/*.ts"]
+}

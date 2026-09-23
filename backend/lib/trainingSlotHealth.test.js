@@ -4,9 +4,12 @@ import {
   focusSlotState,
   computeTrainingSlotHealth,
   evaluateSlotHealthAlert,
+  typicalRaceDayTicksPerTeam,
+  calendarDayEquivalents,
   TRAINING_SLOT_HEALTH_TUNING,
 } from "./trainingSlotHealth.js";
 import { ALL_SESSIONS } from "./trainingDayTypes.js";
+import { TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor } from "./trainingRaceDayTick.js";
 
 // Hjælper: en rider_derived_abilities-agtig række. Kun de evner testen bruger
 // sættes; cappedVisibleAbilities springer ikke-numeriske felter over.
@@ -118,4 +121,114 @@ test("evaluateSlotHealthAlert: rolig dag alarmerer ikke, og nul ryttere deler ik
 test("evaluateSlotHealthAlert: tuning-konstanterne er dem vagten faktisk kører på", () => {
   assert.equal(TRAINING_SLOT_HEALTH_TUNING.deadShareCeiling, 0.07);
   assert.equal(TRAINING_SLOT_HEALTH_TUNING.deadJumpAbsolute, 15);
+});
+
+// ── #4848 / gate G9: spring-gaten på løbsdags-kadencen ────────────────────────
+
+const J = TRAINING_SLOT_HEALTH_TUNING.deadJumpAbsolute;
+
+test("evaluateSlotHealthAlert G9: trainingDays udeladt/1/under 1 er BIT-IDENTISK med den gamle gate", () => {
+  const cases = [
+    [{ ridersInTraining: 2319, deadSlots: 117, partialSlots: 741 }, { ridersInTraining: 2319, deadSlots: 90, partialSlots: 700 }],
+    [{ ridersInTraining: 2319, deadSlots: 117, partialSlots: 741 }, { ridersInTraining: 2319, deadSlots: 115, partialSlots: 738 }],
+    [{ ridersInTraining: 1000, deadSlots: 80, partialSlots: 0 }, { ridersInTraining: 1000, deadSlots: 79, partialSlots: 0 }],
+    [{ ridersInTraining: 0, deadSlots: 0, partialSlots: 0 }, null],
+  ];
+  for (const [today, prev] of cases) {
+    const base = evaluateSlotHealthAlert(today, prev);
+    assert.equal(base.jumpScale, 1);
+    for (const trainingDays of [undefined, 1, 0.4, 0, NaN, -3]) {
+      assert.deepEqual(evaluateSlotHealthAlert(today, prev, undefined, { trainingDays }), base, `trainingDays=${trainingDays}`);
+    }
+  }
+});
+
+test("evaluateSlotHealthAlert G9: et efterslæbs-interval med mere træning end én dag giver IKKE falsk alarm", () => {
+  // Springet svarer præcis til loftet pr. kalenderdag, men intervallet rummede to
+  // kalenderdags-ækvivalenter træning (fx en division der tog et efterslæb).
+  const prev = { ridersInTraining: 2000, deadSlots: 50, partialSlots: 0 };
+  const today = { ridersInTraining: 2000, deadSlots: 50 + J, partialSlots: 0 };
+  assert.equal(evaluateSlotHealthAlert(today, prev).shouldAlert, true, "kontrol: gammel gate fyrer");
+  const scaled = evaluateSlotHealthAlert(today, prev, undefined, { trainingDays: 2 });
+  assert.equal(scaled.shouldAlert, false);
+  assert.equal(scaled.jumpScale, 2);
+});
+
+test("evaluateSlotHealthAlert G9: et ÆGTE spring fanges stadig på løbsdags-kadencen", () => {
+  const prev = { ridersInTraining: 2000, deadSlots: 50, partialSlots: 0 };
+  const today = { ridersInTraining: 2000, deadSlots: 50 + 2 * J, partialSlots: 0 };
+  const res = evaluateSlotHealthAlert(today, prev, undefined, { trainingDays: 2 });
+  assert.equal(res.shouldAlert, true);
+  assert.match(res.reasons.join(" "), /løbsdags-tick/);
+});
+
+test("evaluateSlotHealthAlert G9: andels-gaten er kadence-uafhængig (skaleres ikke)", () => {
+  const res = evaluateSlotHealthAlert(
+    { ridersInTraining: 1000, deadSlots: 80, partialSlots: 0 },
+    { ridersInTraining: 1000, deadSlots: 79, partialSlots: 0 },
+    undefined,
+    { trainingDays: 5 }
+  );
+  assert.equal(res.shouldAlert, true);
+  assert.match(res.reasons.join(" "), /helt døde/);
+});
+
+test("typicalRaceDayTicksPerTeam: median af distinkte løbsdage pr. hold; trupper kollapser", () => {
+  const rows = [];
+  // Tre hold à fem løbsdage, heraf ét med en U23-trup på de samme løbsdage.
+  for (const team of ["A", "B", "C"]) {
+    for (let gd = 10; gd < 15; gd++) rows.push({ team_id: team, season_id: "s4", game_day: gd });
+  }
+  for (let gd = 10; gd < 15; gd++) rows.push({ team_id: "A", season_id: "s4", game_day: gd }); // U23-trup
+  // Ét hold tog et efterslæb (otte løbsdage) — medianen må ikke flytte sig.
+  for (let gd = 3; gd < 11; gd++) rows.push({ team_id: "D", season_id: "s4", game_day: gd });
+  rows.push({ team_id: "E", season_id: null, game_day: null }); // gammel nøgle ignoreres
+  // Median af [5, 5, 5, 8] = 5.
+  assert.equal(typicalRaceDayTicksPerTeam(rows), 5);
+});
+
+test("typicalRaceDayTicksPerTeam: ingen løbsdags-rækker → 0; ulige antal hold → midterste", () => {
+  assert.equal(typicalRaceDayTicksPerTeam([]), 0);
+  assert.equal(typicalRaceDayTicksPerTeam(null), 0);
+  assert.equal(typicalRaceDayTicksPerTeam([{ team_id: "A", game_day: null }]), 0);
+  const rows = [
+    { team_id: "A", season_id: "s", game_day: 1 },
+    { team_id: "B", season_id: "s", game_day: 1 }, { team_id: "B", season_id: "s", game_day: 2 },
+    { team_id: "C", season_id: "s", game_day: 1 }, { team_id: "C", season_id: "s", game_day: 2 }, { team_id: "C", season_id: "s", game_day: 3 },
+  ];
+  assert.equal(typicalRaceDayTicksPerTeam(rows), 2);
+});
+
+test("typicalRaceDayTicksPerTeam: samme game_day i to sæsoner er to ticks (sæsonskifte i intervallet)", () => {
+  const rows = [
+    { team_id: "A", season_id: "s3", game_day: 0 },
+    { team_id: "A", season_id: "s4", game_day: 0 },
+  ];
+  assert.equal(typicalRaceDayTicksPerTeam(rows), 2);
+});
+
+test("calendarDayEquivalents G9: en normal løbsdato ≈ én kalenderdags træning (G1-deleren)", () => {
+  const cfg = TRAINING_RACE_DAY_CONFIG;
+  // En normal kalenderdato bærer sæsonens løbsdage fordelt på lige så mange datoer
+  // som den gamle kalenderdags-sæson havde ticks.
+  const raceDaysPerDate = cfg.raceDaysPerSeason / cfg.legacyDaysPerSeason;
+  const eq = calendarDayEquivalents({
+    raceDayTicks: raceDaysPerDate,
+    raceDayBudgetDivisor: raceDayBudgetDivisor(cfg),
+    legacyDaysPerSeason: cfg.legacyDaysPerSeason,
+  });
+  // Deleren bevarer sæsonens samlede udvikling, så én løbsdato skal ligge tæt på
+  // én kalenderdag — IKKE på antallet af løbsdage. Det er hele pointen: at dividere
+  // med rå ticks ville gøre vagten blind.
+  assert.ok(eq > 0.75 && eq < 1.5, `ækvivalenter ${eq}`);
+  assert.ok(eq < raceDaysPerDate / 2);
+});
+
+test("calendarDayEquivalents: ugyldige input → null, nul ticks → 0", () => {
+  assert.equal(calendarDayEquivalents({ raceDayTicks: 5, raceDayBudgetDivisor: 0, legacyDaysPerSeason: 28 }), null);
+  assert.equal(calendarDayEquivalents({ raceDayTicks: 5, raceDayBudgetDivisor: 100, legacyDaysPerSeason: 0 }), null);
+  assert.equal(calendarDayEquivalents({ raceDayTicks: -1, raceDayBudgetDivisor: 100, legacyDaysPerSeason: 28 }), null);
+  assert.equal(calendarDayEquivalents({ raceDayTicks: NaN, raceDayBudgetDivisor: 100, legacyDaysPerSeason: 28 }), null);
+  assert.equal(calendarDayEquivalents(), null);
+  assert.equal(calendarDayEquivalents({ raceDayTicks: 0, raceDayBudgetDivisor: 100, legacyDaysPerSeason: 28 }), 0);
 });

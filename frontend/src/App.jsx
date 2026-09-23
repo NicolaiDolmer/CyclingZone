@@ -117,6 +117,8 @@ const AcademyPage = lazy(() => import("./pages/AcademyPage"));
 // moenster TransfersPage allerede bruger paa TradeListPage.tsx — naboerne
 // herover er .jsx-filer og staar derfor uden endelse.
 const GraduationDayPage = lazy(() => import("./pages/GraduationDayPage.js"));
+// #5519: U23 team- og Junior team-siden (én side, trup i URL'en).
+const SquadPage = lazy(() => import("./pages/SquadPage.js"));
 const KlubPage = lazy(() => import("./pages/KlubPage"));
 const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
 const PlanningHubPage = lazy(() => import("./pages/PlanningHubPage"));
@@ -446,6 +448,9 @@ export default function App() {
             <Route path="planner" element={<PlannerLegacyRedirect />} />
             <Route path="academy" element={<AcademyPage />} />
             <Route path="academy/graduation" element={<GraduationDayPage />} />
+            {/* #5519: /squads/u23 og /squads/junior. Kontakten youth_squad_pages
+                gater siden server-side (409 → videre til /team). */}
+            <Route path="squads/:squad" element={<I18nReadyGate ns="squad"><SquadPage /></I18nReadyGate>} />
             <Route path="klub" element={<KlubPage />} />
             <Route path="scouting" element={<I18nReadyGate ns="scouting"><ScoutingCentralPage /></I18nReadyGate>} />
             {/* #4943: in-app spoergeskema. Login-gated med vilje (svarene

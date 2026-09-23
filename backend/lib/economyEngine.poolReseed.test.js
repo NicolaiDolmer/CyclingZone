@@ -294,15 +294,17 @@ test("reseedTierPools: ugyldig tærskel i app_config falder tilbage til default 
 // Reseed'et SKAL ligge efter hele op/nedryknings-loopet (tierens medlemsliste er
 // først endelig dér) og før AI-fyld-sweepen (så reconcile ser de endelige
 // ægte-hold-tal). Rækkefølgen verificeres statisk mod kilden, fordi et fuldt
-// processSeasonEnd-mock ville skjule præcis den detalje.
+// processSeasonEnd-mock ville skjule præcis den detalje. (#4592 gjorde
+// processDivisionEnd/reconcileAiTeamsForPool injicérbare; den kørende
+// rækkefølge bevises også adfærdsmæssigt i economyEngine.test.js.)
 
 test("processSeasonEnd kalder reseed EFTER processDivisionEnd og FØR reconcileAiTeamsForPool", async () => {
   const { readFile } = await import("node:fs/promises");
   const src = await readFile(new URL("./economyEngine.js", import.meta.url), "utf8");
 
-  const divisionLoop = src.indexOf("await processDivisionEnd(divStandings");
+  const divisionLoop = src.indexOf("await processDivisionEndFn(divStandings");
   const reseedCall = src.indexOf("const reseedFn = deps.reseedTierPools");
-  const reconcile = src.indexOf("await reconcileAiTeamsForPool(");
+  const reconcile = src.indexOf("await reconcileAiTeamsFn(");
 
   assert.ok(divisionLoop > 0 && reseedCall > 0 && reconcile > 0, "alle tre kald skal findes");
   assert.ok(divisionLoop < reseedCall, "reseed skal kaldes EFTER op/nedryknings-loopet");

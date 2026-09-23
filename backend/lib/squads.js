@@ -16,8 +16,14 @@
 // valg rykker fra 22 til 23), §2.4 (loft pr. trup erstatter den flade 8-cap),
 // og docs/superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md
 // §3.2 + §10.6.
+//
+// #5517 (A2) tilføjer én import mere: racePoolCatalog.js, som selv er helt
+// import-fri. Den bærer senior-filteret for rækker med en trup-kolonne og dommen
+// "kolonnen squad findes ikke i databasen" (#5330), og liga-/løbs-scopet nederst i
+// denne fil skal bruge nøjagtig samme filter og samme dom — én kopi, ikke to.
 
 import { ageForSeason, ageForReferenceYear } from "./riderSeasonAge.js";
+import { isMissingSquadColumnError, SENIOR_SQUAD_OR_FILTER, SQUAD_COLUMN } from "./racePoolCatalog.js";
 
 /** Trup-værdierne, ordnet fra yngst til ældst. Spejler CHECK-constrainten på
  *  `riders.squad` (database/2026-09-15-4619-riders-squad.sql). */
@@ -282,6 +288,97 @@ export function wouldExceedSquadCap({ squad, currentCount, adding = 1 } = {}) {
   return Number(currentCount ?? 0) + Number(adding) > cap;
 }
 
+// ── Lofterne i SQL: ÉN kilde, sendt ind som argument (#5432) ─────────────────
+//
+// Før #5432 havde de to akademi-RPC'er (demote_rider_to_academy og
+// finalize_academy_acquisition) hver deres egen hårde 8-tal i SQL, og slice 1
+// (#4619) lagde lofterne pr. trup her i JS. Resultatet var tre kilder til "hvor
+// mange må der være", hvor den strammeste (SQL's flade 8) reelt vandt. Nu
+// kender SQL intet tal: kalderen sender truppen OG dens loft med ind, og de
+// eneste tal findes i SQUAD_CAPS/SQUAD_MAX_AGE ovenfor. Tællingen pr. trup sker
+// inde i RPC'ens advisory-lås (count_team_squad_members), så to samtidige
+// flytninger ikke kan fylde den sidste plads to gange.
+
+/**
+ * RPC-argumenterne for en UNGDOMStrups loft — den eneste vej et loft når SQL.
+ *
+ * Kaster ved en ikke-ungdomstrup: senior har intet eget loft her (divisionens
+ * `squad_limits.max`), og en RPC der skriver en ungdomstrup må aldrig kaldes
+ * med 'senior' eller en tastefejl. Fejlen er en programmeringsfejl, ikke en
+ * brugertilstand.
+ *
+ * @param {unknown} squad
+ * @returns {{p_squad:"junior"|"u23", p_squad_cap:number}}
+ * @throws {Error} 'invalid_squad'
+ */
+export function squadCapRpcArgs(squad) {
+  const cap = capForSquad(squad);
+  if (!isYouthSquad(squad) || cap === null) throw new Error("invalid_squad");
+  return { p_squad: squad, p_squad_cap: cap };
+}
+
+/**
+ * Passer sæsonalderen ind under truppens aldersloft?
+ *
+ * Bruges til NEDAD-flytninger (YOUTH_RULES §2.1: en rytter må kun ligge i en
+ * ungdomstrup han aldersmæssigt hører til i eller er yngre end). Senior har
+ * intet loft og passer altid. Ukendt alder passer ALDRIG — et gæt her ville
+ * kunne sende en voksen rytter ned i junior-truppen.
+ *
+ * @param {{squad?:unknown, seasonAge?:number|null}} [args]
+ * @returns {boolean}
+ */
+export function fitsSquadAge({ squad, seasonAge } = {}) {
+  if (!isSquad(squad) || !Number.isFinite(seasonAge)) return false;
+  const max = SQUAD_MAX_AGE[squad];
+  return max === null || seasonAge <= max;
+}
+
+/**
+ * Retningen på et trup-skifte: "up" mod senior, "down" mod junior, "none" hvis
+ * det er samme trup, og null ved en ugyldig trup. Rækkefølgen er SQUADS (yngst
+ * → ældst), så der findes ingen anden kopi af "hvilken trup er højest".
+ *
+ * @param {unknown} from
+ * @param {unknown} to
+ * @returns {"up"|"down"|"none"|null}
+ */
+export function squadMoveDirection(from, to) {
+  if (!isSquad(from) || !isSquad(to)) return null;
+  const delta = SQUADS.indexOf(to) - SQUADS.indexOf(from);
+  if (delta === 0) return "none";
+  return delta > 0 ? "up" : "down";
+}
+
+/**
+ * Trup en akademirytter lander i når alderen er UKENDT (ingen brugbar
+ * fødselsdato). Samme regel som backfill'en (backend/scripts/backfill-4619-
+ * riders-squad.js, targetSquadFor): akademiets nederste trin, aldrig et gæt
+ * opad og aldrig tavst til senior.
+ */
+export const ACADEMY_SQUAD_WHEN_AGE_UNKNOWN = "junior";
+
+/**
+ * Ungdomstruppen en rytter PLACERES i når han optages i akademiet uden at
+ * manageren har valgt truppen (ungdomsauktion, intake-signering, nedrykning).
+ *
+ * Aldrig null: en optagelse skal altid kunne tælles mod ét loft. Ukendt
+ * FØDSELSDATO → ACADEMY_SQUAD_WHEN_AGE_UNKNOWN; en akademirytter på 23+ → u23
+ * (han er vokset ud og skal igennem Graduation Day, jf. academySquadForSeasonAge).
+ *
+ * Et ukendt SÆSONNUMMER er derimod en kaldefejl og kaster: så ville en rytter
+ * med en helt gyldig fødselsdato blive gættet ned i junior-truppen.
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @param {number} seasonNumber
+ * @returns {"junior"|"u23"}
+ * @throws {Error} 'season_required'
+ */
+export function academyPlacementSquad(birthdate, seasonNumber) {
+  if (!Number.isFinite(seasonNumber)) throw new Error("season_required");
+  return academySquadForSeasonAge(ageForSeason(birthdate, seasonNumber)) ?? ACADEMY_SQUAD_WHEN_AGE_UNKNOWN;
+}
+
 // ── Graduering: de TO overgange (YOUTH_RULES §2.1 + §2.2) ────────────────────
 //
 // Tidligere fandtes ÉN overgang: akademi → senior ved sæsonalder 22
@@ -325,4 +422,126 @@ export function hasOutgrownSquad({ squad, seasonAge } = {}) {
 export function transitionForRider({ squad, seasonAge } = {}) {
   if (!hasOutgrownSquad({ squad, seasonAge })) return null;
   return SQUAD_TRANSITIONS.find((t) => t.from === squad) ?? null;
+}
+
+// ── Puljer og løb: seniorernes ÉNE scope (#5517, A2, spec §3.2 slice 2) ──────
+//
+// Efter A2 bærer `league_divisions` og `races` en `squad`-kolonne (TEXT NOT NULL
+// DEFAULT 'senior', CHECK IN ('senior','u23','junior');
+// database/2026-09-24-5517-squad-leagues-races-teams.sql). Ungdomspuljer og
+// ungdomsløb bor i SAMME tabeller som seniorernes, og hver eneste læser der i dag
+// lister "alle puljer" eller "alle sæsonens løb" til kalenderen, planlæggeren,
+// udtagelsen, resultat-modulerne, AI-generatoren eller kalender-materializeren er
+// en SENIORlæser. Uden scopet ville de i det øjeblik ungdomspuljerne seedes
+// (C1 + ejer-go, ikke denne slice) fx vise U23-puljer i seniorkalenderens
+// divisions-træ, oprette AI-hold i U23-puljer eller måle U23-aksen med, når en
+// seniorpulje aktiveres midt i sæsonen.
+//
+// Scopet findes ÉT sted — withSeniorSquadScope — og squadSeniorReaders.test.js
+// fælder enhver ny liste-læser der ikke går gennem det.
+//
+// FORSKELLEN TIL applySeniorSquadFilter (riders) [vigtig]
+// Rytter-prædikatet kræver BÅDE squad og is_academy, fordi riders.squad-backfill'en
+// er ejer-gated og ikke kørt. Puljer og løb har hverken is_academy eller en
+// backfill: ALLE eksisterende rækker er 'senior' via kolonnens DEFAULT, og en
+// ungdomsrække kan kun opstå ved en eksplicit seed. Ét led på `squad` er derfor
+// bit-identisk i dag OG korrekt efter seed.
+//
+// HVORFOR `squad IS NULL OR squad = 'senior'` OG IKKE BARE `= 'senior'`
+// Kolonnen er NOT NULL, så NULL-leddet rammer aldrig en rigtig række. Det er med for
+// at SQL- og JS-siden fælder samme dom (isSeniorSquadRow: manglende felt = senior) og
+// for at bruge PRÆCIS race_pool-scopets filter (#5330, SENIOR_SQUAD_OR_FILTER) i
+// stedet for en næsten-kopi. En række kan kun falde ud ved at bære en eksplicit
+// ungdomstrup — aldrig fordi en kolonne eller et fixture-felt mangler.
+//
+// KOLONNEN KAN MANGLE (auto-migrate-vinduet)
+// auto-migrate.yml venter bevidst 3 minutter på deployet FØR den applier SQL'en,
+// så den nye kode kører et øjeblik mod et skema uden `squad`. Postgres svarer da
+// 42703 (undefined_column). Findes kolonnen ikke, kan ingen ungdomsrække findes, og
+// samme læsning uden scope er per definition ren senior. Kun 42703 tæller — samme
+// dom som race_pool-scopet (#5330, isMissingSquadColumnError): en PGRST204 /
+// schema-cache-fejl beviser ikke at kolonnen mangler, og dér fejler vi lukket.
+// Fallback'et caches ikke: næste kald prøver scopet igen.
+
+/** Tabellerne hvis rækker har en trup og derfor et senior-scope (#5517). */
+export const SQUAD_SCOPED_RELATIONS = Object.freeze(["league_divisions", "races"]);
+
+/** Kolonnen scopet filtrerer på (samme konstant som race_pool-scopet, #5330). */
+export { SQUAD_COLUMN };
+
+/**
+ * JS-siden: er en pulje- eller løbsrække en SENIORrække?
+ *
+ * Manglende felt = senior (rækker hentet med en projektion uden `squad`, fixtures,
+ * eller et skema fra før A2). Kun en eksplicit ungdomstrup gør rækken til ikke-senior,
+ * så prædikatet aldrig kan tømme et seniorudvalg bare fordi en kolonne mangler.
+ *
+ * @param {{squad?:string|null}|null|undefined} row
+ * @returns {boolean}
+ */
+export function isSeniorSquadRow(row) {
+  if (row == null) return false;
+  const squad = row[SQUAD_COLUMN];
+  return squad == null || squad === DEFAULT_SQUAD;
+}
+
+/**
+ * Filtrér en række-liste til seniorrækkerne. Tolerant over for null/undefined.
+ * @template T
+ * @param {T[]|null|undefined} rows
+ * @returns {T[]}
+ */
+export function onlySeniorSquadRows(rows) {
+  return (Array.isArray(rows) ? rows : []).filter(isSeniorSquadRow);
+}
+
+/**
+ * SQL-siden: begræns en `league_divisions`- eller `races`-query til seniorrækkerne
+ * (`squad IS NULL OR squad = 'senior'`, se headeren). Kæd den på builderen lige efter
+ * `.select(...)`. Brug den ikke direkte i en læser — gå gennem withSeniorSquadScope,
+ * som også dækker auto-migrate-vinduet.
+ *
+ * @template T
+ * @param {T} query  supabase/PostgREST query-builder
+ * @returns {T}
+ */
+export function scopeToSeniorSquad(query) {
+  return query.or(SENIOR_SQUAD_OR_FILTER);
+}
+
+const unscopedSquadQuery = (query) => query;
+
+/**
+ * Kør en liste-læsning af `league_divisions` eller `races` afgrænset til seniorerne.
+ *
+ * `run(senior)` bygger og kører læsningen og skal pakke builderen ind i `senior(...)`:
+ *
+ *   withSeniorSquadScope((senior) =>
+ *     senior(supabase.from("league_divisions").select("id, tier")).order("tier"))
+ *
+ * `run` kaldes med scopet først. Svarer databasen 42703 på `squad` (kolonnen er
+ * ikke migreret endnu), kaldes `run` én gang til med et identitets-scope. Begge
+ * fejl-former håndteres: en returneret `{ data, error }` (almindelig builder) og en
+ * kastet fejl (fetchAllRows/fetchAllRowsChunkedIn). Alt andet returneres/kastes
+ * uændret, så kaldstedets egen fejlhåndtering virker som før.
+ *
+ * `run` SKAL bygge en frisk builder ved hvert kald (en PostgREST-builder er one-shot).
+ *
+ * @template R
+ * @param {(senior: (query:any) => any) => (R|PromiseLike<R>)} run
+ * @returns {Promise<R>}
+ */
+export async function withSeniorSquadScope(run) {
+  if (typeof run !== "function") {
+    throw new TypeError("withSeniorSquadScope: run must be a function that builds a fresh query");
+  }
+  let result;
+  try {
+    result = await run(scopeToSeniorSquad);
+  } catch (err) {
+    if (!isMissingSquadColumnError(err)) throw err;
+    return run(unscopedSquadQuery);
+  }
+  if (result?.error && isMissingSquadColumnError(result.error)) return run(unscopedSquadQuery);
+  return result;
 }

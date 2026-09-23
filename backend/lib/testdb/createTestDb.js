@@ -61,6 +61,12 @@ export const RACE_HUB_SCHEMA_FILES = [
   // ville contract-testenes endpoints fejle mod PGlite — præcis den drift-fælde
   // listens egen header advarer om.
   "2026-09-15-4619-riders-squad.sql",
+  // #5517 · league_divisions.squad + races.squad + teams' ungdomspulje-FK'er. SKAL
+  // loades af samme grund som riders.squad ovenfor: senior-læsernes delte scope
+  // (squads.withSeniorSquadScope) filtrerer på kolonnen, og PGlite-skemaet skal
+  // bevise at migrationen faktisk kan køres (idempotent, to gange) oven på base-
+  // skemaets inline UNIQUE (tier, pool_index).
+  "2026-09-24-5517-squad-leagues-races-teams.sql",
 ];
 
 // Supabase-prærekvisitter som migrationerne antager findes i prod, men som PGlite

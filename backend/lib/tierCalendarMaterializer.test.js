@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST } from "./tierCalendarMaterializer.js";
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { TIER_DENSITY } from "./calendarTierCaps.js";
-import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
 
@@ -110,6 +110,13 @@ function makeSupabase(initial = {}) {
 
 const routeStr = (profiles) => profiles.slice().sort((a, b) => a.stage_number - b.stage_number)
   .map((p) => `${p.stage_number}:${p.profile_type}|${p.finale_type ?? ""}`).join(">");
+
+// #5405: det materializeren skriver for en tier = hvert løb genereret med sit eget seed,
+// og finale-typerne kvote-fordelt over HELE tierens løbssæt. entries: [[nøgle, seedRace]].
+function expectedTierRoutes(entries, toRoute) {
+  const balanced = balanceFinaleQuotas(entries.map(([, seedRace]) => generateRaceStageProfiles(seedRace)));
+  return new Map(entries.map(([key], i) => [key, toRoute(balanced[i])]));
+}
 
 // Tier-3-katalog: ProSeries + Class1, > kvote 84.
 // #3469 (2026-08-07 morgen, ejer-beslutning om endagsløbs-balancen): D3's endagsløb-
@@ -287,6 +294,18 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
   const tier3Attempt = summary.tiers.find((t) => t.tier === 3)?.realismDraw?.attempt ?? 0;
   assert.equal(typeof tier3Attempt, "number");
 
+  // (2)'s forventning: tierens løbssæt genereret med external_id-seed (id "ignored"), og
+  // finalerne kvote-fordelt over HELE sættet (#5405, balanceFinaleQuotas) — det er det
+  // materializeren skriver. Terræntyperne afhænger stadig kun af løbets eget seed.
+  const tierPoolRaceIds = [...new Set(sb.state.races.filter((r) => r.league_division_id === 4).map((r) => r.pool_race_id))];
+  const expectedByPoolRace = expectedTierRoutes(tierPoolRaceIds.map((poolRaceId) => {
+    const meta = metaById.get(poolRaceId);
+    // season_id "s1" matcher materializerens seedRace (sæson-akse, Task 6); season_variant
+    // er tierens #3347-re-draw som materializeren selv rapporterer — så assertionen
+    // beskriver "det materializeren skrev", også hvis et gen-træk var nødvendigt.
+    return [poolRaceId, { id: "ignored", external_id: externalById.get(poolRaceId), race_type: meta.race_type, stages: meta.stages, season_id: "s1", season_variant: tier3Attempt }];
+  }), routeStr);
+
   let shared = 0;
   for (const [poolRaceId, rs] of racesByPoolRace) {
     if (rs.length < 2) continue; // kun løb der optræder i begge puljer
@@ -296,12 +315,7 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
     assert.equal(variants.size, 1, `pool_race ${poolRaceId}: parcours afviger mellem puljer`);
     // (2) Parcourset er external_id-seedet (ikke pool_race_id/race.id). external_id != pool_race_id
     // i denne fixture, så en revert til en anden seed-kilde ville give et andet parcours.
-    const meta = metaById.get(poolRaceId);
-    // season_id "s1" matcher materializerens seedRace (sæson-akse, Task 6); season_variant
-    // er tierens #3347-re-draw som materializeren selv rapporterer — så assertionen
-    // beskriver "det materializeren skrev", også hvis et gen-træk var nødvendigt.
-    const expected = routeStr(generateRaceStageProfiles({ id: "ignored", external_id: externalById.get(poolRaceId), race_type: meta.race_type, stages: meta.stages, season_id: "s1", season_variant: tier3Attempt }));
-    assert.equal([...variants][0], expected, `pool_race ${poolRaceId}: parcours er ikke seedet på external_id+sæson`);
+    assert.equal([...variants][0], expectedByPoolRace.get(poolRaceId), `pool_race ${poolRaceId}: parcours er ikke seedet på external_id+sæson`);
   }
   assert.ok(shared > 0, "mindst ét løb skal optræde i begge puljer (fan-out)");
 });
@@ -345,8 +359,13 @@ test("#3347 apply: de indsatte profiler er tierens RESOLVEREDE re-draw, ikke alt
 
   // Deterministisk søgning efter en sæson hvis kanoniske træk bryder båndene — netop
   // det tilfælde #3347 handler om. Generatoren er deterministisk, så listen er stabil.
+  //
+  // #5405 (23/9): finale-typerne kvote-fordeles nu over tierens løbssæt, så finale-gulvene
+  // (fx nedkørsels-finaler) ikke længere svinger fra træk til træk — de afhænger kun af hvor
+  // mange etaper af hvert terræn trækket gav. Færre kanoniske træk bryder derfor båndene, og
+  // de første 12 sæsoner rummer ikke længere ét. Søgningen er udvidet; fixturen er uændret.
   let hit = null;
-  for (let i = 0; i < 12 && !hit; i++) {
+  for (let i = 0; i < 80 && !hit; i++) {
     const seasonId = `s-3347-${i}`;
     const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
     const summary = await materializeTierCalendars({ supabase: sb, seasonId, seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX });
@@ -366,13 +385,22 @@ test("#3347 apply: de indsatte profiler er tierens RESOLVEREDE re-draw, ikke alt
     persisted.get(poolRaceId).push(p);
   }
   assert.ok(persisted.size > 0);
+  const seedFor = (poolRaceId) => {
+    const meta = metaById.get(poolRaceId);
+    return { id: "ignored", external_id: meta.external_id, race_type: meta.race_type, stages: meta.stages, terrain_archetype: meta.terrain_archetype, season_id: hit.seasonId };
+  };
+  // #5405: forventningen er tierens resolverede træk MED kvote-fordelte finaler — samme
+  // skridt som drawTierAttempt tager, så gaten og skrive-stien er beviseligt samme træk.
+  const toRouteList = (profiles) => profiles.map(routeStr2);
+  const withVariantByPoolRace = expectedTierRoutes(
+    [...persisted.keys()].map((poolRaceId) => [poolRaceId, { ...seedFor(poolRaceId), season_variant: hit.draw.attempt }]),
+    toRouteList,
+  );
   let differsFromCanonical = 0;
   for (const [poolRaceId, rows] of persisted) {
-    const meta = metaById.get(poolRaceId);
-    const seed = { id: "ignored", external_id: meta.external_id, race_type: meta.race_type, stages: meta.stages, terrain_archetype: meta.terrain_archetype, season_id: hit.seasonId };
-    const withVariant = generateRaceStageProfiles({ ...seed, season_variant: hit.draw.attempt });
-    assert.deepEqual(rows.map(routeStr2), withVariant.map(routeStr2), `pool_race ${poolRaceId}: persisteret parcours ≠ det resolverede træk`);
-    if (JSON.stringify(generateRaceStageProfiles(seed).map(routeStr2)) !== JSON.stringify(withVariant.map(routeStr2))) differsFromCanonical++;
+    const withVariant = withVariantByPoolRace.get(poolRaceId);
+    assert.deepEqual(rows.map(routeStr2), withVariant, `pool_race ${poolRaceId}: persisteret parcours ≠ det resolverede træk`);
+    if (JSON.stringify(generateRaceStageProfiles(seedFor(poolRaceId)).map(routeStr2)) !== JSON.stringify(withVariant)) differsFromCanonical++;
   }
   assert.ok(differsFromCanonical > 0, "re-drawet skal faktisk ændre mindst ét løbs parcours ift. attempt 0");
 });
@@ -1178,4 +1206,74 @@ test("#5272 reconcile: et eksplicit sæson-mål slår det målte (indgangen for 
   });
 
   assert.equal(calls[0].raceDayTarget, 100, "140 (#4845's S4-mål) − 40 afviklede");
+});
+
+// ── #5517 (A2) · materializeren er en SENIORlæser af puljer og løb ───────────────────
+// Efter A2 kan league_divisions rumme ungdomspuljer (samme tier 1-4, adskilt af squad),
+// og races kan rumme ungdomsløb. Begge tests har en kontrol: de SAMME rækker mærket
+// 'senior' skal ændre resultatet, ellers kunne testen bestå fordi fixturen var
+// uinteressant og ikke fordi scopet virker.
+
+test("#5517 materialize: en ungdomspulje i league_divisions får ingen seniorkalender", async () => {
+  const run = async (youthSquad) => {
+    const league_divisions = [
+      { id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" },
+      { id: 5, tier: 3, pool_index: 1, label: "Division 3 — B" },
+      // Samme tier og pool_index som pulje 4 — kun squad adskiller dem (den nye nøgle).
+      { id: 40, tier: 3, pool_index: 0, label: "U23 Division 3 — A", squad: youthSquad },
+    ];
+    // Mocken giver bevidst ungdomspuljen "managere", så den VILLE være levende hvis
+    // den blev læst som seniorpulje — ellers havde testen ingen tænder.
+    const teams = [mgrTeam("a1", 4), mgrTeam("b1", 5), mgrTeam("y1", 40)];
+    const sb = makeSupabase({ league_divisions, teams, race_pool: fullCatalog() });
+    await materializeTierCalendars({
+      supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, tiers: [3], dryRun: false, ...LEGACY_MIX,
+    });
+    return sb;
+  };
+
+  const youth = await run("u23");
+  const control = await run("senior");
+  const racesIn = (sb, poolId) => sb.state.races.filter((r) => r.league_division_id === poolId);
+
+  assert.ok(racesIn(youth, 4).length > 0, "seniorpuljen skal stadig få sin kalender");
+  assert.equal(racesIn(youth, 40).length, 0, "ungdomspuljen må ALDRIG få en seniorkalender");
+  assert.ok(racesIn(control, 40).length > 0, "kontrol: mærket 'senior' ville puljen få en kalender");
+  const fingerprint = (sb) => sb.state.races
+    .filter((r) => r.league_division_id !== 40)
+    .map((r) => `${r.league_division_id}|${r.pool_race_id}|${r.name}`)
+    .sort();
+  assert.deepEqual(fingerprint(youth), fingerprint(control), "seniorpuljernes kalender er identisk (fan-out)");
+});
+
+test("#5517 reconcile: ungdomsløb i sæsonen trækker hverken løbsdags-målet eller sæson-slut", async () => {
+  // D1's seniorakse er 0-79 (40 afviklet før from, slut 9/7). Et ungdomsløb i en
+  // U23-pulje har en LÆNGERE akse der også er længere fremme (0-60 afviklet, slut 20/7).
+  const run = (youthSquad) => {
+    const state = medDiv1Kalender(tier4ActivationState(), [
+      [0, "2026-06-15"], [39, "2026-06-28"], [40, "2026-06-29"], [79, "2026-07-09"],
+    ]);
+    state.league_divisions.push({ id: 41, tier: 1, pool_index: 0, label: "U23 Division 1", squad: youthSquad });
+    state.races.push({ id: "race-u23", season_id: "s1", league_division_id: 41, pool_race_id: "u23-eksisterende", squad: youthSquad });
+    state.race_stage_schedule.push(
+      { race_id: "race-u23", stage_number: 1, scheduled_at: "2026-06-10T16:00:00Z", game_day: 0 },
+      { race_id: "race-u23", stage_number: 2, scheduled_at: "2026-06-28T16:00:00Z", game_day: 60 },
+      { race_id: "race-u23", stage_number: 3, scheduled_at: "2026-07-20T16:00:00Z", game_day: 79 },
+    );
+    return state;
+  };
+
+  const measure = async (state) => {
+    const calls = [];
+    const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+    const summary = await reconcilePoolCalendarOnActivation({ supabase: makeSupabase(state), poolId: 8, now: FROM, materialize: recording });
+    return { target: calls[0]?.raceDayTarget, realDays: summary.realDays };
+  };
+
+  const youth = await measure(run("u23"));
+  const control = await measure(run("senior"));
+
+  assert.equal(youth.target, 40, "målet måles KUN på seniorakserne: 80 − 40 afviklede");
+  assert.equal(youth.realDays, 10, "sæson-slut er seniorernes sidste etape (9/7)");
+  assert.notDeepEqual(control, youth, "kontrol: som seniorløb ville ungdomsløbet flytte mål og/eller sæson-slut");
 });
