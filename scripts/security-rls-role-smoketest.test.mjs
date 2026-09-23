@@ -151,3 +151,81 @@ test("hele scriptet koerer i en transaktion der rulles tilbage - ingen prod-muta
   assert.ok(trimmed.endsWith("ROLLBACK;"), "scriptet skal slutte med ROLLBACK; uanset udfald");
   assert.ok(!/\bCOMMIT;/.test(sql), "scriptet maa aldrig committe - kun ROLLBACK er tilladt");
 });
+
+// #5375 — falsk alarm: en SUND koersel (ingen reelle fund) blev alligevel
+// rapporteret som CRITICAL. Aarsag: scriptet wrapper sig i
+// BEGIN/CREATE TEMP TABLE/GRANT/DO $$...$$/ROLLBACK, og psql printer en bar
+// kommando-tag-linje ("BEGIN", "CREATE TABLE", "GRANT", "DO", "ROLLBACK")
+// for hver af disse ikke-SELECT-kommandoer naar scriptet koeres med -f. Det
+// er UPAAVIRKET af -tA (tuples-only styrer kun SELECT-resultatets
+// header/footer, ikke kommando-status-linjer) og laekkede derfor direkte ind
+// i FINDINGS via workflowets `sed '/^$/d'`-filter, som kun fjerner TOMME
+// linjer - ikke disse. -q (quiet) undertrykker kommando-tags, saa kun
+// scriptets reelle severity|check|detail-output fra SELECT'et bliver
+// tilbage.
+test("psql-kaldet for smoketest-trinnet bruger -q, ellers laekker BEGIN/CREATE TABLE/GRANT/DO/ROLLBACK som falske fund (#5375)", () => {
+  const smoketestStep = workflow.split(/\n\s*- name: Kør RLS-role-smoketest\b/)[1];
+  assert.ok(smoketestStep, "smoketest-steppet ('Kør RLS-role-smoketest') skal findes i workflowet");
+  const runBlock = smoketestStep.split(/\n\s*- name: /)[0];
+  assert.match(
+    runBlock,
+    /psql "\$DB_URL" -q -tA -F '\|' -v ON_ERROR_STOP=1 -f scripts\/security-rls-role-smoketest\.sql/,
+    "psql-kaldet skal have -q FOER -tA, ellers laekker kommando-tags som falske fund (#5375)"
+  );
+});
+
+test("de tre andre psql-trin i workflowet har ikke BEGIN/CREATE TABLE/GRANT/DO-moenstret og behoever derfor ikke -q", () => {
+  // Kun scripts der selv aabner en transaktion / opretter noget / GRANT'er
+  // noget udloeser bar-kommando-tag-problemet fra #5375 - en ren SELECT (evt.
+  // i en "with ... select" CTE-kaede) goer det ikke, fordi -tA allerede
+  // undertrykker header/footer for SELECT-tuple-output.
+  const otherScripts = [
+    join(repoRoot, "scripts/security-grants.sql"),
+    join(repoRoot, "scripts/security-rls-policy-fn-grants.sql"),
+  ];
+  for (const path of otherScripts) {
+    const text = readFileSync(path, "utf8");
+    assert.ok(
+      !/^\s*(BEGIN|CREATE TABLE|CREATE TEMP TABLE|GRANT |DO \$\$)/m.test(text),
+      `${path} har faaet et top-niveau BEGIN/CREATE TABLE/GRANT/DO-moenster - tilfoej -q til dens psql-kald i .github/workflows/security-grants-audit.yml (samme klasse som #5375)`
+    );
+  }
+});
+
+/**
+ * Simulerer psql's stdout for scriptets faste, ikke-SELECT-kommandoer
+ * (BEGIN, CREATE TEMP TABLE, GRANT, DO $$...$$, ROLLBACK) i en koersel UDEN
+ * reelle fund (den afsluttende SELECT returnerer 0 raekker). Modellerer kun
+ * det trae der udloeste #5375 - ikke en fuld psql-parser.
+ */
+function simulateSmoketestPsqlOutput({ quiet }) {
+  const commandTagLines = quiet ? [] : ["BEGIN", "CREATE TABLE", "GRANT", "DO", "ROLLBACK"];
+  const selectDataLines = []; // -tA + 0 fund = ingen datalinjer, med eller uden -q
+  return [...commandTagLines, ...selectDataLines].join("\n");
+}
+
+// Samme filter som workflowet bruger: `sed '/^$/d'` fjerner kun TOMME linjer.
+function stripBlankLines(text) {
+  return text
+    .split("\n")
+    .filter((line) => line !== "")
+    .join("\n");
+}
+
+test("simulering: uden -q ser en fundfri koersel alligevel ikke-tom ud (reproducerer #5375's falske CRITICAL)", () => {
+  const findings = stripBlankLines(simulateSmoketestPsqlOutput({ quiet: false }));
+  assert.notEqual(
+    findings,
+    "",
+    "dokumenterer roden til #5375: uden -q er FINDINGS ikke-tom selvom scriptets SELECT ikke fandt noget"
+  );
+});
+
+test("simulering: med -q er en fundfri koersel tom, saa has_findings korrekt bliver false", () => {
+  const findings = stripBlankLines(simulateSmoketestPsqlOutput({ quiet: true }));
+  assert.equal(
+    findings,
+    "",
+    "med -q skal en koersel uden reelle fund give tom FINDINGS (has_findings=false) - regressionstest for #5375"
+  );
+});
