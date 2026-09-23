@@ -197,11 +197,12 @@ export function parseArgs(argv) {
 /**
  * Rapporten har holdnavne og præcise balance-tal → den må KUN skrives ind i
  * balance-internals/ (gitignoreret, hard rule 17). Alt andet afvises.
+ * Stien tolkes relativt til arbejdsmappen (som enhver anden CLI-sti).
  * @param {string} p
  * @returns {string} absolut sti
  */
-export function assertBalanceInternalsPath(p, { root = REPO_ROOT } = {}) {
-  const abs = resolve(root, p);
+export function assertBalanceInternalsPath(p, { root = REPO_ROOT, cwd = process.cwd() } = {}) {
+  const abs = resolve(cwd, p);
   const rel = relative(join(root, "balance-internals"), abs);
   if (rel === "" || rel.startsWith("..") || rel.split(sep)[0] === ".." || resolve(abs) === resolve(root, "balance-internals")) {
     throw new Error(`--out skal pege på en fil inde i balance-internals/ (fik ${p})`);
@@ -213,6 +214,10 @@ export function assertBalanceInternalsPath(p, { root = REPO_ROOT } = {}) {
 /**
  * Kør ÉN payload-række gennem præcis den kæde `deriveForRiderIds` persisterer,
  * på målsæsonens alders-akse. Ren funktion.
+ *
+ * Kendt, ufarlig forskel: `hidden_potential` hasher rytterens DB-id, som først
+ * findes efter insert. Den indgår hverken i caps, type, base_value eller
+ * løngrundlag, så gaten vurderer stadig præcis den rytter der lander.
  *
  * @param {object} row   payload-række (med `archetype_draw.birth`) + et id
  * @param {object} opts
@@ -435,7 +440,10 @@ export function renderMarkdown(plan, summary) {
   lines.push(`- Over værdiloft (blokerer apply): ${summary.totals.overValueCap}`, "");
   lines.push("## Belastning", "");
   lines.push(`- Aktive ryttere i dag: ${fmt(summary.load.activeRiders)} · AI-seniorer: ${fmt(summary.load.aiSeniorRiders)}`);
-  lines.push(`- Vækst: +${fmt(summary.load.newRiders)} ryttere (${summary.load.growthPct == null ? "-" : summary.load.growthPct.toFixed(1)} %)`);
+  const pct = summary.load.growthPct == null
+    ? "-"
+    : summary.load.growthPct.toLocaleString("da-DK", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  lines.push(`- Vækst: +${fmt(summary.load.newRiders)} ryttere (${pct} %)`);
   lines.push(`- AI-hold der allerede har ungdomsryttere: ${summary.load.aiTeamsWithYouthAlready ?? "-"}`, "");
   for (const squad of ["u23", "junior"]) {
     const s = summary[squad];

@@ -60,10 +60,15 @@ test("parseArgs: dry-run er default, --apply kræver --owner-go", () => {
 
 test("--out må kun pege ind i balance-internals/", () => {
   const root = join("C:", "repo");
-  assert.throws(() => assertBalanceInternalsPath("docs/x.md", { root }), /balance-internals/);
-  assert.throws(() => assertBalanceInternalsPath("balance-internals/../docs/x.md", { root }), /balance-internals/);
-  assert.throws(() => assertBalanceInternalsPath("balance-internals", { root }), /balance-internals/);
-  assert.ok(assertBalanceInternalsPath("balance-internals/5518.md", { root }).endsWith("5518.md"));
+  const opts = { root, cwd: root };
+  assert.throws(() => assertBalanceInternalsPath("docs/x.md", opts), /balance-internals/);
+  assert.throws(() => assertBalanceInternalsPath("balance-internals/../docs/x.md", opts), /balance-internals/);
+  assert.throws(() => assertBalanceInternalsPath("balance-internals", opts), /balance-internals/);
+  assert.ok(assertBalanceInternalsPath("balance-internals/5518.md", opts).endsWith("5518.md"));
+  // Relativt til arbejdsmappen: fra backend/ er det ../balance-internals/.
+  const fromBackend = { root, cwd: join(root, "backend") };
+  assert.ok(assertBalanceInternalsPath("../balance-internals/5518.md", fromBackend).endsWith("5518.md"));
+  assert.throws(() => assertBalanceInternalsPath("balance-internals/5518.md", fromBackend), /balance-internals/);
 });
 
 // ── Planen ───────────────────────────────────────────────────────────────────
@@ -186,10 +191,16 @@ test("#2065: spejlingen rammer PRÆCIS det deriveForRiderIds persisterer (base_v
     assert.equal(got.current_production_value, row.mirror.current_production_value, `cpv ${i}`);
   });
   // Evnerne derive skrev = evnerne spejlingen så (samme fødsels-seed, samme bånd).
+  // Undtagelse: hidden_potential hasher rytterens DB-id, som først findes efter
+  // insert. Den indgår hverken i caps, type eller værdi (derfor matcher
+  // base_value ovenfor), så gaten vurderer stadig den rytter der lander.
   const abilityRows = supabase.writes.upserts.find((u) => u.table === "rider_derived_abilities").rows;
   for (const a of abilityRows) {
     const idx = Number(a.rider_id.slice(2));
-    for (const [k, v] of Object.entries(p.rows[idx].mirror.abilities)) assert.equal(a[k], v, `${a.rider_id}.${k}`);
+    for (const [k, v] of Object.entries(p.rows[idx].mirror.abilities)) {
+      if (k === "hidden_potential") continue;
+      assert.equal(a[k], v, `${a.rider_id}.${k}`);
+    }
   }
 });
 
