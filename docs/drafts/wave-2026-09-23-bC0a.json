@@ -1,0 +1,116 @@
+{
+ "allowExistingPr": true,
+ "trackTimeoutMinutes": 150,
+ "tracks": [
+  {
+   "issue": 2789,
+   "branch": "fix/2789-itt-elevation",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "title": "[routes] Enkeltstarters hoejdemeter skaleres med distancen",
+   "scopeText": "TJEK FOERST om det allerede er lavet. Laes #2789 (hullet 'enkeltstarters 80 hm'). BASE_ELEVATION.itt = 80 fast (raceRouteGenerator.js:147); alle 117 S3-ITT'er har 80 hm, og spilleren ser tallet. Skaler med distancen uden ekstra rng-traek (saa andre ruter ikke flytter sig). Skal lande foer S4 bliver aktiv (CALENDAR_RULES §2c). Koer calendarGoldenDiff.mjs.",
+   "ownership": [
+    "backend/lib/raceRouteGenerator.js",
+    "backend/lib/raceRouteGenerator.test.js"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/raceRouteGenerator.test.js",
+    "node backend/scripts/dev/calendarGoldenDiff.mjs",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5485,
+   "branch": "feat/5485-training-page-overview-tabs",
+   "title": "[traening] Rettespor PR #5564: guidet tur, markering, assistent op, faner, ugeplan, Saved, tickModelDone, seneste score, skademarkoer",
+   "model": "opus",
+   "tier": "FULL",
+   "scopeText": "RETTESPOR paa en AABEN PR. Arbejd paa den eksisterende branch (den er allerede pushet), merge origin/main ind foerst, byg ikke nyt ud over listen. Laes PR-body + hele diffen + issuets seneste kommentarer FOER du retter. Hver rettelse faar en test. Opdater PR-body med et afsnit \"Rettelser 23/9 aften\" (punkt for punkt, klart sprog). Ingen patch note i PR (boelge; samles ved close-out). Spillervendt tekst: EN foerst, DA under, ingen em-dash, jeg/du-tone (docs/TONE_OF_VOICE.md). PR #5564 (traeningssiden, overblik + faner). Ret disse 10 ting: (1) GUIDET TUR trin 2 (data-tour=training-run-today, TrainingPage.jsx ca. linje 2059): naar guldknappen staar paa \"Set days for N riders\" peger turen paa en knap der ikke traener. Turen skal pege paa den kontrol der faktisk koerer dagens traening (Run now, eller guldknappen naar den koerer traening), turens tekst skal passe til det tryk, og onboarding-trinnet \"foerste traening\" skal fuldfoeres af netop det tryk. I prod har 15 af 23 nye hold ingen dage sat, saa det er nye spilleres foerste oplevelse. (2) MARKERING: \"Apply to N\" maa aldrig ramme en rytter der ikke staar paa skaermen. Skaer markeringen ned til de synlige ryttere baade ved filterskift OG naar en rytter forsvinder fra filteret fordi han har faaet en dag (fx i handleBulkApply). Test: A,B,C markeret via \"Set days for 3\", A faar en dag i sin egen vaelger, knappen viser \"Apply to 2\" og A overskrives ikke. (3) ASSISTENTEN OP (ejer-go 23/9): paa telefonen (baade beta-tabellen og den almindelige telefon-visning) en raekke lige under de 4 overbliks-tal, over tabellen; paa desktop en rigtig sekundaer knap (Button variant secondary med ramme, ikke tekst-link) i tabellens vaerktoejslinje. Samme panel aabnes som i dag. Kravet om mindst 8 ryttere paa foerste skaerm i 390x844 (beta-visning) skal stadig holde; opdater 5485-acceptance-spec. (4) FANERNE paa 390 px: \"Report\"/\"Rapport\" er skaaret af. Alle 4 faner skal ses helt paa 360-390 px med den kanoniske fane-komponent (opfind ikke egen stil, docs/design/PAGE_TEMPLATES.md + TASTE.md). (5) UGEPLAN: fjern den gamle lange forklaring under tabellen (\"The rhythm is a default ... consistency bonus (+25%) ...\"); introen \"Set the intensity for each day of the week.\" er nok. Fjern de doede i18n-noegler i en+da (today.assistant hvis ubrugt efter punkt 3, weekRhythmTitle, weekRhythmIntro, weekRhythmSave, individualWeekPlanOverviewEmpty, individualWeekPlanOverviewGoToRoster, individualWeekPlanOverviewOverridesNote) KUN hvis grep bekraefter at de er ubrugte. (6) SAVED i filtret \"Needs a day\": raekken forsvinder i samme oejeblik dagen gemmes, saa kvitteringen ses aldrig. Lad raekken blive staaende med \"Saved\" i ca. 2 sekunder, eller vis kvitteringen i vaerktoejslinjen. (7) tickModelDone (\"Today's training has already run. Changes now take effect tomorrow\") skal ogsaa vises paa fanen I dag naar dagen er koert (desktop-statuscellen og telefonens statuslinje), ikke kun paa Rapport (#1936). (8) TELEFON PAA LANGS UDEN BETA (mobileTable false, 844x390) viser i dag PC-tabellen med 0 ryttere paa foerste skaerm. Maal det i en e2e og forbedr det inden for siden uden at roere flag-logikken, hvis det kan goeres sikkert; ellers skriv tallet i PR-body (ejeren vaelger flip af training_mobile_table separat). (9) SCORE FOER DAGENS PAS (ejer-valg A 23/9, flip-blokker for training_score_visible): Score-kolonnen viser i dag en streg og ingen kurve, indtil dagens pas er koert (TrainingPage.jsx ca. 1146-1168 og trainingMobileModel.ts mobileScoreCell; buildTrainingScoreView saetter kun today fra dagens tick_date). Kl. 19 havde kun 43 af 258 hold dagens tal. Ret til: foer dagens pas vises SENESTE scores tal daempet (graa) med et lille 'seneste'-maerke (EN 'latest' / DA 'seneste'), kurven vises altid, og sorteringen bruger seneste tal; naar dagens pas er koert, vises dagens tal normalt som i dag. Hviledag/ingen historik giver stadig streg. Desktop OG telefon (beta-tabellen og kortet). Brug de data /api/training/me allerede sender (spark/avg/best/days pr. rytter); aendr ikke backend medmindre seneste tal ikke kan udledes (skriv det i PR-body hvis ja). help.json (en+da, ca. linje 1084): fjern saetningen om at kurven har et hul paa loebsdage (#5486 fjernede hullerne) og tilfoej een kort saetning om at dagens tal kommer, naar passet er koert. (10) SKADEMARKOER I RAEKKEN PAA TELEFONEN (ejer-valg 23/9, flip-blokker for training_mobile_table, audit 21/9 punkt 1): i telefonens raekke (beta-tabellen) vises en lille roed markoer under underlinjen for en skadet rytter, fx 'Injured · back 25/9' / 'Skadet · tilbage 25/9' (brug de eksisterende skade-tekster og injury_race_days_left hvor det findes, ellers injured_until). Ingen emoji; stroke-ikon eller prik. Test i e2e. Skaermbilleder med mock-data i pr-screens/ (1440x900, 390x844, 844x390). Tryk aldrig paa Run now / Train today / en dagsvaelger mod prod.",
+   "ownership": [
+    "frontend/src/pages/TrainingPage.jsx",
+    "frontend/src/pages/TrainingPage.wiring.test.js",
+    "frontend/src/components/training/**",
+    "frontend/src/lib/training.js",
+    "frontend/src/lib/useTraining.js",
+    "frontend/src/lib/trainingMobileModel.ts",
+    "frontend/public/locales/en/training.json",
+    "frontend/public/locales/da/training.json",
+    "frontend/tests/e2e/5485-training-overview-tabs.spec.ts",
+    "frontend/tests/e2e/3643-training-mobile.spec.js",
+    "frontend/tests/e2e/3721-training-tabs.spec.js",
+    "frontend/tests/e2e/3761-3815-training-rider-info.spec.js",
+    "frontend/tests/e2e/3762-day-panel.spec.js",
+    "frontend/tests/e2e/5124-training-mobile.spec.js",
+    "frontend/tests/e2e/training-race-day.spec.js",
+    "frontend/tests/e2e/training-report.spec.js",
+    "frontend/tests/e2e/training-season-receipt.spec.js",
+    "frontend/src/lib/trainingScoreView.ts",
+    "frontend/src/lib/trainingScoreView.test.ts",
+    "frontend/public/locales/en/help.json",
+    "frontend/public/locales/da/help.json",
+    "pr-screens/5485-*"
+   ],
+   "verifyCommands": [
+    "node --test frontend/src/components/training/trainingOverview.test.ts frontend/src/pages/TrainingPage.wiring.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -NoProfile -Command \"Set-Location frontend; npx playwright test tests/e2e/5485-training-overview-tabs.spec.ts tests/e2e/3643-training-mobile.spec.js tests/e2e/3721-training-tabs.spec.js tests/e2e/3762-day-panel.spec.js tests/e2e/5124-training-mobile.spec.js tests/e2e/training-report.spec.js\"",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5075,
+   "branch": "fix/5075-stats-academy-toggle",
+   "title": "[hold] Rettespor PR #5556: ingen tom vaerktoejslinje paa Statistik for hold uden akademi",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "scopeText": "RETTESPOR paa en AABEN PR. Arbejd paa den eksisterende branch (den er allerede pushet), merge origin/main ind foerst, byg ikke nyt ud over listen. Laes PR-body + hele diffen + issuets seneste kommentarer FOER du retter. Hver rettelse faar en test. Opdater PR-body med et afsnit \"Rettelser 23/9 aften\" (punkt for punkt, klart sprog). Ingen patch note i PR (boelge; samles ved close-out). Spillervendt tekst: EN foerst, DA under, ingen em-dash, jeg/du-tone (docs/TONE_OF_VOICE.md). PR #5556 (Statistik-fanen deler akademifilteret). Ret: TeamStatsTab.jsx sender altid <AcademySquadFilter/> som toolbar til DataTable. DataTable tjekker kun toolbar && (DataTable.jsx ca. 187 og 270), og et React-element er altid sandt, ogsaa naar komponenten returnerer null. Hold uden akademiryttere (148 af 258 menneskestyrede hold i prod) faar derfor en tom bjaelke med streg oeverst paa Statistik, desktop og mobil. Send kun toolbar naar academyCount > 0 eller seniorer er skjult, ellers null. Tilfoej en e2e-case for et hold UDEN akademiryttere (ingen tom bjaelke) paa desktop og mobil. Ret samtidig de tre kodekommentarer der peger paa AcademySquadFilter.jsx (filen er .tsx) og kommentaren i TeamPage.jsx om totaler der foelger filteret (Statistik har ingen totaler).",
+   "ownership": [
+    "frontend/src/components/TeamStatsTab.jsx",
+    "frontend/src/components/team/AcademySquadFilter.tsx",
+    "frontend/src/pages/TeamPage.jsx",
+    "frontend/tests/e2e/5075-stats-academy-toggle.spec.ts",
+    "pr-screens/5075-*"
+   ],
+   "verifyCommands": [
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -NoProfile -Command \"Set-Location frontend; npx playwright test tests/e2e/5075-stats-academy-toggle.spec.ts\"",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5242,
+   "branch": "fix/5242-apifetch-slice-b",
+   "title": "[frontend] Goer PR #5554 faerdig: apiFetch skive B med netvaerksfejl-grene, tests og rigtige tal",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "scopeText": "RETTESPOR paa en AABEN PR. Arbejd paa den eksisterende branch (den er allerede pushet), merge origin/main ind foerst, byg ikke nyt ud over listen. Laes PR-body + hele diffen + issuets seneste kommentarer FOER du retter. Hver rettelse faar en test. Opdater PR-body med et afsnit \"Rettelser 23/9 aften\" (punkt for punkt, klart sprog). Ingen patch note i PR (boelge; samles ved close-out). Spillervendt tekst: EN foerst, DA under, ingen em-dash, jeg/du-tone (docs/TONE_OF_VOICE.md). PR #5554 (apiFetch skive B, draft). Goer den faerdig og marker den klar (gh pr ready) naar alt er groent: (1) RiderStatsPage.jsx handleAuctionBid (ca. 1591), handleSetProxy (ca. 1634) og handleRemoveProxy (ca. 1647) mangler netvaerksfejl-grenen. Tilfoej if (res.networkError) throw res.error ?? new Error(\"Network request failed\"); lige efter kaldet (samme moenster som riderContractActions.js:29), saa spilleren stadig ser \"Couldn't reach the server\" og Sentry faar reason network (#3619). Samme hul i AuctionsPage.jsx handleBid/handleSetProxy/handleRemoveProxy: ret det ogsaa. (2) FinancePage.jsx (laan ca. 437, afdrag ca. 495) og rytter-sidens tilbud/bytte/salgsliste viser \"Fejl: undefined\" eller tom grund ved 401/429: giv en fallback-tekst eller tjek res.limited/res.unauthorized. (3) AdminSystemTab.jsx:48: return res.data ?? { webhooks: [] }. (4) AdminDataTab.jsx saveRaceEdit (ca. 124): brug adminErrorMessage, saa netvaerksfejl ikke viser HTTP 0. (5) Tests af netvaerksfejl-grenen som lovet i #5242 (kommentar 18/9): mindst useAcademy.js, riderContractActions.js, useScouting.js startTargetJob/scoutLegacy (grenen skal ligge FOER sharedRequestCache.invalidate) og bud-grenen paa rytter-siden. (6) Ret tallene i PR-body (diffen tilfoejer 105 apiFetch-kald i 27 filer, baseline 153 til 51).",
+   "ownership": [
+    "frontend/src/pages/RiderStatsPage.jsx",
+    "frontend/src/pages/AuctionsPage.jsx",
+    "frontend/src/pages/FinancePage.jsx",
+    "frontend/src/pages/admin/AdminSystemTab.jsx",
+    "frontend/src/pages/admin/AdminDataTab.jsx",
+    "frontend/src/lib/useScouting.js",
+    "frontend/src/lib/useScouting.test.js",
+    "frontend/src/lib/useAcademy.js",
+    "frontend/src/lib/useAcademy.test.js",
+    "frontend/src/lib/riderContractActions.js",
+    "frontend/src/lib/riderContractActions.test.js",
+    "frontend/src/lib/useAuctionBidding.js",
+    "frontend/src/lib/useAuctionBidding.test.js",
+    "frontend/src/lib/apiFetchNetworkBranch.test.js"
+   ],
+   "verifyCommands": [
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  }
+ ]
+}
