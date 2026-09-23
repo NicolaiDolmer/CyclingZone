@@ -56,7 +56,7 @@ import { dirname, join, resolve } from "node:path";
 import { buildTierMaterializationPlan, TIER_DENSITY } from "../../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
 import { arg as devArg } from "./lib/devCalendarArgs.mjs";
-import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, balanceFinaleQuotas } from "../../lib/raceStageProfileGenerator.js";
 import { scoreCalendarPlan, formatScorecard, alleBrud } from "../../lib/calendarScorecardReport.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -140,20 +140,20 @@ export function loadFixtureCalendar() {
 
   // Samme seed-vej som skrive-stien (#3347/#4104): race_class SKAL med, ellers
   // prissættes monumenterne på terrænbåndet i stedet for klassebåndet.
+  // #5405: finale-typerne fordeles efter kvote over tierens løbssæt — samme skridt som
+  // materializerens coverageProfilesFor, så fixture-gaten måler det skrive-stien skriver.
   const profilesByTier = new Map();
   for (const plan of tierPlans) {
     const pool = (plan.pools ?? [])[0] ?? { raceRows: [] };
-    const byRace = new Map();
-    for (const r of pool.raceRows ?? []) {
-      byRace.set(r.pool_race_id, generateRaceStageProfiles({
-        id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
-        external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
-        terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
-        race_class: r.race_class ?? null,
-        season_id: SEASON_UUID, season_variant: 0,
-      }));
-    }
-    profilesByTier.set(plan.tier, byRace);
+    const rows = pool.raceRows ?? [];
+    const balanced = balanceFinaleQuotas(rows.map((r) => generateRaceStageProfiles({
+      id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
+      external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
+      terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
+      race_class: r.race_class ?? null,
+      season_id: SEASON_UUID, season_variant: 0,
+    })));
+    profilesByTier.set(plan.tier, new Map(rows.map((r, i) => [r.pool_race_id, balanced[i]])));
   }
 
   return {

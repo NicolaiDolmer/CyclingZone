@@ -14,7 +14,7 @@ import { poolHasCalendar } from "./divisionCalendarGenerator.js";
 import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
 import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
-import { generateRaceStageProfiles, toStageProfileRow } from "./raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, balanceFinaleQuotas, toStageProfileRow } from "./raceStageProfileGenerator.js";
 import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
@@ -91,10 +91,13 @@ function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, s
 // materializeTierCalendars({ useUniformTierTilt: true }) er slået til for dette kald —
 // ellers undefined, og generateRaceStageProfiles falder tilbage til sin egen default
 // (bit-identisk med før #4103).
+// #5405: finale-typerne fordeles efter kvote over tierens HELE løbssæt
+// (balanceFinaleQuotas), samme skridt som realisme-gen-trækket tager i drawTierAttempt.
+// Kortet her er derfor også det skrive-stien persisterer — se insert-løkken nedenfor.
 function coverageProfilesFor(raceRows, ctx) {
-  const map = new Map();
-  for (const r of raceRows) map.set(r.pool_race_id, generateRaceStageProfiles(seedRaceFor(r, ctx), { archetypeProfiles: ctx.archetypeProfiles }));
-  return map;
+  const generated = raceRows.map((r) => generateRaceStageProfiles(seedRaceFor(r, ctx), { archetypeProfiles: ctx.archetypeProfiles }));
+  const balanced = balanceFinaleQuotas(generated);
+  return new Map(raceRows.map((r, i) => [r.pool_race_id, balanced[i]]));
 }
 
 // #3295/#3326/#3371: form de allerede-genererede profiler som den {race_type,
@@ -660,6 +663,9 @@ export async function materializeTierCalendars({
     // gate-scorecard og de rækker der faktisk INSERTES alle beskriver det SAMME parcours.
     // attempt 0 (det kanoniske træk) er det normale svar og er bit-identisk med før #3347.
     let seasonVariant = 0;
+    // #5405: tierens profiler (med kvote-fordelte finaler) — SAMME kort bruges af
+    // dæknings-verifikationen, dry-run-scorecardet OG insert'et nedenfor.
+    let tierProfiles = null;
     if (repPool) {
       const seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId }));
       const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces });
@@ -669,6 +675,7 @@ export async function materializeTierCalendars({
       if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
 
       const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier });
+      tierProfiles = profiles;
       const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand });
       const coverageViolations = detectCoverageViolations({
         tier: tierPlan.tier, stats: coverageStats, oneDayShareMin, terrainFamilyMin, mountainFreeMin,
@@ -740,14 +747,21 @@ export async function materializeTierCalendars({
 
       const profileRows = [];
       for (const race of inserted) {
-        // external_id (samme parcours i alle puljer) + terrain_archetype (terrænkarakter)
-        // + season_id (variation pr. sæson) fra konteksten.
-        // season_variant (#3347) er tierens resolverede re-draw — SAMME tal som
-        // dæknings-verifikationen og realisme-scorecardet bruger.
-        const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant };
-        for (const p of generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier })) {
-          profileRows.push(toStageProfileRow(race.id, p));
+        // #5405: profilerne tages fra tierens kort (dæknings-verifikationen ovenfor), ikke
+        // fra et nyt træk pr. løb. Finale-typerne er fordelt efter kvote over hele tierens
+        // løbssæt, og det kan et enkelt løbs træk ikke genskabe. Alle puljer i en tier har
+        // samme løbssæt (#2276, detectPoolSignatureMismatch nægter apply ellers), så kortet
+        // dækker hvert løb i hver pulje.
+        //
+        // Faldbagud (bør ikke ske): et løb uden for kortet genereres som før — external_id
+        // (samme parcours i alle puljer) + terrain_archetype + season_id + season_variant
+        // (#3347, tierens resolverede re-draw) fra konteksten.
+        let profiles = tierProfiles?.get(race.pool_race_id);
+        if (!profiles) {
+          const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant };
+          profiles = generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier });
         }
+        for (const p of profiles) profileRows.push(toStageProfileRow(race.id, p));
       }
       for (let i = 0; i < profileRows.length; i += INSERT_BATCH) {
         const { error } = await supabase.from("race_stage_profiles").insert(profileRows.slice(i, i + INSERT_BATCH));
