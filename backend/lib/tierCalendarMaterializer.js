@@ -35,6 +35,10 @@ import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 // #5272: remaining-horizon-målet for en pulje der aktiveres midt i sæsonen.
 import { resolveActivationRaceDayTarget } from "./calendarActivationRaceDays.js";
 import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
+// #5517: puljernes og løbenes senior-scope. Materializeren bygger SENIORkalenderen;
+// ungdomspuljer og ungdomsløb (league_divisions.squad / races.squad) må hverken få
+// en seniorkalender, tælle i navne-dedup'en eller måles med i løbsdags-aksen.
+import { withSeniorSquadScope } from "./squads.js";
 
 export { TIER_CLASS_WHITELIST };
 
@@ -560,7 +564,7 @@ export async function materializeTierCalendars({
 } = {}) {
   const editionYear = editionYearFrom(seasonStartDate);
 
-  const { data: divisions, error: dErr } = await supabase.from("league_divisions").select("id, tier, pool_index, label");
+  const { data: divisions, error: dErr } = await withSeniorSquadScope((senior) => senior(supabase.from("league_divisions").select("id, tier, pool_index, label")));
   if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
   // #2962: helt ufiltreret teams-select (369 rækker 25/7, samme #2951-klasse) —
   // pagineret via fetchAllRows; .order("id") som stabilt tiebreak.
@@ -617,7 +621,9 @@ export async function materializeTierCalendars({
   // immunt over for at nogen aendrer selectet senere.
   const raceClassByPoolRace = new Map((catalog || []).map((c) => [c.id, c.race_class ?? null]));
 
-  const { data: existing, error: exErr } = await supabase.from("races").select("league_division_id, pool_race_id, name").eq("season_id", seasonId);
+  // #5517: kun SENIORløbene — idempotens-nøglen og cross-tier-dedup'en gælder
+  // seniorkalenderen (spec §4.2: navne-dedup pr. trup, ikke på tværs af trupper).
+  const { data: existing, error: exErr } = await withSeniorSquadScope((senior) => senior(supabase.from("races").select("league_division_id, pool_race_id, name")).eq("season_id", seasonId));
   if (exErr) throw new Error(`races (existing): ${exErr.message}`);
   const existingKey = new Set((existing || []).map((r) => `${r.league_division_id}:${r.pool_race_id}`));
 
@@ -887,13 +893,15 @@ export async function reconcilePoolCalendarOnActivation({
   // sæson — stage-læsningen er altså allerede OVER loftet i dag. En afkortet side ville
   // give en for tidlig sæson-slut OG (efter #5272) en for kort løbsdags-akse, begge
   // tavst. Fanget af CodeRabbit 17/9.
+  // #5517: kun SENIORløbene. Ungdomsaksen (140 løbsdage, de fleste tomme) må hverken
+  // trække sæson-slut eller løbsdags-målet for en seniorpulje der vågner midt i sæsonen.
   let seasonRaces;
   try {
-    seasonRaces = await fetchAllRows(() => (
-      supabase.from("races").select("id, league_division_id")
+    seasonRaces = await withSeniorSquadScope((senior) => fetchAllRows(() => (
+      senior(supabase.from("races").select("id, league_division_id"))
         .eq("season_id", season.id)
         .order("id", { ascending: true })
-    ));
+    )));
   } catch (allErr) {
     throw new Error(`races (season horizon): ${allErr.message}`, { cause: allErr });
   }
