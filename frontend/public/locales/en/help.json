@@ -704,7 +704,7 @@
           "Injuries are NOT reset. They carry over unchanged.",
           "Peak plans are unaffected by the changeover.",
           "Wages and rider values update on the Sunday of changeover.",
-          "The new season's first race day is a Tuesday. The Monday before it has no races."
+          "The new season's first race day is the day after the changeover. Its first stage starts at least 24 hours after the old season's last stage, so you have time to pick your race squads."
         ]
       }
     },
