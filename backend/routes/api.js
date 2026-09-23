@@ -1267,9 +1267,10 @@ router.get("/youth-squads", requireAuth, async (req, res) => {
   try {
     const isBetaTester = await isViewerBetaTester(req);
     if (!(await isYouthSquadPagesEnabled(supabase, { isBetaTester }))) {
-      return res.status(409).json({ error: "youth_squad_pages_disabled", errorCode: "youth_squad_pages_disabled" });
+      return res.status(409).json({ error: "youth_squad_pages_disabled" });
     }
     const [{ data: riders, error: ridersErr }, seasonNumber] = await Promise.all([
+      // pagination-safe: ét holds ryttere (senior-trup + akademi), langt under 1000
       supabase
         .from("riders")
         .select(YOUTH_SQUAD_ROSTER_COLUMNS.join(", "))

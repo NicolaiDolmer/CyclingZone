@@ -60,6 +60,7 @@ export function useYouthSquad(squad: YouthSquad) {
       const ids = riderIdsForSquad(squadsRes.data, squad);
       let rows: YouthSquadRider[] = [];
       if (ids.length > 0) {
+        // pagination-safe: kun id'erne fra én ungdomstrup, langt under 1000
         const { data, error } = await supabase
           .from("riders")
           .select(RIDER_SELECT)
