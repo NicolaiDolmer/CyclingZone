@@ -29,25 +29,28 @@ type RowMetrics = {
   rowHeight: number;
   linkWidth: number;
   linkClipped: boolean;
-  longestWord: number;
+  brokenWords: string[];
 };
 
 async function measureRows(page: Page): Promise<RowMetrics[]> {
   return page.evaluate(() => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
     const out: RowMetrics[] = [];
     for (const tr of Array.from(document.querySelectorAll("table tbody tr"))) {
       const link = tr.querySelector<HTMLAnchorElement>('a[href^="/teams/"]');
       if (!link) continue;
-      const style = getComputedStyle(link);
-      // Bredeste ORD i navnet, maalt med linkets egen font. Er det bredere end
-      // linket, er et ord braekket midt over (break-words' sidste udvej).
-      let longestWord = 0;
-      if (ctx) {
-        ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-        for (const word of (link.textContent ?? "").split(/\s+/)) {
-          longestWord = Math.max(longestWord, ctx.measureText(word).width);
+      // Ord der er braekket midt over: et ord hvis tegn fordeler sig paa mere
+      // end een linje (Range.getClientRects giver een boks pr. linje). Det er
+      // browserens egen ombrydning, ikke et estimat af tekstbredden.
+      const brokenWords: string[] = [];
+      const text = link.firstChild;
+      if (text && text.nodeType === Node.TEXT_NODE) {
+        const value = text.textContent ?? "";
+        for (const match of value.matchAll(/\S+/g)) {
+          const range = document.createRange();
+          range.setStart(text, match.index ?? 0);
+          range.setEnd(text, (match.index ?? 0) + match[0].length);
+          const lines = new Set(Array.from(range.getClientRects()).map((r) => Math.round(r.top)));
+          if (lines.size > 1) brokenWords.push(match[0]);
         }
       }
       out.push({
@@ -56,7 +59,7 @@ async function measureRows(page: Page): Promise<RowMetrics[]> {
         rowHeight: tr.getBoundingClientRect().height,
         linkWidth: link.getBoundingClientRect().width,
         linkClipped: link.scrollWidth > link.clientWidth + 1,
-        longestWord,
+        brokenWords,
       });
     }
     return out;
@@ -79,8 +82,8 @@ for (const vp of VIEWPORTS) {
       // Navnet har reel bredde og er ikke klippet — heller ikke hos hold uden maerke.
       expect(row.linkWidth, `${row.name}: bredde`).toBeGreaterThan(60);
       expect(row.linkClipped, `${row.name}: klippet`).toBe(false);
-      // Intet ord braekket midt over (+1 px for afrunding).
-      expect(row.longestWord, `${row.name}: bredeste ord vs. linkets bredde`).toBeLessThanOrEqual(row.linkWidth + 1);
+      // Intet ord braekket midt over.
+      expect(row.brokenWords, `${row.name}: ord braekket midt over`).toEqual([]);
     }
     for (const row of founders) {
       // Maerket giver hoejst en ekstra linje, aldrig en raekke der fylder skaermen.
