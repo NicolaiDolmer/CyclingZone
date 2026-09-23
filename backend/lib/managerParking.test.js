@@ -1,18 +1,35 @@
-// [epic #4592 del 2] Tests for managerParking.js — selectTeamsToPark (ren
-// udvælgelse) + parkTeam/parkDormantTeams (write-skridt mod en fake
-// Supabase-klient, samme fixture-mønster som dormantTeamsReport.js'
-// enriched-mapping).
+// [epic #4592 del 2] Tests for managerParking.js — de rene udvælgelser
+// (selectTeamsToPark/selectTeamsToUnpark/selectActiveSubscriptionTeamIds) og
+// write-skridtene (parkTeam/unparkTeam/resetSeasonSignups/runParkingSweep) mod
+// en lille in-memory Supabase-fake.
 
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { selectTeamsToPark, parkTeam, parkDormantTeams } from "./managerParking.js";
+import {
+  isSubscriptionProtectingTeam,
+  loadParkingInputs,
+  parkDormantTeams,
+  parkTeam,
+  resetSeasonSignups,
+  runParkingSweep,
+  selectActiveSubscriptionTeamIds,
+  selectTeamsToPark,
+  selectTeamsToUnpark,
+  unparkSignedUpTeams,
+  unparkTeam,
+} from "./managerParking.js";
+import { PRO_GRACE_AFTER_PERIOD_END_MS } from "./entitlement.js";
 
 const DAY_MS = 86_400_000;
 const NOW = new Date("2026-09-28T09:00:00Z"); // S4 cutover-dato
 
 function daysAgo(days) {
   return new Date(NOW.getTime() - days * DAY_MS).toISOString();
+}
+
+function daysAhead(days) {
+  return new Date(NOW.getTime() + days * DAY_MS).toISOString();
 }
 
 function team(overrides = {}) {
@@ -35,6 +52,107 @@ function team(overrides = {}) {
 function user(id, lastSeenDaysAgo) {
   return { id, last_seen: lastSeenDaysAgo == null ? null : daysAgo(lastSeenDaysAgo) };
 }
+
+function subscription(teamId, overrides = {}) {
+  return {
+    id: `sub-${teamId}`,
+    team_id: teamId,
+    status: "active",
+    current_period_end: daysAhead(20),
+    last_event_at: daysAgo(10),
+    ...overrides,
+  };
+}
+
+// -- In-memory Supabase-fake --------------------------------------------------
+//
+// Understøtter præcis de kæder managerParking bruger: select/eq/in/is/not/
+// order/range (læsning via fetchAllRows) og update/eq/is/not/select (skrivning).
+
+function makeFakeDb({ teams = [], users = [], subscriptions = [] } = {}) {
+  const tables = {
+    teams: teams.map((t) => ({ ...t })),
+    users: users.map((u) => ({ ...u })),
+    subscriptions: subscriptions.map((s) => ({ ...s })),
+  };
+  const writes = [];
+
+  function from(table) {
+    if (!tables[table]) throw new Error(`Unexpected table: ${table}`);
+    const filters = [];
+    let updatePayload = null;
+
+    const matching = () => tables[table].filter((row) => filters.every((f) => f(row)));
+    const run = () => {
+      if (updatePayload) {
+        const hit = matching();
+        for (const row of hit) Object.assign(row, updatePayload);
+        writes.push({ table, payload: updatePayload, ids: hit.map((r) => r.id) });
+        return { data: hit.map((r) => ({ id: r.id })), error: null };
+      }
+      return { data: matching().map((r) => ({ ...r })), error: null };
+    };
+
+    const chain = {
+      select() { return chain; },
+      update(payload) { updatePayload = payload; return chain; },
+      eq(col, val) { filters.push((row) => row[col] === val); return chain; },
+      in(col, vals) { filters.push((row) => vals.includes(row[col])); return chain; },
+      is(col, val) { filters.push((row) => (row[col] ?? null) === val); return chain; },
+      not(col, op, val) {
+        if (op === "is") filters.push((row) => (row[col] ?? null) !== val);
+        else if (op === "in") {
+          const ids = String(val).replace(/^\(|\)$/g, "").split(",").filter(Boolean);
+          filters.push((row) => !ids.includes(String(row[col])));
+        } else throw new Error(`fake: not(${op}) ikke understøttet`);
+        return chain;
+      },
+      order() { return chain; },
+      range(fromIdx, toIdx) {
+        const result = run();
+        return Promise.resolve({ ...result, data: result.data.slice(fromIdx, toIdx + 1) });
+      },
+      then(resolve, reject) { return Promise.resolve(run()).then(resolve, reject); },
+    };
+    return chain;
+  }
+
+  return { from, tables, writes, row: (id) => tables.teams.find((t) => t.id === id) };
+}
+
+// -- isSubscriptionProtectingTeam / selectActiveSubscriptionTeamIds -----------
+
+test("isSubscriptionProtectingTeam: status 'active' beskytter altid", () => {
+  assert.equal(isSubscriptionProtectingTeam(subscription("t1"), NOW), true);
+  // også med en forældet periodeslut-cache: status 'active' er nok
+  assert.equal(isSubscriptionProtectingTeam(subscription("t1", { current_period_end: daysAgo(40) }), NOW), true);
+});
+
+test("isSubscriptionProtectingTeam: opsagt men betalt til periodens slut beskytter", () => {
+  assert.equal(isSubscriptionProtectingTeam(subscription("t1", { status: "cancelled", current_period_end: daysAhead(5) }), NOW), true);
+  assert.equal(isSubscriptionProtectingTeam(subscription("t1", { status: "cancelled", current_period_end: daysAgo(1) }), NOW), false);
+});
+
+test("isSubscriptionProtectingTeam: rykker-status følger entitlement-respitten", () => {
+  const withinGrace = new Date(NOW.getTime() - PRO_GRACE_AFTER_PERIOD_END_MS / 2).toISOString();
+  const pastGrace = new Date(NOW.getTime() - PRO_GRACE_AFTER_PERIOD_END_MS * 2).toISOString();
+  assert.equal(isSubscriptionProtectingTeam(subscription("t1", { status: "past_due", current_period_end: withinGrace }), NOW), true);
+  assert.equal(isSubscriptionProtectingTeam(subscription("t1", { status: "past_due", current_period_end: pastGrace }), NOW), false);
+});
+
+test("isSubscriptionProtectingTeam: afsluttet abonnement eller manglende team_id beskytter ikke", () => {
+  assert.equal(isSubscriptionProtectingTeam(subscription("t1", { status: "inactive" }), NOW), false);
+  assert.equal(isSubscriptionProtectingTeam({ status: "active" }, NOW), false);
+  assert.equal(isSubscriptionProtectingTeam(null, NOW), false);
+});
+
+test("selectActiveSubscriptionTeamIds: samler kun de beskyttende hold", () => {
+  const ids = selectActiveSubscriptionTeamIds([
+    subscription("paying"),
+    subscription("ended", { status: "inactive" }),
+  ], NOW);
+  assert.deepEqual([...ids], ["paying"]);
+});
 
 // -- selectTeamsToPark ------------------------------------------------------
 
@@ -89,6 +207,16 @@ test("selectTeamsToPark: hold der har tilmeldt sig via knappen parkeres ALDRIG, 
   assert.deepEqual(picked, []);
 });
 
+test("selectTeamsToPark: hold med beskyttende abonnement parkeres ALDRIG, uanset inaktivitet", () => {
+  const teams = [team({ id: "paying", user_id: "u1" }), team({ id: "free", user_id: "u2" })];
+  const users = [user("u1", 90), user("u2", 90)];
+  const picked = selectTeamsToPark({ teams, users, now: NOW, activeSubscriptionTeamIds: new Set(["paying"]) });
+  assert.deepEqual(picked.map((t) => t.id), ["free"]);
+  // array-form virker også
+  const pickedFromArray = selectTeamsToPark({ teams, users, now: NOW, activeSubscriptionTeamIds: ["paying"] });
+  assert.deepEqual(pickedFromArray.map((t) => t.id), ["free"]);
+});
+
 test("selectTeamsToPark: allerede parkeret hold vælges ikke igen (idempotent sweep)", () => {
   const teams = [team({ id: "t1", user_id: "u1", parked_at: daysAgo(3) })];
   const users = [user("u1", 90)];
@@ -128,61 +256,37 @@ test("selectTeamsToPark: respekterer custom days-tærskel", () => {
   assert.deepEqual(picked.map((t) => t.id), ["t1"]);
 });
 
-// -- parkTeam / parkDormantTeams (fake Supabase) -----------------------------
+// -- selectTeamsToUnpark ------------------------------------------------------
 
-function makeFakeSupabase(initialTeams) {
-  const rows = new Map(initialTeams.map((t) => [t.id, { ...t }]));
-  const calls = [];
-  return {
-    calls,
-    rows,
-    from(table) {
-      assert.equal(table, "teams");
-      let updatePayload = null;
-      let eqId = null;
-      let requireParkedNull = false;
-      const chain = {
-        update(payload) {
-          updatePayload = payload;
-          return chain;
-        },
-        eq(col, val) {
-          if (col === "id") eqId = val;
-          return chain;
-        },
-        is(col, val) {
-          if (col === "parked_at" && val === null) requireParkedNull = true;
-          return chain;
-        },
-        select() {
-          const row = rows.get(eqId);
-          calls.push({ eqId, updatePayload, requireParkedNull });
-          if (!row) return { data: [], error: null };
-          if (requireParkedNull && row.parked_at != null) return { data: [], error: null };
-          Object.assign(row, updatePayload);
-          return { data: [{ id: eqId }], error: null };
-        },
-      };
-      return chain;
-    },
-  };
-}
+test("selectTeamsToUnpark: kun parkerede hold med en tilmelding", () => {
+  const teams = [
+    team({ id: "parked-signed", parked_at: daysAgo(90), next_season_signup_at: daysAgo(2) }),
+    team({ id: "parked-silent", parked_at: daysAgo(90) }),
+    team({ id: "active-signed", next_season_signup_at: daysAgo(2) }),
+    team({ id: "ai-parked-signed", is_ai: true, parked_at: daysAgo(90), next_season_signup_at: daysAgo(2) }),
+  ];
+  assert.deepEqual(selectTeamsToUnpark({ teams }).map((t) => t.id), ["parked-signed"]);
+  assert.deepEqual(selectTeamsToUnpark({ teams: null }), []);
+});
+
+// -- parkTeam / parkDormantTeams ----------------------------------------------
 
 test("parkTeam: markerer parked_at + rydder league_division_id, rører intet andet", async () => {
-  const supabase = makeFakeSupabase([team({ id: "t1", league_division_id: "pool-a" })]);
-  const ok = await parkTeam({ supabase, teamId: "t1", now: NOW });
+  const db = makeFakeDb({ teams: [team({ id: "t1", league_division_id: "pool-a" })] });
+  const ok = await parkTeam({ supabase: db, teamId: "t1", now: NOW });
   assert.equal(ok, true);
-  const row = supabase.rows.get("t1");
+  const row = db.row("t1");
   assert.equal(row.parked_at, NOW.toISOString());
   assert.equal(row.league_division_id, null);
   assert.equal(row.name, "Test CC"); // urørt
+  assert.equal(row.division, 3); // urørt
 });
 
 test("parkTeam: idempotent — et allerede parkeret hold rammes ikke igen", async () => {
-  const supabase = makeFakeSupabase([team({ id: "t1", parked_at: daysAgo(3) })]);
-  const ok = await parkTeam({ supabase, teamId: "t1", now: NOW });
+  const db = makeFakeDb({ teams: [team({ id: "t1", parked_at: daysAgo(3) })] });
+  const ok = await parkTeam({ supabase: db, teamId: "t1", now: NOW });
   assert.equal(ok, false);
-  assert.equal(supabase.rows.get("t1").parked_at, daysAgo(3)); // uændret
+  assert.equal(db.row("t1").parked_at, daysAgo(3)); // uændret
 });
 
 test("parkDormantTeams: vælger og parkerer i ét kald, tæller korrekt", async () => {
@@ -191,22 +295,202 @@ test("parkDormantTeams: vælger og parkerer i ét kald, tæller korrekt", async 
     team({ id: "active", user_id: "u2" }),
   ];
   const users = [user("u1", 45), user("u2", 2)];
-  const supabase = makeFakeSupabase(teams);
-  const result = await parkDormantTeams({ supabase, teams, users, now: NOW });
+  const db = makeFakeDb({ teams });
+  const result = await parkDormantTeams({ supabase: db, teams, users, subscriptions: [], now: NOW });
   assert.equal(result.candidates, 1);
   assert.equal(result.parked, 1);
   assert.equal(result.skipped, 0);
   assert.deepEqual(result.parkedTeamIds, ["dormant"]);
-  assert.equal(supabase.rows.get("dormant").parked_at, NOW.toISOString());
-  assert.equal(supabase.rows.get("active").parked_at, null);
+  assert.deepEqual(result.subscriptionProtectedTeamIds, []);
+  assert.equal(db.row("dormant").parked_at, NOW.toISOString());
+  assert.equal(db.row("active").parked_at, null);
 });
 
 test("parkDormantTeams: ingen kandidater → ingen writes", async () => {
   const teams = [team({ id: "active", user_id: "u1" })];
   const users = [user("u1", 1)];
-  const supabase = makeFakeSupabase(teams);
-  const result = await parkDormantTeams({ supabase, teams, users, now: NOW });
+  const db = makeFakeDb({ teams });
+  const result = await parkDormantTeams({ supabase: db, teams, users, subscriptions: [], now: NOW });
   assert.equal(result.candidates, 0);
   assert.equal(result.parked, 0);
-  assert.equal(supabase.calls.length, 0);
+  assert.equal(db.writes.length, 0);
+});
+
+test("parkDormantTeams: henter selv abonnementer og springer et betalende hold over", async () => {
+  const db = makeFakeDb({
+    teams: [
+      team({ id: "paying", user_id: "u1" }),
+      team({ id: "free", user_id: "u2" }),
+      team({ id: "ai", is_ai: true, user_id: null }),
+    ],
+    users: [user("u1", 60), user("u2", 60)],
+    subscriptions: [subscription("paying")],
+  });
+
+  const result = await parkDormantTeams({ supabase: db, now: NOW });
+
+  assert.deepEqual(result.parkedTeamIds, ["free"]);
+  assert.deepEqual(result.subscriptionProtectedTeamIds, ["paying"]);
+  assert.equal(db.row("paying").parked_at, null, "et betalende hold må aldrig parkeres");
+  assert.equal(db.row("ai").parked_at, null);
+});
+
+test("loadParkingInputs: henter kun menneskehold, deres brugere og alle abonnementer", async () => {
+  const db = makeFakeDb({
+    teams: [team({ id: "h1", user_id: "u1" }), team({ id: "ai", is_ai: true, user_id: null }), team({ id: "bank", is_bank: true, user_id: "u9" })],
+    users: [user("u1", 3), user("u9", 3), user("u-other", 3)],
+    subscriptions: [subscription("h1")],
+  });
+  const inputs = await loadParkingInputs({ supabase: db });
+  assert.deepEqual(inputs.teams.map((t) => t.id), ["h1"]);
+  assert.deepEqual(inputs.users.map((u) => u.id), ["u1"]);
+  assert.deepEqual(inputs.subscriptions.map((s) => s.team_id), ["h1"]);
+});
+
+// -- unparkTeam / unparkSignedUpTeams ----------------------------------------
+
+test("unparkTeam: genindplacerer via placeringsreglen og reconciler AI i puljen", async () => {
+  const db = makeFakeDb({ teams: [team({ id: "t1", parked_at: daysAgo(90), league_division_id: null, division: 2 })] });
+  const reconciled = [];
+  const result = await unparkTeam({
+    supabase: db,
+    teamId: "t1",
+    pickDivision: async (client) => { assert.equal(client, db); return { division: 3, leagueDivisionId: "pool-d3a" }; },
+    reconcileAiTeams: async ({ supabase, poolId }) => { assert.equal(supabase, db); reconciled.push(poolId); },
+  });
+  assert.deepEqual(result, { unparked: true, division: 3, leagueDivisionId: "pool-d3a" });
+  const row = db.row("t1");
+  assert.equal(row.parked_at, null);
+  assert.equal(row.division, 3);
+  assert.equal(row.league_division_id, "pool-d3a");
+  assert.deepEqual(reconciled, ["pool-d3a"]);
+});
+
+test("unparkTeam: idempotent — et hold der ikke er parkeret, flyttes ikke og reconciler intet", async () => {
+  const db = makeFakeDb({ teams: [team({ id: "t1", parked_at: null, league_division_id: "pool-x", division: 2 })] });
+  let reconciled = false;
+  const result = await unparkTeam({
+    supabase: db,
+    teamId: "t1",
+    pickDivision: async () => ({ division: 3, leagueDivisionId: "pool-d3a" }),
+    reconcileAiTeams: async () => { reconciled = true; },
+  });
+  assert.equal(result.unparked, false);
+  assert.equal(db.row("t1").league_division_id, "pool-x");
+  assert.equal(db.row("t1").division, 2);
+  assert.equal(reconciled, false);
+});
+
+test("unparkTeam: en fejlende AI-reconcile vælter ikke genindplaceringen", async () => {
+  const db = makeFakeDb({ teams: [team({ id: "t1", parked_at: daysAgo(90), league_division_id: null })] });
+  const result = await unparkTeam({
+    supabase: db,
+    teamId: "t1",
+    pickDivision: async () => ({ division: 4, leagueDivisionId: "pool-d4a" }),
+    reconcileAiTeams: async () => { throw new Error("reconcile boom"); },
+  });
+  assert.equal(result.unparked, true);
+  assert.equal(db.row("t1").league_division_id, "pool-d4a");
+});
+
+test("unparkSignedUpTeams: placerer ét hold ad gangen og samler fejl pr. hold", async () => {
+  const teams = [
+    team({ id: "a", parked_at: daysAgo(90), next_season_signup_at: daysAgo(2), league_division_id: null }),
+    team({ id: "b", parked_at: daysAgo(90), next_season_signup_at: daysAgo(1), league_division_id: null }),
+    team({ id: "c", parked_at: daysAgo(90), league_division_id: null }),
+  ];
+  const db = makeFakeDb({ teams });
+  const picks = [];
+  const result = await unparkSignedUpTeams({
+    supabase: db,
+    teams,
+    pickDivision: async () => {
+      picks.push(picks.length);
+      if (picks.length === 2) throw new Error("placering fejlede");
+      return { division: 3, leagueDivisionId: "pool-d3a" };
+    },
+    reconcileAiTeams: async () => {},
+  });
+  assert.equal(result.candidates, 2);
+  assert.equal(result.unparked, 1);
+  assert.deepEqual(result.failedTeamIds, ["b"]);
+  assert.deepEqual(result.placements, [{ teamId: "a", division: 3, leagueDivisionId: "pool-d3a" }]);
+  assert.equal(db.row("c").parked_at, daysAgo(90), "et parkeret hold uden tilmelding bliver parkeret");
+});
+
+// -- resetSeasonSignups -------------------------------------------------------
+
+test("resetSeasonSignups: nulstiller alle tilmeldinger undtagen de fritagne", async () => {
+  const db = makeFakeDb({
+    teams: [
+      team({ id: "a", next_season_signup_at: daysAgo(2) }),
+      team({ id: "b", next_season_signup_at: daysAgo(1) }),
+      team({ id: "c", next_season_signup_at: null }),
+    ],
+  });
+  const count = await resetSeasonSignups({ supabase: db, keepTeamIds: ["b"] });
+  assert.equal(count, 1);
+  assert.equal(db.row("a").next_season_signup_at, null);
+  assert.equal(db.row("b").next_season_signup_at, daysAgo(1), "fejlet genindplacering beholder tilmeldingen");
+  assert.equal(db.row("c").next_season_signup_at, null);
+});
+
+// -- runParkingSweep ------------------------------------------------------------
+
+test("runParkingSweep: parkerer, genindplacerer og nulstiller tilmeldinger i ét kald", async () => {
+  const db = makeFakeDb({
+    teams: [
+      team({ id: "dormant", user_id: "u1" }),
+      team({ id: "paying", user_id: "u2" }),
+      team({ id: "active-signed", user_id: "u3", next_season_signup_at: daysAgo(3) }),
+      team({ id: "dormant-signed", user_id: "u4", next_season_signup_at: daysAgo(3) }),
+      team({ id: "parked-back", user_id: "u5", parked_at: daysAgo(90), league_division_id: null, next_season_signup_at: daysAgo(1) }),
+      team({ id: "parked-silent", user_id: "u6", parked_at: daysAgo(90), league_division_id: null }),
+    ],
+    users: [user("u1", 60), user("u2", 60), user("u3", 1), user("u4", 60), user("u5", 1), user("u6", 120)],
+    subscriptions: [subscription("paying")],
+  });
+
+  const sweep = await runParkingSweep({
+    supabase: db,
+    now: NOW,
+    pickDivision: async () => ({ division: 3, leagueDivisionId: "pool-d3b" }),
+    reconcileAiTeams: async () => {},
+  });
+
+  assert.deepEqual(sweep.park.parkedTeamIds, ["dormant"]);
+  assert.deepEqual(sweep.park.subscriptionProtectedTeamIds, ["paying"]);
+  assert.deepEqual(sweep.unpark.placements, [{ teamId: "parked-back", division: 3, leagueDivisionId: "pool-d3b" }]);
+  assert.equal(sweep.signupsReset, 3);
+  assert.equal(sweep.signupsResetError, null);
+
+  assert.equal(db.row("dormant-signed").parked_at, null, "en tilmeldt manager parkeres aldrig");
+  assert.equal(db.row("parked-back").parked_at, null);
+  assert.equal(db.row("parked-back").league_division_id, "pool-d3b");
+  assert.equal(db.row("parked-silent").parked_at, daysAgo(90));
+  for (const id of ["active-signed", "dormant-signed", "parked-back"]) {
+    assert.equal(db.row(id).next_season_signup_at, null, `${id}: tilmeldingen er brugt og nulstilles`);
+  }
+});
+
+test("runParkingSweep: en fejlende nulstilling vælter ikke sweepen, men rapporteres", async () => {
+  const db = makeFakeDb({ teams: [team({ id: "dormant", user_id: "u1" })], users: [user("u1", 60)] });
+  const originalFrom = db.from;
+  db.from = (table) => {
+    const chain = originalFrom(table);
+    const originalUpdate = chain.update;
+    chain.update = (payload) => {
+      if (payload && "next_season_signup_at" in payload) {
+        return { not() { return this; }, select: async () => ({ data: null, error: { message: "reset boom" } }) };
+      }
+      return originalUpdate(payload);
+    };
+    return chain;
+  };
+
+  const sweep = await runParkingSweep({ supabase: db, now: NOW, pickDivision: async () => ({ division: 3, leagueDivisionId: null }) });
+
+  assert.deepEqual(sweep.park.parkedTeamIds, ["dormant"]);
+  assert.equal(sweep.signupsReset, null);
+  assert.match(sweep.signupsResetError, /reset boom/);
 });
