@@ -1,0 +1,272 @@
+// backend/lib/calendarPlanningWindow.js
+// #5592 (ejer 23/9 kl. 22): mindst 24 timer til trupudtagelse.
+//
+// Ejeren ordret: "Sørge for at løbene om søndagen slutter tidligere og at løbene om
+// mandagen starter senere end normalt, så der kommer til at være en noget længere periode
+// end normalt, til at udtage trupper" + "gør det med flere timer, sådan det er mindst 24
+// timer til at planlægge. Skal også tage højde for sæsonskiftet, der skal være nok tid til
+// planlægning for managers fremadrettet."
+//
+// TO REGLER, begge i dansk tid (Europe/Copenhagen) og målt i VIRKELIGE timer:
+//
+//   1. UGEDAGS-REGLEN. I hver division ligger mandagens første etape mindst 24 timer efter
+//      søndagens sidste. Søndagens slots presses sammen fra dagens normale første slot til
+//      WEEKEND_HANDOVER_SLOT, og mandagens fra WEEKEND_HANDOVER_SLOT til dagens normale
+//      sidste slot. Samme klokkeslæt to dage i træk er præcis 24 timer - også søndag 25/10,
+//      fordi skiftet til vintertid sker kl. 03 søndag nat, før søndagens første etape.
+//      Dagens yderpunkter flytter sig ikke: søndag starter som normalt, mandag slutter som
+//      normalt, så ingen etape rykker ud over kl. 19 (træningen kører fra kl. 20,
+//      trainingDayCloseTrigger.js).
+//
+//   2. SÆSONSKIFTE-REGLEN. En ny sæsons første etape ligger mindst 24 timer efter
+//      sæsonskiftet (app_config.season_transition_planned_at, ellers aftenen før første
+//      løbsdag kl. 18, jf. seasonTransitionBoundary.js) - og, når kalderen kender den,
+//      mindst 24 timer efter divisionens sidste etape i den forrige sæson. Den sidste del er
+//      ugedags-reglen hen over sæsongrænsen: søndagen før en sæsonstart hører til den
+//      forrige sæson og står allerede i databasen.
+//
+// ÉN KILDE. TIER_STAGE_SLOTS (en almindelig dag) bor her og re-eksporteres af
+// tierCalendarMaterializer.js. Søndag, mandag og sæsonens første dag UDLEDES af den med
+// slotsFor(); der findes ingen søndags- eller mandags-tabel ved siden af. Ændres en
+// division's normale slots, følger søndag og mandag med af sig selv.
+//
+// Antal slots ændres aldrig: en dag har stadig præcis density slots (CALENDAR_RULES §1),
+// og bane k kører stadig i slot k, så etaperækkefølgen inden for en dag er uændret.
+//
+// Alt her er RENT (ingen DB, intet ur) og testet i calendarPlanningWindow.test.js.
+
+import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js";
+import { computeSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
+
+// Etape-tids-slots pr. division på en ALMINDELIG dag (tirsdag-lørdag): bane k → slots[k]
+// (ejer-låst: div 3 = 12/15/18). Antal slots = density, så en dag aldrig har flere etaper
+// end slots.
+// #4270 (ejer-beslutning 3/9): D4 2 -> 3 slots, samme klokkeslaet som D3 (12/15/18).
+// Antal slots skal FOELGE TIER_DENSITY - en dag maa aldrig have flere etaper end slots.
+// #5592: flyttet hertil fra tierCalendarMaterializer.js (re-eksporteret der), saa
+// slotsFor() kan udlede soendag/mandag uden en cirkulaer import.
+export const TIER_STAGE_SLOTS = Object.freeze({
+  1: Object.freeze(["11:00", "13:00", "15:00", "17:00", "19:00"]),
+  2: Object.freeze(["12:00", "14:00", "16:00", "18:00"]),
+  3: Object.freeze(["12:00", "15:00", "18:00"]),
+  4: Object.freeze(["12:00", "15:00", "18:00"]),
+});
+
+/** Mindste pause fra søndagens sidste til mandagens første etape, og fra sæsonskiftet. */
+export const PLANNING_WINDOW_HOURS = 24;
+
+/**
+ * Søndagens sidste og mandagens første etape, alle divisioner. 15:00 er midten af både
+ * D1's (11-19) og D2-D4's (12-18) normale dag, så søndag og mandag presses lige meget.
+ */
+export const WEEKEND_HANDOVER_SLOT = "15:00";
+
+/**
+ * Mindste afstand mellem to slots når en dag presses sammen (søndag, mandag, sæsonstart).
+ * Kun et gulv: normalt giver den jævne fordeling større afstand (D1 søndag = 1 time).
+ */
+export const COMPRESSED_SLOT_MIN_GAP_MINUTES = 30;
+
+/**
+ * Loft for enhver etape. Træningssweepen venter på dagens sidste etape og har
+ * MAX_WAIT_HOUR 23 (trainingDayCloseTrigger.js), og dry-runnets dato-gruppering læser
+ * UTC-datoen. En sæsonstart der ikke kan nå sine etaper inden loftet er en fejl, ikke et
+ * klokkeslæt der skal skubbes over midnat.
+ */
+export const LATEST_STAGE_SLOT = "22:00";
+
+const SLOT_ROUNDING_MINUTES = 5;
+const HOUR_MS = 3_600_000;
+
+function toMinutes(hhmm) {
+  const [h, m] = String(hhmm).split(":").map(Number);
+  return h * 60 + m;
+}
+
+function toHHMM(minutes) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+/** n slots jævnt fordelt fra lo til hi (minutter), afrundet til 5 minutter. n = 1 → [lo]. */
+function spread(lo, hi, n) {
+  if (n <= 1) return [toHHMM(lo)];
+  const step = (hi - lo) / (n - 1);
+  return Array.from({ length: n }, (_, i) => {
+    const raw = i === n - 1 ? hi : lo + i * step;
+    return toHHMM(Math.round(raw / SLOT_ROUNDING_MINUTES) * SLOT_ROUNDING_MINUTES);
+  });
+}
+
+/** Søndag: fra dagens normale første slot til WEEKEND_HANDOVER_SLOT. */
+export function sundaySlots(base, { handover = WEEKEND_HANDOVER_SLOT, minGap = COMPRESSED_SLOT_MIN_GAP_MINUTES } = {}) {
+  const n = base.length;
+  if (!n) return [];
+  const h = toMinutes(handover);
+  if (toMinutes(base[n - 1]) <= h) return [...base];
+  const lo = Math.min(toMinutes(base[0]), h - (n - 1) * minGap);
+  return spread(lo, h, n);
+}
+
+/** Mandag: fra WEEKEND_HANDOVER_SLOT til dagens normale sidste slot. */
+export function mondaySlots(base, { handover = WEEKEND_HANDOVER_SLOT, minGap = COMPRESSED_SLOT_MIN_GAP_MINUTES } = {}) {
+  const n = base.length;
+  if (!n) return [];
+  const h = toMinutes(handover);
+  if (toMinutes(base[0]) >= h) return [...base];
+  const hi = Math.max(toMinutes(base[n - 1]), h + (n - 1) * minGap);
+  return spread(h, hi, n);
+}
+
+/** Dansk vægur for et øjeblik: { date: "YYYY-MM-DD", minutes } (sekunder rundes OP). */
+const CLOCK_FMT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Copenhagen", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+});
+export function copenhagenClock(instant) {
+  const d = instant instanceof Date ? instant : new Date(instant);
+  const parts = Object.fromEntries(CLOCK_FMT.formatToParts(d).map((p) => [p.type, p.value]));
+  const minutes = (Number(parts.hour) % 24) * 60 + Number(parts.minute) + (Number(parts.second) > 0 ? 1 : 0);
+  return { date: copenhagenDateString(d), minutes };
+}
+
+/**
+ * Sæsonskifte-reglen på én dag: ligger dagens første slot før `notBefore`, presses dagen
+ * sammen fra `notBefore` (rundet op til 5 min). Dagens sidste slot flyttes kun så langt
+ * som mindste-afstanden kræver.
+ *
+ * Kaster hvis dagen ligger FØR notBefore's dato, eller hvis slottene ikke kan nå at ligge
+ * inden LATEST_STAGE_SLOT: så er sæsonstart og sæsonskifte uforenelige, og det skal et
+ * menneske se - ikke en kalender der tavst afvikler etaper om natten.
+ */
+export function applySeasonStartNotBefore(slots, localDate, notBefore, {
+  minGap = COMPRESSED_SLOT_MIN_GAP_MINUTES, latest = LATEST_STAGE_SLOT,
+} = {}) {
+  if (notBefore == null || !slots.length) return [...slots];
+  const nb = copenhagenClock(notBefore);
+  if (nb.date < localDate) return [...slots];
+  if (nb.date > localDate) {
+    throw new Error(`#5592: season start ${localDate} lies before the planning window ends (${new Date(notBefore).toISOString()}) — move the first race day or the season transition`);
+  }
+  const start = Math.ceil(nb.minutes / SLOT_ROUNDING_MINUTES) * SLOT_ROUNDING_MINUTES;
+  const n = slots.length;
+  if (toMinutes(slots[0]) >= start) return [...slots];
+  const hi = Math.max(toMinutes(slots[n - 1]), start + (n - 1) * minGap);
+  if (hi > toMinutes(latest)) {
+    throw new Error(`#5592: ${n} stages on ${localDate} cannot start at ${toHHMM(start)} and end by ${latest} — move the first race day or the season transition`);
+  }
+  return spread(start, hi, n);
+}
+
+/**
+ * DEN ENE KILDE til en dags etape-tider. Almindelig dag = TIER_STAGE_SLOTS; søndag og
+ * mandag udledes af den (ugedags-reglen); `notBefore` er sæsonskifte-reglen.
+ *
+ * @param {number} tier
+ * @param {string} localDate  dansk kalenderdato "YYYY-MM-DD"
+ * @param {{ slots?: object, notBefore?: Date|string|null }} [context]
+ *        slots = tabel pr. tier (default TIER_STAGE_SLOTS); ukendt tier falder tilbage til tier 3,
+ *        præcis som materializeren altid har gjort.
+ * @returns {string[]} "HH:MM"-slots, stigende, samme antal som tabellens
+ */
+export function slotsFor(tier, localDate, { slots = TIER_STAGE_SLOTS, notBefore = null } = {}) {
+  const base = slots?.[tier] ?? slots?.[3] ?? TIER_STAGE_SLOTS[3];
+  const weekday = copenhagenWeekdayKey(localDate);
+  const daySlots = weekday === "sun" ? sundaySlots(base) : weekday === "mon" ? mondaySlots(base) : [...base];
+  return applySeasonStartNotBefore(daySlots, localDate, notBefore);
+}
+
+/** Den danske kalenderdato for kalenderens første dag (buildScheduleRows: real_day 0 = from + 1). */
+export function firstCalendarDay(from) {
+  const [y, m, d] = copenhagenDateString(from).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
+function validInstant(value, label) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) throw new Error(`#5592: ${label} is not a valid timestamp: ${value}`);
+  return d;
+}
+
+/**
+ * Hvornår en ny sæsons første etape tidligst må ligge (sæsonskifte-reglen).
+ *
+ * @param {{ from: Date, seasonTransitionAt?: Date|string|null, previousSeasonLastStageAt?: Date|string|null }} args
+ *   seasonTransitionAt: undefined = udled konventionen (aftenen før første kalenderdag kl. 18,
+ *     computeSeasonTransitionBoundary); null = reglen er slået fra (en pulje der aktiveres midt
+ *     i en sæson er ikke en sæsonstart, §2e); en værdi = det faktiske sæsonskifte.
+ *   previousSeasonLastStageAt: divisionens sidste etape i forrige sæson, hvis kendt.
+ * @returns {Date|null}
+ */
+export function resolveSeasonStartNotBefore({ from, seasonTransitionAt, previousSeasonLastStageAt = null } = {}) {
+  const anchors = [];
+  if (seasonTransitionAt === undefined) {
+    const derived = computeSeasonTransitionBoundary({ upcomingSeasonStartDate: firstCalendarDay(from) });
+    if (derived) anchors.push(derived);
+  } else if (seasonTransitionAt !== null) {
+    anchors.push(validInstant(seasonTransitionAt, "seasonTransitionAt"));
+  }
+  if (previousSeasonLastStageAt != null) anchors.push(validInstant(previousSeasonLastStageAt, "previousSeasonLastStageAt"));
+  if (!anchors.length) return null;
+  const latestAnchor = Math.max(...anchors.map((a) => a.getTime()));
+  return new Date(latestAnchor + PLANNING_WINDOW_HOURS * HOUR_MS);
+}
+
+function addDaysToDate(dateStr, days) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * Mål planlægningsvinduerne i en færdig tidsplan (race_stage_schedule-rækker for ÉN pulje).
+ * Rent rapporterings-data: dommen ligger i detectPlanningWindowViolations.
+ *
+ * @param {Array<{scheduled_at: string}>} stageRows
+ * @returns {{ weekends: Array<{sunday, monday, sundayLastAt, mondayFirstAt, pauseHours}>,
+ *             firstStageAt: string|null, days: Map<string, {first: number, last: number}> }}
+ */
+export function measurePlanningWindows(stageRows = []) {
+  const days = new Map();
+  let first = null;
+  for (const s of stageRows) {
+    const t = Date.parse(s.scheduled_at);
+    if (!Number.isFinite(t)) continue;
+    const date = copenhagenDateString(new Date(t));
+    const day = days.get(date) ?? { first: t, last: t };
+    day.first = Math.min(day.first, t);
+    day.last = Math.max(day.last, t);
+    days.set(date, day);
+    if (first == null || t < first) first = t;
+  }
+  const weekends = [];
+  for (const [date, day] of [...days.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (copenhagenWeekdayKey(date) !== "sun") continue;
+    const monday = addDaysToDate(date, 1);
+    const next = days.get(monday);
+    if (!next) continue;
+    weekends.push({
+      sunday: date, monday,
+      sundayLastAt: new Date(day.last).toISOString(),
+      mondayFirstAt: new Date(next.first).toISOString(),
+      pauseHours: (next.first - day.last) / HOUR_MS,
+    });
+  }
+  return { weekends, firstStageAt: first == null ? null : new Date(first).toISOString(), days };
+}
+
+/**
+ * Hårdt krav uden override (#5592): begge regler, målt på den tidsplan der ville blive
+ * skrevet. Returnerer brud som tekst; materializeren lægger dem i calendarViolations, så
+ * de stopper --apply sammen med de øvrige kalender-invarianter.
+ */
+export function detectPlanningWindowViolations({ tier, stageRows = [], notBefore = null, minHours = PLANNING_WINDOW_HOURS } = {}) {
+  const violations = [];
+  const { weekends, firstStageAt } = measurePlanningWindows(stageRows);
+  for (const w of weekends) {
+    if (w.pauseHours < minHours) {
+      violations.push(`tier ${tier}: Sunday ${w.sunday} last stage ${w.sundayLastAt} → Monday ${w.monday} first stage ${w.mondayFirstAt} = ${w.pauseHours.toFixed(1)} h < ${minHours} h planning window (#5592)`);
+    }
+  }
+  if (notBefore != null && firstStageAt != null && Date.parse(firstStageAt) < validInstant(notBefore, "notBefore").getTime()) {
+    violations.push(`tier ${tier}: season's first stage ${firstStageAt} lies before ${new Date(notBefore).toISOString()} (< ${minHours} h after the season transition) (#5592)`);
+  }
+  return violations;
+}

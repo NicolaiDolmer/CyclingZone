@@ -54,14 +54,13 @@ export { TIER_DENSITY, TIER_OVERLAP_CAP };
 
 // Etape-tids-slots pr. division: bane k → slots[k] (ejer-låst: div 3 = 12/15/18). Antal slots =
 // density, så en dag aldrig har flere etaper end slots.
-// #4270 (ejer-beslutning 3/9): D4 2 -> 3 slots, samme klokkeslaet som D3 (12/15/18).
-// Antal slots skal FOELGE TIER_DENSITY - en dag maa aldrig have flere etaper end slots.
-export const TIER_STAGE_SLOTS = Object.freeze({
-  1: ["11:00", "13:00", "15:00", "17:00", "19:00"],
-  2: ["12:00", "14:00", "16:00", "18:00"],
-  3: ["12:00", "15:00", "18:00"],
-  4: ["12:00", "15:00", "18:00"],
-});
+// #5592 (ejer 23/9): tabellen bor nu i calendarPlanningWindow.js og beskriver en ALMINDELIG
+// dag. Søndag, mandag og sæsonens første dag udledes af den med slotsFor() (mindst 24 timer
+// til trupudtagelse). Re-eksporteres her, så eksisterende importstier virker uændret.
+import {
+  TIER_STAGE_SLOTS, slotsFor, resolveSeasonStartNotBefore, detectPlanningWindowViolations, measurePlanningWindows,
+} from "./calendarPlanningWindow.js";
+export { TIER_STAGE_SLOTS };
 
 function isRealManagerRow(t) {
   return t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account;
@@ -276,6 +275,13 @@ export function buildTierMaterializationPlan({
   // races i DB for tier 1-3, når tier 4 aktiveres i et separat reconcile-kald der ikke ser
   // de andre tiers' selection i hukommelsen). Seedes af materializeTierCalendars.
   usedRaceNames = new Set(),
+  // #5592 sæsonskifte-reglen: første etape mindst 24 timer efter sæsonskiftet.
+  // undefined = konventionen (aftenen før første kalenderdag kl. 18); null = slået fra
+  // (en pulje der aktiveres midt i sæsonen, §2e); en værdi = det faktiske sæsonskifte.
+  seasonTransitionAt = undefined,
+  // #5592: divisionens sidste etape i forrige sæson ({ [tier]: ISO }), så ugedags-reglen
+  // også holder hen over sæsongrænsen. null = ukendt (kun sæsonskiftet tæller).
+  previousSeasonLastStageAtByTier = null,
 } = {}) {
   const catalogById = new Map(catalog.map((c) => [c.id, c]));
   const forced = new Set(forceTiers);
@@ -346,7 +352,6 @@ export function buildTierMaterializationPlan({
     const quota = quotas[tier] ?? 0;
     const dens = density[tier] ?? 1;
     const cap = overlapCaps[tier] ?? 2;
-    const tierSlots = slots[tier] ?? slots[3];
     const usedRaceNamesBeforeTier = new Set(usedRaceNamesRunning);
 
     // #2251: GT'er (≥15 etaper) er KUN tilladt i tier 1 (spec'ens GT-rygrad).
@@ -426,7 +431,19 @@ export function buildTierMaterializationPlan({
     });
     const naturalRaceDays = packed.naturalRaceDays ?? packed.timelineLength ?? 0;
     const raceDayDeficit = raceDayTarget != null ? Math.max(0, Number(raceDayTarget) - naturalRaceDays) : 0;
-    const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
+    // #5592: etape-tiderne pr. DATO fra den ene kilde (slotsFor): søndag slutter tidligt,
+    // mandag starter sent, og sæsonens første dag starter tidligst 24 timer efter
+    // sæsonskiftet. Kun klokkeslættet flytter sig — dato, bane og game_day er urørte.
+    const planningNotBefore = resolveSeasonStartNotBefore({
+      from, seasonTransitionAt, previousSeasonLastStageAt: previousSeasonLastStageAtByTier?.[tier] ?? null,
+    });
+    const slotsByDate = new Map();
+    const slotsForDate = (localDate) => {
+      if (!slotsByDate.has(localDate)) slotsByDate.set(localDate, slotsFor(tier, localDate, { slots, notBefore: planningNotBefore }));
+      return slotsByDate.get(localDate);
+    };
+    const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: slotsForDate });
+    const planningWindows = measurePlanningWindows(stageRows);
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
     // game_day_start = løbets første IRL-dag (real_day), IKKE binding-nøglen (game_day).
@@ -470,6 +487,9 @@ export function buildTierMaterializationPlan({
     const calendarViolations = [
       ...detectCalendarViolations({ tier, placements: packed.placements, catalogById, classWhitelist, usedRaceNamesBeforeTier }),
       ...detectPoolSignatureMismatch({ tier, pools: poolPlans }),
+      // #5592: mindst 24 timer søndag → mandag og efter sæsonskiftet. Hårdt krav uden
+      // override, målt på de tider der faktisk ville blive skrevet.
+      ...detectPlanningWindowViolations({ tier, stageRows, notBefore: planningNotBefore }),
     ];
 
     tierPlans.push({
@@ -516,6 +536,13 @@ export function buildTierMaterializationPlan({
       monumentRulesHeld: Boolean(packed.monumentRulesHeld),
       solveAttempts: packed.solveAttempts ?? [],
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
+      // #5592: planlægningsvinduet — rent rapporterings-data til dry-runnet (dommen er
+      // detectPlanningWindowViolations ovenfor, i calendarViolations).
+      planningWindow: {
+        notBefore: planningNotBefore ? planningNotBefore.toISOString() : null,
+        firstStageAt: planningWindows.firstStageAt,
+        weekends: planningWindows.weekends,
+      },
       chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
       grandTourRestDays: packed.grandTourRestDays, // #3470: dry-run-diagnostik, se packLaneCalendar's docstring.
       pools: poolPlans,
@@ -564,6 +591,10 @@ export async function materializeTierCalendars({
   // ARCHETYPE_PROFILES-tabel i stedet for den globale default, i BÅDE
   // dæknings-verifikationen og selve skrive-stien (samme parcours måles og persisteres).
   useUniformTierTilt = false,
+  // #5592 pass-through til buildTierMaterializationPlan (sæsonskifte-reglen) — se dér.
+  // undefined = konventionen (aftenen før første kalenderdag kl. 18), null = slået fra.
+  seasonTransitionAt = undefined,
+  previousSeasonLastStageAtByTier = null,
 } = {}) {
   const editionYear = editionYearFrom(seasonStartDate);
 
@@ -650,6 +681,7 @@ export async function materializeTierCalendars({
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
     oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
+    seasonTransitionAt, previousSeasonLastStageAtByTier,
   });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
@@ -983,6 +1015,9 @@ export async function reconcilePoolCalendarOnActivation({
   const summary = await materialize({
     supabase, seasonId: season.id, seasonStartDate: season.start_date ?? null,
     from, tiers: [division.tier], dryRun: false, log, ...horizon, ...coverageOverrides,
+    // #5592: en pulje der vågner midt i sæsonen er ikke en sæsonstart — sæsonskifte-
+    // reglen gælder ikke her (ugedags-reglen gælder stadig, via slotsFor).
+    seasonTransitionAt: null,
   });
   return {
     skipped: null, poolId, tier: division.tier, from: from.toISOString(),
