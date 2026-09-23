@@ -22,7 +22,10 @@ export default function BoardroomPreviewPage() {
 
   return (
     <div className="flex min-h-screen justify-center bg-cz-body px-8 pb-16 pt-7">
-      <div className="w-full max-w-4xl">
+      {/* #5472 · Ingen egen max-w her: BoardroomPage baerer selv T1-bredden.
+          Preview-wrapperens max-w-4xl skjulte netop at produktionssiden
+          manglede den. */}
+      <div className="w-full">
         <BoardroomPage
           data={noDna ? { ...fixture, team: { dnaKey: null } } : fixture}
           onReload={() => {}}

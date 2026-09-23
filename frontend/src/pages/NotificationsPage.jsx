@@ -13,6 +13,7 @@ import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
 import { formatNavBadgeCount } from "../lib/navBadges.js";
 import { resolveNotificationLink, aggregateCtaKey } from "../lib/notificationLink";
+import { resolveAggregateLink } from "../components/notifications/aggregateLink.ts"; // #5417
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -779,6 +780,8 @@ export default function NotificationsPage() {
                 // bøtterne er uændrede: dér ER N'et selve pointen (hvor mange
                 // gange blev du overbudt).
                 const isRaceCompleted = entry.group === "race_completed";
+                // #5417: en samlet løbslinje går til LØBET, ikke resultat-hubben.
+                const aggregateLink = resolveAggregateLink(entry, config.link);
                 return (
                   <div key={entry.key}
                     className={`rounded-cz border transition-colors
@@ -876,15 +879,15 @@ export default function NotificationsPage() {
                             </li>
                           ))}
                         </ul>
-                        {config.link && (
+                        {aggregateLink && (
                           <Button variant="secondary" size="sm" className="self-end inline-flex items-center gap-1"
-                            onClick={e => { e.stopPropagation(); navigate(config.link); }}>
+                            onClick={e => { e.stopPropagation(); navigate(aggregateLink); }}>
                             {/* #5384: bøtten dækker nu også race_completed (race_result/
                                 stage_result/career_milestone), ikke kun auktioner.
                                 Teksten afgøres af DESTINATIONEN, ikke bøtte-navnet —
                                 se aggregateCtaKey (bid_received linker også til
                                 /auctions og skal blive ved med at hedde "Vis auktion"). */}
-                            {t(aggregateCtaKey(config.link))} <ChevronRightIcon size={14} aria-hidden="true" />
+                            {t(aggregateCtaKey(aggregateLink))} <ChevronRightIcon size={14} aria-hidden="true" />
                           </Button>
                         )}
                       </div>

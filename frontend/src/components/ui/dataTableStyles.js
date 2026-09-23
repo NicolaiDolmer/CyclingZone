@@ -2,7 +2,14 @@
 // Sticky første kolonne = opak cellebaggrund + 1px højre-rule; erstatter den rå
 // `shadow-[10px_0_16px_-16px_…]`-skygge der var copy-pastet i 8+ filer.
 
-export const WRAP = "overflow-hidden rounded-cz border border-cz-border bg-cz-card";
+// #5471/#4982: `overflow-clip` (hvor browseren kender det) i stedet for
+// `overflow-hidden`. Begge klipper cellebaggrunde til de runde hjoerner, men
+// `hidden` goer ogsaa kortet til en scroll-container, og saa haenger en sticky
+// overskrift fast ved KORTETS top i stedet for ved skaermens. `clip` klipper
+// uden at vaere en scroll-container, saa overskriften kan foelge SIDEN. Aeldre
+// browsere (iOS < 16) faar `hidden` som foer: runde hjoerner, ingen sticky.
+export const WRAP =
+  "overflow-hidden supports-[overflow:clip]:overflow-clip rounded-cz border border-cz-border bg-cz-card";
 // #4747: headeren skal laases i toppen ved lodret scroll. `overflow-x-auto`
 // alene braekker `position: sticky` for theaden — CSS'ens overflow-x/-y-par
 // tvinger overflow-y til ogsaa at blive en scroll-container (CSS2.1 §11.1.1),
@@ -17,14 +24,32 @@ export const WRAP = "overflow-hidden rounded-cz border border-cz-border bg-cz-ca
 // index.css's default er et generelt skoen (samme størrelsesorden som
 // AuctionsPage/TransfersPage's egne 220-260px), sider med usaedvanligt meget
 // chrome over tabellen kan overstyre variablen lokalt.
-export const SCROLLER = "overflow-auto max-h-[calc(100dvh-var(--table-sticky-offset))]";
+//
+// #4982/#5471 (ejer 21/9: "hele siden kan betjenes paa standard-maaden"): den
+// lodrette boks findes KUN paa skaerme der er bredere end mobilgraensen (641px+)
+// OG mindst 600px hoeje — dvs. desktop og tablet, hvor boksen viser 6+ raekker.
+// Paa en telefon i landscape (fx 844 x 390) efterlod `100dvh - 240px` plads til
+// ca. to raekker, og spilleren skulle scrolle i en lille boks i stedet for paa
+// siden. Under graensen er scrolleren kun VANDRET (`overflow-x-auto`): siden
+// scroller som normalt, og brede tabeller kan stadig skubbes til siden. Prisen
+// er #4747-noten ovenfor: en vandret scroll-container er ogsaa en lodret, saa
+// overskriften foelger ikke siden i DEN tilstand — kun i mobil-standarden, hvor
+// der ingen vandret scroll er (MOBILE_SCROLLER nedenfor). Klassenavnene staar
+// ordret (ingen skabelon-streng), ellers finder Tailwinds scanner dem ikke.
+export const SCROLLER =
+  "overflow-x-auto [@media(min-width:641px)_and_(min-height:600px)]:overflow-y-auto [@media(min-width:641px)_and_(min-height:600px)]:max-h-[calc(100dvh-var(--table-sticky-offset))]";
 // #5102 (D-047): mobil-standardtilstanden. "Ingen vandret scroll" er en REGEL,
-// ikke et haab om at indholdet nok passer — derfor `overflow-x-hidden` her og
-// en navnecelle der wrapper (DataTable's renderStickyCell(..., wrap)). Sammen
-// kan et langt rytternavn eller et 8-cifret beloeb ikke laengere snige den
-// vandrette scroller tilbage ad bagvejen paa 375px.
-export const MOBILE_SCROLLER =
-  "overflow-y-auto overflow-x-hidden max-h-[calc(100dvh-var(--table-sticky-offset))]";
+// ikke et haab om at indholdet nok passer — derfor klippes vandret overloeb her,
+// og navnecellen wrapper (DataTable's renderStickyCell(..., wrap)). Sammen kan
+// et langt rytternavn eller et 8-cifret beloeb ikke laengere snige den vandrette
+// scroller tilbage ad bagvejen paa 375px.
+// #4982/#5471: INGEN lodret boks laengere — siden scroller. `overflow-x-clip`
+// (ikke `hidden`) er det der goer det muligt: `clip` er ikke en scroll-
+// container, saa den sticky overskrift foelger SIDEN og bliver staaende i
+// toppen af skaermen mens man scroller. `overflow-x-hidden` er fallback for
+// browsere uden `clip` (iOS < 16): siden scroller stadig, overskriften foelger
+// bare ikke med.
+export const MOBILE_SCROLLER = "overflow-x-hidden supports-[overflow:clip]:overflow-x-clip";
 export const TABLE = "w-full border-collapse";
 // Count-linjen under tabellen ("Showing 8 of 412 riders").
 export const COUNT = "mt-2 font-data text-xs text-cz-3";
@@ -78,8 +103,13 @@ const ZONES = {
 //                   px-2 stod stadig "for langt fra hinanden". Selve tal-badgen
 //                   har sin egen baggrund, så adskillelsen kommer fra farven,
 //                   ikke fra luften. `tight` vinder over `compact`.
+// #4982: `tight` er luften MELLEM matrix-cellerne, ikke luften mod kortets
+// kant. Staar en tight kolonne yderst (Mit hold > Evner: den sidste evne), fik
+// den kun 4px til hairline-rammen, og tallet klistrede til kanten. Den yderste
+// celle faar derfor samme kant-luft som resten af raekken (compact-trinnet, 8px).
+// Header og celle faar samme klasse, saa hoejrestillede tal stadig flugter.
 function gutter(compact, tight) {
-  if (tight) return "px-1";
+  if (tight) return "px-1 last:pr-2";
   return compact ? "px-2" : "px-4";
 }
 

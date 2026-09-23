@@ -120,8 +120,11 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null }) {
   // overblikkets øverste plads (mockup-varianten "team without DNA").
   const showDnaChoice = !hasDna && dnaSuggestions.length > 0;
 
+  // #5472 · T1-containeren (PAGE_TEMPLATES §T1: max-w-4xl, centreret). Uden den
+  // strakte siden sig over hele Layoutets max-w-6xl-flade paa brede skaerme, og
+  // fejlen var usynlig i /ui/boardroom, fordi preview-siden selv pakker ind.
   return (
-    <div>
+    <div data-testid="boardroom-page" className="max-w-4xl mx-auto">
       <PageHeader
         title={t("boardroom.header.title")}
         subtitle={subtitle}
