@@ -44,7 +44,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 11. **Påstande om systemtilstand kræver en positiv observation.** "Jeg fandt ingen" er ikke "der er ingen". Brug det værktøj der ser den tilstand du udtaler dig om, og sig hvilket.
 
-12. **Loft på igangværende arbejde: maks 8 åbne PR'er.** Er køen fuld, merges før der startes nyt.
+12. **PR-loftet er fjernet (ejer-beslutning 22/9, variant B, #5510).** Bremsen på igangværende arbejde er lanerne (4) og verifikations-semaforen (2), ikke et antal åbne PR'er.
 
 13. **Ingen påstand uden en måling. Issue-tal ældre end en uge GENMÅLES, de citeres ikke.**
 

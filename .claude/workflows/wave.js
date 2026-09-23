@@ -17,7 +17,8 @@
 //   - Livstegn: draft-PR inden 30 min, push hvert 15. min, spor-vindue 120 min
 //     (haardt loft 180) maalt paa BRANCH-aktivitet, recovery i SAMME worktree
 //     (aldrig reset). Se punkt 1 herunder.
-//   - Maks 8 aabne PR'er, tjekket og reserveret af wave-policy.mjs i hooken.
+//   - Aabne PR'er optaelles som info af wave-policy.mjs i hooken; intet loft
+//     (ejer-beslutning 22/9, variant B, #5510 - fjernet, lanerne+semaforen er bremsen).
 //   - Sidste fase rydder op og fjerner .claude/run/wave-active.json.
 //
 // args:
@@ -679,7 +680,7 @@ if (rawTracks.length === 0) {
   throw new Error('wave: args.tracks er tom. Kald: Workflow({ name: "wave", args: { tracks: [{ issue, branch, title, scopeText, model, tier }] } })')
 }
 if (rawTracks.length > MAX_TRACKS) {
-  throw new Error(`wave: ${rawTracks.length} spor er for mange (loft ${MAX_TRACKS}). Koer boelgen i flere omgange - loftet paa 8 aabne PR'er gaelder stadig.`)
+  throw new Error(`wave: ${rawTracks.length} spor er for mange (loft ${MAX_TRACKS}). Koer boelgen i flere omgange.`)
 }
 
 // #5220: blandet koe - sorteret stabilt saa lette spor (sonnet+TARGETED)

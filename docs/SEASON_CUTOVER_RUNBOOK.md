@@ -203,6 +203,514 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
 > **Uændret og stadig bindende:** §2c's "én regenerering pr. sæsonkalender". Er S4's
 > kalender skrevet, er formen låst for S4 - en fejl bagefter står til S5.
 
+## S4-tændingsplan (issue #5506)
+
+> **Rækkefølgen er et forslag; ejeren bestemmer.** Planen tænder intet. Hvert trin har ét go-punkt (ejeren), én kontrol og én fortryd-vej. Højst én kontakt pr. trin, og kontrollen skal være grøn, før næste trin startes. Tilstanden er målt read-only mod prod og GitHub 23/9.
+
+**Udgangspunkt 23/9 (målt):**
+- **Sæson 3:** S3 er `active`, og 26 af 31 løbsdatoer er kørt. Sidste løbsdag er søndag 27/9, og der er 135 S3-løb, som ikke er `completed`.
+- **Sæson 4:** S4-rækken findes ikke, og der er 0 S4-løb.
+- **Mangler i `app_config`:** `season_transition_planned_at` (sættes af trin 1) og `rider_primary_type_from_distribution`.
+- **Kontakterne** står som beskrevet i issuet.
+
+**Fælles mekanik:**
+- **Kontakt-flip:** Admin > System, flag-tavlen (`AdminSystemTab.jsx:213`). Den kalder `PATCH /api/admin/feature-flags/<key>` med `{"stage":"on"}` (`backend/routes/api.js:14776`). Tavlen skriver `admin_log` (`feature_flag_changed`) og `app_config.updated_by`.
+- **Boolean-flag:** tavlen tillader kun on/off, ikke beta.
+- **Fortryd et flip:** samme tavle, tilbage til forrige stadie.
+- **Generel flip-kontrol:** `select key, value, updated_at, updated_by from app_config where key = '<key>';`
+- **Node-kommandoer:** køres fra `C:\Dev\CyclingZone` med prod-creds via `infisical run --env=prod --silent --`. Det er samme mønster som `scripts/run-value-event-5443.ps1`. Ejer-kommandoer er PowerShell 5.1: brug `;`, ikke `&&`.
+- **`'<flip-tid>'`:** tidspunktet for go'et, i UTC.
+
+### Oversigt
+
+| Trin | Hvad | Go | Fortryd findes? | Kan tændes i dag? |
+|---|---|---|---|---|
+| **Fase A: før cutover (nu til lørdag 26/9)** | | | | |
+| 1 (H1) | S4-kalenderen skrives | ejer | Delvis: kun genopbygning, mens S4 er `upcoming` | Nej |
+| 2 (H8) | Træningsscore for alle | ejer | Ja (kontakt) | Ja, mangler udmelding |
+| 3 (H12) | Notify-kø for løbsbeskeder | ejer (ejer-only) | Ja (kontakt) | Ja |
+| 4 (H9) | Ny mobil-træningsside for alle | ejer | Ja (kontakt) | Ja, mangler Android-test |
+| 5 (ekstra) | `season_signup_enabled` (tilmelding + parkering) | ejer | Delvis: parkerede hold kan ikke af-parkeres | Ja teknisk |
+| 6 (H10a) | Bestyrelses-backfill (#4857) | ejer | **INGEN (RØD)** | Ja teknisk, mangler go |
+| 7 (H13) | Trup-backfill (#4619/#5396) | ejer | **Delvis (RØD)**: snapshot findes, rollback uafprøvet | Ja teknisk, mangler go |
+| 8 (H2) | Værdikørslen (#5443) | ejer | Ja (`-Rollback` + nøgle tilbage) | Nej |
+| 9 (H4) | Rating = bedste rolle nu | ejer | Ja (kontakt) | Nej |
+| 10 (H3) | Merge #5461 (patch note + hjælp) | ejer ("merge") | Ja (revert) | Nej |
+| **Fase B: søndag 27/9** | | | | |
+| 11 (H15) | Søndagskørslen kl. 06 | ejer (beslutning) | **INGEN (RØD)** | Kører selv |
+| 12 (H14) | Selve cutover-kørslen | ejer | **INGEN (RØD)**, kun PITR | Nej |
+| 13 (H11) | Løbsmotor v4 | ejer-only | Delvis: ikke prod-testet midt i et etapeløb | Nej |
+| **Fase C: mandag 28/9 og frem** | | | | |
+| 14 (H6) | Træning pr. løbsdag | ejer | Delvis: risiko for dobbelt tick | Nej |
+| 15 (H7) | Merge #5281 (B3, bonus væk) | ejer ("merge") | Ja (revert) | Nej |
+| 16 (H10b) | Mandatet for alle (#4859) | ejer | Ja (kontakt til beta) | Nej |
+| 17 (H5) | primaryTypeMode (#5327) | ejer | **INGEN (RØD)** | Nej |
+
+H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) og 10b (flip), så der højst er én kontakt pr. trin. Trin 5 står ikke i issuet; se "Uafklaret".
+
+---
+
+### Trin 1 (H1): S4-kalenderen skrives
+
+- **For spilleren:** S4's løb, datoer og puljekalendere bliver synlige og låses op for udtagelse.
+- **Forudsætning:**
+  - #5469 er merget 22/9. Der er dog tre finale-afvigelser tilbage (kommentar på #5405 22/9: kuperet slutter udbrud, brosten slutter fladt, brosten slutter udbrud).
+  - #5405 og #4270 er åbne.
+  - Den gyldne diff og en frisk tørkørsel skal køres umiddelbart før.
+  - S4-rækken findes ikke. `--apply` opretter den som `upcoming`.
+- **Go:** ejer, "kør" på tallene fra den friske tørkørsel (`CALENDAR_RULES.md` §2c/§2d).
+- **Kommando** (`buildSeasonCalendar.js`: `--race-days` :311, `--apply` :313, `--replace-existing` :325):
+  ```powershell
+  cd C:\Dev\CyclingZone\backend
+  node scripts/dev/calendarGoldenDiff.mjs
+  infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
+  infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --apply
+  ```
+  Accepterer ejeren de tre finale-afvigelser, tilføjes `--allow-finale-drift` bevidst (:321). `--uniform-tilt` bruges ikke (§2d).
+- **Kontrol bagefter:**
+  ```sql
+  select s.number, s.status, s.start_date,
+         (select count(*) from races r where r.season_id = s.id) as loeb,
+         (select count(*) from races r where r.season_id = s.id and r.scheduled_for < now()) as loeb_i_fortiden
+  from seasons s where s.number = 4;
+  select value from app_config where key = 'season_transition_planned_at';
+  ```
+  Forventet: `upcoming`, `2026-09-28`, `loeb` > 0 og `loeb_i_fortiden` = 0. `value` = `"2026-09-27T16:00:00+00:00"`.
+- **Fortryd:**
+  - Mens S4 er `upcoming`: kør samme kommando med `--apply --replace-existing`. Det sletter efter et JSON-snapshot til `docs/snapshots/5405/` og bygger forfra, og det kræver sit eget go (§2d).
+  - Der findes ingen vej, der sletter uden at bygge igen.
+  - Fra S4 er `active`: INGEN (låst, §2c).
+- **Kan tændes i dag?** Nej. De tre finale-afvigelser skal rettes eller accepteres, og der mangler ejer-go.
+
+### Trin 2 (H8): Træningsscore for alle
+
+- **For spilleren:** Scoren fra 1 til 99 og grafen vises på træningssiden og rytterprofilen for alle, ikke kun beta.
+- **Forudsætning:**
+  - Ingen teknisk afhængighed.
+  - Motoren skriver scorer uanset flaget: 43.180 rækker i `rider_training_scores`, seneste 22/9.
+  - help.json og patch notes dækker scoren.
+  - Ejerens udmelding: ingen evidens for, at den er postet.
+- **Go:** ejer.
+- **Kommando:** flag-tavlen: `training_score_visible` -> `on` (læser: `backend/lib/trainingScoreFlag.js:19`, `api.js:2790`).
+- **Kontrol bagefter:** `GET /api/training/me` som ikke-beta-konto. Forventet: svaret indeholder feltet `trainingScore`.
+- **Fortryd:** flag-tavlen -> `beta`.
+- **Kan tændes i dag?** Ja. Mangler kun udmeldingen.
+
+### Trin 3 (H12): Notify-kø for løbsbeskeder
+
+- **For spilleren:** Løbsbeskederne på Discord sendes fra en kø. Afviklingen venter ikke længere på Discord, så etaperne står mindre i kø.
+- **Forudsætning:**
+  - Ingen afhængighed.
+  - Tabellen `race_notify_outbox` findes med 0 rækker.
+  - Skal måles på en stor klynge kl. 12 eller 18 (`backend/lib/raceNotifyOutboxFlag.js:16-17`).
+  - Foreslås kørt i S3, så målingen ikke blandes med v4 og S4-start.
+- **Go:** ejer (ejer-only, #3624).
+- **Kommando:** flag-tavlen: `race_notify_outbox_enabled` -> `on` (:20). `beta` læses som off (:11-14).
+- **Kontrol bagefter:**
+  ```sql
+  select status, count(*) from race_notify_outbox where created_at >= '<flip-tid>' group by status;
+  ```
+  Forventet efter klyngen: kun `sent`, 0 `failed`, ingen `pending` eller `sending` ældre end 5 minutter.
+- **Fortryd:** flag-tavlen -> `off`. Rækker, der allerede står i køen, sendes stadig, fordi drain-tikket ikke læser flaget (`backend/lib/discordNotifier.js:620`, `backend/cron.js:576-585`).
+- **Kan tændes i dag?** Ja.
+
+### Trin 4 (H9): Ny mobil-træningsside for alle
+
+- **For spilleren:** Telefonen viser den nye tabel med dagens løbsdage som kolonner. Desktop er uændret.
+- **Forudsætning:** Ejerens Android-test (#3643 åben).
+- **Go:** ejer.
+- **Kommando:** flag-tavlen: `training_mobile_table` -> `on` (`backend/lib/trainingMobileTableFlag.js:28`).
+- **Kontrol bagefter:** `GET /api/training/me` (`api.js:2776`) som ikke-beta-konto. Forventet: `"mobileTable": true`.
+- **Fortryd:** flag-tavlen -> `beta`. Det virker, så længe den gamle mobil-gren findes i `frontend/src/pages/TrainingPage.jsx` (kommentar ved :2100).
+- **Kan tændes i dag?** Ja teknisk. Mangler Android-testen.
+
+### Trin 5 (ekstra, ikke i #5506): Tilmelding og parkering (`season_signup_enabled`)
+
+- **For spilleren:** Inaktive managere ser kortet "Tilmeld dig næste sæson". Ved "Afslut sæson" parkeres hold uden login i 30 dage, som ikke har tilmeldt sig. De mister deres puljeplads.
+- **Forudsætning:**
+  - Ejer-beslutning om parkering ved S4 (#4592 åben).
+  - Win-back-mailen (send-go står i NOW).
+  - Skal være on, før "Afslut sæson" (trin 12) køres. Ellers sker der ingen parkering (`backend/lib/economyEngine.js:1523-1527`).
+- **Go:** ejer.
+- **Kommando:** flag-tavlen: `season_signup_enabled` -> `on` (`backend/lib/seasonSignupFlag.js:14`). Tørkørsel af parkeringen, som skriver intet:
+  ```powershell
+  infisical run --env=prod --silent -- node backend/scripts/parkingDryRun.js
+  ```
+- **Kontrol bagefter:** `GET /api/season/signup-status` som inaktiv konto. Forventet: `"enabled": true, "eligible": true`.
+- **Fortryd:**
+  - Flag-tavlen -> `off` før "Afslut sæson": så parkeres ingen.
+  - Efter parkering: INGEN af-parkerings-kode. Kun `parkTeam` findes (`backend/lib/managerParking.js:78`). Se afhjælpningen i trin 12.
+- **Kan tændes i dag?** Ja teknisk. Mangler ejer-beslutningen.
+
+### Trin 6 (H10a): Bestyrelses-backfill (#4857)
+
+- **For spilleren:** Menneskehold uden bestyrelsesrelation får relation og mandat, så mandatkortet ikke står tomt.
+- **Forudsætning:**
+  - Ingen teknisk afhængighed.
+  - Tallet har flyttet sig: 10 menneskehold uden `board_relations` målt 23/9 med scriptets prædikat. Issuet siger 2.
+  - Tørkørslen skal vises igen.
+- **Go:** ejer, "kør" på tørkørslens liste.
+- **Kommando** (`backfillMandateForTeamsWithoutRelation.js:35`, `--apply --owner-go` :186-189; scriptets header bruger `node --env-file=backend/.env`):
+  ```powershell
+  infisical run --env=prod --silent -- node backend/scripts/backfillMandateForTeamsWithoutRelation.js
+  infisical run --env=prod --silent -- node backend/scripts/backfillMandateForTeamsWithoutRelation.js --apply --owner-go
+  ```
+- **Kontrol bagefter:**
+  ```sql
+  select count(*) from teams t
+  where not t.is_ai and not coalesce(t.is_bank, false) and not coalesce(t.is_frozen, false)
+    and not coalesce(t.is_test_account, false)
+    and not exists (select 1 from board_relations br where br.team_id = t.id);
+  ```
+  Forventet: 0, eller kun de hold, tørkørslen rapporterer som "ikke klar" (uden `season_1_identity_basis`).
+- **Fortryd:** INGEN. **RØD.** Se afhjælpning 2.
+- **Kan tændes i dag?** Ja teknisk. Mangler go og afhjælpningen.
+
+### Trin 7 (H13): Trup-backfill (#4619, prædikat fra PR #5396)
+
+- **For spilleren:**
+  - Akademiryttere placeres i U23 eller junior efter sæsonalder.
+  - Akademiryttere på 23 år eller mere får en afventende Graduation Day-beslutning.
+  - Seniorsiden er uændret, fordi prædikatet kræver begge kolonner.
+- **Forudsætning:**
+  - Migrationen er kørt, og snapshot-tabellen `riders_4619_squad_backup_20260915` findes og er tom.
+  - I dag står 522 akademiryttere som `squad='senior'`.
+  - #5432 (8-loftet i SQL-RPC'erne) og #4620 (U23-kalender) er åbne.
+  - Ingen evidens for den bedste timing i forhold til cutover.
+- **Go:** ejer, "kør" på tørkørslens tal.
+- **Kommando** (`backfill-4619-riders-squad.js:33`, gates :353-357):
+  ```powershell
+  infisical run --env=prod --silent -- node backend/scripts/backfill-4619-riders-squad.js --dry-run
+  infisical run --env=prod --silent -- node backend/scripts/backfill-4619-riders-squad.js --apply --owner-go
+  ```
+- **Kontrol bagefter:**
+  ```sql
+  select squad, is_academy, count(*) from riders group by 1, 2 order by 1, 2;
+  select count(*) from riders_4619_squad_backup_20260915;
+  select count(*) from academy_graduation where status = 'pending' and from_squad = 'u23' and to_squad = 'senior';
+  ```
+  Forventet:
+  - 0 rækker med `squad='senior'` og `is_academy=true`.
+  - Snapshot-antallet = tørkørslens antal ændrede ryttere.
+  - Antallet af `pending` = tørkørslens antal.
+- **Fortryd:** Delvis. Snapshottet skrives før opdateringen (`backfill-4619-riders-squad.js:298-309`), men der findes intet rollback-script. **RØD**, indtil afhjælpning 3 er testet.
+- **Kan tændes i dag?** Ja teknisk. Mangler go og en testet rollback.
+
+### Trin 8 (H2): Værdikørslen (#5443)
+
+- **For spilleren:** Alle rytterværdier bliver regnet om på én gang, både op og ned. Lønkrav flytter sig ikke.
+- **Forudsætning:**
+  - **Modelvalget:** #5497 er ikke "godkendt til build", og #5502 er åben. Scriptet er låst til `v5` (`riderValueExtraordinaryRun5443.js:70`). Vælges den typefri model, skal der en ny model og en script-ændring til.
+  - **Spillerbeskeder:** udmeldingen og besked aftenen før skal være postet. Ingen evidens for, at de er ude.
+  - **Ikke søndag:** scriptet nægter at køre om søndagen (:122). Kør fredag 25/9 eller lørdag 26/9.
+  - **I prod 23/9:** `backup_5443_value_event_20260920` findes med 0 rækker, og begge nøgler står `v4`.
+- **Go:** ejer, ordret "kør" efter tørkørslen (runbook trin 6).
+- **Kommando** (`docs/runbooks/5443-ekstraordinaer-vaerdikoersel.md` trin 4-7). Nøgle og kørsel er ét trin: scriptet nægter uden nøglen, og nøglen alene lader søndagskørslen regne med v5.
+  ```sql
+  update public.app_config set value = '"v5"'::jsonb where key = 'rider_valuation_model';
+  ```
+  ```powershell
+  pwsh -File scripts/run-value-event-5443.ps1
+  pwsh -File scripts/run-value-event-5443.ps1 -Apply
+  ```
+- **Kontrol bagefter:**
+  ```sql
+  select run_date, changed, written, completed_at from rider_value_sunday_log order by run_date desc limit 1;
+  select count(*) as loengrundlag_flyttet from riders r
+    join backup_5443_value_event_20260920 b on b.rider_id = r.id
+   where r.current_production_value is distinct from b.current_production_value;
+  select count(*) filter (where best_role is null) as uden_bedste_rolle from riders where not coalesce(is_retired, false);
+  ```
+  Forventet:
+  - Dagens dato med `completed_at` sat.
+  - `loengrundlag_flyttet` = 0.
+  - `uden_bedste_rolle` = 0, eller kun ryttere uden evner. Det er forudsætningen for trin 9; i dag er tallet 8.555.
+- **Fortryd:**
+  ```powershell
+  pwsh -File scripts/run-value-event-5443.ps1 -Rollback
+  ```
+  ```sql
+  update public.app_config set value = '"v4"'::jsonb where key = 'rider_valuation_model';
+  ```
+  - Backuppen dækker 6 kolonner inklusive `best_role`/`best_role_rating` (`BACKED_UP_COLUMNS` :77). Runbooken siger fejlagtigt 4.
+  - Sæt samtidig trin 9's kontakt til off, og revertér #5461, hvis trin 10 er kørt.
+- **Kan tændes i dag?** Nej. Modelvalg, spillerbesked og "kør" mangler.
+
+### Trin 9 (H4): Rating = bedste rolle nu
+
+- **For spilleren:** Ratingen på kort, tabeller og profil bliver "bedste rolle nu" med rollenavn, og type-badget hedder "Natural role". Ratingen kan kun stige (`frontend/src/lib/riderRating.js:88-93`, ejer-regel 17/9).
+- **Forudsætning:**
+  - Trin 8's kontrol er grøn, især `uden_bedste_rolle`. Med tom cache viser lister uden evner en tom rating (`riderRating.js:76-83`).
+  - Ejer-beslutning 22/9: tændes sammen med værdiskiftet (`backend/lib/riderBestRoleDisplayFlag.js:8-11`).
+  - Kør umiddelbart efter trin 8. Mens kontakten er off, vises egen rolle (`primary_type`), og værdikørslen kan skifte den. En synlig rating kan altså falde mellem trin 8 og 9. Udledt af koden, ingen prod-måling.
+- **Go:** ejer.
+- **Kommando:** flag-tavlen: `rider_best_role_display` -> `on`.
+- **Kontrol bagefter:** `GET /api/display-flags` (`api.js:1242`) som ikke-beta-konto. Forventet: `{"rider_best_role_display":true}`.
+- **Fortryd:** flag-tavlen -> `off`.
+- **Kan tændes i dag?** Nej. Cachen er tom, og ejer-beslutningen binder trinnet til trin 8.
+
+### Trin 10 (H3): Merge #5461 (patch note + help.json)
+
+- **For spilleren:** Patch note og hjælpetekst forklarer værdiskiftet.
+- **Forudsætning:**
+  - Trin 8 er kørt og kontrolleret.
+  - Konflikten skal løses: PR'en har `mergeStateStatus` DIRTY 23/9.
+  - Version `7.293` er allerede brugt på main, så PR'en skal have ny version og kørselsdagens dato.
+  - EN-teksten ("every rider is priced as the type he is today") passer kun til v5. Den skal omskrives, hvis modellen bliver typefri.
+- **Go:** ejer, ordret "merge".
+- **Kommando:**
+  ```powershell
+  pwsh -File scripts/merge-queue.ps1 -Pr "5461" -DryRun
+  pwsh -File scripts/merge-queue.ps1 -Pr "5461"
+  ```
+- **Kontrol bagefter:** `gh pr view 5461 --repo NicolaiDolmer/CyclingZone --json state,mergeCommit`. Forventet: `MERGED`, og efter deploy står værdinoten øverst på cyclingzone.org/patch-notes.
+- **Fortryd:** `git revert --no-edit <merge-sha>` på egen branch, derefter PR gennem merge-køen.
+- **Kan tændes i dag?** Nej.
+
+### Trin 11 (H15): Søndagskørslen 27/9 kl. 06
+
+- **For spilleren:** Den normale ugentlige værdiopdatering, sidste gang i S3.
+- **Forudsætning:**
+  - #5443 trin 3: rækkefølgen mellem søndagskørslen og cutover skal stå i drejebogen. Den kører før cutover, som ligger om aftenen.
+  - Er trin 8 kørt, regner den med v5.
+  - Markedsblendet er off (`market_value_sweep_enabled`).
+- **Go:** ejer vælger mellem (A) lad den køre med backup og (B) spring den over.
+- **Kommando:**
+  - (A) Ingen. Cron `sunday-value-refresh` kører selv (`backend/cron.js:2179`).
+  - (B) Et claim på forhånd får sweepen til at springe dagen over (`backend/lib/sundayValueSweep.js:158-170`):
+    ```sql
+    insert into public.rider_value_sunday_log (run_date) values ('2026-09-27');
+    ```
+    Ingen evidens for, at en tom claim-række ikke udløser en alarm.
+- **Kontrol bagefter:**
+  ```sql
+  select run_date, scanned, changed, written, completed_at from rider_value_sunday_log where run_date = '2026-09-27';
+  ```
+  Forventet ved (A): én række med `completed_at` sat. Ved (B): én række med `completed_at` null.
+- **Fortryd:** INGEN, fordi kørslen ikke tager backup. **RØD.** Se afhjælpning 4.
+- **Kan tændes i dag?** Kører af sig selv. Det, der mangler, er ejerens valg og backuppen.
+
+### Trin 12 (H14): Selve cutover-kørslen
+
+- **For spilleren:**
+  - S3 afsluttes med op- og nedrykning.
+  - S4 bliver aktiv: kontrakter, sponsorer, løn, pension og nulstilling af form.
+  - Inaktive hold parkeres, hvis trin 5 er on.
+- **Forudsætning:**
+  - Trin 1 er kørt (S4-række + kalender), og alle S3-løb er afviklet.
+  - Preflight uden `[NO-GO]` (`scripts/preflight-season-cutover.ps1:29`). Den dækker ikke kontakterne i denne plan.
+  - PITR er verificeret frisk i Supabase-dashboardet (`SEASON_TRANSITION_CHECKLIST.md` skridt 0 pkt. 1).
+  - Trin 5 er afgjort.
+  - #4153 (løn for ryttere, der pensioneres i samme skifte) er åben.
+- **Go:** ejer for hvert klik: "Afslut sæson" og "Udfør sæsonskifte" hver for sig.
+- **Kommando:**
+  ```powershell
+  pwsh -File scripts/preflight-season-cutover.ps1 -FromSeasonNumber 3 -ToSeasonNumber 4
+  ```
+  Derefter på `/admin/season`:
+  1. "Afslut sæson" = `POST /api/admin/seasons/00000000-0000-0000-0000-000000000003/end` (`api.js:11524`).
+  2. Preview = `GET /api/admin/season-transition/preview` (`api.js:13996`).
+  3. "Udfør sæsonskifte" = `POST /api/admin/season-transition` (`api.js:14013`).
+
+  Mekanikken følger checklistens skridt 0/1/1b/4/5/7 og afsnittene ovenfor.
+- **Kontrol bagefter:**
+  ```sql
+  select number, status from seasons where number in (3, 4) order by number;
+  select count(*) from admin_log where action_type = 'season_transition' and created_at >= '2026-09-27';
+  select count(*) from season_form_reset_runs where season_id = '00000000-0000-0000-0000-000000000004';
+  ```
+  Forventet: S3 `completed` og S4 `active`, 1 kørsel og 1 form-nulstilling. Er trin 5 on, skal antallet af hold med `parked_at >= '2026-09-27'` desuden svare til tørkørslen.
+- **Fortryd:** INGEN. Kun en Supabase PITR-gendannelse, som også sletter alt, spillerne har gjort siden. **RØD.** Se afhjælpning 5.
+- **Kan tændes i dag?** Nej. S3 slutter 27/9, og trin 1 mangler.
+
+### Trin 13 (H11): Løbsmotor v4
+
+- **For spilleren:** Etaperne afvikles af den nye løbsmotor.
+- **Forudsætning:**
+  - #4914, #4915 og #4948 er åbne 23/9. #4948 kræver en PR, der viser raceDay-hjælpen, i samme deploy.
+  - #5505 er merget 22/9.
+  - `race_engine_v3_scoring` skal stå on (`backend/lib/raceEngineFlag.js:73-78`). Den er on 23/9.
+  - Timing: efter cutover-kontrollen og før første S4-etape, så intet etapeløb skifter motor midt i løbet.
+- **Go:** ejer-only.
+- **Kommando:** flag-tavlen: `race_engine_v4` -> `on`. Brug on/off, ikke beta (:80-83).
+- **Kontrol bagefter:**
+  ```sql
+  select engine_version, count(*) from race_simulation_runs where created_at >= '<flip-tid>' group by engine_version;
+  ```
+  Forventet: kun `4`. v3 hedder `2` (`backend/lib/raceSimulator.js:67`).
+- **Fortryd:** flag-tavlen -> `off`. Næste etape kører så v3, og klassementet bygges på begge motorer. Det er unit-testet (`backend/lib/raceRunnerEngineV4.test.js:301`), men aldrig afprøvet i prod midt i et etapeløb. Delvis; se afhjælpning 6.
+- **Kan tændes i dag?** Nej.
+
+### Trin 14 (H6): Træning pr. løbsdag
+
+- **For spilleren:**
+  - Løbsdagen bliver enheden for træning: 140 løbsdage pr. sæson i alle divisioner.
+  - Træningen kører samlet efter dagens sidste løb, tidligst kl. 20.
+  - En rytter kører enten et løb eller træner på en løbsdag, aldrig begge.
+- **Forudsætning:**
+  - S4 er aktiv (trin 12), og kalenderen findes (trin 1).
+  - #5205, #5264, #5169 og #5465 er merget.
+  - Kapacitetsgaten G6 er grøn (`TRAINING_RULES.md` §13.4).
+  - Stadig ikke bygget: program pr. løbsdag (beslutning 8) og ops-vagterne B5. Ejeren skal acceptere at tænde uden dem.
+  - Timing: mandag 28/9 før kl. 20.
+- **Go:** ejer.
+- **Kommando:** flag-tavlen: `training_tick_per_race_day` -> `on`. Det er et boolean-flag, så kun on/off (`backend/lib/trainingTickRaceDayFlag.js:21`, `dailyTrainingEngine.js:189`).
+- **Kontrol bagefter:**
+  ```sql
+  select count(*) filter (where r.game_day is not null) as loebsdags_ticks,
+         count(*) filter (where r.game_day is null) as kalenderdags_ticks
+  from training_day_runs r join teams t on t.id = r.team_id
+  where r.created_at >= '<flip-tid>' and t.league_division_id is not null;
+  ```
+  Forventet efter sweepen kl. 20: `loebsdags_ticks` > 0 og `kalenderdags_ticks` = 0.
+- **Fortryd:** flag-tavlen -> `off`, så kører den gamle sti uændret igen. Men de to stier har hver sit unikke indeks (`dailyTrainingEngine.js:7-10`). Slukkes flaget efter dagens kl. 20-sweep, kan kalenderdags-sweepen kl. 22 træne samme dato en gang til. Det er udledt af koden, ikke testet. Delvis; se afhjælpning 7.
+- **Kan tændes i dag?** Nej. S4 er ikke aktiv.
+
+### Trin 15 (H7): Merge #5281 (B3: manager-bonussen fjernes)
+
+- **For spilleren:** Den gamle bonus på 25 % for selv at trykke "Træn i dag" forsvinder helt fra kode og tekster.
+- **Forudsætning:**
+  - Trin 14's kontrol er grøn. Bonussen lever kun på den gamle sti (`dailyTrainingEngine.js:203`), så en merge før trin 14 ændrer balancen.
+  - #5281 har `mergeStateStatus` DIRTY 23/9.
+- **Go:** ejer, ordret "merge".
+- **Kommando:**
+  ```powershell
+  pwsh -File scripts/merge-queue.ps1 -Pr "5281" -DryRun
+  pwsh -File scripts/merge-queue.ps1 -Pr "5281"
+  ```
+- **Kontrol bagefter:** `git fetch; git --no-pager grep -n "bonusMult" origin/main -- backend/lib/dailyTraining.js`. Forventet: ingen træf, og "Deploy verify" er grøn.
+- **Fortryd:** `git revert --no-edit <merge-sha>` på egen branch, derefter PR gennem merge-køen.
+- **Kan tændes i dag?** Nej.
+
+### Trin 16 (H10b): Mandatet for alle (#4859)
+
+- **For spilleren:** Boardroom og årsmødet med mandat vises for alle, ikke kun beta.
+- **Forudsætning:**
+  - Lukket eller merget: #4855, #4856, #4843 og #4844.
+  - Trin 6 er kørt, og S4 findes (trin 1 og 12, jf. #4838).
+  - Tørkørslen er vist til ejeren (`cd backend; infisical run --env=prod -- node scripts/proposeNextMandateDryRun.js`).
+  - Beta-feedbacken 19/9 om visningsfejl og manglende ord: ingen evidens for, at den er rettet.
+- **Go:** ejer.
+- **Kommando:** flag-tavlen: `board_mandate_model_enabled` -> `on` (`backend/lib/boardMandateFlag.js:32`).
+- **Kontrol bagefter:**
+  ```sql
+  select status, count(*) from board_mandates where season_number = 4 group by status;
+  ```
+  Forventet: S4-mandater for alle berettigede menneskehold, samme antal som i tørkørslen. `GET /api/board/room` som ikke-beta-konto skal vise mandatet (`api.js:16921`).
+- **Fortryd:** flag-tavlen -> `beta`. Det er kill-switchen: motoren skriver videre, men fladen skjules (`boardMandateFlag.js:12-27`).
+- **Kan tændes i dag?** Nej. S4-rækken, trin 6 og tørkørslen mangler.
+
+### Trin 17 (H5): primaryTypeMode (#5327)
+
+- **For spilleren:** Nyfødte ryttere trækker primær type fra kalenderens efterspørgsel i stedet for divisionens vægte.
+- **Forudsætning:**
+  - #5503 er merget: kontakten findes kun i generatoren (`backend/lib/fictionalRiderGenerator.js:229-232`).
+  - Ingen læser, ingen `app_config`-række, ingen migration og ingen post i `stageFlagCatalog.js`.
+  - #5327-B er ikke bygget. Det er rodårsagen til sprinter-potentialet plus koblingen i `aiTeamGenerator.js`, `fictionalLaunchPopulation.js` og `starterSquadAllocator.js`.
+  - Ifølge #5327 (22/9) skal kontakten tændes samlet med B, ikke før.
+- **Go:** ejer.
+- **Kommando:** findes ikke.
+- **Kontrol bagefter** (foreslået, når B findes):
+  ```sql
+  select primary_type, count(*) from riders where created_at >= '<flip-tid>' group by primary_type;
+  ```
+  Sammenlignes med før/efter-målingen fra `backend/scripts/dev/typeDistribution5327.mjs`.
+- **Fortryd:** INGEN for ryttere, der allerede er født med den nye type. Kontakten stopper kun nye fødsler. **RØD.** Se afhjælpning 8.
+- **Kan tændes i dag?** Nej.
+
+---
+
+### Røde trin og afhjælpning
+
+Alle afhjælpninger er prod-skrivninger. De kræver ejer-go og køres **før** trinnet. Backup-tabeller er ikke-destruktive. Rollback-SQL er uafprøvet, indtil den er kørt mod en kopi.
+
+1. **Trin 1 (delvis):** Efter S4 er `active`, er kalenderen låst. Tørkørsel + gylden diff lige før `--apply` er den eneste sikring (§2c).
+
+2. **Trin 6, bestyrelses-backfill:** gem holdlisten før kørslen:
+   ```sql
+   create table public.backup_4857_teams_before_backfill as
+   select t.id as team_id, now() as captured_at from public.teams t
+   where not t.is_ai and not coalesce(t.is_bank, false) and not coalesce(t.is_frozen, false)
+     and not coalesce(t.is_test_account, false)
+     and not exists (select 1 from public.board_relations br where br.team_id = t.id);
+   ```
+   Rollback (uafprøvet, destruktiv). Ingen evidens for, at tabel-listen er udtømmende; tjek den mod tørkørslens output:
+   ```sql
+   delete from public.board_vision_milestones where team_id in (select team_id from public.backup_4857_teams_before_backfill) and created_at >= '<apply-tid>';
+   delete from public.board_mandates where team_id in (select team_id from public.backup_4857_teams_before_backfill) and created_at >= '<apply-tid>';
+   delete from public.board_relations where team_id in (select team_id from public.backup_4857_teams_before_backfill) and created_at >= '<apply-tid>';
+   ```
+
+3. **Trin 7, trup-backfill:** tjek lige før apply, at `select count(*) from academy_graduation where from_squad is not null` = 0 (0 målt 23/9). Rollback-SQL (uafprøvet):
+   ```sql
+   update public.riders r set squad = coalesce(b.squad_before, 'senior'), is_academy = coalesce(b.is_academy_before, r.is_academy)
+   from public.riders_4619_squad_backup_20260915 b where b.rider_id = r.id;
+   delete from public.academy_graduation where status = 'pending' and from_squad = 'u23' and to_squad = 'senior' and created_at >= '<apply-tid>';
+   update public.academy_graduation set from_squad = null, to_squad = null where created_at < '<apply-tid>';
+   ```
+
+4. **Trin 11, søndagskørslen:** tag backup lørdag aften, **efter** trin 8. Ellers ruller en tilbagerulning også værdikørslen tilbage.
+   ```sql
+   create table public.backup_s4_sunday_values_20260926 as
+   select id as rider_id, base_value, current_production_value, primary_type, secondary_type, best_role, best_role_rating, now() as captured_at
+   from public.riders;
+   ```
+   Rollback (uafprøvet):
+   ```sql
+   update public.riders r set base_value = b.base_value, current_production_value = b.current_production_value,
+     primary_type = b.primary_type, secondary_type = b.secondary_type, best_role = b.best_role, best_role_rating = b.best_role_rating
+   from public.backup_s4_sunday_values_20260926 b where b.rider_id = r.id;
+   ```
+   Alternativet er valg (B) i trin 11: spring kørslen over med et claim på forhånd.
+
+5. **Trin 12, cutover:** verificér PITR. Tag snapshots lige før "Afslut sæson":
+   ```sql
+   create table public.backup_s4_cutover_teams_20260927 as
+   select id, division, league_division_id, balance, parked_at, next_season_signup_at, now() as captured_at from public.teams;
+   create table public.backup_s4_cutover_riders_20260927 as
+   select id, team_id, salary, contract_end_season, contract_length, is_retired, now() as captured_at from public.riders;
+   create table public.backup_s4_cutover_board_mandates_20260927 as
+   select *, now() as captured_at from public.board_mandates;
+   ```
+   Snapshots giver et grundlag for reparation, ikke en ren fortrydelse: transaktioner, beskeder og nye mandater består. Af-parkering (uafprøvet):
+   ```sql
+   update public.teams t set league_division_id = b.league_division_id, parked_at = null
+   from public.backup_s4_cutover_teams_20260927 b where b.id = t.id and t.parked_at >= '2026-09-27';
+   ```
+   Ingen evidens for, at puljen ikke imens er fyldt op af AI-hold. Uden PITR-accept står trinnet som **ejer-accepteret risiko**.
+
+6. **Trin 13 (delvis):** skriv proceduren for at slukke v4 midt i et etapeløb ned før flip. Sluk mellem to etapeklynger, og tjek derefter:
+   ```sql
+   select race_id, stage_number, engine_version from race_simulation_runs where created_at >= '<off-tid>';
+   ```
+   Forventet: `2`. Tjek også, at GC-rækker findes for de berørte løb.
+
+7. **Trin 14 (delvis):** sluk kun før dagens kl. 20-sweep. Tjek bagefter:
+   ```sql
+   select team_id, tick_date, count(*) from training_day_runs
+   where tick_date = '<dato>' and coalesce(squad, 'senior') = 'senior'
+   group by 1, 2 having count(*) > 1;
+   ```
+   Forventet: 0 rækker.
+
+8. **Trin 17:** #5327-B skal mærke fødsler under den nye tilstand, fx med den eksisterende kolonne `riders.generation_tag`. Dermed kan de findes. At de beholder typen, står som ejer-accepteret risiko.
+
+### Uafklaret: kræver ejer-beslutning
+
+1. **Værdimodel:** v5 (typet; runbook og script er klar) eller typefri (#5497/#5502). Typefri kræver en ny model, en script-ændring (`REQUIRED_MODEL_ID = "v5"`) og ny #5461-tekst.
+2. **Parkering ved S4:** skal ske? Kræver `season_signup_enabled` on før "Afslut sæson" (trin 5). Denne kontakt står ikke i #5506. Parkerede hold kan ikke af-parkeres med kode.
+3. **S4-kalenderens tre finale-afvigelser:** ret dem eller acceptér med `--allow-finale-drift`.
+4. **Søndagskørslen 27/9:** lad den køre med backup, eller spring over med et claim på forhånd (#5443 trin 3).
+5. **v4-timing:** før første S4-etape (foreslået, så intet etapeløb skifter motor) eller senere. Samme dag som trin 14 giver to store ændringer på S4's første dag.
+6. **Træning pr. løbsdag uden program pr. løbsdag og B5:** kan det tændes 28/9 uden dem?
+7. **Mandatet for alle:** før eller efter cutover.
+8. **primaryTypeMode:** med til S4 eller først senere. Ingen evidens for, hvilke fødsler cutover selv udløser; akademiets optag er off.
+9. **Trup-backfill:** før eller efter cutover, set i forhold til #4620 og #5432.
+10. **Cutover uden rollback:** accepteres risikoen, hvis PITR er verificeret og snapshots er taget?
+11. **#4153:** løn for ryttere, der pensioneres i samme skifte, er åben. Rettes før 27/9 eller accepteres.
+
+> Kilde: status quo-forslag 1 (ejer-ja 22/9), read-only research 23/9. Planen taender intet; hvert trin kraever ejerens go.
+
 ## Reference
 
 - `docs/SEASON_TRANSITION_CHECKLIST.md` — S1→S2-drejebogen (komprimerings-specifik,

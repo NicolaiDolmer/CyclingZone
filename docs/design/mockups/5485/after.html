@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training recommended</title>
+<!-- #5485 EFTER-mockup (statisk, fiktive data). Visning vaelges med ?view=
+     desktop | desktop-week | mobile | mobile-week | landscape  ·  ?pins=1 viser nummererede pins. -->
+<style>
+@font-face { font-family: "Bebas Neue"; src: url(fonts/bebas-neue-latin-400-normal.woff2) format("woff2"); font-weight: 400; font-display: block; }
+@font-face { font-family: "DM Sans"; src: url(fonts/dm-sans-latin-wght-normal.woff2) format("woff2"); font-weight: 100 1000; font-display: block; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215; }
+@font-face { font-family: "DM Sans"; src: url(fonts/dm-sans-latin-ext-wght-normal.woff2) format("woff2"); font-weight: 100 1000; font-display: block; unicode-range: U+0100-02AF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Inter Tight"; src: url(fonts/inter-tight-latin-wght-normal.woff2) format("woff2"); font-weight: 100 900; font-display: block; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215; }
+@font-face { font-family: "Inter Tight"; src: url(fonts/inter-tight-latin-ext-wght-normal.woff2) format("woff2"); font-weight: 100 900; font-display: block; unicode-range: U+0100-02AF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+:root {
+  --bg-body: #f4f2ec; --bg-card: #fcfbf7; --bg-elevated: #ffffff; --bg-subtle: #ece9e1;
+  --border: #e5e0d5; --text-1: #0e0f15; --text-2: #66637a; --text-3: #9896b0;
+  --accent: rgb(232 197 71); --accent-t: rgb(160 120 0); --accent-10: rgb(232 197 71 / .10);
+  --sidebar: #1a1f38; --sidebar-2: rgba(255,255,255,.55); --sidebar-3: rgba(255,255,255,.25); --sidebar-border: rgba(255,255,255,.07);
+  --success: rgb(21 119 47); --danger: rgb(168 30 30); --warning: rgb(154 91 0); --info: rgb(26 71 192);
+  --warning-bg: rgba(154,91,0,.08); --success-bg: rgba(21,119,47,.08);
+  --pin: #c2185b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg-body); color: var(--text-1); font-family: "DM Sans", system-ui, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; }
+.data { font-family: "Inter Tight", "DM Sans", sans-serif; font-variant-numeric: tabular-nums; }
+.num { font-family: "Inter Tight", sans-serif; font-variant-numeric: tabular-nums; }
+.micro { font-family: "Inter Tight", sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 600; }
+.micro11 { font-family: "Inter Tight", sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); font-weight: 600; }
+.ico { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ico.s12 { width: 12px; height: 12px; } .ico.s14 { width: 14px; height: 14px; } .ico.s20 { width: 20px; height: 20px; } .ico.s22 { width: 22px; height: 22px; }
+
+/* ── Knapper ── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 5px; font-weight: 600; font-size: 13px; height: 34px; padding: 0 14px; white-space: nowrap; }
+.btn-primary { background: var(--accent); color: #0e0f15; }
+.btn-secondary { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-1); font-weight: 500; }
+.btn-quiet { color: var(--accent-t); font-weight: 500; font-size: 12px; padding: 0 4px; height: auto; }
+.btn-lg { height: 44px; width: 100%; font-size: 15px; }
+.select { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-elevated); font-size: 12px; color: var(--text-1); }
+.check { width: 16px; height: 16px; border: 1.5px solid var(--text-3); border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-elevated); flex: none; }
+.check.on { background: var(--text-1); border-color: var(--text-1); color: var(--bg-card); }
+
+/* ── Kort ── */
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 5px; }
+
+/* ── Faner ── */
+.tabs { display: flex; gap: 26px; border-bottom: 1px solid var(--border); }
+.tab { font-size: 14px; font-weight: 500; color: var(--text-3); padding: 10px 2px 11px; margin-bottom: -1px; border-bottom: 2px solid transparent; white-space: nowrap; }
+.tab.on { color: var(--text-1); border-bottom-color: var(--accent); }
+.tab .cnt { font-family: "Inter Tight"; font-size: 11px; color: var(--text-3); margin-left: 4px; }
+
+/* ── Desktop-skal ── */
+.shell { display: flex; min-height: 100vh; }
+.sidebar { width: 208px; background: var(--sidebar); color: #fff; flex: none; display: flex; flex-direction: column; }
+.logo { font-family: "Bebas Neue"; color: var(--accent); font-size: 21px; letter-spacing: .02em; text-align: center; padding: 22px 0 0; }
+.logo-rule { width: 128px; height: 1px; background: var(--accent); margin: 3px auto 0; }
+.logo-dash { width: 16px; height: 1px; background: var(--accent); margin: 5px auto 22px; }
+.sb-block { border-top: 1px solid var(--sidebar-border); padding: 14px 16px; }
+.sb-label { font-family: "Inter Tight"; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--sidebar-3); font-weight: 600; }
+.sb-item { display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 0 8px; font-size: 13.5px; color: rgba(255,255,255,.8); border-radius: 5px; }
+.sb-item::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.3); }
+.sb-item.on { background: rgba(255,255,255,.06); color: var(--accent); }
+.sb-item.on::before { background: var(--accent); }
+.sb-sec { display: flex; justify-content: space-between; padding: 16px 16px 6px; }
+.main { flex: 1; min-width: 0; }
+.page { max-width: 1600px; margin: 0 auto; padding: 28px 32px 64px; }
+
+/* ── Sidehoved ── */
+.ph { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.ph h1 { font-family: "Inter Tight"; font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.ph .sub { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+.ph .sub b { color: var(--text-1); font-weight: 600; }
+
+/* ── Overblik ── */
+.ov { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) 1.25fr; margin: 16px 0 14px; }
+.ov-cell { padding: 12px 16px; border-left: 1px solid var(--border); text-align: left; display: block; }
+.ov-cell:first-child { border-left: 0; }
+.ov-val { font-family: "Inter Tight"; font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 650; line-height: 1; display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+.ov-val .ctx { font-family: "DM Sans"; font-size: 12px; font-weight: 400; color: var(--text-2); }
+.ov-cell.warn .ov-val > span:first-child { color: var(--warning); }
+.ov-cell.active { background: var(--bg-subtle); }
+.ov-run { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ov-link { display: inline-flex; align-items: center; gap: 2px; font-size: 11.5px; color: var(--accent-t); font-weight: 500; margin-top: 6px; }
+
+/* ── Tabel ── */
+.tbl-wrap { overflow: hidden; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--border); min-height: 46px; }
+.toolbar .left { display: flex; align-items: center; gap: 10px; }
+.toolbar .right { display: flex; align-items: center; gap: 18px; font-size: 12.5px; color: var(--text-2); }
+.sel-count { font-size: 13px; font-weight: 600; }
+table { border-collapse: collapse; width: 100%; }
+th { font-family: "Inter Tight"; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 6px 12px; border-top: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+tr:first-child td { border-top: 0; }
+th.c, td.c { text-align: center; } th.r, td.r { text-align: right; }
+th.rd { width: 92px; text-align: center; padding-left: 4px; padding-right: 4px; }
+td.rd { text-align: center; padding-left: 4px; padding-right: 4px; }
+.th-group { border-bottom: 0; padding-bottom: 0; padding-top: 7px; text-align: center; color: var(--text-2); }
+.name { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 500; }
+.name .ico { color: var(--text-3); }
+.subl { font-family: "Inter Tight"; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-top: 1px; }
+.cell { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 62px; padding: 3px 6px; border-radius: 4px; font-family: "Inter Tight"; font-size: 12px; font-weight: 600; }
+.cell.race { background: var(--text-1); color: var(--bg-card); }
+.cell.recov { color: var(--text-2); font-weight: 500; }
+.cell.rest { color: var(--text-3); font-weight: 500; }
+.cell.none { color: var(--text-3); font-weight: 500; }
+.nodaycell { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 10px; border: 1px dashed var(--border); border-radius: 5px; font-size: 12px; color: var(--warning); background: var(--warning-bg); }
+.nodaycell .btn-quiet { color: var(--accent-t); }
+.daychip { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 150px; height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-elevated); font-size: 12.5px; }
+.daychip .t { color: var(--text-3); font-size: 11px; }
+.daychip.unset { border-style: dashed; color: var(--accent-t); font-weight: 600; background: var(--bg-card); }
+.saved { display: inline-flex; align-items: center; gap: 3px; color: var(--success); font-size: 11px; font-weight: 600; margin-left: 8px; }
+.bar { position: relative; height: 6px; background: var(--bg-subtle); border-radius: 3px; overflow: hidden; }
+.bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--text-1); border-radius: 3px; }
+.meter { display: flex; align-items: center; gap: 8px; }
+.meter .bar { width: 46px; }
+.meter .v { font-family: "Inter Tight"; font-variant-numeric: tabular-nums; font-size: 12.5px; width: 22px; text-align: right; }
+.fat-hi .v { color: var(--warning); font-weight: 700; }
+.fat-hi .bar > i { background: var(--warning); }
+tr.sel td { background: var(--bg-subtle); }
+tr.open td { background: var(--bg-subtle); }
+.detail td { background: var(--bg-subtle); border-top: 0; padding: 4px 12px 14px 58px; }
+.dgrid { display: grid; grid-template-columns: 210px 1fr 1fr auto; gap: 28px; align-items: start; background: var(--bg-card); border: 1px solid var(--border); border-radius: 5px; padding: 14px 16px; }
+.kv { display: grid; grid-template-columns: auto auto auto; gap: 4px 18px; }
+.kv .v { font-family: "Inter Tight"; font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 650; }
+.prog { display: grid; grid-template-columns: 78px 26px 1fr 34px; gap: 6px 8px; align-items: center; font-size: 12.5px; }
+.prog .bar { width: 100%; } .prog .p { font-family: "Inter Tight"; font-size: 11px; color: var(--text-2); text-align: right; }
+.wk { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.wk span { text-align: center; font-family: "Inter Tight"; font-size: 10px; padding: 3px 0; border-radius: 3px; border: 1px solid var(--border); background: var(--bg-elevated); }
+.wk b { display: block; font-size: 10px; color: var(--text-3); font-weight: 600; letter-spacing: .06em; }
+.wk .today { border-color: var(--text-1); }
+.count-line { font-family: "Inter Tight"; font-size: 12px; color: var(--text-3); padding: 10px 2px; }
+
+/* ── Ugeplan (7 x 5) ── */
+.wp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 12px; border-bottom: 1px solid var(--border); }
+.wp-title { font-size: 15px; font-weight: 600; }
+.wp-expl { font-size: 13px; color: var(--text-2); padding: 12px 16px 4px; }
+.wp-expl b { color: var(--text-1); font-weight: 600; }
+.wp { display: grid; border-top: 1px solid var(--border); }
+.wp > div { border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; }
+.wp .hd { font-family: "Inter Tight"; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); font-weight: 600; background: var(--bg-subtle); padding: 6px 2px; }
+.wp .day { justify-content: space-between; padding: 0 10px; font-weight: 600; font-size: 13px; border-left: 0; }
+.wp .day .ico { color: var(--text-3); }
+.wp .def { font-size: 12.5px; justify-content: space-between; padding: 0 10px; background: var(--bg-card); }
+.wp .c { font-family: "Inter Tight"; font-size: 12px; font-weight: 500; color: var(--text-2); background: var(--bg-elevated); flex-direction: column; gap: 1px; }
+.wp .c.recov { color: var(--text-1); font-weight: 700; }
+.wp .c.rest { color: var(--text-3); font-weight: 500; background: var(--bg-card); }
+.wp .c .rc { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; font-weight: 700; color: var(--bg-card); background: var(--text-1); border-radius: 3px; padding: 0 4px; line-height: 15px; }
+.wp .c.ovr::after { content: ""; position: absolute; top: 5px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--text-2); }
+.wp .past { opacity: .5; }
+.wp .todayrow { box-shadow: none; }
+.wp .todaylbl { font-family: "Inter Tight"; font-size: 9.5px; letter-spacing: .08em; font-weight: 700; color: var(--bg-card); background: var(--text-1); border-radius: 3px; padding: 1px 4px; }
+.wp-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 10px 16px; font-size: 11.5px; color: var(--text-2); border-bottom: 1px solid var(--border); }
+.wp-legend .k { font-family: "Inter Tight"; font-weight: 700; color: var(--text-1); }
+.wp-foot { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.own { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; font-size: 13px; }
+
+/* ── Mobil ── */
+.m { width: 390px; min-height: 844px; background: var(--bg-body); position: relative; }
+.m-top { height: 56px; background: var(--sidebar); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #fff; }
+.m-logo { font-family: "Bebas Neue"; color: var(--accent); font-size: 17px; letter-spacing: .02em; border-bottom: 1px solid var(--accent); line-height: 1.05; }
+.m-body { padding: 16px 16px 90px; }
+.m-ph h1 { font-family: "Inter Tight"; font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.m-ph .sub { font-size: 13px; color: var(--text-2); margin-top: 3px; }
+.m .tabs { gap: 20px; margin-top: 12px; }
+.m-ov { display: grid; grid-template-columns: repeat(4, 1fr); margin: 12px 0; }
+.m-ov .ov-cell { padding: 9px 8px 8px; }
+.m-ov .ov-val { font-size: 20px; margin-top: 0; }
+.m-ov .micro { margin-top: 4px; font-size: 9.5px; letter-spacing: .06em; }
+.m table th { padding: 6px 4px; font-size: 10px; }
+.m table td { padding: 0 3px; height: 44px; border-top: 1px solid var(--border); }
+.m .namecell { padding-left: 10px; width: 136px; max-width: 136px; border-right: 1px solid var(--border); }
+.m .mname { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m .cell { min-width: 0; width: 100%; padding: 3px 1px; font-size: 11px; }
+.m .nodaycell { padding: 5px 8px; font-size: 11.5px; }
+.m-nav { position: fixed; width: 390px; left: 0; right: 0; bottom: 0; height: 64px; background: var(--sidebar); display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; color: rgba(255,255,255,.8); font-size: 11px; text-align: center; }
+.m-nav div { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.m .wp-head { padding: 10px 12px; }
+.m .wp-expl { padding: 10px 12px 2px; font-size: 12.5px; }
+.m .wp .day { padding: 0 8px; font-size: 12.5px; }
+.m .wp .c { font-size: 11px; }
+.m .wp-legend { padding: 8px 12px; gap: 4px 12px; font-size: 11px; }
+.m .wp-foot { padding: 10px 12px; }
+.m .own { padding: 10px 12px; }
+
+/* ── Landscape ── */
+.l { width: 844px; height: 390px; background: var(--bg-body); position: relative; overflow: hidden; }
+.l-top { height: 40px; background: var(--sidebar); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #fff; }
+.l-body { padding: 10px 16px 0; }
+.l .ph { margin-bottom: 4px; }
+.l .tabs { gap: 20px; }
+.l .tab { padding: 7px 2px 8px; font-size: 13.5px; }
+.l-ov { display: flex; gap: 8px; align-items: center; }
+.l-chip { display: inline-flex; align-items: baseline; gap: 5px; border: 1px solid var(--border); border-radius: 5px; padding: 4px 8px; background: var(--bg-card); font-size: 11.5px; color: var(--text-2); white-space: nowrap; }
+.l-chip b { font-family: "Inter Tight"; font-variant-numeric: tabular-nums; font-size: 14px; color: var(--text-1); }
+.l-chip.warn b { color: var(--warning); }
+.l table td { padding: 0 6px; height: 40px; }
+.l table th { padding: 5px 6px; }
+
+/* ── Pins ── */
+.pin { position: absolute; z-index: 50; width: 26px; height: 26px; border-radius: 50%; background: var(--pin); color: #fff; font-family: "Inter Tight"; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; pointer-events: none; }
+.pinbox { position: absolute; z-index: 49; border: 2px solid var(--pin); border-radius: 6px; pointer-events: none; }
+.view { display: none; }
+.view.on { display: block; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ── Ikoner (stroke, 24-grid) ──
+const I = {
+  chevDown: '<path d="m6 9 6 6 6-6"/>', chevRight: '<path d="m9 6 6 6-6 6"/>', chevUp: '<path d="m18 15-6-6-6 6"/>',
+  flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>', star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>', bell: '<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  home: '<path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/>', inbox: '<path d="M4 13h4l1.5 3h5L16 13h4"/><path d="M5 5h14l1 8v6H4v-6z"/>',
+  bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/>', users: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6M17 13.6a5.5 5.5 0 0 1 3.5 5.4"/>',
+  sort: '<path d="M8 5v14M5 16l3 3 3-3M16 19V5M13 8l3-3 3 3"/>', arrowDown: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  play: '<path d="M8 5.5v13l10-6.5z"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>',
+};
+const ico = (n, cls = "") => `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+
+// ── Fiktive data (ingen rigtige ryttere/hold). I dag = onsdag 23/9, Division 1: 5 loebsdage. ──
+// Holdets ugeplan saetter onsdagens loebsdag 3 til "Recovery" for alle der ikke koerer loeb.
+const RIDERS = [
+  { n: "Aksel Brandt", s: "A. Brandt", t: "Sprinter/Rouleur", ts: "SPR/ROU", age: 30, f: 48, fa: 12, day: "Threshold", sh: "Thresh", race: [1], pts: 6 },
+  { n: "Lucien Marchetti", s: "L. Marchetti", t: "Climber/Puncheur", ts: "CLI/PUN", age: 29, f: 55, fa: 25, day: "Punch intervals", sh: "Punch", pts: 9, open: true },
+  { n: "Pieter Draaijer", s: "P. Draaijer", t: "Rouleur/Time-trialist", ts: "ROU/TT", age: 28, f: 62, fa: 38, day: "Sprint", sh: "Sprint", race: [1], pts: 4, own: true },
+  { n: "Oskar Lindvik", s: "O. Lindvik", t: "Puncheur/GC contender", ts: "PUN/GC", age: 27, f: 69, fa: 51, day: "Active recovery", sh: "Recov", kind: "recov", pts: 3 },
+  { n: "Mateo Ferrán", s: "M. Ferrán", t: "Time-trialist/Sprinter", ts: "TT/SPR", age: 26, f: 76, fa: 46, day: null, pts: 2, sel: true },
+  { n: "Jonas Halvorsen", s: "J. Halvorsen", t: "GC contender/Climber", ts: "GC/CLI", age: 25, f: 83, fa: 15, day: "Technique", sh: "Tech", race: [4], pts: 7 },
+  { n: "Rafael Duarte", s: "R. Duarte", t: "Sprinter/Rouleur", ts: "SPR/ROU", age: 24, f: 50, fa: 28, day: "Threshold", sh: "Thresh", race: [4], pts: 5 },
+  { n: "Viggo Kjærgård", s: "V. Kjærgård", t: "Climber/Puncheur", ts: "CLI/PUN", age: 23, f: 57, fa: 41, day: "Punch intervals", sh: "Punch", pts: 8 },
+  { n: "Anton Sørlie", s: "A. Sørlie", t: "Rouleur/Time-trialist", ts: "ROU/TT", age: 22, f: 64, fa: 64, day: "Rest", sh: "Rest", kind: "rest", pts: 3 },
+  { n: "Luca Bellandi", s: "L. Bellandi", t: "Puncheur/GC contender", ts: "PUN/GC", age: 21, f: 71, fa: 67, day: null, pts: 5, sel: true },
+  { n: "Timo Kallioinen", s: "T. Kallioinen", t: "Time-trialist/Sprinter", ts: "TT/SPR", age: 30, f: 78, fa: 18, day: "Tempo", sh: "Tempo", pts: 6 },
+  { n: "Noah Brekkestad", s: "N. Brekkestad", t: "GC contender/Climber", ts: "GC/CLI", age: 29, f: 85, fa: 31, day: "Technique", sh: "Tech", pts: 4 },
+  { n: "Élie Durandet", s: "É. Durandet", t: "Sprinter/Rouleur", ts: "SPR/ROU", age: 20, f: 52, fa: 44, day: "Threshold", sh: "Thresh", pts: 7 },
+  { n: "Kasper Holmegaard", s: "K. Holmegaard", t: "Climber/Puncheur", ts: "CLI/PUN", age: 27, f: 59, fa: 57, day: null, pts: 3 },
+];
+// Hvad rytteren laver paa hver af dagens 5 loebsdage.
+function rdCells(r) {
+  return [1, 2, 3, 4, 5].map((rd) => {
+    if (r.race && r.race.includes(rd)) return { k: "race", l: "Race" };
+    if (r.kind === "rest") return { k: "rest", l: "Rest" };
+    if (r.kind === "recov") return { k: "recov", l: "Recov" };
+    if (rd === 3) return { k: "recov", l: "Recov" }; // holdets ugeplan: onsdag LD3 = Recovery
+    return { k: "", l: r.sh };
+  });
+}
+const cellHtml = (c) => `<span class="cell ${c.k}">${c.k === "race" ? ico("flag", "s12") : ""}${c.l}</span>`;
+const pin = (n) => ` data-pin="${n}"`;
+
+// ── Holdets ugeplan 7 x 5 ──
+const WEEK = [
+  { d: "Mon", def: "Train", c: ["Train", "Train", "Train", "Train", "Recov"], ov: [4], race: { 2: 3 }, past: true },
+  { d: "Tue", def: "Train", c: ["Train", "Train", "Train", "Train", "Train"], race: { 1: 2, 3: 2 }, past: true },
+  { d: "Wed", def: "Train", c: ["Train", "Train", "Recov", "Train", "Train"], ov: [2], race: { 0: 2, 3: 2 }, today: true },
+  { d: "Thu", def: "Train", c: ["Train", "Train", "Train", "Train", "Recov"], ov: [4], race: { 1: 4 } },
+  { d: "Fri", def: "Train", c: ["Train", "Train", "Train", "Recov", "Recov"], ov: [3, 4], race: {} },
+  { d: "Sat", def: "Train", c: ["Train", "Train", "Train", "Train", "Train"], race: { 0: 5, 2: 3 } },
+  { d: "Sun", def: "Rest", c: ["Rest", "Rest", "Rest", "Rest", "Rest"], race: { 1: 2 } },
+];
+function weekGrid({ mobile }) {
+  const dayW = mobile ? "52px" : "120px", defW = mobile ? "" : "150px ";
+  const cols = mobile ? `${dayW} repeat(5, minmax(0,1fr))` : `${dayW} ${defW}repeat(5, minmax(0,1fr))`;
+  let h = `<div class="wp" style="grid-template-columns:${cols}">`;
+  h += `<div class="hd" style="border-left:0">Day</div>`;
+  if (!mobile) h += `<div class="hd">Whole day</div>`;
+  for (let i = 1; i <= 5; i++) h += `<div class="hd">${mobile ? "" : "Race day "}${mobile ? "RD " + i : i}</div>`;
+  const rowH = mobile ? 42 : 44;
+  WEEK.forEach((w) => {
+    const pc = w.past ? " past" : "";
+    const tbg = w.today ? "background:var(--bg-subtle);" : "";
+    h += `<div class="day${pc}" style="height:${rowH}px;${tbg}">${w.today ? `<span style="display:flex;flex-direction:column;gap:2px">${w.d}<span class="todaylbl">TODAY</span></span>` : `<span>${w.d}</span>`}${mobile ? ico("chevDown", "s12") : ""}</div>`;
+    if (!mobile) h += `<div class="def${pc}" style="${tbg}">${w.def === "Train" ? "Train · own session" : w.def}${ico("chevDown", "s14")}</div>`;
+    w.c.forEach((c, i) => {
+      const k = c === "Recov" ? "recov" : c === "Rest" ? "rest" : "";
+      const ov = (w.ov || []).includes(i) ? " ovr" : "";
+      const rc = w.race[i] ? `<span class="rc">${ico("flag", "s12")}${w.race[i]}</span>` : "";
+      h += `<div class="c ${k}${ov}${pc}" style="${w.today ? "background:var(--bg-subtle);" : ""}">${c}${rc}</div>`;
+    });
+  });
+  return h + "</div>";
+}
+function weekCard({ mobile }) {
+  return `<div class="card"${pin(6)}>
+    <div class="wp-head">
+      <div><div class="wp-title">Week plan</div>${mobile ? "" : `<div style="font-size:12.5px;color:var(--text-2);margin-top:2px">Sets the session for every race day. Riders in a race skip the plan that race day.</div>`}</div>
+      <div style="display:flex;align-items:center;gap:8px"><span class="micro11" style="letter-spacing:.04em">Plan for</span><span class="select" style="min-width:${mobile ? 118 : 170}px">Team · 13 riders ${ico("chevDown", "s14")}</span></div>
+    </div>
+    ${mobile ? `<div class="wp-expl"><b>7 days × 5 race days.</b> On each race day a rider races or trains. Riders in a race skip the plan.</div>` : `<div class="wp-expl"><b>7 days × 5 race days.</b> Set a whole day in one go, or tap one race day to change just that one.</div>`}
+    <div style="padding:${mobile ? "8px 12px 12px" : "10px 16px 14px"}">${weekGrid({ mobile })}</div>
+    <div class="wp-legend">
+      <span><span class="k">Train</span> each rider's own session</span>
+      <span><span class="k">Recov</span> active recovery</span>
+      <span><span class="k">Rest</span></span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span class="rc" style="display:inline-flex;align-items:center;gap:2px;font-family:Inter Tight;font-size:10px;font-weight:700;color:var(--bg-card);background:var(--text-1);border-radius:3px;padding:0 4px;line-height:15px">${ico("flag", "s12")}2</span> riders in a race</span>
+      <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:5px;height:5px;border-radius:50%;background:var(--text-2);display:inline-block"></span> changed from the whole day</span>
+    </div>
+    <div class="wp-foot"><span class="btn btn-secondary">Save plan</span><span class="btn-quiet btn">Undo changes</span><span style="margin-left:auto;font-size:12px;color:var(--text-3)" class="data">4 changes not saved</span></div>
+    <div class="own" style="border-top:1px solid var(--border)"><span><span style="font-weight:600">Own plans</span> <span style="color:var(--text-2)">· P. Draaijer rests on Saturday</span></span>${ico("chevRight", "s14")}</div>
+  </div>`;
+}
+
+// ── Desktop ──
+function sidebar() {
+  const items = ["Dashboard", "Inbox", "Forum", "My Team", "Daily training", "Finance", "Academy", "Board", "Sponsors", "Club"];
+  return `<aside class="sidebar">
+    <div class="logo">CYCLING ZONE</div><div class="logo-rule"></div><div class="logo-dash"></div>
+    <div class="sb-block"><div class="sb-label">Balance</div><div class="num" style="color:var(--accent);font-weight:700;font-size:15px;margin-top:4px">500,000 CZ$</div><div style="font-size:11px;color:var(--sidebar-2);margin-top:2px">Division 1</div></div>
+    <div class="sb-block" style="font-size:11px;color:var(--sidebar-2)"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#3fb96b;margin-right:6px"></span>1 online now</div>
+    <div class="sb-sec"><span class="sb-label">Clubhouse</span></div>
+    ${items.map((i) => `<div class="sb-item${i === "Daily training" ? " on" : ""}">${i}</div>`).join("")}
+    <div class="sb-sec" style="padding-top:18px"><span class="sb-label">Planning</span></div>
+    <div class="sb-sec"><span class="sb-label">Market</span></div>
+    <div class="sb-sec"><span class="sb-label">Results</span></div>
+  </aside>`;
+}
+function header({ compact } = {}) {
+  return `<div class="ph">
+    <div><h1>Daily training</h1><div class="sub">Wednesday 23 Sep · <b>5 race days</b> today · training runs at 20:00</div></div>
+    <span class="btn btn-primary"${pin(2)}>Set days for 3 riders</span>
+  </div>`;
+}
+function tabs(active, { counts = true } = {}) {
+  const t = [["today", "Today"], ["week", "Week plan"], ["dev", "Development"], ["report", "Report"]];
+  return `<div class="tabs">${t.map(([k, l]) => `<span class="tab${k === active ? " on" : ""}"${k === "week" && active === "today" ? pin(6) : ""}>${l}${k === "today" && counts ? `<span class="cnt">3</span>` : ""}</span>`).join("")}</div>`;
+}
+function overviewDesktop() {
+  return `<div class="card ov"${pin(1)}>
+    <button class="ov-cell warn active"><div class="micro">Needs a day</div><div class="ov-val"><span>3</span><span class="ctx">Ferrán, Bellandi, Holmegaard</span></div></button>
+    <button class="ov-cell"><div class="micro">Racing today</div><div class="ov-val"><span>4</span><span class="ctx">RD 1: 2 · RD 4: 2</span></div></button>
+    <button class="ov-cell"><div class="micro">Training today</div><div class="ov-val"><span>9</span><span class="ctx">RD 3 is recovery (week plan)</span></div></button>
+    <button class="ov-cell"><div class="micro">Tired · fatigue 60+</div><div class="ov-val"><span>2</span><span class="ctx">A. Sørlie rests today</span></div></button>
+    <div class="ov-cell ov-run"><div><div class="micro">Today's training</div><div style="font-size:13px;margin-top:6px">Runs at <b class="num">20:00</b> after the last race</div></div><span class="btn btn-secondary" style="height:30px;font-size:12px">${ico("play", "s12")}Run now</span></div>
+  </div>`;
+}
+function rosterDesktop() {
+  let rows = "";
+  RIDERS.forEach((r, i) => {
+    const cells = rdCells(r);
+    const trCls = r.open ? "open" : r.sel ? "sel" : "";
+    const fatHi = r.fa >= 60 ? " fat-hi" : "";
+    const rdHtml = r.day
+      ? cells.map((c) => `<td class="rd">${cellHtml(c)}</td>`).join("")
+      : `<td class="rd" colspan="5"><div class="nodaycell"><span>No day set yet</span><span class="btn-quiet btn">Use assistant pick: ${["Endurance", "Tempo", "Threshold"][i % 3]}</span></div></td>`;
+    rows += `<tr class="${trCls}">
+      <td style="width:52px;padding-left:18px"><span class="check${r.sel ? " on" : ""}">${r.sel ? ico("check", "s12") : ""}</span></td>
+      <td style="width:260px"${r.open ? pin(3) : ""}><div class="name">${r.n}${ico(r.open ? "chevUp" : "chevDown", "s12")}</div><div class="subl">${r.t} · ${r.age}${r.own ? " · own week plan" : ""}</div></td>
+      <td style="width:110px"><div class="meter"><span class="v">${r.f}</span><span class="bar"><i style="width:${r.f}%;background:var(--info)"></i></span></div></td>
+      <td style="width:110px"><div class="meter${fatHi}"><span class="v">${r.fa}</span><span class="bar"><i style="width:${r.fa}%"></i></span></div></td>
+      <td style="width:200px"${i === 0 ? pin(4) : ""}>${r.day ? `<span class="daychip"><span>${r.day}</span>${ico("chevDown", "s14")}</span>${i === 0 ? `<span class="saved">${ico("check", "s12")}Saved</span>` : ""}` : `<span class="daychip unset"><span>Set day</span>${ico("chevDown", "s14")}</span>`}</td>
+      ${rdHtml}
+      <td class="r num" style="width:80px">+${r.pts}</td>
+    </tr>`;
+    if (r.open) {
+      rows += `<tr class="detail"><td colspan="11"><div class="dgrid">
+        <div><div class="kv"><span class="micro">Form</span><span class="micro">Fatigue</span><span class="micro">Age</span><span class="v">55</span><span class="v">25</span><span class="v">29</span></div><div style="font-size:12px;color:var(--text-2);margin-top:8px">Counts for <b style="color:var(--text-1)">Climber</b></div></div>
+        <div><div class="micro" style="margin-bottom:7px">Punch intervals trains</div><div class="prog">
+          <span>Punch</span><span class="num">26</span><span class="bar"><i style="width:55%"></i></span><span class="p">55%</span>
+          <span>Tempo</span><span class="num">23</span><span class="bar"><i style="width:81%"></i></span><span class="p">81%</span>
+          <span>Climbing</span><span class="num">19</span><span class="bar"><i style="width:20%"></i></span><span class="p">20%</span></div></div>
+        <div><div class="micro" style="margin-bottom:7px">Week plan</div><div style="font-size:13px">Follows the <b>team plan</b></div><div style="font-size:12px;color:var(--text-2);margin-top:3px">Today: 4 race days training, RD 3 recovery</div><span class="btn-quiet btn" style="display:inline-flex;align-items:center;margin-top:6px;padding:0">Give him his own plan${ico("chevRight", "s12")}</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end"><span class="btn btn-secondary" style="height:30px;font-size:12px">Change day</span><span class="btn-quiet btn" style="display:inline-flex;align-items:center">Rider profile${ico("chevRight", "s12")}</span></div>
+      </div></td></tr>`;
+    }
+  });
+  return `<div class="card tbl-wrap">
+    <div class="toolbar"${pin(5)}>
+      <div class="left"><span class="sel-count">2 selected</span><span class="select" style="min-width:210px">Set day for selected ${ico("chevDown", "s14")}</span><span class="btn btn-secondary" style="height:30px;font-size:12px">Apply to 2</span><span class="btn btn-quiet">Clear</span></div>
+      <div class="right"><span style="display:inline-flex;align-items:center;gap:7px"><span class="check"></span>Group by type</span><span style="color:var(--text-3);text-decoration:underline dotted;font-size:11.5px">How training works</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr><th colspan="5" style="border-bottom:0;padding-bottom:0"></th><th colspan="5" class="th-group">Today's race days</th><th style="border-bottom:0"></th></tr>
+        <tr>
+          <th style="padding-left:14px">Select</th><th>Rider ${ico("sort", "s12")}</th><th>Form ${ico("sort", "s12")}</th><th style="color:var(--text-1)">Fatigue ${ico("arrowDown", "s12")}</th><th>Today's day</th>
+          ${[1, 2, 3, 4, 5].map((i) => `<th class="rd">RD ${i}</th>`).join("")}
+          <th class="r">Season pts</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
+  <div class="count-line">14 riders · sorted by fatigue</div>`;
+}
+function desktop(active) {
+  return `<div class="shell">${sidebar()}<main class="main"><div class="page">
+    ${header()}
+    ${tabs(active)}
+    ${active === "today" ? overviewDesktop() + rosterDesktop() : `<div style="margin-top:16px;max-width:1100px">${weekCard({ mobile: false })}</div>`}
+  </div></main></div>`;
+}
+
+// ── Mobil ──
+function mTop() {
+  return `<div class="m-top">${ico("menu", "s22")}<span class="m-logo">CYCLING ZONE</span><span style="display:flex;gap:14px;align-items:center"><span style="font-size:12px;opacity:.8">EN</span>${ico("bell", "s20")}</span></div>`;
+}
+function mNav() {
+  const n = [["home", "Dashboard"], ["inbox", "Inbox"], ["bag", "Market"], ["users", "Riders"], ["star", "My Team"]];
+  return `<div class="m-nav">${n.map(([i, l]) => `<div>${ico(i, "s20")}<span>${l}</span></div>`).join("")}</div>`;
+}
+function mHead() {
+  return `<div class="m-ph"><h1>Daily training</h1><div class="sub">Wed 23 Sep · 5 race days · runs at 20:00</div></div>
+  <div style="margin-top:12px"><span class="btn btn-primary btn-lg"${pin(2)}>Set days for 3 riders</span></div>`;
+}
+function mobileToday() {
+  let rows = "";
+  RIDERS.forEach((r, i) => {
+    const cells = rdCells(r);
+    const rd = r.day
+      ? cells.map((c) => `<td class="rd">${`<span class="cell ${c.k}">${c.l}</span>`}</td>`).join("")
+      : `<td colspan="5" style="padding:0 6px"><div class="nodaycell"><span>No day set</span><span class="btn-quiet btn" style="font-size:11.5px">Set day</span></div></td>`;
+    rows += `<tr><td class="namecell"${i === 0 ? pin(3) : ""}><div class="mname">${r.s}</div><div class="subl" style="${r.fa >= 60 ? "" : ""}">${r.ts} · F${r.f} · <span style="${r.fa >= 60 ? "color:var(--warning);font-weight:700" : ""}">T${r.fa}</span></div></td>${rd}</tr>`;
+  });
+  return `<div class="m">${mTop()}<div class="m-body">
+    ${mHead()}
+    ${tabs("today")}
+    <div class="card m-ov"${pin(1)}>
+      <button class="ov-cell warn active"><div class="ov-val"><span>3</span></div><div class="micro">Needs a day</div></button>
+      <button class="ov-cell"><div class="ov-val"><span>4</span></div><div class="micro">Racing</div></button>
+      <button class="ov-cell"><div class="ov-val"><span>9</span></div><div class="micro">Training</div></button>
+      <button class="ov-cell"><div class="ov-val"><span>2</span></div><div class="micro">Tired</div></button>
+    </div>
+    <div class="card tbl-wrap">
+      <table>
+        <thead><tr><th style="text-align:left;padding-left:10px;border-right:1px solid var(--border)">Rider</th>${[1, 2, 3, 4, 5].map((i) => `<th class="c"${i === 1 ? pin(4) : ""}>RD ${i}</th>`).join("")}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>${mNav()}</div>`;
+}
+function mobileWeek() {
+  return `<div class="m">${mTop()}<div class="m-body">
+    ${mHead()}
+    ${tabs("week")}
+    <div style="margin-top:12px">${weekCard({ mobile: true })}</div>
+  </div>${mNav()}</div>`;
+}
+
+// ── Landscape (844 x 390): mobil-layoutet, ikke desktop med sidebar ──
+function landscape() {
+  let rows = "";
+  RIDERS.slice(0, 7).forEach((r) => {
+    const cells = rdCells(r);
+    const rd = r.day
+      ? cells.map((c) => `<td class="rd">${`<span class="cell ${c.k}">${c.l}</span>`}</td>`).join("")
+      : `<td colspan="5"><div class="nodaycell"><span>No day set</span><span class="btn-quiet btn">Set day</span></div></td>`;
+    rows += `<tr><td style="padding-left:12px;border-right:1px solid var(--border);width:190px"><div class="mname" style="font-size:13px;font-weight:500">${r.s}</div><div class="subl">${r.ts} · ${r.age}</div></td>${rd}<td class="r num">${r.f}</td><td class="r num" style="${r.fa >= 60 ? "color:var(--warning);font-weight:700" : ""}">${r.fa}</td></tr>`;
+  });
+  return `<div class="l"><div class="l-top">${ico("menu", "s20")}<span class="m-logo" style="font-size:15px">CYCLING ZONE</span><span style="display:flex;gap:14px;align-items:center"><span style="font-size:12px;opacity:.8">EN</span>${ico("bell", "s20")}</span></div>
+    <div class="l-body">
+      <div class="ph"><div style="display:flex;align-items:baseline;gap:12px"><h1 style="font-size:18px">Daily training</h1><div class="sub" style="margin:0">Wed 23 Sep · 5 race days · runs at 20:00</div></div><span class="btn btn-primary" style="height:36px">Set days for 3 riders</span></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border)">
+        <div class="tabs" style="border:0">${["Today", "Week plan", "Development", "Report"].map((l, i) => `<span class="tab${i === 0 ? " on" : ""}">${l}</span>`).join("")}</div>
+        <div class="l-ov" style="padding-bottom:5px"><span class="l-chip warn"><b>3</b>need a day</span><span class="l-chip"><b>4</b>racing</span><span class="l-chip"><b>9</b>training</span><span class="l-chip"><b>2</b>tired</span></div>
+      </div>
+      <div class="card tbl-wrap" style="margin-top:8px"${pin(7)}><table>
+        <thead><tr><th style="padding-left:12px;border-right:1px solid var(--border)">Rider</th>${[1, 2, 3, 4, 5].map((i) => `<th class="c">RD ${i}</th>`).join("")}<th class="r">Form</th><th class="r">Fatigue</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+    </div></div>`;
+}
+
+// ── Render + pins ──
+const params = new URLSearchParams(location.search);
+const view = params.get("view") || "desktop";
+const root = document.getElementById("root");
+root.innerHTML = {
+  desktop: () => desktop("today"),
+  "desktop-week": () => desktop("week"),
+  mobile: mobileToday,
+  "mobile-week": mobileWeek,
+  landscape,
+}[view]();
+if (view === "mobile" || view === "mobile-week") document.body.style.width = "390px";
+if (view === "landscape") document.body.style.width = "844px";
+
+function placePins() {
+  document.querySelectorAll(".pin, .pinbox").forEach((p) => p.remove());
+  if (params.get("pins") !== "1") return;
+  const only = view === "mobile-week" ? ["6", "2"] : view === "landscape" ? ["7"] : null;
+  document.querySelectorAll("[data-pin]").forEach((el) => {
+    const n = el.getAttribute("data-pin");
+    if (only && !only.includes(n)) return;
+    if (view === "mobile-week" && n === "2") return;
+    const r = el.getBoundingClientRect();
+    const box = document.createElement("div");
+    box.className = "pinbox";
+    Object.assign(box.style, { left: `${r.left + scrollX - 3}px`, top: `${r.top + scrollY - 3}px`, width: `${r.width + 6}px`, height: `${r.height + 6}px` });
+    const p = document.createElement("div");
+    p.className = "pin";
+    p.textContent = n;
+    const px = Math.max(2, Math.min(r.left + scrollX - 13, document.documentElement.scrollWidth - 30));
+    const py = Math.max(2, r.top + scrollY - 13);
+    Object.assign(p.style, { left: `${px}px`, top: `${py}px` });
+    if (view !== "landscape") document.body.appendChild(box);
+    document.body.appendChild(p);
+  });
+}
+document.fonts.ready.then(() => { placePins(); document.body.setAttribute("data-ready", "1"); });
+</script>
+</body>
+</html>

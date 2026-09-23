@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (22/9 kl. 24):** **Merget 22/9 aften (bølge 2):** #5504 win-back-tekst · #5503 typekontakt (ikke koblet; sprinter-talent-rodårsag = potentiale pr. type, se #5327) · #5505 v4-jagt skala-invariant · #5501 rating = bedste rolle nu (bag `rider_best_role_display`=off, verificeret). **Ny session:** `drafts/claude-session-2026-09-23.md` (win-back tørkørsel → værdivalg PR #5502 → bølge 3 i 4-spors-hold → #5327-B → v7.295 → status quo-forslag). **Parkeret åbne PR'er:** #5461 kørselsdagen · #5281 flip-dagen · #5444 Codex-draft · #5502 værdivalg (merges ikke). **Ejerens hånd:** spillersvar `drafts/2026-09-22-player-replies.md` · Android-test (#3643) · `training_score_visible` + udmelding · win-back send-go · #4857-backfill-go. **v4 live 28/9 (ejer).** Derefter flip-dag (#5281, #4849).
+> **🎯 Next action (23/9 kl. 08):** **Ny session:** `drafts/claude-session-2026-09-24.md` = 6-timers bølgekæde (b0 #5533 markør-fix → bA 12 spor inkl. U23-vagter #5535-#5537 + forsinkelser #3624 → bB 11 spor; args `drafts/wave-2026-09-24-*.json`). **Først:** markøren fra bølge 3 (#5533) frigives af ejeren (`recover --owner-override`). **Venter på ejer:** 16 grønne PR'er (#5502 #5512-#5514 #5521-#5532), valg i OneDrive `private-handoffs/2026-09-23-morgenrapport.md` (værdier #5497 først). S4-tørkørsel prod 0 regelbrud (#5522 → kalender-"kør"). Tændingsplan i `SEASON_CUTOVER_RUNBOOK.md` (#5506). U23-plan `superpowers/plans/2026-09-23-u23-junior-ranglister-plan.md`. **Ejerens hånd:** `AUTO_MERGE_PAT` (#5508) · Android-test (#3643) · `training_score_visible`. **v4 live 28/9 (ejer).**
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt, overlap forbliver det almindelige. **Tallet er LÅST: 140 (ejer 15/9, TRAINING_RULES §13.3); spørg aldrig igen.** **Ejer 20/9: måde B (jævnt, 5 pr. dato); A + synkrone blokke fjernet i #5169. B4 #5264 merget 20/9 bag flag.** **§2c (ejer 19/9):** S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only.
 
@@ -12,7 +12,7 @@
 
 > **🟡 Lofter + potentiale (ejer 18/9, byg intet):** lofterne ud, potentialet styrer farten (#5351); 6 huller efter 28/9. **#5268-point-flyt afventer.** **D-049-visning:** #5435 (b2), svar upostet #5436.
 
-> **🔴 Åbne fund:** Webkit-flake #4925: rerun. **#5323 Quad9:** aflæs målingen før DNS-kort. **📊 Triage:** `scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
+> **🔴 Åbne fund:** Webkit-flake #4925: fix i PR #5531. **#5323 Quad9:** målt 23/9, 0 låst ude (ejer-valg A/B). **📊 Triage:** `scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
 
 ## Standing context (forever-relaunch)
 
@@ -24,6 +24,6 @@
 - **Trupper (15/9):** `riders.squad` + `backend/lib/squads.js` live; senior-læserne bruger ÉT delt prædikat (#5396, kræver squad=senior OG is_academy=false til backfill er kørt; backfill ejer-gated). `U23_BIRTH_BAND` = variant A (#5401), generator A6 mangler; RPC'er har hård 8-cap (#5432). Alt live 28/9; spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md`.
 - **Forside `/`:** anonym = marketing-sitet; ændring → `node scripts/check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms, ejeren ekskl. (#5215).
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
-- **Mekanik:** byg KUN via wave.js (Codex: samme indgang, #5468); merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); PR-loft 8; commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx. Base-PR merget → PR lukkes; retarget først (#5478).
+- **Mekanik:** byg KUN via wave.js (Codex: samme indgang, #5468); merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); intet PR-loft (#5510); commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx. Base-PR merget → PR lukkes; retarget først (#5478).
 
-> **🤖 Working agent:** Claude 23/9: bølge 3 kører; win-back sendt (#2760). (`docs(now)…`/`docs(close-out)…`, #5093.)
+> **🤖 Working agent:** Ingen aktiv session. (`docs(now)…`/`docs(close-out)…`, #5093.)

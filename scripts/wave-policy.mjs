@@ -7,9 +7,9 @@ import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { admissionOwnerProcess, assertWaveOwnership, ownershipSnapshot } from './wave-ownership.mjs';
+import { measureBootIdentity, sameBoot } from './wave-boot-identity.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
-export const PR_LIMIT = 8;
 const reserved = ['docs/now.md', '.claude/run', '.claude/launch.json'];
 const normalize = p => p.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
 
@@ -42,12 +42,16 @@ export function validateTracks(tracks) {
   return tracks;
 }
 
+// Ejer-beslutning 22/9 (variant B, #5510): PR-loftet paa 8 er fjernet helt.
+// Optaellingen bevares som info til planen (lanerne (4) og
+// verifikations-semaforen (2) er fortsat bremsen). Fail-closed bevares: en
+// uhentbar PR-liste maa aldrig stiltiende tillade en boelge - en GitHub-fejl
+// skal opdages, ikke maskeres som "ingen aabne PR'er".
 export function checkCapacity(prs, tracks) {
   if (!Array.isArray(prs)) throw Error('PR count unavailable');
   const branches = new Set(prs.map(p => p.headRefName));
   const additional = tracks.filter(t => t.kind !== 'investigate' && !branches.has(t.branch)).length;
   const projected = prs.length + additional;
-  if (prs.length >= PR_LIMIT || projected > PR_LIMIT) throw Error(`PR capacity: ${prs.length} open + ${additional} reserved > available capacity (${PR_LIMIT})`);
   return { open: prs.length, additional, projected };
 }
 
@@ -64,19 +68,23 @@ export function readWave(dir) {
   return JSON.parse(fs.readFileSync(path.join(dir, 'wave-active.json'), 'utf8'));
 }
 
-let cachedBootId;
+let cachedBootIdentity;
+function hostBootIdentity() {
+  if (!cachedBootIdentity?.bootId) cachedBootIdentity = measureBootIdentity();
+  return cachedBootIdentity;
+}
+
+// Normalized (#5533): raw Windows ticks drift within one boot.
 export function hostBootId() {
-  if (cachedBootId) return cachedBootId;
-  if (process.platform === 'linux') cachedBootId = fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim();
-  else if (process.platform === 'win32') cachedBootId = execFileSync('pwsh', ['-NoProfile', '-Command',
-    '$ErrorActionPreference="Stop"; (Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToUniversalTime().Ticks.ToString()'], { encoding: 'utf8', timeout: 15000 }).trim();
-  return cachedBootId;
+  return hostBootIdentity().bootId;
 }
 
 export function withWaveStateLock(dir, action) {
-  const bootId = hostBootId();
-  if (!bootId) throw Error('Cannot identify host boot for wave state lock');
-  const key = createHash('sha256').update(bootId).digest('hex').slice(0, 16);
+  // Keyed on a clock-independent boot identity (#5533), so every process in
+  // one boot shares the lock even across a clock correction.
+  const lockKey = hostBootIdentity().lockKey;
+  if (!lockKey) throw Error('Cannot identify host boot for wave state lock');
+  const key = createHash('sha256').update(lockKey).digest('hex').slice(0, 16);
   const lock = path.join(dir, `wave-state-${key}.lock`);
   let acquired = false;
   for (let attempt = 0; attempt < 100; attempt++) {
@@ -162,21 +170,22 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   }
 }
 
-export function releaseWave(dir, waveId, childrenStopped) {
-  return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped));
+export function releaseWave(dir, waveId, childrenStopped, snapshot = ownershipSnapshot) {
+  return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped, snapshot));
 }
 
-function releaseWaveLocked(dir, waveId, childrenStopped) {
+function releaseWaveLocked(dir, waveId, childrenStopped, snapshot) {
   if (!childrenStopped) throw Error('All children must be observed stopped before release');
   const wave = requireModernWave(readWave(dir));
   if (!waveId || wave.waveId !== waveId) throw Error('Wave owner mismatch; marker retained');
-  assertWaveOwnership(wave, ownershipSnapshot());
+  assertWaveOwnership(wave, snapshot());
   stopWaveWatch(wave);
   fs.unlinkSync(path.join(dir, 'wave-active.json'));
 }
 
 export function stopWaveWatch(wave, observedBootId) {
-  if (wave.watchPid && !(observedBootId && wave.bootId && observedBootId !== wave.bootId)) {
+  // Only a proven different boot skips the kill; sub-second drift is the same boot (#5533).
+  if (wave.watchPid && !(observedBootId && wave.bootId && !sameBoot(observedBootId, wave.bootId))) {
     // PID reuse must never turn cleanup into a kill of somebody else's process.
     const pid = wave.watchPid;
     if (!Number.isSafeInteger(pid) || pid < 1 || !/^\d+$/.test(wave.watchStarted || '')) throw Error('Unverified watch identity; marker retained');

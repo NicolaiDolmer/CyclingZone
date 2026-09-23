@@ -3,7 +3,7 @@
 
 ## Godkendte runtime-indgange (#5142, #5467)
 
-Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer, og otte-PR-loftet er kode. Resten af det historiske playbook laeses med disse aendringer: ingen automatisk merge, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
+Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer. PR-loftet paa 8 er fjernet 22/9 (variant B, ejer-beslutning, #5510) - lanerne (4) og verifikations-semaforen (2) er fortsat bremsen. Resten af det historiske playbook laeses med disse aendringer: ingen automatisk merge, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
 
 ## Codex-boelger (#5467)
 
