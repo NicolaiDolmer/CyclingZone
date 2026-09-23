@@ -66,13 +66,14 @@ async function mockSignupStatus(page: Page, status: SignupStatus) {
   });
 }
 
-async function mockScheduledRace(page: Page) {
+async function mockRaces(page: Page, rows: (typeof SCHEDULED_RACE)[]) {
   // Override OVEN PÅ installNetworkMocks (senest registrerede route vinder).
+  // Tom liste = ingen holdudtagelse mangler (default-fixturen har selv løb).
   await page.route("**/rest/v1/races?**", (route: Route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
     if (request.method() !== "GET") return route.fallback();
-    return json(route, [SCHEDULED_RACE]);
+    return json(route, rows);
   });
 }
 
@@ -81,7 +82,7 @@ async function openDashboard(
   { width, height, status, withRace = true }: { width: number; height: number; status: SignupStatus; withRace?: boolean },
 ) {
   await mockSignupStatus(page, status);
-  if (withRace) await mockScheduledRace(page);
+  await mockRaces(page, withRace ? [SCHEDULED_RACE] : []);
   await login(page);
   // Copy'en er EN-first, så beviset tages på engelsk: login-helperen kræver de
   // danske placeholders, og stabilizePage sætter cz_lang=da ved hver
