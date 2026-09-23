@@ -1,0 +1,51 @@
+{
+ "note": "Boelge 5-kandidater fra natten 23/9 (flyttet pga. fil-overlap i boelge 4). Suppleres fra forfiltret: #4592 parkering (ejer-valg), #5242 apiFetch skive B, #5075, #4875, #5246, #3796, #2761 (dry-run), Quad9-vagt (#5323 valg A), roadmap Today-tekster (#5387), #5473 statusdoc.",
+ "tracks": [
+  {
+   "issue": 4948,
+   "branch": "feat/4948-feature-flags-endpoint-help-raceday",
+   "title": "[flip] Globalt spiller-synligt flag-endpoint + Hjaelp-sektionen raceDay foelger race_engine_v4",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#4948\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/audits/2026-09-22-v4-foer-s4-research-memo.md par. 4-5. Loesning A (anbefalet i issuet): nyt letvaegts endpoint GET /api/feature-flags med en ALLOWLIST af spiller-synlige flag (start: race_engine_v4, board_mandate_model_enabled, training_tick_per_race_day) laest via backend/lib/featureStage.js-moensteret, aldrig alle app_config-raekker; katalog i backend/lib/stageFlagCatalog.js. frontend/src/pages/HelpPage.jsx: fjern de hardkodede gates (raceDayEnabled=false linje ~771, TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED linje ~78) og mandat-sektionens saerkald, saa alle tre flag-gatede sektioner bruger EEN mekanisme. Test: raceDay vises naar flaget er on, skjult ellers (node --test paa HelpPage + backend route-test). Roer IKKE teksten i help.json sections.raceDay (ejer-go udestaar; noter i PR). Preview-mock frontend/src/preview/betaAccessMock.js opdateres. Ingen patch note (usynlig til flip).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/pages/HelpPage.jsx",
+    "frontend/src/pages/HelpPage.*.test.js",
+    "frontend/src/preview/betaAccessMock.js",
+    "backend/api/featureFlagsApi.js",
+    "backend/api/featureFlagsApi.test.js",
+    "backend/lib/stageFlagCatalog.js",
+    "backend/routes/api.js"
+   ],
+   "verifyCommands": [
+    "node --test frontend/src/pages/HelpPage.sectionBlocks.test.js frontend/src/pages/HelpPage.faqKeys.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix backend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5386,
+   "branch": "fix/5386-forum-quote-op",
+   "title": "[forum] Traadens foerste indlaeg kan citeres (ejer 18/9)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5386\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Additiv idempotent migration database/2026-09-24-5386-forum-quote-op.sql: forum_replies.quotes_post boolean not null default false (eller quoted_post_id). Backend createForumReply accepterer quoteOp, og getForumPost former citatet af aabningsindlaegget med samme excerpt/removed-logik som svar-citater. Frontend ForumPostPage: samme ghost-knap Citer/Quote paa aabningsindlaegget, og QuotedReplyBlock hopper til toppen. Ingen ekstra notifikation (traadstarteren faar allerede forum_thread_reply). Tests: forum.test.js + e2e. Billeder desktop + 390 (mock ok). Patch note-linje kun i PR-body. Merges ikke uden ejer-go. HARD RULE 31: ALLE nye frontend-filer, ogsaa e2e-specs og tests, skrives i .ts/.tsx (ikke .js/.jsx); eksisterende filer beholder deres endelse. Hver paastand i PR-body skal kunne findes i diffen.",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "database/2026-09-24-5386-forum-quote-op.sql",
+    "backend/lib/forum.js",
+    "backend/lib/forum.test.js",
+    "backend/routes/forum.js",
+    "frontend/src/pages/ForumPostPage.jsx",
+    "frontend/src/components/forum/**",
+    "frontend/tests/e2e/5386-forum-quote-op.spec.ts"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/forum.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  }
+ ]
+}
