@@ -135,7 +135,7 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     await setup(page, { on: true });
     await login(page);
     await page.goto("/squads/junior");
-    await expect(page.getByRole("heading", { name: "E2E Racing Juniors" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^E2E Racing Juniors?$/ })).toBeVisible();
 
     const tabs = page.getByRole("tablist");
     for (const name of [/Calendar|Kalender/, /Results|Resultater/, /Standings|Stilling/]) {

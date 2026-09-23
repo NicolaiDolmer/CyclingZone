@@ -7,7 +7,7 @@
 //      409 = kontakten youth_squad_pages er slukket → status "disabled".
 //   2. Visnings-felterne hentes med SAMME projektion som My Team (TeamPage.jsx),
 //      så rating, type, potentiale og værdi ser ens ud på begge sider.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { ABILITY_SELECT, flattenAbilities } from "../../lib/abilities.js";
@@ -42,18 +42,25 @@ export function useYouthSquad(squad: YouthSquad) {
   const [status, setStatus] = useState<YouthSquadStatus>("loading");
   const [team, setTeam] = useState<YouthSquadTeam | null>(null);
   const [riders, setRiders] = useState<YouthSquadRider[]>([]);
+  // Hver hentning får et nummer; et svar fra en ældre hentning (eller efter
+  // unmount) kasseres, så det aldrig overskriver det der vises nu.
+  const requestRef = useRef(0);
 
   const load = useCallback(async () => {
+    const request = ++requestRef.current;
+    const isCurrent = () => requestRef.current === request;
     setStatus("loading");
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const headers = await authHeaders({ json: false });
+      if (!isCurrent()) return;
       if (!user || !headers || !API) { setStatus("error"); return; }
 
       const [teamRes, squadsRes] = await Promise.all([
         supabase.from("teams").select("id, name").eq("user_id", user.id).maybeSingle(),
         apiFetch(`${API}/api/youth-squads`, { headers }, { source: "youth-squads" }),
       ]);
+      if (!isCurrent()) return;
       if (squadsRes.status === 409) { setStatus("disabled"); return; }
       if (!squadsRes.ok) { setStatus("error"); return; }
 
@@ -68,7 +75,8 @@ export function useYouthSquad(squad: YouthSquad) {
           .eq("is_retired", false)
           .order("market_value", { ascending: false });
         if (error) throw error;
-        rows = ((data ?? []) as unknown[]).map(
+        if (!isCurrent()) return;
+        rows =((data ?? []) as unknown[]).map(
           (r) => flattenCondition(flattenAbilities(r)) as YouthSquadRider,
         );
       }
@@ -77,11 +85,14 @@ export function useYouthSquad(squad: YouthSquad) {
       setRiders(rows);
       setStatus("ready");
     } catch {
-      setStatus("error");
+      if (isCurrent()) setStatus("error");
     }
   }, [squad]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    return () => { requestRef.current += 1; };
+  }, [load]);
 
   return { status, team, riders, reload: load };
 }

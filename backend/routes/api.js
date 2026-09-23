@@ -1262,7 +1262,7 @@ router.get("/display-flags", requireAuth, presencePulseLimiter, async (req, res)
 // frontend'en aldrig regner en trup ud af en alder selv. Svaret er rytter-id'er
 // pr. trup; siden henter selv visnings-felterne (samme projektion som My Team).
 // Bag kontakten youth_squad_pages: slukket = 409, som /academy/me.
-router.get("/youth-squads", requireAuth, async (req, res) => {
+router.get("/youth-squads", requireAuth, presencePulseLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const isBetaTester = await isViewerBetaTester(req);
