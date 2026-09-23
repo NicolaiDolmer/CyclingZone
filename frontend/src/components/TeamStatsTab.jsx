@@ -8,7 +8,7 @@ import NationCell from "./rider/NationCell";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { formatNumber } from "../lib/intl";
 import { DataTable, EmptyState, ErrorState, SkeletonLines, Button, TrophyIcon } from "./ui";
-import AcademySquadFilter from "./team/AcademySquadFilter";
+import AcademySquadFilter from "./team/AcademySquadFilter.jsx";
 
 // #3190: samme seks sejrs-kategorier som rytter-ranglisten (hooks/useRiderRankings.js's
 // WIN_KEYS, #925's total_wins-definition) — dupliceret her i stedet for importeret,

@@ -17,9 +17,12 @@ export default function AcademySquadFilter({
 }) {
   const { t } = useTranslation("team");
 
-  // Samme betingelse som den oprindelige SquadTab-toolbar: kun synlig når
-  // holdet faktisk har akademiryttere at filtrere på.
-  if (!(academyCount > 0)) return null;
+  // Samme grundbetingelse som den oprindelige SquadTab-toolbar: kun synlig når
+  // holdet faktisk har akademiryttere at filtrere på. Undtagelsen (CodeRabbit,
+  // #5075): har manageren skjult seniorer OG akademiet siden er tømt (frigivet/
+  // graduate-flyttet ryttere), skal kontrollen blive stående — ellers er der
+  // ingen vej tilbage til at slå seniorerne til igen uden en side-reload.
+  if (!(academyCount > 0) && !(seniorCount > 0 && !showSeniors)) return null;
 
   return (
     <div className="flex items-center gap-2">
