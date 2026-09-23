@@ -162,12 +162,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Training",
         "en": {
-          "title": "Mobile training in the beta group: sort by score, smoother graph",
-          "body": "What changed: On the new mobile training page for beta testers you can sort by training score, a dead button is gone, and the small score graph skips race days instead of showing a gap."
+          "title": "Training score and the new phone page for everyone",
+          "body": "What changed: Every rider now shows a training score from 1 to 99 with a small graph, and on a phone the whole squad fits on one screen with the day in each row and an injury mark when a rider is hurt. The graph skips race days instead of showing a gap."
         },
         "da": {
-          "title": "Mobiltræning i beta-gruppen: sortér efter score, jævnere graf",
-          "body": "Hvad er ændret: På den nye mobile træningsside for beta-testere kan du sortere efter træningsscore, en død knap er væk, og den lille scoregraf springer løbsdage over i stedet for at vise et hul."
+          "title": "Træningsscoren og den nye telefonside for alle",
+          "body": "Hvad er ændret: Hver rytter viser nu en træningsscore fra 1 til 99 med en lille graf, og på telefonen står hele truppen på én skærm med dagen i hver række og et skademærke, når en rytter er skadet. Grafen springer løbsdage over i stedet for at vise et hul."
         },
         "refs": [
           3643,
