@@ -15631,7 +15631,9 @@ router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => 
 
 // POST /api/forum/posts/:id/replies — nyt svar i tråden. #3517: body kan
 // bære quoted_reply_id (citér et andet svar i SAMME tråd — forum.js afviser
-// tråd-fremmede id'er med 400).
+// tråd-fremmede id'er med 400). #5386: body kan i stedet bære quote_op:true
+// (citér traadens eget aabningsindlaeg — mutex med quoted_reply_id, forum.js
+// afviser begge sat samtidig).
 router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (req, res) => {
   try {
     const result = await createForumReply({
@@ -15642,6 +15644,7 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
       body: req.body?.body,
       images: req.body?.images ?? null,
       quotedReplyId: req.body?.quoted_reply_id || null,
+      quoteOp: Boolean(req.body?.quote_op),
     });
     if (result.status === 200) {
       const replyBody = typeof req.body?.body === "string" ? req.body.body.trim() : "";

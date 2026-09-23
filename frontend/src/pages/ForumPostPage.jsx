@@ -245,6 +245,10 @@ function SupportButton({ active, count, onToggle, disabled, t }) {
 // #3517 — kompakt uddrag af det citerede svar, vist over eget svar. Slettede
 // kilder (backend shaper kun { id, removed: true }) viser en neutral tekst,
 // aldrig indhold. `onJump` springer til originalen når den stadig findes.
+// #5386: `quoted.target` er enten "reply" (spring til reply-<id>) eller
+// "post" (spring til traadens top, aabningsindlaegget) — et post-citat kan
+// aldrig blive "removed" (backend 404'er hele traaden hvis posten er
+// slettet, se getForumPost).
 function QuotedReplyBlock({ quoted, onJump, t }) {
   if (!quoted) return null;
   if (quoted.removed) {
@@ -257,7 +261,7 @@ function QuotedReplyBlock({ quoted, onJump, t }) {
   return (
     <button
       type="button"
-      onClick={() => onJump(quoted.id)}
+      onClick={() => onJump(quoted)}
       className="mb-2 block w-full border-l-2 border-cz-border pl-2.5 text-left text-2xs text-cz-3 transition-colors hover:border-cz-accent/50"
     >
       <span className="font-data uppercase tracking-[.04em] text-cz-3">
@@ -349,7 +353,10 @@ export default function ForumPostPage() {
   const [moveOpen, setMoveOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [reactingKey, setReactingKey] = useState(null); // "post:<id>" | "reply:<id>" | null
-  const [quoteTarget, setQuoteTarget] = useState(null); // { id, excerpt, author } | null
+  // #5386: `isPost` skelner mellem et citat af et svar (id = reply-id,
+  // sendes som quoted_reply_id) og et citat af aabningsindlaegget (intet
+  // reply-id at sende — sendes i stedet som quote_op: true).
+  const [quoteTarget, setQuoteTarget] = useState(null); // { id, excerpt, author, isPost } | null
   // #3451: "sidst læst" FØR dette besøg — fanget fra det FØRSTE svar fra
   // backend og aldrig opdateret igen (undefined = endnu ikke fanget, null =
   // fanget som "aldrig besøgt før"). Bruges til at beregne fold + scroll til
@@ -466,7 +473,10 @@ export default function ForumPostPage() {
         body: JSON.stringify({
           body: replyBody.trim(),
           images: replyImages,
-          quoted_reply_id: quoteTarget?.id || null,
+          // #5386: et citat af aabningsindlaegget har intet reply-id at
+          // sende — quote_op erstatter quoted_reply_id, aldrig begge.
+          quoted_reply_id: quoteTarget && !quoteTarget.isPost ? quoteTarget.id : null,
+          quote_op: Boolean(quoteTarget?.isPost),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -505,12 +515,26 @@ export default function ForumPostPage() {
   }
 
   function handleQuote(reply) {
-    setQuoteTarget({ id: reply.id, excerpt: quotePreview(reply.body), author: reply.author });
+    setQuoteTarget({ id: reply.id, excerpt: quotePreview(reply.body), author: reply.author, isPost: false });
     document.getElementById("forum-reply-body")?.focus();
   }
 
-  function handleJumpToOriginal(replyId) {
-    document.getElementById(`reply-${replyId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  // #5386: samme ghost-knap som handleQuote, men for traadens aabningsindlaeg
+  // — intet reply-id, sendes derfor som quote_op frem for quoted_reply_id.
+  function handleQuotePost() {
+    setQuoteTarget({ id: post.id, excerpt: quotePreview(post.body), author: post.author, isPost: true });
+    document.getElementById("forum-reply-body")?.focus();
+  }
+
+  // #5386: et svar-citat springer til svaret (reply-<id>); et citat af
+  // aabningsindlaegget springer til traadens top i stedet (der er intet
+  // reply-anker at ramme).
+  function handleJumpToOriginal(quoted) {
+    if (quoted.target === "post") {
+      document.getElementById("forum-post-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    document.getElementById(`reply-${quoted.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   async function handleVote(optionId) {
@@ -710,7 +734,9 @@ export default function ForumPostPage() {
           <p role="alert" className="mb-4 text-xs text-cz-danger">{imageActionError}</p>
         )}
         <SectionStack>
-          <Section>
+          {/* #5386: citat-spring-maal for et citat af aabningsindlaegget
+              (samme "id + scrollIntoView"-mønster som reply-<id> herunder). */}
+          <Section id="forum-post-top">
             {/* #5000: visningstal i traadhovedet — samme metalinje som
                 pinned-maerket, saa traaden ikke faar en ny linje at bære.
                 tabular-nums fordi tallet skifter mens man laeser. */}
@@ -747,6 +773,12 @@ export default function ForumPostPage() {
                 disabled={reactingKey === `post:${post.id}`}
                 t={t}
               />
+              {/* #5386: samme ghost-knap som på hvert svar (handleQuote) —
+                  traadens aabningsindlaeg kunne foer kun citeres implicit. */}
+              <Button variant="ghost" size="sm" onClick={handleQuotePost}>
+                <UndoIcon size={14} aria-hidden="true" className="me-1 inline -mt-0.5" />
+                {t("quote.action")}
+              </Button>
               {!post.is_mine && (
                 <Button variant="ghost" size="sm" onClick={() => setReportTarget({ type: "post", id: post.id })}>
                   {t("post.report")}
