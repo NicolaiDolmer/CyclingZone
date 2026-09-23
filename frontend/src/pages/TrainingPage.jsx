@@ -1683,7 +1683,9 @@ export default function TrainingPage() {
       label: t("overview.training"),
       shortLabel: t("overview.trainingShort"),
       count: overview.training.length,
-      context: t("overview.restRecovery", { rest: overview.resting, recovery: overview.recovering }),
+      context: overview.resting + overview.recovering > 0
+        ? t("overview.restRecovery", { rest: overview.resting, recovery: overview.recovering })
+        : null,
     },
     {
       key: "tired",
@@ -1834,7 +1836,7 @@ export default function TrainingPage() {
     const riderScore = scoreVisible ? trainingScore?.[riderId] ?? null : null;
     const age = ageForSeason(rider.birthdate, seasonYear);
     return (
-      <div className="overflow-hidden rounded-cz border border-cz-border">
+      <div className="max-w-[880px] overflow-hidden rounded-cz border border-cz-border">
         <TrainingMobileRiderCard
           id={detailId}
           name={`${rider.firstname} ${rider.lastname}`}

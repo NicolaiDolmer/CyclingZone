@@ -36,7 +36,7 @@
     "racing": "Kører løb i dag",
     "training": "Træner i dag",
     "tired": "Trætte · træthed {from}+",
-    "needsDayShort": "Mangler dag",
+    "needsDayShort": "Uden dag",
     "racingShort": "Løb",
     "trainingShort": "Træner",
     "tiredShort": "Trætte",
