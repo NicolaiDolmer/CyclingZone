@@ -3,7 +3,7 @@
 > Opfølger til assistent-flip-målingen 14/9 ([#5136](https://github.com/NicolaiDolmer/CyclingZone/issues/5136)).
 > D-034 (hvornår assistenten skal træde ind på en tom trup) er beskrevet i
 > [`docs/ASSISTANT_RULES.md`](ASSISTANT_RULES.md) §1b. Denne fil dækker KUN
-> målingen: skemaet #5246 tilføjede + fem færdige forespørgsler, i samme stil
+> målingen: skemaet #5246 tilføjede + færdige forespørgsler, i samme stil
 > som [`docs/SURVEY_SYSTEM.md`](SURVEY_SYSTEM.md) §5.
 >
 > Migration: `database/2026-09-23-5246-late-fill-log.sql`.
@@ -120,8 +120,31 @@ FROM public.race_entry_overrides
 WHERE overridden_at >= '<vindue-start>';
 ```
 
-Assistentens egen selvrettelsesrate er `from_late_fill` (og `from_opt_in`) delt med
-antal late-fill-fyldte menneskehold-enheder i samme vindue (4.2).
+Assistentens egen selvrettelsesrate pr. enhed (løb, hold). En overskrevet enhed har
+ikke længere auto-rækker i `race_entries`, så nævneren er de enheder der STADIG står
+som late-fill PLUS de overskrevne (ellers tæller de rettede kun i tælleren, og raten
+kan overstige 100 %). Samme forespørgsel med `'opt_in'` giver opt_in-raten.
+
+```sql
+WITH remaining AS (
+  SELECT count(DISTINCT (e.race_id, e.team_id)) AS n
+    FROM public.race_entries e
+    JOIN public.teams t ON t.id = e.team_id
+   WHERE e.is_auto_filled = true
+     AND e.auto_filled_source = 'late_fill'
+     AND t.user_id IS NOT NULL
+     AND e.auto_filled_at >= '<vindue-start>'
+), corrected AS (
+  SELECT count(DISTINCT (race_id, team_id)) AS n
+    FROM public.race_entry_overrides
+   WHERE auto_source = 'late_fill'
+     AND overridden_at >= '<vindue-start>'
+)
+SELECT c.n AS self_corrected_units,
+       c.n + r.n AS late_fill_units,
+       round(100.0 * c.n / NULLIF(c.n + r.n, 0), 1) AS late_fill_self_correction_pct
+  FROM corrected c, remaining r;
+```
 
 Selvrettelser pr. løb (til at se om de klumper omkring bestemte startvinduer):
 
