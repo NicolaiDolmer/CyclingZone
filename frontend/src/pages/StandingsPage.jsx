@@ -466,15 +466,18 @@ export default function StandingsPage() {
   function renderTeamCell(s, i) {
     const isSelected = selected.includes(s.team_id);
     const isLeader = lens === LENS_STANDINGS && i === 0;
+    // #5471 (ejer 21/9: "Dette maa aldrig kunne ske"): paa mobil var navne-
+    // cellen EEN flex-linje i ca. 90px med rang, prik, navn og op til fire
+    // badges. Badges er `shrink-0`, navnet `min-w-0`, saa et Founder-hold i
+    // zonen fik 0px navn og en raekke paa 500px. Nu er hele cellen EET barn af
+    // DataTable-linjen, og under 640px WRAPPER det (samme moenster som
+    // RiderNameCell): rang + prik + navn er een gruppe der altid staar sammen
+    // paa foerste linje (`max-w-full`: er navnet bredere end cellen, bryder det
+    // ved ordgraenserne INDE i gruppen), og badges rykker ned paa naeste linje i
+    // stedet for at tage navnets plads. Desktop er uaendret (ingen wrap).
     return (
-      <>
-        {/* #5471: rang, online-prik og holdnavn er EEN enhed. Paa mobil wrapper
-            navnecellens linje (DataTable), og badges rykker saa ned paa naeste
-            linje; uden denne gruppe kunne rangen staa alene paa foerste linje
-            og navnet blive skilt fra den. Navnet har `min-w-0` (maa afkortes/
-            bryde), rang og prik er `shrink-0` — et badge kan aldrig tage
-            navnets plads. */}
-        <span className="inline-flex min-w-0 items-center gap-2">
+      <span className="flex min-w-0 items-center gap-2 [@media(max-width:640px)]:flex-wrap [@media(max-width:640px)]:gap-y-1">
+        <span className="inline-flex min-w-0 max-w-full items-center gap-2">
           <span className="relative inline-flex shrink-0 items-center gap-2">
             <button
               type="button"
@@ -490,12 +493,12 @@ export default function StandingsPage() {
               {isSelected ? <CheckIcon size={13} aria-hidden="true" /> : (i + 1)}
             </button>
             {/* Online-prik (#1609, foldet ind fra TeamsPage): grøn = last_seen < 5 min.
-                #5471: under 640px sidder prikken i rang-knappens hjoerne i stedet
+                #5471: paa mobil (<=640px) sidder prikken i rang-knappens hjoerne i stedet
                 for paa sin egen plads. Navnecellen er ca. 90px bred paa 390px, og
                 de 14px (prik + mellemrum) var forskellen paa at et ord som
                 "Continental" staar helt eller braekkes midt over. Desktop uaendret. */}
             <span aria-hidden="true"
-              className={`h-1.5 w-1.5 shrink-0 rounded-full max-sm:absolute max-sm:-right-0.5 max-sm:-top-0.5 ${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
+              className={`h-1.5 w-1.5 shrink-0 rounded-full [@media(max-width:640px)]:absolute [@media(max-width:640px)]:-right-0.5 [@media(max-width:640px)]:-top-0.5${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
               title={onlineIds.has(s.team_id) ? t("onlineNow") : t("offline")} />
           </span>
           {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen.
@@ -531,7 +534,7 @@ export default function StandingsPage() {
             {t("relegationBadge")}
           </ZonePill>
         )}
-      </>
+      </span>
     );
   }
 

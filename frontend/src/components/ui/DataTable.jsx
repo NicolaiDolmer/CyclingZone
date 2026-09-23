@@ -689,17 +689,19 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
   // 19/9 stak rytternavne og den foldede meta-linje 3-84 px ud over deres egen
   // <td> paa 412 px. D-047's "ingen vandret scroll" maa ikke afhaenge af at hver
   // enkelt side husker at lade vaere: mobil-tilstanden overstyrer descendants.
-  // `flex-wrap` (#5471): linjen maa BRYDE mellem sine dele. Uden den skulle
-  // rang, navn og alle badges dele EEN linje i en celle paa ca. 90px; badges er
-  // `shrink-0`, og `min-w-0` lod saa navnet krympe til 0px og braekke tegn for
-  // tegn (ranglisten 21/9: en raekke paa 500px med et Founder-maerke og intet
-  // navn). En flex-linje der wrapper, klemmer aldrig et barn under dets egen
-  // bredde: et badge der ikke er plads til, rykker ned paa naeste linje, og et
-  // barn der er bredere end hele cellen, faar hele linjen (`max-w-full`) og
-  // bryder sin tekst dér. Navnet er dermed altid synligt, uanset hvor mange
-  // badges siden saetter ved siden af det.
+  //
+  // #5471 — REGEL for sider der saetter badges ved siden af navnet: linjen
+  // herunder er EEN flex-linje uden wrap, og `[&>*]:min-w-0` lader hvert barn
+  // krympe. Er badges `shrink-0` og tilsammen bredere end cellen (ca. 90px paa
+  // 390px), faar navnet 0px og braekkes tegn for tegn (ranglisten 21/9: en
+  // raekke paa 500px med et Founder-maerke og intet navn). Navn + badges skal
+  // derfor vaere EET barn med egen `flex-wrap` (RiderNameCell, StandingsPage),
+  // saa badges rykker ned paa naeste linje i stedet for at tage navnets plads.
+  // `flex-wrap` her paa hele linjen er proevet og maalt: det lod et ledende
+  // ikon (troejeprikken foran et rytternavn) staa alene paa foerste linje, fordi
+  // flex bryder mellem boernene og ikke inde i navnet.
   const nowrap = wrap
-    ? "min-w-0 flex-wrap gap-y-1 break-words [&>*]:min-w-0 [&>*]:max-w-full [&_*]:whitespace-normal"
+    ? "min-w-0 break-words [&>*]:min-w-0 [&_*]:whitespace-normal"
     : "whitespace-nowrap";
   return (
     <>

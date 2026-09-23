@@ -145,17 +145,6 @@ test("DataTable wrapper hver tbody i TableRowContext.Provider", () => {
   assert.match(src, /<TableRowContext\.Provider[\s\S]*<tbody>[\s\S]*<\/tbody>[\s\S]*<\/TableRowContext\.Provider>/);
 });
 
-// #5471 — mobil-navnecellens linje WRAPPER. Uden `flex-wrap` delte rang, navn
-// og badges een linje i en celle paa ca. 90px, og med `min-w-0` paa alle boern
-// kunne badges (shrink-0) klemme navnet til 0px (ranglisten 21/9: en raekke paa
-// 500px med et Founder-maerke og intet navn). Adfaerden maales i
-// standings-mobile-founder-mark.spec.ts.
-test("mobil-navnecellen wrapper mellem sine dele, saa intet barn klemmes til 0px", () => {
-  const block = src.slice(src.indexOf("function renderStickyCell"));
-  assert.match(block, /flex-wrap/);
-  assert.match(block, /\[&>\*\]:max-w-full/);
-});
-
 // #4982/#5471: "Fuld tabel" har ingen lodret boks om de to lag; kun datablokken
 // scroller (vandret).
 test("to-lags-tilstanden ligger ikke i den lodrette SCROLLER-boks", () => {
