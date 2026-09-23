@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
 - **Mekanik:** byg KUN via wave.js (Codex: samme indgang, #5468); merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); intet PR-loft (#5510); commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx. Base-PR merget → PR lukkes; retarget først (#5478).
 
-> **🤖 Working agent:** Ingen aktiv session (23/9-c lukket; 24/9-b starter C0b).
+> **🤖 Working agent:** nat-session 24/9-b, C0b kører (`1ab1d82a`); ejer-go i #4914 + #5508.
