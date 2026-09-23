@@ -5,6 +5,8 @@ import { useConsent } from "../lib/consent.jsx";
 import { logEvent } from "../lib/logEvent";
 import { shouldPromptNps, normalizeNpsSubmission } from "../lib/npsGating.js";
 import { getRaceCount } from "../lib/rankingsApi.ts";
+import { useBottomSlot } from "../lib/bottomSlot.ts";
+import { createNpsExposureMarker, isNpsPromptShown } from "../lib/npsExposure.ts";
 
 // #940 In-app NPS-prompt-hook. Omskrevet i #4997.
 //
@@ -28,21 +30,49 @@ import { getRaceCount } from "../lib/rankingsApi.ts";
 // player_events-instrumenteringen er stadig consent-gated — logEvent() gater sig
 // selv, så der er ingen gren-kode her.
 //
-// Prompten holdes ude af vejen mens cookie-banneret står: begge er fixed bund-
-// overlays, og to bundbjælker oven på hinanden er ingen af dem tjent med.
+// #5440: baren deler bundkanten med cookie-banneret og release-banneret gennem
+// ÉN bund-slot (lib/bottomSlot.ts, prioritet samtykke > release > NPS). Taber
+// baren kanten, rendrer den null men forbliver monteret, så et valgt tal eller en
+// halvskrevet begrundelse overlever og kommer tilbage når kanten er fri.
 //
-// Når prompten VISES, sættes nps_last_prompted_at = NOW() med det samme, så et
-// reload ikke gen-viser den inden for vinduet (best-effort; en fejl her må ikke
-// blokere UI'et).
+// #5306: nps_last_prompted_at = NOW() skrives først når baren FAKTISK er synlig
+// (gaten sagde ja, samtykke-banneret står ikke, og baren har bund-slotten), ikke
+// når gaten åbner. Før brændte en spiller med samtykke-banneret åbent sine 90
+// dage uden at have set spørgsmålet. Skrivningen sker stadig kun én gang pr.
+// mount, så et reload ikke gen-viser den inden for vinduet (best-effort; en fejl
+// her må ikke blokere UI'et). Throttle og hasResponded er uændrede (ejer-
+// beslutninger i #5306).
+
+// Selve cooldown-skrivningen (best-effort, fire-and-forget).
+function writeLastPrompted(userId, promptedAtIso) {
+  supabase.from("users").update({ nps_last_prompted_at: promptedAtIso }).eq("id", userId)
+    .then(() => { /* fire-and-forget */ }, () => { /* best-effort */ });
+}
 
 export function useNpsPrompt({ teamId, surface } = {}) {
   const { bannerOpen } = useConsent();
-  const [visible, setVisible] = useState(false);
+  // `eligible`: gaten har sagt ja og baren er ikke lukket af spilleren. Om den
+  // faktisk VISES afgøres af samtykke-banneret og bund-slotten nedenfor.
+  const [eligible, setEligible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false); // svar afgivet i denne session
-  // Guard så vi kun evaluerer/markerer én gang pr. mount (undgår dobbelt-write
-  // hvis teamId ankommer i to tempi).
+  // Guard så vi kun evaluerer én gang pr. mount (undgår dobbelt-opslag hvis
+  // teamId ankommer i to tempi).
   const evaluatedRef = useRef(false);
+  // Den indloggede bruger fra evalueringen — cooldown-skrivningen skal ramme
+  // samme række som gaten læste.
+  const userIdRef = useRef(null);
+  // Én markør pr. mount: den skriver højst én gang, uanset hvor mange gange
+  // baren skjules og vises igen (samtykke-banneret genåbnet, release-banneret).
+  const [exposureMarker] = useState(() => createNpsExposureMarker(writeLastPrompted));
+
+  const slotGranted = useBottomSlot("nps", eligible);
+  const shown = isNpsPromptShown({ eligible, bannerOpen, slotGranted });
+
+  // #5306: cooldown-vinduet starter i det første øjeblik baren er synlig.
+  useEffect(() => {
+    exposureMarker.observe({ eligible, bannerOpen, slotGranted, userId: userIdRef.current });
+  }, [exposureMarker, eligible, bannerOpen, slotGranted]);
 
   useEffect(() => {
     if (!teamId || evaluatedRef.current) return;
@@ -67,12 +97,10 @@ export function useNpsPrompt({ teamId, surface } = {}) {
       if (!decision) return;
 
       evaluatedRef.current = true;
-      setVisible(true);
-
-      // Markér "vist nu" så throttle-vinduet starter — best-effort.
-      const nowIso = new Date().toISOString();
-      supabase.from("users").update({ nps_last_prompted_at: nowIso }).eq("id", user.id)
-        .then(() => { /* fire-and-forget */ }, () => { /* best-effort */ });
+      userIdRef.current = user.id;
+      // INGEN skrivning her (#5306): cooldown-effekten ovenfor skriver først når
+      // baren faktisk er synlig.
+      setEligible(true);
     })();
 
     return () => { cancelled = true; };
@@ -111,11 +139,11 @@ export function useNpsPrompt({ teamId, surface } = {}) {
   // eller aldrig så den. score_selected fortæller om de nåede at vælge et tal før
   // de lukkede (delvist udfyldt = et andet problem end "ikke set").
   const dismiss = useCallback(({ scoreSelected = false } = {}) => {
-    setVisible(false);
+    setEligible(false);
     logEvent("nps_dismissed", { score_selected: scoreSelected === true, surface: surface || null });
   }, [surface]);
 
-  const close = useCallback(() => { setVisible(false); setDone(false); }, []);
+  const close = useCallback(() => { setEligible(false); setDone(false); }, []);
 
-  return { visible: visible && !bannerOpen, submitting, done, submit, dismiss, close };
+  return { visible: shown, submitting, done, submit, dismiss, close };
 }
