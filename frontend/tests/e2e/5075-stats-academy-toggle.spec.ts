@@ -1,5 +1,5 @@
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage, RIDERS, TEST_TEAM, json } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, RIDERS, TEST_TEAM, json, evidenceShotPath } from "./fixtures.js";
 import { wantsObject } from "../../src/preview/mockHandlers.js";
 
 // #5075 (spillerforslag @cybersimon 9/9, Discord #feedback-and-ideas): Stats-
@@ -80,6 +80,14 @@ test("Stats-fanen deler akademi-filteret med Trup-fanen — akademiryttere forsv
   await expect(statsAcademyToggle).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByRole("link", { name: "Oskar Berg", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Ada Pedersen", exact: true })).toBeVisible();
+
+  // PR-bevis (#5075-scope: "Billeder desktop 1440 + mobil 390"). Kun skrevet
+  // til repoet når CZ_WRITE_COMMITTED_SHOTS=1 (evidenceShotPath) — en normal
+  // CI-/lokal-koersel lander i det ikke-committede test-results/evidence.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.screenshot({ path: evidenceShotPath("pr-screens/5075-stats-academy-toggle-desktop.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: evidenceShotPath("pr-screens/5075-stats-academy-toggle-mobile.png") });
 
   // DELT state (kernekravet i #5075): fravalget fulgte med til Trup-fanen —
   // ikke en ny, lokal kopi af filteret dér.
