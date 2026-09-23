@@ -145,14 +145,23 @@ function SwapOfferButton({ rider, myTeamId }) {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API}/api/transfers/swaps`, {
+      const res = await apiFetch(`${API}/api/transfers/swaps`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ offered_rider_id: offeredId, requested_rider_id: rider.id, cash_adjustment: cash }),
       });
-      const data = await res.json().catch(() => ({}));
+      // #5242: catch'en herunder viste FOER "auth:error.connectionFailed" ved en
+      // transportfejl; apiFetch kaster ikke laengere (#5322), og uden denne
+      // gren ville resolveApiError({}, t) give en TOM fejltekst (ingen fallback).
+      if (res.networkError) {
+        setResult({ ok: false, msg: t("auth:error.connectionFailed") });
+        return;
+      }
+      const data = res.data || {};
       if (res.ok) { setResult({ ok: true, msg: t("swapOffer.toast.success") }); setShow(false); }
-      else        { setResult({ ok: false, msg: `${t("swapOffer.toast.errorPrefix")} ${resolveApiError(data, t)}` }); }
+      // #5242: 401/429 (res.unauthorized/res.limited) har ingen data.error —
+      // uden fallback viste toasten kun errorPrefix'et og ingen begrundelse.
+      else        { setResult({ ok: false, msg: `${t("swapOffer.toast.errorPrefix")} ${resolveApiError(data, t, t("errors:generic.unknown"))}` }); }
     } catch {
       setResult({ ok: false, msg: t("auth:error.connectionFailed") });
     } finally {
@@ -211,19 +220,25 @@ function DirectOfferButton({ rider, seasonYear }) {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API}/api/transfers/offer`, {
+      const res = await apiFetch(`${API}/api/transfers/offer`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ rider_id: rider.id, offer_amount: amount, message }),
       });
-      const data = await res.json().catch(() => ({}));
+      // #5242: samme netvaerksfejl-fix som SwapOfferButton.sendSwap() ovenfor.
+      if (res.networkError) {
+        setResult({ ok: false, msg: t("auth:error.connectionFailed") });
+        return;
+      }
+      const data = res.data || {};
       if (res.ok) {
         logEvent("transfer_offer_sent", { rider_id: rider.id, amount });
         // #1583: aktiverings-funnel — kun brugerens FØRSTE transfer (de-dup pr. bruger).
         logFirstEvent("first_transfer", { rider_id: rider.id, amount });
         setResult({ ok: true, msg: t("directOffer.toast.success") }); setShow(false);
       }
-      else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${resolveApiError(data, t)}` }); }
+      // #5242: samme 401/429-fallback som SwapOfferButton.sendSwap() ovenfor.
+      else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${resolveApiError(data, t, t("errors:generic.unknown"))}` }); }
     } catch {
       setResult({ ok: false, msg: t("auth:error.connectionFailed") });
     } finally {
@@ -310,9 +325,9 @@ function TransferListButton({ rider, onChanged }) {
           async () => {
             // catch-ok: bobler ud gennem sharedRequestCache.get() til effektens
             // egen try/catch (salgs-knappen virker stadig, se kommentar ovenfor).
-            const res = await fetch(`${API}/api/transfers`, { headers: { Authorization: `Bearer ${session.access_token}` } }); // catch-ok
-            if (!res.ok) throw new Error("transfer_listings_failed");
-            return res.json();
+            const res = await apiFetch(`${API}/api/transfers`, { headers: { Authorization: `Bearer ${session.access_token}` } }); // catch-ok
+            if (!res.ok) throw new Error("transfer_listings_failed"); // apiFetch: ok:false ogsaa ved networkError, saa uaendret
+            return res.data;
           },
           SHARED_TTL_MS.transferListings,
         );
@@ -337,7 +352,7 @@ function TransferListButton({ rider, onChanged }) {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
+      const res = await apiFetch(
         listing ? `${API}/api/transfers/${listing.id}` : `${API}/api/transfers`,
         {
           method: listing ? "PATCH" : "POST",
@@ -345,7 +360,13 @@ function TransferListButton({ rider, onChanged }) {
           body: JSON.stringify(listing ? { asking_price: price } : { rider_id: rider.id, asking_price: price }),
         }
       );
-      const data = await res.json().catch(() => ({}));
+      // #5242: catch'en herunder viste FOER "auth:error.connectionFailed" ved en
+      // transportfejl; grenen genindfoeres eksplicit (#5322).
+      if (res.networkError) {
+        flashResult(false, t("auth:error.connectionFailed"));
+        return;
+      }
+      const data = res.data || {};
       if (res.ok) {
         // #5089: den delte transferliste er nu stale — ryd den, saa naeste
         // profil-mount ser den nye/ændrede listing i stedet for TTL-kopien.
@@ -358,7 +379,8 @@ function TransferListButton({ rider, onChanged }) {
         // fuldt loadRider() (som TransferListButton ellers ikke selv trigger'er).
         onChanged?.();
       } else {
-        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
+        // #5242: samme 401/429-fallback som SwapOfferButton.sendSwap() ovenfor.
+        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t, t("errors:generic.unknown"))}`);
       }
     } catch {
       flashResult(false, t("auth:error.connectionFailed"));
@@ -371,11 +393,16 @@ function TransferListButton({ rider, onChanged }) {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API}/api/transfers/${listing.id}`, {
+      const res = await apiFetch(`${API}/api/transfers/${listing.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      const data = await res.json().catch(() => ({}));
+      // #5242: samme netvaerksfejl-fix som submit() ovenfor.
+      if (res.networkError) {
+        flashResult(false, t("auth:error.connectionFailed"));
+        return;
+      }
+      const data = res.data || {};
       if (res.ok) {
         sharedRequestCache.invalidate(SHARED_KEYS.transferListings); // #5089
         setListing(null);
@@ -384,7 +411,8 @@ function TransferListButton({ rider, onChanged }) {
         flashResult(true, t("sellRider.toast.removed"));
         onChanged?.(); // #3490: hero-banneret skal forsvinde med det samme
       } else {
-        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
+        // #5242: samme 401/429-fallback som SwapOfferButton.sendSwap() ovenfor.
+        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t, t("errors:generic.unknown"))}`);
       }
     } catch {
       flashResult(false, t("auth:error.connectionFailed"));
@@ -973,8 +1001,8 @@ export default function RiderStatsPage() {
       try {
         const h = await authHeaders();
         if (!h) return; // #4347/#4348: ingen session — fanen falder tilbage til egne tal
-        const res = await fetch(`${API}/api/physiology/division-benchmark?division=${division}`, { headers: h });
-        if (res.ok && !cancelled) setPhysBenchmark(await res.json());
+        const res = await apiFetch(`${API}/api/physiology/division-benchmark?division=${division}`, { headers: h });
+        if (res.ok && !cancelled) setPhysBenchmark(res.data);
       } catch { /* non-kritisk: fanen falder tilbage til egne tal uden sammenligning */ }
     })();
     return () => { cancelled = true; };
@@ -998,8 +1026,8 @@ export default function RiderStatsPage() {
     try {
       const h = await authHeaders();
       if (!h) return; // #4347/#4348: ingen session — tallet forbliver 0
-      const res = await fetch(`${API}/api/riders/${fetchId}/watchlist-count`, { headers: h });
-      const data = await res.json();
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/watchlist-count`, { headers: h });
+      const data = res.data || {};
       if (watchlistCountFetchIdRef.current !== fetchId) return;
       setWatchlistCount(data.count || 0);
     } catch { /* non-critical: tallet forbliver 0 for den nye rytter */ }
@@ -1015,8 +1043,8 @@ export default function RiderStatsPage() {
     try {
       const h = await authHeaders();
       if (!h) return; // #4347/#4348: ingen session — visits forbliver null
-      const res = await fetch(`${API}/api/riders/${fetchId}/view-count`, { headers: h });
-      const data = await res.json();
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/view-count`, { headers: h });
+      const data = res.data;
       if (visitsFetchIdRef.current !== fetchId) return;
       setVisits(data);
     } catch { /* non-critical: TrendSub/summary håndterer visits=null */ }
@@ -1032,8 +1060,8 @@ export default function RiderStatsPage() {
     try {
       const h = await authHeaders();
       if (!h) return; // #4347/#4348: ingen session — banneret vises bare ikke
-      const res = await fetch(`${API}/api/riders/${fetchId}/retirement-status`, { headers: h });
-      const data = await res.json();
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/retirement-status`, { headers: h });
+      const data = res.data || {};
       if (retirementStatusFetchIdRef.current !== fetchId) return;
       setAnnouncedRetirement(Boolean(data.announced_retirement));
     } catch { /* non-critical: banneret vises bare ikke for den nye rytter */ }
@@ -1068,7 +1096,7 @@ export default function RiderStatsPage() {
       // Achievement check
       const h = await authHeaders();
       if (!h) return; // #4347/#4348: ingen session — spring den bonus-agtige check over
-      fetch(`${API}/api/achievements/check`, {
+      apiFetch(`${API}/api/achievements/check`, {
         method: "POST", headers: h,
         body: JSON.stringify({ context: "watchlist_add" }),
       }).catch(() => {});
@@ -1088,10 +1116,10 @@ export default function RiderStatsPage() {
       // #4347/#4348: ingen session — samme eksplicitte fejl-tilstand som et
       // afvist svar ville have givet, i stedet for at hænge i loading for evigt.
       if (!h) { if (historyFetchIdRef.current === fetchId) setHistory({ error: true }); return; }
-      const res = await fetch(`${API}/api/riders/${fetchId}/history`, { headers: h });
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/history`, { headers: h });
       // Fejl må ikke ligne "ingen handelshistorik" (#1338-princippet) — fanen
       // viser en eksplicit kunne-ikke-hentes-tilstand i stedet for tom liste.
-      const data = res.ok ? await res.json() : { error: true };
+      const data = res.ok ? res.data : { error: true };
       if (historyFetchIdRef.current !== fetchId) return;
       setHistory(Array.isArray(data) || data?.error ? data : []);
     } catch {
@@ -1108,10 +1136,10 @@ export default function RiderStatsPage() {
     try {
       const h = await authHeaders();
       if (!h) { if (interestFetchIdRef.current === fetchId) setInterest({ error: true }); return; }
-      const res = await fetch(`${API}/api/riders/${fetchId}/interest`, { headers: h });
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/interest`, { headers: h });
       // Fejl må ikke ligne "ingen interesse" (#1338-princippet) — fanen viser
       // en eksplicit kunne-ikke-hentes-tilstand i stedet for nuller.
-      const data = res.ok ? await res.json() : { error: true };
+      const data = res.ok ? res.data : { error: true };
       if (interestFetchIdRef.current !== fetchId) return;
       setInterest(data);
     } catch {
@@ -1131,8 +1159,8 @@ export default function RiderStatsPage() {
     try {
       const h = await authHeaders();
       if (!h) { if (bidTimelineFetchIdRef.current === fetchId) setBidTimeline({ auction_id: null, status: null }); return; }
-      const res = await fetch(`${API}/api/riders/${fetchId}/bid-timeline`, { headers: h });
-      const data = res.ok ? await res.json() : { auction_id: null, status: null };
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/bid-timeline`, { headers: h });
+      const data = res.ok ? res.data : { auction_id: null, status: null };
       if (bidTimelineFetchIdRef.current !== fetchId) return;
       setBidTimeline(data);
     } catch {
@@ -1179,8 +1207,8 @@ export default function RiderStatsPage() {
     try {
       const h = await authHeaders();
       if (!h) { if (projectionFetchIdRef.current === fetchId) setProjection(null); return; }
-      const res = await fetch(`${API}/api/riders/${fetchId}/development-projection`, { headers: h });
-      const data = res.ok ? await res.json() : null;
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/development-projection`, { headers: h });
+      const data = res.ok ? res.data : null;
       if (projectionFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
       setProjection(data);
     } catch {
@@ -1217,8 +1245,8 @@ export default function RiderStatsPage() {
     try {
       const h = await authHeaders();
       if (!h) { if (levelCorrectionReceiptFetchIdRef.current === fetchId) setLevelCorrectionReceipt(null); return; }
-      const res = await fetch(`${API}/api/riders/${fetchId}/level-correction-receipt`, { headers: h });
-      const data = res.ok ? await res.json() : null;
+      const res = await apiFetch(`${API}/api/riders/${fetchId}/level-correction-receipt`, { headers: h });
+      const data = res.ok ? res.data : null;
       if (levelCorrectionReceiptFetchIdRef.current !== fetchId) return; // stale svar
       setLevelCorrectionReceipt(data?.receipt || null);
     } catch {
@@ -1399,7 +1427,7 @@ export default function RiderStatsPage() {
     // Fyrer én gang pr. profil-mount (useEffect [id]) — ikke pr. re-render.
     if (riderRes.data?.id) {
       const h = await authHeaders();
-      if (h) fetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
+      if (h) apiFetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
     }
   }, [id, loadActiveAuctionFull, loadTransferListing]);
 
@@ -1416,9 +1444,9 @@ export default function RiderStatsPage() {
         async () => {
           // catch-ok: bobler ud gennem sharedRequestCache.get() til loadDdStatus'
           // egen try/catch (non-critical: banneret falder tilbage til inaktiv).
-          const res = await fetch(`${API}/api/deadline-day/status`, { headers: h }); // catch-ok
-          if (!res.ok) throw new Error("dd_status_failed");
-          return res.json();
+          const res = await apiFetch(`${API}/api/deadline-day/status`, { headers: h }); // catch-ok
+          if (!res.ok) throw new Error("dd_status_failed"); // apiFetch: ok:false ogsaa ved networkError, saa uaendret
+          return res.data;
         },
         SHARED_TTL_MS.deadlineDayStatus,
       );
@@ -1570,14 +1598,18 @@ export default function RiderStatsPage() {
     const cur = activeAuctionRef.current;
     const body = { amount };
     if (!skipExpectedPrice && cur) body.expected_current_price = cur.current_price;
-    const res = await fetch(`${API}/api/auctions/${auctionId}/bid`, {
+    const res = await apiFetch(`${API}/api/auctions/${auctionId}/bid`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(body),
     });
+    // #5242/#3619: apiFetch returnerer networkError i stedet for at kaste. Uden
+    // dette kast rammer et tabt netværk `!res.ok` her og viser den generiske
+    // resolveApiError-fallback i stedet for useAuctionBidding.handleBid's
+    // "errors:generic.networkError" + reportActionFailure(reason:"network").
+    if (res.networkError) throw res.error ?? new Error("Network request failed");
     if (res.status === 409) {
-      let raceData = {};
-      try { raceData = await res.json(); } catch { /* ignore */ }
+      const raceData = res.data || {};
       if (raceData.error === "price_changed") {
         setRaceConfirm({
           auctionId,
@@ -1589,18 +1621,16 @@ export default function RiderStatsPage() {
       }
     }
     if (res.ok) {
-      fetch(`${API}/api/achievements/check`, {
+      apiFetch(`${API}/api/achievements/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ context: "auction_bid", data: { amount } }),
       }).catch(() => {});
       loadActiveAuctionFull(rider);
-      let okData = {};
-      try { okData = await res.json(); } catch { /* ignore */ }
+      const okData = res.data || {};
       return { ok: true, warnings: okData.warnings || [] };
     }
-    let data = {};
-    try { data = await res.json(); } catch { /* ignore */ }
+    const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctionPanel.errorFallback")) };
   }
 
@@ -1613,27 +1643,27 @@ export default function RiderStatsPage() {
 
   async function handleSetProxy(auctionId, maxAmount) {
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+    const res = await apiFetch(`${API}/api/auctions/${auctionId}/proxy`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ max_amount: maxAmount }),
     });
+    if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleAuctionBid
     if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
-    let data = {};
-    try { data = await res.json(); } catch { /* ignore */ }
+    const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctionPanel.proxyErrorFallback")) };
   }
 
   // #2719: se AuctionsPage.handleRemoveProxy — samme tavse fejl, samme rettelse.
   async function handleRemoveProxy(auctionId) {
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+    const res = await apiFetch(`${API}/api/auctions/${auctionId}/proxy`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
+    if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleAuctionBid
     if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
-    let data = {};
-    try { data = await res.json(); } catch { /* ignore */ }
+    const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctionPanel.proxyRemoveErrorFallback")) };
   }
 
@@ -1664,7 +1694,7 @@ export default function RiderStatsPage() {
     setAuctionError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API}/api/auctions`, {
+      const res = await apiFetch(`${API}/api/auctions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({
@@ -1674,9 +1704,24 @@ export default function RiderStatsPage() {
           ...(endsAtIso ? { ends_at: endsAtIso } : {}),
         }),
       });
+      // #5242: catch'en herunder viste FOER "errors:generic.networkError" +
+      // reportActionFailure(reason:"network"); apiFetch kaster ikke laengere
+      // (#5322), saa grenen genindfoeres eksplicit for at holde adfaerden og
+      // telemetrien uaendret (ellers ville den generiske resolveApiError-tekst
+      // vises i stedet, og ingen "network"-telemetri sendes).
+      if (res.networkError) {
+        setAuctionError(t("errors:generic.networkError"));
+        setTimeout(() => setAuctionError(null), 5000);
+        reportActionFailure("auction_start", {
+          reason: "network",
+          cause: res.error,
+          context: { riderId: id, startPrice, flash: isFlash },
+        });
+        return;
+      }
       if (res.ok) {
         // Squad-cap-warning er non-blocking siden #29 — vis besked hvis manager går over max.
-        const data = await res.json().catch(() => ({}));
+        const data = res.data || {};
         const warning = (data.warnings || []).find(w => w?.code === "squad_capacity_exceeded");
         if (warning) {
           const fine = warning.finePerRider * warning.exceedBy;
@@ -1691,7 +1736,7 @@ export default function RiderStatsPage() {
         }
         navigate("/auctions");
       } else {
-        const data = await res.json().catch(() => ({}));
+        const data = res.data || {};
         setAuctionError(resolveApiError(data, t, t("blocked.errorFallback")));
         setTimeout(() => setAuctionError(null), 5000);
       }

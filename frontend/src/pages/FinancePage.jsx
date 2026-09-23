@@ -21,6 +21,7 @@ import { computeReservedBalance } from "../lib/availableBalance";
 import { useTableSort } from "../lib/useTableSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import {
   AmountInput, Tabs, TabList, Tab, TabPanel,
   Card, Button, Select, ProgressMeter, PageLoader, BlockedNote,
@@ -149,12 +150,12 @@ export default function FinancePage() {
     setForecastLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
+      const res = await apiFetch(
         `${API}/api/me/finance-forecast?seasonsAhead=${nextSeasonsAhead}`,
         { headers: { Authorization: `Bearer ${session.access_token}` } },
       );
       if (res.ok) {
-        setForecast(await res.json());
+        setForecast(res.data);
       }
     } finally {
       setForecastLoading(false);
@@ -235,11 +236,11 @@ export default function FinancePage() {
     const { data: { session } } = await supabase.auth.getSession();
     const authHeaders = { Authorization: `Bearer ${session.access_token}` };
     const [loanRes, forecastRes, seasonSwitchRes, leadingRes, proxiesRes, seasonsRes] = await Promise.all([
-      fetch(`${API}/api/finance/loans`, { headers: authHeaders }),
-      fetch(`${API}/api/me/finance-forecast`, { headers: authHeaders }),
+      apiFetch(`${API}/api/finance/loans`, { headers: authHeaders }),
+      apiFetch(`${API}/api/me/finance-forecast`, { headers: authHeaders }),
       // #4011: S2/S3-opgørelsen — fælles kilde for både forecast-kortets
       // to-kolonne-visning (Overblik) og season-switch-fanens kvittering.
-      fetch(`${API}/api/finance/season-switch-preview`, { headers: authHeaders }),
+      apiFetch(`${API}/api/finance/season-switch-preview`, { headers: authHeaders }),
       // #44: hent leading auktioner + proxies så vi kan vise reserveret balance
       supabase.from("auctions")
         .select("id, current_price")
@@ -268,14 +269,21 @@ export default function FinancePage() {
         || ALL_SEASONS,
     );
 
-    if (loanRes.ok) setLoanData(await loanRes.json());
+    // #5242: apiFetch kaster ikke laengere ved en transportfejl (#5322); disse
+    // tre GET-kald blev FOER kastet videre til den ydre catch (setLoadError(true),
+    // fuld side-fejl med retry) — grenen genindfoeres eksplicit, ellers ville en
+    // offline-tilstand nu bare rendere en tavst tom side i stedet.
+    if (loanRes.networkError || forecastRes.networkError || seasonSwitchRes.networkError) {
+      throw new Error("network");
+    }
+    if (loanRes.ok) setLoanData(loanRes.data);
     if (forecastRes.ok) {
-      setForecast(await forecastRes.json());
+      setForecast(forecastRes.data);
     } else {
       setForecast(null);
     }
     if (seasonSwitchRes.ok) {
-      setSeasonSwitch(await seasonSwitchRes.json());
+      setSeasonSwitch(seasonSwitchRes.data);
     } else {
       setSeasonSwitch(null);
     }
@@ -289,15 +297,18 @@ export default function FinancePage() {
     // i stedet for den tidligere ubegrænsede klient-side prize-query.
     const prizeSeason = active || allSeasons[0] || null;
     if (prizeSeason) {
-      const reportRes = await fetch(
+      const reportRes = await apiFetch(
         `${API}/api/teams/${teamData.id}/finance-report?seasonId=${prizeSeason.id}`,
         { headers: authHeaders },
       );
+      // #5242: !reportRes.ok daekker allerede networkError (apiFetch saetter
+      // ok:false ogsaa ved transportfejl), saa dette konvergerer uaendret med
+      // den tidligere kastede fejl der ramte den ydre catch.
       if (!reportRes.ok) {
         setLoadError(true);
         return;
       }
-      const report = await reportRes.json();
+      const report = reportRes.data;
       const prizes = report.prizes || { season_total: 0, race_count: 0, all_time_total: 0, rows: [] };
       setPrizeSummary({
         seasonNumber: prizeSeason.number,
@@ -398,12 +409,20 @@ export default function FinancePage() {
     setTakingLoan(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API}/api/finance/loans`, {
+      const res = await apiFetch(`${API}/api/finance/loans`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ loan_type: loanType, amount }),
       });
-      const result = await res.json().catch(() => ({}));
+      // #5242: catch'en herunder viste FOER "auth:error.connectionFailed" ved en
+      // transportfejl; apiFetch kaster ikke laengere (#5322), saa uden denne
+      // gren ville !res.ok's generiske "errorPrefix + undefined" vises i stedet.
+      if (res.networkError) {
+        showMsg(t("auth:error.connectionFailed"), "error");
+        setShowLoanConfirm(false);
+        return;
+      }
+      const result = res.data || {};
       if (res.ok) {
         showMsg(t("msg.loanCreated", { amount: formatNumber(amount) }));
         setLoanAmount(null);
@@ -412,9 +431,11 @@ export default function FinancePage() {
       } else {
         // #1012: strukturerede engine-fejl (error.debtCapReached m.fl.) renderes
         // lokaliseret via backendMessages; rå error-string er fallback.
+        // #5242: 401/429 (res.unauthorized/res.limited) har ingen data.error —
+        // uden denne fallback viste toasten "Fejl: undefined".
         const errText = result.errorCode
           ? renderBackendMessage({ code: result.errorCode, params: result.errorParams }, tBackend, result.error)
-          : result.error;
+          : result.error || t("errors:generic.unknown");
         showMsg(`${t("msg.errorPrefix")}${errText}`, "error");
         setShowLoanConfirm(false);
       }
@@ -446,12 +467,17 @@ export default function FinancePage() {
     setRepaying(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API}/api/finance/loans/${loanId}/repay`, {
+      const res = await apiFetch(`${API}/api/finance/loans/${loanId}/repay`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ amount }),
       });
-      const result = await res.json().catch(() => ({}));
+      // #5242: samme netvaerksfejl-fix som submitLoan() ovenfor.
+      if (res.networkError) {
+        showMsg(t("auth:error.connectionFailed"), "error");
+        return;
+      }
+      const result = res.data || {};
       if (res.ok) {
         showMsg(result.paid_off
           ? t("msg.loanRepaidFull")
@@ -465,9 +491,10 @@ export default function FinancePage() {
       } else {
         // #1012: samme lokaliserede fejl-rendering som handleTakeLoan
         // (fx error.repayInsufficient med { available }).
+        // #5242: samme 401/429-fallback som submitLoan() ovenfor.
         const errText = result.errorCode
           ? renderBackendMessage({ code: result.errorCode, params: result.errorParams }, tBackend, result.error)
-          : result.error;
+          : result.error || t("errors:generic.unknown");
         showMsg(`${t("msg.errorPrefix")}${errText}`, "error");
       }
     } catch {

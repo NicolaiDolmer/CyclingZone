@@ -17,6 +17,7 @@ import TargetRacePicker from "../components/racehub/strategy/TargetRacePicker.js
 import PreviewDiff from "../components/racehub/strategy/PreviewDiff.jsx";
 // #5159 (B1): A-kaede, rolle-regler, kaptajner og maal-loeb er kladde indtil Gem.
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: kun mutationerne — se load()'s #4165-kommentar
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -60,6 +61,13 @@ export default function StrategyPage() {
       return;
     }
     try {
+      // #5242: bevidst IKKE migreret til apiFetch (samme undtagelse som
+      // RaceHubBoard.jsx/SeasonMatrix.jsx/SeasonView.jsx, se
+      // frontend/scripts/check-fetch-wiring.mjs's fil-header) — denne load()
+      // skelner en parse-fejl fra en network-fejl til Sentry-telemetrien
+      // (#4165, faa linjer nedenfor), og apiFetch parser altid selv og giver
+      // data:null for begge. runPreview/save/regenerate nedenfor har ingen
+      // tilsvarende skelnen og ER migreret.
       const res = await fetch(`${API}/api/races/strategy`, { headers });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -130,11 +138,11 @@ export default function StrategyPage() {
     lastActionRef.current = "preview";
     setBusy(true); setError(null);
     try {
-      const res = await fetch(`${API}/api/races/strategy/preview`, { method: "POST", headers, body: JSON.stringify(payload()) });
+      const res = await apiFetch(`${API}/api/races/strategy/preview`, { method: "POST", headers, body: JSON.stringify(payload()) });
       if (res.ok) {
-        setPreview((await res.json()).diff || {});
+        setPreview((res.data || {}).diff || {});
       } else {
-        const body = await res.json().catch(() => ({}));
+        const body = res.data || {};
         setError({ code: body.error || "generic" });
       }
     } catch { setError({ code: "generic" }); } finally { setBusy(false); }
@@ -144,13 +152,13 @@ export default function StrategyPage() {
     lastActionRef.current = "save";
     setBusy(true); setSaved(false); setError(null);
     try {
-      const res = await fetch(`${API}/api/races/strategy`, { method: "PUT", headers, body: JSON.stringify(payload()) });
+      const res = await apiFetch(`${API}/api/races/strategy`, { method: "PUT", headers, body: JSON.stringify(payload()) });
       if (res.ok) {
         setSaved(true);
         // Kladden er nu paa serveren: porten maa aabne igen (#5159 B1).
         setTouched(false);
       } else {
-        const body = await res.json().catch(() => ({}));
+        const body = res.data || {};
         setError({ code: body.error || "generic" });
       }
     } catch { setError({ code: "generic" }); } finally { setBusy(false); }
@@ -160,9 +168,9 @@ export default function StrategyPage() {
     lastActionRef.current = "regenerate";
     setBusy(true); setError(null);
     try {
-      const res = await fetch(`${API}/api/races/distribution/regenerate?mode=missing`, { method: "POST", headers });
+      const res = await apiFetch(`${API}/api/races/distribution/regenerate?mode=missing`, { method: "POST", headers });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = res.data || {};
         setError({ code: body.error || "generic" });
       }
     } catch { setError({ code: "generic" }); } finally { setBusy(false); }

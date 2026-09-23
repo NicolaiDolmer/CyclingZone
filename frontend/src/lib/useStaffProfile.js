@@ -12,6 +12,7 @@
 import { useState, useEffect } from "react";
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { useFacilities } from "./useFacilities.js";
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt paa 429 + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -28,11 +29,14 @@ export function useStaffProfile(staffId) {
       if (!alive) return;
       if (!headers) return setStatus("forbidden");
       try {
-        const res = await fetch(`${API}/api/club/staff/${staffId}`, { headers });
+        // #5242: en transportfejl (networkError) har status:0, saa den rammer
+        // altid `res.status !== 404` nedenfor og ender paa setStatus("error") —
+        // praecis som catch'en gjorde foer (#5322). Ingen eksplicit gren behoeves.
+        const res = await apiFetch(`${API}/api/club/staff/${staffId}`, { headers });
         if (!alive) return;
         if (res.status === 403) return setStatus("forbidden");
         if (res.ok) {
-          const body = await res.json();
+          const body = res.data;
           if (!alive) return;
           setProfile(body);
           setStatus("ok");
@@ -40,12 +44,12 @@ export function useStaffProfile(staffId) {
         }
         if (res.status !== 404) return setStatus("error");
         // Ikke ejet (eller ukendt) — prøv candidate-niveau public-profilen (#2450).
-        const pubRes = await fetch(`${API}/api/staff/${staffId}/public`, { headers });
+        const pubRes = await apiFetch(`${API}/api/staff/${staffId}/public`, { headers });
         if (!alive) return;
         if (pubRes.status === 403) return setStatus("forbidden");
         if (pubRes.status === 404) return setStatus("notfound");
         if (!pubRes.ok) return setStatus("error");
-        const pubBody = await pubRes.json();
+        const pubBody = pubRes.data;
         if (!alive) return;
         // Normaliseret til SAMME profil-shape som owner-svaret (abilities.overall),
         // + topSpecialization på øverste niveau (candidate-niveau — ingen fuld matrix).
