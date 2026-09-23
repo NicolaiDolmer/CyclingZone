@@ -11,14 +11,15 @@ SÅDAN TALER DU MED MIG
 * Før du foreslår et Discord-opslag: læs kanalen LIGE FØR (mcp__discord__discord_read_messages), og sig hvornår du læste den.
 
 MÅLET
-Følg bølge C0b til dørs i nat, og byg motoren videre. Kæde: C0b (9 spor) → motor-runde 2 + bølge C (rullende optag, når #5562 er merget) → runde 3-4 → D (løfterne) → E. Args til C0b: OneDrive private-handoffs\wave-2026-09-23-bC0b.json (læs med Read, send objektet; privat fordi motorsporene står der).
+Følg bølge C0b til dørs i nat, og byg motoren videre. Kæde: C0b (10 spor) → motor-runde 2 + bølge C (rullende optag, når #5562 er merget) → runde 3-4 → D (løfterne) → E. Args til C0b: OneDrive private-handoffs\wave-2026-09-23-bC0b.json (læs med Read, send objektet; privat fordi motorsporene står der).
 
 FØRST
-1. node scripts/wave-policy.mjs assert-idle skal være idle. Tjek at C0a's PR'er er merget: gh pr view 5587 5564 5556 5554 5521 5588 --json state (se NOW.md; det der ikke er merget, tager du som go-kort, og merge-køen skal være færdig før bølgen).
-2. pwsh -File scripts/preflight-night-wave.ps1 -Fix -StartKeepAwake skal sige [GO]. Start C0b fra DENNE session (bølgen ejes af den session der starter den). Rækkefølge i filen: #5589 dashboard-fejlen først (brand: 69 hold manglede vinderen 23/9), så #5562, motor-runde 1 (#5576 #5570 #5571), #5246 (#5557-rettespor, blocker rettet), #2761 Discord-kort, #4592 parkeret økonomi (A med løn), #452 tilmeldingskortet øverst.
+1. node scripts/wave-policy.mjs assert-idle skal være idle. 23/9-c merget: #5563 #5555 #5549 #5524 #5585 #5564 #5587 #5521 #5556 #5554 + v7.296 (#5588, tjek state; merge den som det første hvis den står åben: ejer-godkendt tekst). Flag 23/9: training_score_visible = on, training_mobile_table = on, youth_squad_pages = beta, season_signup_enabled = on.
+2. pwsh -File scripts/preflight-night-wave.ps1 -Fix -StartKeepAwake skal sige [GO]. Start C0b fra DENNE session (bølgen ejes af den session der starter den). Rækkefølge i filen: #5589 dashboard-fejlen (brand: 69 hold manglede vinderen 23/9) og #5592 (mindst 24 timer til trupudtagelse: søndag tidligt, mandag sent, 24 t efter hvert sæsonskifte; S4-KALENDEREN VENTER PÅ DEN) først, så #5562, motor-runde 1 (#5576 #5570 #5571), #5246 (#5557-rettespor, blocker rettet), #2761 Discord-kort, #4592 parkeret økonomi (A med løn), #452 tilmeldingskortet øverst.
 3. Når C0b er færdig: merge #5562 FØRST (kategori 3). Derefter kan merge-køen merge PR'er uden fil-overlap mens bølger kører. Post-verificér #5589 i prod: Bad At Names' dashboard viser vinder på alle afsluttede kort.
 
 MINE GO-PUNKTER I C0b-RESULTATET
+* #5592: tabellen med nye tider pr. division (søndag, mandag, 28/9) → mit OK på tallene → "merge" → frisk tørkørsel → mit "kør" på S4-kalenderen (--apply). Det er det vigtigste i morgen.
 * #5589: "merge" (brand-fejl, billede af dashboardet før/efter med ægte data).
 * #2761 Discord-kort: billede → min tekst-go → "kør" på sendDiscordInviteBackfill.mjs --execute (212 managers; kun efter dry-run-tal).
 * #4592 parkeret økonomi: "merge" før "Afslut sæson" 27/9.
@@ -37,7 +38,7 @@ FASTE REGLER
 * Spillervendt tekst: EN først, DA under, jeg/du, ingen em-dash, kort. Discord KUN EN. Patch note pr. merge-dag (samlet, én PR).
 
 MORGENBLOK 08:30 (ét kort ad gangen, se OneDrive private-handoffs\2026-09-24-morgenrapport.md)
-S4-kalender "kør" (hvis ikke gjort) · træningsside-flips efter Android-test · Discord-invite · #5558 roadmap · #5268 · #5497 · #5538/#5539/#5540 · #5323 · #4514 · #4269 token · 6 UI-tjek (#5471 #5472 #5417 #5386 #5313 #5486).
+#5592-tider → S4-kalender "kør" · Discord-invite · #5558 roadmap · #5268 · #5497 · #5538/#5539/#5540 · #5323 · #4514 · #4269 token · 6 UI-tjek (#5471 #5472 #5417 #5386 #5313 #5486).
 
 NÅR DU STOPPER
 Opdatér docs/NOW.md (maks 1.200 tokens, Next action + Working agent nulstillet), pwsh -File scripts/check-agent-token-hygiene.ps1, status på hvert rørt issue, claude:done på det merget, pwsh -File scripts/close-out-cleanup.ps1. Morgenrapport i OneDrive private-handoffs. Ny sessions-prompt i samme stil. Sidste linje: "Ny session anbefales: <hvad næste session starter med>".
@@ -45,4 +46,4 @@ Opdatér docs/NOW.md (maks 1.200 tokens, Next action + Working agent nulstillet)
 FØRSTE SVAR: tre linjer: er markøren idle (ja/nej), hvilke C0a-PR'er der mangler merge, og om C0b er startet.
 ```
 
-Ny session anbefales: preflight → start bølge C0b (#5589 dashboard-fejlen først) → merge #5562 først efter bølgen → motor-runde 2 + bølge C med rullende optag.
+Ny session anbefales: preflight → start bølge C0b (#5589 dashboard-fejlen og #5592 planlægningsvinduet først, S4-kalenderen venter) → merge #5562 først efter bølgen → motor-runde 2 + bølge C med rullende optag.
