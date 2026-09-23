@@ -601,7 +601,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // og vises nu i SAMME tabel som seniorerne, styret af to gruppe-filtre (begge on som
   // default → hele holdet vist). Datakilden er den samme (loadAll henter is_academy).
   // #5075: showSeniors/showAcademy er LØFTET op i TeamPage (props her) så Stats-fanen
-  // kan dele nøjagtig samme state — se AcademySquadFilter.jsx.
+  // kan dele nøjagtig samme state — se AcademySquadFilter.tsx.
   // #2906 punkt 1 (ejer 25/7: "muligt/nemmere at se alle evner på samme tid"):
   // to kolonne-tilstande i stedet for én 25-kolonners tabel ingen skærm kan vise.
   // "overview" = de beskrivende kolonner (værdi, løn, status, kontrakt, handling);
@@ -1019,7 +1019,7 @@ export function TeamPage() {
   // #5075: showSeniors/showAcademy boede tidligere kun i SquadTab — Stats-fanen
   // manglede dermed helt til-/fravalget af akademiryttere. Løftet herop, så
   // Trup- og Stats-fanen deler PRÆCIS samme state (samme kontrol i begge, se
-  // AcademySquadFilter.jsx) i stedet for at hver fane opfinder sin egen variant.
+  // AcademySquadFilter.tsx) i stedet for at hver fane opfinder sin egen variant.
   // Default = begge på, uændret fra Trup-fanens hidtidige default.
   const [showSeniors, setShowSeniors] = useState(true);
   const [showAcademy, setShowAcademy] = useState(true);
@@ -1356,8 +1356,9 @@ export function TeamPage() {
       )}
       {activeTab === "stats" && (
         // #5075: samme showSeniors/showAcademy-state som Trup-fanen ovenfor —
-        // filtreringen (og dermed totalerne, da de udledes af de viste rækker)
-        // regnes på det samme filtrerede rytter-sæt.
+        // Statistik-fanen har ingen sum-/gennemsnitslinjer i dag, men rækkerne
+        // filtreres på nøjagtig den samme delte state, så den viste liste
+        // matcher Trup-fanens til-/fravalg.
         <TeamStatsTab riders={currentRiders}
           showSeniors={showSeniors} showAcademy={showAcademy} onToggleSeniors={() => setShowSeniors(v => !v)} onToggleAcademy={() => setShowAcademy(v => !v)} />
       )}

@@ -5,17 +5,22 @@ import { wantsObject } from "../../src/preview/mockHandlers.js";
 // #5075 (spillerforslag @cybersimon 9/9, Discord #feedback-and-ideas): Stats-
 // fanen under Mit hold manglede den til-/fravalg af akademiryttere som Trup-
 // fanen allerede havde (#1929). Rettelsen genbruger PRÆCIS samme kontrol og
-// samme state (løftet til TeamPage.jsx, se AcademySquadFilter.jsx) i stedet
-// for at opfinde en ny variant — testen dækker derfor begge halvdele af
-// kravet:
+// samme state (løftet til TeamPage.jsx, se AcademySquadFilter.tsx) i stedet
+// for at opfinde en ny variant — testfilen dækker derfor tre ting:
 //   1) akademiryttere forsvinder fra Stats-tabellen når filteret slås fra
 //   2) filter-valget er DELT state — et flip i den ene fane følger med til
 //      den anden, i stedet for at hver fane holde sin egen kopi.
+//   3) rettespor 23/9: hold UDEN akademiryttere får ingen tom værktøjslinje
+//      (streg foroven, ingen indhold) på Stats-fanen — DataTable's
+//      `toolbar && (...)` var sand for selve React-elementet, også når
+//      AcademySquadFilter selv rendererede null (148 af 258 menneskestyrede
+//      hold i prod har ingen akademiryttere).
 //
 // `installNetworkMocks`s riders-fixture (seedData.js) har kun ÉN rytter på
-// TEST_TEAM (Ada, ikke akademi) — ingen akademiryttere at teste filteret på.
-// Overrides herunder tilføjer én akademirytter til TEST_TEAM, samme
-// override-mønster som 4582-demote-keeps-contract.spec.js's mockU23OwnRider.
+// TEST_TEAM (Ada, ikke akademi) — det er default-tilstanden testcase 3 bruger
+// UÆNDRET (intet akademi at filtrere på). Overrides herunder tilføjer én
+// akademirytter til TEST_TEAM til testcase 1+2, samme override-mønster som
+// 4582-demote-keeps-contract.spec.js's mockU23OwnRider.
 
 const SENIOR_RIDER = RIDERS.find((r) => r.id === "rider-1"); // Ada Pedersen — allerede is_academy: falsy.
 
@@ -55,12 +60,13 @@ async function mockAcademyRoster(page) {
 test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
-  await mockAcademyRoster(page);
   await login(page);
-  await page.goto("/team");
 });
 
 test("Stats-fanen deler akademi-filteret med Trup-fanen — akademiryttere forsvinder fra tabellen når filteret slås fra (#5075)", async ({ page }) => {
+  await mockAcademyRoster(page);
+  await page.goto("/team");
+
   // Trup-fanen (default) viser begge ryttere.
   await expect(page.getByRole("link", { name: "Ada Pedersen", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Oskar Berg", exact: true })).toBeVisible();
@@ -102,4 +108,33 @@ test("Stats-fanen deler akademi-filteret med Trup-fanen — akademiryttere forsv
   await page.getByRole("tab", { name: "Statistik" }).click();
   await expect(page.getByRole("button", { name: "Akademi (1)" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("link", { name: "Oskar Berg", exact: true })).toBeVisible();
+});
+
+test("Stats-fanen viser ingen tom værktøjslinje for hold uden akademiryttere (#5075 rettespor)", async ({ page }) => {
+  // INGEN mockAcademyRoster her — default-fixturen (kun Ada, ikke akademi) ER
+  // selve testcasen: holdet har akademiCount === 0 og seniorer er ikke skjult,
+  // så AcademySquadFilter.tsx skal rendere null, og TeamStatsTab.jsx skal derfor
+  // slet ikke sende et toolbar-element til DataTable.
+  await page.goto("/team");
+  await page.getByRole("tab", { name: "Statistik" }).click();
+  await expect(page.getByRole("link", { name: "Ada Pedersen", exact: true })).toBeVisible();
+
+  // Selve filter-kontrollen findes slet ikke (holdet har intet at filtrere på).
+  await expect(page.getByRole("button", { name: /^Akademi/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Seniorer/ })).toHaveCount(0);
+
+  // Rettelsens kerne: DataTable's toolbar-wrapper (den bjælke med border-b-
+  // stregen foroven, DataTable.jsx linje ~188 og ~271) må ikke monteres
+  // overhovedet, når der ikke er noget at vise i den. Før rettelsen var
+  // wrapperen der uanset — tom, men med streg — fordi et React-element altid
+  // er "sandt" for `toolbar && (...)`, selv når komponenten selv returnerer
+  // null. Klasselisten er identisk på tværs af desktop- og mobil-render.
+  const toolbarBar = page.locator(".border-b.border-cz-border.px-4.py-2\\.5");
+  await expect(toolbarBar).toHaveCount(0);
+
+  // Samme tjek på mobil (390 — samme bredde som PR-bevis-screenshottet ovenfor).
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("link", { name: "Ada Pedersen", exact: true })).toBeVisible();
+  await expect(toolbarBar).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Akademi/ })).toHaveCount(0);
 });

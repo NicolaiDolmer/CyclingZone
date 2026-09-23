@@ -34,7 +34,7 @@ const EMPTY_STATS = { raceDays: 0, wins: 0, points: 0, prize: 0 };
 // allerede beregner til sine egne sum-linjer — ingen ekstra fetch her).
 //
 // #5075 (spillerforslag @cybersimon 9/9): showSeniors/showAcademy er den SAMME
-// state som Trup-fanen (løftet til TeamPage.jsx, se AcademySquadFilter.jsx) —
+// state som Trup-fanen (løftet til TeamPage.jsx, se AcademySquadFilter.tsx) —
 // tabellens rækker filtreres på den her, så tallene (i dag pr. rytter; en
 // fremtidig sum-/gennemsnitslinje ville arve det samme) altid regnes på den
 // viste, filtrerede liste. `riders` holder BEVIDST hele holdet (ikke det
@@ -55,6 +55,16 @@ export default function TeamStatsTab({ riders, showSeniors, showAcademy, onToggl
   const riderIdsKey = riderIds.join(",");
   const seniorCount = riders.filter((r) => !r.is_academy).length;
   const academyCount = riders.filter((r) => r.is_academy).length;
+  // #5075 rettespor 23/9: DataTable's toolbar-slot tjekker kun `toolbar && (...)`
+  // (DataTable.jsx) — et React-element er ALTID sandt, også når komponenten selv
+  // returnerer null. AcademySquadFilter.tsx returnerer null når holdet ikke har
+  // akademiryttere og seniorer ikke er skjult, men fordi vi hidtil sendte
+  // ELEMENTET til `toolbar` uanset, viste DataTable stadig sin tomme
+  // toolbar-bjælke (streg foroven, desktop og mobil) — synlig for hold uden
+  // akademiryttere (148 af 258 menneskestyrede hold i prod). Betingelsen her
+  // spejler PRÆCIS AcademySquadFilter.tsx's egen null-check, så vi kun sender
+  // elementet når det faktisk render'er noget.
+  const showAcademyFilter = academyCount > 0 || (seniorCount > 0 && !showSeniors);
 
   useEffect(() => {
     let cancelled = false;
@@ -227,10 +237,14 @@ export default function TeamStatsTab({ riders, showSeniors, showAcademy, onToggl
         onSort={handleSort}
         rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
         /* #5075: samme kontrol + state som Trup-fanen — ligger i tabellens egen
-           toolbar, samme placering/mønster som SquadTab (#4628). */
-        toolbar={<AcademySquadFilter showSeniors={showSeniors} showAcademy={showAcademy}
-          onToggleSeniors={onToggleSeniors} onToggleAcademy={onToggleAcademy}
-          seniorCount={seniorCount} academyCount={academyCount} />}
+           toolbar, samme placering/mønster som SquadTab (#4628). Sendes KUN når
+           showAcademyFilter er sand (se rettespor-kommentaren ovenfor) — ellers
+           null, så DataTable ikke monterer en tom toolbar-bjælke. */
+        toolbar={showAcademyFilter ? (
+          <AcademySquadFilter showSeniors={showSeniors} showAcademy={showAcademy}
+            onToggleSeniors={onToggleSeniors} onToggleAcademy={onToggleAcademy}
+            seniorCount={seniorCount} academyCount={academyCount} />
+        ) : null}
         /* Holdet har ryttere, men filteret skjuler dem alle — toolbaren (og dermed
            til-/fravalget) skal blive stående, så spilleren kan slå det fra igen. */
         empty={<EmptyState icon={<TrophyIcon size={26} aria-hidden="true" />} title={t("squad.emptyView")} />}
