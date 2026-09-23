@@ -94,3 +94,92 @@ test("bevarer scroll-positionen naar en ny besked ankommer via polling, hvis bru
   // historikken (#5313: "bevarer positionen hvis brugeren selv har rullet op").
   await expect(oldest).toBeInViewport();
 });
+
+// ---------------------------------------------------------------------------
+// Efter ejer-review 23/9: aabnet via DIREKTE LINK (som fra en notifikation om
+// en ny besked) stod traaden stadig ved den AELDSTE besked, mens et klik i
+// samtalelisten virkede. Testene ovenfor fangede det ikke, fordi mock-svarene
+// kommer med det samme og i en fast raekkefoelge.
+//
+// Rod-aarsagen: panelet viser et skelet saa laenge SAMTALELISTEN henter. Ved et
+// direkte link hentes listen og traaden parallelt; svarer traaden foerst, koerer
+// scroll-effekten mens scroll-containeren endnu ikke findes, og naar listen
+// senere kommer og containeren monteres, er der ingen ny besked til at udloese
+// effekten igen. Ved et klik i listen er listen allerede hentet, derfor virkede
+// det. Testene herunder forsinker hver sit svar, saa begge raekkefoelger er
+// daekket.
+
+const OWNER_NEWEST = "Deal at 165k. Sending the offer now.";
+
+// Ejerens tilfaelde: 7 beskeder hvor nogle er lange (3 seedede + 4 her).
+function seedOwnerReviewThread(state) {
+  const CONVERSATION_ID = state.conversations[0].id;
+  const base = Date.parse("2026-09-07T11:00:00.000Z");
+  const long = (lead: string) => `${lead} ${"I have been going through the numbers again, and the wage bill for next season is the part that worries me most, because the sponsor money only lands after the spring classics. ".repeat(3)}`.trim();
+  const bodies = [
+    long("Budget checked."),
+    long("Understood, but"),
+    long("One more angle:"),
+    OWNER_NEWEST,
+  ];
+  bodies.forEach((body, index) => {
+    state.messages.push({
+      id: `dm-msg-owner-${index + 4}`,
+      conversationId: CONVERSATION_ID,
+      fromMe: index % 2 === 1,
+      body,
+      createdAt: new Date(base + index * 60_000).toISOString(),
+      context: null,
+    });
+  });
+}
+
+// Holder GET-svarene tilbage i `ms` og lader dem saa gaa videre til
+// installMessagesMocks (senest registrerede route koerer foerst i Playwright,
+// `fallback` sender videre til den naeste).
+async function delayGet(page, matches: (url: URL) => boolean, ms: number) {
+  await page.route(matches, async (route) => {
+    if (route.request().method() === "GET") {
+      await new Promise((resolve) => { setTimeout(resolve, ms); });
+    }
+    await route.fallback();
+  });
+}
+
+const isConversationList = (url: URL) => url.pathname.endsWith("/api/messages/conversations");
+const isThreadFetch = (url: URL) => /\/api\/messages\/conversations\/[^/]+$/.test(url.pathname);
+
+for (const variant of [
+  { slow: "samtalelisten", matches: isConversationList },
+  { slow: "traaden", matches: isThreadFetch },
+]) {
+  test(`direkte link aabner ved nyeste besked naar ${variant.slow} svarer 800 ms forsinket`, async ({ page }) => {
+    const state = await installMessagesMocks(page);
+    seedOwnerReviewThread(state);
+    await delayGet(page, variant.matches, 800);
+    await login(page);
+
+    await page.goto("/notifications?tab=messages&c=dm-conv-1");
+
+    const newest = thread(page).getByText(OWNER_NEWEST);
+    const oldest = thread(page).getByText(/Are you open to selling Vandenberg/);
+    await expect(newest).toBeInViewport();
+    await expect(oldest).not.toBeInViewport();
+  });
+}
+
+test("bliver ved nyeste besked naar beskederne vokser i hoejden efter foerste render", async ({ page }) => {
+  const state = await installMessagesMocks(page);
+  seedOwnerReviewThread(state);
+  await login(page);
+
+  await page.goto("/notifications?tab=messages&c=dm-conv-1");
+  const newest = thread(page).getByText(OWNER_NEWEST);
+  await expect(newest).toBeInViewport();
+
+  // Samme klasse som en webfont der loader efter foerste render og ombryder de
+  // lange beskeder: hver boble bliver hoejere, uden at der kommer en ny besked.
+  await page.addStyleTag({ content: '[data-testid="dm-thread-messages"] > li { padding-bottom: 120px; }' });
+
+  await expect(newest).toBeInViewport();
+});
