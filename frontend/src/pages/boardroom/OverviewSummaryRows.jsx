@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { SectionAction } from "../../components/ui";
 import MonogramAvatar from "../../components/MonogramAvatar";
-import { resolveGoalTitle } from "./boardroomFormat";
+import { resolveGoalTitle } from "./boardroomFormat.js";
 
 // #4557 (overblik + faner) · Vision og bestyrelse som to RESUMÉ-LINJER paa
 // sidebaggrunden, ikke som to kort til. Fold-disciplinens punkt 1: nyt indhold

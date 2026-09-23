@@ -66,7 +66,12 @@ export function resolveGoalTitle(t, goal) {
     label: goal.label ?? "",
     label_key: goal.labelKey ?? null,
     cumulative: goal.cumulative ?? false,
-    race_scope: goal.raceScope ?? null,
-    nationality_code: goal.nationalityCode ?? null,
+    // #5472 · boardRoom.js spreder buildGoalLabelSource ind i baade maal og
+    // milepaele, saa felterne ankommer i snake_case (race_scope,
+    // nationality_code). Kun camelCase blev laest: et nationalt-kerne-maal faldt
+    // derfor tilbage til DB'ens raa danske label (ogsaa paa engelsk), og et
+    // klassiker-podie-maal blev vist som Monument-varianten.
+    race_scope: goal.raceScope ?? goal.race_scope ?? null,
+    nationality_code: goal.nationalityCode ?? goal.nationality_code ?? null,
   });
 }

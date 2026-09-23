@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, SectionAction, EmptyState, ClipboardIcon, ProgressMeter } from "../../components/ui";
-import { endSentence, formatShortDate, resolveGoalTitle } from "./boardroomFormat";
+import { endSentence, formatShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import { goalProgressPct } from "../../components/board/goalProgress.js";
 import { BonusOfferStripe, BonusAcceptedLine } from "./BonusOffer.jsx";
 import StatusPill from "./StatusPill.jsx";

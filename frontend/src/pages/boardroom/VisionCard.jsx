@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, FlagIcon } from "../../components/ui";
-import { resolveGoalTitle } from "./boardroomFormat";
+import { resolveGoalTitle } from "./boardroomFormat.js";
 
 // Milepael-prik pr. status (Main.dc.html §3): "current" = gold fyld + navy
 // kant (2px, sidebar-navy — samme token som app-shellets altid-moerke

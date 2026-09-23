@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, ProgressMeter } from "../../components/ui";
-import { appendDate, formatWeekdayShortDate } from "./boardroomFormat";
+import { appendDate, formatWeekdayShortDate } from "./boardroomFormat.js";
 
 // #4557 · Boardroom · Tillidskort (Main.dc.html §1). Stort tabular-nums-tal +
 // ugedelta, 4 kategorimetre (gold fyld, amber under ~60 pr. mockup) og en

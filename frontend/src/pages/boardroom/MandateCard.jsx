@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon } from "../../components/ui";
-import { appendDate, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
+import { appendDate, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import MonogramAvatar from "../../components/MonogramAvatar";
 import { logEvent } from "../../lib/logEvent";
 import StatusPill from "./StatusPill.jsx";

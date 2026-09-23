@@ -101,6 +101,7 @@ function prodShapedPayload() {
   const results = owner("resultatjaegeren", "Jørgen Brandt", "JB");
   const economy = owner("sponsoraten", "Søren Lindqvist", "SL");
   const identity = owner("ungdomsidealisten", "Astrid Holm", "AH");
+  const ranking = owner("nationalist_purist", "Niels Østergaard", "NO");
 
   return {
     ...boardRoomFixture,
@@ -112,6 +113,12 @@ function prodShapedPayload() {
         goal("no_outstanding_debt", 0, "0", "on_track", economy),
         goal("u25_development_delta", 4, "1", "at_risk", identity),
         goal("top_n_finish", 40, "46", "behind", chair, { isStretch: true }),
+        // DB-labelen er rå dansk (backend buildGoalLabel); titlen skal komme
+        // fra nationality_code + locale, ellers lækker dansk ud på engelsk.
+        goal("min_national_riders", 3, "4", "on_track", ranking, {
+          label: "Min. 3 ryttere fra dk",
+          nationality_code: "dk",
+        }),
       ],
     },
     vision: {
@@ -305,6 +312,8 @@ test.describe("#5472 Boardroom-layout på desktop", () => {
         expect.soft(text, `${tab} (${lang}) viser en rå nøgle`).not.toMatch(rawKey);
         // Replik + dato ("Keep them coming., Sun, Sep 20.") gav ".," midt i linjen.
         expect.soft(text, `${tab} (${lang}) har ".," efter en replik`).not.toMatch(/\.,/);
+        // Den rå danske DB-label må ikke nå den engelske flade.
+        if (lang === "en") expect.soft(text, `${tab} (en) viser dansk DB-label`).not.toMatch(/ryttere fra/i);
       }
     });
   }
