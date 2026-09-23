@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   SCALE_0_10,
@@ -463,4 +466,31 @@ test("et tomt eller ulæseligt luk-flag betyder at kortet vises", () => {
   assert.equal(isInviteDismissed(undefined), false);
   assert.equal(isInviteDismissed(""), false);
   assert.equal(isInviteDismissed("ja tak"), false);
+});
+
+// ── Dashboard-kortet skjules efter closes_at (#4943-followup) ──────────────
+// SurveyInviteCard.jsx henter selv sine data via Supabase, så adfærden kan
+// ikke unit-testes direkte uden en jsdom-harness (ingen findes i dette repo,
+// se f.eks. NextActionsCard.dashboardUxPakke.test.js). Source-scan-mønster:
+// verificerer at kortets forespørgsel rent faktisk henter closes_at, og at
+// isSurveyPastClose bruges til at skjule kortet, FØR nogen sletter guarden.
+//
+// Selve lukke-logikken (isSurveyPastClose) er allerede fuldt dækket ovenfor —
+// det denne test beskytter er at komponenten kalder den, ikke at den virker.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const inviteCardSource = readFileSync(
+  join(__dirname, "..", "components", "SurveyInviteCard.jsx"),
+  "utf8"
+);
+
+test("SurveyInviteCard henter closes_at sammen med status", () => {
+  assert.match(inviteCardSource, /\.select\("id, slug, status, closes_at"\)/);
+});
+
+test("SurveyInviteCard skjuler kortet når closes_at er passeret", () => {
+  assert.match(inviteCardSource, /isSurveyPastClose\(open\.closes_at\)/);
+  const guardIdx = inviteCardSource.indexOf("isSurveyPastClose(open.closes_at)");
+  const setSurveyIdx = inviteCardSource.indexOf("setSurvey(open)");
+  assert.ok(guardIdx !== -1 && setSurveyIdx !== -1, "begge linjer skal findes");
+  assert.ok(guardIdx < setSurveyIdx, "closes_at-tjekket skal ske FØR kortet vises");
 });
