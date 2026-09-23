@@ -24,7 +24,7 @@ korrekte.
 kald og dropper resten STILLE, uden fejl. Kommentaren på queryen kaldte den
 "pagination-safe: ... langt under 1000", hvilket var forkert: et etapeløb med
 160 ryttere passerer 1.000-rækkers-loftet fra omkring etape 4, og et grand
-tour-løb kan nå op på 6.000+ rækker over en sæson.
+tour-løb kan nå op på 6.000+ rækker pr. løb.
 
 Siden commit `de1046afa` (PR #3927, issue #3915), 18/8 — latent indtil et
 holds dagens løb samlet passerede 1.000 rækker.
@@ -38,6 +38,7 @@ filter der strukturelt forhindrer at ramme loftet:
    dagens race_id'er OG dagens etapenumre OG kun rank-1 stage-resultater —
    `.in("race_id", ownRaceIds).in("stage_number", todayStageNumbers)
    .eq("result_type", "stage").eq("rank", 1)`. Højst løb×etaper-i-dag rækker.
+   (Siden delt i højst to grupper, se "Opfølgning: endagsløb (#5601)" nedenfor.)
 2. **Placerings-forespørgsel** (`computeStageRaceStanding`'s input): én
    forespørgsel PR eget etapeløb med `stages_completed > 0`, afgrænset til
    dette ene løb OG dets aktuelle etape —
@@ -49,7 +50,7 @@ filter der strukturelt forhindrer at ramme loftet:
    uafhængigt af hvor mange etaper løbet har kørt i alt.
 
 `computeStageRaceStanding` og `todayStageWinner` (lib/dashboardTodayStages.js)
-er UÆNDREDE — kun deres input-rækker kommer nu fra to afgrænsede kilder i
+var UÆNDREDE i #5589-rettelsen — kun deres input-rækker kom fra to afgrænsede kilder i
 stedet for én fælles, ubegrænset kilde. En ny ren hjælper,
 `mergeStandingRowsByRace`, kombinerer placerings-forespørgslernes resultater
 (én pr. løb) til et `Map<raceId, rows>`.
@@ -58,6 +59,18 @@ Fravalgt: at wrappe den oprindelige forespørgsel i `fetchAllRows` — det ville
 hente 2.700-6.000+ rækker pr. minut pr. åbent dashboard (minut-tick-polling),
 langt mere data end de to nye forespørgsler tilsammen, for data der reelt
 kun bruges til to enkeltfelter (vindernavn + placering).
+
+## Opfølgning: endagsløb (#5601)
+
+Diff-tjekket af denne PR fandt en anden fejl med samme symptom: endagsløb
+viste ALDRIG en vinder (alle 380 afsluttede endagskort 23/9), hverken på
+dashboardet eller i Race Centre. Motoren skriver et endagsløbs resultat kun
+som `result_type = 'gc'` på `stage_number` 1, aldrig `'stage'`, men begge
+vinder-opslag filtrerede på `'stage'`. Rettet i samme PR med én delt ren
+hjælper, `frontend/src/lib/raceWinnerResultType.ts`: etapeløb → `'stage'`,
+endagsløb → `'gc'` rank 1. En `'gc'`-række på et etapeløbs sidste etape (den
+samlede vinder) forveksles aldrig med etapevinderen. Forespørgslerne er stadig
+afgrænsede (højst én `'stage'`- og én `'gc'`-gruppe).
 
 ## Forhindret fremover
 

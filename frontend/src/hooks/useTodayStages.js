@@ -8,6 +8,7 @@ import {
   terrainGlyphBucket,
   todayStageWinner,
 } from "../lib/dashboardTodayStages.js";
+import { planRaceResultQueries } from "../lib/raceWinnerResultType.ts";
 
 // #3915 — "Today's stages" dashboard strip: data-hentning for DIT holds
 // etaper/løb i dag. SELVSTÆNDIG hook (kun teamId som input), samme
@@ -23,8 +24,11 @@ import {
 //     placering / vindernavn / antal tilmeldte) — alle wrapper omkring
 //     allerede eksisterende race_results-afledninger.
 //
-// Bounded queries, alle scoped til DAGENS EGNE løb (typisk 0-2 rækker pr.
-// tabel) — ingen N+1, samme forsigtighed som RaceCentrePage.jsx.
+// Afgrænsede forespørgsler, alle scoped til DAGENS EGNE løb (målt 23/9: højst
+// 3 egne løb / 5 egne etaper pr. hold). Rækketallet er IKKE 0-2 pr. tabel —
+// fx giver placerings-forespørgslen et helt felt — så hver forespørgsel
+// dokumenterer sin egen grænse nedenfor. Samme forsigtighed som
+// RaceCentrePage.jsx.
 export default function useTodayStages(teamId) {
   const [state, setState] = useState({ loading: true, cards: [] });
 
@@ -62,16 +66,12 @@ export default function useTodayStages(teamId) {
       if (!ownRaceIds.length) { setState({ loading: false, cards: [] }); return; }
       const ownSlotRows = (slotRows || []).filter((r) => enteredRaceIds.has(r.race_id));
 
-      // Dagens etapenumre for MINE løb — afgrænser vinder-forespørgslen
-      // nedenfor. Målt 23/9: 37 etaper på tværs af spillets 31 løb i dag.
-      const todayStageNumbers = [...new Set(ownSlotRows.map((r) => r.stage_number))];
-
-      const [racesRes, profilesRes, winnerRes] = await Promise.all([
+      const [racesRes, profilesRes] = await Promise.all([
         // "races" er ikke deny-listet (ikke i scripts/lint-pagination-guard.mjs).
         supabase.from("races")
           .select("id, name, race_type, stages, stages_completed, status")
           .in("id", ownRaceIds),
-        // pagination-safe: afgrænset til MINE dagens race_id'er (0-2 løb).
+        // pagination-safe: MINE dagens race_id'er (højst 3 pr. hold, 23/9).
         // #3958 (ejer-mistanke bekræftet 23/8): tidligere hentede denne query KUN
         // profile_type → miniaturen var et generisk 6-vejrs kategori-piktogram
         // (TerrainGlyph), IKKE etapens ægte rutedata. Nu hentes de samme felter
@@ -80,28 +80,47 @@ export default function useTodayStages(teamId) {
         supabase.from("race_stage_profiles")
           .select("race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors")
           .in("race_id", ownRaceIds),
-        // pagination-safe: vinder-forespørgslen (#5589) — afgrænset til MINE
-        // dagens race_id'er OG dagens etapenumre OG kun rank-1 stage-
-        // resultater, ikke hele feltets leader/team/stage-rækker som den
-        // tidligere fejlagtige markering her påstod. Målt 23/9: den gamle,
-        // ubegrænsede forespørgsel ramte PostgREST's 1.000-rækkers-loft for
-        // 92 af dagens 254 hold, så 69 hold manglede vinderen på 205 kort.
-        supabase.from("race_results")
-          .select("race_id, stage_number, result_type, rank, rider_name")
-          .in("race_id", ownRaceIds)
-          .in("stage_number", todayStageNumbers)
-          .eq("result_type", "stage")
-          .eq("rank", 1),
       ]);
       if (racesRes.error) throw racesRes.error;
       if (profilesRes.error) throw profilesRes.error;
-      if (winnerRes.error) throw winnerRes.error;
 
       const raceById = new Map((racesRes.data || []).map((r) => [r.id, r]));
       const profileByKey = new Map(
         (profilesRes.data || []).map((p) => [`${p.race_id}:${p.stage_number}`, p])
       );
-      const winnerRows = winnerRes.data || [];
+
+      // 2a) Vinderen af hver af MINE etaper i dag (#5589/#5601). Etapeløb
+      // står under result_type 'stage' på etapens nummer, endagsløb under
+      // 'gc' på stage_number 1 (motoren skriver aldrig 'stage' for endagsløb,
+      // så et rent 'stage'-filter viste "No results" på alle 380 afsluttede
+      // endagskort 23/9). planRaceResultQueries deler dagens egne etaper op i
+      // højst to grupper, så et etapeløbs samlede 'gc'-vinder på sidste etape
+      // aldrig hentes som etapevinder.
+      const winnerGroups = planRaceResultQueries(
+        ownSlotRows
+          .filter((row) => raceById.has(row.race_id))
+          .map((row) => ({
+            raceId: row.race_id,
+            raceType: raceById.get(row.race_id).race_type,
+            stageNumber: row.stage_number,
+          }))
+      );
+      const winnerPromise = Promise.all(
+        winnerGroups.map((group) =>
+          // Målt 23/9: den gamle, ubegrænsede forespørgsel ramte PostgREST's
+          // 1.000-rækkers-loft for 92 af dagens 254 hold, så 69 hold manglede
+          // vinderen på 205 kort (#5589).
+          // pagination-safe: vinder-forespørgslen — MINE dagens race_id'er for
+          // én løbstype × deres etapenumre × rank 1: højst én række pr. egen
+          // etape i dag (#5589/#5601).
+          supabase.from("race_results")
+            .select("race_id, stage_number, result_type, rank, rider_name")
+            .in("race_id", group.raceIds)
+            .in("stage_number", group.stageNumbers)
+            .eq("result_type", group.resultType)
+            .eq("rank", 1)
+        )
+      );
 
       // 2b) Samlet placering pr. EGET etapeløb med stages_completed > 0 — én
       // forespørgsel PR løb (ikke én fælles for alle løb), afgrænset til det
@@ -113,19 +132,26 @@ export default function useTodayStages(teamId) {
       const standingRaces = (racesRes.data || []).filter(
         (r) => r.race_type === "stage_race" && (r.stages_completed ?? 0) > 0
       );
-      const standingResults = await Promise.all(
-        standingRaces.map((race) =>
-          // pagination-safe: afgrænset til ÉT løb OG dets aktuelle etape
-          // (stages_completed) — feltstørrelse (ryttere/hold), langt under
-          // 1000, uafhængigt af hvor mange etaper løbet har kørt i alt (#5589).
-          supabase.from("race_results")
-            .select("race_id, stage_number, result_type, rank, team_id, finish_time")
-            .eq("race_id", race.id)
-            .eq("stage_number", race.stages_completed)
-            .in("result_type", ["leader", "team"])
-        )
-      );
+      // Vinder- og placerings-forespørgslerne afventes samlet, så vinder-
+      // opslaget ikke lægger en ekstra runde oven i hentningen.
+      const [winnerResults, standingResults] = await Promise.all([
+        winnerPromise,
+        Promise.all(
+          standingRaces.map((race) =>
+            // pagination-safe: afgrænset til ÉT løb OG dets aktuelle etape
+            // (stages_completed) — feltstørrelse (ryttere/hold), langt under
+            // 1000, uafhængigt af hvor mange etaper løbet har kørt i alt (#5589).
+            supabase.from("race_results")
+              .select("race_id, stage_number, result_type, rank, team_id, finish_time")
+              .eq("race_id", race.id)
+              .eq("stage_number", race.stages_completed)
+              .in("result_type", ["leader", "team"])
+          )
+        ),
+      ]);
+      for (const res of winnerResults) if (res.error) throw res.error;
       for (const res of standingResults) if (res.error) throw res.error;
+      const winnerRows = winnerResults.flatMap((res) => res.data || []);
       const standingRowsByRace = mergeStandingRowsByRace(standingRaces, standingResults);
 
       const slots = ownSlotRows
@@ -136,6 +162,7 @@ export default function useTodayStages(teamId) {
           return {
             raceId: race.id,
             raceName: race.name,
+            raceType: race.race_type,
             isStageRace: race.race_type === "stage_race",
             stageNumber: row.stage_number,
             totalStages: race.stages ?? 1,
@@ -172,7 +199,9 @@ export default function useTodayStages(teamId) {
           bucket: terrainGlyphBucket(c.profileType),
           standing: c.isStageRace ? computeStageRaceStanding(standingRows, teamId) : null,
           entryCount: c.isStageRace ? null : entryCountFor(entryRowsAll, c.raceId),
-          winnerName: c.state === "finished" ? todayStageWinner(winnerRows, c.raceId, c.stageNumber) : null,
+          winnerName: c.state === "finished"
+            ? todayStageWinner(winnerRows, { raceId: c.raceId, raceType: c.raceType, stageNumber: c.stageNumber })
+            : null,
         };
       });
 

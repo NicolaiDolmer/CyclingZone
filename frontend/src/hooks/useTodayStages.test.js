@@ -19,11 +19,12 @@ import { fileURLToPath } from "node:url";
 //
 // #5589: hooket har siden PostgREST's 1.000-rækkers-loft blev fanget i prod
 // fået TO afgrænsede race_results-forespørgsler i stedet for én ubegrænset —
-// en vinder-forespørgsel (rank=1 stage-resultater) og en placerings-
-// forespørgsel pr. eget etapeløb (leader/team-resultater for den ene
-// aktuelle etape). Disse kilde-læsende tests holder begge forespørgslers
-// afgrænsende filtre fast, så ingen af dem regredierer til den ubegrænsede
-// form der ramte 92 af dagens 254 hold 23/9.
+// en vinder-forespørgsel (rank=1) og en placerings-forespørgsel pr. eget
+// etapeløb (leader/team-resultater for den ene aktuelle etape). Disse kilde-
+// læsende tests holder begge forespørgslers afgrænsende filtre fast, så ingen
+// af dem regredierer til den ubegrænsede form der ramte 92 af dagens 254 hold
+// 23/9. #5601: vinder-forespørgslen er siden delt i højst to grupper
+// ('stage' for etapeløb, 'gc' for endagsløb) via raceWinnerResultType.ts.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const hookSource = readFileSync(join(__dirname, "useTodayStages.js"), "utf8");
@@ -40,13 +41,18 @@ test("#4378/#5589 useTodayStages: placerings-forespørgslen henter finish_time (
   );
 });
 
-test("#5589 useTodayStages: vinder-forespørgslen er afgrænset til rank=1 OG dagens etapenumre", () => {
+test("#5589/#5601 useTodayStages: vinder-forespørgslen er afgrænset til rank=1, gruppens løb, etapenumre og result_type", () => {
   const match = hookSource.match(
-    /supabase\.from\("race_results"\)\s*\n\s*\.select\("([^"]*)"\)\s*\n\s*\.in\("race_id", ownRaceIds\)\s*\n\s*\.in\("stage_number", todayStageNumbers\)\s*\n\s*\.eq\("result_type", "stage"\)\s*\n\s*\.eq\("rank", 1\)/,
+    /supabase\.from\("race_results"\)\s*\n\s*\.select\("([^"]*)"\)\s*\n\s*\.in\("race_id", group\.raceIds\)\s*\n\s*\.in\("stage_number", group\.stageNumbers\)\s*\n\s*\.eq\("result_type", group\.resultType\)\s*\n\s*\.eq\("rank", 1\)/,
   );
   assert.ok(
     match,
-    "vinder-forespørgslen skal have BÅDE .in(\"stage_number\", todayStageNumbers) OG .eq(\"rank\", 1) — uden dem henter den igen hele feltets rækker og rammer PostgREST's 1.000-rækkers-loft (#5589)",
+    "vinder-forespørgslen skal have .in(\"race_id\", group.raceIds), .in(\"stage_number\", group.stageNumbers), .eq(\"result_type\", group.resultType) OG .eq(\"rank\", 1) — uden dem henter den igen hele feltets rækker og rammer PostgREST's 1.000-rækkers-loft (#5589), eller finder aldrig endagsløbets 'gc'-vinder (#5601)",
+  );
+  assert.match(
+    hookSource,
+    /const winnerGroups = planRaceResultQueries\(/,
+    "vinder-grupperne skal komme fra planRaceResultQueries (raceWinnerResultType.ts), så endagsløb slås op under 'gc' og etapeløb under 'stage' (#5601)",
   );
 });
 
@@ -58,32 +64,47 @@ test("#5589 useTodayStages: placerings-forespørgslen er afgrænset pr. løb til
   );
 });
 
-test("#5589 regression guard: ingen race_results-forespørgsel er kun afgrænset af race_id og result_type", () => {
-  const RACE_RESULTS_CALL = 'supabase.from("race_results")';
-  const positions = [];
-  let idx = hookSource.indexOf(RACE_RESULTS_CALL);
-  while (idx !== -1) {
-    positions.push(idx);
-    idx = hookSource.indexOf(RACE_RESULTS_CALL, idx + 1);
-  }
-  assert.ok(
-    positions.length >= 2,
-    `forventede mindst 2 race_results-forespørgsler (vinder + placering pr. løb), fandt ${positions.length}`,
-  );
-  for (let i = 0; i < positions.length; i++) {
-    const pos = positions[i];
-    // Slut blokken ved starten af NÆSTE .from("race_results")-kald (eller
-    // filens slutning) — IKKE et fast tegn-vindue. Et fast vindue kan nå ind
-    // i den EFTERFØLGENDE forespørgsels filtre og fejlagtigt "låne" dens
-    // rank/stage_number-filter til denne, så guarden lukker en reelt
-    // ubegrænset forespørgsel igennem (CodeRabbit, denne PR).
-    const end = i + 1 < positions.length ? positions[i + 1] : hookSource.length;
-    const block = hookSource.slice(pos, end);
-    const hasStageNumberFilter = /\.(?:eq|in)\("stage_number"/.test(block);
-    const hasRankFilter = /\.eq\("rank"/.test(block);
+// #5601 udvidede guarden til Race Centre, som har samme vinder/podie-opslag
+// og nu deler hjælperen (raceWinnerResultType.ts) med dashboardet. Begge
+// kaldesteder skal forblive afgrænsede efter omlægningen til grupper.
+const raceCentreSource = readFileSync(join(__dirname, "../pages/RaceCentrePage.jsx"), "utf8");
+
+for (const [name, source, minCalls] of [
+  ["useTodayStages.js", hookSource, 2], // vinder + placering pr. løb
+  ["RaceCentrePage.jsx", raceCentreSource, 1], // top-3 pr. kørt etape
+]) {
+  test(`#5589/#5601 regression guard (${name}): ingen race_results-forespørgsel er kun afgrænset af race_id og result_type`, () => {
+    // Matcher både `supabase.from("race_results")` og kæden brudt over to
+    // linjer (`supabase\n  .from("race_results")`, RaceCentrePage's form).
+    const RACE_RESULTS_CALL = /supabase\s*\.from\("race_results"\)/g;
+    const positions = [...source.matchAll(RACE_RESULTS_CALL)].map((m) => m.index);
     assert.ok(
-      hasStageNumberFilter || hasRankFilter,
-      `race_results-forespørgsel er kun afgrænset af race_id/result_type uden et rank- eller stage_number-filter — det er PRÆCIS den form der ramte PostgREST's 1.000-rækkers-loft (#5589): ${block.slice(0, 200)}`,
+      positions.length >= minCalls,
+      `forventede mindst ${minCalls} race_results-forespørgsler i ${name}, fandt ${positions.length}`,
     );
-  }
+    for (let i = 0; i < positions.length; i++) {
+      const pos = positions[i];
+      // Slut blokken ved starten af NÆSTE .from("race_results")-kald (eller
+      // filens slutning) — IKKE et fast tegn-vindue. Et fast vindue kan nå ind
+      // i den EFTERFØLGENDE forespørgsels filtre og fejlagtigt "låne" dens
+      // rank/stage_number-filter til denne, så guarden lukker en reelt
+      // ubegrænset forespørgsel igennem (CodeRabbit, PR #5598).
+      const end = i + 1 < positions.length ? positions[i + 1] : source.length;
+      const block = source.slice(pos, end);
+      const hasStageNumberFilter = /\.(?:eq|in)\("stage_number"/.test(block);
+      const hasRankFilter = /\.(?:eq|lte)\("rank"/.test(block);
+      assert.ok(
+        hasStageNumberFilter || hasRankFilter,
+        `race_results-forespørgsel i ${name} er kun afgrænset af race_id/result_type uden et rank- eller stage_number-filter — det er PRÆCIS den form der ramte PostgREST's 1.000-rækkers-loft (#5589): ${block.slice(0, 200)}`,
+      );
+    }
+  });
+}
+
+test("#5601 RaceCentrePage: top-3-forespørgslen er afgrænset til gruppens løb, etapenumre, result_type og rank <= 3", () => {
+  assert.match(
+    raceCentreSource,
+    /\.from\("race_results"\)\s*\n\s*\.select\("[^"]*"\)\s*\n\s*\.in\("race_id", group\.raceIds\)\s*\n\s*\.in\("stage_number", group\.stageNumbers\)\s*\n\s*\.eq\("result_type", group\.resultType\)\s*\n\s*\.lte\("rank", 3\)/,
+    "Race Centres top-3-forespørgsel skal være afgrænset af gruppens race_id'er, etapenumre, result_type og rank <= 3 (#5589/#5601)",
+  );
 });
