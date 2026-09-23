@@ -289,7 +289,9 @@ function syntheticResult() {
     },
     rates: summarizeRates(acc),
     perf: [{ fieldSize: 180, summary: summarizeTimings([{ ms: 12.4, stageNumber: 1, profileType: "mountain" }]) }],
-    infraTests: [{ file: "backend/lib/x.test.js", ...parseTap("ok 1 - kill-switch virker\n# tests 1\n# pass 1\n# fail 0") }],
+    // Bevidst IKKE et testfil-lignende navn: #4479-vagten (promisedTestFilesExist)
+    // fælder enhver streng der ligner en sti til en testfil der ikke findes.
+    infraTests: [{ file: "syntetisk-infra-fil", ...parseTap("ok 1 - kill-switch virker\n# tests 1\n# pass 1\n# fail 0") }],
   };
 }
 
