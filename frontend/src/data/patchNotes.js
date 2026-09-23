@@ -1,5 +1,133 @@
 export const PATCHES = [
   {
+    "version": "7.296",
+    "date": "2026-09-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Keep your spot for season 4",
+          "body": "What changed: If you have not logged in for 30 days, your dashboard now shows a card where you can sign up for season 4. At the season change on 27 September, teams that are still away are parked, and an AI team takes the spot until the manager comes back.\n\nWhat it means for you: Log in before 27 September, or sign up on the card, and your team keeps its place in its league. Nothing is deleted while a team is parked."
+        },
+        "da": {
+          "title": "Behold din plads i sæson 4",
+          "body": "Hvad er ændret: Har du ikke været logget ind i 30 dage, viser dit dashboard nu et kort, hvor du kan tilmelde dig sæson 4. Ved sæsonskiftet 27. september bliver hold, der stadig er væk, parkeret, og et AI-hold tager pladsen, indtil manageren kommer tilbage.\n\nHvad det betyder for dig: Log ind før 27. september, eller tilmeld dig på kortet, så beholder dit hold sin plads i ligaen. Intet bliver slettet, mens et hold er parkeret."
+        },
+        "refs": [
+          452,
+          4592,
+          5553
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help only describes what is switched on",
+          "body": "What changed: Help now shows or hides its sections on race day, the board mandate and daily training based on what is live in the game right now."
+        },
+        "da": {
+          "title": "Hjælp beskriver kun det, der er tændt",
+          "body": "Hvad er ændret: Hjælp viser eller skjuler nu sine afsnit om løbsdagen, bestyrelsens mandat og den daglige træning ud fra, hvad der er live i spillet lige nu."
+        },
+        "refs": [
+          4948,
+          5563
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "One sprint captain per team, every time",
+          "body": "What changed: When one rider was sprint captain from your standing roles and another from the stage roles, the race kept one and ignored the other without a word. Now the race combines the roles in a fixed order, and the extra captain rides as a helper."
+        },
+        "da": {
+          "title": "Én spurtkaptajn pr. hold, hver gang",
+          "body": "Hvad er ændret: Når én rytter var spurtkaptajn fra holdets faste roller og en anden fra etapens roller, beholdt løbet den ene og ignorerede den anden uden varsel. Nu lægger løbet rollerne sammen i en fast rækkefølge, og den ekstra kaptajn kører som hjælper."
+        },
+        "refs": [
+          5223,
+          5345
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "The inbox no longer breaks the page",
+          "body": "What changed: The inbox and the badge in the menu no longer take down the whole page when the server replies without content."
+        },
+        "da": {
+          "title": "Indbakken vælter ikke længere siden",
+          "body": "Hvad er ændret: Indbakken og mærket i menuen vælter ikke længere hele siden, når serveren svarer uden indhold."
+        },
+        "refs": [
+          5475
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Next season's calendar waits for your division",
+          "body": "What changed: The calendar no longer marks your team in next season's races before your division for that season is settled."
+        },
+        "da": {
+          "title": "Næste sæsons kalender venter på din division",
+          "body": "Hvad er ændret: Kalenderen markerer ikke længere dit hold i næste sæsons løb, før din division for den sæson er afgjort."
+        },
+        "refs": [
+          5405,
+          5408
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "U23 team and Junior team pages, in the beta group",
+          "body": "What changed: Beta testers now have a U23 team page and a Junior team page under My Team, with the squad, development and, once youth racing starts, calendar, results and standings.\n\nWhat it means for you: If you are in the beta group, tell me what you miss before the pages go out to everyone."
+        },
+        "da": {
+          "title": "Sider for U23-hold og juniorhold, i beta-gruppen",
+          "body": "Hvad er ændret: Beta-testere har nu en side for U23-holdet og en for juniorholdet under Mit Hold, med truppen, udviklingen og, når ungdomsløbene starter, kalender, resultater og stilling.\n\nHvad det betyder for dig: Er du i beta-gruppen, så fortæl mig, hvad du savner, før siderne kommer ud til alle."
+        },
+        "refs": [
+          5519,
+          5549
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Mobile training in the beta group: sort by score, smoother graph",
+          "body": "What changed: On the new mobile training page for beta testers you can sort by training score, a dead button is gone, and the small score graph skips race days instead of showing a gap."
+        },
+        "da": {
+          "title": "Mobiltræning i beta-gruppen: sortér efter score, jævnere graf",
+          "body": "Hvad er ændret: På den nye mobile træningsside for beta-testere kan du sortere efter træningsscore, en død knap er væk, og den lille scoregraf springer løbsdage over i stedet for at vise et hul."
+        },
+        "refs": [
+          3643,
+          5552,
+          5486,
+          5513
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.295",
     "date": "2026-09-23",
     "label": "Beta",
