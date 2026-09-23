@@ -47,10 +47,13 @@ export const DEFAULT_STAGE_SLOTS = Object.freeze(["12:00", "15:00", "18:00"]);
  * @returns {{ raceUpdates: Array<{id, scheduled_for}>, stageRows: Array<{race_id, stage_number, scheduled_at, game_day}> }}
  */
 export function buildScheduleRows({ placements = [], from = new Date(), slots = DEFAULT_STAGE_SLOTS } = {}) {
-  const fixed = typeof slots === "function" ? null : (slots.length ? slots : DEFAULT_STAGE_SLOTS);
+  // Indsnævret FØR closuren, så tsc ved at kaldet er en funktion (#5158-ratchet'en).
+  const slotFn = typeof slots === "function" ? slots : null;
+  const fixed = typeof slots === "function" ? DEFAULT_STAGE_SLOTS : (slots.length ? slots : DEFAULT_STAGE_SLOTS);
+  /** @param {string} dateStr */
   const slotListFor = (dateStr) => {
-    if (fixed) return fixed;
-    const list = slots(dateStr);
+    if (!slotFn) return fixed;
+    const list = slotFn(dateStr);
     return list?.length ? list : DEFAULT_STAGE_SLOTS;
   };
   const stageRows = [];

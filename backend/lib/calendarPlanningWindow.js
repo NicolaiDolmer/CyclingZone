@@ -18,12 +18,15 @@
 //      normalt, så ingen etape rykker ud over kl. 19 (træningen kører fra kl. 20,
 //      trainingDayCloseTrigger.js).
 //
-//   2. SÆSONSKIFTE-REGLEN. En ny sæsons første etape ligger mindst 24 timer efter
-//      sæsonskiftet (app_config.season_transition_planned_at, ellers aftenen før første
-//      løbsdag kl. 18, jf. seasonTransitionBoundary.js) - og, når kalderen kender den,
-//      mindst 24 timer efter divisionens sidste etape i den forrige sæson. Den sidste del er
-//      ugedags-reglen hen over sæsongrænsen: søndagen før en sæsonstart hører til den
-//      forrige sæson og står allerede i databasen.
+//   2. SÆSONSKIFTE-REGLEN. En ny sæsons første etape ligger, i HVER division, mindst 24
+//      timer efter det TIDLIGST MULIGE sæsonskifte (resolveEarliestSeasonTransition):
+//      starten på den afsluttende sæsons seneste etape på tværs af ALLE divisioner +
+//      SEASON_TRANSITION_PROCESSING_BUFFER_MINUTES. Skiftet kan ikke ske før, fordi
+//      sæsonafslutningen er spærret til sidste løb er afviklet. Er
+//      app_config.season_transition_planned_at sat og SENERE, vinder den. Kendes forrige
+//      sæsons etaper ikke, gælder konventionen (aftenen før første løbsdag kl. 18,
+//      seasonTransitionBoundary.js). Divisionens egen sidste etape tæller også (ugedags-
+//      reglen hen over sæsongrænsen), men den ligger aldrig senere end det globale anker.
 //
 // ÉN KILDE. TIER_STAGE_SLOTS (en almindelig dag) bor her og re-eksporteres af
 // tierCalendarMaterializer.js. Søndag, mandag og sæsonens første dag UDLEDES af den med
@@ -54,6 +57,19 @@ export const TIER_STAGE_SLOTS = Object.freeze({
 
 /** Mindste pause fra søndagens sidste til mandagens første etape, og fra sæsonskiftet. */
 export const PLANNING_WINDOW_HOURS = 24;
+
+/**
+ * Minutter fra STARTEN på den afsluttende sæsons seneste etape (på tværs af alle
+ * divisioner) til det tidligst mulige sæsonskifte. Dækker to ting:
+ *   1. Afviklingen af den sidste etape. "Afslut sæson" er spærret så længe et løb ikke er
+ *      afviklet (assessSeasonEndBlockers, seasonTransitionReadiness.js), og en slot med
+ *      mange etaper er målt op til 10,7 min forsinket.
+ *   2. Selve skiftet: sæsonafslutning + transition er en manuel admin-handling.
+ * 30 min er diff-tjekkets tal (24/9 nat). Loftet er 60: S3 slutter med D1's etape kl. 19,
+ * og med 30 min mindste-afstand kan D1's 5 etaper på S4's første dag højst starte kl. 20
+ * for at slutte inden LATEST_STAGE_SLOT kl. 22 (testet i calendarPlanningWindow.test.js).
+ */
+export const SEASON_TRANSITION_PROCESSING_BUFFER_MINUTES = 30;
 
 /**
  * Søndagens sidste og mandagens første etape, alle divisioner. 15:00 er midten af både
@@ -208,6 +224,69 @@ export function resolveSeasonStartNotBefore({ from, seasonTransitionAt, previous
   if (!anchors.length) return null;
   const latestAnchor = Math.max(...anchors.map((a) => a.getTime()));
   return new Date(latestAnchor + PLANNING_WINDOW_HOURS * HOUR_MS);
+}
+
+/** Det seneste af en række tidspunkter (ugyldige/tomme springes over). null hvis ingen. */
+export function latestInstant(values = []) {
+  let best = null;
+  for (const v of values) {
+    if (v == null) continue;
+    const t = (v instanceof Date ? v : new Date(v)).getTime();
+    if (Number.isFinite(t) && (best == null || t > best)) best = t;
+  }
+  return best == null ? null : new Date(best);
+}
+
+/**
+ * Det sæsonskifte en ny sæsons kalender planlægges mod: det TIDLIGST MULIGE skifte.
+ *
+ * "Afslut sæson" er spærret til hvert løb er afviklet (assessSeasonEndBlockers), så skiftet
+ * kan tidligst ske når den afsluttende sæsons seneste etape (på tværs af ALLE divisioner)
+ * er afviklet og skiftet er kørt: dens start + bufferMinutes. Et planlagt skifte
+ * (app_config.season_transition_planned_at) der ligger SENERE, vinder. Et planlagt skifte
+ * der ligger tidligere, er umuligt (eller en efterladenskab fra en tidligere sæson) og taber.
+ * Kendes forrige sæsons etaper ikke (første sæson, tom sæson), gælder den planlagte værdi,
+ * og ellers konventionen: aftenen før første løbsdag kl. 18.
+ *
+ * Samme værdi sendes til kalenderen (seasonTransitionAt) og skrives til app_config ved
+ * --apply, så de to aldrig kan komme ud af trit.
+ *
+ * @param {{ previousSeasonLastStageAt?: Date|string|null, plannedAt?: Date|string|null,
+ *           firstRaceDay?: string|null, bufferMinutes?: number }} [args]
+ *   previousSeasonLastStageAt: STARTEN på forrige sæsons seneste etape, alle divisioner.
+ * @returns {{ at: Date|null, source: string, earliestPossibleAt: Date|null, plannedAt: Date|null }}
+ */
+export function resolveEarliestSeasonTransition({
+  previousSeasonLastStageAt = null, plannedAt = null, firstRaceDay = null,
+  bufferMinutes = SEASON_TRANSITION_PROCESSING_BUFFER_MINUTES,
+} = {}) {
+  const planned = plannedAt == null ? null : new Date(plannedAt);
+  const plannedValid = planned != null && !Number.isNaN(planned.getTime()) ? planned : null;
+  const lastStage = previousSeasonLastStageAt == null ? null : validInstant(previousSeasonLastStageAt, "previousSeasonLastStageAt");
+  const earliestPossibleAt = lastStage ? new Date(lastStage.getTime() + bufferMinutes * 60_000) : null;
+
+  if (earliestPossibleAt) {
+    if (plannedValid && plannedValid.getTime() > earliestPossibleAt.getTime()) {
+      return { at: plannedValid, source: "app_config (senere end det tidligst mulige skifte)", earliestPossibleAt, plannedAt: plannedValid };
+    }
+    return {
+      at: earliestPossibleAt,
+      source: `forrige sæsons seneste etape + ${bufferMinutes} min (afvikling + skifte)` +
+        (plannedValid ? "; app_config-værdien er tidligere og kan ikke nås" : ""),
+      earliestPossibleAt, plannedAt: plannedValid,
+    };
+  }
+  // Ingen etaper at regne fra: det SENESTE af den planlagte værdi og konventionen, så en
+  // efterladt værdi fra en tidligere sæson taber af sig selv.
+  const derived = firstRaceDay ? computeSeasonTransitionBoundary({ upcomingSeasonStartDate: firstRaceDay }) : null;
+  if (plannedValid && (!derived || plannedValid.getTime() > derived.getTime())) {
+    return { at: plannedValid, source: "app_config", earliestPossibleAt: null, plannedAt: plannedValid };
+  }
+  return {
+    at: derived,
+    source: "konvention: aftenen før første løbsdag kl. 18" + (plannedValid ? " (app_config-værdien er ældre)" : ""),
+    earliestPossibleAt: null, plannedAt: plannedValid,
+  };
 }
 
 function addDaysToDate(dateStr, days) {

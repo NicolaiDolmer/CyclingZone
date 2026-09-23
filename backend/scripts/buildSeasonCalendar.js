@@ -88,10 +88,11 @@
 //
 // #5592 — MINDST 24 TIMER TIL TRUPUDTAGELSE (ejer 23/9):
 //   Søndag slutter tidligt og mandag starter sent (lib/calendarPlanningWindow.js), og
-//   sæsonens første etape ligger mindst 24 timer efter sæsonskiftet og efter divisionens
-//   sidste etape i forrige sæson. Begge ankre læses read-only her og sendes til både
-//   dry-run og apply; dry-runnet printer vinduet pr. division. Brud er kalender-
-//   invarianter (ingen override).
+//   sæsonens første etape ligger i HVER division mindst 24 timer efter det TIDLIGST MULIGE
+//   sæsonskifte: forrige sæsons seneste etape på tværs af alle divisioner + afviklings-
+//   bufferen, eller et senere planlagt skifte (resolveEarliestSeasonTransition). Ankrene
+//   læses read-only her og sendes til dry-run, apply og app_config-skrivningen; dry-runnet
+//   printer vinduet pr. division. Brud er kalender-invarianter (ingen override).
 //
 // EFTER APPLY kører scriptet en post-verify (rækketal pr. tier + at ingen etape er
 // planlagt i fortiden) og printer den, så resultatet ikke skal tages på tro.
@@ -116,10 +117,10 @@ import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../
 import { withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { scoreCalendarPlan, formatScorecard, scorecardGateGroups } from "../lib/calendarScorecardReport.js";
 import { findNextSeason } from "../lib/seasonLookup.js";
+import { ensureSeasonTransitionPlannedAt, SEASON_TRANSITION_PLANNED_AT_KEY } from "../lib/seasonTransitionBoundary.js";
 import {
-  ensureSeasonTransitionPlannedAt, computeSeasonTransitionBoundary, SEASON_TRANSITION_PLANNED_AT_KEY,
-} from "../lib/seasonTransitionBoundary.js";
-import { copenhagenClock, measurePlanningWindows, PLANNING_WINDOW_HOURS } from "../lib/calendarPlanningWindow.js";
+  copenhagenClock, measurePlanningWindows, PLANNING_WINDOW_HOURS, latestInstant, resolveEarliestSeasonTransition,
+} from "../lib/calendarPlanningWindow.js";
 import { withSeniorSquadScope } from "../lib/squads.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -292,27 +293,11 @@ export function quotasForRaceDays(raceDays, density = TIER_DENSITY) {
 }
 
 /**
- * #5592: sæsonskiftet som den nye sæsons første etape skal ligge mindst 24 timer efter.
- * Det SENESTE af app_config.season_transition_planned_at og konventionen (aftenen før
- * første løbsdag kl. 18, computeSeasonTransitionBoundary). En efterladt værdi fra en
- * tidligere sæson ligger før konventionen og taber af sig selv; et bevidst senere skifte
- * vinder. Samme værdi sendes til både dry-run og apply, så de planlægger samme kalender.
- */
-export function resolveSeasonTransitionAnchor({ plannedAtValue = null, firstRaceDay } = {}) {
-  const derived = computeSeasonTransitionBoundary({ upcomingSeasonStartDate: firstRaceDay });
-  const explicit = plannedAtValue ? new Date(plannedAtValue) : null;
-  const explicitValid = Boolean(explicit) && !Number.isNaN(explicit.getTime());
-  if (explicitValid && (!derived || explicit.getTime() > derived.getTime())) return { at: explicit, source: "app_config" };
-  return {
-    at: derived,
-    source: explicitValid ? "konvention: aftenen før kl. 18 (app_config-værdien er ældre)" : "konvention: aftenen før første løbsdag kl. 18",
-  };
-}
-
-/**
  * #5592: seneste etape pr. division i FORRIGE sæson (seniorløb) — ugedags-reglen hen over
  * sæsongrænsen: søndagen før en sæsonstart hører til den forrige sæson og står allerede i
  * databasen. Kun SELECT. Rent aggregat i `lastStageAtByTier`, så det kan testes uden DB.
+ * Det tidligst mulige sæsonskifte regnes fra den seneste af ALLE etaperne (latestAt i
+ * fetchPreviousSeasonLastStages), også en etape i en pulje uden kendt division.
  */
 export function lastStageAtByTier({ races = [], divisions = [], schedule = [] } = {}) {
   const tierByDivision = new Map(divisions.map((d) => [d.id, d.tier]));
@@ -327,15 +312,21 @@ export function lastStageAtByTier({ races = [], divisions = [], schedule = [] } 
   return out;
 }
 
-export async function fetchPreviousSeasonLastStageAtByTier({ supabase, seasonNumber }) {
-  if (!(seasonNumber > 1)) return {};
+/**
+ * #5592: forrige sæsons sidste etaper. `byTier` = pr. division, `latestAt` = den seneste
+ * på tværs af ALLE divisioner (ankeret for det tidligst mulige sæsonskifte). Kun SELECT.
+ * @returns {Promise<{ byTier: Record<number, string>, latestAt: string|null }>}
+ */
+export async function fetchPreviousSeasonLastStages({ supabase, seasonNumber }) {
+  const none = { byTier: {}, latestAt: null };
+  if (!(seasonNumber > 1)) return none;
   const prevSeasonId = seasonUuid(seasonNumber - 1);
   const races = await withSeniorSquadScope((senior) => fetchAllRows(() => (
     senior(supabase.from("races").select("id, league_division_id"))
       .eq("season_id", prevSeasonId)
       .order("id", { ascending: true })
   )));
-  if (!races?.length) return {};
+  if (!races?.length) return none;
   const { data: divisions, error: dErr } = await supabase.from("league_divisions").select("id, tier");
   if (dErr) throw new Error(`league_divisions (#5592): ${dErr.message}`);
   const schedule = await fetchAllRowsChunkedIn(races.map((r) => r.id), (chunk) => (
@@ -344,7 +335,11 @@ export async function fetchPreviousSeasonLastStageAtByTier({ supabase, seasonNum
       .order("race_id", { ascending: true })
       .order("stage_number", { ascending: true })
   ));
-  return lastStageAtByTier({ races, divisions: divisions ?? [], schedule });
+  const latest = latestInstant(schedule.map((s) => s.scheduled_at));
+  return {
+    byTier: lastStageAtByTier({ races, divisions: divisions ?? [], schedule }),
+    latestAt: latest ? latest.toISOString() : null,
+  };
 }
 
 /** "YYYY-MM-DD HH:MM" i dansk tid. */
@@ -359,10 +354,12 @@ const fmtHours = (h) => `${h.toFixed(1).replace(".", ",")} t`;
  * #5592: planlægningsvinduet pr. division, som tekst til dry-runnet. Tallene er
  * spillervendte (ejeren godkender dem), så de står her i klart sprog og dansk tid.
  */
-export function formatPlanningWindowReport({ planTiers = [], transition, previousByTier = {} }) {
+export function formatPlanningWindowReport({ planTiers = [], transition, previousByTier = {}, previousLatestAt = null }) {
   const lines = [];
   lines.push(`\n── #5592 planlægningsvindue (mindst ${PLANNING_WINDOW_HOURS} t til trupudtagelse, dansk tid) ──`);
-  lines.push(`  sæsonskifte: ${fmtLocal(transition?.at)} (${transition?.source ?? "ukendt"})`);
+  lines.push(`  forrige sæsons seneste etape (alle divisioner): ${fmtLocal(previousLatestAt)}`);
+  lines.push(`  app_config.season_transition_planned_at: ${transition?.plannedAt ? fmtLocal(transition.plannedAt) : "ikke sat"}`);
+  lines.push(`  sæsonskifte der planlægges mod (tidligst mulige): ${fmtLocal(transition?.at)} (${transition?.source ?? "ukendt"})`);
   for (const t of planTiers) {
     const rows = t?.pools?.[0]?.stageRows ?? [];
     const { weekends, firstStageAt, days } = measurePlanningWindows(rows);
@@ -376,8 +373,8 @@ export function formatPlanningWindowReport({ planTiers = [], transition, previou
     lines.push(
       `  D${t.tier}: første dag ${firstDay ? `${fmtLocal(firstDay.first)}–${fmtLocal(firstDay.last).slice(11)}` : "—"}` +
       ` · tidligst tilladt ${fmtLocal(t.planningWindow?.notBefore)}` +
-      (fromPrev != null ? ` · pause fra forrige sæsons sidste etape (${fmtLocal(prev)}): ${fmtHours(fromPrev)}` : " · forrige sæson: ingen etaper") +
-      (fromTransition != null ? ` · fra sæsonskiftet: ${fmtHours(fromTransition)}` : "") +
+      (fromPrev != null ? ` · pause fra divisionens sidste etape i forrige sæson (${fmtLocal(prev)}): ${fmtHours(fromPrev)}` : " · forrige sæson: ingen etaper") +
+      (fromTransition != null ? ` · fra tidligst mulige skifte: ${fmtHours(fromTransition)}` : "") +
       `  ${planningBreaches.length ? "❌" : "✅"}`,
     );
     if (weekends.length) {
@@ -572,14 +569,21 @@ if (isMain) {
       ? `${raceDayTarget}${raceDayTargetExplicit != null ? " (--race-day-target)" : ` (saeson ${seasonNumber}'s maal)`}`
       : "FRA — aksen er et soegeresultat pr. division, som foer #4845"}`);
 
-    // #5592 (ejer 23/9): mindst 24 timer til trupudtagelse ved sæsonstarten — efter
-    // sæsonskiftet OG efter divisionens sidste etape i forrige sæson. Begge læses her (kun
-    // SELECT) og sendes UÆNDRET til både dry-run og apply, så de planlægger samme kalender.
+    // #5592 (ejer 23/9): mindst 24 timer til trupudtagelse ved sæsonstarten, regnet fra det
+    // TIDLIGST MULIGE sæsonskifte: forrige sæsons seneste etape på tværs af alle divisioner
+    // + afviklings-bufferen (sæsonafslutningen er spærret til sidste løb er afviklet), eller
+    // et senere planlagt skifte. Læses her (kun SELECT) og sendes UÆNDRET til dry-run, apply
+    // og app_config-skrivningen, så kalender og app_config planlægger mod samme tidspunkt.
     const { data: plannedAtRow, error: plannedAtErr } = await supabase
       .from("app_config").select("value").eq("key", SEASON_TRANSITION_PLANNED_AT_KEY).maybeSingle();
     if (plannedAtErr) throw new Error(`app_config.${SEASON_TRANSITION_PLANNED_AT_KEY} (#5592): ${plannedAtErr.message}`);
-    const transition = resolveSeasonTransitionAnchor({ plannedAtValue: plannedAtRow?.value ?? null, firstRaceDay });
-    const previousSeasonLastStageAtByTier = await fetchPreviousSeasonLastStageAtByTier({ supabase, seasonNumber });
+    const previousSeasonLastStages = await fetchPreviousSeasonLastStages({ supabase, seasonNumber });
+    const transition = resolveEarliestSeasonTransition({
+      previousSeasonLastStageAt: previousSeasonLastStages.latestAt,
+      plannedAt: plannedAtRow?.value ?? null,
+      firstRaceDay,
+    });
+    const previousSeasonLastStageAtByTier = previousSeasonLastStages.byTier;
     const planningWindowArgs = { seasonTransitionAt: transition.at, previousSeasonLastStageAtByTier };
 
     // 1) Planlæg (altid dry-run først — også når vi skal apply'e).
@@ -650,6 +654,7 @@ if (isMain) {
     // i materializeren (calendarViolations → gatePlan's blocking); her printes tallene.
     for (const line of formatPlanningWindowReport({
       planTiers: plan.planTiers ?? [], transition, previousByTier: previousSeasonLastStageAtByTier,
+      previousLatestAt: previousSeasonLastStages.latestAt,
     })) console.log(line);
 
     console.log(`\n── Komposition mod K-B ──`);
@@ -805,12 +810,22 @@ if (isMain) {
       // uskrevne start_date-gæt, fordi ingen kode nogensinde satte nøglen (kun
       // manuel SQL på selve cutover-aftenen, se issue #4129). Idempotent — se
       // ensureSeasonTransitionPlannedAt for hvornår den (ikke) overskriver.
+      // #5592: værdien der skrives er PRÆCIS det skifte kalenderen er planlagt mod
+      // (transition.at), så app_config og kalender ikke kan komme ud af trit. En senere
+      // værdi i app_config bevares altid; den var allerede med i transition.at, så ligger
+      // der NU en senere værdi end kalenderens, er den ændret under kørslen → stop før
+      // kalenderen skrives.
       const transitionKeyResult = await ensureSeasonTransitionPlannedAt({
         supabase,
         seasonStartDate: seasonRow?.start_date ?? firstDay,
+        target: transition.at,
       });
       if (transitionKeyResult.updated) {
-        console.log(`  ✓ season_transition_planned_at sat til ${transitionKeyResult.value} (#4129, årsag: ${transitionKeyResult.reason}).`);
+        console.log(`  ✓ season_transition_planned_at sat til ${transitionKeyResult.value} (#4129/#5592, årsag: ${transitionKeyResult.reason}).`);
+      } else if (transitionKeyResult.reason === "existing-later-kept") {
+        console.error(`\n❌ STOP (#5592): app_config.season_transition_planned_at (${transitionKeyResult.existing}) er SENERE end det skifte kalenderen er planlagt mod (${transitionKeyResult.target}).`);
+        console.error(`   Værdien er ændret under kørslen. Den bevares, og INGEN kalender er skrevet. Kør scriptet igen, så kalenderen planlægges mod den nye værdi.`);
+        process.exit(1);
       } else {
         console.log(`  · season_transition_planned_at ikke ændret (${transitionKeyResult.reason}).`);
       }

@@ -4,6 +4,7 @@ import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCa
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { TIER_DENSITY } from "./calendarTierCaps.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
+import { resolveEarliestSeasonTransition, latestInstant } from "./calendarPlanningWindow.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
 
@@ -1320,6 +1321,23 @@ test("#5592 plan: sæsonens første dag starter tidligst 24 t efter sæsonskifte
   for (const tp of Object.values(off)) {
     assert.equal(tp.planningWindow.notBefore, null);
     assert.equal(localClock(tp.planningWindow.firstStageAt), "Mon 15:00", `tier ${tp.tier}: almindelig mandag uden sæsonskifte`);
+  }
+});
+
+test("#5592 plan: det tidligst mulige skifte (seneste etape på tværs af divisioner + buffer) gælder HVER division", () => {
+  // Forrige sæson slutter søndag 28/6: D1 kl. 19, D2-D4 kl. 18 (samme form som S3 27/9).
+  const lastByTier = { 1: "2026-06-28T17:00:00Z", 2: "2026-06-28T16:00:00Z", 3: "2026-06-28T16:00:00Z", 4: "2026-06-28T16:00:00Z" };
+  const transition = resolveEarliestSeasonTransition({ previousSeasonLastStageAt: latestInstant(Object.values(lastByTier)), firstRaceDay: "2026-06-29" });
+  assert.equal(transition.at.toISOString(), "2026-06-28T17:30:00.000Z", "28/6 kl. 19:30, ikke konventionens kl. 18");
+  const { tierPlans } = buildTierMaterializationPlan({
+    pools: fullPools, catalog: fullCatalog(), from: FROM,
+    seasonTransitionAt: transition.at, previousSeasonLastStageAtByTier: lastByTier,
+  });
+  for (const tp of tierPlans) {
+    assert.equal(tp.planningWindow.notBefore, "2026-06-29T17:30:00.000Z", `tier ${tp.tier}: samme anker som D1`);
+    assert.ok(Date.parse(tp.planningWindow.firstStageAt) - transition.at.getTime() >= 24 * 3_600_000, `tier ${tp.tier}: ${tp.planningWindow.firstStageAt}`);
+    assert.deepEqual(tp.calendarViolations.filter((v) => v.includes("#5592")), [], `tier ${tp.tier}`);
+    for (const s of tp.pools[0].stageRows) assert.ok(localClock(s.scheduled_at).slice(-5) <= "22:00", `tier ${tp.tier}: ${localClock(s.scheduled_at)}`);
   }
 });
 
