@@ -26,32 +26,33 @@
 
 | Objekt | Hvad |
 |---|---|
-| `race_entry_generator_runs` | Én række pr. faktiske sweep-kørsel (flag ON + aktiv sæson fundet), OGSÅ ved 0 fyld. `started_at`, `finished_at`, `mode`, `late_fill_hours`, `races_considered`, `teams_filled`, `entries_written`, `error`. |
+| `race_entry_generator_runs` | Én række pr. faktiske sweep-kørsel (flag ON + aktiv sæson fundet), OGSÅ ved 0 fyld. `started_at`, `finished_at`, `mode` (den EFFEKTIVE tilstand generatoren kørte med), `late_fill_hours`, `races_considered`, `teams_filled` (hold der fik mindst én NY række, ikke alle behandlede), `entries_written`, `error`. |
 | `race_entries.auto_filled_at` | `NULL` = manuelt. Sat af en TRIGGER (`race_entries_stamp_auto_fill_trg`) på ethvert insert/update der (gen-)sætter `is_auto_filled`, ryddet når `is_auto_filled=false`. |
-| `race_entries.auto_filled_source` | `'late_fill'` eller `'start_rescue'` (CHECK-constraint). Se §3 for hvordan de to skilles. |
-| `race_entry_overrides` | Én række pr. `replace_race_selection`-kald (ethvert "Gem plan"-gem i sæsonmatrixen), skrevet FØR delete+insert. `had_auto_filled`, `auto_source` (`'late_fill'`/`'start_rescue'`/`'mixed'`/NULL). |
+| `race_entries.auto_filled_source` | Hvem skrev auto-rækken, se §3 (CHECK-constraint). Sættes eksplicit af skriveren; triggeren giver INGEN default. |
+| `race_entry_overrides` | Én række pr. (løb, hold) som et gem erstatter: `replace_race_selection` (ét løb) og `replace_race_selection_bulk` (sæsonmatrixens "Gem plan", én række pr. løb i gemmet). Skrevet FØR delete+insert. `had_auto_filled`, `auto_source` (en kilde fra §3, `'unknown'`, `'mixed'` eller NULL). |
 
-## 3. To auto-kilder — og en kendt grænse
+## 3. Kilder
 
-Samme skelnen som #5136 §1 fandt manuelt (ved at sammenligne `race_entries.created_at`
-mod `race_stage_schedule`'s starttidspunkt):
+| Kilde | Hvem | Hvor |
+|---|---|---|
+| `late_fill` | Assistenten fylder et menneskeholds tomme trup kort før start (`assistant_selection_mode=late_fill`) | `raceEntryGeneratorSweep.js` → `raceEntryGenerator.js` |
+| `opt_in` | Assistenten fylder et menneskehold der selv har slået den til (`assistant_selection_mode=opt_in`) | Samme sti |
+| `start_rescue` | Redning ved løbsstart (hel trup fra nul eller op til gulvet), ikke mode-gated | `raceRunner.js` `fillMissingTeamEntries` |
+| `manager_auto` | Managerens egen knap | `POST /races/:raceId/selection/auto` og Race Hubs `POST /races/distribution/regenerate` |
+| `ai_generator` | Generatoren fylder et AI-hold (sweep i alle tilstande, sæsonskifte, admin-genvejen) | `raceEntryGenerator.js` |
 
-| Kilde | Hvornår | Hvor | Mode-gated? |
-|---|---|---|---|
-| `late_fill` | FØR løbsstart | `raceEntryGeneratorSweep.js` → `raceEntryGenerator.js` | Ja (`assistant_selection_mode`) |
-| `start_rescue` | VED løbsstart | `raceRunner.js`'s `fillMissingTeamEntries` | Nej — uændret af flippet |
+**`unknown` (NULL-kilde):** alle auto-rækker fra før #5246 har ingen kilde, og det
+samme gælder rækker skrevet i vinduet mellem backend-deploy og migrationen (backend
+skriver da uden feltet i stedet for at fejle). De tælles som `unknown`, aldrig som
+`late_fill`. I `race_entry_overrides` giver erstattede auto-rækker uden kilde
+`auto_source='unknown'`; `'mixed'` betyder mindst to forskellige værdier (en kendt
+kilde og `unknown` tæller som to).
 
-**Kendt, dokumenteret grænse:** `auto_filled_source` sættes præcist for
-`start_rescue` (raceRunner.js sætter det eksplicit) og for `late_fill` via
-sweepen — MEN triggeren giver samme `'late_fill'`-default til enhver
-`is_auto_filled=true`-række uden et eksplicit source, og det gælder også
-`raceEntryGenerator.js`'s to ANDRE kaldere (`seasonTransition.js` ved
-sæsonskifte, admin-genvejen `POST /admin/seasons/:id/generate-entries`).
-`raceEntryGenerator.js` er uden for denne lanes ejerskab (#5246-briefen), så de
-tre kan ikke skelnes på `auto_filled_source` uden at ændre den fil. I praksis er
-det sjældent støj: sæsonskifte/admin-regenerate rammer typisk tomme løb midt i
-en sæsonoperation, ikke løb en manager aktivt spiller — men vær opmærksom på
-det ved en måling lige efter et sæsonskifte.
+**Kendt grænse:** managerens egen `POST /races/:raceId/selection/auto` sletter og
+genindsætter uden om `replace_race_selection`, så en overskrivning af en late-fill-
+trup med knappen giver ingen `race_entry_overrides`-række. Det samme gælder
+bulk-gemmets #2637-frigivelser (en auto-udtaget rytter fjernet fra et ANDET løb end
+dem gemmet handler om): de logges ikke som selvrettelser.
 
 ## 4. Måle-SQL
 
@@ -82,17 +83,22 @@ SELECT started_at, finished_at, mode, late_fill_hours,
  ORDER BY started_at;
 ```
 
-### 4.2 Auto-fyldte hold pr. kilde (direkte — afløser #5136 §1's `created_at`-heuristik)
+### 4.2 Auto-fyldte menneskehold pr. kilde (direkte — afløser #5136 §1's `created_at`-heuristik)
+
+Kun menneskehold (`teams.user_id IS NOT NULL`): AI-holdenes `ai_generator`-rækker
+og `start_rescue` af AI-hold er ikke assistentens arbejde for en manager.
 
 ```sql
-SELECT auto_filled_source,
+SELECT COALESCE(e.auto_filled_source, 'unknown') AS source,
        count(*) AS entries,
-       count(DISTINCT team_id) AS teams,
-       count(DISTINCT race_id) AS races
-  FROM public.race_entries
- WHERE is_auto_filled = true
-   AND auto_filled_at >= '<vindue-start>'
- GROUP BY auto_filled_source
+       count(DISTINCT e.team_id) AS teams,
+       count(DISTINCT e.race_id) AS races
+  FROM public.race_entries e
+  JOIN public.teams t ON t.id = e.team_id
+ WHERE e.is_auto_filled = true
+   AND t.user_id IS NOT NULL
+   AND e.auto_filled_at >= '<vindue-start>'
+ GROUP BY 1
  ORDER BY entries DESC;
 ```
 
@@ -105,11 +111,17 @@ SELECT
   round(100.0 * count(*) FILTER (WHERE had_auto_filled)
         / NULLIF(count(*), 0), 1) AS self_correction_pct,
   count(*) FILTER (WHERE auto_source = 'late_fill') AS from_late_fill,
+  count(*) FILTER (WHERE auto_source = 'opt_in') AS from_opt_in,
   count(*) FILTER (WHERE auto_source = 'start_rescue') AS from_start_rescue,
+  count(*) FILTER (WHERE auto_source = 'manager_auto') AS from_manager_auto,
+  count(*) FILTER (WHERE auto_source = 'unknown') AS from_unknown,
   count(*) FILTER (WHERE auto_source = 'mixed') AS from_mixed
 FROM public.race_entry_overrides
 WHERE overridden_at >= '<vindue-start>';
 ```
+
+Assistentens egen selvrettelsesrate er `from_late_fill` (og `from_opt_in`) delt med
+antal late-fill-fyldte menneskehold-enheder i samme vindue (4.2).
 
 Selvrettelser pr. løb (til at se om de klumper omkring bestemte startvinduer):
 
@@ -124,12 +136,17 @@ SELECT race_id, count(*) AS self_corrections,
 
 ### 4.4 Redning ved start vs. late-fill — samme opdeling, nu uden gætteri
 
+Kun menneskehold (`teams.user_id IS NOT NULL`), samme grund som 4.2.
+
 ```sql
 SELECT
-  count(*) FILTER (WHERE auto_filled_source = 'late_fill') AS late_fill_entries,
-  count(*) FILTER (WHERE auto_filled_source = 'start_rescue') AS start_rescue_entries,
-  count(DISTINCT team_id) FILTER (WHERE auto_filled_source = 'late_fill') AS late_fill_teams,
-  count(DISTINCT team_id) FILTER (WHERE auto_filled_source = 'start_rescue') AS start_rescue_teams
-FROM public.race_entries
-WHERE is_auto_filled = true AND auto_filled_at >= '<vindue-start>';
+  count(*) FILTER (WHERE e.auto_filled_source = 'late_fill') AS late_fill_entries,
+  count(*) FILTER (WHERE e.auto_filled_source = 'start_rescue') AS start_rescue_entries,
+  count(DISTINCT e.team_id) FILTER (WHERE e.auto_filled_source = 'late_fill') AS late_fill_teams,
+  count(DISTINCT e.team_id) FILTER (WHERE e.auto_filled_source = 'start_rescue') AS start_rescue_teams
+FROM public.race_entries e
+JOIN public.teams t ON t.id = e.team_id
+WHERE e.is_auto_filled = true
+  AND t.user_id IS NOT NULL
+  AND e.auto_filled_at >= '<vindue-start>';
 ```
