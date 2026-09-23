@@ -65,6 +65,7 @@ import type {
   Weather,
 } from "../types.ts";
 import { deriveRechargeRate, tickPhysiologyOverSegment, wprimeDepletionCpMultiplier } from "../physiology.ts";
+import { gaussian, rngFor } from "../rng.ts";
 import { computeFinaleAbilityScore } from "../finale.ts";
 import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
@@ -111,9 +112,10 @@ export function isIndividualTimeTrial(profileType: ProfileType | null | undefine
  */
 export const INDIVIDUAL_TIME_TRIAL_TUNING = Object.freeze({
   strengthSpeedGain: 0.16,
+  stageNoiseSd: 0.035,
 });
 
-export type IndividualTimeTrialTuning = { strengthSpeedGain: number };
+export type IndividualTimeTrialTuning = { strengthSpeedGain: number; stageNoiseSd: number };
 
 // ── Evne og fart ─────────────────────────────────────────────────────────────
 
@@ -160,6 +162,7 @@ export function ittCapacityForSegment(
   segment: Segment,
   tuning: EngineTuning,
   weather: Weather,
+  stageNoise = 0,
 ): number {
   const fresh = ittAbilityScore(entrant.abilities, segment.kind, tuning);
   const worn = applyDistanceFatigueToCp(fresh, {
@@ -169,7 +172,22 @@ export function ittCapacityForSegment(
   });
   const weatherFactor = riderWeatherCpMultiplier(entrant, segment, weather);
   const fatigueFactor = wprimeDepletionCpMultiplier(rider.wprime, rider.wprimeMax);
-  return Math.max(0, worn * weatherFactor * fatigueFactor + rider.dayform);
+  return Math.max(0, worn * weatherFactor * fatigueFactor + rider.dayform + stageNoise);
+}
+
+/**
+ * Tidskoerslens dagsudsving pr. rytter (seedet, egen strøm "itt_day"): det
+ * v3's enkeltstart allerede baerer som `randomness`-leddet i sin demand-vektor
+ * (raceStageProfileGenerator.js's itt/itt_hilly), og som v4's massestart faar
+ * gennem finalens placerings-stoej. Uden det er dagsformen den eneste stoej,
+ * og feltets bedste enkeltstartsrytter vinder langt oftere end v3-spec'ens
+ * favorit-baand. Additivt paa evnen ligesom dagsformen: det skalerer
+ * magnitude og kan aldrig vende evnens fortegn i fart-formlen.
+ * Uafhaengigt af segment: det er dagens start, ikke et udsving pr. km.
+ */
+export function ittStageNoise(seed: string, riderId: string, ittTuning: IndividualTimeTrialTuning): number {
+  if (!(ittTuning.stageNoiseSd > 0)) return 0;
+  return gaussian(rngFor(seed, "itt_day", riderId), 0, ittTuning.stageNoiseSd);
 }
 
 /**
@@ -204,11 +222,12 @@ function tickSoloRider(
   entrant: Entrant,
   segment: Segment,
   referenceCapacity: number,
+  stageNoise: number,
   route: RouteV2,
   tuning: EngineTuning,
   ittTuning: IndividualTimeTrialTuning,
 ): void {
-  const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather);
+  const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise);
   const distanceKm = Math.max(0, segment.to_km - segment.from_km);
   const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning);
   const dtSeconds = speedKmh > 0 ? (distanceKm / speedKmh) * 3600 : 0;
@@ -235,6 +254,7 @@ function tickSoloRider(
 function individualTimeTrialMode(
   route: RouteV2,
   reference: Record<SegmentKind, number>,
+  stageNoiseByRider: ReadonlyMap<string, number>,
   ittTuning: IndividualTimeTrialTuning,
 ): TimeTrialMode {
   return {
@@ -251,7 +271,8 @@ function individualTimeTrialMode(
       for (const entrant of unit.roster.riders) {
         const rider = unit.riders[entrant.rider_id];
         if (!rider || rider.status === "abandoned") continue;
-        tickSoloRider(rider, entrant, segment, reference[segment.kind], route, tuning, ittTuning);
+        const noise = stageNoiseByRider.get(entrant.rider_id) ?? 0;
+        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning);
       }
       return [];
     },
@@ -276,13 +297,14 @@ export function simulateIndividualTimeTrialStage(
   const ittTuning = options.ittTuning ?? INDIVIDUAL_TIME_TRIAL_TUNING;
   const units: TeamRoster[] = startlist.map((entrant) => ({ team_id: entrant.rider_id, riders: [entrant] }));
   const reference = ittReferenceByKind(startlist, tuning);
+  const stageNoiseByRider = new Map(startlist.map((e) => [e.rider_id, ittStageNoise(seed, e.rider_id, ittTuning)]));
   const { teams: _perRiderUnits, ...output } = runTimeTrialStage(
     route,
     units,
     seed,
     tuning,
     { incidentsTuning: options.incidentsTuning, timeLimitTuning: options.timeLimitTuning },
-    individualTimeTrialMode(route, reference, ittTuning),
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning),
   );
   return output;
 }
