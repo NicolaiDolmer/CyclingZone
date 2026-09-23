@@ -18,6 +18,7 @@ import {
   SEED_DEV_TRANSITION, ACTIVE_SEASON, SEED_TEAM_RACE_POINTS_MV,
 } from "./seedData.js";
 import { SEED_SURVEY } from "./surveyMock.js";
+import { previewYouthSquadsPayload, previewYouthRiderRows } from "./youthSquadsMock.ts"; // #5519
 import { NPS_MIN_RACE_DAYS } from "../lib/npsGating.js";
 import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
 
@@ -134,6 +135,21 @@ function previewBestRoleEnabled() {
   }
 }
 
+// #5519: U23 team- og Junior team-siderne er ON på preview-deployet (ejeren
+// skal kunne se dem før flaget flippes), men kan slås fra med ?youthSquads=off
+// for et før/efter-par af menuen og Akademiets Coming soon-kort. Samme mønster
+// og samme localStorage-huske som previewBestRoleEnabled ovenfor.
+function previewYouthSquadsEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("youthSquads");
+    if (param === "on") localStorage.setItem("cz_mock_youth_squads", "1");
+    if (param === "off") localStorage.setItem("cz_mock_youth_squads", "0");
+    return localStorage.getItem("cz_mock_youth_squads") !== "0";
+  } catch {
+    return true;
+  }
+}
+
 export function installPreviewMock() {
   const realFetch = window.fetch.bind(window);
 
@@ -213,6 +229,13 @@ export function installPreviewMock() {
         return jsonResponse(
           wantsObject(accept) ? PREVIEW_AUTOBID_NOTIFICATIONS[0] : PREVIEW_AUTOBID_NOTIFICATIONS,
         );
+      }
+
+      // #5519: rytter-opslaget fra U23 team-/Junior team-siden. Svarer KUN når
+      // opslaget gælder netop preview-ungdomsrytterne (youthSquadsMock.ts).
+      if (method === "GET") {
+        const youthRows = previewYouthRiderRows(url);
+        if (youthRows) return jsonResponse(wantsObject(accept) ? youthRows[0] ?? null : youthRows);
       }
 
       // Supabase REST (PostgREST).
@@ -348,7 +371,17 @@ export function installPreviewMock() {
       // #5435: se previewBestRoleEnabled ovenfor. Kun her (ikke i
       // mockHandlers.js), så Playwright-snapshots beholder dagens visning.
       if (method === "GET" && /\/api\/display-flags$/.test(url)) {
-        return jsonResponse({ rider_best_role_display: previewBestRoleEnabled() });
+        return jsonResponse({
+          rider_best_role_display: previewBestRoleEnabled(),
+          youth_squad_pages: previewYouthSquadsEnabled(), // #5519
+        });
+      }
+      // #5519: trup-sidernes rytter-id'er. 409 når kontakten er slået fra med
+      // ?youthSquads=off, præcis som serveren svarer med flaget slukket.
+      if (method === "GET" && /\/api\/youth-squads$/.test(url)) {
+        return previewYouthSquadsEnabled()
+          ? jsonResponse(previewYouthSquadsPayload())
+          : jsonResponse({ error: "youth_squad_pages_disabled" }, 409);
       }
       if (method === "GET" && /\/api\/season\/signup-status$/.test(url)) {
         return jsonResponse({
