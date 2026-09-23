@@ -84,19 +84,20 @@ test('path traversal, duplicate branches/issues and overlapping ownership fail b
   assert.throws(() => validateTracks([{ ...track(1), branch: 'codex/a-b' }, { ...track(2), branch: 'codex/a/b' }]), /duplicate/);
 });
 
-test('Claude Workflow admission uses the same code and cap; dry-run never reserves', async (t) => {
+test('Claude Workflow admission uses the same code, no PR cap; dry-run never reserves', async (t) => {
   const dir = fixture(t);
   const payload = { session_id: 'claude-fixture', tool_name: 'Workflow', tool_input: {
     scriptPath: 'C:/Dev/CyclingZone/.claude/workflows/wave.js', args: { tracks: [track(1)] },
   } };
-  const full = async () => [1, 2, 3, 4, 5, 6, 7, 8].map(number => ({ number }));
-  await assert.rejects(handleHook(payload, dir, full, now, () => undefined, () => process.pid), /PR/);
+  // 8 already-open PRs (the old cap) must not block admission (ejer-beslutning 22/9, #5510).
+  const full = async () => [1, 2, 3, 4, 5, 6, 7, 8].map(number => ({ number, headRefName: `other/${number}` }));
   payload.tool_input.args.dryRun = true;
   await handleHook(payload, dir, full, now);
   assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
   payload.tool_input.args.dryRun = false;
-  await handleHook(payload, dir, async () => [], now, () => undefined, () => process.pid);
+  const wave = await handleHook(payload, dir, full, now, () => undefined, () => process.pid);
   assert.equal(JSON.parse(readFileSync(path.join(dir, 'wave-active.json'))).runtime, 'claude');
+  assert.equal(wave.capacity.open, 8);
 });
 
 test('Claude wave-prefixed agents cannot join a Codex wave', async (t) => {
