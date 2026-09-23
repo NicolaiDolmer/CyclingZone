@@ -36,10 +36,6 @@ function makeSupabase(cfg = {}) {
     return b;
   }
   const has = (st, op) => st.ops.some((o) => o[0] === op);
-  const eqArg = (st, key) => {
-    const hit = st.ops.find((o) => o[0] === "eq" && o[1][0] === key);
-    return hit ? hit[1][1] : undefined;
-  };
   const selectIsCount = (st) => {
     const hit = st.ops.find((o) => o[0] === "select");
     return !!(hit && hit[1][1] && hit[1][1].count === "exact" && hit[1][1].head === true);
