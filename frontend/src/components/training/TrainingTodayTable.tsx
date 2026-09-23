@@ -21,10 +21,14 @@
 
 import { Fragment, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import type { RaceDayColumn } from "../../lib/trainingMobileModel.ts";
 import type { RosterCell } from "./mobile/TrainingMobileRoster.tsx";
 import TrainingScoreSparkline, { type TrainingScorePoint } from "./TrainingScoreSparkline.tsx";
-import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon, FlagIcon } from "../ui/icons/index.jsx";
+// Den ENE kanoniske sorterbare header (samme pil, aria-sort og klik-maal som
+// resten af spillet), ikke en lokal kopi.
+import SortableTh from "../ui/SortableTh.jsx";
+import { ChevronDownIcon, FlagIcon, InfoIcon } from "../ui/icons/index.jsx";
 
 export type TodayRow = {
   id: string;
@@ -41,46 +45,6 @@ export type TodayRow = {
 export type TodayGroup = { key: string; label: string; count: string; rows: TodayRow[] };
 
 type SortDir = "asc" | "desc";
-
-function SortHeader({
-  sortKey,
-  sort,
-  sortDir,
-  onSort,
-  numeric = false,
-  children,
-}: {
-  sortKey: string;
-  sort: string | null;
-  sortDir: SortDir;
-  onSort: (key: string) => void;
-  numeric?: boolean;
-  children: ReactNode;
-}) {
-  const active = sort === sortKey;
-  return (
-    <th
-      aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-      className={`whitespace-nowrap border-b border-cz-border px-3 py-2 font-data text-2xs font-semibold uppercase tracking-[.06em] ${
-        active ? "text-cz-1" : "text-cz-3"
-      } ${numeric ? "text-right" : "text-left"}`}
-    >
-      <button
-        type="button"
-        onClick={() => onSort(sortKey)}
-        className={`inline-flex items-center gap-1 uppercase hover:text-cz-1 ${numeric ? "flex-row-reverse" : ""}`}
-      >
-        {children}
-        {active &&
-          (sortDir === "asc" ? (
-            <ArrowUpIcon size={11} aria-hidden="true" />
-          ) : (
-            <ArrowDownIcon size={11} aria-hidden="true" />
-          ))}
-      </button>
-    </th>
-  );
-}
 
 function Meter({ value, warn, tone }: { value: number | null; warn: boolean; tone: "form" | "fatigue" }) {
   const pct = Math.max(0, Math.min(100, Number(value ?? 0)));
@@ -161,8 +125,14 @@ export default function TrainingTodayTable({
   const { t } = useTranslation("training");
   const single = columns.length === 1;
   const colCount = 5 + (showScore ? 1 : 0) + columns.length + 1;
+  // Justeringen saettes pr. kolonne, saa text-left aldrig kaemper med
+  // text-center/text-right i samme klasseliste.
   const headClass =
-    "whitespace-nowrap border-b border-cz-border px-3 py-2 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
+    "whitespace-nowrap border-b border-cz-border px-3 py-2 font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
+  // SortableTh's knap arver ikke text-transform (preflight nulstiller den paa
+  // <button>) og centrerer sin tekst (browserens standard), saa de sorterbare
+  // overskrifter faar samme versaler og venstrestilling som resten af raekken.
+  const sortHeadClass = `${headClass} text-left [&_button]:uppercase [&_button]:text-start`;
 
   let firstRendered = false;
   const renderRow = (row: TodayRow) => {
@@ -267,7 +237,7 @@ export default function TrainingTodayTable({
         <table className="w-full border-collapse" data-sortable>
           <thead>
             <tr>
-              <th className={`${headClass} w-11 ps-4`}>
+              <th className={`${headClass} w-11 ps-4 text-left`}>
                 <span className="inline-flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -279,21 +249,41 @@ export default function TrainingTodayTable({
                   {t("today.colSelect")}
                 </span>
               </th>
-              <SortHeader sortKey="name" sort={sort} sortDir={sortDir} onSort={onSort}>
+              <SortableTh sortKey="name" sort={sort} sortDir={sortDir} onSort={onSort} className={sortHeadClass}>
                 {t("colRider")}
-              </SortHeader>
-              <SortHeader sortKey="form" sort={sort} sortDir={sortDir} onSort={onSort}>
+              </SortableTh>
+              <SortableTh sortKey="form" sort={sort} sortDir={sortDir} onSort={onSort} className={sortHeadClass}>
                 {t("form")}
-              </SortHeader>
-              <SortHeader sortKey="fatigue" sort={sort} sortDir={sortDir} onSort={onSort}>
+              </SortableTh>
+              <SortableTh sortKey="fatigue" sort={sort} sortDir={sortDir} onSort={onSort} className={sortHeadClass}>
                 {t("fatigue")}
-              </SortHeader>
+              </SortableTh>
+              {/* #4851: "Score" forklarer ikke sig selv. Kort tekst paa fladen
+                  (title) og et stille link til Hjaelpens prosa (#4025), samme
+                  moenster som den gamle roster-header. */}
               {showScore && (
-                <SortHeader sortKey="score" sort={sort} sortDir={sortDir} onSort={onSort} numeric>
+                <SortableTh
+                  sortKey="score"
+                  sort={sort}
+                  sortDir={sortDir}
+                  onSort={onSort}
+                  title={t("score.columnHint")}
+                  className={`${headClass} text-right [&_button]:uppercase`}
+                  help={
+                    <Link
+                      to="/help?section=dailytraining"
+                      aria-label={t("score.columnHelpAria")}
+                      title={t("score.columnHelpAria")}
+                      className="inline-flex items-center text-cz-3 hover:text-cz-accent"
+                    >
+                      <InfoIcon size={12} aria-hidden="true" />
+                    </Link>
+                  }
+                >
                   {t("score.column")}
-                </SortHeader>
+                </SortableTh>
               )}
-              <th className={headClass}>{t("today.colDay")}</th>
+              <th className={`${headClass} text-left`}>{t("today.colDay")}</th>
               {columns.map((column) => (
                 <th key={column.key} className={`${headClass} px-1 text-center`}>
                   {single ? t("mobile.today") : t("mobile.raceDayShort", { n: column.index })}

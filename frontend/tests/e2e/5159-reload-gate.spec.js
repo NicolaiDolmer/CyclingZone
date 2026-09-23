@@ -280,8 +280,9 @@ test("B1 traening: en ugemt ugekladde blokerer reloadet, Gem frigiver det", asyn
 
   // Ugerytme-panelets select'er er kladde indtil Gem. Vi aendrer én og flytter
   // fokus vaek — den praecise tilstand auditten kaldte "beskytter fokus, ikke
-  // arbejde".
-  const weekSelect = page.locator("select:visible").first();
+  // arbejde". #5485: fanens foerste select er "Plan for" (hold/rytter), som
+  // ikke er en kladde; dagenes vaelgere staar i ugeplanens raekker.
+  const weekSelect = page.locator('[data-testid="training-week-plan-row"] select:visible').first();
   await expect(weekSelect).toBeVisible({ timeout: 20_000 });
   const options = await weekSelect.locator("option").all();
   const values = [];

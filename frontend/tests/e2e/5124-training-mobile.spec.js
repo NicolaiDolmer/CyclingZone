@@ -108,14 +108,16 @@ test("mobil 393px: roster scroller aldrig vandret, og hovedhandlingen (skift dag
   await page.screenshot({ path: evidenceShotPath(`pr-screens/5124-training-mobile-393-fulltable-${testInfo.project.name}.png`), fullPage: false });
 });
 
-test("desktop 1280px: uændret — alle kolonner synlige uden chip-række, ingen 'Fuld tabel'-knap", async ({ page }, testInfo) => {
+test("desktop 1280px: desktop-tabellen uden chip-række, ingen 'Fuld tabel'-knap", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "Desktop-only regressionstjek — dækket af mobile-projekterne ovenfor.");
   await login(page);
   await page.goto("/training");
   await page.locator("table[data-sortable]").first().waitFor();
 
-  await expect(page.getByRole("columnheader", { name: "Denne sæson" })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Ugeplan" })).toBeVisible();
+  // #5485: desktop har sin egen tabel; D-047-chip-rækken hører kun til telefonen.
+  await expect(page.getByTestId("training-today-table")).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Dagens dag" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Sæsonpoint" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Fuld tabel" })).toHaveCount(0);
 
   await page.screenshot({ path: evidenceShotPath(`pr-screens/5124-training-desktop-1280-${testInfo.project.name}.png`), fullPage: false });

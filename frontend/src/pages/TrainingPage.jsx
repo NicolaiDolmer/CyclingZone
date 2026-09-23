@@ -316,7 +316,13 @@ function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, data
 // select + retnings-toggle eksponerer PRÆCIS de samme sort-nøgler som desktop-
 // headerne og skriver til samme rosterSort-state via handleSort — ingen ny
 // sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
-function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t }) {
+//
+// #5485: desktop-tabellen har kun kolonner for navn, form, træthed og score.
+// Type, alder (#3815) og status (#3706) var sorterbare kolonner, men står nu i
+// navnets underlinje og i rytterens kort. `inline` viser SAMME kontrol i
+// tabellens værktøjslinje, så desktop kan sortere på alle nøgler uden at få
+// kolonnerne tilbage.
+function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inline = false }) {
   const options = [
     { key: "name", label: t("colRider") },
     { key: "primary_type", label: t("colType") },
@@ -335,6 +341,33 @@ function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t }) {
     { key: "status", label: t("colStatus") },
   ];
   const dirAria = sortDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
+
+  if (inline) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <label className="flex items-center gap-2">
+          <span className="font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("mobileSort.label")}</span>
+          <Select size="sm" value={sort ?? ""} onChange={(e) => onSort(e.target.value)} className="w-32">
+            {options.map(({ key, label }) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </Select>
+        </label>
+        <button
+          type="button"
+          onClick={() => sort && onSort(sort)}
+          disabled={!sort}
+          aria-label={dirAria}
+          title={dirAria}
+          className="flex h-8 w-8 flex-none items-center justify-center rounded-cz border border-cz-border bg-cz-subtle text-cz-2 transition-colors hover:text-cz-1 disabled:opacity-40"
+        >
+          {sortDir === "desc"
+            ? <ArrowDownIcon size={14} aria-hidden="true" />
+            : <ArrowUpIcon size={14} aria-hidden="true" />}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="sm:hidden flex items-end gap-2 mb-3">
@@ -2270,6 +2303,14 @@ export default function TrainingPage() {
           {bulkMsgNode}
         </div>
         <div className="flex flex-wrap items-center gap-4">
+          <RosterMobileSortControl
+            inline
+            sort={rosterSort.sort}
+            sortDir={rosterSort.sortDir}
+            onSort={rosterSort.handleSort}
+            scoreVisible={scoreVisible}
+            t={t}
+          />
           <Checkbox checked={groupByType} onChange={(e) => setGroupByType(e.target.checked)} label={t("groupByType")} />
           {/* #4522: assistentens forslag — flyttet fra sidehovedet til
               tabellens værktøjslinje (en tabel-handling, ikke sidens). */}
