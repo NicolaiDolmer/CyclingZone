@@ -44,6 +44,10 @@ const NOOP = () => {};
 // senere / intet at gøre", ikke en fejl.
 const FLUSH_NOT_NOW = new Set(["academy_full", "not_pending"]);
 
+/**
+ * @param {any} supabase
+ * @returns {Promise<number|null>}
+ */
 async function activeSeasonNumber(supabase) {
   const { data, error } = await supabase
     .from("seasons").select("number").eq("status", "active").maybeSingle();
