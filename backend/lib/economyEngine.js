@@ -555,13 +555,15 @@ export async function processSeasonStart(seasonId, deps = {}) {
   // i den. Samme regel som motoren (riderProgressionEngine.willRetireAtSeasonStart),
   // ingen kopi. Fejler opslaget, lønnes alle som før (status quo), og fejlen
   // sendes til Sentry — et sæsonskifte må ikke gå i stå på det her.
+  /** @type {Set<unknown>} */
   let retiringRiderIds = new Set();
   if (progressionWillRun) {
-    const loadRetiringFn = deps.loadRetiringRiderIds ?? loadRetiringRiderIds;
+    const retiringSeam = /** @type {{ loadRetiringRiderIds?: typeof loadRetiringRiderIds }} */ (deps);
+    const loadRetiringFn = retiringSeam.loadRetiringRiderIds ?? loadRetiringRiderIds;
     try {
       retiringRiderIds = await loadRetiringFn({ supabase: supabaseClient, seasonNumber });
     } catch (err) {
-      console.error(`  ⚠️ Retirement lookup for payroll failed, every rider is paid as before (#4153): ${err?.message || err}`);
+      console.error(`  ⚠️ Retirement lookup for payroll failed, every rider is paid as before (#4153): ${err instanceof Error ? err.message : String(err)}`);
       captureException(err, { tags: { flow: "season-transition", stage: "payroll-retiring-riders" } });
     }
   }
@@ -663,7 +665,7 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
       // #1678 · videre-fører seasonNumber så upkeep kan deferres i sæson 1.
       seasonNumber: deps.seasonNumber,
       // #4153 · ryttere motoren pensionerer i samme skifte (processSeasonStart).
-      retiringRiderIds: deps.retiringRiderIds,
+      retiringRiderIds: /** @type {{ retiringRiderIds?: unknown }} */ (deps).retiringRiderIds,
       facilitiesEnabled,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
@@ -719,6 +721,31 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
 }
 
 /**
+ * #4153 · Normaliserer en rytter-id-mængde (Set eller liste) til en Set.
+ * Udeladt/ukendt input = tom mængde.
+ *
+ * @param {unknown} input
+ * @returns {Set<unknown>}
+ */
+function toRiderIdSet(input) {
+  if (input instanceof Set) return input;
+  return new Set(Array.isArray(input) ? input : []);
+}
+
+/**
+ * #4153 · Ryttere der lønnes ved sæsonstart: alle undtagen dem som motoren
+ * pensionerer i samme skifte.
+ *
+ * @template {{ id?: unknown, salary?: number | null }} R
+ * @param {R[]} riders
+ * @param {Set<unknown>} retiringRiderIds
+ * @returns {R[]}
+ */
+function ridersOnSeasonPayroll(riders, retiringRiderIds) {
+  return riders.filter((rider) => !retiringRiderIds.has(rider.id));
+}
+
+/**
  * Sæson-payroll: lånerenter + lønninger (+ emergency-lån hvis shortfall) +
  * resterende negativ-balance-rente. Kører ved sæson-START efter sponsor er
  * udbetalt. Idempotent via finance_transactions partial unique-indices.
@@ -767,8 +794,8 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   // kører aldrig et løb i den nye sæson og lønnes derfor ikke for den.
   // deps.retiringRiderIds kommer fra processSeasonStart (samme regel som
   // motoren); udeladt = tom mængde = alle lønnes som før.
-  const retiringRiderIds = deps.retiringRiderIds instanceof Set ? deps.retiringRiderIds : new Set(deps.retiringRiderIds || []);
-  const payrollRiders = (team.riders || []).filter((r) => !retiringRiderIds.has(r.id));
+  const { retiringRiderIds } = /** @type {{ retiringRiderIds?: unknown }} */ (deps);
+  const payrollRiders = ridersOnSeasonPayroll(team.riders || [], toRiderIdSet(retiringRiderIds));
 
   const totalSalary = isDailyWageMode
     ? 0
@@ -1501,8 +1528,10 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     const poolTree = await buildPoolTree(supabaseClient);
     // Injicérbare seams (samme mønster som reseedTierPools nedenfor), så en test
     // kan bevise rækkefølgen op/nedrykning → reseed → AI-fyld → parkering.
-    const processDivisionEndFn = deps.processDivisionEnd ?? processDivisionEnd;
-    const reconcileAiTeamsFn = deps.reconcileAiTeamsForPool ?? reconcileAiTeamsForPool;
+    const movementSeams = /** @type {{ processDivisionEnd?: typeof processDivisionEnd,
+      reconcileAiTeamsForPool?: typeof reconcileAiTeamsForPool }} */ (deps);
+    const processDivisionEndFn = movementSeams.processDivisionEnd ?? processDivisionEnd;
+    const reconcileAiTeamsFn = movementSeams.reconcileAiTeamsForPool ?? reconcileAiTeamsForPool;
 
     for (let division = MIN_DIVISION; division <= MAX_DIVISION; division++) {
       const divStandings = standings.filter(s => s.division === division);
