@@ -7,7 +7,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { admissionOwnerProcess, assertWaveOwnership, ownershipSnapshot } from './wave-ownership.mjs';
-import { measureBootId, normalizeBootId, sameBoot } from './wave-boot-identity.mjs';
+import { measureBootIdentity, sameBoot } from './wave-boot-identity.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
 const reserved = ['docs/now.md', '.claude/run', '.claude/launch.json'];
@@ -68,19 +68,23 @@ export function readWave(dir) {
   return JSON.parse(fs.readFileSync(path.join(dir, 'wave-active.json'), 'utf8'));
 }
 
-let cachedBootId;
+let cachedBootIdentity;
+function hostBootIdentity() {
+  if (!cachedBootIdentity?.bootId) cachedBootIdentity = measureBootIdentity();
+  return cachedBootIdentity;
+}
+
 // Normalized (#5533): raw Windows ticks drift within one boot.
 export function hostBootId() {
-  if (cachedBootId) return cachedBootId;
-  cachedBootId = measureBootId();
-  return cachedBootId;
+  return hostBootIdentity().bootId;
 }
 
 export function withWaveStateLock(dir, action) {
-  // Normalized again so a raw value can never select a different lock.
-  const bootId = normalizeBootId(hostBootId());
-  if (!bootId) throw Error('Cannot identify host boot for wave state lock');
-  const key = createHash('sha256').update(bootId).digest('hex').slice(0, 16);
+  // Keyed on a clock-independent boot identity (#5533), so every process in
+  // one boot shares the lock even across a clock correction.
+  const lockKey = hostBootIdentity().lockKey;
+  if (!lockKey) throw Error('Cannot identify host boot for wave state lock');
+  const key = createHash('sha256').update(lockKey).digest('hex').slice(0, 16);
   const lock = path.join(dir, `wave-state-${key}.lock`);
   let acquired = false;
   for (let attempt = 0; attempt < 100; attempt++) {

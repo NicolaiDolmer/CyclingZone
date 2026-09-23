@@ -4,10 +4,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { readWave, requireModernWave, withWaveStateLock, stopWaveWatch } from './wave-policy.mjs';
-import { normalizeBootId, sameBoot } from './wave-boot-identity.mjs';
+import { isClockDerivedBootId, normalizeBootId, sameBoot } from './wave-boot-identity.mjs';
 
 import { processSnapshot } from './wave-process-snapshot.mjs';
 export { processSnapshot } from './wave-process-snapshot.mjs';
+
+const isoStart = value => (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value) ? Date.parse(value) : NaN);
+
+// A Windows boot time is derived from the wall clock, so even a mismatch far
+// beyond the tolerance can be a large clock correction (#5533). Process start
+// times are recorded once and never adjusted: a restart is proven only when
+// every observed process, the kernel's own included, started after the
+// admitted owner process. Anything less keeps the same-boot rules below.
+function restartProven(wave, observed, observedBootId) {
+  if (sameBoot(wave.bootId, observedBootId)) return false;
+  if (!isClockDerivedBootId(wave.bootId) && !isClockDerivedBootId(observedBootId)) return true;
+  const ownerStart = isoStart(wave.ownerProcess?.createdAt);
+  const starts = (Array.isArray(observed?.processes) ? observed.processes : []).map(p => isoStart(p?.createdAt)).filter(Number.isFinite);
+  return Number.isFinite(ownerStart) && starts.length > 0 && starts.every(start => start > ownerStart);
+}
 
 export function recoverWave(dir, expected, snapshot = processSnapshot) {
   const wave = requireModernWave(readWave(dir));
@@ -19,7 +34,7 @@ export function recoverWave(dir, expected, snapshot = processSnapshot) {
   if (!normalizeBootId(wave.bootId) || !observedBootId) throw Error('Unknown host boot identity; marker retained');
   // Sub-second drift within one Windows boot is NOT a restart (#5533); only a
   // proven different boot may skip the process check below.
-  const rebooted = !sameBoot(wave.bootId, observedBootId);
+  const rebooted = restartProven(wave, observed, observedBootId);
   if (!rebooted && (!Number.isSafeInteger(wave.pid) || wave.pid < 1)) throw Error('Unknown owner PID; marker retained');
   const children = wave.children || [];
   if (!rebooted && (!Array.isArray(children) || children.some(c => !Number.isSafeInteger(c.pid) || c.pid < 1 || !['running', 'stopped'].includes(c.state)))) {
@@ -58,7 +73,8 @@ export function recoverWave(dir, expected, snapshot = processSnapshot) {
     fs.writeFileSync(evidence, JSON.stringify({ waveId: wave.waveId, owner: wave.owner, checkedAt: expected.now, checkedPids: [...roots], proof: rebooted ? 'host-restarted' : 'dead-owner-before-dispatch', observedBootId }, null, 2));
     withWaveStateLock(dir, () => {
       if (JSON.stringify(readWave(dir)) !== JSON.stringify(wave)) throw Error('Wave changed during recovery; marker retained');
-      stopWaveWatch(wave, observedBootId);
+      // Unless a restart is proven, the watch belongs to this boot and must stop.
+      stopWaveWatch(wave, rebooted ? observedBootId : undefined);
       fs.unlinkSync(path.join(dir, 'wave-active.json'));
     });
     return { released: true, waveId: wave.waveId, evidence };
