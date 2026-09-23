@@ -15,8 +15,11 @@ import {
   isSquad, isYouthSquad, squadForSeasonAge, squadForSeason, squadForReferenceYear,
   capForSquad, wouldExceedSquadCap, hasOutgrownSquad, transitionForRider, seniorSquadPatch,
   squadCapRpcArgs, fitsSquadAge, squadMoveDirection, academyPlacementSquad, ACADEMY_SQUAD_WHEN_AGE_UNKNOWN,
+  SQUAD_SCOPED_RELATIONS, SQUAD_COLUMN, isSeniorSquadRow, onlySeniorSquadRows,
+  scopeToSeniorSquad, withSeniorSquadScope,
 } from "./squads.js";
 import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
+import { SENIOR_SQUAD_OR_FILTER } from "./racePoolCatalog.js";
 
 test("SQUADS + DEFAULT_SQUAD matcher migrationens CHECK-constraint", () => {
   assert.deepEqual([...SQUADS].sort(), ["junior", "senior", "u23"]);
@@ -243,4 +246,136 @@ test("academyPlacementSquad og #4619-backfill'en placerer en akademirytter ens (
       `birthdate=${birthdate}`,
     );
   }
+});
+
+// ── #5517 (A2): puljernes og løbenes senior-scope ────────────────────────────
+//
+// Det der SKAL være låst:
+//   1) SQL-filteret er PRÆCIS race_pool-scopets (#5330), ikke en næsten-kopi.
+//   2) SQL- og JS-siden fælder samme dom: manglende/NULL squad = senior, kun en
+//      eksplicit ungdomstrup falder ud.
+//   3) auto-migrate-vinduet: 42703 på squad → samme læsning uden scope, både i
+//      { error }-formen og den kastende form. ALLE andre fejl bobler uændret op —
+//      også en PGRST204/schema-cache-fejl (fejl lukket, ikke åbent).
+
+// Minimal PostgREST-builder-attrap: optager kaldene, svarer med et fast resultat.
+function recordingQuery(result) {
+  const calls = [];
+  const q = {
+    calls,
+    or(expr) { calls.push(["or", expr]); return q; },
+    eq(c, v) { calls.push(["eq", c, v]); return q; },
+    then(res, rej) { return Promise.resolve(result).then(res, rej); },
+  };
+  return q;
+}
+
+const MISSING_SQUAD_42703 = { code: "42703", message: "column races.squad does not exist" };
+
+test("#5517 SQUAD_SCOPED_RELATIONS: kun puljer og løb (riders har sit eget prædikat)", () => {
+  assert.deepEqual([...SQUAD_SCOPED_RELATIONS].sort(), ["league_divisions", "races"]);
+  assert.ok(Object.isFrozen(SQUAD_SCOPED_RELATIONS));
+  assert.equal(SQUAD_COLUMN, "squad");
+});
+
+test("#5517 scopeToSeniorSquad: bruger race_pool-scopets filter ordret (#5330), ét kald", () => {
+  const q = recordingQuery({ data: [], error: null });
+  assert.equal(scopeToSeniorSquad(q), q, "kædbar: returnerer builderen");
+  assert.deepEqual(q.calls, [["or", SENIOR_SQUAD_OR_FILTER]]);
+  assert.equal(SENIOR_SQUAD_OR_FILTER, "squad.is.null,squad.eq.senior");
+});
+
+test("#5517 isSeniorSquadRow / onlySeniorSquadRows: manglende felt = senior, kun ungdom falder ud", () => {
+  assert.equal(isSeniorSquadRow({ id: 1, squad: "senior" }), true);
+  assert.equal(isSeniorSquadRow({ id: 1, squad: null }), true, "NULL = senior");
+  assert.equal(isSeniorSquadRow({ id: 1 }), true, "projektion uden squad = senior (dagens select)");
+  assert.equal(isSeniorSquadRow({ id: 1, squad: "u23" }), false);
+  assert.equal(isSeniorSquadRow({ id: 1, squad: "junior" }), false);
+  assert.equal(isSeniorSquadRow(null), false);
+  assert.equal(isSeniorSquadRow(undefined), false);
+
+  const rows = [{ id: 1 }, { id: 2, squad: "u23" }, { id: 3, squad: "senior" }, { id: 4, squad: "junior" }];
+  assert.deepEqual(onlySeniorSquadRows(rows).map((r) => r.id), [1, 3]);
+  assert.deepEqual(onlySeniorSquadRows(null), []);
+  assert.deepEqual(onlySeniorSquadRows(undefined), []);
+});
+
+test("#5517 JS- og SQL-dommen er ens for hver trup-værdi (mock af .or-grammatikken)", () => {
+  // Evaluer SENIOR_SQUAD_OR_FILTER som PostgREST gør (is/eq, komma = OR) og sammenlign
+  // med isSeniorSquadRow for hver mulig værdi — inkl. manglende felt.
+  const sqlVerdict = (row) => SENIOR_SQUAD_OR_FILTER.split(",").some((cond) => {
+    const [col, op, raw] = cond.split(".");
+    if (op === "is") return (row[col] ?? null) === (raw === "null" ? null : raw);
+    return row[col] === raw;
+  });
+  for (const row of [{}, { squad: null }, { squad: "senior" }, { squad: "u23" }, { squad: "junior" }]) {
+    assert.equal(isSeniorSquadRow(row), sqlVerdict(row), `uenighed for ${JSON.stringify(row)}`);
+  }
+});
+
+test("#5517 withSeniorSquadScope: scoper læsningen og returnerer dens svar uændret", async () => {
+  const seen = [];
+  const out = await withSeniorSquadScope((senior) => {
+    const q = recordingQuery({ data: [{ id: 1 }], error: null });
+    seen.push(q);
+    return senior(q);
+  });
+  assert.deepEqual(out, { data: [{ id: 1 }], error: null });
+  assert.equal(seen.length, 1, "ingen fallback når scopet virker");
+  assert.deepEqual(seen[0].calls, [["or", SENIOR_SQUAD_OR_FILTER]]);
+});
+
+test("#5517 withSeniorSquadScope: 42703 i { error } → ÉN uscopet genkørsel (auto-migrate-vinduet)", async () => {
+  const seen = [];
+  const out = await withSeniorSquadScope((senior) => {
+    const first = seen.length === 0;
+    const q = recordingQuery(first ? { data: null, error: MISSING_SQUAD_42703 } : { data: [{ id: 7 }], error: null });
+    seen.push(q);
+    return senior(q);
+  });
+  assert.deepEqual(out, { data: [{ id: 7 }], error: null });
+  assert.equal(seen.length, 2);
+  assert.deepEqual(seen[0].calls, [["or", SENIOR_SQUAD_OR_FILTER]]);
+  assert.deepEqual(seen[1].calls, [], "fallback-kaldet har intet squad-led");
+});
+
+test("#5517 withSeniorSquadScope: kastet 42703 (fetchAllRows-formen) → uscopet genkørsel", async () => {
+  let attempts = 0;
+  const out = await withSeniorSquadScope(async (senior) => {
+    attempts += 1;
+    const q = senior(recordingQuery(null));
+    if (q.calls.length) throw Object.assign(new Error(MISSING_SQUAD_42703.message), { code: "42703" });
+    return [{ id: 9 }];
+  });
+  assert.equal(attempts, 2);
+  assert.deepEqual(out, [{ id: 9 }]);
+});
+
+test("#5517 withSeniorSquadScope: andre fejl bobler op uændret, INGEN fallback", async () => {
+  // { error }-formen: en RLS-/netværksfejl returneres som den er.
+  let calls = 0;
+  const rls = { code: "42501", message: "permission denied for table races" };
+  const out = await withSeniorSquadScope((senior) => { calls += 1; return senior(recordingQuery({ data: null, error: rls })); });
+  assert.equal(calls, 1);
+  assert.equal(out.error, rls);
+
+  // PGRST204 / schema-cache: beviser IKKE at kolonnen mangler → fejl lukket (#5330-dommen).
+  calls = 0;
+  const cache = { code: "PGRST204", message: "Could not find the 'squad' column of 'races' in the schema cache" };
+  const out2 = await withSeniorSquadScope((senior) => { calls += 1; return senior(recordingQuery({ data: null, error: cache })); });
+  assert.equal(calls, 1, "ingen uscopet genkørsel på en schema-cache-fejl");
+  assert.equal(out2.error, cache);
+
+  // Kastende form: en ikke-42703-fejl kastes videre.
+  calls = 0;
+  await assert.rejects(
+    withSeniorSquadScope(async () => { calls += 1; throw Object.assign(new Error("boom"), { code: "57014" }); }),
+    /boom/,
+  );
+  assert.equal(calls, 1);
+});
+
+test("#5517 withSeniorSquadScope: kræver en funktion (en færdig builder er one-shot)", async () => {
+  await assert.rejects(withSeniorSquadScope(recordingQuery({ data: [] })), TypeError);
+  await assert.rejects(withSeniorSquadScope(null), TypeError);
 });

@@ -69,11 +69,12 @@ if (SKEW_PROTECTION_ENABLED) {
 // FOER initSentry(), ville en saadan browser doe paa boot uden at nogen fejl
 // naaede frem. Alle lag gaar nu gennem den samme sikre accessor.
 const _storage = safeSessionStorage(window);
-// #5159 (M3): boot-vagten (public/chunk-selfheal.js) er ren, tidlig JS uden
-// adgang til moduler og kan derfor ikke selv bogfoere sit reload i det faelles
-// recovery-budget. Den efterlader kun sit tidsstempel; vi bogfoerer det her, saa
-// boot-vagt, global fejlhandler, error-boundary og release-watcheren deler ÉT
-// budget i stedet for tre der ikke kender hinanden.
+// #5159 (M3): boot-vagt, global fejlhandler, error-boundary og release-watcheren
+// deler ÉT recovery-budget. Siden #5440 bogfoerer boot-vagten
+// (public/chunk-selfheal.js) selv sit reload dér, foer det sker, og skriver
+// markoeren der fortaeller at det er gjort. Kaldet her er no-op for den vagt og
+// daekker kun en aeldre, cachet udgave af vagten der blot efterlod sit
+// tidsstempel.
 accountBootGuardReload(_storage);
 const _release = getRelease();
 installChunkReloadHandlers({

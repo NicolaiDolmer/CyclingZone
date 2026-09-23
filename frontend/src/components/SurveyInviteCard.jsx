@@ -1,9 +1,13 @@
 // Dashboard-indgang til det aktive spørgeskema (#4943).
 //
 // Vises kun når (1) et skema står som `open` (RLS gør at lukkede og kladder
-// aldrig kommer med i svaret), (2) spilleren ikke allerede har gennemført det,
-// og (3) kortet ikke er lukket inden for de sidste 3 dage. Kortet henter selv
-// sine data, så DashboardPage ikke skal vokse med endnu en forespørgsel.
+// aldrig kommer med i svaret), (2) closes_at enten er tom eller ikke er
+// passeret endnu — RLS blokerer kun SKRIVNINGER efter lukketid (#5121), ikke
+// selve SELECT'et, så status kan stå som 'open' længe efter closes_at uden at
+// nogen har flippet den manuelt (#4943-followup, prod 23/9), (3) spilleren
+// ikke allerede har gennemført det, og (4) kortet ikke er lukket inden for de
+// sidste 3 dage. Kortet henter selv sine data, så DashboardPage ikke skal
+// vokse med endnu en forespørgsel.
 //
 // CTA'en er SEKUNDÆR med vilje: dashboardets ene guld-primære element styres
 // af computeDashboardGoldCta, og en guld-knap her ville være den anden
@@ -20,7 +24,12 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { supabase } from "../lib/supabase";
-import { inviteDismissKey, inviteDismissedUntil, isInviteDismissed } from "../lib/survey.js";
+import {
+  inviteDismissKey,
+  inviteDismissedUntil,
+  isInviteDismissed,
+  isSurveyPastClose,
+} from "../lib/survey.js";
 import { ClipboardIcon, XIcon } from "./ui";
 import { buttonClass } from "./ui/buttonStyles.js";
 
@@ -31,11 +40,20 @@ export default function SurveyInviteCard() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Lukketids-filteret sidder i selve forespørgslen (ikke kun i
+      // isSurveyPastClose bagefter): `.limit(1)` tager den NYESTE `open`-række,
+      // og uden filteret her ville en udløbet-men-nyest-oprettet survey vinde
+      // over en ældre survey der stadig er gyldig, og ingen af dem ville vise
+      // et kort (CodeRabbit, denne PR). `.or()` skal stå FØR `.order()`/`.limit()`
+      // for at virke som en filtrering af hvilken række der vindes, ikke en
+      // eftersortering af den ene række der allerede blev valgt.
+      const nowIso = new Date().toISOString();
       const [{ data: rows }, { data: auth }] = await Promise.all([
         supabase
           .from("surveys")
-          .select("id, slug, status")
+          .select("id, slug, status, closes_at")
           .eq("status", "open")
+          .or(`closes_at.is.null,closes_at.gt.${nowIso}`)
           .order("created_at", { ascending: false })
           .limit(1),
         supabase.auth.getUser(),
@@ -43,6 +61,10 @@ export default function SurveyInviteCard() {
       const open = rows?.[0];
       const uid = auth?.user?.id ?? null;
       if (cancelled || !open || !uid) return;
+      // Bælte og seler: `.or()` ovenfor bør allerede have udelukket en udløbet
+      // survey, men et ur der er skævt mellem klient og database skal aldrig
+      // kunne vise et kort til et skema der reelt er lukket.
+      if (isSurveyPastClose(open.closes_at)) return;
 
       let dismissed;
       try {

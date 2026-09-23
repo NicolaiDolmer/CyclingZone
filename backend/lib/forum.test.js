@@ -636,14 +636,41 @@ test("getForumPost: citeret svar giver uddrag+forfatter, citeret SLETTET svar l�
 
   assert.equal(r2.quoted.id, "r1");
   assert.equal(r2.quoted.removed, false);
+  assert.equal(r2.quoted.target, "reply");
   assert.equal(r2.quoted.excerpt, "Original point");
   assert.equal(r2.quoted.author.username, "alice");
 
   // r3 (den citerede kilde) er soft-deleted og er derfor slet ikke i replies-listen —
   // klienten kan ikke selv rekonstruere citatet, derfor SKAL backend shape det.
   assert.equal(result.body.replies.some((r) => r.id === "r3"), false);
-  assert.deepEqual(r4.quoted, { id: "r3", removed: true });
+  assert.deepEqual(r4.quoted, { id: "r3", removed: true, target: "reply" });
   assert.equal(JSON.stringify(r4).includes("Secret"), false);
+});
+
+// #5386 · citér aabningsindlaegget: samme uddrag+forfatter-shape som et
+// svar-citat, men target: "post" (frontend hopper til traadens top, ikke til
+// et svar) — og kan ALDRIG blive "removed": er post.deleted_at sat, 404'er
+// hele getForumPost-kaldet, før nogen replies overhovedet shapes (se testen
+// "getForumPost: 404 på ukendt og på slettet opslag" ovenfor).
+test("getForumPost: citat af aabningsindlaegget shapes med target 'post', svar-citater target 'reply'", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", user_id: "admin1", team_id: null, body: "Opening statement" })],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u1", team_id: "t1", body: "Original point", deleted_at: null, quoted_reply_id: null, quotes_post: false },
+      { id: "r2", seq: 2, created_at: "2026-08-01T12:00:00Z", post_id: "p1", user_id: "u2", team_id: "t2", body: "Quoting the opener", deleted_at: null, quoted_reply_id: null, quotes_post: true },
+    ],
+  }));
+
+  const result = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  const [r1, r2] = ["r1", "r2"].map((id) => result.body.replies.find((r) => r.id === id));
+
+  assert.equal(r1.quoted, null);
+
+  assert.equal(r2.quoted.id, "p1");
+  assert.equal(r2.quoted.removed, false);
+  assert.equal(r2.quoted.target, "post");
+  assert.equal(r2.quoted.excerpt, "Opening statement");
+  assert.equal(r2.quoted.author.username, "dolmer");
 });
 
 // ── Opret opslag ────────────────────────────────────────────────────────────
@@ -819,6 +846,31 @@ test("createForumReply: quotedReplyId skal høre til samme tråd, ellers 400; el
   assert.equal(ok.quotedUserId, "u1");
   const insertedReply = fake.state.forum_replies.find((r) => r.body === "I agree");
   assert.equal(insertedReply.quoted_reply_id, "r1");
+});
+
+// #5386 · citér aabningsindlaegget: quoteOp erstatter quotedReplyId — mutex
+// haandhaevet (begge sat = 400, intet svar indsat), og INGEN quotedUserId
+// (ingen ekstra notifikation — trådejeren får allerede forum_thread_reply
+// via routens almindelige svar-notifikation, se routes/api.js).
+test("createForumReply: quoteOp citerer aabningsindlaegget, mutex med quotedReplyId (400), ingen quotedUserId", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", user_id: "u1" })],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u1", team_id: "t1", body: "Original", deleted_at: null, quoted_reply_id: null },
+    ],
+  }));
+
+  const both = await createForumReply({ supabase: fake, postId: "p1", userId: "u2", body: "Hi", quotedReplyId: "r1", quoteOp: true });
+  assert.equal(both.status, 400);
+  assert.equal(both.body.errorCode, "forum_invalid_quote");
+  assert.equal(fake.state.forum_replies.length, 1, "det afviste dobbelt-citat må ikke have indsat et svar");
+
+  const ok = await createForumReply({ supabase: fake, postId: "p1", userId: "u2", body: "Agreed with the opener", quoteOp: true });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.quotedUserId, null, "ingen ekstra notifikation — trådejeren får allerede forum_thread_reply");
+  const inserted = fake.state.forum_replies.find((r) => r.body === "Agreed with the opener");
+  assert.equal(inserted.quotes_post, true);
+  assert.equal(inserted.quoted_reply_id, null);
 });
 
 // ── Poll-afstemning ─────────────────────────────────────────────────────────

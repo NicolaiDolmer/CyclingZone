@@ -248,7 +248,10 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
-import { applySeniorSquadFilter, SQUAD_CAPS } from "../lib/squads.js";
+// #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
+// af league_divisions og sæson-læsere af races i denne fil går gennem den
+// (forward-guard: lib/squadSeniorReaders.test.js).
+import { applySeniorSquadFilter, SQUAD_CAPS, withSeniorSquadScope } from "../lib/squads.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
@@ -4097,11 +4100,12 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     const demandForTargets = await loadTargetRaceDemands({ supabase, raceIds: targetRaceIds });
 
     // ── Sæson-kalender (genbrug buildCalendarModel) + fulde etape-profiler ─────
+    // #5517: seniorkalenderen — ungdomspuljer og ungdomsløb holdes ude (squads.withSeniorSquadScope).
     const [racesRes, divisionsRes] = await Promise.all([
-      supabase.from("races")
-        .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start")
-        .eq("season_id", season.id),
-      supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index"),
+      withSeniorSquadScope((senior) => senior(supabase.from("races")
+        .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start"))
+        .eq("season_id", season.id)),
+      withSeniorSquadScope((senior) => senior(supabase.from("league_divisions").select("id, tier, pool_index, label")).order("tier").order("pool_index")),
     ]);
     if (racesRes.error) throw new Error(`races (planner board): ${racesRes.error.message}`);
     if (divisionsRes.error) throw new Error(`league_divisions (planner board): ${divisionsRes.error.message}`);
@@ -4714,7 +4718,8 @@ router.get("/races/calendar", requireAuth, cached({
       // #2600: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er ikke en rigtig
       // spillesæson og skal aldrig tilbydes i kalenderens sæson-vælger.
       supabase.from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: true }),
-      supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index"),
+      // #5517: kun seniorernes divisions-træ (squads.withSeniorSquadScope).
+      withSeniorSquadScope((senior) => senior(supabase.from("league_divisions").select("id, tier, pool_index, label")).order("tier").order("pool_index")),
     ]);
     const { data: season, error: seasonErr } = seasonRes;
     if (seasonErr) throw new Error(`seasons (calendar): ${seasonErr.message}`);
@@ -4746,10 +4751,11 @@ router.get("/races/calendar", requireAuth, cached({
     // Bølge 2 — løbene og holdets entries afhænger begge KUN af season.id. Entry-loadet
     // ventede før på raceIds (og sendte dem som id-liste); joinet gør det unødvendigt.
     const [racesRes, teamEntryRows] = await Promise.all([
-      supabase
+      // #5517: seniorkalenderen — ungdomsløb holdes ude (squads.withSeniorSquadScope).
+      withSeniorSquadScope((senior) => senior(supabase
         .from("races")
-        .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start")
-        .eq("season_id", season.id),
+        .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start"))
+        .eq("season_id", season.id)),
       fetchTeamSeasonRaceEntries(supabase, req.team?.id, season.id),
     ]);
     if (racesRes.error) throw new Error(`races (calendar): ${racesRes.error.message}`);
@@ -4853,10 +4859,11 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
     }
     const readOnly = activeSeasonRow != null && season.number !== activeSeasonRow.number;
 
-    const { data: raceRows, error: racesErr } = await supabase
+    // #5517: seniorløbene (squads.withSeniorSquadScope).
+    const { data: raceRows, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id")
-      .eq("season_id", season.id);
+      .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id"))
+      .eq("season_id", season.id));
     if (racesErr) throw new Error(`races (selection/season): ${racesErr.message}`);
     const allRaceIds = (raceRows || []).map((r) => r.id);
 
@@ -4998,12 +5005,15 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       .from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
     if (!season) return res.json({ enabled: true, season: null, columns: [], timeline: null, race_v3_enabled: raceV3Enabled });
 
-    const { data: races } = await supabase
+    // #5517: seniorløbene (squads.withSeniorSquadScope).
+    // CodeRabbit (#5517): en læsefejl skal være en 500, ikke en tom matrix.
+    const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
       .from("races")
       // #4701: scheduled_for skal med — getSelectionContext (kaldt pr. kolonne nedenfor)
       // vurderer skadesstatus mod LØBETS startdato, ikke "nu".
-      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text), scheduled_for")
-      .eq("season_id", season.id);
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text), scheduled_for"))
+      .eq("season_id", season.id));
+    if (racesErr) throw new Error(`races (distribution): ${racesErr.message}`);
     const raceIds = (races || []).map((r) => r.id);
     // #1984/#2195 rod-årsag: load MED game_day, så binding-vinduet regnes i in-game-dag-rum —
     // SAMME nøgle-rum som save-guarden (loadTeamBindingContext). Loades det uden game_day (som før),
@@ -5227,8 +5237,10 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
     if (!enabled) return res.json({ enabled: false });
 
     // Pulje-træ til vælgeren (tier → puljer), genbrugt fra standings-vokabularet.
-    const { data: pools } = await supabase
-      .from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index");
+    // #5517: kun seniorpuljerne (squads.withSeniorSquadScope).
+    const { data: pools, error: poolsErr } = await withSeniorSquadScope((senior) => senior(supabase
+      .from("league_divisions").select("id, tier, pool_index, label")).order("tier").order("pool_index"));
+    if (poolsErr) throw new Error(`league_divisions (distribution/browse): ${poolsErr.message}`);
     const poolList = pools || [];
 
     const { data: season } = await supabase
@@ -5241,10 +5253,12 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
     const pool = poolList.find((p) => String(p.id) === String(requestedPool)) || null;
     if (!pool) return res.json({ enabled: true, season: { id: season.id, number: season.number }, pools: poolList, pool: null, ownPoolId: req.team?.league_division_id ?? null, columns: [], timeline: null });
 
-    const { data: races } = await supabase
+    // #5517: seniorløbene (squads.withSeniorSquadScope).
+    const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text)")
-      .eq("season_id", season.id);
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text)"))
+      .eq("season_id", season.id));
+    if (racesErr) throw new Error(`races (distribution/browse): ${racesErr.message}`);
     const raceIds = (races || []).map((r) => r.id);
     const schedRows = await fetchAllScheduleRows(supabase, raceIds);
     const schedByRace = new Map();
@@ -6175,10 +6189,12 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const { data: season } = await supabase.from("seasons").select("id, start_date").eq("status", "active").maybeSingle();
     if (!season) return res.status(409).json({ error: "no_active_season" });
 
-    const { data: races } = await supabase
+    // #5517: seniorløbene (squads.withSeniorSquadScope).
+    const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
       // #4701: scheduled_for skal med — injuredIds-kandidatpoolen nedenfor vurderes mod
       // regenerings-DAGENS løbsdato, ikke "nu" (raceSelectionReferenceDateStr).
-      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id, scheduled_for").eq("season_id", season.id);
+      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id, scheduled_for")).eq("season_id", season.id));
+    if (racesErr) throw new Error(`races (distribution/regenerate): ${racesErr.message}`);
     const raceIds = (races || []).map((r) => r.id);
     // #1984/#2195: load MED game_day, så autofill-bindingen regnes i in-game-dag-rum — SAMME
     // nøgle-rum som save-guarden. Uden game_day (CET-ordinal) ville autofill nægte at placere en
@@ -6336,8 +6352,9 @@ router.get("/races/distribution/clear-preview", requireAuth, async (req, res) =>
     if (seasonErr) throw new Error(`clear-preview seasons: ${seasonErr.message}`);
     if (!season) return res.json({ ok: true, races: [] });
 
-    const { data: races, error: racesErr } = await supabase
-      .from("races").select("id, name, stages_completed, status, league_division_id").eq("season_id", season.id);
+    // #5517: seniorløbene (squads.withSeniorSquadScope).
+    const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
+      .from("races").select("id, name, stages_completed, status, league_division_id")).eq("season_id", season.id));
     if (racesErr) throw new Error(`clear-preview races: ${racesErr.message}`);
 
     const cols = (races || []).filter((r) =>
@@ -6386,8 +6403,10 @@ router.post("/races/distribution/clear", requireAuth, marketWriteLimiter, async 
     const { data: season } = await supabase.from("seasons").select("id, start_date").eq("status", "active").maybeSingle();
     if (!season) return res.status(409).json({ error: "no_active_season" });
 
-    const { data: races } = await supabase
-      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id").eq("season_id", season.id);
+    // #5517: seniorløbene (squads.withSeniorSquadScope).
+    const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
+      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id")).eq("season_id", season.id));
+    if (racesErr) throw new Error(`races (distribution/clear): ${racesErr.message}`);
 
     let cols;
     if (scope === "all") {
@@ -6470,9 +6489,11 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
     let suitabilities = {};
     let upcoming = [];
     if (season) {
-      const { data: races } = await supabase
-        .from("races").select("id, name, race_class, stages, stages_completed, status, league_division_id")
-        .eq("season_id", season.id);
+      // #5517: seniorløbene (squads.withSeniorSquadScope).
+      const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
+        .from("races").select("id, name, race_class, stages, stages_completed, status, league_division_id"))
+        .eq("season_id", season.id));
+      if (racesErr) throw new Error(`races (strategy): ${racesErr.message}`);
       const myRaces = (races || []).filter((r) =>
         teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
       const raceIds = myRaces.map((r) => r.id);
@@ -6547,7 +6568,11 @@ router.put("/races/strategy", requireAuth, marketWriteLimiter, async (req, res) 
     const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
     let raceIds = new Set();
     if (season) {
-      const { data: races } = await supabase.from("races").select("id, league_division_id").eq("season_id", season.id);
+      // #5517: seniorløbene (squads.withSeniorSquadScope).
+      // CodeRabbit (#5517): en tavst tom liste her ville filtrere ALLE mål-løb ud af den
+      // gemte strategi — en læsefejl skal afbryde gemningen, ikke tømme den.
+      const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase.from("races").select("id, league_division_id")).eq("season_id", season.id));
+      if (racesErr) throw new Error(`races (strategy save): ${racesErr.message}`);
       raceIds = new Set((races || [])
         .filter((r) => teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }))
         .map((r) => r.id));
@@ -6594,8 +6619,10 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
     const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
     if (!season) return res.json({ ok: true, diff: {} });
 
-    const { data: races } = await supabase
-      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id").eq("season_id", season.id);
+    // #5517: seniorløbene (squads.withSeniorSquadScope).
+    const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
+      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id")).eq("season_id", season.id));
+    if (racesErr) throw new Error(`races (strategy preview): ${racesErr.message}`);
     const myRaces = (races || []).filter((r) =>
       r.status === "scheduled" &&
       teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
@@ -11537,6 +11564,8 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
       return res.status(400).json({ error: "Kun aktive sæsoner kan afsluttes" });
     }
 
+    // squad-scope-ok: sæson-afslutningen skal se ALLE trupper — et afventende
+    // ungdomsresultat skal blokere præcis som et seniorresultat (#5517).
     const { data: seasonRaces, error: racesError } = await supabase
       .from("races")
       .select("id")
@@ -11815,8 +11844,9 @@ router.get("/admin/seasons/:id/generate-calendar/preview", requireAdmin, async (
     if (seasonError) return res.status(500).json({ error: seasonError.message });
     if (!season) return res.status(404).json({ error: "Season not found" });
 
-    const { data: pools, error: poolErr } = await supabase
-      .from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index");
+    // #5517: seniorkalenderens puljer (squads.withSeniorSquadScope).
+    const { data: pools, error: poolErr } = await withSeniorSquadScope((senior) => senior(supabase
+      .from("league_divisions").select("id, tier, pool_index, label")).order("tier").order("pool_index"));
     if (poolErr) return res.status(500).json({ error: poolErr.message });
 
     const { data: teams, error: teamErr } = await supabase
@@ -12642,11 +12672,13 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
     let replacedCount = 0;
     if (replace) {
       // Hent alle eksisterende pool-bound races for sæsonen + deres race_results-status.
-      const { data: existingRaces, error: existingRacesError } = await supabase
+      // #5517: kun SENIORløbene — værktøjet erstatter seniorkalenderen (kataloget ovenfor
+      // er senior-filtreret), og "erstat" må aldrig kunne slette ungdomsløb.
+      const { data: existingRaces, error: existingRacesError } = await withSeniorSquadScope((senior) => senior(supabase
         .from("races")
-        .select("id, name")
+        .select("id, name"))
         .eq("season_id", seasonId)
-        .not("pool_race_id", "is", null);
+        .not("pool_race_id", "is", null));
       if (existingRacesError) return res.status(500).json({ error: existingRacesError.message });
 
       const existingRaceIds = (existingRaces || []).map((r) => r.id);
@@ -12683,11 +12715,12 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
       }
     }
 
-    const { data: existing, error: existingError } = await supabase
+    // #5517: dubletkontrollen gælder seniorkalenderen (squads.withSeniorSquadScope).
+    const { data: existing, error: existingError } = await withSeniorSquadScope((senior) => senior(supabase
       .from("races")
-      .select("pool_race_id")
+      .select("pool_race_id"))
       .eq("season_id", seasonId)
-      .not("pool_race_id", "is", null);
+      .not("pool_race_id", "is", null));
     if (existingError) return res.status(500).json({ error: existingError.message });
     const existingPoolIds = new Set((existing || []).map((r) => r.pool_race_id));
 
@@ -12788,19 +12821,22 @@ router.get("/races", requireAuth, cached({ namespace: "races", ttlMs: CACHE_TTL.
       }
     }
 
-    let query = supabase
-      .from("races")
-      .select(
-        "id, name, race_type, race_class, stages, status, edition_year, pool_race:pool_race_id(date_text), season:season_id(id, number, status)"
-      )
-      .order("name", { ascending: true });
+    // #5517: løbslisten er seniorernes — ungdomsløb får deres egen flade
+    // ("Youth races", spec §7), ikke en plads i denne liste (squads.withSeniorSquadScope).
+    const { data, error } = await withSeniorSquadScope((senior) => {
+      let query = senior(supabase
+        .from("races")
+        .select(
+          "id, name, race_type, race_class, stages, status, edition_year, pool_race:pool_race_id(date_text), season:season_id(id, number, status)"
+        ))
+        .order("name", { ascending: true });
 
-    if (seasonId) query = query.eq("season_id", seasonId);
-    if (raceClass) query = query.eq("race_class", raceClass);
-    if (status) query = query.eq("status", status);
-    if (q) query = query.ilike("name", `%${q}%`);
-
-    const { data, error } = await query;
+      if (seasonId) query = query.eq("season_id", seasonId);
+      if (raceClass) query = query.eq("race_class", raceClass);
+      if (status) query = query.eq("status", status);
+      if (q) query = query.ilike("name", `%${q}%`);
+      return query;
+    });
     if (error) return res.status(500).json({ error: error.message });
     res.json(data || []);
   } catch (e) {
@@ -12834,15 +12870,21 @@ router.get("/dashboard/recent-results", requireAuth, cached({
       .from("seasons").select("id").eq("status", "active").maybeSingle();
     if (!season) return res.json({ races: [] });
 
-    let racesQuery = supabase
-      .from("races")
-      .select("id, name, race_type, stages")
-      .eq("season_id", season.id)
-      .eq("status", "completed");
-    if (req.team.league_division_id != null) {
-      racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
-    }
-    const { data: races } = await racesQuery;
+    // #5517: seniorløbene (squads.withSeniorSquadScope) — også når holdet endnu ikke
+    // har en pulje og filteret nedenfor derfor ikke sættes.
+    // Fejlhåndteringen er uændret fra før #5517: en læsefejl giver et tomt kort, ikke en
+    // 500. Scopet flyttede kun .from( ind i højresiden, så lint:supabase-error nu ser den.
+    const { data: races } = await withSeniorSquadScope((senior) => {
+      let racesQuery = senior(supabase
+        .from("races")
+        .select("id, name, race_type, stages"))
+        .eq("season_id", season.id)
+        .eq("status", "completed");
+      if (req.team.league_division_id != null) {
+        racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
+      }
+      return racesQuery;
+    }); // best-effort: dashboard-kortet falder tilbage til tomt (se ovenfor)
     if (!races?.length) return res.json({ races: [] });
 
     const raceIds = races.map(r => r.id);
@@ -12995,15 +13037,18 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
 
     // Afsluttede løb i managerens egen pulje — samme filter som recent-results
     // (#2288 G): uden det ville "seneste løb" kunne pege ind i en anden division.
-    let racesQuery = supabase
-      .from("races")
-      .select("id, name, race_type, stages")
-      .eq("season_id", season.id)
-      .eq("status", "completed");
-    if (req.team.league_division_id != null) {
-      racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
-    }
-    const { data: races, error: racesError } = await racesQuery;
+    // #5517: seniorløbene (squads.withSeniorSquadScope), samme scope som recent-results.
+    const { data: races, error: racesError } = await withSeniorSquadScope((senior) => {
+      let racesQuery = senior(supabase
+        .from("races")
+        .select("id, name, race_type, stages"))
+        .eq("season_id", season.id)
+        .eq("status", "completed");
+      if (req.team.league_division_id != null) {
+        racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
+      }
+      return racesQuery;
+    });
     if (racesError) throw racesError;
     if (!races?.length) return res.json({ race: null });
     const raceMetaById = new Map(races.map((r) => [r.id, r]));
@@ -14215,11 +14260,14 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
       .filter((s) => s.status !== "ok");
 
     // Faktisk kalender-tjek mod aktiv sæson
+    // #5517: "har sæsonen en kalender" = har SENIORkalenderen løb. En sæson med kun
+    // ungdomsløb må ikke se klar ud (squads.withSeniorSquadScope).
     let activeSeasonRacesCount = 0;
     if (activeSeason?.id) {
-      const { count } = await supabase
-        .from("races").select("id", { count: "exact", head: true })
-        .eq("season_id", activeSeason.id);
+      const { count, error: countErr } = await withSeniorSquadScope((senior) => senior(supabase
+        .from("races").select("id", { count: "exact", head: true }))
+        .eq("season_id", activeSeason.id));
+      if (countErr) throw new Error(`races (deadline-readiness, active): ${countErr.message}`);
       activeSeasonRacesCount = count || 0;
     }
 
@@ -14227,9 +14275,10 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
     const upcomingSeason = (nextSeason || []).find((s) => s.status !== "active" && s.status !== "completed");
     let upcomingSeasonRacesCount = 0;
     if (upcomingSeason?.id) {
-      const { count } = await supabase
-        .from("races").select("id", { count: "exact", head: true })
-        .eq("season_id", upcomingSeason.id);
+      const { count, error: countErr } = await withSeniorSquadScope((senior) => senior(supabase
+        .from("races").select("id", { count: "exact", head: true }))
+        .eq("season_id", upcomingSeason.id));
+      if (countErr) throw new Error(`races (deadline-readiness, upcoming): ${countErr.message}`);
       upcomingSeasonRacesCount = count || 0;
     }
 
@@ -15631,7 +15680,9 @@ router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => 
 
 // POST /api/forum/posts/:id/replies — nyt svar i tråden. #3517: body kan
 // bære quoted_reply_id (citér et andet svar i SAMME tråd — forum.js afviser
-// tråd-fremmede id'er med 400).
+// tråd-fremmede id'er med 400). #5386: body kan i stedet bære quote_op:true
+// (citér traadens eget aabningsindlaeg — mutex med quoted_reply_id, forum.js
+// afviser begge sat samtidig).
 router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (req, res) => {
   try {
     const result = await createForumReply({
@@ -15642,6 +15693,9 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
       body: req.body?.body,
       images: req.body?.images ?? null,
       quotedReplyId: req.body?.quoted_reply_id || null,
+      // #5386 (CodeRabbit): strict === true, ikke Boolean(...) — en streng som
+      // "false"/"0" er truthy og ville ellers stille slaa citat-af-OP til.
+      quoteOp: req.body?.quote_op === true,
     });
     if (result.status === 200) {
       const replyBody = typeof req.body?.body === "string" ? req.body.body.trim() : "";

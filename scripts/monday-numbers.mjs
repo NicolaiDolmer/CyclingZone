@@ -55,6 +55,13 @@ const DISCORD_HOSTS = ["discord.com", "discordapp.com"];
 // "google.com.evil.com" eller "google.evil.com" matcher.
 const GOOGLE_SEARCH_PATTERN = /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/;
 const SEARCH_HOSTS = ["bing.com", "duckduckgo.com", "ecosia.org", "yahoo.com", "search.brave.com"];
+// Vores eget site: app-domaenet, det gamle domaene (redirecter) og marketing-
+// origin bag rewrites. En referrer herfra er aldrig en kanal (#5310).
+const OWN_SITE_HOSTS = ["cyclingzone.org", "cycling-zone.vercel.app", "cycling-zone-marketing.vercel.app"];
+// #5310: siden marketing-forsiden overtog "/" (14/9) fangede SPA'en foerst
+// first-touch efter klikket, saa UTM og ekstern referrer var vaek, og referreren
+// blev vores egen side. Samme etiket som backend/lib/attributionDashboard.js.
+export const LOST_IN_MARKETING = "ukendt (tabt i marketing)";
 
 function parseArgs(argv) {
   const args = {};
@@ -145,11 +152,28 @@ function hostMatches(probe, suffix) {
   return probe === suffix || probe.endsWith(`.${suffix}`);
 }
 
+// utm_source fra en referrers query-streng, eller "" naar der ingen er.
+function utmSourceFromReferrer(referrer) {
+  try {
+    return (new URL(String(referrer).trim()).searchParams.get("utm_source") || "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 // Kanal-gruppering. Rangorden: eksplicit utm_source foerst (det er VORES egen
 // maerkning), derefter referrer-vaertsnavn. Definitionerne staar i GROWTH_STACK §2.
+// Laese-side-fallback (#5310, ingen DB-skriv): er utm_source NULL og referreren
+// vores eget site, udledes utm_source af referrerens query; uden UTM er kanalen
+// LOST_IN_MARKETING, aldrig "self-referral".
 export function classifyChannel(row) {
-  const source = (row.utm_source || "").trim().toLowerCase();
+  let source = (row.utm_source || "").trim().toLowerCase();
   const host = hostOf(row.referrer);
+  const ownSiteReferrer = Boolean(host) && OWN_SITE_HOSTS.some((h) => hostMatches(host, h));
+  if (!source && ownSiteReferrer) {
+    source = utmSourceFromReferrer(row.referrer);
+    if (!source) return LOST_IN_MARKETING;
+  }
   const probe = source || host || "";
   if (!probe) return "(direct / ukendt)";
   if (AI_ASSISTANT_HOSTS.some((h) => hostMatches(probe, h))) return "AI assistant";
@@ -158,7 +182,7 @@ export function classifyChannel(row) {
   if (hostMatches(probe, "hattrick.org") || source === "hattrick") return "hattrick";
   if (DISCORD_HOSTS.some((h) => hostMatches(probe, h)) || source === "discord") return "discord";
   if (SEARCH_HOSTS.some((h) => hostMatches(probe, h)) || GOOGLE_SEARCH_PATTERN.test(probe)) return "soegning (organisk)";
-  if (hostMatches(probe, "cyclingzone.org") || hostMatches(probe, "cycling-zone.vercel.app")) return "self-referral";
+  if (OWN_SITE_HOSTS.some((h) => hostMatches(probe, h))) return "self-referral";
   return probe;
 }
 
@@ -345,6 +369,12 @@ async function main() {
     .map(([channel, total]) => ({ channel, last_30d: channel30.get(channel) ?? 0, total }))
     .sort((a, b) => b.total - a.total || a.channel.localeCompare(b.channel));
   out.attribution_coverage_30d = out.signups_30d ? (channel30.size ? [...channel30.values()].reduce((a, b) => a + b, 0) : 0) : 0;
+  const lostInMarketing = channelTotal.get(LOST_IN_MARKETING) ?? 0;
+  if (lostInMarketing) {
+    notes.push(
+      `${lostInMarketing} signups har vores egen side som referrer uden UTM: kanalen blev tabt paa marketing-siden (maalebrud 14/9, #5310, GROWTH_STACK §3.5). Laes dem som ukendt, aldrig som direct.`,
+    );
+  }
 
   // --- 7. Sovende med marketing-mail-samtykke (win-back-segmentet, GROWTH_STACK §8).
   const cutDormant = new Date(daysAgo(30)).getTime();
