@@ -87,12 +87,20 @@ async function postOnce({ webhookUrl, payload, fetchFn, timeoutMs }) {
     };
   }
   if (res.ok) return { ok: true, status: res.status };
-  const text = await res.text().catch(() => "");
+  let bodyTimedOut = false;
+  const text = await res.text().catch(() => {
+    // best-effort: body'en er kun til fejlteksten. Men staar den stille til loftet
+    // rammer, er endpointet lige saa haengende som ved et udeblevet svar (#3624):
+    // markeres som timeout, saa kalderen heller ikke her proever igen inline.
+    bodyTimedOut = signal.aborted;
+    return "";
+  });
   return {
     ok: false,
     status: res.status,
-    errorText: text.slice(0, 300),
+    errorText: bodyTimedOut ? `svar-body timeout efter ${timeoutMs} ms` : text.slice(0, 300),
     retryAfterMs: res.status === 429 ? parseRetryAfterMs(res, text) : null,
+    timedOut: bodyTimedOut,
   };
 }
 

@@ -251,28 +251,77 @@ test("attemptWebhookDelivery (#3624) — timeout efter et 5xx stopper retry-loop
   assert.equal(n, 2);
 });
 
-test("attemptWebhookDelivery (#3624) — ogsaa en haengende svar-body afbrydes af loftet", async () => {
-  const fetchFn = (_url, opts) => Promise.resolve({
-    ok: false,
-    status: 502,
-    headers: { get: () => null },
-    text: () => new Promise((_, reject) => {
-      opts.signal.addEventListener("abort", () => reject(opts.signal.reason), { once: true });
-    }),
-  });
+test("attemptWebhookDelivery (#3624) — haengende svar-body efter fejl-status: timeout, eet POST", async () => {
+  let posts = 0;
+  const fetchFn = (_url, opts) => {
+    posts++;
+    return Promise.resolve({
+      ok: false,
+      status: 502,
+      headers: { get: () => null },
+      text: () => new Promise((_, reject) => {
+        opts.signal.addEventListener("abort", () => reject(opts.signal.reason), { once: true });
+      }),
+    });
+  };
   const started = Date.now();
   const result = await attemptWebhookDelivery({
     webhookUrl: "https://discord.com/api/webhooks/1/abc",
     payload: {},
     fetchFn,
     sleepFn: noSleep,
-    maxAttempts: 1,
+    maxAttempts: 4,
     timeoutMs: 30,
   });
   assert.ok(Date.now() - started < 2000);
   assert.equal(result.ok, false);
   assert.equal(result.status, 502);
-  assert.equal(result.failure.reason, "discord-5xx");
+  assert.deepEqual(result.failure, { kind: "retryable", reason: "timeout", deferred: true });
+  assert.equal(result.attempts, 1);
+  assert.equal(posts, 1, "ingen inline-retry selvom der var forsoeg tilbage");
+});
+
+test("attemptWebhookDelivery (#3624) — en body der fejler UDEN timeout er stadig en almindelig 5xx-retry", async () => {
+  let posts = 0;
+  const fetchFn = () => {
+    posts++;
+    if (posts === 2) return Promise.resolve({ ok: true, status: 204 });
+    return Promise.resolve({
+      ok: false,
+      status: 502,
+      headers: { get: () => null },
+      text: () => Promise.reject(new Error("socket hang up")),
+    });
+  };
+  const result = await attemptWebhookDelivery({
+    webhookUrl: "https://discord.com/api/webhooks/1/abc",
+    payload: {},
+    fetchFn,
+    sleepFn: noSleep,
+    timeoutMs: 1000,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.attempts, 2);
+});
+
+test("attemptWebhookDelivery (#3624) — permanent 4xx forbliver permanent, ogsaa med haengende body", async () => {
+  const fetchFn = (_url, opts) => Promise.resolve({
+    ok: false,
+    status: 404,
+    headers: { get: () => null },
+    text: () => new Promise((_, reject) => {
+      opts.signal.addEventListener("abort", () => reject(opts.signal.reason), { once: true });
+    }),
+  });
+  const result = await attemptWebhookDelivery({
+    webhookUrl: "https://discord.com/api/webhooks/1/deleted",
+    payload: {},
+    fetchFn,
+    sleepFn: noSleep,
+    timeoutMs: 30,
+  });
+  assert.equal(result.failure.kind, "permanent");
+  assert.equal(result.attempts, 1);
 });
 
 test("attemptWebhookDelivery (#3624) — rigtig fetch mod en server der aldrig svarer", async () => {
