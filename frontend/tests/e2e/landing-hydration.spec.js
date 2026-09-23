@@ -22,7 +22,7 @@ import { installNetworkMocks, stabilizePage } from "./fixtures.js";
 // App.jsx) → dansk "Spring til indhold" mod engelsk "Skip to content" → #418,
 // og React genopbyggede hele landing-træet på klienten. Nu venter skiftet på et
 // signal fra selve boundary'en (lib/prerenderHydration.ts). Den anden test
-// nedenfor fjerner requestIdleCallback, så Safari-stien også køres i Chromium.
+// nedenfor gør racet deterministisk, så det ikke kun fanges under CI-belastning.
 
 const HYDRATION_ERROR = /Minified React error #(418|422|423|425)|Hydration failed|hydrat|did not match|server[- ]rendered/i;
 
@@ -92,15 +92,20 @@ test("prerendered landing hydrates cleanly for a Danish visitor (no #418/#422/#4
   await expectCleanDanishHydration(page);
 });
 
-// #4925: Safari/WebKit har ingen requestIdleCallback. Uden den faldt det gamle
-// sprogskifte tilbage til setTimeout(0), som kunne lande før rute-boundary'en
-// var hydreret. Denne variant tvinger den sti i ALLE tre projekter, så den ikke
-// kun er dækket af den ene webkit-shard.
-test("prerendered landing hydrates cleanly for a Danish visitor without requestIdleCallback (Safari path)", async ({
+// #4925: værste tilfælde, deterministisk. Det gamle sprogskifte ventede på
+// requestIdleCallback (Safari: setTimeout(0)) og lod browserens scheduler
+// afgøre om rute-boundary'en nåede at hydrere først. Her fyrer "idle" MED DET
+// SAMME, så et skifte der stoler på tid, lander før boundary'en er hydreret —
+// i alle tre projekter, hver gang. Kun et skifte der venter på hydrations-
+// signalet fra selve boundary'en (lib/prerenderHydration.ts) består.
+test("prerendered landing hydrates cleanly for a Danish visitor even when idle fires immediately", async ({
   page,
 }) => {
   await page.addInitScript(() => {
-    window.requestIdleCallback = undefined;
+    window.requestIdleCallback = (callback) => {
+      callback({ didTimeout: false, timeRemaining: () => 50 });
+      return 0;
+    };
   });
   await expectCleanDanishHydration(page);
 });

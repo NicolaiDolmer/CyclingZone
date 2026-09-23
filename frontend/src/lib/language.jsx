@@ -48,6 +48,8 @@ import { useUserProfile } from "./userProfile.jsx";
 // #4733: SUPPORTED/DEFAULT afledt af den ene sprog-konfigurationsfil i stedet
 // for hardcodet her — se i18n/languages.js.
 import { SUPPORTED_LANGS, DEFAULT_LANG } from "../i18n/languages.js";
+// #4925: det deferrede sprogskifte venter på at rute-boundary'en er hydreret.
+import { whenPrerenderHydrated } from "./prerenderHydration.ts";
 
 const STORAGE_KEY = "cz_lang";
 const SUPPORTED = SUPPORTED_LANGS;
@@ -147,15 +149,35 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
   // startTransition virkede beviseligt IKKE på React 18, jf. noten ovenfor),
   // så requestIdleCallback-udsættelsen her er fortsat det bærende værn.
   // FJERN DEN IKKE på baggrund af denne kommentar alene.
+  //
+  // #4925 (rod-årsag, målt med ikke-minificeret React på mobile-webkit): racet
+  // var IKKE lukket. Denne effekt kører når SKALLEN committer, men rute-
+  // indholdet (LandingPage i route-Suspense'en i App.jsx) hydreres i et senere
+  // pass. WebKit/Safari har ingen requestIdleCallback, så setTimeout(0)-
+  // fallback'en kunne skifte til dansk før LandingPage var hydreret → "Spring
+  // til indhold" mod server-HTML'ens "Skip to content" → #418, og React
+  // genopbyggede landing på klienten. Intermitterende og belastningsafhængigt,
+  // og det ramte også rigtige Safari-brugere med dansk som sprog.
+  //
+  // Fix: skiftet venter nu på et SIGNAL fra selve boundary'en
+  // (PrerenderHydrationMarker, lib/prerenderHydration.ts), ikke på tid. Idle-
+  // udsættelsen bevares OVENI, så skiftet stadig holdes væk fra den første
+  // paint — men den er ikke længere det der gør hydrationen ren.
   useEffect(() => {
-    if (deferredLanguage && i18n.language !== deferredLanguage) {
-      const ric = typeof window.requestIdleCallback === "function"
-        ? window.requestIdleCallback
-        : (cb) => setTimeout(cb, 0);
+    if (!deferredLanguage || i18n.language === deferredLanguage) return undefined;
+    let cancelled = false;
+    const ric = typeof window.requestIdleCallback === "function"
+      ? window.requestIdleCallback
+      : (cb) => setTimeout(cb, 0);
+    const unsubscribe = whenPrerenderHydrated(() => {
       ric(() => {
-        i18n.changeLanguage(deferredLanguage);
+        if (!cancelled) i18n.changeLanguage(deferredLanguage);
       });
-    }
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bevidst engangs-hint fra boot; må ikke genkøre ved sprogskift (se #2045-noten nedenfor)
   }, []);
 
