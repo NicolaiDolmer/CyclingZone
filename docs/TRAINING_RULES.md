@@ -678,6 +678,8 @@ gren slettes først den dag flaget går til `on`.
 
 Løbsdagens rytme i rigtig tid (antal pr. kalenderdag, klokkeslæt, hvornår tick'et lukker) · hvad der kan nå sæson 4 · om en løbsdag med løb også får en score på samme skala · off-season-hullet mellem to sæsoner · økonomi pr. kalenderdag mod udvikling pr. løbsdag · sweep-kapacitet (ca. 3x writes pr. døgn) · ops-vagter kalibreret pr. kalenderdag · skadesvarighed i løbsdage eller kalenderdage · historikkens akse · rytter solgt mellem divisioner midt i sæsonen · Grand Tour-hviledage · hvad der sker med eksisterende `training_day_runs` uden `game_day`.
 
+**#4848 (B5) har givet tre af punkterne et defineret svar** — off-season-hullet, ops-vagterne og peak-plannerens konsistens-signal — og dokumenteret økonomi-aksens status quo. Se §13.4. Økonomi-aksen er stadig **åben for ejeren**: status quo er beskrevet, ikke valgt.
+
 ### 13.3 Ejerens beslutninger 15/9 (design-session, 8 kort ét ad gangen; låste, genåbn ikke)
 
 Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 15/9](https://github.com/NicolaiDolmer/CyclingZone/issues/4850)). Ændrer §13's beslutning 1-2 på disse punkter:
@@ -734,7 +736,22 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off e
 | Manager-bonussen (`bonusMult` 1,25) + `bonus_applied` **slettet** fra kode og skema (B3) | **mangler** — neutraliseret på løbsdags-stien, men lever uændret på den gamle sti, så flag off er bit-identisk. Ryddes ved cutover | `dailyTraining.js:16`, `dailyTrainingEngine.js` |
 | Skadesvarighed i løbsdage (beslutning 7) | **bygget bag flag**, PR #5465 afventer ejerens merge. Begge skrivere bruger sæsonaksen; ukendt akse beholder kalenderfallback. En skade hen over sæsonslut bruger den konservative datofallback og genbruger aldrig en gammel akse | `injuryRaceDays.js`, `dailyTrainingEngine.js`, `raceRunner.js` |
 | Program pr. løbsdag, 7 × 5 celler (beslutning 8) | **mangler** | `training_week_plans` |
-| Ops-vagter + peak-plannerens konsistens-signal rekalibreret (B5) | **mangler** | `trainingSlotHealth.js`, `racePeakPlans.js` |
+| Peak-plannerens konsistens-signal tæller datoer, ikke løbsdags-rækker (B5, gate G8) | **bygget** (#4848) — se "B5" nedenfor | `racePeakPlans.js` (`summarizeLeadupTraining`) |
+| Trænings-slot-vagtens spring-gate målt pr. løbsdag (B5, gate G9) | **bygget** (#4848) — se "B5" nedenfor | `trainingSlotHealth.js`, `trainingSlotHealthWatch.js` |
+| Off-season-hullet: defineret, logget adfærd i begge sweeps (B5) | **bygget** (#4848) — se "B5" nedenfor | `trainingSweep.js`, `trainingDayCloseTrigger.js` |
+| Økonomi-aksen (løn, akademi-indtag) | **status quo dokumenteret, ingen kodeændring — åben for ejeren** | se "Økonomi-aksen" nedenfor |
+
+**B5 (#4848): hvad de tre vagter gør på løbsdags-ticket.** Alle tre er bit-identiske med flaget off.
+
+- **Peak-plannerens konsistens (G8).** Optaktsvinduet er målt i kalenderdatoer, men løbsdags-ticket skriver én `training_day_runs`-række pr. løbsdag, altså flere pr. dato. `summarizeLeadupTraining` grupperer derfor rytterens entries pr. dato, og hver dato bidrager med *andelen* af datoens løbsdage han trænede. Flere runs samme dato kan dermed ikke mætte signalet og gøre peak-bonussen gratis. Fokus-fordelingen vægtes på samme måde. Én run pr. dato (flag off) giver præcis den gamle optælling, og det er låst af en test mod den gamle implementering.
+- **Trænings-slot-vagten (G9).** Andels-gaten måler en tilstand og er uændret. Spring-gaten var kalibreret mod én kalenderdags træning mellem to snapshots. På løbsdags-ticket tæller vagten de løbsdags-ticks der faktisk blev kørt i intervallet (medianen pr. hold, trupper talt én gang) og regner dem om til kalenderdags-ækvivalenter via G1-deleren i `trainingRaceDayTick.js`. Spring-loftet skaleres med det tal, dog aldrig under 1, så vagten aldrig bliver mere følsom end i dag. Der divideres bevidst **ikke** med det rå antal ticks: deleren holder sæsonens samlede udvikling uændret, så en normal løbsdato er omtrent én kalenderdags træning, og at dividere med antallet af løbsdage ville gøre vagten blind. Kan tick-tallet ikke læses, droppes spring-gaten for det snapshot (Sentry får besked) i stedet for at fyre en falsk alarm.
+- **Off-season.** Uden en aktiv sæson er en dato **ikke** en træningsdag: intet tick, og dermed heller ikke den restitution der kører i ticket (§5.1), og ingen historik. Rytternes trænings-tilstand står stille, til sæsonskiftets nulstilling (§5.2) og planernes overførsel i `seasonTransition.js` tager over. Begge sweeps logger tilstanden én gang pr. dansk dato og returnerer `offSeason: true`. Day-close-sweepen sætter ikke sin dags-claim, så en sæson der aktiveres senere samme aften stadig kører. Løbsdags-aksen springer ingen løbsdage over hen over hullet, fordi den starter forfra i den nye sæson, og `gameDaySpansByDivision` opfinder ingen træningsdage før sæsonens første løbsdato. Adfærden med en aktiv sæson (S3) er uændret.
+
+**Økonomi-aksen (status quo, ingen kodeændring, åben for ejeren).** Kun udviklingen flytter til løbsdagen. Økonomien bliver på kalenderen:
+
+- **Løn.** Standard-mode er `season_upfront` (`wageDeductionConfig.js`). I `daily`-mode trækkes lønnen én gang pr. hold pr. **dansk kalenderdato** (`wageDeductionSweep.js`, marker-tabellen `wage_daily_runs` med `UNIQUE(team_id, tick_date)`), og dagsraten deles med sæsonens kalender-løbsdage (`seasons.race_days_total`), ikke med antallet af løbsdage.
+- **Akademi-indtag.** Ét kuld pr. hold pr. **uge**, claimet på ugens søndag (`academyIntakePull.js`, `academy_intake_ticks`). Uafhængigt af løbsdags-aksen.
+- **Konsekvens.** G1-deleren holder sæsonens samlede udvikling uændret, så på sæson-niveau flytter forholdet "udvikling pr. lønkrone" sig ikke af akse-skiftet alene. Inden for sæsonen følger udviklingen løbsdagene og lønnen kalenderdatoen. Skal økonomien flytte med til løbsdagen, er det en selvstændig ejer-beslutning og et selvstændigt stykke arbejde. Dette afsnit beskriver status quo, det vælger den ikke.
 
 **Gate G6 (målt om 20/9, harness `backend/scripts/dev/trainingDayCloseCapacity4847.mjs`):** 362 hold × 5 løbsdage × 18 ryttere = 1.810 ticks, ca. 61.600 DB-kald, ca. 134.000 skrevne rækker. Sekventielt ved 12 ms latens pr. kald: ca. 152 s mod cron-intervallets 300 s (49 % margin) — **grøn**. Ved 25 ms latens er sweepen over intervallet; knappen er `TEAM_CONCURRENCY` i `trainingDayCloseTrigger.js`. Overlap-guarden gør en langsom dag sikker: den forsinker, den fordobler aldrig.
 
