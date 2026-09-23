@@ -59,12 +59,21 @@ export const MOOD_DOT = {
 // BoardPage. `goal.labelKey` (kontraktens navn) er fallback naar `type`
 // mangler eller ikke er en kendt type: resolveren tjekker selv `label_key`
 // naar det type-styrede spor ikke matcher.
+//
+// #5472 · boardRoom.js sender ALTID `labelKey: "goalType.<type>"` — den
+// generiske korttitel, ikke en maal-specifik label. Gives den til resolveren
+// som label_key, vinder den over typer resolveren først haandterer EFTER
+// label_key (min_national_riders blev altid "National core" uden tal og land).
+// Korttitlen er derfor kun fallback, naar resolveren intet bedre har end
+// DB'ens raa label.
 export function resolveGoalTitle(t, goal) {
-  return getBoardGoalLabel(t, {
+  const labelKey = goal.labelKey ?? null;
+  const isTypeFallback = typeof labelKey === "string" && labelKey.startsWith("goalType.");
+  const title = getBoardGoalLabel(t, {
     type: goal.type ?? null,
     target: goal.target ?? null,
     label: goal.label ?? "",
-    label_key: goal.labelKey ?? null,
+    label_key: isTypeFallback ? null : labelKey,
     cumulative: goal.cumulative ?? false,
     // #5472 · boardRoom.js spreder buildGoalLabelSource ind i baade maal og
     // milepaele, saa felterne ankommer i snake_case (race_scope,
@@ -74,4 +83,8 @@ export function resolveGoalTitle(t, goal) {
     race_scope: goal.raceScope ?? goal.race_scope ?? null,
     nationality_code: goal.nationalityCode ?? goal.nationality_code ?? null,
   });
+  if (isTypeFallback && (!title || title === goal.label)) {
+    return t(labelKey, { defaultValue: goal.label ?? "" });
+  }
+  return title;
 }

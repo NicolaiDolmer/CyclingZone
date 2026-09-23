@@ -312,8 +312,13 @@ test.describe("#5472 Boardroom-layout på desktop", () => {
         expect.soft(text, `${tab} (${lang}) viser en rå nøgle`).not.toMatch(rawKey);
         // Replik + dato ("Keep them coming., Sun, Sep 20.") gav ".," midt i linjen.
         expect.soft(text, `${tab} (${lang}) har ".," efter en replik`).not.toMatch(/\.,/);
-        // Den rå danske DB-label må ikke nå den engelske flade.
+        // Den rå danske DB-label må ikke nå den engelske flade, og målet skal
+        // stå som hel sætning med antal ("Min. 3 riders from ..."), ikke som
+        // korttitlen "National core".
         if (lang === "en") expect.soft(text, `${tab} (en) viser dansk DB-label`).not.toMatch(/ryttere fra/i);
+        if (lang === "en" && tab === "mandate") {
+          expect.soft(text, "mandate (en): nationalt-kerne-målet mangler sin hele titel").toMatch(/Min\. 3 riders from/);
+        }
       }
     });
   }
