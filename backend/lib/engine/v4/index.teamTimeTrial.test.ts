@@ -2,7 +2,8 @@
 // M13-WIRINGEN (#3463/#2412, #3855, ejer-beslutning 6/9): simulateStageV4
 // forgrener paa profile_type "ttt" og koerer holdtidskoerslen.
 //
-// mechanics/teamTimeTrial.test.ts daekker selve mekanikken (17 tests). DENNE
+// mechanics/teamTimeTrial.test.ts daekker selve mekanikken (inkl. #4915's
+// uheld, hold-tidsgraense og maalpassage). DENNE
 // fil daekker koblingen: at forgreningen sker, at holdets tid lander pr. rytter
 // (praecis #3463's fund: "ni ryttere fra samme hold ville hver faa deres egen
 // tid"), at invariant 3 holder pr. hold, og at en almindelig vejetape er
@@ -199,6 +200,25 @@ test("stage_start baerer profile_type ttt (filmens hold-vis start-linje)", () =>
   const out = simulateStageV4(input());
   const start = out.timeline.events.find((e) => e.type === "stage_start");
   assert.equal(start?.params.profile_type, "ttt");
+});
+
+// ── 4b. Foelgesagerne (#4915): TTT-grenen leverer samme output-form som vejen ─
+
+test("#4915: ttt-etapen leverer maalpassage, point pr. rytter og uheldsprotokol gennem simulateStageV4", () => {
+  const list = startlist([60, 50, 40]);
+  const out = simulateStageV4(input({ startlist: list }));
+
+  assert.ok(Array.isArray(out.incidents), "uheldsprotokollen findes (tom eller ej), som paa en vejetape");
+  const finish = out.passages?.find((p) => p.kind === "finish");
+  assert.ok(finish, "TTT'en giver maalpoint (paritet med v3's lag)");
+  assert.ok(finish.results.length > 0);
+  assert.ok(finish.results.every((r) => r.bonus_seconds === 0), "ingen maal-bonussekunder paa en tidskoersel");
+  // passage_totals er en ren aggregering af passagerne.
+  const pointsFromPassages = out.passages!.reduce((sum, p) => sum + p.results.reduce((s, r) => s + r.points, 0), 0);
+  const pointsFromTotals = (out.passage_totals ?? []).reduce((sum, t) => sum + t.sprint_points + t.kom_points, 0);
+  assert.equal(pointsFromTotals, pointsFromPassages);
+  // Vinderen af maalpassagen er etapens vinder.
+  assert.equal(finish.results[0].rider_id, out.results[0].rider_id);
 });
 
 // ── 5. En almindelig vejetape er upaavirket ─────────────────────────────────
