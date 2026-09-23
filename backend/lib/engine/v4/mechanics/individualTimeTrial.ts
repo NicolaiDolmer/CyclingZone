@@ -167,6 +167,11 @@ export function ittReferenceByKind(startlist: readonly Entrant[], tuning: Engine
  * raekkefoelge som vejetapens `riderCpForSegment` (segmentLoop.ts) — kun
  * evne-grundlaget er tidskoerslens eget. Holdrollens `team_cp_factor` findes
  * ikke her: en enkeltstart har intet holdarbejde.
+ *
+ * BEVIDST uden gulv paa 0 (modsat vejetapens CP): vaerdien er et fart-input,
+ * og et gulv ville give alle de svageste ryttere paa en daarlig dag PRAECIS
+ * samme fart og dermed samme tid — netop den klump invariant 7 forbyder.
+ * Fysiologi-tikket klemmer selv til >= 0 (se tickSoloRider).
  */
 export function ittCapacityForSegment(
   entrant: Entrant,
@@ -184,7 +189,7 @@ export function ittCapacityForSegment(
   });
   const weatherFactor = riderWeatherCpMultiplier(entrant, segment, weather);
   const fatigueFactor = wprimeDepletionCpMultiplier(rider.wprime, rider.wprimeMax);
-  return Math.max(0, worn * weatherFactor * fatigueFactor + rider.dayform + stageNoise);
+  return worn * weatherFactor * fatigueFactor + rider.dayform + stageNoise;
 }
 
 /**
@@ -258,10 +263,12 @@ function tickSoloRider(
   const dtSeconds = speedKmh > 0 ? (distanceKm / speedKmh) * 3600 : 0;
   // Kravet: vejetapens front-rytter i en gruppe paa én (tickGroupRiders med
   // collectiveCp = rytterens egen evne), moduleret af rytterens indsatsvalg.
-  const baseDemand = capacity * tuning.terrain.baseDemand[segment.kind] * tuning.work.frontWorkFactor[segment.kind];
+  // Fysiologien regner paa en ikke-negativ troeskel, samme gulv som vejetapens CP.
+  const cp = Math.max(0, capacity);
+  const baseDemand = cp * tuning.terrain.baseDemand[segment.kind] * tuning.work.frontWorkFactor[segment.kind];
   const demand = applyEffortToDemand(baseDemand, entrant.effort, undefined, route.profile_type);
   const tick = tickPhysiologyOverSegment({
-    cp: capacity,
+    cp,
     wprimeMax: rider.wprimeMax,
     wprime: rider.wprime,
     demand,
@@ -269,7 +276,7 @@ function tickSoloRider(
     rechargeRate: deriveRechargeRate(entrant.abilities, tuning.physiology),
     segmentLengthKm: distanceKm,
   });
-  rider.cp = capacity;
+  rider.cp = cp;
   rider.wprime = tick.wprime;
   rider.seconds_over_cp += tick.secondsOverCp;
   rider.work_norm += tick.workNorm;

@@ -66,6 +66,24 @@ export const ANCHOR_BANDS = {
     min: 60, max: 480,
     source: "#2415 (gap-realisme-baand: GT-vindermargin typisk 1-8 min)",
   },
+  // #5576: enkeltstartens TIDER, ikke kun dens rang. ITT-korrelationen ovenfor
+  // er spearman paa placeringen og var groen, mens naesten hele feltet delte
+  // én tid — de to ankre herunder maaler det rangen ikke kan se.
+  ittTop10SpreadPer40KmSeconds: {
+    min: 60, max: 180,
+    source: "#2415 (gap-realisme-baand: \"ITT 1-3 min over 40 km\", PCS-niveau; mor-spec'ens konsekvens for §5) — top-10-spredning skaleret til 40 km",
+  },
+  // FORSLAG — IKKE et ejer-godkendt maal. Regressionsvagt for RULES §3
+  // invariant 7 ("selektive finaler, herunder ITT, beholder individuelle
+  // tider"): #5576's fejl samlede naesten hele feltet paa én tid, og en
+  // top-10-maaling alene kunne ikke se det, fordi finalens placerings-tiers gav
+  // toppen individuelle tider. Loftet er valgt af denne harness med plads til
+  // v3's afrunding til hele sekunder (samme tid for naboer er aegte dér).
+  ittLargestSameTimeShare: {
+    max: 0.10,
+    source: "FORSLAG (#5576) — regressionsvagt for RULES §3 invariant 7 (individuelle tider paa ITT); "
+      + "loftet er valgt af denne harness, ikke ejer-godkendt",
+  },
   // M8-wiring 6/9 (#2789/#4105). FORSLAG — IKKE et ejer-godkendt maal.
   // Taersklen er valgt af denne harness som REGRESSIONSVAGT for ejer-reglen 3/9
   // ("brostensevnen taeller kun paa etaper med brosten/grus"), jf.
@@ -551,6 +569,89 @@ export function scoreGapRealism(rows) {
 }
 
 // ---------------------------------------------------------------------------
+// 11. Enkeltstartens tider (#5576) — gap-realisme + individuelle tider
+// ---------------------------------------------------------------------------
+
+const INDIVIDUAL_TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly"]);
+const ITT_REFERENCE_DISTANCE_KM = 40; // #2415-baandets egen distance ("1-3 min over 40 km")
+
+/** Tider for de ryttere der krydsede stregen (v4). En udgaaet rytters tid er frosset ved styrtet og ikke en maaltid. */
+function v4FinisherTimes(row) {
+  return row.raw.v4Output.results.filter((x) => x.status !== "abandoned").map((x) => x.time_seconds);
+}
+
+/** Stoerste andel af feltet paa én og samme tid (afrundet til 1/100 s, samme oploesning som StageResult). */
+export function largestSameTimeShare(times) {
+  if (!times || times.length === 0) return null;
+  const counts = new Map();
+  for (const t of times) {
+    const key = Math.round(t * 100);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return Math.max(...counts.values()) / times.length;
+}
+
+/**
+ * To ankre paa enkeltstarternes TIDER (itt, itt_hilly — ttt er et holdresultat
+ * og har sin egen model):
+ *
+ *   1. Top-10-spredningen skaleret til 40 km mod #2415's "ITT 1-3 min over
+ *      40 km". Skaleringen er lineaer i distancen: en prolog paa 6 km og en
+ *      enkeltstart paa 40 km maales paa samme skala.
+ *   2. Den stoerste andel af feltet paa én tid (invariant 7). Det er DEN
+ *      maaling #5576's fejl ville have fejlet: toppen havde individuelle tider
+ *      fra finalens placerings-tiers, saa spredningen i (1) saa rimelig ud,
+ *      mens resten af feltet delte én tid.
+ */
+export function scoreIttTimeRealism(rows) {
+  const ittRows = stagesWhere(rows, (route) => INDIVIDUAL_TIME_TRIAL_PROFILES.has(route.profile_type));
+  const spreadBand = ANCHOR_BANDS.ittTop10SpreadPer40KmSeconds;
+  const tieBand = ANCHOR_BANDS.ittLargestSameTimeShare;
+
+  function spreadFor(getTimes) {
+    const values = [];
+    for (const r of ittRows) {
+      const km = Number(r.raw.route.distance_km);
+      const spread = spreadAtRank(getTimes(r), 10);
+      if (spread === null || !(km > 0)) continue;
+      values.push((spread / km) * ITT_REFERENCE_DISTANCE_KM);
+    }
+    return { value: mean(values), n: values.length };
+  }
+
+  function tieShareFor(getTimes) {
+    const values = ittRows.map((r) => largestSameTimeShare(getTimes(r))).filter((v) => v !== null);
+    return { value: mean(values), n: values.length };
+  }
+
+  const v3Times = (r) => r.raw.v3Output.ranked.map((x) => x.stageGap);
+  const naNote = "ingen enkeltstarter (itt/itt_hilly) i input";
+  const v3Spread = spreadFor(v3Times);
+  const v4Spread = spreadFor(v4FinisherTimes);
+  const v3Tie = tieShareFor(v3Times);
+  const v4Tie = tieShareFor(v4FinisherTimes);
+
+  return [
+    {
+      id: "itt_top10_spread_per_40km",
+      label: "ITT top-10-spredning pr. 40 km (#2415)",
+      bandLabel: `${spreadBand.min}-${spreadBand.max}s (1-3 min)`,
+      source: spreadBand.source,
+      v3: { ...judge(v3Spread.value, spreadBand, v3Spread.n, naNote), display: (v) => fmt(v, 0) },
+      v4: { ...judge(v4Spread.value, spreadBand, v4Spread.n, naNote), display: (v) => fmt(v, 0) },
+    },
+    {
+      id: "itt_largest_same_time_share",
+      label: "ITT: stoerste andel af feltet paa samme tid (invariant 7)",
+      bandLabel: `<= ${fmtPct(tieBand.max)} (FORSLAG, ikke ejer-godkendt)`,
+      source: tieBand.source,
+      v3: { ...judge(v3Tie.value, tieBand, v3Tie.n, naNote), display: fmtPct },
+      v4: { ...judge(v4Tie.value, tieBand, v4Tie.n, naNote), display: fmtPct },
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Samlet scorecard
 // ---------------------------------------------------------------------------
 
@@ -576,6 +677,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
     ...scoreTypeIntegrity(rows, abilitiesByRider),
     scoreBonusSecondsBounded(rows),
     ...scoreGapRealism(rows),
+    ...scoreIttTimeRealism(rows),
   ];
 }
 
@@ -592,7 +694,8 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
  * @param {Array<ReturnType<typeof buildScorecard>>} scorecards  ét pr. seed
  * @returns {Array<object>}  samme form som buildScorecard, plus .spread pr. motor
  */
-// ALLE 13 anker-id'er fra buildScorecard() SKAL have en indgang her (#4947).
+// ALLE anker-id'er fra buildScorecard() SKAL have en indgang her (#4947;
+// 15 siden #5576's to ITT-tids-ankre).
 // Et manglende id gjorde at aggregateEngine() faldt tilbage til
 // `measured[0].verdict` — dommen fra FOERSTE seed — i stedet for at doemme
 // 3-seed-middelvaerdien mod baandet, praecis den aggregerings-fejl §7 raekke 8
@@ -617,6 +720,8 @@ export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   bonus_seconds_bounded: { max: 10 },
   mountain_top10_spread: ANCHOR_BANDS.mountainTop10SpreadSeconds,
   gt_winner_margin: ANCHOR_BANDS.gtWinnerMarginSeconds,
+  itt_top10_spread_per_40km: ANCHOR_BANDS.ittTop10SpreadPer40KmSeconds,
+  itt_largest_same_time_share: ANCHOR_BANDS.ittLargestSameTimeShare,
 };
 
 export function aggregateScorecards(scorecards) {
