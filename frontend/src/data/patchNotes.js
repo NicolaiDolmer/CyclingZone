@@ -5,6 +5,57 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Daily training: overview at the top and four tabs",
+          "body": "What changed: The top of Daily training now shows who needs a day, who is racing, who is training and who is tired, plus one button with your next step. The page has four tabs: Today, Week plan, Development and Report. Until today's session has run, each rider shows his latest training score in grey.\n\nWhat it means for you: Pick each rider's day in one list that saves straight away, and tap a rider's name to open his card right under the row."
+        },
+        "da": {
+          "title": "Daglig træning: overblik øverst og fire faner",
+          "body": "Hvad er ændret: Øverst på Daglig træning står nu, hvem der mangler en dag, hvem der kører løb, hvem der træner, og hvem der er træt, plus én knap med dit næste skridt. Siden har fire faner: I dag, Ugeplan, Udvikling og Rapport. Indtil dagens pas er kørt, viser hver rytter sin seneste træningsscore i gråt.\n\nHvad det betyder for dig: Vælg hver rytters dag i én liste, der gemmer med det samme, og tryk på en rytters navn for at åbne hans kort lige under rækken."
+        },
+        "refs": [
+          5485,
+          5564
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Time trial climbing follows the distance",
+          "body": "What changed: A time trial's metres of climbing now follow its length, so a short prologue is no longer as hilly as a 40 km time trial. This applies to new routes, starting with the season 4 calendar."
+        },
+        "da": {
+          "title": "Enkeltstarters højdemeter følger distancen",
+          "body": "Hvad er ændret: En enkeltstarts højdemeter følger nu dens længde, så en kort prolog ikke længere er lige så kuperet som en enkeltstart på 40 km. Det gælder nye ruter, begyndende med sæson 4-kalenderen."
+        },
+        "refs": [
+          2789,
+          5587
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Hide academy riders on the Stats tab too",
+          "body": "What changed: The Stats tab on My Team now has the same Seniors and Academy buttons as the Squad tab, and your choice follows you between the two tabs."
+        },
+        "da": {
+          "title": "Skjul akademiryttere på Statistik-fanen",
+          "body": "Hvad er ændret: Statistik-fanen under Mit Hold har nu de samme knapper for Seniorer og Akademi som Trup-fanen, og dit valg følger med mellem de to faner."
+        },
+        "refs": [
+          5075,
+          5556
+        ]
+      },
+      {
         "category": "new",
         "audience": "player",
         "topic": "Dashboard",
