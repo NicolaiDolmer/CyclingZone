@@ -250,10 +250,14 @@ async function loadInputs(supabase) {
       .select("id, is_ai, is_bank, is_frozen, is_test_account, league_division_id, pending_removal_at, retired_at, parked_at")
       .order("id")),
     fetchAllRows(() => supabase.from("league_divisions").select("id, tier, pool_index").order("id")),
+    // schema-columns-ok: riders.squad findes i prod (#4619, verificeret 23/9 i
+    // information_schema); schema-snapshot.json er ikke gen-dumpet siden.
     fetchAllRows(() => supabase.from("riders")
       .select("id, team_id, birthdate, squad, is_academy, is_retired")
       .not("team_id", "is", null)
       .order("id")),
+    // schema-columns-ok: race_pool.squad findes i prod (U23-/juniorkataloget,
+    // verificeret 23/9 i information_schema); snapshottet er ældre end kolonnen.
     fetchAllRows(() => supabase.from("race_pool").select("race_class, squad").order("id")),
   ]);
   const poolById = new Map(pools.map((p) => [p.id, p]));

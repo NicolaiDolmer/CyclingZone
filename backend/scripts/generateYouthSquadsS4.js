@@ -496,6 +496,8 @@ export async function loadActiveAiTeams(supabase) {
 }
 
 async function loadPopulation(supabase, aiTeamIds) {
+  // schema-columns-ok: riders.squad findes i prod (database/2026-09-15-4619-riders-squad.sql,
+  // #4619, verificeret 23/9 i information_schema); schema-snapshot.json er ikke gen-dumpet siden.
   const riders = await fetchAllRows(() => supabase.from("riders")
     .select("id, firstname, lastname, team_id, is_academy, squad, is_retired, archetype_draw")
     .order("id"));
