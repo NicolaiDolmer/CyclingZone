@@ -300,13 +300,18 @@ function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, data
 // select + retnings-toggle eksponerer PRÆCIS de samme sort-nøgler som desktop-
 // headerne og skriver til samme rosterSort-state via handleSort — ingen ny
 // sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
-function RosterMobileSortControl({ sort, sortDir, onSort, t }) {
+function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t }) {
   const options = [
     { key: "name", label: t("colRider") },
     { key: "primary_type", label: t("colType") },
     // #3815: alderen er sorterbar på desktop — kontrollen skal eksponere
     // PRÆCIS de samme nøgler som desktop-headerne (samme krav som #3706).
     { key: "age", label: t("colAge") },
+    // #3643 (paritets-audit 21/9): Score-headeren er sorterbar på desktop, så
+    // telefonen skal have samme nøgle. Kun når scoren er synlig
+    // (training_score_visible) — ellers findes kolonnen ikke nogen steder, og
+    // en sortering på et tal man ikke kan se ville være en skjult rækkefølge.
+    ...(scoreVisible ? [{ key: "score", label: t("score.column") }] : []),
     { key: "form", label: t("form") },
     { key: "fatigue", label: t("fatigue") },
     // #3706: Status blev sorterbar — kontrollen skal blive ved med at eksponere
@@ -1704,6 +1709,7 @@ export default function TrainingPage() {
                 sort={rosterSort.sort}
                 sortDir={rosterSort.sortDir}
                 onSort={rosterSort.handleSort}
+                scoreVisible={scoreVisible}
                 t={t}
               />
             }
@@ -1773,6 +1779,14 @@ export default function TrainingPage() {
           ? t("dayClose.ready")
           : t("notTrainedYetToday");
 
+  // #3643: sidens ENE primary findes i to former — desktop-sidehovedets knap og
+  // mobil-visningens knap i fuld bredde. Gate og label bor ÉT sted, så de to
+  // ikke kan drive fra hinanden igen: mobil-knappen manglede #4847's
+  // dayClose-gate og "Kør dagens træning nu"-labelen og ville have stået åben
+  // før dagens sidste løb var lukket, den dag training_tick_per_race_day tændes.
+  const runTodayDisabled = !enabled || !!todayRun || running || !!(dayClose && !dayClose.open);
+  const runTodayLabel = running ? t("loading") : (dayClose ? t("runDayNow") : t("trainToday"));
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-[1600px]">
@@ -1821,9 +1835,9 @@ export default function TrainingPage() {
                 onClick={handleRunToday}
                 // #4847: paa loebsdags-stien aabner knappen foerst naar dagens
                 // sidste loeb er lukket (samme betingelse som cron-sweepen).
-                disabled={!enabled || !!todayRun || running || !!(dayClose && !dayClose.open)}
+                disabled={runTodayDisabled}
               >
-                {running ? t("loading") : (dayClose ? t("runDayNow") : t("trainToday"))}
+                {runTodayLabel}
               </Button>
             </span>
           </div>
@@ -1843,13 +1857,15 @@ export default function TrainingPage() {
             type="button"
             variant={assistantPanelOpen ? "secondary" : "primary"}
             onClick={handleRunToday}
-            disabled={!enabled || !!todayRun || running}
+            // Samme #4847-gate og label som desktop-knappen (runTodayDisabled/
+            // runTodayLabel ovenfor).
+            disabled={runTodayDisabled}
             // min-h-11 = #1602's 44px tryk-mål. Button's egen sm/md-højde er
             // 42px, og sidens ENE primary må ikke være den der underskrider
             // kravet på den skærm der har mindst plads.
             className="w-full min-h-11"
           >
-            {running ? t("loading") : t("trainToday")}
+            {runTodayLabel}
           </Button>
         </span>
       )}
@@ -1978,6 +1994,7 @@ export default function TrainingPage() {
             sort={rosterSort.sort}
             sortDir={rosterSort.sortDir}
             onSort={rosterSort.handleSort}
+            scoreVisible={scoreVisible}
             t={t}
           />
         )}
@@ -2475,11 +2492,18 @@ export default function TrainingPage() {
               ))}
             </div>
           )}
-          <div className="mt-3">
-            <Button type="button" variant="ghost" size="sm" onClick={handleGoToRoster}>
-              {t("individualWeekPlanOverviewGoToRoster")}
-            </Button>
-          </div>
+          {/* #3643 (paritets-audit 21/9): i den NYE mobil-visning findes
+              roster-tabellen ikke (rosterTableRef renderes aldrig), så knappen
+              skiftede fane og landede ingen steder — en død knap. Den skjules
+              dér; en rigtig vej til rytterens ugeplan på telefonen hører til
+              #5485. Desktop og den gamle mobil-visning er uændrede. */}
+          {!mobileTableView && (
+            <div className="mt-3">
+              <Button type="button" variant="ghost" size="sm" onClick={handleGoToRoster}>
+                {t("individualWeekPlanOverviewGoToRoster")}
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
       </TabPanel>
