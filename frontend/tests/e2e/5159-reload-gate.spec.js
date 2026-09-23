@@ -335,6 +335,10 @@ test("#5440 A->B: NPS-baren viger for release-banneret, kladden overlever, ét r
   await page.clock.fastForward(PERIODIC);
   await expect.poll(() => state.versionCalls, { timeout: 10_000 }).toBeGreaterThan(callsBeforeRecheck);
   await page.waitForTimeout(800);
+  // Testens HTML hævder stadig A, saa B er "brugt" uden at vaere naaet: banneret
+  // er den manuelle udvej, og slotten holder NPS-baren vaek ogsaa i det nye dokument.
+  await expect(banner(page)).toBeVisible();
+  await expect(npsBar(page)).toHaveCount(0);
   expect(await documentLoads(page), "ingen reload-loop paa samme release").toBe(loadsBefore + 1);
 
   // En route der ikke er hentet i DETTE dokument: client-side, intet nyt load.
