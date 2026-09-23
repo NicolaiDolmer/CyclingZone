@@ -15,6 +15,7 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 
 import { groupEffortTempo, groupStrengthSpeedFactor, riderTempoEffortFactor } from "./segmentLoop.ts";
+import { grupettoDropBackForced } from "./mechanics/climbSelection.ts";
 import { GROUP_TEMPO_EFFORT_EXTRA_TUNING, RACE_V4_TUNING } from "./tuning.ts";
 import type { EffortLevel, SegmentKind } from "./types.ts";
 
@@ -92,6 +93,17 @@ test("groupStrengthSpeedFactor: default indsats-led = uaendret adfaerd; led < 1 
     // Et led over 1 clampes: indsats kan aldrig give fart over egen CP.
     assert.equal(groupStrengthSpeedFactor(0.25, 0.3, kind, RACE_V4_TUNING, 1.5), base, kind);
   }
+});
+
+test("tilbagefald paa stigninger: aldrig i cp_only; i effort_weighted kun grupetto-ryttere i en gruppe hvor andre koerer", () => {
+  for (const effort of EFFORTS) {
+    assert.equal(grupettoDropBackForced(effort, true, CP_ONLY), false, `cp_only/${effort}`);
+    assert.equal(grupettoDropBackForced(effort, true, EFFORT_WEIGHTED), effort === "grupetto", `effort_weighted/${effort}`);
+  }
+  // En gruppe der KUN er grupetto-ryttere ER den sidste gruppe — den splittes ikke op.
+  assert.equal(grupettoDropBackForced("grupetto", false, EFFORT_WEIGHTED), false);
+  // Default-tuningen (cp_only) tvinger aldrig nogen tilbage.
+  assert.equal(grupettoDropBackForced("grupetto", true), false);
 });
 
 test("INVARIANT 3 (fast-check): med SAMME indsats-led er farten monotont ikke-faldende i gruppens CP", () => {

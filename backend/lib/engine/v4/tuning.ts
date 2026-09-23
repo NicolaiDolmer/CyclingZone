@@ -846,13 +846,23 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 // worker aendrer ikke defaulten:
 //   "cp_only"         (b, DEFAULT): som hidtil — tempoet foelger CP alene.
 //                                   Bit-identisk med main foer denne kontakt.
-//   "effort_weighted" (a): tempoet foelger ogsaa gruppens indsats. En
+//   "effort_weighted" (a): "grupettoen er den sidste gruppe paa vejen", to
+//                                   led der kun virker sammen:
+//                                   1. TEMPO (segmentLoop.groupEffortTempo): en
 //                                   grupetto-rytter bidrager kun med en andel
 //                                   af sin CP til gruppens tempo; han ryger
-//                                   derfor bagerst i raekken af dem der
-//                                   saetter farten, og en gruppe der KUN
-//                                   bestaar af grupetto-ryttere koerer i
-//                                   grupetto-tempo. De fire andre trin er
+//                                   bagerst i raekken af dem der saetter
+//                                   farten, og en gruppe der KUN bestaar af
+//                                   grupetto-ryttere koerer i grupetto-tempo.
+//                                   2. TILBAGEFALD (climbSelection.
+//                                   grupettoDropBackForced): paa en stigning
+//                                   falder en grupetto-rytter tilbage fra en
+//                                   gruppe hvor andre koerer.
+//                                   Led 2 alene er #4909's tilbagerullede
+//                                   forsoeg (en staerk rytter alene koerte fra
+//                                   feltet); led 1 alene flytter maalt naesten
+//                                   intet (rytteren bliver hvor selektionen
+//                                   efterlader ham). De fire andre trin er
 //                                   uaendrede (faktor 1): all_out giver ALDRIG
 //                                   gruppen mere fart end rytternes CP, og
 //                                   save er at koere inden for sig selv i

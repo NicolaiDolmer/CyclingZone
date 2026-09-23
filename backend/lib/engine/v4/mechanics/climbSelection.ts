@@ -36,6 +36,35 @@ import type {
 } from "../types.ts";
 import { gaussian } from "../rng.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
+import { GROUP_TEMPO_EFFORT_EXTRA_TUNING } from "../tuning.ts";
+import type { GroupTempoModel } from "../tuning.ts";
+
+/**
+ * #4914 (grupetto-tempo, EJER-VALG bag GROUP_TEMPO_EFFORT_EXTRA_TUNING.model):
+ * skal en grupetto-rytter falde tilbage paa denne stigning?
+ *
+ * Kun i modellen "effort_weighted", og kun naar gruppen ogsaa rummer ryttere
+ * der KOERER (ikke-grupetto) — en gruppe der udelukkende er grupetto ER den
+ * sidste gruppe paa vejen og skal ikke splittes op i stumper. I default-
+ * modellen "cp_only" er svaret altid nej, saa selektionen er bit-identisk med
+ * main.
+ *
+ * Hvorfor den hoerer sammen med tempo-leddet (segmentLoop.groupEffortTempo):
+ * #4909 byggede en tvungen tilbagefaldning ALENE og rullede den tilbage, fordi
+ * en staerk grupetto-rytter alene i sin nye gruppe havde en hoejere kollektiv
+ * CP end feltet og koerte FRA det. Med tempo-leddet koerer den gruppe i
+ * grupetto-tempo, saa tilbagefaldningen virker efter hensigten. De to led er
+ * derfor ÉN model bag én kontakt.
+ *
+ * Eksporteret for testbarhed af kontakten.
+ */
+export function grupettoDropBackForced(
+  effort: string | undefined,
+  groupHasRacers: boolean,
+  tempoTuning: { model: GroupTempoModel } = GROUP_TEMPO_EFFORT_EXTRA_TUNING,
+): boolean {
+  return tempoTuning.model === "effort_weighted" && effort === "grupetto" && groupHasRacers;
+}
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -64,6 +93,7 @@ type RiderSelection = {
   baseScore: number; // stoej-fri: deficitWeight*climbDeficitScaled + energyDeficitWeight*energyDeficit
   scoreTriggered: boolean; // (baseScore + stoej) > splitThreshold, FOER rank-guard
   wprimeForced: boolean; // wprime <= 0 — fysiologisk absolut, uafhaengig af rank-guard
+  effortForced: boolean; // #4914: grupetto-rytter falder tilbage (kun model "effort_weighted") — rytterens EGET valg, uafhaengig af rank-guard
 };
 
 /** Klatre-underskud (0-1, normaliseret) relativt til gruppens staerkeste klatrer. */
@@ -133,10 +163,12 @@ function computeSelections(
   const { deficitWeight, energyDeficitWeight, noiseSdBase, splitThreshold } = tuning.selection;
 
   let referenceClimbing = 0;
+  let groupHasRacers = false;
   for (const riderId of group.rider_ids) {
     const entrant = entrants[riderId];
     if (!entrant) continue;
     referenceClimbing = Math.max(referenceClimbing, entrant.abilities.climbing);
+    if (entrant.effort !== "grupetto") groupHasRacers = true;
   }
 
   const selections: RiderSelection[] = [];
@@ -160,6 +192,7 @@ function computeSelections(
       baseScore,
       scoreTriggered: noisyScore > splitThreshold,
       wprimeForced: riderState.wprime <= 0,
+      effortForced: grupettoDropBackForced(entrant.effort, groupHasRacers),
     });
   }
   return selections;
@@ -188,7 +221,7 @@ function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
   for (const sel of sorted) {
     const guardedTriggered = stillEligible && sel.scoreTriggered;
     if (!sel.scoreTriggered) stillEligible = false;
-    if (guardedTriggered || sel.wprimeForced) split.push(sel.riderId);
+    if (guardedTriggered || sel.wprimeForced || sel.effortForced) split.push(sel.riderId);
   }
   return split.sort();
 }
@@ -209,8 +242,12 @@ function causeFor(selections: RiderSelection[], splitRiderIds: string[]): string
   const splitSet = new Set(splitRiderIds);
   const chosen = selections.filter((s) => splitSet.has(s.riderId));
   if (chosen.length === 0) return "climb_deficit";
+  // #4914: en tilbagefaldet grupetto-rytter har sin EGEN aarsag — ellers ville
+  // tidslinjen paastaa at han var koert i saenk. I default-modellen er
+  // effortForced altid false, saa de tre gamle aarsager er uaendrede.
+  if (chosen.every((s) => s.effortForced && !s.wprimeForced)) return "grupetto";
   const allForced = chosen.every((s) => s.wprimeForced);
-  const noneForced = chosen.every((s) => !s.wprimeForced);
+  const noneForced = chosen.every((s) => !s.wprimeForced && !s.effortForced);
   if (allForced) return "wprime_depleted";
   if (noneForced) return "climb_deficit";
   return "mixed";
