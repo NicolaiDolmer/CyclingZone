@@ -68,7 +68,10 @@ const FIELD_SIZE = 180;
 
 /** Tvillingens niveau: percentil af feltet paa etapens egen styrke. */
 export const TWIN_LEVELS = Object.freeze({ mid: 0.5, strong: 0.9, top: 0.99 });
-export const TWIN_EFFORTS = Object.freeze(["all_out", "grupetto"]);
+// `save` er med som KONTROL for grupetto: vinder en grupetto-tvilling fordi
+// normal-tvillingen braender ud, giver save (v3-kalibreret) samme beskyttelse,
+// og fundet handler om kollaps-modellen, ikke om grupetto (PR #4909 tvivlspunkt 2).
+export const TWIN_EFFORTS = Object.freeze(["all_out", "grupetto", "save"]);
 
 /** Grupetto-scenariet: hvilke profiler, og hvor stor en andel af feltet. */
 export const GRUPETTO_SCENARIO = Object.freeze({ profiles: ["mountain", "high_mountain"], fieldShare: 0.3 });
