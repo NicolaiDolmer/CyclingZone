@@ -11,6 +11,8 @@
     "item": {
       "dashboard": "Dashboard",
       "team": "My Team",
+      "u23Team": "U23 team",
+      "juniorTeam": "Junior team",
       "training": "Daily Training",
       "planning": "Planning",
       "academy": "Academy",

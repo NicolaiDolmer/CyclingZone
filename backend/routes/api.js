@@ -1260,8 +1260,8 @@ router.get("/display-flags", requireAuth, presencePulseLimiter, async (req, res)
 // GET /api/youth-squads (#5519) — hvem står på holdets U23 team og Junior team.
 // Truppen afgøres SERVER-side af effectiveSquad (youthSquadRoster.js), så
 // frontend'en aldrig regner en trup ud af en alder selv. Svaret er rytter-id'er
-// + loft pr. trup; siden henter selv visnings-felterne (samme projektion som
-// My Team). Bag kontakten youth_squad_pages: slukket = 409, som /academy/me.
+// pr. trup; siden henter selv visnings-felterne (samme projektion som My Team).
+// Bag kontakten youth_squad_pages: slukket = 409, som /academy/me.
 router.get("/youth-squads", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {

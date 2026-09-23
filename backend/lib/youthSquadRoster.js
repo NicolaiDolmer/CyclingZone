@@ -13,7 +13,7 @@
 // Frontend'en maa ALDRIG selv regne truppen ud af en alder: det ville vaere
 // kopi nr. to af aldersgraenserne (samme lektie som #3071/#3081).
 
-import { effectiveSquad, SQUAD_CAPS } from "./squads.js";
+import { effectiveSquad } from "./squads.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 
 /** De to ungdomstrupper der har en egen side, i menu-raekkefoelge. */
@@ -43,9 +43,11 @@ export function groupYouthSquads(riders, seasonNumber) {
 }
 
 /**
- * Svaret fra GET /api/youth-squads: rytter-id'er + loft pr. ungdomstrup.
- * Loftet er SQUAD_CAPS (grundloftet, D-032) — samme tal Graduation Day's
- * "Move up"-gate bruger, saa siden og motoren ikke kan vise to forskellige.
+ * Svaret fra GET /api/youth-squads: rytter-id'er pr. ungdomstrup.
+ *
+ * Bevidst UDEN loft: SQUAD_CAPS (squads.js) er et sim-startpunkt, og i dag
+ * begraenses akademiet stadig af sine faelles pladser. Et "x/12" paa siden
+ * ville love plads der ikke findes endnu (TASTE P11).
  *
  * @param {Array<object>} riders
  * @param {number|null|undefined} seasonNumber
@@ -53,8 +55,6 @@ export function groupYouthSquads(riders, seasonNumber) {
 export function buildYouthSquadsPayload(riders, seasonNumber) {
   const grouped = groupYouthSquads(riders, seasonNumber);
   const squads = {};
-  for (const key of YOUTH_SQUAD_PAGE_KEYS) {
-    squads[key] = { cap: SQUAD_CAPS[key] ?? null, riderIds: grouped[key] };
-  }
+  for (const key of YOUTH_SQUAD_PAGE_KEYS) squads[key] = { riderIds: grouped[key] };
   return { seasonNumber: Number.isFinite(seasonNumber) ? seasonNumber : null, squads };
 }

@@ -48,6 +48,7 @@ import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useTableSort } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { scoutSortValue } from "../lib/scouting.js";
+import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
 
 // #2796: var hardkodet Intl.NumberFormat("en-US") midt på en side der ellers
 // bruger den locale-bevidste formatNumber — en dansk bruger så "45,000 CZ$" i
@@ -90,6 +91,8 @@ export default function AcademyPage() {
   const scouting = useScouting();
   // #3071: sæson-referenceår til alders-visning (intake/roster) — se riderAge.js.
   const seasonYear = useActiveSeasonYear();
+  // #5519: med U23/Junior-siderne tændt forsvinder Youth squads-kortet (3a).
+  const youthSquadPagesOn = useYouthSquadPages();
   const {
     enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance,
     intakePull, loading, error, signCandidate, rejectCandidate, promoteRider,
@@ -721,7 +724,11 @@ export default function AcademyPage() {
           Beskrivelseslinjen er en fuld sætning, ikke en meta-label, så den
           IKKE bruger PAGE_TEMPLATES' uppercase-11px-meta-stil (den stil er til
           korte labels/tal, ikke løbende tekst) — samme valg som
-          FacilityTrackCard's egen "coming soon"-linje (text-xs text-cz-2). */}
+          FacilityTrackCard's egen "coming soon"-linje (text-xs text-cz-2).
+          #5519 (artboard 3a): med kontakten youth_squad_pages tændt ER
+          trupperne ægte og bor i menuen lige efter My Team, så kortet
+          forsvinder. Slukket = dagens visning uændret. */}
+      {!youthSquadPagesOn && (
       <Section>
         <SectionHeader
           title={t("youthSquads.title")}
@@ -744,6 +751,7 @@ export default function AcademyPage() {
           ))}
         </div>
       </Section>
+      )}
 
       {/* Akademi-regnskab (#2485) — P&L for udvikl-og-sælg. */}
       <AcademyPnl />
