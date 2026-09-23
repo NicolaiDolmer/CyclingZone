@@ -93,7 +93,10 @@ export function computeTrainingQuality(signals = {}, tuning = RACE_V3_TUNING) {
 
 /**
  * Konsistens: andel af optakts-dage der faktisk blev trænet. leadupDays = hele
- * optaktsvinduet (PEAK_LEADUP_DAYS); trainedDays = dage med status != "rest".
+ * optaktsvinduet (PEAK_LEADUP_DAYS, kalenderdatoer); trainedDays = trænede DATOER
+ * (status != "rest"). #4848/G8: på løbsdags-ticket er trainedDays en brøk pr. dato
+ * (andel af datoens løbsdage der blev trænet), ikke et antal rækker — se
+ * racePeakPlans.summarizeLeadupTraining. Klampet til [0,1] som værn.
  * @returns {number|undefined}
  */
 export function consistencySignal(trainedDays, leadupDays) {
