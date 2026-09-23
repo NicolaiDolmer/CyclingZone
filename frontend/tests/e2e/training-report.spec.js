@@ -85,7 +85,9 @@ test.beforeEach(async ({ page }) => {
 
 test("training report shows day summary, progress and breakthrough jump", async ({ page }) => {
   await login(page);
-  await page.goto("/training");
+  // #5485: dagens rapport og historikken er samlet i fanen Report. Før stod
+  // rapporten øverst på Train today og skubbede truppen ned under folden.
+  await page.goto("/training?tab=report");
 
   // Dags-opsummering (payoff, holdniveau) — DA-locale via stabilizePage.
   await expect(page.getByText("Ryttere trænet")).toBeVisible();
@@ -127,7 +129,9 @@ test("#3194: portræt — sticky navnekolonne æder ikke skærmen (flag off)", a
   await login(page);
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/training");
-  await expect(page.getByRole("columnheader", { name: "Næste +1" }).first()).toBeVisible();
+  // #5485: rapport-tabellen ("Næste +1") bor på fanen Report; rosteret er
+  // det der måles her, så det er rosteret der ventes på.
+  await page.locator("table[data-sortable]").first().waitFor();
 
   const viewport = page.viewportSize();
 

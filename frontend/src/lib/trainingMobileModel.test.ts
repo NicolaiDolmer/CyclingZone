@@ -6,11 +6,13 @@ import {
   countsForRole,
   expandScrollAdjustment,
   isSingleRaceDay,
+  latestScore,
   MOBILE_CARD_PEEK,
   mobileScoreCell,
   pacePerWeek,
   programGrid,
   riderShortName,
+  scoreSortValue,
 } from "./trainingMobileModel.ts";
 
 // #3643 — mobilformen er tabel med dagens LOEBSDAGE som kolonner. Reglerne her
@@ -149,6 +151,46 @@ test("mobileScoreCell: ingen maaling er en streg, aldrig et maalt nul", () => {
   // Et maalt 0 findes ikke i modellen (skalaen er 1-99), men hvis det kom, er
   // det et TAL og skal vises som et - ikke skjules bag en streg.
   assert.deepEqual(mobileScoreCell({ today: 0 }), { state: "score", value: 0 });
+});
+
+// #5485 (ejer-valg A 23/9): foer dagens pas er koert, har ingen rytter et tal
+// for i dag. Kolonnen skal da vise det SENESTE maalte tal (daempet), ikke en
+// streg hele vejen ned.
+const SPARK_WITH_REST = [
+  { date: "2026-09-20", score: 48 },
+  { date: "2026-09-21", score: 61 },
+  // Hviledag og loebsdag har intet tal og maa aldrig blive "seneste".
+  { date: "2026-09-22", score: null },
+  { date: "2026-09-22", score: null, raceDay: true },
+];
+
+test("latestScore: sidste punkt MED et tal, hviledage og loebsdage springes over", () => {
+  assert.equal(latestScore(SPARK_WITH_REST), 61);
+  assert.equal(latestScore([]), null);
+  assert.equal(latestScore(null), null);
+  assert.equal(latestScore([{ date: "2026-09-22", score: null }]), null);
+});
+
+test("#5485 mobileScoreCell foer dagens pas: seneste tal, daempet; efter passet: dagens tal eller streg", () => {
+  // Foer passet (settled false): seneste tal.
+  assert.deepEqual(mobileScoreCell({ today: null, spark: SPARK_WITH_REST }, { settled: false }), { state: "latest", value: 61 });
+  // Ingen historik: stadig en streg.
+  assert.deepEqual(mobileScoreCell({ today: null, spark: [] }, { settled: false }), { state: "none" });
+  // Dagens tal vinder altid, ogsaa hvis holdets todayRun endnu ikke er hentet.
+  assert.deepEqual(mobileScoreCell({ today: 70, spark: SPARK_WITH_REST }, { settled: false }), { state: "score", value: 70 });
+  // En loebsdag i dag er "Race", ikke gaarsdagens tal.
+  assert.deepEqual(mobileScoreCell({ today: null, todayIsRaceDay: true, spark: SPARK_WITH_REST }, { settled: false }), { state: "race" });
+  // Efter passet (settled true, default): intet tal = hviledag = streg.
+  assert.deepEqual(mobileScoreCell({ today: null, spark: SPARK_WITH_REST }), { state: "none" });
+  assert.deepEqual(mobileScoreCell({ today: null, spark: SPARK_WITH_REST }, { settled: true }), { state: "none" });
+});
+
+test("#5485 scoreSortValue: sorteringen bruger dagens tal, ellers det seneste; loeb og streg er null", () => {
+  assert.equal(scoreSortValue({ state: "score", value: 70 }), 70);
+  assert.equal(scoreSortValue({ state: "latest", value: 61 }), 61);
+  assert.equal(scoreSortValue({ state: "race" }), null);
+  assert.equal(scoreSortValue({ state: "none" }), null);
+  assert.equal(scoreSortValue(null), null);
 });
 
 test("score-kolonnen holder budgettet 'navn + hoejst 3 datakolonner'", () => {

@@ -144,13 +144,23 @@ const SUMMIT_FINALE = new Set(["long_climb"]);
 // (summit_finish=true). Prod-mål: ~35% hilly, ~20% rolling (0% målt i dag for begge).
 export const UPHILL_FINISH_SHARE = Object.freeze({ hilly: 0.35, rolling: 0.20 });
 // Basis-højdemeter (ikke-kategoriseret bølgeterræn) pr. profil.
+// #2789 (bonus-fund): "itt" er IKKE her — den flade enkeltstart havde et FAST tal (80)
+// uanset distance, så en 5 km prolog og en 40 km enkeltstart fik samme højdemeter-facit.
+// Se ITT_ELEVATION_PER_KM nedenfor, som erstatter den faste værdi med en sats pr. km.
 const BASE_ELEVATION = Object.freeze({
   flat: 200, rolling: 500, hilly: 700, mountain: 900, high_mountain: 1100,
-  cobbles: 400, gravel: 800, classic: 900, itt: 80, ttt: 120,
+  cobbles: 400, gravel: 800, classic: 900, ttt: 120,
   // itt_hilly (#3546 D): moderat: mere end den flade ITT, men langt under en hel
-  // hilly-etape (kortere distance holder det samlede højdemeter-tal nede).
+  // hilly-etape (kortere distance holder det samlede højdemeter-tal nede). Beholder sin
+  // egen climbs+base-logik uændret (#2789 rører KUN den flade "itt"-profil).
   itt_hilly: 350,
 });
+// #2789: "itt" skalerer nu LINEÆRT med distance_km i stedet for et fast 80-tal. Satsen er
+// kalibreret mod en typisk enkeltstarts reference-distance og skalerer proportionalt
+// derfra. Ingen ekstra rng-træk: elevationGain() læser kun det allerede-trukne
+// distance_km fra pass 2's normale distance-bånd (prolog 5-8/8-14, normal 15-40,
+// GT 25-40 — se DISTANCE_BANDS ovenfor).
+const ITT_ELEVATION_PER_KM = 80 / 27.5;
 
 // --- Region-flavoured stignings-navne (deterministisk) ---
 const REGION_PREFIXES = Object.freeze({
@@ -447,9 +457,12 @@ export function buildSectors(rng, profileType, distanceKm, namer) {
   return sectors;
 }
 
-function elevationGain(climbs, profileType) {
+function elevationGain(climbs, profileType, distanceKm) {
   const fromClimbs = climbs.reduce((s, c) => s + Math.round((c.length_km * 1000 * c.avg_gradient) / 100), 0);
-  return fromClimbs + (BASE_ELEVATION[profileType] ?? 300);
+  // #2789: den flade "itt" skalerer med distancen (se ITT_ELEVATION_PER_KM); alle andre
+  // profiler (inkl. itt_hilly, ttt) bruger uændret det faste BASE_ELEVATION-opslag.
+  const base = profileType === "itt" ? Math.round(distanceKm * ITT_ELEVATION_PER_KM) : (BASE_ELEVATION[profileType] ?? 300);
+  return fromClimbs + base;
 }
 
 /**
@@ -491,5 +504,5 @@ export function attachRoute(stage, race, isStageRace) {
   const climbs = buildClimbs(rng, pt, stage.finale_type, distance_km, namer);
   const sprints = buildSprints(rng, pt, stage.finale_type, distance_km, isStageRace, climbs);
   const sectors = buildSectors(rng, pt, distance_km, namer);
-  return { distance_km, elevation_gain_m: elevationGain(climbs, pt), climbs, sprints, sectors };
+  return { distance_km, elevation_gain_m: elevationGain(climbs, pt, distance_km), climbs, sprints, sectors };
 }
