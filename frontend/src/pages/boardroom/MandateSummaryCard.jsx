@@ -37,10 +37,11 @@ function GoalSummary({ goal, t }) {
   const title = resolveGoalTitle(t, goal);
 
   return (
-    <div className="flex min-w-0 flex-col">
-      {/* Fast to-linjers titelhoejde i stedet for flex-1: med flex-1 aad den
-          KORTESTE titel al slacken i sin gitter-celle, saa maalerne stod i
-          hver sin hoejde ved siden af hinanden (tydeligst paa 390px). */}
+    // #5472 · Hvert maal er et subgrid over tre raekker (titel, maaler, tal), saa
+    // naboerne i samme raekke deler titelhoejde: en titel paa tre linjer skubber
+    // nu alle maalerne i raekken ned, i stedet for kun sin egen (maalerne stod i
+    // hver sin hoejde i et smalt vindue). min-h holder to linjer som gulv.
+    <div className="row-span-3 grid min-w-0 grid-rows-subgrid gap-y-0">
       <p className="mb-1.5 min-h-[2.75em] text-[12.5px] font-medium leading-snug text-cz-1">
         {title}
         {goal.isBonus && (
@@ -107,7 +108,9 @@ export default function MandateSummaryCard({ mandate, bonusOffer = null, onOpenM
           : ""}
       </p>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 sm:grid-cols-4">
+      {/* #5472 · Fire kolonner kun fra lg: sm er en viewport-grænse, og med
+          sidebaren er kortet under 480 px bredt ved 774-1023 px vinduer. */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 lg:grid-cols-4">
         {goals.map((goal) => (
           <GoalSummary key={goal.id} goal={goal} t={t} />
         ))}

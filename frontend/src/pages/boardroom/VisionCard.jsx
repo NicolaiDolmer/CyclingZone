@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, FlagIcon } from "../../components/ui";
+import { resolveGoalTitle } from "./boardroomFormat";
 
 // Milepael-prik pr. status (Main.dc.html §3): "current" = gold fyld + navy
 // kant (2px, sidebar-navy — samme token som app-shellets altid-moerke
@@ -57,8 +58,12 @@ export default function VisionCard({ vision }) {
                   ? t("boardroom.vision.currentSeasonLabel", { season: m.seasonNumber })
                   : t("boardroom.vision.seasonLabel", { season: m.seasonNumber })}
               </p>
-              <p className="mt-[3px] text-[13px] font-medium text-cz-1">
-                {t(m.labelKey, m.labelParams || {})}
+              {/* #5472 · Samme hele saetning som overblikkets "Next milestone"
+                  (resolveGoalTitle, fx "Top 40 in the division"), ikke goalType-
+                  korttitlen: fire ens "Division finish" sagde ikke hvad maalet
+                  var. Korttitlen er kun fallback for en ukendt maaltype. */}
+              <p className="mt-[3px] break-words text-[13px] font-medium text-cz-1">
+                {resolveGoalTitle(t, m) || t(m.labelKey, m.labelParams || {})}
               </p>
             </div>
           ))}

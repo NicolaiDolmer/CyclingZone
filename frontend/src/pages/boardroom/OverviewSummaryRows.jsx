@@ -8,14 +8,18 @@ import { resolveGoalTitle } from "./boardroomFormat";
 // bor i en linje der allerede findes, ikke i et tredje stablet kort. Hver linje
 // siger konklusionen og fører til sin fane.
 
+// #5472 · Etiketten står paa sin egen linje under lg (sm er en viewport-graense,
+// og med sidebaren er raekken under 520 px bred ved 774-1023 px vinduer), og
+// teksten tager sin egen linje naar der ikke er 15rem ved siden af ansigterne,
+// i stedet for at blive presset ned i en smal kolonne mellem dem og handlingen.
 function SummaryRow({ label, faces = null, children, actionLabel, onAction }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-cz-border px-0.5 py-2.5">
-      <p className="w-full flex-shrink-0 font-data text-3xs uppercase tracking-[.1em] text-cz-3 sm:w-24">
+      <p className="w-full flex-shrink-0 font-data text-3xs uppercase tracking-[.1em] text-cz-3 lg:w-24">
         {label}
       </p>
       {faces}
-      <div className="min-w-0 flex-1 text-[13px]">{children}</div>
+      <div className="min-w-0 flex-1 basis-60 text-[13px]">{children}</div>
       <SectionAction onClick={onAction}>{actionLabel}</SectionAction>
     </div>
   );

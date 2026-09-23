@@ -28,7 +28,11 @@ export default function ConfidenceCard({ confidence, lastMovement = null }) {
         title={t("boardroom.confidence.cardTitle")}
         meta={t("boardroom.confidence.updated", { date: formatWeekdayShortDate(updatedAt) })}
       />
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+      {/* #5472 · Rækkefølgen tal | fire metre kræver kortets fulde T1-bredde.
+          sm: er en VIEWPORT-grænse, og med sidebaren (fra md) har indholdet
+          under 520 px ved 774-1023 px vinduer: metrene blev ~70 px, og
+          "RESULTATER" løb ud af sin kolonne. Under lg står tallet over metrene. */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
         <div className="flex items-baseline gap-2.5">
           <span className="font-data text-[44px] font-bold leading-none tabular-nums text-cz-1">{value}</span>
           <span className={`text-[13px] font-semibold tabular-nums ${deltaClass}`}>{deltaText}</span>
@@ -48,7 +52,7 @@ export default function ConfidenceCard({ confidence, lastMovement = null }) {
           })}
         </div>
       </div>
-      <div className="mt-4 flex flex-col gap-1.5 border-t border-cz-border pt-3 text-[13px] text-cz-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+      <div className="mt-4 flex flex-col gap-1.5 border-t border-cz-border pt-3 text-[13px] text-cz-2 lg:flex-row lg:items-baseline lg:justify-between lg:gap-4">
         {lastMovement?.textKey ? (
           <p className="min-w-0">
             <span className="font-medium text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
@@ -56,7 +60,7 @@ export default function ConfidenceCard({ confidence, lastMovement = null }) {
             {lastMovement.occurredAt ? `, ${endSentence(formatWeekdayShortDate(lastMovement.occurredAt))}` : ""}
           </p>
         ) : <span />}
-        <p className="min-w-0 sm:text-end">
+        <p className="min-w-0 lg:text-end">
           {consequence?.active
             ? t(consequence.lineKey, consequence.lineParams || {})
             : t("boardroom.confidence.noConsequenceDefault")}

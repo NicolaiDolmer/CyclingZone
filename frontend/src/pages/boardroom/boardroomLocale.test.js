@@ -62,6 +62,58 @@ test("#4570-afstemning: top-level 'vision.title' dækker ALLE 5 klub-DNA-nøgler
   assert.deepEqual(Object.keys(da.vision.title).sort(), dnaKeys.sort());
 });
 
+// #5472 · GET /api/board/room (backend/lib/boardRoom.js) bygger to nøgle-
+// familier uden for boardroom-blokken: kvitteringens "Counted" som
+// `goalReceipt.counted.<type>` og formandscitatets kontekst som
+// `chairmanBeat.<beat>`. Ingen af dem fandtes i locale-filerne, så beta viste
+// rå nøgler ("Counted: goalReceipt.counted.stage_wins"). Fixturen brugte egne
+// fixture-nøgler og kunne ikke se hullet; derfor pinnes dækningen her mod
+// backendens EGEN kilde (samme kilde-parity-mønster som academyDemoteContract).
+const repoRoot = join(__dirname, "..", "..", "..", "..");
+const readBackend = (p) => readFileSync(join(repoRoot, "backend", "lib", p), "utf8");
+
+function evaluatedGoalTypes() {
+  const src = readBackend("boardGoals.js");
+  const start = src.indexOf("export function evaluateGoalProgress");
+  const end = src.indexOf("export function addGoalMetadata");
+  assert.ok(start >= 0 && end > start, "evaluateGoalProgress blev ikke fundet i boardGoals.js");
+  return [...new Set([...src.slice(start, end).matchAll(/case "([a-z0-9_]+)":/g)].map((m) => m[1]))];
+}
+
+function chairmanBeats() {
+  const src = readBackend("boardRoom.js");
+  const block = src.match(/const CHAIRMAN_BEAT_BY_REASON = \{([\s\S]*?)\};/);
+  assert.ok(block, "CHAIRMAN_BEAT_BY_REASON blev ikke fundet i boardRoom.js");
+  return [...new Set([...block[1].matchAll(/:\s*"([a-z_]+)"/g)].map((m) => m[1]))];
+}
+
+test("#5472 goalReceipt.counted dækker hver måltype backend evaluerer, plus 'unknown', i begge sprog", () => {
+  const types = evaluatedGoalTypes();
+  assert.ok(types.length >= 10, `forventede mindst 10 måltyper, fandt ${types.length}`);
+  for (const type of [...types, "unknown"]) {
+    assert.equal(typeof en.goalReceipt?.counted?.[type], "string", `en mangler goalReceipt.counted.${type}`);
+    assert.equal(typeof da.goalReceipt?.counted?.[type], "string", `da mangler goalReceipt.counted.${type}`);
+  }
+  assert.deepEqual(Object.keys(en.goalReceipt.counted).sort(), Object.keys(da.goalReceipt.counted).sort());
+});
+
+test("#5472 chairmanBeat dækker hvert beat formandscitatet kan få, i begge sprog", () => {
+  const beats = chairmanBeats();
+  assert.ok(beats.length >= 1, "ingen beats fundet i CHAIRMAN_BEAT_BY_REASON");
+  for (const beat of beats) {
+    assert.equal(typeof en.chairmanBeat?.[beat], "string", `en mangler chairmanBeat.${beat}`);
+    assert.equal(typeof da.chairmanBeat?.[beat], "string", `da mangler chairmanBeat.${beat}`);
+  }
+});
+
+test("#5472 goalReceipt og chairmanBeat: ingen em-dash og ingen ICU-klammer (teksten har ingen parametre)", () => {
+  const strings = [en.goalReceipt, da.goalReceipt, en.chairmanBeat, da.chairmanBeat].flatMap((o) => collectStrings(o));
+  for (const s of strings) {
+    assert.doesNotMatch(s, /—/, `em-dash fundet i: "${s}"`);
+    assert.doesNotMatch(s, /[{}]/, `uventet ICU-parameter i: "${s}"`);
+  }
+});
+
 test("#4570-afstemning: vision.title-namespace har ingen em-dash og ingen invented gameplay-løfter (kun narrativt navn)", () => {
   const enStrings = Object.values(en.vision.title);
   const daStrings = Object.values(da.vision.title);

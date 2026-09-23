@@ -31,11 +31,18 @@ function MemberTile({ member, selected, onSelect, t }) {
 function MinuteRow({ minute, t }) {
   const isPositive = minute.delta > 0;
   const deltaClass = isPositive ? "text-cz-success" : "text-cz-danger";
+  // #5472 · `delta` er null naar haendelsen ikke flyttede tilliden
+  // (satisfaction_delta mangler): ingen tom, roed tal-plads foran teksten.
+  const hasDelta = minute.delta != null;
   return (
     <div className="flex items-center justify-between gap-3 border-b border-cz-border py-[11px] last:border-b-0">
-      <p className="text-[13px] text-cz-1">
-        <span className={`font-semibold tabular-nums ${deltaClass}`}>{isPositive ? "+" : ""}{minute.delta}</span>
-        {" · "}
+      <p className="min-w-0 text-[13px] text-cz-1">
+        {hasDelta && (
+          <>
+            <span className={`font-semibold tabular-nums ${deltaClass}`}>{isPositive ? "+" : ""}{minute.delta}</span>
+            {" · "}
+          </>
+        )}
         {t(minute.textKey, minute.textParams || {})}
       </p>
       <p className="flex-shrink-0 whitespace-nowrap text-2xs uppercase tracking-[.06em] text-cz-3">
@@ -87,7 +94,10 @@ export default function BoardCard({ board, mandate, minutes = [], dna = null, on
   const [selectedKey, setSelectedKey] = useState(null);
   const members = board?.members || [];
   const selectedMember = members.find((m) => m.archetypeKey === selectedKey) || null;
-  const feedRows = minutes.slice(0, 3);
+  // #5472 · boardRoom.js sender `textKey: null` for en haendelse uden taler
+  // (ingen formand, eller en tom stemme-bucket). Den raekke har intet at sige
+  // og ville staa som en tom linje i referatet, saa den springes over.
+  const feedRows = minutes.filter((minute) => minute.textKey).slice(0, 3);
 
   return (
     <Section>

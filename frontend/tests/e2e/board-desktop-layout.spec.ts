@@ -22,6 +22,8 @@ import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, evidenceShotPath } from "./fixtures.js";
+import { scanPageForTextDefects, formatFinding } from "./lib/text-overflow-scan.js";
+import { isKnownContrastDebt } from "./lib/text-overflow-allowlist.js";
 
 const boardRoomFixture = JSON.parse(
   readFileSync(new URL("../../src/pages/boardroom/__fixtures__/boardRoom.json", import.meta.url), "utf8"),
@@ -32,6 +34,11 @@ const T1_MAX_WIDTH = 896;
 
 const WIDTHS = [
   { name: "390", size: { width: 390, height: 844 } },
+  // 967 px-skærmbilledet fra beta-feedbacken er ENHEDS-pixels. Windows kører
+  // typisk 125 % skalering, og så er vinduet kun ca. 774 CSS-px bredt: lige
+  // over md-grænsen, hvor sidebaren (208 px) står, men indholdet har under
+  // 520 px. Det er den smalleste desktop-geometri siden kan få.
+  { name: "774", size: { width: 774, height: 862 } },
   { name: "970", size: { width: 970, height: 1077 } },
   { name: "1440", size: { width: 1440, height: 900 } },
   { name: "1830", size: { width: 1830, height: 1077 } },
@@ -235,29 +242,42 @@ test.describe("#5472 Boardroom-layout på desktop", () => {
   test.skip(({ isMobile }) => isMobile, "specen sætter selv sine bredder; kun desktop-chromium");
 
   for (const width of WIDTHS) {
-    test(`ingen vandret overflow og T1-bredde ved ${width.name} px`, async ({ page }) => {
-      await page.setViewportSize(width.size);
-      await stabilizePage(page);
-      await installNetworkMocks(page);
-      await installBoardroomMocks(page, prodShapedPayload());
-      await login(page);
-      await openBoardroom(page, "en");
+    for (const lang of ["en", "da"] as const) {
+      test(`ingen vandret overflow, ingen tekst ud af boksene og T1-bredde ved ${width.name} px (${lang})`, async ({ page }) => {
+        await page.setViewportSize(width.size);
+        await stabilizePage(page);
+        await installNetworkMocks(page);
+        await installBoardroomMocks(page, prodShapedPayload());
+        await login(page);
+        await openBoardroom(page, lang);
 
-      for (const tab of TABS) {
-        await openTab(page, tab);
-        // Billedet tages FØR målingen, så et brud også efterlader bevis.
-        await page.screenshot({
-          path: evidenceShotPath(`pr-screens/5472-board-${tab}-${width.name}.png`),
-          fullPage: true,
-        });
-        const report = await measureLayout(page);
-        // Bløde asserts: alle fire faner måles, også når den første fejler.
-        expect.soft(report.docOverflow, `${tab} @ ${width.name}: dokumentet scroller vandret`).toBeLessThanOrEqual(0);
-        expect.soft(report.mainOverflow, `${tab} @ ${width.name}: <main> scroller vandret`).toBeLessThanOrEqual(0);
-        expect.soft(report.rootWidth, `${tab} @ ${width.name}: siden er bredere end T1`).toBeLessThanOrEqual(T1_MAX_WIDTH + 0.5);
-        expect.soft(report.escaped, `${tab} @ ${width.name}: elementer uden for sidens container`).toEqual([]);
-      }
-    });
+        for (const tab of TABS) {
+          await openTab(page, tab);
+          const where = `${tab} @ ${width.name} (${lang})`;
+          // Billedet tages FØR målingen, så et brud også efterlader bevis.
+          if (lang === "en") {
+            await page.screenshot({
+              path: evidenceShotPath(`pr-screens/5472-board-${tab}-${width.name}.png`),
+              fullPage: true,
+            });
+          }
+          const report = await measureLayout(page);
+          // Bløde asserts: alle fire faner måles, også når den første fejler.
+          expect.soft(report.docOverflow, `${where}: dokumentet scroller vandret`).toBeLessThanOrEqual(0);
+          expect.soft(report.mainOverflow, `${where}: <main> scroller vandret`).toBeLessThanOrEqual(0);
+          expect.soft(report.rootWidth, `${where}: siden er bredere end T1`).toBeLessThanOrEqual(T1_MAX_WIDTH + 0.5);
+          expect.soft(report.escaped, `${where}: elementer uden for sidens container`).toEqual([]);
+
+          // #5383-måleren element for element: klippet tekst, tekst der løber
+          // ud over sin boks eller sit kort, og rå nøgler. Kendt palet-
+          // kontrastgæld dømmes i #5383-vagten, ikke her.
+          const defects = (await scanPageForTextDefects(page, { root: '[data-testid="boardroom-page"]' }))
+            .filter((finding) => !isKnownContrastDebt(finding))
+            .map((finding) => formatFinding({ ...finding, where }));
+          expect.soft(defects, `${where}: tekst-fund`).toEqual([]);
+        }
+      });
+    }
   }
 
   for (const lang of ["en", "da"] as const) {
@@ -269,7 +289,10 @@ test.describe("#5472 Boardroom-layout på desktop", () => {
       await login(page);
       await openBoardroom(page, lang);
 
-      const rawKey = /\b(?:goalReceipt|chairmanBeat|boardroom|archetypes|goalType|vision|dna|consequence)\.[A-Za-z_]+(?:\.[A-Za-z0-9_]+)*/;
+      // innerText følger CSS text-transform, så en nøgle i en uppercase-meta-
+      // linje ("CHAIRMANBEAT.MEETING_KEEP") skal fanges uden hensyn til store
+      // og små bogstaver.
+      const rawKey = /\b(?:goalReceipt|chairmanBeat|boardroom|archetypes|goalType|vision|dna|consequence)\.[A-Za-z_]+(?:\.[A-Za-z0-9_]+)*/i;
       for (const tab of TABS) {
         await openTab(page, tab);
         const text = await page.getByTestId("boardroom-page").innerText();
