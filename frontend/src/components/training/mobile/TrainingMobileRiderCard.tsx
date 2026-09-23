@@ -77,8 +77,9 @@ export default function TrainingMobileRiderCard({
   // tilstande er de samme som desktop-kolonnen og tabellen ovenfor: tal,
   // "loeb" uden tal, eller streg.
   score?: MobileScoreCell | null;
-  // De sidste 7 loebsdage. Loebsdage har ingen score og efterlader et HUL i
-  // kurven — TrainingScoreSparkline tegner segmenter, ikke een polyline.
+  // De sidste 7 traeningsdage. Loebsdage har ingen score og udelades af
+  // kurven (#5486) — TrainingScoreSparkline filtrerer dem selv vaek, saa
+  // linjen er ubrudt.
   scoreSpark?: TrainingScorePoint[] | null;
   scoreAria?: string;
   // #5485 (A3): kortet bruges nu ogsaa paa desktop, foldet ud under raekken.
