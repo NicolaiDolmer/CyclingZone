@@ -41,7 +41,11 @@ test("Citér-knappen på opslaget citerer aabningsindlaegget — sender quote_op
   // uddrag — samme komponent som når man citerer et svar (#3517), bare med
   // opslagets egen forfatter/tekst.
   await expect(page.getByText("Svarer peloton_pete")).toBeVisible();
-  await expect(page.getByText(new RegExp(POST_BODY_EXCERPT))).toBeVisible();
+  // #5386 (CodeRabbit): scopet til svar-formularen — opslagets EGEN krop
+  // viser samme tekst på siden, så en uscopet getByText matcher to elementer
+  // og fejler Playwrights strict-mode-tjek.
+  const replyForm = page.locator("#forum-reply-body").locator("xpath=ancestor::form");
+  await expect(replyForm.getByText(new RegExp(POST_BODY_EXCERPT))).toBeVisible();
 
   if (testInfo.project.name === "desktop-chromium") {
     await page.screenshot({ path: evidenceShotPath("pr-screens/5386-quote-op-compose-desktop.png"), fullPage: true });

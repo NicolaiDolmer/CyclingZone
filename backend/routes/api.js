@@ -15644,7 +15644,9 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
       body: req.body?.body,
       images: req.body?.images ?? null,
       quotedReplyId: req.body?.quoted_reply_id || null,
-      quoteOp: Boolean(req.body?.quote_op),
+      // #5386 (CodeRabbit): strict === true, ikke Boolean(...) — en streng som
+      // "false"/"0" er truthy og ville ellers stille slaa citat-af-OP til.
+      quoteOp: req.body?.quote_op === true,
     });
     if (result.status === 200) {
       const replyBody = typeof req.body?.body === "string" ? req.body.body.trim() : "";
