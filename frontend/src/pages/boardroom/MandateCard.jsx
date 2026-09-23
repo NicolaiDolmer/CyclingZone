@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon } from "../../components/ui";
-import { appendDate, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat.js";
+import { appendDate, formatGoalValue, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import MonogramAvatar from "../../components/MonogramAvatar";
 import { logEvent } from "../../lib/logEvent";
 import StatusPill from "./StatusPill.jsx";
@@ -88,7 +88,10 @@ function GoalRow({ goal, t, expanded, onToggle }) {
               )}
             </p>
             <p className="font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">
-              {t("boardroom.mandate.achievedTarget", { achieved: goal.achievedDisplay, target: goal.targetDisplay })}
+              {t("boardroom.mandate.achievedTarget", {
+                achieved: formatGoalValue(goal.achievedDisplay, goal.type),
+                target: formatGoalValue(goal.targetDisplay, goal.type),
+              })}
             </p>
           </div>
         </div>

@@ -108,11 +108,20 @@ function prodShapedPayload() {
     mandate: {
       seasonNumber: 3,
       signedAt: "2026-08-28",
+      // `label` er DB'ens rå danske label (backend buildGoalLabel). Den er ofte
+      // ORDRET den danske titel ("Top 40 i divisionen"), og netop det fik
+      // titlen til at falde tilbage til korttitlen (ejer-review 23/9).
+      // Gældsmålets tal er rå tal-strenge i prod-størrelse (formatGoalDisplayValue).
       goals: [
-        goal("stage_wins", 3, "2", "on_track", results),
-        goal("no_outstanding_debt", 0, "0", "on_track", economy),
-        goal("u25_development_delta", 4, "1", "at_risk", identity),
-        goal("top_n_finish", 40, "46", "behind", chair, { isStretch: true }),
+        goal("stage_wins", 3, "2", "on_track", results, { label: "Mindst 3 sejre" }),
+        goal("no_outstanding_debt", 0, "1074082", "on_track", economy, {
+          label: "Positiv nettostilling ved saesonslut",
+          targetDisplay: "106397",
+        }),
+        goal("u25_development_delta", 4, "1", "at_risk", identity, {
+          label: "Gennemsnitlig U25-stat-gevinst >= 4 stat-points/saeson",
+        }),
+        goal("top_n_finish", 40, "46", "behind", chair, { isStretch: true, label: "Top 40 i divisionen" }),
         // DB-labelen er rå dansk (backend buildGoalLabel); titlen skal komme
         // fra nationality_code + locale, ellers lækker dansk ud på engelsk.
         goal("min_national_riders", 3, "4", "on_track", ranking, {
@@ -318,6 +327,18 @@ test.describe("#5472 Boardroom-layout på desktop", () => {
         if (lang === "en") expect.soft(text, `${tab} (en) viser dansk DB-label`).not.toMatch(/ryttere fra/i);
         if (lang === "en" && tab === "mandate") {
           expect.soft(text, "mandate (en): nationalt-kerne-målet mangler sin hele titel").toMatch(/Min\. 3 riders from/);
+        }
+        // Ejer-review 23/9: hvert mål bærer sin hele titel med tal på begge
+        // sprog, også når DB-labelen er ordret den danske titel, og beløb står
+        // med tusindtalsseparator efter sprog (ikke "1074082 / 106397").
+        if (tab === "overview" || tab === "mandate") {
+          const topN = lang === "da" ? /Top 40 i divisionen/ : /Top 40 in the division/;
+          const shortTitle = lang === "da" ? /Divisions-placering/ : /Division finish/;
+          const debt = lang === "da" ? /1\.074\.082\sCZ\$ \/ (?:mål )?106\.397\sCZ\$/iu : /1,074,082\sCZ\$ \/ (?:target )?106,397\sCZ\$/iu;
+          expect.soft(text, `${tab} (${lang}): top_n_finish mangler sin hele titel`).toMatch(topN);
+          expect.soft(text, `${tab} (${lang}): top_n_finish viser korttitlen`).not.toMatch(shortTitle);
+          expect.soft(text, `${tab} (${lang}): gældsmålets beløb er ikke formateret`).toMatch(debt);
+          expect.soft(text, `${tab} (${lang}): uformateret beløb`).not.toMatch(/1074082|106397/);
         }
       }
     });

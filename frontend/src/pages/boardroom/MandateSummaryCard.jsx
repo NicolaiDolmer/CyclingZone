@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, SectionAction, EmptyState, ClipboardIcon, ProgressMeter } from "../../components/ui";
-import { endSentence, formatShortDate, resolveGoalTitle } from "./boardroomFormat.js";
+import { endSentence, formatGoalValue, formatShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import { goalProgressPct } from "../../components/board/goalProgress.js";
 import { BonusOfferStripe, BonusAcceptedLine } from "./BonusOffer.jsx";
 import StatusPill from "./StatusPill.jsx";
@@ -52,13 +52,19 @@ function GoalSummary({ goal, t }) {
         )}
       </p>
       <ProgressMeter value={pct} tone={tone} ariaLabel={title} />
-      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+      {/* #5472 · content-start: naar en nabo i raekken har et langt beloeb paa
+          to linjer, bliver tal-raekken hoejere; uden den stod "2 / 3" centreret
+          midt i den ekstra hoejde i stedet for i flugt med naboens foerste linje. */}
+      <div className="mt-1.5 flex flex-wrap content-start items-center justify-between gap-x-2 gap-y-1">
         <span className="font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">
           {/* Resuméet baerer den KORTE form ("46 / 40") som mockup'en; den fulde
               "Achieved 46 / target 40" staar paa maal-raekken i Mandat-fanen.
               Den lange form ombrød til tre linjer paa 390px og skubbede
               maalerne ud af flugt (TASTE P5: ens ting staar ens). */}
-          {t("boardroom.overview.goalValue", { achieved: goal.achievedDisplay, target: goal.targetDisplay })}
+          {t("boardroom.overview.goalValue", {
+            achieved: formatGoalValue(goal.achievedDisplay, goal.type),
+            target: formatGoalValue(goal.targetDisplay, goal.type),
+          })}
         </span>
         <StatusPill status={goal.status} t={t} />
       </div>
@@ -103,8 +109,8 @@ export default function MandateSummaryCard({ mandate, bonusOffer = null, onOpenM
         {worst
           ? ` ${t("boardroom.overview.worstGoalNote", {
             goal: resolveGoalTitle(t, worst),
-            achieved: worst.achievedDisplay,
-            target: worst.targetDisplay,
+            achieved: formatGoalValue(worst.achievedDisplay, worst.type),
+            target: formatGoalValue(worst.targetDisplay, worst.type),
           })}`
           : ""}
       </p>
