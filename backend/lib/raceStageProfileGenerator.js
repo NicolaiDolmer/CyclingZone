@@ -776,20 +776,29 @@ function chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages) {
     counts.forEach((count, k) => { byClass[FINALE_CLASS_BY_TYPE[g.options[k].value]] += count; });
     return byClass;
   };
+  // Tre led, i prioriteret rækkefølge: (1) etaper uden for et TERRÆN-bånd — de er de mest
+  // specifikke regler, og en afrunding må aldrig bytte dem væk for det samlede bånd;
+  // (2) etaper uden for det SAMLEDE bånd; (3) antal etaper flyttet fra standard-afrundingen.
   const score = () => {
-    let violation = 0, moved = 0;
+    let terrain = 0, overallViolation = 0, moved = 0;
     const overall = { ...fixedClassCounts };
     for (const g of groups) {
       const byClass = classCounts(g, g.counts);
       for (const c of FINALE_CLASSES) overall[c] += byClass[c];
       const bands = TERRAIN_FINALE_BANDS[g.profileType];
-      if (bands) for (const c of FINALE_CLASSES) violation += outside(byClass[c], bands[c] ?? [0, 0], g.n);
+      if (bands) for (const c of FINALE_CLASSES) terrain += outside(byClass[c], bands[c] ?? [0, 0], g.n);
       g.counts.forEach((count, k) => { moved += Math.abs(count - g.defaults[k]); });
     }
-    for (const [c, band] of Object.entries(OVERALL_FINALE_BAND)) violation += outside(overall[c], band, totalStages);
-    return { violation, moved };
+    for (const [c, band] of Object.entries(OVERALL_FINALE_BAND)) overallViolation += outside(overall[c], band, totalStages);
+    return { terrain, overall: overallViolation, moved, violation: terrain + overallViolation };
   };
-  const better = (a, b) => a.violation < b.violation - eps || (Math.abs(a.violation - b.violation) <= eps && a.moved < b.moved);
+  const better = (a, b) => {
+    if (a.terrain < b.terrain - eps) return true;
+    if (a.terrain > b.terrain + eps) return false;
+    if (a.overall < b.overall - eps) return true;
+    if (a.overall > b.overall + eps) return false;
+    return a.moved < b.moved;
+  };
 
   // Bedste enkelt-ændring ad gangen (ikke første forbedring): så vælges det terræn hvor
   // afrundingen koster mindst, i stedet for det der tilfældigvis står først i rækkefølgen.

@@ -391,8 +391,13 @@ export function formatKendtTilstand(k) {
     ud.push("", `❌ ${k.nye.length} NYT brud der ikke står på listen:`);
     for (const n of k.nye) ud.push(`   · ${n}`);
   }
-  ud.push("", k.ok
+  // #5405: en tom liste betyder at fixture-kalenderen ingen kendte brud har. Så er "kun
+  // kendte brud" det forkerte budskab — gaten er grøn fordi der INGEN brud er.
+  const okLinje = KENDTE_FIXTURE_BRUD.length
     ? "✅ Kun kendte brud. Gaten er grøn — men den er IKKE et bevis på at kalenderen er i orden."
+    : "✅ Ingen kendte brud på listen og ingen nye. Gaten er grøn.";
+  ud.push("", k.ok
+    ? okLinje
     : "Se linjerne ovenfor. Et nyt eller forsvundet brud kræver en beslutning, ikke en opdatering af tallet.");
   return ud;
 }
@@ -413,28 +418,14 @@ export function formatKendtTilstand(k) {
 //
 // DETTE ER KUN FIXTURE-GATEN. `buildSeasonCalendar.js --apply` er UAENDRET haard uden
 // override: en kalender med et af disse brud kan ikke skrives til prod.
-export const KENDTE_FIXTURE_BRUD = Object.freeze([
-  // Owner-approved scope 22/9: keep the measured residuals visible. This list
-  // only describes the fixture; applying a calendar still needs explicit go.
-  {
-    id: "saeson-hilly-udbrud",
-    moenster: /sæson: hilly slutter udbrud/,
-    hvorfor: "Den afgraensede kalibrering efterlader denne maalte finale-afvigelse i fixturen.",
-    lukkesAf: "Ejerens beslutning om resterende finale-afvigelser (#5405)",
-  },
-  {
-    id: "saeson-cobbles-fladt",
-    moenster: /sæson: cobbles slutter fladt/,
-    hvorfor: "Det ejer-godkendte brostensbaand efterlader denne maalte afvigelse. Den skjules ikke af et andet traek.",
-    lukkesAf: "Ejerens beslutning om resterende finale-afvigelser (#5405)",
-  },
-  {
-    id: "saeson-cobbles-udbrud",
-    moenster: /sæson: cobbles slutter udbrud/,
-    hvorfor: "Samme maalte brostensstikproeve efterlader ogsaa en afvigelse for udbrud.",
-    lukkesAf: "Ejerens beslutning om resterende finale-afvigelser (#5405)",
-  },
-]);
+//
+// #5405 (23/9): listen er TOM. De tre sidste poster (hilly slutter udbrud, brosten slutter
+// fladt, brosten slutter udbrud) var stikproevestoej fra et frit finale-traek pr. etape og
+// er lukket af kvote-fordelingen (raceStageProfileGenerator.js, balanceFinaleQuotas) — ikke
+// af et slaekket baand eller en flyttet vaegt. En tom liste er den tilstand gaten skal
+// vaere i: et nyt brud faelder den, og skal enten rettes eller staa her med begrundelse
+// og det spor der lukker det.
+export const KENDTE_FIXTURE_BRUD = Object.freeze([]);
 
 /** Del bruddene i kendte og nye, og find de kendte poster der ikke laengere rammer noget. */
 export function delEfterKendteBrud(brud, kendte = KENDTE_FIXTURE_BRUD) {

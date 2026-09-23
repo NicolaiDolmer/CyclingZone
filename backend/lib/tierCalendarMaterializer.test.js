@@ -359,8 +359,13 @@ test("#3347 apply: de indsatte profiler er tierens RESOLVEREDE re-draw, ikke alt
 
   // Deterministisk søgning efter en sæson hvis kanoniske træk bryder båndene — netop
   // det tilfælde #3347 handler om. Generatoren er deterministisk, så listen er stabil.
+  //
+  // #5405 (23/9): finale-typerne kvote-fordeles nu over tierens løbssæt, så finale-gulvene
+  // (fx nedkørsels-finaler) ikke længere svinger fra træk til træk — de afhænger kun af hvor
+  // mange etaper af hvert terræn trækket gav. Færre kanoniske træk bryder derfor båndene, og
+  // de første 12 sæsoner rummer ikke længere ét. Søgningen er udvidet; fixturen er uændret.
   let hit = null;
-  for (let i = 0; i < 12 && !hit; i++) {
+  for (let i = 0; i < 80 && !hit; i++) {
     const seasonId = `s-3347-${i}`;
     const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
     const summary = await materializeTierCalendars({ supabase: sb, seasonId, seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX });
