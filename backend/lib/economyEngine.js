@@ -75,7 +75,7 @@ import {
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
-import { runParkingSweep } from "./managerParking.js";
+import { runParkingSweep, isParkedTeam } from "./managerParking.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -166,6 +166,9 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
+      // #4592: parkerede hold filtreres BEVIDST ikke her. Payroll deler listen
+      // og skal betale deres løn; bestyrelsesdommen springer dem over i
+      // processTeamSeasonEnd (isParkedTeam).
       .order("id", { ascending: true })
   ), "Could not load human teams for season end");
 
@@ -302,8 +305,22 @@ export async function processSeasonStart(seasonId, deps = {}) {
   const parachuteSummary = { count: 0, total: 0 };
   // #4376 · divisions-tillæg — samme summary-mønster, så transition-loggen kan surface det.
   const divisionAdjustmentSummary = { count: 0, total: 0 };
+  // #4592 · parkerede hold der står økonomisk stille i denne sæsonstart.
+  const parkedSummary = { count: 0 };
 
   for (const team of teams || []) {
+    // #4592 ejer-valg (b) = A med løn (23/9): et parkeret hold står økonomisk
+    // stille. Ingen sponsor, ingen faldskærm og intet divisions-tillæg (begge er
+    // sponsor-indtægt, se nedenfor) og ingen nye bestyrelsesplaner/mål. Payroll
+    // (runSeasonPayroll → loadHumanSeasonEndTeams) springer IKKE parkerede hold
+    // over, så lønnen betales som normalt. Et hold der er genindplaceret ved
+    // sæson-slut-sweepen, er ikke parkeret her og får sin sponsor som normalt.
+    if (isParkedTeam(team)) {
+      parkedSummary.count += 1;
+      console.log(`  🅿️  ${team.name}: parkeret, ingen sponsor eller bestyrelsesplan denne sæson (#4592)`);
+      continue;
+    }
+
     const boards = team.board_profiles || [];
     // #2753 · modifier/loft-regnestykket bor i sponsorEngine, så transition-
     // previewet (buildTransitionPlan) og denne udbetaling ikke kan drive fra
@@ -642,6 +659,9 @@ export async function processSeasonStart(seasonId, deps = {}) {
     // #4376 · divisions-tillæg — samme mønster. `total` kan være negativ fra sæson 4,
     // hvor den nedadgående korrektion også gælder.
     divisionAdjustment: divisionAdjustmentSummary,
+    // #4592 · antal parkerede hold uden sponsor/bestyrelsesplan. De tæller ikke
+    // med i `sponsor` (listen er kun de hold der faktisk fik sponsor-behandling).
+    parked: parkedSummary,
   };
 }
 
@@ -1821,6 +1841,21 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
 }
 
 async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber, deps = {}) {
+  // #4592 ejer-valg (b) = A med løn (23/9): ingen bestyrelsesdom, konsekvenser,
+  // mandat eller årsmøde for et parkeret hold. Tjekket ligger HER, i den ene
+  // funktion der afsiger dommen (evaluateBoardSeason + evaluateAndApplyConsequences),
+  // så både processSeasonEnd og repair-stien er dækket. Holdlisten
+  // (loadHumanSeasonEndTeams) filtrerer ikke selv på parkering, fordi payroll
+  // deler den og skal betale løn for parkerede hold.
+  //
+  // processSeasonEnd henter holdene FØR parkerings-sweepen, så et hold der
+  // parkeres i dette skifte, får dommen for den sæson det kørte. Kun hold der
+  // allerede var parkeret hele sæsonen, springes over.
+  if (isParkedTeam(team)) {
+    console.log(`  🅿️  ${team.name}: parkeret, ingen bestyrelsesdom denne sæson (#4592)`);
+    return;
+  }
+
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processReplacementTriggerFn = deps.processReplacementTrigger ?? processReplacementTrigger;
   const evaluateAndApplyConsequencesFn = deps.evaluateAndApplyConsequences ?? evaluateAndApplyConsequences;
