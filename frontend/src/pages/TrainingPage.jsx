@@ -323,9 +323,10 @@ function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t }) {
     // #3815: alderen er sorterbar på desktop — kontrollen skal eksponere
     // PRÆCIS de samme nøgler som desktop-headerne (samme krav som #3706).
     { key: "age", label: t("colAge") },
-    // #3643 (PR #5552, paritets-audit 21/9): Score er sorterbar på desktop, så
-    // telefonen skal have samme nøgle — kun når scoren er synlig
-    // (training_score_visible), ellers findes kolonnen ingen steder.
+    // #3643 (paritets-audit 21/9): Score-headeren er sorterbar på desktop, så
+    // telefonen skal have samme nøgle. Kun når scoren er synlig
+    // (training_score_visible) — ellers findes kolonnen ikke nogen steder, og
+    // en sortering på et tal man ikke kan se ville være en skjult rækkefølge.
     ...(scoreVisible ? [{ key: "score", label: t("score.column") }] : []),
     { key: "form", label: t("form") },
     { key: "fatigue", label: t("fatigue") },
@@ -2384,6 +2385,7 @@ export default function TrainingPage() {
         : dayClose
           ? t("dayClose.ready")
           : t("notTrainedYetToday");
+
 
   if (isLoading) {
     return (

@@ -15,6 +15,7 @@ import ReleaseUpdateBanner from "./components/ReleaseUpdateBanner.jsx";
 // så komponenten SKAL være synkront tilgængelig ved klientens første render —
 // en lazy-suspense-fallback ville ellers give et hydration-mismatch.
 import LandingPage from "./pages/LandingPage.jsx";
+import { PrerenderHydrationMarker } from "./lib/prerenderHydration.ts";
 import { logSessionStart } from "./lib/logEvent";
 import { setSentryUser, clearSentryUser, AnalyticsBoundary } from "./lib/sentry.jsx";
 import { sharedRequestCache } from "./lib/sharedRequestCache.js";
@@ -471,6 +472,11 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        {/* #4925: SIDSTE barn i rute-boundary'en. Renderer intet (ændrer ikke
+            prerender-HTML'en); dens effekt melder at boundary'en er hydreret,
+            og først da skifter LanguageProvider en dansk besøgende fra den
+            EN-prerendrede landing til dansk. Se lib/prerenderHydration.ts. */}
+        <PrerenderHydrationMarker />
       </Suspense>
       <CookieBanner />
       {/* #5159 (review-fund 5): de to stacking-gates — cookie-banneret og "anonym
