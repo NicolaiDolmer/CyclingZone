@@ -17,48 +17,99 @@
 // "peloton" (flere ryttere sammen) / "solo" (kun én tilbage) er den korrekte,
 // semantisk naermeste genbrug uden at braekke den frosne kontrakt.
 //
-// Entrant (types.ts, frosset) baerer INTET team_id-felt — udenfor M13-scope
-// at udvide kerne-kontrakten. Denne mekanik modtager derfor holdinddelingen
-// som et separat TeamRoster[]-parameter (allerede grupperet af kalderen) i
-// stedet for at laese den ud af StageInput.startlist. Se filens bund for det
-// fulde wiring-forslag til index.ts/en ny adapter (arkitekt-scope, IKKE
-// implementeret her — denne fil roerer hverken index.ts, segmentLoop.ts eller
-// andre frosne/andre-workers-filer, jf. natboelge-mandatet).
+// Holdinddelingen kommer ind som et separat TeamRoster[]-parameter (grupperet
+// af adapters/teamRosterAdapter.ts paa Entrant.team_id, M16), ikke laest ud af
+// StageInput.startlist her. index.ts's simulateStageV4 forgrener paa
+// profile_type "ttt" og kalder denne fil (wiret 6/9).
 //
-// REN — ingen import fra oevrigt backend, ingen IO/Date/Math.random. Ingen rng
-// overhovedet: TTT-tiden er en ren CP/W'-fysiologi-simulation (#2412-skitsen
-// beskriver ingen stoej-komponent), saa determinisme (§2 invariant 1) holder
-// trivielt uden en seedet rng-strøm. `seed` tages stadig som parameter (samme
-// kontrakt-form som resten af motoren) fordi initRiderStates (groups.ts)
-// bruger den til dagsform/jour-sans — IKKE fordi denne fil selv trækker rng.
+// ── FOELGESAGERNE (#4915) ──────────────────────────────────────────────────────
+// Holdtidskoerslen gaar IKKE gennem segment-loopet, saa de tre mekanikker der
+// bor dér (M10 uheld, M15 tidsgraense, M9 passager) naaede den ikke. Nu goer de:
+//
+//   M10  Samme trappe (mechanics/incidents.ts's resolveIncident), samme
+//        seedede, segment-noeglede strømme, samme etape-loft. FORSKELLEN er
+//        konsekvensen: i en TTT er HOLDET ankomstgruppen, og alle holdets
+//        ryttere faar holdets tid. Et tidstab rammer derfor HOLDETS tid (holdet
+//        venter/samler op), ikke rytterens alene — ellers ville uheldet vaere
+//        usynligt i resultatet. En allerede droppet rytter er sin egen
+//        ankomstgruppe; hans tidstab rammer kun ham. Et alvorligt styrt tager
+//        rytteren ud (status "abandoned"); holdet koerer videre uden ham.
+//   M15  Graensen er en HOLD-graense: holdets officielle tid maales mod det
+//        vindende holds tid med etapetypens faktor (timeLimit.ts's
+//        timeLimitSecondsFor). Ligger holdet over, er alle dets ryttere uden
+//        for tidsgraensen. Grupetto-redningen gaelder IKKE: den er kalibreret
+//        mod et massestartsfelt, og en TTT-ankomstgruppe er et helt hold, saa
+//        "en stor gruppe reddes" ville enten redde alle hold eller intet.
+//   M9   Maalpassagen koeres paa den endelige placeringsraekkefoelge, praecis
+//        som paa en vejetape og som v3's lag (racePassages: "Maalorden ER
+//        motorens rangering"): profil-skalaen for ttt, ingen maal-bonussekunder
+//        (ttt staar i bonusExcludedProfileTypes, samme gate som v3). Genererede
+//        TTT-ruter har hverken stigninger eller indlagte spurter
+//        (raceRouteGenerator: CLIMB_SPEC.ttt og isTimeTrialProfile), saa kun
+//        maalpassagen (og en evt. summit-finish-top) bygges her — en haandbygget
+//        TTT-rute med indlagte vejpunkter giver ingen point dér.
+//
+// REN — ingen import fra oevrigt backend, ingen IO/Date/Math.random. Selve
+// holdtiden er en ren CP/W'-fysiologi-simulation uden stoej; den ENESTE rng er
+// M10's, og den bruger de samme seedede, segment-noeglede strømme som
+// segment-loopet (rng.ts's segmentRngFor), saa determinisme (§2 invariant 1)
+// holder og en rytters uheldslodtraekning afhaenger kun af (seed, segment,
+// rider_id).
 //
 // Genbrug: initRiderStates (groups.ts) for wprimeMax/dayform/jour-sans (samme
 // allerede-testede kontrakt som resten af motoren); deriveCp/deriveRechargeRate/
 // tickPhysiology (physiology.ts) for selve fysiologi-tikket; makeEvent/
 // gapUpdateEvent/finishEvent/sortTimeline (timeline.ts) for event-formerne.
 // computeTeamSpeedKmh nedenfor DUPLIKERER segmentLoop.ts's interne
-// hastigheds-formel (ikke eksporteret derfra, og segmentLoop.ts er frosset for
-// denne session) — samme "intern implementeringsdetalje er OK at duplikere"-
-// praecedens som finale.ts's lokale normAbility/climbSelection.ts's lokale
-// clamp/round2.
+// hastigheds-formel (ikke eksporteret derfra) — samme "intern
+// implementeringsdetalje er OK at duplikere"-praecedens som finale.ts's lokale
+// normAbility/climbSelection.ts's lokale clamp/round2.
 
 import type {
   Entrant,
   EngineTuning,
   GroupKind,
+  ProfileType,
   RiderLoad,
+  RngForFn,
   RouteV2,
   Segment,
   SegmentGroupSnapshot,
   SegmentKind,
+  StageIncident,
   StageOutput,
+  StagePassage,
   StageResult,
   TimelineEvent,
 } from "../types.ts";
 import { deriveCp, deriveRechargeRate, tickPhysiology } from "../physiology.ts";
 import { initRiderStates } from "../groups.ts";
-import { gapUpdateEvent, finishEvent, makeEvent, sortTimeline } from "../timeline.ts";
-import { TTT_EXTRA_TUNING } from "../tuning.ts";
+import { boundRngFor, segmentRngFor } from "../rng.ts";
+import { gapUpdateEvent, finishEvent, incidentEvent, makeEvent, sortTimeline } from "../timeline.ts";
+import { INCIDENTS_EXTRA_TUNING, TTT_EXTRA_TUNING } from "../tuning.ts";
+import {
+  applyThreeKmRuleToResults,
+  incidentProbability,
+  maxIncidentsForField,
+  resolveIncident,
+  segmentLengthFactor,
+  threeKmRuleApplies,
+  type IncidentsTuning,
+} from "./incidents.ts";
+import {
+  OTL_STATUS,
+  OUTSIDE_TIME_LIMIT_EVENT,
+  TIME_LIMIT_TUNING,
+  timeLimitSecondsFor,
+  type TimeLimitTuning,
+} from "./timeLimit.ts";
+import {
+  buildFinishPassages,
+  clampPassageBonusToPerRiderCap,
+  passageTotals,
+  passagesToTimelineEvents,
+  sortPassages,
+} from "./bonusSeconds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -79,13 +130,26 @@ export type TeamRoster = {
 export type TeamTimeTrialTeamResult = {
   team_id: string;
   team_group_id: string; // "ttt-<team_id>" — group_id i StageResult/groupSnapshots
-  time_seconds: number; // holdets officielle tid (k'te ankomst blandt starterne, round2)
-  counted_rider_id: string; // rytteren hvis ankomst satte den officielle tid
-  arrived_rider_ids: string[]; // ALLE starter-id'er, ankomst-sorteret (front til bag)
+  time_seconds: number; // holdets officielle tid (k'te ankomst blandt de ankomne, round2)
+  counted_rider_id: string; // rytteren hvis ankomst satte den officielle tid ("" hvis ingen kom i maal)
+  arrived_rider_ids: string[]; // alle ryttere der KOM I MAAL, ankomst-sorteret (front til bag)
   dropped_rider_ids: string[]; // ryttere hvis W' ramte 0 og faldt ud af holdets front-rotation undervejs
+  abandoned_rider_ids: string[]; // #4915: ryttere et alvorligt styrt (M10 trin 3) tog ud af loebet
+  outside_time_limit: boolean; // #4915: holdets tid laa over hold-graensen (M15)
 };
 
 export type TeamTimeTrialOutput = StageOutput & { teams: TeamTimeTrialTeamResult[] };
+
+/**
+ * Injicerbar tuning (#4915). Udeladt = den rigtige motor-tuning. Findes saa
+ * tests kan rigge et uheld deterministisk (risiko 0 eller 1) eller flytte
+ * graensen, uden at aendre den rigtige signatur — samme moenster som
+ * incidents.ts's createIncidentHook(tuning).
+ */
+export type TeamTimeTrialOptions = {
+  incidentsTuning?: IncidentsTuning;
+  timeLimitTuning?: TimeLimitTuning;
+};
 
 // ── Rotation (work-rotation i holdet, #2412: "roller faar mening") ────────────
 
@@ -136,8 +200,18 @@ type InternalRider = {
   dayform: number;
   seconds_over_cp: number;
   work_norm: number;
-  status: "with_team" | "dropped";
+  // "abandoned" (#4915): et alvorligt styrt (M10 trin 3). Rytteren tikker ikke
+  // mere, tager ingen tørn og krydser aldrig stregen.
+  status: "with_team" | "dropped" | "abandoned";
   elapsed_seconds: number;
+};
+
+type TeamState = {
+  roster: TeamRoster;
+  teamGroupId: string;
+  entrantsById: Record<string, Entrant>;
+  riders: Record<string, InternalRider>;
+  lastEmittedGap: number | undefined;
 };
 
 function initInternalRiders(roster: TeamRoster, tuning: EngineTuning, seed: string): Record<string, InternalRider> {
@@ -183,11 +257,10 @@ function tickRider(rider: InternalRider, entrant: Entrant, segment: Segment, dem
  * markerer nye drop (W' <= 0) og fjerner dem fra holdets front-rotation fra
  * naeste segment, (3) tikker allerede-droppede ryttere SOLO (egen cp, ingen
  * hjul-rabat, egen fart — de fortsaetter etapen, blot uden holdets tempo-assist).
- * Muterer `riders` (lokal per-kald-tilstand, aldrig kalderens input) og
- * returnerer km-mærket ny-droppede rider_ids (til events).
+ * Udgaaede ryttere tikkes ikke. Muterer `riders` (lokal per-kald-tilstand,
+ * aldrig kalderens input) og returnerer km-mærket ny-droppede rider_ids (til events).
  */
 function tickTeamSegment(
-  route: RouteV2,
   segment: Segment,
   segmentIndex: number,
   roster: TeamRoster,
@@ -257,68 +330,286 @@ function tickTeamSegment(
   return newlyDropped;
 }
 
+// ── M10 i holdtidskoerslen (#4915) ─────────────────────────────────────────────
+
+/**
+ * M10 for ÉT segment paa tvaers af ALLE hold. Samme regler som
+ * incidents.ts's incidentHook, linje for linje, bortset fra konsekvensen:
+ *
+ *   - Risiko: `incidentProbability` (positioning-daempet) x `segmentLengthFactor`.
+ *   - Strømme: `rngFor` er segment-noeglet (rng.ts's segmentRngFor) med
+ *     SAMME mekanik-navne som hooket ("incident", "incident_kind", ...).
+ *   - Etape-loftet: `maxIncidentsForField` over HELE startfeltet, kronologisk.
+ *   - Kandidater i stabil rider_id-orden paa tvaers af hold.
+ *   - "En hjaelper taet paa": i en TTT ER gruppen holdet, saa en rytter der
+ *     stadig er med holdet har altid holdkammerater omkring sig — praecis
+ *     incidents.ts's hasHelperNearby-definition (en holdkammerat i samme
+ *     gruppe). En droppet rytter koerer alene og har ingen.
+ *
+ * KONSEKVENSEN (se filhovedet): tidstabet rammer ankomstgruppen. For en
+ * rytter der er med holdet er det HELE den med-holdet-gruppe (holdets tid);
+ * for en droppet rytter kun ham selv. Et alvorligt styrt saetter "abandoned".
+ *
+ * Muterer `perTeam`'s lokale rytter-tilstand (aldrig kalderens input).
+ */
+function rollSegmentIncidents(args: {
+  perTeam: TeamState[];
+  route: RouteV2;
+  segment: Segment;
+  rngFor: RngForFn;
+  fieldSize: number;
+  loggedCount: number;
+  tuning: IncidentsTuning;
+}): { incidents: StageIncident[]; events: TimelineEvent[] } {
+  const { perTeam, route, segment, rngFor, tuning } = args;
+  const incidents: StageIncident[] = [];
+  const events: TimelineEvent[] = [];
+
+  let budget = maxIncidentsForField(args.fieldSize, tuning) - args.loggedCount;
+  if (budget <= 0) return { incidents, events };
+  const lengthFactor = segmentLengthFactor(segment, tuning);
+  if (lengthFactor <= 0) return { incidents, events };
+
+  const candidates: Array<{ riderId: string; team: TeamState }> = [];
+  for (const team of perTeam) {
+    for (const r of team.roster.riders) {
+      if (team.riders[r.rider_id].status === "abandoned") continue;
+      candidates.push({ riderId: r.rider_id, team });
+    }
+  }
+  candidates.sort((a, b) => a.riderId.localeCompare(b.riderId));
+
+  for (const { riderId, team } of candidates) {
+    if (budget <= 0) break;
+    const entrant = team.entrantsById[riderId];
+    const rider = team.riders[riderId];
+    if (!entrant || rider.status === "abandoned") continue;
+
+    const rng = rngFor("incident", riderId);
+    const p = clamp(incidentProbability(entrant.abilities.positioning, segment.kind, tuning) * lengthFactor, 0, 1);
+    if (rng() >= p) continue;
+
+    const kmFrac = rng();
+    const incidentKm = round2(segment.from_km + kmFrac * (segment.to_km - segment.from_km));
+    const protectedByRule = threeKmRuleApplies(incidentKm, route.distance_km, route.profile_type, tuning);
+    const withTeam = rider.status === "with_team";
+    const helperNearby =
+      withTeam && team.roster.riders.some((r) => r.rider_id !== riderId && team.riders[r.rider_id].status === "with_team");
+
+    const resolved = resolveIncident(
+      {
+        kind: rngFor("incident_kind", riderId)(),
+        severity: rngFor("incident_severity", riderId)(),
+        magnitude: rngFor("incident_time_loss", riderId)(),
+        injury: rngFor("incident_injury", riderId)(),
+      },
+      { protectedByRule, helperNearby },
+      tuning,
+    );
+    budget -= 1;
+
+    if (resolved.outcome === "abandoned") {
+      rider.status = "abandoned";
+    } else if (resolved.outcome === "time_loss") {
+      const loss = resolved.timeLossSeconds ?? 0;
+      if (withTeam) {
+        // Holdet er ankomstgruppen: hele den med-holdet-gruppe taber tiden.
+        for (const r of team.roster.riders) {
+          const teammate = team.riders[r.rider_id];
+          if (teammate.status === "with_team") teammate.elapsed_seconds += loss;
+        }
+      } else {
+        rider.elapsed_seconds += loss;
+      }
+    }
+    // "protected_three_km_rule": ingen tidskonsekvens (kan i dag ikke ske paa
+    // en ttt — den staar ikke i flatProfileTypes — men reglen er den samme).
+
+    incidents.push({
+      rider_id: riderId,
+      km: incidentKm,
+      kind: resolved.kind,
+      severity: resolved.severity,
+      outcome: resolved.outcome,
+      time_loss_seconds: resolved.timeLossSeconds,
+      injury_days: resolved.injuryDays,
+      helper_assist: resolved.helperAssist,
+    });
+    events.push(
+      incidentEvent(incidentKm, {
+        riderId,
+        kind: resolved.kind,
+        outcome: resolved.outcome,
+        timeLossSeconds: resolved.timeLossSeconds,
+        severity: resolved.severity,
+        injuryDays: resolved.injuryDays,
+        helperAssist: resolved.helperAssist,
+      }),
+    );
+  }
+
+  return { incidents, events };
+}
+
+// ── M15 i holdtidskoerslen (#4915): hold-graensen ─────────────────────────────
+
+export type TeamTimeLimitOutcome = {
+  /** `results` med `status: "otl"` paa de ramte holds ryttere. Samme laengde/raekkefoelge/rank/tid. */
+  results: StageResult[];
+  /** Tidslinje-events (tom naar intet hold er ramt) — ALDRIG med procent eller sekundgraense. */
+  events: TimelineEvent[];
+  /** Motor-intern (fog-gated): graensen i sekunder. */
+  limitSeconds: number;
+  /** Motor-intern: det vindende holds tid. */
+  winnerTimeSeconds: number;
+  /** group_id ("ttt-<team_id>") for de hold der endte uden for graensen. */
+  otlTeamGroupIds: string[];
+};
+
+/**
+ * M15 som HOLD-graense (#4915). Reglen er timeLimit.ts's (graense =
+ * vindertid x (1 + faktor for etapetypen)), men enheden er holdet:
+ *
+ *   1. Vindertiden = den bedste holdtid blandt ryttere der kom i maal.
+ *   2. Et hold hvis officielle tid ligger OVER graensen er ude — alle dets
+ *      ryttere der kom i maal faar status "otl".
+ *   3. INGEN grupetto-redning (se filhovedet). Et helt hold er per konstruktion
+ *      en "stor gruppe", saa redningen ville ophaeve graensen for alle hold.
+ *
+ * Udgaaede ryttere roeres ikke (terminal udfaldsklasse, samme som M15).
+ * Rank, tid og raekkefoelge er uroerte — kun `status` aendres. Eventets form er
+ * M15's egen (`rider_ids` + `rider_count`), saa renderer-laget kan laese den
+ * uaendret, og tallet naar aldrig spilleren (#1791).
+ */
+export function applyTeamTimeLimit(args: {
+  results: readonly StageResult[];
+  profileType: ProfileType | null | undefined;
+  distanceKm: number;
+  tuning?: TimeLimitTuning;
+}): TeamTimeLimitOutcome {
+  const tuning = args.tuning ?? TIME_LIMIT_TUNING;
+  const finishers = args.results.filter((r) => r.status === "finished");
+  const unchanged: TeamTimeLimitOutcome = {
+    results: args.results.map((r) => ({ ...r })),
+    events: [],
+    limitSeconds: 0,
+    winnerTimeSeconds: 0,
+    otlTeamGroupIds: [],
+  };
+  if (finishers.length === 0) return unchanged;
+
+  const winnerTimeSeconds = finishers.reduce((min, r) => Math.min(min, r.time_seconds), finishers[0].time_seconds);
+  const limitSeconds = timeLimitSecondsFor(winnerTimeSeconds, args.profileType, tuning);
+
+  const otlGroups = new Set(finishers.filter((r) => r.time_seconds > limitSeconds).map((r) => r.group_id));
+  if (otlGroups.size === 0) return { ...unchanged, limitSeconds, winnerTimeSeconds };
+
+  const results = args.results.map((r) =>
+    r.status === "finished" && otlGroups.has(r.group_id) ? { ...r, status: OTL_STATUS } : { ...r },
+  );
+  const otlRiderIds = results.filter((r) => r.status === OTL_STATUS).map((r) => r.rider_id);
+  const events: TimelineEvent[] = [
+    {
+      km: round2(args.distanceKm),
+      type: OUTSIDE_TIME_LIMIT_EVENT,
+      params: { rider_ids: otlRiderIds, rider_count: otlRiderIds.length },
+    },
+  ];
+  return { results, events, limitSeconds, winnerTimeSeconds, otlTeamGroupIds: [...otlGroups].sort() };
+}
+
 // ── Top-niveau: hele TTT-etapen, alle hold ─────────────────────────────────────
 
 /**
  * M13 (#4030): simulerer en HEL TTT-etape for alle deltagende hold og
  * returnerer et StageOutput-formet resultat (+ `teams`-opsummering, se
- * TeamTimeTrialOutput). Wiring-forslag (arkitekt-scope, se filhoved-noten):
- * index.ts's `simulateStageV4` forgrener paa `input.route.profile_type ===
- * "ttt"` og kalder denne funktion med en TeamRoster[] afledt af en ny adapter
- * der grupperer input.startlist paa team_id.
+ * TeamTimeTrialOutput). index.ts's `simulateStageV4` forgrener paa
+ * `input.route.profile_type === "ttt"` og kalder denne funktion med en
+ * TeamRoster[] fra adapters/teamRosterAdapter.ts.
  *
  * "K'te rytters passage" (#2412): holdets officielle tid = round2(elapsed)
- * for den `TTT_EXTRA_TUNING.countbackRiderRank`'te ankomst blandt STARTENDE
- * ryttere (ankomst-sorteret; ryttere der aldrig droppes ankommer alle
+ * for den `TTT_EXTRA_TUNING.countbackRiderRank`'te ankomst blandt de ryttere
+ * der KOM I MAAL (ankomst-sorteret; ryttere der aldrig droppes ankommer alle
  * samtidigt = holdets faelles tempo, droppede ryttere ankommer senere,
- * individuelt). ALLE holdets startende ryttere faar denne tid i `results`
- * (mor-spec §3.2 rent gruppe-princip, #2412: "Alle ryttere paa holdet faar
- * holdets tid i GC" — v1-default; individuel afvigelse for droppede ryttere
- * er eksplicit en v2-detalje i #2412's egen skitse). `loads` afspejler
- * derimod HVER rytters REELLE fysiologiske forbrug (inkl. droppede ryttere,
- * jf. #3459-loebsdagskontrakten: belastning maales paa reelt arbejde, ikke
- * paa den nominelle klassements-tid).
+ * individuelt; en udgaaet rytter krydser aldrig stregen). ALLE holdets
+ * startende ryttere faar denne tid i `results` (mor-spec §3.2 rent
+ * gruppe-princip, #2412: "Alle ryttere paa holdet faar holdets tid i GC" —
+ * v1-default; individuel afvigelse for droppede ryttere er eksplicit en
+ * v2-detalje i #2412's egen skitse). `loads` afspejler derimod HVER rytters
+ * REELLE fysiologiske forbrug (inkl. droppede ryttere, jf.
+ * #3459-loebsdagskontrakten: belastning maales paa reelt arbejde, ikke paa
+ * den nominelle klassements-tid).
+ *
+ * Placerings-raekkefoelgen inden for et hold (#4915) er den FAKTISKE ankomst:
+ * holdets kerne foran, droppede ryttere efter i den raekkefoelge de kom i maal
+ * (derefter rider_id). Den bestemmer hvem der faar maalpointene (M9), saa en
+ * rytter holdet satte af kan ikke staa foran en holdkammerat der holdt hjulet.
  */
 export function simulateTeamTimeTrialStage(
   route: RouteV2,
   teams: TeamRoster[],
   seed: string,
   tuning: EngineTuning,
+  options: TeamTimeTrialOptions = {},
 ): TeamTimeTrialOutput {
+  const incidentsTuning = options.incidentsTuning ?? INCIDENTS_EXTRA_TUNING;
   const totalFieldCount = teams.reduce((sum, t) => sum + t.riders.length, 0);
   const events: TimelineEvent[] = [];
   events.push(
     makeEvent(0, "stage_start", { field_count: totalFieldCount, profile_type: route.profile_type, distance_km: route.distance_km }),
   );
 
-  const perTeam = teams.map((roster) => ({
+  const perTeam: TeamState[] = teams.map((roster) => ({
     roster,
     teamGroupId: `ttt-${roster.team_id}`,
     entrantsById: Object.fromEntries(roster.riders.map((r) => [r.rider_id, r])) as Record<string, Entrant>,
     riders: initInternalRiders(roster, tuning, seed),
-    lastEmittedGap: undefined as number | undefined,
+    lastEmittedGap: undefined,
   }));
 
+  const rngForStage = boundRngFor(seed);
+  const stageIncidents: StageIncident[] = [];
   const groupSnapshots: SegmentGroupSnapshot[] = [];
 
   for (let segmentIndex = 0; segmentIndex < route.segments.length; segmentIndex++) {
     const segment = route.segments[segmentIndex];
 
     for (const t of perTeam) {
-      const newlyDropped = tickTeamSegment(route, segment, segmentIndex, t.roster, t.entrantsById, t.riders, tuning);
+      const newlyDropped = tickTeamSegment(segment, segmentIndex, t.roster, t.entrantsById, t.riders, tuning);
       for (const riderId of newlyDropped) {
         events.push(makeEvent(segment.to_km, "ttt_rider_dropped", { team_id: t.roster.team_id, rider_id: riderId, group_id: t.teamGroupId }));
       }
     }
 
+    // M10 (#4915): efter segmentets tik, foer snapshot — et tidstab paa dette
+    // segment er dermed med i holdets position ved segmentets slutning.
+    const segmentIncidents = rollSegmentIncidents({
+      perTeam,
+      route,
+      segment,
+      rngFor: segmentRngFor(rngForStage, segmentIndex),
+      fieldSize: totalFieldCount,
+      loggedCount: stageIncidents.length,
+      tuning: incidentsTuning,
+    });
+    stageIncidents.push(...segmentIncidents.incidents);
+    events.push(...segmentIncidents.events);
+
     // Holdets "position" for snapshot/gap-formaal: mindste elapsed blandt
-    // holdets ryttere (den der stadig er laengst fremme — enten hele
-    // med-holdet-gruppen paa faelles tempo, eller den senest droppede rytter).
+    // holdets ryttere der stadig er paa vejen (den der er laengst fremme —
+    // enten hele med-holdet-gruppen paa faelles tempo, eller den senest
+    // droppede rytter). En udgaaet rytter tikker ikke mere, saa hans tid er
+    // frosset og ville ellers traekke holdet "frem".
     const teamProxyElapsed = new Map<string, number>();
     for (const t of perTeam) {
       let minElapsed = Infinity;
-      for (const r of t.roster.riders) minElapsed = Math.min(minElapsed, t.riders[r.rider_id].elapsed_seconds);
-      teamProxyElapsed.set(t.roster.team_id, Number.isFinite(minElapsed) ? minElapsed : 0);
+      let maxElapsed = 0;
+      for (const r of t.roster.riders) {
+        const rider = t.riders[r.rider_id];
+        maxElapsed = Math.max(maxElapsed, rider.elapsed_seconds);
+        if (rider.status !== "abandoned") minElapsed = Math.min(minElapsed, rider.elapsed_seconds);
+      }
+      teamProxyElapsed.set(t.roster.team_id, Number.isFinite(minElapsed) ? minElapsed : maxElapsed);
     }
     const bestElapsed = Math.min(...[...teamProxyElapsed.values(), Infinity]);
 
@@ -341,18 +632,33 @@ export function simulateTeamTimeTrialStage(
   }
 
   const finishKm = round2(route.distance_km);
-  const results: StageResult[] = [];
+  const unsortedResults: StageResult[] = [];
   const loads: RiderLoad[] = [];
   const teamResults: TeamTimeTrialTeamResult[] = [];
+  const arrivalElapsedByRider = new Map<string, number>();
+
+  // Skadedage pr. rytter (M10, #2944): den LAENGSTE skade taeller, samme regel
+  // som index.ts's buildResults.
+  const injuryDaysByRider = new Map<string, number>();
+  for (const incident of stageIncidents) {
+    if (incident.injury_days == null) continue;
+    const current = injuryDaysByRider.get(incident.rider_id) ?? 0;
+    if (incident.injury_days > current) injuryDaysByRider.set(incident.rider_id, incident.injury_days);
+  }
 
   for (const t of perTeam) {
     const arrived = t.roster.riders
+      .filter((r) => t.riders[r.rider_id].status !== "abandoned")
       .map((r) => ({ rider_id: r.rider_id, elapsed: t.riders[r.rider_id].elapsed_seconds }))
       .sort((a, b) => a.elapsed - b.elapsed || a.rider_id.localeCompare(b.rider_id));
     const rank = clamp(TTT_EXTRA_TUNING.countbackRiderRank, 1, Math.max(1, arrived.length));
     const counted = arrived[rank - 1] ?? arrived[arrived.length - 1];
-    const teamTimeSeconds = round2(counted?.elapsed ?? 0);
+    // Et hold hvor ALLE udgik har ingen ankomst; tiden er da den seneste
+    // frosne tid (rytterne staar alligevel som udgaaede, bagest).
+    const fallbackElapsed = Math.max(0, ...t.roster.riders.map((r) => t.riders[r.rider_id].elapsed_seconds));
+    const teamTimeSeconds = round2(counted?.elapsed ?? fallbackElapsed);
     const droppedIds = t.roster.riders.filter((r) => t.riders[r.rider_id].status === "dropped").map((r) => r.rider_id).sort();
+    const abandonedIds = t.roster.riders.filter((r) => t.riders[r.rider_id].status === "abandoned").map((r) => r.rider_id).sort();
 
     teamResults.push({
       team_id: t.roster.team_id,
@@ -361,6 +667,8 @@ export function simulateTeamTimeTrialStage(
       counted_rider_id: counted?.rider_id ?? "",
       arrived_rider_ids: arrived.map((a) => a.rider_id),
       dropped_rider_ids: droppedIds,
+      abandoned_rider_ids: abandonedIds,
+      outside_time_limit: false,
     });
 
     events.push(
@@ -375,7 +683,15 @@ export function simulateTeamTimeTrialStage(
 
     for (const r of t.roster.riders) {
       const internal = t.riders[r.rider_id];
-      results.push({ rider_id: r.rider_id, rank: 0, time_seconds: teamTimeSeconds, group_id: t.teamGroupId, status: "finished" });
+      arrivalElapsedByRider.set(r.rider_id, internal.elapsed_seconds);
+      unsortedResults.push({
+        rider_id: r.rider_id,
+        rank: 0,
+        time_seconds: teamTimeSeconds,
+        group_id: t.teamGroupId,
+        status: internal.status === "abandoned" ? "abandoned" : "finished",
+        injury_days: injuryDaysByRider.get(r.rider_id) ?? null,
+      });
       loads.push({
         rider_id: r.rider_id,
         wprime_depleted_j_norm: round2(Math.max(0, internal.wprimeMax - internal.wprime)),
@@ -385,11 +701,46 @@ export function simulateTeamTimeTrialStage(
     }
   }
 
-  results.sort((a, b) => a.time_seconds - b.time_seconds || a.rider_id.localeCompare(b.rider_id));
-  results.forEach((r, index) => {
-    r.rank = index + 1;
-  });
+  // Placering: udgaaede altid bagest (#2944, samme regel som buildResults),
+  // ellers holdtid -> faktisk ankomst -> rider_id.
+  const arrival = (riderId: string): number => arrivalElapsedByRider.get(riderId) ?? Number.MAX_SAFE_INTEGER;
+  const byArrival = (a: StageResult, b: StageResult): number =>
+    a.time_seconds - b.time_seconds || arrival(a.rider_id) - arrival(b.rider_id) || a.rider_id.localeCompare(b.rider_id);
+  const finishedSorted = unsortedResults.filter((r) => r.status !== "abandoned").sort(byArrival);
+  const abandonedSorted = unsortedResults.filter((r) => r.status === "abandoned").sort(byArrival);
+  // M10's 3 km-regel er en placerings-konsekvens (en no-op paa en ttt i dag,
+  // se rollSegmentIncidents) og maa kun flytte ryttere der kom i maal.
+  const rankedResults: StageResult[] = [
+    ...applyThreeKmRuleToResults(finishedSorted, sortTimeline(events)),
+    ...abandonedSorted,
+  ].map((r, index) => ({ ...r, rank: index + 1 }));
   loads.sort((a, b) => a.rider_id.localeCompare(b.rider_id));
+
+  // M15 som hold-graense (#4915).
+  const timeLimit = applyTeamTimeLimit({
+    results: rankedResults,
+    profileType: route.profile_type,
+    distanceKm: route.distance_km,
+    tuning: options.timeLimitTuning,
+  });
+  const results = timeLimit.results;
+  const otlGroups = new Set(timeLimit.otlTeamGroupIds);
+  for (const team of teamResults) team.outside_time_limit = otlGroups.has(team.team_group_id);
+
+  // M9 (#4915): maalpassagen paa den endelige placeringsraekkefoelge. Samme
+  // funktioner som index.ts's vejetape-vej, saa skala og bonus-gate er de samme.
+  const passages: StagePassage[] = clampPassageBonusToPerRiderCap(
+    sortPassages(
+      buildFinishPassages({
+        results,
+        waypoints: route.waypoints,
+        distanceKm: route.distance_km,
+        profileType: route.profile_type,
+        finaleType: route.finale_type,
+        tuning: tuning.bonusSeconds,
+      }),
+    ),
+  );
 
   const winnerTime = results[0]?.time_seconds ?? 0;
   const top = results.slice(0, Math.min(10, results.length)).map((r) => ({ rider_id: r.rider_id, rank: r.rank, gap: round2(r.time_seconds - winnerTime) }));
@@ -399,33 +750,21 @@ export function simulateTeamTimeTrialStage(
   // spiller-copy paa en+da ("leads home the fastest team of the day").
   // Et selvopfundet navn ville tavst falde tilbage paa den generiske
   // "finish"-linje — mekanikken var bygget foer filmen fik sine TT-varianter.
-  events.push(finishEvent(finishKm, { top, winType: "ttt_win" }));
+  const finish = finishEvent(finishKm, { top, winType: "ttt_win" });
+
+  // Samme raekkefoelge som index.ts's vejetape-vej: alt paa sit eget km,
+  // derefter finish-eventet, derefter tidsgraensens events (de kan foerst
+  // afgoeres naar vinderen er i maal — #2410 §2.3 regel 4).
+  const timelineEvents = [...sortTimeline([...events, ...passagesToTimelineEvents(passages)]), finish, ...timeLimit.events];
 
   return {
-    timeline: { timeline_version: 2, events: sortTimeline(events) },
+    timeline: { timeline_version: 2, events: timelineEvents },
     results,
     loads,
     groupSnapshots,
+    incidents: [...stageIncidents].sort((a, b) => a.km - b.km || a.rider_id.localeCompare(b.rider_id)),
+    passages,
+    passage_totals: passageTotals(passages),
     teams: teamResults,
   };
 }
-
-// ── Wiring-forslag til orkestratoren (IKKE implementeret her — beskrivelse) ───
-//
-// index.ts's simulateStageV4 (frosset for denne session) kan udvides saadan
-// (arkitekt-scope):
-//
-//   if (input.route.profile_type === "ttt") {
-//     const teams = groupStartlistByTeam(input.startlist, riderTeamIds); // NY adapter
-//     return simulateTeamTimeTrialStage(input.route, teams, input.seed, input.tuning);
-//   }
-//   return simulateStageV4RoadStage(input); // eksisterende runSegmentLoop-vej
-//
-// `riderTeamIds: Record<string, string>` (rider_id -> team_id) findes IKKE i
-// StageInput i dag (Entrant baerer intet team_id-felt) — en ny adapter under
-// adapters/ (fx teamRosterAdapter.ts) skal laese team_id fra DB-laget
-// (rider_derived_abilities/roster-raekken, samme sted entrantAdapter.ts
-// allerede laeser fra) og bygge TeamRoster[]-parameteren, ELLER StageInput
-// udvides med et `team_id`-felt paa Entrant (kraever arkitekt-godkendelse,
-// da types.ts er frosset). Begge veje er additive og braekker intet
-// eksisterende — ingen af dem er implementeret i denne fil/PR.
