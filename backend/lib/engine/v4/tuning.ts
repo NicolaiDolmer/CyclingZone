@@ -849,11 +849,11 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 //   "effort_weighted" (a): "grupettoen er den sidste gruppe paa vejen", to
 //                                   led der kun virker sammen:
 //                                   1. TEMPO (segmentLoop.groupEffortTempo): en
-//                                   grupetto-rytter bidrager kun med en andel
-//                                   af sin CP til gruppens tempo; han ryger
-//                                   bagerst i raekken af dem der saetter
-//                                   farten, og en gruppe der KUN bestaar af
-//                                   grupetto-ryttere koerer i grupetto-tempo.
+//                                   grupetto-rytter saetter aldrig farten i en
+//                                   gruppe hvor andre koerer (han sidder paa
+//                                   hjul), og en gruppe der KUN bestaar af
+//                                   grupetto-ryttere koerer grupetto-tempo
+//                                   (andelen nedenfor af deres CP).
 //                                   2. TILBAGEFALD (climbSelection.
 //                                   grupettoDropBackForced): paa en stigning
 //                                   falder en grupetto-rytter tilbage fra en
