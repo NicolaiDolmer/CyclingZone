@@ -1,6 +1,44 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { WRAP, COUNT, thClass, tdClass, trClass, zonePillClass, mergeRowProps } from "./dataTableStyles.js";
+import { WRAP, SCROLLER, MOBILE_SCROLLER, COUNT, thClass, tdClass, trClass, zonePillClass, mergeRowProps } from "./dataTableStyles.js";
+
+// #4982/#5471 (ejer 21/9: "hele siden kan betjenes paa standard-maaden"): paa
+// mobil og paa en telefon i landscape maa tabellen ALDRIG ligge i en lodret
+// boks. Klasserne er kontrakten; table-page-scroll-mobile.spec.ts maaler
+// adfaerden i en rigtig browser.
+const BOX_MEDIA = "[@media(min-width:641px)_and_(min-height:600px)]:";
+
+test("mobil-standarden har ingen lodret boks, og klip-containeren er ikke en scroll-container", () => {
+  assert.doesNotMatch(MOBILE_SCROLLER, /max-h-/);
+  assert.doesNotMatch(MOBILE_SCROLLER, /overflow-y-/);
+  assert.doesNotMatch(MOBILE_SCROLLER, /overflow-auto/);
+  // `clip` (ikke `hidden`) er det der lader overskriften foelge SIDEN.
+  assert.ok(MOBILE_SCROLLER.includes("supports-[overflow:clip]:overflow-x-clip"));
+});
+
+test("desktop-boksen findes kun paa skaerme der er bredere end mobilgraensen OG mindst 600px hoeje", () => {
+  const classes = SCROLLER.split(/\s+/);
+  assert.ok(classes.includes("overflow-x-auto"), "brede tabeller skal stadig kunne skubbes vandret");
+  assert.ok(!classes.includes("overflow-auto"), "overflow-auto uden media-graense ville gen-indfoere boksen");
+  for (const cls of classes) {
+    if (/max-h-|overflow-y-/.test(cls)) {
+      assert.ok(cls.startsWith(BOX_MEDIA), `${cls} skal ligge bag ${BOX_MEDIA}`);
+    }
+  }
+  assert.ok(classes.includes(`${BOX_MEDIA}max-h-[calc(100dvh-var(--table-sticky-offset))]`));
+});
+
+test("kortet klipper runde hjoerner uden at vaere en scroll-container, hvor browseren kan", () => {
+  assert.ok(WRAP.includes("supports-[overflow:clip]:overflow-clip"));
+  // Fallback for browsere uden `clip` (iOS < 16) er den gamle adfaerd.
+  assert.ok(WRAP.includes("overflow-hidden"));
+});
+
+test("en tight matrix-kolonne yderst faar kant-luft (Mit hold > Evner, #4982)", () => {
+  assert.ok(tdClass({ tight: true }).includes("last:pr-2"));
+  assert.ok(thClass({ tight: true }).includes("last:pr-2"), "header og celle skal flugte");
+  assert.ok(!tdClass({ compact: true }).includes("last:"), "kun tight-trinnet aendres");
+});
 
 // #2849 bølge 0 — cz-table-recipen (T2, docs/design/PAGE_TEMPLATES.md).
 

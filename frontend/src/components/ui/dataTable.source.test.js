@@ -145,6 +145,18 @@ test("DataTable wrapper hver tbody i TableRowContext.Provider", () => {
   assert.match(src, /<TableRowContext\.Provider[\s\S]*<tbody>[\s\S]*<\/tbody>[\s\S]*<\/TableRowContext\.Provider>/);
 });
 
+// #4982/#5471: "Fuld tabel" har ingen lodret boks om de to lag; kun datablokken
+// scroller (vandret).
+test("to-lags-tilstanden ligger ikke i den lodrette SCROLLER-boks", () => {
+  const block = src.slice(src.indexOf("function MobileFullTable"), src.indexOf("function withBreakHints"));
+  assert.doesNotMatch(block, /className=\{SCROLLER\}/);
+});
+
+// `mobileHeader` bruges KUN i mobil-tilstandene; desktop viser altid `header`.
+test("mobileHeader gaelder kun paa mobil", () => {
+  assert.match(src, /mobile && col\.mobileHeader != null \? col\.mobileHeader : col\.header/);
+});
+
 // Desktop skal vaere UAENDRET af D-047: den gamle gren beholder fold-skjulet og
 // den pinnede foerste kolonne.
 test("desktop-grenen er uaendret: fold-skjul + sticky foerste kolonne", () => {
