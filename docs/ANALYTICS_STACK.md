@@ -73,7 +73,7 @@ Valget gemmes to steder: `localStorage["cz_consent_v1"]` og `users.consent_prefe
 | `player_events` (klient) | `hasAnalyticsConsent()` læser `localStorage["cz_consent_v1"]` direkte | `frontend/src/lib/logEvent.js:30-39` |
 | Sentry | **ingen gate** | `frontend/src/lib/sentry.jsx`, `backend/instrument.mjs` |
 | Traffic beacon | **ingen gate** (cookie-fri, storage-less, kun offentlige sider) | `frontend/src/lib/trafficBeacon.js` |
-| First-touch attribution | **ingen gate** (fanges før banneret besvares, skrives først ved signup) | `frontend/src/lib/attribution.js` |
+| First-touch attribution | **ingen gate** (fanges før banneret besvares, skrives først ved signup) | `frontend/src/lib/attribution.js`, på marketing-siderne `marketing/lib/attribution.ts` (samme felter, #5310) |
 | Presence (`users.last_seen`) | **ingen gate** (nødvendig drift) | `POST /api/presence`, RPC `touch_user_presence` |
 | Server-events (`checkout_started`/`checkout_completed`) | **ingen gate** (betalings-telemetri, service-role) | `backend/lib/billingCheckout.js`, `backend/lib/aluntaWebhook.js` |
 
@@ -273,7 +273,7 @@ Strukturen fra `docs/archive/SPRINT_DASHBOARD.md` overlever selvom tallene deri 
 
 ## 5. Attribution (kort)
 
-First-touch fanges ved **første** besøg i `localStorage["cz_attribution_v1"]` (`frontend/src/lib/attribution.js`): fem UTM-felter plus `referrer` og `landing_path`. "First-touch wins", der overskrives aldrig. Rækken skrives først server-side ved holdoprettelse (`backend/routes/api.js`, `PUT /api/teams/my`, kun når holdet reelt blev oprettet) til `signup_attribution`, service-role-only, læses via `GET /api/admin/attribution`. 📄
+First-touch fanges ved **første** besøg i `localStorage["cz_attribution_v1"]` (`frontend/src/lib/attribution.js`): fem UTM-felter plus `referrer` og `landing_path`. "First-touch wins", der overskrives aldrig. Marketing-siderne ligger på samme origin og skriver samme række via et inline-script i root-layoutet (`marketing/lib/attribution.ts`, #5310). En same-origin referrer gemmes aldrig som kanal; dens utm_* udledes i stedet. Målebruddet 14/9 og læse-sidens fallback: `docs/GROWTH_STACK.md` §3.5. Rækken skrives først server-side ved holdoprettelse (`backend/routes/api.js`, `PUT /api/teams/my`, kun når holdet reelt blev oprettet) til `signup_attribution`, service-role-only, læses via `GET /api/admin/attribution`. 📄
 
 Attributionen er **bevidst uden for samtykke-gaten**: first-touch sker før banneret besvares, og intet persisteres før brugeren selv opretter en konto. Grundlaget er legitim interesse (vurdering, ikke juridisk efterprøvet); om privatlivspolitikken beskriver det, er ikke tjekket ❓
 
@@ -298,6 +298,7 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 | 9 | **Sprint-metrics-snapshottet kører ikke** | `.github/workflows/sprint-metrics-snapshot.yml.disabled`. Der findes ingen automatisk historik på DAU/WAU/MAU ud over `growth_metric_snapshots` | 📄 bevidst deaktiveret. `backend/scripts/snapshot-sprint-metrics.mjs` findes og kan køres manuelt |
 | 10 | **PostHog-projektet er tomt** | 0 events nogensinde. Ethvert PostHog-tal er indtil videre ikke-eksisterende, ikke lavt | ❓ SDK'et wires i søster-PR ([#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)) |
 | 11 | ~~16 events er canary-blinde~~ **lukket 18/9** | De fyrede i prod, men stod ikke i `KNOWN_EVENTS`, så Detector E ville ikke opdage at de tørrede ud | ✅ Alle 16 tilføjet i [#5369](https://github.com/NicolaiDolmer/CyclingZone/issues/5369). 15 flyder (8 til 3.502 pr. 30 dage, målt mod prod 18/9); `academy_intake_pull` er dormant bag flag og whitelistet i Detector E. Guarden FEJLER nu på et nyt canary-blindt event |
+| 12 | **First-touch tabt på marketing-forsiden fra 14/9** | Signups via marketing-forsiden fik vores egen side som referrer og ingen UTM. Den eksterne referrer er tabt for de rækker | 🔧 [#5310](https://github.com/NicolaiDolmer/CyclingZone/issues/5310): skrive-siden rettet, læse-siden udleder UTM fra referrerens query eller viser "ukendt (tabt i marketing)". Ingen backfill. Se `docs/GROWTH_STACK.md` §3.5 |
 
 ## 7. Adgang og scripts
 
