@@ -53,15 +53,15 @@ async function loadRaces() {
   });
 }
 
-// #3347: hvilken re-draw-variant hører hvert løb til? Uden det ville en backfill
-// overskrive gatens træk med det kanoniske og gøre realisme-scorecardet til en løgn.
-// Grupperings-reglen (pr. season_id+tier, laveste pulje som repræsentant) bor i
-// raceRouteRealismDraw.js, så scorecardet, materializeren og backfill'ene deler den.
 async function loadTierByDivision() {
   const divisions = await fetchAllRows(() => supabase.from("league_divisions").select("id, tier").order("id"));
   return new Map((divisions || []).map((d) => [d.id, d.tier]));
 }
 
+// #3347: hvilken re-draw-variant hører hvert løb til? Uden det ville en backfill
+// overskrive gatens træk med det kanoniske og gøre realisme-scorecardet til en løgn.
+// Grupperings-reglen (pr. season_id+tier, laveste pulje som repræsentant) bor i
+// raceRouteRealismDraw.js, så scorecardet, materializeren og backfill'ene deler den.
 async function loadVariantByRaceId(races, catalogMeta, tierByDivision) {
   return resolveVariantByRaceId({
     races, catalogMeta, tierByDivision,
@@ -81,38 +81,35 @@ async function loadCatalogMeta() {
   return new Map((rows || []).map((r) => [r.id, { external_id: r.external_id ?? null, terrain_archetype: r.terrain_archetype ?? null }]));
 }
 
-// #5405: finale-typerne i en sæsons tier er kvote-fordelt over HELE tierens løbssæt
+// #5405: finale-typerne i en sæsons pulje er kvote-fordelt over puljens løbssæt
 // (balanceFinaleQuotas) — det kan et træk pr. løb ikke genskabe. Uden dette ville en
 // backfill tavst skrive frie finaler over dem materializeren skrev, og realisme-gaten ville
-// have målt et andet parcours end det der står i basen. Samme gruppering som
-// resolveVariantByRaceId: (season_id, tier), laveste pulje som repræsentant — alle puljer i
-// en tier kører samme løbssæt (#2276), så pulje-kopierne slås op på pool_race_id.
+// have målt et andet parcours end det der står i basen.
+//
+// Grupperet pr. (season_id, pulje), ikke pr. tier: normalt kører alle puljer i en tier
+// samme løbssæt (#2276), og fordelingen er deterministisk og uafhængig af rækkefølgen, så
+// hver pulje får præcis de samme finaler. Men en pulje der aktiveres midt i sæsonen (§2e)
+// kan have sit EGET løbssæt, og materializeren fordelte finalerne over netop det sæt. En
+// tier-repræsentant ville give den puljes løb et andet sæts fordeling (fundet af CodeRabbit).
 const raceKey = (race, tierByDivision) => {
   const tier = tierByDivision.get(race.league_division_id);
-  return tier == null || !race.season_id || !race.pool_race_id ? null : `${race.season_id}|${tier}|${race.pool_race_id}`;
+  return tier == null || !race.season_id || !race.pool_race_id
+    ? null
+    : `${race.season_id}|${race.league_division_id}|${race.pool_race_id}`;
 };
 
-function tierProfilesByRaceKey(races, tierByDivision, seedRaceOf) {
-  const lowestDivByGroup = new Map();
+function poolProfilesByRaceKey(races, tierByDivision, seedRaceOf) {
+  const racesByPool = new Map();
   for (const r of races) {
-    const tier = tierByDivision.get(r.league_division_id);
-    if (tier == null || !r.season_id) continue;
-    const g = `${r.season_id}|${tier}`;
-    if (!lowestDivByGroup.has(g) || r.league_division_id < lowestDivByGroup.get(g)) lowestDivByGroup.set(g, r.league_division_id);
-  }
-  const repByGroup = new Map();
-  for (const r of races) {
-    const tier = tierByDivision.get(r.league_division_id);
-    if (tier == null || !r.season_id || !r.pool_race_id) continue;
-    const g = `${r.season_id}|${tier}`;
-    if (lowestDivByGroup.get(g) !== r.league_division_id) continue;
-    if (!repByGroup.has(g)) repByGroup.set(g, []);
-    repByGroup.get(g).push(r);
+    if (raceKey(r, tierByDivision) == null) continue;
+    const pool = `${r.season_id}|${r.league_division_id}`;
+    if (!racesByPool.has(pool)) racesByPool.set(pool, []);
+    racesByPool.get(pool).push(r);
   }
   const out = new Map();
-  for (const rep of repByGroup.values()) {
-    const balanced = balanceFinaleQuotas(rep.map((r) => generateRaceStageProfiles(seedRaceOf(r))));
-    rep.forEach((r, i) => out.set(raceKey(r, tierByDivision), balanced[i]));
+  for (const poolRaces of racesByPool.values()) {
+    const balanced = balanceFinaleQuotas(poolRaces.map((r) => generateRaceStageProfiles(seedRaceOf(r))));
+    poolRaces.forEach((r, i) => out.set(raceKey(r, tierByDivision), balanced[i]));
   }
   return out;
 }
@@ -137,7 +134,7 @@ async function main() {
     // season_variant (#3347) = tierens resolverede re-draw, samme tal som gaten scorer.
     return { ...race, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null, season_variant: variantByRaceId.get(race.id) ?? 0 };
   };
-  const tierProfiles = tierProfilesByRaceKey(races, tierByDivision, seedRaceOf);
+  const poolProfiles = poolProfilesByRaceKey(races, tierByDivision, seedRaceOf);
 
   const dist = Object.fromEntries(PROFILE_TYPES.map((p) => [p, 0]));
   const sample = [];
@@ -148,9 +145,9 @@ async function main() {
   for (const race of races) {
     if (manualRaceIds.has(race.id)) { racesSkippedManual++; continue; }
 
-    // #5405: et sæson-løb får tierens profiler (finaler kvote-fordelt over tierens løbssæt,
+    // #5405: et sæson-løb får puljens profiler (finaler kvote-fordelt over puljens løbssæt,
     // som materializeren skrev dem). Løb uden sæson/division genereres alene, som før.
-    const profiles = tierProfiles.get(raceKey(race, tierByDivision)) ?? generateRaceStageProfiles(seedRaceOf(race));
+    const profiles = poolProfiles.get(raceKey(race, tierByDivision)) ?? generateRaceStageProfiles(seedRaceOf(race));
     for (const p of profiles) dist[p.profile_type]++;
     if (sample.length < 12) {
       sample.push(`  ${race.name}${race.race_type === "stage_race" ? ` (${profiles.length} etaper)` : ""}: ${profiles.map((p) => p.profile_type).join(" → ")}`);
