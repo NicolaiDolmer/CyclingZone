@@ -13,6 +13,11 @@
 //       pinnede 09-07-population — praecis som gaten er defineret, ikke paa 5.
 //   (3) Uhelds- og OTL-rate pr. etapetype (v4), fra de samme 5-seed-koersler.
 //   (4) Ydelse: ms pr. etape ved 180 og 192 ryttere mod flip-gatens 60 s.
+//   (6) Flip-infrastrukturens og kill-switchens EKSISTERENDE tests koeres og
+//       rapporteres (spec 6/9: "kill-switch-test groen").
+//
+// RULES §9-tjeklisten (5) og de kendte roede punkter (7) er prosa i selve
+// rapporten, ikke genereret — de er kildehenvisninger, ikke maalinger.
 //
 // HVAD DEN IKKE GOER: den aendrer intet i motoren, tuning.ts eller baseline-
 // JSON'en (backend/scripts/baselines/v4-anchor-baseline.json). Den flipper
@@ -34,7 +39,8 @@
 //     --private-out=balance-internals/5515-v4-flip-klar/2026-09-23-tal.md
 //
 //   Flag: --seeds=s1,...  (default s1-s5) · --tail-seeds=s1,s2,s3 (ejer-laast,
-//   aendr kun bevidst) · --perf-sizes=180,192 · --json=<fil> (raa resultat).
+//   aendr kun bevidst) · --perf-sizes=180,192 · --json=<fil> (raa resultat) ·
+//   --skip-tests (spring (6) over, fx under udvikling).
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -323,6 +329,71 @@ export function runPerf({ population, stages, fieldSizes = PERF_FIELD_SIZES, see
 }
 
 // ---------------------------------------------------------------------------
+// (6) Flip-infrastruktur + kill-switch: de eksisterende tests koeres, ikke
+// genopfundet. Spec 6/9 §3: "kill-switch-test groen".
+// ---------------------------------------------------------------------------
+
+// Relativt til backend/. Flag/kaldssted/kill-switch · broen (inkl. 180-rytter-
+// ydelsestesten) · v4-paritet mod v3's afvikling · TTT-grenen i broen.
+export const FLIP_INFRA_TEST_FILES = Object.freeze([
+  "lib/raceRunnerEngineV4.test.js",
+  "lib/raceEngineV4Bridge.test.js",
+  "lib/raceRunnerEngineV4Parity.test.js",
+  "lib/raceEngineV4Bridge.teamTimeTrial.test.js",
+]);
+
+// Tests hvis NAVN goer dem til kill-switch-tests (flag off = v3 uroert, v4
+// kan ikke indlaeses = fald tilbage, skift motor midt i et etapeloeb).
+const KILL_SWITCH_NAME = /kill-switch|flag off|flag-off/iu;
+
+/**
+ * Parser node --test's TAP-output (--test-reporter=tap). Kun top-level-
+ * linjer (ingen indrykning) er testresultater; indrykkede er subtests.
+ * @param {string} tap
+ */
+export function parseTap(tap) {
+  const tests = [];
+  const summary = {};
+  for (const line of String(tap).split(/\r?\n/u)) {
+    const m = line.match(/^(not ok|ok) \d+ - (.*)$/u);
+    if (m) {
+      tests.push({ ok: m[1] === "ok", name: m[2].replace(/\\#/gu, "#").trim() });
+      continue;
+    }
+    const s = line.match(/^# (tests|pass|fail|skipped|todo|cancelled) (\d+)$/u);
+    if (s) summary[s[1]] = Number(s[2]);
+  }
+  const fail = summary.fail ?? tests.filter((t) => !t.ok).length;
+  return {
+    tests,
+    total: summary.tests ?? tests.length,
+    pass: summary.pass ?? tests.filter((t) => t.ok).length,
+    fail,
+    killSwitch: tests.filter((t) => KILL_SWITCH_NAME.test(t.name)),
+    ok: fail === 0 && tests.length > 0,
+  };
+}
+
+export function runFlipInfraTests(files = FLIP_INFRA_TEST_FILES) {
+  const backendDir = join(REPO_ROOT, "backend");
+  return files.map((file) => {
+    let stdout;
+    try {
+      stdout = execFileSync(process.execPath, ["--test", "--import", "./test-setup.js", "--test-reporter=tap", file], {
+        cwd: backendDir,
+        encoding: "utf8",
+        maxBuffer: 32 * 1024 * 1024,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (err) {
+      // Exit != 0 = mindst én test roed. Det er en DOM, ikke en scriptfejl.
+      stdout = typeof err?.stdout === "string" ? err.stdout : "";
+    }
+    return { file: `backend/${file}`, ...parseTap(stdout) };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Rendering: offentlig blok (ingen balance-tal) + privat fil (alle tal)
 // ---------------------------------------------------------------------------
 
@@ -346,7 +417,7 @@ function seedsCell(engine, seedCount) {
  * rater eller baand-graenser — de staar i den private fil.
  */
 export function renderPublicBlock(result) {
-  const { meta, anchors, tailGate, rates, perf, killSwitch } = result;
+  const { meta, anchors, tailGate, rates, perf, infraTests } = result;
   const lines = [];
   lines.push(START_MARKER);
   lines.push("");
@@ -415,11 +486,22 @@ export function renderPublicBlock(result) {
     `Maalt paa ${meta.host} (${meta.node}), rute-adapter + motor + oversaettelse til v3's ranked-form, uden DB. ` +
       "Railway-containerens CPU er ikke maalt her.",
   );
-  if (killSwitch) {
+  if (infraTests?.length) {
     lines.push("");
-    lines.push("### 5. Kill-switch-tests");
+    lines.push("### 5. Flip-infrastruktur og kill-switch (eksisterende tests, koert nu)");
     lines.push("");
-    lines.push(`\`${killSwitch.command}\`: **${killSwitch.pass ? "groen" : "ROED"}** (${killSwitch.summary}).`);
+    lines.push("| Testfil | Resultat | Heraf kill-switch-tests |");
+    lines.push("|---|---|---|");
+    for (const t of infraTests) {
+      const ks = t.killSwitch.length ? `${t.killSwitch.filter((k) => k.ok).length}/${t.killSwitch.length} groenne` : "-";
+      lines.push(`| \`${t.file}\` | ${t.ok ? "groen" : "**ROED**"} (${t.pass}/${t.total}) | ${ks} |`);
+    }
+    const allKill = infraTests.flatMap((t) => t.killSwitch);
+    lines.push("");
+    lines.push(
+      `**Kill-switch samlet:** ${allKill.length > 0 && allKill.every((k) => k.ok) ? "groen" : "**ROED**"} ` +
+        `(${allKill.filter((k) => k.ok).length}/${allKill.length}). Testene er lokale enhedstests med stub-DB, ikke en prod-oevelse.`,
+    );
   }
   lines.push("");
   lines.push(END_MARKER);
@@ -557,7 +639,7 @@ async function main() {
   const reportPath = argValue("write-report");
   const privatePath = argValue("private-out", "balance-internals/5515-v4-flip-klar/v4-flip-klar-tal.md");
   const jsonPath = argValue("json");
-  const killSwitchJson = argValue("kill-switch");
+  const skipTests = process.argv.includes("--skip-tests");
 
   const population = JSON.parse(readFileSync(abs(POPULATION_FILE), "utf8"));
   const stagesFile = JSON.parse(readFileSync(abs(STAGES_FILE), "utf8"));
@@ -570,6 +652,11 @@ async function main() {
   const tailGate = evaluateTailGate(runTailSpread({ population, stages, seeds: tailSeeds, fieldSize: FIELD_SIZE }));
   console.log(`[5515] ydelse ${perfSizes.join(",")} ...`);
   const perf = runPerf({ population, stages, fieldSizes: perfSizes });
+  let infraTests = null;
+  if (!skipTests) {
+    console.log(`[5515] flip-infra/kill-switch-tests (${FLIP_INFRA_TEST_FILES.length} filer) ...`);
+    infraTests = runFlipInfraTests();
+  }
   console.log(`[5515] faerdig paa ${((performance.now() - t0) / 1000).toFixed(1)} s`);
 
   const result = {
@@ -590,7 +677,7 @@ async function main() {
     tailGate,
     rates,
     perf: perf.map((p) => ({ fieldSize: p.fieldSize, summary: p.summary })),
-    killSwitch: killSwitchJson ? JSON.parse(readFileSync(abs(killSwitchJson), "utf8")) : null,
+    infraTests,
   };
 
   const privateAbs = abs(privatePath);
