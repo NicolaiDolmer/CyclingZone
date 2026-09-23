@@ -43,6 +43,9 @@ import { applyTimeLimit } from "./mechanics/timeLimit.ts";
 // koerer sammen), saa den forgrenes i simulateStageV4 — se TTT-blokken dér.
 import { simulateTeamTimeTrialStage } from "./mechanics/teamTimeTrial.ts";
 import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
+// #5576: enkeltstarten. Samme kerne som holdtidskoerslen, én rytter pr. enhed —
+// se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
+import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
 
 // Fase C-wiring (#4030) + F3-wiring (#4615, #2944, #3855): de rigtige
 // M2/M3/M4/M5/M8/M10-
@@ -199,6 +202,19 @@ export function simulateStageV4(input: StageInput): StageOutput {
   if (input.route.profile_type === "ttt") {
     const rosters = teamRostersFromStartlist(input.startlist);
     if (rosters) return simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning);
+  }
+
+  // ── Enkeltstarten (#5576) ────────────────────────────────────────────────
+  // itt/itt_hilly faldt foer igennem til massestartens segment-loop: felt,
+  // laee, udbrud og `sprint_decided`, og naesten hele feltet paa vindertiden.
+  // §3 invariant 7 kraever individuelle tider paa en ITT. Kernen er
+  // holdtidskoerslens med ét hold pr. rytter (egen start, intet laee, egen
+  // tid), saa M10/M15/M9 koeres af den og IKKE af blokken nedenfor.
+  //
+  // Ingen fallback som TTT's: en enkeltstart kraever intet hold-id, saa den
+  // forgrener altid — ogsaa for fixtures og haandbyggede testlister.
+  if (isIndividualTimeTrial(input.route.profile_type)) {
+    return simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning);
   }
 
   const { state, timeline, groupSnapshots } = runSegmentLoop(input, LIVE_MECHANIC_HOOKS);

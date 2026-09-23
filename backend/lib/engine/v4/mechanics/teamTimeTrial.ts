@@ -189,8 +189,12 @@ function computeTeamSpeedKmh(collectiveCp: number, kind: SegmentKind, tuning: En
   return baseSpeed * multiplier;
 }
 
-// ── Intern pr.-rytter-tilstand (IKKE et af de frosne types.ts-typer — rent
-// internt bogholderi for denne mekanik, aldrig eksponeret udenfor filen) ──────
+// ── Pr.-rytter-tilstand (IKKE et af de frosne types.ts-typer — rent internt
+// bogholderi for tidskoerslerne; eksporteret som TYPE saa enkeltstarten
+// (mechanics/individualTimeTrial.ts, #5576) kan skrive sit eget segment-tik
+// paa den samme kerne, aldrig brugt uden for de to mekanikker) ─────────────────
+
+export type TimeTrialRider = InternalRider;
 
 type InternalRider = {
   rider_id: string;
@@ -212,6 +216,29 @@ type TeamState = {
   entrantsById: Record<string, Entrant>;
   riders: Record<string, InternalRider>;
   lastEmittedGap: number | undefined;
+};
+
+/** Én startende enhed i en tidskoersel: et hold (TTT) eller én rytter (ITT). */
+export type TimeTrialUnit = TeamState;
+
+/**
+ * Hvad der ADSKILLER holdtidskoerslen fra enkeltstarten (#5576). Alt andet —
+ * egen start fra nul, M10's uheld, M15's graense pr. ankomstgruppe, M9's
+ * maalpassage, placering og tidslinje-form — er den samme kerne
+ * (`runTimeTrialStage`). En enkeltstart er en tidskoersel hvor hver enhed er
+ * ét hold paa én rytter.
+ */
+export type TimeTrialMode = {
+  /** group_id-praefiks: `<praefiks>-<enheds-id>`. */
+  groupPrefix: string;
+  /** finish-eventets win_type — skal vaere en noegle loebsfilmen allerede kender. */
+  winType: string;
+  /** Hold-events (`ttt_rider_dropped`, `ttt_team_result`). En enkeltstart har intet hold at falde af. */
+  unitEvents: boolean;
+  /** `gap_update` pr. enhed. Loebsfilmen tegner ingen gap-kurve paa en tidskoersel (#3463). */
+  gapUpdates: boolean;
+  /** Ét segment for én enhed. Muterer enhedens lokale rytter-tilstand; returnerer ny-droppede rider_ids. */
+  tickUnitSegment: (unit: TimeTrialUnit, segment: Segment, segmentIndex: number, tuning: EngineTuning) => string[];
 };
 
 function initInternalRiders(roster: TeamRoster, tuning: EngineTuning, seed: string): Record<string, InternalRider> {
@@ -552,6 +579,39 @@ export function simulateTeamTimeTrialStage(
   tuning: EngineTuning,
   options: TeamTimeTrialOptions = {},
 ): TeamTimeTrialOutput {
+  return runTimeTrialStage(route, teams, seed, tuning, options, TEAM_TIME_TRIAL_MODE);
+}
+
+/** Holdtidskoerslens variant af kernen: work-rotation i holdet, hold-events, gap-kurve pr. hold. */
+const TEAM_TIME_TRIAL_MODE: TimeTrialMode = {
+  groupPrefix: "ttt",
+  // `ttt_win` og IKKE "team_time_trial" (wiringen 6/9): det er den win_type
+  // baade v3's raceTimeline.js og loebsfilmen (frontend/src/lib/
+  // stageTimelineFilm.js's WIN_TYPE_KEY) allerede kender, med faerdig
+  // spiller-copy paa en+da ("leads home the fastest team of the day").
+  // Et selvopfundet navn ville tavst falde tilbage paa den generiske
+  // "finish"-linje — mekanikken var bygget foer filmen fik sine TT-varianter.
+  winType: "ttt_win",
+  unitEvents: true,
+  gapUpdates: true,
+  tickUnitSegment: (unit, segment, segmentIndex, tuning) =>
+    tickTeamSegment(segment, segmentIndex, unit.roster, unit.entrantsById, unit.riders, tuning),
+};
+
+/**
+ * Tidskoersels-kernen (#5576): M13's etape-model med enhedens eget tik som
+ * eneste variabel. `simulateTeamTimeTrialStage` koerer den med hold som
+ * enheder (bit-uaendret mod foer udskillelsen); mechanics/individualTimeTrial.ts
+ * koerer den med én rytter pr. enhed. Se `TimeTrialMode` for forskellene.
+ */
+export function runTimeTrialStage(
+  route: RouteV2,
+  teams: TeamRoster[],
+  seed: string,
+  tuning: EngineTuning,
+  options: TeamTimeTrialOptions,
+  mode: TimeTrialMode,
+): TeamTimeTrialOutput {
   const incidentsTuning = options.incidentsTuning ?? INCIDENTS_EXTRA_TUNING;
   const totalFieldCount = teams.reduce((sum, t) => sum + t.riders.length, 0);
   const events: TimelineEvent[] = [];
@@ -561,7 +621,7 @@ export function simulateTeamTimeTrialStage(
 
   const perTeam: TeamState[] = teams.map((roster) => ({
     roster,
-    teamGroupId: `ttt-${roster.team_id}`,
+    teamGroupId: `${mode.groupPrefix}-${roster.team_id}`,
     entrantsById: Object.fromEntries(roster.riders.map((r) => [r.rider_id, r])) as Record<string, Entrant>,
     riders: initInternalRiders(roster, tuning, seed),
     lastEmittedGap: undefined,
@@ -575,7 +635,8 @@ export function simulateTeamTimeTrialStage(
     const segment = route.segments[segmentIndex];
 
     for (const t of perTeam) {
-      const newlyDropped = tickTeamSegment(segment, segmentIndex, t.roster, t.entrantsById, t.riders, tuning);
+      const newlyDropped = mode.tickUnitSegment(t, segment, segmentIndex, tuning);
+      if (!mode.unitEvents) continue;
       for (const riderId of newlyDropped) {
         events.push(makeEvent(segment.to_km, "ttt_rider_dropped", { team_id: t.roster.team_id, rider_id: riderId, group_id: t.teamGroupId }));
       }
@@ -621,6 +682,7 @@ export function simulateTeamTimeTrialStage(
     });
     groupSnapshots.push({ km: round2(segment.to_km), groups: groupEntries });
 
+    if (!mode.gapUpdates) continue;
     for (const t of perTeam) {
       const gapSeconds = round2(Math.max(0, (teamProxyElapsed.get(t.roster.team_id) ?? 0) - bestElapsed));
       if (gapSeconds === 0) continue;
@@ -671,15 +733,17 @@ export function simulateTeamTimeTrialStage(
       outside_time_limit: false,
     });
 
-    events.push(
-      makeEvent(finishKm, "ttt_team_result", {
-        team_id: t.roster.team_id,
-        group_id: t.teamGroupId,
-        time_seconds: teamTimeSeconds,
-        counted_rider_id: counted?.rider_id ?? "",
-        dropped_rider_ids: droppedIds,
-      }),
-    );
+    if (mode.unitEvents) {
+      events.push(
+        makeEvent(finishKm, "ttt_team_result", {
+          team_id: t.roster.team_id,
+          group_id: t.teamGroupId,
+          time_seconds: teamTimeSeconds,
+          counted_rider_id: counted?.rider_id ?? "",
+          dropped_rider_ids: droppedIds,
+        }),
+      );
+    }
 
     for (const r of t.roster.riders) {
       const internal = t.riders[r.rider_id];
@@ -744,13 +808,7 @@ export function simulateTeamTimeTrialStage(
 
   const winnerTime = results[0]?.time_seconds ?? 0;
   const top = results.slice(0, Math.min(10, results.length)).map((r) => ({ rider_id: r.rider_id, rank: r.rank, gap: round2(r.time_seconds - winnerTime) }));
-  // `ttt_win` og IKKE "team_time_trial" (wiringen 6/9): det er den win_type
-  // baade v3's raceTimeline.js og loebsfilmen (frontend/src/lib/
-  // stageTimelineFilm.js's WIN_TYPE_KEY) allerede kender, med faerdig
-  // spiller-copy paa en+da ("leads home the fastest team of the day").
-  // Et selvopfundet navn ville tavst falde tilbage paa den generiske
-  // "finish"-linje — mekanikken var bygget foer filmen fik sine TT-varianter.
-  const finish = finishEvent(finishKm, { top, winType: "ttt_win" });
+  const finish = finishEvent(finishKm, { top, winType: mode.winType });
 
   // Samme raekkefoelge som index.ts's vejetape-vej: alt paa sit eget km,
   // derefter finish-eventet, derefter tidsgraensens events (de kan foerst
