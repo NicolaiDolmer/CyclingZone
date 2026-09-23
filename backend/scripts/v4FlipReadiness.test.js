@@ -237,6 +237,24 @@ test("parseTap: top-level ok/not ok, opsummering, kill-switch-navne og escapede 
   assert.equal(parseTap("").ok, false, "intet output er ikke groent");
 });
 
+test("parseTap: en sprunget eller todo-markeret kill-switch-test er IKKE groen", () => {
+  const tap = [
+    "ok 1 - \\#3855 (d) kill-switch: skift motor midt i loebet # SKIP ikke klar",
+    "ok 2 - \\#3855 (a) flag off: motoren kaldes ALDRIG # TODO",
+    "ok 3 - determinisme",
+    "# tests 3",
+    "# pass 1",
+    "# fail 0",
+    "# skipped 1",
+    "# todo 1",
+  ].join("\n");
+  const r = parseTap(tap);
+  assert.deepEqual(r.tests.map((t) => t.directive), ["SKIP", "TODO", null]);
+  assert.equal(r.tests[0].name, "#3855 (d) kill-switch: skift motor midt i loebet", "direktivet er skilt fra navnet");
+  assert.deepEqual(r.killSwitch.map((k) => k.ok), [false, false]);
+  assert.equal(r.ok, false, "en fil med sprungne tests er ikke groen");
+});
+
 // ── Rendering + hard rule 17-vagten ──────────────────────────────────────────
 
 function syntheticResult() {

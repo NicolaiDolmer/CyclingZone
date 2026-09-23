@@ -42,7 +42,7 @@ Kommandoen erstatter kun den genererede blok under [Målingerne](#målingerne) (
 - **Ankre:** `runHeadToHead` + `buildScorecard` fra `headToHeadV4.js` pr. seed (s1-s5), aggregeret med `aggregateScorecards`. Dommen er på seed-middel (RULES §7 række 8); kolonnen "seeds" viser hvor mange enkelt-seeds der består for sig.
 - **Hale-gaten:** `runTailSpread` + `evaluateTailGate` fra `v4TailSpread.js` på de ejer-låste seeds s1-s3 mod de samme pinnede filer. Det er præcedensen fra `teamPlayAbMeasure.mjs`. CLI'ens default-population er en anden, se [røde punkter](#kendte-røde-punkter).
 - **Uheld og OTL:** fra v4-outputtet i de samme 5-seed-kørsler, pr. etapetype. OTL læses fra resultatets `status`, redninger fra tidslinjens grupetto-event. OTL splittes op efter årsag: uden uheld, kun mekanisk uheld, eller efter styrt.
-- **Ydelse:** rute-adapter + startliste-adapter + `simulateStageV4` + oversættelse til v3's `ranked`-form, pr. etape, alle 141 etaper ved 180 og 192 ryttere, efter én opvarmningskørsel. 192 er det største felt prod har haft pr. løb (GAME_INVARIANTS.md, #3331). DB-kald er ikke med.
+- **Ydelse:** rute-adapter + startliste-adapter + `simulateStageV4` + oversættelse til v3's `ranked`-form, pr. etape, alle 141 etaper ved 180 og 192 ryttere, efter én opvarmningskørsel. 192 er det største felt prod har haft pr. løb (GAME_INVARIANTS.md, #3331). DB-kald er ikke med. Tiderne svinger mellem kørsler med maskinens belastning (andre bølge-spor kørte samtidig), men maks-etapen har ligget langt under gaten i hver kørsel.
 - **Kill-switch:** de eksisterende tests køres, de er ikke skrevet om: `raceRunnerEngineV4.test.js` (flag, kaldssted, kill-switch), `raceEngineV4Bridge.test.js` (broen og 180-rytters-ydelsestesten), `raceRunnerEngineV4Parity.test.js` og `raceEngineV4Bridge.teamTimeTrial.test.js`.
 - Harnessen er `backend/scripts/v4FlipReadiness.mjs`, testet i `v4FlipReadiness.test.js`. Den test fælder også en offentlig blok der lækker målte værdier.
 
@@ -54,7 +54,7 @@ Afsnit 1-5 herunder er genereret; de omtales som "måling 1-5" i resten af rappo
 
 > **Genereret af `backend/scripts/v4FlipReadiness.mjs`, ikke haandskrevet.** Tallene bag dommene (middel, spaend, rater) staar i den private fil (hard rule 17), ikke her. Ret ikke i blokken; koer scriptet igen.
 >
-> Koert 2026-09-23T00:49:01.876Z paa motor-sha `86d14b239` · population `backend/scripts/baselines/population-snapshot-2026-09-07.json` · etaper `backend/scripts/baselines/v4-proxy-stages-2026-09-06.json` (141 etaper) · felt 180 · orders=none.
+> Koert 2026-09-23T01:01:36.867Z paa motor-sha `86d14b239` · population `backend/scripts/baselines/population-snapshot-2026-09-07.json` · etaper `backend/scripts/baselines/v4-proxy-stages-2026-09-06.json` (141 etaper) · felt 180 · orders=none.
 
 ### 1. Ankre, v3 mod v4 (5 seeds: s1, s2, s3, s4, s5)
 
@@ -102,8 +102,8 @@ Dommen er paa seed-middel (RULES §7 raekke 8). "Seeds" = antal enkelt-seeds der
 
 | Felt | Etaper | Middel | p95 | Maks (etapetype) | Dom |
 |---|---|---|---|---|---|
-| 180 | 141 | 9 ms | 19 ms | 44 ms (mountain) | PASS |
-| 192 | 141 | 10 ms | 19 ms | 52 ms (mountain) | PASS |
+| 180 | 141 | 17 ms | 36 ms | 229 ms (mountain) | PASS |
+| 192 | 141 | 13 ms | 23 ms | 80 ms (high_mountain) | PASS |
 
 Maalt paa DOLMERPC (v24.16.0), rute-adapter + motor + oversaettelse til v3's ranked-form, uden DB. Railway-containerens CPU er ikke maalt her.
 

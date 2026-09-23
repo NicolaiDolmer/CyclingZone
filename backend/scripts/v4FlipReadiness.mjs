@@ -390,9 +390,13 @@ export function parseTap(tap) {
   const tests = [];
   const summary = {};
   for (const line of String(tap).split(/\r?\n/u)) {
-    const m = line.match(/^(not ok|ok) \d+ - (.*)$/u);
+    // En sprunget/todo-test skrives som "ok N - navn # SKIP" / "# TODO". Den
+    // koerte aldrig og maa derfor ikke taelle som groen (navnets egne '#' er
+    // escapet som '\#' af reporteren, saa direktivet kan skilles fra).
+    const m = line.match(/^(not ok|ok) \d+ - (.*?)(?:\s+# (SKIP|TODO)\b.*)?$/iu);
     if (m) {
-      tests.push({ ok: m[1] === "ok", name: m[2].replace(/\\#/gu, "#").trim() });
+      const directive = m[3]?.toUpperCase() ?? null;
+      tests.push({ ok: m[1] === "ok" && directive === null, directive, name: m[2].replace(/\\#/gu, "#").trim() });
       continue;
     }
     const s = line.match(/^# (tests|pass|fail|skipped|todo|cancelled) (\d+)$/u);
@@ -405,7 +409,8 @@ export function parseTap(tap) {
     pass: summary.pass ?? tests.filter((t) => t.ok).length,
     fail,
     killSwitch: tests.filter((t) => KILL_SWITCH_NAME.test(t.name)),
-    ok: fail === 0 && tests.length > 0,
+    // Groen = mindst én test koerte, ingen fejlede, og ingen blev sprunget over.
+    ok: fail === 0 && tests.length > 0 && tests.every((t) => t.ok),
   };
 }
 
