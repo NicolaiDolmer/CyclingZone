@@ -5869,13 +5869,23 @@ test("processSeasonEnd fail-safe: manglende/fejlende flag-opslag = motorens norm
 
 // ─── [epic #4592 del 2] Parkerings-wiring ──────────────────────────────────
 //
-// processSeasonEnd skal kalde parkDormantTeams KUN når season_signup_enabled
-// er 'on', og en fejlende parkerings-sweep må ALDRIG vælte resten af
-// sæsonskiftet (samme fail-isolerende mønster som notifikations-loopet).
+// processSeasonEnd skal kalde parkerings-sweepen (park → genindplacér →
+// nulstil tilmeldinger) KUN når season_signup_enabled er 'on', og en fejlende
+// sweep må ALDRIG vælte resten af sæsonskiftet (samme fail-isolerende mønster
+// som notifikations-loopet).
+
+function fakeSweepResult() {
+  return {
+    park: { candidates: 3, parked: 2, skipped: 1, parkedTeamIds: ["t1", "t2"], subscriptionProtectedTeamIds: ["t9"] },
+    unpark: { candidates: 1, unparked: 1, skipped: 0, failedTeamIds: [], placements: [{ teamId: "t5", division: 3, leagueDivisionId: "p3" }] },
+    signupsReset: 4,
+    signupsResetError: null,
+  };
+}
 
 test("[epic #4592] processSeasonEnd kalder INGEN parkering når season_signup_enabled er off (default/fail-safe)", async () => {
   const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
-  let parkCalled = false;
+  let sweepCalled = false;
 
   await processSeasonEnd("season-1", {
     supabase,
@@ -5885,16 +5895,16 @@ test("[epic #4592] processSeasonEnd kalder INGEN parkering når season_signup_en
     updateRiderValues: async () => {},
     isSeasonEndDivisionMovementSkipped: async () => true, // undgå at røre league_divisions-mocken her
     isSeasonSignupEnabled: async () => false,
-    parkDormantTeams: async () => { parkCalled = true; return { candidates: 0, parked: 0, skipped: 0, parkedTeamIds: [] }; },
+    runParkingSweep: async () => { sweepCalled = true; return fakeSweepResult(); },
   });
 
-  assert.equal(parkCalled, false, "parkDormantTeams må ikke kaldes når flaget er off");
+  assert.equal(sweepCalled, false, "parkerings-sweepen må ikke kaldes når flaget er off");
   assert.equal(supabase.state.season.status, "completed");
 });
 
-test("[epic #4592] processSeasonEnd kalder parkDormantTeams når season_signup_enabled er on, og fortsætter uændret", async () => {
+test("[epic #4592] processSeasonEnd kalder parkerings-sweepen når season_signup_enabled er on, og fortsætter uændret", async () => {
   const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
-  let parkArgs = null;
+  let sweepArgs = null;
 
   await processSeasonEnd("season-1", {
     supabase,
@@ -5904,11 +5914,12 @@ test("[epic #4592] processSeasonEnd kalder parkDormantTeams når season_signup_e
     updateRiderValues: async () => {},
     isSeasonEndDivisionMovementSkipped: async () => true,
     isSeasonSignupEnabled: async () => true,
-    parkDormantTeams: async (args) => { parkArgs = args; return { candidates: 3, parked: 2, skipped: 1, parkedTeamIds: ["t1", "t2"] }; },
+    runParkingSweep: async (args) => { sweepArgs = args; return fakeSweepResult(); },
   });
 
-  assert.ok(parkArgs, "parkDormantTeams skal kaldes når flaget er on");
-  assert.equal(parkArgs.supabase, supabase);
+  assert.ok(sweepArgs, "parkerings-sweepen skal kaldes når flaget er on");
+  assert.equal(sweepArgs.supabase, supabase);
+  assert.equal(sweepArgs.now, FIXED_SEASON_END_NOW);
   assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre normalt efter parkeringen");
 });
 
@@ -5923,10 +5934,61 @@ test("[epic #4592] processSeasonEnd: en fejlende parkerings-sweep vælter IKKE r
     updateRiderValues: async () => {},
     isSeasonEndDivisionMovementSkipped: async () => true,
     isSeasonSignupEnabled: async () => true,
-    parkDormantTeams: async () => { throw new Error("boom"); },
+    runParkingSweep: async () => { throw new Error("boom"); },
   });
 
   assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre selv om parkeringen fejler");
+});
+
+// Rækkefølgen er et åbent ejer-valg (#4592): i dag kører sweepen EFTER hele
+// op/nedryknings-blokken, reseed OG AI-fyld-sweepen. Testen låser den
+// nuværende rækkefølge, så en flytning kun kan ske som en bevidst ændring.
+test("[epic #4592] processSeasonEnd: op/nedrykning → reseed → AI-fyld → parkerings-sweep (nuværende rækkefølge)", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  const originalFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    if (table === "league_divisions") {
+      return {
+        select() {
+          return Promise.resolve({
+            data: [
+              { id: "pool-d3a", tier: 3, pool_index: 0 },
+              { id: "pool-d3b", tier: 3, pool_index: 1 },
+            ],
+            error: null,
+          });
+        },
+      };
+    }
+    return originalFrom(table);
+  };
+  const calls = [];
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => false,
+    processDivisionEnd: async (_standings, division) => { calls.push(`division:${division}`); },
+    reseedTierPools: async () => { calls.push("reseed"); return { enabled: false, moved: 0, tiers: [] }; },
+    reconcileAiTeamsForPool: async ({ poolId }) => { calls.push(`reconcile:${poolId}`); },
+    isSeasonSignupEnabled: async () => true,
+    runParkingSweep: async () => { calls.push("parking"); return fakeSweepResult(); },
+  });
+
+  assert.deepEqual(calls, [
+    "division:1",
+    "division:2",
+    "division:3",
+    "division:4",
+    "reseed",
+    "reconcile:pool-d3a",
+    "reconcile:pool-d3b",
+    "parking",
+  ]);
+  assert.equal(supabase.state.season.status, "completed");
 });
 
 // ─── #2912/#2919/#2920 · Gælds-/pengemotor-cluster ────────────────────────────

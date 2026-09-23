@@ -75,7 +75,7 @@ import {
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
-import { parkDormantTeams } from "./managerParking.js";
+import { runParkingSweep } from "./managerParking.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -1471,10 +1471,14 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     // #1152: byg pulje-træet én gang og videregiv til hver processDivisionEnd, så
     // op/nedrykning kan route til forælder/barn-puljer (binær-træ via pool_index).
     const poolTree = await buildPoolTree(supabaseClient);
+    // Injicérbare seams (samme mønster som reseedTierPools nedenfor), så en test
+    // kan bevise rækkefølgen op/nedrykning → reseed → AI-fyld → parkering.
+    const processDivisionEndFn = deps.processDivisionEnd ?? processDivisionEnd;
+    const reconcileAiTeamsFn = deps.reconcileAiTeamsForPool ?? reconcileAiTeamsForPool;
 
     for (let division = MIN_DIVISION; division <= MAX_DIVISION; division++) {
       const divStandings = standings.filter(s => s.division === division);
-      await processDivisionEnd(divStandings, division, seasonId, currentSeasonNumber, {
+      await processDivisionEndFn(divStandings, division, seasonId, currentSeasonNumber, {
         supabase: supabaseClient,
         now: notificationNow,
         poolTree,
@@ -1505,30 +1509,44 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     // trække ægte hold op uden for sporten.
     if (currentSeasonNumber >= FIRST_PROMOTION_RELEGATION_SEASON) {
       for (const ld of poolTree.byId.values()) {
-        await reconcileAiTeamsForPool({ supabase: supabaseClient, poolId: ld.id });
+        await reconcileAiTeamsFn({ supabase: supabaseClient, poolId: ld.id });
       }
     }
   }
 
-  // [epic #4592 del 2] Parkerings-forberedelse — KUN når season_signup_enabled
-  // er 'on' (fælles flag med tilmeld-knappen, del 3). Kører UDENFOR if/else'en
-  // ovenfor, BEVIDST uafhængig af #2851-skip-flaget (den er en engangs-undtagelse
-  // for S1→S2-pyramide-kompriмering og har intet med parkering af inaktive hold
-  // at gøre) — parkFn bruger heller intet fra poolTree. Placeres alligevel EFTER
-  // hele op/nedryknings-blokken (når den kører), så vores league_division_id=null
-  // altid er sidste ord for et parkeret holds plads (processDivisionEnd kan
-  // ellers overskrive den igen hvis holdet også rangerer til op/nedrykning).
+  // [epic #4592 del 2] Parkerings-sweep — KUN når season_signup_enabled er 'on'
+  // (fælles flag med tilmeld-knappen, del 3): parkér inaktive (aldrig et hold
+  // med aktivt abonnement) → genindplacér parkerede hold hvis manager har
+  // tilmeldt sig igen → nulstil tilmeldingerne (managerParking.runParkingSweep).
+  // Kører UDENFOR if/else'en ovenfor, BEVIDST uafhængig af #2851-skip-flaget
+  // (den er en engangs-undtagelse for S1→S2-pyramide-komprimering og har intet
+  // med parkering af inaktive hold at gøre). Placeres EFTER hele op/nedryknings-
+  // blokken (når den kører), så vores league_division_id=null altid er sidste
+  // ord for et parkeret holds plads (processDivisionEnd kan ellers overskrive den
+  // igen hvis holdet også rangerer til op/nedrykning).
+  //
+  // RÆKKEFØLGE ER ET ÅBENT EJER-VALG (#4592): sweepen kører i dag EFTER AI-fyld-
+  // sweepen, så en plads en parkering frigør, står tom resten af sæsonen. At
+  // flytte den ind mellem op/nedryknings-loopet og reseedTierPools ville lade
+  // AI-fyldet lukke hullet. Ændres først med ejer-go.
+  //
   // Fail-safe: manglende flag/fejl → false → ingen parkering (motorens uændrede
   // adfærd).
   const isSignupEnabledFn = deps.isSeasonSignupEnabled ?? isSeasonSignupEnabled;
   const signupEnabled = await isSignupEnabledFn(supabaseClient);
   if (signupEnabled) {
     try {
-      const parkFn = deps.parkDormantTeams ?? parkDormantTeams;
-      // Ingen teams/users her: parkFn henter selv (menneskehold-diskriminator
-      // + last_seen), samme pagineret mønster som dormantTeamsReport.js.
-      const parkResult = await parkFn({ supabase: supabaseClient, now: notificationNow });
-      console.log(`  🅿️  Parkering (#4592 del 2): ${parkResult.parked}/${parkResult.candidates} inaktive hold parkeret (${parkResult.skipped} sprunget over).`);
+      const sweepFn = deps.runParkingSweep ?? runParkingSweep;
+      // Ingen teams/users/subscriptions her: sweepen henter selv
+      // (managerParking.loadParkingInputs).
+      const sweep = await sweepFn({ supabase: supabaseClient, now: notificationNow });
+      const { park, unpark } = sweep;
+      console.log(
+        `  🅿️  Parkering (#4592 del 2): ${park.parked}/${park.candidates} inaktive hold parkeret`
+        + ` (${park.skipped} sprunget over, ${park.subscriptionProtectedTeamIds?.length ?? 0} beskyttet af abonnement)`
+        + ` · ${unpark.unparked}/${unpark.candidates} genindplaceret`
+        + ` · ${sweep.signupsReset ?? "?"} tilmeldinger nulstillet.`,
+      );
     } catch (parkErr) {
       // Parkering må ALDRIG vælte resten af sæsonskiftet — logges + Sentry, cutoveren fortsætter.
       console.error("  ❌ Parkerings-sweep fejlede (#4592 del 2):", parkErr?.message || parkErr);
