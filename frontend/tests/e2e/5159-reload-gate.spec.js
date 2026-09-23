@@ -335,11 +335,14 @@ test("#5440 A->B: NPS-baren viger for release-banneret, kladden overlever, ét r
   expect(await documentLoads(page), "ingen reload-loop paa samme release").toBe(loadsBefore + 1);
 
   // En route der ikke er hentet i DETTE dokument: client-side, intet nyt load.
-  const link = page.locator('main a[href^="/"]:visible').first();
+  // Et konkret link fra dashboardets resultatkort (findes i begge viewports; det
+  // foerste link i <main> paa mobil er "Dashboard" selv).
+  const link = page.getByRole("link", { name: "Fuldt resultat" }).first();
   await expect(link).toBeVisible({ timeout: 20_000 });
   const href = await link.getAttribute("href");
   await link.click();
-  await expect(page).not.toHaveURL(/\/dashboard$/);
+  // Loebssiden er sin egen lazy route-chunk, som dette dokument ikke har hentet.
+  await expect(page).toHaveURL(/\/races\//);
   await expect(page.locator("main")).toBeVisible();
   await page.waitForTimeout(800);
   expect(await documentLoads(page), `navigationen til ${href} gav intet ekstra dokument-load`).toBe(loadsBefore + 1);
