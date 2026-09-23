@@ -34,6 +34,15 @@ import { captureException } from "./sentry.js";
 
 export const RACE_ENTRY_GENERATOR_RUNS_TABLE = "race_entry_generator_runs";
 
+// #5246 (deploy-raekkefoelge): backend deployes ca. 3 min FOER auto-migrate.yml
+// opretter tabellen. PostgREST svarer da PGRST205 (tabel ikke i schema cache), raa
+// Postgres 42P01. Det er forventet i vinduet og skal ikke fyre en Sentry-alarm pr. koersel.
+export function isMissingRunLogTable(err) {
+  const code = String(err?.code ?? "");
+  if (code !== "PGRST205" && code !== "42P01") return false;
+  return `${err?.message ?? ""}`.includes(RACE_ENTRY_GENERATOR_RUNS_TABLE);
+}
+
 // #5246: best-effort log-skrivning — se filens header. Dobbelt try/catch (samme
 // mønster som activeSeasonLookup.js's fler-aktiv-alarm): den ydre beskytter mod at
 // captureExceptionFn'ens EGET kald kaster videre og alligevel vælter sweepen.
@@ -44,21 +53,29 @@ async function writeRunLog({
     const row = {
       started_at: startedAt.toISOString(),
       finished_at: finishedAt.toISOString(),
-      mode: mode ?? null,
+      // Den EFFEKTIVE tilstand generatoren koerte med (result.mode): opt_in kan
+      // fail-safe'e til proactive inde i generatoren. Kun ved en generator-fejl
+      // (intet result) falder vi tilbage til den konfigurerede tilstand.
+      mode: result?.mode ?? mode ?? null,
       late_fill_hours: lateFillHours ?? null,
-      // result.teams = "hold behandlet i mindst én pulje" (raceEntryGenerator.js'
-      // egen definition) — den bedste tilgængelige proxy for "hold fyldt" uden at
-      // ændre generatorens returværdi (raceEntryGenerator.js er uden for denne
-      // lanes ejerskab, #5246-briefen). result.inserted er de faktisk skrevne
-      // race_entries-rækker (entries_written), ikke `generated` (kandidat-picks
-      // FØR frozen/fejl-filtrering).
       races_considered: result?.races ?? 0,
-      teams_filled: result?.teams ?? 0,
+      // result.teams_written = hold der FAKTISK fik mindst een ny raekke skrevet.
+      // result.teams (alle behandlede hold) bruges bevidst IKKE: det ville taelle
+      // hold hvor intet blev skrevet som "fyldt".
+      teams_filled: result?.teams_written ?? 0,
+      // result.inserted er de faktisk skrevne race_entries-raekker, ikke `generated`
+      // (kandidat-picks FOER frozen/fejl-filtrering).
       entries_written: result?.inserted ?? 0,
       error: error ? String(error.message || error) : null,
     };
     const { error: insErr } = await supabase.from(RACE_ENTRY_GENERATOR_RUNS_TABLE).insert(row);
-    if (insErr) throw insErr;
+    if (insErr) {
+      if (isMissingRunLogTable(insErr)) {
+        console.warn("⚠️  race_entry_generator_runs findes ikke endnu (migrationen #5246 er ikke koert) — koerslen logges ikke");
+        return;
+      }
+      throw insErr;
+    }
   } catch (logErr) {
     try {
       captureExceptionFn(logErr, {
