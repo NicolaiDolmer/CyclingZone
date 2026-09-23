@@ -28,12 +28,23 @@ import {
   computeShare4PlusRaceSnapshot,
   poolClusterCorrectedShare4Plus,
   classifyTierBreakdown,
+  computeV4DayMetrics,
+  classifyV4Day,
+  findConsecutiveV4Breaches,
+  formatBreachAlert,
+  ENGINE_SERIES_V4,
   BALANCE_DRIFT_TUNING,
 } from "./balanceDriftMetrics.js";
 import { withOpsMention } from "./opsWebhook.js";
 import { shouldAlertOnChange } from "./opsAlertDedupe.js";
+import { ENGINE_VERSION_V4 } from "./raceEngineV4Bridge.js";
 
 const ENGINE_VERSION_V3 = 2; // #2414: race_simulation_runs.engine_version=2 er den DB-interne værdi for "race v3" (flippet 12/7 — se seneste engine_version-skift i prod).
+//
+// #5516: v4 har nu sin EGEN serie (fetchV4DayInputs nedenfor → metrics.v4 /
+// statuses.v4). Det ændrer intet ved v3-serien herunder: dens filter forbliver
+// engine_version=2, og de to serier blandes aldrig. Begrundelsen nedenfor for
+// hvorfor v3-serien ikke må tage engine_version=4 med gælder uændret.
 //
 // BEVIDST v3-ONLY (#3855, løbsmotor v4): filteret udvides IKKE til engine_version=4.
 // Vagten folder race_simulation_rider_scores.components (terrain/team/work_cost/
@@ -43,11 +54,9 @@ const ENGINE_VERSION_V3 = 2; // #2414: race_simulation_runs.engine_version=2 er 
 // observations tomme, båndene ville se grønne ud fordi der intet er at måle.
 // Det er værre end at måle på færre løb.
 //
-// KONSEKVENS, skrevet ned så den ikke overses ved flip: den dag race_engine_v4
-// er ON for alle løb, holder balance-drift-vagten op med at se noget. Paritets-
-// slicen skal enten (a) give v4 et komponentlag der kan skrives til
-// race_simulation_rider_scores, eller (b) give vagten en v4-kilde (gruppe-
-// snapshots + resultater). Ingen af delene hører til flip-infrastrukturen.
+// KONSEKVENS (løst af #5516, vej b): den dag race_engine_v4 er ON for alle løb,
+// ser v3-serien ingenting — men v4-serien (fetchV4DayInputs) måler de samme
+// dominans-/DNF-metrikker direkte fra race_results + evner + race_incidents.
 //
 // #4879 (bro-paritet, 6/9): v4 SKRIVER nu race_incidents — uheldstrappen
 // (#2944) og tidsgrænsen (#2582). Uheldsraten nedenfor forbliver alligevel
@@ -55,8 +64,8 @@ const ENGINE_VERSION_V3 = 2; // #2414: race_simulation_runs.engine_version=2 er 
 // som udelukkende bygges af dagens engine_version=2-runs. En v4-etape har
 // ingen run i det sæt, så dens incident-rækker tælles aldrig med. Uden det
 // filter ville v4's uheld blive lagt oven i et v3-etapetal og forskyde båndet
-// uden at nogen kunne se hvorfra. Ovenstående "vagten ser ingenting ved fuldt
-// flip" gælder derfor uændret — også for uheldscellen.
+// uden at nogen kunne se hvorfra. v4's uheld tælles i stedet i v4-serien
+// (#5516), filtreret på v4-runsenes egne etaper.
 const ROLLING_WINDOW_DAYS = 14;
 const BALANCE_DRIFT_ALERT_KEY = "balance-drift-breach"; // #2730: nøgle i ops_alert_state for edge-triggered dedup
 
@@ -274,6 +283,230 @@ export async function fetchDayInputs(supabase, dateStr) {
   };
 }
 
+// ── #5516: v4-serien ─────────────────────────────────────────────────────────
+//
+// Modulerne indlæses DYNAMISK og KUN når dagen har mindst én v4-run: v4-kernen
+// er TypeScript (Node 24's type-stripping), og favorit-definitionen bor i
+// harnessets observeStageV4 (backend/scripts/lib/headToHeadObservers.js — den
+// SAMME funktion headToHeadAnchors.scoreDominance bruger til favorite_win_rate-
+// ankeret). En dag uden v4-runs loader derfor ikke ét v4-modul, præcis som
+// raceEngineV4Bridge.loadRaceEngineV4 aldrig loader noget med flaget slukket.
+const V4_SERIES_MODULE_URLS = Object.freeze({
+  observers: new URL("../scripts/lib/headToHeadObservers.js", import.meta.url).href,
+  tuning: new URL("./engine/v4/tuning.ts", import.meta.url).href,
+  entrants: new URL("./engine/v4/adapters/entrantAdapter.ts", import.meta.url).href,
+  abilities: new URL("./abilityRegistry.js", import.meta.url).href,
+});
+
+// PostgREST .in() lægger id-listen i URL'en; en dags v4-felt kan være flere
+// tusinde ryttere. Samme chunk-størrelse som raceRunner.selectInChunks.
+const IN_CHUNK_SIZE = 200;
+
+async function loadV4SeriesModules(importModule) {
+  const [observers, tuning, entrants, abilities] = await Promise.all([
+    importModule(V4_SERIES_MODULE_URLS.observers),
+    importModule(V4_SERIES_MODULE_URLS.tuning),
+    importModule(V4_SERIES_MODULE_URLS.entrants),
+    importModule(V4_SERIES_MODULE_URLS.abilities),
+  ]);
+  return {
+    observeStageV4: observers.observeStageV4,
+    tuning: tuning.RACE_V4_TUNING,
+    entrantFromAbilitiesRow: entrants.entrantFromAbilitiesRow,
+    abilityKeys: abilities.REGISTRY_ABILITY_KEYS,
+  };
+}
+
+async function fetchInChunks(supabase, table, columns, inColumn, ids) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + IN_CHUNK_SIZE);
+    out.push(...await fetchAllRows(() =>
+      supabase.from(table).select(columns).in(inColumn, chunk).order(inColumn)
+    ));
+  }
+  return out;
+}
+
+const stageKeyOf = (raceId, stageNumber) => `${raceId}:${stageNumber || 1}`;
+
+/**
+ * #5516 — hent ÉN UTC-kalenderdags v4-runs (engine_version=4) og byg v4-seriens
+ * observationer. Returnerer `null` når dagen ingen v4-runs har — kalderen
+ * skriver så ingen v4-nøgle, og rækken er bit-identisk med før.
+ *
+ * Kilderne er det v4 rent faktisk persisterer: race_results (placering + hold),
+ * rider_derived_abilities (evner → favorit), race_stage_profiles (finale_type →
+ * favorittens demand-vektor) og race_incidents (DNF). Ingen skrivning.
+ *
+ * STARTFELTET pr. etape = etapens resultatrækker + de ryttere der udgik PÅ
+ * etapen (race_incidents med outcome='abandon'). En udgået rytter får ingen
+ * resultatrække (broen udelader ham, #4879), men han startede — og i motoren/
+ * harnesset står han sidst i resultatlisten og kan stadig være favorit. Uden
+ * ham ville en favorit der styrtede ud blive erstattet af næstbedste finisher,
+ * og favorit-raten ville pege opad. Tidsgrænse-ryttere (kind='time_limit')
+ * placeres før de udgåede, som i motorens egen rækkefølge.
+ *
+ * Forbehold: evnerne er rytterens NUVÆRENDE rider_derived_abilities (der findes
+ * intet evne-snapshot pr. etape). Vagten kører for i går, så forskellen er
+ * højst ét døgns træning.
+ *
+ * @param {import("@supabase/supabase-js").SupabaseClient} supabase
+ * @param {string} dateStr  YYYY-MM-DD (UTC-kalenderdag)
+ * @param {{importModule?: (href:string) => Promise<any>}} [opts]
+ * @returns {Promise<null | {
+ *   observations: Array<object>,
+ *   incidentObservationsInput: Array<{incidents:Array, fieldSize:number}>,
+ *   timeLimitObservationsInput: Array<{incidents:Array, fieldSize:number}>,
+ *   stages: number,
+ * }>}
+ */
+export async function fetchV4DayInputs(supabase, dateStr, { importModule = (href) => import(href) } = {}) {
+  const { start, end } = dayBoundsUtc(dateStr);
+
+  const runs = await fetchAllRows(() =>
+    supabase
+      .from("race_simulation_runs")
+      .select("id, race_id, stage_number, entrant_snapshot, created_at")
+      .eq("engine_version", ENGINE_VERSION_V4)
+      .gte("created_at", start)
+      .lt("created_at", end)
+      .order("id")
+  );
+  if (runs.length === 0) return null;
+
+  // Én run pr. etape. persistRuns er idempotent pr. (race_id, stage_number),
+  // men skulle der alligevel ligge to, må de ikke tælle etapen to gange —
+  // resultaterne findes kun én gang. Seneste created_at vinder (id som tie-break).
+  const runByStage = new Map();
+  for (const run of runs) {
+    const key = stageKeyOf(run.race_id, run.stage_number);
+    const prev = runByStage.get(key);
+    const newer = !prev
+      || String(run.created_at) > String(prev.created_at)
+      || (String(run.created_at) === String(prev.created_at) && String(run.id) > String(prev.id));
+    if (newer) runByStage.set(key, run);
+  }
+  const stageKeys = [...runByStage.keys()].sort();
+  const raceIds = [...new Set(runs.map((r) => r.race_id))];
+  const stageNumbers = [...new Set(runs.map((r) => r.stage_number || 1))];
+
+  const modules = await loadV4SeriesModules(importModule);
+
+  const dayResults = await fetchAllRows(() =>
+    supabase
+      .from("race_results")
+      .select("id, race_id, stage_number, rider_id, team_id, rank")
+      .eq("result_type", "stage")
+      .in("race_id", raceIds)
+      .in("stage_number", stageNumbers)
+      .order("id")
+  );
+  const incidents = await fetchAllRows(() =>
+    supabase
+      .from("race_incidents")
+      .select("id, race_id, stage_number, rider_id, kind, outcome")
+      .in("race_id", raceIds)
+      .in("stage_number", stageNumbers)
+      .order("id")
+  );
+  // Ikke filtreret på stage_number: et endagsløbs profil kan bære NULL, som
+  // raceRunner læser som etape 1 (samme `|| 1` som stageKeyOf).
+  const profiles = await fetchAllRows(() =>
+    supabase
+      .from("race_stage_profiles")
+      .select("id, race_id, stage_number, profile_type, finale_type")
+      .in("race_id", raceIds)
+      .order("id")
+  );
+
+  const resultsByStage = new Map();
+  for (const r of dayResults) {
+    const key = stageKeyOf(r.race_id, r.stage_number);
+    if (!runByStage.has(key) || r.rider_id == null) continue;
+    if (!resultsByStage.has(key)) resultsByStage.set(key, []);
+    resultsByStage.get(key).push(r);
+  }
+  const incidentsByStage = new Map();
+  for (const i of incidents) {
+    const key = stageKeyOf(i.race_id, i.stage_number);
+    if (!runByStage.has(key)) continue;
+    if (!incidentsByStage.has(key)) incidentsByStage.set(key, []);
+    incidentsByStage.get(key).push(i);
+  }
+  const profileByStage = new Map(profiles.map((p) => [stageKeyOf(p.race_id, p.stage_number), p]));
+
+  // Startfeltet pr. etape (se funktionens header).
+  const fieldByStage = new Map();
+  const riderIds = new Set();
+  for (const key of stageKeys) {
+    const finishers = [...(resultsByStage.get(key) || [])].sort((a, b) => a.rank - b.rank);
+    if (finishers.length === 0) continue; // ingen resultater ⇒ intet at observere
+    const finisherIds = new Set(finishers.map((r) => r.rider_id));
+    const outOfRace = (incidentsByStage.get(key) || [])
+      .filter((i) => i.outcome === "abandon" && i.rider_id != null && !finisherIds.has(i.rider_id));
+    const timeLimitIds = [...new Set(outOfRace.filter((i) => i.kind === "time_limit").map((i) => i.rider_id))].sort();
+    const abandonedIds = [...new Set(outOfRace.filter((i) => i.kind !== "time_limit").map((i) => i.rider_id))]
+      .filter((id) => !timeLimitIds.includes(id))
+      .sort();
+    let nextRank = Math.max(...finishers.map((r) => r.rank)) + 1;
+    const results = [
+      ...finishers.map((r) => ({ rider_id: r.rider_id, rank: r.rank })),
+      ...[...timeLimitIds, ...abandonedIds].map((riderId) => ({ rider_id: riderId, rank: nextRank++ })),
+    ];
+    for (const r of results) riderIds.add(r.rider_id);
+    fieldByStage.set(key, {
+      results,
+      teamByRider: new Map(finishers.map((r) => [r.rider_id, r.team_id ?? null])),
+    });
+  }
+
+  const abilityRows = await fetchInChunks(
+    supabase,
+    "rider_derived_abilities",
+    ["rider_id", ...modules.abilityKeys].join(", "),
+    "rider_id",
+    [...riderIds].sort(),
+  );
+  const abilityRowByRider = new Map(abilityRows.map((a) => [a.rider_id, a]));
+
+  const observations = [];
+  for (const key of stageKeys) {
+    const field = fieldByStage.get(key);
+    if (!field) continue;
+    const run = runByStage.get(key);
+    const profile = profileByStage.get(key);
+    // Kun .abilities læses af observeStageV4 — samme Entrant-normalisering
+    // (entrantAdapter) som motoren og harnesset, ingen parallel evne-skala.
+    const entrants = {};
+    for (const r of field.results) {
+      const row = abilityRowByRider.get(r.rider_id);
+      if (row) entrants[r.rider_id] = modules.entrantFromAbilitiesRow(row, { riderId: r.rider_id });
+    }
+    observations.push(modules.observeStageV4({
+      results: field.results,
+      entrants,
+      teamByRider: field.teamByRider,
+      route: { finale_type: profile?.finale_type ?? null },
+      tuning: modules.tuning,
+      raceId: run.race_id,
+      terrain: profile?.profile_type ?? undefined,
+    }));
+  }
+
+  const incidentObservationsInput = [];
+  const timeLimitObservationsInput = [];
+  for (const key of stageKeys) {
+    const run = runByStage.get(key);
+    const fieldSize = Array.isArray(run.entrant_snapshot) ? run.entrant_snapshot.length : 0;
+    const stageIncidents = incidentsByStage.get(key) || [];
+    incidentObservationsInput.push({ incidents: stageIncidents.filter((i) => i.kind !== "time_limit"), fieldSize });
+    timeLimitObservationsInput.push({ incidents: stageIncidents.filter((i) => i.kind === "time_limit"), fieldSize });
+  }
+
+  return { observations, incidentObservationsInput, timeLimitObservationsInput, stages: stageKeys.length };
+}
+
 /**
  * Kør ÉN nats balance-drift-vagt: beregn i går, persistér, tjek 3-dages-alarm.
  * Read-only mod prod bortset fra upsert i race_balance_drift_daily.
@@ -284,6 +517,7 @@ export async function fetchDayInputs(supabase, dateStr) {
  * @param {(url:string, payload:object) => Promise<any>} [args.sendWebhookFn]
  * @param {() => Promise<string|null>} [args.getOpsWebhookFn]
  * @param {(err:Error, ctx:object) => void} [args.captureExceptionFn]
+ * @param {(href:string) => Promise<any>} [args.importModule]  #5516: v4-seriens modul-loader (tests)
  * @returns {Promise<{date:string, metrics:object, statuses:object, breaches:Array}>}
  */
 export async function runBalanceDriftWatch({
@@ -292,11 +526,26 @@ export async function runBalanceDriftWatch({
   sendWebhookFn,
   getOpsWebhookFn,
   captureExceptionFn,
+  importModule,
 } = {}) {
   // "I går" (UTC) — dagen jobbet kører for er altid FÆRDIG-simuleret ved 24h-tick.
   const targetDate = toDateStr(new Date(now.getTime() - 86_400_000));
 
   const inputs = await fetchDayInputs(supabase, targetDate);
+
+  // #5516: v4-serien. Fejler den (fx et v4-modul der ikke kan loades), må den
+  // ALDRIG tage v3-vagten med sig: fejlen rapporteres, og dagen skrives uden
+  // v4-nøgle — præcis som en dag uden v4-runs. Hullet bryder en v4-streak i
+  // stedet for at opfinde en værdi.
+  let v4Inputs = null;
+  try {
+    v4Inputs = await fetchV4DayInputs(supabase, targetDate, importModule ? { importModule } : {});
+  } catch (err) {
+    captureExceptionFn?.(new Error(`balance-drift v4-serie: ${err?.message ?? err}`), {
+      tags: { cron: "balance-drift-watch", engine: ENGINE_SERIES_V4 },
+      extra: { targetDate },
+    });
+  }
 
   // observeRace importeres her (ikke i fetchDayInputs) for at holde I/O-funktionen
   // fri af den pure lib's beslutningslogik-overflade — kosmetisk adskillelse,
@@ -367,6 +616,19 @@ export async function runBalanceDriftWatch({
   metrics.share4PlusByRace = computeShare4PlusRaceSnapshot(observations);
   metrics.share4PlusClusterSe = poolClusterCorrectedShare4Plus(history, BALANCE_DRIFT_TUNING.POOL_WINDOW_DAYS);
 
+  // #5516: v4-serien under sin EGEN under-nøgle — kun på dage med v4-runs, så
+  // en dag uden v4 persisterer præcis samme række som før. Nøglen tilføjes
+  // efter v3-felterne; ingen v3-beregning ovenfor kan se den (de læser kun
+  // navngivne rod-felter). Pooling i robust-mode læser kun `metrics.v4`.
+  if (v4Inputs) {
+    metrics[ENGINE_SERIES_V4] = computeV4DayMetrics({
+      observations: v4Inputs.observations,
+      incidentObservations: v4Inputs.incidentObservationsInput.map((o) => observeIncidents(o)),
+      timeLimitObservations: v4Inputs.timeLimitObservationsInput.map((o) => observeIncidents(o)),
+    });
+    statuses[ENGINE_SERIES_V4] = classifyV4Day(metrics[ENGINE_SERIES_V4], { recentRows: history });
+  }
+
   const { error: upsertError } = await supabase
     .from("race_balance_drift_daily")
     .upsert({ metric_date: targetDate, metrics, statuses, computed_at: new Date().toISOString() }, { onConflict: "metric_date" });
@@ -402,7 +664,26 @@ export async function runBalanceDriftWatch({
         : r.statuses,
     })),
   ];
-  const breaches = findConsecutiveBreaches(rows, { minConsecutiveDays: 3 });
+  const v3Breaches = findConsecutiveBreaches(rows, { minConsecutiveDays: 3 });
+
+  // #5516: v4-seriens egen streak, på `statuses.v4`. Samme robust-regel som
+  // ovenfor: re-klassificér historikken under dagens estimator, men kun rækker
+  // der faktisk har en v4-serie (resten har ingen `statuses.v4` og bryder
+  // streaken). Uden v4-data nogen steder er listen tom ⇒ alarmen er uændret.
+  const v4Rows = [
+    { date: targetDate, statuses },
+    ...priorHistory.map((r) => ({
+      date: r.date,
+      statuses: BALANCE_DRIFT_TUNING.ROBUST_ESTIMATORS && r.metrics?.[ENGINE_SERIES_V4]
+        ? {
+          [ENGINE_SERIES_V4]: classifyV4Day(r.metrics[ENGINE_SERIES_V4], {
+            recentRows: history.filter((h) => h.date <= r.date),
+          }),
+        }
+        : r.statuses,
+    })),
+  ];
+  const breaches = [...v3Breaches, ...findConsecutiveV4Breaches(v4Rows, { minConsecutiveDays: 3 })];
 
   // #2730: edge-triggered dedup — alarmér KUN når brud-sættet ÆNDRER sig, så en
   // boot-/restart-kørsel (24h-timeren nulstilles ved hver deploy) ikke re-spammer
@@ -435,16 +716,16 @@ export async function runBalanceDriftWatch({
   if (shouldAlert) {
     const url = getOpsWebhookFn ? await getOpsWebhookFn() : null;
     if (url && sendWebhookFn) {
+      // #5516: teksten nævner motorversionen (formatBreachAlert). Kun v3-brud
+      // ⇒ byte for byte den tekst vagten sendte før v4-serien fandtes.
+      const alertText = formatBreachAlert({ breaches, metrics, targetDate });
       const payload = withOpsMention({
         embeds: [
           {
-            title: `⚠️ Balance-drift-vagt: ${breaches.length} bånd-brud i 3+ dage`,
-            description: `Race v3-kalibreringen har drevet uden for kanoniske bånd i mindst 3 på hinanden følgende dage (seneste målt: ${targetDate}). Read-only vagt — ingen automatisk handling.`,
+            title: alertText.title,
+            description: alertText.description,
             color: 0xf39c12,
-            fields: breaches.map((b) => ({
-              name: b.metric,
-              value: `${b.days} dage i træk (siden ${b.since}) · seneste værdi ${metrics[b.metric]}`,
-            })),
+            fields: alertText.fields,
             timestamp: new Date().toISOString(),
           },
         ],
