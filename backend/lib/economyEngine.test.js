@@ -6049,6 +6049,8 @@ test("processSeasonEnd fail-safe: manglende/fejlende flag-opslag = motorens norm
 
 function fakeSweepResult() {
   return {
+    alreadySwept: false,
+    seasonId: "season-1",
     park: { candidates: 3, parked: 2, skipped: 1, parkedTeamIds: ["t1", "t2"], subscriptionProtectedTeamIds: ["t9"] },
     unpark: { candidates: 1, unparked: 1, skipped: 0, failedTeamIds: [], placements: [{ teamId: "t5", division: 3, leagueDivisionId: "p3" }] },
     signupsReset: 4,
@@ -6092,8 +6094,26 @@ test("[epic #4592] processSeasonEnd kalder parkerings-sweepen når season_signup
 
   assert.ok(sweepArgs, "parkerings-sweepen skal kaldes når flaget er on");
   assert.equal(sweepArgs.supabase, supabase);
+  assert.equal(sweepArgs.seasonId, "season-1", "sæsonen gør sweepen idempotent ved genkørsel");
   assert.equal(sweepArgs.now, FIXED_SEASON_END_NOW);
   assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre normalt efter parkeringen");
+});
+
+test("[epic #4592] processSeasonEnd: en sweep der allerede har kørt for sæsonen, fuldfører stille", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    isSeasonSignupEnabled: async () => true,
+    runParkingSweep: async () => ({ alreadySwept: true, seasonId: "season-1", park: null, unpark: null, signupsReset: null, signupsResetError: null }),
+  });
+
+  assert.equal(supabase.state.season.status, "completed");
 });
 
 test("[epic #4592] processSeasonEnd: en fejlende parkerings-sweep vælter IKKE resten af sæsonskiftet", async () => {

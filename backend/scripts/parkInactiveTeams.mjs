@@ -115,13 +115,26 @@ async function runApply() {
     process.exit(1);
   }
   const now = new Date();
-  const result = await runParkingSweep({ supabase, now });
+  // Sweepen er idempotent pr. sæson (runParkingSweep). Den manuelle kørsel
+  // gælder den AKTIVE sæson — den der slutter ved cutoveren — så den deler
+  // markør med processSeasonEnd og aldrig kører to gange for samme skifte.
+  const { data: activeSeason, error: seasonError } = await supabase
+    .from('seasons').select('id, number').eq('status', 'active').maybeSingle();
+  if (seasonError || !activeSeason) {
+    console.error(`Kunne ikke finde den aktive sæson (${seasonError?.message ?? 'ingen aktiv sæson'}). Ingen writes udført.`);
+    process.exit(1);
+  }
+  const result = await runParkingSweep({ supabase, seasonId: activeSeason.id, now });
   if (wantJson) {
     console.log(JSON.stringify({ mode: 'apply', generated_at: now.toISOString(), ...result }, null, 2));
     return;
   }
+  console.log(`=== [epic #4592 del 2] parkInactiveTeams — APPLY (${now.toISOString()}, sæson ${activeSeason.number}) ===\n`);
+  if (result.alreadySwept) {
+    console.log('Sweepen har allerede kørt for den aktive sæson. Ingen writes udført.');
+    return;
+  }
   const { park, unpark } = result;
-  console.log(`=== [epic #4592 del 2] parkInactiveTeams — APPLY (${now.toISOString()}) ===\n`);
   console.log(`Parkering: kandidater ${park.candidates}, parkeret ${park.parked}, sprunget over/fejlet ${park.skipped}, beskyttet af abonnement ${park.subscriptionProtectedTeamIds.length}.`);
   if (park.parkedTeamIds.length) {
     console.log(`Parkerede hold-id'er: ${park.parkedTeamIds.join(', ')}`);

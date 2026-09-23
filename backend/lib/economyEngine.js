@@ -1570,14 +1570,20 @@ export async function processSeasonEnd(seasonId, deps = {}) {
       const sweepFn = deps.runParkingSweep ?? runParkingSweep;
       // Ingen teams/users/subscriptions her: sweepen henter selv
       // (managerParking.loadParkingInputs).
-      const sweep = await sweepFn({ supabase: supabaseClient, now: notificationNow });
-      const { park, unpark } = sweep;
-      console.log(
-        `  🅿️  Parkering (#4592 del 2): ${park.parked}/${park.candidates} inaktive hold parkeret`
-        + ` (${park.skipped} sprunget over, ${park.subscriptionProtectedTeamIds?.length ?? 0} beskyttet af abonnement)`
-        + ` · ${unpark.unparked}/${unpark.candidates} genindplaceret`
-        + ` · ${sweep.signupsReset ?? "?"} tilmeldinger nulstillet.`,
-      );
+      // seasonId gør sweepen idempotent pr. sæson (se runParkingSweep): en
+      // genkørsel af sæson-slut parkerer ikke hold hvis tilmelding er brugt.
+      const sweep = await sweepFn({ supabase: supabaseClient, seasonId, now: notificationNow });
+      if (sweep.alreadySwept) {
+        console.log(`  🅿️  Parkering (#4592 del 2): allerede kørt for sæson ${seasonId} — springes over.`);
+      } else {
+        const { park, unpark } = sweep;
+        console.log(
+          `  🅿️  Parkering (#4592 del 2): ${park.parked}/${park.candidates} inaktive hold parkeret`
+          + ` (${park.skipped} sprunget over, ${park.subscriptionProtectedTeamIds?.length ?? 0} beskyttet af abonnement)`
+          + ` · ${unpark.unparked}/${unpark.candidates} genindplaceret`
+          + ` · ${sweep.signupsReset ?? "?"} tilmeldinger nulstillet.`,
+        );
+      }
     } catch (parkErr) {
       // Parkering må ALDRIG vælte resten af sæsonskiftet — logges + Sentry, cutoveren fortsætter.
       console.error("  ❌ Parkerings-sweep fejlede (#4592 del 2):", parkErr?.message || parkErr);

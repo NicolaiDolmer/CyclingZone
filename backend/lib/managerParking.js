@@ -353,21 +353,58 @@ export async function resetSeasonSignups({ supabase, keepTeamIds = [] }) {
   return Array.isArray(data) ? data.length : 0;
 }
 
+// Idempotens pr. sæson: app_config-nøglen husker hvilken sæson sweepen sidst
+// har kørt for. Uden den ville en genkørsel af processSeasonEnd (eller CLI'en)
+// efter nulstillingen se en tilmeldt, inaktiv manager som utilmeldt og parkere
+// holdet (CodeRabbit-fund på #4592).
+export const PARKING_SWEEP_MARKER_KEY = "manager_parking_sweep_season_id";
+
+async function readSweepMarker(supabase) {
+  const { data, error } = await supabase
+    .from("app_config")
+    .select("value")
+    .eq("key", PARKING_SWEEP_MARKER_KEY)
+    .maybeSingle();
+  if (error) throw new Error(`app_config (${PARKING_SWEEP_MARKER_KEY}): ${error.message}`);
+  return data?.value ?? null;
+}
+
+async function writeSweepMarker(supabase, seasonId, now) {
+  const { error } = await supabase.from("app_config").upsert(
+    {
+      key: PARKING_SWEEP_MARKER_KEY,
+      value: String(seasonId),
+      description:
+        "Sæsonen parkerings-sweepen (#4592) sidst har kørt for. Gør sweepen idempotent " +
+        "pr. sæson, så en genkørsel ikke parkerer hold hvis tilmelding allerede er brugt.",
+      updated_at: now.toISOString(),
+    },
+    { onConflict: "key" },
+  );
+  if (error) throw new Error(`app_config (${PARKING_SWEEP_MARKER_KEY}): ${error.message}`);
+}
+
 /**
  * Hele sweepen ved sæsonskiftet: parkér → genindplacér → nulstil tilmeldinger.
  * Kaldes fra processSeasonEnd KUN når season_signup_enabled er 'on', og fra
  * scripts/parkInactiveTeams.mjs --apply. Ingen egen flag-kontrol.
  *
+ * IDEMPOTENT PR. SÆSON (`seasonId` = den sæson der slutter, påkrævet): har
+ * sweepen allerede kørt for sæsonen, gør den intet. Markøren skrives FØR
+ * nulstillingen, og fejler den skrivning, springes nulstillingen over — så en
+ * genkørsel altid enten springes over eller stadig ser tilmeldingerne.
+ *
  * Grundlaget hentes ÉN gang før parkeringen. Et hold der parkeres i denne
  * kørsel, har ingen tilmelding (ellers var det ikke valgt), så det kan ikke
  * samtidig være en genindplaceringskandidat.
  *
- * @param {{ supabase: object, now?: Date, days?: number, teams?: object[],
- *           users?: object[], subscriptions?: object[],
+ * @param {{ supabase: object, seasonId: string, now?: Date, days?: number,
+ *           teams?: object[], users?: object[], subscriptions?: object[],
  *           pickDivision?: Function, reconcileAiTeams?: Function }} args
  */
 export async function runParkingSweep({
   supabase,
+  seasonId,
   now = new Date(),
   days = 30,
   teams,
@@ -376,6 +413,15 @@ export async function runParkingSweep({
   pickDivision,
   reconcileAiTeams,
 } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (seasonId == null) throw new Error("runParkingSweep: seasonId required (idempotency per season)");
+
+  // Kan vi ikke læse markøren, ved vi ikke om sweepen allerede har kørt — så
+  // kaster vi hellere (kalderen logger) end at risikere en dobbelt-sweep.
+  if (await readSweepMarker(supabase) === String(seasonId)) {
+    return { alreadySwept: true, seasonId, park: null, unpark: null, signupsReset: null, signupsResetError: null };
+  }
+
   const inputs = (teams && users && subscriptions)
     ? { teams, users, subscriptions }
     : await loadParkingInputs({ supabase });
@@ -386,14 +432,15 @@ export async function runParkingSweep({
   let signupsReset = null;
   let signupsResetError = null;
   try {
+    await writeSweepMarker(supabase, seasonId, now);
     signupsReset = await resetSeasonSignups({ supabase, keepTeamIds: unpark.failedTeamIds });
   } catch (err) {
     // Parkering og genindplacering ER sket; en hængende tilmelding beskytter
     // blot holdet ét skifte mere. Synlig, men ikke en grund til at vælte sweepen.
     signupsResetError = err?.message || String(err);
     console.error("  ❌ managerParking: nulstilling af tilmeldinger fejlede:", signupsResetError);
-    captureException(err, { tags: { flow: "manager_parking", stage: "reset_signups" } });
+    captureException(err, { tags: { flow: "manager_parking", stage: "reset_signups" }, extra: { seasonId } });
   }
 
-  return { park, unpark, signupsReset, signupsResetError };
+  return { alreadySwept: false, seasonId, park, unpark, signupsReset, signupsResetError };
 }

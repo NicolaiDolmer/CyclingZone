@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import {
   isSubscriptionProtectingTeam,
   loadParkingInputs,
+  PARKING_SWEEP_MARKER_KEY,
   parkDormantTeams,
   parkTeam,
   resetSeasonSignups,
@@ -69,11 +70,12 @@ function subscription(teamId, overrides = {}) {
 // Understøtter præcis de kæder managerParking bruger: select/eq/in/is/not/
 // order/range (læsning via fetchAllRows) og update/eq/is/not/select (skrivning).
 
-function makeFakeDb({ teams = [], users = [], subscriptions = [] } = {}) {
+function makeFakeDb({ teams = [], users = [], subscriptions = [], appConfig = [] } = {}) {
   const tables = {
     teams: teams.map((t) => ({ ...t })),
     users: users.map((u) => ({ ...u })),
     subscriptions: subscriptions.map((s) => ({ ...s })),
+    app_config: appConfig.map((c) => ({ ...c })),
   };
   const writes = [];
 
@@ -108,6 +110,17 @@ function makeFakeDb({ teams = [], users = [], subscriptions = [] } = {}) {
         return chain;
       },
       order() { return chain; },
+      maybeSingle() {
+        const result = run();
+        return Promise.resolve({ data: result.data[0] ?? null, error: null });
+      },
+      upsert(row, { onConflict } = {}) {
+        const existing = tables[table].find((r) => r[onConflict] === row[onConflict]);
+        if (existing) Object.assign(existing, row);
+        else tables[table].push({ ...row });
+        writes.push({ table, payload: row, ids: [row[onConflict]] });
+        return Promise.resolve({ error: null });
+      },
       range(fromIdx, toIdx) {
         const result = run();
         return Promise.resolve({ ...result, data: result.data.slice(fromIdx, toIdx + 1) });
@@ -453,11 +466,14 @@ test("runParkingSweep: parkerer, genindplacerer og nulstiller tilmeldinger i ét
 
   const sweep = await runParkingSweep({
     supabase: db,
+    seasonId: "season-3",
     now: NOW,
     pickDivision: async () => ({ division: 3, leagueDivisionId: "pool-d3b" }),
     reconcileAiTeams: async () => {},
   });
 
+  assert.equal(sweep.alreadySwept, false);
+  assert.equal(db.tables.app_config.find((c) => c.key === PARKING_SWEEP_MARKER_KEY)?.value, "season-3", "markøren husker sæsonen");
   assert.deepEqual(sweep.park.parkedTeamIds, ["dormant"]);
   assert.deepEqual(sweep.park.subscriptionProtectedTeamIds, ["paying"]);
   assert.deepEqual(sweep.unpark.placements, [{ teamId: "parked-back", division: 3, leagueDivisionId: "pool-d3b" }]);
@@ -488,9 +504,64 @@ test("runParkingSweep: en fejlende nulstilling vælter ikke sweepen, men rapport
     return chain;
   };
 
-  const sweep = await runParkingSweep({ supabase: db, now: NOW, pickDivision: async () => ({ division: 3, leagueDivisionId: null }) });
+  const sweep = await runParkingSweep({ supabase: db, seasonId: "season-3", now: NOW, pickDivision: async () => ({ division: 3, leagueDivisionId: null }) });
 
   assert.deepEqual(sweep.park.parkedTeamIds, ["dormant"]);
   assert.equal(sweep.signupsReset, null);
   assert.match(sweep.signupsResetError, /reset boom/);
+});
+
+// CodeRabbit-fund (#4592): processSeasonEnd kan genkøres. Uden idempotens pr.
+// sæson ville anden kørsel se en tilmeldt, inaktiv manager som utilmeldt (første
+// kørsel nulstillede tilmeldingen) og parkere holdet.
+test("runParkingSweep: en genkørsel for SAMME sæson gør intet og parkerer ikke en brugt tilmelding", async () => {
+  const db = makeFakeDb({
+    teams: [
+      team({ id: "dormant", user_id: "u1" }),
+      team({ id: "dormant-signed", user_id: "u2", next_season_signup_at: daysAgo(3) }),
+    ],
+    users: [user("u1", 60), user("u2", 60)],
+  });
+  const deps = { pickDivision: async () => ({ division: 3, leagueDivisionId: "pool-d3a" }), reconcileAiTeams: async () => {} };
+
+  const first = await runParkingSweep({ supabase: db, seasonId: "season-3", now: NOW, ...deps });
+  assert.deepEqual(first.park.parkedTeamIds, ["dormant"]);
+  assert.equal(db.row("dormant-signed").next_season_signup_at, null, "tilmeldingen er brugt");
+  const writesAfterFirst = db.writes.length;
+
+  const rerun = await runParkingSweep({ supabase: db, seasonId: "season-3", now: NOW, ...deps });
+
+  assert.equal(rerun.alreadySwept, true);
+  assert.equal(db.writes.length, writesAfterFirst, "genkørslen skriver intet");
+  assert.equal(db.row("dormant-signed").parked_at, null, "en brugt tilmelding beskytter stadig i samme skifte");
+
+  // Næste sæsons sweep er en ny sæson: uden ny tilmelding parkeres holdet dér.
+  const nextSeason = await runParkingSweep({ supabase: db, seasonId: "season-4", now: NOW, ...deps });
+  assert.equal(nextSeason.alreadySwept, false);
+  assert.deepEqual(nextSeason.park.parkedTeamIds, ["dormant-signed"]);
+});
+
+test("runParkingSweep: kan markøren ikke skrives, nulstilles tilmeldingerne IKKE (genkørsel forbliver sikker)", async () => {
+  const db = makeFakeDb({
+    teams: [team({ id: "dormant-signed", user_id: "u1", next_season_signup_at: daysAgo(3) })],
+    users: [user("u1", 60)],
+  });
+  const originalFrom = db.from;
+  db.from = (table) => {
+    const chain = originalFrom(table);
+    if (table === "app_config") chain.upsert = async () => ({ error: { message: "marker boom" } });
+    return chain;
+  };
+
+  const sweep = await runParkingSweep({ supabase: db, seasonId: "season-3", now: NOW, pickDivision: async () => ({ division: 3, leagueDivisionId: null }) });
+
+  assert.match(sweep.signupsResetError, /marker boom/);
+  assert.equal(sweep.signupsReset, null);
+  assert.equal(db.row("dormant-signed").next_season_signup_at, daysAgo(3), "tilmeldingen står, så en genkørsel stadig beskytter holdet");
+  assert.equal(db.row("dormant-signed").parked_at, null);
+});
+
+test("runParkingSweep: kræver seasonId (idempotens pr. sæson)", async () => {
+  const db = makeFakeDb({ teams: [], users: [] });
+  await assert.rejects(() => runParkingSweep({ supabase: db, now: NOW }), /seasonId required/);
 });
