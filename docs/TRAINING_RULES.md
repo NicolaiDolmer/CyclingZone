@@ -721,7 +721,7 @@ Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fu
 
 ### 13.4 Status pr. 20/9 (15/9 som baseline; hvad der er bygget bag flaget, og hvad der mangler)
 
-Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off er bit-identisk med kalenderdags-ticket.
+Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off er bit-identisk med kalenderdags-ticket. **Én undtagelse:** off-seasonens loglinje og returværdi (#4848, se "B5" nedenfor) gælder uanset flaget, men kun når der ingen aktiv sæson er; selve træningen er uændret.
 
 | Del | Status | Hvor |
 |---|---|---|
@@ -741,7 +741,7 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off e
 | Off-season-hullet: defineret, logget adfærd i begge sweeps (B5) | **bygget** (#4848) — se "B5" nedenfor | `trainingSweep.js`, `trainingDayCloseTrigger.js` |
 | Økonomi-aksen (løn, akademi-indtag) | **status quo dokumenteret, ingen kodeændring — åben for ejeren** | se "Økonomi-aksen" nedenfor |
 
-**B5 (#4848): hvad de tre vagter gør på løbsdags-ticket.** Alle tre er bit-identiske med flaget off.
+**B5 (#4848): hvad de tre vagter gør på løbsdags-ticket.** Konsistens-signalet og slot-vagten er bit-identiske med flaget off. Off-season-adfærden er IKKE flag-gated: den gælder i begge sweeps når der ingen aktiv sæson er, og det eneste nye dér er en loglinje og to felter i returværdien (ingen træning kørte før, ingen kører nu).
 
 - **Peak-plannerens konsistens (G8).** Optaktsvinduet er målt i kalenderdatoer, men løbsdags-ticket skriver én `training_day_runs`-række pr. løbsdag, altså flere pr. dato. `summarizeLeadupTraining` grupperer derfor rytterens entries pr. dato, og hver dato bidrager med *andelen* af datoens løbsdage han trænede. Flere runs samme dato kan dermed ikke mætte signalet og gøre peak-bonussen gratis. Fokus-fordelingen vægtes på samme måde. Én run pr. dato (flag off) giver præcis den gamle optælling, og det er låst af en test mod den gamle implementering.
 - **Trænings-slot-vagten (G9).** Andels-gaten måler en tilstand og er uændret. Spring-gaten var kalibreret mod én kalenderdags træning mellem to snapshots. På løbsdags-ticket tæller vagten de løbsdags-ticks der faktisk blev kørt i intervallet (medianen pr. hold, trupper talt én gang) og regner dem om til kalenderdags-ækvivalenter via G1-deleren i `trainingRaceDayTick.js`. Spring-loftet skaleres med det tal, dog aldrig under 1, så vagten aldrig bliver mere følsom end i dag. Der divideres bevidst **ikke** med det rå antal ticks: deleren holder sæsonens samlede udvikling uændret, så en normal løbsdato er omtrent én kalenderdags træning, og at dividere med antallet af løbsdage ville gøre vagten blind. Kan tick-tallet ikke læses, droppes spring-gaten for det snapshot (Sentry får besked) i stedet for at fyre en falsk alarm.
