@@ -78,6 +78,10 @@ export async function resolveTrainingDaysSincePrevious({ supabase, since, now, s
     if (trainingDays == null) return { reliable: false, error: "invalid race-day divisor" };
     return { reliable: true, trainingDays, raceDayTicks };
   } catch (err) {
+    // best-effort: fejlen sluges IKKE — den returneres som { reliable:false, error },
+    // og runTrainingSlotHealthWatch sender den til captureExceptionFn og dropper
+    // spring-gaten for dette snapshot. Et kast her ville vælte hele vagten, også
+    // andels-gaten, for en fejl der kun gør ÉN af de to gates uevaluerbar.
     return { reliable: false, error: err?.message ?? String(err) };
   }
 }
