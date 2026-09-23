@@ -5,6 +5,7 @@ import {
   computeStageRaceStanding,
   todayStageWinner,
   entryCountFor,
+  mergeStandingRowsByRace,
 } from "./dashboardTodayStages.js";
 
 test("terrainGlyphBucket — flat/rolling renames to sprint (TerrainGlyph vocabulary)", () => {
@@ -98,4 +99,45 @@ test("entryCountFor — counts race_entries rows for one race", () => {
   assert.equal(entryCountFor(rows, "race-a"), 2);
   assert.equal(entryCountFor(rows, "race-c"), 0);
   assert.equal(entryCountFor(null, "race-a"), 0);
+});
+
+// #5589: mergeStandingRowsByRace combines N per-race "placering" query
+// results (each individually bounded to ONE race + ONE stage_number, so each
+// is far under PostgREST's 1000-row cap) into a single in-memory map. Three
+// races with 400 rows each (1200 total, over the cap) demonstrate that the
+// merge is safe: the cap applies per HTTP response, never to this JS array.
+test("mergeStandingRowsByRace — merges three races' results (1.200 rows combined, over the 1.000-row cap) without loss or mixing", () => {
+  const makeRows = (raceId, n) =>
+    Array.from({ length: n }, (_, i) => ({ race_id: raceId, rank: i + 1, team_id: `${raceId}-team-${i}` }));
+
+  const standingRaces = [
+    { id: "race-a", stages_completed: 4 },
+    { id: "race-b", stages_completed: 7 },
+    { id: "race-c", stages_completed: 2 },
+  ];
+  const standingResults = [
+    { data: makeRows("race-a", 400), error: null },
+    { data: makeRows("race-b", 400), error: null },
+    { data: makeRows("race-c", 400), error: null },
+  ];
+
+  const byRace = mergeStandingRowsByRace(standingRaces, standingResults);
+
+  assert.equal(byRace.size, 3);
+  assert.equal(byRace.get("race-a").length, 400);
+  assert.equal(byRace.get("race-b").length, 400);
+  assert.equal(byRace.get("race-c").length, 400);
+  const totalRows = [...byRace.values()].reduce((sum, rows) => sum + rows.length, 0);
+  assert.ok(totalRows > 1000, `forventede >1000 rækker kombineret (viser at PostgREST-loftet ikke rammer den samlede merge), fik ${totalRows}`);
+  // Ingen sammenblanding: hvert løbs rækker matcher kun dets eget race_id.
+  for (const race of standingRaces) {
+    assert.ok(byRace.get(race.id).every((r) => r.race_id === race.id));
+  }
+});
+
+test("mergeStandingRowsByRace — missing/undefined data falls back to an empty array per race", () => {
+  const standingRaces = [{ id: "race-a", stages_completed: 1 }];
+  const standingResults = [{ data: null, error: null }];
+  const byRace = mergeStandingRowsByRace(standingRaces, standingResults);
+  assert.deepEqual(byRace.get("race-a"), []);
 });

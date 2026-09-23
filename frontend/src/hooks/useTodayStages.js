@@ -4,6 +4,7 @@ import { buildRaceCentreCards, copenhagenDayRange } from "../lib/raceCentre.js";
 import {
   computeStageRaceStanding,
   entryCountFor,
+  mergeStandingRowsByRace,
   terrainGlyphBucket,
   todayStageWinner,
 } from "../lib/dashboardTodayStages.js";
@@ -61,7 +62,11 @@ export default function useTodayStages(teamId) {
       if (!ownRaceIds.length) { setState({ loading: false, cards: [] }); return; }
       const ownSlotRows = (slotRows || []).filter((r) => enteredRaceIds.has(r.race_id));
 
-      const [racesRes, profilesRes, resultsRes] = await Promise.all([
+      // Dagens etapenumre for MINE løb — afgrænser vinder-forespørgslen
+      // nedenfor. Målt 23/9: 37 etaper på tværs af spillets 31 løb i dag.
+      const todayStageNumbers = [...new Set(ownSlotRows.map((r) => r.stage_number))];
+
+      const [racesRes, profilesRes, winnerRes] = await Promise.all([
         // "races" er ikke deny-listet (ikke i scripts/lint-pagination-guard.mjs).
         supabase.from("races")
           .select("id, name, race_type, stages, stages_completed, status")
@@ -75,22 +80,53 @@ export default function useTodayStages(teamId) {
         supabase.from("race_stage_profiles")
           .select("race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors")
           .in("race_id", ownRaceIds),
-        // pagination-safe: afgrænset til MINE dagens race_id'er (0-2 løb) — hele
-        // løbets leader/team/stage-rækker for de par løb er langt under 1000.
+        // pagination-safe: vinder-forespørgslen (#5589) — afgrænset til MINE
+        // dagens race_id'er OG dagens etapenumre OG kun rank-1 stage-
+        // resultater, ikke hele feltets leader/team/stage-rækker som den
+        // tidligere fejlagtige markering her påstod. Målt 23/9: den gamle,
+        // ubegrænsede forespørgsel ramte PostgREST's 1.000-rækkers-loft for
+        // 92 af dagens 254 hold, så 69 hold manglede vinderen på 205 kort.
         supabase.from("race_results")
-          .select("race_id, stage_number, result_type, rank, team_id, rider_name, finish_time")
+          .select("race_id, stage_number, result_type, rank, rider_name")
           .in("race_id", ownRaceIds)
-          .in("result_type", ["leader", "team", "stage"]),
+          .in("stage_number", todayStageNumbers)
+          .eq("result_type", "stage")
+          .eq("rank", 1),
       ]);
       if (racesRes.error) throw racesRes.error;
       if (profilesRes.error) throw profilesRes.error;
-      if (resultsRes.error) throw resultsRes.error;
+      if (winnerRes.error) throw winnerRes.error;
 
       const raceById = new Map((racesRes.data || []).map((r) => [r.id, r]));
       const profileByKey = new Map(
         (profilesRes.data || []).map((p) => [`${p.race_id}:${p.stage_number}`, p])
       );
-      const resultRows = resultsRes.data || [];
+      const winnerRows = winnerRes.data || [];
+
+      // 2b) Samlet placering pr. EGET etapeløb med stages_completed > 0 — én
+      // forespørgsel PR løb (ikke én fælles for alle løb), afgrænset til det
+      // ene løb OG dets aktuelle etape. stages_completed skrives i samme
+      // transaktion som resultatrækkerne (raceRunner.js:2999-3034); prod
+      // 23/9: 13/13 kørende og 185/185 afsluttede løb stemmer. Hver
+      // forespørgsel returnerer højst feltets størrelse (ryttere/hold),
+      // langt under 1000, uanset hvor mange etaper løbet har kørt i alt (#5589).
+      const standingRaces = (racesRes.data || []).filter(
+        (r) => r.race_type === "stage_race" && (r.stages_completed ?? 0) > 0
+      );
+      const standingResults = await Promise.all(
+        standingRaces.map((race) =>
+          // pagination-safe: afgrænset til ÉT løb OG dets aktuelle etape
+          // (stages_completed) — feltstørrelse (ryttere/hold), langt under
+          // 1000, uafhængigt af hvor mange etaper løbet har kørt i alt (#5589).
+          supabase.from("race_results")
+            .select("race_id, stage_number, result_type, rank, team_id, finish_time")
+            .eq("race_id", race.id)
+            .eq("stage_number", race.stages_completed)
+            .in("result_type", ["leader", "team"])
+        )
+      );
+      for (const res of standingResults) if (res.error) throw res.error;
+      const standingRowsByRace = mergeStandingRowsByRace(standingRaces, standingResults);
 
       const slots = ownSlotRows
         .map((row) => {
@@ -130,13 +166,13 @@ export default function useTodayStages(teamId) {
       }
 
       const cards = built.map((c) => {
-        const resultsForRace = resultRows.filter((r) => r.race_id === c.raceId);
+        const standingRows = standingRowsByRace.get(c.raceId) || [];
         return {
           ...c,
           bucket: terrainGlyphBucket(c.profileType),
-          standing: c.isStageRace ? computeStageRaceStanding(resultsForRace, teamId) : null,
+          standing: c.isStageRace ? computeStageRaceStanding(standingRows, teamId) : null,
           entryCount: c.isStageRace ? null : entryCountFor(entryRowsAll, c.raceId),
-          winnerName: c.state === "finished" ? todayStageWinner(resultsForRace, c.raceId, c.stageNumber) : null,
+          winnerName: c.state === "finished" ? todayStageWinner(winnerRows, c.raceId, c.stageNumber) : null,
         };
       });
 

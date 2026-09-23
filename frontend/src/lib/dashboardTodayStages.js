@@ -78,3 +78,18 @@ export function entryCountFor(rows, raceId) {
   if (!Array.isArray(rows)) return 0;
   return rows.filter((r) => r.race_id === raceId).length;
 }
+
+// Combine the per-race "placering" query results (#5589) into a
+// Map<raceId, rows>. Each race's rows come from its OWN Supabase query
+// (one race_id + one stage_number), so this in-memory merge can safely hold
+// MORE than 1000 rows in total across races — PostgREST's 1000-row cap
+// applies per HTTP response, not to a JS array built by combining several
+// already-bounded responses. `standingResults` is the `{ data, error }`
+// array `Promise.all` returns, in the SAME order as `standingRaces`.
+export function mergeStandingRowsByRace(standingRaces, standingResults) {
+  const byRace = new Map();
+  standingRaces.forEach((race, i) => {
+    byRace.set(race.id, standingResults[i]?.data || []);
+  });
+  return byRace;
+}
