@@ -6133,10 +6133,10 @@ test("[epic #4592] processSeasonEnd: en fejlende parkerings-sweep vælter IKKE r
   assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre selv om parkeringen fejler");
 });
 
-// Rækkefølgen er et åbent ejer-valg (#4592): i dag kører sweepen EFTER hele
-// op/nedryknings-blokken, reseed OG AI-fyld-sweepen. Testen låser den
-// nuværende rækkefølge, så en flytning kun kan ske som en bevidst ændring.
-test("[epic #4592] processSeasonEnd: op/nedrykning → reseed → AI-fyld → parkerings-sweep (nuværende rækkefølge)", async () => {
+// Ejer-valg (a) = A (23/9, #4592): sweepen kører EFTER op/nedryknings-loopet og
+// FØR reseed og AI-fyld-sweepen, så AI lukker de pladser parkeringen frigør.
+// Testen låser rækkefølgen, så en flytning kun kan ske som en bevidst ændring.
+test("[epic #4592] processSeasonEnd: op/nedrykning → parkerings-sweep → reseed → AI-fyld (ejer-valg A)", async () => {
   const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
   const originalFrom = supabase.from.bind(supabase);
   supabase.from = (table) => {
@@ -6176,11 +6176,33 @@ test("[epic #4592] processSeasonEnd: op/nedrykning → reseed → AI-fyld → pa
     "division:2",
     "division:3",
     "division:4",
+    "parking",
     "reseed",
     "reconcile:pool-d3a",
     "reconcile:pool-d3b",
-    "parking",
   ]);
+  assert.equal(supabase.state.season.status, "completed");
+});
+
+test("[epic #4592] processSeasonEnd: parkerings-sweepen kører også når #2851-skip-flaget springer op/nedrykning over", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  const calls = [];
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    processDivisionEnd: async (_standings, division) => { calls.push(`division:${division}`); },
+    reseedTierPools: async () => { calls.push("reseed"); return { enabled: false, moved: 0, tiers: [] }; },
+    reconcileAiTeamsForPool: async ({ poolId }) => { calls.push(`reconcile:${poolId}`); },
+    isSeasonSignupEnabled: async () => true,
+    runParkingSweep: async () => { calls.push("parking"); return fakeSweepResult(); },
+  });
+
+  assert.deepEqual(calls, ["parking"]);
   assert.equal(supabase.state.season.status, "completed");
 });
 
