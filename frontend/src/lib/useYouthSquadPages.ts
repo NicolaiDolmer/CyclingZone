@@ -1,4 +1,4 @@
-// #5519 — React-adgang til kontakten for U23 team- og Junior team-siderne.
+// #5519: React-adgang til kontakten for U23 team- og Junior team-siderne.
 //
 // useYouthSquadPages(): true når siderne og menupunkterne skal vises, og
 // Akademiets Coming soon-kort skal væk. Re-renderer hvis kontakten flipper

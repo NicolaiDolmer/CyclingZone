@@ -1,4 +1,4 @@
-// #5519 — kontakten for U23 team- og Junior team-SIDERNE (roadbook-loeftet
+// #5519: kontakten for U23 team- og Junior team-SIDERNE (roadbook-loeftet
 // "U23 team and junior team become real squads").
 //
 // ON  = to nye Klubhus-menupunkter efter My Team (U23 team, Junior team), hver

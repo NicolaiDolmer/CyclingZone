@@ -1,4 +1,4 @@
-// #5519 — U23 team- og Junior team-sidernes trup-afgoerelse.
+// #5519: U23 team- og Junior team-sidernes trup-afgoerelse.
 //
 // Den vigtige egenskab: siden viser samme trup som motoren tror paa. Derfor
 // testes groupYouthSquads mod effectiveSquad's to faser:
@@ -18,7 +18,7 @@ import {
 } from "./youthSquadRoster.js";
 
 const SEASON = 3;
-// Saesonens referenceaar — foedselsaaret regnes ud herfra, aldrig hardkodet,
+// Saesonens referenceaar, foedselsaaret regnes ud herfra, aldrig hardkodet,
 // saa testen ikke raadner naar LAUNCH_REFERENCE_YEAR flytter sig.
 const REF_YEAR = LAUNCH_REFERENCE_YEAR + (SEASON - 1);
 const bornAged = (age) => `${REF_YEAR - age}-06-15`;
@@ -51,7 +51,7 @@ test("#5519 foer backfill: akademiryttere fordeles efter saesonalder", () => {
 
 test("#5519 efter backfill: eksplicit ungdomstrup vinder over alderen", () => {
   const riders = [
-    // En 20-aarig flyttet ned i junior (eller en fejl) — raekken er sandheden.
+    // En 20-aarig flyttet ned i junior (eller en fejl), raekken er sandheden.
     { id: "a", birthdate: bornAged(20), squad: "junior", is_academy: true },
     { id: "b", birthdate: bornAged(17), squad: "u23", is_academy: true },
     { id: "c", birthdate: bornAged(20), squad: "senior", is_academy: false },

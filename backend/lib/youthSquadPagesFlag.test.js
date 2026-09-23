@@ -1,4 +1,4 @@
-// #5519 — kontakten for U23 team- og Junior team-siderne.
+// #5519: kontakten for U23 team- og Junior team-siderne.
 //
 // Tre fejlklasser daekkes:
 //   1) SELVE GATEN: off/beta/on + fail-safe. En fejl her ville vise siderne
@@ -84,7 +84,7 @@ test("#5519 wiring: /api/youth-squads er gatet paa flaget og bruger effectiveSqu
   assert.match(body, /isYouthSquadPagesEnabled\(supabase, \{ isBetaTester \}\)/);
   assert.match(body, /status\(409\)/);
   assert.match(body, /youth_squad_pages_disabled/);
-  // Truppen afgoeres af den delte, rene funktion — ikke af et inline filter.
+  // Truppen afgoeres af den delte, rene funktion, ikke af et inline filter.
   assert.match(body, /buildYouthSquadsPayload\(/);
   assert.match(body, /YOUTH_SQUAD_ROSTER_COLUMNS/);
   assert.match(body, /\.eq\("team_id", req\.team\.id\)/);

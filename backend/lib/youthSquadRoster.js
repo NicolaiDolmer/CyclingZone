@@ -1,4 +1,4 @@
-// #5519 — hvem staar paa U23 team- og Junior team-siden?
+// #5519: hvem staar paa U23 team- og Junior team-siden?
 //
 // Ren funktion (ingen DB), saa trup-siderne og testene deler EEN afgoerelse.
 // Truppen afgoeres af effectiveSquad (squads.js), ikke af et frontend-gaet:

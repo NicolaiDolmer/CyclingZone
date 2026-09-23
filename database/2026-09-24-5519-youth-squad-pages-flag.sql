@@ -1,4 +1,4 @@
--- #5519 — U23 team- og Junior team-siderne bag et stadie-flag.
+-- #5519: U23 team- og Junior team-siderne bag et stadie-flag.
 --
 -- Roadbook-loefte ("U23 team and junior team become real squads. The 'coming
 -- soon' card on the Academy page turns into the real thing."). ON = to nye

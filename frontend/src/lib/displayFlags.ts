@@ -1,4 +1,4 @@
-// #5519 — ÉN hentning af GET /api/display-flags pr. sideload, delt af alle
+// #5519: ÉN hentning af GET /api/display-flags pr. sideload, delt af alle
 // visnings-kontakter.
 //
 // Endpointet leverer flere kontakter i samme svar (rating-visningen #5435 og
@@ -7,7 +7,7 @@
 // den første kalder starter kaldet, resten får samme svar.
 //
 // Fail-safe: fejl, 401, 429 (stille backoff) eller manglende session giver
-// `null`, og null CACHES IKKE — næste kalder prøver igen. Kaldstedet beholder
+// `null`, og null CACHES IKKE, næste kalder prøver igen. Kaldstedet beholder
 // da sin sidst kendte værdi (default off) i stedet for at blinke til "off".
 import { authHeaders } from "./supabase";
 import { apiFetch } from "./apiFetch.ts";

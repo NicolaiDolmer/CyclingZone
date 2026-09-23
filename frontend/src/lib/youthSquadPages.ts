@@ -1,4 +1,4 @@
-// #5519 — U23 team- og Junior team-siderne: kontakten, ruterne og menupunkterne.
+// #5519: U23 team- og Junior team-siderne: kontakten, ruterne og menupunkterne.
 //
 // Kilden er app_config-flaget `youth_squad_pages` (off|beta|on), evalueret
 // SERVER-side mod viewerens beta-status og leveret som en bar boolean i
@@ -42,6 +42,20 @@ export interface NavItem { to: string; label: string }
 export function youthSquadNavItems(enabled: boolean, t: (key: string) => string): NavItem[] {
   if (!enabled) return [];
   return YOUTH_SQUADS.map((squad) => ({ to: youthSquadPath(squad), label: t(NAV_LABEL_KEY[squad]) }));
+}
+
+interface YouthSquadsResponse {
+  squads?: Partial<Record<YouthSquad, { riderIds?: unknown }>>;
+}
+
+/**
+ * Rytter-id'erne for én trup i svaret fra GET /api/youth-squads. Et
+ * uventet svar giver en tom liste (siden viser da sin tomme tilstand), aldrig
+ * en exception midt i render.
+ */
+export function riderIdsForSquad(payload: unknown, squad: YouthSquad): string[] {
+  const ids = (payload as YouthSquadsResponse | null)?.squads?.[squad]?.riderIds;
+  return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string" && id.length > 0) : [];
 }
 
 // ── Kontakt-store ───────────────────────────────────────────────────────────
