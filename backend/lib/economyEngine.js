@@ -1696,7 +1696,8 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   // afbryder hellere (før nogen skrivning) end at dømme på den forkerte tilstand.
   // Sweepen kører først efter hele bestyrelses-loopet i processSeasonEnd, så en
   // repair efter et nedbrud i det loop rammer aldrig denne gren.
-  const hasSweepRunFn = deps.hasParkingSweepRunForSeason ?? hasParkingSweepRunForSeason;
+  const sweepSeam = /** @type {{ hasParkingSweepRunForSeason?: typeof hasParkingSweepRunForSeason }} */ (deps);
+  const hasSweepRunFn = sweepSeam.hasParkingSweepRunForSeason ?? hasParkingSweepRunForSeason;
   if (await hasSweepRunFn({ supabase: supabaseClient, seasonId })) {
     throw new Error(
       `Season-end repair for ${seasonId} aborted: the parking sweep (#4592) has already run for this season, `
