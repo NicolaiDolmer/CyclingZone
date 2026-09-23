@@ -544,7 +544,7 @@ test("#5440 et udloebet budget-vindue starter forfra", async () => {
 });
 
 test("#5440 en ulaeselig budget-post er FAIL-CLOSED (samme regel som chunkErrors.js)", async () => {
-  for (const broken of ["{ikke json", "null", '"tekst"', JSON.stringify({ used: "1", windowStart: 0 }), JSON.stringify({ used: -1, windowStart: 0 }), JSON.stringify({ used: 0, windowStart: Date.now() + 60_000 })]) {
+  for (const broken of ["", "{ikke json", "null", '"tekst"', JSON.stringify({ used: "1", windowStart: 0 }), JSON.stringify({ used: -1, windowStart: 0 }), JSON.stringify({ used: 0, windowStart: Date.now() + 60_000 })]) {
     const storage = new Map([[RECOVERY_BUDGET_KEY, broken]]);
     const g = bootGuard({ storage });
     g.fireResourceError(g.entry);

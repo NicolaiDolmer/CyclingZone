@@ -217,7 +217,9 @@
     // forsoeg hver gang. Kaster selve getItem, er svaret ogsaa null.
     function readRecoveryBudget(storage, now) {
       var raw = storage.getItem(RECOVERY_BUDGET_KEY);
-      if (!raw) return { used: 0, windowStart: now };
+      // Kun en FRAVAERENDE noegle er et ubrugt budget; en tom streng er en
+      // ulaeselig post og fejler lukket i JSON.parse nedenfor.
+      if (raw === null || raw === undefined) return { used: 0, windowStart: now };
       var parsed;
       try {
         parsed = JSON.parse(raw);

@@ -256,6 +256,9 @@ test("banneret venter paa cookie-banneret — to bundbjaelker tegner ikke oven i
 // bevise HVORNAAR den sker — ikke kun AT den sker.
 async function makeNpsEligible(page) {
   const cooldownWrites = [];
+  // Gaten har laest sit loebstal: saa ved testen at beslutningen er ved at blive
+  // truffet, og kan vente paa den i stedet for at gaette en timeout.
+  let raceCountReads = 0;
   await page.route("**/rest/v1/users**", async (route) => {
     const request = route.request();
     if (request.method() === "PATCH") {
@@ -278,10 +281,12 @@ async function makeNpsEligible(page) {
   await page.route("**/rest/v1/nps_responses**", (route) =>
     route.request().method() === "GET" ? json(route, []) : route.fallback(),
   );
-  await page.route("**/api/rankings/race-count**", (route) =>
-    route.request().method() === "GET" ? json(route, { count: 5 }) : route.fallback(),
-  );
-  return { cooldownWrites };
+  await page.route("**/api/rankings/race-count**", (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    raceCountReads += 1;
+    return json(route, { count: 5 });
+  });
+  return { cooldownWrites, raceCountReads: () => raceCountReads };
 }
 
 const npsBar = (page) => page.getByRole("region", { name: "Feedback-prompt" });
@@ -331,9 +336,22 @@ test("#5440 A->B: NPS-baren viger for release-banneret, kladden overlever, ét r
 
   // Ingen loop: naeste tjek ser stadig B, men B's slot er brugt. Tjekket SKAL
   // faktisk koere i det nye dokument, ellers beviser taellingen ingenting.
+  // Det nye dokument skal have monteret appen (og dermed watcherens interval),
+  // foer klokken spoles: i WebKit kan boot tage laengere end selve reloadet.
+  await expect
+    .poll(() => page.evaluate(() => Boolean(window.__czAppBooted)).catch(() => false), { timeout: 20_000 })
+    .toBe(true);
+  await expect(page.locator("main")).toBeVisible({ timeout: 20_000 });
   const callsBeforeRecheck = state.versionCalls;
-  await page.clock.fastForward(PERIODIC);
-  await expect.poll(() => state.versionCalls, { timeout: 10_000 }).toBeGreaterThan(callsBeforeRecheck);
+  await expect
+    .poll(
+      async () => {
+        await page.clock.fastForward(PERIODIC).catch(() => {});
+        return state.versionCalls;
+      },
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(callsBeforeRecheck);
   await page.waitForTimeout(800);
   // Testens HTML hævder stadig A, saa B er "brugt" uden at vaere naaet: banneret
   // er den manuelle udvej, og slotten holder NPS-baren vaek ogsaa i det nye dokument.
@@ -364,18 +382,21 @@ test("#5306 NPS-cooldownen starter foerst naar samtykke-banneret er lukket og ba
   );
   await setupReleaseHarness(page);
   const nps = await makeNpsEligible(page);
-  await login(page);
-  // Samtykket mangler fra naeste dokument: stabilizePage saetter det i hvert
-  // load, saa det fjernes af et init-script der koerer EFTER den.
+  // Samtykket mangler i ALLE dokumenter, ogsaa det dashboard login() lander paa
+  // (CodeRabbit #5551): ellers kunne det foerste dashboard vise baren og skrive
+  // cooldownen foer testen overhovedet naar sin nul-assertion. stabilizePage
+  // saetter samtykket i sit eget init-script; Playwright koerer init-scripts i
+  // registreringsraekkefoelge, saa dette koerer EFTER det.
   await page.addInitScript(() => {
     try { window.localStorage.removeItem("cz_consent_v1"); } catch { /* noop */ }
   });
-  await page.goto("/dashboard");
+  await login(page);
 
   const cookieBanner = page.getByRole("dialog", { name: /data|Cycling Zone/i }).first();
   await expect(cookieBanner).toBeVisible();
-  // Gaten har haft tid til at aabne (tre opslag), men baren er skjult.
-  await page.waitForTimeout(1500);
+  // Gaten har laest sit loebstal og aabnet (tre opslag), men baren er skjult.
+  await expect.poll(nps.raceCountReads, { timeout: 15_000 }).toBeGreaterThan(0);
+  await page.waitForTimeout(1000);
   await expect(npsBar(page)).toHaveCount(0);
   expect(nps.cooldownWrites.length, "ingen cooldown bag samtykke-banneret").toBe(0);
 

@@ -124,7 +124,9 @@ function readBudget(storage, now) {
   } catch {
     return null;
   }
-  if (!raw) return { used: 0, windowStart: now };
+  // Kun en FRAVAERENDE noegle er et ubrugt budget (CodeRabbit #5551). En tom
+  // streng er en post nogen har skrevet, og den er ulaeselig: fail-closed nedenfor.
+  if (raw === null || raw === undefined) return { used: 0, windowStart: now };
   try {
     const parsed = JSON.parse(raw);
     // FAIL-CLOSED paa en ugyldig post (CodeRabbit 11/9). Foer blev baade
