@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, ProgressMeter } from "../../components/ui";
-import { endSentence, formatWeekdayShortDate } from "./boardroomFormat";
+import { appendDate, formatWeekdayShortDate } from "./boardroomFormat";
 
 // #4557 · Boardroom · Tillidskort (Main.dc.html §1). Stort tabular-nums-tal +
 // ugedelta, 4 kategorimetre (gold fyld, amber under ~60 pr. mockup) og en
@@ -56,8 +56,10 @@ export default function ConfidenceCard({ confidence, lastMovement = null }) {
         {lastMovement?.textKey ? (
           <p className="min-w-0">
             <span className="font-medium text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
-            {t(lastMovement.textKey, lastMovement.textParams || {})}
-            {lastMovement.occurredAt ? `, ${endSentence(formatWeekdayShortDate(lastMovement.occurredAt))}` : ""}
+            {appendDate(
+              t(lastMovement.textKey, lastMovement.textParams || {}),
+              lastMovement.occurredAt ? formatWeekdayShortDate(lastMovement.occurredAt) : "",
+            )}
           </p>
         ) : <span />}
         <p className="min-w-0 lg:text-end">

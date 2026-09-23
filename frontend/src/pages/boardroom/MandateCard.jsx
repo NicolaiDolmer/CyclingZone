@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon } from "../../components/ui";
-import { endSentence, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
+import { appendDate, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
 import MonogramAvatar from "../../components/MonogramAvatar";
 import { logEvent } from "../../lib/logEvent";
 import StatusPill from "./StatusPill.jsx";
@@ -27,7 +27,10 @@ function GoalReceipt({ receipt, t }) {
     lines.push(
       <span key="lastMovement">
         <span className="font-semibold text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
-        {t(receipt.lastMovementKey, receipt.lastMovementParams || {})}, {endSentence(formatWeekdayShortDate(receipt.lastMovementAt))}
+        {appendDate(
+          t(receipt.lastMovementKey, receipt.lastMovementParams || {}),
+          formatWeekdayShortDate(receipt.lastMovementAt),
+        )}
       </span>,
     );
   }

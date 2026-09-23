@@ -39,10 +39,11 @@ function GoalSummary({ goal, t }) {
   return (
     // #5472 · Hvert maal er et subgrid over tre raekker (titel, maaler, tal), saa
     // naboerne i samme raekke deler titelhoejde: en titel paa tre linjer skubber
-    // nu alle maalerne i raekken ned, i stedet for kun sin egen (maalerne stod i
-    // hver sin hoejde i et smalt vindue). min-h holder to linjer som gulv.
+    // alle maalerne i raekken ned, ikke kun sin egen (maalerne stod i hver sin
+    // hoejde i et smalt vindue). Det goer den tidligere faste to-linjers
+    // min-hoejde overfloedig; den efterlod en tom linje under korte titler.
     <div className="row-span-3 grid min-w-0 grid-rows-subgrid gap-y-0">
-      <p className="mb-1.5 min-h-[2.75em] text-[12.5px] font-medium leading-snug text-cz-1">
+      <p className="mb-1.5 text-[12.5px] font-medium leading-snug text-cz-1">
         {title}
         {goal.isBonus && (
           <span className="ms-1.5 rounded-cz-pill border border-cz-border px-[7px] py-px align-middle text-3xs font-semibold uppercase tracking-[.08em] text-cz-accent-t">

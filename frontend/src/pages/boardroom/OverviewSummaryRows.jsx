@@ -20,7 +20,9 @@ function SummaryRow({ label, faces = null, children, actionLabel, onAction }) {
       </p>
       {faces}
       <div className="min-w-0 flex-1 basis-60 text-[13px]">{children}</div>
-      <SectionAction onClick={onAction}>{actionLabel}</SectionAction>
+      {/* ms-auto: brydes handlingen ned paa sin egen linje, staar den stadig
+          i hoejre side som i de andre raekker. */}
+      <SectionAction className="ms-auto" onClick={onAction}>{actionLabel}</SectionAction>
     </div>
   );
 }

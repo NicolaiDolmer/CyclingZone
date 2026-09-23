@@ -1,18 +1,24 @@
 // #5472 · Bestyrelsessiden (Boardroom, /board) bryder ikke layoutet på desktop.
 //
 // Beta-feedback 21/9: siden så forkert ud både i et smalt desktop-vindue
-// (ca. 970 px) og i fuld skærm (ca. 1830 px). Rodårsagen var at Boardroom-
-// siden ingen T1-container havde (PAGE_TEMPLATES: max-w-4xl, centreret), så
-// kortene strakte sig over hele hovedfladen. Preview-siden (/ui/boardroom)
-// pakkede den ind i max-w-4xl selv, så fejlen var usynlig dér.
+// (skærmbillede 967 px) og i fuld skærm (1831 px). To fund:
+//   · Fuld skærm: Boardroom-siden havde ingen T1-container (PAGE_TEMPLATES:
+//     max-w-4xl, centreret), så kortene strakte sig til Layoutets max-w-6xl.
+//     Preview-siden (/ui/boardroom) pakker selv ind i max-w-4xl, så fejlen var
+//     usynlig dér.
+//   · Smalt vindue: flerkolonne-rækkerne skiftede ved sm (en VIEWPORT-grænse),
+//     men fra md står sidebaren, så indholdet er langt smallere end sm antyder.
+//     Ved 774 px løb "RESULTATER" ud af sin meter-kolonne, og mål-målerne stod
+//     i hver sin højde.
 //
-// Specen dækker tre ting:
-//   1. Ingen vandret overflow og intet indhold uden for sidens container ved
-//      970 / 1440 / 1830 (og mobil 390), på alle fire faner, med en mål-
+// Specen dækker:
+//   1. Ingen vandret overflow, intet indhold uden for sidens container og
+//      ingen tekst uden for sin boks (#5383-måleren) ved 390 / 774 / 970 /
+//      1440 / 1830, på dansk og engelsk, på alle fire faner, med en mål-
 //      kvittering og et medlemspanel foldet ud.
 //   2. Siden holder T1-bredden (max 896 px) uanset skærmbredde.
-//   3. Ingen rå i18n-nøgler på siden, på dansk og engelsk, med en payload i
-//      samme form som backend/lib/boardRoom.js faktisk sender (nøgle-familierne
+//   3. Ingen rå i18n-nøgler på siden, med en payload i samme form som
+//      backend/lib/boardRoom.js faktisk sender (nøgle-familierne
 //      goalReceipt.counted.*, chairmanBeat.*, goalType.*, archetypes.*). Den
 //      delte fixture bruger egne fixture-nøgler og kunne derfor ikke se hullet.
 //
@@ -34,10 +40,10 @@ const T1_MAX_WIDTH = 896;
 
 const WIDTHS = [
   { name: "390", size: { width: 390, height: 844 } },
-  // 967 px-skærmbilledet fra beta-feedbacken er ENHEDS-pixels. Windows kører
-  // typisk 125 % skalering, og så er vinduet kun ca. 774 CSS-px bredt: lige
-  // over md-grænsen, hvor sidebaren (208 px) står, men indholdet har under
-  // 520 px. Det er den smalleste desktop-geometri siden kan få.
+  // Et 967 px-skærmbillede kan være ENHEDS-pixels: med Windows' 125 %-
+  // skalering er vinduet ca. 774 CSS-px bredt. Det er lige over md-grænsen,
+  // hvor sidebaren (208 px) står, så indholdet har under 520 px: den
+  // smalleste desktop-geometri siden kan få.
   { name: "774", size: { width: 774, height: 862 } },
   { name: "970", size: { width: 970, height: 1077 } },
   { name: "1440", size: { width: 1440, height: 900 } },
@@ -297,6 +303,8 @@ test.describe("#5472 Boardroom-layout på desktop", () => {
         await openTab(page, tab);
         const text = await page.getByTestId("boardroom-page").innerText();
         expect.soft(text, `${tab} (${lang}) viser en rå nøgle`).not.toMatch(rawKey);
+        // Replik + dato ("Keep them coming., Sun, Sep 20.") gav ".," midt i linjen.
+        expect.soft(text, `${tab} (${lang}) har ".," efter en replik`).not.toMatch(/\.,/);
       }
     });
   }

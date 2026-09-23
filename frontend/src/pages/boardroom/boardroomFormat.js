@@ -33,6 +33,17 @@ export function endSentence(text) {
   return value.endsWith(".") ? value : `${value}.`;
 }
 
+// #5472 · Replik + dato i én linje ("Last movement: ..."). Replikkerne er hele
+// saetninger med eget punktum, saa den faste ", {dato}."-form gav ".," midt i
+// linjen ("Keep them coming., Sun, Sep 20."). Slutter teksten allerede med et
+// saetningstegn, kommer datoen efter et mellemrum i stedet for et komma.
+export function appendDate(text, date) {
+  const body = String(text ?? "").trim();
+  if (!date) return body;
+  const separator = /[.!?…"”]$/.test(body) ? " " : ", ";
+  return `${body}${separator}${endSentence(date)}`;
+}
+
 // Delt mellem BoardCard (avatar-grid) og MemberPanel (portræt-header) — samme
 // stemnings-dot-farve begge steder, defineret ét sted.
 export const MOOD_DOT = {
