@@ -15,8 +15,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { processSeasonStart, processSeasonEnd, loadHumanSeasonEndTeams } from "./economyEngine.js";
-import { isParkedTeam } from "./managerParking.js";
+import {
+  processSeasonStart,
+  processSeasonEnd,
+  loadHumanSeasonEndTeams,
+  repairSeasonEndFinanceAndBoard,
+} from "./economyEngine.js";
+import { isParkedTeam, hasParkingSweepRunForSeason, PARKING_SWEEP_MARKER_KEY } from "./managerParking.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -379,6 +384,53 @@ test("#4592 sæson-slut: et ikke-parkeret hold får samme dom, uanset om et ande
   assert.deepEqual(writesA(parked), writesA(control));
   assert.ok(parked.calls.consequences.includes(TEAM_A));
   assert.ok(parked.calls.annualMeeting.includes(TEAM_A));
+});
+
+// ─── Repair-stien (CodeRabbit-fund) ─────────────────────────────────────────────
+
+const repairDeps = {
+  now: new Date("2026-09-27T20:00:00.000Z"),
+  boardTestMode: false,
+  processReplacementTrigger: async () => ({ counter: 0, replaced: false }),
+  evaluateAndApplyConsequences: async () => {},
+  applyMandateSeasonEndSync: async () => null,
+  advanceMandateAtSeasonEnd: async () => null,
+  captureException: () => {},
+};
+
+test("#4592 repair: før sæsonens parkerings-sweep springes det parkerede hold over, det aktive dømmes", async () => {
+  const supabase = createFakeSupabase(seasonEndTables({ parked: true }));
+  const result = await repairSeasonEndFinanceAndBoard("season-5", { supabase, ...repairDeps });
+
+  assert.equal(result.teamsProcessed, 2);
+  const snapshotBoards = supabase.writes.upserts
+    .filter(({ table }) => table === "board_plan_snapshots")
+    .flatMap(({ rows }) => rows.map((row) => row.board_id));
+  assert.deepEqual(snapshotBoards, [BOARD_A], "kun det aktive hold får et snapshot");
+});
+
+test("#4592 repair: efter sæsonens parkerings-sweep afbrydes repair før nogen skrivning", async () => {
+  // Efter sweepen viser parked_at ikke længere sæsonens tilstand: P (aktivt
+  // her) kan være genindplaceret og ville få en dom for en sæson det ikke kørte.
+  const tables = seasonEndTables({ parked: false });
+  tables.app_config = [{ key: PARKING_SWEEP_MARKER_KEY, value: "season-5" }];
+  const supabase = createFakeSupabase(tables);
+
+  await assert.rejects(
+    repairSeasonEndFinanceAndBoard("season-5", { supabase, ...repairDeps }),
+    /parking sweep \(#4592\) has already run/,
+  );
+  assert.deepEqual(supabase.writes.updates, []);
+  assert.deepEqual(supabase.writes.upserts, []);
+  assert.deepEqual(supabase.writes.inserts, []);
+});
+
+test("hasParkingSweepRunForSeason: sand kun når markøren er netop den sæson", async () => {
+  const marker = (value) => createFakeSupabase({ app_config: value == null ? [] : [{ key: PARKING_SWEEP_MARKER_KEY, value }] });
+  assert.equal(await hasParkingSweepRunForSeason({ supabase: marker("season-5"), seasonId: "season-5" }), true);
+  assert.equal(await hasParkingSweepRunForSeason({ supabase: marker("season-4"), seasonId: "season-5" }), false);
+  assert.equal(await hasParkingSweepRunForSeason({ supabase: marker(null), seasonId: "season-5" }), false);
+  await assert.rejects(hasParkingSweepRunForSeason({ supabase: marker(null) }), /seasonId required/);
 });
 
 test("#4592 payroll-listen (loadHumanSeasonEndTeams) indeholder stadig parkerede hold", async () => {

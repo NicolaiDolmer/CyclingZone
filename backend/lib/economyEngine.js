@@ -75,7 +75,7 @@ import {
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
-import { runParkingSweep, isParkedTeam } from "./managerParking.js";
+import { runParkingSweep, isParkedTeam, hasParkingSweepRunForSeason } from "./managerParking.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -1687,6 +1687,22 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
     .single();
   throwIfSupabaseError(seasonError, "Could not load season for season-end repair");
   if (!currentSeason) throw new Error("Season not found");
+
+  // #4592 (CodeRabbit-fund): processTeamSeasonEnd springer hold over der var
+  // parkeret I SÆSONEN og læser det fra teams.parked_at. Kun parkerings-sweepen
+  // skriver det felt, så før sweepen for denne sæson har kørt, er den nuværende
+  // værdi også sæsonens. Bagefter er den ikke: et genindplaceret hold ville få en
+  // dom for en sæson det ikke kørte, og et nyparkeret hold ville miste sin. Repair
+  // afbryder hellere (før nogen skrivning) end at dømme på den forkerte tilstand.
+  // Sweepen kører først efter hele bestyrelses-loopet i processSeasonEnd, så en
+  // repair efter et nedbrud i det loop rammer aldrig denne gren.
+  const hasSweepRunFn = deps.hasParkingSweepRunForSeason ?? hasParkingSweepRunForSeason;
+  if (await hasSweepRunFn({ supabase: supabaseClient, seasonId })) {
+    throw new Error(
+      `Season-end repair for ${seasonId} aborted: the parking sweep (#4592) has already run for this season, `
+      + "so teams.parked_at no longer shows which teams were parked during it.",
+    );
+  }
 
   // 2026-05-21: Salary/loan-interest/emergency-loan flyttet til sæson-start.
   // Repair-funktionen reparerer derfor nu kun board-snapshots og division-side-

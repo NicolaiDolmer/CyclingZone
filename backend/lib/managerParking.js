@@ -389,6 +389,23 @@ async function readSweepMarker(supabase) {
   return data?.value ?? null;
 }
 
+/**
+ * Har sweepen allerede kørt for sæsonen? Kun sweepen skriver parked_at, så før
+ * den har kørt, viser teams.parked_at præcis hvem der var parkeret i sæsonen.
+ * Bagefter gør den ikke (genindplacerede hold har mistet deres parked_at,
+ * nyparkerede har fået et). Bruges af repair-stien i economyEngine, som ellers
+ * ville dømme sæsonen på den forkerte parkerings-tilstand. Kaster ved en
+ * læsefejl: uden markøren ved vi det ikke.
+ *
+ * @param {{ supabase: object, seasonId: string }} args
+ * @returns {Promise<boolean>}
+ */
+export async function hasParkingSweepRunForSeason({ supabase, seasonId }) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (seasonId == null) throw new Error("hasParkingSweepRunForSeason: seasonId required");
+  return await readSweepMarker(supabase) === String(seasonId);
+}
+
 async function writeSweepMarker(supabase, seasonId, now) {
   const { error } = await supabase.from("app_config").upsert(
     {
