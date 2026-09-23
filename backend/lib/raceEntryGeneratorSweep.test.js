@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runRaceEntryGeneratorSweep, RACE_ENTRY_GENERATOR_RUNS_TABLE } from "./raceEntryGeneratorSweep.js";
+import { runRaceEntryGeneratorSweep, RACE_ENTRY_GENERATOR_RUNS_TABLE, isMissingRunLogTable } from "./raceEntryGeneratorSweep.js";
 
 // Chainable seasons-mock (mirrors activeSeasonLookup.js' forbrug): season-lookuppet
 // kæder .select().eq().order().limit().maybeSingle(), og fler-aktiv-alarmen kæder
@@ -214,7 +214,9 @@ test("#5246: succesfuld koersel skriver én række i race_entry_generator_runs, 
     supabase,
     isEnabled: async () => true,
     readModeFn: async () => ({ mode: "late_fill", lateFillHours: 12 }),
-    runGeneratorFn: async () => ({ races: 3, teams: 5, generated: 22, inserted: 20, skipped: 1 }),
+    runGeneratorFn: async () => ({
+      mode: "late_fill", races: 3, teams: 5, teams_written: 2, generated: 22, inserted: 20, skipped: 1,
+    }),
   });
   assert.equal(r.ran, true);
   assert.equal(supabase.writes.length, 1);
@@ -222,10 +224,83 @@ test("#5246: succesfuld koersel skriver én række i race_entry_generator_runs, 
   assert.equal(row.mode, "late_fill");
   assert.equal(row.late_fill_hours, 12);
   assert.equal(row.races_considered, 3);
-  assert.equal(row.teams_filled, 5);
   assert.equal(row.entries_written, 20, "entries_written = result.inserted, ikke result.generated");
   assert.equal(row.error, null);
   assert.ok(row.started_at && row.finished_at, "started_at/finished_at skal være sat");
+});
+
+// Rettelse 23/9 (d): teams_filled var result.teams = ALLE behandlede hold, ogsaa dem
+// der ikke fik en eneste raekke. Nu: kun hold der faktisk fik nye raekker skrevet.
+test("#5246 (d): teams_filled = result.teams_written (hold med nye raekker), ikke result.teams (alle behandlede)", async () => {
+  const supabase = makeSweepSupabase({ seasons: [{ id: "s1" }] });
+  await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    runGeneratorFn: async () => ({ races: 3, teams: 40, teams_written: 2, generated: 12, inserted: 12, skipped: 0 }),
+  });
+  assert.equal(supabase.writes[0].teams_filled, 2);
+});
+
+test("#5246 (d): uden teams_written i resultatet (fx intet loeb i saesonen) → teams_filled = 0, aldrig result.teams", async () => {
+  const supabase = makeSweepSupabase({ seasons: [{ id: "s1" }] });
+  await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    runGeneratorFn: async () => ({ races: 0, teams: 7, generated: 0, skipped: 0 }),
+  });
+  assert.equal(supabase.writes[0].teams_filled, 0);
+});
+
+// Rettelse 23/9 (d): mode skal vaere den EFFEKTIVE tilstand (result.mode). opt_in
+// fail-safer til proactive inde i generatoren hvis teams-kolonnen ikke kan laeses.
+test("#5246 (d): mode = result.mode (den effektive), ikke den konfigurerede", async () => {
+  const supabase = makeSweepSupabase({ seasons: [{ id: "s1" }] });
+  await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    readModeFn: async () => ({ mode: "opt_in", lateFillHours: 24 }),
+    runGeneratorFn: async () => ({ mode: "proactive", races: 1, teams: 1, teams_written: 0, inserted: 0 }),
+  });
+  assert.equal(supabase.writes[0].mode, "proactive");
+});
+
+test("#5246 (d): ved en generator-fejl (intet resultat) logges den konfigurerede tilstand", async () => {
+  const supabase = makeSweepSupabase({ seasons: [{ id: "s1" }] });
+  await assert.rejects(() => runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    readModeFn: async () => ({ mode: "late_fill", lateFillHours: 24 }),
+    runGeneratorFn: async () => { throw new Error("boom"); },
+  }), /boom/);
+  assert.equal(supabase.writes[0].mode, "late_fill");
+});
+
+// Rettelse 23/9 (a): backend deployes FOER auto-migrate.yml opretter tabellen. En
+// manglende tabel er forventet i det vindue og maa ikke fyre en Sentry-alarm pr. koersel.
+test("#5246 (a): manglende race_entry_generator_runs-tabel (PGRST205) → ingen alarm, sweepen koerer videre", async () => {
+  const supabase = makeSweepSupabase({
+    seasons: [{ id: "s1" }],
+    insertError: {
+      code: "PGRST205",
+      message: "Could not find the table 'public.race_entry_generator_runs' in the schema cache",
+    },
+  });
+  const captured = [];
+  const r = await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    runGeneratorFn: async () => ({ races: 1, teams: 1, teams_written: 1, inserted: 3 }),
+    captureExceptionFn: (err) => captured.push(err),
+  });
+  assert.equal(r.ran, true);
+  assert.equal(captured.length, 0);
+});
+
+test("#5246 (a): isMissingRunLogTable kender kun tabel-mangel paa NETOP denne tabel", () => {
+  assert.equal(isMissingRunLogTable({ code: "42P01", message: 'relation "race_entry_generator_runs" does not exist' }), true);
+  assert.equal(isMissingRunLogTable({ code: "42P01", message: 'relation "other_table" does not exist' }), false);
+  assert.equal(isMissingRunLogTable({ code: "23505", message: "race_entry_generator_runs duplicate" }), false);
+  assert.equal(isMissingRunLogTable(null), false);
 });
 
 test("#5246: 0-fyld-koersel skriver STADIG en række (ikke kun ved fund, modsat email_sweep_runs)", async () => {
