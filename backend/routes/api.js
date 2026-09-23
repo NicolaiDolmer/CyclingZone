@@ -11,6 +11,7 @@
 
 import express from "express";
 import { createRankingsRouter } from "./rankings.ts";
+import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
@@ -923,6 +924,7 @@ router.use("/rankings", createRankingsRouter({
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }),
 }));
+router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
 
 async function requireAdmin(req, res, next) {
   await requireAuth(req, res, async () => {

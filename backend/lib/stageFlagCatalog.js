@@ -109,3 +109,16 @@ export function isUnknownStageValue(value) {
   if (typeof value === "boolean") return false;
   return !FLAG_STAGES.includes(value);
 }
+
+// #4948 · ALLOWLIST for det spiller-synlige flag-endpoint (GET /api/feature-flags,
+// backend/api/featureFlagsApi.js). Kun noegler her kan nogensinde laeses og
+// returneres derfra; resten af app_config (tal, tidsstempler, andre
+// tre-tilstande, ops-flag) forlader aldrig serveren ad den vej. Hver noegle
+// SKAL ogsaa staa i STAGE_FLAGS ovenfor, fordi endpointet evaluerer dem med
+// evaluateFlagStage. Tilfoej kun et flag her naar en spillerflade skal kunne
+// spoerge om det uden en mere specifik route at spoerge.
+export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
+  "race_engine_v4",
+  "board_mandate_model_enabled",
+  "training_tick_per_race_day",
+]);
