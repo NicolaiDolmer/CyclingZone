@@ -73,8 +73,8 @@ function route(profileType: ProfileType = "itt", segments?: Segment[]): RouteV2 
 
 const HILLY_SEGMENTS: Segment[] = [
   { kind: "flat", from_km: 0, to_km: 10 },
-  { kind: "climb", from_km: 10, to_km: 15 },
-  { kind: "descent", from_km: 15, to_km: 19 },
+  { kind: "climb", from_km: 10, to_km: 15, category: "3", avg_gradient: 5.6, top_elevation_m: 480 },
+  { kind: "descent", from_km: 15, to_km: 19, technicality: 1 },
   { kind: "flat", from_km: 19, to_km: 30 },
 ];
 
