@@ -261,7 +261,7 @@ test("#2789 itt: elevation_gain_m varierer med distance_km (ikke længere fast 8
   assert.ok(seen.size > 1, `forventede varierende elevation_gain_m over 30 forsøg, fik kun ${[...seen]}`);
 });
 
-test("#2789 itt: elevation_gain_m følger PRÆCIS Math.round(distance_km * 80/27.5) — samme referencedistance som raceSimulator.js's DISTANCE_BAND_MIDPOINTS.itt", () => {
+test("#2789 itt: elevation_gain_m følger PRÆCIS den dokumenterede lineære distance-formel", () => {
   for (let i = 0; i < 30; i++) {
     const r = attachRoute(stage("itt", null, 5), { external_id: `itt-formula-${i}` }, true);
     const expected = Math.round(r.distance_km * (80 / 27.5));

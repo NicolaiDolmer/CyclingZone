@@ -156,11 +156,10 @@ const BASE_ELEVATION = Object.freeze({
   itt_hilly: 350,
 });
 // #2789: "itt" skalerer nu LINEÆRT med distance_km i stedet for et fast 80-tal. Satsen er
-// kalibreret så den rammer PRÆCIS 80 hm ved 27,5 km — samme reference-distance som
-// raceSimulator.js's DISTANCE_BAND_MIDPOINTS.itt (den "typiske" enkeltstart motoren
-// allerede regner ud fra) — og skalerer proportionalt derfra. Ingen ekstra rng-træk:
-// elevationGain() læser kun det allerede-trukne distance_km fra pass 2's normale
-// distance-bånd (prolog 5-8/8-14, normal 15-40, GT 25-40 — se DISTANCE_BANDS ovenfor).
+// kalibreret mod en typisk enkeltstarts reference-distance og skalerer proportionalt
+// derfra. Ingen ekstra rng-træk: elevationGain() læser kun det allerede-trukne
+// distance_km fra pass 2's normale distance-bånd (prolog 5-8/8-14, normal 15-40,
+// GT 25-40 — se DISTANCE_BANDS ovenfor).
 const ITT_ELEVATION_PER_KM = 80 / 27.5;
 
 // --- Region-flavoured stignings-navne (deterministisk) ---
