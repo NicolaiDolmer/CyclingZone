@@ -157,8 +157,18 @@ jobs:
       # checkout skal ske FØR den, ikke bagefter. Alle senere trin der også
       # bruger arbejdstræet (cache-header-guarden m.fl.) er upåvirkede af at
       # checkout nu sker tidligere — ingen af dem er tidsafhængige.
+      # Pinnet til fuld commit-SHA (samme som claude.yml/ci.yml m.fl. bruger,
+      # CodeRabbit-fund #5489) — en tag som @v7 kan flytte sig og aendre hvad
+      # der koerer i et trin der laeser secrets.RAILWAY_TOKEN.
+      # persist-credentials: false — ingen af de trin der bruger dette
+      # arbejdstraee (Railway-status-scriptet, cache-header-guarden,
+      # asset-miss-proben) laver authenticated Git-kald; de trin der rent
+      # faktisk kalder GitHub-API'et bruger deres eget GH_TOKEN via env,
+      # ikke det persisterede checkout-credential.
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Wait for Vercel + Railway deployments
         id: deployments

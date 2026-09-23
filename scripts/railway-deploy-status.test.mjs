@@ -143,6 +143,19 @@ test("getRailwayDeployStatus: netvaerksfejl klassificeres som pending, ikke fail
   assert.equal(result, "pending");
 });
 
+test("getRailwayDeployStatus: request-timeout (AbortError) klassificeres som pending, ikke failed (#5489-CodeRabbit-fund)", async () => {
+  // Simulerer UDFALDET af AbortSignal.timeout() uden at vente paa den rigtige
+  // timer (10s) — fetchImpl afviser straks med samme fejltype `fetch` selv
+  // ville kaste, saa vi tester at getRailwayDeployStatus'  generiske catch
+  // ogsaa daekker denne fejltype, ikke bare almindelige netvaerksfejl.
+  const fetchImpl = async (_url, init) => {
+    assert.ok(init.signal instanceof AbortSignal, "kaldet skal have et abort-signal med (timeout-loft)");
+    throw new DOMException("The operation was aborted", "AbortError");
+  };
+  const result = await getRailwayDeployStatus({ sha, token: "tok", serviceId: "svc-1", environmentId: "env-1", fetchImpl });
+  assert.equal(result, "pending");
+});
+
 test("getRailwayDeployStatus: HTTP 500 klassificeres som pending", async () => {
   const fetchImpl = async () => jsonResponse(500, { errors: [{ message: "internal error" }] });
   const result = await getRailwayDeployStatus({ sha, token: "tok", serviceId: "svc-1", environmentId: "env-1", fetchImpl });

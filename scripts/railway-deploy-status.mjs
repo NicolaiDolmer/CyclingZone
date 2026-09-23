@@ -160,11 +160,22 @@ const DEPLOYMENTS_QUERY = `
   }
 `;
 
+/**
+ * Loft paa hvor laenge ÉT GraphQL-kald maa haenge (ms). CodeRabbit-fund
+ * (#5489): Undicis default kan vente op til 300s paa headers/body, og et
+ * haengende kald ville forsinke deploy-verify.yml's 600s-deadline-tjek og
+ * udsaette fallbacket til GitHub-deployment-status. Enhver timeout rammer
+ * det eksisterende catch-led i getRailwayDeployStatus og klassificeres som
+ * "pending", præcis som enhver anden API-fejl.
+ */
+export const REQUEST_TIMEOUT_MS = 10_000;
+
 async function graphqlRequest(url, token, headerStyle, query, variables, fetchImpl) {
   const res = await fetchImpl(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...buildAuthHeaders(token, headerStyle) },
     body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   let body;
   try {
