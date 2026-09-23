@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (23/9 kl. 19):** **Ny session:** `drafts/claude-session-2026-09-23-c.md` = go-kort m. ægte-data-billeder (#5564 grøn, #5556 #5558 #5563 #5549 #5557 #5555 #5554) → bølge C0 (#5562 merges under bølger, args `drafts/wave-2026-09-23-bC0.json`) → bølge C (11 spor, `-bC.json`, U23-vagter #5535-#5537 nu låst op) → D (løfterne: #5238, ugeplan pr. løbsdag, U23 S4-S6, #5456, motor-spor) → E. **23/9 merget:** 31 PR'er inkl. #5542 (etaper på klokken), #5522 (→ kalender-"kør"), #5547 (trup-lofter, verificeret), v7.295 (#5569). **Motor-issues #5570-#5583** mangler plads i MASTERPLAN. #4619-backfill kørt. **Ejer:** motor-design (#4914/#4915) · #5497 · spillersvar (OneDrive `2026-09-23-spillersvar.md`) · Discord `drafts/discord-patch-notes-2026-09-23.md`. **Morgenblok 08:30.**
+> **🎯 Next action (23/9 kl. 22):** **Ny session:** `drafts/claude-session-2026-09-24-b.md` = start bølge C0b fra den nye session (args OneDrive `private-handoffs/wave-2026-09-23-bC0b.json`, 9 spor, **#5589 dashboard-fejlen først**: 69 hold manglede vinderen 23/9) → merge #5562 FØRST efter bølgen (merge uden fil-overlap under bølger) → motor-runde 2 + bølge C (rullende optag). **23/9-c:** #5563 #5555 #5549 #5524 #5585 merget; C0a + #5521 + v7.296 (#5588): se PR-status. `youth_squad_pages` beta, `season_signup_enabled` on (login før 27/9 undgår parkering). **Ejer 08:30:** OneDrive `2026-09-24-morgenrapport.md` (S4-kalender "kør", træningsside-flips, Discord-invite, #5558, #5268, #5497).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt, overlap forbliver det almindelige. **Tallet er LÅST: 140 (ejer 15/9, TRAINING_RULES §13.3); spørg aldrig igen.** **Ejer 20/9: måde B (jævnt, 5 pr. dato); A + synkrone blokke fjernet i #5169. B4 #5264 merget 20/9 bag flag.** **§2c (ejer 19/9):** S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only.
 
@@ -12,7 +12,7 @@
 
 > **🟡 Lofter + potentiale (ejer 18/9, byg intet):** lofterne ud, potentialet styrer farten (#5351); 6 huller efter 28/9. **#5268-point-flyt afventer.** **D-049-visning:** #5435 (b2), svar upostet #5436.
 
-> **🔴 Åbne fund (bølge C):** #5568 · #5561 · #5566. **#5323 Quad9:** målt 23/9, 0 låst ude (ejer-valg A/B). **📊 Triage:** `scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
+> **🔴 Åbne fund:** **#5589 dashboard 1.000-rækker (brand, C0b først)** · #5568 (+ pladsvisning fra #5547) · #5561 · #5566. **#5323 Quad9:** 0 låst ude (ejer-valg A/B). **📊 Triage:** `scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
 
 ## Standing context (forever-relaunch)
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
 - **Mekanik:** byg KUN via wave.js (Codex: samme indgang, #5468); merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); intet PR-loft (#5510); commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx. Base-PR merget → PR lukkes; retarget først (#5478).
 
-> **🤖 Working agent:** 23/9-c (åbne PR'er + bølge C0 → C). 23/9-b lukket efter #5569.
+> **🤖 Working agent:** Ingen aktiv session (23/9-c lukket; 24/9-b starter C0b).
