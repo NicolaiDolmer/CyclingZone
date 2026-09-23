@@ -21,6 +21,7 @@
 // Fuld kalibrering/tuning sker i 23-24/8-scope (F2-core-design.md §7).
 
 import { observeRace, aggregateObservations } from "../../lib/raceDominanceMetrics.js";
+import { isTimeTrial } from "../../lib/raceStageProfileGenerator.js";
 import { observeStageV4, cohesionFraction, spreadAtRank, descentAttackGainStats } from "./headToHeadObservers.js";
 import { mean, spearmanCorrelation, percentile, fmt, fmtPct } from "./headToHeadStats.js";
 
@@ -309,6 +310,17 @@ export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
   const v3Agg = aggregateObservations(v3Observations);
   const v4Agg = aggregateObservations(v4Observations);
 
+  // Samme-hold-top-10 udelader TIDSKOERSLER (#4915): baandet ("4+ fra samme
+  // hold i top 10 sjaeldent") maaler holddominans i MASSESTARTS-etaper. Paa en
+  // holdtidskoersel deler holdets ryttere tiden og fylder top 10 med rette,
+  // saa ankret ville maale strukturelt 100 %; en enkeltstart har intet holdspil
+  // at maale. "Tidskoersel" er generatorens egen definition (isTimeTrial:
+  // itt, itt_hilly, ttt), ikke en liste her. Favorit-ankret ovenfor maaler
+  // stadig alle etaper.
+  const isMassStart = (index) => !isTimeTrial(rows[index].raw.route.profile_type);
+  const v3TeamAgg = aggregateObservations(v3Observations.filter((_, i) => isMassStart(i)));
+  const v4TeamAgg = aggregateObservations(v4Observations.filter((_, i) => isMassStart(i)));
+
   const winBand = ANCHOR_BANDS.favoriteWinRate;
   const teamBand = ANCHOR_BANDS.sameTeamTop10Share4Plus;
 
@@ -323,11 +335,11 @@ export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
     },
     {
       id: "same_team_top10_share_4plus",
-      label: "Samme-hold-top-10 (andel etaper med 4+ fra ét hold)",
+      label: "Samme-hold-top-10 (andel massestarts-etaper med 4+ fra ét hold)",
       bandLabel: `< ${fmtPct(teamBand.max)}`,
       source: teamBand.source,
-      v3: { ...judge(v3Agg.share4PlusSameTeamTop10, teamBand, v3Agg.races), display: fmtPct },
-      v4: { ...judge(v4Agg.share4PlusSameTeamTop10, teamBand, v4Agg.races), display: fmtPct },
+      v3: { ...judge(v3TeamAgg.share4PlusSameTeamTop10, teamBand, v3TeamAgg.races), display: fmtPct },
+      v4: { ...judge(v4TeamAgg.share4PlusSameTeamTop10, teamBand, v4TeamAgg.races), display: fmtPct },
     },
   ];
 }
