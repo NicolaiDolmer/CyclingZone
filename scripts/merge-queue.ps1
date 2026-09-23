@@ -26,6 +26,11 @@
 #      main = stop-alt-fix-foerst, jf. GITHUB_WORKFLOW.md §Hurtige merges)
 #      i stedet for at merge videre ovenpaa den.
 #
+# Boelge-gaten (#5562): en koerende boelge blokerer kun PR'er hvis filer
+# overlapper boelgens aktive ownership (`wave-policy.mjs assert-merge-allowed
+# --pr N`, gentaget under state-laasen i guarded-merge, der merger med
+# --match-head-commit). En legacy/ulaeselig markoer blokerer stadig alt.
+#
 # -DryRun: gennemgaar HELE koeen paa noejagtig samme maade som en rigtig
 # koersel (inkl. et frisk checks-genkald pr. PR og etape-tick-ventepunktet),
 # og standser paa PRAECIS det punkt en rigtig koersel ville standse - men

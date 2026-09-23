@@ -37,9 +37,12 @@
 // VIGTIGT: .claude/workflows/wave.js SPEJLER konstanterne og classifyStall()
 // herfra (den kan ikke importere). Aendrer du en konstant her, skal den samme
 // vaerdi ind i wave.js - `node --test scripts/wave-freeze.test.mjs` har en
-// drift-vagt der laeser wave.js og fejler hvis de to ikke stemmer.
+// drift-vagt der laeser wave.js og fejler hvis de to ikke stemmer. Siden
+// #5562/#5567 sammenligner vagten ogsaa de normaliserede funktionskroppe af
+// trackWeight, sortHeavyFirst, planIdleLane, releasesOwnership,
+// applySchemaEvidenceRule og tailIdleLaneMinutes.
 //
-// Refs #5178, #5142, #4918.
+// Refs #5178, #5142, #4918, #5562, #5567.
 
 /** Konstanter. Spejles i .claude/workflows/wave.js - hold dem synkrone. */
 export const WAVE_FREEZE = {
