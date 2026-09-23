@@ -184,7 +184,7 @@ export function simulateStageV4(input: StageInput): StageOutput {
   //
   // #3463's fund var praecis den manglende forgrening: "ni ryttere fra samme
   // hold ville hver faa deres egen tid", fordi `ttt` faldt igennem til
-  // enkeltstarts-vejen. Diskriminatoren er `profile_type` og IKKE `finale_type`
+  // vejetape-vejen. Diskriminatoren er `profile_type` og IKKE `finale_type`
   // — raceStageProfileGenerator mapper baade itt/itt_hilly OG ttt til
   // finale_type "solo_tt", saa de kan ikke skelnes paa finalen alene.
   //

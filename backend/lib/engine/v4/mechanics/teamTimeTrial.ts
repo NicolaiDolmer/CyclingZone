@@ -17,6 +17,11 @@
 // "peloton" (flere ryttere sammen) / "solo" (kun én tilbage) er den korrekte,
 // semantisk naermeste genbrug uden at braekke den frosne kontrakt.
 //
+// #5576: etape-modellen er udskilt som `runTimeTrialStage` og deles med
+// enkeltstarten (mechanics/individualTimeTrial.ts), der koerer den med ét hold
+// pr. rytter og sit eget segment-tik. Holdtidskoerslen er bit-uaendret af
+// udskillelsen; forskellene bor i `TimeTrialMode`.
+//
 // Holdinddelingen kommer ind som et separat TeamRoster[]-parameter (grupperet
 // af adapters/teamRosterAdapter.ts paa Entrant.team_id, M16), ikke laest ud af
 // StageInput.startlist her. index.ts's simulateStageV4 forgrener paa
