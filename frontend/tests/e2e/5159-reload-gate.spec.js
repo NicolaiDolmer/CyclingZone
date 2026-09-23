@@ -329,8 +329,11 @@ test("#5440 A->B: NPS-baren viger for release-banneret, kladden overlever, ét r
   await expect.poll(() => documentLoads(page), { timeout: 15_000 }).toBe(loadsBefore + 1);
   await expect(page.locator("#root")).toBeVisible();
 
-  // Ingen loop: naeste tjek ser stadig B, men B's slot er brugt.
+  // Ingen loop: naeste tjek ser stadig B, men B's slot er brugt. Tjekket SKAL
+  // faktisk koere i det nye dokument, ellers beviser taellingen ingenting.
+  const callsBeforeRecheck = state.versionCalls;
   await page.clock.fastForward(PERIODIC);
+  await expect.poll(() => state.versionCalls, { timeout: 10_000 }).toBeGreaterThan(callsBeforeRecheck);
   await page.waitForTimeout(800);
   expect(await documentLoads(page), "ingen reload-loop paa samme release").toBe(loadsBefore + 1);
 
