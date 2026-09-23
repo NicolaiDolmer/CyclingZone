@@ -17,6 +17,12 @@ export const DISCORD_WELCOME_TYPE = "discord_welcome";
  * til nogen entitet) — CTA'en er et fast eksternt link (DISCORD_INVITE_URL,
  * frontend/src/lib/externalLinks.js), udledt af notifikationens TYPE i
  * NotificationsPage.jsx's TYPE_CONFIG, ikke af metadata her.
+ *
+ * #2761: kortets synlige "Join Discord"-knap og linjen om manager-forummet
+ * rendres ogsaa af frontend ud fra TYPEN (notif.discordWelcome.cta/.forumLine),
+ * ikke af payloaden. Derfor faar baade den loebende velkomst (#5130) og
+ * backfill-udsendelsen (#2761) samme kort, ogsaa raekker der allerede er sendt.
+ * Den engelske fallback nedenfor (e-mail-digest, gamle klienter) er uroert.
  */
 export function buildDiscordWelcomeNotification() {
   return {
