@@ -1,5 +1,5 @@
 import { expect, test } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
+import { installNetworkMocks, json, login, stabilizePage } from "./fixtures.js";
 
 // #5159 — porten foran automatisk genindlaesning (Codex-fund B1 + M1 + M2 + M3).
 //
@@ -246,6 +246,133 @@ test("banneret venter paa cookie-banneret — to bundbjaelker tegner ikke oven i
   await page.getByRole("button", { name: /Kun nødvendige|Necessary only/ }).click();
   await expect(cookieBanner).toHaveCount(0);
   await expect(banner(page)).toBeVisible();
+});
+
+// --- #5440 punkt 1 + #5306: den delte bund-slot og NPS-cooldownen ------------
+//
+// NPS-gaten aabnes med vilje: fixturens testhold har for faa afsluttede
+// loebsdage, og uden disse routes ville baren aldrig vises. Cooldown-
+// skrivningen (PATCH paa users med nps_last_prompted_at) taelles, saa testen kan
+// bevise HVORNAAR den sker — ikke kun AT den sker.
+async function makeNpsEligible(page) {
+  const cooldownWrites = [];
+  await page.route("**/rest/v1/users**", async (route) => {
+    const request = route.request();
+    if (request.method() === "PATCH") {
+      try {
+        const body = JSON.parse(request.postData() || "{}");
+        if ("nps_last_prompted_at" in body) cooldownWrites.push(body.nps_last_prompted_at);
+      } catch {
+        // ikke en JSON-body — ikke vores skrivning
+      }
+      return route.fallback();
+    }
+    const url = new URL(request.url());
+    if (request.method() === "GET" && url.searchParams.get("select") === "nps_last_prompted_at") {
+      const row = { nps_last_prompted_at: null };
+      const wantsObject = (request.headers().accept || "").includes("vnd.pgrst.object");
+      return json(route, wantsObject ? row : [row]);
+    }
+    return route.fallback();
+  });
+  await page.route("**/rest/v1/nps_responses**", (route) =>
+    route.request().method() === "GET" ? json(route, []) : route.fallback(),
+  );
+  await page.route("**/api/rankings/race-count**", (route) =>
+    route.request().method() === "GET" ? json(route, { count: 5 }) : route.fallback(),
+  );
+  return { cooldownWrites };
+}
+
+const npsBar = (page) => page.getByRole("region", { name: "Feedback-prompt" });
+
+// Epic-gaten for #5162 (A -> B) i BEGGE motorer: aaben A-fane med en usendt
+// NPS-kladde, B udgives, og en route der ikke er hentet i dokumentet besoeges
+// bagefter. Ingen tabt kladde, aldrig to bundbjaelker, ét reload og ingen loop.
+test("#5440 A->B: NPS-baren viger for release-banneret, kladden overlever, ét reload og ingen loop", async ({ page }) => {
+  const state = await setupReleaseHarness(page);
+  const nps = await makeNpsEligible(page);
+  await login(page);
+
+  const bar = npsBar(page);
+  await expect(bar).toBeVisible({ timeout: 20_000 });
+  // #5306: baren er synlig, saa cooldownen starter nu — én gang.
+  await expect.poll(() => nps.cooldownWrites.length, { timeout: 10_000 }).toBe(1);
+  const loadsBefore = await documentLoads(page);
+
+  // En usendt kladde: tal valgt og en begrundelse skrevet.
+  await bar.getByRole("radio", { name: "9", exact: true }).click();
+  await bar.locator("textarea").fill("ugemt begrundelse");
+  await page.locator("h1").first().click();
+
+  // B udgives, og det periodiske tjek fyrer.
+  state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
+  await page.clock.fastForward(PERIODIC);
+
+  await expect(banner(page)).toBeVisible();
+  await expect(bar, "aldrig to bundbjaelker: NPS-baren viger for release-banneret").toHaveCount(0);
+  expect(await documentLoads(page), "INTET reload oven i en usendt NPS-kladde").toBe(loadsBefore);
+
+  // "Save first": banneret gaar, NPS-baren kommer tilbage MED kladden.
+  await page.getByTestId("release-update-apply").click();
+  await page.getByTestId("release-update-save-first").click();
+  await expect(banner(page)).toHaveCount(0);
+  await expect(bar).toBeVisible();
+  await expect(bar.getByRole("radio", { name: "9", exact: true })).toHaveAttribute("aria-checked", "true");
+  await expect(bar.locator("textarea")).toHaveValue("ugemt begrundelse");
+  expect(await documentLoads(page)).toBe(loadsBefore);
+  expect(nps.cooldownWrites.length, "at skjule og vise baren igen skriver ikke cooldownen igen").toBe(1);
+
+  // Spilleren lukker selv baren: kladden er vaek ved hans eget valg, og det er
+  // det sikre punkt. Opdateringen tages af sig selv — ét dokument-load.
+  await bar.getByRole("button", { name: "Ikke nu" }).click();
+  await expect.poll(() => documentLoads(page), { timeout: 15_000 }).toBe(loadsBefore + 1);
+  await expect(page.locator("#root")).toBeVisible();
+
+  // Ingen loop: naeste tjek ser stadig B, men B's slot er brugt.
+  await page.clock.fastForward(PERIODIC);
+  await page.waitForTimeout(800);
+  expect(await documentLoads(page), "ingen reload-loop paa samme release").toBe(loadsBefore + 1);
+
+  // En route der ikke er hentet i DETTE dokument: client-side, intet nyt load.
+  const link = page.locator('main a[href^="/"]:visible').first();
+  await expect(link).toBeVisible({ timeout: 20_000 });
+  const href = await link.getAttribute("href");
+  await link.click();
+  await expect(page).not.toHaveURL(/\/dashboard$/);
+  await expect(page.locator("main")).toBeVisible();
+  await page.waitForTimeout(800);
+  expect(await documentLoads(page), `navigationen til ${href} gav intet ekstra dokument-load`).toBe(loadsBefore + 1);
+});
+
+// #5306 i browseren: gaten aabner mens samtykke-banneret staar. Foer blev de 90
+// dage braendt her uden at spilleren saa spoergsmaalet.
+test("#5306 NPS-cooldownen starter foerst naar samtykke-banneret er lukket og baren faktisk ses", async ({ page, browserName }) => {
+  test.skip(
+    browserName !== "chromium",
+    "Ren state-mekanik uden motor-afhaengighed (daekket linje for linje i useNpsPrompt.test.ts). WebKit-shard'en ligger paa tidsbudgettet (#4647); A->B-scenariet ovenfor koerer i BEGGE motorer.",
+  );
+  await setupReleaseHarness(page);
+  const nps = await makeNpsEligible(page);
+  await login(page);
+  // Samtykket mangler fra naeste dokument: stabilizePage saetter det i hvert
+  // load, saa det fjernes af et init-script der koerer EFTER den.
+  await page.addInitScript(() => {
+    try { window.localStorage.removeItem("cz_consent_v1"); } catch { /* noop */ }
+  });
+  await page.goto("/dashboard");
+
+  const cookieBanner = page.getByRole("dialog", { name: /data|Cycling Zone/i }).first();
+  await expect(cookieBanner).toBeVisible();
+  // Gaten har haft tid til at aabne (tre opslag), men baren er skjult.
+  await page.waitForTimeout(1500);
+  await expect(npsBar(page)).toHaveCount(0);
+  expect(nps.cooldownWrites.length, "ingen cooldown bag samtykke-banneret").toBe(0);
+
+  await page.getByRole("button", { name: /Kun nødvendige|Necessary only/ }).click();
+  await expect(cookieBanner).toHaveCount(0);
+  await expect(npsBar(page)).toBeVisible();
+  await expect.poll(() => nps.cooldownWrites.length, { timeout: 10_000 }).toBe(1);
 });
 
 test("ingen opdaterings-stribe for en anonym besoegende paa forsiden", async ({ page, browserName }) => {
