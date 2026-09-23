@@ -238,15 +238,18 @@ export function mirrorDerive(row, { seasonNumber, valuationModel, productionValu
   const baseline = {};
   for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
   const caps = buildCapsForRider(baseline, { potentiale: row.potentiale, age }, draw.primary, draw.secondary || null);
-  // rider-type-write-ok: spejling i hukommelsen — typen persisteres af deriveForRiderIds, ikke her.
+  // Typen kommer fra resolveRiderTypes (identitets-kilden, #3588) — samme kald som derive.
   const { primary, secondary } = resolveRiderTypes(draw, caps, selectTypesBaseline(age, TYPES_BASELINE, YOUTH_TYPES_BASELINE));
+  // rider-type-write-ok: prissætnings-input i hukommelsen (spejler derive), aldrig persisteret herfra.
   const valueRider = { ...row, primary_type: primary.key, age };
   const base_value = predictBaseValue(valueRider, abilities, valuationModel);
   const current_production_value = currentProductionValue(valueRider, abilities, productionValuationModel);
   return {
     age,
     abilities,
+    // rider-type-write-ok: gatens forventning (rapport + post-verify); typen persisteres af deriveForRiderIds.
     primary_type: primary.key,
+    // rider-type-write-ok: samme — kun til rapporten, aldrig skrevet til riders herfra.
     secondary_type: secondary.key,
     base_value,
     current_production_value,
@@ -613,6 +616,7 @@ export async function applyPlan(supabase, plan, {
     const m = plan.rows[i].mirror;
     const p = byId.get(id);
     if (!p || p.base_value !== m.base_value || p.primary_type !== m.primary_type) {
+      // rider-type-write-ok: afvigelses-rapport (læst tilbage efter derive), skrives aldrig til riders.
       mismatches.push({ id, expected: { base_value: m.base_value, primary_type: m.primary_type }, got: p ?? null });
     }
   }
