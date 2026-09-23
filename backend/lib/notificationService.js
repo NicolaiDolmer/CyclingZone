@@ -491,11 +491,35 @@ async function defaultFetchParticipatingManagers({ supabase, raceId }) {
   return (data || []).map((row) => row.rider?.team?.user_id ?? null);
 }
 
+// #3624 trin 2: hvor mange hold-opslag der maa vaere i luften ad gangen.
+const FIRST_TIME_LOOKUP_CONCURRENCY = 8;
+
+// #3624 trin 2: har holdet mindst eet resultat fra et ANDET loeb? Et EXISTS-
+// opslag (limit 1 via idx_race_results_team_id) i stedet for at hente hele
+// holdets historik. Kaster ved DB-fejl; kalderen degraderer.
+async function teamHasEarlierRaceResult({ supabase, teamId, raceId }) {
+  const { data, error } = await supabase
+    .from("race_results")
+    .select("team_id")
+    .eq("team_id", teamId)
+    .neq("race_id", raceId)
+    .limit(1);
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}
+
 // #3310 comeback-buen: hvilke af løbets deltagende managere fik her deres
 // FØRSTE resultat? Første = holdets eneste race_results-løb er netop dette.
 // Fejl (inkl. et supabase-stub uden .from, fx i tests der ikke bruger denne
 // sti) degraderer til tomt sæt: alle får standard-copy, ingen notifikation
 // tabes. Standard-implementering; injicérbar i test.
+//
+// #3624 trin 2: opslaget hentede tidligere ALLE historiske race_results for de
+// deltagende hold (sidepaginering, titusinder af raekker pr. etapeloebs-
+// afslutning og voksende hver dag i saesonen) bare for at svare ja/nej pr.
+// hold — og det laa i den blokerende afviklingssti. Nu eet EXISTS-opslag pr.
+// hold. Samme svar: et hold er veteran hvis det har mindst eet resultat fra
+// et andet loeb.
 export async function defaultFetchFirstTimeManagers({ supabase, race, userIds }) {
   if (!userIds?.length) return new Set();
   try {
@@ -512,23 +536,21 @@ export async function defaultFetchFirstTimeManagers({ supabase, race, userIds })
       return new Set();
     }
     if (!teams?.length) return new Set();
-    // #3331: a team can accumulate 1000+ race_results rows over several
-    // seasons (max observed ~5.1k) — an unpaginated select here would falsely
-    // mark veteran teams as "first-timer" once truncation kicks in.
-    let other;
+    // #3331-klassen (trunkering markerede veteraner som first-timer) kan ikke
+    // opstaa her: hvert opslag svarer ja/nej med hoejst een raekke.
+    const veteranTeamIds = new Set();
     try {
-      other = await fetchAllRows(() => supabase
-        .from("race_results")
-        .select("team_id")
-        .in("team_id", teams.map((t) => t.id))
-        .neq("race_id", race.id)
-        .order("id", { ascending: true }));
+      for (let i = 0; i < teams.length; i += FIRST_TIME_LOOKUP_CONCURRENCY) {
+        const chunk = teams.slice(i, i + FIRST_TIME_LOOKUP_CONCURRENCY);
+        const answers = await Promise.all(chunk.map((t) =>
+          teamHasEarlierRaceResult({ supabase, teamId: t.id, raceId: race.id })));
+        chunk.forEach((t, j) => { if (answers[j]) veteranTeamIds.add(t.id); });
+      }
     } catch (otherError) {
       console.error(`  ❌ first-time-manager-lookup fejlede (race_results, race ${race?.id}):`, otherError?.message || otherError);
       captureException(otherError, { tags: { flow: "notifications", stage: "first-time-managers-race-results" }, raceId: race?.id });
       return new Set();
     }
-    const veteranTeamIds = new Set((other ?? []).map((r) => r.team_id));
     return new Set(teams.filter((t) => !veteranTeamIds.has(t.id)).map((t) => t.user_id));
   } catch (err) {
     console.error(`  ❌ first-time-manager-lookup fejlede (race ${race?.id}):`, err?.message || err);
