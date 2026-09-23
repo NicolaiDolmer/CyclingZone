@@ -2,11 +2,12 @@
 // Session names and public wave IDs alone are not proof of ownership.
 import fs from 'node:fs';
 import { processSnapshot } from './wave-process-snapshot.mjs';
+import { measureBootId, sameBoot } from './wave-boot-identity.mjs';
 
 export function ownershipSnapshot() {
   if (process.platform === 'win32') return processSnapshot();
   if (process.platform !== 'linux') throw Error('Cannot prove wave process ownership on this platform');
-  const bootId = fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim();
+  const bootId = measureBootId();
   const processes = [];
   for (const pid of fs.readdirSync('/proc').filter(p => /^\d+$/.test(p))) {
     try {
@@ -26,7 +27,8 @@ export function assertWaveOwnership(wave, observed, callerPid = process.pid, ses
   const fail = () => { throw Error('Another session owns this wave; marker retained'); };
   if (sessionId !== undefined && sessionId !== wave.owner) fail();
   const owner = wave.ownerProcess;
-  if (!owner || !owner.createdAt || owner.bootId !== observed.bootId || !Array.isArray(observed.processes)) fail();
+  // Normalized comparison (#5533): markers with raw drifted ticks stay valid.
+  if (!owner || !owner.createdAt || !sameBoot(owner.bootId, observed.bootId) || !Array.isArray(observed.processes)) fail();
   const byPid = new Map(observed.processes.map(p => [p.pid, p]));
   if (byPid.get(owner.pid)?.createdAt !== owner.createdAt) fail();
   const seen = new Set();

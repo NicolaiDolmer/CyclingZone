@@ -76,6 +76,56 @@ test('Windows recovery measures a real stopped owner and refuses the live test p
   assert.equal(recoverWave(stopped.dir, expected).released, true);
 });
 
+// #5533: Windows LastBootUpTime drifts sub-ms within one boot (23/9: +0.772 ms).
+const markerTicks = '639256957975000000';
+const driftedTicks = '639256957975007720';
+const minutesLater = (BigInt(markerTicks) + 5n * 60n * 10_000_000n).toString();
+const bootAt = bootId => processes => () => ({ bootId, processes });
+
+test('sub-second boot drift is the same boot: a dispatched wave is never released as host-restarted', t => {
+  const { dir } = fixture(t, { bootId: markerTicks });
+  assert.throws(() => recoverWave(dir, expected, bootAt(driftedTicks)([{ pid: 999, ppid: 998 }])), /Same-boot/);
+  assert.equal(fs.existsSync(path.join(dir, 'wave-active.json')), true);
+});
+
+test('sub-second boot drift before dispatch still recovers a dead owner as the same boot', t => {
+  const { dir } = fixture(t, { bootId: markerTicks, dispatchStarted: false, children: [] });
+  const result = recoverWave(dir, expected, bootAt(driftedTicks)([{ pid: 999, ppid: 998 }]));
+  assert.equal(result.released, true);
+  const evidence = JSON.parse(fs.readFileSync(result.evidence, 'utf8'));
+  assert.equal(evidence.proof, 'dead-owner-before-dispatch');
+  assert.equal(evidence.observedBootId, '639256957970000000');
+});
+
+// Owner admitted shortly after the 17:43:17 UTC boot; the new boot starts 5 minutes after it.
+const ownerProcess = { pid: 100, createdAt: '2026-09-22T17:44:00.0000000Z', bootId: markerTicks };
+const newBootProcesses = [{ pid: 4, ppid: 0, createdAt: '2026-09-22T17:48:22.9512800Z' }, { pid: 100, ppid: 4, createdAt: '2026-09-22T17:49:10.0000000Z' }];
+const sameBootProcesses = [{ pid: 4, ppid: 0, createdAt: '2026-09-22T17:43:22.9512800Z' }, { pid: 999, ppid: 4, createdAt: '2026-09-22T18:10:00.0000000Z' }];
+
+test('a real restart minutes later is still recovered as host-restarted', t => {
+  const { dir } = fixture(t, { bootId: markerTicks, ownerProcess });
+  const result = recoverWave(dir, expected, bootAt(minutesLater)(newBootProcesses));
+  assert.equal(result.released, true);
+  assert.equal(JSON.parse(fs.readFileSync(result.evidence, 'utf8')).proof, 'host-restarted');
+});
+
+test('a large clock correction without restart is never taken as host-restarted', t => {
+  // Boot time moved an hour by a clock step, but the kernel still predates the owner.
+  const stepped = (BigInt(markerTicks) + 3600n * 10_000_000n).toString();
+  const { dir } = fixture(t, { bootId: markerTicks, ownerProcess });
+  assert.throws(() => recoverWave(dir, expected, bootAt(stepped)(sameBootProcesses)), /Same-boot/);
+  assert.equal(fs.existsSync(path.join(dir, 'wave-active.json')), true);
+});
+
+test('a changed Windows boot time without process-start proof keeps the marker', t => {
+  const { dir } = fixture(t, { bootId: markerTicks });
+  // No admitted owner start time to compare with: restart unproven.
+  assert.throws(() => recoverWave(dir, expected, bootAt(minutesLater)(newBootProcesses)), /Same-boot/);
+  const unparseable = fixture(t, { bootId: markerTicks, ownerProcess });
+  assert.throws(() => recoverWave(unparseable.dir, expected, bootAt(minutesLater)([{ pid: 4, ppid: 0 }])), /Same-boot/);
+  assert.equal(fs.existsSync(path.join(dir, 'wave-active.json')), true);
+});
+
 test('recovery after reboot does not kill an old watch PID reused by another process', t => {
   const { dir } = fixture(t, { watchPid: process.pid, watchStarted: 'old-identity' });
   assert.equal(recoverWave(dir, expected, nextBoot([{ pid: process.pid, ppid: 1 }])).released, true);

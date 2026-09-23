@@ -5,8 +5,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook, updateWave, withIdleWaveLock } from './wave-policy.mjs';
+import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook, updateWave, withIdleWaveLock, stopWaveWatch } from './wave-policy.mjs';
 import { assertWaveOwnership } from './wave-ownership.mjs';
+import { normalizeBootId } from './wave-boot-identity.mjs';
 
 const now = 1790000000000;
 const track = (n) => ({ issue: n, branch: `codex/${n}-fixture`, ownership: [`fixtures/${n}.txt`], tier: 'TARGETED' });
@@ -210,6 +211,56 @@ test('process proof accepts the admitted tree and rejects foreign trees, PID reu
   assert.throws(() => assertWaveOwnership(wave, observed, 11, 'session-b'), /Another session owns/);
   assert.throws(() => assertWaveOwnership(wave, { ...observed, bootId: 'new-boot' }, 11), /Another session owns/);
   assert.throws(() => assertWaveOwnership(wave, { ...observed, processes: observed.processes.map(p => p.pid === 10 ? {...p, createdAt: '105'} : p) }, 11), /Another session owns/);
+});
+
+// #5533: Windows LastBootUpTime drifts sub-ms within one boot (23/9: +0.772 ms).
+const markerTicks = '639256957975000000';
+const driftedTicks = '639256957975007720';
+const minutesLater = (BigInt(markerTicks) + 5n * 60n * 10_000_000n).toString();
+
+test('process proof treats sub-second boot drift as the same boot and a restart as a new one', () => {
+  const wave = { owner: 'session-a', ownerProcess: { pid: 10, createdAt: '100', bootId: markerTicks } };
+  const processes = [{ pid: 10, ppid: 1, createdAt: '100' }, { pid: 11, ppid: 10, createdAt: '110' }];
+  assertWaveOwnership(wave, { bootId: driftedTicks, processes }, 11, 'session-a');
+  assertWaveOwnership(wave, { bootId: normalizeBootId(driftedTicks), processes }, 11, 'session-a');
+  assert.throws(() => assertWaveOwnership(wave, { bootId: minutesLater, processes }, 11, 'session-a'), /Another session owns/);
+  assert.throws(() => assertWaveOwnership({ ...wave, ownerProcess: { ...wave.ownerProcess, bootId: undefined } }, { bootId: undefined, processes }, 11), /Another session owns/);
+});
+
+test('owned release succeeds after sub-second boot drift and refuses after a restart', t => {
+  const dir = fixture(t);
+  const file = path.join(dir, 'wave-active.json');
+  // Marker as written before #5533: raw ticks, owner = this test process.
+  const marker = { waveId: 'drift-wave', runtime: 'claude', owner: 'fixture-owner', pid: process.pid, bootId: markerTicks,
+    ownerProcess: { pid: process.pid, createdAt: 'fixture-created', bootId: markerTicks } };
+  const snapshot = bootId => () => ({ bootId, processes: [{ pid: process.pid, ppid: 1, createdAt: 'fixture-created' }] });
+  writeFileSync(file, JSON.stringify(marker));
+  assert.throws(() => releaseWave(dir, marker.waveId, true, snapshot(minutesLater)), /Another session owns this wave; marker retained/);
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), marker);
+  releaseWave(dir, marker.waveId, true, snapshot(normalizeBootId(driftedTicks)));
+  assert.equal(existsSync(file), false);
+});
+
+test('watch cleanup is skipped only for a proven different boot, not for drift', () => {
+  const wave = { watchPid: 424242, watchStarted: 'not-ticks', bootId: markerTicks };
+  // Same boot: the watch must be stopped, so its identity is verified (and here rejected).
+  assert.throws(() => stopWaveWatch(wave, normalizeBootId(driftedTicks)), /Unverified watch identity/);
+  // Different boot: the old PID may belong to someone else; never touched.
+  assert.doesNotThrow(() => stopWaveWatch(wave, minutesLater));
+});
+
+test('Windows release CLI frees a pre-#5533 marker whose raw boot ticks drifted', { skip: process.platform !== 'win32' }, async t => {
+  const dir = fixture(t);
+  const wave = await acquireWave(dir, request(), async () => []);
+  assert.match(wave.ownerProcess.bootId, /^\d+0000000$/);
+  // Rewrite as an old marker: raw ticks half a second into the boot second.
+  const raw = (BigInt(wave.ownerProcess.bootId) + 5_000_000n).toString();
+  const file = path.join(dir, 'wave-active.json');
+  writeFileSync(file, JSON.stringify({ ...wave, bootId: raw, ownerProcess: { ...wave.ownerProcess, bootId: raw } }));
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('./wave-policy.mjs', import.meta.url)),
+    'release', '--run-dir', dir, '--wave-id', wave.waveId, '--children-stopped'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(file), false);
 });
 
 test('process ownership and started dispatch cannot be rewritten into recoverable history', async t => {
