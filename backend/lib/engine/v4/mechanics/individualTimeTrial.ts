@@ -24,10 +24,10 @@
 //     (en enkeltstart har ingen grupetto) — samme faktor som §2d's tabel.
 //
 // HVAD DER ER ANDERLEDES END TTT: segment-tikket. TTT's tik er et holds
-// work-rotation paa den absolutte fart-formel; en rytter alene har hverken
-// rotation eller laee, og den absolutte formel er netop den #4885 fjernede fra
-// vejetapen (den loeftede hele feltet ind i ét smalt baand). Enkeltstartens tik
-// er derfor:
+// work-rotation, maalt mod en fast krav-konstant uden terraen-vaegt; en rytter
+// alene har hverken rotation eller laee, og mod den aegte population ville
+// den konstant skubbe hele feltet ind i ét smalt fart-baand (samme fund som
+// #4885 paa vejetapen). Enkeltstartens tik er derfor:
 //
 //   evne    Tidskoersels-evnen pr. terraen: finale-tuningens `solo_tt`-vektor
 //           (den samme vektor der i dag afgoer en enkeltstart og definerer
@@ -37,12 +37,15 @@
 //   dagen   Samme lag som vejetapen, i samme raekkefoelge: M7's distance-/
 //           dag-til-dag-slid, M11's vejr og udmattelsen (W'-reserven), alle
 //           proportionale, derefter dagsformen (§2 invariant 3: ingen af dem
-//           kan vende to rytteres orden paa samme dag).
-//   fart    RELATIV til feltets reference (top-`work.frontFraction`, samme
-//           regel som vejetapens referenceCpByKind), terraen-vaegtet med
-//           STRENGTH_SPEED_EXTRA_TUNING.terrainWeight (styrke betyder mest op
-//           ad bakke). Lineaer og stigende i evne: en staerkere rytter koerer
-//           aldrig langsommere (styrke straffes aldrig, ejer 4/8).
+//           kan vende to rytteres orden paa samme dag) plus tidskoerslens
+//           dagsudsving (`ittStageNoise`, v3-paritet).
+//   fart    Rytterens EGEN evne mod uret: tidsforskellen mellem to ryttere
+//           foelger deres evne-forskel og ikke hvem der ellers stiller op (se
+//           `ittSpeedKmh`). Feltet saetter kun nulpunktet (dagens tempo).
+//           Terraen-vaegtet med vejetapens STRENGTH_SPEED_EXTRA_TUNING.
+//           terrainWeight (styrke betyder mest op ad bakke), uden gruppe-
+//           dynamikken (laee, over-/underskuds-formning). Lineaer og stigende i
+//           evne: en staerkere rytter koerer aldrig langsommere (ejer 4/8).
 //   krav    Som vejetapens front-rytter i en gruppe paa én: evnen x
 //           terraenets baseDemand x frontWorkFactor, moduleret af rytterens
 //           eget indsatsvalg (M12). Belastningen (#3459) er dermed maalt paa
@@ -50,8 +53,9 @@
 //
 // Ordrer ignoreres: en enkeltstart har intet holdspil at bestille.
 //
-// REN — ingen IO/Date/Math.random. Eneste stoej er dagsformen (seedet pr.
-// rytter) og M10's segment-noeglede strømme, begge fra kernen; determinisme
+// REN — ingen IO/Date/Math.random. Stoejen er dagsformen og M10's
+// segment-noeglede strømme (begge fra kernen) plus dagsudsvinget paa sin egen
+// seedede strøm ("itt_day"), alle noeglet paa (seed, rytter); determinisme
 // (§2 invariant 1) holder per konstruktion.
 
 import type {
@@ -100,22 +104,30 @@ export function isIndividualTimeTrial(profileType: ProfileType | null | undefine
 // ── Tuning ───────────────────────────────────────────────────────────────────
 
 /**
- * Enkeltstartens eget haandtag. Samme "additiv tuning uden om den frosne
+ * Enkeltstartens egne haandtag. Samme "additiv tuning uden om den frosne
  * EngineTuning-kontrakt"-moenster som tuning.ts's *_EXTRA_TUNING-blokke; ligger
- * i modulet fordi det kun har én aftager.
+ * i modulet fordi de kun har én aftager.
  *
- * `strengthSpeedGain` er fart-leddets haeldning pr. enhed relativ evne over/
- * under feltets reference, FOER terraen-vaegten. Kalibreret mod ITT-gap-ankret
- * (headToHeadAnchors.js's `ittTop10SpreadPer40KmSeconds`, #2415: "ITT 1-3 min
- * over 40 km") paa den pinnede population og de pinnede proxy-etaper, 5 seeds,
- * felt 180. Maalingen ligger i balance-internals/ (hard rule 17).
+ * `abilitySpeedSlope`: fart-andel pr. enhed evne-forskel paa fladt terraen
+ * FOER terraen-vaegten (se `ittSpeedKmh`). Kalibreret mod ITT-gap-ankret
+ * (headToHeadAnchors.js, #2415: "ITT 1-3 min over 40 km") og mod at ingen
+ * rytter ryger uden for tidsgraensen paa en enkeltstart uden uheld.
+ *
+ * `stageNoiseSd`: dagsudsvingets spredning (se `ittStageNoise`), i evne-enheder
+ * som dagsformen. Udgangspunktet er v3's enkeltstarts-stoej omregnet til v4's
+ * evne-skala (v3's itt-vektor baerer en doed `positioning`-vaegt, saa den samme
+ * stoej fylder relativt mere dér), efterproevet mod v3-spec'ens favorit-baand
+ * for ITT (45-65 %) og ITT-korrelations-ankret.
+ *
+ * Begge er maalt paa den pinnede population og de pinnede proxy-etaper, felt
+ * 180; tallene ligger i balance-internals/ (hard rule 17).
  */
 export const INDIVIDUAL_TIME_TRIAL_TUNING = Object.freeze({
-  strengthSpeedGain: 0.16,
-  stageNoiseSd: 0.035,
+  abilitySpeedSlope: 0.4,
+  stageNoiseSd: 0.04,
 });
 
-export type IndividualTimeTrialTuning = { strengthSpeedGain: number; stageNoiseSd: number };
+export type IndividualTimeTrialTuning = { abilitySpeedSlope: number; stageNoiseSd: number };
 
 // ── Evne og fart ─────────────────────────────────────────────────────────────
 
@@ -191,10 +203,24 @@ export function ittStageNoise(seed: string, riderId: string, ittTuning: Individu
 }
 
 /**
- * Rytterens fart alene paa ét segment. Relativ til feltets reference,
- * terraen-vaegtet, clampet af `terrain.speedMultiplierBounds`. Ingen laee-led:
- * en rytter alene faar per definition ingen (segmentLoop's groupDraftSpeedGain
- * giver praecis 0 ved én rytter). Monotont ikke-faldende i `capacity`.
+ * Rytterens fart alene paa ét segment: basisfarten x (1 + haeldning x
+ * (evne - feltets reference)), terraen-vaegtet med vejetapens
+ * STRENGTH_SPEED_EXTRA_TUNING.terrainWeight og clampet af
+ * `terrain.speedMultiplierBounds`.
+ *
+ * HVORFOR EVNE-FORSKEL OG IKKE EVNE-FORHOLD (modsat vejetapens #4885-form):
+ * paa en vejetape koerer en gruppe feltets tempo, saa farten SKAL maales mod
+ * feltet. Mod uret koerer rytteren sit eget: to ryttere med samme evne-forskel
+ * skal skilles af samme tid, uanset om feltet er staerkt eller svagt. Et
+ * forhold (evne / reference) ville goere en given evne-forskel DYRERE i et
+ * svagt felt end i et staerkt — det modsatte af population-uafhaengighed.
+ * Referencen saetter kun nulpunktet (dagens tempo), aldrig afstandene; samme
+ * form som v3's gap-model (sekunder pr. evne-point bag vinderen).
+ *
+ * Det vejetapen har OVEN I, har en rytter alene ikke: intet laee-led
+ * (segmentLoop's groupDraftSpeedGain giver praecis 0 ved én rytter) og ingen
+ * formning af over-/underskud (gruppe-dynamik). Lineaer og stigende i
+ * `capacity`: en staerkere rytter koerer aldrig langsommere (ejer 4/8).
  */
 export function ittSpeedKmh(
   capacity: number,
@@ -205,9 +231,8 @@ export function ittSpeedKmh(
 ): number {
   const baseSpeed = tuning.terrain.baseSpeedKmh[kind];
   const [lo, hi] = tuning.terrain.speedMultiplierBounds;
-  const relative = referenceCapacity > 0 ? capacity / referenceCapacity - 1 : 0;
-  const slope = ittTuning.strengthSpeedGain * STRENGTH_SPEED_EXTRA_TUNING.terrainWeight[kind];
-  return baseSpeed * clamp(1 + slope * relative, lo, hi);
+  const slope = ittTuning.abilitySpeedSlope * STRENGTH_SPEED_EXTRA_TUNING.terrainWeight[kind];
+  return baseSpeed * clamp(1 + slope * (capacity - referenceCapacity), lo, hi);
 }
 
 // ── Segment-tikket ───────────────────────────────────────────────────────────
