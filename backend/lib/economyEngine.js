@@ -1556,7 +1556,10 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   // RÆKKEFØLGE ER ET ÅBENT EJER-VALG (#4592): sweepen kører i dag EFTER AI-fyld-
   // sweepen, så en plads en parkering frigør, står tom resten af sæsonen. At
   // flytte den ind mellem op/nedryknings-loopet og reseedTierPools ville lade
-  // AI-fyldet lukke hullet. Ændres først med ejer-go.
+  // AI-fyldet lukke hullet. Det er sikkert for begge: reseedTierPools
+  // (buildTierInputs) og reconcileAiTeamsForPool tæller kun hold MED
+  // league_division_id, så et parkeret hold (league_division_id=null) indgår i
+  // ingen af dem. Ændres først med ejer-go.
   //
   // Fail-safe: manglende flag/fejl → false → ingen parkering (motorens uændrede
   // adfærd).

@@ -18,6 +18,11 @@
 //   3. nulstil next_season_signup_at (resetSeasonSignups): tilmeldingen gælder
 //      ÉN sæson, og sweepen har nu brugt den
 //
+// ÅBENT EJER-VALG (#4592): et parkeret hold kører i dag videre økonomisk —
+// hverken sæson-start-økonomien (processSeasonStart/humanTeamFilter) eller
+// sæson-slut-boardet (loadHumanSeasonEndTeams) filtrerer på parked_at. Om
+// parkerede hold skal stå stille (ingen sponsor, ingen løn), er næste skridt.
+//
 // Udvælgelsen er REN (selectTeamsToPark/selectTeamsToUnpark/
 // selectActiveSubscriptionTeamIds) — ingen DB, letter unit-test og genbrug i
 // scripts/parkingDryRun.js (read-only) uden duplikeret udvælgelseslogik.
