@@ -40,7 +40,7 @@ import {
 } from "./boardMandateEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
-import { developRidersForSeason } from "./riderProgressionEngine.js";
+import { developRidersForSeason, loadRetiringRiderIds } from "./riderProgressionEngine.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
 // #4148: bag flag, default OFF — se riderValuesBulkWriteFlag.js.
@@ -75,7 +75,7 @@ import {
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
-import { parkDormantTeams } from "./managerParking.js";
+import { runParkingSweep } from "./managerParking.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -541,6 +541,33 @@ export async function processSeasonStart(seasonId, deps = {}) {
     throwIfSupabaseError(expireError, "Could not expire sponsor-pullouts");
   }
 
+  // #1155: rytterudvikling (#1137) gated bag SEASON_RIDER_PROGRESSION_ENABLED
+  // (ejer-beslutning 2026-06-08). Tests injicerer deps.developRidersForSeason og
+  // kører kaldet uafhængigt af flaget. Afgøres HER (før payroll), fordi #4153
+  // bruger samme svar: kun når motoren faktisk kører i dette skifte, bliver
+  // nogen pensioneret — og kun da må payroll undlade deres løn.
+  const progressionWillRun = Number.isFinite(seasonNumber)
+    && seasonNumber >= 2
+    && Boolean(deps.developRidersForSeason || SEASON_RIDER_PROGRESSION_ENABLED);
+
+  // #4153 · Ryttere som motoren pensionerer i SAMME skifte (efter payroll
+  // nedenfor) skal ikke have den nye sæsons løn trukket — de kører aldrig et løb
+  // i den. Samme regel som motoren (riderProgressionEngine.willRetireAtSeasonStart),
+  // ingen kopi. Fejler opslaget, lønnes alle som før (status quo), og fejlen
+  // sendes til Sentry — et sæsonskifte må ikke gå i stå på det her.
+  /** @type {Set<unknown>} */
+  let retiringRiderIds = new Set();
+  if (progressionWillRun) {
+    const retiringSeam = /** @type {{ loadRetiringRiderIds?: typeof loadRetiringRiderIds }} */ (deps);
+    const loadRetiringFn = retiringSeam.loadRetiringRiderIds ?? loadRetiringRiderIds;
+    try {
+      retiringRiderIds = await loadRetiringFn({ supabase: supabaseClient, seasonNumber });
+    } catch (err) {
+      console.error(`  ⚠️ Retirement lookup for payroll failed, every rider is paid as before (#4153): ${err instanceof Error ? err.message : String(err)}`);
+      captureException(err, { tags: { flow: "season-transition", stage: "payroll-retiring-riders" } });
+    }
+  }
+
   // 2026-05-21: Sæson-payroll flyttet fra sæson-SLUT til sæson-START.
   // Rækkefølge i sæson-start er nu:
   //   1. Sponsor (kredit) — udbetalt ovenfor
@@ -557,6 +584,7 @@ export async function processSeasonStart(seasonId, deps = {}) {
   const payrollOutcome = await runSeasonPayrollFn(supabaseClient, seasonId, {
     ...deps,
     seasonNumber,
+    retiringRiderIds,
   });
 
   // #535: Returnér struktureret { sponsor, payroll } så admin-UI og
@@ -585,17 +613,10 @@ export async function processSeasonStart(seasonId, deps = {}) {
   // retirement + base_value-recompute. Kører fra sæson 2 (sæson 1 = launch-baseline,
   // intet at udvikle fra). Idempotent via rider_development_log. Isoleret: en fejl
   // her må ikke rulle sponsor/payroll tilbage (allerede skrevet) → fang + rapportér.
-  // #1155: rytterudvikling (#1137) gated bag SEASON_RIDER_PROGRESSION_ENABLED
-  // (ejer-beslutning 2026-06-08 — slået fra indtil progressions-systemet er
-  // færdigbygget). Tests injicerer deps.developRidersForSeason og kører kaldet
-  // uafhængigt af flaget.
+  // Gaten (progressionWillRun) afgøres før payroll ovenfor — se #1155/#4153 dér.
   const developFn = deps.developRidersForSeason ?? developRidersForSeason;
   let progression = null;
-  if (
-    Number.isFinite(seasonNumber) &&
-    seasonNumber >= 2 &&
-    (deps.developRidersForSeason || SEASON_RIDER_PROGRESSION_ENABLED)
-  ) {
+  if (progressionWillRun) {
     try {
       progression = await developFn({ supabase: supabaseClient, seasonId, seasonNumber });
       console.log(`  ✅ Rytterudvikling: ${progression.developed} udviklet · ${progression.grew}↑ ${progression.declined}↓ · ${progression.retired} pensioneret`);
@@ -643,6 +664,8 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
       supabase: supabaseClient,
       // #1678 · videre-fører seasonNumber så upkeep kan deferres i sæson 1.
       seasonNumber: deps.seasonNumber,
+      // #4153 · ryttere motoren pensionerer i samme skifte (processSeasonStart).
+      retiringRiderIds: /** @type {{ retiringRiderIds?: unknown }} */ (deps).retiringRiderIds,
       facilitiesEnabled,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
@@ -698,6 +721,31 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
 }
 
 /**
+ * #4153 · Normaliserer en rytter-id-mængde (Set eller liste) til en Set.
+ * Udeladt/ukendt input = tom mængde.
+ *
+ * @param {unknown} input
+ * @returns {Set<unknown>}
+ */
+function toRiderIdSet(input) {
+  if (input instanceof Set) return input;
+  return new Set(Array.isArray(input) ? input : []);
+}
+
+/**
+ * #4153 · Ryttere der lønnes ved sæsonstart: alle undtagen dem som motoren
+ * pensionerer i samme skifte.
+ *
+ * @template {{ id?: unknown, salary?: number | null }} R
+ * @param {R[]} riders
+ * @param {Set<unknown>} retiringRiderIds
+ * @returns {R[]}
+ */
+function ridersOnSeasonPayroll(riders, retiringRiderIds) {
+  return riders.filter((rider) => !retiringRiderIds.has(rider.id));
+}
+
+/**
  * Sæson-payroll: lånerenter + lønninger (+ emergency-lån hvis shortfall) +
  * resterende negativ-balance-rente. Kører ved sæson-START efter sponsor er
  * udbetalt. Idempotent via finance_transactions partial unique-indices.
@@ -742,9 +790,16 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   const wageDeductionMode = await readWageDeductionModeFn(supabaseClient);
   const isDailyWageMode = wageDeductionMode === WAGE_DEDUCTION_MODES.DAILY;
 
+  // #4153 · En rytter som motoren pensionerer i SAMME skifte (efter payroll)
+  // kører aldrig et løb i den nye sæson og lønnes derfor ikke for den.
+  // deps.retiringRiderIds kommer fra processSeasonStart (samme regel som
+  // motoren); udeladt = tom mængde = alle lønnes som før.
+  const { retiringRiderIds } = /** @type {{ retiringRiderIds?: unknown }} */ (deps);
+  const payrollRiders = ridersOnSeasonPayroll(team.riders || [], toRiderIdSet(retiringRiderIds));
+
   const totalSalary = isDailyWageMode
     ? 0
-    : (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
+    : payrollRiders.reduce((sum, r) => sum + (r.salary || 0), 0);
   let emergencyLoanAmount = 0;
 
   if (!isDailyWageMode && totalSalary > 0) {
@@ -769,7 +824,7 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
         idempotent: true,
         metadata: {
           code: "tx.salary",
-          params: { count: (team.riders || []).length },
+          params: { count: payrollRiders.length },
         },
         audit: {
           sourcePath: "economyEngine.processSeasonStart.salary",
@@ -1462,8 +1517,56 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     deps.isSeasonEndDivisionMovementSkipped ?? isSeasonEndDivisionMovementSkipped;
   const skipDivisionMovement = await isMovementSkippedFn(supabaseClient);
 
+  // [epic #4592 del 2] Parkerings-sweep — KUN når season_signup_enabled er 'on'
+  // (fælles flag med tilmeld-knappen, del 3): parkér inaktive (aldrig et hold
+  // med aktivt abonnement) → genindplacér parkerede hold hvis manager har
+  // tilmeldt sig igen → nulstil tilmeldingerne (managerParking.runParkingSweep).
+  // BEVIDST uafhængig af #2851-skip-flaget (en engangs-undtagelse for S1→S2-
+  // pyramide-komprimering, intet med parkering af inaktive hold at gøre).
+  //
+  // RÆKKEFØLGE (ejer-valg (a) = A, 23/9, #4592): sweepen kører EFTER op/nedryknings-
+  // loopet, så vores league_division_id=null er sidste ord for et parkeret holds
+  // plads (processDivisionEnd kan ellers overskrive den), men FØR reseedTierPools
+  // og AI-fyld-sweepen, så AI lukker de pladser parkeringen frigør, og en
+  // genindplaceret manager tælles med i reseed og AI-fyld. Sikkert for begge:
+  // reseedTierPools (buildTierInputs) og reconcileAiTeamsForPool tæller kun hold
+  // MED league_division_id, så et parkeret hold (league_division_id=null) indgår i
+  // ingen af dem.
+  //
+  // Fail-safe: manglende flag/fejl → false → ingen parkering (motorens uændrede
+  // adfærd). En fejlende sweep vælter aldrig resten af sæsonskiftet.
+  const runParkingIfEnabled = async () => {
+    const isSignupEnabledFn = deps.isSeasonSignupEnabled ?? isSeasonSignupEnabled;
+    const signupEnabled = await isSignupEnabledFn(supabaseClient);
+    if (!signupEnabled) return;
+    try {
+      const sweepFn = deps.runParkingSweep ?? runParkingSweep;
+      // Ingen teams/users/subscriptions her: sweepen henter selv
+      // (managerParking.loadParkingInputs).
+      // seasonId gør sweepen idempotent pr. sæson (se runParkingSweep): en
+      // genkørsel af sæson-slut parkerer ikke hold hvis tilmelding er brugt.
+      const sweep = await sweepFn({ supabase: supabaseClient, seasonId, now: notificationNow });
+      if (sweep.alreadySwept) {
+        console.log(`  🅿️  Parkering (#4592 del 2): allerede kørt for sæson ${seasonId} — springes over.`);
+      } else {
+        const { park, unpark } = sweep;
+        console.log(
+          `  🅿️  Parkering (#4592 del 2): ${park.parked}/${park.candidates} inaktive hold parkeret`
+          + ` (${park.skipped} sprunget over, ${park.subscriptionProtectedTeamIds?.length ?? 0} beskyttet af abonnement)`
+          + ` · ${unpark.unparked}/${unpark.candidates} genindplaceret`
+          + ` · ${sweep.signupsReset ?? "?"} tilmeldinger nulstillet.`,
+        );
+      }
+    } catch (parkErr) {
+      // Parkering må ALDRIG vælte resten af sæsonskiftet — logges + Sentry, cutoveren fortsætter.
+      console.error("  ❌ Parkerings-sweep fejlede (#4592 del 2):", parkErr?.message || parkErr);
+      captureException(parkErr, { tags: { flow: "season_end", stage: "manager_parking" }, extra: { seasonId } });
+    }
+  };
+
   if (skipDivisionMovement) {
     console.log("  ⏭  Op/nedrykning + AI-reconcile sprunget over (season_end_skip_division_movement=on, #2851 — komprimeringen ER flytningen i dette skifte)");
+    await runParkingIfEnabled();
   } else {
     // Process each division after finance/board side effects have succeeded.
     // #1608: loop MIN..MAX_DIVISION (nu 4) i stedet for hardcodet [1,2,3], så tier 4
@@ -1471,10 +1574,16 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     // #1152: byg pulje-træet én gang og videregiv til hver processDivisionEnd, så
     // op/nedrykning kan route til forælder/barn-puljer (binær-træ via pool_index).
     const poolTree = await buildPoolTree(supabaseClient);
+    // Injicérbare seams (samme mønster som reseedTierPools nedenfor), så en test
+    // kan bevise rækkefølgen op/nedrykning → reseed → AI-fyld → parkering.
+    const movementSeams = /** @type {{ processDivisionEnd?: typeof processDivisionEnd,
+      reconcileAiTeamsForPool?: typeof reconcileAiTeamsForPool }} */ (deps);
+    const processDivisionEndFn = movementSeams.processDivisionEnd ?? processDivisionEnd;
+    const reconcileAiTeamsFn = movementSeams.reconcileAiTeamsForPool ?? reconcileAiTeamsForPool;
 
     for (let division = MIN_DIVISION; division <= MAX_DIVISION; division++) {
       const divStandings = standings.filter(s => s.division === division);
-      await processDivisionEnd(divStandings, division, seasonId, currentSeasonNumber, {
+      await processDivisionEndFn(divStandings, division, seasonId, currentSeasonNumber, {
         supabase: supabaseClient,
         now: notificationNow,
         poolTree,
@@ -1484,6 +1593,9 @@ export async function processSeasonEnd(seasonId, deps = {}) {
         captureException: deps.captureException,
       });
     }
+
+    // #4592 ejer-valg (a) = A: parkering efter op/nedrykning, før reseed og AI-fyld.
+    await runParkingIfEnabled();
 
     // #2557 spor B · styrke-balanceret pulje-reseed. Kører EFTER hele
     // op/nedryknings-loopet (tierens medlemsliste er først endelig dér) og FØR
@@ -1505,34 +1617,8 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     // trække ægte hold op uden for sporten.
     if (currentSeasonNumber >= FIRST_PROMOTION_RELEGATION_SEASON) {
       for (const ld of poolTree.byId.values()) {
-        await reconcileAiTeamsForPool({ supabase: supabaseClient, poolId: ld.id });
+        await reconcileAiTeamsFn({ supabase: supabaseClient, poolId: ld.id });
       }
-    }
-  }
-
-  // [epic #4592 del 2] Parkerings-forberedelse — KUN når season_signup_enabled
-  // er 'on' (fælles flag med tilmeld-knappen, del 3). Kører UDENFOR if/else'en
-  // ovenfor, BEVIDST uafhængig af #2851-skip-flaget (den er en engangs-undtagelse
-  // for S1→S2-pyramide-kompriмering og har intet med parkering af inaktive hold
-  // at gøre) — parkFn bruger heller intet fra poolTree. Placeres alligevel EFTER
-  // hele op/nedryknings-blokken (når den kører), så vores league_division_id=null
-  // altid er sidste ord for et parkeret holds plads (processDivisionEnd kan
-  // ellers overskrive den igen hvis holdet også rangerer til op/nedrykning).
-  // Fail-safe: manglende flag/fejl → false → ingen parkering (motorens uændrede
-  // adfærd).
-  const isSignupEnabledFn = deps.isSeasonSignupEnabled ?? isSeasonSignupEnabled;
-  const signupEnabled = await isSignupEnabledFn(supabaseClient);
-  if (signupEnabled) {
-    try {
-      const parkFn = deps.parkDormantTeams ?? parkDormantTeams;
-      // Ingen teams/users her: parkFn henter selv (menneskehold-diskriminator
-      // + last_seen), samme pagineret mønster som dormantTeamsReport.js.
-      const parkResult = await parkFn({ supabase: supabaseClient, now: notificationNow });
-      console.log(`  🅿️  Parkering (#4592 del 2): ${parkResult.parked}/${parkResult.candidates} inaktive hold parkeret (${parkResult.skipped} sprunget over).`);
-    } catch (parkErr) {
-      // Parkering må ALDRIG vælte resten af sæsonskiftet — logges + Sentry, cutoveren fortsætter.
-      console.error("  ❌ Parkerings-sweep fejlede (#4592 del 2):", parkErr?.message || parkErr);
-      captureException(parkErr, { tags: { flow: "season_end", stage: "manager_parking" }, extra: { seasonId } });
     }
   }
 
