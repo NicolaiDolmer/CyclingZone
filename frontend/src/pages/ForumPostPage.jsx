@@ -765,7 +765,12 @@ export default function ForumPostPage() {
             />
             <ForumSignature author={post.author} body={post.body} t={t} />
             {poll && <PollBlock poll={poll} onVote={handleVote} voting={voting} t={t} />}
-            <div className="mt-4 flex items-center gap-2 border-t border-cz-border pt-3">
+            {/* #5386: flex-wrap tilfoejet — samme moenster som svarenes
+                handlings-raekke (renderReply nedenfor). Med den nye
+                Citér-knap er der nu fire mulige knapper her (opbakning,
+                citér, rapportér, admin-sæt) — uden wrap presser de raekken
+                bredere end viewporten ved 390px (fundet af e2e-testen). */}
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-cz-border pt-3">
               <SupportButton
                 active={post.supported_by_me}
                 count={post.support_count ?? 0}
