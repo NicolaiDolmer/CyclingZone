@@ -464,6 +464,12 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 // har krævet `--allow-finale-drift` siden 3/9 (#4272); de er stadig ikke grønne, men de
 // er tættere på end før dette spor begyndte.
 //
+// OPFØLGNING 23/9 (#5405): grus blev "kun rapport" under stikprøveminimum (22/9), og de
+// tre sidste linjer (kuperet i udbrud, brosten fladt, brosten i udbrud) var stikprøvestøj
+// fra et frit træk pr. etape — ikke forkerte vægte. De er lukket af kvote-fordelingen
+// (balanceFinaleQuotas nedenfor), uden at røre en vægt eller et bånd. S4-tørkørslen har
+// nul §7b-brud; tallene står i balance-internals/2026-09-23-5405-finale-afvigelser/.
+//
 // pass1-golden.json-fixturen er REGENERERET (vægtene ændrer pass-1-output for de
 // berørte arketyper — samme "bevidst ændring, fixture regenereret"-præcedens som
 // #3326-korrektionen ovenfor). calendarGoldenSnapshot.s3.json er derimod UÆNDRET:
