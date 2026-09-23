@@ -1,5 +1,14 @@
 import { useTranslation } from "react-i18next";
 
+interface AcademySquadFilterProps {
+  showSeniors: boolean;
+  showAcademy: boolean;
+  onToggleSeniors: () => void;
+  onToggleAcademy: () => void;
+  seniorCount: number;
+  academyCount: number;
+}
+
 // #5075 (spillerforslag @cybersimon 9/9): Stats-fanen under Mit hold manglede
 // den til-/fravalg af akademiryttere som Trup-fanen (SquadTab, #1929) allerede
 // havde. I stedet for at bygge en ny variant i Stats-fanen er selve kontrollen
@@ -14,7 +23,7 @@ export default function AcademySquadFilter({
   onToggleAcademy,
   seniorCount,
   academyCount,
-}) {
+}: AcademySquadFilterProps) {
   const { t } = useTranslation("team");
 
   // Samme grundbetingelse som den oprindelige SquadTab-toolbar: kun synlig når
