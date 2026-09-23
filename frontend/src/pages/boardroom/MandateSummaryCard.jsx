@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, SectionAction, EmptyState, ClipboardIcon, ProgressMeter } from "../../components/ui";
-import { endSentence, formatShortDate, resolveGoalTitle } from "./boardroomFormat";
+import { endSentence, formatGoalValue, formatShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import { goalProgressPct } from "../../components/board/goalProgress.js";
 import { BonusOfferStripe, BonusAcceptedLine } from "./BonusOffer.jsx";
 import StatusPill from "./StatusPill.jsx";
@@ -37,11 +37,13 @@ function GoalSummary({ goal, t }) {
   const title = resolveGoalTitle(t, goal);
 
   return (
-    <div className="flex min-w-0 flex-col">
-      {/* Fast to-linjers titelhoejde i stedet for flex-1: med flex-1 aad den
-          KORTESTE titel al slacken i sin gitter-celle, saa maalerne stod i
-          hver sin hoejde ved siden af hinanden (tydeligst paa 390px). */}
-      <p className="mb-1.5 min-h-[2.75em] text-[12.5px] font-medium leading-snug text-cz-1">
+    // #5472 · Hvert maal er et subgrid over tre raekker (titel, maaler, tal), saa
+    // naboerne i samme raekke deler titelhoejde: en titel paa tre linjer skubber
+    // alle maalerne i raekken ned, ikke kun sin egen (maalerne stod i hver sin
+    // hoejde i et smalt vindue). Det goer den tidligere faste to-linjers
+    // min-hoejde overfloedig; den efterlod en tom linje under korte titler.
+    <div className="row-span-3 grid min-w-0 grid-rows-subgrid gap-y-0">
+      <p className="mb-1.5 text-[12.5px] font-medium leading-snug text-cz-1">
         {title}
         {goal.isBonus && (
           <span className="ms-1.5 rounded-cz-pill border border-cz-border px-[7px] py-px align-middle text-3xs font-semibold uppercase tracking-[.08em] text-cz-accent-t">
@@ -50,13 +52,19 @@ function GoalSummary({ goal, t }) {
         )}
       </p>
       <ProgressMeter value={pct} tone={tone} ariaLabel={title} />
-      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+      {/* #5472 · content-start: naar en nabo i raekken har et langt beloeb paa
+          to linjer, bliver tal-raekken hoejere; uden den stod "2 / 3" centreret
+          midt i den ekstra hoejde i stedet for i flugt med naboens foerste linje. */}
+      <div className="mt-1.5 flex flex-wrap content-start items-center justify-between gap-x-2 gap-y-1">
         <span className="font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">
           {/* Resuméet baerer den KORTE form ("46 / 40") som mockup'en; den fulde
               "Achieved 46 / target 40" staar paa maal-raekken i Mandat-fanen.
               Den lange form ombrød til tre linjer paa 390px og skubbede
               maalerne ud af flugt (TASTE P5: ens ting staar ens). */}
-          {t("boardroom.overview.goalValue", { achieved: goal.achievedDisplay, target: goal.targetDisplay })}
+          {t("boardroom.overview.goalValue", {
+            achieved: formatGoalValue(goal.achievedDisplay, goal.type),
+            target: formatGoalValue(goal.targetDisplay, goal.type),
+          })}
         </span>
         <StatusPill status={goal.status} t={t} />
       </div>
@@ -101,13 +109,15 @@ export default function MandateSummaryCard({ mandate, bonusOffer = null, onOpenM
         {worst
           ? ` ${t("boardroom.overview.worstGoalNote", {
             goal: resolveGoalTitle(t, worst),
-            achieved: worst.achievedDisplay,
-            target: worst.targetDisplay,
+            achieved: formatGoalValue(worst.achievedDisplay, worst.type),
+            target: formatGoalValue(worst.targetDisplay, worst.type),
           })}`
           : ""}
       </p>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 sm:grid-cols-4">
+      {/* #5472 · Fire kolonner kun fra lg: sm er en viewport-grænse, og med
+          sidebaren er kortet under 480 px bredt ved 774-1023 px vinduer. */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 lg:grid-cols-4">
         {goals.map((goal) => (
           <GoalSummary key={goal.id} goal={goal} t={t} />
         ))}

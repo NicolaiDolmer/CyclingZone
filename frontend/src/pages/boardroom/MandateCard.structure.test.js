@@ -15,7 +15,7 @@ test("#4557 mandate: null renderer den kanoniske EmptyState (T1 canonical states
 });
 
 test("#4557/#4570 mandate: mål-titlen bruger den delte type-styrede resolver, ikke rå labelKey-interpolation", () => {
-  assert.match(source, /import \{[^}]*resolveGoalTitle[^}]*\} from "\.\/boardroomFormat";/);
+  assert.match(source, /import \{[^}]*resolveGoalTitle[^}]*\} from "\.\/boardroomFormat(?:\.js)?";/);
   assert.match(source, /\{resolveGoalTitle\(t, goal\)\}/);
   assert.doesNotMatch(source, /t\(goal\.labelKey/, "titlen må ikke længere kaldes direkte via t(goal.labelKey, ...) — det er nu KUN resolverens interne fallback-sti");
 });
@@ -68,4 +68,20 @@ test("#4557 mandate: bonustilbuddet i fuld laengde bor i Mandat-fanen, koblet ti
 
 test("#4557 mandate: 'Discuss target' er eksplicit disabled (no-op, årsmødet er S-M2c)", () => {
   assert.match(source, /<button type="button" disabled aria-disabled="true"/);
+});
+
+// #5472 (ejer-review 23/9) · Målets tal kommer som rå tal-strenge fra
+// GET /api/board/room ("1074082"). Både mål-rækken her og resuméet på
+// overblikket (tal-linjen og "står på X mod et mål på Y") skal formatere dem.
+const summarySource = readFileSync(join(__dirname, "MandateSummaryCard.jsx"), "utf8");
+
+test("#5472 mandate + resumé: achievedDisplay/targetDisplay vises kun gennem formatGoalValue", () => {
+  for (const [name, src] of [["MandateCard", source], ["MandateSummaryCard", summarySource]]) {
+    assert.match(src, /import \{[^}]*formatGoalValue[^}]*\} from "\.\/boardroomFormat\.js";/, `${name} skal importere formatGoalValue`);
+    assert.doesNotMatch(src, /achieved: (?:goal|worst)\.achievedDisplay/, `${name} sender stadig et rå achievedDisplay til t()`);
+    assert.doesNotMatch(src, /target: (?:goal|worst)\.targetDisplay/, `${name} sender stadig et rå targetDisplay til t()`);
+  }
+  assert.match(source, /achieved: formatGoalValue\(goal\.achievedDisplay, goal\.type\)/);
+  assert.match(summarySource, /achieved: formatGoalValue\(goal\.achievedDisplay, goal\.type\)/);
+  assert.match(summarySource, /achieved: formatGoalValue\(worst\.achievedDisplay, worst\.type\)/);
 });
