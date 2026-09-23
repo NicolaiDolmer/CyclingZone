@@ -1,3 +1,4 @@
+import type { Page, Route } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, RIDERS, TEST_TEAM, json, evidenceShotPath } from "./fixtures.js";
 import { wantsObject } from "../../src/preview/mockHandlers.js";
@@ -40,13 +41,13 @@ const ACADEMY_RIDER = {
 };
 delete ACADEMY_RIDER.rider_derived_abilities;
 
-async function mockAcademyRoster(page) {
-  await page.route("**/rest/v1/riders**", (route) => {
+async function mockAcademyRoster(page: Page) {
+  await page.route("**/rest/v1/riders**", (route: Route) => {
     const request = route.request();
     if (request.method() !== "GET") return json(route, {});
     const url = request.url();
     const accept = request.headers().accept || "";
-    const asSingle = (rows) => (wantsObject(accept) ? (rows[0] || {}) : rows);
+    const asSingle = (rows: any[]) => (wantsObject(accept) ? (rows[0] || {}) : rows);
     // TeamPage.jsx's "kommende trup"-query (pending_team_id=eq.<team>) — ingen
     // indgående ryttere nødvendige for dette filter-flow.
     if (url.includes("pending_team_id=eq.")) return json(route, asSingle([]));
