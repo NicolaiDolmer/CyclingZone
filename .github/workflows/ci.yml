@@ -776,6 +776,12 @@ jobs:
           python3 scripts/hooks/lib/test_codex_sessions.py
           bash scripts/test-guard-agent-spawn.sh
 
+      # #5489: deploy-verify.yml laeser Railway-status via scripts/railway-deploy-status.mjs
+      # (#5560). Klassifikationen (success/failed/pending, API-fejl = pending) skal
+      # koere i CI, ellers er den usynlig ligesom monday-numbers var (#5092).
+      - name: Test Railway deploy-status classifier (#5489)
+        run: node --test scripts/railway-deploy-status.test.mjs
+
   migration-idempotency:
     runs-on: ubuntu-latest
     permissions:
