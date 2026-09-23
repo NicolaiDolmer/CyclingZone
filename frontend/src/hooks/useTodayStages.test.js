@@ -70,8 +70,15 @@ test("#5589 regression guard: ingen race_results-forespørgsel er kun afgrænset
     positions.length >= 2,
     `forventede mindst 2 race_results-forespørgsler (vinder + placering pr. løb), fandt ${positions.length}`,
   );
-  for (const pos of positions) {
-    const block = hookSource.slice(pos, pos + 500);
+  for (let i = 0; i < positions.length; i++) {
+    const pos = positions[i];
+    // Slut blokken ved starten af NÆSTE .from("race_results")-kald (eller
+    // filens slutning) — IKKE et fast tegn-vindue. Et fast vindue kan nå ind
+    // i den EFTERFØLGENDE forespørgsels filtre og fejlagtigt "låne" dens
+    // rank/stage_number-filter til denne, så guarden lukker en reelt
+    // ubegrænset forespørgsel igennem (CodeRabbit, denne PR).
+    const end = i + 1 < positions.length ? positions[i + 1] : hookSource.length;
+    const block = hookSource.slice(pos, end);
     const hasStageNumberFilter = /\.(?:eq|in)\("stage_number"/.test(block);
     const hasRankFilter = /\.eq\("rank"/.test(block);
     assert.ok(
