@@ -170,6 +170,14 @@ function emptyRateBucket() {
     abandoned: 0,
     otl: 0,
     stagesWithOtl: 0,
+    // Samspillet M10 x M15 (#5515-fund): en OTL-rytter er "ude af loebet"
+    // (broen skriver outcome='abandon'). RULES §9 raekke 4 siger at et mekanisk
+    // uheld ALDRIG maa koste udgaaelse — men tidstabet kan skubbe rytteren uden
+    // for tidsgraensen. Disse tre taellere skiller OTL'en ad efter aarsag.
+    otlNoIncident: 0,
+    otlMechanicalOnly: 0,
+    otlAfterCrash: 0,
+    hardCrashToOtl: 0,
     rescued: 0,
     stagesWithRescue: 0,
   };
@@ -193,8 +201,24 @@ export function accumulateStageRates(acc, profileType, v4Output) {
   const results = v4Output?.results ?? [];
   const incidents = v4Output?.incidents ?? [];
   const events = v4Output?.timeline?.events ?? [];
-  const otl = results.filter((r) => r.status === "otl").length;
+  const otlIds = new Set(results.filter((r) => r.status === "otl").map((r) => r.rider_id));
+  const otl = otlIds.size;
   const rescued = countEventRiders(events, "grupetto_saved");
+  const incidentsByRider = new Map();
+  for (const inc of incidents) {
+    if (!incidentsByRider.has(inc.rider_id)) incidentsByRider.set(inc.rider_id, []);
+    incidentsByRider.get(inc.rider_id).push(inc);
+  }
+  let otlNoIncident = 0;
+  let otlMechanicalOnly = 0;
+  let otlAfterCrash = 0;
+  for (const id of otlIds) {
+    const own = incidentsByRider.get(id) ?? [];
+    if (own.length === 0) otlNoIncident += 1;
+    else if (own.every((i) => i.kind === "mechanical")) otlMechanicalOnly += 1;
+    else otlAfterCrash += 1;
+  }
+  const hardCrashToOtl = incidents.filter((i) => i.kind !== "mechanical" && i.severity === "hard" && otlIds.has(i.rider_id)).length;
   for (const key of [profileType ?? "?", "_total"]) {
     if (!acc.has(key)) acc.set(key, emptyRateBucket());
     const b = acc.get(key);
@@ -203,6 +227,10 @@ export function accumulateStageRates(acc, profileType, v4Output) {
     b.abandoned += results.filter((r) => r.status === "abandoned").length;
     b.otl += otl;
     if (otl > 0) b.stagesWithOtl += 1;
+    b.otlNoIncident += otlNoIncident;
+    b.otlMechanicalOnly += otlMechanicalOnly;
+    b.otlAfterCrash += otlAfterCrash;
+    b.hardCrashToOtl += hardCrashToOtl;
     b.rescued += rescued;
     if (rescued > 0) b.stagesWithRescue += 1;
     for (const inc of incidents) {
@@ -236,6 +264,8 @@ export function summarizeRates(acc, target = OWNER_INCIDENT_TARGET) {
       otlRate: ratio(b.otl, b.riderStarts),
       rescueRate: ratio(b.rescued, b.riderStarts),
       seriousShareOfCrashes: ratio(b.serious, crashes),
+      mechanicalToOtlShare: ratio(b.otlMechanicalOnly, b.mechanical),
+      hardCrashToOtlShare: ratio(b.hardCrashToOtl, b.hard),
     };
   };
   const rows = keys.map(toRow);
@@ -254,6 +284,11 @@ export function summarizeRates(acc, target = OWNER_INCIDENT_TARGET) {
     rescueObserved: (total?.rescued ?? 0) > 0,
     otlTypes: rows.filter((r) => r.otl > 0).map((r) => r.key),
     rescueTypes: rows.filter((r) => r.rescued > 0).map((r) => r.key),
+    // Typer hvor OTL KUN forekommer efter et uheld (ingen "rent fysiologisk" OTL).
+    otlOnlyAfterIncidentTypes: rows.filter((r) => r.otl > 0 && r.otlNoIncident === 0).map((r) => r.key),
+    mechanicalToOtlObserved: (total?.otlMechanicalOnly ?? 0) > 0,
+    mechanicalToOtlTypes: rows.filter((r) => r.otlMechanicalOnly > 0).map((r) => r.key),
+    hardCrashToOtlObserved: (total?.hardCrashToOtl ?? 0) > 0,
   };
 }
 
@@ -469,7 +504,18 @@ export function renderPublicBlock(result) {
     `- **Grupetto-redning udloeses:** ${rates.rescueObserved ? "ja" : "**nej**"}` +
       (rates.rescueTypes.length ? ` (etapetyper: ${rates.rescueTypes.join(", ")})` : "") + ".",
   );
-  lines.push("- Rater pr. etapetype (uheld, alvorlige styrt, udgaaede, OTL, redninger) staar i den private fil.");
+  lines.push(
+    `- **Mekanisk uheld (og intet andet) ender som OTL, dvs. ude af loebet:** ${rates.mechanicalToOtlObserved ? "**ja**" : "nej"}` +
+      (rates.mechanicalToOtlTypes.length ? ` (etapetyper: ${rates.mechanicalToOtlTypes.join(", ")})` : "") +
+      ". RULES §9 raekke 4: et mekanisk uheld maa aldrig koste udgaaelse.",
+  );
+  lines.push(
+    `- **Haardt styrt ender som OTL:** ${rates.hardCrashToOtlObserved ? "**ja**" : "nej"}. Trappen lover at han kommer i maal og koerer videre.`,
+  );
+  if (rates.otlOnlyAfterIncidentTypes.length) {
+    lines.push(`- **OTL kun efter et uheld** (aldrig rent fysiologisk) paa: ${rates.otlOnlyAfterIncidentTypes.join(", ")}.`);
+  }
+  lines.push("- Rater pr. etapetype (uheld, alvorlige styrt, udgaaede, OTL og dens aarsager, redninger) staar i den private fil.");
   lines.push("");
   lines.push(`### 4. Ydelse (gate: under ${PERF_GATE_MS / 1000} s pr. etape)`);
   lines.push("");
@@ -556,6 +602,16 @@ export function renderPrivateReport(result) {
   }
   lines.push("");
   lines.push(`Uheldsrate samlet mod ejer-maalet ${fmtPct(OWNER_INCIDENT_TARGET.min, 0)}-${fmtPct(OWNER_INCIDENT_TARGET.max, 0)}: ${rates.incidentVerdict}.`);
+  lines.push("");
+  lines.push("### 3b. OTL efter aarsag (M10 x M15)");
+  lines.push("");
+  lines.push("| Etapetype | OTL i alt | uden uheld | kun mekanisk | efter styrt | mekaniske -> OTL % | haarde styrt -> OTL % |");
+  lines.push("|---|---|---|---|---|---|---|");
+  for (const r of [...rates.rows, ...(rates.total ? [rates.total] : [])]) {
+    lines.push(
+      `| ${r.key} | ${r.otl} | ${r.otlNoIncident} | ${r.otlMechanicalOnly} | ${r.otlAfterCrash} | ${fmtPct(r.mechanicalToOtlShare, 1)} | ${fmtPct(r.hardCrashToOtlShare, 1)} |`,
+    );
+  }
   lines.push("");
   lines.push("## 4. Ydelse");
   lines.push("");

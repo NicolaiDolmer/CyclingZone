@@ -129,6 +129,40 @@ test("accumulateStageRates: OTL fra status, redning fra tidslinjen, trappen klas
   assert.equal(total.incidents, 4);
 });
 
+test("OTL skilles ad efter aarsag: uden uheld / kun mekanisk / efter styrt (M10 x M15)", () => {
+  const acc = new Map();
+  // r0: OTL uden uheld · r1: OTL efter kun mekanisk · r2: OTL efter haardt styrt
+  // · r3: OTL efter mekanisk OG styrt (taeller som styrt) · r4: mekanisk, i maal.
+  accumulateStageRates(acc, "hilly", stageOutput({
+    statuses: ["otl", "otl", "otl", "otl", "finished"],
+    incidents: [
+      { rider_id: "r1", kind: "mechanical", severity: null },
+      { rider_id: "r2", kind: "crash", severity: "hard" },
+      { rider_id: "r3", kind: "mechanical", severity: null },
+      { rider_id: "r3", kind: "crash", severity: "light" },
+      { rider_id: "r4", kind: "mechanical", severity: null },
+    ],
+  }));
+  // Flad etape hvor den eneste OTL kommer efter et mekanisk uheld.
+  accumulateStageRates(acc, "flat", stageOutput({
+    statuses: ["finished", "otl"],
+    incidents: [{ rider_id: "r1", kind: "mechanical", severity: null }],
+  }));
+  const h = acc.get("hilly");
+  assert.equal(h.otlNoIncident, 1);
+  assert.equal(h.otlMechanicalOnly, 1);
+  assert.equal(h.otlAfterCrash, 2);
+  assert.equal(h.hardCrashToOtl, 1);
+  const s = summarizeRates(acc);
+  assert.equal(s.mechanicalToOtlObserved, true);
+  assert.deepEqual(s.mechanicalToOtlTypes, ["flat", "hilly"]);
+  assert.equal(s.hardCrashToOtlObserved, true);
+  assert.deepEqual(s.otlOnlyAfterIncidentTypes, ["flat"], "hilly har ogsaa OTL uden uheld");
+  const hillyRow = s.rows.find((r) => r.key === "hilly");
+  assert.equal(hillyRow.mechanicalToOtlShare, 1 / 3);
+  assert.equal(hillyRow.hardCrashToOtlShare, 1);
+});
+
 test("summarizeRates: dom mod ejer-maalet KUN paa totalen; typer uden OTL listes ikke", () => {
   const acc = new Map();
   // 1 uheld pr. 100 starter = inden for maalet.
@@ -275,6 +309,7 @@ test("hard rule 17: den OFFENTLIGE blok indeholder ingen maalte vaerdier, rater 
   assert.match(block, /Felt-favoritters win-rate \| PASS \| 4\/5 \| \*\*FAIL\*\* \| 0\/5 \|/u);
   assert.match(block, /\| 180 \| 1 \| 12 ms/u);
   assert.match(block, /OTL forekommer:\*\* ja \(etapetyper: mountain\)/u);
+  assert.match(block, /Mekanisk uheld \(og intet andet\) ender som OTL, dvs\. ude af loebet:\*\* nej/u);
   assert.match(block, /Kill-switch samlet:\*\* groen/u);
   assert.match(block, /IKKE OPFYLDT/u);
 });
