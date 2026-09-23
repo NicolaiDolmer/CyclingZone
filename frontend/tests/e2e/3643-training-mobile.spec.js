@@ -411,6 +411,153 @@ test("412 px med flaget OFF: ingen ny mobil-tabel — den gamle visning står u�
   await expect(page.getByText("Ada Pedersen")).toBeVisible();
 });
 
+// ── Paritets-audit 21/9: tre rene fejl i den nye visning ────────────────────
+//
+// (1) Mobil-primaryen manglede #4847's dayClose-gate og "Kør dagens træning
+//     nu"-labelen. Latent i prod (training_tick_per_race_day er off), men den
+//     dag flaget tændes, ville telefonen kunne køre dagen før sidste løb.
+// (2) RosterMobileSortControl manglede Score, selvom desktop-headeren sorterer
+//     på den.
+// (3) Ugeplan-fanens "Gå til rosteret" skiftede fane og landede ingen steder,
+//     fordi roster-tabellen ikke findes i den nye visning.
+
+function mockTrainingMe(page, overrides) {
+  return page.route("**/api/training/me**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, { ...TRAINING_ME, ...overrides });
+  });
+}
+
+// Samme form som serverens `trainingScore` (se 4851-specen). Scorerne er valgt
+// så en sortering ikke kan falde sammen med truppens egen rækkefølge: den
+// højeste står som rytter nr. 4, og tre ryttere har ingen måling i dag.
+function scoreRow(today) {
+  return { today, todayIsRaceDay: false, todaySession: null, spark: [], avg: null, best: null, days: 0, contributions: [] };
+}
+const SCORES = {
+  [SQUAD[0].id]: scoreRow(41),
+  [SQUAD[1].id]: scoreRow(63),
+  [SQUAD[2].id]: scoreRow(null),
+  [SQUAD[3].id]: scoreRow(88),
+  [SQUAD[4].id]: scoreRow(57),
+};
+
+const DAY_CLOSE_WAITING = { open: false, reason: "awaiting_finalization", gameDays: [40, 41, 42], opensAtHour: 20 };
+const DAY_CLOSE_READY = { open: true, reason: "closed", gameDays: [40, 41, 42], opensAtHour: 20 };
+
+// Sidens ENE primary. På telefonen står den i fuld bredde over fanerne, på
+// desktop i sidehovedet — der er aldrig to på samme skærm.
+const primary = (page) => page.locator('[data-tour="training-run-today"] button');
+
+const DAY_CLOSE_CASES = [
+  { name: "venter på dagens sidste løb", dayClose: DAY_CLOSE_WAITING, label: "Kør dagens træning nu", disabled: true },
+  { name: "klar", dayClose: DAY_CLOSE_READY, label: "Kør dagens træning nu", disabled: false },
+  // Flaget off: serveren sender slet ikke feltet, og knappen er den gamle.
+  { name: "flaget off", dayClose: undefined, label: "Træn i dag (+25% konsistens-bonus)", disabled: false },
+];
+
+for (const c of DAY_CLOSE_CASES) {
+  test(`390 px + 1440 px: primaryen har samme dayClose-gate og label (${c.name})`, async ({ page }) => {
+    await mockTrainingMe(page, c.dayClose ? { dayClose: c.dayClose } : {});
+    await login(page);
+
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/training");
+      await expect(primary(page)).toHaveCount(1);
+      await expect(primary(page)).toHaveText(c.label);
+      if (c.disabled) await expect(primary(page)).toBeDisabled();
+      else await expect(primary(page)).toBeEnabled();
+    }
+  });
+}
+
+test("390 px: Score kan vælges i mobil-sorteringen når scoren er synlig, og sorterer efter dagens tal", async ({ page }) => {
+  await mockTrainingMe(page, { trainingScore: SCORES });
+  await login(page);
+  await openTraining(page, 390, 900);
+
+  const select = page.locator('[data-testid="training-mobile-today"] select');
+  await expect(select.locator('option[value="score"]')).toHaveCount(1);
+  await expect(select.locator('option[value="score"]')).toHaveText("Score");
+
+  await select.selectOption("score");
+  // Score er en "høj-først"-nøgle ligesom desktop-headeren: højeste tal øverst,
+  // ryttere uden måling i dag nederst uanset retning.
+  const names = riderRows(page).locator("button[aria-expanded]");
+  await expect(names.nth(0)).toContainText("L. Colombo");
+  await expect(names.nth(1)).toContainText("M. Sørensen");
+  await expect(names.nth(2)).toContainText("R. Duran");
+  await expect(names.nth(3)).toContainText("A. Pedersen");
+});
+
+test("390 px: uden synlig score findes Score-sorteringen ikke", async ({ page }) => {
+  // Standard-mocken udelader `trainingScore`, præcis som serveren gør når
+  // training_score_visible er off.
+  await login(page);
+  await openTraining(page, 390, 900);
+
+  const select = page.locator('[data-testid="training-mobile-today"] select');
+  await expect(select.locator('option[value="form"]')).toHaveCount(1);
+  await expect(select.locator('option[value="score"]')).toHaveCount(0);
+});
+
+test("390 px: ugeplan-fanens 'Gå til rosteret' er skjult i den nye visning, men står på desktop og i den gamle", async ({ page }) => {
+  await login(page);
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/training?tab=weekplan");
+  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Gå til rosteret" })).toHaveCount(0);
+
+  // Desktop har roster-tabellen, så knappen virker dér og bliver stående.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/training?tab=weekplan");
+  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Gå til rosteret" })).toBeVisible();
+
+  // Den gamle mobil-visning (flaget off) har også roster-tabellen.
+  await mockTrainingMe(page, { mobileTable: false });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/training?tab=weekplan");
+  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Gå til rosteret" })).toBeVisible();
+});
+
+// Bevis-billeder til PR'en: ét pr. skærmstørrelse og fane, taget på den motor
+// der svarer til skærmen (mock-data; ejeren ser ægte data på preview).
+test("bevis 390 px: dayClose-gaten, Score-sortering og ugeplan-fanen", async ({ page }) => {
+  test.skip(test.info().project.name !== "mobile-chromium", "Ét sæt billeder; formen er dækket i alle tre projekter ovenfor.");
+  await mockTrainingMe(page, { dayClose: DAY_CLOSE_WAITING, trainingScore: SCORES });
+  await login(page);
+  await openTraining(page, 390, 844);
+  await page.locator('[data-testid="training-mobile-today"] select').selectOption("score");
+  await expect(riderRows(page).first().locator("button[aria-expanded]")).toContainText("L. Colombo");
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-390-today.png"), fullPage: false });
+
+  await page.getByRole("tab", { name: "Ugeplan" }).click();
+  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
+  await page.getByRole("heading", { name: "Individuelle ugeplaner" }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-390-weekplan.png"), fullPage: false });
+});
+
+test("bevis 1440 px: desktop er uændret", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop-chromium", "Ét sæt billeder; formen er dækket i alle tre projekter ovenfor.");
+  await mockTrainingMe(page, { dayClose: DAY_CLOSE_WAITING, trainingScore: SCORES });
+  await login(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/training");
+  await page.locator("table[data-sortable]").first().waitFor();
+  await expect(primary(page)).toHaveText("Kør dagens træning nu");
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-1440-today.png"), fullPage: false });
+
+  await page.getByRole("tab", { name: "Ugeplan" }).click();
+  await expect(page.getByRole("button", { name: "Gå til rosteret" })).toBeVisible();
+  await page.getByRole("button", { name: "Gå til rosteret" }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-1440-weekplan.png"), fullPage: false });
+});
+
 test("desktop 1280 px: uændret — alle kolonner som før, ingen mobil-tabel", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "Desktop-regressionstjek; mobil-formen dækkes af testene ovenfor.");
   await login(page);
