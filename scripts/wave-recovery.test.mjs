@@ -76,6 +76,34 @@ test('Windows recovery measures a real stopped owner and refuses the live test p
   assert.equal(recoverWave(stopped.dir, expected).released, true);
 });
 
+// #5533: Windows LastBootUpTime drifts sub-ms within one boot (23/9: +0.772 ms).
+const markerTicks = '639256957975000000';
+const driftedTicks = '639256957975007720';
+const minutesLater = (BigInt(markerTicks) + 5n * 60n * 10_000_000n).toString();
+const bootAt = bootId => processes => () => ({ bootId, processes });
+
+test('sub-second boot drift is the same boot: a dispatched wave is never released as host-restarted', t => {
+  const { dir } = fixture(t, { bootId: markerTicks });
+  assert.throws(() => recoverWave(dir, expected, bootAt(driftedTicks)([{ pid: 999, ppid: 998 }])), /Same-boot/);
+  assert.equal(fs.existsSync(path.join(dir, 'wave-active.json')), true);
+});
+
+test('sub-second boot drift before dispatch still recovers a dead owner as the same boot', t => {
+  const { dir } = fixture(t, { bootId: markerTicks, dispatchStarted: false, children: [] });
+  const result = recoverWave(dir, expected, bootAt(driftedTicks)([{ pid: 999, ppid: 998 }]));
+  assert.equal(result.released, true);
+  const evidence = JSON.parse(fs.readFileSync(result.evidence, 'utf8'));
+  assert.equal(evidence.proof, 'dead-owner-before-dispatch');
+  assert.equal(evidence.observedBootId, '639256957970000000');
+});
+
+test('a real restart minutes later is still recovered as host-restarted', t => {
+  const { dir } = fixture(t, { bootId: markerTicks });
+  const result = recoverWave(dir, expected, bootAt(minutesLater)([{ pid: 100, ppid: 1 }]));
+  assert.equal(result.released, true);
+  assert.equal(JSON.parse(fs.readFileSync(result.evidence, 'utf8')).proof, 'host-restarted');
+});
+
 test('recovery after reboot does not kill an old watch PID reused by another process', t => {
   const { dir } = fixture(t, { watchPid: process.pid, watchStarted: 'old-identity' });
   assert.equal(recoverWave(dir, expected, nextBoot([{ pid: process.pid, ppid: 1 }])).released, true);
