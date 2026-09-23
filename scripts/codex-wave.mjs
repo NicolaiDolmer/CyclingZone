@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { acquireWave, releaseWave, readWave, updateWave, hostBootId, validateTracks, getOpenPrs, sharedRunDir, REPO, PR_LIMIT } from './wave-policy.mjs';
+import { acquireWave, releaseWave, readWave, updateWave, hostBootId, validateTracks, getOpenPrs, sharedRunDir, REPO } from './wave-policy.mjs';
 import { generateBrief } from './make-wave-brief.mjs';
 import { classifyStall, commitAgeMinutes, resolveTrackTimeoutMinutes, WAVE_FREEZE } from './wave-freeze.mjs';
 
@@ -63,10 +63,9 @@ export async function runWave(options, supplied = {}) {
         results.push(row); checkpoint('pending');
         try {
           // Recheck live state directly before every writer, including a fixer.
+          // No PR-count re-check: the shared cap was removed (ejer-beslutning
+          // 22/9, #5510). Lanes (4) and the verify semaphore (2) remain the brake.
           await deps.prefilter(track, context);
-          const currentPrs = await deps.readPrs();
-          const missing = tracks.filter(t => t.kind !== 'investigate' && !currentPrs.some(p => p.headRefName === t.branch)).length;
-          if (currentPrs.length + missing > PR_LIMIT) throw Error('PR capacity changed since reservation');
           row.worker = await deps.runAgent('worker', track, context);
           if (row.worker?.status !== 'ready') throw Error('Worker reported blocked or invalid result');
           row.evidence = await deps.validateResult(track, context);

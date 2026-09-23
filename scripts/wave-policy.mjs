@@ -9,7 +9,6 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { admissionOwnerProcess, assertWaveOwnership, ownershipSnapshot } from './wave-ownership.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
-export const PR_LIMIT = 8;
 const reserved = ['docs/now.md', '.claude/run', '.claude/launch.json'];
 const normalize = p => p.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
 
@@ -42,12 +41,16 @@ export function validateTracks(tracks) {
   return tracks;
 }
 
+// Ejer-beslutning 22/9 (variant B, #5510): PR-loftet paa 8 er fjernet helt.
+// Optaellingen bevares som info til planen (lanerne (4) og
+// verifikations-semaforen (2) er fortsat bremsen). Fail-closed bevares: en
+// uhentbar PR-liste maa aldrig stiltiende tillade en boelge - en GitHub-fejl
+// skal opdages, ikke maskeres som "ingen aabne PR'er".
 export function checkCapacity(prs, tracks) {
   if (!Array.isArray(prs)) throw Error('PR count unavailable');
   const branches = new Set(prs.map(p => p.headRefName));
   const additional = tracks.filter(t => t.kind !== 'investigate' && !branches.has(t.branch)).length;
   const projected = prs.length + additional;
-  if (prs.length >= PR_LIMIT || projected > PR_LIMIT) throw Error(`PR capacity: ${prs.length} open + ${additional} reserved > available capacity (${PR_LIMIT})`);
   return { open: prs.length, additional, projected };
 }
 

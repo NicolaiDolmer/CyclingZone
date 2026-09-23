@@ -81,9 +81,10 @@ fi
 MAX_SPAWNS=${CZ_AGENT_GUARD_MAX:-4}
 WINDOW_MIN=${CZ_AGENT_GUARD_WINDOW_MIN:-45}
 
-# #5467: both runtimes share atomic admission and the eight-PR budget.
-# Run BEFORE legacy exemptions (including Workflow itself). This gate fails
-# closed; an unavailable GitHub count must not silently admit a new wave.
+# #5467: both runtimes share atomic admission (open-PR count is info only,
+# no hard cap since ejer-beslutning 22/9 variant B, #5510). Run BEFORE legacy
+# exemptions (including Workflow itself). This gate fails closed; an
+# unavailable GitHub count must not silently admit a new wave.
 POLICY="$(dirname "$0")/../wave-policy.mjs"
 if ! printf '%s' "$INPUT" | node "$POLICY" hook --run-dir "$RUN_DIR"; then
   echo "BLOCKED: shared wave admission failed; no agent started." >&2
