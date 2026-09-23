@@ -9,6 +9,7 @@
 // ind i den samme muterbare mock-state (samme mønster som `state.sent` i
 // fixtures.js), så traaden reelt skal rulle for at vise den nyeste.
 
+import type { Page, Route } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks,
@@ -22,12 +23,18 @@ test.beforeEach(async ({ page }) => {
   await installNetworkMocks(page);
 });
 
-const thread = (page) => page.getByTestId("dm-thread-messages");
+// Den muterbare mock-state fra installMessagesMocks (fixtures.js er utypet).
+type MessagesMockState = {
+  conversations: Array<{ id: string }>;
+  messages: Array<Record<string, unknown>>;
+};
+
+const thread = (page: Page) => page.getByTestId("dm-thread-messages");
 
 // Fylder samtalen op til 30 beskeder i alt (3 seedede + 27 her), kronologisk
 // efter de tre seedede fra 2026-09-07. `fromMe` alternerer, så bobler ligger
 // begge veje ligesom i en rigtig tråd.
-function seedThirtyMessages(state) {
+function seedThirtyMessages(state: MessagesMockState) {
   const CONVERSATION_ID = state.conversations[0].id;
   const base = Date.parse("2026-09-07T11:00:00.000Z");
   for (let i = 4; i <= 30; i += 1) {
@@ -112,7 +119,7 @@ test("bevarer scroll-positionen naar en ny besked ankommer via polling, hvis bru
 const OWNER_NEWEST = "Deal at 165k. Sending the offer now.";
 
 // Ejerens tilfaelde: 7 beskeder hvor nogle er lange (3 seedede + 4 her).
-function seedOwnerReviewThread(state) {
+function seedOwnerReviewThread(state: MessagesMockState) {
   const CONVERSATION_ID = state.conversations[0].id;
   const base = Date.parse("2026-09-07T11:00:00.000Z");
   const long = (lead: string) => `${lead} ${"I have been going through the numbers again, and the wage bill for next season is the part that worries me most, because the sponsor money only lands after the spring classics. ".repeat(3)}`.trim();
@@ -137,8 +144,8 @@ function seedOwnerReviewThread(state) {
 // Holder GET-svarene tilbage i `ms` og lader dem saa gaa videre til
 // installMessagesMocks (senest registrerede route koerer foerst i Playwright,
 // `fallback` sender videre til den naeste).
-async function delayGet(page, matches: (url: URL) => boolean, ms: number) {
-  await page.route(matches, async (route) => {
+async function delayGet(page: Page, matches: (url: URL) => boolean, ms: number) {
+  await page.route(matches, async (route: Route) => {
     if (route.request().method() === "GET") {
       await new Promise((resolve) => { setTimeout(resolve, ms); });
     }
