@@ -498,7 +498,7 @@ export default function StandingsPage() {
                 de 14px (prik + mellemrum) var forskellen paa at et ord som
                 "Continental" staar helt eller braekkes midt over. Desktop uaendret. */}
             <span aria-hidden="true"
-              className={`h-1.5 w-1.5 shrink-0 rounded-full [@media(max-width:640px)]:absolute [@media(max-width:640px)]:-right-0.5 [@media(max-width:640px)]:-top-0.5${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
+              className={`h-1.5 w-1.5 shrink-0 rounded-full [@media(max-width:640px)]:absolute [@media(max-width:640px)]:-right-0.5 [@media(max-width:640px)]:-top-0.5 ${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
               title={onlineIds.has(s.team_id) ? t("onlineNow") : t("offline")} />
           </span>
           {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen.
