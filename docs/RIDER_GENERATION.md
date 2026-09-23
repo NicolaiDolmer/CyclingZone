@@ -277,6 +277,23 @@ Rapporten spejler `deriveForRiderIds`' kæde in-memory (§6/§8b's spejlings-kra
 
 **To fund står åbne i rapporten pr. 18/9** (begge dokumenteret, ingen rettet her): en betydelig del af alle evne-værdier lander på gulvet, drevet af `domestique`-tierens niveau; og en lille andel fødes med `tactics` over vækst-loftet i D-056. Det tredje fund — at akademiets bånd er mættet ved U23-aldrene — er LUKKET af [#5376](https://github.com/NicolaiDolmer/CyclingZone/issues/5376): U23-fødslen fik sit eget bånd (§8b2), og rapportens §8b står tilbage som referencen der forklarer hvorfor. Rapportens §8c måler produktions-båndet, og en **forward-guard** (`u23ProductionBandGuard()`) siger fra i §9 hvis alderen holder op med at flytte medianen eller loftet begynder at klippe dominerende igen — også når årsagen er en ændring på akademi-siden, som U23-båndet arver fra.
 
+## 8d. Primær type-kilden bag kontakt ([#5327](https://github.com/NicolaiDolmer/CyclingZone/issues/5327))
+
+En ny rytters PRIMÆRE type har to mulige kilder (`primaryTypeMode` i `generateFictionalRiders`):
+
+| Kilde | Hvad | Status |
+|---|---|---|
+| `tier` (default) | tier-aware `TIER_TYPE_WEIGHTS`. Typevalget følger tieren, og tieren styrer potentialet, så nogle typer er koblet til høje eller lave potentialer | i brug |
+| `distribution` | tier-uafhængigt træk fra `DEFAULT_DISTRIBUTION` (`archetypeDistribution.js`), samme formel som akademiet trækker begge anlæg fra | bag kontakt, slukket |
+
+**Kontakten** er app_config-nøglen `rider_primary_type_from_distribution` (off | on), læst af `primaryTypeModeFlag.js`. Kun `on` tænder den; `beta` gør ikke, fordi en genereret rytter er synlig for alle. Manglende række eller læsefejl giver `tier`. Den læses ÉN gang pr. allokering ved de tre kaldesteder der skaber ryttere (start-trupper i `starterSquadAllocator.js`, nye AI-hold i `aiTeamGenerator.js`, launch-populationen via `relaunchOrchestrator.js`) og sendes til alle generator-kald i allokeringen, så kerne og hale aldrig får hver sin kilde. Slukket er byte-identisk med koden før kontakten. Begge grene bruger præcis ét rng-kald pr. rytter, så kun typens værdi flytter sig, ikke alt det der trækkes bagefter.
+
+**Kun nye ryttere.** Eksisterende ryttere røres ikke. Skævheden i dagens population (for få unge store talenter af visse typer) stammer fra gamle data: absolutte type-gulve pr. generator-kald før 10/8 plus den efterfølgende reparation i [#3570](https://github.com/NicolaiDolmer/CyclingZone/issues/3570). Hvad der skal ske med de data, er et separat ejer-valg på #5327.
+
+**Gaten** (talent-gaten i `archetypeGenerationGates.test.js`): i distribution-mode skal hver types andel blandt unge store talenter, delt med dens andel blandt alle, ligge over et loft. Den måles for kald på 8, 24 og 1.000 ryttere, fordi gulv-mekanikken opfører sig forskelligt ved små og store kald. Tier-mode fejler gaten, og det er en negativ-test: består tier-mode, måler gaten ikke længere koblingen.
+
+**Før kontakten tændes** (ejer-gated): population-preview, værdi-bånd-gaten, `race:gate` og AI-truppens værdiloft køres i distribution-mode.
+
 ## 9. Kendte faldgruber
 
 - **PostgREST-paginering:** `select()` uden `.range()` topper stille ved 1000 rækker. Brug `fetchAllRows` fra `supabasePagination.js` til alle loads der kan overstige det. Bed dette bidt under #4172 (rapporterede 1000 af 4.982 entries).
