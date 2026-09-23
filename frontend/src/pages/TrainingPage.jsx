@@ -63,8 +63,9 @@ import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
   TIRED_FATIGUE_FROM, buildOverview, idsForFilter, isTired, primaryActionFor, canRunToday,
+  tourRunTarget, pruneSelection, visibleIdsFor,
 } from "../components/training/trainingOverview.ts";
-import { countsForRole, mobileScoreCell, pacePerWeek } from "../lib/trainingMobileModel.ts";
+import { countsForRole, mobileScoreCell, pacePerWeek, scoreSortValue } from "../lib/trainingMobileModel.ts";
 import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 // #3643: telefonens egen visning af I dag-fanen (ejer-valg 18/9, mockup 2).
 // BAG FLAG (training_mobile_table, stadie beta — ejer 19/9): kun beta-testere
@@ -83,6 +84,10 @@ import { buildRaceDayColumns } from "../lib/trainingMobileModel.ts";
 // ?tab=history-link (bogmaerker, notifikationer) lander paa Report.
 const TRAINING_TABS = ["today", "weekplan", "development", "report"];
 const LEGACY_TAB_ALIASES = { history: "report" };
+
+// #5485 (23/9): hvor længe en rytter hvis dag lige er gemt, bliver stående i
+// et filter han ikke længere hører til ("Needs a day"), så "Saved" kan ses.
+const SAVED_LINGER_MS = 2000;
 
 // #2849 bølge 4 — migreret til T2 wide-data-skabelonen (docs/design/PAGE_TEMPLATES.md):
 // PageHeader-recipe (status i subtitle, "Train today" som sidens ene gold CTA),
@@ -172,7 +177,16 @@ function dayLabel(plan, t) {
 // onboarding-trin 2, first_training_run, er næste trin). Samme mønster som
 // AuctionsPage's getAuctionsTourSteps: bygges via t() ved render-tid så sproget
 // følger brugerens locale. Ankrene sidder på første roster-række + dagens knap.
-function getTrainingTourSteps(t) {
+//
+// #5485 (rettet 23/9): trin 2 peger på det tryk der faktisk KØRER dagens
+// træning, og kun det tryk fuldfører onboarding-trinnet (en kørsel med
+// executed_by = manager). Står guld-knappen på "Set days for N riders", kører
+// den ingen træning, så turen peger på "Run now" og siger hvad dét tryk gør.
+// Nye hold har typisk ingen dage sat, så det er den første oplevelse.
+// `runTarget` kommer fra tourRunTarget (trainingOverview.ts, testet).
+const TOUR_RUN_KEY = { primary: "runToday", runNow: "runNow", status: "runStatus" };
+function getTrainingTourSteps(t, runTarget = "primary") {
+  const runKey = TOUR_RUN_KEY[runTarget] ?? "runToday";
   return [
     {
       target: "[data-tour='training-focus']",
@@ -181,8 +195,8 @@ function getTrainingTourSteps(t) {
     },
     {
       target: "[data-tour='training-run-today']",
-      title: t("tour.runToday.title"),
-      body: t("tour.runToday.body"),
+      title: t(`tour.${runKey}.title`),
+      body: t(`tour.${runKey}.body`),
     },
     {
       target: "[data-tour='training-next-up']",
@@ -190,6 +204,13 @@ function getTrainingTourSteps(t) {
       body: t("tour.nextUp.body"),
     },
   ];
+}
+
+// Stabil trin-liste pr. (sprog, anker): OnboardingTour genstarter sin rulle-
+// og måle-effekt når trinnets objekt skifter, så listen må ikke bygges på ny
+// ved hver render af siden.
+function useTrainingTourSteps(t, runTarget) {
+  return useMemo(() => getTrainingTourSteps(t, runTarget), [t, runTarget]);
 }
 
 // Bred side — samme mønster som TeamPage / RidersPage.
@@ -409,9 +430,6 @@ export default function TrainingPage() {
 
   const tTypes = useTranslation("riderTypes").t;
 
-  // #2819: guidet rundvisning for onboarding-trin 2 (first_training_run).
-  const trainingTourSteps = useMemo(() => getTrainingTourSteps(t), [t]);
-
   // #3721: tre faner, ?tab=-synkroniseret efter samme mønster som FinancePage/
   // RiderStatsPage (VALID_TABS-fallback). Kun læst ved mount for den initiale
   // fane; skift derefter styres af setTab (skriver `replace`, ingen historik-
@@ -491,6 +509,10 @@ export default function TrainingPage() {
     dayClose,
   } = training;
   const scoreVisible = trainingScore != null;
+  // #5485 (ejer-valg A 23/9): er dagens pas kørt? Før det har ingen rytter et
+  // tal for i dag, og Score viser det SENESTE tal dæmpet (mobileScoreCell).
+  const scoreSettled = !!todayRun;
+  const scoreCellFor = (riderId) => mobileScoreCell(trainingScore?.[riderId] ?? null, { settled: scoreSettled });
 
   // #2578: dagens vundne hele point pr. rytter fra dagens kørsel — så roster-
   // rækkens progress-celle kan vise "+N i dag" når baren netop har wrappet efter
@@ -559,6 +581,35 @@ export default function TrainingPage() {
   // netværk, backend-afvisning) var visuelt usynlig. Fælles wrapper + pr.-rytter
   // fejl-state (kun én celle relevant ad gangen pr. bruger-handling).
   const [planActionError, setPlanActionError] = useState(null); // { riderId, error } | null
+
+  // #5485 (23/9): i filtret "Needs a day" forsvandt rækken i samme øjeblik
+  // dagen blev gemt, så kvitteringen "Saved" aldrig kunne ses. En rytter hvis
+  // dag LIGE er gemt, bliver derfor stående i tabellen ca. 2 sekunder med
+  // "Saved" (visibleIdsFor). Kun synlighed: markeringen og "Apply to N"
+  // følger stadig filtret alene (pruneSelection).
+  const [lingerIds, setLingerIds] = useState(() => new Set());
+  const lingerTimers = useRef(new Map());
+  useEffect(() => {
+    const timers = lingerTimers.current;
+    return () => {
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
+  function lingerAfterSave(riderId) {
+    setLingerIds((prev) => new Set(prev).add(riderId));
+    const timers = lingerTimers.current;
+    if (timers.has(riderId)) clearTimeout(timers.get(riderId));
+    timers.set(riderId, setTimeout(() => {
+      timers.delete(riderId);
+      setLingerIds((prev) => {
+        const next = new Set(prev);
+        next.delete(riderId);
+        return next;
+      });
+    }, SAVED_LINGER_MS));
+  }
+
   async function handlePlanChange(riderId, dayType, session = null) {
     setPlanActionError(null);
     const result = await setPlan(riderId, dayType, session);
@@ -566,6 +617,7 @@ export default function TrainingPage() {
       setPlanActionError({ riderId, error: result.error || "failed" });
       return false;
     }
+    lingerAfterSave(riderId);
     return true;
   }
   async function handleClearPlan(riderId) {
@@ -893,6 +945,10 @@ export default function TrainingPage() {
   // training_mobile_table mod viewerens beta-status (GET /api/training/me), så
   // klienten vælger kun MELLEM to flader — den åbner aldrig selv en.
   const mobileTableView = phoneLayout && mobileTable;
+  // Tegner fanen Today en af telefonens to visninger (beta-tabellen eller
+  // D-047-grenen)? Ellers desktop-tabellen — også på en telefon på langs uden
+  // beta-flaget, der har sin egen #5124-gren ≤640 px, ikke på 844 px.
+  const phoneTodayView = phoneLayout && (isMobile || mobileTable);
   // Den gamle D-047-tilstand gælder KUN når den nye tabel ikke er valgt.
   const mobileRosterView = isMobile && !mobileTable;
   // #5124-rettelse (fanget af eksisterende specs, ikke af mig selv): fire
@@ -977,14 +1033,14 @@ export default function TrainingPage() {
     // ikke drive fra det man ser.
     status: (r) => (r.is_academy ? STATUS_ACADEMY_WEIGHT : 0)
       + (injuryTimeLeft(condition[r.id], today).count > 0 ? STATUS_INJURED_WEIGHT : 0),
-    // #4851: dagens tal. Ryttere uden et tal (hvile, loebsdag, ingen koersel
-    // endnu) giver null, og sortRows laegger null'er sidst uanset retning — de
-    // kan derfor ikke forurene toppen af en "hvem traente bedst"-sortering.
-    score: (r) => {
-      const value = trainingScore?.[r.id]?.today;
-      return Number.isFinite(value) ? value : null;
-    },
-  }), [condition, today, seasonYear, trainingScore]);
+    // #4851: dagens tal. Ryttere uden et tal (hvile, loebsdag) giver null, og
+    // sortRows laegger null'er sidst uanset retning — de kan derfor ikke
+    // forurene toppen af en "hvem traente bedst"-sortering.
+    // #5485: foer dagens pas sorteres der paa det SENESTE tal, samme tal som
+    // cellen viser (scoreSortValue), saa raekkefoelgen ikke kan drive fra det
+    // man laeser.
+    score: (r) => scoreSortValue(mobileScoreCell(trainingScore?.[r.id] ?? null, { settled: scoreSettled })),
+  }), [condition, today, seasonYear, trainingScore, scoreSettled]);
   const rosterAccessor = rosterSort.sort ? rosterAccessors[rosterSort.sort] : null;
   const sortRoster = (list) => sortRows(list, rosterAccessor, rosterSort.sortDir);
 
@@ -1005,7 +1061,9 @@ export default function TrainingPage() {
   // filter), aldrig dem filtret skjuler. Ellers kunne mængde-handlingen skifte
   // dag for ryttere spilleren ikke kan se.
   function toggleSelectAll() {
-    const ids = visibleRiders.map((r) => r.id);
+    // #5485: filtrets ryttere, ikke dem der kun står et øjeblik endnu med
+    // "Saved" (lingerIds) — de hører ikke længere til filtret.
+    const ids = selectableRiders.map((r) => r.id);
     setSelected((prev) => (ids.length > 0 && ids.every((id) => prev.has(id)) ? new Set() : new Set(ids)));
   }
 
@@ -1034,6 +1092,7 @@ export default function TrainingPage() {
     // #4851: dagens traeningsscore + de sidste 7 dage. undefined naar flaget er
     // off (trainingScore er null) — cellen tegnes saa slet ikke.
     const riderScore = trainingScore?.[rider.id] ?? null;
+    const riderScoreCell = scoreVisible ? scoreCellFor(rider.id) : null;
     // #3709 trin 1: kvitteringen for fokussets 2-3 evner. Erstatter den ene
     // aggregerede progress-bar, som var rod-årsagen bag #3639: baren viste kun
     // evnen tættest på gennembrud, så en låst evne ved siden af var usynlig.
@@ -1170,9 +1229,12 @@ export default function TrainingPage() {
               `${t("fatigue")} ${cond.fatigue ?? "—"}`,
               // #4851: scoren staar ogsaa i portraet-underlinjen, saa dagens
               // vigtigste tal kan laeses uden vandret scroll (D-047's princip).
-              scoreVisible && Number.isFinite(riderScore?.today)
-                ? `${t("score.column")} ${riderScore.today}`
-                : null,
+              // #5485: foer dagens pas er det det SENESTE tal, og linjen siger det.
+              scoreVisible && riderScoreCell?.state === "score"
+                ? `${t("score.column")} ${riderScoreCell.value}`
+                : scoreVisible && riderScoreCell?.state === "latest"
+                  ? `${t("score.column")} ${riderScoreCell.value} (${t("score.latest")})`
+                  : null,
             ].filter(Boolean).flatMap((value, index) => [
               index > 0 ? " · " : null,
               ...[].concat(withBreakHints(value)),
@@ -1198,28 +1260,40 @@ export default function TrainingPage() {
             "loeb" uden tal og efterlader et hul i kurven (spec §4.4).
             Tabular figures, saa cifrene flugter lodret ned gennem truppen. */}
         {scoreVisible && (
-          <td className={tdClass({ numeric: true, compact: true })}>
-            {riderScore?.todayIsRaceDay && !Number.isFinite(riderScore?.today) ? (
-              <span className="font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-                {t("score.raceDay")}
-              </span>
-            ) : Number.isFinite(riderScore?.today) ? (
-              <div className="flex flex-col items-end gap-1">
-                <span className="font-mono tabular-nums text-sm font-bold leading-none text-cz-1">
-                  {riderScore.today}
+          <td
+            className={tdClass({ numeric: true, compact: true })}
+            data-testid="training-score-cell"
+            data-score-state={riderScoreCell?.state ?? "none"}
+          >
+            {/* #5485 (ejer-valg A 23/9): samme fire tilstande som den nye
+                tabel (mobileScoreCell). Før dagens pas: seneste tal dæmpet med
+                "latest"; kurven står altid når der er målte dage. */}
+            <div className="flex flex-col items-end gap-1">
+              {riderScoreCell?.state === "race" ? (
+                <span className="font-data text-3xs uppercase tracking-[.06em] text-cz-3">
+                  {t("score.raceDay")}
                 </span>
-                {(riderScore.spark?.length ?? 0) > 1 && (
-                  <TrainingScoreSparkline
-                    points={riderScore.spark}
-                    label={t("score.sparkAria", { name: `${rider.firstname} ${rider.lastname}` })}
-                    width={64}
-                    height={18}
-                  />
-                )}
-              </div>
-            ) : (
-              <span className="text-cz-3 text-xs">—</span>
-            )}
+              ) : riderScoreCell?.state === "score" ? (
+                <span className="font-mono tabular-nums text-sm font-bold leading-none text-cz-1">
+                  {riderScoreCell.value}
+                </span>
+              ) : riderScoreCell?.state === "latest" ? (
+                <span className="inline-flex items-baseline gap-1" title={t("score.latestHint")}>
+                  <span className="font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("score.latest")}</span>
+                  <span className="font-mono tabular-nums text-sm font-bold leading-none text-cz-3">{riderScoreCell.value}</span>
+                </span>
+              ) : (
+                <span className="text-cz-3 text-xs">—</span>
+              )}
+              {(riderScore?.spark?.length ?? 0) > 0 && (
+                <TrainingScoreSparkline
+                  points={riderScore.spark}
+                  label={t("score.sparkAria", { name: `${rider.firstname} ${rider.lastname}` })}
+                  width={64}
+                  height={18}
+                />
+              )}
+            </div>
           </td>
         )}
 
@@ -1534,7 +1608,9 @@ export default function TrainingPage() {
       setBulkMsg({ type: "warn", text: t("bulkPickFocus") });
       return;
     }
-    const ids = [...selected];
+    // #5485: "Apply to N" rammer aldrig en rytter der ikke står i filtret,
+    // heller ikke i det øjeblik før markeringen er skåret ned (effekten nedenfor).
+    const ids = [...pruneSelection(selected, filterIds)];
     if (ids.length === 0) return;
     const { dayType, session } = bulkChoiceToDay(bulkDay);
     const result = await setPlanBulk(ids, dayType, session);
@@ -1732,17 +1808,34 @@ export default function TrainingPage() {
     },
   ];
   const filterIds = idsForFilter(overview, overviewFilter);
-  const visibleRiders = filterIds ? riders.filter((r) => filterIds.has(r.id)) : riders;
-  const allSelected = visibleRiders.length > 0 && visibleRiders.every((r) => selected.has(r.id));
+  // Filtrets ryttere: dem markeringen og "Apply to N" må ramme.
+  const selectableRiders = filterIds ? riders.filter((r) => filterIds.has(r.id)) : riders;
+  // Rækkerne tabellen viser: filtrets ryttere + dem hvis dag lige er gemt
+  // (vises ca. 2 sekunder endnu med "Saved", se lingerAfterSave).
+  const visibleIds = visibleIdsFor(filterIds, lingerIds);
+  const visibleRiders = visibleIds ? riders.filter((r) => visibleIds.has(r.id)) : riders;
+  const allSelected = selectableRiders.length > 0 && selectableRiders.every((r) => selected.has(r.id));
+
+  // #5485 (rettet 23/9): markeringen skæres ned til filtrets ryttere, både ved
+  // filterskift OG når en rytter forsvinder fra filtret fordi han har fået en
+  // dag (hans egen vælger, "Use assistant pick", dagspanelet eller en mængde-
+  // handling). Nøglen er filtrets indhold som tekst, så effekten kun kører når
+  // indholdet faktisk skifter, ikke ved hver render.
+  const filterKey = filterIds ? [...filterIds].sort().join("|") : null;
+  useEffect(() => {
+    if (filterKey === null) return;
+    const keep = new Set(filterKey ? filterKey.split("|") : []);
+    setSelected((prev) => {
+      const next = pruneSelection(prev, keep);
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filterKey]);
 
   // Et tryk på en overbliks-celle filtrerer tabellen; et tryk mere viser alle.
   // En rytter der forsvinder fra tabellen, må ikke blive ved med at være valgt
-  // til mængde-handlingen i værktøjslinjen.
+  // til mængde-handlingen i værktøjslinjen (effekten ovenfor).
   function toggleOverviewFilter(key) {
-    const next = overviewFilter === key ? null : key;
-    setOverviewFilter(next);
-    const keep = idsForFilter(overview, next);
-    if (keep) setSelected((prev) => new Set([...prev].filter((id) => keep.has(id))));
+    setOverviewFilter(overviewFilter === key ? null : key);
   }
   const activeFilterLabel = overviewFilter ? overviewCells.find((c) => c.key === overviewFilter)?.label : null;
 
@@ -1756,6 +1849,12 @@ export default function TrainingPage() {
     dayClose,
   });
   const runnable = canRunToday({ trainedToday: !!todayRun, enabled, dayClose });
+  // #2819/#5485: turens trin 2 peger på det tryk der KØRER dagen (se
+  // getTrainingTourSteps). Ét anker ad gangen: guld-knappen, "Run now" eller
+  // statuslinjen.
+  const tourTarget = tourRunTarget(primaryAction, runnable);
+  const trainingTourSteps = useTrainingTourSteps(t, tourTarget);
+  const selectedCount = pruneSelection(selected, filterIds).size;
   const runTodayLabel = running ? t("loading") : (dayClose ? t("runDayNow") : t("trainToday"));
   const primaryLabel = primaryAction.kind === "setDays"
     ? t("primary.setDays", { n: primaryAction.riders })
@@ -1899,7 +1998,7 @@ export default function TrainingPage() {
           onChangeDay={() => setFocusPanelRiderId(riderId)}
           changeDisabled={savingId === riderId || bulkApplying}
           changeLabel={t("card.changeDay")}
-          score={scoreVisible ? mobileScoreCell(riderScore) : null}
+          score={scoreVisible ? scoreCellFor(riderId) : null}
           scoreSpark={riderScore?.spark ? [...riderScore.spark] : null}
           scoreAria={t("score.sparkAria", { name: `${rider.firstname} ${rider.lastname}` })}
           footer={riderCardFooter(riderId)}
@@ -1951,6 +2050,7 @@ export default function TrainingPage() {
             // training_score_visible er off ⇒ hverken kolonnen eller blokken i
             // kortet findes paa telefonen, praecis som paa desktop.
             scoreFor={scoreVisible ? (riderId) => trainingScore?.[riderId] ?? null : null}
+            scoreSettled={scoreSettled}
             conditionFor={(riderId) => condition[riderId] ?? null}
             ageFor={(riderId) => ageForSeason(riderById.get(riderId)?.birthdate, seasonYear)}
             isRacing={racingFor}
@@ -1982,51 +2082,17 @@ export default function TrainingPage() {
             yesterdaySlot={null}
             sortSlot={null}
             assistantSlot={
-              // Assistenten er et LUKKET panel med tælling (mockup 2), ikke et
-              // åbent kort. Trykket åbner det samme AssistantSuggestionsPanel
-              // desktop bruger — her under tabellen, hvor det blev kaldt frem.
               // #5485: sorteringen står her under tabellen, så mindst 8 ryttere
               // står på første skærm; overblikket over tabellen er den hurtige
-              // vej til "hvem er træt".
-              <>
-                <RosterMobileSortControl
-                  sort={rosterSort.sort}
-                  sortDir={rosterSort.sortDir}
-                  onSort={rosterSort.handleSort}
-                  scoreVisible={scoreVisible}
-                  t={t}
-                />
-                <button
-                  type="button"
-                  onClick={handleOpenAssistantPanel}
-                  className="flex min-h-11 w-full items-center gap-2.5 rounded-cz border border-cz-border bg-cz-card px-3 text-start"
-                >
-                  <StarIcon size={16} className="flex-none text-cz-3" aria-hidden="true" />
-                  <span className="flex-1 text-[13px] font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
-                  <span className="font-data text-2xs text-cz-3">
-                    {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
-                  </span>
-                </button>
-                {assistantPanelOpen && (
-                  <div ref={assistantPanelRef} className="mt-3">
-                    <AssistantSuggestionsPanel
-                      rows={assistantSuggestionRows}
-                      visibleRows={assistantVisibleRows}
-                      noPlanCount={assistantNoPlanCount}
-                      onlyWithoutPlan={assistantOnlyNoPlan}
-                      onToggleOnlyWithoutPlan={handleToggleAssistantOnlyNoPlan}
-                      selected={assistantSelected}
-                      onToggleSelect={toggleAssistantSelect}
-                      onAcceptSelected={handleAcceptAssistantSelected}
-                      onAcceptAll={handleAcceptAssistantAll}
-                      onDismiss={handleDismissAssistantPanel}
-                      busy={bulkApplying}
-                      message={assistantMsg}
-                      acceptableCount={assistantAcceptableIds.size}
-                    />
-                  </div>
-                )}
-              </>
+              // vej til "hvem er træt". Assistenten er rykket OP (ejer-go
+              // 23/9): rækken lige under overblikket, se assistantRow.
+              <RosterMobileSortControl
+                sort={rosterSort.sort}
+                sortDir={rosterSort.sortDir}
+                onSort={rosterSort.handleSort}
+                scoreVisible={scoreVisible}
+                t={t}
+              />
             }
           />
         )}
@@ -2053,62 +2119,124 @@ export default function TrainingPage() {
   // chips) har ingen statuscelle, så knappen står dér ved siden af guld-knappen
   // i samme række (ingen ekstra højde, CodeRabbit på #5564).
   const runNowBesidePrimary = overviewVariant !== "desktop" && runnable && primaryAction.kind === "setDays";
+  // #2819/#5485: tour-ankeret sidder på det tryk der KØRER dagen (tourTarget).
+  // Wrapper-span frem for data-tour på <Button>, så ankeret overlever uanset om
+  // Button videresender data-*.
+  const tourAnchor = (target) => (tourTarget === target ? "training-run-today" : undefined);
   const primaryButton = primaryAction.kind === "none" ? null : (
-    // #2819: tour-anker på dagens knap. Wrapper-span frem for data-tour på
-    // <Button>, så ankeret overlever uanset om Button videresender data-*.
-    <span data-tour="training-run-today" className={isMobile ? "mb-3 flex gap-2" : "inline-flex gap-2"}>
-      <Button
-        type="button"
-        variant={assistantPanelOpen ? "secondary" : "primary"}
-        size={isMobile ? "md" : "sm"}
-        onClick={handlePrimary}
-        // Kun optaget mens kørslen eller en mængde-ændring står på; ellers er
-        // knappen aldrig grå (Clarity: den grå "Train today" var en af sidens
-        // største kilder til døde klik).
-        disabled={running || bulkApplying}
-        // min-h-11 = #1602's 44px tryk-mål på telefonen.
-        className={isMobile ? "min-h-11 flex-1" : ""}
-        data-testid="training-primary"
-      >
-        {primaryLabel}
-      </Button>
-      {runNowBesidePrimary && (
+    <span className={isMobile ? "mb-3 flex gap-2" : "inline-flex gap-2"}>
+      <span data-tour={tourAnchor("primary")} className={isMobile ? "flex flex-1" : "inline-flex"}>
         <Button
           type="button"
-          variant="secondary"
+          variant={assistantPanelOpen ? "secondary" : "primary"}
           size={isMobile ? "md" : "sm"}
-          iconLeft={<PlayIcon size={12} aria-hidden="true" />}
-          onClick={handleRunToday}
+          onClick={handlePrimary}
+          // Kun optaget mens kørslen eller en mængde-ændring står på; ellers er
+          // knappen aldrig grå (Clarity: den grå "Train today" var en af sidens
+          // største kilder til døde klik).
           disabled={running || bulkApplying}
-          className={isMobile ? "min-h-11 flex-none" : ""}
+          // min-h-11 = #1602's 44px tryk-mål på telefonen.
+          className={isMobile ? "min-h-11 flex-1" : ""}
+          data-testid="training-primary"
         >
-          {running ? t("loading") : t("overview.runNow")}
+          {primaryLabel}
         </Button>
+      </span>
+      {runNowBesidePrimary && (
+        <span data-tour={tourAnchor("runNow")} className="inline-flex flex-none">
+          <Button
+            type="button"
+            variant="secondary"
+            size={isMobile ? "md" : "sm"}
+            iconLeft={<PlayIcon size={12} aria-hidden="true" />}
+            onClick={handleRunToday}
+            disabled={running || bulkApplying}
+            className={isMobile ? "min-h-11 flex-none" : ""}
+            data-testid="training-run-now"
+          >
+            {running ? t("loading") : t("overview.runNow")}
+          </Button>
+        </span>
       )}
     </span>
   );
 
   // Overblikkets femte celle: dagens status + en sekundær "Run now" mens
   // guld-knappen beder om dage, så dagen stadig kan køres uden at alle har en.
+  // #5485 (rettet 23/9, #1936): er dagen kørt, siger cellen også at ændringer
+  // nu gælder fra i morgen (tickModelDone i fuld længde som title).
   const overviewStatus = (
     <>
-      <div className="min-w-0" data-tour={primaryAction.kind === "none" && !phoneLayout ? "training-run-today" : undefined}>
+      <div className="min-w-0" data-tour={!phoneLayout ? tourAnchor("status") : undefined}>
         <div className="font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3">{t("overview.status")}</div>
         <div className="mt-1.5 truncate text-[13px] text-cz-1" title={todayStatusText}>{todayStatusText}</div>
+        {todayRun && (
+          <div className="mt-0.5 truncate text-2xs text-cz-3" title={t("tickModelDone")} data-testid="training-tick-model-note">
+            {t("overview.changesTomorrow")}
+          </div>
+        )}
       </div>
       {runnable && primaryAction.kind === "setDays" && (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          iconLeft={<PlayIcon size={12} aria-hidden="true" />}
-          onClick={handleRunToday}
-          disabled={running}
-        >
-          {running ? t("loading") : t("overview.runNow")}
-        </Button>
+        <span data-tour={tourAnchor("runNow")} className="inline-flex flex-none">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            iconLeft={<PlayIcon size={12} aria-hidden="true" />}
+            onClick={handleRunToday}
+            disabled={running}
+            data-testid="training-run-now"
+          >
+            {running ? t("loading") : t("overview.runNow")}
+          </Button>
+        </span>
       )}
     </>
+  );
+
+  // #4522/#5485: assistentens forslags-panel. Samme panel på alle flader;
+  // kun stedet det åbnes fra er forskelligt.
+  const assistantPanel = assistantPanelOpen ? (
+    <div ref={assistantPanelRef}>
+      <AssistantSuggestionsPanel
+        rows={assistantSuggestionRows}
+        visibleRows={assistantVisibleRows}
+        noPlanCount={assistantNoPlanCount}
+        onlyWithoutPlan={assistantOnlyNoPlan}
+        onToggleOnlyWithoutPlan={handleToggleAssistantOnlyNoPlan}
+        selected={assistantSelected}
+        onToggleSelect={toggleAssistantSelect}
+        onAcceptSelected={handleAcceptAssistantSelected}
+        onAcceptAll={handleAcceptAssistantAll}
+        onDismiss={handleDismissAssistantPanel}
+        busy={bulkApplying}
+        message={assistantMsg}
+        acceptableCount={assistantAcceptableIds.size}
+      />
+    </div>
+  ) : null;
+
+  // #5485 (ejer-go 23/9): på telefonen står assistenten som en række LIGE
+  // under overblikkets fire tal, over tabellen, i begge telefon-visninger
+  // (beta-tabellen og #5124's D-047-gren). Samme lukkede række med tælling som
+  // mockup 2; trykket åbner det samme panel lige under rækken.
+  const assistantRow = (
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={handleOpenAssistantPanel}
+        data-testid="training-assistant-row"
+        className="flex min-h-11 w-full items-center gap-2.5 rounded-cz border border-cz-border bg-cz-card px-3 text-start transition-colors hover:bg-cz-subtle"
+      >
+        <StarIcon size={16} className="flex-none text-cz-3" aria-hidden="true" />
+        <span className="flex-1 text-[13px] font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
+        <span className="font-data text-2xs tabular-nums text-cz-3">
+          {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
+        </span>
+        <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
+      </button>
+      {assistantPanel}
+    </div>
   );
 
   function renderBulkDayOptions() {
@@ -2151,7 +2279,7 @@ export default function TrainingPage() {
     return sortRoster(list).map((rider) => {
       const cond = condition[rider.id] ?? {};
       const age = ageForSeason(rider.birthdate, seasonYear);
-      const cell = scoreVisible ? mobileScoreCell(trainingScore?.[rider.id] ?? null) : null;
+      const cell = scoreVisible ? scoreCellFor(rider.id) : null;
       return {
         id: rider.id,
         name: `${rider.firstname} ${rider.lastname}`,
@@ -2168,7 +2296,7 @@ export default function TrainingPage() {
         score: cell
           ? {
               state: cell.state,
-              value: cell.state === "score" ? cell.value : null,
+              value: cell.state === "score" || cell.state === "latest" ? cell.value : null,
               spark: trainingScore?.[rider.id]?.spark ?? null,
             }
           : null,
@@ -2274,7 +2402,6 @@ export default function TrainingPage() {
           : (riderWeekPlans[key] != null ? t("individualWeekPlanRemove") : null)}
         onReset={() => (isTeam ? handleResetWeekPlan() : handleRemoveRiderWeekPlan(key))}
         message={isTeam ? weekPlanMsg : riderWeekMsgMap[key] ?? null}
-        note={t("weekRhythmBonusNote")}
         ownPlans={ridersWithOwnWeekPlan.map((r) => ({
           id: r.id,
           name: `${r.firstname} ${r.lastname}`,
@@ -2300,9 +2427,9 @@ export default function TrainingPage() {
     const toolbar = (
       <>
         <div className="flex flex-wrap items-center gap-2.5">
-          {selected.size > 0 ? (
+          {selectedCount > 0 ? (
             <>
-              <span className="text-[13px] font-semibold text-cz-1">{t("selected", { n: selected.size })}</span>
+              <span className="text-[13px] font-semibold text-cz-1">{t("selected", { n: selectedCount })}</span>
               <div className="w-56">
                 <Select
                   size="sm"
@@ -2315,7 +2442,7 @@ export default function TrainingPage() {
                 </Select>
               </div>
               <Button type="button" variant="secondary" size="sm" onClick={handleBulkApply} disabled={bulkApplying}>
-                {bulkApplying ? t("bulkApplying") : t("today.applyTo", { n: selected.size })}
+                {bulkApplying ? t("bulkApplying") : t("today.applyTo", { n: selectedCount })}
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={clearSelection} disabled={bulkApplying}>
                 {t("today.clear")}
@@ -2344,15 +2471,19 @@ export default function TrainingPage() {
           />
           <Checkbox checked={groupByType} onChange={(e) => setGroupByType(e.target.checked)} label={t("groupByType")} />
           {/* #4522: assistentens forslag — flyttet fra sidehovedet til
-              tabellens værktøjslinje (en tabel-handling, ikke sidens). */}
-          <button
+              tabellens værktøjslinje (en tabel-handling, ikke sidens).
+              #5485 (ejer-go 23/9): en rigtig sekundær knap med ramme, ikke et
+              tekst-link. Sidens ene gold er stadig guld-knappen. */}
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
+            iconLeft={<StarIcon size={13} aria-hidden="true" />}
             onClick={handleOpenAssistantPanel}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-cz-accent-t hover:underline"
+            data-testid="training-assistant-button"
           >
-            <StarIcon size={13} aria-hidden="true" />
             {t("assistantSuggestions.openButton")}
-          </button>
+          </Button>
           <Link
             to="/help?section=dailytraining"
             className="whitespace-nowrap text-2xs text-cz-3 underline decoration-dotted hover:text-cz-accent"
@@ -2365,25 +2496,7 @@ export default function TrainingPage() {
 
     return (
       <div className="space-y-3">
-        {assistantPanelOpen && (
-          <div ref={assistantPanelRef}>
-            <AssistantSuggestionsPanel
-              rows={assistantSuggestionRows}
-              visibleRows={assistantVisibleRows}
-              noPlanCount={assistantNoPlanCount}
-              onlyWithoutPlan={assistantOnlyNoPlan}
-              onToggleOnlyWithoutPlan={handleToggleAssistantOnlyNoPlan}
-              selected={assistantSelected}
-              onToggleSelect={toggleAssistantSelect}
-              onAcceptSelected={handleAcceptAssistantSelected}
-              onAcceptAll={handleAcceptAssistantAll}
-              onDismiss={handleDismissAssistantPanel}
-              busy={bulkApplying}
-              message={assistantMsg}
-              acceptableCount={assistantAcceptableIds.size}
-            />
-          </div>
-        )}
+        {assistantPanel}
         {runError && <p className="text-sm text-cz-danger">{runError}</p>}
         {(history.seasonState === SEASON_RECEIPT_NOT_STARTED || history.seasonState === SEASON_RECEIPT_NO_DAYS) && history.seasonStart && (
           <p className="text-2xs leading-snug text-cz-3">
@@ -2425,6 +2538,7 @@ export default function TrainingPage() {
                     error={planActionError?.riderId === riderId ? planActionError.error : null}
                     onChoose={(choice) => handleDayChoice(riderId, choice)}
                     dataTour={isFirst ? "training-focus" : undefined}
+                    justSaved={lingerIds.has(riderId)}
                   />
                 );
               }}
@@ -2445,8 +2559,21 @@ export default function TrainingPage() {
 
   // Sidehoved-status (T2 PageHeader subtitle) — samme 3 tilstande som før, nu i
   // ÉT sted i stedet for inline i JSX'en. Ren tekst/farve-mapping, ingen ny logik.
+  // #5485 (rettet 23/9, #1936): telefonen har ingen statuscelle i overblikket,
+  // så sidehovedets statuslinje siger på telefonen også at ændringer nu gælder
+  // fra i morgen (tickModelDone i fuld længde som title). Desktop har samme
+  // linje i overblikkets statuscelle.
   const headerStatus = todayRun
-    ? <span className="text-cz-success font-medium">{trainedTodayLabel()}</span>
+    ? (
+      <>
+        <span className="text-cz-success font-medium">{trainedTodayLabel()}</span>
+        {phoneLayout && (
+          <span className="block text-cz-3" title={t("tickModelDone")} data-testid="training-tick-model-note">
+            {t("overview.changesTomorrow")}
+          </span>
+        )}
+      </>
+    )
     : !enabled
       ? <span className="italic">{t("disabledNote")}</span>
       // #4847: naar loebsdags-ticket er on, koerer programmet af sig selv naar dagens
@@ -2484,9 +2611,12 @@ export default function TrainingPage() {
       {isMobile && primaryButton}
 
       {/* #5485: fanerne hedder Today / Week plan / Development / Report.
-          Tallet ved Today er antallet af ryttere der mangler en dag. */}
+          Tallet ved Today er antallet af ryttere der mangler en dag.
+          `fit` (rettet 23/9): alle fire faner står helt på 360-390 px; uden den
+          blev "Report"/"Rapport" skåret af. Den kanoniske fane-komponent, kun
+          luften mellem fanerne er strammet på telefonen (tabsStyles.js). */}
       <Tabs value={activeTab} onChange={setTab} className="mt-1">
-        <TabList label={t("title")} className="mb-3">
+        <TabList label={t("title")} className="mb-3" fit>
           <Tab value="today">
             {t("tabs.today")}
             {overview.needsDay.length > 0 && (
@@ -2501,7 +2631,7 @@ export default function TrainingPage() {
       <TabPanel value="today">
       <div className="space-y-3">
       {/* #5485 (aendring 1): overblikket øverst. Et tryk filtrerer tabellen. */}
-      <div data-tour={primaryAction.kind === "none" && phoneLayout ? "training-run-today" : undefined}>
+      <div data-tour={phoneLayout ? tourAnchor("status") : undefined}>
         <TrainingOverview
           cells={overviewCells}
           active={overviewFilter}
@@ -2510,6 +2640,11 @@ export default function TrainingPage() {
           status={overviewStatus}
         />
       </div>
+      {/* #5485 (ejer-go 23/9): assistenten rykket OP på telefonen — rækken
+          lige under overblikkets fire tal, over tabellen, i begge telefon-
+          visninger. Desktop (og telefon på langs uden beta) har knappen i
+          tabellens værktøjslinje. */}
+      {phoneTodayView && assistantRow}
       {/* #3643 (ejer-valg 18/9, låst): telefonen får sin EGEN visning — tabel
           med dagens løbsdage som kolonner, mockup 2. Alt under gaten er ren
           præsentation: fetches, mutationer og state-maskiner er de samme, og
@@ -2527,30 +2662,10 @@ export default function TrainingPage() {
       {/* #5485: desktop (og telefon på langs uden beta-flaget) får den nye
           tabel; telefonen med flaget sin løbsdags-tabel; telefonen uden flaget
           #5124's D-047-gren, uændret indhold i den nye struktur. */}
-      {!phoneLayout || (!isMobile && !mobileTable) ? renderDesktopToday() : mobileTableView ? renderMobileToday() : (
+      {!phoneTodayView ? renderDesktopToday() : mobileTableView ? renderMobileToday() : (
       <div className="space-y-6">
-        {/* #4522 (ejer-direktiv 31/8): assistent-forslagspanelet — øverst i
-            indholdet, som mockuppen kræver. Card med accent-hairline-border
-            (samme opskrift som PlannerAssistantCard, #3086's peak-forslag). */}
-        {assistantPanelOpen && (
-          <div ref={assistantPanelRef}>
-            <AssistantSuggestionsPanel
-              rows={assistantSuggestionRows}
-              visibleRows={assistantVisibleRows}
-              noPlanCount={assistantNoPlanCount}
-              onlyWithoutPlan={assistantOnlyNoPlan}
-              onToggleOnlyWithoutPlan={handleToggleAssistantOnlyNoPlan}
-              selected={assistantSelected}
-              onToggleSelect={toggleAssistantSelect}
-              onAcceptSelected={handleAcceptAssistantSelected}
-              onAcceptAll={handleAcceptAssistantAll}
-              onDismiss={handleDismissAssistantPanel}
-              busy={bulkApplying}
-              message={assistantMsg}
-              acceptableCount={assistantAcceptableIds.size}
-            />
-          </div>
-        )}
+        {/* #4522/#5485: assistent-forslagspanelet åbnes nu fra rækken lige
+            under overblikket (assistantRow ovenfor), og panelet står dér. */}
 
         {runError && (
           <p className="text-cz-danger text-sm">{runError}</p>
@@ -2598,16 +2713,6 @@ export default function TrainingPage() {
               label={t("groupByType")}
             />
           ) : <span />}
-          {/* #5485: sidehovedet bærer kun guld-knappen nu; assistentens
-              forslag åbnes herfra, samme sted som på desktop-tabellen. */}
-          <button
-            type="button"
-            onClick={handleOpenAssistantPanel}
-            className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-cz-accent-t"
-          >
-            <StarIcon size={13} aria-hidden="true" />
-            {t("mobile.assistantTitle")}
-          </button>
           <Link
             to="/help?section=dailytraining"
             className="text-2xs text-cz-3 hover:text-cz-accent underline decoration-dotted whitespace-nowrap"
@@ -2617,9 +2722,9 @@ export default function TrainingPage() {
         </div>
 
         {/* Bulk-apply bjælke — vises kun når ryttere er valgt (#1480) */}
-        {selected.size > 0 && (
+        {selectedCount > 0 && (
           <Card className="p-4 flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-cz-1">{t("selected", { n: selected.size })}</span>
+            <span className="text-sm font-medium text-cz-1">{t("selected", { n: selectedCount })}</span>
 
             {/* #3762: ét valg, ikke to. Listen er de DAGE der findes, grupperet
                 som i panelet — så en markering aldrig kan få en kombination som
@@ -2654,7 +2759,7 @@ export default function TrainingPage() {
             </div>
 
             <Button type="button" variant="secondary" size="sm" onClick={handleBulkApply} disabled={bulkApplying || !bulkDay}>
-              {bulkApplying ? t("bulkApplying") : t("bulkApply", { n: selected.size })}
+              {bulkApplying ? t("bulkApplying") : t("bulkApply", { n: selectedCount })}
             </Button>
 
             <Button type="button" variant="ghost" size="sm" onClick={clearSelection} disabled={bulkApplying}>

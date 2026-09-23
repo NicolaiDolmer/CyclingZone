@@ -39,7 +39,7 @@ export type TodayRow = {
   tired: boolean;
   seasonPoints: number | null;
   noDay: boolean;
-  score?: { state: "score" | "race" | "none"; value?: number | null; spark?: TrainingScorePoint[] | null } | null;
+  score?: { state: "score" | "latest" | "race" | "none"; value?: number | null; spark?: TrainingScorePoint[] | null } | null;
 };
 
 export type TodayGroup = { key: string; label: string; count: string; rows: TodayRow[] };
@@ -181,24 +181,37 @@ export default function TrainingTodayTable({
             <Meter value={row.fatigue} warn={row.tired} tone="fatigue" />
           </td>
           {showScore && (
-            <td className={`${cellBase} w-[84px] text-right font-data tabular-nums`}>
-              {row.score?.state === "score" ? (
-                <div className="flex flex-col items-end gap-1">
+            <td
+              className={`${cellBase} w-[84px] text-right font-data tabular-nums`}
+              data-testid="training-score-cell"
+              data-score-state={row.score?.state ?? "none"}
+            >
+              {/* #5485 (ejer-valg A 23/9): foer dagens pas staar det SENESTE
+                  tal daempet med et lille "latest"-maerke, og kurven staar
+                  altid. Efter passet: dagens tal som foer, eller streg paa en
+                  hviledag. */}
+              <div className="flex flex-col items-end gap-1">
+                {row.score?.state === "score" ? (
                   <span className="text-sm font-bold leading-none text-cz-1">{row.score.value}</span>
-                  {(row.score.spark?.length ?? 0) > 1 && (
-                    <TrainingScoreSparkline
-                      points={row.score.spark ?? null}
-                      label={t("score.sparkAria", { name: row.name })}
-                      width={64}
-                      height={18}
-                    />
-                  )}
-                </div>
-              ) : row.score?.state === "race" ? (
-                <span className="text-3xs uppercase tracking-[.06em] text-cz-3">{t("score.raceDay")}</span>
-              ) : (
-                <span className="text-xs text-cz-3">—</span>
-              )}
+                ) : row.score?.state === "latest" ? (
+                  <span className="inline-flex items-baseline gap-1" title={t("score.latestHint")}>
+                    <span className="text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("score.latest")}</span>
+                    <span className="text-sm font-bold leading-none text-cz-3">{row.score.value}</span>
+                  </span>
+                ) : row.score?.state === "race" ? (
+                  <span className="text-3xs uppercase tracking-[.06em] text-cz-3">{t("score.raceDay")}</span>
+                ) : (
+                  <span className="text-xs text-cz-3">—</span>
+                )}
+                {(row.score?.spark?.length ?? 0) > 0 && (
+                  <TrainingScoreSparkline
+                    points={row.score?.spark ?? null}
+                    label={t("score.sparkAria", { name: row.name })}
+                    width={64}
+                    height={18}
+                  />
+                )}
+              </div>
             </td>
           )}
           <td className={`${cellBase} w-[220px]`}>{renderDay(row.id, isFirst)}</td>

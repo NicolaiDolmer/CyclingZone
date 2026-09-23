@@ -38,7 +38,6 @@ export default function TrainingWeekPlan({
   resetLabel = null,
   onReset,
   message,
-  note,
   ownPlans,
   onOpenOwnPlan,
 }: {
@@ -59,7 +58,6 @@ export default function TrainingWeekPlan({
   resetLabel?: string | null;
   onReset?: () => void;
   message: { type: string; text: string } | null;
-  note: string;
   ownPlans: OwnPlanRow[];
   onOpenOwnPlan: (riderId: string) => void;
 }) {
@@ -161,7 +159,9 @@ export default function TrainingWeekPlan({
               );
             })}
           </div>
-          <p className="mt-2 text-xs text-cz-3">{note}</p>
+          {/* #5485 (23/9): den gamle lange forklaring ("The rhythm is a
+              default ... consistency bonus ...") under gitteret er vaek.
+              Introen oeverst er nok paa fladen; resten bor i Hjaelp (#4025). */}
         </div>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-cz-border px-4 py-3 sm:px-5">

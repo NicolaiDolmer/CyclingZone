@@ -131,16 +131,28 @@ export default function TrainingMobileRiderCard({
           <div className="min-w-0">
             <div className="font-data text-3xs font-semibold uppercase tracking-[.09em] text-cz-3">
               {t("score.column")}
+              {/* #5485 (ejer-valg A 23/9): foer dagens pas er tallet det
+                  SENESTE, daempet, og maerket siger det. */}
+              {score.state === "latest" && (
+                <span className="ms-1.5 normal-case tracking-normal" title={t("score.latestHint")}>
+                  · {t("score.latest")}
+                </span>
+              )}
             </div>
-            <div className="mt-0.5 font-data text-2xl font-bold leading-none tabular-nums text-cz-1">
-              {score.state === "score"
+            <div
+              className={`mt-0.5 font-data text-2xl font-bold leading-none tabular-nums ${score.state === "latest" ? "text-cz-3" : "text-cz-1"}`}
+              data-score-state={score.state}
+            >
+              {score.state === "score" || score.state === "latest"
                 ? score.value
                 : score.state === "race"
                   ? <span className="text-sm font-semibold uppercase tracking-[.06em] text-cz-3">{t("score.raceDay")}</span>
                   : <span className="text-cz-3">—</span>}
             </div>
           </div>
-          {(scoreSpark?.length ?? 0) > 1 && (
+          {/* Kurven staar altid naar der er maalte dage (#5485), ogsaa foer
+              dagens pas og paa en hviledag. */}
+          {(scoreSpark?.length ?? 0) > 0 && (
             <TrainingScoreSparkline points={scoreSpark} label={scoreAria} width={104} height={30} />
           )}
         </div>

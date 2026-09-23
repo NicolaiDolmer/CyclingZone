@@ -51,7 +51,8 @@
     "runNow": "Run now",
     "showing": "Showing: {label}",
     "showAll": "Show all",
-    "emptyFiltered": "No riders here right now."
+    "emptyFiltered": "No riders here right now.",
+    "changesTomorrow": "Changes now take effect tomorrow."
   },
   "today": {
     "colSelect": "Select",
@@ -62,7 +63,6 @@
     "clear": "Clear",
     "noDaySet": "No day set yet",
     "useAssistantPick": "Use assistant pick: {session}",
-    "assistant": "Assistant",
     "count": "{n, plural, one {# rider} other {# riders}}"
   },
   "daySelect": {
@@ -176,8 +176,6 @@
   "riderHistorySubtitle": "This rider's daily training over the last 30 days",
   "riderHistoryEmpty": "No training history for this rider yet.",
   "riderHistoryRest": "Rest day",
-  "weekRhythmTitle": "Weekly rhythm",
-  "weekRhythmIntro": "Set your team's target intensity for each day of the week. This is only the default for riders without their own setting: a rider's own focus and intensity, or their individual weekly plan, always take priority over the team rhythm for that rider. \"Train today\" still needs your click for the consistency bonus.",
   "weekday_mon": "Mon",
   "weekday_tue": "Tue",
   "weekday_wed": "Wed",
@@ -185,7 +183,6 @@
   "weekday_fri": "Fri",
   "weekday_sat": "Sat",
   "weekday_sun": "Sun",
-  "weekRhythmSave": "Save rhythm",
   "weekRhythmResetButton": "Reset to no rhythm",
   "weekRhythmSaved": "Weekly rhythm saved.",
   "weekRhythmReset": "Weekly rhythm removed: riders are back to their season intensity every day.",
@@ -195,7 +192,6 @@
   "planActionError_not_own_rider": "You can only train your own riders.",
   "planActionError_auth": "Your session expired. Sign in again.",
   "planActionError_network": "Connection failed. Check your network and try again.",
-  "weekRhythmBonusNote": "The rhythm is a default: it only applies to riders without their own focus/intensity or individual weekly plan, and it never touches focus. The manager consistency bonus (+25%) still only applies when you click \"Train today\" yourself.",
   "weekRhythmTodayShort": "Today: {intensity}",
   "weekRhythmTodayHint": "today: {intensity} (team weekly rhythm)",
   "weekRhythmTodayHintOwn": "today: {intensity} (own weekly plan)",
@@ -249,9 +245,6 @@
   "individualWeekPlanBadge": "Own plan",
   "individualWeekPlanBadgeTitle": "This rider has their own individual weekly plan, which overrides the team's weekly rhythm.",
   "individualWeekPlanOverviewTitle": "Individual weekly plans",
-  "individualWeekPlanOverviewEmpty": "No riders have an individual weekly plan yet. Set one from a rider's row on Train today.",
-  "individualWeekPlanOverviewOverridesNote": "Overrides team rhythm",
-  "individualWeekPlanOverviewGoToRoster": "Go to roster",
   "momentLabelToday": "Today's story",
   "momentLabelLatest": "Latest training story",
   "momentBreakthrough_0": "{riderName} breaks through on {ability}: {from} → {to}.",
@@ -286,6 +279,14 @@
     "runToday": {
       "title": "Train once a day",
       "body": "Press this and the squad trains with a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus. Hard intensity gains more but leaves riders tired for their next race."
+    },
+    "runNow": {
+      "title": "Run today's training",
+      "body": "Run now trains the whole squad today, also the riders without a day: they train what your assistant picks for their type. Press it once a day for a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus."
+    },
+    "runStatus": {
+      "title": "Train once a day",
+      "body": "This line shows today's training: whether it has run, or when it can. When the day can be run, the button that runs it appears right here."
     },
     "nextUp": {
       "title": "Where the training shows up",
@@ -366,6 +367,8 @@
     "sparkAria": "Training score, last 7 days: {name}",
     "columnHint": "How good today's session was, 1-99. Race days read 'Race'.",
     "columnHelpAria": "What the training score means: read it in Help",
+    "latest": "latest",
+    "latestHint": "Today's session has not run yet. This is the latest score.",
     "factor_intensity": "Session",
     "factor_focusMatch": "Focus match",
     "factor_condition": "Form and fatigue",

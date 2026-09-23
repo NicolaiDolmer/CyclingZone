@@ -45,6 +45,7 @@ export default function TrainingDaySelect({
   onChoose,
   dataTour,
   compact = false,
+  justSaved = false,
 }: {
   riderName: string;
   plan: DayPlan;
@@ -54,6 +55,10 @@ export default function TrainingDaySelect({
   onChoose: (choice: string) => Promise<boolean>;
   dataTour?: string;
   compact?: boolean;
+  // #5485 (23/9): siden ved ogsaa hvornaar en dag er gemt ad en ANDEN vej
+  // (fx "Use assistant pick" i samme raekke). Saa staar kvitteringen her, i
+  // raekken, uanset hvilken knap der gemte dagen.
+  justSaved?: boolean;
 }) {
   const { t } = useTranslation("training");
   const value = dayChoiceForPlan(plan);
@@ -122,7 +127,7 @@ export default function TrainingDaySelect({
             className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-cz-3"
           />
         </div>
-        {saved && (
+        {(saved || justSaved) && (
           <span role="status" className="inline-flex flex-none items-center gap-1 text-2xs font-semibold text-cz-success">
             <CheckIcon size={12} aria-hidden="true" />
             {t("daySelect.saved")}

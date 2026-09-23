@@ -50,6 +50,10 @@ export type RosterRider = {
   id: string;
   name: string;
   sub: string;
+  // #5485 (ejer-valg 23/9, audit 21/9 punkt 1): en skadet rytter skal kunne
+  // ses i RAEKKEN, ikke kun i kortet eet tryk vaek. Faerdig tekst (samme
+  // skade-noegler som desktop-raekken) + evt. ca.-datoen som title.
+  injury?: { label: string; title?: string | null } | null;
 };
 
 // Tal-kolonnernes faste bredder (#4851, ejer-review 20/9). De er MAALT paa det
@@ -231,6 +235,19 @@ export default function TrainingMobileRoster({
                     >
                       {rider.sub}
                     </span>
+                    {/* #5485: skaden i raekken, under underlinjen. Roed prik
+                        (ingen emoji, TASTE) + den korte skade-tekst. */}
+                    {rider.injury && (
+                      <span
+                        data-testid="training-mobile-injury"
+                        className="mt-0.5 flex w-full min-w-0 items-center gap-1 text-3xs font-medium leading-tight text-cz-danger"
+                      >
+                        <span aria-hidden="true" className="h-1.5 w-1.5 flex-none rounded-cz-pill bg-cz-danger" />
+                        <span className="min-w-0 truncate" title={rider.injury.title ?? rider.injury.label}>
+                          {rider.injury.label}
+                        </span>
+                      </span>
+                    )}
                   </button>
                 </td>
                 {columns.map((column) => {
@@ -269,9 +286,20 @@ export default function TrainingMobileRoster({
                       // flugter lodret ned gennem truppen, saa kolonnen kan
                       // skannes uden at laese hvert tal.
                       className="border-b border-cz-border px-1 py-1.5 text-center align-middle font-data tabular-nums"
+                      data-testid="training-mobile-score-cell"
+                      data-score-state={score.state}
                     >
                       {score.state === "score" ? (
                         <span className="text-2xs font-bold leading-tight text-cz-1">{score.value}</span>
+                      ) : score.state === "latest" ? (
+                        // #5485 (ejer-valg A 23/9): foer dagens pas staar det
+                        // seneste tal daempet med et lille "latest"-maerke.
+                        <span className="flex flex-col items-center leading-none">
+                          <span className="text-2xs font-bold text-cz-3">{score.value}</span>
+                          <span className="mt-0.5 block max-w-full truncate text-3xs font-medium text-cz-3" title={t("score.latestHint")}>
+                            {t("score.latest")}
+                          </span>
+                        </span>
                       ) : score.state === "race" ? (
                         <span className="text-3xs font-medium uppercase tracking-[.06em] text-cz-3">
                           {t("score.raceDay")}

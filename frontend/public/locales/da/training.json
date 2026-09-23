@@ -51,7 +51,8 @@
     "runNow": "Kør nu",
     "showing": "Viser: {label}",
     "showAll": "Vis alle",
-    "emptyFiltered": "Ingen ryttere her lige nu."
+    "emptyFiltered": "Ingen ryttere her lige nu.",
+    "changesTomorrow": "Ændringer gælder nu fra i morgen."
   },
   "today": {
     "colSelect": "Vælg",
@@ -62,7 +63,6 @@
     "clear": "Ryd",
     "noDaySet": "Ingen dag valgt endnu",
     "useAssistantPick": "Brug assistentens bud: {session}",
-    "assistant": "Assistent",
     "count": "{n, plural, one {# rytter} other {# ryttere}}"
   },
   "daySelect": {
@@ -176,8 +176,6 @@
   "riderHistorySubtitle": "Rytterens daglige træning de seneste 30 dage",
   "riderHistoryEmpty": "Ingen træningshistorik for rytteren endnu.",
   "riderHistoryRest": "Hviledag",
-  "weekRhythmTitle": "Ugentlig rytme",
-  "weekRhythmIntro": "Sæt holdets ønskede intensitet pr. ugedag. Dette er kun default for ryttere UDEN egen indstilling: en rytters eget fokus og intensitet, eller deres individuelle ugeplan, vinder altid over holdets rytme for netop den rytter. \"Træn i dag\" kræver stadig dit klik for konsistens-bonussen.",
   "weekday_mon": "Man",
   "weekday_tue": "Tir",
   "weekday_wed": "Ons",
@@ -185,7 +183,6 @@
   "weekday_fri": "Fre",
   "weekday_sat": "Lør",
   "weekday_sun": "Søn",
-  "weekRhythmSave": "Gem rytme",
   "weekRhythmResetButton": "Nulstil (ingen rytme)",
   "weekRhythmSaved": "Ugentlig rytme gemt.",
   "weekRhythmReset": "Ugentlig rytme fjernet: ryttere følger igen deres sæson-intensitet hver dag.",
@@ -195,7 +192,6 @@
   "planActionError_not_own_rider": "Du kan kun træne dine egne ryttere.",
   "planActionError_auth": "Din session er udløbet. Log ind igen.",
   "planActionError_network": "Forbindelsen fejlede. Tjek dit netværk og prøv igen.",
-  "weekRhythmBonusNote": "Rytmen er en default: den gælder kun for ryttere uden egen fokus/intensitet eller individuel ugeplan, og den rører aldrig fokus. Manager-konsistens-bonussen (+25%) gives stadig kun når du selv klikker \"Træn i dag\".",
   "weekRhythmTodayShort": "I dag: {intensity}",
   "weekRhythmTodayHint": "i dag: {intensity} (holdets ugentlige rytme)",
   "weekRhythmTodayHintOwn": "i dag: {intensity} (egen ugeplan)",
@@ -249,9 +245,6 @@
   "individualWeekPlanBadge": "Egen plan",
   "individualWeekPlanBadgeTitle": "Denne rytter har sin egen individuelle ugeplan, som overstyrer holdets ugentlige rytme.",
   "individualWeekPlanOverviewTitle": "Individuelle ugeplaner",
-  "individualWeekPlanOverviewEmpty": "Ingen ryttere har en individuel ugeplan endnu. Sæt en fra en rytters række på Træn i dag.",
-  "individualWeekPlanOverviewOverridesNote": "Overstyrer holdrytmen",
-  "individualWeekPlanOverviewGoToRoster": "Gå til rosteret",
   "momentLabelToday": "Dagens historie",
   "momentLabelLatest": "Seneste træningshistorie",
   "momentBreakthrough_0": "{riderName} gennembryder i {ability}: {from} → {to}.",
@@ -286,6 +279,14 @@
     "runToday": {
       "title": "Træn én gang om dagen",
       "body": "Trykker du her, træner truppen med +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
+    },
+    "runNow": {
+      "title": "Kør dagens træning",
+      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Tryk én gang om dagen for +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus."
+    },
+    "runStatus": {
+      "title": "Træn én gang om dagen",
+      "body": "Linjen viser dagens træning: om den er kørt, eller hvornår den kan køres. Når dagen kan køres, står knappen der kører den lige her."
     },
     "nextUp": {
       "title": "Hvor træningen viser sig",
@@ -366,6 +367,8 @@
     "sparkAria": "Træningsscore, seneste 7 dage: {name}",
     "columnHint": "Hvor godt dagens pas var, 1-99. Løbsdage viser \"Løb\".",
     "columnHelpAria": "Hvad træningsscoren betyder: læs det i Hjælp",
+    "latest": "seneste",
+    "latestHint": "Dagens pas er ikke kørt endnu. Det her er den seneste score.",
     "factor_intensity": "Passet",
     "factor_focusMatch": "Fokus-match",
     "factor_condition": "Form og træthed",

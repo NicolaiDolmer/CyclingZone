@@ -77,6 +77,7 @@ export default function TrainingMobileToday({
   assistantSlot,
   sortSlot,
   scoreFor = null,
+  scoreSettled = true,
   openFirstForTour = false,
   overviewLayout = false,
   cardFooterFor = null,
@@ -120,6 +121,9 @@ export default function TrainingMobileToday({
   // `training_score_visible` er off, og saa findes hverken kolonnen eller
   // blokken i kortet — praecis som paa desktop.
   scoreFor?: ((riderId: string) => MobileScoreView | null) | null;
+  // #5485 (ejer-valg A 23/9): er dagens pas koert? Foer det viser scoren det
+  // SENESTE tal daempet (mobileScoreCell), bagefter dagens tal.
+  scoreSettled?: boolean;
   // #2819: sandt naar onboarding-touren koerer paa denne side. Se effekten
   // nedenfor — det er den ENESTE grund til at et kort aabner af sig selv.
   openFirstForTour?: boolean;
@@ -151,7 +155,22 @@ export default function TrainingMobileToday({
         const sub = [type, `${t("mobile.formShort")}${cond.form ?? "—"}`, `${t("mobile.fatigueShort")}${cond.fatigue ?? "—"}`]
           .filter(Boolean)
           .join(" · ");
-        return { id: rider.id, name: riderShortName(rider), sub };
+        // #5485 (ejer-valg 23/9): skaden staar i raekken. Samme kerne og
+        // samme korte noegler som desktop-raekkens badge (injuryBadgeMessage
+        // compact): loebsdage naar backenden har skrevet dem, ellers
+        // kalenderdage fra injured_until. Ca.-datoen staar i title.
+        const injuryLeft = injuryTimeLeft(cond);
+        let injury: { label: string; title: string | null } | null = null;
+        if (injuryLeft.count > 0) {
+          const msg = injuryBadgeMessage(injuryLeft, { compact: true });
+          injury = {
+            label: t(msg.key, { days: msg.days }),
+            title: injuryLeft.approxDate
+              ? t("injuredApprox", { date: formatDate(injuryLeft.approxDate, "medium") })
+              : null,
+          };
+        }
+        return { id: rider.id, name: riderShortName(rider), sub, injury };
       }),
     [riders, conditionFor, tTypes, t],
   );
@@ -212,7 +231,7 @@ export default function TrainingMobileToday({
   // aldrig forsvinder helt fra telefonen (ejer 18/9).
   const scoreColumn =
     scoreFor && canShowScoreColumn(columns)
-      ? (riderId: string) => mobileScoreCell(scoreFor(riderId))
+      ? (riderId: string) => mobileScoreCell(scoreFor(riderId), { settled: scoreSettled })
       : null;
   const selectedScore = selected && scoreFor ? scoreFor(selected.id) : null;
 
@@ -272,7 +291,7 @@ export default function TrainingMobileToday({
           seasonPoints={seasonPointsFor(selected.id)}
           onChangeDay={() => onOpenDay(selected.id)}
           changeDisabled={dayBusyFor(selected.id)}
-          score={scoreFor ? mobileScoreCell(selectedScore) : null}
+          score={scoreFor ? mobileScoreCell(selectedScore, { settled: scoreSettled }) : null}
           scoreSpark={selectedScore?.spark ? [...selectedScore.spark] : null}
           changeLabel={changeLabel}
           footer={cardFooterFor ? cardFooterFor(selected.id) : null}
