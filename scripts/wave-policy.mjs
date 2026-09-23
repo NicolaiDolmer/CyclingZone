@@ -12,6 +12,35 @@ import { measureBootIdentity, sameBoot } from './wave-boot-identity.mjs';
 export const REPO = 'NicolaiDolmer/CyclingZone';
 const reserved = ['docs/now.md', '.claude/run', '.claude/launch.json'];
 const normalize = p => p.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
+const slugOf = branch => branch.replaceAll('/', '-').toLowerCase();
+// #5562: rullende optag - maks saa mange spor kan staa i koe til en koerende boelge.
+export const MAX_PENDING_TRACKS = 12;
+
+// Ownership as a prefix (#5562 rule 3). Shared by admission (validateTracks),
+// rolling intake (enqueue) and the merge gate, so the three can never disagree.
+// A directory or a glob that stops at a '/' is a CLOSED prefix: it covers
+// itself and its descendants. A glob that stops mid-segment ('scripts/wave-*.mjs'
+// -> 'scripts/wave-') is OPEN: it covers every path that starts with the same
+// string. Before #5562 the open case was treated as closed and missed
+// 'scripts/wave-policy.mjs'.
+export function ownershipPrefix(raw) {
+  if (typeof raw !== 'string') throw Error('Invalid ownership path');
+  const p = normalize(raw);
+  if (!p || p.startsWith('/') || p.includes(':') || p.split('/').some(s => ['.', '..', ''].includes(s))) throw Error('Invalid ownership path');
+  const head = p.split('*')[0];
+  const prefix = head.replace(/\/$/, '');
+  if (!prefix) throw Error('Ownership path too broad');
+  return { prefix, open: p.includes('*') && !head.endsWith('/') };
+}
+
+const covers = (x, y) => x.open ? y.prefix.startsWith(x.prefix) : (y.prefix === x.prefix || y.prefix.startsWith(x.prefix + '/'));
+
+// Conservative and symmetric: two entries overlap if either could contain the other.
+export function ownershipOverlaps(a, b) {
+  const x = typeof a === 'string' ? ownershipPrefix(a) : a;
+  const y = typeof b === 'string' ? ownershipPrefix(b) : b;
+  return covers(x, y) || covers(y, x);
+}
 
 export function validateTracks(tracks) {
   if (!Array.isArray(tracks) || !tracks.length || tracks.length > 12) throw Error('Expected 1-12 tracks');
@@ -19,27 +48,55 @@ export function validateTracks(tracks) {
   for (const t of tracks) {
     if (!Number.isSafeInteger(t.issue) || t.issue < 1) throw Error('Invalid issue');
     if (!/^[a-zA-Z0-9][a-zA-Z0-9/_-]+$/.test(t.branch || '') || t.branch.includes('//')) throw Error('Invalid branch');
-    const slug = t.branch.replaceAll('/', '-').toLowerCase();
+    const slug = slugOf(t.branch);
     if (issues.has(t.issue) || branches.has(t.branch) || slugs.has(slug)) throw Error('duplicate issue, branch or worktree slug');
     issues.add(t.issue); branches.add(t.branch); slugs.add(slug);
     if (!Array.isArray(t.ownership) || !t.ownership.length) throw Error('Explicit ownership required');
     for (const raw of t.ownership) {
-      const p = normalize(raw);
-      if (!p || p.startsWith('/') || p.includes(':') || p.split('/').some(s => ['.', '..', ''].includes(s))) throw Error('Invalid ownership path');
       // Directory/glob prefixes conservatively conflict with descendants.
-      const prefix = p.split('*')[0].replace(/\/$/, '');
-      if (!prefix) throw Error('Ownership path too broad');
-      if (reserved.some(r => prefix === r || prefix.startsWith(r + '/') || r.startsWith(prefix + '/'))) throw Error(`reserved ownership: ${raw}`);
+      const own = ownershipPrefix(raw);
+      if (reserved.some(r => ownershipOverlaps(own, { prefix: r, open: false }))) throw Error(`reserved ownership: ${raw}`);
       for (const f of files) {
-        if (f.issue !== t.issue && (prefix === f.path || prefix.startsWith(f.path + '/') || f.path.startsWith(prefix + '/'))) {
-          throw Error(`ownership overlap: ${raw}`);
-        }
+        if (f.issue !== t.issue && ownershipOverlaps(own, f.own)) throw Error(`ownership overlap: ${raw}`);
       }
-      files.push({ issue: t.issue, path: prefix });
+      files.push({ issue: t.issue, own });
     }
   }
   if (tracks.filter(t => t.tier === 'FULL').length > 1) throw Error('Only one FULL verification track');
   return tracks;
+}
+
+// The wave's ACTIVE set (#5562): admitted/intaken tracks minus finished
+// branches, plus tracks waiting in the queue. Anything malformed fails closed:
+// the merge gate must never read a broken marker as "nothing is owned".
+export function activeTracks(wave) {
+  if (!Array.isArray(wave?.tracks)) throw Error('Wave marker has no track ownership; merge blocked');
+  if (wave.pendingTracks !== undefined && !Array.isArray(wave.pendingTracks)) throw Error('Wave marker has malformed pendingTracks; merge blocked');
+  if (wave.finishedBranches !== undefined && !Array.isArray(wave.finishedBranches)) throw Error('Wave marker has malformed finishedBranches; merge blocked');
+  const finished = new Set(wave.finishedBranches || []);
+  const active = [...wave.tracks.filter(t => !finished.has(t?.branch)), ...(wave.pendingTracks || [])];
+  for (const t of active) {
+    if (!t || !Array.isArray(t.ownership) || !t.ownership.length) throw Error('Wave marker has a track without ownership; merge blocked');
+  }
+  return active;
+}
+
+// New tracks against the running wave: no duplicate issue/branch/slug, no
+// ownership overlap (same helper as admission), and still max ONE FULL.
+export function assertCompatibleWithActive(active, incoming) {
+  const issues = new Set(active.map(t => t.issue));
+  const branches = new Set(active.map(t => t.branch));
+  const slugs = new Set(active.map(t => slugOf(String(t.branch))));
+  for (const t of incoming) {
+    if (issues.has(t.issue) || branches.has(t.branch) || slugs.has(slugOf(t.branch))) throw Error(`duplicate issue, branch or worktree slug in the running wave: #${t.issue}`);
+    for (const raw of t.ownership) {
+      for (const a of active) {
+        const hit = a.ownership.find(other => ownershipOverlaps(raw, other));
+        if (hit !== undefined) throw Error(`ownership overlap with running #${a.issue}: ${raw} vs ${hit}`);
+      }
+    }
+  }
+  if ([...active, ...incoming].filter(t => t.tier === 'FULL').length > 1) throw Error('Only one FULL verification track');
 }
 
 // Ejer-beslutning 22/9 (variant B, #5510): PR-loftet paa 8 er fjernet helt.
@@ -174,13 +231,178 @@ export function releaseWave(dir, waveId, childrenStopped, snapshot = ownershipSn
   return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped, snapshot));
 }
 
+const trackRef = t => ({ issue: t?.issue, branch: t?.branch });
+
 function releaseWaveLocked(dir, waveId, childrenStopped, snapshot) {
   if (!childrenStopped) throw Error('All children must be observed stopped before release');
   const wave = requireModernWave(readWave(dir));
   if (!waveId || wave.waveId !== waveId) throw Error('Wave owner mismatch; marker retained');
   assertWaveOwnership(wave, snapshot());
+  // #5562: queued-but-never-taken tracks are reported, never dropped silently.
+  const pendingNeverTaken = (Array.isArray(wave.pendingTracks) ? wave.pendingTracks : []).map(trackRef);
+  const tracks = (Array.isArray(wave.tracks) ? wave.tracks : []).map(trackRef);
   stopWaveWatch(wave);
   fs.unlinkSync(path.join(dir, 'wave-active.json'));
+  return { released: true, waveId: wave.waveId, pendingNeverTaken, tracks };
+}
+
+// ---------------------------------------------------------------- rolling intake (#5562)
+// Only one marker exists and the hook rejects a new wave while it does, so the
+// next wave's tracks join the RUNNING wave instead: the orchestrator enqueues,
+// wave.js' idle lanes take them via `intake`. Same ownership proof as
+// release/watch; every rejection leaves the marker untouched.
+function assertIntakeOwner(wave, snapshot) {
+  if (wave.runtime !== 'claude') throw Error('Rolling intake is only for Claude waves');
+  if (wave.state !== 'running') throw Error('Wave is not running; rolling intake refused');
+  assertWaveOwnership(wave, snapshot());
+}
+
+export function readTracksFile(file) {
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const tracks = Array.isArray(data) ? data : data?.tracks;
+  if (!Array.isArray(tracks)) throw Error('Tracks file must be an array or {"tracks":[...]}');
+  return tracks;
+}
+
+export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot) {
+  validateTracks(tracks);
+  const next = updateWave(dir, waveId, wave => {
+    assertIntakeOwner(wave, snapshot);
+    if (wave.rollingIntake !== true) throw Error('Rolling intake is disabled for this wave');
+    const pending = Array.isArray(wave.pendingTracks) ? wave.pendingTracks : [];
+    if (pending.length + tracks.length > MAX_PENDING_TRACKS) throw Error(`At most ${MAX_PENDING_TRACKS} pending tracks`);
+    assertCompatibleWithActive(activeTracks(wave), tracks);
+    return { ...wave, pendingTracks: [...pending, ...tracks] };
+  });
+  return { enqueued: tracks.map(trackRef), pending: next.pendingTracks.map(trackRef) };
+}
+
+// Marks finished branches (only admitted ones) and moves ALL pending tracks
+// into marker.tracks in one locked write, so a track can be taken only once.
+export function intakeTracks(dir, waveId, finished = [], snapshot = ownershipSnapshot) {
+  let taken = [], ignoredFinished = [];
+  const next = updateWave(dir, waveId, wave => {
+    assertIntakeOwner(wave, snapshot);
+    if (!Array.isArray(wave.tracks)) throw Error('Wave marker has no tracks');
+    const known = new Set(wave.tracks.map(t => t?.branch));
+    const done = new Set(Array.isArray(wave.finishedBranches) ? wave.finishedBranches : []);
+    ignoredFinished = finished.filter(b => !known.has(b));
+    for (const b of finished) if (known.has(b)) done.add(b);
+    taken = Array.isArray(wave.pendingTracks) ? wave.pendingTracks : [];
+    return { ...wave, tracks: [...wave.tracks, ...taken], pendingTracks: [], finishedBranches: [...done] };
+  });
+  return { taken, finishedBranches: next.finishedBranches, ignoredFinished };
+}
+
+// ---------------------------------------------------------------- merge gate (#5562)
+// A merge during a running wave is allowed only when NONE of the PR's files
+// overlap the wave's active ownership. Everything unknown blocks (fail-closed).
+function ghJson(args) {
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return JSON.parse(execFileSync('gh', args, { encoding: 'utf8', timeout: 60000, maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] }));
+    } catch (e) {
+      lastError = e;
+      if (attempt < 3) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
+    }
+  }
+  throw lastError;
+}
+
+// `gh api --paginate --slurp` gives one array per page. The count must match
+// the PR's changed_files: the files endpoint stops at 3000, and a short list
+// would let an overlapping file through unseen.
+export function flattenPrFilePages(pages, changedFiles) {
+  if (!Array.isArray(pages) || !pages.length || pages.some(p => !Array.isArray(p))) throw Error('PR file list is not an array; merge blocked');
+  const files = pages.flat();
+  if (!Number.isSafeInteger(changedFiles) || files.length !== changedFiles) throw Error(`PR file list is incomplete (${files.length} of ${changedFiles}); merge blocked`);
+  return files;
+}
+
+export function readPrFilesFromGitHub(pr, repo = REPO) {
+  const pull = ghJson(['api', `repos/${repo}/pulls/${pr}`]);
+  return flattenPrFilePages(ghJson(['api', `repos/${repo}/pulls/${pr}/files`, '--paginate', '--slurp']), pull?.changed_files);
+}
+
+export function readPrHeadFromGitHub(pr, repo = REPO) {
+  return ghJson(['pr', 'view', String(pr), '--repo', repo, '--json', 'headRefOid'])?.headRefOid;
+}
+
+// Renames count with their previous path too.
+export function findOwnershipConflicts(wave, files) {
+  if (!Array.isArray(files)) throw Error('PR file list is not an array; merge blocked');
+  const owned = activeTracks(wave).flatMap(t => t.ownership.map(raw => ({ issue: t.issue, raw, own: ownershipPrefix(raw) })));
+  const conflicts = [];
+  for (const f of files) {
+    if (typeof f?.filename !== 'string' || !f.filename) throw Error('PR file entry without filename; merge blocked');
+    const names = [f.filename];
+    if (f.previous_filename !== undefined && f.previous_filename !== null) {
+      if (typeof f.previous_filename !== 'string' || !f.previous_filename) throw Error('PR file entry with malformed previous_filename; merge blocked');
+      names.push(f.previous_filename);
+    }
+    for (const name of names) {
+      const own = ownershipPrefix(name);
+      for (const o of owned) if (ownershipOverlaps(o.own, own)) conflicts.push({ file: name, issue: o.issue, ownership: o.raw });
+    }
+  }
+  return conflicts;
+}
+
+function conflictError(pr, conflicts) {
+  const first = conflicts[0];
+  const more = conflicts.length > 1 ? ` (+${conflicts.length - 1} more)` : '';
+  return Error(`Merge blocked: PR #${pr} file ${first.file} overlaps running wave track #${first.issue} (${first.ownership})${more}`);
+}
+
+function modernMarkerOrBlock(dir) {
+  let wave;
+  try { wave = requireModernWave(readWave(dir)); }
+  catch (e) { throw Error(`Wave marker exists but is legacy or malformed; merge blocked (${e.message})`); }
+  activeTracks(wave);
+  return wave;
+}
+
+// Pre-check for merge-queue.ps1. The authoritative check is guardedMerge.
+export function assertMergeAllowed(dir, pr, readFiles = readPrFilesFromGitHub, repo = REPO) {
+  if (!fs.existsSync(path.join(dir, 'wave-active.json'))) return { allowed: true, wave: null };
+  const wave = modernMarkerOrBlock(dir);
+  if (pr === undefined || pr === null) return { allowed: true, wave: wave.waveId };
+  let files;
+  try { files = readFiles(pr, repo); }
+  catch (e) { throw Error(`PR file list unavailable; merge blocked (${e.message})`); }
+  const conflicts = findOwnershipConflicts(wave, files);
+  if (conflicts.length) throw conflictError(pr, conflicts);
+  return { allowed: true, wave: wave.waveId, pr: Number(pr), files: files.length };
+}
+
+const mergeScript = () => fileURLToPath(new URL('./lib/merge-pr-owned.ps1', import.meta.url));
+const defaultMergeIo = {
+  readHead: readPrHeadFromGitHub,
+  readFiles: readPrFilesFromGitHub,
+  // fileURLToPath handles Windows drive paths; no shell-built command string.
+  merge: (pr, repo, headSha) => execFileSync('pwsh', ['-NoProfile', '-File', mergeScript(), '-Pr', String(pr), '-Repo', repo, ...(headSha ? ['-HeadSha', headSha] : [])], { stdio: 'inherit' }),
+};
+
+// Everything under the SAME state lock as admission and intake. Without a
+// marker this is exactly the old idle merge. With a marker: head, files,
+// overlap, head again, then merge pinned to that head (--match-head-commit),
+// so a push after the check cannot smuggle new files in.
+export function guardedMerge(dir, pr, repo = REPO, io = defaultMergeIo) {
+  fs.mkdirSync(dir, { recursive: true });
+  return withWaveStateLock(dir, () => {
+    if (!fs.existsSync(path.join(dir, 'wave-active.json'))) return io.merge(pr, repo);
+    const wave = modernMarkerOrBlock(dir);
+    const head = io.readHead(pr, repo);
+    if (typeof head !== 'string' || !/^[0-9a-f]{40}$/i.test(head)) throw Error('PR head unavailable; merge blocked');
+    let files;
+    try { files = io.readFiles(pr, repo); }
+    catch (e) { throw Error(`PR file list unavailable; merge blocked (${e.message})`); }
+    const conflicts = findOwnershipConflicts(wave, files);
+    if (conflicts.length) throw conflictError(pr, conflicts);
+    if (io.readHead(pr, repo) !== head) throw Error('PR head changed during the overlap check; merge blocked');
+    return io.merge(pr, repo, head);
+  });
 }
 
 export function stopWaveWatch(wave, observedBootId) {
@@ -224,7 +446,9 @@ export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captur
     if (!payload.session_id) throw Error('Wave admission requires session_id');
     const pid = resolveOwnerPid(payload.session_id);
     if (!Number.isSafeInteger(pid) || pid < 1) throw Error('Cannot verify admission owner process');
-    return acquireWave(dir, { runtime: 'claude', owner: payload.session_id, pid, bootId: captureBoot(), admissionToolUseId: payload.tool_use_id ?? null, dispatchStarted: false, processTracking: 'owner-tree', now, tracks: Array.isArray(args) ? args : args.tracks }, readPrs);
+    // rollingIntake (#5562): wave.js takes enqueued tracks unless args.rollingIntake === false.
+    // Only a marker that says so accepts `enqueue`; an older wave.js never would take them.
+    return acquireWave(dir, { runtime: 'claude', owner: payload.session_id, pid, bootId: captureBoot(), admissionToolUseId: payload.tool_use_id ?? null, dispatchStarted: false, processTracking: 'owner-tree', rollingIntake: Array.isArray(args) || args.rollingIntake !== false, now, tracks: Array.isArray(args) ? args : args.tracks }, readPrs);
   }
   if (payload.tool_name !== 'Agent') return;
   const prompt = String(input.prompt || input.description || '').trimStart();
@@ -233,7 +457,9 @@ export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captur
   const wave = readWave(dir); // malformed markers fail closed
   if (wave.runtime === 'codex') throw Error('codex wave owns machine; Claude build dispatch blocked');
   if (wave.owner && payload.session_id !== wave.owner) throw Error('Another session owns this wave');
-  if (wave.waveId && /^WAVE-/.test(prompt)) updateWave(dir, wave.waveId, current => ({ ...current, dispatchStarted: true }));
+  // Write once (#5562): merges may now hold the state lock during a wave, and a
+  // lane spawn must not fail on a busy lock just to repeat a flag already set.
+  if (wave.waveId && /^WAVE-/.test(prompt) && wave.dispatchStarted !== true) updateWave(dir, wave.waveId, current => ({ ...current, dispatchStarted: true }));
 }
 
 async function cli() {
@@ -248,12 +474,23 @@ async function cli() {
   } else if (command === 'assert-idle') {
     if (fs.existsSync(path.join(dir, 'wave-active.json'))) throw Error('Wave marker exists; merge blocked regardless of age or format');
     console.log(JSON.stringify({ idle: true, runDir: dir }));
+  } else if (command === 'assert-merge-allowed') {
+    // #5562: replaces assert-idle in merge-queue.ps1. No override of the file reader here.
+    const pr = value('--pr'), repo = value('--repo') || REPO;
+    if ((pr !== undefined && !/^[1-9]\d*$/.test(pr)) || !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Valid PR and repository required');
+    console.log(JSON.stringify(assertMergeAllowed(dir, pr, readPrFilesFromGitHub, repo)));
   } else if (command === 'guarded-merge') {
     const pr = value('--pr'), repo = value('--repo') || REPO;
     if (!/^[1-9]\d*$/.test(pr || '') || !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Valid merge PR and repository required');
-    // fileURLToPath handles Windows drive paths; no shell-built command string.
-    const mergeScript = fileURLToPath(new URL('./lib/merge-pr-owned.ps1', import.meta.url));
-    withIdleWaveLock(dir, () => execFileSync('pwsh', ['-NoProfile', '-File', mergeScript, '-Pr', pr, '-Repo', repo], { stdio: 'inherit' }));
+    // No override of the file reader or merge call from the CLI (#5562).
+    guardedMerge(dir, pr, repo);
+  } else if (command === 'enqueue') {
+    const file = value('--tracks-file');
+    if (!file) throw Error('--tracks-file required');
+    console.log(JSON.stringify(enqueueTracks(dir, value('--wave-id'), readTracksFile(file))));
+  } else if (command === 'intake') {
+    const finished = (value('--finished') || '').split(',').map(s => s.trim()).filter(Boolean);
+    console.log(JSON.stringify(intakeTracks(dir, value('--wave-id'), finished)));
   } else if (command === 'recover') {
     if (args.includes('--owner-override')) {
       const { ownerOverride } = await import('./wave-owner-override.mjs');
@@ -263,7 +500,7 @@ async function cli() {
     const { recoverWave } = await import('./wave-recovery.mjs');
     console.log(JSON.stringify(recoverWave(dir, { waveId: value('--wave-id'), owner: value('--owner'), now: Date.now() })));
   } else if (command === 'release') {
-    releaseWave(dir, value('--wave-id'), args.includes('--children-stopped'));
+    console.log(JSON.stringify(releaseWave(dir, value('--wave-id'), args.includes('--children-stopped'))));
   } else if (command === 'watch') {
     const wave = requireModernWave(readWave(dir));
     if (wave.waveId !== value('--wave-id')) throw Error('Wave owner mismatch');
@@ -275,7 +512,7 @@ async function cli() {
     wave.watchPid = pid;
     wave.watchStarted = info.started;
     updateWave(dir, wave.waveId, current => ({ ...current, watchPid: pid, watchStarted: info.started }));
-  } else throw Error('Usage: wave-policy.mjs hook|inspect|assert-idle|release|watch|recover');
+  } else throw Error('Usage: wave-policy.mjs hook|inspect|assert-idle|assert-merge-allowed|guarded-merge|enqueue|intake|release|watch|recover');
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   cli().catch(e => { console.error(`wave-policy: ${e.message}`); process.exitCode = 2; });
