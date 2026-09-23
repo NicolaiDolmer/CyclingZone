@@ -127,9 +127,19 @@ test("citat-knappen og en eksisterende post-citation virker uden vandret scroll 
 
   await page.screenshot({ path: evidenceShotPath("pr-screens/5386-quote-op-390.png"), fullPage: true });
 
-  const overflow = await page.evaluate(() => Math.max(
-    document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    ...[...document.querySelectorAll("main, main p, main button")].map(el => el.scrollWidth - el.clientWidth),
-  ));
+  // #5386: KUN side-niveau-scroll — ikke et per-element scrollWidth-tjek på
+  // "main p". QuotedReplyBlocks eget uddrag bruger bevidst `truncate`
+  // (white-space: nowrap + overflow: hidden + ellipsis, samme mønster som
+  // #3517): et <p> med den klasse har PR DESIGN et scrollWidth > clientWidth
+  // så snart teksten er for lang til én linje — det er selve mekanismen der
+  // klipper den, ikke en overflow-bug, og det smitter aldrig til siden
+  // (overflow: hidden containere ALDRIG videre). Et per-element-tjek her gav
+  // falsk rødt paa citat-uddraget (139 tegn, laengere end 3517-fixturens
+  // korte standard-citat) uden at der var noget synligt at rette — bekræftet
+  // ved at gennemse fejl-screenshottet: ingen vandret scrollbar, korrekt
+  // ombrudt layout.
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
   expect(overflow).toBe(0);
 });
