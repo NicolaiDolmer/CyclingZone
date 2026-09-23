@@ -31,6 +31,7 @@ import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamStatsTab from "../components/TeamStatsTab";
 import TeamDevelopmentTab from "../components/TeamDevelopmentTab";
+import AcademySquadFilter from "../components/team/AcademySquadFilter";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
@@ -583,7 +584,7 @@ function OwnTransferListingBadge({ listing }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber }) {
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber, showSeniors, showAcademy, onToggleSeniors, onToggleAcademy }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -599,8 +600,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // #1929 (redesign 3/7): akademiryttere lever på holdet men uden for senior-cap'en (30)
   // og vises nu i SAMME tabel som seniorerne, styret af to gruppe-filtre (begge on som
   // default → hele holdet vist). Datakilden er den samme (loadAll henter is_academy).
-  const [showSeniors, setShowSeniors] = useState(true);
-  const [showAcademy, setShowAcademy] = useState(true);
+  // #5075: showSeniors/showAcademy er LØFTET op i TeamPage (props her) så Stats-fanen
+  // kan dele nøjagtig samme state — se AcademySquadFilter.jsx.
   // #2906 punkt 1 (ejer 25/7: "muligt/nemmere at se alle evner på samme tid"):
   // to kolonne-tilstande i stedet for én 25-kolonners tabel ingen skærm kan vise.
   // "overview" = de beskrivende kolonner (værdi, løn, status, kontrakt, handling);
@@ -901,20 +902,16 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
           synligt når holdet har akademiryttere (ellers er der intet at filtrere).
           #3188: "Vis" + de to filter-piller ligger i deres EGEN wrapper, så et
           klik i mellemrummet fanges lokalt i stedet for at boble op til en række
-          uden handler (1.306 dead clicks, Clarity 27/7-3/8). */}
-      {academyGroupCount > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-cz-3 select-none">{t("squad.filter.label")}</span>
-          <button type="button" onClick={() => setShowSeniors(v => !v)} aria-pressed={showSeniors}
-            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-colors duration-150 ${showSeniors ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
-            {t("squad.filter.seniors", { count: seniorGroupCount })}
-          </button>
-          <button type="button" onClick={() => setShowAcademy(v => !v)} aria-pressed={showAcademy}
-            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-colors duration-150 ${showAcademy ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
-            {t("squad.filter.academy", { count: academyGroupCount })}
-          </button>
-        </div>
-      )}
+          uden handler (1.306 dead clicks, Clarity 27/7-3/8).
+          #5075: markup + state udtrukket til AcademySquadFilter, delt med Stats-fanen. */}
+      <AcademySquadFilter
+        showSeniors={showSeniors}
+        showAcademy={showAcademy}
+        onToggleSeniors={onToggleSeniors}
+        onToggleAcademy={onToggleAcademy}
+        seniorCount={seniorGroupCount}
+        academyCount={academyGroupCount}
+      />
 
       {/* #1095: segmenteret nuværende/kommende-visning */}
       {hasTransfers && (
@@ -1019,6 +1016,13 @@ export function TeamPage() {
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [activeTab, setActiveTab] = useState("squad");
+  // #5075: showSeniors/showAcademy boede tidligere kun i SquadTab — Stats-fanen
+  // manglede dermed helt til-/fravalget af akademiryttere. Løftet herop, så
+  // Trup- og Stats-fanen deler PRÆCIS samme state (samme kontrol i begge, se
+  // AcademySquadFilter.jsx) i stedet for at hver fane opfinder sin egen variant.
+  // Default = begge på, uændret fra Trup-fanens hidtidige default.
+  const [showSeniors, setShowSeniors] = useState(true);
+  const [showAcademy, setShowAcademy] = useState(true);
   const [selectedRider, setSelectedRider] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ddActive, setDdActive] = useState(false);
@@ -1344,13 +1348,18 @@ export function TeamPage() {
       </Tabs>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber}
+          showSeniors={showSeniors} showAcademy={showAcademy} onToggleSeniors={() => setShowSeniors(v => !v)} onToggleAcademy={() => setShowAcademy(v => !v)} />
       )}
       {activeTab === "development" && (
         <TeamDevelopmentTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} />
       )}
       {activeTab === "stats" && (
-        <TeamStatsTab riders={currentRiders} />
+        // #5075: samme showSeniors/showAcademy-state som Trup-fanen ovenfor —
+        // filtreringen (og dermed totalerne, da de udledes af de viste rækker)
+        // regnes på det samme filtrerede rytter-sæt.
+        <TeamStatsTab riders={currentRiders}
+          showSeniors={showSeniors} showAcademy={showAcademy} onToggleSeniors={() => setShowSeniors(v => !v)} onToggleAcademy={() => setShowAcademy(v => !v)} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />
