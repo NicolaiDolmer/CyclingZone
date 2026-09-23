@@ -7,6 +7,9 @@ import {
   idsForFilter,
   isTired,
   primaryActionFor,
+  pruneSelection,
+  tourRunTarget,
+  visibleIdsFor,
   type OverviewDayType,
 } from "./trainingOverview.ts";
 
@@ -60,6 +63,29 @@ test("#5485 A2: guld-knappen skifter med situationen og staar aldrig graa", () =
   assert.deepEqual(primaryActionFor({ ...base, needsDay: 2, trainedToday: true }), { kind: "none" });
   // Slukket traening: programmer kan stadig saettes, men intet koeres.
   assert.deepEqual(primaryActionFor({ ...base, needsDay: 0, enabled: false }), { kind: "none" });
+});
+
+test("#5485 turens trin 2 peger paa det tryk der KOERER dagen, aldrig paa 'Set days'", () => {
+  // Guld-knappen beder om dage og koerer ikke traening: turen peger paa Run now.
+  assert.equal(tourRunTarget({ kind: "setDays", riders: 15 }, true), "runNow");
+  // Guld-knappen koerer dagen: turen peger paa den.
+  assert.equal(tourRunTarget({ kind: "run" }, true), "primary");
+  // Intet kan koere dagen lige nu (koert, slukket, venter): statuslinjen.
+  assert.equal(tourRunTarget({ kind: "setDays", riders: 2 }, false), "status");
+  assert.equal(tourRunTarget({ kind: "none" }, false), "status");
+});
+
+test("#5485 markeringen skaeres ned til filterets ryttere, ogsaa naar en rytter faar en dag", () => {
+  const selected = new Set(["a", "b", "c"]);
+  // Intet filter: alt bevares.
+  assert.deepEqual([...pruneSelection(selected, null)], ["a", "b", "c"]);
+  // A har faaet en dag og hoerer ikke laengere til "Needs a day".
+  assert.deepEqual([...pruneSelection(selected, new Set(["b", "c", "x"]))], ["b", "c"]);
+});
+
+test("#5485 en rytter der lige har faaet sin dag, vises et oejeblik endnu, men er ikke med i markeringen", () => {
+  assert.equal(visibleIdsFor(null, new Set(["a"])), null);
+  assert.deepEqual([...(visibleIdsFor(new Set(["b"]), new Set(["a"])) ?? [])].sort(), ["a", "b"]);
 });
 
 test("#5485/#4847 dayClose-gaten gaelder guld-knappen og den sekundaere Run now", () => {

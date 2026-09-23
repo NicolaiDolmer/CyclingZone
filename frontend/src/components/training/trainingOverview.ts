@@ -106,3 +106,42 @@ export function canRunToday({
   if (trainedToday || !enabled) return false;
   return !(dayClose && !dayClose.open);
 }
+
+// ── Den guidede turs trin 2 (#2819, rettet paa #5485 23/9) ──────────────────
+//
+// Onboarding-trinnet "foerste traening" fuldfoeres kun af et tryk der KOERER
+// dagens traening (backend taeller en koersel med executed_by = manager). Mens
+// guld-knappen staar paa "Set days for N riders", koerer den ingen traening,
+// saa turen maa ikke pege paa den: den peger paa "Run now" i stedet, og turens
+// tekst passer til netop det tryk. Kan dagen slet ikke koeres (koert, slukket,
+// venter paa dagens sidste loeb), peger turen paa statuslinjen.
+//   "primary"  guld-knappen koerer dagen
+//   "runNow"   den sekundaere "Run now" ved siden af / i statuscellen
+//   "status"   ingen knap koerer dagen lige nu
+export type TourRunTarget = "primary" | "runNow" | "status";
+
+export function tourRunTarget(action: PrimaryAction, runnable: boolean): TourRunTarget {
+  if (action.kind === "run") return "primary";
+  if (action.kind === "setDays" && runnable) return "runNow";
+  return "status";
+}
+
+// ── Markeringen foelger det tabellen viser (#5485 23/9) ──────────────────────
+//
+// "Apply to N" maa aldrig ramme en rytter der ikke staar paa skaermen. Naar
+// filteret skifter, ELLER en rytter forsvinder fra filteret fordi han har faaet
+// en dag (fx efter en mængde-handling), skaeres markeringen ned til de ryttere
+// der stadig hoerer til filteret. `null` = intet filter, alle ryttere vises.
+export function pruneSelection(selected: ReadonlySet<string>, keep: ReadonlySet<string> | null): Set<string> {
+  if (!keep) return new Set(selected);
+  return new Set([...selected].filter((id) => keep.has(id)));
+}
+
+// Raekkerne tabellen viser: filterets ryttere plus dem der LIGE har faaet deres
+// dag gemt (vises et oejeblik endnu med "Saved", saa kvitteringen ses foer
+// raekken forsvinder fra "Needs a day"). Kun synlighed: markeringen og "Apply
+// to N" foelger stadig filteret alene (pruneSelection ovenfor).
+export function visibleIdsFor(filterIds: ReadonlySet<string> | null, lingering: ReadonlySet<string>): Set<string> | null {
+  if (!filterIds) return null;
+  return new Set([...filterIds, ...lingering]);
+}

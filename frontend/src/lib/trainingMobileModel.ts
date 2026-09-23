@@ -189,26 +189,62 @@ export type MobileScoreView = {
   spark?: ReadonlyArray<{ date: string; score: number | null; raceDay?: boolean }> | null;
 };
 
-// De TRE tilstande fladen skal kunne vise — praecis de samme som desktop-
-// kolonnen (TrainingPage.jsx):
+// De FIRE tilstande fladen skal kunne vise — praecis de samme paa desktop-
+// tabellen, telefonens tabel og rytterens kort:
 //   "score"   dagens tal (tabular figures)
+//   "latest"  dagens pas er IKKE koert endnu: seneste maalte tal, daempet og
+//             med et lille "latest"-maerke (#5485, ejer-valg A 23/9)
 //   "race"    loebsdag uden tal ⇒ "Race"/"Loeb"
 //   "none"    ingen maaling ⇒ streg
 export type MobileScoreCell =
   | { state: "score"; value: number }
+  | { state: "latest"; value: number }
   | { state: "race" }
   | { state: "none" };
+
+// Det seneste MAALTE tal i kurven: sidste punkt med et gyldigt tal. Loebsdage
+// og hviledage har `score: null` (backend/lib/trainingScore.js) og springes
+// over, saa "seneste" altid er et rigtigt pas, aldrig en hviledag som 0.
+export function latestScore(spark: MobileScoreView["spark"]): number | null {
+  if (!Array.isArray(spark)) return null;
+  for (let i = spark.length - 1; i >= 0; i -= 1) {
+    const raw = spark[i]?.score;
+    if (raw != null && Number.isFinite(Number(raw))) return Number(raw);
+  }
+  return null;
+}
 
 // Raekkefoelgen er bindende: en loebsdag MED et tal er stadig en maalt dag, saa
 // tallet vinder. Kun en loebsdag UDEN tal skriver "loeb" — ellers ville en
 // loebsdag hvor motoren faktisk maalte passet forsvinde bag et ord.
-export function mobileScoreCell(view: MobileScoreView | null | undefined): MobileScoreCell {
+//
+// #5485 (ejer-valg A 23/9): `settled` = dagens pas er koert (holdets todayRun
+// findes). FOER det har ingen rytter et tal for i dag, og kolonnen stod som en
+// streg hele vejen ned det meste af dagen (kl. 19 havde kun en lille del af
+// holdene dagens tal). Derfor vises det SENESTE tal indtil passet er koert.
+// Efter passet betyder "intet tal" en hviledag, og saa er det en streg.
+// Default `true` = den gamle kontrakt for kald-steder der ikke kender dagen.
+export function mobileScoreCell(
+  view: MobileScoreView | null | undefined,
+  { settled = true }: { settled?: boolean } = {},
+): MobileScoreCell {
   const raw = view?.today;
   // `Number(null)` er 0 og finite: uden det eksplicitte null-tjek ville "ingen
   // maaling" blive til et maalt 0 — samme fald som countsForRole ovenfor.
   if (raw != null && Number.isFinite(Number(raw))) return { state: "score", value: Number(raw) };
   if (view?.todayIsRaceDay) return { state: "race" };
+  if (!settled) {
+    const latest = latestScore(view?.spark);
+    if (latest != null) return { state: "latest", value: latest };
+  }
   return { state: "none" };
+}
+
+// Tallet en sortering paa Score bruger: dagens tal, ellers det seneste foer
+// dagens pas. Loeb og streg giver null, saa de lander sidst uanset retning.
+export function scoreSortValue(cell: MobileScoreCell | null | undefined): number | null {
+  if (cell?.state === "score" || cell?.state === "latest") return cell.value;
+  return null;
 }
 
 // Kan score-kolonnen vaere i tabellen uden at fortraenge noget?
