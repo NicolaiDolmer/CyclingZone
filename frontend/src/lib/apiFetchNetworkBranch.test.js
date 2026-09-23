@@ -18,6 +18,7 @@ const auctions = read("../pages/AuctionsPage.jsx");
 const finance = read("../pages/FinancePage.jsx");
 const adminSystem = read("../pages/admin/AdminSystemTab.jsx");
 const adminData = read("../pages/admin/AdminDataTab.jsx");
+const founderTeams = read("useFounderTeams.js");
 
 const THROW_LINE = 'if (res.networkError) throw res.error ?? new Error("Network request failed");';
 
@@ -85,6 +86,23 @@ test("RiderStatsPage tilbud/bytte/salgsliste: resolveApiError() får en fallback
 
 test("AdminSystemTab loadData(): res.data ?? { webhooks: [] } — et tomt 200-svar må ikke kaste på w.webhooks", () => {
   assert.match(adminSystem, /return res\.data \?\? \{ webhooks: \[\] \};/);
+});
+
+// CodeRabbit-fund (den ene CLI-runde, 23/9): uden dette kast blev det
+// hardkodede loft (50) cachet for resten af sessionen efter ÉT tabt kald —
+// catch'ens "cachedCapPromise = null; næste mount prøver igen" blev aldrig
+// nået, fordi apiFetch ikke selv kaster ved en transportfejl (#5322).
+test("useFounderTeams fetchFounderCap(): kaster på res.networkError, så catch nulstiller cachen i stedet for at cache fallback-loftet permanent", () => {
+  const start = founderTeams.indexOf("function fetchFounderCap()");
+  const end = founderTeams.indexOf("// Returnerer { founderMap, founderCap, loading }");
+  assert.ok(start >= 0 && end > start, "fandt ikke fetchFounderCap()'s body");
+  const body = founderTeams.slice(start, end);
+
+  const throwIdx = body.indexOf('if (res.networkError) throw res.error ?? new Error("Network request failed");');
+  const okReadIdx = body.indexOf("return res.ok ? res.data : null;");
+  assert.ok(throwIdx >= 0, "fetchFounderCap skal kaste på res.networkError");
+  assert.ok(throwIdx < okReadIdx, "kastet skal ligge FØR res.ok læses");
+  assert.match(body, /\.catch\(\(\) => \{\s*cachedCapPromise = null;\s*return 50;\s*\}\)/);
 });
 
 test("AdminDataTab saveRaceEdit(): bruger adminErrorMessage() (status-0-guard), ikke rå `HTTP ${res.status}`", () => {

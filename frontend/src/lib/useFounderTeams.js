@@ -40,7 +40,14 @@ function fetchFounderCap() {
   if (!cachedCapPromise) {
     const API = import.meta.env.VITE_API_URL || "";
     cachedCapPromise = apiFetch(`${API}/api/billing/founder-seats`)
-      .then((res) => (res.ok ? res.data : null))
+      .then((res) => {
+        // #5242 (CodeRabbit-fund 23/9): apiFetch kaster ikke ved en transportfejl
+        // (#5322) — uden dette kast blev det uændrede loft (50) cachet for resten
+        // af sessionen efter ÉT tabt kald, og catch'ens "næste mount prøver igen"
+        // nedenfor blev aldrig nået.
+        if (res.networkError) throw res.error ?? new Error("Network request failed");
+        return res.ok ? res.data : null;
+      })
       .then((data) => data?.cap ?? 50)
       .catch(() => {
         cachedCapPromise = null;
