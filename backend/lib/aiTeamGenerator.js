@@ -37,6 +37,7 @@ import {
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { loadValuationModel, loadProductionValueModel } from "./riderValuationModelSelect.js";
+import { readPrimaryTypeMode } from "./primaryTypeModeFlag.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName } from "./aiTeamNames.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { teamInflightRaceIds } from "./aiTeamRaceObligations.js";
@@ -523,7 +524,10 @@ export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPUL
 //   • tier 3/4: uændret clamp-vindue-sti (kerne+hale, lagdelt) — proven i prod.
 // Gælder KUN nye AI-hold; eksisterende AI-rosters er urørte (ejer-beslutning).
 // Indsætter med team_id sat (intet orphan-vindue). Deterministisk per-hold seed.
-async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, ordinal }) {
+// `generate` er kun en test-søm (#5327); produktionen bruger altid den ægte generator.
+async function defaultAllocateSquadForTeam(supabase, teamId, {
+  pool, baseSeed, ordinal, generate = generateFictionalRiders,
+}) {
   const referenceYear = LAUNCH_POPULATION.referenceYear;
   const existingFoldedNames = await fetchExistingFoldedNamesForAi(supabase);
   const tierFractions = aiTierFractionsForTier(pool.tier);
@@ -535,13 +539,16 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
   // få persisteret en værdi fra en anden — over tier-loftet.
   const valuationModel = await loadValuationModel(supabase);
   const productionValuationModel = await loadProductionValueModel(supabase);
+  // #5327: samme mønster for primær-type-kilden — én læsning, sendt til alle
+  // generator-kald i denne allokering (cap-batchen hhv. kerne + hale).
+  const primaryTypeMode = await readPrimaryTypeMode(supabase);
 
   let poolPayload;
   if (tierFractions) {
     const seed = deriveTeamSeed((baseSeed + 1688) >>> 0, `${pool.id}:${ordinal}`);
     poolPayload = generateAiRiderBatchWithCap({
       count: AI_SQUAD.TOTAL_SIZE, tierFractions, valueCap: aiValueCapForTier(pool.tier),
-      seed, referenceYear, existingFoldedNames, valuationModel,
+      seed, referenceYear, existingFoldedNames, valuationModel, generate, primaryTypeMode,
     }).map((r) => ({ ...r, team_id: teamId }));
   } else {
     const { core: coreWindow, tail: tailWindow } = aiStatWindowsForTier(pool.tier);
@@ -553,11 +560,11 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
     const tailSeed = deriveTeamSeed((baseSeed + 1688 + 7) >>> 0, `${pool.id}:${ordinal}`);
     const corePayload = buildWeakStarterPool({
       count: AI_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
-      window: coreWindow, generate: generateFictionalRiders,
+      window: coreWindow, generate, primaryTypeMode,
     }).map((r) => ({ ...r, team_id: teamId }));
     const tailPayload = buildWeakStarterPool({
       count: AI_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
-      window: tailWindow, generate: generateFictionalRiders,
+      window: tailWindow, generate, primaryTypeMode,
     }).map((r) => ({ ...r, team_id: teamId }));
     poolPayload = [...corePayload, ...tailPayload];
   }
