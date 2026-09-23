@@ -63,7 +63,7 @@ import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
   TIRED_FATIGUE_FROM, buildOverview, idsForFilter, isTired, primaryActionFor, canRunToday,
-  tourRunTarget, pruneSelection, visibleIdsFor,
+  tourRunTarget, tourRunStepKey, pruneSelection, visibleIdsFor,
 } from "../components/training/trainingOverview.ts";
 import { countsForRole, mobileScoreCell, pacePerWeek, scoreSortValue } from "../lib/trainingMobileModel.ts";
 import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
@@ -183,10 +183,10 @@ function dayLabel(plan, t) {
 // executed_by = manager). Står guld-knappen på "Set days for N riders", kører
 // den ingen træning, så turen peger på "Run now" og siger hvad dét tryk gør.
 // Nye hold har typisk ingen dage sat, så det er den første oplevelse.
-// `runTarget` kommer fra tourRunTarget (trainingOverview.ts, testet).
-const TOUR_RUN_KEY = { primary: "runToday", runNow: "runNow", status: "runStatus" };
-function getTrainingTourSteps(t, runTarget = "primary") {
-  const runKey = TOUR_RUN_KEY[runTarget] ?? "runToday";
+// `runTarget` kommer fra tourRunTarget og teksten fra tourRunStepKey
+// (trainingOverview.ts, testet): med #4847's dayClose lover turen ingen bonus.
+function getTrainingTourSteps(t, runTarget = "primary", dayCloseOn = false) {
+  const runKey = tourRunStepKey(runTarget, dayCloseOn);
   return [
     {
       target: "[data-tour='training-focus']",
@@ -209,8 +209,8 @@ function getTrainingTourSteps(t, runTarget = "primary") {
 // Stabil trin-liste pr. (sprog, anker): OnboardingTour genstarter sin rulle-
 // og måle-effekt når trinnets objekt skifter, så listen må ikke bygges på ny
 // ved hver render af siden.
-function useTrainingTourSteps(t, runTarget) {
-  return useMemo(() => getTrainingTourSteps(t, runTarget), [t, runTarget]);
+function useTrainingTourSteps(t, runTarget, dayCloseOn) {
+  return useMemo(() => getTrainingTourSteps(t, runTarget, dayCloseOn), [t, runTarget, dayCloseOn]);
 }
 
 // Bred side — samme mønster som TeamPage / RidersPage.
@@ -1853,7 +1853,7 @@ export default function TrainingPage() {
   // getTrainingTourSteps). Ét anker ad gangen: guld-knappen, "Run now" eller
   // statuslinjen.
   const tourTarget = tourRunTarget(primaryAction, runnable);
-  const trainingTourSteps = useTrainingTourSteps(t, tourTarget);
+  const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null);
   const selectedCount = pruneSelection(selected, filterIds).size;
   const runTodayLabel = running ? t("loading") : (dayClose ? t("runDayNow") : t("trainToday"));
   const primaryLabel = primaryAction.kind === "setDays"

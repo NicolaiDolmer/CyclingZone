@@ -95,7 +95,15 @@ function trainingMe({
   mobileTable = true,
   withScore = false,
   injured = false,
-}: { allSet?: boolean; trained?: boolean; mobileTable?: boolean; withScore?: boolean; injured?: boolean } = {}) {
+  dayClose = null,
+}: {
+  allSet?: boolean;
+  trained?: boolean;
+  mobileTable?: boolean;
+  withScore?: boolean;
+  injured?: boolean;
+  dayClose?: { open: boolean; opensAtHour?: number } | null;
+} = {}) {
   const plans: Record<string, { focus: string; intensity: string }> = {};
   const condition: Record<string, { form: number; fatigue: number; injured_until: string | null; injury_race_days_left?: number; risk: number }> = {};
   const progress: Record<string, Record<string, number>> = {};
@@ -117,6 +125,7 @@ function trainingMe({
   }
   return {
     ...(withScore ? { trainingScore: scoreFor({ trained }) } : {}),
+    ...(dayClose ? { dayClose } : {}),
     enabled: true,
     betaTester: true,
     mobileTable,
@@ -369,6 +378,16 @@ test("(1) guidet tur: når guld-knappen selv kører dagen, peger trin 2 på den 
   await expect(anchor).toHaveCount(1);
   await expect(anchor.getByTestId("training-primary")).toHaveText(/Train today|Run today's training now/);
   await expect(page.getByRole("dialog")).toContainText("Train once a day");
+});
+
+test("(1) guidet tur med dayClose (#4847): turen lover ingen bonus, men siger at dagen også kører af sig selv", async ({ page }) => {
+  await startTourAtRunStep(page);
+  await openTraining(page, 1440, 900, trainingMe({ dayClose: { open: true, opensAtHour: 20 } }));
+  const anchor = page.locator("[data-tour='training-run-today']");
+  await expect(anchor.getByTestId("training-run-now")).toBeVisible();
+  const tour = page.getByRole("dialog");
+  await expect(tour).toContainText("with no bonus");
+  await expect(tour).not.toContainText("+25%");
 });
 
 test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, 'Apply to 2', og A overskrives ikke", async ({ page }) => {

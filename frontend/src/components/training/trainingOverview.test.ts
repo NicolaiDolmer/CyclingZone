@@ -8,6 +8,7 @@ import {
   isTired,
   primaryActionFor,
   pruneSelection,
+  tourRunStepKey,
   tourRunTarget,
   visibleIdsFor,
   type OverviewDayType,
@@ -73,6 +74,16 @@ test("#5485 turens trin 2 peger paa det tryk der KOERER dagen, aldrig paa 'Set d
   // Intet kan koere dagen lige nu (koert, slukket, venter): statuslinjen.
   assert.equal(tourRunTarget({ kind: "setDays", riders: 2 }, false), "status");
   assert.equal(tourRunTarget({ kind: "none" }, false), "status");
+});
+
+test("#5485 turens tekst: med dayClose (ingen bonus, koerer af sig selv) faar knapperne deres egen tekst", () => {
+  assert.equal(tourRunStepKey("primary", false), "runToday");
+  assert.equal(tourRunStepKey("runNow", false), "runNow");
+  assert.equal(tourRunStepKey("primary", true), "runTodayDayClose");
+  assert.equal(tourRunStepKey("runNow", true), "runNowDayClose");
+  // Statuslinjen lover intet om bonus, saa den er den samme med og uden.
+  assert.equal(tourRunStepKey("status", true), "runStatus");
+  assert.equal(tourRunStepKey("status", false), "runStatus");
 });
 
 test("#5485 markeringen skaeres ned til filterets ryttere, ogsaa naar en rytter faar en dag", () => {

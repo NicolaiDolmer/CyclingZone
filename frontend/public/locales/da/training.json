@@ -284,6 +284,14 @@
       "title": "Kør dagens træning",
       "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Tryk én gang om dagen for +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus."
     },
+    "runTodayDayClose": {
+      "title": "Kør dagens træning",
+      "body": "Tryk her for at køre dagens træning nu i stedet for at vente. Det er samme træning som den automatiske kørsel, uden bonus: dagen kører også af sig selv, når dagens sidste løb er slut."
+    },
+    "runNowDayClose": {
+      "title": "Kør dagens træning",
+      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Det er samme træning som den automatiske kørsel, uden bonus: dagen kører også af sig selv, når dagens sidste løb er slut."
+    },
     "runStatus": {
       "title": "Træn én gang om dagen",
       "body": "Linjen viser dagens træning: om den er kørt, eller hvornår den kan køres. Når dagen kan køres, står knappen der kører den lige her."

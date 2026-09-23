@@ -126,6 +126,16 @@ export function tourRunTarget(action: PrimaryAction, runnable: boolean): TourRun
   return "status";
 }
 
+// Hvilken tekst trin 2 har (noeglen under `tour.` i training.json). Med #4847's
+// dayClose (training_tick_per_race_day on) koerer dagen af sig selv naar dagens
+// sidste loeb er slut, og et tryk giver INGEN bonus (Hjaelp: runDayNow). Saa maa
+// turen ikke love bonus eller "efter 22:00" (CodeRabbit paa #5564 23/9).
+export function tourRunStepKey(target: TourRunTarget, dayCloseOn: boolean): string {
+  if (target === "status") return "runStatus";
+  const base = target === "runNow" ? "runNow" : "runToday";
+  return dayCloseOn ? `${base}DayClose` : base;
+}
+
 // ── Markeringen foelger det tabellen viser (#5485 23/9) ──────────────────────
 //
 // "Apply to N" maa aldrig ramme en rytter der ikke staar paa skaermen. Naar

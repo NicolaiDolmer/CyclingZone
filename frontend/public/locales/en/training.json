@@ -282,7 +282,15 @@
     },
     "runNow": {
       "title": "Run today's training",
-      "body": "Run now trains the whole squad today, also the riders without a day: they train what your assistant picks for their type. Press it once a day for a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus."
+      "body": "Run now trains the whole squad today, including riders without a day: they train what your assistant picks for their type. Press it once a day for a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus."
+    },
+    "runTodayDayClose": {
+      "title": "Run today's training",
+      "body": "Press this to run today's training now instead of waiting. It is the same training as the automatic run, with no bonus: the day also runs on its own once the last race is done."
+    },
+    "runNowDayClose": {
+      "title": "Run today's training",
+      "body": "Run now trains the whole squad today, including riders without a day: they train what your assistant picks for their type. It is the same training as the automatic run, with no bonus: the day also runs on its own once the last race is done."
     },
     "runStatus": {
       "title": "Train once a day",
