@@ -34,6 +34,10 @@ import {
 //   fold,         // true → skjules ≤640px og foldes ind i sticky-cellens underlinje
 //   foldValue,    // (row) => string — tekstværdi til mobil-fold (default row[key])
 //   mobileLabel,  // chip-label på mobil når `header` ikke er ren tekst
+//   mobileHeader, // kolonne-header ≤640px (fx sidens eksisterende korte label);
+//                 // default `header`. #5471: på 390px er tallenes headere det der
+//                 // afgør hvor meget plads navnet får — ét langt ord (PRÆMIEPENGE)
+//                 // kostede navnekolonnen ~40px.
 //   sortKey,      // gør headeren sorterbar når onSort er sat
 // }
 //
@@ -360,7 +364,7 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
                 sortable ? (active ? (sortDir === "desc" ? "descending" : "ascending") : "none") : undefined
               }
             >
-              {col.header}
+              {mobile && col.mobileHeader != null ? col.mobileHeader : col.header}
               {sortable && <SortIndicator active={active} dir={sortDir} />}
             </th>
           );

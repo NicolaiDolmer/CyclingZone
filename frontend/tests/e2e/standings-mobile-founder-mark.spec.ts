@@ -47,6 +47,16 @@ const STANDING_ROWS = TEAMS.map((t) => ({
   team: { id: t.id, name: t.name, division: DIV, is_ai: false },
 }));
 const FOUNDERS = TEAMS.filter((t) => t.founder != null).map((t) => ({ team_id: t.id, founder_number: t.founder }));
+// Praemiekolonnen med 7-cifrede beloeb, saa talkolonnerne er saa brede som de
+// bliver midt i en saeson (fiktive tal). Med "0 CZ$" ville navnet faa mere
+// plads end det faar i virkeligheden, og specen ville maale heldet.
+const EXT_ROWS = TEAMS.map((t, i) => ({
+  team_id: t.id,
+  comp_wins: 1,
+  comp_podiums: 2,
+  podiums: 5,
+  prize_earned: 1_480_000 - i * 95_000,
+}));
 
 const VIEWPORTS = [
   { name: "portrait 390", width: 390, height: 844 },
@@ -67,6 +77,7 @@ async function openStandings(page: Page) {
     return json(route, TEAM_ROWS);
   });
   await page.route("**/rest/v1/season_standings*", (route: Route) => json(route, STANDING_ROWS));
+  await page.route("**/rest/v1/team_standings_ext_mv*", (route: Route) => json(route, EXT_ROWS));
   await page.route("**/rest/v1/rpc/founder_public_list*", (route: Route) => {
     if (route.request().method() === "OPTIONS") return route.fallback();
     return json(route, FOUNDERS);

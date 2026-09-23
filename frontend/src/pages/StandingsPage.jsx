@@ -566,7 +566,9 @@ export default function StandingsPage() {
     { key: "teamComp", header: t("thTeamComp"), numeric: true, render: (s) => teamComp[s.team_id]?.wins || 0 },
     { key: "podiums", header: t("thPodiums"), numeric: true, render: (s) => podiums[s.team_id] || 0 },
     {
-      key: "prize", header: t("thPrize"), numeric: true,
+      // #5471: den korte label paa mobil (thPrizeShort fandtes allerede) — et
+      // langt header-ord tog plads fra holdnavnet paa 390px.
+      key: "prize", header: t("thPrize"), mobileHeader: t("thPrizeShort"), numeric: true,
       render: (s) => <>{formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-3xs text-cz-3">CZ$</span></>,
     },
     {
@@ -600,7 +602,7 @@ export default function StandingsPage() {
       subline: (s) => <ShareBar pct={Math.round((strengthVal(s) / maxValue) * 100)} color={colorSoft} />,
     },
     {
-      key: "squadValue", header: t("thSquadValue"), numeric: true,
+      key: "squadValue", header: t("thSquadValue"), mobileHeader: t("thSquadValueShort"), numeric: true,
       render: (s) => (strengthLoading && !strength?.[s.team_id]
         ? <span className="text-cz-3">…</span>
         : <>{formatNumber(strength?.[s.team_id]?.totalValue || 0)} <span className="text-3xs text-cz-3">CZ$</span></>),
