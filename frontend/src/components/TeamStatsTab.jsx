@@ -53,6 +53,12 @@ export default function TeamStatsTab({ riders, showSeniors, showAcademy, onToggl
 
   const riderIds = riders.map((r) => r.id);
   const riderIdsKey = riderIds.join(",");
+  // CodeRabbit (#5075 rettespor 23/9): riderIdsKey alene fanger IKKE en rytter
+  // der skifter is_academy UDEN at skifte id (fx en graduering) — `rows`-memoet
+  // nedenfor ville ellers beholde den GAMLE akademi-/senior-gruppering, indtil
+  // noget andet (sort/statsByRider) tvang en genberegning. Samme stabile
+  // streng-proxy-mønster som riderIdsKey, blot for is_academy-feltet.
+  const academyFlagsKey = riders.map((r) => (r.is_academy ? "1" : "0")).join("");
   const seniorCount = riders.filter((r) => !r.is_academy).length;
   const academyCount = riders.filter((r) => r.is_academy).length;
   // #5075 rettespor 23/9: DataTable's toolbar-slot tjekker kun `toolbar && (...)`
@@ -127,8 +133,8 @@ export default function TeamStatsTab({ riders, showSeniors, showAcademy, onToggl
       const diff = (b[sortKey] || 0) - (a[sortKey] || 0);
       return sortDir === "desc" ? diff : -diff;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- memoet læser kun id/navn/nationalitet/is_academy fra riders — felter der ikke ændrer sig når riderIdsKey er uændret; tallene kommer fra statsByRider, som ER en dependency
-  }, [riderIdsKey, statsByRider, sortKey, sortDir, showAcademy, showSeniors]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- memoet læser id/navn/nationalitet fra riders (stabile når riderIdsKey er uændret) og is_academy (stabilt når academyFlagsKey er uændret, CodeRabbit-fund #5075 23/9); tallene kommer fra statsByRider, som ER en dependency
+  }, [riderIdsKey, academyFlagsKey, statsByRider, sortKey, sortDir, showAcademy, showSeniors]);
 
   if (loading) return <SkeletonLines lines={6} />;
 
