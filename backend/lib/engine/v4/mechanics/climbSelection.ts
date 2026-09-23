@@ -226,6 +226,26 @@ function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
   return split.sort();
 }
 
+/**
+ * Naar ALLE ryttere i en gruppe er udvalgt til split, beholdes én som
+ * gruppens fortsatte front: den med laveste baseScore. #4914 (CodeRabbit-fund):
+ * en tilbagefaldet grupetto-rytter (`effortForced`) maa aldrig vaere den der
+ * bliver — ellers ville han blive i fronten mens en udkoert rytter der koerer
+ * blev splittet, altsaa det modsatte af tilbagefaldet. Findes der ingen uden
+ * `effortForced` (kan ikke ske: tilbagefaldet kraever en rytter der koerer),
+ * falder reglen tilbage paa hele gruppen. I default-modellen er
+ * `effortForced` altid false, saa valget er praecis det gamle.
+ *
+ * Eksporteret for testbarhed af netop denne regel.
+ */
+export function retainedRiderIdWhenAllSplit(
+  selections: ReadonlyArray<Pick<RiderSelection, "riderId" | "baseScore" | "effortForced">>,
+): string {
+  const racers = selections.filter((s) => !s.effortForced);
+  const candidates = racers.length > 0 ? racers : selections;
+  return [...candidates].sort((a, b) => a.baseScore - b.baseScore || a.riderId.localeCompare(b.riderId))[0].riderId;
+}
+
 function gapSecondsDeltaFor(selections: RiderSelection[], splitRiderIds: string[]): number {
   const splitSet = new Set(splitRiderIds);
   const chosen = selections.filter((s) => splitSet.has(s.riderId));
@@ -299,9 +319,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
       // positionerede rytter (laveste baseScore) som gruppens fortsatte front,
       // saa selektionen stadig differentierer resten (climbDeficitScaled
       // adskiller ryttere ogsaa naar alle er wprime-tvungne).
-      const bestRiderId = [...selections].sort(
-        (a, b) => a.baseScore - b.baseScore || a.riderId.localeCompare(b.riderId),
-      )[0].riderId;
+      const bestRiderId = retainedRiderIdWhenAllSplit(selections);
       splitRiderIds = splitRiderIds.filter((id) => id !== bestRiderId);
     }
     if (splitRiderIds.length === 0) continue;

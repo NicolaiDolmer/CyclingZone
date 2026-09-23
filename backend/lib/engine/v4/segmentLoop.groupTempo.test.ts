@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 
 import { groupEffortTempo, groupStrengthSpeedFactor, riderTempoEffortFactor } from "./segmentLoop.ts";
-import { grupettoDropBackForced } from "./mechanics/climbSelection.ts";
+import { grupettoDropBackForced, retainedRiderIdWhenAllSplit } from "./mechanics/climbSelection.ts";
 import { GROUP_TEMPO_EFFORT_EXTRA_TUNING, RACE_V4_TUNING } from "./tuning.ts";
 import type { EffortLevel, SegmentKind } from "./types.ts";
 
@@ -61,9 +61,11 @@ test("cp_only: groupEffortTempo er den gamle regel — front efter CP (rider_id 
 });
 
 test("effort_weighted: i en blandet gruppe saetter de ikke-grupetto-ryttere tempoet (grupetto sidder paa hjul)", () => {
-  // r2 er staerkest paa CP, men hans tempo-bidrag (CP x grupetto-faktor) er
-  // under r1's — saa r1 overtager hans plads i fronten.
-  const cps = cpMap([["r1", 0.45], ["r2", 0.5], ["r3", 0.5], ["r4", 0.2], ["r5", 0.1]]);
+  // r2 er KLART staerkest — ogsaa hans tempo-bidrag (CP x grupetto-faktor)
+  // ligger over de andres. Han er alligevel ikke med i fronten: en
+  // grupetto-rytter saetter aldrig tempoet i en gruppe hvor andre koerer
+  // (CodeRabbit-fund paa denne PR, regressionsvagt).
+  const cps = cpMap([["r1", 0.3], ["r2", 0.8], ["r3", 0.5], ["r4", 0.2], ["r5", 0.1]]);
   const efforts: Record<string, EffortLevel> = { r1: "normal", r2: "grupetto", r3: "normal", r4: "normal", r5: "grupetto" };
   const out = groupEffortTempo(cps, (id) => efforts[id], 0.4, EFFORT_WEIGHTED);
   assert.ok(!out.frontRiderIds.has("r2"), "grupetto-rytteren skal ud af fronten naar andre kan koere");
@@ -104,6 +106,21 @@ test("tilbagefald paa stigninger: aldrig i cp_only; i effort_weighted kun grupet
   assert.equal(grupettoDropBackForced("grupetto", false, EFFORT_WEIGHTED), false);
   // Default-tuningen (cp_only) tvinger aldrig nogen tilbage.
   assert.equal(grupettoDropBackForced("grupetto", true), false);
+});
+
+test("alle udvalgt til split: den der bliver i fronten er aldrig en tilbagefaldet grupetto-rytter", () => {
+  // CodeRabbit-fund: en frisk grupetto-rytter har laveste baseScore, men han
+  // skal falde tilbage — den udkoerte rytter der koerer bliver.
+  const selections = [
+    { riderId: "g", baseScore: 0.01, effortForced: true },
+    { riderId: "w", baseScore: 0.9, effortForced: false },
+  ];
+  assert.equal(retainedRiderIdWhenAllSplit(selections), "w");
+  // Uden tilbagefald (default-modellen): den gamle regel, laveste baseScore.
+  assert.equal(
+    retainedRiderIdWhenAllSplit(selections.map((s) => ({ ...s, effortForced: false }))),
+    "g",
+  );
 });
 
 test("INVARIANT 3 (fast-check): med SAMME indsats-led er farten monotont ikke-faldende i gruppens CP", () => {

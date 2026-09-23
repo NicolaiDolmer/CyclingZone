@@ -338,10 +338,11 @@ export function riderTempoEffortFactor(
  * "cp_only" (default): de `frontFraction` staerkeste efter CP, indsats-led 1 —
  * praecis den regel computeGroupTempo altid har brugt.
  *
- * "effort_weighted": de `frontFraction` med det hoejeste TEMPO-bidrag
- * (CP x indsats-faktor). En grupetto-rytter i en blandet gruppe falder derfor
- * ud af fronten (han sidder paa hjul, de andre koerer), mens en gruppe der KUN
- * er grupetto-ryttere faar et indsats-led under 1 og koerer grupetto-tempo.
+ * "effort_weighted": i en blandet gruppe er fronten de `frontFraction`
+ * staerkeste af dem der KOERER — en grupetto-rytter er aldrig med (han sidder
+ * paa hjul, de andre koerer), uanset hvor staerk han er. En gruppe der KUN er
+ * grupetto-ryttere rangeres paa tempo-bidrag (CP x indsats-faktor), faar et
+ * indsats-led under 1 og koerer grupetto-tempo.
  * `collectiveCp` er fortsat front-rytternes FYSISKE CP; indsats-leddet er
  * forholdet mellem deres tempo-bidrag og den CP.
  *
@@ -355,13 +356,21 @@ export function groupEffortTempo(
 ): { collectiveCp: number; frontRiderIds: Set<string>; effortTempoFactor: number } {
   const weighted = [...cpByRider.entries()].map(([id, cp]) => {
     const factor = riderTempoEffortFactor(effortByRider(id), tempoTuning);
-    return { id, cp, tempoCp: cp * factor };
+    return { id, cp, tempoCp: cp * factor, slowed: factor < 1 };
   });
   // Sorteringen er identisk med den gamle (CP faldende, rider_id som
   // tie-break) naar alle faktorer er 1 — det er bit-identitets-garantien.
   weighted.sort((a, b) => b.tempoCp - a.tempoCp || a.id.localeCompare(b.id));
   const frontCount = Math.max(1, Math.ceil(weighted.length * frontFraction));
-  const frontSlice = weighted.slice(0, frontCount);
+  // En grupetto-rytter saetter ALDRIG tempoet i en gruppe hvor andre koerer
+  // (CodeRabbit-fund: en faktor alene garanterer det ikke — en staerk
+  // grupetto-rytter kan stadig have et hoejere tempo-bidrag end en svag
+  // rytter der koerer). Kun en gruppe af udelukkende grupetto-ryttere bruger
+  // den vaegtede raekkefoelge. I "cp_only" er ingen ryttere `slowed`, saa
+  // kandidaterne er hele gruppen, praecis som foer.
+  const racers = weighted.filter((r) => !r.slowed);
+  const frontCandidates = racers.length > 0 ? racers : weighted;
+  const frontSlice = frontCandidates.slice(0, frontCount);
   const frontRiderIds = new Set(frontSlice.map((r) => r.id));
   if (frontSlice.length === 0) return { collectiveCp: 0, frontRiderIds, effortTempoFactor: 1 };
   const collectiveCp = frontSlice.reduce((s, r) => s + r.cp, 0) / frontSlice.length;
