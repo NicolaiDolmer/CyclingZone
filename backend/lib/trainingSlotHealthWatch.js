@@ -12,8 +12,9 @@
 // fortæller OS det, før spillerne når at opdage det næste gang et loft flytter sig.
 //
 // READ-ONLY mod spil-data: kun SELECT på riders/teams/training_plans/seasons/
-// rider_derived_abilities. Eneste skrivning er upsert til vagtens egne tabeller
-// (training_slot_health_daily + ops_alert_state).
+// rider_derived_abilities (+ app_config-flaget og, på løbsdags-ticket,
+// training_day_runs til G9-kadencen, #4848). Eneste skrivning er upsert til vagtens
+// egne tabeller (training_slot_health_daily + ops_alert_state).
 //
 // Ren beregning ligger i trainingSlotHealth.js (unit-testet uden supabase-mock) —
 // samme split som balanceDriftWatch.js/balanceDriftMetrics.js.
@@ -22,11 +23,64 @@ import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import {
   computeTrainingSlotHealth,
   evaluateSlotHealthAlert,
+  typicalRaceDayTicksPerTeam,
+  calendarDayEquivalents,
   TOTAL_FOCUS_KEY,
 } from "./trainingSlotHealth.js";
 import { withOpsMention } from "./opsWebhook.js";
+import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
+import { TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor } from "./trainingRaceDayTick.js";
 
 const ALERT_KEY = "training-slot-health"; // nøgle i ops_alert_state (edge-triggered dedup)
+
+/**
+ * #4848 (gate G9): kalenderdags-ækvivalenter træning mellem forrige snapshot og nu.
+ *
+ * Flag off ⇒ { trainingDays: 1 } UDEN et eneste opslag ud over flaget: kalenderdags-
+ * ticket er det spring-loftet er kalibreret mod, så gaten er bit-identisk.
+ *
+ * Flag on ⇒ tæl løbsdags-ticks (training_day_runs med game_day) oprettet i
+ * intervallet, tag medianen pr. hold, og omregn via budget-deleren (G1) til
+ * kalenderdags-ækvivalenter. Samme `engineWrite`-læsning som sweepene: vagten skal
+ * måle præcis den nøgle motoren faktisk skriver på.
+ *
+ * FEJL ⇒ { reliable: false }. Uden et pålideligt tick-tal kan spring-gaten ikke
+ * evalueres ærligt (et rå spring over fem løbsdage er netop G9's falske alarm), så
+ * kalderen dropper den for dette snapshot — andels-gaten kører uændret.
+ *
+ * @param {{supabase:object, since:string|null, now:Date, seasonNumber?:number|null}} args
+ * @returns {Promise<{reliable:boolean, trainingDays?:number, raceDayTicks?:number, error?:string}>}
+ */
+export async function resolveTrainingDaysSincePrevious({ supabase, since, now, seasonNumber = null }) {
+  const raceDayTickOn = await isTrainingTickPerRaceDayEnabled(supabase, { engineWrite: true });
+  if (!raceDayTickOn) return { reliable: true, trainingDays: 1 };
+  if (!since) return { reliable: false, error: "previous snapshot has no generated_at" };
+  try {
+    // PAGINERET (#3331-klassen): et døgn på løbsdags-ticket er hold × løbsdage
+    // rækker, over PostgREST's 1.000-cap. `.order("id")` = stabil unik sortering.
+    const rows = await fetchAllRows(() =>
+      supabase
+        .from("training_day_runs")
+        // schema-columns-ok: game_day/season_id tilfoejes af database/2026-09-14-4846-training-tick-game-day.sql
+        .select("id, team_id, season_id, game_day")
+        .gt("created_at", since)
+        .lte("created_at", now.toISOString())
+        .not("game_day", "is", null)
+        .order("id")
+    );
+    const raceDayTicks = typicalRaceDayTicksPerTeam(rows);
+    const divisor = await resolveRaceDayBudgetDivisor({ seasonNumber });
+    const trainingDays = calendarDayEquivalents({
+      raceDayTicks,
+      raceDayBudgetDivisor: divisor,
+      legacyDaysPerSeason: TRAINING_RACE_DAY_CONFIG.legacyDaysPerSeason,
+    });
+    if (trainingDays == null) return { reliable: false, error: "invalid race-day divisor" };
+    return { reliable: true, trainingDays, raceDayTicks };
+  } catch (err) {
+    return { reliable: false, error: err?.message ?? String(err) };
+  }
+}
 
 // Hent alt vagten skal bruge for ÉN dag. Ingen klassifikation her.
 // Returnerer computeTrainingSlotHealth()-inputtet.
@@ -59,7 +113,7 @@ export async function fetchSlotHealthInputs(supabase) {
   // trenden er ærlig, en forkert dag er ikke.
   const { data: season, error: seasonErr } = await supabase
     .from("seasons")
-    .select("id")
+    .select("id, number")
     .eq("status", "active")
     .maybeSingle();
   if (seasonErr) throw new Error(`active season lookup failed: ${seasonErr.message}`);
@@ -80,7 +134,9 @@ export async function fetchSlotHealthInputs(supabase) {
     supabase.from("rider_derived_abilities").select("*").in("rider_id", chunk).order("rider_id")
   );
 
-  return { riders, planByRiderId, abilityRows };
+  // seasonNumber følger med til G9-omregningen (#4848); computeTrainingSlotHealth
+  // ignorerer feltet.
+  return { riders, planByRiderId, abilityRows, seasonNumber: season?.number ?? null };
 }
 
 export async function runTrainingSlotHealthWatch({
@@ -101,7 +157,7 @@ export async function runTrainingSlotHealthWatch({
   // egen række som "i går" og springet ville altid være nul.
   const { data: priorRows, error: priorErr } = await supabase
     .from("training_slot_health_daily")
-    .select("snapshot_date, riders_in_training, dead_slots, partial_slots")
+    .select("snapshot_date, riders_in_training, dead_slots, partial_slots, generated_at")
     .eq("focus", TOTAL_FOCUS_KEY)
     .lt("snapshot_date", snapshotDate)
     .order("snapshot_date", { ascending: false })
@@ -138,9 +194,33 @@ export async function runTrainingSlotHealthWatch({
     });
   }
 
+  // #4848 (G9): hvor meget træning ligger der mellem forrige snapshot og nu? Kun
+  // relevant når der ER en pålidelig forrige række (ellers evalueres springet ikke).
+  let jumpPrevious = priorErr ? null : previous;
+  let trainingDays = 1;
+  if (jumpPrevious) {
+    const cadence = await resolveTrainingDaysSincePrevious({
+      supabase,
+      since: priorRows[0].generated_at ?? null,
+      now,
+      seasonNumber: inputs.seasonNumber ?? null,
+    });
+    if (cadence.reliable) {
+      trainingDays = cadence.trainingDays;
+    } else {
+      jumpPrevious = null;
+      captureExceptionFn?.(new Error(`training-slot-health cadence (race-day tick): ${cadence.error}`), {
+        tags: { cron: "training-slot-health-watch" },
+        extra: { snapshotDate },
+      });
+    }
+  }
+
   // Uden en pålidelig forrige række kan spring-gaten ikke evalueres; andels-gaten
   // kan. evaluateSlotHealthAlert håndterer previous=null selv.
-  const { shouldAlert, reasons, deadShare } = evaluateSlotHealthAlert(totals, priorErr ? null : previous);
+  const { shouldAlert, reasons, deadShare } = evaluateSlotHealthAlert(
+    totals, jumpPrevious, undefined, { trainingDays }
+  );
 
   // Edge-triggered dedup (#2730-mønsteret): alarmér kun når ÅRSAGS-sættet ændrer
   // sig, så en deploy-genstart ikke re-spammer en uændret vedvarende tilstand.
@@ -154,7 +234,7 @@ export async function runTrainingSlotHealthWatch({
     captureExceptionFn?.(new Error(`ops_alert_state read (training-slot-health): ${stateErr.message}`), {
       tags: { cron: "training-slot-health-watch" },
     });
-    return { date: snapshotDate, totals, rows, alerted: false };
+    return { date: snapshotDate, totals, rows, alerted: false, trainingDays };
   }
   const changed = (stateRow?.signature ?? "") !== signature;
 
@@ -205,5 +285,5 @@ export async function runTrainingSlotHealthWatch({
     }
   }
 
-  return { date: snapshotDate, totals, rows, alerted: shouldAlert && changed };
+  return { date: snapshotDate, totals, rows, alerted: shouldAlert && changed, trainingDays };
 }
