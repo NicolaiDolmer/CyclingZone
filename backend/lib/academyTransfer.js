@@ -435,6 +435,8 @@ export async function moveRider(supabase, {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!isSquad(targetSquad)) throw new Error("invalid_squad");
 
+  // schema-columns-ok: riders.squad tilføjes af database/2026-09-15-4619-riders-squad.sql
+  // (#4619); schema-snapshot.json er ikke refreshet siden.
   const { data: rider, error } = await supabase.from("riders")
     .select("id, team_id, is_academy, squad, birthdate")
     .eq("id", riderId).maybeSingle();

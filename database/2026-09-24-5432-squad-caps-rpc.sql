@@ -10,7 +10,7 @@
 --
 -- HVAD DEN GØR
 --   1) count_team_squad_members(team, trup, udeladt rytter) — ÉT tælle-prædikat for
---      alle tre RPC'er, kaldt INDE i advisory-låsen.
+--      alle RPC'erne herunder, kaldt INDE i advisory-låsen.
 --   2) demote_rider_to_academy: tæller pr. MÅL-trup, aldersgaten bruger det
 --      aldersloft kalderen sender, og squad skrives i SAMME UPDATE som is_academy.
 --   3) finalize_academy_acquisition (ungdomsauktion + intake-signering): tæller pr.
@@ -18,7 +18,11 @@
 --      (#4423, rytteren kører et etapeløb) rører hverken is_academy eller squad.
 --   4) move_academy_rider_squad (ny): flyt en akademirytter mellem junior og U23
 --      under samme lås og samme tælling (backend/lib/academyTransfer.js moveRider).
---   5) Gen-assertér ACL'en (service_role only) og bed PostgREST genindlæse skemaet.
+--   5) flush_pending_academy_signing (ny): fuldfør en udskudt optagelse (#4423) med
+--      samme tælling og samme skrivning — erstatter en JS-cap på hele akademiet,
+--      der ellers ville låse udskudte optagelser fast når et hold lovligt har flere
+--      akademiryttere end det gamle flade tal.
+--   6) Gen-assertér ACL'en (service_role only) og bed PostgREST genindlæse skemaet.
 --
 -- TÆLLINGEN I OVERGANGSPERIODEN [kritisk]
 -- #4619-backfill'en (backend/scripts/backfill-4619-riders-squad.js) er ejer-gated.
@@ -37,7 +41,7 @@
 -- flade cap blive liggende ved siden af og kunne kaldes af gammel kode. DROP +
 -- CREATE sker i én transaktion, så der findes intet øjeblik uden funktionen.
 -- Backend deployer før auto-migrate.yml applier (3 min, docs/AUTO_MIGRATION_SETUP.md);
--- i det vindue svarer PostgREST "function not found" på de nye kald, og alle tre
+-- i det vindue svarer PostgREST "function not found" på de nye kald, og alle
 -- stier fejler højlydt uden at skrive noget (auktions-cron'en prøver igen næste pas).
 --
 -- IDEMPOTENT: DROP FUNCTION IF EXISTS (gammel signatur) + CREATE OR REPLACE (ny).
@@ -52,6 +56,7 @@
 --   DROP FUNCTION IF EXISTS public.demote_rider_to_academy(uuid, uuid, bigint, integer, integer, integer, text, integer, integer);
 --   DROP FUNCTION IF EXISTS public.finalize_academy_acquisition(uuid, uuid, bigint, bigint, integer, integer, timestamptz, jsonb, text, integer);
 --   DROP FUNCTION IF EXISTS public.move_academy_rider_squad(uuid, uuid, text, integer);
+--   DROP FUNCTION IF EXISTS public.flush_pending_academy_signing(uuid, uuid, text, integer);
 --   DROP FUNCTION IF EXISTS public.count_team_squad_members(uuid, text, uuid);
 -- og backend-koden der sender de nye argumenter skal rulles tilbage samtidig.
 
@@ -457,7 +462,59 @@ BEGIN
 END;
 $$;
 
--- ─── 5. ACL: service_role only ───────────────────────────────────────────────
+-- ─── 5. flush_pending_academy_signing (ny) ───────────────────────────────────
+-- Den udskudte optagelse (#4423) fuldføres når rytterens etapeløb er kørt færdigt
+-- (backend/lib/academySigningDefer.js). Før #5432 lå flippet i JS med sin egen
+-- flade akademi-cap, der passede så længe RPC'en ovenfor holdt HELE akademiet
+-- under samme tal. Med loft pr. trup kan et hold lovligt have flere akademiryttere
+-- end det gamle tal, og en JS-cap på totalen ville låse udskudte optagelser fast.
+-- Flippet tæller derfor nu pr. mål-trup under samme lås og skriver squad og
+-- is_academy i samme række-skrivning. Returnerer JSONB:
+--   { ok:false, code:'invalid_squad' | 'academy_full' | 'not_pending' }
+--   { ok:true, squad, squad_count }
+CREATE OR REPLACE FUNCTION public.flush_pending_academy_signing(
+  p_team_id UUID,
+  p_rider_id UUID,
+  p_squad TEXT,
+  p_squad_cap INTEGER
+) RETURNS JSONB
+  LANGUAGE plpgsql
+  SET search_path = public, pg_catalog
+  AS $$
+DECLARE
+  v_squad_count INTEGER;
+  v_updated INTEGER;
+BEGIN
+  IF p_squad IS NULL OR p_squad NOT IN ('junior', 'u23')
+     OR p_squad_cap IS NULL OR p_squad_cap < 0 THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'invalid_squad');
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_team_id::text, 0));
+
+  v_squad_count := count_team_squad_members(p_team_id, p_squad, p_rider_id);
+  IF v_squad_count >= p_squad_cap THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'academy_full');
+  END IF;
+
+  -- TOCTOU-guard: kun en rytter der STADIG venter, og stadig hos holdet.
+  UPDATE riders
+    SET is_academy = true,
+        squad = p_squad,
+        pending_academy_signing = false
+    WHERE id = p_rider_id
+      AND team_id = p_team_id
+      AND pending_academy_signing = true;
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated = 0 THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'not_pending');
+  END IF;
+
+  RETURN jsonb_build_object('ok', true, 'squad', p_squad, 'squad_count', v_squad_count + 1);
+END;
+$$;
+
+-- ─── 6. ACL: service_role only ───────────────────────────────────────────────
 -- Supabase' default privileges granter EXECUTE til anon/authenticated på enhver
 -- NY funktion (#2858/#3765-klassen), og en DROP + CREATE er en ny funktion. REVOKE
 -- fra PUBLIC OG de navngivne roller (.claude/learnings/2026-07-12-revoke-from-
@@ -477,6 +534,10 @@ GRANT  EXECUTE ON FUNCTION public.finalize_academy_acquisition(uuid, uuid, bigin
 REVOKE ALL     ON FUNCTION public.move_academy_rider_squad(uuid, uuid, text, integer) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.move_academy_rider_squad(uuid, uuid, text, integer) FROM anon, authenticated;
 GRANT  EXECUTE ON FUNCTION public.move_academy_rider_squad(uuid, uuid, text, integer) TO service_role;
+
+REVOKE ALL     ON FUNCTION public.flush_pending_academy_signing(uuid, uuid, text, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.flush_pending_academy_signing(uuid, uuid, text, integer) FROM anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.flush_pending_academy_signing(uuid, uuid, text, integer) TO service_role;
 
 COMMIT;
 

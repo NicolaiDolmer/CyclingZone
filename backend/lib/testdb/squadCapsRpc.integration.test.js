@@ -7,7 +7,8 @@
 //      #5432 findes der præcis ÉN overload af hver funktion — den gamle signatur med
 //      den flade cap er væk, ikke efterladt ved siden af.
 //   2. Tællingen sker pr. MÅL-trup: en fuld U23-trup blokerer ikke en junior-optagelse
-//      og omvendt — for alle tre stier (nedrykning, ungdomsauktion, intake).
+//      og omvendt — for alle stier (nedrykning, ungdomsauktion, intake, udskudt
+//      optagelse og flyt mellem junior og U23).
 //   3. Loftet og aldersloftet kommer fra kalderen (squads.js), ikke fra SQL: et andet
 //      loft i argumentet giver en anden grænse.
 //   4. Atomicitet: squad skrives i SAMME transaktion som is_academy. En afvisning
@@ -17,7 +18,7 @@
 //      tæller i begge ungdomstrupper, så gaten aldrig bliver mildere end loftet.
 //
 // Advisory-låsen (pg_advisory_xact_lock) kan ikke bevises med én PGlite-forbindelse;
-// den er uændret fra de tidligere versioner og deles af alle tre RPC'er.
+// den er uændret fra de tidligere versioner og deles af alle RPC'erne.
 
 import test, { before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
@@ -204,13 +205,15 @@ test("apply-rækkefølge: præcis ÉN overload pr. funktion — den gamle flade-
   const { rows } = await db.query(
     `SELECT proname, pronargs FROM pg_proc
      WHERE proname IN ('demote_rider_to_academy', 'finalize_academy_acquisition',
-                       'move_academy_rider_squad', 'count_team_squad_members')
+                       'move_academy_rider_squad', 'count_team_squad_members',
+                       'flush_pending_academy_signing')
      ORDER BY proname`,
   );
   assert.deepEqual(rows, [
     { proname: "count_team_squad_members", pronargs: 3 },
     { proname: "demote_rider_to_academy", pronargs: 9 },
     { proname: "finalize_academy_acquisition", pronargs: 10 },
+    { proname: "flush_pending_academy_signing", pronargs: 4 },
     { proname: "move_academy_rider_squad", pronargs: 4 },
   ]);
 });
@@ -474,4 +477,56 @@ test("move: et afsluttet eller ikke-startet etapeløb blokerer ikke", async () =
   const future = (await db.query("INSERT INTO races (race_type, stages_completed) VALUES ('stage_race', 0) RETURNING id")).rows[0].id;
   await db.query("INSERT INTO race_entries (race_id, rider_id, team_id) VALUES ($1, $3, $4), ($2, $3, $4)", [done, future, riderId, teamId]);
   assert.equal((await move(teamId, riderId, "u23")).ok, true);
+});
+
+// ── 6. Udskudt optagelse fuldføres (flush_pending_academy_signing) ────────────
+
+async function flush(teamId, riderId, squad, { cap } = {}) {
+  const args = squadCapRpcArgs(squad);
+  const { rows } = await db.query(
+    "SELECT flush_pending_academy_signing($1::uuid, $2::uuid, $3::text, $4::int) AS r",
+    [teamId, riderId, args.p_squad, cap ?? args.p_squad_cap],
+  );
+  return rows[0].r;
+}
+
+async function makePendingSigning(teamId, birthdate = BORN_U23) {
+  const riderId = await makeRider({ teamId, birthdate });
+  await db.query("UPDATE riders SET pending_academy_signing = true WHERE id = $1", [riderId]);
+  return riderId;
+}
+
+test("flush: udskudt optagelse fuldføres — is_academy, squad og flag i én skrivning", async () => {
+  const teamId = await makeTeam();
+  const riderId = await makePendingSigning(teamId);
+  assert.deepEqual(await flush(teamId, riderId, "u23"), { ok: true, squad: "u23", squad_count: 1 });
+  assert.deepEqual(await riderRow(riderId), { team_id: teamId, is_academy: true, squad: "u23", salary: 5000, pending_academy_signing: false });
+});
+
+test("flush: flere akademiryttere end det gamle flade tal låser ikke en optagelse i en trup med plads", async () => {
+  // Regressions-vagt: før #5432 talte flush hele akademiet mod ét fladt tal i JS.
+  const teamId = await makeTeam();
+  await fillSquad(teamId, "u23", SQUAD_CAPS.u23);
+  const riderId = await makePendingSigning(teamId, BORN_JUNIOR);
+  assert.equal((await flush(teamId, riderId, "junior")).ok, true);
+});
+
+test("flush: fuld mål-trup → academy_full; rytteren venter fortsat, intet skrevet", async () => {
+  const teamId = await makeTeam();
+  await fillSquad(teamId, "u23", SQUAD_CAPS.u23);
+  const riderId = await makePendingSigning(teamId);
+  assert.deepEqual(await flush(teamId, riderId, "u23"), { ok: false, code: "academy_full" });
+  assert.deepEqual(await riderRow(riderId), { team_id: teamId, is_academy: false, squad: "senior", salary: 5000, pending_academy_signing: true });
+});
+
+test("flush: idempotent — en rytter der ikke venter (eller er på et andet hold) → not_pending", async () => {
+  const teamId = await makeTeam();
+  const other = await makeTeam();
+  const riderId = await makePendingSigning(teamId);
+  assert.equal((await flush(teamId, riderId, "u23")).ok, true);
+  assert.deepEqual(await flush(teamId, riderId, "u23"), { ok: false, code: "not_pending" });
+
+  const moved = await makePendingSigning(other);
+  assert.deepEqual(await flush(teamId, moved, "u23"), { ok: false, code: "not_pending" });
+  assert.equal((await riderRow(moved)).is_academy, false);
 });
