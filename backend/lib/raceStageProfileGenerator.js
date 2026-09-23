@@ -25,6 +25,9 @@ import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
 import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
+// #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
+// afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
+import { FINALE_CLASS_BY_TYPE, FINALE_CLASSES, OVERALL_FINALE_BAND, TERRAIN_FINALE_BANDS } from "./stageFinaleMetrics.js";
 
 // v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
 // identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
@@ -461,6 +464,12 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 // har krævet `--allow-finale-drift` siden 3/9 (#4272); de er stadig ikke grønne, men de
 // er tættere på end før dette spor begyndte.
 //
+// OPFØLGNING 23/9 (#5405): grus blev "kun rapport" under stikprøveminimum (22/9), og de
+// tre sidste linjer (kuperet i udbrud, brosten fladt, brosten i udbrud) var stikprøvestøj
+// fra et frit træk pr. etape — ikke forkerte vægte. De er lukket af kvote-fordelingen
+// (balanceFinaleQuotas nedenfor), uden at røre en vægt eller et bånd. S4-tørkørslen har
+// nul §7b-brud; tallene står i balance-internals/2026-09-23-5405-finale-afvigelser/.
+//
 // pass1-golden.json-fixturen er REGENERERET (vægtene ændrer pass-1-output for de
 // berørte arketyper — samme "bevidst ændring, fixture regenereret"-præcedens som
 // #3326-korrektionen ovenfor). calendarGoldenSnapshot.s3.json er derimod UÆNDRET:
@@ -513,8 +522,16 @@ function seedKeyFor(race) {
 }
 
 function weightedPick(rng, items) {
+  return pickByQuantile(items, rng());
+}
+
+// Samme kumulative afbildning som weightedPick, men med kvantilen givet udefra (0 ≤ u < 1).
+// weightedPick er defineret som pickByQuantile(items, rng()), saa de to kan ikke drifte fra
+// hinanden: #5405's kvote-fordeling (balanceFinaleQuotas nedenfor) vaelger finalen med
+// PRAECIS den afbildning det frie traek bruger — kun kvantilen er en anden.
+function pickByQuantile(items, u) {
   const total = items.reduce((s, it) => s + it.weight, 0);
-  let r = rng() * total;
+  let r = u * total;
   for (const it of items) {
     r -= it.weight;
     if (r < 0) return it.value;
@@ -584,29 +601,230 @@ function demandVectorFor(profileType) {
 }
 
 export function finaleFor(rng, profileType) {
-  const options = FINALE_WEIGHTS_BY_PROFILE[profileType] || [];
-  if (!options.length) return null;
-  // #4272: ét vægtet træk (weightedPick bruger præcis ÉT rng-kald, som den gamle
-  // 60/40-sti gjorde i sit hyppigste tilfælde). Vægtene bor i tabellen ovenfor, så
-  // båndene kan justeres uden at røre trækket.
-  return weightedPick(rng, options);
+  return drawFinale(rng, profileType).value;
 }
 
-function toStage(rng, profileType, stageNumber, race, isStageRace) {
-  const base = {
-    stage_number: stageNumber,
-    profile_type: profileType,
-    finale_type: finaleFor(rng, profileType),
-    demand_vector: demandVectorFor(profileType),
-  };
-  // Pass 2: rute-berigelse via DEDIKERET rng-strøm (rører ikke `rng` ovenfor).
+// #4272: ét vægtet træk (præcis ÉT rng-kald, som den gamle 60/40-sti gjorde i sit
+// hyppigste tilfælde). Vægtene bor i tabellen ovenfor, så båndene kan justeres uden at
+// røre trækket. #5405: kvantilen returneres med, så kvote-fordelingen kan rangere
+// etaperne efter PRÆCIS det træk de fik — ingen ekstra rng-kald, pass 1 er bit-identisk.
+function drawFinale(rng, profileType) {
+  const options = FINALE_WEIGHTS_BY_PROFILE[profileType] || [];
+  if (!options.length) return { value: null, u: null };
+  const u = rng();
+  return { value: pickByQuantile(options, u), u };
+}
+
+// #5405: sidekanal fra generatoren til balanceFinaleQuotas. Pr. genereret etape-objekt:
+// finale-trækkets kvantil, en stabil sorterings-nøgle og en genbygger der laver SAMME
+// etape med en anden finale. WeakMap (ikke et felt på objektet), fordi etaperne persisteres
+// og sammenlignes feltvist (toStageProfileRow, pass1-golden.json) — konteksten må hverken
+// skrives til basen eller ændre et eneste felt. Etaper der ikke er lavet af toStage (fx
+// læst fra basen eller bygget i en test) har ingen kontekst og røres ikke af fordelingen.
+const FINALE_CONTEXT = new WeakMap();
+
+function buildStage(base, race, isStageRace) {
+  // Pass 2: rute-berigelse via DEDIKERET rng-strøm (rører ikke pass 1's rng).
   const route = attachRoute(base, race, isStageRace);
   const merged = { ...base, ...route };
   // v4 F1 (#3855): segments + weather via EGNE dedikerede rng-strømme (routeSegments.js)
   // — rører hverken pass 1's `rng` eller pass 2's route-rng. Additivt: intet eksisterende
   // felt ændres/fjernes.
-  const { segments, weather } = attachSegmentsAndWeather(merged, race, stageNumber);
+  const { segments, weather } = attachSegmentsAndWeather(merged, race, base.stage_number);
   return { ...merged, segments, weather };
+}
+
+function registerFinaleContext(stage, { u, key, race, isStageRace }) {
+  const base = { stage_number: stage.stage_number, profile_type: stage.profile_type, demand_vector: stage.demand_vector };
+  FINALE_CONTEXT.set(stage, {
+    u, key,
+    // Ruten (stigninger, spurter, segmenter) afhænger af finalen og genbygges derfor med
+    // den. Rute-, segment- og vejr-strømmene er seedet pr. (løb, etape), ikke af pass 1,
+    // så genbygningen er deterministisk og rører ingen anden etape.
+    rebuild: (finaleType) => {
+      const rebuilt = buildStage({ ...base, demand_vector: { ...base.demand_vector }, finale_type: finaleType }, race, isStageRace);
+      FINALE_CONTEXT.set(rebuilt, FINALE_CONTEXT.get(stage));
+      return rebuilt;
+    },
+  });
+}
+
+function toStage(rng, profileType, stageNumber, race, isStageRace) {
+  const { value, u } = drawFinale(rng, profileType);
+  const stage = buildStage({
+    stage_number: stageNumber,
+    profile_type: profileType,
+    finale_type: value,
+    demand_vector: demandVectorFor(profileType),
+  }, race, isStageRace);
+  if (u != null) registerFinaleContext(stage, { u, key: `${seedKeyFor(race)}#${stageNumber}`, race, isStageRace });
+  return stage;
+}
+
+/**
+ * #5405: fordel finale-typerne i ÉN divisions løbssæt efter kvote i stedet for et frit
+ * træk pr. etape.
+ *
+ * HVORFOR. Vægtene i FINALE_WEIGHTS_BY_PROFILE står på båndenes midte (§7b), men hver
+ * etape trak sin finale uafhængigt. En divisions andel var derfor en binomial stikprøve
+ * omkring vægten, og på en terræntype med få etaper (brosten) er båndet ikke bredere end
+ * én standardfejl: en korrekt generator lå uden for båndet i en stor del af sæsonerne,
+ * og ingen vægt kunne rette det. Fordelingen her fjerner stikprøvestøjen i stedet for at
+ * flytte vægtene væk fra midten for at ramme ét bestemt træk.
+ *
+ * HVORDAN. Pr. terræntype rangeres divisionens etaper efter kvantilen i deres eget frie
+ * træk. Etapen på plads r (0-baseret) af n får den finale som samme vægtede afbildning
+ * giver kvantilen (r + ½)/n — en stratificeret stikprøve i stedet for en tilfældig. Antallet
+ * af hver finale bliver dermed n × vægtandelen afrundet (højst én etape fra), mens
+ * rækkefølgen bevares: en etape der frit trak en tidlig finale i listen, får stadig en
+ * tidlig finale. Kun etaper tæt på en grænse skifter, og deres rute genbygges med den nye
+ * finale.
+ *
+ * HVORFOR PR. DIVISION, ikke pr. sæson: samme begrundelse som realisme-gen-trækket
+ * (raceRouteRealismDraw.js). Divisionerne deler ikke løb, alle puljer i en division kører
+ * samme løbssæt, og en division kan genopbygges alene (§2e) uden at de andre skal kendes.
+ * Sæson-aggregatet er summen af fire fordelinger der hver ligger under én etape fra målet.
+ *
+ * Ren og deterministisk: samme løbssæt i vilkårlig rækkefølge giver samme resultat.
+ * Inputtet muteres ikke; uændrede etaper genbruges som samme objekter.
+ *
+ * @param {Array<Array<object>>} stagesByRace  generateRaceStageProfiles-output pr. løb
+ * @returns {Array<Array<object>>} samme form og rækkefølge
+ */
+export function balanceFinaleQuotas(stagesByRace = []) {
+  const groupsByProfile = new Map();
+  const fixedClassCounts = Object.fromEntries(FINALE_CLASSES.map((c) => [c, 0]));
+  let totalStages = 0;
+  stagesByRace.forEach((stages, raceIdx) => {
+    (stages ?? []).forEach((stage, stageIdx) => {
+      if (!stage) return;
+      totalStages += 1;
+      const ctx = FINALE_CONTEXT.get(stage);
+      const options = FINALE_WEIGHTS_BY_PROFILE[stage.profile_type] || [];
+      if (!ctx || options.length < 2) {
+        const cls = FINALE_CLASS_BY_TYPE[stage.finale_type];
+        if (cls) fixedClassCounts[cls] += 1;
+        return;
+      }
+      if (!groupsByProfile.has(stage.profile_type)) groupsByProfile.set(stage.profile_type, []);
+      groupsByProfile.get(stage.profile_type).push({ raceIdx, stageIdx, stage, ctx });
+    });
+  });
+
+  const groups = [...groupsByProfile.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([profileType, members]) => {
+      members.sort((a, b) => (a.ctx.u - b.ctx.u) || (a.ctx.key < b.ctx.key ? -1 : a.ctx.key > b.ctx.key ? 1 : 0));
+      const options = FINALE_WEIGHTS_BY_PROFILE[profileType];
+      const n = members.length;
+      // Standard-kvoten: etapen på plads r får finalen for kvantilen (r + ½)/n.
+      const defaults = options.map(() => 0);
+      for (let r = 0; r < n; r++) {
+        const finale = pickByQuantile(options, (r + 0.5) / n);
+        defaults[options.findIndex((o) => o.value === finale)] += 1;
+      }
+      return { profileType, members, options, n, defaults, counts: defaults, roundings: quotaRoundings(options, n) };
+    });
+
+  chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages);
+
+  const out = stagesByRace.map((stages) => (stages ? [...stages] : stages));
+  for (const g of groups) {
+    // Rangordenen bevares: de første counts[0] etaper får første finale i listen, osv.
+    let rank = 0;
+    g.counts.forEach((count, k) => {
+      for (let i = 0; i < count; i++, rank++) {
+        const m = g.members[rank];
+        const finale = g.options[k].value;
+        if (finale !== m.stage.finale_type) out[m.raceIdx][m.stageIdx] = m.ctx.rebuild(finale);
+      }
+    });
+  }
+  return out;
+}
+
+// Alle lovlige afrundinger af kvoten n × vægtandel: hver finale får enten nedrundet eller
+// oprundet antal, og summen er n. Højst fire finaler pr. terræn → højst seks muligheder.
+function quotaRoundings(options, n) {
+  const total = options.reduce((s, o) => s + o.weight, 0);
+  const exact = options.map((o) => (n * o.weight) / total);
+  const floors = exact.map((e) => Math.floor(e + 1e-9));
+  const fractional = exact.map((e, k) => k).filter((k) => exact[k] - floors[k] > 1e-9);
+  const extra = n - floors.reduce((s, f) => s + f, 0);
+  const out = [];
+  const pick = (start, chosen) => {
+    if (chosen.length === extra) {
+      out.push(floors.map((f, k) => f + (chosen.includes(k) ? 1 : 0)));
+      return;
+    }
+    for (let i = start; i < fractional.length; i++) pick(i + 1, [...chosen, fractional[i]]);
+  };
+  pick(0, []);
+  return out.length ? out : [floors];
+}
+
+// #5405: kvoten skal rundes af — n × vægtandel er sjældent et helt tal. Standard er den
+// nærmeste afrunding ((r + ½)/n ovenfor). Men ejeren har ÉT bånd mere end terræn-båndene:
+// det samlede bånd på tværs af ALLE en divisions etaper (OVERALL_FINALE_BAND, "samme i alle
+// divisioner"). Med terræn-vægtene på båndenes midte kan summen af dem ligge på kanten af
+// det samlede bånd — så afgør afrundingen hvilken side af kanten divisionen lander på.
+//
+// Reglen: behold standard-afrundingen, medmindre en anden LOVLIG afrunding (hver finale
+// stadig højst én etape fra sin kvote) bringer divisionen tættere på at overholde både det
+// samlede bånd og terræn-båndene. Ingen vægt ændres, intet bånd ændres, og intet terræn
+// flyttes mere end afrundingen tillader. Koordinat-søgning over terrænerne i fast
+// rækkefølge; lige gode valg beholder det nuværende. Deterministisk.
+function chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages) {
+  const eps = 1e-9;
+  const outside = (count, [lo, hi], n) => Math.max(0, (lo * n) / 100 - count - eps) + Math.max(0, count - (hi * n) / 100 - eps);
+  const classCounts = (g, counts) => {
+    const byClass = Object.fromEntries(FINALE_CLASSES.map((c) => [c, 0]));
+    counts.forEach((count, k) => { byClass[FINALE_CLASS_BY_TYPE[g.options[k].value]] += count; });
+    return byClass;
+  };
+  // Tre led, i prioriteret rækkefølge: (1) etaper uden for et TERRÆN-bånd — de er de mest
+  // specifikke regler, og en afrunding må aldrig bytte dem væk for det samlede bånd;
+  // (2) etaper uden for det SAMLEDE bånd; (3) antal etaper flyttet fra standard-afrundingen.
+  const score = () => {
+    let terrain = 0, overallViolation = 0, moved = 0;
+    const overall = { ...fixedClassCounts };
+    for (const g of groups) {
+      const byClass = classCounts(g, g.counts);
+      for (const c of FINALE_CLASSES) overall[c] += byClass[c];
+      const bands = TERRAIN_FINALE_BANDS[g.profileType];
+      if (bands) for (const c of FINALE_CLASSES) terrain += outside(byClass[c], bands[c] ?? [0, 0], g.n);
+      g.counts.forEach((count, k) => { moved += Math.abs(count - g.defaults[k]); });
+    }
+    for (const [c, band] of Object.entries(OVERALL_FINALE_BAND)) overallViolation += outside(overall[c], band, totalStages);
+    return { terrain, overall: overallViolation, moved, violation: terrain + overallViolation };
+  };
+  const better = (a, b) => {
+    if (a.terrain < b.terrain - eps) return true;
+    if (a.terrain > b.terrain + eps) return false;
+    if (a.overall < b.overall - eps) return true;
+    if (a.overall > b.overall + eps) return false;
+    return a.moved < b.moved;
+  };
+
+  // Bedste enkelt-ændring ad gangen (ikke første forbedring): så vælges det terræn hvor
+  // afrundingen koster mindst, i stedet for det der tilfældigvis står først i rækkefølgen.
+  let best = score();
+  for (let step = 0; step < 64 && best.violation > eps; step++) {
+    let move = null;
+    for (const g of groups) {
+      const current = g.counts;
+      for (const candidate of g.roundings) {
+        if (candidate.every((c, k) => c === current[k])) continue;
+        g.counts = candidate;
+        const s = score();
+        if (better(s, move?.score ?? best)) move = { g, candidate, score: s };
+      }
+      g.counts = current;
+    }
+    if (!move) break;
+    move.g.counts = move.candidate;
+    best = move.score;
+  }
 }
 
 // Endagsløb: ét terræn fra arketypens (eller den generiske) vægtede fordeling.
