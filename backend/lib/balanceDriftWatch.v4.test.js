@@ -142,7 +142,7 @@ function v3Tables() {
 // race-d etape 1 (ingen finale_type ⇒ fallback-vektor): d12 er feltets
 // stærkeste og FAVORIT, men styrter ud — favoritten vandt altså ikke, og kom
 // ikke på podiet. En favorit valgt blandt finisherne alene ville have været
-// d02 (nr. 2 ⇒ podie) — det er præcis den skævhed startfelt-rekonstruktionen
+// d01 (vinderen) — det er præcis den skævhed startfelt-rekonstruktionen
 // fjerner.
 const SPRINT_KEYS = new Set(["sprint", "acceleration", "positioning", "flat"]);
 const CLIMB_KEYS = new Set(["climbing", "endurance", "tempo"]);
@@ -163,7 +163,7 @@ function v4AbilityRows() {
   }
   for (let i = 1; i <= 12; i++) {
     const id = `d${pad(i)}`;
-    rows.push(abilityRow(id, () => (id === "d12" ? 95 : id === "d02" ? 90 : 50)));
+    rows.push(abilityRow(id, () => (id === "d12" ? 95 : id === "d01" ? 90 : 50)));
   }
   return rows;
 }
@@ -334,8 +334,8 @@ test("ren v4-dag: v4-serien måles fra race_results + evner + race_incidents und
   const v4 = row.metrics.v4;
 
   // race-c: favoritten (c05) vinder. race-d: favoritten (d12) styrter ud.
-  assert.equal(v4.favoriteWinRate, 0.5);
-  assert.equal(v4.favoritePodiumRate, 0.5, "d12 er favorit selvom han udgik — ikke næstbedste finisher d02");
+  assert.equal(v4.favoriteWinRate, 0.5, "d12 er favorit selvom han udgik — ikke næstbedste finisher d01");
+  assert.equal(v4.favoritePodiumRate, 0.5);
   assert.equal(v4.share4PlusSameTeamTop10, 0.5);
   assert.equal(v4.avgDistinctTeamsTop10, 8.5);
   // DNF som i v3 (outcome='abandon' / feltstørrelse), uden tidsgrænsen.
