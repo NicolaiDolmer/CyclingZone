@@ -33,6 +33,8 @@ const FIRST = ["Mathias", "Tom", "Luca", "Rafael", "Viktor", "Antoine", "Søren"
 const LAST = ["Sørensen", "Van Aerde", "Colombo", "Duran", "Lindqvist", "Fabre", "Mikkelsen", "Halvorsen", "Bakker", "Riis", "Lindvik", "Draaijer", "Sørlie"];
 
 const base = RIDERS.find((r: { id: string }) => r.id === "rider-1");
+// #5534-typecheck: fixturens rider-1 er grundformen for hele truppen.
+if (!base) throw new Error("fixtures.js: rider-1 mangler i RIDERS");
 const SQUAD = [
   base,
   ...FIRST.map((firstname, i) => ({
