@@ -121,7 +121,7 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null }) {
   const showDnaChoice = !hasDna && dnaSuggestions.length > 0;
 
   return (
-    <div>
+    <div data-testid="boardroom-page">
       <PageHeader
         title={t("boardroom.header.title")}
         subtitle={subtitle}
