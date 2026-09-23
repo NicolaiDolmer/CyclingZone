@@ -1249,6 +1249,13 @@ export async function fillMissingTeamEntries({
       rows.push({
         race_id: race.id, rider_id: pick.rider_id, team_id: teamId,
         race_role: isRescue ? "helper" : pick.race_role, is_auto_filled: true,
+        // #5246: eksplicit kilde — race_entries_stamp_auto_fill_trg (database/
+        // 2026-09-23-5246-late-fill-log.sql) respekterer et allerede sat
+        // auto_filled_source (COALESCE) i stedet for at overskrive med sin egen
+        // default ('late_fill'), så denne kørsel-ved-løbsstart-vej skiller sig
+        // korrekt fra late-fill-sweepen (raceEntryGenerator.js, ingen eksplicit
+        // source, falder tilbage til 'late_fill') i målingen.
+        auto_filled_source: "start_rescue",
       });
     }
   }

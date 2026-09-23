@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runRaceEntryGeneratorSweep } from "./raceEntryGeneratorSweep.js";
+import { runRaceEntryGeneratorSweep, RACE_ENTRY_GENERATOR_RUNS_TABLE } from "./raceEntryGeneratorSweep.js";
 
 // Chainable seasons-mock (mirrors activeSeasonLookup.js' forbrug): season-lookuppet
 // kæder .select().eq().order().limit().maybeSingle(), og fler-aktiv-alarmen kæder
@@ -11,6 +11,14 @@ import { runRaceEntryGeneratorSweep } from "./raceEntryGeneratorSweep.js";
 function makeSeasonsSupabase({ seasons = [], seasonsError = null, activeCount, countError = null } = {}) {
   return {
     from(table) {
+      // #5246: writeRunLog() (best-effort) skriver til denne tabel efter enhver
+      // faktisk kørsel. Tests der bruger DENNE helper tester sæson-lookuppet, ikke
+      // logningen — no-op-succes her holder dem uændrede (ingen ekstra
+      // captureExceptionFn-kald, se den dedikerede makeSweepSupabase nedenfor for
+      // tests der faktisk verificerer race_entry_generator_runs-skrivningen).
+      if (table === RACE_ENTRY_GENERATOR_RUNS_TABLE) {
+        return { insert: async () => ({ error: null }) };
+      }
       assert.equal(table, "seasons");
       return {
         select(_cols, opts) {
@@ -172,4 +180,111 @@ test("#4201: uden app_config-svar koerer sweepet proactive (fail-safe)", async (
   });
   assert.equal(called.mode, "proactive");
   assert.equal(called.lateFillHours, 24);
+});
+
+// ── #5246: race_entry_generator_runs-logning ────────────────────────────────────────
+
+// Udvider makeSeasonsSupabase med en anden tabel: fanger INSERT-kald til
+// race_entry_generator_runs i `writes` i stedet for at kaste (assert.equal(table,
+// "seasons") ville ellers ramme enhver ny tabel — se writeRunLog's egen
+// try/catch: den fanger netop den slags fejl som "log-skrivning fejlede", derfor
+// tester eksisterende tests OVENFOR fortsat rent (best-effort, ingen synlig effekt).
+function makeSweepSupabase({ seasons = [], insertError = null } = {}) {
+  const writes = [];
+  const seasonsSupabase = makeSeasonsSupabase({ seasons });
+  return {
+    writes,
+    from(table) {
+      if (table === RACE_ENTRY_GENERATOR_RUNS_TABLE) {
+        return {
+          insert: async (row) => {
+            writes.push(row);
+            return { error: insertError };
+          },
+        };
+      }
+      return seasonsSupabase.from(table);
+    },
+  };
+}
+
+test("#5246: succesfuld koersel skriver én række i race_entry_generator_runs, felterne matcher generator-resultatet", async () => {
+  const supabase = makeSweepSupabase({ seasons: [{ id: "s1" }] });
+  const r = await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    readModeFn: async () => ({ mode: "late_fill", lateFillHours: 12 }),
+    runGeneratorFn: async () => ({ races: 3, teams: 5, generated: 22, inserted: 20, skipped: 1 }),
+  });
+  assert.equal(r.ran, true);
+  assert.equal(supabase.writes.length, 1);
+  const row = supabase.writes[0];
+  assert.equal(row.mode, "late_fill");
+  assert.equal(row.late_fill_hours, 12);
+  assert.equal(row.races_considered, 3);
+  assert.equal(row.teams_filled, 5);
+  assert.equal(row.entries_written, 20, "entries_written = result.inserted, ikke result.generated");
+  assert.equal(row.error, null);
+  assert.ok(row.started_at && row.finished_at, "started_at/finished_at skal være sat");
+});
+
+test("#5246: 0-fyld-koersel skriver STADIG en række (ikke kun ved fund, modsat email_sweep_runs)", async () => {
+  const supabase = makeSweepSupabase({ seasons: [{ id: "s1" }] });
+  await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    runGeneratorFn: async () => ({ races: 0, teams: 0, generated: 0, inserted: 0, skipped: 0 }),
+  });
+  assert.equal(supabase.writes.length, 1);
+  assert.equal(supabase.writes[0].entries_written, 0);
+});
+
+test("#5246: flag_off skriver INTET i race_entry_generator_runs (ikke en rigtig kørsel)", async () => {
+  const supabase = makeSweepSupabase({ seasons: [] });
+  await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => false,
+    runGeneratorFn: async () => { throw new Error("burde ikke kaldes"); },
+  });
+  assert.equal(supabase.writes.length, 0);
+});
+
+test("#5246: no_active_season skriver INTET i race_entry_generator_runs", async () => {
+  const supabase = makeSweepSupabase({ seasons: [] });
+  await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    runGeneratorFn: async () => { throw new Error("burde ikke kaldes"); },
+  });
+  assert.equal(supabase.writes.length, 0);
+});
+
+test("#5246: generator-fejl logges MED besked i error-feltet, og fejlen kastes stadig videre", async () => {
+  const supabase = makeSweepSupabase({ seasons: [{ id: "s1" }] });
+  await assert.rejects(
+    () => runRaceEntryGeneratorSweep({
+      supabase,
+      isEnabled: async () => true,
+      runGeneratorFn: async () => { throw new Error("race_entries insert boom"); },
+    }),
+    /race_entries insert boom/,
+  );
+  assert.equal(supabase.writes.length, 1);
+  assert.match(supabase.writes[0].error, /race_entries insert boom/);
+  assert.equal(supabase.writes[0].entries_written, 0);
+});
+
+test("#5246: en fejlende log-skrivning er best-effort — sweepen returnerer stadig normalt (ran:true)", async () => {
+  const supabase = makeSweepSupabase({ seasons: [{ id: "s1" }], insertError: { message: "log insert boom" } });
+  const captured = [];
+  const r = await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    runGeneratorFn: async () => ({ races: 1, teams: 1, generated: 1, inserted: 1, skipped: 0 }),
+    captureExceptionFn: (err, ctx) => captured.push({ message: err.message, ctx }),
+  });
+  assert.equal(r.ran, true, "en fejlet log-skrivning må aldrig vælte en sweep der ellers lykkedes");
+  assert.equal(captured.length, 1);
+  assert.match(captured[0].message, /log insert boom/);
+  assert.equal(captured[0].ctx.tags.stage, "run_log_write");
 });
