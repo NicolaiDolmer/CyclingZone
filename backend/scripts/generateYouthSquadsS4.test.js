@@ -261,6 +261,39 @@ test("applyPlan: en derive der persisterer noget andet end gaten så, rapportere
   assert.equal(mismatches.length, p.totals.riders);
 });
 
+test("applyPlan: rollback-kaldet får id'erne pr. hold, og et kort insert-svar stopper kørslen", async () => {
+  const p = planYouthSquads({ teams: TEAMS.slice(0, 2), juniorsPerTeam: 0, targetSeason: 4, seed: 5518, ...MODELS });
+  const seen = [];
+  const ok = makeStore({ riders: [], seasons: [{ number: 4, status: "active" }] });
+  await applyPlan(ok, p, { ...MODELS, log: () => {}, onInserted: (ids) => seen.push(ids.length) });
+  assert.deepEqual(seen, p.perTeam.map((t) => t.u23), "ét kald pr. hold, alle id'er med");
+
+  // Et insert der returnerer færre id'er end rækker: stop før derive, men de
+  // id'er der FINDES er allerede meldt til rollback-listen fra de forrige hold.
+  const short = makeStore({ riders: [], seasons: [{ number: 4, status: "active" }] });
+  const realFrom = short.from;
+  let calls = 0;
+  short.from = (table) => {
+    const api = realFrom(table);
+    if (table !== "riders") return api;
+    const realInsert = api.insert;
+    api.insert = (rows) => {
+      calls++;
+      const res = realInsert(rows);
+      return calls === 2 ? { select: () => res.select().then((r) => ({ ...r, data: r.data.slice(1) })) } : res;
+    };
+    return api;
+  };
+  const reported = [];
+  let derived = false;
+  await assert.rejects(
+    () => applyPlan(short, p, { ...MODELS, log: () => {}, derive: async () => { derived = true; }, onInserted: (ids) => reported.push(...ids) }),
+    /forventede .* id'er/,
+  );
+  assert.equal(derived, false, "derive køres ikke på et ufuldstændigt insert");
+  assert.equal(reported.length, p.perTeam[0].u23, "første holds ryttere står på rollback-listen");
+});
+
 test("applyPlan: blokeret når en kandidat ligger over værdiloftet", async () => {
   const p = plan();
   const blocked = { ...p, totals: { ...p.totals, overValueCap: 1 } };

@@ -548,12 +548,19 @@ async function fetchActiveSeason(supabase) {
 /**
  * Apply: insert pr. hold → deriveForRiderIds (samme modeller som spejlingen) →
  * kontrakt-felter → post-verify mod spejlingen. Returnerer afvigelserne.
+ *
+ * `onInserted(ids)` kaldes straks efter HVERT holds insert, så kalderen kan
+ * skrive rollback-listen løbende. Fejler et senere trin (et andet holds insert,
+ * derive, kontrakter), findes de allerede indsatte id'er stadig på disk — ellers
+ * ville en genkørsel se holdet som genereret (idempotensen) og aldrig give dets
+ * ryttere derive eller kontrakt.
  */
 export async function applyPlan(supabase, plan, {
   valuationModel,
   productionValuationModel,
   derive = deriveForRiderIds,
   log = console.log,
+  onInserted = () => {},
 } = {}) {
   if (plan.totals.overValueCap > 0) {
     throw new Error(`STOP: ${plan.totals.overValueCap} kandidat(er) over AI-holdets værdiloft — apply blokeret (#2065)`);
@@ -569,9 +576,16 @@ export async function applyPlan(supabase, plan, {
   for (const [teamId, idxs] of byTeam) {
     const payload = idxs.map((i) => plan.rows[i].payload);
     for (let i = 0; i < payload.length; i += INSERT_BATCH) {
-      const { data, error } = await supabase.from("riders").insert(payload.slice(i, i + INSERT_BATCH)).select("id");
+      const batch = payload.slice(i, i + INSERT_BATCH);
+      const { data, error } = await supabase.from("riders").insert(batch).select("id");
       if (error) throw new Error(`insert (hold ${teamId}): ${error.message}`);
-      (data || []).forEach((row, k) => insertedByPlanIndex.set(idxs[i + k], row.id));
+      // Ét id pr. række, ellers ville en indsat rytter falde uden for derive,
+      // kontrakt, rollback-liste og post-verify — tavst.
+      if (!Array.isArray(data) || data.length !== batch.length) {
+        throw new Error(`insert (hold ${teamId}): forventede ${batch.length} id'er, fik ${Array.isArray(data) ? data.length : "intet"}`);
+      }
+      data.forEach((row, k) => insertedByPlanIndex.set(idxs[i + k], row.id));
+      onInserted(data.map((row) => row.id));
     }
   }
   const ids = [...insertedByPlanIndex.values()];
@@ -695,11 +709,28 @@ async function main() {
   }
 
   console.log("APPLY (--owner-go givet)");
-  const { inserted, mismatches } = await applyPlan(supabase, plan, { valuationModel, productionValuationModel });
+  // Rollback-listen skrives LØBENDE (efter hvert holds insert) og en sidste gang
+  // i finally, så en fejl midt i kørslen aldrig efterlader indsatte ryttere uden
+  // spor. `complete: false` = kørslen stoppede undervejs: de listede ryttere kan
+  // mangle derive og/eller kontrakt og skal rulles tilbage eller re-derives, før
+  // en genkørsel (idempotensen springer holdene over).
   const rollbackPath = join(REPO_ROOT, "balance-internals", `5518-a6-inserted-s${plan.targetSeason}-${Date.now()}.json`);
   mkdirSync(dirname(rollbackPath), { recursive: true });
-  writeFileSync(rollbackPath, JSON.stringify({ inserted }, null, 2));
-  console.log(`  rollback-liste (rytter-id'er): ${relative(REPO_ROOT, rollbackPath)}`);
+  const insertedSoFar = [];
+  const persistRollback = (complete) =>
+    writeFileSync(rollbackPath, JSON.stringify({ inserted: insertedSoFar, complete }, null, 2));
+  let result = null;
+  try {
+    result = await applyPlan(supabase, plan, {
+      valuationModel,
+      productionValuationModel,
+      onInserted: (ids) => { insertedSoFar.push(...ids); persistRollback(false); },
+    });
+  } finally {
+    persistRollback(result !== null);
+    console.log(`  rollback-liste (rytter-id'er, complete=${result !== null}): ${relative(REPO_ROOT, rollbackPath)}`);
+  }
+  const { mismatches } = result;
   if (mismatches.length > 0) {
     console.error(`  SPEJLINGS-AFVIGELSE: ${mismatches.length} rytter(e) fik en anden base_value/type end gaten vurderede (#2065).`);
     process.exit(1);

@@ -222,17 +222,27 @@ function parseArgs(argv) {
     const eq = hit.indexOf("=");
     return eq === -1 ? true : hit.slice(eq + 1);
   };
+  // Samme strenge heltals-parsing som generatorens parseArgs: et bart `--juniors`
+  // (true → 1) eller `--juniors=` ("" → 0) må aldrig blive til et antal ejeren
+  // ikke har valgt.
+  const intArg = (name, raw) => {
+    if (raw === true || raw === "" || !/^-?\d+$/.test(String(raw))) {
+      throw new Error(`--${name} skal være et helt tal (fik ${JSON.stringify(raw)})`);
+    }
+    return Number(raw);
+  };
   const squadArg = get("squad") ?? "u23";
   if (!["u23", "junior", "both"].includes(squadArg)) throw new Error(`--squad skal være u23, junior eller both (fik ${squadArg})`);
   const juniorsRaw = get("juniors");
-  const juniors = juniorsRaw === undefined ? null : Number(juniorsRaw);
-  if (juniors !== null && (!Number.isInteger(juniors) || juniors < 0 || juniors > SQUAD_CAPS.junior)) {
+  const juniors = juniorsRaw === undefined ? null : intArg("juniors", juniorsRaw);
+  if (juniors !== null && (juniors < 0 || juniors > SQUAD_CAPS.junior)) {
     throw new Error(`--juniors skal være et helt tal i [0,${SQUAD_CAPS.junior}]`);
   }
   if (squadArg !== "u23" && juniors === null) {
     throw new Error("junior-målingen kræver --juniors=N (antal AI-juniorer pr. hold er et ejer-valg, intet default)");
   }
-  const season = get("season") === undefined ? DEFAULT_TARGET_SEASON : Number(get("season"));
+  const season = get("season") === undefined ? DEFAULT_TARGET_SEASON : intArg("season", get("season"));
+  if (season < 1) throw new Error(`--season skal være ≥ 1 (fik ${season})`);
   const unavailable = get("unavailable") === undefined
     ? [...DEFAULT_UNAVAILABLE]
     : String(get("unavailable")).split(",").map(Number);
