@@ -11,7 +11,8 @@
 //      og når dagen er kørt: ingen knap, kun statuslinjen.
 //   4) A3: rytternavnet folder rytterens kort ud LIGE under rækken, også på
 //      desktop, og profil-linket ligger inde i kortet.
-//   5) Et tryk på en overbliks-celle filtrerer tabellen.
+//   5) Et tryk på en overbliks-celle filtrerer tabellen, og markeringen følger
+//      det tabellen viser.
 //   6) Week plan: "Plan for" vælger holdet eller én rytters egen plan.
 //
 // Testene sætter selv viewport, så alle tre Playwright-projekter kører de samme
@@ -161,6 +162,24 @@ test("guld-knappen 'Set days' filtrerer til rytterne uden dag og markerer dem", 
   // Et tryk på "Tired" filtrerer til de trætte (skaderegelens grænse, #5418).
   await overview(page).getByRole("button", { name: /Tired|Trætte/ }).click();
   await expect(page.getByTestId("training-today-row")).toHaveCount(TIRED.size);
+  // Ingen af de trætte mangler en dag, så markeringen er tom nu: en rytter der
+  // forsvinder fra tabellen, må ikke blive stående som valgt til mængde-
+  // handlingen i værktøjslinjen.
+  await expect(page.getByText(/^\d+ (selected|valgt)$/)).toHaveCount(0);
+});
+
+test("Select all gælder kun de ryttere tabellen viser, ikke dem filtret skjuler", async ({ page }) => {
+  await openTraining(page, 1440, 900);
+  await overview(page).getByRole("button", { name: /Tired|Trætte/ }).click();
+  await expect(page.getByTestId("training-today-row")).toHaveCount(TIRED.size);
+
+  await page.getByRole("checkbox", { name: /^(Select all|Vælg alle)$/ }).check();
+  await expect(page.getByText(new RegExp(`^${TIRED.size} (selected|valgt)$`))).toBeVisible();
+
+  // Tilbage til alle: markeringen er stadig kun de to trætte.
+  await overview(page).getByRole("button", { name: /Tired|Trætte/ }).click();
+  await expect(page.getByTestId("training-today-row")).toHaveCount(SQUAD.length);
+  await expect(page.getByText(new RegExp(`^${TIRED.size} (selected|valgt)$`))).toBeVisible();
 });
 
 test("A2: alle har en dag → knappen kører dagen; dagen kørt → ingen knap, kun status", async ({ page }) => {
@@ -196,7 +215,24 @@ test("mobil 390 × 844: guld-knap + overblik uden scroll og mindst 8 ryttere på
   const visible = bottoms.filter((b) => b <= bottom).length;
   expect(visible).toBeGreaterThanOrEqual(8);
 
+  // Mens guld-knappen beder om dage, kan dagen stadig køres fra telefonen:
+  // "Run now" står i samme række som guld-knappen (telefonens overblik har
+  // ingen statuscelle), og den kalder den samme kørsel.
+  const runNow = page.getByRole("button", { name: /^(Run now|Kør nu)$/ });
+  await expect(runNow).toBeEnabled();
+  expect(await fullyInViewport(page, runNow)).toBe(true);
+
   await page.screenshot({ path: evidenceShotPath("pr-screens/5485-training-390-today.png") });
+
+  let ran = false;
+  await page.route("**/api/training/run-today", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    ran = true;
+    return json(route, { ok: true, tickDate: "2026-09-23", report: { riders: [] } });
+  });
+  await runNow.click();
+  await expect.poll(() => ran).toBe(true);
 });
 
 test("landscape 844 × 390: telefonens layout, guld-knap og overblik uden scroll", async ({ page }) => {
@@ -207,6 +243,10 @@ test("landscape 844 × 390: telefonens layout, guld-knap og overblik uden scroll
   expect(await fullyInViewport(page, primary(page))).toBe(true);
   const chips = page.getByRole("group", { name: /Today at a glance|Dagen på et blik/ });
   expect(await fullyInViewport(page, chips)).toBe(true);
+  // Chips-overblikket har heller ingen statuscelle: "Run now" står ved guld-knappen.
+  const runNow = page.getByRole("button", { name: /^(Run now|Kør nu)$/ });
+  await expect(runNow).toBeEnabled();
+  expect(await fullyInViewport(page, runNow)).toBe(true);
 });
 
 test("Week plan: Plan for vælger holdet eller én rytters egen plan", async ({ page }) => {

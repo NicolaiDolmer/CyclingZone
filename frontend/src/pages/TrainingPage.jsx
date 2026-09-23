@@ -632,7 +632,6 @@ export default function TrainingPage() {
   // #5485 (aendring 1): et tryk paa en overbliks-celle filtrerer tabellen.
   // null = alle ryttere. Et tryk mere paa den samme celle viser alle igen.
   const [overviewFilter, setOverviewFilter] = useState(null);
-  const toggleOverviewFilter = (key) => setOverviewFilter((prev) => (prev === key ? null : key));
   // #5485 (A3): den rytter hvis kort er foldet ud under raekken paa desktop.
   // Hoejst eet ad gangen; tryk paa den samme rytter igen lukker kortet.
   const [openRiderId, setOpenRiderId] = useState(null);
@@ -993,8 +992,6 @@ export default function TrainingPage() {
   // riders-array (ingen ny query) og den samme aktive sortering.
   const groups = groupByType ? groupRidersByType(riders) : null;
 
-  const allSelected = riders.length > 0 && selected.size === riders.length;
-
   function toggleSelect(riderId) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -1004,8 +1001,12 @@ export default function TrainingPage() {
     });
   }
 
+  // "Vælg alle" gælder de ryttere tabellen VISER (visibleRiders, overblikkets
+  // filter), aldrig dem filtret skjuler. Ellers kunne mængde-handlingen skifte
+  // dag for ryttere spilleren ikke kan se.
   function toggleSelectAll() {
-    setSelected((prev) => (prev.size === riders.length ? new Set() : new Set(riders.map((r) => r.id))));
+    const ids = visibleRiders.map((r) => r.id);
+    setSelected((prev) => (ids.length > 0 && ids.every((id) => prev.has(id)) ? new Set() : new Set(ids)));
   }
 
   function clearSelection() {
@@ -1732,6 +1733,17 @@ export default function TrainingPage() {
   ];
   const filterIds = idsForFilter(overview, overviewFilter);
   const visibleRiders = filterIds ? riders.filter((r) => filterIds.has(r.id)) : riders;
+  const allSelected = visibleRiders.length > 0 && visibleRiders.every((r) => selected.has(r.id));
+
+  // Et tryk på en overbliks-celle filtrerer tabellen; et tryk mere viser alle.
+  // En rytter der forsvinder fra tabellen, må ikke blive ved med at være valgt
+  // til mængde-handlingen i værktøjslinjen.
+  function toggleOverviewFilter(key) {
+    const next = overviewFilter === key ? null : key;
+    setOverviewFilter(next);
+    const keep = idsForFilter(overview, next);
+    if (keep) setSelected((prev) => new Set([...prev].filter((id) => keep.has(id))));
+  }
   const activeFilterLabel = overviewFilter ? overviewCells.find((c) => c.key === overviewFilter)?.label : null;
 
   // A2 (ejer-go 23/9): EN guld-knap der skifter med situationen og aldrig står
@@ -2035,10 +2047,16 @@ export default function TrainingPage() {
   // alene (sidehovedets undertitel + overblikkets femte celle). Mens
   // assistentens panel er åbent bærer dets "Accept selected" sidens gold
   // (#4522), så denne dæmpes til secondary.
+  const overviewVariant = isShortLandscape && !isMobile ? "chips" : phoneLayout ? "compact" : "desktop";
+  // Mens guld-knappen beder om dage, skal dagen stadig kunne køres. På desktop
+  // står "Run now" i overblikkets statuscelle; telefonens overblik (compact og
+  // chips) har ingen statuscelle, så knappen står dér ved siden af guld-knappen
+  // i samme række (ingen ekstra højde, CodeRabbit på #5564).
+  const runNowBesidePrimary = overviewVariant !== "desktop" && runnable && primaryAction.kind === "setDays";
   const primaryButton = primaryAction.kind === "none" ? null : (
     // #2819: tour-anker på dagens knap. Wrapper-span frem for data-tour på
     // <Button>, så ankeret overlever uanset om Button videresender data-*.
-    <span data-tour="training-run-today" className={isMobile ? "mb-3 block" : "inline-flex"}>
+    <span data-tour="training-run-today" className={isMobile ? "mb-3 flex gap-2" : "inline-flex gap-2"}>
       <Button
         type="button"
         variant={assistantPanelOpen ? "secondary" : "primary"}
@@ -2049,11 +2067,24 @@ export default function TrainingPage() {
         // største kilder til døde klik).
         disabled={running || bulkApplying}
         // min-h-11 = #1602's 44px tryk-mål på telefonen.
-        className={isMobile ? "w-full min-h-11" : ""}
+        className={isMobile ? "min-h-11 flex-1" : ""}
         data-testid="training-primary"
       >
         {primaryLabel}
       </Button>
+      {runNowBesidePrimary && (
+        <Button
+          type="button"
+          variant="secondary"
+          size={isMobile ? "md" : "sm"}
+          iconLeft={<PlayIcon size={12} aria-hidden="true" />}
+          onClick={handleRunToday}
+          disabled={running || bulkApplying}
+          className={isMobile ? "min-h-11 flex-none" : ""}
+        >
+          {running ? t("loading") : t("overview.runNow")}
+        </Button>
+      )}
     </span>
   );
 
@@ -2475,7 +2506,7 @@ export default function TrainingPage() {
           cells={overviewCells}
           active={overviewFilter}
           onToggle={toggleOverviewFilter}
-          variant={isShortLandscape && !isMobile ? "chips" : phoneLayout ? "compact" : "desktop"}
+          variant={overviewVariant}
           status={overviewStatus}
         />
       </div>

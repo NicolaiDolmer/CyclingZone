@@ -83,7 +83,7 @@
     "title": "Ugeplan",
     "planFor": "Plan for",
     "team": "Hold · {n, plural, one {# rytter} other {# ryttere}}",
-    "teamIntro": "Sæt intensiteten for hver af ugens dage. Ryttere der kører løb springer planen over den dag.",
+    "teamIntro": "Sæt intensiteten for hver af ugens dage.",
     "colDay": "Dag",
     "colWholeDay": "Hele dagen",
     "today": "I dag",

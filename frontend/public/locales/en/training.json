@@ -83,7 +83,7 @@
     "title": "Week plan",
     "planFor": "Plan for",
     "team": "Team · {n, plural, one {# rider} other {# riders}}",
-    "teamIntro": "Set the intensity for each day of the week. Riders in a race skip the plan that day.",
+    "teamIntro": "Set the intensity for each day of the week.",
     "colDay": "Day",
     "colWholeDay": "Whole day",
     "today": "Today",
