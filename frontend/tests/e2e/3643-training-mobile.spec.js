@@ -538,7 +538,10 @@ test("bevis 390 px: dayClose-gaten, Score-sortering og ugeplan-fanen", async ({ 
 
   await page.getByRole("tab", { name: "Ugeplan" }).click();
   await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
-  await page.getByRole("heading", { name: "Individuelle ugeplaner" }).scrollIntoViewIfNeeded();
+  // Kortet ligger under folden på 390 px, og det er netop kortets bund (hvor
+  // knappen stod) billedet skal vise. Rullet til bunds frem for fullPage: den
+  // faste bundnavigation ville ellers ligge midt hen over kortet i billedet.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-390-weekplan.png"), fullPage: false });
 });
 
@@ -554,7 +557,6 @@ test("bevis 1440 px: desktop er uændret", async ({ page }) => {
 
   await page.getByRole("tab", { name: "Ugeplan" }).click();
   await expect(page.getByRole("button", { name: "Gå til rosteret" })).toBeVisible();
-  await page.getByRole("button", { name: "Gå til rosteret" }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-1440-weekplan.png"), fullPage: false });
 });
 
