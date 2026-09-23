@@ -29,8 +29,19 @@ function makeSupabase(initial = {}) {
     if (!state[table]) state[table] = [];
     const rows = () => state[table];
     const filters = [];
+    // #5517: .or("squad.is.null,squad.eq.senior") — puljernes senior-scope
+    // (squads.withSeniorSquadScope). Samme mini-grammatik som tierCalendarMaterializer-
+    // testens mock; enhver anden operator fælder højlydt i stedet for at matche alt.
+    function matchOrCond(row, cond) {
+      const [col, op, ...rest] = String(cond).split(".");
+      const raw = rest.join(".");
+      if (op === "is") return (row[col] ?? null) === (raw === "null" ? null : raw);
+      if (op === "eq") return row[col] === raw;
+      throw new Error(`mock-supabase: uunderstøttet .or()-operator "${op}" i "${cond}"`);
+    }
     function matches(row) {
       return filters.every((f) => {
+        if (f.t === "or") return f.conds.some((cond) => matchOrCond(row, cond));
         if (f.t === "eq") return row[f.c] === f.v;
         if (f.t === "neq") return row[f.c] !== f.v;
         if (f.t === "in") return f.v.includes(row[f.c]);
@@ -48,6 +59,7 @@ function makeSupabase(initial = {}) {
       gt(c, v) { filters.push({ t: "gt", c, v }); return builder; },
       gte(c, v) { filters.push({ t: "gte", c, v }); return builder; },
       is(c, v) { filters.push({ t: "is", c, v }); return builder; },
+      or(expr) { filters.push({ t: "or", conds: String(expr).split(",") }); return builder; },
       order() { return builder; },
       // fetchAllRows-paginering (supabasePagination.js): én side rummer alt i denne
       // in-memory mock; from=0 → alle matchende rækker, ellers tom (loopet stopper).

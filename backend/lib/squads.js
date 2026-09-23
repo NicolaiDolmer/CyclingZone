@@ -18,12 +18,12 @@
 // §3.2 + §10.6.
 //
 // #5517 (A2) tilføjer én import mere: racePoolCatalog.js, som selv er helt
-// import-fri. Den bærer dommen "kolonnen squad findes ikke i databasen" (#5330),
-// og liga-/løbs-scopet nederst i denne fil skal fælde nøjagtig samme dom — én
-// kopi af den, ikke to.
+// import-fri. Den bærer senior-filteret for rækker med en trup-kolonne og dommen
+// "kolonnen squad findes ikke i databasen" (#5330), og liga-/løbs-scopet nederst i
+// denne fil skal bruge nøjagtig samme filter og samme dom — én kopi, ikke to.
 
 import { ageForSeason, ageForReferenceYear } from "./riderSeasonAge.js";
-import { isMissingSquadColumnError } from "./racePoolCatalog.js";
+import { isMissingSquadColumnError, SENIOR_SQUAD_OR_FILTER, SQUAD_COLUMN } from "./racePoolCatalog.js";
 
 /** Trup-værdierne, ordnet fra yngst til ældst. Spejler CHECK-constrainten på
  *  `riders.squad` (database/2026-09-15-4619-riders-squad.sql). */
@@ -353,8 +353,15 @@ export function transitionForRider({ squad, seasonAge } = {}) {
 // Rytter-prædikatet kræver BÅDE squad og is_academy, fordi riders.squad-backfill'en
 // er ejer-gated og ikke kørt. Puljer og løb har hverken is_academy eller en
 // backfill: ALLE eksisterende rækker er 'senior' via kolonnens DEFAULT, og en
-// ungdomsrække kan kun opstå ved en eksplicit seed. `squad = 'senior'` er derfor
-// bit-identisk i dag OG korrekt efter seed — ét led er nok.
+// ungdomsrække kan kun opstå ved en eksplicit seed. Ét led på `squad` er derfor
+// bit-identisk i dag OG korrekt efter seed.
+//
+// HVORFOR `squad IS NULL OR squad = 'senior'` OG IKKE BARE `= 'senior'`
+// Kolonnen er NOT NULL, så NULL-leddet rammer aldrig en rigtig række. Det er med for
+// at SQL- og JS-siden fælder samme dom (isSeniorSquadRow: manglende felt = senior) og
+// for at bruge PRÆCIS race_pool-scopets filter (#5330, SENIOR_SQUAD_OR_FILTER) i
+// stedet for en næsten-kopi. En række kan kun falde ud ved at bære en eksplicit
+// ungdomstrup — aldrig fordi en kolonne eller et fixture-felt mangler.
 //
 // KOLONNEN KAN MANGLE (auto-migrate-vinduet)
 // auto-migrate.yml venter bevidst 3 minutter på deployet FØR den applier SQL'en,
@@ -368,8 +375,8 @@ export function transitionForRider({ squad, seasonAge } = {}) {
 /** Tabellerne hvis rækker har en trup og derfor et senior-scope (#5517). */
 export const SQUAD_SCOPED_RELATIONS = Object.freeze(["league_divisions", "races"]);
 
-/** Kolonnen scopet filtrerer på. */
-export const SQUAD_COLUMN = "squad";
+/** Kolonnen scopet filtrerer på (samme konstant som race_pool-scopet, #5330). */
+export { SQUAD_COLUMN };
 
 /**
  * JS-siden: er en pulje- eller løbsrække en SENIORrække?
@@ -398,16 +405,17 @@ export function onlySeniorSquadRows(rows) {
 }
 
 /**
- * SQL-siden: begræns en `league_divisions`- eller `races`-query til seniorrækkerne.
- * Kæd den på builderen lige efter `.select(...)`. Brug den ikke direkte i en
- * læser — gå gennem withSeniorSquadScope, som også dækker auto-migrate-vinduet.
+ * SQL-siden: begræns en `league_divisions`- eller `races`-query til seniorrækkerne
+ * (`squad IS NULL OR squad = 'senior'`, se headeren). Kæd den på builderen lige efter
+ * `.select(...)`. Brug den ikke direkte i en læser — gå gennem withSeniorSquadScope,
+ * som også dækker auto-migrate-vinduet.
  *
  * @template T
  * @param {T} query  supabase/PostgREST query-builder
  * @returns {T}
  */
 export function scopeToSeniorSquad(query) {
-  return query.eq(SQUAD_COLUMN, DEFAULT_SQUAD);
+  return query.or(SENIOR_SQUAD_OR_FILTER);
 }
 
 const unscopedSquadQuery = (query) => query;
