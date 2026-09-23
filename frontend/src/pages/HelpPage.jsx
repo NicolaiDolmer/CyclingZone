@@ -103,6 +103,9 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatBoard", kind: "text" },
       { id: "season1Baseline", kind: "text" },
+      // #5483 · national kerne-taerskel forklaret lige efter den foerste
+      // omtale (season1Baseline), foer selve plan-onboardingen.
+      { id: "nationalCoreRule", kind: "text" },
       { id: "season2Onboarding", kind: "steps" },
       // #4382 · flerarsplanens livscyklus samlet ET sted (udloeb + nulstilling,
       // midtvejs-review, obligatorisk genforhandling, bonustilbud fra alle tre
