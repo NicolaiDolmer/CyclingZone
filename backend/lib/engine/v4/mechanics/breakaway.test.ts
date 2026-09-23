@@ -728,7 +728,10 @@ test("#4707 skala-invariant: jagten lukker praecis lige meget af forspringet paa
 
 const REALISM_TEAMS = ["tA", "tB", "tC", "tD", "tE", "tF", "tG", "tH"];
 const REALISM_BREAKAWAY_FACTORS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
-const REALISM_GAPS = [60, 120, 240, 480, 900];
+// Taet i det omraade hvor jagten er afgoerende (stancen er en BOUNDED
+// multiplikator paa jagten, saa den flytter kun udfaldet naer vippepunktet),
+// plus et par forspring ingen jagt henter.
+const REALISM_GAPS = Array.from({ length: 16 }, (_, i) => 40 + 20 * i).concat([600, 900]);
 
 type TeamChaseOutcome = {
   caughtAtSegment: number | null;
