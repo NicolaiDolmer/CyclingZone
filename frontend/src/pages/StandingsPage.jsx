@@ -468,27 +468,35 @@ export default function StandingsPage() {
     const isLeader = lens === LENS_STANDINGS && i === 0;
     return (
       <>
-        <button
-          type="button"
-          onClick={(e) => toggleSelect(s.team_id, e)}
-          aria-pressed={isSelected}
-          aria-label={t("compare.select", { team: s.team?.name })}
-          title={t("compare.selectHint")}
-          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz border font-data text-xs font-bold transition-colors
-            ${isSelected
-              ? "border-cz-accent bg-cz-accent text-cz-on-accent"
-              : "border-cz-border hover:border-cz-accent/50 hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}
-        >
-          {isSelected ? <CheckIcon size={13} aria-hidden="true" /> : (i + 1)}
-        </button>
-        {/* Online-prik (#1609, foldet ind fra TeamsPage): grøn = last_seen < 5 min. */}
-        <span aria-hidden="true"
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
-          title={onlineIds.has(s.team_id) ? t("onlineNow") : t("offline")} />
-        {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen.
-            stopPropagation: rækken selv har et onClick (navigate, via rowProps) —
-            uden dette ville linket først navigere, og row-klikket bagefter forsøge igen. */}
-        <TeamLink id={s.team_id} tab="results" stopPropagation className="truncate">{s.team?.name}</TeamLink>
+        {/* #5471: rang, online-prik og holdnavn er EEN enhed. Paa mobil wrapper
+            navnecellens linje (DataTable), og badges rykker saa ned paa naeste
+            linje; uden denne gruppe kunne rangen staa alene paa foerste linje
+            og navnet blive skilt fra den. Navnet har `min-w-0` (maa afkortes/
+            bryde), rang og prik er `shrink-0` — et badge kan aldrig tage
+            navnets plads. */}
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => toggleSelect(s.team_id, e)}
+            aria-pressed={isSelected}
+            aria-label={t("compare.select", { team: s.team?.name })}
+            title={t("compare.selectHint")}
+            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz border font-data text-xs font-bold transition-colors
+              ${isSelected
+                ? "border-cz-accent bg-cz-accent text-cz-on-accent"
+                : "border-cz-border hover:border-cz-accent/50 hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}
+          >
+            {isSelected ? <CheckIcon size={13} aria-hidden="true" /> : (i + 1)}
+          </button>
+          {/* Online-prik (#1609, foldet ind fra TeamsPage): grøn = last_seen < 5 min. */}
+          <span aria-hidden="true"
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
+            title={onlineIds.has(s.team_id) ? t("onlineNow") : t("offline")} />
+          {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen.
+              stopPropagation: rækken selv har et onClick (navigate, via rowProps) —
+              uden dette ville linket først navigere, og row-klikket bagefter forsøge igen. */}
+          <TeamLink id={s.team_id} tab="results" stopPropagation className="min-w-0 truncate">{s.team?.name}</TeamLink>
+        </span>
         {/* #4649: Founder-mærke — synligt for ALLE, ikke kun køberen selv. */}
         <FounderMark teamId={s.team_id} />
         {isLeader && <LeaderBadge className={leaderPulse ? "cz-chip-pulse" : ""} />}

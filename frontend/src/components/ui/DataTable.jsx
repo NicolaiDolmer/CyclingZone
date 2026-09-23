@@ -60,9 +60,13 @@ import {
 //   mobileDefaults: ["ovr", "value", "salary"]  // sidens tre standardkolonner
 //
 // "Ingen vandret scroll" er HÅNDHÆVET, ikke håbet: standardtilstanden ligger i
-// MOBILE_SCROLLER (overflow-x: hidden), og navnecellen wrapper i stedet for at
+// MOBILE_SCROLLER (overflow-x: clip), og navnecellen wrapper i stedet for at
 // stå på én nowrap-linje, så et langt rytternavn eller et 8-cifret beløb bliver
 // to linjer i stedet for at skubbe tabellen ud over 375px.
+//
+// #4982/#5471 (ejer 21/9): på mobil er der INGEN lodret boks om tabellen — siden
+// scroller på den normale måde, og overskriften følger SIDEN (sticky mod
+// skærmens top), fordi hverken WRAP eller MOBILE_SCROLLER er scroll-containere.
 //
 // TASTE §3 (ejerens AI-slop-krav i D-047): ingen gradienter, ingen skygger,
 // ingen rå hex — og "Fuld tabel" er en NEUTRAL kontrol, aldrig gold: guld er
@@ -533,8 +537,12 @@ function MobileFullTable({
 
   const entityLabel = mobileColumnLabel(entityCol);
 
+  // #4982/#5471: ingen lodret boks om de to lag laengere (den var SCROLLER med
+  // `max-h`) — siden scroller. Kun datablokken scroller, og kun vandret.
+  // Overskrifterne er i forvejen ikke sticky her (stickyHeader={false}), saa
+  // intet mistes ved at boksen forsvinder.
   return (
-    <div className={SCROLLER}>
+    <div>
       <div className="relative flex">
         <div className="flex-none border-r border-cz-border bg-cz-card">
           <table className={TABLE} ref={nameRef} aria-label={`${label ?? ""} · ${entityLabel}`.trim()} data-sortable>
@@ -677,8 +685,17 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
   // 19/9 stak rytternavne og den foldede meta-linje 3-84 px ud over deres egen
   // <td> paa 412 px. D-047's "ingen vandret scroll" maa ikke afhaenge af at hver
   // enkelt side husker at lade vaere: mobil-tilstanden overstyrer descendants.
+  // `flex-wrap` (#5471): linjen maa BRYDE mellem sine dele. Uden den skulle
+  // rang, navn og alle badges dele EEN linje i en celle paa ca. 90px; badges er
+  // `shrink-0`, og `min-w-0` lod saa navnet krympe til 0px og braekke tegn for
+  // tegn (ranglisten 21/9: en raekke paa 500px med et Founder-maerke og intet
+  // navn). En flex-linje der wrapper, klemmer aldrig et barn under dets egen
+  // bredde: et badge der ikke er plads til, rykker ned paa naeste linje, og et
+  // barn der er bredere end hele cellen, faar hele linjen (`max-w-full`) og
+  // bryder sin tekst dér. Navnet er dermed altid synligt, uanset hvor mange
+  // badges siden saetter ved siden af det.
   const nowrap = wrap
-    ? "min-w-0 break-words [&>*]:min-w-0 [&_*]:whitespace-normal"
+    ? "min-w-0 flex-wrap gap-y-1 break-words [&>*]:min-w-0 [&>*]:max-w-full [&_*]:whitespace-normal"
     : "whitespace-nowrap";
   return (
     <>
