@@ -568,7 +568,9 @@ export default function StandingsPage() {
     },
     // D-047 (#5102): sejre/podier folder ikke laengere ind i underlinjen — de er
     // chip-kolonner, saa et umaerket tal aldrig staar alene under holdnavnet.
-    { key: "stageWins", header: t("thStageWins"), numeric: true, render: (s) => s.stage_wins || 0 },
+    // #5471: paa mobil er talkolonnernes HEADERE det der afgoer navnets plads —
+    // "ETAPESEJRE" gjorde kolonnen ca. 90px bred for et tal paa et ciffer.
+    { key: "stageWins", header: t("thStageWins"), mobileHeader: t("thStageWinsShort"), numeric: true, render: (s) => s.stage_wins || 0 },
     { key: "teamComp", header: t("thTeamComp"), numeric: true, render: (s) => teamComp[s.team_id]?.wins || 0 },
     { key: "podiums", header: t("thPodiums"), numeric: true, render: (s) => podiums[s.team_id] || 0 },
     {
