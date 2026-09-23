@@ -14,7 +14,17 @@ import {
   JUNIOR_AGE_MAX,
   DEFAULT_TARGET_SEASON,
 } from "./generateYouthSquadsS4.js";
+import {
+  mirrorPool,
+  poolsOfForm,
+  youthRosterByTeam,
+  assignPools,
+  simulateForm,
+  gatePasses,
+  PYRAMID_FORMS,
+} from "./measureYouthFieldGate.mjs";
 import { deriveForRiderIds } from "../lib/backfillCores.js";
+import { MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ageForSeason } from "../lib/riderSeasonAge.js";
 import { U23_BIRTH_AGE_MIN, U23_BIRTH_AGE_MAX, U23_BIRTH_TIER, YOUTH_BIRTH_TIER } from "../lib/riderBirthPriors.js";
 import { SQUAD_CAPS } from "../lib/squads.js";
@@ -127,11 +137,25 @@ test("deterministisk: samme seed = samme kuld, uanset holdenes rækkefølge", ()
   assert.notDeepEqual(a.rows.map((r) => r.payload.firstname), c.rows.map((r) => r.payload.firstname));
 });
 
-test("et hold der allerede er genereret springes over (idempotens)", () => {
-  const p = plan({ skipTeamIds: new Set([TEAMS[0].id]) });
-  assert.equal(p.perTeam.length, TEAMS.length - 1);
-  assert.equal(p.skipped.length, 1);
-  assert.ok(!p.rows.some((r) => r.teamId === TEAMS[0].id));
+test("idempotens pr. trup: en eksisterende U23-trup/juniortrup fødes ikke igen", () => {
+  const [a, b, c] = TEAMS;
+  const p = plan({
+    existingByTeam: new Map([
+      [a.id, { u23Born: true, juniors: 2 }],   // alt findes → holdet springes helt over
+      [b.id, { u23Born: true, juniors: 0 }],   // kun juniorerne mangler
+      [c.id, { u23Born: false, juniors: 1 }],  // kun U23-truppen mangler
+    ]),
+  });
+  assert.ok(!p.rows.some((r) => r.teamId === a.id));
+  assert.deepEqual([...new Set(p.rows.filter((r) => r.teamId === b.id).map((r) => r.squad))], ["junior"]);
+  assert.deepEqual([...new Set(p.rows.filter((r) => r.teamId === c.id).map((r) => r.squad))], ["u23"]);
+  assert.equal(p.skipped.length, 3);
+  // U23-truppens størrelse afhænger ikke af hvad der allerede findes.
+  const fresh = plan();
+  assert.equal(
+    p.perTeam.find((t) => t.teamId === c.id).u23,
+    fresh.perTeam.find((t) => t.teamId === c.id).u23,
+  );
 });
 
 test("påkrævede plan-argumenter kan ikke udelades", () => {
@@ -241,6 +265,64 @@ test("applyPlan: blokeret når en kandidat ligger over værdiloftet", async () =
   const p = plan();
   const blocked = { ...p, totals: { ...p.totals, overValueCap: 1 } };
   await assert.rejects(() => applyPlan(makeStore({ riders: [] }), blocked, { ...MODELS, log: () => {} }), /værdiloft/);
+});
+
+// ── C1: felt-gatens rene kerne (measureYouthFieldGate.mjs) ───────────────────
+test("C1: spejlet pulje — nederste tiers lægges sammen i forældre-puljen", () => {
+  assert.deepEqual(mirrorPool({ tier: 2, pool_index: 1 }, [1, 2, 4, 8]), { tier: 2, pool_index: 1 });
+  assert.deepEqual(mirrorPool({ tier: 4, pool_index: 7 }, [1, 2, 4]), { tier: 3, pool_index: 3 });
+  assert.deepEqual(mirrorPool({ tier: 4, pool_index: 5 }, [1, 2]), { tier: 2, pool_index: 1 });
+  assert.deepEqual(mirrorPool({ tier: 3, pool_index: 2 }, [1]), { tier: 1, pool_index: 0 });
+  assert.deepEqual(PYRAMID_FORMS.map((f) => poolsOfForm(f).length), [15, 7, 3, 1]);
+});
+
+test("C1: ungdomstruppen tæller kun ungdomsryttere i truppens alder, under loftet", () => {
+  const season = 4;
+  const born = (age) => `${2029 - age}-06-15`;
+  const riders = [
+    { id: "a", team_id: "H", birthdate: born(20), squad: "u23", is_academy: true },
+    { id: "b", team_id: "H", birthdate: born(23), squad: "u23", is_academy: true },    // vokset ud
+    { id: "c", team_id: "H", birthdate: born(21), squad: "senior", is_academy: false }, // senior
+    { id: "d", team_id: "H", birthdate: born(18), squad: "junior", is_academy: true },  // junior
+    { id: "e", team_id: "X", birthdate: born(20), squad: "u23", is_academy: true },     // ikke et aktivt hold
+    ...Array.from({ length: SQUAD_CAPS.u23 + 3 }, (_, i) => ({ id: `z${i}`, team_id: "F", birthdate: born(19), squad: "senior", is_academy: true })),
+  ];
+  const humanTeamIds = new Set(["H", "F"]);
+  const base = youthRosterByTeam({ riders, humanTeamIds, squad: "u23", season });
+  assert.deepEqual(base.get("H"), ["a"]);
+  assert.equal(base.get("F").length, SQUAD_CAPS.u23, "loftet");
+  const upper = youthRosterByTeam({ riders, humanTeamIds, squad: "u23", season, includeHumanSeniors: true });
+  assert.deepEqual(upper.get("H"), ["a", "c"]);
+  const junior = youthRosterByTeam({ riders, humanTeamIds, squad: "junior", season });
+  assert.deepEqual(junior.get("H"), ["d"]);
+  const sixteen = youthRosterByTeam({ riders: [{ id: "y", team_id: "H", birthdate: born(16), squad: "junior", is_academy: true }], humanTeamIds, squad: "junior", season });
+  assert.equal(sixteen.size, 0, "16-årige er ikke løbsberettigede");
+});
+
+test("C1: et hold starter kun med mindst MIN_RACE_ENTRIES, og gaten er 100 % af løbsdagene", () => {
+  const teams = [
+    { id: "T1", tier: 1, pool_index: 0, is_ai: false },
+    { id: "T2", tier: 2, pool_index: 0, is_ai: false },
+    { id: "A1", tier: 2, pool_index: 1, is_ai: true },
+  ];
+  const ids = (n, p) => Array.from({ length: n }, (_, i) => `${p}${i}`);
+  const rosters = new Map([["T1", ids(MIN_RACE_ENTRIES, "t")], ["T2", ids(MIN_RACE_ENTRIES - 1, "u")], ["A1", ids(9, "a")]]);
+  const mirror = simulateForm({ pools: assignPools(teams, rosters, [1, 2], "mirror"), rosters, raceDays: 3, fieldMax: 6 });
+  // Pulje 2:0 har kun T2 (for få) → 0 startende hold → gaten fejler ved ethvert gulv.
+  assert.equal(mirror.minStarters, 0);
+  assert.equal(gatePasses(mirror, 1), false);
+  const single = simulateForm({ pools: assignPools(teams, rosters, [1], "mirror"), rosters, raceDays: 3, fieldMax: 6 });
+  assert.equal(single.minStarters, 2);
+  assert.equal(single.maxRiders, 12, "feltet er højst klassens størrelse pr. hold");
+  assert.equal(gatePasses(single, 2), true);
+  // ai-balanced: AI-truppen lægges hvor der mangler startende hold.
+  const balanced = assignPools(teams, rosters, [1, 2], "ai-balanced");
+  assert.ok(balanced.get("2:0").includes("A1") || balanced.get("2:1").includes("A1"));
+  // Fravær er deterministisk og kan kun gøre feltet mindre.
+  const stressed = simulateForm({ pools: assignPools(teams, rosters, [1], "mirror"), rosters, raceDays: 20, unavailable: 0.3, fieldMax: 6 });
+  const again = simulateForm({ pools: assignPools(teams, rosters, [1], "mirror"), rosters, raceDays: 20, unavailable: 0.3, fieldMax: 6 });
+  assert.deepEqual(stressed, again);
+  assert.ok(stressed.minStarters <= single.minStarters);
 });
 
 test("summarizePlan: vækst regnes mod bestanden", () => {

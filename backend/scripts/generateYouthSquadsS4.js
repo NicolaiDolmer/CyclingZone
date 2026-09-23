@@ -38,9 +38,12 @@
 // køre medmindre målsæsonen ER den aktive sæson — ellers ville derive prissætte
 // en rytter ét år yngre end gaten vurderede.
 //
-// IDEMPOTENT: et hold der allerede har en U23-født rytter (markør-tier "u23" —
-// kun denne generator skriver den) springes over. Hvert holds kuld indsættes i
-// ÉT insert, så et hold ikke kan stå halvt genereret.
+// IDEMPOTENT PR. TRUP: har et hold allerede en U23-født rytter (markør-tier
+// "u23" — kun denne generator skriver den), fødes U23-truppen ikke igen; har det
+// allerede juniorer, fødes juniorerne ikke igen. Juniorerne kan derfor fødes i en
+// senere kørsel (fx `--juniors=N` når junior-kalenderen findes) uden at røre
+// U23-truppen. Hvert holds kuld indsættes i ÉT insert, så et hold ikke kan stå
+// halvt genereret.
 //
 // Usage:
 //   node backend/scripts/generateYouthSquadsS4.js --juniors=N                 # dry-run (default), READ-ONLY
@@ -264,7 +267,10 @@ export function mirrorDerive(row, { seasonNumber, valuationModel, productionValu
  * @param {Set<string>} [args.existingNames]  foldNameNordic-sæt (kopieres, muteres ikke)
  * @param {object} args.valuationModel
  * @param {object} args.productionValuationModel
- * @param {Set<string>} [args.skipTeamIds]    hold der allerede har en U23-født trup
+ * @param {Map<string, {u23Born?:boolean, juniors?:number}>} [args.existingByTeam]
+ *        hvad holdet ALLEREDE har: en U23-født trup (markør-tier "u23") og/eller
+ *        juniorer. Idempotensen er PR. TRUP, så juniorerne kan fødes i en senere
+ *        kørsel (fx når junior-kalenderen findes) uden at U23-truppen fødes igen.
  */
 export function planYouthSquads({
   teams,
@@ -274,7 +280,7 @@ export function planYouthSquads({
   existingNames = new Set(),
   valuationModel,
   productionValuationModel,
-  skipTeamIds = new Set(),
+  existingByTeam = new Map(),
 }) {
   if (!Number.isInteger(juniorsPerTeam) || juniorsPerTeam < 0) {
     throw new Error("planYouthSquads: juniorsPerTeam er påkrævet (helt tal ≥ 0)");
@@ -292,13 +298,20 @@ export function planYouthSquads({
   const rows = [];
   const skipped = [];
   for (const team of ordered) {
-    if (skipTeamIds.has(team.id)) {
-      skipped.push({ teamId: team.id, name: team.name ?? team.id, tier: team.tier });
-      continue;
-    }
+    const existing = existingByTeam.get(team.id) ?? {};
+    const skipU23 = existing.u23Born === true;
+    const skipJuniors = Number(existing.juniors) > 0;
     const shapeRng = makeRng(deriveTeamSeed((base + SHAPE_OFFSET) >>> 0, team.id));
-    const u23Count = U23_SQUAD_SIZE.min + Math.floor(shapeRng() * (U23_SQUAD_SIZE.max - U23_SQUAD_SIZE.min + 1));
-    const count = u23Count + juniorsPerTeam;
+    // Størrelsen trækkes ALTID (også når truppen springes over), så U23-truppens
+    // størrelse for et hold er den samme i dry-run, apply og en gentaget kørsel.
+    const drawnU23 = U23_SQUAD_SIZE.min + Math.floor(shapeRng() * (U23_SQUAD_SIZE.max - U23_SQUAD_SIZE.min + 1));
+    const u23Count = skipU23 ? 0 : drawnU23;
+    const juniorCount = skipJuniors ? 0 : juniorsPerTeam;
+    const count = u23Count + juniorCount;
+    if (skipU23 || skipJuniors) {
+      skipped.push({ teamId: team.id, name: team.name ?? team.id, tier: team.tier, u23: skipU23, juniors: skipJuniors });
+    }
+    if (count === 0) continue;
 
     const candidates = generateAcademyCandidates({
       rng: makeRng(deriveTeamSeed((base + IDENTITY_OFFSET) >>> 0, team.id)),
@@ -348,7 +361,7 @@ export function planYouthSquads({
       name: team.name ?? team.id,
       tier: team.tier,
       u23: u23Count,
-      junior: juniorsPerTeam,
+      junior: juniorCount,
       valueCap,
       overValueCap: teamRows.filter((r) => r.overValueCap).length,
     });
@@ -435,7 +448,7 @@ export function renderMarkdown(plan, summary) {
   lines.push("PRIVAT (balance-internals/, hard rule 17). Genereret af backend/scripts/generateYouthSquadsS4.js.", "");
   lines.push(`- Juniorer pr. AI-hold (ejer-valg, argument): ${plan.juniorsPerTeam}`);
   lines.push(`- Seed: ${plan.seed} · referenceår ${plan.referenceYear}`);
-  lines.push(`- AI-hold: ${summary.totals.teams} (sprunget over, allerede genereret: ${summary.skippedTeams})`);
+  lines.push(`- AI-hold: ${summary.totals.teams} (hold med en trup der allerede findes: ${summary.skippedTeams})`);
   lines.push(`- Nye ryttere: ${summary.totals.riders} (U23 ${summary.totals.u23} · junior ${summary.totals.junior})`);
   lines.push(`- Over værdiloft (blokerer apply): ${summary.totals.overValueCap}`, "");
   lines.push("## Belastning", "");
@@ -489,14 +502,20 @@ async function loadPopulation(supabase, aiTeamIds) {
   const aiSet = new Set(aiTeamIds);
   const active = riders.filter((r) => r.is_retired !== true);
   const aiRiders = active.filter((r) => r.team_id && aiSet.has(r.team_id));
-  const alreadyGenerated = new Set(
-    aiRiders.filter((r) => r.archetype_draw?.birth?.tier === U23_BIRTH_TIER).map((r) => r.team_id),
-  );
+  // Idempotens pr. trup. AI-hold får intet akademi-intake (runAcademyIntake er
+  // kun for menneskehold), så en junior på et AI-hold stammer fra denne generator.
+  const existingByTeam = new Map();
+  for (const r of aiRiders) {
+    const e = existingByTeam.get(r.team_id) ?? { u23Born: false, juniors: 0 };
+    if (r.archetype_draw?.birth?.tier === U23_BIRTH_TIER) e.u23Born = true;
+    if (r.squad === "junior") e.juniors++;
+    existingByTeam.set(r.team_id, e);
+  }
   const aiTeamsWithYouth = new Set(aiRiders.filter((r) => r.is_academy === true || isYouthSquad(r.squad)).map((r) => r.team_id));
   const aiSeniorIds = aiRiders.filter((r) => r.is_academy !== true && !isYouthSquad(r.squad)).map((r) => r.id);
   return {
     existingNames: new Set(riders.map((r) => foldNameNordic(`${r.firstname} ${r.lastname}`))),
-    alreadyGenerated,
+    existingByTeam,
     load: {
       activeRiders: active.length,
       aiSeniorRiders: aiSeniorIds.length,
@@ -630,7 +649,7 @@ async function main() {
     existingNames: population.existingNames,
     valuationModel,
     productionValuationModel,
-    skipTeamIds: population.alreadyGenerated,
+    existingByTeam: population.existingByTeam,
   });
   const summary = summarizePlan(plan, {
     ...population.load,
@@ -643,7 +662,7 @@ async function main() {
     console.log("");
     console.log(`#5518 A6 - AI-ungdomstrupper til S${plan.targetSeason} (${args.apply ? "APPLY" : "DRY-RUN, read-only"})`);
     console.log("=".repeat(64));
-    console.log(`  AI-hold .......................... ${summary.totals.teams}  (allerede genereret: ${summary.skippedTeams})`);
+    console.log(`  AI-hold .......................... ${summary.totals.teams}  (med eksisterende trup: ${summary.skippedTeams})`);
     console.log(`  U23-ryttere ...................... ${summary.totals.u23}`);
     console.log(`  Juniorer (${args.juniors} pr. hold) ............ ${summary.totals.junior}`);
     console.log(`  Over værdiloft (blokerer apply) .. ${summary.totals.overValueCap}`);

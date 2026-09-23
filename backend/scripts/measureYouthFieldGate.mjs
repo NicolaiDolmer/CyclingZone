@@ -261,7 +261,11 @@ async function loadInputs(supabase) {
     .filter((t) => !t.is_bank && !t.is_test_account && !t.is_frozen)
     .filter((t) => !t.pending_removal_at && !t.retired_at && !t.parked_at)
     .filter((t) => poolById.has(t.league_division_id))
-    .map((t) => ({ id: t.id, is_ai: t.is_ai === true, ...poolById.get(t.league_division_id) }));
+    .map((t) => {
+      // Kun tier/pool_index fra puljen — puljens eget `id` må ikke overskrive holdets.
+      const { tier, pool_index } = poolById.get(t.league_division_id);
+      return { id: t.id, is_ai: t.is_ai === true, tier, pool_index };
+    });
   return { teams: active, riders, catalog };
 }
 
