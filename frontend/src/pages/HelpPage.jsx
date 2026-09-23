@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import { fetchRecentOpsNotices, pickNoticeCopy, SEVERITY_META } from "../lib/opsNotices.js";
-import { fetchBoardRoom } from "./annualMeeting/meetingApi.js";
+import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
+import { isHelpBlockVisible, isHelpSectionVisible } from "./helpFlagGates.js";
 import { formatDate } from "../lib/intl.js";
 import {
   PageHeader,
@@ -50,39 +51,10 @@ import {
   MessageIcon,
 } from "../components/ui/icons/index.jsx";
 
-// #4855 · Sektioner der kun maa vises naar den bagvedliggende model er slaaet
-// til for MANAGEREN. Vaerdien er navnet paa den gate der afgoer det; i dag
-// findes kun én, board_mandate_model_enabled, aflaest via GET /board/room's
-// `enabled` (samme lette kald og samme sikre fallback som BoardroomRoute:
-// fejl, ingen session eller flag off -> sektionen er skjult).
-//
-// #4910 · "raceDay" er OGSAA flag-gated, men har INGEN tilsvarende letvaegts,
-// globalt GET-endpoint at kalde: race_engine_v4 og race_day_intention_enabled
-// (backend/lib/raceEngineFlag.js, raceIntentionFlag.js) laeses kun server-side
-// og er kun spiller-synlige via `valid_efforts` paa et PER-LOEB endpoint
-// (GET /api/races/:raceId/stage-roles) — Hjaelpesiden har intet raceId at
-// spoerge med. Sektionen holdes derfor HARDKODET skjult (se raceDayEnabled
-// nedenfor) indtil en opgave tilfoejer et globalt flag-svar i samme stil som
-// GET /board/room. Braekker ALDRIG denne kommentar op fra raceDayEnabled.
-const FLAG_GATED_SECTIONS = ["mandate", "raceDay"];
-
-// #4847 · BLOK-niveau-gating. `dailytraining` er en synlig sektion, men ÉN af dens
-// blokke beskriver en model der endnu ikke er taendt: "runDayNow" (dagens samlede
-// traening + den frivillige knap) gaelder foerst naar `training_tick_per_race_day`
-// er on, mens "trainToday" (+25 %-bonussen) gaelder indtil da. De to modsiger
-// hinanden, saa de maa ALDRIG staa side om side paa fladen.
-//
-// Hardkodet false efter samme moenster som `raceDayEnabled` nedenfor, og af samme
-// grund: der findes intet letvaegts, globalt flag-endpoint Hjaelpesiden kan spoerge.
-// Ved cutover flippes DENNE linje, og "trainToday" flyttes samtidig til den anden
-// side af kontakten (den beskriver da fortiden).
-const TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED = false;
-const FLAG_GATED_BLOCKS = {
-  dailytraining: {
-    runDayNow: () => TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED,
-    trainToday: () => !TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED,
-  },
-};
+// #4948 · Flag-gatede sektioner (mandate, raceDay) og blokke (dailytraining:
+// runDayNow/trainToday) er defineret ét sted, i ./helpFlagGates.js, og foelger
+// ét kald til GET /api/feature-flags (se useEffect i HelpPage nedenfor). Et
+// flag-flip kraever ingen kodeaendring her.
 
 const SECTION_DEFS = [
   {
@@ -124,9 +96,9 @@ const SECTION_DEFS = [
   // #4855 · Mandatet (#3514 fase 2). Sektionen SUPPLERER board-sektionen
   // ovenfor, den erstatter den ikke: indtil board_mandate_model_enabled er
   // flippet (#4859) er det board-sektionen der beskriver den model spilleren
-  // faktisk moeder. Derfor er netop denne sektion flag-gated i render'en
-  // nedenfor (FLAG_GATED_SECTIONS) - copy'en ligger klar i help.json en+da
-  // fra i dag, men vises foerst naar manageren rent faktisk har Boardroom.
+  // faktisk moeder. Derfor er netop denne sektion flag-gated (HELP_SECTION_FLAGS
+  // i ./helpFlagGates.js) - copy'en ligger klar i help.json en+da fra i dag,
+  // men vises foerst naar mandat-modellen er taendt for viewer'en.
   {
     key: "mandate",
     Icon: GavelIcon,
@@ -497,9 +469,9 @@ const SECTION_DEFS = [
     ],
   },
   // #4910 · Race engine v4 + løbsdagens intention (#4632). Copy'en ligger klar
-  // i help.json en+da fra i dag, men sektionen er flag-gated (se
-  // FLAG_GATED_SECTIONS ovenfor) og forbliver skjult indtil v4-flippet
-  // (RACE_ENGINE_RULES.md §9). Placeret lige efter raceSelection, som den
+  // i help.json en+da fra i dag, men sektionen er flag-gated på race_engine_v4
+  // (HELP_SECTION_FLAGS i ./helpFlagGates.js, #4948) og vises automatisk ved
+  // v4-flippet (RACE_ENGINE_RULES.md §9). Placeret lige efter raceSelection, som den
   // udvider: samme emne (roller, taktik, uheld), næste lag ovenpå.
   {
     key: "raceDay",
@@ -641,19 +613,16 @@ const FAQ_KEYS = [
   "betaGroupFaq", // #5259
 ];
 
-function buildSections(t, vars) {
+function buildSections(t, vars, flags) {
   return SECTION_DEFS.map((def) => {
     const base = `sections.${def.key}`;
     return {
       key: def.key,
       Icon: def.Icon,
       label: t(`${base}.label`, vars),
-      // #4847: blokke hvis indhold haenger paa et flag filtreres FOER de oversaettes.
-      // En blok uden en linje i FLAG_GATED_BLOCKS er altid synlig (uaendret adfaerd).
-      content: def.blocks.filter((block) => {
-        const gate = FLAG_GATED_BLOCKS[def.key]?.[block.id];
-        return typeof gate === "function" ? gate() : true;
-      }).map((block) => {
+      // #4847/#4948: blokke hvis indhold haenger paa et flag filtreres FOER de
+      // oversaettes. En blok uden en linje i HELP_BLOCK_FLAGS er altid synlig.
+      content: def.blocks.filter((block) => isHelpBlockVisible(def.key, block.id, flags)).map((block) => {
         const blockBase = `${base}.${block.id}`;
         const title = t(`${blockBase}.title`, vars);
         if (block.kind === "steps") {
@@ -763,37 +732,26 @@ export default function HelpPage() {
     return () => { active = false; };
   }, []);
 
-  // #4855 · Mandat-sektionen vises kun naar manageren faktisk har Boardroom
-  // (board_mandate_model_enabled, #4859). Ét let kald, aldrig blokerende:
-  // fejler det, mangler sessionen eller staar flaget off, forbliver sektionen
-  // skjult og hjaelpen viser den model spilleren rent faktisk moeder.
-  const [mandateModelEnabled, setMandateModelEnabled] = useState(false);
+  // #4948 · ÉT let kald for alle flag-gatede dele (mandate, raceDay og
+  // traenings-blokkene, se ./helpFlagGates.js). Aldrig blokerende: null mens
+  // det hentes, og et fejlsvar giver {} = alt off, saa hjaelpen viser den
+  // model spilleren rent faktisk moeder.
+  const [playerFlags, setPlayerFlags] = useState(null);
   useEffect(() => {
     let active = true;
-    fetchBoardRoom()
-      .then((room) => { if (active && room?.enabled) setMandateModelEnabled(true); })
-      .catch(() => { /* ikke-kritisk: sektionen forbliver skjult */ });
+    fetchPlayerFeatureFlags()
+      .then((flags) => { if (active) setPlayerFlags(flags); })
+      .catch(() => { if (active) setPlayerFlags({}); });
     return () => { active = false; };
   }, []);
-
-  // #4910 · "raceDay" har intet globalt flag-endpoint at kalde endnu (se
-  // kommentaren ved FLAG_GATED_SECTIONS). Hardkodet false, ikke et
-  // useState/useEffect-par som mandatet ovenfor: der findes intet kald at
-  // lave, og en fremtidig PR der wirer det rigtige endpoint skal ÆNDRE denne
-  // linje, ikke tilføje endnu en skjult tilstand ved siden af.
-  const raceDayEnabled = false;
 
   if (!ready) return <PageLoader />;
 
   // #1916: fill the hard game numbers in help prose from RULES_NUMBERS (pinned to
   // the backend constants) so /help can't drift the way it did in #1907.
   const helpNumbers = buildHelpNumbers(i18n.language);
-  // #4855/#4910: hvert flag-gated key slaas op i sin egen kilde. En sektion i
-  // FLAG_GATED_SECTIONS uden en linje her er default SKJULT (fail-safe), ikke
-  // synlig-som-fejl.
-  const SECTION_ENABLED = { mandate: mandateModelEnabled, raceDay: raceDayEnabled };
-  const sections = buildSections(t, helpNumbers).filter(
-    (s) => !FLAG_GATED_SECTIONS.includes(s.key) || SECTION_ENABLED[s.key] === true,
+  const sections = buildSections(t, helpNumbers, playerFlags).filter(
+    (s) => isHelpSectionVisible(s.key, playerFlags),
   );
   const faq = buildFaq(t, helpNumbers);
 
