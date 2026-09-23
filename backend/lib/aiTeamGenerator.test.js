@@ -664,3 +664,24 @@ test("defaultAllocateSquadForTeam bruger tier-4-vinduet for en tier-4-pulje", as
   const t3Window = AI_TIER_STAT_WINDOWS[3];
   assert.ok(core.hi < t3Window.core.hi, "tier-4 kerne-loft skal være under tier-3's");
 });
+
+test("#5517: en ungdomspulje i league_divisions får ALDRIG AI-hold (kun seniorpuljer allokeres)", async () => {
+  // Efter A2 kan league_divisions rumme U23-/juniorpuljer med samme tier 1-4 som
+  // seniorerne. En tier 1-ungdomspulje ville ellers blive fyldt til target, præcis som
+  // seniorernes tier 1 (se første test i filen).
+  const run = async (youthSquad) => {
+    const pools = [...seedPools(), { id: 101, tier: 1, pool_index: 0, label: "U23 Division 1", squad: youthSquad }];
+    const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
+    const summary = await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
+    return { supabase, summary };
+  };
+
+  const youth = await run("u23");
+  const control = await run("senior");
+
+  assert.equal(countTeamsInPool(youth.supabase.state, 101), 0, "ingen AI-hold i ungdomspuljen");
+  assert.ok(!youth.summary.pools.some((p) => p.pool_id === 101), "ungdomspuljen optræder ikke i opsummeringen");
+  assert.ok(control.summary.pools.some((p) => p.pool_id === 101), "kontrol: som seniorpulje står den i opsummeringen");
+  assert.equal(countTeamsInPool(youth.supabase.state, 1), POOL_TARGET_SIZE, "seniorernes tier 1 fyldes uændret");
+  assert.equal(countTeamsInPool(control.supabase.state, 101), POOL_TARGET_SIZE, "kontrol: mærket 'senior' ville den blive fyldt");
+});
