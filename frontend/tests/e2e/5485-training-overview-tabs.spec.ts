@@ -116,6 +116,10 @@ async function fullyInViewport(page: Page, locator: ReturnType<Page["locator"]>)
 async function openTraining(page: Page, width: number, height: number, me = trainingMe()) {
   await mockSquad(page, me);
   await login(page);
+  // Copy'en er EN-first, så beviset tages på engelsk (samme greb som #3709's
+  // EN-bevis): login-helperen kræver de danske placeholders, og stabilizePage
+  // sætter cz_lang=da ved hver navigation, så sproget flyttes EFTER login.
+  await page.addInitScript(() => window.localStorage.setItem("cz_lang", "en"));
   await page.setViewportSize({ width, height });
   await page.goto("/training");
   await overview(page).or(page.getByRole("group", { name: /Today at a glance|Dagen på et blik/ })).first().waitFor();
