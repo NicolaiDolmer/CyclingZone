@@ -195,7 +195,10 @@ test("#1894.3 bulk-select har smart-fokus-mulighed + viser skipped-med-plan", ()
 // wired mod useTraining's setWeekPlan/clearWeekPlan (aldrig frontend-fokus-logik).
 test("#1895 ugerytme-panel har 7 ugedags-selects + gem/nulstil wired mod useTraining", () => {
   assert.match(src, /weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan/, "skal destrukturere ugerytme-state fra useTraining");
-  assert.match(src, /t\("weekRhythmTitle"\)/);
+  // #5485: holdets plan redigeres i fanen Week plan (TrainingWeekPlan, "Plan
+  // for: Team"), stadig mod de samme handlers nedenfor.
+  assert.match(src, /<TrainingWeekPlan/);
+  assert.match(src, /onSave=\{\(\) => \(isTeam \? handleSaveWeekPlan\(\) : handleSaveRiderWeekPlan\(key\)\)\}/);
   assert.match(src, /WEEKDAY_KEYS\.map\(\(weekday\)/, "skal rendere én select pr. WEEKDAY_KEYS-nøgle");
   assert.match(src, /handleSaveWeekPlan/);
   assert.match(src, /handleResetWeekPlan/);

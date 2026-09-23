@@ -101,11 +101,14 @@ export default function FocusPanel({
 
   const [draftDayType, setDraftDayType] = useState(savedDayType);
   const [draftSession, setDraftSession] = useState(savedSession);
+  // #5485: sat naar spilleren trykker Save day foer trin 2 har en session.
+  const [missingSession, setMissingSession] = useState(false);
 
   useEffect(() => {
     if (open) {
       setDraftDayType(savedDayType);
       setDraftSession(savedSession);
+      setMissingSession(false);
     }
     // savedDayType/savedSession er udledt af focus+intensity; de er med som
     // deps for at panelet følger med hvis planen ændrer sig mens det er åbent.
@@ -172,6 +175,11 @@ export default function FocusPanel({
               {t("focusPanel.noRisk")}
             </span>
           )}
+          {missingSession && !complete && (
+            <span role="alert" className="text-2xs font-medium text-cz-warning">
+              {t("dayPanel.pickSession")}
+            </span>
+          )}
 
           <div className="ms-auto flex items-center gap-2">
             {focus && (
@@ -182,14 +190,29 @@ export default function FocusPanel({
             <Button type="button" variant="secondary" size="sm" disabled={saving} onClick={onClose}>
               {t("focusPanel.cancel")}
             </Button>
+            {/* #5485 (aendring 4): "Save day" er aldrig graa. Clarity 16-23/9:
+                Gem dag / Save day havde doedt-klik-signal fordi knappen stod
+                deaktiveret indtil valget baade var komplet OG aendret.
+                Uaendret = "Done" (lukker), ufaerdigt = en linje der siger
+                hvad der mangler, i stedet for et tryk der intet goer. */}
             <Button
               type="button"
               variant="primary"
               size="sm"
-              disabled={saving || !complete || !dirty}
-              onClick={() => onSave(draftDayType, needsSession ? draftSession : null)}
+              disabled={saving}
+              onClick={() => {
+                if (!dirty) {
+                  onClose();
+                  return;
+                }
+                if (!complete) {
+                  setMissingSession(true);
+                  return;
+                }
+                onSave(draftDayType, needsSession ? draftSession : null);
+              }}
             >
-              {saving ? t("loading") : t("dayPanel.save")}
+              {saving ? t("loading") : dirty ? t("dayPanel.save") : t("dayPanel.done")}
             </Button>
           </div>
         </div>
