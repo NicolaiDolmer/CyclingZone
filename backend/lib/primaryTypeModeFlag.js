@@ -35,16 +35,13 @@ export async function isPrimaryTypeFromDistributionEnabled(supabase) {
 }
 
 /**
- * Den `primaryTypeMode` generatoren skal kaldes med lige nu.
+ * Den `primaryTypeMode` generatoren skal kaldes med lige nu. Kaster aldrig:
+ * readFlagStage gør enhver læsefejl til null, og null evalueres til off.
  * @param {object} supabase
  * @returns {Promise<"tier"|"distribution">} aldrig andet end de to
  */
 export async function readPrimaryTypeMode(supabase) {
-  try {
-    return (await isPrimaryTypeFromDistributionEnabled(supabase))
-      ? PRIMARY_TYPE_MODE_DISTRIBUTION
-      : PRIMARY_TYPE_MODE_TIER;
-  } catch {
-    return PRIMARY_TYPE_MODE_TIER;
-  }
+  return (await isPrimaryTypeFromDistributionEnabled(supabase))
+    ? PRIMARY_TYPE_MODE_DISTRIBUTION
+    : PRIMARY_TYPE_MODE_TIER;
 }
