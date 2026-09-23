@@ -543,8 +543,8 @@ function MobileFullTable({
 
   // #4982/#5471: ingen lodret boks om de to lag laengere (den var SCROLLER med
   // `max-h`) — siden scroller. Kun datablokken scroller, og kun vandret.
-  // Overskrifterne er i forvejen ikke sticky her (stickyHeader={false}), saa
-  // intet mistes ved at boksen forsvinder.
+  // Overskrifterne er i forvejen ikke sticky her (begge blokke slaar den laaste
+  // overskrift fra), saa intet mistes ved at boksen forsvinder.
   return (
     <div>
       <div className="relative flex">
