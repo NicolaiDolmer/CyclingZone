@@ -231,7 +231,7 @@ Markøren ligger i `riders.archetype_draw` (jsonb, persisteres allerede) som et 
 | AI-fyld tier 1/2 | `generateAiRiderBatchWithCap` | own-priors (default) |
 | AI-fyld tier 3/4 + start-trupper | `buildWeakStarterPool` | own-priors + persisteret evne-loft |
 | Akademi-intake | `generateAcademyCandidates` → `academyIntake` | own-priors (ungdomsbåndet) |
-| U23-trupper til AI-holdene | ENGANGS ved S4-cutover — generatoren findes endnu ikke | own-priors (U23-båndet, se §8b2). Båndet og evne-trækket er klar; selve genereringen er ejer-gated |
+| U23-trupper (+ juniorer) til AI-holdene | ENGANGS ved S4-cutover — `backend/scripts/generateYouthSquadsS4.js` ([#5518](https://github.com/NicolaiDolmer/CyclingZone/issues/5518)) | own-priors (U23-båndet for U23, akademibåndet for juniorer, se §8b2). Dry-run er default; `--apply` kræver `--owner-go` og er ikke kørt |
 | Pool-import | `lib/racePoolImport.js` | **føder ingen ryttere** — modulet importerer LØB (`race_pool`) fra CSV. Ingen ændring. |
 
 `mode: "pcm"` bevarer den gamle sti og er ikke fjernet: de golden-population-harnesses der kalibrerer balancen (`previewFictionalPopulation.js`, `simSecondaryArchetype3634.js`, `raceGate.js`) måler mod netop den fordeling og skal kunne sammenlignes med historikken indtil ejeren fjerner stien.
@@ -240,7 +240,7 @@ Markøren ligger i `riders.archetype_draw` (jsonb, persisteres allerede) som et 
 
 Enhver gate der prissætter eller vurderer en kandidat **før** insert skal se de evner `deriveForRiderIds` bagefter persisterer. Gør den ikke det, vurderer den en anden rytter end den der lander i DB'en — [#2065](https://github.com/NicolaiDolmer/CyclingZone/issues/2065)-klassen. Målt under #5269: uden spejlingen i `generateAiRiderBatchWithCap` passerede en tier-1-rytter med `base_value` 856.501 mod loftet 200.000.
 
-Spejlingen er `isBornFromPriors(row) ? deriveBirthAbilities(row, { age }) : deriveAbilities(physiology, row)` og findes i dag i `backfillCores.js` (begge backfills), `starterSquadAllocator.js`, `balanceSnapshot.js` og `fictionalPopulationPreview.js`.
+Spejlingen er `isBornFromPriors(row) ? deriveBirthAbilities(row, { age }) : deriveAbilities(physiology, row)` og findes i dag i `backfillCores.js` (begge backfills), `starterSquadAllocator.js`, `balanceSnapshot.js`, `fictionalPopulationPreview.js` og `scripts/generateYouthSquadsS4.js` (§8b3).
 
 ### Fysiologi
 
@@ -248,7 +248,7 @@ En prior-født rytter seeder sin fysiologi fra sine EGNE evner (samme 0-99-skala
 
 ## 8b2. U23-fødselsbåndet ([#5376](https://github.com/NicolaiDolmer/CyclingZone/issues/5376))
 
-**Ryttere fødes stadig som 16-årige i akademiet.** Det her ændrer ikke hvor spillet får sine ryttere fra. Båndet gælder ÉN ting: engangs-genereringen af en U23-trup (6-9 ryttere, 19-22 år) til hvert AI-hold ved S4-cutover, så U23-kalenderens løb har køreklare felter fra dag ét ([GDD D-054 §10.4](GAME_DESIGN_DOCUMENT.md), [U23-spec](superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md) §4.4 + §10.4). Efter cutover fyldes U23-truppen af akademiet, der graduerer opad — der er ingen løbende U23-fødsel.
+**Ryttere fødes stadig som 16-årige i akademiet.** Det her ændrer ikke hvor spillet får sine ryttere fra. Båndet gælder ÉN ting: engangs-genereringen af en U23-trup (6-9 ryttere, 19-22 år) til hvert AI-hold ved S4-cutover (§8b3), så U23-kalenderens løb har køreklare felter fra dag ét ([GDD D-054 §10.4](GAME_DESIGN_DOCUMENT.md), [U23-spec](superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md) §4.4 + §10.4). Efter cutover fyldes U23-truppen af akademiet, der graduerer opad — der er ingen løbende U23-fødsel.
 
 **Hvorfor et eget bånd.** Akademiets bånd (`YOUTH_BIRTH_BAND`) er kalibreret til 16-21 år, hvor det er en TILSIGTET invariant at evnerne mætter mod loftet: G5 ([#3561](https://github.com/NicolaiDolmer/CyclingZone/issues/3561)/[#2064](https://github.com/NicolaiDolmer/CyclingZone/issues/2064) §2a) kræver at en ungdomsrytters NUVÆRENDE evne ikke løfter `ability_caps` over det loft hans potentiale tillader. Netop dét loft slår igennem i den øvre ende af U23-intervallet, og generator-rapportens §8b måler det: lånte U23-fødslen akademiets bånd, ville en 19-årig og en 22-årig fødes praktisk talt ens, og alderen holde op med at betyde noget i netop det interval U23-kalenderen kører i.
 
@@ -258,7 +258,26 @@ En prior-født rytter seeder sin fysiologi fra sine EGNE evner (samme 0-99-skala
 
 **Markøren har sin egen tier.** En U23-fødsel skriver `archetype_draw.birth.tier = "u23"`, ikke `"youth"`. Det er ikke kosmetik: `deriveBirthAbilities` vælger BÅND ud fra markørens tier, og enhver re-derive (heal-sweep, backfill) går igennem den. Bar markøren `"youth"`, ville hver sweep reproducere engangs-kuldet mod akademiets bånd og klippe rytterne ned — stille, og først synligt når nogen undrede sig over at U23-felterne var blevet svagere.
 
-**Hvad der mangler.** `drawU23BirthAbilities()` + `makeU23BirthMarker()` er hele evne-siden og er rene funktioner uden DB, ur eller `Math.random`. Selve generatoren (spec A6: hvilke AI-hold, hvor mange ryttere, arketype-/tier-mix, navne, nationalitet, kontrakter, `squad = 'u23'`, insert + `deriveForRiderIds`) findes IKKE endnu, og intet produktions-kaldsted kalder funktionerne i dag. Det er med vilje: genereringen er en ejer-gated engangs-handling ved cutover og må ikke kunne udløses som sideeffekt af at båndet blev bygget.
+**Evne-siden.** `drawU23BirthAbilities()` + `makeU23BirthMarker()` er hele evne-siden og er rene funktioner uden DB, ur eller `Math.random`. Intet produktions-kaldsted (route, cron, sweep) kalder dem: den eneste kalder er engangs-generatoren nedenfor, som er et script der kun skriver med `--apply --owner-go`.
+
+### 8b3. Engangs-generatoren (spec A6, [#5518](https://github.com/NicolaiDolmer/CyclingZone/issues/5518))
+
+`backend/scripts/generateYouthSquadsS4.js` føder AI-holdenes ungdomstrupper. **Dry-run er default og read-only; `--apply` kræver `--owner-go` og køres først ved cutover efter ejer-go på dry-run-tallene.**
+
+| Regel | Hvordan |
+|---|---|
+| Hvilke hold | Aktive AI-hold: `is_ai`, ikke bank/test/frossen, ikke på vej ud (`pending_removal_at`, `retired_at`, `parked_at`), med en pulje |
+| U23-trup | 6-9 ryttere pr. hold (ejer-låst 15/9), sæsonalder 19-22 i målsæsonen, U23-båndet (markør-tier `u23`) |
+| Juniorer | `--juniors=N` er PÅKRÆVET uden default (ejer-valg), 0 til juniortruppens loft; sæsonalder 16-18, akademibåndet (markør-tier `youth`) |
+| Identitet | Akademiets egen generator (`generateAcademyCandidates`, own-priors): navn (unikt mod hele bestanden), nationalitet, potentiale, krop, to-delt anlæg og fødsels-seed. Alderen trækkes derefter i truppens interval, og markøren laves om med den alder, så re-derivationen reproducerer netop dette træk |
+| Trup-felter | `squad` og `is_academy = true` skrives i samme insert; `generation_tag = 's<målsæson>'` |
+| Kontrakt/løn | Start-truppens sammensætning: `computeFrozenSalary` på `current_production_value` efter derive, `pickStarterContractLength`, `computeContractEndSeason` fra målsæsonen |
+| Spejlings-gate (§8b) | Hver kandidat køres før insert gennem præcis den kæde `deriveForRiderIds` persisterer, på målsæsonens alders-akse og med samme model-objekter. Ligger en kandidat over AI-tierens værdiloft, blokeres apply. Efter apply læses base_value/type tilbage og sammenlignes; en afvigelse giver exit 1. Eneste kendte forskel er `hidden_potential`, som hasher DB-id'et og ikke indgår i caps, type eller værdi |
+| Alders-aksen | Apply nægter at køre medmindre målsæsonen er den AKTIVE sæson (`deriveForRiderIds` regner alder mod den aktive sæson, #4876-lektien) |
+| Idempotens | Pr. trup: en eksisterende U23-født trup (markør-tier `u23`) eller eksisterende juniorer fødes ikke igen. Juniorerne kan derfor fødes i en senere kørsel. Ét insert pr. hold |
+| Rollback | Apply skriver listen over indsatte rytter-id'er til `balance-internals/` |
+
+Dry-run-tallene (antal, værdi- og evnefordeling, pr. hold) skrives kun til `balance-internals/` via `--out` (hard rule 17). Felt-gaten for ungdomsløb (C1) måles af `backend/scripts/measureYouthFieldGate.mjs`, som bruger samme plan-funktion, så måling og apply ikke kan se to forskellige kuld (YOUTH_RULES §2.3).
 
 ## 8c. Den synlige test af generatoren ([#5283](https://github.com/NicolaiDolmer/CyclingZone/issues/5283))
 
