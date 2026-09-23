@@ -14,6 +14,7 @@ import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
+import { academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
 
 // Deterministisk 32-bit hash (FNV-1a) — samme algoritme som
 // starterSquadAllocator.hashStringToSeed, bevidst dupliceret (få linjer) for ikke
@@ -417,7 +418,7 @@ export async function runAcademyIntakeForTeam(supabase, teamId, {
 /**
  * Signer en akademi-kandidat til holdet.
  *
- * #1558: cap-check (8-plads) + rider-update + signing-fee-debit sker ATOMISK i
+ * #1558: cap-check (loft pr. ungdomstrup, #5432) + rider-update + signing-fee-debit sker ATOMISK i
  * finalize_academy_acquisition-RPC'en under pg_advisory_xact_lock(team_id), så en
  * samtidig youth-auktion-finalize ikke kan dobbelt-debitere samme rytter. Kun
  * offered-check'en sker før RPC-kaldet; RPC'en er den autoritative cap/balance-gate.
@@ -444,7 +445,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // 2. Hent rytterens markedsværdi og beregn løn + signing-fee.
   const { data: rider, error: riderErr } = await supabase
     .from("riders")
-    .select("id, team_id, firstname, lastname, market_value, base_value, prize_earnings_bonus, current_production_value")
+    .select("id, team_id, firstname, lastname, birthdate, market_value, base_value, prize_earnings_bonus, current_production_value")
     .eq("id", riderId)
     .maybeSingle();
   if (riderErr) throw new Error(`signAcademyCandidate rider lookup: ${riderErr.message}`);
@@ -488,7 +489,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   const acquiredAt = new Date().toISOString();
 
-  // 3. #1558: cap-check (8-plads) + rider-update + signing-fee-debit sker nu
+  // 3. #1558: cap-check (loft pr. ungdomstrup, #5432) + rider-update + signing-fee-debit sker nu
   // ATOMISK i én RPC under pg_advisory_xact_lock(team_id). Tidligere var
   // cap-tjekket (ulåst getTeamAcademyCount) adskilt fra writes, og denne sti
   // brugte INGEN idempotency_key — så en samtidig finalize (youth_auction_winner)
@@ -521,6 +522,9 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
       // pr. rytter, så riderId alene er tilstrækkeligt unikt.)
       idempotency_key: `academy_signing:${riderId}`,
     },
+    // #5432: kandidaten tælles mod sin ungdomstrups loft (squads.js), og RPC'en
+    // skriver truppen i samme række-skrivning som is_academy.
+    ...squadCapRpcArgs(academyPlacementSquad(rider.birthdate, seasonNumber)),
   });
 
   if (acqErr) {
