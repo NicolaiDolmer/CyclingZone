@@ -246,17 +246,24 @@
    "ownNodeModules": false
   },
   {
-   "issue": 5485,
-   "branch": "docs/5485-training-clarity-mockup",
-   "title": "[traening] Traeningssiden: Clarity-analyse + EET samlet foer/efter-mockup (intet byg)",
-   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5485\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Ejer-direktiv 22/9: ingen lange scroll-sider, faner/modals, det mest brugte oeverst, 'programmet' i toppen skal have en mere forstaaelig loesning (program 7x5: ugeplanen saetter sessionen pr. loebsdag), landscape maa ikke falde tilbage til desktop-layout. Memory-regler: 'Overblik foerst + faner ud, aldrig mere paa en scroll-side', 'ET samlet foer/efter-billede', anti-AI-slop. (1) Clarity-rapport docs/audits/2026-09-23-5485-training-clarity.md via Microsoft Clarity MCP (query-analytics-dashboard; ingen session-dumps i konteksten): scroll-dybde, aktiv tid, doede klik og top-klik pr. enhed paa /training for de sidste 3-7 dage. Kendt 20-22/9: doede klik paa rytternavne i raekken (flest), paa kontakten 'on', Hvile/Rest, Training/Traening, Gem dag/Save day og Traethed. Forklar hvad spilleren forventer der sker. (2) EET samlet foer/efter-billede (PNG, desktop 1440 + mobil 390 side om side, 'i dag' vs 'anbefalet', nummererede pins + legende) bygget som statisk HTML-mockup i docs/design/mockups/5485/ (brug T2/T3-skabelonerne fra docs/design/PAGE_TEMPLATES.md og TASTE.md; 'foer' = render af den nuvaerende side med preview-mock, VITE_PREVIEW_MOCK). Skal vise: faner, program 7x5 i toppen forstaaeligt, dagens handling oeverst, doede klik adresseret. INTET byg af siden. PR = docs + mockup + PNG. Orkestratoren viser billedet til ejeren. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "issue": 5533,
+   "branch": "fix/5533-stable-boot-identity",
+   "title": "[ops] Stabil Windows boot-identitet saa boelge-markoeren kan frigives (sub-ms drift)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5533\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Se issue #5533 (bevis fra natbolgen 23/9: bootId 639256957975000000 vs maalt 639256957975007720, 0,772 ms drift, samme boot). Ret: EEN delt helper (fx scripts/wave-boot-identity.mjs) der maaler LastBootUpTime og normaliserer den til hele sekunder (afrund ticks til 10^7), brugt af baade hostBootId() i scripts/wave-policy.mjs og processSnapshot() i scripts/wave-process-snapshot.mjs; sammenligninger (assertWaveOwnership, wave-recovery.mjs rebooted, withWaveStateLock-noeglen) bruger den normaliserede vaerdi, og eksisterende markoerer med raa ticks sammenlignes efter samme normalisering (bagudkompatibelt). Tests: sub-sekund-drift = samme boot (release lykkes); ægte genstart (forskel i minutter) = ny boot (recover som i dag). Roer IKKE owner-override-flowet eller admission-reglerne i oevrigt. Kategori 3 (scripts/test): orkestratoren merger naar CI er groen. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen.",
    "model": "opus",
    "tier": "TARGETED",
    "ownership": [
-    "docs/audits/2026-09-23-5485-training-clarity.md",
-    "docs/design/mockups/5485/**"
+    "scripts/wave-boot-identity.mjs",
+    "scripts/wave-boot-identity.test.mjs",
+    "scripts/wave-policy.mjs",
+    "scripts/wave-policy.test.mjs",
+    "scripts/wave-process-snapshot.mjs",
+    "scripts/wave-recovery.mjs",
+    "scripts/wave-recovery.test.mjs",
+    "scripts/wave-hook.test.mjs"
    ],
    "verifyCommands": [
+    "node --test scripts/wave-boot-identity.test.mjs scripts/wave-policy.test.mjs scripts/wave-hook.test.mjs",
     "pwsh -File scripts/preflight-pr.ps1"
    ],
    "ownNodeModules": false
