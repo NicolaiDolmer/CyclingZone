@@ -247,6 +247,78 @@ test("#3546 itt_hilly: etape 1 trækker ALDRIG en prolog (kun literal 'itt' kan)
   }
 });
 
+// ── #2789 (bonus-fund): "itt" skalerer højdemeter med distance ───────────────
+// Før rettelsen havde ALLE enkeltstarter (5-40 km, prolog såvel som normalt bånd)
+// præcis 80 hm — spilleren så samme facit på en 5 km prolog og en 40 km enkeltstart.
+test("#2789 itt: elevation_gain_m varierer med distance_km (ikke længere fast 80)", () => {
+  const seen = new Set();
+  for (let i = 0; i < 30; i++) {
+    // stage_number 5: aldrig prolog-grenen, så vi tester det normale [15,40]-bånd isoleret.
+    const r = attachRoute(stage("itt", null, 5), { external_id: `itt-elev-${i}` }, true);
+    assert.equal(r.climbs.length, 0, "itt trækker ALDRIG climbs (CLIMB_SPEC.itt.count=[0,0])");
+    seen.add(r.elevation_gain_m);
+  }
+  assert.ok(seen.size > 1, `forventede varierende elevation_gain_m over 30 forsøg, fik kun ${[...seen]}`);
+});
+
+test("#2789 itt: elevation_gain_m følger PRÆCIS Math.round(distance_km * 80/27.5) — samme referencedistance som raceSimulator.js's DISTANCE_BAND_MIDPOINTS.itt", () => {
+  for (let i = 0; i < 30; i++) {
+    const r = attachRoute(stage("itt", null, 5), { external_id: `itt-formula-${i}` }, true);
+    const expected = Math.round(r.distance_km * (80 / 27.5));
+    assert.equal(r.elevation_gain_m, expected, `distance_km=${r.distance_km}`);
+  }
+});
+
+test("#2789 itt: en kort prolog (5-8 km) får MARKANT lavere elevation_gain_m end en lang enkeltstart (15-40 km)", () => {
+  let prolog = null;
+  for (let i = 0; i < 30 && !prolog; i++) {
+    const r = attachRoute(stage("itt", null, 1), { external_id: `itt-prolog-elev-${i}`, name: "Grand Tour" }, true);
+    if (r.distance_km <= PROLOGUE_DISTANCE_BAND[1]) prolog = r;
+  }
+  assert.ok(prolog, "forventede mindst én prolog-udfald over 30 forsøg");
+  assert.ok(prolog.elevation_gain_m < 40, `prolog (${prolog.distance_km} km) fik ${prolog.elevation_gain_m} hm — forventede under 40`);
+  const long = attachRoute(stage("itt", null, 5), { external_id: "itt-long-elev" }, true); // 15-40 km bånd
+  assert.ok(long.elevation_gain_m > prolog.elevation_gain_m, "en længere enkeltstart bør have flere højdemeter end en prolog");
+});
+
+test("#2789 itt_hilly og ttt beholder deres EGEN elevation-logik (rører kun 'itt')", () => {
+  // ttt: BASE_ELEVATION.ttt=120 er uændret fast (ttt trækker 0 climbs, samme som itt før).
+  for (let i = 0; i < 15; i++) {
+    const r = attachRoute(stage("ttt", null, 2), { external_id: `ttt-elev-${i}` }, true);
+    assert.equal(r.climbs.length, 0);
+    assert.equal(r.elevation_gain_m, 120, "ttt skal fortsat være fast 120 (kun 'itt' skalerer, jf. #2789-scope)");
+  }
+  // itt_hilly: climbs-baseret + egen BASE_ELEVATION (350) — ikke berørt af itt-formlen.
+  for (let i = 0; i < 15; i++) {
+    const r = attachRoute(stage("itt_hilly", "solo_tt", 5), { external_id: `ih-elev-${i}` }, true);
+    const fromClimbs = r.climbs.reduce((s, c) => s + Math.round((c.length_km * 1000 * c.avg_gradient) / 100), 0);
+    assert.equal(r.elevation_gain_m, fromClimbs + 350, "itt_hilly skal fortsat bruge fast BASE_ELEVATION.itt_hilly=350 + climbs");
+  }
+});
+
+// #2789: rettelsen (itt-only, ingen ekstra rng-træk) må IKKE flytte nogen andre ruter.
+// Golden fixtures nedenfor er attachRoute()-output for de samme (race-identitet,
+// profile_type, stage_number)-kombinationer FØR og EFTER rettelsen — verificeret
+// bit-identiske i 250/250 stikprøver (alle terræn-profiler + ttt + itt_hilly, 25
+// identiteter hver) i forbindelse med denne PR. Fixtures her fanger en fremtidig
+// regression, hvis nogen ved en fejl lader itt-ændringen røre den fælles rng-strøm.
+test("#2789 regression: ikke-itt profiler er BIT-IDENTISKE med før rettelsen (samme seed)", () => {
+  const golden = {
+    flat: { distance_km: 175, elevation_gain_m: 261, climbs: [{ name: "Coll de Peña Blanca", category: "4", crest_km: 160, length_km: 1.5, avg_gradient: 4.1, summit_finish: false }], sprints: [{ name: "Intermediate Sprint", km: 96, kind: "intermediate" }, { name: "Finish", km: 175, kind: "finish" }], sectors: [] },
+    hilly: { distance_km: 165, elevation_gain_m: 1793, climbs: [{ name: "Alto de Valdeón", category: "2", crest_km: 87, length_km: 5.7, avg_gradient: 6.9, summit_finish: false }, { name: "Alto de El Cordal", category: "2", crest_km: 165, length_km: 10, avg_gradient: 7, summit_finish: true }], sprints: [{ name: "Intermediate Sprint", km: 79, kind: "intermediate" }, { name: "Finish", km: 165, kind: "finish" }], sectors: [] },
+    mountain: { distance_km: 165, elevation_gain_m: 2084, climbs: [{ name: "Puerto de Navacerrada", category: "3", crest_km: 72, length_km: 5.6, avg_gradient: 5.1, summit_finish: false }, { name: "Coll de El Cordal", category: "3", crest_km: 102, length_km: 6, avg_gradient: 4.7, summit_finish: false }, { name: "Coll de Ancares", category: "1", crest_km: 160, length_km: 8.8, avg_gradient: 7, summit_finish: false }], sprints: [{ name: "Intermediate Sprint", km: 79, kind: "intermediate" }, { name: "Finish", km: 165, kind: "finish" }], sectors: [] },
+    cobbles: { distance_km: 170, elevation_gain_m: 400, climbs: [], sprints: [{ name: "Intermediate Sprint", km: 70, kind: "intermediate" }, { name: "Finish", km: 170, kind: "finish" }], sectors: [{ kind: "cobbles", start_km: 77, length_km: 2.6, name: "Tramo de Piedra 1" }, { kind: "cobbles", start_km: 88, length_km: 1.2, name: "Sector Adoquinado 2" }, { kind: "cobbles", start_km: 100, length_km: 1.1, name: "Sector Adoquinado 3" }, { kind: "cobbles", start_km: 112, length_km: 2.5, name: "Sector Adoquinado 4" }, { kind: "cobbles", start_km: 160, length_km: 2.1, name: "Tramo de Piedra 5" }] },
+    classic: { distance_km: 230, elevation_gain_m: 3395, climbs: [{ name: "Alto de Valdeón", category: "3", crest_km: 83, length_km: 5, avg_gradient: 6.3, summit_finish: false }, { name: "Coll de Robledo", category: "2", crest_km: 108, length_km: 9.7, avg_gradient: 6.6, summit_finish: false }, { name: "Coll de Ancares", category: "2", crest_km: 133, length_km: 6.6, avg_gradient: 5.6, summit_finish: false }, { name: "Alto de Montaña", category: "2", crest_km: 159, length_km: 5, avg_gradient: 5.6, summit_finish: false }, { name: "Alto de Robledo", category: "1", crest_km: 211, length_km: 12.9, avg_gradient: 6.9, summit_finish: false }], sprints: [{ name: "Intermediate Sprint", km: 150, kind: "intermediate" }, { name: "Finish", km: 230, kind: "finish" }], sectors: [{ kind: "cobbles", start_km: 104, length_km: 2.8, name: "Tramo de Piedra 1" }, { kind: "cobbles", start_km: 111, length_km: 1.2, name: "Tramo de Piedra 2" }, { kind: "cobbles", start_km: 120, length_km: 1.8, name: "Tramo de Piedra 3" }] },
+    ttt: { distance_km: 34, elevation_gain_m: 120, climbs: [], sprints: [{ name: "Finish", km: 34, kind: "finish" }], sectors: [] },
+    itt_hilly: { distance_km: 17, elevation_gain_m: 663, climbs: [{ name: "Alto de Navacerrada", category: "3", crest_km: 8, length_km: 4.5, avg_gradient: 4.7, summit_finish: false }, { name: "Coll de Covadonga", category: "4", crest_km: 9, length_km: 2.1, avg_gradient: 4.8, summit_finish: false }], sprints: [{ name: "Finish", km: 17, kind: "finish" }], sectors: [] },
+  };
+  for (const [pt, expected] of Object.entries(golden)) {
+    const finaleType = pt === "itt_hilly" ? "solo_tt" : null;
+    const r = attachRoute(stage(pt, finaleType, 2), { external_id: `golden-${pt}`, season_id: "s1", name: "Vuelta Andaluza" }, true);
+    assert.deepEqual(r, expected, `${pt}: rute flyttede sig — #2789-rettelsen skal kun røre 'itt'`);
+  }
+});
+
 test("climb-navne er region-flavoured + ikke-tomme", () => {
   const es = attachRoute(stage("high_mountain", "long_climb"), { ...race, name: "Vuelta Burgalesa" }, true);
   assert.ok(es.climbs.every((c) => typeof c.name === "string" && c.name.length > 0));
