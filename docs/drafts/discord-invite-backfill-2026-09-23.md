@@ -28,7 +28,11 @@ Nye rækker fra DETTE script er mærket `metadata.backfill = "2026-09"` (kun
 til audit/rapportering — dedupe-tjekket i scriptet er bredere end tagget, se
 scriptets header).
 
-## Teksten der sendes (uændret fra 15/9-godkendelsen)
+## Teksten spilleren rent faktisk ser (uændret fra 15/9-godkendelsen)
+
+Rendres klient-side af `notif.discordWelcome.title`/`.message` i
+`frontend/public/locales/{en,da}/backendMessages.json`, i modtagerens
+`users.language` — dette ER teksten der vises i indbakken i en moderne klient.
 
 ### EN
 **Title:** Hep! Come join us on Discord
@@ -49,6 +53,23 @@ Kom som du er, du behøver ingen resultater for at høre til. Vi ses derinde :)
 CTA-knappen (samme som `discord_welcome` allerede får i `NotificationsPage.jsx`
 via `TYPE_CONFIG`) peger på `DISCORD_INVITE_URL`
 (`frontend/src/lib/externalLinks.js`) — det permanente invite-link.
+
+## Den gemte fallback-tekst (ANDEN streng, CodeRabbit-fund)
+
+`notifications.title`/`.message` (selve raekken) er IKKE ovenstående tekst.
+Kontrakten (#4734, `buildKeyedNotification`) er at denne kolonne kun er en
+ENGELSK fallback — til gamle klienter uden i18n, e-mail-digestet og
+dedupe-nøglen — mens en moderne klient altid rendrer teksten ovenfor fra
+`metadata.titleCode`/`messageCode`. `buildDiscordWelcomeNotification()`
+(genbrugt uændret af dette script) sætter denne fallback til en KORTERE,
+ældre EN-tekst, ikke 15/9-godkendelsen:
+
+**Title (fallback):** Come hang out on Discord
+**Message (fallback):** I'm in there, and so are the other managers: ask me
+anything, swap tactics, and get the roadbook before anyone else.
+
+Ingen DA-fallback findes eller skal findes — fallbacken er altid engelsk
+(`DEFAULT_LANGUAGE`), uanset modtagerens `users.language`.
 
 ## Ejer-direktivets scope-udvidelser 6/8 og 7/9 (IKKE dækket af denne PR)
 

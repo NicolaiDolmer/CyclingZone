@@ -68,10 +68,17 @@ import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.j
 
 export const BACKFILL_TAG = "2026-09";
 
-/** Parser argv. Dry-run er default; kun --execute skriver. */
+/**
+ * Parser argv. Dry-run er default; kun --execute skriver. `--execute` OG
+ * `--dry-run` sammen er en modsigelse (CodeRabbit-fund) — flages i stedet for
+ * stiltiende at lade --execute vinde, saa en operatoer-fejl aldrig utilsigtet
+ * skriver til prod.
+ */
 export function parseArgs(argv) {
   const args = argv ?? [];
-  return { execute: args.includes("--execute") };
+  const execute = args.includes("--execute");
+  const dryRun = args.includes("--dry-run");
+  return { execute, conflicting: execute && dryRun };
 }
 
 /** Menneskelige managers med konto → unikke user_id, stabil raekkefoelge. */
@@ -122,7 +129,11 @@ export function buildBackfillInvite() {
 // ── Koerslen ────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { execute } = parseArgs(process.argv.slice(2));
+  const { execute, conflicting } = parseArgs(process.argv.slice(2));
+  if (conflicting) {
+    console.error("--execute og --dry-run kan ikke bruges sammen. Vaelg én.");
+    process.exit(1);
+  }
 
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
@@ -170,10 +181,20 @@ async function main() {
   let deduped = 0;
   let failed = 0;
   for (const userId of pendingIds) {
-    const result = await notifyUser({ supabase: sb, userId, ...invite });
-    if (result?.delivered) delivered += 1;
-    else if (result?.deduped) deduped += 1;
-    else failed += 1;
+    // Per-modtager try/catch (CodeRabbit-fund): notifyUser KAN kaste (fx et
+    // lookup- eller insert-fejl fra Supabase) — uden dette stopper hele loopet
+    // ved foerste fejl, og hverken leverings-opsummeringen eller post-verify
+    // naas for de resterende modtagere. Samme moenster som
+    // discordWelcomeSweep.js' per-hold try/catch.
+    try {
+      const result = await notifyUser({ supabase: sb, userId, ...invite });
+      if (result?.delivered) delivered += 1;
+      else if (result?.deduped) deduped += 1;
+      else failed += 1;
+    } catch (err) {
+      failed += 1;
+      console.error(`  notifyUser fejlede for ${userId}:`, err?.message || err);
+    }
   }
   console.log(`Sendt: ${delivered} · dedupet: ${deduped} · fejlet: ${failed}`);
 

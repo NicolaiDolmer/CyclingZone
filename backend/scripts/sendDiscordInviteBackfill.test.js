@@ -14,9 +14,14 @@ import {
 } from "./sendDiscordInviteBackfill.mjs";
 
 test("dry-run er default: kun --execute skriver", () => {
-  assert.deepEqual(parseArgs([]), { execute: false });
-  assert.deepEqual(parseArgs(["--dry-run"]), { execute: false });
-  assert.deepEqual(parseArgs(["--execute"]), { execute: true });
+  assert.deepEqual(parseArgs([]), { execute: false, conflicting: false });
+  assert.deepEqual(parseArgs(["--dry-run"]), { execute: false, conflicting: false });
+  assert.deepEqual(parseArgs(["--execute"]), { execute: true, conflicting: false });
+});
+
+test("--execute OG --dry-run sammen flages som modsigende (CodeRabbit-fund)", () => {
+  assert.equal(parseArgs(["--execute", "--dry-run"]).conflicting, true);
+  assert.equal(parseArgs(["--dry-run", "--execute"]).conflicting, true);
 });
 
 test("modtagere er unikke user_id i stabil raekkefoelge, uden tomme", () => {
