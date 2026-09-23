@@ -21,7 +21,9 @@
 //   - M10: ingen hjaelper taet paa (ingen holdkammerat i enheden), og et
 //     tidstab rammer kun rytteren selv;
 //   - M15: graensen maales pr. rytter mod vindertiden, uden grupetto-redning
-//     (en enkeltstart har ingen grupetto) — samme faktor som §2d's tabel.
+//     (en enkeltstart har ingen grupetto) — samme faktor som §2d's tabel;
+//   - M9: maalpassagen paa placeringen, og bjergtoppe/indlagte spurter
+//     undervejs paa hver rytters egen passagetid; aldrig bonussekunder.
 //
 // HVAD DER ER ANDERLEDES END TTT: segment-tikket. TTT's tik er et holds
 // work-rotation, maalt mod en fast krav-konstant uden terraen-vaegt; en rytter
@@ -41,7 +43,7 @@
 //           dagsudsving (`ittStageNoise`, v3-paritet).
 //   fart    Rytterens EGEN evne mod uret: tidsforskellen mellem to ryttere
 //           foelger deres evne-forskel og ikke hvem der ellers stiller op (se
-//           `ittSpeedKmh`). Feltet saetter kun nulpunktet (dagens tempo).
+//           `ittSpeedKmh`, et lineaert tempo). Feltet saetter kun nulpunktet.
 //           Terraen-vaegtet med vejetapens STRENGTH_SPEED_EXTRA_TUNING.
 //           terrainWeight (styrke betyder mest op ad bakke), uden gruppe-
 //           dynamikken (laee, over-/underskuds-formning). Lineaer og stigende i
@@ -208,10 +210,10 @@ export function ittStageNoise(seed: string, riderId: string, ittTuning: Individu
 }
 
 /**
- * Rytterens fart alene paa ét segment: basisfarten x (1 + haeldning x
- * (evne - feltets reference)), terraen-vaegtet med vejetapens
- * STRENGTH_SPEED_EXTRA_TUNING.terrainWeight og clampet af
- * `terrain.speedMultiplierBounds`.
+ * Rytterens fart alene paa ét segment, regnet som TEMPO (tid pr. km):
+ * basistempoet x (1 - haeldning x (evne - feltets reference)), terraen-vaegtet
+ * med vejetapens STRENGTH_SPEED_EXTRA_TUNING.terrainWeight. Tempo-faktoren
+ * clampes, saa farten holder sig inden for `terrain.speedMultiplierBounds`.
  *
  * HVORFOR EVNE-FORSKEL OG IKKE EVNE-FORHOLD (modsat vejetapens #4885-form):
  * paa en vejetape koerer en gruppe feltets tempo, saa farten SKAL maales mod
@@ -219,13 +221,18 @@ export function ittStageNoise(seed: string, riderId: string, ittTuning: Individu
  * skal skilles af samme tid, uanset om feltet er staerkt eller svagt. Et
  * forhold (evne / reference) ville goere en given evne-forskel DYRERE i et
  * svagt felt end i et staerkt — det modsatte af population-uafhaengighed.
- * Referencen saetter kun nulpunktet (dagens tempo), aldrig afstandene; samme
- * form som v3's gap-model (sekunder pr. evne-point bag vinderen).
+ *
+ * HVORFOR TEMPO OG IKKE FART: tid = distance x tempo, saa et lineaert tempo
+ * giver et tidsgab paa praecis distance x basistempo x haeldning x
+ * evne-forskel. Referencen saetter dermed kun dagens nulpunkt og aldrig
+ * afstanden mellem to ryttere (inden for clamp). Et lineaert FART-led ville
+ * lade gabet afhaenge (svagt) af feltet, fordi tid er 1/fart. Samme form som
+ * v3's gap-model (sekunder pr. evne-point bag vinderen).
  *
  * Det vejetapen har OVEN I, har en rytter alene ikke: intet laee-led
  * (segmentLoop's groupDraftSpeedGain giver praecis 0 ved én rytter) og ingen
- * formning af over-/underskud (gruppe-dynamik). Lineaer og stigende i
- * `capacity`: en staerkere rytter koerer aldrig langsommere (ejer 4/8).
+ * formning af over-/underskud (gruppe-dynamik). Stigende i `capacity`: en
+ * staerkere rytter koerer aldrig langsommere (ejer 4/8).
  */
 export function ittSpeedKmh(
   capacity: number,
@@ -237,7 +244,8 @@ export function ittSpeedKmh(
   const baseSpeed = tuning.terrain.baseSpeedKmh[kind];
   const [lo, hi] = tuning.terrain.speedMultiplierBounds;
   const slope = ittTuning.abilitySpeedSlope * STRENGTH_SPEED_EXTRA_TUNING.terrainWeight[kind];
-  return baseSpeed * clamp(1 + slope * (capacity - referenceCapacity), lo, hi);
+  const paceFactor = clamp(1 - slope * (capacity - referenceCapacity), 1 / hi, 1 / lo);
+  return baseSpeed / paceFactor;
 }
 
 // ── Segment-tikket ───────────────────────────────────────────────────────────
@@ -299,6 +307,9 @@ function individualTimeTrialMode(
     // filmen tegner ingen gap-kurve paa en tidskoersel. Tiderne staar i
     // finish-eventets top-10 og i resultatet.
     gapUpdates: false,
+    // Kuperede enkeltstarter har kategoriserede stigninger; bjergpointene gaar
+    // til den hurtigste op til toppen (kernens timeTrialIntermediatePassages).
+    intermediatePassages: true,
     tickUnitSegment: (unit: TimeTrialUnit, segment: Segment, _segmentIndex: number, tuning: EngineTuning): string[] => {
       for (const entrant of unit.roster.riders) {
         const rider = unit.riders[entrant.rider_id];

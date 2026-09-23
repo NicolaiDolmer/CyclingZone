@@ -189,12 +189,29 @@ test("farten er stigende i evne paa hvert terraen, og feltets reference flytter 
       assert.ok(v >= previous, `${kind}: fart faldt ved evne ${c.toFixed(2)}`);
       previous = v;
     }
-    // Samme evne-forskel giver samme fart-forhold, uanset feltets niveau
-    // (inden for clamp): forskellen mellem to ryttere afhaenger af DERES evne.
-    const strongField = ittSpeedKmh(0.6, 0.6, kind, RACE_V4_TUNING) - ittSpeedKmh(0.5, 0.6, kind, RACE_V4_TUNING);
-    const weakField = ittSpeedKmh(0.3, 0.3, kind, RACE_V4_TUNING) - ittSpeedKmh(0.2, 0.3, kind, RACE_V4_TUNING);
-    assert.ok(Math.abs(strongField - weakField) < 1e-9, `${kind}: evne-forskel koster forskelligt i staerkt/svagt felt`);
+    // Samme evne-forskel giver samme TIDSGAB, uanset feltets niveau (inden for
+    // clamp): afstanden mellem to ryttere afhaenger af DERES evne, ikke af
+    // hvem der ellers stiller op.
+    const secondsPer10Km = (c: number, ref: number) => (10 / ittSpeedKmh(c, ref, kind, RACE_V4_TUNING)) * 3600;
+    const strongField = secondsPer10Km(0.5, 0.6) - secondsPer10Km(0.6, 0.6);
+    const weakField = secondsPer10Km(0.2, 0.3) - secondsPer10Km(0.3, 0.3);
+    assert.ok(strongField > 0);
+    assert.ok(Math.abs(strongField - weakField) < 1e-6, `${kind}: gab ${strongField} i staerkt felt, ${weakField} i svagt`);
   }
+});
+
+test("hele etapen: to ryttere skilles af samme tid i et staerkt og et svagt felt", () => {
+  const pair = [rider("x", 50, { time_trial: 80 }), rider("y", 50, { time_trial: 60 })];
+  const strong = [...pair, ...Array.from({ length: 20 }, (_, i) => rider(`s${i}`, 75, { time_trial: 90 }))];
+  const weak = [...pair, ...Array.from({ length: 20 }, (_, i) => rider(`w${i}`, 20, { time_trial: 20 }))];
+  const opts = { ittTuning: NO_NOISE, incidentsTuning: NO_INCIDENTS };
+  const gap = (list: Entrant[]) => {
+    const out = simulateIndividualTimeTrialStage(route(), list, "field", NO_DAYFORM, opts);
+    const t = new Map(out.results.map((r) => [r.rider_id, r.time_seconds]));
+    return t.get("y")! - t.get("x")!;
+  };
+  assert.ok(gap(strong) > 0);
+  assert.ok(Math.abs(gap(strong) - gap(weak)) <= 0.02, `gab ${gap(strong)} s i staerkt felt, ${gap(weak)} s i svagt`);
 });
 
 test("uden stoej er raekkefoelgen praecis TT-evnens (flad enkeltstart)", () => {
@@ -306,6 +323,37 @@ test("M9: maalpassagen giver point i placeringsraekkefoelge, men aldrig bonussek
   assert.equal(finish.results[0].rider_id, out.results[0].rider_id);
   assert.ok(finish.results.some((r) => r.points > 0));
   assert.ok((out.passage_totals ?? []).every((t) => t.bonus_seconds === 0));
+});
+
+test("M9 undervejs: bjergpointene paa en kuperet enkeltstart gaar til den hurtigste op til toppen", () => {
+  const list = [
+    rider("tt", 50, { time_trial: 90, climbing: 40 }),
+    rider("climber", 50, { time_trial: 60, climbing: 95 }),
+    ...field(12),
+  ];
+  const r: RouteV2 = {
+    ...route("itt_hilly", HILLY_SEGMENTS),
+    waypoints: [
+      { kind: "kom", index: 0, name: "Top", km: 15, category: "3", summit_finish: false },
+      { kind: "finish", index: 0, name: "Maal", km: 30 },
+    ],
+  };
+  const out = simulateIndividualTimeTrialStage(r, list, "kom", NO_DAYFORM, { ittTuning: NO_NOISE, incidentsTuning: NO_INCIDENTS });
+  const kom = out.passages?.find((p) => p.kind === "kom");
+  assert.ok(kom, "den kategoriserede stigning skal give bjergpoint (paritet med massestarts-vejen og v3)");
+  assert.equal(kom.results[0].rider_id, "climber", "klatreren er hurtigst op til toppen");
+  assert.ok(kom.results.every((x) => x.bonus_seconds === 0), "en bjergtop giver aldrig bonussekunder");
+  assert.ok(out.timeline.events.some((e) => e.type === "kom_passage"));
+  const totals = new Map((out.passage_totals ?? []).map((t) => [t.rider_id, t]));
+  assert.ok((totals.get("climber")?.kom_points ?? 0) > 0);
+  // Et indlagt spurt-vejpunkt paa en enkeltstart giver point, men aldrig sekunder.
+  const withSprint = simulateIndividualTimeTrialStage(
+    { ...r, waypoints: [...r.waypoints, { kind: "sprint", index: 0, name: "Spurt", km: 8 }] },
+    list, "kom", NO_DAYFORM, { ittTuning: NO_NOISE, incidentsTuning: NO_INCIDENTS },
+  );
+  const sprint = withSprint.passages?.find((p) => p.kind === "sprint");
+  assert.ok(sprint);
+  assert.ok(sprint.results.every((x) => x.bonus_seconds === 0));
 });
 
 test("belastningen maales pr. rytter (#3459): alle ryttere har reelt arbejde", () => {

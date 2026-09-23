@@ -77,10 +77,12 @@ export const ANCHOR_BANDS = {
   // invariant 7 ("selektive finaler, herunder ITT, beholder individuelle
   // tider"): #5576's fejl samlede naesten hele feltet paa én tid, og en
   // top-10-maaling alene kunne ikke se det, fordi finalens placerings-tiers gav
-  // toppen individuelle tider. Loftet er valgt af denne harness med plads til
-  // v3's afrunding til hele sekunder (samme tid for naboer er aegte dér).
+  // toppen individuelle tider. Maales paa den VAERSTE enkeltstart i koerslen,
+  // saa én sammenklumpet etape ikke kan midles vaek. Loftet er valgt af denne
+  // harness med plads til v3's afrunding til hele sekunder (paa en kort prolog
+  // deler naboer aegte samme sekund dér).
   ittLargestSameTimeShare: {
-    max: 0.10,
+    max: 0.25,
     source: "FORSLAG (#5576) — regressionsvagt for RULES §3 invariant 7 (individuelle tider paa ITT); "
       + "loftet er valgt af denne harness, ikke ejer-godkendt",
   },
@@ -574,6 +576,9 @@ export function scoreGapRealism(rows) {
 
 const INDIVIDUAL_TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly"]);
 const ITT_REFERENCE_DISTANCE_KM = 40; // #2415-baandets egen distance ("1-3 min over 40 km")
+// Begge ITT-ankre maaler kun felter med mindst ti i maal: top-10 kraever ti,
+// og i et mindre felt er én rytter alene over klump-loftet (1/n).
+const ITT_MIN_FINISHERS = 10;
 
 /** Tider for de ryttere der krydsede stregen (v4). En udgaaet rytters tid er frosset ved styrtet og ikke en maaltid. */
 function v4FinisherTimes(row) {
@@ -598,38 +603,44 @@ export function largestSameTimeShare(times) {
  *   1. Top-10-spredningen skaleret til 40 km mod #2415's "ITT 1-3 min over
  *      40 km". Skaleringen er lineaer i distancen: en prolog paa 6 km og en
  *      enkeltstart paa 40 km maales paa samme skala.
- *   2. Den stoerste andel af feltet paa én tid (invariant 7). Det er DEN
- *      maaling #5576's fejl ville have fejlet: toppen havde individuelle tider
- *      fra finalens placerings-tiers, saa spredningen i (1) saa rimelig ud,
- *      mens resten af feltet delte én tid.
+ *   2. Den stoerste andel af feltet paa én tid (invariant 7), paa den VAERSTE
+ *      enkeltstart. Det er DEN maaling #5576's fejl ville have fejlet: toppen
+ *      havde individuelle tider fra finalens placerings-tiers, saa
+ *      spredningen i (1) saa rimelig ud, mens resten af feltet delte én tid.
+ *
+ * Kun felter med mindst `ITT_MIN_FINISHERS` i maal taeller (se konstanten).
  */
 export function scoreIttTimeRealism(rows) {
   const ittRows = stagesWhere(rows, (route) => INDIVIDUAL_TIME_TRIAL_PROFILES.has(route.profile_type));
   const spreadBand = ANCHOR_BANDS.ittTop10SpreadPer40KmSeconds;
   const tieBand = ANCHOR_BANDS.ittLargestSameTimeShare;
 
+  function measurable(getTimes) {
+    return ittRows.map((r) => ({ row: r, times: getTimes(r) })).filter((x) => x.times.length >= ITT_MIN_FINISHERS);
+  }
+
   function spreadFor(getTimes) {
     const values = [];
-    for (const r of ittRows) {
-      const km = Number(r.raw.route.distance_km);
-      const spread = spreadAtRank(getTimes(r), 10);
+    for (const { row, times } of measurable(getTimes)) {
+      const km = Number(row.raw.route.distance_km);
+      const spread = spreadAtRank(times, 10);
       if (spread === null || !(km > 0)) continue;
       values.push((spread / km) * ITT_REFERENCE_DISTANCE_KM);
     }
     return { value: mean(values), n: values.length };
   }
 
-  function tieShareFor(getTimes) {
-    const values = ittRows.map((r) => largestSameTimeShare(getTimes(r))).filter((v) => v !== null);
-    return { value: mean(values), n: values.length };
+  function worstTieShareFor(getTimes) {
+    const values = measurable(getTimes).map(({ times }) => largestSameTimeShare(times)).filter((v) => v !== null);
+    return { value: values.length > 0 ? Math.max(...values) : null, n: values.length };
   }
 
   const v3Times = (r) => r.raw.v3Output.ranked.map((x) => x.stageGap);
   const naNote = "ingen enkeltstarter (itt/itt_hilly) i input";
   const v3Spread = spreadFor(v3Times);
   const v4Spread = spreadFor(v4FinisherTimes);
-  const v3Tie = tieShareFor(v3Times);
-  const v4Tie = tieShareFor(v4FinisherTimes);
+  const v3Tie = worstTieShareFor(v3Times);
+  const v4Tie = worstTieShareFor(v4FinisherTimes);
 
   return [
     {
@@ -642,7 +653,7 @@ export function scoreIttTimeRealism(rows) {
     },
     {
       id: "itt_largest_same_time_share",
-      label: "ITT: stoerste andel af feltet paa samme tid (invariant 7)",
+      label: "ITT: stoerste andel af feltet paa samme tid, vaerste etape (invariant 7)",
       bandLabel: `<= ${fmtPct(tieBand.max)} (FORSLAG, ikke ejer-godkendt)`,
       source: tieBand.source,
       v3: { ...judge(v3Tie.value, tieBand, v3Tie.n, naNote), display: fmtPct },

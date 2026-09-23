@@ -491,6 +491,20 @@ test("#5576-regression: rangen er perfekt, men feltet deler én tid -> klump-ank
   assert.equal(tie.v4.verdict, "FAIL");
 });
 
+test("scoreIttTimeRealism: ÉN sammenklumpet enkeltstart kan ikke midles vaek af sunde etaper", () => {
+  const healthy = Array.from({ length: 9 }, () => ittRow({ times: spacedTimes(20, 10) }));
+  const bunched = ittRow({ times: [0, 5, ...Array(18).fill(60)] });
+  const [, tie] = scoreIttTimeRealism([...healthy, bunched]);
+  assert.equal(tie.v4.value, 18 / 20, "klump-ankret maaler den vaerste etape");
+  assert.equal(tie.v4.verdict, "FAIL");
+});
+
+test("scoreIttTimeRealism: felter under ti i maal maales ikke (1/n alene ville vaere over loftet)", () => {
+  const [spread, tie] = scoreIttTimeRealism([ittRow({ times: spacedTimes(3, 10) })]);
+  assert.equal(spread.v4.verdict, "N/A");
+  assert.equal(tie.v4.verdict, "N/A");
+});
+
 test("scoreIttTimeRealism: itt_hilly taeller med, ttt og vejetaper goer ikke", () => {
   const hilly = ittRow({ profile_type: "itt_hilly", times: spacedTimes(20, 10) });
   const ttt = ittRow({ profile_type: "ttt", times: Array(20).fill(0) });

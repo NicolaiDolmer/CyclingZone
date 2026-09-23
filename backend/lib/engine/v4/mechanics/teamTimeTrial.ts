@@ -91,7 +91,7 @@ import { deriveCp, deriveRechargeRate, tickPhysiology } from "../physiology.ts";
 import { initRiderStates } from "../groups.ts";
 import { boundRngFor, segmentRngFor } from "../rng.ts";
 import { gapUpdateEvent, finishEvent, incidentEvent, makeEvent, sortTimeline } from "../timeline.ts";
-import { INCIDENTS_EXTRA_TUNING, TTT_EXTRA_TUNING } from "../tuning.ts";
+import { BONUS_SECONDS_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING, TTT_EXTRA_TUNING } from "../tuning.ts";
 import {
   applyThreeKmRuleToResults,
   incidentProbability,
@@ -110,7 +110,10 @@ import {
 } from "./timeLimit.ts";
 import {
   buildFinishPassages,
+  buildPassage,
   clampPassageBonusToPerRiderCap,
+  inRacePassageWaypoints,
+  komPointScale,
   passageTotals,
   passagesToTimelineEvents,
   sortPassages,
@@ -242,6 +245,13 @@ export type TimeTrialMode = {
   unitEvents: boolean;
   /** `gap_update` pr. enhed. Loebsfilmen tegner ingen gap-kurve paa en tidskoersel (#3463). */
   gapUpdates: boolean;
+  /**
+   * Afgoer vejpunkterne UNDERVEJS (bjergtoppe, indlagte spurter) paa hver
+   * rytters egen passagetid (#5576). Enkeltstart: ja — en kuperet enkeltstart
+   * har kategoriserede stigninger. Holdtidskoersel: nej, uaendret siden #4915
+   * (genererede TTT-ruter har ingen, se filhovedet).
+   */
+  intermediatePassages: boolean;
   /** Ét segment for én enhed. Muterer enhedens lokale rytter-tilstand; returnerer ny-droppede rider_ids. */
   tickUnitSegment: (unit: TimeTrialUnit, segment: Segment, segmentIndex: number, tuning: EngineTuning) => string[];
 };
@@ -483,6 +493,67 @@ function rollSegmentIncidents(args: {
   return { incidents, events };
 }
 
+// ── M9 undervejs i en tidskoersel (#5576) ─────────────────────────────────────
+
+/**
+ * Vejpunkterne i ét segment (bjergtoppe og indlagte spurter, ikke maalet),
+ * afgjort paa hver rytters EGEN passagetid: tiden ved segmentets start plus
+ * den andel af segmentets tid der svarer til vejpunktets km (rytterens fart
+ * er konstant inden for segmentet). Mod uret er den hurtigste op til toppen
+ * den der tager bjergpointene — der er ingen gruppe at spurte ud af, saa
+ * vejetapens evne-lodtraekning (computePassageOrder) hoerer ikke til her.
+ *
+ * Point-skalaerne er vejetapens (M9). Bonussekunder undervejs gives ikke paa
+ * en tidskoersel — samme profil-gate som maalbonussen
+ * (BONUS_SECONDS_EXTRA_TUNING.bonusExcludedProfileTypes).
+ *
+ * Et uheld paa segmentet afgoeres efter passagen: dets tidstab flytter ikke
+ * raekkefoelgen ved et vejpunkt paa samme segment. Udgaaede ryttere er ude.
+ */
+function timeTrialIntermediatePassages(args: {
+  route: RouteV2;
+  segment: Segment;
+  perTeam: readonly TeamState[];
+  elapsedAtSegmentStart: ReadonlyMap<string, number>;
+  tuning: EngineTuning;
+}): StagePassage[] {
+  const { route, segment, perTeam, elapsedAtSegmentStart, tuning } = args;
+  const waypoints = inRacePassageWaypoints(route.waypoints, segment.from_km, segment.to_km);
+  if (waypoints.length === 0) return [];
+  const extra = BONUS_SECONDS_EXTRA_TUNING;
+  const bonusExcluded = extra.bonusExcludedProfileTypes.includes(String(route.profile_type ?? ""));
+  const lengthKm = segment.to_km - segment.from_km;
+
+  const passages: StagePassage[] = [];
+  for (const wp of waypoints) {
+    const fraction = lengthKm > 0 ? clamp((wp.km - segment.from_km) / lengthKm, 0, 1) : 1;
+    const arrivals: Array<{ riderId: string; at: number }> = [];
+    for (const t of perTeam) {
+      for (const r of t.roster.riders) {
+        const rider = t.riders[r.rider_id];
+        if (rider.status === "abandoned") continue;
+        const before = elapsedAtSegmentStart.get(r.rider_id) ?? 0;
+        arrivals.push({ riderId: r.rider_id, at: before + (rider.elapsed_seconds - before) * fraction });
+      }
+    }
+    const order = arrivals.sort((a, b) => a.at - b.at || a.riderId.localeCompare(b.riderId)).map((a) => a.riderId);
+    const isKom = wp.kind === "kom";
+    const category = isKom ? (wp.category ?? null) : null;
+    const passage = buildPassage({
+      kind: wp.kind as StagePassage["kind"],
+      index: wp.index,
+      name: wp.name,
+      km: wp.km,
+      category,
+      order,
+      pointScale: isKom ? komPointScale(category, false) : extra.intermediateSprintPoints,
+      bonusScale: isKom || bonusExcluded ? [] : tuning.bonusSeconds.intermediateSeconds,
+    });
+    if (passage) passages.push(passage);
+  }
+  return passages;
+}
+
 // ── M15 i holdtidskoerslen (#4915): hold-graensen ─────────────────────────────
 
 export type TeamTimeLimitOutcome = {
@@ -599,6 +670,7 @@ const TEAM_TIME_TRIAL_MODE: TimeTrialMode = {
   winType: "ttt_win",
   unitEvents: true,
   gapUpdates: true,
+  intermediatePassages: false,
   tickUnitSegment: (unit, segment, segmentIndex, tuning) =>
     tickTeamSegment(segment, segmentIndex, unit.roster, unit.entrantsById, unit.riders, tuning),
 };
@@ -635,9 +707,16 @@ export function runTimeTrialStage(
   const rngForStage = boundRngFor(seed);
   const stageIncidents: StageIncident[] = [];
   const groupSnapshots: SegmentGroupSnapshot[] = [];
+  const intermediatePassages: StagePassage[] = [];
 
   for (let segmentIndex = 0; segmentIndex < route.segments.length; segmentIndex++) {
     const segment = route.segments[segmentIndex];
+    const elapsedAtSegmentStart = new Map<string, number>();
+    if (mode.intermediatePassages) {
+      for (const t of perTeam) {
+        for (const r of t.roster.riders) elapsedAtSegmentStart.set(r.rider_id, t.riders[r.rider_id].elapsed_seconds);
+      }
+    }
 
     for (const t of perTeam) {
       const newlyDropped = mode.tickUnitSegment(t, segment, segmentIndex, tuning);
@@ -645,6 +724,14 @@ export function runTimeTrialStage(
       for (const riderId of newlyDropped) {
         events.push(makeEvent(segment.to_km, "ttt_rider_dropped", { team_id: t.roster.team_id, rider_id: riderId, group_id: t.teamGroupId }));
       }
+    }
+
+    // M9 undervejs (#5576): paa tikket, foer segmentets uheld (se
+    // timeTrialIntermediatePassages).
+    if (mode.intermediatePassages) {
+      intermediatePassages.push(
+        ...timeTrialIntermediatePassages({ route, segment, perTeam, elapsedAtSegmentStart, tuning }),
+      );
     }
 
     // M10 (#4915): efter segmentets tik, foer snapshot — et tidstab paa dette
@@ -799,8 +886,9 @@ export function runTimeTrialStage(
   // M9 (#4915): maalpassagen paa den endelige placeringsraekkefoelge. Samme
   // funktioner som index.ts's vejetape-vej, saa skala og bonus-gate er de samme.
   const passages: StagePassage[] = clampPassageBonusToPerRiderCap(
-    sortPassages(
-      buildFinishPassages({
+    sortPassages([
+      ...intermediatePassages,
+      ...buildFinishPassages({
         results,
         waypoints: route.waypoints,
         distanceKm: route.distance_km,
@@ -808,7 +896,7 @@ export function runTimeTrialStage(
         finaleType: route.finale_type,
         tuning: tuning.bonusSeconds,
       }),
-    ),
+    ]),
   );
 
   const winnerTime = results[0]?.time_seconds ?? 0;
