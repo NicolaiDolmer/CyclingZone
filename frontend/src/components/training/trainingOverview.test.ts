@@ -1,0 +1,72 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  TIRED_FATIGUE_FROM,
+  buildOverview,
+  canRunToday,
+  idsForFilter,
+  isTired,
+  primaryActionFor,
+  type OverviewDayType,
+} from "./trainingOverview.ts";
+
+const riders: Record<string, { day: OverviewDayType; racing?: boolean; fatigue: number | null }> = {
+  a: { day: "training", fatigue: 12 },
+  b: { day: null, fatigue: 40 },
+  c: { day: "rest", fatigue: TIRED_FATIGUE_FROM + 4 },
+  d: { day: "skill", racing: true, fatigue: TIRED_FATIGUE_FROM },
+  e: { day: "recovery", fatigue: TIRED_FATIGUE_FROM - 1 },
+  f: { day: null, racing: true, fatigue: null },
+};
+
+function overview() {
+  return buildOverview({
+    riderIds: Object.keys(riders),
+    hasDay: (id) => riders[id].day != null,
+    isRacing: (id) => Boolean(riders[id].racing),
+    dayType: (id) => riders[id].day,
+    fatigue: (id) => riders[id].fatigue,
+  });
+}
+
+test("#5485 overblikket: mangler en dag, loeb, traening og traet taelles hver for sig", () => {
+  const o = overview();
+  assert.deepEqual(o.needsDay, ["b", "f"]);
+  assert.deepEqual(o.racing, ["d", "f"]);
+  // Loeb slaar traening: d har en skill-dag, men koerer loeb i dag.
+  assert.deepEqual(o.training, ["a"]);
+  assert.equal(o.resting, 1);
+  assert.equal(o.recovering, 1);
+});
+
+test("#5485 traethed foelger skaderegelens graense, ikke mockuppets", () => {
+  assert.equal(isTired(TIRED_FATIGUE_FROM), true);
+  assert.equal(isTired(TIRED_FATIGUE_FROM - 1), false);
+  assert.equal(isTired(null), false);
+  assert.deepEqual(overview().tired, ["c", "d"]);
+});
+
+test("#5485 et tryk paa en celle filtrerer til netop dens ryttere, og null viser alle", () => {
+  const o = overview();
+  assert.equal(idsForFilter(o, null), null);
+  assert.deepEqual([...(idsForFilter(o, "needsDay") ?? [])], ["b", "f"]);
+});
+
+test("#5485 A2: guld-knappen skifter med situationen og staar aldrig graa", () => {
+  const base = { trainedToday: false, enabled: true, dayClose: null };
+  assert.deepEqual(primaryActionFor({ ...base, needsDay: 3 }), { kind: "setDays", riders: 3 });
+  assert.deepEqual(primaryActionFor({ ...base, needsDay: 0 }), { kind: "run" });
+  // Dagen er koert: ingen knap, kun statuslinjen.
+  assert.deepEqual(primaryActionFor({ ...base, needsDay: 2, trainedToday: true }), { kind: "none" });
+  // Slukket traening: programmer kan stadig saettes, men intet koeres.
+  assert.deepEqual(primaryActionFor({ ...base, needsDay: 0, enabled: false }), { kind: "none" });
+});
+
+test("#5485/#4847 dayClose-gaten gaelder guld-knappen og den sekundaere Run now", () => {
+  const waiting = { open: false };
+  assert.deepEqual(primaryActionFor({ needsDay: 0, trainedToday: false, enabled: true, dayClose: waiting }), { kind: "none" });
+  assert.deepEqual(primaryActionFor({ needsDay: 0, trainedToday: false, enabled: true, dayClose: { open: true } }), { kind: "run" });
+  assert.equal(canRunToday({ trainedToday: false, enabled: true, dayClose: waiting }), false);
+  assert.equal(canRunToday({ trainedToday: false, enabled: true, dayClose: null }), true);
+  assert.equal(canRunToday({ trainedToday: true, enabled: true, dayClose: null }), false);
+});
