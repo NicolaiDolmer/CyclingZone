@@ -289,7 +289,7 @@ test("#5570 teamChasePlan: et hold kan kun jage med ryttere det HAR i jagt-grupp
   assert.equal(plan.signal, 0);
   assert.equal(plan.chaserWork.size, 0);
 
-  const withDropped = teamRiders(["A"], 4, { status: "dnf" });
+  const withDropped = teamRiders(["A"], 4, { status: "abandoned" });
   assert.equal(planFor(withDropped, [orderFor("A", "chase")]).signal, 0, "udgaaede ryttere jager ikke");
 });
 
@@ -350,8 +350,9 @@ test("#5570 applyChaseCost: jagten koster jaegerne hold-CP — aldrig andre, ald
   });
   const after = applyChaseCost(f.riderStates, plan.chaserWork, 0.5);
   assert.ok(after, "et jagende hold skal betale");
+  const paidStates: Record<string, RiderState> = after;
   for (const id of f.ids) {
-    const factor = after![id].team_cp_factor;
+    const factor: number | undefined = paidStates[id].team_cp_factor;
     if (id.startsWith("A-")) assert.ok(factor !== undefined && factor < 1, `${id} jagede og skal have betalt`);
     else assert.equal(factor, undefined, `${id} jagede ikke og maa ikke betale`);
   }
