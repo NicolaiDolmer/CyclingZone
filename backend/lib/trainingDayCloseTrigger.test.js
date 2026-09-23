@@ -231,6 +231,44 @@ describe("runTrainingDayCloseSweep", () => {
     assert.equal(calls, 0);
   });
 
+  // #4848: off-season er en DEFINERET, LOGGET tilstand — ikke en stille no-op.
+  it("off-season: intet tick, en defineret returvaerdi, og EN logget linje pr. dansk dato", async () => {
+    const supabase = makeSupabase({ flags: ALL_ON, season: null, teams: [{ id: "t1", league_division_id: "d1" }] });
+    const lines = [];
+    const logger = { warn: (m) => lines.push(m), error() {} };
+    let calls = 0;
+    const runDay = async () => { calls++; return { alreadyRan: false }; };
+
+    const first = await runTrainingDayCloseSweep({ supabase, now: inWindow, runDay, logger });
+    assert.deepEqual(first, { ran: false, skipped: "no_active_season", offSeason: true, tickDate: "2026-09-15" });
+    await runTrainingDayCloseSweep({ supabase, now: new Date("2026-09-15T19:00:00Z"), runDay, logger });
+    assert.equal(lines.length, 1, "samme dato ⇒ én linje, ikke én pr. 5-min-tick");
+    assert.match(lines[0], /off-season/);
+
+    await runTrainingDayCloseSweep({ supabase, now: new Date("2026-09-16T18:30:00Z"), runDay, logger });
+    assert.equal(lines.length, 2, "ny dato ⇒ ny linje");
+    assert.equal(calls, 0, "ingen hold trænes i off-season");
+  });
+
+  it("off-season saetter IKKE dags-claimen: en saeson der aktiveres senere samme aften koerer stadig", async () => {
+    const logger = { warn() {}, error() {} };
+    const offSeason = makeSupabase({ flags: ALL_ON, season: null });
+    await runTrainingDayCloseSweep({ supabase: offSeason, now: inWindow, logger });
+    const active = makeSupabase({
+      flags: ALL_ON,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 1, finalize_state: null }],
+      stages: [{ race_id: "r1", stage_number: 1, game_day: 0, scheduled_at: "2026-09-15T10:00:00Z" }],
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    let calls = 0;
+    const result = await runTrainingDayCloseSweep({
+      supabase: active, now: new Date("2026-09-15T19:00:00Z"), logger,
+      runDay: async () => { calls++; return { alreadyRan: false }; },
+    });
+    assert.equal(result.ran, true);
+    assert.equal(calls, 1);
+  });
+
   it("foer kl. 20 dansk tid koeres der ikke", async () => {
     const supabase = makeSupabase({ flags: ALL_ON });
     const result = await runTrainingDayCloseSweep({ supabase, now: beforeWindow });

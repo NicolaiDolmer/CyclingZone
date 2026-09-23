@@ -93,11 +93,14 @@ export const MAX_GAME_DAY_CATCH_UP = 8;
 // ── Modul-lokal tilstand (lag a + b i idempotens-kaskaden) ───────────────────
 let sweepRunning = false;
 let lastCompletedDate = null;
+// #4848: off-season logges ÉN gang pr. dansk dato (se runTrainingDayCloseSweep).
+let lastOffSeasonLogDate = null;
 
-/** Kun til test: nulstil overlap-guard og dags-claim. */
+/** Kun til test: nulstil overlap-guard, dags-claim og off-season-loggen. */
 export function __resetTrainingDayCloseStateForTests() {
   sweepRunning = false;
   lastCompletedDate = null;
+  lastOffSeasonLogDate = null;
 }
 
 /** Kun til test/ops: er en sweep i gang lige nu? */
@@ -491,7 +494,23 @@ export async function runTrainingDayCloseSweep({
       .eq("status", "active")
       .maybeSingle();
     if (seasonError) throw new Error(`seasons: ${seasonError.message}`);
-    if (!season) return { ran: false, skipped: "no_active_season", tickDate };
+    // ── Off-season (#4848): defineret, logget skip — ikke en stille no-op ─────
+    // Mellem to sæsoner findes ingen løbsdags-akse at ticke paa. En off-season-dato
+    // er IKKE en traeningsdag: intet tick (heller ikke tickets restitution), ingen historik, og
+    // INGEN loebsdag springes over — aksen starter forfra i den nye saeson, og
+    // `gameDaySpansByDivision` opfinder aldrig traeningsdage foer saesonens foerste
+    // loebsdato. Samme regel som trainingSweep.js; én linje pr. dansk dato (cron er
+    // 5-min), ASCII-only fordi det er ops-log. Dags-claimen saettes IKKE: en saeson
+    // der aktiveres senere samme aften skal kunne naa at koere.
+    if (!season) {
+      if (lastOffSeasonLogDate !== tickDate) {
+        lastOffSeasonLogDate = tickDate;
+        logger.warn?.(
+          `  ⏸️ Traenings-lukning ${tickDate}: ingen aktiv saeson (off-season) - ingen loebsdage at ticke, intet traenings-tick i dag (heller ikke tickets restitution)`,
+        );
+      }
+      return { ran: false, skipped: "no_active_season", offSeason: true, tickDate };
+    }
 
     // ── Dagens loeb + etaper ──────────────────────────────────────────────────
     // schema-columns-ok: finalize_state tilfoejes af database/2026-08-23-4147-*.sql
