@@ -8,7 +8,7 @@
 // ville navnet faa mere plads end i virkeligheden, og specen ville maale heldet.
 import { expect } from "@playwright/test";
 import type { Page, Route } from "@playwright/test";
-import { installNetworkMocks, login, stabilizePage, json, TEST_TEAM } from "../fixtures.js";
+import { corsHeaders, installNetworkMocks, login, stabilizePage, json, TEST_TEAM } from "../fixtures.js";
 
 export const DIV = 2;
 
@@ -68,7 +68,12 @@ export async function openStandings(page: Page, { founders = true }: { founders?
     return json(route, TEAM_ROWS);
   });
   await page.route("**/rest/v1/season_standings*", (route: Route) => json(route, STANDING_ROWS));
-  await page.route("**/rest/v1/team_standings_ext_mv*", (route: Route) => json(route, EXT_ROWS));
+  // Holdkonkurrence/podier/praemie kommer fra backend-endpointet (rankingsClient).
+  await page.route("**/api/rankings/standings*", (route: Route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, { data: EXT_ROWS });
+  });
   await page.route("**/rest/v1/rpc/founder_public_list*", (route: Route) => {
     if (route.request().method() === "OPTIONS") return route.fallback();
     return json(route, founders ? FOUNDERS : []);
@@ -77,6 +82,8 @@ export async function openStandings(page: Page, { founders = true }: { founders?
   await page.goto("/standings");
   await expect(page.getByRole("table").first()).toBeVisible();
   await expect(page.locator("table tbody tr")).toHaveCount(TEAMS.length);
+  // Praemiebeloebene ER tegnet (ellers maaler specen smalle "0 CZ$"-kolonner).
+  await expect(page.locator("table tbody")).toContainText("1.480.000");
   // Maerket hentes asynkront (RPC) — vent til alle er tegnet.
   if (founders) await expect(page.getByText(/^Founder$/)).toHaveCount(FOUNDERS.length);
 }
