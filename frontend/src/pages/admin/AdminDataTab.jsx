@@ -7,6 +7,7 @@ import I18nReadyGate from "../../components/I18nReadyGate.jsx"; // #3697
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
 import { FlagIcon, EditIcon, CheckIcon, XIcon } from "../../components/ui";
 import { useTableSort } from "../../lib/useTableSort.js";
 import SortableTh from "../../components/ui/SortableTh.jsx";
@@ -55,7 +56,7 @@ export default function AdminDataTab() {
 
   async function loadEngineStatus() {
     try {
-      const res = await fetch(`${API}/api/admin/race-engine-status`, {
+      const res = await apiFetch(`${API}/api/admin/race-engine-status`, {
         headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -72,7 +73,7 @@ export default function AdminDataTab() {
   async function handleCreateRace(e) {
     e.preventDefault(); setLoad("race", true);
     try {
-      const res = await fetch(`${API}/api/admin/races`, {
+      const res = await apiFetch(`${API}/api/admin/races`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({
           ...raceForm,
@@ -105,7 +106,7 @@ export default function AdminDataTab() {
     if (!editingRace) return;
     setLoad("raceEdit", true);
     try {
-      const res = await fetch(`${API}/api/admin/races/${editingRace.id}`, {
+      const res = await apiFetch(`${API}/api/admin/races/${editingRace.id}`, {
         method: "PUT",
         headers: await getAuth(),
         body: JSON.stringify({
@@ -115,8 +116,9 @@ export default function AdminDataTab() {
           stages: parseInt(editingRace.stages) || 1,
         }),
       });
-      let data = {};
-      try { data = await res.json(); } catch { /* non-JSON response */ }
+      // #5242: res.data er allerede parset (null ved tomt/ikke-JSON svar) — samme
+      // fallback-tilfaelde som det tidligere `try { res.json() } catch {}` daekkede.
+      const data = res.data || {};
       if (res.ok) { showMsg("Løb gemt"); setEditingRace(null); loadData(); }
       else if (res.status === 404) showMsg("Endpoint ikke deployet endnu — vent 1-2 min og prøv igen", "error");
       else showMsg(data.error || `HTTP ${res.status}`, "error");
@@ -131,7 +133,7 @@ export default function AdminDataTab() {
     if (!confirm(`Slet "${raceName}"?\n\nAlle løbsresultater for dette løb slettes også.`)) return;
     setLoad(`del_race_${raceId}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/races/${raceId}`, {
+      const res = await apiFetch(`${API}/api/admin/races/${raceId}`, {
         method: "DELETE", headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -155,7 +157,7 @@ export default function AdminDataTab() {
     }
     setSimBusyId(race.id);
     try {
-      const res = await fetch(`${API}/api/admin/simulate-race`, {
+      const res = await apiFetch(`${API}/api/admin/simulate-race`, {
         method: "POST",
         headers: await getAuth(),
         body: JSON.stringify({ race_id: race.id, dry_run: dryRun }),
