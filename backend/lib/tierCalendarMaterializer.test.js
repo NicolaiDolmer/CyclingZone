@@ -1277,3 +1277,56 @@ test("#5517 reconcile: ungdomsløb i sæsonen trækker hverken løbsdags-målet 
   assert.equal(youth.realDays, 10, "sæson-slut er seniorernes sidste etape (9/7)");
   assert.notDeepEqual(control, youth, "kontrol: som seniorløb ville ungdomsløbet flytte mål og/eller sæson-slut");
 });
+
+// ── #5592 · mindst 24 timer til trupudtagelse (søndag tidligt, mandag sent, sæsonstart) ──
+
+const localClock = (iso) => new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Copenhagen", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
+}).format(new Date(iso));
+
+test("#5592 plan: ingen planlægningsvindue-brud, søndag ≤ 15:00, mandag ≥ 15:00, og kun klokkeslæt flytter sig", () => {
+  const { tierPlans } = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM });
+  for (const tp of tierPlans) {
+    assert.deepEqual(tp.calendarViolations.filter((v) => v.includes("#5592")), [], `tier ${tp.tier}`);
+    assert.ok(tp.planningWindow.weekends.length >= 3, `tier ${tp.tier}: weekender målt`);
+    for (const w of tp.planningWindow.weekends) assert.ok(w.pauseHours >= 24, `tier ${tp.tier} ${w.sunday}: ${w.pauseHours} t`);
+    for (const s of tp.pools[0].stageRows) {
+      const clock = localClock(s.scheduled_at);
+      if (clock.startsWith("Sun")) assert.ok(clock.slice(-5) <= "15:00", `tier ${tp.tier}: søndag ${clock}`);
+      if (clock.startsWith("Mon")) assert.ok(clock.slice(-5) >= "15:00", `tier ${tp.tier}: mandag ${clock}`);
+    }
+  }
+  // Med og uden sæsonskifte-reglen er løb, etaper, game_days og DATOER identiske — kun
+  // klokkeslættet flytter sig. (At datoerne også er uændret mod før #5592, dømmer den
+  // gyldne kalender-diff: calendarGoldenSnapshot.test.js.)
+  const before = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM, seasonTransitionAt: null });
+  const shape = (plans) => plans.map((tp) => tp.pools[0].stageRows.map((s) => `${s.race_id}:${s.stage_number}:${s.game_day}:${s.scheduled_at.slice(0, 10)}`));
+  assert.deepEqual(shape(tierPlans), shape(before.tierPlans));
+});
+
+test("#5592 plan: sæsonens første dag starter tidligst 24 t efter sæsonskiftet — og efter forrige sæsons sidste etape", () => {
+  // FROM = søn 28/6 00:00Z → første kalenderdag er mandag 29/6; konventionens skifte er 28/6 kl. 18.
+  const byTier = (args) => Object.fromEntries(buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM, ...args }).tierPlans.map((t) => [t.tier, t]));
+  const derived = byTier({});
+  for (const tp of Object.values(derived)) {
+    assert.equal(tp.planningWindow.notBefore, "2026-06-29T16:00:00.000Z", `tier ${tp.tier}: 29/6 kl. 18`);
+    assert.ok(tp.planningWindow.firstStageAt >= "2026-06-29T16:00:00.000Z", `tier ${tp.tier}: ${tp.planningWindow.firstStageAt}`);
+  }
+  const withPrev = byTier({ previousSeasonLastStageAtByTier: { 1: "2026-06-28T17:00:00Z" } });
+  assert.equal(withPrev[1].planningWindow.notBefore, "2026-06-29T17:00:00.000Z", "D1: 24 t efter forrige sæsons 19:00");
+  assert.equal(withPrev[1].planningWindow.firstStageAt, "2026-06-29T17:00:00.000Z");
+  assert.equal(withPrev[2].planningWindow.notBefore, "2026-06-29T16:00:00.000Z", "D2 har intet eget anker → sæsonskiftet");
+  const off = byTier({ seasonTransitionAt: null });
+  for (const tp of Object.values(off)) {
+    assert.equal(tp.planningWindow.notBefore, null);
+    assert.equal(localClock(tp.planningWindow.firstStageAt), "Mon 15:00", `tier ${tp.tier}: almindelig mandag uden sæsonskifte`);
+  }
+});
+
+test("#5592 reconcile: en pulje der vågner midt i sæsonen er ikke en sæsonstart (seasonTransitionAt: null)", async () => {
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+  await reconcilePoolCalendarOnActivation({ supabase: makeSupabase(tier4ActivationState()), poolId: 8, now: FROM, materialize: recording });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].seasonTransitionAt, null);
+});
