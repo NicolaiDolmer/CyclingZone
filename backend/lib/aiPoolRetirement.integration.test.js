@@ -53,6 +53,13 @@ function client() {
         eq(key,value){values.push(value);clauses.push(`${key}=$${values.length}`);return q;},
         neq(key,value){values.push(value);clauses.push(`${key}<>$${values.length}`);return q;},
         gt(key,value){values.push(value);clauses.push(`${key}>$${values.length}`);return q;},
+        // #5517: PostgREST or-grammar (col.is.null / col.eq.value) for the pools' senior scope.
+        // This fixture schema has no league_divisions.squad, so Postgres answers 42703 and
+        // squads.withSeniorSquadScope re-runs unscoped: the auto-migrate window, end to end.
+        or(expr){const parts=String(expr).split(',').map((cond)=>{const [col,op,...rest]=cond.split('.');const raw=rest.join('.');
+          if(op==='is'&&raw==='null')return `${col} IS NULL`;
+          if(op==='eq'){values.push(raw);return `${col}=$${values.length}`;}
+          throw new Error(`unsupported or-operator ${op}`);});clauses.push(`(${parts.join(' OR ')})`);return q;},
         async result(){return {data:(await db.query(`SELECT * FROM ${table}${clauses.length?' WHERE '+clauses.join(' AND '):''}`,values)).rows,error:null};},
         async range(from,to){const r=await q.result();return {...r,data:r.data.slice(from,to+1)};},
         async maybeSingle(){const r=await q.result();return {...r,data:r.data[0]??null};},

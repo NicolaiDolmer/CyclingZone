@@ -12,6 +12,10 @@
 // fordelings-funktion unit-testet". Al DB-læsning/skrivning bor i
 // scripts/compressPyramid.js.
 
+// #5517: seniorpyramiden er den eneste der komprimeres her. squads.js er selv I/O-fri
+// (kun rene funktioner og konstanter), så modulet forbliver rent.
+import { onlySeniorSquadRows } from "./squads.js";
+
 // #3036: sentinel for "ingen række i denne klassifikation" i countback-leddene
 // bestStageRank/bestGcRank. En rigtig placering er altid >= 1, så sentinellen
 // taber ALTID mod en reel placering. Bevidst en stor endelig værdi (ikke
@@ -261,7 +265,11 @@ export function distributeCompression(rankedTeams, pools, {
   d4PoolCount = null,
 } = {}) {
   const byTier = new Map();
-  for (const p of pools || []) {
+  // #5517: KUN seniorpuljer. Efter A2 kan league_divisions rumme U23-/juniorpuljer med
+  // samme tier 1-4 (adskilt af squad); tælles de med, finder strukturtjekket nedenfor
+  // fx 4 tier 2-puljer i stedet for 2, og managerhold kunne snake-fordeles ind i en
+  // ungdomspulje. En række uden squad-felt (dagens select) tæller som senior.
+  for (const p of onlySeniorSquadRows(pools)) {
     if (!byTier.has(p.tier)) byTier.set(p.tier, []);
     byTier.get(p.tier).push(p);
   }

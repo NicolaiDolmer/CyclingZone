@@ -45,6 +45,10 @@ import { notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { isAiTeamRetireEnabled } from "./aiTeamRetireFlag.js";
 import { retireExcessAiTeamsForPool } from "./aiPoolRetirement.js";
 import { retireAiTeam, teamHasLiveTransferOffers } from "./aiTeamRetirement.js";
+// #5517: AI-hold allokeres KUN i seniorpuljer. En ungdomspulje (league_divisions.squad
+// <> 'senior') er ikke et sted et hold kan bo — holdets ungdomspulje er en separat FK
+// (teams.u23_league_division_id), ikke teams.league_division_id.
+import { withSeniorSquadScope } from "./squads.js";
 
 const INSERT_BATCH = 500;
 
@@ -453,11 +457,11 @@ export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPUL
   const allocateSquadForTeam = deps.allocateSquadForTeam || defaultAllocateSquadForTeam;
   const baseSeed = (Number(seed) >>> 0);
 
-  const { data: pools, error: poolErr } = await supabase
+  const { data: pools, error: poolErr } = await withSeniorSquadScope((senior) => senior(supabase
     .from("league_divisions")
-    .select("id, tier, pool_index, label")
+    .select("id, tier, pool_index, label"))
     .order("tier")
-    .order("pool_index");
+    .order("pool_index"));
   if (poolErr) throw new Error(`league_divisions: ${poolErr.message}`);
   if (!pools || !pools.length) return { created: 0, removed: 0, pools: [] };
 
