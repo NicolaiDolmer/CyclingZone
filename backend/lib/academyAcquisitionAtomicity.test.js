@@ -14,7 +14,8 @@
  * vi kan fyre N parallelle kald og assertere de invarianter koden SKAL holde:
  *   - præcis ÉN optagelse lykkes når cap-grænsen rammes
  *   - netto kun ÉN debit
- *   - cap aldrig overskredet (≤ 8)
+ *   - loftet aldrig overskredet (#5432: loft pr. mål-trup fra squads.js, sendt
+ *     som p_squad/p_squad_cap — mocken tæller pr. trup ligesom RPC'en)
  *   - finalize-vs-signAcademyCandidate-krydset (forskellige stier, samme team,
  *     samme rytter) → kun ÉN debit, kun ÉN optagelse
  */
@@ -26,6 +27,7 @@ process.env.SUPABASE_SERVICE_KEY ??= "test-service-key";
 
 const { finalizeAuctionById } = await import("./auctionFinalization.js");
 const { signAcademyCandidate } = await import("./academyIntake.js");
+const { SQUAD_CAPS } = await import("./squads.js");
 
 const DUPLICATE_VIOLATION_CODE = "23505";
 
@@ -40,23 +42,25 @@ function makeAcademyWorld({
   teamId = "team-A",
   balance = 1_000_000,
   riders = {},
-  academyStart = 0,
+  squadStart = {},
 } = {}) {
-  // riders: { riderId: { team_id, is_academy, ... } }
+  // riders: { riderId: { team_id, is_academy, squad, ... } }
   const state = {
     balance,
     riders: { ...riders },
     financeRows: [],
     idempotencyKeys: new Set(),
     rpcCalls: 0,
-    // Antal akademiryttere "på holdet" der ikke er i riders-map'en (baseline).
-    academyBaseline: academyStart,
+    rpcParams: [],
+    // #5432: optagede pladser pr. ungdomstrup "på holdet" der ikke er i
+    // riders-map'en (baseline), fx { junior: 9 }.
+    squadBaseline: { ...squadStart },
   };
 
-  function academyCount() {
-    let n = state.academyBaseline;
+  function squadCount(squad) {
+    let n = state.squadBaseline[squad] ?? 0;
     for (const r of Object.values(state.riders)) {
-      if (r.team_id === teamId && r.is_academy === true) n += 1;
+      if (r.team_id === teamId && r.is_academy === true && r.squad === squad) n += 1;
     }
     return n;
   }
@@ -69,13 +73,17 @@ function makeAcademyWorld({
       if (name === "finalize_academy_acquisition") {
         const next = chain.then(async () => {
           state.rpcCalls += 1;
+          state.rpcParams.push(params);
           // Simulér DB-roundtrip så concurrent calls reelt overlapper.
           await new Promise((resolve) => setTimeout(resolve, 1));
 
           const price = Number(params.p_price);
 
-          // (a) cap-check
-          if (academyCount() >= 8) {
+          // (a) loft pr. MÅL-trup (#5432): truppen og loftet kommer fra kalderen.
+          if (!params.p_squad || params.p_squad_cap == null) {
+            return { data: { ok: false, code: "invalid_squad" }, error: null };
+          }
+          if (squadCount(params.p_squad) >= params.p_squad_cap) {
             return { data: { ok: false, code: "academy_full" }, error: null };
           }
 
@@ -99,6 +107,7 @@ function makeAcademyWorld({
             ...(rider || {}),
             team_id: teamId,
             is_academy: true,
+            squad: params.p_squad,
             salary: Number(params.p_salary),
             contract_length: params.p_contract_length,
             contract_end_season: params.p_contract_end_season,
@@ -127,7 +136,7 @@ function makeAcademyWorld({
           }
 
           return {
-            data: { ok: true, balance: state.balance, academy_count: academyCount() },
+            data: { ok: true, balance: state.balance, squad: params.p_squad, squad_count: squadCount(params.p_squad), deferred: false },
             error: null,
           };
         });
@@ -137,15 +146,15 @@ function makeAcademyWorld({
       throw new Error(`Unexpected RPC: ${name}`);
     },
     _state: state,
-    _academyCount: academyCount,
+    _squadCount: squadCount,
   };
 
-  return { supabase, state, academyCount };
+  return { supabase, state, squadCount };
 }
 
 // ─── RACE: N parallelle finalize på et hold med count=7 (1 ledig plads) ────────
 
-test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykkes, resten academy_full, netto ÉN debit", async () => {
+test("RACE: N parallelle akademi-auktion-finalize, én ledig plads i mål-truppen — præcis ÉN lykkes, resten academy_full, netto ÉN debit", async () => {
   const N = 6;
   const teamId = "buyer-team";
   // Hver finalize prøver at optage SIN egen rytter i den ENE ledige plads.
@@ -165,7 +174,9 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
     };
   }
 
-  const { supabase, state } = makeAcademyWorld({ teamId, balance: 1_000_000, riders, academyStart: 7 });
+  // Rytterne har ingen fødselsdato → academyPlacementSquad placerer dem i junior
+  // (samme regel som #4619-backfill'en). Én ledig junior-plads.
+  const { supabase, state } = makeAcademyWorld({ teamId, balance: 1_000_000, riders, squadStart: { junior: SQUAD_CAPS.junior - 1 } });
 
   // Wire auctions + seasons + teams + transfer_listings + riders read ind i
   // verden-mocken (RPC'en deles, men finalize læser også auction/season/team).
@@ -287,9 +298,13 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
   assert.equal(state.financeRows.length, 1, "netto kun ÉN debit");
   assert.equal(state.balance, 1_000_000 - 25000, "balance kun trukket én gang");
 
-  // Cap aldrig overskredet.
-  const finalCount = Object.values(state.riders).filter((r) => r.team_id === teamId && r.is_academy).length + state.academyBaseline;
-  assert.equal(finalCount, 8, "akademi-cap præcis fyldt (7 + 1), aldrig over 8");
+  // Loftet aldrig overskredet, og hvert kald bar truppen + loftet fra squads.js.
+  const finalCount = Object.values(state.riders).filter((r) => r.team_id === teamId && r.is_academy && r.squad === "junior").length + state.squadBaseline.junior;
+  assert.equal(finalCount, SQUAD_CAPS.junior, "junior-loftet præcis fyldt, aldrig over");
+  for (const p of state.rpcParams) {
+    assert.equal(p.p_squad, "junior");
+    assert.equal(p.p_squad_cap, SQUAD_CAPS.junior);
+  }
 
   // #2456 "usolgt = væk": den ENE optagne rytter består; de N-1 tabere er slettet
   // (ikke efterladt som holdløse spøgelsesryttere), og en optaget rytter blev
@@ -298,6 +313,7 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
   const survivor = Object.values(state.riders)[0];
   assert.equal(survivor.team_id, teamId, "overleveren er den optagne akademirytter");
   assert.equal(survivor.is_academy, true);
+  assert.equal(survivor.squad, "junior", "truppen skrevet i samme RPC som is_academy");
   for (const r of results) {
     if (r.code === "academy_full") assert.equal(r.rider_deleted, true, "taber-rytter slettet");
   }
@@ -305,12 +321,12 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
 
 // ─── KRYDS: finalize-vs-signAcademyCandidate, samme team + samme rytter ────────
 
-test("KRYDS: finalize + signAcademyCandidate samtidig (samme team, samme rytter) — kun ÉN debit, cap ≤ 8", async () => {
+test("KRYDS: finalize + signAcademyCandidate samtidig (samme team, samme rytter) — kun ÉN debit, samme mål-trup", async () => {
   const teamId = "team-A";
   const riderId = "rider-shared";
   const rider = { id: riderId, team_id: null, is_academy: false, firstname: "Sander", lastname: "Akademi", base_value: 100000, market_value: 100000, prize_earnings_bonus: 0 };
 
-  const { supabase, state } = makeAcademyWorld({ teamId, balance: 1_000_000, riders: { [riderId]: { ...rider } }, academyStart: 0 });
+  const { supabase, state } = makeAcademyWorld({ teamId, balance: 1_000_000, riders: { [riderId]: { ...rider } } });
   const baseRpc = supabase.rpc.bind(supabase);
 
   // finalize-stien (auctionFinalization): youth-auktion for samme rytter.
@@ -413,10 +429,17 @@ test("KRYDS: finalize + signAcademyCandidate samtidig (samme team, samme rytter)
   assert.equal(state.financeRows.length, 1, `netto kun ÉN debit på tværs af de to stier — fik ${state.financeRows.length}`);
   assert.equal(state.balance, 1_000_000 - 25000, "balance kun trukket én gang");
 
-  // Rytteren er optaget præcis én gang; cap = 1, aldrig over 8.
+  // Rytteren er optaget præcis én gang.
   const finalCount = Object.values(state.riders).filter((r) => r.team_id === teamId && r.is_academy).length;
   assert.equal(finalCount, 1, "rytteren optaget præcis én gang");
-  assert.ok(finalCount <= 8, "cap aldrig overskredet");
+
+  // #5432: de to stier (auktion + intake) placerer den samme rytter i den samme
+  // trup og tæller mod det samme loft — én regel, ikke to.
+  assert.equal(state.rpcParams.length, 2, "begge stier nåede RPC'en");
+  const [p1, p2] = state.rpcParams;
+  assert.equal(p1.p_squad, p2.p_squad);
+  assert.equal(p1.p_squad_cap, p2.p_squad_cap);
+  assert.equal(p1.p_squad_cap, SQUAD_CAPS[p1.p_squad]);
 
   // Den tabende sti skal enten kaste 'already_assigned'-afledt fejl eller
   // returnere en ikke-completed kode — IKKE en succesfuld debit.

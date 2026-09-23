@@ -14,6 +14,7 @@ import {
   SQUADS, DEFAULT_SQUAD, SQUAD_CAPS, SQUAD_MAX_AGE, SQUAD_TRANSITIONS,
   isSquad, isYouthSquad, squadForSeasonAge, squadForSeason, squadForReferenceYear,
   capForSquad, wouldExceedSquadCap, hasOutgrownSquad, transitionForRider, seniorSquadPatch,
+  squadCapRpcArgs, fitsSquadAge, squadMoveDirection, academyPlacementSquad, ACADEMY_SQUAD_WHEN_AGE_UNKNOWN,
 } from "./squads.js";
 import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 
@@ -174,4 +175,65 @@ test("seniorSquadPatch: saetter BEGGE trup-felter og giver et FRISK objekt hver 
   // is_academy er afledt som (squad <> 'senior').
   const patch = seniorSquadPatch();
   assert.equal(isYouthSquad(patch.squad), patch.is_academy);
+});
+
+// ── #5432: lofterne når SQL som argument, aldrig som et tal i SQL ────────────
+
+test("squadCapRpcArgs: truppen + dens loft fra SQUAD_CAPS — den eneste vej et loft når en RPC", () => {
+  assert.deepEqual(squadCapRpcArgs("u23"), { p_squad: "u23", p_squad_cap: SQUAD_CAPS.u23 });
+  assert.deepEqual(squadCapRpcArgs("junior"), { p_squad: "junior", p_squad_cap: SQUAD_CAPS.junior });
+});
+
+test("squadCapRpcArgs: senior og ugyldige værdier kaster invalid_squad (ingen fallback-tal)", () => {
+  for (const bad of ["senior", "U23", "", null, undefined, 12]) {
+    assert.throws(() => squadCapRpcArgs(bad), /invalid_squad/, `${String(bad)} skal afvises`);
+  }
+});
+
+test("fitsSquadAge: aldersloftet er SQUAD_MAX_AGE (inklusivt); senior passer altid; ukendt alder passer aldrig", () => {
+  assert.equal(fitsSquadAge({ squad: "junior", seasonAge: SQUAD_MAX_AGE.junior }), true);
+  assert.equal(fitsSquadAge({ squad: "junior", seasonAge: SQUAD_MAX_AGE.junior + 1 }), false);
+  assert.equal(fitsSquadAge({ squad: "u23", seasonAge: SQUAD_MAX_AGE.u23 }), true);
+  assert.equal(fitsSquadAge({ squad: "u23", seasonAge: SQUAD_MAX_AGE.u23 + 1 }), false);
+  assert.equal(fitsSquadAge({ squad: "u23", seasonAge: 16 }), true, "yngre end truppen er fint (opad frit)");
+  assert.equal(fitsSquadAge({ squad: "senior", seasonAge: 40 }), true);
+  assert.equal(fitsSquadAge({ squad: "junior", seasonAge: null }), false);
+  assert.equal(fitsSquadAge({ squad: "senior", seasonAge: null }), false, "heller ikke senior uden alder");
+  assert.equal(fitsSquadAge({ squad: "u25", seasonAge: 20 }), false);
+});
+
+test("squadMoveDirection: rækkefølgen er SQUADS (junior < u23 < senior)", () => {
+  assert.equal(squadMoveDirection("junior", "u23"), "up");
+  assert.equal(squadMoveDirection("junior", "senior"), "up");
+  assert.equal(squadMoveDirection("u23", "senior"), "up");
+  assert.equal(squadMoveDirection("senior", "u23"), "down");
+  assert.equal(squadMoveDirection("senior", "junior"), "down");
+  assert.equal(squadMoveDirection("u23", "junior"), "down");
+  assert.equal(squadMoveDirection("u23", "u23"), "none");
+  assert.equal(squadMoveDirection("u23", "u25"), null);
+  assert.equal(squadMoveDirection(null, "u23"), null);
+});
+
+test("academyPlacementSquad: sæsonalder → ungdomstrup, aldrig null og aldrig senior", () => {
+  const seasonNumber = 2; // referenceår LAUNCH_REFERENCE_YEAR + 1
+  const year = LAUNCH_REFERENCE_YEAR + 1;
+  assert.equal(academyPlacementSquad(`${year - SQUAD_MAX_AGE.junior}-06-01`, seasonNumber), "junior");
+  assert.equal(academyPlacementSquad(`${year - SQUAD_MAX_AGE.junior - 1}-06-01`, seasonNumber), "u23");
+  assert.equal(academyPlacementSquad(`${year - SQUAD_MAX_AGE.u23}-06-01`, seasonNumber), "u23");
+  assert.equal(academyPlacementSquad(`${year - 30}-06-01`, seasonNumber), "u23", "vokset ud → u23 + Graduation Day, ikke senior");
+  assert.equal(academyPlacementSquad(null, seasonNumber), ACADEMY_SQUAD_WHEN_AGE_UNKNOWN);
+  assert.equal(ACADEMY_SQUAD_WHEN_AGE_UNKNOWN, "junior");
+});
+
+test("academyPlacementSquad og #4619-backfill'en placerer en akademirytter ens (samme regel, også ved ukendt alder)", async () => {
+  const { targetSquadFor } = await import("../scripts/backfill-4619-riders-squad.js");
+  const seasonNumber = 3;
+  const year = LAUNCH_REFERENCE_YEAR + 2;
+  for (const birthdate of [null, "ikke-en-dato", `${year - 16}-01-01`, `${year - 18}-12-31`, `${year - 19}-01-01`, `${year - 22}-06-01`, `${year - 25}-06-01`]) {
+    assert.equal(
+      academyPlacementSquad(birthdate, seasonNumber),
+      targetSquadFor({ is_academy: true, birthdate }, seasonNumber).squad,
+      `birthdate=${birthdate}`,
+    );
+  }
 });
