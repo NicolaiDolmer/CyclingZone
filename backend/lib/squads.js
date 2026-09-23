@@ -282,6 +282,92 @@ export function wouldExceedSquadCap({ squad, currentCount, adding = 1 } = {}) {
   return Number(currentCount ?? 0) + Number(adding) > cap;
 }
 
+// ── Lofterne i SQL: ÉN kilde, sendt ind som argument (#5432) ─────────────────
+//
+// Før #5432 havde de to akademi-RPC'er (demote_rider_to_academy og
+// finalize_academy_acquisition) hver deres egen hårde 8-tal i SQL, og slice 1
+// (#4619) lagde lofterne pr. trup her i JS. Resultatet var tre kilder til "hvor
+// mange må der være", hvor den strammeste (SQL's flade 8) reelt vandt. Nu
+// kender SQL intet tal: kalderen sender truppen OG dens loft med ind, og de
+// eneste tal findes i SQUAD_CAPS/SQUAD_MAX_AGE ovenfor. Tællingen pr. trup sker
+// inde i RPC'ens advisory-lås (count_team_squad_members), så to samtidige
+// flytninger ikke kan fylde den sidste plads to gange.
+
+/**
+ * RPC-argumenterne for en UNGDOMStrups loft — den eneste vej et loft når SQL.
+ *
+ * Kaster ved en ikke-ungdomstrup: senior har intet eget loft her (divisionens
+ * `squad_limits.max`), og en RPC der skriver en ungdomstrup må aldrig kaldes
+ * med 'senior' eller en tastefejl. Fejlen er en programmeringsfejl, ikke en
+ * brugertilstand.
+ *
+ * @param {unknown} squad
+ * @returns {{p_squad:"junior"|"u23", p_squad_cap:number}}
+ * @throws {Error} 'invalid_squad'
+ */
+export function squadCapRpcArgs(squad) {
+  const cap = capForSquad(squad);
+  if (!isYouthSquad(squad) || cap === null) throw new Error("invalid_squad");
+  return { p_squad: squad, p_squad_cap: cap };
+}
+
+/**
+ * Passer sæsonalderen ind under truppens aldersloft?
+ *
+ * Bruges til NEDAD-flytninger (YOUTH_RULES §2.1: en rytter må kun ligge i en
+ * ungdomstrup han aldersmæssigt hører til i eller er yngre end). Senior har
+ * intet loft og passer altid. Ukendt alder passer ALDRIG — et gæt her ville
+ * kunne sende en voksen rytter ned i junior-truppen.
+ *
+ * @param {{squad?:unknown, seasonAge?:number|null}} [args]
+ * @returns {boolean}
+ */
+export function fitsSquadAge({ squad, seasonAge } = {}) {
+  if (!isSquad(squad) || !Number.isFinite(seasonAge)) return false;
+  const max = SQUAD_MAX_AGE[squad];
+  return max === null || seasonAge <= max;
+}
+
+/**
+ * Retningen på et trup-skifte: "up" mod senior, "down" mod junior, "none" hvis
+ * det er samme trup, og null ved en ugyldig trup. Rækkefølgen er SQUADS (yngst
+ * → ældst), så der findes ingen anden kopi af "hvilken trup er højest".
+ *
+ * @param {unknown} from
+ * @param {unknown} to
+ * @returns {"up"|"down"|"none"|null}
+ */
+export function squadMoveDirection(from, to) {
+  if (!isSquad(from) || !isSquad(to)) return null;
+  const delta = SQUADS.indexOf(to) - SQUADS.indexOf(from);
+  if (delta === 0) return "none";
+  return delta > 0 ? "up" : "down";
+}
+
+/**
+ * Trup en akademirytter lander i når alderen er UKENDT (ingen brugbar
+ * fødselsdato). Samme regel som backfill'en (backend/scripts/backfill-4619-
+ * riders-squad.js, targetSquadFor): akademiets nederste trin, aldrig et gæt
+ * opad og aldrig tavst til senior.
+ */
+export const ACADEMY_SQUAD_WHEN_AGE_UNKNOWN = "junior";
+
+/**
+ * Ungdomstruppen en rytter PLACERES i når han optages i akademiet uden at
+ * manageren har valgt truppen (ungdomsauktion, intake-signering, nedrykning).
+ *
+ * Aldrig null: en optagelse skal altid kunne tælles mod ét loft. Ukendt alder →
+ * ACADEMY_SQUAD_WHEN_AGE_UNKNOWN; en akademirytter på 23+ → u23 (han er vokset
+ * ud og skal igennem Graduation Day, jf. academySquadForSeasonAge).
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @param {number|null|undefined} seasonNumber
+ * @returns {"junior"|"u23"}
+ */
+export function academyPlacementSquad(birthdate, seasonNumber) {
+  return academySquadForSeasonAge(ageForSeason(birthdate, seasonNumber)) ?? ACADEMY_SQUAD_WHEN_AGE_UNKNOWN;
+}
+
 // ── Graduering: de TO overgange (YOUTH_RULES §2.1 + §2.2) ────────────────────
 //
 // Tidligere fandtes ÉN overgang: akademi → senior ved sæsonalder 22
