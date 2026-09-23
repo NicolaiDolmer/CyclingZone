@@ -157,7 +157,8 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
   // fallback'en kunne skifte til dansk før LandingPage var hydreret → "Spring
   // til indhold" mod server-HTML'ens "Skip to content" → #418, og React
   // genopbyggede landing på klienten. Intermitterende og belastningsafhængigt,
-  // og det ramte også rigtige Safari-brugere med dansk som sprog.
+  // og samme sti tages af enhver dansk besøgende i en browser uden
+  // requestIdleCallback (WebKit = Safari-motoren), ikke kun af testen.
   //
   // Fix: skiftet venter nu på et SIGNAL fra selve boundary'en
   // (PrerenderHydrationMarker, lib/prerenderHydration.ts), ikke på tid. Idle-

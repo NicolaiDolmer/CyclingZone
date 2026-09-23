@@ -13,7 +13,8 @@
 // fallback'en setTimeout(0) kunne lande mellem Reacts hydrerings-skiver → dansk
 // "Spring til indhold" mod engelsk "Skip to content" → React #418, og React
 // genopbyggede landing på klienten. Intermitterende og belastningsafhængigt
-// (målinger i #4925), og det rammer også rigtige Safari-brugere med dansk.
+// (målinger i #4925). Det er appens kode, ikke testens: enhver dansk besøgende
+// i en browser uden requestIdleCallback (WebKit = Safari-motoren) tager samme sti.
 //
 // Markøren nedenfor ligger INDE i rute-boundary'en. Dens effekt kører først
 // når boundary'ens indhold er committet — hydreret, eller client-renderet hvis
