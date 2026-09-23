@@ -55,6 +55,8 @@ export default function TrainingMobileRiderCard({
   score = null,
   scoreSpark = null,
   scoreAria,
+  changeLabel,
+  footer = null,
 }: {
   id: string;
   name: string;
@@ -79,6 +81,11 @@ export default function TrainingMobileRiderCard({
   // kurven — TrainingScoreSparkline tegner segmenter, ikke een polyline.
   scoreSpark?: TrainingScorePoint[] | null;
   scoreAria?: string;
+  // #5485 (A3): kortet bruges nu ogsaa paa desktop, foldet ud under raekken.
+  // Knappens tekst kan saettes ("Change day"), og `footer` baerer rytterens
+  // ugeplan og profil-linket, som Clarity viste hoerer til INDE i kortet.
+  changeLabel?: string;
+  footer?: React.ReactNode;
 }) {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
@@ -201,7 +208,7 @@ export default function TrainingMobileRiderCard({
           disabled={changeDisabled}
           className="inline-flex min-h-11 min-w-[88px] flex-none items-center justify-center rounded-cz border border-cz-border bg-cz-card px-3 font-data text-[13px] font-semibold text-cz-1 transition-colors hover:border-cz-2/40 hover:bg-cz-subtle disabled:opacity-40"
         >
-          {t("mobile.change")}
+          {changeLabel ?? t("mobile.change")}
         </button>
       </div>
 
@@ -210,6 +217,8 @@ export default function TrainingMobileRiderCard({
           {t("mobile.seasonPoints", { n: seasonPoints })}
         </p>
       )}
+
+      {footer && <div className="mt-3 border-t border-cz-border pt-2.5">{footer}</div>}
     </section>
   );
 }

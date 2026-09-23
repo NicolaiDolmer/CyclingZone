@@ -21,10 +21,76 @@
     "descAria": "Sorterer faldende, tryk for stigende"
   },
   "tabs": {
-    "today": "Træn i dag",
+    "today": "I dag",
     "weekplan": "Ugeplan",
     "development": "Udvikling",
-    "history": "Historik"
+    "history": "Historik",
+    "report": "Rapport"
+  },
+  "primary": {
+    "setDays": "Sæt dag for {n, plural, one {# rytter} other {# ryttere}}"
+  },
+  "overview": {
+    "label": "Dagen på et blik",
+    "needsDay": "Mangler en dag",
+    "racing": "Kører løb i dag",
+    "training": "Træner i dag",
+    "tired": "Trætte · træthed {from}+",
+    "needsDayShort": "Mangler dag",
+    "racingShort": "Løb",
+    "trainingShort": "Træner",
+    "tiredShort": "Trætte",
+    "restRecovery": "{rest} hviler · {recovery} restitution",
+    "more": "+{n} mere",
+    "filterAria": "Vis kun: {label}",
+    "status": "Dagens træning",
+    "statusPaused": "Sat på pause",
+    "statusNotYet": "Ikke kørt endnu",
+    "statusWaiting": "Kører af sig selv fra kl. {hour}:00",
+    "statusReady": "Klar til at køre",
+    "runNow": "Kør nu",
+    "showing": "Viser: {label}",
+    "showAll": "Vis alle",
+    "emptyFiltered": "Ingen ryttere her lige nu."
+  },
+  "today": {
+    "colSelect": "Vælg",
+    "colDay": "Dagens dag",
+    "colSeasonPoints": "Sæsonpoint",
+    "selectRider": "Vælg {name}",
+    "applyTo": "Brug på {n}",
+    "clear": "Ryd",
+    "noDaySet": "Ingen dag valgt endnu",
+    "useAssistantPick": "Brug assistentens bud: {session}",
+    "assistant": "Assistent",
+    "count": "{n, plural, one {# rytter} other {# ryttere}}"
+  },
+  "daySelect": {
+    "placeholder": "Vælg dag",
+    "saved": "Gemt",
+    "aria": "Dagens dag for {name}"
+  },
+  "card": {
+    "changeDay": "Skift dag",
+    "profile": "Rytterprofil",
+    "weekPlan": "Ugeplan",
+    "followsTeam": "Følger holdets plan",
+    "ownPlan": "Har sin egen plan",
+    "giveOwnPlan": "Giv ham sin egen plan",
+    "editOwnPlan": "Ret hans plan"
+  },
+  "weekPlan": {
+    "title": "Ugeplan",
+    "planFor": "Plan for",
+    "team": "Hold · {n, plural, one {# rytter} other {# ryttere}}",
+    "teamIntro": "Sæt intensiteten for hver af ugens dage. Ryttere der kører løb springer planen over den dag.",
+    "colDay": "Dag",
+    "colWholeDay": "Hele dagen",
+    "today": "I dag",
+    "save": "Gem plan",
+    "undo": "Fortryd ændringer",
+    "unsaved": "{n, plural, one {# ændring ikke gemt} other {# ændringer ikke gemt}}",
+    "ownPlansEmpty": "Ingen rytter har sin egen plan endnu. Vælg en rytter under Plan for for at give ham en."
   },
   "howTrainingWorksLink": "Sådan virker træning",
   "development": {
@@ -289,6 +355,8 @@
     "chooseDay": "Vælg dag",
     "clear": "Fjern plan",
     "save": "Gem dag",
+    "done": "Færdig",
+    "pickSession": "Vælg først en session i trin 2.",
     "bulkSetDay": "Sæt dag",
     "bulkWholeDay": "Hele dagen"
   },

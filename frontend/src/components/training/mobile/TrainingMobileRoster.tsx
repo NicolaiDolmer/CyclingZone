@@ -77,6 +77,7 @@ export default function TrainingMobileRoster({
   detailId,
   detail = null,
   scoreFor = null,
+  showHeader = true,
 }: {
   riders: RosterRider[];
   columns: RaceDayColumn[];
@@ -94,6 +95,9 @@ export default function TrainingMobileRoster({
   // eller fordi loebsdags-kolonnerne allerede bruger tabellens budget
   // (canShowScoreColumn). Kaldes kun naar kolonnen er der.
   scoreFor?: ((riderId: string) => MobileScoreCell) | null;
+  // #5485: med sidens overblik oeverst er titel-linjen ("The squad today · N
+  // riders") en gentagelse, og dens hoejde koster en rytter paa foerste skaerm.
+  showHeader?: boolean;
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
@@ -136,12 +140,14 @@ export default function TrainingMobileRoster({
 
   return (
     <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card">
+      {showHeader && (
       <div className="flex items-center justify-between gap-2 border-b border-cz-border px-3 py-2">
         <span className="text-[13px] font-semibold text-cz-1">{t("mobile.rosterTitle")}</span>
         <span className="font-data text-2xs font-medium uppercase tracking-[.07em] text-cz-3">
           {t("mobile.riderCount", { n: riders.length })}
         </span>
       </div>
+      )}
 
       <table className="w-full table-fixed border-separate border-spacing-0" data-testid="training-mobile-roster">
         {/* Bredderne staar i EEN colgroup i stedet for paa hver <th>: saa er

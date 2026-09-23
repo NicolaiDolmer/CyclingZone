@@ -78,6 +78,9 @@ export default function TrainingMobileToday({
   sortSlot,
   scoreFor = null,
   openFirstForTour = false,
+  overviewLayout = false,
+  cardFooterFor = null,
+  changeLabel,
 }: {
   riders: MobileRider[];
   columns: RaceDayColumn[];
@@ -120,6 +123,14 @@ export default function TrainingMobileToday({
   // #2819: sandt naar onboarding-touren koerer paa denne side. Se effekten
   // nedenfor — det er den ENESTE grund til at et kort aabner af sig selv.
   openFirstForTour?: boolean;
+  // #5485: siden har faaet sit eget overblik oeverst (Needs a day / Racing /
+  // Training / Tired), og programmet er flyttet til fanen Week plan. I den
+  // struktur tegnes hverken dagens stribe, programmet eller tabellens titel-
+  // linje her, saa mindst 8 ryttere staar paa foerste skaerm (390 x 844).
+  overviewLayout?: boolean;
+  // Rytterens ugeplan + profil-linket, inde i kortet (A3).
+  cardFooterFor?: ((riderId: string) => React.ReactNode) | null;
+  changeLabel?: string;
 }) {
   const { t } = useTranslation("training");
   const tTypes = useTranslation("riderTypes").t;
@@ -207,9 +218,9 @@ export default function TrainingMobileToday({
 
   return (
     <div className="space-y-3" data-testid="training-mobile-today">
-      <TrainingRaceDayStrip columns={columns} splitFor={splitFor} />
+      {!overviewLayout && <TrainingRaceDayStrip columns={columns} splitFor={splitFor} />}
 
-      <TrainingProgramGrid weekdays={weekdays} rows={programRows} onEdit={onEditProgram} />
+      {!overviewLayout && <TrainingProgramGrid weekdays={weekdays} rows={programRows} onEdit={onEditProgram} />}
 
       {yesterdaySlot}
 
@@ -223,6 +234,7 @@ export default function TrainingMobileToday({
         onSelect={onSelectRider}
         detailId={detailId}
         scoreFor={scoreColumn}
+        showHeader={!overviewLayout}
         detail={selected && (
         <TrainingMobileRiderCard
           id={detailId}
@@ -262,6 +274,8 @@ export default function TrainingMobileToday({
           changeDisabled={dayBusyFor(selected.id)}
           score={scoreFor ? mobileScoreCell(selectedScore) : null}
           scoreSpark={selectedScore?.spark ? [...selectedScore.spark] : null}
+          changeLabel={changeLabel}
+          footer={cardFooterFor ? cardFooterFor(selected.id) : null}
           scoreAria={t("score.sparkAria", {
             name: `${selected.firstname ?? ""} ${selected.lastname ?? ""}`.trim(),
           })}

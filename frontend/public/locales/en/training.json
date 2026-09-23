@@ -1,5 +1,5 @@
 {
-  "title": "Daily Training",
+  "title": "Daily training",
   "trainToday": "Train today (+25% consistency bonus)",
   "runDayNow": "Run today's training now",
   "dayClose": {
@@ -21,10 +21,76 @@
     "descAria": "Sorting descending, tap for ascending"
   },
   "tabs": {
-    "today": "Train today",
+    "today": "Today",
     "weekplan": "Week plan",
     "development": "Development",
-    "history": "History"
+    "history": "History",
+    "report": "Report"
+  },
+  "primary": {
+    "setDays": "Set days for {n, plural, one {# rider} other {# riders}}"
+  },
+  "overview": {
+    "label": "Today at a glance",
+    "needsDay": "Needs a day",
+    "racing": "Racing today",
+    "training": "Training today",
+    "tired": "Tired · fatigue {from}+",
+    "needsDayShort": "Needs a day",
+    "racingShort": "Racing",
+    "trainingShort": "Training",
+    "tiredShort": "Tired",
+    "restRecovery": "{rest} rest · {recovery} recovery",
+    "more": "+{n} more",
+    "filterAria": "Show only: {label}",
+    "status": "Today's training",
+    "statusPaused": "Paused",
+    "statusNotYet": "Not run yet",
+    "statusWaiting": "Runs on its own from {hour}:00",
+    "statusReady": "Ready to run",
+    "runNow": "Run now",
+    "showing": "Showing: {label}",
+    "showAll": "Show all",
+    "emptyFiltered": "No riders here right now."
+  },
+  "today": {
+    "colSelect": "Select",
+    "colDay": "Today's day",
+    "colSeasonPoints": "Season pts",
+    "selectRider": "Select {name}",
+    "applyTo": "Apply to {n}",
+    "clear": "Clear",
+    "noDaySet": "No day set yet",
+    "useAssistantPick": "Use assistant pick: {session}",
+    "assistant": "Assistant",
+    "count": "{n, plural, one {# rider} other {# riders}}"
+  },
+  "daySelect": {
+    "placeholder": "Set day",
+    "saved": "Saved",
+    "aria": "Today's day for {name}"
+  },
+  "card": {
+    "changeDay": "Change day",
+    "profile": "Rider profile",
+    "weekPlan": "Week plan",
+    "followsTeam": "Follows the team plan",
+    "ownPlan": "Has his own plan",
+    "giveOwnPlan": "Give him his own plan",
+    "editOwnPlan": "Edit his plan"
+  },
+  "weekPlan": {
+    "title": "Week plan",
+    "planFor": "Plan for",
+    "team": "Team · {n, plural, one {# rider} other {# riders}}",
+    "teamIntro": "Set the intensity for each day of the week. Riders in a race skip the plan that day.",
+    "colDay": "Day",
+    "colWholeDay": "Whole day",
+    "today": "Today",
+    "save": "Save plan",
+    "undo": "Undo changes",
+    "unsaved": "{n, plural, one {# change not saved} other {# changes not saved}}",
+    "ownPlansEmpty": "No rider has his own plan yet. Pick a rider under Plan for to give him one."
   },
   "howTrainingWorksLink": "How training works",
   "development": {
@@ -289,6 +355,8 @@
     "chooseDay": "Choose day",
     "clear": "Remove plan",
     "save": "Save day",
+    "done": "Done",
+    "pickSession": "Pick a session in step 2 first.",
     "bulkSetDay": "Set day",
     "bulkWholeDay": "Whole day"
   },
