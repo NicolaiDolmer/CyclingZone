@@ -29,8 +29,19 @@ function makeSupabase(initial = {}) {
     if (!state[table]) state[table] = [];
     const rows = () => state[table];
     const filters = [];
+    // #5517: .or("squad.is.null,squad.eq.senior") — puljernes senior-scope
+    // (squads.withSeniorSquadScope). Samme mini-grammatik som tierCalendarMaterializer-
+    // testens mock; enhver anden operator fælder højlydt i stedet for at matche alt.
+    function matchOrCond(row, cond) {
+      const [col, op, ...rest] = String(cond).split(".");
+      const raw = rest.join(".");
+      if (op === "is") return (row[col] ?? null) === (raw === "null" ? null : raw);
+      if (op === "eq") return row[col] === raw;
+      throw new Error(`mock-supabase: uunderstøttet .or()-operator "${op}" i "${cond}"`);
+    }
     function matches(row) {
       return filters.every((f) => {
+        if (f.t === "or") return f.conds.some((cond) => matchOrCond(row, cond));
         if (f.t === "eq") return row[f.c] === f.v;
         if (f.t === "neq") return row[f.c] !== f.v;
         if (f.t === "in") return f.v.includes(row[f.c]);
@@ -48,6 +59,7 @@ function makeSupabase(initial = {}) {
       gt(c, v) { filters.push({ t: "gt", c, v }); return builder; },
       gte(c, v) { filters.push({ t: "gte", c, v }); return builder; },
       is(c, v) { filters.push({ t: "is", c, v }); return builder; },
+      or(expr) { filters.push({ t: "or", conds: String(expr).split(",") }); return builder; },
       order() { return builder; },
       // fetchAllRows-paginering (supabasePagination.js): én side rummer alt i denne
       // in-memory mock; from=0 → alle matchende rækker, ellers tom (loopet stopper).
@@ -651,4 +663,25 @@ test("defaultAllocateSquadForTeam bruger tier-4-vinduet for en tier-4-pulje", as
   // Sanity: tier-4-vinduet skal være strengt svagere end tier-3's (division-realisme).
   const t3Window = AI_TIER_STAT_WINDOWS[3];
   assert.ok(core.hi < t3Window.core.hi, "tier-4 kerne-loft skal være under tier-3's");
+});
+
+test("#5517: en ungdomspulje i league_divisions får ALDRIG AI-hold (kun seniorpuljer allokeres)", async () => {
+  // Efter A2 kan league_divisions rumme U23-/juniorpuljer med samme tier 1-4 som
+  // seniorerne. En tier 1-ungdomspulje ville ellers blive fyldt til target, præcis som
+  // seniorernes tier 1 (se første test i filen).
+  const run = async (youthSquad) => {
+    const pools = [...seedPools(), { id: 101, tier: 1, pool_index: 0, label: "U23 Division 1", squad: youthSquad }];
+    const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
+    const summary = await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
+    return { supabase, summary };
+  };
+
+  const youth = await run("u23");
+  const control = await run("senior");
+
+  assert.equal(countTeamsInPool(youth.supabase.state, 101), 0, "ingen AI-hold i ungdomspuljen");
+  assert.ok(!youth.summary.pools.some((p) => p.pool_id === 101), "ungdomspuljen optræder ikke i opsummeringen");
+  assert.ok(control.summary.pools.some((p) => p.pool_id === 101), "kontrol: som seniorpulje står den i opsummeringen");
+  assert.equal(countTeamsInPool(youth.supabase.state, 1), POOL_TARGET_SIZE, "seniorernes tier 1 fyldes uændret");
+  assert.equal(countTeamsInPool(control.supabase.state, 101), POOL_TARGET_SIZE, "kontrol: mærket 'senior' ville den blive fyldt");
 });

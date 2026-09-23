@@ -454,7 +454,7 @@ test("M3 — en oedelagt budget-post er FAIL-CLOSED, ikke et frisk budget", () =
   // Foer denne aendring blev baade ugyldig JSON og ulaeselige felter laest som
   // "ubrugt". En reload-loop der naaede at skrive skrald i noeglen, fik dermed
   // tre friske forsoeg hver gang — praecis det budgettet findes for at stoppe.
-  for (const broken of ['{"used":', '"ikke et objekt"', '{"used":"3","windowStart":1}', "null", "[]"]) {
+  for (const broken of ['{"used":', '"ikke et objekt"', '{"used":"3","windowStart":1}', "null", "[]", ""]) {
     const storage = memoryStorage();
     storage.setItem(RECOVERY_BUDGET_KEY, broken);
     assert.equal(hasRecoveryBudget(storage), false, `skrald skal lukke porten: ${broken}`);

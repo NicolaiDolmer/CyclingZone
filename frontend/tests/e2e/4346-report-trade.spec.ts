@@ -2,6 +2,7 @@
 // (TeamTransferHistoryTab → ReportTradeDialog). SEED_TRANSFER_HISTORY (#2400)
 // har allerede en gennemført auktion med en rigtig modpart (RIVAL_TEAM) —
 // den er hvad denne spec bruger som "mock en handel".
+import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./e2e-base.js";
 import {
   installNetworkMocks,
@@ -18,8 +19,8 @@ const CONSOLE_NOISE = [/WebSocket connection to .*supabase\.co.*failed/i, /ERR_N
 // Formen matcher hvad api.js rent faktisk returnerer (submitTradeReport, se
 // backend/lib/feedbackInbox.js) — alreadyReported styrer hvilken af de to
 // succes-tekster dialogen viser.
-function mockReportRoute(page, { alreadyReported = false } = {}) {
-  return page.route("**/api/transfers/*/*/report", (route) => {
+function mockReportRoute(page: Page, { alreadyReported = false } = {}) {
+  return page.route("**/api/transfers/*/*/report", (route: Route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") {
       return route.fulfill({ status: 204, headers: corsHeaders(request) });
@@ -28,7 +29,7 @@ function mockReportRoute(page, { alreadyReported = false } = {}) {
   });
 }
 
-async function openTeamHistoryTab(page) {
+async function openTeamHistoryTab(page: Page) {
   await login(page);
   await page.goto("/team");
   await page.getByRole("tab", { name: /Transferhistorik|Transfer history/ }).click();

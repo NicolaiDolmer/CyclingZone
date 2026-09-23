@@ -68,7 +68,12 @@ const PLAN_SEASON_ID = SNAPSHOT.seasonId;
 // bestå i første forsøg. Præcis den skrøbelighed advarslen forudsiger. Genfundet med samme
 // søgeloop mod det uændrede snapshot: …07d har samme form (tier 3 OG tier 4, attempt 1 begge
 // steder, tier 1 attempt 0).
-const RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000007d";
+//
+// #5405 (23/9): …07d holdt op med at have tier 1 på attempt 0 da drawTierAttempt begyndte
+// at kvote-fordele finale-typerne over tierens løbssæt (balanceFinaleQuotas) — det ændrer
+// hvilke finaler realisme-båndene måler. Genfundet med søgeloopet ovenfor mod det uændrede
+// snapshot: …011 har samme form (tier 3 OG tier 4 attempt 1, tier 1 attempt 0).
+const RETRY_SEASON_ID = "00000000-0000-0000-0000-000000000011";
 
 // Samme idé, men for testen der SPECIFIKT skal bevise "kun ÉN tier brød, og KUN den
 // trækkes om" — fundet via søgeloopet ovenfor mod det regenererede snapshot. Samme

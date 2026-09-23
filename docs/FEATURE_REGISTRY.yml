@@ -320,6 +320,16 @@ features:
     verified: 2026-09-23
     note: 'Flag-noegle youth_squad_pages (#5519, default off); flyttes til flag-feltet naar app_config-raekken er applied efter merge. Ejer flipper efter visuelt go.'
 
+  - id: rider-primary-type-from-distribution
+    area: squad
+    title_en: New riders' primary type from the target distribution
+    title_da: Nye rytteres primære type fra mål-fordelingen
+    state: building
+    ssot: docs/RIDER_GENERATION.md
+    epic: 5327
+    verified: 2026-09-23
+    note: 'Kontakt rider_primary_type_from_distribution (off) koblet paa start-trup, AI-hold og relaunch; flag-feltet saettes naar raekken er verificeret i prod efter merge. Flip er ejer-gated.'
+
   # --- training ------------------------------------------------------------
   - id: daily-training
     area: training

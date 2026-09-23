@@ -24,6 +24,7 @@ import { runStarterSquadAllocation } from "./starterSquadAllocator.js";
 import { runContractSeed } from "./contractSeed.js";
 import { runAcademyIntake } from "./academyIntake.js";
 import { isAcademyEnabled } from "./academyFlag.js";
+import { readPrimaryTypeMode } from "./primaryTypeModeFlag.js";
 import { grantFounderBadges } from "./founderBadge.js";
 import { transitionToNextSeason, computeSeasonUuid } from "./seasonTransition.js";
 import { startSequentialNegotiation } from "./boardSequentialNegotiation.js";
@@ -43,15 +44,21 @@ export function isProdSupabaseUrl(url, ref = RELAUNCH_PROD_PROJECT_REF) {
 }
 
 // Generér + indsæt den låste launch-population (pcm_id null), navne-unikke mod DB.
-export async function generateAndInsertPopulation(supabase, { dryRun = true } = {}) {
+// #5327: primær-type-kilden læses fra app_config (én gang) og står i resultatet,
+// så en tørkørsel viser hvilken kilde en rigtig relaunch ville bruge.
+// `generate` er kun en test-søm; produktionen bruger generateLaunchPopulation.
+export async function generateAndInsertPopulation(supabase, {
+  dryRun = true, generate = generateLaunchPopulation,
+} = {}) {
   const existing = await fetchAllRows(() => supabase.from("riders").select("firstname, lastname").order("id"));
   const folded = new Set(existing.map((r) => foldNameNordic(`${r.firstname} ${r.lastname}`)));
-  const { riders } = generateLaunchPopulation(folded);
+  const primaryTypeMode = await readPrimaryTypeMode(supabase);
+  const { riders } = generate(folded, { primaryTypeMode });
   const payload = toInsertPayload(riders);
   for (const r of payload) {
     if (r.pcm_id !== null) throw new Error("pre-flight: payload med pcm_id !== null — afbryder.");
   }
-  if (dryRun) return { generated: payload.length, inserted: 0, dryRun: true };
+  if (dryRun) return { generated: payload.length, inserted: 0, dryRun: true, primaryTypeMode };
   let inserted = 0;
   for (let i = 0; i < payload.length; i += INSERT_BATCH) {
     const batch = payload.slice(i, i + INSERT_BATCH);
@@ -59,7 +66,7 @@ export async function generateAndInsertPopulation(supabase, { dryRun = true } = 
     if (error) throw new Error(`population insert ved ${i}: ${error.message}`);
     inserted += batch.length;
   }
-  return { generated: payload.length, inserted };
+  return { generated: payload.length, inserted, primaryTypeMode };
 }
 
 // Genindsæt sæson 0 (deterministisk UUID, active) så transition 0→1 har en fromSeason.

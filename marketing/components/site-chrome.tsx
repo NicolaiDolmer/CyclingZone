@@ -7,6 +7,7 @@
 // oversatte side (ikke bare "/da"), saa hreflang og synligt link stemmer overens.
 
 import { buttonClass } from "./landing/button-styles";
+import { AppLink } from "./app-link";
 import enLanding from "../locales/en/landing.json";
 import daLanding from "../locales/da/landing.json";
 
@@ -151,15 +152,15 @@ export function SiteHeader({
                 hrefDa={homePaths.da}
               />
             </div>
-            <a href={`${APP}/login`} className={`${buttonClass({ variant: "ghost", size: "sm" })} whitespace-nowrap`}>
+            <AppLink href={`${APP}/login`} className={`${buttonClass({ variant: "ghost", size: "sm" })} whitespace-nowrap`}>
               {nav.login}
-            </a>
-            <a
+            </AppLink>
+            <AppLink
               href={`${APP}/login?mode=signup`}
               className={`${buttonClass({ variant: "secondary", size: "sm" })} whitespace-nowrap`}
             >
               {nav.signup}
-            </a>
+            </AppLink>
           </div>
         </div>
       </header>

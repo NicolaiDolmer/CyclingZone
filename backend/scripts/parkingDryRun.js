@@ -1,27 +1,41 @@
 /**
  * [epic #4592 del 2] Parkerings-dry-run (READ-ONLY)
  *
- * Printer hvem selectTeamsToPark() VILLE parkere lige nu (managerParking.js —
- * ejer-definition 2/9: 30 dage uden login, ikke frosset, ikke tilmeldt via
- * "Tilmeld dig næste sæson"-knappen) og hvor mange aktive mennesker hver
- * pulje ville have TILBAGE bagefter — samme "aktive mennesker pr. pulje"-tal
- * som dormantTeamsReport.js, men efter den hypotetiske parkering.
+ * Viser hvad sæsonskiftets parkerings-sweep (managerParking.runParkingSweep)
+ * VILLE gøre lige nu, uden at skrive noget:
+ *   - pr. division: menneskehold før, parkeret, genindplaceret, efter
+ *   - abonnement-skip: hold der ellers var parkeret, men har et beskyttende
+ *     abonnement (managerParking.selectActiveSubscriptionTeamIds)
+ *   - genindplaceringer: parkerede hold hvis manager har tilmeldt sig igen, og
+ *     hvilken pulje de lander i (teamProfileEngine.choosePoolForNewTeam — samme
+ *     regel som et nyt hold, simuleret ét hold ad gangen)
+ *   - forventet puljestørrelse: pladser optaget pr. pulje før og efter sweepen,
+ *     FØR AI-fyldet eventuelt lukker huller (se rækkefølge-valget i PR #4592)
  *
- * Ingen writes overhovedet. Selve parkeringen (parkTeam) kaldes ALDRIG herfra.
+ * Udvælgelsen er de SAMME rene funktioner som sweepen bruger — ingen kopi.
+ * Ingen writes overhovedet: parkTeam/unparkTeam/resetSeasonSignups kaldes
+ * ALDRIG herfra.
  *
  *   node scripts/parkingDryRun.js            # markdown til stdout
  *   node scripts/parkingDryRun.js --json      # maskinlæsbart
  *
  * Kræver SUPABASE_URL + SUPABASE_SERVICE_KEY i miljøet (som øvrige backend/scripts).
- * Kør IKKE mod prod uden orkestratorens eksplicitte kommando — se PR-body.
+ * Kør IKKE mod prod uden orkestratorens eksplicitte kommando.
  */
 import 'dotenv/config';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
-import { fetchAllRows, fetchAllRowsChunkedIn } from '../lib/supabasePagination.js';
-import { selectTeamsToPark } from '../lib/managerParking.js';
+import { fetchAllRows } from '../lib/supabasePagination.js';
+import {
+  loadParkingInputs,
+  selectActiveSubscriptionTeamIds,
+  selectTeamsToPark,
+  selectTeamsToUnpark,
+} from '../lib/managerParking.js';
+import { choosePoolForNewTeam, NEW_TEAM_PLACEMENT_TEAM_COLUMNS } from '../lib/teamProfileEngine.js';
 import { daysSinceLastSeen } from '../lib/managerActivity.js';
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+import { MANAGER_ENTRY_DIVISION, MAX_DIVISION, POOL_TARGET_SIZE } from '../lib/economyConstants.js';
 
 const wantJson = process.argv.includes('--json');
 
@@ -38,122 +52,160 @@ function mdTable(headers, rows) {
   ].join('\n');
 }
 
-async function main() {
-  const now = new Date();
+// Samme "optager en plads"-regel som choosePoolForNewTeam (#4183): alt der ikke
+// er banken og ikke er markeret til fjernelse.
+function holdsSeat(team) {
+  return team.is_bank !== true && team.pending_removal_at == null;
+}
 
-  // Samme "menneskehold"-diskriminator som dormantTeamsReport.js. Bevidst
-  // UDEN is_frozen-eksklusion i selve query'en — selectTeamsToPark filtrerer
-  // frosne hold fra selv, så vi kan vise dem i totalen ("X frosne, ikke rørt").
-  // schema-columns-ok: parked_at/next_season_signup_at kommer fra #4592-
-  // migrationerne (applies post-merge, #2642) — manuelt script, fejler højt.
-  const teams = await fetchAllRows(() =>
-    supabase
-      .from('teams')
-      .select('id, name, division, league_division_id, user_id, is_frozen, parked_at, next_season_signup_at')
-      .eq('is_ai', false)
-      .eq('is_bank', false)
-      .eq('is_test_account', false)
-      .order('id')
-  );
-
-  const poolRows = await fetchAllRows(() =>
-    supabase.from('league_divisions').select('id, tier, pool_index, label').order('id')
-  );
-  const poolById = new Map(poolRows.map((p) => [p.id, p]));
-
-  const userIds = [...new Set(teams.map((t) => t.user_id).filter(Boolean))];
-  const userRows = await fetchAllRowsChunkedIn(userIds, (chunk) =>
-    supabase.from('users').select('id, last_seen').in('id', chunk).order('id')
-  );
-
-  const wouldPark = selectTeamsToPark({ teams, users: userRows, now });
+/**
+ * Ren simulering af sweepen på et øjebliksbillede. Eksporteret så den kan
+ * testes uden DB.
+ */
+export function simulateParkingSweep({ humanTeams, users, subscriptions, pools, seatTeams, now }) {
+  const activeSubscriptionTeamIds = selectActiveSubscriptionTeamIds(subscriptions, now);
+  const wouldPark = selectTeamsToPark({ teams: humanTeams, users, now, activeSubscriptionTeamIds });
   const wouldParkIds = new Set(wouldPark.map((t) => t.id));
-  const userById = new Map(userRows.map((u) => [u.id, u]));
+  const subscriptionSkipped = selectTeamsToPark({ teams: humanTeams, users, now })
+    .filter((t) => !wouldParkIds.has(t.id));
+  const wouldUnpark = selectTeamsToUnpark({ teams: humanTeams });
 
-  const rows = teams.map((t) => {
-    const pool = poolById.get(t.league_division_id) ?? null;
-    const user = t.user_id ? userById.get(t.user_id) ?? null : null;
+  // Pladserne efter sweepen: parkering frigør, genindplacering optager — ét
+  // hold ad gangen, præcis som unparkSignedUpTeams (pickDivisionForNewTeam
+  // læser occupancy forfra før hvert hold).
+  const simTeams = seatTeams.map((t) => ({ ...t }));
+  const simById = new Map(simTeams.map((t) => [t.id, t]));
+  for (const t of wouldPark) {
+    const sim = simById.get(t.id);
+    if (sim) sim.league_division_id = null;
+  }
+  const placementPools = pools.filter((p) => p.tier === MANAGER_ENTRY_DIVISION || p.tier === MAX_DIVISION);
+  const placements = [];
+  for (const t of wouldUnpark) {
+    const choice = choosePoolForNewTeam({ pools: placementPools, teams: simTeams });
+    const sim = simById.get(t.id);
+    if (sim) sim.league_division_id = choice.leagueDivisionId;
+    placements.push({ team: t, division: choice.division, leagueDivisionId: choice.leagueDivisionId });
+  }
+
+  const poolById = new Map(pools.map((p) => [p.id, p]));
+  const occupancy = (teams, poolId) => teams.filter((t) => holdsSeat(t) && t.league_division_id === poolId).length;
+  const poolSizes = [...pools]
+    .sort((a, b) => (a.tier - b.tier) || (a.pool_index - b.pool_index))
+    .map((p) => ({
+      pool_id: p.id,
+      label: p.label ?? `(pulje ${p.id})`,
+      tier: p.tier,
+      before: occupancy(seatTeams, p.id),
+      after: occupancy(simTeams, p.id),
+      parked_out: wouldPark.filter((t) => t.league_division_id === p.id).length,
+      placed_in: placements.filter((pl) => pl.leagueDivisionId === p.id).length,
+    }));
+
+  const divisions = [...new Set([
+    ...humanTeams.map((t) => t.division),
+    ...placements.map((pl) => pl.division),
+  ].filter((d) => d != null))].sort((a, b) => a - b);
+  const activeHuman = (t) => t.parked_at == null;
+  const byDivision = divisions.map((division) => {
+    const before = humanTeams.filter((t) => activeHuman(t) && t.division === division).length;
+    const parked = wouldPark.filter((t) => t.division === division).length;
+    const placedIn = placements.filter((pl) => pl.division === division).length;
     return {
-      team_id: t.id,
-      name: t.name,
-      division: t.division,
-      pool_id: t.league_division_id,
-      pool_label: pool?.label ?? `(ukendt pulje ${t.league_division_id ?? '—'})`,
-      is_frozen: !!t.is_frozen,
-      already_parked: t.parked_at != null,
-      signed_up: t.next_season_signup_at != null,
-      days_since_login: user ? daysSinceLastSeen(user, now) : null,
-      would_park: wouldParkIds.has(t.id),
+      division,
+      before,
+      parked,
+      subscription_skipped: subscriptionSkipped.filter((t) => t.division === division).length,
+      placed_in: placedIn,
+      after: before - parked + placedIn,
     };
   });
 
-  rows.sort((a, b) => {
-    if (a.would_park !== b.would_park) return a.would_park ? -1 : 1;
-    const ad = a.days_since_login ?? Infinity;
-    const bd = b.days_since_login ?? Infinity;
-    return bd - ad;
-  });
+  return { wouldPark, subscriptionSkipped, placements, poolSizes, byDivision, poolById };
+}
 
-  // Aktive mennesker pr. pulje EFTER den hypotetiske parkering (samme
-  // "occupancy frigives"-effekt som parkTeam's league_division_id=null).
-  const byPool = new Map();
-  for (const t of teams) {
-    const key = t.league_division_id ?? `division-${t.division}`;
-    if (!byPool.has(key)) {
-      const pool = poolById.get(t.league_division_id) ?? null;
-      byPool.set(key, {
-        division: t.division,
-        pool_label: pool?.label ?? `(ukendt pulje ${t.league_division_id ?? '—'})`,
-        before: 0,
-        after: 0,
-        parked: 0,
-      });
-    }
-    const agg = byPool.get(key);
-    if (t.parked_at == null) agg.before += 1;
-    if (t.parked_at == null && !wouldParkIds.has(t.id)) agg.after += 1;
-    if (wouldParkIds.has(t.id)) agg.parked += 1;
-  }
-  const poolSummaries = [...byPool.values()].sort((a, b) => {
-    if (a.division !== b.division) return (a.division ?? 0) - (b.division ?? 0);
-    return a.pool_label.localeCompare(b.pool_label);
-  });
+async function main() {
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+  const now = new Date();
+
+  // Samme grundlag som sweepen (managerParking.loadParkingInputs).
+  const { teams: humanTeams, users, subscriptions } = await loadParkingInputs({ supabase });
+  const pools = await fetchAllRows(() =>
+    supabase.from('league_divisions').select('id, tier, pool_index, label').order('id')
+  );
+  // ALLE hold (også AI) — pladser tæller uanset hvem der sidder på dem.
+  const seatTeams = await fetchAllRows(() =>
+    supabase.from('teams').select(`id, ${NEW_TEAM_PLACEMENT_TEAM_COLUMNS}`).order('id')
+  );
+
+  const sim = simulateParkingSweep({ humanTeams, users, subscriptions, pools, seatTeams, now });
+  const userById = new Map(users.map((u) => [u.id, u]));
+  const poolLabel = (id) => (id == null ? '—' : sim.poolById.get(id)?.label ?? `(ukendt pulje ${id})`);
+  const daysFor = (t) => {
+    const user = t.user_id ? userById.get(t.user_id) ?? null : null;
+    return user ? daysSinceLastSeen(user, now) : null;
+  };
 
   if (wantJson) {
-    console.log(JSON.stringify({ generated_at: now.toISOString(), teams: rows, pools: poolSummaries, would_park_total: wouldPark.length }, null, 2));
+    console.log(JSON.stringify({
+      generated_at: now.toISOString(),
+      pool_target_size: POOL_TARGET_SIZE,
+      by_division: sim.byDivision,
+      pools: sim.poolSizes,
+      would_park: sim.wouldPark.map((t) => ({ team_id: t.id, name: t.name, division: t.division, pool_id: t.league_division_id, days_since_login: daysFor(t) })),
+      subscription_skipped: sim.subscriptionSkipped.map((t) => ({ team_id: t.id, name: t.name, division: t.division, days_since_login: daysFor(t) })),
+      placements: sim.placements.map((pl) => ({ team_id: pl.team.id, name: pl.team.name, division: pl.division, pool_id: pl.leagueDivisionId })),
+    }, null, 2));
     return;
   }
 
   console.log(`=== [epic #4592 del 2] Parkerings-DRY-RUN (READ-ONLY, genereret ${now.toISOString()}) ===\n`);
-  console.log(`Ville parkere ${wouldPark.length} af ${teams.length} menneskehold ved cutover LIGE NU.\n`);
+  console.log(`Ville parkere ${sim.wouldPark.length} af ${humanTeams.length} menneskehold, springe ${sim.subscriptionSkipped.length} over pga. abonnement og genindplacere ${sim.placements.length}.\n`);
 
-  console.log('## Aktive mennesker pr. pulje — før / efter hypotetisk parkering\n');
-  console.log(
-    mdTable(
-      ['Division', 'Pulje', 'Aktive hold før', 'Ville parkere', 'Aktive hold efter'],
-      poolSummaries.map((p) => [p.division ?? '—', p.pool_label, String(p.before), String(p.parked), String(p.after)])
-    )
-  );
+  console.log('## Pr. division (menneskehold)\n');
+  console.log(mdTable(
+    ['Division', 'Aktive før', 'Parkeres', 'Abonnement-skip', 'Genindplaceres', 'Aktive efter'],
+    sim.byDivision.map((d) => [d.division, d.before, d.parked, d.subscription_skipped, d.placed_in, d.after].map(String)),
+  ));
 
-  console.log('\n## Hold\n');
-  console.log(
-    mdTable(
-      ['Division', 'Pulje', 'Hold', 'Dage siden login', 'Ville parkere', 'Frosset', 'Tilmeldt', 'Allerede parkeret'],
-      rows.map((r) => [
-        r.division ?? '—',
-        r.pool_label,
-        r.name,
-        fmtDays(r.days_since_login),
-        r.would_park ? 'JA' : '',
-        r.is_frozen ? 'ja' : '',
-        r.signed_up ? 'ja' : '',
-        r.already_parked ? 'ja' : '',
-      ])
-    )
-  );
+  console.log(`\n## Forventet puljestørrelse (optagne pladser, mål ${POOL_TARGET_SIZE}) — før AI-fyld\n`);
+  console.log(mdTable(
+    ['Division', 'Pulje', 'Før', 'Parkeret ud', 'Genindplaceret ind', 'Efter sweep', 'Under mål'],
+    sim.poolSizes.map((p) => [
+      String(p.tier), p.label, String(p.before), String(p.parked_out), String(p.placed_in), String(p.after),
+      p.after > 0 && p.after < POOL_TARGET_SIZE ? String(POOL_TARGET_SIZE - p.after) : '',
+    ]),
+  ));
+
+  console.log('\n## Abonnement-skip (ville ellers være parkeret)\n');
+  console.log(sim.subscriptionSkipped.length
+    ? mdTable(['Division', 'Pulje', 'Hold', 'Dage siden login'], sim.subscriptionSkipped.map((t) => [
+      String(t.division ?? '—'), poolLabel(t.league_division_id), t.name, fmtDays(daysFor(t)),
+    ]))
+    : '(ingen)');
+
+  console.log('\n## Genindplaceringer (parkeret + tilmeldt igen)\n');
+  console.log(sim.placements.length
+    ? mdTable(['Hold', 'Ny division', 'Ny pulje'], sim.placements.map((pl) => [
+      pl.team.name, String(pl.division), poolLabel(pl.leagueDivisionId),
+    ]))
+    : '(ingen)');
+
+  console.log('\n## Parkeres\n');
+  console.log(sim.wouldPark.length
+    ? mdTable(['Division', 'Pulje', 'Hold', 'Dage siden login'], [...sim.wouldPark]
+      .sort((a, b) => (daysFor(b) ?? Infinity) - (daysFor(a) ?? Infinity))
+      .map((t) => [String(t.division ?? '—'), poolLabel(t.league_division_id), t.name, fmtDays(daysFor(t))]))
+    : '(ingen)');
 }
 
-main().catch((err) => {
-  console.error('Fatal:', err);
-  process.exit(1);
-});
+// Kun når filen selv er entry-point'et — så simulateParkingSweep kan importeres
+// i en test uden at ramme en database (samme main-guard som
+// audit-4377-board-goal-counters.js).
+const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+if (isMain) {
+  main().catch((err) => {
+    console.error('Fatal:', err);
+    process.exit(1);
+  });
+}

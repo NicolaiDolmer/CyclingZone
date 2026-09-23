@@ -7,6 +7,7 @@ import Button from "./ui/Button.jsx";
 import { RefreshIcon } from "./ui/icons/index.jsx";
 import { isReloadAllowed } from "../lib/reloadGate.js";
 import { useConsent } from "../lib/consent.jsx";
+import { useBottomSlot } from "../lib/bottomSlot.ts";
 
 // #5159 — den manuelle udvej. Banneret er selve grunden til at appen tør LADE
 // VÆRE med at genindlæse af sig selv: opdager watcheren en ny frontend mens
@@ -30,7 +31,13 @@ import { useConsent } from "../lib/consent.jsx";
 // en vilkårlig side, og viewets egen gold primary — Gem, Log ind — skal blive ved
 // med at være den ene guld-flade i billedet.
 // Review-fund 5: banneret deler `fixed inset-x-0 bottom-0 z-toast` med
-// cookie-banneret og NPS-prompten og tegner OVENPÅ dem. De to gates herunder bor
+// cookie-banneret og NPS-prompten og tegner OVENPÅ dem. #5440: bundkanten er nu
+// ÉN delt slot (lib/bottomSlot.ts, samtykke > release > NPS). Banneret gør krav
+// paa den naar det har noget at vise, og NPS-baren viger saa længe banneret
+// staar; cookie-banneret har sit eget krav med hoejere prioritet. Samtykke-
+// gaten staar stadig ogsaa direkte herunder: saa gør banneret slet ikke krav paa
+// kanten mens samtykket mangler, og NPS-baren kan heller ikke miste den til et
+// banner der alligevel ikke maa vises. De gates bor
 // HER og ikke i App, med vilje: App er rodkomponenten, og et abonnement dér
 // (samtykke-contexten, `useLocation`) gen-renderer HELE træet — inklusive den
 // prerendrede landing — hver gang samtykket eller ruten ændrer sig. Banneret er
@@ -56,7 +63,9 @@ export default function ReleaseUpdateBanner({ show, hasSession = false, onUpdate
   // Forsiden for en anonym besøgende: ingen session, intet ugemt arbejde og
   // ingen app-tilstand at redde. En opdaterings-stribe dér er ren støj.
   const anonymousOnLanding = !hasSession && pathname === "/";
-  const visible = Boolean(show) && !consentBannerOpen && !anonymousOnLanding;
+  const wantsSlot = Boolean(show) && !consentBannerOpen && !anonymousOnLanding;
+  const slotGranted = useBottomSlot("release", wantsSlot);
+  const visible = wantsSlot && slotGranted;
 
   useEffect(() => {
     if (!visible) setConfirming(false);

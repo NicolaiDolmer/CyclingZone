@@ -50,6 +50,10 @@
         "title": "Din bestyrelse er åben fra dag ét",
         "text": "Bestyrelsen er låst op fra starten af din første sæson, så du kan vælge dit Klub-DNA og forhandle dine planer med det samme i stedet for at vente en sæson. Din sponsor-modifier holdes på 1.0× indtil du signer din første plan, så sæson-1-sponsoren er neutral mens du sætter op. I denne baseline-sæson følger bestyrelsen allerede dine løbsresultater og klubbens økonomi weekend for weekend, og dens tilfredshed bevæger sig inden for et interval på 30-75 derefter. Der er bare ingen hårde konsekvenser endnu. Bestyrelsen læser også dit hold (national kerne, U25-andel, specialisering og stjerneprofil) og gemmer et permanent identity-snapshot der bruges som fundament for dine 5-årsplan-forslag."
       },
+      "nationalCoreRule": {
+        "title": "Sådan afgøres din nationale kerne",
+        "text": "Din nationale kerne afgøres af den nationalitet, der har flest ryttere i din trup, aldrig af en samlet vurdering på tværs af flere. Den bliver en etableret kerne, når den nationalitet har mindst 4 ryttere og udgør mindst 35% af din fulde trup; under den tærskel viser dit bestyrelseskort 'Blandet' og 'Ingen tydelig kerne endnu', uanset hvor tæt en nummer to ligger. Er kernen etableret, navngiver kortet den nationalitet med antal ryttere og andel af din trup. Kun den største nationalitet bliver nogensinde tjekket mod disse tal: er to nationaliteter begge tæt på at kvalificere sig, får den mindste ingen kerne af sin egen, selv hvis den kun mangler én rytter. Er to nationaliteter præcis lige store i ryttertal, går det til den, hvis landekode kommer først alfabetisk."
+      },
       "season2Onboarding": {
         "title": "Sekventiel onboarding",
         "steps": [

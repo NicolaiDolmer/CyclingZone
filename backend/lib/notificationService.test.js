@@ -400,10 +400,15 @@ test("emitRaceResultNotifications bruger første-resultat-copy for førstegangs-
 });
 
 // Fixture til defaultFetchFirstTimeManagers: mock af .from("teams").select("id,
-// user_id").in("user_id", ...) og .from("race_results").select("team_id")
-// .in("team_id", ...).neq("race_id", ...) (samme stil som createNotificationSupabase).
-function makeFirstTimeSupabase({ teams = [], otherResults = [], teamsError = null } = {}) {
+// user_id").in("user_id", ...) og (#3624 trin 2) EXISTS-opslaget pr. hold:
+// .from("race_results").select("team_id").eq("team_id", id).neq("race_id", ...)
+// .limit(1). `results` er ALLE race_results-raekker ({team_id, race_id}); mocken
+// anvender begge filtre, saa raekker fra netop dette loeb ikke taeller.
+// `calls` logger hvert race_results-opslag, saa testene kan se formen.
+function makeFirstTimeSupabase({ teams = [], results = [], teamsError = null, resultsError = null } = {}) {
+  const calls = [];
   return {
+    calls,
     from(table) {
       if (table === "teams") {
         return {
@@ -421,28 +426,28 @@ function makeFirstTimeSupabase({ teams = [], otherResults = [], teamsError = nul
         };
       }
       if (table === "race_results") {
+        const call = { select: null, eq: null, neq: null, limit: null };
+        calls.push(call);
         return {
           select(columns) {
-            assert.equal(columns, "team_id");
+            call.select = columns;
             return {
-              in(column, values) {
+              eq(column, teamId) {
                 assert.equal(column, "team_id");
+                call.eq = teamId;
                 return {
-                  neq(column2, _value2) {
+                  neq(column2, raceId) {
                     assert.equal(column2, "race_id");
+                    call.neq = raceId;
                     return {
-                      // #3331: defaultFetchFirstTimeManagers now pages via
-                      // fetchAllRows, which chains .order() then .range() on
-                      // the query builder. Test data is small (< 1 page).
-                      order(column3, options) {
-                        assert.equal(column3, "id");
-                        assert.deepEqual(options, { ascending: true });
-                        return {
-                          range(_from, _to) {
-                            const data = otherResults.filter((r) => values.includes(r.team_id));
-                            return Promise.resolve({ data, error: null });
-                          },
-                        };
+                      limit(n) {
+                        call.limit = n;
+                        if (resultsError) return Promise.resolve({ data: null, error: resultsError });
+                        const data = results
+                          .filter((r) => r.team_id === teamId && r.race_id !== raceId)
+                          .slice(0, n)
+                          .map((r) => ({ team_id: r.team_id }));
+                        return Promise.resolve({ data, error: null });
                       },
                     };
                   },
@@ -457,10 +462,22 @@ function makeFirstTimeSupabase({ teams = [], otherResults = [], teamsError = nul
   };
 }
 
+// Den gamle semantik (foer #3624 trin 2), som reference: hent alle holdets
+// resultater fra andre loeb; et hold uden nogen er foerstegangs-hold.
+function referenceFirstTimeManagers({ teams, results, raceId, userIds }) {
+  const ownTeams = teams.filter((t) => userIds.includes(t.user_id));
+  const veteranTeamIds = new Set(
+    results
+      .filter((r) => ownTeams.some((t) => t.id === r.team_id) && r.race_id !== raceId)
+      .map((r) => r.team_id),
+  );
+  return new Set(ownTeams.filter((t) => !veteranTeamIds.has(t.id)).map((t) => t.user_id));
+}
+
 test("defaultFetchFirstTimeManagers: manager uden andre resultater er first-timer", async () => {
   const supabase = makeFirstTimeSupabase({
     teams: [{ id: "t1", user_id: "user-first" }, { id: "t2", user_id: "user-vet" }],
-    otherResults: [{ team_id: "t2" }],
+    results: [{ team_id: "t2", race_id: "race-1" }],
   });
   const set = await defaultFetchFirstTimeManagers({
     supabase, race: { id: "race-9" }, userIds: ["user-first", "user-vet"],
@@ -468,8 +485,84 @@ test("defaultFetchFirstTimeManagers: manager uden andre resultater er first-time
   assert.deepEqual([...set], ["user-first"]);
 });
 
+test("defaultFetchFirstTimeManagers: resultater fra NETOP dette loeb goer ikke holdet til veteran", async () => {
+  const supabase = makeFirstTimeSupabase({
+    teams: [{ id: "t1", user_id: "user-first" }],
+    results: [
+      { team_id: "t1", race_id: "race-9" },
+      { team_id: "t1", race_id: "race-9" },
+    ],
+  });
+  const set = await defaultFetchFirstTimeManagers({
+    supabase, race: { id: "race-9" }, userIds: ["user-first"],
+  });
+  assert.deepEqual([...set], ["user-first"]);
+});
+
+test("defaultFetchFirstTimeManagers (#3624): eet EXISTS-opslag pr. hold, limit 1, ingen paginering", async () => {
+  const supabase = makeFirstTimeSupabase({
+    teams: [{ id: "t1", user_id: "u1" }, { id: "t2", user_id: "u2" }, { id: "t3", user_id: "u3" }],
+    // Veteranhold med en lang historik: svaret maa ikke afhaenge af at den hentes.
+    results: Array.from({ length: 5000 }, (_, i) => ({ team_id: "t2", race_id: `old-${i}` })),
+  });
+  const set = await defaultFetchFirstTimeManagers({
+    supabase, race: { id: "race-9" }, userIds: ["u1", "u2", "u3"],
+  });
+  assert.deepEqual([...set].sort(), ["u1", "u3"]);
+  assert.equal(supabase.calls.length, 3, "eet opslag pr. hold");
+  assert.deepEqual(supabase.calls.map((c) => c.eq).sort(), ["t1", "t2", "t3"]);
+  for (const c of supabase.calls) {
+    assert.equal(c.select, "team_id");
+    assert.equal(c.neq, "race-9");
+    assert.equal(c.limit, 1);
+  }
+});
+
+test("defaultFetchFirstTimeManagers (#3624): samme svar som den gamle fulde hentning", async () => {
+  // Blanding af veteraner, foerstegangs-hold, hold med resultater kun i dette
+  // loeb, en manager med to hold og flere hold end der koeres parallelt.
+  const teams = [
+    { id: "vet-a", user_id: "u-vet-a" },
+    { id: "vet-b", user_id: "u-vet-b" },
+    { id: "new-a", user_id: "u-new-a" },
+    { id: "new-b", user_id: "u-new-b" },
+    { id: "only-here", user_id: "u-only-here" },
+    { id: "two-1", user_id: "u-two" }, // veteranhold
+    { id: "two-2", user_id: "u-two" }, // nyt hold, samme manager
+    ...Array.from({ length: 14 }, (_, i) => ({ id: `bulk-${i}`, user_id: `u-bulk-${i}` })),
+  ];
+  const results = [
+    { team_id: "vet-a", race_id: "r1" },
+    { team_id: "vet-a", race_id: "r2" },
+    { team_id: "vet-b", race_id: "r3" },
+    { team_id: "vet-b", race_id: "r2" },
+    { team_id: "only-here", race_id: "r2" },
+    { team_id: "two-1", race_id: "r1" },
+    ...Array.from({ length: 14 }, (_, i) => ({ team_id: `bulk-${i}`, race_id: i % 3 === 0 ? "r2" : "r1" })),
+  ];
+  const userIds = [...new Set(teams.map((t) => t.user_id))];
+  for (const raceId of ["r1", "r2", "r3", "r-new"]) {
+    const supabase = makeFirstTimeSupabase({ teams, results });
+    const actual = await defaultFetchFirstTimeManagers({ supabase, race: { id: raceId }, userIds });
+    const expected = referenceFirstTimeManagers({ teams, results, raceId, userIds });
+    assert.deepEqual([...actual].sort(), [...expected].sort(), `loeb ${raceId}`);
+    assert.equal(supabase.calls.length, teams.length, `loeb ${raceId}: eet opslag pr. hold`);
+  }
+});
+
 test("defaultFetchFirstTimeManagers: fejl → tomt sæt (alle får standard-copy)", async () => {
   const supabase = makeFirstTimeSupabase({ teamsError: new Error("boom") });
+  const set = await defaultFetchFirstTimeManagers({
+    supabase, race: { id: "race-9" }, userIds: ["u1"],
+  });
+  assert.equal(set.size, 0);
+});
+
+test("defaultFetchFirstTimeManagers: fejl i race_results-opslaget → tomt sæt", async () => {
+  const supabase = makeFirstTimeSupabase({
+    teams: [{ id: "t1", user_id: "u1" }],
+    resultsError: new Error("timeout"),
+  });
   const set = await defaultFetchFirstTimeManagers({
     supabase, race: { id: "race-9" }, userIds: ["u1"],
   });

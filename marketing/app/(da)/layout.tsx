@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "../globals.css";
+import { FIRST_TOUCH_SCRIPT } from "@/lib/attribution";
 
 // DA-root-layout. Alle ruter i denne gruppe ligger under /da/ og serveres med
 // lang="da" i den statiske HTML. Title-separator "·" (ingen em-dash).
@@ -55,6 +56,9 @@ export default function DaRootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="da">
       <body>
+        {/* #5310: first-touch attribution FØR noget link kan klikkes. Samme nøgle
+            og format som SPA'ens attribution.js; skriver kun hvis nøglen mangler. */}
+        <script dangerouslySetInnerHTML={{ __html: FIRST_TOUCH_SCRIPT }} />
         <link
           rel="preload"
           href="/fonts/dm-sans-latin-wght-normal.woff2"

@@ -63,6 +63,7 @@ import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
+import { startClockAlignedInterval } from "./lib/schedulerTick.js"; // #3624 trin 1
 import { runHalfFinalizedRaceWatch } from "./lib/raceFinalizeWatch.js"; // #4147
 import { refreshRankingMatviewsSafe } from "./lib/refreshRankingMatviews.js";
 import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot.js";
@@ -2052,9 +2053,14 @@ export function startCron() {
   // Bevidst INGEN immediate-run: det periodiske tick er nok, og en etape skal ikke
   // fyre ved hver genstart (mirror auto-prize-mønstret).
   // #2077: Sentry-heartbeat (monitorCron) → MISSED-alarm hvis tick'et udebliver.
-  setInterval(
-    trackedTick("stage scheduler", monitorCron("stage-scheduler", runStageSchedulerCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
+  // #3624 trin 1: tikket ligger paa klokken (hh:00:05, hh:05:05 ...) i stedet for
+  // 5 min efter processens start — ventetiden fra planlagt etape til foerste tick
+  // afhang ellers af hvornaar Railway sidst genstartede. Samme kadence, samme
+  // overlap-guard (runStageSchedulerCron), samme daglige cap. To instanser der
+  // overlapper under et deploy, tikker nu samtidig; #4026-claimet
+  // (race_stage_claims) lader kun den ene afvikle etapen.
+  startClockAlignedInterval(
+    trackedTick("stage scheduler", monitorCron("stage-scheduler", runStageSchedulerCron, CRON_MONITOR_5MIN))
   );
 
   // Every 15 minutes: halv-finaliserings-vagt (#4147) — read-only detektion af løb

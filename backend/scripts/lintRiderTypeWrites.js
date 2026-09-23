@@ -103,6 +103,12 @@ export const TYPE_WRITE_FILES = Object.freeze({
     "Scriptets egen UPDATE rører kun stat_*-kolonnerne + archetype_draw — typen " +
     "persisteres udelukkende af deriveForRiderIds bagefter, altså gennem den " +
     "allerede-ankrede identitets-kilde.",
+  "scripts/generateYouthSquadsS4.js":
+    "#5518 A6-engangsgeneratoren (AI-holdenes ungdomstrupper). Spejlings-gaten før " +
+    "insert bygger primary_type via resolveRiderTypes (samme kæde som deriveForRiderIds, " +
+    "#2065-klassen) til værdi-input, rapport og post-verify. Scriptets egne riders-writes " +
+    "(insert uden type-kolonner + kontrakt-update) rører aldrig typen; den persisteres " +
+    "udelukkende af deriveForRiderIds bagefter.",
   "lib/marketValueSundaySweep.js":
     "#3448-markedsblendet LÆSER riders.primary_type og pakker den i rene " +
     "feature-objekter til predictMarketPrice/computeSupport (markedsmodellens " +
