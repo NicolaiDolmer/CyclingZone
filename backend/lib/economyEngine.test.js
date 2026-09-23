@@ -4924,6 +4924,179 @@ test("#2840 · mode=daily springer sæson-start-løntrækket helt over (dagsswee
   assert.equal(result.emergency_loan, 0, "intet nødlån skal udløses af det (fraværende) sæson-start-løntræk");
 });
 
+// ─── #4153 · ingen ny-sæson-løn for ryttere der pensioneres i samme skifte ──────
+//
+// processSeasonStart trækker lønnen FØR rytterudviklingen pensionerer. En rytter
+// motoren pensionerer i samme skifte, kører aldrig et løb i den nye sæson og må
+// derfor ikke lønnes for den. Reglen er motorens egen
+// (riderProgressionEngine.willRetireAtSeasonStart) — ingen kopi her.
+
+const { loadRetiringRiderIds } = await import("./riderProgressionEngine.js");
+const { PROGRESSION_CONFIG } = await import("./riderProgression.js");
+const { LAUNCH_REFERENCE_YEAR } = await import("./riderSeasonAge.js");
+
+// Fødselsdato for en rytter der var `age` år i den sæson der SLUTTER, når
+// sæson `seasonNumber` starter (motoren måler pension på den afsluttede sæson).
+function bornForEndedSeasonAge(age, seasonNumber) {
+  return `${LAUNCH_REFERENCE_YEAR + seasonNumber - 2 - age}-01-01`;
+}
+
+// Read-only mock af præcis de to opslag loadRetiringRiderIds laver.
+function buildRetirementLookupMock({ riders, abilityRiderIds }) {
+  return {
+    from(table) {
+      if (table === "riders") {
+        return {
+          select() {
+            return {
+              eq(col, val) {
+                assert.equal(col, "is_retired");
+                const rows = riders.filter((r) => (r.is_retired ?? false) === val);
+                return { order() { return { range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }) }; } };
+              },
+            };
+          },
+        };
+      }
+      if (table === "rider_derived_abilities") {
+        const rows = abilityRiderIds.map((id) => ({ rider_id: id }));
+        return { select() { return { order() { return { range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }) }; } }; } };
+      }
+      throw new Error(`Unexpected table in #4153 lookup mock: ${table}`);
+    },
+  };
+}
+
+test("#4153 · processTeamSeasonPayroll lønner ikke ryttere der pensioneres i skiftet", async () => {
+  const { supabase, financeRows } = buildPayrollGateMock();
+  const team = { id: "team-4153", name: "Pension FC", division: 3, riders: [{ id: "old", salary: 5000 }, { id: "young", salary: 3000 }] };
+
+  const result = await processTeamSeasonPayroll(team, "season-4153", {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+    readWageDeductionMode: async () => "season_upfront",
+    retiringRiderIds: new Set(["old"]),
+  });
+
+  const salaryRows = financeRows.filter((r) => r.type === "salary");
+  assert.equal(salaryRows.length, 1);
+  assert.equal(salaryRows[0].amount, -3000, "kun den rytter der fortsætter, lønnes");
+  assert.equal(salaryRows[0].metadata?.params?.count, 1, "løn-posten tæller kun de lønnede ryttere");
+  assert.equal(result.total_salary, 3000);
+});
+
+test("#4153 · processTeamSeasonPayroll uden retiringRiderIds lønner alle som før", async () => {
+  const { supabase, financeRows } = buildPayrollGateMock();
+  const team = { id: "team-4153b", name: "Uaendret FC", division: 3, riders: [{ id: "old", salary: 5000 }, { id: "young", salary: 3000 }] };
+
+  await processTeamSeasonPayroll(team, "season-4153b", {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+    readWageDeductionMode: async () => "season_upfront",
+  });
+
+  assert.equal(financeRows.find((r) => r.type === "salary").amount, -8000);
+});
+
+test("#4153 · transition-fixture: en rytter over den garanterede pensionsalder lønnes ikke ved skiftet", async () => {
+  const seasonNumber = 4;
+  const { guaranteedAge, windowStartAge } = PROGRESSION_CONFIG.retirement;
+  const base = { primary_type: "sprinter", potentiale: 4, is_retired: false, team_id: "team-fixture" };
+  const riders = [
+    { ...base, id: "veteran", salary: 5000, birthdate: bornForEndedSeasonAge(guaranteedAge, seasonNumber) },
+    { ...base, id: "prime", salary: 3000, birthdate: bornForEndedSeasonAge(windowStartAge - 6, seasonNumber) },
+  ];
+
+  // Trin 1 (før payroll): motorens egen regel på motorens eget grundlag.
+  const retiringRiderIds = await loadRetiringRiderIds({
+    supabase: buildRetirementLookupMock({ riders, abilityRiderIds: riders.map((r) => r.id) }),
+    seasonNumber,
+  });
+  assert.deepEqual([...retiringRiderIds], ["veteran"]);
+
+  // Trin 2: payroll for holdet med samme mængde.
+  const { supabase, financeRows } = buildPayrollGateMock();
+  await processTeamSeasonPayroll(
+    { id: "team-fixture", name: "Fixture FC", division: 3, riders: riders.map(({ id, salary }) => ({ id, salary })) },
+    "season-fixture",
+    {
+      supabase,
+      processLoanInterest: async () => ({ charged: [] }),
+      createEmergencyLoan: async () => {},
+      getTotalDebt: async () => 0,
+      readWageDeductionMode: async () => "season_upfront",
+      retiringRiderIds,
+    },
+  );
+  assert.equal(financeRows.find((r) => r.type === "salary").amount, -3000, "veteranen lønnes ikke for en sæson han aldrig kører");
+});
+
+test("#4153 · processSeasonStart slår pensionerne op før payroll og sender dem videre (sæson ≥ 2)", async () => {
+  const seasonId = "season-4";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 4 },
+    prevSeasonId: "season-3",
+    prevStandings: [],
+    team: makeSeason1Team({ balance: INITIAL_BALANCE, division: 3, sponsor_income: 340_000 }),
+  });
+  const calls = [];
+  let payrollDeps = null;
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    loadRetiringRiderIds: async (args) => { calls.push("lookup"); assert.equal(args.seasonNumber, 4); return new Set(["r-old"]); },
+    runSeasonPayroll: async (_client, _seasonId, deps) => { calls.push("payroll"); payrollDeps = deps; return { results: [], summary: {} }; },
+    developRidersForSeason: async () => { calls.push("progression"); return { developed: 0, grew: 0, declined: 0, retired: 1 }; },
+  });
+
+  assert.deepEqual(calls, ["lookup", "payroll", "progression"]);
+  assert.deepEqual([...payrollDeps.retiringRiderIds], ["r-old"]);
+});
+
+test("#4153 · processSeasonStart i sæson 1 (ingen rytterudvikling) slår intet op og lønner alle", async () => {
+  const seasonId = "season-1";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 1 },
+    team: makeSeason1Team({ balance: INITIAL_BALANCE - 50_000 }),
+  });
+  let lookedUp = false;
+  let payrollDeps = null;
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    loadRetiringRiderIds: async () => { lookedUp = true; return new Set(["r-old"]); },
+    runSeasonPayroll: async (_client, _seasonId, deps) => { payrollDeps = deps; return { results: [], summary: {} }; },
+  });
+
+  assert.equal(lookedUp, false, "ingen motor-kørsel i sæson 1 ⇒ ingen pensioner at undtage");
+  assert.equal(payrollDeps.retiringRiderIds.size, 0);
+});
+
+test("#4153 · et fejlende pensions-opslag vælter ikke sæsonstarten — alle lønnes som før", async () => {
+  const seasonId = "season-4";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 4 },
+    prevSeasonId: "season-3",
+    prevStandings: [],
+    team: makeSeason1Team({ balance: INITIAL_BALANCE, division: 3, sponsor_income: 340_000 }),
+  });
+  let payrollDeps = null;
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    loadRetiringRiderIds: async () => { throw new Error("lookup boom"); },
+    runSeasonPayroll: async (_client, _seasonId, deps) => { payrollDeps = deps; return { results: [], summary: {} }; },
+    developRidersForSeason: async () => ({ developed: 0, grew: 0, declined: 0, retired: 0 }),
+  });
+
+  assert.ok(payrollDeps, "payroll skal stadig køre");
+  assert.equal(payrollDeps.retiringRiderIds.size, 0);
+});
+
 // ─── #1608 form-frys: tier 4 (DIVISION_BONUSES[4] + [1,2,3]→MIN..MAX-loop) ────────
 
 test("#1608 · payDivisionBonuses krediterer tier-4-hold (DIVISION_BONUSES[4] findes)", async () => {

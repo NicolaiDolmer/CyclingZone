@@ -26,7 +26,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { developRiderSeason, buildCapsForRider, sameCaps } from "./riderProgression.js";
+import { developRiderSeason, buildCapsForRider, sameCaps, resolveSeasonRetirement } from "./riderProgression.js";
 import {
   RETIREMENT_NOTICE_COLUMNS,
   frozenNoticeFor,
@@ -93,6 +93,68 @@ async function fetchRidersForSeason(supabase) {
     );
     return load(SEASON_RIDER_COLUMNS);
   }
+}
+
+/**
+ * #4153 · Motorens pensions-input for ÉN rytter ved sæsonstart `seasonNumber`.
+ * Det ENESTE sted input'et sammensættes: developRidersForSeason bruger det selv,
+ * og willRetireAtSeasonStart (sæson-payrollens spørgsmål) bruger det også.
+ *
+ * Returnerer null når motoren springer rytteren over (mangler type, potentiale
+ * eller en alder) — en sådan rytter pensioneres ikke i skiftet.
+ *
+ * `endingSeason` er null ved kald uden sæsonnummer (tests/orchestrator), og så
+ * er der intet frosset varsel at læse (#5073).
+ */
+export function seasonStartRetirementInputs(riderRow, seasonNumber) {
+  if (!riderRow?.primary_type || riderRow.potentiale == null) return null;
+  const age = ageForSeason(riderRow.birthdate, seasonNumber);
+  if (age == null) return null;
+  const endingSeason = seasonNumber != null ? Number(seasonNumber) - 1 : null;
+  const frozenRetirementNotice = endingSeason != null ? frozenNoticeFor(riderRow, endingSeason) : null;
+  return { age, endingSeason, frozenRetirementNotice };
+}
+
+/**
+ * #4153 · Pensioneres rytteren af motoren, når sæson `seasonNumber` starter?
+ * Samme input (seasonStartRetirementInputs) og samme regel
+ * (riderProgression.resolveSeasonRetirement) som developRiderSeason bruger i
+ * developRidersForSeason — ingen kopi af reglen.
+ */
+export function willRetireAtSeasonStart(riderRow, seasonNumber) {
+  const inputs = seasonStartRetirementInputs(riderRow, seasonNumber);
+  if (!inputs) return false;
+  return resolveSeasonRetirement(
+    { id: riderRow.id, frozenRetirementNotice: inputs.frozenRetirementNotice },
+    inputs.age,
+    seasonNumber,
+  ).retire;
+}
+
+/**
+ * #4153 · Id'erne på de ryttere developRidersForSeason vil pensionere ved
+ * sæsonstart `seasonNumber`. Samme rytter-grundlag som motoren
+ * (fetchRidersForSeason: aktive ryttere + varsel-kolonnerne, med samme
+ * fallback) og samme spring-over-regel for ryttere uden evne-række.
+ * Kun ryttere på et hold er relevante for lønnen.
+ *
+ * Read-only. Kaldes af sæson-payrollen FØR motoren kører, så en rytter der
+ * pensioneres i skiftet ikke får den nye sæsons løn trukket.
+ *
+ * @returns {Promise<Set<string>>}
+ */
+export async function loadRetiringRiderIds({ supabase, seasonNumber }) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  const [riders, abilityRows] = await Promise.all([
+    fetchRidersForSeason(supabase),
+    fetchAllRows(() => supabase.from("rider_derived_abilities").select("rider_id").order("rider_id")),
+  ]);
+  const hasAbilities = new Set(abilityRows.map((a) => a.rider_id));
+  return new Set(
+    riders
+      .filter((r) => r.team_id != null && hasAbilities.has(r.id) && willRetireAtSeasonStart(r, seasonNumber))
+      .map((r) => r.id),
+  );
 }
 
 async function runBatched(items, concurrency, fn) {
@@ -220,9 +282,12 @@ export async function developRidersForSeason({
 
   for (const r of riders) {
     if (alreadyDeveloped.has(r.id)) { summary.skipped_already_done++; continue; }
-    if (!r.primary_type || r.potentiale == null) continue;
-    const age = ageForSeason(r.birthdate, seasonNumber);
-    if (age == null) continue;
+    // #4153: alder + frosset varsel sammensættes ét sted (seasonStartRetirementInputs),
+    // så sæson-payroll kan spørge "pensioneres han i dette skifte?" med præcis
+    // samme input som motoren selv bruger nedenfor.
+    const retirementInputs = seasonStartRetirementInputs(r, seasonNumber);
+    if (!retirementInputs) continue;
+    const { age, endingSeason, frozenRetirementNotice } = retirementInputs;
     const abRow = abilityByRider.get(r.id);
     if (!abRow) continue;
 
@@ -254,11 +319,8 @@ export async function developRidersForSeason({
 
     // #5073: pensionen for den AFSLUTTEDE sæson (seasonNumber − 1) er et løfte
     // rytterkortet allerede har vist. Er svaret frosset for netop den sæson,
-    // læses det; ellers rulles som hidtil — og resultatet skrives ned nedenfor,
-    // så det aldrig kan flytte sig igen. `endingSeason` er null ved kald uden
-    // sæsonnummer (tests/orchestrator), og så er adfærden præcis som før.
-    const endingSeason = seasonNumber != null ? Number(seasonNumber) - 1 : null;
-    const frozenRetirementNotice = endingSeason != null ? frozenNoticeFor(r, endingSeason) : null;
+    // læses det (frozenRetirementNotice ovenfor); ellers rulles som hidtil — og
+    // resultatet skrives ned nedenfor, så det aldrig kan flytte sig igen.
     if (frozenRetirementNotice !== null) summary.retirement_notice_read++;
 
     const { next, retirement } = developRiderSeason(

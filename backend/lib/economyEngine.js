@@ -40,7 +40,7 @@ import {
 } from "./boardMandateEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
-import { developRidersForSeason } from "./riderProgressionEngine.js";
+import { developRidersForSeason, loadRetiringRiderIds } from "./riderProgressionEngine.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
 // #4148: bag flag, default OFF — se riderValuesBulkWriteFlag.js.
@@ -541,6 +541,31 @@ export async function processSeasonStart(seasonId, deps = {}) {
     throwIfSupabaseError(expireError, "Could not expire sponsor-pullouts");
   }
 
+  // #1155: rytterudvikling (#1137) gated bag SEASON_RIDER_PROGRESSION_ENABLED
+  // (ejer-beslutning 2026-06-08). Tests injicerer deps.developRidersForSeason og
+  // kører kaldet uafhængigt af flaget. Afgøres HER (før payroll), fordi #4153
+  // bruger samme svar: kun når motoren faktisk kører i dette skifte, bliver
+  // nogen pensioneret — og kun da må payroll undlade deres løn.
+  const progressionWillRun = Number.isFinite(seasonNumber)
+    && seasonNumber >= 2
+    && Boolean(deps.developRidersForSeason || SEASON_RIDER_PROGRESSION_ENABLED);
+
+  // #4153 · Ryttere som motoren pensionerer i SAMME skifte (efter payroll
+  // nedenfor) skal ikke have den nye sæsons løn trukket — de kører aldrig et løb
+  // i den. Samme regel som motoren (riderProgressionEngine.willRetireAtSeasonStart),
+  // ingen kopi. Fejler opslaget, lønnes alle som før (status quo), og fejlen
+  // sendes til Sentry — et sæsonskifte må ikke gå i stå på det her.
+  let retiringRiderIds = new Set();
+  if (progressionWillRun) {
+    const loadRetiringFn = deps.loadRetiringRiderIds ?? loadRetiringRiderIds;
+    try {
+      retiringRiderIds = await loadRetiringFn({ supabase: supabaseClient, seasonNumber });
+    } catch (err) {
+      console.error(`  ⚠️ Retirement lookup for payroll failed, every rider is paid as before (#4153): ${err?.message || err}`);
+      captureException(err, { tags: { flow: "season-transition", stage: "payroll-retiring-riders" } });
+    }
+  }
+
   // 2026-05-21: Sæson-payroll flyttet fra sæson-SLUT til sæson-START.
   // Rækkefølge i sæson-start er nu:
   //   1. Sponsor (kredit) — udbetalt ovenfor
@@ -557,6 +582,7 @@ export async function processSeasonStart(seasonId, deps = {}) {
   const payrollOutcome = await runSeasonPayrollFn(supabaseClient, seasonId, {
     ...deps,
     seasonNumber,
+    retiringRiderIds,
   });
 
   // #535: Returnér struktureret { sponsor, payroll } så admin-UI og
@@ -585,17 +611,10 @@ export async function processSeasonStart(seasonId, deps = {}) {
   // retirement + base_value-recompute. Kører fra sæson 2 (sæson 1 = launch-baseline,
   // intet at udvikle fra). Idempotent via rider_development_log. Isoleret: en fejl
   // her må ikke rulle sponsor/payroll tilbage (allerede skrevet) → fang + rapportér.
-  // #1155: rytterudvikling (#1137) gated bag SEASON_RIDER_PROGRESSION_ENABLED
-  // (ejer-beslutning 2026-06-08 — slået fra indtil progressions-systemet er
-  // færdigbygget). Tests injicerer deps.developRidersForSeason og kører kaldet
-  // uafhængigt af flaget.
+  // Gaten (progressionWillRun) afgøres før payroll ovenfor — se #1155/#4153 dér.
   const developFn = deps.developRidersForSeason ?? developRidersForSeason;
   let progression = null;
-  if (
-    Number.isFinite(seasonNumber) &&
-    seasonNumber >= 2 &&
-    (deps.developRidersForSeason || SEASON_RIDER_PROGRESSION_ENABLED)
-  ) {
+  if (progressionWillRun) {
     try {
       progression = await developFn({ supabase: supabaseClient, seasonId, seasonNumber });
       console.log(`  ✅ Rytterudvikling: ${progression.developed} udviklet · ${progression.grew}↑ ${progression.declined}↓ · ${progression.retired} pensioneret`);
@@ -643,6 +662,8 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
       supabase: supabaseClient,
       // #1678 · videre-fører seasonNumber så upkeep kan deferres i sæson 1.
       seasonNumber: deps.seasonNumber,
+      // #4153 · ryttere motoren pensionerer i samme skifte (processSeasonStart).
+      retiringRiderIds: deps.retiringRiderIds,
       facilitiesEnabled,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
@@ -742,9 +763,16 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   const wageDeductionMode = await readWageDeductionModeFn(supabaseClient);
   const isDailyWageMode = wageDeductionMode === WAGE_DEDUCTION_MODES.DAILY;
 
+  // #4153 · En rytter som motoren pensionerer i SAMME skifte (efter payroll)
+  // kører aldrig et løb i den nye sæson og lønnes derfor ikke for den.
+  // deps.retiringRiderIds kommer fra processSeasonStart (samme regel som
+  // motoren); udeladt = tom mængde = alle lønnes som før.
+  const retiringRiderIds = deps.retiringRiderIds instanceof Set ? deps.retiringRiderIds : new Set(deps.retiringRiderIds || []);
+  const payrollRiders = (team.riders || []).filter((r) => !retiringRiderIds.has(r.id));
+
   const totalSalary = isDailyWageMode
     ? 0
-    : (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
+    : payrollRiders.reduce((sum, r) => sum + (r.salary || 0), 0);
   let emergencyLoanAmount = 0;
 
   if (!isDailyWageMode && totalSalary > 0) {
@@ -769,7 +797,7 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
         idempotent: true,
         metadata: {
           code: "tx.salary",
-          params: { count: (team.riders || []).length },
+          params: { count: payrollRiders.length },
         },
         audit: {
           sourcePath: "economyEngine.processSeasonStart.salary",
