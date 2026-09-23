@@ -15,6 +15,7 @@ import {
   isHelpSectionVisible,
 } from "./helpFlagGates.js";
 import { PLAYER_VISIBLE_FLAG_KEYS } from "../../../backend/lib/stageFlagCatalog.js";
+import { betaAccessMockRoute } from "../preview/betaAccessMock.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "HelpPage.jsx"), "utf8");
@@ -82,6 +83,17 @@ test("hvert flag Hjaelp-siden gater paa staar i backendens allowlist", () => {
     "GET /api/feature-flags svarer kun paa PLAYER_VISIBLE_FLAG_KEYS (backend/lib/stageFlagCatalog.js); " +
       `et flag udenfor listen ville holde delen skjult for evigt: ${missing.join(", ")}`,
   );
+});
+
+test("preview-mocken svarer med praecis backendens allowlist (ingen drift i kopien)", async () => {
+  const res = betaAccessMockRoute("https://preview.example/api/feature-flags", "GET");
+  assert.ok(res, "preview-mocken svarer ikke paa GET /api/feature-flags");
+  const body = await res.json();
+  assert.deepEqual(Object.keys(body.flags).sort(), [...PLAYER_VISIBLE_FLAG_KEYS].sort());
+  for (const value of Object.values(body.flags)) assert.equal(typeof value, "boolean");
+  // Admin-ruten maa ikke fanges af spiller-ruten.
+  const admin = await betaAccessMockRoute("https://preview.example/api/admin/feature-flags", "GET").json();
+  assert.ok(Array.isArray(admin.flags), "admin-tavlens svar blev overskygget af spiller-svaret");
 });
 
 test("hver gated sektion og blok findes i SECTION_DEFS i HelpPage.jsx", () => {
