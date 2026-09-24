@@ -16,11 +16,11 @@
 
 ## Bane 1 · S4-cutover 27-28/9 (rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
 
-1. 🟠 **Køen først (24/9):** #5670 #5661 (go, CI) · #5650 #5651 (rettes, go) · go-kort #5666 #5671 #5672 #5663 · "kør"-kort: `race_notify_outbox_enabled` on · `email_loop_race_digest` dry_run · `race_finalize_resumable_enabled` · gamle PR'er #5502 #5461 #5444 #5281 · GitHub-audit.
+1. 🟠 **Køen (24/9-d):** ✅ merget #5670 #5661 #5650 #5651 #5672 #5610 #5666 #5671 #5663 #5679 · ✅ `race_notify_outbox_enabled` on 18:45 · "kør"-kort: `youth_squad_pages` on (ejer venter på beta-testere) · `email_loop_race_digest` dry_run · `race_finalize_resumable_enabled` · parkeret m. dato: #5461 27/9 · #5281 28/9 · #5502 28/9 (A/B) · #5444 åben til værdikørslen · GitHub-audit.
 2. 🟠 **Træning:** ✅ 140 (#5608 #5615) · ✅ kerne + motor C2 (#5640 #5654) · #5670 hjælp · flip-prep #5663 · B3 #5281 flip-dagen · #5238 · #5456 · #4852-#4854. **Rytter-fundament:** point-flyt #5268 (ejer-gated) · #5269 · #5273.
 3. 🟠 **Kalender m. trupper:** ✅ kalender pr. trup + 4 D4-puljer (#5653) · **S4-kalender genereres om** (#5405: tørkørsel → "kør" efter #2789; gate lige mange løbsdage #5658) · generator A6 `--juniors=10 --apply` på ejer-go efter transitionen · #5327 arketype (#3512) · #4270 apply (ejer).
-4. 🟠 **Trupper (alt live 28/9):** ✅ S2 #5652 · ✅ puljer #5660 · ✅ stilling backend #5665 · #5650 præmie+udtagelse (16 år) · #5666 U23/junior-sider (#5631) · #5671 frontend-scope (#5648) · Y7-hook + comeback→ungdomsgruppe (opfølgningsissues 24/9).
-5. 🔵 **Cutover:** ✅ D4→D3-script #5669 (kør 28/9) · #5651 D4 = 4 puljer · #5661 comeback efter Global Rank · ✅ parkerede hold #5603 · **Mandatet: #5618 #5632 #5633 (PR #5679, go-kort m. billeder)** → #4859 flip → #4858 · **v4:** ✅ #5524 #5521 #5579 #5576 #5614 → #5577 · #5582 · lag 1 #5059 #5570 #5571 #5572 · indsats #5580 → #5581 · målinger #5578 #5583 → #5515 → **flip ejer-only** → #4916.
+4. 🟠 **Trupper (alt live 28/9):** ✅ S2 #5652 · ✅ puljer #5660 · ✅ stilling backend #5665 · ✅ #5650 præmie+udtagelse (16 år) · ✅ #5666 U23/junior-sider (beta; flag on for alle udestår) · ✅ #5671 frontend-scope · Y7-hook + comeback→ungdomsgruppe (opfølgningsissues 24/9).
+5. 🔵 **Cutover:** ✅ D4→D3-script #5669 (kør 28/9) · #5651 D4 = 4 puljer · #5661 comeback efter Global Rank · ✅ parkerede hold #5603 · **Mandatet: ✅ #5679 merget 24/9** → #4859 flip 28/9 → #4858 · **v4:** ✅ #5524 #5521 #5579 #5576 #5614 → #5577 · #5582 · lag 1 #5059 #5570 #5571 #5572 · indsats #5580 → #5581 · målinger #5578 #5583 → #5515 → **flip ejer-only** → #4916.
 6. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag) · #3458/#3512 · taktik-epic #5575 lag 2-4: #5101 → #5573 → #5574.
 
 ## Bane 2 · Forretning (viger aldrig; SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
