@@ -5,8 +5,15 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
+import { POPULATION_FILE, STAGES_FILE, TAIL_GATE_SEEDS } from "./v4FlipReadiness.mjs";
 import {
+  DEFAULT_POPULATION_FILE,
+  DEFAULT_SEEDS,
+  DEFAULT_STAGES_FILE,
   DISTANCE_BANDS,
   DISTANCE_EXPERIMENT_KM,
   abilityRankCorrelation,
@@ -24,6 +31,19 @@ import {
   summarizeBy,
   WEATHER_EXPERIMENT_CASES,
 } from "./v4TailSpread.js";
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+// ── Standardvaerdierne (#5579) ───────────────────────────────────────────────
+
+test("#5579: --gate uden flag bruger de pinnede filer og de ejer-laaste seeds, i takt med v4FlipReadiness.mjs", () => {
+  assert.equal(DEFAULT_POPULATION_FILE, POPULATION_FILE);
+  assert.equal(DEFAULT_STAGES_FILE, STAGES_FILE);
+  assert.deepEqual([...DEFAULT_SEEDS], [...TAIL_GATE_SEEDS]);
+  for (const file of [DEFAULT_POPULATION_FILE, DEFAULT_STAGES_FILE]) {
+    assert.ok(existsSync(join(REPO_ROOT, file)), `pinnet fil mangler: ${file}`);
+  }
+});
 
 // ── Proxy-kalenderen ─────────────────────────────────────────────────────────
 

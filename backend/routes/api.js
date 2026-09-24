@@ -250,6 +250,7 @@ import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked }
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
+import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "../lib/raceEntryAutoFillSource.js";
 import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
 // #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
 // af league_divisions og sæson-læsere af races i denne fil går gennem den
@@ -5887,13 +5888,16 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 
     const rows = picks.map((p) => ({
       race_id: race.id, rider_id: p.rider_id, team_id: req.team.id, race_role: p.race_role, is_auto_filled: true,
+      // #5246: managerens egen knap, ikke assistentens late-fill.
+      auto_filled_source: AUTO_FILL_SOURCES.MANAGER_AUTO,
     }));
     // Delete-then-insert (samme mønster + samme atomicitets-afvejning som regenerate-
     // endpointet ovenfor — se dets kommentar: ægte atomicitet kræver replace_race_selection-
     // RPC'en, men den er skrevet til manager-input, ikke assistent-genererede picks).
     const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
     if (delErr) return res.status(500).json({ error: delErr.message });
-    const { error: insErr } = await supabase.from("race_entries").insert(rows);
+    // #5246: tolerant hvis auto_filled_source-kolonnen ikke findes endnu (deploy-vinduet).
+    const { error: insErr } = await writeRaceEntriesWithSource({ supabase, rows });
     if (insErr) {
       // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
       // loadTeamBindingContext ovenfor alligevel skulle overse en konflikt — giv
@@ -6337,6 +6341,8 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       if (!picks.length || !captainId) continue;
       const rows = picks.map((p) => ({
         race_id: race.id, rider_id: p.rider_id, team_id: req.team.id, race_role: p.race_role, is_auto_filled: true,
+        // #5246: Race Hubs udfyld er managerens egen handling, ikke assistentens late-fill.
+        auto_filled_source: AUTO_FILL_SOURCES.MANAGER_AUTO,
       }));
       // Forward-guard (#2074): target er allerede filtreret til stages_completed===0, men
       // gør invarianten lokal til delete'en så et igangværende felt aldrig nulstilles.
@@ -6345,7 +6351,8 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       // (ægte atomicitet kræver en RPC; her gør vi i det mindste fejlen synlig + retry-bar).
       const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
       if (delErr) throw new Error(`race_entries delete (${race.id}): ${delErr.message}`);
-      const { error: insErr } = await supabase.from("race_entries").insert(rows);
+      // #5246: tolerant hvis auto_filled_source-kolonnen ikke findes endnu (deploy-vinduet).
+      const { error: insErr } = await writeRaceEntriesWithSource({ supabase, rows });
       if (insErr) {
         // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
         // bindingWindowByRace/lockedWindows ovenfor alligevel skulle overse en

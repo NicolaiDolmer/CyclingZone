@@ -278,9 +278,18 @@ test("prod-kataloget: ingen kendt afvigelse er blevet VÆRRE", () => {
   );
 });
 
+// #4827: denne test skal bevise STRUKTUREN (hver afvigelse har en gyldig, ikke-udløbet
+// dato PÅ DET TIDSPUNKT TESTEN BLEV SKREVET) — ikke fungere som den nightly udløbs-vagt.
+// Et bart `new Date()` gjorde testen klokke-afhængig: CI kører også med uret skubbet langt
+// frem (CZ_TEST_CLOCK_OFFSET_DAYS, #3385-mekanismen), og ville dermed fælde denne test hver
+// gang en afvigelse passerer sin reviewBy — uanset om nogen faktisk har set på kataloget.
+// Den ÆGTE udløbs-vagt med den rigtige vægur-klokke er flyttet til et natligt,
+// ikke-gatende tjek: `--check-expiry` i backend/scripts/dev/catalogSupplyReport.mjs, kaldt
+// fra .github/workflows/calendar-invariant-audit.yml.
+const STRUCTURAL_TODAY = "2026-09-19";
+
 test("de kendte afvigelser er tidsbegrænsede og ikke udløbet", () => {
-  const today = new Date().toISOString().slice(0, 10);
-  const { expired } = classifySupplyFindings([], { today });
+  const { expired } = classifySupplyFindings([], { today: STRUCTURAL_TODAY });
   assert.deepEqual(
     expired.map((d) => `${d.id} (udløb ${d.reviewBy})`),
     [],
