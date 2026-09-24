@@ -43,6 +43,9 @@ import { applyTimeLimit } from "./mechanics/timeLimit.ts";
 // koerer sammen), saa den forgrenes i simulateStageV4 — se TTT-blokken dér.
 import { simulateTeamTimeTrialStage } from "./mechanics/teamTimeTrial.ts";
 import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
+// #5576: enkeltstarten. Samme kerne som holdtidskoerslen, én rytter pr. enhed —
+// se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
+import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
 
 // Fase C-wiring (#4030) + F3-wiring (#4615, #2944, #3855): de rigtige
 // M2/M3/M4/M5/M8/M10-
@@ -52,7 +55,8 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // segment-loopet. Harness/tests kan stadig injicere egne hooks via
 // runSegmentLoop direkte.
 //
-// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855 + #4885 + #4246 + #2770).
+// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855 + #4885 + #4246 + #2770;
+// M12-linjen rettet 24/9, #5579).
 // Audit'en 5/9 talte otte faerdige mekanikker uden ét eneste kaldssted. M10
 // (incidents), M8 (brosten/grus), M7 (distance-slid), M11 (vejr), M16
 // (holdspil) og M9 (passager/bonussekunder) er nu KOBLET IND og staar altsaa
@@ -61,7 +65,10 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // `riderCpForSegment`) og er dermed ikke terraen-udloeste hooks men et lag
 // under dem. M11's anden arm — vejr-forstaerket styrt-risiko — ligger i
 // mechanics/descent.ts og mechanics/cobbles.ts.
-// Stadig bygget-men-ikke-kaldt: M12 (effort).
+// M12 (effort) er ogsaa koblet ind (#4632, 6/9) og har af samme grund INTET
+// hook her: rytterens eget indsatsvalg ganges paa kraftkravet i
+// segmentLoop.ts's `tickGroupRiders` (`applyEffortToDemand`, se M12-blokken
+// dér) og i enkeltstarten (mechanics/individualTimeTrial.ts).
 // (M16/holdspillet gav `Entrant.team_id`, forudsaetningen for M13/
 // holdtidskoerslen, der er wiret 6/9 som forgreningen i simulateStageV4
 // nedenfor. Ordre-adapteren kaldes af broen.)
@@ -181,7 +188,7 @@ export function simulateStageV4(input: StageInput): StageOutput {
   //
   // #3463's fund var praecis den manglende forgrening: "ni ryttere fra samme
   // hold ville hver faa deres egen tid", fordi `ttt` faldt igennem til
-  // enkeltstarts-vejen. Diskriminatoren er `profile_type` og IKKE `finale_type`
+  // vejetape-vejen. Diskriminatoren er `profile_type` og IKKE `finale_type`
   // — raceStageProfileGenerator mapper baade itt/itt_hilly OG ttt til
   // finale_type "solo_tt", saa de kan ikke skelnes paa finalen alene.
   //
@@ -199,6 +206,19 @@ export function simulateStageV4(input: StageInput): StageOutput {
   if (input.route.profile_type === "ttt") {
     const rosters = teamRostersFromStartlist(input.startlist);
     if (rosters) return simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning);
+  }
+
+  // ── Enkeltstarten (#5576) ────────────────────────────────────────────────
+  // itt/itt_hilly faldt foer igennem til massestartens segment-loop: felt,
+  // laee, udbrud og `sprint_decided`, og naesten hele feltet paa vindertiden.
+  // §3 invariant 7 kraever individuelle tider paa en ITT. Kernen er
+  // holdtidskoerslens med ét hold pr. rytter (egen start, intet laee, egen
+  // tid), saa M10/M15/M9 koeres af den og IKKE af blokken nedenfor.
+  //
+  // Ingen fallback som TTT's: en enkeltstart kraever intet hold-id, saa den
+  // forgrener altid — ogsaa for fixtures og haandbyggede testlister.
+  if (isIndividualTimeTrial(input.route.profile_type)) {
+    return simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning);
   }
 
   const { state, timeline, groupSnapshots } = runSegmentLoop(input, LIVE_MECHANIC_HOOKS);

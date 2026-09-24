@@ -10,9 +10,10 @@
 // GET /api/season/signup-status og POST'er /api/season/signup, best-effort
 // (forsvinder stille ved fejl, docs/DASHBOARD_RULES.md §3).
 //
-// Placering: blandt de betingede engangskort (DASHBOARD_RULES.md §4/§5),
-// mellem SeasonWrapNudgeCard og SeasonStartGuideCard — ny placering, ikke en
-// af de historisk ejer-låste rækker i §2. Bygges som Card, ikke banner (§3:
+// Placering (ejer-go 23/9, #452): øverst i indholdsflowet, lige under trup-/
+// kontrakt-advarslerne og over dagens etaper — samme konto-risiko-klasse som
+// dem (DASHBOARD_RULES.md §2). Før lå kortet blandt de betingede engangskort
+// og endte under folden på telefonen. Bygges som Card, ikke banner (§3:
 // "maks én nudge-banner ad gangen" gælder kun banner-formen).
 //
 // `signedUp` erstatter knappen med en bekræftelse i stedet for at skjule

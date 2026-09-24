@@ -537,6 +537,35 @@ test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async 
   assert.equal(r1.abilities.climbing, 80);
 });
 
+// #5571: AI-holdets markering følger med på entrant, så løbsmotor v4 kan give
+// KUN AI-hold M14's taktik. Et menneskehold får aldrig feltet.
+test("loadEntrantsForRace: markerer AI-holdets ryttere (team_is_ai), aldrig et menneskeholds", async () => {
+  const supabase = makeSupabase({
+    ...padToFloor(padToFloor({
+      race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T2" }],
+      riders: [
+        { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: false },
+        { id: "r2", team_id: "T2", firstname: "Bo", lastname: "Dahl", is_u25: false },
+      ],
+      rider_derived_abilities: [
+        { rider_id: "r1", ...abil({ climbing: 80 }) },
+        { rider_id: "r2", ...abil({ sprint: 80 }) },
+      ],
+    }, "T1", "padA"), "T2", "padB"),
+    teams: [
+      { id: "T1", name: "Hold A", is_ai: true },
+      { id: "T2", name: "Hold B", is_ai: false },
+    ],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
+  const aiRiders = entrants.filter((e) => e.team_id === "T1");
+  const humanRiders = entrants.filter((e) => e.team_id === "T2");
+  assert.ok(aiRiders.length > 0 && humanRiders.length > 0);
+  assert.ok(aiRiders.every((e) => e.team_is_ai === true));
+  assert.ok(humanRiders.every((e) => e.team_is_ai === undefined));
+  assert.equal(aiRiders[0].team_name, "Hold A");
+});
+
 // #4357: Postgres garanterer ingen rækkefølge uden ORDER BY — regressionstest der
 // fælder hvis nogen fjerner .order()-kaldet på race_entries-forespørgslen. Bygger
 // sin egen mock (i stedet for makeSupabase, hvis order() er et no-op) netop for at

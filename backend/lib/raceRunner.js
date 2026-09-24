@@ -105,6 +105,7 @@ import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
+import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
@@ -443,6 +444,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     ...(v3 && e.peakWindows?.length
       ? { peakWindows: e.peakWindows }
       : {}),
+    // #5571: AI-holdets markering følger KUN med ind i v4 (M14-taktikken);
+    // v3-stien ser en uændret simEntrant-form.
+    ...(v4Engine && e.team_is_ai === true ? { team_is_ai: true } : {}),
   }));
 
   // S5 (#2224): deterministisk peak-input-signatur til input_checksum — konstant
@@ -502,7 +506,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // StageOutput til den samme `ranked`-form v3 returnerer, så ALT herunder
     // (pushIndiv, computePassages, akkumulering, klassementer) er uændret.
     const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
-      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace })
+      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted })
       : simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
     for (const inc of incidents) {
       allIncidents.push({ stage_number: stageNumber, ...inc });
@@ -1249,6 +1253,9 @@ export async function fillMissingTeamEntries({
       rows.push({
         race_id: race.id, rider_id: pick.rider_id, team_id: teamId,
         race_role: isRescue ? "helper" : pick.race_role, is_auto_filled: true,
+        // #5246: eksplicit kilde, saa redningen ved start skilles fra assistentens
+        // late-fill i maalingen. Triggeren giver ingen default (uden kilde = unknown).
+        auto_filled_source: AUTO_FILL_SOURCES.START_RESCUE,
       });
     }
   }
@@ -1272,7 +1279,10 @@ export async function fillMissingTeamEntries({
   }
 
   if (persist && rows.length) {
-    const { error: insErr } = await supabase.from("race_entries").insert(rows);
+    // #5246: tolerant skrivning — i vinduet mellem backend-deploy og migrationen
+    // findes auto_filled_source ikke endnu; saa skrives raekkerne uden kilden i
+    // stedet for at vaelte loebsstartens autofyld (raceEntryAutoFillSource.js).
+    const { error: insErr } = await writeRaceEntriesWithSource({ supabase, rows });
     if (insErr) {
       // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
       // loadFieldBindingContext/excludeBoundRiders ovenfor alligevel skulle overse
@@ -1308,7 +1318,7 @@ export async function fillMissingTeamEntries({
         );
         rows.splice(0, rows.length, ...kept);
         if (rows.length) {
-          const { error: retryErr } = await supabase.from("race_entries").insert(rows);
+          const { error: retryErr } = await writeRaceEntriesWithSource({ supabase, rows });
           if (retryErr) throw new Error(`race_entries insert (efter drain-filter): ${retryErr.message}`);
         }
         await notifyOwnersOfFullFill(rows);
@@ -1510,9 +1520,14 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // nuværende hold (team_id-snapshottet i race_entries er #1844-beskyttet).
   const teamIds = [...new Set([...teamByRider.values()].filter(Boolean))];
   let teamNameById = new Map();
+  // #5571: hvilke hold er AI-styrede — løbsmotor v4 giver KUN dem M14's
+  // taktik (aldrig autopilot for et menneskehold). Samme additive opslag som
+  // navnet: fejler det, er intet hold markeret AI, og alle kører rollernes
+  // standardordre, præcis som før.
+  let aiTeamIds = new Set();
   if (teamIds.length) {
     const { data: teamRows, error: teamErr } = await selectInChunks({
-      supabase, table: "teams", columns: "id, name",
+      supabase, table: "teams", columns: "id, name, is_ai",
       inColumn: "id", ids: teamIds,
     });
     if (teamErr) {
@@ -1520,6 +1535,7 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
       console.error(`team_name-berigelse fejlede (degraderer til null): ${teamErr.message}`);
     } else {
       teamNameById = new Map((teamRows || []).map((t) => [t.id, t.name]));
+      aiTeamIds = new Set((teamRows || []).filter((t) => t.is_ai === true).map((t) => t.id));
     }
   }
 
@@ -1541,6 +1557,7 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     };
     const role = roleByRider.get(r.id);
     if (role) entrant.race_role = role;
+    if (teamId != null && aiTeamIds.has(teamId)) entrant.team_is_ai = true;
     const cond = conditionByRider.get(r.id);
     if (cond !== undefined) {
       entrant.form = cond.form;
@@ -2387,6 +2404,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       ...(v3 && e.peakWindows?.length
         ? { peakWindows: e.peakWindows }
         : {}),
+      // #5571: se buildRaceResults' tilsvarende note (kun v4).
+      ...(v4Engine && e.team_is_ai === true ? { team_is_ai: true } : {}),
     };
   });
 
@@ -2398,7 +2417,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const seed = stableSeed(seedInput);
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
   const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
-    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true })
+    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted })
     : simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
   const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));

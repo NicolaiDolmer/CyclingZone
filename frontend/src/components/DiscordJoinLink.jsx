@@ -1,5 +1,7 @@
 import { DISCORD_INVITE_URL } from "../lib/externalLinks";
 import { logEvent } from "../lib/logEvent.js"; // #5130
+import { buttonClass } from "./ui/buttonStyles.js"; // #2761
+import { ExternalLinkIcon } from "./ui/icons/index.jsx"; // #2761
 
 // Discord-brand-glyf (officielt mærke). Inline her frem for i det delte
 // ui/icons-sæt: en ekstern social-glyf hører ikke hjemme i det generiske
@@ -12,22 +14,44 @@ function DiscordGlyph({ className = "" }) {
   );
 }
 
-// Persistent "Join Discord"-CTA mod community-serveren. Tre varianter:
-//   "button"  → fuld-bredde Discord-blurple-knap (signup-success, #415)
-//   "sidebar" → kompakt rad der matcher nav-items i sidebar-footeren (#679)
-//   "icon"    → lille ikon-only-link til en sekundær raekke/footer, hvor en
-//               fuld label ikke passer (#427/#5130: sidebar-footerraekken,
-//               ved siden af LanguageSwitcher — headeren selv baerer KUN
-//               wordmarket, jf. Layout.jsx's #671-kommentar).
+// Persistent "Join Discord"-CTA mod community-serveren. Fire varianter:
+//   "button"    → fuld-bredde Discord-blurple-knap (signup-success, #415)
+//   "sidebar"   → kompakt rad der matcher nav-items i sidebar-footeren (#679)
+//   "icon"      → lille ikon-only-link til en sekundær raekke/footer, hvor en
+//                 fuld label ikke passer (#427/#5130: sidebar-footerraekken,
+//                 ved siden af LanguageSwitcher — headeren selv baerer KUN
+//                 wordmarket, jf. Layout.jsx's #671-kommentar).
+//   "secondary" → sekundaer sm-knap inde i et kort (#2761: discord_welcome i
+//                 indbakken). Hairline og aldrig guld, fordi viewets ene guld-
+//                 knap tilhoerer siden, ikke et kort. Ingen Discord-glyf i
+//                 knappen: kortets ikon-plads viser allerede maerket, og
+//                 ExternalLinkIcon siger at den aabner en ny fane.
 // Ekstern destination → <a target=_blank rel=noopener noreferrer>, ikke router-Link.
-export default function DiscordJoinLink({ variant = "button", label, className = "", onClick }) {
-  // #5130: alle tre varianter maaler samme konvertering (dedupe sker ikke her
+// `source` overstyrer maalingens kilde, saa et kald-sted kan skelnes fra de
+// andre varianter (fx "notification_button" i indbakken).
+export default function DiscordJoinLink({ variant = "button", label, className = "", onClick, source }) {
+  // #5130: alle varianter maaler samme konvertering (dedupe sker ikke her
   // — det er en ren instrumentering, ikke idempotens-kilden for
   // indbakke-beskeden, som ligger i teams.discord_welcome_sent_at).
   const handleClick = (e) => {
-    logEvent("discord_invite_clicked", { source: `discord_join_link_${variant}` });
+    logEvent("discord_invite_clicked", { source: source ?? `discord_join_link_${variant}` });
     onClick?.(e);
   };
+
+  if (variant === "secondary") {
+    return (
+      <a
+        href={DISCORD_INVITE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleClick}
+        className={`${buttonClass({ variant: "secondary", size: "sm" })} ${className}`}
+      >
+        <span>{label}</span>
+        <ExternalLinkIcon size={14} aria-hidden="true" />
+      </a>
+    );
+  }
 
   if (variant === "icon") {
     return (

@@ -22,8 +22,24 @@
 // ÉN kontrakt: formen, vokabularerne og rolle-defaulten bor i
 // `../ai/teamOrderContract.ts` og importeres herfra — de fire uenige kopier
 // auditten fandt er nu én.
+//
+// #5571 (lag 1 i "Holdmoedet", ejer 23/9) — AI-holdene faar M14 i prod:
+//
+//   AI-hold:      M14's ordre (generateAiTeamOrder)  = standardordren
+//   Menneskehold: rollernes standardordre            = standardordren (uaendret)
+//   Begge:        + etapens gemte raekke som overlay (uaendret)
+//
+// Samme TeamOrder-type, samme overlay-regel, samme vej ind i motoren — ingen
+// sidekanal. Et menneskehold faar ALDRIG M14 (ingen autopilot for mennesker):
+// kun et hold hvis ryttere baerer `is_ai: true` fra startlisten.
+//
+// Motoren laeser indsatsen paa `Entrant.effort`, ikke i ordren. Planen
+// returnerer derfor AI-holdenes indsats pr. rytter (`aiEffortByRider`), som
+// kaldstedet saetter paa startlisten. Menneskeholdenes indsatskilde roeres
+// ikke her (den er #5580's "én kilde til effort").
 
-import type { TeamOrder as EngineTeamOrder } from "../types.ts";
+import type { AbilityKey, TeamOrder as EngineTeamOrder } from "../types.ts";
+import { generateAiTeamOrder, type AiFieldRider, type AiRaceContext, type AiTacticsRoute } from "../ai/aiTactics.ts";
 import {
   applyStageOverlayToOrder,
   defaultTeamOrderForRoster,
@@ -51,8 +67,30 @@ export type TeamOrderRow = {
   riders?: unknown;
 };
 
-/** Startlistens hold + roller: hvem koerer, og hvad er deres opgave. */
-export type RosterRider = { team_id: string; rider_id: string; role?: string | null };
+/**
+ * Startlistens hold + roller: hvem koerer, og hvad er deres opgave.
+ * `is_ai` + `abilities` (#5571) er kun noedvendige for AI-hold: M14 vaelger
+ * taktik ud fra evnerne, og holdet genkendes paa flaget.
+ */
+export type RosterRider = {
+  team_id: string;
+  rider_id: string;
+  role?: string | null;
+  is_ai?: boolean | null;
+  abilities?: Record<string, unknown> | null;
+};
+
+/** Dagens rute + loebet omkring den: det M14 skal kende for at vaelge taktik. */
+export type StageOrderContext = {
+  route: AiTacticsRoute;
+  race?: AiRaceContext;
+};
+
+export type StageOrderPlan = {
+  orders: EngineTeamOrder[];
+  /** KUN AI-holdenes ryttere: indsatsen fra deres ordre (motoren laeser Entrant.effort). */
+  aiEffortByRider: Map<string, EffortLevel>;
+};
 
 const VALID_STANCES: ReadonlySet<string> = new Set(BREAKAWAY_STANCE_VALUES);
 const VALID_EFFORTS: ReadonlySet<string> = new Set(EFFORT_LEVEL_VALUES);
@@ -148,31 +186,88 @@ export function rosterByTeam(roster: readonly RosterRider[]): Map<string, Roster
   return new Map([...byTeam.entries()].sort((a, b) => a[0].localeCompare(b[0])));
 }
 
+/** Evne-raekken som M14 laeser den. M14 clamper selv hver vaerdi (null/streng → tal). */
+function toAbilities(raw: Record<string, unknown> | null | undefined): Record<AbilityKey, number> {
+  return (raw ?? {}) as Record<AbilityKey, number>;
+}
+
+/** Hold hvis ryttere baerer `is_ai: true` fra startlisten (holdet er AI-styret). */
+function aiTeamIds(roster: readonly RosterRider[]): Set<string> {
+  const ids = new Set<string>();
+  for (const rider of roster) {
+    if (rider.is_ai === true && rider.team_id != null) ids.add(String(rider.team_id));
+  }
+  return ids;
+}
+
 /**
  * Alle raekker for ÉN etape + startlistens hold og roller → komplet
- * `StageInput.orders`.
+ * `StageInput.orders` + AI-holdenes indsats pr. rytter.
  *
- * Raekker for andre etaper ignoreres; hold uden raekke faar rollernes
- * standardordre (T4); raekker for hold UDENFOR startlisten droppes (holdet
- * stiller ikke op). Deterministisk output-orden: hold sorteret paa team_id,
- * og pr. hold foerst `team_tactics`, saa evt. `leadout`.
+ * Raekker for andre etaper ignoreres; raekker for hold UDENFOR startlisten
+ * droppes (holdet stiller ikke op). Standardordren er rollernes for et
+ * menneskehold og M14's for et AI-hold (#5571); etapens raekke laegges oven
+ * paa begge. Uden `context` kender adapteren ikke dagens rute, og AI-holdene
+ * falder tilbage paa rollernes standard (T4: kernen kraever aldrig ordrer).
+ * Deterministisk output-orden: hold sorteret paa team_id, og pr. hold foerst
+ * `team_tactics`, saa evt. `leadout`.
  */
-export function buildStageOrders(args: {
+export function buildStageOrderPlan(args: {
   rows: readonly TeamOrderRow[];
   stageNumber: number;
   roster: readonly RosterRider[];
-}): EngineTeamOrder[] {
-  const { rows, stageNumber, roster } = args;
+  context?: StageOrderContext;
+}): StageOrderPlan {
+  const { rows, stageNumber, roster, context } = args;
   const byTeam = new Map<string, TeamOrderRow>();
   for (const row of rows) {
     if (row.stage_number === stageNumber) byTeam.set(String(row.team_id), row);
   }
+  const aiTeams = context ? aiTeamIds(roster) : new Set<string>();
+  const abilitiesByRider = new Map<string, Record<AbilityKey, number>>();
+  if (aiTeams.size > 0) {
+    for (const rider of roster) {
+      if (rider.rider_id != null) abilitiesByRider.set(String(rider.rider_id), toAbilities(rider.abilities));
+    }
+  }
+  // Hele dagens startliste: M14 placerer kaptajnen i FELTET, ikke i holdet.
+  const field: AiFieldRider[] = [...abilitiesByRider.entries()].map(([rider_id, abilities]) => ({ rider_id, abilities }));
+
   const orders: EngineTeamOrder[] = [];
+  const aiEffortByRider = new Map<string, EffortLevel>();
   for (const [teamId, teamRoster] of rosterByTeam(roster)) {
-    const order = teamOrderFor(teamId, teamRoster, byTeam.get(teamId));
+    const isAiTeam = context !== undefined && aiTeams.has(teamId);
+    const base = isAiTeam
+      ? generateAiTeamOrder({
+          team_id: teamId,
+          route: context.route,
+          roster: teamRoster.map((r) => ({
+            rider_id: r.rider_id,
+            role: r.role,
+            abilities: abilitiesByRider.get(r.rider_id) ?? toAbilities(null),
+          })),
+          field,
+          race: context.race,
+        }).order
+      : defaultTeamOrderForRoster(teamId, teamRoster);
+    const row = byTeam.get(teamId);
+    const order = row ? applyStageOverlayToOrder(base, rowToStageOverlay(row)) : base;
+    if (isAiTeam) {
+      for (const rider of order.riders) aiEffortByRider.set(rider.rider_id, rider.effort);
+    }
     orders.push(toEngineTeamOrder(order));
     const leadout = toEngineLeadoutOrder(order, teamRoster);
     if (leadout) orders.push(leadout);
   }
-  return orders;
+  return { orders, aiEffortByRider };
+}
+
+/** Kun ordrerne (bagudkompatibel form) — se `buildStageOrderPlan`. */
+export function buildStageOrders(args: {
+  rows: readonly TeamOrderRow[];
+  stageNumber: number;
+  roster: readonly RosterRider[];
+  context?: StageOrderContext;
+}): EngineTeamOrder[] {
+  return buildStageOrderPlan(args).orders;
 }

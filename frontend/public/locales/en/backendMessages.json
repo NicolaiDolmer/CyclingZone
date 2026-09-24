@@ -501,7 +501,9 @@
     },
     "discordWelcome": {
       "title": "Hep! Come join us on Discord",
-      "message": "Cycling Zone is more than the website. It is a community, and a lot of it happens on Discord: that is where I hang out, where I ask you what to build next, and where the other managers talk cycling all day. Be blunt with me in there, it is way more useful than praise. Come as you are, you do not need results to belong. See you in there :)"
+      "message": "Cycling Zone is more than the website. It is a community, and a lot of it happens on Discord: that is where I hang out, where I ask you what to build next, and where the other managers talk cycling all day. Be blunt with me in there, it is way more useful than praise. Come as you are, you do not need results to belong. See you in there :)",
+      "forumLine": "Prefer to stay on the site? The <forum>manager forum</forum> is right here in the game.",
+      "cta": "Join Discord"
     },
     "betaAccess": {
       "approved": {
