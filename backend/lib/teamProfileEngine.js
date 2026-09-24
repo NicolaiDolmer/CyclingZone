@@ -4,7 +4,8 @@ import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
 import { runAcademyIntakeForTeam } from "./academyIntake.js";
 import { isAcademyEnabled } from "./academyFlag.js";
-import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
+import { reconcileAiTeamsForPool, isPoolRetired, withPoolRetiredColumn } from "./aiTeamGenerator.js";
+import { withSeniorSquadScope } from "./squads.js";
 import { reconcilePoolCalendarOnActivation } from "./tierCalendarMaterializer.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import { ensureMidSeasonSponsor } from "./midSeasonSponsor.js";
@@ -178,11 +179,16 @@ function getEconomyRepairValues(team) {
 // [epic #4592 del 2] Eksporteret, så en parkeret manager der har tilmeldt sig igen
 // (managerParking.unparkTeam) genindplaceres efter PRÆCIS samme regel som et nyt hold,
 // i stedet for en kopi der kan drive fra den.
+//
+// #5642 (S4, pyramide 1/2/4/4): pensionerede puljer (league_divisions.retired_at,
+// D4 E-H) er aldrig et mål. #5536: kun seniorpuljer — en ungdomspulje deler tier med
+// seniorernes og må aldrig blive et nyt holds pulje.
 export async function pickDivisionForNewTeam(supabase) {
-  const { data: pools, error: poolsError } = await supabase
-    .from("league_divisions")
-    .select("id, tier")
-    .in("tier", [MANAGER_ENTRY_DIVISION, MAX_DIVISION]);
+  const { data: pools, error: poolsError } = await withPoolRetiredColumn((retiredCol) =>
+    withSeniorSquadScope((senior) => senior(supabase
+      .from("league_divisions")
+      .select(`id, tier${retiredCol}`))
+      .in("tier", [MANAGER_ENTRY_DIVISION, MAX_DIVISION])));
 
   if (poolsError) {
     throw createHttpError(500, poolsError.message);
@@ -222,7 +228,10 @@ export const NEW_TEAM_PLACEMENT_TEAM_COLUMNS =
  * @returns {{ division:number, leagueDivisionId:any }}
  */
 export function choosePoolForNewTeam({ pools = [], teams = [] } = {}) {
-  const allPools = pools || [];
+  // #5642: en pensioneret pulje (D4 E-H fra S4) har ingen pladser, ingen AI og ingen
+  // kalender. Den udelades før BÅDE mætnings-testen og valget, så D4-overflow kun
+  // spreder på de aktive puljer A-D.
+  const allPools = (pools || []).filter((pool) => !isPoolRetired(pool));
   const entryPools = allPools.filter((pool) => pool.tier === MANAGER_ENTRY_DIVISION);
   const overflowPools = allPools.filter((pool) => pool.tier === MAX_DIVISION);
 
