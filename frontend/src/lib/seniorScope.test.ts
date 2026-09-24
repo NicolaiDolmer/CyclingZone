@@ -18,13 +18,13 @@ function mockQuery(result: { data: unknown; error: unknown } = { data: [], error
     or: (s: string) => typeof q;
     is: (c: string, v: null) => typeof q;
     order: (...args: unknown[]) => typeof q;
-    then: (resolve: (v: typeof result) => unknown) => unknown;
+    then: PromiseLike<typeof result>["then"];
     _calls: typeof calls;
   } = {
     or(s) { calls.or.push(s); return q; },
     is(c, v) { calls.is.push([c, v]); return q; },
     order() { return q; },
-    then(resolve) { return resolve(result); },
+    then(onfulfilled, onrejected) { return Promise.resolve(result).then(onfulfilled, onrejected); },
     _calls: calls,
   };
   return q;
