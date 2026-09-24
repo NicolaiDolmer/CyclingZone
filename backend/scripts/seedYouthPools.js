@@ -55,6 +55,12 @@ import {
   youthGroupLabel,
 } from "../lib/youthPoolAssignment.js";
 import { MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
+import {
+  loadParkingInputs,
+  selectActiveSubscriptionTeamIds,
+  selectTeamsToPark,
+  selectTeamsToUnpark,
+} from "../lib/managerParking.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -165,13 +171,38 @@ export function buildSquadPlan({ squad, pools, teams, globalRanks, riders, group
   return { squad, mode, plan, poolsToCreate, unusedPools, updates };
 }
 
-/** Tal uden holdnavne/id'er, til den committede snapshot (offentligt repo). */
-export function publicSummary(squadPlans, { generatedAt, eligibleManagers, eligibleAi, globalRankRows }) {
+/**
+ * Prognose for holdene EFTER sæsonskiftets parkerings-sweep: hold sweepen ville
+ * parkere får parked_at, parkerede hold der har tilmeldt sig igen får det fjernet.
+ * Ren; udvælgelsen er managerParking.js' egne funktioner (se main).
+ */
+export function applyParkingForecast(teams, { toPark = [], toUnpark = [] } = {}) {
+  const park = new Set(toPark);
+  const unpark = new Set(toUnpark);
+  return (teams || []).map((t) => {
+    if (park.has(t.id)) return { ...t, parked_at: "forecast" };
+    if (unpark.has(t.id)) return { ...t, parked_at: null };
+    return t;
+  });
+}
+
+/** Kort tal-udgave af en trup-plan (prognose-tabellen). */
+export function squadNumbers({ squad, plan }) {
+  const { managers, aiTeams, groupCount, largestGroup, smallestGroup } = plan.summary;
+  return { squad, managers, aiTeams, groupCount, largestGroup, smallestGroup };
+}
+
+/**
+ * Tal uden holdnavne/id'er, til den committede snapshot (offentligt repo).
+ * forecast (valgfri) = { parked, unparked, squads: [squadNumbers] } efter parkerings-sweepen.
+ */
+export function publicSummary(squadPlans, { generatedAt, eligibleManagers, eligibleAi, globalRankRows, forecast = null }) {
   return {
     issue: ISSUE,
     generated_at: generatedAt,
     mode: "dry-run",
     input: { eligibleManagers, eligibleAi, globalRankRows },
+    forecastAfterParking: forecast,
     squads: squadPlans.map(({ squad, mode, plan, poolsToCreate, unusedPools, updates }) => ({
       squad,
       mode,
@@ -210,6 +241,21 @@ export function renderMarkdown(summary) {
     `Input: ${summary.input.eligibleManagers} berettigede managers, ${summary.input.eligibleAi} aktive AI-hold, ${summary.input.globalRankRows} Global Rank-rækker.`,
     "",
   ];
+  const fc = summary.forecastAfterParking;
+  if (fc) {
+    lines.push(
+      "## Prognose efter sæsonskiftets parkering",
+      "",
+      `Parkerings-sweepen (managerParking.js, 30 dage uden login) ville parkere ${fc.parked} managers og genindplacere ${fc.unparked}. Grupperne seedes efter transitionen, så det er disse tal der gælder; kør dry-run igen der.`,
+      "",
+      "| Trup | Managers | AI-hold | Grupper | Største | Mindste |",
+      "|---|---:|---:|---:|---:|---:|",
+      ...fc.squads.map((s) => `| ${s.squad === "u23" ? "U23" : "Junior"} | ${s.managers} | ${s.aiTeams} | ${s.groupCount} | ${s.largestGroup} | ${s.smallestGroup} |`),
+      "",
+      "## Plan i dag (før parkering)",
+      "",
+    );
+  }
   for (const s of summary.squads) {
     lines.push(
       `## ${s.squad === "u23" ? "U23" : "Junior"} (${s.mode})`,
@@ -303,6 +349,20 @@ export async function main(argv = process.argv.slice(2)) {
   const state = await loadState(supabase);
   const squadPlans = args.squads.map((squad) => buildSquadPlan({ squad, groupSize: args.groupSize, ...state }));
 
+  // Prognose: samme plan efter parkerings-sweepen ved sæsonskiftet (read-only;
+  // udvælgelsen er managerParking.js' egne rene funktioner, ingen kopi).
+  const now = new Date();
+  const parking = await loadParkingInputs({ supabase });
+  const activeSubscriptionTeamIds = selectActiveSubscriptionTeamIds(parking.subscriptions, now);
+  const toPark = selectTeamsToPark({ teams: parking.teams, users: parking.users, now, activeSubscriptionTeamIds }).map((t) => t.id);
+  const toUnpark = selectTeamsToUnpark({ teams: parking.teams }).map((t) => t.id);
+  const forecastTeams = applyParkingForecast(state.teams, { toPark, toUnpark });
+  const forecast = {
+    parked: toPark.length,
+    unparked: toUnpark.length,
+    squads: args.squads.map((squad) => squadNumbers(buildSquadPlan({ squad, groupSize: args.groupSize, ...state, teams: forecastTeams }))),
+  };
+
   const generatedAt = new Date().toISOString();
   const date = generatedAt.slice(0, 10);
   const summary = publicSummary(squadPlans, {
@@ -310,6 +370,7 @@ export async function main(argv = process.argv.slice(2)) {
     eligibleManagers: state.teams.filter(isEligibleManagerTeam).length,
     eligibleAi: state.teams.filter((t) => isEligibleAiTeam(t) && t.league_division_id != null).length,
     globalRankRows: state.globalRanks.length,
+    forecast,
   });
 
   const publicDir = join(REPO_ROOT, PUBLIC_SNAPSHOT_DIR);
@@ -326,6 +387,7 @@ export async function main(argv = process.argv.slice(2)) {
   for (const s of summary.squads) {
     console.log(`  ${s.squad} (${s.mode}): ${s.managers} managers + ${s.aiTeams} AI → ${s.groupCount} grupper, størst ${s.largestGroup}, mindst ${s.smallestGroup}, ${s.groupsBelowMinStarters} under ${s.minRaceEntries} startklare, ${s.teamUpdates} FK-opdateringer`);
   }
+  console.log(`  prognose efter parkering (${forecast.parked} parkeres, ${forecast.unparked} genindplaceres): ${forecast.squads.map((s) => `${s.squad} ${s.managers}+${s.aiTeams} → ${s.groupCount} grupper (${s.smallestGroup}-${s.largestGroup})`).join(" · ")}`);
   console.log(`  snapshot: ${relative(REPO_ROOT, jsonPath)} + .md · fuld plan: ${relative(REPO_ROOT, fullPath)}`);
 
   if (!args.apply) return 0;

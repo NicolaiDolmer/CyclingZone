@@ -9,6 +9,8 @@ import {
   buildSquadPlan,
   publicSummary,
   renderMarkdown,
+  applyParkingForecast,
+  squadNumbers,
 } from "./seedYouthPools.js";
 
 const pad = (n) => String(n).padStart(3, "0");
@@ -90,11 +92,25 @@ test("buildSquadPlan genkørt efter apply = top-up med 0 skrivninger (idempotent
   assert.deepEqual(again.poolsToCreate, []);
 });
 
+test("applyParkingForecast: sweepens parkerede hold falder ud, genindplacerede kommer med", () => {
+  const w = world({ managers: 30, ai: 0 });
+  w.teams.push(manager(31, { parked_at: "2026-08-01" }));
+  const before = buildSquadPlan({ squad: "u23", ...w });
+  assert.equal(before.plan.summary.managers, 30);
+  const toPark = ["m001", "m002", "m003", "m004", "m005", "m006", "m007"];
+  const forecastTeams = applyParkingForecast(w.teams, { toPark, toUnpark: ["m031"] });
+  const after = squadNumbers(buildSquadPlan({ squad: "u23", ...w, teams: forecastTeams }));
+  assert.deepEqual(after, { squad: "u23", managers: 24, aiTeams: 0, groupCount: 1, largestGroup: 24, smallestGroup: 24 });
+  assert.equal(w.teams[0].parked_at, undefined, "input muteres ikke");
+});
+
 test("publicSummary/renderMarkdown indeholder ingen holdnavne eller team-id'er", () => {
   const w = world();
   const sp = buildSquadPlan({ squad: "u23", ...w });
-  const summary = publicSummary([sp], { generatedAt: "2026-09-25T00:00:00.000Z", eligibleManagers: 40, eligibleAi: 20, globalRankRows: 40 });
+  const forecast = { parked: 3, unparked: 1, squads: [squadNumbers(sp)] };
+  const summary = publicSummary([sp], { generatedAt: "2026-09-25T00:00:00.000Z", eligibleManagers: 40, eligibleAi: 20, globalRankRows: 40, forecast });
   const text = JSON.stringify(summary) + renderMarkdown(summary);
+  assert.match(renderMarkdown(summary), /Prognose efter sæsonskiftets parkering/);
   assert.doesNotMatch(text, /Hold M|AI 0|\bm0\d\d\b|\ba0\d\d\b/);
   assert.equal(summary.squads[0].groupCount, 3);
   assert.match(renderMarkdown(summary), /U23 — Group A/);

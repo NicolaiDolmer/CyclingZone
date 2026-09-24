@@ -1,0 +1,314 @@
+{
+  "issue": 4620,
+  "generated_at": "2026-09-24T11:04:51.301Z",
+  "mode": "dry-run",
+  "input": {
+    "eligibleManagers": 257,
+    "eligibleAi": 101,
+    "globalRankRows": 257
+  },
+  "forecastAfterParking": {
+    "parked": 144,
+    "unparked": 0,
+    "squads": [
+      {
+        "squad": "u23",
+        "managers": 113,
+        "aiTeams": 101,
+        "groupCount": 9,
+        "largestGroup": 24,
+        "smallestGroup": 23
+      },
+      {
+        "squad": "junior",
+        "managers": 113,
+        "aiTeams": 101,
+        "groupCount": 9,
+        "largestGroup": 24,
+        "smallestGroup": 23
+      }
+    ]
+  },
+  "squads": [
+    {
+      "squad": "u23",
+      "mode": "fresh",
+      "groupSize": 24,
+      "managers": 257,
+      "aiTeams": 101,
+      "groupCount": 15,
+      "largestGroup": 24,
+      "smallestGroup": 23,
+      "groupsBelowMinStarters": 15,
+      "minRaceEntries": 6,
+      "managersWithoutGlobalRank": 0,
+      "excludedManagers": 7,
+      "aiOverflow": 0,
+      "poolsToCreate": 15,
+      "unusedPools": 0,
+      "teamUpdates": 358,
+      "groups": [
+        {
+          "poolIndex": 0,
+          "label": "U23 — Group A",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 1,
+          "label": "U23 — Group B",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 2,
+          "label": "U23 — Group C",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 3,
+          "label": "U23 — Group D",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 4,
+          "label": "U23 — Group E",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 1
+        },
+        {
+          "poolIndex": 5,
+          "label": "U23 — Group F",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 6,
+          "label": "U23 — Group G",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 2
+        },
+        {
+          "poolIndex": 7,
+          "label": "U23 — Group H",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 8,
+          "label": "U23 — Group I",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 9,
+          "label": "U23 — Group J",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 10,
+          "label": "U23 — Group K",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 1
+        },
+        {
+          "poolIndex": 11,
+          "label": "U23 — Group L",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 12,
+          "label": "U23 — Group M",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 1
+        },
+        {
+          "poolIndex": 13,
+          "label": "U23 — Group N",
+          "managers": 18,
+          "aiTeams": 5,
+          "size": 23,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 14,
+          "label": "U23 — Group O",
+          "managers": 18,
+          "aiTeams": 5,
+          "size": 23,
+          "startersNow": 1
+        }
+      ]
+    },
+    {
+      "squad": "junior",
+      "mode": "fresh",
+      "groupSize": 24,
+      "managers": 257,
+      "aiTeams": 101,
+      "groupCount": 15,
+      "largestGroup": 24,
+      "smallestGroup": 23,
+      "groupsBelowMinStarters": 15,
+      "minRaceEntries": 6,
+      "managersWithoutGlobalRank": 0,
+      "excludedManagers": 7,
+      "aiOverflow": 0,
+      "poolsToCreate": 15,
+      "unusedPools": 0,
+      "teamUpdates": 358,
+      "groups": [
+        {
+          "poolIndex": 0,
+          "label": "Junior — Group A",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 1,
+          "label": "Junior — Group B",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 2,
+          "label": "Junior — Group C",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 3,
+          "label": "Junior — Group D",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 1
+        },
+        {
+          "poolIndex": 4,
+          "label": "Junior — Group E",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 5,
+          "label": "Junior — Group F",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 4
+        },
+        {
+          "poolIndex": 6,
+          "label": "Junior — Group G",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 7,
+          "label": "Junior — Group H",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 1
+        },
+        {
+          "poolIndex": 8,
+          "label": "Junior — Group I",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 3
+        },
+        {
+          "poolIndex": 9,
+          "label": "Junior — Group J",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 2
+        },
+        {
+          "poolIndex": 10,
+          "label": "Junior — Group K",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 1
+        },
+        {
+          "poolIndex": 11,
+          "label": "Junior — Group L",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 1
+        },
+        {
+          "poolIndex": 12,
+          "label": "Junior — Group M",
+          "managers": 17,
+          "aiTeams": 7,
+          "size": 24,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 13,
+          "label": "Junior — Group N",
+          "managers": 18,
+          "aiTeams": 5,
+          "size": 23,
+          "startersNow": 0
+        },
+        {
+          "poolIndex": 14,
+          "label": "Junior — Group O",
+          "managers": 18,
+          "aiTeams": 5,
+          "size": 23,
+          "startersNow": 1
+        }
+      ]
+    }
+  ]
+}
