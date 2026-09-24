@@ -96,7 +96,7 @@ export async function refreshYouthStandings({ supabase, raceId, race = null, cap
  * @param {object} args.supabase service_role-klient
  * @param {string} args.seasonId
  * @param {"u23"|"junior"} args.squad
- * @param {number} [args.leagueDivisionId] gruppen (league_divisions.id)
+ * @param {number | null} [args.leagueDivisionId] gruppen (league_divisions.id); udeladt = alle grupper
  * @returns {Promise<object[]>}
  */
 export async function listYouthStandings({ supabase, seasonId, squad, leagueDivisionId = null } = {}) {

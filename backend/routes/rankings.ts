@@ -201,7 +201,7 @@ export function createRankingsRouter({ supabase, requireAuth, reportError, viewe
     await requireYouthPages(req);
     const season = await resolveSeasonId(season_id);
     if (!season) return { data: [] };
-    return { data: await listYouthStandings({ supabase, seasonId: season, squad, leagueDivisionId: pool ?? null }) };
+    return { data: await listYouthStandings({ supabase, seasonId: season, squad, leagueDivisionId: pool }) };
   });
 
   // #5647 (Y7 / plan S5): rytterranglisten for en ungdomstrup (kun ungdomsloeb,
