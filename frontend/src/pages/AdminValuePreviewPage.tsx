@@ -252,7 +252,8 @@ export default function AdminValuePreviewPage() {
       if (toParam) qs.set("to", toParam);
       if (step) qs.set("step", String(step));
       const query = qs.toString();
-      const res = await apiFetch(`${API}/api/admin/value-preview${query ? `?${query}` : ""}`, { headers });
+      const url = `${API}/api/admin/value-preview` + (query ? `?${query}` : "");
+      const res = await apiFetch(url, { headers });
       if (!isLatest()) return;
       if (res.status === 403) { setAdminStatus("not_admin"); return; }
       const json = await readAdminJson(res);
