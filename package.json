@@ -106,7 +106,7 @@
     "db:selftest": "node scripts/db-selftest.mjs"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.125.0",
+    "@anthropic-ai/sdk": "^0.126.0",
     "lint-staged": "^17.5.1",
     "png-to-ico": "^3.0.2",
     "sharp": "^0.35.4"
