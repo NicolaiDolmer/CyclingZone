@@ -14,7 +14,7 @@ Intet nyt startes før A+B er live. **🏁 Motoren (ejer 23/9): runde 1-4 (#4914
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
 
 **#5589 dashboardet mister resultater** (1.000-rækker, 69 hold 23/9) · **#5323 Quad9** (#5312): målt 23/9, 0 låst ude; ejer-valg A/B.
-**Rest:** **#5443 værdisystemet færdigt** (trin 1-3 før 27/9) · #4595 → epic #5162 · #5242 apiFetch · #5288 · #5325.
+**Rest:** **#5443 værdisystemet færdigt** (trin 1-3 før 27/9) · epic #5162 (verdensklasse-A lige efter S4, ejer 24/9) · #5242 apiFetch.
 
 ## Bane 1 · S4-cutover 27-28/9 (rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
 
@@ -23,7 +23,7 @@ Intet nyt startes før A+B er live. **🏁 Motoren (ejer 23/9): runde 1-4 (#4914
 4. ⚪ **Bølge 4, kalender m. trupper:** 🟠 **S4-kalender** (#5405: tørkørsel 0 regelbrud; "kør" efter #2789) · pakker pr. trup · generator A6 (U23-bånd variant A) → AI U23/junior-ryttere · #5327 arketype (#3512) m. #5269 · C1 · dry-run → go → #4270 apply (ejer).
 5. 🟠 **Bølge 5, træning færdig (28/9):** ✅ skader i løbsdage (#5465) · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849 #5485 #5486) · #4852-#4854 · #4848.
 6. 🟠 **Bølge 6, trup-flader:** ✅ Graduation Day-siden (#2491) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
-7. 🔵 **Bølge 7, cutover:** #4592 → #452 → #4759 · Mandatet: #4857 lukket (løst af #4842) → #4859 flip → #4858 · **v4:** ✅ #5524 → #5521 → #5579 → flip-blokkere #5576 → #5577 · #5582 · lag 1 #5059 #5570 #5571 #5572 · indsats #5580 → #5581 (realisme-gate m. ejer-måltal) · målinger #5578 #5583 → #5515 → **flip ejer-only** → #4916.
+7. 🔵 **Bølge 7, cutover:** #4592 + hent tilbage før 27/9 (ejer 24/9) · ✅ #452 #4759 · Mandatet: #4857 lukket (løst af #4842) → #4859 flip → #4858 · **v4:** ✅ #5524 → #5521 → #5579 → flip-blokkere #5576 → #5577 · #5582 · lag 1 #5059 #5570 #5571 #5572 · indsats #5580 → #5581 (realisme-gate m. ejer-måltal) · målinger #5578 #5583 → #5515 → **flip ejer-only** → #4916.
 8. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag) · #3458/#3512 · taktik-epic #5575 lag 2-4: #5101 → #5573 → #5574 (needs-design).
 
 ## Bane 2 · Forretning (viger aldrig; SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))

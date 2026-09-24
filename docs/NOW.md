@@ -4,15 +4,15 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (23/9 kl. 22):** **Ny session:** `drafts/claude-session-2026-09-24-b.md` = start bølge C0b fra den nye session (OneDrive `private-handoffs/wave-2026-09-23-bC0b.json`, 10 spor: **#5589 dashboard-fejlen** + **#5592 24 t planlægning (S4-kalenderen venter)** først) → merge #5562 FØRST efter bølgen → motor-runde 2 + bølge C. **23/9-c merget:** #5563 #5555 #5549 #5524 #5585 #5564 #5587 #5521 #5556 #5554 (+ v7.296 #5588). **Flag:** scoren + telefon-tabellen on for alle, `youth_squad_pages` beta, `season_signup_enabled` on. **Ejer 08:30:** OneDrive `2026-09-24-morgenrapport.md` (#5592-tider → S4 "kør", Discord-invite, #5558, #5268, #5497).
+> **🎯 Next action (24/9 kl. 10):** **Ny session:** OneDrive `private-handoffs/session-prompt-2026-09-24-c.md` (v2, ejer-godkendt) + KØ i `2026-09-24-morgenrapport-nat.md`: beslutninger der blokerer byggeri FØRST (#4592 comeback: Global Rank/D4→D3/pro rata · træning fra løb · ungdomsløb) → bølge → merge-blok (S4-kalender "kør" først). **Løfte-tavle 24/9:** live = tilmeldingskort (#5605), Discord-kort (#5604; backfill "kør"), /roadmap-tekster (#5558; SQL "kør") · beta = U23/junior (on med #5568), Mandatet (28/9) · go-klar = #5596 #5598 #5603 #5608 #5615 · ikke bygget = hent tilbage, ungdomsløb, træning fra løb, ugeplan 7×5.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt, overlap forbliver det almindelige. **Tallet er LÅST: 140 (ejer 15/9, TRAINING_RULES §13.3); spørg aldrig igen.** **Ejer 20/9: måde B (jævnt, 5 pr. dato); A + synkrone blokke fjernet i #5169. B4 #5264 merget 20/9 bag flag.** **§2c (ejer 19/9):** S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only.
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende. `ratingGolden.5321.json` opdateres KUN m. ejer-go.
 
-> **🟡 Lofter + potentiale (ejer 18/9, byg intet):** lofterne ud, potentialet styrer farten (#5351); 6 huller efter 28/9. **#5268-point-flyt afventer.** **D-049-visning:** #5435 (b2), svar upostet #5436.
+> **🟡 Lofter (ejer 18/9, byg intet):** potentialet styrer farten (#5351); #5268 afventer; svar #5436 upostet.
 
-> **🔴 Åbne fund:** **#5589 dashboard 1.000-rækker (brand, C0b først)** · #5568 (+ pladsvisning fra #5547) · #5561 · #5566. **#5323 Quad9:** 0 låst ude (ejer-valg A/B). **📊 Triage:** `scripts/sentry-issues.mjs --period=7d`. **S3:** 529 løb, 28/8 → 27/9.
+> **🔴 Åbne fund:** **#5589 + #5601 dashboard-vinder (brand, PR #5598)** · #5602 bølge-motor-opfølgning · #5618/#5617 bestyrelses-beta · mobil hurtig-hvile. **#5162 chunk (ejer 24/9):** verdensklasse-A lige EFTER S4-sporene. **CodeRabbit:** loft nået, lokal CR på risk:high. **📊 Triage:** `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. **S3:** slutter 27/9.
 
 ## Standing context (forever-relaunch)
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
 - **Mekanik:** byg KUN via wave.js (Codex: samme indgang, #5468); merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); intet PR-loft (#5510); commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx. Base-PR merget → PR lukkes; retarget først (#5478).
 
-> **🤖 Working agent:** nat-session 24/9-b, C0b kører (`1ab1d82a`); ejer-go i #4914 + #5508.
+> **🤖 Working agent:** session 24/9-b lukker, når rette-bølge R (`c4c315ce`, 6 rettespor + #5568) er færdig; derefter "Ingen aktiv session".
