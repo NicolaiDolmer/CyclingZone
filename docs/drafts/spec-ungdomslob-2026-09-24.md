@@ -152,6 +152,6 @@ Ingen frontend-hjælper findes; lav én: **ny** `frontend/src/lib/seniorScope.ts
    - Junior: samme model.
    - **Konsekvens for sporene:** Y3 seeder ca. 9 grupper pr. trup (tier 1, `pool_index` 0-8) i stedet for en pyramide. `youthPoolAssignment.js` placerer alle ikke-parkerede menneskehold + AI-hold. Nye managers (`teamProfileEngine.js`, S4-struktur A2) og comebacks (A4) får også en ungdomsgruppe med AI-plads. Op/nedrykning (plan S6) bygges først til S4-slut.
 2. **Gruppefordeling i S4 (ejer 24/9): snake efter seniorholdets Global Rank** (`rankTeamsByGlobalRank` + `snakeAssign`, `backend/lib/pyramidCompression.js:172, :212`), så grupperne er lige stærke. AI-holdene fylder op til 24 pr. gruppe.
-3. **Åbent: antal AI-juniorer pr. hold** (`--juniors=N`, 0-10). Juniorer er 16-18, men løbsberettigede fra 17, så et AI-hold skal have ca. 9-10 juniorer for at have 6 løbsberettigede. A6-tørkørslen viser det præcise tal.
+3. **AI-juniorer pr. hold (ejer 24/9): 10** (`--juniors=10`). Juniorer er 16-18 og løbsberettigede fra 17, så 10 giver et skøn på ca. 6-7 løbsberettigede pr. AI-hold. `--apply` kræver stadig ejer-go ved cutover efter tørkørslen.
 
 **Prod 24/9 (aktive managers ≤ 30 d, ikke parkeret):** 114 managers · 58 har U23-ryttere, 5 kan stille et fuldt U23-hold · 70 har juniorer, 14 kan stille et fuldt juniorhold. Felterne er derfor mest AI i starten.
