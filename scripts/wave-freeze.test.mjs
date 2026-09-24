@@ -12,14 +12,18 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
   WAVE_FREEZE,
+  applySchemaEvidenceRule,
   classifyStall,
   commitAgeMinutes,
   extractInvestigateVerdict,
-  isLightTrack,
   needsGracefulStop,
+  planIdleLane,
   planReviewAttempt,
+  releasesOwnership,
   resolveTrackTimeoutMinutes,
-  sortMixedQueue,
+  sortHeavyFirst,
+  tailIdleLaneMinutes,
+  trackWeight,
   wipCommitMessage,
 } from "./wave-freeze.mjs";
 
@@ -221,41 +225,204 @@ test("WIP-commit-beskeden er den ordret aftalte fra #5178", () => {
   assert.equal(wipCommitMessage(5159), "wip(#5159): boelge-timeout, ucommittet arbejde gemt");
 });
 
-// ===== Blandet koe (#5220) =====
+// ===== Tungeste spor foerst (#5562, erstatter #5220's blandede koe) =====
 
-test("isLightTrack: kun sonnet+TARGETED er let - opus og/eller FULL er tungt", () => {
-  assert.equal(isLightTrack({ model: "sonnet", tier: "TARGETED" }), true);
-  assert.equal(isLightTrack({ model: "opus", tier: "TARGETED" }), false);
-  assert.equal(isLightTrack({ model: "sonnet", tier: "FULL" }), false);
-  assert.equal(isLightTrack({ model: "opus", tier: "FULL" }), false);
-  assert.equal(isLightTrack(null), false);
-  assert.equal(isLightTrack(undefined), false);
+test("trackWeight: FULL vejer 2, opus 1, lette spor 0 - ugyldigt spor 0", () => {
+  assert.equal(trackWeight({ model: "opus", tier: "FULL" }), 3);
+  assert.equal(trackWeight({ model: "sonnet", tier: "FULL" }), 2);
+  assert.equal(trackWeight({ model: "opus", tier: "TARGETED" }), 1);
+  assert.equal(trackWeight({ model: "sonnet", tier: "TARGETED" }), 0);
+  assert.equal(trackWeight(null), 0);
+  assert.equal(trackWeight(undefined), 0);
 });
 
-test("sortMixedQueue: lette spor forrest, stabil inden for hver gruppe", () => {
-  const heavy1 = { id: "heavy1", model: "opus", tier: "FULL" };
+test("sortHeavyFirst: tungeste forrest, stabil inden for samme vaegt", () => {
   const light1 = { id: "light1", model: "sonnet", tier: "TARGETED" };
-  const heavy2 = { id: "heavy2", model: "opus", tier: "TARGETED" };
+  const opus1 = { id: "opus1", model: "opus", tier: "TARGETED" };
+  const full = { id: "full", model: "opus", tier: "FULL" };
   const light2 = { id: "light2", model: "sonnet", tier: "TARGETED" };
-  const sorted = sortMixedQueue([heavy1, light1, heavy2, light2]);
+  const opus2 = { id: "opus2", model: "opus", tier: "TARGETED" };
+  const sonnetFull = { id: "sonnetFull", model: "sonnet", tier: "FULL" };
+  const sorted = sortHeavyFirst([light1, opus1, full, light2, opus2, sonnetFull]);
   assert.deepEqual(
     sorted.map((t) => t.id),
-    ["light1", "light2", "heavy1", "heavy2"],
-    "lette spor forrest, og den indbyrdes raekkefoelge inden for hver gruppe er uaendret (stabil)",
+    ["full", "sonnetFull", "opus1", "opus2", "light1", "light2"],
+    "faldende vaegt; orkestratorens raekkefoelge er tie-breaker inden for samme vaegt",
   );
 });
 
-test("sortMixedQueue: en koe der allerede kun har lette eller kun tunge spor rykkes ikke rundt", () => {
-  const allLight = [{ model: "sonnet", tier: "TARGETED" }, { model: "sonnet", tier: "TARGETED" }];
-  assert.deepEqual(sortMixedQueue(allLight), allLight);
-  const allHeavy = [{ model: "opus", tier: "FULL" }, { model: "opus", tier: "TARGETED" }];
-  assert.deepEqual(sortMixedQueue(allHeavy), allHeavy);
+test("sortHeavyFirst: boelge A 23/9 - det tunge spor starter foerst, ikke sidst", () => {
+  // Den gamle blandede koe lagde det tunge spor bagerst, saa det koerte alene i halen.
+  const queue = [
+    ...Array.from({ length: 11 }, (_, i) => ({ id: `let-${i}`, model: "sonnet", tier: "TARGETED" })),
+    { id: "tungt", model: "opus", tier: "FULL" },
+  ];
+  assert.equal(sortHeavyFirst(queue)[0].id, "tungt");
 });
 
-test("sortMixedQueue: tom eller ugyldig liste giver et tomt array, ikke en fejl", () => {
-  assert.deepEqual(sortMixedQueue([]), []);
-  assert.deepEqual(sortMixedQueue(null), []);
-  assert.deepEqual(sortMixedQueue(undefined), []);
+test("sortHeavyFirst: en koe med ens vaegt rykkes ikke rundt, og input muteres ikke", () => {
+  const allLight = [{ id: 1, model: "sonnet", tier: "TARGETED" }, { id: 2, model: "sonnet", tier: "TARGETED" }];
+  assert.deepEqual(sortHeavyFirst(allLight), allLight);
+  const input = [{ id: "a", model: "sonnet", tier: "TARGETED" }, { id: "b", model: "opus", tier: "FULL" }];
+  const before = input.map((t) => t.id);
+  sortHeavyFirst(input);
+  assert.deepEqual(input.map((t) => t.id), before);
+});
+
+test("sortHeavyFirst: tom eller ugyldig liste giver et tomt array, ikke en fejl", () => {
+  assert.deepEqual(sortHeavyFirst([]), []);
+  assert.deepEqual(sortHeavyFirst(null), []);
+  assert.deepEqual(sortHeavyFirst(undefined), []);
+});
+
+// ===== Rullende optag (#5562) =====
+
+test("planIdleLane: frys vinder over alt andet", () => {
+  assert.equal(planIdleLane({ queued: 3, activeLanes: 2, stoppedByFreeze: true, intakeEmpty: false }), "exit");
+});
+
+test("planIdleLane: et spor i koen tages", () => {
+  assert.equal(planIdleLane({ queued: 1, activeLanes: 0, stoppedByFreeze: false, intakeEmpty: true }), "take");
+  assert.equal(planIdleLane({ queued: 1, activeLanes: 0, stoppedByFreeze: false, intakeEmpty: true, intakeEnabled: false }), "take");
+});
+
+test("planIdleLane: tom koe uden optag (rollingIntake=false eller intake doed) lukker lanen", () => {
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 3, stoppedByFreeze: false, intakeEmpty: false, intakeEnabled: false }), "exit");
+});
+
+test("planIdleLane: tom koe -> intake, saa laenge intake ikke lige har givet intet", () => {
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, stoppedByFreeze: false, intakeEmpty: false }), "intake");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 0, stoppedByFreeze: false, intakeEmpty: false }), "intake", "et sidste optag foer boelgen slutter");
+});
+
+test("planIdleLane: intake gav intet og andre laner koerer -> vent; ellers exit", () => {
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 1, stoppedByFreeze: false, intakeEmpty: true }), "wait");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 0, stoppedByFreeze: false, intakeEmpty: true }), "exit");
+});
+
+test("planIdleLane: manglende eller ugyldig tilstand giver aldrig 'take' paa en tom koe", () => {
+  assert.equal(planIdleLane(undefined), "intake");
+  assert.equal(planIdleLane({ queued: "n/a", intakeEmpty: true }), "exit");
+});
+
+test("releasesOwnership: kun beviseligt faerdige spor frigiver ejerskab", () => {
+  for (const s of ["bygget", "rettet", "undersoegt", "undersoegt-ufuldstaendig"]) {
+    assert.equal(releasesOwnership(s), true, s);
+  }
+  // En timeout afbryder ikke agenten - den kan stadig skrive i worktreet.
+  for (const s of ["timeout", "investigate-timeout", "frys", "doed", "fejl", "rettelse-mangler", undefined, null, ""]) {
+    assert.equal(releasesOwnership(s), false, String(s));
+  }
+});
+
+test("INTAKE_POLL_MINUTES er 10 og intake-loftet ligger over poll-intervallet", () => {
+  assert.equal(WAVE_FREEZE.INTAKE_POLL_MINUTES, 10);
+  assert.ok(WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES > WAVE_FREEZE.INTAKE_POLL_MINUTES);
+});
+
+// ===== Reviewerens skema-bevisregel (#5567) =====
+
+const blocking = (extra) => ({ severity: "blokerende", file: "backend/x.js", what: "kolonnen fixture_col mangler i tabellen", ...extra });
+
+test("applySchemaEvidenceRule: et data-fund uden bevis nedgraderes, og dommen bliver BEMAERKNINGER", () => {
+  const review = { verdict: "BLOKERENDE", summary: "s", findings: [blocking({ category: "data-skema", evidence: "laeste diffen" })] };
+  const { review: out, downgraded } = applySchemaEvidenceRule(review);
+  assert.equal(downgraded.length, 1);
+  assert.equal(out.findings[0].severity, "bemaerkning");
+  assert.equal(out.findings[0].note, "nedgraderet: mangler skema-/prod-opslag (#5567)");
+  assert.equal(out.verdict, "BEMAERKNINGER", "ingen blokerende fund tilbage -> ret-trinnet springes over");
+  assert.equal(review.findings[0].severity, "blokerende", "input muteres ikke");
+});
+
+test("applySchemaEvidenceRule: fund UDEN category med skema-ord nedgraderes ogsaa", () => {
+  for (const what of ["column x is missing", "mangler NOT NULL", "constraint brydes", "migrationen dropper data", "RLS mangler", "foreign key peger forkert", "enum-vaerdien findes ikke"]) {
+    const { downgraded } = applySchemaEvidenceRule({ verdict: "BLOKERENDE", findings: [{ severity: "blokerende", what }] });
+    assert.equal(downgraded.length, 1, what);
+  }
+});
+
+test("applySchemaEvidenceRule: henvisning til schema-snapshot.json eller en SELECT bevarer fundet", () => {
+  for (const evidence of [
+    "database/schema-snapshot.json: relations.fixture_table.columns har ikke fixture_col",
+    "Supabase MCP: select column_name from information_schema.columns where table_name = 'fixture_table'",
+  ]) {
+    const review = { verdict: "BLOKERENDE", findings: [blocking({ category: "data-skema", evidence })] };
+    const { review: out, downgraded } = applySchemaEvidenceRule(review);
+    assert.equal(downgraded.length, 0, evidence);
+    assert.equal(out.verdict, "BLOKERENDE");
+    assert.equal(out.findings[0].severity, "blokerende");
+  }
+});
+
+test("applySchemaEvidenceRule: et UI-fund (category andet) roeres ikke", () => {
+  const review = { verdict: "BLOKERENDE", findings: [{ severity: "blokerende", category: "andet", what: "tabellen flyder ud paa mobil" }] };
+  const { review: out, downgraded } = applySchemaEvidenceRule(review);
+  assert.equal(downgraded.length, 0);
+  assert.equal(out, review);
+});
+
+test("applySchemaEvidenceRule: en blandet liste nedgraderer kun data-fundet og beholder BLOKERENDE", () => {
+  const review = {
+    verdict: "BLOKERENDE",
+    findings: [
+      blocking({ category: "data-skema", evidence: "" }),
+      { severity: "blokerende", category: "forbudte-filer", what: "docs/NOW.md er roert" },
+      { severity: "bemaerkning", category: "andet", what: "navngivning" },
+    ],
+  };
+  const { review: out, downgraded } = applySchemaEvidenceRule(review);
+  assert.equal(downgraded.length, 1);
+  assert.deepEqual(out.findings.map((f) => f.severity), ["bemaerkning", "blokerende", "bemaerkning"]);
+  assert.equal(out.verdict, "BLOKERENDE", "et andet blokerende fund staar tilbage");
+});
+
+test("applySchemaEvidenceRule: BLOKERENDE uden findings-liste og ugyldigt input er uaendret", () => {
+  const bare = { verdict: "BLOKERENDE", summary: "ingen liste" };
+  assert.equal(applySchemaEvidenceRule(bare).review, bare);
+  assert.deepEqual(applySchemaEvidenceRule(bare).downgraded, []);
+  assert.equal(applySchemaEvidenceRule(null).review, null);
+});
+
+// ===== Hale-tomgang (#5562) =====
+
+test("tailIdleLaneMinutes: profil som boelge A 23/9 - eet tungt spor alene til sidst", () => {
+  // 4 laner, 197 min. Det tunge spor starter i minut 139 og slutter i 192;
+  // de tre andre laner bliver faerdige i minut 141, 154 og 160.
+  const intervals = [
+    { lane: 0, start: 80, end: 141 },
+    { lane: 1, start: 95, end: 154 },
+    { lane: 2, start: 110, end: 160 },
+    { lane: 3, start: 139, end: 192 },
+  ];
+  const r = tailIdleLaneMinutes({ intervals, lanes: 4, endMinute: 197 });
+  assert.equal(r.tailStartMinute, 139);
+  // (197-139)*4 = 232 lane-minutter, heraf 2+15+21+53 = 91 optaget.
+  assert.equal(r.idleLaneMinutes, 141);
+  assert.equal(r.capacityPct, 17.9, "141 / (4 x 197) = 17,9 %");
+});
+
+test("tailIdleLaneMinutes: en boelge uden hale giver 0", () => {
+  const intervals = [
+    { lane: 0, start: 0, end: 30 }, { lane: 1, start: 0, end: 30 }, { lane: 2, start: 0, end: 30 }, { lane: 3, start: 0, end: 30 },
+    { lane: 0, start: 30, end: 60 }, { lane: 1, start: 30, end: 60 }, { lane: 2, start: 30, end: 60 }, { lane: 3, start: 30, end: 60 },
+  ];
+  assert.deepEqual(tailIdleLaneMinutes({ intervals, lanes: 4, endMinute: 60 }), { tailStartMinute: 30, idleLaneMinutes: 0, capacityPct: 0 });
+});
+
+test("tailIdleLaneMinutes: en lukket lane (timeout) taeller som optaget til boelgens slut", () => {
+  const intervals = [
+    { lane: 0, start: 0, end: 20, closed: true },
+    { lane: 1, start: 10, end: 40 },
+  ];
+  const r = tailIdleLaneMinutes({ intervals, lanes: 2, endMinute: 50 });
+  // Halen starter i minut 10: lane 0 er optaget 10-50 (40), lane 1 10-40 (30).
+  assert.equal(r.idleLaneMinutes, 2 * 40 - 40 - 30);
+});
+
+test("tailIdleLaneMinutes: tom maaling giver nul og ingen division med nul", () => {
+  assert.deepEqual(tailIdleLaneMinutes({ intervals: [], lanes: 4, endMinute: 30 }), { tailStartMinute: 30, idleLaneMinutes: 0, capacityPct: 0 });
+  assert.deepEqual(tailIdleLaneMinutes(undefined), { tailStartMinute: 0, idleLaneMinutes: 0, capacityPct: 0 });
+  assert.equal(tailIdleLaneMinutes({ intervals: [{ start: 0, end: 5 }], lanes: 4, endMinute: 0 }).capacityPct, 0);
 });
 
 // ===== extractInvestigateVerdict (#5220, CodeRabbit-fund) =====
@@ -359,7 +526,14 @@ test("wave.js spejler konstanterne fra dette modul", () => {
     STOP_TIMEOUT_MINUTES: WAVE_FREEZE.STOP_TIMEOUT_MINUTES,
     INVESTIGATE_TIMEOUT_MINUTES: WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES,
     POKE_MINUTES: WAVE_FREEZE.POKE_MINUTES,
+    INTAKE_POLL_MINUTES: WAVE_FREEZE.INTAKE_POLL_MINUTES,
+    INTAKE_TIMEOUT_MINUTES: WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES,
   };
+  assert.deepEqual(
+    Object.keys(WAVE_FREEZE).sort(),
+    Object.keys(mirrored).sort(),
+    "en ny konstant i modulet skal ogsaa ind i denne drift-vagt (og i wave.js)",
+  );
   for (const [key, value] of Object.entries(mirrored)) {
     const m = src.match(new RegExp(`^\\s*${key}:\\s*(\\d+)\\s*,`, "m"));
     assert.ok(m, `wave.js mangler den spejlede konstant ${key}`);
@@ -408,11 +582,104 @@ test("wave.js bogfoerer probens tid, saa det haarde loft ikke kan overskrides", 
   assert.ok(!/\bMath\.random\(\)/.test(code), "Math.random() kaster i workflow-scripts");
 });
 
-test("#5220: wave.js sorterer koeen med den spejlede sortMixedQueue-regel", () => {
+test("#5562: wave.js sorterer koeen tungeste foerst - den blandede koe fra #5220 er vaek", () => {
   const src = readFileSync(WAVE_JS_PATH, "utf8");
-  assert.ok(src.includes("sortMixedQueue"), "wave.js skal bruge en spejlet sortMixedQueue()");
-  assert.ok(src.includes("isLightTrack"), "wave.js skal bruge en spejlet isLightTrack()");
-  assert.ok(src.includes("'sonnet'") && src.includes("'TARGETED'"), "det lette kriterie skal vaere model sonnet + tier TARGETED");
+  assert.ok(src.includes("const tracks = sortHeavyFirst(rawTracks.map(normalizeTrack))"), "startkoeen skal sorteres med sortHeavyFirst()");
+  assert.ok(src.includes("queue.push(...sorted)") && src.includes("sortHeavyFirst(intake.ready)"), "optagne spor skal ogsaa sorteres tungeste foerst");
+  assert.ok(!src.includes("sortMixedQueue") && !src.includes("isLightTrack"), "den gamle blandede koe maa ikke staa i wave.js");
+});
+
+test("#5562: semaforen er uaendret - verify-lock -Max 2, verifyMax: 2 og maks EET FULL-spor", () => {
+  // Tungeste foerst er kun sikkert fordi disse tre haandhaeves uafhaengigt af koeen.
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(src.includes('verify-lock.ps1" -Max 2 -Timeout 1800'), "lane- og ret-prompterne skal wrappe tunge kommandoer i verify-lock.ps1 -Max 2");
+  assert.equal((src.match(/verifyMax: 2,/g) || []).length, 2, "baade dry-run- og slut-rapporten skal melde verifyMax: 2");
+  assert.ok(
+    src.includes("const fullTiers = tracks.filter((t) => t.tier === 'FULL')") && src.includes("if (fullTiers.length > 1) {"),
+    "wave.js skal afvise mere end EET FULL-spor",
+  );
+});
+
+// Normaliseret funktionstekst: uden kommentarer, semikolon og whitespace, og
+// med ' og " behandlet ens. Saa fejler vagten kun paa en reel aendring.
+function extractFunction(src, name) {
+  const start = src.search(new RegExp(`\\bfunction ${name}\\(`));
+  if (start < 0) return null;
+  let i = src.indexOf("(", start);
+  let depth = 0;
+  for (; i < src.length; i += 1) {
+    if (src[i] === "(") depth += 1;
+    else if (src[i] === ")" && --depth === 0) break;
+  }
+  i = src.indexOf("{", i);
+  depth = 0;
+  for (; i < src.length; i += 1) {
+    if (src[i] === "{") depth += 1;
+    else if (src[i] === "}" && --depth === 0) return src.slice(start, i + 1);
+  }
+  return null;
+}
+function normalizeFunction(text) {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "")
+    .replace(/\s\/\/.*$/gm, "")
+    .replace(/;/g, "")
+    .replace(/\s+/g, "")
+    .replace(/"/g, "'");
+}
+
+test("#5562/#5567: de spejlede funktioner er identiske i wave.js og modulet", () => {
+  const waveSrc = readFileSync(WAVE_JS_PATH, "utf8");
+  const moduleSrc = readFileSync(MODULE_PATH, "utf8");
+  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes"]) {
+    const inWave = extractFunction(waveSrc, name);
+    const inModule = extractFunction(moduleSrc, name);
+    assert.ok(inWave, `wave.js mangler den spejlede funktion ${name}()`);
+    assert.ok(inModule, `wave-freeze.mjs mangler ${name}()`);
+    assert.ok(
+      normalizeFunction(inWave) === normalizeFunction(inModule),
+      `${name}() er rettet det ene sted men ikke det andet - hold wave.js og scripts/wave-freeze.mjs identiske`,
+    );
+  }
+});
+
+test("drift-vagten opdager en aendring i en spejlet funktion", () => {
+  const a = "function f(x) {\n  // kommentar\n  return x === 'a';\n}";
+  assert.equal(normalizeFunction(a), normalizeFunction('function f(x) { return x === "a" }'));
+  assert.notEqual(normalizeFunction(a), normalizeFunction("function f(x) { return x === 'b' }"));
+  assert.equal(extractFunction("const y = 1\nfunction g({ a }) { if (a) { return 1 } return 2 }\nfoo()", "g"), "function g({ a }) { if (a) { return 1 } return 2 }");
+});
+
+test("#5562: rullende optag bruger WAVE-SETUP-praefikset og deler trin 2-3b med fase 0", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(src.includes("'WAVE-SETUP: intake til rullende optag (#5562)'"), "intake-agenten skal have WAVE-SETUP-praefikset, saa guard-agent-spawn.sh lader den passere");
+  assert.equal((src.match(/\.\.\.trackSetupSteps\(\)/g) || []).length, 2, "fase 0 og intake skal begge bruge trackSetupSteps()");
+  assert.ok(/label, phase: 'Laner', model: 'sonnet', schema: INTAKE_SCHEMA/.test(src), "intake-agenten koerer paa sonnet med INTAKE_SCHEMA");
+  assert.ok(src.includes("const laneCount = lanes"), "alle laner starter, ogsaa naar koeen er kortere");
+  assert.ok(src.includes("planIdleLane({") && src.includes("releasesOwnership(row.status)"), "lane-poolen skal bruge de spejlede planIdleLane() og releasesOwnership()");
+  assert.ok(src.includes("cleanupPrompt(allTracks,"), "oprydningen skal have ALLE boelgens branches, ogsaa de optagne");
+  assert.ok(src.includes("'koeet men aldrig optaget'"), "spor der stod i koe ved release skal rapporteres som unstarted");
+  assert.ok(src.includes("input.rollingIntake !== false"), "args.rollingIntake: false slaar optaget fra; default er til");
+});
+
+test("#5567: reviewer koerer paa opus, og skema-bevisreglen haandhaeves i koden", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  const reviewCall = src.slice(src.indexOf("agent(reviewPrompt(track, attempt), {"), src.indexOf("schema: REVIEW_SCHEMA,"));
+  assert.ok(reviewCall.includes("model: 'opus'"), "reviewer-agenten skal koere paa opus, sat eksplicit");
+  assert.ok(src.includes("const evidence = applySchemaEvidenceRule(review)"), "reviewerens dom skal gennem applySchemaEvidenceRule() foer ret-trinnet");
+  assert.ok(src.includes("row.reviewDowngraded"), "nedgraderinger skal staa i sporets raekke");
+  assert.ok(src.includes("enum: ['data-skema', 'scope', 'forbudte-filer', 'secrets', 'verifikation', 'andet']"), "REVIEW_SCHEMA skal have category-enum");
+  assert.ok(src.includes("database/schema-snapshot.json (relations.<tabel>.columns)"), "reviewPrompt skal kraeve skema-opslag (punkt 9)");
+  assert.ok(/label: `frys-probe #\$\{track\.issue\}`,\s*phase: 'Laner',\s*model: 'sonnet'/.test(src), "proben forbliver sonnet");
+});
+
+test("#5562: hale-tomgang maales med et minut-ur der ryddes foer return", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(src.includes("clock.timer = setTimeout(tick, 60 * 1000)"), "minut-uret er et selv-genplanlagt setTimeout");
+  assert.ok(/finally \{\s*laneEndMinute = clock\.minute\s*stopMinuteClock\(\)/.test(src), "uret skal stoppes i finally, saa det ikke holder scriptet i live");
+  assert.ok(src.includes("log(`Hale-tomgang: ${tailIdle.idleLaneMinutes} lane-minutter (${tailIdle.capacityPct} % af kapacitet)`)"), "loggen skal have hale-tomgangs-linjen");
+  assert.ok(/\n\s*tailIdle,\n/.test(src), "returobjektet skal have tailIdle");
 });
 
 test("#5220: wave.js har en investigate-gren med det spejlede faste vindue", () => {
