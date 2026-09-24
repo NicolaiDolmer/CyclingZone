@@ -28,7 +28,7 @@ import { planYouthSquads, DEFAULT_SEED, DEFAULT_TARGET_SEASON } from "./generate
 import { deriveForRiderIds } from "../lib/backfillCores.js";
 import { createFakeSupabase } from "../lib/testUtils/fakeSupabase.js";
 import { ageForSeason } from "../lib/riderSeasonAge.js";
-import { U23_BIRTH_TIER } from "../lib/riderBirthPriors.js";
+import { U23_BIRTH_TIER, YOUTH_BIRTH_TIER } from "../lib/riderBirthPriors.js";
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { RIDER_TYPES } from "../lib/riderTypes.js";
 import { SQUAD_CAPS } from "../lib/squads.js";
@@ -100,6 +100,11 @@ function fixtureState() {
     // Født af A6 selv: er ikke en "eksisterende" rytter at sammenligne med.
     rider(`p-20-${type}-a6`, 20, type, { archetype_draw: { primary: type, birth: { tier: U23_BIRTH_TIER, seed: 1, v: 1 } } });
     derived.push(abilityRow(`p-20-${type}-a6`));
+    // Født af akademiets ungdomsbånd (anden tier end U23) — er STADIG et
+    // priors-fødsel, ikke en "eksisterende" rytter. Lokkerytter for fund 1:
+    // før fixen udelukkede isComparableProdRider kun tier "u23".
+    rider(`p-20-${type}-youth`, 20, type, { archetype_draw: { primary: type, birth: { tier: YOUTH_BIRTH_TIER, seed: 1, v: 1 } } });
+    derived.push(abilityRow(`p-20-${type}-youth`));
   }
   return {
     seasons: [{ id: "s3", number: ACTIVE_SEASON, status: "active" }, { id: "s2", number: 2, status: "completed" }],
@@ -217,7 +222,9 @@ test("pickProdSample: kun samme sæson-alder + type, parrene på skift, determin
     { id: "gc21-0", birthdate: born(21), primary_type: "gc" },       // gc, men forkert alder
     { id: "sp20-0", birthdate: born(20), primary_type: "sprinter" }, // 20, men forkert type
     { id: "gc20-ret", birthdate: born(20), primary_type: "gc", is_retired: true },
-    { id: "gc20-a6", birthdate: born(20), primary_type: "gc", archetype_draw: { birth: { tier: U23_BIRTH_TIER } } },
+    { id: "gc20-a6", birthdate: born(20), primary_type: "gc", archetype_draw: { birth: { tier: U23_BIRTH_TIER, v: 1 } } },
+    // Priors-født på en ANDEN tier end u23 — fund 1: skal udelukkes ligesom a6.
+    { id: "gc20-youth", birthdate: born(20), primary_type: "gc", archetype_draw: { birth: { tier: YOUTH_BIRTH_TIER, v: 1 } } },
     { id: "gc20-noabil", birthdate: born(20), primary_type: "gc" },
   ];
   const abilityByRider = new Map(riders.filter((r) => r.id !== "gc20-noabil").map((r) => [r.id, {}]));
@@ -232,7 +239,7 @@ test("pickProdSample: kun samme sæson-alder + type, parrene på skift, determin
   assert.equal(ids.length, 4);
   assert.equal(ids[1], "sp21-0", "det næsthyppigste par kommer til før det hyppigste tages igen");
   assert.equal(ids.filter((id) => id.startsWith("gc20-")).length, 3);
-  for (const id of ids) assert.ok(!["gc21-0", "sp20-0", "gc20-ret", "gc20-a6", "gc20-noabil"].includes(id), id);
+  for (const id of ids) assert.ok(!["gc21-0", "sp20-0", "gc20-ret", "gc20-a6", "gc20-youth", "gc20-noabil"].includes(id), id);
   for (const p of a.picks) {
     assert.equal(ageForSeason(p.rider.birthdate, ACTIVE_SEASON), p.age);
     assert.ok(generated.some((g) => g.age === p.age && g.primary_type === p.rider.primary_type));
@@ -266,6 +273,9 @@ test("runComparison er READ-ONLY: ingen insert/update/upsert/delete/rpc, fixture
     ["app_config", "league_divisions", "rider_derived_abilities", "riders", "seasons", "teams"],
   );
   assert.ok(out.markdown.includes("PRIVAT (balance-internals/"));
+  // Fund 3: rapporten skal sige at "–" er ikke-beregnet, ikke 0 (fx
+  // teamwork/leadership, som mangler for de fleste unge prod-ryttere).
+  assert.ok(out.markdown.includes("betyder ikke-beregnet"), "dash-forklaring i hovedet");
 });
 
 test("runComparison: 3 holds U23-trup + op til 10 prod-ryttere på samme alder og type", async () => {
@@ -289,6 +299,17 @@ test("runComparison: 3 holds U23-trup + op til 10 prod-ryttere på samme alder o
   // Én tabel: hver genereret og hver prod-rytter har sin række.
   const tableRows = out.markdown.split("## Matchning")[0].split("\n").filter((l) => /^\| \d+ \|/.test(l));
   assert.equal(tableRows.length, out.generated.length + out.prod.length);
+});
+
+test("runComparison: ingen aktiv sæson → fejl, aldrig stille fallback til målsæsonen (fund 2)", async () => {
+  const state = fixtureState();
+  // Ingen sæson har status "active": prod-alderen kan ikke måles dér hvor
+  // rytterens evner faktisk gælder.
+  state.seasons = state.seasons.map((s) => ({ ...s, status: "completed" }));
+  await assert.rejects(
+    () => runComparison(readOnlyProbe(state), { seed: DEFAULT_SEED, season: TARGET_SEASON }),
+    /aktiv sæson/,
+  );
 });
 
 test("runComparison er deterministisk: samme seed = samme tabel, anden seed = anden trup", async () => {

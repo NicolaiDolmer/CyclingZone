@@ -60,7 +60,7 @@ import {
   DEFAULT_TARGET_SEASON,
 } from "./generateYouthSquadsS4.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
-import { U23_BIRTH_TIER } from "../lib/riderBirthPriors.js";
+import { isBornFromPriors } from "../lib/riderBirthPriors.js";
 import { ageForSeason, seasonReferenceYear } from "../lib/riderSeasonAge.js";
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { buildCapsForRider } from "../lib/riderProgression.js";
@@ -225,11 +225,14 @@ function seededShuffle(arr, rng) {
 
 /**
  * Er rytteren en prod-rytter der må stå i sammenligningen? Ikke pensioneret, og
- * ikke født af A6 selv (fødsels-tier "u23"): efter en apply skal tabellen stadig
- * sammenligne med de ryttere der fandtes FØR generatoren.
+ * ikke født af spillets egne priors (`archetype_draw.birth`, uanset tier — U23
+ * fra A6, ungdomsbåndets "youth" fra akademiet, eller "domestique"/"solid"/
+ * "star" fra den fiktive generator): efter en apply skal tabellen stadig
+ * sammenligne med de ryttere der fandtes FØR generatoren, ikke med generatorens
+ * eget tidligere output under et andet navn.
  */
 export function isComparableProdRider(rider) {
-  return rider.is_retired !== true && rider.archetype_draw?.birth?.tier !== U23_BIRTH_TIER;
+  return rider.is_retired !== true && !isBornFromPriors(rider);
 }
 
 /**
@@ -353,7 +356,8 @@ export function renderComparison({ seed, targetSeason, ageSeason, juniors, teams
   lines.push(`- Alder: genererede = sæson-alder i S${targetSeason}; prod = sæson-alder i S${ageSeason} (den aktive sæson, dér hvor deres evner gælder)`);
   lines.push(`- Hold: ${teams.map((t) => `${t.alias} = ${t.name} (tier ${t.tier}, U23 ${t.u23}, over værdiloft ${t.overValueCap})`).join(" · ") || dash}`);
   lines.push(`- Prod-udvalg: ${prod.length} af ${candidates} mulige (ikke-pensioneret, samme sæson-alder og primary_type som en genereret rytter; A6-fødte ryttere udeladt; kun ryttere med en evne-række)`);
-  lines.push("- Celler: evne = `nu/loft` (ability_caps) · rolle = `rating/loft-rating` (`ratingForRole` på evner og på lofter) · Pot. = potentiale", "");
+  lines.push("- Celler: evne = `nu/loft` (ability_caps) · rolle = `rating/loft-rating` (`ratingForRole` på evner og på lofter) · Pot. = potentiale");
+  lines.push(`- \`${dash}\` betyder ikke-beregnet (feltet er NULL på rytteren), ikke 0 - typisk teamwork/leadership på prod-ryttere uden den evne-afledning endnu`, "");
   lines.push("## Side om side", "");
   lines.push(table(header, [...generated, ...prod].map((row, i) => comparisonCells(row, i))), "");
   lines.push("## Matchning (sæson-alder × primary_type)", "");
@@ -397,7 +401,15 @@ export async function runComparison(supabase, { seed = DEFAULT_SEED, season = DE
   const teams = pickComparisonTeams(plan.perTeam);
   const generated = generatedRows(plan, teams);
 
-  const ageSeason = (await fetchActiveSeasonNumber(supabase)) ?? season;
+  // Ingen stille fallback til målsæsonen: findes der ingen aktiv sæson, kan
+  // prod-alderen ikke måles dér hvor rytterens evner faktisk gælder, og en
+  // stiltiende brug af målsæsonen ville sammenligne på en forkert akse uden at
+  // rapporten sagde det (main() fanger og giver exit 2).
+  const activeSeason = await fetchActiveSeasonNumber(supabase);
+  if (activeSeason == null) {
+    throw new Error("ingen aktiv sæson fundet - kan ikke måle prod-alder (se ALDERS-AKSEN øverst i filen)");
+  }
+  const ageSeason = activeSeason;
   const riders = await fetchAllRows(() => supabase.from("riders")
     .select("id, firstname, lastname, birthdate, primary_type, secondary_type, potentiale, base_value, is_retired, archetype_draw")
     .order("id"));
