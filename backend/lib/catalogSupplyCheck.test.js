@@ -219,6 +219,8 @@ test("en arketype-reservation uden forsyning i vinduet dømmes 'kan ikke nås'",
 
 test("kvoten udledes af density × løbsdatoer, ikke af den forældede default-konstant", () => {
   // CALENDAR_RULES §1b: TIER_GAME_DAY_QUOTA står stadig med D4 = 56 fra dengang tætheden var 2.
+  // #5658: kalenderens auto-sti afleder nu også kvoten sådan (tierGameDayQuotasFor); at de
+  // to er enige, vagtes i tierCalendarMaterializer.test.js.
   assert.deepEqual(quotasForRaceDays(28), { 1: 140, 2: 112, 3: 84, 4: 84 });
   assert.equal(SUPPLY_DEFAULT_RACE_DAYS, 28);
 });
