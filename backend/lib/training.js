@@ -136,17 +136,24 @@ export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUSES));
 //
 // Fokus uden en post her vægter 1,0 pr. evne, dvs. bit-identisk med før.
 // #5236/#5237: samme greb som #4631 — uden en vægt ville tre-evners-pakken
-// bare være tre lige store tredjedele, og hovedevnen (brosten/flat/angreb)
-// ville ikke stå tydeligere end de to evner der er der for at holde prisen
-// (durability/positioning). INVARIANTEN: de tre nye sessioner har samme
-// vægtsum (2+1+1=4) som hinanden — pinnet i training.test.js, samme mønster
+// bare være tre lige store tredjedele, og hovedevnen (brosten/angreb) ville
+// ikke stå tydeligere end de to evner der er der for at holde prisen
+// (durability/positioning). INVARIANTEN: cobbled_sectors og attack_repeats
+// har samme vægtsum som hinanden — pinnet i training.test.js, samme mønster
 // som vo2max-familiens interne invariant. Uden det ville én pakke give mere
 // "dag" end en anden for samme pris, hvilket er power creep.
+//
+// #5456 (ejer offentligt 23/9, retning A): echelon_drills gav markant flere
+// flerpoint-stigninger end resten af den hårde familie, fordi dens vægtsum lå
+// over vo2max-familiens. Vægtsummen er sænket til at matche vo2max-familien
+// — samme rod-årsag-fix som invarianten ovenfor beskytter mod, bare anvendt
+// retroaktivt på den ene session. cobbled_sectors og attack_repeats er
+// URØRTE af denne ændring.
 export const FOCUS_ABILITY_WEIGHT = Object.freeze({
   vo2max_climb: Object.freeze({ climbing: 2, tempo: 1 }),
   vo2max_punch: Object.freeze({ punch: 2, tempo: 1 }),
   cobbled_sectors: Object.freeze({ cobblestone: 2, durability: 1, positioning: 1 }),
-  echelon_drills:  Object.freeze({ flat: 2, positioning: 1, durability: 1 }),
+  echelon_drills:  Object.freeze({ flat: 1, positioning: 1, durability: 1 }),
   attack_repeats:  Object.freeze({ aggression: 2, punch: 1, acceleration: 1 }),
 });
 

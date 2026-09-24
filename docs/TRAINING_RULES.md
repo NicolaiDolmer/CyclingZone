@@ -255,6 +255,8 @@ Næsten hver tredje aktive plan står på Hvile, og det er forudsætningen for a
 
 Merget 15/9 (PR #5265): `cobbled_sectors` (cobblestone 2, durability 1, positioning 1), `echelon_drills` (flat 2, positioning 1, durability 1) og `attack_repeats` (aggression 2, punch 1, acceleration 1) som hårde sessioner. Vægtsummen er låst mod den hårde families (`focusWeightSum`, pinnet i `training.test.js`), så splittet flytter udbytte, det skaber ikke nyt. `technique`, `tempo` og `loebslaere` er uændrede hybrider (ingen datamigration); nøglerne er IKKE i `SMART_DEFAULT_FOCUS_KEYS`. Brosten, flad og aggression kan dermed trænes hårdt for første gang (#4874). Formpas før løb (Åbnere, #5238) er stadig ikke bygget.
 
+**#5456 (ejer offentligt 23/9, retning A):** `echelon_drills` gav markant flere flerpoint-stigninger end resten af den hårde familie, fordi dens vægtsum lå over de øvrige hårde sessioners. Vægtsummen for `echelon_drills` er sænket til at matche vo2max-familien: `echelon_drills` (flat 1, positioning 1, durability 1). `cobbled_sectors` og `attack_repeats` er urørte og har stadig deres oprindelige vægtsum. Testen der pinner dette er `training.test.js` (søg #5456).
+
 ## 4. Ugerytme: hvem vinder når to lag siger noget forskelligt
 
 `resolveDayIntensity` (`backend/lib/training.js:372-386`) er ÉN ren funktion, delt mellem
