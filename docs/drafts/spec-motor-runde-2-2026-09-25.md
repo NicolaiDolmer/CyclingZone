@@ -74,7 +74,7 @@ Indsatstrappen bliver "pris og gevinst" (alle fem trin er rigtige valg), løbsfi
 | R2b | **M2** (#5577) + **M3** (#5578) parallelt | M2 rebaser på M1's `finale.ts`; M3 rører ikke M1/M2's filer (`descent.ts`/`types.ts`/`segmentLoop.ts` deles ikke med M1: M1's `segmentLoop.ts`-ændring er :369-372, M3's er gruppe-origin i merge/split. **Serialisér alligevel** M1 → M3 på `segmentLoop.ts`) |
 | R2c | B13 (#5515) | baseline-JSON + §7b regenereres én gang; flip-klar-rapport genkøres |
 
-Ingen fil-overlap med S4-sporene, chunk-spor 5 (K1-K4) eller billedstationen (#5565).
+Fil-overlap: M1 roerer backend/lib/raceRunner.js (kun :2215 + flag), som boelge C1 ejer via spor #5645 (Y4, docs/drafts/wave-2026-09-24-c1.json). M1 bygges derfor foerst naar #5645 er merget, eller raceRunner-delen holdes til en kort rebase efter merge. Ellers ingen fil-overlap med S4-sporene, chunk-spor 5 (K1-K4) eller billedstationen (#5565).
 
 ## Tests (fælles)
 
