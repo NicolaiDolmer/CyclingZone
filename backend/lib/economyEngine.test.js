@@ -5,6 +5,8 @@ process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
 
 const {
+  buildPoolTree,
+  isMissingRetiredAtColumnError,
   buildSeasonEndPreviewRows,
   loadHumanSeasonEndTeams,
   payDivisionBonuses,
@@ -34,6 +36,48 @@ const { SUPABASE_PAGE_SIZE } = await import("./supabasePagination.js");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+// #5536: en thenable league_divisions-/races-builder der FORTOLKER de filtre motoren
+// kæder på: senior-scopet (.or("squad.is.null,squad.eq.senior")), aktiv-filteret
+// (.is("retired_at", null)) og .eq(). Rækker uden squad/retired_at passerer uændret,
+// så eksisterende fixtures er bit-identiske. `failOn` simulerer en manglende kolonne
+// (42703) første gang et filter på den kolonne bruges.
+function filteredRowsQuery(rows, { failOn = null, failCode = "42703", calls = null } = {}) {
+  const filters = [];
+  const builder = {
+    or(expr) {
+      calls?.push(`or:${expr}`);
+      if (failOn === "squad") filters.push("fail:squad");
+      assert.equal(expr, "squad.is.null,squad.eq.senior");
+      filters.push((r) => r.squad == null || r.squad === "senior");
+      return builder;
+    },
+    is(column, value) {
+      calls?.push(`is:${column}`);
+      if (failOn === column) filters.push(`fail:${column}`);
+      filters.push((r) => (r[column] ?? null) === value);
+      return builder;
+    },
+    eq(column, value) {
+      calls?.push(`eq:${column}`);
+      filters.push((r) => r[column] === value);
+      return builder;
+    },
+    then(resolve, reject) {
+      const failure = filters.find((f) => typeof f === "string");
+      if (failure) {
+        const column = failure.slice("fail:".length);
+        const message = failCode === "PGRST204"
+          ? `Could not find the '${column}' column of 'league_divisions' in the schema cache`
+          : `column league_divisions.${column} does not exist`;
+        return Promise.resolve({ data: null, error: { code: failCode, message } }).then(resolve, reject);
+      }
+      const data = clone(rows).filter((r) => filters.every((f) => f(r)));
+      return Promise.resolve({ data, error: null }).then(resolve, reject);
+    },
+  };
+  return builder;
 }
 
 function createSeasonEndSupabase({
@@ -716,7 +760,7 @@ function createSeasonEndSupabase({
       if (table === "league_divisions") {
         return {
           select() {
-            return Promise.resolve({ data: [], error: null });
+            return filteredRowsQuery([]);
           },
         };
       }
@@ -784,16 +828,23 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null, pena
         return {
           select(columns) {
             assert.equal(columns, "id");
-            return {
+            const scoped = { senior: false };
+            const builder = {
+              // #5536: Node-fallbacken senior-scoper løbene (samme prædikat som RPC'en).
+              or(expr) {
+                assert.equal(expr, "squad.is.null,squad.eq.senior");
+                scoped.senior = true;
+                return builder;
+              },
               eq(column, value) {
                 assert.equal(column, "season_id");
                 assert.equal(value, "season-1");
-                return Promise.resolve({
-                  data: clone(state.races),
-                  error: null,
-                });
+                const data = clone(state.races)
+                  .filter((race) => !scoped.senior || race.squad == null || race.squad === "senior");
+                return Promise.resolve({ data, error: null });
               },
             };
+            return builder;
           },
         };
       }
@@ -805,7 +856,10 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null, pena
             return {
               in(column, value) {
                 assert.equal(column, "race_id");
-                assert.deepEqual(value, state.races.map(race => race.id));
+                // #5536: kun de (senior-)løb updateStandings selv har læst.
+                const knownRaceIds = new Set(state.races.map(race => race.id));
+                assert.ok(value.every(id => knownRaceIds.has(id)), "race_id-listen kommer fra races-læsningen");
+                const wanted = new Set(value);
                 // updateStandings paginerer nu (fetchAllRows → .order().range()).
                 return {
                   order(orderCol, opts) {
@@ -814,7 +868,7 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null, pena
                     return {
                       range(from, to) {
                         return Promise.resolve({
-                          data: clone(state.results).slice(from, to + 1),
+                          data: clone(state.results).filter(r => wanted.has(r.race_id)).slice(from, to + 1),
                           error: null,
                         });
                       },
@@ -2499,6 +2553,47 @@ test("updateStandings falder tilbage til Node-recompute når RPC'en mangler (PGR
   assert.equal(supabase.state.upserts[0].rows[0].total_points, 20);
 });
 
+test("#5536 updateStandings' Node-fallback tæller kun seniorløb (samme prædikat som RPC'en)", async () => {
+  const seniorOnly = {
+    teams: [{ id: "team-a", division: 1 }, { id: "team-b", division: 1 }],
+    races: [{ id: "race-1" }, { id: "race-2", squad: "senior" }],
+    results: [
+      { race_id: "race-1", team_id: "team-a", result_type: "stage", rank: 1, points_earned: 20, rider: null },
+      { race_id: "race-2", team_id: "team-b", result_type: "gc", rank: 1, points_earned: 30, rider: null },
+    ],
+  };
+  const missingRpc = (supabase) => {
+    supabase.rpc = () => Promise.resolve({
+      data: null,
+      error: { code: "PGRST202", message: "Could not find the function public.recompute_season_standings(p_season_id) in the schema cache" },
+    });
+    return supabase;
+  };
+  const plain = missingRpc(createStandingsSupabase(seniorOnly));
+  await updateStandings("season-1", null, { supabase: plain });
+
+  // Et U23- og et juniorløb i samme sæson, hvor team-a vinder stort.
+  const mixed = missingRpc(createStandingsSupabase({
+    ...seniorOnly,
+    races: [...seniorOnly.races, { id: "race-u23", squad: "u23" }, { id: "race-jr", squad: "junior" }],
+    results: [
+      ...seniorOnly.results,
+      { race_id: "race-u23", team_id: "team-a", result_type: "gc", rank: 1, points_earned: 500, rider: null },
+      { race_id: "race-jr", team_id: "team-a", result_type: "gc", rank: 1, points_earned: 500, rider: null },
+    ],
+  }));
+  await updateStandings("season-1", null, { supabase: mixed });
+
+  // updated_at er vægur-tid; alt andet skal være identisk.
+  const withoutClock = (upserts) => upserts.map(u => ({
+    ...u,
+    rows: u.rows.map(({ updated_at: _clock, ...row }) => row),
+  }));
+  assert.deepEqual(withoutClock(mixed.state.upserts), withoutClock(plain.state.upserts));
+  const teamA = mixed.state.upserts[0].rows.find(r => r.team_id === "team-a");
+  assert.equal(teamA.total_points, 20, "ungdomspoint lækker ikke ind i seniorstillingen");
+});
+
 test("updateStandings retry'er et statement timeout og lykkes (CYCLINGZONE-3D)", async () => {
   // 24/7: recompute'en sprængte de 8 s statement_timeout under samtidige etape-
   // afviklinger. Fejlen boblede op i simulateStageByIndex EFTER stages_completed var
@@ -2741,19 +2836,20 @@ const TEST_POOL_ROWS = [
 ];
 const FIRST_POOL_OF_TIER = { 1: 1, 2: 2, 3: 4, 4: 8 };
 
-function createDivisionEndSupabase() {
+function createDivisionEndSupabase({ poolRows = TEST_POOL_ROWS, failOn = null, failCode, calls = null } = {}) {
   const updates = [];
   const notifications = [];
   return {
     updates,
     notifications,
+    calls,
     rpc(name) {
       assert.equal(name, "increment_balance_with_audit");
       return Promise.resolve({ data: 0, error: null });
     },
     from(table) {
       if (table === "league_divisions") {
-        return { select() { return Promise.resolve({ data: TEST_POOL_ROWS.map(r => ({ ...r })), error: null }); } };
+        return { select() { return filteredRowsQuery(poolRows, { failOn, failCode, calls }); } };
       }
       if (table === "teams") {
         return {
@@ -2857,6 +2953,103 @@ test("#1152 · Div3-pulje ALL-REAL relegerer til Div4 (aktivering)", async () =>
   const relegated = supabase.updates.filter(u => u.payload.division === 4);
   assert.equal(relegated.length, 4, "bund 4 relegeret til Div4");
   assert.deepEqual(relegated.map(u => u.payload.league_division_id).sort(), [8, 8, 9, 9], "Div4-børn = pulje 8+9");
+});
+
+// ─── #5536: pulje-træet er pr. trup og uden pensionerede puljer ──────────────
+
+// Ungdomspuljerne spejler seniorpyramiden (samme tier/pool_index, spec §6.1).
+const YOUTH_POOL_ROWS = TEST_POOL_ROWS.map(r => ({ ...r, id: r.id + 100, squad: "u23" }));
+// #4592: D4 går fra 8 til 4 puljer; E-H (pool_index 4-7, id 12-15) pensioneres.
+const RETIRED_D4_POOL_ROWS = TEST_POOL_ROWS.map(r => (
+  r.tier === 4 && r.pool_index >= 4 ? { ...r, retired_at: "2026-09-28T00:00:00Z" } : r
+));
+
+function treeShape(tree, ids) {
+  return {
+    ids: [...tree.byId.keys()].sort((a, b) => a - b),
+    poolsPerTier: [...tree.poolsPerTier].sort((a, b) => a[0] - b[0]),
+    links: ids.map(id => [id, tree.parentOf(id), tree.childrenOf(id)]),
+  };
+}
+const SENIOR_IDS = TEST_POOL_ROWS.map(r => r.id);
+
+test("#5536 buildPoolTree: ungdomspuljer med samme tier/pool_index ændrer intet i seniortræet (bit-identisk)", async () => {
+  const plain = await buildPoolTree(createDivisionEndSupabase());
+  const calls = [];
+  const mixed = await buildPoolTree(createDivisionEndSupabase({ poolRows: [...TEST_POOL_ROWS, ...YOUTH_POOL_ROWS], calls }));
+  assert.deepEqual(treeShape(mixed, SENIOR_IDS), treeShape(plain, SENIOR_IDS));
+  assert.deepEqual(calls, ["or:squad.is.null,squad.eq.senior", "is:retired_at"], "senior-scope + aktiv-filter");
+  // Kontrol: uden scope ville tier 2 have 4 puljer, og ratio'en (og dermed forælder/barn) knække.
+  assert.equal(mixed.poolsPerTier.get(2), 2);
+});
+
+test("#5536 buildPoolTree({ squad: 'u23' }) bygger ungdomstræet med et eksplicit trup-filter", async () => {
+  const calls = [];
+  const tree = await buildPoolTree(
+    createDivisionEndSupabase({ poolRows: [...TEST_POOL_ROWS, ...YOUTH_POOL_ROWS], calls }),
+    { squad: "u23" },
+  );
+  assert.deepEqual(calls, ["eq:squad", "is:retired_at"]);
+  assert.deepEqual([...tree.byId.keys()].sort((a, b) => a - b), YOUTH_POOL_ROWS.map(r => r.id));
+  assert.equal(tree.parentOf(102), 101, "U23 Div2 A → U23 Div1");
+  assert.deepEqual(tree.childrenOf(101), [102, 103]);
+});
+
+test("#5536 buildPoolTree afviser en ukendt trup", async () => {
+  await assert.rejects(buildPoolTree(createDivisionEndSupabase(), { squad: "pro" }), /ukendt trup/);
+});
+
+test("#5536/#4592 buildPoolTree: pensionerede D4-puljer (E-H) er ikke i træet, D3 og D4 A-D parres 1:1", async () => {
+  const tree = await buildPoolTree(createDivisionEndSupabase({ poolRows: RETIRED_D4_POOL_ROWS }));
+  for (const id of [12, 13, 14, 15]) assert.equal(tree.byId.has(id), false, `pensioneret pulje ${id} er ude`);
+  assert.equal(tree.poolsPerTier.get(4), 4);
+  assert.deepEqual([4, 5, 6, 7].map(id => tree.childrenOf(id)), [[8], [9], [10], [11]]);
+  assert.deepEqual([8, 9, 10, 11].map(id => tree.parentOf(id)), [4, 5, 6, 7]);
+});
+
+test("#5536/#4592 processDivisionEnd: en D3-pulje relegerer til sin aktive D4-pulje, aldrig til en pensioneret", async () => {
+  const run = async (poolRows) => {
+    const supabase = createDivisionEndSupabase({ poolRows });
+    // D3 C (id 6, pool_index 2), all-real → relegerer til Div4.
+    await processDivisionEnd(buildPoolStandings({ division: 3, poolId: 6, count: 24, aiCount: 0 }), 3, "s", 4, { supabase, now: new Date("2026-09-27T23:00:00Z") });
+    return supabase.updates.filter(u => u.payload.division === 4).map(u => u.payload.league_division_id).sort();
+  };
+  assert.deepEqual(await run(RETIRED_D4_POOL_ROWS), [10, 10, 10, 10], "D3 C → D4 C (id 10)");
+  // Kontrol: uden pensionering (8 D4-puljer) går D3 C til E/F (id 12, 13), som i S3.
+  assert.deepEqual(await run(TEST_POOL_ROWS), [12, 12, 13, 13]);
+});
+
+test("#5536 buildPoolTree: mangler retired_at-kolonnen (42703, før #4592-migrationen), bruges alle puljer (bit-identisk i dag)", async () => {
+  const calls = [];
+  const tree = await buildPoolTree(createDivisionEndSupabase({ poolRows: TEST_POOL_ROWS, failOn: "retired_at", calls }));
+  const plain = await buildPoolTree(createDivisionEndSupabase());
+  assert.deepEqual(treeShape(tree, SENIOR_IDS), treeShape(plain, SENIOR_IDS));
+  assert.deepEqual(calls, [
+    "or:squad.is.null,squad.eq.senior", "is:retired_at", // første forsøg → 42703
+    "or:squad.is.null,squad.eq.senior", // igen uden aktiv-filteret, stadig senior-scopet
+  ]);
+});
+
+test("#5536 buildPoolTree: mangler squad-kolonnen (42703), falder senior-scopet væk men aktiv-filteret bliver", async () => {
+  const calls = [];
+  const tree = await buildPoolTree(createDivisionEndSupabase({ poolRows: RETIRED_D4_POOL_ROWS, failOn: "squad", calls }));
+  assert.equal(tree.poolsPerTier.get(4), 4, "pensionerede puljer er stadig ude");
+  assert.deepEqual(calls.slice(-1), ["is:retired_at"]);
+});
+
+test("#5536 buildPoolTree fejler LUKKET på PGRST204 (skema-cache) for retired_at, i stedet for at tage pensionerede puljer med", async () => {
+  await assert.rejects(
+    buildPoolTree(createDivisionEndSupabase({ poolRows: RETIRED_D4_POOL_ROWS, failOn: "retired_at", failCode: "PGRST204" })),
+    /pool tree/,
+  );
+});
+
+test("#5536 isMissingRetiredAtColumnError: kun 42703/does-not-exist på netop retired_at", () => {
+  assert.equal(isMissingRetiredAtColumnError({ code: "42703", message: "column league_divisions.retired_at does not exist" }), true);
+  assert.equal(isMissingRetiredAtColumnError({ code: "42703", message: "column league_divisions.squad does not exist" }), false);
+  assert.equal(isMissingRetiredAtColumnError({ code: "PGRST204", message: "Could not find the 'retired_at' column of 'league_divisions' in the schema cache" }), false);
+  assert.equal(isMissingRetiredAtColumnError({ code: "57014", message: "canceling statement due to statement timeout" }), false);
+  assert.equal(isMissingRetiredAtColumnError(null), false);
 });
 
 // #1688(a) · regressions-dækning for sæson-gaten: seasonNumber < FIRST_PROMOTION_RELEGATION_SEASON
@@ -6147,13 +6340,10 @@ test("[epic #4592] processSeasonEnd: op/nedrykning → parkerings-sweep → rese
     if (table === "league_divisions") {
       return {
         select() {
-          return Promise.resolve({
-            data: [
-              { id: "pool-d3a", tier: 3, pool_index: 0 },
-              { id: "pool-d3b", tier: 3, pool_index: 1 },
-            ],
-            error: null,
-          });
+          return filteredRowsQuery([
+            { id: "pool-d3a", tier: 3, pool_index: 0 },
+            { id: "pool-d3b", tier: 3, pool_index: 1 },
+          ]);
         },
       };
     }

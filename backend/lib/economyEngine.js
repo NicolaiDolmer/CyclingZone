@@ -96,6 +96,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { withSupabaseRetry } from "./supabaseErrorNormalize.js";
 import { captureException } from "./sentry.js";
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
+import { DEFAULT_SQUAD, isSquad, withSeniorSquadScope } from "./squads.js";
 import { readWageDeductionMode, WAGE_DEDUCTION_MODES } from "./wageDeductionConfig.js";
 
 let defaultSupabaseClientPromise;
@@ -2535,16 +2536,86 @@ export async function updateRiderValues(supabaseClient, opts = {}) {
   return { ridersUpdated };
 }
 
+const RETIRED_AT_COLUMN = "retired_at";
+
+// Findes league_divisions.retired_at IKKE endnu (#4592 A2's migration er ikke kørt)?
+// Kun Postgres' egen 42703 / "does not exist" med kolonnenavnet tæller: uden kolonnen
+// kan ingen pulje være pensioneret, så en læsning uden filteret er per definition
+// korrekt. PGRST204 (PostgREST's skema-cache) tæller bevidst IKKE, samme dom som
+// isMissingSquadColumnError: cachen kan mangle kolonnen EFTER migrationen har
+// pensioneret puljer, og dér fejler vi lukket i stedet for at tage dem med.
+/**
+ * @param {{code?:string, message?:string, details?:string, hint?:string}|null|undefined} error
+ * @returns {boolean}
+ */
+export function isMissingRetiredAtColumnError(error) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const text = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+  if (!text.includes(RETIRED_AT_COLUMN)) return false;
+  if (code === "PGRST204" || text.includes("schema cache")) return false;
+  if (code === "42703") return true;
+  return /does not exist|undefined column/.test(text);
+}
+
+/** @type {(query: any) => any} */
+const onlyActivePools = (query) => query.is(RETIRED_AT_COLUMN, null);
+/** @type {(query: any) => any} */
+const allPoolsIncludingRetired = (query) => query;
+
+// Kør en league_divisions-læsning uden pensionerede puljer (retired_at IS NULL).
+// Samme form som withSeniorSquadScope: `run(active)` bygger en FRISK builder og pakker
+// den ind i `active(...)`. Svarer databasen 42703 på retired_at, køres `run` én gang
+// til uden filteret.
+/**
+ * @template R
+ * @param {(active: (query: any) => any) => (R|PromiseLike<R>)} run
+ * @returns {Promise<R>}
+ */
+async function withoutRetiredPools(run) {
+  let result;
+  try {
+    result = await run(onlyActivePools);
+  } catch (err) {
+    if (!isMissingRetiredAtColumnError(err)) throw err;
+    return run(allPoolsIncludingRetired);
+  }
+  if (result?.error && isMissingRetiredAtColumnError(result.error)) return run(allPoolsIncludingRetired);
+  return result;
+}
+
+// Puljerne ét træ bygges af: trup (senior = withSeniorSquadScope, ellers et eksplicit
+// squad-filter) og kun aktive puljer.
+/**
+ * @param {any} client  Supabase-klient
+ * @param {string} squad
+ */
+function loadPoolTreeRows(client, squad) {
+  if (squad === DEFAULT_SQUAD) {
+    return withSeniorSquadScope((senior) => withoutRetiredPools((active) =>
+      active(senior(client.from("league_divisions").select("id, tier, pool_index")))));
+  }
+  return withoutRetiredPools((active) =>
+    active(client.from("league_divisions").select("id, tier, pool_index").eq("squad", squad)));
+}
+
 /**
  * Bygger pulje-træet (forælder/barn) fra league_divisions' pool_index. Strukturen er
  * et binært træ (1/2/4/8 puljer): forælder(T,i) = (T-1, ⌊i / ratio⌋); børn = pool_index
  * i tieren under der mapper tilbage. ratio = puljer(T) / puljer(T-1). Udledt fra data
  * (robust mod fremtidig pyramide-udvidelse) — INGEN migration nødvendig.
+ *
+ * Ét træ pr. trup (#5536): ungdomspuljerne deler tier/pool_index med seniorernes, så et
+ * uscopet træ ville nøgle to puljer på samme `tier:pool_index`. Default er senior.
+ * Pensionerede puljer (retired_at sat, #4592: D4 går fra 8 til 4 puljer) er ikke med,
+ * ellers ville D3 rykke ned i de tomme D4-puljer og ratio'en regnes på 8 i stedet for 4.
+ *
+ * @param {object} client  Supabase-klient
+ * @param {{ squad?: string }} [options]
  */
-export async function buildPoolTree(client) {
-  const { data: lds, error } = await client
-    .from("league_divisions")
-    .select("id, tier, pool_index");
+export async function buildPoolTree(client, { squad = DEFAULT_SQUAD } = {}) {
+  if (!isSquad(squad)) throw new TypeError(`buildPoolTree: ukendt trup ${JSON.stringify(squad)}`);
+  const { data: lds, error } = await loadPoolTreeRows(client, squad);
   throwIfSupabaseError(error, "Could not load league_divisions for pool tree");
   const byId = new Map();
   const byTierIdx = new Map();
@@ -2763,9 +2834,10 @@ export async function reseedTierPools(seasonId, deps = {}) {
 
   // Pulje-etiketten ("Division 3 — B") bruges i beskeden til manageren. 15 rækker,
   // og kun når flaget er på — derfor et selvstændigt opslag frem for at udvide
-  // buildPoolTree, som kaldes på hver sæson-slut uanset flag.
-  const { data: poolLabelRows, error: poolLabelError } = await client
-    .from("league_divisions").select("id, label");
+  // buildPoolTree, som kaldes på hver sæson-slut uanset flag. Senior-scopet (#5536):
+  // reseed flytter kun mellem seniorpuljer.
+  const { data: poolLabelRows, error: poolLabelError } = await withSeniorSquadScope((senior) =>
+    senior(client.from("league_divisions").select("id, label")));
   throwIfSupabaseError(poolLabelError, "Could not load league_division labels for reseed");
   const labelByPool = new Map((poolLabelRows || []).map((p) => [p.id, p.label]));
   const notificationDeps = { supabase: client, now: deps.now };
@@ -2895,7 +2967,10 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
         .select("id, division, league_division_id")
         .order("id", { ascending: true })
     ), "Could not load teams for standings recalculation"),
-    supabaseClient.from("races").select("id").eq("season_id", seasonId),
+    // #5536: kun seniorløb, samme prædikat som RPC'en (#5535). Et ungdomsløb må ikke
+    // give point i seniorstillingen, heller ikke i fallback-vinduet.
+    withSeniorSquadScope((senior) =>
+      senior(supabaseClient.from("races").select("id")).eq("season_id", seasonId)),
   ]);
 
   if (racesError) throw new Error(racesError.message);

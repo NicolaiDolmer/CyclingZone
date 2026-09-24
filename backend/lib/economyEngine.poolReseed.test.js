@@ -71,8 +71,32 @@ function unimprovableSpecs() {
   ];
 }
 
+// #5536: league_divisions-builder der fortolker motorens senior-scope (.or) og
+// aktiv-filter (.is("retired_at", null)). Senior-fixturen uden squad/retired_at passerer
+// uændret.
+function poolRowsQuery(rows) {
+  const filters = [];
+  const builder = {
+    or(expr) {
+      assert.equal(expr, "squad.is.null,squad.eq.senior");
+      filters.push((p) => p.squad == null || p.squad === "senior");
+      return builder;
+    },
+    is(column, value) {
+      filters.push((p) => (p[column] ?? null) === value);
+      return builder;
+    },
+    then(resolve, reject) {
+      const data = rows.map((p) => ({ ...p })).filter((p) => filters.every((f) => f(p)));
+      return Promise.resolve({ data, error: null }).then(resolve, reject);
+    },
+  };
+  return builder;
+}
+
 function createReseedSupabase({
   specs = improvableSpecs(),
+  pools = POOLS,
   flagValue = "on",
   flagMissing = false,
   thresholdValue,
@@ -120,7 +144,7 @@ function createReseedSupabase({
         };
       }
       if (table === "league_divisions") {
-        return { select: () => Promise.resolve({ data: POOLS.map((p) => ({ ...p })), error: null }) };
+        return { select: () => poolRowsQuery(pools) };
       }
       if (table === "teams") {
         return {
@@ -247,6 +271,30 @@ test("reseedTierPools: sender pulje-besked til manageren med i18n-koder", async 
     assert.equal(n.metadata.titleCode, "notif.poolReseeded.title");
     assert.equal(n.metadata.messageCode, "notif.poolReseeded.message");
     assert.match(n.metadata.messageParams.pool, /^Division 3 - [AB]$/);
+  }
+});
+
+// ── #5536: ungdomspuljer og pensionerede puljer er ikke reseed-mål ──────────
+
+test("#5536 reseedTierPools: ungdomspuljer og pensionerede puljer i fixturen ændrer intet (senior bit-identisk)", async () => {
+  const plain = createReseedSupabase({ userIdByTeam: { mid2: "user-mid2" } });
+  const plainResult = await reseedTierPools("season-2", { supabase: plain });
+
+  // Samme tier/pool_index som seniorpuljerne (spec §6.1) + en pensioneret seniorpulje.
+  const youth = POOLS.map((p) => ({ ...p, id: p.id + 100, squad: "u23", label: `U23 ${p.label}` }));
+  const retired = { id: 6, tier: 3, pool_index: 2, label: "Division 3 - C", retired_at: "2026-09-28T00:00:00Z" };
+  const mixed = createReseedSupabase({
+    pools: [...POOLS, ...youth, retired],
+    userIdByTeam: { mid2: "user-mid2" },
+  });
+  const mixedResult = await reseedTierPools("season-2", { supabase: mixed });
+
+  assert.ok(plain.updates.length > 0, "kontrol: fixturen skal give flytninger");
+  assert.deepEqual(mixedResult, plainResult);
+  assert.deepEqual(mixed.updates, plain.updates);
+  assert.deepEqual(mixed.notifications, plain.notifications);
+  for (const u of mixed.updates) {
+    assert.ok([4, 5].includes(u.payload.league_division_id), `hold ${u.id} flyttet til pulje ${u.payload.league_division_id}`);
   }
 });
 
