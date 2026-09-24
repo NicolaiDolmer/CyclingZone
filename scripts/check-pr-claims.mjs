@@ -49,7 +49,7 @@ import { fileURLToPath } from "node:url";
 import { buildIndex, classifyPath, findReaders, loadRepoFiles, loadTreeFiles, parseStageFlagKeys, stripComments, CATALOG_PATH } from "./check-flag-liveness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const CLAIM_DIRS = Object.freeze(["backend", "frontend", "database", "shared", "api", "scripts", ".github"]);
+const CLAIM_DIRS = Object.freeze(["backend", "frontend", "database", "shared", "api", "scripts", ".github", ".claude/workflows"]);
 const PATH_EXT = "js|mjs|cjs|jsx|ts|tsx|sql|json|md|yml|yaml|ps1|sh|css|html|toml";
 const PATH_RE = new RegExp(`(?:^|[\\s\`'"(|])((?:\\.{0,2}/)?(?:[\\w@*.-]+/)+[\\w@*.-]+\\.(?:${PATH_EXT}))(?::\\d+)?(?=$|[\\s\`'"),.;:|])`, "g");
 const BARE_FILE_RE = new RegExp(`^[\\w@*.-]+\\.(?:${PATH_EXT})$`);
@@ -116,7 +116,8 @@ export function extractClaims(body, knownKeys = new Set(), tables = new Set(["ap
       // (PR #5501-linjen naevnte baade en hjaelpefunktion og "kontakten").
       const near = line.slice(Math.max(0, sm.index - 50), sm.index + sm[0].length + 50);
       for (const tok of span.split(/[\s=(),:;'"<>[\]{}]+/).filter(Boolean)) {
-        const t = tok.replace(/^[.?&]+|[.?]+$/g, "");
+        if (/^[?&]/.test(tok)) continue; // `?navn=` er en parameter, allerede talt ovenfor
+        const t = tok.replace(/^\.+|[.?]+$/g, "");
         if (BARE_FILE_RE.test(t)) {
           add("sti", t, rawLine);
           continue;
@@ -259,7 +260,10 @@ export function lookupClaim(claim, ctx) {
   res.onMain = baseHits.length > 0;
   const all = [...new Set([...headHits])];
   res.where = all.slice(0, 8);
-  const prodKinds = claim.type === "env" ? ["prod", "script", "other"] : ["prod"];
+  // Ops-scripts og workflows er rigtig kode for en paastand om en konstant,
+  // et env-navn eller en parameter; for en kontakt er det kaldestederne i
+  // produktionskode der doemmer (se nedenfor).
+  const prodKinds = ["prod", "script", "other"];
   res.verdict = verdictFromHits(all, { prodKinds });
   if (claim.type === "endpoint" && res.verdict === "findes-ikke") {
     const callers = filesMatching(head, (f) => f.kind === "prod" && f.text.includes(claim.value));
@@ -354,6 +358,14 @@ export function checkClaims(input) {
     if (r.verdict === "kun-test") notices.push(`${r.type} "${r.value}" findes kun i tests.`);
     if (r.verdict === "findes-ikke" && r.type !== "kontakt" && r.type !== "konstant") notices.push(`${r.type} "${r.value}" findes ikke i diffen, i main eller i PR-headen${r.note ? ` (${r.note})` : ""}.`);
     if (r.verdict === "slettet-i-diffen") notices.push(`sti "${r.value}" slettes af denne PR.`);
+  }
+  // Issue-kommentar paa #5507 (22/9): `npx --prefix frontend playwright test`
+  // rammer ikke frontend/playwright.config.js - saa er "e2e groen" ikke koert
+  // mod den rigtige konfiguration.
+  for (const line of cleanBody(input.body).split(/\r?\n/)) {
+    if (/playwright\s+test/.test(line) && /--prefix[\s=]+frontend/.test(line) && !/--config/.test(line)) {
+      notices.push(`playwright-kommando uden --config: "${line.trim().slice(0, 120)}" - brug --config=frontend/playwright.config.js.`);
+    }
   }
   return { results, warnings, notices };
 }
