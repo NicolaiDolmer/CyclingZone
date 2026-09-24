@@ -1,5 +1,7 @@
 // #2175/#3013: refresh af rangliste-matviews (rider_rankings_mv,
-// team_standings_ext_mv, team_race_points_mv, global_rank_mv).
+// team_standings_ext_mv, team_race_points_mv, global_rank_mv) + #5647
+// youth_rider_rankings_mv. "Fire" nedenfor er den historiske senior-kerne; listen
+// REFRESH_RPCS er sandheden for hvor mange der kaldes.
 //
 // Matviews aggregerer fra race_results, så de skal refreshes når nye resultater
 // skrives (race-finalization) — ellers driver /standings + /rider-rankings.
@@ -49,6 +51,11 @@ const REFRESH_RPCS = [
   { rpc: "refresh_team_standings_ext_mv", label: "team_standings_ext_mv" },
   { rpc: "refresh_team_race_points_mv", label: "team_race_points_mv" },
   { rpc: "refresh_global_rank_mv", label: "global_rank_mv" },
+  // #5647 (Y7 / plan S5): ungdoms-rytterranglisten (kun løb med squad <> 'senior',
+  // database/2026-09-25-4620-youth-rider-rankings-mv.sql). SIDST i rækken, så de
+  // fire seniorviews altid refreshes først. Indgår i heartbeat-invarianten som de
+  // andre: "ranking"-heartbeatet betyder at ALLE rangliste-matviews er friske.
+  { rpc: "refresh_youth_rider_rankings_mv", label: "youth_rider_rankings_mv" },
 ];
 
 export async function refreshRankingMatviewsSafe(supabase, { captureExceptionFn } = {}) {
@@ -77,7 +84,7 @@ export async function refreshRankingMatviewsSafe(supabase, { captureExceptionFn 
     return false;
   }
 
-  // Alle fire lykkedes → heartbeat opdateres (bevarer "heartbeat kan ikke lyve"-
+  // Alle RPC'er lykkedes → heartbeat opdateres (bevarer "heartbeat kan ikke lyve"-
   // invarianten fra #2196 Del 2, nu på Node-siden i stedet for i én DB-transaktion).
   try {
     const { error: hbError } = await supabase
