@@ -1,6 +1,54 @@
 # Forslag til beregning: typefri rytterværdi med marked (#5497, R2-R5)
 
-Status: **forslag v2 (23/9) med ejerens valg fra 22/9 bygget ind. Ikke godkendt til build.** Ingen live-sti er ændret. Tal og navne står kun i den private rapport (`balance-internals/2026-09-23-5497-typefree-v2/`) og i ejerens private valg-fil. Låste beslutninger i #5497 genåbnes ikke.
+Status: **v3 (25/9): den samlede model er bygget bag nøglen `v6`, dev-only. Ikke godkendt til build.** app_config peger stadig på v4; intet flag er flippet. Se afsnit 0. Afsnit 1-6 er forslag v2 (23/9) og gælder uændret for selve beregningen.
+
+## 0. v3: hvad der er bygget (25/9)
+
+Ejer-direktiv 24/9: modellen der går live har alt med fra start, så spillerne ikke oplever at den laves om igen og igen. Typefri grundværdi, elitepræmien i trin og markedet ligger derfor i én model under én nøgle.
+
+**Nøglen.** `v6` i `riderValuationModelSelect.js` (`MODEL_PATHS`, `VALUATION_MODEL_IDS`). Model-filen er `backend/lib/riderValuationModelV6Typefree.json` med de fittede parametre fra målescriptet (samme tal som den private model-fil). Fail-safe er uændret: alt ukendt og enhver læsefejl giver v4. Løn-nøglen (`rider_production_value_model`) accepterer ikke `v6` og falder tilbage til v4.
+
+**Kaldestien.** `recomputeRiderValue` genkender den typefri model og regner prisen med `valueTypefree`: typefri grundværdi, elitepræmien på det valgte trin, markedsfaktoren ovenpå. `predictBaseValue` (rytterkort, backfill, progression) dispatcher også, altid på trin 0. v4 og v5 er bit-identiske med før.
+
+**Kontrakten med admin-forhåndsvisningen (#5686).**
+
+```
+recomputeRiderValue(riderRow, abilities, baseline, model,
+                    { typeAbilities, youthBaseline, productionModel, phaseStep })
+```
+
+- `model`: `loadValuationModelById("v6")` virker uden opsætning, men **uden marked**. Skal markedet med, hentes modellen med `await loadValuationModelByIdWithMarket(supabase, "v6")`.
+- `phaseStep`: 0-4 = antal søndagskørsler siden kørselsdagen (0 = fuld præmie, 4 = ny normal). Default 0. Uden for intervallet klemmes den ind; ugyldigt giver 0.
+- Returnerer de samme fire felter som før. For v6 kommer `valuation_components` med: model-id, grundværdi før marked, markedsfaktor, om markedet var med, trin og præmie-faktor. Det er det admin-siden kan vise som "før/efter" og "hvor meget kommer fra markedet".
+- `current_production_value` regnes altid med v4 for v6 (eller med den `productionModel` kalderen sender). Lønnen følger ikke værdien.
+
+**Markedet.** Vægt, loft og selve markeds-fittet (fælles led + lokal kerne) er ejer-valg og afledt af rigtige handler. De står aldrig i repoet. De bor i app_config-nøglen `rider_valuation_v6_market`, som loaderen lægger på modellen som `market_fit`. Formen er `serializeMarketFit` / `hydrateMarketFit` i `marketComponent.js`; målescriptet skriver den som privat fil. Mangler nøglen, regner v6 uden marked og siger det (`market_applied: false`). Søndagskørslens strikse læsning stopper, hvis nøglen ikke kan læses.
+
+**Tørkørslen.** `valuationV5DryRun5443.mjs --to=v6 --step=N --market=<privat fil>` regner hele prod-populationen read-only gennem `recomputeRiderValue` og skriver en trin-rapport under `balance-internals/`: population på alle fem trin, managerhold, løn, typebyte, +1-glathed og udvikl-og-sælg.
+
+**Tørkørsel mod prod 24/9 (kvalitativt; tal privat):**
+
+| Kontrol | Resultat |
+|---|---|
+| Løngrundlag flyttet | ✅ Ingen ryttere, på alle fem trin |
+| Menneskeholds ryttere ændrer sig | ✅ Alle får ny pris på kørselsdagen. Omkring hver tredje stiger, resten falder |
+| Typebyte | ✅ 0 afvigelser på alle fem trin |
+| +1 evnepoint, grundværdi | ✅ Falder i under hver hundrede test |
+| +1 evnepoint, med marked | 🟡 Markedsleddet giver små udsving: prisen falder i omkring hver syvende test, næsten altid under 1 % |
+| Udvikl-og-sælg, ikke dominant | ✅ Grøn på alle fem trin |
+| Udvikl-og-sælg, net-positiv (dyreste prospect) | Grøn på trin 0-3, rød i den nye normal (afsnit 4 punkt 1, ejer-valg) |
+
+**Menneskehold.** Intet i stien kigger på hold. En rytter på et managerhold regnes præcis som en fri eller en AI-rytter, og søndagskørslens diff skriver ham (test + tørkørsel).
+
+**Hvad v3 IKKE dækker:**
+
+1. **Trin-tælleren.** Søndagskørslen kalder stadig med trin 0. Et gemt trin-tal, der tælles op efter hver kørsel, hører til build-planen (afsnit 5 punkt 3) og indfasningsplanen.
+2. **Markeds-fittet i prod.** Nøglen `rider_valuation_v6_market` findes ikke endnu. Den skrives først efter ejerens "kør" (et prod-skridt med tal, ejer-gated). Indtil da viser admin-siden v6 uden marked, medmindre fittet gives direkte.
+3. **Gaterne.** `eliteUnbuyableGate` og udvikl-og-sælg-gaten er ikke omformuleret (afsnit 4 punkt 1 er stadig et ejer-valg).
+4. **R1** (S4-programmet) og en re-fit af markedet efter udfasningen (afsnit 6).
+5. **Andre læsere af modellen.** `backfillCores`, `riderProgressionEngine` og rytterkortet går gennem `predictBaseValue` og får trin 0. Hvis de skal følge trinnet, skal de have trin-tallet fra punkt 1.
+
+Tal og navne står kun i de private rapporter (`balance-internals/2026-09-24-5497-typefree-v3/`, `balance-internals/2026-09-24-5497-v6-dryrun-trin0/`) og i ejerens private valg-fil. Låste beslutninger i #5497 genåbnes ikke.
 
 ## 1. I hverdagsord
 
@@ -109,8 +157,8 @@ v1-prognosen havde ingen svagheds-klasse: alle evner fik mindst mellemniveauets 
 
 ## 5. Build-plan når ejeren har sagt "godkendt til build"
 
-1. Nyt model-id (`v6-typefree`) i `riderValuationModelSelect.js` `MODEL_PATHS` + model-JSON med de valgte tal. v4-stien og `valuationTypeFor` skal forblive bit-identiske.
-2. `computeSupport` → `evidens(x)`; `marketValueModelV2.type_column` udgår for den nye model.
+1. ~~Nyt model-id i `riderValuationModelSelect.js` `MODEL_PATHS` + model-JSON.~~ **Gjort i v3** (nøgle `v6`, afsnit 0). v4-stien og `valuationTypeFor` er bit-identiske.
+2. Markeds-fittet skrives til `rider_valuation_v6_market` (ejer-gated prod-skridt). `computeSupport` → `evidens(x)`; `marketValueModelV2.type_column` udgår for den nye model.
 3. Præmie-trin: søndagskørslen (`riderValueRefresh`) læser et gemt trin-tal og tæller det op efter hver kørsel.
 4. `eliteUnbuyableGate` og udvikl-og-sælg-gaten omformuleres efter punkt 4.1. Type-økonomi-tabellen erstattes af typebyte-ækvivalens.
 5. R1: referenceprogram på S4-kalenderens tørkørsel **uden** uniform tilt (#5405). Programandelene sættes fra den, og fittet genkøres.
