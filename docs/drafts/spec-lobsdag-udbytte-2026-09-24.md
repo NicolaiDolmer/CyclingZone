@@ -14,6 +14,8 @@ En rytter der kører løb på en løbsdag, udvikler sig som efter et "mellem"-tr
 - **6/9** ([#4850-kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/4850#issuecomment-5561066685)): "haardt loft paa maks +1 pr. evne pr. tick for alle ryttere, og overskydende fremdrift skal baeres videre til naeste tick (aldrig klippes)". Ejerens ord 5/9: "Det skal aldrig vaere muligt at stige x2 samme dag i en evne."
 - **18/9** (#5267, låst): "løbsdag = én dato · ét løb ELLER træning".
 
+- **24/9, efter simuleringen (#5640): S1 valgt**: mellem-pas med off-fokus 0,35, ingen ×1,15. Median-udvikling fra løbsdage 0,61 point/sæson; ryttere med 31-60 løbsdage 1/5 → 2/11 (median/p90); +1-loftet binder 0 %. C1 + C3 er bygget i #5640; C2 + help.json + TRAINING_RULES.md mangler.
+
 ## Hvad der sker i dag (flag `race_day_development_enabled` = off i prod, SELECT 24/9)
 
 - `backend/lib/dailyTrainingEngine.js:497-511`: en rytter der er bundet/kørte i dag og hvor udviklingen er slukket, får `boundRestToday` → **hvile: intet tick, ingen udvikling, kun restitution**.
