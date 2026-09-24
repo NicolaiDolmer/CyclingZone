@@ -75,7 +75,7 @@ Ingen frontend-hjælper findes; lav én: **ny** `frontend/src/lib/seniorScope.ts
 - **Ny migration** `database/2026-09-25-4620-youth-pools-seed.sql`: `insert into league_divisions (squad, tier, pool_index, …)` for u23 og junior + `teams.u23_league_division_id` / `teams.junior_league_division_id` (kolonnerne ligger i planens S3, l.280-299). Seed-gaten (`squadSeniorReaders.test.js:348-361`) stopper migrationen, til Y1 + economyEngine-delen er grønne. Det er meningen.
 - **Ny** `backend/lib/youthPoolAssignment.js` (ren): hvilket hold i hvilken ungdomspulje. Menneskehold: spejl seniorpuljen (spec 2026-09-15 §6.1) eller fordel efter behov. AI-hold: fordel efter behov (C1 23/9: "Fordeles AI-trupperne efter behov, holder større former").
 - **Ny** `backend/scripts/seedYouthPools.js`: dry-run default, `--apply --owner-go`.
-- **Pyramideform = ejer-valg** (YOUTH_RULES §6 pkt. 3). Ingen evidens her for felt-tallene efter A6; `backend/scripts/measureYouthFieldGate.mjs` skal køres med A6-dry-run-populationen. Se "Ejer-valg" nederst.
+- **Form besluttet 24/9:** ca. 9 grupper pr. trup i S4, alle managers med, snake efter senior-Global Rank. Divisioner fra S5. Se "Ejer-valg" nederst.
 
 ### Y4: præmievagt + udtagelse (senior bliver bit-identisk)
 
@@ -143,7 +143,15 @@ Ingen frontend-hjælper findes; lav én: **ny** `frontend/src/lib/seniorScope.ts
 | **Y6** A6-kørsel | ingen kode; runbook-trin + ejer-go | S4 aktiv | ingen |
 | **Y7** stilling/rangliste/visning | migration `youth_season_standings`, `youthStandings.js`, `refreshRankingMatviews.js`, `backend/routes/rankings.ts`, `frontend/src/lib/rankingsClient.ts`/`rankingsApi.ts`, `SquadPage.tsx`, ny `YouthRacesPage.tsx`, `squad.json` (en+da) | Y3 (puljer) | ingen, hvis hooket ligger i Y4's `raceRunner.js` |
 
-## Ejer-valg der blokerer (ét ad gangen)
+## Ejer-valg
 
-1. **Pyramideform for U23 og junior** (YOUTH_RULES §6 pkt. 3). A: U23 og junior spejler seniorens nye 1/2/4/4 med AI-trupper fordelt efter behov · B: én ungdomspulje-tier pr. trup i S4 (fx 4 puljer à ca. 24 hold), op/nedrykning tændes først, når felterne er målt. 👍 A giver samme struktur overalt · 👎 A har flest puljer at fylde og C1 fejlede for den fulde form ved spejling · 👍 B er mest robust (C1 23/9: "mest robust ved de mindste former") · 👎 B har ingen op/nedrykning i S4. **Anbefaling: B for S4**, A fra S5 når felterne er målt. Ingen evidens for de konkrete felt-tal efter A6; kør `measureYouthFieldGate.mjs` med A6-dry-run-populationen før valget.
-2. **Antal AI-juniorer pr. hold** (`--juniors=N`, 0-10): kræves for A6-kørslen.
+1. **Model (ejer 24/9 ca. kl. 11:30, [#2492-kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/2492#issuecomment-5811431705)): alle i grupper i S4, divisioner fra S5.**
+   - S4: én række ungdomsgrupper à 24 med plads til ALLE ikke-parkerede managers + AI-ungdomshold. Skøn: ca. 116 managers + 101 AI = ca. 9 grupper pr. trup. En ny manager i løbet af S4 overtager en AI-plads.
+   - Ingen starter i en ungdoms-1. division ("det skal man fortjene").
+   - Ved S4-slut: U23-holdene rangeres efter S4-resultater og fordeles i divisioner + grupper (snake, som `pyramidCompression.js`). Formen vælges ved S4-slut.
+   - Junior: samme model.
+   - **Konsekvens for sporene:** Y3 seeder ca. 9 grupper pr. trup (tier 1, `pool_index` 0-8) i stedet for en pyramide. `youthPoolAssignment.js` placerer alle ikke-parkerede menneskehold + AI-hold. Nye managers (`teamProfileEngine.js`, S4-struktur A2) og comebacks (A4) får også en ungdomsgruppe med AI-plads. Op/nedrykning (plan S6) bygges først til S4-slut.
+2. **Gruppefordeling i S4 (ejer 24/9): snake efter seniorholdets Global Rank** (`rankTeamsByGlobalRank` + `snakeAssign`, `backend/lib/pyramidCompression.js:172, :212`), så grupperne er lige stærke. AI-holdene fylder op til 24 pr. gruppe.
+3. **Åbent: antal AI-juniorer pr. hold** (`--juniors=N`, 0-10). Juniorer er 16-18, men løbsberettigede fra 17, så et AI-hold skal have ca. 9-10 juniorer for at have 6 løbsberettigede. A6-tørkørslen viser det præcise tal.
+
+**Prod 24/9 (aktive managers ≤ 30 d, ikke parkeret):** 114 managers · 58 har U23-ryttere, 5 kan stille et fuldt U23-hold · 70 har juniorer, 14 kan stille et fuldt juniorhold. Felterne er derfor mest AI i starten.
