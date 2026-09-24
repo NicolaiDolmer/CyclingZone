@@ -149,7 +149,7 @@ Genstart pwsh efter Trin 0. Log derefter ind — **Bitwarden og OneDrive først:
 | GitHub | `gh auth login` | Clone + push |
 | Infisical | `infisical login` | Secrets (browser-OAuth) |
 | Vercel | `vercel login` | Frontend-deploy |
-| Railway | `railway login` | Backend-deploy + Discord-MCP-token |
+| Railway | `railway login` (CLI ≥ 5.30.3, se Troubleshooting) | Backend-deploy + Railway-MCP + Discord-MCP-token |
 | Claude | `claude` (OAuth ved første kørsel) | AI-dev |
 | Codex | `codex` (login ved første kørsel) | AI-dev |
 
@@ -310,6 +310,29 @@ Copy-Item -Path "<gammel-memory-sti>" -Destination "$env:USERPROFILE\.claude\pro
 ```
 
 Hvis det ikke lykkes: kør `pwsh -File scripts/link-onedrive-context.ps1` — memory + AI-context (codex-local) sync'es via OneDrive (`~/OneDrive/CyclingZone-context/`). Secrets bootstrap via Infisical — se "Scenarie 2 — Frisk PC" ovenfor.
+
+### "Railway-MCP svarer `Unauthorized. Please run railway login again`" (#2409)
+
+**Årsag (fundet 24/9):** Railway CLI før **5.30.3** bagte sit OAuth-access-token (levetid 1 time) ind i `railway mcp`-processen ved opstart. Når tokenet udløb, fejlede alle MCP-kald, mens `railway`-CLI'en selv fornyede tokenet og virkede. Fra 5.30.3 henter `railway mcp` et frisk token fra CLI-login ved hvert kald, og fra v5 er den en stdio-proxy til `mcp.railway.com`.
+
+**Engangs-trin pr. PC** (DOLMERPC gjort 24/9 med 5.62.1; NICOLAIPC og EMMAPC mangler):
+
+```powershell
+npm i -g @railway/cli@latest
+railway --version
+railway whoami
+claude mcp list
+```
+
+Forventet: `railway --version` viser 5.30.3 eller nyere, `railway whoami` viser din konto (ellers `railway login`), og `claude mcp list` viser `railway: railway mcp - Connected`.
+
+- User-scope MCP-entry i `~/.claude.json`: `railway` → `railway mcp`. Mangler den: `claude mcp add --scope user railway -- railway mcp`.
+- Genstart Claude Code-sessioner bagefter. Kørende sessioner beholder deres gamle `railway mcp`-proces.
+- npm kan ikke slette den gamle `railway.exe`, mens gamle sessioner kører (`EPERM ... @railway\.cli-XXXX`). Det er ufarligt: slet `%APPDATA%\npm\node_modules\@railway\.cli-*`, når sessionerne er lukket.
+- v5 omdøbte værktøjerne til kebab-case (`mcp__railway__get-logs`, `list-deployments`, `list-services`; før `get_logs` osv.), og parametrene er camelCase (`projectId`, `serviceId`, `startDate`).
+- **Dublet slået fra i repoet (intet at gøre pr. PC):** plugin'en `railway@claude-plugins-official` leverer samme remote-server (`plugin:railway:railway`, `https://mcp.railway.com`), men via Claude Codes egen OAuth, som ikke kan gennemføres i desktop-appens sessioner. `.claude/settings.json` → `deniedMcpServers` blokerer den på URL; plugin'ens skill og hook virker stadig.
+- `mcp__railway__list-variables` er deny'et i `.claude/settings.json`, fordi den returnerer secret-værdier i klartekst med en CLI-session. Brug `scripts/probe-railway-keys.ps1` (kun key-navne).
+- `pwsh -File scripts/agent-doctor.ps1` advarer (`railway-cli`), hvis en PC kører en version under 5.30.3.
 
 ### "Codex åbner stadig i den gamle Codex-mappe"
 

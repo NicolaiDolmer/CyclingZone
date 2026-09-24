@@ -7,6 +7,9 @@
     "code-modernization@claude-plugins-official": false,
     "vercel@claude-plugins-official": false
   },
+  "deniedMcpServers": [
+    { "serverUrl": "https://mcp.railway.com*" }
+  ],
   "permissions": {
     "additionalDirectories": [
       "../CyclingZone-worktrees/"
@@ -96,7 +99,9 @@
       "PowerShell(gc *.env*)",
       "PowerShell(cat *.env*)",
       "PowerShell(type *.env*)",
-      "PowerShell(Select-String *.env*)"
+      "PowerShell(Select-String *.env*)",
+      "mcp__railway__list-variables",
+      "mcp__railway__list_variables"
     ]
   },
   "hooks": {

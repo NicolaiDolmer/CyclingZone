@@ -451,6 +451,23 @@ if ($infisicalCmd) {
   Add-Check "infisical-cli" "WARN" "not found — install: winget install Infisical.infisical (see docs/CROSS_PC_SETUP.md)"
 }
 
+# Railway CLI < 5.30.3: `railway mcp` froze its 1h OAuth token at startup, so the
+# Railway-MCP answered "Unauthorized" mid-session while the CLI worked (#2409).
+$railwayMinVersion = [version]"5.30.3"
+if (Get-Command railway -ErrorAction SilentlyContinue) {
+  $railwayVersion = Try-Run @("railway", "--version")
+  $railwayMatch = [regex]::Match($railwayVersion.Text, '\d+\.\d+\.\d+')
+  if (-not $railwayMatch.Success) {
+    Add-Check "railway-cli" "WARN" "could not read 'railway --version': $(($railwayVersion.Text -split "`n") | Select-Object -First 1)"
+  } elseif ([version]$railwayMatch.Value -lt $railwayMinVersion) {
+    Add-Check "railway-cli" "WARN" "$($railwayMatch.Value) < $railwayMinVersion — Railway-MCP loses auth after 1h; run: npm i -g @railway/cli@latest (see docs/CROSS_PC_SETUP.md)"
+  } else {
+    Add-Check "railway-cli" "OK" $railwayMatch.Value
+  }
+} else {
+  Add-Check "railway-cli" "WARN" "not found — install: npm i -g @railway/cli, then railway login (see docs/CROSS_PC_SETUP.md)"
+}
+
 # Sentry config — probes live prod-state (Vercel + Railway) for env-var presence,
 # falls back to local env scan if CLIs unavailable. Source of truth = prod, since
 # #348 close-out showed local-only check produces both false-WARN (prod live, local
