@@ -6,13 +6,13 @@ Status: **v3 (25/9): den samlede model er bygget bag nøglen `v6`, dev-only. Ikk
 
 Ejer-direktiv 24/9: modellen der går live har alt med fra start, så spillerne ikke oplever at den laves om igen og igen. Typefri grundværdi, elitepræmien i trin og markedet ligger derfor i én model under én nøgle.
 
-**Nøglen.** `v6` i `riderValuationModelSelect.js` (`MODEL_PATHS`, `VALUATION_MODEL_IDS`). Model-filen er `backend/lib/riderValuationModelV6Typefree.json` med de fittede parametre fra målescriptet (samme tal som den private model-fil). Fail-safe er uændret: alt ukendt og enhver læsefejl giver v4. Løn-nøglen (`rider_production_value_model`) accepterer ikke `v6` og falder tilbage til v4.
+**Nøglen.** `v6` i `riderValuationModelSelect.js` (`MODEL_PATHS`, `VALUATION_MODEL_IDS`). Model-filen er `backend/lib/riderValuationModelV6Typefree.json` med de fittede parametre fra målescriptet (samme tal som den private model-fil). Fail-safe er uændret: alt ukendt giver v4, og en læsefejl giver v4 på de lempelige læse-stier. De strikse læsninger (søndagskørslen, sæson-transitionen) stopper kørslen i stedet. Løn-nøglen (`rider_production_value_model`) accepterer ikke `v6` og falder tilbage til v4.
 
 **Kaldestien.** `recomputeRiderValue` genkender den typefri model og regner prisen med `valueTypefree`: typefri grundværdi, elitepræmien på det valgte trin, markedsfaktoren ovenpå. `predictBaseValue` (rytterkort, backfill, progression) dispatcher også, på det trin loaderen har lagt på modellen (se "Trin-tælleren"). v4 og v5 er bit-identiske med før.
 
 **Trin-tælleren (25/9, indfasningsplanen §5 valg 1).** app_config-nøglen `rider_value_phase_step` (heltal 0-4, manglende/ugyldig = 0, uden for intervallet klemmes) er det trin der **sidst er skrevet** til rytterne.
 
-- Den ekstraordinære kørsel sætter den til 0 ved `--apply`, som første skrivning. Tørkørslen rører den ikke.
+- Den ekstraordinære kørsel sætter den til 0 ved `--apply`, efter backup og dags-claim og lige før første rytterværdi. Tørkørslen og en afvist kørsel rører den ikke.
 - Søndagskørslen læser den strikst og regner hele populationen med **nøgle + 1** (loft 4). Er prisen `v6` og refresh'en fuldført, skrives trinnet tilbage i samme afslutning som `completed_at`. Under v4/v5 røres nøglen ikke. En læsefejl frigiver dagen som enhver anden refresh-fejl; en fejlet op-tælling lader nøglen stå, så præmien bliver et trin længere, aldrig et trin for tidligt væk.
 - Hvorfor "sidst skrevet" og ikke "næste": søndag 1 skal være 75 % (indfasningsplanen §2), og læse-fladerne kan bruge nøglen direkte som det trin databasen står på.
 - Loaderne (`loadValuationModel`, `…Strict`, `…Cached`, `…ByIdWithMarket`) lægger trinnet på v6-modellen som `current_phase_step` sammen med markeds-fittet. `valueTypefree`, `predictBaseValue` og `recomputeRiderValue` bruger det, når kalderen ikke sender et eksplicit `phaseStep`; et eksplicit trin vinder altid. `refreshChangedRiderValues` sender altid sit eget trin (default 0), så et gemt trin aldrig tavst overtager en skrivende kørsel.

@@ -316,14 +316,6 @@ export async function runExtraordinaryValueEvent(supabase, {
   // ── RIGTIG KØRSEL ─────────────────────────────────────────────────────────
   log("ekstraordinaer vaerdikoersel - alle laase er aabne");
 
-  // #5497: trin-tælleren nulstilles til 0 som FØRSTE skrivning. Den næste
-  // søndagskørsel regner så trin 1 (75 %), præcis som indfasningsplanen.
-  // Før backuppen med vilje: fejler den, er intet andet rørt; fejler et
-  // senere skridt, står nøglen på 0, hvilket er den sikre retning (fuld
-  // præmie), aldrig et gammelt trin fra en tidligere kørsel.
-  await resetPhaseStepFn(supabase, EXTRAORDINARY_PHASE_STEP);
-  log(`trin-taeller: app_config.${RIDER_VALUE_PHASE_STEP_KEY} = ${EXTRAORDINARY_PHASE_STEP}`);
-
   const riders = await readAllRiderSnapshots(supabase);
   log(`foer-billede: ${riders.length} ryttere`);
   await writeBackup(supabase, riders, log);
@@ -336,6 +328,14 @@ export async function runExtraordinaryValueEvent(supabase, {
       + "INGEN vaerdier er aendret af dette kald."
     );
   }
+
+  // #5497: trin-tælleren nulstilles til 0 lige FØR første rytterværdi skrives,
+  // så den næste søndagskørsel regner trin 1 (75 %), præcis som
+  // indfasningsplanen. Efter backuppen og dags-claimet med vilje: afvises
+  // kørslen der (backup findes allerede, dagen er taget), står nøglen urørt
+  // og beskriver stadig de værdier rytterne faktisk har.
+  await resetPhaseStepFn(supabase, EXTRAORDINARY_PHASE_STEP);
+  log(`trin-taeller: app_config.${RIDER_VALUE_PHASE_STEP_KEY} = ${EXTRAORDINARY_PHASE_STEP}`);
 
   // SAMME funktion som søndagen. Ingen ny formel, ingen ny model-valg-logik.
   const res = await refreshFn(supabase, { log, phaseStep: EXTRAORDINARY_PHASE_STEP });

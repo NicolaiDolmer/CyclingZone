@@ -181,8 +181,9 @@ gennem den almindelige søndagskørsel, ikke gennem dette script.
 
 - Nøglen er det trin (0-4) der **sidst er skrevet** til rytterne. Manglende
   eller ugyldig værdi = 0 (fuld præmie).
-- `--apply` sætter den til **0 som første skrivning**, før backuppen. En
-  tørkørsel og en blokeret kørsel rører den ikke.
+- `--apply` sætter den til **0 efter backup og dags-claim**, lige før første
+  rytterværdi skrives. En tørkørsel, en blokeret kørsel og en kørsel der
+  afvises ved backup eller claim rører den ikke.
 - Hver fuldført søndagskørsel med prisen på `v6` regner med nøgle + 1 (loft 4)
   og skriver trinnet tilbage. Under `v4`/`v5` røres nøglen ikke.
 - Post-verify i Railway: søndagens linje `💰 Søndags-værdier` viser

@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import {
   APPLY_CONFIRM_PHRASE,
   BACKED_UP_COLUMNS,
+  BACKUP_TABLE,
   DEFAULT_WAGE_MODEL_ID,
   EXTRAORDINARY_PHASE_STEP,
   OWNER_ACK_ENV,
@@ -195,19 +196,67 @@ test("#5497: en blokeret --apply roerer heller ikke trin-taelleren", async () =>
   assert.deepEqual(resets, []);
 });
 
-test("#5497: --apply nulstiller trin-taelleren til 0 som FOERSTE skrivning", async () => {
-  const sb = configOnlySupabase();
+// In-memory mock af de tabeller --apply rører: model-nøglerne, rytter-
+// snapshottet, backup-tabellen og dags-claimet. `ops` er rækkefølgen.
+function applySupabase({ backupRows = [], claimTaken = false } = {}) {
+  const ops = [];
+  const backup = backupRows.map((r) => ({ ...r }));
+  const riders = [{ id: "fixture-a", base_value: 10, current_production_value: 2, primary_type: "gc", secondary_type: null, best_role: null, best_role_rating: null }];
+  const values = { rider_valuation_model: REQUIRED_MODEL_ID, rider_production_value_model: DEFAULT_WAGE_MODEL_ID };
+  const pageOf = (rows) => ({ order() { return this; }, range: async () => ({ data: rows.map((r) => ({ ...r })), error: null }) });
+  return {
+    ops,
+    from(table) {
+      if (table === "app_config") {
+        return { select: () => ({ eq: (_c, key) => ({ maybeSingle: async () => ({ data: { value: values[key] ?? null }, error: null }) }) }) };
+      }
+      if (table === "riders") return { select: () => { ops.push("riders:read"); return pageOf(riders); } };
+      if (table === BACKUP_TABLE) {
+        return {
+          select: () => pageOf(backup),
+          upsert: async (rows) => { ops.push("backup:write"); backup.push(...rows); return { error: null }; },
+        };
+      }
+      if (table === "rider_value_sunday_log") {
+        return {
+          insert: async () => {
+            ops.push("claim");
+            return claimTaken ? { error: { code: "23505", message: "duplicate key" } } : { error: null };
+          },
+          update: () => ({ eq: async () => { ops.push("complete"); return { error: null }; } }),
+        };
+      }
+      throw new Error(`uventet tabel ${table}`);
+    },
+  };
+}
+
+const applyArgs = (sb, resets) => ({
+  apply: true, confirm: APPLY_CONFIRM_PHRASE, ownerAck: true, now: WEDNESDAY, log: () => {},
+  refreshFn: async (_sb, opts) => { sb.ops.push(`refresh:${opts.phaseStep}`); return { scanned: 1, changed: 0, written: 0 }; },
+  resetPhaseStepFn: async (_sb, step) => { sb.ops.push("reset"); resets.push(step); },
+});
+
+test("#5497: --apply nulstiller trin-taelleren til 0 efter backup + claim, lige foer foerste rytterskrivning", async () => {
+  const sb = applySupabase();
   const resets = [];
-  await assert.rejects(
-    () => runExtraordinaryValueEvent(sb, {
-      apply: true, confirm: APPLY_CONFIRM_PHRASE, ownerAck: true, now: WEDNESDAY, log: () => {},
-      // Stopper kørslen lige efter nulstillingen, så testen kan se at intet
-      // andet (rytter-snapshot, backup, dags-claim) er rørt først.
-      resetPhaseStepFn: async (_sb, step) => { resets.push(step); throw new Error("stop efter reset"); },
-    }),
-    /stop efter reset/
-  );
+  const res = await runExtraordinaryValueEvent(sb, applyArgs(sb, resets));
+  assert.equal(res.ran, true);
   assert.deepEqual(resets, [0]);
   assert.equal(EXTRAORDINARY_PHASE_STEP, 0);
-  assert.deepEqual([...new Set(sb.tables)], ["app_config"], "kun model-noeglerne maa vaere laest foer nulstillingen");
+  const at = (op) => sb.ops.indexOf(op);
+  assert.ok(at("backup:write") < at("claim") && at("claim") < at("reset") && at("reset") < at("refresh:0"), sb.ops.join(" > "));
+});
+
+test("#5497: en afvist --apply (backup findes / dagen er taget) roerer IKKE trin-taelleren", async () => {
+  const existing = [{ rider_id: "fixture-a", base_value: 10, current_production_value: 2, primary_type: "gc", secondary_type: null, best_role: null, best_role_rating: null }];
+  for (const [navn, sb, fejl] of [
+    ["backup findes", applySupabase({ backupRows: existing }), /indeholder allerede/],
+    ["dagen er taget", applySupabase({ claimTaken: true }), /allerede claimet/],
+  ]) {
+    const resets = [];
+    await assert.rejects(() => runExtraordinaryValueEvent(sb, applyArgs(sb, resets)), fejl, navn);
+    assert.deepEqual(resets, [], navn);
+    assert.ok(!sb.ops.some((o) => o.startsWith("refresh")), navn);
+  }
 });
