@@ -416,6 +416,12 @@ export async function runComparison(supabase, { seed = DEFAULT_SEED, season = DE
     markdown: renderComparison({
       seed, targetSeason: season, ageSeason, juniors, teams, generated, prod, pairs: sample.pairs, candidates: withAbilities,
     }),
+    // Rækkerne til testen. main() skriver dem ALDRIG til stdout (hard rule 17).
+    teams,
+    generated,
+    prod,
+    prodIds: sample.picks.map((p) => p.rider.id),
+    pairs: sample.pairs,
     summary: {
       targetSeason: season,
       ageSeason,
