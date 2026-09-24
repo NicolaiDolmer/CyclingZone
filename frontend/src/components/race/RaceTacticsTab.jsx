@@ -781,8 +781,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       </div>
 
       {/* Holdplanen for den åbne etape: hvem kører der ledes for, hvad gør
-          holdet med udbruddet, og hvor mange kører sprint-tog. Preview-gated
-          sammen med ordre-kolonnen — se TACTICS_V4_PREVIEW i RaceDetailPage. */}
+          holdet med udbruddet, og hvor mange kører sprint-tog. Flag-gated
+          sammen med ordre-kolonnen — se computeShowOrders() i
+          raceOrdersVisibility.ts (kaldt fra RaceDetailPage). */}
       {showOrders && (
       <div className="px-4 py-3 border-b border-cz-border grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>

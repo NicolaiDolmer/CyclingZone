@@ -71,6 +71,8 @@ import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
+import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
+import { computeShowOrders } from "../lib/raceOrdersVisibility.ts";
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
@@ -263,12 +265,16 @@ function HeroStatBlock({ label, value, sub, last = false }) {
   );
 }
 
-// #4030/#4246: ORDRE-halvdelen af Taktik-fanen (holdplan, udbrud, sprint-tog,
-// "forsøg udbrud"/"sprint-tog" pr. rytter) er stadig preview-gated. Kæden er ægte
-// siden #4246 — kortet taler med det live team-orders-endpoint — men v4-flippet er
-// ikke taget, så ordrerne ændrer endnu ingenting i motoren for en almindelig
-// spiller. Gaten er UÆNDRET fra #4030; #4613 flytter kun fladen ind i fanen.
-// Intentions-halvdelen (#4632) er ikke gated og vises altid.
+// #4030/#4246/#5059: ORDRE-halvdelen af Taktik-fanen (holdplan, udbrud, sprint-tog,
+// "forsøg udbrud"/"sprint-tog" pr. rytter) er stadig gated, ikke længere kun på
+// build-variablen. Kæden er ægte siden #4246 — kortet taler med det live
+// team-orders-endpoint — men før #5059 sås ordrerne KUN på udviklerens egen
+// maskine (DEV) eller preview-mock: en spiller med det server-styrede
+// race_engine_v4-flag tændt så dem aldrig, fordi build-variablen altid er
+// false i prod. computeShowOrders() (raceOrdersVisibility.ts) afgør nu
+// showOrders ud fra BEGGE: build-variablen (uændret fra #4030, dev/preview) ELLER
+// spillerens race_engine_v4-flag. Intentions-halvdelen (#4632) er ikke gated og
+// vises altid.
 const TACTICS_V4_PREVIEW = import.meta.env.DEV || import.meta.env.VITE_PREVIEW_MOCK;
 
 export default function RaceDetailPage() {
@@ -604,6 +610,19 @@ export default function RaceDetailPage() {
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => clearInterval(id);
+  }, []);
+
+  // #5059 · ÉT let kald for Taktik-fanens ordre-gate (samme mønster som
+  // HelpPage.jsx :745, fetchPlayerFeatureFlags). null mens svaret hentes og et
+  // fejlsvar giver {} = alt off — computeShowOrders() behandler begge som
+  // "skjult", se raceOrdersVisibility.ts.
+  const [playerFlags, setPlayerFlags] = useState(null);
+  useEffect(() => {
+    let active = true;
+    fetchPlayerFeatureFlags()
+      .then((flags) => { if (active) setPlayerFlags(flags); })
+      .catch(() => { if (active) setPlayerFlags({}); });
+    return () => { active = false; };
   }, []);
 
   // #4581: etaper med faktiske etape-data — afledt af races.stages_completed (samme
@@ -1082,7 +1101,7 @@ export default function RaceDetailPage() {
           )}
 
           {activeMainTab === "tactics" && (
-            <RaceTacticsTab raceId={race.id} profileByStage={profileByStage} showOrders={TACTICS_V4_PREVIEW} />
+            <RaceTacticsTab raceId={race.id} profileByStage={profileByStage} showOrders={computeShowOrders(TACTICS_V4_PREVIEW, playerFlags)} />
           )}
 
           {activeMainTab === "stages" && (
