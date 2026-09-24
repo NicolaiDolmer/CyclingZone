@@ -40,10 +40,18 @@ const SCHEDULE = [
   { race_id: "race-other", stage_number: 7, scheduled_at: "2026-08-17T18:00:00Z" },
 ];
 
+// #5601 rettespor (24/9): "race-done" er et ENDAGSLØB (race_type "single",
+// se RACES ovenfor) — motoren skriver kun dets resultater som result_type
+// 'gc' på stage_number 1, ALDRIG 'stage' (frontend/src/lib/raceWinnerResultType.ts).
+// "race-live" er derimod et etapeløb (race_type "stage_race"), hvor etapens
+// egne placeringer fortsat står som 'stage'. Før denne rettelse brugte begge
+// løb fejlagtigt 'stage', hvilket ikke findes i prod for et endagsløb — Race
+// Centre fandt derfor intet podie på det færdige kort ("Lars Bendtsen" var
+// usynlig).
 const RESULTS = [
-  { race_id: "race-done", stage_number: 1, result_type: "stage", rank: 1, rider_id: "r-win", rider_name: "Mathieu Vasseur", team_id: "team-rival" },
-  { race_id: "race-done", stage_number: 1, result_type: "stage", rank: 2, rider_id: "r-mine", rider_name: "Lars Bendtsen", team_id: TEST_TEAM.id },
-  { race_id: "race-done", stage_number: 1, result_type: "stage", rank: 3, rider_id: "r-third", rider_name: "Nico Ferrari", team_id: "team-rival" },
+  { race_id: "race-done", stage_number: 1, result_type: "gc", rank: 1, rider_id: "r-win", rider_name: "Mathieu Vasseur", team_id: "team-rival" },
+  { race_id: "race-done", stage_number: 1, result_type: "gc", rank: 2, rider_id: "r-mine", rider_name: "Lars Bendtsen", team_id: TEST_TEAM.id },
+  { race_id: "race-done", stage_number: 1, result_type: "gc", rank: 3, rider_id: "r-third", rider_name: "Nico Ferrari", team_id: "team-rival" },
   { race_id: "race-live", stage_number: 5, result_type: "stage", rank: 1, rider_id: "r-live1", rider_name: "Tom Aalborg", team_id: "team-rival" },
   { race_id: "race-live", stage_number: 5, result_type: "stage", rank: 2, rider_id: "r-live2", rider_name: "Ivan Petrov", team_id: TEST_TEAM.id },
   { race_id: "race-live", stage_number: 5, result_type: "stage", rank: 3, rider_id: "r-live3", rider_name: "Sepp Vogel", team_id: "team-rival" },
@@ -64,6 +72,35 @@ const LIVE_TIMELINE = {
   ],
 };
 
+// #5601 rettespor (24/9): RaceCentrePage henter nu race_results i OP TIL TO
+// afgrænsede kald (planRaceResultQueries), ét pr. result_type — race-live
+// (stage_race) i 'stage'-gruppen, race-done (endagsløb) i 'gc'-gruppen.
+// PostgREST filtrerer server-side på in()/eq(); en mock der svarer med HELE
+// datasættet uanset query (som et rent json(route, RESULTS) gjorde) ville
+// duplikere rækkerne på tværs af de to kald, og stagePodium's rank-sortering
+// ville så vise samme rytter to gange i stedet for begge løbs egne rækker.
+// Filtrér derfor på race_id=in.(...), stage_number=in.(...) og result_type=eq.,
+// samme mønster som mockHandlers.js's restRows() bruger for race_results.
+function filterRaceResults(dataset, requestUrl) {
+  const search = decodeURIComponent(new URL(requestUrl).search);
+  const raceIdMatch = search.match(/race_id=in\.\(([^)]*)\)/);
+  const stageNumberMatch = search.match(/stage_number=in\.\(([^)]*)\)/);
+  const resultTypeMatch = search.match(/result_type=eq\.([^&]+)/);
+  let rows = dataset;
+  if (raceIdMatch) {
+    const ids = new Set(raceIdMatch[1].split(",").map((s) => s.trim().replace(/^"|"$/g, "")));
+    rows = rows.filter((r) => ids.has(r.race_id));
+  }
+  if (stageNumberMatch) {
+    const numbers = new Set(stageNumberMatch[1].split(",").map((s) => Number(s.trim())));
+    rows = rows.filter((r) => numbers.has(r.stage_number));
+  }
+  if (resultTypeMatch) {
+    rows = rows.filter((r) => r.result_type === resultTypeMatch[1]);
+  }
+  return rows;
+}
+
 async function installRaceCentreMocks(page) {
   await page.route("**/rest/v1/race_stage_schedule**", (route) => json(route, SCHEDULE));
   await page.route("**/rest/v1/races**", (route) => json(route, RACES));
@@ -71,7 +108,7 @@ async function installRaceCentreMocks(page) {
   await page.route("**/rest/v1/race_entries**", (route) => json(route, [
     { race_id: "race-live" }, { race_id: "race-up" }, { race_id: "race-done" },
   ]));
-  await page.route("**/rest/v1/race_results**", (route) => json(route, RESULTS));
+  await page.route("**/rest/v1/race_results**", (route) => json(route, filterRaceResults(RESULTS, route.request().url())));
 
   await page.route("**/api/races/*/timeline**", (route) => {
     const request = route.request();
@@ -116,11 +153,17 @@ test("race centre: live, upcoming and finished cards render for today's stages",
   await expect(main.getByRole("link", { name: "Gennemgå taktik" })).toHaveCount(1);
 
   // Færdig: podie med egen rytter fremhævet + "Fuldt resultat" + løbsfilm.
+  // Milano Sanremo er et ENDAGSLØB (result_type 'gc', ikke 'stage', #5601).
   await expect(main.getByText("Milano Sanremo")).toBeVisible();
   await expect(main.getByText("Lars Bendtsen")).toBeVisible();
   await expect(main.getByText("Din rytter").first()).toBeVisible();
   await expect(main.getByRole("link", { name: "Fuldt resultat" })).toBeVisible();
   await expect(main.getByRole("link", { name: "Se løbsfilmen" })).toBeVisible();
+  // Regression guard: de to result_type-grupper (planRaceResultQueries) må
+  // ALDRIG lække ind i hinanden eller duplikere — vinderen står kun én gang,
+  // ikke to (mock-routen skal filtrere på race_id/stage_number/result_type,
+  // ligesom PostgREST rent faktisk gør).
+  await expect(main.getByText("Mathieu Vasseur")).toHaveCount(1);
 
   // Presse-laget: løb fra andre divisioner ligger i sin egen stribe, ikke i "dine".
   await expect(main.getByRole("heading", { name: "Rundt i divisionerne" })).toBeVisible();

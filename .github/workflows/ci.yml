@@ -9,6 +9,13 @@ on:
   # ellers timer køen ud. Alle jobs her er fil-/test-baserede og kører uændret.
   merge_group:
 
+# Annuller foraeldede koersler paa samme PR-gren: boelgens laner pusher hvert kvarter, og hver push
+# koerte foer fuld CI til ende (24/9: 20 forældede koersler i koe, frontend-smoke pending 60+ min).
+# main og merge_group faar egen gruppe pr. SHA og annulleres aldrig.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 

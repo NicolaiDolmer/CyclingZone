@@ -2088,6 +2088,9 @@ test("repairSeasonEndFinanceAndBoard runs finance and board only without season 
   const result = await repairSeasonEndFinanceAndBoard("season-1", {
     supabase,
     now: FIXED_SEASON_END_NOW,
+    // #4592: parkerings-sweepen har ikke kørt for sæsonen (guarden dækkes i
+    // parkedTeamEconomy.test.js).
+    hasParkingSweepRunForSeason: async () => false,
   });
 
   // 2026-05-21: Repair-funktionen er nu kun board-snapshot-repair.
@@ -2166,6 +2169,7 @@ test("repairSeasonEndFinanceAndBoard resumes without duplicating existing salary
   const result = await repairSeasonEndFinanceAndBoard("season-1", {
     supabase,
     now: FIXED_SEASON_END_NOW,
+    hasParkingSweepRunForSeason: async () => false,
   });
 
   // 2026-05-21: Repair håndterer kun board-snapshots. Eksisterende
