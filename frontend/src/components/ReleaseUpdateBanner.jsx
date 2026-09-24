@@ -30,7 +30,8 @@ import { useBottomSlot } from "../lib/bottomSlot.ts";
 // Knappen er SECONDARY (review-fund 6, TASTE §P3): banneret er en stribe oven på
 // en vilkårlig side, og viewets egen gold primary — Gem, Log ind — skal blive ved
 // med at være den ene guld-flade i billedet.
-// Review-fund 5: banneret deler `fixed inset-x-0 bottom-0 z-toast` med
+// Review-fund 5: banneret deler bundkanten (`fixed inset-x-0 z-toast`, over
+// bundmenuen på mobil via --cz-mobile-nav-offset, #5561) med
 // cookie-banneret og NPS-prompten og tegner OVENPÅ dem. #5440: bundkanten er nu
 // ÉN delt slot (lib/bottomSlot.ts, samtykke > release > NPS). Banneret gør krav
 // paa den naar det har noget at vise, og NPS-baren viger saa længe banneret
@@ -96,7 +97,7 @@ export default function ReleaseUpdateBanner({ show, hasSession = false, onUpdate
       aria-live="polite"
       aria-label={t("releaseUpdate.regionAriaLabel")}
       data-testid="release-update-banner"
-      className="fixed inset-x-0 bottom-0 z-toast px-3 pb-3 sm:px-6 sm:pb-6 pointer-events-none"
+      className="fixed inset-x-0 bottom-[var(--cz-mobile-nav-offset,0px)] z-toast px-3 pb-3 sm:px-6 sm:pb-6 pointer-events-none"
     >
       {/* flex-wrap: ikon + spoergsmaal bliver paa samme linje, og det er
           KNAPPERNE der bryder om til linje to paa 390 px. To knapper og en hel

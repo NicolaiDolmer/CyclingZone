@@ -11,6 +11,7 @@ import {
   expireAndRenewContracts,
   recomputeActivationRate,
   resolveStageDivisor,
+  loadSeasonStageCounts,
   evaluateSeasonObjectives,
   resolveContractForNewSeason,
   contractRaceDayPool,
@@ -31,8 +32,8 @@ import { computeDivisionAdjustment } from "./divisionAdjustment.js";
 //   seasons:          .select(...).eq("number", N).maybeSingle()  (renown + stageCounts)
 //                      .select("race_days_total").eq("status","active").maybeSingle() (calendarDays)
 //   season_standings: .select(...).eq("season_id", id)  (thenable → array)
-//   races:            .select("league_division_id, stages").eq("season_id", id) (thenable)
-//   league_divisions: .select("id, tier")  (thenable, ingen filter)
+//   races:            .select("league_division_id, stages").or(<senior>).eq("season_id", id) (thenable)
+//   league_divisions: .select("id, tier").or(<senior>)  (thenable)
 //   sponsor_contracts:
 //     .select("*").eq("team_id").eq("status","active"|"pending").maybeSingle()
 //     .select(...).eq("status","active")                 (thenable, bulk — evaluateSeasonObjectives)
@@ -126,23 +127,40 @@ function makeSupabase({
     return b;
   }
 
+  // #5536: withSeniorSquadScope kæder .or("squad.is.null,squad.eq.senior") på; mocken
+  // fortolker det, så ungdomsrækker i en fixture faktisk filtreres fra.
+  const isSeniorRow = (row) => row.squad == null || row.squad === "senior";
+  function seniorOr(ctx, expr) {
+    assert.equal(expr, "squad.is.null,squad.eq.senior");
+    ctx.seniorOnly = true;
+  }
+
   function racesBuilder() {
     const ctx = {};
     const b = {
       select: () => b,
+      or: (expr) => { seniorOr(ctx, expr); return b; },
       eq: (col, val) => {
         if (col === "season_id") ctx.seasonId = val;
         return b;
       },
-      then: (resolve) => resolve({ data: racesBySeasonId[ctx.seasonId] ?? [], error: null }),
+      then: (resolve) => resolve({
+        data: (racesBySeasonId[ctx.seasonId] ?? []).filter((r) => !ctx.seniorOnly || isSeniorRow(r)),
+        error: null,
+      }),
     };
     return b;
   }
 
   function leagueDivisionsBuilder() {
+    const ctx = {};
     const b = {
       select: () => b,
-      then: (resolve) => resolve({ data: poolsList, error: null }),
+      or: (expr) => { seniorOr(ctx, expr); return b; },
+      then: (resolve) => resolve({
+        data: poolsList.filter((p) => !ctx.seniorOnly || isSeniorRow(p)),
+        error: null,
+      }),
     };
     return b;
   }
@@ -1818,6 +1836,43 @@ test("evaluateSeasonObjectives: ingen aktive kontrakter med season_objective-kla
   });
   const result = await evaluateSeasonObjectives({ supabase, finishedSeasonNumber: 2 });
   assert.deepEqual(result, { evaluated: 0, paid: 0 });
+});
+
+// ─── #5536: sponsor-divisoren tæller kun seniorløb og seniorpuljer ────────────
+
+test("#5536 loadSeasonStageCounts: ungdomsløb og ungdomspuljer i fixturen ændrer intet (senior bit-identisk)", async () => {
+  const seniorRaces = [
+    { league_division_id: "pool-a", stages: 3 },
+    { league_division_id: "pool-a", stages: 2 },
+    { league_division_id: "pool-b", stages: 5 },
+    { league_division_id: "pool-c", stages: 1 },
+  ];
+  const seniorPools = [{ id: "pool-a", tier: 2 }, { id: "pool-b", tier: 2 }, { id: "pool-c", tier: 3 }];
+  const base = { seasonsByNumber: { 3: { id: "s3", number: 3, race_days_total: 60 } } };
+
+  const plain = await loadSeasonStageCounts({
+    supabase: makeSupabase({ ...base, racesBySeasonId: { s3: seniorRaces }, poolsList: seniorPools }),
+    seasonNumber: 3,
+  });
+
+  // Ungdomspuljer med samme tier og mange etaper + ungdomsløb, også ét i en seniorpulje-id.
+  const mixed = await loadSeasonStageCounts({
+    supabase: makeSupabase({
+      ...base,
+      racesBySeasonId: { s3: [
+        ...seniorRaces,
+        { league_division_id: "u23-a", stages: 40, squad: "u23" },
+        { league_division_id: "u23-b", stages: 40, squad: "u23" },
+        { league_division_id: "pool-a", stages: 40, squad: "junior" },
+      ] },
+      poolsList: [...seniorPools, { id: "u23-a", tier: 2, squad: "u23" }, { id: "u23-b", tier: 3, squad: "u23" }],
+    }),
+    seasonNumber: 3,
+  });
+
+  assert.deepEqual(mixed, plain);
+  assert.deepEqual(plain.byPool, { "pool-a": 5, "pool-b": 5, "pool-c": 1 });
+  assert.equal(mixed.byPool["u23-a"], undefined, "ingen ungdomspulje i divisor-opslaget");
 });
 
 // ─── #2913: resolveStageDivisor fallback-kæde (pure) ──────────────────────────

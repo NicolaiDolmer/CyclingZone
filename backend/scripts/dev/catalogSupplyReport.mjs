@@ -18,9 +18,16 @@
 //   infisical run --env=prod -- node backend/scripts/dev/catalogSupplyReport.mjs --prod
 //
 //   # andre flag
-//   --race-days N   antal løbsdatoer i sæsonen (default 28, CALENDAR_RULES §2)
-//   --json          skriv hele resultatet som JSON på stdout i stedet for tabellen
-//   --all           vis også de mål der er grønne (default: kun fund + et sammendrag)
+//   --race-days N     antal løbsdatoer i sæsonen (default 28, CALENDAR_RULES §2)
+//   --json            skriv hele resultatet som JSON på stdout i stedet for tabellen
+//   --all             vis også de mål der er grønne (default: kun fund + et sammendrag)
+//   --check-expiry    #4827: kun udløbstjek af KNOWN_SUPPLY_DEVIATIONS mod DEN ÆGTE
+//                     vægur-klokke — ingen katalog indlæses. Til det natlige,
+//                     ikke-gatende step i .github/workflows/calendar-invariant-audit.yml
+//                     (unit-testen i catalogSupplyCheck.test.js bruger med vilje en FAST
+//                     "i dag", så den ikke afhænger af klokken CI'en kører tests med,
+//                     se #4827). Exit 1 hvis mindst én afvigelse er udløbet, ellers 0 —
+//                     workflow-steppet er advisory og vælter ikke jobbet på den kode.
 //
 // HVORNÅR DEN SKAL KØRES: ved enhver katalog-ændring, og senest EN MÅNED før et
 // sæsonskifte. Se CALENDAR_RULES.md §5b1.
@@ -121,6 +128,26 @@ function printSources(row) {
 }
 
 async function main() {
+  // #4827: udløbstjekket rører hverken kataloget eller netværket — kør det FØR
+  // resten af main() overhovedet overvejer at hente kataloget/prod-credentials.
+  if (has("--check-expiry")) {
+    const today = new Date().toISOString().slice(0, 10);
+    const { expired } = classifySupplyFindings([], { today });
+    if (expired.length) {
+      console.log(`FORSYNINGS-AFVIGELSER: ${expired.length} udløbet (dagens dato ${today}).`);
+      for (const d of expired) {
+        console.log(`  [UDLØBET] ${d.id} (issue #${d.issue}) skulle have været genbesøgt senest ${d.reviewBy}.`);
+      }
+      console.log("\nGenmål mod prod-kataloget (node backend/scripts/dev/catalogSupplyReport.mjs --prod),");
+      console.log("afgør med ejeren om afvigelsen er lukket eller skal forlænges, og opdatér");
+      console.log("KNOWN_SUPPLY_DEVIATIONS i backend/lib/catalogSupplyCheck.js.");
+    } else {
+      console.log(`FORSYNINGS-AFVIGELSER: ingen udløbet (dagens dato ${today}).`);
+    }
+    process.exitCode = expired.length ? 1 : 0;
+    return;
+  }
+
   // Valideres FØR kataloget hentes: `valueOf` returnerer bare det næste argument, så
   // `--race-days --json` eller en tastefejl ville give NaN. quotasForRaceDays mapper NaN til
   // 0 løbsdage, og en rapport mod en kvote på nul er ikke bare forkert — den er misvisende,

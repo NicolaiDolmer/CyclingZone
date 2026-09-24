@@ -41,12 +41,15 @@ import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter
 import { sampleField } from "./lib/headToHeadStats.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { stableSeed } from "../lib/raceSimulator.js";
-import { buildProxyCalendar } from "./v4TailSpread.js";
+import { buildProxyCalendar, DEFAULT_POPULATION_FILE } from "./v4TailSpread.js";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, "..", "..");
 
-const DEFAULT_POPULATION = join(REPO_ROOT, "backend", "scripts", "baselines", "population-snapshot-2026-07-11.json");
+// #5579: den pinnede population, importeret fra v4TailSpread.js i stedet for
+// en egen kopi, saa de to scripts ikke kan drive fra hinanden (samme grund som
+// buildProxyCalendar ovenfor). Juli-snapshottet stod her indtil #5579.
+const DEFAULT_POPULATION = join(REPO_ROOT, DEFAULT_POPULATION_FILE);
 const DEFAULT_SEEDS = ["descent-incidents-1", "descent-incidents-2", "descent-incidents-3"];
 const DEFAULT_FIELD_SIZE = 180; // samme laaste feltstoerrelse som headToHeadV4.LOCKED_FIELD_SIZE
 const DEFAULT_RACE_COUNT = 24;

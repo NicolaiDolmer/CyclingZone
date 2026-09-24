@@ -1,7 +1,8 @@
 {
   "title": "Academy",
   "subtitle": "Sign young talent, develop it, and decide when to promote or sell.",
-  "slots": "Academy: {used} / {max} places",
+  "slotsU23": "U23 {used}/{max}",
+  "slotsJunior": "Junior {used}/{max}",
   "balance": "Balance: {amount} CZ$",
   "disabledTitle": "Follow the academy on the roadmap",
   "disabledNote": "The academy is not open on your account yet.",
@@ -54,8 +55,10 @@
     "errorFailed": "Could not scout this week's intake. Please try again."
   },
   "loading": "...",
-  "fullTooltip": "Academy is full ({max}/{max}). Release a rider first.",
-  "fullNote": "Academy is full. Sign only after a spot opens.",
+  "fullTooltipU23": "Your U23 team is full ({max}/{max}). Free a place first.",
+  "fullTooltipJunior": "Your junior team is full ({max}/{max}). Free a place first.",
+  "fullNoteU23": "He joins your U23 team, and it is full. Sign once a place opens.",
+  "fullNoteJunior": "He joins your junior team, and it is full. Sign once a place opens.",
   "contractUntil": "Until season {season}",
   "colNation": "Nation",
   "colRider": "Rider",
@@ -85,6 +88,8 @@
     "currentSalaryLabel": "Current salary",
     "seniorCapLabel": "Senior squad",
     "academyCapLabel": "Academy places",
+    "u23CapLabel": "U23 team places",
+    "juniorCapLabel": "Junior team places",
     "racesClearedLabel": "Upcoming races cleared",
     "racesOngoingLabel": "Races they'll drop out of"
   },

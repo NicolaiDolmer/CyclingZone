@@ -7,6 +7,7 @@ import {
 } from "./sponsorRaceDayIncome.js";
 import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from "./economyConstants.js";
 import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
+import { SENIOR_SQUAD_OR_FILTER } from "./racePoolCatalog.js";
 
 // #4010: snapshot-cachen er modul-global og lever derfor på tvaers af tests i
 // samme fil. Fixtures her genbruger bevidst race-id "r1", saa uden en nulstilling
@@ -187,7 +188,10 @@ test("computeResultBonusCredits: remainingCapByTeam muterer IKKE (caller-ansvar)
 // ─── payRaceDaySponsorsToDate (I/O-sti) ────────────────────────────────────────
 // Faithful mock modelleret efter prizePayoutEngine.test.js / sponsorContractsService.test.js.
 // Dækker præcis de queries servicen laver:
-//   races:            .select(...).eq("season_id").eq("status","completed")  (thenable)
+//   races:            .select(...).or(senior-scope).eq("season_id").eq("status","completed")  (thenable)
+//                     #5537: `.or(SENIOR_SQUAD_OR_FILTER)` anvendes som SQL ville gøre det
+//                     (squad IS NULL OR squad = 'senior'); racesSquadColumnMissing
+//                     simulerer skemaet fra før A2, hvor Postgres svarer 42703.
 //   sponsor_contracts:.select("id, team_id, per_race_day_rate, bonus_clauses, results_bonus_paid").eq("status","active") (thenable)
 //   race_results:     .select("team_id, result_type, rank").eq("race_id", id) (thenable)
 //   finance_transactions:.select("idempotency_key").eq("season_id").in("type",[..]).range(from,to) (#3123 pre-filter)
@@ -197,6 +201,7 @@ test("computeResultBonusCredits: remainingCapByTeam muterer IKKE (caller-ansvar)
 // hele I/O-stien — ikke en stubbet kredit-funktion.
 function makeSupabase({
   races = [],
+  racesSquadColumnMissing = false, // #5537: `races.squad` findes ikke endnu → 42703
   contracts = [],
   resultsByRaceId = {},     // { [raceId]: [{ team_id, result_type, rank }] }
   skipKeys = new Set(),     // idempotency_keys der skal returnere 23505 (skip)
@@ -204,18 +209,36 @@ function makeSupabase({
   teamOwners = {},          // #3315: { [teamId]: userId } — sponsor_paid-notifikation
   failNotificationForUserIds = [], // #3315: simulerer en fejlende notifications-insert
 } = {}) {
-  const state = { rpcCalls: [], updates: [], keyPages: [], notifications: [], notificationInserts: [], raceResultsFetches: [] };
+  const state = {
+    rpcCalls: [], updates: [], keyPages: [], notifications: [], notificationInserts: [], raceResultsFetches: [],
+    raceQueries: [], // #5537: én post pr. races-læsning — { or, referencedTable }
+  };
   const failNotify = new Set(failNotificationForUserIds);
 
-  function thenable(rows) {
+  // #5537: races-læsningen. Senior-scopet anvendes her som SQL'en ville gøre det,
+  // skrevet ud bogstaveligt (ikke via squads.js), så testen ikke låner prædikatet
+  // den skal bevise.
+  function racesQuery() {
+    const call = { or: null, referencedTable: null };
+    state.raceQueries.push(call);
     const b = {
-      _ctx: {},
       select: () => b,
-      eq(col, val) {
-        b._ctx[col] = val;
+      eq: () => b,
+      or(filter, opts = {}) {
+        call.or = filter;
+        call.referencedTable = opts.referencedTable ?? null;
         return b;
       },
-      then: (resolve) => resolve({ data: rows, error: null }),
+      then: (resolve) => {
+        if (call.or !== null) {
+          assert.equal(call.or, SENIOR_SQUAD_OR_FILTER, "races må kun scopes med senior-filteret");
+          if (racesSquadColumnMissing) {
+            return resolve({ data: null, error: { code: "42703", message: "column races.squad does not exist" } });
+          }
+          return resolve({ data: races.filter((r) => r.squad == null || r.squad === "senior"), error: null });
+        }
+        return resolve({ data: races, error: null });
+      },
     };
     return b;
   }
@@ -237,7 +260,7 @@ function makeSupabase({
       return Promise.resolve({ data: 100000, error: null });
     },
     from(table) {
-      if (table === "races") return thenable(races);
+      if (table === "races") return racesQuery();
       if (table === "sponsor_contracts") {
         const ctx = {};
         const b = {
@@ -970,4 +993,97 @@ test("#4010 snapshottet bevarer sejre og podier på tværs af ticks", async () =
   assert.deepEqual(supabase.state.rpcCalls.map((c) => c.delta), firstTick,
     "cachet tick skal give præcis samme bonus som den DB-hentede");
   assert.deepEqual(supabase.state.raceResultsFetches, ["r1"]);
+});
+
+// ─── #5537 (S9, C3): kun seniorløb udbetaler ──────────────────────────────────
+// Efter A2 bor U23-/juniorløb i samme races-tabel. Et ungdomsløb må hverken give
+// løbsdags-indtægt, resultat-bonus, loft-forbrug eller en sponsor_paid-besked —
+// ellers bliver ungdomstruppen en ny guldkilde for seniorkontrakten.
+
+function youthAndSeniorFixture(extra = {}) {
+  const contract = () => ({
+    id: "c1", team_id: "t1", sponsor_name: "Sponsor A", per_race_day_rate: 1000,
+    bonus_clauses: [
+      { type: "stage_win", amount: 500 },
+      { type: "podium", amount: 100 },
+      { type: "results_cap", amount: 100000 },
+    ],
+    results_bonus_paid: 0,
+  });
+  const podium = () => [
+    { team_id: "t1", result_type: "stage", rank: 1 },
+    { team_id: "t1", result_type: "stage", rank: 2 },
+  ];
+  return makeSupabase({
+    races: [
+      { id: "r-senior", name: "Senior Race", stages: 2, status: "completed", squad: "senior" },
+      { id: "r-u23", name: "U23 Race", stages: 3, status: "completed", squad: "u23" },
+      { id: "r-junior", name: "Junior Race", stages: 1, status: "completed", squad: "junior" },
+    ],
+    contracts: [contract()],
+    resultsByRaceId: { "r-senior": podium(), "r-u23": podium(), "r-junior": podium() },
+    teamOwners: { t1: "user-a" },
+    ...extra,
+  });
+}
+
+test("#5537 ungdomsløb giver 0 kr.: ingen løbsdag, ingen bonus, intet loft-forbrug, ingen besked", async () => {
+  const supabase = youthAndSeniorFixture();
+
+  const result = await payRaceDaySponsorsToDate("s1", supabase);
+
+  // Kontrol: seniorløbet udbetaler som altid (løbsdag + bonus).
+  assert.deepEqual(result, { credited: 1, result_bonuses: 1 });
+  assert.deepEqual(
+    supabase.state.rpcCalls.map((c) => [c.payload.race_id, c.payload.type, c.delta]),
+    [["r-senior", "sponsor_race_day", 2000], ["r-senior", "sponsor_result_bonus", 600]],
+  );
+  // Ungdomsløbenes resultater hentes slet ikke — de er aldrig kandidater.
+  assert.deepEqual(supabase.state.raceResultsFetches, ["r-senior"]);
+  // Loftet forbruges kun af seniorbonussen.
+  assert.deepEqual(supabase.state.updates.map((u) => u.payload.results_bonus_paid), [600]);
+  // Én sponsor_paid-besked, og den handler om seniorløbet.
+  assert.equal(supabase.state.notificationInserts.length, 1);
+  assert.equal(supabase.state.notificationInserts[0].related_id, "r-senior");
+});
+
+test("#5537 scopet ligger på races-læsningen selv (ikke et indlejret filter)", async () => {
+  const supabase = youthAndSeniorFixture();
+
+  await payRaceDaySponsorsToDate("s1", supabase);
+
+  assert.deepEqual(supabase.state.raceQueries, [{ or: SENIOR_SQUAD_OR_FILTER, referencedTable: null }]);
+});
+
+test("#5537 skema fra før A2 (42703 på squad): ét fallback-kald uden scope, udbetaling som i dag", async () => {
+  // Uden kolonnen kan intet ungdomsløb findes, så den uscopede læsning er ren senior.
+  const supabase = makeSupabase({
+    racesSquadColumnMissing: true,
+    races: [{ id: "r1", stages: 2, status: "completed" }],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000 }],
+    resultsByRaceId: { r1: [{ team_id: "t1", result_type: "stage", rank: 5 }] },
+  });
+
+  const result = await payRaceDaySponsorsToDate("s1", supabase);
+
+  assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
+  assert.deepEqual(supabase.state.rpcCalls.map((c) => c.delta), [2000]);
+  assert.deepEqual(
+    supabase.state.raceQueries.map((q) => q.or),
+    [SENIOR_SQUAD_OR_FILTER, null],
+    "første forsøg scoped, fallback uden scope",
+  );
+});
+
+test("#5537 bit-identisk i dag: løb uden squad-felt (DEFAULT 'senior') udbetaler uændret", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r1", stages: 3, status: "completed" }, { id: "r2", stages: 1, status: "completed", squad: null }],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000 }],
+    resultsByRaceId: { r1: [{ team_id: "t1", result_type: "stage", rank: 5 }], r2: [{ team_id: "t1", result_type: "gc", rank: 7 }] },
+  });
+
+  const result = await payRaceDaySponsorsToDate("s1", supabase);
+
+  assert.deepEqual(result, { credited: 2, result_bonuses: 0 });
+  assert.deepEqual(supabase.state.rpcCalls.map((c) => [c.payload.race_id, c.delta]), [["r1", 3000], ["r2", 1000]]);
 });
